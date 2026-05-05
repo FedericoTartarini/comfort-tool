@@ -44,48 +44,48 @@ export const chartMetaById: Record<
   }
 > = {
   [ChartId.Psychrometric]: {
-    name: "Psychrometric Chart",
+    name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.Stress]: {
-    name: "Psychrometric Chart",
+    name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.Adaptive]: {
-    name: "Psychrometric Chart",
+    name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.AdaptiveDynamic]: {
-    name: "Dynamic Adaptive Chart",
-    emptyMessage: "No adaptive dynamic chart yet.",
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.PmvDynamic]: {
-    name: "Dynamic PMV Chart",
-    emptyMessage: "No PMV dynamic chart yet.",
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.UtciDynamic]: {
-    name: "Dynamic UTCI Chart",
-    emptyMessage: "No UTCI dynamic chart yet.",
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.HeatIndexRanges]: {
-    name: "Heat Index Chart",
-    emptyMessage: "No heat index chart yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.Humidex]: {
-    name: "Humidex Chart",
-    emptyMessage: "No humidex chart yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.WindChill]: {
-    name: "Wind Chill Chart",
-    emptyMessage: "No wind chill chart yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
 };

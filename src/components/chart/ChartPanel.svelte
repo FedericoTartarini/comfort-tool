@@ -76,8 +76,8 @@
       {/if}
     </div>
 
-    <div class="flex flex-wrap items-center justify-end gap-2">
-      {#if (selectedChart === ChartId.PmvDynamic || selectedChart === ChartId.UtciDynamic || selectedChart === ChartId.AdaptiveDynamic) && dynamicXAxis && dynamicYAxis && onSelectXAxis && onSelectYAxis}
+    <div class="flex flex-wrap items-center justify-end gap-2 pr-[24px]">
+      {#if (compareEnabled || (selectedChart === ChartId.PmvDynamic || selectedChart === ChartId.UtciDynamic || selectedChart === ChartId.AdaptiveDynamic)) && baselineInputId && onSelectBaselineInput}
         <ChartAxisMenu
           {dynamicXAxis}
           {dynamicYAxis}
@@ -91,15 +91,6 @@
         />
       {/if}
       <div class="flex items-center gap-1.5">
-        <span class="text-xs font-medium text-stone-500">Zones</span>
-        <Toggle
-          checked={showZones}
-          onchange={(e) => (showZones = e.currentTarget.checked)}
-          color="teal"
-          size="small"
-        />
-      </div>
-      <div class="flex items-center gap-1.5">
         <span class="text-xs font-medium text-stone-500">Chart:</span>
         <ChartExportMenu
           {chartOptions}
@@ -107,6 +98,15 @@
           activeChartId={selectedChart}
           onSelectChart={onSelectChart}
           onExport={(type) => exportChart?.(type)}
+        />
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-medium text-stone-500">Zones:</span>
+        <Toggle
+          checked={showZones}
+          onchange={(e) => (showZones = e.currentTarget.checked)}
+          color="teal"
+          size="small"
         />
       </div>
     </div>

@@ -192,7 +192,7 @@ function buildUtciChartResult(
 
   // Handle the Stress chart type.
   if (chartId === ChartId.Stress) {
-    return buildUtciStressChart(chartSource.chartRequest, resultsByInput, unitSystem);
+    return buildUtciStressChart(chartSource.chartRequest, resultsByInput, unitSystem, chartSource.baselineInputId);
   }
 
   // Handle the Dynamic UTCI chart type.

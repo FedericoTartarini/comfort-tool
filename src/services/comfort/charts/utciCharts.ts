@@ -119,6 +119,7 @@ export function buildUtciStressChart(
   payload: UtciChartInputsRequestDto,
   cachedResultsByInput: UtciChartResultsByInput = {},
   unitSystem: UnitSystemType = UnitSystem.SI,
+  baselineInputId?: string,
 ): PlotlyChartResponseDto {
   // Get the inputs for the chart.
   const inputs = getCompareInputs(payload.inputs);

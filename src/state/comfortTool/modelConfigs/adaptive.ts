@@ -452,7 +452,7 @@ function createAdaptiveModelConfig(modelId: ComfortModel, standardMode: Adaptive
       );
     }
     
-    return buildAdaptiveChart(chartSource.chartRequest, standardMode, unitSystem);
+    return buildAdaptiveChart(chartSource.chartRequest, standardMode, unitSystem, chartSource.baselineInputId);
   });
 
   return builder.build();
