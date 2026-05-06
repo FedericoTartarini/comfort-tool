@@ -118,6 +118,8 @@ function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
     [ComfortModel.AdaptiveAshrae]: createEmptyCalculationCache(),
     [ComfortModel.AdaptiveEn]: createEmptyCalculationCache(),
     [ComfortModel.HeatIndex]: createEmptyCalculationCache(),
+    [ComfortModel.Humidex]: createEmptyCalculationCache(),
+    [ComfortModel.WindChill]: createEmptyCalculationCache(),
   } as ModelCalculationCacheByModelState;
 }
 
@@ -406,13 +408,29 @@ export function createComfortToolState(): ComfortToolController {
   }
 
   function setDynamicXAxis(fieldKey: FieldKeyType) {
+    const prevX = state.ui.dynamicXAxis;
     state.ui.dynamicXAxis = fieldKey;
+
+    // Auto-swap for thermal models with only 2 inputs.
+    const thermalModels = [ComfortModel.HeatIndex, ComfortModel.Humidex, ComfortModel.WindChill];
+    if (thermalModels.includes(state.ui.selectedModel as any) && fieldKey === state.ui.dynamicYAxis) {
+      state.ui.dynamicYAxis = prevX;
+    }
+
     invalidateAllModels();
     scheduleCalculationInternal({ immediate: true });
   }
 
   function setDynamicYAxis(fieldKey: FieldKeyType) {
+    const prevY = state.ui.dynamicYAxis;
     state.ui.dynamicYAxis = fieldKey;
+
+    // Auto-swap for thermal models with only 2 inputs.
+    const thermalModels = [ComfortModel.HeatIndex, ComfortModel.Humidex, ComfortModel.WindChill];
+    if (thermalModels.includes(state.ui.selectedModel as any) && fieldKey === state.ui.dynamicXAxis) {
+      state.ui.dynamicXAxis = prevY;
+    }
+
     invalidateAllModels();
     scheduleCalculationInternal({ immediate: true });
   }

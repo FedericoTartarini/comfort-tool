@@ -18,7 +18,7 @@ import type { ComfortToolStateSlice, ModelOptionsState, ResultSectionViewModel }
 import { pmvModelConfig } from "./pmv";
 import { utciModelConfig } from "./utci";
 import { adaptiveAshraeModelConfig, adaptiveEnModelConfig } from "./adaptive";
-import { thermalIndicesModelConfig } from "./thermalIndices";
+import { heatIndexModelConfig, humidexModelConfig, windChillModelConfig } from "./thermalIndices";
 
 /**
  * Type for model calculation outputs, containing results by input and chart source.
@@ -40,39 +40,6 @@ export type ModelOptionChangeHandler = (
   context: ControlBehaviorContext,
   nextValue: string,
 ) => BehaviorPatch | null;
-
-/**
- * Type for comfort model definition, containing model information and calculation logic.
- * @template ResultType - The type of the calculation results.
- * @template ChartSourceType - The type of the chart source.
- */
-export interface ComfortModelDefinition<ResultType, ChartSourceType> {
-  id: ComfortModelType;
-  controls: InputControlDefinition[];
-  optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
-  chartIds: ChartIdType[];
-  defaultChartId: ChartIdType;
-  defaultOptions: Partial<Record<OptionKeyType, string>>;
-  normalizeOptions: (value: unknown) => ModelOptionsState | null;
-  calculate: (
-    state: ComfortToolStateSlice,
-    visibleInputIds: InputIdType[],
-  ) => ModelCalculationOutputs<ResultType, ChartSourceType>;
-  buildResultSections: (
-    resultsByInput: Record<InputIdType, ResultType | null>,
-    visibleInputIds: InputIdType[],
-    unitSystem: UnitSystemType,
-    options: ModelOptionsState,
-    selectedChartId: ChartIdType,
-  ) => ResultSectionViewModel[];
-  buildChartResult: (
-    chartId: ChartIdType,
-    chartSource: ChartSourceType | null,
-    resultsByInput: Record<InputIdType, ResultType | null>,
-    unitSystem: UnitSystemType,
-  ) => PlotlyChartResponseDto | null;
-  dynamicAxisFields: FieldKeyType[];
-}
 
 /**
  * Type for comfort model definition, containing model information and calculation logic.
@@ -117,7 +84,9 @@ export const comfortModelConfigs = {
   [ComfortModel.Utci]: utciModelConfig,
   [ComfortModel.AdaptiveAshrae]: adaptiveAshraeModelConfig,
   [ComfortModel.AdaptiveEn]: adaptiveEnModelConfig,
-  [ComfortModel.HeatIndex]: thermalIndicesModelConfig,
+  [ComfortModel.HeatIndex]: heatIndexModelConfig,
+  [ComfortModel.Humidex]: humidexModelConfig,
+  [ComfortModel.WindChill]: windChillModelConfig,
 } as const;
 
 // Gets the model config for a given model id

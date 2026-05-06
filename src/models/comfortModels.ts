@@ -4,11 +4,22 @@ export const ComfortModel = {
   AdaptiveAshrae: "ADAPTIVE_ASHRAE",
   AdaptiveEn: "ADAPTIVE_EN",
   HeatIndex: "HEAT_INDEX",
+  Humidex: "HUMIDEX",
+  WindChill: "WIND_CHILL",
 } as const;
 
 export type ComfortModel = (typeof ComfortModel)[keyof typeof ComfortModel];
+
 // The order in which the comfort models are displayed in the dropdown.
-export const comfortModelOrder: ComfortModel[] = [ComfortModel.Pmv, ComfortModel.Utci, ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn, ComfortModel.HeatIndex];
+export const comfortModelOrder: ComfortModel[] = [
+  ComfortModel.Pmv,
+  ComfortModel.Utci,
+  ComfortModel.AdaptiveAshrae,
+  ComfortModel.AdaptiveEn,
+  ComfortModel.HeatIndex,
+  ComfortModel.Humidex,
+  ComfortModel.WindChill,
+];
 
 export const comfortModelMetaById: Record<
   ComfortModel,
@@ -34,7 +45,15 @@ export const comfortModelMetaById: Record<
     description: "EN 16798-1 Adaptive thermal comfort model for naturally ventilated buildings.",
   },
   [ComfortModel.HeatIndex]: {
-    label: "Thermal Indices",
-    description: "Various heat and cold indices used to calculate the apparent temperature of the thermal environment.",
+    label: "Heat Index",
+    description: "Combines air temperature and relative humidity to determine the human-perceived equivalent temperature.",
+  },
+  [ComfortModel.Humidex]: {
+    label: "Humidex",
+    description: "Canadian index used to describe how hot the weather feels to the average person, by combining the effects of heat and humidity.",
+  },
+  [ComfortModel.WindChill]: {
+    label: "Wind Chill",
+    description: "Index that measures how cold it feels when wind is factored in with the actual air temperature.",
   },
 };

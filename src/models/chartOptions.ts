@@ -15,8 +15,11 @@ export const ChartId = {
   PmvDynamic: "pmvDynamic", // PMV (ASHRAE) dynamic chart
   UtciDynamic: "utciDynamic", // UTCI (Heat stress) dynamic chart
   HeatIndexRanges: "heatIndexRanges", // Heat index chart
+  HeatIndexDynamic: "heatIndexDynamic", // Heat index dynamic chart
   Humidex: "humidex", // Humidex chart
+  HumidexDynamic: "humidexDynamic", // Humidex dynamic chart
   WindChill: "windChill", // Wind chill chart
+  WindChillDynamic: "windChillDynamic", // Wind chill dynamic chart
 } as const;
 
 // This type is a union of all the ChartId values. It is used to ensure type safety when
@@ -78,14 +81,29 @@ export const chartMetaById: Record<
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
+  [ChartId.HeatIndexDynamic]: {
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
+    heightClass: "h-[480px] xl:h-[480px]",
+  },
   [ChartId.Humidex]: {
     name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
+  [ChartId.HumidexDynamic]: {
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
+    heightClass: "h-[480px] xl:h-[480px]",
+  },
   [ChartId.WindChill]: {
     name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
+    heightClass: "h-[480px] xl:h-[480px]",
+  },
+  [ChartId.WindChillDynamic]: {
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
 };

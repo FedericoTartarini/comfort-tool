@@ -21,6 +21,7 @@
     compareEnabled = false,
     onSelectXAxis,
     onSelectYAxis,
+    lockYAxis = false,
   }: {
     dynamicXAxis?: string;
     dynamicYAxis?: string;
@@ -31,6 +32,7 @@
     compareEnabled?: boolean;
     onSelectXAxis?: (fieldKey: string) => void;
     onSelectYAxis?: (fieldKey: string) => void;
+    lockYAxis?: boolean;
   } = $props();
 
   const currentXLabel = $derived(fieldMetaByKey[dynamicXAxis as FieldKey]?.label ?? "X-Axis");
@@ -87,8 +89,8 @@
       {#each axisOptions as option}
         <DropdownItem 
           onclick={() => onSelectXAxis(option)} 
-          class="text-left {dynamicYAxis === option ? 'cursor-not-allowed opacity-40 bg-stone-50' : ''}"
-          disabled={dynamicYAxis === option}
+          class="text-left {(dynamicYAxis === option && !lockYAxis) ? 'cursor-not-allowed opacity-40 bg-stone-50' : ''}"
+          disabled={dynamicYAxis === option && !lockYAxis}
         >
           <span class={dynamicXAxis === option ? "font-bold text-teal-700" : "text-stone-700"}>
             {fieldMetaByKey[option].label}
@@ -98,27 +100,31 @@
     </Dropdown>
 
     <span class="ml-2 text-xs font-medium text-stone-500">Y:</span>
-    <Button id="chart-y-axis-trigger" color="light" pill size="xs" class="text-stone-700 flex items-center">
+    <Button id="chart-y-axis-trigger" color="light" pill size="xs" class="text-stone-700 flex items-center {lockYAxis ? 'cursor-default pointer-events-none' : ''}" disabled={lockYAxis}>
       <span class="max-w-[100px] truncate">
         {currentYLabel}
       </span>
-      <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
+      {#if !lockYAxis}
+        <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
+      {/if}
     </Button>
-    <Dropdown triggeredBy="#chart-y-axis-trigger" class="w-48 shadow-lg">
-      <div slot="header" class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
-        Select Y Axis
-      </div>
-      {#each axisOptions as option}
-        <DropdownItem 
-          onclick={() => onSelectYAxis(option)} 
-          class="text-left {dynamicXAxis === option ? 'cursor-not-allowed opacity-40 bg-stone-50' : ''}"
-          disabled={dynamicXAxis === option}
-        >
-          <span class={dynamicYAxis === option ? "font-bold text-teal-700" : "text-stone-700"}>
-            {fieldMetaByKey[option].label}
-          </span>
-        </DropdownItem>
-      {/each}
-    </Dropdown>
+    {#if !lockYAxis}
+      <Dropdown triggeredBy="#chart-y-axis-trigger" class="w-48 shadow-lg">
+        <div slot="header" class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
+          Select Y Axis
+        </div>
+        {#each axisOptions as option}
+          <DropdownItem 
+            onclick={() => onSelectYAxis(option)} 
+            class="text-left {dynamicXAxis === option ? 'cursor-not-allowed opacity-40 bg-stone-50' : ''}"
+            disabled={dynamicXAxis === option}
+          >
+            <span class={dynamicYAxis === option ? "font-bold text-teal-700" : "text-stone-700"}>
+              {fieldMetaByKey[option].label}
+            </span>
+          </DropdownItem>
+        {/each}
+      </Dropdown>
+    {/if}
   {/if}
 </div>

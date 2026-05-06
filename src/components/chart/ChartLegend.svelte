@@ -4,10 +4,10 @@
    * Renders the thermal comfort zone legends for various charts.
    * Dynamically displays color-coded categories for PMV, UTCI, Adaptive, and other thermal models.
    */
-  import { ChartId } from "../../models/chartOptions";
+  import { ChartId, type ChartId as ChartIdType } from "../../models/chartOptions";
   import { utciStressBands } from "../../models/utciStress";
 
-  let { selectedChart }: { selectedChart: ChartId } = $props();
+  let { selectedChart }: { selectedChart: ChartIdType } = $props();
 
   const pmvZones = [
     { label: "Cold", color: "#0571b0" },
@@ -102,7 +102,7 @@
   </div>
 {/if}
 
-{#if selectedChart === ChartId.HeatIndexRanges}
+{#if selectedChart === ChartId.HeatIndexRanges || selectedChart === ChartId.HeatIndexDynamic}
   <div class="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-stone-100 pt-4">
     <span class="text-xs font-semibold uppercase tracking-wider text-stone-400">Heat Index</span>
     <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
@@ -116,7 +116,7 @@
   </div>
 {/if}
 
-{#if selectedChart === ChartId.Humidex}
+{#if selectedChart === ChartId.Humidex || selectedChart === ChartId.HumidexDynamic}
   <div class="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-stone-100 pt-4">
     <span class="text-xs font-semibold uppercase tracking-wider text-stone-400">Humidex</span>
     <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
@@ -130,7 +130,7 @@
   </div>
 {/if}
 
-{#if selectedChart === ChartId.WindChill}
+{#if selectedChart === ChartId.WindChill || selectedChart === ChartId.WindChillDynamic}
   <div class="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-stone-100 pt-4">
     <span class="text-xs font-semibold uppercase tracking-wider text-stone-400">Wind Chill</span>
     <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">

@@ -2,7 +2,7 @@
   /**
    * @component
    * The primary container for comfort tool visualizations.
-   * Orchestrates the display of the chart canvas, header information, axis selection, 
+   * Orchestrates the display of the chart canvas, header information, axis selection,
    * legends, and export controls.
    */
   import { Card, Heading, Toggle } from "flowbite-svelte";
@@ -10,7 +10,7 @@
   import ChartExportMenu from "./ChartExportMenu.svelte";
   import ChartAxisMenu from "./ChartAxisMenu.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import { ChartId } from "../../models/chartOptions";
+  import { ChartId, type ChartId as ChartIdType } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
 
   let {
@@ -40,9 +40,9 @@
     isLoading: boolean;
     emptyMessage: string;
     heightClass: string;
-    chartOptions: Array<{ name: string; value: ChartId }>;
-    selectedChart: ChartId;
-    onSelectChart: (chartId: ChartId) => void;
+    chartOptions: Array<{ name: string; value: ChartIdType }>;
+    selectedChart: ChartIdType;
+    onSelectChart: (chartId: ChartIdType) => void;
     dynamicXAxis?: string;
     dynamicYAxis?: string;
     onSelectXAxis?: (fieldKey: string) => void;
@@ -55,7 +55,8 @@
     embedded?: boolean;
   } = $props();
 
-  let exportChart: ((type: "png" | "svg") => void) | undefined = $state(undefined);
+  let exportChart: ((type: "png" | "svg") => void) | undefined =
+    $state(undefined);
   let showZones = $state(true);
 
   // Reset zone visibility whenever the active chart changes.
@@ -63,13 +64,24 @@
     selectedChart;
     showZones = true;
   });
+
+  // Disable dynamic axis selection for heat index, humidex, and wind chill dynamic charts
+  const lockYAxis = $derived(
+    ([
+      ChartId.HeatIndexDynamic,
+      ChartId.HumidexDynamic,
+      ChartId.WindChillDynamic,
+    ] as ChartIdType[]).includes(selectedChart),
+  );
 </script>
 
 {#snippet content()}
   <header class="flex items-start justify-between gap-4">
     <div class="min-w-0">
       {#if title}
-        <Heading tag="h3" class="text-sm font-semibold text-stone-900">{title}</Heading>
+        <Heading tag="h3" class="text-sm font-semibold text-stone-900"
+          >{title}</Heading
+        >
       {/if}
       {#if description}
         <p class="mt-1 text-xs text-stone-500">{description}</p>
@@ -77,7 +89,7 @@
     </div>
 
     <div class="flex flex-wrap items-center justify-end gap-2 pr-[24px]">
-      {#if (compareEnabled || (selectedChart === ChartId.PmvDynamic || selectedChart === ChartId.UtciDynamic || selectedChart === ChartId.AdaptiveDynamic)) && baselineInputId && onSelectBaselineInput}
+      {#if (compareEnabled || ([ChartId.PmvDynamic, ChartId.UtciDynamic, ChartId.AdaptiveDynamic, ChartId.HeatIndexDynamic, ChartId.HumidexDynamic, ChartId.WindChillDynamic] as ChartIdType[]).includes(selectedChart)) && baselineInputId && onSelectBaselineInput}
         <ChartAxisMenu
           {dynamicXAxis}
           {dynamicYAxis}
@@ -88,6 +100,7 @@
           {compareEnabled}
           {onSelectXAxis}
           {onSelectYAxis}
+          {lockYAxis}
         />
       {/if}
       <div class="flex items-center gap-1.5">
@@ -96,7 +109,7 @@
           {chartOptions}
           {selectedChart}
           activeChartId={selectedChart}
-          onSelectChart={onSelectChart}
+          {onSelectChart}
           onExport={(type) => exportChart?.(type)}
         />
       </div>
@@ -112,7 +125,9 @@
     </div>
   </header>
 
-  <div class={`mt-4 ${heightClass} relative overflow-hidden rounded-lg bg-stone-50/50`}>
+  <div
+    class={`mt-4 ${heightClass} relative overflow-hidden rounded-lg bg-stone-50/50`}
+  >
     <PlotlyCanvas
       {chartResult}
       {isLoading}

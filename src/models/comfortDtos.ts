@@ -183,6 +183,8 @@ export interface ThermalIndicesChartInputsRequestDto {
 // Thermal Indices Chart Source DTO, contains chart requests for each input
 export interface ThermalIndicesChartSourceDto {
   chartRequest: ThermalIndicesChartInputsRequestDto;
+  dynamicXAxis?: FieldKey;
+  dynamicYAxis?: FieldKey;
 }
 
 // Adaptive Chart Inputs Request DTO, contains adaptive requests for each input
