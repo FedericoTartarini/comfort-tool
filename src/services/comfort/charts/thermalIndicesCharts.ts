@@ -40,6 +40,130 @@ import { type ComfortModel as ComfortModelType } from "../../../models/comfortMo
 import { inputDisplayMetaById } from "../../../models/inputSlotPresentation";
 import { buildInputScatterTrace, buildContourTrace } from "./plotlyBuilders";
 
+/**
+ * Builds a range chart for thermal indices (Heat Index, Humidex, Wind Chill), 
+ * creating a 2D heatmap of the index over a specified range of two input variables.
+ * @param payload - The inputs for the chart, including multiple calculation inputs.
+ * @param cachedResultsByInput - A map of input IDs to their cached calculation results.
+ * @param unitSystem - The unit system (SI or IP) for unit conversions.
+ * @param config - Configuration object defining the chart's properties.
+ * @returns PlotlyChartResponseDto - The chart data containing traces and layout.
+ */
+function buildThermalIndexRangeChart(
+  payload: ThermalIndicesChartInputsRequestDto,
+  cachedResultsByInput: any,
+  unitSystem: UnitSystemType,
+  config: {
+    title: string;
+    xKey: FieldKey;
+    yKey: FieldKey;
+    xRangeSi: { min: number; max: number };
+    yRangeSi: { min: number; max: number };
+    zMax: number;
+    colorscale: any[][];
+    hovertemplateContour: string;
+    getHovertemplateScatter: (inputLabel: string, cached: any) => string;
+    getScatterXSi: (payload: any) => number;
+    getScatterYSi: (payload: any) => number;
+    calculatePoint: (xSi: number, ySi: number) => { rangeValue: number; category: string };
+  }
+): PlotlyChartResponseDto {
+  const inputs = getCompareInputs(payload.inputs);
+  const showInputLegend = inputs.length > 1;
+
+  const xMeta = fieldMetaByKey[config.xKey];
+  const yMeta = fieldMetaByKey[config.yKey];
+
+  const xMin = convertFieldValueFromSi(config.xKey, config.xRangeSi.min, unitSystem);
+  const xMax = convertFieldValueFromSi(config.xKey, config.xRangeSi.max, unitSystem);
+  const yMin = convertFieldValueFromSi(config.yKey, config.yRangeSi.min, unitSystem);
+  const yMax = convertFieldValueFromSi(config.yKey, config.yRangeSi.max, unitSystem);
+
+  const xPoints = 50;
+  const yPoints = 50;
+  const xValues: number[] = [];
+  const yValues: number[] = [];
+
+  // Create the X and Y values for the range chart
+  for (let i = 0; i < xPoints; i++) xValues.push(xMin + i * ((xMax - xMin) / (xPoints - 1)));
+  for (let i = 0; i < yPoints; i++) yValues.push(yMin + i * ((yMax - yMin) / (yPoints - 1)));
+
+  const zValues: number[][] = [];
+  const textValues: string[][] = [];
+
+  // Iterate over the Y-axis points to build each row of the grid
+  for (let i = 0; i < yPoints; i++) {
+    const row: number[] = [];
+    const textRow: string[] = [];
+    const ySi = convertFieldValueToSi(config.yKey, yValues[i], unitSystem);
+
+    // For each X-axis point in the current row, calculate the thermal index value and category
+    for (let j = 0; j < xPoints; j++) {
+      const xSi = convertFieldValueToSi(config.xKey, xValues[j], unitSystem);
+      try {
+        const { rangeValue, category } = config.calculatePoint(xSi, ySi);
+        row.push(rangeValue);
+        textRow.push(category);
+      } catch {
+        row.push(NaN);
+        textRow.push("Error");
+      }
+    }
+    zValues.push(row);
+    textValues.push(textRow);
+  }
+
+  // Add the heatmap trace
+  const traces: PlotTraceDto[] = [
+    buildContourTrace({
+      name: config.title,
+      x: xValues,
+      y: yValues,
+      z: zValues,
+      text: textValues,
+      colorscale: config.colorscale,
+      zmin: 0,
+      zmax: config.zMax,
+      contours: { coloring: "heatmap", showlines: false },
+      hovertemplate: config.hovertemplateContour,
+      showscale: false,
+      isZone: true,
+    })
+  ];
+
+  // Add the scatter traces for each input
+  inputs.forEach((input) => {
+    const cached = cachedResultsByInput[input.inputId];
+    const xVal = convertFieldValueFromSi(config.xKey, config.getScatterXSi(input.payload), unitSystem);
+    const yVal = convertFieldValueFromSi(config.yKey, config.getScatterYSi(input.payload), unitSystem);
+    
+    traces.push(
+      buildInputScatterTrace({
+        inputId: input.inputId,
+        x: xVal,
+        y: yVal,
+        showLegend: showInputLegend,
+        hovertemplate: config.getHovertemplateScatter(inputDisplayMetaById[input.inputId].label, cached),
+      })
+    );
+  });
+
+  // Return the chart data
+  return {
+    traces,
+    layout: {
+      title: config.title,
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      showlegend: showInputLegend,
+      margin: { l: 60, r: 24, t: 60, b: 60 },
+      xaxis: { title: `${xMeta.label} (${xMeta.displayUnits[unitSystem]})`, range: [xMin, xMax] },
+      yaxis: { title: `${yMeta.label} (${yMeta.displayUnits[unitSystem]})`, range: [yMin, yMax] }
+    },
+    annotations: [],
+    source: CalculationSource.JsThermalComfort
+  };
+}
 
 /**
  * Builds the Heat Index Chart.
@@ -53,134 +177,35 @@ export function buildHeatIndexRangesChart(
   cachedResultsByInput: any = {},
   unitSystem: UnitSystemType = UnitSystem.SI,
 ): PlotlyChartResponseDto {
-  // Get the inputs for the chart
-  const inputs = getCompareInputs(payload.inputs);
-  // Check if we should show the input legend
-  const showInputLegend = inputs.length > 1;
-
-  // Get the metadata for the y-axis (air temperature)
-  const yMeta = fieldMetaByKey[FieldKey.DryBulbTemperature];
-
-  // Set the min/max values for the x-axis (relative humidity)
-  const xMin = 0; // RH 0%
-  const xMax = 100; // RH 100%
-  
-  // Set the min/max values for the y-axis (air temperature)
-  const yMinSi = 20;
-  const yMaxSi = 50;
-  const yMin = convertFieldValueFromSi(FieldKey.DryBulbTemperature, yMinSi, unitSystem);
-  const yMax = convertFieldValueFromSi(FieldKey.DryBulbTemperature, yMaxSi, unitSystem);
-
-  // Set the number of points for the x and y axes
-  const xPoints = 50;
-  const yPoints = 50;
-  const xValues: number[] = [];
-  const yValues: number[] = [];
-
-  // Build the x and y values
-  for (let i = 0; i < xPoints; i++) {
-    xValues.push(xMin + (xMax - xMin) * (i / (xPoints - 1)));
-  }
-  for (let i = 0; i < yPoints; i++) {
-    yValues.push(yMin + (yMax - yMin) * (i / (yPoints - 1)));
-  }
-
-  // Build the z and text values
-  const zValues: number[][] = [];
-  const textValues: string[][] = [];
-
-  // Build the z and text values
-  for (let i = 0; i < yPoints; i++) {
-    const row: number[] = [];
-    const textRow: string[] = [];
-    const ySi = unitSystem === UnitSystem.IP ? (yValues[i] - 32) * 5/9 : yValues[i];
-
-    // Calculate the heat index for each x value
-    for (let j = 0; j < xPoints; j++) {
-      const xSi = xValues[j]; // RH is same
-      
-      // Try to calculate the heat index
-      try {
-        const result = heat_index(ySi, xSi, { round: true, units: "SI" });
-        const hi = result.hi;
-        
-        // Check which range the heat index falls into
-        let rangeValue = 0;
-        if (hi >= HI_EXTREME_DANGER) rangeValue = 4;
-        else if (hi >= HI_DANGER) rangeValue = 3;
-        else if (hi >= HI_EXTREME_CAUTION) rangeValue = 2;
-        else if (hi >= HI_CAUTION) rangeValue = 1;
-        // Push the range value and category to the row and text row
-        row.push(rangeValue);
-        textRow.push(getHeatIndexCategory(hi));
-      } catch (e) {
-        // If calculation fails, push NaN and "Error"
-        row.push(NaN);
-        textRow.push("Error");
-      }
+  return buildThermalIndexRangeChart(payload, cachedResultsByInput, unitSystem, {
+    title: "Heat Index Ranges",
+    xKey: FieldKey.RelativeHumidity,
+    yKey: FieldKey.DryBulbTemperature,
+    xRangeSi: { min: 0, max: 100 },
+    yRangeSi: { min: 20, max: 50 },
+    zMax: 4,
+    colorscale: [
+      [0, "#e2e8f0"], [0.2, "#e2e8f0"], // Safe
+      [0.2, "#fef08a"], [0.4, "#fef08a"], // Caution
+      [0.4, "#fde047"], [0.6, "#fde047"], // Extreme Caution
+      [0.6, "#f97316"], [0.8, "#f97316"], // Danger
+      [0.8, "#dc2626"], [1, "#dc2626"] // Extreme Danger
+    ],
+    hovertemplateContour: "Category: %{text}<extra></extra>",
+    getHovertemplateScatter: (label, cached) => `${label}<br>RH: %{x:.1f}%<br>Air Temp: %{y:.1f}°<br>Heat Index: ${roundValue(cached?.hi, 1)}°<extra></extra>`,
+    getScatterXSi: (p) => p.rh,
+    getScatterYSi: (p) => p.tdb,
+    calculatePoint: (xSi, ySi) => {
+      const result = heat_index(ySi, xSi, { round: true, units: "SI" });
+      const hi = result.hi;
+      let rangeValue = 0;
+      if (hi >= HI_EXTREME_DANGER) rangeValue = 4;
+      else if (hi >= HI_DANGER) rangeValue = 3;
+      else if (hi >= HI_EXTREME_CAUTION) rangeValue = 2;
+      else if (hi >= HI_CAUTION) rangeValue = 1;
+      return { rangeValue, category: getHeatIndexCategory(hi) };
     }
-    // Push the row and text row to the z and text values
-    zValues.push(row);
-    textValues.push(textRow);
-  }
-
-  // Build the traces
-  const traces: PlotTraceDto[] = [
-    buildContourTrace({
-      name: "Heat Index",
-      x: xValues,
-      y: yValues,
-      z: zValues,
-      text: textValues,
-      colorscale: [
-        [0, "#e2e8f0"], [0.2, "#e2e8f0"], // Safe
-        [0.2, "#fef08a"], [0.4, "#fef08a"], // Caution
-        [0.4, "#fde047"], [0.6, "#fde047"], // Extreme Caution
-        [0.6, "#f97316"], [0.8, "#f97316"], // Danger
-        [0.8, "#dc2626"], [1, "#dc2626"] // Extreme Danger
-      ],
-      zmin: 0,
-      zmax: 4,
-      contours: { coloring: "heatmap", showlines: false },
-      hovertemplate: "Category: %{text}<extra></extra>",
-      showscale: false,
-      isZone: true,
-    })
-  ];
-
-  // Build the input scatter traces for each input
-  inputs.forEach((input) => {
-    const cached = cachedResultsByInput[input.inputId];
-    const xVal = input.payload.rh;
-    const yVal = convertFieldValueFromSi(FieldKey.DryBulbTemperature, input.payload.tdb, unitSystem);
-    
-    // Push the input scatter trace to the traces array
-    traces.push(
-      buildInputScatterTrace({
-        inputId: input.inputId,
-        x: xVal,
-        y: yVal,
-        showLegend: showInputLegend,
-        hovertemplate: `${inputDisplayMetaById[input.inputId].label}<br>RH: %{x:.1f}%<br>Air Temp: %{y:.1f}°<br>Heat Index: ${roundValue(cached?.hi, 1)}°<extra></extra>`,
-      })
-    );
   });
-
-  // Return the traces and layout
-  return {
-    traces,
-    layout: {
-      title: "Heat Index Ranges",
-      paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: "rgba(0,0,0,0)",
-      showlegend: showInputLegend,
-      margin: { l: 60, r: 24, t: 60, b: 60 },
-      xaxis: { title: "Relative Humidity (%)", range: [0, 100] },
-      yaxis: { title: `Air Temperature (${yMeta.displayUnits[unitSystem]})`, range: [yMin, yMax] }
-    },
-    annotations: [],
-    source: CalculationSource.JsThermalComfort
-  };
 }
 
 /**
@@ -195,132 +220,38 @@ export function buildHumidexChart(
   cachedResultsByInput: any = {},
   unitSystem: UnitSystemType = UnitSystem.SI,
 ): PlotlyChartResponseDto {
-  // Get the inputs for the chart
-  const inputs = getCompareInputs(payload.inputs);
-  const showInputLegend = inputs.length > 1;
-
-  // Get the metadata for the y-axis (air temperature)
-  const yMeta = fieldMetaByKey[FieldKey.DryBulbTemperature];
-
-  // Set the min/max values for the x-axis (relative humidity)
-  const xMin = 0; // RH 0%
-  const xMax = 100; // RH 100%
-  
-  // Set the min/max values for the y-axis (air temperature)
-  const yMinSi = 20;
-  const yMaxSi = 50;
-  const yMin = convertFieldValueFromSi(FieldKey.DryBulbTemperature, yMinSi, unitSystem);
-  const yMax = convertFieldValueFromSi(FieldKey.DryBulbTemperature, yMaxSi, unitSystem);
-
-  // Set the number of points for the x and y axes
-  const xPoints = 50;
-  const yPoints = 50;
-  const xValues: number[] = [];
-  const yValues: number[] = [];
-
-  // Build the x and y values
-  for (let i = 0; i < xPoints; i++) xValues.push(i * (100 / (xPoints - 1)));
-  for (let i = 0; i < yPoints; i++) yValues.push(yMin + i * ((yMax - yMin) / (yPoints - 1)));
-
-  // Build the z and text values
-  const zValues: number[][] = [];
-  const textValues: string[][] = [];
-
-    // Calculate the humidex for each x value
-    for (let i = 0; i < yPoints; i++) {
-      const row: number[] = [];
-      const textRow: string[] = [];
-      const ySi = convertFieldValueToSi(FieldKey.DryBulbTemperature, yValues[i], unitSystem);
-  
-      // Calculate the humidex for each x value
-      for (let j = 0; j < xPoints; j++) {
-        const xSi = xValues[j];
-  
-        // Try to calculate the humidex
-        try {
-          const result = humidex(ySi, xSi, { round: true });
-          const h = result.humidex;
-          
-          // Check which range the humidex falls into
-        let rangeValue = 0;
-        if (h >= HUMIDEX_STROKE_PROBABLE) rangeValue = 5;
-        else if (h >= HUMIDEX_DANGEROUS) rangeValue = 4;
-        else if (h >= HUMIDEX_INTENSE) rangeValue = 3;
-        else if (h >= HUMIDEX_EVIDENT) rangeValue = 2;
-        else if (h >= HUMIDEX_NOTICEABLE) rangeValue = 1;
-
-        // Push the range value and category to the row and text row
-        row.push(rangeValue);
-        textRow.push(getHumidexDiscomfort(h));
-      } catch {
-        // If calculation fails, push NaN and "Error"
-        row.push(NaN);
-        textRow.push("Error");
-      }
+  return buildThermalIndexRangeChart(payload, cachedResultsByInput, unitSystem, {
+    title: "Humidex Discomfort",
+    xKey: FieldKey.RelativeHumidity,
+    yKey: FieldKey.DryBulbTemperature,
+    xRangeSi: { min: 0, max: 100 },
+    yRangeSi: { min: 20, max: 50 },
+    zMax: 5,
+    colorscale: [
+      [0, "#e2e8f0"], [0.166, "#e2e8f0"], // Little/None
+      [0.166, "#fef08a"], [0.333, "#fef08a"], // Noticeable
+      [0.333, "#fde047"], [0.5, "#fde047"], // Evident
+      [0.5, "#facc15"], [0.666, "#facc15"], // Intense
+      [0.666, "#f97316"], [0.833, "#f97316"], // Dangerous
+      [0.833, "#dc2626"], [1, "#dc2626"] // Stroke Probable
+    ],
+    hovertemplateContour: "Discomfort: %{text}<extra></extra>",
+    getHovertemplateScatter: (label, cached) => `${label}<br>RH: %{x:.1f}%<br>Air Temp: %{y:.1f}°<br>Humidex: ${roundValue(cached?.humidex, 1)}<extra></extra>`,
+    getScatterXSi: (p) => p.rh,
+    getScatterYSi: (p) => p.tdb,
+    calculatePoint: (xSi, ySi) => {
+      const result = humidex(ySi, xSi, { round: true });
+      const h = result.humidex;
+      let rangeValue = 0;
+      if (h >= HUMIDEX_STROKE_PROBABLE) rangeValue = 5;
+      else if (h >= HUMIDEX_DANGEROUS) rangeValue = 4;
+      else if (h >= HUMIDEX_INTENSE) rangeValue = 3;
+      else if (h >= HUMIDEX_EVIDENT) rangeValue = 2;
+      else if (h >= HUMIDEX_NOTICEABLE) rangeValue = 1;
+      return { rangeValue, category: getHumidexDiscomfort(h) };
     }
-    zValues.push(row);
-    textValues.push(textRow);
-  }
-
-  // Build the traces
-  const traces: PlotTraceDto[] = [
-    buildContourTrace({
-      name: "Humidex",
-      x: xValues,
-      y: yValues,
-      z: zValues,
-      text: textValues,
-      colorscale: [
-        [0, "#e2e8f0"], [0.166, "#e2e8f0"], // Little/None
-        [0.166, "#fef08a"], [0.333, "#fef08a"], // Noticeable
-        [0.333, "#fde047"], [0.5, "#fde047"], // Evident
-        [0.5, "#facc15"], [0.666, "#facc15"], // Intense
-        [0.666, "#f97316"], [0.833, "#f97316"], // Dangerous
-        [0.833, "#dc2626"], [1, "#dc2626"] // Stroke Probable
-      ],
-      zmin: 0,
-      zmax: 5,
-      contours: { coloring: "heatmap", showlines: false },
-      hovertemplate: "Discomfort: %{text}<extra></extra>",
-      showscale: false,
-      isZone: true,
-    })
-  ];
-
-  // Build the input scatter traces for each input
-  inputs.forEach((input) => {
-    const cached = cachedResultsByInput[input.inputId];
-    const yVal = convertFieldValueFromSi(FieldKey.DryBulbTemperature, input.payload.tdb, unitSystem);
-
-    // Push the input scatter trace to the traces array
-    traces.push(
-      buildInputScatterTrace({
-        inputId: input.inputId,
-        x: input.payload.rh,
-        y: yVal,
-        showLegend: showInputLegend,
-        hovertemplate: `${inputDisplayMetaById[input.inputId].label}<br>RH: %{x:.1f}%<br>Air Temp: %{y:.1f}°<br>Humidex: ${roundValue(cached?.humidex, 1)}<extra></extra>`,
-      })
-    );
   });
-
-  // Return the traces and layout
-  return {
-    traces,
-    layout: {
-      title: "Humidex Discomfort",
-      paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: "rgba(0,0,0,0)",
-      showlegend: showInputLegend,
-      margin: { l: 60, r: 24, t: 60, b: 60 },
-      xaxis: { title: "Relative Humidity (%)", range: [0, 100] },
-      yaxis: { title: `Air Temperature (${yMeta.displayUnits[unitSystem]})`, range: [yMin, yMax] }
-    },
-    annotations: [],
-    source: CalculationSource.JsThermalComfort
-  };
 }
-
 
 /**
  * Builds the Wind Chill Chart.
@@ -334,128 +265,33 @@ export function buildWindChillChart(
   cachedResultsByInput: any = {},
   unitSystem: UnitSystemType = UnitSystem.SI,
 ): PlotlyChartResponseDto {
-  // Get the inputs for the chart
-  const inputs = getCompareInputs(payload.inputs);
-  const showInputLegend = inputs.length > 1;
-
-  // Get the metadata for the y-axis (air temperature) and x-axis (wind speed)
-  const yMeta = fieldMetaByKey[FieldKey.DryBulbTemperature];
-  const vMeta = fieldMetaByKey[FieldKey.RelativeAirSpeed];
-
-  // Set the min/max values for the x-axis (wind speed)
-  const xMinSi = 1;
-  const xMaxSi = 20;
-  const xMin = convertFieldValueFromSi(FieldKey.RelativeAirSpeed, xMinSi, unitSystem);
-  const xMax = convertFieldValueFromSi(FieldKey.RelativeAirSpeed, xMaxSi, unitSystem);
-
-  // Set the min/max values for the y-axis (air temperature)
-  const yMinSi = -45;
-  const yMaxSi = 0;
-  const yMin = convertFieldValueFromSi(FieldKey.DryBulbTemperature, yMinSi, unitSystem);
-  const yMax = convertFieldValueFromSi(FieldKey.DryBulbTemperature, yMaxSi, unitSystem);
-
-  // Set the number of points for the x and y axes
-  const xPoints = 50;
-  const yPoints = 50;
-
-  // Build the x and y values
-  const xValues: number[] = [];
-  const yValues: number[] = [];
-  for (let i = 0; i < xPoints; i++) xValues.push(xMin + i * ((xMax - xMin) / (xPoints - 1)));
-  for (let i = 0; i < yPoints; i++) yValues.push(yMin + i * ((yMax - yMin) / (yPoints - 1)));
-
-  // Build the z and text values
-  const zValues: number[][] = [];
-  const textValues: string[][] = [];
-
-  // Calculate the wind chill for each x and y value
-  for (let i = 0; i < yPoints; i++) {
-    const row: number[] = [];
-    const textRow: string[] = [];
-    const ySi = convertFieldValueToSi(FieldKey.DryBulbTemperature, yValues[i], unitSystem);
-
-    // Calculate the wind chill for each x value
-    for (let j = 0; j < xPoints; j++) {
-      const xSi = convertFieldValueToSi(FieldKey.RelativeAirSpeed, xValues[j], unitSystem);
-
-      // Try to calculate the wind chill
-      try {
-        const result = wc(ySi, xSi, { round: true });
-        const wci = result.wci;
-        
-        // Check which range the wind chill falls into
-        let rangeValue = 0;
-        if (wci >= WCI_FROSTBITE_2) rangeValue = 3;
-        else if (wci >= WCI_FROSTBITE_10) rangeValue = 2;
-        else if (wci >= WCI_FROSTBITE_30) rangeValue = 1;
-
-        // Push the range value and category to the row and text row
-        row.push(rangeValue);
-        textRow.push(getWindChillZone(wci));
-      } catch {
-        // If calculation fails, push NaN and "Error"
-        row.push(NaN);
-        textRow.push("Error");
-      }
+  return buildThermalIndexRangeChart(payload, cachedResultsByInput, unitSystem, {
+    title: "Wind Chill Frostbite Risk",
+    xKey: FieldKey.RelativeAirSpeed,
+    yKey: FieldKey.DryBulbTemperature,
+    xRangeSi: { min: 1, max: 20 },
+    yRangeSi: { min: -45, max: 0 },
+    zMax: 3,
+    colorscale: [
+      [0, "#e0f2fe"], [0.25, "#e0f2fe"], // Safe
+      [0.25, "#64b5f5"], [0.5, "#64b5f5"], // 30 min
+      [0.5, "#5c6bc0"], [0.75, "#5c6bc0"], // 10 min
+      [0.75, "#8e24aa"], [1, "#8e24aa"] // 2 min
+    ],
+    hovertemplateContour: "Frostbite Risk: %{text}<extra></extra>",
+    getHovertemplateScatter: (label, cached) => `${label}<br>Wind Speed: %{x:.2f}<br>Air Temp: %{y:.1f}°<br>Wind Chill: ${roundValue(cached?.wciTemp, 1)}°<extra></extra>`,
+    getScatterXSi: (p) => p.v || 0,
+    getScatterYSi: (p) => p.tdb,
+    calculatePoint: (xSi, ySi) => {
+      const result = wc(ySi, xSi, { round: true });
+      const wci = result.wci;
+      let rangeValue = 0;
+      if (wci >= WCI_FROSTBITE_2) rangeValue = 3;
+      else if (wci >= WCI_FROSTBITE_10) rangeValue = 2;
+      else if (wci >= WCI_FROSTBITE_30) rangeValue = 1;
+      return { rangeValue, category: getWindChillZone(wci) };
     }
-    zValues.push(row);
-    textValues.push(textRow);
-  }
-
-  // Build the contour trace
-  const traces: PlotTraceDto[] = [
-    buildContourTrace({
-      name: "Wind Chill",
-      x: xValues,
-      y: yValues,
-      z: zValues,
-      text: textValues,
-      colorscale: [
-        [0, "#e0f2fe"], [0.25, "#e0f2fe"], // Safe
-        [0.25, "#64b5f5"], [0.5, "#64b5f5"], // 30 min
-        [0.5, "#5c6bc0"], [0.75, "#5c6bc0"], // 10 min
-        [0.75, "#8e24aa"], [1, "#8e24aa"] // 2 min
-      ],
-      zmin: 0,
-      zmax: 3,
-      contours: { coloring: "heatmap", showlines: false },
-      hovertemplate: "Frostbite Risk: %{text}<extra></extra>",
-      showscale: false,
-      isZone: true,
-    })
-  ];
-
-  // Build the input scatter traces for each input
-  inputs.forEach((input) => {
-    const cached = cachedResultsByInput[input.inputId];
-    const xVal = convertFieldValueFromSi(FieldKey.RelativeAirSpeed, input.payload.v || 0, unitSystem);
-    const yVal = convertFieldValueFromSi(FieldKey.DryBulbTemperature, input.payload.tdb, unitSystem);
-    traces.push(
-      buildInputScatterTrace({
-        inputId: input.inputId,
-        x: xVal,
-        y: yVal,
-        showLegend: showInputLegend,
-        hovertemplate: `${inputDisplayMetaById[input.inputId].label}<br>Wind Speed: %{x:.2f}<br>Air Temp: %{y:.1f}°<br>Wind Chill: ${roundValue(cached?.wciTemp, 1)}°<extra></extra>`,
-      })
-    );
   });
-
-  // Return the traces and layout
-  return {
-    traces,
-    layout: {
-      title: "Wind Chill Frostbite Risk",
-      paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: "rgba(0,0,0,0)",
-      showlegend: showInputLegend,
-      margin: { l: 60, r: 24, t: 60, b: 60 },
-      xaxis: { title: `Wind Speed (${vMeta.displayUnits[unitSystem]})`, range: [xMin, xMax] },
-      yaxis: { title: `Air Temperature (${yMeta.displayUnits[unitSystem]})`, range: [yMin, yMax] }
-    },
-    annotations: [],
-    source: CalculationSource.JsThermalComfort
-  };
 }
 
 /**

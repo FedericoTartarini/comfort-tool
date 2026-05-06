@@ -21,6 +21,7 @@ import { InputId as InputIdType } from "../../../models/inputSlots";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import {
   convertFieldValueFromSi,
+  convertFieldValueToSi,
   convertHumidityRatioFromSi,
   getHumidityRatioDisplayMeta,
 } from "../../units";
@@ -33,16 +34,18 @@ import {
 import { pmv_ppd, psy_ta_rh, p_sat, t_o } from "jsthermalcomfort";
 import { buildComfortPolygonTrace, buildInputScatterTrace, buildLineTrace, buildContourTrace } from "./plotlyBuilders";
 
-// Color scale for the PMV chart.
-const PMV_COLORSCALE = [
-  [0, "#0571b0"], [0.1428, "#0571b0"], // Cold
-  [0.1428, "#4c78a8"], [0.2857, "#4c78a8"], // Cool
-  [0.2857, "#92c5de"], [0.4285, "#92c5de"], // Slightly Cool
-  [0.4285, "#f2f2f2"], [0.5714, "#f2f2f2"], // Neutral
-  [0.5714, "#f4a582"], [0.7142, "#f4a582"], // Slightly Warm
-  [0.7142, "#e15759"], [0.8571, "#e15759"], // Warm
-  [0.8571, "#cc79a7"], [1, "#cc79a7"], // Hot
-];
+import { pmvZones, getPmvZoneMeta } from "../../../models/pmvZones";
+
+// Color scale for the PMV chart dynamically generated from pmvZones
+const PMV_COLORSCALE = pmvZones.reduce((acc, zone, index, array) => {
+  // Calculate the step size for the color scale.
+  const step = 1 / array.length;
+  // Start point of the discrete color block for this zone.
+  acc.push([index * step, zone.color]);
+  // End point of the discrete color block for this zone.
+  acc.push([(index + 1) * step, zone.color]);
+  return acc;
+}, [] as [number, string][]);
 
 // Contours for the PMV chart.
 const PMV_CONTOURS = {
@@ -77,23 +80,7 @@ function smoothComfortZoneXValues(xValues: number[]): number[] {
   ));
 }
 
-/**
- * Maps a PMV value to its corresponding thermal sensation zone name.
- * @param pmv - The PMV value.
- * @returns The thermal sensation zone name.
- */
-function getPmvZoneName(pmv: number): string {
-  // If PMV value is not a number, return empty string.
-  if (isNaN(pmv)) return "";
-  // Returns the thermal sensation zone name based on the PMV value.
-  if (pmv <= -2.5) return "Cold";
-  if (pmv <= -1.5) return "Cool";
-  if (pmv <= -0.5) return "Slightly Cool";
-  if (pmv < 0.5) return "Neutral";
-  if (pmv < 1.5) return "Slightly Warm";
-  if (pmv < 2.5) return "Warm";
-  return "Hot";
-}
+
 
 /**
  * Builds a closed comfort-zone polygon while smoothing only the X axis.
@@ -229,7 +216,7 @@ export function buildComparePsychrometricChart(
         try {
           const pmvResult = pmv_ppd(tdb, activeInputPayload.tr, activeInputPayload.vr, rh, activeInputPayload.met, activeInputPayload.clo, activeInputPayload.wme, "ASHRAE", { limit_inputs: false });
           row.push(pmvResult.pmv);
-          textRow.push(getPmvZoneName(pmvResult.pmv));
+          textRow.push(getPmvZoneMeta(pmvResult.pmv).label);
         // Catch any errors in the PMV calculation.
         } catch {
           row.push(NaN);
@@ -433,15 +420,11 @@ export function buildPmvDynamicChart(
       const row: number[] = [];
       const textRow: string[] = [];
       const currentYSi = yValues[i];
-      const ySi = dynamicYAxis === FieldKey.RelativeHumidity || dynamicYAxis === FieldKey.RelativeAirSpeed || dynamicYAxis === FieldKey.MetabolicRate || dynamicYAxis === FieldKey.ClothingInsulation || dynamicYAxis === FieldKey.ExternalWork 
-                  ? yValues[i] 
-                  : (unitSystem === UnitSystem.IP ? (yValues[i] - 32) * 5/9 : yValues[i]);
+      const ySi = convertFieldValueToSi(dynamicYAxis, yValues[i], unitSystem);
 
       // For each point on the x-axis, update the values in the payload with the current x value and calculate the PMV values.
       for (let j = 0; j < xPoints; j++) {
-        const xSi = dynamicXAxis === FieldKey.RelativeHumidity || dynamicXAxis === FieldKey.RelativeAirSpeed || dynamicXAxis === FieldKey.MetabolicRate || dynamicXAxis === FieldKey.ClothingInsulation || dynamicXAxis === FieldKey.ExternalWork
-                    ? xValues[j]
-                    : (unitSystem === UnitSystem.IP ? (xValues[j] - 32) * 5/9 : xValues[j]);
+        const xSi = convertFieldValueToSi(dynamicXAxis, xValues[j], unitSystem);
 
         // Copy baseline inputs
         const pointArgs = { ...activeInputPayload };
@@ -465,7 +448,7 @@ export function buildPmvDynamicChart(
         try {
           const pmvResult = pmv_ppd(pointArgs.tdb, pointArgs.tr, pointArgs.vr, pointArgs.rh, pointArgs.met, pointArgs.clo, pointArgs.wme, "ASHRAE", { limit_inputs: false });
           row.push(pmvResult.pmv);
-          textRow.push(getPmvZoneName(pmvResult.pmv));
+          textRow.push(getPmvZoneMeta(pmvResult.pmv).label);
         } catch (e) {
           row.push(NaN);
           textRow.push("");

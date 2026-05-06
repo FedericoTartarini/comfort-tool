@@ -1,17 +1,20 @@
 <script lang="ts">
   /**
    * @component
-   * The primary container for comfort tool visualizations.
-   * Orchestrates the display of the chart canvas, header information, axis selection,
-   * legends, and export controls.
+   * Renders a configurable chart panel with support for dynamic axis selection,
+   * multiple export formats, and integrated loading states.
    */
   import { Card, Heading, Toggle } from "flowbite-svelte";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
   import ChartExportMenu from "./ChartExportMenu.svelte";
   import ChartAxisMenu from "./ChartAxisMenu.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import { ChartId, type ChartId as ChartIdType } from "../../models/chartOptions";
+  import {
+    ChartId,
+    type ChartId as ChartIdType,
+  } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 
   let {
     title,
@@ -22,6 +25,7 @@
     heightClass,
     chartOptions,
     selectedChart,
+    selectedModel,
     onSelectChart,
     dynamicXAxis,
     dynamicYAxis,
@@ -42,6 +46,7 @@
     heightClass: string;
     chartOptions: Array<{ name: string; value: ChartIdType }>;
     selectedChart: ChartIdType;
+    selectedModel: ComfortModelType;
     onSelectChart: (chartId: ChartIdType) => void;
     dynamicXAxis?: string;
     dynamicYAxis?: string;
@@ -67,11 +72,13 @@
 
   // Disable dynamic axis selection for heat index, humidex, and wind chill dynamic charts
   const lockYAxis = $derived(
-    ([
-      ChartId.HeatIndexDynamic,
-      ChartId.HumidexDynamic,
-      ChartId.WindChillDynamic,
-    ] as ChartIdType[]).includes(selectedChart),
+    (
+      [
+        ChartId.HeatIndexDynamic,
+        ChartId.HumidexDynamic,
+        ChartId.WindChillDynamic,
+      ] as ChartIdType[]
+    ).includes(selectedChart),
   );
 </script>
 
@@ -138,7 +145,7 @@
     />
   </div>
 
-  <ChartLegend {selectedChart} />
+  <ChartLegend {selectedChart} {selectedModel} />
 {/snippet}
 
 {#if embedded}

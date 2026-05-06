@@ -17,7 +17,7 @@ import { createControlBehavior, createTemperatureControlBehavior } from "../../.
 import { buildUtciStressChart, buildUtciDynamicChart } from "../../../services/comfort/charts/utciCharts";
 import { calculateUtci } from "../../../services/comfort/utci";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../../services/units";
-import { getUtciStressTone } from "../../../services/comfort/helpers";
+import { getUtciStressTone, getUtciStressLabel } from "../../../services/comfort/helpers";
 import { OptionKey, TemperatureMode, defaultUtciOptions, type UtciModelOptions } from "../../../models/inputModes";
 import { applyOperativeTemperatureControlMode, synchronizeControlInputState } from "../../../services/comfort/syncState";
 import { createSingleInputPatch } from "../../../services/comfort/controls/types";
@@ -156,11 +156,11 @@ function buildUtciResultSections(
     }),
   );
 
-  // Add the stress category description. Example: "No thermal stress"
+  // Add the stress category description. Example: "No Thermal Stress"
   sections.push(
     buildResultSection("Stress Category", results, visibleInputIds, (result) => {
       return {
-        text: result.stressCategory,
+        text: getUtciStressLabel(result.stressCategory),
         tone: getUtciStressTone(result.stressCategory),
       };
     }),
