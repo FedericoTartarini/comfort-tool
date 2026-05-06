@@ -1,3 +1,10 @@
+/**
+ * Adaptive Comfort Model Configuration
+ * 
+ * Defines the structural configuration for the Adaptive comfort model 
+ * (ASHRAE 55 and EN 16798-1). Registers model-specific controls, calculation 
+ * logic, and chart builders using the ComfortModelBuilder.
+ */
 import { ChartId, type ChartId as ChartIdType } from "../../../models/chartOptions";
 import { type InputId as InputIdType } from "../../../models/inputSlots";
 import { ComfortModel } from "../../../models/comfortModels";
@@ -33,25 +40,18 @@ import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection }
 const adaptiveChartIds: ChartIdType[] = [ChartId.Adaptive, ChartId.AdaptiveDynamic];
 
 function normalizeAdaptiveOptionsSnapshot(value: unknown) {
-  // Check if the input value is a valid record.
   if (!isRecord(value)) {
     return null;
   }
 
-  // Create a new options object by copying the default adaptive options.
-  // Example: { "temperature_mode": "operative", ... }
   const nextOptions = Object.assign({}, defaultAdaptiveOptions);
 
-  // Check if the temperature mode in the input value is set to "air".
   if (value[OptionKey.TemperatureMode] === TemperatureMode.Air) {
-    // If it is, set the temperature mode in our next options to "air".
     nextOptions[OptionKey.TemperatureMode] = TemperatureMode.Air;
   } else {
-    // Otherwise, default to "operative".
     nextOptions[OptionKey.TemperatureMode] = TemperatureMode.Operative;
   }
 
-  // Return the normalized options.
   return nextOptions;
 }
 
@@ -62,20 +62,20 @@ function normalizeAdaptiveOptionsSnapshot(value: unknown) {
  * @returns An AdaptiveRequestDto object.
  */
 function toAdaptiveRequest(state: any, inputId: InputIdType): AdaptiveRequestDto {
-  // Get the input state for the given input ID.
   const inputs = state.inputsByInput[inputId];
   
-  // Return the adaptive request DTO.
+  const options = normalizeAdaptiveOptionsSnapshot(state.ui.modelOptionsByModel[ComfortModel.AdaptiveAshrae]) || defaultAdaptiveOptions;
+
+  const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
+  const tr = options[OptionKey.TemperatureMode] === TemperatureMode.Operative
+    ? tdb
+    : Number(inputs[FieldKey.MeanRadiantTemperature]);
+
   return {
-    // Dry bulb temperature (air temperature) in °C. Example: 25
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    // Mean radiant temperature in °C. Example: 25
-    tr: Number(inputs[FieldKey.MeanRadiantTemperature]),
-    // Prevailing mean outdoor temperature in °C. Example: 20
+    tdb,
+    tr,
     trm: Number(inputs[FieldKey.PrevailingMeanOutdoorTemperature]),
-    // Relative air speed in m/s. Example: 0.1
     v: Number(inputs[FieldKey.RelativeAirSpeed]),
-    // The unit system (always SI for this internal calculation).
     units: UnitSystem.SI,
   };
 }
@@ -263,6 +263,7 @@ function createAdaptiveModelConfig(modelId: ComfortModel, standardMode: Adaptive
   builder.setDynamicAxisFields([
     FieldKey.DryBulbTemperature,
     FieldKey.MeanRadiantTemperature,
+    FieldKey.OperativeTemperature,
     FieldKey.RelativeAirSpeed,
     FieldKey.PrevailingMeanOutdoorTemperature,
   ]);
@@ -432,13 +433,10 @@ function createAdaptiveModelConfig(modelId: ComfortModel, standardMode: Adaptive
       );
     }
 
-    // Return the list of sections.
     return sections;
   });
 
-  // Set the chart builder for the model.
   builder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem) => {
-    // If there is no chart source or the chart ID is invalid, return null.
     if (!chartSource || !adaptiveChartIds.includes(chartId)) {
       return null;
     }
@@ -454,11 +452,9 @@ function createAdaptiveModelConfig(modelId: ComfortModel, standardMode: Adaptive
       );
     }
     
-    // Build and return the adaptive chart.
-    return buildAdaptiveChart(chartSource.chartRequest, standardMode, unitSystem);
+    return buildAdaptiveChart(chartSource.chartRequest, standardMode, unitSystem, chartSource.baselineInputId);
   });
 
-  // Return the completed model configuration.
   return builder.build();
 }
 

@@ -1,6 +1,11 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
+  /**
+   * @component
+   * Main dashboard layout that combines input, results, and chart panels
+   * in a responsive grid layout. Receives state via ComfortToolController.
+   */
   import { Card } from "flowbite-svelte";
 
   import ChartPanel from "../components/chart/ChartPanel.svelte";
@@ -35,12 +40,15 @@
 
 <main id="overview" class="bg-stone-50 px-4 py-4 sm:px-6 lg:px-8">
   <div class="mx-auto max-w-7xl grid gap-4 xl:grid-cols-[25rem_1fr]">
+    <!-- Left Sidebar: Environmental and Personal Inputs -->
     <aside id="inputs-panel" class="scroll-mt-32">
       <InputPanel {toolState} />
     </aside>
 
+    <!-- Main Section: Results Table and Interactive Charts -->
     <section class="grid gap-4">
       <Card size="none" class="p-3 shadow-sm scroll-mt-32 border-stone-300">
+        <!-- Summary of calculation results -->
         <ResultsPanel
           activeInputId={toolState.state.ui.activeInputId}
           visibleInputIds={toolState.selectors.getVisibleInputIds()}
@@ -49,6 +57,8 @@
           isLoading={toolState.state.ui.isLoading}
           embedded={true}
         />
+
+        <!-- Visual representation of comfort models -->
         <ChartPanel
           title=""
           description=""
@@ -58,6 +68,7 @@
           heightClass={toolState.selectors.getCurrentChartHeightClass()}
           chartOptions={toolState.selectors.getCurrentChartOptions()}
           selectedChart={toolState.selectors.getCurrentSelectedChart()}
+          selectedModel={toolState.state.ui.selectedModel}
           onSelectChart={handleSelectChart}
           dynamicXAxis={toolState.state.ui.dynamicXAxis}
           dynamicYAxis={toolState.state.ui.dynamicYAxis}

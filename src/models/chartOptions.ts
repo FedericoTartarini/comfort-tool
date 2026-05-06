@@ -1,19 +1,43 @@
+/**
+ * Chart Visualization Registry
+ * 
+ * This file serves as the central registry for all charts available in the comfort tool.
+ * It defines unique chart identifiers (ChartId) and maps them to UI metadata, including 
+ * display names, layout constraints (e.g. height classes), and empty-state messaging.
+ */
+
+// This object is a set of unique string values used to identify each chart type.
 export const ChartId = {
-  Psychrometric: "psychrometric",
-  RelativeHumidity: "relativeHumidity",
-  Stress: "stress",
-  AirTemperature: "airTemperature",
-  Adaptive: "adaptive",
-  AdaptiveDynamic: "adaptiveDynamic",
-  PmvDynamic: "pmvDynamic",
-  UtciDynamic: "utciDynamic",
-  HeatIndexRanges: "heatIndexRanges",
-  Humidex: "humidex",
-  WindChill: "windChill",
+  Psychrometric: "psychrometric", // PMV (ASHRAE) psychrometric chart
+  Stress: "stress", // UTCI (Heat stress) psychrometric chart
+  Adaptive: "adaptive", // Adaptive psychrometric chart
+  AdaptiveDynamic: "adaptiveDynamic", //  Adaptive dynamic chart
+  PmvDynamic: "pmvDynamic", // PMV (ASHRAE) dynamic chart
+  UtciDynamic: "utciDynamic", // UTCI (Heat stress) dynamic chart
+  HeatIndexRanges: "heatIndexRanges", // Heat index chart
+  HeatIndexDynamic: "heatIndexDynamic", // Heat index dynamic chart
+  Humidex: "humidex", // Humidex chart
+  HumidexDynamic: "humidexDynamic", // Humidex dynamic chart
+  WindChill: "windChill", // Wind chill chart
+  WindChillDynamic: "windChillDynamic", // Wind chill dynamic chart
 } as const;
 
+// This type is a union of all the ChartId values. It is used to ensure type safety when
+// working with ChartIds in the application.
 export type ChartId = (typeof ChartId)[keyof typeof ChartId];
 
+/**
+ * This object maps each ChartId to its metadata, by assigning each ChartId
+ * an object with all the same properties. This allows for easy retrieval of
+ * metadata for a given ChartId.
+ * 
+ * @type {ChartMetaById}
+ * @property {ChartId.Psychrometric}
+ *   @property {string} name - The name of the chart.
+ *   @property {string} emptyMessage - The message to display when there is no data for the chart.
+ *   @property {string} heightClass - The Tailwind CSS class for the height of the chart.
+ * 
+ */
 export const chartMetaById: Record<
   ChartId,
   {
@@ -23,58 +47,63 @@ export const chartMetaById: Record<
   }
 > = {
   [ChartId.Psychrometric]: {
-    name: "Psychrometric Chart",
+    name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
-  [ChartId.RelativeHumidity]: {
-    name: "Relative Humidity Chart",
-    emptyMessage: "No relative humidity chart yet.",
-    heightClass: "h-[480px] xl:h-[480px]",
-  },
   [ChartId.Stress]: {
-    name: "UTCI Stress Chart",
-    emptyMessage: "No UTCI stress visualization yet.",
-    heightClass: "h-[480px] xl:h-[480px]",
-  },
-  [ChartId.AirTemperature]: {
-    name: "UTCI vs Air Temperature",
-    emptyMessage: "No UTCI temperature comparison yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.Adaptive]: {
-    name: "Adaptive Chart",
-    emptyMessage: "No adaptive chart yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.AdaptiveDynamic]: {
-    name: "Dynamic Adaptive Chart",
-    emptyMessage: "No adaptive dynamic chart yet.",
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.PmvDynamic]: {
-    name: "Dynamic PMV Chart",
-    emptyMessage: "No PMV dynamic chart yet.",
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.UtciDynamic]: {
-    name: "Dynamic UTCI Chart",
-    emptyMessage: "No UTCI dynamic chart yet.",
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.HeatIndexRanges]: {
-    name: "Heat Index Chart",
-    emptyMessage: "No heat index chart yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
+    heightClass: "h-[480px] xl:h-[480px]",
+  },
+  [ChartId.HeatIndexDynamic]: {
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.Humidex]: {
-    name: "Humidex Chart",
-    emptyMessage: "No humidex chart yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
+    heightClass: "h-[480px] xl:h-[480px]",
+  },
+  [ChartId.HumidexDynamic]: {
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.WindChill]: {
-    name: "Wind Chill Chart",
-    emptyMessage: "No wind chill chart yet.",
+    name: "Psychrometric",
+    emptyMessage: "No psychrometric chart yet.",
+    heightClass: "h-[480px] xl:h-[480px]",
+  },
+  [ChartId.WindChillDynamic]: {
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
 };

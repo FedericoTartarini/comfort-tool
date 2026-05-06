@@ -1,6 +1,9 @@
 /**
- * UTCI model definition.
- * UTCI uses the shared control-driven contract with fixed numeric inputs and no advanced option menus.
+ * UTCI Comfort Model Configuration
+ * 
+ * Defines the structural configuration for the UTCI (Universal Thermal 
+ * Climate Index) model. Registers model-specific controls, calculation logic, 
+ * and chart builders using the ComfortModelBuilder.
  */
 import { ChartId, type ChartId as ChartIdType } from "../../../models/chartOptions";
 import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
@@ -10,15 +13,20 @@ import { FieldKey } from "../../../models/fieldKeys";
 import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
 import { InputControlId } from "../../../models/inputControls";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
-import { createControlBehavior } from "../../../services/comfort/controls/controlBehaviors";
-import { buildUtciStressChart, buildUtciTemperatureChart, buildUtciDynamicChart } from "../../../services/comfort/charts/utciCharts";
+import { createControlBehavior, createTemperatureControlBehavior } from "../../../services/comfort/controls/controlBehaviors";
+import { buildUtciStressChart, buildUtciDynamicChart } from "../../../services/comfort/charts/utciCharts";
 import { calculateUtci } from "../../../services/comfort/utci";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../../services/units";
-import { getUtciStressTone } from "../../../services/comfort/helpers";
+import { getUtciStressTone, getUtciStressLabel } from "../../../services/comfort/helpers";
+import { OptionKey, TemperatureMode, defaultUtciOptions, type UtciModelOptions } from "../../../models/inputModes";
+import { applyOperativeTemperatureControlMode, synchronizeControlInputState } from "../../../services/comfort/syncState";
+import { createSingleInputPatch } from "../../../services/comfort/controls/types";
 
-const utciChartIds: ChartIdType[] = [ChartId.Stress, ChartId.AirTemperature, ChartId.UtciDynamic];
+const utciChartIds: ChartIdType[] = [ChartId.Stress, ChartId.UtciDynamic];
 
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "./builder";
+
+const utciTemperatureModeValues = new Set<string>(Object.values(TemperatureMode));
 
 /**
  * Validates an untyped object layer.
@@ -27,14 +35,29 @@ import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection }
  * @param value Unvalidated unknown state shape.
  * @returns An empty valid options map `{}`, or null if not a record.
  */
-function normalizeUtciOptions(value: unknown) {
+function normalizeUtciOptions(value: unknown): UtciModelOptions | null {
   // Check if the input value is a valid record.
-  if (isRecord(value)) {
-    // If it is, return an empty object since UTCI has no options.
-    return {};
+  if (!isRecord(value)) {
+    return null;
   }
-  // Otherwise, return null.
-  return null;
+
+  const nextTemperatureMode = value[OptionKey.TemperatureMode];
+
+  // Validate the temperature mode if it exists. Example: "air" or "operative"
+  if (nextTemperatureMode !== undefined && !utciTemperatureModeValues.has(String(nextTemperatureMode))) {
+    return null;
+  }
+
+  // Create a new options object by copying the default UTCI options.
+  const options: UtciModelOptions = Object.assign({}, defaultUtciOptions);
+
+  // Apply the validated temperature mode if provided.
+  if (nextTemperatureMode !== undefined) {
+    options[OptionKey.TemperatureMode] = nextTemperatureMode as TemperatureMode;
+  }
+
+  // Return the normalized options object.
+  return options;
 }
 
 /**
@@ -48,12 +71,21 @@ function toUtciRequest(state: any, inputId: InputIdType): UtciRequestDto {
   // Get the input values for the specific input slot.
   const inputs = state.inputsByInput[inputId];
   
+  // Normalize the model options for UTCI.
+  const options = normalizeUtciOptions(state.ui.modelOptionsByModel[ComfortModel.Utci]) || defaultUtciOptions;
+
+  // If the temperature mode is operative, set the radiant temperature to the same value as air temperature.
+  const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
+  const tr = options[OptionKey.TemperatureMode] === TemperatureMode.Operative 
+    ? tdb 
+    : Number(inputs[FieldKey.MeanRadiantTemperature]);
+
   // Return the UTCI request object.
   return {
     // Air temperature in °C. Example: 25
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
+    tdb,
     // Radiant temperature in °C. Example: 25
-    tr: Number(inputs[FieldKey.MeanRadiantTemperature]),
+    tr,
     // Wind speed in m/s. Example: 1.0
     v: Number(inputs[FieldKey.WindSpeed]),
     // Relative humidity in %. Example: 50
@@ -124,11 +156,11 @@ function buildUtciResultSections(
     }),
   );
 
-  // Add the stress category description. Example: "No thermal stress"
+  // Add the stress category description. Example: "No Thermal Stress"
   sections.push(
     buildResultSection("Stress Category", results, visibleInputIds, (result) => {
       return {
-        text: result.stressCategory,
+        text: getUtciStressLabel(result.stressCategory),
         tone: getUtciStressTone(result.stressCategory),
       };
     }),
@@ -160,12 +192,7 @@ function buildUtciChartResult(
 
   // Handle the Stress chart type.
   if (chartId === ChartId.Stress) {
-    return buildUtciStressChart(chartSource.chartRequest, resultsByInput, unitSystem);
-  }
-
-  // Handle the Air Temperature chart type.
-  if (chartId === ChartId.AirTemperature) {
-    return buildUtciTemperatureChart(chartSource.chartRequest, resultsByInput, unitSystem);
+    return buildUtciStressChart(chartSource.chartRequest, resultsByInput, unitSystem, chartSource.baselineInputId);
   }
 
   // Handle the Dynamic UTCI chart type.
@@ -184,13 +211,12 @@ function buildUtciChartResult(
  */
 const builder = new ComfortModelBuilder<UtciResponseDto, UtciChartSourceDto>(ComfortModel.Utci);
 
+const temperatureBehavior = createTemperatureControlBehavior(InputControlId.Temperature);
+
 // Register the temperature control.
 builder.addControl({
   id: InputControlId.Temperature,
-  behavior: createControlBehavior({
-    controlId: InputControlId.Temperature,
-    fieldKey: FieldKey.DryBulbTemperature,
-  }),
+  behavior: temperatureBehavior,
 });
 
 // Register the radiant temperature control.
@@ -199,6 +225,11 @@ builder.addControl({
   behavior: createControlBehavior({
     controlId: InputControlId.RadiantTemperature,
     fieldKey: FieldKey.MeanRadiantTemperature,
+    // MRT is hidden if we are in Operative Temperature mode.
+    hidden: (context) => {
+      const options = normalizeUtciOptions(context.options) || defaultUtciOptions;
+      return options[OptionKey.TemperatureMode] === TemperatureMode.Operative;
+    },
   }),
 });
 
@@ -220,6 +251,45 @@ builder.addControl({
   }),
 });
 
+// Add option handlers for UTCI.
+builder.addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) => {
+  if (!utciTemperatureModeValues.has(nextValue)) return null;
+
+  const nextOptions = Object.assign({}, context.options);
+  nextOptions[OptionKey.TemperatureMode] = nextValue;
+
+  return buildCanonicalInputSyncPatch(
+    inputOrder,
+    { [OptionKey.TemperatureMode]: nextValue },
+    (inputId) => {
+      if (nextValue === TemperatureMode.Operative) {
+        return applyOperativeTemperatureControlMode(
+          context.inputsByInput[inputId],
+          nextOptions,
+          context.derivedByInput[inputId]
+        );
+      }
+      return synchronizeControlInputState(
+        context.inputsByInput[inputId],
+        nextOptions,
+        context.derivedByInput[inputId]
+      );
+    }
+  );
+});
+
+function buildCanonicalInputSyncPatch(
+  targetInputIds: InputIdType[],
+  optionsPatch: Partial<Record<OptionKey, string>>,
+  updater: (inputId: InputIdType) => { inputState: any }
+) {
+  const inputsPatch = {} as any;
+  targetInputIds.forEach((inputId) => {
+    inputsPatch[inputId] = updater(inputId).inputState;
+  });
+  return { inputsPatch, optionsPatch };
+}
+
 // Set the available charts and the default chart.
 builder.setDefaultChart(ChartId.Stress, utciChartIds);
 
@@ -227,12 +297,13 @@ builder.setDefaultChart(ChartId.Stress, utciChartIds);
 builder.setDynamicAxisFields([
   FieldKey.DryBulbTemperature,
   FieldKey.MeanRadiantTemperature,
+  FieldKey.OperativeTemperature,
   FieldKey.WindSpeed,
   FieldKey.RelativeHumidity,
 ]);
 
-// Set the default options (UTCI has none).
-builder.setDefaultOptions({});
+// Set the default options.
+builder.setDefaultOptions(Object.assign({}, defaultUtciOptions));
 
 // Set the option normalizer.
 builder.setOptionNormalizer(normalizeUtciOptions);

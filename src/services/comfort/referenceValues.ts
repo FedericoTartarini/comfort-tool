@@ -4,6 +4,8 @@ import {
   met_typical_tasks,
 } from "jsthermalcomfort";
 
+import { ClothingZone, type ClothingZoneId } from "../../models/clothingZones";
+
 type NumericReferenceMap = Record<string, number>;
 type TypicalEnsembleLabel = Parameters<typeof clo_typical_ensembles>[0];
 
@@ -23,6 +25,7 @@ export interface ClothingGarmentOption {
   id: string;
   article: string;
   clo: number;
+  zone: ClothingZoneId;
 }
 
 const metabolicActivityValues = met_typical_tasks as NumericReferenceMap;
@@ -75,62 +78,62 @@ const clothingTypicalEnsembleMeta = [
 ] as const satisfies ReadonlyArray<readonly [TypicalEnsembleLabel, string]>;
 
 const clothingGarmentMeta = [
-  ["Metal_chair", "Metal chair"],
-  ["Bra", "Bra"],
-  ["Wooden_stool", "Wooden stool"],
-  ["Ankle_socks", "Ankle socks"],
-  ["Shoes_or_sandals", "Shoes or sandals"],
-  ["Slippers", "Slippers"],
-  ["Panty_hose", "Panty hose"],
-  ["Calf_length_socks", "Calf length socks"],
-  ["Women_underwear", "Women's underwear"],
-  ["Men_underwear", "Men's underwear"],
-  ["Knee_socks_thick", "Knee socks (thick)"],
-  ["Short_shorts", "Short shorts"],
-  ["Walking_shorts", "Walking shorts"],
-  ["T_shirt", "T-shirt"],
-  ["Standard_office_chair", "Standard office chair"],
-  ["Executive_chair", "Executive chair"],
-  ["Boots", "Boots"],
-  ["Sleeveless_scoop_neck_blouse", "Sleeveless scoop-neck blouse"],
-  ["Half_slip", "Half slip"],
-  ["Long_underwear_bottoms", "Long underwear bottoms"],
-  ["Full_slip", "Full slip"],
-  ["Short_sleeve_knit_shirt", "Short-sleeve knit shirt"],
-  ["Sleeveless_vest_thin", "Sleeveless vest (thin)"],
-  ["Sleeveless_vest_thick", "Sleeveless vest (thick)"],
-  ["Sleeveless_short_gown_thin", "Sleeveless short gown (thin)"],
-  ["Short_sleeve_dress_shirt", "Short-sleeve dress shirt"],
-  ["Sleeveless_long_gown_thin", "Sleeveless long gown (thin)"],
-  ["Long_underwear_top", "Long underwear top"],
-  ["Thick_skirt", "Thick skirt"],
-  ["Long_sleeve_dress_shirt", "Long-sleeve dress shirt"],
-  ["Long_sleeve_flannel_shirt", "Long-sleeve flannel shirt"],
-  ["Long_sleeve_sweat_shirt", "Long-sleeve sweat shirt"],
-  ["Short_sleeve_hospital_gown", "Short-sleeve hospital gown"],
-  ["Short_sleeve_short_robe_thin", "Short-sleeve short robe (thin)"],
-  ["Short_sleeve_pajamas", "Short-sleeve pajamas"],
-  ["Long_sleeve_long_gown", "Long-sleeve long gown"],
-  ["Long_sleeve_short_wrap_robe_thick", "Long-sleeve short wrap robe (thick)"],
-  ["Long_sleeve_pajamas_thick", "Long-sleeve pajamas (thick)"],
-  ["Long_sleeve_long_wrap_robe_thick", "Long-sleeve long wrap robe (thick)"],
-  ["Thin_trousers", "Thin trousers"],
-  ["Thick_trousers", "Thick trousers"],
-  ["Sweatpants", "Sweatpants"],
-  ["Overalls", "Overalls"],
-  ["Coveralls", "Coveralls"],
-  ["Thin_skirt", "Thin skirt"],
-  ["Long_sleeve_shirt_dress_thin", "Long-sleeve shirtdress (thin)"],
-  ["Long_sleeve_shirt_dress_thick", "Long-sleeve shirtdress (thick)"],
-  ["Short_sleeve_shirt_dress", "Short-sleeve shirtdress"],
-  ["Sleeveless_scoop_neck_shirt_thin", "Sleeveless, scoop-neck shirt (thin)"],
-  ["Sleeveless_scoop_neck_shirt_thick", "Sleeveless, scoop-neck shirt (thick)"],
-  ["Long_sleeve_shirt_thin", "Long sleeve shirt (thin)"],
-  ["Long_sleeve_shirt_thick", "Long sleeve shirt (thick)"],
-  ["Single_breasted_coat_thin", "Single-breasted coat (thin)"],
-  ["Single_breasted_coat_thick", "Single-breasted coat (thick)"],
-  ["Double_breasted_coat_thin", "Double-breasted coat (thin)"],
-  ["Double_breasted_coat_thick", "Double-breasted coat (thick)"],
+  ["Metal_chair", "Metal chair", ClothingZone.Other],
+  ["Bra", "Bra", ClothingZone.BaseLayer],
+  ["Wooden_stool", "Wooden stool", ClothingZone.Other],
+  ["Ankle_socks", "Ankle socks", ClothingZone.Footwear],
+  ["Shoes_or_sandals", "Shoes or sandals", ClothingZone.Footwear],
+  ["Slippers", "Slippers", ClothingZone.Footwear],
+  ["Panty_hose", "Panty hose", ClothingZone.BaseLayer],
+  ["Calf_length_socks", "Calf length socks", ClothingZone.Footwear],
+  ["Women_underwear", "Women's underwear", ClothingZone.BaseLayer],
+  ["Men_underwear", "Men's underwear", ClothingZone.BaseLayer],
+  ["Knee_socks_thick", "Knee socks (thick)", ClothingZone.Footwear],
+  ["Short_shorts", "Short shorts", ClothingZone.LowerBody],
+  ["Walking_shorts", "Walking shorts", ClothingZone.LowerBody],
+  ["T_shirt", "T-shirt", ClothingZone.UpperBody],
+  ["Standard_office_chair", "Standard office chair", ClothingZone.Other],
+  ["Executive_chair", "Executive chair", ClothingZone.Other],
+  ["Boots", "Boots", ClothingZone.Footwear],
+  ["Sleeveless_scoop_neck_blouse", "Sleeveless scoop-neck blouse", ClothingZone.UpperBody],
+  ["Half_slip", "Half slip", ClothingZone.BaseLayer],
+  ["Long_underwear_bottoms", "Long underwear bottoms", ClothingZone.BaseLayer],
+  ["Full_slip", "Full slip", ClothingZone.BaseLayer],
+  ["Short_sleeve_knit_shirt", "Short-sleeve knit shirt", ClothingZone.UpperBody],
+  ["Sleeveless_vest_thin", "Sleeveless vest (thin)", ClothingZone.UpperBody],
+  ["Sleeveless_vest_thick", "Sleeveless vest (thick)", ClothingZone.UpperBody],
+  ["Sleeveless_short_gown_thin", "Sleeveless short gown (thin)", ClothingZone.WholeBody],
+  ["Short_sleeve_dress_shirt", "Short-sleeve dress shirt", ClothingZone.UpperBody],
+  ["Sleeveless_long_gown_thin", "Sleeveless long gown (thin)", ClothingZone.WholeBody],
+  ["Long_underwear_top", "Long underwear top", ClothingZone.BaseLayer],
+  ["Thick_skirt", "Thick skirt", ClothingZone.LowerBody],
+  ["Long_sleeve_dress_shirt", "Long-sleeve dress shirt", ClothingZone.UpperBody],
+  ["Long_sleeve_flannel_shirt", "Long-sleeve flannel shirt", ClothingZone.UpperBody],
+  ["Long_sleeve_sweat_shirt", "Long-sleeve sweat shirt", ClothingZone.UpperBody],
+  ["Short_sleeve_hospital_gown", "Short-sleeve hospital gown", ClothingZone.WholeBody],
+  ["Short_sleeve_short_robe_thin", "Short-sleeve short robe (thin)", ClothingZone.WholeBody],
+  ["Short_sleeve_pajamas", "Short-sleeve pajamas", ClothingZone.WholeBody],
+  ["Long_sleeve_long_gown", "Long-sleeve long gown", ClothingZone.WholeBody],
+  ["Long_sleeve_short_wrap_robe_thick", "Long-sleeve short wrap robe (thick)", ClothingZone.WholeBody],
+  ["Long_sleeve_pajamas_thick", "Long-sleeve pajamas (thick)", ClothingZone.WholeBody],
+  ["Long_sleeve_long_wrap_robe_thick", "Long-sleeve long wrap robe (thick)", ClothingZone.WholeBody],
+  ["Thin_trousers", "Thin trousers", ClothingZone.LowerBody],
+  ["Thick_trousers", "Thick trousers", ClothingZone.LowerBody],
+  ["Sweatpants", "Sweatpants", ClothingZone.LowerBody],
+  ["Overalls", "Overalls", ClothingZone.WholeBody],
+  ["Coveralls", "Coveralls", ClothingZone.WholeBody],
+  ["Thin_skirt", "Thin skirt", ClothingZone.LowerBody],
+  ["Long_sleeve_shirt_dress_thin", "Long-sleeve shirtdress (thin)", ClothingZone.WholeBody],
+  ["Long_sleeve_shirt_dress_thick", "Long-sleeve shirtdress (thick)", ClothingZone.WholeBody],
+  ["Short_sleeve_shirt_dress", "Short-sleeve shirtdress", ClothingZone.WholeBody],
+  ["Sleeveless_scoop_neck_shirt_thin", "Sleeveless, scoop-neck shirt (thin)", ClothingZone.UpperBody],
+  ["Sleeveless_scoop_neck_shirt_thick", "Sleeveless, scoop-neck shirt (thick)", ClothingZone.UpperBody],
+  ["Long_sleeve_shirt_thin", "Long sleeve shirt (thin)", ClothingZone.UpperBody],
+  ["Long_sleeve_shirt_thick", "Long sleeve shirt (thick)", ClothingZone.UpperBody],
+  ["Single_breasted_coat_thin", "Single-breasted coat (thin)", ClothingZone.UpperBody],
+  ["Single_breasted_coat_thick", "Single-breasted coat (thick)", ClothingZone.UpperBody],
+  ["Double_breasted_coat_thin", "Double-breasted coat (thin)", ClothingZone.UpperBody],
+  ["Double_breasted_coat_thick", "Double-breasted coat (thick)", ClothingZone.UpperBody],
 ] as const;
 
 function createReferenceId(sourceKey: string): string {
@@ -159,8 +162,9 @@ export const clothingTypicalEnsembles: ClothingEnsembleOption[] = clothingTypica
   clo: clo_typical_ensembles(sourceLabel),
 }));
 
-export const clothingGarmentOptions: ClothingGarmentOption[] = clothingGarmentMeta.map(([sourceKey, article]) => ({
+export const clothingGarmentOptions: ClothingGarmentOption[] = clothingGarmentMeta.map(([sourceKey, article, zone]) => ({
   id: createReferenceId(sourceKey),
   article,
   clo: getReferenceValue(clothingGarmentValues, sourceKey, article),
+  zone,
 }));

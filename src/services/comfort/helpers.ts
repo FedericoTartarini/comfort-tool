@@ -1,5 +1,6 @@
 /**
- * Helper functions for input ordering, dtos, and Thermal Indices constants.
+ * Domain-specific utility functions for thermal comfort calculations, 
+ * result formatting, and chart axis management.
  */
 
 import {
@@ -16,7 +17,8 @@ import type {
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertFieldValueFromSi } from "../units";
 import type { ResultTone } from "../../state/comfortTool/types";
-import { UtciStressCategory } from "../../models/utciStress";
+import { UtciStressCategory, utciStressBands } from "../../models/utciStress";
+import { getPmvZoneMeta } from "../../models/pmvZones";
 
 // Heat Index thresholds in Celsius
 export const HI_CAUTION = 27;
@@ -46,18 +48,14 @@ export function getHeatIndexCategory(hiSi: number): string {
   if (hiSi >= HI_CAUTION) return "Caution";
   return "Safe";
 }
-
 /**
  * Determines the PMV thermal sensation zone.
  */
 export function getPmvZone(pmv: number): { text: string; tone: ResultTone } {
-  if (pmv >= 2.5) return { text: "Hot", tone: "pmvHot" };
-  if (pmv >= 1.5) return { text: "Warm", tone: "pmvWarm" };
-  if (pmv >= 0.5) return { text: "Slightly Warm", tone: "pmvSlightlyWarm" };
-  if (pmv > -0.5) return { text: "Neutral", tone: "pmvNeutral" };
-  if (pmv > -1.5) return { text: "Slightly Cool", tone: "pmvSlightlyCool" };
-  if (pmv > -2.5) return { text: "Cool", tone: "pmvCool" };
-  return { text: "Cold", tone: "pmvCold" };
+  const meta = getPmvZoneMeta(pmv);
+  // Construct tone id from zone id (e.g., "cold" -> "pmvCold")
+  const toneId = `pmv${meta.id.charAt(0).toUpperCase() + meta.id.slice(1)}` as ResultTone;
+  return { text: meta.label, tone: toneId };
 }
 
 /**
@@ -77,6 +75,14 @@ export function getUtciStressTone(category: string): ResultTone {
     case UtciStressCategory.ExtremeHeatStress: return "utciExtremeHeat";
     default: return "default";
   }
+}
+
+/**
+ * Determines the UTCI stress category display label.
+ */
+export function getUtciStressLabel(category: string): string {
+  const band = utciStressBands.find((b) => b.category === category);
+  return band ? band.label : category;
 }
 
 /**
@@ -121,6 +127,7 @@ export function roundValue(value: number, decimals = 3): number {
  * @returns The value if finite.
  */
 export function ensureFiniteValue(label: string, value: number): number {
+  // If the value is not a finite number, throw an error
   if (!Number.isFinite(value)) {
     throw new Error(`${label} calculation returned an invalid value.`);
   }
@@ -135,11 +142,8 @@ export function ensureFiniteValue(label: string, value: number): number {
  * @returns A formatted string (e.g., "+25.0 °C").
  */
 export function formatSignedTemperature(value: number, unitSystem: UnitSystemType = UnitSystem.SI): string {
-  // Convert the temperature to the target unit system
   const convertedValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, value, unitSystem);
-  // Round the temperature to one decimal place
   const rounded = roundValue(convertedValue, 1);
-  // Return the temperature with a sign prefix and unit
   return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)} ${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}`;
 }
 
@@ -171,7 +175,7 @@ export function getPaddedAxisRange(
   // Clamp the results within the fallback boundaries
   const paddedMinimum = Math.max(fallback[0], roundedMin);
   const paddedMaximum = Math.min(fallback[1], roundedMax);
-
+  // If the minimum and maximum values are the same, expand the range by 5 on each side
   if (paddedMinimum === paddedMaximum) {
     return [
       Math.max(fallback[0], paddedMinimum - 5),
@@ -189,9 +193,8 @@ export function getPaddedAxisRange(
  */
 export function getCompareInputs<T>(inputsByInput: CompareInputMap<T>): Array<{ inputId: InputIdType; payload: T }> {
   return inputOrder
-    // Filter out inputs that don't exist in the map
+    // Filter out inputs that don't exist in the map, then map to the correct format
     .filter((inputId) => !!inputsByInput[inputId])
-    // Get inputs in order
     .map((inputId) => ({
       inputId,
       payload: inputsByInput[inputId] as T,

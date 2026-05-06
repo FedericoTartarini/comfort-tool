@@ -1,6 +1,9 @@
 /**
- * PMV model definition.
- * Shared input semantics live in pure behavior modules; this file only composes controls and calculation outputs.
+ * PMV Comfort Model Configuration
+ * 
+ * Defines the structural configuration for the PMV (Predicted Mean Vote) 
+ * comfort model. Registers model-specific controls, default options, 
+ * calculation logic, and chart builders using the ComfortModelBuilder.
  */
 import { ChartId, type ChartId as ChartIdType } from "../../../models/chartOptions";
 import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
@@ -30,7 +33,6 @@ import { type ComfortZonesByInput, getPmvZone } from "../../../services/comfort/
 import {
   buildComparePsychrometricChart,
   buildPmvDynamicChart,
-  buildPmvRelativeHumidityChart,
 } from "../../../services/comfort/charts/pmvCharts";
 import { calculateComfortZone } from "../../../services/comfort/comfortZone";
 import { check_standard_compliance_array } from "jsthermalcomfort";
@@ -50,7 +52,7 @@ import { clothingTypicalEnsembles, metabolicActivityOptions } from "../../../ser
 import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../../services/units";
 
-const pmvChartIds: ChartIdType[] = [ChartId.Psychrometric, ChartId.RelativeHumidity, ChartId.PmvDynamic];
+const pmvChartIds: ChartIdType[] = [ChartId.Psychrometric, ChartId.PmvDynamic];
 
 const clothingPresetOptions = clothingTypicalEnsembles.map((ensemble) => ({
   id: ensemble.id,
@@ -144,31 +146,25 @@ function normalizePmvOptionsSnapshot(value: unknown) {
  * @returns An isolated PmvRequestDto containing SI physical parameters.
  */
 function toPmvRequest(state: any, inputId: InputIdType): PmvRequestDto {
-  // Get the input values for the specific input slot.
+  // Get the input state for the given input ID.
   const inputs = state.inputsByInput[inputId];
+  // Normalize the model options for PMV by copying the default PMV options and updating them with the normalized values.
+  const options = normalizePmvOptionsSnapshot(state.ui.modelOptionsByModel[ComfortModel.Pmv]) || defaultPmvOptions;
   
-  // Normalize the model options for PMV.
-  const options = normalizePmvOptions(state.ui.modelOptionsByModel[ComfortModel.Pmv]);
-  
-  // Return the PMV request object.
+  const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
+  const tr = options[OptionKey.TemperatureMode] === TemperatureMode.Operative
+    ? tdb
+    : Number(inputs[FieldKey.MeanRadiantTemperature]);
+
   return {
-    // Air temperature in °C. Example: 25
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    // Radiant temperature in °C. Example: 25
-    tr: Number(inputs[FieldKey.MeanRadiantTemperature]),
-    // Relative air speed in m/s. Example: 0.1
+    tdb,
+    tr,
     vr: Number(inputs[FieldKey.RelativeAirSpeed]),
-    // Relative humidity in %. Example: 50
     rh: Number(inputs[FieldKey.RelativeHumidity]),
-    // Metabolic rate in met. Example: 1.2
     met: Number(inputs[FieldKey.MetabolicRate]),
-    // Clothing insulation in clo. Example: 0.5
     clo: Number(inputs[FieldKey.ClothingInsulation]),
-    // External work in met. Example: 0
     wme: Number(inputs[FieldKey.ExternalWork]),
-    // Whether the occupant has local air speed control. Example: true
     occupantHasAirSpeedControl: options[OptionKey.AirSpeedControlMode] === AirSpeedControlMode.WithLocalControl,
-    // The unit system (always SI for internal requests).
     units: UnitSystem.SI,
   };
 }
@@ -356,15 +352,6 @@ function buildPmvChartResult(
     );
   }
 
-  // Handle the Relative Humidity chart type.
-  if (chartId === ChartId.RelativeHumidity) {
-    return buildPmvRelativeHumidityChart(
-      chartSource.chartRequest, 
-      unitSystem,
-      chartSource
-    );
-  }
-
   // Handle the Dynamic PMV chart type.
   if (chartId === ChartId.PmvDynamic && chartSource.dynamicXAxis && chartSource.dynamicYAxis) {
     return buildPmvDynamicChart(
@@ -499,6 +486,7 @@ export const pmvModelConfig = new ComfortModelBuilder<PmvResponseDto, PmvChartSo
   .setDynamicAxisFields([
     FieldKey.DryBulbTemperature,
     FieldKey.MeanRadiantTemperature,
+    FieldKey.OperativeTemperature,
     FieldKey.RelativeAirSpeed,
     FieldKey.RelativeHumidity,
     FieldKey.MetabolicRate,

@@ -1,5 +1,12 @@
+/**
+ * Thermal Indices Model Configurations
+ * 
+ * Defines the structural configurations for the standalone thermal models:
+ * Heat Index, Humidex, and Wind Chill. Registers controls, calculation logic,
+ * and chart builders for both standard and dynamic visualizations.
+ */
 import { ChartId, type ChartId as ChartIdType } from "../../../models/chartOptions";
-import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
+import { type InputId as InputIdType } from "../../../models/inputSlots";
 import { ComfortModel } from "../../../models/comfortModels";
 import type { ThermalIndicesChartInputsRequestDto, ThermalIndicesChartSourceDto, ThermalIndicesResponseDto, ThermalIndicesRequestDto } from "../../../models/comfortDtos";
 import { FieldKey } from "../../../models/fieldKeys";
@@ -10,27 +17,45 @@ import { createControlBehavior, buildDefaultPresentation } from "../../../servic
 import { calculateThermalIndices } from "../../../services/comfort/thermalIndices";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../../services/units/index";
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "./builder";
-import { buildHeatIndexRangesChart, buildHumidexChart, buildWindChillChart } from "../../../services/comfort/charts/thermalIndicesCharts";
+import { buildHeatIndexRangesChart, buildHumidexChart, buildWindChillChart, buildThermalIndicesDynamicChart } from "../../../services/comfort/charts/thermalIndicesCharts";
+import {
+  HUMIDEX_NOTICEABLE,
+  HUMIDEX_EVIDENT,
+  HUMIDEX_INTENSE,
+  HUMIDEX_DANGEROUS,
+  HUMIDEX_STROKE_PROBABLE,
+} from "../../../services/comfort/helpers";
 
-const thermalIndicesChartIds: ChartIdType[] = [ChartId.HeatIndexRanges, ChartId.Humidex, ChartId.WindChill];
+// Shared helpers
 
-function normalizeThermalIndicesOptions(value: unknown) {
-  if (isRecord(value)) {
-    return {};
-  }
+/**
+ * Ensures model options are normalized to an empty object if valid.
+ */
+function normalizeOptions(value: unknown) {
+  if (isRecord(value)) return {};
   return null;
 }
 
+/**
+ * Formats canonical UI state into a SI request DTO for thermal index calculations.
+ */
 function toThermalIndicesRequest(state: any, inputId: InputIdType): ThermalIndicesRequestDto {
   const inputs = state.inputsByInput[inputId];
+  const v = inputs[FieldKey.WindSpeed] !== undefined 
+    ? Number(inputs[FieldKey.WindSpeed]) 
+    : Number(inputs[FieldKey.RelativeAirSpeed]);
+    
   return {
     tdb: Number(inputs[FieldKey.DryBulbTemperature]),
     rh: Number(inputs[FieldKey.RelativeHumidity]),
-    v: Number(inputs[FieldKey.RelativeAirSpeed]),
+    v: isNaN(v) ? 0.1 : v,
     units: "SI" as const,
   };
 }
 
+/**
+ * Aggregates thermal index requests for all visible inputs to support chart generation.
+ */
 function toThermalIndicesChartInputsRequest(
   state: any,
   visibleInputIds: InputIdType[],
@@ -43,281 +68,278 @@ function toThermalIndicesChartInputsRequest(
   };
 }
 
-import {
-  HUMIDEX_NOTICEABLE,
-  HUMIDEX_EVIDENT,
-  HUMIDEX_INTENSE,
-  HUMIDEX_DANGEROUS,
-  HUMIDEX_STROKE_PROBABLE,
-} from "../../../services/comfort/helpers";
+// ── Heat Index Model ─────────────────────────────────────────────────────────
 
-// Build the result sections for heat index, humidex, and wind chill charts
-function buildThermalIndicesResultSections(
-  results: Record<InputIdType, ThermalIndicesResponseDto | null>,
-  visibleInputIds: InputIdType[],
-  unitSystem: UnitSystemType,
-  options: any,
-  selectedChartId: ChartIdType,
-) {
-  // Get the temperature units for the active unit system
-  const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-  const sections = [];
+const heatIndexBuilder = new ComfortModelBuilder<ThermalIndicesResponseDto, ThermalIndicesChartSourceDto>(ComfortModel.HeatIndex);
 
-  // Check if the selected chart is wind chill
-  const isWindChill = selectedChartId === ChartId.WindChill;
-
-  // If the selected chart is not wind chill, build the heat index and humidex result sections
-  if (!isWindChill) {
-    // Build the heat index result section
-    sections.push(
-      buildResultSection("Heat Index", results, visibleInputIds, (result) => {
-        // Convert and format the heat index value for display
-        const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.hi, unitSystem);
-        const formattedValue = formatDisplayValue(
-          displayValue,
-          fieldMetaByKey[FieldKey.DryBulbTemperature].decimals,
-        );
-
-        // Set the tone (color) based on the heat index category
-        let tone: any = "default";
-        if (result.category === "Extreme Danger") tone = "hiExtremeDanger";
-        else if (result.category === "Danger") tone = "hiDanger";
-        else if (result.category === "Extreme Caution") tone = "hiExtremeCaution";
-        else if (result.category === "Caution") tone = "hiCaution";
-
-        // Return the heat index result section
-        return {
-          text: `${formattedValue} ${temperatureUnits}`,
-          subtext: result.category,
-          tone: tone,
-        };
-      }),
-    );
-
-    // Build the humidex result section
-    sections.push(
-      buildResultSection("Humidex", results, visibleInputIds, (result) => {
-        if (!result.humidex) return null;
-        
-        const formattedValue = formatDisplayValue(
-          result.humidex,
-          1,
-        );
-
-        // Set the tone (color) based on the humidex category
-        let tone: any = "default";
-        const h = result.humidex;
-        if (h >= HUMIDEX_STROKE_PROBABLE) tone = "hiExtremeDanger";
-        else if (h >= HUMIDEX_DANGEROUS) tone = "hiDanger";
-        else if (h >= HUMIDEX_INTENSE) tone = "hiExtremeCaution";
-        else if (h >= HUMIDEX_EVIDENT) tone = "hiCaution";
-        else if (h >= HUMIDEX_NOTICEABLE) tone = "default";
-
-        // Return the humidex result section
-        return {
-          text: `${formattedValue}`,
-          subtext: result.humidexDiscomfort,
-          tone: tone,
-        };
-      }),
-    );
-  } else {
-    // Build the wind chill index result section
-    sections.push(
-      buildResultSection("Wind Chill Index", results, visibleInputIds, (result) => {
-        // Return null if the wind chill index is not available
-        if (result.wci === undefined) return null;
-        
-        // Format the wind chill index value for display
-        const formattedValue = formatDisplayValue(
-          result.wci,
-          0,
-        );
-
-        // Set the tone (color) based on the wind chill zone
-        let tone: any = "default";
-        if (result.wciZone === "2 min frostbite") tone = "wc2min";
-        else if (result.wciZone === "10 min frostbite") tone = "wc10min";
-        else if (result.wciZone === "30 min frostbite") tone = "wc30min";
-
-        // Return the wind chill index result section
-        return {
-          text: `${formattedValue} W/m²`,
-          subtext: result.wciZone,
-          tone: tone,
-        };
-      }),
-    );
-
-    // Build the wind chill temperature result section
-    sections.push(
-      buildResultSection("Wind Chill Temperature", results, visibleInputIds, (result) => {
-        // Return null if the wind chill temperature is not available
-        if (result.wciTemp === undefined) return null;
-        
-        // Convert and format the wind chill temperature value for display
-        const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.wciTemp, unitSystem);
-        const formattedValue = formatDisplayValue(
-          displayValue,
-          1,
-        );
-
-        // Set the tone (color) based on the wind chill zone
-        let tone: any = "default";
-        if (result.wciZone === "2 min frostbite") tone = "wc2min";
-        else if (result.wciZone === "10 min frostbite") tone = "wc10min";
-        else if (result.wciZone === "30 min frostbite") tone = "wc30min";
-
-        return {
-          text: `${formattedValue} ${temperatureUnits}`,
-          tone: tone,
-        };
-      }),
-    );
-  }
-  
-  // Return the result sections for the selected chart
-  return sections;
-}
-
-// Build the chart result for the selected chart
-function buildChartResult(
-  // Parameters passed by the Comfort Tool
-  chartId: ChartIdType,
-  chartSource: ThermalIndicesChartSourceDto | null,
-  resultsByInput: Record<InputIdType, ThermalIndicesResponseDto | null>,
-  unitSystem: UnitSystemType,
-) {
-  // Return null if the chart source is not available
-  if (!chartSource) {
-    return null;
-  }
-
-  // Build the heat index ranges chart
-  if (chartId === ChartId.HeatIndexRanges) {
-    return buildHeatIndexRangesChart(chartSource.chartRequest, resultsByInput, unitSystem);
-  }
-
-  // Build the humidex chart
-  if (chartId === ChartId.Humidex) {
-    return buildHumidexChart(chartSource.chartRequest, resultsByInput, unitSystem);
-  }
-
-  // Build the wind chill chart
-  if (chartId === ChartId.WindChill) {
-    return buildWindChillChart(chartSource.chartRequest, resultsByInput, unitSystem);
-  }
-
-  // Return null if the chart ID is not recognized
-  return null;
-}
-
-// Initialize the Thermal Indices model builder
-const builder = new ComfortModelBuilder<ThermalIndicesResponseDto, ThermalIndicesChartSourceDto>(ComfortModel.HeatIndex);
-
-builder.addControl({
+heatIndexBuilder.addControl({
   id: InputControlId.Temperature,
-  // Create the behavior for the temperature control
   behavior: createControlBehavior({
     controlId: InputControlId.Temperature,
     fieldKey: FieldKey.DryBulbTemperature,
-    // Get the presentation for the temperature control (UI configuration and constraints)
-    getPresentation: (context, meta) => {
-      // Get the default presentation for the temperature control
-      const presentation = buildDefaultPresentation(context, meta);
-      
-      // Adjust the temperature range for the wind chill chart only
-      if (context.selectedChartId === ChartId.WindChill) {
-        // Set the minimum and maximum temperature values for the wind chill chart
-        const minSi = -45;
-        const maxSi = 0;
-        presentation.minValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, minSi, context.unitSystem);
-        presentation.maxValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, maxSi, context.unitSystem);
-        
-        const minFmt = formatDisplayValue(presentation.minValue, presentation.decimals);
-        const maxFmt = formatDisplayValue(presentation.maxValue, presentation.decimals);
-        presentation.rangeText = `From ${minFmt} to ${maxFmt}`;
-      }
-      return presentation;
-    },
   }),
 });
 
-// Add the humidity control
-builder.addControl({
+heatIndexBuilder.addControl({
   id: InputControlId.Humidity,
   behavior: createControlBehavior({
     controlId: InputControlId.Humidity,
     fieldKey: FieldKey.RelativeHumidity,
-    hidden: (context) => context.selectedChartId === ChartId.WindChill,
   }),
 });
 
-// Add the air speed control
-builder.addControl({
-  id: InputControlId.AirSpeed,
+heatIndexBuilder.setCalculator((state, visibleInputIds) => {
+  const resultsByInput = createEmptyResults<ThermalIndicesResponseDto>();
+  visibleInputIds.forEach((inputId) => {
+    resultsByInput[inputId] = calculateThermalIndices(toThermalIndicesRequest(state, inputId));
+  });
+  return {
+    resultsByInput,
+    chartSource: { 
+      chartRequest: toThermalIndicesChartInputsRequest(state, visibleInputIds),
+      dynamicXAxis: state.ui.dynamicXAxis,
+      dynamicYAxis: state.ui.dynamicYAxis
+    },
+  };
+});
+
+heatIndexBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
+  const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+  return [
+    buildResultSection("Heat Index", results, visibleInputIds, (result) => {
+      const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.hi, unitSystem);
+      const formattedValue = formatDisplayValue(displayValue, fieldMetaByKey[FieldKey.DryBulbTemperature].decimals);
+
+      let tone: any = "default";
+      if (result.category === "Extreme Danger") tone = "hiExtremeDanger";
+      else if (result.category === "Danger") tone = "hiDanger";
+      else if (result.category === "Extreme Caution") tone = "hiExtremeCaution";
+      else if (result.category === "Caution") tone = "hiCaution";
+
+      return {
+        text: `${formattedValue} ${temperatureUnits}`,
+        subtext: result.category,
+        tone,
+      };
+    }),
+  ];
+});
+
+heatIndexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem) => {
+  if (!chartSource) return null;
+  if (chartId === ChartId.HeatIndexDynamic) {
+    return buildThermalIndicesDynamicChart(
+      ComfortModel.HeatIndex,
+      chartSource.chartRequest,
+      resultsByInput,
+      unitSystem,
+      chartSource.dynamicXAxis,
+      chartSource.dynamicYAxis
+    );
+  }
+  return buildHeatIndexRangesChart(chartSource.chartRequest, resultsByInput, unitSystem);
+});
+
+heatIndexBuilder.setDefaultChart(ChartId.HeatIndexRanges, [ChartId.HeatIndexRanges, ChartId.HeatIndexDynamic]);
+heatIndexBuilder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity]);
+heatIndexBuilder.setDefaultOptions({});
+heatIndexBuilder.setOptionNormalizer(normalizeOptions);
+
+export const heatIndexModelConfig = heatIndexBuilder.build();
+
+// ── Humidex Model ───────────────────────────────────────────────────────────
+
+const humidexBuilder = new ComfortModelBuilder<ThermalIndicesResponseDto, ThermalIndicesChartSourceDto>(ComfortModel.Humidex);
+
+humidexBuilder.addControl({
+  id: InputControlId.Temperature,
   behavior: createControlBehavior({
-    controlId: InputControlId.AirSpeed,
-    fieldKey: FieldKey.RelativeAirSpeed,
-    // Hide the air speed control for the heat index and humidex charts as it is not needed for them
-    hidden: (context) => context.selectedChartId !== ChartId.WindChill,
-    // Get the presentation for the air speed control (UI configuration and constraints)
+    controlId: InputControlId.Temperature,
+    fieldKey: FieldKey.DryBulbTemperature,
+  }),
+});
+
+humidexBuilder.addControl({
+  id: InputControlId.Humidity,
+  behavior: createControlBehavior({
+    controlId: InputControlId.Humidity,
+    fieldKey: FieldKey.RelativeHumidity,
+  }),
+});
+
+humidexBuilder.setCalculator((state, visibleInputIds) => {
+  const resultsByInput = createEmptyResults<ThermalIndicesResponseDto>();
+  visibleInputIds.forEach((inputId) => {
+    resultsByInput[inputId] = calculateThermalIndices(toThermalIndicesRequest(state, inputId));
+  });
+  return {
+    resultsByInput,
+    chartSource: { 
+      chartRequest: toThermalIndicesChartInputsRequest(state, visibleInputIds),
+      dynamicXAxis: state.ui.dynamicXAxis,
+      dynamicYAxis: state.ui.dynamicYAxis
+    },
+  };
+});
+
+humidexBuilder.setResultBuilder((results, visibleInputIds) => {
+  return [
+    buildResultSection("Humidex", results, visibleInputIds, (result) => {
+      if (!result.humidex) return null;
+      const formattedValue = formatDisplayValue(result.humidex, 1);
+
+      let tone: any = "default";
+      const h = result.humidex;
+      if (h >= HUMIDEX_STROKE_PROBABLE) tone = "hiExtremeDanger";
+      else if (h >= HUMIDEX_DANGEROUS) tone = "hiDanger";
+      else if (h >= HUMIDEX_INTENSE) tone = "hiExtremeCaution";
+      else if (h >= HUMIDEX_EVIDENT) tone = "hiCaution";
+      else if (h >= HUMIDEX_NOTICEABLE) tone = "default";
+
+      return {
+        text: `${formattedValue}`,
+        subtext: result.humidexDiscomfort,
+        tone,
+      };
+    }),
+  ];
+});
+
+humidexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem) => {
+  if (!chartSource) return null;
+  if (chartId === ChartId.HumidexDynamic) {
+    return buildThermalIndicesDynamicChart(
+      ComfortModel.Humidex,
+      chartSource.chartRequest,
+      resultsByInput,
+      unitSystem,
+      chartSource.dynamicXAxis,
+      chartSource.dynamicYAxis
+    );
+  }
+  return buildHumidexChart(chartSource.chartRequest, resultsByInput, unitSystem);
+});
+
+humidexBuilder.setDefaultChart(ChartId.Humidex, [ChartId.Humidex, ChartId.HumidexDynamic]);
+humidexBuilder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity]);
+humidexBuilder.setDefaultOptions({});
+humidexBuilder.setOptionNormalizer(normalizeOptions);
+
+export const humidexModelConfig = humidexBuilder.build();
+
+// ── Wind Chill Model ─────────────────────────────────────────────────────────
+
+const windChillBuilder = new ComfortModelBuilder<ThermalIndicesResponseDto, ThermalIndicesChartSourceDto>(ComfortModel.WindChill);
+
+windChillBuilder.addControl({
+  id: InputControlId.Temperature,
+  behavior: createControlBehavior({
+    controlId: InputControlId.Temperature,
+    fieldKey: FieldKey.DryBulbTemperature,
     getPresentation: (context, meta) => {
-      // Get the default air speed presentation
       const presentation = buildDefaultPresentation(context, meta);
-      // Adjust the air speed range and step (increment/decrement) size for the wind chill chart only
-      if (context.selectedChartId === ChartId.WindChill) {
-        // Set the minimum and maximum air speed values for the wind chill chart
-        const minSi = 1;
-        const maxSi = 20;
-        presentation.minValue = convertFieldValueFromSi(FieldKey.RelativeAirSpeed, minSi, context.unitSystem);
-        presentation.maxValue = convertFieldValueFromSi(FieldKey.RelativeAirSpeed, maxSi, context.unitSystem);
-        // Set the step (increment/decrement) size for the wind chill chart
-        presentation.step = 1;
-        // Set the number of decimal places for the wind chill chart
-        presentation.decimals = 0;
-        
-        const minFmt = formatDisplayValue(presentation.minValue, presentation.decimals);
-        const maxFmt = formatDisplayValue(presentation.maxValue, presentation.decimals);
-        presentation.rangeText = `From ${minFmt} to ${maxFmt}`;
-      }
+      const minSi = -45;
+      const maxSi = 0;
+      presentation.minValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, minSi, context.unitSystem);
+      presentation.maxValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, maxSi, context.unitSystem);
+      const minFmt = formatDisplayValue(presentation.minValue, presentation.decimals);
+      const maxFmt = formatDisplayValue(presentation.maxValue, presentation.decimals);
+      presentation.rangeText = `From ${minFmt} to ${maxFmt}`;
       return presentation;
     },
   }),
 });
 
-// Set the default chart for the thermal indices model
-builder.setDefaultChart(ChartId.HeatIndexRanges, thermalIndicesChartIds);
-// Set the dynamic axis fields for the thermal indices model
-builder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity, FieldKey.RelativeAirSpeed]);
-// Set the default options for the thermal indices model
-builder.setDefaultOptions({});
-// Set the option normalizer for the thermal indices model
-builder.setOptionNormalizer(normalizeThermalIndicesOptions);
+windChillBuilder.addControl({
+  id: InputControlId.WindSpeed,
+  behavior: createControlBehavior({
+    controlId: InputControlId.WindSpeed,
+    fieldKey: FieldKey.WindSpeed,
+    getPresentation: (context, meta) => {
+      const presentation = buildDefaultPresentation(context, meta);
+      const minSi = 1;
+      const maxSi = 20;
+      presentation.minValue = convertFieldValueFromSi(FieldKey.WindSpeed, minSi, context.unitSystem);
+      presentation.maxValue = convertFieldValueFromSi(FieldKey.WindSpeed, maxSi, context.unitSystem);
+      presentation.step = 1;
+      presentation.decimals = 0;
+      const minFmt = formatDisplayValue(presentation.minValue, presentation.decimals);
+      const maxFmt = formatDisplayValue(presentation.maxValue, presentation.decimals);
+      presentation.rangeText = `From ${minFmt} to ${maxFmt}`;
+      return presentation;
+    },
+  }),
+});
 
-// Set the calculator for the thermal indices model
-builder.setCalculator((state, visibleInputIds) => {
-  // Create an empty results object
+windChillBuilder.setCalculator((state, visibleInputIds) => {
   const resultsByInput = createEmptyResults<ThermalIndicesResponseDto>();
-  // Iterate over the visible input IDs and calculate the thermal indices for each input
   visibleInputIds.forEach((inputId) => {
     resultsByInput[inputId] = calculateThermalIndices(toThermalIndicesRequest(state, inputId));
   });
-  // Build the chart inputs request
-  const chartRequest = toThermalIndicesChartInputsRequest(state, visibleInputIds);
-
-  // Return the results and chart source
   return {
-    resultsByInput: resultsByInput,
-    chartSource: {
-      chartRequest: chartRequest,
+    resultsByInput,
+    chartSource: { 
+      chartRequest: toThermalIndicesChartInputsRequest(state, visibleInputIds),
+      dynamicXAxis: state.ui.dynamicXAxis,
+      dynamicYAxis: state.ui.dynamicYAxis
     },
   };
 });
 
-// Set the result builder for the thermal indices model
-builder.setResultBuilder(buildThermalIndicesResultSections);
-// Set the chart builder for the thermal indices model
-builder.setChartBuilder(buildChartResult);
-// Export the thermal indices model configuration
-export const thermalIndicesModelConfig = builder.build();
+windChillBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
+  const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+  return [
+    buildResultSection("Wind Chill Index", results, visibleInputIds, (result) => {
+      if (result.wci === undefined) return null;
+      const formattedValue = formatDisplayValue(result.wci, 0);
+
+      let tone: any = "default";
+      if (result.wciZone === "2 min frostbite") tone = "wc2min";
+      else if (result.wciZone === "10 min frostbite") tone = "wc10min";
+      else if (result.wciZone === "30 min frostbite") tone = "wc30min";
+
+      return {
+        text: `${formattedValue} W/m²`,
+        subtext: result.wciZone,
+        tone,
+      };
+    }),
+    buildResultSection("Wind Chill Temperature", results, visibleInputIds, (result) => {
+      if (result.wciTemp === undefined) return null;
+      const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.wciTemp, unitSystem);
+      const formattedValue = formatDisplayValue(displayValue, 1);
+
+      let tone: any = "default";
+      if (result.wciZone === "2 min frostbite") tone = "wc2min";
+      else if (result.wciZone === "10 min frostbite") tone = "wc10min";
+      else if (result.wciZone === "30 min frostbite") tone = "wc30min";
+
+      return {
+        text: `${formattedValue} ${temperatureUnits}`,
+        tone,
+      };
+    }),
+  ];
+});
+
+windChillBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem) => {
+  if (!chartSource) return null;
+  if (chartId === ChartId.WindChillDynamic) {
+    return buildThermalIndicesDynamicChart(
+      ComfortModel.WindChill,
+      chartSource.chartRequest,
+      resultsByInput,
+      unitSystem,
+      chartSource.dynamicXAxis,
+      chartSource.dynamicYAxis
+    );
+  }
+  return buildWindChillChart(chartSource.chartRequest, resultsByInput, unitSystem);
+});
+
+windChillBuilder.setDefaultChart(ChartId.WindChill, [ChartId.WindChill, ChartId.WindChillDynamic]);
+windChillBuilder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.WindSpeed]);
+windChillBuilder.setDefaultOptions({});
+windChillBuilder.setOptionNormalizer(normalizeOptions);
+
+export const windChillModelConfig = windChillBuilder.build();

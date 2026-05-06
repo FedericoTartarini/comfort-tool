@@ -91,4 +91,58 @@
     font-weight: 400;
     color: #78716c; /* stone-500 */
   }
+
+  .panel-shell {
+    border: 1px solid #e7e5e4; /* stone-200 */
+    border-radius: 28px;
+    background: #ffffff;
+    padding: 1rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  .panel-muted {
+    border: 1px solid #e7e5e4; /* stone-200 */
+    border-radius: 24px;
+    background: #fafaf9; /* stone-50 */
+  }
+
+  .panel-empty-state {
+    border: 1px dashed #d6d3d1; /* stone-300 */
+    border-radius: 1rem;
+    background: #fafaf9; /* stone-50 */
+    padding: 2rem 1rem;
+    text-align: center;
+  }
+
+  .tool-button-subtle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid #e7e5e4; /* stone-200 */
+    border-radius: 9999px;
+    background: #ffffff;
+    padding: 0.125rem 0.5rem;
+    font-size: 11px;
+    font-weight: 500;
+    color: #57534e; /* stone-600 */
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .tool-button-subtle:hover {
+    border-color: #d6d3d1; /* stone-300 */
+    background: #fafaf9; /* stone-50 */
+    color: #1c1917; /* stone-900 */
+  }
+
+  .modal-shell-soft {
+    max-height: calc(100svh - 2rem);
+    overflow: hidden;
+    border: 1px solid #e7e5e4; /* stone-200 */
+    border-radius: 28px;
+    background: #ffffff;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  }
 }

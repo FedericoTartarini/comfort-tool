@@ -1,7 +1,10 @@
-/*
-* UTCI Stress Charts (1D and 2D)
-* Display UTCI (Universal Thermal Climate Index) stress categories for different conditions.
-*/
+/**
+ * UTCI Chart Services
+ * 
+ * Provides functions for building UTCI (Universal Thermal Climate Index) charts.
+ * Includes 1D stress category plots and 2D dynamic heatmaps characterizing 
+ * thermal stress across varying environmental conditions.
+ */
 
 import { FieldKey } from "../../../models/fieldKeys";
 import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
@@ -32,7 +35,7 @@ import {
 } from "../helpers";
 import { inputDisplayMetaById } from "../../../models/inputSlotPresentation";
 import { buildInputAnnotation, buildInputScatterTrace, buildRectangleSelectionShape, buildTextAnnotation, buildContourTrace } from "./plotlyBuilders";
-import { utci } from "jsthermalcomfort";
+import { utci, t_o } from "jsthermalcomfort";
 import { mapping as utciMapping } from "jsthermalcomfort/src/models/utci";
 
 const UTCI_MIN = -50;
@@ -113,12 +116,10 @@ function getUtciResultForInput(
  * @returns Generated plotly traces and layout components mapping the stress charts.
  */
 export function buildUtciStressChart(
-  // UTCI Chart Inputs Request Data Transfer Object (DTO).
   payload: UtciChartInputsRequestDto,
-  // Cached UTCI results for each input.
   cachedResultsByInput: UtciChartResultsByInput = {},
-  // Unit system (SI or IP).
   unitSystem: UnitSystemType = UnitSystem.SI,
+  baselineInputId?: string,
 ): PlotlyChartResponseDto {
   // Get the inputs for the chart.
   const inputs = getCompareInputs(payload.inputs);
@@ -145,12 +146,12 @@ export function buildUtciStressChart(
       z: [[UTCI_MIN, UTCI_MAX], [UTCI_MIN, UTCI_MAX]],
       colorscale: UTCI_COLORSCALE,
       contours: UTCI_CONTOURS,
-      showscale: true,
-      colorbar: UTCI_COLORBAR,
+      showscale: false,
       hovertemplate: "<extra></extra>",
       zmin: UTCI_MIN,
       zmax: UTCI_MAX,
       opacity: 0.75,
+      isZone: true,
     })
   ];
 
@@ -158,26 +159,17 @@ export function buildUtciStressChart(
   inputs.forEach(({ inputId, payload: inputPayload }, index) => {
     // Get UTCI result for the current input.
     const result = getUtciResultForInput(inputId, inputPayload, cachedResultsByInput);
-    // Get input label.
     const inputLabel = inputDisplayMetaById[inputId].label;
-    // Get y position.
     const yPosition = markerPositions[index];
     // Convert calculated UTCI (SI) to display units.
     const displayUtci = roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.utci, unitSystem));
 
-    // Add the scatter point representing the UTCI value.
     traces.push(buildInputScatterTrace({
-      // Input ID.
       inputId,
-      // UTCI value (X position).
       x: displayUtci,
-      // Y position.
       y: yPosition,
-      // Show legend if multiple inputs.
       showLegend: showInputLegend,
-      // Tooltip text showing UTCI value and stress category.
       hovertemplate: `${inputLabel}<br>UTCI %{x:.1f} ${temperatureDisplayUnits}<br>${result.stressCategory}<extra></extra>`,
-      // Marker size.
       markerSize: 14,
     }));
   });
@@ -203,40 +195,24 @@ export function buildUtciStressChart(
   return {
     traces,
     layout: {
-      // Chart title.
       title: "UTCI stress category",
-      // Background colors.
       paper_bgcolor: "#ffffff",
       plot_bgcolor: "#f8fafc",
-      // Show legend if multiple inputs.
       showlegend: showInputLegend,
-      // Margins.
-      margin: { l: 40, r: 100, t: 48, b: 80 },
-      // X-axis (UTCI value).
+      margin: { l: 56, r: 24, t: 48, b: 80 },
       xaxis: {
-        // X-axis title.
         title: `UTCI (${temperatureDisplayUnits})`,
-        // X-axis range.
         range: stressRange,
-        // Grid color.
         gridcolor: "#e2e8f0",
       },
-      // Y-axis (Empty, used only for marker positioning).
       yaxis: {
-        // Y-axis title.
         title: "",
-        // Y-axis range.
         range: [0, 1],
-        // Show tick labels.
         showticklabels: false,
-        // Grid color.
         gridcolor: "#ffffff",
       },
-      // Colored background bands for each stress category.
       shapes: [],
-      // Legend orientation and position.
       legend: { orientation: "h", x: 0, y: 1.08 },
-      // Chart height.
       height: 480,
     },
     // Annotations.
@@ -246,170 +222,6 @@ export function buildUtciStressChart(
   };
 }
 
-/**
- * Assembles a scatter chart projecting Air Temperature (X) against UTCI (Y).
- * Allows visually seeing exactly how much thermal burden or cooling the wind+radiation combination shifted.
- *
- * @param payload Extracted physical parameters mapping array.
- * @param cachedResultsByInput Evaluated UTCI output models.
- * @param unitSystem The active unit system mapping context.
- * @returns Plotly layout shapes plotting the UTCI shifts diagrammatically.
- */
-export function buildUtciTemperatureChart(
-  // UTCI Chart Inputs Request Data Transfer Object (DTO).
-  payload: UtciChartInputsRequestDto,
-  // Cached UTCI results for each input.
-  cachedResultsByInput: UtciChartResultsByInput = {},
-  // Unit system (SI or IP).
-  unitSystem: UnitSystemType = UnitSystem.SI,
-): PlotlyChartResponseDto {
-  // Get the inputs for the chart.
-  const inputs = getCompareInputs(payload.inputs);
-  // Show input legend if there are multiple inputs.
-  const showInputLegend = inputs.length > 1;
-  // UTCI axis range.
-  const utciAxisRange: [number, number] = [
-    // Minimum UTCI Temperature.
-    convertFieldValueFromSi(FieldKey.DryBulbTemperature, -50, unitSystem),
-    // Maximum UTCI Temperature.
-    convertFieldValueFromSi(FieldKey.DryBulbTemperature, 55, unitSystem),
-  ];
-
-  // UTCI chart traces.
-  const traces: PlotTraceDto[] = [
-    buildContourTrace({
-      name: "Legend",
-      x: [utciAxisRange[0], utciAxisRange[1]],
-      y: [utciAxisRange[0], utciAxisRange[1]],
-      z: [[UTCI_MIN, UTCI_MIN], [UTCI_MAX, UTCI_MAX]],
-      colorscale: UTCI_COLORSCALE,
-      contours: UTCI_CONTOURS,
-      showscale: true,
-      colorbar: UTCI_COLORBAR,
-      hovertemplate: "<extra></extra>",
-      zmin: UTCI_MIN,
-      zmax: UTCI_MAX,
-      opacity: 0.75,
-    })
-  ];
-  // UTCI chart annotations.
-  const annotations: PlotAnnotationDto[] = [];
-  // Get temperature display units.
-  const temperatureDisplayUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-  // Extract dry bulb temperatures for determining the X-axis range.
-  const dryBulbTemperatures = inputs.map(({ payload: inputPayload }) => (
-    convertFieldValueFromSi(FieldKey.DryBulbTemperature, inputPayload.tdb, unitSystem)
-  ));
-  // Calculate padded ranges for the chart axes.
-  const xRange = getPaddedAxisRange(
-    // Dry bulb temperatures.
-    dryBulbTemperatures,
-    // Default range.
-    [
-      // Minimum UTCI Temperature.
-      convertFieldValueFromSi(FieldKey.DryBulbTemperature, -50, unitSystem),
-      // Maximum UTCI Temperature.
-      convertFieldValueFromSi(FieldKey.DryBulbTemperature, 55, unitSystem),
-    ],
-  );
-
-  // Create data points and labels for each input.
-  inputs.forEach(({ inputId, payload: inputPayload }) => {
-    // Get UTCI result for the current input.
-    const result = getUtciResultForInput(inputId, inputPayload, cachedResultsByInput);
-    // Get input label.
-    const inputLabel = inputDisplayMetaById[inputId].label;
-    // Calculate the temperature shift (UTCI vs Air Temp).
-    const temperatureOffset = result.utci - inputPayload.tdb;
-    // Convert calculated values to display units.
-    const displayDryBulb = roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, inputPayload.tdb, unitSystem));
-    const displayUtci = roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.utci, unitSystem));
-
-    // Add the scatter point representing the current environment.
-    traces.push(buildInputScatterTrace({
-      // Input ID.
-      inputId,
-      // X position.
-      x: displayDryBulb,
-      // Y position.
-      y: displayUtci,
-      // Show legend if multiple inputs.
-      showLegend: showInputLegend,
-      // Tooltip text showing temperatures, offset, and stress category.
-      hovertemplate: `${inputLabel}<br>Dry bulb %{x:.1f} ${temperatureDisplayUnits}<br>` +
-      `UTCI %{y:.1f} ${temperatureDisplayUnits}<br>` +
-      `Offset ${formatSignedTemperature(temperatureOffset, unitSystem)}<br>${result.stressCategory}<extra></extra>`,
-      // Marker size.
-      markerSize: 13,
-    }));
-
-  });
-
-
-  // Return the chart traces and layout.
-  return {
-    traces,
-    layout: {
-      // Chart title.
-      title: "UTCI vs air temperature",
-      // Background colors.
-      paper_bgcolor: "#ffffff",
-      plot_bgcolor: "#f8fafc",
-      // Show legend if multiple inputs.
-      showlegend: showInputLegend,
-      // Margins.
-      margin: { l: 56, r: 100, t: 48, b: 80 },
-      // X-axis (Air temperature).
-      xaxis: {
-        // X-axis title.
-        title: `Dry bulb temperature (${temperatureDisplayUnits})`,
-        // X-axis range.
-        range: xRange,
-        // Grid color.
-        gridcolor: "#e2e8f0",
-      },
-      // Y-axis (UTCI value).
-      yaxis: {
-        // Y-axis title.
-        title: `UTCI (${temperatureDisplayUnits})`,
-        // Y-axis range.
-        range: utciAxisRange,
-        // Grid color.
-        gridcolor: "#e2e8f0",
-      },
-      // Horizontal stress category bands.
-      shapes: [
-        // Reference line (where UTCI = Air Temp).
-        {
-          // Line type.
-          type: "line",
-          // X-axis reference.
-          xref: "x" as const,
-          // Y-axis reference.
-          yref: "y" as const,
-          // X-axis start value.
-          x0: xRange[0],
-          // X-axis end value.
-          x1: xRange[1],
-          // Y-axis start value.
-          y0: xRange[0],
-          // Y-axis end value.
-          y1: xRange[1],
-          // Line styling.
-          line: { color: "#94a3b8", width: 1.5, dash: "dash" },
-        } as any,
-      ],
-      // Legend orientation and position.
-      legend: { orientation: "h", x: 0, y: 1.08 },
-      // Chart height.
-      height: 480,
-    },
-    // Annotations.
-    annotations,
-    // The source of the calculation, indicating it was generated directly in the browser.
-    source: CalculationSource.FrontendGenerated,
-  };
-}
 
 /**
  * Builds a dynamic 2D contour chart for the UTCI model based on two user-selected input axes.
@@ -505,15 +317,17 @@ export function buildUtciDynamicChart(
         let rh = activeInputPayload.rh;
 
         // Override values based on the selected dynamic axes.
-        // Apply X-axis value.
+        // Apply X-axis value if the dynamic X-axis is set.
         if (dynamicXAxis === FieldKey.DryBulbTemperature) { tdb = xSi; }
         else if (dynamicXAxis === FieldKey.MeanRadiantTemperature) { tr = xSi; }
+        else if (dynamicXAxis === FieldKey.OperativeTemperature) { tdb = xSi; tr = xSi; }
         else if (dynamicXAxis === FieldKey.WindSpeed) { v = xSi; }
         else if (dynamicXAxis === FieldKey.RelativeHumidity) { rh = xSi; }
 
-        // Apply Y-axis value.
+        // Apply Y-axis value if the dynamic Y-axis is set.
         if (dynamicYAxis === FieldKey.DryBulbTemperature) { tdb = ySi; }
         else if (dynamicYAxis === FieldKey.MeanRadiantTemperature) { tr = ySi; }
+        else if (dynamicYAxis === FieldKey.OperativeTemperature) { tdb = ySi; tr = ySi; }
         else if (dynamicYAxis === FieldKey.WindSpeed) { v = ySi; }
         else if (dynamicYAxis === FieldKey.RelativeHumidity) { rh = ySi; }
 
@@ -559,19 +373,30 @@ export function buildUtciDynamicChart(
       text: textValues,
       colorscale: UTCI_COLORSCALE,
       contours: UTCI_CONTOURS,
-      showscale: true,
-      colorbar: UTCI_COLORBAR,
+      showscale: false,
       zmin: UTCI_MIN,
       zmax: UTCI_MAX,
       hovertemplate: `${xMeta.label}: %{x:.2f} ${xMeta.displayUnits[unitSystem]}<br>${yMeta.label}: %{y:.2f} ${yMeta.displayUnits[unitSystem]}<br><b>Zone: %{text}</b><br>UTCI: %{z:.1f}<extra></extra>`,
       opacity: 0.75,
+      isZone: true,
     }));
   }
 
   // Add input scatter traces.
   inputs.forEach(({ inputId, payload: inputPayload }) => {
-    let inputX = inputPayload[dynamicXAxis as keyof typeof inputPayload] as number;
-    let inputY = inputPayload[dynamicYAxis as keyof typeof inputPayload] as number;
+    let inputX: number;
+    if (dynamicXAxis === FieldKey.OperativeTemperature) {
+      inputX = t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, "ASHRAE");
+    } else {
+      inputX = inputPayload[dynamicXAxis as keyof typeof inputPayload] as number;
+    }
+
+    let inputY: number;
+    if (dynamicYAxis === FieldKey.OperativeTemperature) {
+      inputY = t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, "ASHRAE");
+    } else {
+      inputY = inputPayload[dynamicYAxis as keyof typeof inputPayload] as number;
+    }
     
     // Convert input values to SI units.
     inputX = convertFieldValueFromSi(dynamicXAxis, inputX, unitSystem);
@@ -595,7 +420,7 @@ export function buildUtciDynamicChart(
       paper_bgcolor: "#ffffff",
       plot_bgcolor: "#f8fafc",
       showlegend: showInputLegend,
-      margin: { l: 64, r: 100, t: 48, b: 64 },
+      margin: { l: 64, r: 24, t: 48, b: 64 },
       xaxis: {
         title: `${xMeta.label} (${xMeta.displayUnits[unitSystem]})`,
         range: [xMin, xMax],

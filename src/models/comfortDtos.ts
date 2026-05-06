@@ -160,8 +160,6 @@ export interface PmvChartSourceDto {
   baselineInputId?: InputIdType;
 }
 
-// Relative Humidity Chart Request DTO, contains comfort zone requests for each input
-export interface RelativeHumidityChartRequestDto extends PmvChartInputsRequestDto {}
 
 // Utci Chart Inputs Request DTO, contains utci requests for each input
 export interface UtciChartInputsRequestDto {
@@ -185,6 +183,8 @@ export interface ThermalIndicesChartInputsRequestDto {
 // Thermal Indices Chart Source DTO, contains chart requests for each input
 export interface ThermalIndicesChartSourceDto {
   chartRequest: ThermalIndicesChartInputsRequestDto;
+  dynamicXAxis?: FieldKey;
+  dynamicYAxis?: FieldKey;
 }
 
 // Adaptive Chart Inputs Request DTO, contains adaptive requests for each input
@@ -207,7 +207,7 @@ export interface AdaptiveChartSourceDto {
 // showlegend, fill, fillcolor, line, marker, colorscale, contours, zmin, zmax, showscale,
 // hoverinfo and hovertemplate
 export interface PlotTraceDto {
-  type: "scatter" | "contour";
+  type: "scatter" | "contour" | "heatmap";
   mode?: string;
   name: string;
   x: number[];
@@ -228,6 +228,8 @@ export interface PlotTraceDto {
   opacity?: number;
   hoverinfo?: string;
   hovertemplate?: string | null;
+  /** When true, this trace is a background zone overlay that can be hidden via the Zones toggle. */
+  isZone?: boolean;
 }
 
 // Plot Annotation DTO, contains plot annotation data, including x, y, text, showarrow and font

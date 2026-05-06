@@ -18,6 +18,7 @@
     emptyMessage,
     heightClass = "h-[420px]",
     showPlotTitle = false,
+    showZones = true,
     onRegisterExport = undefined,
   } = $props();
 
@@ -233,6 +234,11 @@
       const chartPayload = JSON.parse(JSON.stringify(chartResult));
       // Convert the chart payload to a Plotly figure.
       const figure = toPlotlyFigure(chartPayload);
+
+      // Filter out zone traces if showZones is false
+      if (!showZones) {
+        figure.data = figure.data.filter((trace: any) => !trace.isZone);
+      }
       // Hide the plot title if the showPlotTitle flag is false.
       if (!showPlotTitle) {
         // Set the plot title to undefined
@@ -308,6 +314,7 @@
   $effect(() => {
     // Re-render the chart when the chart result changes.
     chartResult;
+    showZones;
     // Register the export function if it is provided
     if (onRegisterExport) onRegisterExport(exportChart);
     // Render the chart

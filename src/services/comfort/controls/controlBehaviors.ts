@@ -1,3 +1,10 @@
+/**
+ * Input Control Behaviors
+ * 
+ * Defines the logic and interaction patterns for sidebar input controls. 
+ * Orchestrates field value synchronization, unit conversions, and the management 
+ * of advanced option menus for complex comfort model parameters.
+ */
 import { ChartId } from "../../../models/chartOptions";
 import {
   DerivedInputId,
@@ -50,56 +57,99 @@ import {
 import type { BehaviorPatch, ControlBehaviorContext, InputControlBehavior } from "./types";
 import { createSingleInputPatch } from "./types";
 
-// Type for the presentation meta data, used to build the presentation of the control.
+/**
+ * Type for the presentation meta data, used to build the presentation of the control.
+ * Contains information about the units, step, decimals, range, and min/max values of a control.
+ */
 type PresentationMeta = {
-  // The label to display for the control.
   label: string;
-  // The units to display for the control.
   displayUnits: string;
-  // The step value for the control.
   step: number;
-  // The number of decimals to display for the control.
   decimals: number;
-  // The range text to display for the control.
   rangeText: string;
-  // The minimum value for the control.
   minValue?: number;
-  // The maximum value for the control.
   maxValue?: number;
 };
 
-// Type for the control behavior config. Used to define the behavior of a control.
+/**
+ * Type for the control behavior config. Used to define the behavior of a control (e.g. how units are displayed).
+ */
 type ControlBehaviorConfig = {
-  // The ID of the control.
   controlId: InputControlIdType;
-  // The field key of the control.
   fieldKey: FieldKeyType;
-  // A function that gets the presentation of the control.
+  /**
+   * Gets the presentation of the control.
+   * @param context - The context of the control behavior.
+   * @param meta - The metadata of the field key.
+   * @returns The presentation of the control.
+   */
   getPresentation?: (context: ControlBehaviorContext, meta: FieldMeta) => PresentationMeta;
-  // A function that determines if the control should be hidden.
+  /**
+   * Determines if the control should be hidden.
+   * @param context - The context of the control behavior.
+   * @returns Whether the control should be hidden.
+   */
   hidden?: (context: ControlBehaviorContext) => boolean;
-  // A function that gets the advanced option menu for the control.
+  /**
+   * Gets the advanced option menu for the control.
+   * @param context - The context of the control behavior.
+   * @returns The advanced option menu for the control.
+   */
   getMenu?: (context: ControlBehaviorContext) => AdvancedOptionMenu;
-  // The preset input options for the control.
+  /**
+   * Gets the preset input options for the control.
+   * @param context - The context of the control behavior.
+   * @returns The preset input options for the control.
+   */
   presetOptions?: PresetInputOption[];
-  // The preset decimals for the control.
+  /**
+   * Gets the preset decimals for the control.
+   * @param context - The context of the control behavior.
+   * @returns The preset decimals for the control.
+   */
   presetDecimals?: number;
-  // Whether the clothing builder should be shown for the control.
+  /**
+   * Whether the clothing builder should be shown for the control.
+   * @param context - The context of the control behavior.
+   * @returns Whether the clothing builder should be shown for the control.
+   */
   showClothingBuilder?: boolean;
-  // A function that gets the display value for the control.
+  /**
+   * Gets the display value for the control.
+   * @param context - The context of the control behavior.
+   * @param inputId - The ID of the input to get the display value for.
+   * @returns The display value for the control.
+   */
   getDisplayValue?: (context: ControlBehaviorContext, inputId: InputIdType) => number;
-  // A function that parses the input value for the control.
+  /**
+   * Parses the input value for the control.
+   * @param context - The context of the control behavior.
+   * @param nextValue - The next value to parse for the control.
+   * @returns The parsed input value for the control.
+   */
   parseInput?: (context: ControlBehaviorContext, nextValue: number) => number | null;
-  // A function that applies the input value to the control.
+  /**
+   * Applies the input value to the control.
+   * @param context - The context of the control behavior.
+   * @param inputId - The ID of the input to apply the value to.
+   * @param nextValue - The next value to apply to the input.
+   * @returns The behavior patch to apply to the control.
+   */
   applyInput?: (
     // Context of the control behavior.
     context: ControlBehaviorContext,
     // ID of the input to apply the value to.
     inputId: InputIdType,
     // The next value to apply to the input.
-    nextValue: number,
+    nextValue: number | null,
   ) => BehaviorPatch | null;
-  // A function that applies the option change to the control.
+  /**
+   * Applies the option change to the control.
+   * @param context - The context of the control behavior.
+   * @param optionKey - The key of the option to apply the change to.
+   * @param nextValue - The next value of the option to apply.
+   * @returns The behavior patch to apply to the control.
+   */
   applyOptionChange?: (
     // Context of the control behavior.
     context: ControlBehaviorContext,
@@ -141,40 +191,26 @@ function isHumidityInputMode(value: string): value is HumidityInputModeType {
 
 // Build the range text for a field. Used in table to build the full range for inputs.
 function buildRangeText(meta: FieldMeta, context: ControlBehaviorContext): string {
-  // Convert the minimum value to the display units and format it for display.
   const minimum = formatDisplayValue(
-    // Convert the minimum value to the display units.
     convertFieldValueFromSi(meta.key, meta.minValue, context.unitSystem),
-    // The number of decimals to display for the control (e.g., 2).
     meta.decimals,
   );
-  // Convert the maximum value to the display units and format it for display.
   const maximum = formatDisplayValue(
-    // Convert the maximum value to the display units.
     convertFieldValueFromSi(meta.key, meta.maxValue, context.unitSystem),
-    // The number of decimals to display for the control (e.g., 2).
     meta.decimals,
   );
-  // Return the range text in the format: "From [minimum] to [maximum]".
   return `From ${minimum} to ${maximum}`;
 }
 
 // Build the default presentation for a field. Used as a fallback for other behaviors.
 export function buildDefaultPresentation(context: ControlBehaviorContext, meta: FieldMeta): PresentationMeta {
   return {
-    // The label to display for the control.
     label: meta.label,
-    // The units to display for the control (e.g. "°C", "%").
     displayUnits: meta.displayUnits[context.unitSystem],
-    // The increment/decrement interval (step size) for the input field (e.g., 0.1).
     step: meta.step,
-    // The number of decimals to display for the control (e.g., 2).
     decimals: meta.decimals,
-    // The range text to display for the control (e.g., "From 0 to 100").
     rangeText: buildRangeText(meta, context),
-    // The minimum value for the control (in display units).
     minValue: convertFieldValueFromSi(meta.key, meta.minValue, context.unitSystem),
-    // The maximum value for the control (in display units).
     maxValue: convertFieldValueFromSi(meta.key, meta.maxValue, context.unitSystem),
   };
 }
@@ -374,26 +410,16 @@ export function createControlBehavior(config: ControlBehaviorConfig): InputContr
         if (value === undefined || value === null) {
           value = getDefaultDisplayValue(context, inputId, config.fieldKey);
         }
-        // Format the display value.
         accumulator[inputId] = formatDisplayValue(value, presentation.decimals);
-        // Return the accumulator.
         return accumulator;
       }, 
-      // The initial value for the accumulator.
       {} as Record<InputIdType, string>);
 
-      // Calculate the numeric values for each visible input. Use the provided function
-      // if it exists, otherwise fall back to the default behavior (getting the
-      // numeric value from the context).
       const numericValuesByInput = context.visibleInputIds.reduce((accumulator, inputId) => {
-        // Use the provided display value function if available, otherwise fall back
-        // to the default display value function.
         let value: number | undefined | null;
         if (config.getDisplayValue) {
           value = config.getDisplayValue(context, inputId);
         }
-        // Use the default display value function if no display value function is
-        // provided or if the display value function returns undefined or null.
         if (value === undefined || value === null) {
           value = getDefaultDisplayValue(context, inputId, config.fieldKey);
         }
@@ -544,13 +570,17 @@ export function createTemperatureControlBehavior(controlId: InputControlIdType):
     getMenu: (context) => {
       // Get the temperature mode from the control options (e.g., Operative or Dry Bulb).
       const temperatureMode = normalizeControlOptions(context.options)[OptionKey.TemperatureMode];
-      // If the selected chart is not Psychrometric or Adaptive, and the temperature mode is not Operative, return null.
-      if (
-        context.selectedChartId !== ChartId.Psychrometric &&
-        context.selectedChartId !== ChartId.Adaptive &&
-        temperatureMode !== TemperatureMode.Operative
-      ) {
-        // Return null if the temperature mode is not Operative and the selected chart is not Psychrometric or Adaptive.
+      // If the selected chart is not one of the main comfort charts, and the temperature mode is not Operative, return null.
+      const isComfortChart = 
+        context.selectedChartId === ChartId.Psychrometric ||
+        context.selectedChartId === ChartId.Stress ||
+        context.selectedChartId === ChartId.Adaptive ||
+        context.selectedChartId === ChartId.PmvDynamic ||
+        context.selectedChartId === ChartId.UtciDynamic ||
+        context.selectedChartId === ChartId.AdaptiveDynamic;
+
+      if (!isComfortChart && temperatureMode !== TemperatureMode.Operative) {
+        // Return null if the temperature mode is not Operative and the selected chart is not a comfort chart.
         return null;
       }
 
@@ -1167,17 +1197,11 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
 
       // Return a patch for the input state.
       return buildCanonicalInputSyncPatch(
-        // The order of the inputs.
         inputOrder,
-        // The option change.
         { [optionKey]: nextValue },
-        // The function to synchronize the input state.
         (inputId) => synchronizeControlInputState(
-          // The input state.
           context.inputsByInput[inputId],
-          // The next options.
           nextOptions,
-          // The derived input overrides.
           context.derivedByInput[inputId],
         ),
       );
