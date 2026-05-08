@@ -51,11 +51,36 @@
             <TableBodyCell
               class={!cell
                 ? "text-stone-400"
-                : cell.tone === "success"
-                  ? "text-emerald-700"
-                  : cell.tone === "danger"
-                    ? "text-red-600"
-                    : ""}
+                : {
+                    success: "text-emerald-700",
+                    danger: "text-red-600",
+                    warning: "text-orange-500",
+                    hiCaution: "text-yellow-500",
+                    hiExtremeCaution: "text-yellow-600",
+                    hiDanger: "text-orange-500",
+                    hiExtremeDanger: "text-red-600",
+                    wcSafe: "text-emerald-600",
+                    wc30min: "text-amber-500",
+                    wc10min: "text-orange-600",
+                    wc2min: "text-red-700",
+                    pmvCold: "text-violet-600",
+                    pmvCool: "text-blue-600",
+                    pmvSlightlyCool: "text-blue-400",
+                    pmvNeutral: "text-emerald-600",
+                    pmvSlightlyWarm: "text-amber-500",
+                    pmvWarm: "text-orange-500",
+                    pmvHot: "text-red-600",
+                    utciExtremeCold: "text-[#0f172a]",
+                    utciVeryStrongCold: "text-[#1d4ed8]",
+                    utciStrongCold: "text-[#2563eb]",
+                    utciModerateCold: "text-[#3b82f6]",
+                    utciSlightCold: "text-[#7dd3fc]",
+                    utciNoStress: "text-[#34d399]",
+                    utciModerateHeat: "text-[#fbbf24]",
+                    utciStrongHeat: "text-[#fb923c]",
+                    utciVeryStrongHeat: "text-[#f97316]",
+                    utciExtremeHeat: "text-[#dc2626]",
+                  }[cell.tone] || ""}
             >
               {#if cell}
                 <!-- Display the calculated values -->

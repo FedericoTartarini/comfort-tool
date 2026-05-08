@@ -78,7 +78,11 @@ export function convertFieldValueFromSi(
     return value;
   }
 
-  if (key === FieldKey.DryBulbTemperature || key === FieldKey.MeanRadiantTemperature) {
+  if (
+    key === FieldKey.DryBulbTemperature || 
+    key === FieldKey.MeanRadiantTemperature ||
+    key === FieldKey.PrevailingMeanOutdoorTemperature
+  ) {
     return value * FAHRENHEIT_MULTIPLIER + FAHRENHEIT_OFFSET;
   }
 
@@ -105,7 +109,11 @@ export function convertFieldValueToSi(
     return value;
   }
 
-  if (key === FieldKey.DryBulbTemperature || key === FieldKey.MeanRadiantTemperature) {
+  if (
+    key === FieldKey.DryBulbTemperature || 
+    key === FieldKey.MeanRadiantTemperature ||
+    key === FieldKey.PrevailingMeanOutdoorTemperature
+  ) {
     return (value - FAHRENHEIT_OFFSET) / FAHRENHEIT_MULTIPLIER;
   }
 

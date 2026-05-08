@@ -83,43 +83,45 @@
   });
 </script>
 
-<Navbar fluid={false} class="border-b border-stone-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-  <NavBrand href="#overview" class="flex items-center gap-6 hover:opacity-95 transition-opacity">
-    <div class="header-logo-container">
-      <Img src={siteBrand.headerLogoSrc} alt={siteBrand.eyebrow} class="header-logo" />
-    </div>
+<Navbar fluid={true} class="border-b border-stone-200 bg-white px-0 py-4">
+  <div class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between px-4 sm:px-6 lg:px-8">
+    <NavBrand href="#overview" class="flex items-center gap-6 hover:opacity-95 transition-opacity">
+      <div class="header-logo-container">
+        <Img src={siteBrand.headerLogoSrc} alt={siteBrand.eyebrow} class="header-logo" />
+      </div>
 
-    <div class="min-w-0">
-      <Heading tag="h6" class="text-eyebrow uppercase tracking-[0.2em]">{siteBrand.eyebrow}</Heading>
-      <Heading tag="h1" class="truncate text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">{siteBrand.title}</Heading>
-    </div>
-  </NavBrand>
+      <div class="min-w-0">
+        <Heading tag="h6" class="text-eyebrow uppercase tracking-[0.2em]">{siteBrand.eyebrow}</Heading>
+        <Heading tag="h1" class="truncate text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">{siteBrand.title}</Heading>
+      </div>
+    </NavBrand>
 
-  <div class="flex items-center gap-2 lg:order-2">
-    <Button
-      pill
-      color={exportStatus === "copied" ? "green" : exportStatus === "error" ? "red" : "light"}
-      onclick={() => void handleExportLink()}
-      class="px-4 py-2 font-semibold shadow-sm"
-    >
-      <LinkOutline class="mr-2 h-4 w-4" strokeWidth="1.7" />
-      {getExportLabel()}
-    </Button>
-    <NavHamburger />
-  </div>
-
-  <NavUl class="lg:order-1">
-    {#each siteHeaderLinks as link}
-      <NavLi
-        href={link.href}
-        target={getLinkTarget(link.external)}
-        rel={getLinkRel(link.external)}
-        class="inline-block rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:border-stone-300 hover:text-stone-950 transition-colors shadow-sm"
+    <div class="flex items-center gap-2 lg:order-2">
+      <Button
+        pill
+        color={exportStatus === "copied" ? "green" : exportStatus === "error" ? "red" : "light"}
+        onclick={() => void handleExportLink()}
+        class="px-4 py-2 font-semibold shadow-sm"
       >
-        {link.label}
-      </NavLi>
-    {/each}
-  </NavUl>
+        <LinkOutline class="mr-2 h-4 w-4" strokeWidth="1.7" />
+        {getExportLabel()}
+      </Button>
+      <NavHamburger />
+    </div>
+
+    <NavUl class="lg:order-1">
+      {#each siteHeaderLinks as link}
+        <NavLi
+          href={link.href}
+          target={getLinkTarget(link.external)}
+          rel={getLinkRel(link.external)}
+          class="inline-block rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:border-stone-300 hover:text-stone-950 transition-colors shadow-sm"
+        >
+          {link.label}
+        </NavLi>
+      {/each}
+    </NavUl>
+  </div>
 </Navbar>
 
 

@@ -2,6 +2,7 @@ import { inputOrder, type InputId as InputIdType } from "../../../models/inputSl
 import type { ResultSectionViewModel, ResultTone, ModelOptionsState } from "../types";
 import type { ComfortModelDefinition, ModelOptionChangeHandler } from "./index";
 import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
+import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
@@ -156,6 +157,15 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   setChartBuilder(builder: ComfortModelDefinition<ResultType, ChartSourceType>["buildChartResult"]): this {
     this.config.buildChartResult = builder;
+    return this;
+  }
+
+  /**
+   * Defines the field keys available for dynamic axis selection in charts.
+   * @param fields Array of FieldKey values.
+   */
+  setDynamicAxisFields(fields: FieldKeyType[]): this {
+    this.config.dynamicAxisFields = fields;
     return this;
   }
 

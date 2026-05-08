@@ -11,7 +11,7 @@ import {
   deriveRelativeAirSpeedFromMeasured,
   deriveRelativeHumidityFromDewPoint,
 } from "./derivations";
-import { check_standard_compliance_array, clo_tout, t_o } from "jsthermalcomfort";
+import { check_standard_compliance_array } from "jsthermalcomfort";
 import {
   synchronizeControlInputState,
 } from "./syncState";
@@ -19,6 +19,7 @@ import { pmv_ppd_ashrae, PMV_COMFORT_LIMIT } from "./pmv";
 import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOptions } from "./referenceValues";
 import { calculateUtci } from "./utci";
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
+import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
 
 const pmvPayload = {
   tdb: 26,
@@ -163,8 +164,8 @@ describe("comfort services", () => {
     );
 
     expect(psychrometricChart.traces.length).toBeGreaterThan(1);
-    expect(utciChart.traces).toHaveLength(1);
-    expect(utciChart.annotations).toHaveLength(1);
+    expect(utciChart.traces).toHaveLength(2);
+    expect(utciChart.annotations).toHaveLength(0);
   });
 
   it("rebuilds chart labels and hover text for IP units", () => {
@@ -207,7 +208,7 @@ describe("comfort services", () => {
     expect(psychrometricChart.traces[0].hovertemplate).toContain("°F");
     expect(String(utciChart.layout.xaxis.title)).toContain("°F");
     expect(String(utciChart.layout.yaxis.title)).toContain("°F");
-    expect(utciChart.traces[0].hovertemplate).toContain("°F");
+    expect(utciChart.traces[1].hovertemplate).toContain("°F");
   });
 
   it("smooths comfort-zone polygon x values while preserving solver output", () => {
@@ -246,7 +247,7 @@ describe("comfort services", () => {
   });
 
   it("normalizes clothing prediction results from jsthermalcomfort", () => {
-    const predictedClothing = clo_tout(10, UnitSystem.SI).clo_tout;
+    const predictedClothing = predictClothingInsulationFromService(10, UnitSystem.SI);
 
     expect(predictedClothing).toBeTypeOf("number");
     expect(predictedClothing).toBeGreaterThan(0);

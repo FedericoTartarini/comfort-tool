@@ -4,9 +4,12 @@
   import { Button, Card, Heading, Modal } from "flowbite-svelte";
 
   import ClothingEnsembleBuilder from "../ClothingEnsembleBuilder.svelte";
+  import QuickClothingEstimate from "../clothing-builder/QuickClothingEstimate.svelte";
   import InputFieldRow from "./InputFieldRow.svelte";
   import { inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
+  import { FieldKey } from "../../models/fieldKeys";
+  import { fieldMetaByKey } from "../../models/inputFieldsMeta";
   import { InputControlId } from "../../models/inputControls";
   import ToolControls from "./ToolControls.svelte";
   import type { ComfortToolController } from "../../state/comfortTool/types";
@@ -18,6 +21,8 @@
   } = $props();
 
   let clothingBuilderOpen = $state(false);
+  let quickClothingEstimateOpen = $state(false);
+  const maxClothingValue = fieldMetaByKey[FieldKey.ClothingInsulation].maxValue;
 
   function handleApplyClothingValue(inputId, value) {
     toolState.actions.setActiveInputId(inputId);
@@ -36,7 +41,7 @@
   }
 </script>
 
-<Card size="none" class="w-full border border-stone-300 bg-white p-3 shadow-sm">
+<Card size="none" class="w-full border-stone-300 bg-white p-3 shadow-sm">
   <header class="flex items-start justify-between gap-3 pb-2">
     <h2 class="text-base font-semibold text-stone-900">Inputs</h2>
   </header>
@@ -71,6 +76,9 @@
           onOpenClothingBuilder={() => {
             clothingBuilderOpen = true;
           }}
+          onOpenQuickClothingEstimate={() => {
+            quickClothingEstimateOpen = true;
+          }}
         />
       {/each}
     </div>
@@ -79,15 +87,13 @@
 
 <Modal
   bind:open={clothingBuilderOpen}
-  size="md"
+  size="xl"
   autoclose={false}
   outsideclose={true}
-  class="w-full"
-  title="Clothing Tools"
+  class="modal-shell-soft"
+  classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
+  classBody="h-[84svh] overflow-hidden p-0"
 >
-  <Heading slot="header" tag="h6" class="text-description-muted">
-    Predict clo quickly or build a garment ensemble from the CBE list.
-  </Heading>
   <ClothingEnsembleBuilder
     activeInputId={toolState.state.ui.activeInputId}
     visibleInputIds={toolState.selectors.getVisibleInputIds()}
@@ -96,6 +102,28 @@
     onApplyClothingValue={handleApplyClothingValue}
     onClose={() => {
       clothingBuilderOpen = false;
+    }}
+  />
+</Modal>
+
+<Modal
+  bind:open={quickClothingEstimateOpen}
+  size="md"
+  autoclose={false}
+  outsideclose={true}
+  class="modal-shell-soft"
+  classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
+  classBody="overflow-y-auto p-0"
+>
+  <QuickClothingEstimate
+    activeInputId={toolState.state.ui.activeInputId}
+    visibleInputIds={toolState.selectors.getVisibleInputIds()}
+    unitSystem={toolState.state.ui.unitSystem}
+    {maxClothingValue}
+    onSelectInput={toolState.actions.setActiveInputId}
+    onApplyClothingValue={handleApplyClothingValue}
+    onClose={() => {
+      quickClothingEstimateOpen = false;
     }}
   />
 </Modal>

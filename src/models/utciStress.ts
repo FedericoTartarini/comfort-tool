@@ -30,6 +30,7 @@ interface UtciStressBand {
   minimum: number;
   maximum: number;
   category: UtciStressCategory;
+  label: string;
   color: string;
 }
 
@@ -38,60 +39,70 @@ export const utciStressBands: UtciStressBand[] = [
     minimum: -50,
     maximum: -40,
     category: UtciStressCategory.ExtremeColdStress,
+    label: "Extreme Cold Stress",
     color: "#0f172a",
   },
   {
     minimum: -40,
     maximum: -27,
     category: UtciStressCategory.VeryStrongColdStress,
+    label: "Very Strong Cold Stress",
     color: "#1d4ed8",
   },
   {
     minimum: -27,
     maximum: -13,
     category: UtciStressCategory.StrongColdStress,
+    label: "Strong Cold Stress",
     color: "#2563eb",
   },
   {
     minimum: -13,
     maximum: 0,
     category: UtciStressCategory.ModerateColdStress,
+    label: "Moderate Cold Stress",
     color: "#3b82f6",
   },
   {
     minimum: 0,
     maximum: 9,
     category: UtciStressCategory.SlightColdStress,
+    label: "Slight Cold Stress",
     color: "#7dd3fc",
   },
   {
     minimum: 9,
     maximum: 26,
     category: UtciStressCategory.NoThermalStress,
+    label: "No Thermal Stress",
     color: "#34d399",
   },
   {
     minimum: 26,
     maximum: 32,
     category: UtciStressCategory.ModerateHeatStress,
+    label: "Moderate Heat Stress",
     color: "#fbbf24",
   },
   {
     minimum: 32,
     maximum: 38,
     category: UtciStressCategory.StrongHeatStress,
+    label: "Strong Heat Stress",
     color: "#fb923c",
   },
   {
     minimum: 38,
     maximum: 46,
     category: UtciStressCategory.VeryStrongHeatStress,
+    label: "Very Strong Heat Stress",
     color: "#f97316",
   },
   {
     minimum: 46,
     maximum: 55,
     category: UtciStressCategory.ExtremeHeatStress,
+    label: "Extreme Heat Stress",
     color: "#dc2626",
   },
 ];

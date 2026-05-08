@@ -58,6 +58,7 @@ export function calculateAdaptive(
       payload.units === UnitSystem.SI ? "SI" : "IP",
       // Flag to indicate if the calculation should be performed.
       true,
+      { round_output: false },
     );
 
     // Return the results.
@@ -65,8 +66,8 @@ export function calculateAdaptive(
       t_cmf: result.tmp_cmf,
       acceptability_80: result.acceptability_80,
       acceptability_90: result.acceptability_90,
-      status_80: getStatus(to, result.tmp_cmf_80_low, result.tmp_cmf_80_up),
-      status_90: getStatus(to, result.tmp_cmf_90_low, result.tmp_cmf_90_up),
+      status_80: result.acceptability_80 ? "Comfortable" : (to < result.tmp_cmf ? "Too cool" : "Too warm"),
+      status_90: result.acceptability_90 ? "Comfortable" : (to < result.tmp_cmf ? "Too cool" : "Too warm"),
       tmp_cmf_80_low: result.tmp_cmf_80_low,
       tmp_cmf_80_up: result.tmp_cmf_80_up,
       tmp_cmf_90_low: result.tmp_cmf_90_low,
@@ -91,6 +92,7 @@ export function calculateAdaptive(
     payload.units === UnitSystem.SI ? "SI" : "IP",
     // Flag to indicate if the calculation should be performed.
     true,
+    { round_output: false },
   );
 
   // Return the results.
@@ -99,9 +101,9 @@ export function calculateAdaptive(
     acceptability_cat_i: result.acceptability_cat_i,
     acceptability_cat_ii: result.acceptability_cat_ii,
     acceptability_cat_iii: result.acceptability_cat_iii,
-    status_cat_i: getStatus(to, result.tmp_cmf_cat_i_low, result.tmp_cmf_cat_i_up),
-    status_cat_ii: getStatus(to, result.tmp_cmf_cat_ii_low, result.tmp_cmf_cat_ii_up),
-    status_cat_iii: getStatus(to, result.tmp_cmf_cat_iii_low, result.tmp_cmf_cat_iii_up),
+    status_cat_i: result.acceptability_cat_i ? "Comfortable" : (to < result.tmp_cmf ? "Too cool" : "Too warm"),
+    status_cat_ii: result.acceptability_cat_ii ? "Comfortable" : (to < result.tmp_cmf ? "Too cool" : "Too warm"),
+    status_cat_iii: result.acceptability_cat_iii ? "Comfortable" : (to < result.tmp_cmf ? "Too cool" : "Too warm"),
     tmp_cmf_cat_i_low: result.tmp_cmf_cat_i_low,
     tmp_cmf_cat_i_up: result.tmp_cmf_cat_i_up,
     tmp_cmf_cat_ii_low: result.tmp_cmf_cat_ii_low,

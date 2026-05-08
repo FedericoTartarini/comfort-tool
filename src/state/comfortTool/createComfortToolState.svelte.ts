@@ -1,7 +1,16 @@
 /**
- * Main comfort-tool controller.
- * Canonical user inputs are stored in SI under `inputsByInput`; reusable control behaviors produce UI-ready view
- * models and plain patches, while model definitions own calculations and chart assembly.
+ * Creates and manages the entire state for the comfort-tool application.
+ * 
+ * Orchestrates the following main areas:
+ * - Input Management: Handles inputs for environmental parameters and personal settings.
+ * - Model Options: Manages configuration for various comfort models (PMV, UTCI, etc.).
+ * - UI State: Controls the layout, visibility, and selection of components (charts, panels).
+ * - Calculations: Interfaces with the CalculationManager for model evaluations.
+ * - Charting: Manages chart configurations and generation settings.
+ * - Comparisons: Supports comparing multiple input scenarios.
+ * - Sharing & Persistence: Handles sharing state via snapshots and URLs.
+ * 
+ * @returns A ComfortToolController object exposing state and derived selectors.
  */
 import {
   InputId,
@@ -11,6 +20,7 @@ import {
 } from "../../models/inputSlots";
 import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
 import { ComfortModel, comfortModelOrder, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { allFieldOrder, fieldMetaByKey } from "../../models/inputFieldsMeta";
 import type { InputControlId as InputControlIdType } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
@@ -75,6 +85,10 @@ function normalizeCompareInputIds(inputIds: InputIdType[]): InputIdType[] {
   return inputOrder.filter((inputId) => inputId === InputId.Input1 || inputIds.includes(inputId));
 }
 
+/**
+ * Initializes the default chart selection for each comfort model.
+ * @returns A record mapping each model to its default chart ID.
+ */
 function createSelectedChartByModel(): SelectedChartByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
     accumulator[modelId] = comfortModelConfigs[modelId].defaultChartId;
@@ -82,6 +96,10 @@ function createSelectedChartByModel(): SelectedChartByModelState {
   }, {} as SelectedChartByModelState);
 }
 
+/**
+ * Initializes the default options (e.g., standards, limits) for each comfort model.
+ * @returns A record mapping each model to its default options.
+ */
 function createModelOptionsByModel(): ModelOptionsByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
     accumulator[modelId] = { ...comfortModelConfigs[modelId].defaultOptions };
@@ -89,6 +107,10 @@ function createModelOptionsByModel(): ModelOptionsByModelState {
   }, {} as ModelOptionsByModelState);
 }
 
+/**
+ * Creates an empty record of results for all available input slots.
+ * @returns A record mapping each InputId to a null result.
+ */
 function createEmptyInputResultRecord<T>(): Record<InputIdType, T | null> {
   return inputOrder.reduce((accumulator, inputId) => {
     accumulator[inputId] = null;
@@ -96,6 +118,10 @@ function createEmptyInputResultRecord<T>(): Record<InputIdType, T | null> {
   }, {} as Record<InputIdType, T | null>);
 }
 
+/**
+ * Creates an empty calculation cache container for a comfort model.
+ * @returns An initialized calculation cache object.
+ */
 function createEmptyCalculationCache<ResultType>(): {
   status: CalculationCacheStatus;
   lastVisibleInputIds: InputIdType[];
@@ -110,15 +136,26 @@ function createEmptyCalculationCache<ResultType>(): {
   };
 }
 
+/**
+ * Initializes the calculation cache registry for all available comfort models.
+ * @returns A record mapping each model to an empty calculation cache.
+ */
 function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
   return {
     [ComfortModel.Pmv]: createEmptyCalculationCache(),
     [ComfortModel.Utci]: createEmptyCalculationCache(),
     [ComfortModel.AdaptiveAshrae]: createEmptyCalculationCache(),
     [ComfortModel.AdaptiveEn]: createEmptyCalculationCache(),
+    [ComfortModel.HeatIndex]: createEmptyCalculationCache(),
+    [ComfortModel.Humidex]: createEmptyCalculationCache(),
+    [ComfortModel.WindChill]: createEmptyCalculationCache(),
   } as ModelCalculationCacheByModelState;
 }
 
+/**
+ * Creates and initializes the root state for the comfort-tool.
+ * @returns A ComfortToolController containing the core state and action methods.
+ */
 export function createComfortToolState(): ComfortToolController {
   const inputsByInput = $state(createInputsByInput());
   const derivedByInput = $derived.by(() => deriveInputsDerivedState(inputsByInput));
@@ -130,6 +167,9 @@ export function createComfortToolState(): ComfortToolController {
     compareInputIds: createDefaultCompareInputIds(),
     activeInputId: InputId.Input1,
     unitSystem: UnitSystem.SI,
+    dynamicXAxis: FieldKey.DryBulbTemperature,
+    dynamicYAxis: FieldKey.RelativeHumidity,
+    chartBaselineInputId: InputId.Input1,
     isLoading: false,
     errorMessage: "",
     calculationCacheByModel: createCalculationCacheByModel(),
@@ -249,6 +289,8 @@ export function createComfortToolState(): ComfortToolController {
         cache.resultsByInput,
         getVisibleInputIds(),
         state.ui.unitSystem,
+        state.ui.modelOptionsByModel[state.ui.selectedModel],
+        getCurrentSelectedChartId(),
       );
     },
     getCurrentChartResult: () => {
@@ -260,6 +302,7 @@ export function createComfortToolState(): ComfortToolController {
         state.ui.unitSystem,
       );
     },
+    getCurrentBaselineInputId: () => state.ui.chartBaselineInputId,
     getCurrentChartEmptyMessage: () => chartMetaById[getCurrentSelectedChartId()].emptyMessage,
     getCurrentChartOptions: () => getActiveModelConfig().chartIds.map((chartId) => ({
       name: chartMetaById[chartId].name,
@@ -268,6 +311,7 @@ export function createComfortToolState(): ComfortToolController {
     getCurrentSelectedChart: () => getCurrentSelectedChartId(),
     getCurrentChartHeightClass: () => chartMetaById[getCurrentSelectedChartId()].heightClass,
     getCurrentCacheStatus: () => getCurrentModelCache().status,
+    getDynamicAxisOptions: () => getActiveModelConfig().dynamicAxisFields || [],
   };
 
   const calculationManager = createCalculationManager(state, getVisibleInputIds);
@@ -287,6 +331,18 @@ export function createComfortToolState(): ComfortToolController {
   function setSelectedModel(nextModel: ComfortModelType) {
     state.ui.selectedModel = nextModel;
     state.ui.errorMessage = "";
+
+    // Ensure dynamic axes are valid for the new model.
+    const config = getComfortModelConfig(nextModel);
+    if (config.dynamicAxisFields && config.dynamicAxisFields.length >= 2) {
+      if (!config.dynamicAxisFields.includes(state.ui.dynamicXAxis as any)) {
+        state.ui.dynamicXAxis = config.dynamicAxisFields[0];
+      }
+      if (!config.dynamicAxisFields.includes(state.ui.dynamicYAxis as any)) {
+        state.ui.dynamicYAxis = config.dynamicAxisFields[config.dynamicAxisFields.length - 1];
+      }
+    }
+
     scheduleCalculationInternal({ immediate: true });
   }
 
@@ -329,6 +385,7 @@ export function createComfortToolState(): ComfortToolController {
    */
   function setCompareEnabled(enabled: boolean) {
     state.ui.compareEnabled = enabled;
+    
     if (enabled) {
       state.ui.compareInputIds = normalizeCompareInputIds(state.ui.compareInputIds);
       if (state.ui.compareInputIds.length < 2) {
@@ -338,8 +395,10 @@ export function createComfortToolState(): ComfortToolController {
         state.ui.activeInputId = state.ui.compareInputIds[0] ?? InputId.Input1;
       }
     } else {
+      state.ui.chartBaselineInputId = InputId.Input1;
       state.ui.activeInputId = InputId.Input1;
     }
+    
     invalidateAllModels();
     scheduleCalculationInternal({ immediate: true });
   }
@@ -381,6 +440,38 @@ export function createComfortToolState(): ComfortToolController {
     state.ui.unitSystem = state.ui.unitSystem === UnitSystem.SI ? UnitSystem.IP : UnitSystem.SI;
   }
 
+  function setDynamicXAxis(fieldKey: FieldKeyType) {
+    const prevX = state.ui.dynamicXAxis;
+    state.ui.dynamicXAxis = fieldKey;
+
+    // Auto-swap if the newly selected X-axis is the same as the current Y-axis
+    if (fieldKey === state.ui.dynamicYAxis) {
+      state.ui.dynamicYAxis = prevX;
+    }
+
+    invalidateAllModels();
+    scheduleCalculationInternal({ immediate: true });
+  }
+
+  function setDynamicYAxis(fieldKey: FieldKeyType) {
+    const prevY = state.ui.dynamicYAxis;
+    state.ui.dynamicYAxis = fieldKey;
+
+    // Auto-swap if the newly selected Y-axis is the same as the current X-axis
+    if (fieldKey === state.ui.dynamicXAxis) {
+      state.ui.dynamicXAxis = prevY;
+    }
+
+    invalidateAllModels();
+    scheduleCalculationInternal({ immediate: true });
+  }
+
+  function setChartBaselineInputId(inputId: InputIdType) {
+    state.ui.chartBaselineInputId = inputId;
+    invalidateAllModels();
+    scheduleCalculationInternal({ immediate: true });
+  }
+
   /**
    * Updates a specific environmental or personal input variable.
    * @param inputId The ID of the input slot being modified.
@@ -411,6 +502,9 @@ export function createComfortToolState(): ComfortToolController {
     setActiveInputId,
     toggleCompareInputVisibility,
     toggleUnitSystem,
+    setDynamicXAxis,
+    setDynamicYAxis,
+    setChartBaselineInputId,
     exportShareSnapshot: () => createShareStateSnapshot(state),
     applyShareSnapshot: (snapshot: ShareStateSnapshot) => {
       applyShareSnapshotToState(state, snapshot);

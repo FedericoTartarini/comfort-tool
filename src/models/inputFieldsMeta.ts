@@ -1,5 +1,13 @@
+/**
+ * Input Fields Metadata
+ * 
+ * This file defines the descriptive metadata for all user-adjustable input fields 
+ * (e.g., Temperature, Humidity, Clothing). It centralizes display labels, 
+ * unit systems (SI/IP), decimal precision, and valid range constraints used 
+ * by the UI and validation logic.
+ */
 import { FieldKey, type FieldKey as FieldKeyType } from "./fieldKeys";
-// The field metadata keyed by field key.
+// Defines the schema for the metadata associated with a single input field, (e.g. display name, units, and allowed value range).
 export interface FieldMeta {
   key: FieldKeyType;
   label: string;
@@ -18,6 +26,7 @@ export interface FieldMeta {
   maxValue: number;
 }
 
+// A central registry mapping each FieldKey to its corresponding FieldMeta definition. Used to define metadata for each input field.
 export const fieldMetaByKey: Record<FieldKeyType, FieldMeta> = {
   [FieldKey.DryBulbTemperature]: {
     key: FieldKey.DryBulbTemperature,
@@ -117,6 +126,17 @@ export const fieldMetaByKey: Record<FieldKeyType, FieldMeta> = {
     defaultValue: 20,
     minValue: 10,
     maxValue: 33.5,
+  },
+  [FieldKey.OperativeTemperature]: {
+    key: FieldKey.OperativeTemperature,
+    label: "Operative temperature",
+    units: { SI: "degC", IP: "degF" },
+    displayUnits: { SI: "°C", IP: "°F" },
+    step: 0.5,
+    decimals: 1,
+    defaultValue: 25,
+    minValue: 10,
+    maxValue: 40,
   },
 };
 
