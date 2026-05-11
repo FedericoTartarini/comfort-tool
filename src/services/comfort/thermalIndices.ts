@@ -7,10 +7,11 @@ import {
   getHumidexDiscomfort,
   getWindChillZone,
 } from "./helpers";
-import { UnitSystem } from "../../models/units";
+// todo Please remember to remove unused imports. Please check all the other files.
 import { FieldKey } from "../../models/fieldKeys";
 import { convertFieldValueToSi, convertFieldValueFromSi } from "../units/index";
 
+// todo We should not have a single file to calculate three different thermal indexes As we did for the PMV and UTCI, we should have one separate file for the heat index, one for the humidex and one for the windchill index.
 /**
  * Main entry point for calculation of thermal indices (Heat Index, Humidex, Wind Chill).
  * @param payload The request parameters.
@@ -48,6 +49,8 @@ export function calculateThermalIndices(payload: ThermalIndicesRequestDto): Ther
     // Calculate Wind Chill Index (expects SI)
     const wcResult = wc(tdbSi, vSi, { round: true });
     wci = wcResult.wci;
+
+    // todo We should never calculate an index inside a code here, but we should be always importing it from JS Thermal Comfort.
     
     // Calculate Wind Chill Temperature using formula (expects tdbSi in Celsius and vSi in m/s)
     // Only applied if wind speed is greater than 1.33 m/s and temperature is less than or equal to 10 Celsius

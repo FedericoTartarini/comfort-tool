@@ -41,12 +41,13 @@ export function createCalculationManager(state: ComfortToolStateSlice, getVisibl
 
     try {
       const modelConfig = getComfortModelConfig(selectedModel);
+      // todo AI visibleInputIds is string[] here because getVisibleInputIds returns string[]. It should return InputIdType[] and this cast would not be needed.
       const calculationOutputs = modelConfig.calculate(state, visibleInputIds as any);
 
       state.ui.calculationCacheByModel[selectedModel] = {
         ...state.ui.calculationCacheByModel[selectedModel],
         status: "ready",
-        lastVisibleInputIds: [...visibleInputIds] as any[],
+        lastVisibleInputIds: [...visibleInputIds] as any[], // todo AI same issue as above
         resultsByInput: calculationOutputs.resultsByInput,
         chartSource: calculationOutputs.chartSource,
       };

@@ -56,6 +56,7 @@
           {#each sections as section}
             {@const cell = section.valuesByInput[inputId]}
             <!-- Render cell with primary value and optional descriptive subtext -->
+            <!-- todo AI This inline map hard-codes one CSS class per ResultTone value. Every new model that introduces new tones requires editing this component, which should know nothing about specific models. The tone-to-class mapping should live in src/models/ (e.g. as a record exported from the same place ResultTone is defined) so this component stays generic. -->
             <TableBodyCell
               class={!cell
                 ? "text-stone-400"
