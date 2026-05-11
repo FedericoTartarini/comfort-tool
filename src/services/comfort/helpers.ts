@@ -21,6 +21,7 @@ import type {
 } from "../../models/comfortDtos";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertFieldValueFromSi } from "../units";
+// todo AI This import goes from a service into the state layer, which breaks the architecture rule that services should only depend on models. ResultTone should either live in src/models/ or each model should define its own tone type locally and ResultTone should be derived from those.
 import type { ResultTone } from "../../state/comfortTool/types";
 
 // Heat Index thresholds in Celsius
@@ -133,6 +134,8 @@ export const utciStressShortLabelByCategory: Record<UtciStressCategory, string> 
   [UtciStressCategory.VeryStrongHeatStress]: "V strong<br>heat",
   [UtciStressCategory.ExtremeHeatStress]: "Ext.<br>heat",
 };
+
+// todo AI This file mixes zone definitions for all models, math utilities, and UI formatting helpers. Once each model gets its own service file, the zone data (heatIndexZones, humidexZones, windChillZones, adaptiveAshraeZones, adaptiveEnZones) should move into those files. Only the shared math utilities (roundValue, ensureFiniteValue, getPaddedAxisRange, getCompareInputs) belong here long-term.
 
 // ── Thermal Index Zones ─────────────────────────────────────────────────────
 export const heatIndexZones = [
