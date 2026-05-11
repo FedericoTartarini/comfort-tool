@@ -295,3 +295,11 @@ There are 74 source files and only 6 test files. The following areas have no tes
 - Share state serialization: does a round-trip through URL encoding preserve all values exactly?
 
 All of these are pure functions and straightforward to test with Vitest.
+
+** Psychrometric chart **
+
+You should not be showing the risk categories above 100% relative humidity.
+
+** Documentation. **
+
+The current "docs" folder contains a markdown document that is currently unused and disconnected from the frontend. We should restructure this documentation into modular files—such as an introduction, a contribution guide, and a frontend structure overview—and use a generator to build a dedicated documentation website from these files. This will allow us to integrate the documentation directly into the frontend, providing users with easy access via a dedicated button or link. We should then use a package to build these markdown files into HTML and then connect these files via a button from the home page.
