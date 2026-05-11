@@ -52,38 +52,23 @@ export function calculateThermalIndices(payload: ThermalIndicesRequestDto): Ther
     // Calculate Wind Chill Temperature using formula (expects tdbSi in Celsius and vSi in m/s)
     // Only applied if wind speed is greater than 1.33 m/s and temperature is less than or equal to 10 Celsius
     if (vSi > 1.33 && tdbSi <= 10) {
-      // 13.95 (wind coefficient) and 0.486 (temp/wind interaction) are calibrated for m/s
+      // 13.12, 0.6215, 13.95, and 0.486 are calibrated for Celsius and m/s
       wciTemp = 13.12 + 0.6215 * tdbSi - 13.95 * Math.pow(vSi, 0.16) + 0.486 * tdbSi * Math.pow(vSi, 0.16);
-      
-      // Convert result back to requested unit system if needed
-      if (payload.units === UnitSystem.IP) {
-        wciTemp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, wciTemp, UnitSystem.IP);
-      }
     } else {
       // In mild conditions, Wind Chill Temp is equal to Air Temp
-      wciTemp = payload.tdb;
+      wciTemp = tdbSi;
     }
     // Categorization must use Celsius values
     wciZone = getWindChillZone(wci);
   }
 
-  // Ensure we return finite values for the optional Wind Chill indices
-  let finalWci: number | undefined;
-  if (wci !== undefined) {
-    finalWci = ensureFiniteValue("Wind Chill", wci);
-  }
-  let finalWciTemp: number | undefined;
-  if (wciTemp !== undefined) {
-    finalWciTemp = ensureFiniteValue("Wind Chill Temp", wciTemp);
-  }
-
   return {
-    hi: ensureFiniteValue("Heat Index", hi),
+    hi: ensureFiniteValue("Heat Index", hiSi),
     category,
     humidex: ensureFiniteValue("Humidex", humidexResult.humidex),
     humidexDiscomfort,
-    wci: finalWci,
-    wciTemp: finalWciTemp,
+    wci: wci !== undefined ? ensureFiniteValue("Wind Chill", wci) : undefined,
+    wciTemp: wciTemp !== undefined ? ensureFiniteValue("Wind Chill Temp", wciTemp) : undefined,
     wciZone,
     source: CalculationSource.JsThermalComfort,
   };

@@ -1,6 +1,8 @@
 <script lang="ts">
   /**
    * @component
+   * ChartLegend.svelte
+   *
    * Renders the thermal comfort zone legends for various charts.
    * Dynamically displays color-coded categories for PMV, UTCI, Adaptive, and other thermal models.
    */
@@ -10,8 +12,15 @@
   } from "../../models/chartOptions";
   import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
   import { ComfortModel } from "../../models/comfortModels";
-  import { utciStressBands } from "../../models/utciStress";
-  import { pmvZones } from "../../models/pmvZones";
+  import {
+    adaptiveAshraeZones,
+    adaptiveEnZones,
+    heatIndexZones,
+    humidexZones,
+    windChillZones,
+    pmvZones,
+    utciStressBands,
+  } from "../../services/comfort/helpers";
 
   let {
     selectedChart,
@@ -28,48 +37,9 @@
       selectedChart === ChartId.PmvDynamic,
   );
 
-  const adaptiveAshraeZones = [
-    { label: "Too Cool", color: "#3b82f6" },
-    { label: "80% Acceptability", color: "#86efac" },
-    { label: "90% Acceptability", color: "#16a34a" },
-    { label: "Too Warm", color: "#ef4444" },
-  ];
-
-  const adaptiveEnZones = [
-    { label: "Too Cool", color: "#3b82f6" },
-    { label: "Category III", color: "#86efac" },
-    { label: "Category II", color: "#4ade80" },
-    { label: "Category I", color: "#16a34a" },
-    { label: "Too Warm", color: "#ef4444" },
-  ];
-
   const isUtciChart = $derived(
     selectedChart === ChartId.Stress || selectedChart === ChartId.UtciDynamic,
   );
-
-  const heatIndexZones = [
-    { label: "Safe", color: "#e2e8f0" },
-    { label: "Caution", color: "#fef08a" },
-    { label: "Extreme Caution", color: "#fde047" },
-    { label: "Danger", color: "#f97316" },
-    { label: "Extreme Danger", color: "#dc2626" },
-  ];
-
-  const humidexZones = [
-    { label: "Little/None", color: "#e2e8f0" },
-    { label: "Noticeable", color: "#fef08a" },
-    { label: "Evident", color: "#fde047" },
-    { label: "Intense", color: "#facc15" },
-    { label: "Dangerous", color: "#f97316" },
-    { label: "Stroke Probable", color: "#dc2626" },
-  ];
-
-  const windChillZones = [
-    { label: "Safe", color: "#e0f2fe" },
-    { label: "30 min frostbite", color: "#64b5f5" },
-    { label: "10 min frostbite", color: "#5c6bc0" },
-    { label: "2 min frostbite", color: "#8e24aa" },
-  ];
 </script>
 
 {#if isPmvChart}

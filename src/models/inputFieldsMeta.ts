@@ -83,6 +83,17 @@ export const fieldMetaByKey: Record<FieldKeyType, FieldMeta> = {
     minValue: 0,
     maxValue: 100,
   },
+  [FieldKey.HumidityRatio]: {
+    key: FieldKey.HumidityRatio,
+    label: "Humidity ratio",
+    units: { SI: "g/kg", IP: "gr/lb" },
+    displayUnits: { SI: "g/kg", IP: "gr/lb" },
+    step: 1,
+    decimals: 0,
+    defaultValue: 9,
+    minValue: 0,
+    maxValue: 25,
+  },
   [FieldKey.MetabolicRate]: {
     key: FieldKey.MetabolicRate,
     label: "Metabolic rate",

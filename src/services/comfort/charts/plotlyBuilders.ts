@@ -27,6 +27,7 @@ export interface InputScatterTraceOptions {
   hovertemplate: string;
   markerSize?: number;
   color?: string;
+  customdata?: any[] | any[][];
 }
 
 /**
@@ -45,6 +46,7 @@ export function buildInputScatterTrace({
   hovertemplate,
   markerSize = 12,
   color,
+  customdata,
 }: InputScatterTraceOptions): PlotTraceDto {
   // Get the style and label for the input.
   const inputStyle = inputChartStyleById[inputId];
@@ -64,6 +66,7 @@ export function buildInputScatterTrace({
     line: {},
     marker: { color: markerColor, size: markerSize, line: { color: "#000000", width: 1.5 } },
     hovertemplate,
+    customdata,
   };
 }
 
@@ -83,6 +86,7 @@ export interface ComfortPolygonTraceOptions {
   polygonY: number[];
   hovertemplate: string;
   isZone?: boolean;
+  customdata?: any[] | any[][];
 }
 
 /**
@@ -100,6 +104,7 @@ export function buildComfortPolygonTrace({
   polygonY,
   hovertemplate,
   isZone,
+  customdata,
 }: ComfortPolygonTraceOptions): PlotTraceDto {
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;
@@ -117,6 +122,7 @@ export function buildComfortPolygonTrace({
     marker: {},
     hovertemplate,
     isZone,
+    customdata,
   };
 }
 
@@ -341,7 +347,9 @@ export interface ContourTraceOptions {
   zmax?: number;
   colorbar?: any;
   opacity?: number;
+  line?: any;
   isZone?: boolean;
+  customdata?: any[][];
 }
 
 /**
@@ -364,7 +372,9 @@ export function buildContourTrace({
   zmax,
   colorbar,
   opacity,
+  line,
   isZone,
+  customdata,
 }: ContourTraceOptions): PlotTraceDto {
   return {
     type: "contour",
@@ -380,8 +390,10 @@ export function buildContourTrace({
     zmax,
     colorbar,
     opacity,
+    line,
     hoverinfo: "all",
     hovertemplate,
     isZone,
+    customdata,
   };
 }

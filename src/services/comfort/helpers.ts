@@ -1,6 +1,11 @@
 /**
- * Domain-specific utility functions for thermal comfort calculations, 
- * result formatting, and chart axis management.
+ * @file helpers.ts
+ * @description Centralized utility functions and shared metadata for thermal comfort models.
+ *
+ * This file serves as the single source of truth for:
+ * 1. Comfort zone definitions (labels, colors, and thresholds) for all models (PMV, UTCI, Heat Index, etc.).
+ * 2. Mathematical utilities (rounding, finite checks).
+ * 3. UI helpers (axis range padding, result formatting, input ordering).
  */
 
 import {
@@ -17,8 +22,6 @@ import type {
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertFieldValueFromSi } from "../units";
 import type { ResultTone } from "../../state/comfortTool/types";
-import { UtciStressCategory, utciStressBands } from "../../models/utciStress";
-import { getPmvZoneMeta } from "../../models/pmvZones";
 
 // Heat Index thresholds in Celsius
 export const HI_CAUTION = 27;
@@ -38,16 +41,159 @@ export const WCI_FROSTBITE_30 = 1400;
 export const WCI_FROSTBITE_10 = 1600;
 export const WCI_FROSTBITE_2 = 2300;
 
+// ── PMV Zones ───────────────────────────────────────────────────────────────
+
+export type PmvZoneId =
+  | "cold"
+  | "cool"
+  | "slightlyCool"
+  | "neutral"
+  | "slightlyWarm"
+  | "warm"
+  | "hot";
+
+export interface PmvZoneMeta {
+  id: PmvZoneId;
+  label: string;
+  min: number;
+  max: number;
+  color: string;
+}
+
+export const pmvZones = [
+  { id: "cold", label: "Cold", min: -Infinity, max: -2.5, color: "#0571b0" },
+  { id: "cool", label: "Cool", min: -2.5, max: -1.5, color: "#4c78a8" },
+  { id: "slightlyCool", label: "Slightly Cool", min: -1.5, max: -0.5, color: "#92c5de" },
+  { id: "neutral", label: "Neutral", min: -0.5, max: 0.5, color: "#f2f2f2" },
+  { id: "slightlyWarm", label: "Slightly Warm", min: 0.5, max: 1.5, color: "#f4a582" },
+  { id: "warm", label: "Warm", min: 1.5, max: 2.5, color: "#e15759" },
+  { id: "hot", label: "Hot", min: 2.5, max: Infinity, color: "#cc79a7" },
+] as const satisfies readonly PmvZoneMeta[];
+
+// ── UTCI Stress Zones ───────────────────────────────────────────────────────
+
+export const UtciStressCategory = {
+  ExtremeColdStress: "extreme cold stress",
+  VeryStrongColdStress: "very strong cold stress",
+  StrongColdStress: "strong cold stress",
+  ModerateColdStress: "moderate cold stress",
+  SlightColdStress: "slight cold stress",
+  NoThermalStress: "no thermal stress",
+  ModerateHeatStress: "moderate heat stress",
+  StrongHeatStress: "strong heat stress",
+  VeryStrongHeatStress: "very strong heat stress",
+  ExtremeHeatStress: "extreme heat stress",
+} as const;
+
+export type UtciStressCategory = (typeof UtciStressCategory)[keyof typeof UtciStressCategory];
+
+export const utciStressCategoryOrder: UtciStressCategory[] = [
+  UtciStressCategory.ExtremeColdStress,
+  UtciStressCategory.VeryStrongColdStress,
+  UtciStressCategory.StrongColdStress,
+  UtciStressCategory.ModerateColdStress,
+  UtciStressCategory.SlightColdStress,
+  UtciStressCategory.NoThermalStress,
+  UtciStressCategory.ModerateHeatStress,
+  UtciStressCategory.StrongHeatStress,
+  UtciStressCategory.VeryStrongHeatStress,
+  UtciStressCategory.ExtremeHeatStress,
+];
+
+interface UtciStressBand {
+  minimum: number;
+  maximum: number;
+  category: UtciStressCategory;
+  label: string;
+  color: string;
+}
+
+export const utciStressBands: UtciStressBand[] = [
+  { minimum: -50, maximum: -40, category: UtciStressCategory.ExtremeColdStress, label: "Extreme Cold Stress", color: "#0f172a" },
+  { minimum: -40, maximum: -27, category: UtciStressCategory.VeryStrongColdStress, label: "Very Strong Cold Stress", color: "#1d4ed8" },
+  { minimum: -27, maximum: -13, category: UtciStressCategory.StrongColdStress, label: "Strong Cold Stress", color: "#2563eb" },
+  { minimum: -13, maximum: 0, category: UtciStressCategory.ModerateColdStress, label: "Moderate Cold Stress", color: "#3b82f6" },
+  { minimum: 0, maximum: 9, category: UtciStressCategory.SlightColdStress, label: "Slight Cold Stress", color: "#7dd3fc" },
+  { minimum: 9, maximum: 26, category: UtciStressCategory.NoThermalStress, label: "No Thermal Stress", color: "#34d399" },
+  { minimum: 26, maximum: 32, category: UtciStressCategory.ModerateHeatStress, label: "Moderate Heat Stress", color: "#fbbf24" },
+  { minimum: 32, maximum: 38, category: UtciStressCategory.StrongHeatStress, label: "Strong Heat Stress", color: "#fb923c" },
+  { minimum: 38, maximum: 46, category: UtciStressCategory.VeryStrongHeatStress, label: "Very Strong Heat Stress", color: "#f97316" },
+  { minimum: 46, maximum: 55, category: UtciStressCategory.ExtremeHeatStress, label: "Extreme Heat Stress", color: "#dc2626" },
+];
+
+export const utciStressShortLabelByCategory: Record<UtciStressCategory, string> = {
+  [UtciStressCategory.ExtremeColdStress]: "Ext.<br>cold",
+  [UtciStressCategory.VeryStrongColdStress]: "V strong<br>cold",
+  [UtciStressCategory.StrongColdStress]: "Strong<br>cold",
+  [UtciStressCategory.ModerateColdStress]: "Moderate<br>cold",
+  [UtciStressCategory.SlightColdStress]: "Slight<br>cold",
+  [UtciStressCategory.NoThermalStress]: "No<br>stress",
+  [UtciStressCategory.ModerateHeatStress]: "Moderate<br>heat",
+  [UtciStressCategory.StrongHeatStress]: "Strong<br>heat",
+  [UtciStressCategory.VeryStrongHeatStress]: "V strong<br>heat",
+  [UtciStressCategory.ExtremeHeatStress]: "Ext.<br>heat",
+};
+
+// ── Thermal Index Zones ─────────────────────────────────────────────────────
+export const heatIndexZones = [
+  { label: "Safe", color: "#e2e8f0" },
+  { label: "Caution", color: "#fef08a" },
+  { label: "Extreme Caution", color: "#fde047" },
+  { label: "Danger", color: "#f97316" },
+  { label: "Extreme Danger", color: "#dc2626" },
+];
+
+export const humidexZones = [
+  { label: "Little/None", color: "#e2e8f0" },
+  { label: "Noticeable", color: "#fef08a" },
+  { label: "Evident", color: "#fde047" },
+  { label: "Intense", color: "#facc15" },
+  { label: "Dangerous", color: "#f97316" },
+  { label: "Stroke Probable", color: "#dc2626" },
+];
+
+export const windChillZones = [
+  { label: "Safe", color: "#e0f2fe" },
+  { label: "30 mins to frostbite", color: "#64b5f5" },
+  { label: "10 mins to frostbite", color: "#5c6bc0" },
+  { label: "2 mins to frostbite", color: "#8e24aa" },
+];
+
+export const adaptiveAshraeZones = [
+  { label: "Too Cool", color: "#3b82f6" },
+  { label: "80% Acceptability", color: "#86efac" },
+  { label: "90% Acceptability", color: "#22c55e" },
+  { label: "Too Warm", color: "#ef4444" },
+];
+
+export const adaptiveEnZones = [
+  { label: "Too Cool", color: "#3b82f6" },
+  { label: "Category III", color: "#fde047" },
+  { label: "Category II", color: "#86efac" },
+  { label: "Category I", color: "#22c55e" },
+  { label: "Too Warm", color: "#ef4444" },
+];
+
 /**
  * Determines the Heat Index risk category based on Celsius value.
  */
 export function getHeatIndexCategory(hiSi: number): string {
-  if (hiSi >= HI_EXTREME_DANGER) return "Extreme Danger";
-  if (hiSi >= HI_DANGER) return "Danger";
-  if (hiSi >= HI_EXTREME_CAUTION) return "Extreme Caution";
-  if (hiSi >= HI_CAUTION) return "Caution";
-  return "Safe";
+  if (hiSi >= HI_EXTREME_DANGER) return heatIndexZones[4].label;
+  if (hiSi >= HI_DANGER) return heatIndexZones[3].label;
+  if (hiSi >= HI_EXTREME_CAUTION) return heatIndexZones[2].label;
+  if (hiSi >= HI_CAUTION) return heatIndexZones[1].label;
+  return heatIndexZones[0].label;
 }
+/**
+ * Resolves the metadata for a PMV value.
+ * @param pmv - The predicted mean vote value.
+ * @returns The metadata for the matching thermal sensation zone.
+ */
+export function getPmvZoneMeta(pmv: number): PmvZoneMeta {
+  if (isNaN(pmv)) return pmvZones[0];
+  return pmvZones.find((zone) => pmv >= zone.min && pmv < zone.max) ?? pmvZones[0];
+}
+
 /**
  * Determines the PMV thermal sensation zone.
  */
@@ -89,22 +235,22 @@ export function getUtciStressLabel(category: string): string {
  * Determines the Humidex discomfort level.
  */
 export function getHumidexDiscomfort(h: number): string {
-  if (h >= HUMIDEX_STROKE_PROBABLE) return "Stroke Probable";
-  if (h >= HUMIDEX_DANGEROUS) return "Dangerous";
-  if (h >= HUMIDEX_INTENSE) return "Intense";
-  if (h >= HUMIDEX_EVIDENT) return "Evident";
-  if (h >= HUMIDEX_NOTICEABLE) return "Noticeable";
-  return "Little/None";
+  if (h >= HUMIDEX_STROKE_PROBABLE) return humidexZones[5].label;
+  if (h >= HUMIDEX_DANGEROUS) return humidexZones[4].label;
+  if (h >= HUMIDEX_INTENSE) return humidexZones[3].label;
+  if (h >= HUMIDEX_EVIDENT) return humidexZones[2].label;
+  if (h >= HUMIDEX_NOTICEABLE) return humidexZones[1].label;
+  return humidexZones[0].label;
 }
 
 /**
  * Determines the Wind Chill frostbite risk zone.
  */
 export function getWindChillZone(wci: number): string {
-  if (wci >= WCI_FROSTBITE_2) return "2 min frostbite";
-  if (wci >= WCI_FROSTBITE_10) return "10 min frostbite";
-  if (wci >= WCI_FROSTBITE_30) return "30 min frostbite";
-  return "Safe";
+  if (wci >= WCI_FROSTBITE_2) return windChillZones[3].label;
+  if (wci >= WCI_FROSTBITE_10) return windChillZones[2].label;
+  if (wci >= WCI_FROSTBITE_30) return windChillZones[1].label;
+  return windChillZones[0].label;
 }
 
 export type ComfortZonesByInput = Partial<Record<InputIdType, ComfortZoneResponseDto>>;
@@ -127,7 +273,6 @@ export function roundValue(value: number, decimals = 3): number {
  * @returns The value if finite.
  */
 export function ensureFiniteValue(label: string, value: number): number {
-  // If the value is not a finite number, throw an error
   if (!Number.isFinite(value)) {
     throw new Error(`${label} calculation returned an invalid value.`);
   }
@@ -159,23 +304,19 @@ export function getPaddedAxisRange(
   fallback: [number, number],
   padding = 4,
 ): [number, number] {
-  // Return the fallback range if no values are provided
   if (values.length === 0) {
     return fallback;
   }
 
-  // Find the minimum and maximum values in the array
   const rawMin = values.reduce((min, current) => Math.min(min, current));
   const rawMax = values.reduce((max, current) => Math.max(max, current));
 
-  // Round down/up to nearest 5 after applying padding
   const roundedMin = Math.floor((rawMin - padding) / 5) * 5;
   const roundedMax = Math.ceil((rawMax + padding) / 5) * 5;
 
-  // Clamp the results within the fallback boundaries
   const paddedMinimum = Math.max(fallback[0], roundedMin);
   const paddedMaximum = Math.min(fallback[1], roundedMax);
-  // If the minimum and maximum values are the same, expand the range by 5 on each side
+
   if (paddedMinimum === paddedMaximum) {
     return [
       Math.max(fallback[0], paddedMinimum - 5),
@@ -193,7 +334,6 @@ export function getPaddedAxisRange(
  */
 export function getCompareInputs<T>(inputsByInput: CompareInputMap<T>): Array<{ inputId: InputIdType; payload: T }> {
   return inputOrder
-    // Filter out inputs that don't exist in the map, then map to the correct format
     .filter((inputId) => !!inputsByInput[inputId])
     .map((inputId) => ({
       inputId,

@@ -194,7 +194,7 @@ humidexBuilder.setResultBuilder((results, visibleInputIds) => {
       else if (h >= HUMIDEX_DANGEROUS) tone = "hiDanger";
       else if (h >= HUMIDEX_INTENSE) tone = "hiExtremeCaution";
       else if (h >= HUMIDEX_EVIDENT) tone = "hiCaution";
-      else if (h >= HUMIDEX_NOTICEABLE) tone = "default";
+      else if (h >= HUMIDEX_NOTICEABLE) tone = "hiNoticeable";
 
       return {
         text: `${formattedValue}`,
@@ -294,9 +294,9 @@ windChillBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
       const formattedValue = formatDisplayValue(result.wci, 0);
 
       let tone: any = "default";
-      if (result.wciZone === "2 min frostbite") tone = "wc2min";
-      else if (result.wciZone === "10 min frostbite") tone = "wc10min";
-      else if (result.wciZone === "30 min frostbite") tone = "wc30min";
+      if (result.wciZone === "2 mins to frostbite") tone = "wc2min";
+      else if (result.wciZone === "10 mins to frostbite") tone = "wc10min";
+      else if (result.wciZone === "30 mins to frostbite") tone = "wc30min";
 
       return {
         text: `${formattedValue} W/m²`,
@@ -310,9 +310,9 @@ windChillBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
       const formattedValue = formatDisplayValue(displayValue, 1);
 
       let tone: any = "default";
-      if (result.wciZone === "2 min frostbite") tone = "wc2min";
-      else if (result.wciZone === "10 min frostbite") tone = "wc10min";
-      else if (result.wciZone === "30 min frostbite") tone = "wc30min";
+      if (result.wciZone === "2 mins to frostbite") tone = "wc2min";
+      else if (result.wciZone === "10 mins to frostbite") tone = "wc10min";
+      else if (result.wciZone === "30 mins to frostbite") tone = "wc30min";
 
       return {
         text: `${formattedValue} ${temperatureUnits}`,

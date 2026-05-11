@@ -1,4 +1,12 @@
 <script lang="ts">
+  /**
+   * @component
+   * ResultsPanel.svelte
+   *
+   * Renders a tabular display of thermal comfort model results for all visible inputs.
+   * It dynamically groups results by category (e.g., "Heat Index", "UTCI") and applies
+   * color-coded tones based on the comfort risk levels calculated by the models.
+   */
   import {
     Card,
     Table,
@@ -47,7 +55,7 @@
           </TableBodyCell>
           {#each sections as section}
             {@const cell = section.valuesByInput[inputId]}
-            <!-- Renders cell with primary text and optional subtext (e.g. status + range) -->
+            <!-- Render cell with primary value and optional descriptive subtext -->
             <TableBodyCell
               class={!cell
                 ? "text-stone-400"
@@ -55,14 +63,15 @@
                     success: "text-emerald-700",
                     danger: "text-red-600",
                     warning: "text-orange-500",
+                    hiNoticeable: "text-yellow-400",
                     hiCaution: "text-yellow-500",
                     hiExtremeCaution: "text-yellow-600",
                     hiDanger: "text-orange-500",
                     hiExtremeDanger: "text-red-600",
-                    wcSafe: "text-emerald-600",
-                    wc30min: "text-amber-500",
-                    wc10min: "text-orange-600",
-                    wc2min: "text-red-700",
+                    wcSafe: "text-sky-600",
+                    wc30min: "text-blue-500",
+                    wc10min: "text-indigo-600",
+                    wc2min: "text-purple-700",
                     pmvCold: "text-violet-600",
                     pmvCool: "text-blue-600",
                     pmvSlightlyCool: "text-blue-400",
@@ -83,9 +92,7 @@
                   }[cell.tone] || ""}
             >
               {#if cell}
-                <!-- Display the calculated values -->
                 <div class="font-medium">{cell.text}</div>
-                <!-- Support a primary status label and optional subtext -->
                 {#if cell.subtext}
                   <div class="text-[10px] opacity-70 mt-0.5">
                     {cell.subtext}

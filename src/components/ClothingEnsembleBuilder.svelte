@@ -92,8 +92,8 @@
   }
 </script>
 
-<section class="h-full min-h-0 p-5 md:p-6">
-  <div class="grid h-full min-h-0 gap-6 xl:grid-cols-3">
+<section class="p-4 sm:p-5 md:p-6 xl:h-full xl:min-h-0">
+  <div class="grid gap-4 sm:gap-5 xl:h-full xl:min-h-0 xl:grid-cols-3 xl:gap-6">
     <ClothingZonePicker
       {activeZoneId}
       onSelectZone={(zoneId) => {

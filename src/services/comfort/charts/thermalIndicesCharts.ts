@@ -23,6 +23,9 @@ import {
   getHeatIndexCategory,
   getHumidexDiscomfort,
   getWindChillZone,
+  heatIndexZones,
+  humidexZones,
+  windChillZones,
   HI_CAUTION,
   HI_EXTREME_CAUTION,
   HI_DANGER,
@@ -79,8 +82,8 @@ function buildThermalIndexRangeChart(
   const yMin = convertFieldValueFromSi(config.yKey, config.yRangeSi.min, unitSystem);
   const yMax = convertFieldValueFromSi(config.yKey, config.yRangeSi.max, unitSystem);
 
-  const xPoints = 50;
-  const yPoints = 50;
+  const xPoints = 300;
+  const yPoints = 300;
   const xValues: number[] = [];
   const yValues: number[] = [];
 
@@ -113,7 +116,6 @@ function buildThermalIndexRangeChart(
     textValues.push(textRow);
   }
 
-  // Add the heatmap trace
   const traces: PlotTraceDto[] = [
     buildContourTrace({
       name: config.title,
@@ -124,14 +126,22 @@ function buildThermalIndexRangeChart(
       colorscale: config.colorscale,
       zmin: 0,
       zmax: config.zMax,
-      contours: { coloring: "heatmap", showlines: false },
+      contours: {
+        coloring: "fill",
+        showlines: true,
+        type: "levels",
+        start: 0.5,
+        end: config.zMax - 0.5,
+        size: 1,
+        smoothing: 1.3,
+        line: { width: 1, color: "#333333" },
+      },
       hovertemplate: config.hovertemplateContour,
       showscale: false,
       isZone: true,
     })
   ];
 
-  // Add the scatter traces for each input
   inputs.forEach((input) => {
     const cached = cachedResultsByInput[input.inputId];
     const xVal = convertFieldValueFromSi(config.xKey, config.getScatterXSi(input.payload), unitSystem);
@@ -148,7 +158,6 @@ function buildThermalIndexRangeChart(
     );
   });
 
-  // Return the chart data
   return {
     traces,
     layout: {
@@ -185,14 +194,14 @@ export function buildHeatIndexRangesChart(
     yRangeSi: { min: 20, max: 50 },
     zMax: 4,
     colorscale: [
-      [0, "#e2e8f0"], [0.2, "#e2e8f0"], // Safe
-      [0.2, "#fef08a"], [0.4, "#fef08a"], // Caution
-      [0.4, "#fde047"], [0.6, "#fde047"], // Extreme Caution
-      [0.6, "#f97316"], [0.8, "#f97316"], // Danger
-      [0.8, "#dc2626"], [1, "#dc2626"] // Extreme Danger
+      [0, heatIndexZones[0].color], [0.2, heatIndexZones[0].color],
+      [0.2, heatIndexZones[1].color], [0.4, heatIndexZones[1].color],
+      [0.4, heatIndexZones[2].color], [0.6, heatIndexZones[2].color],
+      [0.6, heatIndexZones[3].color], [0.8, heatIndexZones[3].color],
+      [0.8, heatIndexZones[4].color], [1, heatIndexZones[4].color]
     ],
-    hovertemplateContour: "Category: %{text}<extra></extra>",
-    getHovertemplateScatter: (label, cached) => `${label}<br>RH: %{x:.1f}%<br>Air Temp: %{y:.1f}°<br>Heat Index: ${roundValue(cached?.hi, 1)}°<extra></extra>`,
+    hovertemplateContour: `${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Category: %{text}</b><extra></extra>`,
+    getHovertemplateScatter: (label, cached) => `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Category: ${cached?.category || ""}</b><br>Heat Index: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.hi, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`,
     getScatterXSi: (p) => p.rh,
     getScatterYSi: (p) => p.tdb,
     calculatePoint: (xSi, ySi) => {
@@ -228,15 +237,15 @@ export function buildHumidexChart(
     yRangeSi: { min: 20, max: 50 },
     zMax: 5,
     colorscale: [
-      [0, "#e2e8f0"], [0.166, "#e2e8f0"], // Little/None
-      [0.166, "#fef08a"], [0.333, "#fef08a"], // Noticeable
-      [0.333, "#fde047"], [0.5, "#fde047"], // Evident
-      [0.5, "#facc15"], [0.666, "#facc15"], // Intense
-      [0.666, "#f97316"], [0.833, "#f97316"], // Dangerous
-      [0.833, "#dc2626"], [1, "#dc2626"] // Stroke Probable
+      [0, humidexZones[0].color], [0.166, humidexZones[0].color],
+      [0.166, humidexZones[1].color], [0.333, humidexZones[1].color],
+      [0.333, humidexZones[2].color], [0.5, humidexZones[2].color],
+      [0.5, humidexZones[3].color], [0.666, humidexZones[3].color],
+      [0.666, humidexZones[4].color], [0.833, humidexZones[4].color],
+      [0.833, humidexZones[5].color], [1, humidexZones[5].color]
     ],
-    hovertemplateContour: "Discomfort: %{text}<extra></extra>",
-    getHovertemplateScatter: (label, cached) => `${label}<br>RH: %{x:.1f}%<br>Air Temp: %{y:.1f}°<br>Humidex: ${roundValue(cached?.humidex, 1)}<extra></extra>`,
+    hovertemplateContour: `${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Discomfort: %{text}</b><extra></extra>`,
+    getHovertemplateScatter: (label, cached) => `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Discomfort: ${cached?.humidexDiscomfort || ""}</b><br>Humidex: ${roundValue(cached?.humidex, 1)}<extra></extra>`,
     getScatterXSi: (p) => p.rh,
     getScatterYSi: (p) => p.tdb,
     calculatePoint: (xSi, ySi) => {
@@ -267,19 +276,19 @@ export function buildWindChillChart(
 ): PlotlyChartResponseDto {
   return buildThermalIndexRangeChart(payload, cachedResultsByInput, unitSystem, {
     title: "Wind Chill Frostbite Risk",
-    xKey: FieldKey.RelativeAirSpeed,
+    xKey: FieldKey.WindSpeed,
     yKey: FieldKey.DryBulbTemperature,
     xRangeSi: { min: 1, max: 20 },
     yRangeSi: { min: -45, max: 0 },
     zMax: 3,
     colorscale: [
-      [0, "#e0f2fe"], [0.25, "#e0f2fe"], // Safe
-      [0.25, "#64b5f5"], [0.5, "#64b5f5"], // 30 min
-      [0.5, "#5c6bc0"], [0.75, "#5c6bc0"], // 10 min
-      [0.75, "#8e24aa"], [1, "#8e24aa"] // 2 min
+      [0, windChillZones[0].color], [0.25, windChillZones[0].color],
+      [0.25, windChillZones[1].color], [0.5, windChillZones[1].color],
+      [0.5, windChillZones[2].color], [0.75, windChillZones[2].color],
+      [0.75, windChillZones[3].color], [1, windChillZones[3].color]
     ],
-    hovertemplateContour: "Frostbite Risk: %{text}<extra></extra>",
-    getHovertemplateScatter: (label, cached) => `${label}<br>Wind Speed: %{x:.2f}<br>Air Temp: %{y:.1f}°<br>Wind Chill: ${roundValue(cached?.wciTemp, 1)}°<extra></extra>`,
+    hovertemplateContour: `${fieldMetaByKey[FieldKey.WindSpeed].label}: %{x:.1f} ${fieldMetaByKey[FieldKey.WindSpeed].displayUnits[unitSystem]}<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Frostbite Risk: %{text}</b><extra></extra>`,
+    getHovertemplateScatter: (label, cached) => `${label}<br>${fieldMetaByKey[FieldKey.WindSpeed].label}: %{x:.2f} ${fieldMetaByKey[FieldKey.WindSpeed].displayUnits[unitSystem]}<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Frostbite Risk: ${cached?.wciZone || ""}</b><br>Wind Chill Index: ${roundValue(cached?.wci, 0)} W/m²<br>Wind Chill Temperature: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.wciTemp, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`,
     getScatterXSi: (p) => p.v || 0,
     getScatterYSi: (p) => p.tdb,
     calculatePoint: (xSi, ySi) => {
@@ -354,8 +363,8 @@ export function buildThermalIndicesDynamicChart(
   const yMin = convertFieldValueFromSi(dynamicYAxis, yRangeSi.min, unitSystem);
   const yMax = convertFieldValueFromSi(dynamicYAxis, yRangeSi.max, unitSystem);
 
-  const xPoints = 50;
-  const yPoints = 50;
+  const xPoints = 300;
+  const yPoints = 300;
   const xValues: number[] = [];
   const yValues: number[] = [];
 
@@ -430,25 +439,25 @@ export function buildThermalIndicesDynamicChart(
 
   const colorscales: Record<string, any[][]> = {
     "HEAT_INDEX": [
-      [0, "#e2e8f0"], [0.2, "#e2e8f0"],
-      [0.2, "#fef08a"], [0.4, "#fef08a"],
-      [0.4, "#fde047"], [0.6, "#fde047"],
-      [0.6, "#f97316"], [0.8, "#f97316"],
-      [0.8, "#dc2626"], [1, "#dc2626"]
+      [0, heatIndexZones[0].color], [0.2, heatIndexZones[0].color],
+      [0.2, heatIndexZones[1].color], [0.4, heatIndexZones[1].color],
+      [0.4, heatIndexZones[2].color], [0.6, heatIndexZones[2].color],
+      [0.6, heatIndexZones[3].color], [0.8, heatIndexZones[3].color],
+      [0.8, heatIndexZones[4].color], [1, heatIndexZones[4].color]
     ],
     "HUMIDEX": [
-      [0, "#e2e8f0"], [0.166, "#e2e8f0"],
-      [0.166, "#fef08a"], [0.333, "#fef08a"],
-      [0.333, "#fde047"], [0.5, "#fde047"],
-      [0.5, "#facc15"], [0.666, "#facc15"],
-      [0.666, "#f97316"], [0.833, "#f97316"],
-      [0.833, "#dc2626"], [1, "#dc2626"]
+      [0, humidexZones[0].color], [0.166, humidexZones[0].color],
+      [0.166, humidexZones[1].color], [0.333, humidexZones[1].color],
+      [0.333, humidexZones[2].color], [0.5, humidexZones[2].color],
+      [0.5, humidexZones[3].color], [0.666, humidexZones[3].color],
+      [0.666, humidexZones[4].color], [0.833, humidexZones[4].color],
+      [0.833, humidexZones[5].color], [1, humidexZones[5].color]
     ],
     "WIND_CHILL": [
-      [0, "#e0f2fe"], [0.25, "#e0f2fe"],
-      [0.25, "#64b5f5"], [0.5, "#64b5f5"],
-      [0.5, "#5c6bc0"], [0.75, "#5c6bc0"],
-      [0.75, "#8e24aa"], [1, "#8e24aa"]
+      [0, windChillZones[0].color], [0.25, windChillZones[0].color],
+      [0.25, windChillZones[1].color], [0.5, windChillZones[1].color],
+      [0.5, windChillZones[2].color], [0.75, windChillZones[2].color],
+      [0.75, windChillZones[3].color], [1, windChillZones[3].color]
     ]
   };
 
@@ -464,8 +473,17 @@ export function buildThermalIndicesDynamicChart(
       colorscale: colorscales[modelId as any] || [],
       zmin: 0,
       zmax: zMaxs[modelId as any] || 1,
-      contours: { coloring: "heatmap", showlines: false },
-      hovertemplate: "%{text}<extra></extra>",
+      contours: {
+        coloring: "fill",
+        showlines: true,
+        type: "levels",
+        start: 0.5,
+        end: (zMaxs[modelId as any] || 1) - 0.5,
+        size: 1,
+        smoothing: 1.3,
+        line: { width: 1, color: "#333333" },
+      },
+      hovertemplate: `${xMeta.label}: %{x:.1f} ${xMeta.displayUnits[unitSystem]}<br>${yMeta.label}: %{y:.1f} ${yMeta.displayUnits[unitSystem]}<br><b>Zone: %{text}</b><extra></extra>`,
       showscale: false,
       isZone: true,
     })
@@ -482,9 +500,17 @@ export function buildThermalIndicesDynamicChart(
     const cached = cachedResultsByInput[input.inputId];
     
     let indexValue = "";
-    if (modelId === "HEAT_INDEX") indexValue = `HI: ${roundValue(cached?.hi, 1)}°`;
-    else if (modelId === "HUMIDEX") indexValue = `Humidex: ${roundValue(cached?.humidex, 1)}`;
-    else if (modelId === "WIND_CHILL") indexValue = `WC: ${roundValue(cached?.wciTemp, 1)}°`;
+    let indexCategory = "";
+    if (modelId === "HEAT_INDEX") {
+      indexValue = `HI: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.hi, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}`;
+      indexCategory = cached?.category || "";
+    } else if (modelId === "HUMIDEX") {
+      indexValue = `Humidex: ${roundValue(cached?.humidex, 1)}`;
+      indexCategory = cached?.humidexDiscomfort || "";
+    } else if (modelId === "WIND_CHILL") {
+      indexValue = `Wind Chill Index: ${roundValue(cached?.wci, 0)} W/m²<br>Wind Chill Temperature: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.wciTemp, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}`;
+      indexCategory = cached?.wciZone || "";
+    }
 
     traces.push(
       buildInputScatterTrace({
@@ -492,7 +518,7 @@ export function buildThermalIndicesDynamicChart(
         x: xVal,
         y: yVal,
         showLegend: showInputLegend,
-        hovertemplate: `${inputDisplayMetaById[input.inputId].label}<br>${xMeta.label}: %{x:.1f}<br>${yMeta.label}: %{y:.1f}<br>${indexValue}<extra></extra>`,
+        hovertemplate: `${inputDisplayMetaById[input.inputId].label}<br>${xMeta.label}: %{x:.1f} ${xMeta.displayUnits[unitSystem]}<br>${yMeta.label}: %{y:.1f} ${yMeta.displayUnits[unitSystem]}<br><b>Zone: ${indexCategory}</b><br>${indexValue}<extra></extra>`,
       })
     );
   });

@@ -1,17 +1,24 @@
+/**
+ * UTCI Calculation Service
+ *
+ * Provides functions for calculating the Universal Thermal Climate Index (UTCI)
+ * and mapping the raw results to the application's canonical stress categories.
+ */
 import { utci } from "jsthermalcomfort";
 
 import { CalculationSource } from "../../models/calculationMetadata";
 import {
   utciStressCategoryOrder,
   type UtciStressCategory as UtciStressCategoryType,
-} from "../../models/utciStress";
+  ensureFiniteValue,
+} from "./helpers";
 import type { UtciRequestDto, UtciResponseDto } from "../../models/comfortDtos";
-import { ensureFiniteValue } from "./helpers";
 
 /**
- * Strictly resolves loosely-typed third-party dynamic string outputs (e.g. from computational engines) 
- * against our canonical union types, forcibly crashing the pipeline if an unregistered thermal category is returned.
- * @param value The raw string evaluated by JSThermalComfort
+ * Validates dynamic string outputs from the calculation engine against canonical 
+ * stress categories, ensuring type safety and consistency.
+ * @param value The raw category string from JSThermalComfort.
+ * @returns The normalized UTCI stress category.
  */
 function normalizeUtciStressCategory(value: string): UtciStressCategoryType {
   const matchedCategory = utciStressCategoryOrder.find((category) => category === value);

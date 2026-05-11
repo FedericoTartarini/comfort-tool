@@ -92,7 +92,7 @@
   outsideclose={true}
   class="modal-shell-soft"
   classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
-  classBody="h-[84svh] overflow-hidden p-0"
+  classBody="max-h-[84svh] overflow-y-auto p-0 xl:h-[84svh] xl:overflow-hidden"
 >
   <ClothingEnsembleBuilder
     activeInputId={toolState.state.ui.activeInputId}

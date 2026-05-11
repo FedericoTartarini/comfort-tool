@@ -11,7 +11,7 @@ import {
   deriveRelativeAirSpeedFromMeasured,
   deriveRelativeHumidityFromDewPoint,
 } from "./derivations";
-import { check_standard_compliance_array } from "jsthermalcomfort";
+import { check_standard_compliance } from "jsthermalcomfort/lib/esm/utilities/utilities.js";
 import {
   synchronizeControlInputState,
 } from "./syncState";
@@ -96,22 +96,18 @@ describe("comfort services", () => {
           airspeed_control: constrainedPayload.occupantHasAirSpeedControl,
         },
       );
-      const constrainedCompliance = check_standard_compliance_array("ASHRAE", {
-        tdb: [constrainedPayload.tdb],
-        tr: [constrainedPayload.tr],
-        v: [constrainedPayload.vr],
-        met: [constrainedPayload.met],
-        clo: [constrainedPayload.clo],
+      const constrainedComplianceWarnings = check_standard_compliance("ASHRAE", {
+        tdb: constrainedPayload.tdb,
+        tr: constrainedPayload.tr,
+        v: constrainedPayload.vr,
+        met: constrainedPayload.met,
+        clo: constrainedPayload.clo,
         airspeed_control: constrainedPayload.occupantHasAirSpeedControl,
       });
 
       const constrainedResult = {
         ...constrainedPmv,
-        isCompliant: !constrainedCompliance.tdb.some((value) => Number.isNaN(value))
-          && !constrainedCompliance.tr.some((value) => Number.isNaN(value))
-          && !constrainedCompliance.v.some((value) => Number.isNaN(value))
-          && !(constrainedCompliance.met ?? []).some((value) => Number.isNaN(value))
-          && !(constrainedCompliance.clo ?? []).some((value) => Number.isNaN(value))
+        isCompliant: constrainedComplianceWarnings.length === 0
           && Math.abs(constrainedPmv.pmv) <= PMV_COMFORT_LIMIT,
         standard: ComfortStandard.Ashrae55PmvPpd,
         source: CalculationSource.JsThermalComfort,

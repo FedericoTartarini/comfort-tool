@@ -1,4 +1,5 @@
-import { pmv_ppd_ashrae, check_standard_compliance_array, units_converter } from "jsthermalcomfort";
+import { pmv_ppd_ashrae, units_converter } from "jsthermalcomfort";
+import { check_standard_compliance } from "jsthermalcomfort/lib/esm/utilities/utilities.js";
 
 import type { PmvRequestDto } from "../../models/comfortDtos";
 import { UnitSystem } from "../../models/units";
@@ -58,22 +59,16 @@ function findTemperatureBracket(
           units: UnitSystem.SI,
         };
 
-    const compliance = check_standard_compliance_array("ASHRAE", {
-      tdb: [normalizedPayload.tdb],
-      tr: [normalizedPayload.tr],
-      v: [normalizedPayload.vr],
-      met: [normalizedPayload.met],
-      clo: [normalizedPayload.clo],
+    const complianceWarnings = check_standard_compliance("ASHRAE", {
+      tdb: normalizedPayload.tdb,
+      tr: normalizedPayload.tr,
+      v: normalizedPayload.vr,
+      met: normalizedPayload.met,
+      clo: normalizedPayload.clo,
       airspeed_control: normalizedPayload.occupantHasAirSpeedControl,
     });
 
-    if (
-      compliance.tdb.some((value) => Number.isNaN(value))
-      || compliance.tr.some((value) => Number.isNaN(value))
-      || compliance.v.some((value) => Number.isNaN(value))
-      || (compliance.met ?? []).some((value) => Number.isNaN(value))
-      || (compliance.clo ?? []).some((value) => Number.isNaN(value))
-    ) {
+    if (complianceWarnings.length > 0) {
       previousTemperature = null;
       previousDelta = null;
       continue;

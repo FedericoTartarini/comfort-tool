@@ -35,7 +35,7 @@ import {
   buildPmvDynamicChart,
 } from "../../../services/comfort/charts/pmvCharts";
 import { calculateComfortZone } from "../../../services/comfort/comfortZone";
-import { check_standard_compliance_array } from "jsthermalcomfort";
+import { check_standard_compliance } from "jsthermalcomfort/lib/esm/utilities/utilities.js";
 import { pmv_ppd_ashrae, PMV_COMFORT_LIMIT } from "../../../services/comfort/pmv";
 import {
   normalizePmvOptions,
@@ -524,12 +524,12 @@ export const pmvModelConfig = new ComfortModelBuilder<PmvResponseDto, PmvChartSo
           airspeed_control: request.occupantHasAirSpeedControl,
         },
       );
-      const compliance = check_standard_compliance_array("ASHRAE", {
-        tdb: [request.tdb],
-        tr: [request.tr],
-        v: [request.vr],
-        met: [request.met],
-        clo: [request.clo],
+      const complianceWarnings = check_standard_compliance("ASHRAE", {
+        tdb: request.tdb,
+        tr: request.tr,
+        v: request.vr,
+        met: request.met,
+        clo: request.clo,
         airspeed_control: request.occupantHasAirSpeedControl,
       });
 
@@ -537,11 +537,7 @@ export const pmvModelConfig = new ComfortModelBuilder<PmvResponseDto, PmvChartSo
         pmv: result.pmv,
         ppd: result.ppd,
         vr: request.vr,
-        isCompliant: !compliance.tdb.some((value) => Number.isNaN(value))
-          && !compliance.tr.some((value) => Number.isNaN(value))
-          && !compliance.v.some((value) => Number.isNaN(value))
-          && !(compliance.met ?? []).some((value) => Number.isNaN(value))
-          && !(compliance.clo ?? []).some((value) => Number.isNaN(value))
+        isCompliant: complianceWarnings.length === 0
           && Math.abs(result.pmv) <= PMV_COMFORT_LIMIT,
         standard: ComfortStandard.Ashrae55PmvPpd,
         source: CalculationSource.JsThermalComfort,

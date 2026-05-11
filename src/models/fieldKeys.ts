@@ -14,6 +14,7 @@ export const FieldKey = {
   RelativeAirSpeed: "vr",
   WindSpeed: "v",
   RelativeHumidity: "rh",
+  HumidityRatio: "hr",
   MetabolicRate: "met",
   ClothingInsulation: "clo",
   ExternalWork: "wme",
