@@ -74,9 +74,11 @@ Use constants from `src/models/` for model identifiers, field identifiers, chart
 ## UI Conventions
 
 - Use Flowbite Svelte components first; Tailwind utilities for layout/spacing/styling.
+- Use Flowbite components for UI patterns they cover: `DropdownHeader`, `DropdownDivider` for dropdown sections; icon components from `flowbite-svelte-icons` instead of Unicode characters.
 - Add handwritten CSS only when necessary.
 - Components should be presentational or interaction-focused. If a component mixes layout, modal state, domain branching, and data shaping, split it.
 - New shared components should have at least two real call sites; otherwise keep them feature-local.
+- Semantic HTML: use `<div>` for layout-only wrappers. Only use `<section>` / `<article>` for genuine landmark/self-contained content. Never place `<header>` inside `<footer>`.
 
 ## TypeScript & Svelte Style
 
@@ -84,6 +86,26 @@ Use constants from `src/models/` for model identifiers, field identifiers, chart
 - 2-space indentation; `camelCase` for variables/functions; `PascalCase` for component filenames.
 - Prefer clear names and straightforward types over abstract type patterns.
 - `strict` mode is off in tsconfig — don't rely on it.
+- Declare component props using a named `interface Props` above the destructuring — not inline in `$props()`:
+  ```svelte
+  interface Props { title: string; isLoading: boolean; }
+  let { title, isLoading }: Props = $props();
+  ```
+- Complex `{#if}` conditions (more than one operator) should be moved to a `$derived` variable with a descriptive name before use in the template.
+- Extract repeated markup blocks to Svelte snippets (`{#snippet}` / `{@render}`).
+- Extract "close on click outside" to a shared Svelte action (`use:clickOutside`) rather than duplicating the `onMount` + `document.addEventListener` pattern.
+
+## Comfort Zone Design
+
+Zones use the `ThermalZone` class in `src/models/thermalZone.ts`. Each boundary value appears exactly once, as a constructor argument. The `toneToClass` map is derived from the zones array:
+```ts
+const toneToClass = Object.fromEntries(zones.map(z => [z.id, z.cssClass]));
+```
+Do not define threshold constants separately and then repeat the same number in the zone array.
+
+## Planned Architecture: comfortModels/
+
+The intended target architecture places one file per model in `src/comfortModels/` (e.g. `src/comfortModels/pmv.ts`). Each file is the single source of truth for that model: zones, tones, calculation, chart builders, input controls. See `26-05-11-review-federico.md` for the implementation plan. New model work should follow this structure once it is in place.
 
 ## Done Criteria
 

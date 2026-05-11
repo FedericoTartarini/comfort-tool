@@ -110,6 +110,8 @@ A model definition should own:
 - request builders
 - calculation execution
 - chart list and chart builders
+- comfort zone definitions (as `ThermalZone` instances — see below)
+- tone-to-CSS-class map derived from those zones
 
 Use centralized constants and typed metadata from `src/models/` for:
 
@@ -119,6 +121,40 @@ Use centralized constants and typed metadata from `src/models/` for:
 - compare-input identifiers
 
 Do not introduce new raw domain strings for those concepts.
+
+## Comfort Zone Design
+
+Comfort zones are defined using the `ThermalZone` class in `src/models/thermalZone.ts`:
+
+```ts
+export class ThermalZone {
+  constructor(
+    public readonly id: string,
+    public readonly label: string,
+    public readonly min: number,
+    public readonly max: number,
+    public readonly color: string,   // Plotly / hex color
+    public readonly cssClass: string, // Tailwind class for UI
+  ) {}
+  contains(value: number): boolean {
+    return value >= this.min && value < this.max;
+  }
+}
+```
+
+Zone boundaries appear **once** — as constructor arguments. Do not also define them as separate named constants. The `toneToClass` map for a model is derived from its zones:
+
+```ts
+const toneToClass = Object.fromEntries(zones.map(z => [z.id, z.cssClass]));
+```
+
+## Generic Calculation Cache
+
+Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not add new named per-model cache types (`PmvCalculationCache`, etc.). At the state controller level, store caches as `Record<ComfortModelType, ModelCalculationCache<unknown, unknown>>` — the controller does not need to know what `R` and `C` are.
+
+## ResultTone
+
+`ResultTone` must live in `src/models/` (not `src/state/`) so that services can import it without breaking the import direction rule. Each model defines its own tone type (e.g. `PmvTone`), and `ResultTone` is a union of all of them.
 
 ## Branching And Duplication
 
@@ -152,6 +188,22 @@ Do not reintroduce pure comfort-tool barrel files unless they provide a real sta
 - Use `camelCase` for variables and functions.
 - Use `PascalCase` for component filenames.
 - Prefer clear names and straightforward types over clever or overly abstract type patterns.
+- Declare component props using a named `interface Props` above the destructuring — do not write the type inline in `$props()`. This separates the shape definition from the destructuring and makes both easier to read:
+
+```svelte
+interface Props {
+  title: string;
+  isLoading: boolean;
+}
+let { title, isLoading }: Props = $props();
+```
+
+- Use `$derived` to name complex template conditions before using them in `{#if}`. Inline boolean expressions with more than one operator belong in a derived variable.
+- Use semantic HTML correctly: `<div>` for layout-only wrappers, `<section>` and `<article>` only when the content is genuinely a landmark section or self-contained article. Do not place a `<header>` inside a `<footer>`.
+- Use Flowbite Svelte components (e.g. `DropdownHeader`, `DropdownDivider`) instead of raw `<div>` markup that replicates their appearance.
+- Use icon components from `flowbite-svelte-icons` instead of Unicode arrow/chevron characters.
+- Extract repeated markup blocks to Svelte snippets (`{#snippet}` / `{@render}`) rather than copy-pasting them.
+- Extract the "close dropdown on click outside" pattern to a Svelte action (`use:clickOutside`) instead of duplicating the `onMount` + `document.addEventListener` block in each component.
 
 ## Testing And Done Criteria
 
