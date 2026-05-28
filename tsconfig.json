@@ -5,7 +5,8 @@
     "moduleResolution": "Bundler",
     "allowJs": true,
     "checkJs": false,
-    "strict": false,
+    "strict": true,
+    "skipLibCheck": true,
     "types": ["vite/client", "vitest/globals"]
   },
   "include": ["src/**/*.ts", "src/**/*.svelte", "src/**/*.js"]

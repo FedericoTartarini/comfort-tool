@@ -1,9 +1,8 @@
+import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ComfortToolStateSlice } from "./types";
 import { getComfortModelConfig } from "./modelConfigs";
 
-function getTimerApi() {
-  return typeof window !== "undefined" ? window : globalThis;
-}
+type TimerId = ReturnType<typeof globalThis.setTimeout>;
 
 async function yieldToNextFrame() {
   if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
@@ -15,13 +14,13 @@ async function yieldToNextFrame() {
   });
 }
 
-export function createCalculationManager(state: ComfortToolStateSlice, getVisibleInputIds: () => string[]) {
-  let calculationTimerId: ReturnType<typeof setTimeout> | null = null;
+export function createCalculationManager(state: ComfortToolStateSlice, getVisibleInputIds: () => InputIdType[]) {
+  let calculationTimerId: TimerId | null = null;
   let latestCalculationToken = 0;
 
   function clearScheduledCalculation() {
     if (calculationTimerId !== null) {
-      getTimerApi().clearTimeout(calculationTimerId as never);
+      globalThis.clearTimeout(calculationTimerId);
       calculationTimerId = null;
     }
   }
@@ -41,13 +40,12 @@ export function createCalculationManager(state: ComfortToolStateSlice, getVisibl
 
     try {
       const modelConfig = getComfortModelConfig(selectedModel);
-      // todo AI visibleInputIds is string[] here because getVisibleInputIds returns string[]. It should return InputIdType[] and this cast would not be needed.
-      const calculationOutputs = modelConfig.calculate(state, visibleInputIds as any);
+      const calculationOutputs = modelConfig.calculate(state, visibleInputIds);
 
       state.ui.calculationCacheByModel[selectedModel] = {
         ...state.ui.calculationCacheByModel[selectedModel],
         status: "ready",
-        lastVisibleInputIds: [...visibleInputIds] as any[], // todo AI same issue as above
+        lastVisibleInputIds: [...visibleInputIds],
         resultsByInput: calculationOutputs.resultsByInput,
         chartSource: calculationOutputs.chartSource,
       };
@@ -78,7 +76,7 @@ export function createCalculationManager(state: ComfortToolStateSlice, getVisibl
       return;
     }
 
-    calculationTimerId = getTimerApi().setTimeout(runCalculation, 180);
+    calculationTimerId = globalThis.setTimeout(runCalculation, 180);
   }
 
   return { scheduleCalculation };

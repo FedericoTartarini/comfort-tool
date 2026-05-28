@@ -4,10 +4,18 @@
    * UI for selecting the active chart type and triggering image exports (PNG/SVG).
    * Displays the current chart name in a dropdown and provides action buttons for saving the visualization.
    */
-  import { Button, Dropdown, DropdownItem } from "flowbite-svelte";
+  import { Button, Dropdown, DropdownDivider, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
   import { chartMetaById } from "../../models/chartOptions";
   import type { ChartId } from "../../models/chartOptions";
+
+  interface Props {
+    chartOptions: Array<{ name: string; value: ChartId }>;
+    selectedChart: ChartId;
+    activeChartId: ChartId;
+    onSelectChart: (chartId: ChartId) => void;
+    onExport: (type: "png" | "svg") => void;
+  }
 
   let {
     chartOptions,
@@ -15,13 +23,7 @@
     activeChartId,
     onSelectChart,
     onExport,
-  }: {
-    chartOptions: Array<{ name: string; value: ChartId }>;
-    selectedChart: ChartId;
-    activeChartId: ChartId;
-    onSelectChart: (chartId: ChartId) => void;
-    onExport: (type: "png" | "svg") => void;
-  } = $props();
+  }: Props = $props();
 
   const currentChartLabel = $derived(chartMetaById[activeChartId].name);
 </script>
@@ -51,9 +53,10 @@
     </DropdownItem>
   {/each}
 
-  <div class="mt-1 border-t border-stone-100 px-4 py-2 text-xs font-semibold text-stone-500 uppercase tracking-wider">
+  <DropdownDivider />
+  <DropdownHeader divider={false} class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
     Export options
-  </div>
+  </DropdownHeader>
   <DropdownItem class="text-left text-sm text-stone-700" onclick={() => onExport("png")}>
     Export as image (PNG)
   </DropdownItem>

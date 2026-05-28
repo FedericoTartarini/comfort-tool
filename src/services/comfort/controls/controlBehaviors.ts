@@ -90,6 +90,12 @@ type ControlBehaviorConfig = {
    * @returns Whether the control should be hidden.
    */
   hidden?: (context: ControlBehaviorContext) => boolean;
+    /**
+   * Determines if the control should be disabled (locked).
+   * @param context - The context of the control behavior.
+   * @returns Whether the control should be disabled.
+   */
+  disabled?: (context: ControlBehaviorContext) => boolean;
   /**
    * Gets the advanced option menu for the control.
    * @param context - The context of the control behavior.
@@ -158,6 +164,10 @@ type ControlBehaviorConfig = {
     // The next value of the option to apply.
     nextValue: string,
   ) => BehaviorPatch | null;
+  /** Optional override for the minimum allowed value (in SI units). */
+  minValue?: number;
+  /** Optional override for the maximum allowed value (in SI units). */
+  maxValue?: number;
 };
 
 // Values of the temperature mode enum. Used for input validation.
@@ -189,29 +199,52 @@ function isHumidityInputMode(value: string): value is HumidityInputModeType {
   return humidityInputModeValues.includes(value as HumidityInputModeType);
 }
 
-// Build the range text for a field. Used in table to build the full range for inputs.
-function buildRangeText(meta: FieldMeta, context: ControlBehaviorContext): string {
+/**
+ * Build the range text for a field. Used in table to build the full range for inputs.
+ * @param fieldKey The key of the field.
+ * @param minValue The minimum value in SI.
+ * @param maxValue The maximum value in SI.
+ * @param decimals The number of decimals for display.
+ * @param context The context of the control behavior.
+ */
+function buildRangeText(
+  fieldKey: FieldKeyType,
+  minValue: number,
+  maxValue: number,
+  decimals: number,
+  context: ControlBehaviorContext,
+): string {
   const minimum = formatDisplayValue(
-    convertFieldValueFromSi(meta.key, meta.minValue, context.unitSystem),
-    meta.decimals,
+    convertFieldValueFromSi(fieldKey, minValue, context.unitSystem),
+    decimals,
   );
   const maximum = formatDisplayValue(
-    convertFieldValueFromSi(meta.key, meta.maxValue, context.unitSystem),
-    meta.decimals,
+    convertFieldValueFromSi(fieldKey, maxValue, context.unitSystem),
+    decimals,
   );
   return `From ${minimum} to ${maximum}`;
 }
 
-// Build the default presentation for a field. Used as a fallback for other behaviors.
-export function buildDefaultPresentation(context: ControlBehaviorContext, meta: FieldMeta): PresentationMeta {
+/**
+ * Build the default presentation for a field. Used as a fallback for other behaviors.
+ * Supports model-specific min/max overrides.
+ */
+export function buildDefaultPresentation(
+  context: ControlBehaviorContext, 
+  meta: FieldMeta,
+  overrides?: { minValue?: number; maxValue?: number },
+): PresentationMeta {
+  const minValue = overrides?.minValue ?? meta.minValue;
+  const maxValue = overrides?.maxValue ?? meta.maxValue;
+
   return {
     label: meta.label,
     displayUnits: meta.displayUnits[context.unitSystem],
     step: meta.step,
     decimals: meta.decimals,
-    rangeText: buildRangeText(meta, context),
-    minValue: convertFieldValueFromSi(meta.key, meta.minValue, context.unitSystem),
-    maxValue: convertFieldValueFromSi(meta.key, meta.maxValue, context.unitSystem),
+    rangeText: buildRangeText(meta.key, minValue, maxValue, meta.decimals, context),
+    minValue: convertFieldValueFromSi(meta.key, minValue, context.unitSystem),
+    maxValue: convertFieldValueFromSi(meta.key, maxValue, context.unitSystem),
   };
 }
 
@@ -281,7 +314,7 @@ function buildCanonicalInputSyncPatch(
   },
 ): BehaviorPatch {
   // The patch to apply to the inputs.
-  const inputsPatch = {} as BehaviorPatch["inputsPatch"];
+  const inputsPatch: NonNullable<BehaviorPatch["inputsPatch"]> = {};
 
   // Apply the updater function to each target input.
   targetInputIds.forEach((inputId) => {
@@ -350,7 +383,10 @@ export function createControlBehavior(config: ControlBehaviorConfig): InputContr
       if (config.getPresentation) {
         presentation = config.getPresentation(context, meta);
       } else {
-        presentation = buildDefaultPresentation(context, meta);
+        presentation = buildDefaultPresentation(context, meta, {
+          minValue: config.minValue,
+          maxValue: config.maxValue,
+        });
       }
 
       // Determine if the control should be hidden. Use the provided function
@@ -358,6 +394,12 @@ export function createControlBehavior(config: ControlBehaviorConfig): InputContr
       let hidden = false;
       if (config.hidden) {
         hidden = config.hidden(context);
+      }
+
+      // Determine if the control should be disabled.
+      let disabled = false;
+      if (config.disabled) {
+        disabled = config.disabled(context);
       }
 
       // Determine the editor kind based on whether preset options are available.
@@ -445,6 +487,8 @@ export function createControlBehavior(config: ControlBehaviorConfig): InputContr
         maxValue: presentation.maxValue,
         // Whether the control should be hidden (e.g. false).
         hidden,
+        // Whether the control should be disabled (e.g. false).
+        disabled,
         // The kind of editor to use for the control (e.g. "number" or "preset").
         editorKind,
         // The step size for the control (e.g. 1).
@@ -511,9 +555,13 @@ export function createControlBehavior(config: ControlBehaviorConfig): InputContr
 /**
  * Creates an input control behavior for temperature. Used for both Dry Bulb Temperature and Operative Temperature.
  * @param controlId The ID of the control.
+ * @param overrides Optional override for the minimum and maximum allowed values (in SI units).
  * @returns An input control behavior for temperature.
  */
-export function createTemperatureControlBehavior(controlId: InputControlIdType): InputControlBehavior {
+export function createTemperatureControlBehavior(
+  controlId: InputControlIdType,
+  overrides?: { minValue?: number; maxValue?: number },
+): InputControlBehavior {
   // Get the temperature field metadata (e.g., units, precision).
   const temperatureMeta = fieldMetaByKey[FieldKey.DryBulbTemperature];
 
@@ -523,6 +571,9 @@ export function createTemperatureControlBehavior(controlId: InputControlIdType):
     controlId,
     // The field key for the control (always FieldKey.DryBulbTemperature).
     fieldKey: FieldKey.DryBulbTemperature,
+    // Minimum and maximum overrides.
+    minValue: overrides?.minValue,
+    maxValue: overrides?.maxValue,
     // Get the presentation for the control.
     getPresentation: (context) => {
       // Get the temperature mode from the control options (e.g., Operative or Dry Bulb).
@@ -534,6 +585,10 @@ export function createTemperatureControlBehavior(controlId: InputControlIdType):
       if (temperatureMode === TemperatureMode.Operative) {
         label = "Operative temperature";
       }
+
+      const minValue = overrides?.minValue ?? temperatureMeta.minValue;
+      const maxValue = overrides?.maxValue ?? temperatureMeta.maxValue;
+
       // Return the presentation.
       return {
         // The label for the control.
@@ -545,14 +600,13 @@ export function createTemperatureControlBehavior(controlId: InputControlIdType):
         // The number of decimals to use for the control.
         decimals: temperatureMeta.decimals,
         // The range text for the control (e.g., "20-30°C").
-        rangeText: buildRangeText(temperatureMeta, context),
+        rangeText: buildRangeText(temperatureMeta.key, minValue, maxValue, temperatureMeta.decimals, context),
         // The minimum value for the control.
         minValue: convertFieldValueFromSi(
           // The field key for the control.
           temperatureMeta.key,
           // The minimum value for the control in SI units.
-          temperatureMeta.minValue,
-          // The unit system for the control.
+          minValue,
           context.unitSystem,
         ),
         // The maximum value for the control.
@@ -560,8 +614,7 @@ export function createTemperatureControlBehavior(controlId: InputControlIdType):
           // The field key for the control.
           temperatureMeta.key,
           // The maximum value for the control in SI units.
-          temperatureMeta.maxValue,
-          // The unit system for the control.
+          maxValue,
           context.unitSystem,
         ),
       };
@@ -601,6 +654,9 @@ export function createTemperatureControlBehavior(controlId: InputControlIdType):
     },
     // Apply the input value to the control.
     applyInput: (context, inputId, nextValueSi) => {
+      if (nextValueSi === null) {
+        return null;
+      }
       // Normalize the control options.
       const options = normalizeControlOptions(context.options);
       
@@ -717,7 +773,7 @@ export function createAirSpeedControlBehavior(controlId: InputControlIdType): In
         // The number of decimals to display for the control.
         decimals: airSpeedMeta.decimals,
         // The range text to display for the control.
-        rangeText: buildRangeText(airSpeedMeta, context),
+        rangeText: buildRangeText(airSpeedMeta.key, airSpeedMeta.minValue, airSpeedMeta.maxValue, airSpeedMeta.decimals, context),
         // The minimum value for the control.
         minValue: convertFieldValueFromSi(
           // The key of the field.
@@ -793,6 +849,9 @@ export function createAirSpeedControlBehavior(controlId: InputControlIdType): In
     },
     // Apply input to the control.
     applyInput: (context, inputId, nextValueSi) => {
+      if (nextValueSi === null) {
+        return null;
+      }
       // Normalize the control options.
       const airSpeedMode = normalizeControlOptions(context.options)[OptionKey.AirSpeedInputMode];
       
@@ -975,7 +1034,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
         // The number of decimals for the control.
         decimals: relativeHumidityMeta.decimals,
         // The range text for the control.
-        rangeText: buildRangeText(relativeHumidityMeta, context),
+        rangeText: buildRangeText(relativeHumidityMeta.key, relativeHumidityMeta.minValue, relativeHumidityMeta.maxValue, relativeHumidityMeta.decimals, context),
         // The minimum value for the control.
         minValue: convertFieldValueFromSi(
           // The field key for the relative humidity control.
@@ -1138,6 +1197,9 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
     },
     // Apply the input to the control.
     applyInput: (context, inputId, nextValue) => {
+      if (nextValue === null) {
+        return null;
+      }
       // Get the humidity mode from the control options.
       const humidityMode = normalizeControlOptions(context.options)[OptionKey.HumidityInputMode];
 

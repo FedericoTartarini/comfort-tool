@@ -10,7 +10,7 @@ export type InputId = (typeof InputId)[keyof typeof InputId];
 
 export const inputOrder: InputId[] = [InputId.Input1, InputId.Input2, InputId.Input3];
 
-type InputDefaults = Record<FieldKeyType, number>;
+type InputDefaults = Record<Exclude<FieldKeyType, "hr" | "to">, number>;
 
 export const inputDefaultsById: Record<InputId, InputDefaults> = {
   [InputId.Input1]: {

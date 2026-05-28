@@ -48,6 +48,7 @@ export type InputControlViewModel = {
   minValue?: number;
   maxValue?: number;
   hidden: boolean;
+  disabled: boolean;
   editorKind: InputControlEditorKind;
   step: number;
   menu: AdvancedOptionMenu;

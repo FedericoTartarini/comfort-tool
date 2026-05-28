@@ -1,8 +1,9 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-  import { onMount } from "svelte";
   import { Button, Heading } from "flowbite-svelte";
+  import { ChevronDownOutline, ChevronUpOutline } from "flowbite-svelte-icons";
+  import { clickOutside } from "../utils/clickOutside";
 
   type SelectOption<TValue> = {
     name: string | number;
@@ -10,6 +11,17 @@
     description?: string;
     disabled?: boolean;
   };
+
+  interface Props {
+    items?: SelectOption<string>[];
+    value?: string;
+    placeholder?: string;
+    searchPlaceholder?: string;
+    emptyMessage?: string;
+    disabled?: boolean;
+    onSelect?: ((value: string) => void) | undefined;
+    class?: string;
+  }
 
   let {
     items = [],
@@ -20,16 +32,7 @@
     disabled = false,
     onSelect = undefined,
     class: className = "",
-  }: {
-    items?: SelectOption<string>[];
-    value?: string;
-    placeholder?: string;
-    searchPlaceholder?: string;
-    emptyMessage?: string;
-    disabled?: boolean;
-    onSelect?: ((value: string) => void) | undefined;
-    class?: string;
-  } = $props();
+  }: Props = $props();
 
   let rootElement = $state<HTMLElement | null>(null);
   let searchInput = $state<HTMLInputElement | null>(null);
@@ -141,22 +144,9 @@
     }
   }
 
-  onMount(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (rootElement && event.target instanceof Node && !rootElement.contains(event.target)) {
-        closeDropdown();
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  });
 </script>
 
-<section class={`relative w-full min-w-0 ${className}`} bind:this={rootElement}>
+<div class={`relative w-full min-w-0 ${className}`} bind:this={rootElement} use:clickOutside={closeDropdown}>
   <input
     bind:this={searchInput}
     type="text"
@@ -183,11 +173,15 @@
     aria-label={isOpen ? "Close options" : "Open options"}
     disabled={disabled}
   >
-    <span class="text-xs">{isOpen ? "▲" : "▼"}</span>
+    {#if isOpen}
+      <ChevronUpOutline class="h-4 w-4" strokeWidth="2" />
+    {:else}
+      <ChevronDownOutline class="h-4 w-4" strokeWidth="2" />
+    {/if}
   </Button>
 
   {#if isOpen}
-    <section id={listboxId} role="listbox" class="absolute z-20 mt-1 w-full rounded-lg border border-stone-300 bg-white p-2 shadow-lg">
+    <div id={listboxId} role="listbox" class="absolute z-20 mt-1 w-full rounded-lg border border-stone-300 bg-white p-2 shadow-lg">
       <Heading tag="h6" class="text-eyebrow px-1 pb-2">
         {searchPlaceholder}
       </Heading>
@@ -214,7 +208,7 @@
               >
                 <span class="font-semibold">{item.name}</span>
                 {#if item.description}
-                  <span class="text-[11px] opacity-70">{item.description}</span>
+                  <span class="text-xs opacity-70">{item.description}</span>
                 {/if}
               </Button>
             </li>
@@ -223,6 +217,6 @@
           <li class="px-2 py-2 text-sm text-stone-500">{emptyMessage}</li>
         {/if}
       </ul>
-    </section>
+    </div>
   {/if}
-</section>
+</div>

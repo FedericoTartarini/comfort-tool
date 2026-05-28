@@ -11,10 +11,42 @@
   import ChartLegend from "./ChartLegend.svelte";
   import {
     ChartId,
+    chartMetaById,
     type ChartId as ChartIdType,
   } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
-  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+  import {
+    ComfortModel,
+    type ComfortModel as ComfortModelType,
+  } from "../../models/comfortModels";
+  import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
+  import type { InputId as InputIdType } from "../../models/inputSlots";
+
+  interface Props {
+    title: string;
+    description: string;
+    chartResult: PlotlyChartResponseDto | null;
+    isLoading: boolean;
+    emptyMessage: string;
+    heightClass: string;
+    chartOptions: Array<{ name: string; value: ChartIdType }>;
+    selectedChart: ChartIdType;
+    selectedModel: ComfortModelType;
+    onSelectChart: (chartId: ChartIdType) => void;
+    dynamicXAxis?: FieldKeyType;
+    dynamicYAxis?: FieldKeyType;
+    onSelectXAxis?: (fieldKey: FieldKeyType) => void;
+    onSelectYAxis?: (fieldKey: FieldKeyType) => void;
+    dynamicAxisOptions?: FieldKeyType[];
+    baselineInputId?: InputIdType;
+    onSelectBaselineInput?: (inputId: InputIdType) => void;
+    visibleInputIds?: InputIdType[];
+    compareEnabled?: boolean;
+    embedded?: boolean;
+    lockYAxis?: boolean;
+    legendZones?: ReadonlyArray<{ label: string; color: string }> | null;
+    legendTitle?: string;
+  }
 
   let {
     title,
@@ -37,32 +69,15 @@
     visibleInputIds = [],
     compareEnabled = false,
     embedded = false,
-  }: {
-    title: string;
-    description: string;
-    chartResult: PlotlyChartResponseDto | null;
-    isLoading: boolean;
-    emptyMessage: string;
-    heightClass: string;
-    chartOptions: Array<{ name: string; value: ChartIdType }>;
-    selectedChart: ChartIdType;
-    selectedModel: ComfortModelType;
-    onSelectChart: (chartId: ChartIdType) => void;
-    dynamicXAxis?: string;
-    dynamicYAxis?: string;
-    onSelectXAxis?: (fieldKey: string) => void;
-    onSelectYAxis?: (fieldKey: string) => void;
-    dynamicAxisOptions?: string[];
-    baselineInputId?: string;
-    onSelectBaselineInput?: (inputId: string) => void;
-    visibleInputIds?: string[];
-    compareEnabled?: boolean;
-    embedded?: boolean;
-  } = $props();
+    lockYAxis = false,
+    legendZones = null,
+    legendTitle = "",
+  }: Props = $props();
 
   let exportChart: ((type: "png" | "svg") => void) | undefined =
     $state(undefined);
   let showZones = $state(true);
+  const chartPanelIdPrefix = `chart-panel-${Math.random().toString(36).slice(2, 10)}`;
 
   // Reset zone visibility whenever the active chart changes.
   $effect(() => {
@@ -70,15 +85,20 @@
     showZones = true;
   });
 
-  // Disable dynamic axis selection for heat index, humidex, and wind chill dynamic charts
-  const lockYAxis = $derived(
-    (
-      [
-        ChartId.HeatIndexDynamic,
-        ChartId.HumidexDynamic,
-        ChartId.WindChillDynamic,
-      ] as ChartIdType[]
-    ).includes(selectedChart),
+  // Disable dynamic axis selection based on the currently selected chart's metadata properties (disabled when lockYAxis is true)
+  const isDynamicChart = $derived(!!chartMetaById[selectedChart]?.isDynamic);
+  const showAxisMenu = $derived(
+    (compareEnabled || isDynamicChart) &&
+      !!baselineInputId &&
+      !!onSelectBaselineInput,
+  );
+  const axisMenuIdPrefix = $derived(
+    `${chartPanelIdPrefix}-${selectedModel}-${selectedChart}`,
+  );
+  // Show zones toggle ONLY for PMV's Psychrometric chart.
+  const showZonesToggle = $derived(
+    selectedModel === ComfortModel.Pmv &&
+      selectedChart === ChartId.Psychrometric,
   );
 </script>
 
@@ -96,8 +116,9 @@
     </div>
 
     <div class="flex flex-wrap items-center justify-end gap-2 pr-[24px]">
-      {#if (compareEnabled || ([ChartId.PmvDynamic, ChartId.UtciDynamic, ChartId.AdaptiveDynamic, ChartId.HeatIndexDynamic, ChartId.HumidexDynamic, ChartId.WindChillDynamic] as ChartIdType[]).includes(selectedChart)) && baselineInputId && onSelectBaselineInput}
+      {#if showAxisMenu}
         <ChartAxisMenu
+          idPrefix={axisMenuIdPrefix}
           {dynamicXAxis}
           {dynamicYAxis}
           axisOptions={dynamicAxisOptions}
@@ -120,15 +141,17 @@
           onExport={(type) => exportChart?.(type)}
         />
       </div>
-      <div class="flex items-center gap-1.5">
-        <span class="text-xs font-medium text-stone-500">Zones:</span>
-        <Toggle
-          checked={showZones}
-          onchange={(e) => (showZones = e.currentTarget.checked)}
-          color="teal"
-          size="small"
-        />
-      </div>
+      {#if showZonesToggle}
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs font-medium text-stone-500">Zones:</span>
+          <Toggle
+            checked={showZones}
+            onchange={(e) => (showZones = e.currentTarget.checked)}
+            color="teal"
+            size="small"
+          />
+        </div>
+      {/if}
     </div>
   </header>
 
@@ -145,7 +168,7 @@
     />
   </div>
 
-  <ChartLegend {selectedChart} {selectedModel} />
+  <ChartLegend zones={legendZones} {legendTitle} />
 {/snippet}
 
 {#if embedded}

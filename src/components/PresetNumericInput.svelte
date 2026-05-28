@@ -1,13 +1,29 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-  import { onMount } from "svelte";
   import { Button, Heading } from "flowbite-svelte";
+  import { ChevronDownOutline, ChevronUpOutline } from "flowbite-svelte-icons";
+  import { clickOutside } from "../utils/clickOutside";
 
   export interface NumericPresetOption {
     id: string;
     label: string;
     value: number;
+  }
+
+  interface Props {
+    items: NumericPresetOption[];
+    value: number;
+    decimals?: number;
+    valueSuffix?: string;
+    placeholder?: string;
+    searchPlaceholder?: string;
+    emptyMessage?: string;
+    disabled?: boolean;
+    ariaLabel?: string;
+    onActivate?: (() => void) | undefined;
+    onCommit?: ((value: number) => void) | undefined;
+    class?: string;
   }
 
   let {
@@ -23,20 +39,7 @@
     onActivate = undefined,
     onCommit = undefined,
     class: className = "",
-  }: {
-    items: NumericPresetOption[];
-    value: number;
-    decimals?: number;
-    valueSuffix?: string;
-    placeholder?: string;
-    searchPlaceholder?: string;
-    emptyMessage?: string;
-    disabled?: boolean;
-    ariaLabel?: string;
-    onActivate?: (() => void) | undefined;
-    onCommit?: ((value: number) => void) | undefined;
-    class?: string;
-  } = $props();
+  }: Props = $props();
 
   let rootElement = $state<HTMLElement | null>(null);
   let searchInput = $state<HTMLInputElement | null>(null);
@@ -165,12 +168,7 @@
       return;
     }
 
-    let nextIndex = highlightedIndex;
-    for (let attempts = 0; attempts < filteredItems.length; attempts += 1) {
-      nextIndex = (nextIndex + direction + filteredItems.length) % filteredItems.length;
-      highlightedIndex = nextIndex;
-      return;
-    }
+    highlightedIndex = (highlightedIndex + direction + filteredItems.length) % filteredItems.length;
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -239,22 +237,13 @@
     openDropdown({ resetQuery: true });
   }
 
-  onMount(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (rootElement && event.target instanceof Node && !rootElement.contains(event.target)) {
-        closeDropdown({ commitIfNumeric: true });
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  });
 </script>
 
-<section class={`relative w-full min-w-0 ${className}`} bind:this={rootElement}>
+<div
+  class={`relative w-full min-w-0 ${className}`}
+  bind:this={rootElement}
+  use:clickOutside={() => closeDropdown({ commitIfNumeric: true })}
+>
   <input
     bind:this={searchInput}
     type="text"
@@ -282,27 +271,31 @@
     aria-label={isOpen ? "Close presets" : "Open presets"}
     disabled={disabled}
   >
-    <span class="text-xs">{isOpen ? "▲" : "▼"}</span>
+    {#if isOpen}
+      <ChevronUpOutline class="h-4 w-4" strokeWidth="2" />
+    {:else}
+      <ChevronDownOutline class="h-4 w-4" strokeWidth="2" />
+    {/if}
   </Button>
 
   {#if isOpen}
-    <section
+    <div
       id={listboxId}
       role="listbox"
       class="absolute left-0 z-20 mt-1 rounded-lg border border-stone-300 bg-white p-2 shadow-lg"
       style={dropdownPanelStyle}
     >
-      <header class="flex items-center justify-between gap-3 px-1 pb-2">
+      <div class="flex items-center justify-between gap-3 px-1 pb-2">
         <Heading
           tag="h6"
           class="text-eyebrow px-1 pb-2"
         >
           {searchPlaceholder}
         </Heading>
-        <p class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-600">
+        <p class="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-600">
           Current {formatValue(value)}
         </p>
-      </header>
+      </div>
       <ul class="max-h-64 overflow-y-auto">
         {#if filteredItems.length > 0}
           {#each filteredItems as item, index}
@@ -322,7 +315,7 @@
                 }}
               >
                 <span class="min-w-0 text-sm">{item.label}</span>
-                <span class="shrink-0 rounded-full bg-stone-900 px-2 py-0.5 text-[11px] font-semibold text-white">
+                <span class="shrink-0 rounded-full bg-stone-900 px-2 py-0.5 text-xs font-semibold text-white">
                   {formatValue(item.value)}
                 </span>
               </Button>
@@ -332,6 +325,6 @@
           <li class="px-2 py-2 text-sm text-stone-500">{emptyMessage}</li>
         {/if}
       </ul>
-    </section>
+    </div>
   {/if}
-</section>
+</div>

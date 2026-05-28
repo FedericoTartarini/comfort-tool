@@ -93,7 +93,7 @@ describe("createComfortToolState", () => {
     toolState.actions.setSelectedModel(ComfortModel.Utci);
     await waitForIdle(toolState);
 
-    const rawUtci = toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].resultsByInput.input1?.utci;
+    const rawUtci = (toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].resultsByInput.input1 as any)?.utci;
     const chartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource;
     const siResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
     const siChartTitle = String(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title ?? "");
@@ -103,7 +103,7 @@ describe("createComfortToolState", () => {
     const ipResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
     const ipChartTitle = String(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title ?? "");
 
-    expect(rawUtci).toBe(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].resultsByInput.input1?.utci);
+    expect(rawUtci).toBe((toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].resultsByInput.input1 as any)?.utci);
     expect(chartSource).toBe(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource);
     expect(siResultText).toContain("°C");
     expect(ipResultText).toContain("°F");

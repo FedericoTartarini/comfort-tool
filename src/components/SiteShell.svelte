@@ -7,23 +7,23 @@
   import SiteHeader from "./SiteHeader.svelte";
   import type { ComfortToolController } from "../state/comfortTool/types";
 
+  interface Props {
+    toolState: ComfortToolController;
+    children: Snippet;
+  }
+
   let {
     toolState,
     children,
-  }: {
-    toolState: ComfortToolController;
-    children: Snippet;
-  } = $props();
+  }: Props = $props();
 </script>
 
-<section class="min-h-screen bg-stone-950 text-stone-950">
-  <article class="flex min-h-screen flex-col">
-    <SiteHeader {toolState} />
+<div class="flex min-h-screen flex-col bg-stone-950">
+  <SiteHeader {toolState} />
 
-    <main class="flex-1 bg-stone-50">
-      {@render children?.()}
-    </main>
+  <main class="flex-1 bg-stone-50">
+    {@render children?.()}
+  </main>
 
-    <SiteFooter />
-  </article>
-</section>
+  <SiteFooter />
+</div>

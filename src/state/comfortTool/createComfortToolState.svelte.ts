@@ -19,7 +19,7 @@ import {
   type InputId as InputIdType,
 } from "../../models/inputSlots";
 import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
-import { ComfortModel, comfortModelOrder, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { allFieldOrder, fieldMetaByKey } from "../../models/inputFieldsMeta";
 import type { InputControlId as InputControlIdType } from "../../models/inputControls";
@@ -27,11 +27,12 @@ import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import { UnitSystem } from "../../models/units";
 import type { BehaviorPatch, ControlBehaviorContext } from "../../services/comfort/controls/types";
 import { deriveInputsDerivedState } from "../../services/comfort/syncState";
-import { comfortModelConfigs, getComfortModelConfig } from "./modelConfigs";
+import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig, type ComfortModelDefinition } from "./modelConfigs";
 import { createCalculationManager } from "./calculationManager.svelte";
 import {
   applyShareSnapshotToState,
   createShareStateSnapshot,
+  normalizeCompareInputIds,
   type ShareStateSnapshot,
 } from "./shareState";
 import type {
@@ -42,6 +43,8 @@ import type {
   ModelOptionsByModelState,
   SelectedChartByModelState,
   ComfortToolStateSlice,
+  ModelSwitchViolation,
+  PendingModelSwitch,
 } from "./types";
 
 /**
@@ -51,7 +54,8 @@ import type {
  */
 function createInputState(inputId: InputIdType): InputState {
   return allFieldOrder.reduce((accumulator, fieldKey) => {
-    accumulator[fieldKey] = inputDefaultsById[inputId][fieldKey] ?? fieldMetaByKey[fieldKey].defaultValue;
+    const defaults = inputDefaultsById[inputId] as Partial<Record<FieldKeyType, number>>;
+    accumulator[fieldKey] = defaults[fieldKey] ?? fieldMetaByKey[fieldKey].defaultValue;
     return accumulator;
   }, {} as InputState);
 }
@@ -75,15 +79,6 @@ function createDefaultCompareInputIds(): InputIdType[] {
   return [InputId.Input1, InputId.Input2];
 }
 
-/**
- * Sorts and enforces a data contract for input IDs. 
- * It filters dirty input IDs and sequences them rigidly against the main application layout index.
- * @param inputIds The unsorted or incomplete list of input IDs.
- * @returns A normalized array of input IDs.
- */
-function normalizeCompareInputIds(inputIds: InputIdType[]): InputIdType[] {
-  return inputOrder.filter((inputId) => inputId === InputId.Input1 || inputIds.includes(inputId));
-}
 
 /**
  * Initializes the default chart selection for each comfort model.
@@ -137,24 +132,18 @@ function createEmptyCalculationCache<ResultType>(): {
 }
 
 /**
- * Initializes the calculation cache registry for all available comfort models.
+ * Initializes the calculation cache registry for all available comfort models by looping through comfort model order.
  * @returns A record mapping each model to an empty calculation cache.
  */
 function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
-  return {
-    [ComfortModel.Pmv]: createEmptyCalculationCache(),
-    [ComfortModel.Utci]: createEmptyCalculationCache(),
-    [ComfortModel.AdaptiveAshrae]: createEmptyCalculationCache(),
-    [ComfortModel.AdaptiveEn]: createEmptyCalculationCache(),
-    [ComfortModel.HeatIndex]: createEmptyCalculationCache(),
-    [ComfortModel.Humidex]: createEmptyCalculationCache(),
-    [ComfortModel.WindChill]: createEmptyCalculationCache(),
-  //   todo see my other comments about having to update this manually. I'm quite concerned here because I don't know exactly what the code is doing but in many parts of the codes we need to create an empty cache and then define all the different models. This is going to be very hard to maintain. we should have one central source of truth which tells us which models are included in the tool.
-  } as ModelCalculationCacheByModelState;
+  return comfortModelOrder.reduce((accumulator, modelId) => {
+    accumulator[modelId] = createEmptyCalculationCache();
+    return accumulator;
+  }, {} as ModelCalculationCacheByModelState);
 }
 
 /**
- * Creates and initializes the root state for the comfort-tool.
+ * Creates and initializes the root state for the comfort-tool by initializing all the state variables.
  * @returns A ComfortToolController containing the core state and action methods.
  */
 export function createComfortToolState(): ComfortToolController {
@@ -174,6 +163,7 @@ export function createComfortToolState(): ComfortToolController {
     isLoading: false,
     errorMessage: "",
     calculationCacheByModel: createCalculationCacheByModel(),
+    pendingModelSwitch: null,
   });
 
   const state: ComfortToolStateSlice = {
@@ -193,11 +183,10 @@ export function createComfortToolState(): ComfortToolController {
 
     const cache = state.ui.calculationCacheByModel[modelId];
     const nextStatus = cache.chartSource ? "stale" : "empty";
-    // todo AI The "as any" cast here is a symptom of the per-model cache types. If ModelCalculationCache were a single generic type, this assignment would type-check without casting.
     state.ui.calculationCacheByModel[modelId] = {
       ...cache,
       status: nextStatus,
-    } as any;
+    };
   }
 
   /**
@@ -235,8 +224,8 @@ export function createComfortToolState(): ComfortToolController {
     };
   }
 
-  function getActiveModelConfig() {
-    return getComfortModelConfig(state.ui.selectedModel);
+  function getActiveModelConfig(): ComfortModelDefinition<any, any> {
+    return getComfortModelConfig(state.ui.selectedModel) as ComfortModelDefinition<any, any>;
   }
 
   function getCurrentSelectedChartId() {
@@ -267,10 +256,35 @@ export function createComfortToolState(): ComfortToolController {
         }
 
         Object.entries(inputPatch).forEach(([fieldKey, value]) => {
-          state.inputsByInput[inputId as InputIdType][fieldKey] = value;
+          state.inputsByInput[inputId as InputIdType][fieldKey as FieldKeyType] = value;
         });
       });
     }
+  }
+
+  /**
+   * Triggers the model-specific synchronization hook.
+   * Useful for enforcing constraints like tr=tdb when a specific chart is selected.
+   */
+  function synchronizeActiveModel() {
+    const config = getActiveModelConfig();
+    if (!config.synchronize) {
+      return;
+    }
+
+    const context = getModelContext(state.ui.selectedModel);
+    const patch = config.synchronize(context);
+    if (patch) {
+      applyBehaviorPatch(state.ui.selectedModel, patch);
+    }
+  }
+
+  function getDynamicAxisOptions(): FieldKeyType[] {
+    return getActiveModelConfig().dynamicAxisFields || [];
+  }
+
+  function getPendingModelSwitch(): PendingModelSwitch | null {
+    return state.ui.pendingModelSwitch;
   }
 
   const selectors = {
@@ -287,8 +301,7 @@ export function createComfortToolState(): ComfortToolController {
         return [];
       }
 
-      // todo AI Same problem: the generic type parameters are lost here so we cast to any. A generic ModelCalculationCache would fix this.
-      return (getActiveModelConfig() as any).buildResultSections(
+      return getActiveModelConfig().buildResultSections(
         cache.resultsByInput,
         getVisibleInputIds(),
         state.ui.unitSystem,
@@ -298,8 +311,7 @@ export function createComfortToolState(): ComfortToolController {
     },
     getCurrentChartResult: () => {
       const cache = getCurrentModelCache();
-      // todo AI Same problem as above.
-      return (getActiveModelConfig() as any).buildChartResult(
+      return getActiveModelConfig().buildChartResult(
         getCurrentSelectedChartId(),
         cache.chartSource,
         cache.resultsByInput,
@@ -315,51 +327,177 @@ export function createComfortToolState(): ComfortToolController {
     getCurrentSelectedChart: () => getCurrentSelectedChartId(),
     getCurrentChartHeightClass: () => chartMetaById[getCurrentSelectedChartId()].heightClass,
     getCurrentCacheStatus: () => getCurrentModelCache().status,
-    getDynamicAxisOptions: () => getActiveModelConfig().dynamicAxisFields || [],
+    getCurrentChartLockYAxis: () => getActiveModelConfig().lockYAxisChartIds.includes(getCurrentSelectedChartId()),
+    getCurrentChartLegendZones: () => {
+      const config = getActiveModelConfig();
+      if (config.legendChartIds.includes(getCurrentSelectedChartId())) {
+        return config.zones;
+      }
+      return null;
+    },
+    getCurrentChartLegendTitle: () => getActiveModelConfig().legendTitle,
+    getDynamicAxisOptions,
+    getPendingModelSwitch,
   };
 
-  const calculationManager = createCalculationManager(state, getVisibleInputIds);
+  const { scheduleCalculation: scheduleCalculationInternal } = createCalculationManager(state, getVisibleInputIds);
 
   /**
-   * Schedules a calculation to run after a short debounce period.
-   * @param options Configuration for the calculation (immediate or forced).
+   * Performs the final state updates for a model selection.
    */
-  function scheduleCalculationInternal(options?: { immediate?: boolean; force?: boolean }) {
-    calculationManager.scheduleCalculation(options);
-  }
-
-  /**
-   * Switches the active comfort model (e.g., PMV, UTCI) and triggers a re-calculation.
-   * @param nextModel The ID of the model to select.
-   */
-  function setSelectedModel(nextModel: ComfortModelType) {
+  function completeModelSelection(nextModel: ComfortModelType) {
     state.ui.selectedModel = nextModel;
     state.ui.errorMessage = "";
 
-    // Ensure dynamic axes are valid for the new model.
     const config = getComfortModelConfig(nextModel);
-    if (config.dynamicAxisFields && config.dynamicAxisFields.length >= 2) {
-      if (!config.dynamicAxisFields.includes(state.ui.dynamicXAxis as any)) {
-        state.ui.dynamicXAxis = config.dynamicAxisFields[0];
-      }
-      if (!config.dynamicAxisFields.includes(state.ui.dynamicYAxis as any)) {
-        state.ui.dynamicYAxis = config.dynamicAxisFields[config.dynamicAxisFields.length - 1];
-      }
-    }
+    // Ensure dynamic axes are valid and unique for the new model.
+    ensureUniqueDynamicAxes(config);
+
+    synchronizeActiveModel();
 
     scheduleCalculationInternal({ immediate: true });
   }
 
   /**
-   * Updates the selected chart for the current model.
-   * @param nextChart The ID of the chart to display.
+   * Validates that the dynamic chart axes are both supported by the current model
+   * and distinct from each other.
    */
+  function ensureUniqueDynamicAxes(config: ComfortModelDefinition<any, any>) {
+    if (!config.dynamicAxisFields || config.dynamicAxisFields.length < 2) {
+      return;
+    }
+
+    // 1. Ensure current X-axis is valid for this model
+    if (!config.dynamicAxisFields.includes(state.ui.dynamicXAxis)) {
+      state.ui.dynamicXAxis = config.dynamicAxisFields[0];
+    }
+
+    // 2. Ensure current Y-axis is valid for this model
+    if (!config.dynamicAxisFields.includes(state.ui.dynamicYAxis)) {
+      state.ui.dynamicYAxis = config.dynamicAxisFields[config.dynamicAxisFields.length - 1];
+    }
+
+    // 3. Prevent X and Y from being the same field
+    if (state.ui.dynamicXAxis === state.ui.dynamicYAxis) {
+      const fields = config.dynamicAxisFields;
+      const currentIndex = fields.indexOf(state.ui.dynamicYAxis);
+      // Select the next available field, or loop back to the first.
+      const nextIndex = (currentIndex + 1) % fields.length;
+      state.ui.dynamicYAxis = fields[nextIndex];
+    }
+  }
+
+  /**
+   * Switches the active comfort model (e.g., PMV, UTCI) and triggers a re-calculation.
+   * Performs a boundary check and interrupts with a confirmation if violations are found.
+   * @param nextModel The ID of the model to select.
+   */
+  function setSelectedModel(nextModel: ComfortModelType) {
+    if (state.ui.selectedModel === nextModel) {
+      return;
+    }
+
+    const violations: ModelSwitchViolation[] = [];
+    const nextModelConfig = getComfortModelConfig(nextModel);
+    const visibleInputIds = getVisibleInputIds();
+
+    visibleInputIds.forEach((inputId) => {
+      const context: ControlBehaviorContext = {
+        inputsByInput: state.inputsByInput,
+        derivedByInput,
+        options: state.ui.modelOptionsByModel[nextModel],
+        unitSystem: state.ui.unitSystem,
+        visibleInputIds: [inputId],
+        selectedChartId: state.ui.selectedChartByModel[nextModel],
+      };
+
+      nextModelConfig.controls.forEach((control) => {
+        const vm = control.behavior.buildViewModel(context);
+        if (vm.hidden) return;
+
+        const currentValue = vm.numericValuesByInput[inputId];
+        if (currentValue === undefined) return;
+
+        // Use a small epsilon for float comparisons to avoid precision issues.
+        const epsilon = 0.0001;
+        const underMin = vm.minValue !== undefined && currentValue < vm.minValue - epsilon;
+        const overMax = vm.maxValue !== undefined && currentValue > vm.maxValue + epsilon;
+        if (underMin || overMax) {
+          violations.push({
+            inputId,
+            controlId: control.id,
+            label: vm.label,
+            currentValue,
+            minAllowed: vm.minValue ?? -Infinity,
+            maxAllowed: vm.maxValue ?? Infinity,
+            displayUnits: vm.displayUnits,
+          });
+        }
+      });
+    });
+
+    if (violations.length > 0) {
+      state.ui.pendingModelSwitch = {
+        targetModel: nextModel,
+        violations,
+      };
+      return;
+    }
+
+    completeModelSelection(nextModel);
+  }
+
+  function confirmModelSwitch() {
+    if (!state.ui.pendingModelSwitch) {
+      return;
+    }
+
+    const { targetModel, violations } = state.ui.pendingModelSwitch;
+
+    // Fix violating values by clamping them to the closest legal boundary.
+    violations.forEach((v) => {
+      const modelConfig = getComfortModelConfig(targetModel);
+      const control = modelConfig.controls.find((c) => c.id === v.controlId);
+      if (!control) return;
+
+      const context = getModelContext(targetModel);
+      const vm = control.behavior.buildViewModel(context);
+
+      const min = vm.minValue ?? -Infinity;
+      const max = vm.maxValue ?? Infinity;
+      const clampedValue = Math.max(min, Math.min(max, v.currentValue));
+      
+      if (control.behavior.applyInput) {
+        const patch = control.behavior.applyInput(context, v.inputId, clampedValue.toString());
+        if (patch) {
+          applyBehaviorPatch(targetModel, patch);
+        }
+      }
+    });
+
+    state.ui.pendingModelSwitch = null;
+    completeModelSelection(targetModel);
+    invalidateAllModels();
+  }
+
+  function cancelModelSwitch() {
+    state.ui.pendingModelSwitch = null;
+  }
+
   function setSelectedChart(nextChart: ChartIdType) {
     if (!getActiveModelConfig().chartIds.includes(nextChart)) {
       return;
     }
 
     state.ui.selectedChartByModel[state.ui.selectedModel] = nextChart;
+
+    // If switching to a dynamic chart, ensure the axes are unique.
+    if (chartMetaById[nextChart].isDynamic) {
+      ensureUniqueDynamicAxes(getActiveModelConfig());
+    }
+
+    synchronizeActiveModel();
+
     invalidateModel(state.ui.selectedModel);
     scheduleCalculationInternal({ immediate: true });
   }
@@ -494,6 +632,9 @@ export function createComfortToolState(): ComfortToolController {
     }
 
     applyBehaviorPatch(state.ui.selectedModel, patch);
+
+    synchronizeActiveModel();
+
     invalidateAllModels();
     scheduleCalculationInternal();
   }
@@ -516,7 +657,9 @@ export function createComfortToolState(): ComfortToolController {
       scheduleCalculationInternal({ immediate: true, force: true });
     },
     updateInput,
-    scheduleCalculation: (scheduleOptions) => scheduleCalculationInternal(scheduleOptions),
+    scheduleCalculation: (scheduleOptions?: { immediate?: boolean; force?: boolean }) => scheduleCalculationInternal(scheduleOptions),
+    confirmModelSwitch,
+    cancelModelSwitch,
   };
 
   return {

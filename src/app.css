@@ -16,6 +16,8 @@
   body {
     margin: 0;
     font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
     color: #0f172a;
   }
 }
@@ -61,7 +63,8 @@
 
 @layer utilities {
   .text-eyebrow {
-    font-size: 11px;
+    font-size: 0.75rem;
+    line-height: 1rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.16em;
@@ -71,6 +74,7 @@
   .text-footer-label {
     margin-bottom: 1rem;
     font-size: 0.75rem;
+    line-height: 1rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -79,8 +83,8 @@
 
   .text-result-summary {
     margin-top: 0.25rem;
-    font-size: 1.875rem;
-    line-height: 2.25rem;
+    font-size: 1.125rem;
+    line-height: 1.5rem;
     font-weight: 600;
     letter-spacing: -0.015em;
     color: #1c1917; /* stone-900 */
@@ -88,6 +92,7 @@
 
   .text-description-muted {
     font-size: 0.875rem;
+    line-height: 1.25rem;
     font-weight: 400;
     color: #78716c; /* stone-500 */
   }
@@ -122,7 +127,8 @@
     border-radius: 9999px;
     background: #ffffff;
     padding: 0.125rem 0.5rem;
-    font-size: 11px;
+    font-size: 0.75rem;
+    line-height: 1rem;
     font-weight: 500;
     color: #57534e; /* stone-600 */
     transition:

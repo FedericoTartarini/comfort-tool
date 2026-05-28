@@ -7,6 +7,7 @@
     Input,
     Label,
   } from "flowbite-svelte";
+  import { ChevronDownOutline } from "flowbite-svelte-icons";
   import PresetNumericInput from "../PresetNumericInput.svelte";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
   import type { InputId as InputIdType } from "../../models/inputSlots";
@@ -14,17 +15,19 @@
   import type { OptionKey } from "../../models/inputModes";
   import type { ComfortToolController } from "../../state/comfortTool/types";
 
+  interface Props {
+    toolState: ComfortToolController;
+    control: InputControlViewModel;
+    onOpenClothingBuilder: () => void;
+    onOpenQuickClothingEstimate: () => void;
+  }
+
   let {
     toolState,
     control,
     onOpenClothingBuilder,
     onOpenQuickClothingEstimate,
-  }: {
-    toolState: ComfortToolController;
-    control: InputControlViewModel;
-    onOpenClothingBuilder: () => void;
-    onOpenQuickClothingEstimate: () => void;
-  } = $props();
+  }: Props = $props();
 
   let menu = $derived(control.menu);
 
@@ -42,8 +45,8 @@
 
   const dropdownClass = "w-72 overflow-hidden rounded-xl py-1 shadow-lg";
   const clothingToolsDropdownClass = "w-64 overflow-hidden rounded-xl py-1 shadow-lg";
-  const dropdownHeaderClass = "border-b border-stone-100 px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-stone-500";
-  const dropdownSectionTitleClass = "px-4 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400";
+  const dropdownHeaderClass = "border-b border-stone-100 px-4 py-2 text-xs uppercase tracking-[0.16em] text-stone-500";
+  const dropdownSectionTitleClass = "px-4 pt-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-400";
   const dropdownItemClass = "flex flex-col items-start gap-0.5 px-4 py-2 text-left";
   const subtleButtonClass = "tool-button-subtle focus:ring-0";
 
@@ -110,7 +113,7 @@
           class={subtleButtonClass}
         >
           More
-          <span class="text-[10px]">▼</span>
+          <ChevronDownOutline class="h-3 w-3" strokeWidth="2" />
         </Button>
 
         <Dropdown
@@ -158,7 +161,7 @@
           class={subtleButtonClass}
         >
           Clothing tools
-          <span class="text-[10px]">▼</span>
+          <ChevronDownOutline class="h-3 w-3" strokeWidth="2" />
         </Button>
 
         <Dropdown
@@ -191,7 +194,7 @@
     </div>
 
     {#if control.rangeText}
-      <small class="shrink-0 text-[11px] text-stone-500">
+      <small class="shrink-0 text-xs text-stone-500">
         {control.rangeText.replace("From ", "").replace(" to ", " ~ ")}
       </small>
     {/if}
@@ -218,6 +221,7 @@
             ariaLabel={`${inputDisplayMetaById[inputId].label} ${control.label}`}
             onActivate={() => toolState.actions.setActiveInputId(inputId)}
             onCommit={(value) => handleApplyPresetValue(inputId, value)}
+            disabled={control.disabled}
           />
         {:else}
           <Input
@@ -229,6 +233,7 @@
             size="sm"
             value={control.displayValuesByInput[inputId] ?? ""}
             aria-label={`${inputDisplayMetaById[inputId].label} ${control.label}`}
+            disabled={control.disabled}
             onfocus={() => toolState.actions.setActiveInputId(inputId)}
             onchange={(event) => commitFieldValue(inputId, event.currentTarget)}
             onblur={(event) => {

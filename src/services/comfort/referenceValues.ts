@@ -7,7 +7,7 @@ import {
 import { ClothingZone, type ClothingZoneId } from "../../models/clothingZones";
 
 type NumericReferenceMap = Record<string, number>;
-type TypicalEnsembleLabel = Parameters<typeof clo_typical_ensembles>[0];
+type TypicalEnsembleLabel = Parameters<typeof clo_typical_ensembles>[0] | "Trousers, short-sleeve shirt, socks, shoes, underwear";
 
 export interface MetabolicActivityOption {
   id: string;
@@ -159,7 +159,7 @@ export const metabolicActivityOptions: MetabolicActivityOption[] = metabolicActi
 export const clothingTypicalEnsembles: ClothingEnsembleOption[] = clothingTypicalEnsembleMeta.map(([sourceLabel, label]) => ({
   id: createReferenceId(sourceLabel),
   label,
-  clo: clo_typical_ensembles(sourceLabel),
+  clo: clo_typical_ensembles(sourceLabel as any),
 }));
 
 export const clothingGarmentOptions: ClothingGarmentOption[] = clothingGarmentMeta.map(([sourceKey, article, zone]) => ({

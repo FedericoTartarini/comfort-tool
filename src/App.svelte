@@ -5,6 +5,7 @@
   import ComfortDashboard from "./views/ComfortDashboard.svelte";
   import { createComfortToolState } from "./state/comfortTool/createComfortToolState.svelte";
   import { readShareStateFromUrl } from "./state/comfortTool/shareState";
+  import ModelSwitchWarningModal from "./components/modals/ModelSwitchWarningModal.svelte";
 
   const toolState = createComfortToolState();
 
@@ -22,3 +23,5 @@
 <SiteShell {toolState}>
   <ComfortDashboard {toolState} />
 </SiteShell>
+
+<ModelSwitchWarningModal {toolState} />

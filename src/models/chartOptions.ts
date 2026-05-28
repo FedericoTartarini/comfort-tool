@@ -18,7 +18,6 @@ export const ChartId = {
   HeatIndexDynamic: "heatIndexDynamic", // Heat index dynamic chart
   Humidex: "humidex", // Humidex chart
   HumidexDynamic: "humidexDynamic", // Humidex dynamic chart
-  WindChill: "windChill", // Wind chill chart
   WindChillDynamic: "windChillDynamic", // Wind chill dynamic chart
 } as const;
 
@@ -27,54 +26,55 @@ export const ChartId = {
 export type ChartId = (typeof ChartId)[keyof typeof ChartId];
 
 /**
- * This object maps each ChartId to its metadata, by assigning each ChartId
- * an object with all the same properties. This allows for easy retrieval of
- * metadata for a given ChartId.
- * 
+ * Defines the metadata for each chart type in the registry
  * @type {ChartMetaById}
- * @property {ChartId.Psychrometric}
- *   @property {string} name - The name of the chart.
- *   @property {string} emptyMessage - The message to display when there is no data for the chart.
- *   @property {string} heightClass - The Tailwind CSS class for the height of the chart.
- * 
+ * @property {string} name - The name of the chart.
+ * @property {string} emptyMessage - The message to display when there is no data for the chart.
+ * @property {string} heightClass - The Tailwind CSS class for the height of the chart.
+ * @property {boolean} isDynamic - Whether the chart is dynamic (has selectable X and Y axes).
+ * @property {boolean} lockYAxis - Whether the Y-axis should be locked, used when the chart has only 2 inputs.
  */
-export const chartMetaById: Record<
-  ChartId,
-  {
-    name: string;
-    emptyMessage: string;
-    heightClass: string;
-  }
-> = {
+
+export interface ChartMetadata {
+  name: string;
+  emptyMessage: string;
+  heightClass: string;
+  isDynamic?: boolean; // optional, defaults to false
+}
+
+export const chartMetaById: Record<ChartId, ChartMetadata> = {
   [ChartId.Psychrometric]: {
     name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.Stress]: {
-    name: "Psychrometric",
+    name: "UTCI",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.Adaptive]: {
-    name: "Psychrometric",
-    emptyMessage: "No psychrometric chart yet.",
+    name: "Adaptive",
+    emptyMessage: "No adaptive chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
   },
   [ChartId.AdaptiveDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    isDynamic: true,
   },
   [ChartId.PmvDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    isDynamic: true,
   },
   [ChartId.UtciDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    isDynamic: true,
   },
   [ChartId.HeatIndexRanges]: {
     name: "Psychrometric",
@@ -85,6 +85,7 @@ export const chartMetaById: Record<
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    isDynamic: true,
   },
   [ChartId.Humidex]: {
     name: "Psychrometric",
@@ -95,15 +96,12 @@ export const chartMetaById: Record<
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
-  },
-  [ChartId.WindChill]: {
-    name: "Psychrometric",
-    emptyMessage: "No psychrometric chart yet.",
-    heightClass: "h-[480px] xl:h-[480px]",
+    isDynamic: true,
   },
   [ChartId.WindChillDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    isDynamic: true,
   },
 };

@@ -10,6 +10,19 @@
   import { onMount, tick } from "svelte";
 
   import { toPlotlyFigure } from "../../services/plotlyFigure";
+  import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+
+  interface Props {
+    chartResult: PlotlyChartResponseDto | null;
+    isLoading: boolean;
+    emptyMessage: string;
+    heightClass?: string;
+    showPlotTitle?: boolean;
+    showZones?: boolean;
+    onRegisterExport?:
+      | ((handler: (type: "png" | "svg") => void) => void)
+      | undefined;
+  }
 
   // Component properties
   let {
@@ -20,11 +33,9 @@
     showPlotTitle = false,
     showZones = true,
     onRegisterExport = undefined,
-  } = $props();
+  }: Props = $props();
 
-  // Component state
-  let chartElement = $state<HTMLDivElement | null>(null);
-  let plotlyModule = $state<{
+  interface PlotlyModule {
     // React renders the chart in the given element
     react: (
       // The element to render the chart in
@@ -45,7 +56,11 @@
       // The options for the download
       options: Record<string, unknown>,
     ) => Promise<void>;
-  } | null>(null);
+  }
+
+  // Component state
+  let chartElement = $state<HTMLDivElement | null>(null);
+  let plotlyModule = $state<PlotlyModule | null>(null);
 
   // Boolean state to track if the chart has been rendered
   let hasRenderedChart = $state(false);
@@ -60,16 +75,15 @@
   );
 
   // Asynchronously load the Plotly.js library
-  async function loadPlotly() {
+  async function loadPlotly(): Promise<PlotlyModule> {
     // Return the module if it has already been loaded
     if (plotlyModule) {
       return plotlyModule;
     }
-    // Dynamically import the Plotly.js library
-    const importedModule = await import("plotly.js-dist-min");
+    const importedModule = await import("plotly.js-dist-min" as any);
     // Assign the module to plotlyModule state variable as the plotly module type
     plotlyModule = (importedModule.default ??
-      importedModule) as typeof plotlyModule;
+      importedModule) as PlotlyModule;
     // Return the module
     return plotlyModule;
   }
@@ -235,9 +249,10 @@
       // Convert the chart payload to a Plotly figure.
       const figure = toPlotlyFigure(chartPayload);
 
-      // Filter out zone traces if showZones is false
       if (!showZones) {
-        figure.data = figure.data.filter((trace: any) => !trace.isZone);
+        figure.data = figure.data.filter(
+          (trace: any) => !trace.isBackgroundZone,
+        );
       }
       // Hide the plot title if the showPlotTitle flag is false.
       if (!showPlotTitle) {

@@ -4,14 +4,29 @@
    * Renders the axis selection interface for dynamic charts, including
    * button triggers and dropdown menus for both dimensions.
    */
-  import { Button, Dropdown, DropdownItem } from "flowbite-svelte";
+  import { Button, Dropdown, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import { FieldKey } from "../../models/fieldKeys";
+  import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
   import { fieldMetaByKey } from "../../models/inputFieldsMeta";
-  import { inputOrder, type InputId } from "../../models/inputSlots";
+  import { inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
 
+  interface Props {
+    idPrefix: string;
+    dynamicXAxis?: FieldKeyType;
+    dynamicYAxis?: FieldKeyType;
+    axisOptions?: FieldKeyType[];
+    baselineInputId?: InputIdType;
+    onSelectBaselineInput?: (inputId: InputIdType) => void;
+    visibleInputIds?: InputIdType[];
+    compareEnabled?: boolean;
+    onSelectXAxis?: (fieldKey: FieldKeyType) => void;
+    onSelectYAxis?: (fieldKey: FieldKeyType) => void;
+    lockYAxis?: boolean;
+  }
+
   let {
+    idPrefix,
     dynamicXAxis,
     dynamicYAxis,
     axisOptions = [],
@@ -22,24 +37,20 @@
     onSelectXAxis,
     onSelectYAxis,
     lockYAxis = false,
-  }: {
-    dynamicXAxis?: string;
-    dynamicYAxis?: string;
-    axisOptions?: string[];
-    baselineInputId?: string;
-    onSelectBaselineInput?: (inputId: string) => void;
-    visibleInputIds?: string[];
-    compareEnabled?: boolean;
-    onSelectXAxis?: (fieldKey: string) => void;
-    onSelectYAxis?: (fieldKey: string) => void;
-    lockYAxis?: boolean;
-  } = $props();
+  }: Props = $props();
+
+  const baselineTriggerId = $derived(`${idPrefix}-baseline-trigger`);
+  const xAxisTriggerId = $derived(`${idPrefix}-x-axis-trigger`);
+  const yAxisTriggerId = $derived(`${idPrefix}-y-axis-trigger`);
 
   const currentXLabel = $derived(
-    fieldMetaByKey[dynamicXAxis as FieldKey]?.label ?? "X-Axis",
+    dynamicXAxis ? fieldMetaByKey[dynamicXAxis].label : "X-Axis",
   );
   const currentYLabel = $derived(
-    fieldMetaByKey[dynamicYAxis as FieldKey]?.label ?? "Y-Axis",
+    dynamicYAxis ? fieldMetaByKey[dynamicYAxis].label : "Y-Axis",
+  );
+  const currentBaselineLabel = $derived(
+    baselineInputId ? inputDisplayMetaById[baselineInputId].label : "Input 1",
   );
 </script>
 
@@ -47,24 +58,25 @@
   {#if compareEnabled && baselineInputId && onSelectBaselineInput}
     <span class="text-xs font-medium text-stone-500">Baseline:</span>
     <Button
-      id="chart-baseline-trigger"
+      id={baselineTriggerId}
       color="light"
       pill
       size="xs"
       class="text-stone-700 flex items-center"
     >
       <span class="max-w-[100px] truncate">
-        {inputDisplayMetaById[baselineInputId as InputId]?.label ?? "Input 1"}
+        {currentBaselineLabel}
       </span>
       <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
     </Button>
-    <Dropdown triggeredBy="#chart-baseline-trigger" class="w-48 shadow-lg">
-      <div
+    <Dropdown triggeredBy={`#${baselineTriggerId}`} class="w-48 shadow-lg">
+      <DropdownHeader
         slot="header"
+        divider={false}
         class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500"
       >
         Select Baseline Input
-      </div>
+      </DropdownHeader>
       {#each inputOrder as inputId}
         <DropdownItem
           onclick={() => onSelectBaselineInput(inputId)}
@@ -82,7 +94,7 @@
               {inputDisplayMetaById[inputId].label}
             </span>
             {#if !visibleInputIds.includes(inputId)}
-              <span class="text-[10px] uppercase text-stone-400 font-medium"
+              <span class="text-xs uppercase text-stone-400 font-medium"
                 >Inactive</span
               >
             {/if}
@@ -98,7 +110,7 @@
   {#if dynamicXAxis && dynamicYAxis && onSelectXAxis && onSelectYAxis}
     <span class="text-xs font-medium text-stone-500">X:</span>
     <Button
-      id="chart-x-axis-trigger"
+      id={xAxisTriggerId}
       color="light"
       pill
       size="xs"
@@ -109,13 +121,14 @@
       </span>
       <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
     </Button>
-    <Dropdown triggeredBy="#chart-x-axis-trigger" class="w-48 shadow-lg">
-      <div
+    <Dropdown triggeredBy={`#${xAxisTriggerId}`} class="w-48 shadow-lg">
+      <DropdownHeader
         slot="header"
+        divider={false}
         class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500"
       >
         Select X Axis
-      </div>
+      </DropdownHeader>
       {#each axisOptions as option}
         <DropdownItem onclick={() => onSelectXAxis(option)} class="text-left">
           <span
@@ -131,7 +144,7 @@
 
     <span class="ml-2 text-xs font-medium text-stone-500">Y:</span>
     <Button
-      id="chart-y-axis-trigger"
+      id={yAxisTriggerId}
       color="light"
       pill
       size="xs"
@@ -151,13 +164,14 @@
       {/if}
     </Button>
     {#if !lockYAxis}
-      <Dropdown triggeredBy="#chart-y-axis-trigger" class="w-48 shadow-lg">
-        <div
+      <Dropdown triggeredBy={`#${yAxisTriggerId}`} class="w-48 shadow-lg">
+        <DropdownHeader
           slot="header"
+          divider={false}
           class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500"
         >
           Select Y Axis
-        </div>
+        </DropdownHeader>
         {#each axisOptions as option}
           <DropdownItem onclick={() => onSelectYAxis(option)} class="text-left">
             <span

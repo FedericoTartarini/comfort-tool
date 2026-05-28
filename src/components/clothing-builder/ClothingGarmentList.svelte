@@ -6,6 +6,15 @@
   import { clothingZoneMetaById, type ClothingZoneId } from "../../models/clothingZones";
   import type { ClothingGarmentOption } from "../../services/comfort/referenceValues";
 
+  interface Props {
+    activeZoneId: ClothingZoneId;
+    searchQuery: string;
+    garments: ClothingGarmentOption[];
+    selectedGarmentIds: string[];
+    onSearchChange: (value: string) => void;
+    onToggleGarment: (garmentId: string, shouldSelect: boolean) => void;
+  }
+
   let {
     activeZoneId,
     searchQuery,
@@ -13,14 +22,7 @@
     selectedGarmentIds,
     onSearchChange,
     onToggleGarment,
-  }: {
-    activeZoneId: ClothingZoneId;
-    searchQuery: string;
-    garments: ClothingGarmentOption[];
-    selectedGarmentIds: string[];
-    onSearchChange: (value: string) => void;
-    onToggleGarment: (garmentId: string, shouldSelect: boolean) => void;
-  } = $props();
+  }: Props = $props();
 
   const garmentSearchInputId = "clothing-garment-search";
   const activeZoneMeta = $derived(clothingZoneMetaById[activeZoneId]);

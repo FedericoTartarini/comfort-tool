@@ -16,6 +16,15 @@
   import ClothingSelectionSummary from "./clothing-builder/ClothingSelectionSummary.svelte";
   import ClothingZonePicker from "./clothing-builder/ClothingZonePicker.svelte";
 
+  interface Props {
+    activeInputId: InputIdType;
+    visibleInputIds: InputIdType[];
+    unitSystem: UnitSystemType;
+    onSelectInput: (inputId: InputIdType) => void;
+    onApplyClothingValue: (inputId: InputIdType, value: number) => void;
+    onClose: () => void;
+  }
+
   let {
     activeInputId,
     visibleInputIds,
@@ -23,14 +32,7 @@
     onSelectInput,
     onApplyClothingValue,
     onClose,
-  }: {
-    activeInputId: InputIdType;
-    visibleInputIds: InputIdType[];
-    unitSystem: UnitSystemType;
-    onSelectInput: (inputId: InputIdType) => void;
-    onApplyClothingValue: (inputId: InputIdType, value: number) => void;
-    onClose: () => void;
-  } = $props();
+  }: Props = $props();
 
   let targetInputId = $state<InputIdType>(InputId.Input1);
   let activeZoneId = $state(ClothingZone.UpperBody);

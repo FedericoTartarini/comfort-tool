@@ -11,43 +11,25 @@
   import ChartPanel from "../components/chart/ChartPanel.svelte";
   import InputPanel from "../components/input-panel/InputPanel.svelte";
   import ResultsPanel from "../components/ResultsPanel.svelte";
-  import type { ChartId } from "../models/chartOptions";
-  import type { FieldKey } from "../models/fieldKeys";
   import type { ComfortToolController } from "../state/comfortTool/types";
 
-  let {
-    toolState,
-  }: {
+  interface Props {
     toolState: ComfortToolController;
-  } = $props();
-
-  function handleSelectChart(nextChart: ChartId) {
-    toolState.actions.setSelectedChart(nextChart);
   }
 
-  function handleSelectXAxis(fieldKey: string) {
-    toolState.actions.setDynamicXAxis(fieldKey as FieldKey);
-  }
-
-  function handleSelectYAxis(fieldKey: string) {
-    toolState.actions.setDynamicYAxis(fieldKey as FieldKey);
-  }
-
-  function handleSelectBaselineInput(inputId: string) {
-    toolState.actions.setChartBaselineInputId(inputId as any);
-  }
+  let { toolState }: Props = $props();
 </script>
 
 <main id="overview" class="bg-stone-50 px-4 py-4 sm:px-6 lg:px-8">
-  <div class="mx-auto max-w-7xl grid gap-4 xl:grid-cols-[25rem_1fr]">
+  <div class="mx-auto grid w-full max-w-7xl gap-4 xl:grid-cols-[25rem_minmax(0,1fr)]">
     <!-- Left Sidebar: Environmental and Personal Inputs -->
-    <aside id="inputs-panel" class="scroll-mt-32">
+    <aside id="inputs-panel" class="min-w-0 scroll-mt-32">
       <InputPanel {toolState} />
     </aside>
 
     <!-- Main Section: Results Table and Interactive Charts -->
-    <section class="grid gap-4">
-      <Card size="none" class="p-3 shadow-sm scroll-mt-32 border-stone-300">
+    <section class="grid min-w-0 gap-4">
+      <Card size="none" class="w-full min-w-0 border-stone-300 p-3 shadow-sm scroll-mt-32">
         <!-- Summary of calculation results -->
         <ResultsPanel
           activeInputId={toolState.state.ui.activeInputId}
@@ -69,16 +51,19 @@
           chartOptions={toolState.selectors.getCurrentChartOptions()}
           selectedChart={toolState.selectors.getCurrentSelectedChart()}
           selectedModel={toolState.state.ui.selectedModel}
-          onSelectChart={handleSelectChart}
+          onSelectChart={toolState.actions.setSelectedChart}
           dynamicXAxis={toolState.state.ui.dynamicXAxis}
           dynamicYAxis={toolState.state.ui.dynamicYAxis}
           dynamicAxisOptions={toolState.selectors.getDynamicAxisOptions()}
           baselineInputId={toolState.state.ui.chartBaselineInputId}
-          onSelectBaselineInput={handleSelectBaselineInput}
+          onSelectBaselineInput={toolState.actions.setChartBaselineInputId}
           visibleInputIds={toolState.selectors.getVisibleInputIds()}
           compareEnabled={toolState.state.ui.compareEnabled}
-          onSelectXAxis={handleSelectXAxis}
-          onSelectYAxis={handleSelectYAxis}
+          onSelectXAxis={toolState.actions.setDynamicXAxis}
+          onSelectYAxis={toolState.actions.setDynamicYAxis}
+          lockYAxis={toolState.selectors.getCurrentChartLockYAxis()}
+          legendZones={toolState.selectors.getCurrentChartLegendZones()}
+          legendTitle={toolState.selectors.getCurrentChartLegendTitle()}
           embedded={true}
         />
       </Card>

@@ -11,6 +11,7 @@ import {
   deserializeShareState,
   parseShareStateSnapshot,
   serializeShareState,
+  type ShareStateSnapshot,
 } from "./shareState";
 
 describe("shareState", () => {
@@ -19,6 +20,8 @@ describe("shareState", () => {
     toolState.state.ui.selectedModel = ComfortModel.Utci;
     toolState.state.ui.unitSystem = UnitSystem.IP;
     toolState.state.ui.modelOptionsByModel[ComfortModel.Pmv][OptionKey.TemperatureMode] = TemperatureMode.Operative;
+    toolState.state.ui.dynamicXAxis = "v";
+    toolState.state.ui.dynamicYAxis = "tr";
 
     const snapshot = createShareStateSnapshot(toolState.state);
     const encodedSnapshot = serializeShareState(snapshot);
@@ -32,6 +35,8 @@ describe("shareState", () => {
     originalState.state.ui.compareEnabled = true;
     originalState.state.ui.compareInputIds = ["input1", "input3"];
     originalState.state.ui.unitSystem = UnitSystem.IP;
+    originalState.state.ui.dynamicXAxis = "v";
+    originalState.state.ui.dynamicYAxis = "tr";
 
     const snapshot = createShareStateSnapshot(originalState.state);
     const restoredState = createComfortToolState();
@@ -39,6 +44,33 @@ describe("shareState", () => {
     applyShareSnapshotToState(restoredState.state, snapshot);
 
     expect(createShareStateSnapshot(restoredState.state)).toEqual(snapshot);
+  });
+
+  it("restores and validates dynamic axes during snapshot application", () => {
+    const originalState = createComfortToolState();
+    originalState.state.ui.selectedModel = ComfortModel.Utci;
+    originalState.state.ui.dynamicXAxis = "v";
+    originalState.state.ui.dynamicYAxis = "tr";
+
+    const snapshot = createShareStateSnapshot(originalState.state);
+
+    const restoredState = createComfortToolState();
+    applyShareSnapshotToState(restoredState.state, snapshot);
+    expect(restoredState.state.ui.dynamicXAxis).toBe("v");
+    expect(restoredState.state.ui.dynamicYAxis).toBe("tr");
+
+    // Test axis validation: Adaptive ASHRAE does not support 'v' or 'rh'
+    const invalidSnapshot: ShareStateSnapshot = {
+      ...snapshot,
+      selectedModel: ComfortModel.AdaptiveAshrae,
+      dynamicXAxis: "v",
+      dynamicYAxis: "rh",
+    };
+    const restoredState2 = createComfortToolState();
+    applyShareSnapshotToState(restoredState2.state, invalidSnapshot);
+    // Should fallback to valid dynamic axes for Adaptive ASHRAE (usually to / trm)
+    expect(restoredState2.state.ui.dynamicXAxis).not.toBe("v");
+    expect(restoredState2.state.ui.dynamicYAxis).not.toBe("rh");
   });
 
   it("rejects unsupported snapshot versions through the version-dispatch entrypoint", () => {

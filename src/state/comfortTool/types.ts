@@ -5,23 +5,12 @@
  */
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import type {
-  PlotlyChartResponseDto,
-  PmvChartSourceDto,
-  PmvResponseDto,
-  UtciChartSourceDto,
-  UtciResponseDto,
-  AdaptiveResponseDto,
-  AdaptiveChartSourceDto,
-  ThermalIndicesResponseDto,
-  ThermalIndicesChartSourceDto,
-} from "../../models/comfortDtos";
+import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
 import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { InputControlId as InputControlIdType, InputControlViewModel } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
-import { ComfortModel } from "../../models/comfortModels";
 import type { ShareStateSnapshot } from "./shareState";
 
 // State for a single input.
@@ -35,16 +24,11 @@ export type ModelOptionsByModelState = Record<ComfortModelType, ModelOptionsStat
 // State of the currently selected chart for each model.
 export type SelectedChartByModelState = Record<ComfortModelType, ChartIdType>;
 
-// todo AI ResultTone is a single union that grows every time a new model is added. Each model should define its own set of tone values (e.g. PmvTone, UtciTone, HeatIndexTone) and ResultTone should be a union of those. That way adding a new model only touches one file, not this shared type.
-// todo AI Note that this type also lives in the state layer but is imported by src/services/comfort/helpers.ts, which violates the architecture rule that services should not depend on state. Moving this type to src/models/ would fix that.
-// Defines the color coding for the result cells.
-export type ResultTone = "default" | "success" | "danger" | "warning" | "hiNoticeable" | "hiCaution" | "hiExtremeCaution" | "hiDanger" | "hiExtremeDanger" | "wcSafe" | "wc30min" | "wc10min" | "wc2min" | "pmvCold" | "pmvCool" | "pmvSlightlyCool" | "pmvNeutral" | "pmvSlightlyWarm" | "pmvWarm" | "pmvHot" | "utciExtremeCold" | "utciVeryStrongCold" | "utciStrongCold" | "utciModerateCold" | "utciSlightCold" | "utciNoStress" | "utciModerateHeat" | "utciStrongHeat" | "utciVeryStrongHeat" | "utciExtremeHeat";
-
 // View model for a single result cell.
 export type ResultCellViewModel = {
   text: string;
   subtext?: string;
-  tone?: ResultTone;
+  color?: string;
 };
 
 // View model for a single result section.
@@ -56,59 +40,35 @@ export type ResultSectionViewModel = {
 
 // Cache status for calculations.
 export type CalculationCacheStatus = "empty" | "stale" | "ready";
-// State for PMV results.
-export type PmvResultsState = Record<InputIdType, PmvResponseDto | null>;
-// State for UTCI results.
-export type UtciResultsState = Record<InputIdType, UtciResponseDto | null>;
 
-// Base type for model calculation caches.
-type ModelCalculationCacheBase = {
+// Generic model calculation cache decoupled from individual model definitions.
+export type ModelCalculationCache<ResultType, ChartSourceType> = {
   status: CalculationCacheStatus;
   lastVisibleInputIds: InputIdType[];
+  resultsByInput: Record<InputIdType, ResultType | null>;
+  chartSource: ChartSourceType | null;
 };
 
-// PMV Calculation Cache
-export type PmvCalculationCache = ModelCalculationCacheBase & {
-  resultsByInput: PmvResultsState;
-  chartSource: PmvChartSourceDto | null;
-};
-// todo why do we need a cache for each model?
+// Mapping of models to their respective generic calculation caches.
+export type ModelCalculationCacheByModelState = Record<
+  ComfortModelType,
+  ModelCalculationCache<unknown, unknown>
+>;
+// Reporting input range violations when switching models.
+export interface ModelSwitchViolation {
+  inputId: InputIdType;
+  controlId: InputControlIdType;
+  label: string;
+  currentValue: number;
+  minAllowed: number;
+  maxAllowed: number;
+  displayUnits: string;
+}
 
-// UTCI Calculation Cache
-export type UtciCalculationCache = ModelCalculationCacheBase & {
-  resultsByInput: UtciResultsState;
-  chartSource: UtciChartSourceDto | null;
-};
-
-// Adaptive Results State
-export type AdaptiveResultsState = Record<InputIdType, AdaptiveResponseDto | null>;
-
-// Adaptive Calculation Cache
-export type AdaptiveCalculationCache = ModelCalculationCacheBase & {
-  resultsByInput: AdaptiveResultsState;
-  chartSource: AdaptiveChartSourceDto | null;
-};
-
-// Thermal Indices Results State
-export type ThermalIndicesResultsState = Record<InputIdType, ThermalIndicesResponseDto | null>;
-
-// Thermal Indices Calculation Cache
-export type ThermalIndicesCalculationCache = ModelCalculationCacheBase & {
-  resultsByInput: ThermalIndicesResultsState;
-  chartSource: ThermalIndicesChartSourceDto | null;
-};
-
-// Mapping of models to their respective calculation caches.
-// todo AI This type is incomplete: Humidex and WindChill are missing. The controller hides this with an "as ModelCalculationCacheByModelState" cast in createCalculationCacheByModel(). Any access to state.ui.calculationCacheByModel[ComfortModel.Humidex] is untyped at runtime. This is a direct result of using per-model cache types instead of a single generic ModelCalculationCache<ResultType, ChartSourceType>.
-// todo this needs to be updated manually which is a bit concerning
-export type ModelCalculationCacheByModelState = {
-  [ComfortModel.Pmv]: PmvCalculationCache;
-  [ComfortModel.Utci]: UtciCalculationCache;
-  [ComfortModel.AdaptiveAshrae]: AdaptiveCalculationCache;
-  [ComfortModel.AdaptiveEn]: AdaptiveCalculationCache;
-  [ComfortModel.HeatIndex]: ThermalIndicesCalculationCache;
-  [ComfortModel.Humidex]: ThermalIndicesCalculationCache;
-  [ComfortModel.WindChill]: ThermalIndicesCalculationCache;
+// Temporary state for a model switch that has not yet been confirmed.
+export type PendingModelSwitch = {
+  targetModel: ComfortModelType;
+  violations: ModelSwitchViolation[];
 };
 
 // UI state for the comfort tool.
@@ -126,6 +86,7 @@ export type UiState = {
   isLoading: boolean;
   errorMessage: string;
   calculationCacheByModel: ModelCalculationCacheByModelState;
+  pendingModelSwitch: PendingModelSwitch | null;
 };
 
 // The main state slice for the comfort tool, containing both input data and UI state.
@@ -149,7 +110,9 @@ export type ComfortToolActions = {
   exportShareSnapshot: () => ShareStateSnapshot;
   applyShareSnapshot: (snapshot: ShareStateSnapshot) => void;
   updateInput: (inputId: InputIdType, controlId: InputControlIdType, rawValue: string) => void;
-  scheduleCalculation: (options?: { immediate?: boolean }) => void;
+  scheduleCalculation: (options?: { immediate?: boolean; force?: boolean }) => void;
+  confirmModelSwitch: () => void;
+  cancelModelSwitch: () => void;
 };
 
 // Selectors for retrieving computed values from the state.
@@ -163,7 +126,11 @@ export type ComfortToolSelectors = {
   getCurrentSelectedChart: () => ChartIdType;
   getCurrentChartHeightClass: () => string;
   getCurrentCacheStatus: () => CalculationCacheStatus;
+  getCurrentChartLockYAxis: () => boolean;
+  getCurrentChartLegendZones: () => ReadonlyArray<{ label: string; color: string }> | null;
+  getCurrentChartLegendTitle: () => string;
   getDynamicAxisOptions: () => FieldKeyType[];
+  getPendingModelSwitch: () => PendingModelSwitch | null;
 };
 
 // Controller that combines state, actions, and selectors for the comfort tool.

@@ -7,22 +7,16 @@
   import { buildShareUrl } from "../state/comfortTool/shareState";
   import type { ComfortToolController } from "../state/comfortTool/types";
 
+  interface Props {
+    toolState: ComfortToolController;
+  }
+
   let {
     toolState,
-  }: {
-    toolState: ComfortToolController;
-  } = $props();
+  }: Props = $props();
 
   let exportStatus = $state<"idle" | "copied" | "error">("idle");
   let exportStatusTimer: number | null = null;
-
-  function getLinkTarget(external?: boolean) {
-    return external ? "_blank" : undefined;
-  }
-
-  function getLinkRel(external?: boolean) {
-    return external ? "noreferrer" : undefined;
-  }
 
   function getExportLabel() {
     if (exportStatus === "copied") {
@@ -85,14 +79,14 @@
 
 <Navbar fluid={true} class="border-b border-stone-200 bg-white px-0 py-4">
   <div class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between px-4 sm:px-6 lg:px-8">
-    <NavBrand href="#overview" class="flex items-center gap-6 hover:opacity-95 transition-opacity">
+    <NavBrand href="/" class="flex items-center gap-6 hover:opacity-95 transition-opacity">
       <div class="header-logo-container">
         <Img src={siteBrand.headerLogoSrc} alt={siteBrand.eyebrow} class="header-logo" />
       </div>
 
       <div class="min-w-0">
         <Heading tag="h6" class="text-eyebrow uppercase tracking-[0.2em]">{siteBrand.eyebrow}</Heading>
-        <Heading tag="h1" class="truncate text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">{siteBrand.title}</Heading>
+        <Heading tag="h1" class="truncate text-lg font-semibold tracking-tight text-stone-950 sm:text-lg">{siteBrand.title}</Heading>
       </div>
     </NavBrand>
 
@@ -113,8 +107,8 @@
       {#each siteHeaderLinks as link}
         <NavLi
           href={link.href}
-          target={getLinkTarget(link.external)}
-          rel={getLinkRel(link.external)}
+          target={link.external ? "_blank" : undefined}
+          rel={link.external ? "noreferrer" : undefined}
           class="inline-block rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:border-stone-300 hover:text-stone-950 transition-colors shadow-sm"
         >
           {link.label}
@@ -123,5 +117,3 @@
     </NavUl>
   </div>
 </Navbar>
-
-

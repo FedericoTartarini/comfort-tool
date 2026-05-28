@@ -10,6 +10,16 @@
   import type { UnitSystem as UnitSystemType } from "../../models/units";
   import { predictClothingInsulation } from "../../services/comfort/clothingTools";
 
+  interface Props {
+    activeInputId: InputIdType;
+    visibleInputIds: InputIdType[];
+    unitSystem: UnitSystemType;
+    maxClothingValue: number;
+    onSelectInput: (inputId: InputIdType) => void;
+    onApplyClothingValue: (inputId: InputIdType, value: number) => void;
+    onClose: () => void;
+  }
+
   let {
     activeInputId,
     visibleInputIds,
@@ -18,15 +28,7 @@
     onSelectInput,
     onApplyClothingValue,
     onClose,
-  }: {
-    activeInputId: InputIdType;
-    visibleInputIds: InputIdType[];
-    unitSystem: UnitSystemType;
-    maxClothingValue: number;
-    onSelectInput: (inputId: InputIdType) => void;
-    onApplyClothingValue: (inputId: InputIdType, value: number) => void;
-    onClose: () => void;
-  } = $props();
+  }: Props = $props();
 
   let targetInputId = $state<InputId.Input1 | InputId.Input2 | InputId.Input3>(InputId.Input1);
   let predictiveOutdoorTemperature = $state<string>("");

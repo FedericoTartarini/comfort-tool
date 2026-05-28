@@ -27,7 +27,8 @@ export interface InputScatterTraceOptions {
   hovertemplate: string;
   markerSize?: number;
   color?: string;
-  customdata?: any[] | any[][];
+  hoverMetadata?: any[] | any[][];
+  hoverinfo?: string;
 }
 
 /**
@@ -46,7 +47,8 @@ export function buildInputScatterTrace({
   hovertemplate,
   markerSize = 12,
   color,
-  customdata,
+  hoverMetadata,
+  hoverinfo,
 }: InputScatterTraceOptions): PlotTraceDto {
   // Get the style and label for the input.
   const inputStyle = inputChartStyleById[inputId];
@@ -66,7 +68,8 @@ export function buildInputScatterTrace({
     line: {},
     marker: { color: markerColor, size: markerSize, line: { color: "#000000", width: 1.5 } },
     hovertemplate,
-    customdata,
+    hoverMetadata,
+    hoverinfo,
   };
 }
 
@@ -86,7 +89,10 @@ export interface ComfortPolygonTraceOptions {
   polygonY: number[];
   hovertemplate: string;
   isZone?: boolean;
-  customdata?: any[] | any[][];
+  isBackgroundZone?: boolean;
+  isComfortZone?: boolean;
+  hoverMetadata?: any[] | any[][];
+  hoverinfo?: string;
 }
 
 /**
@@ -104,7 +110,10 @@ export function buildComfortPolygonTrace({
   polygonY,
   hovertemplate,
   isZone,
-  customdata,
+  isBackgroundZone,
+  isComfortZone,
+  hoverMetadata,
+  hoverinfo,
 }: ComfortPolygonTraceOptions): PlotTraceDto {
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;
@@ -122,7 +131,10 @@ export function buildComfortPolygonTrace({
     marker: {},
     hovertemplate,
     isZone,
-    customdata,
+    isBackgroundZone,
+    isComfortZone,
+    hoverMetadata,
+    hoverinfo,
   };
 }
 
@@ -140,6 +152,9 @@ export interface LineTraceOptions {
   y: number[];
   color: string;
   hovertemplate: string;
+  text?: string[];
+  hoverMetadata?: any[] | any[][];
+  hoverinfo?: string;
 }
 
 /**
@@ -156,6 +171,9 @@ export function buildLineTrace({
   y,
   color,
   hovertemplate,
+  text,
+  hoverMetadata,
+  hoverinfo,
 }: LineTraceOptions): PlotTraceDto {
   return {
     type: "scatter",
@@ -167,6 +185,9 @@ export function buildLineTrace({
     line: { color, width: 1.2 },
     marker: {},
     hovertemplate,
+    text,
+    hoverMetadata,
+    hoverinfo,
   };
 }
 
@@ -349,7 +370,10 @@ export interface ContourTraceOptions {
   opacity?: number;
   line?: any;
   isZone?: boolean;
-  customdata?: any[][];
+  isBackgroundZone?: boolean;
+  isComfortZone?: boolean;
+  hoverinfo?: string;
+  hoverMetadata?: any[][];
 }
 
 /**
@@ -374,7 +398,10 @@ export function buildContourTrace({
   opacity,
   line,
   isZone,
-  customdata,
+  isBackgroundZone,
+  isComfortZone,
+  hoverinfo,
+  hoverMetadata,
 }: ContourTraceOptions): PlotTraceDto {
   return {
     type: "contour",
@@ -391,9 +418,11 @@ export function buildContourTrace({
     colorbar,
     opacity,
     line,
-    hoverinfo: "all",
+    hoverinfo: hoverinfo ?? "all",
     hovertemplate,
     isZone,
-    customdata,
+    isBackgroundZone,
+    isComfortZone,
+    hoverMetadata,
   };
 }

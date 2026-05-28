@@ -51,8 +51,11 @@ export function toPlotlyFigure(chart: PlotlyChartResponseDto): {
 
   // Return the plotly figure
   return {
-    // Traces data
-    data: chart.traces,
+    // Traces data, mapping internal hoverMetadata to Plotly's customdata attribute
+    data: chart.traces.map((trace) => {
+      const { hoverMetadata, ...rest } = trace;
+      return { ...rest, customdata: hoverMetadata };
+    }),
     // Figure layout
     layout: {
       // Spread all base "layout" properties (like title, x-axis, y-axis),
@@ -69,7 +72,7 @@ export function toPlotlyFigure(chart: PlotlyChartResponseDto): {
     config: {
       responsive: true,
       displaylogo: false,
-      displayModeBar: false,
+      displayModeBar: "hover",
     },
   };
 }

@@ -1,11 +1,12 @@
 import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
-import type { ResultSectionViewModel, ResultTone, ModelOptionsState } from "../types";
+import type { ResultSectionViewModel, ModelOptionsState, ResultCellViewModel } from "../types";
 import type { ComfortModelDefinition, ModelOptionChangeHandler } from "./index";
 import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
+import type { ThermalZone } from "../../../models/thermalZone";
 
 /**
  * Utility to verify if a value is a non-null object (and not an array).
@@ -42,7 +43,7 @@ export function buildResultSection<T>(
   title: string,
   resultsByInput: Record<InputIdType, T | null>,
   visibleInputIds: InputIdType[],
-  formatter: (result: T) => { text: string; tone: ResultTone },
+  formatter: (result: T) => ResultCellViewModel,
   group?: string,
 ): ResultSectionViewModel {
   return {
@@ -58,7 +59,7 @@ export function buildResultSection<T>(
 
       acc[inputId] = formattedValue;
       return acc;
-    }, {} as Record<InputIdType, { text: string; tone: ResultTone } | null>),
+    }, {} as Record<InputIdType, ResultCellViewModel | null>),
   };
 }
 
@@ -74,6 +75,10 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
   private config: Partial<ComfortModelDefinition<ResultType, ChartSourceType>> = {
     controls: [],
     optionHandlersByKey: {},
+    zones: [],
+    legendChartIds: [],
+    legendTitle: "",
+    lockYAxisChartIds: [],
   };
 
   /**
@@ -82,6 +87,24 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   constructor(id: ComfortModelType) {
     this.config.id = id;
+  }
+
+  /**
+   * Sets the display label for the comfort model in the model selection menu.
+   * @param label Display label string.
+   */
+  setLabel(label: string): this {
+    this.config.label = label;
+    return this;
+  }
+
+  /**
+   * Sets the detailed description for the comfort model in the model selection menu.
+   * @param description Description string.
+   */
+  setDescription(description: string): this {
+    this.config.description = description;
+    return this;
   }
 
   /**
@@ -166,6 +189,51 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   setDynamicAxisFields(fields: FieldKeyType[]): this {
     this.config.dynamicAxisFields = fields;
+    return this;
+  }
+
+  /**
+   * Defines the boundary zones associated with this model.
+   * @param zones Array of ThermalZone instances.
+   */
+  setZones(zones: ThermalZone[]): this {
+    this.config.zones = zones;
+    return this;
+  }
+
+  /**
+   * Defines the chart IDs for which this model shows a zone legend.
+   * @param chartIds Array of ChartId values.
+   */
+  setLegendChartIds(chartIds: ChartIdType[]): this {
+    this.config.legendChartIds = chartIds;
+    return this;
+  }
+
+  /**
+   * Sets the display title for the legend.
+   * @param title Title string.
+   */
+  setLegendTitle(title: string): this {
+    this.config.legendTitle = title;
+    return this;
+  }
+
+  /**
+   * Defines the chart IDs that lock the dynamic Y-axis.
+   * @param chartIds Array of ChartId values.
+   */
+  setLockYAxisChartIds(chartIds: ChartIdType[]): this {
+    this.config.lockYAxisChartIds = chartIds;
+    return this;
+  }
+
+  /**
+   * Defines a custom synchronization hook for the model.
+   * @param synchronizer Function that returns a behavior patch.
+   */
+  setSynchronizer(synchronizer: ComfortModelDefinition<ResultType, ChartSourceType>["synchronize"]): this {
+    this.config.synchronize = synchronizer;
     return this;
   }
 

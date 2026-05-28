@@ -7,6 +7,19 @@
   import type { InputId as InputIdType } from "../../models/inputSlots";
   import type { ClothingSelectionSection } from "../../services/comfort/clothingTools";
 
+  interface Props {
+    visibleInputIds: InputIdType[];
+    targetInputId: InputIdType;
+    selectedCount: number;
+    totalClothingValue: number;
+    maxClothingValue: number;
+    selectedSections: ClothingSelectionSection[];
+    onSelectTargetInput: (inputId: InputIdType) => void;
+    onRemoveGarment: (garmentId: string) => void;
+    onClearSelection: () => void;
+    onApply: () => void;
+  }
+
   let {
     visibleInputIds,
     targetInputId,
@@ -18,18 +31,7 @@
     onRemoveGarment,
     onClearSelection,
     onApply,
-  }: {
-    visibleInputIds: InputIdType[];
-    targetInputId: InputIdType;
-    selectedCount: number;
-    totalClothingValue: number;
-    maxClothingValue: number;
-    selectedSections: ClothingSelectionSection[];
-    onSelectTargetInput: (inputId: InputIdType) => void;
-    onRemoveGarment: (garmentId: string) => void;
-    onClearSelection: () => void;
-    onApply: () => void;
-  } = $props();
+  }: Props = $props();
 
   const targetInputMeta = $derived(inputDisplayMetaById[targetInputId]);
   const selectionSummaryLabel = $derived(
