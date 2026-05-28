@@ -149,6 +149,7 @@ function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
     [ComfortModel.HeatIndex]: createEmptyCalculationCache(),
     [ComfortModel.Humidex]: createEmptyCalculationCache(),
     [ComfortModel.WindChill]: createEmptyCalculationCache(),
+  //   todo see my other comments about having to update this manually. I'm quite concerned here because I don't know exactly what the code is doing but in many parts of the codes we need to create an empty cache and then define all the different models. This is going to be very hard to maintain. we should have one central source of truth which tells us which models are included in the tool.
   } as ModelCalculationCacheByModelState;
 }
 
@@ -192,6 +193,7 @@ export function createComfortToolState(): ComfortToolController {
 
     const cache = state.ui.calculationCacheByModel[modelId];
     const nextStatus = cache.chartSource ? "stale" : "empty";
+    // todo AI The "as any" cast here is a symptom of the per-model cache types. If ModelCalculationCache were a single generic type, this assignment would type-check without casting.
     state.ui.calculationCacheByModel[modelId] = {
       ...cache,
       status: nextStatus,
@@ -285,6 +287,7 @@ export function createComfortToolState(): ComfortToolController {
         return [];
       }
 
+      // todo AI Same problem: the generic type parameters are lost here so we cast to any. A generic ModelCalculationCache would fix this.
       return (getActiveModelConfig() as any).buildResultSections(
         cache.resultsByInput,
         getVisibleInputIds(),
@@ -295,6 +298,7 @@ export function createComfortToolState(): ComfortToolController {
     },
     getCurrentChartResult: () => {
       const cache = getCurrentModelCache();
+      // todo AI Same problem as above.
       return (getActiveModelConfig() as any).buildChartResult(
         getCurrentSelectedChartId(),
         cache.chartSource,

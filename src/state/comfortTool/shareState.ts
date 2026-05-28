@@ -36,9 +36,10 @@ const inputIdValues = new Set<InputIdType>(Object.values(InputId));
 const unitSystemValues = new Set<UnitSystemType>(Object.values(UnitSystem));
 const fieldKeyValues = Object.values(FieldKey);
 
+// todo AI normalizeCompareInputIds is defined identically in createComfortToolState.svelte.ts. One copy should be removed. Since this logic is stateless and not UI-specific, keeping it here and importing it from the controller is probably the right move.
 /**
  * Cleanses and reconstructs the compare slots array.
- * Ensures that Input 1 is always present as the baseline and that other elements 
+ * Ensures that Input 1 is always present as the baseline and that other elements
  * strictly conform to the canonical `inputOrder` structure, dropping invalid IDs.
  * @param inputIds The unsorted or incomplete list of input IDs.
  * @returns A sanitized and ordered array of input IDs.

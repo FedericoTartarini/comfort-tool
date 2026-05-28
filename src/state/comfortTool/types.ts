@@ -35,8 +35,10 @@ export type ModelOptionsByModelState = Record<ComfortModelType, ModelOptionsStat
 // State of the currently selected chart for each model.
 export type SelectedChartByModelState = Record<ComfortModelType, ChartIdType>;
 
+// todo AI ResultTone is a single union that grows every time a new model is added. Each model should define its own set of tone values (e.g. PmvTone, UtciTone, HeatIndexTone) and ResultTone should be a union of those. That way adding a new model only touches one file, not this shared type.
+// todo AI Note that this type also lives in the state layer but is imported by src/services/comfort/helpers.ts, which violates the architecture rule that services should not depend on state. Moving this type to src/models/ would fix that.
 // Defines the color coding for the result cells.
-export type ResultTone = "default" | "success" | "danger" | "warning" | "hiCaution" | "hiExtremeCaution" | "hiDanger" | "hiExtremeDanger" | "wcSafe" | "wc30min" | "wc10min" | "wc2min" | "pmvCold" | "pmvCool" | "pmvSlightlyCool" | "pmvNeutral" | "pmvSlightlyWarm" | "pmvWarm" | "pmvHot" | "utciExtremeCold" | "utciVeryStrongCold" | "utciStrongCold" | "utciModerateCold" | "utciSlightCold" | "utciNoStress" | "utciModerateHeat" | "utciStrongHeat" | "utciVeryStrongHeat" | "utciExtremeHeat";
+export type ResultTone = "default" | "success" | "danger" | "warning" | "hiNoticeable" | "hiCaution" | "hiExtremeCaution" | "hiDanger" | "hiExtremeDanger" | "wcSafe" | "wc30min" | "wc10min" | "wc2min" | "pmvCold" | "pmvCool" | "pmvSlightlyCool" | "pmvNeutral" | "pmvSlightlyWarm" | "pmvWarm" | "pmvHot" | "utciExtremeCold" | "utciVeryStrongCold" | "utciStrongCold" | "utciModerateCold" | "utciSlightCold" | "utciNoStress" | "utciModerateHeat" | "utciStrongHeat" | "utciVeryStrongHeat" | "utciExtremeHeat";
 
 // View model for a single result cell.
 export type ResultCellViewModel = {
@@ -70,6 +72,7 @@ export type PmvCalculationCache = ModelCalculationCacheBase & {
   resultsByInput: PmvResultsState;
   chartSource: PmvChartSourceDto | null;
 };
+// todo why do we need a cache for each model?
 
 // UTCI Calculation Cache
 export type UtciCalculationCache = ModelCalculationCacheBase & {
@@ -96,12 +99,16 @@ export type ThermalIndicesCalculationCache = ModelCalculationCacheBase & {
 };
 
 // Mapping of models to their respective calculation caches.
+// todo AI This type is incomplete: Humidex and WindChill are missing. The controller hides this with an "as ModelCalculationCacheByModelState" cast in createCalculationCacheByModel(). Any access to state.ui.calculationCacheByModel[ComfortModel.Humidex] is untyped at runtime. This is a direct result of using per-model cache types instead of a single generic ModelCalculationCache<ResultType, ChartSourceType>.
+// todo this needs to be updated manually which is a bit concerning
 export type ModelCalculationCacheByModelState = {
   [ComfortModel.Pmv]: PmvCalculationCache;
   [ComfortModel.Utci]: UtciCalculationCache;
   [ComfortModel.AdaptiveAshrae]: AdaptiveCalculationCache;
   [ComfortModel.AdaptiveEn]: AdaptiveCalculationCache;
   [ComfortModel.HeatIndex]: ThermalIndicesCalculationCache;
+  [ComfortModel.Humidex]: ThermalIndicesCalculationCache;
+  [ComfortModel.WindChill]: ThermalIndicesCalculationCache;
 };
 
 // UI state for the comfort tool.

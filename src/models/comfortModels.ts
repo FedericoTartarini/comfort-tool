@@ -10,6 +10,7 @@ export const ComfortModel = {
 
 export type ComfortModel = (typeof ComfortModel)[keyof typeof ComfortModel];
 
+// todo AI comfortModelOrder and comfortModelMetaById need to be kept in sync with the comfortModelConfigs object in src/state/comfortTool/modelConfigs/index.ts. If you add a model here but forget to register it in modelConfigs (or vice versa), the app will silently break at runtime. Ideally, the model configs would be the single registration point and this order/meta would be derived from them.
 // The order in which the comfort models are displayed in the dropdown.
 export const comfortModelOrder: ComfortModel[] = [
   ComfortModel.Pmv,

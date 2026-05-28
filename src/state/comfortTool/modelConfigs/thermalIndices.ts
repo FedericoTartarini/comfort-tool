@@ -12,7 +12,6 @@ import type { ThermalIndicesChartInputsRequestDto, ThermalIndicesChartSourceDto,
 import { FieldKey } from "../../../models/fieldKeys";
 import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
 import { InputControlId } from "../../../models/inputControls";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { createControlBehavior, buildDefaultPresentation } from "../../../services/comfort/controls/controlBehaviors";
 import { calculateThermalIndices } from "../../../services/comfort/thermalIndices";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../../services/units/index";
@@ -25,6 +24,10 @@ import {
   HUMIDEX_DANGEROUS,
   HUMIDEX_STROKE_PROBABLE,
 } from "../../../services/comfort/helpers";
+
+// todo See my previous comment in the thermal indexes.ts file inside the services/comfort we should not have one single file for three different thermal indexes but we should have three separate files.
+
+// todo I am quite confused here Why we need to have this file when we have another file with the same name inside Services/Comfort?
 
 // Shared helpers
 
@@ -89,6 +92,7 @@ heatIndexBuilder.addControl({
 });
 
 heatIndexBuilder.setCalculator((state, visibleInputIds) => {
+  // todo there seems to be many code repetitions for these three indices in the code
   const resultsByInput = createEmptyResults<ThermalIndicesResponseDto>();
   visibleInputIds.forEach((inputId) => {
     resultsByInput[inputId] = calculateThermalIndices(toThermalIndicesRequest(state, inputId));

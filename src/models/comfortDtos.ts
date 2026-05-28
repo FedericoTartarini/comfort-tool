@@ -72,6 +72,7 @@ export interface UtciResponseDto {
   source: CalculationSource;
 }
 
+// todo AI ThermalIndicesRequestDto and ThermalIndicesResponseDto bundle three separate models (Heat Index, Humidex, Wind Chill) into one DTO. This means the Heat Index calculator receives a wind speed field it does not use, and the Humidex calculator receives fields it ignores. Each model should have its own request and response DTO once the calculation files are split.
 // Thermal Indices Request DTO, contains heat index, humidex and wind chill index
 export interface ThermalIndicesRequestDto {
   tdb: number;
