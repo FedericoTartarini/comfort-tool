@@ -103,9 +103,9 @@ const toneToClass = Object.fromEntries(zones.map(z => [z.id, z.cssClass]));
 ```
 Do not define threshold constants separately and then repeat the same number in the zone array.
 
-## Planned Architecture: comfortModels/
+## Architecture: comfortModels/
 
-The intended target architecture places one file per model in `src/comfortModels/` (e.g. `src/comfortModels/pmv.ts`). Each file is the single source of truth for that model: zones, tones, calculation, chart builders, input controls. See `26-05-11-review-federico.md` for the implementation plan. New model work should follow this structure once it is in place.
+Each model lives in one file in `src/comfortModels/` (e.g. `src/comfortModels/pmv.ts`) and is the single source of truth for that model: zones, tones, calculation, chart builders, input controls. New model work must follow this structure. The next phase of work (shared chart engine, Compliance/Explore modes, input sub-tools) is specified in `26-06-29-architecture-brief.md`.
 
 ## Done Criteria
 
