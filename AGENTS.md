@@ -14,12 +14,13 @@ Primary source layout:
 
 ```text
 src/
+  comfortModels/          one file per comfort model; model-specific config, zones, calculations, charts
   components/
     chart/                 chart rendering and export UI
     input-panel/           comfort-tool input subcomponents
   models/                  centralized domain constants and metadata
   services/
-    comfort/               thermal-comfort calculations, adapters, chart builders
+    comfort/               shared comfort helpers, psychrometrics, chart scaffolding, adapters
     units/                 SI <-> active-unit-system conversion helpers
   state/
     comfortTool/           controller, model configs, derived state, share state
@@ -37,35 +38,32 @@ src/state/comfortTool/types.ts
 
 ## Architecture Priorities
 
-- Keep imports moving in one direction:
+- Keep cross-layer imports constrained to these lanes:
   - `views` -> `components`, `state`
   - `components` -> `state`, `models`, lightweight `services`
-  - `state` -> `models`, `services`
+  - `state` -> `models`, `services`; the model registry imports registered configs from `comfortModels`
+  - `comfortModels` -> `models`, `services`, and builder helpers from `state/comfortTool/modelConfigs`
   - `services` -> `models`
 - Canonical shared domain state stays in SI units.
 - Views compose pages.
 - Components handle rendering and interaction.
 - State orchestrates shared UI state, mode transitions, request building, and calculation scheduling.
-- Services own calculations, derived-domain logic, and chart generation.
+- `comfortModels` own model-specific zones, request mapping, calculations, result sections, and chart builders.
+- Services own reusable calculations, derived-domain logic, unit conversion, and shared chart generation helpers.
 
 ## Calculation Ownership
 
-Thermal-comfort and psychrometric logic belongs in `src/services/comfort/**`.
+Model-specific thermal-comfort logic belongs in `src/comfortModels/**`. Shared helpers belong in `src/services/comfort/**`.
 
-- All PMV / PPD computation belongs in `src/services/comfort/**`.
-- All UTCI computation belongs in `src/services/comfort/**`.
-- All comfort-zone solving belongs in `src/services/comfort/**`.
-- All psychrometric and stress-band derivation belongs in `src/services/comfort/**`.
-- All chart-building logic belongs in `src/services/comfort/**`.
+- PMV / PPD, UTCI, adaptive, heat-index, humidex, and wind-chill model calculations may live in their model files under `src/comfortModels/**`.
+- Shared psychrometric helpers, stress-band derivation, reusable chart scaffolding, reference values, adapters, and cross-model utilities belong in `src/services/comfort/**`.
 - State and components must stay free of raw formula implementations.
+- If a helper is missing upstream, keep a thin local adapter beside the model when it is model-specific, or in `src/services/comfort/**` when it is reusable.
 
-Use `jsthermalcomfort` where it cleanly covers the need. If a helper is missing upstream, keep a thin local adapter and place it in `src/services/comfort/**`.
+All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or `src/services/comfort/**`.
 
-All direct `jsthermalcomfort` imports must stay inside `src/services/comfort/**`.
-
-- Do not add new `jsthermalcomfort` imports in `src/state/**`, `src/components/**`, or top-level `src/services/*.ts`.
-- `src/services/advancedPmvInputs.ts` is a legacy exception today, not a pattern to extend.
-- When touching legacy wrappers, prefer moving them under `src/services/comfort/**` rather than adding more service code beside the boundary.
+- Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/components/**`, `src/views/**`, or top-level `src/services/*.ts`.
+- When touching legacy wrappers or shared helpers, prefer moving reusable comfort logic under `src/services/comfort/**` rather than adding more top-level service files.
 
 ## Conversion Ownership
 
@@ -99,7 +97,7 @@ When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createCom
 
 ## Model Extension Strategy
 
-New models should be added through config-driven registration, not by hardcoding another controller slice.
+New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; the builder and registry live in `src/state/comfortTool/modelConfigs/**`.
 
 A model definition should own:
 
@@ -111,7 +109,6 @@ A model definition should own:
 - calculation execution
 - chart list and chart builders
 - comfort zone definitions (as `ThermalZone` instances — see below)
-- tone-to-CSS-class map derived from those zones
 
 Use centralized constants and typed metadata from `src/models/` for:
 
@@ -122,45 +119,44 @@ Use centralized constants and typed metadata from `src/models/` for:
 
 Do not introduce new raw domain strings for those concepts.
 
+## Next Architecture Direction
+
+`26-06-29-architecture-brief.md` describes the next target architecture; these concepts are not all implemented yet.
+
+- Compliance and Explore should share one chart engine, with Compliance as the constrained version.
+- Future model declarations should add `modes`, `chartableOutputs`, and optional `complianceSpec` through the builder instead of controller branches.
+- Future constants such as `ModelOutputKey`, `ModifierId`, and `ChartMode` should be added under `src/models/` before use; do not inline raw strings.
+- Future input sub-tools should use an `InputModifier` pattern: keep base SI input separate from effective SI input, apply reversible modifier patches, and declare supported modifiers per model.
+- Keep Time-series out of Analysis state until it is explicitly implemented.
+
 ## Comfort Zone Design
 
 Comfort zones are defined using the `ThermalZone` class in `src/models/thermalZone.ts`:
 
 ```ts
-export class ThermalZone {
-  constructor(
-    public readonly id: string,
-    public readonly label: string,
-    public readonly min: number,
-    public readonly max: number,
-    public readonly color: string,   // Plotly / hex color
-    public readonly cssClass: string, // Tailwind class for UI
-  ) {}
-  contains(value: number): boolean {
-    return value >= this.min && value < this.max;
-  }
-}
+new ThermalZone({
+  label: "Neutral",
+  min: -0.5,
+  max: 0.5,
+  color: "#f2f2f2",
+  textColor: "#475569",
+  cssClass: "neutral",
+  category: "no thermal stress",
+});
 ```
 
-Zone boundaries appear **once** — as constructor arguments. Do not also define them as separate named constants. The `toneToClass` map for a model is derived from its zones:
-
-```ts
-const toneToClass = Object.fromEntries(zones.map(z => [z.id, z.cssClass]));
-```
+Zone boundaries appear **once** — as `min` / `max` values in the zone config. Do not also define them as separate named constants. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label by `ThermalZone`.
 
 ## Generic Calculation Cache
 
 Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not add new named per-model cache types (`PmvCalculationCache`, etc.). At the state controller level, store caches as `Record<ComfortModelType, ModelCalculationCache<unknown, unknown>>` — the controller does not need to know what `R` and `C` are.
 
-## ResultTone
-
-`ResultTone` must live in `src/models/` (not `src/state/`) so that services can import it without breaking the import direction rule. Each model defines its own tone type (e.g. `PmvTone`), and `ResultTone` is a union of all of them.
-
 ## Branching And Duplication
 
 There is already repeated PMV mode branching pressure in places like:
 
-- `src/state/comfortTool/modelConfigs/pmv.ts`
+- `src/comfortModels/pmv.ts`
+- `src/comfortModels/adaptive.ts`
 - `src/components/input-panel/InputFieldRow.svelte`
 - share/import-export synchronization paths
 
@@ -220,7 +216,7 @@ A change in this frontend is done when:
 - production build passes
 - SI remains the canonical shared state
 - no new raw domain strings were introduced
-- no new `jsthermalcomfort` imports were added outside `src/services/comfort/**`
+- no new direct `jsthermalcomfort` imports were added outside `src/comfortModels/**` or `src/services/comfort/**`
 - no new scattered conversion helpers were added outside the chosen conversion module family
 - model or chart additions do not expand the controller with more hardcoded parallel properties unless explicitly approved
 - module boundaries remain clear

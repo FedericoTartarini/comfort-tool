@@ -26,10 +26,11 @@ Frontend-only — no backend in this repo.
 
 ```
 src/
+  comfortModels/    one file per comfort model; model-specific config, zones, calculations, charts
   components/       rendering and interaction (input-panel/, chart/, shared UI)
   models/           centralized domain constants and metadata (field keys, model IDs, units, etc.)
   services/
-    comfort/        all thermal-comfort calculations, chart builders, clothing tools
+    comfort/        shared comfort helpers, psychrometrics, chart scaffolding, clothing tools
     units/          SI <-> IP conversion helpers
   state/
     comfortTool/    controller, model configs, derived state, URL share state
@@ -39,17 +40,18 @@ src/
 
 ## Architecture Rules
 
-**Import direction** — one-way only:
+**Import direction** — keep cross-layer imports constrained to these lanes:
 - `views` → `components`, `state`
 - `components` → `state`, `models`, lightweight `services`
-- `state` → `models`, `services`
+- `state` → `models`, `services`; the model registry imports registered configs from `comfortModels`
+- `comfortModels` → `models`, `services`, and builder helpers from `state/comfortTool/modelConfigs`
 - `services` → `models`
 
 **Canonical state is always SI.** All user input is converted to SI on entry; all calculations run in SI; display converts from SI via `src/services/units/`.
 
-**Calculation ownership:** All thermal-comfort and psychrometric logic (PMV, UTCI, adaptive, stress bands, chart builders) belongs in `src/services/comfort/**`. State and components must not contain raw formula implementations.
+**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/comfortModels/**`. Shared psychrometric helpers, stress-band derivation, chart scaffolding, adapters, reference values, and cross-model utilities belong in `src/services/comfort/**`. State and components must not contain raw formula implementations.
 
-**`jsthermalcomfort` imports** are restricted to `src/services/comfort/**`. Do not add them to `src/state/**`, `src/components/**`, or top-level service files.
+**`jsthermalcomfort` imports** are restricted to `src/comfortModels/**` and `src/services/comfort/**`. Do not add them to `src/state/**`, `src/components/**`, `src/views/**`, or top-level service files.
 
 **Unit conversion** belongs in `src/services/units/`. Do not scatter temperature, speed, humidity-ratio, or vapor-pressure conversions across components or state helpers.
 
@@ -67,9 +69,19 @@ When touching state or types, prefer keyed generic records over adding more mode
 
 ## Model Configuration
 
-Models are registered through config objects in `src/state/comfortTool/modelConfigs/`. Each config owns: input field list, default inputs, derived-input sync, request builder, calculation function, chart list, and chart builders. New models must follow this config-driven pattern — do not add another hardcoded controller slice.
+Model definitions live in `src/comfortModels/`. The builder and registry live in `src/state/comfortTool/modelConfigs/`. Each model config owns: input field list, default inputs, derived-input sync, request builder, calculation function, chart list, and chart builders. New models must follow this config-driven pattern — do not add another hardcoded controller slice.
 
 Use constants from `src/models/` for model identifiers, field identifiers, chart identifiers, and compare-input identifiers. Do not introduce new raw domain strings for these concepts.
+
+## Next Architecture Direction
+
+`26-06-29-architecture-brief.md` describes the target architecture for upcoming work; these concepts are not all implemented today.
+
+- Compliance and Explore should share one chart engine, with Compliance as the constrained version.
+- Future model declarations should add `modes`, `chartableOutputs`, and optional `complianceSpec` through the builder instead of controller branches.
+- Future constants such as `ModelOutputKey`, `ModifierId`, and `ChartMode` should be added under `src/models/` before use; do not inline raw strings.
+- Future input sub-tools should use an `InputModifier` pattern: keep base SI input separate from effective SI input, apply reversible modifier patches, and declare supported modifiers per model.
+- Keep Time-series out of Analysis state until it is explicitly implemented.
 
 ## UI Conventions
 
@@ -85,7 +97,7 @@ Use constants from `src/models/` for model identifiers, field identifiers, chart
 - Use Svelte 5 rune conventions (`$state`, `$derived`, `$derived.by`) for new code.
 - 2-space indentation; `camelCase` for variables/functions; `PascalCase` for component filenames.
 - Prefer clear names and straightforward types over abstract type patterns.
-- `strict` mode is off in tsconfig — don't rely on it.
+- `strict` mode is on in `tsconfig.json`; keep new code compatible with it.
 - Declare component props using a named `interface Props` above the destructuring — not inline in `$props()`:
   ```svelte
   interface Props { title: string; isLoading: boolean; }
@@ -97,15 +109,23 @@ Use constants from `src/models/` for model identifiers, field identifiers, chart
 
 ## Comfort Zone Design
 
-Zones use the `ThermalZone` class in `src/models/thermalZone.ts`. Each boundary value appears exactly once, as a constructor argument. The `toneToClass` map is derived from the zones array:
+Zones use the `ThermalZone` class in `src/models/thermalZone.ts`. Each boundary value appears exactly once, as `min` / `max` values in the config object:
 ```ts
-const toneToClass = Object.fromEntries(zones.map(z => [z.id, z.cssClass]));
+new ThermalZone({
+  label: "Neutral",
+  min: -0.5,
+  max: 0.5,
+  color: "#f2f2f2",
+  textColor: "#475569",
+  cssClass: "neutral",
+  category: "no thermal stress",
+});
 ```
-Do not define threshold constants separately and then repeat the same number in the zone array.
+Do not define threshold constants separately and then repeat the same number in the zone array. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label by `ThermalZone`.
 
 ## Architecture: comfortModels/
 
-Each model lives in one file in `src/comfortModels/` (e.g. `src/comfortModels/pmv.ts`) and is the single source of truth for that model: zones, tones, calculation, chart builders, input controls. New model work must follow this structure. The next phase of work (shared chart engine, Compliance/Explore modes, input sub-tools) is specified in `26-06-29-architecture-brief.md`.
+Each model lives in one file in `src/comfortModels/` (e.g. `src/comfortModels/pmv.ts`) and is the single source of truth for that model: zones, calculation, request mapping, chart builders, result sections, and input controls. New model work must follow this structure. The next phase of work (shared chart engine, Compliance/Explore modes, input sub-tools) is specified in `26-06-29-architecture-brief.md`.
 
 ## Done Criteria
 
@@ -114,6 +134,6 @@ A change is complete when:
 - `npm run build` passes
 - SI remains the canonical shared state
 - No new raw domain strings were introduced for model/field/chart IDs
-- No new `jsthermalcomfort` imports outside `src/services/comfort/**`
+- No new direct `jsthermalcomfort` imports outside `src/comfortModels/**` or `src/services/comfort/**`
 - No new scattered conversion helpers outside `src/services/units/`
 - Model or chart additions do not expand the controller with more hardcoded parallel properties (unless explicitly approved)
