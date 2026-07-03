@@ -4,7 +4,15 @@ import { inputDefaultsById, InputId } from "../../models/inputSlots";
 import { AirSpeedInputMode, HumidityInputMode, OptionKey } from "../../models/inputModes";
 import { DerivedInputId, FieldKey } from "../../models/fieldKeys";
 import { UnitSystem } from "../../models/units";
-import { buildComparePsychrometricChart, buildComfortZonePolygon, pmv_ppd_ashrae, PMV_COMFORT_LIMIT, calculateComfortZone } from "../../comfortModels/pmv";
+import {
+  buildComparePsychrometricChart,
+  buildComfortZonePolygon,
+  buildPmvDynamicChart,
+  pmv_ppd_ashrae,
+  PMV_COMFORT_LIMIT,
+  calculateComfortZone,
+  type PmvChartSourceDto,
+} from "../../comfortModels/pmv";
 import { buildUtciStressChart, calculateUtci } from "../../comfortModels/utci";
 import {
   deriveRelativeAirSpeedFromMeasured,
@@ -157,8 +165,130 @@ describe("comfort services", () => {
     );
 
     expect(psychrometricChart.traces.length).toBeGreaterThan(1);
+    expect(psychrometricChart.traces[0].name).toContain("PMV");
+    expect(psychrometricChart.traces[0].z).toHaveLength(50);
+    expect(psychrometricChart.traces[0].z?.[0]).toHaveLength(50);
+    expect(psychrometricChart.traces[0].isBackgroundZone).toBe(true);
+    expect(psychrometricChart.traces.filter((trace) => trace.name.startsWith("RH "))).toHaveLength(6);
+    const comfortZoneTrace = psychrometricChart.traces.find((trace) => trace.name.includes("comfort zone"));
+    expect(comfortZoneTrace?.isComfortZone).toBe(true);
+    expect(psychrometricChart.traces.at(-1)?.type).toBe("scatter");
+    expect(psychrometricChart.traces.slice(0, 8).map((trace) => trace.name)).toEqual([
+      "PMV (ASHRAE-55) Zones",
+      "RH 10%",
+      "RH 20%",
+      "RH 30%",
+      "RH 40%",
+      "RH 50%",
+      "RH 60%",
+      "Input 1 comfort zone",
+    ]);
+    expect(psychrometricChart.traces[8].name).toBe("Input 1");
     expect(utciChart.traces).toHaveLength(3);
     expect(utciChart.annotations.length).toBeGreaterThan(0);
+  });
+
+  it("keeps PMV psychrometric supersaturated grid cells empty", () => {
+    const psychrometricChart = buildComparePsychrometricChart(
+      {
+        inputs: {
+          [InputId.Input1]: comfortZonePayload,
+        },
+        chartRange: {
+          tdbMin: 10,
+          tdbMax: 40,
+          tdbPoints: 121,
+          humidityRatioMin: 0,
+          humidityRatioMax: 0.03,
+        },
+        rhCurves: [10, 20, 30, 40, 50, 60],
+      },
+    );
+
+    expect(Number.isNaN(psychrometricChart.traces[0].z?.[49]?.[0])).toBe(true);
+    expect(psychrometricChart.traces[0].text?.[49]?.[0]).toBe("");
+  });
+
+  it("builds PMV dynamic chart with selected axes and input point", () => {
+    const dynamicChart = buildPmvDynamicChart(
+      {
+        inputs: {
+          [InputId.Input1]: comfortZonePayload,
+        },
+        chartRange: {
+          tdbMin: 10,
+          tdbMax: 40,
+          tdbPoints: 121,
+          humidityRatioMin: 0,
+          humidityRatioMax: 0.03,
+        },
+        rhCurves: [10, 20, 30, 40, 50, 60],
+      },
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+    );
+    const inputTrace = dynamicChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
+
+    expect(dynamicChart.traces[0].name).toBe("PMV (ASHRAE-55)");
+    expect(dynamicChart.traces[0].isBackgroundZone).toBe(true);
+    expect(dynamicChart.traces[0].z).toHaveLength(50);
+    expect(dynamicChart.traces[0].z?.[0]).toHaveLength(50);
+    expect(String(dynamicChart.layout.xaxis.title)).toContain("Air temperature");
+    expect(String(dynamicChart.layout.yaxis.title)).toContain("Relative humidity");
+    expect(inputTrace?.x).toEqual([26]);
+    expect(inputTrace?.y).toEqual([50]);
+    expect(inputTrace?.hovertemplate).toContain("PPD");
+  });
+
+  it("uses the selected baseline input for PMV dynamic contour evaluation", () => {
+    const alternatePayload = {
+      ...comfortZonePayload,
+      met: 2.0,
+      clo: 1.0,
+    };
+    const chartRequest = {
+      inputs: {
+        [InputId.Input1]: comfortZonePayload,
+        [InputId.Input2]: alternatePayload,
+      },
+      chartRange: {
+        tdbMin: 10,
+        tdbMax: 40,
+        tdbPoints: 121,
+        humidityRatioMin: 0,
+        humidityRatioMax: 0.03,
+      },
+      rhCurves: [10, 20, 30, 40, 50, 60],
+    };
+    const input1Source: PmvChartSourceDto = {
+      chartRequest,
+      comfortZonesByInput: {},
+      dynamicXAxis: FieldKey.DryBulbTemperature,
+      dynamicYAxis: FieldKey.RelativeHumidity,
+      baselineInputId: InputId.Input1,
+    };
+    const input2Source: PmvChartSourceDto = {
+      ...input1Source,
+      baselineInputId: InputId.Input2,
+    };
+
+    const input1BaselineChart = buildPmvDynamicChart(
+      chartRequest,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      UnitSystem.SI,
+      input1Source,
+    );
+    const input2BaselineChart = buildPmvDynamicChart(
+      chartRequest,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      UnitSystem.SI,
+      input2Source,
+    );
+
+    expect(input1BaselineChart.traces[0].z?.[25]?.[25]).not.toBe(input2BaselineChart.traces[0].z?.[25]?.[25]);
+    expect(input2BaselineChart.traces.filter((trace) => trace.type === "scatter")).toHaveLength(2);
   });
 
   it("rebuilds chart labels and hover text for IP units", () => {

@@ -14,7 +14,6 @@ import { InputControlId, type PresetInputOption } from "../models/inputControls"
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../models/units";
 import { type InputId as InputIdType } from "../models/inputSlots";
-import { inputDisplayMetaById } from "../models/inputSlotPresentation";
 import type { PlotlyChartResponseDto, PlotTraceDto, CompareInputMap } from "../models/comfortDtos";
 
 import { OptionKey, TemperatureMode, defaultAdaptiveOptions, AdaptiveStandardMode } from "../models/inputModes";
@@ -23,10 +22,25 @@ import {
   createControlBehavior,
   createTemperatureControlBehavior,
 } from "../services/comfort/controls/controlBehaviors";
-import { convertFieldValueFromSi, convertFieldValueToSi } from "../services/units";
+import { convertFieldValueFromSi } from "../services/units";
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "../state/comfortTool/modelConfigs/builder";
-import { getCompareInputs, roundValue, isFiniteNumber } from "../services/comfort/helpers";
-import { buildComfortPolygonTrace, buildInputScatterTrace, buildContourTrace } from "../services/comfort/charts/plotlyBuilders";
+import { roundValue, isFiniteNumber } from "../services/comfort/helpers";
+import { buildComfortPolygonTrace } from "../services/comfort/charts/plotlyBuilders";
+import { createFieldAxisScale } from "../services/comfort/charts/axis";
+import { buildBoundaryRegionFieldChart, buildGridContourFieldChart } from "../services/comfort/charts/chartEngine";
+import {
+  resolveBaselineInputEntry,
+  shouldShowInputLegend,
+  type BuildInputTraceGroupsOptions,
+} from "../services/comfort/charts/inputPoints";
+import {
+  buildClosedBoundaryPolygonTrace,
+  buildBoundaryRegionTraces,
+  buildFilledBoundaryRegionTrace,
+  buildTooltipGridTrace,
+} from "../services/comfort/charts/boundaryRegionEngine";
+import { buildZoneContourLayers } from "../services/comfort/charts/zoneGrid";
+import type { ChartAxisScale, ChartLayoutSpec } from "../services/comfort/charts/types";
 
 // ── Thermal Zones Definitions ───────────────────────
 
@@ -513,17 +527,6 @@ const enAirSpeedPresets: PresetInputOption[] = [
   { id: "1.2", value: 1.2, label: "1.2 m/s (236 fpm)" },
 ];// ── Chart Construction Utilities ────────────────────
 
-/**
- * Restricts a value to be within the specified minimum and maximum boundaries.
- * - If the value is below the minimum, the minimum value is returned.
- * - If the value is above the maximum, the maximum value is returned.
- * - Otherwise, the value itself is returned.
- * Used for adaptive comfort calculations.
- */
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
 function isTemperatureAxis(field: FieldKeyType): boolean {
   return field === FieldKey.DryBulbTemperature ||
     field === FieldKey.MeanRadiantTemperature ||
@@ -534,11 +537,68 @@ function isAirSpeedAxis(field: FieldKeyType): boolean {
   return field === FieldKey.RelativeAirSpeed || field === FieldKey.WindSpeed;
 }
 
+function getAdaptiveJtcStandard(standardMode: AdaptiveStandardMode): JsThermalComfortStandard {
+  return standardMode === AdaptiveStandardMode.Ashrae
+    ? JsThermalComfortStandard.ASHRAE
+    : JsThermalComfortStandard.ISO;
+}
+
+function getAdaptiveModelId(standardMode: AdaptiveStandardMode): ComfortModel {
+  return standardMode === AdaptiveStandardMode.Ashrae
+    ? ComfortModel.AdaptiveAshrae
+    : ComfortModel.AdaptiveEn;
+}
+
+function setAdaptiveAxisValue(payload: AdaptiveRequestDto, key: FieldKeyType, value: number): void {
+  if (key === FieldKey.DryBulbTemperature) payload.tdb = value;
+  else if (key === FieldKey.MeanRadiantTemperature) payload.tr = value;
+  else if (key === FieldKey.PrevailingMeanOutdoorTemperature) payload.trm = value;
+  else if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) payload.v = value;
+  else if (key === FieldKey.OperativeTemperature) {
+    payload.tdb = value;
+    payload.tr = value;
+  }
+}
+
+function getAdaptiveAxisValue(payload: AdaptiveRequestDto, key: FieldKeyType, standardMode: AdaptiveStandardMode): number {
+  const fieldValues: Partial<Record<FieldKeyType, number>> = {
+    [FieldKey.DryBulbTemperature]: payload.tdb,
+    [FieldKey.MeanRadiantTemperature]: payload.tr,
+    [FieldKey.PrevailingMeanOutdoorTemperature]: payload.trm,
+    [FieldKey.RelativeAirSpeed]: payload.v,
+    [FieldKey.WindSpeed]: payload.v,
+    [FieldKey.OperativeTemperature]: t_o(payload.tdb, payload.tr, payload.v, getAdaptiveJtcStandard(standardMode)),
+  };
+
+  return fieldValues[key] ?? 0;
+}
+
+interface AdaptiveChartEvaluation {
+  result: AdaptiveResponseDto;
+  operativeTemperature: number;
+}
+
+function evaluateAdaptiveChartPayload(
+  payload: AdaptiveRequestDto,
+  standardMode: AdaptiveStandardMode,
+): AdaptiveChartEvaluation {
+  const result = calculateAdaptive(payload, standardMode);
+  const operativeTemperature = t_o(
+    payload.tdb,
+    payload.tr,
+    payload.v,
+    getAdaptiveJtcStandard(standardMode),
+  );
+
+  return { result, operativeTemperature };
+}
+
 function getAdaptiveHoverTemplate({
   xLabel,
   xUnits,
   yLabel,
   yUnits,
+  boundaryUnits,
   standard,
   inputLabel,
 }: {
@@ -546,6 +606,7 @@ function getAdaptiveHoverTemplate({
   xUnits: string;
   yLabel: string;
   yUnits: string;
+  boundaryUnits: string;
   standard: AdaptiveStandardMode;
   inputLabel?: string;
 }): string {
@@ -557,15 +618,19 @@ function getAdaptiveHoverTemplate({
   parts.push(`${yLabel}: %{y:.1f} ${yUnits}`);
 
   if (isAshrae) {
-    parts.push(`${adaptiveAshraeZonesList[2].label}: %{customdata[3]:.1f} to %{customdata[4]:.1f} °C`);
-    parts.push(`${adaptiveAshraeZonesList[1].label}: %{customdata[1]:.1f} to %{customdata[2]:.1f} °C`);
+    parts.push(`${adaptiveAshraeZonesList[2].label}: %{customdata[3]:.1f} to %{customdata[4]:.1f} ${boundaryUnits}`);
+    parts.push(`${adaptiveAshraeZonesList[1].label}: %{customdata[1]:.1f} to %{customdata[2]:.1f} ${boundaryUnits}`);
   } else {
-    parts.push(`${adaptiveEnZonesList[3].label}: %{customdata[1]:.1f} to %{customdata[2]:.1f} °C`);
-    parts.push(`${adaptiveEnZonesList[2].label}: %{customdata[3]:.1f} to %{customdata[4]:.1f} °C`);
-    parts.push(`${adaptiveEnZonesList[1].label}: %{customdata[5]:.1f} to %{customdata[6]:.1f} °C`);
+    parts.push(`${adaptiveEnZonesList[3].label}: %{customdata[1]:.1f} to %{customdata[2]:.1f} ${boundaryUnits}`);
+    parts.push(`${adaptiveEnZonesList[2].label}: %{customdata[3]:.1f} to %{customdata[4]:.1f} ${boundaryUnits}`);
+    parts.push(`${adaptiveEnZonesList[1].label}: %{customdata[5]:.1f} to %{customdata[6]:.1f} ${boundaryUnits}`);
   }
 
   return parts.join("<br>") + "<extra></extra>";
+}
+
+function getAdaptiveBoundaryUnits(unitSystem: UnitSystemType): string {
+  return fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
 }
 
 function getAdaptiveHoverMetadata(
@@ -574,6 +639,7 @@ function getAdaptiveHoverMetadata(
   standard: AdaptiveStandardMode,
   unitSystem: UnitSystemType
 ): any[] {
+  // Boundary metadata is converted once here; hover templates only append display units.
   const conv = (val: number | undefined) =>
     val !== undefined ? roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, val, unitSystem), 1) : NaN;
 
@@ -593,6 +659,113 @@ function getAdaptiveHoverMetadata(
       conv(result.tmp_cmf_cat_iii_low), conv(result.tmp_cmf_cat_iii_up)
     ];
   }
+}
+
+function getAdaptiveChartHoverMetadata(
+  payload: AdaptiveRequestDto,
+  standardMode: AdaptiveStandardMode,
+  unitSystem: UnitSystemType,
+): any[] {
+  const { result, operativeTemperature } = evaluateAdaptiveChartPayload(payload, standardMode);
+  return getAdaptiveHoverMetadata(result, operativeTemperature, standardMode, unitSystem);
+}
+
+function getAdaptiveDynamicZone(
+  evaluation: AdaptiveChartEvaluation,
+  standardMode: AdaptiveStandardMode,
+): { z: number; label: string } {
+  return standardMode === AdaptiveStandardMode.Ashrae
+    ? getAshraeDynamicZone(evaluation.result, evaluation.operativeTemperature)
+    : getEnDynamicZone(evaluation.result, evaluation.operativeTemperature);
+}
+
+function getAdaptiveBoundaryHoverText(
+  metadata: any[],
+  standardMode: AdaptiveStandardMode,
+  boundaryUnits: string,
+): string {
+  if (standardMode === AdaptiveStandardMode.Ashrae) {
+    return `<br>${adaptiveAshraeZonesList[2].label}: ${metadata[3]} to ${metadata[4]} ${boundaryUnits}<br>${adaptiveAshraeZonesList[1].label}: ${metadata[1]} to ${metadata[2]} ${boundaryUnits}`;
+  }
+
+  return `<br>${adaptiveEnZonesList[3].label}: ${metadata[1]} to ${metadata[2]} ${boundaryUnits}<br>${adaptiveEnZonesList[2].label}: ${metadata[3]} to ${metadata[4]} ${boundaryUnits}<br>${adaptiveEnZonesList[1].label}: ${metadata[5]} to ${metadata[6]} ${boundaryUnits}`;
+}
+
+function getAdaptiveInputHoverTemplate({
+  inputLabel,
+  inputPayload,
+  xLabel,
+  xUnits,
+  yLabel,
+  yUnits,
+  coordinateDecimals,
+  boundaryUnits,
+  standardMode,
+  unitSystem,
+}: {
+  inputLabel: string;
+  inputPayload: AdaptiveRequestDto;
+  xLabel: string;
+  xUnits: string;
+  yLabel: string;
+  yUnits: string;
+  coordinateDecimals: number;
+  boundaryUnits: string;
+  standardMode: AdaptiveStandardMode;
+  unitSystem: UnitSystemType;
+}): string {
+  let hoverText = "";
+  try {
+    const metadata = getAdaptiveChartHoverMetadata(inputPayload, standardMode, unitSystem);
+    hoverText = getAdaptiveBoundaryHoverText(metadata, standardMode, boundaryUnits);
+  } catch {
+    // Preserve existing scatter hover fallback when Adaptive evaluation fails.
+  }
+
+  return `${inputLabel}<br>${xLabel}: %{x:.${coordinateDecimals}f} ${xUnits}<br>${yLabel}: %{y:.${coordinateDecimals}f} ${yUnits}${hoverText}<extra></extra>`;
+}
+
+function buildAdaptiveTooltipLayer({
+  xAxis,
+  yAxis,
+  xLabel,
+  xUnits,
+  yLabel,
+  yUnits,
+  boundaryUnits,
+  standardMode,
+  getHoverMetadata,
+}: {
+  xAxis: ReturnType<typeof createFieldAxisScale>;
+  yAxis: ReturnType<typeof createFieldAxisScale>;
+  xLabel: string;
+  xUnits: string;
+  yLabel: string;
+  yUnits: string;
+  boundaryUnits: string;
+  standardMode: AdaptiveStandardMode;
+  getHoverMetadata: (xSi: number, ySi: number, xIndex: number, yIndex: number) => any[];
+}): PlotTraceDto {
+  return buildTooltipGridTrace({
+    xAxis,
+    yAxis,
+    colorscale: TRANSPARENT_COLORSCALE,
+    hovertemplate: getAdaptiveHoverTemplate({
+      xLabel,
+      xUnits,
+      yLabel,
+      yUnits,
+      boundaryUnits,
+      standard: standardMode,
+    }),
+    getHoverMetadata: (xSi, ySi, xIndex, yIndex) => {
+      try {
+        return getHoverMetadata(xSi, ySi, xIndex, yIndex);
+      } catch {
+        return [NaN];
+      }
+    },
+  });
 }
 
 function getFieldValues(field: FieldKeyType, points: number, extraValues: number[] = []): number[] {
@@ -676,24 +849,41 @@ function getOutdoorTemperatureBoundaries(
   v: number,
   standardMode: AdaptiveStandardMode,
 ): number[] {
-  const ce = getCe(v, to);
+  const solveBoundary = (
+    slope: number,
+    intercept: number,
+    offset: number,
+    appliesCoolingEffect: boolean,
+  ) => {
+    const solveWithoutCooling = (to - offset - intercept) / slope;
 
-  // Derived by solving the standard boundary equations for the prevailing/running mean outdoor temperature (trm)
-  // given a target operative temperature (to). 
-  // For upper boundaries with air speed, the cooling effect (ce) is subtracted:
-  //   to = slope * trm + intercept + offset + ce  =>  trm = (to - offset - ce - intercept) / slope
-  // For lower boundaries (no cooling effect):
-  //   to = slope * trm + intercept + offset       =>  trm = (to - offset - intercept) / slope
+    if (!appliesCoolingEffect || getCe(v, to) === 0) {
+      return solveWithoutCooling;
+    }
+
+    const coolingEffect = getCe(v, 25);
+    const solveWithCooling = (to - offset - coolingEffect - intercept) / slope;
+    const unadjustedUpperBoundary = (slope * solveWithCooling) + intercept + offset;
+
+    // Dynamic outdoor-temperature bands invert the SI forward equations used by
+    // getAdaptiveTemperatureBoundaries. CE is applied only to upper boundaries and
+    // is keyed from the unadjusted upper boundary, leaving a jump at 25 degC.
+    if (getCe(v, unadjustedUpperBoundary) === coolingEffect) {
+      return solveWithCooling;
+    }
+
+    return (25 - offset - intercept) / slope;
+  };
 
   if (standardMode === AdaptiveStandardMode.Ashrae) {
     const coeffs = ADAPTIVE_COEFFICIENTS.ASHRAE;
     const slope = coeffs.SLOPE;
     const intercept = coeffs.INTERCEPT;
     return [
-      (to + coeffs.OFFSETS_COOL[1] - ce - intercept) / slope,
-      (to + coeffs.OFFSETS_COOL[0] - ce - intercept) / slope,
-      (to - coeffs.OFFSETS_WARM[0] - intercept) / slope,
-      (to - coeffs.OFFSETS_WARM[1] - intercept) / slope,
+      solveBoundary(slope, intercept, coeffs.OFFSETS_COOL[1], false),
+      solveBoundary(slope, intercept, coeffs.OFFSETS_COOL[0], false),
+      solveBoundary(slope, intercept, coeffs.OFFSETS_WARM[0], true),
+      solveBoundary(slope, intercept, coeffs.OFFSETS_WARM[1], true),
     ];
   }
 
@@ -701,12 +891,12 @@ function getOutdoorTemperatureBoundaries(
   const slope = coeffs.SLOPE;
   const intercept = coeffs.INTERCEPT;
   return [
-    (to + coeffs.OFFSETS_COOL[2] - ce - intercept) / slope,
-    (to + coeffs.OFFSETS_COOL[1] - ce - intercept) / slope,
-    (to + coeffs.OFFSETS_COOL[0] - ce - intercept) / slope,
-    (to - coeffs.OFFSETS_WARM[0] - intercept) / slope,
-    (to - coeffs.OFFSETS_WARM[1] - intercept) / slope,
-    (to - coeffs.OFFSETS_WARM[2] - intercept) / slope,
+    solveBoundary(slope, intercept, coeffs.OFFSETS_COOL[2], false),
+    solveBoundary(slope, intercept, coeffs.OFFSETS_COOL[1], false),
+    solveBoundary(slope, intercept, coeffs.OFFSETS_COOL[0], false),
+    solveBoundary(slope, intercept, coeffs.OFFSETS_WARM[0], true),
+    solveBoundary(slope, intercept, coeffs.OFFSETS_WARM[1], true),
+    solveBoundary(slope, intercept, coeffs.OFFSETS_WARM[2], true),
   ];
 }
 
@@ -773,30 +963,16 @@ function buildAdaptiveBandTrace(
   color: string,
   polygonX: number[],
   polygonY: number[],
-  xMetaLabel: string,
-  yMetaLabel: string,
-  xUnits: string,
-  yUnits: string,
-  standard: AdaptiveStandardMode,
   hoverMetadata: any[][],
 ): PlotTraceDto {
-  return {
-    type: "scatter",
-    mode: "lines",
+  return buildFilledBoundaryRegionTrace({
     name,
-    x: polygonX,
-    y: polygonY,
-    showlegend: false,
-    fill: "toself",
-    fillcolor: color,
-    line: { color: CHART_COLORS.LINE, width: 0.8 },
-    marker: {},
-    opacity: 0.72,
-    hovertemplate: "",
-    hoverinfo: "skip",
+    color,
+    polygonX,
+    polygonY,
+    lineColor: CHART_COLORS.LINE,
     hoverMetadata,
-    isZone: true,
-  };
+  });
 }
 
 function buildAdaptiveBandTraces(
@@ -812,161 +988,184 @@ function buildAdaptiveBandTraces(
   activeInputPayload: any,
 ): PlotTraceDto[] {
   const boundaryMeta = fieldMetaByKey[boundaryAxis];
-  const variableDisplayValues = variableValues.map((value) => convertFieldValueFromSi(variableAxis, value, unitSystem));
-  const boundaryMin = boundaryMeta.minValue;
-  const boundaryMax = boundaryMeta.maxValue;
-  const traces: PlotTraceDto[] = [];
+  const variableScale = createFieldAxisScale({
+    field: variableAxis,
+    unitSystem,
+    points: variableValues.length,
+  });
+  const boundaryScale = createFieldAxisScale({
+    field: boundaryAxis,
+    unitSystem,
+    rangeSi: { min: boundaryMeta.minValue, max: boundaryMeta.maxValue },
+    points: variableValues.length,
+  });
+  const xAxis = createFieldAxisScale({
+    field: dynamicXAxis,
+    unitSystem,
+    points: variableValues.length,
+  });
+  const yAxis = createFieldAxisScale({
+    field: dynamicYAxis,
+    unitSystem,
+    points: variableValues.length,
+  });
 
-  bands.forEach((band, bandIndex) => {
-    const lowerValues = bandIndex === 0
-      ? variableValues.map(() => boundaryMin)
-      : boundaryCurves[bandIndex - 1];
-    const upperValues = bandIndex === boundaryCurves.length
-      ? variableValues.map(() => boundaryMax)
-      : boundaryCurves[bandIndex];
-    const hasVisibleArea = lowerValues.some((lower, index) => lower < boundaryMax && upperValues[index] > boundaryMin);
-
-    if (!hasVisibleArea) {
-      return;
-    }
-
-    const lowerDisplayValues = lowerValues.map((value) => (
-      convertFieldValueFromSi(boundaryAxis, clamp(value, boundaryMin, boundaryMax), unitSystem)
-    ));
-    const upperDisplayValues = upperValues.map((value) => (
-      convertFieldValueFromSi(boundaryAxis, clamp(value, boundaryMin, boundaryMax), unitSystem)
-    ));
-    const variableIsXAxis = variableAxis === dynamicXAxis;
-    const polygonX = variableIsXAxis
-      ? variableDisplayValues.concat(variableDisplayValues.slice().reverse())
-      : lowerDisplayValues.concat(upperDisplayValues.slice().reverse());
-    const polygonY = variableIsXAxis
-      ? lowerDisplayValues.concat(upperDisplayValues.slice().reverse())
-      : variableDisplayValues.concat(variableDisplayValues.slice().reverse());
-
-    const hoverMetadata: any[][] = [];
-    polygonX.forEach((px, i) => {
-      const py = polygonY[i];
-      const xSi = convertFieldValueToSi(dynamicXAxis, px, unitSystem);
-      const ySi = convertFieldValueToSi(dynamicYAxis, py, unitSystem);
-
+  return buildBoundaryRegionTraces({
+    variableValuesSi: variableValues,
+    boundaryCurvesSi: boundaryCurves,
+    bands,
+    variableAxis: variableScale,
+    boundaryAxis: boundaryScale,
+    xAxis,
+    yAxis,
+    boundaryRangeSi: { min: boundaryMeta.minValue, max: boundaryMeta.maxValue },
+    getHoverMetadata: (xSi, ySi) => {
       const args = { ...activeInputPayload };
-      const setVal = (k: string, v: number) => {
-        if (k === FieldKey.DryBulbTemperature) args.tdb = v;
-        else if (k === FieldKey.MeanRadiantTemperature) args.tr = v;
-        else if (k === FieldKey.PrevailingMeanOutdoorTemperature) args.trm = v;
-        else if (k === FieldKey.RelativeAirSpeed || k === FieldKey.WindSpeed) args.v = v;
-        else if (k === FieldKey.OperativeTemperature) { args.tdb = v; args.tr = v; }
-      };
-      setVal(dynamicXAxis, xSi);
-      setVal(dynamicYAxis, ySi);
+      setAdaptiveAxisValue(args, dynamicXAxis, xSi);
+      setAdaptiveAxisValue(args, dynamicYAxis, ySi);
 
-      const res = calculateAdaptive(args, standardMode);
-      const toVal = t_o(args.tdb, args.tr, args.v, standardMode === AdaptiveStandardMode.Ashrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO);
-      hoverMetadata.push(getAdaptiveHoverMetadata(res, toVal, standardMode, unitSystem));
-    });
-
-    traces.push(buildAdaptiveBandTrace(
+      return getAdaptiveChartHoverMetadata(args, standardMode, unitSystem);
+    },
+    buildTrace: ({ band, polygonX, polygonY, hoverMetadata }) => buildAdaptiveBandTrace(
       band.label,
       band.color,
       polygonX,
       polygonY,
-      fieldMetaByKey[dynamicXAxis].label,
-      fieldMetaByKey[dynamicYAxis].label,
-      fieldMetaByKey[dynamicXAxis].displayUnits[unitSystem],
-      fieldMetaByKey[dynamicYAxis].displayUnits[unitSystem],
-      standardMode,
       hoverMetadata,
-    ));
+    ),
   });
-
-  return traces;
 }
 
-function buildOutdoorTemperatureDynamicBands(
+interface AdaptiveFieldLayoutOptions {
+  title: string;
+  xAxis: ChartAxisScale;
+  yAxis: ChartAxisScale;
+  showLegend: boolean;
+  margin: Record<string, number>;
+}
+
+function buildAdaptiveFieldLayout({
+  title,
+  xAxis,
+  yAxis,
+  showLegend,
+  margin,
+}: AdaptiveFieldLayoutOptions): ChartLayoutSpec {
+  return {
+    title,
+    xAxis,
+    yAxis,
+    paperBgColor: CHART_COLORS.PAPER_BG,
+    plotBgColor: CHART_COLORS.PLOT_BG,
+    showLegend,
+    margin,
+    gridColor: "#e2e8f0",
+    legend: { orientation: "h", x: 0, y: 1.1 },
+    height: 480,
+  };
+}
+
+interface AdaptiveBoundaryChartOptions {
+  xAxis: ChartAxisScale;
+  yAxis: ChartAxisScale;
+  layout: ChartLayoutSpec;
+  inputGroups: Array<BuildInputTraceGroupsOptions<AdaptiveRequestDto, unknown>>;
+  leadingTraces?: PlotTraceDto[];
+  boundaryTraces?: PlotTraceDto[];
+}
+
+function buildAdaptiveBoundaryChart({
+  xAxis,
+  yAxis,
+  layout,
+  inputGroups,
+  leadingTraces = [],
+  boundaryTraces = [],
+}: AdaptiveBoundaryChartOptions): PlotlyChartResponseDto {
+  return buildBoundaryRegionFieldChart({
+    xAxis,
+    yAxis,
+    leadingTraces,
+    boundaryTraces,
+    inputGroups,
+    layout,
+    source: CalculationSource.FrontendGenerated,
+  });
+}
+
+interface AdaptiveBoundaryTraceSet {
+  leadingTraces: PlotTraceDto[];
+  boundaryTraces: PlotTraceDto[];
+}
+
+function createEmptyAdaptiveBoundaryTraceSet(): AdaptiveBoundaryTraceSet {
+  return {
+    leadingTraces: [],
+    boundaryTraces: [],
+  };
+}
+
+function buildOutdoorTemperatureDynamicBoundaryTraces(
   activeInputPayload: any,
   standardMode: AdaptiveStandardMode,
   unitSystem: UnitSystemType,
   dynamicXAxis: FieldKeyType,
   dynamicYAxis: FieldKeyType,
-): PlotTraceDto[] {
+): AdaptiveBoundaryTraceSet {
   if (!activeInputPayload) {
-    return [];
+    return createEmptyAdaptiveBoundaryTraceSet();
   }
 
   const hasOutdoorXAxis = dynamicXAxis === FieldKey.PrevailingMeanOutdoorTemperature;
   const hasOutdoorYAxis = dynamicYAxis === FieldKey.PrevailingMeanOutdoorTemperature;
   if (!hasOutdoorXAxis && !hasOutdoorYAxis) {
-    return [];
+    return createEmptyAdaptiveBoundaryTraceSet();
   }
 
   const otherAxis = hasOutdoorXAxis ? dynamicYAxis : dynamicXAxis;
   const isAshrae = standardMode === AdaptiveStandardMode.Ashrae;
 
-  const addTooltipLayer = (traces: PlotTraceDto[]) => {
+  const buildTooltipLayer = () => {
     const xMeta = fieldMetaByKey[dynamicXAxis];
     const yMeta = fieldMetaByKey[dynamicYAxis];
-    const gPoints = 40;
-    const gX = Array.from({ length: gPoints }, (_, i) => xMeta.minValue + ((xMeta.maxValue - xMeta.minValue) * i) / (gPoints - 1));
-    const gY = Array.from({ length: gPoints }, (_, i) => yMeta.minValue + ((yMeta.maxValue - yMeta.minValue) * i) / (gPoints - 1));
-    const zValues: number[][] = [];
-    const hoverMetadataGrid: any[][][] = [];
-
-    for (let i = 0; i < gPoints; i++) {
-      const row: number[] = [];
-      const hoverMetadataRow: any[][] = [];
-      const ySi = gY[i];
-      for (let j = 0; j < gPoints; j++) {
-        const xSi = gX[j];
-        try {
-          const args = { ...activeInputPayload };
-          const setVal = (k: string, v: number) => {
-            if (k === FieldKey.DryBulbTemperature) args.tdb = v;
-            else if (k === FieldKey.MeanRadiantTemperature) args.tr = v;
-            else if (k === FieldKey.PrevailingMeanOutdoorTemperature) args.trm = v;
-            else if (k === FieldKey.RelativeAirSpeed || k === FieldKey.WindSpeed) args.v = v;
-            else if (k === FieldKey.OperativeTemperature) { args.tdb = v; args.tr = v; }
-          };
-          setVal(dynamicXAxis, xSi);
-          setVal(dynamicYAxis, ySi);
-
-          const res = calculateAdaptive(args, standardMode);
-          const toVal = t_o(args.tdb, args.tr, args.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO);
-          row.push(1);
-          hoverMetadataRow.push(getAdaptiveHoverMetadata(res, toVal, standardMode, unitSystem));
-        } catch {
-          row.push(NaN);
-          hoverMetadataRow.push([NaN]);
-        }
-      }
-      zValues.push(row);
-      hoverMetadataGrid.push(hoverMetadataRow);
-    }
-
     const xLabel = dynamicXAxis === FieldKey.PrevailingMeanOutdoorTemperature
       ? (isAshrae ? MeanOutdoorTempLabel.Prevailing : MeanOutdoorTempLabel.Running)
       : xMeta.label;
     const yLabel = dynamicYAxis === FieldKey.PrevailingMeanOutdoorTemperature
       ? (isAshrae ? MeanOutdoorTempLabel.Prevailing : MeanOutdoorTempLabel.Running)
       : yMeta.label;
+    const xAxis = createFieldAxisScale({
+      field: dynamicXAxis,
+      unitSystem,
+      rangeSi: { min: xMeta.minValue, max: xMeta.maxValue },
+      points: 40,
+      label: xLabel,
+    });
+    const yAxis = createFieldAxisScale({
+      field: dynamicYAxis,
+      unitSystem,
+      rangeSi: { min: yMeta.minValue, max: yMeta.maxValue },
+      points: 40,
+      label: yLabel,
+    });
 
-    traces.unshift(buildContourTrace({
-      name: "Tooltip Layer",
-      x: gX.map(x => convertFieldValueFromSi(dynamicXAxis, x, unitSystem)),
-      y: gY.map(y => convertFieldValueFromSi(dynamicYAxis, y, unitSystem)),
-      z: zValues,
-      colorscale: TRANSPARENT_COLORSCALE,
-      contours: { coloring: "none", showlines: false },
-      showscale: false,
-      hovertemplate: getAdaptiveHoverTemplate({
-        xLabel,
-        xUnits: xMeta.displayUnits[unitSystem],
-        yLabel,
-        yUnits: yMeta.displayUnits[unitSystem],
-        standard: standardMode,
-      }),
-      hoverMetadata: hoverMetadataGrid,
-    }));
+    return buildAdaptiveTooltipLayer({
+      xAxis,
+      yAxis,
+      xLabel,
+      xUnits: xMeta.displayUnits[unitSystem],
+      yLabel,
+      yUnits: yMeta.displayUnits[unitSystem],
+      boundaryUnits: getAdaptiveBoundaryUnits(unitSystem),
+      standardMode,
+      getHoverMetadata: (xSi, ySi) => {
+        const args = { ...activeInputPayload };
+        setAdaptiveAxisValue(args, dynamicXAxis, xSi);
+        setAdaptiveAxisValue(args, dynamicYAxis, ySi);
+
+        return getAdaptiveChartHoverMetadata(args, standardMode, unitSystem);
+      },
+    });
   };
 
   if (isTemperatureAxis(otherAxis)) {
@@ -998,8 +1197,10 @@ function buildOutdoorTemperatureDynamicBands(
       activeInputPayload,
     );
 
-    addTooltipLayer(traces);
-    return traces;
+    return {
+      leadingTraces: [buildTooltipLayer()],
+      boundaryTraces: traces,
+    };
   }
 
   if (isAirSpeedAxis(otherAxis)) {
@@ -1042,11 +1243,13 @@ function buildOutdoorTemperatureDynamicBands(
       activeInputPayload,
     );
 
-    addTooltipLayer(traces);
-    return traces;
+    return {
+      leadingTraces: [buildTooltipLayer()],
+      boundaryTraces: traces,
+    };
   }
 
-  return [];
+  return createEmptyAdaptiveBoundaryTraceSet();
 }
 
 export function buildAdaptiveChart(
@@ -1055,15 +1258,32 @@ export function buildAdaptiveChart(
   unitSystem: UnitSystemType = UnitSystem.SI,
   baselineInputId?: string,
 ): PlotlyChartResponseDto {
-  const inputs = getCompareInputs(payload.inputs);
-  const showInputLegend = inputs.length > 1;
-  const temperatureDisplayUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-  const traces: PlotTraceDto[] = [];
+  const showInputLegend = shouldShowInputLegend(payload.inputs);
+  const temperatureDisplayUnits = getAdaptiveBoundaryUnits(unitSystem);
+  const boundaryTraces: PlotTraceDto[] = [];
   const isAshrae = standardMode === AdaptiveStandardMode.Ashrae;
+  const modelId = getAdaptiveModelId(standardMode);
   const trmMin = isAshrae ? STANDARD_APPLICABILITY_LIMITS.ASHRAE.TRM_MIN : STANDARD_APPLICABILITY_LIMITS.EN.TRM_MIN;
   const trmMax = isAshrae ? STANDARD_APPLICABILITY_LIMITS.ASHRAE.TRM_MAX : STANDARD_APPLICABILITY_LIMITS.EN.TRM_MAX;
-
-  const baselineInput = inputs.find(i => i.inputId === baselineInputId) || inputs[0];
+  const baselineInput = resolveBaselineInputEntry(payload.inputs, baselineInputId);
+  const xLabel = `${isAshrae ? "Prevailing" : "Running"} ${fieldMetaByKey[FieldKey.PrevailingMeanOutdoorTemperature].label.toLowerCase()}`;
+  const yLabel = fieldMetaByKey[FieldKey.OperativeTemperature].label;
+  const xAxis = createFieldAxisScale({
+    field: FieldKey.PrevailingMeanOutdoorTemperature,
+    unitSystem,
+    rangeSi: { min: trmMin, max: trmMax },
+    points: 2,
+    label: xLabel,
+    units: temperatureDisplayUnits,
+  });
+  const yAxis = createFieldAxisScale({
+    field: FieldKey.DryBulbTemperature,
+    unitSystem,
+    rangeSi: { min: 10, max: 40 },
+    points: 2,
+    label: yLabel,
+    units: temperatureDisplayUnits,
+  });
 
   if (baselineInput) {
     const v = baselineInput.payload.v;
@@ -1105,27 +1325,23 @@ export function buildAdaptiveChart(
     });
 
     const addPolygon = (lower: number[], upper: number[], nameSuffix: string) => {
-      const polygonX = trmPoints.concat(trmPoints.slice().reverse());
-      const polygonY = lower.concat(upper.slice().reverse());
-
-      const hoverMetadata: any[][] = [];
-      polygonX.forEach((trm, i) => {
-        const toVal = polygonY[i];
-        const res = calculateAdaptive({ tdb: toVal, tr: toVal, trm, v, units: UnitSystem.SI }, standardMode);
-        hoverMetadata.push(getAdaptiveHoverMetadata(res, toVal, standardMode, unitSystem));
-      });
-
-      const trace = buildComfortPolygonTrace({
-        inputId: baselineInput.inputId,
-        nameSuffix,
-        polygonX: polygonX.map((x) => roundValue(convertFieldValueFromSi(FieldKey.PrevailingMeanOutdoorTemperature, x, unitSystem))),
-        polygonY: polygonY.map((y) => roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, y, unitSystem))),
-        hovertemplate: "",
-        hoverinfo: "skip",
-        isZone: true,
-      });
-
-      traces.push(trace);
+      boundaryTraces.push(buildClosedBoundaryPolygonTrace({
+        lowerXValuesSi: trmPoints,
+        lowerYValuesSi: lower,
+        upperXValuesSi: trmPoints,
+        upperYValuesSi: upper,
+        xAxis,
+        yAxis,
+        buildTrace: ({ polygonX, polygonY }) => buildComfortPolygonTrace({
+          inputId: baselineInput.inputId,
+          nameSuffix,
+          polygonX: polygonX.map((value) => roundValue(value)),
+          polygonY: polygonY.map((value) => roundValue(value)),
+          hovertemplate: "",
+          hoverinfo: "skip",
+          isZone: true,
+        }),
+      }));
     };
 
     if (isAshrae) {
@@ -1138,112 +1354,113 @@ export function buildAdaptiveChart(
     }
   }
 
-  const gPoints = 40;
-  const gTrm = Array.from({ length: gPoints }, (_, i) => 10 + ((trmMax - 10) * i) / (gPoints - 1));
-  const gTo = Array.from({ length: gPoints }, (_, i) => 10 + (30 * i) / (gPoints - 1));
-  const zValues: number[][] = [];
-  const hoverMetadataGrid: any[][][] = [];
-  const v_baseline = baselineInput.payload.v;
-
-  for (let i = 0; i < gPoints; i++) {
-    const row: number[] = [];
-    const hoverMetadataRow: any[][] = [];
-    const toVal = gTo[i];
-    for (let j = 0; j < gPoints; j++) {
-      const trmVal = gTrm[j];
-      try {
-        const res = calculateAdaptive({ tdb: toVal, tr: toVal, trm: trmVal, v: v_baseline, units: UnitSystem.SI }, standardMode);
-        row.push(1);
-        hoverMetadataRow.push(getAdaptiveHoverMetadata(res, toVal, standardMode, unitSystem));
-      } catch {
-        row.push(NaN);
-        hoverMetadataRow.push([NaN]);
-      }
-    }
-    zValues.push(row);
-    hoverMetadataGrid.push(hoverMetadataRow);
-  }
-
-  const xLabel = `${isAshrae ? "Prevailing" : "Running"} ${fieldMetaByKey[FieldKey.PrevailingMeanOutdoorTemperature].label.toLowerCase()}`;
-  const yLabel = fieldMetaByKey[FieldKey.OperativeTemperature].label;
-
-  traces.unshift(buildContourTrace({
-    name: "Tooltip Layer",
-    x: gTrm.map(x => convertFieldValueFromSi(FieldKey.PrevailingMeanOutdoorTemperature, x, unitSystem)),
-    y: gTo.map(y => convertFieldValueFromSi(FieldKey.DryBulbTemperature, y, unitSystem)),
-    z: zValues,
-    colorscale: [[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
-    contours: { coloring: "none", showlines: false },
-    showscale: false,
-    hovertemplate: getAdaptiveHoverTemplate({
-      xLabel,
-      xUnits: temperatureDisplayUnits,
-      yLabel,
-      yUnits: temperatureDisplayUnits,
-      standard: standardMode,
-    }),
-    hoverMetadata: hoverMetadataGrid,
-  }));
-
-  inputs.forEach(({ inputId, payload: inputPayload }) => {
-    let toValue = t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO);
-    let trmValue = inputPayload.trm;
-
-    toValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, toValue, unitSystem);
-    trmValue = convertFieldValueFromSi(FieldKey.PrevailingMeanOutdoorTemperature, trmValue, unitSystem);
-
-    let hoverText = "";
-    try {
-      const res = calculateAdaptive(inputPayload, standardMode);
-      const toValSi = t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO);
-      const metadata = getAdaptiveHoverMetadata(res, toValSi, standardMode, unitSystem);
-      if (isAshrae) {
-        hoverText = `<br>90% Acceptability: ${metadata[3]} to ${metadata[4]} ${temperatureDisplayUnits}<br>80% Acceptability: ${metadata[1]} to ${metadata[2]} ${temperatureDisplayUnits}`;
-      } else {
-        hoverText = `<br>Category I: ${metadata[1]} to ${metadata[2]} ${temperatureDisplayUnits}<br>Category II: ${metadata[3]} to ${metadata[4]} ${temperatureDisplayUnits}<br>Category III: ${metadata[5]} to ${metadata[6]} ${temperatureDisplayUnits}`;
-      }
-    } catch {
-      // Ignore
-    }
-
-    traces.push(buildInputScatterTrace({
-      inputId,
-      x: roundValue(trmValue),
-      y: roundValue(toValue),
-      showLegend: showInputLegend,
-      hovertemplate: `${inputDisplayMetaById[inputId]?.label ?? "Input"}<br>${xLabel}: %{x:.1f} ${temperatureDisplayUnits}<br>${yLabel}: %{y:.1f} ${temperatureDisplayUnits}${hoverText}<extra></extra>`,
-    }));
+  const vBaseline = baselineInput?.payload.v ?? 0;
+  const tooltipXAxis = createFieldAxisScale({
+    field: FieldKey.PrevailingMeanOutdoorTemperature,
+    unitSystem,
+    rangeSi: { min: 10, max: trmMax },
+    points: 40,
+    label: xLabel,
+    units: temperatureDisplayUnits,
+  });
+  const tooltipYAxis = createFieldAxisScale({
+    field: FieldKey.DryBulbTemperature,
+    unitSystem,
+    rangeSi: { min: 10, max: 40 },
+    points: 40,
+    label: yLabel,
+    units: temperatureDisplayUnits,
   });
 
-  return {
-    traces,
-    layout: {
-      title: `${comfortModelMetaById[ComfortModel.AdaptiveAshrae].label} Comfort Chart`,
-      paper_bgcolor: CHART_COLORS.PAPER_BG,
-      plot_bgcolor: CHART_COLORS.PLOT_BG,
-      showlegend: showInputLegend,
-      margin: { l: 56, r: 24, t: 48, b: 80 },
-      xaxis: {
-        title: `${xLabel} (${temperatureDisplayUnits})`,
-        range: [
-          convertFieldValueFromSi(FieldKey.PrevailingMeanOutdoorTemperature, trmMin, unitSystem),
-          convertFieldValueFromSi(FieldKey.PrevailingMeanOutdoorTemperature, trmMax, unitSystem),
-        ],
-        gridcolor: "#e2e8f0",
-      },
-      yaxis: {
-        title: `${yLabel} (${temperatureDisplayUnits})`,
-        range: [
-          convertFieldValueFromSi(FieldKey.DryBulbTemperature, 10, unitSystem),
-          convertFieldValueFromSi(FieldKey.DryBulbTemperature, 40, unitSystem),
-        ],
-        gridcolor: "#e2e8f0",
-      },
-      legend: { orientation: "h", x: 0, y: 1.1 },
-      height: 480,
+  const tooltipTrace = buildAdaptiveTooltipLayer({
+    xAxis: tooltipXAxis,
+    yAxis: tooltipYAxis,
+    xLabel,
+    xUnits: temperatureDisplayUnits,
+    yLabel,
+    yUnits: temperatureDisplayUnits,
+    boundaryUnits: temperatureDisplayUnits,
+    standardMode,
+    getHoverMetadata: (trmVal, toVal) => {
+      return getAdaptiveChartHoverMetadata(
+        { tdb: toVal, tr: toVal, trm: trmVal, v: vBaseline, units: UnitSystem.SI },
+        standardMode,
+        unitSystem,
+      );
     },
-    annotations: [],
-    source: CalculationSource.FrontendGenerated,
+  });
+  const layout = buildAdaptiveFieldLayout({
+    title: `${comfortModelMetaById[modelId].label} Comfort Chart`,
+    xAxis,
+    yAxis,
+    showLegend: showInputLegend,
+    margin: { l: 56, r: 24, t: 48, b: 80 },
+  });
+
+  return buildAdaptiveBoundaryChart({
+    xAxis,
+    yAxis,
+    layout,
+    leadingTraces: [tooltipTrace],
+    boundaryTraces,
+    inputGroups: [{
+      inputsMap: payload.inputs,
+      xAxis,
+      yAxis,
+      getXSi: (inputPayload) => inputPayload.trm,
+      getYSi: (inputPayload) => t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, getAdaptiveJtcStandard(standardMode)),
+      formatXDisplay: roundValue,
+      formatYDisplay: roundValue,
+      getHovertemplate: ({ inputLabel, payload: inputPayload }) => {
+        return getAdaptiveInputHoverTemplate({
+          inputLabel,
+          inputPayload,
+          xLabel,
+          xUnits: temperatureDisplayUnits,
+          yLabel,
+          yUnits: temperatureDisplayUnits,
+          coordinateDecimals: 1,
+          boundaryUnits: temperatureDisplayUnits,
+          standardMode,
+          unitSystem,
+        });
+      },
+    }],
+  });
+}
+
+function buildAdaptiveDynamicInputGroup(
+  payload: AdaptiveChartInputsRequestDto,
+  xAxis: ChartAxisScale,
+  yAxis: ChartAxisScale,
+  dynamicXAxis: FieldKeyType,
+  dynamicYAxis: FieldKeyType,
+  standardMode: AdaptiveStandardMode,
+  unitSystem: UnitSystemType,
+): BuildInputTraceGroupsOptions<AdaptiveRequestDto, unknown> {
+  const xMeta = fieldMetaByKey[dynamicXAxis];
+  const yMeta = fieldMetaByKey[dynamicYAxis];
+
+  return {
+    inputsMap: payload.inputs,
+    xAxis,
+    yAxis,
+    getXSi: (inputPayload) => getAdaptiveAxisValue(inputPayload, dynamicXAxis, standardMode),
+    getYSi: (inputPayload) => getAdaptiveAxisValue(inputPayload, dynamicYAxis, standardMode),
+    formatXDisplay: roundValue,
+    formatYDisplay: roundValue,
+    getHovertemplate: ({ inputLabel, payload: inputPayload }) => getAdaptiveInputHoverTemplate({
+      inputLabel,
+      inputPayload,
+      xLabel: xMeta.label,
+      xUnits: xMeta.displayUnits[unitSystem],
+      yLabel: yMeta.label,
+      yUnits: yMeta.displayUnits[unitSystem],
+      coordinateDecimals: 2,
+      boundaryUnits: getAdaptiveBoundaryUnits(unitSystem),
+      standardMode,
+      unitSystem,
+    }),
   };
 }
 
@@ -1255,9 +1472,8 @@ export function buildAdaptiveDynamicChart(
   dynamicYAxis?: FieldKeyType,
   baselineInputId?: string,
 ): PlotlyChartResponseDto {
-  const inputs = getCompareInputs(payload.inputs);
-  const showInputLegend = inputs.length > 1;
-  const modelId = standardMode === AdaptiveStandardMode.Ashrae ? ComfortModel.AdaptiveAshrae : ComfortModel.AdaptiveEn;
+  const showInputLegend = shouldShowInputLegend(payload.inputs);
+  const modelId = getAdaptiveModelId(standardMode);
 
   if (!dynamicXAxis || !dynamicYAxis || dynamicXAxis === dynamicYAxis) {
     return {
@@ -1276,248 +1492,112 @@ export function buildAdaptiveDynamicChart(
     };
   }
 
-  const activeInputPayload = (payload.inputs[baselineInputId as InputIdType] || inputs[0]?.payload);
-
+  const activeInputPayload = resolveBaselineInputEntry(payload.inputs, baselineInputId)?.payload;
   const xMeta = fieldMetaByKey[dynamicXAxis];
   const yMeta = fieldMetaByKey[dynamicYAxis];
-
-  const xMin = convertFieldValueFromSi(dynamicXAxis, xMeta.minValue, unitSystem);
-  const xMax = convertFieldValueFromSi(dynamicXAxis, xMeta.maxValue, unitSystem);
-  const yMin = convertFieldValueFromSi(dynamicYAxis, yMeta.minValue, unitSystem);
-  const yMax = convertFieldValueFromSi(dynamicYAxis, yMeta.maxValue, unitSystem);
-
-  const xPoints = 50;
-  const yPoints = 50;
-  const xValues: number[] = [];
-  const yValues: number[] = [];
-
-  for (let i = 0; i < xPoints; i++) {
-    xValues.push(xMin + (xMax - xMin) * (i / (xPoints - 1)));
-  }
-  for (let i = 0; i < yPoints; i++) {
-    yValues.push(yMin + (yMax - yMin) * (i / (yPoints - 1)));
-  }
-
-  const zValues: number[][] = [];
-  const textValues: string[][] = [];
-  const hoverMetadata: any[][][] = [];
   const isAshrae = standardMode === AdaptiveStandardMode.Ashrae;
+  const xAxis = createFieldAxisScale({
+    field: dynamicXAxis,
+    unitSystem,
+    rangeSi: { min: xMeta.minValue, max: xMeta.maxValue },
+    points: 50,
+  });
+  const yAxis = createFieldAxisScale({
+    field: dynamicYAxis,
+    unitSystem,
+    rangeSi: { min: yMeta.minValue, max: yMeta.maxValue },
+    points: 50,
+  });
+  const dynamicInputGroup = buildAdaptiveDynamicInputGroup(
+    payload,
+    xAxis,
+    yAxis,
+    dynamicXAxis,
+    dynamicYAxis,
+    standardMode,
+    unitSystem,
+  );
+  const layout = buildAdaptiveFieldLayout({
+    title: `${comfortModelMetaById[modelId].label} Dynamic Chart (${xMeta.label} vs ${yMeta.label})`,
+    xAxis,
+    yAxis,
+    showLegend: showInputLegend,
+    margin: { l: 64, r: 24, t: 48, b: 64 },
+  });
 
   if (activeInputPayload) {
     const isOutdoorX = dynamicXAxis === FieldKey.PrevailingMeanOutdoorTemperature;
     const isOutdoorY = dynamicYAxis === FieldKey.PrevailingMeanOutdoorTemperature;
 
     if (isOutdoorX || isOutdoorY) {
-      const traces = buildOutdoorTemperatureDynamicBands(activeInputPayload, standardMode, unitSystem, dynamicXAxis, dynamicYAxis);
+      const { leadingTraces, boundaryTraces } = buildOutdoorTemperatureDynamicBoundaryTraces(activeInputPayload, standardMode, unitSystem, dynamicXAxis, dynamicYAxis);
 
-      inputs.forEach(({ inputId, payload: inputPayload }) => {
-        // Map each FieldKey to its corresponding SI value from the Adaptive request payload.
-        const ADAPTIVE_FIELD_VALUES: Partial<Record<string, number>> = {
-          [FieldKey.DryBulbTemperature]: inputPayload.tdb,
-          [FieldKey.MeanRadiantTemperature]: inputPayload.tr,
-          [FieldKey.PrevailingMeanOutdoorTemperature]: inputPayload.trm,
-          [FieldKey.RelativeAirSpeed]: inputPayload.v,
-          [FieldKey.WindSpeed]: inputPayload.v,
-          [FieldKey.OperativeTemperature]: t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO),
-        };
-        const getFieldValue = (key: string): number => ADAPTIVE_FIELD_VALUES[key] ?? 0;
-
-        let inputX = getFieldValue(dynamicXAxis as string);
-        let inputY = getFieldValue(dynamicYAxis as string);
-
-        inputX = convertFieldValueFromSi(dynamicXAxis as FieldKey, inputX, unitSystem);
-        inputY = convertFieldValueFromSi(dynamicYAxis as FieldKey, inputY, unitSystem);
-
-        let hoverText = "";
-        try {
-          const res = calculateAdaptive(inputPayload, standardMode);
-          const toValSi = t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO);
-          const metadata = getAdaptiveHoverMetadata(res, toValSi, standardMode, unitSystem);
-          if (isAshrae) {
-            hoverText = `<br>${adaptiveAshraeZonesList[2].label}: ${metadata[3]} to ${metadata[4]} °C<br>${adaptiveAshraeZonesList[1].label}: ${metadata[1]} to ${metadata[2]} °C`;
-          } else {
-            hoverText = `<br>${adaptiveEnZonesList[3].label}: ${metadata[1]} to ${metadata[2]} °C<br>${adaptiveEnZonesList[2].label}: ${metadata[3]} to ${metadata[4]} °C<br>${adaptiveEnZonesList[1].label}: ${metadata[5]} to ${metadata[6]} °C`;
-          }
-        } catch {
-          // Ignore
-        }
-
-        traces.push(buildInputScatterTrace({
-          inputId,
-          x: roundValue(inputX),
-          y: roundValue(inputY),
-          showLegend: showInputLegend,
-          hovertemplate: `${inputDisplayMetaById[inputId]?.label ?? "Input"}<br>${xMeta.label}: %{x:.2f} ${xMeta.displayUnits[unitSystem]}<br>${yMeta.label}: %{y:.2f} ${yMeta.displayUnits[unitSystem]}${hoverText}<extra></extra>`,
-        }));
+      return buildAdaptiveBoundaryChart({
+        xAxis,
+        yAxis,
+        layout,
+        leadingTraces,
+        boundaryTraces,
+        inputGroups: [dynamicInputGroup],
       });
-
-      return {
-        traces,
-        layout: {
-          title: `${comfortModelMetaById[modelId].label} Dynamic Chart (${xMeta.label} vs ${yMeta.label})`,
-          paper_bgcolor: CHART_COLORS.PAPER_BG,
-          plot_bgcolor: CHART_COLORS.PLOT_BG,
-          showlegend: showInputLegend,
-          margin: { l: 64, r: 24, t: 48, b: 64 },
-          xaxis: {
-            title: `${xMeta.label} (${xMeta.displayUnits[unitSystem]})`,
-            range: [xMin, xMax],
-            gridcolor: "#e2e8f0",
-          },
-          yaxis: {
-            title: `${yMeta.label} (${yMeta.displayUnits[unitSystem]})`,
-            range: [yMin, yMax],
-            gridcolor: "#e2e8f0",
-          },
-          legend: { orientation: "h", x: 0, y: 1.1 },
-          height: 480,
-        },
-        annotations: [],
-        source: CalculationSource.FrontendGenerated,
-      };
     }
 
-    for (let i = 0; i < yPoints; i++) {
-      const row: number[] = [];
-      const textRow: string[] = [];
-      const hoverMetadataRow: any[][] = [];
-      const ySi = convertFieldValueToSi(dynamicYAxis, yValues[i], unitSystem);
+    return buildGridContourFieldChart({
+      xAxis,
+      yAxis,
+      grid: {
+        evaluatePoint: (xSi: number, ySi: number) => {
+          const pointArgs = { ...activeInputPayload };
+          setAdaptiveAxisValue(pointArgs, dynamicXAxis, xSi);
+          setAdaptiveAxisValue(pointArgs, dynamicYAxis, ySi);
 
-      for (let j = 0; j < xPoints; j++) {
-        const xSi = convertFieldValueToSi(dynamicXAxis, xValues[j], unitSystem);
-
-        const pointArgs = { ...activeInputPayload };
-        // Dynamically overrides the baseline comfort inputs with the active grid coordinates 
-        // for the current contour point, leaving all other input parameters unchanged.
-        // Used to evaluate model states across the grid.
-        const updateParams = (key: string, val: number) => {
-          if (key === FieldKey.DryBulbTemperature) { pointArgs.tdb = val; }
-          else if (key === FieldKey.MeanRadiantTemperature) { pointArgs.tr = val; }
-          else if (key === FieldKey.PrevailingMeanOutdoorTemperature) { pointArgs.trm = val; }
-          else if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) { pointArgs.v = val; }
-          else if (key === FieldKey.OperativeTemperature) { pointArgs.tdb = val; pointArgs.tr = val; }
-        };
-
-        updateParams(dynamicXAxis, xSi);
-        updateParams(dynamicYAxis, ySi);
-
-        try {
-          const res = calculateAdaptive(pointArgs, standardMode);
-          const toVal = t_o(pointArgs.tdb, pointArgs.tr, pointArgs.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO);
-          if (isAshrae) {
-            const dynamicZone = getAshraeDynamicZone(res, toVal);
-            row.push(dynamicZone.z);
-            textRow.push(dynamicZone.label);
-          } else {
-            const dynamicZone = getEnDynamicZone(res, toVal);
-            row.push(dynamicZone.z);
-            textRow.push(dynamicZone.label);
+          try {
+            const evaluation = evaluateAdaptiveChartPayload(pointArgs, standardMode);
+            const dynamicZone = getAdaptiveDynamicZone(evaluation, standardMode);
+            return {
+              z: dynamicZone.z,
+              text: dynamicZone.label,
+              hoverMetadata: getAdaptiveHoverMetadata(
+                evaluation.result,
+                evaluation.operativeTemperature,
+                standardMode,
+                unitSystem,
+              ),
+            };
+          } catch {
+            return { z: NaN, text: "", hoverMetadata: [NaN] };
           }
-          hoverMetadataRow.push(getAdaptiveHoverMetadata(res, toVal, standardMode, unitSystem));
-        } catch {
-          row.push(NaN);
-          textRow.push("");
-          hoverMetadataRow.push([NaN]);
-        }
-      }
-      zValues.push(row);
-      textValues.push(textRow);
-      hoverMetadata.push(hoverMetadataRow);
-    }
+        },
+        layers: buildZoneContourLayers({
+          name: "Adaptive Zones",
+          colorscale: isAshrae ? ADAPTIVE_ASHRAE_COLORSCALE : ADAPTIVE_EN_COLORSCALE,
+          contours: ADAPTIVE_CONTOURS,
+          zmin: 1.5,
+          zmax: isAshrae ? 5.5 : 7.5,
+          hovertemplate: getAdaptiveHoverTemplate({
+            xLabel: xMeta.label,
+            xUnits: xMeta.displayUnits[unitSystem],
+            yLabel: yMeta.label,
+            yUnits: yMeta.displayUnits[unitSystem],
+            boundaryUnits: getAdaptiveBoundaryUnits(unitSystem),
+            standard: standardMode,
+          }),
+          opacity: 0.75,
+          isBackgroundZone: true,
+        }),
+      },
+      inputGroups: [dynamicInputGroup],
+      layout,
+      source: CalculationSource.FrontendGenerated,
+    });
   }
 
-  const traces: PlotTraceDto[] = [];
-
-  if (zValues.length > 0) {
-    traces.push(buildContourTrace({
-      name: "Adaptive Zones",
-      x: xValues,
-      y: yValues,
-      z: zValues,
-      text: textValues,
-      colorscale: isAshrae ? ADAPTIVE_ASHRAE_COLORSCALE : ADAPTIVE_EN_COLORSCALE,
-      contours: ADAPTIVE_CONTOURS,
-      showscale: false,
-      zmin: 1.5,
-      zmax: isAshrae ? 5.5 : 7.5,
-      hovertemplate: getAdaptiveHoverTemplate({
-        xLabel: xMeta.label,
-        xUnits: xMeta.displayUnits[unitSystem],
-        yLabel: yMeta.label,
-        yUnits: yMeta.displayUnits[unitSystem],
-        standard: standardMode,
-      }),
-      hoverMetadata,
-      opacity: 0.75,
-      isBackgroundZone: true,
-    }));
-  }
-
-  inputs.forEach(({ inputId, payload: inputPayload }) => {
-    // Map each FieldKey to its corresponding SI value from the Adaptive request payload.
-    const ADAPTIVE_FIELD_VALUES: Partial<Record<string, number>> = {
-      [FieldKey.DryBulbTemperature]: inputPayload.tdb,
-      [FieldKey.MeanRadiantTemperature]: inputPayload.tr,
-      [FieldKey.PrevailingMeanOutdoorTemperature]: inputPayload.trm,
-      [FieldKey.RelativeAirSpeed]: inputPayload.v,
-      [FieldKey.WindSpeed]: inputPayload.v,
-      [FieldKey.OperativeTemperature]: t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO),
-    };
-    const getFieldValue = (key: string): number => ADAPTIVE_FIELD_VALUES[key] ?? 0;
-
-    let inputX = getFieldValue(dynamicXAxis as string);
-    let inputY = getFieldValue(dynamicYAxis as string);
-
-    inputX = convertFieldValueFromSi(dynamicXAxis as FieldKey, inputX, unitSystem);
-    inputY = convertFieldValueFromSi(dynamicYAxis as FieldKey, inputY, unitSystem);
-
-    let hoverText = "";
-    try {
-      const res = calculateAdaptive(inputPayload, standardMode);
-      const toValSi = t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, isAshrae ? JsThermalComfortStandard.ASHRAE : JsThermalComfortStandard.ISO);
-      const metadata = getAdaptiveHoverMetadata(res, toValSi, standardMode, unitSystem);
-      if (isAshrae) {
-        hoverText = `<br>${adaptiveAshraeZonesList[2].label}: ${metadata[3]} to ${metadata[4]} °C<br>${adaptiveAshraeZonesList[1].label}: ${metadata[1]} to ${metadata[2]} °C`;
-      } else {
-        hoverText = `<br>${adaptiveEnZonesList[3].label}: ${metadata[1]} to ${metadata[2]} °C<br>${adaptiveEnZonesList[2].label}: ${metadata[3]} to ${metadata[4]} °C<br>${adaptiveEnZonesList[1].label}: ${metadata[5]} to ${metadata[6]} °C`;
-      }
-    } catch {
-      // Ignore
-    }
-
-    traces.push(buildInputScatterTrace({
-      inputId,
-      x: roundValue(inputX),
-      y: roundValue(inputY),
-      showLegend: showInputLegend,
-      hovertemplate: `${inputDisplayMetaById[inputId]?.label ?? "Input"}<br>${xMeta.label}: %{x:.2f} ${xMeta.displayUnits[unitSystem]}<br>${yMeta.label}: %{y:.2f} ${yMeta.displayUnits[unitSystem]}${hoverText}<extra></extra>`,
-    }));
+  return buildAdaptiveBoundaryChart({
+    xAxis,
+    yAxis,
+    layout,
+    inputGroups: [dynamicInputGroup],
   });
-
-  return {
-    traces,
-    layout: {
-      title: `${comfortModelMetaById[modelId].label} Dynamic Chart (${xMeta.label} vs ${yMeta.label})`,
-      paper_bgcolor: CHART_COLORS.PAPER_BG,
-      plot_bgcolor: CHART_COLORS.PLOT_BG,
-      showlegend: showInputLegend,
-      margin: { l: 64, r: 24, t: 48, b: 64 },
-      xaxis: {
-        title: `${xMeta.label} (${xMeta.displayUnits[unitSystem]})`,
-        range: [xMin, xMax],
-        gridcolor: "#e2e8f0",
-      },
-      yaxis: {
-        title: `${yMeta.label} (${yMeta.displayUnits[unitSystem]})`,
-        range: [yMin, yMax],
-        gridcolor: "#e2e8f0",
-      },
-      legend: { orientation: "h", x: 0, y: 1.1 },
-      height: 480,
-    },
-    annotations: [],
-    source: CalculationSource.FrontendGenerated,
-  };
 }
 
 function getAshraeDynamicZone(result: AdaptiveResponseDto, to: number): { z: number; label: string } {

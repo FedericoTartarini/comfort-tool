@@ -16,7 +16,6 @@ import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../models/units";
 import { type InputId as InputIdType } from "../models/inputSlots";
-import { inputDisplayMetaById } from "../models/inputSlotPresentation";
 import type {
   CompareInputMap,
   ComfortPointDto,
@@ -49,10 +48,20 @@ import {
 
 import { createSingleInputPatch, type InputControlBehavior } from "../services/comfort/controls/types";
 import { clothingTypicalEnsembles, metabolicActivityOptions } from "../services/comfort/referenceValues";
-import { convertFieldValueFromSi, convertFieldValueToSi, convertHumidityRatioFromSi, getHumidityRatioDisplayMeta, formatDisplayValue } from "../services/units/index";
+import { convertFieldValueFromSi, convertFieldValueToSi, convertHumidityRatioFromSi, convertHumidityRatioToSi, getHumidityRatioDisplayMeta, formatDisplayValue } from "../services/units/index";
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "../state/comfortTool/modelConfigs/builder";
-import { getCompareInputs, roundValue } from "../services/comfort/helpers";
-import { buildComfortPolygonTrace, buildInputScatterTrace, buildLineTrace, buildContourTrace } from "../services/comfort/charts/plotlyBuilders";
+import { roundValue } from "../services/comfort/helpers";
+import { buildComfortPolygonTrace, buildLineTrace } from "../services/comfort/charts/plotlyBuilders";
+import { createFieldAxisScale } from "../services/comfort/charts/axis";
+import { buildGridContourFieldChart, type GridFieldChartStrategy } from "../services/comfort/charts/chartEngine";
+import { buildClosedBoundaryPolygon } from "../services/comfort/charts/boundaryRegionEngine";
+import {
+  resolveBaselineInputEntry,
+  shouldShowInputLegend,
+  type BuildInputTraceGroupsOptions,
+} from "../services/comfort/charts/inputPoints";
+import { buildZoneColorscale, buildZoneContourLayers } from "../services/comfort/charts/zoneGrid";
+import type { ChartAxisScale } from "../services/comfort/charts/types";
 
 // ── Constants ──────────────────────────────────────────
 
@@ -586,12 +595,7 @@ function getPmvHoverTemplate({
   return parts.join("<br>") + "<extra></extra>";
 }
 
-const PMV_COLORSCALE = pmvZonesList.reduce((acc, zone, index, array) => {
-  const step = 1 / array.length;
-  acc.push([index * step, zone.color]);
-  acc.push([(index + 1) * step, zone.color]);
-  return acc;
-}, [] as [number, string][]);
+const PMV_COLORSCALE = buildZoneColorscale(pmvZonesList);
 
 const PMV_CONTOURS = {
   start: -2.5,
@@ -603,6 +607,93 @@ const PMV_CONTOURS = {
   smoothing: 1,
   line: { width: 1, color: CHART_COLOR_BOUNDARY_LINE },
 };
+
+interface PmvChartEvaluation {
+  pmv: number;
+  ppd: number;
+  zoneLabel: string;
+}
+
+function evaluatePmvCondition(
+  tdb: number,
+  tr: number,
+  vr: number,
+  rh: number,
+  met: number,
+  clo: number,
+  wme: number,
+): PmvChartEvaluation {
+  const pmvResult = pmv_ppd(
+    tdb,
+    tr,
+    vr,
+    rh,
+    met,
+    clo,
+    wme,
+    JsThermalComfortStandard.ASHRAE,
+    { limit_inputs: false },
+  );
+
+  return {
+    pmv: pmvResult.pmv,
+    ppd: pmvResult.ppd,
+    zoneLabel: getPmvZoneMeta(pmvResult.pmv).label,
+  };
+}
+
+function evaluatePmvPayload(payload: PmvRequestDto): PmvChartEvaluation {
+  return evaluatePmvCondition(
+    payload.tdb,
+    payload.tr,
+    payload.vr,
+    payload.rh,
+    payload.met,
+    payload.clo,
+    payload.wme,
+  );
+}
+
+function buildPmvGridPoint(evaluation: PmvChartEvaluation) {
+  return {
+    z: evaluation.pmv,
+    text: evaluation.zoneLabel,
+    hoverMetadata: [evaluation.ppd],
+  };
+}
+
+function buildPmvZoneLayers(name: string, hovertemplate: string) {
+  return buildZoneContourLayers({
+    name,
+    colorscale: PMV_COLORSCALE,
+    contours: PMV_CONTOURS,
+    zmin: -3.5,
+    zmax: 3.5,
+    hovertemplate,
+    opacity: 0.80,
+    isBackgroundZone: true,
+  });
+}
+
+function buildPmvGridStrategy(
+  activeInputPayload: PmvRequestDto | undefined,
+  name: string,
+  hovertemplate: string,
+  evaluatePoint: (xSi: number, ySi: number, activeInputPayload: PmvRequestDto) => ReturnType<typeof buildPmvGridPoint>,
+): GridFieldChartStrategy | undefined {
+  if (!activeInputPayload) {
+    return undefined;
+  }
+
+  return {
+    evaluatePoint: (xSi, ySi) => evaluatePoint(xSi, ySi, activeInputPayload),
+    layers: buildPmvZoneLayers(name, hovertemplate),
+  };
+}
+
+function buildFailedPmvGridPoint() {
+  return { z: NaN, text: "", hoverMetadata: [NaN] };
+}
 
 function smoothComfortZoneXValues(xValues: number[]): number[] {
   if (xValues.length < 3) {
@@ -621,15 +712,12 @@ export function buildComfortZonePolygon(
   getX: (point: ComfortPointDto) => number,
   getY: (point: ComfortPointDto) => number,
 ): { polygonX: number[]; polygonY: number[] } {
-  const coolX = smoothComfortZoneXValues(coolEdge.map(getX));
-  const coolY = coolEdge.map(getY);
-  const warmX = smoothComfortZoneXValues(warmEdge.map(getX));
-  const warmY = warmEdge.map(getY);
-
-  return {
-    polygonX: coolX.concat(warmX.slice().reverse()),
-    polygonY: coolY.concat(warmY.slice().reverse()),
-  };
+  return buildClosedBoundaryPolygon({
+    lowerX: smoothComfortZoneXValues(coolEdge.map(getX)),
+    lowerY: coolEdge.map(getY),
+    upperX: smoothComfortZoneXValues(warmEdge.map(getX)),
+    upperY: warmEdge.map(getY),
+  });
 }
 
 function getComfortZoneForInput(
@@ -648,102 +736,185 @@ function getHumidityRatioDisplayValue(
   return convertHumidityRatioFromSi(psy_ta_rh(temperature, relativeHumidity).hr, unitSystem);
 }
 
+function setPmvAxisValue(payload: PmvRequestDto, key: FieldKey, value: number): void {
+  if (key === FieldKey.DryBulbTemperature) payload.tdb = value;
+  else if (key === FieldKey.MeanRadiantTemperature) payload.tr = value;
+  else if (key === FieldKey.OperativeTemperature) {
+    payload.tdb = value;
+    payload.tr = value;
+  } else if (key === FieldKey.WindSpeed || key === FieldKey.RelativeAirSpeed) payload.vr = value;
+  else if (key === FieldKey.RelativeHumidity) payload.rh = value;
+  else if (key === FieldKey.MetabolicRate) payload.met = value;
+  else if (key === FieldKey.ClothingInsulation) payload.clo = value;
+  else if (key === FieldKey.ExternalWork) payload.wme = value;
+}
+
+function getPmvAxisValue(payload: PmvRequestDto, key: FieldKey): number {
+  const fieldValues: Partial<Record<FieldKey, number>> = {
+    [FieldKey.DryBulbTemperature]: payload.tdb,
+    [FieldKey.MeanRadiantTemperature]: payload.tr,
+    [FieldKey.WindSpeed]: payload.vr,
+    [FieldKey.RelativeAirSpeed]: payload.vr,
+    [FieldKey.RelativeHumidity]: payload.rh,
+    [FieldKey.MetabolicRate]: payload.met,
+    [FieldKey.ClothingInsulation]: payload.clo,
+    [FieldKey.ExternalWork]: payload.wme,
+    [FieldKey.OperativeTemperature]: t_o(payload.tdb, payload.tr, payload.vr, JsThermalComfortStandard.ASHRAE),
+  };
+
+  return fieldValues[key] ?? 0;
+}
+
+function getPmvInputHoverTemplate({
+  inputLabel,
+  inputPayload,
+  xLabel,
+  xUnits,
+  yLabel,
+  yUnits,
+  yDecimals,
+}: {
+  inputLabel: string;
+  inputPayload: PmvRequestDto;
+  xLabel: string;
+  xUnits: string;
+  yLabel: string;
+  yUnits: string;
+  yDecimals: number;
+}): string {
+  let evaluation: PmvChartEvaluation | undefined;
+  try {
+    evaluation = evaluatePmvPayload(inputPayload);
+  } catch {
+    // Preserve existing hover fallback behavior when PMV evaluation fails.
+  }
+
+  return getPmvHoverTemplate({
+    inputLabel,
+    xLabel,
+    xUnits,
+    yLabel,
+    yUnits,
+    yDecimals,
+    zoneText: evaluation?.zoneLabel,
+    pmvText: evaluation !== undefined ? roundValue(evaluation.pmv, 2).toString() : undefined,
+    ppdText: evaluation !== undefined ? `${roundValue(evaluation.ppd, 1)}%` : undefined,
+  });
+}
+
+interface PmvFieldChartOptions {
+  title: string;
+  xAxis: ChartAxisScale;
+  yAxis: ChartAxisScale;
+  grid: GridFieldChartStrategy | undefined;
+  showLegend: boolean;
+  margin: Record<string, number>;
+  inputGroups: Array<BuildInputTraceGroupsOptions<ComfortZoneRequestDto, unknown>>;
+  beforeInputTraces?: PlotTraceDto[];
+}
+
+function buildPmvFieldChart({
+  title,
+  xAxis,
+  yAxis,
+  grid,
+  showLegend,
+  margin,
+  inputGroups,
+  beforeInputTraces = [],
+}: PmvFieldChartOptions): PlotlyChartResponseDto {
+  return buildGridContourFieldChart({
+    xAxis,
+    yAxis,
+    grid,
+    beforeInputTraces,
+    inputGroups,
+    layout: {
+      title,
+      xAxis,
+      yAxis,
+      paperBgColor: CHART_COLOR_WHITE,
+      plotBgColor: CHART_COLOR_PLOT_BG,
+      showLegend,
+      margin,
+      gridColor: CHART_COLOR_GRIDLINE,
+      legend: { orientation: "h", x: 0, y: 1.1 },
+      height: 480,
+    },
+    source: CalculationSource.FrontendGenerated,
+  });
+}
+
 export function buildComparePsychrometricChart(
   payload: PmvChartInputsRequestDto,
   comfortZonesByInput: Record<string, any> = {},
   unitSystem: UnitSystemType = UnitSystem.SI,
   chartSource?: PmvChartSourceDto,
 ): PlotlyChartResponseDto {
-  const inputs = getCompareInputs(payload.inputs);
-  const showInputLegend = inputs.length > 1;
+  const showInputLegend = shouldShowInputLegend(payload.inputs);
   const { chartRange } = payload;
-  const temperatureDisplayUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
   const humidityRatioMeta = getHumidityRatioDisplayMeta(unitSystem);
+  const temperatureAxis = createFieldAxisScale({
+    field: FieldKey.DryBulbTemperature,
+    unitSystem,
+    rangeSi: { min: chartRange.tdbMin, max: chartRange.tdbMax },
+    points: CONTOUR_GRID_RESOLUTION,
+  });
+  const humidityRatioAxis = createFieldAxisScale({
+    field: FieldKey.HumidityRatio,
+    unitSystem,
+    rangeSi: {
+      min: chartRange.humidityRatioMin,
+      max: chartRange.humidityRatioMax,
+    },
+    points: CONTOUR_GRID_RESOLUTION,
+    units: humidityRatioMeta.displayUnits,
+    decimals: humidityRatioMeta.decimals,
+    toDisplay: (valueSi) => convertHumidityRatioFromSi(valueSi, unitSystem),
+    toSi: (valueDisplay) => convertHumidityRatioToSi(valueDisplay, unitSystem),
+  });
   const temperatures = Array.from({ length: chartRange.tdbPoints }, (_, index) => (
     chartRange.tdbMin + ((chartRange.tdbMax - chartRange.tdbMin) * index) / (chartRange.tdbPoints - 1)
   ));
 
-  const traces: PlotTraceDto[] = [];
-
-  const activeInputPayload = (payload.inputs[chartSource?.baselineInputId as InputIdType] || inputs[0]?.payload);
-  if (activeInputPayload) {
-    const xPoints = CONTOUR_GRID_RESOLUTION;
-    const yPoints = CONTOUR_GRID_RESOLUTION;
-    const xValuesSi: number[] = [];
-    const yValuesSi: number[] = [];
-    for (let i = 0; i < xPoints; i++) xValuesSi.push(chartRange.tdbMin + (chartRange.tdbMax - chartRange.tdbMin) * (i / (xPoints - 1)));
-    for (let i = 0; i < yPoints; i++) yValuesSi.push(chartRange.humidityRatioMin + (chartRange.humidityRatioMax - chartRange.humidityRatioMin) * (i / (yPoints - 1)));
-
-    const zValues: number[][] = [];
-    const textValues: string[][] = [];
-    const hoverMetadata: any[][][] = [];
-    for (let i = 0; i < yPoints; i++) {
-      const row: number[] = [];
-      const textRow: string[] = [];
-      const hoverMetadataRow: any[][] = [];
-      const hr = yValuesSi[i];
-      for (let j = 0; j < xPoints; j++) {
-        const tdb = xValuesSi[j];
-        const pAtm = STANDARD_ATM_PRESSURE_PA;
-        const pVap = (hr * pAtm) / (WATER_VAPOR_MOLECULAR_WEIGHT_RATIO + hr);
-        const pSaturation = p_sat(tdb);
-        if (pVap > pSaturation) {
-          row.push(NaN);
-          textRow.push("");
-          hoverMetadataRow.push([NaN]);
-        } else {
-          const rh = Math.max(0, (pVap / pSaturation) * 100);
-          try {
-            const pmvResult = pmv_ppd(
-              tdb,
-              activeInputPayload.tr,
-              activeInputPayload.vr,
-              rh,
-              activeInputPayload.met,
-              activeInputPayload.clo,
-              activeInputPayload.wme,
-              JsThermalComfortStandard.ASHRAE,
-              { limit_inputs: false },
-            );
-            row.push(pmvResult.pmv);
-            textRow.push(getPmvZoneMeta(pmvResult.pmv).label);
-            hoverMetadataRow.push([pmvResult.ppd]);
-          } catch {
-            row.push(NaN);
-            textRow.push("");
-            hoverMetadataRow.push([NaN]);
-          }
-        }
+  const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource?.baselineInputId)?.payload;
+  const gridStrategy = buildPmvGridStrategy(
+    activeInputPayload,
+    `${comfortModelMetaById[ComfortModel.Pmv].label} Zones`,
+    getPmvHoverTemplate({
+      xLabel: fieldMetaByKey[FieldKey.DryBulbTemperature].label,
+      xUnits: temperatureAxis.units,
+      yLabel: fieldMetaByKey[FieldKey.HumidityRatio].label,
+      yUnits: humidityRatioMeta.displayUnits,
+      yDecimals: humidityRatioMeta.decimals,
+    }),
+    (tdb: number, hr: number, inputPayload: PmvRequestDto) => {
+      const pAtm = STANDARD_ATM_PRESSURE_PA;
+      const pVap = (hr * pAtm) / (WATER_VAPOR_MOLECULAR_WEIGHT_RATIO + hr);
+      const pSaturation = p_sat(tdb);
+      if (pVap > pSaturation) {
+        return { z: NaN, text: "", hoverMetadata: [NaN] };
       }
-      zValues.push(row);
-      textValues.push(textRow);
-      hoverMetadata.push(hoverMetadataRow);
-    }
-    const displayXValues = xValuesSi.map(x => convertFieldValueFromSi(FieldKey.DryBulbTemperature, x, unitSystem));
-    const displayYValues = yValuesSi.map(y => convertHumidityRatioFromSi(y, unitSystem));
 
-    traces.push(buildContourTrace({
-      name: `${comfortModelMetaById[ComfortModel.Pmv].label} Zones`,
-      x: displayXValues,
-      y: displayYValues,
-      z: zValues,
-      text: textValues,
-      colorscale: PMV_COLORSCALE,
-      contours: PMV_CONTOURS,
-      zmin: -3.5,
-      zmax: 3.5,
-      hovertemplate: getPmvHoverTemplate({
-        xLabel: fieldMetaByKey[FieldKey.DryBulbTemperature].label,
-        xUnits: temperatureDisplayUnits,
-        yLabel: fieldMetaByKey[FieldKey.HumidityRatio].label,
-        yUnits: humidityRatioMeta.displayUnits,
-        yDecimals: humidityRatioMeta.decimals,
-      }),
-      hoverMetadata: hoverMetadata,
-      opacity: 0.80,
-      isBackgroundZone: true,
-    }));
-  }
+      const rh = Math.max(0, (pVap / pSaturation) * 100);
+      try {
+        const evaluation = evaluatePmvCondition(
+          tdb,
+          inputPayload.tr,
+          inputPayload.vr,
+          rh,
+          inputPayload.met,
+          inputPayload.clo,
+          inputPayload.wme,
+        );
+        return buildPmvGridPoint(evaluation);
+      } catch {
+        return buildFailedPmvGridPoint();
+      }
+    },
+  );
+
+  const rhCurveTraces: PlotTraceDto[] = [];
 
   payload.rhCurves.forEach((relativeHumidity) => {
     const xValues: number[] = [];
@@ -760,9 +931,17 @@ export function buildComparePsychrometricChart(
 
         if (activeInputPayload) {
           try {
-            const res = pmv_ppd(temperature, activeInputPayload.tr, activeInputPayload.vr, relativeHumidity, activeInputPayload.met, activeInputPayload.clo, activeInputPayload.wme, JsThermalComfortStandard.ASHRAE, { limit_inputs: false });
-            hoverMetadata.push([res.ppd, res.pmv.toFixed(2)]);
-            textValues.push(getPmvZoneMeta(res.pmv).label);
+            const evaluation = evaluatePmvCondition(
+              temperature,
+              activeInputPayload.tr,
+              activeInputPayload.vr,
+              relativeHumidity,
+              activeInputPayload.met,
+              activeInputPayload.clo,
+              activeInputPayload.wme,
+            );
+            hoverMetadata.push([evaluation.ppd, evaluation.pmv.toFixed(2)]);
+            textValues.push(evaluation.zoneLabel);
           } catch {
             hoverMetadata.push([NaN, "NaN"]);
             textValues.push("");
@@ -773,14 +952,14 @@ export function buildComparePsychrometricChart(
     if (xValues.length === 0) {
       return;
     }
-    traces.push(buildLineTrace({
+    rhCurveTraces.push(buildLineTrace({
       name: `RH ${relativeHumidity}%`,
       x: xValues,
       y: yValues,
       color: CHART_COLOR_RH_LINE,
       hovertemplate: getPmvHoverTemplate({
         xLabel: fieldMetaByKey[FieldKey.DryBulbTemperature].label,
-        xUnits: temperatureDisplayUnits,
+        xUnits: temperatureAxis.units,
         yLabel: fieldMetaByKey[FieldKey.HumidityRatio].label,
         yUnits: humidityRatioMeta.displayUnits,
         yDecimals: humidityRatioMeta.decimals,
@@ -793,89 +972,58 @@ export function buildComparePsychrometricChart(
     }));
   });
 
-  inputs.forEach(({ inputId, payload: inputPayload }) => {
-    const comfortZone = getComfortZoneForInput(inputId, inputPayload, comfortZonesByInput);
-
-    const { polygonX, polygonY } = buildComfortZonePolygon(
-      comfortZone.coolEdge || [],
-      comfortZone.warmEdge || [],
-      (point) => roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, point.tdb, unitSystem)),
-      (point) => roundValue(getHumidityRatioDisplayValue(point.tdb, point.rh, unitSystem)),
-    );
-
-    if (polygonX.length > 0) {
-      traces.push(buildComfortPolygonTrace({
-        inputId,
-        nameSuffix: "comfort zone",
-        polygonX,
-        polygonY,
-        hovertemplate: "",
-        hoverinfo: "skip",
-        isComfortZone: true,
-      }));
-    }
-
-    let pmvValue: number | undefined;
-    let zoneLabel: string | undefined;
-    let ppdValue: number | undefined;
-    try {
-      const pmvRes = pmv_ppd(inputPayload.tdb, inputPayload.tr, inputPayload.vr, inputPayload.rh, inputPayload.met, inputPayload.clo, inputPayload.wme, JsThermalComfortStandard.ASHRAE, { limit_inputs: false });
-      pmvValue = pmvRes.pmv;
-      zoneLabel = getPmvZoneMeta(pmvRes.pmv).label;
-      ppdValue = pmvRes.ppd;
-    } catch {
-      // Ignore errors.
-    }
-
-    traces.push(buildInputScatterTrace({
-      inputId,
-      x: roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, inputPayload.tdb, unitSystem)),
-      y: roundValue(getHumidityRatioDisplayValue(inputPayload.tdb, inputPayload.rh, unitSystem)),
+  return buildPmvFieldChart({
+    title: `${comfortModelMetaById[ComfortModel.Pmv].label} Psychrometric Chart`,
+    xAxis: temperatureAxis,
+    yAxis: humidityRatioAxis,
+    grid: gridStrategy,
+    beforeInputTraces: rhCurveTraces,
+    inputGroups: [{
+      inputsMap: payload.inputs,
       showLegend: showInputLegend,
-      hovertemplate: getPmvHoverTemplate({
-        inputLabel: inputDisplayMetaById[inputId]?.label ?? "Input",
-        xLabel: fieldMetaByKey[FieldKey.DryBulbTemperature].label,
-        xUnits: temperatureDisplayUnits,
-        yLabel: fieldMetaByKey[FieldKey.HumidityRatio].label,
-        yUnits: humidityRatioMeta.displayUnits,
-        yDecimals: humidityRatioMeta.decimals,
-        zoneText: zoneLabel,
-        pmvText: pmvValue !== undefined ? roundValue(pmvValue, 2).toString() : undefined,
-        ppdText: ppdValue !== undefined ? `${roundValue(ppdValue, 1)}%` : undefined,
-      }),
-    }));
-  });
+      xAxis: temperatureAxis,
+      yAxis: humidityRatioAxis,
+      getXSi: (inputPayload) => inputPayload.tdb,
+      getYSi: (inputPayload) => psy_ta_rh(inputPayload.tdb, inputPayload.rh).hr,
+      formatXDisplay: roundValue,
+      formatYDisplay: roundValue,
+      buildOverlayTraces: ({ inputId, payload: inputPayload }) => {
+        const comfortZone = getComfortZoneForInput(inputId, inputPayload, comfortZonesByInput);
 
-  return {
-    traces,
-    layout: {
-      title: `${comfortModelMetaById[ComfortModel.Pmv].label} Psychrometric Chart`,
-      paper_bgcolor: CHART_COLOR_WHITE,
-      plot_bgcolor: CHART_COLOR_PLOT_BG,
-      showlegend: showInputLegend,
-      margin: { l: 56, r: 24, t: 48, b: 80 },
-      xaxis: {
-        title: `${fieldMetaByKey[FieldKey.DryBulbTemperature].label} (${temperatureDisplayUnits})`,
-        range: [
-          convertFieldValueFromSi(FieldKey.DryBulbTemperature, chartRange.tdbMin, unitSystem),
-          convertFieldValueFromSi(FieldKey.DryBulbTemperature, chartRange.tdbMax, unitSystem),
-        ],
-        gridcolor: CHART_COLOR_GRIDLINE,
+        const { polygonX, polygonY } = buildComfortZonePolygon(
+          comfortZone.coolEdge || [],
+          comfortZone.warmEdge || [],
+          (point) => roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, point.tdb, unitSystem)),
+          (point) => roundValue(getHumidityRatioDisplayValue(point.tdb, point.rh, unitSystem)),
+        );
+
+        return polygonX.length > 0
+          ? [buildComfortPolygonTrace({
+            inputId,
+            nameSuffix: "comfort zone",
+            polygonX,
+            polygonY,
+            hovertemplate: "",
+            hoverinfo: "skip",
+            isComfortZone: true,
+          })]
+          : [];
       },
-      yaxis: {
-        title: `${fieldMetaByKey[FieldKey.HumidityRatio].label} (${humidityRatioMeta.displayUnits})`,
-        range: [
-          convertHumidityRatioFromSi(chartRange.humidityRatioMin, unitSystem),
-          convertHumidityRatioFromSi(chartRange.humidityRatioMax, unitSystem),
-        ],
-        gridcolor: CHART_COLOR_GRIDLINE,
+      getHovertemplate: ({ inputLabel, payload: scatterPayload }) => {
+        return getPmvInputHoverTemplate({
+          inputLabel,
+          inputPayload: scatterPayload,
+          xLabel: fieldMetaByKey[FieldKey.DryBulbTemperature].label,
+          xUnits: temperatureAxis.units,
+          yLabel: fieldMetaByKey[FieldKey.HumidityRatio].label,
+          yUnits: humidityRatioMeta.displayUnits,
+          yDecimals: humidityRatioMeta.decimals,
+        });
       },
-      legend: { orientation: "h", x: 0, y: 1.1 },
-      height: 480,
-    },
-    annotations: [],
-    source: CalculationSource.FrontendGenerated,
-  };
+    }],
+    showLegend: showInputLegend,
+    margin: { l: 56, r: 24, t: 48, b: 80 },
+  });
 }
 
 export function buildPmvDynamicChart(
@@ -885,180 +1033,69 @@ export function buildPmvDynamicChart(
   unitSystem: UnitSystemType = UnitSystem.SI,
   chartSource?: PmvChartSourceDto,
 ): PlotlyChartResponseDto {
-  const inputs = getCompareInputs(payload.inputs);
-  const showInputLegend = inputs.length > 1;
-  const activeInputPayload = payload.inputs[chartSource?.baselineInputId as InputIdType] || inputs[0]?.payload;
-
-  const xMeta = fieldMetaByKey[dynamicXAxis];
-  const yMeta = fieldMetaByKey[dynamicYAxis];
-
-  const xMin = convertFieldValueFromSi(dynamicXAxis, xMeta.minValue, unitSystem);
-  const xMax = convertFieldValueFromSi(dynamicXAxis, xMeta.maxValue, unitSystem);
-  const yMin = convertFieldValueFromSi(dynamicYAxis, yMeta.minValue, unitSystem);
-  const yMax = convertFieldValueFromSi(dynamicYAxis, yMeta.maxValue, unitSystem);
-
-  const xPoints = CONTOUR_GRID_RESOLUTION;
-  const yPoints = CONTOUR_GRID_RESOLUTION;
-  const xValues: number[] = [];
-  const yValues: number[] = [];
-
-  for (let i = 0; i < xPoints; i++) {
-    xValues.push(xMin + (xMax - xMin) * (i / (xPoints - 1)));
-  }
-  for (let i = 0; i < yPoints; i++) {
-    yValues.push(yMin + (yMax - yMin) * (i / (yPoints - 1)));
-  }
-
-  const zValues: number[][] = [];
-  const textValues: string[][] = [];
-  const hoverMetadata: any[][][] = [];
-
-  if (activeInputPayload) {
-    for (let i = 0; i < yPoints; i++) {
-      const row: number[] = [];
-      const textRow: string[] = [];
-      const hoverMetadataRow: any[][] = [];
-      const ySi = convertFieldValueToSi(dynamicYAxis, yValues[i], unitSystem);
-
-      for (let j = 0; j < xPoints; j++) {
-        const xSi = convertFieldValueToSi(dynamicXAxis, xValues[j], unitSystem);
-
-        const pointArgs = { ...activeInputPayload };
-        // Dynamically overrides the baseline comfort inputs with the active grid coordinates 
-        // for the current contour point, leaving all other input parameters unchanged.
-        // Used to evaluate model states across the grid.
-        const updateParams = (key: string, val: number) => {
-          if (key === FieldKey.DryBulbTemperature) { pointArgs.tdb = val; }
-          else if (key === FieldKey.MeanRadiantTemperature) { pointArgs.tr = val; }
-          else if (key === FieldKey.OperativeTemperature) { pointArgs.tdb = val; pointArgs.tr = val; }
-          else if (key === FieldKey.WindSpeed || key === FieldKey.RelativeAirSpeed) { pointArgs.vr = val; }
-          else if (key === FieldKey.RelativeHumidity) { pointArgs.rh = val; }
-          else if (key === FieldKey.MetabolicRate) { pointArgs.met = val; }
-          else if (key === FieldKey.ClothingInsulation) { pointArgs.clo = val; }
-          else if (key === FieldKey.ExternalWork) { pointArgs.wme = val; }
-        };
-
-        updateParams(dynamicXAxis as string, xSi);
-        updateParams(dynamicYAxis as string, ySi);
-        try {
-          const pmvResult = pmv_ppd(pointArgs.tdb, pointArgs.tr, pointArgs.vr, pointArgs.rh, pointArgs.met, pointArgs.clo, pointArgs.wme, JsThermalComfortStandard.ASHRAE, { limit_inputs: false });
-          row.push(pmvResult.pmv);
-          textRow.push(getPmvZoneMeta(pmvResult.pmv).label);
-          hoverMetadataRow.push([pmvResult.ppd]);
-        } catch (e) {
-          row.push(NaN);
-          textRow.push("");
-          hoverMetadataRow.push([NaN]);
-        }
-      }
-      zValues.push(row);
-      textValues.push(textRow);
-      hoverMetadata.push(hoverMetadataRow);
-    }
-  }
-
-  const traces: PlotTraceDto[] = [];
-
-  if (zValues.length > 0) {
-    traces.push(buildContourTrace({
-      name: comfortModelMetaById[ComfortModel.Pmv].label,
-      x: xValues,
-      y: yValues,
-      z: zValues,
-      text: textValues,
-      colorscale: PMV_COLORSCALE,
-      contours: PMV_CONTOURS,
-      zmin: -3.5,
-      zmax: 3.5,
-      hovertemplate: getPmvHoverTemplate({
-        xLabel: xMeta.label,
-        xUnits: xMeta.displayUnits[unitSystem],
-        yLabel: yMeta.label,
-        yUnits: yMeta.displayUnits[unitSystem],
-        yDecimals: 2,
-      }),
-      hoverMetadata: hoverMetadata,
-      opacity: 0.80,
-      isBackgroundZone: true,
-    }));
-  }
-
-  inputs.forEach(({ inputId, payload: inputPayload }) => {
-    // Map each FieldKey to its corresponding SI value from the PMV request payload.
-    const PMV_FIELD_VALUES: Partial<Record<string, number>> = {
-      [FieldKey.DryBulbTemperature]: inputPayload.tdb,
-      [FieldKey.MeanRadiantTemperature]: inputPayload.tr,
-      [FieldKey.WindSpeed]: inputPayload.vr,
-      [FieldKey.RelativeAirSpeed]: inputPayload.vr,
-      [FieldKey.RelativeHumidity]: inputPayload.rh,
-      [FieldKey.MetabolicRate]: inputPayload.met,
-      [FieldKey.ClothingInsulation]: inputPayload.clo,
-      [FieldKey.ExternalWork]: inputPayload.wme,
-      [FieldKey.OperativeTemperature]: t_o(inputPayload.tdb, inputPayload.tr, inputPayload.vr, JsThermalComfortStandard.ASHRAE),
-    };
-    const getFieldValue = (key: string): number => PMV_FIELD_VALUES[key] ?? 0;
-
-    let inputX = getFieldValue(dynamicXAxis as string);
-    let inputY = getFieldValue(dynamicYAxis as string);
-
-    inputX = convertFieldValueFromSi(dynamicXAxis, inputX, unitSystem);
-    inputY = convertFieldValueFromSi(dynamicYAxis, inputY, unitSystem);
-
-    let pmvValue: number | undefined;
-    let zoneLabel: string | undefined;
-    let ppdValue: number | undefined;
-    try {
-      const pmvRes = pmv_ppd(inputPayload.tdb, inputPayload.tr, inputPayload.vr, inputPayload.rh, inputPayload.met, inputPayload.clo, inputPayload.wme, JsThermalComfortStandard.ASHRAE, { limit_inputs: false });
-      pmvValue = pmvRes.pmv;
-      zoneLabel = getPmvZoneMeta(pmvRes.pmv).label;
-      ppdValue = pmvRes.ppd;
-    } catch {
-      // Ignore errors.
-    }
-
-    traces.push(buildInputScatterTrace({
-      inputId,
-      x: roundValue(inputX),
-      y: roundValue(inputY),
-      showLegend: showInputLegend,
-      hovertemplate: getPmvHoverTemplate({
-        inputLabel: inputDisplayMetaById[inputId]?.label ?? "Input",
-        xLabel: xMeta.label,
-        xUnits: xMeta.displayUnits[unitSystem],
-        yLabel: yMeta.label,
-        yUnits: yMeta.displayUnits[unitSystem],
-        yDecimals: 2,
-        zoneText: zoneLabel,
-        pmvText: pmvValue !== undefined ? roundValue(pmvValue, 2).toString() : undefined,
-        ppdText: ppdValue !== undefined ? `${roundValue(ppdValue, 1)}%` : undefined,
-      }),
-    }));
+  const showInputLegend = shouldShowInputLegend(payload.inputs);
+  const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource?.baselineInputId)?.payload;
+  const xAxis = createFieldAxisScale({
+    field: dynamicXAxis,
+    unitSystem,
+    points: CONTOUR_GRID_RESOLUTION,
   });
+  const yAxis = createFieldAxisScale({
+    field: dynamicYAxis,
+    unitSystem,
+    points: CONTOUR_GRID_RESOLUTION,
+  });
+  const gridStrategy = buildPmvGridStrategy(
+    activeInputPayload,
+    comfortModelMetaById[ComfortModel.Pmv].label,
+    getPmvHoverTemplate({
+      xLabel: xAxis.label,
+      xUnits: xAxis.units,
+      yLabel: yAxis.label,
+      yUnits: yAxis.units,
+      yDecimals: 2,
+    }),
+    (xSi: number, ySi: number, inputPayload: PmvRequestDto) => {
+      const pointArgs = { ...inputPayload };
+      setPmvAxisValue(pointArgs, dynamicXAxis, xSi);
+      setPmvAxisValue(pointArgs, dynamicYAxis, ySi);
 
-  return {
-    traces,
-    layout: {
-      title: `${comfortModelMetaById[ComfortModel.Pmv].label} Dynamic Chart (${xMeta.label} vs ${yMeta.label})`,
-      paper_bgcolor: CHART_COLOR_WHITE,
-      plot_bgcolor: CHART_COLOR_PLOT_BG,
-      showlegend: showInputLegend,
-      margin: { l: 64, r: 24, t: 48, b: 64 },
-      xaxis: {
-        title: `${xMeta.label} (${xMeta.displayUnits[unitSystem]})`,
-        range: [xMin, xMax],
-        gridcolor: CHART_COLOR_GRIDLINE,
-      },
-      yaxis: {
-        title: `${yMeta.label} (${yMeta.displayUnits[unitSystem]})`,
-        range: [yMin, yMax],
-        gridcolor: CHART_COLOR_GRIDLINE,
-      },
-      legend: { orientation: "h", x: 0, y: 1.1 },
-      height: 480,
+      try {
+        return buildPmvGridPoint(evaluatePmvPayload(pointArgs));
+      } catch {
+        return buildFailedPmvGridPoint();
+      }
     },
-    annotations: [],
-    source: CalculationSource.FrontendGenerated,
-  };
+  );
+
+  return buildPmvFieldChart({
+    title: `${comfortModelMetaById[ComfortModel.Pmv].label} Dynamic Chart (${xAxis.label} vs ${yAxis.label})`,
+    xAxis,
+    yAxis,
+    grid: gridStrategy,
+    inputGroups: [{
+      inputsMap: payload.inputs,
+      xAxis,
+      yAxis,
+      getXSi: (inputPayload) => getPmvAxisValue(inputPayload, dynamicXAxis),
+      getYSi: (inputPayload) => getPmvAxisValue(inputPayload, dynamicYAxis),
+      formatXDisplay: roundValue,
+      formatYDisplay: roundValue,
+      getHovertemplate: ({ inputLabel, payload: inputPayload }) => {
+        return getPmvInputHoverTemplate({
+          inputLabel,
+          inputPayload,
+          xLabel: xAxis.label,
+          xUnits: xAxis.units,
+          yLabel: yAxis.label,
+          yUnits: yAxis.units,
+          yDecimals: 2,
+        });
+      },
+    }],
+    showLegend: showInputLegend,
+    margin: { l: 64, r: 24, t: 48, b: 64 },
+  });
 }
 
 function buildPmvChartResult(

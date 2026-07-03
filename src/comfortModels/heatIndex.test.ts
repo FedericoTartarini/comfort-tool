@@ -2,10 +2,12 @@
  * Unit tests for the Heat Index calculation service.
  */
 import { describe, expect, it } from "vitest";
-import { calculateHeatIndex } from "./heatIndex";
+import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
 import { UnitSystem } from "../models/units";
 import { convertFieldValueFromSi } from "../services/units";
 import { FieldKey } from "../models/fieldKeys";
+import { ChartId } from "../models/chartOptions";
+import { InputId } from "../models/inputSlots";
 
 describe("heatIndex service", () => {
   it("calculates Heat Index correctly in SI format", () => {
@@ -43,5 +45,37 @@ describe("heatIndex service", () => {
     });
     
     expect(result.category).toBe("Extreme Danger");
+  });
+
+  it("builds static and dynamic chart results through the shared chart wrapper", () => {
+    const request = { tdb: 35, rh: 70, units: UnitSystem.SI };
+    const result = calculateHeatIndex(request);
+    const chartSource = {
+      chartRequest: { [InputId.Input1]: request },
+      dynamicXAxis: FieldKey.DryBulbTemperature,
+      dynamicYAxis: FieldKey.RelativeHumidity,
+      baselineInputId: InputId.Input1,
+    };
+    const resultsByInput = { [InputId.Input1]: result } as any;
+
+    const staticChart = heatIndexModelConfig.buildChartResult(
+      ChartId.HeatIndexRanges,
+      chartSource,
+      resultsByInput,
+      UnitSystem.SI,
+    );
+    const dynamicChart = heatIndexModelConfig.buildChartResult(
+      ChartId.HeatIndexDynamic,
+      chartSource,
+      resultsByInput,
+      UnitSystem.SI,
+    );
+
+    expect(staticChart?.traces[0].type).toBe("contour");
+    expect(staticChart?.traces[0].z).toHaveLength(300);
+    expect(staticChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(dynamicChart?.traces[0].type).toBe("contour");
+    expect(dynamicChart?.traces[0].z).toHaveLength(300);
+    expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 });
