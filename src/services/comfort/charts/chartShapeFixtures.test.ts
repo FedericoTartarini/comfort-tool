@@ -18,6 +18,7 @@ import {
   type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
 } from "../../../comfortModels/pmv";
+import { buildUtciDynamicChart } from "../../../comfortModels/utci";
 
 const pmvPayload: ComfortZoneRequestDto = {
   tdb: 25,
@@ -39,6 +40,14 @@ const adaptivePayload = {
   tr: 24,
   trm: 20.16,
   v: 0.1,
+  units: UnitSystem.SI,
+};
+
+const utciPayload = {
+  tdb: 25,
+  tr: 25,
+  v: 1,
+  rh: 50,
   units: UnitSystem.SI,
 };
 
@@ -159,5 +168,25 @@ describe("PMV and Adaptive chart shape fixtures", () => {
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeAirSpeed,
     ))).toBe("576cac4ab2ddbb327133132e2afd0d152e628d81b1920af8a28751b708bbac12");
+  });
+
+  it("keeps the UTCI dynamic chart DTO shape stable", () => {
+    expect(chartShapeHash(buildUtciDynamicChart(
+      {
+        inputs: {
+          [InputId.Input1]: utciPayload,
+        },
+      },
+      {
+        [InputId.Input1]: {
+          utci: 25,
+          stressCategory: "no thermal stress",
+        },
+      },
+      UnitSystem.SI,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      InputId.Input1,
+    ))).toBe("53693384f2856e0f6cdaa22fac5aadaa7c3ed3817538c5ba6fb869620eb3b618");
   });
 });

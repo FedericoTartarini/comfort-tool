@@ -2,6 +2,9 @@ import type { PlotTraceDto } from "../../../models/comfortDtos";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale, ChartRange } from "./types";
 
+type BoundaryHoverRow = unknown[];
+type BoundaryHoverMetadata = BoundaryHoverRow[];
+
 interface BoundaryBand {
   label: string;
   color: string;
@@ -10,7 +13,7 @@ interface BoundaryBand {
 interface BoundaryPolygonTraceContext {
   polygonX: number[];
   polygonY: number[];
-  hoverMetadata: any[][];
+  hoverMetadata: BoundaryHoverMetadata;
 }
 
 interface BuildBoundaryPolygonTraceOptions {
@@ -18,7 +21,7 @@ interface BuildBoundaryPolygonTraceOptions {
   yValuesSi: number[];
   xAxis: ChartAxisScale;
   yAxis: ChartAxisScale;
-  getHoverMetadata?: (xSi: number, ySi: number, index: number) => any[];
+  getHoverMetadata?: (xSi: number, ySi: number, index: number) => BoundaryHoverRow;
   buildTrace: (context: BoundaryPolygonTraceContext) => PlotTraceDto;
 }
 
@@ -41,7 +44,7 @@ interface BuildBoundaryRegionTracesOptions {
   xAxis: ChartAxisScale;
   yAxis: ChartAxisScale;
   boundaryRangeSi?: ChartRange;
-  getHoverMetadata?: (xSi: number, ySi: number, index: number) => any[];
+  getHoverMetadata?: (xSi: number, ySi: number, index: number) => BoundaryHoverRow;
   buildTrace: (context: BoundaryPolygonTraceContext & { band: BoundaryBand; bandIndex: number }) => PlotTraceDto;
 }
 
@@ -54,7 +57,7 @@ interface FilledBoundaryRegionTraceOptions {
   opacity?: number;
   hovertemplate?: string;
   hoverinfo?: string;
-  hoverMetadata?: any[][];
+  hoverMetadata?: BoundaryHoverMetadata;
   isZone?: boolean;
 }
 
@@ -63,7 +66,7 @@ interface TooltipGridTraceOptions {
   xAxis: ChartAxisScale;
   yAxis: ChartAxisScale;
   hovertemplate: string;
-  getHoverMetadata: (xSi: number, ySi: number, xIndex: number, yIndex: number) => any[];
+  getHoverMetadata: (xSi: number, ySi: number, xIndex: number, yIndex: number) => BoundaryHoverRow;
   colorscale?: [number, string][];
   contours?: any;
 }
@@ -131,6 +134,11 @@ export function buildClosedBoundaryPolygonTrace({
   });
 }
 
+/**
+ * Builds filled boundary bands from model-owned SI curves. This helper owns axis
+ * orientation, range clamping, display conversion, polygon assembly, and hover
+ * metadata placement; models own boundary equations, labels, and trace styling.
+ */
 export function buildBoundaryRegionTraces({
   variableValuesSi,
   boundaryCurvesSi,
@@ -161,19 +169,23 @@ export function buildBoundaryRegionTraces({
       return;
     }
 
-    const lowerDisplayValues = lowerValues.map((value) => boundaryAxis.toDisplay(clamp(value, boundaryRangeSi)));
-    const upperDisplayValues = upperValues.map((value) => boundaryAxis.toDisplay(clamp(value, boundaryRangeSi)));
+    const lowerValuesClampedSi = lowerValues.map((value) => clamp(value, boundaryRangeSi));
+    const upperValuesClampedSi = upperValues.map((value) => clamp(value, boundaryRangeSi));
+    const lowerDisplayValues = lowerValuesClampedSi.map(boundaryAxis.toDisplay);
+    const upperDisplayValues = upperValuesClampedSi.map(boundaryAxis.toDisplay);
     const variableIsXAxis = variableAxis.field === xAxis.field;
+    const variablePolygonValuesSi = variableValuesSi.concat(variableValuesSi.slice().reverse());
+    const boundaryPolygonValuesSi = lowerValuesClampedSi.concat(upperValuesClampedSi.slice().reverse());
     const polygonX = variableIsXAxis
       ? variableDisplayValues.concat(variableDisplayValues.slice().reverse())
       : lowerDisplayValues.concat(upperDisplayValues.slice().reverse());
     const polygonY = variableIsXAxis
       ? lowerDisplayValues.concat(upperDisplayValues.slice().reverse())
       : variableDisplayValues.concat(variableDisplayValues.slice().reverse());
-    const hoverMetadata = polygonX.map((xDisplay, index) => {
-      const yDisplay = polygonY[index];
-      const xSi = xAxis.toSi(xDisplay);
-      const ySi = yAxis.toSi(yDisplay);
+    const hoverMetadata = variablePolygonValuesSi.map((variableValueSi, index) => {
+      const boundaryValueSi = boundaryPolygonValuesSi[index];
+      const xSi = variableIsXAxis ? variableValueSi : boundaryValueSi;
+      const ySi = variableIsXAxis ? boundaryValueSi : variableValueSi;
       return getHoverMetadata?.(xSi, ySi, index) ?? [];
     });
 

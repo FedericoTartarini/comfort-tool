@@ -289,6 +289,10 @@ export function buildComfortModelChart(
   const sharedChartRequest = chartSource.chartRequest;
 
   if (chartId === config.dynamicChartId) {
+    const baselinePayload =
+      resolveBaselineInputEntry(sharedChartRequest, chartSource.baselineInputId)?.payload
+      ?? config.baselinePayloadDefault;
+
     return buildDynamicContourChart(
       sharedChartRequest,
       resultsByInput,
@@ -301,9 +305,6 @@ export function buildComfortModelChart(
         colorscale: buildZoneColorscale(config.zones),
         getRange: (key: FieldKey) => getDefaultRange(key, config.customRanges),
         calculatePoint: (xSi, ySi, dynamicXAxis, dynamicYAxis) => {
-          const baselinePayload =
-            resolveBaselineInputEntry(sharedChartRequest, chartSource.baselineInputId)?.payload
-            ?? config.baselinePayloadDefault;
           return config.calculateDynamicPoint(xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload);
         },
         getHovertemplateScatter: config.getHovertemplateScatterDynamic,

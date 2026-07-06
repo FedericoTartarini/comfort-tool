@@ -5,6 +5,21 @@ import { buildInputTraceGroups, type BuildInputTraceGroupsOptions } from "./inpu
 import { buildChartResponse } from "./layout";
 import type { ChartAxisScale, ChartLayoutSpec, GridEvaluationResult, GridPointEvaluation } from "./types";
 
+/**
+ * Step 9.1 shared chart engine contract.
+ *
+ * This layer is intentionally lower-level than the future Compliance/Explore
+ * `FieldChartConfig`: models still choose the active chart ID, z metric, and
+ * threshold semantics. The engine only owns common field-chart scaffolding:
+ * axis display conversion, trace ordering, input overlays, layout assembly, and
+ * the two current rendering strategies:
+ *
+ * 1. grid/contour - evaluate a model over SI x/y points, then build contour traces
+ * 2. boundary/region - accept model-built boundary geometry and assemble it with inputs
+ *
+ * Strategy callbacks receive SI values. Axis scales are the only place where
+ * chart point values are converted to display units.
+ */
 export interface GridContourLayerSpec {
   name: string;
   colorscale: any[];
@@ -91,10 +106,6 @@ function buildGridTraces(
   }));
 }
 
-/**
- * Shared field-chart assembly. Strategy callbacks work in SI; axis scales own display
- * conversion; strategy traces supply only grid or boundary geometry.
- */
 function buildFieldChart<TPayload, TResult>({
   strategyTraces = [],
   leadingTraces = [],

@@ -373,7 +373,7 @@ export interface ContourTraceOptions {
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
   hoverinfo?: string;
-  hoverMetadata?: any[][];
+  hoverMetadata?: any[] | any[][];
 }
 
 /**

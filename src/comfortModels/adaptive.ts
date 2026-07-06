@@ -963,7 +963,7 @@ function buildAdaptiveBandTrace(
   color: string,
   polygonX: number[],
   polygonY: number[],
-  hoverMetadata: any[][],
+  hoverMetadata: unknown[][],
 ): PlotTraceDto {
   return buildFilledBoundaryRegionTrace({
     name,
@@ -1098,10 +1098,64 @@ interface AdaptiveBoundaryTraceSet {
   boundaryTraces: PlotTraceDto[];
 }
 
+interface AdaptiveInputGroupOptions {
+  payload: AdaptiveChartInputsRequestDto;
+  xAxis: ChartAxisScale;
+  yAxis: ChartAxisScale;
+  getXSi: (inputPayload: AdaptiveRequestDto) => number;
+  getYSi: (inputPayload: AdaptiveRequestDto) => number;
+  xLabel: string;
+  xUnits: string;
+  yLabel: string;
+  yUnits: string;
+  coordinateDecimals: number;
+  boundaryUnits: string;
+  standardMode: AdaptiveStandardMode;
+  unitSystem: UnitSystemType;
+}
+
 function createEmptyAdaptiveBoundaryTraceSet(): AdaptiveBoundaryTraceSet {
   return {
     leadingTraces: [],
     boundaryTraces: [],
+  };
+}
+
+function buildAdaptiveInputGroup({
+  payload,
+  xAxis,
+  yAxis,
+  getXSi,
+  getYSi,
+  xLabel,
+  xUnits,
+  yLabel,
+  yUnits,
+  coordinateDecimals,
+  boundaryUnits,
+  standardMode,
+  unitSystem,
+}: AdaptiveInputGroupOptions): BuildInputTraceGroupsOptions<AdaptiveRequestDto, unknown> {
+  return {
+    inputsMap: payload.inputs,
+    xAxis,
+    yAxis,
+    getXSi,
+    getYSi,
+    formatXDisplay: roundValue,
+    formatYDisplay: roundValue,
+    getHovertemplate: ({ inputLabel, payload: inputPayload }) => getAdaptiveInputHoverTemplate({
+      inputLabel,
+      inputPayload,
+      xLabel,
+      xUnits,
+      yLabel,
+      yUnits,
+      coordinateDecimals,
+      boundaryUnits,
+      standardMode,
+      unitSystem,
+    }),
   };
 }
 
@@ -1124,16 +1178,16 @@ function buildOutdoorTemperatureDynamicBoundaryTraces(
 
   const otherAxis = hasOutdoorXAxis ? dynamicYAxis : dynamicXAxis;
   const isAshrae = standardMode === AdaptiveStandardMode.Ashrae;
+  const xMeta = fieldMetaByKey[dynamicXAxis];
+  const yMeta = fieldMetaByKey[dynamicYAxis];
+  const xLabel = dynamicXAxis === FieldKey.PrevailingMeanOutdoorTemperature
+    ? (isAshrae ? MeanOutdoorTempLabel.Prevailing : MeanOutdoorTempLabel.Running)
+    : xMeta.label;
+  const yLabel = dynamicYAxis === FieldKey.PrevailingMeanOutdoorTemperature
+    ? (isAshrae ? MeanOutdoorTempLabel.Prevailing : MeanOutdoorTempLabel.Running)
+    : yMeta.label;
 
   const buildTooltipLayer = () => {
-    const xMeta = fieldMetaByKey[dynamicXAxis];
-    const yMeta = fieldMetaByKey[dynamicYAxis];
-    const xLabel = dynamicXAxis === FieldKey.PrevailingMeanOutdoorTemperature
-      ? (isAshrae ? MeanOutdoorTempLabel.Prevailing : MeanOutdoorTempLabel.Running)
-      : xMeta.label;
-    const yLabel = dynamicYAxis === FieldKey.PrevailingMeanOutdoorTemperature
-      ? (isAshrae ? MeanOutdoorTempLabel.Prevailing : MeanOutdoorTempLabel.Running)
-      : yMeta.label;
     const xAxis = createFieldAxisScale({
       field: dynamicXAxis,
       unitSystem,
@@ -1167,6 +1221,10 @@ function buildOutdoorTemperatureDynamicBoundaryTraces(
       },
     });
   };
+  const buildTraceSet = (boundaryTraces: PlotTraceDto[]): AdaptiveBoundaryTraceSet => ({
+    leadingTraces: [buildTooltipLayer()],
+    boundaryTraces,
+  });
 
   if (isTemperatureAxis(otherAxis)) {
     const trmMeta = fieldMetaByKey[FieldKey.PrevailingMeanOutdoorTemperature];
@@ -1197,10 +1255,7 @@ function buildOutdoorTemperatureDynamicBoundaryTraces(
       activeInputPayload,
     );
 
-    return {
-      leadingTraces: [buildTooltipLayer()],
-      boundaryTraces: traces,
-    };
+    return buildTraceSet(traces);
   }
 
   if (isAirSpeedAxis(otherAxis)) {
@@ -1243,10 +1298,7 @@ function buildOutdoorTemperatureDynamicBoundaryTraces(
       activeInputPayload,
     );
 
-    return {
-      leadingTraces: [buildTooltipLayer()],
-      boundaryTraces: traces,
-    };
+    return buildTraceSet(traces);
   }
 
   return createEmptyAdaptiveBoundaryTraceSet();
@@ -1403,29 +1455,21 @@ export function buildAdaptiveChart(
     layout,
     leadingTraces: [tooltipTrace],
     boundaryTraces,
-    inputGroups: [{
-      inputsMap: payload.inputs,
+    inputGroups: [buildAdaptiveInputGroup({
+      payload,
       xAxis,
       yAxis,
       getXSi: (inputPayload) => inputPayload.trm,
       getYSi: (inputPayload) => t_o(inputPayload.tdb, inputPayload.tr, inputPayload.v, getAdaptiveJtcStandard(standardMode)),
-      formatXDisplay: roundValue,
-      formatYDisplay: roundValue,
-      getHovertemplate: ({ inputLabel, payload: inputPayload }) => {
-        return getAdaptiveInputHoverTemplate({
-          inputLabel,
-          inputPayload,
-          xLabel,
-          xUnits: temperatureDisplayUnits,
-          yLabel,
-          yUnits: temperatureDisplayUnits,
-          coordinateDecimals: 1,
-          boundaryUnits: temperatureDisplayUnits,
-          standardMode,
-          unitSystem,
-        });
-      },
-    }],
+      xLabel,
+      xUnits: temperatureDisplayUnits,
+      yLabel,
+      yUnits: temperatureDisplayUnits,
+      coordinateDecimals: 1,
+      boundaryUnits: temperatureDisplayUnits,
+      standardMode,
+      unitSystem,
+    })],
   });
 }
 
@@ -1441,27 +1485,21 @@ function buildAdaptiveDynamicInputGroup(
   const xMeta = fieldMetaByKey[dynamicXAxis];
   const yMeta = fieldMetaByKey[dynamicYAxis];
 
-  return {
-    inputsMap: payload.inputs,
+  return buildAdaptiveInputGroup({
+    payload,
     xAxis,
     yAxis,
     getXSi: (inputPayload) => getAdaptiveAxisValue(inputPayload, dynamicXAxis, standardMode),
     getYSi: (inputPayload) => getAdaptiveAxisValue(inputPayload, dynamicYAxis, standardMode),
-    formatXDisplay: roundValue,
-    formatYDisplay: roundValue,
-    getHovertemplate: ({ inputLabel, payload: inputPayload }) => getAdaptiveInputHoverTemplate({
-      inputLabel,
-      inputPayload,
-      xLabel: xMeta.label,
-      xUnits: xMeta.displayUnits[unitSystem],
-      yLabel: yMeta.label,
-      yUnits: yMeta.displayUnits[unitSystem],
-      coordinateDecimals: 2,
-      boundaryUnits: getAdaptiveBoundaryUnits(unitSystem),
-      standardMode,
-      unitSystem,
-    }),
-  };
+    xLabel: xMeta.label,
+    xUnits: xMeta.displayUnits[unitSystem],
+    yLabel: yMeta.label,
+    yUnits: yMeta.displayUnits[unitSystem],
+    coordinateDecimals: 2,
+    boundaryUnits: getAdaptiveBoundaryUnits(unitSystem),
+    standardMode,
+    unitSystem,
+  });
 }
 
 export function buildAdaptiveDynamicChart(

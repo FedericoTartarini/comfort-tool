@@ -195,6 +195,8 @@ describe("adaptive charts", () => {
 
     const tooltipLayer = chart.traces.find((trace) => trace.name === "Tooltip Layer");
     const visibleContourTraces = chart.traces.filter((trace) => trace.type === "contour" && trace.name !== "Tooltip Layer");
+    const inputTraceIndex = chart.traces.findIndex((trace) => trace.type === "scatter" && trace.name === "Input 1");
+    const firstBoundaryIndex = chart.traces.findIndex((trace) => trace.type === "scatter" && trace.fill === "toself");
 
     expect(tooltipLayer?.type).toBe("contour");
     expect(tooltipLayer?.contours?.coloring).toBe("none");
@@ -202,6 +204,8 @@ describe("adaptive charts", () => {
     expect(tooltipLayer?.z?.[0]).toHaveLength(40);
     expect(visibleContourTraces).toHaveLength(0);
     expect(chart.traces.some((trace) => trace.type === "scatter" && trace.fill === "toself")).toBe(true);
+    expect(firstBoundaryIndex).toBeGreaterThan(0);
+    expect(inputTraceIndex).toBeGreaterThan(firstBoundaryIndex);
   });
 
   it("keeps boundary bands when mean outdoor temperature is the dynamic y-axis", () => {

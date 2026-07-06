@@ -40,12 +40,12 @@ export function evaluateGrid({
   const yAxisValues = buildAxisValues(yAxis);
   const zValues: number[][] = [];
   const textValues: string[][] = [];
-  const hoverMetadata: unknown[][][] = [];
+  const hoverMetadata: unknown[][] = [];
 
   for (let yIndex = 0; yIndex < yAxisValues.siValues.length; yIndex += 1) {
     const row: number[] = [];
     const textRow: string[] = [];
-    const hoverMetadataRow: unknown[][] = [];
+    const hoverMetadataRow: unknown[] = [];
     const ySi = yAxisValues.siValues[yIndex];
 
     for (let xIndex = 0; xIndex < xAxisValues.siValues.length; xIndex += 1) {

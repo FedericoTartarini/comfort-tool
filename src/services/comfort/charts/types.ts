@@ -27,7 +27,11 @@ export interface ChartAxisValues {
 export interface GridPointEvaluation {
   z: number;
   text?: string;
-  hoverMetadata?: unknown[];
+  /**
+   * Per-cell Plotly customdata. Models may return a scalar or a tuple; the grid
+   * engine preserves the shape so hover templates can reference it directly.
+   */
+  hoverMetadata?: unknown;
 }
 
 export interface GridEvaluationResult {
@@ -37,7 +41,7 @@ export interface GridEvaluationResult {
   yValuesSi: number[];
   zValues: number[][];
   textValues: string[][];
-  hoverMetadata: unknown[][][];
+  hoverMetadata: unknown[][];
 }
 
 export interface ChartLayoutSpec {
@@ -49,6 +53,8 @@ export interface ChartLayoutSpec {
   showLegend: boolean;
   margin: Record<string, number>;
   gridColor?: string;
+  showGrid?: boolean;
+  zeroLine?: boolean;
   legend?: Record<string, unknown> | null;
   height?: number | null;
 }

@@ -11,7 +11,7 @@ import {
   buildClosedBoundaryPolygonTrace,
   buildFilledBoundaryRegionTrace,
 } from "./boundaryRegionEngine";
-import { buildGridContourFieldChart } from "./chartEngine";
+import { buildBoundaryRegionFieldChart, buildGridContourFieldChart } from "./chartEngine";
 import { evaluateGrid } from "./gridEngine";
 import { buildInputScatterTraces, resolveBaselineInputEntry } from "./inputPoints";
 import { buildZoneColorscale, buildZoneContourLayers } from "./zoneGrid";
@@ -59,6 +59,33 @@ describe("shared chart engine", () => {
     expect(grid.textValues[0]).toEqual(["ok", "Error"]);
     expect(grid.hoverMetadata[0][0]).toEqual([0, 0]);
     expect(grid.hoverMetadata[0][1]).toEqual([NaN]);
+  });
+
+  it("preserves scalar and tuple grid hover metadata shapes", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 1 },
+      points: 2,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 1 },
+      points: 1,
+    });
+
+    const grid = evaluateGrid({
+      xAxis,
+      yAxis,
+      evaluatePoint: (xSi, ySi) => ({
+        z: xSi + ySi,
+        hoverMetadata: xSi === 0 ? 12.5 : [xSi, ySi],
+      }),
+    });
+
+    expect(grid.hoverMetadata[0][0]).toBe(12.5);
+    expect(grid.hoverMetadata[0][1]).toEqual([1, 0]);
   });
 
   it("builds input scatter traces from SI payload values", () => {
@@ -240,6 +267,174 @@ describe("shared chart engine", () => {
     expect(traces[0].x).toEqual([0, 10, 10, 0]);
     expect(traces[0].y).toEqual([0, 0, 75, 25]);
     expect(traces[1].y).toEqual([25, 75, 100, 100]);
+  });
+
+  it("builds boundary regions when the boundary variable is on the y-axis", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 10 },
+      points: 2,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 100 },
+      points: 2,
+    });
+
+    const traces = buildBoundaryRegionTraces({
+      variableValuesSi: [0, 100],
+      boundaryCurvesSi: [[-5, 15]],
+      bands: [
+        { label: "Left", color: "#dddddd" },
+        { label: "Right", color: "#eeeeee" },
+      ],
+      variableAxis: yAxis,
+      boundaryAxis: xAxis,
+      xAxis,
+      yAxis,
+      buildTrace: ({ band, polygonX, polygonY, hoverMetadata }) => buildFilledBoundaryRegionTrace({
+        name: band.label,
+        color: band.color,
+        polygonX,
+        polygonY,
+        lineColor: "#111111",
+        hoverMetadata,
+      }),
+    });
+
+    expect(traces).toHaveLength(2);
+    expect(traces[0].x).toEqual([0, 0, 10, 0]);
+    expect(traces[0].y).toEqual([0, 100, 100, 0]);
+    expect(traces[1].x).toEqual([0, 10, 10, 10]);
+    expect(traces[1].y).toEqual([0, 100, 100, 0]);
+  });
+
+  it("builds boundary region hover metadata from SI values without reverse display conversion", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 10 },
+      points: 2,
+      toDisplay: (valueSi) => valueSi + 1000,
+      toSi: () => Number.NaN,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 100 },
+      points: 2,
+      toDisplay: (valueSi) => valueSi + 2000,
+      toSi: () => Number.NaN,
+    });
+
+    const traces = buildBoundaryRegionTraces({
+      variableValuesSi: [20, 80],
+      boundaryCurvesSi: [[-5, 15]],
+      bands: [
+        { label: "Left", color: "#dddddd" },
+        { label: "Right", color: "#eeeeee" },
+      ],
+      variableAxis: yAxis,
+      boundaryAxis: xAxis,
+      xAxis,
+      yAxis,
+      getHoverMetadata: (xSi, ySi, index) => [xSi, ySi, index],
+      buildTrace: ({ band, polygonX, polygonY, hoverMetadata }) => buildFilledBoundaryRegionTrace({
+        name: band.label,
+        color: band.color,
+        polygonX,
+        polygonY,
+        lineColor: "#111111",
+        hoverMetadata,
+      }),
+    });
+
+    expect(traces[0].x).toEqual([1000, 1000, 1010, 1000]);
+    expect(traces[0].y).toEqual([2020, 2080, 2080, 2020]);
+    expect(traces[0].hoverMetadata).toEqual([
+      [0, 20, 0],
+      [0, 80, 1],
+      [10, 80, 2],
+      [0, 20, 3],
+    ]);
+  });
+
+  it("orders boundary strategy traces before pre-input overlays and input markers", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 10 },
+      points: 2,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 100 },
+      points: 2,
+    });
+
+    const chart = buildBoundaryRegionFieldChart({
+      xAxis,
+      yAxis,
+      leadingTraces: [{
+        type: "scatter",
+        mode: "lines",
+        name: "Leading",
+        x: [],
+        y: [],
+      }],
+      boundaryTraces: [{
+        type: "scatter",
+        mode: "lines",
+        name: "Boundary",
+        x: [],
+        y: [],
+      }],
+      beforeInputTraces: [{
+        type: "scatter",
+        mode: "lines",
+        name: "Before inputs",
+        x: [],
+        y: [],
+      }],
+      inputGroups: [{
+        inputsMap: {
+          [InputId.Input1]: { tdb: 5, rh: 50 },
+        },
+        xAxis,
+        yAxis,
+        getXSi: (payload) => payload.tdb,
+        getYSi: (payload) => payload.rh,
+        buildOverlayTraces: ({ inputLabel, xDisplay, yDisplay }) => [{
+          type: "scatter",
+          mode: "lines",
+          name: `${inputLabel} overlay`,
+          x: [xDisplay],
+          y: [yDisplay],
+        }],
+        getHovertemplate: ({ inputLabel }) => `${inputLabel}<extra></extra>`,
+      }],
+      layout: {
+        title: "Boundary chart",
+        xAxis,
+        yAxis,
+        paperBgColor: "#ffffff",
+        plotBgColor: "#ffffff",
+        showLegend: false,
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+      },
+      source: CalculationSource.FrontendGenerated,
+    });
+
+    expect(chart.traces.map((trace) => trace.name)).toEqual([
+      "Leading",
+      "Boundary",
+      "Before inputs",
+      "Input 1 overlay",
+      "Input 1",
+    ]);
   });
 
   it("builds a closed polygon from two boundary edges", () => {

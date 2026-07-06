@@ -104,9 +104,13 @@ describe("PMV charts", () => {
     );
     const siInputTrace = siChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
     const ipInputTrace = ipChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
+    const siRhTrace = siChart.traces.find((trace) => trace.name === "RH 50%");
+    const ipRhTrace = ipChart.traces.find((trace) => trace.name === "RH 50%");
 
     expect(ipInputTrace?.x).toEqual([77]);
     expect((ipInputTrace?.y?.[0] as number)).toBeGreaterThan(siInputTrace?.y?.[0] as number);
+    expect(ipRhTrace?.x?.[0] as number).toBeGreaterThan(siRhTrace?.x?.[0] as number);
+    expect(ipRhTrace?.y?.[0] as number).toBeGreaterThan(siRhTrace?.y?.[0] as number);
     expect(String(ipChart.layout.xaxis.title)).toContain("°F");
     expect(String(ipChart.layout.yaxis.title)).toContain("gr/lb");
   });

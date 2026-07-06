@@ -813,6 +813,21 @@ interface PmvFieldChartOptions {
   beforeInputTraces?: PlotTraceDto[];
 }
 
+interface PmvInputGroupOptions {
+  inputsMap: CompareInputMap<ComfortZoneRequestDto>;
+  xAxis: ChartAxisScale;
+  yAxis: ChartAxisScale;
+  getXSi: (payload: ComfortZoneRequestDto) => number;
+  getYSi: (payload: ComfortZoneRequestDto) => number;
+  coordinateDecimals: number;
+  showLegend?: boolean;
+  xLabel?: string;
+  xUnits?: string;
+  yLabel?: string;
+  yUnits?: string;
+  buildOverlayTraces?: BuildInputTraceGroupsOptions<ComfortZoneRequestDto, unknown>["buildOverlayTraces"];
+}
+
 function buildPmvFieldChart({
   title,
   xAxis,
@@ -843,6 +858,42 @@ function buildPmvFieldChart({
     },
     source: CalculationSource.FrontendGenerated,
   });
+}
+
+function buildPmvInputGroup({
+  inputsMap,
+  xAxis,
+  yAxis,
+  getXSi,
+  getYSi,
+  coordinateDecimals,
+  showLegend,
+  xLabel = xAxis.label,
+  xUnits = xAxis.units,
+  yLabel = yAxis.label,
+  yUnits = yAxis.units,
+  buildOverlayTraces,
+}: PmvInputGroupOptions): BuildInputTraceGroupsOptions<ComfortZoneRequestDto, unknown> {
+  return {
+    inputsMap,
+    showLegend,
+    xAxis,
+    yAxis,
+    getXSi,
+    getYSi,
+    formatXDisplay: roundValue,
+    formatYDisplay: roundValue,
+    buildOverlayTraces,
+    getHovertemplate: ({ inputLabel, payload: inputPayload }) => getPmvInputHoverTemplate({
+      inputLabel,
+      inputPayload,
+      xLabel,
+      xUnits,
+      yLabel,
+      yUnits,
+      yDecimals: coordinateDecimals,
+    }),
+  };
 }
 
 export function buildComparePsychrometricChart(
@@ -978,15 +1029,14 @@ export function buildComparePsychrometricChart(
     yAxis: humidityRatioAxis,
     grid: gridStrategy,
     beforeInputTraces: rhCurveTraces,
-    inputGroups: [{
+    inputGroups: [buildPmvInputGroup({
       inputsMap: payload.inputs,
       showLegend: showInputLegend,
       xAxis: temperatureAxis,
       yAxis: humidityRatioAxis,
       getXSi: (inputPayload) => inputPayload.tdb,
       getYSi: (inputPayload) => psy_ta_rh(inputPayload.tdb, inputPayload.rh).hr,
-      formatXDisplay: roundValue,
-      formatYDisplay: roundValue,
+      coordinateDecimals: humidityRatioMeta.decimals,
       buildOverlayTraces: ({ inputId, payload: inputPayload }) => {
         const comfortZone = getComfortZoneForInput(inputId, inputPayload, comfortZonesByInput);
 
@@ -1009,18 +1059,7 @@ export function buildComparePsychrometricChart(
           })]
           : [];
       },
-      getHovertemplate: ({ inputLabel, payload: scatterPayload }) => {
-        return getPmvInputHoverTemplate({
-          inputLabel,
-          inputPayload: scatterPayload,
-          xLabel: fieldMetaByKey[FieldKey.DryBulbTemperature].label,
-          xUnits: temperatureAxis.units,
-          yLabel: fieldMetaByKey[FieldKey.HumidityRatio].label,
-          yUnits: humidityRatioMeta.displayUnits,
-          yDecimals: humidityRatioMeta.decimals,
-        });
-      },
-    }],
+    })],
     showLegend: showInputLegend,
     margin: { l: 56, r: 24, t: 48, b: 80 },
   });
@@ -1073,26 +1112,14 @@ export function buildPmvDynamicChart(
     xAxis,
     yAxis,
     grid: gridStrategy,
-    inputGroups: [{
+    inputGroups: [buildPmvInputGroup({
       inputsMap: payload.inputs,
       xAxis,
       yAxis,
       getXSi: (inputPayload) => getPmvAxisValue(inputPayload, dynamicXAxis),
       getYSi: (inputPayload) => getPmvAxisValue(inputPayload, dynamicYAxis),
-      formatXDisplay: roundValue,
-      formatYDisplay: roundValue,
-      getHovertemplate: ({ inputLabel, payload: inputPayload }) => {
-        return getPmvInputHoverTemplate({
-          inputLabel,
-          inputPayload,
-          xLabel: xAxis.label,
-          xUnits: xAxis.units,
-          yLabel: yAxis.label,
-          yUnits: yAxis.units,
-          yDecimals: 2,
-        });
-      },
-    }],
+      coordinateDecimals: 2,
+    })],
     showLegend: showInputLegend,
     margin: { l: 64, r: 24, t: 48, b: 64 },
   });
