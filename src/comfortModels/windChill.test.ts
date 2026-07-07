@@ -2,10 +2,12 @@
  * Unit tests for the standalone Wind Chill calculation service.
  */
 import { describe, expect, it } from "vitest";
-import { calculateWindChill } from "./windChill";
+import { calculateWindChill, windChillModelConfig } from "./windChill";
 import { UnitSystem } from "../models/units";
 import { convertFieldValueFromSi } from "../services/units";
 import { FieldKey } from "../models/fieldKeys";
+import { ChartId } from "../models/chartOptions";
+import { InputId } from "../models/inputSlots";
 
 describe("windChill service", () => {
   it("calculates Wind Chill Index and equivalent temperature correctly in SI", () => {
@@ -42,5 +44,28 @@ describe("windChill service", () => {
     });
     
     expect(result.wciTemp).toBe(12);
+  });
+
+  it("builds dynamic chart results through the shared chart wrapper", () => {
+    const request = { tdb: -10, v: 10, units: UnitSystem.SI };
+    const result = calculateWindChill(request);
+    const chartSource = {
+      chartRequest: { [InputId.Input1]: request },
+      dynamicXAxis: FieldKey.DryBulbTemperature,
+      dynamicYAxis: FieldKey.WindSpeed,
+      baselineInputId: InputId.Input1,
+    };
+
+    const dynamicChart = windChillModelConfig.buildChartResult(
+      ChartId.WindChillDynamic,
+      chartSource,
+      { [InputId.Input1]: result } as any,
+      UnitSystem.SI,
+    );
+
+    expect(dynamicChart?.traces[0].type).toBe("contour");
+    expect(dynamicChart?.traces[0].z).toHaveLength(300);
+    expect(dynamicChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 });

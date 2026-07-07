@@ -1,0 +1,192 @@
+import { createHash } from "node:crypto";
+import { describe, expect, it } from "vitest";
+
+import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import { AdaptiveStandardMode } from "../../../models/inputModes";
+import { FieldKey } from "../../../models/fieldKeys";
+import { InputId } from "../../../models/inputSlots";
+import { UnitSystem } from "../../../models/units";
+import {
+  buildAdaptiveChart,
+  buildAdaptiveDynamicChart,
+} from "../../../comfortModels/adaptive";
+import {
+  buildComparePsychrometricChart,
+  buildPmvDynamicChart,
+  calculateComfortZone,
+  type ComfortZoneRequestDto,
+  type PmvChartInputsRequestDto,
+  type PmvChartSourceDto,
+} from "../../../comfortModels/pmv";
+import { buildUtciDynamicChart } from "../../../comfortModels/utci";
+
+const pmvPayload: ComfortZoneRequestDto = {
+  tdb: 25,
+  tr: 25,
+  vr: 0.1,
+  rh: 50,
+  met: 1.2,
+  clo: 0.5,
+  wme: 0,
+  occupantHasAirSpeedControl: true,
+  units: UnitSystem.SI,
+  rhMin: 0,
+  rhMax: 100,
+  rhPoints: 9,
+};
+
+const adaptivePayload = {
+  tdb: 24,
+  tr: 24,
+  trm: 20.16,
+  v: 0.1,
+  units: UnitSystem.SI,
+};
+
+const utciPayload = {
+  tdb: 25,
+  tr: 25,
+  v: 1,
+  rh: 50,
+  units: UnitSystem.SI,
+};
+
+function createPmvChartRequest(): PmvChartInputsRequestDto {
+  return {
+    inputs: {
+      [InputId.Input1]: pmvPayload,
+    },
+    chartRange: {
+      tdbMin: 10,
+      tdbMax: 40,
+      tdbPoints: 121,
+      humidityRatioMin: 0,
+      humidityRatioMax: 0.03,
+    },
+    rhCurves: [50, 100],
+  };
+}
+
+function createPmvChartSource(chartRequest: PmvChartInputsRequestDto): PmvChartSourceDto {
+  return {
+    chartRequest,
+    comfortZonesByInput: {
+      [InputId.Input1]: calculateComfortZone(pmvPayload),
+    },
+    baselineInputId: InputId.Input1,
+  };
+}
+
+function normalizeChartValue(value: unknown): unknown {
+  if (typeof value === "number") {
+    if (Number.isNaN(value)) return "NaN";
+    if (!Number.isFinite(value)) return String(value);
+    return Number(value.toFixed(4));
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeChartValue);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+        .map(([key, nestedValue]) => [key, normalizeChartValue(nestedValue)]),
+    );
+  }
+
+  return value;
+}
+
+function chartShapeHash(chart: PlotlyChartResponseDto): string {
+  return createHash("sha256")
+    .update(JSON.stringify(normalizeChartValue(chart)))
+    .digest("hex");
+}
+
+describe("PMV and Adaptive chart shape fixtures", () => {
+  it("keeps the PMV psychrometric chart DTO shape stable", () => {
+    const chartRequest = createPmvChartRequest();
+    const chartSource = createPmvChartSource(chartRequest);
+
+    expect(chartShapeHash(buildComparePsychrometricChart(
+      chartRequest,
+      chartSource.comfortZonesByInput,
+      UnitSystem.SI,
+      chartSource,
+    ))).toBe("b8d399b1110cb8c1f4b52777e83bcf80267c24ec0e46e43472db58ece35e88ad");
+  });
+
+  it("keeps the PMV dynamic chart DTO shape stable", () => {
+    const chartRequest = createPmvChartRequest();
+
+    expect(chartShapeHash(buildPmvDynamicChart(
+      chartRequest,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      UnitSystem.SI,
+      createPmvChartSource(chartRequest),
+    ))).toBe("4c2a824b89c6a7c06c319fbd7ad991a5d47ddcc9963979003eebd84bbc5bfba6");
+  });
+
+  it("keeps the Adaptive static chart DTO shape stable", () => {
+    expect(chartShapeHash(buildAdaptiveChart(
+      {
+        inputs: {
+          [InputId.Input1]: adaptivePayload as any,
+        },
+      },
+      AdaptiveStandardMode.Ashrae,
+      UnitSystem.SI,
+    ))).toBe("fb745994a97042340949ed493a2b9014a701b498394dc090c41538e69f2ec0ce");
+  });
+
+  it("keeps the Adaptive outdoor dynamic chart DTO shape stable", () => {
+    expect(chartShapeHash(buildAdaptiveDynamicChart(
+      {
+        inputs: {
+          [InputId.Input1]: adaptivePayload as any,
+        },
+      },
+      AdaptiveStandardMode.Ashrae,
+      UnitSystem.SI,
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.OperativeTemperature,
+    ))).toBe("7c41e66a1fad273d712bc0d9ee3fc5533014b643accf665ac775eeeefb29e78e");
+  });
+
+  it("keeps the Adaptive non-outdoor dynamic chart DTO shape stable", () => {
+    expect(chartShapeHash(buildAdaptiveDynamicChart(
+      {
+        inputs: {
+          [InputId.Input1]: adaptivePayload as any,
+        },
+      },
+      AdaptiveStandardMode.Ashrae,
+      UnitSystem.SI,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeAirSpeed,
+    ))).toBe("576cac4ab2ddbb327133132e2afd0d152e628d81b1920af8a28751b708bbac12");
+  });
+
+  it("keeps the UTCI dynamic chart DTO shape stable", () => {
+    expect(chartShapeHash(buildUtciDynamicChart(
+      {
+        inputs: {
+          [InputId.Input1]: utciPayload,
+        },
+      },
+      {
+        [InputId.Input1]: {
+          utci: 25,
+          stressCategory: "no thermal stress",
+        },
+      },
+      UnitSystem.SI,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      InputId.Input1,
+    ))).toBe("53693384f2856e0f6cdaa22fac5aadaa7c3ed3817538c5ba6fb869620eb3b618");
+  });
+});
