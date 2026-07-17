@@ -4,7 +4,14 @@ import { AdaptiveStandardMode } from "../../../models/inputModes";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
-import { calculateAdaptive, buildAdaptiveChart, buildAdaptiveDynamicChart, getCe } from "../../../comfortModels/adaptive";
+import {
+  adaptiveAshraeModelConfig,
+  adaptiveEnModelConfig,
+  calculateAdaptive,
+  buildAdaptiveChart,
+  buildAdaptiveDynamicChart,
+} from "../../../comfortModels/adaptive";
+import { convertFieldValueFromSi, convertFieldValueToSi } from "../../units";
 
 const ashraePayload = {
   tdb: 24,
@@ -15,7 +22,7 @@ const ashraePayload = {
 };
 
 function getBoundaryPoint(chart: any, traceName: string, targetTrm: number, side: "lower" | "upper") {
-  const trace = chart.traces.find((candidate: any) => candidate.name.includes(traceName));
+  const trace = chart.traces.find((candidate: any) => candidate.name === `Input 1 ${traceName}`);
   expect(trace).toBeDefined();
 
   const lowerPointCount = Math.floor(trace!.x.length / 2);
@@ -35,30 +42,39 @@ function getBoundaryPoint(chart: any, traceName: string, targetTrm: number, side
   };
 }
 
-function getAdaptiveBaseTemperature(trm: number, standardMode: AdaptiveStandardMode): number {
-  return standardMode === AdaptiveStandardMode.Ashrae
-    ? (0.31 * trm) + 17.8
-    : (0.33 * trm) + 18.8;
-}
-
 function getBoundaryTargetTemperature(
   trm: number,
   speed: number,
   standardMode: AdaptiveStandardMode,
   boundaryIndex: number,
 ): number {
-  const baseTemperature = getAdaptiveBaseTemperature(trm, standardMode);
-  const offsets = standardMode === AdaptiveStandardMode.Ashrae
-    ? [-3.5, -2.5, 2.5, 3.5]
-    : [-4, -3, -2, 2, 3, 4];
-  const boundaryWithoutCooling = baseTemperature + offsets[boundaryIndex];
-  const isUpperBoundary = standardMode === AdaptiveStandardMode.Ashrae
-    ? boundaryIndex >= 2
-    : boundaryIndex >= 3;
+  const result = calculateAdaptive({
+    tdb: 25,
+    tr: 25,
+    trm,
+    v: speed,
+    units: UnitSystem.SI,
+  }, standardMode);
+  const boundaries = standardMode === AdaptiveStandardMode.Ashrae
+    ? [
+      result.tmp_cmf_80_low,
+      result.tmp_cmf_90_low,
+      result.tmp_cmf_90_up,
+      result.tmp_cmf_80_up,
+    ]
+    : [
+      result.tmp_cmf_cat_iii_low,
+      result.tmp_cmf_cat_ii_low,
+      result.tmp_cmf_cat_i_low,
+      result.tmp_cmf_cat_i_up,
+      result.tmp_cmf_cat_ii_up,
+      result.tmp_cmf_cat_iii_up,
+    ];
+  const boundary = boundaries[boundaryIndex];
 
-  return isUpperBoundary
-    ? boundaryWithoutCooling + getCe(speed, boundaryWithoutCooling)
-    : boundaryWithoutCooling;
+  expect(boundary).toBeTypeOf("number");
+  expect(Number.isFinite(boundary)).toBe(true);
+  return boundary!;
 }
 
 function getOutdoorBoundaryFromDynamicChart({
@@ -67,12 +83,14 @@ function getOutdoorBoundaryFromDynamicChart({
   targetOperativeTemperature,
   expectedOutdoorTemperature,
   outdoorAxis,
+  unitSystem,
 }: {
   standardMode: AdaptiveStandardMode;
   targetSpeed: number;
   targetOperativeTemperature: number;
   expectedOutdoorTemperature: number;
   outdoorAxis: "x" | "y";
+  unitSystem: UnitSystem;
 }) {
   const chart = buildAdaptiveDynamicChart(
     {
@@ -87,9 +105,19 @@ function getOutdoorBoundaryFromDynamicChart({
       },
     },
     standardMode,
-    UnitSystem.SI,
+    unitSystem,
     outdoorAxis === "x" ? FieldKey.PrevailingMeanOutdoorTemperature : FieldKey.RelativeAirSpeed,
     outdoorAxis === "x" ? FieldKey.RelativeAirSpeed : FieldKey.PrevailingMeanOutdoorTemperature,
+  );
+  const targetSpeedDisplay = convertFieldValueFromSi(
+    FieldKey.RelativeAirSpeed,
+    targetSpeed,
+    unitSystem,
+  );
+  const expectedOutdoorDisplay = convertFieldValueFromSi(
+    FieldKey.PrevailingMeanOutdoorTemperature,
+    expectedOutdoorTemperature,
+    unitSystem,
   );
   const candidates = chart.traces
     .filter((trace) => trace.type === "scatter" && trace.fill === "toself")
@@ -110,22 +138,43 @@ function getOutdoorBoundaryFromDynamicChart({
       const variableValues = outdoorAxis === "x" ? edge.y : edge.x;
       const boundaryValues = outdoorAxis === "x" ? edge.x : edge.y;
       const closestIndex = variableValues.reduce((bestIndex, value, index) => (
-        Math.abs(value - targetSpeed) < Math.abs(variableValues[bestIndex] - targetSpeed)
+        Math.abs(value - targetSpeedDisplay) < Math.abs(variableValues[bestIndex] - targetSpeedDisplay)
           ? index
           : bestIndex
       ), 0);
 
-      expect(variableValues[closestIndex]).toBeCloseTo(targetSpeed, 4);
+      expect(variableValues[closestIndex]).toBeCloseTo(targetSpeedDisplay, 4);
       return boundaryValues[closestIndex];
     });
   const closestCandidate = candidates.reduce((best, candidate) => (
-    Math.abs(candidate - expectedOutdoorTemperature) < Math.abs(best - expectedOutdoorTemperature)
+    Math.abs(candidate - expectedOutdoorDisplay) < Math.abs(best - expectedOutdoorDisplay)
       ? candidate
       : best
   ), candidates[0]);
 
   expect(closestCandidate).toBeDefined();
-  return closestCandidate;
+  return convertFieldValueToSi(
+    FieldKey.PrevailingMeanOutdoorTemperature,
+    closestCandidate,
+    unitSystem,
+  );
+}
+
+function getBoundaryBandTraces(chart: any) {
+  return chart.traces.filter((trace: any) => (
+    trace.type === "scatter" && trace.fill === "toself"
+  ));
+}
+
+function getBandSpan(trace: any, boundaryCoordinate: "x" | "y") {
+  const values = trace[boundaryCoordinate] as number[];
+  const pointCount = values.length / 2;
+  const index = Math.floor(pointCount / 2);
+
+  return {
+    lower: values[index],
+    upper: values[(2 * pointCount) - 1 - index],
+  };
 }
 
 function expectIpBoundaryHover(trace: any) {
@@ -197,6 +246,9 @@ describe("adaptive charts", () => {
     const visibleContourTraces = chart.traces.filter((trace) => trace.type === "contour" && trace.name !== "Tooltip Layer");
     const inputTraceIndex = chart.traces.findIndex((trace) => trace.type === "scatter" && trace.name === "Input 1");
     const firstBoundaryIndex = chart.traces.findIndex((trace) => trace.type === "scatter" && trace.fill === "toself");
+    const boundaryNames = chart.traces
+      .filter((trace) => trace.type === "scatter" && trace.fill === "toself")
+      .map((trace) => trace.name);
 
     expect(tooltipLayer?.type).toBe("contour");
     expect(tooltipLayer?.contours?.coloring).toBe("none");
@@ -204,6 +256,13 @@ describe("adaptive charts", () => {
     expect(tooltipLayer?.z?.[0]).toHaveLength(40);
     expect(visibleContourTraces).toHaveLength(0);
     expect(chart.traces.some((trace) => trace.type === "scatter" && trace.fill === "toself")).toBe(true);
+    expect(boundaryNames).toEqual([
+      "Too Cool",
+      "80% Acceptability",
+      "90% Acceptability",
+      "80% Acceptability",
+      "Too Warm",
+    ]);
     expect(firstBoundaryIndex).toBeGreaterThan(0);
     expect(inputTraceIndex).toBeGreaterThan(firstBoundaryIndex);
   });
@@ -262,6 +321,30 @@ describe("adaptive charts", () => {
     expect(String(chart.layout.yaxis.title)).toContain("Air speed");
   });
 
+  it.each([
+    { xAxis: FieldKey.DryBulbTemperature, yAxis: FieldKey.OperativeTemperature },
+    { xAxis: FieldKey.OperativeTemperature, yAxis: FieldKey.DryBulbTemperature },
+    { xAxis: FieldKey.MeanRadiantTemperature, yAxis: FieldKey.OperativeTemperature },
+    { xAxis: FieldKey.OperativeTemperature, yAxis: FieldKey.MeanRadiantTemperature },
+    { xAxis: FieldKey.RelativeAirSpeed, yAxis: FieldKey.WindSpeed },
+    { xAxis: FieldKey.WindSpeed, yAxis: FieldKey.RelativeAirSpeed },
+  ])("rejects coupled adaptive axes $xAxis / $yAxis", ({ xAxis, yAxis }) => {
+    const chart = buildAdaptiveDynamicChart(
+      {
+        inputs: {
+          [InputId.Input1]: ashraePayload as any,
+        },
+      },
+      AdaptiveStandardMode.Ashrae,
+      UnitSystem.SI,
+      xAxis,
+      yAxis,
+    );
+
+    expect(chart.traces).toEqual([]);
+    expect(chart.layout.title).toBe("Invalid Axes Selection");
+  });
+
   it("renders EN static chart boundary regions and input markers", () => {
     const chart = buildAdaptiveChart(
       {
@@ -281,6 +364,170 @@ describe("adaptive charts", () => {
     expect(boundaryNames.some((name) => name.includes("Category II"))).toBe(true);
     expect(boundaryNames.some((name) => name.includes("Category III"))).toBe(true);
     expect(chart.traces.some((trace) => trace.type === "scatter" && trace.name === "Input 1")).toBe(true);
+  });
+
+  it.each([UnitSystem.SI, UnitSystem.IP])(
+    "keeps EN Category I/II/III cool-side boundaries aligned with calculation results in %s",
+    (unitSystem) => {
+      const payload = {
+        ...ashraePayload,
+        trm: 20,
+      };
+      const result = calculateAdaptive(payload, AdaptiveStandardMode.En);
+      const chart = buildAdaptiveChart(
+        { inputs: { [InputId.Input1]: payload as any } },
+        AdaptiveStandardMode.En,
+        unitSystem,
+      );
+      const targetTrm = convertFieldValueFromSi(
+        FieldKey.PrevailingMeanOutdoorTemperature,
+        payload.trm,
+        unitSystem,
+      );
+      const boundaries = [
+        ["Category I", result.tmp_cmf_cat_i_low, 22.4],
+        ["Category II", result.tmp_cmf_cat_ii_low, 21.4],
+        ["Category III", result.tmp_cmf_cat_iii_low, 20.4],
+      ] as const;
+
+      boundaries.forEach(([label, calculatedBoundary, expectedSi]) => {
+        expect(calculatedBoundary).toBeCloseTo(expectedSi, 6);
+        const chartPoint = getBoundaryPoint(chart, label, targetTrm, "lower");
+        const expectedDisplay = convertFieldValueFromSi(
+          FieldKey.DryBulbTemperature,
+          calculatedBoundary!,
+          unitSystem,
+        );
+        expect(chartPoint.operativeTemperature).toBeCloseTo(expectedDisplay, 1);
+      });
+    },
+  );
+
+  it.each([
+    {
+      standardMode: AdaptiveStandardMode.Ashrae,
+      expectedNames: [
+        "Too Cool",
+        "80% Acceptability",
+        "90% Acceptability",
+        "80% Acceptability",
+        "Too Warm",
+      ],
+      expectedColors: ["#3b82f6", "#86efac", "#22c55e", "#86efac", "#ef4444"],
+    },
+    {
+      standardMode: AdaptiveStandardMode.En,
+      expectedNames: [
+        "Too Cool",
+        "Category III",
+        "Category II",
+        "Category I",
+        "Category II",
+        "Category III",
+        "Too Warm",
+      ],
+      expectedColors: [
+        "#3b82f6",
+        "#fde047",
+        "#86efac",
+        "#22c55e",
+        "#86efac",
+        "#fde047",
+        "#ef4444",
+      ],
+    },
+  ])("keeps complete ordered $standardMode boundary bands and reverses inverse air-speed bands", ({
+    standardMode,
+    expectedNames,
+    expectedColors,
+  }) => {
+    const temperatureChart = buildAdaptiveDynamicChart(
+      { inputs: { [InputId.Input1]: ashraePayload as any } },
+      standardMode,
+      UnitSystem.SI,
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.OperativeTemperature,
+    );
+    const temperatureBands = getBoundaryBandTraces(temperatureChart);
+
+    expect(temperatureBands.map((trace: any) => trace.name)).toEqual(expectedNames);
+    expect(temperatureBands.map((trace: any) => trace.fillcolor)).toEqual(expectedColors);
+    const temperatureSpans = temperatureBands.map((trace: any) => getBandSpan(trace, "y"));
+    temperatureSpans.forEach((span: { lower: number; upper: number }) => {
+      expect(span.lower).toBeLessThanOrEqual(span.upper);
+    });
+    temperatureSpans.slice(0, -1).forEach((span: { upper: number }, index: number) => {
+      expect(span.upper).toBeCloseTo(temperatureSpans[index + 1].lower, 6);
+    });
+
+    const inverseChart = buildAdaptiveDynamicChart(
+      { inputs: { [InputId.Input1]: ashraePayload as any } },
+      standardMode,
+      UnitSystem.SI,
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.RelativeAirSpeed,
+    );
+    const inverseBands = getBoundaryBandTraces(inverseChart);
+
+    const inverseNames = inverseBands.map((trace: any) => trace.name);
+    const inverseColors = inverseBands.map((trace: any) => trace.fillcolor);
+    const reversedNames = expectedNames.slice().reverse();
+    const reversedColors = expectedColors.slice().reverse();
+    const visibleSequenceStart = reversedNames.findIndex((_, index) => (
+      reversedNames.slice(index, index + inverseNames.length).every((name, sequenceIndex) => (
+        name === inverseNames[sequenceIndex]
+      ))
+    ));
+
+    expect(visibleSequenceStart).toBeGreaterThanOrEqual(0);
+    expect(inverseColors).toEqual(
+      reversedColors.slice(visibleSequenceStart, visibleSequenceStart + inverseColors.length),
+    );
+    const inverseSpans = inverseBands.map((trace: any) => getBandSpan(trace, "x"));
+    inverseSpans.forEach((span: { lower: number; upper: number }) => {
+      expect(span.lower).toBeLessThanOrEqual(span.upper);
+    });
+    inverseSpans.slice(0, -1).forEach((span: { upper: number }, index: number) => {
+      expect(span.upper).toBeCloseTo(inverseSpans[index + 1].lower, 6);
+    });
+  });
+
+  it.each([
+    {
+      standardMode: AdaptiveStandardMode.Ashrae,
+      modelConfig: adaptiveAshraeModelConfig,
+    },
+    {
+      standardMode: AdaptiveStandardMode.En,
+      modelConfig: adaptiveEnModelConfig,
+    },
+  ])("builds every configured compatible $standardMode axis pair in SI and IP", ({
+    standardMode,
+    modelConfig,
+  }) => {
+    const compatiblePairs = modelConfig.dynamicAxisFields.flatMap((xAxis) => (
+      modelConfig.dynamicAxisFields
+        .filter((yAxis) => (
+          xAxis !== yAxis &&
+          (modelConfig.dynamicAxisPairValidator?.(xAxis, yAxis) ?? true)
+        ))
+        .map((yAxis) => ({ xAxis, yAxis }))
+    ));
+
+    [UnitSystem.SI, UnitSystem.IP].forEach((unitSystem) => {
+      compatiblePairs.forEach(({ xAxis, yAxis }) => {
+        const chart = buildAdaptiveDynamicChart(
+          { inputs: { [InputId.Input1]: ashraePayload as any } },
+          standardMode,
+          unitSystem,
+          xAxis,
+          yAxis,
+        );
+
+        expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+        expect(chart.traces.length).toBeGreaterThan(0);
+      });
+    });
   });
 
   it("uses IP units for static adaptive boundary hover text and metadata", () => {
@@ -388,11 +635,15 @@ describe("adaptive charts", () => {
   });
 
   it.each([
-    { standardMode: AdaptiveStandardMode.Ashrae, boundaryIndex: 0, speed: 0, label: "ASHRAE lower, no cooling" },
-    { standardMode: AdaptiveStandardMode.Ashrae, boundaryIndex: 3, speed: 0.6, label: "ASHRAE upper, cooling" },
-    { standardMode: AdaptiveStandardMode.En, boundaryIndex: 0, speed: 0, label: "EN lower, no cooling" },
-    { standardMode: AdaptiveStandardMode.En, boundaryIndex: 5, speed: 0.6, label: "EN upper, cooling" },
-  ])("round-trips outdoor-temperature inverse boundaries for $label", ({ standardMode, boundaryIndex, speed }) => {
+    { standardMode: AdaptiveStandardMode.Ashrae, boundaryIndex: 0, speed: 0, unitSystem: UnitSystem.SI, label: "ASHRAE lower, no cooling, SI" },
+    { standardMode: AdaptiveStandardMode.Ashrae, boundaryIndex: 3, speed: 0.6, unitSystem: UnitSystem.SI, label: "ASHRAE upper, cooling, SI" },
+    { standardMode: AdaptiveStandardMode.En, boundaryIndex: 0, speed: 0, unitSystem: UnitSystem.SI, label: "EN lower, no cooling, SI" },
+    { standardMode: AdaptiveStandardMode.En, boundaryIndex: 5, speed: 0.6, unitSystem: UnitSystem.SI, label: "EN upper, cooling, SI" },
+    { standardMode: AdaptiveStandardMode.Ashrae, boundaryIndex: 0, speed: 0, unitSystem: UnitSystem.IP, label: "ASHRAE lower, no cooling, IP" },
+    { standardMode: AdaptiveStandardMode.Ashrae, boundaryIndex: 3, speed: 0.6, unitSystem: UnitSystem.IP, label: "ASHRAE upper, cooling, IP" },
+    { standardMode: AdaptiveStandardMode.En, boundaryIndex: 0, speed: 0, unitSystem: UnitSystem.IP, label: "EN lower, no cooling, IP" },
+    { standardMode: AdaptiveStandardMode.En, boundaryIndex: 5, speed: 0.6, unitSystem: UnitSystem.IP, label: "EN upper, cooling, IP" },
+  ])("round-trips outdoor-temperature inverse boundaries for $label", ({ standardMode, boundaryIndex, speed, unitSystem }) => {
     const expectedTrm = 20;
     const targetOperativeTemperature = getBoundaryTargetTemperature(
       expectedTrm,
@@ -407,6 +658,7 @@ describe("adaptive charts", () => {
       targetOperativeTemperature,
       expectedOutdoorTemperature: expectedTrm,
       outdoorAxis: "x",
+      unitSystem,
     })).toBeCloseTo(expectedTrm, 1);
 
     expect(getOutdoorBoundaryFromDynamicChart({
@@ -415,6 +667,7 @@ describe("adaptive charts", () => {
       targetOperativeTemperature,
       expectedOutdoorTemperature: expectedTrm,
       outdoorAxis: "y",
+      unitSystem,
     })).toBeCloseTo(expectedTrm, 1);
   });
 });

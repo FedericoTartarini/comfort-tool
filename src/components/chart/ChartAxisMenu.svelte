@@ -15,7 +15,8 @@
     idPrefix: string;
     dynamicXAxis?: FieldKeyType;
     dynamicYAxis?: FieldKeyType;
-    axisOptions?: FieldKeyType[];
+    dynamicXAxisOptions?: FieldKeyType[];
+    dynamicYAxisOptions?: FieldKeyType[];
     baselineInputId?: InputIdType;
     onSelectBaselineInput?: (inputId: InputIdType) => void;
     visibleInputIds?: InputIdType[];
@@ -29,7 +30,8 @@
     idPrefix,
     dynamicXAxis,
     dynamicYAxis,
-    axisOptions = [],
+    dynamicXAxisOptions = [],
+    dynamicYAxisOptions = [],
     baselineInputId,
     onSelectBaselineInput,
     visibleInputIds = [],
@@ -129,7 +131,7 @@
       >
         Select X Axis
       </DropdownHeader>
-      {#each axisOptions as option}
+      {#each dynamicXAxisOptions as option}
         <DropdownItem onclick={() => onSelectXAxis(option)} class="text-left">
           <span
             class={dynamicXAxis === option
@@ -172,7 +174,7 @@
         >
           Select Y Axis
         </DropdownHeader>
-        {#each axisOptions as option}
+        {#each dynamicYAxisOptions as option}
           <DropdownItem onclick={() => onSelectYAxis(option)} class="text-left">
             <span
               class={dynamicYAxis === option

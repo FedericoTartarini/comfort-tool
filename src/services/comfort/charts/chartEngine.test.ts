@@ -4,7 +4,7 @@ import { CalculationSource } from "../../../models/calculationMetadata";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
-import { createFieldAxisScale } from "./axis";
+import { buildAxisValues, createFieldAxisScale } from "./axis";
 import {
   buildBoundaryRegionTraces,
   buildClosedBoundaryPolygon,
@@ -13,7 +13,7 @@ import {
 } from "./boundaryRegionEngine";
 import { buildBoundaryRegionFieldChart, buildGridContourFieldChart } from "./chartEngine";
 import { evaluateGrid } from "./gridEngine";
-import { buildInputScatterTraces, resolveBaselineInputEntry } from "./inputPoints";
+import { buildInputTraceGroups, resolveBaselineInputEntry } from "./inputPoints";
 import { buildZoneColorscale, buildZoneContourLayers } from "./zoneGrid";
 
 describe("shared chart engine", () => {
@@ -29,6 +29,22 @@ describe("shared chart engine", () => {
     expect(axis.toSi(212)).toBe(100);
     expect(axis.units).toBe("°F");
   });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid axis point count %s",
+    (points) => {
+      const axis = createFieldAxisScale({
+        field: FieldKey.DryBulbTemperature,
+        unitSystem: UnitSystem.SI,
+        rangeSi: { min: 0, max: 1 },
+        points,
+      });
+
+      expect(() => buildAxisValues(axis)).toThrow(
+        `Axis points must be a positive integer; received ${points}`,
+      );
+    },
+  );
 
   it("evaluates grids with NaN cells when a point fails", () => {
     const xAxis = createFieldAxisScale({
@@ -102,7 +118,7 @@ describe("shared chart engine", () => {
       points: 2,
     });
 
-    const traces = buildInputScatterTraces({
+    const traces = buildInputTraceGroups({
       inputsMap: {
         [InputId.Input1]: { tdb: 25, rh: 50 },
       },
@@ -156,6 +172,18 @@ describe("shared chart engine", () => {
       rangeSi: { min: 0, max: 100 },
       points: 2,
     });
+    const mismatchedXAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: -10, max: 10 },
+      points: 3,
+    });
+    const mismatchedYAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 10, max: 20 },
+      points: 3,
+    });
     const xValuesSeen: number[] = [];
 
     const chart = buildGridContourFieldChart({
@@ -191,8 +219,8 @@ describe("shared chart engine", () => {
         inputsMap: {
           [InputId.Input1]: { tdb: 25, rh: 50 },
         },
-        xAxis,
-        yAxis,
+        xAxis: mismatchedXAxis,
+        yAxis: mismatchedYAxis,
         getXSi: (payload) => payload.tdb,
         getYSi: (payload) => payload.rh,
         buildOverlayTraces: ({ inputLabel, xDisplay, yDisplay }) => [{
@@ -206,8 +234,8 @@ describe("shared chart engine", () => {
       }],
       layout: {
         title: "Grid chart",
-        xAxis,
-        yAxis,
+        xAxis: mismatchedXAxis,
+        yAxis: mismatchedYAxis,
         paperBgColor: "#ffffff",
         plotBgColor: "#ffffff",
         showLegend: false,
@@ -226,6 +254,9 @@ describe("shared chart engine", () => {
     ]);
     expect(chart.traces[4].x).toEqual([77]);
     expect(chart.traces[4].y).toEqual([50]);
+    expect(chart.layout.xaxis.range).toEqual([32, 212]);
+    expect(chart.layout.yaxis.range).toEqual([0, 100]);
+    expect(String(chart.layout.xaxis.title)).toContain("°F");
   });
 
   it("builds boundary regions with axis-aware polygon orientation", () => {
@@ -311,6 +342,101 @@ describe("shared chart engine", () => {
     expect(traces[1].y).toEqual([0, 100, 100, 0]);
   });
 
+  it("rejects boundary curves with mismatched band or variable dimensions", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 10 },
+      points: 2,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 100 },
+      points: 2,
+    });
+    const buildTrace = ({
+      band,
+      polygonX,
+      polygonY,
+    }: {
+      band: { label: string; color: string };
+      polygonX: number[];
+      polygonY: number[];
+    }) => buildFilledBoundaryRegionTrace({
+      name: band.label,
+      color: band.color,
+      polygonX,
+      polygonY,
+      lineColor: "#111111",
+    });
+
+    expect(() => buildBoundaryRegionTraces({
+      variableValuesSi: [0, 10],
+      boundaryCurvesSi: [[25, 75]],
+      bands: [
+        { label: "Lower", color: "#dddddd" },
+        { label: "Middle", color: "#eeeeee" },
+        { label: "Upper", color: "#ffffff" },
+      ],
+      variableAxis: xAxis,
+      boundaryAxis: yAxis,
+      xAxis,
+      yAxis,
+      buildTrace,
+    })).toThrow("Boundary curves must match the band and variable dimensions");
+
+    expect(() => buildBoundaryRegionTraces({
+      variableValuesSi: [0, 10],
+      boundaryCurvesSi: [[25]],
+      bands: [
+        { label: "Lower", color: "#dddddd" },
+        { label: "Upper", color: "#eeeeee" },
+      ],
+      variableAxis: xAxis,
+      boundaryAxis: yAxis,
+      xAxis,
+      yAxis,
+      buildTrace,
+    })).toThrow("Boundary curves must match the band and variable dimensions");
+  });
+
+  it("rejects inverted adjacent boundary curves", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 10 },
+      points: 2,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 100 },
+      points: 2,
+    });
+
+    expect(() => buildBoundaryRegionTraces({
+      variableValuesSi: [0, 10],
+      boundaryCurvesSi: [[60, 40], [50, 70]],
+      bands: [
+        { label: "Lower", color: "#dddddd" },
+        { label: "Middle", color: "#eeeeee" },
+        { label: "Upper", color: "#ffffff" },
+      ],
+      variableAxis: xAxis,
+      boundaryAxis: yAxis,
+      xAxis,
+      yAxis,
+      buildTrace: ({ band, polygonX, polygonY }) => buildFilledBoundaryRegionTrace({
+        name: band.label,
+        color: band.color,
+        polygonX,
+        polygonY,
+        lineColor: "#111111",
+      }),
+    })).toThrow("Boundary curves must be ordered at every variable point");
+  });
+
   it("builds boundary region hover metadata from SI values without reverse display conversion", () => {
     const xAxis = createFieldAxisScale({
       field: FieldKey.DryBulbTemperature,
@@ -374,10 +500,20 @@ describe("shared chart engine", () => {
       rangeSi: { min: 0, max: 100 },
       points: 2,
     });
+    const mismatchedXAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 10, max: 20 },
+      points: 3,
+    });
+    const mismatchedYAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 10, max: 20 },
+      points: 3,
+    });
 
     const chart = buildBoundaryRegionFieldChart({
-      xAxis,
-      yAxis,
       leadingTraces: [{
         type: "scatter",
         mode: "lines",
@@ -403,8 +539,8 @@ describe("shared chart engine", () => {
         inputsMap: {
           [InputId.Input1]: { tdb: 5, rh: 50 },
         },
-        xAxis,
-        yAxis,
+        xAxis: mismatchedXAxis,
+        yAxis: mismatchedYAxis,
         getXSi: (payload) => payload.tdb,
         getYSi: (payload) => payload.rh,
         buildOverlayTraces: ({ inputLabel, xDisplay, yDisplay }) => [{
@@ -435,6 +571,10 @@ describe("shared chart engine", () => {
       "Input 1 overlay",
       "Input 1",
     ]);
+    expect(chart.traces[4].x).toEqual([5]);
+    expect(chart.traces[4].y).toEqual([50]);
+    expect(chart.layout.xaxis.range).toEqual([0, 10]);
+    expect(chart.layout.yaxis.range).toEqual([0, 100]);
   });
 
   it("builds a closed polygon from two boundary edges", () => {
@@ -516,5 +656,11 @@ describe("shared chart engine", () => {
     expect(layers[1].name).toBe("Boundaries");
     expect(layers[1].contours?.coloring).toBe("none");
     expect(layers[1].includeText).toBe(false);
+  });
+
+  it("rejects an empty zone colorscale configuration", () => {
+    expect(() => buildZoneColorscale([])).toThrow(
+      "At least one zone is required to build a colorscale",
+    );
   });
 });

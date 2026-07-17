@@ -49,7 +49,13 @@ import {
 import { createSingleInputPatch, type InputControlBehavior } from "../services/comfort/controls/types";
 import { clothingTypicalEnsembles, metabolicActivityOptions } from "../services/comfort/referenceValues";
 import { convertFieldValueFromSi, convertFieldValueToSi, convertHumidityRatioFromSi, convertHumidityRatioToSi, getHumidityRatioDisplayMeta, formatDisplayValue } from "../services/units/index";
-import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "../state/comfortTool/modelConfigs/builder";
+import {
+  ComfortModelBuilder,
+  isRecord,
+  createEmptyResults,
+  buildResultSectionsFromRows,
+  type ResultRowDefinition,
+} from "../state/comfortTool/modelConfigs/builder";
 import { roundValue } from "../services/comfort/helpers";
 import { buildComfortPolygonTrace, buildLineTrace } from "../services/comfort/charts/plotlyBuilders";
 import { createFieldAxisScale } from "../services/comfort/charts/axis";
@@ -480,76 +486,80 @@ function buildPmvResultSections(
   visibleInputIds: InputIdType[],
   unitSystem: UnitSystemType,
   options: any,
-  selectedChartId: ChartIdType,
 ) {
   const normalizedOptions = normalizePmvOptions(options);
-  const sections = [];
+  const measuredAirSpeedRows: ResultRowDefinition<PmvResponseDto>[] =
+    normalizedOptions[OptionKey.AirSpeedInputMode] === AirSpeedInputMode.Measured
+      ? [
+          {
+            title: fieldMetaByKey[FieldKey.RelativeAirSpeed].label,
+            formatter: (result) => {
+              const airSpeedUnits = fieldMetaByKey[FieldKey.RelativeAirSpeed].displayUnits[unitSystem];
+              const displayValue = convertFieldValueFromSi(FieldKey.RelativeAirSpeed, result.vr, unitSystem);
+              const formattedValue = formatDisplayValue(
+                displayValue,
+                fieldMetaByKey[FieldKey.RelativeAirSpeed].decimals,
+              );
 
-  sections.push(
-    buildResultSection("Compliance", results, visibleInputIds, (result) => {
-      return {
-        text: result.isCompliant ? ComplianceStatus.Compliant : ComplianceStatus.OutOfRange,
-        color: result.isCompliant ? COLOR_COMPLIANT_GREEN : COLOR_NON_COMPLIANT_RED,
-      };
-    }),
-  );
-
-  if (normalizedOptions[OptionKey.AirSpeedInputMode] === AirSpeedInputMode.Measured) {
-    const airSpeedUnits = fieldMetaByKey[FieldKey.RelativeAirSpeed].displayUnits[unitSystem];
-    sections.push(
-      buildResultSection(fieldMetaByKey[FieldKey.RelativeAirSpeed].label, results, visibleInputIds, (result) => {
-        const displayValue = convertFieldValueFromSi(FieldKey.RelativeAirSpeed, result.vr, unitSystem);
-        const formattedValue = formatDisplayValue(
-          displayValue,
-          fieldMetaByKey[FieldKey.RelativeAirSpeed].decimals,
-        );
-
+              return {
+                text: `${formattedValue} ${airSpeedUnits}`,
+                color: "",
+              };
+            },
+          },
+        ]
+      : [];
+  const rows: ResultRowDefinition<PmvResponseDto>[] = [
+    {
+      title: "Compliance",
+      formatter: (result) => {
         return {
-          text: `${formattedValue} ${airSpeedUnits}`,
+          text: result.isCompliant ? ComplianceStatus.Compliant : ComplianceStatus.OutOfRange,
+          color: result.isCompliant ? COLOR_COMPLIANT_GREEN : COLOR_NON_COMPLIANT_RED,
+        };
+      },
+    },
+    ...measuredAirSpeedRows,
+    {
+      title: "PMV",
+      formatter: (result) => {
+        return {
+          text: result.pmv.toFixed(2),
           color: "",
         };
-      }),
-    );
-  }
+      },
+    },
+    {
+      title: "Zone",
+      formatter: (result) => {
+        const zoneInfo = getPmvZoneMeta(result.pmv);
+        return {
+          text: zoneInfo.label,
+          color: zoneInfo.textColor,
+        };
+      },
+    },
+    {
+      title: "PPD",
+      formatter: (result) => {
+        return {
+          text: `${result.ppd.toFixed(1)}%`,
+          color: "",
+        };
+      },
+    },
+    {
+      title: "Acceptability",
+      formatter: (result) => {
+        return {
+          text: `${(100 - result.ppd).toFixed(1)}%`,
+          color: "",
+        };
+      },
+    },
+  ];
 
-  sections.push(
-    buildResultSection("PMV", results, visibleInputIds, (result) => {
-      return {
-        text: result.pmv.toFixed(2),
-        color: "",
-      };
-    }),
-  );
-
-  sections.push(
-    buildResultSection("Zone", results, visibleInputIds, (result) => {
-      const zoneInfo = getPmvZoneMeta(result.pmv);
-      return {
-        text: zoneInfo.label,
-        color: zoneInfo.textColor,
-      };
-    }),
-  );
-
-  sections.push(
-    buildResultSection("PPD", results, visibleInputIds, (result) => {
-      return {
-        text: `${result.ppd.toFixed(1)}%`,
-        color: "",
-      };
-    }),
-  );
-
-  sections.push(
-    buildResultSection("Acceptability", results, visibleInputIds, (result) => {
-      return {
-        text: `${(100 - result.ppd).toFixed(1)}%`,
-        color: "",
-      };
-    }),
-  );
-
-  return sections;
+  return buildResultSectionsFromRows(rows, results, visibleInputIds);
 }
 
 // ── Chart Building Logic ──────────────────────────

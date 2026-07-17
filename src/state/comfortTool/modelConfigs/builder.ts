@@ -1,12 +1,22 @@
 import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
 import type { ResultSectionViewModel, ModelOptionsState, ResultCellViewModel } from "../types";
-import type { ComfortModelDefinition, ModelOptionChangeHandler } from "./index";
+import type {
+  ComfortModelDefinition,
+  DynamicAxisPairValidator,
+  ModelOptionChangeHandler,
+} from "./index";
 import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
 import type { ThermalZone } from "../../../models/thermalZone";
+
+export type ResultRowDefinition<T> = {
+  title: string;
+  group?: string;
+  formatter: (result: T) => ResultCellViewModel;
+};
 
 /**
  * Utility to verify if a value is a non-null object (and not an array).
@@ -31,12 +41,12 @@ export function createEmptyResults<T>(): Record<InputIdType, T | null> {
 
 /**
  * Assembles a view model for a results table section (e.g., "Compliance" or "PMV").
- * Maps raw model results into formatted display strings and semantic "tones" (success, danger, etc.).
+ * Maps raw model results into formatted display cells.
  *
  * @param title The display heading for this result section.
  * @param resultsByInput The record of raw calculation results for all slots.
  * @param visibleInputIds The subset of slots that should be included in the view model.
- * @param formatter A callback to transform a raw result into a displayable text and tone.
+ * @param formatter A callback to transform a raw result into a displayable cell.
  * @returns A ResultSectionViewModel ready for the UI.
  */
 export function buildResultSection<T>(
@@ -61,6 +71,16 @@ export function buildResultSection<T>(
       return acc;
     }, {} as Record<InputIdType, ResultCellViewModel | null>),
   };
+}
+
+export function buildResultSectionsFromRows<T>(
+  rows: ResultRowDefinition<T>[],
+  resultsByInput: Record<InputIdType, T | null>,
+  visibleInputIds: InputIdType[],
+): ResultSectionViewModel[] {
+  return rows.map((row) => (
+    buildResultSection(row.title, resultsByInput, visibleInputIds, row.formatter, row.group)
+  ));
 }
 
 /**
@@ -189,6 +209,14 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   setDynamicAxisFields(fields: FieldKeyType[]): this {
     this.config.dynamicAxisFields = fields;
+    return this;
+  }
+
+  /**
+   * Defines model-specific compatibility for otherwise supported dynamic axes.
+   */
+  setDynamicAxisPairValidator(validator: DynamicAxisPairValidator): this {
+    this.config.dynamicAxisPairValidator = validator;
     return this;
   }
 

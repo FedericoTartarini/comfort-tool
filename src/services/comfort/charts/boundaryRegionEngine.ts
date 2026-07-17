@@ -16,15 +16,6 @@ interface BoundaryPolygonTraceContext {
   hoverMetadata: BoundaryHoverMetadata;
 }
 
-interface BuildBoundaryPolygonTraceOptions {
-  xValuesSi: number[];
-  yValuesSi: number[];
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
-  getHoverMetadata?: (xSi: number, ySi: number, index: number) => BoundaryHoverRow;
-  buildTrace: (context: BoundaryPolygonTraceContext) => PlotTraceDto;
-}
-
 interface BuildClosedBoundaryPolygonTraceOptions {
   lowerXValuesSi: number[];
   lowerYValuesSi: number[];
@@ -94,23 +85,6 @@ export function buildClosedBoundaryPolygon({
   };
 }
 
-export function buildBoundaryPolygonTrace({
-  xValuesSi,
-  yValuesSi,
-  xAxis,
-  yAxis,
-  getHoverMetadata,
-  buildTrace,
-}: BuildBoundaryPolygonTraceOptions): PlotTraceDto {
-  const polygonX = xValuesSi.map(xAxis.toDisplay);
-  const polygonY = yValuesSi.map(yAxis.toDisplay);
-  const hoverMetadata = polygonX.map((_, index) => (
-    getHoverMetadata?.(xValuesSi[index], yValuesSi[index], index) ?? []
-  ));
-
-  return buildTrace({ polygonX, polygonY, hoverMetadata });
-}
-
 export function buildClosedBoundaryPolygonTrace({
   lowerXValuesSi,
   lowerYValuesSi,
@@ -151,6 +125,22 @@ export function buildBoundaryRegionTraces({
   getHoverMetadata,
   buildTrace,
 }: BuildBoundaryRegionTracesOptions): PlotTraceDto[] {
+  if (
+    boundaryCurvesSi.length !== bands.length - 1 ||
+    boundaryCurvesSi.some((curve) => curve.length !== variableValuesSi.length)
+  ) {
+    throw new Error("Boundary curves must match the band and variable dimensions");
+  }
+
+  const hasInvertedCurves = boundaryCurvesSi.some((upperCurve, curveIndex) => (
+    curveIndex > 0 && upperCurve.some((upper, valueIndex) => (
+      boundaryCurvesSi[curveIndex - 1][valueIndex] > upper
+    ))
+  ));
+  if (hasInvertedCurves) {
+    throw new Error("Boundary curves must be ordered at every variable point");
+  }
+
   const variableDisplayValues = variableValuesSi.map(variableAxis.toDisplay);
   const traces: PlotTraceDto[] = [];
 
@@ -162,7 +152,8 @@ export function buildBoundaryRegionTraces({
       ? variableValuesSi.map(() => boundaryRangeSi.max)
       : boundaryCurvesSi[bandIndex];
     const hasVisibleArea = lowerValues.some((lower, index) => (
-      lower < boundaryRangeSi.max && upperValues[index] > boundaryRangeSi.min
+      Math.max(lower, boundaryRangeSi.min)
+        < Math.min(upperValues[index], boundaryRangeSi.max)
     ));
 
     if (!hasVisibleArea) {
