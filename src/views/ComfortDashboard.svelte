@@ -54,7 +54,8 @@
           onSelectChart={toolState.actions.setSelectedChart}
           dynamicXAxis={toolState.state.ui.dynamicXAxis}
           dynamicYAxis={toolState.state.ui.dynamicYAxis}
-          dynamicAxisOptions={toolState.selectors.getDynamicAxisOptions()}
+          dynamicXAxisOptions={toolState.selectors.getDynamicXAxisOptions()}
+          dynamicYAxisOptions={toolState.selectors.getDynamicYAxisOptions()}
           baselineInputId={toolState.state.ui.chartBaselineInputId}
           onSelectBaselineInput={toolState.actions.setChartBaselineInputId}
           visibleInputIds={toolState.selectors.getVisibleInputIds()}

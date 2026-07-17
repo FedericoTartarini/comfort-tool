@@ -30,6 +30,11 @@ import { deriveInputsDerivedState } from "../../services/comfort/syncState";
 import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig, type ComfortModelDefinition } from "./modelConfigs";
 import { createCalculationManager } from "./calculationManager.svelte";
 import {
+  getDynamicAxisOptions,
+  normalizeDynamicAxisPair,
+  resolveDynamicAxisSelection,
+} from "./dynamicAxes";
+import {
   applyShareSnapshotToState,
   createShareStateSnapshot,
   normalizeCompareInputIds,
@@ -279,8 +284,27 @@ export function createComfortToolState(): ComfortToolController {
     }
   }
 
-  function getDynamicAxisOptions(): FieldKeyType[] {
-    return getActiveModelConfig().dynamicAxisFields || [];
+  function getCurrentDynamicAxisPair() {
+    return {
+      xAxis: state.ui.dynamicXAxis,
+      yAxis: state.ui.dynamicYAxis,
+    };
+  }
+
+  function getDynamicXAxisOptions(): FieldKeyType[] {
+    return getDynamicAxisOptions(
+      getActiveModelConfig(),
+      getCurrentDynamicAxisPair(),
+      "x",
+    );
+  }
+
+  function getDynamicYAxisOptions(): FieldKeyType[] {
+    return getDynamicAxisOptions(
+      getActiveModelConfig(),
+      getCurrentDynamicAxisPair(),
+      "y",
+    );
   }
 
   function getPendingModelSwitch(): PendingModelSwitch | null {
@@ -336,7 +360,8 @@ export function createComfortToolState(): ComfortToolController {
       return null;
     },
     getCurrentChartLegendTitle: () => getActiveModelConfig().legendTitle,
-    getDynamicAxisOptions,
+    getDynamicXAxisOptions,
+    getDynamicYAxisOptions,
     getPendingModelSwitch,
   };
 
@@ -350,41 +375,21 @@ export function createComfortToolState(): ComfortToolController {
     state.ui.errorMessage = "";
 
     const config = getComfortModelConfig(nextModel);
-    // Ensure dynamic axes are valid and unique for the new model.
-    ensureUniqueDynamicAxes(config);
+    ensureValidDynamicAxes(config);
 
     synchronizeActiveModel();
 
     scheduleCalculationInternal({ immediate: true });
   }
 
-  /**
-   * Validates that the dynamic chart axes are both supported by the current model
-   * and distinct from each other.
-   */
-  function ensureUniqueDynamicAxes(config: ComfortModelDefinition<any, any>) {
-    if (!config.dynamicAxisFields || config.dynamicAxisFields.length < 2) {
+  function ensureValidDynamicAxes(config: ComfortModelDefinition<any, any>) {
+    const pair = normalizeDynamicAxisPair(config, getCurrentDynamicAxisPair());
+    if (!pair) {
       return;
     }
 
-    // 1. Ensure current X-axis is valid for this model
-    if (!config.dynamicAxisFields.includes(state.ui.dynamicXAxis)) {
-      state.ui.dynamicXAxis = config.dynamicAxisFields[0];
-    }
-
-    // 2. Ensure current Y-axis is valid for this model
-    if (!config.dynamicAxisFields.includes(state.ui.dynamicYAxis)) {
-      state.ui.dynamicYAxis = config.dynamicAxisFields[config.dynamicAxisFields.length - 1];
-    }
-
-    // 3. Prevent X and Y from being the same field
-    if (state.ui.dynamicXAxis === state.ui.dynamicYAxis) {
-      const fields = config.dynamicAxisFields;
-      const currentIndex = fields.indexOf(state.ui.dynamicYAxis);
-      // Select the next available field, or loop back to the first.
-      const nextIndex = (currentIndex + 1) % fields.length;
-      state.ui.dynamicYAxis = fields[nextIndex];
-    }
+    state.ui.dynamicXAxis = pair.xAxis;
+    state.ui.dynamicYAxis = pair.yAxis;
   }
 
   /**
@@ -491,9 +496,8 @@ export function createComfortToolState(): ComfortToolController {
 
     state.ui.selectedChartByModel[state.ui.selectedModel] = nextChart;
 
-    // If switching to a dynamic chart, ensure the axes are unique.
     if (chartMetaById[nextChart].isDynamic) {
-      ensureUniqueDynamicAxes(getActiveModelConfig());
+      ensureValidDynamicAxes(getActiveModelConfig());
     }
 
     synchronizeActiveModel();
@@ -583,27 +587,35 @@ export function createComfortToolState(): ComfortToolController {
   }
 
   function setDynamicXAxis(fieldKey: FieldKeyType) {
-    const prevX = state.ui.dynamicXAxis;
-    state.ui.dynamicXAxis = fieldKey;
-
-    // Auto-swap if the newly selected X-axis is the same as the current Y-axis
-    if (fieldKey === state.ui.dynamicYAxis) {
-      state.ui.dynamicYAxis = prevX;
+    const pair = resolveDynamicAxisSelection(
+      getActiveModelConfig(),
+      getCurrentDynamicAxisPair(),
+      "x",
+      fieldKey,
+    );
+    if (!pair) {
+      return;
     }
 
+    state.ui.dynamicXAxis = pair.xAxis;
+    state.ui.dynamicYAxis = pair.yAxis;
     invalidateAllModels();
     scheduleCalculationInternal({ immediate: true });
   }
 
   function setDynamicYAxis(fieldKey: FieldKeyType) {
-    const prevY = state.ui.dynamicYAxis;
-    state.ui.dynamicYAxis = fieldKey;
-
-    // Auto-swap if the newly selected Y-axis is the same as the current X-axis
-    if (fieldKey === state.ui.dynamicXAxis) {
-      state.ui.dynamicXAxis = prevY;
+    const pair = resolveDynamicAxisSelection(
+      getActiveModelConfig(),
+      getCurrentDynamicAxisPair(),
+      "y",
+      fieldKey,
+    );
+    if (!pair) {
+      return;
     }
 
+    state.ui.dynamicXAxis = pair.xAxis;
+    state.ui.dynamicYAxis = pair.yAxis;
     invalidateAllModels();
     scheduleCalculationInternal({ immediate: true });
   }

@@ -42,6 +42,10 @@ export function createFieldAxisScale({
 }
 
 export function buildAxisValues(axis: ChartAxisScale): ChartAxisValues {
+  if (!Number.isInteger(axis.points) || axis.points < 1) {
+    throw new Error(`Axis points must be a positive integer; received ${axis.points}`);
+  }
+
   const displayMin = axis.toDisplay(axis.rangeSi.min);
   const displayMax = axis.toDisplay(axis.rangeSi.max);
   const displayValues = Array.from({ length: axis.points }, (_, index) => (

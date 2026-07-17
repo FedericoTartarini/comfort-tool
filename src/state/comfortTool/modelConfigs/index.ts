@@ -44,6 +44,11 @@ export type ModelOptionChangeHandler = (
   nextValue: string,
 ) => BehaviorPatch | null;
 
+export type DynamicAxisPairValidator = (
+  xAxis: FieldKeyType,
+  yAxis: FieldKeyType,
+) => boolean;
+
 /**
  * Type for comfort model definition, containing model information and calculation logic.
  * @template ResultType - The type of the calculation results.
@@ -81,6 +86,7 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
     unitSystem: UnitSystemType,
   ) => PlotlyChartResponseDto | null;
   dynamicAxisFields: FieldKeyType[];
+  dynamicAxisPairValidator?: DynamicAxisPairValidator;
   zones: ThermalZone[];
   legendChartIds: ChartIdType[];
   legendTitle: string;

@@ -34,11 +34,6 @@ export interface BuildInputTraceGroupsOptions<TPayload, TResult> {
   hoverinfo?: string;
 }
 
-export type BuildInputScatterTracesOptions<TPayload, TResult> = Omit<
-  BuildInputTraceGroupsOptions<TPayload, TResult>,
-  "buildOverlayTraces"
->;
-
 export type ChartInputEntry<TPayload> = {
   inputId: InputIdType;
   payload: TPayload;
@@ -54,7 +49,7 @@ export function shouldShowInputLegend<TPayload>(inputsMap: CompareInputMap<TPayl
  */
 export function resolveBaselineInputEntry<TPayload>(
   inputsMap: CompareInputMap<TPayload>,
-  preferredInputId?: string,
+  preferredInputId?: InputIdType,
 ): ChartInputEntry<TPayload> | undefined {
   const inputs = getCompareInputs(inputsMap);
   return inputs.find(({ inputId }) => inputId === preferredInputId) ?? inputs[0];
@@ -113,10 +108,4 @@ export function buildInputTraceGroups<TPayload, TResult = unknown>({
       }),
     ];
   });
-}
-
-export function buildInputScatterTraces<TPayload, TResult = unknown>(
-  options: BuildInputScatterTracesOptions<TPayload, TResult>,
-): PlotTraceDto[] {
-  return buildInputTraceGroups(options);
 }

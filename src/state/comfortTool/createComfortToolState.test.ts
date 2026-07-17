@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ComfortModel } from "../../models/comfortModels";
+import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
 import { AirSpeedInputMode, OptionKey, TemperatureMode } from "../../models/inputModes";
 import { InputId } from "../../models/inputSlots";
@@ -20,6 +21,43 @@ async function waitForIdle(toolState: ReturnType<typeof createComfortToolState>)
   throw new Error("Controller did not finish calculating.");
 }
 describe("createComfortToolState", () => {
+  it("filters incompatible adaptive axes and ignores invalid selections", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
+    toolState.state.ui.dynamicXAxis = FieldKey.PrevailingMeanOutdoorTemperature;
+    toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
+
+    expect(toolState.selectors.getDynamicXAxisOptions()).toEqual([
+      FieldKey.OperativeTemperature,
+      FieldKey.RelativeAirSpeed,
+      FieldKey.PrevailingMeanOutdoorTemperature,
+    ]);
+
+    toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
+
+    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
+    expect(toolState.state.ui.isLoading).toBe(false);
+
+    toolState.actions.setDynamicXAxis(FieldKey.OperativeTemperature);
+
+    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.OperativeTemperature);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+  });
+
+  it("normalizes dynamic axes deterministically when switching models", async () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.dynamicXAxis = FieldKey.DryBulbTemperature;
+    toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
+
+    toolState.actions.setSelectedModel(ComfortModel.AdaptiveAshrae);
+    await waitForIdle(toolState);
+
+    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.AdaptiveAshrae);
+    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+  });
+
   it("preserves ready model caches when switching between models", async () => {
     const toolState = createComfortToolState();
 

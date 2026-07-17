@@ -129,7 +129,8 @@ export type ComfortToolSelectors = {
   getCurrentChartLockYAxis: () => boolean;
   getCurrentChartLegendZones: () => ReadonlyArray<{ label: string; color: string }> | null;
   getCurrentChartLegendTitle: () => string;
-  getDynamicAxisOptions: () => FieldKeyType[];
+  getDynamicXAxisOptions: () => FieldKeyType[];
+  getDynamicYAxisOptions: () => FieldKeyType[];
   getPendingModelSwitch: () => PendingModelSwitch | null;
 };
 

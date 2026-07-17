@@ -34,6 +34,10 @@ interface ZoneContourLayersOptions {
 }
 
 export function buildZoneColorscale(zones: ReadonlyArray<ZoneColorSource>): Array<[number, string]> {
+  if (zones.length === 0) {
+    throw new Error("At least one zone is required to build a colorscale");
+  }
+
   const colorscale: Array<[number, string]> = [];
   const step = 1 / zones.length;
 

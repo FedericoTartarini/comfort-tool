@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ComfortModel } from "../../models/comfortModels";
+import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
 import { HumidityInputMode, OptionKey, TemperatureMode } from "../../models/inputModes";
 import { UnitSystem } from "../../models/units";
@@ -71,6 +72,31 @@ describe("shareState", () => {
     // Should fallback to valid dynamic axes for Adaptive ASHRAE (usually to / trm)
     expect(restoredState2.state.ui.dynamicXAxis).not.toBe("v");
     expect(restoredState2.state.ui.dynamicYAxis).not.toBe("rh");
+
+    const validAdaptiveSnapshot: ShareStateSnapshot = {
+      ...snapshot,
+      selectedModel: ComfortModel.AdaptiveEn,
+      dynamicXAxis: FieldKey.OperativeTemperature,
+      dynamicYAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+    };
+    const validAdaptiveState = createComfortToolState();
+    applyShareSnapshotToState(validAdaptiveState.state, validAdaptiveSnapshot);
+
+    expect(validAdaptiveState.state.ui.dynamicXAxis).toBe(FieldKey.OperativeTemperature);
+    expect(validAdaptiveState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+
+    const incompatibleSnapshot: ShareStateSnapshot = {
+      ...snapshot,
+      selectedModel: ComfortModel.AdaptiveEn,
+      dynamicXAxis: FieldKey.DryBulbTemperature,
+      dynamicYAxis: FieldKey.OperativeTemperature,
+    };
+    const normalizedState = createComfortToolState();
+    applyShareSnapshotToState(normalizedState.state, incompatibleSnapshot);
+
+    expect(incompatibleSnapshot.version).toBe(6);
+    expect(normalizedState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(normalizedState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
   });
 
   it("rejects unsupported snapshot versions through the version-dispatch entrypoint", () => {

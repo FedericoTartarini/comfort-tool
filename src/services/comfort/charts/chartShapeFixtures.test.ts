@@ -153,7 +153,7 @@ describe("PMV and Adaptive chart shape fixtures", () => {
       UnitSystem.SI,
       FieldKey.PrevailingMeanOutdoorTemperature,
       FieldKey.OperativeTemperature,
-    ))).toBe("7c41e66a1fad273d712bc0d9ee3fc5533014b643accf665ac775eeeefb29e78e");
+    ))).toBe("c64ce56030d705213b78fb4633a4d7e43a2a98d091fe30ecf933453ad5e21fff");
   });
 
   it("keeps the Adaptive non-outdoor dynamic chart DTO shape stable", () => {

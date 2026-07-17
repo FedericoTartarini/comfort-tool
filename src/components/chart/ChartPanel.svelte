@@ -37,7 +37,8 @@
     dynamicYAxis?: FieldKeyType;
     onSelectXAxis?: (fieldKey: FieldKeyType) => void;
     onSelectYAxis?: (fieldKey: FieldKeyType) => void;
-    dynamicAxisOptions?: FieldKeyType[];
+    dynamicXAxisOptions?: FieldKeyType[];
+    dynamicYAxisOptions?: FieldKeyType[];
     baselineInputId?: InputIdType;
     onSelectBaselineInput?: (inputId: InputIdType) => void;
     visibleInputIds?: InputIdType[];
@@ -63,7 +64,8 @@
     dynamicYAxis,
     onSelectXAxis,
     onSelectYAxis,
-    dynamicAxisOptions,
+    dynamicXAxisOptions,
+    dynamicYAxisOptions,
     baselineInputId,
     onSelectBaselineInput,
     visibleInputIds = [],
@@ -121,7 +123,8 @@
           idPrefix={axisMenuIdPrefix}
           {dynamicXAxis}
           {dynamicYAxis}
-          axisOptions={dynamicAxisOptions}
+          {dynamicXAxisOptions}
+          {dynamicYAxisOptions}
           {baselineInputId}
           {onSelectBaselineInput}
           {visibleInputIds}

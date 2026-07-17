@@ -60,7 +60,7 @@ interface FieldChartBaseOptions<TPayload, TResult> extends FieldChartAssemblyOpt
   yAxis: ChartAxisScale;
 }
 
-interface FieldChartOptions<TPayload, TResult> extends FieldChartAssemblyOptions<TPayload, TResult> {
+interface FieldChartOptions<TPayload, TResult> extends FieldChartBaseOptions<TPayload, TResult> {
   strategyTraces?: PlotTraceDto[];
 }
 
@@ -70,14 +70,20 @@ export interface GridContourFieldChartOptions<TPayload, TResult>
 }
 
 export interface BoundaryRegionFieldChartOptions<TPayload, TResult>
-  extends FieldChartBaseOptions<TPayload, TResult> {
+  extends FieldChartAssemblyOptions<TPayload, TResult> {
   boundaryTraces?: PlotTraceDto[];
 }
 
 function buildInputGroups<TPayload, TResult>(
   inputGroups: Array<BuildInputTraceGroupsOptions<TPayload, TResult>> | undefined,
+  xAxis: ChartAxisScale,
+  yAxis: ChartAxisScale,
 ): PlotTraceDto[] {
-  return inputGroups?.flatMap(buildInputTraceGroups) ?? [];
+  return inputGroups?.flatMap((inputGroup) => buildInputTraceGroups({
+    ...inputGroup,
+    xAxis,
+    yAxis,
+  })) ?? [];
 }
 
 function buildGridTraces(
@@ -107,6 +113,8 @@ function buildGridTraces(
 }
 
 function buildFieldChart<TPayload, TResult>({
+  xAxis,
+  yAxis,
   strategyTraces = [],
   leadingTraces = [],
   beforeInputTraces = [],
@@ -120,9 +128,13 @@ function buildFieldChart<TPayload, TResult>({
       ...leadingTraces,
       ...strategyTraces,
       ...beforeInputTraces,
-      ...buildInputGroups(inputGroups),
+      ...buildInputGroups(inputGroups, xAxis, yAxis),
     ],
-    layout,
+    layout: {
+      ...layout,
+      xAxis,
+      yAxis,
+    },
     annotations,
     source,
   });
@@ -143,6 +155,8 @@ export function buildGridContourFieldChart<TPayload = unknown, TResult = unknown
   annotations = [],
 }: GridContourFieldChartOptions<TPayload, TResult>): PlotlyChartResponseDto {
   return buildFieldChart({
+    xAxis,
+    yAxis,
     strategyTraces: buildGridTraces(grid, xAxis, yAxis),
     leadingTraces,
     beforeInputTraces,
@@ -154,7 +168,8 @@ export function buildGridContourFieldChart<TPayload = unknown, TResult = unknown
 }
 
 /**
- * Shared boundary/region chart runner. Boundary geometry is supplied by the model.
+ * Shared boundary/region chart runner. Boundary geometry is supplied by the model,
+ * and the layout axes are authoritative for layout and input overlays.
  */
 export function buildBoundaryRegionFieldChart<TPayload = unknown, TResult = unknown>(
   options: BoundaryRegionFieldChartOptions<TPayload, TResult>,
@@ -170,6 +185,8 @@ export function buildBoundaryRegionFieldChart<TPayload = unknown, TResult = unkn
   } = options;
 
   return buildFieldChart({
+    xAxis: layout.xAxis,
+    yAxis: layout.yAxis,
     strategyTraces: boundaryTraces,
     leadingTraces,
     beforeInputTraces,

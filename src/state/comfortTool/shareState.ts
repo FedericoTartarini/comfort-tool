@@ -12,6 +12,7 @@ import { allFieldOrder } from "../../models/inputFieldsMeta";
 import { getComfortModelConfig, comfortModelOrder } from "./modelConfigs";
 import type { ComfortToolStateSlice } from "./types";
 import { isFiniteNumber } from "../../services/comfort/helpers";
+import { normalizeDynamicAxisPair } from "./dynamicAxes";
 
 export interface ShareStateSnapshot {
   version: 6;
@@ -317,23 +318,14 @@ export function applyShareSnapshotToState(state: ComfortToolStateSlice, snapshot
     state.ui.dynamicYAxis = snapshot.dynamicYAxis;
   }
 
-  // Ensure dynamic axes are valid and unique for the loaded model
   const config = getComfortModelConfig(snapshot.selectedModel);
-  if (config.dynamicAxisFields && config.dynamicAxisFields.length >= 2) {
-    if (!config.dynamicAxisFields.includes(state.ui.dynamicXAxis as any)) {
-      state.ui.dynamicXAxis = config.dynamicAxisFields[0];
-    }
-
-    if (!config.dynamicAxisFields.includes(state.ui.dynamicYAxis as any)) {
-      state.ui.dynamicYAxis = config.dynamicAxisFields[config.dynamicAxisFields.length - 1];
-    }
-
-    if (state.ui.dynamicXAxis === state.ui.dynamicYAxis) {
-      const fields = config.dynamicAxisFields;
-      const currentIndex = fields.indexOf(state.ui.dynamicYAxis as any);
-      const nextIndex = (currentIndex + 1) % fields.length;
-      state.ui.dynamicYAxis = fields[nextIndex];
-    }
+  const dynamicAxisPair = normalizeDynamicAxisPair(config, {
+    xAxis: state.ui.dynamicXAxis,
+    yAxis: state.ui.dynamicYAxis,
+  });
+  if (dynamicAxisPair) {
+    state.ui.dynamicXAxis = dynamicAxisPair.xAxis;
+    state.ui.dynamicYAxis = dynamicAxisPair.yAxis;
   }
 }
 
