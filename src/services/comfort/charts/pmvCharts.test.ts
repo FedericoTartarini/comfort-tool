@@ -13,6 +13,7 @@ import {
   type PmvChartSourceDto,
 } from "../../../comfortModels/pmvShared";
 import { pmvAshraeAdapter } from "../../../comfortModels/pmvAshrae";
+import { pmvIsoAdapter } from "../../../comfortModels/pmvIso";
 
 function createPmvInput(overrides: Partial<ComfortZoneRequestDto> = {}): ComfortZoneRequestDto {
   return {
@@ -49,9 +50,12 @@ function createPmvChartRequest(input = createPmvInput()): PmvChartInputsRequestD
   };
 }
 
-function createPmvChartSource(chartRequest: PmvChartInputsRequestDto): PmvChartSourceDto {
+function createPmvChartSource(
+  chartRequest: PmvChartInputsRequestDto,
+  modelId: PmvChartSourceDto["modelId"] = ComfortModel.PmvAshrae,
+): PmvChartSourceDto {
   return {
-    modelId: ComfortModel.PmvAshrae,
+    modelId,
     chartRequest,
     comfortZonesByInput: {},
     baselineInputId: InputId.Input1,
@@ -145,5 +149,67 @@ describe("PMV charts", () => {
     expect(ipInputTrace?.y).toEqual([50]);
     expect(String(siChart.layout.title)).toContain("Dynamic Chart");
     expect(String(ipChart.layout.xaxis.title)).toContain("°F");
+  });
+
+  it.each([
+    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
+    [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
+    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
+    [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
+  ] as const)("rejects PMV axes that overwrite the same request fields", (xAxis, yAxis) => {
+    const chart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      xAxis,
+      yAxis,
+      UnitSystem.SI,
+    );
+
+    expect(chart.traces).toEqual([]);
+    expect(chart.layout.title).toBe("Invalid Axes Selection");
+  });
+
+  it.each([
+    [FieldKey.DryBulbTemperature, FieldKey.MeanRadiantTemperature],
+    [FieldKey.OperativeTemperature, FieldKey.RelativeHumidity],
+  ] as const)("keeps independent PMV axis pairs chartable", (xAxis, yAxis) => {
+    const chart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      xAxis,
+      yAxis,
+      UnitSystem.SI,
+    );
+
+    expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+    expect(chart.traces.length).toBeGreaterThan(0);
+  });
+
+  it("uses each PMV standard's clothing limit for dynamic chart axes", () => {
+    const ashraeChart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      FieldKey.ClothingInsulation,
+      FieldKey.RelativeHumidity,
+      UnitSystem.SI,
+    );
+    const isoInput = createPmvInput({
+      standard: JsThermalComfortStandard.ISO,
+      occupantHasAirSpeedControl: false,
+      clo: 2,
+    });
+    const isoChart = buildPmvDynamicChart(
+      pmvIsoAdapter,
+      createPmvChartSource(
+        createPmvChartRequest(isoInput),
+        ComfortModel.PmvIso,
+      ),
+      FieldKey.ClothingInsulation,
+      FieldKey.RelativeHumidity,
+      UnitSystem.SI,
+    );
+
+    expect(ashraeChart.layout.xaxis.range).toEqual([0, 1.5]);
+    expect(isoChart.layout.xaxis.range).toEqual([0, 2]);
   });
 });

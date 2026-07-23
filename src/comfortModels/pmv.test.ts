@@ -5,6 +5,7 @@ import { CalculationSource, ComfortStandard } from "../models/calculationMetadat
 import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
+import { InputControlId } from "../models/inputControls";
 import { AirSpeedControlMode, OptionKey } from "../models/inputModes";
 import { InputId } from "../models/inputSlots";
 import { findBandForValue, type InputsSi } from "../models/modelCapabilities";
@@ -73,6 +74,104 @@ describe("PMV standard model configurations", () => {
     expect(pmvAshraeModelConfig.label).toContain("ASHRAE");
     expect(pmvIsoModelConfig.label).toContain("ISO");
   });
+
+  it.each([
+    {
+      label: "ASHRAE",
+      adapter: pmvAshraeAdapter,
+      config: pmvAshraeModelConfig,
+      maxClothingInsulation: 1.5,
+      supportsOccupantAirSpeedControl: true,
+    },
+    {
+      label: "ISO",
+      adapter: pmvIsoAdapter,
+      config: pmvIsoModelConfig,
+      maxClothingInsulation: 2,
+      supportsOccupantAirSpeedControl: false,
+    },
+  ])(
+    "$label declares its clothing limit and occupant-control capability",
+    ({ adapter, config, maxClothingInsulation, supportsOccupantAirSpeedControl }) => {
+      const toolState = createComfortToolState();
+      toolState.state.ui.selectedModel = config.id;
+      const controls = toolState.selectors.getInputControls();
+      const clothingControl = controls.find(
+        (control) => control.id === InputControlId.ClothingInsulation,
+      );
+      const airSpeedControl = controls.find(
+        (control) => control.id === InputControlId.AirSpeed,
+      );
+      const airSpeedOptionKeys = airSpeedControl?.menu?.sections.flatMap(
+        (section) => section.items.map((item) => item.optionKey),
+      ) ?? [];
+
+      expect(adapter.clothingInsulationMaxSi).toBe(maxClothingInsulation);
+      expect(clothingControl?.maxValue).toBe(maxClothingInsulation);
+      expect(adapter.supportsOccupantAirSpeedControl)
+        .toBe(supportsOccupantAirSpeedControl);
+      expect(airSpeedOptionKeys.includes(OptionKey.AirSpeedControlMode))
+        .toBe(supportsOccupantAirSpeedControl);
+      expect(config.optionHandlersByKey[OptionKey.AirSpeedControlMode] !== undefined)
+        .toBe(supportsOccupantAirSpeedControl);
+    },
+  );
+
+  it.each(pmvStandardCases)(
+    "$label accepts its inclusive clothing limit and rejects values above it",
+    ({ adapter }) => {
+      const request = {
+        tdb: 25,
+        tr: 25,
+        vr: 0.1,
+        rh: 50,
+        met: 1.2,
+        clo: adapter.clothingInsulationMaxSi,
+        wme: 0,
+        occupantHasAirSpeedControl: adapter.supportsOccupantAirSpeedControl,
+        standard: adapter.calculationStandard,
+        units: UnitSystem.SI,
+      };
+
+      expect(adapter.checkApplicability(request)).toEqual([]);
+      expect(adapter.checkApplicability({
+        ...request,
+        clo: adapter.clothingInsulationMaxSi + 0.0001,
+      })).not.toEqual([]);
+    },
+  );
+
+  it.each(pmvStandardCases)(
+    "$label rejects dynamic axes that write the same PMV request fields",
+    ({ config }) => {
+      const validate = config.dynamicAxisPairValidator;
+
+      expect(validate?.(
+        FieldKey.OperativeTemperature,
+        FieldKey.DryBulbTemperature,
+      )).toBe(false);
+      expect(validate?.(
+        FieldKey.DryBulbTemperature,
+        FieldKey.OperativeTemperature,
+      )).toBe(false);
+      expect(validate?.(
+        FieldKey.OperativeTemperature,
+        FieldKey.MeanRadiantTemperature,
+      )).toBe(false);
+      expect(validate?.(
+        FieldKey.MeanRadiantTemperature,
+        FieldKey.OperativeTemperature,
+      )).toBe(false);
+      expect(validate?.(
+        FieldKey.DryBulbTemperature,
+        FieldKey.MeanRadiantTemperature,
+      )).toBe(true);
+      expect(validate?.(
+        FieldKey.OperativeTemperature,
+        FieldKey.RelativeHumidity,
+      )).toBe(true);
+    },
+  );
 
   it("uses different PMV implementations at elevated air speed", () => {
     const toolState = createComfortToolState();
@@ -169,13 +268,17 @@ describe("PMV standard model configurations", () => {
 
     toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso][OptionKey.AirSpeedControlMode] =
       AirSpeedControlMode.WithLocalControl;
-    const isoWithControl = calculatePmvModel(pmvIsoModelConfig, toolState).result;
+    const isoWithControl = calculatePmvModel(pmvIsoModelConfig, toolState);
 
     expect(ashraeWithoutControl.pmv).toBeGreaterThanOrEqual(pmvZonesList[3].min);
     expect(ashraeWithoutControl.pmv).toBeLessThan(pmvZonesList[3].max);
     expect(ashraeWithoutControl.isCompliant).toBe(false);
     expect(isoWithoutControl.isCompliant).toBe(true);
-    expect(isoWithControl).toEqual(isoWithoutControl);
+    expect(isoWithControl.result).toEqual(isoWithoutControl);
+    expect(
+      isoWithControl.chartSource.chartRequest.inputs[InputId.Input1]
+        ?.occupantHasAirSpeedControl,
+    ).toBe(false);
   });
 
   it.each(pmvStandardCases)(

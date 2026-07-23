@@ -23,6 +23,9 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
   modelId: ComfortModel.PmvIso,
   calculationStandard: JsThermalComfortStandard.ISO,
   resultStandard: ComfortStandard.Iso7730PmvPpd,
+  // ISO 7730 applicability includes the upper boundary of 2 clo.
+  clothingInsulationMaxSi: 2,
+  supportsOccupantAirSpeedControl: false,
   calculate: (request) => pmv_ppd(
     request.tdb,
     request.tr,

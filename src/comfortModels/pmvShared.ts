@@ -139,6 +139,8 @@ export interface PmvStandardAdapter {
   readonly modelId: PmvModelId;
   readonly calculationStandard: JsThermalComfortStandard;
   readonly resultStandard: ComfortStandard;
+  readonly clothingInsulationMaxSi: number;
+  readonly supportsOccupantAirSpeedControl: boolean;
   readonly calculate: (request: PmvRequestDto) => { pmv: number; ppd: number };
   readonly checkApplicability: (request: PmvRequestDto) => readonly string[];
   readonly getOperativeTemperature: (request: PmvRequestDto) => number;
@@ -568,7 +570,8 @@ function toPmvRequest(
     met: Number(inputs[FieldKey.MetabolicRate]),
     clo: Number(inputs[FieldKey.ClothingInsulation]),
     wme: Number(inputs[FieldKey.ExternalWork]),
-    occupantHasAirSpeedControl: options[OptionKey.AirSpeedControlMode] === AirSpeedControlMode.WithLocalControl,
+    occupantHasAirSpeedControl: adapter.supportsOccupantAirSpeedControl &&
+      options[OptionKey.AirSpeedControlMode] === AirSpeedControlMode.WithLocalControl,
     standard: adapter.calculationStandard,
     units: UnitSystem.SI,
   };
@@ -855,6 +858,45 @@ function getHumidityRatioDisplayValue(
   unitSystem: UnitSystemType,
 ): number {
   return convertHumidityRatioFromSi(psy_ta_rh(temperature, relativeHumidity).hr, unitSystem);
+}
+
+type PmvAxisPayloadKey = Exclude<
+  keyof PmvRequestDto,
+  "occupantHasAirSpeedControl" | "standard" | "units"
+>;
+
+const pmvAxisPayloadKeysByField: Partial<
+  Record<FieldKey, ReadonlyArray<PmvAxisPayloadKey>>
+> = {
+  [FieldKey.DryBulbTemperature]: ["tdb"],
+  [FieldKey.MeanRadiantTemperature]: ["tr"],
+  [FieldKey.OperativeTemperature]: ["tdb", "tr"],
+  [FieldKey.WindSpeed]: ["vr"],
+  [FieldKey.RelativeAirSpeed]: ["vr"],
+  [FieldKey.RelativeHumidity]: ["rh"],
+  [FieldKey.MetabolicRate]: ["met"],
+  [FieldKey.ClothingInsulation]: ["clo"],
+  [FieldKey.ExternalWork]: ["wme"],
+};
+
+function pmvAxesSharePayloadKey(xAxis: FieldKey, yAxis: FieldKey): boolean {
+  const xKeys = pmvAxisPayloadKeysByField[xAxis] ?? [];
+  const yKeys = pmvAxisPayloadKeysByField[yAxis] ?? [];
+  return xKeys.some((key) => yKeys.includes(key));
+}
+
+function getPmvAxisRangeSi(
+  adapter: PmvStandardAdapter,
+  fieldKey: FieldKey,
+): { min: number; max: number } | undefined {
+  if (fieldKey !== FieldKey.ClothingInsulation) {
+    return undefined;
+  }
+
+  return {
+    min: fieldMetaByKey[fieldKey].minValue,
+    max: adapter.clothingInsulationMaxSi,
+  };
 }
 
 function setPmvAxisValue(payload: PmvRequestDto, key: FieldKey, value: number): void {
@@ -1202,17 +1244,40 @@ export function buildPmvDynamicChart(
   unitSystem: UnitSystemType = UnitSystem.SI,
 ): PlotlyChartResponseDto {
   assertPmvChartSource(adapter, chartSource);
+
+  if (
+    dynamicXAxis === dynamicYAxis ||
+    pmvAxesSharePayloadKey(dynamicXAxis, dynamicYAxis)
+  ) {
+    return {
+      traces: [],
+      layout: {
+        title: "Invalid Axes Selection",
+        paper_bgcolor: CHART_COLOR_WHITE,
+        plot_bgcolor: CHART_COLOR_PLOT_BG,
+        showlegend: false,
+        margin: { l: 64, r: 24, t: 48, b: 64 },
+        xaxis: {},
+        yaxis: {},
+      },
+      annotations: [],
+      source: CalculationSource.FrontendGenerated,
+    };
+  }
+
   const { modelId, chartRequest: payload } = chartSource;
   const showInputLegend = shouldShowInputLegend(payload.inputs);
   const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource.baselineInputId)?.payload;
   const xAxis = createFieldAxisScale({
     field: dynamicXAxis,
     unitSystem,
+    rangeSi: getPmvAxisRangeSi(adapter, dynamicXAxis),
     points: CONTOUR_GRID_RESOLUTION,
   });
   const yAxis = createFieldAxisScale({
     field: dynamicYAxis,
     unitSystem,
+    rangeSi: getPmvAxisRangeSi(adapter, dynamicYAxis),
     points: CONTOUR_GRID_RESOLUTION,
   });
   const gridStrategy = buildPmvGridStrategy(
@@ -1303,7 +1368,6 @@ function createOptionHandler(
 }
 
 const temperatureBehavior = createTemperatureControlBehavior(InputControlId.Temperature);
-const airSpeedBehavior = createAirSpeedControlBehavior(InputControlId.AirSpeed);
 const humidityBehavior = createHumidityControlBehavior(InputControlId.Humidity);
 
 const pmvChartIds: ChartIdType[] = [ChartId.Psychrometric, ChartId.PmvDynamic];
@@ -1317,8 +1381,11 @@ export function createPmvModelConfig({
   const builder = new ComfortModelBuilder<PmvResponseDto, PmvChartSourceDto>(
     adapter.modelId,
   );
+  const airSpeedBehavior = createAirSpeedControlBehavior(InputControlId.AirSpeed, {
+    supportsOccupantAirSpeedControl: adapter.supportsOccupantAirSpeedControl,
+  });
 
-  return builder
+  builder
   .setLabel(comfortModelMetaById[adapter.modelId].label)
   .setDescription(comfortModelMetaById[adapter.modelId].description)
   .setModes(modes)
@@ -1378,10 +1445,10 @@ export function createPmvModelConfig({
       presetOptions: clothingPresetOptions,
       presetDecimals: 2,
       showClothingBuilder: true,
+      maxValue: adapter.clothingInsulationMaxSi,
     }),
   })
   .addOptionHandler(OptionKey.TemperatureMode, createOptionHandler(temperatureBehavior, OptionKey.TemperatureMode))
-  .addOptionHandler(OptionKey.AirSpeedControlMode, createOptionHandler(airSpeedBehavior, OptionKey.AirSpeedControlMode))
   .addOptionHandler(OptionKey.AirSpeedInputMode, createOptionHandler(airSpeedBehavior, OptionKey.AirSpeedInputMode))
   .addOptionHandler(OptionKey.HumidityInputMode, createOptionHandler(humidityBehavior, OptionKey.HumidityInputMode))
   .setDefaultChart(ChartId.Psychrometric, pmvChartIds)
@@ -1396,6 +1463,7 @@ export function createPmvModelConfig({
     FieldKey.MetabolicRate,
     FieldKey.ClothingInsulation,
   ])
+  .setDynamicAxisPairValidator((xAxis, yAxis) => !pmvAxesSharePayloadKey(xAxis, yAxis))
   .setCalculator((state, visibleInputIds) => {
     const compareChartRequest = toPmvChartInputsRequest(state, visibleInputIds, adapter);
     const resultsByInput = createEmptyResults<PmvResponseDto>();
@@ -1443,6 +1511,14 @@ export function createPmvModelConfig({
   .setZones(pmvZonesList)
   .setLegendChartIds([ChartId.Psychrometric, ChartId.PmvDynamic])
   .setLegendTitle("PMV Zones")
-  .setLockYAxisChartIds([])
-  .build();
+  .setLockYAxisChartIds([]);
+
+  if (adapter.supportsOccupantAirSpeedControl) {
+    builder.addOptionHandler(
+      OptionKey.AirSpeedControlMode,
+      createOptionHandler(airSpeedBehavior, OptionKey.AirSpeedControlMode),
+    );
+  }
+
+  return builder.build();
 }

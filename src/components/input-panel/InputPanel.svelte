@@ -11,8 +11,6 @@
     type InputId as InputIdType,
   } from "../../models/inputSlots";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
-  import { FieldKey } from "../../models/fieldKeys";
-  import { fieldMetaByKey } from "../../models/inputFieldsMeta";
   import { InputControlId } from "../../models/inputControls";
   import ToolControls from "./ToolControls.svelte";
   import type { ComfortToolController } from "../../state/comfortTool/types";
@@ -25,7 +23,17 @@
 
   let clothingBuilderOpen = $state(false);
   let quickClothingEstimateOpen = $state(false);
-  const maxClothingValue = fieldMetaByKey[FieldKey.ClothingInsulation].maxValue;
+  const inputControls = $derived(toolState.selectors.getInputControls());
+  const maxClothingValue = $derived(
+    inputControls.find((control) => control.id === InputControlId.ClothingInsulation)?.maxValue,
+  );
+
+  $effect(() => {
+    if (maxClothingValue === undefined) {
+      clothingBuilderOpen = false;
+      quickClothingEstimateOpen = false;
+    }
+  });
 
   function handleApplyClothingValue(inputId: InputIdType, value: number) {
     toolState.actions.setActiveInputId(inputId);
@@ -79,7 +87,7 @@
     {/if}
 
     <div class="grid gap-1" aria-label="Input fields">
-      {#each toolState.selectors.getInputControls() as control}
+      {#each inputControls as control}
         <InputFieldRow
           {toolState}
           {control}
@@ -95,45 +103,48 @@
   </div>
 </Card>
 
-<Modal
-  bind:open={clothingBuilderOpen}
-  size="xl"
-  autoclose={false}
-  outsideclose={true}
-  class="modal-shell-soft"
-  classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
-  classBody="max-h-[84svh] overflow-y-auto p-0 xl:h-[84svh] xl:overflow-hidden"
->
-  <ClothingEnsembleBuilder
-    activeInputId={toolState.state.ui.activeInputId}
-    visibleInputIds={toolState.selectors.getVisibleInputIds()}
-    unitSystem={toolState.state.ui.unitSystem}
-    onSelectInput={toolState.actions.setActiveInputId}
-    onApplyClothingValue={handleApplyClothingValue}
-    onClose={() => {
-      clothingBuilderOpen = false;
-    }}
-  />
-</Modal>
+{#if maxClothingValue !== undefined}
+  <Modal
+    bind:open={clothingBuilderOpen}
+    size="xl"
+    autoclose={false}
+    outsideclose={true}
+    class="modal-shell-soft"
+    classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
+    classBody="max-h-[84svh] overflow-y-auto p-0 xl:h-[84svh] xl:overflow-hidden"
+  >
+    <ClothingEnsembleBuilder
+      activeInputId={toolState.state.ui.activeInputId}
+      visibleInputIds={toolState.selectors.getVisibleInputIds()}
+      unitSystem={toolState.state.ui.unitSystem}
+      {maxClothingValue}
+      onSelectInput={toolState.actions.setActiveInputId}
+      onApplyClothingValue={handleApplyClothingValue}
+      onClose={() => {
+        clothingBuilderOpen = false;
+      }}
+    />
+  </Modal>
 
-<Modal
-  bind:open={quickClothingEstimateOpen}
-  size="md"
-  autoclose={false}
-  outsideclose={true}
-  class="modal-shell-soft"
-  classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
-  classBody="overflow-y-auto p-0"
->
-  <QuickClothingEstimate
-    activeInputId={toolState.state.ui.activeInputId}
-    visibleInputIds={toolState.selectors.getVisibleInputIds()}
-    unitSystem={toolState.state.ui.unitSystem}
-    {maxClothingValue}
-    onSelectInput={toolState.actions.setActiveInputId}
-    onApplyClothingValue={handleApplyClothingValue}
-    onClose={() => {
-      quickClothingEstimateOpen = false;
-    }}
-  />
-</Modal>
+  <Modal
+    bind:open={quickClothingEstimateOpen}
+    size="md"
+    autoclose={false}
+    outsideclose={true}
+    class="modal-shell-soft"
+    classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
+    classBody="overflow-y-auto p-0"
+  >
+    <QuickClothingEstimate
+      activeInputId={toolState.state.ui.activeInputId}
+      visibleInputIds={toolState.selectors.getVisibleInputIds()}
+      unitSystem={toolState.state.ui.unitSystem}
+      {maxClothingValue}
+      onSelectInput={toolState.actions.setActiveInputId}
+      onApplyClothingValue={handleApplyClothingValue}
+      onClose={() => {
+        quickClothingEstimateOpen = false;
+      }}
+    />
+  </Modal>
+{/if}

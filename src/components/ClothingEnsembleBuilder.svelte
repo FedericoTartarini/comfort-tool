@@ -2,8 +2,6 @@
 
 <script lang="ts">
   import { ClothingZone } from "../models/clothingZones";
-  import { FieldKey } from "../models/fieldKeys";
-  import { fieldMetaByKey } from "../models/inputFieldsMeta";
   import { InputId, type InputId as InputIdType } from "../models/inputSlots";
   import type { UnitSystem as UnitSystemType } from "../models/units";
   import {
@@ -20,6 +18,7 @@
     activeInputId: InputIdType;
     visibleInputIds: InputIdType[];
     unitSystem: UnitSystemType;
+    maxClothingValue: number;
     onSelectInput: (inputId: InputIdType) => void;
     onApplyClothingValue: (inputId: InputIdType, value: number) => void;
     onClose: () => void;
@@ -29,6 +28,7 @@
     activeInputId,
     visibleInputIds,
     unitSystem,
+    maxClothingValue,
     onSelectInput,
     onApplyClothingValue,
     onClose,
@@ -38,8 +38,6 @@
   let activeZoneId = $state(ClothingZone.UpperBody);
   let searchQuery = $state("");
   let selectedGarmentIds = $state<string[]>([]);
-
-  const maxClothingValue = fieldMetaByKey[FieldKey.ClothingInsulation].maxValue;
 
   $effect(() => {
     if (visibleInputIds.includes(activeInputId)) {

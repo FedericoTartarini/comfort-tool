@@ -65,6 +65,69 @@ describe("createComfortToolState", () => {
     expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
   });
 
+  it.each([ComfortModel.PmvAshrae, ComfortModel.PmvIso])(
+    "filters conflicting operative-temperature axes for %s",
+    (modelId) => {
+      const toolState = createComfortToolState();
+      toolState.state.ui.selectedModel = modelId;
+      toolState.state.ui.dynamicXAxis = FieldKey.RelativeAirSpeed;
+      toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
+
+      const xAxisOptions = toolState.selectors.getDynamicXAxisOptions();
+      expect(xAxisOptions).not.toContain(FieldKey.DryBulbTemperature);
+      expect(xAxisOptions).not.toContain(FieldKey.MeanRadiantTemperature);
+      expect(xAxisOptions).toContain(FieldKey.RelativeHumidity);
+
+      toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
+
+      expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.RelativeAirSpeed);
+      expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
+      expect(toolState.state.ui.isLoading).toBe(false);
+    },
+  );
+
+  it("ignores the unsupported occupant-control option for ISO PMV", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.PmvIso;
+    const initialValue = toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]
+      [OptionKey.AirSpeedControlMode];
+
+    toolState.actions.setModelOption(
+      OptionKey.AirSpeedControlMode,
+      AirSpeedControlMode.NoLocalControl,
+    );
+
+    expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]
+      [OptionKey.AirSpeedControlMode]).toBe(initialValue);
+    expect(toolState.state.ui.isLoading).toBe(false);
+  });
+
+  it("allows ISO clothing values above 1.5 clo and flags them when switching to ASHRAE", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.PmvIso;
+
+    toolState.actions.updateInput(
+      InputId.Input1,
+      InputControlId.ClothingInsulation,
+      "1.8",
+    );
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
+
+    expect(toolState.state.inputsByInput[InputId.Input1][FieldKey.ClothingInsulation])
+      .toBe(1.8);
+    expect(toolState.selectors.getPendingModelSwitch()).toEqual(expect.objectContaining({
+      targetModel: ComfortModel.PmvAshrae,
+      violations: expect.arrayContaining([
+        expect.objectContaining({
+          inputId: InputId.Input1,
+          controlId: InputControlId.ClothingInsulation,
+          currentValue: 1.8,
+          maxAllowed: 1.5,
+        }),
+      ]),
+    }));
+  });
+
   it("normalizes dynamic axes deterministically when switching models", async () => {
     const toolState = createComfortToolState();
     toolState.state.ui.dynamicXAxis = FieldKey.DryBulbTemperature;

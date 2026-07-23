@@ -23,6 +23,8 @@ export const pmvAshraeAdapter: PmvStandardAdapter = {
   modelId: ComfortModel.PmvAshrae,
   calculationStandard: JsThermalComfortStandard.ASHRAE,
   resultStandard: ComfortStandard.Ashrae55PmvPpd,
+  clothingInsulationMaxSi: 1.5,
+  supportsOccupantAirSpeedControl: true,
   calculate: (request) => pmv_ppd_ashrae(
     request.tdb,
     request.tr,

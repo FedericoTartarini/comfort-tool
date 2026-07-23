@@ -24,6 +24,7 @@ describe("shareState", () => {
     toolState.state.ui.selectedChartByModel[ComfortModel.PmvIso] = ChartId.PmvDynamic;
     toolState.state.ui.unitSystem = UnitSystem.IP;
     toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso][OptionKey.TemperatureMode] = TemperatureMode.Operative;
+    toolState.state.inputsByInput[InputId.Input1][FieldKey.ClothingInsulation] = 2;
     toolState.state.ui.dynamicXAxis = FieldKey.DryBulbTemperature;
     toolState.state.ui.dynamicYAxis = FieldKey.RelativeHumidity;
 
@@ -36,6 +37,7 @@ describe("shareState", () => {
     expect(snapshot.models[ComfortModel.PmvIso]).toEqual(expect.objectContaining({
       selectedChart: ChartId.PmvDynamic,
     }));
+    expect(snapshot.inputsByInput[InputId.Input1][FieldKey.ClothingInsulation]).toBe(2);
     expect(deserializeShareState(encodedSnapshot)).toEqual(snapshot);
   });
 
@@ -106,6 +108,18 @@ describe("shareState", () => {
     expect(incompatibleSnapshot.version).toBe(1);
     expect(normalizedState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
     expect(normalizedState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+
+    const incompatiblePmvSnapshot: ShareStateSnapshot = {
+      ...snapshot,
+      selectedModel: ComfortModel.PmvIso,
+      dynamicXAxis: FieldKey.DryBulbTemperature,
+      dynamicYAxis: FieldKey.OperativeTemperature,
+    };
+    const normalizedPmvState = createComfortToolState();
+    applyShareSnapshotToState(normalizedPmvState.state, incompatiblePmvSnapshot);
+
+    expect(normalizedPmvState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(normalizedPmvState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
   });
 
   it("rejects every snapshot version except the current v1 schema", () => {

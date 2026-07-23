@@ -740,7 +740,11 @@ export function createTemperatureControlBehavior(
  * @param controlId The ID of the control.
  * @returns An input control behavior for air speed.
  */
-export function createAirSpeedControlBehavior(controlId: InputControlIdType): InputControlBehavior {
+export function createAirSpeedControlBehavior(
+  controlId: InputControlIdType,
+  options: { supportsOccupantAirSpeedControl?: boolean } = {},
+): InputControlBehavior {
+  const supportsOccupantAirSpeedControl = options.supportsOccupantAirSpeedControl ?? true;
   // The metadata for the field that this control is associated with.
   const airSpeedMeta = fieldMetaByKey[FieldKey.RelativeAirSpeed];
 
@@ -798,9 +802,7 @@ export function createAirSpeedControlBehavior(controlId: InputControlIdType): In
     getMenu: (context) => {
       // Normalize the control options.
       const options = normalizeControlOptions(context.options);
-      // Return the menu for the control.
-      return buildAdvancedOptionMenu("Air speed options", [
-        // Build the input mode section.
+      const sections = [
         buildAdvancedOptionSection(
           // The label for the section.
           "Input mode",
@@ -811,8 +813,10 @@ export function createAirSpeedControlBehavior(controlId: InputControlIdType): In
           // The menu items for the option.
           airSpeedInputMenuItems,
         ),
-        // Build the occupant control section.
-        buildAdvancedOptionSection(
+      ];
+
+      if (supportsOccupantAirSpeedControl) {
+        sections.push(buildAdvancedOptionSection(
           // The label for the section.
           "Occupant control",
           // The key of the option.
@@ -821,8 +825,10 @@ export function createAirSpeedControlBehavior(controlId: InputControlIdType): In
           options[OptionKey.AirSpeedControlMode],
           // The menu items for the option.
           airSpeedControlMenuItems,
-        ),
-      ]);
+        ));
+      }
+
+      return buildAdvancedOptionMenu("Air speed options", sections);
     },
     // Get the display value for the control.
     getDisplayValue: (context, inputId) => {
@@ -878,6 +884,10 @@ export function createAirSpeedControlBehavior(controlId: InputControlIdType): In
     applyOptionChange: (context, optionKey, nextValue) => {
       // If the option key is the air speed control mode.
       if (optionKey === OptionKey.AirSpeedControlMode) {
+        if (!supportsOccupantAirSpeedControl) {
+          return null;
+        }
+
         // If the next value is not a valid air speed control mode, return null.
         if (!isAirSpeedControlMode(nextValue)) {
           return null;
