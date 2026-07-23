@@ -11,6 +11,7 @@ import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
+import { bandsFromThermalZones, ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../models/units";
 import { inputOrder, type InputId as InputIdType } from "../models/inputSlots";
 import { inputDisplayMetaById } from "../models/inputSlotPresentation";
@@ -39,7 +40,7 @@ import type { ChartAxisScale, GridPointEvaluation } from "../services/comfort/ch
 // ── Thermal Zones Definition ──────────────────────────
 
 export const utciZonesList = [
-  new ThermalZone({ category: "extreme cold stress",      label: "Extreme Cold Stress",      legendText: "Ext.<br>cold",      min: -50, max: -40, color: "#0f172a", textColor: "#64748b" }),
+  new ThermalZone({ category: "extreme cold stress",      label: "Extreme Cold Stress",      legendText: "Ext.<br>cold",                max: -40, color: "#0f172a", textColor: "#64748b" }),
   new ThermalZone({ category: "very strong cold stress",  label: "Very Strong Cold Stress",  legendText: "V strong<br>cold", min: -40, max: -27, color: "#1d4ed8", textColor: "#2563eb" }),
   new ThermalZone({ category: "strong cold stress",       label: "Strong Cold Stress",       legendText: "Strong<br>cold",   min: -27, max: -13, color: "#2563eb", textColor: "#3b82f6" }),
   new ThermalZone({ category: "moderate cold stress",     label: "Moderate Cold Stress",     legendText: "Moderate<br>cold", min: -13, max:   0, color: "#3b82f6", textColor: "#60a5fa" }),
@@ -48,19 +49,20 @@ export const utciZonesList = [
   new ThermalZone({ category: "moderate heat stress",     label: "Moderate Heat Stress",     legendText: "Moderate<br>heat", min:  26, max:  32, color: "#fbbf24", textColor: "#d97706" }),
   new ThermalZone({ category: "strong heat stress",       label: "Strong Heat Stress",       legendText: "Strong<br>heat",   min:  32, max:  38, color: "#fb923c", textColor: "#ea580c" }),
   new ThermalZone({ category: "very strong heat stress",  label: "Very Strong Heat Stress",  legendText: "V strong<br>heat", min:  38, max:  46, color: "#f97316", textColor: "#c2410c" }),
-  new ThermalZone({ category: "extreme heat stress",      label: "Extreme Heat Stress",      legendText: "Ext.<br>heat",      min:  46, max:  55, color: "#dc2626", textColor: "#b91c1c" }),
+  new ThermalZone({ category: "extreme heat stress",      label: "Extreme Heat Stress",      legendText: "Ext.<br>heat",      min:  46,          color: "#dc2626", textColor: "#b91c1c" }),
 ];
 
-// Derived from utciZonesList so the boundary values are never duplicated.
-const UTCI_BOUNDARIES = [
-  utciZonesList[0].min,
-  ...utciZonesList.map((z) => z.max),
+// UTCI stress categories are unbounded, while the chart needs finite endpoints.
+const UTCI_CHART_RANGE_SI = { min: -50, max: 55 } as const;
+const UTCI_CHART_BOUNDARIES = [
+  UTCI_CHART_RANGE_SI.min,
+  ...utciZonesList.slice(0, -1).map((zone) => zone.max),
+  UTCI_CHART_RANGE_SI.max,
 ];
 
-// Fallback zone used when a UTCI value is out of range or NaN.
+// Fallback zone used for NaN or an unrecognized category.
 const UTCI_DEFAULT_ZONE = utciZonesList[5]; // "No Thermal Stress"
 
-// If a UTCI value is out of range or NaN, return the default zone; otherwise, return the UTCI stress category zone.
 export function getUtciZoneMeta(value: string | number): ThermalZone {
   if (typeof value === "number") {
     if (isNaN(value)) return UTCI_DEFAULT_ZONE;
@@ -75,8 +77,7 @@ export function getUtciZoneMeta(value: string | number): ThermalZone {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────
-// tdb and tr limits are based on the UTCI_BOUNDARIES
-const TDB_LIMITS = { min: utciZonesList[0].min, max: 50 };
+const TDB_LIMITS = { min: UTCI_CHART_RANGE_SI.min, max: 50 };
 const TR_LIMITS = { min: -80, max: 120 };
 
 /**
@@ -279,13 +280,13 @@ function buildUtciResultSections(
 // ── Chart Building Logic ──────────────────────────
 
 function mapUtciToZ(utci: number): number {
-  if (utci <= UTCI_BOUNDARIES[0]) return 0;
-  const lastIdx = UTCI_BOUNDARIES.length - 1;
-  if (utci >= UTCI_BOUNDARIES[lastIdx]) return lastIdx;
+  if (utci <= UTCI_CHART_BOUNDARIES[0]) return 0;
+  const lastIdx = UTCI_CHART_BOUNDARIES.length - 1;
+  if (utci >= UTCI_CHART_BOUNDARIES[lastIdx]) return lastIdx;
 
   for (let i = 0; i < lastIdx; i++) {
-    const min = UTCI_BOUNDARIES[i];
-    const max = UTCI_BOUNDARIES[i + 1];
+    const min = UTCI_CHART_BOUNDARIES[i];
+    const max = UTCI_CHART_BOUNDARIES[i + 1];
     if (utci >= min && utci < max) {
       return i + (utci - min) / (max - min);
     }
@@ -329,17 +330,17 @@ export function buildUtciStressChart(
   const annotations: PlotAnnotationDto[] = [];
   const temperatureDisplayUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
   const stressRange: [number, number] = [
-    convertFieldValueFromSi(FieldKey.DryBulbTemperature, utciZonesList[0].min, unitSystem),
-    convertFieldValueFromSi(FieldKey.DryBulbTemperature, utciZonesList[utciZonesList.length - 1].max, unitSystem),
+    convertFieldValueFromSi(FieldKey.DryBulbTemperature, UTCI_CHART_RANGE_SI.min, unitSystem),
+    convertFieldValueFromSi(FieldKey.DryBulbTemperature, UTCI_CHART_RANGE_SI.max, unitSystem),
   ];
-  const zMax = UTCI_BOUNDARIES.length - 1;
+  const zMax = UTCI_CHART_BOUNDARIES.length - 1;
 
   const traces: PlotTraceDto[] = [
     buildContourTrace({
       name: "Legend",
-      x: UTCI_BOUNDARIES.map(val => convertFieldValueFromSi(FieldKey.DryBulbTemperature, val, unitSystem)),
+      x: UTCI_CHART_BOUNDARIES.map(val => convertFieldValueFromSi(FieldKey.DryBulbTemperature, val, unitSystem)),
       y: Array.from({ length: STRESS_BAND_Y_RESOLUTION }, (_, i) => i / (STRESS_BAND_Y_RESOLUTION - 1)),
-      z: Array.from({ length: STRESS_BAND_Y_RESOLUTION }, () => UTCI_BOUNDARIES.map((_, i) => i)),
+      z: Array.from({ length: STRESS_BAND_Y_RESOLUTION }, () => UTCI_CHART_BOUNDARIES.map((_, i) => i)),
       text: Array.from({ length: STRESS_BAND_Y_RESOLUTION }, () => 
         utciZonesList.map(b => b.label).concat(utciZonesList[utciZonesList.length - 1].label)
       ),
@@ -354,11 +355,11 @@ export function buildUtciStressChart(
     }),
     buildContourTrace({
       name: "Boundaries",
-      x: UTCI_BOUNDARIES.map((val) =>
+      x: UTCI_CHART_BOUNDARIES.map((val) =>
         convertFieldValueFromSi(FieldKey.DryBulbTemperature, val, unitSystem),
       ),
       y: Array.from({ length: 50 }, (_, i) => i / 49),
-      z: Array.from({ length: 50 }, () => UTCI_BOUNDARIES.map((_, i) => i)),
+      z: Array.from({ length: 50 }, () => UTCI_CHART_BOUNDARIES.map((_, i) => i)),
       colorscale: UTCI_COLORSCALE,
       contours: UTCI_BOUNDARY_CONTOURS,
       showscale: false,
@@ -387,10 +388,12 @@ export function buildUtciStressChart(
   });
 
   utciZonesList.forEach((band, index) => {
+    const chartMin = UTCI_CHART_BOUNDARIES[index];
+    const chartMax = UTCI_CHART_BOUNDARIES[index + 1];
     annotations.push(buildTextAnnotation({
       x: (
-        convertFieldValueFromSi(FieldKey.DryBulbTemperature, band.min, unitSystem) +
-        convertFieldValueFromSi(FieldKey.DryBulbTemperature, band.max, unitSystem)
+        convertFieldValueFromSi(FieldKey.DryBulbTemperature, chartMin, unitSystem) +
+        convertFieldValueFromSi(FieldKey.DryBulbTemperature, chartMax, unitSystem)
       ) / 2,
       y: index % 2 === 0 ? ZONE_ANNOTATION_Y_STAGGER.even : ZONE_ANNOTATION_Y_STAGGER.odd,
       text: band.legendText ?? band.label,
@@ -662,7 +665,16 @@ const utciChartIds: ChartIdType[] = [ChartId.Stress, ChartId.UtciDynamic];
 const builder = new ComfortModelBuilder<UtciResponseDto, UtciChartSourceDto>(ComfortModel.Utci);
 builder
   .setLabel(comfortModelMetaById[ComfortModel.Utci].label)
-  .setDescription(comfortModelMetaById[ComfortModel.Utci].description);
+  .setDescription(comfortModelMetaById[ComfortModel.Utci].description)
+  .setModes([ChartMode.Explore])
+  .setChartableOutputs([
+    {
+      key: ModelOutputKey.Utci,
+      label: "UTCI",
+      unit: "°C",
+      defaultBands: bandsFromThermalZones(utciZonesList),
+    },
+  ]);
 
 const utciTemperatureBehavior = createTemperatureControlBehavior(InputControlId.Temperature, {
   minValue: TDB_LIMITS.min,

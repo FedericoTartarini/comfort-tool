@@ -54,6 +54,8 @@ export const comfortModelMetaById: Record<ComfortModel, { label: string; descrip
 };
 ```
 
+If the model exposes a new calculated output, add its stable key to `ModelOutputKey` in `src/models/modelCapabilities.ts`. Reuse an existing key when the output already exists; never use an inline output string in a declaration.
+
 > **Why here?** `src/models/` is the layer for centralized constants. The model ID and its display label are stable metadata, not calculation logic. All other layers (`state/`, `comfortModels/`, `services/`) import from here.
 
 ---
@@ -235,6 +237,7 @@ import { ChartId } from "../models/chartOptions";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
+import { bandsFromThermalZones, ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
 import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
@@ -253,6 +256,41 @@ myNewModelBuilder
   .setLabel(comfortModelMetaById[ComfortModel.MyNewModel].label)
   .setDescription(comfortModelMetaById[ComfortModel.MyNewModel].description);
 ```
+
+#### Capability Declaration (Required)
+
+Every model must explicitly declare its supported chart modes and chartable outputs. For an Explore-only model whose preset bands are its existing zones:
+
+```ts
+myNewModelBuilder
+  .setModes([ChartMode.Explore])
+  .setChartableOutputs([
+    {
+      key: ModelOutputKey.MyNewModelIndex,
+      label: "My New Model Index",
+      unit: "°C",
+      defaultBands: bandsFromThermalZones(myNewModelZonesList),
+    },
+  ]);
+```
+
+For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of the chart X value and the readonly canonical-SI input record:
+
+```ts
+myNewModelBuilder
+  .setModes([ChartMode.Compliance, ChartMode.Explore])
+  .setChartableOutputs([/* one or more ModelOutput declarations */])
+  .setComplianceSpec({
+    output: ModelOutputKey.MyNewModelIndex,
+    bands: fixedStandardBands,
+  });
+```
+
+A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, and duplicate modes or output keys.
+
+Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
+
+`bandsFromThermalZones()` copies each zone's real `min`, `max`, `label`, and `color`, keeping thresholds single-sourced. Adaptive-style functional compliance bands should call the model's existing boundary function rather than restating its equations. PMV ASHRAE and PMV ISO remain separate declarations and band arrays; the ISO model is explicitly ISO 7730 Category B, whose `[-0.5, 0.5)` acceptable range intentionally matches the ASHRAE declaration numerically.
 
 #### Input Controls
 
@@ -484,7 +522,8 @@ import { myNewModelConfig } from "../../../comfortModels/myNewModel";
 
 // Inside comfortModelConfigs:
 export const comfortModelConfigs = {
-  [ComfortModel.Pmv]:           pmvModelConfig,
+  [ComfortModel.PmvAshrae]:     pmvAshraeModelConfig,
+  [ComfortModel.PmvIso]:        pmvIsoModelConfig,
   [ComfortModel.Utci]:          utciModelConfig,
   [ComfortModel.AdaptiveAshrae]: adaptiveAshraeModelConfig,
   [ComfortModel.AdaptiveEn]:    adaptiveEnModelConfig,
@@ -510,6 +549,7 @@ Test at minimum:
 1. A known-good calculation produces the expected index value and zone category.
 2. Edge cases at zone boundaries behave correctly.
 3. IP/SI unit handling if applicable.
+4. The registered capability declaration has the intended modes, output keys, preset bands, and compliance bands.
 
 ```ts
 import { describe, it, expect } from "vitest";

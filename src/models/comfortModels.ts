@@ -1,5 +1,6 @@
 export const ComfortModel = {
-  Pmv: "PMV",
+  PmvAshrae: "PMV_ASHRAE",
+  PmvIso: "PMV_ISO",
   Utci: "UTCI",
   AdaptiveAshrae: "ADAPTIVE_ASHRAE",
   AdaptiveEn: "ADAPTIVE_EN",
@@ -36,9 +37,13 @@ export const comfortModelMetaById: Record<
     description: string;
   }
 > = {
-  [ComfortModel.Pmv]: {
+  [ComfortModel.PmvAshrae]: {
     label: "PMV (ASHRAE-55)",
     description: "ASHRAE 55 PMV/PPD with comfort zone overlays.",
+  },
+  [ComfortModel.PmvIso]: {
+    label: "PMV (ISO 7730 Category B)",
+    description: "ISO 7730 Category B PMV/PPD with comfort zone overlays.",
   },
   [ComfortModel.Utci]: {
     label: "UTCI",

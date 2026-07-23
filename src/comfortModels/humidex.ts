@@ -11,6 +11,7 @@ import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
+import { bandsFromThermalZones, ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import type { InputId as InputIdType } from "../models/inputSlots";
 import type { CompareInputMap } from "../models/comfortDtos";
@@ -94,7 +95,15 @@ const humidexBuilder = new ComfortModelBuilder<HumidexResponseDto, HumidexChartS
  */
 humidexBuilder
   .setLabel(comfortModelMetaById[ComfortModel.Humidex].label)
-  .setDescription(comfortModelMetaById[ComfortModel.Humidex].description);
+  .setDescription(comfortModelMetaById[ComfortModel.Humidex].description)
+  .setModes([ChartMode.Explore])
+  .setChartableOutputs([
+    {
+      key: ModelOutputKey.Humidex,
+      label: "Humidex",
+      defaultBands: bandsFromThermalZones(humidexZonesList),
+    },
+  ]);
 
 /**
  * Registers UI controls for the Humidex model.

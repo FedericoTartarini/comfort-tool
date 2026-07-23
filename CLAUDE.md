@@ -69,17 +69,20 @@ When touching state or types, prefer keyed generic records over adding more mode
 
 ## Model Configuration
 
-Model definitions live in `src/comfortModels/`. The builder and registry live in `src/state/comfortTool/modelConfigs/`. Each model config owns: input field list, default inputs, derived-input sync, request builder, calculation function, chart list, and chart builders. New models must follow this config-driven pattern — do not add another hardcoded controller slice.
+Model definitions live in `src/comfortModels/`. The builder and registry live in `src/state/comfortTool/modelConfigs/`. Each model config owns: input field list, default inputs, derived-input sync, request builder, calculation function, chart list, chart builders, supported modes, chartable outputs, and any fixed compliance specification. New models must follow this config-driven pattern — do not add another hardcoded controller slice.
 
 Use constants from `src/models/` for model identifiers, field identifiers, chart identifiers, and compare-input identifiers. Do not introduce new raw domain strings for these concepts.
 
-## Next Architecture Direction
+## Capability Declarations And Next Architecture Direction
 
-`26-06-29-architecture-brief.md` describes the target architecture for upcoming work; these concepts are not all implemented today.
+`26-06-29-architecture-brief.md` describes the broader target architecture. Declarative model capabilities are implemented; mode UI and input modifiers are not.
 
 - Compliance and Explore should share one chart engine, with Compliance as the constrained version.
-- Future model declarations should add `modes`, `chartableOutputs`, and optional `complianceSpec` through the builder instead of controller branches.
-- Future constants such as `ModelOutputKey`, `ModifierId`, and `ChartMode` should be added under `src/models/` before use; do not inline raw strings.
+- Every declaration must call `setModes()` and `setChartableOutputs()`; Compliance models must also call `setComplianceSpec()` with non-empty bands.
+- Use `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` from `src/models/modelCapabilities.ts`.
+- Resolve bands in array order with half-open membership (`min <= value < max`); band values, functional-edge X values, and inputs are canonical SI.
+- PMV ASHRAE and PMV ISO are separate registry entries with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files. ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. Shared PMV mechanics use an injected adapter in `pmvShared.ts`, never a standard-toggle branch.
+- Future constants such as `ModifierId` should be added under `src/models/` before use; do not inline raw strings.
 - Future input sub-tools should use an `InputModifier` pattern: keep base SI input separate from effective SI input, apply reversible modifier patches, and declare supported modifiers per model.
 - Keep Time-series out of Analysis state until it is explicitly implemented.
 
@@ -125,7 +128,7 @@ Do not define threshold constants separately and then repeat the same number in 
 
 ## Architecture: comfortModels/
 
-Each model lives in one file in `src/comfortModels/` (e.g. `src/comfortModels/pmv.ts`) and is the single source of truth for that model: zones, calculation, request mapping, chart builders, result sections, and input controls. New model work must follow this structure. The next phase of work (shared chart engine, Compliance/Explore modes, input sub-tools) is specified in `26-06-29-architecture-brief.md`.
+Each registered model declaration lives in its own file in `src/comfortModels/`. Same-family mechanics may be extracted to an explicitly named support module when multiple declarations reuse them: PMV uses `pmvAshrae.ts`, `pmvIso.ts`, and the non-registered `pmvShared.ts`. Standard-specific calculations stay in the declaration files and are injected into shared mechanics without runtime standard branching.
 
 ## Done Criteria
 

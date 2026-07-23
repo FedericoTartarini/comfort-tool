@@ -12,6 +12,11 @@ import { FieldKey, type FieldKey as FieldKeyType } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId, type PresetInputOption } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
+import {
+  ChartMode,
+  ModelOutputKey,
+  type Band,
+} from "../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../models/units";
 import { type InputId as InputIdType } from "../models/inputSlots";
 import type { PlotlyChartResponseDto, PlotTraceDto, CompareInputMap } from "../models/comfortDtos";
@@ -301,8 +306,8 @@ export function calculateAdaptive(
     const tmp_cmf_90_low_si = tCmfSi + coefficients.OFFSETS_COOL[0];
     const tmp_cmf_90_up_si = baseUpper90 + ce90;
 
-    const acceptability_80 = toSi >= tmp_cmf_80_low_si && toSi <= tmp_cmf_80_up_si;
-    const acceptability_90 = toSi >= tmp_cmf_90_low_si && toSi <= tmp_cmf_90_up_si;
+    const acceptability_80 = toSi >= tmp_cmf_80_low_si && toSi < tmp_cmf_80_up_si;
+    const acceptability_90 = toSi >= tmp_cmf_90_low_si && toSi < tmp_cmf_90_up_si;
 
     let t_cmf = tCmfSi;
     let tmp_cmf_80_low = tmp_cmf_80_low_si;
@@ -419,9 +424,9 @@ export function calculateAdaptive(
   const tmp_cmf_cat_iii_low_si = tCmfSi + coefficients.OFFSETS_COOL[2];
   const tmp_cmf_cat_iii_up_si = baseUpperIii + ceCatIii;
 
-  const acceptability_cat_i = toSi >= tmp_cmf_cat_i_low_si && toSi <= tmp_cmf_cat_i_up_si;
-  const acceptability_cat_ii = toSi >= tmp_cmf_cat_ii_low_si && toSi <= tmp_cmf_cat_ii_up_si;
-  const acceptability_cat_iii = toSi >= tmp_cmf_cat_iii_low_si && toSi <= tmp_cmf_cat_iii_up_si;
+  const acceptability_cat_i = toSi >= tmp_cmf_cat_i_low_si && toSi < tmp_cmf_cat_i_up_si;
+  const acceptability_cat_ii = toSi >= tmp_cmf_cat_ii_low_si && toSi < tmp_cmf_cat_ii_up_si;
+  const acceptability_cat_iii = toSi >= tmp_cmf_cat_iii_low_si && toSi < tmp_cmf_cat_iii_up_si;
 
   let t_cmf = tCmfSi;
   let tmp_cmf_cat_i_low = tmp_cmf_cat_i_low_si;
@@ -876,6 +881,31 @@ function getAdaptiveTemperatureBoundaries(
     withCoolingEffect(v, tCmf + coeffs.OFFSETS_WARM[1]),
     withCoolingEffect(v, tCmf + coeffs.OFFSETS_WARM[2]),
   ];
+}
+
+function createAdaptiveComplianceBands(standardMode: AdaptiveStandardMode): readonly Band[] {
+  const bandSequence = standardMode === AdaptiveStandardMode.Ashrae
+    ? adaptiveAshraeBandSequence
+    : adaptiveEnBandSequence;
+
+  return bandSequence.map((zone, index): Band => ({
+    min: index === 0
+      ? -Infinity
+      : (xValueSi, inputsSi) => getAdaptiveTemperatureBoundaries(
+          xValueSi,
+          inputsSi[FieldKey.RelativeAirSpeed],
+          standardMode,
+        )[index - 1],
+    max: index === bandSequence.length - 1
+      ? Infinity
+      : (xValueSi, inputsSi) => getAdaptiveTemperatureBoundaries(
+          xValueSi,
+          inputsSi[FieldKey.RelativeAirSpeed],
+          standardMode,
+        )[index],
+    label: zone.label,
+    color: zone.color,
+  }));
 }
 
 function getOutdoorTemperatureBoundaries(
@@ -1637,7 +1667,7 @@ function getAshraeDynamicZone(result: AdaptiveResponseDto, to: number): { z: num
 
   return {
     z: mapAdaptiveBoundariesToZoneScale(to, boundaries),
-    label: to > boundaries[3] ? adaptiveAshraeZonesList[3].label : adaptiveAshraeZonesList[0].label,
+    label: to >= boundaries[3] ? adaptiveAshraeZonesList[3].label : adaptiveAshraeZonesList[0].label,
   };
 }
 
@@ -1667,7 +1697,7 @@ function getEnDynamicZone(result: AdaptiveResponseDto, to: number): { z: number;
 
   return {
     z: mapAdaptiveBoundariesToZoneScale(to, boundaries),
-    label: to > boundaries[5] ? adaptiveEnZonesList[4].label : adaptiveEnZonesList[0].label,
+    label: to >= boundaries[5] ? adaptiveEnZonesList[4].label : adaptiveEnZonesList[0].label,
   };
 }
 
@@ -1847,6 +1877,13 @@ function createAdaptiveModelConfig(modelId: ComfortModel, standardMode: Adaptive
   });
 
   const builder = new ComfortModelBuilder<AdaptiveResponseDto, AdaptiveChartSourceDto>(modelId);
+
+  builder.setModes([ChartMode.Compliance]);
+  builder.setChartableOutputs([]);
+  builder.setComplianceSpec({
+    output: ModelOutputKey.OperativeTemperature,
+    bands: createAdaptiveComplianceBands(standardMode),
+  });
 
   builder.addControl({
     id: InputControlId.Temperature,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CalculationSource } from "../../../models/calculationMetadata";
+import { ComfortModel, JsThermalComfortStandard } from "../../../models/comfortModels";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
@@ -10,7 +11,9 @@ import {
   type ComfortZoneRequestDto,
   type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
-} from "../../../comfortModels/pmv";
+} from "../../../comfortModels/pmvShared";
+import { pmvAshraeAdapter } from "../../../comfortModels/pmvAshrae";
+import { pmvIsoAdapter } from "../../../comfortModels/pmvIso";
 
 function createPmvInput(overrides: Partial<ComfortZoneRequestDto> = {}): ComfortZoneRequestDto {
   return {
@@ -22,6 +25,7 @@ function createPmvInput(overrides: Partial<ComfortZoneRequestDto> = {}): Comfort
     clo: 0.5,
     wme: 0,
     occupantHasAirSpeedControl: true,
+    standard: JsThermalComfortStandard.ASHRAE,
     units: UnitSystem.SI,
     rhMin: 0,
     rhMax: 100,
@@ -46,8 +50,12 @@ function createPmvChartRequest(input = createPmvInput()): PmvChartInputsRequestD
   };
 }
 
-function createPmvChartSource(chartRequest: PmvChartInputsRequestDto): PmvChartSourceDto {
+function createPmvChartSource(
+  chartRequest: PmvChartInputsRequestDto,
+  modelId: PmvChartSourceDto["modelId"] = ComfortModel.PmvAshrae,
+): PmvChartSourceDto {
   return {
+    modelId,
     chartRequest,
     comfortZonesByInput: {},
     baselineInputId: InputId.Input1,
@@ -58,10 +66,9 @@ describe("PMV charts", () => {
   it("builds the psychrometric chart with PMV zones, RH curves, comfort overlay, and SI input markers", () => {
     const chartRequest = createPmvChartRequest();
     const chart = buildComparePsychrometricChart(
-      chartRequest,
-      {},
-      UnitSystem.SI,
+      pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
+      UnitSystem.SI,
     );
     const zoneTrace = chart.traces.find((trace) => trace.type === "contour" && trace.isBackgroundZone);
     const comfortPolygon = chart.traces.find((trace) => trace.type === "scatter" && trace.isComfortZone);
@@ -91,16 +98,14 @@ describe("PMV charts", () => {
   it("converts psychrometric chart axes and input markers for IP display", () => {
     const chartRequest = createPmvChartRequest();
     const siChart = buildComparePsychrometricChart(
-      chartRequest,
-      {},
-      UnitSystem.SI,
+      pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
+      UnitSystem.SI,
     );
     const ipChart = buildComparePsychrometricChart(
-      chartRequest,
-      {},
-      UnitSystem.IP,
+      pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
+      UnitSystem.IP,
     );
     const siInputTrace = siChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
     const ipInputTrace = ipChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
@@ -118,18 +123,18 @@ describe("PMV charts", () => {
   it("builds PMV dynamic charts from shared grid scaffolding in SI and IP", () => {
     const chartRequest = createPmvChartRequest();
     const siChart = buildPmvDynamicChart(
-      chartRequest,
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest),
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeHumidity,
       UnitSystem.SI,
-      createPmvChartSource(chartRequest),
     );
     const ipChart = buildPmvDynamicChart(
-      chartRequest,
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest),
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeHumidity,
       UnitSystem.IP,
-      createPmvChartSource(chartRequest),
     );
     const siZoneTrace = siChart.traces.find((trace) => trace.type === "contour" && trace.isBackgroundZone);
     const siInputTrace = siChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
@@ -144,5 +149,67 @@ describe("PMV charts", () => {
     expect(ipInputTrace?.y).toEqual([50]);
     expect(String(siChart.layout.title)).toContain("Dynamic Chart");
     expect(String(ipChart.layout.xaxis.title)).toContain("°F");
+  });
+
+  it.each([
+    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
+    [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
+    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
+    [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
+  ] as const)("rejects PMV axes that overwrite the same request fields", (xAxis, yAxis) => {
+    const chart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      xAxis,
+      yAxis,
+      UnitSystem.SI,
+    );
+
+    expect(chart.traces).toEqual([]);
+    expect(chart.layout.title).toBe("Invalid Axes Selection");
+  });
+
+  it.each([
+    [FieldKey.DryBulbTemperature, FieldKey.MeanRadiantTemperature],
+    [FieldKey.OperativeTemperature, FieldKey.RelativeHumidity],
+  ] as const)("keeps independent PMV axis pairs chartable", (xAxis, yAxis) => {
+    const chart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      xAxis,
+      yAxis,
+      UnitSystem.SI,
+    );
+
+    expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+    expect(chart.traces.length).toBeGreaterThan(0);
+  });
+
+  it("uses each PMV standard's clothing limit for dynamic chart axes", () => {
+    const ashraeChart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      FieldKey.ClothingInsulation,
+      FieldKey.RelativeHumidity,
+      UnitSystem.SI,
+    );
+    const isoInput = createPmvInput({
+      standard: JsThermalComfortStandard.ISO,
+      occupantHasAirSpeedControl: false,
+      clo: 2,
+    });
+    const isoChart = buildPmvDynamicChart(
+      pmvIsoAdapter,
+      createPmvChartSource(
+        createPmvChartRequest(isoInput),
+        ComfortModel.PmvIso,
+      ),
+      FieldKey.ClothingInsulation,
+      FieldKey.RelativeHumidity,
+      UnitSystem.SI,
+    );
+
+    expect(ashraeChart.layout.xaxis.range).toEqual([0, 1.5]);
+    expect(isoChart.layout.xaxis.range).toEqual([0, 2]);
   });
 });

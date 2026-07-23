@@ -11,6 +11,7 @@ import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
+import { bandsFromThermalZones, ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import type { InputId as InputIdType } from "../models/inputSlots";
 import type { CompareInputMap } from "../models/comfortDtos";
@@ -102,7 +103,16 @@ const heatIndexBuilder = new ComfortModelBuilder<HeatIndexResponseDto, HeatIndex
 */
 heatIndexBuilder
   .setLabel(comfortModelMetaById[ComfortModel.HeatIndex].label)
-  .setDescription(comfortModelMetaById[ComfortModel.HeatIndex].description);
+  .setDescription(comfortModelMetaById[ComfortModel.HeatIndex].description)
+  .setModes([ChartMode.Explore])
+  .setChartableOutputs([
+    {
+      key: ModelOutputKey.HeatIndex,
+      label: "Heat Index",
+      unit: "°C",
+      defaultBands: bandsFromThermalZones(heatIndexZonesList),
+    },
+  ]);
 
 /**
 * Registers UI controls for the Heat Index model.

@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
+import { ChartId } from "../../models/chartOptions";
 import { ComfortModel } from "../../models/comfortModels";
 import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
-import { AirSpeedInputMode, OptionKey, TemperatureMode } from "../../models/inputModes";
+import {
+  AirSpeedControlMode,
+  AirSpeedInputMode,
+  OptionKey,
+  TemperatureMode,
+} from "../../models/inputModes";
 import { InputId } from "../../models/inputSlots";
 import { UnitSystem } from "../../models/units";
 import { createComfortToolState } from "./createComfortToolState.svelte";
@@ -21,6 +27,20 @@ async function waitForIdle(toolState: ReturnType<typeof createComfortToolState>)
   throw new Error("Controller did not finish calculating.");
 }
 describe("createComfortToolState", () => {
+  it("initializes independent registry defaults for both PMV variants", () => {
+    const toolState = createComfortToolState();
+
+    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
+    expect(toolState.state.ui.selectedChartByModel[ComfortModel.PmvAshrae])
+      .toBe(ChartId.Psychrometric);
+    expect(toolState.state.ui.selectedChartByModel[ComfortModel.PmvIso])
+      .toBe(ChartId.Psychrometric);
+    expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvAshrae])
+      .not.toBe(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae])
+      .not.toBe(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso]);
+  });
+
   it("filters incompatible adaptive axes and ignores invalid selections", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
@@ -45,6 +65,69 @@ describe("createComfortToolState", () => {
     expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
   });
 
+  it.each([ComfortModel.PmvAshrae, ComfortModel.PmvIso])(
+    "filters conflicting operative-temperature axes for %s",
+    (modelId) => {
+      const toolState = createComfortToolState();
+      toolState.state.ui.selectedModel = modelId;
+      toolState.state.ui.dynamicXAxis = FieldKey.RelativeAirSpeed;
+      toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
+
+      const xAxisOptions = toolState.selectors.getDynamicXAxisOptions();
+      expect(xAxisOptions).not.toContain(FieldKey.DryBulbTemperature);
+      expect(xAxisOptions).not.toContain(FieldKey.MeanRadiantTemperature);
+      expect(xAxisOptions).toContain(FieldKey.RelativeHumidity);
+
+      toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
+
+      expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.RelativeAirSpeed);
+      expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
+      expect(toolState.state.ui.isLoading).toBe(false);
+    },
+  );
+
+  it("ignores the unsupported occupant-control option for ISO PMV", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.PmvIso;
+    const initialValue = toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]
+      [OptionKey.AirSpeedControlMode];
+
+    toolState.actions.setModelOption(
+      OptionKey.AirSpeedControlMode,
+      AirSpeedControlMode.NoLocalControl,
+    );
+
+    expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]
+      [OptionKey.AirSpeedControlMode]).toBe(initialValue);
+    expect(toolState.state.ui.isLoading).toBe(false);
+  });
+
+  it("allows ISO clothing values above 1.5 clo and flags them when switching to ASHRAE", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.PmvIso;
+
+    toolState.actions.updateInput(
+      InputId.Input1,
+      InputControlId.ClothingInsulation,
+      "1.8",
+    );
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
+
+    expect(toolState.state.inputsByInput[InputId.Input1][FieldKey.ClothingInsulation])
+      .toBe(1.8);
+    expect(toolState.selectors.getPendingModelSwitch()).toEqual(expect.objectContaining({
+      targetModel: ComfortModel.PmvAshrae,
+      violations: expect.arrayContaining([
+        expect.objectContaining({
+          inputId: InputId.Input1,
+          controlId: InputControlId.ClothingInsulation,
+          currentValue: 1.8,
+          maxAllowed: 1.5,
+        }),
+      ]),
+    }));
+  });
+
   it("normalizes dynamic axes deterministically when switching models", async () => {
     const toolState = createComfortToolState();
     toolState.state.ui.dynamicXAxis = FieldKey.DryBulbTemperature;
@@ -64,41 +147,107 @@ describe("createComfortToolState", () => {
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
 
-    const pmvChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].chartSource;
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].status).toBe("ready");
+    const pmvChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource;
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].status).toBe("empty");
 
     toolState.actions.setSelectedModel(ComfortModel.Utci);
     await waitForIdle(toolState);
 
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].status).toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
 
-    toolState.actions.setSelectedModel(ComfortModel.Pmv);
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
     expect(toolState.state.ui.isLoading).toBe(false);
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].chartSource).toBe(pmvChartSource);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource).toBe(pmvChartSource);
   });
 
-  it("stales only the active model when a model option changes", async () => {
+  it("keeps ASHRAE and ISO PMV calculations in isolated registry caches", async () => {
     const toolState = createComfortToolState();
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
-    toolState.actions.setSelectedModel(ComfortModel.Utci);
-    await waitForIdle(toolState);
-    toolState.actions.setSelectedModel(ComfortModel.Pmv);
+    const ashraeSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource as any;
 
-    const utciChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource;
+    toolState.actions.setSelectedModel(ComfortModel.PmvIso);
+    await waitForIdle(toolState);
+    const isoSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].chartSource as any;
+
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status).toBe("ready");
+    expect(ashraeSource).not.toBe(isoSource);
+    expect(ashraeSource.modelId).toBe(ComfortModel.PmvAshrae);
+    expect(isoSource.modelId).toBe(ComfortModel.PmvIso);
+
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
+    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource).toBe(ashraeSource);
+  });
+
+  it("stales every model cache when an option patch rewrites shared inputs", async () => {
+    const toolState = createComfortToolState();
+
+    toolState.actions.updateInput(InputId.Input1, InputControlId.Temperature, "28");
+    toolState.actions.updateInput(InputId.Input1, InputControlId.RadiantTemperature, "20");
+    toolState.actions.scheduleCalculation({ immediate: true });
+    await waitForIdle(toolState);
+
+    toolState.actions.setSelectedModel(ComfortModel.PmvIso);
+    await waitForIdle(toolState);
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
+
+    const previousIsoChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].chartSource;
 
     toolState.actions.setModelOption(OptionKey.TemperatureMode, TemperatureMode.Operative);
 
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].status).toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource).toBe(utciChartSource);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status).toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].chartSource)
+      .toBe(previousIsoChartSource);
 
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].status).toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status).toBe("stale");
+
+    toolState.actions.setSelectedModel(ComfortModel.PmvIso);
+    await waitForIdle(toolState);
+
+    const currentIsoChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso]
+      .chartSource as any;
+    const currentInput = toolState.state.inputsByInput[InputId.Input1];
+
+    expect(currentIsoChartSource).not.toBe(previousIsoChartSource);
+    expect(currentIsoChartSource.chartRequest.inputs[InputId.Input1].tdb)
+      .toBeCloseTo(currentInput[FieldKey.DryBulbTemperature], 6);
+    expect(currentIsoChartSource.chartRequest.inputs[InputId.Input1].tr)
+      .toBeCloseTo(currentInput[FieldKey.MeanRadiantTemperature], 6);
+  });
+
+  it("stales only the active model cache for a pure option patch", async () => {
+    const toolState = createComfortToolState();
+
+    toolState.actions.scheduleCalculation({ immediate: true });
+    await waitForIdle(toolState);
+    toolState.actions.setSelectedModel(ComfortModel.PmvIso);
+    await waitForIdle(toolState);
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
+
+    const isoChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].chartSource;
+
+    toolState.actions.setModelOption(
+      OptionKey.AirSpeedControlMode,
+      AirSpeedControlMode.NoLocalControl,
+    );
+
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status).toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].chartSource)
+      .toBe(isoChartSource);
+
+    await waitForIdle(toolState);
+
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
   });
 
   it("stales all model caches after shared input updates and only refreshes the selected model", async () => {
@@ -108,19 +257,19 @@ describe("createComfortToolState", () => {
     await waitForIdle(toolState);
     toolState.actions.setSelectedModel(ComfortModel.Utci);
     await waitForIdle(toolState);
-    toolState.actions.setSelectedModel(ComfortModel.Pmv);
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
 
     const previousUtciChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource;
 
     toolState.actions.updateInput(toolState.state.ui.activeInputId, InputControlId.Temperature, "27");
 
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].status).toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("stale");
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].status).toBe("stale");
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Pmv].status).toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].status).toBe("stale");
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource).toBe(previousUtciChartSource);
   });

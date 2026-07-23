@@ -35,14 +35,18 @@ The current active application is the repository root version.
 
 `src/models/`
 - Domain constants and metadata.
-- Defines model IDs, chart IDs, field keys, field metadata, DTOs, units, and preset options.
+- Defines model IDs, chart IDs, field keys, model capability types, field metadata, DTOs, units, and preset options.
+
+`src/comfortModels/`
+- Owns each model's controls, request mapping, calculations, results, charts, zones, and declarative capabilities.
+- Contains separate `pmvAshrae.ts` (`"PMV_ASHRAE"`) and `pmvIso.ts` (`"PMV_ISO"`) declarations; shared PMV mechanics live in the non-registered `pmvShared.ts` support module.
 
 `src/services/comfort/`
-- Thermal-comfort calculation layer.
-- Contains PMV, UTCI, comfort-zone, input-derivation, and chart-building logic.
+- Reusable thermal-comfort helpers shared by model definitions.
+- Contains psychrometrics, input derivation, reference data, control behavior, and chart scaffolding.
 
 `src/services/comfort/charts/`
-- Builds Plotly-ready chart data for PMV and UTCI views.
+- Shared grid/contour and boundary-region engines plus Plotly-ready chart helpers.
 
 `src/services/comfort/controls/`
 - Encapsulates advanced PMV input behavior and reusable numeric control behavior.
@@ -76,42 +80,48 @@ The current active application is the repository root version.
 
 `src/state/comfortTool/modelConfigs/index.ts`
 - Registry of supported comfort models.
-- Connects model IDs to their model-specific definitions.
+- Connects model IDs to their model-specific definitions, including both PMV standards.
 
-`src/state/comfortTool/modelConfigs/pmv.ts`
-- PMV model definition.
-- Declares PMV controls, typed PMV calculations, SI chart-source generation, and PMV presentation builders.
+`src/state/comfortTool/modelConfigs/builder.ts`
+- Fluent model-definition builder and declarative result-row helpers.
+- Validates required `modes`, `chartableOutputs`, and Compliance declarations.
 
-`src/state/comfortTool/modelConfigs/utci.ts`
-- UTCI model definition.
-- Declares UTCI controls, typed UTCI calculations, SI chart-source generation, and UTCI presentation builders.
+`src/models/modelCapabilities.ts`
+- Defines `ChartMode`, `ModelOutputKey`, functional or numeric bands, output declarations, and compliance specifications.
+- Provides `bandsFromThermalZones()` plus canonical-SI, array-ordered half-open (`min <= value < max`) band resolution helpers.
+
+`src/comfortModels/pmvAshrae.ts` and `pmvIso.ts`
+- Own their standard-specific PMV calculation, applicability, operative-temperature strategy, capability declaration, and independent compliance bands.
+- The ISO declaration and result metadata explicitly identify ISO 7730 Category B; its Neutral `[-0.5, 0.5)` thresholds intentionally match the separate ASHRAE declaration numerically.
+
+`src/comfortModels/pmvShared.ts`
+- Owns shared PMV controls, zones, request/result DTOs, result rows, comfort-zone solving, charts, and config-builder plumbing.
+- Accepts an explicit standard adapter and rejects mismatched requests or chart sources; it contains no ASHRAE/ISO selection branch.
+
+`src/comfortModels/adaptive.ts`
+- Builds separate ASHRAE 55 and EN 16798-1 Adaptive configurations.
+- Declares compliance-only functional bands using the existing adaptive boundary equations.
+
+`src/comfortModels/utci.ts`, `heatIndex.ts`, `humidex.ts`, and `windChill.ts`
+- Declare Explore-only capabilities with presets derived from their existing `ThermalZone` definitions.
 
 `src/state/comfortTool/shareState.ts`
-- Owns share snapshot typing, version dispatch, serialization, deserialization, and state-apply helpers.
-
-`src/services/comfort/pmv.ts`
-- Wrapper around PMV-related thermal comfort calculations.
-
-`src/services/comfort/utci.ts`
-- Wrapper around UTCI calculations.
+- Owns the strict v1 share snapshot schema, serialization, deserialization, and state-apply helpers. Unsupported versions are rejected.
 
 `src/services/comfort/referenceValues.ts`
 - Adapts library-backed `met` and `clo` reference datasets into UI-ready option metadata.
 
-`src/services/comfort/comfortZone.ts`
-- Computes comfort-zone boundaries used in chart visualizations.
-
-`src/services/comfort/inputDerivations.ts`
-- Handles derived values such as dew point, humidity ratio, wet-bulb temperature, vapor pressure, operative temperature, relative air speed transformations, and derived-by-input aggregation.
-
-`src/services/comfort/charts/pmvCharts.ts`
-- Builds PMV chart presentation from canonical SI chart source and the active display unit system.
+`src/services/comfort/derivations/`
+- Handles derived values such as dew point, humidity ratio, wet-bulb temperature, vapor pressure, operative temperature, and relative air speed transformations.
 
 `src/services/comfort/charts/sharedCharts.ts`
 - Holds shared chart presentation builders that convert SI source data into display-unit payloads.
 
-`src/services/comfort/charts/utciCharts.ts`
-- Builds UTCI chart presentation from cached SI source data and cached raw UTCI results.
+`src/services/comfort/charts/chartEngine.ts`
+- Shared field-chart engine used by PMV and Adaptive chart strategies.
+
+`src/services/comfort/charts/boundaryRegionEngine.ts`
+- Shared boundary and filled-region scaffolding, including support for functional boundaries.
 
 `src/services/units/index.ts`
 - Centralized unit conversion helpers.
@@ -150,14 +160,15 @@ The current active application is the repository root version.
 - Derived input display values are recomputed from canonical inputs instead of being stored as mutable controller state.
 - Raw calculation caches are stored in SI and kept separate from result/chart presentation.
 - Result sections, chart payloads, units, and tone styling are derived in selectors or presentation builders, not stored in canonical state.
-- Calculation formulas stay in `src/services/comfort/`, not in UI components.
+- Model-specific formulas stay in `src/comfortModels/`; reusable comfort helpers stay in `src/services/comfort/`. Neither belongs in UI components or controller state.
 - Library reference datasets such as metabolic tasks and clothing presets are adapted in `src/services/comfort/`.
 - Views handle composition.
 - Components handle rendering and interaction.
 - State coordinates inputs, selections, cache invalidation, scheduling, and share-state application.
 - Metadata in `src/models/` provides stable identifiers and configuration.
 - Input identifiers/defaults are separated from input display/theme metadata.
-- Share URLs remain versioned and must evolve through explicit snapshot parsing and migration entrypoints.
+- Share URLs use a strict versioned schema. The current undeployed schema is v1 and does not carry legacy migrations.
+- Model modes, chartable outputs, Explore presets, and fixed compliance bands are declared in registered model definitions rather than controller branches.
 
 ## What Was Improved Recently
 
@@ -167,3 +178,4 @@ The current active application is the repository root version.
 - Numeric input fields now commit on change/blur so blank values are not committed as `0`.
 - `met` and `clo` option values now come from `jsthermalcomfort` through a comfort-service adapter instead of duplicated model data.
 - Shared calculation flow remains validated through automated tests and a successful production build.
+- Model capabilities are now declarative, PMV ASHRAE and ISO are separate cached models, and share snapshots use a strict v1 registry-complete schema.
