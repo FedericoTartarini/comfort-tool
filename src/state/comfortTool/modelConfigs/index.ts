@@ -15,8 +15,14 @@ import type {
   InputControlDefinition,
 } from "../../../services/comfort/controls/types";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import type {
+  ChartMode as ChartModeType,
+  ComplianceSpec,
+  ModelOutput,
+} from "../../../models/modelCapabilities";
 import type { ComfortToolStateSlice, ModelOptionsState, ResultSectionViewModel } from "../types";
-import { pmvModelConfig } from "../../../comfortModels/pmv";
+import { pmvAshraeModelConfig } from "../../../comfortModels/pmvAshrae";
+import { pmvIsoModelConfig } from "../../../comfortModels/pmvIso";
 import { utciModelConfig } from "../../../comfortModels/utci";
 import { adaptiveAshraeModelConfig, adaptiveEnModelConfig } from "../../../comfortModels/adaptive";
 import { heatIndexModelConfig } from "../../../comfortModels/heatIndex";
@@ -58,6 +64,9 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
   id: ComfortModelType;
   label: string;
   description: string;
+  modes: readonly ChartModeType[];
+  chartableOutputs: readonly ModelOutput[];
+  complianceSpec?: ComplianceSpec;
   controls: InputControlDefinition[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   chartIds: ChartIdType[];
@@ -97,7 +106,8 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
 
 // Model Registry: Mapping of comfort model ids to their definitions
 export const comfortModelConfigs = {
-  [ComfortModel.Pmv]: pmvModelConfig,
+  [ComfortModel.PmvAshrae]: pmvAshraeModelConfig,
+  [ComfortModel.PmvIso]: pmvIsoModelConfig,
   [ComfortModel.Utci]: utciModelConfig,
   [ComfortModel.AdaptiveAshrae]: adaptiveAshraeModelConfig,
   [ComfortModel.AdaptiveEn]: adaptiveEnModelConfig,

@@ -11,6 +11,12 @@ import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
 import type { ThermalZone } from "../../../models/thermalZone";
+import {
+  ChartMode,
+  type ChartMode as ChartModeType,
+  type ComplianceSpec,
+  type ModelOutput,
+} from "../../../models/modelCapabilities";
 
 export type ResultRowDefinition<T> = {
   title: string;
@@ -92,6 +98,8 @@ export function buildResultSectionsFromRows<T>(
  * @template ChartSourceType The data type required to build the chart visualizations.
  */
 export class ComfortModelBuilder<ResultType, ChartSourceType> {
+  private didSetChartableOutputs = false;
+
   private config: Partial<ComfortModelDefinition<ResultType, ChartSourceType>> = {
     controls: [],
     optionHandlersByKey: {},
@@ -124,6 +132,29 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   setDescription(description: string): this {
     this.config.description = description;
+    return this;
+  }
+
+  setModes(modes: readonly ChartModeType[]): this {
+    this.config.modes = [...modes];
+    return this;
+  }
+
+  /**
+   * Declares the outputs that Explore mode can display on a chart.
+   * An explicit empty array is valid for compliance-only models.
+   */
+  setChartableOutputs(outputs: readonly ModelOutput[]): this {
+    this.didSetChartableOutputs = true;
+    this.config.chartableOutputs = [...outputs];
+    return this;
+  }
+
+  setComplianceSpec(spec: ComplianceSpec): this {
+    this.config.complianceSpec = {
+      ...spec,
+      bands: [...spec.bands],
+    };
     return this;
   }
 
@@ -269,6 +300,39 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Seals the configuration and returns a complete, immutable ComfortModelDefinition.
    */
   build(): ComfortModelDefinition<ResultType, ChartSourceType> {
+    const modes = this.config.modes;
+    if (!modes || modes.length === 0) {
+      throw new Error("Comfort model declarations require at least one mode.");
+    }
+
+    if (new Set(modes).size !== modes.length) {
+      throw new Error("Comfort model declarations cannot contain duplicate modes.");
+    }
+
+    if (!this.didSetChartableOutputs || !this.config.chartableOutputs) {
+      throw new Error("Comfort model declarations must explicitly set chartable outputs.");
+    }
+
+    const outputKeys = this.config.chartableOutputs.map((output) => output.key);
+    if (new Set(outputKeys).size !== outputKeys.length) {
+      throw new Error("Comfort model declarations cannot contain duplicate output keys.");
+    }
+
+    const supportsExplore = modes.includes(ChartMode.Explore);
+    const supportsCompliance = modes.includes(ChartMode.Compliance);
+
+    if (supportsExplore && this.config.chartableOutputs.length === 0) {
+      throw new Error("Explore mode requires at least one chartable output.");
+    }
+
+    if (supportsCompliance && (!this.config.complianceSpec || this.config.complianceSpec.bands.length === 0)) {
+      throw new Error("Compliance mode requires a non-empty compliance specification.");
+    }
+
+    if (!supportsCompliance && this.config.complianceSpec) {
+      throw new Error("A model without Compliance mode cannot declare a compliance specification.");
+    }
+
     return this.config as ComfortModelDefinition<ResultType, ChartSourceType>;
   }
 }

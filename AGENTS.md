@@ -109,6 +109,7 @@ A model definition should own:
 - calculation execution
 - chart list and chart builders
 - comfort zone definitions (as `ThermalZone` instances — see below)
+- supported `modes`, `chartableOutputs`, and an optional fixed `complianceSpec`
 
 Use centralized constants and typed metadata from `src/models/` for:
 
@@ -116,16 +117,20 @@ Use centralized constants and typed metadata from `src/models/` for:
 - field identifiers
 - chart identifiers
 - compare-input identifiers
+- chart modes and model-output identifiers
 
 Do not introduce new raw domain strings for those concepts.
 
-## Next Architecture Direction
+## Capability Declarations And Next Architecture Direction
 
-`26-06-29-architecture-brief.md` describes the next target architecture; these concepts are not all implemented yet.
+`26-06-29-architecture-brief.md` describes the broader target architecture; §9.3 model capabilities are implemented, while the mode UI and input modifiers remain future work.
 
 - Compliance and Explore should share one chart engine, with Compliance as the constrained version.
-- Future model declarations should add `modes`, `chartableOutputs`, and optional `complianceSpec` through the builder instead of controller branches.
-- Future constants such as `ModelOutputKey`, `ModifierId`, and `ChartMode` should be added under `src/models/` before use; do not inline raw strings.
+- Every model declaration must set `modes` and `chartableOutputs`; Compliance models must also set a non-empty `complianceSpec`. Use the builder rather than controller branches.
+- `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
+- Band assignment is array-ordered and half-open (`min <= value < max`); numeric values, functional-edge X values, and band inputs are canonical SI.
+- PMV ASHRAE and PMV ISO are separate registered models with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files (`pmvAshrae.ts` and `pmvIso.ts`). ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. Shared PMV mechanics live in `pmvShared.ts`; do not merge the standards behind a runtime toggle.
+- Future constants such as `ModifierId` should be added under `src/models/` before use; do not inline raw strings.
 - Future input sub-tools should use an `InputModifier` pattern: keep base SI input separate from effective SI input, apply reversible modifier patches, and declare supported modifiers per model.
 - Keep Time-series out of Analysis state until it is explicitly implemented.
 
@@ -155,7 +160,7 @@ Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not 
 
 There is already repeated PMV mode branching pressure in places like:
 
-- `src/comfortModels/pmv.ts`
+- `src/comfortModels/pmvAshrae.ts`, `pmvIso.ts`, and `pmvShared.ts`
 - `src/comfortModels/adaptive.ts`
 - `src/components/input-panel/InputFieldRow.svelte`
 - share/import-export synchronization paths

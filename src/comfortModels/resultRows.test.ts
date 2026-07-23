@@ -16,7 +16,8 @@ import {
   adaptiveEnZonesList,
   type AdaptiveResponseDto,
 } from "./adaptive";
-import { pmvModelConfig, pmvZonesList, type PmvResponseDto } from "./pmv";
+import { pmvAshraeModelConfig } from "./pmvAshrae";
+import { pmvZonesList, type PmvResponseDto } from "./pmvShared";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
@@ -86,7 +87,7 @@ const enResult: AdaptiveResponseDto = {
 
 describe("comfort model result rows", () => {
   it("builds PMV default rows in order with current formatting", () => {
-    const sections = pmvModelConfig.buildResultSections(
+    const sections = pmvAshraeModelConfig.buildResultSections(
       createResultRecord(pmvResult),
       visibleInputIds,
       UnitSystem.SI,
@@ -121,14 +122,14 @@ describe("comfort model result rows", () => {
     const measuredOptions = {
       [OptionKey.AirSpeedInputMode]: AirSpeedInputMode.Measured,
     };
-    const siSections = pmvModelConfig.buildResultSections(
+    const siSections = pmvAshraeModelConfig.buildResultSections(
       createResultRecord(pmvResult),
       visibleInputIds,
       UnitSystem.SI,
       measuredOptions,
       ChartId.Psychrometric,
     );
-    const ipSections = pmvModelConfig.buildResultSections(
+    const ipSections = pmvAshraeModelConfig.buildResultSections(
       createResultRecord(pmvResult),
       visibleInputIds,
       UnitSystem.IP,
@@ -155,7 +156,7 @@ describe("comfort model result rows", () => {
       ppd: 35,
       isCompliant: false,
     };
-    const sections = pmvModelConfig.buildResultSections(
+    const sections = pmvAshraeModelConfig.buildResultSections(
       createResultRecord(pmvResult, {
         [InputId.Input3]: nonCompliantResult,
       }),

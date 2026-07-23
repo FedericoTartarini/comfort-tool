@@ -1,19 +1,30 @@
 /**
- * @file pmv.ts
- * @description Configuration, calculation, and charting service for the PMV (Predicted Mean Vote) comfort model.
+ * @file pmvShared.ts
+ * @description Shared configuration, calculation, and charting support for PMV model declarations.
  */
 
-import { pmv_ppd_ashrae, pmv_ppd, units_converter, psy_ta_rh, p_sat, t_o, check_standard_compliance } from "jsthermalcomfort";
+import { units_converter, psy_ta_rh, p_sat } from "jsthermalcomfort";
 
-export { pmv_ppd_ashrae };
-
-import { CalculationSource, ComfortStandard } from "../models/calculationMetadata";
-import { ComfortModel, comfortModelMetaById, JsThermalComfortStandard, ComplianceStatus } from "../models/comfortModels";
+import { CalculationSource, type ComfortStandard } from "../models/calculationMetadata";
+import {
+  ComfortModel,
+  comfortModelMetaById,
+  ComplianceStatus,
+  type JsThermalComfortStandard,
+} from "../models/comfortModels";
 import { ChartId, type ChartId as ChartIdType } from "../models/chartOptions";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
+import {
+  bandsFromThermalZones,
+  ModelOutputKey,
+  type Band,
+  type ChartMode as ChartModeType,
+  type ComplianceSpec,
+  type ModelOutput,
+} from "../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../models/units";
 import { type InputId as InputIdType } from "../models/inputSlots";
 import type {
@@ -71,8 +82,6 @@ import type { ChartAxisScale } from "../services/comfort/charts/types";
 
 // ── Constants ──────────────────────────────────────────
 
-export const PMV_COMFORT_LIMIT = 0.5;
-
 // These exact bounds are used as a search bracket for finding PMV roots (comfort zone boundaries).
 const COMFORT_ZONE_MIN_DRY_BULB = -20;
 const COMFORT_ZONE_MAX_DRY_BULB = 80;
@@ -122,6 +131,80 @@ export const pmvZonesList = [
   new ThermalZone({ label: "Hot", min: 2.5, color: "#cc79a7", textColor: "#701a75" }),
 ];
 
+const PMV_NEUTRAL_ZONE = pmvZonesList[3];
+
+export type PmvModelId = typeof ComfortModel.PmvAshrae | typeof ComfortModel.PmvIso;
+
+export interface PmvStandardAdapter {
+  readonly modelId: PmvModelId;
+  readonly calculationStandard: JsThermalComfortStandard;
+  readonly resultStandard: ComfortStandard;
+  readonly calculate: (request: PmvRequestDto) => { pmv: number; ppd: number };
+  readonly checkApplicability: (request: PmvRequestDto) => readonly string[];
+  readonly getOperativeTemperature: (request: PmvRequestDto) => number;
+}
+
+export interface PmvModelDeclaration {
+  readonly adapter: PmvStandardAdapter;
+  readonly modes: readonly ChartModeType[];
+  readonly chartableOutputs: readonly ModelOutput[];
+  readonly complianceSpec: ComplianceSpec;
+}
+
+const pmvExploreBands = bandsFromThermalZones(pmvZonesList);
+
+const ppdExploreBands: readonly Band[] = [
+  {
+    min: -Infinity,
+    max: 10,
+    label: "Acceptable dissatisfaction (< 10%)",
+    color: "#86efac",
+  },
+  {
+    min: 10,
+    max: Infinity,
+    label: "Elevated dissatisfaction (≥ 10%)",
+    color: "#fca5a5",
+  },
+];
+
+export function createPmvComplianceBands(): readonly Band[] {
+  return [
+    {
+      min: -Infinity,
+      max: PMV_NEUTRAL_ZONE.min,
+      label: "Outside acceptable PMV range",
+      color: "#fecaca",
+    },
+    {
+      min: PMV_NEUTRAL_ZONE.min,
+      max: PMV_NEUTRAL_ZONE.max,
+      label: "Acceptable PMV range",
+      color: "#86efac",
+    },
+    {
+      min: PMV_NEUTRAL_ZONE.max,
+      max: Infinity,
+      label: "Outside acceptable PMV range",
+      color: "#fecaca",
+    },
+  ];
+}
+
+export const pmvChartableOutputs: readonly ModelOutput[] = [
+  {
+    key: ModelOutputKey.Pmv,
+    label: "PMV",
+    defaultBands: pmvExploreBands,
+  },
+  {
+    key: ModelOutputKey.Ppd,
+    label: "PPD (%)",
+    unit: "%",
+    defaultBands: ppdExploreBands,
+  },
+];
+
 type TemperatureBracket =
   | { exactTemperature: number }
   | { low: number; high: number };
@@ -146,6 +229,7 @@ export interface PmvRequestDto {
   clo: number;
   wme: number;
   occupantHasAirSpeedControl: boolean;
+  standard: JsThermalComfortStandard;
   units: UnitSystemType;
 }
 
@@ -161,7 +245,11 @@ export interface ComfortZoneResponseDto {
   source: CalculationSource;
 }
 
-export function calculateComfortZone(payload: ComfortZoneRequestDto): ComfortZoneResponseDto {
+export function calculateComfortZone(
+  adapter: PmvStandardAdapter,
+  payload: ComfortZoneRequestDto,
+): ComfortZoneResponseDto {
+  assertPmvRequestStandard(adapter, payload);
   const rhMinimum = Math.min(payload.rhMin, payload.rhMax);
   const rhMaximum = Math.max(payload.rhMin, payload.rhMax);
   const rhValues =
@@ -175,8 +263,18 @@ export function calculateComfortZone(payload: ComfortZoneRequestDto): ComfortZon
   const warmEdge: ComfortPointDto[] = [];
 
   rhValues.forEach((relativeHumidity) => {
-    const coolTemperature = solveDryBulbForTargetPmv(-PMV_COMFORT_LIMIT, relativeHumidity, payload);
-    const warmTemperature = solveDryBulbForTargetPmv(PMV_COMFORT_LIMIT, relativeHumidity, payload);
+    const coolTemperature = solveDryBulbForTargetPmv(
+      adapter,
+      PMV_NEUTRAL_ZONE.min,
+      relativeHumidity,
+      payload,
+    );
+    const warmTemperature = solveDryBulbForTargetPmv(
+      adapter,
+      PMV_NEUTRAL_ZONE.max,
+      relativeHumidity,
+      payload,
+    );
 
     if (coolTemperature === null || warmTemperature === null) {
       return;
@@ -223,6 +321,7 @@ export interface PmvChartInputsRequestDto {
 }
 
 export interface PmvChartSourceDto {
+  modelId: PmvModelId;
   chartRequest: PmvChartInputsRequestDto;
   comfortZonesByInput: CompareInputMap<ComfortZoneResponseDto>;
   dynamicXAxis?: string;
@@ -232,10 +331,47 @@ export interface PmvChartSourceDto {
 
 // ── Math Calculations & Solvers ──────────────────────
 
+function assertPmvRequestStandard(
+  adapter: PmvStandardAdapter,
+  payload: PmvRequestDto,
+): void {
+  if (payload.standard !== adapter.calculationStandard) {
+    throw new Error(
+      `PMV adapter ${adapter.modelId} cannot evaluate a ${payload.standard} request.`,
+    );
+  }
+}
+
+function assertPmvChartSource(
+  adapter: PmvStandardAdapter,
+  chartSource: PmvChartSourceDto,
+): void {
+  if (chartSource.modelId !== adapter.modelId) {
+    throw new Error(
+      `PMV adapter ${adapter.modelId} cannot build a chart for ${chartSource.modelId}.`,
+    );
+  }
+
+  Object.values(chartSource.chartRequest.inputs).forEach((request) => {
+    if (request) {
+      assertPmvRequestStandard(adapter, request);
+    }
+  });
+}
+
+function calculatePmvValues(
+  adapter: PmvStandardAdapter,
+  payload: PmvRequestDto,
+): { pmv: number; ppd: number } {
+  assertPmvRequestStandard(adapter, payload);
+  return adapter.calculate(payload);
+}
+
 /**
  * Scans a range of temperatures sequentially to locate a bracket where the target PMV root crosses zero.
  */
 function findTemperatureBracket(
+  adapter: PmvStandardAdapter,
   targetPmv: number,
   rh: number,
   payload: PmvRequestDto,
@@ -268,20 +404,7 @@ function findTemperatureBracket(
         units: UnitSystem.SI,
       };
 
-    const pmv = pmv_ppd_ashrae(
-      normalizedPayload.tdb,
-      normalizedPayload.tr,
-      normalizedPayload.vr,
-      normalizedPayload.rh,
-      normalizedPayload.met,
-      normalizedPayload.clo,
-      normalizedPayload.wme,
-      {
-        units: normalizedPayload.units,
-        limit_inputs: false,
-        airspeed_control: normalizedPayload.occupantHasAirSpeedControl,
-      },
-    ).pmv;
+    const pmv = calculatePmvValues(adapter, normalizedPayload).pmv;
     const delta = Number.isFinite(pmv) ? pmv - targetPmv : null;
 
     if (delta === null) {
@@ -312,11 +435,13 @@ function findTemperatureBracket(
  * Solves for the dry bulb temperature that results in a target PMV value at a given RH.
  */
 export function solveDryBulbForTargetPmv(
+  adapter: PmvStandardAdapter,
   targetPmv: number,
   rh: number,
   payload: PmvRequestDto,
 ): number | null {
   const initialBracket = findTemperatureBracket(
+    adapter,
     targetPmv,
     rh,
     payload,
@@ -337,6 +462,7 @@ export function solveDryBulbForTargetPmv(
 
   for (let index = 0; index < ROOT_MAX_REFINEMENTS; index += 1) {
     const refinedBracket = findTemperatureBracket(
+      adapter,
       targetPmv,
       rh,
       payload,
@@ -419,9 +545,15 @@ function normalizePmvOptionsSnapshot(value: unknown) {
   return options;
 }
 
-function toPmvRequest(state: any, inputId: InputIdType): PmvRequestDto {
+function toPmvRequest(
+  state: any,
+  inputId: InputIdType,
+  adapter: PmvStandardAdapter,
+): PmvRequestDto {
   const inputs = state.inputsByInput[inputId];
-  const options = normalizePmvOptionsSnapshot(state.ui.modelOptionsByModel[ComfortModel.Pmv]) || defaultPmvOptions;
+  const options = normalizePmvOptionsSnapshot(
+    state.ui.modelOptionsByModel[adapter.modelId],
+  ) || defaultPmvOptions;
 
   const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
   const tr = options[OptionKey.TemperatureMode] === TemperatureMode.Operative
@@ -437,22 +569,19 @@ function toPmvRequest(state: any, inputId: InputIdType): PmvRequestDto {
     clo: Number(inputs[FieldKey.ClothingInsulation]),
     wme: Number(inputs[FieldKey.ExternalWork]),
     occupantHasAirSpeedControl: options[OptionKey.AirSpeedControlMode] === AirSpeedControlMode.WithLocalControl,
+    standard: adapter.calculationStandard,
     units: UnitSystem.SI,
   };
 }
 
-function toComfortZoneRequest(state: any, inputId: InputIdType): ComfortZoneRequestDto {
-  const baseRequest = toPmvRequest(state, inputId);
+function toComfortZoneRequest(
+  state: any,
+  inputId: InputIdType,
+  adapter: PmvStandardAdapter,
+): ComfortZoneRequestDto {
+  const baseRequest = toPmvRequest(state, inputId, adapter);
   return {
-    tdb: baseRequest.tdb,
-    tr: baseRequest.tr,
-    vr: baseRequest.vr,
-    rh: baseRequest.rh,
-    met: baseRequest.met,
-    clo: baseRequest.clo,
-    wme: baseRequest.wme,
-    occupantHasAirSpeedControl: baseRequest.occupantHasAirSpeedControl,
-    units: baseRequest.units,
+    ...baseRequest,
     rhMin: 0,
     rhMax: 100,
     rhPoints: 31,
@@ -462,10 +591,11 @@ function toComfortZoneRequest(state: any, inputId: InputIdType): ComfortZoneRequ
 function toPmvChartInputsRequest(
   state: any,
   visibleInputIds: InputIdType[],
+  adapter: PmvStandardAdapter,
 ): PmvChartInputsRequestDto {
   return {
     inputs: visibleInputIds.reduce((accumulator, inputId) => {
-      accumulator[inputId] = toComfortZoneRequest(state, inputId);
+      accumulator[inputId] = toComfortZoneRequest(state, inputId, adapter);
       return accumulator;
     }, {} as PmvChartInputsRequestDto["inputs"]),
     chartRange: {
@@ -625,25 +755,10 @@ interface PmvChartEvaluation {
 }
 
 function evaluatePmvCondition(
-  tdb: number,
-  tr: number,
-  vr: number,
-  rh: number,
-  met: number,
-  clo: number,
-  wme: number,
+  adapter: PmvStandardAdapter,
+  payload: PmvRequestDto,
 ): PmvChartEvaluation {
-  const pmvResult = pmv_ppd(
-    tdb,
-    tr,
-    vr,
-    rh,
-    met,
-    clo,
-    wme,
-    JsThermalComfortStandard.ASHRAE,
-    { limit_inputs: false },
-  );
+  const pmvResult = calculatePmvValues(adapter, payload);
 
   return {
     pmv: pmvResult.pmv,
@@ -652,16 +767,11 @@ function evaluatePmvCondition(
   };
 }
 
-function evaluatePmvPayload(payload: PmvRequestDto): PmvChartEvaluation {
-  return evaluatePmvCondition(
-    payload.tdb,
-    payload.tr,
-    payload.vr,
-    payload.rh,
-    payload.met,
-    payload.clo,
-    payload.wme,
-  );
+function evaluatePmvPayload(
+  adapter: PmvStandardAdapter,
+  payload: PmvRequestDto,
+): PmvChartEvaluation {
+  return evaluatePmvCondition(adapter, payload);
 }
 
 function buildPmvGridPoint(evaluation: PmvChartEvaluation) {
@@ -731,11 +841,12 @@ export function buildComfortZonePolygon(
 }
 
 function getComfortZoneForInput(
+  adapter: PmvStandardAdapter,
   inputId: InputIdType,
   payload: ComfortZoneRequestDto,
   comfortZonesByInput: Record<string, any>
 ): ComfortZoneResponseDto {
-  return comfortZonesByInput[inputId] ?? calculateComfortZone(payload);
+  return comfortZonesByInput[inputId] ?? calculateComfortZone(adapter, payload);
 }
 
 function getHumidityRatioDisplayValue(
@@ -759,7 +870,11 @@ function setPmvAxisValue(payload: PmvRequestDto, key: FieldKey, value: number): 
   else if (key === FieldKey.ExternalWork) payload.wme = value;
 }
 
-function getPmvAxisValue(payload: PmvRequestDto, key: FieldKey): number {
+function getPmvAxisValue(
+  adapter: PmvStandardAdapter,
+  payload: PmvRequestDto,
+  key: FieldKey,
+): number {
   const fieldValues: Partial<Record<FieldKey, number>> = {
     [FieldKey.DryBulbTemperature]: payload.tdb,
     [FieldKey.MeanRadiantTemperature]: payload.tr,
@@ -769,13 +884,14 @@ function getPmvAxisValue(payload: PmvRequestDto, key: FieldKey): number {
     [FieldKey.MetabolicRate]: payload.met,
     [FieldKey.ClothingInsulation]: payload.clo,
     [FieldKey.ExternalWork]: payload.wme,
-    [FieldKey.OperativeTemperature]: t_o(payload.tdb, payload.tr, payload.vr, JsThermalComfortStandard.ASHRAE),
+    [FieldKey.OperativeTemperature]: adapter.getOperativeTemperature(payload),
   };
 
   return fieldValues[key] ?? 0;
 }
 
 function getPmvInputHoverTemplate({
+  adapter,
   inputLabel,
   inputPayload,
   xLabel,
@@ -784,6 +900,7 @@ function getPmvInputHoverTemplate({
   yUnits,
   yDecimals,
 }: {
+  adapter: PmvStandardAdapter;
   inputLabel: string;
   inputPayload: PmvRequestDto;
   xLabel: string;
@@ -794,7 +911,7 @@ function getPmvInputHoverTemplate({
 }): string {
   let evaluation: PmvChartEvaluation | undefined;
   try {
-    evaluation = evaluatePmvPayload(inputPayload);
+    evaluation = evaluatePmvPayload(adapter, inputPayload);
   } catch {
     // Preserve existing hover fallback behavior when PMV evaluation fails.
   }
@@ -824,6 +941,7 @@ interface PmvFieldChartOptions {
 }
 
 interface PmvInputGroupOptions {
+  adapter: PmvStandardAdapter;
   inputsMap: CompareInputMap<ComfortZoneRequestDto>;
   xAxis: ChartAxisScale;
   yAxis: ChartAxisScale;
@@ -871,6 +989,7 @@ function buildPmvFieldChart({
 }
 
 function buildPmvInputGroup({
+  adapter,
   inputsMap,
   xAxis,
   yAxis,
@@ -895,6 +1014,7 @@ function buildPmvInputGroup({
     formatYDisplay: roundValue,
     buildOverlayTraces,
     getHovertemplate: ({ inputLabel, payload: inputPayload }) => getPmvInputHoverTemplate({
+      adapter,
       inputLabel,
       inputPayload,
       xLabel,
@@ -907,11 +1027,12 @@ function buildPmvInputGroup({
 }
 
 export function buildComparePsychrometricChart(
-  payload: PmvChartInputsRequestDto,
-  comfortZonesByInput: Record<string, any> = {},
+  adapter: PmvStandardAdapter,
+  chartSource: PmvChartSourceDto,
   unitSystem: UnitSystemType = UnitSystem.SI,
-  chartSource?: PmvChartSourceDto,
 ): PlotlyChartResponseDto {
+  assertPmvChartSource(adapter, chartSource);
+  const { modelId, chartRequest: payload, comfortZonesByInput } = chartSource;
   const showInputLegend = shouldShowInputLegend(payload.inputs);
   const { chartRange } = payload;
   const humidityRatioMeta = getHumidityRatioDisplayMeta(unitSystem);
@@ -938,10 +1059,10 @@ export function buildComparePsychrometricChart(
     chartRange.tdbMin + ((chartRange.tdbMax - chartRange.tdbMin) * index) / (chartRange.tdbPoints - 1)
   ));
 
-  const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource?.baselineInputId)?.payload;
+  const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource.baselineInputId)?.payload;
   const gridStrategy = buildPmvGridStrategy(
     activeInputPayload,
-    `${comfortModelMetaById[ComfortModel.Pmv].label} Zones`,
+    `${comfortModelMetaById[modelId].label} Zones`,
     getPmvHoverTemplate({
       xLabel: fieldMetaByKey[FieldKey.DryBulbTemperature].label,
       xUnits: temperatureAxis.units,
@@ -959,15 +1080,11 @@ export function buildComparePsychrometricChart(
 
       const rh = Math.max(0, (pVap / pSaturation) * 100);
       try {
-        const evaluation = evaluatePmvCondition(
+        const evaluation = evaluatePmvCondition(adapter, {
+          ...inputPayload,
           tdb,
-          inputPayload.tr,
-          inputPayload.vr,
           rh,
-          inputPayload.met,
-          inputPayload.clo,
-          inputPayload.wme,
-        );
+        });
         return buildPmvGridPoint(evaluation);
       } catch {
         return buildFailedPmvGridPoint();
@@ -992,15 +1109,11 @@ export function buildComparePsychrometricChart(
 
         if (activeInputPayload) {
           try {
-            const evaluation = evaluatePmvCondition(
-              temperature,
-              activeInputPayload.tr,
-              activeInputPayload.vr,
-              relativeHumidity,
-              activeInputPayload.met,
-              activeInputPayload.clo,
-              activeInputPayload.wme,
-            );
+            const evaluation = evaluatePmvCondition(adapter, {
+              ...activeInputPayload,
+              tdb: temperature,
+              rh: relativeHumidity,
+            });
             hoverMetadata.push([evaluation.ppd, evaluation.pmv.toFixed(2)]);
             textValues.push(evaluation.zoneLabel);
           } catch {
@@ -1034,12 +1147,13 @@ export function buildComparePsychrometricChart(
   });
 
   return buildPmvFieldChart({
-    title: `${comfortModelMetaById[ComfortModel.Pmv].label} Psychrometric Chart`,
+    title: `${comfortModelMetaById[modelId].label} Psychrometric Chart`,
     xAxis: temperatureAxis,
     yAxis: humidityRatioAxis,
     grid: gridStrategy,
     beforeInputTraces: rhCurveTraces,
     inputGroups: [buildPmvInputGroup({
+      adapter,
       inputsMap: payload.inputs,
       showLegend: showInputLegend,
       xAxis: temperatureAxis,
@@ -1048,7 +1162,12 @@ export function buildComparePsychrometricChart(
       getYSi: (inputPayload) => psy_ta_rh(inputPayload.tdb, inputPayload.rh).hr,
       coordinateDecimals: humidityRatioMeta.decimals,
       buildOverlayTraces: ({ inputId, payload: inputPayload }) => {
-        const comfortZone = getComfortZoneForInput(inputId, inputPayload, comfortZonesByInput);
+        const comfortZone = getComfortZoneForInput(
+          adapter,
+          inputId,
+          inputPayload,
+          comfortZonesByInput,
+        );
 
         const { polygonX, polygonY } = buildComfortZonePolygon(
           comfortZone.coolEdge || [],
@@ -1076,14 +1195,16 @@ export function buildComparePsychrometricChart(
 }
 
 export function buildPmvDynamicChart(
-  payload: PmvChartInputsRequestDto,
+  adapter: PmvStandardAdapter,
+  chartSource: PmvChartSourceDto,
   dynamicXAxis: FieldKey,
   dynamicYAxis: FieldKey,
   unitSystem: UnitSystemType = UnitSystem.SI,
-  chartSource?: PmvChartSourceDto,
 ): PlotlyChartResponseDto {
+  assertPmvChartSource(adapter, chartSource);
+  const { modelId, chartRequest: payload } = chartSource;
   const showInputLegend = shouldShowInputLegend(payload.inputs);
-  const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource?.baselineInputId)?.payload;
+  const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource.baselineInputId)?.payload;
   const xAxis = createFieldAxisScale({
     field: dynamicXAxis,
     unitSystem,
@@ -1096,7 +1217,7 @@ export function buildPmvDynamicChart(
   });
   const gridStrategy = buildPmvGridStrategy(
     activeInputPayload,
-    comfortModelMetaById[ComfortModel.Pmv].label,
+    comfortModelMetaById[modelId].label,
     getPmvHoverTemplate({
       xLabel: xAxis.label,
       xUnits: xAxis.units,
@@ -1110,7 +1231,7 @@ export function buildPmvDynamicChart(
       setPmvAxisValue(pointArgs, dynamicYAxis, ySi);
 
       try {
-        return buildPmvGridPoint(evaluatePmvPayload(pointArgs));
+        return buildPmvGridPoint(evaluatePmvPayload(adapter, pointArgs));
       } catch {
         return buildFailedPmvGridPoint();
       }
@@ -1118,16 +1239,17 @@ export function buildPmvDynamicChart(
   );
 
   return buildPmvFieldChart({
-    title: `${comfortModelMetaById[ComfortModel.Pmv].label} Dynamic Chart (${xAxis.label} vs ${yAxis.label})`,
+    title: `${comfortModelMetaById[modelId].label} Dynamic Chart (${xAxis.label} vs ${yAxis.label})`,
     xAxis,
     yAxis,
     grid: gridStrategy,
     inputGroups: [buildPmvInputGroup({
+      adapter,
       inputsMap: payload.inputs,
       xAxis,
       yAxis,
-      getXSi: (inputPayload) => getPmvAxisValue(inputPayload, dynamicXAxis),
-      getYSi: (inputPayload) => getPmvAxisValue(inputPayload, dynamicYAxis),
+      getXSi: (inputPayload) => getPmvAxisValue(adapter, inputPayload, dynamicXAxis),
+      getYSi: (inputPayload) => getPmvAxisValue(adapter, inputPayload, dynamicYAxis),
       coordinateDecimals: 2,
     })],
     showLegend: showInputLegend,
@@ -1136,6 +1258,7 @@ export function buildPmvDynamicChart(
 }
 
 function buildPmvChartResult(
+  adapter: PmvStandardAdapter,
   chartId: ChartIdType,
   chartSource: PmvChartSourceDto | null,
   unitSystem: UnitSystemType,
@@ -1146,20 +1269,19 @@ function buildPmvChartResult(
 
   if (chartId === ChartId.Psychrometric) {
     return buildComparePsychrometricChart(
-      chartSource.chartRequest,
-      chartSource.comfortZonesByInput,
+      adapter,
+      chartSource,
       unitSystem,
-      chartSource
     );
   }
 
   if (chartId === ChartId.PmvDynamic && chartSource.dynamicXAxis && chartSource.dynamicYAxis) {
     return buildPmvDynamicChart(
-      chartSource.chartRequest,
+      adapter,
+      chartSource,
       chartSource.dynamicXAxis as any,
       chartSource.dynamicYAxis as any,
       unitSystem,
-      chartSource
     );
   }
 
@@ -1186,9 +1308,22 @@ const humidityBehavior = createHumidityControlBehavior(InputControlId.Humidity);
 
 const pmvChartIds: ChartIdType[] = [ChartId.Psychrometric, ChartId.PmvDynamic];
 
-export const pmvModelConfig = new ComfortModelBuilder<PmvResponseDto, PmvChartSourceDto>(ComfortModel.Pmv)
-  .setLabel(comfortModelMetaById[ComfortModel.Pmv].label)
-  .setDescription(comfortModelMetaById[ComfortModel.Pmv].description)
+export function createPmvModelConfig({
+  adapter,
+  modes,
+  chartableOutputs,
+  complianceSpec,
+}: PmvModelDeclaration) {
+  const builder = new ComfortModelBuilder<PmvResponseDto, PmvChartSourceDto>(
+    adapter.modelId,
+  );
+
+  return builder
+  .setLabel(comfortModelMetaById[adapter.modelId].label)
+  .setDescription(comfortModelMetaById[adapter.modelId].description)
+  .setModes(modes)
+  .setChartableOutputs(chartableOutputs)
+  .setComplianceSpec(complianceSpec)
   .addControl({
     id: InputControlId.Temperature,
     behavior: temperatureBehavior,
@@ -1262,46 +1397,29 @@ export const pmvModelConfig = new ComfortModelBuilder<PmvResponseDto, PmvChartSo
     FieldKey.ClothingInsulation,
   ])
   .setCalculator((state, visibleInputIds) => {
-    const compareChartRequest = toPmvChartInputsRequest(state, visibleInputIds);
+    const compareChartRequest = toPmvChartInputsRequest(state, visibleInputIds, adapter);
     const resultsByInput = createEmptyResults<PmvResponseDto>();
 
     const comfortZonesByInput = visibleInputIds.reduce((accumulator, inputId) => {
-      accumulator[inputId] = calculateComfortZone(toComfortZoneRequest(state, inputId));
+      accumulator[inputId] = calculateComfortZone(
+        adapter,
+        toComfortZoneRequest(state, inputId, adapter),
+      );
       return accumulator;
     }, {} as Record<string, any>);
 
     visibleInputIds.forEach((inputId) => {
-      const request = toPmvRequest(state, inputId);
-      const result = pmv_ppd_ashrae(
-        request.tdb,
-        request.tr,
-        request.vr,
-        request.rh,
-        request.met,
-        request.clo,
-        request.wme,
-        {
-          units: request.units,
-          limit_inputs: false,
-          airspeed_control: request.occupantHasAirSpeedControl,
-        },
-      );
-      const complianceWarnings = check_standard_compliance(JsThermalComfortStandard.ASHRAE, {
-        tdb: request.tdb,
-        tr: request.tr,
-        v: request.vr,
-        met: request.met,
-        clo: request.clo,
-        airspeed_control: request.occupantHasAirSpeedControl,
-      } as any);
+      const request = toPmvRequest(state, inputId, adapter);
+      const result = calculatePmvValues(adapter, request);
+      const complianceWarnings = adapter.checkApplicability(request);
 
       resultsByInput[inputId] = {
         pmv: result.pmv,
         ppd: result.ppd,
         vr: request.vr,
         isCompliant: complianceWarnings.length === 0
-          && Math.abs(result.pmv) <= PMV_COMFORT_LIMIT,
-        standard: ComfortStandard.Ashrae55PmvPpd,
+          && PMV_NEUTRAL_ZONE.contains(result.pmv),
+        standard: adapter.resultStandard,
         source: CalculationSource.JsThermalComfort,
       };
     });
@@ -1309,6 +1427,7 @@ export const pmvModelConfig = new ComfortModelBuilder<PmvResponseDto, PmvChartSo
     return {
       resultsByInput: resultsByInput,
       chartSource: {
+        modelId: adapter.modelId,
         chartRequest: compareChartRequest,
         comfortZonesByInput: comfortZonesByInput,
         dynamicXAxis: state.ui.dynamicXAxis,
@@ -1319,10 +1438,11 @@ export const pmvModelConfig = new ComfortModelBuilder<PmvResponseDto, PmvChartSo
   })
   .setResultBuilder(buildPmvResultSections)
   .setChartBuilder((chartId, chartSource, _resultsByInput, unitSystem) => {
-    return buildPmvChartResult(chartId, chartSource, unitSystem);
+    return buildPmvChartResult(adapter, chartId, chartSource, unitSystem);
   })
   .setZones(pmvZonesList)
   .setLegendChartIds([ChartId.Psychrometric, ChartId.PmvDynamic])
   .setLegendTitle("PMV Zones")
   .setLockYAxisChartIds([])
   .build();
+}

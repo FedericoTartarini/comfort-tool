@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import { ComfortModel, JsThermalComfortStandard } from "../../../models/comfortModels";
 import { AdaptiveStandardMode } from "../../../models/inputModes";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
@@ -17,7 +18,8 @@ import {
   type ComfortZoneRequestDto,
   type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
-} from "../../../comfortModels/pmv";
+} from "../../../comfortModels/pmvShared";
+import { pmvAshraeAdapter } from "../../../comfortModels/pmvAshrae";
 import { buildUtciDynamicChart } from "../../../comfortModels/utci";
 
 const pmvPayload: ComfortZoneRequestDto = {
@@ -29,6 +31,7 @@ const pmvPayload: ComfortZoneRequestDto = {
   clo: 0.5,
   wme: 0,
   occupantHasAirSpeedControl: true,
+  standard: JsThermalComfortStandard.ASHRAE,
   units: UnitSystem.SI,
   rhMin: 0,
   rhMax: 100,
@@ -69,9 +72,10 @@ function createPmvChartRequest(): PmvChartInputsRequestDto {
 
 function createPmvChartSource(chartRequest: PmvChartInputsRequestDto): PmvChartSourceDto {
   return {
+    modelId: ComfortModel.PmvAshrae,
     chartRequest,
     comfortZonesByInput: {
-      [InputId.Input1]: calculateComfortZone(pmvPayload),
+      [InputId.Input1]: calculateComfortZone(pmvAshraeAdapter, pmvPayload),
     },
     baselineInputId: InputId.Input1,
   };
@@ -111,10 +115,9 @@ describe("PMV and Adaptive chart shape fixtures", () => {
     const chartSource = createPmvChartSource(chartRequest);
 
     expect(chartShapeHash(buildComparePsychrometricChart(
-      chartRequest,
-      chartSource.comfortZonesByInput,
-      UnitSystem.SI,
+      pmvAshraeAdapter,
       chartSource,
+      UnitSystem.SI,
     ))).toBe("b8d399b1110cb8c1f4b52777e83bcf80267c24ec0e46e43472db58ece35e88ad");
   });
 
@@ -122,11 +125,11 @@ describe("PMV and Adaptive chart shape fixtures", () => {
     const chartRequest = createPmvChartRequest();
 
     expect(chartShapeHash(buildPmvDynamicChart(
-      chartRequest,
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest),
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeHumidity,
       UnitSystem.SI,
-      createPmvChartSource(chartRequest),
     ))).toBe("4c2a824b89c6a7c06c319fbd7ad991a5d47ddcc9963979003eebd84bbc5bfba6");
   });
 
@@ -153,7 +156,7 @@ describe("PMV and Adaptive chart shape fixtures", () => {
       UnitSystem.SI,
       FieldKey.PrevailingMeanOutdoorTemperature,
       FieldKey.OperativeTemperature,
-    ))).toBe("c64ce56030d705213b78fb4633a4d7e43a2a98d091fe30ecf933453ad5e21fff");
+    ))).toBe("8fc5f61feadd879eaf10b791406ac0cd3d1c251218a33bc74cb8f95c6a2c92fa");
   });
 
   it("keeps the Adaptive non-outdoor dynamic chart DTO shape stable", () => {

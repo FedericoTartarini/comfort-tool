@@ -8,22 +8,23 @@ import {
   buildComparePsychrometricChart,
   buildComfortZonePolygon,
   buildPmvDynamicChart,
-  pmv_ppd_ashrae,
-  PMV_COMFORT_LIMIT,
   calculateComfortZone,
+  pmvZonesList,
   type PmvChartSourceDto,
-} from "../../comfortModels/pmv";
+} from "../../comfortModels/pmvShared";
+import { pmvAshraeAdapter } from "../../comfortModels/pmvAshrae";
 import { buildUtciStressChart, calculateUtci } from "../../comfortModels/utci";
 import {
   deriveRelativeAirSpeedFromMeasured,
   deriveRelativeHumidityFromDewPoint,
 } from "./derivations";
-import { check_standard_compliance } from "jsthermalcomfort";
+import { check_standard_compliance, pmv_ppd_ashrae } from "jsthermalcomfort";
 import {
   synchronizeControlInputState,
 } from "./syncState";
 import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOptions } from "./referenceValues";
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
+import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortModels";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
 
 const pmvPayload = {
@@ -35,6 +36,7 @@ const pmvPayload = {
   clo: 0.5,
   wme: 0,
   occupantHasAirSpeedControl: true,
+  standard: JsThermalComfortStandard.ASHRAE,
   units: UnitSystem.SI,
 };
 
@@ -44,6 +46,36 @@ const comfortZonePayload = {
   rhMax: 100,
   rhPoints: 31,
 };
+
+function createPmvChartRequest(
+  inputs: PmvChartSourceDto["chartRequest"]["inputs"] = {
+    [InputId.Input1]: comfortZonePayload,
+  },
+): PmvChartSourceDto["chartRequest"] {
+  return {
+    inputs,
+    chartRange: {
+      tdbMin: 10,
+      tdbMax: 40,
+      tdbPoints: 121,
+      humidityRatioMin: 0,
+      humidityRatioMax: 0.03,
+    },
+    rhCurves: [10, 20, 30, 40, 50, 60],
+  };
+}
+
+function createPmvChartSource(
+  chartRequest: PmvChartSourceDto["chartRequest"],
+  comfortZonesByInput: PmvChartSourceDto["comfortZonesByInput"] = {},
+): PmvChartSourceDto {
+  return {
+    modelId: ComfortModel.PmvAshrae,
+    chartRequest,
+    comfortZonesByInput,
+    baselineInputId: InputId.Input1,
+  };
+}
 
 const utciPayload = {
   tdb: 30,
@@ -69,7 +101,7 @@ describe("comfort services", () => {
         airspeed_control: pmvPayload.occupantHasAirSpeedControl,
       },
     );
-    const comfortZone = calculateComfortZone(comfortZonePayload);
+    const comfortZone = calculateComfortZone(pmvAshraeAdapter, comfortZonePayload);
 
     expect(pmvResult.pmv).toBeTypeOf("number");
     expect(pmvResult.ppd).toBeGreaterThanOrEqual(0);
@@ -113,11 +145,11 @@ describe("comfort services", () => {
       const constrainedResult = {
         ...constrainedPmv,
         isCompliant: constrainedComplianceWarnings.length === 0
-          && Math.abs(constrainedPmv.pmv) <= PMV_COMFORT_LIMIT,
+          && pmvZonesList[3].contains(constrainedPmv.pmv),
         standard: ComfortStandard.Ashrae55PmvPpd,
         source: CalculationSource.JsThermalComfort,
       };
-      const constrainedComfortZone = calculateComfortZone({
+      const constrainedComfortZone = calculateComfortZone(pmvAshraeAdapter, {
         ...constrainedPayload,
         rhMin: 0,
         rhMax: 100,
@@ -132,24 +164,13 @@ describe("comfort services", () => {
   });
 
   it("builds PMV and UTCI charts from typed requests", () => {
-    const comfortZone = calculateComfortZone(comfortZonePayload);
+    const comfortZone = calculateComfortZone(pmvAshraeAdapter, comfortZonePayload);
+    const chartRequest = createPmvChartRequest();
     const psychrometricChart = buildComparePsychrometricChart(
-      {
-        inputs: {
-          [InputId.Input1]: comfortZonePayload,
-        },
-        chartRange: {
-          tdbMin: 10,
-          tdbMax: 40,
-          tdbPoints: 121,
-          humidityRatioMin: 0,
-          humidityRatioMax: 0.03,
-        },
-        rhCurves: [10, 20, 30, 40, 50, 60],
-      },
-      {
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest, {
         [InputId.Input1]: comfortZone,
-      },
+      }),
     );
 
     const utciResult = calculateUtci(utciPayload);
@@ -188,21 +209,42 @@ describe("comfort services", () => {
     expect(utciChart.annotations.length).toBeGreaterThan(0);
   });
 
-  it("keeps PMV psychrometric supersaturated grid cells empty", () => {
-    const psychrometricChart = buildComparePsychrometricChart(
+  it.each([
+    { unitSystem: UnitSystem.SI, expectedRange: [-50, 55] },
+    { unitSystem: UnitSystem.IP, expectedRange: [-58, 131] },
+  ])("keeps the UTCI stress chart finite in $unitSystem units", ({ unitSystem, expectedRange }) => {
+    const utciResult = calculateUtci(utciPayload);
+    const chart = buildUtciStressChart(
       {
         inputs: {
-          [InputId.Input1]: comfortZonePayload,
+          [InputId.Input1]: utciPayload,
         },
-        chartRange: {
-          tdbMin: 10,
-          tdbMax: 40,
-          tdbPoints: 121,
-          humidityRatioMin: 0,
-          humidityRatioMax: 0.03,
-        },
-        rhCurves: [10, 20, 30, 40, 50, 60],
       },
+      {
+        [InputId.Input1]: utciResult,
+      },
+      unitSystem,
+    );
+    const range = chart.layout.xaxis.range as number[];
+    const bandCoordinates = chart.traces
+      .slice(0, 2)
+      .flatMap((trace) => trace.x ?? []);
+    const annotationCoordinates = chart.annotations
+      .map((annotation) => annotation.x)
+      .filter((value): value is number => typeof value === "number");
+
+    expect(range[0]).toBeCloseTo(expectedRange[0], 6);
+    expect(range[1]).toBeCloseTo(expectedRange[1], 6);
+    expect(bandCoordinates.every(Number.isFinite)).toBe(true);
+    expect(annotationCoordinates).toHaveLength(10);
+    expect(annotationCoordinates.every(Number.isFinite)).toBe(true);
+  });
+
+  it("keeps PMV psychrometric supersaturated grid cells empty", () => {
+    const chartRequest = createPmvChartRequest();
+    const psychrometricChart = buildComparePsychrometricChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest),
     );
 
     expect(Number.isNaN(psychrometricChart.traces[0].z?.[49]?.[0])).toBe(true);
@@ -210,20 +252,10 @@ describe("comfort services", () => {
   });
 
   it("builds PMV dynamic chart with selected axes and input point", () => {
+    const chartRequest = createPmvChartRequest();
     const dynamicChart = buildPmvDynamicChart(
-      {
-        inputs: {
-          [InputId.Input1]: comfortZonePayload,
-        },
-        chartRange: {
-          tdbMin: 10,
-          tdbMax: 40,
-          tdbPoints: 121,
-          humidityRatioMin: 0,
-          humidityRatioMax: 0.03,
-        },
-        rhCurves: [10, 20, 30, 40, 50, 60],
-      },
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest),
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeHumidity,
     );
@@ -246,21 +278,12 @@ describe("comfort services", () => {
       met: 2.0,
       clo: 1.0,
     };
-    const chartRequest = {
-      inputs: {
+    const chartRequest = createPmvChartRequest({
         [InputId.Input1]: comfortZonePayload,
         [InputId.Input2]: alternatePayload,
-      },
-      chartRange: {
-        tdbMin: 10,
-        tdbMax: 40,
-        tdbPoints: 121,
-        humidityRatioMin: 0,
-        humidityRatioMax: 0.03,
-      },
-      rhCurves: [10, 20, 30, 40, 50, 60],
-    };
+    });
     const input1Source: PmvChartSourceDto = {
+      modelId: ComfortModel.PmvAshrae,
       chartRequest,
       comfortZonesByInput: {},
       dynamicXAxis: FieldKey.DryBulbTemperature,
@@ -273,18 +296,18 @@ describe("comfort services", () => {
     };
 
     const input1BaselineChart = buildPmvDynamicChart(
-      chartRequest,
+      pmvAshraeAdapter,
+      input1Source,
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeHumidity,
       UnitSystem.SI,
-      input1Source,
     );
     const input2BaselineChart = buildPmvDynamicChart(
-      chartRequest,
+      pmvAshraeAdapter,
+      input2Source,
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeHumidity,
       UnitSystem.SI,
-      input2Source,
     );
 
     expect(input1BaselineChart.traces[0].z?.[25]?.[25]).not.toBe(input2BaselineChart.traces[0].z?.[25]?.[25]);
@@ -292,24 +315,13 @@ describe("comfort services", () => {
   });
 
   it("rebuilds chart labels and hover text for IP units", () => {
-    const comfortZone = calculateComfortZone(comfortZonePayload);
+    const comfortZone = calculateComfortZone(pmvAshraeAdapter, comfortZonePayload);
+    const chartRequest = createPmvChartRequest();
     const psychrometricChart = buildComparePsychrometricChart(
-      {
-        inputs: {
-          [InputId.Input1]: comfortZonePayload,
-        },
-        chartRange: {
-          tdbMin: 10,
-          tdbMax: 40,
-          tdbPoints: 121,
-          humidityRatioMin: 0,
-          humidityRatioMax: 0.03,
-        },
-        rhCurves: [10, 20, 30, 40, 50, 60],
-      },
-      {
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest, {
         [InputId.Input1]: comfortZone,
-      },
+      }),
       UnitSystem.IP,
     );
 
@@ -336,24 +348,13 @@ describe("comfort services", () => {
   });
 
   it("smooths comfort-zone polygon x values while preserving solver output", () => {
-    const comfortZone = calculateComfortZone(comfortZonePayload);
+    const comfortZone = calculateComfortZone(pmvAshraeAdapter, comfortZonePayload);
+    const chartRequest = createPmvChartRequest();
     const psychrometricChart = buildComparePsychrometricChart(
-      {
-        inputs: {
-          [InputId.Input1]: comfortZonePayload,
-        },
-        chartRange: {
-          tdbMin: 10,
-          tdbMax: 40,
-          tdbPoints: 121,
-          humidityRatioMin: 0,
-          humidityRatioMax: 0.03,
-        },
-        rhCurves: [10, 20, 30, 40, 50, 60],
-      },
-      {
+      pmvAshraeAdapter,
+      createPmvChartSource(chartRequest, {
         [InputId.Input1]: comfortZone,
-      },
+      }),
     );
 
     const comfortPolygon = psychrometricChart.traces.find((trace) => trace.name.includes("comfort zone"));

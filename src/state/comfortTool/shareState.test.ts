@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { ComfortModel } from "../../models/comfortModels";
+import { ChartId } from "../../models/chartOptions";
 import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
 import { HumidityInputMode, OptionKey, TemperatureMode } from "../../models/inputModes";
+import { InputId } from "../../models/inputSlots";
 import { UnitSystem } from "../../models/units";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 import {
@@ -18,26 +20,33 @@ import {
 describe("shareState", () => {
   it("round-trips the current share snapshot format", () => {
     const toolState = createComfortToolState();
-    toolState.state.ui.selectedModel = ComfortModel.Utci;
+    toolState.state.ui.selectedModel = ComfortModel.PmvIso;
+    toolState.state.ui.selectedChartByModel[ComfortModel.PmvIso] = ChartId.PmvDynamic;
     toolState.state.ui.unitSystem = UnitSystem.IP;
-    toolState.state.ui.modelOptionsByModel[ComfortModel.Pmv][OptionKey.TemperatureMode] = TemperatureMode.Operative;
-    toolState.state.ui.dynamicXAxis = "v";
-    toolState.state.ui.dynamicYAxis = "tr";
+    toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso][OptionKey.TemperatureMode] = TemperatureMode.Operative;
+    toolState.state.ui.dynamicXAxis = FieldKey.DryBulbTemperature;
+    toolState.state.ui.dynamicYAxis = FieldKey.RelativeHumidity;
 
     const snapshot = createShareStateSnapshot(toolState.state);
     const encodedSnapshot = serializeShareState(snapshot);
 
+    expect(snapshot.version).toBe(1);
+    expect(snapshot.selectedModel).toBe(ComfortModel.PmvIso);
+    expect(snapshot.models[ComfortModel.PmvAshrae]).toBeDefined();
+    expect(snapshot.models[ComfortModel.PmvIso]).toEqual(expect.objectContaining({
+      selectedChart: ChartId.PmvDynamic,
+    }));
     expect(deserializeShareState(encodedSnapshot)).toEqual(snapshot);
   });
 
   it("applies a snapshot through the centralized codec helpers", () => {
     const originalState = createComfortToolState();
-    originalState.state.ui.selectedModel = ComfortModel.Utci;
+    originalState.state.ui.selectedModel = ComfortModel.PmvIso;
     originalState.state.ui.compareEnabled = true;
-    originalState.state.ui.compareInputIds = ["input1", "input3"];
+    originalState.state.ui.compareInputIds = [InputId.Input1, InputId.Input3];
     originalState.state.ui.unitSystem = UnitSystem.IP;
-    originalState.state.ui.dynamicXAxis = "v";
-    originalState.state.ui.dynamicYAxis = "tr";
+    originalState.state.ui.dynamicXAxis = FieldKey.DryBulbTemperature;
+    originalState.state.ui.dynamicYAxis = FieldKey.RelativeHumidity;
 
     const snapshot = createShareStateSnapshot(originalState.state);
     const restoredState = createComfortToolState();
@@ -50,15 +59,15 @@ describe("shareState", () => {
   it("restores and validates dynamic axes during snapshot application", () => {
     const originalState = createComfortToolState();
     originalState.state.ui.selectedModel = ComfortModel.Utci;
-    originalState.state.ui.dynamicXAxis = "v";
-    originalState.state.ui.dynamicYAxis = "tr";
+    originalState.state.ui.dynamicXAxis = FieldKey.WindSpeed;
+    originalState.state.ui.dynamicYAxis = FieldKey.MeanRadiantTemperature;
 
     const snapshot = createShareStateSnapshot(originalState.state);
 
     const restoredState = createComfortToolState();
     applyShareSnapshotToState(restoredState.state, snapshot);
-    expect(restoredState.state.ui.dynamicXAxis).toBe("v");
-    expect(restoredState.state.ui.dynamicYAxis).toBe("tr");
+    expect(restoredState.state.ui.dynamicXAxis).toBe(FieldKey.WindSpeed);
+    expect(restoredState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
 
     // Test axis validation: Adaptive ASHRAE does not support 'v' or 'rh'
     const invalidSnapshot: ShareStateSnapshot = {
@@ -94,13 +103,62 @@ describe("shareState", () => {
     const normalizedState = createComfortToolState();
     applyShareSnapshotToState(normalizedState.state, incompatibleSnapshot);
 
-    expect(incompatibleSnapshot.version).toBe(6);
+    expect(incompatibleSnapshot.version).toBe(1);
     expect(normalizedState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
     expect(normalizedState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
   });
 
-  it("rejects unsupported snapshot versions through the version-dispatch entrypoint", () => {
-    expect(parseShareStateSnapshot({ version: 999 })).toBeNull();
+  it("rejects every snapshot version except the current v1 schema", () => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+
+    expect(parseShareStateSnapshot({ ...current, version: 6 })).toBeNull();
+    expect(parseShareStateSnapshot({ ...current, version: 7 })).toBeNull();
+    expect(parseShareStateSnapshot({ ...current, version: 999 })).toBeNull();
+  });
+
+  it("requires exactly the current v1 model registry", () => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+    const currentWithoutIso = {
+      ...current,
+      models: { ...current.models },
+    } as any;
+    delete currentWithoutIso.models[ComfortModel.PmvIso];
+
+    const currentWithInvalidIsoChart = {
+      ...current,
+      models: {
+        ...current.models,
+        [ComfortModel.PmvIso]: {
+          ...current.models[ComfortModel.PmvIso],
+          selectedChart: ChartId.UtciDynamic,
+        },
+      },
+    };
+    const currentWithUnknownModel = {
+      ...current,
+      models: {
+        ...current.models,
+        UNKNOWN_MODEL: current.models[ComfortModel.Utci],
+      },
+    };
+    const currentWithLegacyPmvId = {
+      ...current,
+      models: {
+        ...current.models,
+        PMV: current.models[ComfortModel.PmvAshrae],
+      },
+    } as any;
+    delete currentWithLegacyPmvId.models[ComfortModel.PmvAshrae];
+    const currentWithLegacySelectedModel = {
+      ...current,
+      selectedModel: "PMV",
+    };
+
+    expect(parseShareStateSnapshot(currentWithoutIso)).toBeNull();
+    expect(parseShareStateSnapshot(currentWithInvalidIsoChart)).toBeNull();
+    expect(parseShareStateSnapshot(currentWithUnknownModel)).toBeNull();
+    expect(parseShareStateSnapshot(currentWithLegacyPmvId)).toBeNull();
+    expect(parseShareStateSnapshot(currentWithLegacySelectedModel)).toBeNull();
   });
 
   it("recomputes derived control displays after applying a snapshot", () => {

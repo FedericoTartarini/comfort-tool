@@ -8,11 +8,11 @@
 
 // This object is a set of unique string values used to identify each chart type.
 export const ChartId = {
-  Psychrometric: "psychrometric", // PMV (ASHRAE) psychrometric chart
+  Psychrometric: "psychrometric",
   Stress: "stress", // UTCI (Heat stress) psychrometric chart
   Adaptive: "adaptive", // Adaptive psychrometric chart
   AdaptiveDynamic: "adaptiveDynamic", //  Adaptive dynamic chart
-  PmvDynamic: "pmvDynamic", // PMV (ASHRAE) dynamic chart
+  PmvDynamic: "pmvDynamic",
   UtciDynamic: "utciDynamic", // UTCI (Heat stress) dynamic chart
   HeatIndexRanges: "heatIndexRanges", // Heat index chart
   HeatIndexDynamic: "heatIndexDynamic", // Heat index dynamic chart

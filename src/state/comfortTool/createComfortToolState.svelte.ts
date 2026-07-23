@@ -155,7 +155,7 @@ export function createComfortToolState(): ComfortToolController {
   const inputsByInput = $state(createInputsByInput());
   const derivedByInput = $derived.by(() => deriveInputsDerivedState(inputsByInput));
   const ui = $state({
-    selectedModel: ComfortModel.Pmv,
+    selectedModel: ComfortModel.PmvAshrae,
     selectedChartByModel: createSelectedChartByModel(),
     modelOptionsByModel: createModelOptionsByModel(),
     compareEnabled: false,
@@ -521,7 +521,13 @@ export function createComfortToolState(): ComfortToolController {
     }
 
     applyBehaviorPatch(state.ui.selectedModel, patch);
-    invalidateModel(state.ui.selectedModel);
+    // Canonical inputs are shared across models, so patches that touch them
+    // invalidate every model cache even when the option belongs to one model.
+    if (patch.inputsPatch) {
+      invalidateAllModels();
+    } else {
+      invalidateModel(state.ui.selectedModel);
+    }
     scheduleCalculationInternal({ immediate: true });
   }
 

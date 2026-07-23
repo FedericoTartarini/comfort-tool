@@ -15,10 +15,7 @@
     type ChartId as ChartIdType,
   } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
-  import {
-    ComfortModel,
-    type ComfortModel as ComfortModelType,
-  } from "../../models/comfortModels";
+  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
   import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
   import type { InputId as InputIdType } from "../../models/inputSlots";
 
@@ -97,11 +94,8 @@
   const axisMenuIdPrefix = $derived(
     `${chartPanelIdPrefix}-${selectedModel}-${selectedChart}`,
   );
-  // Show zones toggle ONLY for PMV's Psychrometric chart.
-  const showZonesToggle = $derived(
-    selectedModel === ComfortModel.Pmv &&
-      selectedChart === ChartId.Psychrometric,
-  );
+  // The psychrometric chart is the only current chart with a user-toggleable zone layer.
+  const showZonesToggle = $derived(selectedChart === ChartId.Psychrometric);
 </script>
 
 {#snippet content()}

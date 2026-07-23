@@ -4,7 +4,7 @@
  */
 import { inputOrder, InputId, type InputId as InputIdType } from "../../models/inputSlots";
 import type { ChartId as ChartIdType } from "../../models/chartOptions";
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
@@ -15,7 +15,7 @@ import { isFiniteNumber } from "../../services/comfort/helpers";
 import { normalizeDynamicAxisPair } from "./dynamicAxes";
 
 export interface ShareStateSnapshot {
-  version: 6;
+  version: 1;
   selectedModel: ComfortModelType;
   models: Record<
     ComfortModelType,
@@ -33,9 +33,9 @@ export interface ShareStateSnapshot {
   dynamicYAxis?: FieldKeyType;
 }
 
-const SHARE_STATE_VERSION = 6;
+const SHARE_STATE_VERSION = 1;
 const SHARE_STATE_PARAM = "state";
-const comfortModelValues = new Set<ComfortModelType>(Object.values(ComfortModel));
+const comfortModelValues = new Set<ComfortModelType>(comfortModelOrder);
 const inputIdValues = new Set<InputIdType>(Object.values(InputId));
 const unitSystemValues = new Set<UnitSystemType>(Object.values(UnitSystem));
 const fieldKeyValues = allFieldOrder;
@@ -126,14 +126,26 @@ function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"]
  * @param value The value to parse.
  * @returns The models object or null if parsing fails.
  */
-function parseModelSnapshots(value: unknown): ShareStateSnapshot["models"] | null {
+function parseModelSnapshots(
+  value: unknown,
+  modelIds: readonly ComfortModelType[],
+): ShareStateSnapshot["models"] | null {
   if (!isRecord(value)) {
+    return null;
+  }
+
+  const expectedModelIds = new Set<string>(modelIds);
+  const serializedModelIds = Object.keys(value);
+  if (
+    serializedModelIds.length !== modelIds.length ||
+    serializedModelIds.some((modelId) => !expectedModelIds.has(modelId))
+  ) {
     return null;
   }
 
   const parsed = {} as ShareStateSnapshot["models"];
 
-  for (const modelId of comfortModelOrder) {
+  for (const modelId of modelIds) {
     const modelSnapshot = value[modelId];
     if (!isRecord(modelSnapshot)) {
       return null;
@@ -172,25 +184,21 @@ function parseModelSnapshots(value: unknown): ShareStateSnapshot["models"] | nul
 export function serializeShareState(snapshot: ShareStateSnapshot): string {
   return encodeBase64Url(JSON.stringify(snapshot));
 }
-/**
- * Parses the share state snapshot and validates it. This is used when deserializing the share state.
- * @param parsed The value to parse.
- * @returns The share state snapshot or null if parsing fails.
- */
-function parseShareStateSnapshotV6(parsed: Record<string, unknown>): ShareStateSnapshot | null {
+type ParsedSharedSnapshotFields = Omit<
+  ShareStateSnapshot,
+  "version" | "selectedModel" | "models"
+>;
+
+function parseSharedSnapshotFields(
+  parsed: Record<string, unknown>,
+): ParsedSharedSnapshotFields | null {
   if (
-    !comfortModelValues.has(parsed.selectedModel as ComfortModelType) ||
     typeof parsed.compareEnabled !== "boolean" ||
     !Array.isArray(parsed.compareInputIds) ||
     !parsed.compareInputIds.every((inputId) => inputIdValues.has(inputId as InputIdType)) ||
     !inputIdValues.has(parsed.activeInputId as InputIdType) ||
     !unitSystemValues.has(parsed.unitSystem as UnitSystemType)
   ) {
-    return null;
-  }
-
-  const models = parseModelSnapshots(parsed.models);
-  if (!models) {
     return null;
   }
 
@@ -218,9 +226,6 @@ function parseShareStateSnapshotV6(parsed: Record<string, unknown>): ShareStateS
   }
 
   return {
-    version: SHARE_STATE_VERSION,
-    selectedModel: parsed.selectedModel as ComfortModelType,
-    models,
     compareEnabled: parsed.compareEnabled,
     compareInputIds: parsed.compareInputIds as InputIdType[],
     activeInputId: parsed.activeInputId as InputIdType,
@@ -231,16 +236,31 @@ function parseShareStateSnapshotV6(parsed: Record<string, unknown>): ShareStateS
   };
 }
 
-export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | null {
-  if (!isRecord(value) || typeof value.version !== "number") {
+function parseShareStateSnapshotV1(parsed: Record<string, unknown>): ShareStateSnapshot | null {
+  if (!comfortModelValues.has(parsed.selectedModel as ComfortModelType)) {
     return null;
   }
 
-  if (value.version === SHARE_STATE_VERSION) {
-    return parseShareStateSnapshotV6(value);
+  const parsedModels = parseModelSnapshots(parsed.models, comfortModelOrder);
+  const sharedFields = parseSharedSnapshotFields(parsed);
+  if (!parsedModels || !sharedFields) {
+    return null;
   }
 
-  return null;
+  return {
+    version: SHARE_STATE_VERSION,
+    selectedModel: parsed.selectedModel as ComfortModelType,
+    models: parsedModels,
+    ...sharedFields,
+  };
+}
+
+export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | null {
+  if (!isRecord(value) || value.version !== SHARE_STATE_VERSION) {
+    return null;
+  }
+
+  return parseShareStateSnapshotV1(value);
 }
 
 /**

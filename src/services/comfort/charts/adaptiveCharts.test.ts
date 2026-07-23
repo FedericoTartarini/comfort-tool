@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AdaptiveStandardMode } from "../../../models/inputModes";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
+import { findBandForValue, type InputsSi } from "../../../models/modelCapabilities";
 import { UnitSystem } from "../../../models/units";
 import {
   adaptiveAshraeModelConfig,
@@ -20,6 +21,27 @@ const ashraePayload = {
   v: 0.1,
   units: UnitSystem.SI,
 };
+
+function createBandInputsSi(relativeAirSpeed: number): InputsSi {
+  const inputsSi = Object.fromEntries(
+    Object.values(FieldKey).map((fieldKey) => [fieldKey, 0]),
+  ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
+  inputsSi[FieldKey.RelativeAirSpeed] = relativeAirSpeed;
+  return inputsSi;
+}
+
+function calculateAtOperativeTemperature(
+  operativeTemperature: number,
+  standardMode: AdaptiveStandardMode,
+) {
+  return calculateAdaptive({
+    tdb: operativeTemperature,
+    tr: operativeTemperature,
+    trm: 20,
+    v: 0.1,
+    units: UnitSystem.SI,
+  }, standardMode);
+}
 
 function getBoundaryPoint(chart: any, traceName: string, targetTrm: number, side: "lower" | "upper") {
   const trace = chart.traces.find((candidate: any) => candidate.name === `Input 1 ${traceName}`);
@@ -632,6 +654,95 @@ describe("adaptive charts", () => {
     expect(result.acceptability_cat_ii).toBe(true);
     expect(result.tmp_cmf_cat_i_up).toBeCloseTo(24.76, 2);
     expect(result.tmp_cmf_cat_ii_up).toBeCloseTo(26.96, 2);
+  });
+
+  it("keeps ASHRAE calculation results aligned with half-open compliance bands", () => {
+    const baseline = calculateAtOperativeTemperature(24, AdaptiveStandardMode.Ashrae);
+    const bands = adaptiveAshraeModelConfig.complianceSpec!.bands;
+    const inputsSi = createBandInputsSi(0.1);
+    const cases = [
+      {
+        value: baseline.tmp_cmf_80_low!,
+        expectedBand: bands[1],
+        acceptability80: true,
+        acceptability90: false,
+      },
+      {
+        value: baseline.tmp_cmf_90_low!,
+        expectedBand: bands[2],
+        acceptability80: true,
+        acceptability90: true,
+      },
+      {
+        value: baseline.tmp_cmf_90_up!,
+        expectedBand: bands[3],
+        acceptability80: true,
+        acceptability90: false,
+      },
+      {
+        value: baseline.tmp_cmf_80_up!,
+        expectedBand: bands[4],
+        acceptability80: false,
+        acceptability90: false,
+      },
+    ];
+
+    cases.forEach(({ value, expectedBand, acceptability80, acceptability90 }) => {
+      const result = calculateAtOperativeTemperature(value, AdaptiveStandardMode.Ashrae);
+
+      expect(result.acceptability_80).toBe(acceptability80);
+      expect(result.acceptability_90).toBe(acceptability90);
+      expect(findBandForValue(bands, value, 20, inputsSi)).toBe(expectedBand);
+    });
+  });
+
+  it("keeps EN calculation results aligned with half-open compliance bands", () => {
+    const baseline = calculateAtOperativeTemperature(24, AdaptiveStandardMode.En);
+    const bands = adaptiveEnModelConfig.complianceSpec!.bands;
+    const inputsSi = createBandInputsSi(0.1);
+    const cases = [
+      {
+        value: baseline.tmp_cmf_cat_iii_low!,
+        expectedBand: bands[1],
+        acceptability: [false, false, true],
+      },
+      {
+        value: baseline.tmp_cmf_cat_ii_low!,
+        expectedBand: bands[2],
+        acceptability: [false, true, true],
+      },
+      {
+        value: baseline.tmp_cmf_cat_i_low!,
+        expectedBand: bands[3],
+        acceptability: [true, true, true],
+      },
+      {
+        value: baseline.tmp_cmf_cat_i_up!,
+        expectedBand: bands[4],
+        acceptability: [false, true, true],
+      },
+      {
+        value: baseline.tmp_cmf_cat_ii_up!,
+        expectedBand: bands[5],
+        acceptability: [false, false, true],
+      },
+      {
+        value: baseline.tmp_cmf_cat_iii_up!,
+        expectedBand: bands[6],
+        acceptability: [false, false, false],
+      },
+    ];
+
+    cases.forEach(({ value, expectedBand, acceptability }) => {
+      const result = calculateAtOperativeTemperature(value, AdaptiveStandardMode.En);
+
+      expect([
+        result.acceptability_cat_i,
+        result.acceptability_cat_ii,
+        result.acceptability_cat_iii,
+      ]).toEqual(acceptability);
+      expect(findBandForValue(bands, value, 20, inputsSi)).toBe(expectedBand);
+    });
   });
 
   it.each([
