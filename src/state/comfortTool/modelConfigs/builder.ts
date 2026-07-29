@@ -17,6 +17,10 @@ import {
   type ComplianceSpec,
   type ModelOutput,
 } from "../../../models/modelCapabilities";
+import {
+  cloneNumericBands,
+  validateNumericBands,
+} from "../../../services/comfort/charts/bands";
 
 export type ResultRowDefinition<T> = {
   title: string;
@@ -146,14 +150,17 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   setChartableOutputs(outputs: readonly ModelOutput[]): this {
     this.didSetChartableOutputs = true;
-    this.config.chartableOutputs = [...outputs];
+    this.config.chartableOutputs = outputs.map((output) => ({
+      ...output,
+      defaultBands: cloneNumericBands(output.defaultBands),
+    }));
     return this;
   }
 
   setComplianceSpec(spec: ComplianceSpec): this {
     this.config.complianceSpec = {
       ...spec,
-      bands: [...spec.bands],
+      bands: spec.bands.map((band) => ({ ...band })),
     };
     return this;
   }
@@ -323,6 +330,15 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
 
     if (supportsExplore && this.config.chartableOutputs.length === 0) {
       throw new Error("Explore mode requires at least one chartable output.");
+    }
+
+    for (const output of this.config.chartableOutputs) {
+      const validation = validateNumericBands(output.defaultBands);
+      if (!validation.valid) {
+        throw new Error(
+          `Explore output ${output.key} has invalid default bands: ${validation.issues[0].message}`,
+        );
+      }
     }
 
     if (supportsCompliance && (!this.config.complianceSpec || this.config.complianceSpec.bands.length === 0)) {

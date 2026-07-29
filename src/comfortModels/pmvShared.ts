@@ -19,11 +19,16 @@ import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
 import {
   bandsFromThermalZones,
+  ChartMode,
+  findNumericBandIndexForValue,
   ModelOutputKey,
   type Band,
   type ChartMode as ChartModeType,
   type ComplianceSpec,
+  type ExploreFieldChartConfig,
+  type FieldChartConfig,
   type ModelOutput,
+  type NumericBand,
 } from "../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../models/units";
 import { type InputId as InputIdType } from "../models/inputSlots";
@@ -59,7 +64,16 @@ import {
 
 import { createSingleInputPatch, type InputControlBehavior } from "../services/comfort/controls/types";
 import { clothingTypicalEnsembles, metabolicActivityOptions } from "../services/comfort/referenceValues";
-import { convertFieldValueFromSi, convertFieldValueToSi, convertHumidityRatioFromSi, convertHumidityRatioToSi, getHumidityRatioDisplayMeta, formatDisplayValue } from "../services/units/index";
+import {
+  convertFieldValueFromSi,
+  convertFieldValueToSi,
+  convertHumidityRatioFromSi,
+  convertHumidityRatioToSi,
+  convertModelOutputFromSi,
+  formatDisplayValue,
+  getHumidityRatioDisplayMeta,
+  getModelOutputDisplayMeta,
+} from "../services/units/index";
 import {
   ComfortModelBuilder,
   isRecord,
@@ -70,7 +84,11 @@ import {
 import { roundValue } from "../services/comfort/helpers";
 import { buildComfortPolygonTrace, buildLineTrace } from "../services/comfort/charts/plotlyBuilders";
 import { createFieldAxisScale } from "../services/comfort/charts/axis";
-import { buildGridContourFieldChart, type GridFieldChartStrategy } from "../services/comfort/charts/chartEngine";
+import {
+  buildBandedGridFieldChart,
+  buildGridContourFieldChart,
+  type GridFieldChartStrategy,
+} from "../services/comfort/charts/chartEngine";
 import { buildClosedBoundaryPolygon } from "../services/comfort/charts/boundaryRegionEngine";
 import {
   resolveBaselineInputEntry,
@@ -155,7 +173,7 @@ export interface PmvModelDeclaration {
 
 const pmvExploreBands = bandsFromThermalZones(pmvZonesList);
 
-const ppdExploreBands: readonly Band[] = [
+const ppdExploreBands: readonly NumericBand[] = [
   {
     min: -Infinity,
     max: 10,
@@ -326,8 +344,6 @@ export interface PmvChartSourceDto {
   modelId: PmvModelId;
   chartRequest: PmvChartInputsRequestDto;
   comfortZonesByInput: CompareInputMap<ComfortZoneResponseDto>;
-  dynamicXAxis?: string;
-  dynamicYAxis?: string;
   baselineInputId?: InputIdType;
 }
 
@@ -755,6 +771,24 @@ interface PmvChartEvaluation {
   pmv: number;
   ppd: number;
   zoneLabel: string;
+}
+
+const pmvOutputSelectors: Partial<
+  Record<ModelOutputKey, (evaluation: PmvChartEvaluation) => number>
+> = {
+  [ModelOutputKey.Pmv]: (evaluation) => evaluation.pmv,
+  [ModelOutputKey.Ppd]: (evaluation) => evaluation.ppd,
+};
+
+function getPmvOutputValue(
+  outputKey: ModelOutputKey,
+  evaluation: PmvChartEvaluation,
+): number {
+  const selector = pmvOutputSelectors[outputKey];
+  if (!selector) {
+    throw new Error(`Unsupported PMV chart output: ${outputKey}`);
+  }
+  return selector(evaluation);
 }
 
 function evaluatePmvCondition(
@@ -1239,11 +1273,13 @@ export function buildComparePsychrometricChart(
 export function buildPmvDynamicChart(
   adapter: PmvStandardAdapter,
   chartSource: PmvChartSourceDto,
-  dynamicXAxis: FieldKey,
-  dynamicYAxis: FieldKey,
+  fieldChartConfig: ExploreFieldChartConfig,
   unitSystem: UnitSystemType = UnitSystem.SI,
 ): PlotlyChartResponseDto {
   assertPmvChartSource(adapter, chartSource);
+
+  const dynamicXAxis = fieldChartConfig.xField;
+  const dynamicYAxis = fieldChartConfig.yField;
 
   if (
     dynamicXAxis === dynamicYAxis ||
@@ -1268,6 +1304,10 @@ export function buildPmvDynamicChart(
   const { modelId, chartRequest: payload } = chartSource;
   const showInputLegend = shouldShowInputLegend(payload.inputs);
   const activeInputPayload = resolveBaselineInputEntry(payload.inputs, chartSource.baselineInputId)?.payload;
+  const output = pmvChartableOutputs.find(({ key }) => key === fieldChartConfig.zOutput);
+  if (!output) {
+    throw new Error(`Unsupported PMV chart output: ${fieldChartConfig.zOutput}`);
+  }
   const xAxis = createFieldAxisScale({
     field: dynamicXAxis,
     unitSystem,
@@ -1280,45 +1320,68 @@ export function buildPmvDynamicChart(
     rangeSi: getPmvAxisRangeSi(adapter, dynamicYAxis),
     points: CONTOUR_GRID_RESOLUTION,
   });
-  const gridStrategy = buildPmvGridStrategy(
-    activeInputPayload,
-    comfortModelMetaById[modelId].label,
-    getPmvHoverTemplate({
-      xLabel: xAxis.label,
-      xUnits: xAxis.units,
-      yLabel: yAxis.label,
-      yUnits: yAxis.units,
-      yDecimals: 2,
-    }),
-    (xSi: number, ySi: number, inputPayload: PmvRequestDto) => {
-      const pointArgs = { ...inputPayload };
-      setPmvAxisValue(pointArgs, dynamicXAxis, xSi);
-      setPmvAxisValue(pointArgs, dynamicYAxis, ySi);
+  const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
+  const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
 
-      try {
-        return buildPmvGridPoint(evaluatePmvPayload(adapter, pointArgs));
-      } catch {
-        return buildFailedPmvGridPoint();
-      }
-    },
-  );
-
-  return buildPmvFieldChart({
-    title: `${comfortModelMetaById[modelId].label} Dynamic Chart (${xAxis.label} vs ${yAxis.label})`,
+  return buildBandedGridFieldChart({
+    config: fieldChartConfig,
+    output,
+    unitSystem,
     xAxis,
     yAxis,
-    grid: gridStrategy,
-    inputGroups: [buildPmvInputGroup({
-      adapter,
+    evaluateOutput: activeInputPayload
+      ? (xSi: number, ySi: number) => {
+          const pointArgs = { ...activeInputPayload };
+          setPmvAxisValue(pointArgs, dynamicXAxis, xSi);
+          setPmvAxisValue(pointArgs, dynamicYAxis, ySi);
+          return getPmvOutputValue(
+            fieldChartConfig.zOutput,
+            evaluatePmvPayload(adapter, pointArgs),
+          );
+        }
+      : undefined,
+    inputGroups: [{
       inputsMap: payload.inputs,
       xAxis,
       yAxis,
       getXSi: (inputPayload) => getPmvAxisValue(adapter, inputPayload, dynamicXAxis),
       getYSi: (inputPayload) => getPmvAxisValue(adapter, inputPayload, dynamicYAxis),
-      coordinateDecimals: 2,
-    })],
-    showLegend: showInputLegend,
-    margin: { l: 64, r: 24, t: 48, b: 64 },
+      formatXDisplay: roundValue,
+      formatYDisplay: roundValue,
+      getHovertemplate: ({ inputLabel, payload: inputPayload }) => {
+        let outputText = "";
+        let bandLabel = "Unclassified";
+        try {
+          const valueSi = getPmvOutputValue(
+            fieldChartConfig.zOutput,
+            evaluatePmvPayload(adapter, inputPayload),
+          );
+          const bandIndex = findNumericBandIndexForValue(fieldChartConfig.bands, valueSi);
+          bandLabel = bandIndex === undefined
+            ? "Unclassified"
+            : fieldChartConfig.bands[bandIndex].label;
+          const displayValue = convertModelOutputFromSi(output.key, valueSi, unitSystem);
+          outputText = `${displayValue.toFixed(outputMeta.decimals)}${outputUnits}`;
+        } catch {
+          // Preserve a useful coordinate-only hover when a model point cannot be evaluated.
+        }
+
+        return `${inputLabel}<br>${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>Band: ${bandLabel}</b><br>${output.label}: ${outputText}<extra></extra>`;
+      },
+    }],
+    layout: {
+      title: `${comfortModelMetaById[modelId].label} Dynamic Chart — ${output.label}`,
+      xAxis,
+      yAxis,
+      paperBgColor: CHART_COLOR_WHITE,
+      plotBgColor: CHART_COLOR_PLOT_BG,
+      showLegend: showInputLegend,
+      margin: { l: 64, r: 24, t: 48, b: 64 },
+      gridColor: CHART_COLOR_GRIDLINE,
+      legend: { orientation: "h", x: 0, y: 1.1 },
+      height: 480,
+    },
+    source: CalculationSource.FrontendGenerated,
   });
 }
 
@@ -1327,6 +1390,7 @@ function buildPmvChartResult(
   chartId: ChartIdType,
   chartSource: PmvChartSourceDto | null,
   unitSystem: UnitSystemType,
+  fieldChartConfig?: FieldChartConfig | null,
 ) {
   if (!chartSource) {
     return null;
@@ -1340,12 +1404,11 @@ function buildPmvChartResult(
     );
   }
 
-  if (chartId === ChartId.PmvDynamic && chartSource.dynamicXAxis && chartSource.dynamicYAxis) {
+  if (chartId === ChartId.PmvDynamic && fieldChartConfig?.mode === ChartMode.Explore) {
     return buildPmvDynamicChart(
       adapter,
       chartSource,
-      chartSource.dynamicXAxis as any,
-      chartSource.dynamicYAxis as any,
+      fieldChartConfig,
       unitSystem,
     );
   }
@@ -1498,15 +1561,19 @@ export function createPmvModelConfig({
         modelId: adapter.modelId,
         chartRequest: compareChartRequest,
         comfortZonesByInput: comfortZonesByInput,
-        dynamicXAxis: state.ui.dynamicXAxis,
-        dynamicYAxis: state.ui.dynamicYAxis,
         baselineInputId: state.ui.chartBaselineInputId,
       },
     };
   })
   .setResultBuilder(buildPmvResultSections)
-  .setChartBuilder((chartId, chartSource, _resultsByInput, unitSystem) => {
-    return buildPmvChartResult(adapter, chartId, chartSource, unitSystem);
+  .setChartBuilder((chartId, chartSource, _resultsByInput, unitSystem, fieldChartConfig) => {
+    return buildPmvChartResult(
+      adapter,
+      chartId,
+      chartSource,
+      unitSystem,
+      fieldChartConfig,
+    );
   })
   .setZones(pmvZonesList)
   .setLegendChartIds([ChartId.Psychrometric, ChartId.PmvDynamic])

@@ -1,24 +1,37 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
 import type { PlotAnnotationDto, PlotlyChartResponseDto, PlotTraceDto } from "../../../models/comfortDtos";
+import {
+  findNumericBandIndexForValue,
+  type ExploreFieldChartConfig,
+  type ModelOutput,
+  type ModelOutputKey,
+} from "../../../models/modelCapabilities";
+import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import {
+  convertModelOutputFromSi,
+  getModelOutputDisplayMeta,
+} from "../../units";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import { buildInputTraceGroups, type BuildInputTraceGroupsOptions } from "./inputPoints";
 import { buildChartResponse } from "./layout";
 import type { ChartAxisScale, ChartLayoutSpec, GridEvaluationResult, GridPointEvaluation } from "./types";
+import { buildCategoricalBandLayers } from "./zoneGrid";
+import { validateNumericBands } from "./bands";
 
 /**
- * Step 9.1 shared chart engine contract.
+ * Shared field-chart engine contract.
  *
- * This layer is intentionally lower-level than the future Compliance/Explore
- * `FieldChartConfig`: models still choose the active chart ID, z metric, and
- * threshold semantics. The engine only owns common field-chart scaffolding:
+ * The lower-level runners preserve the existing static and boundary chart
+ * strategies. Explore charts add `FieldChartConfig` above that scaffolding so
+ * models provide raw SI outputs while the engine owns band assignment:
  * axis display conversion, trace ordering, input overlays, layout assembly, and
  * the two current rendering strategies:
  *
  * 1. grid/contour - evaluate a model over SI x/y points, then build contour traces
  * 2. boundary/region - accept model-built boundary geometry and assemble it with inputs
  *
- * Strategy callbacks receive SI values. Axis scales are the only place where
- * chart point values are converted to display units.
+ * Strategy callbacks receive SI values. Axis scales convert coordinates, while
+ * selected model outputs use the centralized output conversion registry.
  */
 export interface GridContourLayerSpec {
   name: string;
@@ -72,6 +85,35 @@ export interface GridContourFieldChartOptions<TPayload, TResult>
 export interface BoundaryRegionFieldChartOptions<TPayload, TResult>
   extends FieldChartAssemblyOptions<TPayload, TResult> {
   boundaryTraces?: PlotTraceDto[];
+}
+
+export interface BandedGridOutputEvaluation {
+  valueSi: number;
+  additionalHoverMetadata?: readonly unknown[];
+}
+
+export interface BandedGridFieldChartOptions<TPayload, TResult>
+  extends FieldChartBaseOptions<TPayload, TResult> {
+  config: ExploreFieldChartConfig;
+  output: ModelOutput;
+  unitSystem: UnitSystemType;
+  evaluateOutput?: (
+    xSi: number,
+    ySi: number,
+    zOutput: ModelOutputKey,
+    xIndex: number,
+    yIndex: number,
+  ) => number | BandedGridOutputEvaluation;
+  bandLabel?: string;
+  hoverTemplateSuffix?: string;
+  errorText?: string;
+  opacity?: number;
+}
+
+function normalizeBandedGridOutputEvaluation(
+  evaluation: number | BandedGridOutputEvaluation,
+): BandedGridOutputEvaluation {
+  return typeof evaluation === "number" ? { valueSi: evaluation } : evaluation;
 }
 
 function buildInputGroups<TPayload, TResult>(
@@ -158,6 +200,98 @@ export function buildGridContourFieldChart<TPayload = unknown, TResult = unknown
     xAxis,
     yAxis,
     strategyTraces: buildGridTraces(grid, xAxis, yAxis),
+    leadingTraces,
+    beforeInputTraces,
+    inputGroups,
+    layout,
+    source,
+    annotations,
+  });
+}
+
+/**
+ * Explore-mode grid runner. Model callbacks return one canonical output value
+ * plus optional display-only hover metadata; this layer owns half-open band
+ * assignment and selected-output conversion.
+ */
+export function buildBandedGridFieldChart<TPayload = unknown, TResult = unknown>({
+  config,
+  output,
+  unitSystem,
+  evaluateOutput,
+  bandLabel = "Band",
+  hoverTemplateSuffix = "",
+  errorText,
+  opacity,
+  xAxis,
+  yAxis,
+  leadingTraces = [],
+  beforeInputTraces = [],
+  inputGroups,
+  layout,
+  source,
+  annotations = [],
+}: BandedGridFieldChartOptions<TPayload, TResult>): PlotlyChartResponseDto {
+  if (config.xField !== xAxis.field || config.yField !== yAxis.field) {
+    throw new Error("FieldChartConfig axes must match the chart axis scales.");
+  }
+  if (config.zOutput !== output.key) {
+    throw new Error("FieldChartConfig output must match the declared model output.");
+  }
+  const bandValidation = validateNumericBands(config.bands);
+  if (!bandValidation.valid) {
+    throw new Error(`FieldChartConfig has invalid bands: ${bandValidation.issues[0].message}`);
+  }
+
+  const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
+  const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
+  const hovertemplate = `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${hoverTemplateSuffix}<extra></extra>`;
+
+  return buildGridContourFieldChart({
+    xAxis,
+    yAxis,
+    grid: evaluateOutput
+      ? {
+        evaluatePoint: (xSi, ySi, xIndex, yIndex) => {
+          const evaluation = normalizeBandedGridOutputEvaluation(
+            evaluateOutput(
+              xSi,
+              ySi,
+              config.zOutput,
+              xIndex,
+              yIndex,
+            ),
+          );
+          const valueSi = evaluation.valueSi;
+          const hoverMetadata = [
+            convertModelOutputFromSi(output.key, valueSi, unitSystem),
+            ...(evaluation.additionalHoverMetadata ?? []),
+          ];
+          const bandIndex = findNumericBandIndexForValue(config.bands, valueSi);
+
+          if (bandIndex === undefined) {
+            return {
+              z: NaN,
+              text: "",
+              hoverMetadata,
+            };
+          }
+
+          return {
+            z: bandIndex,
+            text: config.bands[bandIndex].label,
+            hoverMetadata,
+          };
+        },
+        errorText,
+        layers: buildCategoricalBandLayers({
+          name: `${output.label} bands`,
+          bands: config.bands,
+          hovertemplate,
+          opacity,
+        }),
+      }
+      : undefined,
     leadingTraces,
     beforeInputTraces,
     inputGroups,

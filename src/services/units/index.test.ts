@@ -19,6 +19,18 @@ describe("units helpers", () => {
     expect(displayTemperature).toBeCloseTo(77, 6);
     expect(convertFieldValueToSi(FieldKey.DryBulbTemperature, displayTemperature, UnitSystem.IP)).toBeCloseTo(25, 6);
 
+    const displayOperativeTemperature = convertFieldValueFromSi(
+      FieldKey.OperativeTemperature,
+      25,
+      UnitSystem.IP,
+    );
+    expect(displayOperativeTemperature).toBeCloseTo(77, 6);
+    expect(convertFieldValueToSi(
+      FieldKey.OperativeTemperature,
+      displayOperativeTemperature,
+      UnitSystem.IP,
+    )).toBeCloseTo(25, 6);
+
     const displayWindSpeed = convertFieldValueFromSi(FieldKey.WindSpeed, 1.2, UnitSystem.IP);
     expect(displayWindSpeed).toBeCloseTo(3.937007874, 6);
     expect(convertFieldValueToSi(FieldKey.WindSpeed, displayWindSpeed, UnitSystem.IP)).toBeCloseTo(1.2, 6);

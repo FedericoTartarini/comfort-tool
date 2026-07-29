@@ -1,15 +1,19 @@
 <script lang="ts">
-  /**
-   * @component
-   * Renders the axis selection interface for dynamic charts, including
-   * button triggers and dropdown menus for both dimensions.
-   */
   import { Button, Dropdown, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
   import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
+  import type {
+    ExploreFieldChartConfig,
+    ModelOutput,
+    ModelOutputKey,
+    NumericBand,
+  } from "../../models/modelCapabilities";
+  import type { UnitSystem as UnitSystemType } from "../../models/units";
   import { fieldMetaByKey } from "../../models/inputFieldsMeta";
   import { inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
+  import ChartBandEditor from "./ChartBandEditor.svelte";
+  import ChartDisplayMenu from "./ChartDisplayMenu.svelte";
 
   interface Props {
     idPrefix: string;
@@ -24,6 +28,12 @@
     onSelectXAxis?: (fieldKey: FieldKeyType) => void;
     onSelectYAxis?: (fieldKey: FieldKeyType) => void;
     lockYAxis?: boolean;
+    fieldChartConfig?: ExploreFieldChartConfig | null;
+    chartableOutputs?: readonly ModelOutput[];
+    defaultBands?: readonly NumericBand[];
+    unitSystem: UnitSystemType;
+    onSelectOutput?: (outputKey: ModelOutputKey) => void;
+    onApplyBands?: (bands: readonly NumericBand[]) => boolean | void;
   }
 
   let {
@@ -39,6 +49,12 @@
     onSelectXAxis,
     onSelectYAxis,
     lockYAxis = false,
+    fieldChartConfig = null,
+    chartableOutputs = [],
+    defaultBands = [],
+    unitSystem,
+    onSelectOutput,
+    onApplyBands,
   }: Props = $props();
 
   const baselineTriggerId = $derived(`${idPrefix}-baseline-trigger`);
@@ -54,9 +70,18 @@
   const currentBaselineLabel = $derived(
     baselineInputId ? inputDisplayMetaById[baselineInputId].label : "Input 1",
   );
+  const exploreControls = $derived(
+    fieldChartConfig && chartableOutputs.length > 0 && onSelectOutput && onApplyBands
+      ? {
+          config: fieldChartConfig,
+          onSelectOutput,
+          onApplyBands,
+        }
+      : null,
+  );
 </script>
 
-<div class="flex items-center gap-2">
+<div class="flex flex-wrap items-center gap-2">
   {#if compareEnabled && baselineInputId && onSelectBaselineInput}
     <span class="text-xs font-medium text-stone-500">Baseline:</span>
     <Button
@@ -187,5 +212,23 @@
         {/each}
       </Dropdown>
     {/if}
+  {/if}
+
+  {#if exploreControls}
+    <div class="mx-1 h-4 w-px bg-stone-300"></div>
+    <ChartDisplayMenu
+      {idPrefix}
+      outputs={chartableOutputs}
+      selectedOutput={exploreControls.config.zOutput}
+      onSelect={exploreControls.onSelectOutput}
+    />
+    <ChartBandEditor
+      {idPrefix}
+      outputKey={exploreControls.config.zOutput}
+      bands={exploreControls.config.bands}
+      {defaultBands}
+      {unitSystem}
+      onApply={exploreControls.onApplyBands}
+    />
   {/if}
 </div>

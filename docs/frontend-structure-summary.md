@@ -27,7 +27,7 @@ The current active application is the repository root version.
 
 `src/components/chart/`
 - Chart-specific UI.
-- Handles chart display, export, and Plotly rendering.
+- Handles chart display, export, Plotly rendering, Explore output selection, and transactional threshold editing.
 
 `src/components/input-panel/`
 - Input workflow UI.
@@ -46,14 +46,14 @@ The current active application is the repository root version.
 - Contains psychrometrics, input derivation, reference data, control behavior, and chart scaffolding.
 
 `src/services/comfort/charts/`
-- Shared grid/contour and boundary-region engines plus Plotly-ready chart helpers.
+- Shared grid/contour and boundary-region engines, numeric-band validation, and Plotly-ready chart helpers.
 
 `src/services/comfort/controls/`
 - Encapsulates advanced PMV input behavior and reusable numeric control behavior.
 
 `src/services/units/`
 - Centralized SI to display-unit conversion helpers.
-- Keeps canonical shared state in SI units.
+- Keeps canonical shared state and Explore band edges in SI units, including output-specific presentation such as Wind Chill Index heat flux.
 
 `src/state/comfortTool/`
 - Main shared controller for the application.
@@ -74,6 +74,7 @@ The current active application is the repository root version.
 - Exposes actions and selectors used by the interface.
 - Tracks per-model calculation caches with explicit `empty` / `stale` / `ready` status.
 - Invalidates model caches without wiping raw results and rebuilds presentation from selectors.
+- Owns one transient, model-agnostic Explore working state; output or band edits rebuild charts from cached SI source data without recalculation.
 
 `src/state/comfortTool/types.ts`
 - Central type definitions for controller state, model cache state, actions, selectors, and presentation view models.
@@ -87,7 +88,7 @@ The current active application is the repository root version.
 - Validates required `modes`, `chartableOutputs`, and Compliance declarations.
 
 `src/models/modelCapabilities.ts`
-- Defines `ChartMode`, `ModelOutputKey`, functional or numeric bands, output declarations, and compliance specifications.
+- Defines `ChartMode`, `ModelOutputKey`, `FieldChartConfig`, functional Compliance bands, editable numeric Explore bands, output declarations, and compliance specifications.
 - Provides `bandsFromThermalZones()` plus canonical-SI, array-ordered half-open (`min <= value < max`) band resolution helpers.
 
 `src/comfortModels/pmvAshrae.ts` and `pmvIso.ts`
@@ -118,7 +119,14 @@ The current active application is the repository root version.
 - Holds shared chart presentation builders that convert SI source data into display-unit payloads.
 
 `src/services/comfort/charts/chartEngine.ts`
-- Shared field-chart engine used by PMV and Adaptive chart strategies.
+- Shared field-chart engine used by PMV, UTCI, simple-model, and Adaptive chart strategies.
+- Its Explore runner accepts raw canonical-SI model outputs, performs half-open working-band assignment, and emits categorical contour indices so gaps remain transparent.
+
+`src/state/comfortTool/exploreChartState.ts`
+- Seeds deep working copies from declared output presets, validates replacements, reconciles output changes, and builds dynamic `ExploreFieldChartConfig` values without model-specific controller branches.
+
+`src/services/units/modelOutputs.ts`
+- Central registry for output display units, precision, editor steps, and reversible SI/display conversion.
 
 `src/services/comfort/charts/boundaryRegionEngine.ts`
 - Shared boundary and filled-region scaffolding, including support for functional boundaries.
@@ -145,6 +153,10 @@ The current active application is the repository root version.
 `src/components/chart/ChartPanel.svelte`
 - Displays the currently selected chart and chart selector UI.
 
+`src/components/chart/ChartAxisMenu.svelte`, `ChartDisplayMenu.svelte`, and `ChartBandEditor.svelte`
+- Compose dynamic x/y selection with declared-output selection and a draft-based threshold editor.
+- The editor converts finite edges only for display, validates and sorts before atomic commit, and leaves declaration presets untouched.
+
 `src/components/chart/PlotlyCanvas.svelte`
 - Hosts the Plotly chart rendering surface.
 
@@ -169,6 +181,8 @@ The current active application is the repository root version.
 - Input identifiers/defaults are separated from input display/theme metadata.
 - Share URLs use a strict versioned schema. The current undeployed schema is v1 and does not carry legacy migrations.
 - Model modes, chartable outputs, Explore presets, and fixed compliance bands are declared in registered model definitions rather than controller branches.
+- Dynamic Explore charts receive one validated `FieldChartConfig`; model files extract raw outputs while the shared engine owns classification and presentation.
+- Share-state v1 intentionally stores global axes but not transient Explore output or edited bands; applying a snapshot reseeds model defaults.
 
 ## What Was Improved Recently
 
@@ -179,3 +193,4 @@ The current active application is the repository root version.
 - `met` and `clo` option values now come from `jsthermalcomfort` through a comfort-service adapter instead of duplicated model data.
 - Shared calculation flow remains validated through automated tests and a successful production build.
 - Model capabilities are now declarative, PMV ASHRAE and ISO are separate cached models, and share snapshots use a strict v1 registry-complete schema.
+- Explore dynamic charts now share output selection, editable SI working bands, categorical contour generation, and centralized output conversion.

@@ -75,11 +75,12 @@ Use constants from `src/models/` for model identifiers, field identifiers, chart
 
 ## Capability Declarations And Next Architecture Direction
 
-`26-06-29-architecture-brief.md` describes the broader target architecture. Declarative model capabilities are implemented; mode UI and input modifiers are not.
+`26-06-29-architecture-brief.md` describes the broader target architecture. Explore controls and the shared `FieldChartConfig` grid path are implemented; Compliance mode UI, full per-model mode memory, and input modifiers are not.
 
 - Compliance and Explore should share one chart engine, with Compliance as the constrained version.
 - Every declaration must call `setModes()` and `setChartableOutputs()`; Compliance models must also call `setComplianceSpec()` with non-empty bands.
 - Use `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` from `src/models/modelCapabilities.ts`.
+- Explore state is transient and generic: x/y come from declared dynamic fields, z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`. Keep output conversion in `src/services/units/` and raw-output extraction in model files.
 - Resolve bands in array order with half-open membership (`min <= value < max`); band values, functional-edge X values, and inputs are canonical SI.
 - PMV ASHRAE and PMV ISO are separate registry entries with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files. ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. Shared PMV mechanics use an injected adapter in `pmvShared.ts`, never a standard-toggle branch.
 - Future constants such as `ModifierId` should be added under `src/models/` before use; do not inline raw strings.

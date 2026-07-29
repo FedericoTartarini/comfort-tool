@@ -36,17 +36,42 @@ export interface Band {
   readonly color: string;
 }
 
+/** Explore bands are directly editable, so their edges must be numeric SI values. */
+export interface NumericBand extends Band {
+  readonly min: number;
+  readonly max: number;
+}
+
 export interface ModelOutput {
   readonly key: ModelOutputKey;
   readonly label: string;
   readonly unit?: string;
-  readonly defaultBands: readonly Band[];
+  readonly defaultBands: readonly NumericBand[];
 }
 
 export interface ComplianceSpec {
   readonly output: ModelOutputKey;
   readonly bands: readonly Band[];
 }
+
+interface FieldChartConfigBase {
+  readonly xField: FieldKeyType;
+  readonly yField: FieldKeyType;
+  readonly zOutput: ModelOutputKey;
+}
+
+export interface ExploreFieldChartConfig extends FieldChartConfigBase {
+  readonly mode: typeof ChartMode.Explore;
+  readonly bands: readonly NumericBand[];
+}
+
+/** Type-only foundation for the constrained Compliance configuration added in §9.5. */
+export interface ComplianceFieldChartConfig extends FieldChartConfigBase {
+  readonly mode: typeof ChartMode.Compliance;
+  readonly bands: readonly Band[];
+}
+
+export type FieldChartConfig = ExploreFieldChartConfig | ComplianceFieldChartConfig;
 
 export function resolveBandEdge(
   edge: BandEdge,
@@ -63,23 +88,46 @@ export function findBandForValue(
   xValueSi: number,
   inputsSi: InputsSi,
 ): Band | undefined {
+  const bandIndex = findBandIndexForValue(bands, valueSi, xValueSi, inputsSi);
+  return bandIndex === undefined ? undefined : bands[bandIndex];
+}
+
+export function findBandIndexForValue(
+  bands: readonly Band[],
+  valueSi: number,
+  xValueSi: number,
+  inputsSi: InputsSi,
+): number | undefined {
   if (Number.isNaN(valueSi)) {
     return undefined;
   }
 
-  for (const band of bands) {
+  for (let index = 0; index < bands.length; index += 1) {
+    const band = bands[index];
     const min = resolveBandEdge(band.min, xValueSi, inputsSi);
     const max = resolveBandEdge(band.max, xValueSi, inputsSi);
 
     if (valueSi >= min && valueSi < max) {
-      return band;
+      return index;
     }
   }
 
   return undefined;
 }
 
-export function bandsFromThermalZones(zones: readonly ThermalZone[]): readonly Band[] {
+export function findNumericBandIndexForValue(
+  bands: readonly NumericBand[],
+  valueSi: number,
+): number | undefined {
+  if (Number.isNaN(valueSi)) {
+    return undefined;
+  }
+
+  const index = bands.findIndex((band) => valueSi >= band.min && valueSi < band.max);
+  return index === -1 ? undefined : index;
+}
+
+export function bandsFromThermalZones(zones: readonly ThermalZone[]): readonly NumericBand[] {
   return zones.map((zone) => ({
     min: zone.min,
     max: zone.max,

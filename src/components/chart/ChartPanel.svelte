@@ -18,6 +18,13 @@
   import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
   import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
   import type { InputId as InputIdType } from "../../models/inputSlots";
+  import type {
+    ExploreFieldChartConfig,
+    ModelOutput,
+    ModelOutputKey,
+    NumericBand,
+  } from "../../models/modelCapabilities";
+  import type { UnitSystem as UnitSystemType } from "../../models/units";
 
   interface Props {
     title: string;
@@ -44,6 +51,12 @@
     lockYAxis?: boolean;
     legendZones?: ReadonlyArray<{ label: string; color: string }> | null;
     legendTitle?: string;
+    fieldChartConfig?: ExploreFieldChartConfig | null;
+    chartableOutputs?: readonly ModelOutput[];
+    defaultBands?: readonly NumericBand[];
+    unitSystem: UnitSystemType;
+    onSelectOutput?: (outputKey: ModelOutputKey) => void;
+    onApplyBands?: (bands: readonly NumericBand[]) => boolean | void;
   }
 
   let {
@@ -71,6 +84,12 @@
     lockYAxis = false,
     legendZones = null,
     legendTitle = "",
+    fieldChartConfig = null,
+    chartableOutputs = [],
+    defaultBands = [],
+    unitSystem,
+    onSelectOutput,
+    onApplyBands,
   }: Props = $props();
 
   let exportChart: ((type: "png" | "svg") => void) | undefined =
@@ -126,6 +145,12 @@
           {onSelectXAxis}
           {onSelectYAxis}
           {lockYAxis}
+          {fieldChartConfig}
+          {chartableOutputs}
+          {defaultBands}
+          {unitSystem}
+          {onSelectOutput}
+          {onApplyBands}
         />
       {/if}
       <div class="flex items-center gap-1.5">

@@ -7,14 +7,28 @@
 import { FieldKey } from "../../../models/fieldKeys";
 import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
 import { CalculationSource } from "../../../models/calculationMetadata";
+import {
+  findNumericBandIndexForValue,
+  type ExploreFieldChartConfig,
+  type ModelOutput,
+  type ModelOutputKey,
+} from "../../../models/modelCapabilities";
 import type { CompareInputMap, PlotlyChartResponseDto } from "../../../models/comfortDtos";
 import { type UnitSystem as UnitSystemType } from "../../../models/units";
 import { ThermalZone } from "../../../models/thermalZone";
 import { createFieldAxisScale } from "./axis";
-import { buildGridContourFieldChart } from "./chartEngine";
+import {
+  buildBandedGridFieldChart,
+  buildGridContourFieldChart,
+  type BandedGridOutputEvaluation,
+} from "./chartEngine";
 import { resolveBaselineInputEntry, shouldShowInputLegend } from "./inputPoints";
 import { buildZoneColorscale, buildZoneContourLayers } from "./zoneGrid";
 import type { ChartAxisScale, ChartRange, GridPointEvaluation } from "./types";
+import {
+  convertModelOutputFromSi,
+  getModelOutputDisplayMeta,
+} from "../../units";
 
 function getPayloadAxisValue(payload: Record<string, any>, key: FieldKey): number {
   if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) {
@@ -188,14 +202,6 @@ function buildDynamicAxes(
   };
 }
 
-function getDynamicHovertemplate(
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-  hovertemplateContour?: string,
-): string {
-  return hovertemplateContour || `${xAxis.label}: %{x:.1f} ${xAxis.units}<br>${yAxis.label}: %{y:.1f} ${yAxis.units}<br><b>Zone: %{text}</b><extra></extra>`;
-}
-
 function getDefaultRange(key: FieldKey, customRanges?: Partial<Record<FieldKey, ChartRange>>): ChartRange {
   if (customRanges?.[key]) {
     return customRanges[key]!;
@@ -204,22 +210,34 @@ function getDefaultRange(key: FieldKey, customRanges?: Partial<Record<FieldKey, 
   return { min: meta.minValue, max: meta.maxValue };
 }
 
-function buildDynamicContourChart(
+export interface DynamicHoverExtension {
+  templateSuffix: string;
+  getInputMetadata: (cached: any) => readonly unknown[];
+}
+
+function buildDynamicExploreChart(
   inputsMap: CompareInputMap<Record<string, any>>,
   cachedResultsByInput: any,
   unitSystem: UnitSystemType,
-  dynamicXAxis: FieldKey | undefined,
-  dynamicYAxis: FieldKey | undefined,
+  fieldChartConfig: ExploreFieldChartConfig,
   config: {
     title: string;
-    zMax: number;
-    colorscale: any[][];
+    output: ModelOutput;
+    bandLabel?: string;
+    dynamicHoverExtension?: DynamicHoverExtension;
     getRange: (key: FieldKey) => { min: number; max: number };
-    calculatePoint: (xSi: number, ySi: number, dynamicXAxis: FieldKey, dynamicYAxis: FieldKey) => { rangeValue: number; category: string; hovertext?: string };
-    getHovertemplateScatter: (inputLabel: string, cached: any) => string;
-    hovertemplateContour?: string;
+    calculateOutput: (
+      xSi: number,
+      ySi: number,
+      dynamicXAxis: FieldKey,
+      dynamicYAxis: FieldKey,
+      zOutput: ModelOutputKey,
+    ) => number | BandedGridOutputEvaluation;
+    getResultOutputValue: (cached: any, zOutput: ModelOutputKey) => number | undefined;
   }
 ): PlotlyChartResponseDto {
+  const dynamicXAxis = fieldChartConfig.xField;
+  const dynamicYAxis = fieldChartConfig.yField;
   if (!dynamicXAxis || !dynamicYAxis || dynamicXAxis === dynamicYAxis) {
     return {
       traces: [],
@@ -238,31 +256,81 @@ function buildDynamicContourChart(
   }
 
   const { xAxis, yAxis } = buildDynamicAxes(unitSystem, dynamicXAxis, dynamicYAxis, config.getRange);
-  return buildContourZoneChart({
-    inputsMap,
-    cachedResultsByInput,
-    title: config.title,
+  const outputMeta = getModelOutputDisplayMeta(config.output.key, unitSystem);
+  const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
+  const bandLabel = config.bandLabel ?? "Band";
+
+  return buildBandedGridFieldChart({
+    config: fieldChartConfig,
+    output: config.output,
+    unitSystem,
+    bandLabel,
+    hoverTemplateSuffix: config.dynamicHoverExtension?.templateSuffix,
     xAxis,
     yAxis,
-    zMax: config.zMax,
-    colorscale: config.colorscale,
-    hovertemplateContour: getDynamicHovertemplate(xAxis, yAxis, config.hovertemplateContour),
-    calculatePoint: (xSi, ySi) => config.calculatePoint(xSi, ySi, dynamicXAxis, dynamicYAxis),
-    getHovertemplateScatter: config.getHovertemplateScatter,
-    getScatterXSi: (payload) => getPayloadAxisValue(payload, dynamicXAxis),
-    getScatterYSi: (payload) => getPayloadAxisValue(payload, dynamicYAxis),
+    evaluateOutput: (xSi, ySi, zOutput) => (
+      config.calculateOutput(xSi, ySi, dynamicXAxis, dynamicYAxis, zOutput)
+    ),
+    inputGroups: [{
+      inputsMap,
+      resultsByInput: cachedResultsByInput,
+      xAxis,
+      yAxis,
+      getXSi: (payload) => getPayloadAxisValue(payload, dynamicXAxis),
+      getYSi: (payload) => getPayloadAxisValue(payload, dynamicYAxis),
+      getHovertemplate: ({ inputLabel, result }) => {
+        const valueSi = config.getResultOutputValue(result, fieldChartConfig.zOutput);
+        const bandIndex = valueSi === undefined
+          ? undefined
+          : findNumericBandIndexForValue(fieldChartConfig.bands, valueSi);
+        const selectedBandLabel = bandIndex === undefined
+          ? "Unclassified"
+          : fieldChartConfig.bands[bandIndex].label;
+
+        return `${inputLabel}<br>${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: ${selectedBandLabel}</b><br>${config.output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${config.dynamicHoverExtension?.templateSuffix ?? ""}<extra></extra>`;
+      },
+      hoverMetadata: ({ result }) => {
+        const valueSi = config.getResultOutputValue(result, fieldChartConfig.zOutput);
+
+        return [
+          valueSi === undefined
+            ? ""
+            : convertModelOutputFromSi(config.output.key, valueSi, unitSystem),
+          ...(config.dynamicHoverExtension?.getInputMetadata(result) ?? []),
+        ];
+      },
+    }],
+    layout: {
+      title: config.title,
+      xAxis,
+      yAxis,
+      paperBgColor: "rgba(0,0,0,0)",
+      plotBgColor: "rgba(0,0,0,0)",
+      showLegend: shouldShowInputLegend(inputsMap),
+      margin: { l: 60, r: 24, t: 60, b: 60 },
+    },
+    source: CalculationSource.JsThermalComfort,
   });
 }
 
 export interface ModelChartConfig {
   dynamicChartId: string;
   dynamicTitle: string;
+  output: ModelOutput;
   zones: ThermalZone[];
+  bandLabel?: string;
+  dynamicHoverExtension?: DynamicHoverExtension;
   customRanges?: Partial<Record<FieldKey, { min: number; max: number }>>;
   baselinePayloadDefault: any;
-  calculateDynamicPoint: (xSi: number, ySi: number, dynamicXAxis: FieldKey, dynamicYAxis: FieldKey, baselinePayload: any) => { rangeValue: number; category: string; hovertext?: string };
-  getHovertemplateScatterDynamic: (label: string, cached: any) => string;
-  hovertemplateContourDynamic?: string;
+  calculateDynamicOutput: (
+    xSi: number,
+    ySi: number,
+    dynamicXAxis: FieldKey,
+    dynamicYAxis: FieldKey,
+    baselinePayload: any,
+    zOutput: ModelOutputKey,
+  ) => number | BandedGridOutputEvaluation;
+  getResultOutputValue: (cached: any, zOutput: ModelOutputKey) => number | undefined;
 
   staticConfig?: {
     title: string;
@@ -283,32 +351,42 @@ export function buildComfortModelChart(
   chartSource: any,
   resultsByInput: any,
   unitSystem: UnitSystemType,
+  fieldChartConfig: ExploreFieldChartConfig | null | undefined,
   config: ModelChartConfig
 ): PlotlyChartResponseDto | null {
   if (!chartSource) return null;
   const sharedChartRequest = chartSource.chartRequest;
 
   if (chartId === config.dynamicChartId) {
+    if (!fieldChartConfig || fieldChartConfig.zOutput !== config.output.key) {
+      return null;
+    }
     const baselinePayload =
       resolveBaselineInputEntry(sharedChartRequest, chartSource.baselineInputId)?.payload
       ?? config.baselinePayloadDefault;
 
-    return buildDynamicContourChart(
+    return buildDynamicExploreChart(
       sharedChartRequest,
       resultsByInput,
       unitSystem,
-      chartSource.dynamicXAxis as FieldKey,
-      chartSource.dynamicYAxis as FieldKey,
+      fieldChartConfig,
       {
-        title: config.dynamicTitle,
-        zMax: config.zones.length - 1,
-        colorscale: buildZoneColorscale(config.zones),
+        title: `${config.dynamicTitle} — ${config.output.label}`,
+        output: config.output,
+        bandLabel: config.bandLabel,
+        dynamicHoverExtension: config.dynamicHoverExtension,
         getRange: (key: FieldKey) => getDefaultRange(key, config.customRanges),
-        calculatePoint: (xSi, ySi, dynamicXAxis, dynamicYAxis) => {
-          return config.calculateDynamicPoint(xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload);
+        calculateOutput: (xSi, ySi, dynamicXAxis, dynamicYAxis, zOutput) => {
+          return config.calculateDynamicOutput(
+            xSi,
+            ySi,
+            dynamicXAxis,
+            dynamicYAxis,
+            baselinePayload,
+            zOutput,
+          );
         },
-        getHovertemplateScatter: config.getHovertemplateScatterDynamic,
-        hovertemplateContour: config.hovertemplateContourDynamic,
+        getResultOutputValue: config.getResultOutputValue,
       }
     );
   }

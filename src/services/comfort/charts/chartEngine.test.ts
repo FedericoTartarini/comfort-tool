@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CalculationSource } from "../../../models/calculationMetadata";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
+import { ChartMode, ModelOutputKey } from "../../../models/modelCapabilities";
 import { UnitSystem } from "../../../models/units";
 import { buildAxisValues, createFieldAxisScale } from "./axis";
 import {
@@ -11,7 +12,11 @@ import {
   buildClosedBoundaryPolygonTrace,
   buildFilledBoundaryRegionTrace,
 } from "./boundaryRegionEngine";
-import { buildBoundaryRegionFieldChart, buildGridContourFieldChart } from "./chartEngine";
+import {
+  buildBandedGridFieldChart,
+  buildBoundaryRegionFieldChart,
+  buildGridContourFieldChart,
+} from "./chartEngine";
 import { evaluateGrid } from "./gridEngine";
 import { buildInputTraceGroups, resolveBaselineInputEntry } from "./inputPoints";
 import { buildZoneColorscale, buildZoneContourLayers } from "./zoneGrid";
@@ -257,6 +262,190 @@ describe("shared chart engine", () => {
     expect(chart.layout.xaxis.range).toEqual([32, 212]);
     expect(chart.layout.yaxis.range).toEqual([0, 100]);
     expect(String(chart.layout.xaxis.title)).toContain("°F");
+  });
+
+  it("drives categorical grid cells from selected output and working bands", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 0, max: 20 },
+      points: 3,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 50, max: 50 },
+      points: 1,
+    });
+    const xValuesSeen: number[] = [];
+    const bands = [
+      { min: -Infinity, max: 10, label: "Low", color: "#0000ff" },
+      { min: 20, max: Infinity, label: "High", color: "#ff0000" },
+    ];
+
+    const chart = buildBandedGridFieldChart({
+      config: {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.HeatIndex,
+        bands,
+      },
+      output: {
+        key: ModelOutputKey.HeatIndex,
+        label: "Heat Index",
+        defaultBands: bands,
+      },
+      unitSystem: UnitSystem.IP,
+      xAxis,
+      yAxis,
+      evaluateOutput: (xSi, _ySi, zOutput) => {
+        xValuesSeen.push(xSi);
+        expect(zOutput).toBe(ModelOutputKey.HeatIndex);
+        return xSi;
+      },
+      layout: {
+        title: "Explore",
+        xAxis,
+        yAxis,
+        paperBgColor: "#fff",
+        plotBgColor: "#fff",
+        showLegend: false,
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+      },
+      source: CalculationSource.FrontendGenerated,
+    });
+
+    expect(xValuesSeen).toEqual([0, 10, 20]);
+    expect(chart.traces[0].z).toEqual([[0, NaN, 1]]);
+    expect(chart.traces[0].text).toEqual([["Low", "", "High"]]);
+    expect(chart.traces[0].hoverMetadata?.[0]?.[0]).toEqual([32]);
+    expect(chart.traces[0].colorscale).toEqual([
+      [0, "#0000ff"],
+      [0.5, "#0000ff"],
+      [0.5, "#ff0000"],
+      [1, "#ff0000"],
+    ]);
+    expect(chart.traces[0].hovertemplate).toContain("Heat Index");
+  });
+
+  it("appends declared hover metadata after the selected display output", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 10, max: 10 },
+      points: 1,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 50, max: 50 },
+      points: 1,
+    });
+    const bands = [
+      { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
+    ];
+
+    const chart = buildBandedGridFieldChart({
+      config: {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.HeatIndex,
+        bands,
+      },
+      output: {
+        key: ModelOutputKey.HeatIndex,
+        label: "Heat Index",
+        defaultBands: bands,
+      },
+      unitSystem: UnitSystem.IP,
+      bandLabel: "Risk",
+      hoverTemplateSuffix: "<br>Extra: %{customdata[1]:.1f}",
+      xAxis,
+      yAxis,
+      evaluateOutput: () => ({
+        valueSi: 10,
+        additionalHoverMetadata: [123.4],
+      }),
+      layout: {
+        title: "Explore",
+        xAxis,
+        yAxis,
+        paperBgColor: "#fff",
+        plotBgColor: "#fff",
+        showLegend: false,
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+      },
+      source: CalculationSource.FrontendGenerated,
+    });
+
+    expect(chart.traces[0].hoverMetadata?.[0]?.[0]).toEqual([50, 123.4]);
+    expect(chart.traces[0].hovertemplate).toContain("<b>Risk: %{text}</b>");
+    expect(chart.traces[0].hovertemplate).toContain("Extra: %{customdata[1]:.1f}");
+  });
+
+  it("supports one band and rejects malformed FieldChartConfig values", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 1 },
+      points: 1,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 1 },
+      points: 1,
+    });
+    const output = {
+      key: ModelOutputKey.Pmv,
+      label: "PMV",
+      defaultBands: [{ min: -Infinity, max: Infinity, label: "All", color: "#fff" }],
+    } as const;
+    const baseOptions = {
+      output,
+      unitSystem: UnitSystem.SI,
+      xAxis,
+      yAxis,
+      evaluateOutput: () => 0,
+      layout: {
+        title: "Explore",
+        xAxis,
+        yAxis,
+        paperBgColor: "#fff",
+        plotBgColor: "#fff",
+        showLegend: false,
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+      },
+      source: CalculationSource.FrontendGenerated,
+    };
+    const chart = buildBandedGridFieldChart({
+      ...baseOptions,
+      config: {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands: output.defaultBands,
+      },
+    });
+
+    expect(chart.traces).toHaveLength(1);
+    expect(chart.traces[0].z).toEqual([[0]]);
+    expect(() => buildBandedGridFieldChart({
+      ...baseOptions,
+      config: {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands: [
+          { min: 0, max: 2, label: "One", color: "#000" },
+          { min: 1, max: 3, label: "Two", color: "#fff" },
+        ],
+      },
+    })).toThrow(/invalid bands/i);
   });
 
   it("builds boundary regions with axis-aware polygon orientation", () => {

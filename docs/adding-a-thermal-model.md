@@ -167,8 +167,6 @@ export interface MyNewModelResponseDto {
 // Used to pass chart-related data between the calculator and the chart builder.
 export interface MyNewModelChartSourceDto {
   chartRequest: CompareInputMap<MyNewModelRequestDto>;
-  dynamicXAxis?: FieldKey;
-  dynamicYAxis?: FieldKey;
   baselineInputId?: InputIdType;
 }
 ```
@@ -176,7 +174,7 @@ export interface MyNewModelChartSourceDto {
 **Key points:**
 - `RequestDto` contains raw SI values extracted from the shared input state.
 - `ResponseDto` stores computed results in SI. The results panel converts to display units when rendering.
-- `ChartSourceDto` carries the map of per-input requests **and** the dynamic axis selections from UI state.
+- `ChartSourceDto` carries calculation-derived chart data only. Explore axes, selected output, and working bands arrive separately as `FieldChartConfig`, so cached model calculations remain reusable when chart presentation changes.
 
 ### 3d. Write the Calculation Function
 
@@ -237,12 +235,11 @@ import { ChartId } from "../models/chartOptions";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
-import { bandsFromThermalZones, ChartMode, ModelOutputKey } from "../models/modelCapabilities";
+import { bandsFromThermalZones, ChartMode, ModelOutputKey, type ModelOutput } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
 import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
-import { convertFieldValueFromSi, formatDisplayValue } from "../services/units/index";
-import { roundValue } from "../services/comfort/helpers";
+import { convertModelOutputFromSi, formatDisplayValue, getModelOutputDisplayMeta } from "../services/units";
 
 const myNewModelBuilder = new ComfortModelBuilder<MyNewModelResponseDto, MyNewModelChartSourceDto>(
   ComfortModel.MyNewModel
@@ -262,16 +259,16 @@ myNewModelBuilder
 Every model must explicitly declare its supported chart modes and chartable outputs. For an Explore-only model whose preset bands are its existing zones:
 
 ```ts
+const myNewModelOutput: ModelOutput = {
+  key: ModelOutputKey.MyNewModelIndex,
+  label: "My New Model Index",
+  unit: "°C",
+  defaultBands: bandsFromThermalZones(myNewModelZonesList),
+};
+
 myNewModelBuilder
   .setModes([ChartMode.Explore])
-  .setChartableOutputs([
-    {
-      key: ModelOutputKey.MyNewModelIndex,
-      label: "My New Model Index",
-      unit: "°C",
-      defaultBands: bandsFromThermalZones(myNewModelZonesList),
-    },
-  ]);
+  .setChartableOutputs([myNewModelOutput]);
 ```
 
 For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of the chart X value and the readonly canonical-SI input record:
@@ -286,7 +283,7 @@ myNewModelBuilder
   });
 ```
 
-A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, and duplicate modes or output keys.
+A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, and duplicate modes or output keys. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
 
 Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
 
@@ -348,8 +345,6 @@ myNewModelBuilder.setCalculator((state, visibleInputIds) => {
     resultsByInput,
     chartSource: {
       chartRequest: chartInputs,
-      dynamicXAxis: state.ui.dynamicXAxis,
-      dynamicYAxis: state.ui.dynamicYAxis,
       baselineInputId: state.ui.chartBaselineInputId,
     },
   };
@@ -368,17 +363,20 @@ myNewModelBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
       results,
       visibleInputIds,
       (result) => {
-        // Convert SI to display units for rendering.
-        const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.index, unitSystem);
-        const formattedValue = formatDisplayValue(displayValue, 1);
-        const units = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+        const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.MyNewModelIndex, unitSystem);
+        const displayValue = convertModelOutputFromSi(
+          ModelOutputKey.MyNewModelIndex,
+          result.index,
+          unitSystem,
+        );
+        const formattedValue = formatDisplayValue(displayValue, outputMeta.decimals);
 
         // Find the zone for text color.
         const zone = myNewModelZonesList.find((z) => z.contains(result.index));
         const color = zone ? zone.textColor : "";
 
         return {
-          text: `${formattedValue} ${units}`,  // primary result value
+          text: `${formattedValue} ${outputMeta.displayUnits}`, // primary result value
           subtext: result.category,             // zone label shown below
           color,                                // text color from zone
         };
@@ -395,80 +393,85 @@ myNewModelBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
 The chart builder produces Plotly chart data. Use `buildComfortModelChart` from `src/services/comfort/charts/sharedCharts.ts` — it handles both dynamic and static chart types through a single interface.
 
 ```ts
-myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem) => {
-  return buildComfortModelChart(chartId, chartSource, resultsByInput, unitSystem, {
-
-    // ── Dynamic chart ──────────────────────────────────────────────
-    dynamicChartId: ChartId.MyNewModelDynamic,
-    dynamicTitle: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Dynamic Chart`,
-    zones: myNewModelZonesList,
-    customRanges: {
-      // Override the global field range for this model's domain.
-      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-    },
-    baselinePayloadDefault: DEFAULT_BASELINE,
-
-    // Called for every grid point to determine its zone index and hover text.
-    calculateDynamicPoint: (xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload) => {
-      const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
-      calcPayload[dynamicXAxis] = xSi;
-      calcPayload[dynamicYAxis] = ySi;
-
-      const rawResult = someLibraryFunction(calcPayload.tdb, calcPayload.rh);
-      const zone = myNewModelZonesList.find((z) => z.contains(rawResult.index));
-      const rangeValue = zone ? myNewModelZonesList.indexOf(zone) : 0;
-      const zoneLabel  = zone ? zone.label : myNewModelZonesList[0].label;
-
-      // Hover text shown in the chart tooltip on the contour surface.
-      const xMeta = fieldMetaByKey[dynamicXAxis as FieldKey];
-      const yMeta = fieldMetaByKey[dynamicYAxis as FieldKey];
-      const xVal  = convertFieldValueFromSi(dynamicXAxis as FieldKey, xSi, unitSystem);
-      const yVal  = convertFieldValueFromSi(dynamicYAxis as FieldKey, ySi, unitSystem);
-
-      const hovertext = `${xMeta?.label}: ${roundValue(xVal, 1)} ${xMeta?.displayUnits[unitSystem]}<br>${yMeta?.label}: ${roundValue(yVal, 1)} ${yMeta?.displayUnits[unitSystem]}<br><b>Category: ${zoneLabel}</b><br>Index: ${roundValue(rawResult.index, 1)}`;
-
-      return { rangeValue, category: zoneLabel, hovertext };
-    },
-
-    // Hover text for scatter points (the user's input) on the dynamic chart.
-    getHovertemplateScatterDynamic: (label, cached) => {
-      if (!chartSource) return "";
-      const xLabel = fieldMetaByKey[chartSource.dynamicXAxis as FieldKey]?.label;
-      const yLabel = fieldMetaByKey[chartSource.dynamicYAxis as FieldKey]?.label;
-      return `${label}<br>${xLabel}: %{x:.1f}<br>${yLabel}: %{y:.1f}<br><b>Category: ${cached?.category || ""}</b><extra></extra>`;
-    },
-
-    hovertemplateContourDynamic: "%{text}<extra></extra>",
-
-    // ── Static chart (optional) ───────────────────────────────────
-    // Include this block only if your model has a fixed psychrometric-style chart.
-    staticConfig: {
-      title: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Ranges`,
-      xKey: FieldKey.RelativeHumidity,
-      yKey: FieldKey.DryBulbTemperature,
-      xRangeSi: {
-        min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
-        max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+myNewModelBuilder.setChartBuilder((
+  chartId,
+  chartSource,
+  resultsByInput,
+  unitSystem,
+  fieldChartConfig,
+) => {
+  return buildComfortModelChart(
+    chartId,
+    chartSource,
+    resultsByInput,
+    unitSystem,
+    fieldChartConfig?.mode === ChartMode.Explore ? fieldChartConfig : null,
+    {
+      dynamicChartId: ChartId.MyNewModelDynamic,
+      dynamicTitle: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Dynamic Chart`,
+      output: myNewModelOutput,
+      zones: myNewModelZonesList,
+      customRanges: {
+        [FieldKey.DryBulbTemperature]: TDB_LIMITS,
       },
-      yRangeSi: TDB_LIMITS,
-      hovertemplateContour: "%{text}<extra></extra>",
-      getHovertemplateScatter: (label, cached) =>
-        `${label}<br>RH: %{x:.1f}%<br>Tdb: %{y:.1f}<br><b>Category: ${cached?.category || ""}</b><extra></extra>`,
-      getScatterXSi: (p) => p.rh,
-      getScatterYSi: (p) => p.tdb,
-      calculateStaticPoint: (xSi, ySi) => {
-        const rawResult = someLibraryFunction(ySi, xSi);
-        const zone = myNewModelZonesList.find((z) => z.contains(rawResult.index));
-        const rangeValue = zone ? myNewModelZonesList.indexOf(zone) : 0;
-        const zoneLabel  = zone ? zone.label : myNewModelZonesList[0].label;
-        return { rangeValue, category: zoneLabel };
+      baselinePayloadDefault: DEFAULT_BASELINE,
+
+      // The model owns raw output extraction. The shared engine owns working-band
+      // assignment, colors, output conversion, contour metadata, and gap handling.
+      calculateDynamicOutput: (
+        xSi,
+        ySi,
+        dynamicXAxis,
+        dynamicYAxis,
+        baselinePayload,
+        zOutput,
+      ) => {
+        if (zOutput !== ModelOutputKey.MyNewModelIndex) {
+          throw new Error(`Unsupported chart output: ${zOutput}`);
+        }
+        const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
+        calcPayload[dynamicXAxis] = xSi;
+        calcPayload[dynamicYAxis] = ySi;
+        return someLibraryFunction(calcPayload.tdb, calcPayload.rh).index;
+      },
+      getResultOutputValue: (cached, zOutput) => (
+        zOutput === ModelOutputKey.MyNewModelIndex ? cached?.index : undefined
+      ),
+
+      // Optional fixed chart. Static chart behavior remains independent from
+      // the transient Explore output and working bands.
+      staticConfig: {
+        title: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Ranges`,
+        xKey: FieldKey.RelativeHumidity,
+        yKey: FieldKey.DryBulbTemperature,
+        xRangeSi: {
+          min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
+          max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+        },
+        yRangeSi: TDB_LIMITS,
+        hovertemplateContour: "%{text}<extra></extra>",
+        getHovertemplateScatter: (label, cached) =>
+          `${label}<br>RH: %{x:.1f}%<br>Tdb: %{y:.1f}<br><b>Category: ${cached?.category || ""}</b><extra></extra>`,
+        getScatterXSi: (payload) => payload.rh,
+        getScatterYSi: (payload) => payload.tdb,
+        calculateStaticPoint: (xSi, ySi) => {
+          const rawResult = someLibraryFunction(ySi, xSi);
+          const zone = myNewModelZonesList.find((item) => item.contains(rawResult.index));
+          const rangeValue = zone ? myNewModelZonesList.indexOf(zone) : 0;
+          return {
+            rangeValue,
+            category: zone?.label ?? myNewModelZonesList[0].label,
+          };
+        },
       },
     },
-  });
+  );
 });
 ```
 
-> **`rangeValue`** is the zone's position index in `myNewModelZonesList` (0-based). The chart engine maps integer zone indices to colors using the `buildColorscale` helper internally.
+The controller supplies `FieldChartConfig` only for a valid dynamic Explore chart. It restricts x/y to `dynamicAxisFields`, z to `chartableOutputs`, and bands to a sorted, non-overlapping canonical-SI working copy. Do not duplicate those selections in the chart-source DTO or classify Explore output inside the model callback.
+
+If a dynamic hover needs an additional model result, `calculateDynamicOutput` may return `{ valueSi, additionalHoverMetadata }` instead of a number. Set `bandLabel` and `dynamicHoverExtension` on the model chart config to share the label, hover suffix, and cached-input metadata extractor across contour and input-point hovers. Keep `valueSi` canonical; convert presentation-only metadata through `src/services/units/`, and keep the same metadata order for grid evaluations and cached input results.
 
 #### Final Builder Registrations
 
@@ -550,6 +553,8 @@ Test at minimum:
 2. Edge cases at zone boundaries behave correctly.
 3. IP/SI unit handling if applicable.
 4. The registered capability declaration has the intended modes, output keys, preset bands, and compliance bands.
+5. Every declared Explore output can drive the dynamic grid from raw canonical values and working bands.
+6. Unsupported output keys are rejected in the model layer, and static chart behavior remains unchanged.
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -606,6 +611,8 @@ Before marking the work complete, verify all of the following:
 - [ ] The chart(s) render correctly in both SI and IP unit modes
 - [ ] The zone legend appears on the correct charts
 - [ ] The dynamic chart's axis dropdowns contain the correct fields
+- [ ] The Explore Display selector contains only declared outputs and each output uses its own default working-band copy
+- [ ] Output conversions and finite threshold edits round-trip through `src/services/units/` in SI and IP
 - [ ] SI remains the canonical internal unit — no raw display-unit values are stored in state
 - [ ] No new `jsthermalcomfort` imports were added outside `src/comfortModels/` or `src/services/comfort/**`
 - [ ] No new model IDs, chart IDs, field IDs, or compare-input IDs are raw strings — they all use constants from `src/models/`
@@ -626,7 +633,7 @@ Add a new entry to:
 
 Then add a new `InputControlId` entry to `src/models/inputControls.ts` and implement a `createControlBehavior(...)` call for it in your model file.
 
-For unit conversion, if the field is a temperature or air speed the existing conversion helpers in `src/services/units/` will handle it. For custom units (like Wind Chill's W/m²), handle the conversion inside your model file's result builder and chart builder directly.
+For unit conversion, add any new output presentation to the exhaustive registry in `src/services/units/modelOutputs.ts`. Result builders, chart hover text, and the threshold editor must reuse that registry; do not add model-local conversion factors. Field conversions continue to use the other helpers under `src/services/units/`.
 
 ### What if my model uses string categories instead of numeric ranges?
 

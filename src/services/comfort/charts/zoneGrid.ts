@@ -1,4 +1,5 @@
 import type { GridContourLayerSpec } from "./chartEngine";
+import type { NumericBand } from "../../../models/modelCapabilities";
 
 type ZoneColorSource = {
   color: string;
@@ -110,4 +111,55 @@ export function buildZoneContourLayers({
       includeHoverMetadata: boundaryLayer.includeHoverMetadata ?? false,
     },
   ];
+}
+
+interface CategoricalBandLayersOptions {
+  name: string;
+  bands: readonly NumericBand[];
+  hovertemplate: string;
+  opacity?: number;
+}
+
+export function buildCategoricalBandLayers({
+  name,
+  bands,
+  hovertemplate,
+  opacity = 0.8,
+}: CategoricalBandLayersOptions): GridContourLayerSpec[] {
+  const contours = bands.length === 1
+    ? {
+      coloring: "fill",
+      showlines: false,
+      type: "levels",
+    }
+    : {
+      coloring: "fill",
+      showlines: false,
+      type: "levels",
+      start: 0.5,
+      end: bands.length - 1.5,
+      size: 1,
+      smoothing: 0,
+    };
+
+  return buildZoneContourLayers({
+    name,
+    colorscale: buildZoneColorscale(bands),
+    contours,
+    zmin: -0.5,
+    zmax: bands.length - 0.5,
+    hovertemplate,
+    opacity,
+    isBackgroundZone: true,
+    boundaryLayer: bands.length > 1
+      ? {
+        contours: {
+          ...contours,
+          coloring: "none",
+          showlines: true,
+          line: { width: 1, color: "#333333" },
+        },
+      }
+      : undefined,
+  });
 }

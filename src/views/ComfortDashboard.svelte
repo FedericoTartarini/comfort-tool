@@ -65,6 +65,12 @@
           lockYAxis={toolState.selectors.getCurrentChartLockYAxis()}
           legendZones={toolState.selectors.getCurrentChartLegendZones()}
           legendTitle={toolState.selectors.getCurrentChartLegendTitle()}
+          fieldChartConfig={toolState.selectors.getCurrentFieldChartConfig()}
+          chartableOutputs={toolState.selectors.getCurrentChartableOutputs()}
+          defaultBands={toolState.selectors.getCurrentExploreDefaultBands()}
+          unitSystem={toolState.state.ui.unitSystem}
+          onSelectOutput={toolState.actions.setExploreOutput}
+          onApplyBands={toolState.actions.setExploreBands}
           embedded={true}
         />
       </Card>

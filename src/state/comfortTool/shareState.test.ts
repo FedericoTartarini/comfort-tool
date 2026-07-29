@@ -71,6 +71,18 @@ describe("shareState", () => {
     expect(restoredState.state.ui.dynamicXAxis).toBe(FieldKey.WindSpeed);
     expect(restoredState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
 
+    const incompatibleUtciSnapshot: ShareStateSnapshot = {
+      ...snapshot,
+      dynamicXAxis: FieldKey.DryBulbTemperature,
+      dynamicYAxis: FieldKey.OperativeTemperature,
+    };
+    const normalizedUtciState = createComfortToolState();
+    applyShareSnapshotToState(normalizedUtciState.state, incompatibleUtciSnapshot);
+
+    expect(incompatibleUtciSnapshot.version).toBe(1);
+    expect(normalizedUtciState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(normalizedUtciState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+
     // Test axis validation: Adaptive ASHRAE does not support 'v' or 'rh'
     const invalidSnapshot: ShareStateSnapshot = {
       ...snapshot,

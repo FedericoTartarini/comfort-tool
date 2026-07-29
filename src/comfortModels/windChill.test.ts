@@ -4,10 +4,14 @@
 import { describe, expect, it } from "vitest";
 import { calculateWindChill, windChillModelConfig } from "./windChill";
 import { UnitSystem } from "../models/units";
-import { convertFieldValueFromSi } from "../services/units";
+import {
+  convertFieldValueFromSi,
+  convertModelOutputFromSi,
+} from "../services/units";
 import { FieldKey } from "../models/fieldKeys";
 import { ChartId } from "../models/chartOptions";
 import { InputId } from "../models/inputSlots";
+import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 
 describe("windChill service", () => {
   it("calculates Wind Chill Index and equivalent temperature correctly in SI", () => {
@@ -46,26 +50,62 @@ describe("windChill service", () => {
     expect(result.wciTemp).toBe(12);
   });
 
-  it("builds dynamic chart results through the shared chart wrapper", () => {
-    const request = { tdb: -10, v: 10, units: UnitSystem.SI };
-    const result = calculateWindChill(request);
-    const chartSource = {
-      chartRequest: { [InputId.Input1]: request },
-      dynamicXAxis: FieldKey.DryBulbTemperature,
-      dynamicYAxis: FieldKey.WindSpeed,
-      baselineInputId: InputId.Input1,
-    };
+  it.each([UnitSystem.SI, UnitSystem.IP])(
+    "restores Wind Chill hover detail in %s dynamic charts",
+    (unitSystem) => {
+      const request = { tdb: -10, v: 10, units: UnitSystem.SI };
+      const result = calculateWindChill(request);
+      const chartSource = {
+        chartRequest: { [InputId.Input1]: request },
+        baselineInputId: InputId.Input1,
+      };
 
-    const dynamicChart = windChillModelConfig.buildChartResult(
-      ChartId.WindChillDynamic,
-      chartSource,
-      { [InputId.Input1]: result } as any,
-      UnitSystem.SI,
-    );
+      const dynamicChart = windChillModelConfig.buildChartResult(
+        ChartId.WindChillDynamic,
+        chartSource,
+        { [InputId.Input1]: result } as any,
+        unitSystem,
+        {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.WindSpeed,
+          zOutput: windChillModelConfig.chartableOutputs[0].key,
+          bands: windChillModelConfig.chartableOutputs[0].defaultBands,
+        },
+      );
 
-    expect(dynamicChart?.traces[0].type).toBe("contour");
-    expect(dynamicChart?.traces[0].z).toHaveLength(300);
-    expect(dynamicChart?.traces[0].z?.[0]).toHaveLength(300);
-    expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
-  });
+      const contourTrace = dynamicChart?.traces.find((trace) => trace.type === "contour");
+      const inputTrace = dynamicChart?.traces.find((trace) => trace.type === "scatter");
+      const firstGridResult = calculateWindChill({
+        tdb: -45,
+        v: 1,
+        units: UnitSystem.SI,
+      });
+
+      expect(contourTrace?.z).toHaveLength(300);
+      expect(contourTrace?.z?.[0]).toHaveLength(300);
+      expect(contourTrace?.hovertemplate).toContain("Frostbite Risk");
+      expect(contourTrace?.hovertemplate).toContain("Wind Chill Index");
+      expect(contourTrace?.hovertemplate).toContain("Wind Chill Temperature");
+      expect(contourTrace?.hoverMetadata?.[0]?.[0]).toEqual([
+        convertModelOutputFromSi(
+          ModelOutputKey.WindChill,
+          firstGridResult.wci,
+          unitSystem,
+        ),
+        convertFieldValueFromSi(
+          FieldKey.DryBulbTemperature,
+          firstGridResult.wciTemp,
+          unitSystem,
+        ),
+      ]);
+      expect(inputTrace?.hovertemplate).toContain("Frostbite Risk");
+      expect(inputTrace?.hovertemplate).toContain("Wind Chill Index");
+      expect(inputTrace?.hovertemplate).toContain("Wind Chill Temperature");
+      expect(inputTrace?.hoverMetadata).toEqual([
+        convertModelOutputFromSi(ModelOutputKey.WindChill, result.wci, unitSystem),
+        convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.wciTemp, unitSystem),
+      ]);
+    },
+  );
 });

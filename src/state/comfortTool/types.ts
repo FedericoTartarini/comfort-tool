@@ -11,6 +11,12 @@ import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { InputControlId as InputControlIdType, InputControlViewModel } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
+import type {
+  ExploreFieldChartConfig,
+  ModelOutput,
+  ModelOutputKey,
+  NumericBand,
+} from "../../models/modelCapabilities";
 import type { ShareStateSnapshot } from "./shareState";
 
 // State for a single input.
@@ -71,6 +77,12 @@ export type PendingModelSwitch = {
   violations: ModelSwitchViolation[];
 };
 
+/** Transient Explore selections; numeric band edges remain canonical SI. */
+export interface ExploreChartState {
+  zOutput: ModelOutputKey;
+  bands: NumericBand[];
+}
+
 // UI state for the comfort tool.
 export type UiState = {
   selectedModel: ComfortModelType;
@@ -82,6 +94,7 @@ export type UiState = {
   unitSystem: UnitSystemType;
   dynamicXAxis: FieldKeyType;
   dynamicYAxis: FieldKeyType;
+  exploreChart: ExploreChartState | null;
   chartBaselineInputId: InputIdType;
   isLoading: boolean;
   errorMessage: string;
@@ -106,6 +119,8 @@ export type ComfortToolActions = {
   toggleUnitSystem: () => void;
   setDynamicXAxis: (fieldKey: FieldKeyType) => void;
   setDynamicYAxis: (fieldKey: FieldKeyType) => void;
+  setExploreOutput: (outputKey: ModelOutputKey) => void;
+  setExploreBands: (bands: readonly NumericBand[]) => boolean;
   setChartBaselineInputId: (inputId: InputIdType) => void;
   exportShareSnapshot: () => ShareStateSnapshot;
   applyShareSnapshot: (snapshot: ShareStateSnapshot) => void;
@@ -131,6 +146,9 @@ export type ComfortToolSelectors = {
   getCurrentChartLegendTitle: () => string;
   getDynamicXAxisOptions: () => FieldKeyType[];
   getDynamicYAxisOptions: () => FieldKeyType[];
+  getCurrentFieldChartConfig: () => ExploreFieldChartConfig | null;
+  getCurrentChartableOutputs: () => readonly ModelOutput[];
+  getCurrentExploreDefaultBands: () => readonly NumericBand[];
   getPendingModelSwitch: () => PendingModelSwitch | null;
 };
 

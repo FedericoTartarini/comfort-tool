@@ -8,7 +8,12 @@ import { FieldKey } from "../models/fieldKeys";
 import { InputControlId } from "../models/inputControls";
 import { AirSpeedControlMode, OptionKey } from "../models/inputModes";
 import { InputId } from "../models/inputSlots";
-import { findBandForValue, type InputsSi } from "../models/modelCapabilities";
+import {
+  ChartMode,
+  findBandForValue,
+  ModelOutputKey,
+  type InputsSi,
+} from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
 import { pmvAshraeAdapter, pmvAshraeModelConfig } from "./pmvAshrae";
@@ -394,12 +399,26 @@ describe("PMV standard model configurations", () => {
       ashrae.chartSource,
       resultsByInput,
       UnitSystem.SI,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.OperativeTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands: pmvAshraeModelConfig.chartableOutputs[0].defaultBands,
+      },
     );
     const isoChart = pmvIsoModelConfig.buildChartResult(
       ChartId.PmvDynamic,
       iso.chartSource,
       resultsByInput,
       UnitSystem.SI,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.OperativeTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands: pmvIsoModelConfig.chartableOutputs[0].defaultBands,
+      },
     );
     const getInputX = (chart: typeof ashraeChart) => chart?.traces
       .find((trace) => trace.type === "scatter" && trace.name === "Input 1")?.x?.[0];

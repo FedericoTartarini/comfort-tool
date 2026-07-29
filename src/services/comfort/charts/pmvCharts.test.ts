@@ -6,8 +6,14 @@ import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
 import {
+  ChartMode,
+  ModelOutputKey,
+  type ExploreFieldChartConfig,
+} from "../../../models/modelCapabilities";
+import {
   buildComparePsychrometricChart,
   buildPmvDynamicChart,
+  pmvChartableOutputs,
   type ComfortZoneRequestDto,
   type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
@@ -59,6 +65,21 @@ function createPmvChartSource(
     chartRequest,
     comfortZonesByInput: {},
     baselineInputId: InputId.Input1,
+  };
+}
+
+function createExploreConfig(
+  xField: FieldKey,
+  yField: FieldKey,
+  zOutput = ModelOutputKey.Pmv,
+): ExploreFieldChartConfig {
+  const output = pmvChartableOutputs.find(({ key }) => key === zOutput)!;
+  return {
+    mode: ChartMode.Explore,
+    xField,
+    yField,
+    zOutput,
+    bands: output.defaultBands,
   };
 }
 
@@ -125,15 +146,13 @@ describe("PMV charts", () => {
     const siChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
     const ipChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.IP,
     );
     const siZoneTrace = siChart.traces.find((trace) => trace.type === "contour" && trace.isBackgroundZone);
@@ -151,6 +170,37 @@ describe("PMV charts", () => {
     expect(String(ipChart.layout.xaxis.title)).toContain("°F");
   });
 
+  it("switches the dynamic grid between declared PMV and PPD outputs", () => {
+    const chartSource = createPmvChartSource(createPmvChartRequest());
+    const pmvChart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      chartSource,
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
+      UnitSystem.SI,
+    );
+    const ppdChart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      chartSource,
+      createExploreConfig(
+        FieldKey.DryBulbTemperature,
+        FieldKey.RelativeHumidity,
+        ModelOutputKey.Ppd,
+      ),
+      UnitSystem.SI,
+    );
+
+    expect(String(pmvChart.layout.title)).toContain("PMV");
+    expect(String(ppdChart.layout.title)).toContain("PPD");
+    expect(pmvChart.traces[0].z).not.toEqual(ppdChart.traces[0].z);
+    expect(ppdChart.traces[0].hovertemplate).toContain("PPD (%)");
+    expect(ppdChart.traces[0].colorscale).toEqual([
+      [0, "#86efac"],
+      [0.5, "#86efac"],
+      [0.5, "#fca5a5"],
+      [1, "#fca5a5"],
+    ]);
+  });
+
   it.each([
     [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
     [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
@@ -160,8 +210,7 @@ describe("PMV charts", () => {
     const chart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(createPmvChartRequest()),
-      xAxis,
-      yAxis,
+      createExploreConfig(xAxis, yAxis),
       UnitSystem.SI,
     );
 
@@ -176,8 +225,7 @@ describe("PMV charts", () => {
     const chart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(createPmvChartRequest()),
-      xAxis,
-      yAxis,
+      createExploreConfig(xAxis, yAxis),
       UnitSystem.SI,
     );
 
@@ -189,8 +237,7 @@ describe("PMV charts", () => {
     const ashraeChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(createPmvChartRequest()),
-      FieldKey.ClothingInsulation,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.ClothingInsulation, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
     const isoInput = createPmvInput({
@@ -204,8 +251,7 @@ describe("PMV charts", () => {
         createPmvChartRequest(isoInput),
         ComfortModel.PmvIso,
       ),
-      FieldKey.ClothingInsulation,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.ClothingInsulation, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
 

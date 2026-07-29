@@ -11,13 +11,24 @@ import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
-import { bandsFromThermalZones, ChartMode, ModelOutputKey } from "../models/modelCapabilities";
+import {
+  bandsFromThermalZones,
+  ChartMode,
+  ModelOutputKey,
+  type ModelOutput,
+} from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import type { InputId as InputIdType } from "../models/inputSlots";
 import type { CompareInputMap } from "../models/comfortDtos";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
 import { roundValue } from "../services/comfort/helpers";
-import { convertFieldValueToSi, convertFieldValueFromSi, formatDisplayValue } from "../services/units/index";
+import {
+  convertFieldValueFromSi,
+  convertFieldValueToSi,
+  convertModelOutputFromSi,
+  formatDisplayValue,
+  getModelOutputDisplayMeta,
+} from "../services/units/index";
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "../state/comfortTool/modelConfigs/builder";
 import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
 
@@ -50,8 +61,6 @@ export interface HeatIndexResponseDto {
 
 export interface HeatIndexChartSourceDto {
   chartRequest: CompareInputMap<HeatIndexRequestDto>;
-  dynamicXAxis?: FieldKey;
-  dynamicYAxis?: FieldKey;
   baselineInputId?: InputIdType;
 }
 
@@ -98,6 +107,13 @@ function toHeatIndexRequest(state: any, inputId: InputIdType): HeatIndexRequestD
 
 const heatIndexBuilder = new ComfortModelBuilder<HeatIndexResponseDto, HeatIndexChartSourceDto>(ComfortModel.HeatIndex);
 
+const heatIndexOutput: ModelOutput = {
+  key: ModelOutputKey.HeatIndex,
+  label: "Heat Index",
+  unit: "°C",
+  defaultBands: bandsFromThermalZones(heatIndexZonesList),
+};
+
 /**
 * Registers dropdown metadata for the Heat Index model.
 */
@@ -105,14 +121,7 @@ heatIndexBuilder
   .setLabel(comfortModelMetaById[ComfortModel.HeatIndex].label)
   .setDescription(comfortModelMetaById[ComfortModel.HeatIndex].description)
   .setModes([ChartMode.Explore])
-  .setChartableOutputs([
-    {
-      key: ModelOutputKey.HeatIndex,
-      label: "Heat Index",
-      unit: "°C",
-      defaultBands: bandsFromThermalZones(heatIndexZonesList),
-    },
-  ]);
+  .setChartableOutputs([heatIndexOutput]);
 
 /**
 * Registers UI controls for the Heat Index model.
@@ -155,25 +164,23 @@ heatIndexBuilder.setCalculator((state, visibleInputIds) => {
     resultsByInput,
     chartSource: {
       chartRequest: chartInputs,
-      dynamicXAxis: state.ui.dynamicXAxis,
-      dynamicYAxis: state.ui.dynamicYAxis,
       baselineInputId: state.ui.chartBaselineInputId,
     },
   };
 });
 
 heatIndexBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
-  const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+  const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.HeatIndex, unitSystem);
   return [
     buildResultSection(comfortModelMetaById[ComfortModel.HeatIndex].label, results, visibleInputIds, (result) => {
-      const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.hi, unitSystem);
-      const formattedValue = formatDisplayValue(displayValue, fieldMetaByKey[FieldKey.DryBulbTemperature].decimals);
+      const displayValue = convertModelOutputFromSi(ModelOutputKey.HeatIndex, result.hi, unitSystem);
+      const formattedValue = formatDisplayValue(displayValue, outputMeta.decimals);
 
       const zone = heatIndexZonesList.find((z) => z.contains(result.hi));
       const color = zone ? zone.textColor : "";
 
       return {
-        text: `${formattedValue} ${temperatureUnits}`,
+        text: `${formattedValue} ${outputMeta.displayUnits}`,
         subtext: result.category,
         color,
       };
@@ -184,94 +191,81 @@ heatIndexBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
 /**
  * Registers the chart building logic for the Heat Index model.
  */
-heatIndexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem) => {
-  return buildComfortModelChart(chartId, chartSource, resultsByInput, unitSystem, {
-    dynamicChartId: ChartId.HeatIndexDynamic,
-    dynamicTitle: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Dynamic Chart`,
-    zones: heatIndexZonesList,
-    customRanges: {
-      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-    },
-    baselinePayloadDefault: {
-      tdb: fieldMetaByKey[FieldKey.DryBulbTemperature].defaultValue,
-      rh: fieldMetaByKey[FieldKey.RelativeHumidity].defaultValue,
-    },
-    calculateDynamicPoint: (xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload) => {
-      const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
-      calcPayload[dynamicXAxis] = xSi;
-      calcPayload[dynamicYAxis] = ySi;
-
-      const res = heat_index(calcPayload.tdb, calcPayload.rh, { round: true, units: UnitSystem.SI });
-      const rawHiSi = convertFieldValueToSi(FieldKey.DryBulbTemperature, res.hi, UnitSystem.SI);
-      const tdbSi = calcPayload.tdb;
-      const hiSi = isNaN(rawHiSi) ? tdbSi : rawHiSi;
-
-      const zone = heatIndexZonesList.find((z) => z.contains(hiSi));
-      const rangeValue = zone ? heatIndexZonesList.indexOf(zone) : 0;
-      const zoneLabel = zone ? zone.label : heatIndexZonesList[0].label;
-
-      const xMeta = fieldMetaByKey[dynamicXAxis as FieldKey];
-      const yMeta = fieldMetaByKey[dynamicYAxis as FieldKey];
-      const xVal = convertFieldValueFromSi(dynamicXAxis as FieldKey, xSi, unitSystem);
-      const yVal = convertFieldValueFromSi(dynamicYAxis as FieldKey, ySi, unitSystem);
-      const hiDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, hiSi, unitSystem);
-
-      const xUnitStr = dynamicXAxis === FieldKey.RelativeHumidity ? "%" : ` ${xMeta?.displayUnits[unitSystem]}`;
-      const yUnitStr = dynamicYAxis === FieldKey.RelativeHumidity ? "%" : ` ${yMeta?.displayUnits[unitSystem]}`;
-      const hiUnitStr = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-      const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
-
-      const hovertext = `${xMeta?.label}: ${roundValue(xVal, 1)}${xUnitStr}<br>${yMeta?.label}: ${roundValue(yVal, 1)}${yUnitStr}<br><b>Category: ${zoneLabel}</b><br>${modelLabel}: ${roundValue(hiDisp, 1)}${hiUnitStr}`;
-
-      return { rangeValue, category: zoneLabel, hovertext };
-    },
-    getHovertemplateScatterDynamic: (label, cached) => {
-      if (!chartSource) return "";
-      const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
-      return `${label}<br>${fieldMetaByKey[chartSource.dynamicXAxis as FieldKey]?.label}: %{x:.1f}<br>${fieldMetaByKey[chartSource.dynamicYAxis as FieldKey]?.label}: %{y:.1f}<br><b>Category: ${cached?.category || ""}</b><br>${modelLabel}: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.hi, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`;
-    },
-    hovertemplateContourDynamic: "%{text}<extra></extra>",
-    staticConfig: {
-      title: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Ranges`,
-      xKey: FieldKey.RelativeHumidity,
-      yKey: FieldKey.DryBulbTemperature,
-      xRangeSi: {
-        min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
-        max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+heatIndexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem, fieldChartConfig) => {
+  return buildComfortModelChart(
+    chartId,
+    chartSource,
+    resultsByInput,
+    unitSystem,
+    fieldChartConfig?.mode === ChartMode.Explore ? fieldChartConfig : null,
+    {
+      dynamicChartId: ChartId.HeatIndexDynamic,
+      dynamicTitle: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Dynamic Chart`,
+      output: heatIndexOutput,
+      zones: heatIndexZonesList,
+      customRanges: {
+        [FieldKey.DryBulbTemperature]: TDB_LIMITS,
       },
-      yRangeSi: TDB_LIMITS,
-      hovertemplateContour: "%{text}<extra></extra>",
-      getHovertemplateScatter: (label, cached) => {
-        const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
-        return `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Category: ${cached?.category || ""}</b><br>${modelLabel}: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.hi, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`;
+      baselinePayloadDefault: {
+        tdb: fieldMetaByKey[FieldKey.DryBulbTemperature].defaultValue,
+        rh: fieldMetaByKey[FieldKey.RelativeHumidity].defaultValue,
       },
-      getScatterXSi: (p) => p.rh,
-      getScatterYSi: (p) => p.tdb,
-      calculateStaticPoint: (xSi, ySi) => {
-        const result = heat_index(ySi, xSi, { round: true, units: UnitSystem.SI });
-        const rawHiSi = convertFieldValueToSi(FieldKey.DryBulbTemperature, result.hi, UnitSystem.SI);
-        const tdbSi = ySi;
-        const hiSi = isNaN(rawHiSi) ? tdbSi : rawHiSi;
+      calculateDynamicOutput: (xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload, zOutput) => {
+        if (zOutput !== ModelOutputKey.HeatIndex) {
+          throw new Error(`Unsupported Heat Index chart output: ${zOutput}`);
+        }
+        const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
+        calcPayload[dynamicXAxis] = xSi;
+        calcPayload[dynamicYAxis] = ySi;
 
-        const zone = heatIndexZonesList.find((z) => z.contains(hiSi));
-        const rangeValue = zone ? heatIndexZonesList.indexOf(zone) : 0;
-        const zoneLabel = zone ? zone.label : heatIndexZonesList[0].label;
+        const res = heat_index(calcPayload.tdb, calcPayload.rh, { round: true, units: UnitSystem.SI });
+        const rawHiSi = convertFieldValueToSi(FieldKey.DryBulbTemperature, res.hi, UnitSystem.SI);
+        return isNaN(rawHiSi) ? calcPayload.tdb : rawHiSi;
+      },
+      getResultOutputValue: (cached, zOutput) => (
+        zOutput === ModelOutputKey.HeatIndex ? cached?.hi : undefined
+      ),
+      staticConfig: {
+        title: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Ranges`,
+        xKey: FieldKey.RelativeHumidity,
+        yKey: FieldKey.DryBulbTemperature,
+        xRangeSi: {
+          min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
+          max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+        },
+        yRangeSi: TDB_LIMITS,
+        hovertemplateContour: "%{text}<extra></extra>",
+        getHovertemplateScatter: (label, cached) => {
+          const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
+          return `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Category: ${cached?.category || ""}</b><br>${modelLabel}: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.hi, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`;
+        },
+        getScatterXSi: (p) => p.rh,
+        getScatterYSi: (p) => p.tdb,
+        calculateStaticPoint: (xSi, ySi) => {
+          const result = heat_index(ySi, xSi, { round: true, units: UnitSystem.SI });
+          const rawHiSi = convertFieldValueToSi(FieldKey.DryBulbTemperature, result.hi, UnitSystem.SI);
+          const hiSi = isNaN(rawHiSi) ? ySi : rawHiSi;
 
-        const rhDisp = convertFieldValueFromSi(FieldKey.RelativeHumidity, xSi, unitSystem);
-        const tdbDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, ySi, unitSystem);
-        const hiDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, hiSi, unitSystem);
+          const zone = heatIndexZonesList.find((z) => z.contains(hiSi));
+          const rangeValue = zone ? heatIndexZonesList.indexOf(zone) : 0;
+          const zoneLabel = zone ? zone.label : heatIndexZonesList[0].label;
 
-        const rhLabel = fieldMetaByKey[FieldKey.RelativeHumidity].label;
-        const tdbLabel = fieldMetaByKey[FieldKey.DryBulbTemperature].label;
-        const tdbUnit = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-        const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
+          const rhDisp = convertFieldValueFromSi(FieldKey.RelativeHumidity, xSi, unitSystem);
+          const tdbDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, ySi, unitSystem);
+          const hiDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, hiSi, unitSystem);
 
-        const hovertext = `${rhLabel}: ${roundValue(rhDisp, 1)}%<br>${tdbLabel}: ${roundValue(tdbDisp, 1)}${tdbUnit}<br><b>Category: ${zoneLabel}</b><br>${modelLabel}: ${roundValue(hiDisp, 1)}${tdbUnit}`;
+          const rhLabel = fieldMetaByKey[FieldKey.RelativeHumidity].label;
+          const tdbLabel = fieldMetaByKey[FieldKey.DryBulbTemperature].label;
+          const tdbUnit = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+          const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
 
-        return { rangeValue, category: zoneLabel, hovertext };
-      }
-    }
-  });
+          const hovertext = `${rhLabel}: ${roundValue(rhDisp, 1)}%<br>${tdbLabel}: ${roundValue(tdbDisp, 1)}${tdbUnit}<br><b>Category: ${zoneLabel}</b><br>${modelLabel}: ${roundValue(hiDisp, 1)}${tdbUnit}`;
+
+          return { rangeValue, category: zoneLabel, hovertext };
+        },
+      },
+    },
+  );
 });
 
 /**

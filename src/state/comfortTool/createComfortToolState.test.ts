@@ -12,6 +12,8 @@ import {
 } from "../../models/inputModes";
 import { InputId } from "../../models/inputSlots";
 import { UnitSystem } from "../../models/units";
+import { ModelOutputKey } from "../../models/modelCapabilities";
+import { pmvAshraeModelConfig } from "../../comfortModels/pmvAshrae";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 
 async function waitForIdle(toolState: ReturnType<typeof createComfortToolState>) {
@@ -39,6 +41,99 @@ describe("createComfortToolState", () => {
       .not.toBe(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]);
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae])
       .not.toBe(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso]);
+    expect(toolState.state.ui.exploreChart?.zOutput).toBe(ModelOutputKey.Pmv);
+    expect(toolState.state.ui.exploreChart?.bands)
+      .not.toBe(pmvAshraeModelConfig.chartableOutputs[0].defaultBands);
+  });
+
+  it("builds and edits a validated Explore config without invalidating calculations", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.setSelectedChart(ChartId.PmvDynamic);
+    await waitForIdle(toolState);
+
+    const chartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource;
+    expect(toolState.selectors.getCurrentFieldChartConfig()).toEqual(expect.objectContaining({
+      xField: FieldKey.DryBulbTemperature,
+      yField: FieldKey.RelativeHumidity,
+      zOutput: ModelOutputKey.Pmv,
+    }));
+
+    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    expect(toolState.state.ui.exploreChart?.zOutput).toBe(ModelOutputKey.Ppd);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource)
+      .toBe(chartSource);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
+
+    const ppdBands = toolState.state.ui.exploreChart?.bands.map((band) => ({ ...band })) ?? [];
+    toolState.actions.setExploreOutput(ModelOutputKey.Utci);
+    expect(toolState.state.ui.exploreChart?.zOutput).toBe(ModelOutputKey.Ppd);
+
+    expect(toolState.actions.setExploreBands([
+      { min: 0, max: 20, label: "One", color: "#000" },
+      { min: 10, max: 30, label: "Two", color: "#fff" },
+    ])).toBe(false);
+    expect(toolState.state.ui.exploreChart?.bands).toEqual(ppdBands);
+
+    expect(toolState.actions.setExploreBands([
+      { min: 10, max: Infinity, label: "High", color: "#f00" },
+      { min: -Infinity, max: 10, label: "Low", color: "#00f" },
+    ])).toBe(true);
+    expect(toolState.state.ui.exploreChart?.bands.map(({ label }) => label))
+      .toEqual(["Low", "High"]);
+
+    const editedExploreState = toolState.state.ui.exploreChart;
+    const editedBands = editedExploreState?.bands;
+    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    expect(toolState.state.ui.exploreChart).toBe(editedExploreState);
+    expect(toolState.state.ui.exploreChart?.bands).toBe(editedBands);
+
+    toolState.actions.toggleUnitSystem();
+    expect(toolState.state.ui.exploreChart?.bands[1].min).toBe(10);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource)
+      .toBe(chartSource);
+  });
+
+  it("retains Explore edits across chart changes and reseeds on model changes", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setExploreBands([
+      { min: -Infinity, max: 15, label: "Preferred", color: "#0f0" },
+      { min: 15, max: Infinity, label: "Other", color: "#f00" },
+    ]);
+
+    toolState.actions.setSelectedChart(ChartId.PmvDynamic);
+    await waitForIdle(toolState);
+    toolState.actions.setSelectedChart(ChartId.Psychrometric);
+    await waitForIdle(toolState);
+    expect(toolState.state.ui.exploreChart?.bands[0].label).toBe("Preferred");
+    expect(toolState.selectors.getCurrentFieldChartConfig()).toBeNull();
+
+    toolState.actions.setSelectedModel(ComfortModel.Utci);
+    await waitForIdle(toolState);
+    expect(toolState.state.ui.exploreChart?.zOutput).toBe(ModelOutputKey.Utci);
+
+    toolState.actions.setSelectedModel(ComfortModel.AdaptiveAshrae);
+    await waitForIdle(toolState);
+    expect(toolState.state.ui.exploreChart).toBeNull();
+    expect(toolState.selectors.getCurrentChartableOutputs()).toEqual([]);
+  });
+
+  it("keeps share-state v1 unchanged and reseeds transient Explore defaults", async () => {
+    const toolState = createComfortToolState();
+    const snapshot = toolState.actions.exportShareSnapshot();
+
+    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setExploreBands([
+      { min: -Infinity, max: 20, label: "Edited", color: "#0f0" },
+      { min: 20, max: Infinity, label: "Other", color: "#f00" },
+    ]);
+    toolState.actions.applyShareSnapshot(snapshot);
+    await waitForIdle(toolState);
+
+    expect(snapshot).not.toHaveProperty("exploreChart");
+    expect(toolState.state.ui.exploreChart?.zOutput).toBe(ModelOutputKey.Pmv);
+    expect(toolState.state.ui.exploreChart?.bands)
+      .toEqual(pmvAshraeModelConfig.chartableOutputs[0].defaultBands);
   });
 
   it("filters incompatible adaptive axes and ignores invalid selections", () => {
@@ -63,6 +158,37 @@ describe("createComfortToolState", () => {
 
     expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.OperativeTemperature);
     expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+  });
+
+  it("filters conflicting UTCI temperature axes and ignores invalid selections", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.Utci;
+    toolState.state.ui.dynamicXAxis = FieldKey.WindSpeed;
+    toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
+
+    const xAxisOptions = toolState.selectors.getDynamicXAxisOptions();
+    expect(xAxisOptions).not.toContain(FieldKey.DryBulbTemperature);
+    expect(xAxisOptions).not.toContain(FieldKey.MeanRadiantTemperature);
+    expect(xAxisOptions).toContain(FieldKey.RelativeHumidity);
+
+    toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
+
+    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.WindSpeed);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
+
+    toolState.state.ui.dynamicXAxis = FieldKey.OperativeTemperature;
+    toolState.state.ui.dynamicYAxis = FieldKey.WindSpeed;
+
+    const yAxisOptions = toolState.selectors.getDynamicYAxisOptions();
+    expect(yAxisOptions).not.toContain(FieldKey.DryBulbTemperature);
+    expect(yAxisOptions).not.toContain(FieldKey.MeanRadiantTemperature);
+    expect(yAxisOptions).toContain(FieldKey.RelativeHumidity);
+
+    toolState.actions.setDynamicYAxis(FieldKey.MeanRadiantTemperature);
+
+    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.OperativeTemperature);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.WindSpeed);
+    expect(toolState.state.ui.isLoading).toBe(false);
   });
 
   it.each([ComfortModel.PmvAshrae, ComfortModel.PmvIso])(

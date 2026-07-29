@@ -4,12 +4,12 @@ import { ComfortModel } from "../../../models/comfortModels";
 import {
   ChartMode,
   ModelOutputKey,
-  type Band,
   type ModelOutput,
+  type NumericBand,
 } from "../../../models/modelCapabilities";
 import { ComfortModelBuilder } from "./builder";
 
-const bands: readonly Band[] = [
+const bands: readonly NumericBand[] = [
   { min: -Infinity, max: Infinity, label: "All values", color: "#ffffff" },
 ];
 
@@ -102,5 +102,25 @@ describe("ComfortModelBuilder capabilities", () => {
       .setChartableOutputs([pmvOutput, { ...pmvOutput, label: "Duplicate" }])
       .build())
       .toThrow(/duplicate output keys/i);
+  });
+
+  it("rejects malformed, unsorted, and overlapping Explore defaults", () => {
+    const buildWithBands = (defaultBands: readonly NumericBand[]) => createBuilder()
+      .setModes([ChartMode.Explore])
+      .setChartableOutputs([{ ...pmvOutput, defaultBands }])
+      .build();
+
+    expect(() => buildWithBands([])).toThrow(/at least one band/i);
+    expect(() => buildWithBands([
+      { min: 1, max: 2, label: "Later", color: "#000" },
+      { min: 0, max: 1, label: "Earlier", color: "#fff" },
+    ])).toThrow(/sorted/i);
+    expect(() => buildWithBands([
+      { min: 0, max: 2, label: "One", color: "#000" },
+      { min: 1, max: 3, label: "Two", color: "#fff" },
+    ])).toThrow(/overlap/i);
+    expect(() => buildWithBands([
+      { min: NaN, max: 1, label: "Bad", color: "#000" },
+    ])).toThrow(/numeric/i);
   });
 });
