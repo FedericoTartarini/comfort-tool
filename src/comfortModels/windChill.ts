@@ -293,6 +293,10 @@ windChillBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSyst
  */
 windChillBuilder.setDefaultChart(ChartId.WindChillDynamic, [ChartId.WindChillDynamic]);
 windChillBuilder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.WindSpeed]);
+windChillBuilder.setDefaultDynamicAxes({
+  xAxis: FieldKey.DryBulbTemperature,
+  yAxis: FieldKey.WindSpeed,
+});
 windChillBuilder.setDefaultOptions({});
 windChillBuilder.setOptionNormalizer((value) => isRecord(value) ? value : {});
 windChillBuilder.setZones(windChillZonesList);

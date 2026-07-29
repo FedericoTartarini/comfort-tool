@@ -137,7 +137,7 @@ describe("PMV and Adaptive chart shape fixtures", () => {
         bands: pmvChartableOutputs[0].defaultBands,
       },
       UnitSystem.SI,
-    ))).toBe("17b63a8cb88eb16f0b5cba31c99959d0aa32cf42d0f3898a605149d6d5bee6c2");
+    ))).toBe("86296f881da4bfc9c25d8c210f9ed3329d61e18058cca31581941b09a6690f65");
   });
 
   it("keeps the Adaptive static chart DTO shape stable", () => {

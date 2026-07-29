@@ -85,7 +85,7 @@ The current active application is the repository root version.
 
 `src/state/comfortTool/modelConfigs/builder.ts`
 - Fluent model-definition builder and declarative result-row helpers.
-- Validates required `modes`, `chartableOutputs`, and Compliance declarations.
+- Validates required `modes`, `chartableOutputs`, Compliance declarations, and each model's default dynamic-axis pair.
 
 `src/models/modelCapabilities.ts`
 - Defines `ChartMode`, `ModelOutputKey`, `FieldChartConfig`, functional Compliance bands, editable numeric Explore bands, output declarations, and compliance specifications.
@@ -116,11 +116,17 @@ The current active application is the repository root version.
 - Handles derived values such as dew point, humidity ratio, wet-bulb temperature, vapor pressure, operative temperature, and relative air speed transformations.
 
 `src/services/comfort/charts/sharedCharts.ts`
-- Holds shared chart presentation builders that convert SI source data into display-unit payloads.
+- Holds shared chart presentation builders that convert SI source data into display-unit payloads and provide an explicit responsive chart height.
+
+`src/services/comfort/charts/dynamicAxisPayload.ts`
+- Resolves declared dynamic-axis coordinates into model payloads in canonical SI.
+- Preserves the independently selected Air or Radiant temperature when paired with Operative temperature and solves the remaining component, so all four directed pairs remain chartable.
 
 `src/services/comfort/charts/chartEngine.ts`
 - Shared field-chart engine used by PMV, UTCI, simple-model, and Adaptive chart strategies.
-- Its Explore runner accepts raw canonical-SI model outputs, performs half-open working-band assignment, and emits categorical contour indices so gaps remain transparent.
+- Its Explore runner accepts raw canonical-SI model outputs and performs half-open working-band assignment. Categorical contour indices remain the default so classified outputs and gaps preserve their existing rendering.
+- Smooth continuous outputs can opt into constraint contours, which retain one raw SI grid and let Plotly interpolate finite band thresholds. Constraint fills use per-region `fillcolor` without full-grid contour backgrounds, and their operations encode each visible band's complement because Plotly shades invalid constraint regions. PMV ASHRAE/ISO use this strategy; other Explore charts remain categorical.
+- The banded-grid runner keeps generic hover construction as its default and accepts an explicit full-template override for models that need multiple metrics or model-specific precision.
 
 `src/state/comfortTool/exploreChartState.ts`
 - Seeds deep working copies from declared output presets, validates replacements, reconciles output changes, and builds dynamic `ExploreFieldChartConfig` values without model-specific controller branches.
@@ -193,4 +199,4 @@ The current active application is the repository root version.
 - `met` and `clo` option values now come from `jsthermalcomfort` through a comfort-service adapter instead of duplicated model data.
 - Shared calculation flow remains validated through automated tests and a successful production build.
 - Model capabilities are now declarative, PMV ASHRAE and ISO are separate cached models, and share snapshots use a strict v1 registry-complete schema.
-- Explore dynamic charts now share output selection, editable SI working bands, categorical contour generation, and centralized output conversion.
+- Explore dynamic charts now share output selection, editable SI working bands, default categorical contour generation, optional continuous constraint contours, and centralized output conversion.

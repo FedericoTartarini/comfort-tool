@@ -89,7 +89,11 @@ describe("Explore chart state helpers", () => {
       state,
       FieldKey.DryBulbTemperature,
       FieldKey.OperativeTemperature,
-    )).toBeNull();
+    )).toEqual(expect.objectContaining({
+      xField: FieldKey.DryBulbTemperature,
+      yField: FieldKey.OperativeTemperature,
+      zOutput: ModelOutputKey.Pmv,
+    }));
   });
 
   it("keeps compliance-only Adaptive models out of Explore state", () => {

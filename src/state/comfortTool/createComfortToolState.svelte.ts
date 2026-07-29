@@ -166,6 +166,7 @@ function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
 export function createComfortToolState(): ComfortToolController {
   const inputsByInput = $state(createInputsByInput());
   const derivedByInput = $derived.by(() => deriveInputsDerivedState(inputsByInput));
+  const initialModelConfig = getComfortModelConfig(ComfortModel.PmvAshrae);
   const ui = $state({
     selectedModel: ComfortModel.PmvAshrae,
     selectedChartByModel: createSelectedChartByModel(),
@@ -174,9 +175,9 @@ export function createComfortToolState(): ComfortToolController {
     compareInputIds: createDefaultCompareInputIds(),
     activeInputId: InputId.Input1,
     unitSystem: UnitSystem.SI,
-    dynamicXAxis: FieldKey.DryBulbTemperature,
-    dynamicYAxis: FieldKey.RelativeHumidity,
-    exploreChart: seedExploreChartState(getComfortModelConfig(ComfortModel.PmvAshrae)),
+    dynamicXAxis: initialModelConfig.defaultDynamicAxes.xAxis,
+    dynamicYAxis: initialModelConfig.defaultDynamicAxes.yAxis,
+    exploreChart: seedExploreChartState(initialModelConfig),
     chartBaselineInputId: InputId.Input1,
     isLoading: false,
     errorMessage: "",
@@ -410,10 +411,11 @@ export function createComfortToolState(): ComfortToolController {
     getCurrentChartLegendTitle: () => {
       const fieldChartConfig = getCurrentFieldChartConfig();
       if (fieldChartConfig) {
-        return getDeclaredExploreOutput(
+        const output = getDeclaredExploreOutput(
           getActiveModelConfig(),
           fieldChartConfig.zOutput,
-        )?.label ?? "Bands";
+        );
+        return output?.legendTitle ?? output?.label ?? "Bands";
       }
       return getActiveModelConfig().legendTitle;
     },
@@ -532,7 +534,7 @@ export function createComfortToolState(): ComfortToolController {
       const min = vm.minValue ?? -Infinity;
       const max = vm.maxValue ?? Infinity;
       const clampedValue = Math.max(min, Math.min(max, v.currentValue));
-      
+
       if (control.behavior.applyInput) {
         const patch = control.behavior.applyInput(context, v.inputId, clampedValue.toString());
         if (patch) {
@@ -542,8 +544,10 @@ export function createComfortToolState(): ComfortToolController {
     });
 
     state.ui.pendingModelSwitch = null;
-    completeModelSelection(targetModel);
+    // The clamped values live in shared canonical input state, so every model
+    // cache must be invalidated before the target model schedules its refresh.
     invalidateAllModels();
+    completeModelSelection(targetModel);
   }
 
   function cancelModelSwitch() {

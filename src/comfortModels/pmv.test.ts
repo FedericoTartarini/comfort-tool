@@ -147,34 +147,34 @@ describe("PMV standard model configurations", () => {
   );
 
   it.each(pmvStandardCases)(
-    "$label rejects dynamic axes that write the same PMV request fields",
+    "$label exposes the four operative/component axis directions",
     ({ config }) => {
       const validate = config.dynamicAxisPairValidator;
 
       expect(validate?.(
         FieldKey.OperativeTemperature,
         FieldKey.DryBulbTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.DryBulbTemperature,
         FieldKey.OperativeTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.OperativeTemperature,
         FieldKey.MeanRadiantTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.MeanRadiantTemperature,
         FieldKey.OperativeTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.DryBulbTemperature,
         FieldKey.MeanRadiantTemperature,
-      )).toBe(true);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.OperativeTemperature,
         FieldKey.RelativeHumidity,
-      )).toBe(true);
+      ) ?? true).toBe(true);
     },
   );
 

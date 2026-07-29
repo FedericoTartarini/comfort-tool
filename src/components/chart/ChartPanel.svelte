@@ -177,20 +177,22 @@
     </div>
   </header>
 
-  <div
-    class={`mt-4 ${heightClass} relative overflow-hidden rounded-lg bg-stone-50/50`}
-  >
-    <PlotlyCanvas
-      {chartResult}
-      {isLoading}
-      {emptyMessage}
-      {heightClass}
-      {showZones}
-      onRegisterExport={(handler) => (exportChart = handler)}
-    />
-  </div>
+  <div class="mt-4 min-w-0" data-testid="comfort-chart-visual">
+    <div
+      class={`${heightClass} relative overflow-hidden rounded-lg bg-stone-50/50`}
+    >
+      <PlotlyCanvas
+        {chartResult}
+        {isLoading}
+        {emptyMessage}
+        {heightClass}
+        {showZones}
+        onRegisterExport={(handler) => (exportChart = handler)}
+      />
+    </div>
 
-  <ChartLegend zones={legendZones} {legendTitle} />
+    <ChartLegend zones={legendZones} {legendTitle} />
+  </div>
 {/snippet}
 
 {#if embedded}

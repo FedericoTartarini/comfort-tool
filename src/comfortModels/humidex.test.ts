@@ -77,8 +77,12 @@ describe("humidex service", () => {
     expect(staticChart?.traces[0].type).toBe("contour");
     expect(staticChart?.traces[0].z).toHaveLength(300);
     expect(staticChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(staticChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(staticChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces[0].type).toBe("contour");
     expect(dynamicChart?.traces[0].z).toHaveLength(300);
+    expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(dynamicChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 });

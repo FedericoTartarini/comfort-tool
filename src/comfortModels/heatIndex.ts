@@ -273,6 +273,10 @@ heatIndexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSyst
  */
 heatIndexBuilder.setDefaultChart(ChartId.HeatIndexRanges, [ChartId.HeatIndexRanges, ChartId.HeatIndexDynamic]);
 heatIndexBuilder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity]);
+heatIndexBuilder.setDefaultDynamicAxes({
+  xAxis: FieldKey.DryBulbTemperature,
+  yAxis: FieldKey.RelativeHumidity,
+});
 heatIndexBuilder.setDefaultOptions({});
 heatIndexBuilder.setOptionNormalizer((value) => isRecord(value) ? value : {});
 heatIndexBuilder.setZones(heatIndexZonesList);

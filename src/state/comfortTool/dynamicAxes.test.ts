@@ -17,6 +17,10 @@ const fields = [
 
 const adaptiveLikeConfig = {
   dynamicAxisFields: fields,
+  defaultDynamicAxes: {
+    xAxis: FieldKey.DryBulbTemperature,
+    yAxis: FieldKey.MeanRadiantTemperature,
+  },
   dynamicAxisPairValidator: (xAxis: string, yAxis: string) => (
     !(
       (xAxis === FieldKey.OperativeTemperature && (
@@ -47,7 +51,7 @@ describe("dynamicAxes", () => {
     })).toBe(false);
   });
 
-  it("normalizes by preserving X, then Y, then declaration order", () => {
+  it("normalizes with the declared default before legacy fallbacks", () => {
     expect(normalizeDynamicAxisPair(adaptiveLikeConfig, {
       xAxis: FieldKey.DryBulbTemperature,
       yAxis: FieldKey.OperativeTemperature,

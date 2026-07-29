@@ -15,7 +15,7 @@ import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import { buildInputTraceGroups, type BuildInputTraceGroupsOptions } from "./inputPoints";
 import { buildChartResponse } from "./layout";
 import type { ChartAxisScale, ChartLayoutSpec, GridEvaluationResult, GridPointEvaluation } from "./types";
-import { buildCategoricalBandLayers } from "./zoneGrid";
+import { buildCategoricalBandLayers, buildConstraintBandTraces } from "./zoneGrid";
 import { validateNumericBands } from "./bands";
 
 /**
@@ -35,7 +35,8 @@ import { validateNumericBands } from "./bands";
  */
 export interface GridContourLayerSpec {
   name: string;
-  colorscale: any[];
+  colorscale?: any[];
+  fillcolor?: string;
   contours: any;
   hovertemplate: string;
   showscale?: boolean;
@@ -48,6 +49,7 @@ export interface GridContourLayerSpec {
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
   hoverinfo?: string;
+  hoverOnGaps?: boolean;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
 }
@@ -92,6 +94,14 @@ export interface BandedGridOutputEvaluation {
   additionalHoverMetadata?: readonly unknown[];
 }
 
+export const GridBandRenderStrategy = {
+  Categorical: "categorical",
+  ConstraintContours: "constraint-contours",
+} as const;
+
+export type GridBandRenderStrategy =
+  typeof GridBandRenderStrategy[keyof typeof GridBandRenderStrategy];
+
 export interface BandedGridFieldChartOptions<TPayload, TResult>
   extends FieldChartBaseOptions<TPayload, TResult> {
   config: ExploreFieldChartConfig;
@@ -105,9 +115,11 @@ export interface BandedGridFieldChartOptions<TPayload, TResult>
     yIndex: number,
   ) => number | BandedGridOutputEvaluation;
   bandLabel?: string;
+  hoverTemplate?: string;
   hoverTemplateSuffix?: string;
   errorText?: string;
   opacity?: number;
+  renderStrategy?: GridBandRenderStrategy;
 }
 
 function normalizeBandedGridOutputEvaluation(
@@ -220,9 +232,11 @@ export function buildBandedGridFieldChart<TPayload = unknown, TResult = unknown>
   unitSystem,
   evaluateOutput,
   bandLabel = "Band",
+  hoverTemplate,
   hoverTemplateSuffix = "",
   errorText,
   opacity,
+  renderStrategy = GridBandRenderStrategy.Categorical,
   xAxis,
   yAxis,
   leadingTraces = [],
@@ -245,7 +259,8 @@ export function buildBandedGridFieldChart<TPayload = unknown, TResult = unknown>
 
   const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
-  const hovertemplate = `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${hoverTemplateSuffix}<extra></extra>`;
+  const hovertemplate = hoverTemplate
+    ?? `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${hoverTemplateSuffix}<extra></extra>`;
 
   return buildGridContourFieldChart({
     xAxis,
@@ -269,6 +284,14 @@ export function buildBandedGridFieldChart<TPayload = unknown, TResult = unknown>
           ];
           const bandIndex = findNumericBandIndexForValue(config.bands, valueSi);
 
+          if (renderStrategy === GridBandRenderStrategy.ConstraintContours) {
+            return {
+              z: valueSi,
+              text: bandIndex === undefined ? "" : config.bands[bandIndex].label,
+              hoverMetadata,
+            };
+          }
+
           if (bandIndex === undefined) {
             return {
               z: NaN,
@@ -284,12 +307,24 @@ export function buildBandedGridFieldChart<TPayload = unknown, TResult = unknown>
           };
         },
         errorText,
-        layers: buildCategoricalBandLayers({
-          name: `${output.label} bands`,
-          bands: config.bands,
-          hovertemplate,
-          opacity,
-        }),
+        ...(renderStrategy === GridBandRenderStrategy.ConstraintContours
+          ? {
+            buildTraces: (grid: GridEvaluationResult) => buildConstraintBandTraces({
+              name: `${output.label} bands`,
+              bands: config.bands,
+              grid,
+              hovertemplate,
+              opacity,
+            }),
+          }
+          : {
+            layers: buildCategoricalBandLayers({
+              name: `${output.label} bands`,
+              bands: config.bands,
+              hovertemplate,
+              opacity,
+            }),
+          }),
       }
       : undefined,
     leadingTraces,

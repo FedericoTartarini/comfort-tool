@@ -71,17 +71,17 @@ describe("shareState", () => {
     expect(restoredState.state.ui.dynamicXAxis).toBe(FieldKey.WindSpeed);
     expect(restoredState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
 
-    const incompatibleUtciSnapshot: ShareStateSnapshot = {
+    const coupledUtciSnapshot: ShareStateSnapshot = {
       ...snapshot,
       dynamicXAxis: FieldKey.DryBulbTemperature,
       dynamicYAxis: FieldKey.OperativeTemperature,
     };
     const normalizedUtciState = createComfortToolState();
-    applyShareSnapshotToState(normalizedUtciState.state, incompatibleUtciSnapshot);
+    applyShareSnapshotToState(normalizedUtciState.state, coupledUtciSnapshot);
 
-    expect(incompatibleUtciSnapshot.version).toBe(1);
+    expect(coupledUtciSnapshot.version).toBe(1);
     expect(normalizedUtciState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(normalizedUtciState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+    expect(normalizedUtciState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
 
     // Test axis validation: Adaptive ASHRAE does not support 'v' or 'rh'
     const invalidSnapshot: ShareStateSnapshot = {
@@ -93,8 +93,9 @@ describe("shareState", () => {
     const restoredState2 = createComfortToolState();
     applyShareSnapshotToState(restoredState2.state, invalidSnapshot);
     // Should fallback to valid dynamic axes for Adaptive ASHRAE (usually to / trm)
-    expect(restoredState2.state.ui.dynamicXAxis).not.toBe("v");
-    expect(restoredState2.state.ui.dynamicYAxis).not.toBe("rh");
+    expect(restoredState2.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(restoredState2.state.ui.dynamicYAxis)
+      .toBe(FieldKey.PrevailingMeanOutdoorTemperature);
 
     const validAdaptiveSnapshot: ShareStateSnapshot = {
       ...snapshot,
@@ -108,30 +109,30 @@ describe("shareState", () => {
     expect(validAdaptiveState.state.ui.dynamicXAxis).toBe(FieldKey.OperativeTemperature);
     expect(validAdaptiveState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
 
-    const incompatibleSnapshot: ShareStateSnapshot = {
+    const coupledAdaptiveSnapshot: ShareStateSnapshot = {
       ...snapshot,
       selectedModel: ComfortModel.AdaptiveEn,
       dynamicXAxis: FieldKey.DryBulbTemperature,
       dynamicYAxis: FieldKey.OperativeTemperature,
     };
     const normalizedState = createComfortToolState();
-    applyShareSnapshotToState(normalizedState.state, incompatibleSnapshot);
+    applyShareSnapshotToState(normalizedState.state, coupledAdaptiveSnapshot);
 
-    expect(incompatibleSnapshot.version).toBe(1);
+    expect(coupledAdaptiveSnapshot.version).toBe(1);
     expect(normalizedState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(normalizedState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+    expect(normalizedState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
 
-    const incompatiblePmvSnapshot: ShareStateSnapshot = {
+    const coupledPmvSnapshot: ShareStateSnapshot = {
       ...snapshot,
       selectedModel: ComfortModel.PmvIso,
       dynamicXAxis: FieldKey.DryBulbTemperature,
       dynamicYAxis: FieldKey.OperativeTemperature,
     };
     const normalizedPmvState = createComfortToolState();
-    applyShareSnapshotToState(normalizedPmvState.state, incompatiblePmvSnapshot);
+    applyShareSnapshotToState(normalizedPmvState.state, coupledPmvSnapshot);
 
     expect(normalizedPmvState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(normalizedPmvState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+    expect(normalizedPmvState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
   });
 
   it("rejects every snapshot version except the current v1 schema", () => {

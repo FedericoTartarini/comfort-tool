@@ -13,7 +13,8 @@ interface EvaluateGridOptions {
 interface GridContourTraceOptions {
   name: string;
   grid: GridEvaluationResult;
-  colorscale: any[];
+  colorscale?: any[];
+  fillcolor?: string;
   contours: any;
   hovertemplate: string;
   showscale?: boolean;
@@ -26,6 +27,7 @@ interface GridContourTraceOptions {
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
   hoverinfo?: string;
+  hoverOnGaps?: boolean;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
 }
@@ -83,6 +85,7 @@ export function buildGridContourTrace({
   name,
   grid,
   colorscale,
+  fillcolor,
   contours,
   hovertemplate,
   showscale = false,
@@ -95,6 +98,7 @@ export function buildGridContourTrace({
   isBackgroundZone,
   isComfortZone,
   hoverinfo,
+  hoverOnGaps,
   includeText = true,
   includeHoverMetadata = true,
 }: GridContourTraceOptions): PlotTraceDto {
@@ -105,6 +109,7 @@ export function buildGridContourTrace({
     z: grid.zValues,
     text: includeText ? grid.textValues : undefined,
     colorscale,
+    fillcolor,
     contours,
     hovertemplate,
     showscale,
@@ -117,6 +122,7 @@ export function buildGridContourTrace({
     isBackgroundZone,
     isComfortZone,
     hoverinfo,
+    hoverOnGaps,
     hoverMetadata: includeHoverMetadata ? grid.hoverMetadata as any[][] : undefined,
   });
 }

@@ -33,6 +33,7 @@
       value={toolState.state.ui.selectedModel}
       placeholder="Select model"
       searchPlaceholder="Search model..."
+      ariaLabel="Select comfort model"
       onSelect={(val) => toolState.actions.setSelectedModel(val as ComfortModel)}
     />
   </div>
@@ -45,6 +46,7 @@
         <Toggle
           checked={toolState.state.ui.compareEnabled}
           onchange={(event) => toolState.actions.setCompareEnabled(event.currentTarget.checked)}
+          aria-label="Enable input comparison"
           color="teal"
           size="small"
         />
@@ -59,6 +61,7 @@
         <Toggle
           checked={toolState.state.ui.unitSystem === UnitSystem.IP}
           onchange={toolState.actions.toggleUnitSystem}
+          aria-label="Use IP units"
           color="teal"
           size="small"
         />

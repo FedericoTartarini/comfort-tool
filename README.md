@@ -23,6 +23,21 @@ Start the dev server:
 npm run dev
 ```
 
+Run unit and component tests:
+
+```bash
+npm test
+```
+
+Run the local Chromium visual-regression suite:
+
+```bash
+npx playwright install chromium
+npm run test:visual
+```
+
+Approved screenshots are committed beside the browser test. When a visual change is intentional, regenerate them with `npm run test:visual:update`, inspect every expected/actual/diff image, and only then commit the updated baselines. Use `npm run test:visual:headed` when diagnosing an interaction locally. The first baselines target bundled Chromium on macOS; baselines for another operating system require separate review.
+
 
 
 ## Architecture Summary

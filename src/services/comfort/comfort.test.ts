@@ -280,11 +280,11 @@ describe("comfort services", () => {
       createPmvExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
     );
     const inputTrace = dynamicChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
+    const hoverTrace = dynamicChart.traces.find((trace) => trace.name === "PMV bands hover");
 
-    expect(dynamicChart.traces[0].name).toBe("PMV bands");
-    expect(dynamicChart.traces[0].isBackgroundZone).toBe(true);
-    expect(dynamicChart.traces[0].z).toHaveLength(50);
-    expect(dynamicChart.traces[0].z?.[0]).toHaveLength(50);
+    expect(hoverTrace?.isBackgroundZone).toBe(true);
+    expect(hoverTrace?.z).toHaveLength(50);
+    expect(hoverTrace?.z?.[0]).toHaveLength(50);
     expect(String(dynamicChart.layout.xaxis.title)).toContain("Air temperature");
     expect(String(dynamicChart.layout.yaxis.title)).toContain("Relative humidity");
     expect(inputTrace?.x).toEqual([26]);
@@ -325,8 +325,10 @@ describe("comfort services", () => {
       createPmvExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
+    const input1HoverTrace = input1BaselineChart.traces.find((trace) => trace.name === "PMV bands hover");
+    const input2HoverTrace = input2BaselineChart.traces.find((trace) => trace.name === "PMV bands hover");
 
-    expect(input1BaselineChart.traces[0].z?.[25]?.[25]).not.toBe(input2BaselineChart.traces[0].z?.[25]?.[25]);
+    expect(input1HoverTrace?.z?.[25]?.[25]).not.toBe(input2HoverTrace?.z?.[25]?.[25]);
     expect(input2BaselineChart.traces.filter((trace) => trace.type === "scatter")).toHaveLength(2);
   });
 

@@ -89,6 +89,7 @@
       color="light"
       pill
       size="xs"
+      aria-label="Select chart baseline input"
       class="text-stone-700 flex items-center"
     >
       <span class="max-w-[100px] truncate">
@@ -141,6 +142,7 @@
       color="light"
       pill
       size="xs"
+      aria-label="Select chart X axis"
       class="text-stone-700 flex items-center"
     >
       <span class="max-w-[100px] truncate">
@@ -175,6 +177,7 @@
       color="light"
       pill
       size="xs"
+      aria-label="Select chart Y axis"
       class="text-stone-700 flex items-center {lockYAxis
         ? 'cursor-default pointer-events-none'
         : ''}"

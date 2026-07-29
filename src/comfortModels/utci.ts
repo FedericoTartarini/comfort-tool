@@ -47,6 +47,7 @@ import {
   resolveBaselineInputEntry,
   shouldShowInputLegend,
 } from "../services/comfort/charts/inputPoints";
+import { applyDynamicAxisCoordinates } from "../services/comfort/charts/dynamicAxisPayload";
 
 // ── Thermal Zones Definition ──────────────────────────
 
@@ -116,6 +117,13 @@ const STRESS_BAND_Y_RESOLUTION = 50;
  * high-fidelity Plotly dynamic contour maps.
  */
 const CONTOUR_GRID_RESOLUTION = 450;
+const UTCI_DYNAMIC_AXIS_FIELDS = [
+  FieldKey.DryBulbTemperature,
+  FieldKey.MeanRadiantTemperature,
+  FieldKey.OperativeTemperature,
+  FieldKey.WindSpeed,
+  FieldKey.RelativeHumidity,
+] as const;
 
 /**
  * Y-axis positions (normalized coordinates [0, 1]) for displaying input markers/dots 
@@ -427,20 +435,6 @@ export function buildUtciStressChart(
   };
 }
 
-function areUtciDynamicAxesCompatible(xAxis: FieldKey, yAxis: FieldKey): boolean {
-  const includesOperativeTemperature =
-    xAxis === FieldKey.OperativeTemperature || yAxis === FieldKey.OperativeTemperature;
-  const includesTemperatureComponent =
-    xAxis === FieldKey.DryBulbTemperature ||
-    xAxis === FieldKey.MeanRadiantTemperature ||
-    yAxis === FieldKey.DryBulbTemperature ||
-    yAxis === FieldKey.MeanRadiantTemperature;
-
-  // Operative temperature writes both tdb and tr, so pairing it with either
-  // component would make the grid depend on axis application order.
-  return !(includesOperativeTemperature && includesTemperatureComponent);
-}
-
 function setUtciAxisValue(payload: UtciRequestDto, key: FieldKey, value: number): void {
   if (key === FieldKey.DryBulbTemperature) payload.tdb = value;
   else if (key === FieldKey.MeanRadiantTemperature) payload.tr = value;
@@ -482,7 +476,12 @@ export function buildUtciDynamicChart(
     !dynamicXAxis ||
     !dynamicYAxis ||
     dynamicXAxis === dynamicYAxis ||
-    !areUtciDynamicAxesCompatible(dynamicXAxis, dynamicYAxis)
+    !UTCI_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicXAxis as typeof UTCI_DYNAMIC_AXIS_FIELDS[number],
+    ) ||
+    !UTCI_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicYAxis as typeof UTCI_DYNAMIC_AXIS_FIELDS[number],
+    )
   ) {
     return {
       traces: [],
@@ -526,8 +525,26 @@ export function buildUtciDynamicChart(
             throw new Error(`Unsupported UTCI chart output: ${zOutput}`);
           }
           const pointArgs = { ...activeInputPayload };
-          setUtciAxisValue(pointArgs, dynamicXAxis, xSi);
-          setUtciAxisValue(pointArgs, dynamicYAxis, ySi);
+          const hasValidCoordinates = applyDynamicAxisCoordinates(
+            pointArgs,
+            { field: dynamicXAxis, valueSi: xSi },
+            { field: dynamicYAxis, valueSi: ySi },
+            {
+              setAxisValue: setUtciAxisValue,
+              getOperativeTemperature: (request) => t_o(
+                request.tdb,
+                request.tr,
+                request.v,
+                JsThermalComfortStandard.ISO,
+              ),
+              getTemperatureComponentRange: (field) => (
+                field === FieldKey.DryBulbTemperature ? TDB_LIMITS : TR_LIMITS
+              ),
+            },
+          );
+          if (!hasValidCoordinates) {
+            return NaN;
+          }
           const result = utci(
             pointArgs.tdb,
             pointArgs.tr,
@@ -688,14 +705,11 @@ builder.addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) => {
 });
 
 builder.setDefaultChart(ChartId.Stress, utciChartIds);
-builder.setDynamicAxisFields([
-  FieldKey.DryBulbTemperature,
-  FieldKey.MeanRadiantTemperature,
-  FieldKey.OperativeTemperature,
-  FieldKey.WindSpeed,
-  FieldKey.RelativeHumidity,
-]);
-builder.setDynamicAxisPairValidator(areUtciDynamicAxesCompatible);
+builder.setDynamicAxisFields([...UTCI_DYNAMIC_AXIS_FIELDS]);
+builder.setDefaultDynamicAxes({
+  xAxis: FieldKey.DryBulbTemperature,
+  yAxis: FieldKey.RelativeHumidity,
+});
 builder.setDefaultOptions(Object.assign({}, defaultUtciOptions));
 builder.setOptionNormalizer(normalizeUtciOptions);
 

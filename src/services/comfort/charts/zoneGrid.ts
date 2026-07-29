@@ -1,5 +1,11 @@
 import type { GridContourLayerSpec } from "./chartEngine";
-import type { NumericBand } from "../../../models/modelCapabilities";
+import {
+  findNumericBandIndexForValue,
+  type NumericBand,
+} from "../../../models/modelCapabilities";
+import type { PlotTraceDto } from "../../../models/comfortDtos";
+import { buildGridContourTrace } from "./gridEngine";
+import type { GridEvaluationResult } from "./types";
 
 type ZoneColorSource = {
   color: string;
@@ -16,7 +22,7 @@ interface BoundaryLayerOptions {
 
 interface ZoneContourLayersOptions {
   name: string;
-  colorscale: GridContourLayerSpec["colorscale"];
+  colorscale: any[];
   contours: GridContourLayerSpec["contours"];
   hovertemplate: string;
   showscale?: boolean;
@@ -162,4 +168,162 @@ export function buildCategoricalBandLayers({
       }
       : undefined,
   });
+}
+
+interface ConstraintBandTracesOptions {
+  name: string;
+  bands: readonly NumericBand[];
+  grid: GridEvaluationResult;
+  hovertemplate: string;
+  opacity?: number;
+}
+
+const TRANSPARENT_COLORSCALE: Array<[number, string]> = [
+  [0, "rgba(0, 0, 0, 0)"],
+  [1, "rgba(0, 0, 0, 0)"],
+];
+
+function getFiniteGridRange(grid: GridEvaluationResult): { min: number; max: number } | undefined {
+  let min = Infinity;
+  let max = -Infinity;
+
+  grid.zValues.forEach((row) => {
+    row.forEach((value) => {
+      if (!Number.isFinite(value)) {
+        return;
+      }
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    });
+  });
+
+  return Number.isFinite(min) && Number.isFinite(max) ? { min, max } : undefined;
+}
+
+function getFiniteUpperCoverValue(range: { min: number; max: number }): number {
+  const scale = Math.max(1, Math.abs(range.min), Math.abs(range.max), range.max - range.min);
+  const candidate = range.max + scale * 1e-9;
+  return Number.isFinite(candidate) && candidate > range.max ? candidate : range.max;
+}
+
+function buildBandConstraint(
+  band: NumericBand,
+  finiteRange: { min: number; max: number },
+): { operation: string; value: number | [number, number] } {
+  const hasFiniteMin = Number.isFinite(band.min);
+  const hasFiniteMax = Number.isFinite(band.max);
+
+  if (!hasFiniteMin && !hasFiniteMax) {
+    return {
+      operation: ">=",
+      value: getFiniteUpperCoverValue(finiteRange),
+    };
+  }
+  if (!hasFiniteMin) {
+    return { operation: ">=", value: band.max };
+  }
+  if (!hasFiniteMax) {
+    return { operation: "<", value: band.min };
+  }
+  return { operation: "][", value: [band.min, band.max] };
+}
+
+function buildHoverGrid(
+  grid: GridEvaluationResult,
+  bands: readonly NumericBand[],
+): GridEvaluationResult {
+  return {
+    ...grid,
+    zValues: grid.zValues.map((row) => row.map((value) => (
+      findNumericBandIndexForValue(bands, value) === undefined ? NaN : value
+    ))),
+  };
+}
+
+/**
+ * Builds smooth band regions from a continuous raw-output grid. Constraint
+ * traces interpolate threshold crossings between grid samples, while the
+ * separate transparent layer retains band-aware hover data and leaves gaps
+ * unclassified.
+ */
+export function buildConstraintBandTraces({
+  name,
+  bands,
+  grid,
+  hovertemplate,
+  opacity = 0.8,
+}: ConstraintBandTracesOptions): PlotTraceDto[] {
+  const finiteRange = getFiniteGridRange(grid);
+  if (!finiteRange) {
+    return [];
+  }
+
+  const fillTraces = bands.map((band) => {
+    const constraint = buildBandConstraint(band, finiteRange);
+    return buildGridContourTrace({
+      name: `${name}: ${band.label}`,
+      grid,
+      fillcolor: band.color,
+      contours: {
+        type: "constraint",
+        operation: constraint.operation,
+        value: constraint.value,
+        // Plotly shades the region that violates a constraint. The operation
+        // therefore describes the complement of this band: outside for a
+        // finite band and the opposite half-plane for an unbounded band.
+        // `coloring: "none"` avoids adding a full-grid contour background.
+        coloring: "none",
+        showlines: false,
+      },
+      hovertemplate: "",
+      hoverinfo: "skip",
+      showscale: false,
+      opacity,
+      line: { width: 0 },
+      isBackgroundZone: true,
+      includeText: false,
+      includeHoverMetadata: false,
+    });
+  });
+
+  const finiteBoundaries = [...new Set(
+    bands.flatMap((band) => [band.min, band.max]).filter(Number.isFinite),
+  )].sort((left, right) => left - right);
+  const boundaryTraces = finiteBoundaries.map((boundary) => buildGridContourTrace({
+    name: `${name} boundary ${boundary}`,
+    grid,
+    contours: {
+      type: "constraint",
+      operation: "=",
+      value: boundary,
+      coloring: "none",
+      showlines: true,
+    },
+    hovertemplate: "",
+    hoverinfo: "skip",
+    showscale: false,
+    opacity,
+    line: { width: 1, color: "#333333" },
+    isBackgroundZone: true,
+    includeText: false,
+    includeHoverMetadata: false,
+  }));
+
+  const hoverTrace = buildGridContourTrace({
+    name: `${name} hover`,
+    grid: buildHoverGrid(grid, bands),
+    colorscale: TRANSPARENT_COLORSCALE,
+    contours: {
+      type: "levels",
+      coloring: "heatmap",
+      showlines: false,
+    },
+    hovertemplate,
+    hoverOnGaps: false,
+    showscale: false,
+    line: { width: 0 },
+    isBackgroundZone: true,
+  });
+
+  return [...fillTraces, ...boundaryTraces, hoverTrace];
 }

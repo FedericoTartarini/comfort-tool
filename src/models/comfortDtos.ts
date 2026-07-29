@@ -40,6 +40,7 @@ export interface PlotTraceDto {
   colorbar?: any;
   opacity?: number;
   hoverinfo?: string;
+  hoverongaps?: boolean;
   hovertemplate?: string | null;
   /** When true, this trace represents a background zone overlay. Affected by Zones toggle. */
   isZone?: boolean;

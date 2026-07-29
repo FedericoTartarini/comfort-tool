@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ComfortModel } from "../../../models/comfortModels";
+import { FieldKey } from "../../../models/fieldKeys";
 import {
   ChartMode,
   ModelOutputKey,
@@ -20,7 +21,15 @@ const pmvOutput: ModelOutput = {
 };
 
 function createBuilder() {
-  return new ComfortModelBuilder<unknown, unknown>(ComfortModel.PmvAshrae);
+  return new ComfortModelBuilder<unknown, unknown>(ComfortModel.PmvAshrae)
+    .setDynamicAxisFields([
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+    ])
+    .setDefaultDynamicAxes({
+      xAxis: FieldKey.DryBulbTemperature,
+      yAxis: FieldKey.RelativeHumidity,
+    });
 }
 
 describe("ComfortModelBuilder capabilities", () => {
@@ -122,5 +131,27 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() => buildWithBands([
       { min: NaN, max: 1, label: "Bad", color: "#000" },
     ])).toThrow(/numeric/i);
+  });
+
+  it("rejects missing or invalid default dynamic axes", () => {
+    expect(() => new ComfortModelBuilder<unknown, unknown>(ComfortModel.PmvAshrae)
+      .setModes([ChartMode.Explore])
+      .setChartableOutputs([pmvOutput])
+      .setDynamicAxisFields([
+        FieldKey.DryBulbTemperature,
+        FieldKey.RelativeHumidity,
+      ])
+      .build())
+      .toThrow(/explicit default dynamic axes/i);
+
+    expect(() => createBuilder()
+      .setDefaultDynamicAxes({
+        xAxis: FieldKey.DryBulbTemperature,
+        yAxis: FieldKey.DryBulbTemperature,
+      })
+      .setModes([ChartMode.Explore])
+      .setChartableOutputs([pmvOutput])
+      .build())
+      .toThrow(/supported, compatible pair/i);
   });
 });

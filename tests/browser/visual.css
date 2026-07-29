@@ -1,0 +1,8 @@
+.modebar-container {
+  visibility: hidden !important;
+}
+
+* {
+  caret-color: transparent !important;
+  cursor: none !important;
+}

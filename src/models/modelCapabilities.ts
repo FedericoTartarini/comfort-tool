@@ -45,6 +45,7 @@ export interface NumericBand extends Band {
 export interface ModelOutput {
   readonly key: ModelOutputKey;
   readonly label: string;
+  readonly legendTitle?: string;
   readonly unit?: string;
   readonly defaultBands: readonly NumericBand[];
 }

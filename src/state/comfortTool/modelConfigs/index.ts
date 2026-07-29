@@ -56,6 +56,11 @@ export type DynamicAxisPairValidator = (
   yAxis: FieldKeyType,
 ) => boolean;
 
+export interface DynamicAxisDefaults {
+  readonly xAxis: FieldKeyType;
+  readonly yAxis: FieldKeyType;
+}
+
 /**
  * Type for comfort model definition, containing model information and calculation logic.
  * @template ResultType - The type of the calculation results.
@@ -97,6 +102,7 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
     fieldChartConfig?: FieldChartConfig | null,
   ) => PlotlyChartResponseDto | null;
   dynamicAxisFields: FieldKeyType[];
+  defaultDynamicAxes: DynamicAxisDefaults;
   dynamicAxisPairValidator?: DynamicAxisPairValidator;
   zones: ThermalZone[];
   legendChartIds: ChartIdType[];

@@ -2,6 +2,7 @@ import { inputOrder, type InputId as InputIdType } from "../../../models/inputSl
 import type { ResultSectionViewModel, ModelOptionsState, ResultCellViewModel } from "../types";
 import type {
   ComfortModelDefinition,
+  DynamicAxisDefaults,
   DynamicAxisPairValidator,
   ModelOptionChangeHandler,
 } from "./index";
@@ -250,6 +251,12 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
     return this;
   }
 
+  /** Defines the semantic default pair used when entering this model. */
+  setDefaultDynamicAxes(defaults: DynamicAxisDefaults): this {
+    this.config.defaultDynamicAxes = { ...defaults };
+    return this;
+  }
+
   /**
    * Defines model-specific compatibility for otherwise supported dynamic axes.
    */
@@ -347,6 +354,26 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
 
     if (!supportsCompliance && this.config.complianceSpec) {
       throw new Error("A model without Compliance mode cannot declare a compliance specification.");
+    }
+
+    const dynamicAxisFields = this.config.dynamicAxisFields;
+    const defaultDynamicAxes = this.config.defaultDynamicAxes;
+    if (!dynamicAxisFields || dynamicAxisFields.length < 2 || !defaultDynamicAxes) {
+      throw new Error(
+        "Comfort model declarations require dynamic axis fields and explicit default dynamic axes.",
+      );
+    }
+
+    const defaultsAreValid =
+      dynamicAxisFields.includes(defaultDynamicAxes.xAxis) &&
+      dynamicAxisFields.includes(defaultDynamicAxes.yAxis) &&
+      defaultDynamicAxes.xAxis !== defaultDynamicAxes.yAxis &&
+      (this.config.dynamicAxisPairValidator?.(
+        defaultDynamicAxes.xAxis,
+        defaultDynamicAxes.yAxis,
+      ) ?? true);
+    if (!defaultsAreValid) {
+      throw new Error("Default dynamic axes must be a supported, compatible pair.");
     }
 
     return this.config as ComfortModelDefinition<ResultType, ChartSourceType>;

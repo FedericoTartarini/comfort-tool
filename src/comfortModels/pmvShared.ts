@@ -69,10 +69,8 @@ import {
   convertFieldValueToSi,
   convertHumidityRatioFromSi,
   convertHumidityRatioToSi,
-  convertModelOutputFromSi,
   formatDisplayValue,
   getHumidityRatioDisplayMeta,
-  getModelOutputDisplayMeta,
 } from "../services/units/index";
 import {
   ComfortModelBuilder,
@@ -87,9 +85,11 @@ import { createFieldAxisScale } from "../services/comfort/charts/axis";
 import {
   buildBandedGridFieldChart,
   buildGridContourFieldChart,
+  GridBandRenderStrategy,
   type GridFieldChartStrategy,
 } from "../services/comfort/charts/chartEngine";
 import { buildClosedBoundaryPolygon } from "../services/comfort/charts/boundaryRegionEngine";
+import { applyDynamicAxisCoordinates } from "../services/comfort/charts/dynamicAxisPayload";
 import {
   resolveBaselineInputEntry,
   shouldShowInputLegend,
@@ -124,6 +124,15 @@ const WATER_VAPOR_MOLECULAR_WEIGHT_RATIO = 0.62198;
  * background contours in both psychrometric and dynamic PMV charts.
  */
 const CONTOUR_GRID_RESOLUTION = 50;
+const PMV_DYNAMIC_AXIS_FIELDS = [
+  FieldKey.DryBulbTemperature,
+  FieldKey.MeanRadiantTemperature,
+  FieldKey.OperativeTemperature,
+  FieldKey.RelativeAirSpeed,
+  FieldKey.RelativeHumidity,
+  FieldKey.MetabolicRate,
+  FieldKey.ClothingInsulation,
+] as const;
 
 /**
  * Standard colors used across the PMV charts layout.
@@ -215,11 +224,13 @@ export const pmvChartableOutputs: readonly ModelOutput[] = [
   {
     key: ModelOutputKey.Pmv,
     label: "PMV",
+    legendTitle: "PMV Zones",
     defaultBands: pmvExploreBands,
   },
   {
     key: ModelOutputKey.Ppd,
     label: "PPD (%)",
+    legendTitle: "PPD Bands",
     unit: "%",
     defaultBands: ppdExploreBands,
   },
@@ -720,6 +731,7 @@ function getPmvHoverTemplate({
   yUnits,
   yDecimals = 1,
   inputLabel,
+  classificationLabel = "Zone",
   zoneText = "%{text}",
   pmvText = "%{z:.2f}",
   ppdText = "%{customdata[0]:.1f}%",
@@ -731,6 +743,7 @@ function getPmvHoverTemplate({
   yUnits: string;
   yDecimals?: number;
   inputLabel?: string;
+  classificationLabel?: string;
   zoneText?: string | null;
   pmvText?: string | null;
   ppdText?: string | null;
@@ -742,7 +755,7 @@ function getPmvHoverTemplate({
   parts.push(`${yLabel}: %{y:.${yDecimals}f} ${yUnits}`);
 
   if (zoneText) {
-    parts.push(`<b>Zone: ${zoneText}</b>`);
+    parts.push(`<b>${classificationLabel}: ${zoneText}</b>`);
   }
   if (pmvText && !isStaticZone) {
     parts.push(`PMV: ${pmvText}`);
@@ -892,31 +905,6 @@ function getHumidityRatioDisplayValue(
   unitSystem: UnitSystemType,
 ): number {
   return convertHumidityRatioFromSi(psy_ta_rh(temperature, relativeHumidity).hr, unitSystem);
-}
-
-type PmvAxisPayloadKey = Exclude<
-  keyof PmvRequestDto,
-  "occupantHasAirSpeedControl" | "standard" | "units"
->;
-
-const pmvAxisPayloadKeysByField: Partial<
-  Record<FieldKey, ReadonlyArray<PmvAxisPayloadKey>>
-> = {
-  [FieldKey.DryBulbTemperature]: ["tdb"],
-  [FieldKey.MeanRadiantTemperature]: ["tr"],
-  [FieldKey.OperativeTemperature]: ["tdb", "tr"],
-  [FieldKey.WindSpeed]: ["vr"],
-  [FieldKey.RelativeAirSpeed]: ["vr"],
-  [FieldKey.RelativeHumidity]: ["rh"],
-  [FieldKey.MetabolicRate]: ["met"],
-  [FieldKey.ClothingInsulation]: ["clo"],
-  [FieldKey.ExternalWork]: ["wme"],
-};
-
-function pmvAxesSharePayloadKey(xAxis: FieldKey, yAxis: FieldKey): boolean {
-  const xKeys = pmvAxisPayloadKeysByField[xAxis] ?? [];
-  const yKeys = pmvAxisPayloadKeysByField[yAxis] ?? [];
-  return xKeys.some((key) => yKeys.includes(key));
 }
 
 function getPmvAxisRangeSi(
@@ -1283,7 +1271,12 @@ export function buildPmvDynamicChart(
 
   if (
     dynamicXAxis === dynamicYAxis ||
-    pmvAxesSharePayloadKey(dynamicXAxis, dynamicYAxis)
+    !PMV_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicXAxis as typeof PMV_DYNAMIC_AXIS_FIELDS[number],
+    ) ||
+    !PMV_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicYAxis as typeof PMV_DYNAMIC_AXIS_FIELDS[number],
+    )
   ) {
     return {
       traces: [],
@@ -1320,24 +1313,61 @@ export function buildPmvDynamicChart(
     rangeSi: getPmvAxisRangeSi(adapter, dynamicYAxis),
     points: CONTOUR_GRID_RESOLUTION,
   });
-  const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
-  const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
+  const isPmvOutput = fieldChartConfig.zOutput === ModelOutputKey.Pmv;
+  const classificationLabel = isPmvOutput ? "Zone" : "Band";
+  const gridHoverTemplate = getPmvHoverTemplate({
+    xLabel: xAxis.label,
+    xUnits: xAxis.units,
+    yLabel: yAxis.label,
+    yUnits: yAxis.units,
+    yDecimals: 2,
+    classificationLabel,
+    pmvText: isPmvOutput
+      ? "%{customdata[0]:.2f}"
+      : "%{customdata[1]:.2f}",
+    ppdText: isPmvOutput
+      ? "%{customdata[1]:.1f}%"
+      : "%{customdata[0]:.1f}%",
+  });
 
   return buildBandedGridFieldChart({
     config: fieldChartConfig,
     output,
     unitSystem,
+    renderStrategy: GridBandRenderStrategy.ConstraintContours,
+    hoverTemplate: gridHoverTemplate,
     xAxis,
     yAxis,
     evaluateOutput: activeInputPayload
       ? (xSi: number, ySi: number) => {
           const pointArgs = { ...activeInputPayload };
-          setPmvAxisValue(pointArgs, dynamicXAxis, xSi);
-          setPmvAxisValue(pointArgs, dynamicYAxis, ySi);
-          return getPmvOutputValue(
-            fieldChartConfig.zOutput,
-            evaluatePmvPayload(adapter, pointArgs),
+          const hasValidCoordinates = applyDynamicAxisCoordinates(
+            pointArgs,
+            { field: dynamicXAxis, valueSi: xSi },
+            { field: dynamicYAxis, valueSi: ySi },
+            {
+              setAxisValue: setPmvAxisValue,
+              getOperativeTemperature: adapter.getOperativeTemperature,
+              getTemperatureComponentRange: (field) => {
+                const range = getPmvAxisRangeSi(adapter, field);
+                const meta = fieldMetaByKey[field];
+                return range ?? { min: meta.minValue, max: meta.maxValue };
+              },
+            },
           );
+          if (!hasValidCoordinates) {
+            return {
+              valueSi: NaN,
+              additionalHoverMetadata: [NaN],
+            };
+          }
+          const evaluation = evaluatePmvPayload(adapter, pointArgs);
+          return {
+            valueSi: getPmvOutputValue(fieldChartConfig.zOutput, evaluation),
+            additionalHoverMetadata: [
+              isPmvOutput ? evaluation.ppd : evaluation.pmv,
+            ],
+          };
         }
       : undefined,
     inputGroups: [{
@@ -1349,24 +1379,34 @@ export function buildPmvDynamicChart(
       formatXDisplay: roundValue,
       formatYDisplay: roundValue,
       getHovertemplate: ({ inputLabel, payload: inputPayload }) => {
-        let outputText = "";
-        let bandLabel = "Unclassified";
+        let bandLabel: string | null = null;
+        let pmvText: string | null = null;
+        let ppdText: string | null = null;
         try {
-          const valueSi = getPmvOutputValue(
-            fieldChartConfig.zOutput,
-            evaluatePmvPayload(adapter, inputPayload),
-          );
+          const evaluation = evaluatePmvPayload(adapter, inputPayload);
+          const valueSi = getPmvOutputValue(fieldChartConfig.zOutput, evaluation);
           const bandIndex = findNumericBandIndexForValue(fieldChartConfig.bands, valueSi);
           bandLabel = bandIndex === undefined
             ? "Unclassified"
             : fieldChartConfig.bands[bandIndex].label;
-          const displayValue = convertModelOutputFromSi(output.key, valueSi, unitSystem);
-          outputText = `${displayValue.toFixed(outputMeta.decimals)}${outputUnits}`;
+          pmvText = evaluation.pmv.toFixed(2);
+          ppdText = `${evaluation.ppd.toFixed(1)}%`;
         } catch {
           // Preserve a useful coordinate-only hover when a model point cannot be evaluated.
         }
 
-        return `${inputLabel}<br>${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>Band: ${bandLabel}</b><br>${output.label}: ${outputText}<extra></extra>`;
+        return getPmvHoverTemplate({
+          inputLabel,
+          xLabel: xAxis.label,
+          xUnits: xAxis.units,
+          yLabel: yAxis.label,
+          yUnits: yAxis.units,
+          yDecimals: 2,
+          classificationLabel,
+          zoneText: bandLabel,
+          pmvText,
+          ppdText,
+        });
       },
     }],
     layout: {
@@ -1517,16 +1557,11 @@ export function createPmvModelConfig({
   .setDefaultChart(ChartId.Psychrometric, pmvChartIds)
   .setDefaultOptions(Object.assign({}, defaultPmvOptions))
   .setOptionNormalizer(normalizePmvOptionsSnapshot)
-  .setDynamicAxisFields([
-    FieldKey.DryBulbTemperature,
-    FieldKey.MeanRadiantTemperature,
-    FieldKey.OperativeTemperature,
-    FieldKey.RelativeAirSpeed,
-    FieldKey.RelativeHumidity,
-    FieldKey.MetabolicRate,
-    FieldKey.ClothingInsulation,
-  ])
-  .setDynamicAxisPairValidator((xAxis, yAxis) => !pmvAxesSharePayloadKey(xAxis, yAxis))
+  .setDynamicAxisFields([...PMV_DYNAMIC_AXIS_FIELDS])
+  .setDefaultDynamicAxes({
+    xAxis: FieldKey.DryBulbTemperature,
+    yAxis: FieldKey.RelativeHumidity,
+  })
   .setCalculator((state, visibleInputIds) => {
     const compareChartRequest = toPmvChartInputsRequest(state, visibleInputIds, adapter);
     const resultsByInput = createEmptyResults<PmvResponseDto>();

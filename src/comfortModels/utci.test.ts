@@ -40,8 +40,8 @@ describe("UTCI Explore chart", () => {
     [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
     [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
     [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-  ] as const)("rejects UTCI axes that overwrite the same temperature inputs", (xAxis, yAxis) => {
-    expect(utciModelConfig.dynamicAxisPairValidator?.(xAxis, yAxis)).toBe(false);
+  ] as const)("supports UTCI operative/component axes without overwriting", (xAxis, yAxis) => {
+    expect(utciModelConfig.dynamicAxisPairValidator?.(xAxis, yAxis) ?? true).toBe(true);
   });
 
   it.each([
@@ -49,10 +49,10 @@ describe("UTCI Explore chart", () => {
     [FieldKey.OperativeTemperature, FieldKey.RelativeHumidity],
     [FieldKey.WindSpeed, FieldKey.OperativeTemperature],
   ] as const)("keeps independent UTCI axis pairs chartable", (xAxis, yAxis) => {
-    expect(utciModelConfig.dynamicAxisPairValidator?.(xAxis, yAxis)).toBe(true);
+    expect(utciModelConfig.dynamicAxisPairValidator?.(xAxis, yAxis) ?? true).toBe(true);
   });
 
-  it("defensively rejects a conflicting FieldChartConfig", () => {
+  it("builds a coupled FieldChartConfig with finite resolved cells", () => {
     const request = { tdb: 25, tr: 25, v: 1, rh: 50, units: UnitSystem.SI };
     const chart = buildUtciDynamicChart(
       { inputs: { [InputId.Input1]: request } },
@@ -68,7 +68,9 @@ describe("UTCI Explore chart", () => {
       InputId.Input1,
     );
 
-    expect(chart.traces).toEqual([]);
-    expect(chart.layout.title).toBe("Invalid Axes Selection");
+    const contour = chart.traces.find((trace) => trace.type === "contour");
+    expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+    expect(contour).toBeDefined();
+    expect(contour?.z?.flat().some(Number.isFinite)).toBe(true);
   });
 });

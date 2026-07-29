@@ -249,6 +249,10 @@ humidexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem
  */
 humidexBuilder.setDefaultChart(ChartId.Humidex, [ChartId.Humidex, ChartId.HumidexDynamic]);
 humidexBuilder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity]);
+humidexBuilder.setDefaultDynamicAxes({
+  xAxis: FieldKey.DryBulbTemperature,
+  yAxis: FieldKey.RelativeHumidity,
+});
 humidexBuilder.setDefaultOptions({});
 humidexBuilder.setOptionNormalizer((value) => isRecord(value) ? value : {});
 humidexBuilder.setZones(humidexZonesList);

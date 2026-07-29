@@ -262,6 +262,7 @@ Every model must explicitly declare its supported chart modes and chartable outp
 const myNewModelOutput: ModelOutput = {
   key: ModelOutputKey.MyNewModelIndex,
   label: "My New Model Index",
+  legendTitle: "My New Model Bands", // Optional; defaults to label.
   unit: "°C",
   defaultBands: bandsFromThermalZones(myNewModelZonesList),
 };
@@ -287,7 +288,7 @@ A compliance-only model must still call `setChartableOutputs([])` explicitly. `b
 
 Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
 
-`bandsFromThermalZones()` copies each zone's real `min`, `max`, `label`, and `color`, keeping thresholds single-sourced. Adaptive-style functional compliance bands should call the model's existing boundary function rather than restating its equations. PMV ASHRAE and PMV ISO remain separate declarations and band arrays; the ISO model is explicitly ISO 7730 Category B, whose `[-0.5, 0.5)` acceptable range intentionally matches the ASHRAE declaration numerically.
+`bandsFromThermalZones()` copies each zone's real `min`, `max`, `label`, and `color`, keeping thresholds single-sourced. Set the optional `legendTitle` only when the legend heading should differ from the output selector label. Adaptive-style functional compliance bands should call the model's existing boundary function rather than restating its equations. PMV ASHRAE and PMV ISO remain separate declarations and band arrays; the ISO model is explicitly ISO 7730 Category B, whose `[-0.5, 0.5)` acceptable range intentionally matches the ASHRAE declaration numerically.
 
 #### Input Controls
 
@@ -471,7 +472,11 @@ myNewModelBuilder.setChartBuilder((
 
 The controller supplies `FieldChartConfig` only for a valid dynamic Explore chart. It restricts x/y to `dynamicAxisFields`, z to `chartableOutputs`, and bands to a sorted, non-overlapping canonical-SI working copy. Do not duplicate those selections in the chart-source DTO or classify Explore output inside the model callback.
 
-If a dynamic hover needs an additional model result, `calculateDynamicOutput` may return `{ valueSi, additionalHoverMetadata }` instead of a number. Set `bandLabel` and `dynamicHoverExtension` on the model chart config to share the label, hover suffix, and cached-input metadata extractor across contour and input-point hovers. Keep `valueSi` canonical; convert presentation-only metadata through `src/services/units/`, and keep the same metadata order for grid evaluations and cached input results.
+If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper to preserve the independently selected component and solve the other component in canonical SI. Do not reject these pairs solely because Operative temperature ultimately updates both calculation-temperature inputs.
+
+The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Each constraint region uses its top-level `fillcolor` with contour coloring disabled, preventing per-band full-grid backgrounds from blending together. Plotly shades the invalid side of a constraint, so the trace operation represents the complement of the visible band (outside a finite interval or the opposite half-plane for an unbounded interval). Keep this opt-in model-specific: discrete or classified outputs should continue to use the default strategy. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
+
+If a dynamic hover needs an additional model result, `calculateDynamicOutput` may return `{ valueSi, additionalHoverMetadata }` instead of a number. Set `bandLabel` and `dynamicHoverExtension` on the model chart config to share the label, hover suffix, and cached-input metadata extractor across contour and input-point hovers. A direct `buildBandedGridFieldChart` caller may instead provide `hoverTemplate` when the complete model-specific ordering and precision must override the generic template. The selected display output remains `customdata[0]`, and additional metadata starts at index 1, so callers must keep those indexes aligned with the template. Keep `valueSi` canonical; convert presentation-only metadata through `src/services/units/`, and keep the same metadata order for grid evaluations and cached input results.
 
 #### Final Builder Registrations
 
@@ -490,6 +495,13 @@ myNewModelBuilder.setDynamicAxisFields([
   FieldKey.RelativeHumidity,
 ]);
 
+// Semantically meaningful axes used initially and whenever another model's
+// current pair is invalid for this model.
+myNewModelBuilder.setDefaultDynamicAxes({
+  xAxis: FieldKey.DryBulbTemperature,
+  yAxis: FieldKey.RelativeHumidity,
+});
+
 // Default model options (leave empty for simple models with no advanced options).
 myNewModelBuilder.setDefaultOptions({});
 myNewModelBuilder.setOptionNormalizer((value) => isRecord(value) ? value : {});
@@ -504,6 +516,8 @@ myNewModelBuilder.setLegendTitle("My New Model");
 // Which dynamic charts should lock the Y-axis (prevents axis flipping).
 myNewModelBuilder.setLockYAxisChartIds([ChartId.MyNewModelDynamic]);
 ```
+
+`defaultDynamicAxes` is required. Both fields must be distinct members of `dynamicAxisFields` and must satisfy any declared pair validator; `build()` rejects invalid defaults.
 
 ### 3g. Export the Config
 
@@ -611,6 +625,7 @@ Before marking the work complete, verify all of the following:
 - [ ] The chart(s) render correctly in both SI and IP unit modes
 - [ ] The zone legend appears on the correct charts
 - [ ] The dynamic chart's axis dropdowns contain the correct fields
+- [ ] The declared default dynamic axes are valid and semantically meaningful for the model
 - [ ] The Explore Display selector contains only declared outputs and each output uses its own default working-band copy
 - [ ] Output conversions and finite threshold edits round-trip through `src/services/units/` in SI and IP
 - [ ] SI remains the canonical internal unit — no raw display-unit values are stored in state

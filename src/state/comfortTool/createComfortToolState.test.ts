@@ -57,9 +57,11 @@ describe("createComfortToolState", () => {
       yField: FieldKey.RelativeHumidity,
       zOutput: ModelOutputKey.Pmv,
     }));
+    expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PMV Zones");
 
     toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
     expect(toolState.state.ui.exploreChart?.zOutput).toBe(ModelOutputKey.Ppd);
+    expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PPD Bands");
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource)
       .toBe(chartSource);
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
@@ -136,79 +138,79 @@ describe("createComfortToolState", () => {
       .toEqual(pmvAshraeModelConfig.chartableOutputs[0].defaultBands);
   });
 
-  it("filters incompatible adaptive axes and ignores invalid selections", () => {
+  it("exposes coupled adaptive temperature axes in both directions", async () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
     toolState.state.ui.dynamicXAxis = FieldKey.PrevailingMeanOutdoorTemperature;
     toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
 
-    expect(toolState.selectors.getDynamicXAxisOptions()).toEqual([
-      FieldKey.OperativeTemperature,
-      FieldKey.RelativeAirSpeed,
-      FieldKey.PrevailingMeanOutdoorTemperature,
-    ]);
+    expect(toolState.selectors.getDynamicXAxisOptions())
+      .toEqual(toolState.selectors.getDynamicYAxisOptions());
+    expect(toolState.selectors.getDynamicXAxisOptions()).toHaveLength(5);
 
     toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
 
-    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
     expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
-    expect(toolState.state.ui.isLoading).toBe(false);
+    await waitForIdle(toolState);
 
     toolState.actions.setDynamicXAxis(FieldKey.OperativeTemperature);
 
     expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.OperativeTemperature);
-    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.DryBulbTemperature);
+    await waitForIdle(toolState);
   });
 
-  it("filters conflicting UTCI temperature axes and ignores invalid selections", () => {
+  it("exposes coupled UTCI temperature axes in both directions", async () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.Utci;
     toolState.state.ui.dynamicXAxis = FieldKey.WindSpeed;
     toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
 
     const xAxisOptions = toolState.selectors.getDynamicXAxisOptions();
-    expect(xAxisOptions).not.toContain(FieldKey.DryBulbTemperature);
-    expect(xAxisOptions).not.toContain(FieldKey.MeanRadiantTemperature);
-    expect(xAxisOptions).toContain(FieldKey.RelativeHumidity);
+    expect(xAxisOptions).toHaveLength(5);
+    expect(xAxisOptions).toContain(FieldKey.DryBulbTemperature);
+    expect(xAxisOptions).toContain(FieldKey.MeanRadiantTemperature);
 
     toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
 
-    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.WindSpeed);
+    expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
     expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
+    await waitForIdle(toolState);
 
     toolState.state.ui.dynamicXAxis = FieldKey.OperativeTemperature;
     toolState.state.ui.dynamicYAxis = FieldKey.WindSpeed;
 
     const yAxisOptions = toolState.selectors.getDynamicYAxisOptions();
-    expect(yAxisOptions).not.toContain(FieldKey.DryBulbTemperature);
-    expect(yAxisOptions).not.toContain(FieldKey.MeanRadiantTemperature);
-    expect(yAxisOptions).toContain(FieldKey.RelativeHumidity);
+    expect(yAxisOptions).toHaveLength(5);
+    expect(yAxisOptions).toContain(FieldKey.DryBulbTemperature);
+    expect(yAxisOptions).toContain(FieldKey.MeanRadiantTemperature);
 
     toolState.actions.setDynamicYAxis(FieldKey.MeanRadiantTemperature);
 
     expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.OperativeTemperature);
-    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.WindSpeed);
-    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+    await waitForIdle(toolState);
   });
 
   it.each([ComfortModel.PmvAshrae, ComfortModel.PmvIso])(
-    "filters conflicting operative-temperature axes for %s",
-    (modelId) => {
+    "exposes coupled operative-temperature axes for %s",
+    async (modelId) => {
       const toolState = createComfortToolState();
       toolState.state.ui.selectedModel = modelId;
       toolState.state.ui.dynamicXAxis = FieldKey.RelativeAirSpeed;
       toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
 
       const xAxisOptions = toolState.selectors.getDynamicXAxisOptions();
-      expect(xAxisOptions).not.toContain(FieldKey.DryBulbTemperature);
-      expect(xAxisOptions).not.toContain(FieldKey.MeanRadiantTemperature);
-      expect(xAxisOptions).toContain(FieldKey.RelativeHumidity);
+      expect(xAxisOptions).toHaveLength(7);
+      expect(xAxisOptions).toContain(FieldKey.DryBulbTemperature);
+      expect(xAxisOptions).toContain(FieldKey.MeanRadiantTemperature);
 
       toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
 
-      expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.RelativeAirSpeed);
+      expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
       expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.OperativeTemperature);
-      expect(toolState.state.ui.isLoading).toBe(false);
+      await waitForIdle(toolState);
     },
   );
 
@@ -254,17 +256,56 @@ describe("createComfortToolState", () => {
     }));
   });
 
+  it("completes a boundary-confirmed switch to Wind Chill and refreshes its cache", async () => {
+    const toolState = createComfortToolState();
+
+    toolState.actions.setSelectedModel(ComfortModel.WindChill);
+
+    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
+    expect(toolState.selectors.getPendingModelSwitch()).toEqual(expect.objectContaining({
+      targetModel: ComfortModel.WindChill,
+      violations: expect.arrayContaining([
+        expect.objectContaining({
+          inputId: InputId.Input1,
+          controlId: InputControlId.Temperature,
+          currentValue: 26,
+          maxAllowed: 0,
+        }),
+        expect.objectContaining({
+          inputId: InputId.Input1,
+          controlId: InputControlId.WindSpeed,
+          currentValue: 0.1,
+          minAllowed: 1,
+        }),
+      ]),
+    }));
+
+    toolState.actions.confirmModelSwitch();
+
+    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.WindChill);
+    expect(toolState.selectors.getPendingModelSwitch()).toBeNull();
+    expect(toolState.state.inputsByInput[InputId.Input1][FieldKey.DryBulbTemperature])
+      .toBe(0);
+    expect(toolState.state.inputsByInput[InputId.Input1][FieldKey.WindSpeed]).toBe(1);
+
+    await waitForIdle(toolState);
+
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.WindChill].status)
+      .toBe("ready");
+    expect(toolState.selectors.getCurrentChartResult()?.traces[0].type).toBe("contour");
+  });
+
   it("normalizes dynamic axes deterministically when switching models", async () => {
     const toolState = createComfortToolState();
     toolState.state.ui.dynamicXAxis = FieldKey.DryBulbTemperature;
-    toolState.state.ui.dynamicYAxis = FieldKey.OperativeTemperature;
+    toolState.state.ui.dynamicYAxis = FieldKey.RelativeHumidity;
 
     toolState.actions.setSelectedModel(ComfortModel.AdaptiveAshrae);
     await waitForIdle(toolState);
 
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.AdaptiveAshrae);
     expect(toolState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.MeanRadiantTemperature);
+    expect(toolState.state.ui.dynamicYAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
   });
 
   it("preserves ready model caches when switching between models", async () => {

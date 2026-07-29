@@ -16,6 +16,7 @@ import {
   buildBandedGridFieldChart,
   buildBoundaryRegionFieldChart,
   buildGridContourFieldChart,
+  GridBandRenderStrategy,
 } from "./chartEngine";
 import { evaluateGrid } from "./gridEngine";
 import { buildInputTraceGroups, resolveBaselineInputEntry } from "./inputPoints";
@@ -329,7 +330,7 @@ describe("shared chart engine", () => {
     expect(chart.traces[0].hovertemplate).toContain("Heat Index");
   });
 
-  it("appends declared hover metadata after the selected display output", () => {
+  it("uses a custom hover template while preserving declared hover metadata", () => {
     const xAxis = createFieldAxisScale({
       field: FieldKey.DryBulbTemperature,
       unitSystem: UnitSystem.IP,
@@ -361,6 +362,7 @@ describe("shared chart engine", () => {
       },
       unitSystem: UnitSystem.IP,
       bandLabel: "Risk",
+      hoverTemplate: "Custom: %{customdata[1]:.1f}<extra></extra>",
       hoverTemplateSuffix: "<br>Extra: %{customdata[1]:.1f}",
       xAxis,
       yAxis,
@@ -381,8 +383,211 @@ describe("shared chart engine", () => {
     });
 
     expect(chart.traces[0].hoverMetadata?.[0]?.[0]).toEqual([50, 123.4]);
-    expect(chart.traces[0].hovertemplate).toContain("<b>Risk: %{text}</b>");
-    expect(chart.traces[0].hovertemplate).toContain("Extra: %{customdata[1]:.1f}");
+    expect(chart.traces[0].hovertemplate).toBe(
+      "Custom: %{customdata[1]:.1f}<extra></extra>",
+    );
+    expect(chart.traces[0].hovertemplate).not.toContain("Risk");
+    expect(chart.traces[0].hovertemplate).not.toContain("Extra");
+  });
+
+  it("builds continuous constraint bands from one raw SI grid with IP display axes", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 0, max: 30 },
+      points: 7,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 50, max: 50 },
+      points: 1,
+    });
+    const bands = [
+      { min: -Infinity, max: 5, label: "Low", color: "#0000ff" },
+      { min: 10, max: 25, label: "Middle", color: "#ffffff" },
+      { min: 25, max: Infinity, label: "High", color: "#ff0000" },
+    ];
+    const valuesSeen: number[] = [];
+
+    const chart = buildBandedGridFieldChart({
+      config: {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.HeatIndex,
+        bands,
+      },
+      output: {
+        key: ModelOutputKey.HeatIndex,
+        label: "Heat Index",
+        defaultBands: bands,
+      },
+      unitSystem: UnitSystem.IP,
+      renderStrategy: GridBandRenderStrategy.ConstraintContours,
+      xAxis,
+      yAxis,
+      evaluateOutput: (xSi) => {
+        valuesSeen.push(xSi);
+        return xSi;
+      },
+      layout: {
+        title: "Continuous Explore",
+        xAxis,
+        yAxis,
+        paperBgColor: "#fff",
+        plotBgColor: "#fff",
+        showLegend: false,
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+      },
+      source: CalculationSource.FrontendGenerated,
+    });
+
+    const fillTraces = chart.traces.filter((trace) => (
+      trace.contours?.type === "constraint" && trace.contours.operation !== "="
+    ));
+    const boundaryTraces = chart.traces.filter((trace) => trace.contours?.operation === "=");
+    const hoverTrace = chart.traces.find((trace) => trace.name === "Heat Index bands hover");
+
+    expect(valuesSeen).toEqual([0, 5, 10, 15, 20, 25, 30]);
+    expect(fillTraces.map((trace) => trace.contours)).toEqual([
+      expect.objectContaining({ operation: ">=", value: 5 }),
+      expect.objectContaining({ operation: "][", value: [10, 25] }),
+      expect.objectContaining({ operation: "<", value: 25 }),
+    ]);
+    expect(fillTraces.map((trace) => trace.fillcolor)).toEqual([
+      "#0000ff",
+      "#ffffff",
+      "#ff0000",
+    ]);
+    expect(fillTraces.every((trace) => trace.contours.coloring === "none")).toBe(true);
+    expect(fillTraces.every((trace) => trace.z === fillTraces[0].z)).toBe(true);
+    expect(fillTraces[0].z).toEqual([[0, 5, 10, 15, 20, 25, 30]]);
+    expect(boundaryTraces.map((trace) => trace.contours.value)).toEqual([5, 10, 25]);
+    expect(boundaryTraces.every((trace) => trace.line?.color === "#333333")).toBe(true);
+    expect(boundaryTraces.every((trace) => trace.line?.width === 1)).toBe(true);
+    expect(boundaryTraces.every((trace) => trace.opacity === 0.8)).toBe(true);
+    expect(hoverTrace?.x).toEqual([32, 41, 50, 59, 68, 77, 86]);
+    expect(hoverTrace?.text).toEqual([[
+      "Low",
+      "",
+      "Middle",
+      "Middle",
+      "Middle",
+      "High",
+      "High",
+    ]]);
+    expect(Number.isNaN(hoverTrace?.z?.[0]?.[1] as number)).toBe(true);
+    expect(hoverTrace?.hoverongaps).toBe(false);
+    expect(hoverTrace?.hoverMetadata?.[0]?.[2]).toEqual([50]);
+  });
+
+  it("covers a single unbounded continuous band without serializing infinity", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: -2, max: 2 },
+      points: 3,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 50, max: 50 },
+      points: 1,
+    });
+    const bands = [
+      { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
+    ];
+
+    const chart = buildBandedGridFieldChart({
+      config: {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands,
+      },
+      output: {
+        key: ModelOutputKey.Pmv,
+        label: "PMV",
+        defaultBands: bands,
+      },
+      unitSystem: UnitSystem.SI,
+      renderStrategy: GridBandRenderStrategy.ConstraintContours,
+      xAxis,
+      yAxis,
+      evaluateOutput: (xSi) => xSi,
+      layout: {
+        title: "All values",
+        xAxis,
+        yAxis,
+        paperBgColor: "#fff",
+        plotBgColor: "#fff",
+        showLegend: false,
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+      },
+      source: CalculationSource.FrontendGenerated,
+    });
+    const fillTrace = chart.traces.find((trace) => trace.contours?.type === "constraint");
+
+    expect(chart.traces).toHaveLength(2);
+    expect(fillTrace?.contours.operation).toBe(">=");
+    expect(fillTrace?.contours.coloring).toBe("none");
+    expect(fillTrace?.contours.value).toBeGreaterThan(2);
+    expect(fillTrace?.z).toEqual([[-2, 0, 2]]);
+    expect(chart.traces.some((trace) => trace.contours?.operation === "=")).toBe(false);
+    expect(Number.isFinite(fillTrace?.contours.value)).toBe(true);
+    expect(JSON.parse(JSON.stringify(chart)).traces[0].contours.value).toBeGreaterThan(2);
+  });
+
+  it("omits continuous background traces for an all-NaN grid", () => {
+    const xAxis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 1 },
+      points: 2,
+    });
+    const yAxis = createFieldAxisScale({
+      field: FieldKey.RelativeHumidity,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 1 },
+      points: 2,
+    });
+    const bands = [
+      { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
+    ];
+
+    const chart = buildBandedGridFieldChart({
+      config: {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands,
+      },
+      output: {
+        key: ModelOutputKey.Pmv,
+        label: "PMV",
+        defaultBands: bands,
+      },
+      unitSystem: UnitSystem.SI,
+      renderStrategy: GridBandRenderStrategy.ConstraintContours,
+      xAxis,
+      yAxis,
+      evaluateOutput: () => NaN,
+      layout: {
+        title: "No values",
+        xAxis,
+        yAxis,
+        paperBgColor: "#fff",
+        plotBgColor: "#fff",
+        showLegend: false,
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+      },
+      source: CalculationSource.FrontendGenerated,
+    });
+
+    expect(chart.traces).toEqual([]);
   });
 
   it("supports one band and rejects malformed FieldChartConfig values", () => {
