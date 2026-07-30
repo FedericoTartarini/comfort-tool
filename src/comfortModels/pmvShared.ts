@@ -89,7 +89,10 @@ import {
   type GridFieldChartStrategy,
 } from "../services/comfort/charts/chartEngine";
 import { buildClosedBoundaryPolygon } from "../services/comfort/charts/boundaryRegionEngine";
-import { applyDynamicAxisCoordinates } from "../services/comfort/charts/dynamicAxisPayload";
+import {
+  applyDynamicAxisCoordinates,
+  type DynamicAxisPayloadAdapter,
+} from "../services/comfort/charts/dynamicAxisPayload";
 import {
   resolveBaselineInputEntry,
   shouldShowInputLegend,
@@ -104,8 +107,7 @@ import type { ChartAxisScale } from "../services/comfort/charts/types";
 const COMFORT_ZONE_MIN_DRY_BULB = -20;
 const COMFORT_ZONE_MAX_DRY_BULB = 80;
 const ROOT_SCAN_POINTS = 101;
-const ROOT_REFINE_POINTS = 7;
-const ROOT_MAX_REFINEMENTS = 9;
+const ROOT_MAX_BISECTION_EVALUATIONS = 30;
 const ROOT_TOLERANCE = 5e-4;
 
 /**
@@ -238,7 +240,12 @@ export const pmvChartableOutputs: readonly ModelOutput[] = [
 
 type TemperatureBracket =
   | { exactTemperature: number }
-  | { low: number; high: number };
+  | {
+      low: number;
+      high: number;
+      lowDelta: number;
+      highDelta: number;
+    };
 
 /**
  * Returns the ThermalZone metadata for a PMV value if it falls within the 
@@ -388,16 +395,64 @@ function assertPmvChartSource(
   });
 }
 
-function calculatePmvValues(
+function normalizePmvSolverPayload(payload: PmvRequestDto): PmvRequestDto {
+  if (payload.units === UnitSystem.SI) {
+    return { ...payload };
+  }
+
+  return {
+    ...payload,
+    ...units_converter(
+      {
+        tdb: payload.tdb,
+        tr: payload.tr,
+        vr: payload.vr,
+      },
+      payload.units,
+    ),
+    units: UnitSystem.SI,
+  };
+}
+
+function evaluatePmvDeltaAtTemperature(
   adapter: PmvStandardAdapter,
+  targetPmv: number,
+  rh: number,
   payload: PmvRequestDto,
-): { pmv: number; ppd: number } {
-  assertPmvRequestStandard(adapter, payload);
-  return adapter.calculate(payload);
+  temperature: number,
+): number | null {
+  try {
+    const pmv = adapter.calculate({
+      ...payload,
+      tdb: temperature,
+      rh,
+    }).pmv;
+    return Number.isFinite(pmv) ? pmv - targetPmv : null;
+  } catch {
+    return null;
+  }
+}
+
+function createTemperatureBracket(
+  low: number,
+  lowDelta: number,
+  high: number,
+  highDelta: number,
+): TemperatureBracket | null {
+  if (Math.abs(lowDelta) <= ROOT_TOLERANCE) {
+    return { exactTemperature: low };
+  }
+  if (Math.abs(highDelta) <= ROOT_TOLERANCE) {
+    return { exactTemperature: high };
+  }
+  if (lowDelta * highDelta <= 0) {
+    return { low, high, lowDelta, highDelta };
+  }
+  return null;
 }
 
 /**
- * Scans a range of temperatures sequentially to locate a bracket where the target PMV root crosses zero.
+ * Scans a range of temperatures once to locate a bracket where the target PMV root crosses zero.
  */
 function findTemperatureBracket(
   adapter: PmvStandardAdapter,
@@ -413,28 +468,13 @@ function findTemperatureBracket(
 
   for (let index = 0; index < pointCount; index += 1) {
     const temperature = minimum + ((maximum - minimum) * index) / (pointCount - 1);
-    const evaluationPayload = {
-      ...payload,
-      tdb: temperature,
+    const delta = evaluatePmvDeltaAtTemperature(
+      adapter,
+      targetPmv,
       rh,
-    };
-    const normalizedPayload = evaluationPayload.units === UnitSystem.SI
-      ? evaluationPayload
-      : {
-        ...evaluationPayload,
-        ...units_converter(
-          {
-            tdb: evaluationPayload.tdb,
-            tr: evaluationPayload.tr,
-            vr: evaluationPayload.vr,
-          },
-          evaluationPayload.units,
-        ),
-        units: UnitSystem.SI,
-      };
-
-    const pmv = calculatePmvValues(adapter, normalizedPayload).pmv;
-    const delta = Number.isFinite(pmv) ? pmv - targetPmv : null;
+      payload,
+      temperature,
+    );
 
     if (delta === null) {
       previousTemperature = null;
@@ -442,7 +482,7 @@ function findTemperatureBracket(
       continue;
     }
 
-    if (Math.abs(delta) < ROOT_TOLERANCE) {
+    if (Math.abs(delta) <= ROOT_TOLERANCE) {
       return { exactTemperature: temperature };
     }
 
@@ -450,6 +490,8 @@ function findTemperatureBracket(
       return {
         low: previousTemperature,
         high: temperature,
+        lowDelta: previousDelta,
+        highDelta: delta,
       };
     }
 
@@ -469,11 +511,35 @@ export function solveDryBulbForTargetPmv(
   rh: number,
   payload: PmvRequestDto,
 ): number | null {
-  const initialBracket = findTemperatureBracket(
+  assertPmvRequestStandard(adapter, payload);
+  const normalizedPayload = normalizePmvSolverPayload(payload);
+  const minimumDelta = evaluatePmvDeltaAtTemperature(
     adapter,
     targetPmv,
     rh,
-    payload,
+    normalizedPayload,
+    COMFORT_ZONE_MIN_DRY_BULB,
+  );
+  const maximumDelta = evaluatePmvDeltaAtTemperature(
+    adapter,
+    targetPmv,
+    rh,
+    normalizedPayload,
+    COMFORT_ZONE_MAX_DRY_BULB,
+  );
+  const endpointBracket = minimumDelta !== null && maximumDelta !== null
+    ? createTemperatureBracket(
+        COMFORT_ZONE_MIN_DRY_BULB,
+        minimumDelta,
+        COMFORT_ZONE_MAX_DRY_BULB,
+        maximumDelta,
+      )
+    : null;
+  const initialBracket = endpointBracket ?? findTemperatureBracket(
+    adapter,
+    targetPmv,
+    rh,
+    normalizedPayload,
     COMFORT_ZONE_MIN_DRY_BULB,
     COMFORT_ZONE_MAX_DRY_BULB,
     ROOT_SCAN_POINTS,
@@ -487,31 +553,47 @@ export function solveDryBulbForTargetPmv(
     return initialBracket.exactTemperature;
   }
 
-  let currentBracket = initialBracket;
+  let { low, high, lowDelta } = initialBracket;
+  let closestTemperature = Math.abs(lowDelta) <= Math.abs(initialBracket.highDelta)
+    ? low
+    : high;
+  let closestDelta = Math.min(
+    Math.abs(lowDelta),
+    Math.abs(initialBracket.highDelta),
+  );
 
-  for (let index = 0; index < ROOT_MAX_REFINEMENTS; index += 1) {
-    const refinedBracket = findTemperatureBracket(
+  for (let index = 0; index < ROOT_MAX_BISECTION_EVALUATIONS; index += 1) {
+    const midpoint = (low + high) / 2;
+    const midpointDelta = evaluatePmvDeltaAtTemperature(
       adapter,
       targetPmv,
       rh,
-      payload,
-      currentBracket.low,
-      currentBracket.high,
-      ROOT_REFINE_POINTS,
+      normalizedPayload,
+      midpoint,
     );
 
-    if (!refinedBracket) {
+    if (midpointDelta === null) {
       break;
     }
 
-    if ("exactTemperature" in refinedBracket) {
-      return refinedBracket.exactTemperature;
+    const absoluteMidpointDelta = Math.abs(midpointDelta);
+    if (absoluteMidpointDelta < closestDelta) {
+      closestTemperature = midpoint;
+      closestDelta = absoluteMidpointDelta;
+    }
+    if (absoluteMidpointDelta <= ROOT_TOLERANCE) {
+      return midpoint;
     }
 
-    currentBracket = refinedBracket;
+    if (lowDelta * midpointDelta <= 0) {
+      high = midpoint;
+    } else {
+      low = midpoint;
+      lowDelta = midpointDelta;
+    }
   }
 
-  return (currentBracket.low + currentBracket.high) / 2;
+  return closestDelta <= ROOT_TOLERANCE ? closestTemperature : null;
 }
 
 // ── Option Normalization and Synchronizers ──────────────────────────
@@ -808,20 +890,13 @@ function evaluatePmvCondition(
   adapter: PmvStandardAdapter,
   payload: PmvRequestDto,
 ): PmvChartEvaluation {
-  const pmvResult = calculatePmvValues(adapter, payload);
+  const pmvResult = adapter.calculate(payload);
 
   return {
     pmv: pmvResult.pmv,
     ppd: pmvResult.ppd,
     zoneLabel: getPmvZoneMeta(pmvResult.pmv).label,
   };
-}
-
-function evaluatePmvPayload(
-  adapter: PmvStandardAdapter,
-  payload: PmvRequestDto,
-): PmvChartEvaluation {
-  return evaluatePmvCondition(adapter, payload);
 }
 
 function buildPmvGridPoint(evaluation: PmvChartEvaluation) {
@@ -975,7 +1050,7 @@ function getPmvInputHoverTemplate({
 }): string {
   let evaluation: PmvChartEvaluation | undefined;
   try {
-    evaluation = evaluatePmvPayload(adapter, inputPayload);
+    evaluation = evaluatePmvCondition(adapter, inputPayload);
   } catch {
     // Preserve existing hover fallback behavior when PMV evaluation fails.
   }
@@ -993,17 +1068,6 @@ function getPmvInputHoverTemplate({
   });
 }
 
-interface PmvFieldChartOptions {
-  title: string;
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
-  grid: GridFieldChartStrategy | undefined;
-  showLegend: boolean;
-  margin: Record<string, number>;
-  inputGroups: Array<BuildInputTraceGroupsOptions<ComfortZoneRequestDto, unknown>>;
-  beforeInputTraces?: PlotTraceDto[];
-}
-
 interface PmvInputGroupOptions {
   adapter: PmvStandardAdapter;
   inputsMap: CompareInputMap<ComfortZoneRequestDto>;
@@ -1018,38 +1082,6 @@ interface PmvInputGroupOptions {
   yLabel?: string;
   yUnits?: string;
   buildOverlayTraces?: BuildInputTraceGroupsOptions<ComfortZoneRequestDto, unknown>["buildOverlayTraces"];
-}
-
-function buildPmvFieldChart({
-  title,
-  xAxis,
-  yAxis,
-  grid,
-  showLegend,
-  margin,
-  inputGroups,
-  beforeInputTraces = [],
-}: PmvFieldChartOptions): PlotlyChartResponseDto {
-  return buildGridContourFieldChart({
-    xAxis,
-    yAxis,
-    grid,
-    beforeInputTraces,
-    inputGroups,
-    layout: {
-      title,
-      xAxis,
-      yAxis,
-      paperBgColor: CHART_COLOR_WHITE,
-      plotBgColor: CHART_COLOR_PLOT_BG,
-      showLegend,
-      margin,
-      gridColor: CHART_COLOR_GRIDLINE,
-      legend: { orientation: "h", x: 0, y: 1.1 },
-      height: 480,
-    },
-    source: CalculationSource.FrontendGenerated,
-  });
 }
 
 function buildPmvInputGroup({
@@ -1210,8 +1242,7 @@ export function buildComparePsychrometricChart(
     }));
   });
 
-  return buildPmvFieldChart({
-    title: `${comfortModelMetaById[modelId].label} Psychrometric Chart`,
+  return buildGridContourFieldChart({
     xAxis: temperatureAxis,
     yAxis: humidityRatioAxis,
     grid: gridStrategy,
@@ -1253,8 +1284,19 @@ export function buildComparePsychrometricChart(
           : [];
       },
     })],
-    showLegend: showInputLegend,
-    margin: { l: 56, r: 24, t: 48, b: 80 },
+    layout: {
+      title: `${comfortModelMetaById[modelId].label} Psychrometric Chart`,
+      xAxis: temperatureAxis,
+      yAxis: humidityRatioAxis,
+      paperBgColor: CHART_COLOR_WHITE,
+      plotBgColor: CHART_COLOR_PLOT_BG,
+      showLegend: showInputLegend,
+      margin: { l: 56, r: 24, t: 48, b: 80 },
+      gridColor: CHART_COLOR_GRIDLINE,
+      legend: { orientation: "h", x: 0, y: 1.1 },
+      height: 480,
+    },
+    source: CalculationSource.FrontendGenerated,
   });
 }
 
@@ -1278,20 +1320,9 @@ export function buildPmvDynamicChart(
       dynamicYAxis as typeof PMV_DYNAMIC_AXIS_FIELDS[number],
     )
   ) {
-    return {
-      traces: [],
-      layout: {
-        title: "Invalid Axes Selection",
-        paper_bgcolor: CHART_COLOR_WHITE,
-        plot_bgcolor: CHART_COLOR_PLOT_BG,
-        showlegend: false,
-        margin: { l: 64, r: 24, t: 48, b: 64 },
-        xaxis: {},
-        yaxis: {},
-      },
-      annotations: [],
-      source: CalculationSource.FrontendGenerated,
-    };
+    throw new Error(
+      `Unsupported PMV dynamic axis pair: ${dynamicXAxis} / ${dynamicYAxis}.`,
+    );
   }
 
   const { modelId, chartRequest: payload } = chartSource;
@@ -1329,6 +1360,16 @@ export function buildPmvDynamicChart(
       ? "%{customdata[1]:.1f}%"
       : "%{customdata[0]:.1f}%",
   });
+  const dynamicAxisAdapter: DynamicAxisPayloadAdapter<PmvRequestDto> = {
+    setAxisValue: setPmvAxisValue,
+    getAxisValue: (request, field) => getPmvAxisValue(adapter, request, field),
+    getOperativeTemperature: adapter.getOperativeTemperature,
+    getTemperatureComponentRange: (field) => {
+      const range = getPmvAxisRangeSi(adapter, field);
+      const meta = fieldMetaByKey[field];
+      return range ?? { min: meta.minValue, max: meta.maxValue };
+    },
+  };
 
   return buildBandedGridFieldChart({
     config: fieldChartConfig,
@@ -1345,15 +1386,7 @@ export function buildPmvDynamicChart(
             pointArgs,
             { field: dynamicXAxis, valueSi: xSi },
             { field: dynamicYAxis, valueSi: ySi },
-            {
-              setAxisValue: setPmvAxisValue,
-              getOperativeTemperature: adapter.getOperativeTemperature,
-              getTemperatureComponentRange: (field) => {
-                const range = getPmvAxisRangeSi(adapter, field);
-                const meta = fieldMetaByKey[field];
-                return range ?? { min: meta.minValue, max: meta.maxValue };
-              },
-            },
+            dynamicAxisAdapter,
           );
           if (!hasValidCoordinates) {
             return {
@@ -1361,7 +1394,7 @@ export function buildPmvDynamicChart(
               additionalHoverMetadata: [NaN],
             };
           }
-          const evaluation = evaluatePmvPayload(adapter, pointArgs);
+          const evaluation = evaluatePmvCondition(adapter, pointArgs);
           return {
             valueSi: getPmvOutputValue(fieldChartConfig.zOutput, evaluation),
             additionalHoverMetadata: [
@@ -1383,7 +1416,7 @@ export function buildPmvDynamicChart(
         let pmvText: string | null = null;
         let ppdText: string | null = null;
         try {
-          const evaluation = evaluatePmvPayload(adapter, inputPayload);
+          const evaluation = evaluatePmvCondition(adapter, inputPayload);
           const valueSi = getPmvOutputValue(fieldChartConfig.zOutput, evaluation);
           const bandIndex = findNumericBandIndexForValue(fieldChartConfig.bands, valueSi);
           bandLabel = bandIndex === undefined
@@ -1576,7 +1609,7 @@ export function createPmvModelConfig({
 
     visibleInputIds.forEach((inputId) => {
       const request = toPmvRequest(state, inputId, adapter);
-      const result = calculatePmvValues(adapter, request);
+      const result = adapter.calculate(request);
       const complianceWarnings = adapter.checkApplicability(request);
 
       resultsByInput[inputId] = {

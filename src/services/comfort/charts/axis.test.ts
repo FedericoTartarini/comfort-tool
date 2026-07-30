@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+
+import { FieldKey } from "../../../models/fieldKeys";
+import { UnitSystem } from "../../../models/units";
+import { buildAxisValues, createFieldAxisScale } from "./axis";
+
+describe("chart axes", () => {
+  it("preserves SI values while converting display coordinates", () => {
+    const axis = createFieldAxisScale({
+      field: FieldKey.DryBulbTemperature,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 0, max: 100 },
+      points: 2,
+    });
+
+    expect(axis.toDisplay(0)).toBe(32);
+    expect(axis.toSi(212)).toBe(100);
+    expect(axis.units).toBe("°F");
+    expect(buildAxisValues(axis)).toEqual({
+      siValues: [0, 100],
+      displayValues: [32, 212],
+      displayRange: { min: 32, max: 212 },
+    });
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid point count %s",
+    (points) => {
+      const axis = createFieldAxisScale({
+        field: FieldKey.DryBulbTemperature,
+        unitSystem: UnitSystem.SI,
+        rangeSi: { min: 0, max: 1 },
+        points,
+      });
+
+      expect(() => buildAxisValues(axis)).toThrow(
+        `Axis points must be a positive integer; received ${points}`,
+      );
+    },
+  );
+});

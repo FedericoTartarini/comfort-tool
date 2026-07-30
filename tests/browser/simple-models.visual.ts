@@ -11,8 +11,29 @@ async function selectModel(page: Page, modelLabel: string) {
 async function selectChart(page: Page, chartLabel: string) {
   const trigger = page.getByRole("button", { name: "Select chart type and export" });
   await trigger.click();
-  await page.getByRole("button", { name: chartLabel, exact: true }).click();
-  await trigger.click();
+  const option = page.getByRole("button", { name: chartLabel, exact: true });
+  await expect(option).toBeVisible();
+  await option.click();
+  await expect(trigger).toContainText(chartLabel);
+  await page.mouse.click(1, 1);
+  await expect(option).toBeHidden();
+}
+
+async function expectExploreControls(page: Page, visible: boolean) {
+  const controls = [
+    page.getByRole("button", { name: "Select chart X axis" }),
+    page.getByRole("button", { name: "Select chart Y axis" }),
+    page.getByRole("button", { name: "Select chart display output" }),
+    page.getByRole("button", { name: "Edit chart thresholds" }),
+  ];
+
+  for (const control of controls) {
+    if (visible) {
+      await expect(control).toBeVisible();
+    } else {
+      await expect(control).toBeHidden();
+    }
+  }
 }
 
 async function expectRenderedContour(plot: Locator) {
@@ -38,15 +59,19 @@ async function expectRenderedContour(plot: Locator) {
 }
 
 for (const modelLabel of ["Heat Index", "Humidex"]) {
-  test(`${modelLabel} renders non-empty Static and Dynamic charts`, async ({ page }) => {
+  test(`${modelLabel} switches between Psychrometric and Dynamic controls`, async ({ page }) => {
     await page.goto("/");
     const modelSelect = await selectModel(page, modelLabel);
     await expect(modelSelect).toHaveValue(modelLabel);
 
     const plot = page.getByTestId("comfort-chart-plot");
+
+    await selectChart(page, "Psychrometric");
+    await expectExploreControls(page, false);
     await expectRenderedContour(plot);
 
     await selectChart(page, "Dynamic");
+    await expectExploreControls(page, true);
     await expectRenderedContour(plot);
   });
 }

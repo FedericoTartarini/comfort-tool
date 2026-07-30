@@ -47,7 +47,10 @@ import {
   resolveBaselineInputEntry,
   shouldShowInputLegend,
 } from "../services/comfort/charts/inputPoints";
-import { applyDynamicAxisCoordinates } from "../services/comfort/charts/dynamicAxisPayload";
+import {
+  applyDynamicAxisCoordinates,
+  type DynamicAxisPayloadAdapter,
+} from "../services/comfort/charts/dynamicAxisPayload";
 
 // ── Thermal Zones Definition ──────────────────────────
 
@@ -82,16 +85,8 @@ const UTCI_CHART_BOUNDARIES = [
 // Fallback zone used for NaN or an unrecognized category.
 const UTCI_DEFAULT_ZONE = utciZonesList[5]; // "No Thermal Stress"
 
-export function getUtciZoneMeta(value: string | number): ThermalZone {
-  if (typeof value === "number") {
-    if (isNaN(value)) return UTCI_DEFAULT_ZONE;
-    return utciZonesList.find((zone) => zone.contains(value)) ?? UTCI_DEFAULT_ZONE;
-  }
-  // If it's a string, check if it's a numeric representation first
-  const parsed = Number(value);
-  if (value.trim() !== "" && !isNaN(parsed)) {
-    return utciZonesList.find((zone) => zone.contains(parsed)) ?? UTCI_DEFAULT_ZONE;
-  }
+export function getUtciZoneMeta(value: number): ThermalZone {
+  if (!Number.isFinite(value)) return UTCI_DEFAULT_ZONE;
   return utciZonesList.find((zone) => zone.contains(value)) ?? UTCI_DEFAULT_ZONE;
 }
 
@@ -175,30 +170,29 @@ export interface UtciChartSourceDto {
 }
 
 export function calculateUtci(payload: UtciRequestDto): UtciResponseDto {
-  // Calculate UTCI using jsthermalcomfort utci function.
-  const result = utci(payload.tdb, payload.tr, payload.v, payload.rh, payload.units, true, false);
-
-  // The jsthermalcomfort utci function returns a number when return_stress_category is false, 
-  // and an object when return_stress_category is true. Since we pass true, it returns an object, 
-  // and this check acts as a TypeScript type guard to ensure the compiler knows it is an object.
-  if (typeof result === "number") {
-    throw new Error("UTCI calculation did not return a stress category.");
-  }
+  const result = utci(
+    payload.tdb,
+    payload.tr,
+    payload.v,
+    payload.rh,
+    payload.units,
+    false,
+    false,
+  );
 
   const utciVal = result.utci;
   if (!Number.isFinite(utciVal)) {
     throw new Error(`Invalid non-finite UTCI value encountered: ${utciVal}`);
   }
 
-  const category = String(result.stress_category).toLowerCase();
-  const matched = utciZonesList.some((z) => z.category === category);
-  if (!matched) {
-    throw new Error(`Unexpected UTCI stress category: ${category}`);
+  const zone = getUtciZoneMeta(utciVal);
+  if (!zone.category) {
+    throw new Error(`UTCI zone has no stress category: ${zone.label}`);
   }
 
   return {
     utci: utciVal,
-    stressCategory: category,
+    stressCategory: zone.category,
     source: CalculationSource.JsThermalComfort,
   };
 }
@@ -287,7 +281,7 @@ function buildUtciResultSections(
 
   sections.push(
     buildResultSection("Stress Category", results, visibleInputIds, (result) => {
-      const zone = getUtciZoneMeta(result.stressCategory);
+      const zone = getUtciZoneMeta(result.utci);
       return {
         text: zone.label,
         color: zone.textColor,
@@ -388,7 +382,7 @@ export function buildUtciStressChart(
       x: displayUtci,
       y: yPosition,
       showLegend: showInputLegend,
-      hovertemplate: `${inputLabel}<br>UTCI: %{x:.1f} ${temperatureDisplayUnits}<br><b>Stress Category: ${getUtciZoneMeta(result.stressCategory).label}</b><extra></extra>`,
+      hovertemplate: `${inputLabel}<br>UTCI: %{x:.1f} ${temperatureDisplayUnits}<br><b>Stress Category: ${getUtciZoneMeta(result.utci).label}</b><extra></extra>`,
       markerSize: 14,
     }));
   });
@@ -473,8 +467,6 @@ export function buildUtciDynamicChart(
   const dynamicXAxis = fieldChartConfig.xField;
   const dynamicYAxis = fieldChartConfig.yField;
   if (
-    !dynamicXAxis ||
-    !dynamicYAxis ||
     dynamicXAxis === dynamicYAxis ||
     !UTCI_DYNAMIC_AXIS_FIELDS.includes(
       dynamicXAxis as typeof UTCI_DYNAMIC_AXIS_FIELDS[number],
@@ -483,20 +475,9 @@ export function buildUtciDynamicChart(
       dynamicYAxis as typeof UTCI_DYNAMIC_AXIS_FIELDS[number],
     )
   ) {
-    return {
-      traces: [],
-      layout: {
-        title: "Invalid Axes Selection",
-        paper_bgcolor: CHART_COLOR_WHITE,
-        plot_bgcolor: CHART_COLOR_PLOT_BG,
-        showlegend: false,
-        margin: UTCI_DYNAMIC_CHART_MARGIN,
-        xaxis: {},
-        yaxis: {},
-      },
-      annotations: [],
-      source: CalculationSource.FrontendGenerated,
-    };
+    throw new Error(
+      `Unsupported UTCI dynamic axis pair: ${dynamicXAxis} / ${dynamicYAxis}.`,
+    );
   }
 
   const activeInputPayload = resolveBaselineInputEntry(payload.inputs, baselineInputId)?.payload;
@@ -512,6 +493,19 @@ export function buildUtciDynamicChart(
   });
   const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Utci, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
+  const dynamicAxisAdapter: DynamicAxisPayloadAdapter<UtciRequestDto> = {
+    setAxisValue: setUtciAxisValue,
+    getAxisValue: getUtciAxisValue,
+    getOperativeTemperature: (request) => t_o(
+      request.tdb,
+      request.tr,
+      request.v,
+      JsThermalComfortStandard.ISO,
+    ),
+    getTemperatureComponentRange: (field) => (
+      field === FieldKey.DryBulbTemperature ? TDB_LIMITS : TR_LIMITS
+    ),
+  };
 
   return buildBandedGridFieldChart({
     config: fieldChartConfig,
@@ -529,18 +523,7 @@ export function buildUtciDynamicChart(
             pointArgs,
             { field: dynamicXAxis, valueSi: xSi },
             { field: dynamicYAxis, valueSi: ySi },
-            {
-              setAxisValue: setUtciAxisValue,
-              getOperativeTemperature: (request) => t_o(
-                request.tdb,
-                request.tr,
-                request.v,
-                JsThermalComfortStandard.ISO,
-              ),
-              getTemperatureComponentRange: (field) => (
-                field === FieldKey.DryBulbTemperature ? TDB_LIMITS : TR_LIMITS
-              ),
-            },
+            dynamicAxisAdapter,
           );
           if (!hasValidCoordinates) {
             return NaN;
@@ -551,10 +534,10 @@ export function buildUtciDynamicChart(
             pointArgs.v,
             pointArgs.rh,
             UnitSystem.SI,
-            true,
+            false,
             false,
           );
-          if (typeof result !== "object" || typeof result.utci !== "number") {
+          if (typeof result.utci !== "number") {
             return NaN;
           }
           return result.utci;

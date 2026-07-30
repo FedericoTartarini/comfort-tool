@@ -24,7 +24,9 @@ import {
   pmvZonesList,
   solveDryBulbForTargetPmv,
   type PmvChartSourceDto,
+  type PmvRequestDto,
   type PmvResponseDto,
+  type PmvStandardAdapter,
 } from "./pmvShared";
 
 function setPmvInputs(
@@ -425,6 +427,92 @@ describe("PMV standard model configurations", () => {
 
     expect(getInputX(ashraeChart)).toBe(23);
     expect(getInputX(isoChart)).toBeCloseTo(22.612, 3);
+  });
+
+  it.each(pmvStandardCases)(
+    "$label solves a normally bracketed PMV root within 32 model evaluations",
+    ({ adapter }) => {
+      let calculationCount = 0;
+      const countingAdapter: PmvStandardAdapter = {
+        ...adapter,
+        calculate: (request) => {
+          calculationCount += 1;
+          return adapter.calculate(request);
+        },
+      };
+      const request: PmvRequestDto = {
+        tdb: 25,
+        tr: 25,
+        vr: 0.1,
+        rh: 50,
+        met: 1.2,
+        clo: 0.5,
+        wme: 0,
+        occupantHasAirSpeedControl: true,
+        standard: adapter.calculationStandard,
+        units: UnitSystem.SI,
+      };
+      const targetPmv = 0.5;
+      const root = solveDryBulbForTargetPmv(
+        countingAdapter,
+        targetPmv,
+        request.rh,
+        request,
+      );
+
+      expect(root).not.toBeNull();
+      expect(calculationCount).toBeLessThanOrEqual(32);
+      const evaluatedPmv = adapter.calculate({ ...request, tdb: root! }).pmv;
+      expect(Math.abs(evaluatedPmv - targetPmv)).toBeLessThanOrEqual(5e-4);
+    },
+  );
+
+  it("uses the coarse fallback when same-sign endpoints contain a non-monotonic root", () => {
+    const adapter: PmvStandardAdapter = {
+      ...pmvAshraeAdapter,
+      calculate: (request) => ({
+        pmv: (request.tdb - 10.25) * (request.tdb - 20.25),
+        ppd: 0,
+      }),
+    };
+    const request: PmvRequestDto = {
+      tdb: 25,
+      tr: 25,
+      vr: 0.1,
+      rh: 50,
+      met: 1.2,
+      clo: 0.5,
+      wme: 0,
+      occupantHasAirSpeedControl: true,
+      standard: adapter.calculationStandard,
+      units: UnitSystem.SI,
+    };
+
+    const root = solveDryBulbForTargetPmv(adapter, 0, request.rh, request);
+
+    expect(root).not.toBeNull();
+    expect(root).toBeCloseTo(10.25, 4);
+  });
+
+  it("returns null when neither endpoint nor the coarse fallback finds a root", () => {
+    const adapter: PmvStandardAdapter = {
+      ...pmvAshraeAdapter,
+      calculate: () => ({ pmv: 1, ppd: 0 }),
+    };
+    const request: PmvRequestDto = {
+      tdb: 25,
+      tr: 25,
+      vr: 0.1,
+      rh: 50,
+      met: 1.2,
+      clo: 0.5,
+      wme: 0,
+      occupantHasAirSpeedControl: true,
+      standard: adapter.calculationStandard,
+      units: UnitSystem.SI,
+    };
+
+    expect(solveDryBulbForTargetPmv(adapter, 0, request.rh, request)).toBeNull();
   });
 
   it("rejects mismatched standard adapters, requests, and chart sources", () => {

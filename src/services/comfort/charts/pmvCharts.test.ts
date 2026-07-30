@@ -84,6 +84,20 @@ function createExploreConfig(
   };
 }
 
+function getFirstConstraintFill(
+  chart: ReturnType<typeof buildPmvDynamicChart>,
+) {
+  return chart.traces.find((trace) => (
+    trace.contours?.type === "constraint" && trace.contours.operation !== "="
+  ));
+}
+
+function getFirstHitRegion(
+  chart: ReturnType<typeof buildPmvDynamicChart>,
+) {
+  return chart.traces.find((trace) => trace.hoveron === "fills");
+}
+
 describe("PMV charts", () => {
   it("builds the psychrometric chart with PMV zones, RH curves, comfort overlay, and SI input markers", () => {
     const chartRequest = createPmvChartRequest();
@@ -156,19 +170,22 @@ describe("PMV charts", () => {
       createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.IP,
     );
-    const siHoverTrace = siChart.traces.find((trace) => trace.name === "PMV bands hover");
+    const siFillTrace = getFirstConstraintFill(siChart);
+    const siHitRegion = getFirstHitRegion(siChart);
     const siBoundaryValues = siChart.traces
       .filter((trace) => trace.contours?.operation === "=")
       .map((trace) => trace.contours.value);
     const siInputTrace = siChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
     const ipInputTrace = ipChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
 
-    expect(siHoverTrace?.z).toHaveLength(50);
-    expect(siHoverTrace?.z?.[0]).toHaveLength(50);
-    expect(siHoverTrace?.hoverMetadata?.[0]?.[0]).toHaveLength(2);
-    expect(siHoverTrace?.hovertemplate).toContain("<b>Zone: %{text}</b>");
-    expect(siHoverTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
-    expect(siHoverTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
+    expect(siFillTrace?.z).toHaveLength(50);
+    expect(siFillTrace?.z?.[0]).toHaveLength(50);
+    expect(siFillTrace?.hoverinfo).toBe("skip");
+    expect(siHitRegion?.text?.[0]).toBe("Cold");
+    expect(siHitRegion?.hoverMetadata?.[0]).toHaveLength(2);
+    expect(siHitRegion?.hovertemplate).toContain("<b>Zone: %{text}</b>");
+    expect(siHitRegion?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
+    expect(siHitRegion?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
     expect(siBoundaryValues).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
     expect(siInputTrace?.x).toEqual([25]);
     expect(siInputTrace?.y).toEqual([50]);
@@ -205,8 +222,10 @@ describe("PMV charts", () => {
       UnitSystem.SI,
     );
 
-    const pmvHoverTrace = pmvChart.traces.find((trace) => trace.name === "PMV bands hover");
-    const ppdHoverTrace = ppdChart.traces.find((trace) => trace.name === "PPD (%) bands hover");
+    const pmvFillTrace = getFirstConstraintFill(pmvChart);
+    const ppdFillTrace = getFirstConstraintFill(ppdChart);
+    const pmvHitRegion = getFirstHitRegion(pmvChart);
+    const ppdHitRegion = getFirstHitRegion(ppdChart);
     const pmvInputTrace = pmvChart.traces.find(
       (trace) => trace.type === "scatter" && trace.mode === "markers",
     );
@@ -222,15 +241,15 @@ describe("PMV charts", () => {
 
     expect(String(pmvChart.layout.title)).toContain("PMV");
     expect(String(ppdChart.layout.title)).toContain("PPD");
-    expect(pmvHoverTrace?.z).not.toEqual(ppdHoverTrace?.z);
-    expect(pmvHoverTrace?.hovertemplate).toContain("<b>Zone: %{text}</b>");
-    expect(pmvHoverTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
-    expect(pmvHoverTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
-    expect(ppdHoverTrace?.hovertemplate).toContain("<b>Band: %{text}</b>");
-    expect(ppdHoverTrace?.hovertemplate).toContain("PMV: %{customdata[1]:.2f}");
-    expect(ppdHoverTrace?.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
-    expect(pmvHoverTrace?.hoverMetadata?.[0]?.[0]).toHaveLength(2);
-    expect(ppdHoverTrace?.hoverMetadata?.[0]?.[0]).toHaveLength(2);
+    expect(pmvFillTrace?.z).not.toEqual(ppdFillTrace?.z);
+    expect(pmvHitRegion?.hovertemplate).toContain("<b>Zone: %{text}</b>");
+    expect(pmvHitRegion?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
+    expect(pmvHitRegion?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
+    expect(ppdHitRegion?.hovertemplate).toContain("<b>Band: %{text}</b>");
+    expect(ppdHitRegion?.hovertemplate).toContain("PMV: %{customdata[1]:.2f}");
+    expect(ppdHitRegion?.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
+    expect(pmvHitRegion?.hoverMetadata?.[0]).toHaveLength(2);
+    expect(ppdHitRegion?.hoverMetadata?.[0]).toHaveLength(2);
     expect(pmvInputTrace?.hovertemplate).toContain("<b>Zone: Neutral</b>");
     expect(pmvInputTrace?.hovertemplate).toContain("PMV: -0.19");
     expect(pmvInputTrace?.hovertemplate).toContain("PPD: 5.7%");
@@ -267,10 +286,8 @@ describe("PMV charts", () => {
 
     expect(getBoundaryValues(ashraeChart)).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
     expect(getBoundaryValues(isoChart)).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
-    expect(ashraeChart.traces.find((trace) => trace.name === "PMV bands hover")?.z)
-      .toHaveLength(50);
-    expect(isoChart.traces.find((trace) => trace.name === "PMV bands hover")?.z)
-      .toHaveLength(50);
+    expect(getFirstConstraintFill(ashraeChart)?.z).toHaveLength(50);
+    expect(getFirstConstraintFill(isoChart)?.z).toHaveLength(50);
   });
 
   it.each([ModelOutputKey.Pmv, ModelOutputKey.Ppd])(
@@ -315,10 +332,10 @@ describe("PMV charts", () => {
       createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
-    const hoverTrace = chart.traces.find((trace) => trace.name === "PMV bands hover");
-    const xValues = hoverTrace?.x ?? [];
-    const yValues = hoverTrace?.y ?? [];
-    const zValues = hoverTrace?.z ?? [];
+    const fillTrace = getFirstConstraintFill(chart);
+    const xValues = fillTrace?.x ?? [];
+    const yValues = fillTrace?.y ?? [];
+    const zValues = fillTrace?.z ?? [];
     const upperYIndex = yValues.findIndex((value) => value > 50);
     const lowerYIndex = upperYIndex - 1;
     const yFraction = (50 - yValues[lowerYIndex])
@@ -375,7 +392,7 @@ describe("PMV charts", () => {
       UnitSystem.SI,
     );
 
-    expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+    expect(chart.layout.title).toContain("Dynamic Chart");
     expect(chart.traces.some((trace) => (
       trace.type === "contour"
       && trace.z?.flat().some(Number.isFinite)
@@ -393,8 +410,20 @@ describe("PMV charts", () => {
       UnitSystem.SI,
     );
 
-    expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+    expect(chart.layout.title).toContain("Dynamic Chart");
     expect(chart.traces.length).toBeGreaterThan(0);
+  });
+
+  it("fails directly when PMV dynamic axes violate the state invariant", () => {
+    expect(() => buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      createExploreConfig(
+        FieldKey.DryBulbTemperature,
+        FieldKey.DryBulbTemperature,
+      ),
+      UnitSystem.SI,
+    )).toThrow(/dynamic axis pair/i);
   });
 
   it("uses each PMV standard's clothing limit for dynamic chart axes", () => {

@@ -280,11 +280,13 @@ describe("comfort services", () => {
       createPmvExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
     );
     const inputTrace = dynamicChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
-    const hoverTrace = dynamicChart.traces.find((trace) => trace.name === "PMV bands hover");
+    const rawGridTrace = dynamicChart.traces.find((trace) => (
+      trace.contours?.type === "constraint" && trace.contours.operation !== "="
+    ));
 
-    expect(hoverTrace?.isBackgroundZone).toBe(true);
-    expect(hoverTrace?.z).toHaveLength(50);
-    expect(hoverTrace?.z?.[0]).toHaveLength(50);
+    expect(rawGridTrace?.isBackgroundZone).toBe(true);
+    expect(rawGridTrace?.z).toHaveLength(50);
+    expect(rawGridTrace?.z?.[0]).toHaveLength(50);
     expect(String(dynamicChart.layout.xaxis.title)).toContain("Air temperature");
     expect(String(dynamicChart.layout.yaxis.title)).toContain("Relative humidity");
     expect(inputTrace?.x).toEqual([26]);
@@ -325,11 +327,16 @@ describe("comfort services", () => {
       createPmvExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
-    const input1HoverTrace = input1BaselineChart.traces.find((trace) => trace.name === "PMV bands hover");
-    const input2HoverTrace = input2BaselineChart.traces.find((trace) => trace.name === "PMV bands hover");
+    const input1GridTrace = input1BaselineChart.traces.find((trace) => (
+      trace.contours?.type === "constraint" && trace.contours.operation !== "="
+    ));
+    const input2GridTrace = input2BaselineChart.traces.find((trace) => (
+      trace.contours?.type === "constraint" && trace.contours.operation !== "="
+    ));
 
-    expect(input1HoverTrace?.z?.[25]?.[25]).not.toBe(input2HoverTrace?.z?.[25]?.[25]);
-    expect(input2BaselineChart.traces.filter((trace) => trace.type === "scatter")).toHaveLength(2);
+    expect(input1GridTrace?.z?.[25]?.[25]).not.toBe(input2GridTrace?.z?.[25]?.[25]);
+    expect(input2BaselineChart.traces.filter((trace) => trace.mode === "markers"))
+      .toHaveLength(2);
   });
 
   it("rebuilds chart labels and hover text for IP units", () => {

@@ -6,7 +6,7 @@ The architecture is **config-driven**: new models are added by registering a sel
 
 > **Reference models** — use these existing models as concrete examples while reading this guide:
 > - `src/comfortModels/heatIndex.ts` — simple 2-input model with both a static and a dynamic chart
-> - `src/comfortModels/humidex.ts` — simple 2-input model with only a dynamic chart
+> - `src/comfortModels/humidex.ts` — simple 2-input model with both a static and a dynamic chart
 > - `src/comfortModels/windChill.ts` — model with a custom unit (W/m²) and a cold-stress domain
 
 ---
@@ -136,6 +136,7 @@ const TDB_LIMITS = { min: 15, max: 45 };
 const DEFAULT_BASELINE = {
   tdb: 25,
   rh: 50,
+  units: UnitSystem.SI,
 };
 ```
 
@@ -238,7 +239,10 @@ import { InputControlId } from "../models/inputControls";
 import { bandsFromThermalZones, ChartMode, ModelOutputKey, type ModelOutput } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
-import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
+import {
+  buildGridModelChart,
+  type GridModelChartSpec,
+} from "../services/comfort/charts/gridModelCharts";
 import { convertModelOutputFromSi, formatDisplayValue, getModelOutputDisplayMeta } from "../services/units";
 
 const myNewModelBuilder = new ComfortModelBuilder<MyNewModelResponseDto, MyNewModelChartSourceDto>(
@@ -391,9 +395,40 @@ myNewModelBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
 
 #### Chart Builder
 
-The chart builder produces Plotly chart data. Use `buildComfortModelChart` from `src/services/comfort/charts/sharedCharts.ts` — it handles both dynamic and static chart types through a single interface.
+The chart builder produces Plotly chart data. Simple grid models use the typed `buildGridModelChart` strategy from `src/services/comfort/charts/gridModelCharts.ts`. The model declares how its payload maps to fields and how it is evaluated; the shared strategy owns baseline cloning, Explore narrowing, grid assembly, band assignment, and display conversion.
 
 ```ts
+function getMyNewModelAxisValue(
+  payload: MyNewModelRequestDto,
+  field: FieldKey,
+): number {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      return payload.tdb;
+    case FieldKey.RelativeHumidity:
+      return payload.rh;
+    default:
+      throw new Error(`Unsupported My New Model chart field: ${field}`);
+  }
+}
+
+function setMyNewModelAxisValue(
+  payload: MyNewModelRequestDto,
+  field: FieldKey,
+  valueSi: number,
+): void {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      payload.tdb = valueSi;
+      return;
+    case FieldKey.RelativeHumidity:
+      payload.rh = valueSi;
+      return;
+    default:
+      throw new Error(`Unsupported My New Model chart field: ${field}`);
+  }
+}
+
 myNewModelBuilder.setChartBuilder((
   chartId,
   chartSource,
@@ -401,82 +436,74 @@ myNewModelBuilder.setChartBuilder((
   unitSystem,
   fieldChartConfig,
 ) => {
-  return buildComfortModelChart(
+  const chartSpec: GridModelChartSpec<
+    MyNewModelRequestDto,
+    MyNewModelResponseDto
+  > = {
+    dynamicChartId: ChartId.MyNewModelDynamic,
+    dynamicTitle: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Dynamic Chart`,
+    output: myNewModelOutput,
+    zones: myNewModelZonesList,
+    axisRanges: {
+      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
+    },
+    baselinePayloadDefault: DEFAULT_BASELINE,
+    getAxisValue: getMyNewModelAxisValue,
+    setAxisValue: setMyNewModelAxisValue,
+    evaluate: calculateMyNewModel,
+    getOutputValue: (result) => result.index,
+
+    // Optional fixed chart. Its ID is explicit and it remains independent from
+    // the transient Explore output and working bands.
+    staticChart: {
+      chartId: ChartId.MyNewModelRanges,
+      title: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Ranges`,
+      xField: FieldKey.RelativeHumidity,
+      yField: FieldKey.DryBulbTemperature,
+      xRangeSi: {
+        min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
+        max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+      },
+      yRangeSi: TDB_LIMITS,
+      hovertemplate: "%{text}<extra></extra>",
+      getInputHovertemplate: (label, result) =>
+        `${label}<br>RH: %{x:.1f}%<br>Tdb: %{y:.1f}<br><b>Category: ${result?.category || ""}</b><extra></extra>`,
+      getXValue: (payload) => payload.rh,
+      getYValue: (payload) => payload.tdb,
+      evaluatePoint: (xSi, ySi) => {
+        const result = calculateMyNewModel({
+          tdb: ySi,
+          rh: xSi,
+          units: UnitSystem.SI,
+        });
+        const zone = myNewModelZonesList.find((item) => item.contains(result.index));
+        const rangeValue = zone ? myNewModelZonesList.indexOf(zone) : 0;
+        return {
+          rangeValue,
+          category: zone?.label ?? myNewModelZonesList[0].label,
+        };
+      },
+    },
+  };
+
+  return buildGridModelChart(
     chartId,
     chartSource,
     resultsByInput,
     unitSystem,
-    fieldChartConfig?.mode === ChartMode.Explore ? fieldChartConfig : null,
-    {
-      dynamicChartId: ChartId.MyNewModelDynamic,
-      dynamicTitle: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Dynamic Chart`,
-      output: myNewModelOutput,
-      zones: myNewModelZonesList,
-      customRanges: {
-        [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-      },
-      baselinePayloadDefault: DEFAULT_BASELINE,
-
-      // The model owns raw output extraction. The shared engine owns working-band
-      // assignment, colors, output conversion, contour metadata, and gap handling.
-      calculateDynamicOutput: (
-        xSi,
-        ySi,
-        dynamicXAxis,
-        dynamicYAxis,
-        baselinePayload,
-        zOutput,
-      ) => {
-        if (zOutput !== ModelOutputKey.MyNewModelIndex) {
-          throw new Error(`Unsupported chart output: ${zOutput}`);
-        }
-        const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
-        calcPayload[dynamicXAxis] = xSi;
-        calcPayload[dynamicYAxis] = ySi;
-        return someLibraryFunction(calcPayload.tdb, calcPayload.rh).index;
-      },
-      getResultOutputValue: (cached, zOutput) => (
-        zOutput === ModelOutputKey.MyNewModelIndex ? cached?.index : undefined
-      ),
-
-      // Optional fixed chart. Static chart behavior remains independent from
-      // the transient Explore output and working bands.
-      staticConfig: {
-        title: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Ranges`,
-        xKey: FieldKey.RelativeHumidity,
-        yKey: FieldKey.DryBulbTemperature,
-        xRangeSi: {
-          min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
-          max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
-        },
-        yRangeSi: TDB_LIMITS,
-        hovertemplateContour: "%{text}<extra></extra>",
-        getHovertemplateScatter: (label, cached) =>
-          `${label}<br>RH: %{x:.1f}%<br>Tdb: %{y:.1f}<br><b>Category: ${cached?.category || ""}</b><extra></extra>`,
-        getScatterXSi: (payload) => payload.rh,
-        getScatterYSi: (payload) => payload.tdb,
-        calculateStaticPoint: (xSi, ySi) => {
-          const rawResult = someLibraryFunction(ySi, xSi);
-          const zone = myNewModelZonesList.find((item) => item.contains(rawResult.index));
-          const rangeValue = zone ? myNewModelZonesList.indexOf(zone) : 0;
-          return {
-            rangeValue,
-            category: zone?.label ?? myNewModelZonesList[0].label,
-          };
-        },
-      },
-    },
+    fieldChartConfig,
+    chartSpec,
   );
 });
 ```
 
-The controller supplies `FieldChartConfig` only for a valid dynamic Explore chart. It restricts x/y to `dynamicAxisFields`, z to `chartableOutputs`, and bands to a sorted, non-overlapping canonical-SI working copy. Do not duplicate those selections in the chart-source DTO or classify Explore output inside the model callback.
+The shared strategy narrows `FieldChartConfig` to Explore mode. State restricts x/y to `dynamicAxisFields`, z to `chartableOutputs`, and bands to a sorted, non-overlapping canonical-SI working copy. Do not duplicate those selections in the chart-source DTO or classify Explore output inside the model callback. Axis mismatches are invariant failures, not empty “Invalid Axes” charts.
 
-If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper to preserve the independently selected component and solve the other component in canonical SI. Do not reject these pairs solely because Operative temperature ultimately updates both calculation-temperature inputs.
+If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper with a `DynamicAxisPayloadAdapter` that implements both `getAxisValue` and `setAxisValue`. Solver probes restore the temperature component in `finally`; a successful solve commits it once, while a failed post-condition rolls back only that solved field. The independently selected other axis must remain unchanged. Create the adapter once outside the grid loop.
 
-The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Each constraint region uses its top-level `fillcolor` with contour coloring disabled, preventing per-band full-grid backgrounds from blending together. Plotly shades the invalid side of a constraint, so the trace operation represents the complement of the visible band (outside a finite interval or the opposite half-plane for an unbounded interval). Keep this opt-in model-specific: discrete or classified outputs should continue to use the default strategy. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
+The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Each constraint region uses its top-level `fillcolor` with contour coloring disabled. Plotly's constraint traces can still receive hover events outside their visible fill, so `zoneGrid` derives band-local marching-squares hit regions from the same raw grid and band edges. There is no transparent full-grid hover trace: gaps remain non-interactive, while every hit region owns one fixed band label. Keep band geometry and classification in the chart engine, never in `PlotlyCanvas`, and do not raise sampling density to mask a gap. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
 
-If a dynamic hover needs an additional model result, `calculateDynamicOutput` may return `{ valueSi, additionalHoverMetadata }` instead of a number. Set `bandLabel` and `dynamicHoverExtension` on the model chart config to share the label, hover suffix, and cached-input metadata extractor across contour and input-point hovers. A direct `buildBandedGridFieldChart` caller may instead provide `hoverTemplate` when the complete model-specific ordering and precision must override the generic template. The selected display output remains `customdata[0]`, and additional metadata starts at index 1, so callers must keep those indexes aligned with the template. Keep `valueSi` canonical; convert presentation-only metadata through `src/services/units/`, and keep the same metadata order for grid evaluations and cached input results.
+If a typed grid model's dynamic hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A direct `buildBandedGridFieldChart` caller may instead return `{ valueSi, additionalHoverMetadata }` from its evaluator and provide `hoverTemplate` when model-specific ordering or precision is required. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
 
 #### Final Builder Registrations
 
@@ -652,7 +679,7 @@ For unit conversion, add any new output presentation to the exhaustive registry 
 
 ### What if my model uses string categories instead of numeric ranges?
 
-Pass a `category` string to the `ThermalZone` constructor. The `z.contains(value)` method accepts strings and will match against `category` (case-insensitive) or `label`. This is how the UTCI model works.
+Pass a `category` string to the `ThermalZone` constructor only when the model truly has a stable categorical output. The `z.contains(value)` method accepts strings and matches `category` (case-insensitive) or `label`. Models with a numeric index, including UTCI, must classify from that numeric value and the zones' half-open intervals so results and hover cannot diverge.
 
 ### What if my model needs an advanced option menu (like PMV's humidity mode)?
 
@@ -664,7 +691,7 @@ Pass a `category` string to the `ThermalZone` constructor. The `z.contains(value
 
 ### What if my model has no static chart and only a dynamic chart?
 
-Omit the `staticConfig` block from `buildComfortModelChart(...)` entirely and set your default chart to the dynamic chart ID:
+Omit the `staticChart` property from `GridModelChartSpec` and set your default chart to the dynamic chart ID:
 
 ```ts
 myNewModelBuilder.setDefaultChart(

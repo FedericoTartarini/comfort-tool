@@ -44,7 +44,10 @@ import {
   shouldShowInputLegend,
   type BuildInputTraceGroupsOptions,
 } from "../services/comfort/charts/inputPoints";
-import { applyDynamicAxisCoordinates } from "../services/comfort/charts/dynamicAxisPayload";
+import {
+  applyDynamicAxisCoordinates,
+  type DynamicAxisPayloadAdapter,
+} from "../services/comfort/charts/dynamicAxisPayload";
 import {
   buildClosedBoundaryPolygonTrace,
   buildBoundaryRegionTraces,
@@ -1586,6 +1589,25 @@ export function buildAdaptiveDynamicChart(
       });
     }
 
+    const dynamicAxisAdapter: DynamicAxisPayloadAdapter<AdaptiveRequestDto> = {
+      setAxisValue: setAdaptiveAxisValue,
+      getAxisValue: (request, field) => getAdaptiveAxisValue(
+        request,
+        field,
+        standardMode,
+      ),
+      getOperativeTemperature: (request) => t_o(
+        request.tdb,
+        request.tr,
+        request.v,
+        getAdaptiveJtcStandard(standardMode),
+      ),
+      getTemperatureComponentRange: (field) => {
+        const meta = fieldMetaByKey[field];
+        return { min: meta.minValue, max: meta.maxValue };
+      },
+    };
+
     return buildGridContourFieldChart({
       xAxis,
       yAxis,
@@ -1596,19 +1618,7 @@ export function buildAdaptiveDynamicChart(
             pointArgs,
             { field: dynamicXAxis, valueSi: xSi },
             { field: dynamicYAxis, valueSi: ySi },
-            {
-              setAxisValue: setAdaptiveAxisValue,
-              getOperativeTemperature: (request) => t_o(
-                request.tdb,
-                request.tr,
-                request.v,
-                getAdaptiveJtcStandard(standardMode),
-              ),
-              getTemperatureComponentRange: (field) => {
-                const meta = fieldMetaByKey[field];
-                return { min: meta.minValue, max: meta.maxValue };
-              },
-            },
+            dynamicAxisAdapter,
           );
 
           try {

@@ -115,17 +115,20 @@ The current active application is the repository root version.
 `src/services/comfort/derivations/`
 - Handles derived values such as dew point, humidity ratio, wet-bulb temperature, vapor pressure, operative temperature, and relative air speed transformations.
 
-`src/services/comfort/charts/sharedCharts.ts`
-- Holds shared chart presentation builders that convert SI source data into display-unit payloads and provide an explicit responsive chart height.
+`src/services/comfort/charts/gridModelCharts.ts`
+- Implements the typed grid-model strategy used by Heat Index, Humidex, and Wind Chill.
+- Clones typed SI baselines, writes axes through model-owned getters/setters, invokes typed evaluators, narrows Explore config once, and assembles optional explicit-ID static charts without compatibility APIs.
 
 `src/services/comfort/charts/dynamicAxisPayload.ts`
 - Resolves declared dynamic-axis coordinates into model payloads in canonical SI.
-- Preserves the independently selected Air or Radiant temperature when paired with Operative temperature and solves the remaining component, so all four directed pairs remain chartable.
+- Uses transactional axis adapters: every probe restores the solved component in `finally`, successful solves commit once, and failed post-conditions roll back only that component.
+- Preserves the independently selected Air or Radiant temperature when paired with Operative temperature, so all four directed pairs remain chartable.
 
 `src/services/comfort/charts/chartEngine.ts`
 - Shared field-chart engine used by PMV, UTCI, simple-model, and Adaptive chart strategies.
 - Its Explore runner accepts raw canonical-SI model outputs and performs half-open working-band assignment. Categorical contour indices remain the default so classified outputs and gaps preserve their existing rendering.
-- Smooth continuous outputs can opt into constraint contours, which retain one raw SI grid and let Plotly interpolate finite band thresholds. Constraint fills use per-region `fillcolor` without full-grid contour backgrounds, and their operations encode each visible band's complement because Plotly shades invalid constraint regions. PMV ASHRAE/ISO use this strategy; other Explore charts remain categorical.
+- Smooth continuous outputs can opt into constraint contours, which retain one raw SI grid and let Plotly interpolate finite band thresholds. Constraint fills use per-region `fillcolor` without full-grid contour backgrounds. PMV ASHRAE/ISO use this strategy; other Explore charts remain categorical.
+- Constraint-band hover is band-owned: `zoneGrid` derives marching-squares hit regions from the same raw grid and edges, so unfilled gaps have no hover target. No full-grid transparent hover layer or `PlotlyCanvas` classification is used.
 - The banded-grid runner keeps generic hover construction as its default and accepts an explicit full-template override for models that need multiple metrics or model-specific precision.
 
 `src/state/comfortTool/exploreChartState.ts`

@@ -20,7 +20,10 @@ import { UnitSystem } from "../models/units";
 import type { InputId as InputIdType } from "../models/inputSlots";
 import type { CompareInputMap } from "../models/comfortDtos";
 import { buildDefaultPresentation, createControlBehavior, createTemperatureControlBehavior } from "../services/comfort/controls/controlBehaviors";
-import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
+import {
+  buildGridModelChart,
+  type GridModelChartSpec,
+} from "../services/comfort/charts/gridModelCharts";
 import { wc, wind_chill_temperature } from "jsthermalcomfort";
 import {
   convertFieldValueFromSi,
@@ -102,6 +105,37 @@ export function calculateWindChill(payload: WindChillRequestDto): WindChillRespo
     wciZone,
     source: CalculationSource.JsThermalComfort,
   };
+}
+
+function getWindChillAxisValue(
+  payload: WindChillRequestDto,
+  field: FieldKey,
+): number {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      return payload.tdb;
+    case FieldKey.WindSpeed:
+      return payload.v;
+    default:
+      throw new Error(`Unsupported Wind Chill chart field: ${field}`);
+  }
+}
+
+function setWindChillAxisValue(
+  payload: WindChillRequestDto,
+  field: FieldKey,
+  valueSi: number,
+): void {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      payload.tdb = valueSi;
+      return;
+    case FieldKey.WindSpeed:
+      payload.v = valueSi;
+      return;
+    default:
+      throw new Error(`Unsupported Wind Chill chart field: ${field}`);
+  }
 }
 
 /**
@@ -230,61 +264,45 @@ windChillBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
  */
 windChillBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem, fieldChartConfig) => {
   const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-
-  return buildComfortModelChart(
-    chartId,
-    chartSource,
-    resultsByInput,
-    unitSystem,
-    fieldChartConfig?.mode === ChartMode.Explore ? fieldChartConfig : null,
-    {
-      dynamicChartId: ChartId.WindChillDynamic,
-      dynamicTitle: `${comfortModelMetaById[ComfortModel.WindChill].label} Dynamic Chart`,
-      output: windChillOutput,
-      zones: windChillZonesList,
-      bandLabel: "Frostbite Risk",
-      dynamicHoverExtension: {
-        templateSuffix: `<br>${comfortModelMetaById[ComfortModel.WindChill].label} Temperature: %{customdata[1]:.1f} ${temperatureUnits}`,
-        getInputMetadata: (cached) => [
-          cached?.wciTemp === undefined
-            ? ""
-            : convertFieldValueFromSi(
-                FieldKey.DryBulbTemperature,
-                cached.wciTemp,
-                unitSystem,
-              ),
-        ],
-      },
-      customRanges: {
-        [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-        [FieldKey.RelativeAirSpeed]: WIND_LIMITS,
-        [FieldKey.WindSpeed]: WIND_LIMITS,
-      },
-      baselinePayloadDefault: DEFAULT_BASELINE,
-      calculateDynamicOutput: (xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload, zOutput) => {
-        if (zOutput !== ModelOutputKey.WindChill) {
-          throw new Error(`Unsupported Wind Chill chart output: ${zOutput}`);
-        }
-        const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
-        calcPayload[dynamicXAxis] = xSi;
-        calcPayload[dynamicYAxis] = ySi;
-        const result = calculateWindChill(calcPayload);
-
-        return {
-          valueSi: result.wci,
-          additionalHoverMetadata: [
-            convertFieldValueFromSi(
+  const chartSpec: GridModelChartSpec<WindChillRequestDto, WindChillResponseDto> = {
+    dynamicChartId: ChartId.WindChillDynamic,
+    dynamicTitle: `${comfortModelMetaById[ComfortModel.WindChill].label} Dynamic Chart`,
+    output: windChillOutput,
+    zones: windChillZonesList,
+    bandLabel: "Frostbite Risk",
+    dynamicHoverExtension: {
+      templateSuffix: `<br>${comfortModelMetaById[ComfortModel.WindChill].label} Temperature: %{customdata[1]:.1f} ${temperatureUnits}`,
+      getMetadata: (result) => [
+        result?.wciTemp === undefined
+          ? ""
+          : convertFieldValueFromSi(
               FieldKey.DryBulbTemperature,
               result.wciTemp,
               unitSystem,
             ),
-          ],
-        };
-      },
-      getResultOutputValue: (cached, zOutput) => (
-        zOutput === ModelOutputKey.WindChill ? cached?.wci : undefined
-      ),
+      ],
     },
+    axisRanges: {
+      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
+      [FieldKey.WindSpeed]: WIND_LIMITS,
+    },
+    baselinePayloadDefault: {
+      ...DEFAULT_BASELINE,
+      units: UnitSystem.SI,
+    },
+    getAxisValue: getWindChillAxisValue,
+    setAxisValue: setWindChillAxisValue,
+    evaluate: calculateWindChill,
+    getOutputValue: (result) => result.wci,
+  };
+
+  return buildGridModelChart(
+    chartId,
+    chartSource,
+    resultsByInput,
+    unitSystem,
+    fieldChartConfig,
+    chartSpec,
   );
 });
 

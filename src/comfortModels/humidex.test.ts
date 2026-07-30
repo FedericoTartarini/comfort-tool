@@ -45,7 +45,7 @@ describe("humidex service", () => {
     expect(result.humidexDiscomfort).toBe("Little/None");
   });
 
-  it("builds static and dynamic chart results through the shared chart wrapper", () => {
+  it("builds static and dynamic chart results through the typed grid strategy", () => {
     const request = { tdb: 30, rh: 70, units: UnitSystem.SI };
     const result = calculateHumidex(request);
     const chartSource = {

@@ -120,7 +120,7 @@ describe("PMV and Adaptive chart shape fixtures", () => {
       pmvAshraeAdapter,
       chartSource,
       UnitSystem.SI,
-    ))).toBe("b8d399b1110cb8c1f4b52777e83bcf80267c24ec0e46e43472db58ece35e88ad");
+    ))).toBe("7d0feedb63ff34a67a7ce402a279b20364915400afb95ee852ed32c22207e86d");
   });
 
   it("keeps the PMV dynamic chart DTO shape stable", () => {
@@ -137,7 +137,7 @@ describe("PMV and Adaptive chart shape fixtures", () => {
         bands: pmvChartableOutputs[0].defaultBands,
       },
       UnitSystem.SI,
-    ))).toBe("86296f881da4bfc9c25d8c210f9ed3329d61e18058cca31581941b09a6690f65");
+    ))).toBe("a2c690a9969608d20da3231f634d62697b0681b1e84d0257d9e42bb4a80fe62d");
   });
 
   it("keeps the Adaptive static chart DTO shape stable", () => {

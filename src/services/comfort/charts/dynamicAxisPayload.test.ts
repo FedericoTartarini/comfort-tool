@@ -22,6 +22,12 @@ const adapter: DynamicAxisPayloadAdapter<TestPayload> = {
       payload.tr = valueSi;
     }
   },
+  getAxisValue: (payload, field) => {
+    if (field === FieldKey.DryBulbTemperature) return payload.tdb;
+    if (field === FieldKey.MeanRadiantTemperature) return payload.tr;
+    if (field === FieldKey.RelativeAirSpeed) return payload.speed;
+    return (payload.tdb + payload.tr) / 2;
+  },
   getOperativeTemperature: (payload) => (
     payload.speed >= 1
       ? payload.tdb * 0.4 + payload.tr * 0.6
@@ -96,11 +102,103 @@ describe("applyDynamicAxisCoordinates", () => {
       FieldKey.DryBulbTemperature,
       30,
     ).valid).toBe(false);
-    expect(resolve(
+    const unreachable = resolve(
       FieldKey.DryBulbTemperature,
       50,
       FieldKey.OperativeTemperature,
       0,
-    ).valid).toBe(false);
+    );
+    expect(unreachable.valid).toBe(false);
+    expect(unreachable.payload).toEqual({ tdb: 50, tr: 25, speed: 0.1 });
+  });
+
+  it("restores the probed component after a successful solve before committing it once", () => {
+    const solvedFieldWrites: number[] = [];
+    const trackingAdapter: DynamicAxisPayloadAdapter<TestPayload> = {
+      ...adapter,
+      setAxisValue: (payload, field, valueSi) => {
+        adapter.setAxisValue(payload, field, valueSi);
+        if (field === FieldKey.MeanRadiantTemperature) {
+          solvedFieldWrites.push(valueSi);
+        }
+      },
+    };
+    const payload = { tdb: 25, tr: 25, speed: 0.1 };
+
+    expect(applyDynamicAxisCoordinates(
+      payload,
+      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
+      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      trackingAdapter,
+    )).toBe(true);
+
+    expect(solvedFieldWrites.slice(-2)).toEqual([25, 30]);
+    expect(payload).toEqual({ tdb: 20, tr: 30, speed: 0.1 });
+  });
+
+  it.each([
+    {
+      name: "a non-finite endpoint",
+      getOperativeTemperature: (payload: TestPayload) => (
+        payload.tr === 0 ? Number.NaN : (payload.tdb + payload.tr) / 2
+      ),
+    },
+    {
+      name: "a non-finite interior probe",
+      getOperativeTemperature: (payload: TestPayload) => (
+        payload.tr === 25 ? Number.NaN : payload.tr
+      ),
+    },
+  ])("restores the solved field after $name", ({ getOperativeTemperature }) => {
+    const payload = { tdb: 25, tr: 25, speed: 0.1 };
+    const failingAdapter = { ...adapter, getOperativeTemperature };
+
+    expect(applyDynamicAxisCoordinates(
+      payload,
+      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
+      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      failingAdapter,
+    )).toBe(false);
+    expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
+  });
+
+  it("restores the solved field when a probe throws", () => {
+    const payload = { tdb: 25, tr: 25, speed: 0.1 };
+    const throwingAdapter: DynamicAxisPayloadAdapter<TestPayload> = {
+      ...adapter,
+      getOperativeTemperature: () => {
+        throw new Error("probe failed");
+      },
+    };
+
+    expect(() => applyDynamicAxisCoordinates(
+      payload,
+      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
+      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      throwingAdapter,
+    )).toThrow("probe failed");
+    expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
+  });
+
+  it("rolls back the solved field when the final post-condition fails", () => {
+    const payload = { tdb: 25, tr: 25, speed: 0.1 };
+    let evaluations = 0;
+    const postConditionAdapter: DynamicAxisPayloadAdapter<TestPayload> = {
+      ...adapter,
+      getOperativeTemperature: (currentPayload) => {
+        evaluations += 1;
+        return evaluations >= 4
+          ? 26
+          : (currentPayload.tdb + currentPayload.tr) / 2;
+      },
+    };
+
+    expect(applyDynamicAxisCoordinates(
+      payload,
+      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
+      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      postConditionAdapter,
+    )).toBe(false);
+    expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
   });
 });

@@ -30,7 +30,10 @@ import {
   getModelOutputDisplayMeta,
 } from "../services/units/index";
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "../state/comfortTool/modelConfigs/builder";
-import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
+import {
+  buildGridModelChart,
+  type GridModelChartSpec,
+} from "../services/comfort/charts/gridModelCharts";
 
 // ── Thermal Zones Definition ─────────────────────────────────────────────────
 export const heatIndexZonesList = [
@@ -88,6 +91,37 @@ export function calculateHeatIndex(payload: HeatIndexRequestDto): HeatIndexRespo
     category,
     source: CalculationSource.JsThermalComfort,
   };
+}
+
+function getHeatIndexAxisValue(
+  payload: HeatIndexRequestDto,
+  field: FieldKey,
+): number {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      return payload.tdb;
+    case FieldKey.RelativeHumidity:
+      return payload.rh;
+    default:
+      throw new Error(`Unsupported Heat Index chart field: ${field}`);
+  }
+}
+
+function setHeatIndexAxisValue(
+  payload: HeatIndexRequestDto,
+  field: FieldKey,
+  valueSi: number,
+): void {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      payload.tdb = valueSi;
+      return;
+    case FieldKey.RelativeHumidity:
+      payload.rh = valueSi;
+      return;
+    default:
+      throw new Error(`Unsupported Heat Index chart field: ${field}`);
+  }
 }
 
 /**
@@ -192,79 +226,72 @@ heatIndexBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
  * Registers the chart building logic for the Heat Index model.
  */
 heatIndexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem, fieldChartConfig) => {
-  return buildComfortModelChart(
+  const chartSpec: GridModelChartSpec<HeatIndexRequestDto, HeatIndexResponseDto> = {
+    dynamicChartId: ChartId.HeatIndexDynamic,
+    dynamicTitle: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Dynamic Chart`,
+    output: heatIndexOutput,
+    zones: heatIndexZonesList,
+    axisRanges: {
+      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
+    },
+    baselinePayloadDefault: {
+      tdb: fieldMetaByKey[FieldKey.DryBulbTemperature].defaultValue,
+      rh: fieldMetaByKey[FieldKey.RelativeHumidity].defaultValue,
+      units: UnitSystem.SI,
+    },
+    getAxisValue: getHeatIndexAxisValue,
+    setAxisValue: setHeatIndexAxisValue,
+    evaluate: calculateHeatIndex,
+    getOutputValue: (result) => result.hi,
+    staticChart: {
+      chartId: ChartId.HeatIndexRanges,
+      title: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Ranges`,
+      xField: FieldKey.RelativeHumidity,
+      yField: FieldKey.DryBulbTemperature,
+      xRangeSi: {
+        min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
+        max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+      },
+      yRangeSi: TDB_LIMITS,
+      hovertemplate: "%{text}<extra></extra>",
+      getInputHovertemplate: (label, result) => {
+        const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
+        return `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Category: ${result?.category || ""}</b><br>${modelLabel}: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, result?.hi, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`;
+      },
+      getXValue: (payload) => payload.rh,
+      getYValue: (payload) => payload.tdb,
+      evaluatePoint: (xSi, ySi) => {
+        const result = calculateHeatIndex({
+          tdb: ySi,
+          rh: xSi,
+          units: UnitSystem.SI,
+        });
+        const zone = heatIndexZonesList.find((candidate) => candidate.contains(result.hi));
+        const rangeValue = zone ? heatIndexZonesList.indexOf(zone) : 0;
+        const zoneLabel = zone?.label ?? heatIndexZonesList[0].label;
+
+        const rhDisp = convertFieldValueFromSi(FieldKey.RelativeHumidity, xSi, unitSystem);
+        const tdbDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, ySi, unitSystem);
+        const hiDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.hi, unitSystem);
+
+        const rhLabel = fieldMetaByKey[FieldKey.RelativeHumidity].label;
+        const tdbLabel = fieldMetaByKey[FieldKey.DryBulbTemperature].label;
+        const tdbUnit = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+        const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
+        const hovertext = `${rhLabel}: ${roundValue(rhDisp, 1)}%<br>${tdbLabel}: ${roundValue(tdbDisp, 1)}${tdbUnit}<br><b>Category: ${zoneLabel}</b><br>${modelLabel}: ${roundValue(hiDisp, 1)}${tdbUnit}`;
+
+        return { rangeValue, category: zoneLabel, hovertext };
+      },
+    },
+  };
+
+  return buildGridModelChart(
     chartId,
     chartSource,
     resultsByInput,
     unitSystem,
-    fieldChartConfig?.mode === ChartMode.Explore ? fieldChartConfig : null,
-    {
-      dynamicChartId: ChartId.HeatIndexDynamic,
-      dynamicTitle: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Dynamic Chart`,
-      output: heatIndexOutput,
-      zones: heatIndexZonesList,
-      customRanges: {
-        [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-      },
-      baselinePayloadDefault: {
-        tdb: fieldMetaByKey[FieldKey.DryBulbTemperature].defaultValue,
-        rh: fieldMetaByKey[FieldKey.RelativeHumidity].defaultValue,
-      },
-      calculateDynamicOutput: (xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload, zOutput) => {
-        if (zOutput !== ModelOutputKey.HeatIndex) {
-          throw new Error(`Unsupported Heat Index chart output: ${zOutput}`);
-        }
-        const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
-        calcPayload[dynamicXAxis] = xSi;
-        calcPayload[dynamicYAxis] = ySi;
-
-        const res = heat_index(calcPayload.tdb, calcPayload.rh, { round: true, units: UnitSystem.SI });
-        const rawHiSi = convertFieldValueToSi(FieldKey.DryBulbTemperature, res.hi, UnitSystem.SI);
-        return isNaN(rawHiSi) ? calcPayload.tdb : rawHiSi;
-      },
-      getResultOutputValue: (cached, zOutput) => (
-        zOutput === ModelOutputKey.HeatIndex ? cached?.hi : undefined
-      ),
-      staticConfig: {
-        title: `${comfortModelMetaById[ComfortModel.HeatIndex].label} Ranges`,
-        xKey: FieldKey.RelativeHumidity,
-        yKey: FieldKey.DryBulbTemperature,
-        xRangeSi: {
-          min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
-          max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
-        },
-        yRangeSi: TDB_LIMITS,
-        hovertemplateContour: "%{text}<extra></extra>",
-        getHovertemplateScatter: (label, cached) => {
-          const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
-          return `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Category: ${cached?.category || ""}</b><br>${modelLabel}: ${roundValue(convertFieldValueFromSi(FieldKey.DryBulbTemperature, cached?.hi, unitSystem), 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`;
-        },
-        getScatterXSi: (p) => p.rh,
-        getScatterYSi: (p) => p.tdb,
-        calculateStaticPoint: (xSi, ySi) => {
-          const result = heat_index(ySi, xSi, { round: true, units: UnitSystem.SI });
-          const rawHiSi = convertFieldValueToSi(FieldKey.DryBulbTemperature, result.hi, UnitSystem.SI);
-          const hiSi = isNaN(rawHiSi) ? ySi : rawHiSi;
-
-          const zone = heatIndexZonesList.find((z) => z.contains(hiSi));
-          const rangeValue = zone ? heatIndexZonesList.indexOf(zone) : 0;
-          const zoneLabel = zone ? zone.label : heatIndexZonesList[0].label;
-
-          const rhDisp = convertFieldValueFromSi(FieldKey.RelativeHumidity, xSi, unitSystem);
-          const tdbDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, ySi, unitSystem);
-          const hiDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, hiSi, unitSystem);
-
-          const rhLabel = fieldMetaByKey[FieldKey.RelativeHumidity].label;
-          const tdbLabel = fieldMetaByKey[FieldKey.DryBulbTemperature].label;
-          const tdbUnit = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-          const modelLabel = comfortModelMetaById[ComfortModel.HeatIndex].label;
-
-          const hovertext = `${rhLabel}: ${roundValue(rhDisp, 1)}%<br>${tdbLabel}: ${roundValue(tdbDisp, 1)}${tdbUnit}<br><b>Category: ${zoneLabel}</b><br>${modelLabel}: ${roundValue(hiDisp, 1)}${tdbUnit}`;
-
-          return { rangeValue, category: zoneLabel, hovertext };
-        },
-      },
-    },
+    fieldChartConfig,
+    chartSpec,
   );
 });
 

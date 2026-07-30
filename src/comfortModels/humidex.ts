@@ -22,7 +22,10 @@ import type { InputId as InputIdType } from "../models/inputSlots";
 import type { CompareInputMap } from "../models/comfortDtos";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
 import { roundValue } from "../services/comfort/helpers";
-import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
+import {
+  buildGridModelChart,
+  type GridModelChartSpec,
+} from "../services/comfort/charts/gridModelCharts";
 import {
   convertFieldValueFromSi,
   convertModelOutputFromSi,
@@ -79,6 +82,37 @@ export function calculateHumidex(payload: HumidexRequestDto): HumidexResponseDto
     humidexDiscomfort,
     source: CalculationSource.JsThermalComfort,
   };
+}
+
+function getHumidexAxisValue(
+  payload: HumidexRequestDto,
+  field: FieldKey,
+): number {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      return payload.tdb;
+    case FieldKey.RelativeHumidity:
+      return payload.rh;
+    default:
+      throw new Error(`Unsupported Humidex chart field: ${field}`);
+  }
+}
+
+function setHumidexAxisValue(
+  payload: HumidexRequestDto,
+  field: FieldKey,
+  valueSi: number,
+): void {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      payload.tdb = valueSi;
+      return;
+    case FieldKey.RelativeHumidity:
+      payload.rh = valueSi;
+      return;
+    default:
+      throw new Error(`Unsupported Humidex chart field: ${field}`);
+  }
 }
 
 /**
@@ -181,66 +215,64 @@ humidexBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
  * Registers the chart building logic for the Humidex model.
  */
 humidexBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem, fieldChartConfig) => {
-  return buildComfortModelChart(
+  const chartSpec: GridModelChartSpec<HumidexRequestDto, HumidexResponseDto> = {
+    dynamicChartId: ChartId.HumidexDynamic,
+    dynamicTitle: `${comfortModelMetaById[ComfortModel.Humidex].label} Dynamic Chart`,
+    output: humidexOutput,
+    zones: humidexZonesList,
+    axisRanges: {
+      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
+    },
+    baselinePayloadDefault: {
+      tdb: fieldMetaByKey[FieldKey.DryBulbTemperature].defaultValue,
+      rh: fieldMetaByKey[FieldKey.RelativeHumidity].defaultValue,
+      units: UnitSystem.SI,
+    },
+    getAxisValue: getHumidexAxisValue,
+    setAxisValue: setHumidexAxisValue,
+    evaluate: calculateHumidex,
+    getOutputValue: (result) => result.humidex,
+    staticChart: {
+      chartId: ChartId.Humidex,
+      title: `${comfortModelMetaById[ComfortModel.Humidex].label} Discomfort`,
+      xField: FieldKey.RelativeHumidity,
+      yField: FieldKey.DryBulbTemperature,
+      xRangeSi: {
+        min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
+        max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+      },
+      yRangeSi: TDB_LIMITS,
+      hovertemplate: "%{text}<extra></extra>",
+      getInputHovertemplate: (label, result) => `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Discomfort: ${result?.humidexDiscomfort || ""}</b><br>${comfortModelMetaById[ComfortModel.Humidex].label}: ${roundValue(result?.humidex, 1)}<extra></extra>`,
+      getXValue: (payload) => payload.rh,
+      getYValue: (payload) => payload.tdb,
+      evaluatePoint: (xSi, ySi) => {
+        const result = calculateHumidex({
+          tdb: ySi,
+          rh: xSi,
+          units: UnitSystem.SI,
+        });
+        const zone = humidexZonesList.find((candidate) => candidate.contains(result.humidex));
+        const rangeValue = zone ? humidexZonesList.indexOf(zone) : 0;
+        const zoneLabel = zone?.label ?? humidexZonesList[0].label;
+
+        const rhDisp = convertFieldValueFromSi(FieldKey.RelativeHumidity, xSi, unitSystem);
+        const tdbDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, ySi, unitSystem);
+        const modelLabel = comfortModelMetaById[ComfortModel.Humidex].label;
+        const hovertext = `${fieldMetaByKey[FieldKey.RelativeHumidity].label}: ${roundValue(rhDisp, 1)}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: ${roundValue(tdbDisp, 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Discomfort: ${zoneLabel}</b><br>${modelLabel}: ${roundValue(result.humidex, 1)}`;
+
+        return { rangeValue, category: zoneLabel, hovertext };
+      },
+    },
+  };
+
+  return buildGridModelChart(
     chartId,
     chartSource,
     resultsByInput,
     unitSystem,
-    fieldChartConfig?.mode === ChartMode.Explore ? fieldChartConfig : null,
-    {
-      dynamicChartId: ChartId.HumidexDynamic,
-      dynamicTitle: `${comfortModelMetaById[ComfortModel.Humidex].label} Dynamic Chart`,
-      output: humidexOutput,
-      zones: humidexZonesList,
-      customRanges: {
-        [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-      },
-      baselinePayloadDefault: {
-        tdb: fieldMetaByKey[FieldKey.DryBulbTemperature].defaultValue,
-        rh: fieldMetaByKey[FieldKey.RelativeHumidity].defaultValue,
-      },
-      calculateDynamicOutput: (xSi, ySi, dynamicXAxis, dynamicYAxis, baselinePayload, zOutput) => {
-        if (zOutput !== ModelOutputKey.Humidex) {
-          throw new Error(`Unsupported Humidex chart output: ${zOutput}`);
-        }
-        const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
-        calcPayload[dynamicXAxis] = xSi;
-        calcPayload[dynamicYAxis] = ySi;
-        return humidex(calcPayload.tdb, calcPayload.rh, { round: true }).humidex;
-      },
-      getResultOutputValue: (cached, zOutput) => (
-        zOutput === ModelOutputKey.Humidex ? cached?.humidex : undefined
-      ),
-      staticConfig: {
-        title: `${comfortModelMetaById[ComfortModel.Humidex].label} Discomfort`,
-        xKey: FieldKey.RelativeHumidity,
-        yKey: FieldKey.DryBulbTemperature,
-        xRangeSi: {
-          min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
-          max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
-        },
-        yRangeSi: TDB_LIMITS,
-        hovertemplateContour: "%{text}<extra></extra>",
-        getHovertemplateScatter: (label, cached) => `${label}<br>${fieldMetaByKey[FieldKey.RelativeHumidity].label}: %{x:.1f}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: %{y:.1f}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Discomfort: ${cached?.humidexDiscomfort || ""}</b><br>${comfortModelMetaById[ComfortModel.Humidex].label}: ${roundValue(cached?.humidex, 1)}<extra></extra>`,
-        getScatterXSi: (p) => p.rh,
-        getScatterYSi: (p) => p.tdb,
-        calculateStaticPoint: (xSi, ySi) => {
-          const result = humidex(ySi, xSi, { round: true });
-          const h = result.humidex;
-          const zone = humidexZonesList.find((z) => z.contains(h));
-          const rangeValue = zone ? humidexZonesList.indexOf(zone) : 0;
-          const zoneLabel = zone ? zone.label : humidexZonesList[0].label;
-
-          const rhDisp = convertFieldValueFromSi(FieldKey.RelativeHumidity, xSi, unitSystem);
-          const tdbDisp = convertFieldValueFromSi(FieldKey.DryBulbTemperature, ySi, unitSystem);
-          const modelLabel = comfortModelMetaById[ComfortModel.Humidex].label;
-
-          const hovertext = `${fieldMetaByKey[FieldKey.RelativeHumidity].label}: ${roundValue(rhDisp, 1)}%<br>${fieldMetaByKey[FieldKey.DryBulbTemperature].label}: ${roundValue(tdbDisp, 1)}${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<br><b>Discomfort: ${zoneLabel}</b><br>${modelLabel}: ${roundValue(h, 1)}`;
-
-          return { rangeValue, category: zoneLabel, hovertext };
-        },
-      },
-    },
+    fieldChartConfig,
+    chartSpec,
   );
 });
 

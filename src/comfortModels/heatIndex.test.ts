@@ -48,7 +48,7 @@ describe("heatIndex service", () => {
     expect(result.category).toBe("Extreme Danger");
   });
 
-  it("builds static and dynamic chart results through the shared chart wrapper", () => {
+  it("builds static and dynamic chart results through the typed grid strategy", () => {
     const request = { tdb: 35, rh: 70, units: UnitSystem.SI };
     const result = calculateHeatIndex(request);
     const chartSource = {
@@ -87,5 +87,26 @@ describe("heatIndex service", () => {
     expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
     expect(dynamicChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
+  });
+
+  it("fails directly when typed grid axes violate the state invariant", () => {
+    const request = { tdb: 35, rh: 70, units: UnitSystem.SI };
+
+    expect(() => heatIndexModelConfig.buildChartResult(
+      ChartId.HeatIndexDynamic,
+      {
+        chartRequest: { [InputId.Input1]: request },
+        baselineInputId: InputId.Input1,
+      },
+      { [InputId.Input1]: calculateHeatIndex(request) } as any,
+      UnitSystem.SI,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.DryBulbTemperature,
+        zOutput: heatIndexModelConfig.chartableOutputs[0].key,
+        bands: heatIndexModelConfig.chartableOutputs[0].defaultBands,
+      },
+    )).toThrow(/axes must be distinct/i);
   });
 });
