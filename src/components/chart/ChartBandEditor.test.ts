@@ -4,7 +4,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ModelOutputKey } from "../../models/modelCapabilities";
+import {
+  ModelOutputKey,
+  type NumericBand,
+} from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
 import ChartBandEditor from "./ChartBandEditor.svelte";
 
@@ -25,7 +28,7 @@ afterEach(cleanup);
 describe("ChartBandEditor", () => {
   it("edits IP drafts and atomically commits sorted canonical-SI bands", async () => {
     const user = userEvent.setup();
-    const onApply = vi.fn(() => true);
+    const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
       outputKey: ModelOutputKey.Utci,
@@ -76,7 +79,7 @@ describe("ChartBandEditor", () => {
     "preserves exact %s SI edges for unchanged and reset IP drafts",
     async (outputKey, workingBoundarySi, defaultBoundarySi) => {
       const user = userEvent.setup();
-      const onApply = vi.fn(() => true);
+      const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
       const workingBands = createBands(workingBoundarySi, "Working");
       const defaultBands = createBands(defaultBoundarySi, "Default");
       const originalWorkingBands = workingBands.map((band) => ({ ...band }));
@@ -110,7 +113,7 @@ describe("ChartBandEditor", () => {
 
   it("supports add, remove, reset, and cancel without committing drafts", async () => {
     const user = userEvent.setup();
-    const onApply = vi.fn(() => true);
+    const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
       outputKey: ModelOutputKey.Pmv,
@@ -123,7 +126,8 @@ describe("ChartBandEditor", () => {
     await user.click(screen.getByRole("button", { name: "Edit chart thresholds" }));
     await user.click(screen.getByRole("button", { name: "Add band" }));
     expect((screen.getByLabelText("Band 3 label") as HTMLInputElement).value).toBe("New band");
-    expect(screen.getByLabelText("Band 3 errors").textContent).toContain("Enter a valid lower bound");
+    expect(screen.getByLabelText("Band 3 errors").textContent)
+      .toContain("Lower bounds must be numeric or unbounded below.");
 
     await user.click(screen.getByRole("button", { name: "Remove band 3" }));
     expect(screen.queryByLabelText("Band 3 label")).toBeNull();
@@ -149,7 +153,7 @@ describe("ChartBandEditor", () => {
 
   it("shows validation errors and keeps invalid overlapping drafts uncommitted", async () => {
     const user = userEvent.setup();
-    const onApply = vi.fn(() => true);
+    const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
       outputKey: ModelOutputKey.Pmv,

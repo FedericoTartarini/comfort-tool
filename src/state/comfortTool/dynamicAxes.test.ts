@@ -51,7 +51,7 @@ describe("dynamicAxes", () => {
     })).toBe(false);
   });
 
-  it("normalizes with the declared default before legacy fallbacks", () => {
+  it("normalizes every invalid pair to the declared default", () => {
     expect(normalizeDynamicAxisPair(adaptiveLikeConfig, {
       xAxis: FieldKey.DryBulbTemperature,
       yAxis: FieldKey.OperativeTemperature,
@@ -60,19 +60,11 @@ describe("dynamicAxes", () => {
       yAxis: FieldKey.MeanRadiantTemperature,
     });
 
-    const preserveYConfig = {
-      dynamicAxisFields: [
-        FieldKey.DryBulbTemperature,
-        FieldKey.MeanRadiantTemperature,
-        FieldKey.RelativeAirSpeed,
-      ],
-      dynamicAxisPairValidator: (xAxis: string) => xAxis === FieldKey.RelativeAirSpeed,
-    };
-    expect(normalizeDynamicAxisPair(preserveYConfig, {
+    expect(normalizeDynamicAxisPair(adaptiveLikeConfig, {
       xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.MeanRadiantTemperature,
+      yAxis: FieldKey.DryBulbTemperature,
     })).toEqual({
-      xAxis: FieldKey.RelativeAirSpeed,
+      xAxis: FieldKey.DryBulbTemperature,
       yAxis: FieldKey.MeanRadiantTemperature,
     });
 

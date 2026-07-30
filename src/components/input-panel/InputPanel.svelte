@@ -116,7 +116,6 @@
     <ClothingEnsembleBuilder
       activeInputId={toolState.state.ui.activeInputId}
       visibleInputIds={toolState.selectors.getVisibleInputIds()}
-      unitSystem={toolState.state.ui.unitSystem}
       {maxClothingValue}
       onSelectInput={toolState.actions.setActiveInputId}
       onApplyClothingValue={handleApplyClothingValue}

@@ -6,8 +6,9 @@
     "allowJs": true,
     "checkJs": false,
     "strict": true,
+    "noUnusedLocals": true,
     "skipLibCheck": true,
-    "types": ["vite/client", "vitest/globals"]
+    "types": ["vite/client", "vitest/globals", "node"]
   },
   "include": ["src/**/*.ts", "src/**/*.svelte", "src/**/*.js"]
 }

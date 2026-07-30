@@ -12,6 +12,10 @@ interface CreateFieldAxisScaleOptions {
   label?: string;
   units?: string;
   decimals?: number;
+  gridColor?: string;
+  showGrid?: boolean;
+  zeroLine?: boolean;
+  showTickLabels?: boolean;
   toDisplay?: (valueSi: number) => number;
   toSi?: (valueDisplay: number) => number;
 }
@@ -24,6 +28,10 @@ export function createFieldAxisScale({
   label,
   units,
   decimals,
+  gridColor,
+  showGrid,
+  zeroLine,
+  showTickLabels,
   toDisplay,
   toSi,
 }: CreateFieldAxisScaleOptions): ChartAxisScale {
@@ -34,6 +42,10 @@ export function createFieldAxisScale({
     label: label ?? meta.label,
     units: units ?? meta.displayUnits[unitSystem],
     decimals: decimals ?? meta.decimals,
+    gridColor,
+    showGrid,
+    zeroLine,
+    showTickLabels,
     rangeSi: rangeSi ?? { min: meta.minValue, max: meta.maxValue },
     points,
     toDisplay: toDisplay ?? ((valueSi) => convertFieldValueFromSi(field, valueSi, unitSystem)),
@@ -62,5 +74,6 @@ export function buildAxisValues(axis: ChartAxisScale): ChartAxisValues {
 }
 
 export function formatAxisTitle(axis: ChartAxisScale): string {
-  return `${axis.label} (${axis.units})`;
+  if (!axis.label) return "";
+  return axis.units ? `${axis.label} (${axis.units})` : axis.label;
 }

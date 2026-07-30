@@ -1,39 +1,48 @@
-/**
- * @file windChill.ts
- * @description Configuration and calculation service for the Wind Chill comfort model.
- */
-
+import { wc, wind_chill_temperature } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
-import { ComfortModel, comfortModelMetaById } from "../models/comfortModels";
 import { ChartId } from "../models/chartOptions";
+import type { CompareInputMap } from "../models/comfortDtos";
+import { ComfortModel } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
-import { ThermalZone } from "../models/thermalZone";
+import type { InputId as InputIdType } from "../models/inputSlots";
+import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   bandsFromThermalZones,
   ChartMode,
   ModelOutputKey,
   type ModelOutput,
 } from "../models/modelCapabilities";
-import { UnitSystem } from "../models/units";
-import type { InputId as InputIdType } from "../models/inputSlots";
-import type { CompareInputMap } from "../models/comfortDtos";
-import { buildDefaultPresentation, createControlBehavior, createTemperatureControlBehavior } from "../services/comfort/controls/controlBehaviors";
+import { ThermalZone } from "../models/thermalZone";
 import {
   buildGridModelChart,
   type GridModelChartSpec,
 } from "../services/comfort/charts/gridModelCharts";
-import { wc, wind_chill_temperature } from "jsthermalcomfort";
+import {
+  buildDefaultPresentation,
+  createControlBehavior,
+  createTemperatureControlBehavior,
+} from "../services/comfort/controls/controlBehaviors";
 import {
   convertFieldValueFromSi,
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
-} from "../services/units/index";
-import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "../state/comfortTool/modelConfigs/builder";
+} from "../services/units";
+import {
+  buildResultSection,
+  ComfortModelBuilder,
+  createEmptyResults,
+  isRecord,
+} from "../state/comfortTool/modelConfigs/builder";
 
-// ── Thermal Zones Definition ──────────────────────────
+const MODEL_LABEL = "Wind Chill";
+const MODEL_DESCRIPTION =
+  "Index that measures how cold it feels when wind is factored in with the actual air temperature.";
+const TDB_LIMITS = { min: -45, max: 0 };
+const WIND_LIMITS = { min: 1, max: 20 };
+const METRES_PER_SECOND_TO_KILOMETRES_PER_HOUR = 3.6;
 
 export const windChillZonesList = [
   new ThermalZone({ label: "Safe", max: 1400, color: "#e0f2fe", textColor: "#0369a1" }),
@@ -42,26 +51,9 @@ export const windChillZonesList = [
   new ThermalZone({ label: "2 mins to frostbite", min: 2300, color: "#8e24aa", textColor: "#6b21a8" }),
 ];
 
-// ── Constants ────────────────────────────────────────────────────────
-// Temperature is restricted between -45 °C and 0 °C because wind chill index is only defined 
-// for cold-stress / freezing conditions (at or below 0 °C / 32 °F).
-const TDB_LIMITS = { min: -45, max: 0 };
-// Wind speed is constrained between 1 m/s and 20 m/s because wind-induced heat loss dominates over natural convection 
-// above 1 m/s, while speeds exceeding 20 m/s represent extreme storm winds and see diminishing increases in cooling rate.
-const WIND_LIMITS = { min: 1, max: 20 };
-
-// Fallback baseline values for dynamic chart generation.
-// Restricted to freezing temperatures (tdb <= 0 °C) because the global default (25 °C) lies outside the domain of the Wind Chill model.
-const DEFAULT_BASELINE = { tdb: -10, v: 5 };
-
-// Converts Wind Chill Temperature (WCT) from km/h to m/s (required for passing to JsThermalComfort library).
-const WCT_CONVERSION_FACTOR = 3.6;
-
-// ── Data Transfer Object (DTOs) ────────────────────────────────────────────────────────
 export interface WindChillRequestDto {
   tdb: number;
   v: number;
-  units: UnitSystem;
 }
 
 export interface WindChillResponseDto {
@@ -73,31 +65,18 @@ export interface WindChillResponseDto {
 
 export interface WindChillChartSourceDto {
   chartRequest: CompareInputMap<WindChillRequestDto>;
-  baselineInputId?: InputIdType;
 }
 
-/**
- * Calculates the Wind Chill Index, equivalent temperature, and resolves its frostbite zone.
- * @param payload The standardized request inputs.
- * @returns An object containing the calculated Wind Chill values and risk zone.
- */
 export function calculateWindChill(payload: WindChillRequestDto): WindChillResponseDto {
-  const tdbSi = payload.tdb;
-  const vSi = payload.v;
-
-  const wci = wc(tdbSi, vSi).wci;
-
-  // Calculate equivalent Wind Chill Temperature
-  // Only applied if wind speed is greater than 1.33 m/s and temperature is less than or equal to 10 Celsius
-  let wciTemp: number | undefined = undefined;
-  if (vSi > 1.33 && tdbSi <= 10) {
-    wciTemp = wind_chill_temperature(tdbSi, vSi * WCT_CONVERSION_FACTOR).wct;
-  } else {
-    wciTemp = tdbSi;
-  }
-
-  const zone = windChillZonesList.find((z) => z.contains(wci));
-  const wciZone = zone ? zone.label : windChillZonesList[0].label;
+  const wci = wc(payload.tdb, payload.v).wci;
+  const wciTemp = payload.v > 1.33 && payload.tdb <= 10
+    ? wind_chill_temperature(
+        payload.tdb,
+        payload.v * METRES_PER_SECOND_TO_KILOMETRES_PER_HOUR,
+      ).wct
+    : payload.tdb;
+  const wciZone = windChillZonesList.find((zone) => zone.contains(wci))?.label
+    ?? windChillZonesList[0].label;
 
   return {
     wci,
@@ -107,54 +86,39 @@ export function calculateWindChill(payload: WindChillRequestDto): WindChillRespo
   };
 }
 
-function getWindChillAxisValue(
-  payload: WindChillRequestDto,
-  field: FieldKey,
-): number {
-  switch (field) {
-    case FieldKey.DryBulbTemperature:
-      return payload.tdb;
-    case FieldKey.WindSpeed:
-      return payload.v;
-    default:
-      throw new Error(`Unsupported Wind Chill chart field: ${field}`);
-  }
+function getAxisValue(payload: WindChillRequestDto, field: FieldKey): number {
+  if (field === FieldKey.DryBulbTemperature) return payload.tdb;
+  if (field === FieldKey.WindSpeed) return payload.v;
+  throw new Error(`Unsupported Wind Chill chart field: ${field}`);
 }
 
-function setWindChillAxisValue(
+function setAxisValue(
   payload: WindChillRequestDto,
   field: FieldKey,
   valueSi: number,
 ): void {
-  switch (field) {
-    case FieldKey.DryBulbTemperature:
-      payload.tdb = valueSi;
-      return;
-    case FieldKey.WindSpeed:
-      payload.v = valueSi;
-      return;
-    default:
-      throw new Error(`Unsupported Wind Chill chart field: ${field}`);
+  if (field === FieldKey.DryBulbTemperature) {
+    payload.tdb = valueSi;
+    return;
   }
+  if (field === FieldKey.WindSpeed) {
+    payload.v = valueSi;
+    return;
+  }
+  throw new Error(`Unsupported Wind Chill chart field: ${field}`);
 }
 
-/**
- * Extracts calculation inputs from UI state for a specific input slot.
- */
-function toWindChillRequest(state: any, inputId: InputIdType): WindChillRequestDto {
-  const inputs = state.inputsByInput[inputId];
-  const v = Number(inputs[FieldKey.WindSpeed]);
-
+function toRequest(
+  context: ModelCalculationContext,
+  inputId: InputIdType,
+): WindChillRequestDto {
+  const inputs = context.inputsByInput[inputId];
+  const windSpeed = Number(inputs[FieldKey.WindSpeed]);
   return {
     tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    v: isNaN(v) ? WIND_LIMITS.min : v,
-    units: UnitSystem.SI,
+    v: Number.isNaN(windSpeed) ? WIND_LIMITS.min : windSpeed,
   };
 }
-
-// ── Model Configuration Builder ──────────────────────────────────────────────
-
-const windChillBuilder = new ComfortModelBuilder<WindChillResponseDto, WindChillChartSourceDto>(ComfortModel.WindChill);
 
 const windChillOutput: ModelOutput = {
   key: ModelOutputKey.WindChill,
@@ -163,27 +127,57 @@ const windChillOutput: ModelOutput = {
   defaultBands: bandsFromThermalZones(windChillZonesList),
 };
 
-/**
- * Registers dropdown metadata for the Wind Chill model.
- */
-windChillBuilder
-  .setLabel(comfortModelMetaById[ComfortModel.WindChill].label)
-  .setDescription(comfortModelMetaById[ComfortModel.WindChill].description)
+const windChillChartSpec: GridModelChartSpec<
+  WindChillRequestDto,
+  WindChillResponseDto
+> = {
+  dynamicChartId: ChartId.WindChillDynamic,
+  dynamicTitle: `${MODEL_LABEL} Dynamic Chart`,
+  output: windChillOutput,
+  bandLabel: "Frostbite Risk",
+  dynamicHoverExtension: {
+    getTemplateSuffix: (unitSystem) => {
+      const units = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+      return `<br>${MODEL_LABEL} Temperature: %{customdata[1]:.1f} ${units}`;
+    },
+    getMetadata: (result, unitSystem) => [
+      result == null
+        ? ""
+        : convertFieldValueFromSi(
+            FieldKey.DryBulbTemperature,
+            result.wciTemp,
+            unitSystem,
+          ),
+    ],
+  },
+  axisRanges: {
+    [FieldKey.DryBulbTemperature]: TDB_LIMITS,
+    [FieldKey.WindSpeed]: WIND_LIMITS,
+  },
+  getAxisValue,
+  setAxisValue,
+  evaluate: calculateWindChill,
+  getOutputValue: (result) => result.wci,
+};
+
+const builder = new ComfortModelBuilder<WindChillResponseDto, WindChillChartSourceDto>(
+  ComfortModel.WindChill,
+);
+
+builder
+  .setLabel(MODEL_LABEL)
+  .setDescription(MODEL_DESCRIPTION)
   .setModes([ChartMode.Explore])
   .setChartableOutputs([windChillOutput]);
 
-/**
- * Registers UI controls for the Wind Chill model.
- */
-windChillBuilder.addControl({
+builder.addControl({
   id: InputControlId.Temperature,
   behavior: createTemperatureControlBehavior(InputControlId.Temperature, {
     minValue: TDB_LIMITS.min,
     maxValue: TDB_LIMITS.max,
   }),
 });
-
-windChillBuilder.addControl({
+builder.addControl({
   id: InputControlId.WindSpeed,
   behavior: createControlBehavior({
     controlId: InputControlId.WindSpeed,
@@ -202,127 +196,68 @@ windChillBuilder.addControl({
   }),
 });
 
-/**
- * Registers the calculation logic for the Wind Chill model.
- */
-windChillBuilder.setCalculator((state, visibleInputIds) => {
+builder.setCalculator((context, visibleInputIds) => {
   const resultsByInput = createEmptyResults<WindChillResponseDto>();
-  const chartInputs: CompareInputMap<WindChillRequestDto> = {};
+  const chartRequest: CompareInputMap<WindChillRequestDto> = {};
 
-  visibleInputIds.forEach((inputId) => {
-    const request = toWindChillRequest(state, inputId);
+  for (const inputId of visibleInputIds) {
+    const request = toRequest(context, inputId);
     resultsByInput[inputId] = calculateWindChill(request);
-    chartInputs[inputId] = request;
-  });
+    chartRequest[inputId] = request;
+  }
 
-  return {
-    resultsByInput,
-    chartSource: {
-      chartRequest: chartInputs,
-      baselineInputId: state.ui.chartBaselineInputId,
-    },
-  };
+  return { resultsByInput, chartSource: { chartRequest } };
 });
 
-windChillBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
+builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+  const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.WindChill, unitSystem);
+  const getColor = (result: WindChillResponseDto) =>
+    windChillZonesList.find((zone) => zone.contains(result.wci))?.textColor;
+
   return [
-    buildResultSection(`${comfortModelMetaById[ComfortModel.WindChill].label} Index`, results, visibleInputIds, (result) => {
-      if (result.wci === undefined) return { text: "" };
-
-      const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.WindChill, unitSystem);
-      const displayValue = convertModelOutputFromSi(ModelOutputKey.WindChill, result.wci, unitSystem);
-      const formattedValue = formatDisplayValue(displayValue, outputMeta.decimals);
-
-      const zone = windChillZonesList.find((z) => z.contains(result.wci));
-      const color = zone ? zone.textColor : "";
-
+    buildResultSection(`${MODEL_LABEL} Index`, results, visibleInputIds, (result) => {
+      const value = convertModelOutputFromSi(ModelOutputKey.WindChill, result.wci, unitSystem);
       return {
-        text: `${formattedValue} ${outputMeta.displayUnits}`,
+        text: `${formatDisplayValue(value, outputMeta.decimals)} ${outputMeta.displayUnits}`,
         subtext: result.wciZone,
-        color,
+        color: getColor(result),
       };
     }),
-    buildResultSection(`${comfortModelMetaById[ComfortModel.WindChill].label} Temperature`, results, visibleInputIds, (result) => {
-      if (result.wciTemp === undefined) return { text: "" };
-      const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.wciTemp, unitSystem);
-      const formattedValue = formatDisplayValue(displayValue, 1);
-
-      const zone = windChillZonesList.find((z) => z.contains(result.wci));
-      const color = zone ? zone.textColor : "";
-
+    buildResultSection(`${MODEL_LABEL} Temperature`, results, visibleInputIds, (result) => {
+      const value = convertFieldValueFromSi(
+        FieldKey.DryBulbTemperature,
+        result.wciTemp,
+        unitSystem,
+      );
       return {
-        text: `${formattedValue} ${temperatureUnits}`,
-        color,
+        text: `${formatDisplayValue(value, 1)} ${temperatureUnits}`,
+        color: getColor(result),
       };
     }),
   ];
 });
 
-/**
- * Registers the chart building logic for the Wind Chill model.
- */
-windChillBuilder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem, fieldChartConfig) => {
-  const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-  const chartSpec: GridModelChartSpec<WindChillRequestDto, WindChillResponseDto> = {
-    dynamicChartId: ChartId.WindChillDynamic,
-    dynamicTitle: `${comfortModelMetaById[ComfortModel.WindChill].label} Dynamic Chart`,
-    output: windChillOutput,
-    zones: windChillZonesList,
-    bandLabel: "Frostbite Risk",
-    dynamicHoverExtension: {
-      templateSuffix: `<br>${comfortModelMetaById[ComfortModel.WindChill].label} Temperature: %{customdata[1]:.1f} ${temperatureUnits}`,
-      getMetadata: (result) => [
-        result?.wciTemp === undefined
-          ? ""
-          : convertFieldValueFromSi(
-              FieldKey.DryBulbTemperature,
-              result.wciTemp,
-              unitSystem,
-            ),
-      ],
-    },
-    axisRanges: {
-      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-      [FieldKey.WindSpeed]: WIND_LIMITS,
-    },
-    baselinePayloadDefault: {
-      ...DEFAULT_BASELINE,
-      units: UnitSystem.SI,
-    },
-    getAxisValue: getWindChillAxisValue,
-    setAxisValue: setWindChillAxisValue,
-    evaluate: calculateWindChill,
-    getOutputValue: (result) => result.wci,
-  };
-
-  return buildGridModelChart(
+builder.setChartBuilder((chartId, chartSource, resultsByInput, context) =>
+  buildGridModelChart(
     chartId,
     chartSource,
     resultsByInput,
-    unitSystem,
-    fieldChartConfig,
-    chartSpec,
-  );
-});
+    context,
+    windChillChartSpec,
+  ));
 
-/**
- * Registers default chart IDs, dynamic axis fields, and default options for the Wind Chill model.
- */
-windChillBuilder.setDefaultChart(ChartId.WindChillDynamic, [ChartId.WindChillDynamic]);
-windChillBuilder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.WindSpeed]);
-windChillBuilder.setDefaultDynamicAxes({
+builder.setDefaultChart(ChartId.WindChillDynamic, [ChartId.WindChillDynamic]);
+builder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.WindSpeed]);
+builder.setDefaultDynamicAxes({
   xAxis: FieldKey.DryBulbTemperature,
   yAxis: FieldKey.WindSpeed,
 });
-windChillBuilder.setDefaultOptions({});
-windChillBuilder.setOptionNormalizer((value) => isRecord(value) ? value : {});
-windChillBuilder.setZones(windChillZonesList);
-windChillBuilder.setLegendChartIds([ChartId.WindChillDynamic]);
-windChillBuilder.setLegendTitle("Wind Chill");
-windChillBuilder.setLockYAxisChartIds([ChartId.WindChillDynamic]);
+builder.setDefaultOptions({});
+builder.setOptionNormalizer((value) => isRecord(value) ? value : {});
+builder.setZones(windChillZonesList);
+builder.setLegendChartIds([ChartId.WindChillDynamic]);
+builder.setLegendTitle(MODEL_LABEL);
+builder.setLockYAxisChartIds([ChartId.WindChillDynamic]);
 
-/**
- * Builds the final Wind Chill model configuration.
- */
-export const windChillModelConfig = windChillBuilder.build();
+export const windChillModelConfig = builder.build();

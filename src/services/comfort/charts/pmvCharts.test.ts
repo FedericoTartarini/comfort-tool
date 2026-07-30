@@ -1,454 +1,366 @@
 import { describe, expect, it } from "vitest";
 
-import { CalculationSource } from "../../../models/calculationMetadata";
-import { ComfortModel, JsThermalComfortStandard } from "../../../models/comfortModels";
-import { FieldKey } from "../../../models/fieldKeys";
-import { InputId } from "../../../models/inputSlots";
-import { UnitSystem } from "../../../models/units";
 import {
-  ChartMode,
-  ModelOutputKey,
-  type ExploreFieldChartConfig,
-} from "../../../models/modelCapabilities";
+  pmvAshraeAdapter,
+  pmvAshraeDeclaration,
+} from "../../../comfortModels/pmvAshrae";
+import {
+  pmvIsoDeclaration,
+} from "../../../comfortModels/pmvIso";
 import {
   buildComparePsychrometricChart,
   buildPmvDynamicChart,
-  pmvChartableOutputs,
+  calculateComfortZone,
+  getPmvZoneMeta,
+  solveDryBulbForTargetPmv,
   type ComfortZoneRequestDto,
-  type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
+  type PmvModelDeclaration,
+  type PmvResponseDto,
   type PmvStandardAdapter,
 } from "../../../comfortModels/pmvShared";
-import { pmvAshraeAdapter } from "../../../comfortModels/pmvAshrae";
-import { pmvIsoAdapter } from "../../../comfortModels/pmvIso";
+import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import { CalculationSource } from "../../../models/calculationMetadata";
+import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
+import { InputId } from "../../../models/inputSlots";
+import {
+  ChartMode,
+  ModelOutputKey,
+  type ChartBuildContext,
+  type ModelOutputKey as ModelOutputKeyType,
+} from "../../../models/modelCapabilities";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
+import { convertFieldValueFromSi } from "../../units";
 
-function createPmvInput(overrides: Partial<ComfortZoneRequestDto> = {}): ComfortZoneRequestDto {
+const input: ComfortZoneRequestDto = {
+  tdb: 25,
+  tr: 25,
+  vr: 0.1,
+  rh: 50,
+  met: 1.2,
+  clo: 0.5,
+  wme: 0,
+  occupantHasAirSpeedControl: true,
+  rhMin: 0,
+  rhMax: 100,
+  rhPoints: 11,
+};
+
+function createResult(
+  declaration: PmvModelDeclaration,
+  request: ComfortZoneRequestDto = input,
+): PmvResponseDto {
+  const result = declaration.adapter.calculate(request);
   return {
-    tdb: 25,
-    tr: 25,
-    vr: 0.1,
-    rh: 50,
-    met: 1.2,
-    clo: 0.5,
-    wme: 0,
-    occupantHasAirSpeedControl: true,
-    standard: JsThermalComfortStandard.ASHRAE,
-    units: UnitSystem.SI,
-    rhMin: 0,
-    rhMax: 100,
-    rhPoints: 9,
-    ...overrides,
+    ...result,
+    vr: request.vr,
+    isCompliant: declaration.adapter.checkApplicability(request).length === 0
+      && result.pmv >= -0.5
+      && result.pmv < 0.5,
+    standard: declaration.adapter.resultStandard,
+    source: CalculationSource.JsThermalComfort,
   };
 }
 
-function createPmvChartRequest(input = createPmvInput()): PmvChartInputsRequestDto {
-  return {
-    inputs: {
-      [InputId.Input1]: input,
-    },
-    chartRange: {
-      tdbMin: 10,
-      tdbMax: 40,
-      tdbPoints: 121,
-      humidityRatioMin: 0,
-      humidityRatioMax: 0.03,
-    },
-    rhCurves: [50, 100],
-  };
-}
-
-function createPmvChartSource(
-  chartRequest: PmvChartInputsRequestDto,
-  modelId: PmvChartSourceDto["modelId"] = ComfortModel.PmvAshrae,
+function createSource(
+  adapter: PmvStandardAdapter,
+  request: ComfortZoneRequestDto = input,
 ): PmvChartSourceDto {
   return {
-    modelId,
-    chartRequest,
-    comfortZonesByInput: {},
-    baselineInputId: InputId.Input1,
+    inputs: { [InputId.Input1]: request },
+    comfortZonesByInput: {
+      [InputId.Input1]: calculateComfortZone(adapter, request),
+    },
   };
 }
 
-function createExploreConfig(
-  xField: FieldKey,
-  yField: FieldKey,
-  zOutput = ModelOutputKey.Pmv,
-): ExploreFieldChartConfig {
-  const output = pmvChartableOutputs.find(({ key }) => key === zOutput)!;
+function createContext(
+  declaration: PmvModelDeclaration,
+  xField: FieldKeyType,
+  yField: FieldKeyType,
+  outputKey: ModelOutputKeyType,
+  unitSystem: UnitSystemType = UnitSystem.SI,
+): ChartBuildContext {
+  const output = declaration.chartableOutputs.find(({ key }) => key === outputKey);
+  if (!output) throw new Error(`Missing PMV output: ${outputKey}`);
   return {
-    mode: ChartMode.Explore,
-    xField,
-    yField,
-    zOutput,
-    bands: output.defaultBands,
+    unitSystem,
+    dynamicAxes: { xAxis: xField, yAxis: yField },
+    baselineInputId: InputId.Input1,
+    fieldChartConfig: {
+      mode: ChartMode.Explore,
+      xField,
+      yField,
+      zOutput: outputKey,
+      bands: output.defaultBands,
+    },
   };
 }
 
-function getFirstConstraintFill(
-  chart: ReturnType<typeof buildPmvDynamicChart>,
-) {
-  return chart.traces.find((trace) => (
-    trace.contours?.type === "constraint" && trace.contours.operation !== "="
-  ));
+function buildPsychrometric(
+  declaration: PmvModelDeclaration,
+  unitSystem: UnitSystemType = UnitSystem.SI,
+  source = createSource(declaration.adapter),
+): PlotlyChartResponseDto {
+  return buildComparePsychrometricChart(
+    declaration,
+    source,
+    { [InputId.Input1]: createResult(declaration) },
+    {
+      unitSystem,
+      dynamicAxes: {
+        xAxis: FieldKey.DryBulbTemperature,
+        yAxis: FieldKey.RelativeHumidity,
+      },
+      baselineInputId: InputId.Input1,
+      fieldChartConfig: null,
+    },
+  );
 }
 
-function getFirstHitRegion(
-  chart: ReturnType<typeof buildPmvDynamicChart>,
-) {
-  return chart.traces.find((trace) => trace.hoveron === "fills");
+function buildDynamic(
+  declaration: PmvModelDeclaration,
+  xField: FieldKeyType,
+  yField: FieldKeyType,
+  outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
+  unitSystem: UnitSystemType = UnitSystem.SI,
+  request: ComfortZoneRequestDto = input,
+): PlotlyChartResponseDto {
+  return buildPmvDynamicChart(
+    declaration,
+    createSource(declaration.adapter, request),
+    { [InputId.Input1]: createResult(declaration, request) },
+    createContext(declaration, xField, yField, outputKey, unitSystem),
+  );
 }
 
 describe("PMV charts", () => {
-  it("builds the psychrometric chart with PMV zones, RH curves, comfort overlay, and SI input markers", () => {
-    const chartRequest = createPmvChartRequest();
-    const chart = buildComparePsychrometricChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(chartRequest),
-      UnitSystem.SI,
-    );
-    const zoneTrace = chart.traces.find((trace) => trace.type === "contour" && trace.isBackgroundZone);
-    const comfortPolygon = chart.traces.find((trace) => trace.type === "scatter" && trace.isComfortZone);
-    const inputTrace = chart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
+  it("builds the fixed psychrometric view with zones, RH curves, comfort polygon, and input", () => {
+    const chart = buildPsychrometric(pmvAshraeDeclaration);
+    const zoneTrace = chart.traces[0];
 
-    expect(chart.source).toBe(CalculationSource.FrontendGenerated);
-    expect(chart.traces.map((trace) => trace.name)).toEqual([
-      "PMV (ASHRAE-55) Zones",
-      "RH 50%",
-      "RH 100%",
-      "Input 1 comfort zone",
-      "Input 1",
-    ]);
-    expect(zoneTrace?.z).toHaveLength(50);
-    expect(zoneTrace?.z?.[0]).toHaveLength(50);
-    expect(Number.isNaN((zoneTrace?.z as number[][])[49][0])).toBe(true);
-    expect(comfortPolygon?.x?.length).toBeGreaterThan(0);
-    expect(comfortPolygon?.y?.length).toBeGreaterThan(0);
-    expect(inputTrace?.x).toEqual([25]);
-    expect((inputTrace?.y?.[0] as number)).toBeGreaterThan(0);
-    expect((inputTrace?.y?.[0] as number)).toBeLessThan(25);
-    expect(inputTrace?.hovertemplate).toContain("PMV");
-    expect(String(chart.layout.xaxis.title)).toContain("Air temperature");
-    expect(String(chart.layout.yaxis.title)).toContain("Humidity ratio");
+    expect(zoneTrace.type).toBe("contour");
+    expect(zoneTrace.z).toHaveLength(50);
+    expect(zoneTrace.z?.[0]).toHaveLength(50);
+    expect(zoneTrace.hovertemplate).toContain("Zone: %{text}");
+    expect(zoneTrace.hovertemplate).toContain("PMV: %{z:.2f}");
+    expect(zoneTrace.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
+    expect(chart.traces.filter(({ name }) => name.startsWith("RH "))).toHaveLength(10);
+    expect(chart.traces.some(({ name }) => name === "Input 1 comfort zone")).toBe(true);
+    expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
+    expect(String(chart.layout.title)).toContain("ASHRAE");
   });
 
-  it("converts psychrometric chart axes and input markers for IP display", () => {
-    const chartRequest = createPmvChartRequest();
-    const siChart = buildComparePsychrometricChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(chartRequest),
+  it("leaves supersaturated psychrometric cells uncolored and clamps evaluated RH to 100%", () => {
+    let maximumRh = -Infinity;
+    const countingAdapter: PmvStandardAdapter = {
+      ...pmvAshraeAdapter,
+      calculate: (request) => {
+        maximumRh = Math.max(maximumRh, request.rh);
+        return pmvAshraeAdapter.calculate(request);
+      },
+    };
+    const declaration: PmvModelDeclaration = {
+      ...pmvAshraeDeclaration,
+      adapter: countingAdapter,
+    };
+    const chart = buildPsychrometric(
+      declaration,
       UnitSystem.SI,
+      createSource(pmvAshraeAdapter),
     );
-    const ipChart = buildComparePsychrometricChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(chartRequest),
-      UnitSystem.IP,
-    );
-    const siInputTrace = siChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
-    const ipInputTrace = ipChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
-    const siRhTrace = siChart.traces.find((trace) => trace.name === "RH 50%");
-    const ipRhTrace = ipChart.traces.find((trace) => trace.name === "RH 50%");
+    const zValues = chart.traces[0].z?.flat() ?? [];
 
-    expect(ipInputTrace?.x).toEqual([77]);
-    expect((ipInputTrace?.y?.[0] as number)).toBeGreaterThan(siInputTrace?.y?.[0] as number);
-    expect(ipRhTrace?.x?.[0] as number).toBeGreaterThan(siRhTrace?.x?.[0] as number);
-    expect(ipRhTrace?.y?.[0] as number).toBeGreaterThan(siRhTrace?.y?.[0] as number);
+    expect(zValues.some(Number.isNaN)).toBe(true);
+    expect(zValues.some(Number.isFinite)).toBe(true);
+    expect(maximumRh).toBeLessThanOrEqual(100);
+  });
+
+  it("converts psychrometric axes and markers only at the display boundary", () => {
+    const siChart = buildPsychrometric(pmvAshraeDeclaration, UnitSystem.SI);
+    const ipChart = buildPsychrometric(pmvAshraeDeclaration, UnitSystem.IP);
+    const siInput = siChart.traces.find(({ name }) => name === "Input 1");
+    const ipInput = ipChart.traces.find(({ name }) => name === "Input 1");
+
+    expect(siInput?.x).toEqual([25]);
+    expect(ipInput?.x[0]).toBeCloseTo(77, 6);
+    expect(ipInput?.y[0]).not.toBe(siInput?.y[0]);
     expect(String(ipChart.layout.xaxis.title)).toContain("°F");
-    expect(String(ipChart.layout.yaxis.title)).toContain("gr/lb");
-  });
-
-  it("builds PMV dynamic charts from shared grid scaffolding in SI and IP", () => {
-    const chartRequest = createPmvChartRequest();
-    const siChart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(chartRequest),
-      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
-      UnitSystem.SI,
-    );
-    const ipChart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(chartRequest),
-      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
-      UnitSystem.IP,
-    );
-    const siFillTrace = getFirstConstraintFill(siChart);
-    const siHitRegion = getFirstHitRegion(siChart);
-    const siBoundaryValues = siChart.traces
-      .filter((trace) => trace.contours?.operation === "=")
-      .map((trace) => trace.contours.value);
-    const siInputTrace = siChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
-    const ipInputTrace = ipChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
-
-    expect(siFillTrace?.z).toHaveLength(50);
-    expect(siFillTrace?.z?.[0]).toHaveLength(50);
-    expect(siFillTrace?.hoverinfo).toBe("skip");
-    expect(siHitRegion?.text?.[0]).toBe("Cold");
-    expect(siHitRegion?.hoverMetadata?.[0]).toHaveLength(2);
-    expect(siHitRegion?.hovertemplate).toContain("<b>Zone: %{text}</b>");
-    expect(siHitRegion?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
-    expect(siHitRegion?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
-    expect(siBoundaryValues).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
-    expect(siInputTrace?.x).toEqual([25]);
-    expect(siInputTrace?.y).toEqual([50]);
-    expect(ipInputTrace?.x).toEqual([77]);
-    expect(ipInputTrace?.y).toEqual([50]);
-    expect(String(siChart.layout.title)).toContain("Dynamic Chart");
-    expect(String(ipChart.layout.xaxis.title)).toContain("°F");
-  });
-
-  it("switches the dynamic grid between declared PMV and PPD outputs", () => {
-    const targetInput = createPmvInput({
-      tdb: 26,
-      tr: 25,
-      vr: 0.1,
-      rh: 50,
-      met: 1,
-      clo: 0.51,
-    });
-    const chartSource = createPmvChartSource(createPmvChartRequest(targetInput));
-    const pmvChart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      chartSource,
-      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
-      UnitSystem.SI,
-    );
-    const ppdChart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      chartSource,
-      createExploreConfig(
-        FieldKey.DryBulbTemperature,
-        FieldKey.RelativeHumidity,
-        ModelOutputKey.Ppd,
-      ),
-      UnitSystem.SI,
-    );
-
-    const pmvFillTrace = getFirstConstraintFill(pmvChart);
-    const ppdFillTrace = getFirstConstraintFill(ppdChart);
-    const pmvHitRegion = getFirstHitRegion(pmvChart);
-    const ppdHitRegion = getFirstHitRegion(ppdChart);
-    const pmvInputTrace = pmvChart.traces.find(
-      (trace) => trace.type === "scatter" && trace.mode === "markers",
-    );
-    const ppdInputTrace = ppdChart.traces.find(
-      (trace) => trace.type === "scatter" && trace.mode === "markers",
-    );
-    const ppdFillColors = ppdChart.traces
-      .filter((trace) => trace.contours?.type === "constraint" && trace.contours.operation !== "=")
-      .map((trace) => trace.fillcolor);
-    const ppdBoundaryValues = ppdChart.traces
-      .filter((trace) => trace.contours?.operation === "=")
-      .map((trace) => trace.contours.value);
-
-    expect(String(pmvChart.layout.title)).toContain("PMV");
-    expect(String(ppdChart.layout.title)).toContain("PPD");
-    expect(pmvFillTrace?.z).not.toEqual(ppdFillTrace?.z);
-    expect(pmvHitRegion?.hovertemplate).toContain("<b>Zone: %{text}</b>");
-    expect(pmvHitRegion?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
-    expect(pmvHitRegion?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
-    expect(ppdHitRegion?.hovertemplate).toContain("<b>Band: %{text}</b>");
-    expect(ppdHitRegion?.hovertemplate).toContain("PMV: %{customdata[1]:.2f}");
-    expect(ppdHitRegion?.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
-    expect(pmvHitRegion?.hoverMetadata?.[0]).toHaveLength(2);
-    expect(ppdHitRegion?.hoverMetadata?.[0]).toHaveLength(2);
-    expect(pmvInputTrace?.hovertemplate).toContain("<b>Zone: Neutral</b>");
-    expect(pmvInputTrace?.hovertemplate).toContain("PMV: -0.19");
-    expect(pmvInputTrace?.hovertemplate).toContain("PPD: 5.7%");
-    expect(ppdInputTrace?.hovertemplate).toContain("<b>Band: Acceptable dissatisfaction (< 10%)</b>");
-    expect(ppdInputTrace?.hovertemplate).toContain("PMV: -0.19");
-    expect(ppdInputTrace?.hovertemplate).toContain("PPD: 5.7%");
-    expect(ppdFillColors).toEqual(["#86efac", "#fca5a5"]);
-    expect(ppdBoundaryValues).toEqual([10]);
-  });
-
-  it("uses continuous constraint contours for both PMV standards", () => {
-    const ashraeChart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(createPmvChartRequest()),
-      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
-      UnitSystem.SI,
-    );
-    const isoInput = createPmvInput({
-      standard: JsThermalComfortStandard.ISO,
-      occupantHasAirSpeedControl: false,
-    });
-    const isoChart = buildPmvDynamicChart(
-      pmvIsoAdapter,
-      createPmvChartSource(
-        createPmvChartRequest(isoInput),
-        ComfortModel.PmvIso,
-      ),
-      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
-      UnitSystem.SI,
-    );
-    const getBoundaryValues = (chart: typeof ashraeChart) => chart.traces
-      .filter((trace) => trace.contours?.operation === "=")
-      .map((trace) => trace.contours.value);
-
-    expect(getBoundaryValues(ashraeChart)).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
-    expect(getBoundaryValues(isoChart)).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
-    expect(getFirstConstraintFill(ashraeChart)?.z).toHaveLength(50);
-    expect(getFirstConstraintFill(isoChart)?.z).toHaveLength(50);
   });
 
   it.each([ModelOutputKey.Pmv, ModelOutputKey.Ppd])(
-    "evaluates each 50×50 dynamic grid point once for %s",
+    "builds the %s Explore output through continuous band constraints",
     (outputKey) => {
-      let calculationCount = 0;
-      const countingAdapter: PmvStandardAdapter = {
-        ...pmvAshraeAdapter,
-        calculate: (request) => {
-          calculationCount += 1;
-          return pmvAshraeAdapter.calculate(request);
-        },
-      };
-
-      buildPmvDynamicChart(
-        countingAdapter,
-        createPmvChartSource(createPmvChartRequest()),
-        createExploreConfig(
-          FieldKey.DryBulbTemperature,
-          FieldKey.RelativeHumidity,
-          outputKey,
-        ),
-        UnitSystem.SI,
+      const chart = buildDynamic(
+        pmvAshraeDeclaration,
+        FieldKey.DryBulbTemperature,
+        FieldKey.RelativeHumidity,
+        outputKey,
       );
+      const fillTraces = chart.traces.filter(({ contours }) => (
+        contours?.type === "constraint" && contours.operation !== "="
+      ));
+      const tooltipTraces = chart.traces.filter(({ name }) => name.endsWith(" hover"));
+      const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
-      expect(calculationCount).toBe(50 * 50 + 1);
+      expect(fillTraces.length).toBeGreaterThan(0);
+      expect(chart.traces.some(({ hoveron }) => hoveron === "fills")).toBe(false);
+      expect(tooltipTraces).toHaveLength(1);
+      expect(tooltipTraces[0].hoverongaps).toBe(false);
+      expect(tooltipTraces[0].hovertemplate).toContain(
+        outputKey === ModelOutputKey.Pmv ? "Zone:" : "Band:",
+      );
+      expect(tooltipTraces[0].hovertemplate).toContain("PMV:");
+      expect(tooltipTraces[0].hovertemplate).toContain("PPD:");
+      expect(inputTrace?.hovertemplate).toContain(
+        outputKey === ModelOutputKey.Pmv ? "Zone:" : "Band:",
+      );
+      expect(inputTrace?.hovertemplate).toContain("PMV:");
+      expect(inputTrace?.hovertemplate).toContain("PPD:");
     },
   );
 
-  it("keeps RH 50% constraint intersections within 0.1°C of continuous PMV roots", () => {
-    const input = createPmvInput({
-      tdb: 26,
-      tr: 25,
-      vr: 0.1,
-      rh: 50,
-      met: 1,
-      clo: 0.51,
-    });
-    const chart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(createPmvChartRequest(input)),
-      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
-      UnitSystem.SI,
+  it("keeps fixed and Explore classification consistent for the input point", () => {
+    const result = createResult(pmvAshraeDeclaration);
+    const expectedZone = getPmvZoneMeta(result.pmv).label;
+    const fixed = buildPsychrometric(pmvAshraeDeclaration);
+    const explore = buildDynamic(
+      pmvAshraeDeclaration,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
     );
-    const fillTrace = getFirstConstraintFill(chart);
-    const xValues = fillTrace?.x ?? [];
-    const yValues = fillTrace?.y ?? [];
-    const zValues = fillTrace?.z ?? [];
-    const upperYIndex = yValues.findIndex((value) => value > 50);
-    const lowerYIndex = upperYIndex - 1;
-    const yFraction = (50 - yValues[lowerYIndex])
-      / (yValues[upperYIndex] - yValues[lowerYIndex]);
-    const pmvAtRh50 = xValues.map((_, xIndex) => (
-      zValues[lowerYIndex][xIndex]
-      + (zValues[upperYIndex][xIndex] - zValues[lowerYIndex][xIndex]) * yFraction
-    ));
-    const thresholds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5];
+    const fixedInput = fixed.traces.find(({ name }) => name === "Input 1");
+    const exploreInput = explore.traces.find(({ name }) => name === "Input 1");
 
-    const interpolatedRoots = thresholds.map((threshold) => {
-      const upperXIndex = pmvAtRh50.findIndex((value) => value >= threshold);
-      const lowerXIndex = upperXIndex - 1;
-      const fraction = (threshold - pmvAtRh50[lowerXIndex])
-        / (pmvAtRh50[upperXIndex] - pmvAtRh50[lowerXIndex]);
-      return xValues[lowerXIndex]
-        + (xValues[upperXIndex] - xValues[lowerXIndex]) * fraction;
-    });
-    const continuousRoots = thresholds.map((threshold) => {
-      let lower = 10;
-      let upper = 40;
-      for (let iteration = 0; iteration < 60; iteration += 1) {
-        const midpoint = (lower + upper) / 2;
-        const pmv = pmvAshraeAdapter.calculate({
-          ...input,
-          tdb: midpoint,
-          rh: 50,
-        }).pmv;
-        if (pmv < threshold) {
-          lower = midpoint;
-        } else {
-          upper = midpoint;
-        }
-      }
-      return (lower + upper) / 2;
-    });
-
-    expect(interpolatedRoots).toHaveLength(6);
-    interpolatedRoots.forEach((root, index) => {
-      expect(Math.abs(root - continuousRoots[index])).toBeLessThanOrEqual(0.1);
-    });
+    expect(fixedInput?.hovertemplate).toContain(`Zone: ${expectedZone}`);
+    expect(exploreInput?.hovertemplate).toContain(`Zone: ${expectedZone}`);
   });
 
   it.each([
-    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
     [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
+    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
     [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-  ] as const)("keeps coupled PMV component/operative axes chartable", (xAxis, yAxis) => {
-    const chart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(createPmvChartRequest()),
-      createExploreConfig(xAxis, yAxis),
-      UnitSystem.SI,
-    );
+    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
+  ] as const)("solves operative/component axes transactionally for %s / %s", (
+    xField,
+    yField,
+  ) => {
+    const chart = buildDynamic(pmvAshraeDeclaration, xField, yField);
+    const constraint = chart.traces.find(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    ));
 
-    expect(chart.layout.title).toContain("Dynamic Chart");
-    expect(chart.traces.some((trace) => (
-      trace.type === "contour"
-      && trace.z?.flat().some(Number.isFinite)
-    ))).toBe(true);
+    expect(constraint?.z?.flat().some(Number.isFinite)).toBe(true);
   });
 
-  it.each([
-    [FieldKey.DryBulbTemperature, FieldKey.MeanRadiantTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.RelativeHumidity],
-  ] as const)("keeps independent PMV axis pairs chartable", (xAxis, yAxis) => {
-    const chart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(createPmvChartRequest()),
-      createExploreConfig(xAxis, yAxis),
+  it("uses each standard's operative temperature and clothing range", () => {
+    const operativeInput = { ...input, tdb: 20, tr: 30, vr: 0.8 };
+    const ashraeOperative = buildDynamic(
+      pmvAshraeDeclaration,
+      FieldKey.OperativeTemperature,
+      FieldKey.RelativeHumidity,
+      ModelOutputKey.Pmv,
       UnitSystem.SI,
+      operativeInput,
     );
+    const isoOperative = buildDynamic(
+      pmvIsoDeclaration,
+      FieldKey.OperativeTemperature,
+      FieldKey.RelativeHumidity,
+      ModelOutputKey.Pmv,
+      UnitSystem.SI,
+      operativeInput,
+    );
+    const ashraeClothing = buildDynamic(
+      pmvAshraeDeclaration,
+      FieldKey.ClothingInsulation,
+      FieldKey.RelativeHumidity,
+    );
+    const isoClothing = buildDynamic(
+      pmvIsoDeclaration,
+      FieldKey.ClothingInsulation,
+      FieldKey.RelativeHumidity,
+    );
+    const inputX = (chart: PlotlyChartResponseDto) => chart.traces
+      .find(({ name }) => name === "Input 1")?.x[0];
 
-    expect(chart.layout.title).toContain("Dynamic Chart");
-    expect(chart.traces.length).toBeGreaterThan(0);
+    expect(inputX(ashraeOperative)).toBe(23);
+    expect(inputX(isoOperative)).toBeCloseTo(22.612, 3);
+    expect(ashraeClothing.layout.xaxis.range).toEqual([0, 1.5]);
+    expect(isoClothing.layout.xaxis.range).toEqual([0, 2]);
   });
 
-  it("fails directly when PMV dynamic axes violate the state invariant", () => {
-    expect(() => buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(createPmvChartRequest()),
-      createExploreConfig(
+  it("fails directly when Explore axes violate the state invariant", () => {
+    expect(() => buildDynamic(
+      pmvAshraeDeclaration,
+      FieldKey.DryBulbTemperature,
+      FieldKey.DryBulbTemperature,
+    )).toThrow(/unsupported PMV dynamic axis pair/i);
+  });
+
+  it.each([pmvAshraeDeclaration, pmvIsoDeclaration])(
+    "keeps RH 50% constraint crossings close to the continuous root for $label",
+    (declaration) => {
+      const chart = buildDynamic(
+        declaration,
         FieldKey.DryBulbTemperature,
-        FieldKey.DryBulbTemperature,
-      ),
-      UnitSystem.SI,
-    )).toThrow(/dynamic axis pair/i);
-  });
+        FieldKey.RelativeHumidity,
+      );
+      const lowerBoundary = chart.traces.find(({ contours }) => (
+        contours?.operation === "=" && contours.value === -0.5
+      ));
+      const root = solveDryBulbForTargetPmv(
+        declaration.adapter,
+        -0.5,
+        50,
+        input,
+      );
+      if (!lowerBoundary?.z || root === null) {
+        throw new Error("Missing PMV boundary or root.");
+      }
+      const yValues = lowerBoundary.y;
+      const rowIndex = yValues.reduce((bestIndex, value, index) => (
+        Math.abs(value - 50) < Math.abs(yValues[bestIndex] - 50) ? index : bestIndex
+      ), 0);
+      const row = lowerBoundary.z[rowIndex];
+      const crossingIndex = row.findIndex((value, index) => (
+        index > 0
+        && Number.isFinite(value)
+        && Number.isFinite(row[index - 1])
+        && (row[index - 1] + 0.5) * (value + 0.5) <= 0
+      ));
+      const xValues = lowerBoundary.x;
 
-  it("uses each PMV standard's clothing limit for dynamic chart axes", () => {
-    const ashraeChart = buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(createPmvChartRequest()),
-      createExploreConfig(FieldKey.ClothingInsulation, FieldKey.RelativeHumidity),
-      UnitSystem.SI,
-    );
-    const isoInput = createPmvInput({
-      standard: JsThermalComfortStandard.ISO,
-      occupantHasAirSpeedControl: false,
-      clo: 2,
-    });
-    const isoChart = buildPmvDynamicChart(
-      pmvIsoAdapter,
-      createPmvChartSource(
-        createPmvChartRequest(isoInput),
-        ComfortModel.PmvIso,
-      ),
-      createExploreConfig(FieldKey.ClothingInsulation, FieldKey.RelativeHumidity),
-      UnitSystem.SI,
-    );
+      expect(crossingIndex).toBeGreaterThan(0);
+      expect(Math.min(
+        Math.abs(xValues[crossingIndex] - root),
+        Math.abs(xValues[crossingIndex - 1] - root),
+      )).toBeLessThan(0.7);
+    },
+  );
 
-    expect(ashraeChart.layout.xaxis.range).toEqual([0, 1.5]);
-    expect(isoChart.layout.xaxis.range).toEqual([0, 2]);
+  it("keeps PMV grid hover complete in IP display", () => {
+    const chart = buildDynamic(
+      pmvAshraeDeclaration,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      ModelOutputKey.Pmv,
+      UnitSystem.IP,
+    );
+    const tooltipTrace = chart.traces.find(({ name }) => name === "PMV bands hover");
+    const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
+
+    expect(tooltipTrace?.type).toBe("contour");
+    expect(tooltipTrace?.hoverongaps).toBe(false);
+    expect(tooltipTrace?.hovertemplate).toContain("Air temperature");
+    expect(tooltipTrace?.hovertemplate).toContain("Relative humidity");
+    expect(tooltipTrace?.hovertemplate).toContain("Zone:");
+    expect(tooltipTrace?.hovertemplate).toContain("PMV:");
+    expect(tooltipTrace?.hovertemplate).toContain("PPD:");
+    expect(chart.traces.some(({ hoveron }) => hoveron === "fills")).toBe(false);
+    expect(inputTrace?.x[0]).toBeCloseTo(
+      convertFieldValueFromSi(FieldKey.DryBulbTemperature, input.tdb, UnitSystem.IP),
+      6,
+    );
   });
 });

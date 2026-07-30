@@ -30,7 +30,7 @@
     onClose,
   }: Props = $props();
 
-  let targetInputId = $state<InputId.Input1 | InputId.Input2 | InputId.Input3>(InputId.Input1);
+  let targetInputId = $state<InputIdType>(InputId.Input1);
   let predictiveOutdoorTemperature = $state<string>("");
 
   const predictiveTemperatureInputId = "quick-clothing-predictive-temperature";

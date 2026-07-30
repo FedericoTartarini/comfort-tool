@@ -14,6 +14,8 @@ import { InputId } from "../../models/inputSlots";
 import { UnitSystem } from "../../models/units";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { pmvAshraeModelConfig } from "../../comfortModels/pmvAshrae";
+import type { PmvChartSourceDto } from "../../comfortModels/pmvShared";
+import type { UtciResponseDto } from "../../comfortModels/utci";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 
 async function waitForIdle(toolState: ReturnType<typeof createComfortToolState>) {
@@ -334,17 +336,20 @@ describe("createComfortToolState", () => {
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
-    const ashraeSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource as any;
+    const ashraeSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae]
+      .chartSource as PmvChartSourceDto;
 
     toolState.actions.setSelectedModel(ComfortModel.PmvIso);
     await waitForIdle(toolState);
-    const isoSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].chartSource as any;
+    const isoSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso]
+      .chartSource as PmvChartSourceDto;
 
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status).toBe("ready");
     expect(ashraeSource).not.toBe(isoSource);
-    expect(ashraeSource.modelId).toBe(ComfortModel.PmvAshrae);
-    expect(isoSource.modelId).toBe(ComfortModel.PmvIso);
+    expect(Object.keys(ashraeSource).sort()).toEqual(["comfortZonesByInput", "inputs"]);
+    expect(Object.keys(isoSource).sort()).toEqual(["comfortZonesByInput", "inputs"]);
+    expect(ashraeSource.inputs).not.toBe(isoSource.inputs);
 
     toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
     expect(toolState.state.ui.isLoading).toBe(false);
@@ -381,13 +386,13 @@ describe("createComfortToolState", () => {
     await waitForIdle(toolState);
 
     const currentIsoChartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso]
-      .chartSource as any;
+      .chartSource as PmvChartSourceDto;
     const currentInput = toolState.state.inputsByInput[InputId.Input1];
 
     expect(currentIsoChartSource).not.toBe(previousIsoChartSource);
-    expect(currentIsoChartSource.chartRequest.inputs[InputId.Input1].tdb)
+    expect(currentIsoChartSource.inputs[InputId.Input1]?.tdb)
       .toBeCloseTo(currentInput[FieldKey.DryBulbTemperature], 6);
-    expect(currentIsoChartSource.chartRequest.inputs[InputId.Input1].tr)
+    expect(currentIsoChartSource.inputs[InputId.Input1]?.tr)
       .toBeCloseTo(currentInput[FieldKey.MeanRadiantTemperature], 6);
   });
 
@@ -447,7 +452,10 @@ describe("createComfortToolState", () => {
     toolState.actions.setSelectedModel(ComfortModel.Utci);
     await waitForIdle(toolState);
 
-    const rawUtci = (toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].resultsByInput.input1 as any)?.utci;
+    const rawUtci = (
+      toolState.state.ui.calculationCacheByModel[ComfortModel.Utci]
+        .resultsByInput.input1 as UtciResponseDto | null
+    )?.utci;
     const chartSource = toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource;
     const siResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
     const siChartTitle = String(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title ?? "");
@@ -457,7 +465,10 @@ describe("createComfortToolState", () => {
     const ipResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
     const ipChartTitle = String(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title ?? "");
 
-    expect(rawUtci).toBe((toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].resultsByInput.input1 as any)?.utci);
+    expect(rawUtci).toBe((
+      toolState.state.ui.calculationCacheByModel[ComfortModel.Utci]
+        .resultsByInput.input1 as UtciResponseDto | null
+    )?.utci);
     expect(chartSource).toBe(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].chartSource);
     expect(siResultText).toContain("°C");
     expect(ipResultText).toContain("°F");

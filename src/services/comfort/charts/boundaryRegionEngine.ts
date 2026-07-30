@@ -1,4 +1,8 @@
-import type { PlotTraceDto } from "../../../models/comfortDtos";
+import type {
+  PlotColorScaleDto,
+  PlotContoursDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale, ChartRange } from "./types";
 
@@ -32,8 +36,7 @@ interface BuildBoundaryRegionTracesOptions {
   bands: BoundaryBand[];
   variableAxis: ChartAxisScale;
   boundaryAxis: ChartAxisScale;
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
+  variableDimension: "x" | "y";
   boundaryRangeSi?: ChartRange;
   getHoverMetadata?: (xSi: number, ySi: number, index: number) => BoundaryHoverRow;
   buildTrace: (context: BoundaryPolygonTraceContext & { band: BoundaryBand; bandIndex: number }) => PlotTraceDto;
@@ -58,8 +61,8 @@ interface TooltipGridTraceOptions {
   yAxis: ChartAxisScale;
   hovertemplate: string;
   getHoverMetadata: (xSi: number, ySi: number, xIndex: number, yIndex: number) => BoundaryHoverRow;
-  colorscale?: [number, string][];
-  contours?: any;
+  colorscale?: PlotColorScaleDto;
+  contours?: PlotContoursDto;
 }
 
 interface ClosedBoundaryPolygonOptions {
@@ -71,41 +74,6 @@ interface ClosedBoundaryPolygonOptions {
 
 function clamp(value: number, range: ChartRange): number {
   return Math.min(range.max, Math.max(range.min, value));
-}
-
-function resolveVariableIsXAxis(
-  variableAxis: ChartAxisScale,
-  boundaryAxis: ChartAxisScale,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-): boolean {
-  const identityDirections: boolean[] = [];
-  if (variableAxis === xAxis) identityDirections.push(true);
-  if (variableAxis === yAxis) identityDirections.push(false);
-  if (boundaryAxis === xAxis) identityDirections.push(false);
-  if (boundaryAxis === yAxis) identityDirections.push(true);
-
-  if (identityDirections.length > 0) {
-    const variableIsXAxis = identityDirections[0];
-    if (identityDirections.some((direction) => direction !== variableIsXAxis)) {
-      throw new Error("Boundary axis identities describe conflicting orientations");
-    }
-    return variableIsXAxis;
-  }
-
-  if (xAxis.field === yAxis.field) {
-    throw new Error(
-      `Boundary axis orientation cannot be resolved by field because both chart axes use ${xAxis.field}`,
-    );
-  }
-  if (variableAxis.field === xAxis.field && boundaryAxis.field === yAxis.field) {
-    return true;
-  }
-  if (variableAxis.field === yAxis.field && boundaryAxis.field === xAxis.field) {
-    return false;
-  }
-
-  throw new Error("Boundary axis orientation cannot be resolved from axis identity or field");
 }
 
 export function buildClosedBoundaryPolygon({
@@ -154,8 +122,7 @@ export function buildBoundaryRegionTraces({
   bands,
   variableAxis,
   boundaryAxis,
-  xAxis,
-  yAxis,
+  variableDimension,
   boundaryRangeSi = boundaryAxis.rangeSi,
   getHoverMetadata,
   buildTrace,
@@ -177,12 +144,7 @@ export function buildBoundaryRegionTraces({
   }
 
   const variableDisplayValues = variableValuesSi.map(variableAxis.toDisplay);
-  const variableIsXAxis = resolveVariableIsXAxis(
-    variableAxis,
-    boundaryAxis,
-    xAxis,
-    yAxis,
-  );
+  const variableIsXAxis = variableDimension === "x";
   const traces: PlotTraceDto[] = [];
 
   bands.forEach((band, bandIndex) => {

@@ -1,4 +1,5 @@
 import type { InputId as InputIdType } from "../../models/inputSlots";
+import type { ModelCalculationContext } from "../../models/modelCalculation";
 import type { ComfortToolStateSlice } from "./types";
 import { getComfortModelConfig } from "./modelConfigs";
 
@@ -40,7 +41,11 @@ export function createCalculationManager(state: ComfortToolStateSlice, getVisibl
 
     try {
       const modelConfig = getComfortModelConfig(selectedModel);
-      const calculationOutputs = modelConfig.calculate(state, visibleInputIds);
+      const calculationContext: ModelCalculationContext = {
+        inputsByInput: state.inputsByInput,
+        modelOptionsByModel: state.ui.modelOptionsByModel,
+      };
+      const calculationOutputs = modelConfig.calculate(calculationContext, visibleInputIds);
 
       state.ui.calculationCacheByModel[selectedModel] = {
         ...state.ui.calculationCacheByModel[selectedModel],

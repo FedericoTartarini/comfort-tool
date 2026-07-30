@@ -9,7 +9,7 @@ import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
 import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { InputControlId as InputControlIdType, InputControlViewModel } from "../../models/inputControls";
-import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import type {
   ExploreFieldChartConfig,
@@ -24,7 +24,7 @@ export type InputState = Record<FieldKeyType, number>;
 // State for multiple inputs.
 export type InputsByInputState = Record<InputIdType, InputState>;
 // State for model options.
-export type ModelOptionsState = Partial<Record<OptionKeyType, string>>;
+export type ModelOptionsState = ModelOptionsRecord;
 // State for model options by model.
 export type ModelOptionsByModelState = Record<ComfortModelType, ModelOptionsState>;
 // State of the currently selected chart for each model.
@@ -71,7 +71,7 @@ export interface ModelSwitchViolation {
   displayUnits: string;
 }
 
-// Temporary state for a model switch that has not yet been confirmed.
+// Pending model switch awaiting confirmation.
 export type PendingModelSwitch = {
   targetModel: ComfortModelType;
   violations: ModelSwitchViolation[];

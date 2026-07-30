@@ -32,10 +32,8 @@
       <Card size="none" class="w-full min-w-0 border-stone-300 p-3 shadow-sm scroll-mt-32">
         <!-- Summary of calculation results -->
         <ResultsPanel
-          activeInputId={toolState.state.ui.activeInputId}
           visibleInputIds={toolState.selectors.getVisibleInputIds()}
           resultSections={toolState.selectors.getResultSections()}
-          errorMessage={toolState.state.ui.errorMessage}
           isLoading={toolState.state.ui.isLoading}
           embedded={true}
         />

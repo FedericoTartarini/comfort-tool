@@ -10,10 +10,12 @@ import {
 import { ComfortStandard } from "../models/calculationMetadata";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
+import { UnitSystem } from "../models/units";
 import {
   createPmvComplianceBands,
   createPmvModelConfig,
   pmvChartableOutputs,
+  type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./pmvShared";
 
@@ -21,7 +23,6 @@ const ashraeComplianceBands = createPmvComplianceBands();
 
 export const pmvAshraeAdapter: PmvStandardAdapter = {
   modelId: ComfortModel.PmvAshrae,
-  calculationStandard: JsThermalComfortStandard.ASHRAE,
   resultStandard: ComfortStandard.Ashrae55PmvPpd,
   clothingInsulationMaxSi: 1.5,
   supportsOccupantAirSpeedControl: true,
@@ -34,7 +35,7 @@ export const pmvAshraeAdapter: PmvStandardAdapter = {
     request.clo,
     request.wme,
     {
-      units: request.units,
+      units: UnitSystem.SI,
       limit_inputs: false,
       airspeed_control: request.occupantHasAirSpeedControl,
     },
@@ -48,7 +49,7 @@ export const pmvAshraeAdapter: PmvStandardAdapter = {
       met: request.met,
       clo: request.clo,
       airspeed_control: request.occupantHasAirSpeedControl,
-    } as any,
+    },
   ),
   getOperativeTemperature: (request) => t_o(
     request.tdb,
@@ -58,7 +59,9 @@ export const pmvAshraeAdapter: PmvStandardAdapter = {
   ),
 };
 
-export const pmvAshraeModelConfig = createPmvModelConfig({
+export const pmvAshraeDeclaration: PmvModelDeclaration = {
+  label: "PMV (ASHRAE-55)",
+  description: "ASHRAE 55 PMV/PPD with comfort zone overlays.",
   adapter: pmvAshraeAdapter,
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
@@ -66,4 +69,6 @@ export const pmvAshraeModelConfig = createPmvModelConfig({
     output: ModelOutputKey.Pmv,
     bands: ashraeComplianceBands,
   },
-});
+};
+
+export const pmvAshraeModelConfig = createPmvModelConfig(pmvAshraeDeclaration);

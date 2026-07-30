@@ -1,6 +1,12 @@
 import type { GridContourLayerSpec } from "./chartEngine";
-import type { NumericBand } from "../../../models/modelCapabilities";
-import type { PlotTraceDto } from "../../../models/comfortDtos";
+import {
+  findNumericBandIndexForValue,
+  type NumericBand,
+} from "../../../models/modelCapabilities";
+import type {
+  PlotColorScaleDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
 import { buildGridContourTrace } from "./gridEngine";
 import type { GridEvaluationResult } from "./types";
 
@@ -19,7 +25,7 @@ interface BoundaryLayerOptions {
 
 interface ZoneContourLayersOptions {
   name: string;
-  colorscale: any[];
+  colorscale: PlotColorScaleDto;
   contours: GridContourLayerSpec["contours"];
   hovertemplate: string;
   showscale?: boolean;
@@ -119,14 +125,12 @@ export function buildZoneContourLayers({
 interface CategoricalBandLayersOptions {
   name: string;
   bands: readonly NumericBand[];
-  hovertemplate: string;
   opacity?: number;
 }
 
 export function buildCategoricalBandLayers({
   name,
   bands,
-  hovertemplate,
   opacity = 0.8,
 }: CategoricalBandLayersOptions): GridContourLayerSpec[] {
   const contours = bands.length === 1
@@ -151,7 +155,10 @@ export function buildCategoricalBandLayers({
     contours,
     zmin: -0.5,
     zmax: bands.length - 0.5,
-    hovertemplate,
+    hovertemplate: "",
+    hoverinfo: "skip",
+    includeText: false,
+    includeHoverMetadata: false,
     opacity,
     isBackgroundZone: true,
     boundaryLayer: bands.length > 1
@@ -167,11 +174,65 @@ export function buildCategoricalBandLayers({
   });
 }
 
+interface CategoricalBandTracesOptions extends CategoricalBandLayersOptions {
+  grid: GridEvaluationResult;
+}
+
+export function buildCategoricalBandTraces({
+  name,
+  bands,
+  grid,
+  opacity,
+}: CategoricalBandTracesOptions): PlotTraceDto[] {
+  const classifiedGrid: GridEvaluationResult = {
+    ...grid,
+    zValues: grid.zValues.map((row) => row.map((value) => (
+      findNumericBandIndexForValue(bands, value) ?? NaN
+    ))),
+  };
+
+  return buildCategoricalBandLayers({ name, bands, opacity }).map((layer) => (
+    buildGridContourTrace({ ...layer, grid: classifiedGrid })
+  ));
+}
+
+interface BandTooltipTraceOptions {
+  name: string;
+  grid: GridEvaluationResult;
+  hovertemplate: string;
+}
+
+const TRANSPARENT_COLORSCALE: PlotColorScaleDto = [
+  [0, "rgba(0, 0, 0, 0)"],
+  [1, "rgba(0, 0, 0, 0)"],
+];
+
+export function buildBandTooltipTrace({
+  name,
+  grid,
+  hovertemplate,
+}: BandTooltipTraceOptions): PlotTraceDto {
+  return buildGridContourTrace({
+    name,
+    grid,
+    colorscale: TRANSPARENT_COLORSCALE,
+    contours: {
+      type: "levels",
+      coloring: "heatmap",
+      showlines: false,
+    },
+    hovertemplate,
+    hoverOnGaps: false,
+    showscale: false,
+    line: { width: 0 },
+    isBackgroundZone: true,
+  });
+}
+
 interface ConstraintBandTracesOptions {
   name: string;
   bands: readonly NumericBand[];
   grid: GridEvaluationResult;
-  hovertemplate: string;
   opacity?: number;
 }
 
@@ -220,205 +281,14 @@ function buildBandConstraint(
   return { operation: "][", value: [band.min, band.max] };
 }
 
-interface BandHitVertex {
-  x: number;
-  y: number;
-  z: number;
-  hoverMetadata: unknown[];
-}
-
-function toHoverMetadataRow(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [value];
-}
-
-function interpolateHoverMetadata(
-  start: unknown[],
-  end: unknown[],
-  fraction: number,
-): unknown[] {
-  const length = Math.max(start.length, end.length);
-  return Array.from({ length }, (_, index) => {
-    const startValue = start[index];
-    const endValue = end[index];
-    return typeof startValue === "number"
-      && Number.isFinite(startValue)
-      && typeof endValue === "number"
-      && Number.isFinite(endValue)
-      ? startValue + (endValue - startValue) * fraction
-      : fraction < 0.5 ? startValue : endValue;
-  });
-}
-
-function interpolateBandHitVertex(
-  start: BandHitVertex,
-  end: BandHitVertex,
-  threshold: number,
-): BandHitVertex {
-  const zDifference = end.z - start.z;
-  const fraction = zDifference === 0
-    ? 0.5
-    : Math.max(0, Math.min(1, (threshold - start.z) / zDifference));
-
-  return {
-    x: start.x + (end.x - start.x) * fraction,
-    y: start.y + (end.y - start.y) * fraction,
-    z: threshold,
-    hoverMetadata: interpolateHoverMetadata(
-      start.hoverMetadata,
-      end.hoverMetadata,
-      fraction,
-    ),
-  };
-}
-
-function clipBandHitPolygon(
-  polygon: BandHitVertex[],
-  threshold: number,
-  keepAbove: boolean,
-): BandHitVertex[] {
-  if (polygon.length === 0 || !Number.isFinite(threshold)) {
-    return polygon;
-  }
-
-  const isInside = (vertex: BandHitVertex) => (
-    keepAbove ? vertex.z >= threshold : vertex.z <= threshold
-  );
-  const clipped: BandHitVertex[] = [];
-  let previous = polygon[polygon.length - 1];
-  let previousInside = isInside(previous);
-
-  polygon.forEach((current) => {
-    const currentInside = isInside(current);
-    if (currentInside !== previousInside) {
-      clipped.push(interpolateBandHitVertex(previous, current, threshold));
-    }
-    if (currentInside) {
-      clipped.push(current);
-    }
-    previous = current;
-    previousInside = currentInside;
-  });
-
-  return clipped;
-}
-
-function getPolygonArea(polygon: BandHitVertex[]): number {
-  return Math.abs(polygon.reduce((area, vertex, index) => {
-    const next = polygon[(index + 1) % polygon.length];
-    return area + vertex.x * next.y - next.x * vertex.y;
-  }, 0)) / 2;
-}
-
-function buildBandHitPolygons(
-  grid: GridEvaluationResult,
-  band: NumericBand,
-): BandHitVertex[][] {
-  const polygons: BandHitVertex[][] = [];
-
-  for (let yIndex = 0; yIndex < grid.yValues.length - 1; yIndex += 1) {
-    for (let xIndex = 0; xIndex < grid.xValues.length - 1; xIndex += 1) {
-      const corners = [
-        { xIndex, yIndex },
-        { xIndex: xIndex + 1, yIndex },
-        { xIndex: xIndex + 1, yIndex: yIndex + 1 },
-        { xIndex, yIndex: yIndex + 1 },
-      ].map(({ xIndex: cornerXIndex, yIndex: cornerYIndex }): BandHitVertex => ({
-        x: grid.xValues[cornerXIndex],
-        y: grid.yValues[cornerYIndex],
-        z: grid.zValues[cornerYIndex][cornerXIndex],
-        hoverMetadata: toHoverMetadataRow(
-          grid.hoverMetadata[cornerYIndex][cornerXIndex],
-        ),
-      }));
-
-      if (corners.some(({ z }) => !Number.isFinite(z))) {
-        continue;
-      }
-
-      // Split each marching square along a stable diagonal. Clipping both
-      // triangles against the band edges covers narrow isobands even when no
-      // original grid corner lies inside the band.
-      const triangles = [
-        [corners[0], corners[1], corners[2]],
-        [corners[0], corners[2], corners[3]],
-      ];
-      triangles.forEach((triangle) => {
-        const aboveLower = clipBandHitPolygon(triangle, band.min, true);
-        const insideBand = clipBandHitPolygon(aboveLower, band.max, false);
-        if (insideBand.length >= 3 && getPolygonArea(insideBand) > 1e-12) {
-          polygons.push(insideBand);
-        }
-      });
-    }
-  }
-
-  return polygons;
-}
-
-function buildBandHitRegionTrace(
-  name: string,
-  band: NumericBand,
-  grid: GridEvaluationResult,
-  hovertemplate: string,
-): PlotTraceDto | null {
-  const polygons = buildBandHitPolygons(grid, band);
-  if (polygons.length === 0) {
-    return null;
-  }
-
-  const x: number[] = [];
-  const y: number[] = [];
-  const text: string[] = [];
-  const hoverMetadata: unknown[][] = [];
-  const classificationMatch = hovertemplate.match(/<b>([^:<]+): %\{text\}<\/b>/);
-  const hoverName = classificationMatch
-    ? `${classificationMatch[1]}: ${band.label}`
-    : `${name}: ${band.label}`;
-
-  polygons.forEach((polygon, polygonIndex) => {
-    if (polygonIndex > 0) {
-      x.push(NaN);
-      y.push(NaN);
-      text.push(band.label);
-      hoverMetadata.push([]);
-    }
-    [...polygon, polygon[0]].forEach((vertex) => {
-      x.push(vertex.x);
-      y.push(vertex.y);
-      text.push(band.label);
-      hoverMetadata.push(vertex.hoverMetadata);
-    });
-  });
-
-  return {
-    type: "scatter",
-    mode: "lines",
-    name: hoverName,
-    x,
-    y,
-    text,
-    showlegend: false,
-    fill: "toself",
-    fillcolor: "rgba(0, 0, 0, 0)",
-    line: { width: 0, color: "rgba(0, 0, 0, 0)" },
-    marker: {},
-    hoveron: "fills",
-    hovertemplate,
-    hoverMetadata,
-    isBackgroundZone: true,
-  };
-}
-
 /**
- * Builds smooth band regions from a continuous raw-output grid. Plotly constraint
- * traces own the visible fill, while marching-square hit regions own hover so
- * unclassified gaps do not acquire a full-grid hover surface.
+ * Builds smooth visible band regions from a continuous raw-output grid.
+ * A separate transparent contour owns hover for all banded-grid renderers.
  */
 export function buildConstraintBandTraces({
   name,
   bands,
   grid,
-  hovertemplate,
   opacity = 0.8,
 }: ConstraintBandTracesOptions): PlotTraceDto[] {
   const finiteRange = getFiniteGridRange(grid);
@@ -477,10 +347,5 @@ export function buildConstraintBandTraces({
     includeHoverMetadata: false,
   }));
 
-  const hitRegionTraces = bands.flatMap((band) => {
-    const trace = buildBandHitRegionTrace(name, band, grid, hovertemplate);
-    return trace ? [trace] : [];
-  });
-
-  return [...fillTraces, ...boundaryTraces, ...hitRegionTraces];
+  return [...fillTraces, ...boundaryTraces];
 }

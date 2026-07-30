@@ -14,6 +14,10 @@ export interface ChartAxisScale {
   rangeSi: ChartRange;
   points: number;
   decimals?: number;
+  gridColor?: string;
+  showGrid?: boolean;
+  zeroLine?: boolean;
+  showTickLabels?: boolean;
   toDisplay: (valueSi: number) => number;
   toSi: (valueDisplay: number) => number;
 }
@@ -46,8 +50,6 @@ export interface GridEvaluationResult {
 
 export interface ChartLayoutSpec {
   title: string;
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
   paperBgColor: string;
   plotBgColor: string;
   showLegend: boolean;
@@ -56,12 +58,16 @@ export interface ChartLayoutSpec {
   showGrid?: boolean;
   zeroLine?: boolean;
   legend?: Record<string, unknown> | null;
+  shapes?: Record<string, unknown>[];
   height?: number | null;
 }
 
 export interface ChartResponseSpec {
   traces: PlotTraceDto[];
-  layout: ChartLayoutSpec;
+  layout: ChartLayoutSpec & {
+    xAxis: ChartAxisScale;
+    yAxis: ChartAxisScale;
+  };
   annotations?: PlotAnnotationDto[];
   source: CalculationSource;
 }

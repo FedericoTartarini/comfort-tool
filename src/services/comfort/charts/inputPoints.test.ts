@@ -4,7 +4,7 @@ import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
 import { createFieldAxisScale } from "./axis";
-import { buildInputTraceGroups, resolveBaselineInputEntry } from "./inputPoints";
+import { buildInputTraceGroups, getBaselineInputEntry } from "./inputPoints";
 
 describe("chart input points", () => {
   it("builds scatter traces from SI payload values", () => {
@@ -46,24 +46,17 @@ describe("chart input points", () => {
     expect(traces[0].hovertemplate).toContain("Neutral");
   });
 
-  it("resolves a preferred baseline and otherwise uses input order", () => {
+  it("requires the baseline selected by the chart build context", () => {
     const inputsMap = {
       [InputId.Input1]: { label: "first" },
       [InputId.Input2]: { label: "second" },
     };
 
-    expect(resolveBaselineInputEntry(inputsMap, InputId.Input2)).toEqual({
+    expect(getBaselineInputEntry(inputsMap, InputId.Input2)).toEqual({
       inputId: InputId.Input2,
       payload: { label: "second" },
     });
-    expect(resolveBaselineInputEntry(inputsMap, InputId.Input3)).toEqual({
-      inputId: InputId.Input1,
-      payload: { label: "first" },
-    });
-    expect(resolveBaselineInputEntry({ [InputId.Input2]: { label: "only" } }))
-      .toEqual({
-        inputId: InputId.Input2,
-        payload: { label: "only" },
-      });
+    expect(() => getBaselineInputEntry(inputsMap, InputId.Input3))
+      .toThrow("Missing chart baseline payload for input3.");
   });
 });

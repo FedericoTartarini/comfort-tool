@@ -7,7 +7,13 @@
  */
 import { inputChartStyleById, inputDisplayMetaById } from "../../../models/inputSlotPresentation";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
-import type { PlotAnnotationDto, PlotTraceDto } from "../../../models/comfortDtos";
+import type {
+  PlotAnnotationDto,
+  PlotColorScaleDto,
+  PlotContoursDto,
+  PlotLineDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
 
 /**
  * Interface for building an input scatter trace.
@@ -27,7 +33,7 @@ export interface InputScatterTraceOptions {
   hovertemplate: string;
   markerSize?: number;
   color?: string;
-  hoverMetadata?: any[] | any[][];
+  hoverMetadata?: unknown[] | unknown[][];
   hoverinfo?: string;
 }
 
@@ -91,7 +97,7 @@ export interface ComfortPolygonTraceOptions {
   isZone?: boolean;
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
-  hoverMetadata?: any[] | any[][];
+  hoverMetadata?: unknown[] | unknown[][];
   hoverinfo?: string;
 }
 
@@ -153,7 +159,7 @@ export interface LineTraceOptions {
   color: string;
   hovertemplate: string;
   text?: string[];
-  hoverMetadata?: any[] | any[][];
+  hoverMetadata?: unknown[] | unknown[][];
   hoverinfo?: string;
 }
 
@@ -360,22 +366,22 @@ export interface ContourTraceOptions {
   y: number[];
   z: number[][];
   text?: string[][];
-  colorscale?: any[];
+  colorscale?: PlotColorScaleDto;
   fillcolor?: string;
-  contours: any;
+  contours: PlotContoursDto;
   hovertemplate: string;
   showscale?: boolean;
   zmin?: number;
   zmax?: number;
-  colorbar?: any;
+  colorbar?: Record<string, unknown>;
   opacity?: number;
-  line?: any;
+  line?: PlotLineDto;
   isZone?: boolean;
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
   hoverinfo?: string;
   hoverOnGaps?: boolean;
-  hoverMetadata?: any[] | any[][];
+  hoverMetadata?: unknown[] | unknown[][];
 }
 
 /**

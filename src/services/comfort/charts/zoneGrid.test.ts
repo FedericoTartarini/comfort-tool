@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { GridEvaluationResult } from "./types";
 import {
+  buildBandTooltipTrace,
   buildConstraintBandTraces,
   buildZoneColorscale,
   buildZoneContourLayers,
@@ -64,7 +65,7 @@ describe("zone grid", () => {
     );
   });
 
-  it("gives each constraint fill its own label and raw-grid hover data", () => {
+  it("builds constraint fills and boundaries without hover hit regions", () => {
     const grid = createGrid([
       [0, 5, 10, 15, 20, 25, 30],
       [0, 5, 10, 15, 20, 25, 30],
@@ -78,13 +79,11 @@ describe("zone grid", () => {
       name: "Output bands",
       bands,
       grid,
-      hovertemplate: "Band: %{text}; value: %{customdata[0]}",
     });
     const fillTraces = traces.filter((trace) => (
       trace.contours?.type === "constraint" && trace.contours.operation !== "="
     ));
     const boundaryTraces = traces.filter((trace) => trace.contours?.operation === "=");
-    const hitRegionTraces = traces.filter((trace) => trace.hoveron === "fills");
 
     expect(fillTraces.map((trace) => trace.contours)).toEqual([
       expect.objectContaining({ operation: ">=", value: 5 }),
@@ -98,24 +97,33 @@ describe("zone grid", () => {
     ]);
     expect(fillTraces.every((trace) => trace.z === grid.zValues)).toBe(true);
     expect(fillTraces.every((trace) => trace.hoverinfo === "skip")).toBe(true);
-    expect(hitRegionTraces).toHaveLength(3);
-    expect(hitRegionTraces.map((trace) => trace.text?.[0])).toEqual([
-      "Low",
-      "Middle",
-      "High",
-    ]);
-    expect(hitRegionTraces.every((trace) => (
-      trace.hovertemplate === "Band: %{text}; value: %{customdata[0]}"
-    ))).toBe(true);
-    expect(hitRegionTraces.every((trace) => trace.fillcolor === "rgba(0, 0, 0, 0)"))
-      .toBe(true);
-    expect(hitRegionTraces[1].hoverMetadata?.some((metadata) => (
-      Array.isArray(metadata) && metadata[0] === 10
-    ))).toBe(true);
-    expect(boundaryTraces.map((trace) => trace.contours.value)).toEqual([5, 10, 25]);
+    expect(boundaryTraces.map((trace) => trace.contours?.value)).toEqual([5, 10, 25]);
     expect(boundaryTraces.every((trace) => trace.hoverinfo === "skip")).toBe(true);
     expect(boundaryTraces.every((trace) => trace.line?.color === "#333333")).toBe(true);
-    expect(traces.some((trace) => trace.name.endsWith(" hover"))).toBe(false);
+    expect(traces.every((trace) => trace.type === "contour")).toBe(true);
+  });
+
+  it("builds one transparent raw-grid tooltip with unclassified gaps", () => {
+    const grid = createGrid([[0, 5, 10]]);
+    grid.textValues = [["Low", "Unclassified", "High"]];
+    const trace = buildBandTooltipTrace({
+      name: "Output bands hover",
+      grid,
+      hovertemplate: "Band: %{text}; value: %{customdata[0]}",
+    });
+
+    expect(trace).toEqual(expect.objectContaining({
+      type: "contour",
+      name: "Output bands hover",
+      z: grid.zValues,
+      text: grid.textValues,
+      hoverMetadata: grid.hoverMetadata,
+      hoverongaps: false,
+    }));
+    expect(trace.colorscale).toEqual([
+      [0, "rgba(0, 0, 0, 0)"],
+      [1, "rgba(0, 0, 0, 0)"],
+    ]);
   });
 
   it("covers one fully unbounded band with a finite constraint", () => {
@@ -125,23 +133,21 @@ describe("zone grid", () => {
         { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
       ],
       grid: createGrid([[-2, 0, 2], [-2, 0, 2]]),
-      hovertemplate: "%{text}",
     });
 
-    expect(traces).toHaveLength(2);
+    expect(traces).toHaveLength(1);
     expect(traces[0].contours).toEqual(expect.objectContaining({
       type: "constraint",
       operation: ">=",
       coloring: "none",
     }));
-    expect(traces[0].contours.value).toBeGreaterThan(2);
-    expect(Number.isFinite(traces[0].contours.value)).toBe(true);
+    const coverValue = traces[0].contours?.value;
+    if (typeof coverValue !== "number") {
+      throw new Error("Expected a numeric unbounded-band cover value.");
+    }
+    expect(coverValue).toBeGreaterThan(2);
+    expect(Number.isFinite(coverValue)).toBe(true);
     expect(JSON.parse(JSON.stringify(traces))[0].contours.value).toBeGreaterThan(2);
-    expect(traces[1]).toEqual(expect.objectContaining({
-      type: "scatter",
-      hoveron: "fills",
-      fill: "toself",
-    }));
   });
 
   it("omits constraint traces when the raw grid has no finite values", () => {
@@ -151,7 +157,6 @@ describe("zone grid", () => {
         { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
       ],
       grid: createGrid([[NaN, NaN], [NaN, NaN]]),
-      hovertemplate: "%{text}",
     })).toEqual([]);
   });
 });

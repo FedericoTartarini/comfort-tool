@@ -29,8 +29,8 @@ export interface ShareStateSnapshot {
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
   inputsByInput: Record<InputIdType, Record<FieldKeyType, number>>;
-  dynamicXAxis?: FieldKeyType;
-  dynamicYAxis?: FieldKeyType;
+  dynamicXAxis: FieldKeyType;
+  dynamicYAxis: FieldKeyType;
 }
 
 const SHARE_STATE_VERSION = 1;
@@ -197,7 +197,9 @@ function parseSharedSnapshotFields(
     !Array.isArray(parsed.compareInputIds) ||
     !parsed.compareInputIds.every((inputId) => inputIdValues.has(inputId as InputIdType)) ||
     !inputIdValues.has(parsed.activeInputId as InputIdType) ||
-    !unitSystemValues.has(parsed.unitSystem as UnitSystemType)
+    !unitSystemValues.has(parsed.unitSystem as UnitSystemType) ||
+    typeof parsed.dynamicXAxis !== "string" ||
+    typeof parsed.dynamicYAxis !== "string"
   ) {
     return null;
   }
@@ -208,21 +210,11 @@ function parseSharedSnapshotFields(
   }
 
   const validFieldKeys = new Set<FieldKeyType>(Object.values(FieldKey));
-  let dynamicXAxis: FieldKeyType | undefined = undefined;
-  let dynamicYAxis: FieldKeyType | undefined = undefined;
-
-  if (parsed.dynamicXAxis !== undefined) {
-    if (typeof parsed.dynamicXAxis !== "string" || !validFieldKeys.has(parsed.dynamicXAxis as FieldKeyType)) {
-      return null;
-    }
-    dynamicXAxis = parsed.dynamicXAxis as FieldKeyType;
-  }
-
-  if (parsed.dynamicYAxis !== undefined) {
-    if (typeof parsed.dynamicYAxis !== "string" || !validFieldKeys.has(parsed.dynamicYAxis as FieldKeyType)) {
-      return null;
-    }
-    dynamicYAxis = parsed.dynamicYAxis as FieldKeyType;
+  if (
+    !validFieldKeys.has(parsed.dynamicXAxis as FieldKeyType) ||
+    !validFieldKeys.has(parsed.dynamicYAxis as FieldKeyType)
+  ) {
+    return null;
   }
 
   return {
@@ -231,36 +223,32 @@ function parseSharedSnapshotFields(
     activeInputId: parsed.activeInputId as InputIdType,
     unitSystem: parsed.unitSystem as UnitSystemType,
     inputsByInput,
-    dynamicXAxis,
-    dynamicYAxis,
+    dynamicXAxis: parsed.dynamicXAxis as FieldKeyType,
+    dynamicYAxis: parsed.dynamicYAxis as FieldKeyType,
   };
 }
 
-function parseShareStateSnapshotV1(parsed: Record<string, unknown>): ShareStateSnapshot | null {
-  if (!comfortModelValues.has(parsed.selectedModel as ComfortModelType)) {
+export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | null {
+  if (
+    !isRecord(value) ||
+    value.version !== SHARE_STATE_VERSION ||
+    !comfortModelValues.has(value.selectedModel as ComfortModelType)
+  ) {
     return null;
   }
 
-  const parsedModels = parseModelSnapshots(parsed.models, comfortModelOrder);
-  const sharedFields = parseSharedSnapshotFields(parsed);
-  if (!parsedModels || !sharedFields) {
+  const models = parseModelSnapshots(value.models, comfortModelOrder);
+  const sharedFields = parseSharedSnapshotFields(value);
+  if (!models || !sharedFields) {
     return null;
   }
 
   return {
     version: SHARE_STATE_VERSION,
-    selectedModel: parsed.selectedModel as ComfortModelType,
-    models: parsedModels,
+    selectedModel: value.selectedModel as ComfortModelType,
+    models,
     ...sharedFields,
   };
-}
-
-export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | null {
-  if (!isRecord(value) || value.version !== SHARE_STATE_VERSION) {
-    return null;
-  }
-
-  return parseShareStateSnapshotV1(value);
 }
 
 /**
@@ -331,22 +319,13 @@ export function applyShareSnapshotToState(state: ComfortToolStateSlice, snapshot
     });
   });
 
-  if (snapshot.dynamicXAxis) {
-    state.ui.dynamicXAxis = snapshot.dynamicXAxis;
-  }
-  if (snapshot.dynamicYAxis) {
-    state.ui.dynamicYAxis = snapshot.dynamicYAxis;
-  }
-
   const config = getComfortModelConfig(snapshot.selectedModel);
   const dynamicAxisPair = normalizeDynamicAxisPair(config, {
-    xAxis: state.ui.dynamicXAxis,
-    yAxis: state.ui.dynamicYAxis,
+    xAxis: snapshot.dynamicXAxis,
+    yAxis: snapshot.dynamicYAxis,
   });
-  if (dynamicAxisPair) {
-    state.ui.dynamicXAxis = dynamicAxisPair.xAxis;
-    state.ui.dynamicYAxis = dynamicAxisPair.yAxis;
-  }
+  state.ui.dynamicXAxis = dynamicAxisPair.xAxis;
+  state.ui.dynamicYAxis = dynamicAxisPair.yAxis;
 }
 
 /**

@@ -51,8 +51,16 @@
 
   const outputMeta = $derived(getModelOutputDisplayMeta(outputKey, unitSystem));
   const unitSuffix = $derived(outputMeta.displayUnits ? ` (${outputMeta.displayUnits})` : "");
-  const rowErrors = $derived.by(() => drafts.map((draft) => getRowErrors(draft)));
-  const hasRowErrors = $derived(rowErrors.some((errors) => errors.length > 0));
+  const draftBands = $derived(drafts.map(draftToBand));
+  const draftValidation = $derived(validateNumericBands(
+    draftBands,
+    { requireSorted: false },
+  ));
+  const rowErrors = $derived.by(() => {
+    return drafts.map((_, index) => draftValidation.issues
+      .filter((issue) => issue.bandIndex === index && issue.code !== "overlap")
+      .map(({ message }) => message));
+  });
 
   function formatFiniteEdge(valueSi: number): string {
     const displayValue = convertModelOutputFromSi(outputKey, valueSi, unitSystem);
@@ -109,20 +117,6 @@
     };
   }
 
-  function getRowErrors(draft: BandDraft): string[] {
-    const errors: string[] = [];
-    if (!draft.label.trim()) errors.push("Enter a label.");
-    if (!draft.color.trim()) errors.push("Choose a color.");
-
-    const band = draftToBand(draft);
-    if (Number.isNaN(band.min)) errors.push("Enter a valid lower bound.");
-    if (Number.isNaN(band.max)) errors.push("Enter a valid upper bound.");
-    if (!Number.isNaN(band.min) && !Number.isNaN(band.max) && band.min >= band.max) {
-      errors.push("The lower bound must be less than the upper bound.");
-    }
-    return errors;
-  }
-
   function openEditor() {
     drafts = toDrafts(bands);
     listErrors = [];
@@ -162,18 +156,17 @@
   }
 
   function applyDrafts() {
-    if (hasRowErrors) {
-      listErrors = ["Resolve the highlighted band errors before applying changes."];
+    if (!draftValidation.valid) {
+      const validationMessages = draftValidation.issues
+        .filter((issue) => issue.bandIndex === undefined || issue.code === "overlap")
+        .map(({ message }) => message);
+      listErrors = validationMessages.length > 0
+        ? [...new Set(validationMessages)]
+        : ["Resolve the highlighted band errors before applying changes."];
       return;
     }
 
-    const nextBands = normalizeNumericBands(drafts.map(draftToBand));
-    const validation = validateNumericBands(nextBands);
-    if (!validation.valid) {
-      listErrors = [...new Set(validation.issues.map(({ message }) => message))];
-      return;
-    }
-
+    const nextBands = normalizeNumericBands(draftBands);
     if (onApply(nextBands) === false) {
       listErrors = ["The band changes could not be applied."];
       return;
@@ -323,7 +316,7 @@
       <div class="flex flex-wrap justify-end gap-2">
         <Button color="light" size="sm" onclick={resetDrafts}>Reset</Button>
         <Button color="light" size="sm" onclick={cancelEditing}>Cancel</Button>
-        <Button color="teal" size="sm" onclick={applyDrafts}>Apply</Button>
+        <Button color="primary" size="sm" onclick={applyDrafts}>Apply</Button>
       </div>
     </div>
   </div>

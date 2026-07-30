@@ -1,5 +1,7 @@
 import type { FieldKey as FieldKeyType } from "./fieldKeys";
+import type { InputId as InputIdType } from "./inputSlots";
 import type { ThermalZone } from "./thermalZone";
+import type { UnitSystem as UnitSystemType } from "./units";
 
 export const ChartMode = {
   Compliance: "compliance",
@@ -66,13 +68,29 @@ export interface ExploreFieldChartConfig extends FieldChartConfigBase {
   readonly bands: readonly NumericBand[];
 }
 
-/** Type-only foundation for the constrained Compliance configuration added in §9.5. */
+/** Locked field-chart configuration declared by a compliance-capable model. */
 export interface ComplianceFieldChartConfig extends FieldChartConfigBase {
   readonly mode: typeof ChartMode.Compliance;
   readonly bands: readonly Band[];
 }
 
 export type FieldChartConfig = ExploreFieldChartConfig | ComplianceFieldChartConfig;
+
+/** Field-chart configuration accepted by the numeric grid/contour strategy. */
+export type GridFieldChartConfig = FieldChartConfig & {
+  readonly bands: readonly NumericBand[];
+};
+
+/** Generic presentation state supplied to every registered chart builder. */
+export interface ChartBuildContext {
+  readonly unitSystem: UnitSystemType;
+  readonly dynamicAxes: {
+    readonly xAxis: FieldKeyType;
+    readonly yAxis: FieldKeyType;
+  };
+  readonly baselineInputId: InputIdType;
+  readonly fieldChartConfig: FieldChartConfig | null;
+}
 
 export function resolveBandEdge(
   edge: BandEdge,

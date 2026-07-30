@@ -36,7 +36,6 @@
     class: className = "",
   }: Props = $props();
 
-  let rootElement = $state<HTMLElement | null>(null);
   let searchInput = $state<HTMLInputElement | null>(null);
   let isOpen = $state(false);
   let query = $state("");
@@ -148,7 +147,7 @@
 
 </script>
 
-<div class={`relative w-full min-w-0 ${className}`} bind:this={rootElement} use:clickOutside={closeDropdown}>
+<div class={`relative w-full min-w-0 ${className}`} use:clickOutside={closeDropdown}>
   <input
     bind:this={searchInput}
     type="text"

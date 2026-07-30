@@ -2,8 +2,6 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
-import { ComfortModel, JsThermalComfortStandard } from "../../../models/comfortModels";
-import { AdaptiveStandardMode } from "../../../models/inputModes";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
@@ -11,18 +9,25 @@ import { ChartMode, ModelOutputKey } from "../../../models/modelCapabilities";
 import {
   buildAdaptiveChart,
   buildAdaptiveDynamicChart,
-} from "../../../comfortModels/adaptive";
+  calculateAdaptive,
+} from "../../../comfortModels/adaptiveShared";
+import { adaptiveAshraeDeclaration } from "../../../comfortModels/adaptiveAshrae";
 import {
   buildComparePsychrometricChart,
   buildPmvDynamicChart,
   calculateComfortZone,
-  pmvChartableOutputs,
   type ComfortZoneRequestDto,
-  type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
 } from "../../../comfortModels/pmvShared";
-import { pmvAshraeAdapter } from "../../../comfortModels/pmvAshrae";
-import { buildUtciDynamicChart, utciModelConfig } from "../../../comfortModels/utci";
+import {
+  pmvAshraeAdapter,
+  pmvAshraeDeclaration,
+} from "../../../comfortModels/pmvAshrae";
+import {
+  buildUtciDynamicChart,
+  calculateUtci,
+  utciModelConfig,
+} from "../../../comfortModels/utci";
 
 const pmvPayload: ComfortZoneRequestDto = {
   tdb: 25,
@@ -33,8 +38,6 @@ const pmvPayload: ComfortZoneRequestDto = {
   clo: 0.5,
   wme: 0,
   occupantHasAirSpeedControl: true,
-  standard: JsThermalComfortStandard.ASHRAE,
-  units: UnitSystem.SI,
   rhMin: 0,
   rhMax: 100,
   rhPoints: 9,
@@ -45,7 +48,6 @@ const adaptivePayload = {
   tr: 24,
   trm: 20.16,
   v: 0.1,
-  units: UnitSystem.SI,
 };
 
 const utciPayload = {
@@ -53,34 +55,29 @@ const utciPayload = {
   tr: 25,
   v: 1,
   rh: 50,
-  units: UnitSystem.SI,
 };
 
-function createPmvChartRequest(): PmvChartInputsRequestDto {
+function createPmvChartSource(): PmvChartSourceDto {
   return {
     inputs: {
       [InputId.Input1]: pmvPayload,
     },
-    chartRange: {
-      tdbMin: 10,
-      tdbMax: 40,
-      tdbPoints: 121,
-      humidityRatioMin: 0,
-      humidityRatioMax: 0.03,
-    },
-    rhCurves: [50, 100],
-  };
-}
-
-function createPmvChartSource(chartRequest: PmvChartInputsRequestDto): PmvChartSourceDto {
-  return {
-    modelId: ComfortModel.PmvAshrae,
-    chartRequest,
     comfortZonesByInput: {
       [InputId.Input1]: calculateComfortZone(pmvAshraeAdapter, pmvPayload),
     },
-    baselineInputId: InputId.Input1,
   };
+}
+
+function fixedContext() {
+  return {
+    unitSystem: UnitSystem.SI,
+    dynamicAxes: {
+      xAxis: FieldKey.DryBulbTemperature,
+      yAxis: FieldKey.RelativeHumidity,
+    },
+    baselineInputId: InputId.Input1,
+    fieldChartConfig: null,
+  } as const;
 }
 
 function normalizeChartValue(value: unknown): unknown {
@@ -113,71 +110,83 @@ function chartShapeHash(chart: PlotlyChartResponseDto): string {
 
 describe("PMV and Adaptive chart shape fixtures", () => {
   it("keeps the PMV psychrometric chart DTO shape stable", () => {
-    const chartRequest = createPmvChartRequest();
-    const chartSource = createPmvChartSource(chartRequest);
+    const chartSource = createPmvChartSource();
 
     expect(chartShapeHash(buildComparePsychrometricChart(
-      pmvAshraeAdapter,
+      pmvAshraeDeclaration,
       chartSource,
-      UnitSystem.SI,
-    ))).toBe("7d0feedb63ff34a67a7ce402a279b20364915400afb95ee852ed32c22207e86d");
+      {},
+      fixedContext(),
+    ))).toBe("439a4d10378730abf1663272185c0d3bfa545f7108ed78ec535a10c28064ee7d");
   });
 
   it("keeps the PMV dynamic chart DTO shape stable", () => {
-    const chartRequest = createPmvChartRequest();
-
     expect(chartShapeHash(buildPmvDynamicChart(
-      pmvAshraeAdapter,
-      createPmvChartSource(chartRequest),
+      pmvAshraeDeclaration,
+      createPmvChartSource(),
+      {},
       {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.Pmv,
-        bands: pmvChartableOutputs[0].defaultBands,
+        ...fixedContext(),
+        fieldChartConfig: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.Pmv,
+          bands: pmvAshraeDeclaration.chartableOutputs[0].defaultBands,
+        },
       },
-      UnitSystem.SI,
-    ))).toBe("a2c690a9969608d20da3231f634d62697b0681b1e84d0257d9e42bb4a80fe62d");
+    ))).toBe("bf34bae044504c09ec2307d34a0eee3bca7580472463b6fcff3950eacdb623ac");
   });
 
   it("keeps the Adaptive static chart DTO shape stable", () => {
     expect(chartShapeHash(buildAdaptiveChart(
+      adaptiveAshraeDeclaration,
       {
         inputs: {
-          [InputId.Input1]: adaptivePayload as any,
+          [InputId.Input1]: adaptivePayload,
         },
       },
-      AdaptiveStandardMode.Ashrae,
-      UnitSystem.SI,
-    ))).toBe("fb745994a97042340949ed493a2b9014a701b498394dc090c41538e69f2ec0ce");
+      { [InputId.Input1]: calculateAdaptive(adaptiveAshraeDeclaration, adaptivePayload) },
+      fixedContext(),
+    ))).toBe("cb219bf177f01bc53d43747f896838afe815466e677951c0404fd6a8c88058f3");
   });
 
   it("keeps the Adaptive outdoor dynamic chart DTO shape stable", () => {
     expect(chartShapeHash(buildAdaptiveDynamicChart(
+      adaptiveAshraeDeclaration,
       {
         inputs: {
-          [InputId.Input1]: adaptivePayload as any,
+          [InputId.Input1]: adaptivePayload,
         },
       },
-      AdaptiveStandardMode.Ashrae,
-      UnitSystem.SI,
-      FieldKey.PrevailingMeanOutdoorTemperature,
-      FieldKey.OperativeTemperature,
-    ))).toBe("8fc5f61feadd879eaf10b791406ac0cd3d1c251218a33bc74cb8f95c6a2c92fa");
+      { [InputId.Input1]: calculateAdaptive(adaptiveAshraeDeclaration, adaptivePayload) },
+      {
+        ...fixedContext(),
+        dynamicAxes: {
+          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          yAxis: FieldKey.OperativeTemperature,
+        },
+      },
+    ))).toBe("ac72b3f8b16db4a1f47479ad99aa4564715cb74265938d609371464673290dc5");
   });
 
   it("keeps the Adaptive non-outdoor dynamic chart DTO shape stable", () => {
     expect(chartShapeHash(buildAdaptiveDynamicChart(
+      adaptiveAshraeDeclaration,
       {
         inputs: {
-          [InputId.Input1]: adaptivePayload as any,
+          [InputId.Input1]: adaptivePayload,
         },
       },
-      AdaptiveStandardMode.Ashrae,
-      UnitSystem.SI,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeAirSpeed,
-    ))).toBe("576cac4ab2ddbb327133132e2afd0d152e628d81b1920af8a28751b708bbac12");
+      { [InputId.Input1]: calculateAdaptive(adaptiveAshraeDeclaration, adaptivePayload) },
+      {
+        ...fixedContext(),
+        dynamicAxes: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.RelativeAirSpeed,
+        },
+      },
+    ))).toBe("1bae5859f89cf557dc9afb13f2fc9b482616afa6bfe2ba0b598e2ec5ff1e112f");
   });
 
   it("keeps the UTCI dynamic chart DTO shape stable", () => {
@@ -189,19 +198,19 @@ describe("PMV and Adaptive chart shape fixtures", () => {
       },
       {
         [InputId.Input1]: {
-          utci: 25,
-          stressCategory: "no thermal stress",
+          ...calculateUtci(utciPayload),
         },
       },
-      UnitSystem.SI,
       {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.Utci,
-        bands: utciModelConfig.chartableOutputs[0].defaultBands,
+        ...fixedContext(),
+        fieldChartConfig: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.Utci,
+          bands: utciModelConfig.chartableOutputs[0].defaultBands,
+        },
       },
-      InputId.Input1,
-    ))).toBe("286d22be0edd5d455ad011fc148514bd62c15369db96dc851450b92f2760901d");
+    ))).toBe("640a0a697f0d50957641045cc85b1961bfd8b0b108469e41c5d0efe1a45c92d5");
   });
 });

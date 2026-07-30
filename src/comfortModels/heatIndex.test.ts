@@ -4,11 +4,15 @@
 import { describe, expect, it } from "vitest";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
 import { UnitSystem } from "../models/units";
-import { convertFieldValueFromSi } from "../services/units";
+import { convertModelOutputFromSi } from "../services/units";
 import { FieldKey } from "../models/fieldKeys";
 import { ChartId } from "../models/chartOptions";
 import { InputId } from "../models/inputSlots";
-import { ChartMode } from "../models/modelCapabilities";
+import {
+  ChartMode,
+  ModelOutputKey,
+  type ChartBuildContext,
+} from "../models/modelCapabilities";
 
 describe("heatIndex service", () => {
   it("calculates Heat Index correctly in SI format", () => {
@@ -16,72 +20,85 @@ describe("heatIndex service", () => {
     const result = calculateHeatIndex({
       tdb: 35,
       rh: 70,
-      units: UnitSystem.SI,
     });
     
     expect(result.hi).toBeGreaterThan(45);
     expect(result.category).toBe("Danger");
   });
 
-  it("calculates Heat Index correctly in IP format (Fahrenheit)", () => {
-    // 95°F, 70% RH -> HI should be ~122°F (Danger)
+  it("converts the SI Heat Index result for IP display", () => {
+    // 35 °C is 95 °F; the apparent temperature is about 122 °F.
     const result = calculateHeatIndex({
-      tdb: 95,
+      tdb: 35,
       rh: 70,
-      units: UnitSystem.IP,
     });
-    
-    const hiF = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.hi, UnitSystem.IP);
+
+    const hiF = convertModelOutputFromSi(
+      ModelOutputKey.HeatIndex,
+      result.hi,
+      UnitSystem.IP,
+    );
     expect(hiF).toBeGreaterThan(115);
     expect(hiF).toBeLessThan(125);
     expect(result.category).toBe("Danger");
   });
 
   it("identifies Extreme Danger threshold accurately", () => {
-    // 105°F, 75% RH -> HI should be > 130°F (Extreme Danger)
+    // 40.56 °C is 105 °F; at 75% RH this is Extreme Danger.
     const result = calculateHeatIndex({
-      tdb: 105,
+      tdb: 40.56,
       rh: 75,
-      units: UnitSystem.IP,
     });
     
     expect(result.category).toBe("Extreme Danger");
   });
 
   it("builds static and dynamic chart results through the typed grid strategy", () => {
-    const request = { tdb: 35, rh: 70, units: UnitSystem.SI };
+    const request = { tdb: 35, rh: 70 };
     const result = calculateHeatIndex(request);
     const chartSource = {
       chartRequest: { [InputId.Input1]: request },
-      baselineInputId: InputId.Input1,
     };
-    const resultsByInput = { [InputId.Input1]: result } as any;
-
-    const staticChart = heatIndexModelConfig.buildChartResult(
-      ChartId.HeatIndexRanges,
-      chartSource,
-      resultsByInput,
-      UnitSystem.SI,
-    );
-    const dynamicChart = heatIndexModelConfig.buildChartResult(
-      ChartId.HeatIndexDynamic,
-      chartSource,
-      resultsByInput,
-      UnitSystem.SI,
-      {
+    const resultsByInput = {
+      [InputId.Input1]: result,
+      [InputId.Input2]: null,
+      [InputId.Input3]: null,
+    };
+    const fixedContext = {
+      unitSystem: UnitSystem.SI,
+      dynamicAxes: heatIndexModelConfig.defaultDynamicAxes,
+      baselineInputId: InputId.Input1,
+      fieldChartConfig: null,
+    } satisfies ChartBuildContext;
+    const exploreContext = {
+      ...fixedContext,
+      fieldChartConfig: {
         mode: ChartMode.Explore,
         xField: FieldKey.DryBulbTemperature,
         yField: FieldKey.RelativeHumidity,
         zOutput: heatIndexModelConfig.chartableOutputs[0].key,
         bands: heatIndexModelConfig.chartableOutputs[0].defaultBands,
       },
+    } satisfies ChartBuildContext;
+
+    const fixedChart = heatIndexModelConfig.buildChartResult(
+      ChartId.HeatIndexRanges,
+      chartSource,
+      resultsByInput,
+      fixedContext,
+    );
+    const dynamicChart = heatIndexModelConfig.buildChartResult(
+      ChartId.HeatIndexDynamic,
+      chartSource,
+      resultsByInput,
+      exploreContext,
     );
 
-    expect(staticChart?.traces[0].type).toBe("contour");
-    expect(staticChart?.traces[0].z).toHaveLength(300);
-    expect(staticChart?.traces[0].z?.[0]).toHaveLength(300);
-    expect(staticChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
-    expect(staticChart?.layout.height).toBe(480);
+    expect(fixedChart?.traces[0].type).toBe("contour");
+    expect(fixedChart?.traces[0].z).toHaveLength(300);
+    expect(fixedChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(fixedChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(fixedChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces[0].type).toBe("contour");
     expect(dynamicChart?.traces[0].z).toHaveLength(300);
     expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
@@ -89,24 +106,35 @@ describe("heatIndex service", () => {
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 
-  it("fails directly when typed grid axes violate the state invariant", () => {
-    const request = { tdb: 35, rh: 70, units: UnitSystem.SI };
+  it("trusts the state-owned dynamic-axis invariant without revalidating it", () => {
+    const request = { tdb: 35, rh: 70 };
+    const result = calculateHeatIndex(request);
 
-    expect(() => heatIndexModelConfig.buildChartResult(
+    const chart = heatIndexModelConfig.buildChartResult(
       ChartId.HeatIndexDynamic,
       {
         chartRequest: { [InputId.Input1]: request },
-        baselineInputId: InputId.Input1,
       },
-      { [InputId.Input1]: calculateHeatIndex(request) } as any,
-      UnitSystem.SI,
       {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.DryBulbTemperature,
-        zOutput: heatIndexModelConfig.chartableOutputs[0].key,
-        bands: heatIndexModelConfig.chartableOutputs[0].defaultBands,
+        [InputId.Input1]: result,
+        [InputId.Input2]: null,
+        [InputId.Input3]: null,
       },
-    )).toThrow(/axes must be distinct/i);
+      {
+        unitSystem: UnitSystem.SI,
+        dynamicAxes: heatIndexModelConfig.defaultDynamicAxes,
+        baselineInputId: InputId.Input1,
+        fieldChartConfig: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.DryBulbTemperature,
+          zOutput: heatIndexModelConfig.chartableOutputs[0].key,
+          bands: heatIndexModelConfig.chartableOutputs[0].defaultBands,
+        },
+      },
+    );
+
+    expect(chart).not.toBeNull();
+    expect(chart?.layout.xaxis.title).toBe(chart?.layout.yaxis.title);
   });
 });

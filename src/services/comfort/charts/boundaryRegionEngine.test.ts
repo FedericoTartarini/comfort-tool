@@ -101,7 +101,7 @@ describe("boundary region engine", () => {
     expect(trace.hoverMetadata).toEqual([[], [], [], []]);
   });
 
-  it("orients regions from matching axis object identities", () => {
+  it("orients regions when the variable dimension is x", () => {
     const { xAxis, yAxis } = createDistinctFieldAxes();
     const traces = buildBoundaryRegionTraces({
       variableValuesSi: [0, 10],
@@ -112,8 +112,7 @@ describe("boundary region engine", () => {
       ],
       variableAxis: xAxis,
       boundaryAxis: yAxis,
-      xAxis,
-      yAxis,
+      variableDimension: "x",
       buildTrace: buildTestTrace,
     });
 
@@ -123,7 +122,7 @@ describe("boundary region engine", () => {
     expect(traces[1].y).toEqual([25, 75, 100, 100]);
   });
 
-  it("uses object identity when both chart axes have the same field", () => {
+  it("orients regions when the variable dimension is y", () => {
     const xAxis = createFieldAxisScale({
       field: FieldKey.DryBulbTemperature,
       unitSystem: UnitSystem.SI,
@@ -146,63 +145,13 @@ describe("boundary region engine", () => {
       ],
       variableAxis: yAxis,
       boundaryAxis: xAxis,
-      xAxis,
-      yAxis,
+      variableDimension: "y",
       buildTrace: buildTestTrace,
     });
 
     expect(traces[0].x).toEqual([0, 0, 75, 25]);
     expect(traces[0].y).toEqual([0, 10, 10, 0]);
     expect(traces[1].x).toEqual([25, 75, 100, 100]);
-  });
-
-  it("falls back to distinct fields when neither supplied axis shares identity", () => {
-    const { xAxis, yAxis } = createDistinctFieldAxes();
-    const traces = buildBoundaryRegionTraces({
-      variableValuesSi: [0, 10],
-      boundaryCurvesSi: [[25, 75]],
-      bands: [
-        { label: "Lower", color: "#dddddd" },
-        { label: "Upper", color: "#eeeeee" },
-      ],
-      variableAxis: { ...xAxis },
-      boundaryAxis: { ...yAxis },
-      xAxis,
-      yAxis,
-      buildTrace: buildTestTrace,
-    });
-
-    expect(traces[0].x).toEqual([0, 10, 10, 0]);
-    expect(traces[0].y).toEqual([0, 0, 75, 25]);
-  });
-
-  it("throws when same-field axes cannot be disambiguated by identity", () => {
-    const xAxis = createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
-      unitSystem: UnitSystem.SI,
-      rangeSi: { min: 0, max: 100 },
-      points: 2,
-    });
-    const yAxis = createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
-      unitSystem: UnitSystem.SI,
-      rangeSi: { min: 0, max: 10 },
-      points: 2,
-    });
-
-    expect(() => buildBoundaryRegionTraces({
-      variableValuesSi: [0, 10],
-      boundaryCurvesSi: [[25, 75]],
-      bands: [
-        { label: "Left", color: "#dddddd" },
-        { label: "Right", color: "#eeeeee" },
-      ],
-      variableAxis: { ...yAxis },
-      boundaryAxis: { ...xAxis },
-      xAxis,
-      yAxis,
-      buildTrace: buildTestTrace,
-    })).toThrow(/orientation cannot be resolved.*both chart axes use/i);
   });
 
   it("rejects mismatched dimensions and inverted adjacent curves", () => {
@@ -215,8 +164,7 @@ describe("boundary region engine", () => {
       ],
       variableAxis: xAxis,
       boundaryAxis: yAxis,
-      xAxis,
-      yAxis,
+      variableDimension: "x" as const,
       buildTrace: buildTestTrace,
     };
 
@@ -258,8 +206,7 @@ describe("boundary region engine", () => {
       ],
       variableAxis: yAxis,
       boundaryAxis: xAxis,
-      xAxis,
-      yAxis,
+      variableDimension: "y",
       getHoverMetadata: (xSi, ySi, index) => [xSi, ySi, index],
       buildTrace: buildTestTrace,
     });

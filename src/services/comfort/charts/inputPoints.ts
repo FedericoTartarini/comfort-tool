@@ -30,7 +30,9 @@ export interface BuildInputTraceGroupsOptions<TPayload, TResult> {
   buildOverlayTraces?: (context: InputTraceContext<TPayload, TResult>) => PlotTraceDto[];
   markerSize?: number;
   color?: string;
-  hoverMetadata?: (context: InputTraceContext<TPayload, TResult>) => any[] | any[][];
+  hoverMetadata?: (
+    context: InputTraceContext<TPayload, TResult>,
+  ) => unknown[] | unknown[][];
   hoverinfo?: string;
 }
 
@@ -43,16 +45,16 @@ export function shouldShowInputLegend<TPayload>(inputsMap: CompareInputMap<TPayl
   return getCompareInputs(inputsMap).length > 1;
 }
 
-/**
- * Resolves the baseline input used for chart-wide evaluations. The preferred
- * input wins when present; otherwise charts fall back to the first ordered input.
- */
-export function resolveBaselineInputEntry<TPayload>(
+/** Returns the baseline payload declared by the chart build context. */
+export function getBaselineInputEntry<TPayload>(
   inputsMap: CompareInputMap<TPayload>,
-  preferredInputId?: InputIdType,
-): ChartInputEntry<TPayload> | undefined {
-  const inputs = getCompareInputs(inputsMap);
-  return inputs.find(({ inputId }) => inputId === preferredInputId) ?? inputs[0];
+  baselineInputId: InputIdType,
+): ChartInputEntry<TPayload> {
+  const payload = inputsMap[baselineInputId];
+  if (payload === undefined) {
+    throw new Error(`Missing chart baseline payload for ${baselineInputId}.`);
+  }
+  return { inputId: baselineInputId, payload };
 }
 
 export function buildInputTraceGroups<TPayload, TResult = unknown>({

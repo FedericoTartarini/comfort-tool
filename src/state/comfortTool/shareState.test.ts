@@ -92,7 +92,7 @@ describe("shareState", () => {
     };
     const restoredState2 = createComfortToolState();
     applyShareSnapshotToState(restoredState2.state, invalidSnapshot);
-    // Should fallback to valid dynamic axes for Adaptive ASHRAE (usually to / trm)
+    // Invalid shared axes reset to the model's declared default pair.
     expect(restoredState2.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
     expect(restoredState2.state.ui.dynamicYAxis)
       .toBe(FieldKey.PrevailingMeanOutdoorTemperature);
@@ -143,6 +143,43 @@ describe("shareState", () => {
     expect(parseShareStateSnapshot({ ...current, version: 999 })).toBeNull();
   });
 
+  it("requires valid dynamic-axis field keys in the v1 schema", () => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+    const missingXAxis: Record<string, unknown> = { ...current };
+    const missingYAxis: Record<string, unknown> = { ...current };
+    delete missingXAxis.dynamicXAxis;
+    delete missingYAxis.dynamicYAxis;
+
+    expect(parseShareStateSnapshot(missingXAxis)).toBeNull();
+    expect(parseShareStateSnapshot(missingYAxis)).toBeNull();
+    expect(parseShareStateSnapshot({
+      ...current,
+      dynamicXAxis: "not-a-field",
+    })).toBeNull();
+    expect(parseShareStateSnapshot({
+      ...current,
+      dynamicYAxis: "not-a-field",
+    })).toBeNull();
+  });
+
+  it("accepts valid field keys and normalizes an unsupported axis pair on apply", () => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+    const parsed = parseShareStateSnapshot({
+      ...current,
+      selectedModel: ComfortModel.AdaptiveAshrae,
+      dynamicXAxis: FieldKey.WindSpeed,
+      dynamicYAxis: FieldKey.RelativeHumidity,
+    });
+
+    expect(parsed).not.toBeNull();
+    const restoredState = createComfortToolState();
+    applyShareSnapshotToState(restoredState.state, parsed!);
+
+    expect(restoredState.state.ui.dynamicXAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(restoredState.state.ui.dynamicYAxis)
+      .toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+  });
+
   it("requires exactly the current v1 model registry", () => {
     const current = createShareStateSnapshot(createComfortToolState().state);
     const currentWithoutIso = {
@@ -168,15 +205,15 @@ describe("shareState", () => {
         UNKNOWN_MODEL: current.models[ComfortModel.Utci],
       },
     };
-    const currentWithLegacyPmvId = {
+    const currentWithUnregisteredPmvId = {
       ...current,
       models: {
         ...current.models,
         PMV: current.models[ComfortModel.PmvAshrae],
       },
     } as any;
-    delete currentWithLegacyPmvId.models[ComfortModel.PmvAshrae];
-    const currentWithLegacySelectedModel = {
+    delete currentWithUnregisteredPmvId.models[ComfortModel.PmvAshrae];
+    const currentWithInvalidSelectedModel = {
       ...current,
       selectedModel: "PMV",
     };
@@ -184,8 +221,8 @@ describe("shareState", () => {
     expect(parseShareStateSnapshot(currentWithoutIso)).toBeNull();
     expect(parseShareStateSnapshot(currentWithInvalidIsoChart)).toBeNull();
     expect(parseShareStateSnapshot(currentWithUnknownModel)).toBeNull();
-    expect(parseShareStateSnapshot(currentWithLegacyPmvId)).toBeNull();
-    expect(parseShareStateSnapshot(currentWithLegacySelectedModel)).toBeNull();
+    expect(parseShareStateSnapshot(currentWithUnregisteredPmvId)).toBeNull();
+    expect(parseShareStateSnapshot(currentWithInvalidSelectedModel)).toBeNull();
   });
 
   it("recomputes derived control displays after applying a snapshot", () => {

@@ -9,11 +9,7 @@
   import ChartExportMenu from "./ChartExportMenu.svelte";
   import ChartAxisMenu from "./ChartAxisMenu.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import {
-    ChartId,
-    chartMetaById,
-    type ChartId as ChartIdType,
-  } from "../../models/chartOptions";
+  import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
   import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
   import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
@@ -113,8 +109,9 @@
   const axisMenuIdPrefix = $derived(
     `${chartPanelIdPrefix}-${selectedModel}-${selectedChart}`,
   );
-  // The psychrometric chart is the only current chart with a user-toggleable zone layer.
-  const showZonesToggle = $derived(selectedChart === ChartId.Psychrometric);
+  const showZonesToggle = $derived(
+    !!chartMetaById[selectedChart].hasZoneVisibilityToggle,
+  );
 </script>
 
 {#snippet content()}

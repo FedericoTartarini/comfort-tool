@@ -17,15 +17,17 @@ import type {
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import type {
   ChartMode as ChartModeType,
+  ChartBuildContext,
   ComplianceSpec,
-  FieldChartConfig,
   ModelOutput,
 } from "../../../models/modelCapabilities";
-import type { ComfortToolStateSlice, ModelOptionsState, ResultSectionViewModel } from "../types";
+import type { ModelCalculationContext } from "../../../models/modelCalculation";
+import type { ModelOptionsState, ResultSectionViewModel } from "../types";
 import { pmvAshraeModelConfig } from "../../../comfortModels/pmvAshrae";
 import { pmvIsoModelConfig } from "../../../comfortModels/pmvIso";
 import { utciModelConfig } from "../../../comfortModels/utci";
-import { adaptiveAshraeModelConfig, adaptiveEnModelConfig } from "../../../comfortModels/adaptive";
+import { adaptiveAshraeModelConfig } from "../../../comfortModels/adaptiveAshrae";
+import { adaptiveEnModelConfig } from "../../../comfortModels/adaptiveEn";
 import { heatIndexModelConfig } from "../../../comfortModels/heatIndex";
 import { humidexModelConfig } from "../../../comfortModels/humidex";
 import { windChillModelConfig } from "../../../comfortModels/windChill";
@@ -80,9 +82,9 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
   defaultOptions: Partial<Record<OptionKeyType, string>>;
   // Normalizes model options from unknown values to ModelOptionsState.
   normalizeOptions: (value: unknown) => ModelOptionsState | null;
-  // Calculates model results from state and visible inputs
+  // Calculates model results from canonical SI inputs and model options.
   calculate: (
-    state: ComfortToolStateSlice,
+    context: ModelCalculationContext,
     visibleInputIds: InputIdType[],
   ) => ModelCalculationOutputs<ResultType, ChartSourceType>;
   // Builds the result sections to display for the model
@@ -98,8 +100,7 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
     chartId: ChartIdType,
     chartSource: ChartSourceType | null,
     resultsByInput: Record<InputIdType, ResultType | null>,
-    unitSystem: UnitSystemType,
-    fieldChartConfig?: FieldChartConfig | null,
+    context: ChartBuildContext,
   ) => PlotlyChartResponseDto | null;
   dynamicAxisFields: FieldKeyType[];
   defaultDynamicAxes: DynamicAxisDefaults;

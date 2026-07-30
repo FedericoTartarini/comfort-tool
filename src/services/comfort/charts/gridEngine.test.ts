@@ -23,20 +23,32 @@ function createAxes() {
 }
 
 describe("grid engine", () => {
-  it("turns point failures into NaN cells", () => {
+  it("turns explicit unplottable evaluations into NaN cells", () => {
     const { xAxis, yAxis } = createAxes();
     const grid = evaluateGrid({
       xAxis,
       yAxis,
       evaluatePoint: (xSi, ySi) => {
-        if (xSi > 0.5) throw new Error("outside");
+        if (xSi > 0.5) return null;
         return { z: xSi + ySi, text: "ok", hoverMetadata: [xSi, ySi] };
       },
     });
 
     expect(grid.zValues).toEqual([[0, NaN], [1, NaN]]);
-    expect(grid.textValues[0]).toEqual(["ok", "Error"]);
-    expect(grid.hoverMetadata[0]).toEqual([[0, 0], [NaN]]);
+    expect(grid.textValues[0]).toEqual(["ok", ""]);
+    expect(grid.hoverMetadata[0]).toEqual([[0, 0], []]);
+  });
+
+  it("propagates unexpected evaluation errors", () => {
+    const { xAxis, yAxis } = createAxes();
+
+    expect(() => evaluateGrid({
+      xAxis,
+      yAxis,
+      evaluatePoint: () => {
+        throw new Error("unexpected failure");
+      },
+    })).toThrow("unexpected failure");
   });
 
   it("preserves scalar and tuple hover metadata", () => {

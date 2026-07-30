@@ -20,7 +20,7 @@ import {
 } from "../../models/inputSlots";
 import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { allFieldOrder, fieldMetaByKey } from "../../models/inputFieldsMeta";
 import type { InputControlId as InputControlIdType } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
@@ -243,8 +243,11 @@ export function createComfortToolState(): ComfortToolController {
     };
   }
 
-  function getActiveModelConfig(): ComfortModelDefinition<any, any> {
-    return getComfortModelConfig(state.ui.selectedModel) as ComfortModelDefinition<any, any>;
+  function getActiveModelConfig(): ComfortModelDefinition<unknown, unknown> {
+    return getComfortModelConfig(state.ui.selectedModel) as unknown as ComfortModelDefinition<
+      unknown,
+      unknown
+    >;
   }
 
   function getCurrentSelectedChartId() {
@@ -383,8 +386,12 @@ export function createComfortToolState(): ComfortToolController {
         getCurrentSelectedChartId(),
         cache.chartSource,
         cache.resultsByInput,
-        state.ui.unitSystem,
-        getCurrentFieldChartConfig(),
+        {
+          unitSystem: state.ui.unitSystem,
+          dynamicAxes: getCurrentDynamicAxisPair(),
+          baselineInputId: state.ui.chartBaselineInputId,
+          fieldChartConfig: getCurrentFieldChartConfig(),
+        },
       );
     },
     getCurrentBaselineInputId: () => state.ui.chartBaselineInputId,
@@ -445,12 +452,13 @@ export function createComfortToolState(): ComfortToolController {
     scheduleCalculationInternal({ immediate: true });
   }
 
-  function ensureValidDynamicAxes(config: ComfortModelDefinition<any, any>) {
+  function ensureValidDynamicAxes(
+    config: Pick<
+      ComfortModelDefinition<never, never>,
+      "dynamicAxisFields" | "defaultDynamicAxes" | "dynamicAxisPairValidator"
+    >,
+  ) {
     const pair = normalizeDynamicAxisPair(config, getCurrentDynamicAxisPair());
-    if (!pair) {
-      return;
-    }
-
     state.ui.dynamicXAxis = pair.xAxis;
     state.ui.dynamicYAxis = pair.yAxis;
   }

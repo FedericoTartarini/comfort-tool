@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
+import {
+  ChartMode,
+  ModelOutputKey,
+  type ChartBuildContext,
+} from "../models/modelCapabilities";
 import { FieldKey } from "../models/fieldKeys";
 import { InputId } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
@@ -32,7 +36,6 @@ describe("UTCI stress zones", () => {
       tr: 25,
       v: 1,
       rh: 50,
-      units: UnitSystem.SI,
     });
 
     expect(result.stressCategory).toBe(getUtciZoneMeta(result.utci).category);
@@ -41,26 +44,32 @@ describe("UTCI stress zones", () => {
 
 describe("UTCI Explore chart", () => {
   it("uses its declared raw output and working bands", () => {
-    const request = { tdb: 25, tr: 25, v: 1, rh: 50, units: UnitSystem.SI };
+    const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
     const result = calculateUtci(request);
     const chart = buildUtciDynamicChart(
       { inputs: { [InputId.Input1]: request } },
       { [InputId.Input1]: result },
-      UnitSystem.SI,
       {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.Utci,
-        bands: utciModelConfig.chartableOutputs[0].defaultBands,
+        unitSystem: UnitSystem.SI,
+        dynamicAxes: utciModelConfig.defaultDynamicAxes,
+        baselineInputId: InputId.Input1,
+        fieldChartConfig: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.Utci,
+          bands: utciModelConfig.chartableOutputs[0].defaultBands,
+        },
       },
-      InputId.Input1,
     );
 
-    expect(chart.traces[0].type).toBe("contour");
-    expect(chart.traces[0].z).toHaveLength(450);
-    expect(chart.traces[0].z?.[0]).toHaveLength(450);
-    expect(chart.traces[0].hovertemplate).toContain("UTCI");
+    const tooltipTrace = chart.traces.find(({ name }) => name === "UTCI bands hover");
+    expect(tooltipTrace?.type).toBe("contour");
+    expect(tooltipTrace?.z).toHaveLength(450);
+    expect(tooltipTrace?.z?.[0]).toHaveLength(450);
+    expect(tooltipTrace?.hovertemplate).toContain("UTCI");
+    expect(tooltipTrace?.hoverongaps).toBe(false);
+    expect(chart.traces.filter(({ hoveron }) => hoveron === "fills")).toHaveLength(0);
     expect(chart.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 
@@ -82,19 +91,26 @@ describe("UTCI Explore chart", () => {
   });
 
   it("builds a coupled FieldChartConfig with finite resolved cells", () => {
-    const request = { tdb: 25, tr: 25, v: 1, rh: 50, units: UnitSystem.SI };
-    const chart = buildUtciDynamicChart(
-      { inputs: { [InputId.Input1]: request } },
-      {},
-      UnitSystem.SI,
-      {
+    const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
+    const context = {
+      unitSystem: UnitSystem.SI,
+      dynamicAxes: {
+        xAxis: FieldKey.DryBulbTemperature,
+        yAxis: FieldKey.OperativeTemperature,
+      },
+      baselineInputId: InputId.Input1,
+      fieldChartConfig: {
         mode: ChartMode.Explore,
         xField: FieldKey.DryBulbTemperature,
         yField: FieldKey.OperativeTemperature,
         zOutput: ModelOutputKey.Utci,
         bands: utciModelConfig.chartableOutputs[0].defaultBands,
       },
-      InputId.Input1,
+    } satisfies ChartBuildContext;
+    const chart = buildUtciDynamicChart(
+      { inputs: { [InputId.Input1]: request } },
+      {},
+      context,
     );
 
     const contour = chart.traces.find((trace) => trace.type === "contour");
@@ -104,20 +120,23 @@ describe("UTCI Explore chart", () => {
   });
 
   it("fails directly when UTCI dynamic axes violate the state invariant", () => {
-    const request = { tdb: 25, tr: 25, v: 1, rh: 50, units: UnitSystem.SI };
+    const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
 
     expect(() => buildUtciDynamicChart(
       { inputs: { [InputId.Input1]: request } },
       {},
-      UnitSystem.SI,
       {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.DryBulbTemperature,
-        zOutput: ModelOutputKey.Utci,
-        bands: utciModelConfig.chartableOutputs[0].defaultBands,
+        unitSystem: UnitSystem.SI,
+        dynamicAxes: utciModelConfig.defaultDynamicAxes,
+        baselineInputId: InputId.Input1,
+        fieldChartConfig: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.DryBulbTemperature,
+          zOutput: ModelOutputKey.Utci,
+          bands: utciModelConfig.chartableOutputs[0].defaultBands,
+        },
       },
-      InputId.Input1,
     )).toThrow(/dynamic axis pair/i);
   });
 });

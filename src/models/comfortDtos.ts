@@ -7,6 +7,35 @@
 import type { CalculationSource } from "./calculationMetadata";
 import type { InputId as InputIdType } from "./inputSlots";
 
+export type PlotColorScaleDto = Array<[number, string]>;
+
+export interface PlotLineDto {
+  color?: string;
+  width?: number;
+  [key: string]: unknown;
+}
+
+export interface PlotMarkerDto {
+  color?: string;
+  size?: number;
+  line?: PlotLineDto;
+  [key: string]: unknown;
+}
+
+export interface PlotContoursDto {
+  type?: string;
+  operation?: string;
+  value?: number | [number, number];
+  coloring?: string;
+  showlines?: boolean;
+  start?: number;
+  end?: number;
+  size?: number;
+  smoothing?: number;
+  line?: PlotLineDto;
+  [key: string]: unknown;
+}
+
 // Comfort Point DTO, contains dry-bulb temperature and relative humidity
 export interface ComfortPointDto {
   tdb: number;
@@ -30,14 +59,14 @@ export interface PlotTraceDto {
   showlegend?: boolean | null;
   fill?: string | null;
   fillcolor?: string | null;
-  line?: any;
-  marker?: any;
-  colorscale?: any[];
-  contours?: any;
+  line?: PlotLineDto;
+  marker?: PlotMarkerDto;
+  colorscale?: PlotColorScaleDto;
+  contours?: PlotContoursDto;
   zmin?: number;
   zmax?: number;
   showscale?: boolean;
-  colorbar?: any;
+  colorbar?: Record<string, unknown>;
   opacity?: number;
   hoverinfo?: string;
   hoveron?: string;
@@ -50,7 +79,7 @@ export interface PlotTraceDto {
   /** When true, this trace represents a user-specific comfort zone boundary. */
   isComfortZone?: boolean;
   /** Metadata for each point in the trace, used for detailed hover templates. */
-  hoverMetadata?: any[] | any[][];
+  hoverMetadata?: unknown[] | unknown[][];
 }
 
 // Plot Annotation DTO, contains plot annotation data, including x, y, text, showarrow and font

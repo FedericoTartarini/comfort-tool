@@ -210,9 +210,7 @@ async function openTargetPmvChart(
   const plot = page.getByTestId("comfort-chart-plot");
   await waitForTrace(
     plot,
-    display === "PMV"
-      ? "PMV bands: Cold"
-      : "PPD (%) bands: Acceptable dissatisfaction (< 10%)",
+    `${display} bands hover`,
   );
   await waitForXAxisTitle(plot, useIpUnits ? "°F" : "°C");
 
@@ -294,7 +292,11 @@ test.describe("PMV visual regression", () => {
     await expect(visual).toHaveScreenshot("pmv-ashrae-si-hover.png");
 
     await hoverPlotCoordinate(page, plot, 28, 50);
-    await expect(hoverLayer).toContainText(/Zone: \S+/);
+    await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
+    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
+    await expect(hoverLayer).toContainText("Zone: Neutral");
+    await expect(hoverLayer).toContainText(/PMV: 0\.\d{2}/);
+    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
   });
 
   test("ASHRAE PPD in SI", async ({ page }) => {
@@ -352,11 +354,19 @@ test.describe("PMV visual regression", () => {
     const hoverLayer = plot.locator(".hoverlayer");
     const gapX = await findGridXForOutput(plot, -2.375, 50);
     await hoverPlotCoordinate(page, plot, gapX, 50);
-    await expect(hoverLayer.locator(".hovertext")).toHaveCount(0);
+    await expect(hoverLayer).toContainText(/Air temperature: -?\d+\.\d °C/);
+    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
+    await expect(hoverLayer).toContainText("Zone: Unclassified");
+    await expect(hoverLayer).toContainText(/PMV: -2\.\d{2}/);
+    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
 
     const adjacentBandX = await findGridXForOutput(plot, -2.1, 50);
     await hoverPlotCoordinate(page, plot, adjacentBandX, 50);
+    await expect(hoverLayer).toContainText(/Air temperature: -?\d+\.\d °C/);
+    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
     await expect(hoverLayer).toContainText("Zone: Cool");
+    await expect(hoverLayer).toContainText(/PMV: -2\.\d{2}/);
+    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
 
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-si-gap.png");

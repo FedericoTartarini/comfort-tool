@@ -40,6 +40,8 @@ export interface ChartMetadata {
   emptyMessage: string;
   heightClass: string;
   isDynamic?: boolean; // optional, defaults to false
+  supportsTemperatureInputMenu?: boolean;
+  hasZoneVisibilityToggle?: boolean;
 }
 
 export const chartMetaById: Record<ChartId, ChartMetadata> = {
@@ -47,34 +49,41 @@ export const chartMetaById: Record<ChartId, ChartMetadata> = {
     name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    supportsTemperatureInputMenu: true,
+    hasZoneVisibilityToggle: true,
   },
   [ChartId.Stress]: {
     name: "UTCI",
     emptyMessage: "No psychrometric chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    supportsTemperatureInputMenu: true,
   },
   [ChartId.Adaptive]: {
     name: "Adaptive",
     emptyMessage: "No adaptive chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    supportsTemperatureInputMenu: true,
   },
   [ChartId.AdaptiveDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
     isDynamic: true,
+    supportsTemperatureInputMenu: true,
   },
   [ChartId.PmvDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
     isDynamic: true,
+    supportsTemperatureInputMenu: true,
   },
   [ChartId.UtciDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
     isDynamic: true,
+    supportsTemperatureInputMenu: true,
   },
   [ChartId.HeatIndexRanges]: {
     name: "Psychrometric",

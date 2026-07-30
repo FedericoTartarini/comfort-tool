@@ -1,9 +1,11 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-  import { ClothingZone } from "../models/clothingZones";
+  import {
+    ClothingZone,
+    type ClothingDisplayZoneId,
+  } from "../models/clothingZones";
   import { InputId, type InputId as InputIdType } from "../models/inputSlots";
-  import type { UnitSystem as UnitSystemType } from "../models/units";
   import {
     buildSelectedClothingSections,
     filterClothingGarments,
@@ -17,7 +19,6 @@
   interface Props {
     activeInputId: InputIdType;
     visibleInputIds: InputIdType[];
-    unitSystem: UnitSystemType;
     maxClothingValue: number;
     onSelectInput: (inputId: InputIdType) => void;
     onApplyClothingValue: (inputId: InputIdType, value: number) => void;
@@ -27,7 +28,6 @@
   let {
     activeInputId,
     visibleInputIds,
-    unitSystem,
     maxClothingValue,
     onSelectInput,
     onApplyClothingValue,
@@ -35,7 +35,7 @@
   }: Props = $props();
 
   let targetInputId = $state<InputIdType>(InputId.Input1);
-  let activeZoneId = $state(ClothingZone.UpperBody);
+  let activeZoneId = $state<ClothingDisplayZoneId>(ClothingZone.UpperBody);
   let searchQuery = $state("");
   let selectedGarmentIds = $state<string[]>([]);
 

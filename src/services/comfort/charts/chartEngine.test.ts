@@ -7,22 +7,15 @@ import { ChartMode, ModelOutputKey } from "../../../models/modelCapabilities";
 import { UnitSystem } from "../../../models/units";
 import { createFieldAxisScale } from "./axis";
 import {
-  buildBandedGridFieldChart,
-  buildBoundaryRegionFieldChart,
-  buildGridContourFieldChart,
+  buildFieldChart,
+  buildGridFieldChart,
+  createBandedGridStrategy,
   GridBandRenderStrategy,
 } from "./chartEngine";
-import type { ChartAxisScale } from "./types";
 
-function createLayout(
-  title: string,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-) {
+function createLayout(title: string) {
   return {
     title,
-    xAxis,
-    yAxis,
     paperBgColor: "#ffffff",
     plotBgColor: "#ffffff",
     showLegend: false,
@@ -44,15 +37,9 @@ describe("shared chart engine", () => {
       rangeSi: { min: 0, max: 100 },
       points: 2,
     });
-    const mismatchedAxis = createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
-      unitSystem: UnitSystem.SI,
-      rangeSi: { min: -10, max: 10 },
-      points: 3,
-    });
     const xValuesSeen: number[] = [];
 
-    const chart = buildGridContourFieldChart({
+    const chart = buildGridFieldChart({
       xAxis,
       yAxis,
       leadingTraces: [{
@@ -84,8 +71,6 @@ describe("shared chart engine", () => {
         inputsMap: {
           [InputId.Input1]: { tdb: 25, rh: 50 },
         },
-        xAxis: mismatchedAxis,
-        yAxis: mismatchedAxis,
         getXSi: (payload) => payload.tdb,
         getYSi: (payload) => payload.rh,
         buildOverlayTraces: ({ inputLabel, xDisplay, yDisplay }) => [{
@@ -97,7 +82,7 @@ describe("shared chart engine", () => {
         }],
         getHovertemplate: ({ inputLabel }) => `${inputLabel}<extra></extra>`,
       }],
-      layout: createLayout("Grid chart", mismatchedAxis, mismatchedAxis),
+      layout: createLayout("Grid chart"),
       source: CalculationSource.FrontendGenerated,
     });
 
@@ -119,8 +104,8 @@ describe("shared chart engine", () => {
     const xAxis = createFieldAxisScale({
       field: FieldKey.DryBulbTemperature,
       unitSystem: UnitSystem.IP,
-      rangeSi: { min: 0, max: 20 },
-      points: 3,
+      rangeSi: { min: 0, max: 30 },
+      points: 4,
     });
     const yAxis = createFieldAxisScale({
       field: FieldKey.RelativeHumidity,
@@ -134,36 +119,46 @@ describe("shared chart engine", () => {
     ];
     const xValuesSeen: number[] = [];
 
-    const chart = buildBandedGridFieldChart({
-      config: {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.HeatIndex,
-        bands,
-      },
-      output: {
-        key: ModelOutputKey.HeatIndex,
-        label: "Heat Index",
-        defaultBands: bands,
-      },
-      unitSystem: UnitSystem.IP,
+    const chart = buildGridFieldChart({
       xAxis,
       yAxis,
-      evaluateOutput: (xSi, _ySi, zOutput) => {
-        xValuesSeen.push(xSi);
-        expect(zOutput).toBe(ModelOutputKey.HeatIndex);
-        return xSi;
-      },
-      layout: createLayout("Explore", xAxis, yAxis),
+      grid: createBandedGridStrategy({
+        config: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.HeatIndex,
+          bands,
+        },
+        output: {
+          key: ModelOutputKey.HeatIndex,
+          label: "Heat Index",
+          defaultBands: bands,
+        },
+        unitSystem: UnitSystem.IP,
+        xAxis,
+        yAxis,
+        evaluateOutput: (xSi, _ySi, zOutput) => {
+          xValuesSeen.push(xSi);
+          expect(zOutput).toBe(ModelOutputKey.HeatIndex);
+          return xSi === 30 ? null : xSi;
+        },
+      }),
+      layout: createLayout("Explore"),
       source: CalculationSource.FrontendGenerated,
     });
 
-    expect(xValuesSeen).toEqual([0, 10, 20]);
-    expect(chart.traces[0].z).toEqual([[0, NaN, 1]]);
-    expect(chart.traces[0].text).toEqual([["Low", "", "High"]]);
-    expect(chart.traces[0].hoverMetadata?.[0]?.[0]).toEqual([32]);
-    expect(chart.traces[0].hovertemplate).toContain("Heat Index");
+    expect(xValuesSeen).toEqual([0, 10, 20, 30]);
+    expect(chart.traces[0].z).toEqual([[0, NaN, 1, NaN]]);
+    expect(chart.traces[0].hoverinfo).toBe("skip");
+    const tooltipTrace = chart.traces.find(({ name }) => name === "Heat Index bands hover");
+    expect(tooltipTrace?.z).toEqual([[0, 10, 20, NaN]]);
+    expect(tooltipTrace?.text).toEqual([["Low", "Unclassified", "High", ""]]);
+    const hoverMetadata = tooltipTrace?.hoverMetadata as unknown[][][];
+    expect(hoverMetadata[0][0]).toEqual([32]);
+    expect(hoverMetadata[0][3]).toEqual([]);
+    expect(tooltipTrace?.hovertemplate).toContain("Heat Index");
+    expect(tooltipTrace?.hoverongaps).toBe(false);
   });
 
   it("honors a custom hover contract and additional model metadata", () => {
@@ -183,38 +178,44 @@ describe("shared chart engine", () => {
       { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
     ];
 
-    const chart = buildBandedGridFieldChart({
-      config: {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.HeatIndex,
-        bands,
-      },
-      output: {
-        key: ModelOutputKey.HeatIndex,
-        label: "Heat Index",
-        defaultBands: bands,
-      },
-      unitSystem: UnitSystem.IP,
-      hoverTemplate: "Custom: %{customdata[1]:.1f}<extra></extra>",
+    const chart = buildGridFieldChart({
       xAxis,
       yAxis,
-      evaluateOutput: () => ({
-        valueSi: 10,
-        additionalHoverMetadata: [123.4],
+      grid: createBandedGridStrategy({
+        config: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.HeatIndex,
+          bands,
+        },
+        output: {
+          key: ModelOutputKey.HeatIndex,
+          label: "Heat Index",
+          defaultBands: bands,
+        },
+        unitSystem: UnitSystem.IP,
+        hoverTemplate: "Custom: %{customdata[1]:.1f}<extra></extra>",
+        xAxis,
+        yAxis,
+        evaluateOutput: () => ({
+          valueSi: 10,
+          additionalHoverMetadata: [123.4],
+        }),
       }),
-      layout: createLayout("Explore", xAxis, yAxis),
+      layout: createLayout("Explore"),
       source: CalculationSource.FrontendGenerated,
     });
 
-    expect(chart.traces[0].hoverMetadata?.[0]?.[0]).toEqual([50, 123.4]);
-    expect(chart.traces[0].hovertemplate).toBe(
+    const tooltipTrace = chart.traces.find(({ name }) => name === "Heat Index bands hover");
+    const hoverMetadata = tooltipTrace?.hoverMetadata as unknown[][][];
+    expect(hoverMetadata[0][0]).toEqual([50, 123.4]);
+    expect(tooltipTrace?.hovertemplate).toBe(
       "Custom: %{customdata[1]:.1f}<extra></extra>",
     );
   });
 
-  it("assembles continuous band traces without a full-grid hover contour", () => {
+  it("assembles continuous bands with one raw-grid tooltip contour", () => {
     const xAxis = createFieldAxisScale({
       field: FieldKey.DryBulbTemperature,
       unitSystem: UnitSystem.SI,
@@ -233,28 +234,32 @@ describe("shared chart engine", () => {
     ];
     let evaluationCount = 0;
 
-    const chart = buildBandedGridFieldChart({
-      config: {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.Pmv,
-        bands,
-      },
-      output: {
-        key: ModelOutputKey.Pmv,
-        label: "PMV",
-        defaultBands: bands,
-      },
-      unitSystem: UnitSystem.SI,
-      renderStrategy: GridBandRenderStrategy.ConstraintContours,
+    const chart = buildGridFieldChart({
       xAxis,
       yAxis,
-      evaluateOutput: (xSi, ySi) => {
-        evaluationCount += 1;
-        return xSi + ySi;
-      },
-      layout: createLayout("Continuous", xAxis, yAxis),
+      grid: createBandedGridStrategy({
+        config: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.Pmv,
+          bands,
+        },
+        output: {
+          key: ModelOutputKey.Pmv,
+          label: "PMV",
+          defaultBands: bands,
+        },
+        unitSystem: UnitSystem.SI,
+        renderStrategy: GridBandRenderStrategy.ConstraintContours,
+        xAxis,
+        yAxis,
+        evaluateOutput: (xSi, ySi) => {
+          evaluationCount += 1;
+          return xSi + ySi;
+        },
+      }),
+      layout: createLayout("Continuous"),
       source: CalculationSource.FrontendGenerated,
     });
 
@@ -262,67 +267,13 @@ describe("shared chart engine", () => {
     expect(chart.traces.filter((trace) => (
       trace.contours?.type === "constraint" && trace.contours.operation !== "="
     ))).toHaveLength(2);
-    expect(chart.traces.filter((trace) => trace.hoveron === "fills")).toHaveLength(2);
-    expect(chart.traces.some((trace) => (
+    expect(chart.traces.filter((trace) => trace.hoveron === "fills")).toHaveLength(0);
+    const tooltipTraces = chart.traces.filter((trace) => (
       trace.type === "contour" && trace.name.endsWith(" hover")
-    ))).toBe(false);
-  });
-
-  it("rejects mismatched axes, outputs, and malformed working bands", () => {
-    const xAxis = createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
-      unitSystem: UnitSystem.SI,
-      rangeSi: { min: 0, max: 1 },
-      points: 1,
-    });
-    const yAxis = createFieldAxisScale({
-      field: FieldKey.RelativeHumidity,
-      unitSystem: UnitSystem.SI,
-      rangeSi: { min: 0, max: 1 },
-      points: 1,
-    });
-    const bands = [
-      { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
-    ];
-    const baseOptions = {
-      config: {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.Pmv,
-        bands,
-      },
-      output: {
-        key: ModelOutputKey.Pmv,
-        label: "PMV",
-        defaultBands: bands,
-      },
-      unitSystem: UnitSystem.SI,
-      xAxis,
-      yAxis,
-      evaluateOutput: () => 0,
-      layout: createLayout("Explore", xAxis, yAxis),
-      source: CalculationSource.FrontendGenerated,
-    } as const;
-
-    expect(() => buildBandedGridFieldChart({
-      ...baseOptions,
-      config: { ...baseOptions.config, xField: FieldKey.MeanRadiantTemperature },
-    })).toThrow(/axes must match/i);
-    expect(() => buildBandedGridFieldChart({
-      ...baseOptions,
-      output: { ...baseOptions.output, key: ModelOutputKey.Ppd },
-    })).toThrow(/output must match/i);
-    expect(() => buildBandedGridFieldChart({
-      ...baseOptions,
-      config: {
-        ...baseOptions.config,
-        bands: [
-          { min: 0, max: 2, label: "One", color: "#000000" },
-          { min: 1, max: 3, label: "Two", color: "#ffffff" },
-        ],
-      },
-    })).toThrow(/invalid bands/i);
+    ));
+    expect(tooltipTraces).toHaveLength(1);
+    expect(tooltipTraces[0].z).toEqual([[0, 1], [1, 2]]);
+    expect(tooltipTraces[0].hoverongaps).toBe(false);
   });
 
   it("orders boundary traces before overlays and input markers", () => {
@@ -339,7 +290,9 @@ describe("shared chart engine", () => {
       points: 2,
     });
 
-    const chart = buildBoundaryRegionFieldChart({
+    const chart = buildFieldChart({
+      xAxis,
+      yAxis,
       leadingTraces: [{
         type: "scatter",
         mode: "lines",
@@ -347,7 +300,7 @@ describe("shared chart engine", () => {
         x: [],
         y: [],
       }],
-      boundaryTraces: [{
+      strategyTraces: [{
         type: "scatter",
         mode: "lines",
         name: "Boundary",
@@ -365,8 +318,6 @@ describe("shared chart engine", () => {
         inputsMap: {
           [InputId.Input1]: { tdb: 5, rh: 50 },
         },
-        xAxis,
-        yAxis,
         getXSi: (payload) => payload.tdb,
         getYSi: (payload) => payload.rh,
         buildOverlayTraces: ({ inputLabel, xDisplay, yDisplay }) => [{
@@ -378,7 +329,7 @@ describe("shared chart engine", () => {
         }],
         getHovertemplate: ({ inputLabel }) => `${inputLabel}<extra></extra>`,
       }],
-      layout: createLayout("Boundary chart", xAxis, yAxis),
+      layout: createLayout("Boundary chart"),
       source: CalculationSource.FrontendGenerated,
     });
 
@@ -389,7 +340,7 @@ describe("shared chart engine", () => {
       "Input 1 overlay",
       "Input 1",
     ]);
-    expect(chart.traces.at(-1)).toEqual(expect.objectContaining({
+    expect(chart.traces[chart.traces.length - 1]).toEqual(expect.objectContaining({
       x: [5],
       y: [50],
     }));
