@@ -88,11 +88,14 @@ The current active application is the repository root version.
 
 `src/state/comfortTool/modelConfigs/builder.ts`
 - Fluent model-definition builder and declarative result-row helpers.
-- Validates required `modes`, `chartableOutputs`, numeric Explore presets, Compliance declarations, and each model's default dynamic-axis pair.
+- Validates capabilities plus required metadata, chart declarations, calculation/presentation functions, and dynamic-axis defaults, then returns a configuration snapshot with copied arrays and records.
 
 `src/models/modelCapabilities.ts`
-- Defines `ChartMode`, `ModelOutputKey`, `BandedFieldChartConfig`, `FieldChartConfig`, `ChartBuildContext`, functional Compliance bands, editable numeric Explore bands, output declarations, and compliance specifications.
+- Defines `ChartMode`, `ModelOutputKey`, `NumericFieldChartConfig`, numeric and functional Compliance chart contracts, `FieldChartConfig`, `ChartBuildContext`, editable numeric Explore bands, output declarations, and generic compliance specifications.
 - Provides `bandsFromThermalZones()` plus canonical-SI, array-ordered half-open (`min <= value < max`) band resolution helpers.
+
+`src/models/comfortDtos.ts`
+- Defines the shared `ModelChartSourceDto<TRequest>` `{ inputs }` contract. Simple models, UTCI, and Adaptive use it directly; PMV extends it with per-input comfort-zone data.
 
 `src/models/modelCalculation.ts`
 - Defines the readonly calculation boundary exposed to models: canonical-SI `inputsByInput` and `modelOptionsByModel` only.
@@ -135,9 +138,9 @@ The current active application is the repository root version.
 - Exposes `buildFieldChart()` as the single chart-assembly entry point used by PMV, UTCI, simple-model, and Adaptive charts.
 - Accepts a discriminated Grid or Boundary strategy. `createBandedGridStrategy()` and `createZoneGridStrategy()` supply the two reusable Grid renderers without exposing the internal grid or zone modules to model files.
 - Creates display axes from canonical-SI axis specs, then assembles traces in a fixed order: strategy traces, chart overlays, per-input overlays, and input markers.
-- Fixed-axis views and Explore charts share the same axis, grid, band, input, layout, legend, and annotation assembly; fixed views use `BandedFieldChartConfig` and do not create a second Explore state.
+- Fixed-axis views and Explore charts share the same axis, grid, band, input, layout, legend, and annotation assembly; fixed views use mode-free `NumericFieldChartConfig` and do not create a second Explore state.
 - Grid evaluators return an explicit unplottable `null`; unexpected exceptions propagate to the caller.
-- The banded Grid strategy accepts one validated `BandedFieldChartConfig`, evaluates raw canonical-SI model outputs, and performs half-open working-band assignment without repeating state or builder validation.
+- The banded Grid strategy accepts one validated `NumericFieldChartConfig`, evaluates raw canonical-SI model outputs, and performs half-open working-band assignment without repeating state or builder validation. Numeric Compliance configs use the same strategy, while Adaptive retains functional `Band` edges in the general Compliance contract.
 - Smooth continuous outputs can opt into constraint contours, which retain one raw SI grid and let Plotly interpolate finite band thresholds. Constraint fills use per-region `fillcolor` without full-grid contour backgrounds. PMV ASHRAE/ISO use this strategy; other Explore charts remain categorical.
 - Visible categorical and constraint traces skip hover. One transparent contour tooltip trace owns full per-position metadata from the original output grid: band gaps report `Unclassified`, while model-invalid `NaN` cells have no hover.
 - The banded-grid runner keeps generic hover construction as its default and accepts an explicit full-template override for models that need multiple metrics or model-specific precision.
@@ -203,7 +206,7 @@ The current active application is the repository root version.
 - Share URLs use a strict versioned v1 schema with explicit version rejection.
 - Model modes, chartable outputs, Explore presets, and fixed compliance bands are declared in registered model definitions rather than controller branches.
 - Every chart builder receives one `ChartBuildContext`; chart-source DTOs contain calculation-derived data rather than axes, baseline selection, model identity, standards, or duplicate results.
-- Fixed and dynamic numeric-grid charts receive one validated `BandedFieldChartConfig`; model files extract raw SI outputs while the shared engine owns axes, classification, conversion, trace ordering, input markers, legends, layout, and annotations.
+- Fixed and dynamic numeric-grid charts receive one validated `NumericFieldChartConfig`; model files extract raw SI outputs while the shared engine owns axes, classification, conversion, trace ordering, input markers, legends, layout, and annotations.
 - Chart, axis, baseline, Explore output, and working-band changes synchronously rebuild presentation from the current ready cache without invalidating or rescheduling model calculations.
 - Model request DTOs and calculators are SI-only. IP values exist in `src/services/units/` and presentation output.
 - Calculation scheduling exposes only canonical inputs and model options through `ModelCalculationContext`; comfort models do not import full controller state.
@@ -211,7 +214,7 @@ The current active application is the repository root version.
 
 ## What Was Improved Recently
 
-- Per-model caches now preserve typed raw results instead of storing `unknown` buckets and preformatted UI payloads.
+- Each model definition keeps its concrete result and chart-source types. The controller registry deliberately stores them as `ModelCalculationCache<unknown, unknown>` because controller orchestration does not inspect model-specific payloads; raw SI data remains separate from preformatted presentation.
 - Unit switching now rebuilds result and chart presentation consistently from SI source data.
 - Share-state ownership is centralized in one strict v1 parser and codec.
 - Numeric input fields now commit on change/blur so blank values are not committed as `0`.

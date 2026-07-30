@@ -2,7 +2,7 @@ import { t_o, utci } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
 import type {
-  CompareInputMap,
+  ModelChartSourceDto,
   PlotAnnotationDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
@@ -157,10 +157,6 @@ export interface UtciResponseDto {
   source: CalculationSource;
 }
 
-export interface UtciChartSourceDto {
-  inputs: CompareInputMap<UtciRequestDto>;
-}
-
 export function getUtciZoneMeta(value: number): ThermalZone {
   if (!Number.isFinite(value)) return UTCI_DEFAULT_ZONE;
   return utciZonesList.find((zone) => zone.contains(value)) ?? UTCI_DEFAULT_ZONE;
@@ -305,7 +301,7 @@ function assertExploreConfig(context: ChartBuildContext): ExploreFieldChartConfi
 }
 
 export function buildUtciStressChart(
-  source: UtciChartSourceDto,
+  source: ModelChartSourceDto<UtciRequestDto>,
   resultsByInput: Partial<Record<InputIdType, UtciResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
@@ -427,7 +423,7 @@ export function buildUtciStressChart(
 }
 
 export function buildUtciDynamicChart(
-  source: UtciChartSourceDto,
+  source: ModelChartSourceDto<UtciRequestDto>,
   resultsByInput: Partial<Record<InputIdType, UtciResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
@@ -514,7 +510,10 @@ export function buildUtciDynamicChart(
   });
 }
 
-const builder = new ComfortModelBuilder<UtciResponseDto, UtciChartSourceDto>(
+const builder = new ComfortModelBuilder<
+  UtciResponseDto,
+  ModelChartSourceDto<UtciRequestDto>
+>(
   ComfortModel.Utci,
 );
 
@@ -601,7 +600,7 @@ builder.setOptionNormalizer(normalizeUtciOptions);
 
 builder.setCalculator((context, visibleInputIds) => {
   const resultsByInput = createEmptyResults<UtciResponseDto>();
-  const inputs: CompareInputMap<UtciRequestDto> = {};
+  const inputs: ModelChartSourceDto<UtciRequestDto>["inputs"] = {};
   for (const inputId of visibleInputIds) {
     const request = toRequest(context, inputId);
     resultsByInput[inputId] = calculateUtci(request);

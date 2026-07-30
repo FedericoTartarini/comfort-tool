@@ -8,9 +8,9 @@ import type {
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import {
   findNumericBandIndexForValue,
-  type BandedFieldChartConfig,
   type ModelOutput,
   type ModelOutputKey,
+  type NumericFieldChartConfig,
 } from "../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import {
@@ -137,7 +137,7 @@ export type GridBandRenderStrategy =
 type RenderText = string | ((context: FieldChartRenderContext) => string);
 
 export interface BandedGridStrategyOptions {
-  config: BandedFieldChartConfig;
+  config: NumericFieldChartConfig;
   output: ModelOutput;
   evaluateOutput: (
     xSi: number,

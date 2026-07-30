@@ -19,7 +19,7 @@ import {
 } from "./adaptiveEn";
 import type { AdaptiveResponseDto } from "./adaptiveShared";
 import { pmvAshraeModelConfig } from "./pmvAshrae";
-import { pmvZonesList, type PmvResponseDto } from "./pmvShared";
+import { pmvNeutralZone, type PmvResponseDto } from "./pmvShared";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
@@ -149,8 +149,8 @@ describe("comfort model result rows", () => {
     });
     expect(getInputCell(sections, "PMV")?.text).toBe("0.24");
     expect(getInputCell(sections, "Zone")).toEqual({
-      text: pmvZonesList[3].label,
-      color: pmvZonesList[3].textColor,
+      text: pmvNeutralZone.label,
+      color: pmvNeutralZone.textColor,
     });
     expect(getInputCell(sections, "PPD")?.text).toBe("5.3%");
     expect(getInputCell(sections, "Acceptability")?.text).toBe("94.8%");

@@ -57,7 +57,7 @@ describe("windChill service", () => {
       const request = { tdb: -10, v: 10 };
       const result = calculateWindChill(request);
       const chartSource = {
-        chartRequest: { [InputId.Input1]: request },
+        inputs: { [InputId.Input1]: request },
       };
       const context = {
         unitSystem,

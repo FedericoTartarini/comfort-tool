@@ -22,7 +22,7 @@ import {
 } from "./pmvIso";
 import {
   calculateComfortZone,
-  pmvZonesList,
+  pmvNeutralZone,
   solveDryBulbForTargetPmv,
   tryEvaluatePmvForChart,
   type PmvChartSourceDto,
@@ -247,7 +247,7 @@ describe("PMV roots and compliance", () => {
   it.each(standardCases)(
     "$label assigns neutral boundaries with half-open semantics",
     ({ adapter, config }) => {
-      const neutralZone = pmvZonesList[3];
+      const neutralZone = pmvNeutralZone;
       const inputsSi = Object.fromEntries(
         Object.values(FieldKey).map((field) => [field, 0]),
       ) as Record<FieldKeyType, number>;

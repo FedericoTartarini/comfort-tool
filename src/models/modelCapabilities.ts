@@ -52,9 +52,9 @@ export interface ModelOutput {
   readonly defaultBands: readonly NumericBand[];
 }
 
-export interface ComplianceSpec {
+export interface ComplianceSpec<TBand extends Band = Band> {
   readonly output: ModelOutputKey;
-  readonly bands: readonly Band[];
+  readonly bands: readonly TBand[];
 }
 
 interface FieldChartConfigBase {
@@ -64,11 +64,11 @@ interface FieldChartConfigBase {
 }
 
 /** Numeric-band field chart shared by fixed charts and Explore charts. */
-export interface BandedFieldChartConfig extends FieldChartConfigBase {
+export interface NumericFieldChartConfig extends FieldChartConfigBase {
   readonly bands: readonly NumericBand[];
 }
 
-export interface ExploreFieldChartConfig extends BandedFieldChartConfig {
+export interface ExploreFieldChartConfig extends NumericFieldChartConfig {
   readonly mode: typeof ChartMode.Explore;
 }
 
@@ -76,6 +76,11 @@ export interface ExploreFieldChartConfig extends BandedFieldChartConfig {
 export interface ComplianceFieldChartConfig extends FieldChartConfigBase {
   readonly mode: typeof ChartMode.Compliance;
   readonly bands: readonly Band[];
+}
+
+/** Numeric Compliance charts can use the shared banded grid strategy directly. */
+export interface NumericComplianceFieldChartConfig extends NumericFieldChartConfig {
+  readonly mode: typeof ChartMode.Compliance;
 }
 
 export type FieldChartConfig = ExploreFieldChartConfig | ComplianceFieldChartConfig;

@@ -44,6 +44,11 @@ export interface ComfortPointDto {
 // Compare Input Map DTO, contains comfort zone requests for each input
 export type CompareInputMap<T> = Partial<Record<InputIdType, T>>;
 
+/** Shared calculation-derived input payload used by model chart builders. */
+export interface ModelChartSourceDto<TRequest> {
+  inputs: CompareInputMap<TRequest>;
+}
+
 
 // Plot Trace DTO, contains plot trace data, including type, mode, name, x, y, z, text, 
 // showlegend, fill, fillcolor, line, marker, colorscale, contours, zmin, zmax, showscale,

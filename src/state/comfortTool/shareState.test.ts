@@ -38,6 +38,7 @@ describe("shareState", () => {
       selectedChart: ChartId.PmvDynamic,
     }));
     expect(snapshot.inputsByInput[InputId.Input1][FieldKey.ClothingInsulation]).toBe(2);
+    expect(JSON.stringify(snapshot)).not.toContain("chartSource");
     expect(deserializeShareState(encodedSnapshot)).toEqual(snapshot);
   });
 

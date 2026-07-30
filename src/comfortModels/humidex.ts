@@ -1,7 +1,7 @@
 import { humidex } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
-import type { CompareInputMap } from "../models/comfortDtos";
+import type { ModelChartSourceDto } from "../models/comfortDtos";
 import { ComfortModel } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
@@ -55,10 +55,6 @@ export interface HumidexResponseDto {
   humidex: number;
   humidexDiscomfort: string;
   source: CalculationSource;
-}
-
-export interface HumidexChartSourceDto {
-  chartRequest: CompareInputMap<HumidexRequestDto>;
 }
 
 export function calculateHumidex(payload: HumidexRequestDto): HumidexResponseDto {
@@ -136,7 +132,10 @@ const humidexChartSpec: GridModelChartSpec<HumidexRequestDto, HumidexResponseDto
   },
 };
 
-const builder = new ComfortModelBuilder<HumidexResponseDto, HumidexChartSourceDto>(
+const builder = new ComfortModelBuilder<
+  HumidexResponseDto,
+  ModelChartSourceDto<HumidexRequestDto>
+>(
   ComfortModel.Humidex,
 );
 
@@ -165,15 +164,15 @@ builder.addControl({
 
 builder.setCalculator((context, visibleInputIds) => {
   const resultsByInput = createEmptyResults<HumidexResponseDto>();
-  const chartRequest: CompareInputMap<HumidexRequestDto> = {};
+  const inputs: ModelChartSourceDto<HumidexRequestDto>["inputs"] = {};
 
   for (const inputId of visibleInputIds) {
     const request = toRequest(context, inputId);
     resultsByInput[inputId] = calculateHumidex(request);
-    chartRequest[inputId] = request;
+    inputs[inputId] = request;
   }
 
-  return { resultsByInput, chartSource: { chartRequest } };
+  return { resultsByInput, chartSource: { inputs } };
 });
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {

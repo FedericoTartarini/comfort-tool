@@ -13,6 +13,7 @@ import type { InputControlDefinition } from "../../../services/comfort/controls/
 import type { ThermalZone } from "../../../models/thermalZone";
 import {
   ChartMode,
+  type Band,
   type ChartMode as ChartModeType,
   type ComplianceSpec,
   type ModelOutput,
@@ -100,25 +101,79 @@ export function buildResultSectionsFromRows<T>(
  *
  * @template ResultType The data type returned by the calculation engine.
  * @template ChartSourceType The data type required to build the chart visualizations.
+ * @template ComplianceBand The band type declared by the model's Compliance mode.
  */
-export class ComfortModelBuilder<ResultType, ChartSourceType> {
-  private didSetChartableOutputs = false;
+export class ComfortModelBuilder<
+  ResultType,
+  ChartSourceType,
+  ComplianceBand extends Band = Band,
+> {
+  private readonly id: ComfortModelType;
 
-  private config: Partial<ComfortModelDefinition<ResultType, ChartSourceType>> = {
-    controls: [],
-    optionHandlersByKey: {},
-    zones: [],
-    legendChartIds: [],
-    legendTitle: "",
-    lockYAxisChartIds: [],
-  };
+  private label?: string;
+
+  private description?: string;
+
+  private modes?: ChartModeType[];
+
+  private chartableOutputs?: ModelOutput[];
+
+  private complianceSpec?: ComplianceSpec<ComplianceBand>;
+
+  private readonly controls: InputControlDefinition[] = [];
+
+  private readonly optionHandlersByKey: Partial<
+    Record<OptionKeyType, ModelOptionChangeHandler>
+  > = {};
+
+  private chartIds?: ChartIdType[];
+
+  private defaultChartId?: ChartIdType;
+
+  private defaultOptions?: Partial<Record<OptionKeyType, string>>;
+
+  private normalizeOptions?: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["normalizeOptions"];
+
+  private calculate?: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["calculate"];
+
+  private buildResultSections?: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["buildResultSections"];
+
+  private buildChartResult?: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["buildChartResult"];
+
+  private dynamicAxisFields?: FieldKeyType[];
+
+  private defaultDynamicAxes?: DynamicAxisDefaults;
+
+  private zones: ThermalZone[] = [];
+
+  private legendChartIds: ChartIdType[] = [];
+
+  private legendTitle = "";
+
+  private lockYAxisChartIds: ChartIdType[] = [];
 
   /**
    * Initializes the builder for a specific Comfort Model identity.
    * @param id The canonical identifier for the model (e.g., 'pmv', 'utci').
    */
   constructor(id: ComfortModelType) {
-    this.config.id = id;
+    this.id = id;
   }
 
   /**
@@ -126,7 +181,7 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param label Display label string.
    */
   setLabel(label: string): this {
-    this.config.label = label;
+    this.label = label;
     return this;
   }
 
@@ -135,12 +190,12 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param description Description string.
    */
   setDescription(description: string): this {
-    this.config.description = description;
+    this.description = description;
     return this;
   }
 
   setModes(modes: readonly ChartModeType[]): this {
-    this.config.modes = [...modes];
+    this.modes = [...modes];
     return this;
   }
 
@@ -149,16 +204,15 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * An explicit empty array is valid for compliance-only models.
    */
   setChartableOutputs(outputs: readonly ModelOutput[]): this {
-    this.didSetChartableOutputs = true;
-    this.config.chartableOutputs = outputs.map((output) => ({
+    this.chartableOutputs = outputs.map((output) => ({
       ...output,
       defaultBands: cloneNumericBands(output.defaultBands),
     }));
     return this;
   }
 
-  setComplianceSpec(spec: ComplianceSpec): this {
-    this.config.complianceSpec = {
+  setComplianceSpec(spec: ComplianceSpec<ComplianceBand>): this {
+    this.complianceSpec = {
       ...spec,
       bands: spec.bands.map((band) => ({ ...band })),
     };
@@ -170,7 +224,7 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param definition The definition binding a Control ID to its reactive behavior.
    */
   addControl(definition: InputControlDefinition): this {
-    this.config.controls!.push(definition);
+    this.controls.push(definition);
     return this;
   }
 
@@ -180,7 +234,7 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param handler The handler logic to execute when the option changes.
    */
   addOptionHandler(optionKey: OptionKeyType, handler: ModelOptionChangeHandler): this {
-    this.config.optionHandlersByKey![optionKey] = handler;
+    this.optionHandlersByKey[optionKey] = handler;
     return this;
   }
 
@@ -189,9 +243,9 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param chartId The ID of the chart to display by default.
    * @param allChartIds A list of all legal chart IDs accessible in this model.
    */
-  setDefaultChart(chartId: ChartIdType, allChartIds: ChartIdType[]): this {
-    this.config.defaultChartId = chartId;
-    this.config.chartIds = allChartIds;
+  setDefaultChart(chartId: ChartIdType, allChartIds: readonly ChartIdType[]): this {
+    this.defaultChartId = chartId;
+    this.chartIds = [...allChartIds];
     return this;
   }
 
@@ -200,7 +254,7 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param options A partial record of keys and their default string values.
    */
   setDefaultOptions(options: Partial<Record<OptionKeyType, string>>): this {
-    this.config.defaultOptions = options;
+    this.defaultOptions = { ...options };
     return this;
   }
 
@@ -210,7 +264,7 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param normalizer The normalization function.
    */
   setOptionNormalizer(normalizer: (value: unknown) => ModelOptionsState | null): this {
-    this.config.normalizeOptions = normalizer;
+    this.normalizeOptions = normalizer;
     return this;
   }
 
@@ -218,8 +272,12 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Sets the core calculation engine for the model.
    * @param calculator Logic that transforms input state into result DTOs and chart source data.
    */
-  setCalculator(calculator: ComfortModelDefinition<ResultType, ChartSourceType>["calculate"]): this {
-    this.config.calculate = calculator;
+  setCalculator(calculator: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["calculate"]): this {
+    this.calculate = calculator;
     return this;
   }
 
@@ -227,8 +285,12 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Registers the logic for transforming calculation results into UI-friendly result sections.
    * @param builder Function that returns an array of result section view models.
    */
-  setResultBuilder(builder: ComfortModelDefinition<ResultType, ChartSourceType>["buildResultSections"]): this {
-    this.config.buildResultSections = builder;
+  setResultBuilder(builder: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["buildResultSections"]): this {
+    this.buildResultSections = builder;
     return this;
   }
 
@@ -236,8 +298,12 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Registers the logic for transforming chart source data into final Plotly traces and layouts.
    * @param builder Function that creates a PlotlyChartResponseDto.
    */
-  setChartBuilder(builder: ComfortModelDefinition<ResultType, ChartSourceType>["buildChartResult"]): this {
-    this.config.buildChartResult = builder;
+  setChartBuilder(builder: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["buildChartResult"]): this {
+    this.buildChartResult = builder;
     return this;
   }
 
@@ -245,14 +311,14 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Defines the field keys available for dynamic axis selection in charts.
    * @param fields Array of FieldKey values.
    */
-  setDynamicAxisFields(fields: FieldKeyType[]): this {
-    this.config.dynamicAxisFields = fields;
+  setDynamicAxisFields(fields: readonly FieldKeyType[]): this {
+    this.dynamicAxisFields = [...fields];
     return this;
   }
 
   /** Defines the semantic default pair used when entering this model. */
   setDefaultDynamicAxes(defaults: DynamicAxisDefaults): this {
-    this.config.defaultDynamicAxes = { ...defaults };
+    this.defaultDynamicAxes = { ...defaults };
     return this;
   }
 
@@ -260,8 +326,8 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Defines the boundary zones associated with this model.
    * @param zones Array of ThermalZone instances.
    */
-  setZones(zones: ThermalZone[]): this {
-    this.config.zones = zones;
+  setZones(zones: readonly ThermalZone[]): this {
+    this.zones = [...zones];
     return this;
   }
 
@@ -269,8 +335,8 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Defines the chart IDs for which this model shows a zone legend.
    * @param chartIds Array of ChartId values.
    */
-  setLegendChartIds(chartIds: ChartIdType[]): this {
-    this.config.legendChartIds = chartIds;
+  setLegendChartIds(chartIds: readonly ChartIdType[]): this {
+    this.legendChartIds = [...chartIds];
     return this;
   }
 
@@ -279,7 +345,7 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * @param title Title string.
    */
   setLegendTitle(title: string): this {
-    this.config.legendTitle = title;
+    this.legendTitle = title;
     return this;
   }
 
@@ -287,16 +353,16 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    * Defines the chart IDs that lock the dynamic Y-axis.
    * @param chartIds Array of ChartId values.
    */
-  setLockYAxisChartIds(chartIds: ChartIdType[]): this {
-    this.config.lockYAxisChartIds = chartIds;
+  setLockYAxisChartIds(chartIds: readonly ChartIdType[]): this {
+    this.lockYAxisChartIds = [...chartIds];
     return this;
   }
 
   /**
-   * Seals the configuration and returns a complete, immutable ComfortModelDefinition.
+   * Validates the configuration and returns a complete configuration snapshot.
    */
-  build(): ComfortModelDefinition<ResultType, ChartSourceType> {
-    const modes = this.config.modes;
+  build(): ComfortModelDefinition<ResultType, ChartSourceType, ComplianceBand> {
+    const modes = this.modes;
     if (!modes || modes.length === 0) {
       throw new Error("Comfort model declarations require at least one mode.");
     }
@@ -305,11 +371,12 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
       throw new Error("Comfort model declarations cannot contain duplicate modes.");
     }
 
-    if (!this.didSetChartableOutputs || !this.config.chartableOutputs) {
+    const chartableOutputs = this.chartableOutputs;
+    if (!chartableOutputs) {
       throw new Error("Comfort model declarations must explicitly set chartable outputs.");
     }
 
-    const outputKeys = this.config.chartableOutputs.map((output) => output.key);
+    const outputKeys = chartableOutputs.map((output) => output.key);
     if (new Set(outputKeys).size !== outputKeys.length) {
       throw new Error("Comfort model declarations cannot contain duplicate output keys.");
     }
@@ -317,11 +384,11 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
     const supportsExplore = modes.includes(ChartMode.Explore);
     const supportsCompliance = modes.includes(ChartMode.Compliance);
 
-    if (supportsExplore && this.config.chartableOutputs.length === 0) {
+    if (supportsExplore && chartableOutputs.length === 0) {
       throw new Error("Explore mode requires at least one chartable output.");
     }
 
-    for (const output of this.config.chartableOutputs) {
+    for (const output of chartableOutputs) {
       const validation = validateNumericBands(output.defaultBands);
       if (!validation.valid) {
         throw new Error(
@@ -330,20 +397,69 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
       }
     }
 
-    if (supportsCompliance && (!this.config.complianceSpec || this.config.complianceSpec.bands.length === 0)) {
+    if (supportsCompliance && (!this.complianceSpec || this.complianceSpec.bands.length === 0)) {
       throw new Error("Compliance mode requires a non-empty compliance specification.");
     }
 
-    if (!supportsCompliance && this.config.complianceSpec) {
+    if (!supportsCompliance && this.complianceSpec) {
       throw new Error("A model without Compliance mode cannot declare a compliance specification.");
     }
 
-    const dynamicAxisFields = this.config.dynamicAxisFields;
-    const defaultDynamicAxes = this.config.defaultDynamicAxes;
+    if (typeof this.label !== "string" || this.label.trim().length === 0) {
+      throw new Error("Comfort model declarations require a non-empty label.");
+    }
+
+    if (typeof this.description !== "string" || this.description.trim().length === 0) {
+      throw new Error("Comfort model declarations require a non-empty description.");
+    }
+
+    const chartIds = this.chartIds;
+    if (!chartIds || chartIds.length === 0) {
+      throw new Error("Comfort model declarations require at least one chart ID.");
+    }
+
+    if (chartIds.some((chartId) => chartId.trim().length === 0)) {
+      throw new Error("Comfort model declarations require non-empty chart IDs.");
+    }
+
+    if (new Set(chartIds).size !== chartIds.length) {
+      throw new Error("Comfort model declarations cannot contain duplicate chart IDs.");
+    }
+
+    if (!this.defaultChartId || !chartIds.includes(this.defaultChartId)) {
+      throw new Error("The default chart must belong to the declared chart IDs.");
+    }
+
+    if (this.defaultOptions === undefined) {
+      throw new Error("Comfort model declarations must explicitly set default options.");
+    }
+
+    if (!this.normalizeOptions) {
+      throw new Error("Comfort model declarations must set an option normalizer.");
+    }
+
+    if (!this.calculate) {
+      throw new Error("Comfort model declarations must set a calculator.");
+    }
+
+    if (!this.buildResultSections) {
+      throw new Error("Comfort model declarations must set a result builder.");
+    }
+
+    if (!this.buildChartResult) {
+      throw new Error("Comfort model declarations must set a chart builder.");
+    }
+
+    const dynamicAxisFields = this.dynamicAxisFields;
+    const defaultDynamicAxes = this.defaultDynamicAxes;
     if (!dynamicAxisFields || dynamicAxisFields.length < 2 || !defaultDynamicAxes) {
       throw new Error(
         "Comfort model declarations require dynamic axis fields and explicit default dynamic axes.",
       );
+    }
+
+    if (new Set(dynamicAxisFields).size !== dynamicAxisFields.length) {
+      throw new Error("Dynamic axis fields cannot contain duplicates.");
     }
 
     const defaultsAreValid =
@@ -354,6 +470,38 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
       throw new Error("Default dynamic axes must be supported and distinct.");
     }
 
-    return this.config as ComfortModelDefinition<ResultType, ChartSourceType>;
+    return {
+      id: this.id,
+      label: this.label,
+      description: this.description,
+      modes: [...modes],
+      chartableOutputs: chartableOutputs.map((output) => ({
+        ...output,
+        defaultBands: cloneNumericBands(output.defaultBands),
+      })),
+      ...(this.complianceSpec
+        ? {
+            complianceSpec: {
+              ...this.complianceSpec,
+              bands: this.complianceSpec.bands.map((band) => ({ ...band })),
+            },
+          }
+        : {}),
+      controls: [...this.controls],
+      optionHandlersByKey: { ...this.optionHandlersByKey },
+      chartIds: [...chartIds],
+      defaultChartId: this.defaultChartId,
+      defaultOptions: { ...this.defaultOptions },
+      normalizeOptions: this.normalizeOptions,
+      calculate: this.calculate,
+      buildResultSections: this.buildResultSections,
+      buildChartResult: this.buildChartResult,
+      dynamicAxisFields: [...dynamicAxisFields],
+      defaultDynamicAxes: { ...defaultDynamicAxes },
+      zones: [...this.zones],
+      legendChartIds: [...this.legendChartIds],
+      legendTitle: this.legendTitle,
+      lockYAxisChartIds: [...this.lockYAxisChartIds],
+    };
   }
 }

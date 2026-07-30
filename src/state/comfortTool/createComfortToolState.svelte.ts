@@ -53,11 +53,11 @@ import {
   type ShareStateSnapshot,
 } from "./shareState";
 import type {
-  CalculationCacheStatus,
   ChartControlsViewModel,
   ComfortToolController,
   InputState,
   ModelCalculationCacheByModelState,
+  ModelCalculationCache,
   ModelOptionsByModelState,
   SelectedChartByModelState,
   ComfortToolStateSlice,
@@ -135,12 +135,10 @@ function createEmptyInputResultRecord<T>(): Record<InputIdType, T | null> {
  * Creates an empty calculation cache container for a comfort model.
  * @returns An initialized calculation cache object.
  */
-function createEmptyCalculationCache<ResultType>(): {
-  status: CalculationCacheStatus;
-  lastVisibleInputIds: InputIdType[];
-  resultsByInput: Record<InputIdType, ResultType | null>;
-  chartSource: null;
-} {
+function createEmptyCalculationCache<
+  ResultType,
+  ChartSourceType,
+>(): ModelCalculationCache<ResultType, ChartSourceType> {
   return {
     status: "empty",
     lastVisibleInputIds: [InputId.Input1],
@@ -155,7 +153,7 @@ function createEmptyCalculationCache<ResultType>(): {
  */
 function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
-    accumulator[modelId] = createEmptyCalculationCache();
+    accumulator[modelId] = createEmptyCalculationCache<unknown, unknown>();
     return accumulator;
   }, {} as ModelCalculationCacheByModelState);
 }

@@ -2,7 +2,7 @@ import { t_o } from "jsthermalcomfort";
 import { CalculationSource, type ComfortStandard } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
 import type {
-  CompareInputMap,
+  ModelChartSourceDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../models/comfortDtos";
@@ -123,10 +123,6 @@ export interface AdaptiveResponseDto {
   isApplicable: boolean;
   standard: ComfortStandard;
   source: CalculationSource;
-}
-
-export interface AdaptiveChartSourceDto {
-  inputs: CompareInputMap<AdaptiveRequestDto>;
 }
 
 export interface AdaptiveBoundaryDefinition {
@@ -611,7 +607,7 @@ function getInputResult(
 
 function createAdaptiveInputGroup(
   declaration: AdaptiveModelDeclaration,
-  source: AdaptiveChartSourceDto,
+  source: ModelChartSourceDto<AdaptiveRequestDto>,
   resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
   unitSystem: UnitSystemType,
   xAxis: ChartAxisScale,
@@ -841,7 +837,7 @@ function buildOutdoorTemperatureBoundaryTraces(
 
 export function buildAdaptiveChart(
   declaration: AdaptiveModelDeclaration,
-  source: AdaptiveChartSourceDto,
+  source: ModelChartSourceDto<AdaptiveRequestDto>,
   resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
@@ -946,7 +942,7 @@ function assertDynamicAxes(context: ChartBuildContext): {
 
 export function buildAdaptiveDynamicChart(
   declaration: AdaptiveModelDeclaration,
-  source: AdaptiveChartSourceDto,
+  source: ModelChartSourceDto<AdaptiveRequestDto>,
   resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
@@ -1157,7 +1153,7 @@ export function createAdaptiveModelConfig(
 ) {
   const builder = new ComfortModelBuilder<
     AdaptiveResponseDto,
-    AdaptiveChartSourceDto
+    ModelChartSourceDto<AdaptiveRequestDto>
   >(declaration.modelId);
   const temperatureBehavior = createTemperatureControlBehavior(
     InputControlId.Temperature,
@@ -1223,7 +1219,7 @@ export function createAdaptiveModelConfig(
     })
     .setCalculator((context, visibleInputIds) => {
       const resultsByInput = createEmptyResults<AdaptiveResponseDto>();
-      const inputs: CompareInputMap<AdaptiveRequestDto> = {};
+      const inputs: ModelChartSourceDto<AdaptiveRequestDto>["inputs"] = {};
       for (const inputId of visibleInputIds) {
         const request = toAdaptiveRequest(context, inputId, declaration);
         inputs[inputId] = request;

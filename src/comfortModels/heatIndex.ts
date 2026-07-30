@@ -1,7 +1,7 @@
 import { heat_index } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
-import type { CompareInputMap } from "../models/comfortDtos";
+import type { ModelChartSourceDto } from "../models/comfortDtos";
 import { ComfortModel } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
@@ -55,10 +55,6 @@ export interface HeatIndexResponseDto {
   hi: number;
   category: string;
   source: CalculationSource;
-}
-
-export interface HeatIndexChartSourceDto {
-  chartRequest: CompareInputMap<HeatIndexRequestDto>;
 }
 
 export function calculateHeatIndex(payload: HeatIndexRequestDto): HeatIndexResponseDto {
@@ -144,7 +140,7 @@ const heatIndexChartSpec: GridModelChartSpec<
 
 const builder = new ComfortModelBuilder<
   HeatIndexResponseDto,
-  HeatIndexChartSourceDto
+  ModelChartSourceDto<HeatIndexRequestDto>
 >(ComfortModel.HeatIndex);
 
 builder
@@ -172,15 +168,15 @@ builder.addControl({
 
 builder.setCalculator((context, visibleInputIds) => {
   const resultsByInput = createEmptyResults<HeatIndexResponseDto>();
-  const chartRequest: CompareInputMap<HeatIndexRequestDto> = {};
+  const inputs: ModelChartSourceDto<HeatIndexRequestDto>["inputs"] = {};
 
   for (const inputId of visibleInputIds) {
     const request = toRequest(context, inputId);
     resultsByInput[inputId] = calculateHeatIndex(request);
-    chartRequest[inputId] = request;
+    inputs[inputId] = request;
   }
 
-  return { resultsByInput, chartSource: { chartRequest } };
+  return { resultsByInput, chartSource: { inputs } };
 });
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {

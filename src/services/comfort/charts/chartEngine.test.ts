@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
+import { pmvAshraeModelConfig } from "../../../comfortModels/pmvAshrae";
 import { CalculationSource } from "../../../models/calculationMetadata";
 import type { PlotTraceDto } from "../../../models/comfortDtos";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
-import { ModelOutputKey } from "../../../models/modelCapabilities";
+import {
+  ChartMode,
+  ModelOutputKey,
+  type NumericComplianceFieldChartConfig,
+} from "../../../models/modelCapabilities";
 import { UnitSystem } from "../../../models/units";
 import {
   buildFieldChart,
@@ -31,6 +36,31 @@ function lineTrace(name: string, x: number[] = [], y: number[] = []): PlotTraceD
 }
 
 describe("shared chart engine", () => {
+  it("accepts PMV numeric Compliance bands without a cast", () => {
+    const complianceSpec = pmvAshraeModelConfig.complianceSpec;
+    const output = pmvAshraeModelConfig.chartableOutputs.find(
+      ({ key }) => key === complianceSpec?.output,
+    );
+    if (!complianceSpec || !output) {
+      throw new Error("PMV must declare a chartable numeric Compliance output.");
+    }
+    const config: NumericComplianceFieldChartConfig = {
+      mode: ChartMode.Compliance,
+      xField: FieldKey.DryBulbTemperature,
+      yField: FieldKey.RelativeHumidity,
+      zOutput: complianceSpec.output,
+      bands: complianceSpec.bands,
+    };
+
+    const strategy = createBandedGridStrategy({
+      config,
+      output,
+      evaluateOutput: () => 0,
+    });
+
+    expect(strategy.kind).toBe("grid");
+  });
+
   it("evaluates a canonical-SI grid and orders overlays before multi-input markers", () => {
     const xValuesSeen: number[] = [];
     const chart = buildFieldChart<TestPayload, TestResult>({

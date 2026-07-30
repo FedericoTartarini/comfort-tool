@@ -15,8 +15,8 @@ import {
   buildComfortZonePolygon,
   buildPmvDynamicChart,
   calculateComfortZone,
+  pmvNeutralZone,
   pmvChartableOutputs,
-  pmvZonesList,
   type PmvChartSourceDto,
 } from "../../comfortModels/pmvShared";
 import {
@@ -164,7 +164,7 @@ describe("comfort services", () => {
       const constrainedResult = {
         ...constrainedPmv,
         isCompliant: constrainedComplianceWarnings.length === 0
-          && pmvZonesList[3].contains(constrainedPmv.pmv),
+          && pmvNeutralZone.contains(constrainedPmv.pmv),
         standard: ComfortStandard.Ashrae55PmvPpd,
         source: CalculationSource.JsThermalComfort,
       };

@@ -12,6 +12,7 @@ import {
   buildPmvDynamicChart,
   calculateComfortZone,
   getPmvZoneMeta,
+  pmvZonesList,
   solveDryBulbForTargetPmv,
   type ComfortZoneRequestDto,
   type PmvChartSourceDto,
@@ -138,8 +139,18 @@ describe("PMV charts", () => {
   it("builds the fixed psychrometric view with zones, RH curves, comfort polygon, and input", () => {
     const chart = buildPsychrometric(pmvAshraeDeclaration);
     const zoneTrace = chart.traces[0];
+    const finiteZoneBoundaries = [...new Set(
+      pmvZonesList
+        .flatMap((zone) => [zone.min, zone.max])
+        .filter(Number.isFinite),
+    )].sort((left, right) => left - right);
 
     expect(zoneTrace.type).toBe("contour");
+    expect(zoneTrace.contours).toEqual(expect.objectContaining({
+      start: finiteZoneBoundaries[0],
+      end: finiteZoneBoundaries[finiteZoneBoundaries.length - 1],
+      size: finiteZoneBoundaries[1] - finiteZoneBoundaries[0],
+    }));
     expect(zoneTrace.z).toHaveLength(50);
     expect(zoneTrace.z?.[0]).toHaveLength(50);
     expect(zoneTrace.hovertemplate).toContain("Zone: %{text}");

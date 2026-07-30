@@ -1,13 +1,17 @@
 import { CalculationSource } from "../../../models/calculationMetadata";
 import type { ChartId as ChartIdType } from "../../../models/chartOptions";
-import type { CompareInputMap, PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import type {
+  CompareInputMap,
+  ModelChartSourceDto,
+  PlotlyChartResponseDto,
+} from "../../../models/comfortDtos";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
 import type {
-  BandedFieldChartConfig,
   ChartBuildContext,
   ModelOutput,
+  NumericFieldChartConfig,
 } from "../../../models/modelCapabilities";
 import {
   ChartMode,
@@ -26,10 +30,6 @@ import {
 } from "./chartEngine";
 import { getBaselineInputEntry } from "../helpers";
 import type { ChartRange } from "./types";
-
-export interface GridModelChartSource<TPayload> {
-  chartRequest: CompareInputMap<TPayload>;
-}
 
 export interface GridModelDynamicHoverExtension<TResult> {
   getTemplateSuffix: (unitSystem: UnitSystemType) => string;
@@ -64,7 +64,7 @@ export interface GridModelChartSpec<TPayload extends object, TResult> {
 
 interface GridModelView {
   title: string;
-  config: BandedFieldChartConfig;
+  config: NumericFieldChartConfig;
   xRangeSi: ChartRange;
   yRangeSi: ChartRange;
   hoverTemplateSuffix: string;
@@ -168,7 +168,7 @@ function buildGridModelView<TPayload extends object, TResult>(
 
 export function buildGridModelChart<TPayload extends object, TResult>(
   chartId: ChartIdType,
-  chartSource: GridModelChartSource<TPayload> | null,
+  chartSource: ModelChartSourceDto<TPayload> | null,
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
   context: ChartBuildContext,
   spec: GridModelChartSpec<TPayload, TResult>,
@@ -177,7 +177,7 @@ export function buildGridModelChart<TPayload extends object, TResult>(
     return null;
   }
 
-  const inputsMap = chartSource.chartRequest;
+  const inputsMap = chartSource.inputs;
   const baselinePayload = getBaselineInputEntry(
     inputsMap,
     context.baselineInputId,

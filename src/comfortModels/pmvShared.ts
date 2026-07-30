@@ -4,6 +4,7 @@ import { ChartId } from "../models/chartOptions";
 import type {
   ComfortPointDto,
   CompareInputMap,
+  ModelChartSourceDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../models/comfortDtos";
@@ -31,7 +32,6 @@ import {
   ChartMode,
   findNumericBandIndexForValue,
   ModelOutputKey,
-  type Band,
   type ChartBuildContext,
   type ChartMode as ChartModeType,
   type ComplianceSpec,
@@ -115,21 +115,33 @@ const CHART_COLOR_RH_LINE = "#94a3b8";
 const COLOR_COMPLIANT_GREEN = "#047857";
 const COLOR_NON_COMPLIANT_RED = "#dc2626";
 
+export const pmvNeutralZone = new ThermalZone({
+  label: "Neutral",
+  min: -0.5,
+  max: 0.5,
+  color: "#f2f2f2",
+  textColor: "#475569",
+});
+
 export const pmvZonesList = [
   new ThermalZone({ label: "Cold", max: -2.5, color: "#0571b0", textColor: "#1d4ed8" }),
   new ThermalZone({ label: "Cool", min: -2.5, max: -1.5, color: "#4c78a8", textColor: "#2563eb" }),
   new ThermalZone({ label: "Slightly Cool", min: -1.5, max: -0.5, color: "#92c5de", textColor: "#0369a1" }),
-  new ThermalZone({ label: "Neutral", min: -0.5, max: 0.5, color: "#f2f2f2", textColor: "#475569" }),
+  pmvNeutralZone,
   new ThermalZone({ label: "Slightly Warm", min: 0.5, max: 1.5, color: "#f4a582", textColor: "#ea580c" }),
   new ThermalZone({ label: "Warm", min: 1.5, max: 2.5, color: "#e15759", textColor: "#b91c1c" }),
   new ThermalZone({ label: "Hot", min: 2.5, color: "#cc79a7", textColor: "#701a75" }),
 ];
 
-const PMV_NEUTRAL_ZONE = pmvZonesList[3];
+const pmvFiniteZoneBoundaries = [...new Set(
+  pmvZonesList
+    .flatMap((zone) => [zone.min, zone.max])
+    .filter(Number.isFinite),
+)].sort((left, right) => left - right);
 const PMV_CONTOURS = {
-  start: -2.5,
-  end: 2.5,
-  size: 1,
+  start: pmvFiniteZoneBoundaries[0],
+  end: pmvFiniteZoneBoundaries[pmvFiniteZoneBoundaries.length - 1],
+  size: pmvFiniteZoneBoundaries[1] - pmvFiniteZoneBoundaries[0],
   type: "levels",
   coloring: "fill",
   showlines: true,
@@ -171,8 +183,7 @@ export interface PmvResponseDto {
   source: CalculationSource;
 }
 
-export interface PmvChartSourceDto {
-  inputs: CompareInputMap<ComfortZoneRequestDto>;
+export interface PmvChartSourceDto extends ModelChartSourceDto<ComfortZoneRequestDto> {
   comfortZonesByInput: CompareInputMap<ComfortZoneResponseDto>;
 }
 
@@ -192,7 +203,7 @@ export interface PmvModelDeclaration {
   readonly adapter: PmvStandardAdapter;
   readonly modes: readonly ChartModeType[];
   readonly chartableOutputs: readonly ModelOutput[];
-  readonly complianceSpec: ComplianceSpec;
+  readonly complianceSpec: ComplianceSpec<NumericBand>;
 }
 
 interface PmvChartEvaluation {
@@ -236,22 +247,22 @@ export const pmvChartableOutputs: readonly ModelOutput[] = [
   },
 ];
 
-export function createPmvComplianceBands(): readonly Band[] {
+export function createPmvComplianceBands(): readonly NumericBand[] {
   return [
     {
       min: -Infinity,
-      max: PMV_NEUTRAL_ZONE.min,
+      max: pmvNeutralZone.min,
       label: "Outside acceptable PMV range",
       color: "#fecaca",
     },
     {
-      min: PMV_NEUTRAL_ZONE.min,
-      max: PMV_NEUTRAL_ZONE.max,
+      min: pmvNeutralZone.min,
+      max: pmvNeutralZone.max,
       label: "Acceptable PMV range",
       color: "#86efac",
     },
     {
-      min: PMV_NEUTRAL_ZONE.max,
+      min: pmvNeutralZone.max,
       max: Infinity,
       label: "Outside acceptable PMV range",
       color: "#fecaca",
@@ -260,8 +271,8 @@ export function createPmvComplianceBands(): readonly Band[] {
 }
 
 export function getPmvZoneMeta(pmv: number): ThermalZone {
-  if (!Number.isFinite(pmv)) return PMV_NEUTRAL_ZONE;
-  return pmvZonesList.find((zone) => zone.contains(pmv)) ?? PMV_NEUTRAL_ZONE;
+  if (!Number.isFinite(pmv)) return pmvNeutralZone;
+  return pmvZonesList.find((zone) => zone.contains(pmv)) ?? pmvNeutralZone;
 }
 
 function evaluatePmvCondition(
@@ -433,13 +444,13 @@ export function calculateComfortZone(
   for (const relativeHumidity of rhValues) {
     const coolTemperature = solveDryBulbForTargetPmv(
       adapter,
-      PMV_NEUTRAL_ZONE.min,
+      pmvNeutralZone.min,
       relativeHumidity,
       payload,
     );
     const warmTemperature = solveDryBulbForTargetPmv(
       adapter,
-      PMV_NEUTRAL_ZONE.max,
+      pmvNeutralZone.max,
       relativeHumidity,
       payload,
     );
@@ -1155,7 +1166,11 @@ export function buildPmvDynamicChart(
 
 export function createPmvModelConfig(declaration: PmvModelDeclaration) {
   const { adapter } = declaration;
-  const builder = new ComfortModelBuilder<PmvResponseDto, PmvChartSourceDto>(
+  const builder = new ComfortModelBuilder<
+    PmvResponseDto,
+    PmvChartSourceDto,
+    NumericBand
+  >(
     adapter.modelId,
   );
   const temperatureBehavior = createTemperatureControlBehavior(
@@ -1269,7 +1284,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
           ppd: result.ppd,
           vr: request.vr,
           isCompliant: complianceWarnings.length === 0
-            && PMV_NEUTRAL_ZONE.contains(result.pmv),
+            && pmvNeutralZone.contains(result.pmv),
           standard: adapter.resultStandard,
           source: CalculationSource.JsThermalComfort,
         };

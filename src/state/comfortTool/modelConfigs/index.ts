@@ -16,6 +16,7 @@ import type {
 } from "../../../services/comfort/controls/types";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import type {
+  Band,
   ChartMode as ChartModeType,
   ChartBuildContext,
   ComplianceSpec,
@@ -63,13 +64,17 @@ export interface DynamicAxisDefaults {
  * @template ResultType - The type of the calculation results.
  * @template ChartSourceType - The type of the chart source.
  */
-export interface ComfortModelDefinition<ResultType, ChartSourceType> {
+export interface ComfortModelDefinition<
+  ResultType,
+  ChartSourceType,
+  ComplianceBand extends Band = Band,
+> {
   id: ComfortModelType;
   label: string;
   description: string;
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
-  complianceSpec?: ComplianceSpec;
+  complianceSpec?: ComplianceSpec<ComplianceBand>;
   controls: InputControlDefinition[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   chartIds: ChartIdType[];

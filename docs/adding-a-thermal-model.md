@@ -136,7 +136,7 @@ Define TypeScript interfaces for the calculation request and response. These are
 import { FieldKey } from "../models/fieldKeys";
 import { CalculationSource } from "../models/calculationMetadata";
 import type { InputId as InputIdType } from "../models/inputSlots";
-import type { CompareInputMap } from "../models/comfortDtos";
+import type { ModelChartSourceDto } from "../models/comfortDtos";
 
 export interface MyNewModelRequestDto {
   tdb: number;  // dry-bulb temperature in SI (°C)
@@ -149,16 +149,13 @@ export interface MyNewModelResponseDto {
   source: CalculationSource;
 }
 
-// Used to pass chart-related data between the calculator and the chart builder.
-export interface MyNewModelChartSourceDto {
-  chartRequest: CompareInputMap<MyNewModelRequestDto>;
-}
 ```
 
 **Key points:**
 - `RequestDto` contains raw SI values extracted from the shared input state.
 - `ResponseDto` stores computed results in SI. The results panel converts to display units when rendering.
-- `ChartSourceDto` carries calculation-derived chart data only. Explore axes, selected output, and working bands arrive separately as `FieldChartConfig`, so cached model calculations remain reusable when chart presentation changes.
+- Use `ModelChartSourceDto<MyNewModelRequestDto>` directly when the chart source only contains per-input requests. Extend it only when a model owns additional calculation-derived chart data, as PMV does for comfort zones.
+- Chart sources carry calculation-derived data only. Explore axes, selected output, and working bands arrive separately as `FieldChartConfig`, so cached model calculations remain reusable when chart presentation changes.
 - Model calculators and request DTOs are SI-only. `UnitSystem` belongs in display/chart context and conversion services, not in model requests.
 
 ### 3d. Write the Calculation Function
@@ -230,7 +227,10 @@ import {
 } from "../services/comfort/charts/gridModelCharts";
 import { convertModelOutputFromSi, formatDisplayValue, getModelOutputDisplayMeta } from "../services/units";
 
-const myNewModelBuilder = new ComfortModelBuilder<MyNewModelResponseDto, MyNewModelChartSourceDto>(
+const myNewModelBuilder = new ComfortModelBuilder<
+  MyNewModelResponseDto,
+  ModelChartSourceDto<MyNewModelRequestDto>
+>(
   ComfortModel.MyNewModel
 );
 
@@ -276,7 +276,9 @@ myNewModelBuilder
   });
 ```
 
-A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, and duplicate modes or output keys. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
+A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, duplicate modes or output keys, incomplete label/description/chart declarations, missing calculation or presentation functions, and invalid dynamic-axis defaults. A successful build returns a validated configuration snapshot with copied arrays and records. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
+
+`ComplianceSpec` and `ComfortModelBuilder` default to the general `Band` type so Adaptive can retain functional edges. A model with numeric Compliance bands can supply `NumericBand` as the builder's third generic argument; its resulting definition can then form a `NumericComplianceFieldChartConfig` and enter the shared numeric grid strategy without a cast.
 
 Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
 
@@ -326,19 +328,17 @@ The calculator runs for every input slot that is visible and produces `resultsBy
 ```ts
 myNewModelBuilder.setCalculator((context, visibleInputIds) => {
   const resultsByInput = createEmptyResults<MyNewModelResponseDto>();
-  const chartInputs: CompareInputMap<MyNewModelRequestDto> = {};
+  const inputs: ModelChartSourceDto<MyNewModelRequestDto>["inputs"] = {};
 
   visibleInputIds.forEach((inputId) => {
     const request = toMyNewModelRequest(context, inputId);
     resultsByInput[inputId] = calculateMyNewModel(request);
-    chartInputs[inputId] = request;
+    inputs[inputId] = request;
   });
 
   return {
     resultsByInput,
-    chartSource: {
-      chartRequest: chartInputs,
-    },
+    chartSource: { inputs },
   };
 });
 ```
@@ -457,7 +457,7 @@ myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context
 });
 ```
 
-The controller builds one `ChartBuildContext` containing the unit system, active axes, baseline input, and optional `FieldChartConfig`. Fixed and dynamic numeric grids both construct one canonical `BandedFieldChartConfig`; the selected output is looked up through `config.zOutput`. The model builder validates declared preset bands. Explore actions normalize, validate, and store edited bands. Selectors and the chart engine consume that validated state without repeating validation or cloning. Chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in the chart-source DTO or classify Explore output inside the model callback.
+The controller builds one `ChartBuildContext` containing the unit system, active axes, baseline input, and optional `FieldChartConfig`. Fixed numeric charts construct a `NumericFieldChartConfig` with no mode, while Explore extends that numeric contract with `mode: ChartMode.Explore`; the selected output is looked up through `config.zOutput`. The model builder validates declared preset bands. Explore actions normalize, validate, and store edited bands. Selectors and the chart engine consume that validated state without repeating validation or cloning. Chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in the chart source or classify Explore output inside the model callback.
 
 If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper with a `DynamicAxisPayloadAdapter` that implements both `getAxisValue` and `setAxisValue`. The current solver contract is linear: it evaluates the lower and upper component bounds once, interpolates the target component, validates the post-condition, and rejects non-finite, zero-slope, or out-of-range results. Endpoint probes restore the temperature component in `finally`; a successful solve commits it once, while a failed final commit rolls back that solved field. The independently selected other axis must remain unchanged. Create the adapter once outside the grid loop.
 

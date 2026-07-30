@@ -57,7 +57,7 @@ describe("heatIndex service", () => {
     const request = { tdb: 35, rh: 70 };
     const result = calculateHeatIndex(request);
     const chartSource = {
-      chartRequest: { [InputId.Input1]: request },
+      inputs: { [InputId.Input1]: request },
     };
     const resultsByInput = {
       [InputId.Input1]: result,
@@ -113,7 +113,7 @@ describe("heatIndex service", () => {
     const chart = heatIndexModelConfig.buildChartResult(
       ChartId.HeatIndexDynamic,
       {
-        chartRequest: { [InputId.Input1]: request },
+        inputs: { [InputId.Input1]: request },
       },
       {
         [InputId.Input1]: result,

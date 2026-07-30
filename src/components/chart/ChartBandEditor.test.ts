@@ -111,6 +111,33 @@ describe("ChartBandEditor", () => {
     },
   );
 
+  it("sorts untouched IP drafts while preserving their exact SI edges", async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
+    const boundarySi = 12.3456;
+    const expectedBands = createBands(boundarySi, "Exact");
+    const unsortedBands = [...expectedBands].reverse();
+    const originalBands = unsortedBands.map((band) => ({ ...band }));
+
+    render(ChartBandEditor, {
+      idPrefix: "test-unsorted",
+      outputKey: ModelOutputKey.Utci,
+      bands: unsortedBands,
+      defaultBands: unsortedBands,
+      unitSystem: UnitSystem.IP,
+      onApply,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Edit chart thresholds" }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][0]).toEqual(expectedBands);
+    expect(onApply.mock.calls[0][0][0].max).toBe(boundarySi);
+    expect(onApply.mock.calls[0][0][1].min).toBe(boundarySi);
+    expect(unsortedBands).toEqual(originalBands);
+  });
+
   it("supports add, remove, reset, and cancel without committing drafts", async () => {
     const user = userEvent.setup();
     const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);

@@ -1,7 +1,7 @@
 import { wc, wind_chill_temperature } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
-import type { CompareInputMap } from "../models/comfortDtos";
+import type { ModelChartSourceDto } from "../models/comfortDtos";
 import { ComfortModel } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
@@ -61,10 +61,6 @@ export interface WindChillResponseDto {
   wciTemp: number;
   wciZone: string;
   source: CalculationSource;
-}
-
-export interface WindChillChartSourceDto {
-  chartRequest: CompareInputMap<WindChillRequestDto>;
 }
 
 export function calculateWindChill(payload: WindChillRequestDto): WindChillResponseDto {
@@ -160,7 +156,10 @@ const windChillChartSpec: GridModelChartSpec<
   getOutputValue: (result) => result.wci,
 };
 
-const builder = new ComfortModelBuilder<WindChillResponseDto, WindChillChartSourceDto>(
+const builder = new ComfortModelBuilder<
+  WindChillResponseDto,
+  ModelChartSourceDto<WindChillRequestDto>
+>(
   ComfortModel.WindChill,
 );
 
@@ -198,15 +197,15 @@ builder.addControl({
 
 builder.setCalculator((context, visibleInputIds) => {
   const resultsByInput = createEmptyResults<WindChillResponseDto>();
-  const chartRequest: CompareInputMap<WindChillRequestDto> = {};
+  const inputs: ModelChartSourceDto<WindChillRequestDto>["inputs"] = {};
 
   for (const inputId of visibleInputIds) {
     const request = toRequest(context, inputId);
     resultsByInput[inputId] = calculateWindChill(request);
-    chartRequest[inputId] = request;
+    inputs[inputId] = request;
   }
 
-  return { resultsByInput, chartSource: { chartRequest } };
+  return { resultsByInput, chartSource: { inputs } };
 });
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {

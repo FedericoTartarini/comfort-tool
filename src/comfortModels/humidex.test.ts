@@ -46,7 +46,7 @@ describe("humidex service", () => {
     const request = { tdb: 30, rh: 70 };
     const result = calculateHumidex(request);
     const chartSource = {
-      chartRequest: { [InputId.Input1]: request },
+      inputs: { [InputId.Input1]: request },
     };
     const resultsByInput = {
       [InputId.Input1]: result,
