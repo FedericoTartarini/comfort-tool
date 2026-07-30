@@ -56,11 +56,16 @@
       // The options for the download
       options: Record<string, unknown>,
     ) => Promise<void>;
+    // Resize an existing Plotly chart after its responsive container changes.
+    Plots?: {
+      resize: (root: HTMLDivElement) => Promise<void> | void;
+    };
   }
 
   // Component state
   let chartElement = $state<HTMLDivElement | null>(null);
   let plotlyModule = $state<PlotlyModule | null>(null);
+  let resizeObserver: ResizeObserver | null = null;
 
   // Boolean state to track if the chart has been rendered
   let hasRenderedChart = $state(false);
@@ -226,6 +231,20 @@
   // Stores the previous chart data to determine the animation type (dots vs. full redraw), initialized to null.
   let prevChartResult: typeof chartResult | null = null;
 
+  async function resizeRenderedChart() {
+    if (!chartElement || !plotlyModule?.Plots || !hasRenderedChart) return;
+
+    const { width, height } = chartElement.getBoundingClientRect();
+    if (width <= 0 || height <= 0) return;
+
+    try {
+      await plotlyModule.Plots.resize(chartElement);
+    } catch {
+      // A detached element can race with observer cleanup; the rendered chart
+      // remains valid and the next observed size change will retry.
+    }
+  }
+
   // Render the chart to the canvas.
   async function renderChart() {
     // Return if the chart result is not available
@@ -303,6 +322,7 @@
       );
       // Set the hasRenderedChart flag to true
       hasRenderedChart = true;
+      await resizeRenderedChart();
       // Update the previous chart result
       prevChartResult = chartResult;
     } catch (error) {
@@ -315,11 +335,19 @@
   }
 
   onMount(() => {
+    if (chartElement && typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        void resizeRenderedChart();
+      });
+      resizeObserver.observe(chartElement);
+    }
     // Render the chart
     void renderChart();
     // Register the export function if it is provided
     if (onRegisterExport) onRegisterExport(exportChart);
     return () => {
+      resizeObserver?.disconnect();
+      resizeObserver = null;
       // Purge the chart element if it is available
       if (chartElement && plotlyModule) plotlyModule.purge(chartElement);
     };
@@ -341,6 +369,7 @@
 <figure class="relative mt-2 min-w-0">
   <section class="w-full overflow-hidden bg-white">
     <div
+      data-testid="comfort-chart-plot"
       class={`plotly-panel h-full w-full min-w-0 max-w-full ${chartHeightStyle ? "" : heightClass}`}
       style={chartHeightStyle}
       bind:this={chartElement}

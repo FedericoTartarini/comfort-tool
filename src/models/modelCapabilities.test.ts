@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { FieldKey } from "./fieldKeys";
 import {
   findBandForValue,
+  findNumericBandIndexForValue,
   resolveBandEdge,
   type Band,
   type InputsSi,
@@ -53,5 +54,17 @@ describe("model capability band helpers", () => {
     expect(findBandForValue(bands, Number.NaN, 0, inputsSi)).toBeUndefined();
     expect(findBandForValue(bands, 1.5, 0, inputsSi)).toBeUndefined();
     expect(findBandForValue(bands, 3, 0, inputsSi)).toBeUndefined();
+  });
+
+  it("assigns numeric bands at shared edges and infinities", () => {
+    const bands = [
+      createBand(-Infinity, 0, "Lower"),
+      createBand(0, Infinity, "Upper"),
+    ];
+
+    expect(findNumericBandIndexForValue(bands, -Infinity)).toBe(0);
+    expect(findNumericBandIndexForValue(bands, 0)).toBe(1);
+    expect(findNumericBandIndexForValue(bands, Infinity)).toBeUndefined();
+    expect(findNumericBandIndexForValue(bands, NaN)).toBeUndefined();
   });
 });

@@ -2,6 +2,7 @@ import { inputOrder, type InputId as InputIdType } from "../../../models/inputSl
 import type { ResultSectionViewModel, ModelOptionsState, ResultCellViewModel } from "../types";
 import type {
   ComfortModelDefinition,
+  DynamicAxisDefaults,
   DynamicAxisPairValidator,
   ModelOptionChangeHandler,
 } from "./index";
@@ -17,6 +18,10 @@ import {
   type ComplianceSpec,
   type ModelOutput,
 } from "../../../models/modelCapabilities";
+import {
+  cloneNumericBands,
+  validateNumericBands,
+} from "../../../services/comfort/charts/bands";
 
 export type ResultRowDefinition<T> = {
   title: string;
@@ -146,14 +151,17 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   setChartableOutputs(outputs: readonly ModelOutput[]): this {
     this.didSetChartableOutputs = true;
-    this.config.chartableOutputs = [...outputs];
+    this.config.chartableOutputs = outputs.map((output) => ({
+      ...output,
+      defaultBands: cloneNumericBands(output.defaultBands),
+    }));
     return this;
   }
 
   setComplianceSpec(spec: ComplianceSpec): this {
     this.config.complianceSpec = {
       ...spec,
-      bands: [...spec.bands],
+      bands: spec.bands.map((band) => ({ ...band })),
     };
     return this;
   }
@@ -243,6 +251,12 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
     return this;
   }
 
+  /** Defines the semantic default pair used when entering this model. */
+  setDefaultDynamicAxes(defaults: DynamicAxisDefaults): this {
+    this.config.defaultDynamicAxes = { ...defaults };
+    return this;
+  }
+
   /**
    * Defines model-specific compatibility for otherwise supported dynamic axes.
    */
@@ -325,12 +339,41 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
       throw new Error("Explore mode requires at least one chartable output.");
     }
 
+    for (const output of this.config.chartableOutputs) {
+      const validation = validateNumericBands(output.defaultBands);
+      if (!validation.valid) {
+        throw new Error(
+          `Explore output ${output.key} has invalid default bands: ${validation.issues[0].message}`,
+        );
+      }
+    }
+
     if (supportsCompliance && (!this.config.complianceSpec || this.config.complianceSpec.bands.length === 0)) {
       throw new Error("Compliance mode requires a non-empty compliance specification.");
     }
 
     if (!supportsCompliance && this.config.complianceSpec) {
       throw new Error("A model without Compliance mode cannot declare a compliance specification.");
+    }
+
+    const dynamicAxisFields = this.config.dynamicAxisFields;
+    const defaultDynamicAxes = this.config.defaultDynamicAxes;
+    if (!dynamicAxisFields || dynamicAxisFields.length < 2 || !defaultDynamicAxes) {
+      throw new Error(
+        "Comfort model declarations require dynamic axis fields and explicit default dynamic axes.",
+      );
+    }
+
+    const defaultsAreValid =
+      dynamicAxisFields.includes(defaultDynamicAxes.xAxis) &&
+      dynamicAxisFields.includes(defaultDynamicAxes.yAxis) &&
+      defaultDynamicAxes.xAxis !== defaultDynamicAxes.yAxis &&
+      (this.config.dynamicAxisPairValidator?.(
+        defaultDynamicAxes.xAxis,
+        defaultDynamicAxes.yAxis,
+      ) ?? true);
+    if (!defaultsAreValid) {
+      throw new Error("Default dynamic axes must be a supported, compatible pair.");
     }
 
     return this.config as ComfortModelDefinition<ResultType, ChartSourceType>;

@@ -78,6 +78,80 @@ describe("comfort model capability registry", () => {
     expect(ComfortStandard.Iso7730PmvPpd).toContain("ISO 7730 Category B");
   });
 
+  it("declares semantic default axes and every directed distinct pair", () => {
+    const expected = {
+      [ComfortModel.PmvAshrae]: {
+        count: 42,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.RelativeHumidity,
+        },
+      },
+      [ComfortModel.PmvIso]: {
+        count: 42,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.RelativeHumidity,
+        },
+      },
+      [ComfortModel.Utci]: {
+        count: 20,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.RelativeHumidity,
+        },
+      },
+      [ComfortModel.AdaptiveAshrae]: {
+        count: 20,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+        },
+      },
+      [ComfortModel.AdaptiveEn]: {
+        count: 20,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+        },
+      },
+      [ComfortModel.HeatIndex]: {
+        count: 2,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.RelativeHumidity,
+        },
+      },
+      [ComfortModel.Humidex]: {
+        count: 2,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.RelativeHumidity,
+        },
+      },
+      [ComfortModel.WindChill]: {
+        count: 2,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.WindSpeed,
+        },
+      },
+    } as const;
+
+    comfortModelOrder.forEach((modelId) => {
+      const config = getComfortModelConfig(modelId);
+      const pairCount = config.dynamicAxisFields.reduce((count, xAxis) => (
+        count + config.dynamicAxisFields.filter((yAxis) => (
+          xAxis !== yAxis &&
+          (config.dynamicAxisPairValidator?.(xAxis, yAxis) ?? true)
+        )).length
+      ), 0);
+
+      expect(config.defaultDynamicAxes).toEqual(expected[modelId].defaults);
+      expect(pairCount).toBe(expected[modelId].count);
+    });
+  });
+
   it("declares the exact mode, output, and compliance matrix", () => {
     const expected = {
       [ComfortModel.PmvAshrae]: {
@@ -172,9 +246,13 @@ describe("comfort model capability registry", () => {
   it("declares independent PMV bands and assigns PMV/PPD edges half-open", () => {
     const ashrae = getComfortModelConfig(ComfortModel.PmvAshrae);
     const iso = getComfortModelConfig(ComfortModel.PmvIso);
-    const ppdBands = ashrae.chartableOutputs.find((output) => output.key === ModelOutputKey.Ppd)?.defaultBands;
+    const pmvOutput = ashrae.chartableOutputs.find((output) => output.key === ModelOutputKey.Pmv);
+    const ppdOutput = ashrae.chartableOutputs.find((output) => output.key === ModelOutputKey.Ppd);
+    const ppdBands = ppdOutput?.defaultBands;
     const inputsSi = createInputsSi(0.1);
 
+    expect(pmvOutput?.legendTitle).toBe("PMV Zones");
+    expect(ppdOutput?.legendTitle).toBe("PPD Bands");
     expect(ppdBands).toEqual([
       expect.objectContaining({ min: -Infinity, max: 10 }),
       expect.objectContaining({ min: 10, max: Infinity }),

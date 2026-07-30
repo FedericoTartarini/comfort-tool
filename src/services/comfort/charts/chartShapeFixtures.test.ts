@@ -7,6 +7,7 @@ import { AdaptiveStandardMode } from "../../../models/inputModes";
 import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
+import { ChartMode, ModelOutputKey } from "../../../models/modelCapabilities";
 import {
   buildAdaptiveChart,
   buildAdaptiveDynamicChart,
@@ -15,12 +16,13 @@ import {
   buildComparePsychrometricChart,
   buildPmvDynamicChart,
   calculateComfortZone,
+  pmvChartableOutputs,
   type ComfortZoneRequestDto,
   type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
 } from "../../../comfortModels/pmvShared";
 import { pmvAshraeAdapter } from "../../../comfortModels/pmvAshrae";
-import { buildUtciDynamicChart } from "../../../comfortModels/utci";
+import { buildUtciDynamicChart, utciModelConfig } from "../../../comfortModels/utci";
 
 const pmvPayload: ComfortZoneRequestDto = {
   tdb: 25,
@@ -127,10 +129,15 @@ describe("PMV and Adaptive chart shape fixtures", () => {
     expect(chartShapeHash(buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands: pmvChartableOutputs[0].defaultBands,
+      },
       UnitSystem.SI,
-    ))).toBe("4c2a824b89c6a7c06c319fbd7ad991a5d47ddcc9963979003eebd84bbc5bfba6");
+    ))).toBe("86296f881da4bfc9c25d8c210f9ed3329d61e18058cca31581941b09a6690f65");
   });
 
   it("keeps the Adaptive static chart DTO shape stable", () => {
@@ -187,9 +194,14 @@ describe("PMV and Adaptive chart shape fixtures", () => {
         },
       },
       UnitSystem.SI,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Utci,
+        bands: utciModelConfig.chartableOutputs[0].defaultBands,
+      },
       InputId.Input1,
-    ))).toBe("53693384f2856e0f6cdaa22fac5aadaa7c3ed3817538c5ba6fb869620eb3b618");
+    ))).toBe("286d22be0edd5d455ad011fc148514bd62c15369db96dc851450b92f2760901d");
   });
 });

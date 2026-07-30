@@ -18,6 +18,7 @@ import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import type {
   ChartMode as ChartModeType,
   ComplianceSpec,
+  FieldChartConfig,
   ModelOutput,
 } from "../../../models/modelCapabilities";
 import type { ComfortToolStateSlice, ModelOptionsState, ResultSectionViewModel } from "../types";
@@ -54,6 +55,11 @@ export type DynamicAxisPairValidator = (
   xAxis: FieldKeyType,
   yAxis: FieldKeyType,
 ) => boolean;
+
+export interface DynamicAxisDefaults {
+  readonly xAxis: FieldKeyType;
+  readonly yAxis: FieldKeyType;
+}
 
 /**
  * Type for comfort model definition, containing model information and calculation logic.
@@ -93,8 +99,10 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
     chartSource: ChartSourceType | null,
     resultsByInput: Record<InputIdType, ResultType | null>,
     unitSystem: UnitSystemType,
+    fieldChartConfig?: FieldChartConfig | null,
   ) => PlotlyChartResponseDto | null;
   dynamicAxisFields: FieldKeyType[];
+  defaultDynamicAxes: DynamicAxisDefaults;
   dynamicAxisPairValidator?: DynamicAxisPairValidator;
   zones: ThermalZone[];
   legendChartIds: ChartIdType[];

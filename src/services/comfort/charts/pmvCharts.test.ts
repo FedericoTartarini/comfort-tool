@@ -6,11 +6,18 @@ import { FieldKey } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
 import {
+  ChartMode,
+  ModelOutputKey,
+  type ExploreFieldChartConfig,
+} from "../../../models/modelCapabilities";
+import {
   buildComparePsychrometricChart,
   buildPmvDynamicChart,
+  pmvChartableOutputs,
   type ComfortZoneRequestDto,
   type PmvChartInputsRequestDto,
   type PmvChartSourceDto,
+  type PmvStandardAdapter,
 } from "../../../comfortModels/pmvShared";
 import { pmvAshraeAdapter } from "../../../comfortModels/pmvAshrae";
 import { pmvIsoAdapter } from "../../../comfortModels/pmvIso";
@@ -59,6 +66,21 @@ function createPmvChartSource(
     chartRequest,
     comfortZonesByInput: {},
     baselineInputId: InputId.Input1,
+  };
+}
+
+function createExploreConfig(
+  xField: FieldKey,
+  yField: FieldKey,
+  zOutput = ModelOutputKey.Pmv,
+): ExploreFieldChartConfig {
+  const output = pmvChartableOutputs.find(({ key }) => key === zOutput)!;
+  return {
+    mode: ChartMode.Explore,
+    xField,
+    yField,
+    zOutput,
+    bands: output.defaultBands,
   };
 }
 
@@ -125,24 +147,29 @@ describe("PMV charts", () => {
     const siChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
     const ipChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.IP,
     );
-    const siZoneTrace = siChart.traces.find((trace) => trace.type === "contour" && trace.isBackgroundZone);
+    const siHoverTrace = siChart.traces.find((trace) => trace.name === "PMV bands hover");
+    const siBoundaryValues = siChart.traces
+      .filter((trace) => trace.contours?.operation === "=")
+      .map((trace) => trace.contours.value);
     const siInputTrace = siChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
     const ipInputTrace = ipChart.traces.find((trace) => trace.type === "scatter" && trace.mode === "markers");
 
-    expect(siZoneTrace?.z).toHaveLength(50);
-    expect(siZoneTrace?.z?.[0]).toHaveLength(50);
-    expect(siZoneTrace?.hoverMetadata?.[0]?.[0]).toHaveLength(1);
+    expect(siHoverTrace?.z).toHaveLength(50);
+    expect(siHoverTrace?.z?.[0]).toHaveLength(50);
+    expect(siHoverTrace?.hoverMetadata?.[0]?.[0]).toHaveLength(2);
+    expect(siHoverTrace?.hovertemplate).toContain("<b>Zone: %{text}</b>");
+    expect(siHoverTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
+    expect(siHoverTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
+    expect(siBoundaryValues).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
     expect(siInputTrace?.x).toEqual([25]);
     expect(siInputTrace?.y).toEqual([50]);
     expect(ipInputTrace?.x).toEqual([77]);
@@ -151,22 +178,208 @@ describe("PMV charts", () => {
     expect(String(ipChart.layout.xaxis.title)).toContain("°F");
   });
 
+  it("switches the dynamic grid between declared PMV and PPD outputs", () => {
+    const targetInput = createPmvInput({
+      tdb: 26,
+      tr: 25,
+      vr: 0.1,
+      rh: 50,
+      met: 1,
+      clo: 0.51,
+    });
+    const chartSource = createPmvChartSource(createPmvChartRequest(targetInput));
+    const pmvChart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      chartSource,
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
+      UnitSystem.SI,
+    );
+    const ppdChart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      chartSource,
+      createExploreConfig(
+        FieldKey.DryBulbTemperature,
+        FieldKey.RelativeHumidity,
+        ModelOutputKey.Ppd,
+      ),
+      UnitSystem.SI,
+    );
+
+    const pmvHoverTrace = pmvChart.traces.find((trace) => trace.name === "PMV bands hover");
+    const ppdHoverTrace = ppdChart.traces.find((trace) => trace.name === "PPD (%) bands hover");
+    const pmvInputTrace = pmvChart.traces.find(
+      (trace) => trace.type === "scatter" && trace.mode === "markers",
+    );
+    const ppdInputTrace = ppdChart.traces.find(
+      (trace) => trace.type === "scatter" && trace.mode === "markers",
+    );
+    const ppdFillColors = ppdChart.traces
+      .filter((trace) => trace.contours?.type === "constraint" && trace.contours.operation !== "=")
+      .map((trace) => trace.fillcolor);
+    const ppdBoundaryValues = ppdChart.traces
+      .filter((trace) => trace.contours?.operation === "=")
+      .map((trace) => trace.contours.value);
+
+    expect(String(pmvChart.layout.title)).toContain("PMV");
+    expect(String(ppdChart.layout.title)).toContain("PPD");
+    expect(pmvHoverTrace?.z).not.toEqual(ppdHoverTrace?.z);
+    expect(pmvHoverTrace?.hovertemplate).toContain("<b>Zone: %{text}</b>");
+    expect(pmvHoverTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
+    expect(pmvHoverTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
+    expect(ppdHoverTrace?.hovertemplate).toContain("<b>Band: %{text}</b>");
+    expect(ppdHoverTrace?.hovertemplate).toContain("PMV: %{customdata[1]:.2f}");
+    expect(ppdHoverTrace?.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
+    expect(pmvHoverTrace?.hoverMetadata?.[0]?.[0]).toHaveLength(2);
+    expect(ppdHoverTrace?.hoverMetadata?.[0]?.[0]).toHaveLength(2);
+    expect(pmvInputTrace?.hovertemplate).toContain("<b>Zone: Neutral</b>");
+    expect(pmvInputTrace?.hovertemplate).toContain("PMV: -0.19");
+    expect(pmvInputTrace?.hovertemplate).toContain("PPD: 5.7%");
+    expect(ppdInputTrace?.hovertemplate).toContain("<b>Band: Acceptable dissatisfaction (< 10%)</b>");
+    expect(ppdInputTrace?.hovertemplate).toContain("PMV: -0.19");
+    expect(ppdInputTrace?.hovertemplate).toContain("PPD: 5.7%");
+    expect(ppdFillColors).toEqual(["#86efac", "#fca5a5"]);
+    expect(ppdBoundaryValues).toEqual([10]);
+  });
+
+  it("uses continuous constraint contours for both PMV standards", () => {
+    const ashraeChart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest()),
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
+      UnitSystem.SI,
+    );
+    const isoInput = createPmvInput({
+      standard: JsThermalComfortStandard.ISO,
+      occupantHasAirSpeedControl: false,
+    });
+    const isoChart = buildPmvDynamicChart(
+      pmvIsoAdapter,
+      createPmvChartSource(
+        createPmvChartRequest(isoInput),
+        ComfortModel.PmvIso,
+      ),
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
+      UnitSystem.SI,
+    );
+    const getBoundaryValues = (chart: typeof ashraeChart) => chart.traces
+      .filter((trace) => trace.contours?.operation === "=")
+      .map((trace) => trace.contours.value);
+
+    expect(getBoundaryValues(ashraeChart)).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
+    expect(getBoundaryValues(isoChart)).toEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]);
+    expect(ashraeChart.traces.find((trace) => trace.name === "PMV bands hover")?.z)
+      .toHaveLength(50);
+    expect(isoChart.traces.find((trace) => trace.name === "PMV bands hover")?.z)
+      .toHaveLength(50);
+  });
+
+  it.each([ModelOutputKey.Pmv, ModelOutputKey.Ppd])(
+    "evaluates each 50×50 dynamic grid point once for %s",
+    (outputKey) => {
+      let calculationCount = 0;
+      const countingAdapter: PmvStandardAdapter = {
+        ...pmvAshraeAdapter,
+        calculate: (request) => {
+          calculationCount += 1;
+          return pmvAshraeAdapter.calculate(request);
+        },
+      };
+
+      buildPmvDynamicChart(
+        countingAdapter,
+        createPmvChartSource(createPmvChartRequest()),
+        createExploreConfig(
+          FieldKey.DryBulbTemperature,
+          FieldKey.RelativeHumidity,
+          outputKey,
+        ),
+        UnitSystem.SI,
+      );
+
+      expect(calculationCount).toBe(50 * 50 + 1);
+    },
+  );
+
+  it("keeps RH 50% constraint intersections within 0.1°C of continuous PMV roots", () => {
+    const input = createPmvInput({
+      tdb: 26,
+      tr: 25,
+      vr: 0.1,
+      rh: 50,
+      met: 1,
+      clo: 0.51,
+    });
+    const chart = buildPmvDynamicChart(
+      pmvAshraeAdapter,
+      createPmvChartSource(createPmvChartRequest(input)),
+      createExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
+      UnitSystem.SI,
+    );
+    const hoverTrace = chart.traces.find((trace) => trace.name === "PMV bands hover");
+    const xValues = hoverTrace?.x ?? [];
+    const yValues = hoverTrace?.y ?? [];
+    const zValues = hoverTrace?.z ?? [];
+    const upperYIndex = yValues.findIndex((value) => value > 50);
+    const lowerYIndex = upperYIndex - 1;
+    const yFraction = (50 - yValues[lowerYIndex])
+      / (yValues[upperYIndex] - yValues[lowerYIndex]);
+    const pmvAtRh50 = xValues.map((_, xIndex) => (
+      zValues[lowerYIndex][xIndex]
+      + (zValues[upperYIndex][xIndex] - zValues[lowerYIndex][xIndex]) * yFraction
+    ));
+    const thresholds = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5];
+
+    const interpolatedRoots = thresholds.map((threshold) => {
+      const upperXIndex = pmvAtRh50.findIndex((value) => value >= threshold);
+      const lowerXIndex = upperXIndex - 1;
+      const fraction = (threshold - pmvAtRh50[lowerXIndex])
+        / (pmvAtRh50[upperXIndex] - pmvAtRh50[lowerXIndex]);
+      return xValues[lowerXIndex]
+        + (xValues[upperXIndex] - xValues[lowerXIndex]) * fraction;
+    });
+    const continuousRoots = thresholds.map((threshold) => {
+      let lower = 10;
+      let upper = 40;
+      for (let iteration = 0; iteration < 60; iteration += 1) {
+        const midpoint = (lower + upper) / 2;
+        const pmv = pmvAshraeAdapter.calculate({
+          ...input,
+          tdb: midpoint,
+          rh: 50,
+        }).pmv;
+        if (pmv < threshold) {
+          lower = midpoint;
+        } else {
+          upper = midpoint;
+        }
+      }
+      return (lower + upper) / 2;
+    });
+
+    expect(interpolatedRoots).toHaveLength(6);
+    interpolatedRoots.forEach((root, index) => {
+      expect(Math.abs(root - continuousRoots[index])).toBeLessThanOrEqual(0.1);
+    });
+  });
+
   it.each([
     [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
     [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
     [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
     [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-  ] as const)("rejects PMV axes that overwrite the same request fields", (xAxis, yAxis) => {
+  ] as const)("keeps coupled PMV component/operative axes chartable", (xAxis, yAxis) => {
     const chart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(createPmvChartRequest()),
-      xAxis,
-      yAxis,
+      createExploreConfig(xAxis, yAxis),
       UnitSystem.SI,
     );
 
-    expect(chart.traces).toEqual([]);
-    expect(chart.layout.title).toBe("Invalid Axes Selection");
+    expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+    expect(chart.traces.some((trace) => (
+      trace.type === "contour"
+      && trace.z?.flat().some(Number.isFinite)
+    ))).toBe(true);
   });
 
   it.each([
@@ -176,8 +389,7 @@ describe("PMV charts", () => {
     const chart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(createPmvChartRequest()),
-      xAxis,
-      yAxis,
+      createExploreConfig(xAxis, yAxis),
       UnitSystem.SI,
     );
 
@@ -189,8 +401,7 @@ describe("PMV charts", () => {
     const ashraeChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(createPmvChartRequest()),
-      FieldKey.ClothingInsulation,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.ClothingInsulation, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
     const isoInput = createPmvInput({
@@ -204,8 +415,7 @@ describe("PMV charts", () => {
         createPmvChartRequest(isoInput),
         ComfortModel.PmvIso,
       ),
-      FieldKey.ClothingInsulation,
-      FieldKey.RelativeHumidity,
+      createExploreConfig(FieldKey.ClothingInsulation, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
 

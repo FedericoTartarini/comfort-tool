@@ -8,6 +8,7 @@ import { convertFieldValueFromSi } from "../services/units";
 import { FieldKey } from "../models/fieldKeys";
 import { ChartId } from "../models/chartOptions";
 import { InputId } from "../models/inputSlots";
+import { ChartMode } from "../models/modelCapabilities";
 
 describe("heatIndex service", () => {
   it("calculates Heat Index correctly in SI format", () => {
@@ -52,8 +53,6 @@ describe("heatIndex service", () => {
     const result = calculateHeatIndex(request);
     const chartSource = {
       chartRequest: { [InputId.Input1]: request },
-      dynamicXAxis: FieldKey.DryBulbTemperature,
-      dynamicYAxis: FieldKey.RelativeHumidity,
       baselineInputId: InputId.Input1,
     };
     const resultsByInput = { [InputId.Input1]: result } as any;
@@ -69,13 +68,24 @@ describe("heatIndex service", () => {
       chartSource,
       resultsByInput,
       UnitSystem.SI,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: heatIndexModelConfig.chartableOutputs[0].key,
+        bands: heatIndexModelConfig.chartableOutputs[0].defaultBands,
+      },
     );
 
     expect(staticChart?.traces[0].type).toBe("contour");
     expect(staticChart?.traces[0].z).toHaveLength(300);
     expect(staticChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(staticChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(staticChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces[0].type).toBe("contour");
     expect(dynamicChart?.traces[0].z).toHaveLength(300);
+    expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(dynamicChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 });

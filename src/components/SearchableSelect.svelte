@@ -19,6 +19,7 @@
     searchPlaceholder?: string;
     emptyMessage?: string;
     disabled?: boolean;
+    ariaLabel?: string;
     onSelect?: ((value: string) => void) | undefined;
     class?: string;
   }
@@ -30,6 +31,7 @@
     searchPlaceholder = "Search...",
     emptyMessage = "No matching options.",
     disabled = false,
+    ariaLabel = "Select option",
     onSelect = undefined,
     class: className = "",
   }: Props = $props();
@@ -157,6 +159,7 @@
     oninput={handleInput}
     onkeydown={handleKeydown}
     role="combobox"
+    aria-label={ariaLabel}
     aria-expanded={isOpen}
     aria-haspopup="listbox"
     aria-controls={listboxId}

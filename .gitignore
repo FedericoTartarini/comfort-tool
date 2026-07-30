@@ -2,5 +2,7 @@
 /dist/
 /.vite/
 /coverage/
+/playwright-report/
+/test-results/
 /.idea/
 /local-notes/

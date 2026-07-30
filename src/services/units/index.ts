@@ -1,5 +1,8 @@
 import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
+
+export * from "./modelOutputs";
 
 /**
  * Centralized unit conversion helpers.
@@ -41,12 +44,6 @@ const vaporPressureDisplayMetaByUnitSystem: Record<UnitSystemType, DisplayQuanti
  * These conversion constants represent standardized mathematical offsets and multipliers, 
  * used to maintain accuracy and precision across the application.
  */
-/** Multiplier ratio for Fahrenheit to Celsius mapping */
-const FAHRENHEIT_MULTIPLIER = 9 / 5;
-
-/** Offset shift utilized in temperature mapping protocols */
-const FAHRENHEIT_OFFSET = 32;
-
 /** Baseline scaling factor converting meters to feet mappings securely */
 const METER_TO_FEET = 0.3048;
 
@@ -81,9 +78,10 @@ export function convertFieldValueFromSi(
   if (
     key === FieldKey.DryBulbTemperature || 
     key === FieldKey.MeanRadiantTemperature ||
-    key === FieldKey.PrevailingMeanOutdoorTemperature
+    key === FieldKey.PrevailingMeanOutdoorTemperature ||
+    key === FieldKey.OperativeTemperature
   ) {
-    return value * FAHRENHEIT_MULTIPLIER + FAHRENHEIT_OFFSET;
+    return convertTemperatureFromSi(value);
   }
 
   if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) {
@@ -112,9 +110,10 @@ export function convertFieldValueToSi(
   if (
     key === FieldKey.DryBulbTemperature || 
     key === FieldKey.MeanRadiantTemperature ||
-    key === FieldKey.PrevailingMeanOutdoorTemperature
+    key === FieldKey.PrevailingMeanOutdoorTemperature ||
+    key === FieldKey.OperativeTemperature
   ) {
-    return (value - FAHRENHEIT_OFFSET) / FAHRENHEIT_MULTIPLIER;
+    return convertTemperatureToSi(value);
   }
 
   if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) {

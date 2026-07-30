@@ -11,7 +11,15 @@ import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { ThermalZone } from "../models/thermalZone";
-import { bandsFromThermalZones, ChartMode, ModelOutputKey } from "../models/modelCapabilities";
+import {
+  bandsFromThermalZones,
+  ChartMode,
+  findNumericBandIndexForValue,
+  ModelOutputKey,
+  type ExploreFieldChartConfig,
+  type FieldChartConfig,
+  type ModelOutput,
+} from "../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../models/units";
 import { inputOrder, type InputId as InputIdType } from "../models/inputSlots";
 import { inputDisplayMetaById } from "../models/inputSlotPresentation";
@@ -24,18 +32,22 @@ import type {
 import { OptionKey, TemperatureMode, defaultUtciOptions, type UtciModelOptions } from "../models/inputModes";
 import { createControlBehavior, createTemperatureControlBehavior } from "../services/comfort/controls/controlBehaviors";
 import { applyOperativeTemperatureControlMode, synchronizeControlInputState } from "../services/comfort/syncState";
-import { convertFieldValueFromSi, formatDisplayValue } from "../services/units";
+import {
+  convertFieldValueFromSi,
+  convertModelOutputFromSi,
+  formatDisplayValue,
+  getModelOutputDisplayMeta,
+} from "../services/units";
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection } from "../state/comfortTool/modelConfigs/builder";
 import { getCompareInputs, roundValue } from "../services/comfort/helpers";
 import { buildContourTrace, buildInputScatterTrace, buildTextAnnotation } from "../services/comfort/charts/plotlyBuilders";
 import { createFieldAxisScale } from "../services/comfort/charts/axis";
-import { buildGridContourFieldChart, type GridContourLayerSpec } from "../services/comfort/charts/chartEngine";
+import { buildBandedGridFieldChart } from "../services/comfort/charts/chartEngine";
 import {
   resolveBaselineInputEntry,
   shouldShowInputLegend,
-  type BuildInputTraceGroupsOptions,
 } from "../services/comfort/charts/inputPoints";
-import type { ChartAxisScale, GridPointEvaluation } from "../services/comfort/charts/types";
+import { applyDynamicAxisCoordinates } from "../services/comfort/charts/dynamicAxisPayload";
 
 // ── Thermal Zones Definition ──────────────────────────
 
@@ -51,6 +63,13 @@ export const utciZonesList = [
   new ThermalZone({ category: "very strong heat stress",  label: "Very Strong Heat Stress",  legendText: "V strong<br>heat", min:  38, max:  46, color: "#f97316", textColor: "#c2410c" }),
   new ThermalZone({ category: "extreme heat stress",      label: "Extreme Heat Stress",      legendText: "Ext.<br>heat",      min:  46,          color: "#dc2626", textColor: "#b91c1c" }),
 ];
+
+const utciOutput: ModelOutput = {
+  key: ModelOutputKey.Utci,
+  label: "UTCI",
+  unit: "°C",
+  defaultBands: bandsFromThermalZones(utciZonesList),
+};
 
 // UTCI stress categories are unbounded, while the chart needs finite endpoints.
 const UTCI_CHART_RANGE_SI = { min: -50, max: 55 } as const;
@@ -98,6 +117,13 @@ const STRESS_BAND_Y_RESOLUTION = 50;
  * high-fidelity Plotly dynamic contour maps.
  */
 const CONTOUR_GRID_RESOLUTION = 450;
+const UTCI_DYNAMIC_AXIS_FIELDS = [
+  FieldKey.DryBulbTemperature,
+  FieldKey.MeanRadiantTemperature,
+  FieldKey.OperativeTemperature,
+  FieldKey.WindSpeed,
+  FieldKey.RelativeHumidity,
+] as const;
 
 /**
  * Y-axis positions (normalized coordinates [0, 1]) for displaying input markers/dots 
@@ -145,8 +171,6 @@ export interface UtciChartInputsRequestDto {
 
 export interface UtciChartSourceDto {
   chartRequest: UtciChartInputsRequestDto;
-  dynamicXAxis?: FieldKey;
-  dynamicYAxis?: FieldKey;
   baselineInputId?: InputIdType;
 }
 
@@ -246,19 +270,16 @@ function buildUtciResultSections(
   options: any,
   selectedChartId: ChartIdType,
 ) {
-  const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
+  const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Utci, unitSystem);
   const sections = [];
 
   sections.push(
     buildResultSection(comfortModelMetaById[ComfortModel.Utci].label, results, visibleInputIds, (result) => {
-      const displayValue = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.utci, unitSystem);
-      const formattedValue = formatDisplayValue(
-        displayValue,
-        fieldMetaByKey[FieldKey.DryBulbTemperature].decimals,
-      );
+      const displayValue = convertModelOutputFromSi(ModelOutputKey.Utci, result.utci, unitSystem);
+      const formattedValue = formatDisplayValue(displayValue, outputMeta.decimals);
       
       return {
-        text: `${formattedValue} ${temperatureUnits}`,
+        text: `${formattedValue} ${outputMeta.displayUnits}`,
         color: "",
       };
     }),
@@ -278,21 +299,6 @@ function buildUtciResultSections(
 }
 
 // ── Chart Building Logic ──────────────────────────
-
-function mapUtciToZ(utci: number): number {
-  if (utci <= UTCI_CHART_BOUNDARIES[0]) return 0;
-  const lastIdx = UTCI_CHART_BOUNDARIES.length - 1;
-  if (utci >= UTCI_CHART_BOUNDARIES[lastIdx]) return lastIdx;
-
-  for (let i = 0; i < lastIdx; i++) {
-    const min = UTCI_CHART_BOUNDARIES[i];
-    const max = UTCI_CHART_BOUNDARIES[i + 1];
-    if (utci >= min && utci < max) {
-      return i + (utci - min) / (max - min);
-    }
-  }
-  return lastIdx;
-}
 
 const UTCI_COLORSCALE = utciZonesList.reduce((acc, band, index, array) => {
   const step = 1 / array.length;
@@ -457,115 +463,26 @@ function getUtciAxisValue(payload: UtciRequestDto, key: FieldKey): number {
   return fieldValues[key] ?? 0;
 }
 
-function buildFailedUtciGridPoint(): GridPointEvaluation {
-  return { z: NaN, text: "", hoverMetadata: NaN };
-}
-
-function evaluateUtciDynamicPoint(
-  pointArgs: UtciRequestDto,
-  unitSystem: UnitSystemType,
-): GridPointEvaluation {
-  try {
-    const result = utci(pointArgs.tdb, pointArgs.tr, pointArgs.v, pointArgs.rh, UnitSystem.SI, true, false);
-
-    if (typeof result !== "object" || typeof result.utci !== "number") {
-      return buildFailedUtciGridPoint();
-    }
-
-    const categoryName = String(result.stress_category);
-    const zone = getUtciZoneMeta(categoryName);
-    const shortLabel = zone.legendText ?? zone.label;
-
-    return {
-      z: mapUtciToZ(result.utci),
-      text: shortLabel,
-      hoverMetadata: convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.utci, unitSystem),
-    };
-  } catch {
-    return buildFailedUtciGridPoint();
-  }
-}
-
-function buildUtciDynamicGridLayers(
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-  unitSystem: UnitSystemType,
-): GridContourLayerSpec[] {
-  return [
-    {
-      name: `${comfortModelMetaById[ComfortModel.Utci].label} Zones`,
-      colorscale: UTCI_COLORSCALE,
-      contours: UTCI_CONTOURS,
-      showscale: false,
-      zmin: 0,
-      zmax: 10,
-      hovertemplate: `${xAxis.label}: %{x:.2f} ${xAxis.units}<br>${yAxis.label}: %{y:.2f} ${yAxis.units}<br><b>Zone: %{text}</b><br>UTCI: %{customdata:.1f} ${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}<extra></extra>`,
-      opacity: 0.75,
-      isBackgroundZone: true,
-    },
-    {
-      name: "Boundaries",
-      colorscale: UTCI_COLORSCALE,
-      contours: UTCI_BOUNDARY_CONTOURS,
-      showscale: false,
-      hoverinfo: "skip",
-      hovertemplate: "",
-      zmin: 0,
-      zmax: 10,
-      opacity: 0.8,
-      includeText: false,
-      includeHoverMetadata: false,
-    },
-  ];
-}
-
-function buildUtciDynamicInputGroup(
-  payload: UtciChartInputsRequestDto,
-  cachedResultsByInput: Record<string, any>,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-  dynamicXAxis: FieldKey,
-  dynamicYAxis: FieldKey,
-  unitSystem: UnitSystemType,
-): BuildInputTraceGroupsOptions<UtciRequestDto, any> {
-  return {
-    inputsMap: payload.inputs,
-    resultsByInput: cachedResultsByInput,
-    xAxis,
-    yAxis,
-    getXSi: (inputPayload) => getUtciAxisValue(inputPayload, dynamicXAxis),
-    getYSi: (inputPayload) => getUtciAxisValue(inputPayload, dynamicYAxis),
-    formatXDisplay: roundValue,
-    formatYDisplay: roundValue,
-    getHovertemplate: ({ inputLabel, payload: inputPayload }) => {
-      let utciText = "";
-      try {
-        const utciRes = utci(inputPayload.tdb, inputPayload.tr, inputPayload.v, inputPayload.rh, UnitSystem.SI, true, false);
-        if (typeof utciRes === "object" && typeof utciRes.utci === "number") {
-          const categoryName = String(utciRes.stress_category);
-          const categoryZone = getUtciZoneMeta(categoryName);
-          const shortLabel = categoryZone.legendText ?? categoryZone.label;
-          const displayUtciVal = convertFieldValueFromSi(FieldKey.DryBulbTemperature, utciRes.utci, unitSystem);
-          utciText = `<br><b>Zone: ${shortLabel}</b><br>UTCI: ${roundValue(displayUtciVal, 1)} ${fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem]}`;
-        }
-      } catch {
-        // Preserve existing hover fallback behavior when UTCI evaluation fails.
-      }
-
-      return `${inputLabel}<br>${xAxis.label}: %{x:.2f} ${xAxis.units}<br>${yAxis.label}: %{y:.2f} ${yAxis.units}${utciText}<extra></extra>`;
-    },
-  };
-}
-
 export function buildUtciDynamicChart(
   payload: UtciChartInputsRequestDto,
   cachedResultsByInput: Record<string, any> = {},
   unitSystem: UnitSystemType = UnitSystem.SI,
-  dynamicXAxis?: FieldKey,
-  dynamicYAxis?: FieldKey,
+  fieldChartConfig: ExploreFieldChartConfig,
   baselineInputId?: InputIdType,
 ): PlotlyChartResponseDto {
-  if (!dynamicXAxis || !dynamicYAxis || dynamicXAxis === dynamicYAxis) {
+  const dynamicXAxis = fieldChartConfig.xField;
+  const dynamicYAxis = fieldChartConfig.yField;
+  if (
+    !dynamicXAxis ||
+    !dynamicYAxis ||
+    dynamicXAxis === dynamicYAxis ||
+    !UTCI_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicXAxis as typeof UTCI_DYNAMIC_AXIS_FIELDS[number],
+    ) ||
+    !UTCI_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicYAxis as typeof UTCI_DYNAMIC_AXIS_FIELDS[number],
+    )
+  ) {
     return {
       traces: [],
       layout: {
@@ -593,35 +510,81 @@ export function buildUtciDynamicChart(
     unitSystem,
     points: CONTOUR_GRID_RESOLUTION,
   });
+  const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Utci, unitSystem);
+  const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
 
-  return buildGridContourFieldChart({
+  return buildBandedGridFieldChart({
+    config: fieldChartConfig,
+    output: utciOutput,
+    unitSystem,
     xAxis,
     yAxis,
-    grid: activeInputPayload
-      ? {
-        evaluatePoint: (xSi, ySi) => {
+    evaluateOutput: activeInputPayload
+      ? (xSi, ySi, zOutput) => {
+          if (zOutput !== ModelOutputKey.Utci) {
+            throw new Error(`Unsupported UTCI chart output: ${zOutput}`);
+          }
           const pointArgs = { ...activeInputPayload };
-          setUtciAxisValue(pointArgs, dynamicXAxis, xSi);
-          setUtciAxisValue(pointArgs, dynamicYAxis, ySi);
-
-          return evaluateUtciDynamicPoint(pointArgs, unitSystem);
-        },
-        layers: buildUtciDynamicGridLayers(xAxis, yAxis, unitSystem),
-      }
+          const hasValidCoordinates = applyDynamicAxisCoordinates(
+            pointArgs,
+            { field: dynamicXAxis, valueSi: xSi },
+            { field: dynamicYAxis, valueSi: ySi },
+            {
+              setAxisValue: setUtciAxisValue,
+              getOperativeTemperature: (request) => t_o(
+                request.tdb,
+                request.tr,
+                request.v,
+                JsThermalComfortStandard.ISO,
+              ),
+              getTemperatureComponentRange: (field) => (
+                field === FieldKey.DryBulbTemperature ? TDB_LIMITS : TR_LIMITS
+              ),
+            },
+          );
+          if (!hasValidCoordinates) {
+            return NaN;
+          }
+          const result = utci(
+            pointArgs.tdb,
+            pointArgs.tr,
+            pointArgs.v,
+            pointArgs.rh,
+            UnitSystem.SI,
+            true,
+            false,
+          );
+          if (typeof result !== "object" || typeof result.utci !== "number") {
+            return NaN;
+          }
+          return result.utci;
+        }
       : undefined,
-    inputGroups: [
-      buildUtciDynamicInputGroup(
-        payload,
-        cachedResultsByInput,
-        xAxis,
-        yAxis,
-        dynamicXAxis,
-        dynamicYAxis,
-        unitSystem,
-      ),
-    ],
+    inputGroups: [{
+      inputsMap: payload.inputs,
+      resultsByInput: cachedResultsByInput,
+      xAxis,
+      yAxis,
+      getXSi: (inputPayload) => getUtciAxisValue(inputPayload, dynamicXAxis),
+      getYSi: (inputPayload) => getUtciAxisValue(inputPayload, dynamicYAxis),
+      formatXDisplay: roundValue,
+      formatYDisplay: roundValue,
+      getHovertemplate: ({ inputLabel, result }) => {
+        const valueSi = result?.utci;
+        const bandIndex = typeof valueSi === "number"
+          ? findNumericBandIndexForValue(fieldChartConfig.bands, valueSi)
+          : undefined;
+        const bandLabel = bandIndex === undefined
+          ? "Unclassified"
+          : fieldChartConfig.bands[bandIndex].label;
+        const displayValue = typeof valueSi === "number"
+          ? convertModelOutputFromSi(ModelOutputKey.Utci, valueSi, unitSystem).toFixed(outputMeta.decimals)
+          : "";
+        return `${inputLabel}<br>${xAxis.label}: %{x:.2f} ${xAxis.units}<br>${yAxis.label}: %{y:.2f} ${yAxis.units}<br><b>Band: ${bandLabel}</b><br>${utciOutput.label}: ${displayValue}${outputUnits}<extra></extra>`;
+      },
+    }],
     layout: {
-      title: `${comfortModelMetaById[ComfortModel.Utci].label} Dynamic Chart (${xAxis.label} vs ${yAxis.label})`,
+      title: `${comfortModelMetaById[ComfortModel.Utci].label} Dynamic Chart — ${utciOutput.label}`,
       xAxis,
       yAxis,
       paperBgColor: CHART_COLOR_WHITE,
@@ -642,6 +605,7 @@ function buildUtciChartResult(
   chartSource: UtciChartSourceDto | null,
   resultsByInput: Record<InputIdType, UtciResponseDto | null>,
   unitSystem: UnitSystemType,
+  fieldChartConfig?: FieldChartConfig | null,
 ) {
   if (!chartSource) {
     return null;
@@ -651,8 +615,14 @@ function buildUtciChartResult(
     return buildUtciStressChart(chartSource.chartRequest, resultsByInput, unitSystem, chartSource.baselineInputId);
   }
 
-  if (chartId === ChartId.UtciDynamic) {
-    return buildUtciDynamicChart(chartSource.chartRequest, resultsByInput, unitSystem, chartSource.dynamicXAxis, chartSource.dynamicYAxis, chartSource.baselineInputId);
+  if (chartId === ChartId.UtciDynamic && fieldChartConfig?.mode === ChartMode.Explore) {
+    return buildUtciDynamicChart(
+      chartSource.chartRequest,
+      resultsByInput,
+      unitSystem,
+      fieldChartConfig,
+      chartSource.baselineInputId,
+    );
   }
 
   return null;
@@ -667,14 +637,7 @@ builder
   .setLabel(comfortModelMetaById[ComfortModel.Utci].label)
   .setDescription(comfortModelMetaById[ComfortModel.Utci].description)
   .setModes([ChartMode.Explore])
-  .setChartableOutputs([
-    {
-      key: ModelOutputKey.Utci,
-      label: "UTCI",
-      unit: "°C",
-      defaultBands: bandsFromThermalZones(utciZonesList),
-    },
-  ]);
+  .setChartableOutputs([utciOutput]);
 
 const utciTemperatureBehavior = createTemperatureControlBehavior(InputControlId.Temperature, {
   minValue: TDB_LIMITS.min,
@@ -742,13 +705,11 @@ builder.addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) => {
 });
 
 builder.setDefaultChart(ChartId.Stress, utciChartIds);
-builder.setDynamicAxisFields([
-  FieldKey.DryBulbTemperature,
-  FieldKey.MeanRadiantTemperature,
-  FieldKey.OperativeTemperature,
-  FieldKey.WindSpeed,
-  FieldKey.RelativeHumidity,
-]);
+builder.setDynamicAxisFields([...UTCI_DYNAMIC_AXIS_FIELDS]);
+builder.setDefaultDynamicAxes({
+  xAxis: FieldKey.DryBulbTemperature,
+  yAxis: FieldKey.RelativeHumidity,
+});
 builder.setDefaultOptions(Object.assign({}, defaultUtciOptions));
 builder.setOptionNormalizer(normalizeUtciOptions);
 
@@ -765,16 +726,20 @@ builder.setCalculator((state, visibleInputIds) => {
     resultsByInput: resultsByInput,
     chartSource: {
       chartRequest: chartRequest,
-      dynamicXAxis: state.ui.dynamicXAxis,
-      dynamicYAxis: state.ui.dynamicYAxis,
       baselineInputId: state.ui.chartBaselineInputId,
     },
   };
 });
 
 builder.setResultBuilder(buildUtciResultSections);
-builder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem) => {
-  return buildUtciChartResult(chartId, chartSource, resultsByInput, unitSystem);
+builder.setChartBuilder((chartId, chartSource, resultsByInput, unitSystem, fieldChartConfig) => {
+  return buildUtciChartResult(
+    chartId,
+    chartSource,
+    resultsByInput,
+    unitSystem,
+    fieldChartConfig,
+  );
 });
 builder.setZones(utciZonesList);
 builder.setLegendChartIds([ChartId.Stress, ChartId.UtciDynamic]);

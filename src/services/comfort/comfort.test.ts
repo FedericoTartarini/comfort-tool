@@ -5,10 +5,16 @@ import { AirSpeedInputMode, HumidityInputMode, OptionKey } from "../../models/in
 import { DerivedInputId, FieldKey } from "../../models/fieldKeys";
 import { UnitSystem } from "../../models/units";
 import {
+  ChartMode,
+  ModelOutputKey,
+  type ExploreFieldChartConfig,
+} from "../../models/modelCapabilities";
+import {
   buildComparePsychrometricChart,
   buildComfortZonePolygon,
   buildPmvDynamicChart,
   calculateComfortZone,
+  pmvChartableOutputs,
   pmvZonesList,
   type PmvChartSourceDto,
 } from "../../comfortModels/pmvShared";
@@ -74,6 +80,21 @@ function createPmvChartSource(
     chartRequest,
     comfortZonesByInput,
     baselineInputId: InputId.Input1,
+  };
+}
+
+function createPmvExploreConfig(
+  xField: FieldKey,
+  yField: FieldKey,
+  zOutput = ModelOutputKey.Pmv,
+): ExploreFieldChartConfig {
+  const output = pmvChartableOutputs.find(({ key }) => key === zOutput)!;
+  return {
+    mode: ChartMode.Explore,
+    xField,
+    yField,
+    zOutput,
+    bands: output.defaultBands,
   };
 }
 
@@ -256,20 +277,19 @@ describe("comfort services", () => {
     const dynamicChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       createPmvChartSource(chartRequest),
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      createPmvExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
     );
     const inputTrace = dynamicChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
+    const hoverTrace = dynamicChart.traces.find((trace) => trace.name === "PMV bands hover");
 
-    expect(dynamicChart.traces[0].name).toBe("PMV (ASHRAE-55)");
-    expect(dynamicChart.traces[0].isBackgroundZone).toBe(true);
-    expect(dynamicChart.traces[0].z).toHaveLength(50);
-    expect(dynamicChart.traces[0].z?.[0]).toHaveLength(50);
+    expect(hoverTrace?.isBackgroundZone).toBe(true);
+    expect(hoverTrace?.z).toHaveLength(50);
+    expect(hoverTrace?.z?.[0]).toHaveLength(50);
     expect(String(dynamicChart.layout.xaxis.title)).toContain("Air temperature");
     expect(String(dynamicChart.layout.yaxis.title)).toContain("Relative humidity");
     expect(inputTrace?.x).toEqual([26]);
     expect(inputTrace?.y).toEqual([50]);
-    expect(inputTrace?.hovertemplate).toContain("PPD");
+    expect(inputTrace?.hovertemplate).toContain("PMV");
   });
 
   it("uses the selected baseline input for PMV dynamic contour evaluation", () => {
@@ -286,8 +306,6 @@ describe("comfort services", () => {
       modelId: ComfortModel.PmvAshrae,
       chartRequest,
       comfortZonesByInput: {},
-      dynamicXAxis: FieldKey.DryBulbTemperature,
-      dynamicYAxis: FieldKey.RelativeHumidity,
       baselineInputId: InputId.Input1,
     };
     const input2Source: PmvChartSourceDto = {
@@ -298,19 +316,19 @@ describe("comfort services", () => {
     const input1BaselineChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       input1Source,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      createPmvExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
     const input2BaselineChart = buildPmvDynamicChart(
       pmvAshraeAdapter,
       input2Source,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      createPmvExploreConfig(FieldKey.DryBulbTemperature, FieldKey.RelativeHumidity),
       UnitSystem.SI,
     );
+    const input1HoverTrace = input1BaselineChart.traces.find((trace) => trace.name === "PMV bands hover");
+    const input2HoverTrace = input2BaselineChart.traces.find((trace) => trace.name === "PMV bands hover");
 
-    expect(input1BaselineChart.traces[0].z?.[25]?.[25]).not.toBe(input2BaselineChart.traces[0].z?.[25]?.[25]);
+    expect(input1HoverTrace?.z?.[25]?.[25]).not.toBe(input2HoverTrace?.z?.[25]?.[25]);
     expect(input2BaselineChart.traces.filter((trace) => trace.type === "scatter")).toHaveLength(2);
   });
 

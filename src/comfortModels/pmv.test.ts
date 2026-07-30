@@ -8,7 +8,12 @@ import { FieldKey } from "../models/fieldKeys";
 import { InputControlId } from "../models/inputControls";
 import { AirSpeedControlMode, OptionKey } from "../models/inputModes";
 import { InputId } from "../models/inputSlots";
-import { findBandForValue, type InputsSi } from "../models/modelCapabilities";
+import {
+  ChartMode,
+  findBandForValue,
+  ModelOutputKey,
+  type InputsSi,
+} from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
 import { pmvAshraeAdapter, pmvAshraeModelConfig } from "./pmvAshrae";
@@ -142,34 +147,34 @@ describe("PMV standard model configurations", () => {
   );
 
   it.each(pmvStandardCases)(
-    "$label rejects dynamic axes that write the same PMV request fields",
+    "$label exposes the four operative/component axis directions",
     ({ config }) => {
       const validate = config.dynamicAxisPairValidator;
 
       expect(validate?.(
         FieldKey.OperativeTemperature,
         FieldKey.DryBulbTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.DryBulbTemperature,
         FieldKey.OperativeTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.OperativeTemperature,
         FieldKey.MeanRadiantTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.MeanRadiantTemperature,
         FieldKey.OperativeTemperature,
-      )).toBe(false);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.DryBulbTemperature,
         FieldKey.MeanRadiantTemperature,
-      )).toBe(true);
+      ) ?? true).toBe(true);
       expect(validate?.(
         FieldKey.OperativeTemperature,
         FieldKey.RelativeHumidity,
-      )).toBe(true);
+      ) ?? true).toBe(true);
     },
   );
 
@@ -394,12 +399,26 @@ describe("PMV standard model configurations", () => {
       ashrae.chartSource,
       resultsByInput,
       UnitSystem.SI,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.OperativeTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands: pmvAshraeModelConfig.chartableOutputs[0].defaultBands,
+      },
     );
     const isoChart = pmvIsoModelConfig.buildChartResult(
       ChartId.PmvDynamic,
       iso.chartSource,
       resultsByInput,
       UnitSystem.SI,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.OperativeTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.Pmv,
+        bands: pmvIsoModelConfig.chartableOutputs[0].defaultBands,
+      },
     );
     const getInputX = (chart: typeof ashraeChart) => chart?.traces
       .find((trace) => trace.type === "scatter" && trace.name === "Input 1")?.x?.[0];

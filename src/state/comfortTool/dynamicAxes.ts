@@ -3,6 +3,7 @@ import type { DynamicAxisPairValidator } from "./modelConfigs";
 
 interface DynamicAxisConfiguration {
   dynamicAxisFields: ReadonlyArray<FieldKeyType>;
+  defaultDynamicAxes?: DynamicAxisPair;
   dynamicAxisPairValidator?: DynamicAxisPairValidator;
 }
 
@@ -29,6 +30,13 @@ export function normalizeDynamicAxisPair(
 ): DynamicAxisPair | null {
   if (isDynamicAxisPairValid(config, pair)) {
     return pair;
+  }
+
+  if (
+    config.defaultDynamicAxes &&
+    isDynamicAxisPairValid(config, config.defaultDynamicAxes)
+  ) {
+    return { ...config.defaultDynamicAxes };
   }
 
   const fields = config.dynamicAxisFields;

@@ -33,6 +33,7 @@
   color="light"
   pill
   size="xs"
+  aria-label="Select chart type and export"
   class="flex items-center"
 >
   <span class="max-w-[120px] truncate">

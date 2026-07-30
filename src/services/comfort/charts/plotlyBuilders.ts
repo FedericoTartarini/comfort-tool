@@ -360,7 +360,8 @@ export interface ContourTraceOptions {
   y: number[];
   z: number[][];
   text?: string[][];
-  colorscale: any[];
+  colorscale?: any[];
+  fillcolor?: string;
   contours: any;
   hovertemplate: string;
   showscale?: boolean;
@@ -373,6 +374,7 @@ export interface ContourTraceOptions {
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
   hoverinfo?: string;
+  hoverOnGaps?: boolean;
   hoverMetadata?: any[] | any[][];
 }
 
@@ -389,6 +391,7 @@ export function buildContourTrace({
   z,
   text,
   colorscale,
+  fillcolor,
   contours,
   hovertemplate,
   showscale = false,
@@ -401,6 +404,7 @@ export function buildContourTrace({
   isBackgroundZone,
   isComfortZone,
   hoverinfo,
+  hoverOnGaps,
   hoverMetadata,
 }: ContourTraceOptions): PlotTraceDto {
   return {
@@ -411,6 +415,7 @@ export function buildContourTrace({
     z,
     text,
     colorscale,
+    fillcolor,
     contours,
     showscale,
     zmin,
@@ -419,6 +424,7 @@ export function buildContourTrace({
     opacity,
     line,
     hoverinfo: hoverinfo ?? "all",
+    hoverongaps: hoverOnGaps,
     hovertemplate,
     isZone,
     isBackgroundZone,

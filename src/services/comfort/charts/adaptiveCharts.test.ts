@@ -348,15 +348,30 @@ describe("adaptive charts", () => {
     { xAxis: FieldKey.OperativeTemperature, yAxis: FieldKey.DryBulbTemperature },
     { xAxis: FieldKey.MeanRadiantTemperature, yAxis: FieldKey.OperativeTemperature },
     { xAxis: FieldKey.OperativeTemperature, yAxis: FieldKey.MeanRadiantTemperature },
-    { xAxis: FieldKey.RelativeAirSpeed, yAxis: FieldKey.WindSpeed },
-    { xAxis: FieldKey.WindSpeed, yAxis: FieldKey.RelativeAirSpeed },
-  ])("rejects coupled adaptive axes $xAxis / $yAxis", ({ xAxis, yAxis }) => {
+  ])("resolves coupled adaptive axes $xAxis / $yAxis", ({ xAxis, yAxis }) => {
     const chart = buildAdaptiveDynamicChart(
       {
         inputs: {
           [InputId.Input1]: ashraePayload as any,
         },
       },
+      AdaptiveStandardMode.Ashrae,
+      UnitSystem.SI,
+      xAxis,
+      yAxis,
+    );
+
+    const contour = chart.traces.find((trace) => trace.type === "contour");
+    expect(chart.layout.title).not.toBe("Invalid Axes Selection");
+    expect(contour?.z?.flat().some(Number.isFinite)).toBe(true);
+  });
+
+  it.each([
+    { xAxis: FieldKey.RelativeAirSpeed, yAxis: FieldKey.WindSpeed },
+    { xAxis: FieldKey.WindSpeed, yAxis: FieldKey.RelativeAirSpeed },
+  ])("rejects undeclared adaptive axes $xAxis / $yAxis", ({ xAxis, yAxis }) => {
+    const chart = buildAdaptiveDynamicChart(
+      { inputs: { [InputId.Input1]: ashraePayload as any } },
       AdaptiveStandardMode.Ashrae,
       UnitSystem.SI,
       xAxis,

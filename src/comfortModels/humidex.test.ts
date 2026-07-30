@@ -7,6 +7,7 @@ import { UnitSystem } from "../models/units";
 import { ChartId } from "../models/chartOptions";
 import { FieldKey } from "../models/fieldKeys";
 import { InputId } from "../models/inputSlots";
+import { ChartMode } from "../models/modelCapabilities";
 
 describe("humidex service", () => {
   it("calculates Humidex correctly and assigns appropriate discomfort level", () => {
@@ -49,8 +50,6 @@ describe("humidex service", () => {
     const result = calculateHumidex(request);
     const chartSource = {
       chartRequest: { [InputId.Input1]: request },
-      dynamicXAxis: FieldKey.DryBulbTemperature,
-      dynamicYAxis: FieldKey.RelativeHumidity,
       baselineInputId: InputId.Input1,
     };
     const resultsByInput = { [InputId.Input1]: result } as any;
@@ -66,13 +65,24 @@ describe("humidex service", () => {
       chartSource,
       resultsByInput,
       UnitSystem.SI,
+      {
+        mode: ChartMode.Explore,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: humidexModelConfig.chartableOutputs[0].key,
+        bands: humidexModelConfig.chartableOutputs[0].defaultBands,
+      },
     );
 
     expect(staticChart?.traces[0].type).toBe("contour");
     expect(staticChart?.traces[0].z).toHaveLength(300);
     expect(staticChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(staticChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(staticChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces[0].type).toBe("contour");
     expect(dynamicChart?.traces[0].z).toHaveLength(300);
+    expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(dynamicChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 });

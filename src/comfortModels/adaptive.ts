@@ -44,6 +44,7 @@ import {
   shouldShowInputLegend,
   type BuildInputTraceGroupsOptions,
 } from "../services/comfort/charts/inputPoints";
+import { applyDynamicAxisCoordinates } from "../services/comfort/charts/dynamicAxisPayload";
 import {
   buildClosedBoundaryPolygonTrace,
   buildBoundaryRegionTraces,
@@ -570,24 +571,13 @@ function getAdaptiveModelId(standardMode: AdaptiveStandardMode): ComfortModel {
     : ComfortModel.AdaptiveEn;
 }
 
-type AdaptiveAxisPayloadKey = Exclude<keyof AdaptiveRequestDto, "units">;
-
-const adaptiveAxisPayloadKeysByField: Partial<
-  Record<FieldKeyType, ReadonlyArray<AdaptiveAxisPayloadKey>>
-> = {
-  [FieldKey.DryBulbTemperature]: ["tdb"],
-  [FieldKey.MeanRadiantTemperature]: ["tr"],
-  [FieldKey.PrevailingMeanOutdoorTemperature]: ["trm"],
-  [FieldKey.RelativeAirSpeed]: ["v"],
-  [FieldKey.WindSpeed]: ["v"],
-  [FieldKey.OperativeTemperature]: ["tdb", "tr"],
-};
-
-function adaptiveAxesSharePayloadKey(xAxis: FieldKeyType, yAxis: FieldKeyType): boolean {
-  const xKeys = adaptiveAxisPayloadKeysByField[xAxis] ?? [];
-  const yKeys = adaptiveAxisPayloadKeysByField[yAxis] ?? [];
-  return xKeys.some((key) => yKeys.includes(key));
-}
+const ADAPTIVE_DYNAMIC_AXIS_FIELDS = [
+  FieldKey.DryBulbTemperature,
+  FieldKey.MeanRadiantTemperature,
+  FieldKey.OperativeTemperature,
+  FieldKey.RelativeAirSpeed,
+  FieldKey.PrevailingMeanOutdoorTemperature,
+] as const;
 
 function setAdaptiveAxisValue(payload: AdaptiveRequestDto, key: FieldKeyType, value: number): void {
   if (key === FieldKey.DryBulbTemperature) payload.tdb = value;
@@ -1519,7 +1509,12 @@ export function buildAdaptiveDynamicChart(
     !dynamicXAxis ||
     !dynamicYAxis ||
     dynamicXAxis === dynamicYAxis ||
-    adaptiveAxesSharePayloadKey(dynamicXAxis, dynamicYAxis)
+    !ADAPTIVE_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicXAxis as typeof ADAPTIVE_DYNAMIC_AXIS_FIELDS[number],
+    ) ||
+    !ADAPTIVE_DYNAMIC_AXIS_FIELDS.includes(
+      dynamicYAxis as typeof ADAPTIVE_DYNAMIC_AXIS_FIELDS[number],
+    )
   ) {
     return {
       traces: [],
@@ -1597,10 +1592,29 @@ export function buildAdaptiveDynamicChart(
       grid: {
         evaluatePoint: (xSi: number, ySi: number) => {
           const pointArgs = { ...activeInputPayload };
-          setAdaptiveAxisValue(pointArgs, dynamicXAxis, xSi);
-          setAdaptiveAxisValue(pointArgs, dynamicYAxis, ySi);
+          const hasValidCoordinates = applyDynamicAxisCoordinates(
+            pointArgs,
+            { field: dynamicXAxis, valueSi: xSi },
+            { field: dynamicYAxis, valueSi: ySi },
+            {
+              setAxisValue: setAdaptiveAxisValue,
+              getOperativeTemperature: (request) => t_o(
+                request.tdb,
+                request.tr,
+                request.v,
+                getAdaptiveJtcStandard(standardMode),
+              ),
+              getTemperatureComponentRange: (field) => {
+                const meta = fieldMetaByKey[field];
+                return { min: meta.minValue, max: meta.maxValue };
+              },
+            },
+          );
 
           try {
+            if (!hasValidCoordinates) {
+              return { z: NaN, text: "", hoverMetadata: [NaN] };
+            }
             const evaluation = evaluateAdaptiveChartPayload(pointArgs, standardMode);
             const dynamicZone = getAdaptiveDynamicZone(evaluation, standardMode);
             return {
@@ -1966,17 +1980,11 @@ function createAdaptiveModelConfig(modelId: ComfortModel, standardMode: Adaptive
   builder.setDefaultChart(ChartId.Adaptive, adaptiveChartIds);
   builder.setOptionNormalizer(normalizeAdaptiveOptionsSnapshot);
 
-  builder.setDynamicAxisFields([
-    FieldKey.DryBulbTemperature,
-    FieldKey.MeanRadiantTemperature,
-    FieldKey.OperativeTemperature,
-    FieldKey.RelativeAirSpeed,
-    FieldKey.PrevailingMeanOutdoorTemperature,
-  ]);
-  builder.setDynamicAxisPairValidator((xAxis, yAxis) => (
-    !adaptiveAxesSharePayloadKey(xAxis, yAxis)
-  ));
-
+  builder.setDynamicAxisFields([...ADAPTIVE_DYNAMIC_AXIS_FIELDS]);
+  builder.setDefaultDynamicAxes({
+    xAxis: FieldKey.DryBulbTemperature,
+    yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+  });
   builder.setCalculator((state, visibleInputIds) => {
     const chartRequest = toAdaptiveChartInputsRequest(state, visibleInputIds, modelId);
     const resultsByInput = createEmptyResults<AdaptiveResponseDto>();
