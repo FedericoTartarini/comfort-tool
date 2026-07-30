@@ -1,5 +1,7 @@
 import type { FieldKey as FieldKeyType } from "./fieldKeys";
+import type { InputId as InputIdType } from "./inputSlots";
 import type { ThermalZone } from "./thermalZone";
+import type { UnitSystem as UnitSystemType } from "./units";
 
 export const ChartMode = {
   Compliance: "compliance",
@@ -50,9 +52,9 @@ export interface ModelOutput {
   readonly defaultBands: readonly NumericBand[];
 }
 
-export interface ComplianceSpec {
+export interface ComplianceSpec<TBand extends Band = Band> {
   readonly output: ModelOutputKey;
-  readonly bands: readonly Band[];
+  readonly bands: readonly TBand[];
 }
 
 interface FieldChartConfigBase {
@@ -61,18 +63,38 @@ interface FieldChartConfigBase {
   readonly zOutput: ModelOutputKey;
 }
 
-export interface ExploreFieldChartConfig extends FieldChartConfigBase {
-  readonly mode: typeof ChartMode.Explore;
+/** Numeric-band field chart shared by fixed charts and Explore charts. */
+export interface NumericFieldChartConfig extends FieldChartConfigBase {
   readonly bands: readonly NumericBand[];
 }
 
-/** Type-only foundation for the constrained Compliance configuration added in §9.5. */
+export interface ExploreFieldChartConfig extends NumericFieldChartConfig {
+  readonly mode: typeof ChartMode.Explore;
+}
+
+/** Locked field-chart configuration declared by a compliance-capable model. */
 export interface ComplianceFieldChartConfig extends FieldChartConfigBase {
   readonly mode: typeof ChartMode.Compliance;
   readonly bands: readonly Band[];
 }
 
+/** Numeric Compliance charts can use the shared banded grid strategy directly. */
+export interface NumericComplianceFieldChartConfig extends NumericFieldChartConfig {
+  readonly mode: typeof ChartMode.Compliance;
+}
+
 export type FieldChartConfig = ExploreFieldChartConfig | ComplianceFieldChartConfig;
+
+/** Generic presentation state supplied to every registered chart builder. */
+export interface ChartBuildContext {
+  readonly unitSystem: UnitSystemType;
+  readonly dynamicAxes: {
+    readonly xAxis: FieldKeyType;
+    readonly yAxis: FieldKeyType;
+  };
+  readonly baselineInputId: InputIdType;
+  readonly fieldChartConfig: FieldChartConfig | null;
+}
 
 export function resolveBandEdge(
   edge: BandEdge,

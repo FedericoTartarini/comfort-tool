@@ -19,18 +19,37 @@ export function buildChartResponse({
     xaxis: {
       title: formatAxisTitle(layout.xAxis),
       range: [xValues.displayRange.min, xValues.displayRange.max],
-      ...(layout.gridColor ? { gridcolor: layout.gridColor } : {}),
-      ...(layout.showGrid !== undefined ? { showgrid: layout.showGrid } : {}),
-      ...(layout.zeroLine !== undefined ? { zeroline: layout.zeroLine } : {}),
+      ...((layout.xAxis.gridColor ?? layout.gridColor)
+        ? { gridcolor: layout.xAxis.gridColor ?? layout.gridColor }
+        : {}),
+      ...((layout.xAxis.showGrid ?? layout.showGrid) !== undefined
+        ? { showgrid: layout.xAxis.showGrid ?? layout.showGrid }
+        : {}),
+      ...((layout.xAxis.zeroLine ?? layout.zeroLine) !== undefined
+        ? { zeroline: layout.xAxis.zeroLine ?? layout.zeroLine }
+        : {}),
+      ...(layout.xAxis.showTickLabels !== undefined
+        ? { showticklabels: layout.xAxis.showTickLabels }
+        : {}),
     },
     yaxis: {
       title: formatAxisTitle(layout.yAxis),
       range: [yValues.displayRange.min, yValues.displayRange.max],
-      ...(layout.gridColor ? { gridcolor: layout.gridColor } : {}),
-      ...(layout.showGrid !== undefined ? { showgrid: layout.showGrid } : {}),
-      ...(layout.zeroLine !== undefined ? { zeroline: layout.zeroLine } : {}),
+      ...((layout.yAxis.gridColor ?? layout.gridColor)
+        ? { gridcolor: layout.yAxis.gridColor ?? layout.gridColor }
+        : {}),
+      ...((layout.yAxis.showGrid ?? layout.showGrid) !== undefined
+        ? { showgrid: layout.yAxis.showGrid ?? layout.showGrid }
+        : {}),
+      ...((layout.yAxis.zeroLine ?? layout.zeroLine) !== undefined
+        ? { zeroline: layout.yAxis.zeroLine ?? layout.zeroLine }
+        : {}),
+      ...(layout.yAxis.showTickLabels !== undefined
+        ? { showticklabels: layout.yAxis.showTickLabels }
+        : {}),
     },
     ...(layout.legend !== undefined ? { legend: layout.legend } : {}),
+    ...(layout.shapes !== undefined ? { shapes: layout.shapes } : {}),
     ...(layout.height !== undefined ? { height: layout.height } : {}),
   };
 

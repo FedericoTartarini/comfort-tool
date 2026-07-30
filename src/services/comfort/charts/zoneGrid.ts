@@ -1,10 +1,15 @@
-import type { GridContourLayerSpec } from "./chartEngine";
 import {
   findNumericBandIndexForValue,
   type NumericBand,
 } from "../../../models/modelCapabilities";
-import type { PlotTraceDto } from "../../../models/comfortDtos";
-import { buildGridContourTrace } from "./gridEngine";
+import type {
+  PlotColorScaleDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
+import {
+  buildGridContourTrace,
+  type GridContourLayerSpec,
+} from "./gridEngine";
 import type { GridEvaluationResult } from "./types";
 
 type ZoneColorSource = {
@@ -22,7 +27,7 @@ interface BoundaryLayerOptions {
 
 interface ZoneContourLayersOptions {
   name: string;
-  colorscale: any[];
+  colorscale: PlotColorScaleDto;
   contours: GridContourLayerSpec["contours"];
   hovertemplate: string;
   showscale?: boolean;
@@ -56,7 +61,7 @@ export function buildZoneColorscale(zones: ReadonlyArray<ZoneColorSource>): Arra
   return colorscale;
 }
 
-export function buildZoneContourLayers({
+function buildZoneContourLayers({
   name,
   colorscale,
   contours,
@@ -119,17 +124,28 @@ export function buildZoneContourLayers({
   ];
 }
 
+interface ZoneContourTracesOptions extends ZoneContourLayersOptions {
+  grid: GridEvaluationResult;
+}
+
+export function buildZoneContourTraces({
+  grid,
+  ...options
+}: ZoneContourTracesOptions): PlotTraceDto[] {
+  return buildZoneContourLayers(options).map((layer) => (
+    buildGridContourTrace({ ...layer, grid })
+  ));
+}
+
 interface CategoricalBandLayersOptions {
   name: string;
   bands: readonly NumericBand[];
-  hovertemplate: string;
   opacity?: number;
 }
 
-export function buildCategoricalBandLayers({
+function buildCategoricalBandLayers({
   name,
   bands,
-  hovertemplate,
   opacity = 0.8,
 }: CategoricalBandLayersOptions): GridContourLayerSpec[] {
   const contours = bands.length === 1
@@ -154,7 +170,10 @@ export function buildCategoricalBandLayers({
     contours,
     zmin: -0.5,
     zmax: bands.length - 0.5,
-    hovertemplate,
+    hovertemplate: "",
+    hoverinfo: "skip",
+    includeText: false,
+    includeHoverMetadata: false,
     opacity,
     isBackgroundZone: true,
     boundaryLayer: bands.length > 1
@@ -170,18 +189,67 @@ export function buildCategoricalBandLayers({
   });
 }
 
+interface CategoricalBandTracesOptions extends CategoricalBandLayersOptions {
+  grid: GridEvaluationResult;
+}
+
+export function buildCategoricalBandTraces({
+  name,
+  bands,
+  grid,
+  opacity,
+}: CategoricalBandTracesOptions): PlotTraceDto[] {
+  const classifiedGrid: GridEvaluationResult = {
+    ...grid,
+    zValues: grid.zValues.map((row) => row.map((value) => (
+      findNumericBandIndexForValue(bands, value) ?? NaN
+    ))),
+  };
+
+  return buildCategoricalBandLayers({ name, bands, opacity }).map((layer) => (
+    buildGridContourTrace({ ...layer, grid: classifiedGrid })
+  ));
+}
+
+interface BandTooltipTraceOptions {
+  name: string;
+  grid: GridEvaluationResult;
+  hovertemplate: string;
+}
+
+const TRANSPARENT_COLORSCALE: PlotColorScaleDto = [
+  [0, "rgba(0, 0, 0, 0)"],
+  [1, "rgba(0, 0, 0, 0)"],
+];
+
+export function buildBandTooltipTrace({
+  name,
+  grid,
+  hovertemplate,
+}: BandTooltipTraceOptions): PlotTraceDto {
+  return buildGridContourTrace({
+    name,
+    grid,
+    colorscale: TRANSPARENT_COLORSCALE,
+    contours: {
+      type: "levels",
+      coloring: "heatmap",
+      showlines: false,
+    },
+    hovertemplate,
+    hoverOnGaps: false,
+    showscale: false,
+    line: { width: 0 },
+    isBackgroundZone: true,
+  });
+}
+
 interface ConstraintBandTracesOptions {
   name: string;
   bands: readonly NumericBand[];
   grid: GridEvaluationResult;
-  hovertemplate: string;
   opacity?: number;
 }
-
-const TRANSPARENT_COLORSCALE: Array<[number, string]> = [
-  [0, "rgba(0, 0, 0, 0)"],
-  [1, "rgba(0, 0, 0, 0)"],
-];
 
 function getFiniteGridRange(grid: GridEvaluationResult): { min: number; max: number } | undefined {
   let min = Infinity;
@@ -228,29 +296,14 @@ function buildBandConstraint(
   return { operation: "][", value: [band.min, band.max] };
 }
 
-function buildHoverGrid(
-  grid: GridEvaluationResult,
-  bands: readonly NumericBand[],
-): GridEvaluationResult {
-  return {
-    ...grid,
-    zValues: grid.zValues.map((row) => row.map((value) => (
-      findNumericBandIndexForValue(bands, value) === undefined ? NaN : value
-    ))),
-  };
-}
-
 /**
- * Builds smooth band regions from a continuous raw-output grid. Constraint
- * traces interpolate threshold crossings between grid samples, while the
- * separate transparent layer retains band-aware hover data and leaves gaps
- * unclassified.
+ * Builds smooth visible band regions from a continuous raw-output grid.
+ * A separate transparent contour owns hover for all banded-grid renderers.
  */
 export function buildConstraintBandTraces({
   name,
   bands,
   grid,
-  hovertemplate,
   opacity = 0.8,
 }: ConstraintBandTracesOptions): PlotTraceDto[] {
   const finiteRange = getFiniteGridRange(grid);
@@ -309,21 +362,5 @@ export function buildConstraintBandTraces({
     includeHoverMetadata: false,
   }));
 
-  const hoverTrace = buildGridContourTrace({
-    name: `${name} hover`,
-    grid: buildHoverGrid(grid, bands),
-    colorscale: TRANSPARENT_COLORSCALE,
-    contours: {
-      type: "levels",
-      coloring: "heatmap",
-      showlines: false,
-    },
-    hovertemplate,
-    hoverOnGaps: false,
-    showscale: false,
-    line: { width: 0 },
-    isBackgroundZone: true,
-  });
-
-  return [...fillTraces, ...boundaryTraces, hoverTrace];
+  return [...fillTraces, ...boundaryTraces];
 }

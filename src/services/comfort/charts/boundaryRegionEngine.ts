@@ -1,4 +1,8 @@
-import type { PlotTraceDto } from "../../../models/comfortDtos";
+import type {
+  PlotColorScaleDto,
+  PlotContoursDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale, ChartRange } from "./types";
 
@@ -32,8 +36,7 @@ interface BuildBoundaryRegionTracesOptions {
   bands: BoundaryBand[];
   variableAxis: ChartAxisScale;
   boundaryAxis: ChartAxisScale;
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
+  variableDimension: "x" | "y";
   boundaryRangeSi?: ChartRange;
   getHoverMetadata?: (xSi: number, ySi: number, index: number) => BoundaryHoverRow;
   buildTrace: (context: BoundaryPolygonTraceContext & { band: BoundaryBand; bandIndex: number }) => PlotTraceDto;
@@ -58,8 +61,8 @@ interface TooltipGridTraceOptions {
   yAxis: ChartAxisScale;
   hovertemplate: string;
   getHoverMetadata: (xSi: number, ySi: number, xIndex: number, yIndex: number) => BoundaryHoverRow;
-  colorscale?: [number, string][];
-  contours?: any;
+  colorscale?: PlotColorScaleDto;
+  contours?: PlotContoursDto;
 }
 
 interface ClosedBoundaryPolygonOptions {
@@ -119,8 +122,7 @@ export function buildBoundaryRegionTraces({
   bands,
   variableAxis,
   boundaryAxis,
-  xAxis,
-  yAxis,
+  variableDimension,
   boundaryRangeSi = boundaryAxis.rangeSi,
   getHoverMetadata,
   buildTrace,
@@ -142,6 +144,7 @@ export function buildBoundaryRegionTraces({
   }
 
   const variableDisplayValues = variableValuesSi.map(variableAxis.toDisplay);
+  const variableIsXAxis = variableDimension === "x";
   const traces: PlotTraceDto[] = [];
 
   bands.forEach((band, bandIndex) => {
@@ -164,7 +167,6 @@ export function buildBoundaryRegionTraces({
     const upperValuesClampedSi = upperValues.map((value) => clamp(value, boundaryRangeSi));
     const lowerDisplayValues = lowerValuesClampedSi.map(boundaryAxis.toDisplay);
     const upperDisplayValues = upperValuesClampedSi.map(boundaryAxis.toDisplay);
-    const variableIsXAxis = variableAxis.field === xAxis.field;
     const variablePolygonValuesSi = variableValuesSi.concat(variableValuesSi.slice().reverse());
     const boundaryPolygonValuesSi = lowerValuesClampedSi.concat(upperValuesClampedSi.slice().reverse());
     const polygonX = variableIsXAxis

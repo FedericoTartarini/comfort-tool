@@ -1,10 +1,8 @@
 import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import type { DynamicAxisPairValidator } from "./modelConfigs";
 
 interface DynamicAxisConfiguration {
   dynamicAxisFields: ReadonlyArray<FieldKeyType>;
-  defaultDynamicAxes?: DynamicAxisPair;
-  dynamicAxisPairValidator?: DynamicAxisPairValidator;
+  defaultDynamicAxes: DynamicAxisPair;
 }
 
 export interface DynamicAxisPair {
@@ -20,55 +18,18 @@ export function isDynamicAxisPairValid(
 ): boolean {
   return config.dynamicAxisFields.includes(pair.xAxis) &&
     config.dynamicAxisFields.includes(pair.yAxis) &&
-    pair.xAxis !== pair.yAxis &&
-    (config.dynamicAxisPairValidator?.(pair.xAxis, pair.yAxis) ?? true);
+    pair.xAxis !== pair.yAxis;
 }
 
 export function normalizeDynamicAxisPair(
   config: DynamicAxisConfiguration,
   pair: DynamicAxisPair,
-): DynamicAxisPair | null {
+): DynamicAxisPair {
   if (isDynamicAxisPairValid(config, pair)) {
     return pair;
   }
 
-  if (
-    config.defaultDynamicAxes &&
-    isDynamicAxisPairValid(config, config.defaultDynamicAxes)
-  ) {
-    return { ...config.defaultDynamicAxes };
-  }
-
-  const fields = config.dynamicAxisFields;
-
-  if (fields.includes(pair.xAxis)) {
-    for (const yAxis of fields) {
-      const candidate = { xAxis: pair.xAxis, yAxis };
-      if (isDynamicAxisPairValid(config, candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  if (fields.includes(pair.yAxis)) {
-    for (const xAxis of fields) {
-      const candidate = { xAxis, yAxis: pair.yAxis };
-      if (isDynamicAxisPairValid(config, candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  for (const xAxis of fields) {
-    for (const yAxis of fields) {
-      const candidate = { xAxis, yAxis };
-      if (isDynamicAxisPairValid(config, candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  return null;
+  return { ...config.defaultDynamicAxes };
 }
 
 export function resolveDynamicAxisSelection(

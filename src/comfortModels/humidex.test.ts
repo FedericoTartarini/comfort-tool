@@ -7,7 +7,7 @@ import { UnitSystem } from "../models/units";
 import { ChartId } from "../models/chartOptions";
 import { FieldKey } from "../models/fieldKeys";
 import { InputId } from "../models/inputSlots";
-import { ChartMode } from "../models/modelCapabilities";
+import { ChartMode, type ChartBuildContext } from "../models/modelCapabilities";
 
 describe("humidex service", () => {
   it("calculates Humidex correctly and assigns appropriate discomfort level", () => {
@@ -15,7 +15,6 @@ describe("humidex service", () => {
     const result = calculateHumidex({
       tdb: 30,
       rh: 70,
-      units: UnitSystem.SI,
     });
     
     expect(result.humidex).toBeGreaterThan(40);
@@ -28,7 +27,6 @@ describe("humidex service", () => {
     const result = calculateHumidex({
       tdb: 40,
       rh: 75,
-      units: UnitSystem.SI,
     });
     
     expect(result.humidex).toBeGreaterThanOrEqual(54);
@@ -39,46 +37,57 @@ describe("humidex service", () => {
     const result = calculateHumidex({
       tdb: 15,
       rh: 30,
-      units: UnitSystem.SI,
     });
     
     expect(result.humidexDiscomfort).toBe("Little/None");
   });
 
-  it("builds static and dynamic chart results through the shared chart wrapper", () => {
-    const request = { tdb: 30, rh: 70, units: UnitSystem.SI };
+  it("builds static and dynamic chart results through the typed grid strategy", () => {
+    const request = { tdb: 30, rh: 70 };
     const result = calculateHumidex(request);
     const chartSource = {
-      chartRequest: { [InputId.Input1]: request },
-      baselineInputId: InputId.Input1,
+      inputs: { [InputId.Input1]: request },
     };
-    const resultsByInput = { [InputId.Input1]: result } as any;
-
-    const staticChart = humidexModelConfig.buildChartResult(
-      ChartId.Humidex,
-      chartSource,
-      resultsByInput,
-      UnitSystem.SI,
-    );
-    const dynamicChart = humidexModelConfig.buildChartResult(
-      ChartId.HumidexDynamic,
-      chartSource,
-      resultsByInput,
-      UnitSystem.SI,
-      {
+    const resultsByInput = {
+      [InputId.Input1]: result,
+      [InputId.Input2]: null,
+      [InputId.Input3]: null,
+    };
+    const fixedContext = {
+      unitSystem: UnitSystem.SI,
+      dynamicAxes: humidexModelConfig.defaultDynamicAxes,
+      baselineInputId: InputId.Input1,
+      fieldChartConfig: null,
+    } satisfies ChartBuildContext;
+    const exploreContext = {
+      ...fixedContext,
+      fieldChartConfig: {
         mode: ChartMode.Explore,
         xField: FieldKey.DryBulbTemperature,
         yField: FieldKey.RelativeHumidity,
         zOutput: humidexModelConfig.chartableOutputs[0].key,
         bands: humidexModelConfig.chartableOutputs[0].defaultBands,
       },
+    } satisfies ChartBuildContext;
+
+    const fixedChart = humidexModelConfig.buildChartResult(
+      ChartId.Humidex,
+      chartSource,
+      resultsByInput,
+      fixedContext,
+    );
+    const dynamicChart = humidexModelConfig.buildChartResult(
+      ChartId.HumidexDynamic,
+      chartSource,
+      resultsByInput,
+      exploreContext,
     );
 
-    expect(staticChart?.traces[0].type).toBe("contour");
-    expect(staticChart?.traces[0].z).toHaveLength(300);
-    expect(staticChart?.traces[0].z?.[0]).toHaveLength(300);
-    expect(staticChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
-    expect(staticChart?.layout.height).toBe(480);
+    expect(fixedChart?.traces[0].type).toBe("contour");
+    expect(fixedChart?.traces[0].z).toHaveLength(300);
+    expect(fixedChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(fixedChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(fixedChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces[0].type).toBe("contour");
     expect(dynamicChart?.traces[0].z).toHaveLength(300);
     expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);

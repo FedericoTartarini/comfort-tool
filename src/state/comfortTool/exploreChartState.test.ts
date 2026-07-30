@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { FieldKey } from "../../models/fieldKeys";
 import { ModelOutputKey } from "../../models/modelCapabilities";
-import { adaptiveAshraeModelConfig } from "../../comfortModels/adaptive";
+import { adaptiveAshraeModelConfig } from "../../comfortModels/adaptiveAshrae";
 import { pmvAshraeModelConfig } from "../../comfortModels/pmvAshrae";
 import {
   buildExploreFieldChartConfig,

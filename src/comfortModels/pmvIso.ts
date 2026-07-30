@@ -10,10 +10,12 @@ import {
 import { ComfortStandard } from "../models/calculationMetadata";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
+import { UnitSystem } from "../models/units";
 import {
   createPmvComplianceBands,
   createPmvModelConfig,
   pmvChartableOutputs,
+  type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./pmvShared";
 
@@ -21,7 +23,6 @@ const isoComplianceBands = createPmvComplianceBands();
 
 export const pmvIsoAdapter: PmvStandardAdapter = {
   modelId: ComfortModel.PmvIso,
-  calculationStandard: JsThermalComfortStandard.ISO,
   resultStandard: ComfortStandard.Iso7730PmvPpd,
   // ISO 7730 applicability includes the upper boundary of 2 clo.
   clothingInsulationMaxSi: 2,
@@ -36,7 +37,7 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
     request.wme,
     JsThermalComfortStandard.ISO,
     {
-      units: request.units,
+      units: UnitSystem.SI,
       limit_inputs: false,
     },
   ),
@@ -48,7 +49,7 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
       v: request.vr,
       met: request.met,
       clo: request.clo,
-    } as any,
+    },
   ),
   getOperativeTemperature: (request) => t_o(
     request.tdb,
@@ -58,7 +59,9 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
   ),
 };
 
-export const pmvIsoModelConfig = createPmvModelConfig({
+export const pmvIsoDeclaration: PmvModelDeclaration = {
+  label: "PMV (ISO 7730 Category B)",
+  description: "ISO 7730 Category B PMV/PPD with comfort zone overlays.",
   adapter: pmvIsoAdapter,
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
@@ -66,4 +69,6 @@ export const pmvIsoModelConfig = createPmvModelConfig({
     output: ModelOutputKey.Pmv,
     bands: isoComplianceBands,
   },
-});
+};
+
+export const pmvIsoModelConfig = createPmvModelConfig(pmvIsoDeclaration);

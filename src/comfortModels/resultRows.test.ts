@@ -12,12 +12,14 @@ import type { ResultCellViewModel, ResultSectionViewModel } from "../state/comfo
 import {
   adaptiveAshraeModelConfig,
   adaptiveAshraeZonesList,
+} from "./adaptiveAshrae";
+import {
   adaptiveEnModelConfig,
   adaptiveEnZonesList,
-  type AdaptiveResponseDto,
-} from "./adaptive";
+} from "./adaptiveEn";
+import type { AdaptiveResponseDto } from "./adaptiveShared";
 import { pmvAshraeModelConfig } from "./pmvAshrae";
-import { pmvZonesList, type PmvResponseDto } from "./pmvShared";
+import { pmvNeutralZone, type PmvResponseDto } from "./pmvShared";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
@@ -52,38 +54,77 @@ const pmvResult: PmvResponseDto = {
 };
 
 const ashraeResult: AdaptiveResponseDto = {
-  t_cmf: 25,
-  acceptability_80: true,
-  acceptability_90: false,
-  status_80: adaptiveAshraeZonesList[1].label,
-  status_90: adaptiveAshraeZonesList[3].label,
-  tmp_cmf_80_low: 21.5,
-  tmp_cmf_80_up: 28.5,
-  tmp_cmf_90_low: 22.5,
-  tmp_cmf_90_up: 27.5,
-  isCompliant: true,
+  tCmf: 25,
+  operativeTemperature: 28,
+  levels: [
+    {
+      id: "acceptability-80",
+      label: adaptiveAshraeZonesList[1].label,
+      accepted: true,
+      status: adaptiveAshraeZonesList[1].label,
+      lower: 21.5,
+      upper: 28.5,
+    },
+    {
+      id: "acceptability-90",
+      label: adaptiveAshraeZonesList[2].label,
+      accepted: false,
+      status: adaptiveAshraeZonesList[3].label,
+      lower: 22.5,
+      upper: 27.5,
+    },
+  ],
+  isApplicable: true,
   standard: ComfortStandard.Ashrae55Adaptive,
   source: CalculationSource.JsThermalComfort,
 };
 
 const enResult: AdaptiveResponseDto = {
-  t_cmf: 24,
-  acceptability_cat_i: false,
-  acceptability_cat_ii: false,
-  acceptability_cat_iii: true,
-  status_cat_i: adaptiveEnZonesList[4].label,
-  status_cat_ii: adaptiveEnZonesList[4].label,
-  status_cat_iii: adaptiveEnZonesList[1].label,
-  tmp_cmf_cat_i_low: 21,
-  tmp_cmf_cat_i_up: 27,
-  tmp_cmf_cat_ii_low: 20,
-  tmp_cmf_cat_ii_up: 28,
-  tmp_cmf_cat_iii_low: 19,
-  tmp_cmf_cat_iii_up: 29,
-  isCompliant: true,
+  tCmf: 24,
+  operativeTemperature: 28,
+  levels: [
+    {
+      id: "category-i",
+      label: adaptiveEnZonesList[3].label,
+      accepted: false,
+      status: adaptiveEnZonesList[4].label,
+      lower: 21,
+      upper: 27,
+    },
+    {
+      id: "category-ii",
+      label: adaptiveEnZonesList[2].label,
+      accepted: false,
+      status: adaptiveEnZonesList[4].label,
+      lower: 20,
+      upper: 28,
+    },
+    {
+      id: "category-iii",
+      label: adaptiveEnZonesList[1].label,
+      accepted: true,
+      status: adaptiveEnZonesList[1].label,
+      lower: 19,
+      upper: 29,
+    },
+  ],
+  isApplicable: true,
   standard: ComfortStandard.En16798Adaptive,
   source: CalculationSource.JsThermalComfort,
 };
+
+function replaceAdaptiveLevel(
+  result: AdaptiveResponseDto,
+  levelId: string,
+  patch: Partial<AdaptiveResponseDto["levels"][number]>,
+): AdaptiveResponseDto {
+  return {
+    ...result,
+    levels: result.levels.map((level) => (
+      level.id === levelId ? { ...level, ...patch } : level
+    )),
+  };
+}
 
 describe("comfort model result rows", () => {
   it("builds PMV default rows in order with current formatting", () => {
@@ -108,8 +149,8 @@ describe("comfort model result rows", () => {
     });
     expect(getInputCell(sections, "PMV")?.text).toBe("0.24");
     expect(getInputCell(sections, "Zone")).toEqual({
-      text: pmvZonesList[3].label,
-      color: pmvZonesList[3].textColor,
+      text: pmvNeutralZone.label,
+      color: pmvNeutralZone.textColor,
     });
     expect(getInputCell(sections, "PPD")?.text).toBe("5.3%");
     expect(getInputCell(sections, "Acceptability")?.text).toBe("94.8%");
@@ -181,7 +222,7 @@ describe("comfort model result rows", () => {
     expect(getInputCell(sections, "PMV", InputId.Input3)?.text).toBe("-1.20");
   });
 
-  it("builds Adaptive ASHRAE rows with compliance, band formatting, and N/A fallback", () => {
+  it("builds Adaptive ASHRAE rows with compliance, band formatting, and N/A state", () => {
     const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[UnitSystem.SI];
     const sections = adaptiveAshraeModelConfig.buildResultSections(
       createResultRecord(ashraeResult),
@@ -212,7 +253,11 @@ describe("comfort model result rows", () => {
     });
 
     const sectionsWithMissingStatus = adaptiveAshraeModelConfig.buildResultSections(
-      createResultRecord({ ...ashraeResult, status_90: undefined }),
+      createResultRecord(replaceAdaptiveLevel(
+        ashraeResult,
+        "acceptability-90",
+        { status: null },
+      )),
       visibleInputIds,
       UnitSystem.SI,
       {},
@@ -227,9 +272,12 @@ describe("comfort model result rows", () => {
   it("converts Adaptive ASHRAE boundary subtext to IP and colors a cool result", () => {
     const sections = adaptiveAshraeModelConfig.buildResultSections(
       createResultRecord({
-        ...ashraeResult,
-        t_cmf: 20,
-        status_90: adaptiveAshraeZonesList[0].label,
+        ...replaceAdaptiveLevel(
+          ashraeResult,
+          "acceptability-90",
+          { status: adaptiveAshraeZonesList[0].label },
+        ),
+        operativeTemperature: 20,
       }),
       visibleInputIds,
       UnitSystem.IP,
@@ -252,12 +300,16 @@ describe("comfort model result rows", () => {
   it.each([
     {
       label: "noncompliant",
-      result: { ...ashraeResult, acceptability_80: false, isCompliant: true },
+      result: replaceAdaptiveLevel(
+        ashraeResult,
+        "acceptability-80",
+        { accepted: false },
+      ),
       expectedText: ComplianceStatus.NonCompliant,
     },
     {
       label: "out-of-range",
-      result: { ...ashraeResult, acceptability_80: false, isCompliant: false },
+      result: { ...ashraeResult, isApplicable: false },
       expectedText: ComplianceStatus.OutOfRange,
     },
   ])("formats Adaptive ASHRAE $label compliance", ({ result, expectedText }) => {
@@ -275,14 +327,16 @@ describe("comfort model result rows", () => {
     });
   });
 
-  it("preserves the Adaptive warm fallback for unusable boundary data", () => {
+  it("renders N/A without a misleading color when boundary data is missing", () => {
     const sections = adaptiveAshraeModelConfig.buildResultSections(
-      createResultRecord({
-        ...ashraeResult,
-        t_cmf: 0,
-        status_90: adaptiveAshraeZonesList[0].label,
-        tmp_cmf_90_low: undefined,
-      }),
+      createResultRecord(replaceAdaptiveLevel(
+        { ...ashraeResult, operativeTemperature: -5 },
+        "acceptability-90",
+        {
+          status: adaptiveAshraeZonesList[0].label,
+          lower: null,
+        },
+      )),
       visibleInputIds,
       UnitSystem.SI,
       {},
@@ -290,9 +344,8 @@ describe("comfort model result rows", () => {
     );
 
     expect(getInputCell(sections, adaptiveAshraeZonesList[2].label)).toEqual({
-      text: adaptiveAshraeZonesList[0].label,
-      subtext: undefined,
-      color: adaptiveAshraeZonesList[3].textColor,
+      text: "N/A",
+      color: "",
     });
   });
 

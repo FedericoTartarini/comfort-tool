@@ -48,3 +48,13 @@ export function getCompareInputs<T>(inputsByInput: CompareInputMap<T>): Array<{ 
     }));
 }
 
+export function getBaselineInputEntry<T>(
+  inputsByInput: CompareInputMap<T>,
+  baselineInputId: InputIdType,
+): { inputId: InputIdType; payload: T } {
+  const payload = inputsByInput[baselineInputId];
+  if (payload === undefined) {
+    throw new Error(`Missing chart baseline payload for ${baselineInputId}.`);
+  }
+  return { inputId: baselineInputId, payload };
+}

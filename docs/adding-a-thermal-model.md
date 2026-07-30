@@ -5,8 +5,8 @@ This guide walks you through every step required to add a new thermal comfort mo
 The architecture is **config-driven**: new models are added by registering a self-contained configuration object. A model file in `src/comfortModels/` is the single source of truth for all model-specific logic.
 
 > **Reference models** — use these existing models as concrete examples while reading this guide:
-> - `src/comfortModels/heatIndex.ts` — simple 2-input model with both a static and a dynamic chart
-> - `src/comfortModels/humidex.ts` — simple 2-input model with only a dynamic chart
+> - `src/comfortModels/heatIndex.ts` — simple 2-input model with fixed-axis and Explore views
+> - `src/comfortModels/humidex.ts` — simple 2-input model with fixed-axis and Explore views
 > - `src/comfortModels/windChill.ts` — model with a custom unit (W/m²) and a cold-stress domain
 
 ---
@@ -20,7 +20,7 @@ The architecture is **config-driven**: new models are added by registering a sel
    - [3b. Define domain constants](#3b-define-domain-constants)
    - [3c. Define DTOs (request/response types)](#3c-define-dtos)
    - [3d. Write the calculation function](#3d-write-the-calculation-function)
-   - [3e. Write the state-to-request extractor](#3e-write-the-state-to-request-extractor)
+   - [3e. Write the calculation-context-to-request extractor](#3e-write-the-calculation-context-to-request-extractor)
    - [3f. Build the model configuration](#3f-build-the-model-configuration)
    - [3g. Export the config](#3g-export-the-config)
 4. [Register the model in the model registry](#step-4-register-in-the-model-registry)
@@ -42,21 +42,11 @@ export const ComfortModel = {
 } as const;
 ```
 
-Then add a metadata entry to `comfortModelMetaById`. This drives the model-selection dropdown label and description.
-
-```ts
-export const comfortModelMetaById: Record<ComfortModel, { label: string; description: string }> = {
-  // ... existing entries ...
-  [ComfortModel.MyNewModel]: {
-    label: "My New Model",
-    description: "A short description shown in the model selector dropdown.",
-  },
-};
-```
+Declare the model-selection label and description in the registered model definition created in Step 3. The registry derives `comfortModelMetaById` from those definitions, so model metadata has one owner.
 
 If the model exposes a new calculated output, add its stable key to `ModelOutputKey` in `src/models/modelCapabilities.ts`. Reuse an existing key when the output already exists; never use an inline output string in a declaration.
 
-> **Why here?** `src/models/` is the layer for centralized constants. The model ID and its display label are stable metadata, not calculation logic. All other layers (`state/`, `comfortModels/`, `services/`) import from here.
+> **Why here?** `src/models/` owns the stable serialized identifier. The model declaration owns its human-facing metadata and capabilities.
 
 ---
 
@@ -69,7 +59,7 @@ Add one or more entries to the `ChartId` constant — one per chart your model w
 ```ts
 export const ChartId = {
   // ... existing chart IDs ...
-  MyNewModelRanges:  "myNewModelRanges",   // e.g., static psychrometric-style chart
+  MyNewModelRanges:  "myNewModelRanges",   // e.g., fixed-axis psychrometric-style chart
   MyNewModelDynamic: "myNewModelDynamic",  // e.g., dynamic two-axis contour chart
 } as const;
 ```
@@ -89,6 +79,8 @@ export const chartMetaById: Record<ChartId, ChartMetadata> = {
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
     isDynamic: true,  // ← set true for charts with selectable X/Y axes
+    supportsTemperatureInputMenu: true, // only when the chart supports it
+    hasZoneVisibilityToggle: true,       // only when the chart has zone traces
   },
 };
 ```
@@ -132,11 +124,6 @@ Define the valid input ranges for this model and any other constants you need.
 // Temperature range valid for this model (in °C, SI).
 const TDB_LIMITS = { min: 15, max: 45 };
 
-// Baseline values used when a required axis field isn't the dynamic axis.
-const DEFAULT_BASELINE = {
-  tdb: 25,
-  rh: 50,
-};
 ```
 
 > **Always use SI units** for domain constants. The chart and conversion layers convert to the display unit system automatically.
@@ -146,16 +133,14 @@ const DEFAULT_BASELINE = {
 Define TypeScript interfaces for the calculation request and response. These are plain data containers with no logic.
 
 ```ts
-import { UnitSystem } from "../models/units";
 import { FieldKey } from "../models/fieldKeys";
 import { CalculationSource } from "../models/calculationMetadata";
 import type { InputId as InputIdType } from "../models/inputSlots";
-import type { CompareInputMap } from "../models/comfortDtos";
+import type { ModelChartSourceDto } from "../models/comfortDtos";
 
 export interface MyNewModelRequestDto {
   tdb: number;  // dry-bulb temperature in SI (°C)
   rh:  number;  // relative humidity (%)
-  units: UnitSystem;
 }
 
 export interface MyNewModelResponseDto {
@@ -164,17 +149,14 @@ export interface MyNewModelResponseDto {
   source: CalculationSource;
 }
 
-// Used to pass chart-related data between the calculator and the chart builder.
-export interface MyNewModelChartSourceDto {
-  chartRequest: CompareInputMap<MyNewModelRequestDto>;
-  baselineInputId?: InputIdType;
-}
 ```
 
 **Key points:**
 - `RequestDto` contains raw SI values extracted from the shared input state.
 - `ResponseDto` stores computed results in SI. The results panel converts to display units when rendering.
-- `ChartSourceDto` carries calculation-derived chart data only. Explore axes, selected output, and working bands arrive separately as `FieldChartConfig`, so cached model calculations remain reusable when chart presentation changes.
+- Use `ModelChartSourceDto<MyNewModelRequestDto>` directly when the chart source only contains per-input requests. Extend it only when a model owns additional calculation-derived chart data, as PMV does for comfort zones.
+- Chart sources carry calculation-derived data only. Explore axes, selected output, and working bands arrive separately as `FieldChartConfig`, so cached model calculations remain reusable when chart presentation changes.
+- Model calculators and request DTOs are SI-only. `UnitSystem` belongs in display/chart context and conversion services, not in model requests.
 
 ### 3d. Write the Calculation Function
 
@@ -204,24 +186,26 @@ export function calculateMyNewModel(payload: MyNewModelRequestDto): MyNewModelRe
 - The returned index value must be in SI units. The results panel will convert for display.
 - Use `CalculationSource.FrontendGenerated` if you implement the formula yourself without the library.
 
-### 3e. Write the State-to-Request Extractor
+### 3e. Write the Calculation-Context-to-Request Extractor
 
-This private function reads from shared UI state and produces a `RequestDto` for one input slot.
+This private function reads from the model calculation boundary and produces a `RequestDto` for one input slot. Models receive only canonical-SI inputs and model options; they do not receive controller or UI state.
 
 ```ts
-import type { ComfortToolStateSlice } from "../state/comfortTool/types";
+import type { ModelCalculationContext } from "../models/modelCalculation";
 
-function toMyNewModelRequest(state: ComfortToolStateSlice, inputId: InputIdType): MyNewModelRequestDto {
-  const inputs = state.inputsByInput[inputId];
+function toMyNewModelRequest(
+  context: ModelCalculationContext,
+  inputId: InputIdType,
+): MyNewModelRequestDto {
+  const inputs = context.inputsByInput[inputId];
   return {
     tdb: Number(inputs[FieldKey.DryBulbTemperature]),
     rh:  Number(inputs[FieldKey.RelativeHumidity]),
-    units: UnitSystem.SI,
   };
 }
 ```
 
-> The `state.inputsByInput` record contains all field values **already in SI**. You do not need to convert them — just read them.
+> The `context.inputsByInput` record contains all field values **already in SI**. Read model options from `context.modelOptionsByModel` when needed; do not import controller state types into a comfort model.
 
 ### 3f. Build the Model Configuration
 
@@ -230,28 +214,36 @@ Use `ComfortModelBuilder` to compose all the pieces. This is a fluent API where 
 ```ts
 import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection }
   from "../state/comfortTool/modelConfigs/builder";
-import { ComfortModel, comfortModelMetaById } from "../models/comfortModels";
+import { ComfortModel } from "../models/comfortModels";
 import { ChartId } from "../models/chartOptions";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { bandsFromThermalZones, ChartMode, ModelOutputKey, type ModelOutput } from "../models/modelCapabilities";
-import { UnitSystem } from "../models/units";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
-import { buildComfortModelChart } from "../services/comfort/charts/sharedCharts";
+import {
+  buildGridModelChart,
+  type GridModelChartSpec,
+} from "../services/comfort/charts/gridModelCharts";
 import { convertModelOutputFromSi, formatDisplayValue, getModelOutputDisplayMeta } from "../services/units";
 
-const myNewModelBuilder = new ComfortModelBuilder<MyNewModelResponseDto, MyNewModelChartSourceDto>(
+const myNewModelBuilder = new ComfortModelBuilder<
+  MyNewModelResponseDto,
+  ModelChartSourceDto<MyNewModelRequestDto>
+>(
   ComfortModel.MyNewModel
 );
+
+const MODEL_LABEL = "My New Model";
+const MODEL_DESCRIPTION = "A short description shown in the model selector dropdown.";
 ```
 
 #### Label and Description
 
 ```ts
 myNewModelBuilder
-  .setLabel(comfortModelMetaById[ComfortModel.MyNewModel].label)
-  .setDescription(comfortModelMetaById[ComfortModel.MyNewModel].description);
+  .setLabel(MODEL_LABEL)
+  .setDescription(MODEL_DESCRIPTION);
 ```
 
 #### Capability Declaration (Required)
@@ -284,7 +276,9 @@ myNewModelBuilder
   });
 ```
 
-A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, and duplicate modes or output keys. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
+A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, duplicate modes or output keys, incomplete label/description/chart declarations, missing calculation or presentation functions, and invalid dynamic-axis defaults. A successful build returns a validated configuration snapshot with copied arrays and records. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
+
+`ComplianceSpec` and `ComfortModelBuilder` default to the general `Band` type so Adaptive can retain functional edges. A model with numeric Compliance bands can supply `NumericBand` as the builder's third generic argument; its resulting definition can then form a `NumericComplianceFieldChartConfig` and enter the shared numeric grid strategy without a cast.
 
 Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
 
@@ -332,22 +326,19 @@ For temperature controls that support Operative Temperature mode, use `createTem
 The calculator runs for every input slot that is visible and produces `resultsByInput` (one result per slot) plus a `chartSource` payload.
 
 ```ts
-myNewModelBuilder.setCalculator((state, visibleInputIds) => {
+myNewModelBuilder.setCalculator((context, visibleInputIds) => {
   const resultsByInput = createEmptyResults<MyNewModelResponseDto>();
-  const chartInputs: CompareInputMap<MyNewModelRequestDto> = {};
+  const inputs: ModelChartSourceDto<MyNewModelRequestDto>["inputs"] = {};
 
   visibleInputIds.forEach((inputId) => {
-    const request = toMyNewModelRequest(state, inputId);
+    const request = toMyNewModelRequest(context, inputId);
     resultsByInput[inputId] = calculateMyNewModel(request);
-    chartInputs[inputId] = request;
+    inputs[inputId] = request;
   });
 
   return {
     resultsByInput,
-    chartSource: {
-      chartRequest: chartInputs,
-      baselineInputId: state.ui.chartBaselineInputId,
-    },
+    chartSource: { inputs },
   };
 });
 ```
@@ -391,92 +382,88 @@ myNewModelBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
 
 #### Chart Builder
 
-The chart builder produces Plotly chart data. Use `buildComfortModelChart` from `src/services/comfort/charts/sharedCharts.ts` — it handles both dynamic and static chart types through a single interface.
+The chart builder produces Plotly chart data. Simple grid models use the typed `buildGridModelChart` strategy from `src/services/comfort/charts/gridModelCharts.ts`. The model declares how its payload maps to fields and how it is evaluated; the shared strategy owns baseline cloning, Explore narrowing, grid assembly, band assignment, and display conversion.
 
 ```ts
-myNewModelBuilder.setChartBuilder((
-  chartId,
-  chartSource,
-  resultsByInput,
-  unitSystem,
-  fieldChartConfig,
-) => {
-  return buildComfortModelChart(
+function getMyNewModelAxisValue(
+  payload: MyNewModelRequestDto,
+  field: FieldKey,
+): number {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      return payload.tdb;
+    case FieldKey.RelativeHumidity:
+      return payload.rh;
+    default:
+      throw new Error(`Unsupported My New Model chart field: ${field}`);
+  }
+}
+
+function setMyNewModelAxisValue(
+  payload: MyNewModelRequestDto,
+  field: FieldKey,
+  valueSi: number,
+): void {
+  switch (field) {
+    case FieldKey.DryBulbTemperature:
+      payload.tdb = valueSi;
+      return;
+    case FieldKey.RelativeHumidity:
+      payload.rh = valueSi;
+      return;
+    default:
+      throw new Error(`Unsupported My New Model chart field: ${field}`);
+  }
+}
+
+myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context) => {
+  const chartSpec: GridModelChartSpec<
+    MyNewModelRequestDto,
+    MyNewModelResponseDto
+  > = {
+    dynamicChartId: ChartId.MyNewModelDynamic,
+    dynamicTitle: `${MODEL_LABEL} Dynamic Chart`,
+    output: myNewModelOutput,
+    axisRanges: {
+      [FieldKey.DryBulbTemperature]: TDB_LIMITS,
+    },
+    getAxisValue: getMyNewModelAxisValue,
+    setAxisValue: setMyNewModelAxisValue,
+    evaluate: calculateMyNewModel,
+    getOutputValue: (result) => result.index,
+
+    // A fixed-axis view uses the same grid and band primitives as Explore while
+    // remaining independent from transient Explore selections and working bands.
+    fixedView: {
+      chartId: ChartId.MyNewModelRanges,
+      title: `${MODEL_LABEL} Ranges`,
+      xField: FieldKey.RelativeHumidity,
+      yField: FieldKey.DryBulbTemperature,
+      xRangeSi: {
+        min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
+        max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
+      },
+      yRangeSi: TDB_LIMITS,
+    },
+  };
+
+  return buildGridModelChart(
     chartId,
     chartSource,
     resultsByInput,
-    unitSystem,
-    fieldChartConfig?.mode === ChartMode.Explore ? fieldChartConfig : null,
-    {
-      dynamicChartId: ChartId.MyNewModelDynamic,
-      dynamicTitle: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Dynamic Chart`,
-      output: myNewModelOutput,
-      zones: myNewModelZonesList,
-      customRanges: {
-        [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-      },
-      baselinePayloadDefault: DEFAULT_BASELINE,
-
-      // The model owns raw output extraction. The shared engine owns working-band
-      // assignment, colors, output conversion, contour metadata, and gap handling.
-      calculateDynamicOutput: (
-        xSi,
-        ySi,
-        dynamicXAxis,
-        dynamicYAxis,
-        baselinePayload,
-        zOutput,
-      ) => {
-        if (zOutput !== ModelOutputKey.MyNewModelIndex) {
-          throw new Error(`Unsupported chart output: ${zOutput}`);
-        }
-        const calcPayload: any = { ...baselinePayload, units: UnitSystem.SI };
-        calcPayload[dynamicXAxis] = xSi;
-        calcPayload[dynamicYAxis] = ySi;
-        return someLibraryFunction(calcPayload.tdb, calcPayload.rh).index;
-      },
-      getResultOutputValue: (cached, zOutput) => (
-        zOutput === ModelOutputKey.MyNewModelIndex ? cached?.index : undefined
-      ),
-
-      // Optional fixed chart. Static chart behavior remains independent from
-      // the transient Explore output and working bands.
-      staticConfig: {
-        title: `${comfortModelMetaById[ComfortModel.MyNewModel].label} Ranges`,
-        xKey: FieldKey.RelativeHumidity,
-        yKey: FieldKey.DryBulbTemperature,
-        xRangeSi: {
-          min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
-          max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
-        },
-        yRangeSi: TDB_LIMITS,
-        hovertemplateContour: "%{text}<extra></extra>",
-        getHovertemplateScatter: (label, cached) =>
-          `${label}<br>RH: %{x:.1f}%<br>Tdb: %{y:.1f}<br><b>Category: ${cached?.category || ""}</b><extra></extra>`,
-        getScatterXSi: (payload) => payload.rh,
-        getScatterYSi: (payload) => payload.tdb,
-        calculateStaticPoint: (xSi, ySi) => {
-          const rawResult = someLibraryFunction(ySi, xSi);
-          const zone = myNewModelZonesList.find((item) => item.contains(rawResult.index));
-          const rangeValue = zone ? myNewModelZonesList.indexOf(zone) : 0;
-          return {
-            rangeValue,
-            category: zone?.label ?? myNewModelZonesList[0].label,
-          };
-        },
-      },
-    },
+    context,
+    chartSpec,
   );
 });
 ```
 
-The controller supplies `FieldChartConfig` only for a valid dynamic Explore chart. It restricts x/y to `dynamicAxisFields`, z to `chartableOutputs`, and bands to a sorted, non-overlapping canonical-SI working copy. Do not duplicate those selections in the chart-source DTO or classify Explore output inside the model callback.
+The controller builds one `ChartBuildContext` containing the unit system, active axes, baseline input, and optional `FieldChartConfig`. Fixed numeric charts construct a `NumericFieldChartConfig` with no mode, while Explore extends that numeric contract with `mode: ChartMode.Explore`; the selected output is looked up through `config.zOutput`. The model builder validates declared preset bands. Explore actions normalize, validate, and store edited bands. Selectors and the chart engine consume that validated state without repeating validation or cloning. Chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in the chart source or classify Explore output inside the model callback.
 
-If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper to preserve the independently selected component and solve the other component in canonical SI. Do not reject these pairs solely because Operative temperature ultimately updates both calculation-temperature inputs.
+If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper with a `DynamicAxisPayloadAdapter` that implements both `getAxisValue` and `setAxisValue`. The current solver contract is linear: it evaluates the lower and upper component bounds once, interpolates the target component, validates the post-condition, and rejects non-finite, zero-slope, or out-of-range results. Endpoint probes restore the temperature component in `finally`; a successful solve commits it once, while a failed final commit rolls back that solved field. The independently selected other axis must remain unchanged. Create the adapter once outside the grid loop.
 
-The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Each constraint region uses its top-level `fillcolor` with contour coloring disabled, preventing per-band full-grid backgrounds from blending together. Plotly shades the invalid side of a constraint, so the trace operation represents the complement of the visible band (outside a finite interval or the opposite half-plane for an unbounded interval). Keep this opt-in model-specific: discrete or classified outputs should continue to use the default strategy. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
+The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Categorical and constraint traces only render visible fills and boundaries, with hover disabled. One transparent contour tooltip trace uses the original output grid, classification text, and metadata for both renderers. A finite value outside every band remains visibly unfilled but hovers as `Unclassified`; a model-invalid `NaN` cell remains unfilled and has no hover because `hoverongaps` is false. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
 
-If a dynamic hover needs an additional model result, `calculateDynamicOutput` may return `{ valueSi, additionalHoverMetadata }` instead of a number. Set `bandLabel` and `dynamicHoverExtension` on the model chart config to share the label, hover suffix, and cached-input metadata extractor across contour and input-point hovers. A direct `buildBandedGridFieldChart` caller may instead provide `hoverTemplate` when the complete model-specific ordering and precision must override the generic template. The selected display output remains `customdata[0]`, and additional metadata starts at index 1, so callers must keep those indexes aligned with the template. Keep `valueSi` canonical; convert presentation-only metadata through `src/services/units/`, and keep the same metadata order for grid evaluations and cached input results.
+If a typed grid model's dynamic hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A model using the engine directly may instead return `{ valueSi, additionalHoverMetadata }` from the evaluator passed to `createBandedGridStrategy()` and provide `hoverTemplate` when model-specific ordering or precision is required. For a preclassified model zone grid, use `createZoneGridStrategy()` and declare its zones, contour metadata, hover template, and SI evaluator. Pass either Grid strategy to the single `buildFieldChart()` frame. Boundary charts pass `{ kind: "boundary", buildTraces }` to the same frame. Models declare canonical-SI axis specs, ranges, margins, hover metadata, and evaluators; the frame creates axes and owns layout, input overlays, markers, legends, annotations, and trace ordering. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
 
 #### Final Builder Registrations
 
@@ -517,7 +504,7 @@ myNewModelBuilder.setLegendTitle("My New Model");
 myNewModelBuilder.setLockYAxisChartIds([ChartId.MyNewModelDynamic]);
 ```
 
-`defaultDynamicAxes` is required. Both fields must be distinct members of `dynamicAxisFields` and must satisfy any declared pair validator; `build()` rejects invalid defaults.
+`defaultDynamicAxes` is required. Both fields must be distinct members of `dynamicAxisFields`; `build()` rejects invalid defaults. Runtime axis selection applies the same two rules and swaps X/Y when the user selects the field currently used by the other axis.
 
 ### 3g. Export the Config
 
@@ -565,26 +552,25 @@ Create a test file alongside your model file: **`src/comfortModels/myNewModel.te
 Test at minimum:
 1. A known-good calculation produces the expected index value and zone category.
 2. Edge cases at zone boundaries behave correctly.
-3. IP/SI unit handling if applicable.
+3. SI reference values for the calculator, plus SI/IP conversion at the result and chart presentation boundary.
 4. The registered capability declaration has the intended modes, output keys, preset bands, and compliance bands.
 5. Every declared Explore output can drive the dynamic grid from raw canonical values and working bands.
-6. Unsupported output keys are rejected in the model layer, and static chart behavior remains unchanged.
+6. Unsupported output keys are rejected in the model layer, and fixed-axis chart behavior remains unchanged.
 
 ```ts
 import { describe, it, expect } from "vitest";
 import { calculateMyNewModel } from "./myNewModel";
-import { UnitSystem } from "../models/units";
 
 describe("myNewModel service", () => {
   it("returns correct index and category for a high-heat scenario", () => {
-    const result = calculateMyNewModel({ tdb: 38, rh: 75, units: UnitSystem.SI });
+    const result = calculateMyNewModel({ tdb: 38, rh: 75 });
     expect(result.index).toBeGreaterThan(35);
     expect(result.category).toBe("Danger");
     expect(result.source).toBeTruthy();
   });
 
   it("classifies mild conditions as Safe", () => {
-    const result = calculateMyNewModel({ tdb: 22, rh: 40, units: UnitSystem.SI });
+    const result = calculateMyNewModel({ tdb: 22, rh: 40 });
     expect(result.category).toBe("Safe");
   });
 });
@@ -606,11 +592,14 @@ npx vitest run src/comfortModels/myNewModel.test.ts
 
 ## Step 6: Verify
 
-Run both validation commands before considering the work done:
+Run all validation commands before considering the work done:
 
 ```bash
-npm test        # All tests must pass
-npm run build   # Production build must succeed
+npm run lint
+npm run check
+npm test
+npm run build
+npm run test:visual
 ```
 
 ### Done Criteria Checklist
@@ -618,7 +607,9 @@ npm run build   # Production build must succeed
 Before marking the work complete, verify all of the following:
 
 - [ ] `npm test` passes with no failures
+- [ ] `npm run lint` and `npm run check` pass with no errors or warnings
 - [ ] `npm run build` produces no TypeScript or Vite errors
+- [ ] `npm run test:visual` preserves fixed-chart and Explore interaction behavior
 - [ ] The new model appears in the model selector dropdown with the correct label and description
 - [ ] Switching to the new model shows the correct input controls in the sidebar
 - [ ] Results are calculated and displayed correctly when inputs change
@@ -652,7 +643,7 @@ For unit conversion, add any new output presentation to the exhaustive registry 
 
 ### What if my model uses string categories instead of numeric ranges?
 
-Pass a `category` string to the `ThermalZone` constructor. The `z.contains(value)` method accepts strings and will match against `category` (case-insensitive) or `label`. This is how the UTCI model works.
+Pass a `category` string to the `ThermalZone` constructor only when the model truly has a stable categorical output. The `z.contains(value)` method accepts strings and matches `category` (case-insensitive) or `label`. Models with a numeric index, including UTCI, must classify from that numeric value and the zones' half-open intervals so results and hover cannot diverge.
 
 ### What if my model needs an advanced option menu (like PMV's humidity mode)?
 
@@ -662,9 +653,9 @@ Pass a `category` string to the `ThermalZone` constructor. The `z.contains(value
 4. Use `getMenu: (context) => ...` in your `createControlBehavior(...)` config to render the menu caret.
 5. Use `setDefaultOptions({ [OptionKey.MyOption]: defaultValue })` and update `setOptionNormalizer` to validate the option.
 
-### What if my model has no static chart and only a dynamic chart?
+### What if my model has no fixed-axis chart and only a dynamic chart?
 
-Omit the `staticConfig` block from `buildComfortModelChart(...)` entirely and set your default chart to the dynamic chart ID:
+Omit the `fixedView` property from `GridModelChartSpec` and set your default chart to the dynamic chart ID:
 
 ```ts
 myNewModelBuilder.setDefaultChart(
@@ -674,18 +665,6 @@ myNewModelBuilder.setDefaultChart(
 ```
 
 (This is what `windChill.ts` does.)
-
-### What if my model needs a synchronization hook (e.g., reset an option when the user switches charts)?
-
-Use `setSynchronizer` on the builder:
-
-```ts
-myNewModelBuilder.setSynchronizer((context) => {
-  // Return a BehaviorPatch to apply when the model is activated or the chart changes.
-  // Return null to make no changes.
-  return null;
-});
-```
 
 ### How does the model selector dropdown order work?
 
@@ -699,9 +678,9 @@ When adding a new model, these are the files you touch:
 
 | File | What you add |
 |---|---|
-| `src/models/comfortModels.ts` | Model ID constant + label/description metadata |
+| `src/models/comfortModels.ts` | Stable serialized model ID constant |
 | `src/models/chartOptions.ts` | Chart ID constants + chart metadata entries |
-| `src/comfortModels/myNewModel.ts` | **New file** — all model-specific logic |
+| `src/comfortModels/myNewModel.ts` | **New file** — metadata, capabilities, requests, calculations, results, and charts |
 | `src/comfortModels/myNewModel.test.ts` | **New file** — unit tests for the calculation |
 | `src/state/comfortTool/modelConfigs/index.ts` | Import + registry entry |
 

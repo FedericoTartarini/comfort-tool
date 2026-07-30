@@ -5,8 +5,8 @@ import {
   findBandForValue,
   findNumericBandIndexForValue,
   resolveBandEdge,
-  type Band,
   type InputsSi,
+  type NumericBand,
 } from "./modelCapabilities";
 
 function createInputsSi(): InputsSi {
@@ -15,7 +15,7 @@ function createInputsSi(): InputsSi {
   ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
 }
 
-function createBand(min: number, max: number, label: string): Band {
+function createBand(min: number, max: number, label: string): NumericBand {
   return { min, max, label, color: "#000000" };
 }
 

@@ -56,11 +56,15 @@ export function validateNumericBands(
     return { valid: false, issues };
   }
 
+  const validBands: Array<{ band: NumericBand; bandIndex: number }> = [];
+
   bands.forEach((band, bandIndex) => {
     const hasNumericMin = typeof band.min === "number" && !Number.isNaN(band.min);
     const hasNumericMax = typeof band.max === "number" && !Number.isNaN(band.max);
+    const hasValidMin = hasNumericMin && band.min !== Number.POSITIVE_INFINITY;
+    const hasValidMax = hasNumericMax && band.max !== Number.NEGATIVE_INFINITY;
 
-    if (!hasNumericMin || band.min === Number.POSITIVE_INFINITY) {
+    if (!hasValidMin) {
       issues.push({
         code: "invalid-edge",
         message: "Lower bounds must be numeric or unbounded below.",
@@ -69,7 +73,7 @@ export function validateNumericBands(
       });
     }
 
-    if (!hasNumericMax || band.max === Number.NEGATIVE_INFINITY) {
+    if (!hasValidMax) {
       issues.push({
         code: "invalid-edge",
         message: "Upper bounds must be numeric or unbounded above.",
@@ -78,7 +82,8 @@ export function validateNumericBands(
       });
     }
 
-    if (hasNumericMin && hasNumericMax && band.min >= band.max) {
+    const hasValidRange = hasValidMin && hasValidMax && band.min < band.max;
+    if (hasValidMin && hasValidMax && !hasValidRange) {
       issues.push({
         code: "invalid-range",
         message: "The lower bound must be less than the upper bound.",
@@ -104,27 +109,43 @@ export function validateNumericBands(
       });
     }
 
-    if (bandIndex === 0) {
-      return;
+    if (hasValidRange) {
+      validBands.push({ band, bandIndex });
     }
+  });
 
-    const previousBand = bands[bandIndex - 1];
-    if (options.requireSorted !== false && band.min < previousBand.min) {
+  if (options.requireSorted !== false) {
+    validBands.slice(1).forEach(({ band, bandIndex }, validIndex) => {
+      const previousBand = validBands[validIndex].band;
+      if (band.min >= previousBand.min) return;
       issues.push({
         code: "unsorted",
         message: "Bands must be sorted by their lower bound.",
         bandIndex,
       });
-    }
+    });
+  }
 
-    if (band.min < previousBand.max) {
+  const bandsByLowerBound = [...validBands].sort((left, right) => {
+    if (left.band.min !== right.band.min) {
+      return left.band.min - right.band.min;
+    }
+    return left.band.max - right.band.max;
+  });
+  let coveredUntil = bandsByLowerBound[0]?.band.max;
+  for (let index = 1; index < bandsByLowerBound.length; index += 1) {
+    const { band, bandIndex } = bandsByLowerBound[index];
+    if (coveredUntil !== undefined && band.min < coveredUntil) {
       issues.push({
         code: "overlap",
         message: "Bands cannot overlap.",
         bandIndex,
       });
     }
-  });
+    coveredUntil = coveredUntil === undefined
+      ? band.max
+      : Math.max(coveredUntil, band.max);
+  }
 
   return {
     valid: issues.length === 0,

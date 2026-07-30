@@ -1,4 +1,9 @@
-import type { PlotTraceDto } from "../../../models/comfortDtos";
+import type {
+  PlotColorScaleDto,
+  PlotContoursDto,
+  PlotLineDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
 import { buildContourTrace } from "./plotlyBuilders";
 import { buildAxisValues } from "./axis";
 import type { ChartAxisScale, GridEvaluationResult, GridPointEvaluation } from "./types";
@@ -6,23 +11,26 @@ import type { ChartAxisScale, GridEvaluationResult, GridPointEvaluation } from "
 interface EvaluateGridOptions {
   xAxis: ChartAxisScale;
   yAxis: ChartAxisScale;
-  evaluatePoint: (xSi: number, ySi: number, xIndex: number, yIndex: number) => GridPointEvaluation;
-  errorText?: string;
+  evaluatePoint: (
+    xSi: number,
+    ySi: number,
+    xIndex: number,
+    yIndex: number,
+  ) => GridPointEvaluation | null;
 }
 
-interface GridContourTraceOptions {
+export interface GridContourLayerSpec {
   name: string;
-  grid: GridEvaluationResult;
-  colorscale?: any[];
+  colorscale?: PlotColorScaleDto;
   fillcolor?: string;
-  contours: any;
+  contours: PlotContoursDto;
   hovertemplate: string;
   showscale?: boolean;
   zmin?: number;
   zmax?: number;
-  colorbar?: any;
+  colorbar?: Record<string, unknown>;
   opacity?: number;
-  line?: any;
+  line?: PlotLineDto;
   isZone?: boolean;
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
@@ -32,11 +40,14 @@ interface GridContourTraceOptions {
   includeHoverMetadata?: boolean;
 }
 
+interface GridContourTraceOptions extends GridContourLayerSpec {
+  grid: GridEvaluationResult;
+}
+
 export function evaluateGrid({
   xAxis,
   yAxis,
   evaluatePoint,
-  errorText = "Error",
 }: EvaluateGridOptions): GridEvaluationResult {
   const xAxisValues = buildAxisValues(xAxis);
   const yAxisValues = buildAxisValues(yAxis);
@@ -53,15 +64,15 @@ export function evaluateGrid({
     for (let xIndex = 0; xIndex < xAxisValues.siValues.length; xIndex += 1) {
       const xSi = xAxisValues.siValues[xIndex];
 
-      try {
-        const result = evaluatePoint(xSi, ySi, xIndex, yIndex);
+      const result = evaluatePoint(xSi, ySi, xIndex, yIndex);
+      if (result === null) {
+        row.push(NaN);
+        textRow.push("");
+        hoverMetadataRow.push([]);
+      } else {
         row.push(result.z);
         textRow.push(result.text ?? "");
         hoverMetadataRow.push(result.hoverMetadata ?? []);
-      } catch {
-        row.push(NaN);
-        textRow.push(errorText);
-        hoverMetadataRow.push([NaN]);
       }
     }
 
@@ -123,6 +134,6 @@ export function buildGridContourTrace({
     isComfortZone,
     hoverinfo,
     hoverOnGaps,
-    hoverMetadata: includeHoverMetadata ? grid.hoverMetadata as any[][] : undefined,
+    hoverMetadata: includeHoverMetadata ? grid.hoverMetadata : undefined,
   });
 }

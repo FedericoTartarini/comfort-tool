@@ -4,31 +4,17 @@
    * Renders a configurable chart panel with support for dynamic axis selection,
    * multiple export formats, and integrated loading states.
    */
-  import { Card, Heading, Toggle } from "flowbite-svelte";
+  import { Toggle } from "flowbite-svelte";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
   import ChartExportMenu from "./ChartExportMenu.svelte";
-  import ChartAxisMenu from "./ChartAxisMenu.svelte";
+  import ChartControls from "./ChartControls.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import {
-    ChartId,
-    chartMetaById,
-    type ChartId as ChartIdType,
-  } from "../../models/chartOptions";
+  import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
   import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
-  import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-  import type { InputId as InputIdType } from "../../models/inputSlots";
-  import type {
-    ExploreFieldChartConfig,
-    ModelOutput,
-    ModelOutputKey,
-    NumericBand,
-  } from "../../models/modelCapabilities";
-  import type { UnitSystem as UnitSystemType } from "../../models/units";
+  import type { ChartControlsViewModel } from "../../state/comfortTool/types";
 
   interface Props {
-    title: string;
-    description: string;
     chartResult: PlotlyChartResponseDto | null;
     isLoading: boolean;
     emptyMessage: string;
@@ -37,31 +23,12 @@
     selectedChart: ChartIdType;
     selectedModel: ComfortModelType;
     onSelectChart: (chartId: ChartIdType) => void;
-    dynamicXAxis?: FieldKeyType;
-    dynamicYAxis?: FieldKeyType;
-    onSelectXAxis?: (fieldKey: FieldKeyType) => void;
-    onSelectYAxis?: (fieldKey: FieldKeyType) => void;
-    dynamicXAxisOptions?: FieldKeyType[];
-    dynamicYAxisOptions?: FieldKeyType[];
-    baselineInputId?: InputIdType;
-    onSelectBaselineInput?: (inputId: InputIdType) => void;
-    visibleInputIds?: InputIdType[];
-    compareEnabled?: boolean;
-    embedded?: boolean;
-    lockYAxis?: boolean;
-    legendZones?: ReadonlyArray<{ label: string; color: string }> | null;
-    legendTitle?: string;
-    fieldChartConfig?: ExploreFieldChartConfig | null;
-    chartableOutputs?: readonly ModelOutput[];
-    defaultBands?: readonly NumericBand[];
-    unitSystem: UnitSystemType;
-    onSelectOutput?: (outputKey: ModelOutputKey) => void;
-    onApplyBands?: (bands: readonly NumericBand[]) => boolean | void;
+    chartControls: ChartControlsViewModel;
+    legendZones: ReadonlyArray<{ label: string; color: string }> | null;
+    legendTitle: string;
   }
 
   let {
-    title,
-    description,
     chartResult,
     isLoading,
     emptyMessage,
@@ -70,26 +37,9 @@
     selectedChart,
     selectedModel,
     onSelectChart,
-    dynamicXAxis,
-    dynamicYAxis,
-    onSelectXAxis,
-    onSelectYAxis,
-    dynamicXAxisOptions,
-    dynamicYAxisOptions,
-    baselineInputId,
-    onSelectBaselineInput,
-    visibleInputIds = [],
-    compareEnabled = false,
-    embedded = false,
-    lockYAxis = false,
-    legendZones = null,
-    legendTitle = "",
-    fieldChartConfig = null,
-    chartableOutputs = [],
-    defaultBands = [],
-    unitSystem,
-    onSelectOutput,
-    onApplyBands,
+    chartControls,
+    legendZones,
+    legendTitle,
   }: Props = $props();
 
   let exportChart: ((type: "png" | "svg") => void) | undefined =
@@ -103,54 +53,27 @@
     showZones = true;
   });
 
-  // Disable dynamic axis selection based on the currently selected chart's metadata properties (disabled when lockYAxis is true)
-  const isDynamicChart = $derived(!!chartMetaById[selectedChart]?.isDynamic);
-  const showAxisMenu = $derived(
-    (compareEnabled || isDynamicChart) &&
-      !!baselineInputId &&
-      !!onSelectBaselineInput,
+  const showChartControls = $derived(
+    chartControls.baseline !== null ||
+      chartControls.axes !== null ||
+      chartControls.explore !== null,
   );
-  const axisMenuIdPrefix = $derived(
+  const controlsIdPrefix = $derived(
     `${chartPanelIdPrefix}-${selectedModel}-${selectedChart}`,
   );
-  // The psychrometric chart is the only current chart with a user-toggleable zone layer.
-  const showZonesToggle = $derived(selectedChart === ChartId.Psychrometric);
+  const showZonesToggle = $derived(
+    !!chartMetaById[selectedChart].hasZoneVisibilityToggle,
+  );
 </script>
 
-{#snippet content()}
+<div class="mt-4 border-t border-stone-200 pt-4">
   <header class="flex items-start justify-between gap-4">
-    <div class="min-w-0">
-      {#if title}
-        <Heading tag="h3" class="text-sm font-semibold text-stone-900"
-          >{title}</Heading
-        >
-      {/if}
-      {#if description}
-        <p class="mt-1 text-xs text-stone-500">{description}</p>
-      {/if}
-    </div>
-
+    <div class="min-w-0"></div>
     <div class="flex flex-wrap items-center justify-end gap-2 pr-[24px]">
-      {#if showAxisMenu}
-        <ChartAxisMenu
-          idPrefix={axisMenuIdPrefix}
-          {dynamicXAxis}
-          {dynamicYAxis}
-          {dynamicXAxisOptions}
-          {dynamicYAxisOptions}
-          {baselineInputId}
-          {onSelectBaselineInput}
-          {visibleInputIds}
-          {compareEnabled}
-          {onSelectXAxis}
-          {onSelectYAxis}
-          {lockYAxis}
-          {fieldChartConfig}
-          {chartableOutputs}
-          {defaultBands}
-          {unitSystem}
-          {onSelectOutput}
-          {onApplyBands}
+      {#if showChartControls}
+        <ChartControls
+          idPrefix={controlsIdPrefix}
+          controls={chartControls}
         />
       {/if}
       <div class="flex items-center gap-1.5">
@@ -193,14 +116,4 @@
 
     <ChartLegend zones={legendZones} {legendTitle} />
   </div>
-{/snippet}
-
-{#if embedded}
-  <div class="mt-4 border-t border-stone-200 pt-4">
-    {@render content()}
-  </div>
-{:else}
-  <Card size="none" class="w-full border-stone-300 p-4 shadow-sm">
-    {@render content()}
-  </Card>
-{/if}
+</div>

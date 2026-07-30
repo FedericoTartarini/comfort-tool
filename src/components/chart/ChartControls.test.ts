@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FieldKey } from "../../models/fieldKeys";
 import { ChartMode, ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
-import ChartAxisMenu from "./ChartAxisMenu.svelte";
+import ChartControls from "./ChartControls.svelte";
 
 const outputs = [
   {
@@ -24,32 +24,47 @@ const outputs = [
 
 afterEach(cleanup);
 
-describe("ChartAxisMenu Explore composition", () => {
-  it("shows only declared Display choices alongside the threshold editor", async () => {
+describe("ChartControls Explore composition", () => {
+  it("shows declared axes, display choices, and threshold editor", async () => {
     const user = userEvent.setup();
     const onSelectOutput = vi.fn();
-    render(ChartAxisMenu, {
+    render(ChartControls, {
       idPrefix: "test",
-      dynamicXAxis: FieldKey.DryBulbTemperature,
-      dynamicYAxis: FieldKey.RelativeHumidity,
-      dynamicXAxisOptions: [FieldKey.DryBulbTemperature],
-      dynamicYAxisOptions: [FieldKey.RelativeHumidity],
-      onSelectXAxis: vi.fn(),
-      onSelectYAxis: vi.fn(),
-      fieldChartConfig: {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: ModelOutputKey.Pmv,
-        bands: outputs[0].defaultBands,
+      controls: {
+        baseline: null,
+        axes: {
+          x: {
+            selectedField: FieldKey.DryBulbTemperature,
+            options: [FieldKey.DryBulbTemperature],
+            locked: false,
+            onSelect: vi.fn(),
+          },
+          y: {
+            selectedField: FieldKey.RelativeHumidity,
+            options: [FieldKey.RelativeHumidity],
+            locked: false,
+            onSelect: vi.fn(),
+          },
+        },
+        explore: {
+          config: {
+            mode: ChartMode.Explore,
+            xField: FieldKey.DryBulbTemperature,
+            yField: FieldKey.RelativeHumidity,
+            zOutput: ModelOutputKey.Pmv,
+            bands: outputs[0].defaultBands,
+          },
+          outputs,
+          defaultBands: outputs[0].defaultBands,
+          unitSystem: UnitSystem.SI,
+          onSelectOutput,
+          onApplyBands: vi.fn(() => true),
+        },
       },
-      chartableOutputs: outputs,
-      defaultBands: outputs[0].defaultBands,
-      unitSystem: UnitSystem.SI,
-      onSelectOutput,
-      onApplyBands: vi.fn(() => true),
     });
 
+    expect(screen.getByRole("button", { name: "Select chart X axis" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Select chart Y axis" })).toBeTruthy();
     expect(screen.getByText("Display:")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Edit chart thresholds" })).toBeTruthy();
     expect(screen.queryByText("UTCI")).toBeNull();

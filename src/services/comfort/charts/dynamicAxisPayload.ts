@@ -14,6 +14,10 @@ export interface DynamicAxisPayloadAdapter<TPayload> {
     field: FieldKeyType,
     valueSi: number,
   ) => void;
+  getAxisValue: (
+    payload: TPayload,
+    field: FieldKeyType,
+  ) => number;
   getOperativeTemperature: (payload: TPayload) => number;
   getTemperatureComponentRange: (
     field: TemperatureComponentField,
@@ -25,7 +29,6 @@ type TemperatureComponentField =
   | typeof FieldKey.MeanRadiantTemperature;
 
 const SOLVER_TOLERANCE = 1e-6;
-const SOLVER_MAX_ITERATIONS = 48;
 
 function isTemperatureComponent(
   field: FieldKeyType,
@@ -49,75 +52,43 @@ function solveTemperatureComponent<TPayload>(
   adapter: DynamicAxisPayloadAdapter<TPayload>,
 ): number | null {
   const range = adapter.getTemperatureComponentRange(field);
-  let low = Math.min(range.min, range.max);
-  let high = Math.max(range.min, range.max);
+  const low = Math.min(range.min, range.max);
+  const high = Math.max(range.min, range.max);
+  const originalValue = adapter.getAxisValue(payload, field);
 
-  const evaluate = (valueSi: number): number => {
-    adapter.setAxisValue(payload, field, valueSi);
-    return adapter.getOperativeTemperature(payload);
-  };
+  try {
+    const evaluate = (valueSi: number): number => {
+      adapter.setAxisValue(payload, field, valueSi);
+      return adapter.getOperativeTemperature(payload);
+    };
 
-  let lowValue = evaluate(low);
-  let highValue = evaluate(high);
-  if (!Number.isFinite(lowValue) || !Number.isFinite(highValue)) {
-    return null;
-  }
-
-  let lowDelta = lowValue - targetOperativeTemperatureSi;
-  let highDelta = highValue - targetOperativeTemperatureSi;
-  if (Math.abs(lowDelta) <= SOLVER_TOLERANCE) {
-    return low;
-  }
-  if (Math.abs(highDelta) <= SOLVER_TOLERANCE) {
-    return high;
-  }
-  if (lowDelta * highDelta > 0) {
-    return null;
-  }
-
-  // Operative temperature is linear in the current models. This estimate solves
-  // the normal case in one step; bisection below keeps the adapter contract safe
-  // if a future implementation is monotonic but non-linear.
-  if (Math.abs(highValue - lowValue) > SOLVER_TOLERANCE) {
-    const estimate = low +
-      ((targetOperativeTemperatureSi - lowValue) * (high - low)) /
-        (highValue - lowValue);
-    if (estimate >= low && estimate <= high) {
-      const estimateValue = evaluate(estimate);
-      if (
-        Number.isFinite(estimateValue) &&
-        Math.abs(estimateValue - targetOperativeTemperatureSi) <= SOLVER_TOLERANCE
-      ) {
-        return estimate;
-      }
-    }
-  }
-
-  for (let iteration = 0; iteration < SOLVER_MAX_ITERATIONS; iteration += 1) {
-    const midpoint = (low + high) / 2;
-    const midpointValue = evaluate(midpoint);
-    if (!Number.isFinite(midpointValue)) {
+    const lowValue = evaluate(low);
+    const highValue = evaluate(high);
+    const valueDelta = highValue - lowValue;
+    if (
+      !Number.isFinite(lowValue) ||
+      !Number.isFinite(highValue) ||
+      !Number.isFinite(valueDelta) ||
+      Math.abs(valueDelta) <= SOLVER_TOLERANCE
+    ) {
       return null;
     }
 
-    const midpointDelta = midpointValue - targetOperativeTemperatureSi;
-    if (Math.abs(midpointDelta) <= SOLVER_TOLERANCE) {
-      return midpoint;
+    const resolved = low +
+      ((targetOperativeTemperatureSi - lowValue) * (high - low)) /
+        valueDelta;
+    if (!Number.isFinite(resolved) || resolved < low || resolved > high) {
+      return null;
     }
 
-    if (lowDelta * midpointDelta <= 0) {
-      high = midpoint;
-      highDelta = midpointDelta;
-    } else {
-      low = midpoint;
-      lowDelta = midpointDelta;
-    }
+    const resolvedValue = evaluate(resolved);
+    return Number.isFinite(resolvedValue) &&
+      Math.abs(resolvedValue - targetOperativeTemperatureSi) <= SOLVER_TOLERANCE
+      ? resolved
+      : null;
+  } finally {
+    adapter.setAxisValue(payload, field, originalValue);
   }
-
-  const resolved = Math.abs(lowDelta) <= Math.abs(highDelta) ? low : high;
-  return Math.min(Math.abs(lowDelta), Math.abs(highDelta)) <= SOLVER_TOLERANCE * 10
-    ? resolved
-    : null;
 }
 
 /**
@@ -175,8 +146,18 @@ export function applyDynamicAxisCoordinates<TPayload>(
     return false;
   }
 
-  adapter.setAxisValue(payload, solvedField, solvedValue);
-  return Math.abs(
-    adapter.getOperativeTemperature(payload) - operativeCoordinate.valueSi,
-  ) <= SOLVER_TOLERANCE * 10;
+  const previousSolvedValue = adapter.getAxisValue(payload, solvedField);
+  let postConditionSatisfied = false;
+  try {
+    adapter.setAxisValue(payload, solvedField, solvedValue);
+    const operativeTemperature = adapter.getOperativeTemperature(payload);
+    postConditionSatisfied = Number.isFinite(operativeTemperature) && Math.abs(
+      operativeTemperature - operativeCoordinate.valueSi,
+    ) <= SOLVER_TOLERANCE;
+    return postConditionSatisfied;
+  } finally {
+    if (!postConditionSatisfied) {
+      adapter.setAxisValue(payload, solvedField, previousSolvedValue);
+    }
+  }
 }

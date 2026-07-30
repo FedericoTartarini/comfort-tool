@@ -20,7 +20,7 @@ import {
 } from "../../models/inputSlots";
 import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { allFieldOrder, fieldMetaByKey } from "../../models/inputFieldsMeta";
 import type { InputControlId as InputControlIdType } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
@@ -53,10 +53,11 @@ import {
   type ShareStateSnapshot,
 } from "./shareState";
 import type {
-  CalculationCacheStatus,
+  ChartControlsViewModel,
   ComfortToolController,
   InputState,
   ModelCalculationCacheByModelState,
+  ModelCalculationCache,
   ModelOptionsByModelState,
   SelectedChartByModelState,
   ComfortToolStateSlice,
@@ -134,12 +135,10 @@ function createEmptyInputResultRecord<T>(): Record<InputIdType, T | null> {
  * Creates an empty calculation cache container for a comfort model.
  * @returns An initialized calculation cache object.
  */
-function createEmptyCalculationCache<ResultType>(): {
-  status: CalculationCacheStatus;
-  lastVisibleInputIds: InputIdType[];
-  resultsByInput: Record<InputIdType, ResultType | null>;
-  chartSource: null;
-} {
+function createEmptyCalculationCache<
+  ResultType,
+  ChartSourceType,
+>(): ModelCalculationCache<ResultType, ChartSourceType> {
   return {
     status: "empty",
     lastVisibleInputIds: [InputId.Input1],
@@ -154,7 +153,7 @@ function createEmptyCalculationCache<ResultType>(): {
  */
 function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
-    accumulator[modelId] = createEmptyCalculationCache();
+    accumulator[modelId] = createEmptyCalculationCache<unknown, unknown>();
     return accumulator;
   }, {} as ModelCalculationCacheByModelState);
 }
@@ -243,8 +242,11 @@ export function createComfortToolState(): ComfortToolController {
     };
   }
 
-  function getActiveModelConfig(): ComfortModelDefinition<any, any> {
-    return getComfortModelConfig(state.ui.selectedModel) as ComfortModelDefinition<any, any>;
+  function getActiveModelConfig(): ComfortModelDefinition<unknown, unknown> {
+    return getComfortModelConfig(state.ui.selectedModel) as unknown as ComfortModelDefinition<
+      unknown,
+      unknown
+    >;
   }
 
   function getCurrentSelectedChartId() {
@@ -278,23 +280,6 @@ export function createComfortToolState(): ComfortToolController {
           state.inputsByInput[inputId as InputIdType][fieldKey as FieldKeyType] = value;
         });
       });
-    }
-  }
-
-  /**
-   * Triggers the model-specific synchronization hook.
-   * Useful for enforcing constraints like tr=tdb when a specific chart is selected.
-   */
-  function synchronizeActiveModel() {
-    const config = getActiveModelConfig();
-    if (!config.synchronize) {
-      return;
-    }
-
-    const context = getModelContext(state.ui.selectedModel);
-    const patch = config.synchronize(context);
-    if (patch) {
-      applyBehaviorPatch(state.ui.selectedModel, patch);
     }
   }
 
@@ -355,6 +340,48 @@ export function createComfortToolState(): ComfortToolController {
     )?.defaultBands ?? [];
   }
 
+  function getChartControlsViewModel(): ChartControlsViewModel {
+    const selectedChart = getCurrentSelectedChartId();
+    const fieldChartConfig = getCurrentFieldChartConfig();
+    const chartableOutputs = getCurrentChartableOutputs();
+
+    return {
+      baseline: state.ui.compareEnabled
+        ? {
+            selectedInputId: state.ui.chartBaselineInputId,
+            visibleInputIds: getVisibleInputIds(),
+            onSelect: setChartBaselineInputId,
+          }
+        : null,
+      axes: chartMetaById[selectedChart].isDynamic
+        ? {
+            x: {
+              selectedField: state.ui.dynamicXAxis,
+              options: getDynamicXAxisOptions(),
+              locked: false,
+              onSelect: setDynamicXAxis,
+            },
+            y: {
+              selectedField: state.ui.dynamicYAxis,
+              options: getDynamicYAxisOptions(),
+              locked: getActiveModelConfig().lockYAxisChartIds.includes(selectedChart),
+              onSelect: setDynamicYAxis,
+            },
+          }
+        : null,
+      explore: fieldChartConfig && chartableOutputs.length > 0
+        ? {
+            config: fieldChartConfig,
+            outputs: chartableOutputs,
+            defaultBands: getCurrentExploreDefaultBands(),
+            unitSystem: state.ui.unitSystem,
+            onSelectOutput: setExploreOutput,
+            onApplyBands: setExploreBands,
+          }
+        : null,
+    };
+  }
+
   const selectors = {
     getVisibleInputIds,
     getInputControls: () => {
@@ -383,11 +410,14 @@ export function createComfortToolState(): ComfortToolController {
         getCurrentSelectedChartId(),
         cache.chartSource,
         cache.resultsByInput,
-        state.ui.unitSystem,
-        getCurrentFieldChartConfig(),
+        {
+          unitSystem: state.ui.unitSystem,
+          dynamicAxes: getCurrentDynamicAxisPair(),
+          baselineInputId: state.ui.chartBaselineInputId,
+          fieldChartConfig: getCurrentFieldChartConfig(),
+        },
       );
     },
-    getCurrentBaselineInputId: () => state.ui.chartBaselineInputId,
     getCurrentChartEmptyMessage: () => chartMetaById[getCurrentSelectedChartId()].emptyMessage,
     getCurrentChartOptions: () => getActiveModelConfig().chartIds.map((chartId) => ({
       name: chartMetaById[chartId].name,
@@ -396,7 +426,6 @@ export function createComfortToolState(): ComfortToolController {
     getCurrentSelectedChart: () => getCurrentSelectedChartId(),
     getCurrentChartHeightClass: () => chartMetaById[getCurrentSelectedChartId()].heightClass,
     getCurrentCacheStatus: () => getCurrentModelCache().status,
-    getCurrentChartLockYAxis: () => getActiveModelConfig().lockYAxisChartIds.includes(getCurrentSelectedChartId()),
     getCurrentChartLegendZones: () => {
       const config = getActiveModelConfig();
       const fieldChartConfig = getCurrentFieldChartConfig();
@@ -419,11 +448,7 @@ export function createComfortToolState(): ComfortToolController {
       }
       return getActiveModelConfig().legendTitle;
     },
-    getDynamicXAxisOptions,
-    getDynamicYAxisOptions,
-    getCurrentFieldChartConfig,
-    getCurrentChartableOutputs,
-    getCurrentExploreDefaultBands,
+    getChartControlsViewModel,
     getPendingModelSwitch,
   };
 
@@ -440,17 +465,16 @@ export function createComfortToolState(): ComfortToolController {
     ensureValidDynamicAxes(config);
     state.ui.exploreChart = seedExploreChartState(config);
 
-    synchronizeActiveModel();
-
     scheduleCalculationInternal({ immediate: true });
   }
 
-  function ensureValidDynamicAxes(config: ComfortModelDefinition<any, any>) {
+  function ensureValidDynamicAxes(
+    config: Pick<
+      ComfortModelDefinition<never, never>,
+      "dynamicAxisFields" | "defaultDynamicAxes"
+    >,
+  ) {
     const pair = normalizeDynamicAxisPair(config, getCurrentDynamicAxisPair());
-    if (!pair) {
-      return;
-    }
-
     state.ui.dynamicXAxis = pair.xAxis;
     state.ui.dynamicYAxis = pair.yAxis;
   }
@@ -564,11 +588,6 @@ export function createComfortToolState(): ComfortToolController {
     if (chartMetaById[nextChart].isDynamic) {
       ensureValidDynamicAxes(getActiveModelConfig());
     }
-
-    synchronizeActiveModel();
-
-    invalidateModel(state.ui.selectedModel);
-    scheduleCalculationInternal({ immediate: true });
   }
 
   /**
@@ -670,8 +689,6 @@ export function createComfortToolState(): ComfortToolController {
 
     state.ui.dynamicXAxis = pair.xAxis;
     state.ui.dynamicYAxis = pair.yAxis;
-    invalidateAllModels();
-    scheduleCalculationInternal({ immediate: true });
   }
 
   function setDynamicYAxis(fieldKey: FieldKeyType) {
@@ -687,8 +704,6 @@ export function createComfortToolState(): ComfortToolController {
 
     state.ui.dynamicXAxis = pair.xAxis;
     state.ui.dynamicYAxis = pair.yAxis;
-    invalidateAllModels();
-    scheduleCalculationInternal({ immediate: true });
   }
 
   function setExploreOutput(outputKey: ModelOutputKey) {
@@ -718,8 +733,6 @@ export function createComfortToolState(): ComfortToolController {
 
   function setChartBaselineInputId(inputId: InputIdType) {
     state.ui.chartBaselineInputId = inputId;
-    invalidateAllModels();
-    scheduleCalculationInternal({ immediate: true });
   }
 
   /**
@@ -740,8 +753,6 @@ export function createComfortToolState(): ComfortToolController {
     }
 
     applyBehaviorPatch(state.ui.selectedModel, patch);
-
-    synchronizeActiveModel();
 
     invalidateAllModels();
     scheduleCalculationInternal();

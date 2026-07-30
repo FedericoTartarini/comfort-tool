@@ -19,10 +19,10 @@ interface ExploreModelCapabilities {
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
   dynamicAxisFields: readonly FieldKeyType[];
-  dynamicAxisPairValidator?: (
-    xAxis: FieldKeyType,
-    yAxis: FieldKeyType,
-  ) => boolean;
+  defaultDynamicAxes: {
+    readonly xAxis: FieldKeyType;
+    readonly yAxis: FieldKeyType;
+  };
 }
 
 export function getDeclaredExploreOutput(
@@ -100,8 +100,7 @@ export function buildExploreFieldChartConfig(
     !state ||
     !config.modes.includes(ChartMode.Explore) ||
     !getDeclaredExploreOutput(config, state.zOutput) ||
-    !isDynamicAxisPairValid(config, { xAxis: xField, yAxis: yField }) ||
-    !validateNumericBands(state.bands).valid
+    !isDynamicAxisPairValid(config, { xAxis: xField, yAxis: yField })
   ) {
     return null;
   }
@@ -111,6 +110,6 @@ export function buildExploreFieldChartConfig(
     xField,
     yField,
     zOutput: state.zOutput,
-    bands: cloneNumericBands(state.bands),
+    bands: state.bands,
   };
 }

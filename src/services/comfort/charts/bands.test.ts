@@ -39,11 +39,45 @@ describe("numeric Explore bands", () => {
     expect(validateNumericBands([
       { min: 1, max: 2, label: "Later", color: "#000000" },
       { min: 0, max: 1, label: "Earlier", color: "#ffffff" },
-    ]).issues.map(({ code }) => code)).toContain("unsorted");
+    ]).issues.map(({ code }) => code)).toEqual(["unsorted"]);
     expect(validateNumericBands([
       { min: 0, max: 2, label: "One", color: "#000000" },
       { min: 1, max: 3, label: "Two", color: "#ffffff" },
     ]).issues.map(({ code }) => code)).toContain("overlap");
+  });
+
+  it("checks unsorted drafts for geometric overlap after ordering valid bands", () => {
+    const unsortedNonOverlapping = [
+      { min: 10, max: Infinity, label: "High", color: "#ff0000" },
+      { min: -Infinity, max: 0, label: "Low", color: "#0000ff" },
+      { min: 0, max: 10, label: "Middle", color: "#00ff00" },
+    ];
+    const unsortedOverlapping = [
+      { min: 10, max: Infinity, label: "High", color: "#ff0000" },
+      { min: -Infinity, max: 11, label: "Low", color: "#0000ff" },
+    ];
+
+    expect(validateNumericBands(
+      unsortedNonOverlapping,
+      { requireSorted: false },
+    )).toEqual({ valid: true, issues: [] });
+    expect(validateNumericBands(
+      unsortedOverlapping,
+      { requireSorted: false },
+    ).issues.map(({ code }) => code)).toEqual(["overlap"]);
+  });
+
+  it("does not report overlap for bands with invalid geometry", () => {
+    const validation = validateNumericBands([
+      { min: NaN, max: 10, label: "NaN", color: "#000000" },
+      { min: 0, max: 5, label: "Valid", color: "#ffffff" },
+      { min: 4, max: 3, label: "Reversed", color: "#ff0000" },
+    ], { requireSorted: false });
+
+    expect(validation.issues.map(({ code }) => code)).toEqual([
+      "invalid-edge",
+      "invalid-range",
+    ]);
   });
 
   it("allows only semantic lower and upper infinities", () => {

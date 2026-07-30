@@ -13,19 +13,15 @@
   import type { ResultSectionViewModel } from "../state/comfortTool/types";
 
   interface Props {
-    activeInputId: InputIdType;
     visibleInputIds: InputIdType[];
     resultSections: ResultSectionViewModel[];
-    errorMessage: string;
     isLoading: boolean;
     embedded?: boolean;
   }
 
   let {
-    activeInputId,
     visibleInputIds,
     resultSections,
-    errorMessage,
     isLoading,
     embedded = false,
   }: Props = $props();

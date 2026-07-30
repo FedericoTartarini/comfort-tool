@@ -5,7 +5,7 @@
  * Orchestrates field value synchronization, unit conversions, and the management 
  * of advanced option menus for complex comfort model parameters.
  */
-import { ChartId } from "../../../models/chartOptions";
+import { chartMetaById } from "../../../models/chartOptions";
 import {
   DerivedInputId,
   FieldKey,
@@ -226,7 +226,7 @@ function buildRangeText(
 }
 
 /**
- * Build the default presentation for a field. Used as a fallback for other behaviors.
+ * Build the model-specific default presentation for a field.
  * Supports model-specific min/max overrides.
  */
 export function buildDefaultPresentation(
@@ -624,13 +624,8 @@ export function createTemperatureControlBehavior(
       // Get the temperature mode from the control options (e.g., Operative or Dry Bulb).
       const temperatureMode = normalizeControlOptions(context.options)[OptionKey.TemperatureMode];
       // If the selected chart is not one of the main comfort charts, and the temperature mode is not Operative, return null.
-      const isComfortChart = 
-        context.selectedChartId === ChartId.Psychrometric ||
-        context.selectedChartId === ChartId.Stress ||
-        context.selectedChartId === ChartId.Adaptive ||
-        context.selectedChartId === ChartId.PmvDynamic ||
-        context.selectedChartId === ChartId.UtciDynamic ||
-        context.selectedChartId === ChartId.AdaptiveDynamic;
+      const isComfortChart = !!chartMetaById[context.selectedChartId]
+        .supportsTemperatureInputMenu;
 
       if (!isComfortChart && temperatureMode !== TemperatureMode.Operative) {
         // Return null if the temperature mode is not Operative and the selected chart is not a comfort chart.

@@ -15,68 +15,40 @@ const fields = [
   FieldKey.RelativeAirSpeed,
 ] as const;
 
-const adaptiveLikeConfig = {
+const config = {
   dynamicAxisFields: fields,
   defaultDynamicAxes: {
     xAxis: FieldKey.DryBulbTemperature,
     yAxis: FieldKey.MeanRadiantTemperature,
   },
-  dynamicAxisPairValidator: (xAxis: string, yAxis: string) => (
-    !(
-      (xAxis === FieldKey.OperativeTemperature && (
-        yAxis === FieldKey.DryBulbTemperature ||
-        yAxis === FieldKey.MeanRadiantTemperature
-      )) ||
-      (yAxis === FieldKey.OperativeTemperature && (
-        xAxis === FieldKey.DryBulbTemperature ||
-        xAxis === FieldKey.MeanRadiantTemperature
-      ))
-    )
-  ),
 };
 
 describe("dynamicAxes", () => {
-  it("validates supported, distinct, model-compatible pairs", () => {
-    expect(isDynamicAxisPairValid(adaptiveLikeConfig, {
+  it("validates supported, distinct pairs", () => {
+    expect(isDynamicAxisPairValid(config, {
       xAxis: FieldKey.DryBulbTemperature,
       yAxis: FieldKey.MeanRadiantTemperature,
     })).toBe(true);
-    expect(isDynamicAxisPairValid(adaptiveLikeConfig, {
+    expect(isDynamicAxisPairValid(config, {
       xAxis: FieldKey.DryBulbTemperature,
       yAxis: FieldKey.OperativeTemperature,
-    })).toBe(false);
-    expect(isDynamicAxisPairValid(adaptiveLikeConfig, {
+    })).toBe(true);
+    expect(isDynamicAxisPairValid(config, {
       xAxis: FieldKey.RelativeHumidity,
       yAxis: FieldKey.MeanRadiantTemperature,
     })).toBe(false);
   });
 
-  it("normalizes with the declared default before legacy fallbacks", () => {
-    expect(normalizeDynamicAxisPair(adaptiveLikeConfig, {
+  it("normalizes every invalid pair to the declared default", () => {
+    expect(normalizeDynamicAxisPair(config, {
       xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.OperativeTemperature,
+      yAxis: FieldKey.DryBulbTemperature,
     })).toEqual({
       xAxis: FieldKey.DryBulbTemperature,
       yAxis: FieldKey.MeanRadiantTemperature,
     });
 
-    const preserveYConfig = {
-      dynamicAxisFields: [
-        FieldKey.DryBulbTemperature,
-        FieldKey.MeanRadiantTemperature,
-        FieldKey.RelativeAirSpeed,
-      ],
-      dynamicAxisPairValidator: (xAxis: string) => xAxis === FieldKey.RelativeAirSpeed,
-    };
-    expect(normalizeDynamicAxisPair(preserveYConfig, {
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.MeanRadiantTemperature,
-    })).toEqual({
-      xAxis: FieldKey.RelativeAirSpeed,
-      yAxis: FieldKey.MeanRadiantTemperature,
-    });
-
-    expect(normalizeDynamicAxisPair(adaptiveLikeConfig, {
+    expect(normalizeDynamicAxisPair(config, {
       xAxis: FieldKey.RelativeHumidity,
       yAxis: FieldKey.WindSpeed,
     })).toEqual({
@@ -85,14 +57,14 @@ describe("dynamicAxes", () => {
     });
   });
 
-  it("keeps same-field selection as a swap and rejects incompatible actions", () => {
+  it("keeps same-field selection as a swap and rejects undeclared fields", () => {
     const pair = {
       xAxis: FieldKey.RelativeAirSpeed,
       yAxis: FieldKey.OperativeTemperature,
     };
 
     expect(resolveDynamicAxisSelection(
-      adaptiveLikeConfig,
+      config,
       pair,
       "x",
       FieldKey.OperativeTemperature,
@@ -101,24 +73,35 @@ describe("dynamicAxes", () => {
       yAxis: FieldKey.RelativeAirSpeed,
     });
     expect(resolveDynamicAxisSelection(
-      adaptiveLikeConfig,
+      config,
       pair,
       "x",
       FieldKey.DryBulbTemperature,
+    )).toEqual({
+      xAxis: FieldKey.DryBulbTemperature,
+      yAxis: FieldKey.OperativeTemperature,
+    });
+    expect(resolveDynamicAxisSelection(
+      config,
+      pair,
+      "x",
+      FieldKey.RelativeHumidity,
     )).toBeNull();
   });
 
-  it("filters each axis menu through the pair validator", () => {
+  it("offers every declared field on each axis", () => {
     const pair = {
       xAxis: FieldKey.RelativeAirSpeed,
       yAxis: FieldKey.OperativeTemperature,
     };
 
-    expect(getDynamicAxisOptions(adaptiveLikeConfig, pair, "x")).toEqual([
+    expect(getDynamicAxisOptions(config, pair, "x")).toEqual([
+      FieldKey.DryBulbTemperature,
+      FieldKey.MeanRadiantTemperature,
       FieldKey.OperativeTemperature,
       FieldKey.RelativeAirSpeed,
     ]);
-    expect(getDynamicAxisOptions(adaptiveLikeConfig, pair, "y")).toEqual([
+    expect(getDynamicAxisOptions(config, pair, "y")).toEqual([
       FieldKey.DryBulbTemperature,
       FieldKey.MeanRadiantTemperature,
       FieldKey.OperativeTemperature,

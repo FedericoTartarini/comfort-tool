@@ -7,8 +7,12 @@ async function selectDropdownOption(
 ) {
   const trigger = page.getByRole("button", { name: triggerName });
   await trigger.click();
-  await page.getByRole("button", { name: optionName, exact: true }).click();
-  await trigger.click();
+  const option = page.getByRole("button", { name: optionName, exact: true });
+  await expect(option).toBeVisible();
+  await option.click();
+  await expect(trigger).toContainText(optionName);
+  await page.mouse.click(1, 1);
+  await expect(option).toBeHidden();
 }
 
 async function expectChartAxes(

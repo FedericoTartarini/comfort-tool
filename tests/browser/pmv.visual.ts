@@ -49,11 +49,14 @@ async function selectDropdownOption(
   triggerName: string,
   optionName: string,
 ) {
-  await page.getByRole("button", { name: triggerName }).click();
-  await page.getByRole("button", { name: optionName, exact: true }).click();
-  // Flowbite keeps these dropdowns open after choosing an item. Toggle the
-  // same trigger so the screenshot contains only the chart under test.
-  await page.getByRole("button", { name: triggerName }).click();
+  const trigger = page.getByRole("button", { name: triggerName });
+  await trigger.click();
+  const option = page.getByRole("button", { name: optionName, exact: true });
+  await expect(option).toBeVisible();
+  await option.click();
+  await expect(trigger).toContainText(optionName);
+  await page.mouse.click(1, 1);
+  await expect(option).toBeHidden();
 }
 
 async function selectModel(page: Page, model: PmvModel) {
@@ -121,6 +124,61 @@ async function hoverPlotCoordinate(
   );
 }
 
+async function findGridXForOutput(
+  plot: Locator,
+  outputValue: number,
+  yValue: number,
+): Promise<number> {
+  return plot.evaluate((element, target) => {
+    const traces = (element as HTMLElement & {
+      data?: Array<{
+        contours?: { operation?: string; type?: string };
+        x?: number[];
+        y?: number[];
+        z?: number[][];
+      }>;
+    }).data ?? [];
+    const trace = traces.find(({ contours, z }) => (
+      contours?.type === "constraint" && contours.operation !== "=" && z
+    ));
+    if (!trace?.x || !trace.y || !trace.z) {
+      throw new Error("Constraint grid is not ready");
+    }
+
+    const upperYIndex = trace.y.findIndex((value) => value >= target.yValue);
+    const lowerYIndex = Math.max(0, upperYIndex - 1);
+    if (upperYIndex < 0) {
+      throw new Error(`Y value ${target.yValue} is outside the constraint grid`);
+    }
+    const ySpan = trace.y[upperYIndex] - trace.y[lowerYIndex];
+    const yFraction = ySpan === 0
+      ? 0
+      : (target.yValue - trace.y[lowerYIndex]) / ySpan;
+    const outputAtY = trace.x.map((_, xIndex) => (
+      trace.z![lowerYIndex][xIndex]
+      + (trace.z![upperYIndex][xIndex] - trace.z![lowerYIndex][xIndex]) * yFraction
+    ));
+
+    for (let upperXIndex = 1; upperXIndex < outputAtY.length; upperXIndex += 1) {
+      const lowerValue = outputAtY[upperXIndex - 1];
+      const upperValue = outputAtY[upperXIndex];
+      if (
+        Number.isFinite(lowerValue)
+        && Number.isFinite(upperValue)
+        && (lowerValue - target.outputValue) * (upperValue - target.outputValue) <= 0
+      ) {
+        const fraction = upperValue === lowerValue
+          ? 0
+          : (target.outputValue - lowerValue) / (upperValue - lowerValue);
+        return trace.x[upperXIndex - 1]
+          + (trace.x[upperXIndex] - trace.x[upperXIndex - 1]) * fraction;
+      }
+    }
+
+    throw new Error(`Output ${target.outputValue} is outside the constraint grid`);
+  }, { outputValue, yValue });
+}
+
 async function openTargetPmvChart(
   page: Page,
   {
@@ -150,7 +208,10 @@ async function openTargetPmvChart(
   }
 
   const plot = page.getByTestId("comfort-chart-plot");
-  await waitForTrace(plot, `${display} bands hover`);
+  await waitForTrace(
+    plot,
+    `${display} bands hover`,
+  );
   await waitForXAxisTitle(plot, useIpUnits ? "°F" : "°C");
 
   return {
@@ -232,9 +293,9 @@ test.describe("PMV visual regression", () => {
 
     await hoverPlotCoordinate(page, plot, 28, 50);
     await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
-    await expect(hoverLayer).toContainText(/Relative humidity: \d+\.\d{2} %/);
-    await expect(hoverLayer).toContainText(/Zone: \S+/);
-    await expect(hoverLayer).toContainText(/PMV: -?\d+\.\d{2}/);
+    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
+    await expect(hoverLayer).toContainText("Zone: Neutral");
+    await expect(hoverLayer).toContainText(/PMV: 0\.\d{2}/);
     await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
   });
 
@@ -289,6 +350,24 @@ test.describe("PMV visual regression", () => {
         contours?.operation === "=" && contours.value === -2.25
       ));
     })).toBe(true);
+
+    const hoverLayer = plot.locator(".hoverlayer");
+    const gapX = await findGridXForOutput(plot, -2.375, 50);
+    await hoverPlotCoordinate(page, plot, gapX, 50);
+    await expect(hoverLayer).toContainText(/Air temperature: -?\d+\.\d °C/);
+    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
+    await expect(hoverLayer).toContainText("Zone: Unclassified");
+    await expect(hoverLayer).toContainText(/PMV: -2\.\d{2}/);
+    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
+
+    const adjacentBandX = await findGridXForOutput(plot, -2.1, 50);
+    await hoverPlotCoordinate(page, plot, adjacentBandX, 50);
+    await expect(hoverLayer).toContainText(/Air temperature: -?\d+\.\d °C/);
+    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
+    await expect(hoverLayer).toContainText("Zone: Cool");
+    await expect(hoverLayer).toContainText(/PMV: -2\.\d{2}/);
+    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
+
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-si-gap.png");
   });
