@@ -83,6 +83,37 @@ export interface ExploreChartState {
   bands: NumericBand[];
 }
 
+export interface BaselineControl {
+  selectedInputId: InputIdType;
+  visibleInputIds: InputIdType[];
+  onSelect: (inputId: InputIdType) => void;
+}
+
+export interface AxisControl {
+  selectedField: FieldKeyType;
+  options: FieldKeyType[];
+  locked: boolean;
+  onSelect: (fieldKey: FieldKeyType) => void;
+}
+
+export interface ExploreControls {
+  config: ExploreFieldChartConfig;
+  outputs: readonly ModelOutput[];
+  defaultBands: readonly NumericBand[];
+  unitSystem: UnitSystemType;
+  onSelectOutput: (outputKey: ModelOutputKey) => void;
+  onApplyBands: (bands: readonly NumericBand[]) => boolean;
+}
+
+export interface ChartControlsViewModel {
+  baseline: BaselineControl | null;
+  axes: {
+    x: AxisControl;
+    y: AxisControl;
+  } | null;
+  explore: ExploreControls | null;
+}
+
 // UI state for the comfort tool.
 export type UiState = {
   selectedModel: ComfortModelType;
@@ -141,14 +172,9 @@ export type ComfortToolSelectors = {
   getCurrentSelectedChart: () => ChartIdType;
   getCurrentChartHeightClass: () => string;
   getCurrentCacheStatus: () => CalculationCacheStatus;
-  getCurrentChartLockYAxis: () => boolean;
   getCurrentChartLegendZones: () => ReadonlyArray<{ label: string; color: string }> | null;
   getCurrentChartLegendTitle: () => string;
-  getDynamicXAxisOptions: () => FieldKeyType[];
-  getDynamicYAxisOptions: () => FieldKeyType[];
-  getCurrentFieldChartConfig: () => ExploreFieldChartConfig | null;
-  getCurrentChartableOutputs: () => readonly ModelOutput[];
-  getCurrentExploreDefaultBands: () => readonly NumericBand[];
+  getChartControlsViewModel: () => ChartControlsViewModel;
   getPendingModelSwitch: () => PendingModelSwitch | null;
 };
 

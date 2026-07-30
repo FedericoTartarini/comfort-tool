@@ -19,9 +19,8 @@ interface EvaluateGridOptions {
   ) => GridPointEvaluation | null;
 }
 
-interface GridContourTraceOptions {
+export interface GridContourLayerSpec {
   name: string;
-  grid: GridEvaluationResult;
   colorscale?: PlotColorScaleDto;
   fillcolor?: string;
   contours: PlotContoursDto;
@@ -39,6 +38,10 @@ interface GridContourTraceOptions {
   hoverOnGaps?: boolean;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
+}
+
+interface GridContourTraceOptions extends GridContourLayerSpec {
+  grid: GridEvaluationResult;
 }
 
 export function evaluateGrid({

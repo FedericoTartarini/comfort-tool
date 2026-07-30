@@ -132,32 +132,42 @@ describe("applyDynamicAxisCoordinates", () => {
       trackingAdapter,
     )).toBe(true);
 
-    expect(solvedFieldWrites.slice(-2)).toEqual([25, 30]);
+    expect(solvedFieldWrites).toEqual([0, 50, 30, 25, 30]);
     expect(payload).toEqual({ tdb: 20, tr: 30, speed: 0.1 });
   });
 
-  it.each([
-    {
-      name: "a non-finite endpoint",
-      getOperativeTemperature: (payload: TestPayload) => (
-        payload.tr === 0 ? Number.NaN : (payload.tdb + payload.tr) / 2
-      ),
-    },
-    {
-      name: "a non-finite interior probe",
-      getOperativeTemperature: (payload: TestPayload) => (
-        payload.tr === 25 ? Number.NaN : payload.tr
-      ),
-    },
-  ])("restores the solved field after $name", ({ getOperativeTemperature }) => {
+  it("restores the solved field after a non-finite endpoint", () => {
     const payload = { tdb: 25, tr: 25, speed: 0.1 };
-    const failingAdapter = { ...adapter, getOperativeTemperature };
+    const failingAdapter = {
+      ...adapter,
+      getOperativeTemperature: (currentPayload: TestPayload) => (
+        currentPayload.tr === 0
+          ? Number.NaN
+          : (currentPayload.tdb + currentPayload.tr) / 2
+      ),
+    };
 
     expect(applyDynamicAxisCoordinates(
       payload,
       { field: FieldKey.DryBulbTemperature, valueSi: 20 },
       { field: FieldKey.OperativeTemperature, valueSi: 25 },
       failingAdapter,
+    )).toBe(false);
+    expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
+  });
+
+  it("rejects a zero-slope component and restores the probe", () => {
+    const payload = { tdb: 25, tr: 25, speed: 0.1 };
+    const flatAdapter = {
+      ...adapter,
+      getOperativeTemperature: () => 25,
+    };
+
+    expect(applyDynamicAxisCoordinates(
+      payload,
+      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
+      { field: FieldKey.OperativeTemperature, valueSi: 30 },
+      flatAdapter,
     )).toBe(false);
     expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
   });

@@ -1,15 +1,14 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
 import type {
   PlotAnnotationDto,
-  PlotColorScaleDto,
   PlotContoursDto,
-  PlotLineDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
+import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import {
   findNumericBandIndexForValue,
-  type GridFieldChartConfig,
+  type BandedFieldChartConfig,
   type ModelOutput,
   type ModelOutputKey,
 } from "../../../models/modelCapabilities";
@@ -18,88 +17,108 @@ import {
   convertModelOutputFromSi,
   getModelOutputDisplayMeta,
 } from "../../units";
-import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
-import { buildInputTraceGroups, type BuildInputTraceGroupsOptions } from "./inputPoints";
+import { createFieldAxisScale } from "./axis";
+import { evaluateGrid } from "./gridEngine";
+import {
+  buildInputTraceGroup,
+  type BuildInputTraceGroupsOptions,
+} from "./inputPoints";
 import { buildChartResponse } from "./layout";
-import type { ChartAxisScale, ChartLayoutSpec, GridEvaluationResult, GridPointEvaluation } from "./types";
+import type {
+  ChartAxisScale,
+  ChartLayoutSpec,
+  ChartRange,
+  GridEvaluationResult,
+  GridPointEvaluation,
+} from "./types";
 import {
   buildBandTooltipTrace,
   buildCategoricalBandTraces,
   buildConstraintBandTraces,
+  buildZoneColorscale,
+  buildZoneContourTraces,
 } from "./zoneGrid";
 
-/**
- * Shared field-chart engine contract.
- *
- * Fixed-axis and Explore charts both provide raw SI values to this engine,
- * which owns band assignment, axis display conversion, trace ordering, input
- * overlays, and layout assembly. Geometry is supplied through one of two
- * strategies:
- *
- * 1. grid/contour - evaluate a model over SI x/y points, then build contour traces
- * 2. boundary/region - accept model-built boundary geometry and assemble it with inputs
- *
- * Strategy callbacks receive SI values. Axis scales convert coordinates, while
- * selected model outputs use the centralized output conversion registry.
- */
-export interface GridContourLayerSpec {
-  name: string;
-  colorscale?: PlotColorScaleDto;
-  fillcolor?: string;
-  contours: PlotContoursDto;
-  hovertemplate: string;
-  showscale?: boolean;
-  zmin?: number;
-  zmax?: number;
-  colorbar?: Record<string, unknown>;
-  opacity?: number;
-  line?: PlotLineDto;
-  isZone?: boolean;
-  isBackgroundZone?: boolean;
-  isComfortZone?: boolean;
-  hoverinfo?: string;
-  hoverOnGaps?: boolean;
-  includeText?: boolean;
-  includeHoverMetadata?: boolean;
+const DEFAULT_PAPER_BACKGROUND = "#ffffff";
+const DEFAULT_PLOT_BACKGROUND = "#f8fafc";
+const DEFAULT_GRID_COLOR = "#e2e8f0";
+const DEFAULT_CHART_HEIGHT = 480;
+
+export interface FieldChartAxisSpec {
+  field: FieldKeyType;
+  rangeSi?: ChartRange;
+  points: number;
+  label?: string;
+  units?: string | ((unitSystem: UnitSystemType) => string);
+  decimals?: number;
+  gridColor?: string;
+  showGrid?: boolean;
+  zeroLine?: boolean;
+  showTickLabels?: boolean;
+  toDisplay?: (valueSi: number, unitSystem: UnitSystemType) => number;
+  toSi?: (valueDisplay: number, unitSystem: UnitSystemType) => number;
+}
+
+export interface FieldChartRenderContext {
+  xAxis: ChartAxisScale;
+  yAxis: ChartAxisScale;
+  unitSystem: UnitSystemType;
 }
 
 export interface GridFieldChartStrategy {
+  kind: "grid";
   evaluatePoint: (
     xSi: number,
     ySi: number,
     xIndex: number,
     yIndex: number,
+    context: FieldChartRenderContext,
   ) => GridPointEvaluation | null;
-  layers?: GridContourLayerSpec[];
-  buildTraces?: (grid: GridEvaluationResult) => PlotTraceDto[];
+  renderTraces: (
+    grid: GridEvaluationResult,
+    context: FieldChartRenderContext,
+  ) => PlotTraceDto[];
 }
+
+export interface BoundaryFieldChartStrategy {
+  kind: "boundary";
+  buildTraces: (context: FieldChartRenderContext) => PlotTraceDto[];
+}
+
+export type FieldChartStrategy =
+  | GridFieldChartStrategy
+  | BoundaryFieldChartStrategy;
 
 export type FieldChartInputGroup<TPayload, TResult> = Omit<
   BuildInputTraceGroupsOptions<TPayload, TResult>,
   "xAxis" | "yAxis"
 >;
 
-interface FieldChartAssemblyOptions<TPayload, TResult> {
-  layout: ChartLayoutSpec;
+export interface FieldChartLayoutSpec {
+  title: string;
+  margin: Record<string, number>;
+  paperBgColor?: string;
+  plotBgColor?: string;
+  gridColor?: string;
+  showGrid?: boolean;
+  zeroLine?: boolean;
+  legend?: Record<string, unknown> | null;
+  shapes?: Record<string, unknown>[];
+  height?: number | null;
+}
+
+export interface FieldChartOptions<TPayload, TResult> {
+  unitSystem: UnitSystemType;
+  xAxis: FieldChartAxisSpec;
+  yAxis: FieldChartAxisSpec;
+  strategy: FieldChartStrategy;
+  chartOverlays?: (context: FieldChartRenderContext) => PlotTraceDto[];
+  inputGroups?: (
+    context: FieldChartRenderContext,
+  ) => Array<FieldChartInputGroup<TPayload, TResult>>;
+  layout: FieldChartLayoutSpec;
   source: CalculationSource;
   annotations?: PlotAnnotationDto[];
-  leadingTraces?: PlotTraceDto[];
-  beforeInputTraces?: PlotTraceDto[];
-  inputGroups?: Array<FieldChartInputGroup<TPayload, TResult>>;
-}
-
-interface FieldChartBaseOptions<TPayload, TResult> extends FieldChartAssemblyOptions<TPayload, TResult> {
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
-}
-
-interface FieldChartOptions<TPayload, TResult> extends FieldChartBaseOptions<TPayload, TResult> {
-  strategyTraces?: PlotTraceDto[];
-}
-
-export interface GridContourFieldChartOptions<TPayload, TResult>
-  extends FieldChartBaseOptions<TPayload, TResult> {
-  grid: GridFieldChartStrategy;
 }
 
 export interface BandedGridOutputEvaluation {
@@ -115,24 +134,70 @@ export const GridBandRenderStrategy = {
 export type GridBandRenderStrategy =
   typeof GridBandRenderStrategy[keyof typeof GridBandRenderStrategy];
 
+type RenderText = string | ((context: FieldChartRenderContext) => string);
+
 export interface BandedGridStrategyOptions {
-  config: GridFieldChartConfig;
+  config: BandedFieldChartConfig;
   output: ModelOutput;
-  unitSystem: UnitSystemType;
   evaluateOutput: (
     xSi: number,
     ySi: number,
     zOutput: ModelOutputKey,
     xIndex: number,
     yIndex: number,
+    context: FieldChartRenderContext,
   ) => number | BandedGridOutputEvaluation | null;
   bandLabel?: string;
-  hoverTemplate?: string;
-  hoverTemplateSuffix?: string;
+  hoverTemplate?: RenderText;
+  hoverTemplateSuffix?: RenderText;
   opacity?: number;
   renderStrategy?: GridBandRenderStrategy;
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
+}
+
+export interface ZoneGridStrategyOptions {
+  name: string;
+  zones: ReadonlyArray<{ color: string }>;
+  contours: PlotContoursDto;
+  zmin?: number;
+  zmax?: number;
+  hoverTemplate: RenderText;
+  opacity?: number;
+  isBackgroundZone?: boolean;
+  evaluatePoint: GridFieldChartStrategy["evaluatePoint"];
+}
+
+function createAxis(
+  spec: FieldChartAxisSpec,
+  unitSystem: UnitSystemType,
+): ChartAxisScale {
+  return createFieldAxisScale({
+    field: spec.field,
+    unitSystem,
+    rangeSi: spec.rangeSi,
+    points: spec.points,
+    label: spec.label,
+    units: typeof spec.units === "function" ? spec.units(unitSystem) : spec.units,
+    decimals: spec.decimals,
+    gridColor: spec.gridColor,
+    showGrid: spec.showGrid,
+    zeroLine: spec.zeroLine,
+    showTickLabels: spec.showTickLabels,
+    toDisplay: spec.toDisplay
+      ? (valueSi) => spec.toDisplay!(valueSi, unitSystem)
+      : undefined,
+    toSi: spec.toSi
+      ? (valueDisplay) => spec.toSi!(valueDisplay, unitSystem)
+      : undefined,
+  });
+}
+
+function resolveText(
+  value: RenderText | undefined,
+  context: FieldChartRenderContext,
+  fallback = "",
+): string {
+  if (value === undefined) return fallback;
+  return typeof value === "function" ? value(context) : value;
 }
 
 function normalizeBandedGridOutputEvaluation(
@@ -142,156 +207,183 @@ function normalizeBandedGridOutputEvaluation(
   return typeof evaluation === "number" ? { valueSi: evaluation } : evaluation;
 }
 
-function buildInputGroups<TPayload, TResult>(
-  inputGroups: Array<FieldChartInputGroup<TPayload, TResult>> | undefined,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
+function buildStrategyTraces(
+  strategy: FieldChartStrategy,
+  context: FieldChartRenderContext,
 ): PlotTraceDto[] {
-  return inputGroups?.flatMap((inputGroup) => buildInputTraceGroups({
-    ...inputGroup,
-    xAxis,
-    yAxis,
-  })) ?? [];
-}
-
-function buildGridTraces(
-  gridStrategy: GridFieldChartStrategy,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-): PlotTraceDto[] {
-  const grid = evaluateGrid({
-    xAxis,
-    yAxis,
-    evaluatePoint: gridStrategy.evaluatePoint,
-  });
-
-  if (gridStrategy.buildTraces) {
-    return gridStrategy.buildTraces(grid);
+  if (strategy.kind === "boundary") {
+    return strategy.buildTraces(context);
   }
 
-  return (gridStrategy.layers ?? []).map((layer) => buildGridContourTrace({
-    ...layer,
-    grid,
-  }));
+  const grid = evaluateGrid({
+    xAxis: context.xAxis,
+    yAxis: context.yAxis,
+    evaluatePoint: (xSi, ySi, xIndex, yIndex) => strategy.evaluatePoint(
+      xSi,
+      ySi,
+      xIndex,
+      yIndex,
+      context,
+    ),
+  });
+  return strategy.renderTraces(grid, context);
+}
+
+function resolveLayout(
+  layout: FieldChartLayoutSpec,
+  showLegend: boolean,
+): ChartLayoutSpec {
+  return {
+    title: layout.title,
+    paperBgColor: layout.paperBgColor ?? DEFAULT_PAPER_BACKGROUND,
+    plotBgColor: layout.plotBgColor ?? DEFAULT_PLOT_BACKGROUND,
+    showLegend,
+    margin: layout.margin,
+    gridColor: layout.gridColor ?? DEFAULT_GRID_COLOR,
+    showGrid: layout.showGrid,
+    zeroLine: layout.zeroLine,
+    legend: layout.legend,
+    shapes: layout.shapes,
+    height: layout.height === undefined ? DEFAULT_CHART_HEIGHT : layout.height,
+  };
 }
 
 export function buildFieldChart<TPayload = unknown, TResult = unknown>({
-  xAxis,
-  yAxis,
-  strategyTraces = [],
-  leadingTraces = [],
-  beforeInputTraces = [],
+  unitSystem,
+  xAxis: xAxisSpec,
+  yAxis: yAxisSpec,
+  strategy,
+  chartOverlays,
   inputGroups,
   layout,
   source,
   annotations = [],
 }: FieldChartOptions<TPayload, TResult>): PlotlyChartResponseDto {
+  const context: FieldChartRenderContext = {
+    xAxis: createAxis(xAxisSpec, unitSystem),
+    yAxis: createAxis(yAxisSpec, unitSystem),
+    unitSystem,
+  };
+  const groups = inputGroups?.(context) ?? [];
+  const inputTraces = groups.map((inputGroup) => buildInputTraceGroup({
+    ...inputGroup,
+    xAxis: context.xAxis,
+    yAxis: context.yAxis,
+  }));
+  const inputOverlays = inputTraces.flatMap(({ overlays }) => overlays);
+  const inputMarkers = inputTraces.flatMap(({ markers }) => markers);
+
   return buildChartResponse({
     traces: [
-      ...leadingTraces,
-      ...strategyTraces,
-      ...beforeInputTraces,
-      ...buildInputGroups(inputGroups, xAxis, yAxis),
+      ...buildStrategyTraces(strategy, context),
+      ...(chartOverlays?.(context) ?? []),
+      ...inputOverlays,
+      ...inputMarkers,
     ],
     layout: {
-      ...layout,
-      xAxis,
-      yAxis,
+      ...resolveLayout(
+        layout,
+        inputMarkers.some(({ showlegend }) => showlegend === true),
+      ),
+      xAxis: context.xAxis,
+      yAxis: context.yAxis,
     },
     annotations,
     source,
   });
 }
 
-/**
- * Shared grid chart runner. Model callbacks receive SI axis values.
- */
-export function buildGridFieldChart<TPayload = unknown, TResult = unknown>({
-  xAxis,
-  yAxis,
-  grid,
-  leadingTraces = [],
-  beforeInputTraces = [],
-  inputGroups,
-  layout,
-  source,
-  annotations = [],
-}: GridContourFieldChartOptions<TPayload, TResult>): PlotlyChartResponseDto {
-  return buildFieldChart({
-    xAxis,
-    yAxis,
-    strategyTraces: buildGridTraces(grid, xAxis, yAxis),
-    leadingTraces,
-    beforeInputTraces,
-    inputGroups,
-    layout,
-    source,
-    annotations,
-  });
+export function createZoneGridStrategy({
+  name,
+  zones,
+  contours,
+  zmin,
+  zmax,
+  hoverTemplate,
+  opacity,
+  isBackgroundZone,
+  evaluatePoint,
+}: ZoneGridStrategyOptions): GridFieldChartStrategy {
+  return {
+    kind: "grid",
+    evaluatePoint,
+    renderTraces: (grid, context) => buildZoneContourTraces({
+      name,
+      grid,
+      colorscale: buildZoneColorscale(zones),
+      contours,
+      zmin,
+      zmax,
+      hovertemplate: resolveText(hoverTemplate, context),
+      opacity,
+      isBackgroundZone,
+    }),
+  };
 }
 
-/**
- * Explore-mode grid runner. Model callbacks return one canonical output value
- * plus optional display-only hover metadata; this layer owns half-open band
- * assignment and selected-output conversion.
- */
 export function createBandedGridStrategy({
   config,
   output,
-  unitSystem,
   evaluateOutput,
   bandLabel = "Band",
   hoverTemplate,
-  hoverTemplateSuffix = "",
+  hoverTemplateSuffix,
   opacity,
   renderStrategy = GridBandRenderStrategy.Categorical,
-  xAxis,
-  yAxis,
 }: BandedGridStrategyOptions): GridFieldChartStrategy {
-  const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
-  const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
-  const hovertemplate = hoverTemplate
-    ?? `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${hoverTemplateSuffix}<extra></extra>`;
-
   return {
-    evaluatePoint: (xSi, ySi, xIndex, yIndex) => {
+    kind: "grid",
+    evaluatePoint: (xSi, ySi, xIndex, yIndex, context) => {
       const evaluation = normalizeBandedGridOutputEvaluation(
-        evaluateOutput(xSi, ySi, config.zOutput, xIndex, yIndex),
+        evaluateOutput(xSi, ySi, config.zOutput, xIndex, yIndex, context),
       );
-      if (evaluation === null) {
-        return null;
-      }
-      const valueSi = evaluation.valueSi;
-      const hoverMetadata = [
-        convertModelOutputFromSi(output.key, valueSi, unitSystem),
-        ...(evaluation.additionalHoverMetadata ?? []),
-      ];
-      const bandIndex = findNumericBandIndexForValue(config.bands, valueSi);
+      if (evaluation === null) return null;
+
+      const bandIndex = findNumericBandIndexForValue(config.bands, evaluation.valueSi);
       return {
-        z: valueSi,
+        z: evaluation.valueSi,
         text: bandIndex === undefined ? "Unclassified" : config.bands[bandIndex].label,
-        hoverMetadata,
+        hoverMetadata: [
+          convertModelOutputFromSi(
+            output.key,
+            evaluation.valueSi,
+            context.unitSystem,
+          ),
+          ...(evaluation.additionalHoverMetadata ?? []),
+        ],
       };
     },
-    buildTraces: (grid: GridEvaluationResult) => [
-      ...(renderStrategy === GridBandRenderStrategy.ConstraintContours
-        ? buildConstraintBandTraces({
-          name: `${output.label} bands`,
-          bands: config.bands,
+    renderTraces: (grid, context) => {
+      const { xAxis, yAxis, unitSystem } = context;
+      const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
+      const outputUnits = outputMeta.displayUnits
+        ? ` ${outputMeta.displayUnits}`
+        : "";
+      const resolvedHoverTemplate = resolveText(
+        hoverTemplate,
+        context,
+        `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${resolveText(hoverTemplateSuffix, context)}<extra></extra>`,
+      );
+      return [
+        ...(renderStrategy === GridBandRenderStrategy.ConstraintContours
+          ? buildConstraintBandTraces({
+            name: `${output.label} bands`,
+            bands: config.bands,
+            grid,
+            opacity,
+          })
+          : buildCategoricalBandTraces({
+            name: `${output.label} bands`,
+            bands: config.bands,
+            grid,
+            opacity,
+          })),
+        buildBandTooltipTrace({
+          name: `${output.label} bands hover`,
           grid,
-          opacity,
-        })
-        : buildCategoricalBandTraces({
-          name: `${output.label} bands`,
-          bands: config.bands,
-          grid,
-          opacity,
-        })),
-      buildBandTooltipTrace({
-        name: `${output.label} bands hover`,
-        grid,
-        hovertemplate,
-      }),
-    ],
+          hovertemplate: resolvedHoverTemplate,
+        }),
+      ];
+    },
   };
 }

@@ -5,8 +5,8 @@ import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
 import type {
+  BandedFieldChartConfig,
   ChartBuildContext,
-  GridFieldChartConfig,
   ModelOutput,
 } from "../../../models/modelCapabilities";
 import {
@@ -18,14 +18,13 @@ import {
   convertModelOutputFromSi,
   getModelOutputDisplayMeta,
 } from "../../units";
-import { createFieldAxisScale } from "./axis";
 import {
-  buildGridFieldChart,
+  buildFieldChart,
   createBandedGridStrategy,
   type BandedGridOutputEvaluation,
   type FieldChartInputGroup,
 } from "./chartEngine";
-import { getBaselineInputEntry, shouldShowInputLegend } from "./inputPoints";
+import { getBaselineInputEntry } from "../helpers";
 import type { ChartRange } from "./types";
 
 export interface GridModelChartSource<TPayload> {
@@ -65,7 +64,7 @@ export interface GridModelChartSpec<TPayload extends object, TResult> {
 
 interface GridModelView {
   title: string;
-  config: GridFieldChartConfig;
+  config: BandedFieldChartConfig;
   xRangeSi: ChartRange;
   yRangeSi: ChartRange;
   hoverTemplateSuffix: string;
@@ -94,83 +93,73 @@ function buildGridModelView<TPayload extends object, TResult>(
     throw new Error(`Unsupported grid-model chart output: ${view.config.zOutput}.`);
   }
   const output = spec.output;
-  const xAxis = createFieldAxisScale({
-    field: view.config.xField,
-    unitSystem,
-    rangeSi: view.xRangeSi,
-    points: 300,
-  });
-  const yAxis = createFieldAxisScale({
-    field: view.config.yField,
-    unitSystem,
-    rangeSi: view.yRangeSi,
-    points: 300,
-  });
   const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
   const bandLabel = spec.bandLabel ?? "Band";
   const getResultValue = (result: TResult | null | undefined) => (
     result == null ? undefined : spec.getOutputValue(result)
   );
-  const inputGroup: FieldChartInputGroup<TPayload, TResult> = {
-    inputsMap,
-    resultsByInput,
-    getXSi: (payload) => spec.getAxisValue(payload, view.config.xField),
-    getYSi: (payload) => spec.getAxisValue(payload, view.config.yField),
-    getHovertemplate: ({ inputLabel, result }) => {
-      const valueSi = getResultValue(result);
-      const selectedBandIndex = valueSi === undefined
-        ? undefined
-        : findNumericBandIndexForValue(view.config.bands, valueSi);
-      const selectedBandLabel = selectedBandIndex === undefined
-        ? "Unclassified"
-        : view.config.bands[selectedBandIndex].label;
-
-      return `${inputLabel}<br>${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: ${selectedBandLabel}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${view.hoverTemplateSuffix}<extra></extra>`;
+  return buildFieldChart({
+    unitSystem,
+    xAxis: {
+      field: view.config.xField,
+      rangeSi: view.xRangeSi,
+      points: 300,
     },
-    hoverMetadata: ({ result }) => {
-      const valueSi = getResultValue(result);
-      return [
-        valueSi === undefined
-          ? ""
-          : convertModelOutputFromSi(output.key, valueSi, unitSystem),
-        ...(spec.dynamicHoverExtension?.getMetadata(result, unitSystem) ?? []),
-      ];
+    yAxis: {
+      field: view.config.yField,
+      rangeSi: view.yRangeSi,
+      points: 300,
     },
-  };
-
-  return buildGridFieldChart({
-    xAxis,
-    yAxis,
-    grid: createBandedGridStrategy({
+    strategy: createBandedGridStrategy({
       config: view.config,
       output,
-      unitSystem,
       bandLabel,
       hoverTemplateSuffix: view.hoverTemplateSuffix,
-      xAxis,
-      yAxis,
-      evaluateOutput: (xSi, ySi) => {
+      evaluateOutput: (xSi, ySi, _zOutput, _xIndex, _yIndex, renderContext) => {
         const pointPayload = { ...baselinePayload };
         spec.setAxisValue(pointPayload, view.config.xField, xSi);
         spec.setAxisValue(pointPayload, view.config.yField, ySi);
         const result = spec.evaluate(pointPayload);
         const valueSi = spec.getOutputValue(result);
         const additionalHoverMetadata = spec.dynamicHoverExtension
-          ?.getMetadata(result, unitSystem);
+          ?.getMetadata(result, renderContext.unitSystem);
 
         return additionalHoverMetadata
           ? { valueSi, additionalHoverMetadata } satisfies BandedGridOutputEvaluation
           : valueSi;
       },
     }),
-    inputGroups: [inputGroup],
+    inputGroups: ({ xAxis, yAxis }) => [{
+      inputsMap,
+      resultsByInput,
+      getXSi: (payload) => spec.getAxisValue(payload, view.config.xField),
+      getYSi: (payload) => spec.getAxisValue(payload, view.config.yField),
+      getHovertemplate: ({ inputLabel, result }) => {
+        const valueSi = getResultValue(result);
+        const selectedBandIndex = valueSi === undefined
+          ? undefined
+          : findNumericBandIndexForValue(view.config.bands, valueSi);
+        const selectedBandLabel = selectedBandIndex === undefined
+          ? "Unclassified"
+          : view.config.bands[selectedBandIndex].label;
+
+        return `${inputLabel}<br>${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: ${selectedBandLabel}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${view.hoverTemplateSuffix}<extra></extra>`;
+      },
+      hoverMetadata: ({ result }) => {
+        const valueSi = getResultValue(result);
+        return [
+          valueSi === undefined
+            ? ""
+            : convertModelOutputFromSi(output.key, valueSi, unitSystem),
+          ...(spec.dynamicHoverExtension?.getMetadata(result, unitSystem) ?? []),
+        ];
+      },
+    } satisfies FieldChartInputGroup<TPayload, TResult>],
     layout: {
       title: view.title,
-      height: 480,
       paperBgColor: "rgba(0,0,0,0)",
       plotBgColor: "rgba(0,0,0,0)",
-      showLegend: shouldShowInputLegend(inputsMap),
       margin: { l: 60, r: 24, t: 60, b: 60 },
     },
     source: CalculationSource.JsThermalComfort,
@@ -226,7 +215,6 @@ export function buildGridModelChart<TPayload extends object, TResult>(
       {
         title: spec.fixedView.title,
         config: {
-          mode: ChartMode.Explore,
           xField: spec.fixedView.xField,
           yField: spec.fixedView.yField,
           zOutput: spec.output.key,

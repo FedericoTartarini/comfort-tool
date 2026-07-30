@@ -1,10 +1,8 @@
 import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import type { DynamicAxisPairValidator } from "./modelConfigs";
 
 interface DynamicAxisConfiguration {
   dynamicAxisFields: ReadonlyArray<FieldKeyType>;
   defaultDynamicAxes: DynamicAxisPair;
-  dynamicAxisPairValidator?: DynamicAxisPairValidator;
 }
 
 export interface DynamicAxisPair {
@@ -20,8 +18,7 @@ export function isDynamicAxisPairValid(
 ): boolean {
   return config.dynamicAxisFields.includes(pair.xAxis) &&
     config.dynamicAxisFields.includes(pair.yAxis) &&
-    pair.xAxis !== pair.yAxis &&
-    (config.dynamicAxisPairValidator?.(pair.xAxis, pair.yAxis) ?? true);
+    pair.xAxis !== pair.yAxis;
 }
 
 export function normalizeDynamicAxisPair(

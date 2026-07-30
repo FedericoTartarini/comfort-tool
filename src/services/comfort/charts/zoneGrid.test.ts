@@ -5,7 +5,7 @@ import {
   buildBandTooltipTrace,
   buildConstraintBandTraces,
   buildZoneColorscale,
-  buildZoneContourLayers,
+  buildZoneContourTraces,
 } from "./zoneGrid";
 
 function createGrid(zValues: number[][]): GridEvaluationResult {
@@ -27,8 +27,9 @@ describe("zone grid", () => {
       { color: "#ffffff" },
       { color: "#000000" },
     ]);
-    const layers = buildZoneContourLayers({
+    const traces = buildZoneContourTraces({
       name: "Zones",
+      grid: createGrid([[0, 1]]),
       colorscale,
       zmin: 0,
       zmax: 1,
@@ -48,15 +49,15 @@ describe("zone grid", () => {
       [0.5, "#000000"],
       [1, "#000000"],
     ]);
-    expect(layers).toHaveLength(2);
-    expect(layers[0].isBackgroundZone).toBe(true);
-    expect(layers[1]).toEqual(expect.objectContaining({
+    expect(traces).toHaveLength(2);
+    expect(traces[0].isBackgroundZone).toBe(true);
+    expect(traces[1]).toEqual(expect.objectContaining({
       name: "Boundaries",
       hoverinfo: "skip",
-      includeText: false,
-      includeHoverMetadata: false,
+      text: undefined,
+      hoverMetadata: undefined,
     }));
-    expect(layers[1].contours?.coloring).toBe("none");
+    expect(traces[1].contours?.coloring).toBe("none");
   });
 
   it("rejects an empty zone colorscale", () => {

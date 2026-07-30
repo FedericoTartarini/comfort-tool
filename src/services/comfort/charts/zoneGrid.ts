@@ -1,4 +1,3 @@
-import type { GridContourLayerSpec } from "./chartEngine";
 import {
   findNumericBandIndexForValue,
   type NumericBand,
@@ -7,7 +6,10 @@ import type {
   PlotColorScaleDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
-import { buildGridContourTrace } from "./gridEngine";
+import {
+  buildGridContourTrace,
+  type GridContourLayerSpec,
+} from "./gridEngine";
 import type { GridEvaluationResult } from "./types";
 
 type ZoneColorSource = {
@@ -59,7 +61,7 @@ export function buildZoneColorscale(zones: ReadonlyArray<ZoneColorSource>): Arra
   return colorscale;
 }
 
-export function buildZoneContourLayers({
+function buildZoneContourLayers({
   name,
   colorscale,
   contours,
@@ -122,13 +124,26 @@ export function buildZoneContourLayers({
   ];
 }
 
+interface ZoneContourTracesOptions extends ZoneContourLayersOptions {
+  grid: GridEvaluationResult;
+}
+
+export function buildZoneContourTraces({
+  grid,
+  ...options
+}: ZoneContourTracesOptions): PlotTraceDto[] {
+  return buildZoneContourLayers(options).map((layer) => (
+    buildGridContourTrace({ ...layer, grid })
+  ));
+}
+
 interface CategoricalBandLayersOptions {
   name: string;
   bands: readonly NumericBand[];
   opacity?: number;
 }
 
-export function buildCategoricalBandLayers({
+function buildCategoricalBandLayers({
   name,
   bands,
   opacity = 0.8,

@@ -63,9 +63,13 @@ interface FieldChartConfigBase {
   readonly zOutput: ModelOutputKey;
 }
 
-export interface ExploreFieldChartConfig extends FieldChartConfigBase {
-  readonly mode: typeof ChartMode.Explore;
+/** Numeric-band field chart shared by fixed charts and Explore charts. */
+export interface BandedFieldChartConfig extends FieldChartConfigBase {
   readonly bands: readonly NumericBand[];
+}
+
+export interface ExploreFieldChartConfig extends BandedFieldChartConfig {
+  readonly mode: typeof ChartMode.Explore;
 }
 
 /** Locked field-chart configuration declared by a compliance-capable model. */
@@ -75,11 +79,6 @@ export interface ComplianceFieldChartConfig extends FieldChartConfigBase {
 }
 
 export type FieldChartConfig = ExploreFieldChartConfig | ComplianceFieldChartConfig;
-
-/** Field-chart configuration accepted by the numeric grid/contour strategy. */
-export type GridFieldChartConfig = FieldChartConfig & {
-  readonly bands: readonly NumericBand[];
-};
 
 /** Generic presentation state supplied to every registered chart builder. */
 export interface ChartBuildContext {

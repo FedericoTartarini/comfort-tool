@@ -197,50 +197,6 @@ export function buildLineTrace({
   };
 }
 
-/**
- * Interface for building an input annotation (tooltip near an input dot).
- * @param inputId - The ID of the input.
- * @param x - The x-coordinate of the annotation.
- * @param y - The y-coordinate of the annotation.
- * @param text - The text of the annotation.
- * @param showArrow - Whether to show an arrow pointing to the input.
- * @param textSize - The size of the text (optional).
- */
-export interface InputAnnotationOptions {
-  inputId: InputIdType;
-  x: number;
-  y: number;
-  text: string;
-  showArrow: boolean;
-  textSize?: number;
-}
-
-/**
- * Builds an annotation marker placed near an input dot to describe it, styled sequentially.
- * This serves as the universal annotation label connector in all models, binding the provided text to the input data point.
- *
- * @param options configuration object defining the annotation geometry and text.
- * @returns A generic PlotAnnotationDto.
- */
-export function buildInputAnnotation({
-  inputId,
-  x,
-  y,
-  text,
-  showArrow,
-  textSize = 11,
-}: InputAnnotationOptions): PlotAnnotationDto {
-  const inputStyle = inputChartStyleById[inputId];
-
-  return {
-    x,
-    y,
-    text,
-    showarrow: showArrow,
-    font: { size: textSize, color: inputStyle.line },
-  };
-}
-
 // Text Annotation Builder
 
 /**
@@ -280,63 +236,6 @@ export function buildTextAnnotation({
     text,
     showarrow: false,
     font: { size: textSize, color },
-  };
-}
-
-// Rectangle Selection Shape Builder
-
-/**
- * Interface for building a rectangle selection shape.
- * @param xStart - The starting x-coordinate of the rectangle.
- * @param xEnd - The ending x-coordinate of the rectangle.
- * @param yStart - The starting y-coordinate of the rectangle.
- * @param yEnd - The ending y-coordinate of the rectangle.
- * @param fillColor - The color used to fill the rectangle.
- * @param opacity - The opacity of the rectangle.
- * @param xref - The reference frame for the x-coordinates (optional).
- * @param yref - The reference frame for the y-coordinates (optional).
- */
-export interface RectangleSelectionShapeOptions {
-  xStart: number;
-  xEnd: number;
-  yStart: number;
-  yEnd: number;
-  fillColor: string;
-  opacity: number;
-  xref?: "x" | "paper";
-  yref?: "y" | "paper";
-}
-
-/**
- * Assembles a background boundary layer shape object, normally applied
- * to mark thresholds (e.g. UTCI Stress Band horizontal strips).
- * This tool is necessary for `utciCharts.ts`, as it allows for the declarative
- * plotting of fixed threshold rectangles on the chart background.
- *
- * @param options configuration object defining the rectangle geometry and reference frame.
- * @returns Assembled shape definitions ready to pass into the Plotly layout config.
- */
-export function buildRectangleSelectionShape({
-  xStart,
-  xEnd,
-  yStart,
-  yEnd,
-  fillColor,
-  opacity,
-  xref = "x",
-  yref = "paper",
-}: RectangleSelectionShapeOptions) {
-  return {
-    type: "rect" as const,
-    xref,
-    yref,
-    x0: xStart,
-    x1: xEnd,
-    y0: yStart,
-    y1: yEnd,
-    fillcolor: fillColor,
-    line: { width: 0 },
-    opacity,
   };
 }
 

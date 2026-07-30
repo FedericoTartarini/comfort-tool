@@ -23,10 +23,6 @@ interface ExploreModelCapabilities {
     readonly xAxis: FieldKeyType;
     readonly yAxis: FieldKeyType;
   };
-  dynamicAxisPairValidator?: (
-    xAxis: FieldKeyType,
-    yAxis: FieldKeyType,
-  ) => boolean;
 }
 
 export function getDeclaredExploreOutput(

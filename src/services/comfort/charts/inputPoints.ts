@@ -36,28 +36,12 @@ export interface BuildInputTraceGroupsOptions<TPayload, TResult> {
   hoverinfo?: string;
 }
 
-export type ChartInputEntry<TPayload> = {
-  inputId: InputIdType;
-  payload: TPayload;
-};
-
-export function shouldShowInputLegend<TPayload>(inputsMap: CompareInputMap<TPayload>): boolean {
-  return getCompareInputs(inputsMap).length > 1;
+interface InputTraceGroup {
+  overlays: PlotTraceDto[];
+  markers: PlotTraceDto[];
 }
 
-/** Returns the baseline payload declared by the chart build context. */
-export function getBaselineInputEntry<TPayload>(
-  inputsMap: CompareInputMap<TPayload>,
-  baselineInputId: InputIdType,
-): ChartInputEntry<TPayload> {
-  const payload = inputsMap[baselineInputId];
-  if (payload === undefined) {
-    throw new Error(`Missing chart baseline payload for ${baselineInputId}.`);
-  }
-  return { inputId: baselineInputId, payload };
-}
-
-export function buildInputTraceGroups<TPayload, TResult = unknown>({
+export function buildInputTraceGroup<TPayload, TResult = unknown>({
   inputsMap,
   resultsByInput = {},
   showLegend,
@@ -73,11 +57,13 @@ export function buildInputTraceGroups<TPayload, TResult = unknown>({
   color,
   hoverMetadata,
   hoverinfo,
-}: BuildInputTraceGroupsOptions<TPayload, TResult>): PlotTraceDto[] {
+}: BuildInputTraceGroupsOptions<TPayload, TResult>): InputTraceGroup {
   const inputs = getCompareInputs(inputsMap);
   const resolvedShowLegend = showLegend ?? inputs.length > 1;
+  const overlays: PlotTraceDto[] = [];
+  const markers: PlotTraceDto[] = [];
 
-  return inputs.flatMap(({ inputId, payload }) => {
+  inputs.forEach(({ inputId, payload }) => {
     const result = resultsByInput[inputId];
     const xSi = getXSi(payload, inputId);
     const ySi = getYSi(payload, inputId);
@@ -95,19 +81,19 @@ export function buildInputTraceGroups<TPayload, TResult = unknown>({
       yDisplay,
     };
 
-    return [
-      ...(buildOverlayTraces?.(context) ?? []),
-      buildInputScatterTrace({
-        inputId,
-        x: xDisplay,
-        y: yDisplay,
-        showLegend: resolvedShowLegend,
-        markerSize,
-        color,
-        hoverinfo,
-        hoverMetadata: hoverMetadata?.(context),
-        hovertemplate: getHovertemplate(context),
-      }),
-    ];
+    overlays.push(...(buildOverlayTraces?.(context) ?? []));
+    markers.push(buildInputScatterTrace({
+      inputId,
+      x: xDisplay,
+      y: yDisplay,
+      showLegend: resolvedShowLegend,
+      markerSize,
+      color,
+      hoverinfo,
+      hoverMetadata: hoverMetadata?.(context),
+      hovertemplate: getHovertemplate(context),
+    }));
   });
+
+  return { overlays, markers };
 }

@@ -144,8 +144,7 @@ describe("comfort model capability registry", () => {
       const config = getComfortModelConfig(modelId);
       const pairCount = config.dynamicAxisFields.reduce((count, xAxis) => (
         count + config.dynamicAxisFields.filter((yAxis) => (
-          xAxis !== yAxis &&
-          (config.dynamicAxisPairValidator?.(xAxis, yAxis) ?? true)
+          xAxis !== yAxis
         )).length
       ), 0);
 

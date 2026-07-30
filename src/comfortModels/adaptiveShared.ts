@@ -26,7 +26,6 @@ import {
 } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import type { UnitSystem as UnitSystemType } from "../models/units";
-import { createFieldAxisScale } from "../services/comfort/charts/axis";
 import {
   buildBoundaryRegionTraces,
   buildClosedBoundaryPolygonTrace,
@@ -35,27 +34,26 @@ import {
 } from "../services/comfort/charts/boundaryRegionEngine";
 import {
   buildFieldChart,
-  buildGridFieldChart,
+  createZoneGridStrategy,
   type FieldChartInputGroup,
-  type GridFieldChartStrategy,
+  type FieldChartStrategy,
 } from "../services/comfort/charts/chartEngine";
 import {
   applyDynamicAxisCoordinates,
   type DynamicAxisPayloadAdapter,
 } from "../services/comfort/charts/dynamicAxisPayload";
-import {
-  getBaselineInputEntry,
-  shouldShowInputLegend,
-} from "../services/comfort/charts/inputPoints";
 import { buildComfortPolygonTrace } from "../services/comfort/charts/plotlyBuilders";
-import type { ChartAxisScale, ChartLayoutSpec } from "../services/comfort/charts/types";
-import { buildZoneColorscale, buildZoneContourLayers } from "../services/comfort/charts/zoneGrid";
+import type { ChartAxisScale } from "../services/comfort/charts/types";
 import {
   buildDefaultPresentation,
   createControlBehavior,
   createTemperatureControlBehavior,
 } from "../services/comfort/controls/controlBehaviors";
-import { isFiniteNumber, roundValue } from "../services/comfort/helpers";
+import {
+  getBaselineInputEntry,
+  isFiniteNumber,
+  roundValue,
+} from "../services/comfort/helpers";
 import { convertFieldValueFromSi } from "../services/units";
 import {
   buildResultSectionsFromRows,
@@ -72,9 +70,6 @@ const DYNAMIC_BOUNDARY_POINTS = 240;
 const TOOLTIP_GRID_POINTS = 40;
 const COOLING_EFFECT_SPEED_BREAKPOINTS = [0.6, 0.9, 1.2];
 const CHART_COLORS = {
-  paper: "#ffffff",
-  plot: "#f8fafc",
-  grid: "#e2e8f0",
   line: "#334155",
 } as const;
 const ADAPTIVE_CONTOURS = {
@@ -605,23 +600,6 @@ function buildAdaptiveHoverTemplate(
     + "<extra></extra>";
 }
 
-function createAdaptiveLayout(
-  title: string,
-  showLegend: boolean,
-  margin: Record<string, number>,
-): ChartLayoutSpec {
-  return {
-    title,
-    paperBgColor: CHART_COLORS.paper,
-    plotBgColor: CHART_COLORS.plot,
-    showLegend,
-    margin,
-    gridColor: CHART_COLORS.grid,
-    legend: { orientation: "h", x: 0, y: 1.1 },
-    height: 480,
-  };
-}
-
 function getInputResult(
   declaration: AdaptiveModelDeclaration,
   payload: AdaptiveRequestDto,
@@ -734,7 +712,29 @@ function buildAdaptiveBandTraces(
   });
 }
 
-function buildOutdoorTemperatureDynamicTraces(
+function buildOutdoorTemperatureTooltipTrace(
+  declaration: AdaptiveModelDeclaration,
+  baseline: AdaptiveRequestDto,
+  unitSystem: UnitSystemType,
+  xAxis: ChartAxisScale,
+  yAxis: ChartAxisScale,
+): PlotTraceDto {
+  const hasOutdoorXAxis =
+    xAxis.field === FieldKey.PrevailingMeanOutdoorTemperature;
+  return buildAdaptiveTooltipTrace(
+    declaration,
+    baseline,
+    unitSystem,
+    hasOutdoorXAxis
+      ? { ...xAxis, label: declaration.outdoorTemperatureLabel }
+      : xAxis,
+    hasOutdoorXAxis
+      ? yAxis
+      : { ...yAxis, label: declaration.outdoorTemperatureLabel },
+  );
+}
+
+function buildOutdoorTemperatureBoundaryTraces(
   declaration: AdaptiveModelDeclaration,
   baseline: AdaptiveRequestDto,
   unitSystem: UnitSystemType,
@@ -745,19 +745,6 @@ function buildOutdoorTemperatureDynamicTraces(
     xAxis.field === FieldKey.PrevailingMeanOutdoorTemperature;
   const otherAxis = hasOutdoorXAxis ? yAxis : xAxis;
   const outdoorAxis = hasOutdoorXAxis ? xAxis : yAxis;
-  const hoverXAxis = hasOutdoorXAxis
-    ? { ...xAxis, label: declaration.outdoorTemperatureLabel }
-    : xAxis;
-  const hoverYAxis = hasOutdoorXAxis
-    ? yAxis
-    : { ...yAxis, label: declaration.outdoorTemperatureLabel };
-  const tooltip = buildAdaptiveTooltipTrace(
-    declaration,
-    baseline,
-    unitSystem,
-    hoverXAxis,
-    hoverYAxis,
-  );
 
   if (isTemperatureAxis(otherAxis.field)) {
     const range = declaration.outdoorTemperatureRangeSi;
@@ -788,22 +775,19 @@ function buildOutdoorTemperatureDynamicTraces(
           baseline,
         );
       }));
-    return [
-      tooltip,
-      ...buildAdaptiveBandTraces(
-        declaration,
-        baseline,
-        unitSystem,
-        outdoorValues,
-        boundaryCurves,
-        declaration.bandSequence,
-        outdoorAxis,
-        otherAxis,
-        hasOutdoorXAxis ? "x" : "y",
-        xAxis,
-        yAxis,
-      ),
-    ];
+    return buildAdaptiveBandTraces(
+      declaration,
+      baseline,
+      unitSystem,
+      outdoorValues,
+      boundaryCurves,
+      declaration.bandSequence,
+      outdoorAxis,
+      otherAxis,
+      hasOutdoorXAxis ? "x" : "y",
+      xAxis,
+      yAxis,
+    );
   }
 
   if (isAirSpeedAxis(otherAxis.field)) {
@@ -837,22 +821,19 @@ function buildOutdoorTemperatureDynamicTraces(
           speed,
         )[boundaryIndex];
       })).reverse();
-    return [
-      tooltip,
-      ...buildAdaptiveBandTraces(
-        declaration,
-        baseline,
-        unitSystem,
-        speedValues,
-        boundaryCurves,
-        [...declaration.bandSequence].reverse(),
-        otherAxis,
-        outdoorAxis,
-        hasOutdoorXAxis ? "y" : "x",
-        xAxis,
-        yAxis,
-      ),
-    ];
+    return buildAdaptiveBandTraces(
+      declaration,
+      baseline,
+      unitSystem,
+      speedValues,
+      boundaryCurves,
+      [...declaration.bandSequence].reverse(),
+      otherAxis,
+      outdoorAxis,
+      hasOutdoorXAxis ? "y" : "x",
+      xAxis,
+      yAxis,
+    );
   }
 
   throw new Error(`Unsupported Adaptive outdoor axis pair: ${xAxis.field} / ${yAxis.field}`);
@@ -866,82 +847,80 @@ export function buildAdaptiveChart(
 ): PlotlyChartResponseDto {
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
   const { unitSystem } = context;
-  const temperatureUnits =
-    fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-  const xAxis = createFieldAxisScale({
-    field: FieldKey.PrevailingMeanOutdoorTemperature,
-    unitSystem,
-    rangeSi: declaration.outdoorTemperatureRangeSi,
-    points: 2,
-    label: declaration.outdoorTemperatureLabel,
-    units: temperatureUnits,
-  });
-  const yAxis = createFieldAxisScale({
-    field: FieldKey.OperativeTemperature,
-    unitSystem,
-    rangeSi: FIXED_OPERATIVE_RANGE_SI,
-    points: 2,
-    units: temperatureUnits,
-  });
   const range = declaration.outdoorTemperatureRangeSi;
   const outdoorValues = [
     ...Array.from({ length: FIXED_BOUNDARY_POINTS }, (_, index) =>
       range.min + ((range.max - range.min) * index) / (FIXED_BOUNDARY_POINTS - 1)),
     ...addCoolingEffectTransitionPoints(declaration, baseline.payload.v, range),
   ].sort((left, right) => left - right);
-  const boundaryTraces = declaration.levels.map((level) => {
-    const boundaries = outdoorValues.map((outdoorTemperature) =>
-      getLevelBoundaries(
-        declaration,
-        level,
-        outdoorTemperature,
-        baseline.payload.v,
-      ));
-    return buildClosedBoundaryPolygonTrace({
-      lowerXValuesSi: outdoorValues,
-      lowerYValuesSi: boundaries.map(({ lower }) => lower),
-      upperXValuesSi: outdoorValues,
-      upperYValuesSi: boundaries.map(({ upper }) => upper),
-      xAxis,
-      yAxis,
-      buildTrace: ({ polygonX, polygonY }) => buildComfortPolygonTrace({
-        inputId: baseline.inputId,
-        nameSuffix: level.label,
-        polygonX: polygonX.map((value) => roundValue(value)),
-        polygonY: polygonY.map((value) => roundValue(value)),
-        hovertemplate: "",
-        hoverinfo: "skip",
-        isZone: true,
-      }),
-    });
-  });
-  const inputGroup = createAdaptiveInputGroup(
-    declaration,
-    source,
-    resultsByInput,
-    unitSystem,
-    xAxis,
-    yAxis,
-    1,
-  );
 
   return buildFieldChart({
-    xAxis,
-    yAxis,
-    leadingTraces: [buildAdaptiveTooltipTrace(
+    unitSystem,
+    xAxis: {
+      field: FieldKey.PrevailingMeanOutdoorTemperature,
+      rangeSi: declaration.outdoorTemperatureRangeSi,
+      points: 2,
+      label: declaration.outdoorTemperatureLabel,
+      units: (activeUnitSystem) =>
+        fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[activeUnitSystem],
+    },
+    yAxis: {
+      field: FieldKey.OperativeTemperature,
+      rangeSi: FIXED_OPERATIVE_RANGE_SI,
+      points: 2,
+      units: (activeUnitSystem) =>
+        fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[activeUnitSystem],
+    },
+    strategy: {
+      kind: "boundary",
+      buildTraces: ({ xAxis, yAxis }) => declaration.levels.map((level) => {
+        const boundaries = outdoorValues.map((outdoorTemperature) =>
+          getLevelBoundaries(
+            declaration,
+            level,
+            outdoorTemperature,
+            baseline.payload.v,
+          ));
+        return buildClosedBoundaryPolygonTrace({
+          lowerXValuesSi: outdoorValues,
+          lowerYValuesSi: boundaries.map(({ lower }) => lower),
+          upperXValuesSi: outdoorValues,
+          upperYValuesSi: boundaries.map(({ upper }) => upper),
+          xAxis,
+          yAxis,
+          buildTrace: ({ polygonX, polygonY }) => buildComfortPolygonTrace({
+            inputId: baseline.inputId,
+            nameSuffix: level.label,
+            polygonX: polygonX.map((value) => roundValue(value)),
+            polygonY: polygonY.map((value) => roundValue(value)),
+            hovertemplate: "",
+            hoverinfo: "skip",
+            isZone: true,
+          }),
+        });
+      }),
+    },
+    chartOverlays: ({ xAxis, yAxis }) => [buildAdaptiveTooltipTrace(
       declaration,
       baseline.payload,
       unitSystem,
       xAxis,
       yAxis,
     )],
-    strategyTraces: boundaryTraces,
-    inputGroups: [inputGroup],
-    layout: createAdaptiveLayout(
-      `${declaration.label} Comfort Chart`,
-      shouldShowInputLegend(source.inputs),
-      { l: 56, r: 24, t: 48, b: 80 },
-    ),
+    inputGroups: ({ xAxis, yAxis }) => [createAdaptiveInputGroup(
+      declaration,
+      source,
+      resultsByInput,
+      unitSystem,
+      xAxis,
+      yAxis,
+      1,
+    )],
+    layout: {
+      title: `${declaration.label} Comfort Chart`,
+      margin: { l: 56, r: 24, t: 48, b: 80 },
+      legend: { orientation: "h", x: 0, y: 1.1 },
+    },
     source: CalculationSource.FrontendGenerated,
   });
 }
@@ -974,57 +953,22 @@ export function buildAdaptiveDynamicChart(
   const fields = assertDynamicAxes(context);
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
   const { unitSystem } = context;
-  const xAxis = createFieldAxisScale({
+  const xAxis = {
     field: fields.xAxis,
-    unitSystem,
     points: DYNAMIC_GRID_POINTS,
     rangeSi: fields.xAxis === FieldKey.PrevailingMeanOutdoorTemperature
       ? declaration.outdoorTemperatureRangeSi
       : undefined,
-  });
-  const yAxis = createFieldAxisScale({
+  };
+  const yAxis = {
     field: fields.yAxis,
-    unitSystem,
     points: DYNAMIC_GRID_POINTS,
     rangeSi: fields.yAxis === FieldKey.PrevailingMeanOutdoorTemperature
       ? declaration.outdoorTemperatureRangeSi
       : undefined,
-  });
-  const inputGroup = createAdaptiveInputGroup(
-    declaration,
-    source,
-    resultsByInput,
-    unitSystem,
-    xAxis,
-    yAxis,
-    2,
-  );
-  const layout = createAdaptiveLayout(
-    `${declaration.label} Dynamic Chart (${xAxis.label} vs ${yAxis.label})`,
-    shouldShowInputLegend(source.inputs),
-    { l: 64, r: 24, t: 48, b: 64 },
-  );
+  };
   const hasOutdoorAxis = fields.xAxis === FieldKey.PrevailingMeanOutdoorTemperature
     || fields.yAxis === FieldKey.PrevailingMeanOutdoorTemperature;
-  if (hasOutdoorAxis) {
-    const [tooltipTrace, ...boundaryTraces] = buildOutdoorTemperatureDynamicTraces(
-      declaration,
-      baseline.payload,
-      unitSystem,
-      xAxis,
-      yAxis,
-    );
-    return buildFieldChart({
-      xAxis,
-      yAxis,
-      leadingTraces: [tooltipTrace],
-      strategyTraces: boundaryTraces,
-      inputGroups: [inputGroup],
-      layout,
-      source: CalculationSource.FrontendGenerated,
-    });
-  }
-
   const axisAdapter: DynamicAxisPayloadAdapter<AdaptiveRequestDto> = {
     setAxisValue: setAdaptiveAxisValue,
     getAxisValue: (request, field) => getAdaptiveAxisValue(
@@ -1043,54 +987,90 @@ export function buildAdaptiveDynamicChart(
       max: fieldMetaByKey[field].maxValue,
     }),
   };
-  const grid: GridFieldChartStrategy = {
-    evaluatePoint: (xSi, ySi) => {
-      const request = { ...baseline.payload };
-      const hasValidCoordinates = applyDynamicAxisCoordinates(
-        request,
-        { field: fields.xAxis, valueSi: xSi },
-        { field: fields.yAxis, valueSi: ySi },
-        axisAdapter,
-      );
-      if (!hasValidCoordinates) return null;
-      const evaluation = tryEvaluateAdaptiveForChart(declaration, request);
-      if (!evaluation) return null;
-      const zone = getDynamicZone(declaration, evaluation);
-      return zone
-        ? {
-            z: zone.z,
-            text: zone.label,
-            hoverMetadata: getAdaptiveHoverMetadata(
-              declaration,
-              evaluation.result,
-              unitSystem,
-            ),
-          }
-        : null;
-    },
-    layers: buildZoneContourLayers({
-      name: "Adaptive Zones",
-      colorscale: buildZoneColorscale(declaration.bandSequence),
-      contours: ADAPTIVE_CONTOURS,
-      zmin: 1.5,
-      zmax: declaration.bandSequence.length + 0.5,
-      hovertemplate: buildAdaptiveHoverTemplate(
-        declaration,
-        unitSystem,
-        xAxis,
-        yAxis,
-      ),
-      opacity: 0.75,
-      isBackgroundZone: true,
-    }),
-  };
+  const strategy: FieldChartStrategy = hasOutdoorAxis
+    ? {
+        kind: "boundary",
+        buildTraces: ({ xAxis: resolvedX, yAxis: resolvedY }) =>
+          buildOutdoorTemperatureBoundaryTraces(
+            declaration,
+            baseline.payload,
+            unitSystem,
+            resolvedX,
+            resolvedY,
+          ),
+      }
+    : createZoneGridStrategy({
+        name: "Adaptive Zones",
+        zones: declaration.bandSequence,
+        contours: ADAPTIVE_CONTOURS,
+        zmin: 1.5,
+        zmax: declaration.bandSequence.length + 0.5,
+        hoverTemplate: (renderContext) => buildAdaptiveHoverTemplate(
+          declaration,
+          renderContext.unitSystem,
+          renderContext.xAxis,
+          renderContext.yAxis,
+        ),
+        opacity: 0.75,
+        isBackgroundZone: true,
+        evaluatePoint: (xSi, ySi, _xIndex, _yIndex, renderContext) => {
+          const request = { ...baseline.payload };
+          const hasValidCoordinates = applyDynamicAxisCoordinates(
+            request,
+            { field: fields.xAxis, valueSi: xSi },
+            { field: fields.yAxis, valueSi: ySi },
+            axisAdapter,
+          );
+          if (!hasValidCoordinates) return null;
+          const evaluation = tryEvaluateAdaptiveForChart(declaration, request);
+          if (!evaluation) return null;
+          const zone = getDynamicZone(declaration, evaluation);
+          return zone
+            ? {
+                z: zone.z,
+                text: zone.label,
+                hoverMetadata: getAdaptiveHoverMetadata(
+                  declaration,
+                  evaluation.result,
+                  renderContext.unitSystem,
+                ),
+              }
+            : null;
+        },
+      });
 
-  return buildGridFieldChart({
+  return buildFieldChart({
+    unitSystem,
     xAxis,
     yAxis,
-    grid,
-    inputGroups: [inputGroup],
-    layout,
+    strategy,
+    chartOverlays: hasOutdoorAxis
+      ? ({ xAxis: resolvedX, yAxis: resolvedY }) => [
+          buildOutdoorTemperatureTooltipTrace(
+            declaration,
+            baseline.payload,
+            unitSystem,
+            resolvedX,
+            resolvedY,
+          ),
+        ]
+      : undefined,
+    inputGroups: ({ xAxis: resolvedX, yAxis: resolvedY }) => [
+      createAdaptiveInputGroup(
+        declaration,
+        source,
+        resultsByInput,
+        unitSystem,
+        resolvedX,
+        resolvedY,
+        2,
+      ),
+    ],
+    layout: {
+      title: `${declaration.label} Dynamic Chart (${fieldMetaByKey[fields.xAxis].label} vs ${fieldMetaByKey[fields.yAxis].label})`,
+      margin: { l: 64, r: 24, t: 48, b: 64 },
+      legend: { orientation: "h", x: 0, y: 1.1 },
+    },
     source: CalculationSource.FrontendGenerated,
   });
 }

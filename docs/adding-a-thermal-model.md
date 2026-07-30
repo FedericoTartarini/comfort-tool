@@ -457,13 +457,13 @@ myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context
 });
 ```
 
-The controller builds one `ChartBuildContext` containing the unit system, active axes, baseline input, and optional `FieldChartConfig`. Fixed and dynamic numeric grids both construct one canonical `GridFieldChartConfig`; x/y axes come directly from that config, and the selected output is looked up through `config.zOutput`. The model builder validates declared preset bands. Explore actions normalize, validate, and store edited bands. Selectors and the chart engine consume that validated state without repeating validation or cloning. Do not duplicate context fields in the chart-source DTO or classify Explore output inside the model callback.
+The controller builds one `ChartBuildContext` containing the unit system, active axes, baseline input, and optional `FieldChartConfig`. Fixed and dynamic numeric grids both construct one canonical `BandedFieldChartConfig`; the selected output is looked up through `config.zOutput`. The model builder validates declared preset bands. Explore actions normalize, validate, and store edited bands. Selectors and the chart engine consume that validated state without repeating validation or cloning. Chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in the chart-source DTO or classify Explore output inside the model callback.
 
-If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper with a `DynamicAxisPayloadAdapter` that implements both `getAxisValue` and `setAxisValue`. Solver probes restore the temperature component in `finally`; a successful solve commits it once, while a failed post-condition rolls back only that solved field. The independently selected other axis must remain unchanged. Create the adapter once outside the grid loop.
+If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper with a `DynamicAxisPayloadAdapter` that implements both `getAxisValue` and `setAxisValue`. The current solver contract is linear: it evaluates the lower and upper component bounds once, interpolates the target component, validates the post-condition, and rejects non-finite, zero-slope, or out-of-range results. Endpoint probes restore the temperature component in `finally`; a successful solve commits it once, while a failed final commit rolls back that solved field. The independently selected other axis must remain unchanged. Create the adapter once outside the grid loop.
 
 The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Categorical and constraint traces only render visible fills and boundaries, with hover disabled. One transparent contour tooltip trace uses the original output grid, classification text, and metadata for both renderers. A finite value outside every band remains visibly unfilled but hovers as `Unclassified`; a model-invalid `NaN` cell remains unfilled and has no hover because `hoverongaps` is false. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
 
-If a typed grid model's dynamic hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A model using `createBandedGridStrategy()` directly may instead return `{ valueSi, additionalHoverMetadata }` from its evaluator and provide `hoverTemplate` when model-specific ordering or precision is required. Pass that strategy to `buildGridFieldChart()`; use `buildFieldChart()` for boundary geometry or other model-generated traces. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
+If a typed grid model's dynamic hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A model using the engine directly may instead return `{ valueSi, additionalHoverMetadata }` from the evaluator passed to `createBandedGridStrategy()` and provide `hoverTemplate` when model-specific ordering or precision is required. For a preclassified model zone grid, use `createZoneGridStrategy()` and declare its zones, contour metadata, hover template, and SI evaluator. Pass either Grid strategy to the single `buildFieldChart()` frame. Boundary charts pass `{ kind: "boundary", buildTraces }` to the same frame. Models declare canonical-SI axis specs, ranges, margins, hover metadata, and evaluators; the frame creates axes and owns layout, input overlays, markers, legends, annotations, and trace ordering. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
 
 #### Final Builder Registrations
 
@@ -504,7 +504,7 @@ myNewModelBuilder.setLegendTitle("My New Model");
 myNewModelBuilder.setLockYAxisChartIds([ChartId.MyNewModelDynamic]);
 ```
 
-`defaultDynamicAxes` is required. Both fields must be distinct members of `dynamicAxisFields` and must satisfy any declared pair validator; `build()` rejects invalid defaults.
+`defaultDynamicAxes` is required. Both fields must be distinct members of `dynamicAxisFields`; `build()` rejects invalid defaults. Runtime axis selection applies the same two rules and swaps X/Y when the user selects the field currently used by the other axis.
 
 ### 3g. Export the Config
 
@@ -665,18 +665,6 @@ myNewModelBuilder.setDefaultChart(
 ```
 
 (This is what `windChill.ts` does.)
-
-### What if my model needs a synchronization hook (e.g., reset an option when the user switches charts)?
-
-Use `setSynchronizer` on the builder:
-
-```ts
-myNewModelBuilder.setSynchronizer((context) => {
-  // Return a BehaviorPatch to apply when the model is activated or the chart changes.
-  // Return null to make no changes.
-  return null;
-});
-```
 
 ### How does the model selector dropdown order work?
 

@@ -77,6 +77,7 @@ The current active application is the repository root version.
 - Tracks per-model calculation caches with explicit `empty` / `stale` / `ready` status.
 - Invalidates model caches without wiping raw results and rebuilds presentation from selectors.
 - Owns one transient, model-agnostic Explore working state; output or band edits rebuild charts from cached SI source data without recalculation.
+- Builds one `ChartControlsViewModel`; selecting a chart, axes, baseline, output, or working bands changes presentation only and preserves the ready cache and result identities.
 
 `src/state/comfortTool/types.ts`
 - Central type definitions for controller state, model cache state, actions, selectors, and presentation view models.
@@ -90,7 +91,7 @@ The current active application is the repository root version.
 - Validates required `modes`, `chartableOutputs`, numeric Explore presets, Compliance declarations, and each model's default dynamic-axis pair.
 
 `src/models/modelCapabilities.ts`
-- Defines `ChartMode`, `ModelOutputKey`, `FieldChartConfig`, numeric-grid `GridFieldChartConfig`, `ChartBuildContext`, functional Compliance bands, editable numeric Explore bands, output declarations, and compliance specifications.
+- Defines `ChartMode`, `ModelOutputKey`, `BandedFieldChartConfig`, `FieldChartConfig`, `ChartBuildContext`, functional Compliance bands, editable numeric Explore bands, output declarations, and compliance specifications.
 - Provides `bandsFromThermalZones()` plus canonical-SI, array-ordered half-open (`min <= value < max`) band resolution helpers.
 
 `src/models/modelCalculation.ts`
@@ -121,19 +122,22 @@ The current active application is the repository root version.
 - Handles derived values such as dew point, humidity ratio, wet-bulb temperature, vapor pressure, operative temperature, and relative air speed transformations.
 
 `src/services/comfort/charts/gridModelCharts.ts`
-- Implements the typed grid-model strategy used by Heat Index, Humidex, and Wind Chill.
-- Clones typed SI baselines, writes axes through model-owned getters/setters, invokes typed evaluators, and assembles fixed and dynamic views from the same canonical numeric-grid config and shared band primitives.
+- Implements the declarative typed adapter used by Heat Index, Humidex, and Wind Chill.
+- Clones typed SI baselines, writes axes through model-owned getters/setters, invokes typed evaluators, and maps fixed and dynamic declarations into the shared field-chart frame.
 
 `src/services/comfort/charts/dynamicAxisPayload.ts`
 - Resolves declared dynamic-axis coordinates into model payloads in canonical SI.
-- Uses transactional axis adapters: every probe restores the solved component in `finally`, successful solves commit once, and failed post-conditions roll back only that component.
+- Solves the current linear coupled-axis contract from the two endpoint values, rejecting non-finite, zero-slope, out-of-range, or failed post-condition results.
+- Uses transactional axis adapters: endpoint probes restore the solved component in `finally`, successful solves commit once, and failed final commits roll back that component.
 - Preserves the independently selected Air or Radiant temperature when paired with Operative temperature, so all four directed pairs remain chartable.
 
 `src/services/comfort/charts/chartEngine.ts`
-- Exposes three composition primitives used by PMV, UTCI, simple-model, and Adaptive charts: `buildFieldChart()`, `buildGridFieldChart()`, and `createBandedGridStrategy()`.
-- Fixed-axis views and Explore charts share the same axis, grid, band, input, layout, and annotation assembly; fixed views do not create a second Explore state.
+- Exposes `buildFieldChart()` as the single chart-assembly entry point used by PMV, UTCI, simple-model, and Adaptive charts.
+- Accepts a discriminated Grid or Boundary strategy. `createBandedGridStrategy()` and `createZoneGridStrategy()` supply the two reusable Grid renderers without exposing the internal grid or zone modules to model files.
+- Creates display axes from canonical-SI axis specs, then assembles traces in a fixed order: strategy traces, chart overlays, per-input overlays, and input markers.
+- Fixed-axis views and Explore charts share the same axis, grid, band, input, layout, legend, and annotation assembly; fixed views use `BandedFieldChartConfig` and do not create a second Explore state.
 - Grid evaluators return an explicit unplottable `null`; unexpected exceptions propagate to the caller.
-- Its numeric-grid runner accepts one validated `GridFieldChartConfig`, raw canonical-SI model outputs, and performs half-open working-band assignment without repeating state or builder validation.
+- The banded Grid strategy accepts one validated `BandedFieldChartConfig`, evaluates raw canonical-SI model outputs, and performs half-open working-band assignment without repeating state or builder validation.
 - Smooth continuous outputs can opt into constraint contours, which retain one raw SI grid and let Plotly interpolate finite band thresholds. Constraint fills use per-region `fillcolor` without full-grid contour backgrounds. PMV ASHRAE/ISO use this strategy; other Explore charts remain categorical.
 - Visible categorical and constraint traces skip hover. One transparent contour tooltip trace owns full per-position metadata from the original output grid: band gaps report `Unclassified`, while model-invalid `NaN` cells have no hover.
 - The banded-grid runner keeps generic hover construction as its default and accepts an explicit full-template override for models that need multiple metrics or model-specific precision.
@@ -167,10 +171,11 @@ The current active application is the repository root version.
 - Displays calculated result sections for the currently active model.
 
 `src/components/chart/ChartPanel.svelte`
-- Displays the currently selected chart and chart selector UI.
+- Displays the currently selected chart and composes its required controls from one `ChartControlsViewModel`.
 
-`src/components/chart/ChartAxisMenu.svelte`, `ChartDisplayMenu.svelte`, and `ChartBandEditor.svelte`
-- Compose dynamic x/y selection with declared-output selection and a draft-based threshold editor.
+`src/components/chart/ChartControls.svelte`, `ChartDisplayMenu.svelte`, and `ChartBandEditor.svelte`
+- `ChartControls` renders non-null baseline, axes, and Explore branches; its X/Y dropdowns share one Svelte snippet and every branch callback is required.
+- `ChartDisplayMenu` and `ChartBandEditor` retain their focused output-selection and draft-based threshold-editing responsibilities.
 - The editor converts finite edges only for display, validates and sorts before atomic commit, and leaves declaration presets untouched.
 
 `src/components/chart/PlotlyCanvas.svelte`
@@ -198,7 +203,8 @@ The current active application is the repository root version.
 - Share URLs use a strict versioned v1 schema with explicit version rejection.
 - Model modes, chartable outputs, Explore presets, and fixed compliance bands are declared in registered model definitions rather than controller branches.
 - Every chart builder receives one `ChartBuildContext`; chart-source DTOs contain calculation-derived data rather than axes, baseline selection, model identity, standards, or duplicate results.
-- Fixed and dynamic numeric-grid charts receive one validated `GridFieldChartConfig`; model files extract raw SI outputs while the shared engine owns classification, conversion, and presentation.
+- Fixed and dynamic numeric-grid charts receive one validated `BandedFieldChartConfig`; model files extract raw SI outputs while the shared engine owns axes, classification, conversion, trace ordering, input markers, legends, layout, and annotations.
+- Chart, axis, baseline, Explore output, and working-band changes synchronously rebuild presentation from the current ready cache without invalidating or rescheduling model calculations.
 - Model request DTOs and calculators are SI-only. IP values exist in `src/services/units/` and presentation output.
 - Calculation scheduling exposes only canonical inputs and model options through `ModelCalculationContext`; comfort models do not import full controller state.
 - Share-state v1 requires global axes but does not store transient Explore output or edited bands; applying a snapshot normalizes the pair and reseeds model defaults.

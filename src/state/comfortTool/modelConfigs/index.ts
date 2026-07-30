@@ -53,11 +53,6 @@ export type ModelOptionChangeHandler = (
   nextValue: string,
 ) => BehaviorPatch | null;
 
-export type DynamicAxisPairValidator = (
-  xAxis: FieldKeyType,
-  yAxis: FieldKeyType,
-) => boolean;
-
 export interface DynamicAxisDefaults {
   readonly xAxis: FieldKeyType;
   readonly yAxis: FieldKeyType;
@@ -104,13 +99,10 @@ export interface ComfortModelDefinition<ResultType, ChartSourceType> {
   ) => PlotlyChartResponseDto | null;
   dynamicAxisFields: FieldKeyType[];
   defaultDynamicAxes: DynamicAxisDefaults;
-  dynamicAxisPairValidator?: DynamicAxisPairValidator;
   zones: ThermalZone[];
   legendChartIds: ChartIdType[];
   legendTitle: string;
   lockYAxisChartIds: ChartIdType[];
-  // Optional hook to synchronize model state (e.g. when changing charts)
-  synchronize?: (context: ControlBehaviorContext) => BehaviorPatch | null;
 }
 
 // Model Registry: Mapping of comfort model ids to their definitions

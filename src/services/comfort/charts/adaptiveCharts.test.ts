@@ -293,7 +293,9 @@ describe("adaptive charts", () => {
 
     expect(level.lower).not.toBeNull();
     expect(point.operativeTemperature).toBeCloseTo(level.lower!, 1);
-    expect(chart.traces[0].name).toBe("Tooltip Layer");
+    expect(chart.traces.slice(0, declaration.levels.length).map(({ name }) => name))
+      .toEqual(declaration.levels.map(({ label }) => `Input 1 ${label}`));
+    expect(chart.traces[declaration.levels.length].name).toBe("Tooltip Layer");
     expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
     expect(String(chart.layout.xaxis.title)).toContain("temperature");
     expect(String(chart.layout.yaxis.title)).toContain("Operative temperature");
@@ -323,8 +325,12 @@ describe("adaptive charts", () => {
 
     expect(getRegionNames(chartWithOutdoorX)).toEqual(expectedNames);
     expect(getRegionNames(chartWithOutdoorY)).toEqual(expectedNames);
-    expect(chartWithOutdoorX.traces[0].name).toBe("Tooltip Layer");
-    expect(chartWithOutdoorY.traces[0].name).toBe("Tooltip Layer");
+    expect(chartWithOutdoorX.traces.slice(0, expectedNames.length).map(({ name }) => name))
+      .toEqual(expectedNames);
+    expect(chartWithOutdoorY.traces.slice(0, expectedNames.length).map(({ name }) => name))
+      .toEqual(expectedNames);
+    expect(chartWithOutdoorX.traces[expectedNames.length].name).toBe("Tooltip Layer");
+    expect(chartWithOutdoorY.traces[expectedNames.length].name).toBe("Tooltip Layer");
     expect(chartWithOutdoorX.traces.some(({ name }) => name === "Adaptive Zones"))
       .toBe(false);
     expect(chartWithOutdoorY.traces.some(({ name }) => name === "Adaptive Zones"))
@@ -418,12 +424,14 @@ describe("adaptive charts", () => {
     );
     const fixedInput = fixed.traces.find(({ name }) => name === "Input 1");
     const dynamicInput = dynamic.traces.find(({ name }) => name === "Input 1");
+    const fixedTooltip = fixed.traces.find(({ name }) => name === "Tooltip Layer");
+    const dynamicTooltip = dynamic.traces.find(({ name }) => name === "Tooltip Layer");
 
     expect(fixedInput?.x[0]).toBeCloseTo(expectedOutdoor, 6);
     expect(dynamicInput?.x[0]).toBeCloseTo(expectedOutdoor, 6);
-    expect(fixed.traces[0].hovertemplate).toContain("°F");
-    expect(dynamic.traces[0].hovertemplate).toContain("°F");
-    expect(fixed.traces[0].hovertemplate).not.toContain("°C");
+    expect(fixedTooltip?.hovertemplate).toContain("°F");
+    expect(dynamicTooltip?.hovertemplate).toContain("°F");
+    expect(fixedTooltip?.hovertemplate).not.toContain("°C");
   });
 
   it("keeps EN boundary bands ordered and contiguous", () => {

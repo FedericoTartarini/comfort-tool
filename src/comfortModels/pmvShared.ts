@@ -41,32 +41,23 @@ import {
 } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import type { UnitSystem as UnitSystemType } from "../models/units";
-import { createFieldAxisScale } from "../services/comfort/charts/axis";
 import { buildClosedBoundaryPolygon } from "../services/comfort/charts/boundaryRegionEngine";
 import {
-  buildGridFieldChart,
+  buildFieldChart,
   createBandedGridStrategy,
+  createZoneGridStrategy,
   GridBandRenderStrategy,
   type FieldChartInputGroup,
-  type GridFieldChartStrategy,
 } from "../services/comfort/charts/chartEngine";
 import {
   applyDynamicAxisCoordinates,
   type DynamicAxisPayloadAdapter,
 } from "../services/comfort/charts/dynamicAxisPayload";
 import {
-  getBaselineInputEntry,
-  shouldShowInputLegend,
-} from "../services/comfort/charts/inputPoints";
-import {
   buildComfortPolygonTrace,
   buildLineTrace,
 } from "../services/comfort/charts/plotlyBuilders";
 import type { ChartAxisScale, GridPointEvaluation } from "../services/comfort/charts/types";
-import {
-  buildZoneColorscale,
-  buildZoneContourLayers,
-} from "../services/comfort/charts/zoneGrid";
 import {
   createAirSpeedControlBehavior,
   createControlBehavior,
@@ -74,7 +65,7 @@ import {
   createTemperatureControlBehavior,
 } from "../services/comfort/controls/controlBehaviors";
 import { createSingleInputPatch } from "../services/comfort/controls/types";
-import { roundValue } from "../services/comfort/helpers";
+import { getBaselineInputEntry, roundValue } from "../services/comfort/helpers";
 import {
   clothingTypicalEnsembles,
   metabolicActivityOptions,
@@ -119,9 +110,6 @@ const PMV_DYNAMIC_AXIS_FIELDS = [
   FieldKey.MetabolicRate,
   FieldKey.ClothingInsulation,
 ] as const;
-const CHART_COLOR_WHITE = "#ffffff";
-const CHART_COLOR_PLOT_BG = "#f8fafc";
-const CHART_COLOR_GRIDLINE = "#e2e8f0";
 const CHART_COLOR_BOUNDARY_LINE = "#333333";
 const CHART_COLOR_RH_LINE = "#94a3b8";
 const COLOR_COMPLIANT_GREEN = "#047857";
@@ -138,7 +126,6 @@ export const pmvZonesList = [
 ];
 
 const PMV_NEUTRAL_ZONE = pmvZonesList[3];
-const PMV_COLORSCALE = buildZoneColorscale(pmvZonesList);
 const PMV_CONTOURS = {
   start: -2.5,
   end: 2.5,
@@ -949,105 +936,99 @@ export function buildComparePsychrometricChart(
   const { unitSystem } = context;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
   const humidityRatioMeta = getHumidityRatioDisplayMeta(unitSystem);
-  const temperatureAxis = createFieldAxisScale({
-    field: FieldKey.DryBulbTemperature,
-    unitSystem,
-    rangeSi: PSYCHROMETRIC_VIEW.tdbRangeSi,
-    points: CONTOUR_GRID_RESOLUTION,
-  });
-  const humidityRatioAxis = createFieldAxisScale({
-    field: FieldKey.HumidityRatio,
-    unitSystem,
-    rangeSi: PSYCHROMETRIC_VIEW.humidityRatioRangeSi,
-    points: CONTOUR_GRID_RESOLUTION,
-    units: humidityRatioMeta.displayUnits,
-    decimals: humidityRatioMeta.decimals,
-    toDisplay: (value) => convertHumidityRatioFromSi(value, unitSystem),
-    toSi: (value) => convertHumidityRatioToSi(value, unitSystem),
-  });
-  const grid: GridFieldChartStrategy = {
+  const strategy = createZoneGridStrategy({
+    name: `${declaration.label} Zones`,
+    zones: pmvZonesList,
+    contours: PMV_CONTOURS,
+    zmin: -3.5,
+    zmax: 3.5,
+    hoverTemplate: ({ xAxis, yAxis }) => buildPmvHoverTemplate({
+      inputLabel: null,
+      xAxis: axisHoverSpec(xAxis, 1),
+      yAxis: axisHoverSpec(yAxis),
+      classification: { label: "Zone", value: "%{text}" },
+      pmv: "%{z:.2f}",
+      ppd: "%{customdata[0]:.1f}%",
+    }),
+    opacity: 0.8,
+    isBackgroundZone: true,
     evaluatePoint: (tdb, humidityRatio) => getPsychrometricGridPoint(
       adapter,
       baseline.payload,
       tdb,
       humidityRatio,
     ),
-    layers: buildZoneContourLayers({
-      name: `${declaration.label} Zones`,
-      colorscale: PMV_COLORSCALE,
-      contours: PMV_CONTOURS,
-      zmin: -3.5,
-      zmax: 3.5,
-      hovertemplate: buildPmvHoverTemplate({
-        inputLabel: null,
-        xAxis: axisHoverSpec(temperatureAxis, 1),
-        yAxis: axisHoverSpec(humidityRatioAxis),
-        classification: { label: "Zone", value: "%{text}" },
-        pmv: "%{z:.2f}",
-        ppd: "%{customdata[0]:.1f}%",
-      }),
-      opacity: 0.8,
-      isBackgroundZone: true,
-    }),
-  };
-  const rhCurveTraces = buildRelativeHumidityCurves(
-    adapter,
-    baseline.payload,
-    unitSystem,
-    temperatureAxis,
-    humidityRatioAxis,
-  );
-  const inputGroup = createPmvInputGroup({
-    adapter,
-    inputsMap: source.inputs,
-    resultsByInput,
-    xAxis: temperatureAxis,
-    yAxis: humidityRatioAxis,
-    getXSi: (payload) => payload.tdb,
-    getYSi: (payload) => psy_ta_rh(payload.tdb, payload.rh).hr,
-    coordinateDecimals: humidityRatioMeta.decimals,
-    buildOverlayTraces: ({ inputId }) => {
-      const comfortZone = source.comfortZonesByInput[inputId];
-      if (!comfortZone) {
-        throw new Error(`Missing PMV comfort zone for ${inputId}.`);
-      }
-      const { polygonX, polygonY } = buildComfortZonePolygon(
-        comfortZone.coolEdge,
-        comfortZone.warmEdge,
-        (point) => roundValue(temperatureAxis.toDisplay(point.tdb)),
-        (point) => roundValue(
-          humidityRatioAxis.toDisplay(psy_ta_rh(point.tdb, point.rh).hr),
-        ),
-      );
-      return polygonX.length === 0
-        ? []
-        : [buildComfortPolygonTrace({
-            inputId,
-            nameSuffix: "comfort zone",
-            polygonX,
-            polygonY,
-            hovertemplate: "",
-            hoverinfo: "skip",
-            isComfortZone: true,
-          })];
-    },
   });
 
-  return buildGridFieldChart({
-    xAxis: temperatureAxis,
-    yAxis: humidityRatioAxis,
-    grid,
-    beforeInputTraces: rhCurveTraces,
-    inputGroups: [inputGroup],
+  return buildFieldChart({
+    unitSystem,
+    xAxis: {
+      field: FieldKey.DryBulbTemperature,
+      rangeSi: PSYCHROMETRIC_VIEW.tdbRangeSi,
+      points: CONTOUR_GRID_RESOLUTION,
+    },
+    yAxis: {
+      field: FieldKey.HumidityRatio,
+      rangeSi: PSYCHROMETRIC_VIEW.humidityRatioRangeSi,
+      points: CONTOUR_GRID_RESOLUTION,
+      units: humidityRatioMeta.displayUnits,
+      decimals: humidityRatioMeta.decimals,
+      toDisplay: (value, activeUnitSystem) => convertHumidityRatioFromSi(
+        value,
+        activeUnitSystem,
+      ),
+      toSi: (value, activeUnitSystem) => convertHumidityRatioToSi(
+        value,
+        activeUnitSystem,
+      ),
+    },
+    strategy,
+    chartOverlays: ({ xAxis, yAxis }) => buildRelativeHumidityCurves(
+      adapter,
+      baseline.payload,
+      unitSystem,
+      xAxis,
+      yAxis,
+    ),
+    inputGroups: ({ xAxis, yAxis }) => [createPmvInputGroup({
+      adapter,
+      inputsMap: source.inputs,
+      resultsByInput,
+      xAxis,
+      yAxis,
+      getXSi: (payload) => payload.tdb,
+      getYSi: (payload) => psy_ta_rh(payload.tdb, payload.rh).hr,
+      coordinateDecimals: humidityRatioMeta.decimals,
+      buildOverlayTraces: ({ inputId }) => {
+        const comfortZone = source.comfortZonesByInput[inputId];
+        if (!comfortZone) {
+          throw new Error(`Missing PMV comfort zone for ${inputId}.`);
+        }
+        const { polygonX, polygonY } = buildComfortZonePolygon(
+          comfortZone.coolEdge,
+          comfortZone.warmEdge,
+          (point) => roundValue(xAxis.toDisplay(point.tdb)),
+          (point) => roundValue(
+            yAxis.toDisplay(psy_ta_rh(point.tdb, point.rh).hr),
+          ),
+        );
+        return polygonX.length === 0
+          ? []
+          : [buildComfortPolygonTrace({
+              inputId,
+              nameSuffix: "comfort zone",
+              polygonX,
+              polygonY,
+              hovertemplate: "",
+              hoverinfo: "skip",
+              isComfortZone: true,
+            })];
+      },
+    })],
     layout: {
       title: `${declaration.label} Psychrometric Chart`,
-      paperBgColor: CHART_COLOR_WHITE,
-      plotBgColor: CHART_COLOR_PLOT_BG,
-      showLegend: shouldShowInputLegend(source.inputs),
       margin: { l: 56, r: 24, t: 48, b: 80 },
-      gridColor: CHART_COLOR_GRIDLINE,
       legend: { orientation: "h", x: 0, y: 1.1 },
-      height: 480,
     },
     source: CalculationSource.FrontendGenerated,
   });
@@ -1089,18 +1070,6 @@ export function buildPmvDynamicChart(
 
   const output = declaration.chartableOutputs.find(({ key }) => key === config.zOutput);
   if (!output) throw new Error(`Unsupported PMV chart output: ${config.zOutput}`);
-  const xAxis = createFieldAxisScale({
-    field: config.xField,
-    unitSystem,
-    rangeSi: getPmvAxisRangeSi(adapter, config.xField),
-    points: CONTOUR_GRID_RESOLUTION,
-  });
-  const yAxis = createFieldAxisScale({
-    field: config.yField,
-    unitSystem,
-    rangeSi: getPmvAxisRangeSi(adapter, config.yField),
-    points: CONTOUR_GRID_RESOLUTION,
-  });
   const isPmvOutput = config.zOutput === ModelOutputKey.Pmv;
   const classificationLabel = isPmvOutput ? "Zone" : "Band";
   const axisAdapter: DynamicAxisPayloadAdapter<PmvRequestDto> = {
@@ -1113,43 +1082,31 @@ export function buildPmvDynamicChart(
         max: fieldMetaByKey[field].maxValue,
       },
   };
-  const gridHoverTemplate = buildPmvHoverTemplate({
-    inputLabel: null,
-    xAxis: axisHoverSpec(xAxis),
-    yAxis: axisHoverSpec(yAxis),
-    classification: { label: classificationLabel, value: "%{text}" },
-    pmv: isPmvOutput ? "%{customdata[0]:.2f}" : "%{customdata[1]:.2f}",
-    ppd: isPmvOutput ? "%{customdata[1]:.1f}%" : "%{customdata[0]:.1f}%",
-  });
-  const inputGroup = createPmvInputGroup({
-    adapter,
-    inputsMap: source.inputs,
-    resultsByInput,
-    xAxis,
-    yAxis,
-    getXSi: (payload) => getPmvAxisValue(adapter, payload, config.xField),
-    getYSi: (payload) => getPmvAxisValue(adapter, payload, config.yField),
-    coordinateDecimals: 2,
-    classificationLabel,
-    getClassification: (evaluation) => {
-      const value = getPmvOutputValue(config.zOutput, evaluation);
-      const bandIndex = findNumericBandIndexForValue(config.bands, value);
-      return bandIndex === undefined ? "Unclassified" : config.bands[bandIndex].label;
+  return buildFieldChart({
+    unitSystem,
+    xAxis: {
+      field: config.xField,
+      rangeSi: getPmvAxisRangeSi(adapter, config.xField),
+      points: CONTOUR_GRID_RESOLUTION,
     },
-  });
-
-  return buildGridFieldChart({
-    xAxis,
-    yAxis,
-    grid: createBandedGridStrategy({
+    yAxis: {
+      field: config.yField,
+      rangeSi: getPmvAxisRangeSi(adapter, config.yField),
+      points: CONTOUR_GRID_RESOLUTION,
+    },
+    strategy: createBandedGridStrategy({
       config,
       output,
-      unitSystem,
       renderStrategy: GridBandRenderStrategy.ConstraintContours,
       bandLabel: classificationLabel,
-      hoverTemplate: gridHoverTemplate,
-      xAxis,
-      yAxis,
+      hoverTemplate: ({ xAxis, yAxis }) => buildPmvHoverTemplate({
+        inputLabel: null,
+        xAxis: axisHoverSpec(xAxis),
+        yAxis: axisHoverSpec(yAxis),
+        classification: { label: classificationLabel, value: "%{text}" },
+        pmv: isPmvOutput ? "%{customdata[0]:.2f}" : "%{customdata[1]:.2f}",
+        ppd: isPmvOutput ? "%{customdata[1]:.1f}%" : "%{customdata[0]:.1f}%",
+      }),
       evaluateOutput: (xSi, ySi) => {
         const request = { ...baseline.payload };
         const hasValidCoordinates = applyDynamicAxisCoordinates(
@@ -1169,16 +1126,28 @@ export function buildPmvDynamicChart(
         };
       },
     }),
-    inputGroups: [inputGroup],
+    inputGroups: ({ xAxis, yAxis }) => [createPmvInputGroup({
+      adapter,
+      inputsMap: source.inputs,
+      resultsByInput,
+      xAxis,
+      yAxis,
+      getXSi: (payload) => getPmvAxisValue(adapter, payload, config.xField),
+      getYSi: (payload) => getPmvAxisValue(adapter, payload, config.yField),
+      coordinateDecimals: 2,
+      classificationLabel,
+      getClassification: (evaluation) => {
+        const value = getPmvOutputValue(config.zOutput, evaluation);
+        const bandIndex = findNumericBandIndexForValue(config.bands, value);
+        return bandIndex === undefined
+          ? "Unclassified"
+          : config.bands[bandIndex].label;
+      },
+    })],
     layout: {
       title: `${declaration.label} Dynamic Chart — ${output.label}`,
-      paperBgColor: CHART_COLOR_WHITE,
-      plotBgColor: CHART_COLOR_PLOT_BG,
-      showLegend: shouldShowInputLegend(source.inputs),
       margin: { l: 64, r: 24, t: 48, b: 64 },
-      gridColor: CHART_COLOR_GRIDLINE,
       legend: { orientation: "h", x: 0, y: 1.1 },
-      height: 480,
     },
     source: CalculationSource.FrontendGenerated,
   });

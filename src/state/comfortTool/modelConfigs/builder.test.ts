@@ -152,6 +152,6 @@ describe("ComfortModelBuilder capabilities", () => {
       .setModes([ChartMode.Explore])
       .setChartableOutputs([pmvOutput])
       .build())
-      .toThrow(/supported, compatible pair/i);
+      .toThrow(/supported and distinct/i);
   });
 });

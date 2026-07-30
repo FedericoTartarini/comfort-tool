@@ -40,8 +40,6 @@
 
         <!-- Visual representation of comfort models -->
         <ChartPanel
-          title=""
-          description=""
           chartResult={toolState.selectors.getCurrentChartResult()}
           isLoading={toolState.state.ui.isLoading}
           emptyMessage={toolState.selectors.getCurrentChartEmptyMessage()}
@@ -50,26 +48,9 @@
           selectedChart={toolState.selectors.getCurrentSelectedChart()}
           selectedModel={toolState.state.ui.selectedModel}
           onSelectChart={toolState.actions.setSelectedChart}
-          dynamicXAxis={toolState.state.ui.dynamicXAxis}
-          dynamicYAxis={toolState.state.ui.dynamicYAxis}
-          dynamicXAxisOptions={toolState.selectors.getDynamicXAxisOptions()}
-          dynamicYAxisOptions={toolState.selectors.getDynamicYAxisOptions()}
-          baselineInputId={toolState.state.ui.chartBaselineInputId}
-          onSelectBaselineInput={toolState.actions.setChartBaselineInputId}
-          visibleInputIds={toolState.selectors.getVisibleInputIds()}
-          compareEnabled={toolState.state.ui.compareEnabled}
-          onSelectXAxis={toolState.actions.setDynamicXAxis}
-          onSelectYAxis={toolState.actions.setDynamicYAxis}
-          lockYAxis={toolState.selectors.getCurrentChartLockYAxis()}
+          chartControls={toolState.selectors.getChartControlsViewModel()}
           legendZones={toolState.selectors.getCurrentChartLegendZones()}
           legendTitle={toolState.selectors.getCurrentChartLegendTitle()}
-          fieldChartConfig={toolState.selectors.getCurrentFieldChartConfig()}
-          chartableOutputs={toolState.selectors.getCurrentChartableOutputs()}
-          defaultBands={toolState.selectors.getCurrentExploreDefaultBands()}
-          unitSystem={toolState.state.ui.unitSystem}
-          onSelectOutput={toolState.actions.setExploreOutput}
-          onApplyBands={toolState.actions.setExploreBands}
-          embedded={true}
         />
       </Card>
     </section>

@@ -3,7 +3,6 @@ import type { ResultSectionViewModel, ModelOptionsState, ResultCellViewModel } f
 import type {
   ComfortModelDefinition,
   DynamicAxisDefaults,
-  DynamicAxisPairValidator,
   ModelOptionChangeHandler,
 } from "./index";
 import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
@@ -258,14 +257,6 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
   }
 
   /**
-   * Defines model-specific compatibility for otherwise supported dynamic axes.
-   */
-  setDynamicAxisPairValidator(validator: DynamicAxisPairValidator): this {
-    this.config.dynamicAxisPairValidator = validator;
-    return this;
-  }
-
-  /**
    * Defines the boundary zones associated with this model.
    * @param zones Array of ThermalZone instances.
    */
@@ -298,15 +289,6 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
    */
   setLockYAxisChartIds(chartIds: ChartIdType[]): this {
     this.config.lockYAxisChartIds = chartIds;
-    return this;
-  }
-
-  /**
-   * Defines a custom synchronization hook for the model.
-   * @param synchronizer Function that returns a behavior patch.
-   */
-  setSynchronizer(synchronizer: ComfortModelDefinition<ResultType, ChartSourceType>["synchronize"]): this {
-    this.config.synchronize = synchronizer;
     return this;
   }
 
@@ -367,13 +349,9 @@ export class ComfortModelBuilder<ResultType, ChartSourceType> {
     const defaultsAreValid =
       dynamicAxisFields.includes(defaultDynamicAxes.xAxis) &&
       dynamicAxisFields.includes(defaultDynamicAxes.yAxis) &&
-      defaultDynamicAxes.xAxis !== defaultDynamicAxes.yAxis &&
-      (this.config.dynamicAxisPairValidator?.(
-        defaultDynamicAxes.xAxis,
-        defaultDynamicAxes.yAxis,
-      ) ?? true);
+      defaultDynamicAxes.xAxis !== defaultDynamicAxes.yAxis;
     if (!defaultsAreValid) {
-      throw new Error("Default dynamic axes must be a supported, compatible pair.");
+      throw new Error("Default dynamic axes must be supported and distinct.");
     }
 
     return this.config as ComfortModelDefinition<ResultType, ChartSourceType>;

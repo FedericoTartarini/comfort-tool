@@ -73,23 +73,6 @@ describe("UTCI Explore chart", () => {
     expect(chart.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 
-  it.each([
-    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
-    [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
-    [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-  ] as const)("supports UTCI operative/component axes without overwriting", (xAxis, yAxis) => {
-    expect(utciModelConfig.dynamicAxisPairValidator?.(xAxis, yAxis) ?? true).toBe(true);
-  });
-
-  it.each([
-    [FieldKey.DryBulbTemperature, FieldKey.MeanRadiantTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.RelativeHumidity],
-    [FieldKey.WindSpeed, FieldKey.OperativeTemperature],
-  ] as const)("keeps independent UTCI axis pairs chartable", (xAxis, yAxis) => {
-    expect(utciModelConfig.dynamicAxisPairValidator?.(xAxis, yAxis) ?? true).toBe(true);
-  });
-
   it("builds a coupled FieldChartConfig with finite resolved cells", () => {
     const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
     const context = {
