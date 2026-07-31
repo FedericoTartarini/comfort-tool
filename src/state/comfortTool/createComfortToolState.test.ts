@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartId } from "../../models/chartOptions";
+import { ChartId, chartMetaById } from "../../models/chartOptions";
 import { ComfortModel } from "../../models/comfortModels";
 import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
@@ -17,6 +17,7 @@ import { pmvAshraeModelConfig } from "../../comfortModels/pmvAshrae";
 import type { PmvChartSourceDto } from "../../comfortModels/pmvShared";
 import type { UtciResponseDto } from "../../comfortModels/utci";
 import { createComfortToolState } from "./createComfortToolState.svelte";
+import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 
 async function waitForIdle(toolState: ReturnType<typeof createComfortToolState>) {
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -39,11 +40,7 @@ function getChartSettings(
 }
 
 function getModeControl(toolState: ReturnType<typeof createComfortToolState>) {
-  const mode = toolState.selectors.getChartControlsViewModel().mode;
-  if (!mode) {
-    throw new Error("Expected the selected chart to expose mode controls.");
-  }
-  return mode;
+  return toolState.selectors.getChartControlsViewModel().mode;
 }
 
 describe("createComfortToolState", () => {
@@ -104,6 +101,49 @@ describe("createComfortToolState", () => {
       expect(mode.modes).toEqual(expectedModes);
     },
   );
+
+  it("provides one active mode config for every registered selectable chart", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.compareEnabled = true;
+
+    for (const modelId of comfortModelOrder) {
+      toolState.state.ui.selectedModel = modelId;
+      const modelConfig = comfortModelConfigs[modelId];
+      const settings = getChartSettings(toolState, modelId);
+
+      for (const chartId of modelConfig.chartIds) {
+        toolState.actions.setSelectedChart(chartId);
+        const controls = toolState.selectors.getChartControlsViewModel();
+        const isDynamic = chartMetaById[chartId].isDynamic === true;
+        const expectedBands = settings.mode === ChartMode.Compliance
+          ? modelConfig.complianceSpec?.bands
+          : settings.explore?.bands;
+        const outputKey = settings.mode === ChartMode.Compliance
+          ? modelConfig.complianceSpec?.output
+          : settings.explore?.zOutput;
+        const output = modelConfig.chartableOutputs.find(
+          ({ key }) => key === outputKey,
+        );
+        const expectedLegendTitle = (
+          output?.legendTitle
+          ?? output?.label
+          ?? modelConfig.legendTitle
+        ) || "Bands";
+
+        expect(controls.mode?.selectedMode).toBe(settings.mode);
+        expect(controls.mode?.modes).toEqual(modelConfig.modes);
+        expect(controls.baseline?.selectedInputId).toBe(InputId.Input1);
+        expect(controls.axes === null).toBe(!isDynamic);
+        expect(controls.explore === null).toBe(
+          settings.mode !== ChartMode.Explore,
+        );
+        expect(toolState.selectors.getCurrentChartLegendZones())
+          .toEqual(expectedBands);
+        expect(toolState.selectors.getCurrentChartLegendTitle())
+          .toBe(expectedLegendTitle);
+      }
+    }
+  });
 
   it("keeps ASHRAE and ISO mode settings independent from chart selection", () => {
     const toolState = createComfortToolState();
@@ -171,7 +211,7 @@ describe("createComfortToolState", () => {
     expect(explore.feedback).toBeNull();
   });
 
-  it("exposes mode controls only on Dynamic field charts", () => {
+  it("keeps mode and baseline controls on fixed charts while locking their axes", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.compareEnabled = true;
 
@@ -180,33 +220,43 @@ describe("createComfortToolState", () => {
 
     toolState.actions.setSelectedChart(ChartId.Psychrometric);
     const fixed = toolState.selectors.getChartControlsViewModel();
-    expect(fixed.mode).toBeNull();
-    expect(fixed.baseline).toBeNull();
+    expect(fixed.mode?.modes)
+      .toEqual([ChartMode.Compliance, ChartMode.Explore]);
+    expect(fixed.baseline?.selectedInputId).toBe(InputId.Input1);
     expect(fixed.axes).toBeNull();
     expect(fixed.explore).toBeNull();
+
+    toolState.actions.setChartMode(ChartMode.Explore);
+    const fixedExplore = toolState.selectors.getChartControlsViewModel();
+    expect(fixedExplore.mode?.caption).toContain("fixed axes");
+    expect(fixedExplore.explore?.config.mode).toBe(ChartMode.Explore);
 
     toolState.actions.setSelectedChart(ChartId.PmvDynamic);
     expect(getModeControl(toolState).modes)
       .toEqual([ChartMode.Compliance, ChartMode.Explore]);
+    expect(toolState.selectors.getChartControlsViewModel().axes).not.toBeNull();
 
     toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
     const adaptive = getModeControl(toolState);
     expect(adaptive.modes).toEqual([ChartMode.Compliance]);
     expect(adaptive.caption).toContain("ASHRAE 55 adaptive");
     toolState.actions.setSelectedChart(ChartId.Adaptive);
-    expect(toolState.selectors.getChartControlsViewModel()).toEqual({
-      mode: null,
-      baseline: null,
-      axes: null,
-      explore: null,
-    });
+    const adaptiveFixed = toolState.selectors.getChartControlsViewModel();
+    expect(adaptiveFixed.mode?.selectedMode).toBe(ChartMode.Compliance);
+    expect(adaptiveFixed.baseline?.selectedInputId).toBe(InputId.Input1);
+    expect(adaptiveFixed.axes).toBeNull();
+    expect(adaptiveFixed.explore).toBeNull();
 
     toolState.state.ui.selectedModel = ComfortModel.Utci;
     const utci = getModeControl(toolState);
     expect(utci.modes).toEqual([ChartMode.Explore]);
     expect(utci.caption).toContain("Showing UTCI");
     toolState.actions.setSelectedChart(ChartId.Stress);
-    expect(toolState.selectors.getChartControlsViewModel().mode).toBeNull();
+    const utciFixed = toolState.selectors.getChartControlsViewModel();
+    expect(utciFixed.mode?.selectedMode).toBe(ChartMode.Explore);
+    expect(utciFixed.baseline?.selectedInputId).toBe(InputId.Input1);
+    expect(utciFixed.axes).toBeNull();
+    expect(utciFixed.explore?.config.zOutput).toBe(ModelOutputKey.Utci);
   });
 
   it("rebuilds chart presentation without invalidating or replacing ready calculations", async () => {
@@ -335,8 +385,15 @@ describe("createComfortToolState", () => {
     toolState.actions.setDynamicXAxis(FieldKey.MeanRadiantTemperature);
     toolState.actions.setChartBaselineInputId(InputId.Input2);
     expect(getChartSettings(toolState).explore?.bands[0].label).toBe("Preferred");
-    expect(toolState.selectors.getChartControlsViewModel().mode).toBeNull();
-    expect(toolState.selectors.getChartControlsViewModel().explore).toBeNull();
+    expect(toolState.selectors.getChartControlsViewModel().mode?.selectedMode)
+      .toBe(ChartMode.Explore);
+    expect(toolState.selectors.getChartControlsViewModel().explore?.config)
+      .toEqual(expect.objectContaining({
+        zOutput: ModelOutputKey.Ppd,
+        bands: expect.arrayContaining([
+          expect.objectContaining({ label: "Preferred" }),
+        ]),
+      }));
 
     toolState.actions.setSelectedModel(ComfortModel.Utci);
     await waitForIdle(toolState);

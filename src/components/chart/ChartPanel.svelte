@@ -72,11 +72,7 @@
   data-testid="comfort-chart-panel"
 >
   <header class="flex items-start justify-between gap-4">
-    {#if chartControls.mode}
-      <ChartModeControl control={chartControls.mode} />
-    {:else}
-      <div class="min-w-0"></div>
-    {/if}
+    <ChartModeControl control={chartControls.mode} />
     <div class="flex flex-wrap items-center justify-end gap-2 pr-[24px]">
       {#if showChartControls}
         <ChartControls

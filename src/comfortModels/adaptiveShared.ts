@@ -31,7 +31,6 @@ import { ThermalZone } from "../models/thermalZone";
 import type { UnitSystem as UnitSystemType } from "../models/units";
 import {
   buildBoundaryRegionTraces,
-  buildClosedBoundaryPolygonTrace,
   buildFilledBoundaryRegionTrace,
   buildTooltipGridTrace,
 } from "../services/comfort/charts/boundaryRegionEngine";
@@ -45,7 +44,6 @@ import {
   applyDynamicAxisCoordinates,
   type DynamicAxisPayloadAdapter,
 } from "../services/comfort/charts/dynamicAxisPayload";
-import { buildComfortPolygonTrace } from "../services/comfort/charts/plotlyBuilders";
 import type { ChartAxisScale } from "../services/comfort/charts/types";
 import {
   buildDefaultPresentation,
@@ -67,7 +65,6 @@ import {
 } from "../state/comfortTool/modelConfigs/builder";
 
 const FIXED_OPERATIVE_RANGE_SI = { min: 10, max: 40 };
-const FIXED_BOUNDARY_POINTS = 500;
 const DYNAMIC_GRID_POINTS = 50;
 const DYNAMIC_BOUNDARY_POINTS = 240;
 const TOOLTIP_GRID_POINTS = 40;
@@ -860,14 +857,9 @@ export function buildAdaptiveChart(
   resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
+  const config = assertAdaptiveComplianceConfig(declaration, context);
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
   const { unitSystem } = context;
-  const range = declaration.outdoorTemperatureRangeSi;
-  const outdoorValues = [
-    ...Array.from({ length: FIXED_BOUNDARY_POINTS }, (_, index) =>
-      range.min + ((range.max - range.min) * index) / (FIXED_BOUNDARY_POINTS - 1)),
-    ...addCoolingEffectTransitionPoints(declaration, baseline.payload.v, range),
-  ].sort((left, right) => left - right);
 
   return buildFieldChart({
     unitSystem,
@@ -888,32 +880,15 @@ export function buildAdaptiveChart(
     },
     strategy: {
       kind: "boundary",
-      buildTraces: ({ xAxis, yAxis }) => declaration.levels.map((level) => {
-        const boundaries = outdoorValues.map((outdoorTemperature) =>
-          getLevelBoundaries(
-            declaration,
-            level,
-            outdoorTemperature,
-            baseline.payload.v,
-          ));
-        return buildClosedBoundaryPolygonTrace({
-          lowerXValuesSi: outdoorValues,
-          lowerYValuesSi: boundaries.map(({ lower }) => lower),
-          upperXValuesSi: outdoorValues,
-          upperYValuesSi: boundaries.map(({ upper }) => upper),
+      buildTraces: ({ xAxis, yAxis }) =>
+        buildOutdoorTemperatureBoundaryTraces(
+          declaration,
+          config.bands,
+          baseline.payload,
+          unitSystem,
           xAxis,
           yAxis,
-          buildTrace: ({ polygonX, polygonY }) => buildComfortPolygonTrace({
-            inputId: baseline.inputId,
-            nameSuffix: level.label,
-            polygonX: polygonX.map((value) => roundValue(value)),
-            polygonY: polygonY.map((value) => roundValue(value)),
-            hovertemplate: "",
-            hoverinfo: "skip",
-            isZone: true,
-          }),
-        });
-      }),
+        ),
     },
     chartOverlays: ({ xAxis, yAxis }) => [buildAdaptiveTooltipTrace(
       declaration,
@@ -959,8 +934,8 @@ function assertAdaptiveComplianceConfig(
   context: ChartBuildContext,
 ): ComplianceFieldChartConfig {
   const config = context.fieldChartConfig;
-  if (config?.mode !== ChartMode.Compliance) {
-    throw new Error("Adaptive dynamic chart requires a Compliance FieldChartConfig.");
+  if (config.mode !== ChartMode.Compliance) {
+    throw new Error("Adaptive chart requires a Compliance FieldChartConfig.");
   }
   const { xField: xAxis, yField: yAxis } = config;
   if (

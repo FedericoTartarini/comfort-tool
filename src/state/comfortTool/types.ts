@@ -127,7 +127,7 @@ export interface ExploreControls {
 }
 
 export interface ChartControlsViewModel {
-  mode: ChartModeControlViewModel | null;
+  mode: ChartModeControlViewModel;
   baseline: BaselineControl | null;
   axes: {
     x: AxisControl;

@@ -43,21 +43,19 @@ function createContext(
   xAxis: FieldKeyType,
   yAxis: FieldKeyType,
   unitSystem: UnitSystemType = UnitSystem.SI,
-  declaration?: AdaptiveModelDeclaration,
+  declaration: AdaptiveModelDeclaration = adaptiveAshraeDeclaration,
 ): ChartBuildContext {
   return {
     unitSystem,
     dynamicAxes: { xAxis, yAxis },
     baselineInputId: InputId.Input1,
-    fieldChartConfig: declaration
-      ? {
-          mode: ChartMode.Compliance,
-          xField: xAxis,
-          yField: yAxis,
-          zOutput: declaration.complianceSpec.output,
-          bands: declaration.complianceSpec.bands,
-        }
-      : null,
+    fieldChartConfig: {
+      mode: ChartMode.Compliance,
+      xField: xAxis,
+      yField: yAxis,
+      zOutput: declaration.complianceSpec.output,
+      bands: declaration.complianceSpec.bands,
+    },
   };
 }
 
@@ -75,6 +73,7 @@ function buildFixedChart(
       FieldKey.PrevailingMeanOutdoorTemperature,
       FieldKey.OperativeTemperature,
       unitSystem,
+      declaration,
     ),
   );
 }
@@ -107,7 +106,7 @@ function getBoundaryPoint(
   targetOutdoorTemperature: number,
   side: "lower" | "upper",
 ): { outdoorTemperature: number; operativeTemperature: number } {
-  const trace = chart.traces.find(({ name }) => name === `Input 1 ${traceName}`);
+  const trace = chart.traces.find(({ name }) => name === traceName);
   if (!trace) throw new Error(`Missing boundary trace: ${traceName}`);
   const edgePointCount = Math.floor(trace.x.length / 2);
   const xValues = side === "lower"
@@ -304,9 +303,9 @@ describe("adaptive charts", () => {
 
     expect(level.lower).not.toBeNull();
     expect(point.operativeTemperature).toBeCloseTo(level.lower!, 1);
-    expect(chart.traces.slice(0, declaration.levels.length).map(({ name }) => name))
-      .toEqual(declaration.levels.map(({ label }) => `Input 1 ${label}`));
-    expect(chart.traces[declaration.levels.length].name).toBe("Tooltip Layer");
+    expect(chart.traces.slice(0, declaration.complianceSpec.bands.length).map(({ name }) => name))
+      .toEqual(declaration.complianceSpec.bands.map(({ label }) => label));
+    expect(chart.traces[declaration.complianceSpec.bands.length].name).toBe("Tooltip Layer");
     expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
     expect(String(chart.layout.xaxis.title)).toContain("temperature");
     expect(String(chart.layout.yaxis.title)).toContain("Operative temperature");

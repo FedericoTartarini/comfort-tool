@@ -68,10 +68,6 @@ describe("heatIndex service", () => {
       unitSystem: UnitSystem.SI,
       dynamicAxes: heatIndexModelConfig.defaultDynamicAxes,
       baselineInputId: InputId.Input1,
-      fieldChartConfig: null,
-    } satisfies ChartBuildContext;
-    const exploreContext = {
-      ...fixedContext,
       fieldChartConfig: {
         mode: ChartMode.Explore,
         xField: FieldKey.DryBulbTemperature,
@@ -91,7 +87,7 @@ describe("heatIndex service", () => {
       ChartId.HeatIndexDynamic,
       chartSource,
       resultsByInput,
-      exploreContext,
+      fixedContext,
     );
 
     expect(fixedChart?.traces[0].type).toBe("contour");
@@ -136,5 +132,55 @@ describe("heatIndex service", () => {
 
     expect(chart).not.toBeNull();
     expect(chart?.layout.xaxis.title).toBe(chart?.layout.yaxis.title);
+  });
+
+  it("applies edited Explore bands to fixed-view fills and input hover", () => {
+    const request = { tdb: 35, rh: 70 };
+    const result = calculateHeatIndex(request);
+    const bands = [
+      {
+        min: -Infinity,
+        max: result.hi,
+        label: "Below target",
+        color: "#123456",
+      },
+      {
+        min: result.hi,
+        max: Infinity,
+        label: "At or above target",
+        color: "#abcdef",
+      },
+    ];
+    const chart = heatIndexModelConfig.buildChartResult(
+      ChartId.HeatIndexRanges,
+      { inputs: { [InputId.Input1]: request } },
+      {
+        [InputId.Input1]: result,
+        [InputId.Input2]: null,
+        [InputId.Input3]: null,
+      },
+      {
+        unitSystem: UnitSystem.SI,
+        dynamicAxes: heatIndexModelConfig.defaultDynamicAxes,
+        baselineInputId: InputId.Input1,
+        fieldChartConfig: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.HeatIndex,
+          bands,
+        },
+      },
+    );
+    const fillTrace = chart?.traces.find(
+      ({ name }) => name === "Heat Index bands",
+    );
+    const inputTrace = chart?.traces.find(({ name }) => name === "Input 1");
+
+    expect(fillTrace?.colorscale?.map(([, color]) => color))
+      .toEqual(expect.arrayContaining(["#123456", "#abcdef"]));
+    expect(inputTrace?.hovertemplate).toContain("At or above target");
+    expect(String(chart?.layout.xaxis.title)).toContain("Relative humidity");
+    expect(String(chart?.layout.yaxis.title)).toContain("Air temperature");
   });
 });

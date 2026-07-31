@@ -23,7 +23,11 @@ import {
   pmvAshraeAdapter,
   pmvAshraeDeclaration,
 } from "../../comfortModels/pmvAshrae";
-import { buildUtciStressChart, calculateUtci } from "../../comfortModels/utci";
+import {
+  buildUtciStressChart,
+  calculateUtci,
+  utciModelConfig,
+} from "../../comfortModels/utci";
 import {
   deriveRelativeAirSpeedFromMeasured,
   deriveRelativeHumidityFromDewPoint,
@@ -81,16 +85,30 @@ function createPmvExploreConfig(
   };
 }
 
+function createUtciExploreConfig(): ExploreFieldChartConfig {
+  const output = utciModelConfig.chartableOutputs[0];
+  return {
+    mode: ChartMode.Explore,
+    xField: FieldKey.DryBulbTemperature,
+    yField: FieldKey.RelativeHumidity,
+    zOutput: output.key,
+    bands: output.defaultBands,
+  };
+}
+
 function createChartContext(
   unitSystem: UnitSystem = UnitSystem.SI,
-  fieldChartConfig: ExploreFieldChartConfig | null = null,
+  fieldChartConfig: ExploreFieldChartConfig = createPmvExploreConfig(
+    FieldKey.DryBulbTemperature,
+    FieldKey.RelativeHumidity,
+  ),
   baselineInputId: InputId = InputId.Input1,
 ): ChartBuildContext {
   return {
     unitSystem,
     dynamicAxes: {
-      xAxis: fieldChartConfig?.xField ?? FieldKey.DryBulbTemperature,
-      yAxis: fieldChartConfig?.yField ?? FieldKey.RelativeHumidity,
+      xAxis: fieldChartConfig.xField,
+      yAxis: fieldChartConfig.yField,
     },
     baselineInputId,
     fieldChartConfig,
@@ -203,7 +221,7 @@ describe("comfort services", () => {
       {
         [InputId.Input1]: utciResult,
       },
-      createChartContext(),
+      createChartContext(UnitSystem.SI, createUtciExploreConfig()),
     );
 
     expect(psychrometricChart.traces.length).toBeGreaterThan(1);
@@ -216,22 +234,17 @@ describe("comfort services", () => {
     expect(comfortZoneTrace?.isComfortZone).toBe(true);
     expect(psychrometricChart.traces[psychrometricChart.traces.length - 1]?.type)
       .toBe("scatter");
-    expect(psychrometricChart.traces.slice(0, 12).map((trace) => trace.name)).toEqual([
-      "PMV (ASHRAE-55) Zones",
-      "RH 10%",
-      "RH 20%",
-      "RH 30%",
-      "RH 40%",
-      "RH 50%",
-      "RH 60%",
-      "RH 70%",
-      "RH 80%",
-      "RH 90%",
-      "RH 100%",
-      "Input 1 comfort zone",
-    ]);
-    expect(psychrometricChart.traces[12].name).toBe("Input 1");
-    expect(utciChart.traces).toHaveLength(3);
+    expect(psychrometricChart.traces.filter(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    ))).not.toHaveLength(0);
+    expect(psychrometricChart.traces.find(({ name }) => name === "PMV bands hover"))
+      .toBeDefined();
+    expect(psychrometricChart.traces.find(({ name }) => name === "Input 1"))
+      .toBeDefined();
+    expect(utciChart.traces.find(({ name }) => name === "UTCI bands hover"))
+      .toBeDefined();
+    expect(utciChart.traces.find(({ name }) => name === "Input 1"))
+      .toBeDefined();
     expect(utciChart.annotations.length).toBeGreaterThan(0);
   });
 
@@ -249,7 +262,7 @@ describe("comfort services", () => {
       {
         [InputId.Input1]: utciResult,
       },
-      createChartContext(unitSystem),
+      createChartContext(unitSystem, createUtciExploreConfig()),
     );
     const range = chart.layout.xaxis.range as number[];
     const bandCoordinates = chart.traces
@@ -279,8 +292,11 @@ describe("comfort services", () => {
       createChartContext(),
     );
 
-    expect(Number.isNaN(psychrometricChart.traces[0].z?.[49]?.[0])).toBe(true);
-    expect(psychrometricChart.traces[0].text?.[49]?.[0]).toBe("");
+    const hoverTrace = psychrometricChart.traces.find(
+      ({ name }) => name === "PMV bands hover",
+    );
+    expect(Number.isNaN(hoverTrace?.z?.[49]?.[0])).toBe(true);
+    expect(hoverTrace?.text?.[49]?.[0]).toBe("");
   });
 
   it("builds PMV dynamic chart with selected axes and input point", () => {
@@ -373,12 +389,14 @@ describe("comfort services", () => {
       {
         [InputId.Input1]: utciResult,
       },
-      createChartContext(UnitSystem.IP),
+      createChartContext(UnitSystem.IP, createUtciExploreConfig()),
     );
 
     expect(String(psychrometricChart.layout.xaxis.title)).toContain("°F");
     expect(String(psychrometricChart.layout.yaxis.title)).toContain("gr/lb");
-    expect(psychrometricChart.traces[0].hovertemplate).toContain("°F");
+    expect(psychrometricChart.traces.find(({ name }) => (
+      name === "PMV bands hover"
+    ))?.hovertemplate).toContain("°F");
     expect(String(utciChart.layout.xaxis.title)).toContain("°F");
     const utciInputTrace = utciChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
     expect(utciInputTrace).toBeDefined();

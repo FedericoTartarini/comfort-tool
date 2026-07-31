@@ -100,7 +100,7 @@ export interface ChartBuildContext {
     readonly yAxis: FieldKeyType;
   };
   readonly baselineInputId: InputIdType;
-  readonly fieldChartConfig: FieldChartConfig | null;
+  readonly fieldChartConfig: FieldChartConfig;
 }
 
 export function resolveBandEdge(

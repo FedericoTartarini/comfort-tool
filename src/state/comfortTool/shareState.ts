@@ -80,16 +80,26 @@ function toUrl(source: URL | Location | string): URL {
 }
 
 function encodeBase64Url(value: string): string {
-  return globalThis.btoa(value)
+  const bytes = new TextEncoder().encode(value);
+  const binary = Array.from(
+    bytes,
+    (byte) => String.fromCharCode(byte),
+  ).join("");
+  return globalThis.btoa(binary)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
 }
 
 function decodeBase64Url(value: string): string {
+  if (!/^[A-Za-z0-9_-]*$/.test(value) || value.length % 4 === 1) {
+    throw new Error("Invalid Base64URL payload.");
+  }
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   const paddingLength = (4 - (normalized.length % 4)) % 4;
-  return globalThis.atob(`${normalized}${"=".repeat(paddingLength)}`);
+  const binary = globalThis.atob(`${normalized}${"=".repeat(paddingLength)}`);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
 function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"] | null {

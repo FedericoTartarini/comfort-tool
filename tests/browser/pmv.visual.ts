@@ -339,6 +339,46 @@ test.describe("PMV visual regression", () => {
     await expect(panel).toHaveScreenshot("pmv-ashrae-explore-panel.png");
   });
 
+  test("ASHRAE fixed psychrometric view keeps the active mode output and bands", async ({
+    page,
+  }) => {
+    const { panel, plot, visual } = await openTargetPmvChart(page, {
+      display: "PPD (%)",
+      mode: "explore",
+    });
+    const chartTrigger = page.getByRole("button", {
+      name: "Select chart type and export",
+    });
+    await chartTrigger.click();
+    await page.getByRole("button", { name: "Psychrometric", exact: true }).click();
+    await expect(chartTrigger).toContainText("Psychrometric");
+
+    const modeGroup = panel.getByRole("group", { name: "Chart mode" });
+    const complianceButton = modeGroup.getByRole("button", { name: "Compliance" });
+    const exploreButton = modeGroup.getByRole("button", { name: "Explore" });
+    await expect(exploreButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(
+      "Showing PPD (%) on this chart's fixed axes with editable thresholds.",
+      { exact: true },
+    )).toBeVisible();
+    await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Select chart display output" }))
+      .toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeVisible();
+    await waitForTrace(plot, "PPD (%) bands hover");
+    await expect(visual).toContainText("PPD Bands");
+
+    await complianceButton.click();
+    await expect(complianceButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Select chart display output" }))
+      .toBeHidden();
+    await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
+    await waitForTrace(plot, "PMV bands hover");
+    await expectComplianceConstraintFills(plot);
+    await expect(visual).toContainText("PMV Zones");
+  });
+
   test("ASHRAE PMV in SI", async ({ page }) => {
     const { plot, visual } = await openTargetPmvChart(page);
 

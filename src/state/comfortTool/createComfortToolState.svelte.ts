@@ -30,6 +30,7 @@ import {
   ChartMode,
   type Band,
   type ChartMode as ChartModeType,
+  type FieldChartConfig,
   type ModelOutputKey,
   type NumericBand,
 } from "../../models/modelCapabilities";
@@ -331,12 +332,17 @@ export function createComfortToolState(): ComfortToolController {
     return state.ui.pendingModelSwitch;
   }
 
-  function getCurrentFieldChartConfig() {
-    if (!chartMetaById[getCurrentSelectedChartId()].isDynamic) {
-      return null;
+  function getCurrentFieldChartConfig(): FieldChartConfig {
+    const config = buildFieldChartConfig(
+      getActiveModelConfig(),
+      getCurrentChartSettings(),
+    );
+    if (!config) {
+      throw new Error(
+        `Invalid field chart configuration for ${state.ui.selectedModel}.`,
+      );
     }
-
-    return buildFieldChartConfig(getActiveModelConfig(), getCurrentChartSettings());
+    return config;
   }
 
   function getCurrentChartableOutputs() {
@@ -364,41 +370,40 @@ export function createComfortToolState(): ComfortToolController {
     const fieldChartConfig = getCurrentFieldChartConfig();
     const chartableOutputs = getCurrentChartableOutputs();
     const effectiveBaselineInputId = getEffectiveChartBaselineInputId();
-    let mode: ChartControlsViewModel["mode"] = null;
-
-    if (isDynamic) {
-      const selectedOutput = settings.explore
-        ? getDeclaredExploreOutput(modelConfig, settings.explore.zOutput)
-        : undefined;
-      const caption = settings.mode === ChartMode.Compliance
-        ? modelConfig.complianceSpec?.caption ?? "Compliance limits are locked for this chart."
-        : `Showing ${selectedOutput?.label ?? "the selected output"} over the selected axes with editable thresholds.`;
-      const baselineResult = getCurrentModelCache().status === "ready"
-        ? getCurrentModelCache().resultsByInput[effectiveBaselineInputId]
-        : null;
-      const feedback = settings.mode === ChartMode.Compliance
-        && modelConfig.complianceSpec
-        && baselineResult !== null
-        ? {
-            ...modelConfig.complianceSpec.getFeedback(baselineResult),
-            ...(state.ui.compareEnabled
-              ? { inputLabel: inputDisplayMetaById[effectiveBaselineInputId].label }
-              : {}),
-          }
-        : null;
-
-      mode = {
-        modes: modelConfig.modes,
-        selectedMode: settings.mode,
-        caption,
-        feedback,
-        onSelect: setChartMode,
-      };
-    }
+    const selectedOutput = getDeclaredExploreOutput(
+      modelConfig,
+      fieldChartConfig.zOutput,
+    );
+    const caption = settings.mode === ChartMode.Compliance
+      ? modelConfig.complianceSpec?.caption
+        ?? "Compliance limits are locked for this chart."
+      : isDynamic
+        ? `Showing ${selectedOutput?.label ?? "the selected output"} over the selected axes with editable thresholds.`
+        : `Showing ${selectedOutput?.label ?? "the selected output"} on this chart's fixed axes with editable thresholds.`;
+    const baselineResult = getCurrentModelCache().status === "ready"
+      ? getCurrentModelCache().resultsByInput[effectiveBaselineInputId]
+      : null;
+    const feedback = settings.mode === ChartMode.Compliance
+      && modelConfig.complianceSpec
+      && baselineResult !== null
+      ? {
+          ...modelConfig.complianceSpec.getFeedback(baselineResult),
+          ...(state.ui.compareEnabled
+            ? { inputLabel: inputDisplayMetaById[effectiveBaselineInputId].label }
+            : {}),
+        }
+      : null;
+    const mode: ChartControlsViewModel["mode"] = {
+      modes: modelConfig.modes,
+      selectedMode: settings.mode,
+      caption,
+      feedback,
+      onSelect: setChartMode,
+    };
 
     return {
       mode,
-      baseline: isDynamic && state.ui.compareEnabled
+      baseline: state.ui.compareEnabled
         ? {
             selectedInputId: effectiveBaselineInputId,
             visibleInputIds: getVisibleInputIds(),
@@ -421,8 +426,7 @@ export function createComfortToolState(): ComfortToolController {
             },
           }
         : null,
-      explore: isDynamic
-        && fieldChartConfig?.mode === ChartMode.Explore
+      explore: fieldChartConfig.mode === ChartMode.Explore
         && chartableOutputs.length > 0
         ? {
             config: fieldChartConfig,
@@ -482,25 +486,21 @@ export function createComfortToolState(): ComfortToolController {
     getCurrentCacheStatus: () => getCurrentModelCache().status,
     getCurrentChartLegendZones: () => {
       const config = getActiveModelConfig();
-      const fieldChartConfig = getCurrentFieldChartConfig();
-      if (fieldChartConfig) {
-        return fieldChartConfig.bands;
-      }
-      if (config.legendChartIds.includes(getCurrentSelectedChartId())) {
-        return config.zones;
-      }
-      return null;
+      return config.legendChartIds.includes(getCurrentSelectedChartId())
+        ? getCurrentFieldChartConfig().bands
+        : null;
     },
     getCurrentChartLegendTitle: () => {
       const fieldChartConfig = getCurrentFieldChartConfig();
-      if (fieldChartConfig) {
-        const output = getDeclaredExploreOutput(
-          getActiveModelConfig(),
-          fieldChartConfig.zOutput,
-        );
-        return output?.legendTitle ?? output?.label ?? "Bands";
-      }
-      return getActiveModelConfig().legendTitle;
+      const modelConfig = getActiveModelConfig();
+      const output = getDeclaredExploreOutput(
+        modelConfig,
+        fieldChartConfig.zOutput,
+      );
+      const title = output?.legendTitle
+        ?? output?.label
+        ?? modelConfig.legendTitle;
+      return title || "Bands";
     },
     getChartControlsViewModel,
     getPendingModelSwitch,

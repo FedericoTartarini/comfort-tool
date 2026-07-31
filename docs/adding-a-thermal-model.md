@@ -439,8 +439,8 @@ myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context
     evaluate: calculateMyNewModel,
     getOutputValue: (result) => result.index,
 
-    // A fixed-axis view uses the same grid and band primitives as Explore while
-    // remaining independent from transient Explore selections and working bands.
+    // A fixed-axis view locks only its axes and ranges. It still consumes the
+    // active mode's output and bands from context.fieldChartConfig.
     fixedView: {
       chartId: ChartId.MyNewModelRanges,
       title: `${MODEL_LABEL} Ranges`,
@@ -464,7 +464,7 @@ myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context
 });
 ```
 
-The controller builds one `ChartBuildContext` containing the unit system, active axes, effective baseline input, and optional `FieldChartConfig`. Fixed numeric charts construct a local `NumericFieldChartConfig` with no mode and do not display mode captions, feedback, or field controls. Dynamic charts are the sole mode surface: they receive either `mode: ChartMode.Compliance`, with `zOutput` and `bands` taken directly from the registered `complianceSpec`, or `mode: ChartMode.Explore`, with the selected output and independent working bands. A model that declares mode capabilities must therefore select its Dynamic chart as the default; an optional `fixedView` remains a selectable mode-independent auxiliary view. The model builder validates declarations, while field-chart actions normalize and validate editable bands. Selectors and the chart engine consume that state without repeating validation or cloning. Mode, chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in chart sources or add a separate Compliance rendering pipeline.
+The controller builds one `ChartBuildContext` containing the unit system, remembered dynamic axes, effective baseline input, and a required valid `FieldChartConfig`. Every selectable chart receives that same current-mode config. Compliance takes `zOutput` and `bands` directly from the registered `complianceSpec`; Explore uses the selected output and independent working bands. A fixed view overrides only its declared x/y fields and ranges inside the builder, so it still consumes the current mode, output, bands, baseline, caption, feedback, and legend. The UI exposes mode information on every view, exposes baseline whenever compare mode is active, shows x/y controls only for Dynamic charts, shows Display and Thresholds on every Explore view, and hides those two controls in Compliance. The model builder validates declarations, while field-chart actions normalize and validate editable bands. Selectors and the chart engine consume that state without repeating validation or cloning. Mode, chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in chart sources or add a separate Compliance rendering pipeline.
 
 The controller initializes `chartSettingsByModel` for every registered model. Compliance is the default whenever declared; otherwise Explore is the default. Each record independently remembers mode, x/y axes, baseline, and optional Explore z/bands across model and chart switches. A remembered baseline that is currently hidden resolves to Input 1 without being erased. Strict v1 share snapshots store these settings inside each model entry, omit Compliance bands, encode unbounded Explore edges with wire sentinels, and reject the previous v1 shape rather than migrating it.
 
@@ -481,7 +481,7 @@ Register chart metadata, dynamic axis fields, zone legend, and default options:
 ```ts
 // Which chart is shown by default, and which charts are available in the selector.
 myNewModelBuilder.setDefaultChart(
-  ChartId.MyNewModelDynamic,                             // mode-capable default
+  ChartId.MyNewModelDynamic,                             // default chart
   [ChartId.MyNewModelRanges, ChartId.MyNewModelDynamic]  // all available charts
 );
 

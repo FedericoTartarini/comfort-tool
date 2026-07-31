@@ -10,6 +10,7 @@ import { InputId } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
 import {
   buildUtciDynamicChart,
+  buildUtciStressChart,
   calculateUtci,
   getUtciZoneMeta,
   utciModelConfig,
@@ -43,6 +44,65 @@ describe("UTCI stress zones", () => {
 });
 
 describe("UTCI Explore chart", () => {
+  it("applies edited bands and preserves gaps in the fixed stress strip", () => {
+    const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
+    const result = calculateUtci(request);
+    const bands = [
+      {
+        min: -Infinity,
+        max: result.utci,
+        label: "Below marker",
+        color: "#123456",
+      },
+      {
+        min: result.utci,
+        max: result.utci + 1,
+        label: "Marker band",
+        color: "#abcdef",
+      },
+      {
+        min: result.utci + 2,
+        max: Infinity,
+        label: "Above gap",
+        color: "#fedcba",
+      },
+    ];
+    const chart = buildUtciStressChart(
+      { inputs: { [InputId.Input1]: request } },
+      { [InputId.Input1]: result },
+      {
+        unitSystem: UnitSystem.SI,
+        dynamicAxes: utciModelConfig.defaultDynamicAxes,
+        baselineInputId: InputId.Input1,
+        fieldChartConfig: {
+          mode: ChartMode.Explore,
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.Utci,
+          bands,
+        },
+      },
+    );
+    const fillTrace = chart.traces.find(({ name }) => name === "UTCI bands");
+    const hoverTrace = chart.traces.find(
+      ({ name }) => name === "UTCI bands hover",
+    );
+    const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
+    const gapIndex = fillTrace?.x.findIndex((value) => (
+      value > result.utci + 1 && value < result.utci + 2
+    )) ?? -1;
+
+    expect(gapIndex).toBeGreaterThanOrEqual(0);
+    expect(fillTrace?.z?.every((row) => Number.isNaN(row[gapIndex]))).toBe(true);
+    expect(hoverTrace?.text?.every((row) => row[gapIndex] === "Unclassified"))
+      .toBe(true);
+    expect(fillTrace?.colorscale?.map(([, color]) => color))
+      .toEqual(expect.arrayContaining(["#123456", "#abcdef", "#fedcba"]));
+    expect(inputTrace?.hovertemplate).toContain("Marker band");
+    expect(chart.annotations.map(({ text }) => text))
+      .toEqual(expect.arrayContaining(["Below marker", "Marker band", "Above gap"]));
+  });
+
   it("uses its declared raw output and working bands", () => {
     const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
     const result = calculateUtci(request);

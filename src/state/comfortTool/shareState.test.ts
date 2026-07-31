@@ -11,9 +11,11 @@ import { UnitSystem } from "../../models/units";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 import {
   applyShareSnapshotToState,
+  buildShareUrl,
   createShareStateSnapshot,
   deserializeShareState,
   parseShareStateSnapshot,
+  readShareStateFromUrl,
   serializeShareState,
   type ShareStateSnapshot,
 } from "./shareState";
@@ -99,6 +101,59 @@ describe("shareState strict v1 codec", () => {
       .toBe(-Infinity);
     expect(restored?.models[ComfortModel.PmvAshrae].chartSettings.explore?.bands[1].max)
       .toBe(Infinity);
+  });
+
+  it("round-trips built-in and edited UTF-8 labels through the codec and URL", () => {
+    const toolState = createComfortToolState();
+    toolState.actions.setChartMode(ChartMode.Explore);
+    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+
+    const builtInSnapshot = createShareStateSnapshot(toolState.state);
+    const builtInBands = builtInSnapshot.models[ComfortModel.PmvAshrae]
+      .chartSettings.explore?.bands;
+    expect(builtInBands?.[1].label).toContain("≥");
+    expect(deserializeShareState(serializeShareState(builtInSnapshot)))
+      .toEqual(builtInSnapshot);
+
+    expect(toolState.actions.setExploreBands([
+      {
+        min: -Infinity,
+        max: 10,
+        label: "舒适区 ✅",
+        color: "#86efac",
+      },
+      {
+        min: 10,
+        max: Infinity,
+        label: "偏高 🥵（≥ 10%）",
+        color: "#fca5a5",
+      },
+    ])).toBe(true);
+    const editedSnapshot = createShareStateSnapshot(toolState.state);
+    const url = buildShareUrl(
+      editedSnapshot,
+      "https://example.test/comfort?existing=1#results",
+    );
+    const restored = readShareStateFromUrl(url);
+
+    expect(restored).toEqual(editedSnapshot);
+    expect(
+      restored?.models[ComfortModel.PmvAshrae]
+        .chartSettings.explore?.bands.map(({ label }) => label),
+    ).toEqual(["舒适区 ✅", "偏高 🥵（≥ 10%）"]);
+  });
+
+  it("rejects invalid Base64URL and malformed UTF-8 bytes", () => {
+    const malformedUtf8 = globalThis.btoa(
+      String.fromCharCode(0xc3, 0x28),
+    )
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+
+    expect(deserializeShareState("%%%")).toBeNull();
+    expect(deserializeShareState("A")).toBeNull();
+    expect(deserializeShareState(malformedUtf8)).toBeNull();
   });
 
   it("applies a complete snapshot without reseeding any model settings", () => {

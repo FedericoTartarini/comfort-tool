@@ -97,17 +97,26 @@ async function openAdaptiveChart(
   } else {
     await selectChart(page, "Adaptive");
     await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
-    await expect(panel.getByText("Compliance", { exact: true })).toBeHidden();
+    await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
+    await expect(panel.getByText(
+      model === "ashrae"
+        ? "ASHRAE 55 adaptive acceptability limits are locked for this chart."
+        : "EN 16798-1 Category III limits are locked for this chart.",
+      { exact: true },
+    )).toBeVisible();
     await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeHidden();
     await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Select chart display output" }))
+      .toBeHidden();
+    await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
   }
 
   const plot = page.getByTestId("comfort-chart-plot");
   const traceName = dynamic
     ? "Too Cool"
     : model === "ashrae"
-      ? "Input 1 80% Acceptability"
-      : "Input 1 Category III";
+      ? "80% Acceptability"
+      : "Category III";
   await waitForAdaptiveTrace(plot, traceName);
   await expectAxisUnits(plot, useIpUnits ? "°F" : "°C");
 
