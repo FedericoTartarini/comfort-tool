@@ -26,6 +26,20 @@ const pmvOutput: ModelOutput = {
   defaultBands: bands,
 };
 
+const complianceFeedback = () => ({ text: "Compliant", passes: true });
+
+function createComplianceSpec(
+  output: ModelOutputKey = ModelOutputKey.Pmv,
+  complianceBands: readonly NumericBand[] = bands,
+) {
+  return {
+    output,
+    bands: complianceBands,
+    caption: "Test compliance requirements.",
+    getFeedback: complianceFeedback,
+  };
+}
+
 type BuilderPart =
   | "label"
   | "description"
@@ -107,7 +121,7 @@ describe("ComfortModelBuilder capabilities", () => {
       .setDescription("Test model description.")
       .setModes([ChartMode.Compliance, ChartMode.Explore])
       .setChartableOutputs([pmvOutput])
-      .setComplianceSpec({ output: ModelOutputKey.Pmv, bands })
+      .setComplianceSpec(createComplianceSpec())
       .setDefaultChart(ChartId.Psychrometric, [ChartId.Psychrometric])
       .setDefaultOptions({})
       .setOptionNormalizer(() => ({}))
@@ -129,7 +143,7 @@ describe("ComfortModelBuilder capabilities", () => {
 
     expect(definition.modes).toEqual([ChartMode.Compliance, ChartMode.Explore]);
     expect(definition.chartableOutputs).toEqual([pmvOutput]);
-    expect(definition.complianceSpec).toEqual({ output: ModelOutputKey.Pmv, bands });
+    expect(definition.complianceSpec).toEqual(createComplianceSpec());
     expect(definition.complianceSpec?.bands).not.toBe(bands);
   });
 
@@ -137,7 +151,7 @@ describe("ComfortModelBuilder capabilities", () => {
     const definition = createBuilder()
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
-      .setComplianceSpec({ output: ModelOutputKey.OperativeTemperature, bands })
+      .setComplianceSpec(createComplianceSpec(ModelOutputKey.OperativeTemperature))
       .build();
 
     expect(definition.chartableOutputs).toEqual([]);
@@ -173,14 +187,33 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() => createBuilder()
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
-      .setComplianceSpec({ output: ModelOutputKey.Pmv, bands: [] })
+      .setComplianceSpec(createComplianceSpec(ModelOutputKey.Pmv, []))
+      .build())
+      .toThrow(/non-empty compliance specification/i);
+  });
+
+  it("requires Compliance models to expose a caption and feedback callback", () => {
+    expect(() => createBuilder()
+      .setModes([ChartMode.Compliance])
+      .setChartableOutputs([])
+      .setComplianceSpec({ ...createComplianceSpec(), caption: "  " })
+      .build())
+      .toThrow(/non-empty compliance specification/i);
+
+    expect(() => createBuilder()
+      .setModes([ChartMode.Compliance])
+      .setChartableOutputs([])
+      .setComplianceSpec({
+        ...createComplianceSpec(),
+        getFeedback: null as never,
+      })
       .build())
       .toThrow(/non-empty compliance specification/i);
   });
 
   it("rejects a compliance specification without Compliance mode", () => {
     expect(() => createExploreBuilder()
-      .setComplianceSpec({ output: ModelOutputKey.Pmv, bands })
+      .setComplianceSpec(createComplianceSpec())
       .build())
       .toThrow(/without Compliance mode/i);
   });

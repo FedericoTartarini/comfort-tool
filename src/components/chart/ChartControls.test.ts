@@ -31,6 +31,13 @@ describe("ChartControls Explore composition", () => {
     render(ChartControls, {
       idPrefix: "test",
       controls: {
+        mode: {
+          modes: [ChartMode.Compliance, ChartMode.Explore],
+          selectedMode: ChartMode.Explore,
+          caption: "Explore caption.",
+          feedback: null,
+          onSelect: vi.fn(),
+        },
         baseline: null,
         axes: {
           x: {
@@ -77,5 +84,47 @@ describe("ChartControls Explore composition", () => {
 
     await user.click(screen.getByText("PPD (%)"));
     expect(onSelectOutput).toHaveBeenCalledWith(ModelOutputKey.Ppd);
+  });
+
+  it("keeps axes and baseline but hides Display and thresholds in Compliance", () => {
+    render(ChartControls, {
+      idPrefix: "compliance",
+      controls: {
+        mode: {
+          modes: [ChartMode.Compliance, ChartMode.Explore],
+          selectedMode: ChartMode.Compliance,
+          caption: "Compliance caption.",
+          feedback: null,
+          onSelect: vi.fn(),
+        },
+        baseline: {
+          selectedInputId: "input1",
+          visibleInputIds: ["input1", "input2"],
+          onSelect: vi.fn(),
+        },
+        axes: {
+          x: {
+            selectedField: FieldKey.DryBulbTemperature,
+            options: [FieldKey.DryBulbTemperature],
+            locked: false,
+            onSelect: vi.fn(),
+          },
+          y: {
+            selectedField: FieldKey.RelativeHumidity,
+            options: [FieldKey.RelativeHumidity],
+            locked: false,
+            onSelect: vi.fn(),
+          },
+        },
+        explore: null,
+      },
+    });
+
+    expect(screen.getByRole("button", { name: "Select chart baseline input" }))
+      .toBeTruthy();
+    expect(screen.getByRole("button", { name: "Select chart X axis" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Select chart Y axis" })).toBeTruthy();
+    expect(screen.queryByText("Display:")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit chart thresholds" })).toBeNull();
   });
 });

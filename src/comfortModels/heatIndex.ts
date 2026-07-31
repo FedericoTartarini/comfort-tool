@@ -203,7 +203,7 @@ builder.setChartBuilder((chartId, chartSource, resultsByInput, context) =>
     heatIndexChartSpec,
   ));
 
-builder.setDefaultChart(ChartId.HeatIndexRanges, [
+builder.setDefaultChart(ChartId.HeatIndexDynamic, [
   ChartId.HeatIndexRanges,
   ChartId.HeatIndexDynamic,
 ]);

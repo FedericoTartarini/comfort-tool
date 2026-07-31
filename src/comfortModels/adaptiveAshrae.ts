@@ -7,6 +7,7 @@ import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
 import {
   createAdaptiveComplianceBands,
+  createAdaptiveComplianceFeedbackGetter,
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
   type AdaptiveModelDeclaration,
@@ -51,6 +52,10 @@ const adaptiveAshraeBoundaryDefinition: AdaptiveBoundaryDefinition = {
   coefficients: { slope: 0.31, intercept: 17.8 },
 };
 
+const getAdaptiveAshraeFeedback = createAdaptiveComplianceFeedbackGetter(
+  "acceptability-80",
+);
+
 export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   ...adaptiveAshraeBoundaryDefinition,
   modelId: ComfortModel.AdaptiveAshrae,
@@ -65,6 +70,8 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),
+    caption: "ASHRAE 55 adaptive acceptability limits are locked for this chart.",
+    getFeedback: getAdaptiveAshraeFeedback,
   },
   hoverLevelIds: ["acceptability-90", "acceptability-80"],
   complianceLevelId: "acceptability-80",

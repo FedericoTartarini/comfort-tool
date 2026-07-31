@@ -182,12 +182,12 @@ export function buildGridModelChart<TPayload extends object, TResult>(
     inputsMap,
     context.baselineInputId,
   ).payload;
+  const config = context.fieldChartConfig;
+  if (config.mode !== ChartMode.Explore) {
+    throw new Error("Grid-model charts require an Explore FieldChartConfig.");
+  }
 
   if (chartId === spec.dynamicChartId) {
-    const config = context.fieldChartConfig;
-    if (config?.mode !== ChartMode.Explore) {
-      return null;
-    }
     return buildGridModelView(
       inputsMap,
       resultsByInput,
@@ -215,10 +215,9 @@ export function buildGridModelChart<TPayload extends object, TResult>(
       {
         title: spec.fixedView.title,
         config: {
+          ...config,
           xField: spec.fixedView.xField,
           yField: spec.fixedView.yField,
-          zOutput: spec.output.key,
-          bands: spec.output.defaultBands,
         },
         xRangeSi: spec.fixedView.xRangeSi,
         yRangeSi: spec.fixedView.yRangeSi,

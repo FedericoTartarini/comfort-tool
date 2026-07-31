@@ -74,7 +74,7 @@ export interface ComfortModelDefinition<
   description: string;
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
-  complianceSpec?: ComplianceSpec<ComplianceBand>;
+  complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
   controls: InputControlDefinition[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   chartIds: ChartIdType[];

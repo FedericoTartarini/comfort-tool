@@ -12,7 +12,6 @@ import {
   buildPmvDynamicChart,
   calculateComfortZone,
   getPmvZoneMeta,
-  pmvZonesList,
   solveDryBulbForTargetPmv,
   type ComfortZoneRequestDto,
   type PmvChartSourceDto,
@@ -81,6 +80,7 @@ function createContext(
   yField: FieldKeyType,
   outputKey: ModelOutputKeyType,
   unitSystem: UnitSystemType = UnitSystem.SI,
+  mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
 ): ChartBuildContext {
   const output = declaration.chartableOutputs.find(({ key }) => key === outputKey);
   if (!output) throw new Error(`Missing PMV output: ${outputKey}`);
@@ -88,13 +88,21 @@ function createContext(
     unitSystem,
     dynamicAxes: { xAxis: xField, yAxis: yField },
     baselineInputId: InputId.Input1,
-    fieldChartConfig: {
-      mode: ChartMode.Explore,
-      xField,
-      yField,
-      zOutput: outputKey,
-      bands: output.defaultBands,
-    },
+    fieldChartConfig: mode === ChartMode.Compliance
+      ? {
+          mode,
+          xField,
+          yField,
+          zOutput: declaration.complianceSpec.output,
+          bands: declaration.complianceSpec.bands,
+        }
+      : {
+          mode,
+          xField,
+          yField,
+          zOutput: outputKey,
+          bands: output.defaultBands,
+        },
   };
 }
 
@@ -107,15 +115,13 @@ function buildPsychrometric(
     declaration,
     source,
     { [InputId.Input1]: createResult(declaration) },
-    {
+    createContext(
+      declaration,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      ModelOutputKey.Pmv,
       unitSystem,
-      dynamicAxes: {
-        xAxis: FieldKey.DryBulbTemperature,
-        yAxis: FieldKey.RelativeHumidity,
-      },
-      baselineInputId: InputId.Input1,
-      fieldChartConfig: null,
-    },
+    ),
   );
 }
 
@@ -126,40 +132,109 @@ function buildDynamic(
   outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
   unitSystem: UnitSystemType = UnitSystem.SI,
   request: ComfortZoneRequestDto = input,
+  mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
 ): PlotlyChartResponseDto {
   return buildPmvDynamicChart(
     declaration,
     createSource(declaration.adapter, request),
     { [InputId.Input1]: createResult(declaration, request) },
-    createContext(declaration, xField, yField, outputKey, unitSystem),
+    createContext(declaration, xField, yField, outputKey, unitSystem, mode),
   );
 }
 
 describe("PMV charts", () => {
   it("builds the fixed psychrometric view with zones, RH curves, comfort polygon, and input", () => {
     const chart = buildPsychrometric(pmvAshraeDeclaration);
-    const zoneTrace = chart.traces[0];
-    const finiteZoneBoundaries = [...new Set(
-      pmvZonesList
-        .flatMap((zone) => [zone.min, zone.max])
-        .filter(Number.isFinite),
-    )].sort((left, right) => left - right);
+    const fillTraces = chart.traces.filter(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    ));
+    const tooltipTrace = chart.traces.find(({ name }) => name === "PMV bands hover");
 
-    expect(zoneTrace.type).toBe("contour");
-    expect(zoneTrace.contours).toEqual(expect.objectContaining({
-      start: finiteZoneBoundaries[0],
-      end: finiteZoneBoundaries[finiteZoneBoundaries.length - 1],
-      size: finiteZoneBoundaries[1] - finiteZoneBoundaries[0],
-    }));
-    expect(zoneTrace.z).toHaveLength(50);
-    expect(zoneTrace.z?.[0]).toHaveLength(50);
-    expect(zoneTrace.hovertemplate).toContain("Zone: %{text}");
-    expect(zoneTrace.hovertemplate).toContain("PMV: %{z:.2f}");
-    expect(zoneTrace.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
+    expect(fillTraces.length).toBeGreaterThan(0);
+    expect(tooltipTrace?.type).toBe("contour");
+    expect(tooltipTrace?.z).toHaveLength(50);
+    expect(tooltipTrace?.z?.[0]).toHaveLength(50);
+    expect(tooltipTrace?.hovertemplate).toContain("Zone: %{text}");
+    expect(tooltipTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
+    expect(tooltipTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
     expect(chart.traces.filter(({ name }) => name.startsWith("RH "))).toHaveLength(10);
     expect(chart.traces.some(({ name }) => name === "Input 1 comfort zone")).toBe(true);
     expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
     expect(String(chart.layout.title)).toContain("ASHRAE");
+  });
+
+  it("uses locked Compliance and edited PPD configs in the fixed psychrometric view", () => {
+    const declaration = pmvAshraeDeclaration;
+    const source = createSource(declaration.adapter);
+    const result = createResult(declaration);
+    const results = { [InputId.Input1]: result };
+    const compliance = buildComparePsychrometricChart(
+      declaration,
+      source,
+      results,
+      createContext(
+        declaration,
+        FieldKey.DryBulbTemperature,
+        FieldKey.RelativeHumidity,
+        ModelOutputKey.Pmv,
+        UnitSystem.SI,
+        ChartMode.Compliance,
+      ),
+    );
+    const baseExplore = createContext(
+      declaration,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      ModelOutputKey.Ppd,
+    );
+    const editedBands = [
+      {
+        min: -Infinity,
+        max: result.ppd,
+        label: "Lower PPD",
+        color: "#123456",
+      },
+      {
+        min: result.ppd,
+        max: Infinity,
+        label: "Boundary PPD",
+        color: "#abcdef",
+      },
+    ];
+    const ppd = buildComparePsychrometricChart(
+      declaration,
+      source,
+      results,
+      {
+        ...baseExplore,
+        fieldChartConfig: {
+          ...baseExplore.fieldChartConfig,
+          mode: ChartMode.Explore,
+          zOutput: ModelOutputKey.Ppd,
+          bands: editedBands,
+        },
+      },
+    );
+    const ppdHover = ppd.traces.find(
+      ({ name }) => name === "PPD (%) bands hover",
+    );
+    const ppdInput = ppd.traces.find(({ name }) => name === "Input 1");
+    const rhCurve = ppd.traces.find(({ name }) => name === "RH 50%");
+
+    expect(compliance.traces.filter(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    )).map(({ fillcolor }) => fillcolor)).toEqual(
+      declaration.complianceSpec.bands.map(({ color }) => color),
+    );
+    expect(ppd.traces.filter(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    )).map(({ fillcolor }) => fillcolor)).toEqual(["#123456", "#abcdef"]);
+    expect(ppdHover?.hovertemplate).toContain("Band: %{text}");
+    expect(ppdHover?.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
+    expect(ppdHover?.hovertemplate).toContain("PMV: %{customdata[1]:.2f}");
+    expect(ppdInput?.hovertemplate).toContain("Boundary PPD");
+    expect(rhCurve?.text?.some((label) => label === "Lower PPD")).toBe(true);
+    expect(String(ppd.layout.title)).toContain("PPD (%)");
   });
 
   it("leaves supersaturated psychrometric cells uncolored and clamps evaluated RH to 100%", () => {
@@ -230,6 +305,84 @@ describe("PMV charts", () => {
       expect(inputTrace?.hovertemplate).toContain("PPD:");
     },
   );
+
+  it("builds locked Compliance bands through the same PMV field engine", () => {
+    const chart = buildDynamic(
+      pmvAshraeDeclaration,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      ModelOutputKey.Pmv,
+      UnitSystem.SI,
+      input,
+      ChartMode.Compliance,
+    );
+    const fillTraces = chart.traces.filter(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    ));
+
+    expect(fillTraces.length).toBeGreaterThan(0);
+    expect(chart.traces.find(({ name }) => name === "Input 1")?.hovertemplate)
+      .toContain("PMV:");
+  });
+
+  it("rejects altered Compliance output or bands", () => {
+    const context = createContext(
+      pmvAshraeDeclaration,
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeHumidity,
+      ModelOutputKey.Pmv,
+      UnitSystem.SI,
+      ChartMode.Compliance,
+    );
+    const source = createSource(pmvAshraeDeclaration.adapter);
+    const results = { [InputId.Input1]: createResult(pmvAshraeDeclaration) };
+
+    expect(() => buildPmvDynamicChart(
+      pmvAshraeDeclaration,
+      source,
+      results,
+      {
+        ...context,
+        fieldChartConfig: {
+          ...context.fieldChartConfig!,
+          mode: ChartMode.Compliance,
+          zOutput: ModelOutputKey.Ppd,
+        },
+      },
+    )).toThrow(/declared locked output and bands/i);
+    expect(() => buildPmvDynamicChart(
+      pmvAshraeDeclaration,
+      source,
+      results,
+      {
+        ...context,
+        fieldChartConfig: {
+          ...context.fieldChartConfig!,
+          mode: ChartMode.Compliance,
+          bands: [{
+            ...pmvAshraeDeclaration.complianceSpec.bands[0],
+            label: "Altered",
+          }],
+        },
+      },
+    )).toThrow(/declared locked output and bands/i);
+    expect(() => buildComparePsychrometricChart(
+      pmvAshraeDeclaration,
+      source,
+      results,
+      {
+        ...context,
+        fieldChartConfig: {
+          ...context.fieldChartConfig,
+          mode: ChartMode.Compliance,
+          bands: [{
+            ...pmvAshraeDeclaration.complianceSpec.bands[0],
+            label: "Altered",
+          }],
+        },
+      },
+    )).toThrow(/declared locked output and bands/i);
+  });
 
   it("keeps fixed and Explore classification consistent for the input point", () => {
     const result = createResult(pmvAshraeDeclaration);

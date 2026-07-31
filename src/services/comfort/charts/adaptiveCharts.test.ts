@@ -23,7 +23,9 @@ import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
 import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import {
+  ChartMode,
   findBandForValue,
+  ModelOutputKey,
   type ChartBuildContext,
   type InputsSi,
 } from "../../../models/modelCapabilities";
@@ -41,12 +43,19 @@ function createContext(
   xAxis: FieldKeyType,
   yAxis: FieldKeyType,
   unitSystem: UnitSystemType = UnitSystem.SI,
+  declaration: AdaptiveModelDeclaration = adaptiveAshraeDeclaration,
 ): ChartBuildContext {
   return {
     unitSystem,
     dynamicAxes: { xAxis, yAxis },
     baselineInputId: InputId.Input1,
-    fieldChartConfig: null,
+    fieldChartConfig: {
+      mode: ChartMode.Compliance,
+      xField: xAxis,
+      yField: yAxis,
+      zOutput: declaration.complianceSpec.output,
+      bands: declaration.complianceSpec.bands,
+    },
   };
 }
 
@@ -64,6 +73,7 @@ function buildFixedChart(
       FieldKey.PrevailingMeanOutdoorTemperature,
       FieldKey.OperativeTemperature,
       unitSystem,
+      declaration,
     ),
   );
 }
@@ -80,7 +90,7 @@ function buildDynamicChart(
     declaration,
     { inputs: { [InputId.Input1]: request } },
     { [InputId.Input1]: result },
-    createContext(xAxis, yAxis, unitSystem),
+    createContext(xAxis, yAxis, unitSystem, declaration),
   );
 }
 
@@ -96,7 +106,7 @@ function getBoundaryPoint(
   targetOutdoorTemperature: number,
   side: "lower" | "upper",
 ): { outdoorTemperature: number; operativeTemperature: number } {
-  const trace = chart.traces.find(({ name }) => name === `Input 1 ${traceName}`);
+  const trace = chart.traces.find(({ name }) => name === traceName);
   if (!trace) throw new Error(`Missing boundary trace: ${traceName}`);
   const edgePointCount = Math.floor(trace.x.length / 2);
   const xValues = side === "lower"
@@ -293,9 +303,9 @@ describe("adaptive charts", () => {
 
     expect(level.lower).not.toBeNull();
     expect(point.operativeTemperature).toBeCloseTo(level.lower!, 1);
-    expect(chart.traces.slice(0, declaration.levels.length).map(({ name }) => name))
-      .toEqual(declaration.levels.map(({ label }) => `Input 1 ${label}`));
-    expect(chart.traces[declaration.levels.length].name).toBe("Tooltip Layer");
+    expect(chart.traces.slice(0, declaration.complianceSpec.bands.length).map(({ name }) => name))
+      .toEqual(declaration.complianceSpec.bands.map(({ label }) => label));
+    expect(chart.traces[declaration.complianceSpec.bands.length].name).toBe("Tooltip Layer");
     expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
     expect(String(chart.layout.xaxis.title)).toContain("temperature");
     expect(String(chart.layout.yaxis.title)).toContain("Operative temperature");
@@ -352,6 +362,38 @@ describe("adaptive charts", () => {
     expect(zoneTrace?.z?.flat().some(Number.isFinite)).toBe(true);
     expect(inputTrace?.x).toEqual([24]);
     expect(inputTrace?.y).toEqual([0.1]);
+  });
+
+  it("requires the declared Compliance config for the shared dynamic engine", () => {
+    const declaration = adaptiveAshraeDeclaration;
+    const result = calculateAdaptive(declaration, baselineRequest);
+    const context = createContext(
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeAirSpeed,
+      UnitSystem.SI,
+      declaration,
+    );
+    const build = (fieldChartConfig: ChartBuildContext["fieldChartConfig"]) => (
+      buildAdaptiveDynamicChart(
+        declaration,
+        { inputs: { [InputId.Input1]: baselineRequest } },
+        { [InputId.Input1]: result },
+        { ...context, fieldChartConfig },
+      )
+    );
+
+    expect(() => build({
+      mode: ChartMode.Explore,
+      xField: FieldKey.DryBulbTemperature,
+      yField: FieldKey.RelativeAirSpeed,
+      zOutput: declaration.complianceSpec.output,
+      bands: [{ min: -Infinity, max: Infinity, label: "All", color: "#fff" }],
+    })).toThrow(/requires a Compliance FieldChartConfig/i);
+    expect(() => build({
+      ...context.fieldChartConfig!,
+      mode: ChartMode.Compliance,
+      zOutput: ModelOutputKey.Pmv,
+    })).toThrow(/declared locked output and bands/i);
   });
 
   it.each([

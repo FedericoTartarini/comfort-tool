@@ -12,6 +12,8 @@ import type { InputControlId as InputControlIdType, InputControlViewModel } from
 import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import type {
+  ChartMode as ChartModeType,
+  ComplianceFeedback,
   ExploreFieldChartConfig,
   ModelOutput,
   ModelOutputKey,
@@ -83,6 +85,25 @@ export interface ExploreChartState {
   bands: NumericBand[];
 }
 
+/** Per-model field-chart presentation state; all numeric values remain canonical SI. */
+export interface ModelChartSettings {
+  mode: ChartModeType;
+  xAxis: FieldKeyType;
+  yAxis: FieldKeyType;
+  explore: ExploreChartState | null;
+  baselineInputId: InputIdType;
+}
+
+export type ChartSettingsByModelState = Record<ComfortModelType, ModelChartSettings>;
+
+export interface ChartModeControlViewModel {
+  modes: readonly ChartModeType[];
+  selectedMode: ChartModeType;
+  caption: string;
+  feedback: (ComplianceFeedback & { inputLabel?: string }) | null;
+  onSelect: (mode: ChartModeType) => void;
+}
+
 export interface BaselineControl {
   selectedInputId: InputIdType;
   visibleInputIds: InputIdType[];
@@ -106,6 +127,7 @@ export interface ExploreControls {
 }
 
 export interface ChartControlsViewModel {
+  mode: ChartModeControlViewModel;
   baseline: BaselineControl | null;
   axes: {
     x: AxisControl;
@@ -123,10 +145,7 @@ export type UiState = {
   compareInputIds: InputIdType[];
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
-  dynamicXAxis: FieldKeyType;
-  dynamicYAxis: FieldKeyType;
-  exploreChart: ExploreChartState | null;
-  chartBaselineInputId: InputIdType;
+  chartSettingsByModel: ChartSettingsByModelState;
   isLoading: boolean;
   errorMessage: string;
   calculationCacheByModel: ModelCalculationCacheByModelState;
@@ -148,6 +167,7 @@ export type ComfortToolActions = {
   setActiveInputId: (nextInputId: InputIdType) => void;
   toggleCompareInputVisibility: (inputId: InputIdType) => void;
   toggleUnitSystem: () => void;
+  setChartMode: (mode: ChartModeType) => void;
   setDynamicXAxis: (fieldKey: FieldKeyType) => void;
   setDynamicYAxis: (fieldKey: FieldKeyType) => void;
   setExploreOutput: (outputKey: ModelOutputKey) => void;

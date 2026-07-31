@@ -118,7 +118,7 @@ export class ComfortModelBuilder<
 
   private chartableOutputs?: ModelOutput[];
 
-  private complianceSpec?: ComplianceSpec<ComplianceBand>;
+  private complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
 
   private readonly controls: InputControlDefinition[] = [];
 
@@ -211,7 +211,7 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setComplianceSpec(spec: ComplianceSpec<ComplianceBand>): this {
+  setComplianceSpec(spec: ComplianceSpec<ComplianceBand, ResultType>): this {
     this.complianceSpec = {
       ...spec,
       bands: spec.bands.map((band) => ({ ...band })),
@@ -397,7 +397,16 @@ export class ComfortModelBuilder<
       }
     }
 
-    if (supportsCompliance && (!this.complianceSpec || this.complianceSpec.bands.length === 0)) {
+    if (
+      supportsCompliance
+      && (
+        !this.complianceSpec
+        || this.complianceSpec.bands.length === 0
+        || typeof this.complianceSpec.caption !== "string"
+        || this.complianceSpec.caption.trim().length === 0
+        || typeof this.complianceSpec.getFeedback !== "function"
+      )
+    ) {
       throw new Error("Compliance mode requires a non-empty compliance specification.");
     }
 

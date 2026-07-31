@@ -3,9 +3,7 @@ import { CalculationSource } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
 import type {
   ModelChartSourceDto,
-  PlotAnnotationDto,
   PlotlyChartResponseDto,
-  PlotTraceDto,
 } from "../models/comfortDtos";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
@@ -40,7 +38,6 @@ import {
   type DynamicAxisPayloadAdapter,
 } from "../services/comfort/charts/dynamicAxisPayload";
 import {
-  buildContourTrace,
   buildTextAnnotation,
 } from "../services/comfort/charts/plotlyBuilders";
 import {
@@ -58,7 +55,6 @@ import {
   synchronizeControlInputState,
 } from "../services/comfort/syncState";
 import {
-  convertFieldValueFromSi,
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
@@ -72,8 +68,6 @@ import {
 
 const MODEL_LABEL = "UTCI";
 const MODEL_DESCRIPTION = "Outdoor UTCI with stress category visualization.";
-const CHART_COLOR_WHITE = "#ffffff";
-const CHART_COLOR_BOUNDARY_LINE = "#333333";
 const STRESS_BAND_Y_RESOLUTION = 50;
 const CONTOUR_GRID_RESOLUTION = 450;
 const MULTI_INPUT_MARKER_Y_POSITIONS = [0.78, 0.5, 0.22];
@@ -103,11 +97,6 @@ const utciOutput: ModelOutput = {
 };
 
 const UTCI_CHART_RANGE_SI = { min: -50, max: 55 } as const;
-const UTCI_CHART_BOUNDARIES = [
-  UTCI_CHART_RANGE_SI.min,
-  ...utciZonesList.slice(0, -1).map((zone) => zone.max),
-  UTCI_CHART_RANGE_SI.max,
-];
 const UTCI_DEFAULT_ZONE = utciZonesList[5];
 const TDB_LIMITS = { min: UTCI_CHART_RANGE_SI.min, max: 50 };
 const TR_LIMITS = { min: -80, max: 120 };
@@ -118,31 +107,6 @@ const UTCI_DYNAMIC_AXIS_FIELDS = [
   FieldKey.WindSpeed,
   FieldKey.RelativeHumidity,
 ] as const;
-
-const UTCI_COLORSCALE = utciZonesList.flatMap((zone, index, zones) => {
-  const step = 1 / zones.length;
-  return [
-    [index * step, zone.color],
-    [(index + 1) * step, zone.color],
-  ] as [number, string][];
-});
-
-const UTCI_CONTOURS = {
-  start: 1,
-  end: 9,
-  size: 1,
-  type: "levels",
-  coloring: "fill",
-  showlines: false,
-  smoothing: 1.3,
-  line: { width: 1, color: CHART_COLOR_BOUNDARY_LINE },
-};
-
-const UTCI_BOUNDARY_CONTOURS = {
-  ...UTCI_CONTOURS,
-  coloring: "none" as const,
-  showlines: true,
-};
 
 export interface UtciRequestDto {
   tdb: number;
@@ -281,7 +245,7 @@ function setAxisValue(
 
 function assertExploreConfig(context: ChartBuildContext): ExploreFieldChartConfig {
   const config = context.fieldChartConfig;
-  if (config?.mode !== ChartMode.Explore) {
+  if (config.mode !== ChartMode.Explore) {
     throw new Error("UTCI Explore chart requires an Explore FieldChartConfig.");
   }
   if (
@@ -305,6 +269,15 @@ export function buildUtciStressChart(
   resultsByInput: Partial<Record<InputIdType, UtciResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
+  const config = assertExploreConfig(context);
+  if (config.zOutput !== utciOutput.key) {
+    throw new Error(`Unsupported UTCI chart output: ${config.zOutput}`);
+  }
+  const fixedConfig: ExploreFieldChartConfig = {
+    ...config,
+    xField: FieldKey.DryBulbTemperature,
+    yField: FieldKey.RelativeHumidity,
+  };
   const { unitSystem } = context;
   const inputs = getCompareInputs(source.inputs);
   const markerPositions = inputs.length > 1
@@ -315,62 +288,22 @@ export function buildUtciStressChart(
   );
   const temperatureUnits =
     fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
-  const displayBoundaries = UTCI_CHART_BOUNDARIES.map((value) =>
-    convertFieldValueFromSi(FieldKey.DryBulbTemperature, value, unitSystem));
-  const yValues = Array.from(
-    { length: STRESS_BAND_Y_RESOLUTION },
-    (_, index) => index / (STRESS_BAND_Y_RESOLUTION - 1),
-  );
-  const zValues = Array.from(
-    { length: STRESS_BAND_Y_RESOLUTION },
-    () => UTCI_CHART_BOUNDARIES.map((_, index) => index),
-  );
-  const stressTraces: PlotTraceDto[] = [
-    buildContourTrace({
-      name: "Legend",
-      x: displayBoundaries,
-      y: yValues,
-      z: zValues,
-      text: Array.from(
-        { length: STRESS_BAND_Y_RESOLUTION },
-        () => utciZonesList
-          .map((zone) => zone.label)
-          .concat(utciZonesList[utciZonesList.length - 1]?.label ?? ""),
+  const annotations = config.bands.flatMap((band, index) => {
+    const min = Math.max(band.min, UTCI_CHART_RANGE_SI.min);
+    const max = Math.min(band.max, UTCI_CHART_RANGE_SI.max);
+    if (min >= max) return [];
+    const defaultZone = utciZonesList.find(({ label }) => label === band.label);
+    return [buildTextAnnotation({
+      x: convertModelOutputFromSi(
+        ModelOutputKey.Utci,
+        (min + max) / 2,
+        unitSystem,
       ),
-      colorscale: UTCI_COLORSCALE,
-      contours: UTCI_CONTOURS,
-      showscale: false,
-      hovertemplate: `UTCI: %{x:.1f} ${temperatureUnits}<br><b>Stress Category: %{text}</b><extra></extra>`,
-      zmin: 0,
-      zmax: UTCI_CHART_BOUNDARIES.length - 1,
-      opacity: 0.75,
-      isBackgroundZone: true,
-    }),
-    buildContourTrace({
-      name: "Boundaries",
-      x: displayBoundaries,
-      y: yValues,
-      z: zValues,
-      colorscale: UTCI_COLORSCALE,
-      contours: UTCI_BOUNDARY_CONTOURS,
-      showscale: false,
-      hoverinfo: "skip",
-      hovertemplate: "",
-      zmin: 0,
-      zmax: UTCI_CHART_BOUNDARIES.length - 1,
-      opacity: 0.8,
-    }),
-  ];
-  const annotations: PlotAnnotationDto[] = utciZonesList.map((zone, index) => {
-    const min = displayBoundaries[index];
-    const max = displayBoundaries[index + 1];
-    return buildTextAnnotation({
-      x: (min + max) / 2,
       y: index % 2 === 0
         ? ZONE_ANNOTATION_Y_STAGGER.even
         : ZONE_ANNOTATION_Y_STAGGER.odd,
-      text: zone.legendText ?? zone.label,
-    });
+      text: defaultZone?.legendText ?? band.label,
+    })];
   });
   const getResult = (payload: UtciRequestDto, inputId: InputIdType) =>
     resultsByInput[inputId] ?? calculateUtci(payload);
@@ -380,7 +313,7 @@ export function buildUtciStressChart(
     xAxis: {
       field: FieldKey.DryBulbTemperature,
       rangeSi: UTCI_CHART_RANGE_SI,
-      points: UTCI_CHART_BOUNDARIES.length,
+      points: CONTOUR_GRID_RESOLUTION,
       label: MODEL_LABEL,
       showGrid: false,
       zeroLine: false,
@@ -393,13 +326,16 @@ export function buildUtciStressChart(
       units: "",
       toDisplay: (value) => value,
       toSi: (value) => value,
-      gridColor: CHART_COLOR_WHITE,
       showTickLabels: false,
     },
-    strategy: {
-      kind: "boundary",
-      buildTraces: () => stressTraces,
-    },
+    strategy: createBandedGridStrategy({
+      config: fixedConfig,
+      output: utciOutput,
+      bandLabel: "Stress Category",
+      hoverTemplate: `UTCI: %{x:.1f} ${temperatureUnits}<br><b>Stress Category: %{text}</b><extra></extra>`,
+      opacity: 0.75,
+      evaluateOutput: (utciValueSi) => utciValueSi,
+    }),
     inputGroups: () => [{
       inputsMap: source.inputs,
       resultsByInput,
@@ -407,7 +343,14 @@ export function buildUtciStressChart(
       getYSi: (_, inputId) => yByInput.get(inputId) ?? 0.5,
       getHovertemplate: ({ inputLabel, payload, inputId }) => {
         const result = getResult(payload, inputId);
-        return `${inputLabel}<br>UTCI: %{x:.1f} ${temperatureUnits}<br><b>Stress Category: ${getUtciZoneMeta(result.utci).label}</b><extra></extra>`;
+        const bandIndex = findNumericBandIndexForValue(
+          config.bands,
+          result.utci,
+        );
+        const bandLabel = bandIndex === undefined
+          ? "Unclassified"
+          : config.bands[bandIndex].label;
+        return `${inputLabel}<br>UTCI: %{x:.1f} ${temperatureUnits}<br><b>Stress Category: ${bandLabel}</b><extra></extra>`;
       },
       markerSize: 14,
     } satisfies FieldChartInputGroup<UtciRequestDto, UtciResponseDto>],
@@ -589,7 +532,7 @@ builder.addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) => {
   };
 });
 
-builder.setDefaultChart(ChartId.Stress, [ChartId.Stress, ChartId.UtciDynamic]);
+builder.setDefaultChart(ChartId.UtciDynamic, [ChartId.Stress, ChartId.UtciDynamic]);
 builder.setDynamicAxisFields([...UTCI_DYNAMIC_AXIS_FIELDS]);
 builder.setDefaultDynamicAxes({
   xAxis: FieldKey.DryBulbTemperature,
@@ -631,10 +574,7 @@ builder.setChartBuilder((chartId, chartSource, resultsByInput, context) => {
   if (chartId === ChartId.Stress) {
     return buildUtciStressChart(chartSource, resultsByInput, context);
   }
-  if (
-    chartId === ChartId.UtciDynamic
-    && context.fieldChartConfig?.mode === ChartMode.Explore
-  ) {
+  if (chartId === ChartId.UtciDynamic) {
     return buildUtciDynamicChart(chartSource, resultsByInput, context);
   }
   return null;

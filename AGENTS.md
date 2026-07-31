@@ -123,12 +123,14 @@ Do not introduce new raw domain strings for those concepts.
 
 ## Capability Declarations And Next Architecture Direction
 
-`26-06-29-architecture-brief.md` describes the broader target architecture; §9.4 Explore controls and the shared `FieldChartConfig` grid path are implemented. Compliance mode UI, full per-model mode memory, and input modifiers remain future work.
+`26-06-29-architecture-brief.md` describes the broader target architecture; §9.5 Compliance mode, Explore controls, the shared `FieldChartConfig` engine, and full per-model chart-setting memory are implemented. Input modifiers remain future work.
 
 - Compliance and Explore should share one chart engine, with Compliance as the constrained version.
-- Every model declaration must set `modes` and `chartableOutputs`; Compliance models must also set a non-empty `complianceSpec`. Use the builder rather than controller branches.
+- Every model declaration must set `modes` and `chartableOutputs`; Compliance models must also set a `complianceSpec` with non-empty bands, a caption, and a result feedback callback. Use the builder rather than controller branches.
 - `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
-- Explore state is transient and generic: x/y come from declared dynamic fields, z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`. Keep output conversion in `src/services/units/` and raw-output extraction in model files.
+- `chartSettingsByModel` stores each model's mode, x/y axes, baseline, and optional Explore working state. Explore z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`; Compliance output and bands always come directly from `complianceSpec`.
+- Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
+- Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize only Explore bands, and use explicit wire sentinels for unbounded numeric edges. Do not add old-v1 migration behavior.
 - Band assignment is array-ordered and half-open (`min <= value < max`); numeric values, functional-edge X values, and band inputs are canonical SI.
 - PMV ASHRAE and PMV ISO are separate registered models with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files (`pmvAshrae.ts` and `pmvIso.ts`). ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. Shared PMV mechanics live in `pmvShared.ts`; do not merge the standards behind a runtime toggle.
 - Future constants such as `ModifierId` should be added under `src/models/` before use; do not inline raw strings.

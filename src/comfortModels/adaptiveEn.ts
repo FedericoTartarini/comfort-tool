@@ -7,6 +7,7 @@ import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
 import {
   createAdaptiveComplianceBands,
+  createAdaptiveComplianceFeedbackGetter,
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
   type AdaptiveModelDeclaration,
@@ -60,6 +61,8 @@ const adaptiveEnBoundaryDefinition: AdaptiveBoundaryDefinition = {
   coefficients: { slope: 0.33, intercept: 18.8 },
 };
 
+const getAdaptiveEnFeedback = createAdaptiveComplianceFeedbackGetter("category-iii");
+
 export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   ...adaptiveEnBoundaryDefinition,
   modelId: ComfortModel.AdaptiveEn,
@@ -74,6 +77,8 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),
+    caption: "EN 16798-1 Category III limits are locked for this chart.",
+    getFeedback: getAdaptiveEnFeedback,
   },
   hoverLevelIds: ["category-i", "category-ii", "category-iii"],
   complianceLevelId: "category-iii",
