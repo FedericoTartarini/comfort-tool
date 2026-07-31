@@ -267,18 +267,25 @@ myNewModelBuilder
 For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of the chart X value and the readonly canonical-SI input record:
 
 ```ts
+function formatMyNewModelComplianceFeedback(result: MyNewModelResponseDto) {
+  const passes = result.isCompliant;
+  return { text: passes ? "Compliant" : "Non-compliant", passes };
+}
+
 myNewModelBuilder
   .setModes([ChartMode.Compliance, ChartMode.Explore])
   .setChartableOutputs([/* one or more ModelOutput declarations */])
   .setComplianceSpec({
     output: ModelOutputKey.MyNewModelIndex,
     bands: fixedStandardBands,
+    caption: "My Standard compliance limits are locked for this chart.",
+    getFeedback: formatMyNewModelComplianceFeedback,
   });
 ```
 
-A compliance-only model must still call `setChartableOutputs([])` explicitly. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, a compliance spec on a non-Compliance model, duplicate modes or output keys, incomplete label/description/chart declarations, missing calculation or presentation functions, and invalid dynamic-axis defaults. A successful build returns a validated configuration snapshot with copied arrays and records. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
+A compliance-only model must still call `setChartableOutputs([])` explicitly. `getFeedback(result)` returns `{ text, passes }`; use the same family-level formatter for the result table's Compliance row so chart feedback and tabular status cannot drift. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, caption, or feedback callback, a compliance spec on a non-Compliance model, duplicate modes or output keys, incomplete label/description/chart declarations, missing calculation or presentation functions, and invalid dynamic-axis defaults. A successful build returns a validated configuration snapshot with copied arrays and records. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
 
-`ComplianceSpec` and `ComfortModelBuilder` default to the general `Band` type so Adaptive can retain functional edges. A model with numeric Compliance bands can supply `NumericBand` as the builder's third generic argument; its resulting definition can then form a `NumericComplianceFieldChartConfig` and enter the shared numeric grid strategy without a cast.
+`ComplianceSpec<TBand, TResult>` carries the model result type into its feedback callback. `ComplianceSpec` and `ComfortModelBuilder` default to the general `Band` type so Adaptive can retain functional edges. A model with numeric Compliance bands can supply `NumericBand` as the builder's third generic argument; its resulting definition can then form a `NumericComplianceFieldChartConfig` and enter the shared numeric grid strategy without a cast.
 
 Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
 
@@ -382,7 +389,7 @@ myNewModelBuilder.setResultBuilder((results, visibleInputIds, unitSystem) => {
 
 #### Chart Builder
 
-The chart builder produces Plotly chart data. Simple grid models use the typed `buildGridModelChart` strategy from `src/services/comfort/charts/gridModelCharts.ts`. The model declares how its payload maps to fields and how it is evaluated; the shared strategy owns baseline cloning, Explore narrowing, grid assembly, band assignment, and display conversion.
+The chart builder produces Plotly chart data. Simple grid models use the typed `buildGridModelChart` strategy from `src/services/comfort/charts/gridModelCharts.ts`. The model declares how its payload maps to fields and how it is evaluated; the shared strategy owns baseline cloning, field-config narrowing, grid assembly, band assignment, and display conversion.
 
 ```ts
 function getMyNewModelAxisValue(
@@ -457,7 +464,9 @@ myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context
 });
 ```
 
-The controller builds one `ChartBuildContext` containing the unit system, active axes, baseline input, and optional `FieldChartConfig`. Fixed numeric charts construct a `NumericFieldChartConfig` with no mode, while Explore extends that numeric contract with `mode: ChartMode.Explore`; the selected output is looked up through `config.zOutput`. The model builder validates declared preset bands. Explore actions normalize, validate, and store edited bands. Selectors and the chart engine consume that validated state without repeating validation or cloning. Chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in the chart source or classify Explore output inside the model callback.
+The controller builds one `ChartBuildContext` containing the unit system, active axes, effective baseline input, and optional `FieldChartConfig`. Fixed numeric charts construct a local `NumericFieldChartConfig` with no mode and do not display mode captions, feedback, or field controls. Dynamic charts are the sole mode surface: they receive either `mode: ChartMode.Compliance`, with `zOutput` and `bands` taken directly from the registered `complianceSpec`, or `mode: ChartMode.Explore`, with the selected output and independent working bands. A model that declares mode capabilities must therefore select its Dynamic chart as the default; an optional `fixedView` remains a selectable mode-independent auxiliary view. The model builder validates declarations, while field-chart actions normalize and validate editable bands. Selectors and the chart engine consume that state without repeating validation or cloning. Mode, chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in chart sources or add a separate Compliance rendering pipeline.
+
+The controller initializes `chartSettingsByModel` for every registered model. Compliance is the default whenever declared; otherwise Explore is the default. Each record independently remembers mode, x/y axes, baseline, and optional Explore z/bands across model and chart switches. A remembered baseline that is currently hidden resolves to Input 1 without being erased. Strict v1 share snapshots store these settings inside each model entry, omit Compliance bands, encode unbounded Explore edges with wire sentinels, and reject the previous v1 shape rather than migrating it.
 
 If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper with a `DynamicAxisPayloadAdapter` that implements both `getAxisValue` and `setAxisValue`. The current solver contract is linear: it evaluates the lower and upper component bounds once, interpolates the target component, validates the post-condition, and rejects non-finite, zero-slope, or out-of-range results. Endpoint probes restore the temperature component in `finally`; a successful solve commits it once, while a failed final commit rolls back that solved field. The independently selected other axis must remain unchanged. Create the adapter once outside the grid loop.
 
@@ -472,7 +481,7 @@ Register chart metadata, dynamic axis fields, zone legend, and default options:
 ```ts
 // Which chart is shown by default, and which charts are available in the selector.
 myNewModelBuilder.setDefaultChart(
-  ChartId.MyNewModelRanges,                              // default chart
+  ChartId.MyNewModelDynamic,                             // mode-capable default
   [ChartId.MyNewModelRanges, ChartId.MyNewModelDynamic]  // all available charts
 );
 
@@ -482,8 +491,7 @@ myNewModelBuilder.setDynamicAxisFields([
   FieldKey.RelativeHumidity,
 ]);
 
-// Semantically meaningful axes used initially and whenever another model's
-// current pair is invalid for this model.
+// Semantically meaningful axes used to seed this model's independent settings.
 myNewModelBuilder.setDefaultDynamicAxes({
   xAxis: FieldKey.DryBulbTemperature,
   yAxis: FieldKey.RelativeHumidity,

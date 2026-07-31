@@ -1,18 +1,35 @@
 /**
- * Serializable share-state snapshot helpers.
- * Snapshots only store canonical SI inputs plus UI selections that need to survive a reload or shared link.
+ * Strict version-1 share snapshots. This schema intentionally has no migration
+ * path: an older v1 shape is rejected rather than normalized into current state.
  */
-import { inputOrder, InputId, type InputId as InputIdType } from "../../models/inputSlots";
 import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import type { OptionKey as OptionKeyType } from "../../models/inputModes";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { allFieldOrder } from "../../models/inputFieldsMeta";
-import { getComfortModelConfig, comfortModelOrder } from "./modelConfigs";
-import type { ComfortToolStateSlice } from "./types";
+import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
+import {
+  type ChartMode as ChartModeType,
+  type ModelOutputKey,
+  type NumericBand,
+} from "../../models/modelCapabilities";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+import { validateNumericBands } from "../../services/comfort/charts/bands";
 import { isFiniteNumber } from "../../services/comfort/helpers";
-import { normalizeDynamicAxisPair } from "./dynamicAxes";
+import { isDynamicAxisPairValid } from "./dynamicAxes";
+import { comfortModelOrder, getComfortModelConfig } from "./modelConfigs";
+import type { ComfortToolStateSlice, ModelChartSettings } from "./types";
+
+interface ShareModelChartSettings {
+  mode: ChartModeType;
+  xAxis: FieldKeyType;
+  yAxis: FieldKeyType;
+  baselineInputId: InputIdType;
+  explore: {
+    zOutput: ModelOutputKey;
+    bands: NumericBand[];
+  } | null;
+}
 
 export interface ShareStateSnapshot {
   version: 1;
@@ -22,6 +39,7 @@ export interface ShareStateSnapshot {
     {
       selectedChart: ChartIdType;
       options: Partial<Record<OptionKeyType, string>>;
+      chartSettings: ShareModelChartSettings;
     }
   >;
   compareEnabled: boolean;
@@ -29,217 +47,238 @@ export interface ShareStateSnapshot {
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
   inputsByInput: Record<InputIdType, Record<FieldKeyType, number>>;
-  dynamicXAxis: FieldKeyType;
-  dynamicYAxis: FieldKeyType;
 }
 
-const SHARE_STATE_VERSION = 1;
+export const SHARE_STATE_VERSION = 1;
 const SHARE_STATE_PARAM = "state";
+const POSITIVE_INFINITY_WIRE = "__comfort_tool_positive_infinity__";
+const NEGATIVE_INFINITY_WIRE = "__comfort_tool_negative_infinity__";
 const comfortModelValues = new Set<ComfortModelType>(comfortModelOrder);
 const inputIdValues = new Set<InputIdType>(Object.values(InputId));
 const unitSystemValues = new Set<UnitSystemType>(Object.values(UnitSystem));
 const fieldKeyValues = allFieldOrder;
 
-/**
- * Cleanses and reconstructs the compare slots array.
- * Ensures that Input 1 is always present as the baseline and that other elements
- * strictly conform to the canonical `inputOrder` structure, dropping invalid IDs.
- * @param inputIds The unsorted or incomplete list of input IDs.
- * @returns A sanitized and ordered array of input IDs.
- */
-export function normalizeCompareInputIds(inputIds: InputIdType[]): InputIdType[] {
-  return inputOrder.filter((inputId) => inputId === InputId.Input1 || inputIds.includes(inputId));
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actualKeys = Object.keys(value);
+  const expectedKeys = new Set(keys);
+  return actualKeys.length === keys.length
+    && actualKeys.every((key) => expectedKeys.has(key));
 }
 
-/**
- * Helper function to convert various location-like types into a standard URL object by checking the type of the source.
- * @param source The URL, Location, or string to convert.
- * @returns A native URL object.
- */
-function toUrl(source: URL | Location | string): URL {
-  return new URL(typeof source === "string" ? source : source.href);
-}
-/**
- * Encodes a string into a URL-safe Base64 string by using the browser's btoa function and replacing the characters that are not URL-safe.
- * @param value The string to encode.
- * @returns The Base64 encoded string.
- */
-function encodeBase64Url(value: string): string {
-  const encoded = globalThis.btoa(value);
-  return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-/**
- * Decodes a URL-safe Base64 string into a string by using the browser's atob function and replacing the characters that are not URL-safe.
- * @param value The Base64 encoded string.
- * @returns The decoded string.
- */
-function decodeBase64Url(value: string): string {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const paddingLength = (4 - (normalized.length % 4)) % 4;
-  const padded = `${normalized}${"=".repeat(paddingLength)}`;
-  return globalThis.atob(padded);
-}
-/**
- * Checks if a value is a record (an object that is not null and not an array).
- * @param value The value to check.
- * @returns True if the value is a record, false otherwise.
- */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function normalizeCompareInputIds(inputIds: InputIdType[]): InputIdType[] {
+  return inputOrder.filter((inputId) => (
+    inputId === InputId.Input1 || inputIds.includes(inputId)
+  ));
+}
 
-/**
- * Parses the inputsByInput object from the ShareStateSnapshot and validates it. This is used when deserializing the share state.
- * @param value The value to parse.
- * @returns The inputsByInput object or null if parsing fails.
- */
+function toUrl(source: URL | Location | string): URL {
+  return new URL(typeof source === "string" ? source : source.href);
+}
+
+function encodeBase64Url(value: string): string {
+  return globalThis.btoa(value)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function decodeBase64Url(value: string): string {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const paddingLength = (4 - (normalized.length % 4)) % 4;
+  return globalThis.atob(`${normalized}${"=".repeat(paddingLength)}`);
+}
+
 function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"] | null {
-  if (!isRecord(value)) {
+  if (!isRecord(value) || !hasExactKeys(value, inputOrder)) {
     return null;
   }
 
   const inputsByInput = {} as ShareStateSnapshot["inputsByInput"];
-
   for (const inputId of inputOrder) {
     const inputValues = value[inputId];
-    if (!isRecord(inputValues)) {
+    if (!isRecord(inputValues) || !hasExactKeys(inputValues, fieldKeyValues)) {
       return null;
     }
 
-    const normalizedInputValues = {} as Record<FieldKeyType, number>;
+    const parsedInput = {} as Record<FieldKeyType, number>;
     for (const fieldKey of fieldKeyValues) {
       const fieldValue = inputValues[fieldKey];
       if (!isFiniteNumber(fieldValue)) {
         return null;
       }
-      normalizedInputValues[fieldKey] = fieldValue;
+      parsedInput[fieldKey] = fieldValue;
     }
-
-    inputsByInput[inputId] = normalizedInputValues;
+    inputsByInput[inputId] = parsedInput;
   }
-
   return inputsByInput;
 }
-/**
- * Parses the models object from the ShareStateSnapshot and validates it. This is used when deserializing the share state.
- * @param value The value to parse.
- * @returns The models object or null if parsing fails.
- */
-function parseModelSnapshots(
+
+function parseBandEdge(value: unknown): number | null {
+  if (value === POSITIVE_INFINITY_WIRE) return Infinity;
+  if (value === NEGATIVE_INFINITY_WIRE) return -Infinity;
+  return typeof value === "number" && !Number.isNaN(value) ? value : null;
+}
+
+function parseNumericBands(value: unknown): NumericBand[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const bands: NumericBand[] = [];
+  for (const candidate of value) {
+    if (
+      !isRecord(candidate)
+      || !hasExactKeys(candidate, ["min", "max", "label", "color"])
+      || typeof candidate.label !== "string"
+      || typeof candidate.color !== "string"
+    ) {
+      return null;
+    }
+    const min = parseBandEdge(candidate.min);
+    const max = parseBandEdge(candidate.max);
+    if (min === null || max === null) {
+      return null;
+    }
+    bands.push({ min, max, label: candidate.label, color: candidate.color });
+  }
+
+  return validateNumericBands(bands).valid ? bands : null;
+}
+
+function parseChartSettings(
   value: unknown,
-  modelIds: readonly ComfortModelType[],
-): ShareStateSnapshot["models"] | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const expectedModelIds = new Set<string>(modelIds);
-  const serializedModelIds = Object.keys(value);
+  modelId: ComfortModelType,
+): ShareModelChartSettings | null {
   if (
-    serializedModelIds.length !== modelIds.length ||
-    serializedModelIds.some((modelId) => !expectedModelIds.has(modelId))
+    !isRecord(value)
+    || !hasExactKeys(value, ["mode", "xAxis", "yAxis", "baselineInputId", "explore"])
+    || typeof value.mode !== "string"
+    || typeof value.xAxis !== "string"
+    || typeof value.yAxis !== "string"
+    || !inputIdValues.has(value.baselineInputId as InputIdType)
   ) {
     return null;
   }
 
-  const parsed = {} as ShareStateSnapshot["models"];
+  const config = getComfortModelConfig(modelId);
+  const mode = value.mode as ChartModeType;
+  const xAxis = value.xAxis as FieldKeyType;
+  const yAxis = value.yAxis as FieldKeyType;
+  if (
+    !config.modes.includes(mode)
+    || !isDynamicAxisPairValid(config, { xAxis, yAxis })
+  ) {
+    return null;
+  }
 
-  for (const modelId of modelIds) {
-    const modelSnapshot = value[modelId];
-    if (!isRecord(modelSnapshot)) {
+  let explore: ShareModelChartSettings["explore"] = null;
+  if (config.chartableOutputs.length > 0) {
+    const exploreValue = value.explore;
+    if (
+      !isRecord(exploreValue)
+      || !hasExactKeys(exploreValue, ["zOutput", "bands"])
+      || typeof exploreValue.zOutput !== "string"
+      || !config.chartableOutputs.some(({ key }) => key === exploreValue.zOutput)
+    ) {
       return null;
     }
-
-    const selectedChart = modelSnapshot.selectedChart;
-    if (typeof selectedChart !== "string") {
+    const bands = parseNumericBands(exploreValue.bands);
+    if (!bands) {
       return null;
     }
-
-    const modelConfig = getComfortModelConfig(modelId);
-    if (!modelConfig.chartIds.includes(selectedChart as ChartIdType)) {
-      return null;
-    }
-
-    const options = modelConfig.normalizeOptions(modelSnapshot.options);
-    if (!options) {
-      return null;
-    }
-
-    parsed[modelId] = {
-      selectedChart: selectedChart as ChartIdType,
-      options,
+    explore = {
+      zOutput: exploreValue.zOutput as ModelOutputKey,
+      bands,
     };
-  }
-
-  return parsed;
-}
-
-/**
- * Serializes a tool state snapshot into a Base64URL encoded string by stringifying the snapshot 
- * and then encoding it using the encodeBase64Url function.
- * @param snapshot The data structure to serialize.
- * @returns A URL-safe string representation of the state.
- */
-export function serializeShareState(snapshot: ShareStateSnapshot): string {
-  return encodeBase64Url(JSON.stringify(snapshot));
-}
-type ParsedSharedSnapshotFields = Omit<
-  ShareStateSnapshot,
-  "version" | "selectedModel" | "models"
->;
-
-function parseSharedSnapshotFields(
-  parsed: Record<string, unknown>,
-): ParsedSharedSnapshotFields | null {
-  if (
-    typeof parsed.compareEnabled !== "boolean" ||
-    !Array.isArray(parsed.compareInputIds) ||
-    !parsed.compareInputIds.every((inputId) => inputIdValues.has(inputId as InputIdType)) ||
-    !inputIdValues.has(parsed.activeInputId as InputIdType) ||
-    !unitSystemValues.has(parsed.unitSystem as UnitSystemType) ||
-    typeof parsed.dynamicXAxis !== "string" ||
-    typeof parsed.dynamicYAxis !== "string"
-  ) {
-    return null;
-  }
-
-  const inputsByInput = parseInputsByInput(parsed.inputsByInput);
-  if (!inputsByInput) {
-    return null;
-  }
-
-  const validFieldKeys = new Set<FieldKeyType>(Object.values(FieldKey));
-  if (
-    !validFieldKeys.has(parsed.dynamicXAxis as FieldKeyType) ||
-    !validFieldKeys.has(parsed.dynamicYAxis as FieldKeyType)
-  ) {
+  } else if (value.explore !== null) {
     return null;
   }
 
   return {
-    compareEnabled: parsed.compareEnabled,
-    compareInputIds: parsed.compareInputIds as InputIdType[],
-    activeInputId: parsed.activeInputId as InputIdType,
-    unitSystem: parsed.unitSystem as UnitSystemType,
-    inputsByInput,
-    dynamicXAxis: parsed.dynamicXAxis as FieldKeyType,
-    dynamicYAxis: parsed.dynamicYAxis as FieldKeyType,
+    mode,
+    xAxis,
+    yAxis,
+    baselineInputId: value.baselineInputId as InputIdType,
+    explore,
   };
+}
+
+function parseModelSnapshots(
+  value: unknown,
+): ShareStateSnapshot["models"] | null {
+  if (!isRecord(value) || !hasExactKeys(value, comfortModelOrder)) {
+    return null;
+  }
+
+  const parsed = {} as ShareStateSnapshot["models"];
+  for (const modelId of comfortModelOrder) {
+    const modelSnapshot = value[modelId];
+    if (
+      !isRecord(modelSnapshot)
+      || !hasExactKeys(modelSnapshot, ["selectedChart", "options", "chartSettings"])
+      || typeof modelSnapshot.selectedChart !== "string"
+    ) {
+      return null;
+    }
+
+    const config = getComfortModelConfig(modelId);
+    if (!config.chartIds.includes(modelSnapshot.selectedChart as ChartIdType)) {
+      return null;
+    }
+    const options = config.normalizeOptions(modelSnapshot.options);
+    const chartSettings = parseChartSettings(modelSnapshot.chartSettings, modelId);
+    if (!options || !chartSettings) {
+      return null;
+    }
+    parsed[modelId] = {
+      selectedChart: modelSnapshot.selectedChart as ChartIdType,
+      options,
+      chartSettings,
+    };
+  }
+  return parsed;
+}
+
+export function serializeShareState(snapshot: ShareStateSnapshot): string {
+  const json = JSON.stringify(snapshot, (_key, value: unknown) => {
+    if (value === Infinity) return POSITIVE_INFINITY_WIRE;
+    if (value === -Infinity) return NEGATIVE_INFINITY_WIRE;
+    return value;
+  });
+  return encodeBase64Url(json);
 }
 
 export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | null {
   if (
-    !isRecord(value) ||
-    value.version !== SHARE_STATE_VERSION ||
-    !comfortModelValues.has(value.selectedModel as ComfortModelType)
+    !isRecord(value)
+    || !hasExactKeys(value, [
+      "version",
+      "selectedModel",
+      "models",
+      "compareEnabled",
+      "compareInputIds",
+      "activeInputId",
+      "unitSystem",
+      "inputsByInput",
+    ])
+    || value.version !== SHARE_STATE_VERSION
+    || !comfortModelValues.has(value.selectedModel as ComfortModelType)
+    || typeof value.compareEnabled !== "boolean"
+    || !Array.isArray(value.compareInputIds)
+    || !value.compareInputIds.every((inputId) => inputIdValues.has(inputId as InputIdType))
+    || !inputIdValues.has(value.activeInputId as InputIdType)
+    || !unitSystemValues.has(value.unitSystem as UnitSystemType)
   ) {
     return null;
   }
 
-  const models = parseModelSnapshots(value.models, comfortModelOrder);
-  const sharedFields = parseSharedSnapshotFields(value);
-  if (!models || !sharedFields) {
+  const models = parseModelSnapshots(value.models);
+  const inputsByInput = parseInputsByInput(value.inputsByInput);
+  if (!models || !inputsByInput) {
     return null;
   }
 
@@ -247,15 +286,14 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
     version: SHARE_STATE_VERSION,
     selectedModel: value.selectedModel as ComfortModelType,
     models,
-    ...sharedFields,
+    compareEnabled: value.compareEnabled,
+    compareInputIds: value.compareInputIds as InputIdType[],
+    activeInputId: value.activeInputId as InputIdType,
+    unitSystem: value.unitSystem as UnitSystemType,
+    inputsByInput,
   };
 }
 
-/**
- * Decompresses and validates a state snapshot from a Base64URL string by decoding it and then parsing it.
- * @param encodedSnapshot The string to decode.
- * @returns A validated ShareStateSnapshot object, or null if the input is invalid.
- */
 export function deserializeShareState(encodedSnapshot: string): ShareStateSnapshot | null {
   try {
     return parseShareStateSnapshot(JSON.parse(decodeBase64Url(encodedSnapshot)));
@@ -263,11 +301,22 @@ export function deserializeShareState(encodedSnapshot: string): ShareStateSnapsh
     return null;
   }
 }
-/**
- * Creates a share state snapshot from the current state by copying the relevant data.
- * @param state The current state.
- * @returns A share state snapshot.
- */
+
+function cloneChartSettings(settings: ModelChartSettings): ShareModelChartSettings {
+  return {
+    mode: settings.mode,
+    xAxis: settings.xAxis,
+    yAxis: settings.yAxis,
+    baselineInputId: settings.baselineInputId,
+    explore: settings.explore
+      ? {
+          zOutput: settings.explore.zOutput,
+          bands: settings.explore.bands.map((band) => ({ ...band })),
+        }
+      : null,
+  };
+}
+
 export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareStateSnapshot {
   return {
     version: SHARE_STATE_VERSION,
@@ -276,6 +325,7 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
       accumulator[modelId] = {
         selectedChart: state.ui.selectedChartByModel[modelId],
         options: { ...state.ui.modelOptionsByModel[modelId] },
+        chartSettings: cloneChartSettings(state.ui.chartSettingsByModel[modelId]),
       };
       return accumulator;
     }, {} as ShareStateSnapshot["models"]),
@@ -290,67 +340,49 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
       }, {} as ShareStateSnapshot["inputsByInput"][typeof inputId]);
       return accumulator;
     }, {} as ShareStateSnapshot["inputsByInput"]),
-    dynamicXAxis: state.ui.dynamicXAxis,
-    dynamicYAxis: state.ui.dynamicYAxis,
   };
 }
-/**
- * Applies a share state snapshot to the current state by copying the relevant data 
- * and updating the state immutably.
- * @param state The current state.
- * @param snapshot The share state snapshot to apply.
- */
-export function applyShareSnapshotToState(state: ComfortToolStateSlice, snapshot: ShareStateSnapshot) {
+
+export function applyShareSnapshotToState(
+  state: ComfortToolStateSlice,
+  snapshot: ShareStateSnapshot,
+) {
   state.ui.selectedModel = snapshot.selectedModel;
-  comfortModelOrder.forEach((modelId) => {
-    state.ui.selectedChartByModel[modelId] = snapshot.models[modelId].selectedChart;
-    state.ui.modelOptionsByModel[modelId] = { ...snapshot.models[modelId].options };
-  });
+  for (const modelId of comfortModelOrder) {
+    const modelSnapshot = snapshot.models[modelId];
+    state.ui.selectedChartByModel[modelId] = modelSnapshot.selectedChart;
+    state.ui.modelOptionsByModel[modelId] = { ...modelSnapshot.options };
+    state.ui.chartSettingsByModel[modelId] = cloneChartSettings(
+      modelSnapshot.chartSettings,
+    );
+  }
   state.ui.compareEnabled = snapshot.compareEnabled;
   state.ui.compareInputIds = normalizeCompareInputIds(snapshot.compareInputIds);
-  state.ui.activeInputId = snapshot.compareEnabled && state.ui.compareInputIds.includes(snapshot.activeInputId)
+  state.ui.activeInputId = snapshot.compareEnabled
+    && state.ui.compareInputIds.includes(snapshot.activeInputId)
     ? snapshot.activeInputId
     : InputId.Input1;
   state.ui.unitSystem = snapshot.unitSystem;
 
-  inputOrder.forEach((inputId) => {
-    allFieldOrder.forEach((fieldKey) => {
+  for (const inputId of inputOrder) {
+    for (const fieldKey of allFieldOrder) {
       state.inputsByInput[inputId][fieldKey] = snapshot.inputsByInput[inputId][fieldKey];
-    });
-  });
-
-  const config = getComfortModelConfig(snapshot.selectedModel);
-  const dynamicAxisPair = normalizeDynamicAxisPair(config, {
-    xAxis: snapshot.dynamicXAxis,
-    yAxis: snapshot.dynamicYAxis,
-  });
-  state.ui.dynamicXAxis = dynamicAxisPair.xAxis;
-  state.ui.dynamicYAxis = dynamicAxisPair.yAxis;
+    }
+  }
 }
 
-/**
- * Generates a fully qualified URL containing the serialized tool state by serializing the snapshot and then encoding it.
- * @param snapshot The state to include in the URL.
- * @param locationSource The current location context (to preserve the base URL).
- * @returns The shareable URL string.
- */
-export function buildShareUrl(snapshot: ShareStateSnapshot, locationSource: URL | Location | string): string {
+export function buildShareUrl(
+  snapshot: ShareStateSnapshot,
+  locationSource: URL | Location | string,
+): string {
   const url = toUrl(locationSource);
   url.searchParams.set(SHARE_STATE_PARAM, serializeShareState(snapshot));
   return url.toString();
 }
 
-/**
- * Attempts to extract and deserialize a state snapshot from the provided URL by getting the search param and then deserializing it.
- * @param locationSource The URL string or object to read from.
- * @returns The deserialized snapshot if successful, otherwise null.
- */
-export function readShareStateFromUrl(locationSource: URL | Location | string): ShareStateSnapshot | null {
-  const url = toUrl(locationSource);
-  const encodedSnapshot = url.searchParams.get(SHARE_STATE_PARAM);
-  if (!encodedSnapshot) {
-    return null;
-  }
-
-  return deserializeShareState(encodedSnapshot);
+export function readShareStateFromUrl(
+  locationSource: URL | Location | string,
+): ShareStateSnapshot | null {
+  const encodedSnapshot = toUrl(locationSource).searchParams.get(SHARE_STATE_PARAM);
+  return encodedSnapshot ? deserializeShareState(encodedSnapshot) : null;
 }

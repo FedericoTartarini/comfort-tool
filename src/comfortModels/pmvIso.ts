@@ -14,6 +14,7 @@ import { UnitSystem } from "../models/units";
 import {
   createPmvComplianceBands,
   createPmvModelConfig,
+  getPmvComplianceFeedback,
   pmvChartableOutputs,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
@@ -68,6 +69,8 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   complianceSpec: {
     output: ModelOutputKey.Pmv,
     bands: isoComplianceBands,
+    caption: "ISO 7730 Category B PMV compliance limits are locked for this chart.",
+    getFeedback: getPmvComplianceFeedback,
   },
 };
 

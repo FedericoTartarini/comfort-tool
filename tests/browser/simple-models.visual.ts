@@ -65,12 +65,22 @@ for (const modelLabel of ["Heat Index", "Humidex"]) {
     await expect(modelSelect).toHaveValue(modelLabel);
 
     const plot = page.getByTestId("comfort-chart-plot");
+    const chartTrigger = page.getByRole("button", {
+      name: "Select chart type and export",
+    });
+
+    await expect(chartTrigger).toContainText("Dynamic");
+    await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
+    await expect(page.getByText("Explore", { exact: true })).toBeVisible();
+    await expectExploreControls(page, true);
 
     await selectChart(page, "Psychrometric");
+    await expect(page.getByText("Explore", { exact: true })).toBeHidden();
     await expectExploreControls(page, false);
     await expectRenderedContour(plot);
 
     await selectChart(page, "Dynamic");
+    await expect(page.getByText("Explore", { exact: true })).toBeVisible();
     await expectExploreControls(page, true);
     await expectRenderedContour(plot);
   });
@@ -86,5 +96,7 @@ test("Wind Chill completes the boundary-confirmed model switch", async ({ page }
   await expect(modelSelect).toHaveValue("Wind Chill");
   await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeHidden();
   await expect(page.getByLabel("Input 1 Air temperature", { exact: true })).toHaveValue("0.0");
+  await expect(page.getByText("Explore", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
   await expectRenderedContour(page.getByTestId("comfort-chart-plot"));
 });

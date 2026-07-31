@@ -199,7 +199,10 @@ builder.setChartBuilder((chartId, chartSource, resultsByInput, context) =>
     humidexChartSpec,
   ));
 
-builder.setDefaultChart(ChartId.Humidex, [ChartId.Humidex, ChartId.HumidexDynamic]);
+builder.setDefaultChart(ChartId.HumidexDynamic, [
+  ChartId.Humidex,
+  ChartId.HumidexDynamic,
+]);
 builder.setDynamicAxisFields([
   FieldKey.DryBulbTemperature,
   FieldKey.RelativeHumidity,

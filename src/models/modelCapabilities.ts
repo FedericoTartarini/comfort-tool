@@ -52,9 +52,16 @@ export interface ModelOutput {
   readonly defaultBands: readonly NumericBand[];
 }
 
-export interface ComplianceSpec<TBand extends Band = Band> {
+export interface ComplianceFeedback {
+  readonly text: string;
+  readonly passes: boolean;
+}
+
+export interface ComplianceSpec<TBand extends Band = Band, TResult = unknown> {
   readonly output: ModelOutputKey;
   readonly bands: readonly TBand[];
+  readonly caption: string;
+  readonly getFeedback: (result: TResult) => ComplianceFeedback;
 }
 
 interface FieldChartConfigBase {

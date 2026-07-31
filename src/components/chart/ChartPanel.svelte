@@ -8,6 +8,7 @@
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
   import ChartExportMenu from "./ChartExportMenu.svelte";
   import ChartControls from "./ChartControls.svelte";
+  import ChartModeControl from "./ChartModeControl.svelte";
   import ChartLegend from "./ChartLegend.svelte";
   import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
@@ -66,9 +67,16 @@
   );
 </script>
 
-<div class="mt-4 border-t border-stone-200 pt-4">
+<div
+  class="mt-4 border-t border-stone-200 pt-4"
+  data-testid="comfort-chart-panel"
+>
   <header class="flex items-start justify-between gap-4">
-    <div class="min-w-0"></div>
+    {#if chartControls.mode}
+      <ChartModeControl control={chartControls.mode} />
+    {:else}
+      <div class="min-w-0"></div>
+    {/if}
     <div class="flex flex-wrap items-center justify-end gap-2 pr-[24px]">
       {#if showChartControls}
         <ChartControls

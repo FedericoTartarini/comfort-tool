@@ -30,6 +30,14 @@ const PMV_FILL_CONSTRAINTS = [
   { operation: "<", value: 2.5 },
 ] as const;
 
+const COMPLIANCE_COLORS = ["#fecaca", "#86efac", "#fecaca"];
+
+const COMPLIANCE_FILL_CONSTRAINTS = [
+  { operation: ">=", value: -0.5 },
+  { operation: "][", value: [-0.5, 0.5] },
+  { operation: "<", value: 0.5 },
+] as const;
+
 const MODEL_LABELS = {
   ashrae: "PMV (ASHRAE-55)",
   iso: "PMV (ISO 7730 Category B)",
@@ -41,6 +49,7 @@ type PmvDisplay = "PMV" | "PPD (%)";
 interface TargetChartOptions {
   model?: PmvModel;
   display?: PmvDisplay;
+  mode?: "compliance" | "explore";
   useIpUnits?: boolean;
 }
 
@@ -50,6 +59,9 @@ async function selectDropdownOption(
   optionName: string,
 ) {
   const trigger = page.getByRole("button", { name: triggerName });
+  if ((await trigger.textContent())?.includes(optionName)) {
+    return;
+  }
   await trigger.click();
   const option = page.getByRole("button", { name: optionName, exact: true });
   await expect(option).toBeVisible();
@@ -184,6 +196,7 @@ async function openTargetPmvChart(
   {
     model = "ashrae",
     display = "PMV",
+    mode = "explore",
     useIpUnits = false,
   }: TargetChartOptions = {},
 ) {
@@ -196,7 +209,21 @@ async function openTargetPmvChart(
   await unitToggle.setChecked(false);
   await setTargetInputs(page);
 
-  await selectDropdownOption(page, "Select chart type and export", "Dynamic");
+  const chartTrigger = page.getByRole("button", {
+    name: "Select chart type and export",
+  });
+  await expect(chartTrigger).toContainText("Dynamic");
+
+  const modeGroup = page.getByRole("group", { name: "Chart mode" });
+  const complianceButton = modeGroup.getByRole("button", { name: "Compliance" });
+  const exploreButton = modeGroup.getByRole("button", { name: "Explore" });
+  await expect(complianceButton).toHaveAttribute("aria-pressed", "true");
+  await expect(exploreButton).toHaveAttribute("aria-pressed", "false");
+  if (mode === "explore") {
+    await exploreButton.click();
+    await expect(exploreButton).toHaveAttribute("aria-pressed", "true");
+  }
+
   await selectDropdownOption(page, "Select chart X axis", "Air temperature");
   await selectDropdownOption(page, "Select chart Y axis", "Relative humidity");
 
@@ -215,6 +242,7 @@ async function openTargetPmvChart(
   await waitForXAxisTitle(plot, useIpUnits ? "°F" : "°C");
 
   return {
+    panel: page.getByTestId("comfort-chart-panel"),
     plot,
     visual: page.getByTestId("comfort-chart-visual"),
   };
@@ -226,8 +254,8 @@ async function expectTargetResults(page: Page) {
   await expect(page.getByTitle("94.3%")).toBeVisible();
 }
 
-async function expectPmvConstraintFills(plot: Locator) {
-  const fillTraces = await plot.evaluate((element) => {
+async function readConstraintFills(plot: Locator) {
+  return plot.evaluate((element) => {
     const traces = (element as HTMLElement & {
       data?: Array<{
         contours?: {
@@ -250,16 +278,67 @@ async function expectPmvConstraintFills(plot: Locator) {
         value: contours?.value,
       }));
   });
+}
 
-  expect(fillTraces).toEqual(PMV_COLORS.map((fillcolor, index) => ({
-    ...PMV_FILL_CONSTRAINTS[index],
-    coloring: "none",
-    fillcolor,
-  })));
+async function expectPmvConstraintFills(plot: Locator) {
+  await expect.poll(() => readConstraintFills(plot)).toEqual(
+    PMV_COLORS.map((fillcolor, index) => ({
+      ...PMV_FILL_CONSTRAINTS[index],
+      coloring: "none",
+      fillcolor,
+    })),
+  );
+  await expect(plot.locator(".contourbg path")).toHaveCount(0);
+}
+
+async function expectComplianceConstraintFills(plot: Locator) {
+  await expect.poll(() => readConstraintFills(plot)).toEqual(
+    COMPLIANCE_COLORS.map((fillcolor, index) => ({
+      ...COMPLIANCE_FILL_CONSTRAINTS[index],
+      coloring: "none",
+      fillcolor,
+    })),
+  );
   await expect(plot.locator(".contourbg path")).toHaveCount(0);
 }
 
 test.describe("PMV visual regression", () => {
+  test("ASHRAE mode panel locks Compliance and exposes Explore controls", async ({ page }) => {
+    const { panel, plot } = await openTargetPmvChart(page, { mode: "compliance" });
+    const modeGroup = page.getByRole("group", { name: "Chart mode" });
+    const complianceButton = modeGroup.getByRole("button", { name: "Compliance" });
+    const exploreButton = modeGroup.getByRole("button", { name: "Explore" });
+
+    await expect(complianceButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(
+      "ASHRAE 55 PMV compliance limits are locked for this chart.",
+      { exact: true },
+    )).toBeVisible();
+    await expect(panel.getByText("Compliant", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Select chart display output" }))
+      .toBeHidden();
+    await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
+    await expectComplianceConstraintFills(plot);
+    await page.mouse.move(0, 0);
+    await expect(panel).toHaveScreenshot("pmv-ashrae-compliance-panel.png");
+
+    await exploreButton.click();
+    await expect(exploreButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(
+      "Showing PMV over the selected axes with editable thresholds.",
+      { exact: true },
+    )).toBeVisible();
+    await expect(panel.getByText("Compliant", { exact: true })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Select chart display output" }))
+      .toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeVisible();
+    await expectPmvConstraintFills(plot);
+    await page.mouse.move(0, 0);
+    await expect(panel).toHaveScreenshot("pmv-ashrae-explore-panel.png");
+  });
+
   test("ASHRAE PMV in SI", async ({ page }) => {
     const { plot, visual } = await openTargetPmvChart(page);
 

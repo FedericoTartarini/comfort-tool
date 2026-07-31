@@ -23,7 +23,9 @@ import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
 import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import { InputId } from "../../../models/inputSlots";
 import {
+  ChartMode,
   findBandForValue,
+  ModelOutputKey,
   type ChartBuildContext,
   type InputsSi,
 } from "../../../models/modelCapabilities";
@@ -41,12 +43,21 @@ function createContext(
   xAxis: FieldKeyType,
   yAxis: FieldKeyType,
   unitSystem: UnitSystemType = UnitSystem.SI,
+  declaration?: AdaptiveModelDeclaration,
 ): ChartBuildContext {
   return {
     unitSystem,
     dynamicAxes: { xAxis, yAxis },
     baselineInputId: InputId.Input1,
-    fieldChartConfig: null,
+    fieldChartConfig: declaration
+      ? {
+          mode: ChartMode.Compliance,
+          xField: xAxis,
+          yField: yAxis,
+          zOutput: declaration.complianceSpec.output,
+          bands: declaration.complianceSpec.bands,
+        }
+      : null,
   };
 }
 
@@ -80,7 +91,7 @@ function buildDynamicChart(
     declaration,
     { inputs: { [InputId.Input1]: request } },
     { [InputId.Input1]: result },
-    createContext(xAxis, yAxis, unitSystem),
+    createContext(xAxis, yAxis, unitSystem, declaration),
   );
 }
 
@@ -352,6 +363,38 @@ describe("adaptive charts", () => {
     expect(zoneTrace?.z?.flat().some(Number.isFinite)).toBe(true);
     expect(inputTrace?.x).toEqual([24]);
     expect(inputTrace?.y).toEqual([0.1]);
+  });
+
+  it("requires the declared Compliance config for the shared dynamic engine", () => {
+    const declaration = adaptiveAshraeDeclaration;
+    const result = calculateAdaptive(declaration, baselineRequest);
+    const context = createContext(
+      FieldKey.DryBulbTemperature,
+      FieldKey.RelativeAirSpeed,
+      UnitSystem.SI,
+      declaration,
+    );
+    const build = (fieldChartConfig: ChartBuildContext["fieldChartConfig"]) => (
+      buildAdaptiveDynamicChart(
+        declaration,
+        { inputs: { [InputId.Input1]: baselineRequest } },
+        { [InputId.Input1]: result },
+        { ...context, fieldChartConfig },
+      )
+    );
+
+    expect(() => build({
+      mode: ChartMode.Explore,
+      xField: FieldKey.DryBulbTemperature,
+      yField: FieldKey.RelativeAirSpeed,
+      zOutput: declaration.complianceSpec.output,
+      bands: [{ min: -Infinity, max: Infinity, label: "All", color: "#fff" }],
+    })).toThrow(/requires a Compliance FieldChartConfig/i);
+    expect(() => build({
+      ...context.fieldChartConfig!,
+      mode: ChartMode.Compliance,
+      zOutput: ModelOutputKey.Pmv,
+    })).toThrow(/declared locked output and bands/i);
   });
 
   it.each([

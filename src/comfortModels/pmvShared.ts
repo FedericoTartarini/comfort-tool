@@ -34,9 +34,11 @@ import {
   ModelOutputKey,
   type ChartBuildContext,
   type ChartMode as ChartModeType,
+  type ComplianceFeedback,
   type ComplianceSpec,
   type ExploreFieldChartConfig,
   type ModelOutput,
+  type NumericComplianceFieldChartConfig,
   type NumericBand,
 } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
@@ -203,7 +205,7 @@ export interface PmvModelDeclaration {
   readonly adapter: PmvStandardAdapter;
   readonly modes: readonly ChartModeType[];
   readonly chartableOutputs: readonly ModelOutput[];
-  readonly complianceSpec: ComplianceSpec<NumericBand>;
+  readonly complianceSpec: ComplianceSpec<NumericBand, PmvResponseDto>;
 }
 
 interface PmvChartEvaluation {
@@ -559,6 +561,17 @@ function toComfortZoneRequest(
   };
 }
 
+export function getPmvComplianceFeedback(
+  result: PmvResponseDto,
+): ComplianceFeedback {
+  return {
+    text: result.isCompliant
+      ? ComplianceStatus.Compliant
+      : ComplianceStatus.OutOfRange,
+    passes: result.isCompliant,
+  };
+}
+
 function buildPmvResultSections(
   results: Record<InputIdType, PmvResponseDto | null>,
   visibleInputIds: InputIdType[],
@@ -587,14 +600,15 @@ function buildPmvResultSections(
   const rows: ResultRowDefinition<PmvResponseDto>[] = [
     {
       title: "Compliance",
-      formatter: (result) => ({
-        text: result.isCompliant
-          ? ComplianceStatus.Compliant
-          : ComplianceStatus.OutOfRange,
-        color: result.isCompliant
+      formatter: (result) => {
+        const feedback = getPmvComplianceFeedback(result);
+        return {
+          text: feedback.text,
+          color: feedback.passes
           ? COLOR_COMPLIANT_GREEN
           : COLOR_NON_COMPLIANT_RED,
-      }),
+        };
+      },
     },
     ...measuredAirSpeedRows,
     {
@@ -1045,12 +1059,30 @@ export function buildComparePsychrometricChart(
   });
 }
 
-function assertPmvExploreConfig(
+type PmvFieldChartConfig =
+  | ExploreFieldChartConfig
+  | NumericComplianceFieldChartConfig;
+
+function numericBandsMatch(
+  left: readonly NumericBand[],
+  right: readonly NumericBand[],
+): boolean {
+  return left.length === right.length && left.every((band, index) => {
+    const candidate = right[index];
+    return candidate !== undefined
+      && band.min === candidate.min
+      && band.max === candidate.max
+      && band.label === candidate.label
+      && band.color === candidate.color;
+  });
+}
+
+function assertPmvFieldChartConfig(
   context: ChartBuildContext,
-): ExploreFieldChartConfig {
+): PmvFieldChartConfig {
   const config = context.fieldChartConfig;
-  if (config?.mode !== ChartMode.Explore) {
-    throw new Error("PMV Explore chart requires an Explore FieldChartConfig.");
+  if (!config) {
+    throw new Error("PMV dynamic chart requires a FieldChartConfig.");
   }
   if (
     config.xField === config.yField
@@ -1065,7 +1097,12 @@ function assertPmvExploreConfig(
       `Unsupported PMV dynamic axis pair: ${config.xField} / ${config.yField}.`,
     );
   }
-  return config;
+  if (config.bands.some(({ min, max }) => (
+    typeof min !== "number" || typeof max !== "number"
+  ))) {
+    throw new Error("PMV field charts require numeric bands.");
+  }
+  return config as PmvFieldChartConfig;
 }
 
 export function buildPmvDynamicChart(
@@ -1074,13 +1111,22 @@ export function buildPmvDynamicChart(
   resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
-  const config = assertPmvExploreConfig(context);
+  const config = assertPmvFieldChartConfig(context);
   const { adapter } = declaration;
   const { unitSystem } = context;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
 
   const output = declaration.chartableOutputs.find(({ key }) => key === config.zOutput);
   if (!output) throw new Error(`Unsupported PMV chart output: ${config.zOutput}`);
+  if (
+    config.mode === ChartMode.Compliance
+    && (
+      config.zOutput !== declaration.complianceSpec.output
+      || !numericBandsMatch(config.bands, declaration.complianceSpec.bands)
+    )
+  ) {
+    throw new Error("PMV Compliance chart requires the declared locked output and bands.");
+  }
   const isPmvOutput = config.zOutput === ModelOutputKey.Pmv;
   const classificationLabel = isPmvOutput ? "Zone" : "Band";
   const axisAdapter: DynamicAxisPayloadAdapter<PmvRequestDto> = {
@@ -1253,7 +1299,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
         OptionKey.HumidityInputMode,
         nextValue,
       ) ?? null)
-    .setDefaultChart(ChartId.Psychrometric, [
+    .setDefaultChart(ChartId.PmvDynamic, [
       ChartId.Psychrometric,
       ChartId.PmvDynamic,
     ])
@@ -1306,10 +1352,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
           context,
         );
       }
-      if (
-        chartId === ChartId.PmvDynamic
-        && context.fieldChartConfig?.mode === ChartMode.Explore
-      ) {
+      if (chartId === ChartId.PmvDynamic && context.fieldChartConfig) {
         return buildPmvDynamicChart(
           declaration,
           chartSource,

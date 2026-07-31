@@ -47,7 +47,8 @@ async function expectChartAxes(
 
 test("PMV exposes and renders every component/operative axis direction", async ({ page }) => {
   await page.goto("/");
-  await selectDropdownOption(page, "Select chart type and export", "Dynamic");
+  await expect(page.getByRole("button", { name: "Select chart type and export" }))
+    .toContainText("Dynamic");
 
   const plot = page.getByTestId("comfort-chart-plot");
   await selectDropdownOption(page, "Select chart Y axis", "Operative temperature");
@@ -71,7 +72,8 @@ test("Adaptive Dynamic starts with the declared outdoor-temperature axes", async
   await page.getByRole("button", { name: "Adaptive (ASHRAE-55)", exact: false }).click();
   await expect(modelSelect).toHaveValue("Adaptive (ASHRAE-55)");
 
-  await selectDropdownOption(page, "Select chart type and export", "Dynamic");
+  await expect(page.getByRole("button", { name: "Select chart type and export" }))
+    .toContainText("Dynamic");
 
   await expect(page.getByRole("button", { name: "Select chart X axis" }))
     .toContainText("Air temperature");

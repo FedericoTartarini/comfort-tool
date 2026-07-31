@@ -21,7 +21,10 @@ import {
   type Band,
   type ChartBuildContext,
   type ChartMode as ChartModeType,
+  type ComplianceFeedback,
+  type ComplianceFieldChartConfig,
   type ComplianceSpec,
+  ChartMode,
   type ModelOutput,
 } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
@@ -137,7 +140,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   description: string;
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
-  complianceSpec: ComplianceSpec;
+  complianceSpec: ComplianceSpec<Band, AdaptiveResponseDto>;
   resultStandard: ComfortStandard;
   operativeTemperatureStandard: JsThermalComfortStandard;
   zones: readonly ThermalZone[];
@@ -275,6 +278,21 @@ function getLevelResult(
   return level;
 }
 
+export function createAdaptiveComplianceFeedbackGetter(
+  complianceLevelId: string,
+): (result: AdaptiveResponseDto) => ComplianceFeedback {
+  return (result) => {
+    if (!result.isApplicable) {
+      return { text: ComplianceStatus.OutOfRange, passes: false };
+    }
+    const passes = getLevelResult(result, complianceLevelId).accepted;
+    return {
+      text: passes ? ComplianceStatus.Compliant : ComplianceStatus.NonCompliant,
+      passes,
+    };
+  };
+}
+
 function getBoundaryValues(result: AdaptiveResponseDto): number[] | null {
   if (!result.isApplicable) return null;
   const lower = result.levels
@@ -313,7 +331,7 @@ function mapBoundariesToZoneScale(
 }
 
 function getDynamicZone(
-  declaration: AdaptiveModelDeclaration,
+  bands: readonly Band[],
   evaluation: AdaptiveChartEvaluation,
 ): { z: number; label: string } | null {
   const boundaries = getBoundaryValues(evaluation.result);
@@ -322,11 +340,11 @@ function getDynamicZone(
     (boundary) => evaluation.operativeTemperature < boundary,
   );
   const resolvedIndex = bandIndex === -1
-    ? declaration.bandSequence.length - 1
+    ? bands.length - 1
     : bandIndex;
   return {
     z: mapBoundariesToZoneScale(evaluation.operativeTemperature, boundaries),
-    label: declaration.bandSequence[resolvedIndex].label,
+    label: bands[resolvedIndex].label,
   };
 }
 
@@ -672,7 +690,7 @@ function buildAdaptiveBandTraces(
   unitSystem: UnitSystemType,
   variableValues: number[],
   boundaryCurves: number[][],
-  bands: readonly ThermalZone[],
+  bands: ReadonlyArray<{ label: string; color: string }>,
   variableAxis: ChartAxisScale,
   boundaryAxis: ChartAxisScale,
   variableDimension: "x" | "y",
@@ -732,6 +750,7 @@ function buildOutdoorTemperatureTooltipTrace(
 
 function buildOutdoorTemperatureBoundaryTraces(
   declaration: AdaptiveModelDeclaration,
+  bands: readonly Band[],
   baseline: AdaptiveRequestDto,
   unitSystem: UnitSystemType,
   xAxis: ChartAxisScale,
@@ -777,7 +796,7 @@ function buildOutdoorTemperatureBoundaryTraces(
       unitSystem,
       outdoorValues,
       boundaryCurves,
-      declaration.bandSequence,
+      bands,
       outdoorAxis,
       otherAxis,
       hasOutdoorXAxis ? "x" : "y",
@@ -823,7 +842,7 @@ function buildOutdoorTemperatureBoundaryTraces(
       unitSystem,
       speedValues,
       boundaryCurves,
-      [...declaration.bandSequence].reverse(),
+      [...bands].reverse(),
       otherAxis,
       outdoorAxis,
       hasOutdoorXAxis ? "y" : "x",
@@ -921,11 +940,29 @@ export function buildAdaptiveChart(
   });
 }
 
-function assertDynamicAxes(context: ChartBuildContext): {
-  xAxis: FieldKeyType;
-  yAxis: FieldKeyType;
-} {
-  const { xAxis, yAxis } = context.dynamicAxes;
+function complianceBandsMatch(
+  left: readonly Band[],
+  right: readonly Band[],
+): boolean {
+  return left.length === right.length && left.every((band, index) => {
+    const candidate = right[index];
+    return candidate !== undefined
+      && band.min === candidate.min
+      && band.max === candidate.max
+      && band.label === candidate.label
+      && band.color === candidate.color;
+  });
+}
+
+function assertAdaptiveComplianceConfig(
+  declaration: AdaptiveModelDeclaration,
+  context: ChartBuildContext,
+): ComplianceFieldChartConfig {
+  const config = context.fieldChartConfig;
+  if (config?.mode !== ChartMode.Compliance) {
+    throw new Error("Adaptive dynamic chart requires a Compliance FieldChartConfig.");
+  }
+  const { xField: xAxis, yField: yAxis } = config;
   if (
     xAxis === yAxis
     || !ADAPTIVE_DYNAMIC_AXIS_FIELDS.includes(
@@ -937,7 +974,13 @@ function assertDynamicAxes(context: ChartBuildContext): {
   ) {
     throw new Error(`Unsupported Adaptive dynamic axis pair: ${xAxis} / ${yAxis}.`);
   }
-  return { xAxis, yAxis };
+  if (
+    config.zOutput !== declaration.complianceSpec.output
+    || !complianceBandsMatch(config.bands, declaration.complianceSpec.bands)
+  ) {
+    throw new Error("Adaptive Compliance chart requires the declared locked output and bands.");
+  }
+  return config;
 }
 
 export function buildAdaptiveDynamicChart(
@@ -946,7 +989,8 @@ export function buildAdaptiveDynamicChart(
   resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
-  const fields = assertDynamicAxes(context);
+  const config = assertAdaptiveComplianceConfig(declaration, context);
+  const fields = { xAxis: config.xField, yAxis: config.yField };
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
   const { unitSystem } = context;
   const xAxis = {
@@ -989,6 +1033,7 @@ export function buildAdaptiveDynamicChart(
         buildTraces: ({ xAxis: resolvedX, yAxis: resolvedY }) =>
           buildOutdoorTemperatureBoundaryTraces(
             declaration,
+            config.bands,
             baseline.payload,
             unitSystem,
             resolvedX,
@@ -997,7 +1042,7 @@ export function buildAdaptiveDynamicChart(
       }
     : createZoneGridStrategy({
         name: "Adaptive Zones",
-        zones: declaration.bandSequence,
+        zones: config.bands,
         contours: ADAPTIVE_CONTOURS,
         zmin: 1.5,
         zmax: declaration.bandSequence.length + 0.5,
@@ -1020,7 +1065,7 @@ export function buildAdaptiveDynamicChart(
           if (!hasValidCoordinates) return null;
           const evaluation = tryEvaluateAdaptiveForChart(declaration, request);
           if (!evaluation) return null;
-          const zone = getDynamicZone(declaration, evaluation);
+          const zone = getDynamicZone(config.bands, evaluation);
           return zone
             ? {
                 z: zone.z,
@@ -1104,18 +1149,10 @@ function buildAdaptiveResultRows(
     {
       title: "Compliance",
       formatter: (result) => {
-        const complianceLevel = getLevelResult(
-          result,
-          declaration.complianceLevelId,
-        );
-        const isCompliant = result.isApplicable && complianceLevel.accepted;
+        const feedback = declaration.complianceSpec.getFeedback(result);
         return {
-          text: !result.isApplicable
-            ? ComplianceStatus.OutOfRange
-            : isCompliant
-              ? ComplianceStatus.Compliant
-              : ComplianceStatus.NonCompliant,
-          color: isCompliant
+          text: feedback.text,
+          color: feedback.passes
             ? declaration.complianceColors.compliant
             : declaration.complianceColors.nonCompliant,
         };
@@ -1153,7 +1190,8 @@ export function createAdaptiveModelConfig(
 ) {
   const builder = new ComfortModelBuilder<
     AdaptiveResponseDto,
-    ModelChartSourceDto<AdaptiveRequestDto>
+    ModelChartSourceDto<AdaptiveRequestDto>,
+    Band
   >(declaration.modelId);
   const temperatureBehavior = createTemperatureControlBehavior(
     InputControlId.Temperature,
@@ -1210,7 +1248,10 @@ export function createAdaptiveModelConfig(
       ...defaultAdaptiveOptions,
       [OptionKey.TemperatureMode]: TemperatureMode.Operative,
     })
-    .setDefaultChart(ChartId.Adaptive, [ChartId.Adaptive, ChartId.AdaptiveDynamic])
+    .setDefaultChart(ChartId.AdaptiveDynamic, [
+      ChartId.Adaptive,
+      ChartId.AdaptiveDynamic,
+    ])
     .setOptionNormalizer(normalizeAdaptiveOptionsSnapshot)
     .setDynamicAxisFields([...ADAPTIVE_DYNAMIC_AXIS_FIELDS])
     .setDefaultDynamicAxes({

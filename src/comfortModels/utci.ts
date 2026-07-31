@@ -589,7 +589,7 @@ builder.addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) => {
   };
 });
 
-builder.setDefaultChart(ChartId.Stress, [ChartId.Stress, ChartId.UtciDynamic]);
+builder.setDefaultChart(ChartId.UtciDynamic, [ChartId.Stress, ChartId.UtciDynamic]);
 builder.setDynamicAxisFields([...UTCI_DYNAMIC_AXIS_FIELDS]);
 builder.setDefaultDynamicAxes({
   xAxis: FieldKey.DryBulbTemperature,
