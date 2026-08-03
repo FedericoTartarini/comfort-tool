@@ -143,6 +143,24 @@ describe("shareState strict v1 codec", () => {
     ).toEqual(["舒适区 ✅", "偏高 🥵（≥ 10%）"]);
   });
 
+  it("round-trips both Adaptive models with the single fixed chart", () => {
+    const snapshot = createShareStateSnapshot(createComfortToolState().state);
+    const restored = deserializeShareState(serializeShareState(snapshot));
+
+    [ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn].forEach((modelId) => {
+      expect(snapshot.models[modelId]).toEqual(expect.objectContaining({
+        selectedChart: ChartId.Adaptive,
+        chartSettings: expect.objectContaining({
+          mode: ChartMode.Compliance,
+          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          yAxis: FieldKey.OperativeTemperature,
+          explore: null,
+        }),
+      }));
+      expect(restored?.models[modelId]).toEqual(snapshot.models[modelId]);
+    });
+  });
+
   it("rejects invalid Base64URL and malformed UTF-8 bytes", () => {
     const malformedUtf8 = globalThis.btoa(
       String.fromCharCode(0xc3, 0x28),
@@ -196,6 +214,21 @@ describe("shareState strict v1 codec", () => {
       dynamicYAxis: FieldKey.RelativeHumidity,
     };
     expect(parseShareStateSnapshot(oldV1)).toBeNull();
+
+    const historicalAdaptiveDynamic = {
+      ...current,
+      models: {
+        ...current.models,
+        [ComfortModel.AdaptiveAshrae]: {
+          ...current.models[ComfortModel.AdaptiveAshrae],
+          selectedChart: "adaptiveDynamic",
+        },
+      },
+    };
+    expect(parseShareStateSnapshot(historicalAdaptiveDynamic)).toBeNull();
+    expect(deserializeShareState(serializeShareState(
+      historicalAdaptiveDynamic as ShareStateSnapshot,
+    ))).toBeNull();
   });
 
   it("strictly validates declared mode, axes, output, bands, and baseline", () => {
@@ -205,6 +238,14 @@ describe("shareState strict v1 codec", () => {
       current,
       ComfortModel.AdaptiveAshrae,
       { mode: ChartMode.Explore },
+    ))).toBeNull();
+    expect(parseShareStateSnapshot(withChartSettings(
+      current,
+      ComfortModel.AdaptiveAshrae,
+      {
+        xAxis: FieldKey.DryBulbTemperature,
+        yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+      },
     ))).toBeNull();
     expect(parseShareStateSnapshot(withChartSettings(
       current,

@@ -93,7 +93,7 @@ The current active application is the repository root version.
 
 `src/models/modelCapabilities.ts`
 - Defines `ChartMode`, `ModelOutputKey`, `NumericFieldChartConfig`, numeric and functional Compliance chart contracts, `FieldChartConfig`, `ChartBuildContext`, editable numeric Explore bands, output declarations, and generic compliance specifications with captions and result feedback.
-- Provides `bandsFromThermalZones()` plus canonical-SI, array-ordered half-open (`min <= value < max`) band resolution helpers.
+- Defines `BandInputsSi` as the readonly partial canonical-SI field map required by functional edges, and provides `bandsFromThermalZones()` plus array-ordered half-open (`min <= value < max`) band resolution helpers.
 
 `src/models/comfortDtos.ts`
 - Defines the shared `ModelChartSourceDto<TRequest>` `{ inputs }` contract. Simple models, UTCI, and Adaptive use it directly; PMV extends it with per-input comfort-zone data.
@@ -111,7 +111,8 @@ The current active application is the repository root version.
 
 `src/comfortModels/adaptiveAshrae.ts`, `adaptiveEn.ts`, and `adaptiveShared.ts`
 - Each standard declaration explicitly owns `modes`, `chartableOutputs`, `complianceSpec`, coefficients, zones, calculator adapters, and an independently generated functional band array.
-- Shared mechanics accept a boundary definition containing only levels, coefficients, and band sequence, then own request mapping, chart construction, and config-builder plumbing without standard-mode branches.
+- Both registered models are Compliance-only and expose only `ChartId.Adaptive`: outdoor temperature is fixed on X (ASHRAE 10–33.5 °C; EN 10–30 °C), and operative temperature is fixed on Y (10–40 °C).
+- Shared mechanics accept a boundary definition containing only levels, coefficients, and band sequence, then own request mapping, result rows, tooltip metadata, discontinuity samples, and config-builder plumbing without standard-mode branches. They do not build boundary curves, polygons, inverse axes, or zone grids.
 
 `src/comfortModels/utci.ts`, `heatIndex.ts`, `humidex.ts`, and `windChill.ts`
 - Declare Explore-only capabilities with presets derived from their existing `ThermalZone` definitions.
@@ -120,7 +121,7 @@ The current active application is the repository root version.
 - Owns the strict v1 share snapshot schema, serialization, deserialization, and state-apply helpers.
 - Stores selected chart, options, and `{ mode, xAxis, yAxis, baselineInputId, explore }` inside every model snapshot. Compliance bands are never serialized; Explore `±Infinity` edges use explicit wire sentinels.
 - Encodes JSON as UTF-8 bytes before Base64URL and uses fatal UTF-8 decoding, so Unicode labels round-trip while malformed bytes are rejected.
-- Rejects unsupported versions, the previous v1 shape, invalid model/mode/axis/output/band/baseline values, and incomplete registry snapshots without migration or apply-time normalization.
+- Rejects unsupported versions, the previous v1 shape, removed chart IDs such as `adaptiveDynamic`, invalid model/mode/axis/output/band/baseline values, and incomplete registry snapshots without migration or apply-time normalization.
 
 `src/services/comfort/referenceValues.ts`
 - Adapts library-backed `met` and `clo` reference datasets into UI-ready option metadata.
@@ -140,11 +141,11 @@ The current active application is the repository root version.
 
 `src/services/comfort/charts/chartEngine.ts`
 - Exposes `buildFieldChart()` as the single chart-assembly entry point used by PMV, UTCI, simple-model, and Adaptive charts.
-- Accepts a discriminated Grid or Boundary strategy. `createBandedGridStrategy()` and `createZoneGridStrategy()` supply the two reusable Grid renderers without exposing the internal grid or zone modules to model files.
+- Accepts a discriminated Grid or Boundary strategy. `createBandedGridStrategy()` and `createZoneGridStrategy()` supply reusable Grid renderers; `createBoundaryRegionStrategy()` turns ordered functional bands into filled traces without exposing polygon machinery to model files.
 - Creates display axes from canonical-SI axis specs, then assembles traces in a fixed order: strategy traces, chart overlays, per-input overlays, and input markers.
 - Every selectable chart consumes the active `FieldChartConfig`. Fixed views override only their declared x/y axes and ranges; mode, output, bands, baseline, hover classification, and legend remain shared with Dynamic views.
 - Grid evaluators return an explicit unplottable `null`; unexpected exceptions propagate to the caller.
-- The banded Grid strategy accepts one validated `NumericFieldChartConfig`, evaluates raw canonical-SI model outputs, and performs half-open working-band assignment without repeating state or builder validation. Numeric Compliance configs use the same strategy, while Adaptive retains functional `Band` edges in the general Compliance contract.
+- The banded Grid strategy accepts one validated `NumericFieldChartConfig`, evaluates raw canonical-SI model outputs, and performs half-open working-band assignment without repeating state or builder validation. Numeric Compliance configs use the same strategy, while Adaptive passes its general functional `Band` contract and cached baseline air speed to the boundary-region strategy.
 - Smooth continuous outputs can opt into constraint contours, which retain one raw SI grid and let Plotly interpolate finite band thresholds. Constraint fills use per-region `fillcolor` without full-grid contour backgrounds. PMV ASHRAE/ISO use this strategy; other Explore charts remain categorical.
 - Visible categorical and constraint traces skip hover. One transparent contour tooltip trace owns full per-position metadata from the original output grid: band gaps report `Unclassified`, while model-invalid `NaN` cells have no hover.
 - The banded-grid runner keeps generic hover construction as its default and accepts an explicit full-template override for models that need multiple metrics or model-specific precision.
@@ -156,7 +157,8 @@ The current active application is the repository root version.
 - Central registry for output display units, precision, editor steps, and reversible SI/display conversion.
 
 `src/services/comfort/charts/boundaryRegionEngine.ts`
-- Produces boundary and filled-region traces, including functional boundaries with an explicit variable-axis direction; chart assembly remains in `buildFieldChart()`.
+- Samples canonical-SI X, merges model-supplied discontinuity samples, resolves ordered functional `Band` edges from `BandInputsSi`, permits gaps, rejects sampled reversal/overlap, clamps unbounded edges to Y, converts both axes, and assembles filled polygons in declaration order.
+- Preserves the closed-polygon helpers used by PMV and the transparent tooltip-grid helper; complete chart assembly and region → tooltip → input-overlay → marker ordering remain in `buildFieldChart()`.
 
 `src/services/units/index.ts`
 - Centralized unit conversion helpers.
@@ -216,6 +218,7 @@ The current active application is the repository root version.
 - Model request DTOs and calculators are SI-only. IP values exist in `src/services/units/` and presentation output.
 - Calculation scheduling exposes only canonical inputs and model options through `ModelCalculationContext`; comfort models do not import full controller state.
 - Share-state v1 stores mode, axes, baseline, and Explore output/working bands per model. Applying a parsed snapshot restores those values exactly and never serializes declaration-owned Compliance bands.
+- Comparison-dependent functional regions resolve from the selected request in the ready chart-source cache, so changing the baseline rebuilds presentation without mixing live mutable inputs into cached results.
 
 ## What Was Improved Recently
 
@@ -228,3 +231,4 @@ The current active application is the repository root version.
 - Model capabilities are now declarative, PMV ASHRAE and ISO are separate cached models, and share snapshots use a strict v1 registry-complete schema.
 - Explore charts now share output selection, editable SI working bands, default categorical contour generation, optional continuous constraint contours, and centralized output conversion across fixed and Dynamic axes.
 - Compliance is a locked configuration of the same FieldChart engine, with per-model mode/settings memory, accessible segmented controls, captions, and baseline-specific feedback on every selectable view.
+- Adaptive ASHRAE and EN now share the functional-boundary strategy and expose one fixed Compliance chart; their former Dynamic chart ID, arbitrary axes, inverse solvers, and non-outdoor contour grid have been removed.

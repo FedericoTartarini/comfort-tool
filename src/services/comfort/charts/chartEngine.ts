@@ -7,6 +7,8 @@ import type {
 } from "../../../models/comfortDtos";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import {
+  type Band,
+  type BandInputsSi,
   findNumericBandIndexForValue,
   type ModelOutput,
   type ModelOutputKey,
@@ -17,6 +19,10 @@ import {
   convertModelOutputFromSi,
   getModelOutputDisplayMeta,
 } from "../../units";
+import {
+  buildBoundaryRegionTraces,
+  buildFilledBoundaryRegionTrace,
+} from "./boundaryRegionEngine";
 import { createFieldAxisScale } from "./axis";
 import { evaluateGrid } from "./gridEngine";
 import {
@@ -83,6 +89,30 @@ export interface GridFieldChartStrategy {
 export interface BoundaryFieldChartStrategy {
   kind: "boundary";
   buildTraces: (context: FieldChartRenderContext) => PlotTraceDto[];
+}
+
+export interface BoundaryRegionStyle {
+  lineColor: string;
+  opacity?: number;
+  hovertemplate?: string;
+  hoverinfo?: string;
+}
+
+export interface BoundaryRegionStrategyOptions {
+  bands: readonly Band[];
+  bandInputsSi: BandInputsSi;
+  style: BoundaryRegionStyle;
+  additionalXValuesSi?: (
+    context: FieldChartRenderContext,
+  ) => readonly number[];
+  getHoverMetadata?: (
+    xSi: number,
+    ySi: number,
+    index: number,
+    band: Band,
+    bandIndex: number,
+    context: FieldChartRenderContext,
+  ) => unknown[];
 }
 
 export type FieldChartStrategy =
@@ -317,6 +347,48 @@ export function createZoneGridStrategy({
       hovertemplate: resolveText(hoverTemplate, context),
       opacity,
       isBackgroundZone,
+    }),
+  };
+}
+
+export function createBoundaryRegionStrategy({
+  bands,
+  bandInputsSi,
+  style,
+  additionalXValuesSi,
+  getHoverMetadata,
+}: BoundaryRegionStrategyOptions): BoundaryFieldChartStrategy {
+  return {
+    kind: "boundary",
+    buildTraces: (context) => buildBoundaryRegionTraces({
+      bands,
+      bandInputsSi,
+      xAxis: context.xAxis,
+      yAxis: context.yAxis,
+      additionalXValuesSi: additionalXValuesSi?.(context),
+      getHoverMetadata: getHoverMetadata
+        ? (xSi, ySi, index, band, bandIndex) => getHoverMetadata(
+            xSi,
+            ySi,
+            index,
+            band,
+            bandIndex,
+            context,
+          )
+        : undefined,
+      buildTrace: ({ band, polygonX, polygonY, hoverMetadata }) => (
+        buildFilledBoundaryRegionTrace({
+          name: band.label,
+          color: band.color,
+          polygonX,
+          polygonY,
+          lineColor: style.lineColor,
+          opacity: style.opacity,
+          hovertemplate: style.hovertemplate,
+          hoverinfo: style.hoverinfo,
+          hoverMetadata,
+        })
+      ),
     }),
   };
 }

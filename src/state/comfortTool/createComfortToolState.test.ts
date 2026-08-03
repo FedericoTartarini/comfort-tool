@@ -44,7 +44,7 @@ function getModeControl(toolState: ReturnType<typeof createComfortToolState>) {
 }
 
 describe("createComfortToolState", () => {
-  it("initializes Dynamic chart defaults and independent PMV variants", () => {
+  it("initializes model chart defaults and independent PMV variants", () => {
     const toolState = createComfortToolState();
 
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
@@ -52,8 +52,8 @@ describe("createComfortToolState", () => {
       [ComfortModel.PmvAshrae]: ChartId.PmvDynamic,
       [ComfortModel.PmvIso]: ChartId.PmvDynamic,
       [ComfortModel.Utci]: ChartId.UtciDynamic,
-      [ComfortModel.AdaptiveAshrae]: ChartId.AdaptiveDynamic,
-      [ComfortModel.AdaptiveEn]: ChartId.AdaptiveDynamic,
+      [ComfortModel.AdaptiveAshrae]: ChartId.Adaptive,
+      [ComfortModel.AdaptiveEn]: ChartId.Adaptive,
       [ComfortModel.HeatIndex]: ChartId.HeatIndexDynamic,
       [ComfortModel.Humidex]: ChartId.HumidexDynamic,
       [ComfortModel.WindChill]: ChartId.WindChillDynamic,
@@ -369,6 +369,35 @@ describe("createComfortToolState", () => {
     expect(toolState.selectors.getCurrentChartResult()).not.toBeNull();
   });
 
+  it("rebuilds Adaptive regions from the selected cached comparison baseline", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.setSelectedModel(ComfortModel.AdaptiveAshrae);
+    await waitForIdle(toolState);
+    toolState.state.inputsByInput[InputId.Input2][FieldKey.RelativeAirSpeed] = 1.2;
+    toolState.actions.setCompareEnabled(true);
+    await waitForIdle(toolState);
+
+    const cache = toolState.state.ui.calculationCacheByModel[ComfortModel.AdaptiveAshrae];
+    const getTooWarmBoundary = () => toolState.selectors.getCurrentChartResult()?.traces
+      .find(({ name, fill }) => name === "Too Warm" && fill === "toself")?.y;
+    const input1Boundary = getTooWarmBoundary();
+
+    toolState.actions.setChartBaselineInputId(InputId.Input2);
+
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.AdaptiveAshrae])
+      .toBe(cache);
+    expect(cache.status).toBe("ready");
+    expect(toolState.state.ui.isLoading).toBe(false);
+    const input2Boundary = getTooWarmBoundary();
+    expect(input2Boundary).not.toEqual(input1Boundary);
+    expect(toolState.selectors.getCurrentChartResult()?.traces
+      .filter(({ mode }) => mode === "markers")
+      .map(({ name }) => name)).toEqual(["Input 1", "Input 2"]);
+
+    toolState.state.inputsByInput[InputId.Input2][FieldKey.RelativeAirSpeed] = 0.1;
+    expect(getTooWarmBoundary()).toEqual(input2Boundary);
+  });
+
   it("retains independent mode, axes, output, bands, baseline, and chart selections", async () => {
     const toolState = createComfortToolState();
     toolState.actions.setCompareEnabled(true);
@@ -453,28 +482,23 @@ describe("createComfortToolState", () => {
     expect(getChartSettings(toolState).explore?.bands[0].label).toBe("Edited");
   });
 
-  it("exposes coupled adaptive temperature axes in both directions", () => {
+  it("keeps Adaptive on one fixed chart without axis or Explore controls", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
-    toolState.state.ui.selectedChartByModel[ComfortModel.AdaptiveAshrae] =
-      ChartId.AdaptiveDynamic;
     const settings = getChartSettings(toolState);
-    settings.xAxis = FieldKey.PrevailingMeanOutdoorTemperature;
-    settings.yAxis = FieldKey.OperativeTemperature;
-
     const controls = toolState.selectors.getChartControlsViewModel();
-    expect(controls.axes?.x.options).toEqual(controls.axes?.y.options);
-    expect(controls.axes?.x.options).toHaveLength(5);
 
-    toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
-
-    expect(settings.xAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(settings.yAxis).toBe(FieldKey.OperativeTemperature);
-
-    toolState.actions.setDynamicXAxis(FieldKey.OperativeTemperature);
-
-    expect(settings.xAxis).toBe(FieldKey.OperativeTemperature);
-    expect(settings.yAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(toolState.selectors.getCurrentChartOptions()).toEqual([
+      { name: "Adaptive", value: ChartId.Adaptive },
+    ]);
+    expect(settings).toEqual(expect.objectContaining({
+      mode: ChartMode.Compliance,
+      xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+      yAxis: FieldKey.OperativeTemperature,
+      explore: null,
+    }));
+    expect(controls.axes).toBeNull();
+    expect(controls.explore).toBeNull();
   });
 
   it("exposes coupled UTCI temperature axes in both directions", () => {
@@ -622,9 +646,9 @@ describe("createComfortToolState", () => {
     await waitForIdle(toolState);
 
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.AdaptiveAshrae);
-    expect(getChartSettings(toolState).xAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(getChartSettings(toolState).yAxis)
+    expect(getChartSettings(toolState).xAxis)
       .toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+    expect(getChartSettings(toolState).yAxis).toBe(FieldKey.OperativeTemperature);
 
     toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
     expect(getChartSettings(toolState).xAxis).toBe(FieldKey.MeanRadiantTemperature);

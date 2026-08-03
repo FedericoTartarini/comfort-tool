@@ -11,7 +11,7 @@ import {
   ComplianceStatus,
   type JsThermalComfortStandard,
 } from "../models/comfortModels";
-import { FieldKey, type FieldKey as FieldKeyType } from "../models/fieldKeys";
+import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId, type PresetInputOption } from "../models/inputControls";
 import { defaultAdaptiveOptions, OptionKey, TemperatureMode } from "../models/inputModes";
@@ -19,6 +19,8 @@ import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   type Band,
+  type BandEdge,
+  type BandInputsSi,
   type ChartBuildContext,
   type ChartMode as ChartModeType,
   type ComplianceFeedback,
@@ -29,21 +31,12 @@ import {
 } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import type { UnitSystem as UnitSystemType } from "../models/units";
-import {
-  buildBoundaryRegionTraces,
-  buildFilledBoundaryRegionTrace,
-  buildTooltipGridTrace,
-} from "../services/comfort/charts/boundaryRegionEngine";
+import { buildTooltipGridTrace } from "../services/comfort/charts/boundaryRegionEngine";
 import {
   buildFieldChart,
-  createZoneGridStrategy,
+  createBoundaryRegionStrategy,
   type FieldChartInputGroup,
-  type FieldChartStrategy,
 } from "../services/comfort/charts/chartEngine";
-import {
-  applyDynamicAxisCoordinates,
-  type DynamicAxisPayloadAdapter,
-} from "../services/comfort/charts/dynamicAxisPayload";
 import type { ChartAxisScale } from "../services/comfort/charts/types";
 import {
   buildDefaultPresentation,
@@ -52,7 +45,6 @@ import {
 } from "../services/comfort/controls/controlBehaviors";
 import {
   getBaselineInputEntry,
-  isFiniteNumber,
   roundValue,
 } from "../services/comfort/helpers";
 import { convertFieldValueFromSi } from "../services/units";
@@ -65,33 +57,11 @@ import {
 } from "../state/comfortTool/modelConfigs/builder";
 
 const FIXED_OPERATIVE_RANGE_SI = { min: 10, max: 40 };
-const DYNAMIC_GRID_POINTS = 50;
-const DYNAMIC_BOUNDARY_POINTS = 240;
+const BOUNDARY_POINTS = 240;
 const TOOLTIP_GRID_POINTS = 40;
-const COOLING_EFFECT_SPEED_BREAKPOINTS = [0.6, 0.9, 1.2];
 const CHART_COLORS = {
   line: "#334155",
 } as const;
-const ADAPTIVE_CONTOURS = {
-  coloring: "fill",
-  showlines: true,
-  type: "levels",
-  start: 1.5,
-  size: 1,
-  smoothing: 1.3,
-  line: { width: 1, color: "#333333" },
-};
-const TRANSPARENT_COLORSCALE: [number, string][] = [
-  [0, "rgba(0,0,0,0)"],
-  [1, "rgba(0,0,0,0)"],
-];
-const ADAPTIVE_DYNAMIC_AXIS_FIELDS = [
-  FieldKey.DryBulbTemperature,
-  FieldKey.MeanRadiantTemperature,
-  FieldKey.OperativeTemperature,
-  FieldKey.RelativeAirSpeed,
-  FieldKey.PrevailingMeanOutdoorTemperature,
-] as const;
 
 export interface AdaptiveRequestDto {
   tdb: number;
@@ -290,61 +260,6 @@ export function createAdaptiveComplianceFeedbackGetter(
   };
 }
 
-function getBoundaryValues(result: AdaptiveResponseDto): number[] | null {
-  if (!result.isApplicable) return null;
-  const lower = result.levels
-    .map((level) => level.lower)
-    .filter(isFiniteNumber)
-    .sort((left, right) => left - right);
-  const upper = result.levels
-    .map((level) => level.upper)
-    .filter(isFiniteNumber)
-    .sort((left, right) => left - right);
-  return lower.length === result.levels.length && upper.length === result.levels.length
-    ? [...lower, ...upper]
-    : null;
-}
-
-function mapBoundariesToZoneScale(
-  operativeTemperature: number,
-  boundaries: readonly number[],
-): number {
-  if (operativeTemperature < boundaries[0]) {
-    return 1.5 - Math.min(0.49, (boundaries[0] - operativeTemperature) / 4);
-  }
-  for (let index = 0; index < boundaries.length - 1; index += 1) {
-    if (operativeTemperature < boundaries[index + 1]) {
-      const lower = boundaries[index];
-      const upper = boundaries[index + 1];
-      return upper <= lower
-        ? index + 1.5
-        : index + 1.5
-          + (operativeTemperature - lower) / (upper - lower);
-    }
-  }
-  const lastBoundary = boundaries[boundaries.length - 1] ?? operativeTemperature;
-  return boundaries.length + 0.5
-    + Math.min(0.49, Math.max(0, operativeTemperature - lastBoundary) / 4);
-}
-
-function getDynamicZone(
-  bands: readonly Band[],
-  evaluation: AdaptiveChartEvaluation,
-): { z: number; label: string } | null {
-  const boundaries = getBoundaryValues(evaluation.result);
-  if (!boundaries) return null;
-  const bandIndex = boundaries.findIndex(
-    (boundary) => evaluation.operativeTemperature < boundary,
-  );
-  const resolvedIndex = bandIndex === -1
-    ? bands.length - 1
-    : bandIndex;
-  return {
-    z: mapBoundariesToZoneScale(evaluation.operativeTemperature, boundaries),
-    label: bands[resolvedIndex].label,
-  };
-}
-
 function normalizeAdaptiveOptionsSnapshot(value: unknown) {
   if (!isRecord(value)) return { ...defaultAdaptiveOptions };
   return {
@@ -376,71 +291,6 @@ function toAdaptiveRequest(
   };
 }
 
-function isTemperatureAxis(field: FieldKeyType): boolean {
-  return field === FieldKey.DryBulbTemperature
-    || field === FieldKey.MeanRadiantTemperature
-    || field === FieldKey.OperativeTemperature;
-}
-
-function isAirSpeedAxis(field: FieldKeyType): boolean {
-  return field === FieldKey.RelativeAirSpeed || field === FieldKey.WindSpeed;
-}
-
-function setAdaptiveAxisValue(
-  payload: AdaptiveRequestDto,
-  field: FieldKeyType,
-  valueSi: number,
-): void {
-  switch (field) {
-    case FieldKey.DryBulbTemperature:
-      payload.tdb = valueSi;
-      return;
-    case FieldKey.MeanRadiantTemperature:
-      payload.tr = valueSi;
-      return;
-    case FieldKey.OperativeTemperature:
-      payload.tdb = valueSi;
-      payload.tr = valueSi;
-      return;
-    case FieldKey.PrevailingMeanOutdoorTemperature:
-      payload.trm = valueSi;
-      return;
-    case FieldKey.RelativeAirSpeed:
-    case FieldKey.WindSpeed:
-      payload.v = valueSi;
-      return;
-    default:
-      throw new Error(`Unsupported Adaptive chart field: ${field}`);
-  }
-}
-
-function getAdaptiveAxisValue(
-  declaration: AdaptiveModelDeclaration,
-  payload: AdaptiveRequestDto,
-  field: FieldKeyType,
-): number {
-  switch (field) {
-    case FieldKey.DryBulbTemperature:
-      return payload.tdb;
-    case FieldKey.MeanRadiantTemperature:
-      return payload.tr;
-    case FieldKey.OperativeTemperature:
-      return t_o(
-        payload.tdb,
-        payload.tr,
-        payload.v,
-        declaration.operativeTemperatureStandard,
-      );
-    case FieldKey.PrevailingMeanOutdoorTemperature:
-      return payload.trm;
-    case FieldKey.RelativeAirSpeed:
-    case FieldKey.WindSpeed:
-      return payload.v;
-    default:
-      throw new Error(`Unsupported Adaptive chart field: ${field}`);
-  }
-}
-
 function addCoolingEffectTransitionPoints(
   declaration: AdaptiveModelDeclaration,
   airSpeed: number,
@@ -456,102 +306,6 @@ function addCoolingEffectTransitionPoints(
       ? [outdoorTemperature - epsilon, outdoorTemperature + epsilon]
       : [];
   });
-}
-
-function getFieldValues(
-  field: FieldKeyType,
-  points: number,
-  extraValues: readonly number[] = [],
-): number[] {
-  const meta = fieldMetaByKey[field];
-  return [
-    ...Array.from({ length: points }, (_, index) =>
-      meta.minValue
-      + ((meta.maxValue - meta.minValue) * index) / (points - 1)),
-    ...extraValues.filter((value) => value > meta.minValue && value < meta.maxValue),
-  ]
-    .sort((left, right) => left - right)
-    .filter((value, index, values) =>
-      index === 0 || Math.abs(value - values[index - 1]) > 1e-6);
-}
-
-function solveOutdoorTemperatureBoundary(
-  declaration: AdaptiveModelDeclaration,
-  operativeTemperature: number,
-  airSpeed: number,
-  offset: number,
-  isUpperBoundary: boolean,
-): number {
-  const { slope, intercept } = declaration.coefficients;
-  const withoutCooling = (operativeTemperature - offset - intercept) / slope;
-  if (!isUpperBoundary || getCe(airSpeed, operativeTemperature) === 0) {
-    return withoutCooling;
-  }
-
-  const coolingEffect = getCe(airSpeed, 25);
-  const withCooling = (
-    operativeTemperature - offset - coolingEffect - intercept
-  ) / slope;
-  const unadjustedUpper = slope * withCooling + intercept + offset;
-  return getCe(airSpeed, unadjustedUpper) === coolingEffect
-    ? withCooling
-    : (25 - offset - intercept) / slope;
-}
-
-function getOutdoorTemperatureBoundaries(
-  declaration: AdaptiveModelDeclaration,
-  operativeTemperature: number,
-  airSpeed: number,
-): number[] {
-  return [
-    ...declaration.levels
-      .map(({ coolOffset }) => coolOffset)
-      .sort((left, right) => left - right)
-      .map((offset) => solveOutdoorTemperatureBoundary(
-        declaration,
-        operativeTemperature,
-        airSpeed,
-        offset,
-        false,
-      )),
-    ...declaration.levels
-      .map(({ warmOffset }) => warmOffset)
-      .sort((left, right) => left - right)
-      .map((offset) => solveOutdoorTemperatureBoundary(
-        declaration,
-        operativeTemperature,
-        airSpeed,
-        offset,
-        true,
-      )),
-  ];
-}
-
-function getTemperatureAxisValueForOperativeTemperature(
-  declaration: AdaptiveModelDeclaration,
-  targetOperativeTemperature: number,
-  temperatureAxis: FieldKeyType,
-  baseline: AdaptiveRequestDto,
-): number {
-  if (temperatureAxis === FieldKey.OperativeTemperature) {
-    return targetOperativeTemperature;
-  }
-  const meta = fieldMetaByKey[temperatureAxis];
-  const getOperativeTemperature = (axisValue: number) => t_o(
-    temperatureAxis === FieldKey.DryBulbTemperature ? axisValue : baseline.tdb,
-    temperatureAxis === FieldKey.MeanRadiantTemperature ? axisValue : baseline.tr,
-    baseline.v,
-    declaration.operativeTemperatureStandard,
-  );
-  const minimumOperative = getOperativeTemperature(meta.minValue);
-  const maximumOperative = getOperativeTemperature(meta.maxValue);
-  if (Math.abs(maximumOperative - minimumOperative) < 1e-6) {
-    throw new Error("Adaptive temperature axis cannot resolve operative temperature.");
-  }
-  return meta.minValue + (
-    (targetOperativeTemperature - minimumOperative)
-    * (meta.maxValue - meta.minValue)
-  ) / (maximumOperative - minimumOperative);
 }
 
 function convertBoundaryValue(
@@ -627,13 +381,17 @@ function createAdaptiveInputGroup(
   unitSystem: UnitSystemType,
   xAxis: ChartAxisScale,
   yAxis: ChartAxisScale,
-  coordinateDecimals: number,
 ): FieldChartInputGroup<AdaptiveRequestDto, AdaptiveResponseDto> {
   return {
     inputsMap: source.inputs,
     resultsByInput,
-    getXSi: (payload) => getAdaptiveAxisValue(declaration, payload, xAxis.field),
-    getYSi: (payload) => getAdaptiveAxisValue(declaration, payload, yAxis.field),
+    getXSi: (payload) => payload.trm,
+    getYSi: (payload, inputId) => getInputResult(
+      declaration,
+      payload,
+      inputId,
+      resultsByInput,
+    ).operativeTemperature,
     formatXDisplay: roundValue,
     formatYDisplay: roundValue,
     getHovertemplate: ({ inputLabel }) => buildAdaptiveHoverTemplate(
@@ -642,7 +400,7 @@ function createAdaptiveInputGroup(
       xAxis,
       yAxis,
       inputLabel,
-      coordinateDecimals,
+      1,
     ),
     hoverMetadata: ({ payload, inputId }) => getAdaptiveHoverMetadata(
       declaration,
@@ -650,6 +408,20 @@ function createAdaptiveInputGroup(
       unitSystem,
     ),
   };
+}
+
+function evaluateAdaptiveChartPoint(
+  declaration: AdaptiveModelDeclaration,
+  baseline: AdaptiveRequestDto,
+  outdoorTemperatureSi: number,
+  operativeTemperatureSi: number,
+): AdaptiveResponseDto | null {
+  return tryEvaluateAdaptiveForChart(declaration, {
+    ...baseline,
+    tdb: operativeTemperatureSi,
+    tr: operativeTemperatureSi,
+    trm: outdoorTemperatureSi,
+  })?.result ?? null;
 }
 
 function buildAdaptiveTooltipTrace(
@@ -662,7 +434,6 @@ function buildAdaptiveTooltipTrace(
   return buildTooltipGridTrace({
     xAxis: { ...xAxis, points: TOOLTIP_GRID_POINTS },
     yAxis: { ...yAxis, points: TOOLTIP_GRID_POINTS },
-    colorscale: TRANSPARENT_COLORSCALE,
     hovertemplate: buildAdaptiveHoverTemplate(
       declaration,
       unitSystem,
@@ -670,185 +441,12 @@ function buildAdaptiveTooltipTrace(
       yAxis,
     ),
     getHoverMetadata: (xSi, ySi) => {
-      const request = { ...baseline };
-      setAdaptiveAxisValue(request, xAxis.field, xSi);
-      setAdaptiveAxisValue(request, yAxis.field, ySi);
-      const evaluation = tryEvaluateAdaptiveForChart(declaration, request);
-      return evaluation
-        ? getAdaptiveHoverMetadata(declaration, evaluation.result, unitSystem)
+      const result = evaluateAdaptiveChartPoint(declaration, baseline, xSi, ySi);
+      return result
+        ? getAdaptiveHoverMetadata(declaration, result, unitSystem)
         : [NaN];
     },
   });
-}
-
-function buildAdaptiveBandTraces(
-  declaration: AdaptiveModelDeclaration,
-  baseline: AdaptiveRequestDto,
-  unitSystem: UnitSystemType,
-  variableValues: number[],
-  boundaryCurves: number[][],
-  bands: ReadonlyArray<{ label: string; color: string }>,
-  variableAxis: ChartAxisScale,
-  boundaryAxis: ChartAxisScale,
-  variableDimension: "x" | "y",
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-): PlotTraceDto[] {
-  return buildBoundaryRegionTraces({
-    variableValuesSi: variableValues,
-    boundaryCurvesSi: boundaryCurves,
-    bands: [...bands],
-    variableAxis,
-    boundaryAxis,
-    variableDimension,
-    boundaryRangeSi: boundaryAxis.rangeSi,
-    getHoverMetadata: (xSi, ySi) => {
-      const request = { ...baseline };
-      setAdaptiveAxisValue(request, xAxis.field, xSi);
-      setAdaptiveAxisValue(request, yAxis.field, ySi);
-      const evaluation = tryEvaluateAdaptiveForChart(declaration, request);
-      return evaluation
-        ? getAdaptiveHoverMetadata(declaration, evaluation.result, unitSystem)
-        : [NaN];
-    },
-    buildTrace: ({ band, polygonX, polygonY, hoverMetadata }) =>
-      buildFilledBoundaryRegionTrace({
-        name: band.label,
-        color: band.color,
-        polygonX,
-        polygonY,
-        lineColor: CHART_COLORS.line,
-        hoverMetadata,
-      }),
-  });
-}
-
-function buildOutdoorTemperatureTooltipTrace(
-  declaration: AdaptiveModelDeclaration,
-  baseline: AdaptiveRequestDto,
-  unitSystem: UnitSystemType,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-): PlotTraceDto {
-  const hasOutdoorXAxis =
-    xAxis.field === FieldKey.PrevailingMeanOutdoorTemperature;
-  return buildAdaptiveTooltipTrace(
-    declaration,
-    baseline,
-    unitSystem,
-    hasOutdoorXAxis
-      ? { ...xAxis, label: declaration.outdoorTemperatureLabel }
-      : xAxis,
-    hasOutdoorXAxis
-      ? yAxis
-      : { ...yAxis, label: declaration.outdoorTemperatureLabel },
-  );
-}
-
-function buildOutdoorTemperatureBoundaryTraces(
-  declaration: AdaptiveModelDeclaration,
-  bands: readonly Band[],
-  baseline: AdaptiveRequestDto,
-  unitSystem: UnitSystemType,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-): PlotTraceDto[] {
-  const hasOutdoorXAxis =
-    xAxis.field === FieldKey.PrevailingMeanOutdoorTemperature;
-  const otherAxis = hasOutdoorXAxis ? yAxis : xAxis;
-  const outdoorAxis = hasOutdoorXAxis ? xAxis : yAxis;
-
-  if (isTemperatureAxis(otherAxis.field)) {
-    const range = declaration.outdoorTemperatureRangeSi;
-    const outdoorValues = [
-      ...Array.from({ length: DYNAMIC_BOUNDARY_POINTS }, (_, index) =>
-        range.min + ((range.max - range.min) * index) / (DYNAMIC_BOUNDARY_POINTS - 1)),
-      ...addCoolingEffectTransitionPoints(declaration, baseline.v, range),
-    ]
-      .sort((left, right) => left - right)
-      .filter((value, index, values) =>
-        index === 0 || Math.abs(value - values[index - 1]) > 1e-6);
-    const firstBoundaries = getAdaptiveTemperatureBoundaries(
-      declaration,
-      outdoorValues[0],
-      baseline.v,
-    );
-    const boundaryCurves = firstBoundaries.map((_, boundaryIndex) =>
-      outdoorValues.map((outdoorTemperature) => {
-        const target = getAdaptiveTemperatureBoundaries(
-          declaration,
-          outdoorTemperature,
-          baseline.v,
-        )[boundaryIndex];
-        return getTemperatureAxisValueForOperativeTemperature(
-          declaration,
-          target,
-          otherAxis.field,
-          baseline,
-        );
-      }));
-    return buildAdaptiveBandTraces(
-      declaration,
-      baseline,
-      unitSystem,
-      outdoorValues,
-      boundaryCurves,
-      bands,
-      outdoorAxis,
-      otherAxis,
-      hasOutdoorXAxis ? "x" : "y",
-      xAxis,
-      yAxis,
-    );
-  }
-
-  if (isAirSpeedAxis(otherAxis.field)) {
-    const speedValues = getFieldValues(
-      otherAxis.field,
-      DYNAMIC_BOUNDARY_POINTS,
-      COOLING_EFFECT_SPEED_BREAKPOINTS,
-    );
-    const firstOperativeTemperature = t_o(
-      baseline.tdb,
-      baseline.tr,
-      speedValues[0],
-      declaration.operativeTemperatureStandard,
-    );
-    const firstBoundaries = getOutdoorTemperatureBoundaries(
-      declaration,
-      firstOperativeTemperature,
-      speedValues[0],
-    );
-    const boundaryCurves = firstBoundaries.map((_, boundaryIndex) =>
-      speedValues.map((speed) => {
-        const operativeTemperature = t_o(
-          baseline.tdb,
-          baseline.tr,
-          speed,
-          declaration.operativeTemperatureStandard,
-        );
-        return getOutdoorTemperatureBoundaries(
-          declaration,
-          operativeTemperature,
-          speed,
-        )[boundaryIndex];
-      })).reverse();
-    return buildAdaptiveBandTraces(
-      declaration,
-      baseline,
-      unitSystem,
-      speedValues,
-      boundaryCurves,
-      [...bands].reverse(),
-      otherAxis,
-      outdoorAxis,
-      hasOutdoorXAxis ? "y" : "x",
-      xAxis,
-      yAxis,
-    );
-  }
-
-  throw new Error(`Unsupported Adaptive outdoor axis pair: ${xAxis.field} / ${yAxis.field}`);
 }
 
 export function buildAdaptiveChart(
@@ -866,7 +464,7 @@ export function buildAdaptiveChart(
     xAxis: {
       field: FieldKey.PrevailingMeanOutdoorTemperature,
       rangeSi: declaration.outdoorTemperatureRangeSi,
-      points: 2,
+      points: BOUNDARY_POINTS,
       label: declaration.outdoorTemperatureLabel,
       units: (activeUnitSystem) =>
         fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[activeUnitSystem],
@@ -878,18 +476,29 @@ export function buildAdaptiveChart(
       units: (activeUnitSystem) =>
         fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[activeUnitSystem],
     },
-    strategy: {
-      kind: "boundary",
-      buildTraces: ({ xAxis, yAxis }) =>
-        buildOutdoorTemperatureBoundaryTraces(
+    strategy: createBoundaryRegionStrategy({
+      bands: config.bands,
+      bandInputsSi: {
+        [FieldKey.RelativeAirSpeed]: baseline.payload.v,
+      },
+      style: { lineColor: CHART_COLORS.line },
+      additionalXValuesSi: () => addCoolingEffectTransitionPoints(
+        declaration,
+        baseline.payload.v,
+        declaration.outdoorTemperatureRangeSi,
+      ),
+      getHoverMetadata: (xSi, ySi) => {
+        const result = evaluateAdaptiveChartPoint(
           declaration,
-          config.bands,
           baseline.payload,
-          unitSystem,
-          xAxis,
-          yAxis,
-        ),
-    },
+          xSi,
+          ySi,
+        );
+        return result
+          ? getAdaptiveHoverMetadata(declaration, result, unitSystem)
+          : [NaN];
+      },
+    }),
     chartOverlays: ({ xAxis, yAxis }) => [buildAdaptiveTooltipTrace(
       declaration,
       baseline.payload,
@@ -904,7 +513,6 @@ export function buildAdaptiveChart(
       unitSystem,
       xAxis,
       yAxis,
-      1,
     )],
     layout: {
       title: `${declaration.label} Comfort Chart`,
@@ -937,17 +545,13 @@ function assertAdaptiveComplianceConfig(
   if (config.mode !== ChartMode.Compliance) {
     throw new Error("Adaptive chart requires a Compliance FieldChartConfig.");
   }
-  const { xField: xAxis, yField: yAxis } = config;
   if (
-    xAxis === yAxis
-    || !ADAPTIVE_DYNAMIC_AXIS_FIELDS.includes(
-      xAxis as typeof ADAPTIVE_DYNAMIC_AXIS_FIELDS[number],
-    )
-    || !ADAPTIVE_DYNAMIC_AXIS_FIELDS.includes(
-      yAxis as typeof ADAPTIVE_DYNAMIC_AXIS_FIELDS[number],
-    )
+    config.xField !== FieldKey.PrevailingMeanOutdoorTemperature
+    || config.yField !== FieldKey.OperativeTemperature
   ) {
-    throw new Error(`Unsupported Adaptive dynamic axis pair: ${xAxis} / ${yAxis}.`);
+    throw new Error(
+      "Adaptive chart requires outdoor temperature on X and operative temperature on Y.",
+    );
   }
   if (
     config.zOutput !== declaration.complianceSpec.output
@@ -958,157 +562,34 @@ function assertAdaptiveComplianceConfig(
   return config;
 }
 
-export function buildAdaptiveDynamicChart(
-  declaration: AdaptiveModelDeclaration,
-  source: ModelChartSourceDto<AdaptiveRequestDto>,
-  resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
-  context: ChartBuildContext,
-): PlotlyChartResponseDto {
-  const config = assertAdaptiveComplianceConfig(declaration, context);
-  const fields = { xAxis: config.xField, yAxis: config.yField };
-  const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
-  const { unitSystem } = context;
-  const xAxis = {
-    field: fields.xAxis,
-    points: DYNAMIC_GRID_POINTS,
-    rangeSi: fields.xAxis === FieldKey.PrevailingMeanOutdoorTemperature
-      ? declaration.outdoorTemperatureRangeSi
-      : undefined,
-  };
-  const yAxis = {
-    field: fields.yAxis,
-    points: DYNAMIC_GRID_POINTS,
-    rangeSi: fields.yAxis === FieldKey.PrevailingMeanOutdoorTemperature
-      ? declaration.outdoorTemperatureRangeSi
-      : undefined,
-  };
-  const hasOutdoorAxis = fields.xAxis === FieldKey.PrevailingMeanOutdoorTemperature
-    || fields.yAxis === FieldKey.PrevailingMeanOutdoorTemperature;
-  const axisAdapter: DynamicAxisPayloadAdapter<AdaptiveRequestDto> = {
-    setAxisValue: setAdaptiveAxisValue,
-    getAxisValue: (request, field) => getAdaptiveAxisValue(
-      declaration,
-      request,
-      field,
-    ),
-    getOperativeTemperature: (request) => t_o(
-      request.tdb,
-      request.tr,
-      request.v,
-      declaration.operativeTemperatureStandard,
-    ),
-    getTemperatureComponentRange: (field) => ({
-      min: fieldMetaByKey[field].minValue,
-      max: fieldMetaByKey[field].maxValue,
-    }),
-  };
-  const strategy: FieldChartStrategy = hasOutdoorAxis
-    ? {
-        kind: "boundary",
-        buildTraces: ({ xAxis: resolvedX, yAxis: resolvedY }) =>
-          buildOutdoorTemperatureBoundaryTraces(
-            declaration,
-            config.bands,
-            baseline.payload,
-            unitSystem,
-            resolvedX,
-            resolvedY,
-          ),
-      }
-    : createZoneGridStrategy({
-        name: "Adaptive Zones",
-        zones: config.bands,
-        contours: ADAPTIVE_CONTOURS,
-        zmin: 1.5,
-        zmax: declaration.bandSequence.length + 0.5,
-        hoverTemplate: (renderContext) => buildAdaptiveHoverTemplate(
-          declaration,
-          renderContext.unitSystem,
-          renderContext.xAxis,
-          renderContext.yAxis,
-        ),
-        opacity: 0.75,
-        isBackgroundZone: true,
-        evaluatePoint: (xSi, ySi, _xIndex, _yIndex, renderContext) => {
-          const request = { ...baseline.payload };
-          const hasValidCoordinates = applyDynamicAxisCoordinates(
-            request,
-            { field: fields.xAxis, valueSi: xSi },
-            { field: fields.yAxis, valueSi: ySi },
-            axisAdapter,
-          );
-          if (!hasValidCoordinates) return null;
-          const evaluation = tryEvaluateAdaptiveForChart(declaration, request);
-          if (!evaluation) return null;
-          const zone = getDynamicZone(config.bands, evaluation);
-          return zone
-            ? {
-                z: zone.z,
-                text: zone.label,
-                hoverMetadata: getAdaptiveHoverMetadata(
-                  declaration,
-                  evaluation.result,
-                  renderContext.unitSystem,
-                ),
-              }
-            : null;
-        },
-      });
-
-  return buildFieldChart({
-    unitSystem,
-    xAxis,
-    yAxis,
-    strategy,
-    chartOverlays: hasOutdoorAxis
-      ? ({ xAxis: resolvedX, yAxis: resolvedY }) => [
-          buildOutdoorTemperatureTooltipTrace(
-            declaration,
-            baseline.payload,
-            unitSystem,
-            resolvedX,
-            resolvedY,
-          ),
-        ]
-      : undefined,
-    inputGroups: ({ xAxis: resolvedX, yAxis: resolvedY }) => [
-      createAdaptiveInputGroup(
-        declaration,
-        source,
-        resultsByInput,
-        unitSystem,
-        resolvedX,
-        resolvedY,
-        2,
-      ),
-    ],
-    layout: {
-      title: `${declaration.label} Dynamic Chart (${fieldMetaByKey[fields.xAxis].label} vs ${fieldMetaByKey[fields.yAxis].label})`,
-      margin: { l: 64, r: 24, t: 48, b: 64 },
-      legend: { orientation: "h", x: 0, y: 1.1 },
-    },
-    source: CalculationSource.FrontendGenerated,
-  });
-}
-
 export function createAdaptiveComplianceBands(
   declaration: AdaptiveBoundaryDefinition,
 ): readonly Band[] {
+  const getRelativeAirSpeed = (inputsSi: BandInputsSi): number => {
+    const airSpeed = inputsSi[FieldKey.RelativeAirSpeed];
+    if (typeof airSpeed !== "number" || !Number.isFinite(airSpeed)) {
+      throw new Error(
+        "Adaptive boundary bands require finite canonical-SI relative air speed.",
+      );
+    }
+    return airSpeed;
+  };
+  const internalEdges: BandEdge[] = Array.from(
+    { length: declaration.bandSequence.length - 1 },
+    (_, boundaryIndex) => (xValueSi, inputsSi) => (
+      getAdaptiveTemperatureBoundaries(
+        declaration,
+        xValueSi,
+        getRelativeAirSpeed(inputsSi),
+      )[boundaryIndex]
+    ),
+  );
+
   return declaration.bandSequence.map((zone, index): Band => ({
-    min: index === 0
-      ? -Infinity
-      : (xValueSi, inputsSi) => getAdaptiveTemperatureBoundaries(
-          declaration,
-          xValueSi,
-          inputsSi[FieldKey.RelativeAirSpeed],
-        )[index - 1],
+    min: index === 0 ? -Infinity : internalEdges[index - 1],
     max: index === declaration.bandSequence.length - 1
       ? Infinity
-      : (xValueSi, inputsSi) => getAdaptiveTemperatureBoundaries(
-          declaration,
-          xValueSi,
-          inputsSi[FieldKey.RelativeAirSpeed],
-        )[index],
+      : internalEdges[index],
     label: zone.label,
     color: zone.color,
   }));
@@ -1223,15 +704,15 @@ export function createAdaptiveModelConfig(
       ...defaultAdaptiveOptions,
       [OptionKey.TemperatureMode]: TemperatureMode.Operative,
     })
-    .setDefaultChart(ChartId.AdaptiveDynamic, [
-      ChartId.Adaptive,
-      ChartId.AdaptiveDynamic,
-    ])
+    .setDefaultChart(ChartId.Adaptive, [ChartId.Adaptive])
     .setOptionNormalizer(normalizeAdaptiveOptionsSnapshot)
-    .setDynamicAxisFields([...ADAPTIVE_DYNAMIC_AXIS_FIELDS])
+    .setDynamicAxisFields([
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.OperativeTemperature,
+    ])
     .setDefaultDynamicAxes({
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+      xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+      yAxis: FieldKey.OperativeTemperature,
     })
     .setCalculator((context, visibleInputIds) => {
       const resultsByInput = createEmptyResults<AdaptiveResponseDto>();
@@ -1259,18 +740,10 @@ export function createAdaptiveModelConfig(
           context,
         );
       }
-      if (chartId === ChartId.AdaptiveDynamic) {
-        return buildAdaptiveDynamicChart(
-          declaration,
-          chartSource,
-          resultsByInput,
-          context,
-        );
-      }
       return null;
     })
     .setZones([...declaration.zones])
-    .setLegendChartIds([ChartId.Adaptive, ChartId.AdaptiveDynamic])
+    .setLegendChartIds([ChartId.Adaptive])
     .setLegendTitle("Adaptive Zones")
     .setLockYAxisChartIds([]);
 

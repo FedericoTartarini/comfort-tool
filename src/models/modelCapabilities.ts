@@ -22,13 +22,13 @@ export const ModelOutputKey = {
 
 export type ModelOutputKey = (typeof ModelOutputKey)[keyof typeof ModelOutputKey];
 
-export type InputsSi = Readonly<Record<FieldKeyType, number>>;
+export type BandInputsSi = Readonly<Partial<Record<FieldKeyType, number>>>;
 
 /**
  * A numeric edge is already in canonical SI. A functional edge receives the
- * current chart X value and the model input record, both in canonical SI.
+ * current chart X value and the required model inputs, both in canonical SI.
  */
-export type BandEdge = number | ((xValueSi: number, inputsSi: InputsSi) => number);
+export type BandEdge = number | ((xValueSi: number, inputsSi: BandInputsSi) => number);
 
 /** Bands use half-open intervals: min <= value < max. */
 export interface Band {
@@ -106,7 +106,7 @@ export interface ChartBuildContext {
 export function resolveBandEdge(
   edge: BandEdge,
   xValueSi: number,
-  inputsSi: InputsSi,
+  inputsSi: BandInputsSi,
 ): number {
   return typeof edge === "function" ? edge(xValueSi, inputsSi) : edge;
 }
@@ -116,7 +116,7 @@ export function findBandForValue(
   bands: readonly Band[],
   valueSi: number,
   xValueSi: number,
-  inputsSi: InputsSi,
+  inputsSi: BandInputsSi,
 ): Band | undefined {
   const bandIndex = findBandIndexForValue(bands, valueSi, xValueSi, inputsSi);
   return bandIndex === undefined ? undefined : bands[bandIndex];
@@ -126,7 +126,7 @@ export function findBandIndexForValue(
   bands: readonly Band[],
   valueSi: number,
   xValueSi: number,
-  inputsSi: InputsSi,
+  inputsSi: BandInputsSi,
 ): number | undefined {
   if (Number.isNaN(valueSi)) {
     return undefined;

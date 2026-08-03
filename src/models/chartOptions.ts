@@ -11,7 +11,6 @@ export const ChartId = {
   Psychrometric: "psychrometric",
   Stress: "stress", // UTCI (Heat stress) psychrometric chart
   Adaptive: "adaptive", // Adaptive psychrometric chart
-  AdaptiveDynamic: "adaptiveDynamic", //  Adaptive dynamic chart
   PmvDynamic: "pmvDynamic",
   UtciDynamic: "utciDynamic", // UTCI (Heat stress) dynamic chart
   HeatIndexRanges: "heatIndexRanges", // Heat index chart
@@ -62,13 +61,6 @@ export const chartMetaById: Record<ChartId, ChartMetadata> = {
     name: "Adaptive",
     emptyMessage: "No adaptive chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
-    supportsTemperatureInputMenu: true,
-  },
-  [ChartId.AdaptiveDynamic]: {
-    name: "Dynamic",
-    emptyMessage: "No dynamic chart yet.",
-    heightClass: "h-[480px] xl:h-[480px]",
-    isDynamic: true,
     supportsTemperatureInputMenu: true,
   },
   [ChartId.PmvDynamic]: {

@@ -17,17 +17,6 @@ async function selectModel(
   await expect(modelSelect).toHaveValue(modelLabel);
 }
 
-async function selectChart(page: Page, chartLabel: string) {
-  const trigger = page.getByRole("button", { name: "Select chart type and export" });
-  await trigger.click();
-  const option = page.getByRole("button", { name: chartLabel, exact: true });
-  await expect(option).toBeVisible();
-  await option.click();
-  await expect(trigger).toContainText(chartLabel);
-  await page.mouse.click(1, 1);
-  await expect(option).toBeHidden();
-}
-
 async function waitForAdaptiveTrace(plot: Locator, traceName: string) {
   await expect(plot).toHaveClass(/js-plotly-plot/);
   await expect.poll(() => plot.evaluate((element, expectedName) => {
@@ -62,13 +51,11 @@ async function openAdaptiveChart(
   page: Page,
   options: {
     model?: keyof typeof ADAPTIVE_MODEL_LABELS;
-    dynamic?: boolean;
     useIpUnits?: boolean;
   } = {},
 ) {
   const {
     model = "ashrae",
-    dynamic = false,
     useIpUnits = false,
   } = options;
 
@@ -78,45 +65,26 @@ async function openAdaptiveChart(
   const unitToggle = page.getByRole("checkbox", { name: "Use IP units" });
   await unitToggle.setChecked(useIpUnits, { force: true });
   const panel = page.getByTestId("comfort-chart-panel");
-  if (dynamic) {
-    await expect(page.getByRole("button", { name: "Select chart type and export" }))
-      .toContainText("Dynamic");
-    await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
-    await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
-    await expect(panel.getByText(
-      model === "ashrae"
-        ? "ASHRAE 55 adaptive acceptability limits are locked for this chart."
-        : "EN 16798-1 Category III limits are locked for this chart.",
-      { exact: true },
-    )).toBeVisible();
-    await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Select chart display output" }))
-      .toBeHidden();
-    await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
-  } else {
-    await selectChart(page, "Adaptive");
-    await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
-    await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
-    await expect(panel.getByText(
-      model === "ashrae"
-        ? "ASHRAE 55 adaptive acceptability limits are locked for this chart."
-        : "EN 16798-1 Category III limits are locked for this chart.",
-      { exact: true },
-    )).toBeVisible();
-    await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Select chart display output" }))
-      .toBeHidden();
-    await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
-  }
+  await expect(page.getByRole("button", { name: "Select chart type and export" }))
+    .toContainText("Adaptive");
+  await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
+  await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
+  await expect(panel.getByText(
+    model === "ashrae"
+      ? "ASHRAE 55 adaptive acceptability limits are locked for this chart."
+      : "EN 16798-1 Category III limits are locked for this chart.",
+    { exact: true },
+  )).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Select chart display output" }))
+    .toBeHidden();
+  await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
 
   const plot = page.getByTestId("comfort-chart-plot");
-  const traceName = dynamic
-    ? "Too Cool"
-    : model === "ashrae"
-      ? "80% Acceptability"
-      : "Category III";
+  const traceName = model === "ashrae"
+    ? "80% Acceptability"
+    : "Category III";
   await waitForAdaptiveTrace(plot, traceName);
   await expectAxisUnits(plot, useIpUnits ? "°F" : "°C");
 
@@ -136,13 +104,6 @@ test.describe("Adaptive visual regression", () => {
     await expect(visual).toContainText("Category I");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("adaptive-en-fixed-si.png");
-  });
-
-  test("ASHRAE dynamic boundary chart in SI", async ({ page }) => {
-    const visual = await openAdaptiveChart(page, { dynamic: true });
-    await expect(visual).toContainText("Too Cool");
-    await page.mouse.move(0, 0);
-    await expect(visual).toHaveScreenshot("adaptive-ashrae-dynamic-si.png");
   });
 
   test("ASHRAE fixed boundary chart in IP", async ({ page }) => {

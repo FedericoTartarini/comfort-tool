@@ -264,7 +264,7 @@ myNewModelBuilder
   .setChartableOutputs([myNewModelOutput]);
 ```
 
-For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of the chart X value and the readonly canonical-SI input record:
+For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of the chart X value and a readonly partial canonical-SI `BandInputsSi` map containing only the baseline inputs the edge requires:
 
 ```ts
 function formatMyNewModelComplianceFeedback(result: MyNewModelResponseDto) {
@@ -287,9 +287,9 @@ A compliance-only model must still call `setChartableOutputs([])` explicitly. `g
 
 `ComplianceSpec<TBand, TResult>` carries the model result type into its feedback callback. `ComplianceSpec` and `ComfortModelBuilder` default to the general `Band` type so Adaptive can retain functional edges. A model with numeric Compliance bands can supply `NumericBand` as the builder's third generic argument; its resulting definition can then form a `NumericComplianceFieldChartConfig` and enter the shared numeric grid strategy without a cast.
 
-Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
+Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `bandInputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no classification. A functional boundary renderer additionally rejects an edge that resolves to `NaN`, a reversed band, or sampled overlap.
 
-`bandsFromThermalZones()` copies each zone's real `min`, `max`, `label`, and `color`, keeping thresholds single-sourced. Set the optional `legendTitle` only when the legend heading should differ from the output selector label. Adaptive-style functional compliance bands should call the model's existing boundary function rather than restating its equations. PMV ASHRAE and PMV ISO remain separate declarations and band arrays; the ISO model is explicitly ISO 7730 Category B, whose `[-0.5, 0.5)` acceptable range intentionally matches the ASHRAE declaration numerically.
+`bandsFromThermalZones()` copies each zone's real `min`, `max`, `label`, and `color`, keeping thresholds single-sourced. Set the optional `legendTitle` only when the legend heading should differ from the output selector label. Adaptive-style functional compliance bands should create each internal edge function once, reuse it as the adjacent bands' shared `max`/`min`, validate required `BandInputsSi`, and call the model's existing boundary function rather than restating its equations. PMV ASHRAE and PMV ISO remain separate declarations and band arrays; the ISO model is explicitly ISO 7730 Category B, whose `[-0.5, 0.5)` acceptable range intentionally matches the ASHRAE declaration numerically.
 
 #### Input Controls
 
@@ -464,6 +464,49 @@ myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context
 });
 ```
 
+For a fixed functional-boundary chart, pass the declared Compliance bands and only their required cached baseline inputs to `createBoundaryRegionStrategy()`. The model may add canonical-SI X samples around genuine discontinuities and supply hover metadata, but it must not precompute boundary curves or assemble polygons:
+
+```ts
+const baseline = getBaselineInputEntry(
+  chartSource.inputs,
+  context.baselineInputId,
+);
+
+return buildFieldChart({
+  unitSystem: context.unitSystem,
+  xAxis: {
+    field: FieldKey.PrevailingMeanOutdoorTemperature,
+    rangeSi: OUTDOOR_RANGE_SI,
+    points: BOUNDARY_POINTS,
+  },
+  yAxis: {
+    field: FieldKey.OperativeTemperature,
+    rangeSi: OPERATIVE_RANGE_SI,
+    points: 2,
+  },
+  strategy: createBoundaryRegionStrategy({
+    bands: complianceConfig.bands,
+    bandInputsSi: {
+      [FieldKey.RelativeAirSpeed]: baseline.payload.v,
+    },
+    style: { lineColor: "#334155" },
+    additionalXValuesSi: () => getDiscontinuitySamplesSi(baseline.payload),
+    getHoverMetadata: (xSi, ySi, _index, _band, _bandIndex, renderContext) =>
+      buildBoundaryHoverMetadata(xSi, ySi, renderContext.unitSystem),
+  }),
+  chartOverlays: ({ xAxis, yAxis }) => [
+    buildSharedTooltipOverlay(xAxis, yAxis),
+  ],
+  inputGroups: ({ xAxis, yAxis }) => [
+    buildCachedInputGroup(chartSource, resultsByInput, xAxis, yAxis),
+  ],
+  layout: CHART_LAYOUT,
+  source: CalculationSource.FrontendGenerated,
+});
+```
+
+The boundary engine samples X, merges extra samples, resolves and validates every functional edge, clamps to the Y range, converts to the active unit system, and emits filled regions in declaration order. `buildFieldChart()` then preserves region → tooltip overlay → input overlay → input marker order. Adaptive ASHRAE and EN are the reference fixed implementation: each exposes only `ChartId.Adaptive`, uses its declared outdoor range on X and 10–40 °C operative temperature on Y, and resolves air-speed-dependent regions from the selected request in the ready chart-source cache.
+
 The controller builds one `ChartBuildContext` containing the unit system, remembered dynamic axes, effective baseline input, and a required valid `FieldChartConfig`. Every selectable chart receives that same current-mode config. Compliance takes `zOutput` and `bands` directly from the registered `complianceSpec`; Explore uses the selected output and independent working bands. A fixed view overrides only its declared x/y fields and ranges inside the builder, so it still consumes the current mode, output, bands, baseline, caption, feedback, and legend. The UI exposes mode information on every view, exposes baseline whenever compare mode is active, shows x/y controls only for Dynamic charts, shows Display and Thresholds on every Explore view, and hides those two controls in Compliance. The model builder validates declarations, while field-chart actions normalize and validate editable bands. Selectors and the chart engine consume that state without repeating validation or cloning. Mode, chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in chart sources or add a separate Compliance rendering pipeline.
 
 The controller initializes `chartSettingsByModel` for every registered model. Compliance is the default whenever declared; otherwise Explore is the default. Each record independently remembers mode, x/y axes, baseline, and optional Explore z/bands across model and chart switches. A remembered baseline that is currently hidden resolves to Input 1 without being erased. Strict v1 share snapshots store these settings inside each model entry, omit Compliance bands, encode unbounded Explore edges with wire sentinels, and reject the previous v1 shape rather than migrating it.
@@ -472,7 +515,7 @@ If a model exposes Air, Radiant, and Operative temperature together, keep the fo
 
 The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Categorical and constraint traces only render visible fills and boundaries, with hover disabled. One transparent contour tooltip trace uses the original output grid, classification text, and metadata for both renderers. A finite value outside every band remains visibly unfilled but hovers as `Unclassified`; a model-invalid `NaN` cell remains unfilled and has no hover because `hoverongaps` is false. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
 
-If a typed grid model's dynamic hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A model using the engine directly may instead return `{ valueSi, additionalHoverMetadata }` from the evaluator passed to `createBandedGridStrategy()` and provide `hoverTemplate` when model-specific ordering or precision is required. For a preclassified model zone grid, use `createZoneGridStrategy()` and declare its zones, contour metadata, hover template, and SI evaluator. Pass either Grid strategy to the single `buildFieldChart()` frame. Boundary charts pass `{ kind: "boundary", buildTraces }` to the same frame. Models declare canonical-SI axis specs, ranges, margins, hover metadata, and evaluators; the frame creates axes and owns layout, input overlays, markers, legends, annotations, and trace ordering. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
+If a typed grid model's dynamic hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A model using the engine directly may instead return `{ valueSi, additionalHoverMetadata }` from the evaluator passed to `createBandedGridStrategy()` and provide `hoverTemplate` when model-specific ordering or precision is required. For a preclassified model zone grid, use `createZoneGridStrategy()` and declare its zones, contour metadata, hover template, and SI evaluator. Pass either Grid strategy to the single `buildFieldChart()` frame. Functional boundary charts should use `createBoundaryRegionStrategy()`; reserve a raw `{ kind: "boundary", buildTraces }` strategy for non-band geometry that the factory cannot express. Models declare canonical-SI axis specs, ranges, margins, hover metadata, and evaluators; the frame creates axes and owns layout, input overlays, markers, legends, annotations, and trace ordering. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
 
 #### Final Builder Registrations
 

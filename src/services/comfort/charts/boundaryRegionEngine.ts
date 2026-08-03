@@ -3,16 +3,16 @@ import type {
   PlotContoursDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
+import {
+  resolveBandEdge,
+  type Band,
+  type BandInputsSi,
+} from "../../../models/modelCapabilities";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
-import type { ChartAxisScale, ChartRange } from "./types";
+import type { ChartAxisScale } from "./types";
 
 type BoundaryHoverRow = unknown[];
 type BoundaryHoverMetadata = BoundaryHoverRow[];
-
-interface BoundaryBand {
-  label: string;
-  color: string;
-}
 
 interface BoundaryPolygonTraceContext {
   polygonX: number[];
@@ -31,15 +31,21 @@ interface BuildClosedBoundaryPolygonTraceOptions {
 }
 
 interface BuildBoundaryRegionTracesOptions {
-  variableValuesSi: number[];
-  boundaryCurvesSi: number[][];
-  bands: BoundaryBand[];
-  variableAxis: ChartAxisScale;
-  boundaryAxis: ChartAxisScale;
-  variableDimension: "x" | "y";
-  boundaryRangeSi?: ChartRange;
-  getHoverMetadata?: (xSi: number, ySi: number, index: number) => BoundaryHoverRow;
-  buildTrace: (context: BoundaryPolygonTraceContext & { band: BoundaryBand; bandIndex: number }) => PlotTraceDto;
+  bands: readonly Band[];
+  bandInputsSi: BandInputsSi;
+  xAxis: ChartAxisScale;
+  yAxis: ChartAxisScale;
+  additionalXValuesSi?: readonly number[];
+  getHoverMetadata?: (
+    xSi: number,
+    ySi: number,
+    index: number,
+    band: Band,
+    bandIndex: number,
+  ) => BoundaryHoverRow;
+  buildTrace: (
+    context: BoundaryPolygonTraceContext & { band: Band; bandIndex: number },
+  ) => PlotTraceDto;
 }
 
 interface FilledBoundaryRegionTraceOptions {
@@ -72,8 +78,30 @@ interface ClosedBoundaryPolygonOptions {
   upperY: number[];
 }
 
-function clamp(value: number, range: ChartRange): number {
+function clamp(value: number, range: ChartAxisScale["rangeSi"]): number {
   return Math.min(range.max, Math.max(range.min, value));
+}
+
+function buildBoundaryXValuesSi(
+  xAxis: ChartAxisScale,
+  additionalXValuesSi: readonly number[],
+): number[] {
+  const { min, max } = xAxis.rangeSi;
+  if (!Number.isInteger(xAxis.points) || xAxis.points < 1) {
+    throw new Error(`Axis points must be a positive integer; received ${xAxis.points}`);
+  }
+  const sampledXValuesSi = Array.from({ length: xAxis.points }, (_, index) => {
+    if (xAxis.points === 1 || index === 0) return min;
+    if (index === xAxis.points - 1) return max;
+    return min + ((max - min) * index) / (xAxis.points - 1);
+  });
+
+  return [...sampledXValuesSi, ...additionalXValuesSi]
+    .filter((value) => Number.isFinite(value) && value >= min && value <= max)
+    .sort((left, right) => left - right)
+    .filter((value, index, values) => (
+      index === 0 || Math.abs(value - values[index - 1]) > 1e-9
+    ));
 }
 
 export function buildClosedBoundaryPolygon({
@@ -112,74 +140,95 @@ export function buildClosedBoundaryPolygonTrace({
 }
 
 /**
- * Builds filled boundary bands from model-owned SI curves. This helper owns axis
- * orientation, range clamping, display conversion, polygon assembly, and hover
- * metadata placement; models own boundary equations, labels, and trace styling.
+ * Resolves ordered functional bands across the canonical-SI X axis and builds
+ * their filled polygons. Gaps are allowed; reversed bands and overlaps are not.
  */
 export function buildBoundaryRegionTraces({
-  variableValuesSi,
-  boundaryCurvesSi,
   bands,
-  variableAxis,
-  boundaryAxis,
-  variableDimension,
-  boundaryRangeSi = boundaryAxis.rangeSi,
+  bandInputsSi,
+  xAxis,
+  yAxis,
+  additionalXValuesSi = [],
   getHoverMetadata,
   buildTrace,
 }: BuildBoundaryRegionTracesOptions): PlotTraceDto[] {
-  if (
-    boundaryCurvesSi.length !== bands.length - 1 ||
-    boundaryCurvesSi.some((curve) => curve.length !== variableValuesSi.length)
-  ) {
-    throw new Error("Boundary curves must match the band and variable dimensions");
+  if (bands.length === 0) {
+    return [];
   }
 
-  const hasInvertedCurves = boundaryCurvesSi.some((upperCurve, curveIndex) => (
-    curveIndex > 0 && upperCurve.some((upper, valueIndex) => (
-      boundaryCurvesSi[curveIndex - 1][valueIndex] > upper
-    ))
-  ));
-  if (hasInvertedCurves) {
-    throw new Error("Boundary curves must be ordered at every variable point");
+  const xValuesSi = buildBoundaryXValuesSi(xAxis, additionalXValuesSi);
+  if (xValuesSi.length === 0) {
+    throw new Error("Boundary regions require at least one finite X sample");
   }
 
-  const variableDisplayValues = variableValuesSi.map(variableAxis.toDisplay);
-  const variableIsXAxis = variableDimension === "x";
+  const resolvedEdges = bands.map((band) => ({
+    min: xValuesSi.map((xValueSi) => resolveBandEdge(
+      band.min,
+      xValueSi,
+      bandInputsSi,
+    )),
+    max: xValuesSi.map((xValueSi) => resolveBandEdge(
+      band.max,
+      xValueSi,
+      bandInputsSi,
+    )),
+  }));
+
+  xValuesSi.forEach((xValueSi, xIndex) => {
+    let previousMax: number | undefined;
+    resolvedEdges.forEach(({ min, max }, bandIndex) => {
+      const lower = min[xIndex];
+      const upper = max[xIndex];
+      if (Number.isNaN(lower) || Number.isNaN(upper)) {
+        throw new Error(
+          `Boundary band ${bandIndex} resolved to NaN at X=${xValueSi}`,
+        );
+      }
+      if (lower > upper) {
+        throw new Error(
+          `Boundary band ${bandIndex} is reversed at X=${xValueSi}`,
+        );
+      }
+      if (previousMax !== undefined && lower < previousMax) {
+        throw new Error(
+          `Boundary bands overlap at X=${xValueSi}`,
+        );
+      }
+      previousMax = upper;
+    });
+  });
+
+  const xDisplayValues = xValuesSi.map(xAxis.toDisplay);
   const traces: PlotTraceDto[] = [];
 
   bands.forEach((band, bandIndex) => {
-    const lowerValues = bandIndex === 0
-      ? variableValuesSi.map(() => boundaryRangeSi.min)
-      : boundaryCurvesSi[bandIndex - 1];
-    const upperValues = bandIndex === boundaryCurvesSi.length
-      ? variableValuesSi.map(() => boundaryRangeSi.max)
-      : boundaryCurvesSi[bandIndex];
-    const hasVisibleArea = lowerValues.some((lower, index) => (
-      Math.max(lower, boundaryRangeSi.min)
-        < Math.min(upperValues[index], boundaryRangeSi.max)
+    const { min: lowerValuesSi, max: upperValuesSi } = resolvedEdges[bandIndex];
+    const hasVisibleArea = lowerValuesSi.some((lower, index) => (
+      Math.max(lower, yAxis.rangeSi.min)
+        < Math.min(upperValuesSi[index], yAxis.rangeSi.max)
     ));
 
     if (!hasVisibleArea) {
       return;
     }
 
-    const lowerValuesClampedSi = lowerValues.map((value) => clamp(value, boundaryRangeSi));
-    const upperValuesClampedSi = upperValues.map((value) => clamp(value, boundaryRangeSi));
-    const lowerDisplayValues = lowerValuesClampedSi.map(boundaryAxis.toDisplay);
-    const upperDisplayValues = upperValuesClampedSi.map(boundaryAxis.toDisplay);
-    const variablePolygonValuesSi = variableValuesSi.concat(variableValuesSi.slice().reverse());
-    const boundaryPolygonValuesSi = lowerValuesClampedSi.concat(upperValuesClampedSi.slice().reverse());
-    const polygonX = variableIsXAxis
-      ? variableDisplayValues.concat(variableDisplayValues.slice().reverse())
-      : lowerDisplayValues.concat(upperDisplayValues.slice().reverse());
-    const polygonY = variableIsXAxis
-      ? lowerDisplayValues.concat(upperDisplayValues.slice().reverse())
-      : variableDisplayValues.concat(variableDisplayValues.slice().reverse());
-    const hoverMetadata = variablePolygonValuesSi.map((variableValueSi, index) => {
-      const boundaryValueSi = boundaryPolygonValuesSi[index];
-      const xSi = variableIsXAxis ? variableValueSi : boundaryValueSi;
-      const ySi = variableIsXAxis ? boundaryValueSi : variableValueSi;
-      return getHoverMetadata?.(xSi, ySi, index) ?? [];
+    const lowerValuesClampedSi = lowerValuesSi.map((value) => (
+      clamp(value, yAxis.rangeSi)
+    ));
+    const upperValuesClampedSi = upperValuesSi.map((value) => (
+      clamp(value, yAxis.rangeSi)
+    ));
+    const polygonXValuesSi = xValuesSi.concat(xValuesSi.slice().reverse());
+    const polygonYValuesSi = lowerValuesClampedSi.concat(
+      upperValuesClampedSi.slice().reverse(),
+    );
+    const polygonX = xDisplayValues.concat(xDisplayValues.slice().reverse());
+    const polygonY = lowerValuesClampedSi.map(yAxis.toDisplay).concat(
+      upperValuesClampedSi.map(yAxis.toDisplay).reverse(),
+    );
+    const hoverMetadata = polygonXValuesSi.map((xSi, index) => {
+      const ySi = polygonYValuesSi[index];
+      return getHoverMetadata?.(xSi, ySi, index, band, bandIndex) ?? [];
     });
 
     traces.push(buildTrace({

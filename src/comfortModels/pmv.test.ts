@@ -7,7 +7,7 @@ import { FieldKey, type FieldKey as FieldKeyType } from "../models/fieldKeys";
 import { InputControlId } from "../models/inputControls";
 import { OptionKey } from "../models/inputModes";
 import { InputId } from "../models/inputSlots";
-import { findBandForValue, type InputsSi } from "../models/modelCapabilities";
+import { findBandForValue, type BandInputsSi } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
 import {
@@ -266,7 +266,7 @@ describe("PMV roots and compliance", () => {
           bands,
           evaluated.pmv,
           root,
-          inputsSi satisfies InputsSi,
+          inputsSi satisfies BandInputsSi,
         );
 
         expect(evaluated.pmv).toBeCloseTo(targetPmv, 3);

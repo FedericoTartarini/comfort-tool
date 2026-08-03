@@ -5,11 +5,11 @@ import {
   findBandForValue,
   findNumericBandIndexForValue,
   resolveBandEdge,
-  type InputsSi,
+  type BandInputsSi,
   type NumericBand,
 } from "./modelCapabilities";
 
-function createInputsSi(): InputsSi {
+function createInputsSi(): BandInputsSi {
   return Object.fromEntries(
     Object.values(FieldKey).map((fieldKey) => [fieldKey, 0]),
   ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
@@ -28,7 +28,9 @@ describe("model capability band helpers", () => {
 
     expect(resolveBandEdge(10, 20, inputsSi)).toBe(10);
     expect(resolveBandEdge(
-      (xValueSi, currentInputsSi) => xValueSi + currentInputsSi[FieldKey.RelativeAirSpeed],
+      (xValueSi, currentInputsSi) => (
+        xValueSi + Number(currentInputsSi[FieldKey.RelativeAirSpeed])
+      ),
       20,
       inputsSi,
     )).toBe(20.2);

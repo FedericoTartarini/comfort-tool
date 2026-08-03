@@ -14,6 +14,7 @@ import { pmvZonesList } from "../../../comfortModels/pmvShared";
 import { calculateUtci, utciZonesList } from "../../../comfortModels/utci";
 import { windChillZonesList } from "../../../comfortModels/windChill";
 import { ComfortStandard } from "../../../models/calculationMetadata";
+import { ChartId } from "../../../models/chartOptions";
 import {
   ComfortModel,
   type ComfortModel as ComfortModelType,
@@ -24,7 +25,7 @@ import {
   findBandForValue,
   ModelOutputKey,
   resolveBandEdge,
-  type InputsSi,
+  type BandInputsSi,
 } from "../../../models/modelCapabilities";
 import type { ThermalZone } from "../../../models/thermalZone";
 import {
@@ -33,7 +34,7 @@ import {
   getComfortModelConfig,
 } from ".";
 
-function createInputsSi(relativeAirSpeed: number): InputsSi {
+function createInputsSi(relativeAirSpeed: number): BandInputsSi {
   const inputsSi = Object.fromEntries(
     Object.values(FieldKey).map((fieldKey) => [fieldKey, 0]),
   ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
@@ -104,17 +105,17 @@ describe("comfort model capability registry", () => {
         },
       },
       [ComfortModel.AdaptiveAshrae]: {
-        count: 20,
+        count: 2,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          yAxis: FieldKey.OperativeTemperature,
         },
       },
       [ComfortModel.AdaptiveEn]: {
-        count: 20,
+        count: 2,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          yAxis: FieldKey.OperativeTemperature,
         },
       },
       [ComfortModel.HeatIndex]: {
@@ -296,6 +297,15 @@ describe("comfort model capability registry", () => {
       .toBe(ModelOutputKey.OperativeTemperature);
     expect(adaptiveEnDeclaration.complianceSpec.output)
       .toBe(ModelOutputKey.OperativeTemperature);
+    [ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn].forEach((modelId) => {
+      const config = getComfortModelConfig(modelId);
+      expect(config.chartIds).toEqual([ChartId.Adaptive]);
+      expect(config.defaultChartId).toBe(ChartId.Adaptive);
+      expect(config.dynamicAxisFields).toEqual([
+        FieldKey.PrevailingMeanOutdoorTemperature,
+        FieldKey.OperativeTemperature,
+      ]);
+    });
     expect(ashraeBands).not.toBe(enBands);
     expect(ashraeBands[0]).not.toBe(enBands[0]);
     expect(getComfortModelConfig(ComfortModel.AdaptiveAshrae).complianceSpec?.bands)
