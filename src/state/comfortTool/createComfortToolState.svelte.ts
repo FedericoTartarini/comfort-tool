@@ -103,6 +103,18 @@ function createDefaultCompareInputIds(): InputIdType[] {
   return [InputId.Input1, InputId.Input2];
 }
 
+function selectLegendBands(
+  bands: readonly Band[],
+): Array<Pick<Band, "label" | "color">> {
+  const selected: Array<Pick<Band, "label" | "color">> = [];
+  for (const { label, color } of bands) {
+    if (!selected.some((band) => band.label === label && band.color === color)) {
+      selected.push({ label, color });
+    }
+  }
+  return selected;
+}
+
 
 /**
  * Initializes the default chart selection for each comfort model.
@@ -333,16 +345,10 @@ export function createComfortToolState(): ComfortToolController {
   }
 
   function getCurrentFieldChartConfig(): FieldChartConfig {
-    const config = buildFieldChartConfig(
+    return buildFieldChartConfig(
       getActiveModelConfig(),
       getCurrentChartSettings(),
     );
-    if (!config) {
-      throw new Error(
-        `Invalid field chart configuration for ${state.ui.selectedModel}.`,
-      );
-    }
-    return config;
   }
 
   function getCurrentChartableOutputs() {
@@ -353,41 +359,59 @@ export function createComfortToolState(): ComfortToolController {
   function getCurrentExploreDefaultBands() {
     const exploreState = getCurrentChartSettings().explore;
     if (!exploreState) {
-      return [];
+      throw new Error(
+        `Comfort model ${state.ui.selectedModel} is missing its Explore state declaration.`,
+      );
     }
 
-    return getDeclaredExploreOutput(
+    const output = getDeclaredExploreOutput(
       getActiveModelConfig(),
       exploreState.zOutput,
-    )?.defaultBands ?? [];
+    );
+    if (!output) {
+      throw new Error(
+        `Comfort model ${state.ui.selectedModel} does not declare Explore output ${exploreState.zOutput}.`,
+      );
+    }
+    return output.defaultBands;
   }
 
   function getChartControlsViewModel(): ChartControlsViewModel {
     const modelConfig = getActiveModelConfig();
     const settings = getCurrentChartSettings();
     const selectedChart = getCurrentSelectedChartId();
-    const isDynamic = !!chartMetaById[selectedChart].isDynamic;
+    const supportsAxisSelection = chartMetaById[selectedChart].supportsAxisSelection;
     const fieldChartConfig = getCurrentFieldChartConfig();
     const chartableOutputs = getCurrentChartableOutputs();
     const effectiveBaselineInputId = getEffectiveChartBaselineInputId();
-    const selectedOutput = getDeclaredExploreOutput(
-      modelConfig,
-      fieldChartConfig.zOutput,
-    );
-    const caption = settings.mode === ChartMode.Compliance
-      ? modelConfig.complianceSpec?.caption
-        ?? "Compliance limits are locked for this chart."
-      : isDynamic
-        ? `Showing ${selectedOutput?.label ?? "the selected output"} over the selected axes with editable thresholds.`
-        : `Showing ${selectedOutput?.label ?? "the selected output"} on this chart's fixed axes with editable thresholds.`;
+    const complianceSpec = settings.mode === ChartMode.Compliance
+      ? modelConfig.complianceSpec
+      : undefined;
+    if (settings.mode === ChartMode.Compliance && !complianceSpec) {
+      throw new Error(
+        `Comfort model ${modelConfig.id} declares Compliance mode without a compliance specification.`,
+      );
+    }
+    const selectedOutput = settings.mode === ChartMode.Explore
+      ? getDeclaredExploreOutput(modelConfig, fieldChartConfig.zOutput)
+      : undefined;
+    if (settings.mode === ChartMode.Explore && !selectedOutput) {
+      throw new Error(
+        `Comfort model ${modelConfig.id} does not declare Explore output ${fieldChartConfig.zOutput}.`,
+      );
+    }
+    const caption = complianceSpec
+      ? complianceSpec.caption
+      : supportsAxisSelection
+        ? `Showing ${selectedOutput!.label} over the selected axes with editable thresholds.`
+        : `Showing ${selectedOutput!.label} on this chart's fixed axes with editable thresholds.`;
     const baselineResult = getCurrentModelCache().status === "ready"
       ? getCurrentModelCache().resultsByInput[effectiveBaselineInputId]
       : null;
-    const feedback = settings.mode === ChartMode.Compliance
-      && modelConfig.complianceSpec
+    const feedback = complianceSpec
       && baselineResult !== null
       ? {
-          ...modelConfig.complianceSpec.getFeedback(baselineResult),
+          ...complianceSpec.getFeedback(baselineResult),
           ...(state.ui.compareEnabled
             ? { inputLabel: inputDisplayMetaById[effectiveBaselineInputId].label }
             : {}),
@@ -410,7 +434,7 @@ export function createComfortToolState(): ComfortToolController {
             onSelect: setChartBaselineInputId,
           }
         : null,
-      axes: isDynamic
+      axes: supportsAxisSelection
         ? {
             x: {
               selectedField: settings.xAxis,
@@ -470,7 +494,6 @@ export function createComfortToolState(): ComfortToolController {
         cache.resultsByInput,
         {
           unitSystem: state.ui.unitSystem,
-          dynamicAxes: getCurrentDynamicAxisPair(),
           baselineInputId: getEffectiveChartBaselineInputId(),
           fieldChartConfig: getCurrentFieldChartConfig(),
         },
@@ -487,20 +510,28 @@ export function createComfortToolState(): ComfortToolController {
     getCurrentChartLegendZones: () => {
       const config = getActiveModelConfig();
       return config.legendChartIds.includes(getCurrentSelectedChartId())
-        ? getCurrentFieldChartConfig().bands
+        ? selectLegendBands(getCurrentFieldChartConfig().bands)
         : null;
     },
     getCurrentChartLegendTitle: () => {
       const fieldChartConfig = getCurrentFieldChartConfig();
       const modelConfig = getActiveModelConfig();
-      const output = getDeclaredExploreOutput(
-        modelConfig,
-        fieldChartConfig.zOutput,
-      );
-      const title = output?.legendTitle
-        ?? output?.label
-        ?? modelConfig.legendTitle;
-      return title || "Bands";
+      if (fieldChartConfig.mode === ChartMode.Compliance) {
+        if (!modelConfig.complianceSpec || !modelConfig.legendTitle) {
+          throw new Error(
+            `Comfort model ${modelConfig.id} is missing its Compliance legend declaration.`,
+          );
+        }
+        return modelConfig.legendTitle;
+      }
+
+      const output = getDeclaredExploreOutput(modelConfig, fieldChartConfig.zOutput);
+      if (!output) {
+        throw new Error(
+          `Comfort model ${modelConfig.id} does not declare Explore output ${fieldChartConfig.zOutput}.`,
+        );
+      }
+      return output.legendTitle ?? output.label;
     },
     getChartControlsViewModel,
     getPendingModelSwitch,
@@ -636,7 +667,9 @@ export function createComfortToolState(): ComfortToolController {
 
     state.ui.selectedChartByModel[state.ui.selectedModel] = nextChart;
 
-    if (chartMetaById[nextChart].isDynamic) ensureValidDynamicAxes(getActiveModelConfig());
+    if (chartMetaById[nextChart].supportsAxisSelection) {
+      ensureValidDynamicAxes(getActiveModelConfig());
+    }
   }
 
   /**

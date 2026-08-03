@@ -2,12 +2,17 @@ import { pmv_ppd, pmv_ppd_ashrae } from "jsthermalcomfort";
 import { describe, expect, it, vi } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../models/calculationMetadata";
+import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import { FieldKey, type FieldKey as FieldKeyType } from "../models/fieldKeys";
 import { InputControlId } from "../models/inputControls";
 import { OptionKey } from "../models/inputModes";
 import { InputId } from "../models/inputSlots";
-import { findBandForValue, type BandInputsSi } from "../models/modelCapabilities";
+import {
+  ChartMode,
+  findNumericBandIndexForValue,
+  ModelOutputKey,
+} from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
 import {
@@ -21,11 +26,10 @@ import {
   pmvIsoModelConfig,
 } from "./pmvIso";
 import {
-  calculateComfortZone,
-  pmvNeutralZone,
-  solveDryBulbForTargetPmv,
-  tryEvaluatePmvForChart,
+  createPmvComplianceCaption,
+  createPmvModelConfig,
   type PmvChartSourceDto,
+  type PmvModelDeclaration,
   type PmvRequestDto,
   type PmvResponseDto,
   type PmvStandardAdapter,
@@ -67,7 +71,7 @@ function setPmvInputs(
 }
 
 function calculateRegisteredModel(
-  config: typeof pmvAshraeModelConfig | typeof pmvIsoModelConfig,
+  config: ReturnType<typeof createPmvModelConfig>,
   toolState: ReturnType<typeof createComfortToolState>,
 ): { result: PmvResponseDto; chartSource: PmvChartSourceDto } {
   const calculation = config.calculate({
@@ -79,7 +83,27 @@ function calculateRegisteredModel(
   return { result, chartSource: calculation.chartSource };
 }
 
+function emptyPmvResults(): Record<InputId, PmvResponseDto | null> {
+  return {
+    [InputId.Input1]: null,
+    [InputId.Input2]: null,
+    [InputId.Input3]: null,
+  };
+}
+
 describe("PMV standard declarations", () => {
+  it("derives compliance caption thresholds from the supplied Neutral band", () => {
+    const caption = createPmvComplianceCaption("Custom standard", [
+      { min: -Infinity, max: -0.7, label: "Cool", color: "#00f" },
+      { min: -0.7, max: 0.8, label: "Neutral", color: "#0f0" },
+      { min: 0.8, max: Infinity, label: "Warm", color: "#f00" },
+    ]);
+
+    expect(caption).toBe(
+      "Green shading = Custom standard compliant PMV (−0.7 ≤ PMV < +0.8); red = outside the limit.",
+    );
+  });
+
   it("registers independent ASHRAE and ISO models with declaration-owned metadata", () => {
     expect(pmvAshraeModelConfig).not.toBe(pmvIsoModelConfig);
     expect(pmvAshraeModelConfig.id).toBe(ComfortModel.PmvAshrae);
@@ -188,41 +212,73 @@ describe("PMV standard declarations", () => {
 });
 
 describe("PMV roots and compliance", () => {
-  it.each(standardCases)("$label brackets and bisects an ordinary PMV root", ({ adapter }) => {
-    const root = solveDryBulbForTargetPmv(
-      adapter,
-      0.5,
-      baseRequest.rh,
-      baseRequest,
-    );
+  it("rejects non-finite PMV values instead of assigning Neutral", () => {
+    const config = createPmvModelConfig({
+      ...pmvAshraeDeclaration,
+      adapter: {
+        ...pmvAshraeAdapter,
+        calculate: () => ({ pmv: Number.NaN, ppd: Number.NaN }),
+      },
+    });
 
-    expect(root).not.toBeNull();
-    expect(root).toBeGreaterThanOrEqual(10);
-    expect(root).toBeLessThanOrEqual(40);
-    expect(Math.abs(adapter.calculate({ ...baseRequest, tdb: root! }).pmv - 0.5))
-      .toBeLessThanOrEqual(5e-4);
+    expect(() => calculateRegisteredModel(config, createComfortToolState()))
+      .toThrow(/PMV.*non-finite/i);
   });
+
+  it.each(standardCases)(
+    "$label brackets and bisects ordinary PMV comfort-zone roots",
+    ({ adapter, config }) => {
+      const { chartSource } = calculateRegisteredModel(
+        config,
+        createComfortToolState(),
+      );
+      const request = chartSource.inputs[InputId.Input1];
+      const zone = chartSource.comfortZonesByInput[InputId.Input1];
+      const warmPoint = zone?.warmEdge.find(({ rh }) => rh === 50);
+      if (!request || !warmPoint) throw new Error("Missing PMV warm-edge root.");
+
+      expect(warmPoint.tdb).toBeGreaterThanOrEqual(10);
+      expect(warmPoint.tdb).toBeLessThanOrEqual(40);
+      expect(Math.abs(adapter.calculate({
+        ...request,
+        tdb: warmPoint.tdb,
+        rh: warmPoint.rh,
+      }).pmv - 0.5)).toBeLessThanOrEqual(5e-4);
+    },
+  );
 
   it("finds a non-monotonic root even when the view endpoints have the same sign", () => {
     const adapter: PmvStandardAdapter = {
       ...pmvAshraeAdapter,
       calculate: (request) => ({
-        pmv: (request.tdb - 10.25) * (request.tdb - 20.25),
+        pmv: (request.tdb - 10.25) * (request.tdb - 20.25) - 0.5,
         ppd: 0,
       }),
     };
+    const config = createPmvModelConfig({ ...pmvAshraeDeclaration, adapter });
+    const { chartSource } = calculateRegisteredModel(
+      config,
+      createComfortToolState(),
+    );
+    const coolEdge = chartSource.comfortZonesByInput[InputId.Input1]?.coolEdge ?? [];
 
-    expect(solveDryBulbForTargetPmv(adapter, 0, 50, baseRequest))
-      .toBeCloseTo(10.25, 4);
+    expect(coolEdge.some(({ tdb }) => Math.abs(tdb - 10.25) <= 5e-4)).toBe(true);
   });
 
-  it("returns null when the drawable temperature range contains no root", () => {
+  it("omits comfort-zone points when the drawable range contains no roots", () => {
     const adapter: PmvStandardAdapter = {
       ...pmvAshraeAdapter,
       calculate: () => ({ pmv: 1, ppd: 0 }),
     };
+    const config = createPmvModelConfig({ ...pmvAshraeDeclaration, adapter });
+    const { chartSource } = calculateRegisteredModel(
+      config,
+      createComfortToolState(),
+    );
+    const zone = chartSource.comfortZonesByInput[InputId.Input1];
 
-    expect(solveDryBulbForTargetPmv(adapter, 0, 50, baseRequest)).toBeNull();
+    expect(zone?.coolEdge).toEqual([]);
+    expect(zone?.warmEdge).toEqual([]);
   });
 
   it("maps known point-domain failures to null and propagates unexpected errors", () => {
@@ -238,51 +294,81 @@ describe("PMV roots and compliance", () => {
         throw new Error("broken adapter");
       },
     };
+    const buildChart = (adapter: PmvStandardAdapter) => {
+      const declaration: PmvModelDeclaration = { ...pmvAshraeDeclaration, adapter };
+      const config = createPmvModelConfig(declaration);
+      return config.buildChartResult(
+        ChartId.PmvDynamic,
+        {
+          inputs: {
+            [InputId.Input1]: {
+              ...baseRequest,
+              rhMin: 0,
+              rhMax: 100,
+              rhPoints: 31,
+            },
+          },
+          comfortZonesByInput: {},
+        },
+        emptyPmvResults(),
+        {
+          unitSystem: UnitSystem.SI,
+          baselineInputId: InputId.Input1,
+          fieldChartConfig: {
+            mode: ChartMode.Explore,
+            xField: FieldKey.DryBulbTemperature,
+            yField: FieldKey.RelativeHumidity,
+            zOutput: ModelOutputKey.Pmv,
+            bands: declaration.chartableOutputs[0].defaultBands,
+          },
+        },
+      );
+    };
 
-    expect(tryEvaluatePmvForChart(knownFailureAdapter, baseRequest)).toBeNull();
-    expect(() => tryEvaluatePmvForChart(unexpectedFailureAdapter, baseRequest))
+    expect(buildChart(knownFailureAdapter)).not.toBeNull();
+    expect(() => buildChart(unexpectedFailureAdapter))
       .toThrow("broken adapter");
   });
 
   it.each(standardCases)(
     "$label assigns neutral boundaries with half-open semantics",
     ({ adapter, config }) => {
-      const neutralZone = pmvNeutralZone;
-      const inputsSi = Object.fromEntries(
-        Object.values(FieldKey).map((field) => [field, 0]),
-      ) as Record<FieldKeyType, number>;
+      const neutralZone = config.zones.find(({ label }) => label === "Neutral");
       const bands = config.complianceSpec!.bands;
+      const { chartSource } = calculateRegisteredModel(
+        config,
+        createComfortToolState(),
+      );
+      const request = chartSource.inputs[InputId.Input1];
+      const zone = chartSource.comfortZonesByInput[InputId.Input1];
+      if (!neutralZone || !request || !zone) {
+        throw new Error("Missing PMV Neutral zone calculation.");
+      }
 
-      [neutralZone.min, neutralZone.max].forEach((targetPmv, index) => {
-        const root = solveDryBulbForTargetPmv(
-          adapter,
-          targetPmv,
-          baseRequest.rh,
-          baseRequest,
-        );
-        if (root === null) throw new Error(`Could not solve PMV ${targetPmv}.`);
-        const evaluated = adapter.calculate({ ...baseRequest, tdb: root });
-        const assigned = findBandForValue(
-          bands,
-          evaluated.pmv,
-          root,
-          inputsSi satisfies BandInputsSi,
-        );
+      [zone.coolEdge[0], zone.warmEdge[0]].forEach((point, index) => {
+        if (!point) throw new Error("Missing PMV Neutral boundary point.");
+        const targetPmv = index === 0 ? neutralZone.min : neutralZone.max;
+        const evaluated = adapter.calculate({
+          ...request,
+          tdb: point.tdb,
+          rh: point.rh,
+        });
+        const assignedIndex = findNumericBandIndexForValue(bands, evaluated.pmv);
 
         expect(evaluated.pmv).toBeCloseTo(targetPmv, 3);
-        expect(assigned).toBe(index === 0 ? bands[1] : bands[2]);
+        expect(assignedIndex).toBe(index + 1);
       });
     },
   );
 
   it("generates comfort-zone roots without cooling-effect warnings", () => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const zone = calculateComfortZone(pmvAshraeAdapter, {
-      ...baseRequest,
-      rhMin: 0,
-      rhMax: 100,
-      rhPoints: 11,
-    });
+    const { chartSource } = calculateRegisteredModel(
+      pmvAshraeModelConfig,
+      createComfortToolState(),
+    );
+    const zone = chartSource.comfortZonesByInput[InputId.Input1];
+    if (!zone) throw new Error("Missing PMV comfort zone.");
 
     expect(zone.coolEdge.length).toBeGreaterThan(0);
     expect(zone.warmEdge).toHaveLength(zone.coolEdge.length);

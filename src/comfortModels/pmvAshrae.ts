@@ -13,6 +13,7 @@ import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
 import {
   createPmvComplianceBands,
+  createPmvComplianceCaption,
   createPmvModelConfig,
   getPmvComplianceFeedback,
   pmvChartableOutputs,
@@ -69,7 +70,7 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   complianceSpec: {
     output: ModelOutputKey.Pmv,
     bands: ashraeComplianceBands,
-    caption: "ASHRAE 55 PMV compliance limits are locked for this chart.",
+    caption: createPmvComplianceCaption("ASHRAE 55", ashraeComplianceBands),
     getFeedback: getPmvComplianceFeedback,
   },
 };

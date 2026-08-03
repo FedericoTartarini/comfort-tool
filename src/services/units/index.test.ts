@@ -7,6 +7,7 @@ import {
   convertFieldValueToSi,
   convertHumidityRatioFromSi,
   convertHumidityRatioToSi,
+  convertMetersPerSecondToKilometersPerHour,
   convertVaporPressureFromSi,
   convertVaporPressureToSi,
   getHumidityRatioDisplayMeta,
@@ -14,6 +15,12 @@ import {
 } from "./index";
 
 describe("units helpers", () => {
+  it("converts metres per second to kilometres per hour", () => {
+    expect(convertMetersPerSecondToKilometersPerHour(0)).toBe(0);
+    expect(convertMetersPerSecondToKilometersPerHour(1)).toBe(3.6);
+    expect(convertMetersPerSecondToKilometersPerHour(10)).toBe(36);
+  });
+
   it("round-trips field conversions between SI and IP", () => {
     const displayTemperature = convertFieldValueFromSi(FieldKey.DryBulbTemperature, 25, UnitSystem.IP);
     expect(displayTemperature).toBeCloseTo(77, 6);

@@ -62,8 +62,6 @@ export function normalizePmvOptions(options: ModelOptionsRecord): PmvModelOption
   } as PmvModelOptions;
 }
 
-export const normalizeControlOptions = normalizePmvOptions;
-
 /**
  * Calculates all derived environmental values for a single input state.
  * @param inputState The canonical SI input values.
@@ -145,8 +143,6 @@ export function synchronizePmvInputState(
   };
 }
 
-export const synchronizeControlInputState = synchronizePmvInputState;
-
 export function applyOperativeTemperatureMode(
   inputState: CanonicalInputState,
   options: ModelOptionsRecord,
@@ -174,5 +170,3 @@ export function applyOperativeTemperatureMode(
     derivedInputOverrides,
   );
 }
-
-export const applyOperativeTemperatureControlMode = applyOperativeTemperatureMode;

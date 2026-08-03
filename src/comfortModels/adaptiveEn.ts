@@ -7,6 +7,7 @@ import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
 import {
   createAdaptiveComplianceBands,
+  createAdaptiveComplianceCaption,
   createAdaptiveComplianceFeedbackGetter,
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -77,7 +78,11 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),
-    caption: "EN 16798-1 Category III limits are locked for this chart.",
+    caption: createAdaptiveComplianceCaption(
+      "Shading shows EN 16798-1 Categories I–III",
+      adaptiveEnBoundaryDefinition,
+      "category-iii",
+    ),
     getFeedback: getAdaptiveEnFeedback,
   },
   hoverLevelIds: ["category-i", "category-ii", "category-iii"],

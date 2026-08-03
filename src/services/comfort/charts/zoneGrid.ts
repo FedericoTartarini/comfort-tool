@@ -124,19 +124,6 @@ function buildZoneContourLayers({
   ];
 }
 
-interface ZoneContourTracesOptions extends ZoneContourLayersOptions {
-  grid: GridEvaluationResult;
-}
-
-export function buildZoneContourTraces({
-  grid,
-  ...options
-}: ZoneContourTracesOptions): PlotTraceDto[] {
-  return buildZoneContourLayers(options).map((layer) => (
-    buildGridContourTrace({ ...layer, grid })
-  ));
-}
-
 interface CategoricalBandLayersOptions {
   name: string;
   bands: readonly NumericBand[];

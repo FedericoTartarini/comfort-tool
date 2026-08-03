@@ -1,7 +1,6 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
 import type {
   PlotAnnotationDto,
-  PlotContoursDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
@@ -22,6 +21,7 @@ import {
 import {
   buildBoundaryRegionTraces,
   buildFilledBoundaryRegionTrace,
+  type BoundaryAxis,
 } from "./boundaryRegionEngine";
 import { createFieldAxisScale } from "./axis";
 import { evaluateGrid } from "./gridEngine";
@@ -41,8 +41,6 @@ import {
   buildBandTooltipTrace,
   buildCategoricalBandTraces,
   buildConstraintBandTraces,
-  buildZoneColorscale,
-  buildZoneContourTraces,
 } from "./zoneGrid";
 
 const DEFAULT_PAPER_BACKGROUND = "#ffffff";
@@ -94,25 +92,16 @@ export interface BoundaryFieldChartStrategy {
 export interface BoundaryRegionStyle {
   lineColor: string;
   opacity?: number;
-  hovertemplate?: string;
-  hoverinfo?: string;
 }
 
 export interface BoundaryRegionStrategyOptions {
   bands: readonly Band[];
   bandInputsSi: BandInputsSi;
   style: BoundaryRegionStyle;
-  additionalXValuesSi?: (
+  boundaryAxis: BoundaryAxis;
+  additionalBoundaryValuesSi?: (
     context: FieldChartRenderContext,
   ) => readonly number[];
-  getHoverMetadata?: (
-    xSi: number,
-    ySi: number,
-    index: number,
-    band: Band,
-    bandIndex: number,
-    context: FieldChartRenderContext,
-  ) => unknown[];
 }
 
 export type FieldChartStrategy =
@@ -182,18 +171,6 @@ export interface BandedGridStrategyOptions {
   hoverTemplateSuffix?: RenderText;
   opacity?: number;
   renderStrategy?: GridBandRenderStrategy;
-}
-
-export interface ZoneGridStrategyOptions {
-  name: string;
-  zones: ReadonlyArray<{ color: string }>;
-  contours: PlotContoursDto;
-  zmin?: number;
-  zmax?: number;
-  hoverTemplate: RenderText;
-  opacity?: number;
-  isBackgroundZone?: boolean;
-  evaluatePoint: GridFieldChartStrategy["evaluatePoint"];
 }
 
 function createAxis(
@@ -323,40 +300,12 @@ export function buildFieldChart<TPayload = unknown, TResult = unknown>({
   });
 }
 
-export function createZoneGridStrategy({
-  name,
-  zones,
-  contours,
-  zmin,
-  zmax,
-  hoverTemplate,
-  opacity,
-  isBackgroundZone,
-  evaluatePoint,
-}: ZoneGridStrategyOptions): GridFieldChartStrategy {
-  return {
-    kind: "grid",
-    evaluatePoint,
-    renderTraces: (grid, context) => buildZoneContourTraces({
-      name,
-      grid,
-      colorscale: buildZoneColorscale(zones),
-      contours,
-      zmin,
-      zmax,
-      hovertemplate: resolveText(hoverTemplate, context),
-      opacity,
-      isBackgroundZone,
-    }),
-  };
-}
-
 export function createBoundaryRegionStrategy({
   bands,
   bandInputsSi,
   style,
-  additionalXValuesSi,
-  getHoverMetadata,
+  boundaryAxis,
+  additionalBoundaryValuesSi,
 }: BoundaryRegionStrategyOptions): BoundaryFieldChartStrategy {
   return {
     kind: "boundary",
@@ -365,18 +314,9 @@ export function createBoundaryRegionStrategy({
       bandInputsSi,
       xAxis: context.xAxis,
       yAxis: context.yAxis,
-      additionalXValuesSi: additionalXValuesSi?.(context),
-      getHoverMetadata: getHoverMetadata
-        ? (xSi, ySi, index, band, bandIndex) => getHoverMetadata(
-            xSi,
-            ySi,
-            index,
-            band,
-            bandIndex,
-            context,
-          )
-        : undefined,
-      buildTrace: ({ band, polygonX, polygonY, hoverMetadata }) => (
+      boundaryAxis,
+      additionalBoundaryValuesSi: additionalBoundaryValuesSi?.(context),
+      buildTrace: ({ band, polygonX, polygonY }) => (
         buildFilledBoundaryRegionTrace({
           name: band.label,
           color: band.color,
@@ -384,9 +324,6 @@ export function createBoundaryRegionStrategy({
           polygonY,
           lineColor: style.lineColor,
           opacity: style.opacity,
-          hovertemplate: style.hovertemplate,
-          hoverinfo: style.hoverinfo,
-          hoverMetadata,
         })
       ),
     }),

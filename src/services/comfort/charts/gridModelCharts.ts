@@ -11,12 +11,10 @@ import type { InputId as InputIdType } from "../../../models/inputSlots";
 import type {
   ChartBuildContext,
   ModelOutput,
+  NumericBand,
   NumericFieldChartConfig,
 } from "../../../models/modelCapabilities";
-import {
-  ChartMode,
-  findNumericBandIndexForValue,
-} from "../../../models/modelCapabilities";
+import { findNumericBandIndexForValue } from "../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import {
   convertModelOutputFromSi,
@@ -84,14 +82,11 @@ function buildGridModelView<TPayload extends object, TResult>(
   inputsMap: CompareInputMap<TPayload>,
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
   baselinePayload: TPayload,
-  context: ChartBuildContext,
+  context: ChartBuildContext<NumericBand>,
   spec: GridModelChartSpec<TPayload, TResult>,
   view: GridModelView,
 ): PlotlyChartResponseDto {
   const { unitSystem } = context;
-  if (view.config.zOutput !== spec.output.key) {
-    throw new Error(`Unsupported grid-model chart output: ${view.config.zOutput}.`);
-  }
   const output = spec.output;
   const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
@@ -170,7 +165,7 @@ export function buildGridModelChart<TPayload extends object, TResult>(
   chartId: ChartIdType,
   chartSource: ModelChartSourceDto<TPayload> | null,
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
-  context: ChartBuildContext,
+  context: ChartBuildContext<NumericBand>,
   spec: GridModelChartSpec<TPayload, TResult>,
 ): PlotlyChartResponseDto | null {
   if (!chartSource) {
@@ -183,9 +178,6 @@ export function buildGridModelChart<TPayload extends object, TResult>(
     context.baselineInputId,
   ).payload;
   const config = context.fieldChartConfig;
-  if (config.mode !== ChartMode.Explore) {
-    throw new Error("Grid-model charts require an Explore FieldChartConfig.");
-  }
 
   if (chartId === spec.dynamicChartId) {
     return buildGridModelView(

@@ -8,11 +8,7 @@ import {
   pmvIsoDeclaration,
 } from "../../../comfortModels/pmvIso";
 import {
-  buildComparePsychrometricChart,
-  buildPmvDynamicChart,
-  calculateComfortZone,
-  getPmvZoneMeta,
-  solveDryBulbForTargetPmv,
+  createPmvModelConfig,
   type ComfortZoneRequestDto,
   type PmvChartSourceDto,
   type PmvModelDeclaration,
@@ -20,16 +16,23 @@ import {
   type PmvStandardAdapter,
 } from "../../../comfortModels/pmvShared";
 import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
-import { CalculationSource } from "../../../models/calculationMetadata";
+import { ChartId } from "../../../models/chartOptions";
 import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
+import {
+  AirSpeedControlMode,
+  OptionKey,
+  TemperatureMode,
+} from "../../../models/inputModes";
 import { InputId } from "../../../models/inputSlots";
 import {
   ChartMode,
   ModelOutputKey,
   type ChartBuildContext,
+  type NumericBand,
   type ModelOutputKey as ModelOutputKeyType,
 } from "../../../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
+import { createComfortToolState } from "../../../state/comfortTool/createComfortToolState.svelte";
 import { convertFieldValueFromSi } from "../../units";
 
 const input: ComfortZoneRequestDto = {
@@ -46,31 +49,54 @@ const input: ComfortZoneRequestDto = {
   rhPoints: 11,
 };
 
-function createResult(
+function calculateModel(
   declaration: PmvModelDeclaration,
   request: ComfortZoneRequestDto = input,
-): PmvResponseDto {
-  const result = declaration.adapter.calculate(request);
-  return {
-    ...result,
-    vr: request.vr,
-    isCompliant: declaration.adapter.checkApplicability(request).length === 0
-      && result.pmv >= -0.5
-      && result.pmv < 0.5,
-    standard: declaration.adapter.resultStandard,
-    source: CalculationSource.JsThermalComfort,
+): {
+  config: ReturnType<typeof createPmvModelConfig>;
+  result: PmvResponseDto;
+  source: PmvChartSourceDto;
+} {
+  const config = createPmvModelConfig(declaration);
+  const toolState = createComfortToolState();
+  const stateInput = toolState.state.inputsByInput[InputId.Input1];
+  stateInput[FieldKey.DryBulbTemperature] = request.tdb;
+  stateInput[FieldKey.MeanRadiantTemperature] = request.tr;
+  stateInput[FieldKey.RelativeAirSpeed] = request.vr;
+  stateInput[FieldKey.RelativeHumidity] = request.rh;
+  stateInput[FieldKey.MetabolicRate] = request.met;
+  stateInput[FieldKey.ClothingInsulation] = request.clo;
+  stateInput[FieldKey.ExternalWork] = request.wme;
+  toolState.state.ui.modelOptionsByModel[config.id] = {
+    ...config.defaultOptions,
+    [OptionKey.TemperatureMode]: TemperatureMode.Air,
+    [OptionKey.AirSpeedControlMode]: request.occupantHasAirSpeedControl
+      ? AirSpeedControlMode.WithLocalControl
+      : AirSpeedControlMode.NoLocalControl,
   };
+  const calculation = config.calculate({
+    inputsByInput: toolState.state.inputsByInput,
+    modelOptionsByModel: toolState.state.ui.modelOptionsByModel,
+  }, [InputId.Input1]);
+  const result = calculation.resultsByInput[InputId.Input1];
+  if (!result) throw new Error("Expected a PMV result for Input 1.");
+  return { config, result, source: calculation.chartSource };
 }
 
 function createSource(
-  adapter: PmvStandardAdapter,
+  declaration: PmvModelDeclaration,
   request: ComfortZoneRequestDto = input,
 ): PmvChartSourceDto {
+  return calculateModel(declaration, request).source;
+}
+
+function createResults(
+  result: PmvResponseDto,
+): Record<InputId, PmvResponseDto | null> {
   return {
-    inputs: { [InputId.Input1]: request },
-    comfortZonesByInput: {
-      [InputId.Input1]: calculateComfortZone(adapter, request),
-    },
+    [InputId.Input1]: result,
+    [InputId.Input2]: null,
+    [InputId.Input3]: null,
   };
 }
 
@@ -81,12 +107,11 @@ function createContext(
   outputKey: ModelOutputKeyType,
   unitSystem: UnitSystemType = UnitSystem.SI,
   mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
-): ChartBuildContext {
+): ChartBuildContext<NumericBand> {
   const output = declaration.chartableOutputs.find(({ key }) => key === outputKey);
   if (!output) throw new Error(`Missing PMV output: ${outputKey}`);
   return {
     unitSystem,
-    dynamicAxes: { xAxis: xField, yAxis: yField },
     baselineInputId: InputId.Input1,
     fieldChartConfig: mode === ChartMode.Compliance
       ? {
@@ -109,12 +134,13 @@ function createContext(
 function buildPsychrometric(
   declaration: PmvModelDeclaration,
   unitSystem: UnitSystemType = UnitSystem.SI,
-  source = createSource(declaration.adapter),
+  source = createSource(declaration),
 ): PlotlyChartResponseDto {
-  return buildComparePsychrometricChart(
-    declaration,
+  const { config, result } = calculateModel(declaration);
+  const chart = config.buildChartResult(
+    ChartId.Psychrometric,
     source,
-    { [InputId.Input1]: createResult(declaration) },
+    createResults(result),
     createContext(
       declaration,
       FieldKey.DryBulbTemperature,
@@ -123,6 +149,8 @@ function buildPsychrometric(
       unitSystem,
     ),
   );
+  if (!chart) throw new Error("Expected a PMV psychrometric chart.");
+  return chart;
 }
 
 function buildDynamic(
@@ -134,12 +162,15 @@ function buildDynamic(
   request: ComfortZoneRequestDto = input,
   mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
 ): PlotlyChartResponseDto {
-  return buildPmvDynamicChart(
-    declaration,
-    createSource(declaration.adapter, request),
-    { [InputId.Input1]: createResult(declaration, request) },
+  const { config, result, source } = calculateModel(declaration, request);
+  const chart = config.buildChartResult(
+    ChartId.PmvDynamic,
+    source,
+    createResults(result),
     createContext(declaration, xField, yField, outputKey, unitSystem, mode),
   );
+  if (!chart) throw new Error("Expected a PMV dynamic chart.");
+  return chart;
 }
 
 describe("PMV charts", () => {
@@ -165,11 +196,10 @@ describe("PMV charts", () => {
 
   it("uses locked Compliance and edited PPD configs in the fixed psychrometric view", () => {
     const declaration = pmvAshraeDeclaration;
-    const source = createSource(declaration.adapter);
-    const result = createResult(declaration);
-    const results = { [InputId.Input1]: result };
-    const compliance = buildComparePsychrometricChart(
-      declaration,
+    const { config, source, result } = calculateModel(declaration);
+    const results = createResults(result);
+    const compliance = config.buildChartResult(
+      ChartId.Psychrometric,
       source,
       results,
       createContext(
@@ -201,8 +231,8 @@ describe("PMV charts", () => {
         color: "#abcdef",
       },
     ];
-    const ppd = buildComparePsychrometricChart(
-      declaration,
+    const ppd = config.buildChartResult(
+      ChartId.Psychrometric,
       source,
       results,
       {
@@ -215,6 +245,9 @@ describe("PMV charts", () => {
         },
       },
     );
+    if (!compliance || !ppd) {
+      throw new Error("Expected both PMV psychrometric chart modes.");
+    }
     const ppdHover = ppd.traces.find(
       ({ name }) => name === "PPD (%) bands hover",
     );
@@ -253,7 +286,7 @@ describe("PMV charts", () => {
     const chart = buildPsychrometric(
       declaration,
       UnitSystem.SI,
-      createSource(pmvAshraeAdapter),
+      createSource(pmvAshraeDeclaration),
     );
     const zValues = chart.traces[0].z?.flat() ?? [];
 
@@ -325,68 +358,12 @@ describe("PMV charts", () => {
       .toContain("PMV:");
   });
 
-  it("rejects altered Compliance output or bands", () => {
-    const context = createContext(
-      pmvAshraeDeclaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
-      ModelOutputKey.Pmv,
-      UnitSystem.SI,
-      ChartMode.Compliance,
-    );
-    const source = createSource(pmvAshraeDeclaration.adapter);
-    const results = { [InputId.Input1]: createResult(pmvAshraeDeclaration) };
-
-    expect(() => buildPmvDynamicChart(
-      pmvAshraeDeclaration,
-      source,
-      results,
-      {
-        ...context,
-        fieldChartConfig: {
-          ...context.fieldChartConfig!,
-          mode: ChartMode.Compliance,
-          zOutput: ModelOutputKey.Ppd,
-        },
-      },
-    )).toThrow(/declared locked output and bands/i);
-    expect(() => buildPmvDynamicChart(
-      pmvAshraeDeclaration,
-      source,
-      results,
-      {
-        ...context,
-        fieldChartConfig: {
-          ...context.fieldChartConfig!,
-          mode: ChartMode.Compliance,
-          bands: [{
-            ...pmvAshraeDeclaration.complianceSpec.bands[0],
-            label: "Altered",
-          }],
-        },
-      },
-    )).toThrow(/declared locked output and bands/i);
-    expect(() => buildComparePsychrometricChart(
-      pmvAshraeDeclaration,
-      source,
-      results,
-      {
-        ...context,
-        fieldChartConfig: {
-          ...context.fieldChartConfig,
-          mode: ChartMode.Compliance,
-          bands: [{
-            ...pmvAshraeDeclaration.complianceSpec.bands[0],
-            label: "Altered",
-          }],
-        },
-      },
-    )).toThrow(/declared locked output and bands/i);
-  });
-
   it("keeps fixed and Explore classification consistent for the input point", () => {
-    const result = createResult(pmvAshraeDeclaration);
-    const expectedZone = getPmvZoneMeta(result.pmv).label;
+    const { config, result } = calculateModel(pmvAshraeDeclaration);
+    const expectedZone = config.zones.find(({ min, max }) => (
+      result.pmv >= min && result.pmv < max
+    ))?.label;
+    if (!expectedZone) throw new Error("Expected a declared PMV zone.");
     const fixed = buildPsychrometric(pmvAshraeDeclaration);
     const explore = buildDynamic(
       pmvAshraeDeclaration,
@@ -454,14 +431,6 @@ describe("PMV charts", () => {
     expect(isoClothing.layout.xaxis.range).toEqual([0, 2]);
   });
 
-  it("fails directly when Explore axes violate the state invariant", () => {
-    expect(() => buildDynamic(
-      pmvAshraeDeclaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.DryBulbTemperature,
-    )).toThrow(/unsupported PMV dynamic axis pair/i);
-  });
-
   it.each([pmvAshraeDeclaration, pmvIsoDeclaration])(
     "keeps RH 50% constraint crossings close to the continuous root for $label",
     (declaration) => {
@@ -473,14 +442,8 @@ describe("PMV charts", () => {
       const lowerBoundary = chart.traces.find(({ contours }) => (
         contours?.operation === "=" && contours.value === -0.5
       ));
-      const root = solveDryBulbForTargetPmv(
-        declaration.adapter,
-        -0.5,
-        50,
-        input,
-      );
-      if (!lowerBoundary?.z || root === null) {
-        throw new Error("Missing PMV boundary or root.");
+      if (!lowerBoundary?.z) {
+        throw new Error("Missing PMV boundary.");
       }
       const yValues = lowerBoundary.y;
       const rowIndex = yValues.reduce((bestIndex, value, index) => (
@@ -494,12 +457,14 @@ describe("PMV charts", () => {
         && (row[index - 1] + 0.5) * (value + 0.5) <= 0
       ));
       const xValues = lowerBoundary.x;
-
       expect(crossingIndex).toBeGreaterThan(0);
-      expect(Math.min(
-        Math.abs(xValues[crossingIndex] - root),
-        Math.abs(xValues[crossingIndex - 1] - root),
-      )).toBeLessThan(0.7);
+      const closestDelta = Math.min(
+        ...[xValues[crossingIndex - 1], xValues[crossingIndex]].map((tdb) => (
+          Math.abs(declaration.adapter.calculate({ ...input, tdb }).pmv + 0.5)
+        )),
+      );
+
+      expect(closestDelta).toBeLessThan(0.1);
     },
   );
 

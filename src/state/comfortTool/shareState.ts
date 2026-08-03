@@ -1,7 +1,4 @@
-/**
- * Strict version-1 share snapshots. This schema intentionally has no migration
- * path: an older v1 shape is rejected rather than normalized into current state.
- */
+/** Strict current-schema version-1 share snapshots. */
 import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
@@ -73,6 +70,21 @@ export function normalizeCompareInputIds(inputIds: InputIdType[]): InputIdType[]
   return inputOrder.filter((inputId) => (
     inputId === InputId.Input1 || inputIds.includes(inputId)
   ));
+}
+
+function isCanonicalCompareInputIds(value: unknown): value is InputIdType[] {
+  if (
+    !Array.isArray(value)
+    || !value.every((inputId) => inputIdValues.has(inputId as InputIdType))
+    || !value.includes(InputId.Input1)
+    || new Set(value).size !== value.length
+  ) {
+    return false;
+  }
+
+  const canonicalOrder = inputOrder.filter((inputId) => value.includes(inputId));
+  return canonicalOrder.length === value.length
+    && canonicalOrder.every((inputId, index) => value[index] === inputId);
 }
 
 function toUrl(source: URL | Location | string): URL {
@@ -239,7 +251,7 @@ function parseModelSnapshots(
     if (!config.chartIds.includes(modelSnapshot.selectedChart as ChartIdType)) {
       return null;
     }
-    const options = config.normalizeOptions(modelSnapshot.options);
+    const options = config.parseOptions(modelSnapshot.options);
     const chartSettings = parseChartSettings(modelSnapshot.chartSettings, modelId);
     if (!options || !chartSettings) {
       return null;
@@ -278,10 +290,17 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
     || value.version !== SHARE_STATE_VERSION
     || !comfortModelValues.has(value.selectedModel as ComfortModelType)
     || typeof value.compareEnabled !== "boolean"
-    || !Array.isArray(value.compareInputIds)
-    || !value.compareInputIds.every((inputId) => inputIdValues.has(inputId as InputIdType))
+    || !isCanonicalCompareInputIds(value.compareInputIds)
     || !inputIdValues.has(value.activeInputId as InputIdType)
     || !unitSystemValues.has(value.unitSystem as UnitSystemType)
+  ) {
+    return null;
+  }
+
+  const activeInputId = value.activeInputId as InputIdType;
+  if (
+    (value.compareEnabled && !value.compareInputIds.includes(activeInputId))
+    || (!value.compareEnabled && activeInputId !== InputId.Input1)
   ) {
     return null;
   }
@@ -297,8 +316,8 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
     selectedModel: value.selectedModel as ComfortModelType,
     models,
     compareEnabled: value.compareEnabled,
-    compareInputIds: value.compareInputIds as InputIdType[],
-    activeInputId: value.activeInputId as InputIdType,
+    compareInputIds: [...value.compareInputIds],
+    activeInputId,
     unitSystem: value.unitSystem as UnitSystemType,
     inputsByInput,
   };
@@ -367,11 +386,8 @@ export function applyShareSnapshotToState(
     );
   }
   state.ui.compareEnabled = snapshot.compareEnabled;
-  state.ui.compareInputIds = normalizeCompareInputIds(snapshot.compareInputIds);
-  state.ui.activeInputId = snapshot.compareEnabled
-    && state.ui.compareInputIds.includes(snapshot.activeInputId)
-    ? snapshot.activeInputId
-    : InputId.Input1;
+  state.ui.compareInputIds = [...snapshot.compareInputIds];
+  state.ui.activeInputId = snapshot.activeInputId;
   state.ui.unitSystem = snapshot.unitSystem;
 
   for (const inputId of inputOrder) {

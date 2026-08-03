@@ -18,6 +18,11 @@ import {
 } from "../models/modelCapabilities";
 
 describe("windChill service", () => {
+  it("rejects a non-finite result instead of assigning the first zone", () => {
+    expect(() => calculateWindChill({ tdb: Number.MAX_VALUE, v: 10 }))
+      .toThrow(/Wind Chill.*non-finite/i);
+  });
+
   it("calculates Wind Chill Index and equivalent temperature correctly in SI", () => {
     // -10°C, 10 m/s wind
     const result = calculateWindChill({
@@ -61,7 +66,6 @@ describe("windChill service", () => {
       };
       const context = {
         unitSystem,
-        dynamicAxes: windChillModelConfig.defaultDynamicAxes,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
           mode: ChartMode.Explore,

@@ -50,9 +50,9 @@ import {
   getVaporPressureDisplayMeta,
 } from "../../units";
 import {
-  applyOperativeTemperatureControlMode,
-  normalizeControlOptions,
-  synchronizeControlInputState,
+  applyOperativeTemperatureMode,
+  normalizePmvOptions,
+  synchronizePmvInputState,
 } from "../syncState";
 import type { BehaviorPatch, ControlBehaviorContext, InputControlBehavior } from "./types";
 import { createSingleInputPatch } from "./types";
@@ -577,7 +577,7 @@ export function createTemperatureControlBehavior(
     // Get the presentation for the control.
     getPresentation: (context) => {
       // Get the temperature mode from the control options (e.g., Operative or Dry Bulb).
-      const temperatureMode = normalizeControlOptions(context.options)[OptionKey.TemperatureMode];
+      const temperatureMode = normalizePmvOptions(context.options)[OptionKey.TemperatureMode];
       
       // Get the label for the control.
       let label = temperatureMeta.label;
@@ -622,7 +622,7 @@ export function createTemperatureControlBehavior(
     // Get the advanced option menu for the control.
     getMenu: (context) => {
       // Get the temperature mode from the control options (e.g., Operative or Dry Bulb).
-      const temperatureMode = normalizeControlOptions(context.options)[OptionKey.TemperatureMode];
+      const temperatureMode = normalizePmvOptions(context.options)[OptionKey.TemperatureMode];
       // If the selected chart is not one of the main comfort charts, and the temperature mode is not Operative, return null.
       const isComfortChart = !!chartMetaById[context.selectedChartId]
         .supportsTemperatureInputMenu;
@@ -653,7 +653,7 @@ export function createTemperatureControlBehavior(
         return null;
       }
       // Normalize the control options.
-      const options = normalizeControlOptions(context.options);
+      const options = normalizePmvOptions(context.options);
       
       // Create a new input state object with the updated field value.
       const nextInputState = Object.assign({}, context.inputsByInput[inputId]);
@@ -666,7 +666,7 @@ export function createTemperatureControlBehavior(
       }
 
       // Synchronize the control input state.
-      const synchronizedState = synchronizeControlInputState(
+      const synchronizedState = synchronizePmvInputState(
         // The next input state.
         nextInputState,
         // The current control options.
@@ -685,7 +685,7 @@ export function createTemperatureControlBehavior(
       }
 
       // Normalize the control options.
-      const currentOptions = normalizeControlOptions(context.options);
+      const currentOptions = normalizePmvOptions(context.options);
       if (currentOptions[optionKey] === nextValue) {
         return null;
       }
@@ -705,7 +705,7 @@ export function createTemperatureControlBehavior(
           // If the next value is operative temperature, apply the operative temperature control mode.
           if (nextValue === TemperatureMode.Operative) {
             // Apply the operative temperature control mode.
-            return applyOperativeTemperatureControlMode(
+            return applyOperativeTemperatureMode(
               // The input state for the control.
               context.inputsByInput[inputId],
               // The next control options.
@@ -716,7 +716,7 @@ export function createTemperatureControlBehavior(
           }
 
           // Otherwise, synchronize the control input state.
-          return synchronizeControlInputState(
+          return synchronizePmvInputState(
             // The input state for the control.
             context.inputsByInput[inputId],
             // The next control options.
@@ -752,7 +752,7 @@ export function createAirSpeedControlBehavior(
     // The function to build the presentation for the control.
     getPresentation: (context) => {
       // The air speed mode for the control.
-      const airSpeedMode = normalizeControlOptions(context.options)[OptionKey.AirSpeedInputMode];
+      const airSpeedMode = normalizePmvOptions(context.options)[OptionKey.AirSpeedInputMode];
       
       // The label to display for the control, which varies depending on the air speed mode. 
       // If the air speed mode is "Measured", the label is "Measured air speed". Otherwise, the label is "Relative air speed".
@@ -796,7 +796,7 @@ export function createAirSpeedControlBehavior(
     // Get the menu for the control.
     getMenu: (context) => {
       // Normalize the control options.
-      const options = normalizeControlOptions(context.options);
+      const options = normalizePmvOptions(context.options);
       const sections = [
         buildAdvancedOptionSection(
           // The label for the section.
@@ -828,7 +828,7 @@ export function createAirSpeedControlBehavior(
     // Get the display value for the control.
     getDisplayValue: (context, inputId) => {
       // Normalize the control options.
-      const airSpeedMode = normalizeControlOptions(context.options)[OptionKey.AirSpeedInputMode];
+      const airSpeedMode = normalizePmvOptions(context.options)[OptionKey.AirSpeedInputMode];
       
       // The source value for the display value.
       let sourceValue;
@@ -854,7 +854,7 @@ export function createAirSpeedControlBehavior(
         return null;
       }
       // Normalize the control options.
-      const airSpeedMode = normalizeControlOptions(context.options)[OptionKey.AirSpeedInputMode];
+      const airSpeedMode = normalizePmvOptions(context.options)[OptionKey.AirSpeedInputMode];
       
       // The next input state for the control.
       const nextInputState = Object.assign({}, context.inputsByInput[inputId]);
@@ -871,7 +871,7 @@ export function createAirSpeedControlBehavior(
       }
 
       // Synchronize the control input state.
-      const synchronizedState = synchronizeControlInputState(nextInputState, context.options, derivedInputOverrides);
+      const synchronizedState = synchronizePmvInputState(nextInputState, context.options, derivedInputOverrides);
       // Return a patch to update the input state for the control.
       return createSingleInputPatch(inputId, synchronizedState.inputState);
     },
@@ -889,7 +889,7 @@ export function createAirSpeedControlBehavior(
         }
 
         // Get the current options.
-        const currentOptions = normalizeControlOptions(context.options);
+        const currentOptions = normalizePmvOptions(context.options);
         // If the current option value is the same as the next value, return null.
         if (currentOptions[optionKey] === nextValue) {
           return null;
@@ -909,7 +909,7 @@ export function createAirSpeedControlBehavior(
       }
 
       // Get the current options.
-      const currentOptions = normalizeControlOptions(context.options);
+      const currentOptions = normalizePmvOptions(context.options);
       // If the current option value is the same as the next value, return null.
       if (currentOptions[optionKey] === nextValue) {
         return null;
@@ -927,7 +927,7 @@ export function createAirSpeedControlBehavior(
         // The option patch.
         { [optionKey]: nextValue },
         // The function to synchronize the control input state.
-        (inputId) => synchronizeControlInputState(
+        (inputId) => synchronizePmvInputState(
           // The input state for the control.
           context.inputsByInput[inputId],
           // The next options.
@@ -958,7 +958,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
     // Get the presentation for the control.
     getPresentation: (context) => {
       // Normalize the control options.
-      const humidityMode = normalizeControlOptions(context.options)[OptionKey.HumidityInputMode];
+      const humidityMode = normalizePmvOptions(context.options)[OptionKey.HumidityInputMode];
 
       // If the humidity mode is dew point.
       if (humidityMode === HumidityInputMode.DewPoint) {
@@ -1062,7 +1062,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
     },
     getMenu: (context) => {
       // Get the humidity mode from the control options.
-      const humidityMode = normalizeControlOptions(context.options)[OptionKey.HumidityInputMode];
+      const humidityMode = normalizePmvOptions(context.options)[OptionKey.HumidityInputMode];
       // Return the advanced option menu for the humidity control.
       return buildAdvancedOptionMenu("Humidity input", [
         // Build the advanced option section for the humidity control.
@@ -1081,7 +1081,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
     // Get the display value for the control.
     getDisplayValue: (context, inputId) => {
       // Get the humidity mode from the control options.
-      const humidityMode = normalizeControlOptions(context.options)[OptionKey.HumidityInputMode];
+      const humidityMode = normalizePmvOptions(context.options)[OptionKey.HumidityInputMode];
       // Get the derived state for the control.
       const derivedState = context.derivedByInput[inputId];
 
@@ -1171,7 +1171,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
     // Parse the input value.
     parseInput: (context, nextValue) => {
       // Get the humidity mode from the control options.
-      const humidityMode = normalizeControlOptions(context.options)[OptionKey.HumidityInputMode];
+      const humidityMode = normalizePmvOptions(context.options)[OptionKey.HumidityInputMode];
 
       // If the humidity mode is dew point.
       if (humidityMode === HumidityInputMode.DewPoint) {
@@ -1206,7 +1206,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
         return null;
       }
       // Get the humidity mode from the control options.
-      const humidityMode = normalizeControlOptions(context.options)[OptionKey.HumidityInputMode];
+      const humidityMode = normalizePmvOptions(context.options)[OptionKey.HumidityInputMode];
 
       // Get the next input state.
       const nextInputState = Object.assign({}, context.inputsByInput[inputId]);
@@ -1239,7 +1239,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
       }
 
       // Synchronize the input state with the control options and derived input overrides.
-      const synchronizedState = synchronizeControlInputState(nextInputState, context.options, derivedInputOverrides);
+      const synchronizedState = synchronizePmvInputState(nextInputState, context.options, derivedInputOverrides);
       // Create a patch for the input state.
       return createSingleInputPatch(inputId, synchronizedState.inputState);
     },
@@ -1251,7 +1251,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
       }
 
       // Get the current options.
-      const currentOptions = normalizeControlOptions(context.options);
+      const currentOptions = normalizePmvOptions(context.options);
       // If the current option value is equal to the next option value, return null.
       if (currentOptions[optionKey] === nextValue) {
         return null;
@@ -1266,7 +1266,7 @@ export function createHumidityControlBehavior(controlId: InputControlIdType): In
       return buildCanonicalInputSyncPatch(
         inputOrder,
         { [optionKey]: nextValue },
-        (inputId) => synchronizeControlInputState(
+        (inputId) => synchronizePmvInputState(
           context.inputsByInput[inputId],
           nextOptions,
           context.derivedByInput[inputId],

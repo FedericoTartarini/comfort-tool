@@ -17,6 +17,7 @@ import {
   type ChartMode as ChartModeType,
   type ComplianceSpec,
   type ModelOutput,
+  type NumericBand,
 } from "../../../models/modelCapabilities";
 import {
   cloneNumericBands,
@@ -31,11 +32,27 @@ export type ResultRowDefinition<T> = {
 
 /**
  * Utility to verify if a value is a non-null object (and not an array).
- * Primarily used during option normalization to guard against invalid state injections.
+ * Primarily used by strict option parsers to reject invalid state injections.
  * @param value The value to check.
  */
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Returns true only when a record has the complete declared key set and no extras. */
+export function hasExactKeys(
+  value: Record<string, unknown>,
+  expectedKeys: readonly string[],
+): boolean {
+  const actualKeys = Object.keys(value);
+  const expected = new Set(expectedKeys);
+  return actualKeys.length === expectedKeys.length
+    && actualKeys.every((key) => expected.has(key));
+}
+
+/** Strict parser for models whose complete options schema is an empty object. */
+export function parseEmptyOptions(value: unknown): ModelOptionsState | null {
+  return isRecord(value) && hasExactKeys(value, []) ? {} : null;
 }
 
 /**
@@ -106,7 +123,7 @@ export function buildResultSectionsFromRows<T>(
 export class ComfortModelBuilder<
   ResultType,
   ChartSourceType,
-  ComplianceBand extends Band = Band,
+  ComplianceBand extends Band = NumericBand,
 > {
   private readonly id: ComfortModelType;
 
@@ -114,9 +131,9 @@ export class ComfortModelBuilder<
 
   private description?: string;
 
-  private modes?: ChartModeType[];
+  private modes?: readonly ChartModeType[];
 
-  private chartableOutputs?: ModelOutput[];
+  private chartableOutputs?: readonly ModelOutput[];
 
   private complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
 
@@ -126,17 +143,17 @@ export class ComfortModelBuilder<
     Record<OptionKeyType, ModelOptionChangeHandler>
   > = {};
 
-  private chartIds?: ChartIdType[];
+  private chartIds?: readonly ChartIdType[];
 
   private defaultChartId?: ChartIdType;
 
   private defaultOptions?: Partial<Record<OptionKeyType, string>>;
 
-  private normalizeOptions?: ComfortModelDefinition<
+  private parseOptions?: ComfortModelDefinition<
     ResultType,
     ChartSourceType,
     ComplianceBand
-  >["normalizeOptions"];
+  >["parseOptions"];
 
   private calculate?: ComfortModelDefinition<
     ResultType,
@@ -156,17 +173,17 @@ export class ComfortModelBuilder<
     ComplianceBand
   >["buildChartResult"];
 
-  private dynamicAxisFields?: FieldKeyType[];
+  private dynamicAxisFields?: readonly FieldKeyType[];
 
   private defaultDynamicAxes?: DynamicAxisDefaults;
 
-  private zones: ThermalZone[] = [];
+  private zones: readonly ThermalZone[] = [];
 
-  private legendChartIds: ChartIdType[] = [];
+  private legendChartIds: readonly ChartIdType[] = [];
 
   private legendTitle = "";
 
-  private lockYAxisChartIds: ChartIdType[] = [];
+  private lockYAxisChartIds: readonly ChartIdType[] = [];
 
   /**
    * Initializes the builder for a specific Comfort Model identity.
@@ -195,7 +212,7 @@ export class ComfortModelBuilder<
   }
 
   setModes(modes: readonly ChartModeType[]): this {
-    this.modes = [...modes];
+    this.modes = modes;
     return this;
   }
 
@@ -204,18 +221,12 @@ export class ComfortModelBuilder<
    * An explicit empty array is valid for compliance-only models.
    */
   setChartableOutputs(outputs: readonly ModelOutput[]): this {
-    this.chartableOutputs = outputs.map((output) => ({
-      ...output,
-      defaultBands: cloneNumericBands(output.defaultBands),
-    }));
+    this.chartableOutputs = outputs;
     return this;
   }
 
   setComplianceSpec(spec: ComplianceSpec<ComplianceBand, ResultType>): this {
-    this.complianceSpec = {
-      ...spec,
-      bands: spec.bands.map((band) => ({ ...band })),
-    };
+    this.complianceSpec = spec;
     return this;
   }
 
@@ -245,7 +256,7 @@ export class ComfortModelBuilder<
    */
   setDefaultChart(chartId: ChartIdType, allChartIds: readonly ChartIdType[]): this {
     this.defaultChartId = chartId;
-    this.chartIds = [...allChartIds];
+    this.chartIds = allChartIds;
     return this;
   }
 
@@ -254,17 +265,16 @@ export class ComfortModelBuilder<
    * @param options A partial record of keys and their default string values.
    */
   setDefaultOptions(options: Partial<Record<OptionKeyType, string>>): this {
-    this.defaultOptions = { ...options };
+    this.defaultOptions = options;
     return this;
   }
 
   /**
-   * Assigns a validation/stripping function to ensure options coming from the outside (e.g. URL/Local Storage)
-   * match the model's expected schema.
-   * @param normalizer The normalization function.
+   * Assigns the strict parser for a complete external options snapshot.
+   * @param parser The parser, which returns null for any schema mismatch.
    */
-  setOptionNormalizer(normalizer: (value: unknown) => ModelOptionsState | null): this {
-    this.normalizeOptions = normalizer;
+  setOptionParser(parser: (value: unknown) => ModelOptionsState | null): this {
+    this.parseOptions = parser;
     return this;
   }
 
@@ -312,13 +322,13 @@ export class ComfortModelBuilder<
    * @param fields Array of FieldKey values.
    */
   setDynamicAxisFields(fields: readonly FieldKeyType[]): this {
-    this.dynamicAxisFields = [...fields];
+    this.dynamicAxisFields = fields;
     return this;
   }
 
   /** Defines the semantic default pair used when entering this model. */
   setDefaultDynamicAxes(defaults: DynamicAxisDefaults): this {
-    this.defaultDynamicAxes = { ...defaults };
+    this.defaultDynamicAxes = defaults;
     return this;
   }
 
@@ -327,7 +337,7 @@ export class ComfortModelBuilder<
    * @param zones Array of ThermalZone instances.
    */
   setZones(zones: readonly ThermalZone[]): this {
-    this.zones = [...zones];
+    this.zones = zones;
     return this;
   }
 
@@ -336,7 +346,7 @@ export class ComfortModelBuilder<
    * @param chartIds Array of ChartId values.
    */
   setLegendChartIds(chartIds: readonly ChartIdType[]): this {
-    this.legendChartIds = [...chartIds];
+    this.legendChartIds = chartIds;
     return this;
   }
 
@@ -354,7 +364,7 @@ export class ComfortModelBuilder<
    * @param chartIds Array of ChartId values.
    */
   setLockYAxisChartIds(chartIds: readonly ChartIdType[]): this {
-    this.lockYAxisChartIds = [...chartIds];
+    this.lockYAxisChartIds = chartIds;
     return this;
   }
 
@@ -443,8 +453,8 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations must explicitly set default options.");
     }
 
-    if (!this.normalizeOptions) {
-      throw new Error("Comfort model declarations must set an option normalizer.");
+    if (!this.parseOptions) {
+      throw new Error("Comfort model declarations must set an option parser.");
     }
 
     if (!this.calculate) {
@@ -501,7 +511,7 @@ export class ComfortModelBuilder<
       chartIds: [...chartIds],
       defaultChartId: this.defaultChartId,
       defaultOptions: { ...this.defaultOptions },
-      normalizeOptions: this.normalizeOptions,
+      parseOptions: this.parseOptions,
       calculate: this.calculate,
       buildResultSections: this.buildResultSections,
       buildChartResult: this.buildChartResult,

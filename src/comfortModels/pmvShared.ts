@@ -1,4 +1,4 @@
-import { p_sat, psy_ta_rh } from "jsthermalcomfort";
+import { psy_ta_rh } from "jsthermalcomfort";
 import { CalculationSource, type ComfortStandard } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
 import type {
@@ -29,16 +29,14 @@ import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   bandsFromThermalZones,
-  ChartMode,
   findNumericBandIndexForValue,
   ModelOutputKey,
   type ChartBuildContext,
   type ChartMode as ChartModeType,
   type ComplianceFeedback,
   type ComplianceSpec,
-  type ExploreFieldChartConfig,
+  type FieldChartConfig,
   type ModelOutput,
-  type NumericComplianceFieldChartConfig,
   type NumericBand,
 } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
@@ -48,7 +46,9 @@ import {
   buildFieldChart,
   createBandedGridStrategy,
   GridBandRenderStrategy,
+  type FieldChartAxisSpec,
   type FieldChartInputGroup,
+  type FieldChartRenderContext,
 } from "../services/comfort/charts/chartEngine";
 import {
   applyDynamicAxisCoordinates,
@@ -66,7 +66,12 @@ import {
   createTemperatureControlBehavior,
 } from "../services/comfort/controls/controlBehaviors";
 import { createSingleInputPatch } from "../services/comfort/controls/types";
-import { getBaselineInputEntry, roundValue } from "../services/comfort/helpers";
+import { calculateRelativeHumidityFromHumidityRatio } from "../services/comfort/derivations";
+import {
+  getBaselineInputEntry,
+  requireThermalZone,
+  roundValue,
+} from "../services/comfort/helpers";
 import {
   clothingTypicalEnsembles,
   metabolicActivityOptions,
@@ -86,6 +91,7 @@ import {
   buildResultSectionsFromRows,
   ComfortModelBuilder,
   createEmptyResults,
+  hasExactKeys,
   isRecord,
   type ResultRowDefinition,
 } from "../state/comfortTool/modelConfigs/builder";
@@ -99,8 +105,6 @@ const PSYCHROMETRIC_VIEW = {
 const ROOT_SCAN_POINTS = 101;
 const ROOT_MAX_BISECTION_EVALUATIONS = 30;
 const ROOT_TOLERANCE = 5e-4;
-const STANDARD_ATM_PRESSURE_PA = 101325;
-const WATER_VAPOR_MOLECULAR_WEIGHT_RATIO = 0.62198;
 const CONTOUR_GRID_RESOLUTION = 50;
 const PMV_DYNAMIC_AXIS_FIELDS = [
   FieldKey.DryBulbTemperature,
@@ -115,7 +119,7 @@ const CHART_COLOR_RH_LINE = "#94a3b8";
 const COLOR_COMPLIANT_GREEN = "#047857";
 const COLOR_NON_COMPLIANT_RED = "#dc2626";
 
-export const pmvNeutralZone = new ThermalZone({
+const pmvNeutralZone = new ThermalZone({
   label: "Neutral",
   min: -0.5,
   max: 0.5,
@@ -123,7 +127,7 @@ export const pmvNeutralZone = new ThermalZone({
   textColor: "#475569",
 });
 
-export const pmvZonesList = [
+const pmvZonesList = [
   new ThermalZone({ label: "Cold", max: -2.5, color: "#0571b0", textColor: "#1d4ed8" }),
   new ThermalZone({ label: "Cool", min: -2.5, max: -1.5, color: "#4c78a8", textColor: "#2563eb" }),
   new ThermalZone({ label: "Slightly Cool", min: -1.5, max: -0.5, color: "#92c5de", textColor: "#0369a1" }),
@@ -190,10 +194,12 @@ export interface PmvModelDeclaration {
   readonly complianceSpec: ComplianceSpec<NumericBand, PmvResponseDto>;
 }
 
+type PmvFieldChartConfig = FieldChartConfig<NumericBand>;
+
 interface PmvChartEvaluation {
   pmv: number;
   ppd: number;
-  zoneLabel: string;
+  zone: ThermalZone;
 }
 
 type TemperatureBracket =
@@ -226,7 +232,6 @@ export const pmvChartableOutputs: readonly ModelOutput[] = [
     key: ModelOutputKey.Ppd,
     label: "PPD (%)",
     legendTitle: "PPD Bands",
-    unit: "%",
     defaultBands: ppdExploreBands,
   },
 ];
@@ -254,9 +259,29 @@ export function createPmvComplianceBands(): readonly NumericBand[] {
   ];
 }
 
-export function getPmvZoneMeta(pmv: number): ThermalZone {
-  if (!Number.isFinite(pmv)) return pmvNeutralZone;
-  return pmvZonesList.find((zone) => zone.contains(pmv)) ?? pmvNeutralZone;
+function formatPmvBoundary(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new Error(`PMV compliance boundaries must be finite; received ${value}.`);
+  }
+  if (value < 0) return `−${Math.abs(value)}`;
+  return value > 0 ? `+${value}` : "0";
+}
+
+export function createPmvComplianceCaption(
+  standardLabel: string,
+  bands: readonly NumericBand[],
+): string {
+  const neutralBand = bands.find(({ min, max }) => (
+    Number.isFinite(min) && Number.isFinite(max)
+  ));
+  if (!neutralBand) {
+    throw new Error(`${standardLabel} requires a finite Neutral compliance band.`);
+  }
+  return `Green shading = ${standardLabel} compliant PMV (${formatPmvBoundary(neutralBand.min)} ≤ PMV < ${formatPmvBoundary(neutralBand.max)}); red = outside the limit.`;
+}
+
+function getPmvZoneMeta(pmv: number): ThermalZone {
+  return requireThermalZone(pmvZonesList, pmv, "PMV");
 }
 
 function evaluatePmvCondition(
@@ -270,7 +295,7 @@ function evaluatePmvCondition(
   return {
     pmv: result.pmv,
     ppd: result.ppd,
-    zoneLabel: getPmvZoneMeta(result.pmv).label,
+    zone: getPmvZoneMeta(result.pmv),
   };
 }
 
@@ -284,7 +309,7 @@ function isKnownPmvDomainFailure(error: unknown): boolean {
 }
 
 /** Returns null only for known library-domain failures at chart sample points. */
-export function tryEvaluatePmvForChart(
+function tryEvaluatePmvForChart(
   adapter: PmvStandardAdapter,
   payload: PmvRequestDto,
 ): PmvChartEvaluation | null {
@@ -366,7 +391,7 @@ function findTemperatureBracket(
   return null;
 }
 
-export function solveDryBulbForTargetPmv(
+function solveDryBulbForTargetPmv(
   adapter: PmvStandardAdapter,
   targetPmv: number,
   rh: number,
@@ -411,7 +436,7 @@ export function solveDryBulbForTargetPmv(
   return closestDelta <= ROOT_TOLERANCE ? closestTemperature : null;
 }
 
-export function calculateComfortZone(
+function calculateComfortZone(
   adapter: PmvStandardAdapter,
   payload: ComfortZoneRequestDto,
 ): ComfortZoneResponseDto {
@@ -464,41 +489,36 @@ const temperatureModeValues = new Set<string>(Object.values(TemperatureMode));
 const airSpeedControlModeValues = new Set<string>(Object.values(AirSpeedControlMode));
 const airSpeedInputModeValues = new Set<string>(Object.values(AirSpeedInputMode));
 const humidityInputModeValues = new Set<string>(Object.values(HumidityInputMode));
+const pmvOptionKeys = Object.keys(defaultPmvOptions);
 
-function normalizePmvOptionsSnapshot(value: unknown): PmvModelOptions | null {
-  if (!isRecord(value)) return { ...defaultPmvOptions };
+function parsePmvOptions(value: unknown): PmvModelOptions | null {
+  if (!isRecord(value) || !hasExactKeys(value, pmvOptionKeys)) return null;
 
   const temperatureMode = value[OptionKey.TemperatureMode];
   const airSpeedControlMode = value[OptionKey.AirSpeedControlMode];
   const airSpeedInputMode = value[OptionKey.AirSpeedInputMode];
   const humidityInputMode = value[OptionKey.HumidityInputMode];
-  if (temperatureMode !== undefined && !temperatureModeValues.has(String(temperatureMode))) {
+  if (typeof temperatureMode !== "string" || !temperatureModeValues.has(temperatureMode)) {
     return null;
   }
-  if (airSpeedControlMode !== undefined && !airSpeedControlModeValues.has(String(airSpeedControlMode))) {
+  if (
+    typeof airSpeedControlMode !== "string"
+    || !airSpeedControlModeValues.has(airSpeedControlMode)
+  ) {
     return null;
   }
-  if (airSpeedInputMode !== undefined && !airSpeedInputModeValues.has(String(airSpeedInputMode))) {
+  if (typeof airSpeedInputMode !== "string" || !airSpeedInputModeValues.has(airSpeedInputMode)) {
     return null;
   }
-  if (humidityInputMode !== undefined && !humidityInputModeValues.has(String(humidityInputMode))) {
+  if (typeof humidityInputMode !== "string" || !humidityInputModeValues.has(humidityInputMode)) {
     return null;
   }
 
   return {
-    ...defaultPmvOptions,
-    ...(temperatureMode === undefined
-      ? {}
-      : { [OptionKey.TemperatureMode]: temperatureMode as TemperatureMode }),
-    ...(airSpeedControlMode === undefined
-      ? {}
-      : { [OptionKey.AirSpeedControlMode]: airSpeedControlMode as AirSpeedControlMode }),
-    ...(airSpeedInputMode === undefined
-      ? {}
-      : { [OptionKey.AirSpeedInputMode]: airSpeedInputMode as AirSpeedInputMode }),
-    ...(humidityInputMode === undefined
-      ? {}
-      : { [OptionKey.HumidityInputMode]: humidityInputMode as HumidityInputMode }),
+    [OptionKey.TemperatureMode]: temperatureMode as TemperatureMode,
+    [OptionKey.AirSpeedControlMode]: airSpeedControlMode as AirSpeedControlMode,
+    [OptionKey.AirSpeedInputMode]: airSpeedInputMode as AirSpeedInputMode,
+    [OptionKey.HumidityInputMode]: humidityInputMode as HumidityInputMode,
   };
 }
 
@@ -508,9 +528,12 @@ function toPmvRequest(
   adapter: PmvStandardAdapter,
 ): PmvRequestDto {
   const inputs = context.inputsByInput[inputId];
-  const options = normalizePmvOptionsSnapshot(
+  const options = parsePmvOptions(
     context.modelOptionsByModel[adapter.modelId],
-  ) ?? defaultPmvOptions;
+  );
+  if (!options) {
+    throw new Error(`Invalid options state for ${adapter.modelId}.`);
+  }
   const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
 
   return {
@@ -527,19 +550,6 @@ function toPmvRequest(
       adapter.supportsOccupantAirSpeedControl
       && options[OptionKey.AirSpeedControlMode]
         === AirSpeedControlMode.WithLocalControl,
-  };
-}
-
-function toComfortZoneRequest(
-  context: ModelCalculationContext,
-  inputId: InputIdType,
-  adapter: PmvStandardAdapter,
-): ComfortZoneRequestDto {
-  return {
-    ...toPmvRequest(context, inputId, adapter),
-    rhMin: 0,
-    rhMax: 100,
-    rhPoints: 31,
   };
 }
 
@@ -679,7 +689,7 @@ function smoothComfortZoneXValues(xValues: number[]): number[] {
         ) / 1000);
 }
 
-export function buildComfortZonePolygon(
+function buildComfortZonePolygon(
   coolEdge: ComfortPointDto[],
   warmEdge: ComfortPointDto[],
   getX: (point: ComfortPointDto) => number,
@@ -770,22 +780,6 @@ function getPmvAxisValue(
   }
 }
 
-function resolvePmvEvaluation(
-  adapter: PmvStandardAdapter,
-  inputId: InputIdType,
-  payload: PmvRequestDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
-): PmvChartEvaluation | null {
-  const result = resultsByInput[inputId];
-  return result
-    ? {
-        pmv: result.pmv,
-        ppd: result.ppd,
-        zoneLabel: getPmvZoneMeta(result.pmv).label,
-      }
-    : tryEvaluatePmvForChart(adapter, payload);
-}
-
 interface PmvInputGroupOptions {
   adapter: PmvStandardAdapter;
   inputsMap: CompareInputMap<ComfortZoneRequestDto>;
@@ -813,7 +807,7 @@ function createPmvInputGroup({
   getYSi,
   coordinateDecimals,
   classificationLabel = "Zone",
-  getClassification = (evaluation) => evaluation.zoneLabel,
+  getClassification = (evaluation) => evaluation.zone.label,
   buildOverlayTraces,
 }: PmvInputGroupOptions): FieldChartInputGroup<
   ComfortZoneRequestDto,
@@ -828,12 +822,14 @@ function createPmvInputGroup({
     formatYDisplay: roundValue,
     buildOverlayTraces,
     getHovertemplate: ({ inputId, inputLabel, payload }) => {
-      const evaluation = resolvePmvEvaluation(
-        adapter,
-        inputId,
-        payload,
-        resultsByInput,
-      );
+      const result = resultsByInput[inputId];
+      const evaluation = result
+        ? {
+            pmv: result.pmv,
+            ppd: result.ppd,
+            zone: getPmvZoneMeta(result.pmv),
+          }
+        : tryEvaluatePmvForChart(adapter, payload);
       return buildPmvHoverTemplate({
         inputLabel,
         xAxis: axisHoverSpec(xAxis, 1),
@@ -855,13 +851,10 @@ function evaluatePsychrometricPoint(
   tdb: number,
   humidityRatio: number,
 ): PmvChartEvaluation | null {
-  const vaporPressure = (
-    humidityRatio * STANDARD_ATM_PRESSURE_PA
-  ) / (WATER_VAPOR_MOLECULAR_WEIGHT_RATIO + humidityRatio);
-  const saturationPressure = p_sat(tdb);
-  if (vaporPressure > saturationPressure) return null;
+  const unboundedRh = calculateRelativeHumidityFromHumidityRatio(tdb, humidityRatio);
+  if (unboundedRh > 100) return null;
 
-  const rh = Math.min(100, Math.max(0, (vaporPressure / saturationPressure) * 100));
+  const rh = Math.max(0, unboundedRh);
   return tryEvaluatePmvForChart(adapter, { ...baseline, tdb, rh });
 }
 
@@ -945,254 +938,56 @@ function buildRelativeHumidityCurves(
   });
 }
 
-export function buildComparePsychrometricChart(
+type PmvInputOverlayBuilder = NonNullable<FieldChartInputGroup<
+  ComfortZoneRequestDto,
+  PmvResponseDto
+>["buildOverlayTraces"]>;
+
+interface PmvFieldChartDescriptor {
+  config: PmvFieldChartConfig;
+  title: string;
+  xAxis: FieldChartAxisSpec;
+  yAxis: FieldChartAxisSpec;
+  coordinateDecimals: number;
+  opacity?: number;
+  evaluatePoint: (xSi: number, ySi: number) => PmvChartEvaluation | null;
+  getInputXSi: (payload: ComfortZoneRequestDto) => number;
+  getInputYSi: (payload: ComfortZoneRequestDto) => number;
+  chartOverlays?: (context: FieldChartRenderContext) => PlotTraceDto[];
+  getInputOverlayBuilder?: (
+    xAxis: ChartAxisScale,
+    yAxis: ChartAxisScale,
+  ) => PmvInputOverlayBuilder;
+  margin: Record<string, number>;
+}
+
+function buildPmvFieldChart(
   declaration: PmvModelDeclaration,
   source: PmvChartSourceDto,
   resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
-  context: ChartBuildContext,
+  context: ChartBuildContext<NumericBand>,
+  descriptor: PmvFieldChartDescriptor,
 ): PlotlyChartResponseDto {
   const { adapter } = declaration;
-  const { unitSystem } = context;
-  const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
-  const humidityRatioMeta = getHumidityRatioDisplayMeta(unitSystem);
-  const config = assertPmvFieldChartConfig(declaration, context);
-  const output = getPmvChartOutput(declaration, config);
-  const fixedConfig: PmvFieldChartConfig = {
-    ...config,
-    xField: FieldKey.DryBulbTemperature,
-    yField: FieldKey.HumidityRatio,
-  };
-  const isPmvOutput = fixedConfig.zOutput === ModelOutputKey.Pmv;
-  const classificationLabel = isPmvOutput ? "Zone" : "Band";
-  const strategy = createBandedGridStrategy({
-    config: fixedConfig,
-    output,
-    renderStrategy: GridBandRenderStrategy.ConstraintContours,
-    bandLabel: classificationLabel,
-    hoverTemplate: ({ xAxis, yAxis }) => buildPmvHoverTemplate({
-      inputLabel: null,
-      xAxis: axisHoverSpec(xAxis, 1),
-      yAxis: axisHoverSpec(yAxis),
-      classification: { label: classificationLabel, value: "%{text}" },
-      pmv: isPmvOutput
-        ? "%{customdata[0]:.2f}"
-        : "%{customdata[1]:.2f}",
-      ppd: isPmvOutput
-        ? "%{customdata[1]:.1f}%"
-        : "%{customdata[0]:.1f}%",
-    }),
-    opacity: 0.8,
-    evaluateOutput: (tdb, humidityRatio) => {
-      const evaluation = evaluatePsychrometricPoint(
-        adapter,
-        baseline.payload,
-        tdb,
-        humidityRatio,
-      );
-      if (!evaluation) return null;
-      return {
-        valueSi: getPmvOutputValue(fixedConfig.zOutput, evaluation),
-        additionalHoverMetadata: [
-          isPmvOutput ? evaluation.ppd : evaluation.pmv,
-        ],
-      };
-    },
-  });
-
-  return buildFieldChart({
-    unitSystem,
-    xAxis: {
-      field: FieldKey.DryBulbTemperature,
-      rangeSi: PSYCHROMETRIC_VIEW.tdbRangeSi,
-      points: CONTOUR_GRID_RESOLUTION,
-    },
-    yAxis: {
-      field: FieldKey.HumidityRatio,
-      rangeSi: PSYCHROMETRIC_VIEW.humidityRatioRangeSi,
-      points: CONTOUR_GRID_RESOLUTION,
-      units: humidityRatioMeta.displayUnits,
-      decimals: humidityRatioMeta.decimals,
-      toDisplay: (value, activeUnitSystem) => convertHumidityRatioFromSi(
-        value,
-        activeUnitSystem,
-      ),
-      toSi: (value, activeUnitSystem) => convertHumidityRatioToSi(
-        value,
-        activeUnitSystem,
-      ),
-    },
-    strategy,
-    chartOverlays: ({ xAxis, yAxis }) => buildRelativeHumidityCurves(
-      adapter,
-      baseline.payload,
-      fixedConfig,
-      unitSystem,
-      xAxis,
-      yAxis,
-    ),
-    inputGroups: ({ xAxis, yAxis }) => [createPmvInputGroup({
-      adapter,
-      inputsMap: source.inputs,
-      resultsByInput,
-      xAxis,
-      yAxis,
-      getXSi: (payload) => payload.tdb,
-      getYSi: (payload) => psy_ta_rh(payload.tdb, payload.rh).hr,
-      coordinateDecimals: humidityRatioMeta.decimals,
-      classificationLabel,
-      getClassification: (evaluation) => {
-        const valueSi = getPmvOutputValue(fixedConfig.zOutput, evaluation);
-        const bandIndex = findNumericBandIndexForValue(
-          fixedConfig.bands,
-          valueSi,
-        );
-        return bandIndex === undefined
-          ? "Unclassified"
-          : fixedConfig.bands[bandIndex].label;
-      },
-      buildOverlayTraces: ({ inputId }) => {
-        const comfortZone = source.comfortZonesByInput[inputId];
-        if (!comfortZone) {
-          throw new Error(`Missing PMV comfort zone for ${inputId}.`);
-        }
-        const { polygonX, polygonY } = buildComfortZonePolygon(
-          comfortZone.coolEdge,
-          comfortZone.warmEdge,
-          (point) => roundValue(xAxis.toDisplay(point.tdb)),
-          (point) => roundValue(
-            yAxis.toDisplay(psy_ta_rh(point.tdb, point.rh).hr),
-          ),
-        );
-        return polygonX.length === 0
-          ? []
-          : [buildComfortPolygonTrace({
-              inputId,
-              nameSuffix: "comfort zone",
-              polygonX,
-              polygonY,
-              hovertemplate: "",
-              hoverinfo: "skip",
-              isComfortZone: true,
-            })];
-      },
-    })],
-    layout: {
-      title: `${declaration.label} Psychrometric Chart — ${output.label}`,
-      margin: { l: 56, r: 24, t: 48, b: 80 },
-      legend: { orientation: "h", x: 0, y: 1.1 },
-    },
-    source: CalculationSource.FrontendGenerated,
-  });
-}
-
-type PmvFieldChartConfig =
-  | ExploreFieldChartConfig
-  | NumericComplianceFieldChartConfig;
-
-function numericBandsMatch(
-  left: readonly NumericBand[],
-  right: readonly NumericBand[],
-): boolean {
-  return left.length === right.length && left.every((band, index) => {
-    const candidate = right[index];
-    return candidate !== undefined
-      && band.min === candidate.min
-      && band.max === candidate.max
-      && band.label === candidate.label
-      && band.color === candidate.color;
-  });
-}
-
-function assertPmvFieldChartConfig(
-  declaration: PmvModelDeclaration,
-  context: ChartBuildContext,
-): PmvFieldChartConfig {
-  const config = context.fieldChartConfig;
-  if (
-    config.xField === config.yField
-    || !PMV_DYNAMIC_AXIS_FIELDS.includes(
-      config.xField as typeof PMV_DYNAMIC_AXIS_FIELDS[number],
-    )
-    || !PMV_DYNAMIC_AXIS_FIELDS.includes(
-      config.yField as typeof PMV_DYNAMIC_AXIS_FIELDS[number],
-    )
-  ) {
+  const { config } = descriptor;
+  const output = declaration.chartableOutputs.find(({ key }) => key === config.zOutput);
+  if (!output) {
     throw new Error(
-      `Unsupported PMV dynamic axis pair: ${config.xField} / ${config.yField}.`,
+      `${declaration.label} does not declare chart output ${config.zOutput}.`,
     );
   }
-  if (config.bands.some(({ min, max }) => (
-    typeof min !== "number" || typeof max !== "number"
-  ))) {
-    throw new Error("PMV field charts require numeric bands.");
-  }
-
-  const numericConfig = config as PmvFieldChartConfig;
-  getPmvChartOutput(declaration, numericConfig);
-  if (
-    numericConfig.mode === ChartMode.Compliance
-    && (
-      numericConfig.zOutput !== declaration.complianceSpec.output
-      || !numericBandsMatch(
-        numericConfig.bands,
-        declaration.complianceSpec.bands,
-      )
-    )
-  ) {
-    throw new Error("PMV Compliance chart requires the declared locked output and bands.");
-  }
-  return numericConfig;
-}
-
-function getPmvChartOutput(
-  declaration: PmvModelDeclaration,
-  config: PmvFieldChartConfig,
-): ModelOutput {
-  const output = declaration.chartableOutputs.find(({ key }) => (
-    key === config.zOutput
-  ));
-  if (!output) {
-    throw new Error(`Unsupported PMV chart output: ${config.zOutput}`);
-  }
-  return output;
-}
-
-export function buildPmvDynamicChart(
-  declaration: PmvModelDeclaration,
-  source: PmvChartSourceDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
-  context: ChartBuildContext,
-): PlotlyChartResponseDto {
-  const config = assertPmvFieldChartConfig(declaration, context);
-  const { adapter } = declaration;
-  const { unitSystem } = context;
-  const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
-
-  const output = getPmvChartOutput(declaration, config);
   const isPmvOutput = config.zOutput === ModelOutputKey.Pmv;
   const classificationLabel = isPmvOutput ? "Zone" : "Band";
-  const axisAdapter: DynamicAxisPayloadAdapter<PmvRequestDto> = {
-    setAxisValue: setPmvAxisValue,
-    getAxisValue: (request, field) => getPmvAxisValue(adapter, request, field),
-    getOperativeTemperature: adapter.getOperativeTemperature,
-    getTemperatureComponentRange: (field) => getPmvAxisRangeSi(adapter, field)
-      ?? {
-        min: fieldMetaByKey[field].minValue,
-        max: fieldMetaByKey[field].maxValue,
-      },
+  const getClassification = (evaluation: PmvChartEvaluation): string => {
+    const valueSi = getPmvOutputValue(config.zOutput, evaluation);
+    const bandIndex = findNumericBandIndexForValue(config.bands, valueSi);
+    return bandIndex === undefined ? "Unclassified" : config.bands[bandIndex].label;
   };
+
   return buildFieldChart({
-    unitSystem,
-    xAxis: {
-      field: config.xField,
-      rangeSi: getPmvAxisRangeSi(adapter, config.xField),
-      points: CONTOUR_GRID_RESOLUTION,
-    },
-    yAxis: {
-      field: config.yField,
-      rangeSi: getPmvAxisRangeSi(adapter, config.yField),
-      points: CONTOUR_GRID_RESOLUTION,
-    },
+    unitSystem: context.unitSystem,
+    xAxis: descriptor.xAxis,
+    yAxis: descriptor.yAxis,
     strategy: createBandedGridStrategy({
       config,
       output,
@@ -1206,49 +1001,177 @@ export function buildPmvDynamicChart(
         pmv: isPmvOutput ? "%{customdata[0]:.2f}" : "%{customdata[1]:.2f}",
         ppd: isPmvOutput ? "%{customdata[1]:.1f}%" : "%{customdata[0]:.1f}%",
       }),
+      opacity: descriptor.opacity,
       evaluateOutput: (xSi, ySi) => {
-        const request = { ...baseline.payload };
-        const hasValidCoordinates = applyDynamicAxisCoordinates(
-          request,
-          { field: config.xField, valueSi: xSi },
-          { field: config.yField, valueSi: ySi },
-          axisAdapter,
-        );
-        if (!hasValidCoordinates) return null;
-        const evaluation = tryEvaluatePmvForChart(adapter, request);
-        if (!evaluation) return null;
-        return {
-          valueSi: getPmvOutputValue(config.zOutput, evaluation),
-          additionalHoverMetadata: [
-            isPmvOutput ? evaluation.ppd : evaluation.pmv,
-          ],
-        };
+        const evaluation = descriptor.evaluatePoint(xSi, ySi);
+        return evaluation
+          ? {
+              valueSi: getPmvOutputValue(config.zOutput, evaluation),
+              additionalHoverMetadata: [
+                isPmvOutput ? evaluation.ppd : evaluation.pmv,
+              ],
+            }
+          : null;
       },
     }),
+    chartOverlays: descriptor.chartOverlays,
     inputGroups: ({ xAxis, yAxis }) => [createPmvInputGroup({
       adapter,
       inputsMap: source.inputs,
       resultsByInput,
       xAxis,
       yAxis,
-      getXSi: (payload) => getPmvAxisValue(adapter, payload, config.xField),
-      getYSi: (payload) => getPmvAxisValue(adapter, payload, config.yField),
-      coordinateDecimals: 2,
+      getXSi: descriptor.getInputXSi,
+      getYSi: descriptor.getInputYSi,
+      coordinateDecimals: descriptor.coordinateDecimals,
       classificationLabel,
-      getClassification: (evaluation) => {
-        const value = getPmvOutputValue(config.zOutput, evaluation);
-        const bandIndex = findNumericBandIndexForValue(config.bands, value);
-        return bandIndex === undefined
-          ? "Unclassified"
-          : config.bands[bandIndex].label;
-      },
+      getClassification,
+      buildOverlayTraces: descriptor.getInputOverlayBuilder?.(xAxis, yAxis),
     })],
     layout: {
-      title: `${declaration.label} Dynamic Chart — ${output.label}`,
-      margin: { l: 64, r: 24, t: 48, b: 64 },
+      title: `${descriptor.title} — ${output.label}`,
+      margin: descriptor.margin,
       legend: { orientation: "h", x: 0, y: 1.1 },
     },
     source: CalculationSource.FrontendGenerated,
+  });
+}
+
+function createPsychrometricComfortZoneOverlayBuilder(
+  source: PmvChartSourceDto,
+  xAxis: ChartAxisScale,
+  yAxis: ChartAxisScale,
+): PmvInputOverlayBuilder {
+  return ({ inputId }) => {
+    const comfortZone = source.comfortZonesByInput[inputId];
+    if (!comfortZone) {
+      throw new Error(`Missing PMV comfort zone for ${inputId}.`);
+    }
+    const { polygonX, polygonY } = buildComfortZonePolygon(
+      comfortZone.coolEdge,
+      comfortZone.warmEdge,
+      (point) => roundValue(xAxis.toDisplay(point.tdb)),
+      (point) => roundValue(yAxis.toDisplay(psy_ta_rh(point.tdb, point.rh).hr)),
+    );
+    return polygonX.length === 0
+      ? []
+      : [buildComfortPolygonTrace({
+          inputId,
+          nameSuffix: "comfort zone",
+          polygonX,
+          polygonY,
+          hovertemplate: "",
+          hoverinfo: "skip",
+          isComfortZone: true,
+        })];
+  };
+}
+
+function buildComparePsychrometricChart(
+  declaration: PmvModelDeclaration,
+  source: PmvChartSourceDto,
+  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
+  context: ChartBuildContext<NumericBand>,
+): PlotlyChartResponseDto {
+  const { adapter } = declaration;
+  const { unitSystem } = context;
+  const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
+  const humidityRatioMeta = getHumidityRatioDisplayMeta(unitSystem);
+  const config: PmvFieldChartConfig = {
+    ...context.fieldChartConfig,
+    xField: FieldKey.DryBulbTemperature,
+    yField: FieldKey.HumidityRatio,
+  };
+
+  return buildPmvFieldChart(declaration, source, resultsByInput, context, {
+    config,
+    title: `${declaration.label} Psychrometric Chart`,
+    xAxis: {
+      field: config.xField,
+      rangeSi: PSYCHROMETRIC_VIEW.tdbRangeSi,
+      points: CONTOUR_GRID_RESOLUTION,
+    },
+    yAxis: {
+      field: config.yField,
+      rangeSi: PSYCHROMETRIC_VIEW.humidityRatioRangeSi,
+      points: CONTOUR_GRID_RESOLUTION,
+      units: humidityRatioMeta.displayUnits,
+      decimals: humidityRatioMeta.decimals,
+      toDisplay: convertHumidityRatioFromSi,
+      toSi: convertHumidityRatioToSi,
+    },
+    coordinateDecimals: humidityRatioMeta.decimals,
+    opacity: 0.8,
+    evaluatePoint: (tdb, humidityRatio) => evaluatePsychrometricPoint(
+      adapter,
+      baseline.payload,
+      tdb,
+      humidityRatio,
+    ),
+    getInputXSi: (payload) => payload.tdb,
+    getInputYSi: (payload) => psy_ta_rh(payload.tdb, payload.rh).hr,
+    chartOverlays: ({ xAxis, yAxis }) => buildRelativeHumidityCurves(
+      adapter,
+      baseline.payload,
+      config,
+      unitSystem,
+      xAxis,
+      yAxis,
+    ),
+    getInputOverlayBuilder: (xAxis, yAxis) => (
+      createPsychrometricComfortZoneOverlayBuilder(source, xAxis, yAxis)
+    ),
+    margin: { l: 56, r: 24, t: 48, b: 80 },
+  });
+}
+
+function buildPmvDynamicChart(
+  declaration: PmvModelDeclaration,
+  source: PmvChartSourceDto,
+  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
+  context: ChartBuildContext<NumericBand>,
+): PlotlyChartResponseDto {
+  const { adapter } = declaration;
+  const config = context.fieldChartConfig;
+  const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
+  const axisAdapter: DynamicAxisPayloadAdapter<PmvRequestDto> = {
+    setAxisValue: setPmvAxisValue,
+    getAxisValue: (request, field) => getPmvAxisValue(adapter, request, field),
+    getOperativeTemperature: adapter.getOperativeTemperature,
+    getTemperatureComponentRange: (field) => getPmvAxisRangeSi(adapter, field)
+      ?? {
+        min: fieldMetaByKey[field].minValue,
+        max: fieldMetaByKey[field].maxValue,
+      },
+  };
+
+  return buildPmvFieldChart(declaration, source, resultsByInput, context, {
+    config,
+    title: `${declaration.label} Dynamic Chart`,
+    xAxis: {
+      field: config.xField,
+      rangeSi: getPmvAxisRangeSi(adapter, config.xField),
+      points: CONTOUR_GRID_RESOLUTION,
+    },
+    yAxis: {
+      field: config.yField,
+      rangeSi: getPmvAxisRangeSi(adapter, config.yField),
+      points: CONTOUR_GRID_RESOLUTION,
+    },
+    coordinateDecimals: 2,
+    evaluatePoint: (xSi, ySi) => {
+      const request = { ...baseline.payload };
+      const hasValidCoordinates = applyDynamicAxisCoordinates(
+        request,
+        { field: config.xField, valueSi: xSi },
+        { field: config.yField, valueSi: ySi },
+        axisAdapter,
+      );
+      return hasValidCoordinates ? tryEvaluatePmvForChart(adapter, request) : null;
+    },
+    getInputXSi: (payload) => getPmvAxisValue(adapter, payload, config.xField),
+    getInputYSi: (payload) => getPmvAxisValue(adapter, payload, config.yField),
+    margin: { l: 64, r: 24, t: 48, b: 64 },
   });
 }
 
@@ -1346,7 +1269,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
       ChartId.PmvDynamic,
     ])
     .setDefaultOptions({ ...defaultPmvOptions })
-    .setOptionNormalizer(normalizePmvOptionsSnapshot)
+    .setOptionParser(parsePmvOptions)
     .setDynamicAxisFields([...PMV_DYNAMIC_AXIS_FIELDS])
     .setDefaultDynamicAxes({
       xAxis: FieldKey.DryBulbTemperature,
@@ -1359,8 +1282,13 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
 
       for (const inputId of visibleInputIds) {
         const request = toPmvRequest(context, inputId, adapter);
-        const comfortZoneRequest = toComfortZoneRequest(context, inputId, adapter);
-        const result = adapter.calculate(request);
+        const comfortZoneRequest: ComfortZoneRequestDto = {
+          ...request,
+          rhMin: 0,
+          rhMax: 100,
+          rhPoints: 31,
+        };
+        const result = evaluatePmvCondition(adapter, request);
         const complianceWarnings = adapter.checkApplicability(request);
         inputs[inputId] = comfortZoneRequest;
         comfortZonesByInput[inputId] = calculateComfortZone(
@@ -1372,7 +1300,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
           ppd: result.ppd,
           vr: request.vr,
           isCompliant: complianceWarnings.length === 0
-            && pmvNeutralZone.contains(result.pmv),
+            && result.zone === pmvNeutralZone,
           standard: adapter.resultStandard,
           source: CalculationSource.JsThermalComfort,
         };

@@ -24,18 +24,14 @@
         ? "text-amber-700"
         : "text-red-700",
   );
-  const feedbackText = $derived(
-    control.feedback
-      ? `${control.feedback.inputLabel ? `${control.feedback.inputLabel}: ` : ""}${control.feedback.text}`
-      : "",
-  );
+  const feedbackLabel = $derived(control.feedback?.inputLabel ?? "Your input");
 
   function getModeLabel(mode: ChartModeType): string {
     return mode === ChartMode.Compliance ? "Compliance" : "Explore";
   }
 </script>
 
-<div class="min-w-0 space-y-1.5">
+<div class="min-w-0">
   <div class="flex flex-wrap items-center gap-2">
     {#if hasModeChoice}
       <ButtonGroup role="group" aria-label="Chart mode" size="xs">
@@ -55,22 +51,25 @@
         {selectedLabel}
       </span>
     {/if}
-    <p class="text-xs leading-5 text-stone-600">{control.caption}</p>
-  </div>
-
-  {#if control.feedback}
-    <p
-      aria-live="polite"
-      class={`flex items-center gap-1.5 text-xs font-semibold ${feedbackClass}`}
-    >
-      {#if control.feedback.passes}
-        <CheckCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
-      {:else if control.feedback.text === ComplianceStatus.OutOfRange}
-        <ExclamationCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
-      {:else}
-        <CloseCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
+    <p class="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs leading-5 text-stone-600">
+      <span>{control.caption}</span>
+      {#if control.feedback}
+        <span
+          aria-live="polite"
+          aria-label={`${feedbackLabel}: ${control.feedback.text}`}
+          class={`inline-flex items-center gap-1 font-semibold ${feedbackClass}`}
+        >
+          <span>{feedbackLabel}:</span>
+          {#if control.feedback.passes}
+            <CheckCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
+          {:else if control.feedback.text === ComplianceStatus.OutOfRange}
+            <ExclamationCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
+          {:else}
+            <CloseCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
+          {/if}
+          <span>{control.feedback.text}</span>
+        </span>
       {/if}
-      <span>{feedbackText}</span>
     </p>
-  {/if}
+  </div>
 </div>

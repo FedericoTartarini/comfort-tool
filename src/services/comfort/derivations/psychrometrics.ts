@@ -1,5 +1,8 @@
 import { psy_ta_rh, p_sat } from "jsthermalcomfort";
 
+const STANDARD_ATMOSPHERIC_PRESSURE_PA = 101325;
+const WATER_VAPOR_MOLECULAR_WEIGHT_RATIO = 0.62198;
+
 /**
  * Derives the active Relative Humidity given the Dry Bulb Temperature and a target Dew Point temperature.
  *
@@ -24,12 +27,29 @@ export function deriveRelativeHumidityFromDewPoint(dryBulbTemperature: number, d
  * @param humidityRatio Target humidity ratio (kg/kg).
  * @returns The solved Relative Humidity.
  */
-export function deriveRelativeHumidityFromHumidityRatio(dryBulbTemperature: number, humidityRatio: number): number {
-  const pAtm = 101325;
-  const pVap = (humidityRatio * pAtm) / (0.62198 + humidityRatio);
+export function calculateRelativeHumidityFromHumidityRatio(
+  dryBulbTemperature: number,
+  humidityRatio: number,
+): number {
+  const pVap = (
+    humidityRatio * STANDARD_ATMOSPHERIC_PRESSURE_PA
+  ) / (WATER_VAPOR_MOLECULAR_WEIGHT_RATIO + humidityRatio);
   const pSatTdb = p_sat(dryBulbTemperature);
 
-  return Math.min(100, Math.max(0, (pVap / pSatTdb) * 100));
+  return (pVap / pSatTdb) * 100;
+}
+
+export function deriveRelativeHumidityFromHumidityRatio(
+  dryBulbTemperature: number,
+  humidityRatio: number,
+): number {
+  return Math.min(
+    100,
+    Math.max(
+      0,
+      calculateRelativeHumidityFromHumidityRatio(dryBulbTemperature, humidityRatio),
+    ),
+  );
 }
 
 /**

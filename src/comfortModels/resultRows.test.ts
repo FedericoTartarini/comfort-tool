@@ -19,10 +19,14 @@ import {
 } from "./adaptiveEn";
 import type { AdaptiveResponseDto } from "./adaptiveShared";
 import { pmvAshraeModelConfig } from "./pmvAshrae";
-import { pmvNeutralZone, type PmvResponseDto } from "./pmvShared";
+import type { PmvResponseDto } from "./pmvShared";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
+const pmvNeutralZone = pmvAshraeModelConfig.zones.find(
+  ({ label }) => label === "Neutral",
+);
+if (!pmvNeutralZone) throw new Error("Missing registered PMV Neutral zone.");
 
 function createResultRecord<T>(
   result: T,

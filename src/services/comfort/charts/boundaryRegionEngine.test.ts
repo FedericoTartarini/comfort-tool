@@ -7,7 +7,6 @@ import { createFieldAxisScale } from "./axis";
 import {
   buildBoundaryRegionTraces,
   buildClosedBoundaryPolygon,
-  buildClosedBoundaryPolygonTrace,
   buildFilledBoundaryRegionTrace,
 } from "./boundaryRegionEngine";
 
@@ -15,14 +14,12 @@ interface TestTraceContext {
   band: Band;
   polygonX: number[];
   polygonY: number[];
-  hoverMetadata: unknown[][];
 }
 
 function buildTestTrace({
   band,
   polygonX,
   polygonY,
-  hoverMetadata,
 }: TestTraceContext) {
   return buildFilledBoundaryRegionTrace({
     name: band.label,
@@ -30,24 +27,28 @@ function buildTestTrace({
     polygonX,
     polygonY,
     lineColor: "#111111",
-    hoverMetadata,
   });
 }
 
-function createAxes(unitSystem: UnitSystemType = UnitSystem.SI) {
+function createAxes(
+  unitSystem: UnitSystemType = UnitSystem.SI,
+  boundaryAxis: "x" | "y" = "x",
+) {
+  const outdoorAxis = createFieldAxisScale({
+    field: FieldKey.DryBulbTemperature,
+    unitSystem,
+    rangeSi: { min: 0, max: 10 },
+    points: 2,
+  });
+  const operativeAxis = createFieldAxisScale({
+    field: FieldKey.OperativeTemperature,
+    unitSystem,
+    rangeSi: { min: 10, max: 40 },
+    points: 2,
+  });
   return {
-    xAxis: createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
-      unitSystem,
-      rangeSi: { min: 0, max: 10 },
-      points: 2,
-    }),
-    yAxis: createFieldAxisScale({
-      field: FieldKey.OperativeTemperature,
-      unitSystem,
-      rangeSi: { min: 10, max: 40 },
-      points: 2,
-    }),
+    xAxis: boundaryAxis === "x" ? outdoorAxis : operativeAxis,
+    yAxis: boundaryAxis === "x" ? operativeAxis : outdoorAxis,
   };
 }
 
@@ -64,45 +65,7 @@ describe("boundary region engine", () => {
     });
   });
 
-  it("builds closed polygon traces with axis display conversion", () => {
-    const xAxis = createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
-      unitSystem: UnitSystem.IP,
-      rangeSi: { min: 0, max: 10 },
-      points: 2,
-    });
-    const yAxis = createFieldAxisScale({
-      field: FieldKey.RelativeHumidity,
-      unitSystem: UnitSystem.SI,
-      rangeSi: { min: 0, max: 100 },
-      points: 2,
-    });
-
-    const trace = buildClosedBoundaryPolygonTrace({
-      lowerXValuesSi: [0, 10],
-      lowerYValuesSi: [20, 30],
-      upperXValuesSi: [0, 10],
-      upperYValuesSi: [80, 90],
-      xAxis,
-      yAxis,
-      buildTrace: ({ polygonX, polygonY, hoverMetadata }) => (
-        buildFilledBoundaryRegionTrace({
-          name: "Region",
-          color: "#eeeeee",
-          polygonX,
-          polygonY,
-          lineColor: "#111111",
-          hoverMetadata,
-        })
-      ),
-    });
-
-    expect(trace.x).toEqual([32, 50, 50, 32]);
-    expect(trace.y).toEqual([20, 30, 90, 80]);
-    expect(trace.hoverMetadata).toEqual([[], [], [], []]);
-  });
-
-  it("resolves functional edges with partial SI inputs and extra X samples", () => {
+  it("resolves functional edges with partial SI inputs and extra boundary samples", () => {
     const { xAxis, yAxis } = createAxes();
     const lowerEdge = (xSi: number, inputsSi: Readonly<Partial<Record<string, number>>>) => (
       xSi + Number(inputsSi[FieldKey.RelativeAirSpeed]) + 10
@@ -121,7 +84,8 @@ describe("boundary region engine", () => {
       bandInputsSi: { [FieldKey.RelativeAirSpeed]: 0.5 },
       xAxis,
       yAxis,
-      additionalXValuesSi: [-1, 2.5, 7.5, 11, Number.NaN],
+      boundaryAxis: "x",
+      additionalBoundaryValuesSi: [-1, 2.5, 7.5, 11, Number.NaN],
       buildTrace: buildTestTrace,
     });
 
@@ -131,6 +95,34 @@ describe("boundary region engine", () => {
       10.5, 13, 18, 20.5,
       30.5, 28, 23, 20.5,
     ]);
+    expect(traces.every((trace) => trace.hoverinfo === "skip")).toBe(true);
+    expect(traces.every((trace) => trace.hoverMetadata === undefined)).toBe(true);
+  });
+
+  it("transposes the same functional geometry without changing edge semantics", () => {
+    const { xAxis, yAxis } = createAxes(UnitSystem.SI, "y");
+    const lowerEdge = (outdoorTemperatureSi: number) => outdoorTemperatureSi + 10.5;
+    const upperEdge = (outdoorTemperatureSi: number) => outdoorTemperatureSi + 20.5;
+    const traces = buildBoundaryRegionTraces({
+      bands: [
+        { min: -Infinity, max: lowerEdge, label: "Lower", color: "#ddd" },
+        { min: lowerEdge, max: upperEdge, label: "Middle", color: "#eee" },
+        { min: upperEdge, max: Infinity, label: "Upper", color: "#fff" },
+      ],
+      bandInputsSi: {},
+      xAxis,
+      yAxis,
+      boundaryAxis: "y",
+      additionalBoundaryValuesSi: [2.5, 7.5],
+      buildTrace: buildTestTrace,
+    });
+
+    expect(traces.map(({ name }) => name)).toEqual(["Lower", "Middle", "Upper"]);
+    expect(traces[1].x).toEqual([
+      10.5, 13, 18, 20.5,
+      30.5, 28, 23, 20.5,
+    ]);
+    expect(traces[1].y).toEqual([0, 2.5, 7.5, 10, 10, 7.5, 2.5, 0]);
   });
 
   it("clamps unbounded bands to Y and preserves declared gaps", () => {
@@ -144,6 +136,7 @@ describe("boundary region engine", () => {
       bandInputsSi: {},
       xAxis,
       yAxis,
+      boundaryAxis: "x",
       buildTrace: buildTestTrace,
     });
 
@@ -159,6 +152,7 @@ describe("boundary region engine", () => {
       bandInputsSi: {},
       xAxis,
       yAxis,
+      boundaryAxis: "x" as const,
       buildTrace: buildTestTrace,
     };
 
@@ -179,33 +173,28 @@ describe("boundary region engine", () => {
     })).toThrow("resolved to NaN");
   });
 
-  it("converts polygons to IP while passing canonical-SI coordinates to hover hooks", () => {
-    const { xAxis, yAxis } = createAxes(UnitSystem.IP);
-    const traces = buildBoundaryRegionTraces({
+  it("converts direct and transposed polygons to IP without hover payloads", () => {
+    const directAxes = createAxes(UnitSystem.IP);
+    const transposedAxes = createAxes(UnitSystem.IP, "y");
+    const build = (boundaryAxis: "x" | "y") => buildBoundaryRegionTraces({
+      ...(boundaryAxis === "x" ? directAxes : transposedAxes),
       bands: [
         { min: -Infinity, max: 20, label: "Lower", color: "#ddd" },
         { min: 20, max: Infinity, label: "Upper", color: "#eee" },
       ],
       bandInputsSi: {},
-      xAxis,
-      yAxis,
-      getHoverMetadata: (xSi, ySi, index, band, bandIndex) => [
-        xSi,
-        ySi,
-        index,
-        band.label,
-        bandIndex,
-      ],
+      boundaryAxis,
       buildTrace: buildTestTrace,
     });
+    const direct = build("x");
+    const transposed = build("y");
 
-    expect(traces[0].x).toEqual([32, 50, 50, 32]);
-    expect(traces[0].y).toEqual([50, 50, 68, 68]);
-    expect(traces[0].hoverMetadata).toEqual([
-      [0, 10, 0, "Lower", 0],
-      [10, 10, 1, "Lower", 0],
-      [10, 20, 2, "Lower", 0],
-      [0, 20, 3, "Lower", 0],
-    ]);
+    expect(direct[0].x).toEqual([32, 50, 50, 32]);
+    expect(direct[0].y).toEqual([50, 50, 68, 68]);
+    expect(transposed[0].x).toEqual([50, 50, 68, 68]);
+    expect(transposed[0].y).toEqual([32, 50, 50, 32]);
+    expect([...direct, ...transposed].every(({ hoverMetadata }) => (
+      hoverMetadata === undefined
+    ))).toBe(true);
   });
 });
