@@ -25,6 +25,11 @@ import { allFieldOrder, fieldMetaByKey } from "../../models/inputFieldsMeta";
 import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
 import type { InputControlId as InputControlIdType } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+import {
+  modifierOrder,
+  type ModifierFieldKey as ModifierFieldKeyType,
+  type ModifierId as ModifierIdType,
+} from "../../models/inputModifiers";
 import { UnitSystem } from "../../models/units";
 import {
   ChartMode,
@@ -36,6 +41,19 @@ import {
 } from "../../models/modelCapabilities";
 import type { BehaviorPatch, ControlBehaviorContext } from "../../services/comfort/controls/types";
 import { deriveInputsDerivedState } from "../../services/comfort/syncState";
+import {
+  applyInputModifierChain,
+  inputModifierById,
+  isModifierConfigurationComplete,
+  isModifierFieldValueValid,
+} from "../../services/comfort/inputModifiers";
+import {
+  convertFieldValueFromSi,
+  convertModifierFieldValueFromSi,
+  convertModifierFieldValueToSi,
+  formatDisplayValue,
+  getModifierFieldDisplayMeta,
+} from "../../services/units";
 import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig, type ComfortModelDefinition } from "./modelConfigs";
 import { createCalculationManager } from "./calculationManager.svelte";
 import {
@@ -61,7 +79,11 @@ import type {
   ChartControlsViewModel,
   ChartSettingsByModelState,
   ComfortToolController,
+  ActiveModifiersByInputState,
   InputState,
+  InputModifierControlViewModel,
+  InputsByInputState,
+  ModifierInputsByInputState,
   ModelCalculationCacheByModelState,
   ModelCalculationCache,
   ModelOptionsByModelState,
@@ -93,6 +115,32 @@ function createInputsByInput() {
     accumulator[inputId] = createInputState(inputId);
     return accumulator;
   }, {} as ComfortToolStateSlice["inputsByInput"]);
+}
+
+function createActiveModifiersByInput(): ActiveModifiersByInputState {
+  return inputOrder.reduce((byInput, inputId) => {
+    byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
+      byModifier[modifierId] = false;
+      return byModifier;
+    }, {} as Record<ModifierIdType, boolean>);
+    return byInput;
+  }, {} as ActiveModifiersByInputState);
+}
+
+function createModifierInputsByInput(): ModifierInputsByInputState {
+  return inputOrder.reduce((byInput, inputId) => {
+    byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
+      byModifier[modifierId] = inputModifierById[modifierId].extraInputs.reduce(
+        (values, fieldKey) => {
+          values[fieldKey] = null;
+          return values;
+        },
+        {} as ModifierInputsByInputState[typeof inputId][typeof modifierId],
+      );
+      return byModifier;
+    }, {} as ModifierInputsByInputState[typeof inputId]);
+    return byInput;
+  }, {} as ModifierInputsByInputState);
 }
 
 /**
@@ -189,6 +237,8 @@ function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
  */
 export function createComfortToolState(): ComfortToolController {
   const inputsByInput = $state(createInputsByInput());
+  const activeModifiersByInput = $state(createActiveModifiersByInput());
+  const modifierInputsByInput = $state(createModifierInputsByInput());
   const derivedByInput = $derived.by(() => deriveInputsDerivedState(inputsByInput));
   const ui = $state({
     selectedModel: ComfortModel.PmvAshrae,
@@ -207,6 +257,8 @@ export function createComfortToolState(): ComfortToolController {
 
   const state: ComfortToolStateSlice = {
     inputsByInput,
+    activeModifiersByInput,
+    modifierInputsByInput,
     ui,
   };
 
@@ -240,6 +292,15 @@ export function createComfortToolState(): ComfortToolController {
     });
   }
 
+  function invalidateModelsSupportingModifier(modifierId: ModifierIdType) {
+    let keptErrorMessage = false;
+    for (const modelId of comfortModelOrder) {
+      if (!comfortModelConfigs[modelId].supportedModifiers.includes(modifierId)) continue;
+      invalidateModel(modelId, { keepErrorMessage: keptErrorMessage });
+      keptErrorMessage = true;
+    }
+  }
+
   /**
    * Returns the IDs of the input slots that should currently be visible in the UI.
    * @returns Array of Input IDs.
@@ -269,6 +330,81 @@ export function createComfortToolState(): ComfortToolController {
       unknown,
       Band
     >;
+  }
+
+  function getEffectiveInputsByInput(
+    modelId: ComfortModelType = state.ui.selectedModel,
+  ): InputsByInputState {
+    const supportedModifiers = getComfortModelConfig(modelId).supportedModifiers;
+    return inputOrder.reduce((effectiveByInput, inputId) => {
+      effectiveByInput[inputId] = applyInputModifierChain(
+        state.inputsByInput[inputId],
+        supportedModifiers,
+        state.activeModifiersByInput[inputId],
+        state.modifierInputsByInput[inputId],
+      );
+      return effectiveByInput;
+    }, {} as InputsByInputState);
+  }
+
+  function getInputModifierControls(): InputModifierControlViewModel[] {
+    const unitSystem = state.ui.unitSystem;
+    const visibleInputIds = getVisibleInputIds();
+    const effectiveInputs = getEffectiveInputsByInput();
+
+    return getActiveModelConfig().supportedModifiers.map((modifierId) => {
+      const modifier = inputModifierById[modifierId];
+      return {
+        id: modifier.id,
+        label: modifier.label,
+        description: modifier.description,
+        activeByInput: visibleInputIds.reduce((values, inputId) => {
+          values[inputId] = state.activeModifiersByInput[inputId][modifierId];
+          return values;
+        }, {} as InputModifierControlViewModel["activeByInput"]),
+        completeByInput: visibleInputIds.reduce((values, inputId) => {
+          values[inputId] = isModifierConfigurationComplete(
+            modifierId,
+            state.modifierInputsByInput[inputId][modifierId],
+          );
+          return values;
+        }, {} as InputModifierControlViewModel["completeByInput"]),
+        extraInputs: modifier.extraInputs.map((fieldKey) => {
+          const displayMeta = getModifierFieldDisplayMeta(fieldKey, unitSystem);
+          return {
+            key: fieldKey,
+            ...displayMeta,
+            displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
+              const valueSi = state.modifierInputsByInput[inputId][modifierId][fieldKey];
+              values[inputId] = valueSi === null || valueSi === undefined
+                ? ""
+                : formatDisplayValue(
+                    convertModifierFieldValueFromSi(fieldKey, valueSi, unitSystem),
+                    displayMeta.decimals,
+                  );
+              return values;
+            }, {} as Record<InputIdType, string>),
+          };
+        }),
+        affectedFields: modifier.affectedFields.map((fieldKey) => {
+          const meta = fieldMetaByKey[fieldKey];
+          return {
+            key: fieldKey,
+            label: `Effective ${meta.label.toLowerCase()}`,
+            displayUnits: meta.displayUnits[unitSystem],
+            displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
+              const displayValue = convertFieldValueFromSi(
+                fieldKey,
+                effectiveInputs[inputId][fieldKey],
+                unitSystem,
+              );
+              values[inputId] = formatDisplayValue(displayValue, meta.decimals);
+              return values;
+            }, {} as Record<InputIdType, string>),
+          };
+        }),
+      };
+    });
   }
 
   function getCurrentSelectedChartId() {
@@ -472,6 +608,8 @@ export function createComfortToolState(): ComfortToolController {
         .map((control) => control.behavior.buildViewModel(context))
         .filter((control) => !control.hidden);
     },
+    getInputModifierControls,
+    getEffectiveInputsByInput,
     getResultSections: () => {
       const cache = getCurrentModelCache();
       if (cache.status === "empty") {
@@ -537,7 +675,11 @@ export function createComfortToolState(): ComfortToolController {
     getPendingModelSwitch,
   };
 
-  const { scheduleCalculation: scheduleCalculationInternal } = createCalculationManager(state, getVisibleInputIds);
+  const { scheduleCalculation: scheduleCalculationInternal } = createCalculationManager(
+    state,
+    getVisibleInputIds,
+    getEffectiveInputsByInput,
+  );
 
   /**
    * Performs the final state updates for a model selection.
@@ -855,6 +997,78 @@ export function createComfortToolState(): ComfortToolController {
     scheduleCalculationInternal();
   }
 
+  function refreshAfterModifierChange(
+    modifierId: ModifierIdType,
+    options?: { immediate?: boolean },
+  ) {
+    invalidateModelsSupportingModifier(modifierId);
+    if (getActiveModelConfig().supportedModifiers.includes(modifierId)) {
+      scheduleCalculationInternal({ immediate: options?.immediate });
+    }
+  }
+
+  function updateModifierInput(
+    inputId: InputIdType,
+    modifierId: ModifierIdType,
+    fieldKey: ModifierFieldKeyType,
+    rawValue: string,
+  ): boolean {
+    const modifier = inputModifierById[modifierId];
+    if (
+      !getActiveModelConfig().supportedModifiers.includes(modifierId)
+      || !modifier.extraInputs.includes(fieldKey)
+    ) {
+      return false;
+    }
+
+    const currentInputs = state.modifierInputsByInput[inputId][modifierId];
+    const wasActive = state.activeModifiersByInput[inputId][modifierId];
+    if (rawValue.trim() === "") {
+      currentInputs[fieldKey] = null;
+      if (wasActive) {
+        state.activeModifiersByInput[inputId][modifierId] = false;
+        refreshAfterModifierChange(modifierId, { immediate: true });
+      }
+      return true;
+    }
+
+    const displayValue = Number(rawValue);
+    if (!Number.isFinite(displayValue)) return false;
+    const valueSi = convertModifierFieldValueToSi(
+      fieldKey,
+      displayValue,
+      state.ui.unitSystem,
+    );
+    if (!isModifierFieldValueValid(fieldKey, valueSi)) return false;
+
+    currentInputs[fieldKey] = valueSi;
+    if (wasActive) refreshAfterModifierChange(modifierId);
+    return true;
+  }
+
+  function setModifierEnabled(
+    inputId: InputIdType,
+    modifierId: ModifierIdType,
+    enabled: boolean,
+  ): boolean {
+    if (!getActiveModelConfig().supportedModifiers.includes(modifierId)) return false;
+    const currentEnabled = state.activeModifiersByInput[inputId][modifierId];
+    if (currentEnabled === enabled) return true;
+    if (
+      enabled
+      && !isModifierConfigurationComplete(
+        modifierId,
+        state.modifierInputsByInput[inputId][modifierId],
+      )
+    ) {
+      return false;
+    }
+
+    state.activeModifiersByInput[inputId][modifierId] = enabled;
+    refreshAfterModifierChange(modifierId, { immediate: true });
+    return true;
+  }
+
   const actions = {
     setSelectedModel,
     setSelectedChart,
@@ -876,6 +1090,8 @@ export function createComfortToolState(): ComfortToolController {
       scheduleCalculationInternal({ immediate: true, force: true });
     },
     updateInput,
+    updateModifierInput,
+    setModifierEnabled,
     scheduleCalculation: (scheduleOptions?: { immediate?: boolean; force?: boolean }) => scheduleCalculationInternal(scheduleOptions),
     confirmModelSwitch,
     cancelModelSwitch,

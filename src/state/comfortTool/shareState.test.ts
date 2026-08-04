@@ -5,6 +5,11 @@ import { ComfortModel, type ComfortModel as ComfortModelType } from "../../model
 import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
 import { HumidityInputMode, OptionKey, TemperatureMode } from "../../models/inputModes";
+import {
+  ModifierFieldKey,
+  ModifierId,
+  modifierOrder,
+} from "../../models/inputModifiers";
 import { InputId } from "../../models/inputSlots";
 import { ChartMode, ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
@@ -58,6 +63,45 @@ function withModelOptions(
 }
 
 describe("shareState strict v1 codec", () => {
+  it("round-trips enabled, disabled-but-configured, unset, and per-input modifier state", () => {
+    const toolState = createComfortToolState();
+    toolState.state.modifierInputsByInput[InputId.Input1][ModifierId.MeasuredAirSpeed]
+      [ModifierFieldKey.MeasuredAirSpeed] = 0.6;
+    toolState.state.activeModifiersByInput[InputId.Input1]
+      [ModifierId.MeasuredAirSpeed] = true;
+    toolState.state.modifierInputsByInput[InputId.Input2]
+      [ModifierId.MorningClothingEstimate]
+      [ModifierFieldKey.MorningOutdoorTemperature] = 10;
+    Object.assign(
+      toolState.state.modifierInputsByInput[InputId.Input3][ModifierId.SolarGain],
+      {
+        [ModifierFieldKey.SolarAltitude]: 45,
+        [ModifierFieldKey.SolarHorizontalAngle]: 90,
+        [ModifierFieldKey.DirectSolarRadiation]: 800,
+        [ModifierFieldKey.SolarTransmittance]: 0.5,
+        [ModifierFieldKey.SkyVaultViewFraction]: 0.5,
+        [ModifierFieldKey.BodyExposureFraction]: 0.5,
+      },
+    );
+    toolState.state.activeModifiersByInput[InputId.Input3][ModifierId.SolarGain] = true;
+
+    const snapshot = createShareStateSnapshot(toolState.state);
+    const restored = deserializeShareState(serializeShareState(snapshot));
+
+    expect(Object.keys(snapshot.activeModifiersByInput[InputId.Input1]))
+      .toEqual(modifierOrder);
+    expect(snapshot.activeModifiersByInput[InputId.Input1][ModifierId.MeasuredAirSpeed])
+      .toBe(true);
+    expect(snapshot.activeModifiersByInput[InputId.Input2]
+      [ModifierId.MorningClothingEstimate]).toBe(false);
+    expect(snapshot.modifierInputsByInput[InputId.Input2]
+      [ModifierId.MorningClothingEstimate]
+      [ModifierFieldKey.MorningOutdoorTemperature]).toBe(10);
+    expect(snapshot.modifierInputsByInput[InputId.Input2][ModifierId.SolarGain]
+      [ModifierFieldKey.SolarAltitude]).toBeNull();
+    expect(restored).toEqual(snapshot);
+  });
+
   it("round-trips all per-model field settings and explicit Infinity edges", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.PmvIso;
@@ -335,6 +379,52 @@ describe("shareState strict v1 codec", () => {
       ComfortModel.AdaptiveAshrae,
       { unknown: true },
     ))).toBeNull();
+
+    const oldShape = { ...current } as Record<string, unknown>;
+    delete oldShape.activeModifiersByInput;
+    delete oldShape.modifierInputsByInput;
+    expect(parseShareStateSnapshot(oldShape)).toBeNull();
+
+    expect(parseShareStateSnapshot(withModelOptions(
+      current,
+      ComfortModel.PmvAshrae,
+      {
+        ...current.models[ComfortModel.PmvAshrae].options,
+        "airSpeed.inputMode": "relative",
+      },
+    ))).toBeNull();
+  });
+
+  it("strictly validates modifier keys, ranges, and enabled completeness", () => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+    const incomplete = structuredClone(current);
+    incomplete.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain] = true;
+
+    const outOfRange = structuredClone(current);
+    outOfRange.modifierInputsByInput[InputId.Input1][ModifierId.SolarGain]
+      [ModifierFieldKey.SolarAltitude] = 91;
+
+    const unknownModifier = structuredClone(current);
+    Object.assign(
+      unknownModifier.activeModifiersByInput[InputId.Input1],
+      { unknownModifier: false },
+    );
+
+    const unknownField = structuredClone(current);
+    Object.assign(
+      unknownField.modifierInputsByInput[InputId.Input1][ModifierId.SolarGain],
+      { unknownField: 1 },
+    );
+
+    const nonFinite = structuredClone(current);
+    nonFinite.modifierInputsByInput[InputId.Input1][ModifierId.MeasuredAirSpeed]
+      [ModifierFieldKey.MeasuredAirSpeed] = Infinity;
+
+    expect(parseShareStateSnapshot(incomplete)).toBeNull();
+    expect(parseShareStateSnapshot(outOfRange)).toBeNull();
+    expect(parseShareStateSnapshot(unknownModifier)).toBeNull();
+    expect(parseShareStateSnapshot(unknownField)).toBeNull();
+    expect(parseShareStateSnapshot(nonFinite)).toBeNull();
   });
 
   it("strictly validates declared mode, axes, output, bands, and baseline", () => {
@@ -440,5 +530,30 @@ describe("shareState strict v1 codec", () => {
     const humidityControl = restored.selectors.getInputControls()
       .find((control) => control.id === InputControlId.Humidity);
     expect(humidityControl?.numericValuesByInput.input1).toBeCloseTo(10, 6);
+  });
+
+  it("restores modifier configuration even when the selected model does not support it", () => {
+    const original = createComfortToolState();
+    original.state.ui.selectedModel = ComfortModel.Utci;
+    original.state.modifierInputsByInput[InputId.Input1][ModifierId.MeasuredAirSpeed]
+      [ModifierFieldKey.MeasuredAirSpeed] = 0.6;
+    original.state.activeModifiersByInput[InputId.Input1]
+      [ModifierId.MeasuredAirSpeed] = true;
+    const snapshot = createShareStateSnapshot(original.state);
+    const restoredSnapshot = deserializeShareState(serializeShareState(snapshot));
+    const restored = createComfortToolState();
+
+    if (!restoredSnapshot) throw new Error("Expected a valid modifier snapshot.");
+    applyShareSnapshotToState(restored.state, restoredSnapshot);
+
+    expect(restored.selectors.getInputModifierControls()).toEqual([]);
+    expect(restored.selectors.getEffectiveInputsByInput(ComfortModel.Utci)[InputId.Input1]
+      [FieldKey.RelativeAirSpeed]).toBe(
+        restored.state.inputsByInput[InputId.Input1][FieldKey.RelativeAirSpeed],
+      );
+
+    restored.state.ui.selectedModel = ComfortModel.PmvAshrae;
+    expect(restored.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.RelativeAirSpeed]).toBe(0.6);
   });
 });

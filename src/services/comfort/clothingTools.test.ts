@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { ClothingZone } from "../../models/clothingZones";
-import { UnitSystem } from "../../models/units";
 import {
   buildSelectedClothingSections,
   filterClothingGarments,
@@ -91,7 +90,7 @@ describe("clothing tools", () => {
   });
 
   it("wraps predictive clothing estimation through the service boundary", () => {
-    const predictedClothing = predictClothingInsulation(10, UnitSystem.SI);
+    const predictedClothing = predictClothingInsulation(10);
 
     expect(predictedClothing).toBeTypeOf("number");
     expect(predictedClothing).toBeGreaterThan(0);

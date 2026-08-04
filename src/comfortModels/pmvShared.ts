@@ -17,16 +17,15 @@ import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import {
   AirSpeedControlMode,
-  AirSpeedInputMode,
   defaultPmvOptions,
   HumidityInputMode,
   OptionKey,
   TemperatureMode,
-  type ModelOptionsRecord,
   type PmvModelOptions,
 } from "../models/inputModes";
 import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ModelCalculationContext } from "../models/modelCalculation";
+import type { ModifierId as ModifierIdType } from "../models/inputModifiers";
 import {
   bandsFromThermalZones,
   findNumericBandIndexForValue,
@@ -81,10 +80,8 @@ import {
   synchronizePmvInputState,
 } from "../services/comfort/syncState";
 import {
-  convertFieldValueFromSi,
   convertHumidityRatioFromSi,
   convertHumidityRatioToSi,
-  formatDisplayValue,
   getHumidityRatioDisplayMeta,
 } from "../services/units";
 import {
@@ -191,6 +188,7 @@ export interface PmvModelDeclaration {
   readonly adapter: PmvStandardAdapter;
   readonly modes: readonly ChartModeType[];
   readonly chartableOutputs: readonly ModelOutput[];
+  readonly supportedModifiers: readonly ModifierIdType[];
   readonly complianceSpec: ComplianceSpec<NumericBand, PmvResponseDto>;
 }
 
@@ -487,7 +485,6 @@ const metabolicPresetOptions = metabolicActivityOptions.map((activity) => ({
 }));
 const temperatureModeValues = new Set<string>(Object.values(TemperatureMode));
 const airSpeedControlModeValues = new Set<string>(Object.values(AirSpeedControlMode));
-const airSpeedInputModeValues = new Set<string>(Object.values(AirSpeedInputMode));
 const humidityInputModeValues = new Set<string>(Object.values(HumidityInputMode));
 const pmvOptionKeys = Object.keys(defaultPmvOptions);
 
@@ -496,7 +493,6 @@ function parsePmvOptions(value: unknown): PmvModelOptions | null {
 
   const temperatureMode = value[OptionKey.TemperatureMode];
   const airSpeedControlMode = value[OptionKey.AirSpeedControlMode];
-  const airSpeedInputMode = value[OptionKey.AirSpeedInputMode];
   const humidityInputMode = value[OptionKey.HumidityInputMode];
   if (typeof temperatureMode !== "string" || !temperatureModeValues.has(temperatureMode)) {
     return null;
@@ -507,9 +503,6 @@ function parsePmvOptions(value: unknown): PmvModelOptions | null {
   ) {
     return null;
   }
-  if (typeof airSpeedInputMode !== "string" || !airSpeedInputModeValues.has(airSpeedInputMode)) {
-    return null;
-  }
   if (typeof humidityInputMode !== "string" || !humidityInputModeValues.has(humidityInputMode)) {
     return null;
   }
@@ -517,7 +510,6 @@ function parsePmvOptions(value: unknown): PmvModelOptions | null {
   return {
     [OptionKey.TemperatureMode]: temperatureMode as TemperatureMode,
     [OptionKey.AirSpeedControlMode]: airSpeedControlMode as AirSpeedControlMode,
-    [OptionKey.AirSpeedInputMode]: airSpeedInputMode as AirSpeedInputMode,
     [OptionKey.HumidityInputMode]: humidityInputMode as HumidityInputMode,
   };
 }
@@ -534,13 +526,9 @@ function toPmvRequest(
   if (!options) {
     throw new Error(`Invalid options state for ${adapter.modelId}.`);
   }
-  const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
-
   return {
-    tdb,
-    tr: options[OptionKey.TemperatureMode] === TemperatureMode.Operative
-      ? tdb
-      : Number(inputs[FieldKey.MeanRadiantTemperature]),
+    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
+    tr: Number(inputs[FieldKey.MeanRadiantTemperature]),
     vr: Number(inputs[FieldKey.RelativeAirSpeed]),
     rh: Number(inputs[FieldKey.RelativeHumidity]),
     met: Number(inputs[FieldKey.MetabolicRate]),
@@ -567,28 +555,7 @@ export function getPmvComplianceFeedback(
 function buildPmvResultSections(
   results: Record<InputIdType, PmvResponseDto | null>,
   visibleInputIds: InputIdType[],
-  unitSystem: UnitSystemType,
-  options: ModelOptionsRecord,
 ) {
-  const normalizedOptions = normalizePmvOptions(options);
-  const measuredAirSpeedRows: ResultRowDefinition<PmvResponseDto>[] =
-    normalizedOptions[OptionKey.AirSpeedInputMode] === AirSpeedInputMode.Measured
-      ? [{
-          title: fieldMetaByKey[FieldKey.RelativeAirSpeed].label,
-          formatter: (result) => {
-            const meta = fieldMetaByKey[FieldKey.RelativeAirSpeed];
-            const value = convertFieldValueFromSi(
-              FieldKey.RelativeAirSpeed,
-              result.vr,
-              unitSystem,
-            );
-            return {
-              text: `${formatDisplayValue(value, meta.decimals)} ${meta.displayUnits[unitSystem]}`,
-              color: "",
-            };
-          },
-        }]
-      : [];
   const rows: ResultRowDefinition<PmvResponseDto>[] = [
     {
       title: "Compliance",
@@ -602,7 +569,6 @@ function buildPmvResultSections(
         };
       },
     },
-    ...measuredAirSpeedRows,
     {
       title: "PMV",
       formatter: (result) => ({ text: result.pmv.toFixed(2), color: "" }),
@@ -1197,6 +1163,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
     .setDescription(declaration.description)
     .setModes(declaration.modes)
     .setChartableOutputs(declaration.chartableOutputs)
+    .setModifiers(declaration.supportedModifiers)
     .setComplianceSpec(declaration.complianceSpec)
     .addControl({
       id: InputControlId.Temperature,
@@ -1250,12 +1217,6 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
       temperatureBehavior.applyOptionChange?.(
         context,
         OptionKey.TemperatureMode,
-        nextValue,
-      ) ?? null)
-    .addOptionHandler(OptionKey.AirSpeedInputMode, (context, nextValue) =>
-      airSpeedBehavior.applyOptionChange?.(
-        context,
-        OptionKey.AirSpeedInputMode,
         nextValue,
       ) ?? null)
     .addOptionHandler(OptionKey.HumidityInputMode, (context, nextValue) =>

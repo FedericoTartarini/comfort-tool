@@ -9,6 +9,10 @@ import type { ComfortModel as ComfortModelType } from "../../../models/comfortMo
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
+import {
+  modifierOrder,
+  type ModifierId as ModifierIdType,
+} from "../../../models/inputModifiers";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
 import type { ThermalZone } from "../../../models/thermalZone";
 import {
@@ -135,6 +139,8 @@ export class ComfortModelBuilder<
 
   private chartableOutputs?: readonly ModelOutput[];
 
+  private supportedModifiers?: readonly ModifierIdType[];
+
   private complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
 
   private readonly controls: InputControlDefinition[] = [];
@@ -222,6 +228,11 @@ export class ComfortModelBuilder<
    */
   setChartableOutputs(outputs: readonly ModelOutput[]): this {
     this.chartableOutputs = outputs;
+    return this;
+  }
+
+  setModifiers(modifiers: readonly ModifierIdType[]): this {
+    this.supportedModifiers = modifiers;
     return this;
   }
 
@@ -391,6 +402,18 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations cannot contain duplicate output keys.");
     }
 
+    const supportedModifiers = this.supportedModifiers;
+    if (!supportedModifiers) {
+      throw new Error("Comfort model declarations must explicitly set supported modifiers.");
+    }
+    if (new Set(supportedModifiers).size !== supportedModifiers.length) {
+      throw new Error("Comfort model declarations cannot contain duplicate modifiers.");
+    }
+    const knownModifierIds = new Set(modifierOrder);
+    if (supportedModifiers.some((modifierId) => !knownModifierIds.has(modifierId))) {
+      throw new Error("Comfort model declarations cannot contain unknown modifiers.");
+    }
+
     const supportsExplore = modes.includes(ChartMode.Explore);
     const supportsCompliance = modes.includes(ChartMode.Compliance);
 
@@ -498,6 +521,7 @@ export class ComfortModelBuilder<
         ...output,
         defaultBands: cloneNumericBands(output.defaultBands),
       })),
+      supportedModifiers: [...supportedModifiers],
       ...(this.complianceSpec
         ? {
             complianceSpec: {

@@ -4,6 +4,11 @@ import type { ComfortModel as ComfortModelType } from "../../models/comfortModel
 import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { allFieldOrder } from "../../models/inputFieldsMeta";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+import {
+  modifierOrder,
+  type ModifierId as ModifierIdType,
+  type ModifierInputValues,
+} from "../../models/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
 import {
   type ChartMode as ChartModeType,
@@ -13,9 +18,19 @@ import {
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { validateNumericBands } from "../../services/comfort/charts/bands";
 import { isFiniteNumber } from "../../services/comfort/helpers";
+import {
+  inputModifierById,
+  isModifierConfigurationComplete,
+  isModifierFieldValueValid,
+} from "../../services/comfort/inputModifiers";
 import { isDynamicAxisPairValid } from "./dynamicAxes";
 import { comfortModelOrder, getComfortModelConfig } from "./modelConfigs";
-import type { ComfortToolStateSlice, ModelChartSettings } from "./types";
+import type {
+  ActiveModifiersByInputState,
+  ComfortToolStateSlice,
+  ModelChartSettings,
+  ModifierInputsByInputState,
+} from "./types";
 
 interface ShareModelChartSettings {
   mode: ChartModeType;
@@ -44,6 +59,8 @@ export interface ShareStateSnapshot {
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
   inputsByInput: Record<InputIdType, Record<FieldKeyType, number>>;
+  activeModifiersByInput: ActiveModifiersByInputState;
+  modifierInputsByInput: ModifierInputsByInputState;
 }
 
 export const SHARE_STATE_VERSION = 1;
@@ -137,6 +154,70 @@ function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"]
     inputsByInput[inputId] = parsedInput;
   }
   return inputsByInput;
+}
+
+function parseActiveModifiersByInput(
+  value: unknown,
+): ActiveModifiersByInputState | null {
+  if (!isRecord(value) || !hasExactKeys(value, inputOrder)) return null;
+  const parsed = {} as ActiveModifiersByInputState;
+
+  for (const inputId of inputOrder) {
+    const activeByModifier = value[inputId];
+    if (!isRecord(activeByModifier) || !hasExactKeys(activeByModifier, modifierOrder)) {
+      return null;
+    }
+    parsed[inputId] = {} as Record<ModifierIdType, boolean>;
+    for (const modifierId of modifierOrder) {
+      const enabled = activeByModifier[modifierId];
+      if (typeof enabled !== "boolean") return null;
+      parsed[inputId][modifierId] = enabled;
+    }
+  }
+
+  return parsed;
+}
+
+function parseModifierInputsByInput(
+  value: unknown,
+  activeModifiersByInput: ActiveModifiersByInputState,
+): ModifierInputsByInputState | null {
+  if (!isRecord(value) || !hasExactKeys(value, inputOrder)) return null;
+  const parsed = {} as ModifierInputsByInputState;
+
+  for (const inputId of inputOrder) {
+    const inputsByModifier = value[inputId];
+    if (!isRecord(inputsByModifier) || !hasExactKeys(inputsByModifier, modifierOrder)) {
+      return null;
+    }
+    parsed[inputId] = {} as ModifierInputsByInputState[typeof inputId];
+
+    for (const modifierId of modifierOrder) {
+      const definition = inputModifierById[modifierId];
+      const modifierInputs = inputsByModifier[modifierId];
+      if (!isRecord(modifierInputs) || !hasExactKeys(modifierInputs, definition.extraInputs)) {
+        return null;
+      }
+
+      const parsedInputs: ModifierInputValues = {};
+      for (const fieldKey of definition.extraInputs) {
+        const fieldValue = modifierInputs[fieldKey];
+        if (fieldValue !== null && !isModifierFieldValueValid(fieldKey, fieldValue)) {
+          return null;
+        }
+        parsedInputs[fieldKey] = fieldValue as number | null;
+      }
+      if (
+        activeModifiersByInput[inputId][modifierId]
+        && !isModifierConfigurationComplete(modifierId, parsedInputs)
+      ) {
+        return null;
+      }
+      parsed[inputId][modifierId] = parsedInputs;
+    }
+  }
+
+  return parsed;
 }
 
 function parseBandEdge(value: unknown): number | null {
@@ -286,6 +367,8 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
       "activeInputId",
       "unitSystem",
       "inputsByInput",
+      "activeModifiersByInput",
+      "modifierInputsByInput",
     ])
     || value.version !== SHARE_STATE_VERSION
     || !comfortModelValues.has(value.selectedModel as ComfortModelType)
@@ -307,7 +390,13 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
 
   const models = parseModelSnapshots(value.models);
   const inputsByInput = parseInputsByInput(value.inputsByInput);
-  if (!models || !inputsByInput) {
+  const activeModifiersByInput = parseActiveModifiersByInput(
+    value.activeModifiersByInput,
+  );
+  const modifierInputsByInput = activeModifiersByInput
+    ? parseModifierInputsByInput(value.modifierInputsByInput, activeModifiersByInput)
+    : null;
+  if (!models || !inputsByInput || !activeModifiersByInput || !modifierInputsByInput) {
     return null;
   }
 
@@ -320,6 +409,8 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
     activeInputId,
     unitSystem: value.unitSystem as UnitSystemType,
     inputsByInput,
+    activeModifiersByInput,
+    modifierInputsByInput,
   };
 }
 
@@ -369,6 +460,26 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
       }, {} as ShareStateSnapshot["inputsByInput"][typeof inputId]);
       return accumulator;
     }, {} as ShareStateSnapshot["inputsByInput"]),
+    activeModifiersByInput: inputOrder.reduce((byInput, inputId) => {
+      byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
+        byModifier[modifierId] = state.activeModifiersByInput[inputId][modifierId];
+        return byModifier;
+      }, {} as Record<ModifierIdType, boolean>);
+      return byInput;
+    }, {} as ActiveModifiersByInputState),
+    modifierInputsByInput: inputOrder.reduce((byInput, inputId) => {
+      byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
+        byModifier[modifierId] = inputModifierById[modifierId].extraInputs.reduce(
+          (inputs, fieldKey) => {
+            inputs[fieldKey] = state.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
+            return inputs;
+          },
+          {} as ModifierInputValues,
+        );
+        return byModifier;
+      }, {} as ModifierInputsByInputState[typeof inputId]);
+      return byInput;
+    }, {} as ModifierInputsByInputState),
   };
 }
 
@@ -393,6 +504,14 @@ export function applyShareSnapshotToState(
   for (const inputId of inputOrder) {
     for (const fieldKey of allFieldOrder) {
       state.inputsByInput[inputId][fieldKey] = snapshot.inputsByInput[inputId][fieldKey];
+    }
+    for (const modifierId of modifierOrder) {
+      state.activeModifiersByInput[inputId][modifierId] =
+        snapshot.activeModifiersByInput[inputId][modifierId];
+      for (const fieldKey of inputModifierById[modifierId].extraInputs) {
+        state.modifierInputsByInput[inputId][modifierId][fieldKey] =
+          snapshot.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
+      }
     }
   }
 }

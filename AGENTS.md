@@ -110,6 +110,7 @@ A model definition should own:
 - chart list and chart builders
 - comfort zone definitions (as `ThermalZone` instances — see below)
 - supported `modes`, `chartableOutputs`, and an optional fixed `complianceSpec`
+- supported input modifiers, using an explicit empty list when none apply
 
 Use centralized constants and typed metadata from `src/models/` for:
 
@@ -118,23 +119,24 @@ Use centralized constants and typed metadata from `src/models/` for:
 - chart identifiers
 - compare-input identifiers
 - chart modes and model-output identifiers
+- modifier and modifier-field identifiers
 
 Do not introduce new raw domain strings for those concepts.
 
 ## Capability Declarations And Next Architecture Direction
 
-`26-06-29-architecture-brief.md` describes the broader target architecture; §9.5 Compliance mode, Explore controls, the shared `FieldChartConfig` engine, and full per-model chart-setting memory are implemented. Input modifiers remain future work.
+`26-06-29-architecture-brief.md` describes the broader target architecture; §9.5 Compliance mode, Explore controls, the shared `FieldChartConfig` engine, full per-model chart-setting memory, and §9.7 generic input modifiers are implemented.
 
 - Compliance and Explore should share one chart engine, with Compliance as the constrained version.
 - Every model declaration must set `modes` and `chartableOutputs`; Compliance models must also set a `complianceSpec` with non-empty bands, a caption, and a result feedback callback. Use the builder rather than controller branches.
 - `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `chartSettingsByModel` stores each model's mode, x/y axes, baseline, and optional Explore working state. Explore z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`; Compliance output and bands always come directly from `complianceSpec`.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
-- Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize only Explore bands, and use explicit wire sentinels for unbounded numeric edges. Do not add old-v1 migration behavior.
+- Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize only Explore bands plus exact modifier state, and use explicit wire sentinels for unbounded numeric edges. Do not add old-v1 migration behavior.
 - Band assignment is array-ordered and half-open (`min <= value < max`); numeric values, functional-edge X values, and band inputs are canonical SI.
 - PMV ASHRAE and PMV ISO are separate registered models with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files (`pmvAshrae.ts` and `pmvIso.ts`). ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. Shared PMV mechanics live in `pmvShared.ts`; do not merge the standards behind a runtime toggle.
-- Future constants such as `ModifierId` should be added under `src/models/` before use; do not inline raw strings.
-- Future input sub-tools should use an `InputModifier` pattern: keep base SI input separate from effective SI input, apply reversible modifier patches, and declare supported modifiers per model.
+- `ModifierId`, `ModifierFieldKey`, and the generic `InputModifier` contract live in `src/models/inputModifiers.ts`; do not inline modifier strings.
+- Input sub-tools keep base SI input separate from modifier configuration. The controller derives effective SI input through the model's declared modifier order and supplies it through `ModelCalculationContext`; modifiers must never write effective values back to base state.
 - Keep Time-series out of Analysis state until it is explicitly implemented.
 
 ## Comfort Zone Design

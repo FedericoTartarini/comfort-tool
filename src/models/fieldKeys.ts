@@ -27,7 +27,6 @@ export type FieldKey = (typeof FieldKey)[keyof typeof FieldKey];
 
 // This object is a set of unique string values used to identify each derived input parameter.
 export const DerivedInputId = {
-  MeasuredAirSpeed: "airSpeed.measured",
   DewPoint: "humidity.dewPoint",
   HumidityRatio: "humidity.humidityRatio",
   WetBulb: "humidity.wetBulb",

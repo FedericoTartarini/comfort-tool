@@ -1,10 +1,8 @@
 import {
   AirSpeedControlMode,
-  AirSpeedInputMode,
   HumidityInputMode,
   TemperatureMode,
   type AirSpeedControlMode as AirSpeedControlModeType,
-  type AirSpeedInputMode as AirSpeedInputModeType,
   type HumidityInputMode as HumidityInputModeType,
   type TemperatureMode as TemperatureModeType,
 } from "./inputModes";
@@ -25,19 +23,6 @@ export const temperatureMenuItems: MenuItemDefinition<TemperatureModeType>[] = [
     label: "Operative temp",
     description: "Treat operative temperature as the single temperature input.",
     value: TemperatureMode.Operative,
-  },
-];
-
-export const airSpeedInputMenuItems: MenuItemDefinition<AirSpeedInputModeType>[] = [
-  {
-    label: "Relative air speed",
-    description: "Use the relative air speed value directly.",
-    value: AirSpeedInputMode.Relative,
-  },
-  {
-    label: "Measured air speed",
-    description: "Enter measured air speed and derive relative air speed from activity.",
-    value: AirSpeedInputMode.Measured,
   },
 ];
 

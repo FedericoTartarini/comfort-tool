@@ -22,6 +22,7 @@ import {
 } from "../models/inputModes";
 import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ModelCalculationContext } from "../models/modelCalculation";
+import type { ModifierId as ModifierIdType } from "../models/inputModifiers";
 import {
   type Band,
   type BandEdge,
@@ -111,6 +112,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   description: string;
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
+  supportedModifiers: readonly ModifierIdType[];
   complianceSpec: ComplianceSpec<Band, AdaptiveResponseDto>;
   resultStandard: ComfortStandard;
   operativeTemperatureStandard: JsThermalComfortStandard;
@@ -653,6 +655,7 @@ export function createAdaptiveModelConfig(
     .setDescription(declaration.description)
     .setModes(declaration.modes)
     .setChartableOutputs(declaration.chartableOutputs)
+    .setModifiers(declaration.supportedModifiers)
     .setComplianceSpec(declaration.complianceSpec)
     .addControl({ id: InputControlId.Temperature, behavior: temperatureBehavior })
     .addControl({

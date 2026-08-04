@@ -1,6 +1,7 @@
 import type { InputId as InputIdType } from "../../models/inputSlots";
+import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
-import type { ComfortToolStateSlice } from "./types";
+import type { ComfortToolStateSlice, InputsByInputState } from "./types";
 import { getComfortModelConfig } from "./modelConfigs";
 
 type TimerId = ReturnType<typeof globalThis.setTimeout>;
@@ -15,7 +16,11 @@ async function yieldToNextFrame() {
   });
 }
 
-export function createCalculationManager(state: ComfortToolStateSlice, getVisibleInputIds: () => InputIdType[]) {
+export function createCalculationManager(
+  state: ComfortToolStateSlice,
+  getVisibleInputIds: () => InputIdType[],
+  getEffectiveInputsByInput: (modelId: ComfortModelType) => InputsByInputState,
+) {
   let calculationTimerId: TimerId | null = null;
   let latestCalculationToken = 0;
 
@@ -42,7 +47,7 @@ export function createCalculationManager(state: ComfortToolStateSlice, getVisibl
     try {
       const modelConfig = getComfortModelConfig(selectedModel);
       const calculationContext: ModelCalculationContext = {
-        inputsByInput: state.inputsByInput,
+        inputsByInput: getEffectiveInputsByInput(selectedModel),
         modelOptionsByModel: state.ui.modelOptionsByModel,
       };
       const calculationOutputs = modelConfig.calculate(calculationContext, visibleInputIds);

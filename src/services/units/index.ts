@@ -3,6 +3,7 @@ import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/unit
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
 
 export * from "./modelOutputs";
+export * from "./modifierInputs";
 
 /**
  * Centralized unit conversion helpers.

@@ -68,6 +68,7 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   zones: adaptiveAshraeZonesList,
   modes: [ChartMode.Compliance],
   chartableOutputs: [],
+  supportedModifiers: [],
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),

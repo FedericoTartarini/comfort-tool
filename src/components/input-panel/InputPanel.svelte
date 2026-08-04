@@ -4,8 +4,8 @@
   import { Button, Card, Modal } from "flowbite-svelte";
 
   import ClothingEnsembleBuilder from "../ClothingEnsembleBuilder.svelte";
-  import QuickClothingEstimate from "../clothing-builder/QuickClothingEstimate.svelte";
   import InputFieldRow from "./InputFieldRow.svelte";
+  import InputModifiers from "./InputModifiers.svelte";
   import {
     inputOrder,
     type InputId as InputIdType,
@@ -22,7 +22,6 @@
   let { toolState }: Props = $props();
 
   let clothingBuilderOpen = $state(false);
-  let quickClothingEstimateOpen = $state(false);
   const inputControls = $derived(toolState.selectors.getInputControls());
   const maxClothingValue = $derived(
     inputControls.find((control) => control.id === InputControlId.ClothingInsulation)?.maxValue,
@@ -31,7 +30,6 @@
   $effect(() => {
     if (maxClothingValue === undefined) {
       clothingBuilderOpen = false;
-      quickClothingEstimateOpen = false;
     }
   });
 
@@ -94,12 +92,11 @@
           onOpenClothingBuilder={() => {
             clothingBuilderOpen = true;
           }}
-          onOpenQuickClothingEstimate={() => {
-            quickClothingEstimateOpen = true;
-          }}
         />
       {/each}
     </div>
+
+    <InputModifiers {toolState} />
   </div>
 </Card>
 
@@ -121,28 +118,6 @@
       onApplyClothingValue={handleApplyClothingValue}
       onClose={() => {
         clothingBuilderOpen = false;
-      }}
-    />
-  </Modal>
-
-  <Modal
-    bind:open={quickClothingEstimateOpen}
-    size="md"
-    autoclose={false}
-    outsideclose={true}
-    class="modal-shell-soft"
-    classHeader="items-start justify-end gap-4 px-5 py-4 md:px-6"
-    classBody="overflow-y-auto p-0"
-  >
-    <QuickClothingEstimate
-      activeInputId={toolState.state.ui.activeInputId}
-      visibleInputIds={toolState.selectors.getVisibleInputIds()}
-      unitSystem={toolState.state.ui.unitSystem}
-      {maxClothingValue}
-      onSelectInput={toolState.actions.setActiveInputId}
-      onApplyClothingValue={handleApplyClothingValue}
-      onClose={() => {
-        quickClothingEstimateOpen = false;
       }}
     />
   </Modal>

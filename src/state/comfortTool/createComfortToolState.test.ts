@@ -6,15 +6,18 @@ import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
 import {
   AirSpeedControlMode,
-  AirSpeedInputMode,
   OptionKey,
   TemperatureMode,
 } from "../../models/inputModes";
 import { InputId } from "../../models/inputSlots";
 import { UnitSystem } from "../../models/units";
 import { ChartMode, ModelOutputKey } from "../../models/modelCapabilities";
-import { pmvAshraeModelConfig } from "../../comfortModels/pmvAshrae";
-import type { PmvChartSourceDto } from "../../comfortModels/pmvShared";
+import { ModifierFieldKey, ModifierId } from "../../models/inputModifiers";
+import {
+  pmvAshraeAdapter,
+  pmvAshraeModelConfig,
+} from "../../comfortModels/pmvAshrae";
+import type { PmvChartSourceDto, PmvResponseDto } from "../../comfortModels/pmvShared";
 import type { UtciResponseDto } from "../../comfortModels/utci";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
@@ -53,6 +56,31 @@ function toLegendBands(
   )).map(({ label, color }) => ({ label, color }));
 }
 
+const solarModifierFixture = [
+  [ModifierFieldKey.SolarAltitude, "45"],
+  [ModifierFieldKey.SolarHorizontalAngle, "90"],
+  [ModifierFieldKey.DirectSolarRadiation, "800"],
+  [ModifierFieldKey.SolarTransmittance, "0.5"],
+  [ModifierFieldKey.SkyVaultViewFraction, "0.5"],
+  [ModifierFieldKey.BodyExposureFraction, "0.5"],
+] as const;
+
+function populateSolarModifier(
+  toolState: ReturnType<typeof createComfortToolState>,
+  inputId: InputId,
+) {
+  for (const [fieldKey, value] of solarModifierFixture) {
+    if (!toolState.actions.updateModifierInput(
+      inputId,
+      ModifierId.SolarGain,
+      fieldKey,
+      value,
+    )) {
+      throw new Error(`Failed to populate solar modifier field ${fieldKey}.`);
+    }
+  }
+}
+
 describe("createComfortToolState", () => {
   it("initializes model chart defaults and independent PMV variants", () => {
     const toolState = createComfortToolState();
@@ -81,6 +109,168 @@ describe("createComfortToolState", () => {
       .not.toBe(pmvAshraeModelConfig.chartableOutputs[0].defaultBands);
     expect(getChartSettings(toolState, ComfortModel.PmvAshrae).explore?.bands)
       .not.toBe(getChartSettings(toolState, ComfortModel.PmvIso).explore?.bands);
+  });
+
+  it("keeps base air speed separate from reversible per-input modifier state", async () => {
+    const toolState = createComfortToolState();
+    const baseInput1 = toolState.state.inputsByInput[InputId.Input1][FieldKey.RelativeAirSpeed];
+    const baseInput2 = toolState.state.inputsByInput[InputId.Input2][FieldKey.RelativeAirSpeed];
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    )).toBe(false);
+    expect(toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      ModifierFieldKey.MeasuredAirSpeed,
+      "0.6",
+    )).toBe(true);
+    expect(toolState.actions.updateModifierInput(
+      InputId.Input2,
+      ModifierId.MeasuredAirSpeed,
+      ModifierFieldKey.MeasuredAirSpeed,
+      "0.8",
+    )).toBe(true);
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    )).toBe(true);
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input2,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    )).toBe(true);
+
+    expect(toolState.state.inputsByInput[InputId.Input1][FieldKey.RelativeAirSpeed])
+      .toBe(baseInput1);
+    expect(toolState.state.inputsByInput[InputId.Input2][FieldKey.RelativeAirSpeed])
+      .toBe(baseInput2);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.RelativeAirSpeed]).toBeCloseTo(0.6, 6);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input2]
+      [FieldKey.RelativeAirSpeed]).toBeCloseTo(0.83, 6);
+
+    toolState.actions.updateInput(InputId.Input1, InputControlId.AirSpeed, "0.3");
+    toolState.actions.updateInput(InputId.Input1, InputControlId.MetabolicRate, "1.8");
+
+    expect(toolState.state.inputsByInput[InputId.Input1][FieldKey.RelativeAirSpeed])
+      .toBe(0.3);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.RelativeAirSpeed]).toBeCloseTo(0.84, 6);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      false,
+    )).toBe(true);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.RelativeAirSpeed]).toBe(0.3);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input2]
+      [FieldKey.RelativeAirSpeed]).toBeCloseTo(0.83, 6);
+    expect(toolState.state.modifierInputsByInput[InputId.Input1]
+      [ModifierId.MeasuredAirSpeed][ModifierFieldKey.MeasuredAirSpeed]).toBe(0.6);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    )).toBe(true);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.RelativeAirSpeed]).toBeCloseTo(0.84, 6);
+
+    await waitForIdle(toolState);
+  });
+
+  it("disables an active incomplete modifier without clearing its other inputs", async () => {
+    const toolState = createComfortToolState();
+    const baseRadiantTemperature = toolState.state.inputsByInput[InputId.Input1]
+      [FieldKey.MeanRadiantTemperature];
+    populateSolarModifier(toolState, InputId.Input1);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.SolarGain,
+      true,
+    )).toBe(true);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.MeanRadiantTemperature]).toBeCloseTo(baseRadiantTemperature + 15.1, 6);
+
+    expect(toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.SolarGain,
+      ModifierFieldKey.SolarTransmittance,
+      "",
+    )).toBe(true);
+
+    expect(toolState.state.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain])
+      .toBe(false);
+    expect(toolState.state.modifierInputsByInput[InputId.Input1][ModifierId.SolarGain]
+      [ModifierFieldKey.SolarTransmittance]).toBeNull();
+    expect(toolState.state.modifierInputsByInput[InputId.Input1][ModifierId.SolarGain]
+      [ModifierFieldKey.DirectSolarRadiation]).toBe(800);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.MeanRadiantTemperature]).toBe(baseRadiantTemperature);
+
+    await waitForIdle(toolState);
+  });
+
+  it("keeps stored and effective SI values invariant when display units change", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      ModifierFieldKey.MeasuredAirSpeed,
+      "0.6",
+    );
+    toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      ModifierFieldKey.MorningOutdoorTemperature,
+      "10",
+    );
+    populateSolarModifier(toolState, InputId.Input1);
+    toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    );
+    toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      true,
+    );
+    toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.SolarGain,
+      true,
+    );
+    await waitForIdle(toolState);
+
+    const storedSi = JSON.stringify(toolState.state.modifierInputsByInput);
+    const effectiveSi = toolState.selectors.getEffectiveInputsByInput();
+
+    toolState.actions.toggleUnitSystem();
+
+    expect(toolState.state.ui.unitSystem).toBe(UnitSystem.IP);
+    expect(JSON.stringify(toolState.state.modifierInputsByInput)).toBe(storedSi);
+    expect(toolState.selectors.getEffectiveInputsByInput()).toEqual(effectiveSi);
+
+    const controls = toolState.selectors.getInputModifierControls();
+    const measured = controls.find(({ id }) => id === ModifierId.MeasuredAirSpeed);
+    const clothing = controls.find(({ id }) => id === ModifierId.MorningClothingEstimate);
+    const solar = controls.find(({ id }) => id === ModifierId.SolarGain);
+    expect(measured?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("1.97");
+    expect(clothing?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("50.0");
+    expect(solar?.extraInputs.find(({ key }) => (
+      key === ModifierFieldKey.DirectSolarRadiation
+    ))?.displayValuesByInput[InputId.Input1]).toBe("253.599");
+
+    toolState.actions.toggleUnitSystem();
+    expect(JSON.stringify(toolState.state.modifierInputsByInput)).toBe(storedSi);
+    expect(toolState.selectors.getEffectiveInputsByInput()).toEqual(effectiveSi);
   });
 
   it.each([
@@ -856,6 +1046,172 @@ describe("createComfortToolState", () => {
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status).toBe("ready");
   });
 
+  it("invalidates supporting model caches only when modifier state is effective", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.scheduleCalculation({ immediate: true });
+    await waitForIdle(toolState);
+    toolState.actions.setSelectedModel(ComfortModel.PmvIso);
+    await waitForIdle(toolState);
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
+
+    const ashraeSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae]
+      .chartSource;
+    const isoSource = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso]
+      .chartSource;
+
+    expect(toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      ModifierFieldKey.MeasuredAirSpeed,
+      "0.6",
+    )).toBe(true);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status)
+      .toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status)
+      .toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].chartSource)
+      .toBe(ashraeSource);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].chartSource)
+      .toBe(isoSource);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    )).toBe(true);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status)
+      .toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status)
+      .toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].status)
+      .toBe("empty");
+
+    await waitForIdle(toolState);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status)
+      .toBe("ready");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status)
+      .toBe("stale");
+
+    expect(toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      ModifierFieldKey.MeasuredAirSpeed,
+      "0.7",
+    )).toBe(true);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status)
+      .toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvIso].status)
+      .toBe("stale");
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.Utci].status)
+      .toBe("empty");
+
+    toolState.actions.scheduleCalculation({ immediate: true });
+    await waitForIdle(toolState);
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status)
+      .toBe("ready");
+  });
+
+  it("feeds one effective PMV request to results and chart generation in operative mode", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.setModelOption(OptionKey.TemperatureMode, TemperatureMode.Operative);
+    toolState.actions.updateInput(InputId.Input1, InputControlId.Temperature, "24");
+    toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      ModifierFieldKey.MeasuredAirSpeed,
+      "0.6",
+    );
+    toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      ModifierFieldKey.MorningOutdoorTemperature,
+      "10",
+    );
+    populateSolarModifier(toolState, InputId.Input1);
+    toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    );
+    toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      true,
+    );
+    toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.SolarGain,
+      true,
+    );
+    await waitForIdle(toolState);
+
+    const baseInputs = toolState.state.inputsByInput[InputId.Input1];
+    const effectiveInputs = toolState.selectors.getEffectiveInputsByInput()[InputId.Input1];
+    const cache = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae];
+    const chartSource = cache.chartSource as PmvChartSourceDto;
+    const request = chartSource.inputs[InputId.Input1];
+    const result = cache.resultsByInput[InputId.Input1] as PmvResponseDto;
+
+    expect(baseInputs[FieldKey.DryBulbTemperature]).toBe(24);
+    expect(baseInputs[FieldKey.MeanRadiantTemperature]).toBe(24);
+    expect(effectiveInputs[FieldKey.DryBulbTemperature]).toBe(24);
+    expect(effectiveInputs[FieldKey.MeanRadiantTemperature]).toBeCloseTo(39.1, 6);
+    expect(request).toEqual(expect.objectContaining({
+      tdb: effectiveInputs[FieldKey.DryBulbTemperature],
+      tr: effectiveInputs[FieldKey.MeanRadiantTemperature],
+      vr: effectiveInputs[FieldKey.RelativeAirSpeed],
+      clo: effectiveInputs[FieldKey.ClothingInsulation],
+    }));
+    expect(result.vr).toBeCloseTo(request!.vr, 8);
+
+    const expectedPmv = pmvAshraeAdapter.calculate(request!);
+    expect(result.pmv).toBeCloseTo(expectedPmv.pmv, 8);
+    expect(result.ppd).toBeCloseTo(expectedPmv.ppd, 8);
+    expect(toolState.selectors.getResultSections()
+      .find(({ title }) => title === "PMV")?.valuesByInput[InputId.Input1]?.text)
+      .toBe(result.pmv.toFixed(2));
+    expect(toolState.selectors.getChartControlsViewModel().mode.feedback?.passes)
+      .toBe(result.isCompliant);
+
+    toolState.actions.setDynamicXAxis(FieldKey.MeanRadiantTemperature);
+    const marker = toolState.selectors.getCurrentChartResult()?.traces.find((trace) => (
+      trace.name === "Input 1" && trace.mode === "markers"
+    ));
+    expect(Number(marker?.x?.[0])).toBeCloseTo(request!.tr, 6);
+  });
+
+  it("retains modifier configuration while unsupported models ignore and hide it", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      ModifierFieldKey.MeasuredAirSpeed,
+      "0.6",
+    );
+    toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MeasuredAirSpeed,
+      true,
+    );
+    await waitForIdle(toolState);
+    const baseAirSpeed = toolState.state.inputsByInput[InputId.Input1]
+      [FieldKey.RelativeAirSpeed];
+
+    toolState.actions.setSelectedModel(ComfortModel.Utci);
+    await waitForIdle(toolState);
+
+    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+      [ModifierId.MeasuredAirSpeed]).toBe(true);
+    expect(toolState.selectors.getInputModifierControls()).toEqual([]);
+    expect(toolState.selectors.getEffectiveInputsByInput(ComfortModel.Utci)[InputId.Input1]
+      [FieldKey.RelativeAirSpeed]).toBe(baseAirSpeed);
+
+    toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
+    expect(toolState.selectors.getInputModifierControls()
+      .find(({ id }) => id === ModifierId.MeasuredAirSpeed)?.activeByInput[InputId.Input1])
+      .toBe(true);
+  });
+
   it("stales all model caches after shared input updates and only refreshes the selected model", async () => {
     const toolState = createComfortToolState();
 
@@ -911,15 +1267,4 @@ describe("createComfortToolState", () => {
     expect(toolState.state.ui.unitSystem).toBe(UnitSystem.IP);
   });
 
-  it("recomputes derived control displays from canonical input patches", () => {
-    const toolState = createComfortToolState();
-
-    toolState.actions.setModelOption(OptionKey.AirSpeedInputMode, AirSpeedInputMode.Measured);
-    toolState.actions.updateInput(InputId.Input1, InputControlId.AirSpeed, "0.6");
-
-    const airSpeedControl = toolState.selectors.getInputControls()
-      .find((control) => control.id === InputControlId.AirSpeed);
-
-    expect(airSpeedControl?.numericValuesByInput.input1).toBeCloseTo(0.6, 6);
-  });
 });

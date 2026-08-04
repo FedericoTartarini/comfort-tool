@@ -19,6 +19,7 @@ import {
   type ComfortModel as ComfortModelType,
 } from "../../../models/comfortModels";
 import { FieldKey } from "../../../models/fieldKeys";
+import { ModifierId } from "../../../models/inputModifiers";
 import {
   ChartMode,
   findNumericBandIndexForValue,
@@ -203,6 +204,27 @@ describe("comfort model capability registry", () => {
       expect(config.chartableOutputs.map((output) => output.key)).toEqual(expected[modelId].outputs);
       expect(config.complianceSpec?.output).toBe(expected[modelId].complianceOutput);
     });
+  });
+
+  it("declares generic input-modifier availability per model", () => {
+    const pmvModifiers = [
+      ModifierId.MeasuredAirSpeed,
+      ModifierId.MorningClothingEstimate,
+      ModifierId.SolarGain,
+    ];
+
+    expect(getComfortModelConfig(ComfortModel.PmvAshrae).supportedModifiers)
+      .toEqual(pmvModifiers);
+    expect(getComfortModelConfig(ComfortModel.PmvIso).supportedModifiers)
+      .toEqual(pmvModifiers);
+
+    comfortModelOrder
+      .filter((modelId) => (
+        modelId !== ComfortModel.PmvAshrae && modelId !== ComfortModel.PmvIso
+      ))
+      .forEach((modelId) => {
+        expect(getComfortModelConfig(modelId).supportedModifiers).toEqual([]);
+      });
   });
 
   it("derives Explore presets from the existing model zones", () => {

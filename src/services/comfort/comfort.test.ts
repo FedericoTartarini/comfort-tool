@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { inputDefaultsById, InputId } from "../../models/inputSlots";
 import {
   AirSpeedControlMode,
-  AirSpeedInputMode,
   HumidityInputMode,
   OptionKey,
 } from "../../models/inputModes";
@@ -30,7 +29,6 @@ import {
   utciModelConfig,
 } from "../../comfortModels/utci";
 import {
-  deriveRelativeAirSpeedFromMeasured,
   deriveRelativeHumidityFromDewPoint,
 } from "./derivations";
 import { check_standard_compliance, pmv_ppd_ashrae } from "jsthermalcomfort";
@@ -443,7 +441,7 @@ describe("comfort services", () => {
   });
 
   it("normalizes clothing prediction results from jsthermalcomfort", () => {
-    const predictedClothing = predictClothingInsulationFromService(10, UnitSystem.SI);
+    const predictedClothing = predictClothingInsulationFromService(10);
 
     expect(predictedClothing).toBeTypeOf("number");
     expect(predictedClothing).toBeGreaterThan(0);
@@ -457,27 +455,20 @@ describe("comfort services", () => {
     expect(clothingGarmentOptions.find((option) => option.article === "Double-breasted coat (thick)")?.clo).toBe(0.48);
   });
 
-  it("synchronizes canonical inputs from measured air speed and dew point overrides", () => {
+  it("synchronizes canonical relative humidity from a dew-point override", () => {
     const synchronizedState = synchronizePmvInputState(
       {
         ...inputDefaultsById[InputId.Input1],
         [FieldKey.DryBulbTemperature]: 26,
-        [FieldKey.MetabolicRate]: 1.8,
       } as any,
       {
-        [OptionKey.AirSpeedInputMode]: AirSpeedInputMode.Measured,
         [OptionKey.HumidityInputMode]: HumidityInputMode.DewPoint,
       },
       {
-        [DerivedInputId.MeasuredAirSpeed]: 0.6,
         [DerivedInputId.DewPoint]: 12,
       },
     );
 
-    expect(synchronizedState.inputState[FieldKey.RelativeAirSpeed]).toBeCloseTo(
-      deriveRelativeAirSpeedFromMeasured(0.6, 1.8),
-      6,
-    );
     expect(synchronizedState.inputState[FieldKey.RelativeHumidity]).toBeCloseTo(
       deriveRelativeHumidityFromDewPoint(26, 12),
       6,
