@@ -4,6 +4,9 @@ import {
 } from "../../../models/modelCapabilities";
 import type {
   PlotColorScaleDto,
+  PlotConstraintOperationDto,
+  PlotHoverInfoDto,
+  PlotLevelContoursDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
 import {
@@ -18,9 +21,9 @@ type ZoneColorSource = {
 
 interface BoundaryLayerOptions {
   name?: string;
-  contours?: GridContourLayerSpec["contours"];
+  contours?: PlotLevelContoursDto;
   hovertemplate?: string;
-  hoverinfo?: string;
+  hoverinfo?: PlotHoverInfoDto;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
 }
@@ -28,18 +31,17 @@ interface BoundaryLayerOptions {
 interface ZoneContourLayersOptions {
   name: string;
   colorscale: PlotColorScaleDto;
-  contours: GridContourLayerSpec["contours"];
+  contours: PlotLevelContoursDto;
   hovertemplate: string;
   showscale?: boolean;
   zmin?: number;
   zmax?: number;
-  colorbar?: GridContourLayerSpec["colorbar"];
   opacity?: number;
   line?: GridContourLayerSpec["line"];
   isZone?: boolean;
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
-  hoverinfo?: string;
+  hoverinfo?: PlotHoverInfoDto;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
   boundaryLayer?: BoundaryLayerOptions;
@@ -69,7 +71,6 @@ function buildZoneContourLayers({
   showscale = false,
   zmin,
   zmax,
-  colorbar,
   opacity,
   line,
   isZone,
@@ -88,7 +89,6 @@ function buildZoneContourLayers({
     showscale,
     zmin,
     zmax,
-    colorbar,
     opacity,
     line,
     isZone,
@@ -135,7 +135,7 @@ function buildCategoricalBandLayers({
   bands,
   opacity = 0.8,
 }: CategoricalBandLayersOptions): GridContourLayerSpec[] {
-  const contours = bands.length === 1
+  const contours: PlotLevelContoursDto = bands.length === 1
     ? {
       coloring: "fill",
       showlines: false,
@@ -264,7 +264,7 @@ function getFiniteUpperCoverValue(range: { min: number; max: number }): number {
 function buildBandConstraint(
   band: NumericBand,
   finiteRange: { min: number; max: number },
-): { operation: string; value: number | [number, number] } {
+): { operation: PlotConstraintOperationDto; value: number | [number, number] } {
   const hasFiniteMin = Number.isFinite(band.min);
   const hasFiniteMax = Number.isFinite(band.max);
 

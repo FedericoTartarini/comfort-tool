@@ -131,7 +131,7 @@ describe("UTCI Explore chart", () => {
     expect(tooltipTrace?.z?.[0]).toHaveLength(450);
     expect(tooltipTrace?.hovertemplate).toContain("UTCI");
     expect(tooltipTrace?.hoverongaps).toBe(false);
-    expect(chart.traces.filter(({ hoveron }) => hoveron === "fills")).toHaveLength(0);
+    expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
     expect(chart.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
 

@@ -136,7 +136,6 @@ Define TypeScript interfaces for the calculation request and response. These are
 ```ts
 import { FieldKey } from "../models/fieldKeys";
 import { CalculationSource } from "../models/calculationMetadata";
-import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ModelChartSourceDto } from "../models/comfortDtos";
 
 export interface MyNewModelRequestDto {
@@ -189,31 +188,25 @@ export function calculateMyNewModel(payload: MyNewModelRequestDto): MyNewModelRe
 
 ### 3e. Write the Calculation-Context-to-Request Extractor
 
-This private function reads from the model calculation boundary and produces a `RequestDto` for one input slot. Models receive only canonical-SI inputs and model options; they do not receive controller or UI state.
+Declare the model's DTO-property-to-field mapping next to its DTO. The shared mapper reads one input slot from the calculation boundary; the model still explicitly owns which canonical-SI fields belong in its request.
 
 ```ts
-import type { ModelCalculationContext } from "../models/modelCalculation";
+import { createFieldRequestMapper } from "../services/comfort/requestMapping";
 
-function toMyNewModelRequest(
-  context: ModelCalculationContext,
-  inputId: InputIdType,
-): MyNewModelRequestDto {
-  const inputs = context.inputsByInput[inputId];
-  return {
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    rh:  Number(inputs[FieldKey.RelativeHumidity]),
-  };
-}
+const toMyNewModelRequest = createFieldRequestMapper<MyNewModelRequestDto>({
+  tdb: FieldKey.DryBulbTemperature,
+  rh: FieldKey.RelativeHumidity,
+});
 ```
 
-> The `context.inputsByInput` record contains all effective field values **already in SI**. The controller has applied the model's declared modifier chain before this boundary. Read model options from `context.modelOptionsByModel` when needed; do not import controller or modifier state types into a comfort model.
+> The calculation context contains effective field values **already in SI**. The controller has applied the model's declared modifier chain before this boundary. When model options or standards conditionally change a request, call the field mapper from a small model-local request function and apply that rule there, as UTCI, Adaptive, and PMV do. Do not move conditional field selection or model options into the shared mapper.
 
 ### 3f. Build the Model Configuration
 
 Use `ComfortModelBuilder` to compose all the pieces. This is a fluent API where each method registers a specific part of the model.
 
 ```ts
-import { ComfortModelBuilder, parseEmptyOptions, createEmptyResults, buildResultSection }
+import { ComfortModelBuilder, parseEmptyOptions, buildResultSection }
   from "../state/comfortTool/modelConfigs/builder";
 import { ComfortModel } from "../models/comfortModels";
 import { ChartId } from "../models/chartOptions";
@@ -222,6 +215,7 @@ import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
 import { bandsFromThermalZones, ChartMode, ModelOutputKey, type ModelOutput } from "../models/modelCapabilities";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
+import { calculatePerInput } from "../services/comfort/requestMapping";
 import {
   buildGridModelChart,
   type GridModelChartSpec,
@@ -335,22 +329,16 @@ For temperature controls that support Operative Temperature mode, use `createTem
 The calculator runs for every input slot that is visible and produces `resultsByInput` (one result per slot) plus a `chartSource` payload.
 
 ```ts
-myNewModelBuilder.setCalculator((context, visibleInputIds) => {
-  const resultsByInput = createEmptyResults<MyNewModelResponseDto>();
-  const inputs: ModelChartSourceDto<MyNewModelRequestDto>["inputs"] = {};
-
-  visibleInputIds.forEach((inputId) => {
-    const request = toMyNewModelRequest(context, inputId);
-    resultsByInput[inputId] = calculateMyNewModel(request);
-    inputs[inputId] = request;
-  });
-
-  return {
-    resultsByInput,
-    chartSource: { inputs },
-  };
-});
+myNewModelBuilder.setCalculator((context, visibleInputIds) =>
+  calculatePerInput({
+    context,
+    visibleInputIds,
+    mapRequest: toMyNewModelRequest,
+    calculate: calculateMyNewModel,
+  }));
 ```
+
+`calculatePerInput()` initializes every keyed result slot to `null`, calculates only visible inputs, and returns the standard `{ inputs }` chart source. Keep a model-local loop when calculation assembly has additional real responsibilities, such as PMV comfort-zone generation and applicability handling.
 
 #### Result Builder
 

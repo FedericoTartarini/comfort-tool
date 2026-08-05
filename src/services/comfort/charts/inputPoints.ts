@@ -1,5 +1,11 @@
 import { inputDisplayMetaById } from "../../../models/inputSlotPresentation";
-import type { CompareInputMap, PlotTraceDto } from "../../../models/comfortDtos";
+import type {
+  CompareInputMap,
+  PlotHoverInfoDto,
+  PlotHoverRowDto,
+  PlotScatterMarkerTraceDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
 import { getCompareInputs } from "../helpers";
 import { buildInputScatterTrace } from "./plotlyBuilders";
@@ -32,13 +38,13 @@ export interface BuildInputTraceGroupsOptions<TPayload, TResult> {
   color?: string;
   hoverMetadata?: (
     context: InputTraceContext<TPayload, TResult>,
-  ) => unknown[] | unknown[][];
-  hoverinfo?: string;
+  ) => PlotHoverRowDto;
+  hoverinfo?: PlotHoverInfoDto;
 }
 
 interface InputTraceGroup {
   overlays: PlotTraceDto[];
-  markers: PlotTraceDto[];
+  markers: PlotScatterMarkerTraceDto[];
 }
 
 export function buildInputTraceGroup<TPayload, TResult = unknown>({
@@ -61,7 +67,7 @@ export function buildInputTraceGroup<TPayload, TResult = unknown>({
   const inputs = getCompareInputs(inputsMap);
   const resolvedShowLegend = showLegend ?? inputs.length > 1;
   const overlays: PlotTraceDto[] = [];
-  const markers: PlotTraceDto[] = [];
+  const markers: PlotScatterMarkerTraceDto[] = [];
 
   inputs.forEach(({ inputId, payload }) => {
     const result = resultsByInput[inputId];

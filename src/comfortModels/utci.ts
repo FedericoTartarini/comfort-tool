@@ -56,6 +56,10 @@ import {
   synchronizePmvInputState,
 } from "../services/comfort/syncState";
 import {
+  calculatePerInput,
+  createFieldRequestMapper,
+} from "../services/comfort/requestMapping";
+import {
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
@@ -63,7 +67,6 @@ import {
 import {
   buildResultSection,
   ComfortModelBuilder,
-  createEmptyResults,
   hasExactKeys,
   isRecord,
 } from "../state/comfortTool/modelConfigs/builder";
@@ -168,27 +171,28 @@ function parseUtciOptions(value: unknown): UtciModelOptions | null {
   return null;
 }
 
+const mapUtciRequestFields = createFieldRequestMapper<UtciRequestDto>({
+  tdb: FieldKey.DryBulbTemperature,
+  tr: FieldKey.MeanRadiantTemperature,
+  v: FieldKey.WindSpeed,
+  rh: FieldKey.RelativeHumidity,
+});
+
 function toRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
 ): UtciRequestDto {
-  const inputs = context.inputsByInput[inputId];
   const options = parseUtciOptions(
     context.modelOptionsByModel[ComfortModel.Utci],
   );
   if (!options) {
     throw new Error(`Invalid options state for ${ComfortModel.Utci}.`);
   }
-  const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
-
-  return {
-    tdb,
-    tr: options[OptionKey.TemperatureMode] === TemperatureMode.Operative
-      ? tdb
-      : Number(inputs[FieldKey.MeanRadiantTemperature]),
-    v: Number(inputs[FieldKey.WindSpeed]),
-    rh: Number(inputs[FieldKey.RelativeHumidity]),
-  };
+  const request = mapUtciRequestFields(context, inputId);
+  if (options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
+    request.tr = request.tdb;
+  }
+  return request;
 }
 
 function getAxisValue(payload: UtciRequestDto, field: FieldKey): number {
@@ -334,7 +338,6 @@ export function buildUtciStressChart(
       title: `${MODEL_LABEL} stress category`,
       margin: UTCI_STRESS_CHART_MARGIN,
       legend: { orientation: "h", x: 0, y: 1.08 },
-      shapes: [],
     },
     source: CalculationSource.FrontendGenerated,
   });
@@ -517,16 +520,13 @@ builder.setDefaultDynamicAxes({
 builder.setDefaultOptions({ ...defaultUtciOptions });
 builder.setOptionParser(parseUtciOptions);
 
-builder.setCalculator((context, visibleInputIds) => {
-  const resultsByInput = createEmptyResults<UtciResponseDto>();
-  const inputs: ModelChartSourceDto<UtciRequestDto>["inputs"] = {};
-  for (const inputId of visibleInputIds) {
-    const request = toRequest(context, inputId);
-    resultsByInput[inputId] = calculateUtci(request);
-    inputs[inputId] = request;
-  }
-  return { resultsByInput, chartSource: { inputs } };
-});
+builder.setCalculator((context, visibleInputIds) =>
+  calculatePerInput({
+    context,
+    visibleInputIds,
+    mapRequest: toRequest,
+    calculate: calculateUtci,
+  }));
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Utci, unitSystem);

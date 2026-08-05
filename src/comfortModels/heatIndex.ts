@@ -6,8 +6,6 @@ import { ComfortModel } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
-import type { InputId as InputIdType } from "../models/inputSlots";
-import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   bandsFromThermalZones,
   ChartMode,
@@ -23,6 +21,10 @@ import {
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
 import { requireThermalZone } from "../services/comfort/helpers";
 import {
+  calculatePerInput,
+  createFieldRequestMapper,
+} from "../services/comfort/requestMapping";
+import {
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
@@ -30,7 +32,6 @@ import {
 import {
   buildResultSection,
   ComfortModelBuilder,
-  createEmptyResults,
   parseEmptyOptions,
 } from "../state/comfortTool/modelConfigs/builder";
 
@@ -98,16 +99,10 @@ function setAxisValue(
   throw new Error(`Unsupported Heat Index chart field: ${field}`);
 }
 
-function toRequest(
-  context: ModelCalculationContext,
-  inputId: InputIdType,
-): HeatIndexRequestDto {
-  const inputs = context.inputsByInput[inputId];
-  return {
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    rh: Number(inputs[FieldKey.RelativeHumidity]),
-  };
-}
+const toRequest = createFieldRequestMapper<HeatIndexRequestDto>({
+  tdb: FieldKey.DryBulbTemperature,
+  rh: FieldKey.RelativeHumidity,
+});
 
 const heatIndexOutput: ModelOutput = {
   key: ModelOutputKey.HeatIndex,
@@ -171,18 +166,13 @@ builder.addControl({
   }),
 });
 
-builder.setCalculator((context, visibleInputIds) => {
-  const resultsByInput = createEmptyResults<HeatIndexResponseDto>();
-  const inputs: ModelChartSourceDto<HeatIndexRequestDto>["inputs"] = {};
-
-  for (const inputId of visibleInputIds) {
-    const request = toRequest(context, inputId);
-    resultsByInput[inputId] = calculateHeatIndex(request);
-    inputs[inputId] = request;
-  }
-
-  return { resultsByInput, chartSource: { inputs } };
-});
+builder.setCalculator((context, visibleInputIds) =>
+  calculatePerInput({
+    context,
+    visibleInputIds,
+    mapRequest: toRequest,
+    calculate: calculateHeatIndex,
+  }));
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.HeatIndex, unitSystem);

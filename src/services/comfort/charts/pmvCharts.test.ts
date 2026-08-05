@@ -323,7 +323,7 @@ describe("PMV charts", () => {
       const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
       expect(fillTraces.length).toBeGreaterThan(0);
-      expect(chart.traces.some(({ hoveron }) => hoveron === "fills")).toBe(false);
+      expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
       expect(tooltipTraces).toHaveLength(1);
       expect(tooltipTraces[0].hoverongaps).toBe(false);
       expect(tooltipTraces[0].hovertemplate).toContain(
@@ -486,7 +486,7 @@ describe("PMV charts", () => {
     expect(tooltipTrace?.hovertemplate).toContain("Zone:");
     expect(tooltipTrace?.hovertemplate).toContain("PMV:");
     expect(tooltipTrace?.hovertemplate).toContain("PPD:");
-    expect(chart.traces.some(({ hoveron }) => hoveron === "fills")).toBe(false);
+    expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
     expect(inputTrace?.x[0]).toBeCloseTo(
       convertFieldValueFromSi(FieldKey.DryBulbTemperature, input.tdb, UnitSystem.IP),
       6,

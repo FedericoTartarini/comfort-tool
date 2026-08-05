@@ -3,6 +3,7 @@ import { CalculationSource, type ComfortStandard } from "../models/calculationMe
 import { ChartId } from "../models/chartOptions";
 import type {
   ModelChartSourceDto,
+  PlotHoverRowDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../models/comfortDtos";
@@ -51,11 +52,14 @@ import {
   getBaselineInputEntry,
   roundValue,
 } from "../services/comfort/helpers";
+import {
+  calculatePerInput,
+  createFieldRequestMapper,
+} from "../services/comfort/requestMapping";
 import { convertFieldValueFromSi } from "../services/units";
 import {
   buildResultSectionsFromRows,
   ComfortModelBuilder,
-  createEmptyResults,
   hasExactKeys,
   isRecord,
   type ResultRowDefinition,
@@ -284,27 +288,29 @@ function parseAdaptiveOptions(value: unknown): AdaptiveModelOptions | null {
   return { [OptionKey.TemperatureMode]: temperatureMode };
 }
 
+const mapAdaptiveRequestFields = createFieldRequestMapper<AdaptiveRequestDto>({
+  tdb: FieldKey.DryBulbTemperature,
+  tr: FieldKey.MeanRadiantTemperature,
+  trm: FieldKey.PrevailingMeanOutdoorTemperature,
+  v: FieldKey.RelativeAirSpeed,
+});
+
 function toAdaptiveRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
   declaration: AdaptiveModelDeclaration,
 ): AdaptiveRequestDto {
-  const inputs = context.inputsByInput[inputId];
   const options = parseAdaptiveOptions(
     context.modelOptionsByModel[declaration.modelId],
   );
   if (!options) {
     throw new Error(`Invalid options state for ${declaration.modelId}.`);
   }
-  const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
-  return {
-    tdb,
-    tr: options[OptionKey.TemperatureMode] === TemperatureMode.Operative
-      ? tdb
-      : Number(inputs[FieldKey.MeanRadiantTemperature]),
-    trm: Number(inputs[FieldKey.PrevailingMeanOutdoorTemperature]),
-    v: Number(inputs[FieldKey.RelativeAirSpeed]),
-  };
+  const request = mapAdaptiveRequestFields(context, inputId);
+  if (options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
+    request.tr = request.tdb;
+  }
+  return request;
 }
 
 function addCoolingEffectTransitionPoints(
@@ -340,7 +346,7 @@ function getAdaptiveHoverMetadata(
   declaration: AdaptiveModelDeclaration,
   result: AdaptiveResponseDto,
   unitSystem: UnitSystemType,
-): unknown[] {
+): PlotHoverRowDto {
   const complianceLevel = getLevelResult(result, declaration.complianceLevelId);
   return [
     result.isApplicable && complianceLevel.accepted
@@ -703,16 +709,14 @@ export function createAdaptiveModelConfig(
       xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
       yAxis: FieldKey.OperativeTemperature,
     })
-    .setCalculator((context, visibleInputIds) => {
-      const resultsByInput = createEmptyResults<AdaptiveResponseDto>();
-      const inputs: ModelChartSourceDto<AdaptiveRequestDto>["inputs"] = {};
-      for (const inputId of visibleInputIds) {
-        const request = toAdaptiveRequest(context, inputId, declaration);
-        inputs[inputId] = request;
-        resultsByInput[inputId] = calculateAdaptive(declaration, request);
-      }
-      return { resultsByInput, chartSource: { inputs } };
-    })
+    .setCalculator((context, visibleInputIds) =>
+      calculatePerInput({
+        context,
+        visibleInputIds,
+        mapRequest: (calculationContext, inputId) =>
+          toAdaptiveRequest(calculationContext, inputId, declaration),
+        calculate: (request) => calculateAdaptive(declaration, request),
+      }))
     .setResultBuilder((results, visibleInputIds, unitSystem) =>
       buildResultSectionsFromRows(
         buildAdaptiveResultRows(declaration, unitSystem),

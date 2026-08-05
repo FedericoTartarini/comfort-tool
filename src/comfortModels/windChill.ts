@@ -6,8 +6,6 @@ import { ComfortModel } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
-import type { InputId as InputIdType } from "../models/inputSlots";
-import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   bandsFromThermalZones,
   ChartMode,
@@ -26,6 +24,10 @@ import {
 } from "../services/comfort/controls/controlBehaviors";
 import { requireThermalZone } from "../services/comfort/helpers";
 import {
+  calculatePerInput,
+  createFieldRequestMapper,
+} from "../services/comfort/requestMapping";
+import {
   convertFieldValueFromSi,
   convertMetersPerSecondToKilometersPerHour,
   convertModelOutputFromSi,
@@ -35,7 +37,6 @@ import {
 import {
   buildResultSection,
   ComfortModelBuilder,
-  createEmptyResults,
   parseEmptyOptions,
 } from "../state/comfortTool/modelConfigs/builder";
 
@@ -104,16 +105,10 @@ function setAxisValue(
   throw new Error(`Unsupported Wind Chill chart field: ${field}`);
 }
 
-function toRequest(
-  context: ModelCalculationContext,
-  inputId: InputIdType,
-): WindChillRequestDto {
-  const inputs = context.inputsByInput[inputId];
-  return {
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    v: Number(inputs[FieldKey.WindSpeed]),
-  };
-}
+const toRequest = createFieldRequestMapper<WindChillRequestDto>({
+  tdb: FieldKey.DryBulbTemperature,
+  v: FieldKey.WindSpeed,
+});
 
 const windChillOutput: ModelOutput = {
   key: ModelOutputKey.WindChill,
@@ -194,18 +189,13 @@ builder.addControl({
   }),
 });
 
-builder.setCalculator((context, visibleInputIds) => {
-  const resultsByInput = createEmptyResults<WindChillResponseDto>();
-  const inputs: ModelChartSourceDto<WindChillRequestDto>["inputs"] = {};
-
-  for (const inputId of visibleInputIds) {
-    const request = toRequest(context, inputId);
-    resultsByInput[inputId] = calculateWindChill(request);
-    inputs[inputId] = request;
-  }
-
-  return { resultsByInput, chartSource: { inputs } };
-});
+builder.setCalculator((context, visibleInputIds) =>
+  calculatePerInput({
+    context,
+    visibleInputIds,
+    mapRequest: toRequest,
+    calculate: calculateWindChill,
+  }));
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];

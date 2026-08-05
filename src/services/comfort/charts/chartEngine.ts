@@ -1,6 +1,9 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
 import type {
   PlotAnnotationDto,
+  PlotHoverValueDto,
+  PlotLegendDto,
+  PlotMarginDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
@@ -115,15 +118,14 @@ export type FieldChartInputGroup<TPayload, TResult> = Omit<
 
 export interface FieldChartLayoutSpec {
   title: string;
-  margin: Record<string, number>;
+  margin: PlotMarginDto;
   paperBgColor?: string;
   plotBgColor?: string;
   gridColor?: string;
   showGrid?: boolean;
   zeroLine?: boolean;
-  legend?: Record<string, unknown> | null;
-  shapes?: Record<string, unknown>[];
-  height?: number | null;
+  legend?: PlotLegendDto;
+  height?: number;
 }
 
 export interface FieldChartOptions<TPayload, TResult> {
@@ -142,7 +144,7 @@ export interface FieldChartOptions<TPayload, TResult> {
 
 export interface BandedGridOutputEvaluation {
   valueSi: number;
-  additionalHoverMetadata?: readonly unknown[];
+  additionalHoverMetadata?: readonly PlotHoverValueDto[];
 }
 
 export const GridBandRenderStrategy = {
@@ -250,7 +252,6 @@ function resolveLayout(
     showGrid: layout.showGrid,
     zeroLine: layout.zeroLine,
     legend: layout.legend,
-    shapes: layout.shapes,
     height: layout.height === undefined ? DEFAULT_CHART_HEIGHT : layout.height,
   };
 }

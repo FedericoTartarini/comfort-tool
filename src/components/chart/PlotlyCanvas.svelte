@@ -9,7 +9,10 @@
    */
   import { onMount, tick } from "svelte";
 
-  import { toPlotlyFigure } from "../../services/plotlyFigure";
+  import {
+    toPlotlyFigure,
+    type PlotlyFigure,
+  } from "../../services/plotlyFigure";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
 
   interface Props {
@@ -41,11 +44,11 @@
       // The element to render the chart in
       root: HTMLDivElement,
       // The data to render
-      data: unknown[],
+      data: PlotlyFigure["data"],
       // The layout to render
-      layout: object,
+      layout: PlotlyFigure["layout"],
       // The config to render
-      config: object,
+      config: PlotlyFigure["config"],
     ) => Promise<void>;
     // Purge removes the chart from the given element
     purge: (root: HTMLDivElement) => void;
@@ -54,12 +57,18 @@
       // The element to download the chart from
       root: HTMLDivElement,
       // The options for the download
-      options: Record<string, unknown>,
+      options: PlotlyDownloadOptions,
     ) => Promise<void>;
     // Resize an existing Plotly chart after its responsive container changes.
     Plots?: {
       resize: (root: HTMLDivElement) => Promise<void> | void;
     };
+  }
+
+  interface PlotlyDownloadOptions {
+    format: "png" | "svg";
+    filename: string;
+    scale?: number;
   }
 
   // Component state
@@ -85,10 +94,9 @@
     if (plotlyModule) {
       return plotlyModule;
     }
-    const importedModule = await import("plotly.js-dist-min" as any);
-    // Assign the module to plotlyModule state variable as the plotly module type
-    plotlyModule = (importedModule.default ??
-      importedModule) as PlotlyModule;
+    const importedModule = await import("plotly.js-dist-min");
+    const moduleCandidate: unknown = importedModule.default ?? importedModule;
+    plotlyModule = moduleCandidate as PlotlyModule;
     // Return the module
     return plotlyModule;
   }
@@ -172,7 +180,7 @@
     // The Plotly.js module
     plotly: NonNullable<typeof plotlyModule>,
     // The figure to animate
-    figure: { data: unknown[]; layout: object; config: object },
+    figure: PlotlyFigure,
     // The duration of the animation in milliseconds
     durationMs: number,
   ): Promise<void> {
@@ -263,16 +271,16 @@
     try {
       // Load the Plotly.js library
       const plotly = await loadPlotly();
-      // Deep clone the chart result to avoid mutating the original data.
-      const chartPayload = JSON.parse(JSON.stringify(chartResult));
+      const chartPayload = showZones
+        ? chartResult
+        : {
+            ...chartResult,
+            traces: chartResult.traces.filter(
+              (trace) => !trace.isBackgroundZone,
+            ),
+          };
       // Convert the chart payload to a Plotly figure.
       const figure = toPlotlyFigure(chartPayload);
-
-      if (!showZones) {
-        figure.data = figure.data.filter(
-          (trace: any) => !trace.isBackgroundZone,
-        );
-      }
       // Hide the plot title if the showPlotTitle flag is false.
       if (!showPlotTitle) {
         // Set the plot title to undefined

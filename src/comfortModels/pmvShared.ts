@@ -5,6 +5,8 @@ import type {
   ComfortPointDto,
   CompareInputMap,
   ModelChartSourceDto,
+  PlotHoverRowDto,
+  PlotMarginDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../models/comfortDtos";
@@ -75,6 +77,7 @@ import {
   clothingTypicalEnsembles,
   metabolicActivityOptions,
 } from "../services/comfort/referenceValues";
+import { createFieldRequestMapper } from "../services/comfort/requestMapping";
 import {
   normalizePmvOptions,
   synchronizePmvInputState,
@@ -514,26 +517,32 @@ function parsePmvOptions(value: unknown): PmvModelOptions | null {
   };
 }
 
+const mapPmvRequestFields = createFieldRequestMapper<
+  Omit<PmvRequestDto, "occupantHasAirSpeedControl">
+>({
+  tdb: FieldKey.DryBulbTemperature,
+  tr: FieldKey.MeanRadiantTemperature,
+  vr: FieldKey.RelativeAirSpeed,
+  rh: FieldKey.RelativeHumidity,
+  met: FieldKey.MetabolicRate,
+  clo: FieldKey.ClothingInsulation,
+  wme: FieldKey.ExternalWork,
+});
+
 function toPmvRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
   adapter: PmvStandardAdapter,
 ): PmvRequestDto {
-  const inputs = context.inputsByInput[inputId];
   const options = parsePmvOptions(
     context.modelOptionsByModel[adapter.modelId],
   );
   if (!options) {
     throw new Error(`Invalid options state for ${adapter.modelId}.`);
   }
+  const requestFields = mapPmvRequestFields(context, inputId);
   return {
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    tr: Number(inputs[FieldKey.MeanRadiantTemperature]),
-    vr: Number(inputs[FieldKey.RelativeAirSpeed]),
-    rh: Number(inputs[FieldKey.RelativeHumidity]),
-    met: Number(inputs[FieldKey.MetabolicRate]),
-    clo: Number(inputs[FieldKey.ClothingInsulation]),
-    wme: Number(inputs[FieldKey.ExternalWork]),
+    ...requestFields,
     occupantHasAirSpeedControl:
       adapter.supportsOccupantAirSpeedControl
       && options[OptionKey.AirSpeedControlMode]
@@ -846,7 +855,7 @@ function buildRelativeHumidityCurves(
   return PSYCHROMETRIC_VIEW.rhCurves.flatMap((relativeHumidity) => {
     const x: number[] = [];
     const y: number[] = [];
-    const hoverMetadata: unknown[][] = [];
+    const hoverMetadata: PlotHoverRowDto[] = [];
     const text: string[] = [];
     for (const temperature of temperatures) {
       const humidityRatioSi = psy_ta_rh(temperature, relativeHumidity).hr;
@@ -924,7 +933,7 @@ interface PmvFieldChartDescriptor {
     xAxis: ChartAxisScale,
     yAxis: ChartAxisScale,
   ) => PmvInputOverlayBuilder;
-  margin: Record<string, number>;
+  margin: PlotMarginDto;
 }
 
 function buildPmvFieldChart(

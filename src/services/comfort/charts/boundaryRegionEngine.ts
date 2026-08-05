@@ -1,6 +1,9 @@
 import type {
   PlotColorScaleDto,
+  PlotContourTraceDto,
   PlotContoursDto,
+  PlotHoverRowDto,
+  PlotScatterLineTraceDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
 import {
@@ -11,7 +14,7 @@ import {
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale } from "./types";
 
-type BoundaryHoverRow = unknown[];
+type BoundaryHoverRow = PlotHoverRowDto;
 
 interface BoundaryPolygonTraceContext {
   polygonX: number[];
@@ -211,7 +214,7 @@ export function buildFilledBoundaryRegionTrace({
   lineColor,
   opacity = 0.72,
   isZone = true,
-}: FilledBoundaryRegionTraceOptions): PlotTraceDto {
+}: FilledBoundaryRegionTraceOptions): PlotScatterLineTraceDto {
   return {
     type: "scatter",
     mode: "lines",
@@ -237,7 +240,7 @@ export function buildTooltipGridTrace({
   getHoverMetadata,
   colorscale = [[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
   contours = { coloring: "none", showlines: false },
-}: TooltipGridTraceOptions): PlotTraceDto {
+}: TooltipGridTraceOptions): PlotContourTraceDto {
   const grid = evaluateGrid({
     xAxis,
     yAxis,

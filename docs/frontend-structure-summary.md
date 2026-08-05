@@ -102,9 +102,14 @@ The current active application is the repository root version.
 
 `src/models/comfortDtos.ts`
 - Defines the shared `ModelChartSourceDto<TRequest>` `{ inputs }` contract. Simple models, UTCI, and Adaptive use it directly; PMV extends it with per-input comfort-zone data.
+- Defines only the supported Plotly-ready DTO surface: discriminated Scatter-marker, Scatter-line, and Contour traces plus narrow layout, axis, legend, margin, and annotation shapes.
 
 `src/models/modelCalculation.ts`
 - Defines the readonly calculation boundary exposed to models: effective canonical-SI `inputsByInput` and `modelOptionsByModel` only. The controller derives effective values before crossing this boundary.
+
+`src/services/comfort/requestMapping.ts`
+- Maps model-declared request properties to canonical-SI `FieldKey` values and owns the reusable visible-input calculation loop for standard `{ inputs }` chart sources.
+- Does not select fields, interpret model options, or replace the thin request/response DTOs owned by each model.
 
 `src/comfortModels/pmvAshrae.ts` and `pmvIso.ts`
 - Own their standard-specific PMV calculation, applicability, operative-temperature strategy, capability declaration, and independent compliance bands.
@@ -161,6 +166,9 @@ The current active application is the repository root version.
 - Visible categorical and constraint traces skip hover. One transparent contour tooltip trace owns full per-position metadata from the original output grid: band gaps report `Unclassified`, while model-invalid `NaN` cells have no hover.
 - The banded-grid runner keeps generic hover construction as its default and accepts an explicit full-template override for models that need multiple metrics or model-specific precision.
 
+`src/services/plotlyFigure.ts`
+- Isolates the intentionally loose third-party Plotly data boundary. It converts internal hover metadata to `customdata`, removes internal zone flags, converts axis/title shapes, clones the figure before Plotly can mutate it, and preserves non-finite grid cells as Plotly gaps.
+
 `src/state/comfortTool/fieldChartState.ts`
 - Seeds each model's default mode and chart settings and owns independent Explore working copies. Explore bands are cloned only during initialization, output changes, and accepted edits; the edit entry point normalizes and validates replacements. `buildFieldChartConfig()` deterministically maps already validated internal state to a locked Compliance or editable Explore config without repeated axis, mode, or output validation.
 
@@ -204,7 +212,7 @@ The current active application is the repository root version.
 - The editor converts finite edges only for display, validates and sorts before atomic commit, and leaves declaration presets untouched.
 
 `src/components/chart/PlotlyCanvas.svelte`
-- Hosts the Plotly chart rendering surface.
+- Hosts the Plotly chart rendering surface, filters background-zone traces before conversion, and dynamically loads Plotly through the typed figure boundary.
 
 `src/components/chart/ChartExportMenu.svelte`
 - Provides chart export actions.

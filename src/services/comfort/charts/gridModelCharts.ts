@@ -3,6 +3,7 @@ import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type {
   CompareInputMap,
   ModelChartSourceDto,
+  PlotHoverValueDto,
   PlotlyChartResponseDto,
 } from "../../../models/comfortDtos";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
@@ -34,7 +35,7 @@ export interface GridModelDynamicHoverExtension<TResult> {
   getMetadata: (
     result: TResult | null | undefined,
     unitSystem: UnitSystemType,
-  ) => readonly unknown[];
+  ) => readonly PlotHoverValueDto[];
 }
 
 export interface GridModelFixedViewSpec {

@@ -2,7 +2,7 @@
  * Plotly Trace Builders
  * 
  * Provides utility functions for constructing Plotly.js trace and 
- * annotation objects. Standardizes the creation of scatter, contour, and heatmap 
+ * annotation objects. Standardizes the creation of scatter and contour
  * traces to ensure consistent styling and interaction across all comfort charts.
  */
 import { inputChartStyleById, inputDisplayMetaById } from "../../../models/inputSlotPresentation";
@@ -10,9 +10,14 @@ import type { InputId as InputIdType } from "../../../models/inputSlots";
 import type {
   PlotAnnotationDto,
   PlotColorScaleDto,
+  PlotContourTraceDto,
   PlotContoursDto,
+  PlotHoverCellDto,
+  PlotHoverInfoDto,
+  PlotHoverRowDto,
   PlotLineDto,
-  PlotTraceDto,
+  PlotScatterLineTraceDto,
+  PlotScatterMarkerTraceDto,
 } from "../../../models/comfortDtos";
 
 /**
@@ -33,8 +38,8 @@ export interface InputScatterTraceOptions {
   hovertemplate: string;
   markerSize?: number;
   color?: string;
-  hoverMetadata?: unknown[] | unknown[][];
-  hoverinfo?: string;
+  hoverMetadata?: PlotHoverRowDto;
+  hoverinfo?: PlotHoverInfoDto;
 }
 
 /**
@@ -55,7 +60,7 @@ export function buildInputScatterTrace({
   color,
   hoverMetadata,
   hoverinfo,
-}: InputScatterTraceOptions): PlotTraceDto {
+}: InputScatterTraceOptions): PlotScatterMarkerTraceDto {
   // Get the style and label for the input.
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;
@@ -97,8 +102,8 @@ export interface ComfortPolygonTraceOptions {
   isZone?: boolean;
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
-  hoverMetadata?: unknown[] | unknown[][];
-  hoverinfo?: string;
+  hoverMetadata?: PlotHoverRowDto[];
+  hoverinfo?: PlotHoverInfoDto;
 }
 
 /**
@@ -120,7 +125,7 @@ export function buildComfortPolygonTrace({
   isComfortZone,
   hoverMetadata,
   hoverinfo,
-}: ComfortPolygonTraceOptions): PlotTraceDto {
+}: ComfortPolygonTraceOptions): PlotScatterLineTraceDto {
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;
 
@@ -159,8 +164,8 @@ export interface LineTraceOptions {
   color: string;
   hovertemplate: string;
   text?: string[];
-  hoverMetadata?: unknown[] | unknown[][];
-  hoverinfo?: string;
+  hoverMetadata?: PlotHoverRowDto[];
+  hoverinfo?: PlotHoverInfoDto;
 }
 
 /**
@@ -180,7 +185,7 @@ export function buildLineTrace({
   text,
   hoverMetadata,
   hoverinfo,
-}: LineTraceOptions): PlotTraceDto {
+}: LineTraceOptions): PlotScatterLineTraceDto {
   return {
     type: "scatter",
     mode: "lines",
@@ -255,7 +260,6 @@ export function buildTextAnnotation({
  * @param showscale - Whether to show a color scale (optional).
  * @param zmin - The minimum value for the z-coordinates (optional).
  * @param zmax - The maximum value for the z-coordinates (optional).
- * @param colorbar - The colorbar settings (optional).
  * @param opacity - The opacity of the contour (optional).
  * @param isZone - Whether this trace is a zone overlay that can be hidden by the Zones toggle (optional).
  */
@@ -272,15 +276,14 @@ export interface ContourTraceOptions {
   showscale?: boolean;
   zmin?: number;
   zmax?: number;
-  colorbar?: Record<string, unknown>;
   opacity?: number;
   line?: PlotLineDto;
   isZone?: boolean;
   isBackgroundZone?: boolean;
   isComfortZone?: boolean;
-  hoverinfo?: string;
+  hoverinfo?: PlotHoverInfoDto;
   hoverOnGaps?: boolean;
-  hoverMetadata?: unknown[] | unknown[][];
+  hoverMetadata?: PlotHoverCellDto[][];
 }
 
 /**
@@ -302,7 +305,6 @@ export function buildContourTrace({
   showscale = false,
   zmin,
   zmax,
-  colorbar,
   opacity,
   line,
   isZone,
@@ -311,7 +313,7 @@ export function buildContourTrace({
   hoverinfo,
   hoverOnGaps,
   hoverMetadata,
-}: ContourTraceOptions): PlotTraceDto {
+}: ContourTraceOptions): PlotContourTraceDto {
   return {
     type: "contour",
     name,
@@ -325,7 +327,6 @@ export function buildContourTrace({
     showscale,
     zmin,
     zmax,
-    colorbar,
     opacity,
     line,
     hoverinfo: hoverinfo ?? "all",

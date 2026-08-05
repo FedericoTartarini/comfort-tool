@@ -88,6 +88,7 @@ describe("shared chart engine", () => {
           y: grid.yValues,
           z: grid.zValues,
           text: grid.textValues,
+          contours: { type: "levels" },
           hovertemplate: "%{text}<extra></extra>",
         }],
       },
