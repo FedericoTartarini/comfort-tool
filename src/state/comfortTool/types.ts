@@ -1,7 +1,7 @@
 /**
  * Canonical comfort-tool state types.
- * `inputsByInput` stays canonical in SI units, while `ui` stores serializable selections,
- * chart state, and calculation lifecycle flags.
+ * `inputsByInput` stores base SI values, modifier inputs stay SI, and `ui` stores
+ * selections, chart state, and calculation lifecycle flags.
  */
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
@@ -11,6 +11,11 @@ import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { InputControlId as InputControlIdType, InputControlViewModel } from "../../models/inputControls";
 import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
+import type {
+  ModifierFieldKey as ModifierFieldKeyType,
+  ModifierId as ModifierIdType,
+  ModifierInputValues,
+} from "../../models/inputModifiers";
 import type {
   ChartMode as ChartModeType,
   ComplianceFeedback,
@@ -25,6 +30,14 @@ import type { ShareStateSnapshot } from "./shareState";
 export type InputState = Record<FieldKeyType, number>;
 // State for multiple inputs.
 export type InputsByInputState = Record<InputIdType, InputState>;
+export type ActiveModifiersByInputState = Record<
+  InputIdType,
+  Record<ModifierIdType, boolean>
+>;
+export type ModifierInputsByInputState = Record<
+  InputIdType,
+  Record<ModifierIdType, ModifierInputValues>
+>;
 // State for model options.
 export type ModelOptionsState = ModelOptionsRecord;
 // State for model options by model.
@@ -136,6 +149,34 @@ export interface ChartControlsViewModel {
   explore: ExploreControls | null;
 }
 
+export interface ModifierFieldControlViewModel {
+  key: ModifierFieldKeyType;
+  label: string;
+  displayUnits: string;
+  step: number;
+  decimals: number;
+  minValue?: number;
+  maxValue?: number;
+  displayValuesByInput: Partial<Record<InputIdType, string>>;
+}
+
+export interface ModifierAffectedFieldViewModel {
+  key: FieldKeyType;
+  label: string;
+  displayUnits: string;
+  displayValuesByInput: Partial<Record<InputIdType, string>>;
+}
+
+export interface InputModifierControlViewModel {
+  id: ModifierIdType;
+  label: string;
+  description: string;
+  activeByInput: Partial<Record<InputIdType, boolean>>;
+  completeByInput: Partial<Record<InputIdType, boolean>>;
+  extraInputs: ModifierFieldControlViewModel[];
+  affectedFields: ModifierAffectedFieldViewModel[];
+}
+
 // UI state for the comfort tool.
 export type UiState = {
   selectedModel: ComfortModelType;
@@ -155,6 +196,8 @@ export type UiState = {
 // The main state slice for the comfort tool, containing both input data and UI state.
 export type ComfortToolStateSlice = {
   inputsByInput: InputsByInputState;
+  activeModifiersByInput: ActiveModifiersByInputState;
+  modifierInputsByInput: ModifierInputsByInputState;
   ui: UiState;
 };
 
@@ -176,6 +219,17 @@ export type ComfortToolActions = {
   exportShareSnapshot: () => ShareStateSnapshot;
   applyShareSnapshot: (snapshot: ShareStateSnapshot) => void;
   updateInput: (inputId: InputIdType, controlId: InputControlIdType, rawValue: string) => void;
+  updateModifierInput: (
+    inputId: InputIdType,
+    modifierId: ModifierIdType,
+    fieldKey: ModifierFieldKeyType,
+    rawValue: string,
+  ) => boolean;
+  setModifierEnabled: (
+    inputId: InputIdType,
+    modifierId: ModifierIdType,
+    enabled: boolean,
+  ) => boolean;
   scheduleCalculation: (options?: { immediate?: boolean; force?: boolean }) => void;
   confirmModelSwitch: () => void;
   cancelModelSwitch: () => void;
@@ -185,6 +239,8 @@ export type ComfortToolActions = {
 export type ComfortToolSelectors = {
   getVisibleInputIds: () => InputIdType[];
   getInputControls: () => InputControlViewModel[];
+  getInputModifierControls: () => InputModifierControlViewModel[];
+  getEffectiveInputsByInput: (modelId?: ComfortModelType) => InputsByInputState;
   getResultSections: () => ResultSectionViewModel[];
   getCurrentChartResult: () => PlotlyChartResponseDto | null;
   getCurrentChartEmptyMessage: () => string;

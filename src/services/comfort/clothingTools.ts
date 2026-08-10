@@ -7,7 +7,7 @@ import {
   clothingZoneOrder,
   type ClothingZoneId,
 } from "../../models/clothingZones";
-import type { UnitSystem } from "../../models/units";
+import { UnitSystem } from "../../models/units";
 import type { ClothingGarmentOption } from "./referenceValues";
 
 export interface ClothingSelectionSection {
@@ -32,10 +32,9 @@ export function roundClothingValue(value: number): number {
 }
 
 export function predictClothingInsulation(
-  outdoorTemperature: number,
-  unitSystem: UnitSystem,
+  outdoorTemperatureSi: number,
 ): number {
-  return clo_tout(outdoorTemperature, unitSystem).clo_tout;
+  return clo_tout(outdoorTemperatureSi, UnitSystem.SI).clo_tout;
 }
 
 export function filterClothingGarments(

@@ -5,7 +5,6 @@ import { ChartId } from "../models/chartOptions";
 import { ComplianceStatus } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
-import { AirSpeedInputMode, OptionKey } from "../models/inputModes";
 import { InputId, type InputId as InputIdType } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
 import type { ResultCellViewModel, ResultSectionViewModel } from "../state/comfortTool/types";
@@ -158,40 +157,6 @@ describe("comfort model result rows", () => {
     });
     expect(getInputCell(sections, "PPD")?.text).toBe("5.3%");
     expect(getInputCell(sections, "Acceptability")?.text).toBe("94.8%");
-  });
-
-  it("adds the PMV measured air-speed row and converts units for display", () => {
-    const airSpeedLabel = fieldMetaByKey[FieldKey.RelativeAirSpeed].label;
-    const siAirSpeedUnits = fieldMetaByKey[FieldKey.RelativeAirSpeed].displayUnits[UnitSystem.SI];
-    const ipAirSpeedUnits = fieldMetaByKey[FieldKey.RelativeAirSpeed].displayUnits[UnitSystem.IP];
-    const measuredOptions = {
-      [OptionKey.AirSpeedInputMode]: AirSpeedInputMode.Measured,
-    };
-    const siSections = pmvAshraeModelConfig.buildResultSections(
-      createResultRecord(pmvResult),
-      visibleInputIds,
-      UnitSystem.SI,
-      measuredOptions,
-      ChartId.Psychrometric,
-    );
-    const ipSections = pmvAshraeModelConfig.buildResultSections(
-      createResultRecord(pmvResult),
-      visibleInputIds,
-      UnitSystem.IP,
-      measuredOptions,
-      ChartId.Psychrometric,
-    );
-
-    expect(siSections.map((section) => section.title)).toEqual([
-      "Compliance",
-      airSpeedLabel,
-      "PMV",
-      "Zone",
-      "PPD",
-      "Acceptability",
-    ]);
-    expect(getInputCell(siSections, airSpeedLabel)?.text).toBe(`0.60 ${siAirSpeedUnits}`);
-    expect(getInputCell(ipSections, airSpeedLabel)?.text).toBe(`1.97 ${ipAirSpeedUnits}`);
   });
 
   it("maps multiple PMV inputs while preserving null and noncompliant cells", () => {

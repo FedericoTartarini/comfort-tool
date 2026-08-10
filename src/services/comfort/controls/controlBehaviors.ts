@@ -21,19 +21,16 @@ import type {
 } from "../../../models/inputControls";
 import {
   AirSpeedControlMode,
-  AirSpeedInputMode,
   HumidityInputMode,
   OptionKey,
   TemperatureMode,
   type AirSpeedControlMode as AirSpeedControlModeType,
-  type AirSpeedInputMode as AirSpeedInputModeType,
   type HumidityInputMode as HumidityInputModeType,
   type TemperatureMode as TemperatureModeType,
 } from "../../../models/inputModes";
 import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
 import {
   airSpeedControlMenuItems,
-  airSpeedInputMenuItems,
   humidityMenuItems,
   temperatureMenuItems,
   type MenuItemDefinition,
@@ -172,8 +169,6 @@ type ControlBehaviorConfig = {
 
 // Values of the temperature mode enum. Used for input validation.
 const temperatureModeValues = Object.values(TemperatureMode);
-// Values of the air speed input mode enum. Used for input validation.
-const airSpeedInputModeValues = Object.values(AirSpeedInputMode);
 // Values of the air speed control mode enum. Used for input validation.
 const airSpeedControlModeValues = Object.values(AirSpeedControlMode);
 // Values of the humidity input mode enum. Used for input validation.
@@ -182,11 +177,6 @@ const humidityInputModeValues = Object.values(HumidityInputMode);
 // Check if a string is a valid temperature mode. Used for input validation.
 function isTemperatureMode(value: string): value is TemperatureModeType {
   return temperatureModeValues.includes(value as TemperatureModeType);
-}
-
-// Check if a string is a valid air speed input mode. Used for input validation.
-function isAirSpeedInputMode(value: string): value is AirSpeedInputModeType {
-  return airSpeedInputModeValues.includes(value as AirSpeedInputModeType);
 }
 
 // Check if a string is a valid air speed control mode. Used for input validation.
@@ -731,7 +721,7 @@ export function createTemperatureControlBehavior(
 }
 
 /**
- * Creates an input control behavior for air speed. Used for both relative and measured air speed.
+ * Creates the base relative-air-speed control and optional occupant-control menu.
  * @param controlId The ID of the control.
  * @returns An input control behavior for air speed.
  */
@@ -740,202 +730,36 @@ export function createAirSpeedControlBehavior(
   options: { supportsOccupantAirSpeedControl?: boolean } = {},
 ): InputControlBehavior {
   const supportsOccupantAirSpeedControl = options.supportsOccupantAirSpeedControl ?? true;
-  // The metadata for the field that this control is associated with.
-  const airSpeedMeta = fieldMetaByKey[FieldKey.RelativeAirSpeed];
-
-  // Return the control behavior.
   return createControlBehavior({
-    // The ID of the control.
     controlId,
-    // The key of the field that this control is associated with.
     fieldKey: FieldKey.RelativeAirSpeed,
-    // The function to build the presentation for the control.
-    getPresentation: (context) => {
-      // The air speed mode for the control.
-      const airSpeedMode = normalizePmvOptions(context.options)[OptionKey.AirSpeedInputMode];
-      
-      // The label to display for the control, which varies depending on the air speed mode. 
-      // If the air speed mode is "Measured", the label is "Measured air speed". Otherwise, the label is "Relative air speed".
-      let label = "Relative air speed";
-      if (airSpeedMode === AirSpeedInputMode.Measured) {
-        label = "Measured air speed";
-      }
-
-      // Return the presentation for the control.
-      return {
-        // The label to display for the control.
-        label,
-        // The units to display for the control.
-        displayUnits: airSpeedMeta.displayUnits[context.unitSystem],
-        // The step to use for the control.
-        step: airSpeedMeta.step,
-        // The number of decimals to display for the control.
-        decimals: airSpeedMeta.decimals,
-        // The range text to display for the control.
-        rangeText: buildRangeText(airSpeedMeta.key, airSpeedMeta.minValue, airSpeedMeta.maxValue, airSpeedMeta.decimals, context),
-        // The minimum value for the control.
-        minValue: convertFieldValueFromSi(
-          // The key of the field.
-          airSpeedMeta.key,
-          // The minimum value in SI units.
-          airSpeedMeta.minValue,
-          // The unit system to use.
-          context.unitSystem,
-        ),
-        // The maximum value for the control.
-        maxValue: convertFieldValueFromSi(
-          // The key of the field.
-          airSpeedMeta.key,
-          // The maximum value in SI units.
-          airSpeedMeta.maxValue,
-          // The unit system to use.
-          context.unitSystem,
-        ),
-      };
-    },
-    // Get the menu for the control.
+    getPresentation: (context, meta) => ({
+      ...buildDefaultPresentation(context, meta),
+      label: "Relative air speed",
+    }),
     getMenu: (context) => {
-      // Normalize the control options.
-      const options = normalizePmvOptions(context.options);
-      const sections = [
-        buildAdvancedOptionSection(
-          // The label for the section.
-          "Input mode",
-          // The key of the option.
-          OptionKey.AirSpeedInputMode,
-          // The current option value.
-          options[OptionKey.AirSpeedInputMode],
-          // The menu items for the option.
-          airSpeedInputMenuItems,
-        ),
-      ];
-
-      if (supportsOccupantAirSpeedControl) {
-        sections.push(buildAdvancedOptionSection(
-          // The label for the section.
-          "Occupant control",
-          // The key of the option.
-          OptionKey.AirSpeedControlMode,
-          // The current option value.
-          options[OptionKey.AirSpeedControlMode],
-          // The menu items for the option.
-          airSpeedControlMenuItems,
-        ));
-      }
-
-      return buildAdvancedOptionMenu("Air speed options", sections);
-    },
-    // Get the display value for the control.
-    getDisplayValue: (context, inputId) => {
-      // Normalize the control options.
-      const airSpeedMode = normalizePmvOptions(context.options)[OptionKey.AirSpeedInputMode];
-      
-      // The source value for the display value.
-      let sourceValue;
-      // If the air speed mode is measured, the source value is the measured air speed.
-      if (airSpeedMode === AirSpeedInputMode.Measured) {
-        // Get the measured air speed from the derived inputs.
-        sourceValue = context.derivedByInput[inputId][DerivedInputId.MeasuredAirSpeed];
-        // If the measured air speed is undefined or null, set it to 0.
-        if (sourceValue === undefined || sourceValue === null) {
-          sourceValue = 0;
-        }
-      } else {
-        // Get the relative air speed from the inputs.
-        sourceValue = context.inputsByInput[inputId][FieldKey.RelativeAirSpeed];
-      }
-
-      // Return the display value for the control.
-      return convertFieldValueFromSi(FieldKey.RelativeAirSpeed, sourceValue, context.unitSystem);
-    },
-    // Apply input to the control.
-    applyInput: (context, inputId, nextValueSi) => {
-      if (nextValueSi === null) {
-        return null;
-      }
-      // Normalize the control options.
-      const airSpeedMode = normalizePmvOptions(context.options)[OptionKey.AirSpeedInputMode];
-      
-      // The next input state for the control.
-      const nextInputState = Object.assign({}, context.inputsByInput[inputId]);
-      // The derived input overrides for the control.
-      const derivedInputOverrides = buildDerivedInputOverrides(context, inputId);
-
-      // If the air speed mode is measured, the derived input override is the measured air speed.
-      if (airSpeedMode === AirSpeedInputMode.Measured) {
-        // Set the measured air speed in the derived input overrides.
-        derivedInputOverrides[DerivedInputId.MeasuredAirSpeed] = nextValueSi;
-      } else {
-        // Otherwise, set the relative air speed in the next input state.
-        nextInputState[FieldKey.RelativeAirSpeed] = nextValueSi;
-      }
-
-      // Synchronize the control input state.
-      const synchronizedState = synchronizePmvInputState(nextInputState, context.options, derivedInputOverrides);
-      // Return a patch to update the input state for the control.
-      return createSingleInputPatch(inputId, synchronizedState.inputState);
-    },
-    // Apply option change to the control.
-    applyOptionChange: (context, optionKey, nextValue) => {
-      // If the option key is the air speed control mode.
-      if (optionKey === OptionKey.AirSpeedControlMode) {
-        if (!supportsOccupantAirSpeedControl) {
-          return null;
-        }
-
-        // If the next value is not a valid air speed control mode, return null.
-        if (!isAirSpeedControlMode(nextValue)) {
-          return null;
-        }
-
-        // Get the current options.
-        const currentOptions = normalizePmvOptions(context.options);
-        // If the current option value is the same as the next value, return null.
-        if (currentOptions[optionKey] === nextValue) {
-          return null;
-        }
-
-        // Return the options patch.
-        return {
-          optionsPatch: {
-            [optionKey]: nextValue,
-          },
-        };
-      }
-
-      // If the option key is the air speed input mode and the next value is a valid air speed input mode.
-      if (optionKey !== OptionKey.AirSpeedInputMode || !isAirSpeedInputMode(nextValue)) {
-        return null;
-      }
-
-      // Get the current options.
+      if (!supportsOccupantAirSpeedControl) return null;
       const currentOptions = normalizePmvOptions(context.options);
-      // If the current option value is the same as the next value, return null.
-      if (currentOptions[optionKey] === nextValue) {
+      return buildAdvancedOptionMenu("Air speed options", [
+        buildAdvancedOptionSection(
+          "Occupant control",
+          OptionKey.AirSpeedControlMode,
+          currentOptions[OptionKey.AirSpeedControlMode],
+          airSpeedControlMenuItems,
+        ),
+      ]);
+    },
+    applyOptionChange: (context, optionKey, nextValue) => {
+      if (
+        !supportsOccupantAirSpeedControl
+        || optionKey !== OptionKey.AirSpeedControlMode
+        || !isAirSpeedControlMode(nextValue)
+      ) {
         return null;
       }
-
-      // The next options.
-      const nextOptions = Object.assign({}, context.options);
-      // Set the next option value.
-      nextOptions[optionKey] = nextValue;
-
-      // Return the canonical input sync patch.
-      return buildCanonicalInputSyncPatch(
-        // The order of the inputs.
-        inputOrder,
-        // The option patch.
-        { [optionKey]: nextValue },
-        // The function to synchronize the control input state.
-        (inputId) => synchronizePmvInputState(
-          // The input state for the control.
-          context.inputsByInput[inputId],
-          // The next options.
-          nextOptions,
-          // The derived input overrides for the control.
-          context.derivedByInput[inputId],
-        ),
-      );
+      const currentOptions = normalizePmvOptions(context.options);
+      if (currentOptions[optionKey] === nextValue) return null;
+      return { optionsPatch: { [optionKey]: nextValue } };
     },
   });
 }

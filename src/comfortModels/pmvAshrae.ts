@@ -10,6 +10,7 @@ import {
 import { ComfortStandard } from "../models/calculationMetadata";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
+import { ModifierId } from "../models/inputModifiers";
 import { UnitSystem } from "../models/units";
 import {
   createPmvComplianceBands,
@@ -67,6 +68,11 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   adapter: pmvAshraeAdapter,
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
+  supportedModifiers: [
+    ModifierId.MeasuredAirSpeed,
+    ModifierId.MorningClothingEstimate,
+    ModifierId.SolarGain,
+  ],
   complianceSpec: {
     output: ModelOutputKey.Pmv,
     bands: ashraeComplianceBands,

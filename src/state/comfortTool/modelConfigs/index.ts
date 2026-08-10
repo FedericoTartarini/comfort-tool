@@ -15,6 +15,7 @@ import type {
   InputControlDefinition,
 } from "../../../services/comfort/controls/types";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import type { ModifierId as ModifierIdType } from "../../../models/inputModifiers";
 import type {
   Band,
   ChartMode as ChartModeType,
@@ -75,6 +76,7 @@ export interface ComfortModelDefinition<
   description: string;
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
+  supportedModifiers: readonly ModifierIdType[];
   complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
   controls: InputControlDefinition[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;

@@ -4,6 +4,7 @@ import { ChartId } from "../../../models/chartOptions";
 import { ComfortModel } from "../../../models/comfortModels";
 import { FieldKey } from "../../../models/fieldKeys";
 import { OptionKey, TemperatureMode } from "../../../models/inputModes";
+import { ModifierId } from "../../../models/inputModifiers";
 import {
   ChartMode,
   ModelOutputKey,
@@ -43,6 +44,7 @@ function createComplianceSpec(
 type BuilderPart =
   | "label"
   | "description"
+  | "modifiers"
   | "chart"
   | "defaultOptions"
   | "parser"
@@ -60,6 +62,7 @@ function createBuilder(omitted: readonly BuilderPart[] = []) {
 
   if (includes("label")) builder.setLabel("Test model");
   if (includes("description")) builder.setDescription("Test model description.");
+  if (includes("modifiers")) builder.setModifiers([]);
   if (includes("chart")) {
     builder.setDefaultChart(ChartId.Psychrometric, [ChartId.Psychrometric]);
   }
@@ -121,6 +124,7 @@ describe("ComfortModelBuilder capabilities", () => {
       .setDescription("Test model description.")
       .setModes([ChartMode.Compliance, ChartMode.Explore])
       .setChartableOutputs([pmvOutput])
+      .setModifiers([ModifierId.SolarGain])
       .setComplianceSpec(createComplianceSpec())
       .setDefaultChart(ChartId.Psychrometric, [ChartId.Psychrometric])
       .setDefaultOptions({})
@@ -143,6 +147,7 @@ describe("ComfortModelBuilder capabilities", () => {
 
     expect(definition.modes).toEqual([ChartMode.Compliance, ChartMode.Explore]);
     expect(definition.chartableOutputs).toEqual([pmvOutput]);
+    expect(definition.supportedModifiers).toEqual([ModifierId.SolarGain]);
     expect(definition.complianceSpec).toEqual(createComplianceSpec());
     expect(definition.complianceSpec?.bands).not.toBe(bands);
   });
@@ -167,6 +172,19 @@ describe("ComfortModelBuilder capabilities", () => {
   it("requires an explicit chartable-output declaration", () => {
     expect(() => createBuilder().setModes([ChartMode.Explore]).build())
       .toThrow(/explicitly set chartable outputs/i);
+  });
+
+  it("requires an explicit modifier declaration and rejects duplicates", () => {
+    expect(() => createExploreBuilder(["modifiers"]).build())
+      .toThrow(/explicitly set supported modifiers/i);
+    expect(() => createExploreBuilder()
+      .setModifiers([ModifierId.SolarGain, ModifierId.SolarGain])
+      .build())
+      .toThrow(/duplicate modifiers/i);
+    expect(() => createExploreBuilder()
+      .setModifiers(["unknownModifier" as ModifierId])
+      .build())
+      .toThrow(/unknown modifiers/i);
   });
 
   it("requires Explore models to expose an output", () => {

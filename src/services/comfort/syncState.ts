@@ -1,7 +1,6 @@
 import { DerivedInputId, FieldKey, type DerivedInputId as DerivedInputIdType, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
 import {
-  AirSpeedInputMode,
   defaultPmvOptions,
   HumidityInputMode,
   OptionKey,
@@ -9,8 +8,6 @@ import {
   type PmvModelOptions,
 } from "../../models/inputModes";
 import {
-  deriveMeasuredAirSpeedFromRelative,
-  deriveRelativeAirSpeedFromMeasured,
   deriveRelativeHumidityFromDewPoint,
   deriveRelativeHumidityFromHumidityRatio,
   deriveRelativeHumidityFromWetBulb,
@@ -65,7 +62,7 @@ export function normalizePmvOptions(options: ModelOptionsRecord): PmvModelOption
 /**
  * Calculates all derived environmental values for a single input state.
  * @param inputState The canonical SI input values.
- * @returns A record of derived values (dew point, measured air speed, etc.).
+ * @returns A record of derived psychrometric values.
  */
 export function deriveInputDerivedState(inputState: CanonicalInputState): CanonicalDerivedState {
   const psychrometricState = psy_ta_rh(
@@ -74,10 +71,6 @@ export function deriveInputDerivedState(inputState: CanonicalInputState): Canoni
   );
 
   return {
-    [DerivedInputId.MeasuredAirSpeed]: deriveMeasuredAirSpeedFromRelative(
-      inputState[FieldKey.RelativeAirSpeed],
-      inputState[FieldKey.MetabolicRate],
-    ),
     [DerivedInputId.DewPoint]: psychrometricState.t_dp,
     [DerivedInputId.HumidityRatio]: psychrometricState.hr,
     [DerivedInputId.WetBulb]: psychrometricState.t_wb,
@@ -121,13 +114,6 @@ export function synchronizePmvInputState(
   const resolvedDerivedState = resolveDerivedInputState(inputState, derivedInputOverrides);
   const nextInputState = { ...inputState };
 
-  if (normalizedOptions[OptionKey.AirSpeedInputMode] === AirSpeedInputMode.Measured) {
-    nextInputState[FieldKey.RelativeAirSpeed] = deriveRelativeAirSpeedFromMeasured(
-      resolvedDerivedState[DerivedInputId.MeasuredAirSpeed] ?? 0,
-      nextInputState[FieldKey.MetabolicRate],
-    );
-  }
-
   const moistureDerivedRh = resolveMoistureModeToRelativeHumidity(
     nextInputState[FieldKey.DryBulbTemperature],
     normalizedOptions[OptionKey.HumidityInputMode],
@@ -148,16 +134,10 @@ export function applyOperativeTemperatureMode(
   options: ModelOptionsRecord,
   derivedInputOverrides: CanonicalDerivedState = {},
 ): { inputState: CanonicalInputState } {
-  const normalizedOptions = normalizePmvOptions(options);
-  const resolvedDerivedState = resolveDerivedInputState(inputState, derivedInputOverrides);
-  const airSpeed = normalizedOptions[OptionKey.AirSpeedInputMode] === AirSpeedInputMode.Measured
-    ? resolvedDerivedState[DerivedInputId.MeasuredAirSpeed] ?? 0
-    : inputState[FieldKey.RelativeAirSpeed];
-
   const operativeTemperature = t_o(
     inputState[FieldKey.DryBulbTemperature],
     inputState[FieldKey.MeanRadiantTemperature],
-    airSpeed,
+    inputState[FieldKey.RelativeAirSpeed],
   );
 
   return synchronizePmvInputState(

@@ -153,7 +153,7 @@ export interface MyNewModelResponseDto {
 ```
 
 **Key points:**
-- `RequestDto` contains raw SI values extracted from the shared input state.
+- `RequestDto` contains effective SI values supplied through the shared calculation boundary.
 - `ResponseDto` stores computed results in SI. The results panel converts to display units when rendering.
 - Use `ModelChartSourceDto<MyNewModelRequestDto>` directly when the chart source only contains per-input requests. Extend it only when a model owns additional calculation-derived chart data, as PMV does for comfort zones.
 - Chart sources carry calculation-derived data only. Explore axes, selected output, and working bands arrive separately as `FieldChartConfig`, so cached model calculations remain reusable when chart presentation changes.
@@ -206,7 +206,7 @@ function toMyNewModelRequest(
 }
 ```
 
-> The `context.inputsByInput` record contains all field values **already in SI**. Read model options from `context.modelOptionsByModel` when needed; do not import controller state types into a comfort model.
+> The `context.inputsByInput` record contains all effective field values **already in SI**. The controller has applied the model's declared modifier chain before this boundary. Read model options from `context.modelOptionsByModel` when needed; do not import controller or modifier state types into a comfort model.
 
 ### 3f. Build the Model Configuration
 
@@ -249,7 +249,7 @@ myNewModelBuilder
 
 #### Capability Declaration (Required)
 
-Every model must explicitly declare its supported chart modes and chartable outputs. For an Explore-only model whose preset bands are its existing zones:
+Every model must explicitly declare its supported chart modes, chartable outputs, and input modifiers. For an Explore-only model whose preset bands are its existing zones:
 
 ```ts
 const myNewModelOutput: ModelOutput = {
@@ -261,7 +261,8 @@ const myNewModelOutput: ModelOutput = {
 
 myNewModelBuilder
   .setModes([ChartMode.Explore])
-  .setChartableOutputs([myNewModelOutput]);
+  .setChartableOutputs([myNewModelOutput])
+  .setModifiers([]);
 ```
 
 For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of a semantic boundary value and a readonly partial canonical-SI `BandInputsSi` map containing only the baseline inputs the edge requires:
@@ -275,6 +276,7 @@ function formatMyNewModelComplianceFeedback(result: MyNewModelResponseDto) {
 myNewModelBuilder
   .setModes([ChartMode.Compliance, ChartMode.Explore])
   .setChartableOutputs([/* one or more ModelOutput declarations */])
+  .setModifiers([])
   .setComplianceSpec({
     output: ModelOutputKey.MyNewModelIndex,
     bands: fixedStandardBands,
@@ -283,7 +285,7 @@ myNewModelBuilder
   });
 ```
 
-A compliance-only model must still call `setChartableOutputs([])` explicitly. `getFeedback(result)` returns `{ text, passes }`; use the same family-level formatter for the result table's Compliance row so chart feedback and tabular status cannot drift. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, caption, or feedback callback, a compliance spec on a non-Compliance model, duplicate modes or output keys, incomplete label/description/chart declarations, missing calculation or presentation functions, and invalid dynamic-axis defaults. A successful build returns a validated configuration snapshot with copied arrays and records. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
+A compliance-only model must still call `setChartableOutputs([])` explicitly. Every model must also call `setModifiers(...)`: use `[]` when none apply, or use centralized `ModifierId` values from `src/models/inputModifiers.ts` in the exact order they should be applied. `getFeedback(result)` returns `{ text, passes }`; use the same family-level formatter for the result table's Compliance row so chart feedback and tabular status cannot drift. `build()` rejects missing mode, output, or modifier declarations, duplicate or unknown modifier IDs, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, caption, or feedback callback, a compliance spec on a non-Compliance model, duplicate modes or output keys, incomplete label/description/chart declarations, missing calculation or presentation functions, and invalid dynamic-axis defaults. A successful build returns a validated configuration snapshot with copied arrays and records. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
 
 `ComplianceSpec<TBand, TResult>` carries both the Compliance band type and model result type into the chart context and feedback callback. `ComfortModelBuilder` defaults to `NumericBand`; a functional model supplies `Band` as its third generic argument, as Adaptive does. PMV therefore receives `ChartBuildContext<NumericBand>` at compile time and enters the shared numeric grid strategy without a cast.
 
@@ -326,7 +328,7 @@ myNewModelBuilder.addControl({
 - `ClothingInsulation` — clothing insulation
 - `PrevailingMeanOutdoorTemperature` — mean outdoor temperature (adaptive models)
 
-For temperature controls that support Operative Temperature mode, use `createTemperatureControlBehavior` instead of `createControlBehavior`. For air speed controls with measured vs. relative mode, use `createAirSpeedControlBehavior`.
+For temperature controls that support Operative Temperature mode, use `createTemperatureControlBehavior` instead of `createControlBehavior`. PMV uses `createAirSpeedControlBehavior` for its base relative-air-speed row and optional occupant-control menu. Measured air speed is an `InputModifier`, not an input mode.
 
 #### Calculator
 
@@ -601,8 +603,9 @@ Test at minimum:
 2. Edge cases at zone boundaries behave correctly.
 3. SI reference values for the calculator, plus SI/IP conversion at the result and chart presentation boundary.
 4. The registered capability declaration has the intended modes, output keys, preset bands, and compliance bands.
-5. Every declared Explore output can drive the selectable-axis grid from raw canonical values and working bands.
-6. Fixed-axis and selectable-axis views consume the same trusted mode/output/bands while preserving ready-cache identity.
+5. The model explicitly declares the intended modifier IDs, or an empty list.
+6. Every declared Explore output can drive the selectable-axis grid from raw canonical values and working bands.
+7. Fixed-axis and selectable-axis views consume the same trusted mode/output/bands while preserving ready-cache identity.
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -665,6 +668,7 @@ Before marking the work complete, verify all of the following:
 - [ ] Selectable-axis charts expose dropdowns containing only the declared fields
 - [ ] The declared default dynamic axes are valid and semantically meaningful for the model
 - [ ] The Explore Display selector contains only declared outputs and each output uses its own default working-band copy
+- [ ] The model explicitly declares supported modifiers with centralized IDs, or `[]` when none apply
 - [ ] Output conversions and finite threshold edits round-trip through `src/services/units/` in SI and IP
 - [ ] SI remains the canonical internal unit — no raw display-unit values are stored in state
 - [ ] No new `jsthermalcomfort` imports were added outside `src/comfortModels/` or `src/services/comfort/**`
@@ -712,6 +716,19 @@ myNewModelBuilder.setDefaultChart(
 ```
 
 (This is what `windChill.ts` does.)
+
+### What if my model supports an existing input modifier?
+
+Import the centralized `ModifierId` and list it in `setModifiers(...)` in application order.
+No controller or component branch is needed: the controller derives effective SI inputs
+before constructing `ModelCalculationContext`, and the generic input panel renders the
+modifier automatically. Use `setModifiers([])` when the model supports none.
+
+Adding a brand-new modifier is a separate cross-model capability change. Define its stable
+ID, field IDs, and metadata in `src/models/inputModifiers.ts`; implement its pure definition
+in `src/services/comfort/inputModifiers.ts`; add any conversion rules under
+`src/services/units/`; then opt models in declaratively. Do not write effective values back
+to `inputsByInput` or add a second model calculation path.
 
 ### How does the model selector dropdown order work?
 

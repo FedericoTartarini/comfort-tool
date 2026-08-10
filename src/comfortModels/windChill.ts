@@ -165,7 +165,8 @@ builder
   .setLabel(MODEL_LABEL)
   .setDescription(MODEL_DESCRIPTION)
   .setModes([ChartMode.Explore])
-  .setChartableOutputs([windChillOutput]);
+  .setChartableOutputs([windChillOutput])
+  .setModifiers([]);
 
 builder.addControl({
   id: InputControlId.Temperature,

@@ -75,6 +75,7 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   zones: adaptiveEnZonesList,
   modes: [ChartMode.Compliance],
   chartableOutputs: [],
+  supportedModifiers: [],
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),

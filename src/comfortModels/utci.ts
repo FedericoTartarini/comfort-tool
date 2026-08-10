@@ -436,7 +436,8 @@ builder
   .setLabel(MODEL_LABEL)
   .setDescription(MODEL_DESCRIPTION)
   .setModes([ChartMode.Explore])
-  .setChartableOutputs([utciOutput]);
+  .setChartableOutputs([utciOutput])
+  .setModifiers([]);
 
 builder.addControl({
   id: InputControlId.Temperature,

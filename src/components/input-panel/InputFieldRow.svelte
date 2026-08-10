@@ -19,14 +19,12 @@
     toolState: ComfortToolController;
     control: InputControlViewModel;
     onOpenClothingBuilder: () => void;
-    onOpenQuickClothingEstimate: () => void;
   }
 
   let {
     toolState,
     control,
     onOpenClothingBuilder,
-    onOpenQuickClothingEstimate,
   }: Props = $props();
 
   let menu = $derived(control.menu);
@@ -44,7 +42,6 @@
   }
 
   const dropdownClass = "w-72 overflow-hidden rounded-xl py-1 shadow-lg";
-  const clothingToolsDropdownClass = "w-64 overflow-hidden rounded-xl py-1 shadow-lg";
   const dropdownHeaderClass = "border-b border-stone-100 px-4 py-2 text-xs uppercase tracking-[0.16em] text-stone-500";
   const dropdownSectionTitleClass = "px-4 pt-2 text-xs font-semibold uppercase tracking-[0.14em] text-stone-400";
   const dropdownItemClass = "flex flex-col items-start gap-0.5 px-4 py-2 text-left";
@@ -89,7 +86,6 @@
     );
   }
   let dropdownOpen = $state(false);
-  let clothingToolsDropdownOpen = $state(false);
 
   // Updates a model option and automatically closes the "More" dropdown selection.
   function handleSelectItem(optionKey: OptionKey, value: string) {
@@ -155,41 +151,13 @@
 
       {#if control.showClothingBuilder}
         <Button
-          id={`clothing-builder-trigger-${control.id}`}
           color="none"
           pill
           class={subtleButtonClass}
+          onclick={onOpenClothingBuilder}
         >
-          Clothing tools
-          <ChevronDownOutline class="h-3 w-3" strokeWidth="2" />
+          Custom clothing
         </Button>
-
-        <Dropdown
-          bind:open={clothingToolsDropdownOpen}
-          triggeredBy={`#clothing-builder-trigger-${control.id}`}
-          class={clothingToolsDropdownClass}
-        >
-          <DropdownItem
-            class={dropdownItemClass}
-            onclick={() => {
-              clothingToolsDropdownOpen = false;
-              onOpenClothingBuilder();
-            }}
-          >
-            <span class="font-semibold text-stone-900">Custom clothing</span>
-            <span class="text-xs text-stone-500">Build a clothing total by body region.</span>
-          </DropdownItem>
-          <DropdownItem
-            class={dropdownItemClass}
-            onclick={() => {
-              clothingToolsDropdownOpen = false;
-              onOpenQuickClothingEstimate();
-            }}
-          >
-            <span class="font-semibold text-stone-900">Quick estimate</span>
-            <span class="text-xs text-stone-500">Estimate clo from morning outdoor temperature.</span>
-          </DropdownItem>
-        </Dropdown>
       {/if}
     </div>
 

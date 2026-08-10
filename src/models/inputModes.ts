@@ -2,8 +2,8 @@
  * Calculation Modes and Option Identifiers
  * 
  * This file defines the shared option identifiers and enumerations for different 
- * calculation modes and the various methods for specifying input parameters 
- * (e.g., Temperature Mode, Air Speed Input Mode).
+ * calculation modes and the various methods for specifying input parameters
+ * (e.g., temperature and humidity input modes).
  * 
  * These constants are used to manage the state of the UI controls 
  * and toggle between various calculation methodologies (e.g. Air Temperature/Operative Temperature).
@@ -17,15 +17,6 @@ export const TemperatureMode = {
 
 // Defines the temperature mode type.
 export type TemperatureMode = (typeof TemperatureMode)[keyof typeof TemperatureMode];
-
-// Defines the different modes for air speed input.
-export const AirSpeedInputMode = {
-  Relative: "relative",
-  Measured: "measured",
-} as const;
-
-// Defines the air speed input mode type.
-export type AirSpeedInputMode = (typeof AirSpeedInputMode)[keyof typeof AirSpeedInputMode];
 
 // Defines the different modes for air speed control.
 export const AirSpeedControlMode = {
@@ -52,7 +43,6 @@ export type HumidityInputMode = (typeof HumidityInputMode)[keyof typeof Humidity
 export const OptionKey = {
   TemperatureMode: "temperature.mode",
   AirSpeedControlMode: "airSpeed.controlMode",
-  AirSpeedInputMode: "airSpeed.inputMode",
   HumidityInputMode: "humidity.inputMode",
 } as const;
 
@@ -66,7 +56,6 @@ export type ModelOptionsRecord = Partial<Record<OptionKey, string>>;
 export type PmvModelOptions = {
   [OptionKey.TemperatureMode]: TemperatureMode;
   [OptionKey.AirSpeedControlMode]: AirSpeedControlMode;
-  [OptionKey.AirSpeedInputMode]: AirSpeedInputMode;
   [OptionKey.HumidityInputMode]: HumidityInputMode;
 };
 
@@ -74,7 +63,6 @@ export type PmvModelOptions = {
 export const defaultPmvOptions: PmvModelOptions = {
   [OptionKey.TemperatureMode]: TemperatureMode.Air,
   [OptionKey.AirSpeedControlMode]: AirSpeedControlMode.WithLocalControl,
-  [OptionKey.AirSpeedInputMode]: AirSpeedInputMode.Relative,
   [OptionKey.HumidityInputMode]: HumidityInputMode.RelativeHumidity,
 };
 
