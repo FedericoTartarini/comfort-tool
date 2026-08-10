@@ -24,8 +24,10 @@ import {
   createControlBehavior,
   createTemperatureControlBehavior,
 } from "../services/comfort/controls/controlBehaviors";
+import { requireThermalZone } from "../services/comfort/helpers";
 import {
   convertFieldValueFromSi,
+  convertMetersPerSecondToKilometersPerHour,
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
@@ -34,7 +36,7 @@ import {
   buildResultSection,
   ComfortModelBuilder,
   createEmptyResults,
-  isRecord,
+  parseEmptyOptions,
 } from "../state/comfortTool/modelConfigs/builder";
 
 const MODEL_LABEL = "Wind Chill";
@@ -42,7 +44,6 @@ const MODEL_DESCRIPTION =
   "Index that measures how cold it feels when wind is factored in with the actual air temperature.";
 const TDB_LIMITS = { min: -45, max: 0 };
 const WIND_LIMITS = { min: 1, max: 20 };
-const METRES_PER_SECOND_TO_KILOMETRES_PER_HOUR = 3.6;
 
 export const windChillZonesList = [
   new ThermalZone({ label: "Safe", max: 1400, color: "#e0f2fe", textColor: "#0369a1" }),
@@ -68,11 +69,10 @@ export function calculateWindChill(payload: WindChillRequestDto): WindChillRespo
   const wciTemp = payload.v > 1.33 && payload.tdb <= 10
     ? wind_chill_temperature(
         payload.tdb,
-        payload.v * METRES_PER_SECOND_TO_KILOMETRES_PER_HOUR,
+        convertMetersPerSecondToKilometersPerHour(payload.v),
       ).wct
     : payload.tdb;
-  const wciZone = windChillZonesList.find((zone) => zone.contains(wci))?.label
-    ?? windChillZonesList[0].label;
+  const wciZone = requireThermalZone(windChillZonesList, wci, MODEL_LABEL).label;
 
   return {
     wci,
@@ -109,17 +109,15 @@ function toRequest(
   inputId: InputIdType,
 ): WindChillRequestDto {
   const inputs = context.inputsByInput[inputId];
-  const windSpeed = Number(inputs[FieldKey.WindSpeed]);
   return {
     tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    v: Number.isNaN(windSpeed) ? WIND_LIMITS.min : windSpeed,
+    v: Number(inputs[FieldKey.WindSpeed]),
   };
 }
 
 const windChillOutput: ModelOutput = {
   key: ModelOutputKey.WindChill,
   label: "Wind Chill Index",
-  unit: "W/m²",
   defaultBands: bandsFromThermalZones(windChillZonesList),
 };
 
@@ -212,7 +210,7 @@ builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[unitSystem];
   const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.WindChill, unitSystem);
   const getColor = (result: WindChillResponseDto) =>
-    windChillZonesList.find((zone) => zone.contains(result.wci))?.textColor;
+    requireThermalZone(windChillZonesList, result.wci, MODEL_LABEL).textColor;
 
   return [
     buildResultSection(`${MODEL_LABEL} Index`, results, visibleInputIds, (result) => {
@@ -253,7 +251,7 @@ builder.setDefaultDynamicAxes({
   yAxis: FieldKey.WindSpeed,
 });
 builder.setDefaultOptions({});
-builder.setOptionNormalizer((value) => isRecord(value) ? value : {});
+builder.setOptionParser(parseEmptyOptions);
 builder.setZones(windChillZonesList);
 builder.setLegendChartIds([ChartId.WindChillDynamic]);
 builder.setLegendTitle(MODEL_LABEL);

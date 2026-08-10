@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   adaptiveAshraeDeclaration,
@@ -8,26 +8,30 @@ import {
 import {
   adaptiveEnDeclaration,
   adaptiveEnModelConfig,
-  adaptiveEnZonesList,
 } from "../../../comfortModels/adaptiveEn";
 import {
   buildAdaptiveChart,
-  buildAdaptiveDynamicChart,
   calculateAdaptive,
-  tryEvaluateAdaptiveForChart,
+  createAdaptiveComplianceCaption,
+  getCe,
   type AdaptiveLevelResult,
   type AdaptiveModelDeclaration,
   type AdaptiveRequestDto,
+  type AdaptiveResponseDto,
 } from "../../../comfortModels/adaptiveShared";
-import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
-import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
-import { InputId } from "../../../models/inputSlots";
+import type {
+  ModelChartSourceDto,
+  PlotlyChartResponseDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
+import { FieldKey } from "../../../models/fieldKeys";
+import { InputId, type InputId as InputIdType } from "../../../models/inputSlots";
 import {
   ChartMode,
-  findBandForValue,
-  ModelOutputKey,
+  resolveBandEdge,
+  type Band,
+  type BandInputsSi,
   type ChartBuildContext,
-  type InputsSi,
 } from "../../../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { convertFieldValueFromSi } from "../../units";
@@ -40,64 +44,82 @@ const baselineRequest: AdaptiveRequestDto = {
 };
 
 function createContext(
-  xAxis: FieldKeyType,
-  yAxis: FieldKeyType,
+  declaration: AdaptiveModelDeclaration,
   unitSystem: UnitSystemType = UnitSystem.SI,
-  declaration: AdaptiveModelDeclaration = adaptiveAshraeDeclaration,
-): ChartBuildContext {
+  baselineInputId: InputIdType = InputId.Input1,
+  direction: "default" | "transposed" = "default",
+): ChartBuildContext<Band> {
+  const xField = direction === "default"
+    ? FieldKey.PrevailingMeanOutdoorTemperature
+    : FieldKey.OperativeTemperature;
+  const yField = direction === "default"
+    ? FieldKey.OperativeTemperature
+    : FieldKey.PrevailingMeanOutdoorTemperature;
   return {
     unitSystem,
-    dynamicAxes: { xAxis, yAxis },
-    baselineInputId: InputId.Input1,
+    baselineInputId,
     fieldChartConfig: {
       mode: ChartMode.Compliance,
-      xField: xAxis,
-      yField: yAxis,
+      xField,
+      yField,
       zOutput: declaration.complianceSpec.output,
       bands: declaration.complianceSpec.bands,
     },
   };
 }
 
-function buildFixedChart(
+function buildChart(
   declaration: AdaptiveModelDeclaration,
-  request: AdaptiveRequestDto = baselineRequest,
+  requests: Partial<Record<InputIdType, AdaptiveRequestDto>> = {
+    [InputId.Input1]: baselineRequest,
+  },
   unitSystem: UnitSystemType = UnitSystem.SI,
+  baselineInputId: InputIdType = InputId.Input1,
+  direction: "default" | "transposed" = "default",
 ): PlotlyChartResponseDto {
-  const result = calculateAdaptive(declaration, request);
+  const resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>> = {};
+  Object.entries(requests).forEach(([inputId, request]) => {
+    if (request) {
+      resultsByInput[inputId as InputIdType] = calculateAdaptive(declaration, request);
+    }
+  });
+
   return buildAdaptiveChart(
     declaration,
-    { inputs: { [InputId.Input1]: request } },
-    { [InputId.Input1]: result },
-    createContext(
-      FieldKey.PrevailingMeanOutdoorTemperature,
-      FieldKey.OperativeTemperature,
-      unitSystem,
-      declaration,
-    ),
+    { inputs: requests } as ModelChartSourceDto<AdaptiveRequestDto>,
+    resultsByInput,
+    createContext(declaration, unitSystem, baselineInputId, direction),
   );
 }
 
-function buildDynamicChart(
-  declaration: AdaptiveModelDeclaration,
-  xAxis: FieldKeyType,
-  yAxis: FieldKeyType,
-  unitSystem: UnitSystemType = UnitSystem.SI,
-  request: AdaptiveRequestDto = baselineRequest,
-): PlotlyChartResponseDto {
-  const result = calculateAdaptive(declaration, request);
-  return buildAdaptiveDynamicChart(
-    declaration,
-    { inputs: { [InputId.Input1]: request } },
-    { [InputId.Input1]: result },
-    createContext(xAxis, yAxis, unitSystem, declaration),
-  );
-}
-
-function getLevel(result: ReturnType<typeof calculateAdaptive>, id: string): AdaptiveLevelResult {
+function getLevel(
+  result: AdaptiveResponseDto,
+  id: string,
+): AdaptiveLevelResult {
   const level = result.levels.find((candidate) => candidate.id === id);
   if (!level) throw new Error(`Missing test level: ${id}`);
   return level;
+}
+
+function getRegionTraces(chart: PlotlyChartResponseDto): PlotTraceDto[] {
+  return chart.traces.filter(
+    ({ type, fill }) => type === "scatter" && fill === "toself",
+  );
+}
+
+function round(value: number, decimals = 3): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
+function summarizeRegions(chart: PlotlyChartResponseDto) {
+  return getRegionTraces(chart).map((trace) => ({
+    name: trace.name,
+    color: trace.fillcolor,
+    points: trace.x.length,
+    xRange: [round(Math.min(...trace.x)), round(Math.max(...trace.x))],
+    yRange: [round(Math.min(...trace.y)), round(Math.max(...trace.y))],
+  }));
 }
 
 function getBoundaryPoint(
@@ -105,68 +127,108 @@ function getBoundaryPoint(
   traceName: string,
   targetOutdoorTemperature: number,
   side: "lower" | "upper",
+  direction: "default" | "transposed" = "default",
 ): { outdoorTemperature: number; operativeTemperature: number } {
-  const trace = chart.traces.find(({ name }) => name === traceName);
+  const trace = getRegionTraces(chart).find(({ name }) => name === traceName);
   if (!trace) throw new Error(`Missing boundary trace: ${traceName}`);
-  const edgePointCount = Math.floor(trace.x.length / 2);
+  const edgePointCount = trace.x.length / 2;
   const xValues = side === "lower"
     ? trace.x.slice(0, edgePointCount)
     : trace.x.slice(edgePointCount);
   const yValues = side === "lower"
     ? trace.y.slice(0, edgePointCount)
     : trace.y.slice(edgePointCount);
-  const closestIndex = xValues.reduce((bestIndex, value, index) => (
+  const outdoorValues = direction === "default" ? xValues : yValues;
+  const operativeValues = direction === "default" ? yValues : xValues;
+  const closestIndex = outdoorValues.reduce((bestIndex, value, index) => (
     Math.abs(value - targetOutdoorTemperature)
-      < Math.abs(xValues[bestIndex] - targetOutdoorTemperature)
+      < Math.abs(outdoorValues[bestIndex] - targetOutdoorTemperature)
       ? index
       : bestIndex
   ), 0);
 
   return {
-    outdoorTemperature: xValues[closestIndex],
-    operativeTemperature: yValues[closestIndex],
+    outdoorTemperature: outdoorValues[closestIndex],
+    operativeTemperature: operativeValues[closestIndex],
   };
 }
 
-function createBandInputs(relativeAirSpeed: number): InputsSi {
-  const inputs = Object.fromEntries(
-    Object.values(FieldKey).map((field) => [field, 0]),
-  ) as Record<FieldKeyType, number>;
-  inputs[FieldKey.RelativeAirSpeed] = relativeAirSpeed;
-  return inputs;
-}
+describe("adaptive standard mechanics", () => {
+  it("derives compliance caption thresholds from the selected level", () => {
+    const caption = createAdaptiveComplianceCaption(
+      "Custom shading",
+      {
+        bandSequence: adaptiveAshraeDeclaration.bandSequence,
+        coefficients: adaptiveAshraeDeclaration.coefficients,
+        levels: [{
+          id: "custom-level",
+          label: "Custom Acceptability",
+          coolOffset: -4.25,
+          warmOffset: 2.75,
+        }],
+      },
+      "custom-level",
+    );
 
-describe("adaptive model mechanics", () => {
-  it("applies ASHRAE elevated-air-speed cooling only to qualifying upper bounds", () => {
-    const result = calculateAdaptive(adaptiveAshraeDeclaration, {
+    expect(caption).toBe(
+      "Custom shading; compliance is the Custom range from t_cmf − 4.25°C to t_cmf + 2.75°C, including the applicable upper-limit cooling adjustment.",
+    );
+  });
+
+  it("preserves the ASHRAE and EN equations and offsets", () => {
+    const ashrae = calculateAdaptive(adaptiveAshraeDeclaration, {
+      ...baselineRequest,
+      trm: 20,
+    });
+    const en = calculateAdaptive(adaptiveEnDeclaration, {
+      ...baselineRequest,
+      trm: 20,
+    });
+
+    expect(ashrae.tCmf).toBeCloseTo(24, 10);
+    expect(getLevel(ashrae, "acceptability-80"))
+      .toEqual(expect.objectContaining({ lower: 20.5, upper: 27.5 }));
+    expect(getLevel(ashrae, "acceptability-90"))
+      .toEqual(expect.objectContaining({ lower: 21.5, upper: 26.5 }));
+
+    expect(en.tCmf).toBeCloseTo(25.4, 10);
+    expect(getLevel(en, "category-i").lower).toBeCloseTo(22.4, 10);
+    expect(getLevel(en, "category-i").upper).toBeCloseTo(27.4, 10);
+    expect(getLevel(en, "category-ii").lower).toBeCloseTo(21.4, 10);
+    expect(getLevel(en, "category-ii").upper).toBeCloseTo(28.4, 10);
+    expect(getLevel(en, "category-iii").lower).toBeCloseTo(20.4, 10);
+    expect(getLevel(en, "category-iii").upper).toBeCloseTo(29.4, 10);
+  });
+
+  it("keeps elevated-air-speed transitions exact at 0.6, 0.9, 1.2 m/s and 25 °C", () => {
+    expect(getCe(0.599999, 30)).toBe(0);
+    expect(getCe(0.6, 30)).toBe(1.2);
+    expect(getCe(0.899999, 30)).toBe(1.2);
+    expect(getCe(0.9, 30)).toBe(1.8);
+    expect(getCe(1.199999, 30)).toBe(1.8);
+    expect(getCe(1.2, 30)).toBe(2.2);
+    expect(getCe(1.2, 24.999999)).toBe(0);
+    expect(getCe(1.2, 25)).toBe(2.2);
+  });
+
+  it("applies cooling independently to each qualifying standard boundary", () => {
+    const ashrae = calculateAdaptive(adaptiveAshraeDeclaration, {
       tdb: 25.5,
       tr: 25.5,
       trm: 15,
       v: 0.6,
     });
-    const level80 = getLevel(result, "acceptability-80");
-    const level90 = getLevel(result, "acceptability-90");
-
-    expect(level80.accepted).toBe(true);
-    expect(level90.accepted).toBe(false);
-    expect(level90.upper).toBeCloseTo(24.95, 2);
-    expect(level80.upper).toBeCloseTo(27.15, 2);
-  });
-
-  it("applies EN cooling independently for each category", () => {
-    const result = calculateAdaptive(adaptiveEnDeclaration, {
+    const en = calculateAdaptive(adaptiveEnDeclaration, {
       tdb: 25.2,
       tr: 25.2,
       trm: 12,
       v: 0.6,
     });
-    const categoryI = getLevel(result, "category-i");
-    const categoryII = getLevel(result, "category-ii");
 
-    expect(categoryI.accepted).toBe(false);
-    expect(categoryII.accepted).toBe(true);
-    expect(categoryI.upper).toBeCloseTo(24.76, 2);
-    expect(categoryII.upper).toBeCloseTo(26.96, 2);
+    expect(getLevel(ashrae, "acceptability-90").upper).toBeCloseTo(24.95, 2);
+    expect(getLevel(ashrae, "acceptability-80").upper).toBeCloseTo(27.15, 2);
+    expect(getLevel(en, "category-i").upper).toBeCloseTo(24.76, 2);
+    expect(getLevel(en, "category-ii").upper).toBeCloseTo(26.96, 2);
   });
 
   it("reports cold, accepted, warm, and unplottable states directly", () => {
@@ -186,10 +248,7 @@ describe("adaptive model mechanics", () => {
       tr: 40,
       trm: 20,
     });
-    const outside = {
-      ...baselineRequest,
-      trm: 5,
-    };
+    const outside = { ...baselineRequest, trm: 5 };
 
     expect(getLevel(cold, "acceptability-80").status)
       .toBe(adaptiveAshraeZonesList[0].label);
@@ -198,309 +257,345 @@ describe("adaptive model mechanics", () => {
     expect(getLevel(warm, "acceptability-80").status)
       .toBe(adaptiveAshraeZonesList[3].label);
     expect(calculateAdaptive(adaptiveAshraeDeclaration, outside).isApplicable).toBe(false);
-    expect(tryEvaluateAdaptiveForChart(adaptiveAshraeDeclaration, outside)).toBeNull();
   });
 
-  it("keeps the two standard declarations isolated", () => {
-    const request = { ...baselineRequest, trm: 20 };
-    const ashrae = calculateAdaptive(adaptiveAshraeDeclaration, request);
-    const en = calculateAdaptive(adaptiveEnDeclaration, request);
-
-    expect(ashrae.standard).toBe(adaptiveAshraeDeclaration.resultStandard);
-    expect(en.standard).toBe(adaptiveEnDeclaration.resultStandard);
-    expect(ashrae.levels.map(({ id }) => id)).toEqual([
-      "acceptability-80",
-      "acceptability-90",
-    ]);
-    expect(en.levels.map(({ id }) => id)).toEqual([
-      "category-i",
-      "category-ii",
-      "category-iii",
-    ]);
+  it.each([
+    [adaptiveAshraeDeclaration, adaptiveAshraeModelConfig],
+    [adaptiveEnDeclaration, adaptiveEnModelConfig],
+  ] as const)("reuses adjacent functional edges for $label and requires finite SI air speed", (
+    declaration,
+    config,
+  ) => {
+    const bands = config.complianceSpec!.bands;
+    bands.slice(0, -1).forEach((band, index) => {
+      expect(band.max).toBe(bands[index + 1].min);
+    });
+    const functionalEdge = bands[0].max;
+    expect(() => resolveBandEdge(functionalEdge, 20, {})).toThrow(
+      /finite canonical-SI relative air speed/i,
+    );
+    expect(() => resolveBandEdge(functionalEdge, 20, {
+      [FieldKey.RelativeAirSpeed]: Number.NaN,
+    })).toThrow(/finite canonical-SI relative air speed/i);
+    expect(resolveBandEdge(functionalEdge, 20, {
+      [FieldKey.RelativeAirSpeed]: 0.1,
+    })).toBeCloseTo(
+      Math.min(...calculateAdaptive(
+        declaration,
+        { ...baselineRequest, trm: 20 },
+      ).levels.map(({ lower }) => lower!)),
+      10,
+    );
   });
 
-  it("aligns half-open ASHRAE results and functional compliance bands", () => {
-    const baseline = calculateAdaptive(adaptiveAshraeDeclaration, {
-      ...baselineRequest,
-      tdb: 24,
-      tr: 24,
-      trm: 20,
-    });
-    const level80 = getLevel(baseline, "acceptability-80");
-    const level90 = getLevel(baseline, "acceptability-90");
-    const bands = adaptiveAshraeModelConfig.complianceSpec!.bands;
-    const inputsSi = createBandInputs(0.1);
-    const cases = [
-      [level80.lower, bands[1], true, false],
-      [level90.lower, bands[2], true, true],
-      [level90.upper, bands[3], true, false],
-      [level80.upper, bands[4], false, false],
-    ] as const;
+  it.each([
+    [adaptiveAshraeDeclaration, adaptiveAshraeModelConfig],
+    [adaptiveEnDeclaration, adaptiveEnModelConfig],
+  ] as const)("keeps $label functional boundaries contiguous", (
+    declaration,
+    config,
+  ) => {
+    const result = calculateAdaptive(declaration, { ...baselineRequest, trm: 20 });
+    const bands = config.complianceSpec!.bands;
+    const inputsSi: BandInputsSi = { [FieldKey.RelativeAirSpeed]: 0.1 };
 
-    cases.forEach(([temperature, expectedBand, accepted80, accepted90]) => {
-      if (temperature === null) throw new Error("Expected a finite ASHRAE boundary.");
-      const result = calculateAdaptive(adaptiveAshraeDeclaration, {
-        ...baselineRequest,
-        tdb: temperature,
-        tr: temperature,
-        trm: 20,
-      });
-      expect(getLevel(result, "acceptability-80").accepted).toBe(accepted80);
-      expect(getLevel(result, "acceptability-90").accepted).toBe(accepted90);
-      expect(findBandForValue(bands, temperature, 20, inputsSi)).toBe(expectedBand);
+    bands.slice(0, -1).forEach((band, index) => {
+      const boundary = resolveBandEdge(band.max, 20, inputsSi);
+      expect(resolveBandEdge(bands[index + 1].min, 20, inputsSi)).toBe(boundary);
     });
-  });
-
-  it("aligns half-open EN results and functional compliance bands", () => {
-    const baseline = calculateAdaptive(adaptiveEnDeclaration, {
-      ...baselineRequest,
-      tdb: 24,
-      tr: 24,
-      trm: 20,
-    });
-    const categoryI = getLevel(baseline, "category-i");
-    const categoryII = getLevel(baseline, "category-ii");
-    const categoryIII = getLevel(baseline, "category-iii");
-    const bands = adaptiveEnModelConfig.complianceSpec!.bands;
-    const inputsSi = createBandInputs(0.1);
-    const cases = [
-      [categoryIII.lower, bands[1], [false, false, true]],
-      [categoryII.lower, bands[2], [false, true, true]],
-      [categoryI.lower, bands[3], [true, true, true]],
-      [categoryI.upper, bands[4], [false, true, true]],
-      [categoryII.upper, bands[5], [false, false, true]],
-      [categoryIII.upper, bands[6], [false, false, false]],
-    ] as const;
-
-    cases.forEach(([temperature, expectedBand, expectedAcceptance]) => {
-      if (temperature === null) throw new Error("Expected a finite EN boundary.");
-      const result = calculateAdaptive(adaptiveEnDeclaration, {
-        ...baselineRequest,
-        tdb: temperature,
-        tr: temperature,
-        trm: 20,
-      });
-      expect(result.levels.map(({ accepted }) => accepted)).toEqual(expectedAcceptance);
-      expect(findBandForValue(bands, temperature, 20, inputsSi)).toBe(expectedBand);
+    result.levels.forEach((level) => {
+      expect(level.lower).not.toBeNull();
+      expect(level.upper).not.toBeNull();
     });
   });
 });
 
-describe("adaptive charts", () => {
+describe("single Adaptive Compliance chart", () => {
+  it("keeps polygons geometric and evaluates hover points only on the tooltip grid", () => {
+    const evaluateApplicability = vi.fn(
+      adaptiveAshraeDeclaration.evaluateApplicability,
+    );
+    const declaration: AdaptiveModelDeclaration = {
+      ...adaptiveAshraeDeclaration,
+      evaluateApplicability,
+    };
+    const result = calculateAdaptive(adaptiveAshraeDeclaration, baselineRequest);
+    const chart = buildAdaptiveChart(
+      declaration,
+      { inputs: { [InputId.Input1]: baselineRequest } },
+      { [InputId.Input1]: result },
+      createContext(declaration),
+    );
+    const regions = getRegionTraces(chart);
+    const tooltip = chart.traces.find(({ name }) => name === "Tooltip Layer");
+    const tooltipPointCount = tooltip?.z?.reduce(
+      (count, row) => count + row.length,
+      0,
+    ) ?? 0;
+
+    expect(regions.length).toBeGreaterThan(0);
+    expect(regions.every(({ hoverinfo }) => hoverinfo === "skip")).toBe(true);
+    expect(regions.every(({ hoverMetadata }) => hoverMetadata === undefined)).toBe(true);
+    expect(tooltipPointCount).toBeGreaterThan(0);
+    expect(tooltip?.hoverMetadata).toBeDefined();
+    expect(evaluateApplicability).toHaveBeenCalledTimes(tooltipPointCount);
+  });
+
+  it("builds deterministic ASHRAE regions on the default SI axes", () => {
+    const chart = buildChart(adaptiveAshraeDeclaration);
+
+    expect(summarizeRegions(chart)).toEqual([
+      { name: "Too Cool", color: "#3b82f6", points: 480, xRange: [10, 33.5], yRange: [10, 24.685] },
+      { name: "80% Acceptability", color: "#86efac", points: 480, xRange: [10, 33.5], yRange: [17.4, 25.685] },
+      { name: "90% Acceptability", color: "#22c55e", points: 480, xRange: [10, 33.5], yRange: [18.4, 30.685] },
+      { name: "80% Acceptability", color: "#86efac", points: 480, xRange: [10, 33.5], yRange: [23.4, 31.685] },
+      { name: "Too Warm", color: "#ef4444", points: 480, xRange: [10, 33.5], yRange: [24.4, 40] },
+    ]);
+    expect(chart.layout.xaxis).toEqual(expect.objectContaining({
+      title: "Prevailing mean outdoor temperature (°C)",
+      range: [10, 33.5],
+    }));
+    expect(chart.layout.yaxis).toEqual(expect.objectContaining({
+      title: "Operative temperature (°C)",
+      range: [10, 40],
+    }));
+  });
+
+  it.each([
+    adaptiveAshraeDeclaration,
+    adaptiveEnDeclaration,
+  ] as const)("transposes the same $label geometry onto operative-X/outdoor-Y", (
+    declaration,
+  ) => {
+    const direct = summarizeRegions(buildChart(declaration));
+    const transposedChart = buildChart(
+      declaration,
+      { [InputId.Input1]: baselineRequest },
+      UnitSystem.SI,
+      InputId.Input1,
+      "transposed",
+    );
+
+    expect(summarizeRegions(transposedChart)).toEqual(direct.map((region) => ({
+      ...region,
+      xRange: region.yRange,
+      yRange: region.xRange,
+    })));
+    expect(transposedChart.layout.xaxis).toEqual(expect.objectContaining({
+      title: "Operative temperature (°C)",
+      range: [10, 40],
+    }));
+    expect(transposedChart.layout.yaxis.title).toBe(
+      `${declaration.outdoorTemperatureLabel} (°C)`,
+    );
+  });
+
+  it("builds deterministic EN regions on the fixed SI axes", () => {
+    const chart = buildChart(adaptiveEnDeclaration);
+
+    expect(summarizeRegions(chart)).toEqual([
+      { name: "Too Cool", color: "#3b82f6", points: 480, xRange: [10, 30], yRange: [10, 23.7] },
+      { name: "Category III", color: "#fde047", points: 480, xRange: [10, 30], yRange: [17.1, 24.7] },
+      { name: "Category II", color: "#86efac", points: 480, xRange: [10, 30], yRange: [18.1, 25.7] },
+      { name: "Category I", color: "#22c55e", points: 480, xRange: [10, 30], yRange: [19.1, 30.7] },
+      { name: "Category II", color: "#86efac", points: 480, xRange: [10, 30], yRange: [24.1, 31.7] },
+      { name: "Category III", color: "#fde047", points: 480, xRange: [10, 30], yRange: [25.1, 32.7] },
+      { name: "Too Warm", color: "#ef4444", points: 480, xRange: [10, 30], yRange: [26.1, 40] },
+    ]);
+    expect(chart.layout.xaxis).toEqual(expect.objectContaining({
+      title: "Running mean outdoor temperature (°C)",
+      range: [10, 30],
+    }));
+    expect(chart.traces.some(({ name }) => name === "Adaptive Zones")).toBe(false);
+  });
+
   it.each([
     [adaptiveAshraeDeclaration, "acceptability-80", "80% Acceptability"],
     [adaptiveEnDeclaration, "category-i", "Category I"],
-  ] as const)("keeps %s fixed boundaries aligned with the calculator", (
+  ] as const)("keeps $label polygon edges aligned with calculator results", (
     declaration,
     levelId,
     traceName,
   ) => {
     const request = { ...baselineRequest, trm: 20 };
     const result = calculateAdaptive(declaration, request);
-    const chart = buildFixedChart(declaration, request);
-    const level = getLevel(result, levelId);
-    const point = getBoundaryPoint(chart, traceName, request.trm, "lower");
-
-    expect(level.lower).not.toBeNull();
-    expect(point.operativeTemperature).toBeCloseTo(level.lower!, 1);
-    expect(chart.traces.slice(0, declaration.complianceSpec.bands.length).map(({ name }) => name))
-      .toEqual(declaration.complianceSpec.bands.map(({ label }) => label));
-    expect(chart.traces[declaration.complianceSpec.bands.length].name).toBe("Tooltip Layer");
-    expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
-    expect(String(chart.layout.xaxis.title)).toContain("temperature");
-    expect(String(chart.layout.yaxis.title)).toContain("Operative temperature");
-  });
-
-  it("uses the same boundary geometry with outdoor temperature on either axis", () => {
-    const chartWithOutdoorX = buildDynamicChart(
-      adaptiveAshraeDeclaration,
-      FieldKey.PrevailingMeanOutdoorTemperature,
-      FieldKey.OperativeTemperature,
-    );
-    const chartWithOutdoorY = buildDynamicChart(
-      adaptiveAshraeDeclaration,
-      FieldKey.OperativeTemperature,
-      FieldKey.PrevailingMeanOutdoorTemperature,
-    );
-    const expectedNames = [
-      "Too Cool",
-      "80% Acceptability",
-      "90% Acceptability",
-      "80% Acceptability",
-      "Too Warm",
-    ];
-    const getRegionNames = (chart: PlotlyChartResponseDto) => chart.traces
-      .filter(({ type, fill }) => type === "scatter" && fill === "toself")
-      .map(({ name }) => name);
-
-    expect(getRegionNames(chartWithOutdoorX)).toEqual(expectedNames);
-    expect(getRegionNames(chartWithOutdoorY)).toEqual(expectedNames);
-    expect(chartWithOutdoorX.traces.slice(0, expectedNames.length).map(({ name }) => name))
-      .toEqual(expectedNames);
-    expect(chartWithOutdoorY.traces.slice(0, expectedNames.length).map(({ name }) => name))
-      .toEqual(expectedNames);
-    expect(chartWithOutdoorX.traces[expectedNames.length].name).toBe("Tooltip Layer");
-    expect(chartWithOutdoorY.traces[expectedNames.length].name).toBe("Tooltip Layer");
-    expect(chartWithOutdoorX.traces.some(({ name }) => name === "Adaptive Zones"))
-      .toBe(false);
-    expect(chartWithOutdoorY.traces.some(({ name }) => name === "Adaptive Zones"))
-      .toBe(false);
-  });
-
-  it("uses a grid strategy when neither dynamic axis is outdoor temperature", () => {
-    const chart = buildDynamicChart(
-      adaptiveAshraeDeclaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeAirSpeed,
-    );
-    const zoneTrace = chart.traces.find(({ name }) => name === "Adaptive Zones");
-    const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
-
-    expect(zoneTrace?.type).toBe("contour");
-    expect(zoneTrace?.z).toHaveLength(50);
-    expect(zoneTrace?.z?.[0]).toHaveLength(50);
-    expect(zoneTrace?.z?.flat().some(Number.isFinite)).toBe(true);
-    expect(inputTrace?.x).toEqual([24]);
-    expect(inputTrace?.y).toEqual([0.1]);
-  });
-
-  it("requires the declared Compliance config for the shared dynamic engine", () => {
-    const declaration = adaptiveAshraeDeclaration;
-    const result = calculateAdaptive(declaration, baselineRequest);
-    const context = createContext(
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeAirSpeed,
-      UnitSystem.SI,
-      declaration,
-    );
-    const build = (fieldChartConfig: ChartBuildContext["fieldChartConfig"]) => (
-      buildAdaptiveDynamicChart(
+    (["default", "transposed"] as const).forEach((direction) => {
+      const point = getBoundaryPoint(buildChart(
         declaration,
-        { inputs: { [InputId.Input1]: baselineRequest } },
-        { [InputId.Input1]: result },
-        { ...context, fieldChartConfig },
-      )
-    );
+        { [InputId.Input1]: request },
+        UnitSystem.SI,
+        InputId.Input1,
+        direction,
+      ), traceName, request.trm, "lower", direction);
 
-    expect(() => build({
-      mode: ChartMode.Explore,
-      xField: FieldKey.DryBulbTemperature,
-      yField: FieldKey.RelativeAirSpeed,
-      zOutput: declaration.complianceSpec.output,
-      bands: [{ min: -Infinity, max: Infinity, label: "All", color: "#fff" }],
-    })).toThrow(/requires a Compliance FieldChartConfig/i);
-    expect(() => build({
-      ...context.fieldChartConfig!,
-      mode: ChartMode.Compliance,
-      zOutput: ModelOutputKey.Pmv,
-    })).toThrow(/declared locked output and bands/i);
+      expect(point.outdoorTemperature).toBeCloseTo(request.trm, 1);
+      expect(point.operativeTemperature).toBeCloseTo(
+        getLevel(result, levelId).lower!,
+        1,
+      );
+    });
   });
 
-  it.each([
-    [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
-    [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
-  ] as const)("solves coupled axes transactionally for %s / %s", (xAxis, yAxis) => {
-    const chart = buildDynamicChart(adaptiveAshraeDeclaration, xAxis, yAxis);
-    const contour = chart.traces.find(({ type }) => type === "contour");
+  it("brackets cooling-effect discontinuities in both axis directions", () => {
+    const request = { ...baselineRequest, v: 0.6 };
+    const transition = (
+      25 - 2.5 - adaptiveAshraeDeclaration.coefficients.intercept
+    ) / adaptiveAshraeDeclaration.coefficients.slope;
 
-    expect(contour?.z?.flat().some(Number.isFinite)).toBe(true);
-  });
-
-  it("throws when dynamic axes violate the state invariant", () => {
-    expect(() => buildDynamicChart(
-      adaptiveAshraeDeclaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.DryBulbTemperature,
-    )).toThrow(/unsupported adaptive dynamic axis pair/i);
-    expect(() => buildDynamicChart(
-      adaptiveAshraeDeclaration,
-      FieldKey.RelativeHumidity,
-      FieldKey.DryBulbTemperature,
-    )).toThrow(/unsupported adaptive dynamic axis pair/i);
-  });
-
-  it.each([adaptiveAshraeDeclaration, adaptiveEnDeclaration])(
-    "builds every declared directed axis pair in SI and IP for $label",
-    (declaration) => {
-      const config = declaration === adaptiveAshraeDeclaration
-        ? adaptiveAshraeModelConfig
-        : adaptiveEnModelConfig;
-      const pairs = config.dynamicAxisFields.flatMap((xAxis) => (
-        config.dynamicAxisFields
-          .filter((yAxis) => xAxis !== yAxis)
-          .map((yAxis) => ({ xAxis, yAxis }))
+    (["default", "transposed"] as const).forEach((direction) => {
+      const chart = buildChart(
+        adaptiveAshraeDeclaration,
+        { [InputId.Input1]: request },
+        UnitSystem.SI,
+        InputId.Input1,
+        direction,
+      );
+      const trace = getRegionTraces(chart).find(
+        ({ name }) => name === "90% Acceptability",
+      );
+      if (!trace) throw new Error("Missing ASHRAE 90% region.");
+      const pointCount = trace.x.length / 2;
+      const outdoorValues = (direction === "default" ? trace.x : trace.y)
+        .slice(pointCount);
+      const operativeValues = (direction === "default" ? trace.y : trace.x)
+        .slice(pointCount);
+      const upperEdge = outdoorValues.map((outdoor, index) => ({
+        outdoor,
+        operative: operativeValues[index],
+      }));
+      const before = upperEdge.find(({ outdoor }) => (
+        Math.abs(outdoor - (transition - 0.001)) < 1e-7
+      ));
+      const after = upperEdge.find(({ outdoor }) => (
+        Math.abs(outdoor - (transition + 0.001)) < 1e-7
       ));
 
-      [UnitSystem.SI, UnitSystem.IP].forEach((unitSystem) => {
-        pairs.forEach(({ xAxis, yAxis }) => {
-          const chart = buildDynamicChart(
-            declaration,
-            xAxis,
-            yAxis,
-            unitSystem,
-          );
-          expect(chart.traces.length).toBeGreaterThan(0);
-        });
-      });
-    },
-  );
+      expect(trace.x).toHaveLength(488);
+      expect(before).toBeDefined();
+      expect(after).toBeDefined();
+      expect(after!.operative - before!.operative).toBeGreaterThan(1);
+    });
+  });
 
-  it("converts fixed and dynamic coordinates and hover metadata for IP display", () => {
-    const fixed = buildFixedChart(
+  it("orders regions, shared tooltip, and every comparison marker", () => {
+    const input1 = { ...baselineRequest, v: 0.1 };
+    const input2 = { ...baselineRequest, tdb: 26, tr: 26, v: 1.2 };
+    const requests = {
+      [InputId.Input1]: input1,
+      [InputId.Input2]: input2,
+    };
+    const input1Baseline = buildChart(
       adaptiveAshraeDeclaration,
-      baselineRequest,
+      requests,
+      UnitSystem.SI,
+      InputId.Input1,
+    );
+    const input2Baseline = buildChart(
+      adaptiveAshraeDeclaration,
+      requests,
+      UnitSystem.SI,
+      InputId.Input2,
+    );
+    const transposed = buildChart(
+      adaptiveAshraeDeclaration,
+      requests,
+      UnitSystem.SI,
+      InputId.Input2,
+      "transposed",
+    );
+    const expectedRegionNames = adaptiveAshraeDeclaration.complianceSpec.bands.map(
+      ({ label }) => label,
+    );
+
+    expect(input2Baseline.traces.map(({ name }) => name)).toEqual([
+      ...expectedRegionNames,
+      "Tooltip Layer",
+      "Input 1",
+      "Input 2",
+    ]);
+    const input1Regions = getRegionTraces(input1Baseline);
+    const input2Regions = getRegionTraces(input2Baseline);
+    expect(input2Regions[input2Regions.length - 1]?.y)
+      .not.toEqual(input1Regions[input1Regions.length - 1]?.y);
+    expect(input2Baseline.traces.filter(({ mode }) => mode === "markers").map(({ name }) => name))
+      .toEqual(["Input 1", "Input 2"]);
+    expect(transposed.traces.map(({ name }) => name)).toEqual(
+      input2Baseline.traces.map(({ name }) => name),
+    );
+    const transposedInput1 = transposed.traces.find(({ name }) => name === "Input 1");
+    const transposedTooltip = transposed.traces.find(({ name }) => name === "Tooltip Layer");
+    const input1Result = calculateAdaptive(adaptiveAshraeDeclaration, input1);
+    expect(transposedInput1?.x[0]).toBeCloseTo(input1Result.operativeTemperature, 8);
+    expect(transposedInput1?.y[0]).toBeCloseTo(input1.trm, 8);
+    expect(transposedTooltip?.hovertemplate).toContain("Operative temperature: %{x");
+    expect(transposedTooltip?.hovertemplate).toContain(
+      "Prevailing mean outdoor temperature: %{y",
+    );
+  });
+
+  it("converts SI axes, polygons, markers, results, and hover metadata to IP", () => {
+    const result = calculateAdaptive(adaptiveAshraeDeclaration, baselineRequest);
+    const chart = buildChart(
+      adaptiveAshraeDeclaration,
+      { [InputId.Input1]: baselineRequest },
       UnitSystem.IP,
     );
-    const dynamic = buildDynamicChart(
+    const transposed = buildChart(
       adaptiveAshraeDeclaration,
-      FieldKey.PrevailingMeanOutdoorTemperature,
-      FieldKey.OperativeTemperature,
+      { [InputId.Input1]: baselineRequest },
       UnitSystem.IP,
+      InputId.Input1,
+      "transposed",
     );
-    const expectedOutdoor = convertFieldValueFromSi(
+    const input = chart.traces.find(({ name }) => name === "Input 1");
+    const tooltip = chart.traces.find(({ name }) => name === "Tooltip Layer");
+    const firstRegion = getRegionTraces(chart)[0];
+    const metadata = input?.hoverMetadata as unknown[];
+    const level90 = getLevel(result, "acceptability-90");
+
+    expect(chart.layout.xaxis.title).toBe("Prevailing mean outdoor temperature (°F)");
+    expect(chart.layout.yaxis.title).toBe("Operative temperature (°F)");
+    const xRange = chart.layout.xaxis.range as number[];
+    const yRange = chart.layout.yaxis.range as number[];
+    expect(xRange[0]).toBeCloseTo(50, 8);
+    expect(xRange[1]).toBeCloseTo(92.3, 8);
+    expect(yRange).toEqual([50, 104]);
+    expect(firstRegion.x[0]).toBeCloseTo(50, 8);
+    expect(firstRegion.y[0]).toBeCloseTo(50, 8);
+    expect(input?.x[0]).toBeCloseTo(convertFieldValueFromSi(
       FieldKey.PrevailingMeanOutdoorTemperature,
       baselineRequest.trm,
       UnitSystem.IP,
-    );
-    const fixedInput = fixed.traces.find(({ name }) => name === "Input 1");
-    const dynamicInput = dynamic.traces.find(({ name }) => name === "Input 1");
-    const fixedTooltip = fixed.traces.find(({ name }) => name === "Tooltip Layer");
-    const dynamicTooltip = dynamic.traces.find(({ name }) => name === "Tooltip Layer");
-
-    expect(fixedInput?.x[0]).toBeCloseTo(expectedOutdoor, 6);
-    expect(dynamicInput?.x[0]).toBeCloseTo(expectedOutdoor, 6);
-    expect(fixedTooltip?.hovertemplate).toContain("°F");
-    expect(dynamicTooltip?.hovertemplate).toContain("°F");
-    expect(fixedTooltip?.hovertemplate).not.toContain("°C");
-  });
-
-  it("keeps EN boundary bands ordered and contiguous", () => {
-    const chart = buildDynamicChart(
-      adaptiveEnDeclaration,
-      FieldKey.PrevailingMeanOutdoorTemperature,
+    ), 8);
+    expect(input?.y[0]).toBeCloseTo(convertFieldValueFromSi(
       FieldKey.OperativeTemperature,
+      result.operativeTemperature,
+      UnitSystem.IP,
+    ), 8);
+    expect(metadata[1]).toBeCloseTo(round(convertFieldValueFromSi(
+      FieldKey.DryBulbTemperature,
+      level90.lower!,
+      UnitSystem.IP,
+    ), 1), 8);
+    expect(tooltip?.hovertemplate).toContain("°F");
+    expect(tooltip?.hovertemplate).not.toContain("°C");
+    const transposedInput = transposed.traces.find(({ name }) => name === "Input 1");
+    const transposedRegion = getRegionTraces(transposed)[0];
+    expect(transposed.layout.xaxis.title).toBe("Operative temperature (°F)");
+    expect(transposed.layout.yaxis.title).toBe(
+      "Prevailing mean outdoor temperature (°F)",
     );
-    const regions = chart.traces.filter(
-      ({ type, fill }) => type === "scatter" && fill === "toself",
-    );
-
-    expect(regions.map(({ name }) => name)).toEqual([
-      adaptiveEnZonesList[0].label,
-      adaptiveEnZonesList[1].label,
-      adaptiveEnZonesList[2].label,
-      adaptiveEnZonesList[3].label,
-      adaptiveEnZonesList[2].label,
-      adaptiveEnZonesList[1].label,
-      adaptiveEnZonesList[4].label,
-    ]);
-    regions.slice(0, -1).forEach((region, index) => {
-      const pointCount = region.y.length / 2;
-      const next = regions[index + 1];
-      const sampleIndex = Math.floor(pointCount / 2);
-      const upperValue = region.y[(2 * pointCount) - 1 - sampleIndex];
-      expect(upperValue).toBeCloseTo(next.y[sampleIndex], 6);
-    });
+    expect(transposedRegion.x[0]).toBeCloseTo(50, 8);
+    expect(transposedRegion.y[0]).toBeCloseTo(50, 8);
+    expect(transposedInput?.x[0]).toBeCloseTo(convertFieldValueFromSi(
+      FieldKey.OperativeTemperature,
+      result.operativeTemperature,
+      UnitSystem.IP,
+    ), 8);
+    expect(transposedInput?.y[0]).toBeCloseTo(convertFieldValueFromSi(
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      baselineRequest.trm,
+      UnitSystem.IP,
+    ), 8);
   });
 });

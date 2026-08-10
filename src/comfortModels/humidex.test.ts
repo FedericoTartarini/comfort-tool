@@ -10,6 +10,11 @@ import { InputId } from "../models/inputSlots";
 import { ChartMode, type ChartBuildContext } from "../models/modelCapabilities";
 
 describe("humidex service", () => {
+  it("rejects a non-finite result instead of assigning the first zone", () => {
+    expect(() => calculateHumidex({ tdb: Number.MAX_VALUE, rh: 50 }))
+      .toThrow(/Humidex.*non-finite/i);
+  });
+
   it("calculates Humidex correctly and assigns appropriate discomfort level", () => {
     // 30°C, 70% RH -> Humidex should be ~41 (Intense)
     const result = calculateHumidex({
@@ -55,7 +60,6 @@ describe("humidex service", () => {
     };
     const fixedContext = {
       unitSystem: UnitSystem.SI,
-      dynamicAxes: humidexModelConfig.defaultDynamicAxes,
       baselineInputId: InputId.Input1,
       fieldChartConfig: {
         mode: ChartMode.Explore,
@@ -118,7 +122,6 @@ describe("humidex service", () => {
       },
       {
         unitSystem: UnitSystem.SI,
-        dynamicAxes: humidexModelConfig.defaultDynamicAxes,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
           mode: ChartMode.Explore,

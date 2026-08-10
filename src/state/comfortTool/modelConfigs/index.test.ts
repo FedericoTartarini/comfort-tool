@@ -10,10 +10,10 @@ import {
 } from "../../../comfortModels/adaptiveEn";
 import { heatIndexZonesList } from "../../../comfortModels/heatIndex";
 import { humidexZonesList } from "../../../comfortModels/humidex";
-import { pmvZonesList } from "../../../comfortModels/pmvShared";
 import { calculateUtci, utciZonesList } from "../../../comfortModels/utci";
 import { windChillZonesList } from "../../../comfortModels/windChill";
 import { ComfortStandard } from "../../../models/calculationMetadata";
+import { ChartId } from "../../../models/chartOptions";
 import {
   ComfortModel,
   type ComfortModel as ComfortModelType,
@@ -21,10 +21,10 @@ import {
 import { FieldKey } from "../../../models/fieldKeys";
 import {
   ChartMode,
-  findBandForValue,
+  findNumericBandIndexForValue,
   ModelOutputKey,
   resolveBandEdge,
-  type InputsSi,
+  type BandInputsSi,
 } from "../../../models/modelCapabilities";
 import type { ThermalZone } from "../../../models/thermalZone";
 import {
@@ -33,7 +33,7 @@ import {
   getComfortModelConfig,
 } from ".";
 
-function createInputsSi(relativeAirSpeed: number): InputsSi {
+function createInputsSi(relativeAirSpeed: number): BandInputsSi {
   const inputsSi = Object.fromEntries(
     Object.values(FieldKey).map((fieldKey) => [fieldKey, 0]),
   ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
@@ -104,17 +104,17 @@ describe("comfort model capability registry", () => {
         },
       },
       [ComfortModel.AdaptiveAshrae]: {
-        count: 20,
+        count: 2,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          yAxis: FieldKey.OperativeTemperature,
         },
       },
       [ComfortModel.AdaptiveEn]: {
-        count: 20,
+        count: 2,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+          yAxis: FieldKey.OperativeTemperature,
         },
       },
       [ComfortModel.HeatIndex]: {
@@ -206,8 +206,14 @@ describe("comfort model capability registry", () => {
   });
 
   it("derives Explore presets from the existing model zones", () => {
-    expectZoneDerivedBands(ComfortModel.PmvAshrae, pmvZonesList);
-    expectZoneDerivedBands(ComfortModel.PmvIso, pmvZonesList);
+    expectZoneDerivedBands(
+      ComfortModel.PmvAshrae,
+      getComfortModelConfig(ComfortModel.PmvAshrae).zones,
+    );
+    expectZoneDerivedBands(
+      ComfortModel.PmvIso,
+      getComfortModelConfig(ComfortModel.PmvIso).zones,
+    );
     expectZoneDerivedBands(ComfortModel.Utci, utciZonesList);
     expectZoneDerivedBands(ComfortModel.HeatIndex, heatIndexZonesList);
     expectZoneDerivedBands(ComfortModel.Humidex, humidexZonesList);
@@ -216,7 +222,6 @@ describe("comfort model capability registry", () => {
 
   it("covers finite UTCI results with unbounded outer Explore bands", () => {
     const bands = getComfortModelConfig(ComfortModel.Utci).chartableOutputs[0].defaultBands;
-    const inputsSi = createInputsSi(0.1);
     const coldResult = calculateUtci({
       tdb: -50,
       tr: -80,
@@ -235,12 +240,12 @@ describe("comfort model capability registry", () => {
     expect(lastBand).toEqual(expect.objectContaining({ min: 46, max: Infinity }));
     expect(coldResult.utci).toBeLessThan(-50);
     expect(coldResult.stressCategory).toBe("extreme cold stress");
-    expect(findBandForValue(bands, coldResult.utci, 0, inputsSi)).toBe(bands[0]);
+    expect(findNumericBandIndexForValue(bands, coldResult.utci)).toBe(0);
     expect(hotResult.utci).toBeGreaterThan(55);
     expect(hotResult.stressCategory).toBe("extreme heat stress");
-    expect(findBandForValue(bands, hotResult.utci, 0, inputsSi)).toBe(lastBand);
-    expect(findBandForValue(bands, -40, 0, inputsSi)).toBe(bands[1]);
-    expect(findBandForValue(bands, 46, 0, inputsSi)).toBe(lastBand);
+    expect(findNumericBandIndexForValue(bands, hotResult.utci)).toBe(bands.length - 1);
+    expect(findNumericBandIndexForValue(bands, -40)).toBe(1);
+    expect(findNumericBandIndexForValue(bands, 46)).toBe(bands.length - 1);
   });
 
   it("declares independent PMV bands and assigns PMV/PPD edges half-open", () => {
@@ -249,7 +254,6 @@ describe("comfort model capability registry", () => {
     const pmvOutput = ashrae.chartableOutputs.find((output) => output.key === ModelOutputKey.Pmv);
     const ppdOutput = ashrae.chartableOutputs.find((output) => output.key === ModelOutputKey.Ppd);
     const ppdBands = ppdOutput?.defaultBands;
-    const inputsSi = createInputsSi(0.1);
 
     expect(pmvOutput?.legendTitle).toBe("PMV Zones");
     expect(ppdOutput?.legendTitle).toBe("PPD Bands");
@@ -275,11 +279,9 @@ describe("comfort model capability registry", () => {
         min: -0.5,
         max: 0.5,
       }));
-      expect(findBandForValue(bands, -0.5, 0, inputsSi)).toBe(bands[1]);
-      expect(findBandForValue(bands, 0.5, 0, inputsSi)).toBe(bands[2]);
     });
 
-    expect(findBandForValue(ppdBands, 10, 0, inputsSi)).toBe(ppdBands[1]);
+    expect(findNumericBandIndexForValue(ppdBands, 10)).toBe(1);
   });
 
   it("evaluates Adaptive functional bands from the existing standard boundaries", () => {
@@ -296,6 +298,15 @@ describe("comfort model capability registry", () => {
       .toBe(ModelOutputKey.OperativeTemperature);
     expect(adaptiveEnDeclaration.complianceSpec.output)
       .toBe(ModelOutputKey.OperativeTemperature);
+    [ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn].forEach((modelId) => {
+      const config = getComfortModelConfig(modelId);
+      expect(config.chartIds).toEqual([ChartId.Adaptive]);
+      expect(config.defaultChartId).toBe(ChartId.Adaptive);
+      expect(config.dynamicAxisFields).toEqual([
+        FieldKey.PrevailingMeanOutdoorTemperature,
+        FieldKey.OperativeTemperature,
+      ]);
+    });
     expect(ashraeBands).not.toBe(enBands);
     expect(ashraeBands[0]).not.toBe(enBands[0]);
     expect(getComfortModelConfig(ComfortModel.AdaptiveAshrae).complianceSpec?.bands)
@@ -331,8 +342,8 @@ describe("comfort model capability registry", () => {
     [ashraeBands, enBands].forEach((bands) => {
       bands.slice(0, -1).forEach((band, index) => {
         const boundaryValue = resolveBandEdge(band.max, xValueSi, inputsSi);
-        expect(findBandForValue(bands, boundaryValue, xValueSi, inputsSi))
-          .toBe(bands[index + 1]);
+        expect(resolveBandEdge(bands[index + 1].min, xValueSi, inputsSi))
+          .toBe(boundaryValue);
       });
     });
   });

@@ -40,6 +40,23 @@ function withChartSettings(
   };
 }
 
+function withModelOptions(
+  snapshot: ShareStateSnapshot,
+  modelId: ComfortModelType,
+  options: unknown,
+): unknown {
+  return {
+    ...snapshot,
+    models: {
+      ...snapshot.models,
+      [modelId]: {
+        ...snapshot.models[modelId],
+        options,
+      },
+    },
+  };
+}
+
 describe("shareState strict v1 codec", () => {
   it("round-trips all per-model field settings and explicit Infinity edges", () => {
     const toolState = createComfortToolState();
@@ -143,6 +160,37 @@ describe("shareState strict v1 codec", () => {
     ).toEqual(["舒适区 ✅", "偏高 🥵（≥ 10%）"]);
   });
 
+  it("round-trips both Adaptive models and a transposed axis direction", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
+    toolState.actions.setDynamicXAxis(FieldKey.OperativeTemperature);
+    const snapshot = createShareStateSnapshot(toolState.state);
+    const restored = deserializeShareState(serializeShareState(snapshot));
+
+    expect(snapshot.models[ComfortModel.AdaptiveAshrae]).toEqual(expect.objectContaining({
+      selectedChart: ChartId.Adaptive,
+      chartSettings: expect.objectContaining({
+        mode: ChartMode.Compliance,
+        xAxis: FieldKey.OperativeTemperature,
+        yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+        explore: null,
+      }),
+    }));
+    expect(snapshot.models[ComfortModel.AdaptiveEn]).toEqual(expect.objectContaining({
+      selectedChart: ChartId.Adaptive,
+      chartSettings: expect.objectContaining({
+        mode: ChartMode.Compliance,
+        xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+        yAxis: FieldKey.OperativeTemperature,
+        explore: null,
+      }),
+    }));
+    expect(restored?.models[ComfortModel.AdaptiveAshrae])
+      .toEqual(snapshot.models[ComfortModel.AdaptiveAshrae]);
+    expect(restored?.models[ComfortModel.AdaptiveEn])
+      .toEqual(snapshot.models[ComfortModel.AdaptiveEn]);
+  });
+
   it("rejects invalid Base64URL and malformed UTF-8 bytes", () => {
     const malformedUtf8 = globalThis.btoa(
       String.fromCharCode(0xc3, 0x28),
@@ -160,6 +208,7 @@ describe("shareState strict v1 codec", () => {
     const original = createComfortToolState();
     original.state.ui.compareEnabled = true;
     original.state.ui.compareInputIds = [InputId.Input1, InputId.Input3];
+    original.state.ui.activeInputId = InputId.Input3;
     original.state.ui.unitSystem = UnitSystem.IP;
     original.state.ui.chartSettingsByModel[ComfortModel.Utci].xAxis = FieldKey.WindSpeed;
     original.state.ui.chartSettingsByModel[ComfortModel.Utci].yAxis =
@@ -176,26 +225,116 @@ describe("shareState strict v1 codec", () => {
       .toBe(ChartMode.Explore);
     expect(restored.state.ui.chartSettingsByModel[ComfortModel.PmvIso].baselineInputId)
       .toBe(InputId.Input3);
+    expect(restored.state.ui.compareInputIds).toEqual([InputId.Input1, InputId.Input3]);
+    expect(restored.state.ui.activeInputId).toBe(InputId.Input3);
   });
 
-  it("rejects unknown versions and the previous v1 shape without migration", () => {
+  it.each(Object.values(ComfortModel))(
+    "rejects non-object and unknown-key options for %s",
+    (modelId) => {
+      const current = createShareStateSnapshot(createComfortToolState().state);
+
+      expect(parseShareStateSnapshot(withModelOptions(current, modelId, null)))
+        .toBeNull();
+      expect(parseShareStateSnapshot(withModelOptions(current, modelId, [])))
+        .toBeNull();
+      expect(parseShareStateSnapshot(withModelOptions(current, modelId, {
+        ...current.models[modelId].options,
+        unknown: "value",
+      }))).toBeNull();
+    },
+  );
+
+  it.each([
+    ComfortModel.PmvAshrae,
+    ComfortModel.PmvIso,
+    ComfortModel.Utci,
+    ComfortModel.AdaptiveAshrae,
+    ComfortModel.AdaptiveEn,
+  ] as const)("rejects missing, empty, and invalid-enum options for %s", (modelId) => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+    const options = { ...current.models[modelId].options } as Record<string, string>;
+    const [firstKey] = Object.keys(options);
+    const missingKeyOptions = { ...options };
+    delete missingKeyOptions[firstKey];
+
+    expect(parseShareStateSnapshot(withModelOptions(current, modelId, missingKeyOptions)))
+      .toBeNull();
+    expect(parseShareStateSnapshot(withModelOptions(current, modelId, {})))
+      .toBeNull();
+    expect(parseShareStateSnapshot(withModelOptions(current, modelId, {
+      ...options,
+      [firstKey]: "invalid-enum-value",
+    }))).toBeNull();
+  });
+
+  it.each([
+    ComfortModel.HeatIndex,
+    ComfortModel.Humidex,
+    ComfortModel.WindChill,
+  ] as const)("accepts only the exact empty options object for %s", (modelId) => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+
+    expect(parseShareStateSnapshot(withModelOptions(current, modelId, {})))
+      .not.toBeNull();
+    expect(parseShareStateSnapshot(withModelOptions(current, modelId, {
+      [OptionKey.TemperatureMode]: TemperatureMode.Air,
+    }))).toBeNull();
+  });
+
+  it("rejects non-canonical compare IDs and inconsistent active inputs", () => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+    const comparing = {
+      ...current,
+      compareEnabled: true,
+      compareInputIds: [InputId.Input1, InputId.Input2],
+      activeInputId: InputId.Input2,
+    };
+
+    expect(parseShareStateSnapshot({
+      ...comparing,
+      compareInputIds: [InputId.Input1, InputId.Input2, InputId.Input2],
+    })).toBeNull();
+    expect(parseShareStateSnapshot({
+      ...comparing,
+      compareInputIds: [InputId.Input2, InputId.Input1],
+    })).toBeNull();
+    expect(parseShareStateSnapshot({
+      ...comparing,
+      compareInputIds: [InputId.Input2],
+    })).toBeNull();
+    expect(parseShareStateSnapshot({
+      ...comparing,
+      compareInputIds: [InputId.Input1, InputId.Input3],
+      activeInputId: InputId.Input2,
+    })).toBeNull();
+    expect(parseShareStateSnapshot({
+      ...current,
+      compareEnabled: false,
+      activeInputId: InputId.Input2,
+    })).toBeNull();
+  });
+
+  it("rejects unknown versions and unknown current-schema fields", () => {
     const current = createShareStateSnapshot(createComfortToolState().state);
     expect(parseShareStateSnapshot({ ...current, version: 2 })).toBeNull();
     expect(parseShareStateSnapshot({ ...current, version: 999 })).toBeNull();
-
-    const oldModels = Object.fromEntries(Object.entries(current.models).map(
-      ([modelId, model]) => [
-        modelId,
-        { selectedChart: model.selectedChart, options: model.options },
-      ],
-    ));
-    const oldV1 = {
+    expect(parseShareStateSnapshot({ ...current, unknown: true })).toBeNull();
+    expect(parseShareStateSnapshot({
       ...current,
-      models: oldModels,
-      dynamicXAxis: FieldKey.DryBulbTemperature,
-      dynamicYAxis: FieldKey.RelativeHumidity,
-    };
-    expect(parseShareStateSnapshot(oldV1)).toBeNull();
+      models: {
+        ...current.models,
+        [ComfortModel.AdaptiveAshrae]: {
+          ...current.models[ComfortModel.AdaptiveAshrae],
+          unknown: true,
+        },
+      },
+    })).toBeNull();
+    expect(parseShareStateSnapshot(withChartSettings(
+      current,
+      ComfortModel.AdaptiveAshrae,
+      { unknown: true },
+    ))).toBeNull();
   });
 
   it("strictly validates declared mode, axes, output, bands, and baseline", () => {
@@ -205,6 +344,14 @@ describe("shareState strict v1 codec", () => {
       current,
       ComfortModel.AdaptiveAshrae,
       { mode: ChartMode.Explore },
+    ))).toBeNull();
+    expect(parseShareStateSnapshot(withChartSettings(
+      current,
+      ComfortModel.AdaptiveAshrae,
+      {
+        xAxis: FieldKey.DryBulbTemperature,
+        yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+      },
     ))).toBeNull();
     expect(parseShareStateSnapshot(withChartSettings(
       current,

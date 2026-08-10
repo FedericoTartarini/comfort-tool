@@ -59,6 +59,12 @@ const PASCALS_PER_INHG = 3386.389;
 /** Baseline KiloPascals to metric Pascals ratio mapping */
 const PASCALS_PER_KPA = 1000;
 
+const KILOMETERS_PER_HOUR_PER_METER_PER_SECOND = 3.6;
+
+export function convertMetersPerSecondToKilometersPerHour(value: number): number {
+  return value * KILOMETERS_PER_HOUR_PER_METER_PER_SECOND;
+}
+
 /**
  * Converts a canonical SI field value into its display unit equivalent for the active unit system.
  * @param key The field key identifying the quantity type.

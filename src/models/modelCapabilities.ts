@@ -22,13 +22,14 @@ export const ModelOutputKey = {
 
 export type ModelOutputKey = (typeof ModelOutputKey)[keyof typeof ModelOutputKey];
 
-export type InputsSi = Readonly<Record<FieldKeyType, number>>;
+export type BandInputsSi = Readonly<Partial<Record<FieldKeyType, number>>>;
 
 /**
- * A numeric edge is already in canonical SI. A functional edge receives the
- * current chart X value and the model input record, both in canonical SI.
+ * A numeric edge is already in canonical SI. A functional edge receives its
+ * semantic boundary parameter and required model inputs in canonical SI.
+ * Adaptive bands always receive outdoor temperature, regardless of chart direction.
  */
-export type BandEdge = number | ((xValueSi: number, inputsSi: InputsSi) => number);
+export type BandEdge = number | ((boundaryValueSi: number, inputsSi: BandInputsSi) => number);
 
 /** Bands use half-open intervals: min <= value < max. */
 export interface Band {
@@ -48,7 +49,6 @@ export interface ModelOutput {
   readonly key: ModelOutputKey;
   readonly label: string;
   readonly legendTitle?: string;
-  readonly unit?: string;
   readonly defaultBands: readonly NumericBand[];
 }
 
@@ -80,69 +80,34 @@ export interface ExploreFieldChartConfig extends NumericFieldChartConfig {
 }
 
 /** Locked field-chart configuration declared by a compliance-capable model. */
-export interface ComplianceFieldChartConfig extends FieldChartConfigBase {
+export interface ComplianceFieldChartConfig<
+  TBand extends Band = Band,
+> extends FieldChartConfigBase {
   readonly mode: typeof ChartMode.Compliance;
-  readonly bands: readonly Band[];
+  readonly bands: readonly TBand[];
 }
 
 /** Numeric Compliance charts can use the shared banded grid strategy directly. */
-export interface NumericComplianceFieldChartConfig extends NumericFieldChartConfig {
-  readonly mode: typeof ChartMode.Compliance;
-}
+export type NumericComplianceFieldChartConfig =
+  ComplianceFieldChartConfig<NumericBand> & NumericFieldChartConfig;
 
-export type FieldChartConfig = ExploreFieldChartConfig | ComplianceFieldChartConfig;
+export type FieldChartConfig<TComplianceBand extends Band = Band> =
+  | ExploreFieldChartConfig
+  | ComplianceFieldChartConfig<TComplianceBand>;
 
 /** Generic presentation state supplied to every registered chart builder. */
-export interface ChartBuildContext {
+export interface ChartBuildContext<TComplianceBand extends Band = Band> {
   readonly unitSystem: UnitSystemType;
-  readonly dynamicAxes: {
-    readonly xAxis: FieldKeyType;
-    readonly yAxis: FieldKeyType;
-  };
   readonly baselineInputId: InputIdType;
-  readonly fieldChartConfig: FieldChartConfig;
+  readonly fieldChartConfig: FieldChartConfig<TComplianceBand>;
 }
 
 export function resolveBandEdge(
   edge: BandEdge,
-  xValueSi: number,
-  inputsSi: InputsSi,
+  boundaryValueSi: number,
+  inputsSi: BandInputsSi,
 ): number {
-  return typeof edge === "function" ? edge(xValueSi, inputsSi) : edge;
-}
-
-/** Resolves each candidate's edges and returns the first array-ordered match. */
-export function findBandForValue(
-  bands: readonly Band[],
-  valueSi: number,
-  xValueSi: number,
-  inputsSi: InputsSi,
-): Band | undefined {
-  const bandIndex = findBandIndexForValue(bands, valueSi, xValueSi, inputsSi);
-  return bandIndex === undefined ? undefined : bands[bandIndex];
-}
-
-export function findBandIndexForValue(
-  bands: readonly Band[],
-  valueSi: number,
-  xValueSi: number,
-  inputsSi: InputsSi,
-): number | undefined {
-  if (Number.isNaN(valueSi)) {
-    return undefined;
-  }
-
-  for (let index = 0; index < bands.length; index += 1) {
-    const band = bands[index];
-    const min = resolveBandEdge(band.min, xValueSi, inputsSi);
-    const max = resolveBandEdge(band.max, xValueSi, inputsSi);
-
-    if (valueSi >= min && valueSi < max) {
-      return index;
-    }
-  }
-
-  return undefined;
+  return typeof edge === "function" ? edge(boundaryValueSi, inputsSi) : edge;
 }
 
 export function findNumericBandIndexForValue(

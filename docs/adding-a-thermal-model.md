@@ -73,19 +73,20 @@ export const chartMetaById: Record<ChartId, ChartMetadata> = {
     name: "Ranges",
     emptyMessage: "No ranges chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
+    supportsAxisSelection: false,
   },
   [ChartId.MyNewModelDynamic]: {
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     heightClass: "h-[480px] xl:h-[480px]",
-    isDynamic: true,  // ← set true for charts with selectable X/Y axes
+    supportsAxisSelection: true,
     supportsTemperatureInputMenu: true, // only when the chart supports it
     hasZoneVisibilityToggle: true,       // only when the chart has zone traces
   },
 };
 ```
 
-> **`isDynamic: true`** tells the UI to render the axis-selector dropdowns above the chart.
+> **`supportsAxisSelection: true`** tells the UI to render the axis-selector dropdowns. The chart name and ID do not control this behavior.
 
 ---
 
@@ -212,7 +213,7 @@ function toMyNewModelRequest(
 Use `ComfortModelBuilder` to compose all the pieces. This is a fluent API where each method registers a specific part of the model.
 
 ```ts
-import { ComfortModelBuilder, isRecord, createEmptyResults, buildResultSection }
+import { ComfortModelBuilder, parseEmptyOptions, createEmptyResults, buildResultSection }
   from "../state/comfortTool/modelConfigs/builder";
 import { ComfortModel } from "../models/comfortModels";
 import { ChartId } from "../models/chartOptions";
@@ -255,7 +256,6 @@ const myNewModelOutput: ModelOutput = {
   key: ModelOutputKey.MyNewModelIndex,
   label: "My New Model Index",
   legendTitle: "My New Model Bands", // Optional; defaults to label.
-  unit: "°C",
   defaultBands: bandsFromThermalZones(myNewModelZonesList),
 };
 
@@ -264,7 +264,7 @@ myNewModelBuilder
   .setChartableOutputs([myNewModelOutput]);
 ```
 
-For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of the chart X value and the readonly canonical-SI input record:
+For a standards-based model, include Compliance mode and fixed bands. Band edges may be numeric SI values or functions of a semantic boundary value and a readonly partial canonical-SI `BandInputsSi` map containing only the baseline inputs the edge requires:
 
 ```ts
 function formatMyNewModelComplianceFeedback(result: MyNewModelResponseDto) {
@@ -285,11 +285,11 @@ myNewModelBuilder
 
 A compliance-only model must still call `setChartableOutputs([])` explicitly. `getFeedback(result)` returns `{ text, passes }`; use the same family-level formatter for the result table's Compliance row so chart feedback and tabular status cannot drift. `build()` rejects missing modes or output declarations, Explore with no outputs, empty or malformed numeric Explore presets, unsorted or overlapping presets, Compliance without non-empty fixed bands, caption, or feedback callback, a compliance spec on a non-Compliance model, duplicate modes or output keys, incomplete label/description/chart declarations, missing calculation or presentation functions, and invalid dynamic-axis defaults. A successful build returns a validated configuration snapshot with copied arrays and records. Explore presets may touch or leave gaps; finite boundaries remain canonical SI.
 
-`ComplianceSpec<TBand, TResult>` carries the model result type into its feedback callback. `ComplianceSpec` and `ComfortModelBuilder` default to the general `Band` type so Adaptive can retain functional edges. A model with numeric Compliance bands can supply `NumericBand` as the builder's third generic argument; its resulting definition can then form a `NumericComplianceFieldChartConfig` and enter the shared numeric grid strategy without a cast.
+`ComplianceSpec<TBand, TResult>` carries both the Compliance band type and model result type into the chart context and feedback callback. `ComfortModelBuilder` defaults to `NumericBand`; a functional model supplies `Band` as its third generic argument, as Adaptive does. PMV therefore receives `ChartBuildContext<NumericBand>` at compile time and enters the shared numeric grid strategy without a cast.
 
-Band membership is always array-ordered and half-open: `min <= value < max`. Use `resolveBandEdge()` and `findBandForValue()` instead of introducing another boundary convention. The classified value, numeric edges, functional-edge X value, and `inputsSi` are canonical SI; `NaN`, gaps, and unmatched values resolve to no band.
+Band membership is always array-ordered and half-open: `min <= value < max`. Use `findNumericBandIndexForValue()` for numeric bands and `resolveBandEdge()` inside functional-boundary infrastructure instead of introducing another boundary convention. The classified value, numeric edges, functional boundary value, and `bandInputsSi` are canonical SI; `NaN`, gaps, and unmatched chart values resolve to no classification. Model result classification must use `requireThermalZone()`: a non-finite or unmatched result is invalid and must throw rather than silently falling back to Neutral or the first zone. Adaptive functional edges always receive canonical-SI outdoor temperature even after the chart is transposed. A functional boundary renderer additionally rejects an edge that resolves to `NaN`, a reversed band, or sampled overlap.
 
-`bandsFromThermalZones()` copies each zone's real `min`, `max`, `label`, and `color`, keeping thresholds single-sourced. Set the optional `legendTitle` only when the legend heading should differ from the output selector label. Adaptive-style functional compliance bands should call the model's existing boundary function rather than restating its equations. PMV ASHRAE and PMV ISO remain separate declarations and band arrays; the ISO model is explicitly ISO 7730 Category B, whose `[-0.5, 0.5)` acceptable range intentionally matches the ASHRAE declaration numerically.
+`bandsFromThermalZones()` copies each zone's real `min`, `max`, `label`, and `color`, keeping thresholds single-sourced. Set the optional `legendTitle` only when the legend heading should differ from the output selector label. Adaptive-style functional compliance bands should create each internal edge function once, reuse it as the adjacent bands' shared `max`/`min`, validate required `BandInputsSi`, and call the model's existing boundary function rather than restating its equations. PMV ASHRAE and PMV ISO remain separate declarations and band arrays; the ISO model is explicitly ISO 7730 Category B, whose `[-0.5, 0.5)` acceptable range intentionally matches the ASHRAE declaration numerically.
 
 #### Input Controls
 
@@ -464,15 +464,54 @@ myNewModelBuilder.setChartBuilder((chartId, chartSource, resultsByInput, context
 });
 ```
 
-The controller builds one `ChartBuildContext` containing the unit system, remembered dynamic axes, effective baseline input, and a required valid `FieldChartConfig`. Every selectable chart receives that same current-mode config. Compliance takes `zOutput` and `bands` directly from the registered `complianceSpec`; Explore uses the selected output and independent working bands. A fixed view overrides only its declared x/y fields and ranges inside the builder, so it still consumes the current mode, output, bands, baseline, caption, feedback, and legend. The UI exposes mode information on every view, exposes baseline whenever compare mode is active, shows x/y controls only for Dynamic charts, shows Display and Thresholds on every Explore view, and hides those two controls in Compliance. The model builder validates declarations, while field-chart actions normalize and validate editable bands. Selectors and the chart engine consume that state without repeating validation or cloning. Mode, chart, axis, baseline, output, and working-band changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations. Do not duplicate presentation fields in chart sources or add a separate Compliance rendering pipeline.
+For a selectable functional-boundary chart, pass the declared Compliance bands and only their required cached baseline inputs to `createBoundaryRegionStrategy()`. The model may add canonical-SI boundary samples around genuine discontinuities, but it must not precompute boundary curves, solve an inverse axis, assemble polygons, or attach hover metadata to region geometry:
 
-The controller initializes `chartSettingsByModel` for every registered model. Compliance is the default whenever declared; otherwise Explore is the default. Each record independently remembers mode, x/y axes, baseline, and optional Explore z/bands across model and chart switches. A remembered baseline that is currently hidden resolves to Input 1 without being erased. Strict v1 share snapshots store these settings inside each model entry, omit Compliance bands, encode unbounded Explore edges with wire sentinels, and reject the previous v1 shape rather than migrating it.
+```ts
+const baseline = getBaselineInputEntry(
+  chartSource.inputs,
+  context.baselineInputId,
+);
+const boundaryAxis = context.fieldChartConfig.xField === OUTDOOR_FIELD
+  ? "x"
+  : "y";
+
+return buildFieldChart({
+  unitSystem: context.unitSystem,
+  xAxis: boundaryAxis === "x" ? outdoorAxisSpec : operativeAxisSpec,
+  yAxis: boundaryAxis === "x" ? operativeAxisSpec : outdoorAxisSpec,
+  strategy: createBoundaryRegionStrategy({
+    bands: context.fieldChartConfig.bands,
+    bandInputsSi: {
+      [FieldKey.RelativeAirSpeed]: baseline.payload.v,
+    },
+    style: { lineColor: "#334155" },
+    boundaryAxis,
+    additionalBoundaryValuesSi: () => getDiscontinuitySamplesSi(baseline.payload),
+  }),
+  chartOverlays: ({ xAxis, yAxis }) => [
+    buildSharedTooltipOverlay(xAxis, yAxis),
+  ],
+  inputGroups: ({ xAxis, yAxis }) => [
+    buildCachedInputGroup(chartSource, resultsByInput, xAxis, yAxis),
+  ],
+  layout: CHART_LAYOUT,
+  source: CalculationSource.FrontendGenerated,
+});
+```
+
+`boundaryAxis: "x"` produces outdoor-X/operative-Y geometry; `"y"` transposes that same geometry to operative-X/outdoor-Y. Functional edges receive outdoor temperature in both directions. The boundary engine samples the outdoor axis, merges extra samples, resolves and validates every edge, clamps to the operative range, converts both axes, and emits filled regions in declaration order with `hoverinfo: "skip"`. A separate transparent tooltip grid is the only per-point evaluator and hover source. `buildFieldChart()` preserves region → tooltip overlay → input overlay → input marker order. Adaptive ASHRAE and EN are the reference implementation: each exposes only `ChartId.Adaptive`, declares exactly outdoor and operative temperature as interchangeable axes, and resolves air-speed-dependent regions from the selected request in the ready chart-source cache.
+
+The controller builds one `ChartBuildContext` containing the unit system, effective baseline input, and a required valid `FieldChartConfig`; axes come only from `fieldChartConfig.xField/yField`. Every chart receives that same current-mode config. Compliance takes `zOutput` and bands directly from the registered `complianceSpec`; Explore uses the selected output and an independent working copy. A fixed view overrides only its declared x/y fields and ranges inside the builder, so it still consumes the current mode, output, bands, baseline, caption, feedback, and legend. The UI exposes axes when chart metadata sets `supportsAxisSelection`, shows Display and Thresholds only for Explore, and keeps Compliance constrained. Builder setters retain declarations; `build()` validates and copies the final snapshot once. Explore bands are cloned only when initialized, when output changes, or when an edit is accepted. State construction and chart builders consume those trusted values without repeating mode, axis, output, or band-equality checks. Mode, chart, axis, baseline, output, band, and unit changes rebuild presentation from the ready cache; they do not invalidate or schedule calculations.
+
+Compliance captions must state the rendered colors, governing range/category, and any conditional adjustment. The presentation selector deduplicates legend entries by the ordered `label + color` pair only; the geometry retains every declared band, including repeated labels on opposite sides of a nested comfort region. `ChartLegend` only renders the selected entries. Caption and baseline feedback appear on one explanation line, using `Your input: …` outside compare mode and `Input N: …` in compare mode.
+
+The controller initializes `chartSettingsByModel` for every registered model. Compliance is the default whenever declared; otherwise Explore is the default. Each record independently remembers mode, x/y axes, baseline, and optional Explore z/bands across model and chart switches. A remembered baseline that is currently hidden resolves to Input 1 without being erased. Strict `version: 1` share snapshots store these settings inside each model entry, omit Compliance bands, encode unbounded Explore edges with wire sentinels, and reject unknown versions, fields, current chart IDs, options, and invalid values. Compare IDs must be unique, in canonical order, include Input 1, and agree with compare mode and the active input. A validated snapshot is applied exactly; import never normalizes or repairs it.
 
 If a model exposes Air, Radiant, and Operative temperature together, keep the four directed component/operative pairs available. Use the shared `applyDynamicAxisCoordinates()` helper with a `DynamicAxisPayloadAdapter` that implements both `getAxisValue` and `setAxisValue`. The current solver contract is linear: it evaluates the lower and upper component bounds once, interpolates the target component, validates the post-condition, and rejects non-finite, zero-slope, or out-of-range results. Endpoint probes restore the temperature component in `finally`; a successful solve commits it once, while a failed final commit rolls back that solved field. The independently selected other axis must remain unchanged. Create the adapter once outside the grid loop.
 
 The shared banded-grid runner uses categorical rendering by default. A model with a continuous output and a deliberately low-resolution grid may explicitly select `GridBandRenderStrategy.ConstraintContours`; this keeps the raw SI output grid and interpolates constraint boundaries at the working-band thresholds. Categorical and constraint traces only render visible fills and boundaries, with hover disabled. One transparent contour tooltip trace uses the original output grid, classification text, and metadata for both renderers. A finite value outside every band remains visibly unfilled but hovers as `Unclassified`; a model-invalid `NaN` cell remains unfilled and has no hover because `hoverongaps` is false. Constraint values stay in SI even when chart coordinates are displayed in IP units, and unbounded band edges must not be serialized into Plotly DTOs.
 
-If a typed grid model's dynamic hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A model using the engine directly may instead return `{ valueSi, additionalHoverMetadata }` from the evaluator passed to `createBandedGridStrategy()` and provide `hoverTemplate` when model-specific ordering or precision is required. For a preclassified model zone grid, use `createZoneGridStrategy()` and declare its zones, contour metadata, hover template, and SI evaluator. Pass either Grid strategy to the single `buildFieldChart()` frame. Boundary charts pass `{ kind: "boundary", buildTraces }` to the same frame. Models declare canonical-SI axis specs, ranges, margins, hover metadata, and evaluators; the frame creates axes and owns layout, input overlays, markers, legends, annotations, and trace ordering. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
+If a typed grid model's hover needs another result field, set `dynamicHoverExtension` with a template suffix and typed `getMetadata(result)` callback. A model using the engine directly may instead return `{ valueSi, additionalHoverMetadata }` from the evaluator passed to `createBandedGridStrategy()` and provide `hoverTemplate` when model-specific ordering or precision is required. Functional boundary charts use `createBoundaryRegionStrategy()`; reserve a raw `{ kind: "boundary", buildTraces }` strategy for non-band geometry that the factory cannot express. Models declare canonical-SI axis specs, ranges, margins, hover metadata, and evaluators; the frame creates axes and owns layout, input overlays, markers, legends, annotations, and trace ordering. The selected display output remains `customdata[0]`, and additional metadata starts at index 1. Keep raw outputs canonical SI, convert presentation-only metadata through `src/services/units/`, and preserve the same metadata order for grid and cached-input results.
 
 #### Final Builder Registrations
 
@@ -499,7 +538,7 @@ myNewModelBuilder.setDefaultDynamicAxes({
 
 // Default model options (leave empty for simple models with no advanced options).
 myNewModelBuilder.setDefaultOptions({});
-myNewModelBuilder.setOptionNormalizer((value) => isRecord(value) ? value : {});
+myNewModelBuilder.setOptionParser(parseEmptyOptions);
 
 // Zone definitions (used by the legend and the chart engine).
 myNewModelBuilder.setZones(myNewModelZonesList);
@@ -562,8 +601,8 @@ Test at minimum:
 2. Edge cases at zone boundaries behave correctly.
 3. SI reference values for the calculator, plus SI/IP conversion at the result and chart presentation boundary.
 4. The registered capability declaration has the intended modes, output keys, preset bands, and compliance bands.
-5. Every declared Explore output can drive the dynamic grid from raw canonical values and working bands.
-6. Unsupported output keys are rejected in the model layer, and fixed-axis chart behavior remains unchanged.
+5. Every declared Explore output can drive the selectable-axis grid from raw canonical values and working bands.
+6. Fixed-axis and selectable-axis views consume the same trusted mode/output/bands while preserving ready-cache identity.
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -623,7 +662,7 @@ Before marking the work complete, verify all of the following:
 - [ ] Results are calculated and displayed correctly when inputs change
 - [ ] The chart(s) render correctly in both SI and IP unit modes
 - [ ] The zone legend appears on the correct charts
-- [ ] The dynamic chart's axis dropdowns contain the correct fields
+- [ ] Selectable-axis charts expose dropdowns containing only the declared fields
 - [ ] The declared default dynamic axes are valid and semantically meaningful for the model
 - [ ] The Explore Display selector contains only declared outputs and each output uses its own default working-band copy
 - [ ] Output conversions and finite threshold edits round-trip through `src/services/units/` in SI and IP
@@ -659,7 +698,7 @@ Pass a `category` string to the `ThermalZone` constructor only when the model tr
 2. Add a corresponding entry in `src/models/controlMenuMeta.ts` with the menu items.
 3. Use `addOptionHandler(optionKey, handler)` on the builder to register the logic that applies when the option changes.
 4. Use `getMenu: (context) => ...` in your `createControlBehavior(...)` config to render the menu caret.
-5. Use `setDefaultOptions({ [OptionKey.MyOption]: defaultValue })` and update `setOptionNormalizer` to validate the option.
+5. Use `setDefaultOptions({ [OptionKey.MyOption]: defaultValue })` and `setOptionParser(...)` with an exact-key parser. It must reject non-objects, missing or unknown keys, and invalid enum values by returning `null`; it must not fill defaults or discard unknown data.
 
 ### What if my model has no fixed-axis chart and only a dynamic chart?
 

@@ -43,8 +43,18 @@ function getModeControl(toolState: ReturnType<typeof createComfortToolState>) {
   return toolState.selectors.getChartControlsViewModel().mode;
 }
 
+function toLegendBands(
+  bands: readonly { label: string; color: string }[] | undefined,
+) {
+  return bands?.filter((band, index) => (
+    bands.findIndex((candidate) => (
+      candidate.label === band.label && candidate.color === band.color
+    )) === index
+  )).map(({ label, color }) => ({ label, color }));
+}
+
 describe("createComfortToolState", () => {
-  it("initializes Dynamic chart defaults and independent PMV variants", () => {
+  it("initializes model chart defaults and independent PMV variants", () => {
     const toolState = createComfortToolState();
 
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
@@ -52,8 +62,8 @@ describe("createComfortToolState", () => {
       [ComfortModel.PmvAshrae]: ChartId.PmvDynamic,
       [ComfortModel.PmvIso]: ChartId.PmvDynamic,
       [ComfortModel.Utci]: ChartId.UtciDynamic,
-      [ComfortModel.AdaptiveAshrae]: ChartId.AdaptiveDynamic,
-      [ComfortModel.AdaptiveEn]: ChartId.AdaptiveDynamic,
+      [ComfortModel.AdaptiveAshrae]: ChartId.Adaptive,
+      [ComfortModel.AdaptiveEn]: ChartId.Adaptive,
       [ComfortModel.HeatIndex]: ChartId.HeatIndexDynamic,
       [ComfortModel.Humidex]: ChartId.HumidexDynamic,
       [ComfortModel.WindChill]: ChartId.WindChillDynamic,
@@ -114,7 +124,7 @@ describe("createComfortToolState", () => {
       for (const chartId of modelConfig.chartIds) {
         toolState.actions.setSelectedChart(chartId);
         const controls = toolState.selectors.getChartControlsViewModel();
-        const isDynamic = chartMetaById[chartId].isDynamic === true;
+        const supportsAxisSelection = chartMetaById[chartId].supportsAxisSelection;
         const expectedBands = settings.mode === ChartMode.Compliance
           ? modelConfig.complianceSpec?.bands
           : settings.explore?.bands;
@@ -133,12 +143,13 @@ describe("createComfortToolState", () => {
         expect(controls.mode?.selectedMode).toBe(settings.mode);
         expect(controls.mode?.modes).toEqual(modelConfig.modes);
         expect(controls.baseline?.selectedInputId).toBe(InputId.Input1);
-        expect(controls.axes === null).toBe(!isDynamic);
+        expect(controls.axes === null).toBe(!supportsAxisSelection);
         expect(controls.explore === null).toBe(
           settings.mode !== ChartMode.Explore,
         );
+        const expectedLegendBands = toLegendBands(expectedBands);
         expect(toolState.selectors.getCurrentChartLegendZones())
-          .toEqual(expectedBands);
+          .toEqual(expectedLegendBands);
         expect(toolState.selectors.getCurrentChartLegendTitle())
           .toBe(expectedLegendTitle);
       }
@@ -211,7 +222,7 @@ describe("createComfortToolState", () => {
     expect(explore.feedback).toBeNull();
   });
 
-  it("keeps mode and baseline controls on fixed charts while locking their axes", () => {
+  it("keeps mode and baseline controls on fixed views and exposes declared axes", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.compareEnabled = true;
 
@@ -239,13 +250,20 @@ describe("createComfortToolState", () => {
     toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
     const adaptive = getModeControl(toolState);
     expect(adaptive.modes).toEqual([ChartMode.Compliance]);
-    expect(adaptive.caption).toContain("ASHRAE 55 adaptive");
+    expect(adaptive.caption).toContain("ASHRAE 55 80% and 90%");
     toolState.actions.setSelectedChart(ChartId.Adaptive);
-    const adaptiveFixed = toolState.selectors.getChartControlsViewModel();
-    expect(adaptiveFixed.mode?.selectedMode).toBe(ChartMode.Compliance);
-    expect(adaptiveFixed.baseline?.selectedInputId).toBe(InputId.Input1);
-    expect(adaptiveFixed.axes).toBeNull();
-    expect(adaptiveFixed.explore).toBeNull();
+    const adaptiveControls = toolState.selectors.getChartControlsViewModel();
+    expect(adaptiveControls.mode?.selectedMode).toBe(ChartMode.Compliance);
+    expect(adaptiveControls.baseline?.selectedInputId).toBe(InputId.Input1);
+    expect(adaptiveControls.axes?.x.options).toEqual([
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.OperativeTemperature,
+    ]);
+    expect(adaptiveControls.axes?.y.options).toEqual([
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.OperativeTemperature,
+    ]);
+    expect(adaptiveControls.explore).toBeNull();
 
     toolState.state.ui.selectedModel = ComfortModel.Utci;
     const utci = getModeControl(toolState);
@@ -287,7 +305,8 @@ describe("createComfortToolState", () => {
     expect(getModeControl(toolState).selectedMode)
       .toBe(ChartMode.Compliance);
     expect(toolState.selectors.getChartControlsViewModel().explore).toBeNull();
-    expect(toolState.selectors.getCurrentChartLegendZones()).toBe(complianceBands);
+    expect(toolState.selectors.getCurrentChartLegendZones())
+      .toEqual(toLegendBands(complianceBands));
 
     toolState.actions.setChartMode(ChartMode.Explore);
     assertCalculationIdentity();
@@ -295,7 +314,7 @@ describe("createComfortToolState", () => {
     const exploreChart = toolState.selectors.getCurrentChartResult();
     expect(exploreChart?.traces).not.toEqual(complianceChart?.traces);
     expect(toolState.selectors.getCurrentChartLegendZones())
-      .toBe(getChartSettings(toolState).explore?.bands);
+      .toEqual(toLegendBands(getChartSettings(toolState).explore?.bands));
 
     expect(
       toolState.selectors.getChartControlsViewModel().explore?.config,
@@ -341,7 +360,8 @@ describe("createComfortToolState", () => {
     toolState.actions.setChartMode(ChartMode.Compliance);
     assertCalculationIdentity();
     expect(getModeControl(toolState).selectedMode).toBe(ChartMode.Compliance);
-    expect(toolState.selectors.getCurrentChartLegendZones()).toBe(complianceBands);
+    expect(toolState.selectors.getCurrentChartLegendZones())
+      .toEqual(toLegendBands(complianceBands));
     expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PMV Zones");
     expect(toolState.selectors.getCurrentChartResult()?.traces)
       .toEqual(expect.arrayContaining([
@@ -352,7 +372,7 @@ describe("createComfortToolState", () => {
     toolState.actions.setChartMode(ChartMode.Explore);
     assertCalculationIdentity();
     expect(toolState.selectors.getCurrentChartLegendZones())
-      .toBe(getChartSettings(toolState).explore?.bands);
+      .toEqual(toLegendBands(getChartSettings(toolState).explore?.bands));
     expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PPD Bands");
     expect(getChartSettings(toolState).explore?.bands.map(({ label }) => label))
       .toEqual(["Low", "High"]);
@@ -367,6 +387,61 @@ describe("createComfortToolState", () => {
     assertCalculationIdentity();
     expect(getChartSettings(toolState).explore?.bands[1].min).toBe(10);
     expect(toolState.selectors.getCurrentChartResult()).not.toBeNull();
+  });
+
+  it("rebuilds Adaptive regions from the selected cached comparison baseline", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.setSelectedModel(ComfortModel.AdaptiveAshrae);
+    await waitForIdle(toolState);
+    toolState.state.inputsByInput[InputId.Input2][FieldKey.RelativeAirSpeed] = 1.2;
+    toolState.actions.setCompareEnabled(true);
+    await waitForIdle(toolState);
+
+    const cache = toolState.state.ui.calculationCacheByModel[ComfortModel.AdaptiveAshrae];
+    const chartSource = cache.chartSource;
+    const resultsByInput = cache.resultsByInput;
+    const getTooWarmBoundary = () => toolState.selectors.getCurrentChartResult()?.traces
+      .find(({ name, fill }) => name === "Too Warm" && fill === "toself")?.y;
+    const input1Boundary = getTooWarmBoundary();
+
+    toolState.actions.setChartBaselineInputId(InputId.Input2);
+
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.AdaptiveAshrae])
+      .toBe(cache);
+    expect(cache.status).toBe("ready");
+    expect(cache.chartSource).toBe(chartSource);
+    expect(cache.resultsByInput).toBe(resultsByInput);
+    expect(toolState.state.ui.isLoading).toBe(false);
+    const input2Boundary = getTooWarmBoundary();
+    expect(input2Boundary).not.toEqual(input1Boundary);
+    expect(toolState.selectors.getCurrentChartResult()?.traces
+      .filter(({ mode }) => mode === "markers")
+      .map(({ name }) => name)).toEqual(["Input 1", "Input 2"]);
+
+    toolState.state.inputsByInput[InputId.Input2][FieldKey.RelativeAirSpeed] = 0.1;
+    expect(getTooWarmBoundary()).toEqual(input2Boundary);
+
+    toolState.actions.setDynamicXAxis(FieldKey.OperativeTemperature);
+    expect(getChartSettings(toolState)).toEqual(expect.objectContaining({
+      xAxis: FieldKey.OperativeTemperature,
+      yAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+    }));
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.AdaptiveAshrae])
+      .toBe(cache);
+    expect(cache.chartSource).toBe(chartSource);
+    expect(cache.resultsByInput).toBe(resultsByInput);
+    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title)
+      .toContain("Operative temperature");
+
+    toolState.actions.toggleUnitSystem();
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.AdaptiveAshrae])
+      .toBe(cache);
+    expect(cache.chartSource).toBe(chartSource);
+    expect(cache.resultsByInput).toBe(resultsByInput);
+    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title)
+      .toContain("°F");
   });
 
   it("retains independent mode, axes, output, bands, baseline, and chart selections", async () => {
@@ -453,28 +528,66 @@ describe("createComfortToolState", () => {
     expect(getChartSettings(toolState).explore?.bands[0].label).toBe("Edited");
   });
 
-  it("exposes coupled adaptive temperature axes in both directions", () => {
+  it("keeps Adaptive on one Compliance chart with only its two semantic axes", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
-    toolState.state.ui.selectedChartByModel[ComfortModel.AdaptiveAshrae] =
-      ChartId.AdaptiveDynamic;
     const settings = getChartSettings(toolState);
-    settings.xAxis = FieldKey.PrevailingMeanOutdoorTemperature;
-    settings.yAxis = FieldKey.OperativeTemperature;
-
     const controls = toolState.selectors.getChartControlsViewModel();
-    expect(controls.axes?.x.options).toEqual(controls.axes?.y.options);
-    expect(controls.axes?.x.options).toHaveLength(5);
 
-    toolState.actions.setDynamicXAxis(FieldKey.DryBulbTemperature);
+    expect(toolState.selectors.getCurrentChartOptions()).toEqual([
+      { name: "Adaptive", value: ChartId.Adaptive },
+    ]);
+    expect(settings).toEqual(expect.objectContaining({
+      mode: ChartMode.Compliance,
+      xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
+      yAxis: FieldKey.OperativeTemperature,
+      explore: null,
+    }));
+    expect(controls.axes?.x.selectedField)
+      .toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+    expect(controls.axes?.y.selectedField).toBe(FieldKey.OperativeTemperature);
+    expect(controls.axes?.x.options).toEqual([
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.OperativeTemperature,
+    ]);
+    expect(controls.axes?.y.options).toEqual([
+      FieldKey.PrevailingMeanOutdoorTemperature,
+      FieldKey.OperativeTemperature,
+    ]);
+    expect(controls.explore).toBeNull();
 
-    expect(settings.xAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(settings.yAxis).toBe(FieldKey.OperativeTemperature);
-
-    toolState.actions.setDynamicXAxis(FieldKey.OperativeTemperature);
-
+    toolState.actions.setDynamicYAxis(FieldKey.PrevailingMeanOutdoorTemperature);
     expect(settings.xAxis).toBe(FieldKey.OperativeTemperature);
-    expect(settings.yAxis).toBe(FieldKey.DryBulbTemperature);
+    expect(settings.yAxis).toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+  });
+
+  it("deduplicates legend entries by label and color without changing geometry bands", () => {
+    const toolState = createComfortToolState();
+
+    const assertions = [
+      [ComfortModel.PmvAshrae, 3, 2],
+      [ComfortModel.AdaptiveAshrae, 5, 4],
+      [ComfortModel.AdaptiveEn, 7, 5],
+    ] as const;
+    assertions.forEach(([modelId, geometryCount, legendCount]) => {
+      toolState.state.ui.selectedModel = modelId;
+      expect(comfortModelConfigs[modelId].complianceSpec?.bands)
+        .toHaveLength(geometryCount);
+      expect(toolState.selectors.getCurrentChartLegendZones())
+        .toHaveLength(legendCount);
+    });
+
+    toolState.state.ui.selectedModel = ComfortModel.PmvAshrae;
+    toolState.actions.setChartMode(ChartMode.Explore);
+    expect(toolState.actions.setExploreBands([
+      { min: -Infinity, max: 0, label: "Same label", color: "#00ff00" },
+      { min: 0, max: Infinity, label: "Same label", color: "#ff0000" },
+    ])).toBe(true);
+    expect(toolState.selectors.getCurrentChartLegendZones()).toEqual([
+      { label: "Same label", color: "#00ff00" },
+      { label: "Same label", color: "#ff0000" },
+    ]);
+    expect(getChartSettings(toolState).explore?.bands).toHaveLength(2);
   });
 
   it("exposes coupled UTCI temperature axes in both directions", () => {
@@ -622,9 +735,9 @@ describe("createComfortToolState", () => {
     await waitForIdle(toolState);
 
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.AdaptiveAshrae);
-    expect(getChartSettings(toolState).xAxis).toBe(FieldKey.DryBulbTemperature);
-    expect(getChartSettings(toolState).yAxis)
+    expect(getChartSettings(toolState).xAxis)
       .toBe(FieldKey.PrevailingMeanOutdoorTemperature);
+    expect(getChartSettings(toolState).yAxis).toBe(FieldKey.OperativeTemperature);
 
     toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
     expect(getChartSettings(toolState).xAxis).toBe(FieldKey.MeanRadiantTemperature);

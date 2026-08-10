@@ -20,6 +20,7 @@ import {
   type GridModelChartSpec,
 } from "../services/comfort/charts/gridModelCharts";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
+import { requireThermalZone } from "../services/comfort/helpers";
 import {
   convertModelOutputFromSi,
   formatDisplayValue,
@@ -29,7 +30,7 @@ import {
   buildResultSection,
   ComfortModelBuilder,
   createEmptyResults,
-  isRecord,
+  parseEmptyOptions,
 } from "../state/comfortTool/modelConfigs/builder";
 
 const MODEL_LABEL = "Humidex";
@@ -59,8 +60,11 @@ export interface HumidexResponseDto {
 
 export function calculateHumidex(payload: HumidexRequestDto): HumidexResponseDto {
   const value = humidex(payload.tdb, payload.rh, { round: true }).humidex;
-  const humidexDiscomfort = humidexZonesList.find((zone) => zone.contains(value))?.label
-    ?? humidexZonesList[0].label;
+  const humidexDiscomfort = requireThermalZone(
+    humidexZonesList,
+    value,
+    MODEL_LABEL,
+  ).label;
 
   return {
     humidex: value,
@@ -180,7 +184,11 @@ builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   return [
     buildResultSection(MODEL_LABEL, results, visibleInputIds, (result) => {
       const value = convertModelOutputFromSi(ModelOutputKey.Humidex, result.humidex, unitSystem);
-      const color = humidexZonesList.find((zone) => zone.contains(result.humidex))?.textColor;
+      const color = requireThermalZone(
+        humidexZonesList,
+        result.humidex,
+        MODEL_LABEL,
+      ).textColor;
       return {
         text: formatDisplayValue(value, outputMeta.decimals),
         subtext: result.humidexDiscomfort,
@@ -212,7 +220,7 @@ builder.setDefaultDynamicAxes({
   yAxis: FieldKey.RelativeHumidity,
 });
 builder.setDefaultOptions({});
-builder.setOptionNormalizer((value) => isRecord(value) ? value : {});
+builder.setOptionParser(parseEmptyOptions);
 builder.setZones(humidexZonesList);
 builder.setLegendChartIds([ChartId.Humidex, ChartId.HumidexDynamic]);
 builder.setLegendTitle(MODEL_LABEL);

@@ -15,6 +15,11 @@ import {
 } from "../models/modelCapabilities";
 
 describe("heatIndex service", () => {
+  it("rejects a non-finite result instead of assigning the first zone", () => {
+    expect(() => calculateHeatIndex({ tdb: Number.MAX_VALUE, rh: 50 }))
+      .toThrow(/Heat Index.*non-finite/i);
+  });
+
   it("calculates Heat Index correctly in SI format", () => {
     // 35°C, 70% RH -> HI should be ~50°C (Danger)
     const result = calculateHeatIndex({
@@ -24,6 +29,13 @@ describe("heatIndex service", () => {
     
     expect(result.hi).toBeGreaterThan(45);
     expect(result.category).toBe("Danger");
+  });
+
+  it("uses air temperature below the Heat Index applicability threshold", () => {
+    const result = calculateHeatIndex({ tdb: 25, rh: 50 });
+
+    expect(result.hi).toBe(25);
+    expect(result.category).toBe("Safe");
   });
 
   it("converts the SI Heat Index result for IP display", () => {
@@ -66,7 +78,6 @@ describe("heatIndex service", () => {
     };
     const fixedContext = {
       unitSystem: UnitSystem.SI,
-      dynamicAxes: heatIndexModelConfig.defaultDynamicAxes,
       baselineInputId: InputId.Input1,
       fieldChartConfig: {
         mode: ChartMode.Explore,
@@ -118,7 +129,6 @@ describe("heatIndex service", () => {
       },
       {
         unitSystem: UnitSystem.SI,
-        dynamicAxes: heatIndexModelConfig.defaultDynamicAxes,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
           mode: ChartMode.Explore,
@@ -161,7 +171,6 @@ describe("heatIndex service", () => {
       },
       {
         unitSystem: UnitSystem.SI,
-        dynamicAxes: heatIndexModelConfig.defaultDynamicAxes,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
           mode: ChartMode.Explore,

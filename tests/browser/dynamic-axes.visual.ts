@@ -63,25 +63,3 @@ test("PMV exposes and renders every component/operative axis direction", async (
   await selectDropdownOption(page, "Select chart Y axis", "Air temperature");
   await expectChartAxes(plot, "Operative temperature", "Air temperature");
 });
-
-test("Adaptive Dynamic starts with the declared outdoor-temperature axes", async ({ page }) => {
-  await page.goto("/");
-  const modelSelect = page.getByRole("combobox", { name: "Select comfort model" });
-  await modelSelect.click();
-  await modelSelect.fill("Adaptive (ASHRAE-55)");
-  await page.getByRole("button", { name: "Adaptive (ASHRAE-55)", exact: false }).click();
-  await expect(modelSelect).toHaveValue("Adaptive (ASHRAE-55)");
-
-  await expect(page.getByRole("button", { name: "Select chart type and export" }))
-    .toContainText("Dynamic");
-
-  await expect(page.getByRole("button", { name: "Select chart X axis" }))
-    .toContainText("Air temperature");
-  await expect(page.getByRole("button", { name: "Select chart Y axis" }))
-    .toContainText("Mean outdoor temperature");
-  await expectChartAxes(
-    page.getByTestId("comfort-chart-plot"),
-    "Air temperature",
-    "Mean outdoor temperature",
-  );
-});

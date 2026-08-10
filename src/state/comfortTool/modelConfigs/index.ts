@@ -21,6 +21,7 @@ import type {
   ChartBuildContext,
   ComplianceSpec,
   ModelOutput,
+  NumericBand,
 } from "../../../models/modelCapabilities";
 import type { ModelCalculationContext } from "../../../models/modelCalculation";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
@@ -67,7 +68,7 @@ export interface DynamicAxisDefaults {
 export interface ComfortModelDefinition<
   ResultType,
   ChartSourceType,
-  ComplianceBand extends Band = Band,
+  ComplianceBand extends Band = NumericBand,
 > {
   id: ComfortModelType;
   label: string;
@@ -80,8 +81,8 @@ export interface ComfortModelDefinition<
   chartIds: ChartIdType[];
   defaultChartId: ChartIdType;
   defaultOptions: Partial<Record<OptionKeyType, string>>;
-  // Normalizes model options from unknown values to ModelOptionsState.
-  normalizeOptions: (value: unknown) => ModelOptionsState | null;
+  // Strictly parses a complete model-options snapshot without repairing it.
+  parseOptions: (value: unknown) => ModelOptionsState | null;
   // Calculates model results from canonical SI inputs and model options.
   calculate: (
     context: ModelCalculationContext,
@@ -100,7 +101,7 @@ export interface ComfortModelDefinition<
     chartId: ChartIdType,
     chartSource: ChartSourceType | null,
     resultsByInput: Record<InputIdType, ResultType | null>,
-    context: ChartBuildContext,
+    context: ChartBuildContext<ComplianceBand>,
   ) => PlotlyChartResponseDto | null;
   dynamicAxisFields: FieldKeyType[];
   defaultDynamicAxes: DynamicAxisDefaults;

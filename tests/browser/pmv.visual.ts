@@ -311,9 +311,10 @@ test.describe("PMV visual regression", () => {
 
     await expect(complianceButton).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText(
-      "ASHRAE 55 PMV compliance limits are locked for this chart.",
+      "Green shading = ASHRAE 55 compliant PMV (−0.5 ≤ PMV < +0.5); red = outside the limit.",
       { exact: true },
     )).toBeVisible();
+    await expect(panel.getByLabel("Your input: Compliant")).toBeVisible();
     await expect(panel.getByText("Compliant", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeVisible();

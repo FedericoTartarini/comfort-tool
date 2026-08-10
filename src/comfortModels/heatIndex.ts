@@ -21,6 +21,7 @@ import {
   type GridModelChartSpec,
 } from "../services/comfort/charts/gridModelCharts";
 import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
+import { requireThermalZone } from "../services/comfort/helpers";
 import {
   convertModelOutputFromSi,
   formatDisplayValue,
@@ -30,13 +31,14 @@ import {
   buildResultSection,
   ComfortModelBuilder,
   createEmptyResults,
-  isRecord,
+  parseEmptyOptions,
 } from "../state/comfortTool/modelConfigs/builder";
 
 const MODEL_LABEL = "Heat Index";
 const MODEL_DESCRIPTION =
   "Combines air temperature and relative humidity to determine the human-perceived equivalent temperature.";
 const TDB_LIMITS = { min: 20, max: 50 };
+const HEAT_INDEX_APPLICABILITY_THRESHOLD_SI = 27;
 
 export const heatIndexZonesList = [
   new ThermalZone({ label: "Safe", max: 27, color: "#e2e8f0", textColor: "#475569" }),
@@ -64,9 +66,12 @@ export function calculateHeatIndex(payload: HeatIndexRequestDto): HeatIndexRespo
   });
   // The library returns NaN below the Rothfusz regression threshold. The ambient
   // dry-bulb temperature is the meaningful apparent temperature in that range.
-  const hi = Number.isFinite(result.hi) ? result.hi : payload.tdb;
-  const category = heatIndexZonesList.find((zone) => zone.contains(hi))?.label
-    ?? heatIndexZonesList[0].label;
+  const hi = Number.isFinite(result.hi)
+    ? result.hi
+    : payload.tdb < HEAT_INDEX_APPLICABILITY_THRESHOLD_SI
+      ? payload.tdb
+      : result.hi;
+  const category = requireThermalZone(heatIndexZonesList, hi, MODEL_LABEL).label;
 
   return { hi, category, source: CalculationSource.JsThermalComfort };
 }
@@ -107,7 +112,6 @@ function toRequest(
 const heatIndexOutput: ModelOutput = {
   key: ModelOutputKey.HeatIndex,
   label: MODEL_LABEL,
-  unit: "°C",
   defaultBands: bandsFromThermalZones(heatIndexZonesList),
 };
 
@@ -184,7 +188,11 @@ builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   return [
     buildResultSection(MODEL_LABEL, results, visibleInputIds, (result) => {
       const value = convertModelOutputFromSi(ModelOutputKey.HeatIndex, result.hi, unitSystem);
-      const color = heatIndexZonesList.find((zone) => zone.contains(result.hi))?.textColor;
+      const color = requireThermalZone(
+        heatIndexZonesList,
+        result.hi,
+        MODEL_LABEL,
+      ).textColor;
       return {
         text: `${formatDisplayValue(value, outputMeta.decimals)} ${outputMeta.displayUnits}`,
         subtext: result.category,
@@ -216,7 +224,7 @@ builder.setDefaultDynamicAxes({
   yAxis: FieldKey.RelativeHumidity,
 });
 builder.setDefaultOptions({});
-builder.setOptionNormalizer((value) => isRecord(value) ? value : {});
+builder.setOptionParser(parseEmptyOptions);
 builder.setZones(heatIndexZonesList);
 builder.setLegendChartIds([
   ChartId.HeatIndexRanges,

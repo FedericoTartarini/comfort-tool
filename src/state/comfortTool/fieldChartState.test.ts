@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { adaptiveAshraeModelConfig } from "../../comfortModels/adaptiveAshrae";
 import { pmvAshraeModelConfig } from "../../comfortModels/pmvAshrae";
 import { utciModelConfig } from "../../comfortModels/utci";
-import { FieldKey } from "../../models/fieldKeys";
 import { ChartMode, ModelOutputKey } from "../../models/modelCapabilities";
 import {
   buildFieldChartConfig,
@@ -74,7 +73,7 @@ describe("field chart state helpers", () => {
     expect(complianceConfig?.bands[0].label).not.toBe("Edited");
   });
 
-  it("rejects unsupported modes, axes, outputs, and invalid band replacements", () => {
+  it("rejects unsupported mode selections and invalid band replacements", () => {
     const pmvSettings = seedModelChartSettings(pmvAshraeModelConfig);
     expect(selectChartMode(
       pmvAshraeModelConfig,
@@ -92,14 +91,26 @@ describe("field chart state helpers", () => {
       ChartMode.Compliance,
     )).toBeNull();
 
-    expect(buildFieldChartConfig(pmvAshraeModelConfig, {
-      ...pmvSettings,
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.DryBulbTemperature,
-    })).toBeNull();
     expect(replaceExploreBands(pmvAshraeModelConfig, pmvSettings.explore, [
       { min: 0, max: 2, label: "One", color: "#000" },
       { min: 1, max: 3, label: "Two", color: "#fff" },
     ])).toBeNull();
+  });
+
+  it("reports missing Compliance and Explore declarations instead of fabricating config", () => {
+    const complianceSettings = seedModelChartSettings(pmvAshraeModelConfig);
+    expect(() => buildFieldChartConfig(
+      { ...pmvAshraeModelConfig, complianceSpec: undefined },
+      complianceSettings,
+    )).toThrow(/without a compliance specification/i);
+
+    expect(() => buildFieldChartConfig(pmvAshraeModelConfig, {
+      ...complianceSettings,
+      mode: ChartMode.Explore,
+      explore: {
+        zOutput: ModelOutputKey.Utci,
+        bands: [],
+      },
+    })).toThrow(/without its declared output/i);
   });
 });

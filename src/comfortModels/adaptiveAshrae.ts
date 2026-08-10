@@ -7,6 +7,7 @@ import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
 import {
   createAdaptiveComplianceBands,
+  createAdaptiveComplianceCaption,
   createAdaptiveComplianceFeedbackGetter,
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -70,7 +71,11 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),
-    caption: "ASHRAE 55 adaptive acceptability limits are locked for this chart.",
+    caption: createAdaptiveComplianceCaption(
+      "Green shading shows the ASHRAE 55 80% and 90% acceptability regions",
+      adaptiveAshraeBoundaryDefinition,
+      "acceptability-80",
+    ),
     getFeedback: getAdaptiveAshraeFeedback,
   },
   hoverLevelIds: ["acceptability-90", "acceptability-80"],

@@ -14,15 +14,14 @@ import {
   normalizeNumericBands,
   validateNumericBands,
 } from "../../services/comfort/charts/bands";
-import { isDynamicAxisPairValid } from "./dynamicAxes";
 import type { ExploreChartState, ModelChartSettings } from "./types";
 
-interface FieldChartModelCapabilities {
+interface FieldChartModelCapabilities<TComplianceBand extends Band = Band> {
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
   complianceSpec?: {
     readonly output: ModelOutputKey;
-    readonly bands: readonly Band[];
+    readonly bands: readonly TComplianceBand[];
   };
   dynamicAxisFields: readonly FieldKeyType[];
   defaultDynamicAxes: {
@@ -119,18 +118,16 @@ export function replaceExploreBands(
   };
 }
 
-export function buildFieldChartConfig(
-  config: FieldChartModelCapabilities,
+export function buildFieldChartConfig<TComplianceBand extends Band>(
+  config: FieldChartModelCapabilities<TComplianceBand>,
   settings: ModelChartSettings,
-): FieldChartConfig | null {
-  if (!isDynamicAxisPairValid(config, settings)) {
-    return null;
-  }
-
+): FieldChartConfig<TComplianceBand> {
   if (settings.mode === ChartMode.Compliance) {
     const spec = config.complianceSpec;
-    if (!config.modes.includes(ChartMode.Compliance) || !spec) {
-      return null;
+    if (!spec) {
+      throw new Error(
+        "Comfort model declaration selected Compliance mode without a compliance specification.",
+      );
     }
     return {
       mode: ChartMode.Compliance,
@@ -142,12 +139,10 @@ export function buildFieldChartConfig(
   }
 
   const explore = settings.explore;
-  if (
-    !config.modes.includes(ChartMode.Explore)
-    || !explore
-    || !getDeclaredExploreOutput(config, explore.zOutput)
-  ) {
-    return null;
+  if (!explore || !getDeclaredExploreOutput(config, explore.zOutput)) {
+    throw new Error(
+      "Comfort model declaration selected Explore mode without its declared output.",
+    );
   }
   return {
     mode: ChartMode.Explore,

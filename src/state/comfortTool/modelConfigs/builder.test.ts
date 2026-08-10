@@ -45,7 +45,7 @@ type BuilderPart =
   | "description"
   | "chart"
   | "defaultOptions"
-  | "normalizer"
+  | "parser"
   | "calculator"
   | "resultBuilder"
   | "chartBuilder"
@@ -64,7 +64,7 @@ function createBuilder(omitted: readonly BuilderPart[] = []) {
     builder.setDefaultChart(ChartId.Psychrometric, [ChartId.Psychrometric]);
   }
   if (includes("defaultOptions")) builder.setDefaultOptions({});
-  if (includes("normalizer")) builder.setOptionNormalizer(() => ({}));
+  if (includes("parser")) builder.setOptionParser(() => ({}));
   if (includes("calculator")) {
     builder.setCalculator(() => ({
       resultsByInput: createEmptyResults<unknown>(),
@@ -124,7 +124,7 @@ describe("ComfortModelBuilder capabilities", () => {
       .setComplianceSpec(createComplianceSpec())
       .setDefaultChart(ChartId.Psychrometric, [ChartId.Psychrometric])
       .setDefaultOptions({})
-      .setOptionNormalizer(() => ({}))
+      .setOptionParser(() => ({}))
       .setCalculator(() => ({
         resultsByInput: createEmptyResults<unknown>(),
         chartSource: null,
@@ -257,7 +257,7 @@ describe("ComfortModelBuilder capabilities", () => {
     ["description", /non-empty description/i],
     ["chart", /at least one chart ID/i],
     ["defaultOptions", /explicitly set default options/i],
-    ["normalizer", /option normalizer/i],
+    ["parser", /option parser/i],
     ["calculator", /calculator/i],
     ["resultBuilder", /result builder/i],
     ["chartBuilder", /chart builder/i],

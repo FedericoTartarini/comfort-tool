@@ -41,6 +41,10 @@ describe("UTCI stress zones", () => {
 
     expect(result.stressCategory).toBe(getUtciZoneMeta(result.utci).category);
   });
+
+  it("rejects non-finite values instead of assigning no thermal stress", () => {
+    expect(() => getUtciZoneMeta(Number.NaN)).toThrow(/UTCI.*non-finite/i);
+  });
 });
 
 describe("UTCI Explore chart", () => {
@@ -72,7 +76,6 @@ describe("UTCI Explore chart", () => {
       { [InputId.Input1]: result },
       {
         unitSystem: UnitSystem.SI,
-        dynamicAxes: utciModelConfig.defaultDynamicAxes,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
           mode: ChartMode.Explore,
@@ -111,7 +114,6 @@ describe("UTCI Explore chart", () => {
       { [InputId.Input1]: result },
       {
         unitSystem: UnitSystem.SI,
-        dynamicAxes: utciModelConfig.defaultDynamicAxes,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
           mode: ChartMode.Explore,
@@ -137,10 +139,6 @@ describe("UTCI Explore chart", () => {
     const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
     const context = {
       unitSystem: UnitSystem.SI,
-      dynamicAxes: {
-        xAxis: FieldKey.DryBulbTemperature,
-        yAxis: FieldKey.OperativeTemperature,
-      },
       baselineInputId: InputId.Input1,
       fieldChartConfig: {
         mode: ChartMode.Explore,
@@ -162,24 +160,4 @@ describe("UTCI Explore chart", () => {
     expect(contour?.z?.flat().some(Number.isFinite)).toBe(true);
   });
 
-  it("fails directly when UTCI dynamic axes violate the state invariant", () => {
-    const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
-
-    expect(() => buildUtciDynamicChart(
-      { inputs: { [InputId.Input1]: request } },
-      {},
-      {
-        unitSystem: UnitSystem.SI,
-        dynamicAxes: utciModelConfig.defaultDynamicAxes,
-        baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          mode: ChartMode.Explore,
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.DryBulbTemperature,
-          zOutput: ModelOutputKey.Utci,
-          bands: utciModelConfig.chartableOutputs[0].defaultBands,
-        },
-      },
-    )).toThrow(/dynamic axis pair/i);
-  });
 });

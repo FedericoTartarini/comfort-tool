@@ -74,8 +74,25 @@ describe("ChartModeControl", () => {
       },
     });
 
-    const feedback = screen.getByText(`Input 2: ${text}`);
-    expect(feedback.parentElement?.getAttribute("aria-live")).toBe("polite");
+    const feedback = screen.getByLabelText(`Input 2: ${text}`);
+    expect(feedback.getAttribute("aria-live")).toBe("polite");
+    expect(feedback.closest("p")?.textContent).toContain("Locked limits.");
+    expect(container.querySelectorAll("p")).toHaveLength(1);
     expect(container.querySelector("svg")).toBeTruthy();
+  });
+
+  it("labels single-input feedback as Your input on the caption line", () => {
+    render(ChartModeControl, {
+      control: {
+        modes: [ChartMode.Compliance],
+        selectedMode: ChartMode.Compliance,
+        caption: "Locked limits.",
+        feedback: { text: ComplianceStatus.Compliant, passes: true },
+        onSelect: vi.fn(),
+      },
+    });
+
+    expect(screen.getByLabelText("Your input: Compliant").getAttribute("aria-live"))
+      .toBe("polite");
   });
 });
