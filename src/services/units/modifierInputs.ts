@@ -5,9 +5,12 @@ import {
 } from "../../models/inputModifiers";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
-
-const METERS_PER_FOOT = 0.3048;
-const BTU_PER_HOUR_SQUARE_FOOT_PER_WATT_SQUARE_METER = 0.3169983306281505;
+import {
+  convertHeatFluxFromSi,
+  convertHeatFluxToSi,
+  convertSpeedFromSi,
+  convertSpeedToSi,
+} from "./physicalQuantities";
 
 export interface ModifierFieldDisplayMeta {
   label: string;
@@ -37,9 +40,9 @@ export function convertModifierFieldValueFromSi(
 ): number {
   if (unitSystem === UnitSystem.SI) return value;
   if (isTemperatureField(key)) return convertTemperatureFromSi(value);
-  if (isAirSpeedField(key)) return value / METERS_PER_FOOT;
+  if (isAirSpeedField(key)) return convertSpeedFromSi(value);
   if (isSolarRadiationField(key)) {
-    return value * BTU_PER_HOUR_SQUARE_FOOT_PER_WATT_SQUARE_METER;
+    return convertHeatFluxFromSi(value);
   }
   return value;
 }
@@ -51,9 +54,9 @@ export function convertModifierFieldValueToSi(
 ): number {
   if (unitSystem === UnitSystem.SI) return value;
   if (isTemperatureField(key)) return convertTemperatureToSi(value);
-  if (isAirSpeedField(key)) return value * METERS_PER_FOOT;
+  if (isAirSpeedField(key)) return convertSpeedToSi(value);
   if (isSolarRadiationField(key)) {
-    return value / BTU_PER_HOUR_SQUARE_FOOT_PER_WATT_SQUARE_METER;
+    return convertHeatFluxToSi(value);
   }
   return value;
 }

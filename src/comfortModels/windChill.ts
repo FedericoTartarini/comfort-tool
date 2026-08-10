@@ -20,12 +20,11 @@ import {
 import {
   buildDefaultPresentation,
   createControlBehavior,
-  createTemperatureControlBehavior,
-} from "../services/comfort/controls/controlBehaviors";
+} from "../services/comfort/controls/numericControl";
 import { requireThermalZone } from "../services/comfort/helpers";
 import {
   calculatePerInput,
-  createFieldRequestMapper,
+  createFieldRequestAdapter,
 } from "../services/comfort/requestMapping";
 import {
   convertFieldValueFromSi,
@@ -83,29 +82,7 @@ export function calculateWindChill(payload: WindChillRequestDto): WindChillRespo
   };
 }
 
-function getAxisValue(payload: WindChillRequestDto, field: FieldKey): number {
-  if (field === FieldKey.DryBulbTemperature) return payload.tdb;
-  if (field === FieldKey.WindSpeed) return payload.v;
-  throw new Error(`Unsupported Wind Chill chart field: ${field}`);
-}
-
-function setAxisValue(
-  payload: WindChillRequestDto,
-  field: FieldKey,
-  valueSi: number,
-): void {
-  if (field === FieldKey.DryBulbTemperature) {
-    payload.tdb = valueSi;
-    return;
-  }
-  if (field === FieldKey.WindSpeed) {
-    payload.v = valueSi;
-    return;
-  }
-  throw new Error(`Unsupported Wind Chill chart field: ${field}`);
-}
-
-const toRequest = createFieldRequestMapper<WindChillRequestDto>({
+const requestAdapter = createFieldRequestAdapter<WindChillRequestDto>({
   tdb: FieldKey.DryBulbTemperature,
   v: FieldKey.WindSpeed,
 });
@@ -143,8 +120,8 @@ const windChillChartSpec: GridModelChartSpec<
     [FieldKey.DryBulbTemperature]: TDB_LIMITS,
     [FieldKey.WindSpeed]: WIND_LIMITS,
   },
-  getAxisValue,
-  setAxisValue,
+  getAxisValue: requestAdapter.getAxisValue,
+  setAxisValue: requestAdapter.setAxisValue,
   evaluate: calculateWindChill,
   getOutputValue: (result) => result.wci,
 };
@@ -161,11 +138,25 @@ builder
   .setDescription(MODEL_DESCRIPTION)
   .setModes([ChartMode.Explore])
   .setChartableOutputs([windChillOutput])
-  .setModifiers([]);
+  .setModifiers([])
+  .setCharts({
+    defaultId: ChartId.WindChillDynamic,
+    entries: [{
+      id: ChartId.WindChillDynamic,
+      name: "Dynamic",
+      emptyMessage: "No dynamic chart yet.",
+      allowsAxisSelection: true,
+      locksYAxis: true,
+      showsZoneToggle: false,
+      showsLegend: true,
+    }],
+  });
 
 builder.addControl({
   id: InputControlId.Temperature,
-  behavior: createTemperatureControlBehavior(InputControlId.Temperature, {
+  behavior: createControlBehavior({
+    controlId: InputControlId.Temperature,
+    fieldKey: FieldKey.DryBulbTemperature,
     minValue: TDB_LIMITS.min,
     maxValue: TDB_LIMITS.max,
   }),
@@ -193,7 +184,7 @@ builder.setCalculator((context, visibleInputIds) =>
   calculatePerInput({
     context,
     visibleInputIds,
-    mapRequest: toRequest,
+    mapRequest: requestAdapter.mapRequest,
     calculate: calculateWindChill,
   }));
 
@@ -235,7 +226,6 @@ builder.setChartBuilder((chartId, chartSource, resultsByInput, context) =>
     windChillChartSpec,
   ));
 
-builder.setDefaultChart(ChartId.WindChillDynamic, [ChartId.WindChillDynamic]);
 builder.setDynamicAxisFields([FieldKey.DryBulbTemperature, FieldKey.WindSpeed]);
 builder.setDefaultDynamicAxes({
   xAxis: FieldKey.DryBulbTemperature,
@@ -244,8 +234,5 @@ builder.setDefaultDynamicAxes({
 builder.setDefaultOptions({});
 builder.setOptionParser(parseEmptyOptions);
 builder.setZones(windChillZonesList);
-builder.setLegendChartIds([ChartId.WindChillDynamic]);
-builder.setLegendTitle(MODEL_LABEL);
-builder.setLockYAxisChartIds([ChartId.WindChillDynamic]);
 
 export const windChillModelConfig = builder.build();

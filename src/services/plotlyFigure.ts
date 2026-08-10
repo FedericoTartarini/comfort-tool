@@ -47,16 +47,13 @@ export function toPlotlyFigure(chart: PlotlyChartResponseDto): PlotlyFigure {
 
   const figure: PlotlyFigure = {
     data: chart.traces.map((trace) => {
-      const {
-        hoverMetadata,
-        isZone: _isZone,
-        isBackgroundZone: _isBackgroundZone,
-        isComfortZone: _isComfortZone,
-        ...plotlyTrace
-      } = trace;
+      const plotlyTrace = { ...trace };
+      const customdata = plotlyTrace.hoverMetadata;
+      delete plotlyTrace.hoverMetadata;
+      delete plotlyTrace.isBackgroundZone;
       return {
         ...plotlyTrace,
-        customdata: hoverMetadata,
+        customdata,
       };
     }),
     layout: {

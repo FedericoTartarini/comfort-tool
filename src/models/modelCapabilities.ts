@@ -60,6 +60,7 @@ export interface ComplianceFeedback {
 export interface ComplianceSpec<TBand extends Band = Band, TResult = unknown> {
   readonly output: ModelOutputKey;
   readonly bands: readonly TBand[];
+  readonly legendTitle: string;
   readonly caption: string;
   readonly getFeedback: (result: TResult) => ComplianceFeedback;
 }

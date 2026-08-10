@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { CalculationSource, ComfortStandard } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
-import { FieldKey, type FieldKey as FieldKeyType } from "../models/fieldKeys";
+import {
+  FieldKey,
+  type CanonicalInputState,
+} from "../models/fieldKeys";
 import { InputControlId } from "../models/inputControls";
 import { OptionKey } from "../models/inputModes";
 import { InputId } from "../models/inputSlots";
@@ -63,11 +66,9 @@ const standardCases = [
 
 function setPmvInputs(
   toolState: ReturnType<typeof createComfortToolState>,
-  values: Partial<Record<FieldKeyType, number>>,
+  values: Partial<CanonicalInputState>,
 ): void {
-  Object.entries(values).forEach(([fieldKey, value]) => {
-    toolState.state.inputsByInput[InputId.Input1][fieldKey as FieldKeyType] = value;
-  });
+  Object.assign(toolState.state.inputsByInput[InputId.Input1], values);
 }
 
 function calculateRegisteredModel(

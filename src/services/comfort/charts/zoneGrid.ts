@@ -38,9 +38,7 @@ interface ZoneContourLayersOptions {
   zmax?: number;
   opacity?: number;
   line?: GridContourLayerSpec["line"];
-  isZone?: boolean;
   isBackgroundZone?: boolean;
-  isComfortZone?: boolean;
   hoverinfo?: PlotHoverInfoDto;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
@@ -73,9 +71,7 @@ function buildZoneContourLayers({
   zmax,
   opacity,
   line,
-  isZone,
   isBackgroundZone,
-  isComfortZone,
   hoverinfo,
   includeText,
   includeHoverMetadata,
@@ -91,9 +87,7 @@ function buildZoneContourLayers({
     zmax,
     opacity,
     line,
-    isZone,
     isBackgroundZone,
-    isComfortZone,
     hoverinfo,
     includeText,
     includeHoverMetadata,

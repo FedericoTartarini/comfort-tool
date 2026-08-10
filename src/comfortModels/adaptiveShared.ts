@@ -1,6 +1,9 @@
 import { t_o } from "jsthermalcomfort";
 import { CalculationSource, type ComfortStandard } from "../models/calculationMetadata";
-import { ChartId } from "../models/chartOptions";
+import {
+  ChartId,
+  type ModelCharts,
+} from "../models/chartOptions";
 import type {
   ModelChartSourceDto,
   PlotHoverRowDto,
@@ -46,15 +49,19 @@ import type { ChartAxisScale } from "../services/comfort/charts/types";
 import {
   buildDefaultPresentation,
   createControlBehavior,
-  createTemperatureControlBehavior,
-} from "../services/comfort/controls/controlBehaviors";
+} from "../services/comfort/controls/numericControl";
+import {
+  createOperativeTemperatureControlBehavior,
+  createTemperatureModeOptionHandler,
+  requireTemperatureMode,
+} from "../services/comfort/controls/temperatureControl";
 import {
   getBaselineInputEntry,
   roundValue,
 } from "../services/comfort/helpers";
 import {
   calculatePerInput,
-  createFieldRequestMapper,
+  createFieldRequestAdapter,
 } from "../services/comfort/requestMapping";
 import { convertFieldValueFromSi } from "../services/units";
 import {
@@ -117,6 +124,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
   supportedModifiers: readonly ModifierIdType[];
+  charts: ModelCharts;
   complianceSpec: ComplianceSpec<Band, AdaptiveResponseDto>;
   resultStandard: ComfortStandard;
   operativeTemperatureStandard: JsThermalComfortStandard;
@@ -288,7 +296,7 @@ function parseAdaptiveOptions(value: unknown): AdaptiveModelOptions | null {
   return { [OptionKey.TemperatureMode]: temperatureMode };
 }
 
-const mapAdaptiveRequestFields = createFieldRequestMapper<AdaptiveRequestDto>({
+const adaptiveRequestAdapter = createFieldRequestAdapter<AdaptiveRequestDto>({
   tdb: FieldKey.DryBulbTemperature,
   tr: FieldKey.MeanRadiantTemperature,
   trm: FieldKey.PrevailingMeanOutdoorTemperature,
@@ -306,7 +314,7 @@ function toAdaptiveRequest(
   if (!options) {
     throw new Error(`Invalid options state for ${declaration.modelId}.`);
   }
-  const request = mapAdaptiveRequestFields(context, inputId);
+  const request = adaptiveRequestAdapter.mapRequest(context, inputId);
   if (options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
     request.tr = request.tdb;
   }
@@ -643,7 +651,7 @@ export function createAdaptiveModelConfig(
     ModelChartSourceDto<AdaptiveRequestDto>,
     Band
   >(declaration.modelId);
-  const temperatureBehavior = createTemperatureControlBehavior(
+  const temperatureBehavior = createOperativeTemperatureControlBehavior(
     InputControlId.Temperature,
   );
   const airSpeedBehavior = createControlBehavior({
@@ -662,6 +670,7 @@ export function createAdaptiveModelConfig(
     .setModes(declaration.modes)
     .setChartableOutputs(declaration.chartableOutputs)
     .setModifiers(declaration.supportedModifiers)
+    .setCharts(declaration.charts)
     .setComplianceSpec(declaration.complianceSpec)
     .addControl({ id: InputControlId.Temperature, behavior: temperatureBehavior })
     .addControl({
@@ -670,7 +679,7 @@ export function createAdaptiveModelConfig(
         controlId: InputControlId.RadiantTemperature,
         fieldKey: FieldKey.MeanRadiantTemperature,
         hidden: (context) =>
-          context.options[OptionKey.TemperatureMode] !== TemperatureMode.Air,
+          requireTemperatureMode(context.options) !== TemperatureMode.Air,
         getPresentation: (context, meta) => ({
           ...buildDefaultPresentation(context, meta),
           label: "Mean radiant temperature",
@@ -689,17 +698,14 @@ export function createAdaptiveModelConfig(
       }),
     })
     .addControl({ id: InputControlId.AirSpeed, behavior: airSpeedBehavior })
-    .addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) =>
-      temperatureBehavior.applyOptionChange?.(
-        context,
-        OptionKey.TemperatureMode,
-        nextValue,
-      ) ?? null)
+    .addOptionHandler(
+      OptionKey.TemperatureMode,
+      createTemperatureModeOptionHandler(),
+    )
     .setDefaultOptions({
       ...defaultAdaptiveOptions,
       [OptionKey.TemperatureMode]: TemperatureMode.Operative,
     })
-    .setDefaultChart(ChartId.Adaptive, [ChartId.Adaptive])
     .setOptionParser(parseAdaptiveOptions)
     .setDynamicAxisFields([
       FieldKey.PrevailingMeanOutdoorTemperature,
@@ -735,10 +741,7 @@ export function createAdaptiveModelConfig(
       }
       return null;
     })
-    .setZones([...declaration.zones])
-    .setLegendChartIds([ChartId.Adaptive])
-    .setLegendTitle("Adaptive Zones")
-    .setLockYAxisChartIds([]);
+    .setZones([...declaration.zones]);
 
   return builder.build();
 }

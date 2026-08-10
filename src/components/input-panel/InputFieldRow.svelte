@@ -2,8 +2,9 @@
   import {
     Button,
     Dropdown,
+    DropdownDivider,
+    DropdownHeader,
     DropdownItem,
-    Heading,
     Input,
     Label,
   } from "flowbite-svelte";
@@ -87,14 +88,13 @@
   }
   let dropdownOpen = $state(false);
 
-  // Updates a model option and automatically closes the "More" dropdown selection.
   function handleSelectItem(optionKey: OptionKey, value: string) {
     toolState.actions.setModelOption(optionKey, value);
     dropdownOpen = false;
   }
 </script>
 
-<section class="py-0.5">
+<div class="py-0.5">
   <header class="flex items-start justify-between gap-3">
     <div class="flex min-w-0 flex-wrap items-center gap-2">
       <Label class="text-sm font-medium text-sky-700">
@@ -117,21 +117,21 @@
           triggeredBy={`#${getAdvancedMenuTriggerId()}`}
           class={dropdownClass}
         >
-          <Heading
-            slot="header"
-            tag="h6"
+          <DropdownHeader
+            divider={false}
             class={dropdownHeaderClass}
           >
             {menu.title}
-          </Heading>
+          </DropdownHeader>
           {#each menu.sections as section}
             {#if section.title}
-              <Heading
-                tag="h6"
+              <DropdownDivider />
+              <DropdownHeader
+                divider={false}
                 class={dropdownSectionTitleClass}
               >
                 {section.title}
-              </Heading>
+              </DropdownHeader>
             {/if}
 
             {#each section.items as item}
@@ -230,4 +230,4 @@
       </li>
     {/each}
   </ul>
-</section>
+</div>

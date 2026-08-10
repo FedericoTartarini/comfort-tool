@@ -1,6 +1,9 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import { CalculationSource, type ComfortStandard } from "../models/calculationMetadata";
-import { ChartId } from "../models/chartOptions";
+import {
+  ChartId,
+  type ModelCharts,
+} from "../models/chartOptions";
 import type {
   ComfortPointDto,
   CompareInputMap,
@@ -62,10 +65,19 @@ import {
 import type { ChartAxisScale } from "../services/comfort/charts/types";
 import {
   createAirSpeedControlBehavior,
+  createAirSpeedOptionHandler,
   createControlBehavior,
+} from "../services/comfort/controls/numericControl";
+import {
   createHumidityControlBehavior,
-  createTemperatureControlBehavior,
-} from "../services/comfort/controls/controlBehaviors";
+  humidityModeOptionHandler,
+  synchronizeSelectedHumidityMode,
+} from "../services/comfort/controls/humidityControl";
+import {
+  createOperativeTemperatureControlBehavior,
+  createTemperatureModeOptionHandler,
+  requireTemperatureMode,
+} from "../services/comfort/controls/temperatureControl";
 import { createSingleInputPatch } from "../services/comfort/controls/types";
 import { calculateRelativeHumidityFromHumidityRatio } from "../services/comfort/derivations";
 import {
@@ -77,11 +89,7 @@ import {
   clothingTypicalEnsembles,
   metabolicActivityOptions,
 } from "../services/comfort/referenceValues";
-import { createFieldRequestMapper } from "../services/comfort/requestMapping";
-import {
-  normalizePmvOptions,
-  synchronizePmvInputState,
-} from "../services/comfort/syncState";
+import { createFieldRequestAdapter } from "../services/comfort/requestMapping";
 import {
   convertHumidityRatioFromSi,
   convertHumidityRatioToSi,
@@ -127,7 +135,7 @@ const pmvNeutralZone = new ThermalZone({
   textColor: "#475569",
 });
 
-const pmvZonesList = [
+export const pmvZonesList = [
   new ThermalZone({ label: "Cold", max: -2.5, color: "#0571b0", textColor: "#1d4ed8" }),
   new ThermalZone({ label: "Cool", min: -2.5, max: -1.5, color: "#4c78a8", textColor: "#2563eb" }),
   new ThermalZone({ label: "Slightly Cool", min: -1.5, max: -0.5, color: "#92c5de", textColor: "#0369a1" }),
@@ -192,6 +200,8 @@ export interface PmvModelDeclaration {
   readonly modes: readonly ChartModeType[];
   readonly chartableOutputs: readonly ModelOutput[];
   readonly supportedModifiers: readonly ModifierIdType[];
+  readonly zones: readonly ThermalZone[];
+  readonly charts: ModelCharts;
   readonly complianceSpec: ComplianceSpec<NumericBand, PmvResponseDto>;
 }
 
@@ -517,7 +527,7 @@ function parsePmvOptions(value: unknown): PmvModelOptions | null {
   };
 }
 
-const mapPmvRequestFields = createFieldRequestMapper<
+const pmvRequestAdapter = createFieldRequestAdapter<
   Omit<PmvRequestDto, "occupantHasAirSpeedControl">
 >({
   tdb: FieldKey.DryBulbTemperature,
@@ -540,7 +550,7 @@ function toPmvRequest(
   if (!options) {
     throw new Error(`Invalid options state for ${adapter.modelId}.`);
   }
-  const requestFields = mapPmvRequestFields(context, inputId);
+  const requestFields = pmvRequestAdapter.mapRequest(context, inputId);
   return {
     ...requestFields,
     occupantHasAirSpeedControl:
@@ -1037,17 +1047,22 @@ function createPsychrometricComfortZoneOverlayBuilder(
           polygonY,
           hovertemplate: "",
           hoverinfo: "skip",
-          isComfortZone: true,
+          isBackgroundZone: true,
         })];
   };
 }
 
-function buildComparePsychrometricChart(
+type PmvChartViewDescriptorFactory = (
   declaration: PmvModelDeclaration,
   source: PmvChartSourceDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
   context: ChartBuildContext<NumericBand>,
-): PlotlyChartResponseDto {
+) => PmvFieldChartDescriptor;
+
+const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = (
+  declaration,
+  source,
+  context,
+) => {
   const { adapter } = declaration;
   const { unitSystem } = context;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
@@ -1058,7 +1073,7 @@ function buildComparePsychrometricChart(
     yField: FieldKey.HumidityRatio,
   };
 
-  return buildPmvFieldChart(declaration, source, resultsByInput, context, {
+  return {
     config,
     title: `${declaration.label} Psychrometric Chart`,
     xAxis: {
@@ -1097,15 +1112,14 @@ function buildComparePsychrometricChart(
       createPsychrometricComfortZoneOverlayBuilder(source, xAxis, yAxis)
     ),
     margin: { l: 56, r: 24, t: 48, b: 80 },
-  });
-}
+  };
+};
 
-function buildPmvDynamicChart(
+const createDynamicViewDescriptor: PmvChartViewDescriptorFactory = (
   declaration: PmvModelDeclaration,
   source: PmvChartSourceDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
   context: ChartBuildContext<NumericBand>,
-): PlotlyChartResponseDto {
+) => {
   const { adapter } = declaration;
   const config = context.fieldChartConfig;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
@@ -1120,7 +1134,7 @@ function buildPmvDynamicChart(
       },
   };
 
-  return buildPmvFieldChart(declaration, source, resultsByInput, context, {
+  return {
     config,
     title: `${declaration.label} Dynamic Chart`,
     xAxis: {
@@ -1147,7 +1161,31 @@ function buildPmvDynamicChart(
     getInputXSi: (payload) => getPmvAxisValue(adapter, payload, config.xField),
     getInputYSi: (payload) => getPmvAxisValue(adapter, payload, config.yField),
     margin: { l: 64, r: 24, t: 48, b: 64 },
-  });
+  };
+};
+
+const pmvChartViewById: Partial<Record<ChartId, PmvChartViewDescriptorFactory>> = {
+  [ChartId.Psychrometric]: createPsychrometricViewDescriptor,
+  [ChartId.PmvDynamic]: createDynamicViewDescriptor,
+};
+
+function buildPmvChart(
+  chartId: ChartId,
+  declaration: PmvModelDeclaration,
+  source: PmvChartSourceDto,
+  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
+  context: ChartBuildContext<NumericBand>,
+): PlotlyChartResponseDto | null {
+  const createDescriptor = pmvChartViewById[chartId];
+  return createDescriptor
+    ? buildPmvFieldChart(
+        declaration,
+        source,
+        resultsByInput,
+        context,
+        createDescriptor(declaration, source, context),
+      )
+    : null;
 }
 
 export function createPmvModelConfig(declaration: PmvModelDeclaration) {
@@ -1159,11 +1197,18 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
   >(
     adapter.modelId,
   );
-  const temperatureBehavior = createTemperatureControlBehavior(
+  const temperatureBehavior = createOperativeTemperatureControlBehavior(
     InputControlId.Temperature,
+    { postSynchronize: synchronizeSelectedHumidityMode },
   );
   const humidityBehavior = createHumidityControlBehavior(InputControlId.Humidity);
   const airSpeedBehavior = createAirSpeedControlBehavior(InputControlId.AirSpeed, {
+    supportsOccupantAirSpeedControl: adapter.supportsOccupantAirSpeedControl,
+  });
+  const temperatureModeOptionHandler = createTemperatureModeOptionHandler({
+    postSynchronize: synchronizeSelectedHumidityMode,
+  });
+  const airSpeedOptionHandler = createAirSpeedOptionHandler({
     supportsOccupantAirSpeedControl: adapter.supportsOccupantAirSpeedControl,
   });
 
@@ -1173,6 +1218,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
     .setModes(declaration.modes)
     .setChartableOutputs(declaration.chartableOutputs)
     .setModifiers(declaration.supportedModifiers)
+    .setCharts(declaration.charts)
     .setComplianceSpec(declaration.complianceSpec)
     .addControl({
       id: InputControlId.Temperature,
@@ -1184,7 +1230,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
         controlId: InputControlId.RadiantTemperature,
         fieldKey: FieldKey.MeanRadiantTemperature,
         hidden: (context) =>
-          normalizePmvOptions(context.options)[OptionKey.TemperatureMode]
+          requireTemperatureMode(context.options)
             === TemperatureMode.Operative,
       }),
     })
@@ -1202,12 +1248,12 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
             ...context.inputsByInput[inputId],
             [FieldKey.MetabolicRate]: nextValue,
           };
-          const synchronized = synchronizePmvInputState(
+          const synchronized = synchronizeSelectedHumidityMode(
             nextInputState,
-            context.options,
             context.derivedByInput[inputId],
+            context.options,
           );
-          return createSingleInputPatch(inputId, synchronized.inputState);
+          return createSingleInputPatch(inputId, synchronized);
         },
       }),
     })
@@ -1222,22 +1268,8 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
         maxValue: adapter.clothingInsulationMaxSi,
       }),
     })
-    .addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) =>
-      temperatureBehavior.applyOptionChange?.(
-        context,
-        OptionKey.TemperatureMode,
-        nextValue,
-      ) ?? null)
-    .addOptionHandler(OptionKey.HumidityInputMode, (context, nextValue) =>
-      humidityBehavior.applyOptionChange?.(
-        context,
-        OptionKey.HumidityInputMode,
-        nextValue,
-      ) ?? null)
-    .setDefaultChart(ChartId.PmvDynamic, [
-      ChartId.Psychrometric,
-      ChartId.PmvDynamic,
-    ])
+    .addOptionHandler(OptionKey.TemperatureMode, temperatureModeOptionHandler)
+    .addOptionHandler(OptionKey.HumidityInputMode, humidityModeOptionHandler)
     .setDefaultOptions({ ...defaultPmvOptions })
     .setOptionParser(parsePmvOptions)
     .setDynamicAxisFields([...PMV_DYNAMIC_AXIS_FIELDS])
@@ -1284,36 +1316,18 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
     .setResultBuilder(buildPmvResultSections)
     .setChartBuilder((chartId, chartSource, resultsByInput, context) => {
       if (!chartSource) return null;
-      if (chartId === ChartId.Psychrometric) {
-        return buildComparePsychrometricChart(
-          declaration,
-          chartSource,
-          resultsByInput,
-          context,
-        );
-      }
-      if (chartId === ChartId.PmvDynamic) {
-        return buildPmvDynamicChart(
-          declaration,
-          chartSource,
-          resultsByInput,
-          context,
-        );
-      }
-      return null;
+      return buildPmvChart(
+        chartId,
+        declaration,
+        chartSource,
+        resultsByInput,
+        context,
+      );
     })
-    .setZones(pmvZonesList)
-    .setLegendChartIds([ChartId.Psychrometric, ChartId.PmvDynamic])
-    .setLegendTitle("PMV Zones")
-    .setLockYAxisChartIds([]);
+    .setZones(declaration.zones);
 
   if (adapter.supportsOccupantAirSpeedControl) {
-    builder.addOptionHandler(OptionKey.AirSpeedControlMode, (context, nextValue) =>
-      airSpeedBehavior.applyOptionChange?.(
-        context,
-        OptionKey.AirSpeedControlMode,
-        nextValue,
-      ) ?? null);
+    builder.addOptionHandler(OptionKey.AirSpeedControlMode, airSpeedOptionHandler);
   }
 
   return builder.build();

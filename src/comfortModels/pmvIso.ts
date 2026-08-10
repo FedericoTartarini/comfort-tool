@@ -8,6 +8,7 @@ import {
 } from "jsthermalcomfort";
 
 import { ComfortStandard } from "../models/calculationMetadata";
+import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { ModifierId } from "../models/inputModifiers";
@@ -18,6 +19,7 @@ import {
   createPmvModelConfig,
   getPmvComplianceFeedback,
   pmvChartableOutputs,
+  pmvZonesList,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./pmvShared";
@@ -68,14 +70,39 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   adapter: pmvIsoAdapter,
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
+  zones: pmvZonesList,
   supportedModifiers: [
     ModifierId.MeasuredAirSpeed,
     ModifierId.MorningClothingEstimate,
     ModifierId.SolarGain,
   ],
+  charts: {
+    defaultId: ChartId.PmvDynamic,
+    entries: [
+      {
+        id: ChartId.Psychrometric,
+        name: "Psychrometric",
+        emptyMessage: "No psychrometric chart yet.",
+        allowsAxisSelection: false,
+        locksYAxis: false,
+        showsZoneToggle: true,
+        showsLegend: true,
+      },
+      {
+        id: ChartId.PmvDynamic,
+        name: "Dynamic",
+        emptyMessage: "No dynamic chart yet.",
+        allowsAxisSelection: true,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+    ],
+  },
   complianceSpec: {
     output: ModelOutputKey.Pmv,
     bands: isoComplianceBands,
+    legendTitle: "PMV Zones",
     caption: createPmvComplianceCaption("ISO 7730 Category B", isoComplianceBands),
     getFeedback: getPmvComplianceFeedback,
   },

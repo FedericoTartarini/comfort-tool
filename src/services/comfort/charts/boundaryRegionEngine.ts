@@ -42,7 +42,7 @@ interface FilledBoundaryRegionTraceOptions {
   polygonY: number[];
   lineColor: string;
   opacity?: number;
-  isZone?: boolean;
+  isBackgroundZone?: boolean;
 }
 
 interface TooltipGridTraceOptions {
@@ -213,7 +213,7 @@ export function buildFilledBoundaryRegionTrace({
   polygonY,
   lineColor,
   opacity = 0.72,
-  isZone = true,
+  isBackgroundZone = true,
 }: FilledBoundaryRegionTraceOptions): PlotScatterLineTraceDto {
   return {
     type: "scatter",
@@ -228,7 +228,7 @@ export function buildFilledBoundaryRegionTrace({
     marker: {},
     opacity,
     hoverinfo: "skip",
-    isZone,
+    isBackgroundZone,
   };
 }
 

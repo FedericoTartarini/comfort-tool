@@ -70,7 +70,7 @@
   }
 </script>
 
-<section class="panel-shell">
+<div class="panel-shell">
   <div class="panel-muted relative flex h-full min-h-[32rem] items-center justify-center px-4 py-5 xl:min-h-[36rem]">
     <svg
       viewBox="0 0 24 24"
@@ -185,4 +185,4 @@
       </svg>
     </button>
   </div>
-</section>
+</div>

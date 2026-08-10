@@ -15,7 +15,7 @@ import {
   TemperatureMode,
   type UtciModelOptions,
 } from "../models/inputModes";
-import { inputOrder, type InputId as InputIdType } from "../models/inputSlots";
+import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   bandsFromThermalZones,
@@ -42,9 +42,11 @@ import {
 } from "../services/comfort/charts/plotlyBuilders";
 import {
   createControlBehavior,
-  createTemperatureControlBehavior,
-} from "../services/comfort/controls/controlBehaviors";
-import type { BehaviorPatch } from "../services/comfort/controls/types";
+} from "../services/comfort/controls/numericControl";
+import {
+  createOperativeTemperatureControlBehavior,
+  createTemperatureModeOptionHandler,
+} from "../services/comfort/controls/temperatureControl";
 import {
   getBaselineInputEntry,
   getCompareInputs,
@@ -52,12 +54,8 @@ import {
   roundValue,
 } from "../services/comfort/helpers";
 import {
-  applyOperativeTemperatureMode,
-  synchronizePmvInputState,
-} from "../services/comfort/syncState";
-import {
   calculatePerInput,
-  createFieldRequestMapper,
+  createFieldRequestAdapter,
 } from "../services/comfort/requestMapping";
 import {
   convertModelOutputFromSi,
@@ -171,7 +169,7 @@ function parseUtciOptions(value: unknown): UtciModelOptions | null {
   return null;
 }
 
-const mapUtciRequestFields = createFieldRequestMapper<UtciRequestDto>({
+const utciRequestAdapter = createFieldRequestAdapter<UtciRequestDto>({
   tdb: FieldKey.DryBulbTemperature,
   tr: FieldKey.MeanRadiantTemperature,
   v: FieldKey.WindSpeed,
@@ -188,7 +186,7 @@ function toRequest(
   if (!options) {
     throw new Error(`Invalid options state for ${ComfortModel.Utci}.`);
   }
-  const request = mapUtciRequestFields(context, inputId);
+  const request = utciRequestAdapter.mapRequest(context, inputId);
   if (options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
     request.tr = request.tdb;
   }
@@ -440,11 +438,34 @@ builder
   .setDescription(MODEL_DESCRIPTION)
   .setModes([ChartMode.Explore])
   .setChartableOutputs([utciOutput])
-  .setModifiers([]);
+  .setModifiers([])
+  .setCharts({
+    defaultId: ChartId.UtciDynamic,
+    entries: [
+      {
+        id: ChartId.Stress,
+        name: "UTCI",
+        emptyMessage: "No psychrometric chart yet.",
+        allowsAxisSelection: false,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+      {
+        id: ChartId.UtciDynamic,
+        name: "Dynamic",
+        emptyMessage: "No dynamic chart yet.",
+        allowsAxisSelection: true,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+    ],
+  });
 
 builder.addControl({
   id: InputControlId.Temperature,
-  behavior: createTemperatureControlBehavior(InputControlId.Temperature, {
+  behavior: createOperativeTemperatureControlBehavior(InputControlId.Temperature, {
     minValue: TDB_LIMITS.min,
     maxValue: TDB_LIMITS.max,
   }),
@@ -480,38 +501,11 @@ builder.addControl({
   }),
 });
 
-builder.addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) => {
-  if (nextValue !== TemperatureMode.Air && nextValue !== TemperatureMode.Operative) {
-    return null;
-  }
+builder.addOptionHandler(
+  OptionKey.TemperatureMode,
+  createTemperatureModeOptionHandler(),
+);
 
-  const nextOptions = {
-    ...context.options,
-    [OptionKey.TemperatureMode]: nextValue,
-  };
-  const inputsPatch: NonNullable<BehaviorPatch["inputsPatch"]> = {};
-  for (const inputId of inputOrder) {
-    inputsPatch[inputId] = (nextValue === TemperatureMode.Operative
-      ? applyOperativeTemperatureMode(
-          context.inputsByInput[inputId],
-          nextOptions,
-          context.derivedByInput[inputId],
-        )
-      : synchronizePmvInputState(
-          context.inputsByInput[inputId],
-          nextOptions,
-          context.derivedByInput[inputId],
-        )
-    ).inputState;
-  }
-
-  return {
-    inputsPatch,
-    optionsPatch: { [OptionKey.TemperatureMode]: nextValue },
-  };
-});
-
-builder.setDefaultChart(ChartId.UtciDynamic, [ChartId.Stress, ChartId.UtciDynamic]);
 builder.setDynamicAxisFields([...UTCI_DYNAMIC_AXIS_FIELDS]);
 builder.setDefaultDynamicAxes({
   xAxis: FieldKey.DryBulbTemperature,
@@ -556,8 +550,5 @@ builder.setChartBuilder((chartId, chartSource, resultsByInput, context) => {
   return null;
 });
 builder.setZones(utciZonesList);
-builder.setLegendChartIds([ChartId.Stress, ChartId.UtciDynamic]);
-builder.setLegendTitle("UTCI Zones");
-builder.setLockYAxisChartIds([]);
 
 export const utciModelConfig = builder.build();

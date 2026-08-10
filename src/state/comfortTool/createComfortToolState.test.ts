@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartId, chartMetaById } from "../../models/chartOptions";
+import { ChartId } from "../../models/chartOptions";
 import { ComfortModel } from "../../models/comfortModels";
 import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
@@ -311,10 +311,10 @@ describe("createComfortToolState", () => {
       const modelConfig = comfortModelConfigs[modelId];
       const settings = getChartSettings(toolState, modelId);
 
-      for (const chartId of modelConfig.chartIds) {
-        toolState.actions.setSelectedChart(chartId);
+      for (const chart of modelConfig.charts.entries) {
+        toolState.actions.setSelectedChart(chart.id);
         const controls = toolState.selectors.getChartControlsViewModel();
-        const supportsAxisSelection = chartMetaById[chartId].supportsAxisSelection;
+        const supportsAxisSelection = chart.allowsAxisSelection;
         const expectedBands = settings.mode === ChartMode.Compliance
           ? modelConfig.complianceSpec?.bands
           : settings.explore?.bands;
@@ -327,7 +327,7 @@ describe("createComfortToolState", () => {
         const expectedLegendTitle = (
           output?.legendTitle
           ?? output?.label
-          ?? modelConfig.legendTitle
+          ?? modelConfig.complianceSpec?.legendTitle
         ) || "Bands";
 
         expect(controls.mode?.selectedMode).toBe(settings.mode);
@@ -337,7 +337,9 @@ describe("createComfortToolState", () => {
         expect(controls.explore === null).toBe(
           settings.mode !== ChartMode.Explore,
         );
-        const expectedLegendBands = toLegendBands(expectedBands);
+        const expectedLegendBands = chart.showsLegend
+          ? toLegendBands(expectedBands)
+          : null;
         expect(toolState.selectors.getCurrentChartLegendZones())
           .toEqual(expectedLegendBands);
         expect(toolState.selectors.getCurrentChartLegendTitle())
@@ -725,7 +727,7 @@ describe("createComfortToolState", () => {
     const controls = toolState.selectors.getChartControlsViewModel();
 
     expect(toolState.selectors.getCurrentChartOptions()).toEqual([
-      { name: "Adaptive", value: ChartId.Adaptive },
+      expect.objectContaining({ id: ChartId.Adaptive, name: "Adaptive" }),
     ]);
     expect(settings).toEqual(expect.objectContaining({
       mode: ChartMode.Compliance,

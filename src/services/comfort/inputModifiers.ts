@@ -1,11 +1,15 @@
 import { solar_gain } from "jsthermalcomfort";
 
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import {
+  canonicalInputFieldOrder,
+  FieldKey,
+  type CanonicalInputFieldKey,
+  type CanonicalInputState,
+} from "../../models/fieldKeys";
 import {
   ModifierFieldKey,
   ModifierId,
   modifierFieldMetaByKey,
-  type CanonicalInputValues,
   type CompleteModifierInputValues,
   type InputModifier,
   type ModifierFieldKey as ModifierFieldKeyType,
@@ -95,6 +99,10 @@ export const inputModifierById: Record<ModifierIdType, InputModifier> = {
   [ModifierId.SolarGain]: solarGainModifier,
 };
 
+function isCanonicalInputFieldKey(value: string): value is CanonicalInputFieldKey {
+  return canonicalInputFieldOrder.some((fieldKey) => fieldKey === value);
+}
+
 export function isModifierFieldValueValid(
   key: ModifierFieldKeyType,
   value: unknown,
@@ -126,12 +134,12 @@ export function isModifierConfigurationComplete(
 }
 
 export function applyModifierDefinitions(
-  baseInputs: Readonly<CanonicalInputValues>,
+  baseInputs: Readonly<CanonicalInputState>,
   modifiers: readonly InputModifier[],
   activeModifiers: Readonly<Partial<Record<ModifierIdType, boolean>>>,
   modifierInputs: Readonly<Partial<Record<ModifierIdType, ModifierInputValues>>>,
-): CanonicalInputValues {
-  let effectiveInputs: CanonicalInputValues = { ...baseInputs };
+): CanonicalInputState {
+  let effectiveInputs: CanonicalInputState = { ...baseInputs };
 
   for (const modifier of modifiers) {
     if (!activeModifiers[modifier.id]) continue;
@@ -145,11 +153,14 @@ export function applyModifierDefinitions(
 
     const patch = modifier.apply({ ...effectiveInputs }, completeInputs);
     for (const [rawField, value] of Object.entries(patch)) {
-      const field = rawField as FieldKeyType;
-      if (!modifier.affectedFields.includes(field) || !Number.isFinite(value)) {
+      if (
+        !isCanonicalInputFieldKey(rawField)
+        || !modifier.affectedFields.includes(rawField)
+        || !Number.isFinite(value)
+      ) {
         throw new Error(`Modifier ${modifier.id} returned an invalid input patch.`);
       }
-      effectiveInputs[field] = value;
+      effectiveInputs[rawField] = value;
     }
   }
 
@@ -157,11 +168,11 @@ export function applyModifierDefinitions(
 }
 
 export function applyInputModifierChain(
-  baseInputs: Readonly<CanonicalInputValues>,
+  baseInputs: Readonly<CanonicalInputState>,
   modifierIds: readonly ModifierIdType[],
   activeModifiers: Readonly<Record<ModifierIdType, boolean>>,
   modifierInputs: Readonly<Record<ModifierIdType, ModifierInputValues>>,
-): CanonicalInputValues {
+): CanonicalInputState {
   return applyModifierDefinitions(
     baseInputs,
     modifierIds.map((modifierId) => inputModifierById[modifierId]),

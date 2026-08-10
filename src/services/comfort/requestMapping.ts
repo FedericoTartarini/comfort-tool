@@ -1,7 +1,10 @@
 import type { ModelChartSourceDto } from "../../models/comfortDtos";
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import type {
+  CanonicalInputFieldKey,
+  FieldKey as FieldKeyType,
+} from "../../models/fieldKeys";
 import {
-  inputOrder,
+  InputId,
   type InputId as InputIdType,
 } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
@@ -13,26 +16,58 @@ export type CalculationRequestMapper<TRequest> = (
 
 type NumericRequestFieldMap<TRequest extends object> = {
   [TRequestProperty in keyof TRequest]: TRequest[TRequestProperty] extends number
-    ? FieldKeyType
+    ? CanonicalInputFieldKey
     : never;
 };
 
-/** Maps explicitly selected model request properties from canonical-SI input state. */
-export function createFieldRequestMapper<TRequest extends object>(
+export interface FieldRequestAdapter<TRequest extends object> {
+  readonly mapRequest: CalculationRequestMapper<TRequest>;
+  readonly getAxisValue: (request: TRequest, field: FieldKeyType) => number;
+  readonly setAxisValue: (
+    request: TRequest,
+    field: FieldKeyType,
+    valueSi: number,
+  ) => void;
+}
+
+/** Creates calculation and chart-axis adapters from one canonical field mapping. */
+export function createFieldRequestAdapter<TRequest extends object>(
   fieldByRequestProperty: NumericRequestFieldMap<TRequest>,
-): CalculationRequestMapper<TRequest> {
-  return (context, inputId) => {
+): FieldRequestAdapter<TRequest> {
+  const entries = Object.entries(fieldByRequestProperty) as Array<
+    [keyof TRequest & string, CanonicalInputFieldKey]
+  >;
+
+  function getRequestProperty(field: FieldKeyType): keyof TRequest & string {
+    const entry = entries.find(([, mappedField]) => mappedField === field);
+    if (!entry) {
+      throw new Error(`Unsupported request field: ${field}`);
+    }
+    return entry[0];
+  }
+
+  const mapRequest: CalculationRequestMapper<TRequest> = (context, inputId) => {
     const input = context.inputsByInput[inputId];
     return Object.fromEntries(
-      (
-        Object.entries(fieldByRequestProperty) as Array<
-          [string, FieldKeyType]
-        >
-      ).map(([requestProperty, fieldKey]) => [
+      entries.map(([requestProperty, fieldKey]) => [
         requestProperty,
-        Number(input[fieldKey]),
+        input[fieldKey],
       ]),
     ) as TRequest;
+  };
+
+  return {
+    mapRequest,
+    getAxisValue: (request, field) => {
+      const value = Reflect.get(request, getRequestProperty(field));
+      if (typeof value !== "number") {
+        throw new Error(`Mapped request field ${field} is not numeric.`);
+      }
+      return value;
+    },
+    setAxisValue: (request, field, valueSi) => {
+      Reflect.set(request, getRequestProperty(field), valueSi);
+    },
   };
 }
 
@@ -52,9 +87,11 @@ export function calculatePerInput<TRequest, TResult>({
   resultsByInput: Record<InputIdType, TResult | null>;
   chartSource: ModelChartSourceDto<TRequest>;
 } {
-  const resultsByInput = Object.fromEntries(
-    inputOrder.map((inputId) => [inputId, null]),
-  ) as Record<InputIdType, TResult | null>;
+  const resultsByInput: Record<InputIdType, TResult | null> = {
+    [InputId.Input1]: null,
+    [InputId.Input2]: null,
+    [InputId.Input3]: null,
+  };
   const inputs: ModelChartSourceDto<TRequest>["inputs"] = {};
 
   for (const inputId of visibleInputIds) {

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "../../models/fieldKeys";
+import {
+  FieldKey,
+  type CanonicalInputState,
+} from "../../models/fieldKeys";
 import {
   ModifierFieldKey,
   ModifierId,
-  type CanonicalInputValues,
   type InputModifier,
 } from "../../models/inputModifiers";
 import {
@@ -14,19 +16,17 @@ import {
   isModifierConfigurationComplete,
 } from "./inputModifiers";
 
-function createBaseInputs(): CanonicalInputValues {
+function createBaseInputs(): CanonicalInputState {
   return {
     [FieldKey.DryBulbTemperature]: 25,
     [FieldKey.MeanRadiantTemperature]: 25,
     [FieldKey.RelativeAirSpeed]: 0.1,
     [FieldKey.WindSpeed]: 1,
     [FieldKey.RelativeHumidity]: 50,
-    [FieldKey.HumidityRatio]: 9,
     [FieldKey.MetabolicRate]: 1.8,
     [FieldKey.ClothingInsulation]: 0.5,
     [FieldKey.ExternalWork]: 0,
     [FieldKey.PrevailingMeanOutdoorTemperature]: 20,
-    [FieldKey.OperativeTemperature]: 25,
   };
 }
 

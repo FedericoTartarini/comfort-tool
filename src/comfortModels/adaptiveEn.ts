@@ -1,5 +1,6 @@
 import { adaptive_en } from "jsthermalcomfort";
 import { ComfortStandard } from "../models/calculationMetadata";
+import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import type { PresetInputOption } from "../models/inputControls";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
@@ -76,9 +77,22 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   modes: [ChartMode.Compliance],
   chartableOutputs: [],
   supportedModifiers: [],
+  charts: {
+    defaultId: ChartId.Adaptive,
+    entries: [{
+      id: ChartId.Adaptive,
+      name: "Adaptive",
+      emptyMessage: "No adaptive chart yet.",
+      allowsAxisSelection: true,
+      locksYAxis: false,
+      showsZoneToggle: false,
+      showsLegend: true,
+    }],
+  },
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),
+    legendTitle: "Adaptive Zones",
     caption: createAdaptiveComplianceCaption(
       "Shading shows EN 16798-1 Categories I–III",
       adaptiveEnBoundaryDefinition,

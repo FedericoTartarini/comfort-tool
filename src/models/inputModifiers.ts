@@ -1,4 +1,7 @@
-import type { FieldKey as FieldKeyType } from "./fieldKeys";
+import type {
+  CanonicalInputFieldKey,
+  CanonicalInputState,
+} from "./fieldKeys";
 
 export const ModifierId = {
   MeasuredAirSpeed: "measuredAirSpeed",
@@ -103,7 +106,6 @@ export const modifierFieldMetaByKey: Record<ModifierFieldKey, ModifierFieldMeta>
   },
 };
 
-export type CanonicalInputValues = Record<FieldKeyType, number>;
 export type ModifierInputValues = Partial<Record<ModifierFieldKey, number | null>>;
 export type CompleteModifierInputValues = Partial<Record<ModifierFieldKey, number>>;
 
@@ -112,9 +114,9 @@ export interface InputModifier {
   label: string;
   description: string;
   extraInputs: readonly ModifierFieldKey[];
-  affectedFields: readonly FieldKeyType[];
+  affectedFields: readonly CanonicalInputFieldKey[];
   apply: (
-    inputs: Readonly<CanonicalInputValues>,
+    inputs: Readonly<CanonicalInputState>,
     extraInputs: Readonly<CompleteModifierInputValues>,
-  ) => Partial<CanonicalInputValues>;
+  ) => Partial<CanonicalInputState>;
 }

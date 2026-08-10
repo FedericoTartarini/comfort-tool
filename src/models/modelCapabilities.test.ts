@@ -8,20 +8,13 @@ import {
   type NumericBand,
 } from "./modelCapabilities";
 
-function createInputsSi(): BandInputsSi {
-  return Object.fromEntries(
-    Object.values(FieldKey).map((fieldKey) => [fieldKey, 0]),
-  ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
-}
-
 function createBand(min: number, max: number, label: string): NumericBand {
   return { min, max, label, color: "#000000" };
 }
 
 describe("model capability band helpers", () => {
   it("resolves numeric and canonical-SI functional edges", () => {
-    const inputsSi = {
-      ...createInputsSi(),
+    const inputsSi: BandInputsSi = {
       [FieldKey.RelativeAirSpeed]: 0.2,
     };
 

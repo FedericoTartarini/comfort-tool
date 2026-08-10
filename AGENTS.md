@@ -74,7 +74,7 @@ All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or
 
 ## State Rules
 
-The current controller works, but it is still model-specific in several places. New work should move the state shape toward generic, keyed structures rather than expanding the existing parallel PMV/UTCI pattern.
+The controller uses generic keyed structures. New work must preserve that shape rather than adding parallel model-specific state.
 
 Current risks to avoid extending:
 
@@ -131,6 +131,11 @@ Do not introduce new raw domain strings for those concepts.
 - Every model declaration must set `modes` and `chartableOutputs`; Compliance models must also set a `complianceSpec` with non-empty bands, a caption, and a result feedback callback. Use the builder rather than controller branches.
 - `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `chartSettingsByModel` stores each model's mode, x/y axes, baseline, and optional Explore working state. Explore z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`; Compliance output and bands always come directly from `complianceSpec`.
+- `canonicalInputFieldOrder as const` is the exact persisted input-key set. Derive `CanonicalInputFieldKey` and `CanonicalInputState` from it; chart-only and derived `FieldKey` values must not enter canonical records, share input records, behavior patches, modifiers, or calculation context.
+- Every model owns a single `setCharts({ defaultId, entries })` declaration. `ModelChartDefinition` carries chart name, empty state, axis selection/Y locking, zone-toggle, and legend capability; do not recreate a global chart metadata registry or parallel chart/legend/lock arrays.
+- Compliance models must provide `complianceSpec.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput`.
+- `InputControlBehavior` owns only view-model construction and numeric input application. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
+- Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
 - Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize only Explore bands plus exact modifier state, and use explicit wire sentinels for unbounded numeric edges. Do not add old-v1 migration behavior.
 - Band assignment is array-ordered and half-open (`min <= value < max`); numeric values, functional-edge X values, and band inputs are canonical SI.

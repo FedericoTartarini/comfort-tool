@@ -16,9 +16,7 @@ describe("toPlotlyFigure", () => {
           y: [50],
           marker: { color: "#2563eb", size: 10 },
           hoverMetadata: ["Input 1", 24, 50],
-          isZone: true,
           isBackgroundZone: true,
-          isComfortZone: true,
         },
         {
           type: "contour",
@@ -65,9 +63,7 @@ describe("toPlotlyFigure", () => {
 
     for (const trace of figure.data) {
       expect(trace).not.toHaveProperty("hoverMetadata");
-      expect(trace).not.toHaveProperty("isZone");
       expect(trace).not.toHaveProperty("isBackgroundZone");
-      expect(trace).not.toHaveProperty("isComfortZone");
     }
 
     (figure.data[0].x as number[])[0] = 30;

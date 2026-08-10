@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartId } from "../../../models/chartOptions";
+import {
+  ChartId,
+  type ModelChartDefinition,
+} from "../../../models/chartOptions";
 import { ComfortModel } from "../../../models/comfortModels";
 import { FieldKey } from "../../../models/fieldKeys";
 import { OptionKey, TemperatureMode } from "../../../models/inputModes";
@@ -15,6 +18,7 @@ import { ThermalZone } from "../../../models/thermalZone";
 import {
   ComfortModelBuilder,
   createEmptyResults,
+  parseEmptyOptions,
 } from "./builder";
 
 const bands: readonly NumericBand[] = [
@@ -29,6 +33,22 @@ const pmvOutput: ModelOutput = {
 
 const complianceFeedback = () => ({ text: "Compliant", passes: true });
 
+function createChartDefinition(
+  id: ChartId = ChartId.Psychrometric,
+  overrides: Partial<ModelChartDefinition> = {},
+): ModelChartDefinition {
+  return {
+    id,
+    name: "Test chart",
+    emptyMessage: "No test chart yet.",
+    allowsAxisSelection: false,
+    locksYAxis: false,
+    showsZoneToggle: false,
+    showsLegend: true,
+    ...overrides,
+  };
+}
+
 function createComplianceSpec(
   output: ModelOutputKey = ModelOutputKey.Pmv,
   complianceBands: readonly NumericBand[] = bands,
@@ -36,6 +56,7 @@ function createComplianceSpec(
   return {
     output,
     bands: complianceBands,
+    legendTitle: "Test bands",
     caption: "Test compliance requirements.",
     getFeedback: complianceFeedback,
   };
@@ -64,7 +85,10 @@ function createBuilder(omitted: readonly BuilderPart[] = []) {
   if (includes("description")) builder.setDescription("Test model description.");
   if (includes("modifiers")) builder.setModifiers([]);
   if (includes("chart")) {
-    builder.setDefaultChart(ChartId.Psychrometric, [ChartId.Psychrometric]);
+    builder.setCharts({
+      defaultId: ChartId.Psychrometric,
+      entries: [createChartDefinition()],
+    });
   }
   if (includes("defaultOptions")) builder.setDefaultOptions({});
   if (includes("parser")) builder.setOptionParser(() => ({}));
@@ -107,8 +131,10 @@ describe("ComfortModelBuilder capabilities", () => {
       label: "Test model",
       description: "Test model description.",
       modes: [ChartMode.Explore],
-      chartIds: [ChartId.Psychrometric],
-      defaultChartId: ChartId.Psychrometric,
+      charts: {
+        defaultId: ChartId.Psychrometric,
+        entries: [createChartDefinition()],
+      },
       defaultOptions: {},
     }));
     expect(definition.calculate).toBeTypeOf("function");
@@ -126,7 +152,10 @@ describe("ComfortModelBuilder capabilities", () => {
       .setChartableOutputs([pmvOutput])
       .setModifiers([ModifierId.SolarGain])
       .setComplianceSpec(createComplianceSpec())
-      .setDefaultChart(ChartId.Psychrometric, [ChartId.Psychrometric])
+      .setCharts({
+        defaultId: ChartId.Psychrometric,
+        entries: [createChartDefinition()],
+      })
       .setDefaultOptions({})
       .setOptionParser(() => ({}))
       .setCalculator(() => ({
@@ -210,7 +239,14 @@ describe("ComfortModelBuilder capabilities", () => {
       .toThrow(/non-empty compliance specification/i);
   });
 
-  it("requires Compliance models to expose a caption and feedback callback", () => {
+  it("requires Compliance models to expose a legend title, caption, and feedback callback", () => {
+    expect(() => createBuilder()
+      .setModes([ChartMode.Compliance])
+      .setChartableOutputs([])
+      .setComplianceSpec({ ...createComplianceSpec(), legendTitle: "  " })
+      .build())
+      .toThrow(/non-empty compliance specification/i);
+
     expect(() => createBuilder()
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
@@ -227,6 +263,16 @@ describe("ComfortModelBuilder capabilities", () => {
       })
       .build())
       .toThrow(/non-empty compliance specification/i);
+  });
+
+  it("requires default options to satisfy the model's exact parser", () => {
+    expect(() => createExploreBuilder()
+      .setDefaultOptions({
+        [OptionKey.TemperatureMode]: TemperatureMode.Air,
+      })
+      .setOptionParser(parseEmptyOptions)
+      .build())
+      .toThrow(/exact option schema/i);
   });
 
   it("rejects a compliance specification without Compliance mode", () => {
@@ -273,7 +319,7 @@ describe("ComfortModelBuilder capabilities", () => {
   it.each([
     ["label", /non-empty label/i],
     ["description", /non-empty description/i],
-    ["chart", /at least one chart ID/i],
+    ["chart", /at least one chart definition/i],
     ["defaultOptions", /explicitly set default options/i],
     ["parser", /option parser/i],
     ["calculator", /calculator/i],
@@ -287,20 +333,32 @@ describe("ComfortModelBuilder capabilities", () => {
 
   it("rejects empty, duplicate, and mismatched chart declarations", () => {
     expect(() => createExploreBuilder()
-      .setDefaultChart(ChartId.Psychrometric, [])
+      .setCharts({ defaultId: ChartId.Psychrometric, entries: [] })
       .build())
-      .toThrow(/at least one chart ID/i);
+      .toThrow(/at least one chart definition/i);
     expect(() => createExploreBuilder()
-      .setDefaultChart(ChartId.Psychrometric, [
-        ChartId.Psychrometric,
-        ChartId.Psychrometric,
-      ])
+      .setCharts({
+        defaultId: ChartId.Psychrometric,
+        entries: [createChartDefinition(), createChartDefinition()],
+      })
       .build())
       .toThrow(/duplicate chart IDs/i);
     expect(() => createExploreBuilder()
-      .setDefaultChart(ChartId.Psychrometric, [ChartId.PmvDynamic])
+      .setCharts({
+        defaultId: ChartId.Psychrometric,
+        entries: [createChartDefinition(ChartId.PmvDynamic)],
+      })
       .build())
       .toThrow(/default chart must belong/i);
+    expect(() => createExploreBuilder()
+      .setCharts({
+        defaultId: ChartId.Psychrometric,
+        entries: [createChartDefinition(ChartId.Psychrometric, {
+          locksYAxis: true,
+        })],
+      })
+      .build())
+      .toThrow(/locked Y axis requires an axis-selectable chart/i);
   });
 
   it("rejects duplicate, unsupported, or identical dynamic axes", () => {
@@ -332,18 +390,19 @@ describe("ComfortModelBuilder capabilities", () => {
       label: "Original",
       color: "#123456",
     });
-    const builder = createExploreBuilder()
-      .setZones([originalZone])
-      .setLegendChartIds([ChartId.Psychrometric])
-      .setLegendTitle("Original legend")
-      .setLockYAxisChartIds([ChartId.Psychrometric]);
+    const builder = createExploreBuilder().setZones([originalZone]);
     const definition = builder.build();
 
     builder
       .setLabel("Changed model")
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
-      .setDefaultChart(ChartId.PmvDynamic, [ChartId.PmvDynamic])
+      .setCharts({
+        defaultId: ChartId.PmvDynamic,
+        entries: [createChartDefinition(ChartId.PmvDynamic, {
+          name: "Changed chart",
+        })],
+      })
       .setDefaultOptions({
         [OptionKey.TemperatureMode]: TemperatureMode.Operative,
       })
@@ -356,15 +415,15 @@ describe("ComfortModelBuilder capabilities", () => {
         yAxis: FieldKey.RelativeHumidity,
       })
       .setZones([])
-      .setLegendChartIds([])
-      .setLegendTitle("Changed legend")
-      .setLockYAxisChartIds([])
       .addOptionHandler(OptionKey.TemperatureMode, () => null);
 
     expect(definition.label).toBe("Test model");
     expect(definition.modes).toEqual([ChartMode.Explore]);
     expect(definition.chartableOutputs).toEqual([pmvOutput]);
-    expect(definition.chartIds).toEqual([ChartId.Psychrometric]);
+    expect(definition.charts).toEqual({
+      defaultId: ChartId.Psychrometric,
+      entries: [createChartDefinition()],
+    });
     expect(definition.defaultOptions).toEqual({});
     expect(definition.dynamicAxisFields).toEqual([
       FieldKey.DryBulbTemperature,
@@ -375,9 +434,6 @@ describe("ComfortModelBuilder capabilities", () => {
       yAxis: FieldKey.RelativeHumidity,
     });
     expect(definition.zones).toEqual([originalZone]);
-    expect(definition.legendChartIds).toEqual([ChartId.Psychrometric]);
-    expect(definition.legendTitle).toBe("Original legend");
-    expect(definition.lockYAxisChartIds).toEqual([ChartId.Psychrometric]);
     expect(definition.optionHandlersByKey).toEqual({});
   });
 });

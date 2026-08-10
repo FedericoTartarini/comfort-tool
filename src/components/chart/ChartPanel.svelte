@@ -1,16 +1,14 @@
 <script lang="ts">
-  /**
-   * @component
-   * Renders a configurable chart panel with support for dynamic axis selection,
-   * multiple export formats, and integrated loading states.
-   */
   import { Toggle } from "flowbite-svelte";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
   import ChartExportMenu from "./ChartExportMenu.svelte";
   import ChartControls from "./ChartControls.svelte";
   import ChartModeControl from "./ChartModeControl.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
+  import type {
+    ChartId as ChartIdType,
+    ModelChartDefinition,
+  } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
   import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
   import type { ChartControlsViewModel } from "../../state/comfortTool/types";
@@ -18,9 +16,8 @@
   interface Props {
     chartResult: PlotlyChartResponseDto | null;
     isLoading: boolean;
-    emptyMessage: string;
-    heightClass: string;
-    chartOptions: Array<{ name: string; value: ChartIdType }>;
+    chartDefinition: ModelChartDefinition;
+    chartOptions: readonly ModelChartDefinition[];
     selectedChart: ChartIdType;
     selectedModel: ComfortModelType;
     onSelectChart: (chartId: ChartIdType) => void;
@@ -32,8 +29,7 @@
   let {
     chartResult,
     isLoading,
-    emptyMessage,
-    heightClass,
+    chartDefinition,
     chartOptions,
     selectedChart,
     selectedModel,
@@ -46,9 +42,9 @@
   let exportChart: ((type: "png" | "svg") => void) | undefined =
     $state(undefined);
   let showZones = $state(true);
+  const heightClass = "h-[480px] xl:h-[480px]";
   const chartPanelIdPrefix = `chart-panel-${Math.random().toString(36).slice(2, 10)}`;
 
-  // Reset zone visibility whenever the active chart changes.
   $effect(() => {
     selectedChart;
     showZones = true;
@@ -62,9 +58,7 @@
   const controlsIdPrefix = $derived(
     `${chartPanelIdPrefix}-${selectedModel}-${selectedChart}`,
   );
-  const showZonesToggle = $derived(
-    !!chartMetaById[selectedChart].hasZoneVisibilityToggle,
-  );
+  const showZonesToggle = $derived(chartDefinition.showsZoneToggle);
 </script>
 
 <div
@@ -84,8 +78,8 @@
         <span class="text-xs font-medium text-stone-500">Chart:</span>
         <ChartExportMenu
           {chartOptions}
+          currentChart={chartDefinition}
           {selectedChart}
-          activeChartId={selectedChart}
           {onSelectChart}
           onExport={(type) => exportChart?.(type)}
         />
@@ -111,13 +105,15 @@
       <PlotlyCanvas
         {chartResult}
         {isLoading}
-        {emptyMessage}
+        emptyMessage={chartDefinition.emptyMessage}
         {heightClass}
         {showZones}
         onRegisterExport={(handler) => (exportChart = handler)}
       />
     </div>
 
-    <ChartLegend zones={legendZones} {legendTitle} />
+    {#if chartDefinition.showsLegend}
+      <ChartLegend zones={legendZones} {legendTitle} />
+    {/if}
   </div>
 </div>

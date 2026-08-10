@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ChartId } from "../../models/chartOptions";
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import { FieldKey } from "../../models/fieldKeys";
+import { canonicalInputFieldOrder, FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
 import { HumidityInputMode, OptionKey, TemperatureMode } from "../../models/inputModes";
 import {
@@ -88,6 +88,8 @@ describe("shareState strict v1 codec", () => {
     const snapshot = createShareStateSnapshot(toolState.state);
     const restored = deserializeShareState(serializeShareState(snapshot));
 
+    expect(Object.keys(snapshot.inputsByInput[InputId.Input1]))
+      .toEqual(canonicalInputFieldOrder);
     expect(Object.keys(snapshot.activeModifiersByInput[InputId.Input1]))
       .toEqual(modifierOrder);
     expect(snapshot.activeModifiersByInput[InputId.Input1][ModifierId.MeasuredAirSpeed])

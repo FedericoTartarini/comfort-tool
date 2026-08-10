@@ -33,8 +33,9 @@ import {
 } from "./derivations";
 import { check_standard_compliance, pmv_ppd_ashrae } from "jsthermalcomfort";
 import {
-  synchronizePmvInputState,
+  deriveInputDerivedState,
 } from "./syncState";
+import { synchronizeHumidityInputState } from "./controls/humidityControl";
 import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOptions } from "./referenceValues";
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
@@ -262,7 +263,7 @@ describe("comfort services", () => {
     expect(psychrometricChart.traces[0].isBackgroundZone).toBe(true);
     expect(psychrometricChart.traces.filter((trace) => trace.name.startsWith("RH "))).toHaveLength(10);
     const comfortZoneTrace = psychrometricChart.traces.find((trace) => trace.name.includes("comfort zone"));
-    expect(comfortZoneTrace?.isComfortZone).toBe(true);
+    expect(comfortZoneTrace?.isBackgroundZone).toBe(true);
     expect(psychrometricChart.traces[psychrometricChart.traces.length - 1]?.type)
       .toBe("scatter");
     expect(psychrometricChart.traces.filter(({ contours }) => (
@@ -456,20 +457,20 @@ describe("comfort services", () => {
   });
 
   it("synchronizes canonical relative humidity from a dew-point override", () => {
-    const synchronizedState = synchronizePmvInputState(
-      {
-        ...inputDefaultsById[InputId.Input1],
-        [FieldKey.DryBulbTemperature]: 26,
-      } as any,
-      {
-        [OptionKey.HumidityInputMode]: HumidityInputMode.DewPoint,
-      },
+    const inputState = {
+      ...inputDefaultsById[InputId.Input1],
+      [FieldKey.DryBulbTemperature]: 26,
+    };
+    const synchronizedState = synchronizeHumidityInputState(
+      inputState,
+      deriveInputDerivedState(inputState),
+      HumidityInputMode.DewPoint,
       {
         [DerivedInputId.DewPoint]: 12,
       },
     );
 
-    expect(synchronizedState.inputState[FieldKey.RelativeHumidity]).toBeCloseTo(
+    expect(synchronizedState[FieldKey.RelativeHumidity]).toBeCloseTo(
       deriveRelativeHumidityFromDewPoint(26, 12),
       6,
     );

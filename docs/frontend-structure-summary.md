@@ -1,261 +1,143 @@
-# Frontend Structure Summary
+# Frontend structure summary
 
-## Overall Purpose
+This is an internal developer reference for the Svelte 5 frontend. Product code lives under `src/`; calculations run locally, canonical state is SI, and no backend or documentation deployment is part of the application build.
 
-This project is a Svelte 5 frontend for exploring thermal comfort calculations. The application lets users enter environmental and personal parameters, run comfort calculations, and view both numeric results and charts.
+See [Adding a thermal model](adding-a-thermal-model.md) for the model-authoring checklist and [AGENTS.md](../AGENTS.md) for repository execution rules.
 
-The current active application is the repository root version.
+## Source ownership
 
-## Main Runtime Flow
+| Layer | Owns | May depend on |
+|---|---|---|
+| `views` | Page composition | components, state |
+| `components` | Rendering and interaction | state, models, lightweight services |
+| `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots | models, services, registered runtime definitions |
+| `comfortModels` | Model declarations, calculations, results, chart evaluators, declaration-local zones | models, comfort/unit services, model builder |
+| `services/comfort` | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines | models |
+| `services/units` | SI/display conversion and presentation precision | models |
 
-`src/App.svelte`
-- Application entry point.
-- Creates the main comfort-tool state controller.
-- Loads shared state from the URL when present.
-- Triggers the initial calculation when the page opens.
+The model registry is the intentional exception that imports registered definitions from `comfortModels`. `jsthermalcomfort` imports are restricted to `comfortModels` and `services/comfort`.
 
-`src/views/ComfortDashboard.svelte`
-- Main page composition.
-- Connects the input panel, results panel, and chart panel.
-- Keeps layout separate from domain logic.
+Primary entrypoints are:
 
-## Directory Summary
+```text
+src/App.svelte
+src/views/ComfortDashboard.svelte
+src/state/comfortTool/createComfortToolState.svelte.ts
+src/state/comfortTool/types.ts
+```
 
-`src/components/`
-- Reusable UI components.
-- Contains layout components, results display, search/select inputs, and clothing tools.
+## Model authoring and runtime definitions
 
-`src/components/chart/`
-- Chart-specific UI.
-- Handles chart display, export, Plotly rendering, Explore output selection, and transactional threshold editing.
+Each registered model has one focused declaration entry under `src/comfortModels/`. “One declaration entry” means that its identity and product decisions are readable in one place; it does not remove the centralized stable-ID sets, explicit registry, or separate tests.
 
-`src/components/input-panel/`
-- Input workflow UI.
-- Handles model selection, compare mode, unit switching, base-input editing, and optional input modifiers.
+Simple models may keep calculation and chart code in the declaration file. Larger standard families use focused modules beside their declarations so formulas and chart construction are implemented once without hiding standard-specific decisions:
 
-`src/models/`
-- Domain constants and metadata.
-- Defines model IDs, chart IDs, field keys, modifier and modifier-field IDs, model capability types, the minimal calculation context, field metadata, DTOs, units, and preset options.
+- PMV: ASHRAE/ISO declarations, shared builder assembly, calculation/results, and charts;
+- Adaptive: ASHRAE/EN declarations, shared builder assembly, calculation/results, and charts.
 
-`src/comfortModels/`
-- Owns each model's controls, request mapping, calculations, results, charts, zones, and declarative capabilities.
-- Contains separate `pmvAshrae.ts` (`"PMV_ASHRAE"`) and `pmvIso.ts` (`"PMV_ISO"`) declarations; shared PMV mechanics live in the non-registered `pmvShared.ts` support module.
-- Contains separate `adaptiveAshrae.ts` and `adaptiveEn.ts` declarations; standard-independent Adaptive mechanics live in `adaptiveShared.ts`.
-- Model requests and calculation results are canonical-SI only; calculators receive `ModelCalculationContext`, not controller state.
+`ComfortModelDefinition<Result, ChartSource>` is the typed authoring contract in `modelConfigs/definition.ts`. Builder setters preserve the model's result and chart-source types. `build()` validates semantic invariants and erases those generics exactly once into `RuntimeComfortModelDefinition`.
 
-`src/services/comfort/`
-- Reusable thermal-comfort helpers shared by model definitions.
-- Contains psychrometrics, the pure input-modifier registry and chain, input derivation, strict thermal-zone resolution, reference data, control behavior, and chart scaffolding.
+The explicit registry is:
 
-`src/services/comfort/charts/`
-- Shared grid/contour and boundary-region engines, numeric-band validation, and Plotly-ready chart helpers.
+```ts
+Record<ComfortModel, RuntimeComfortModelDefinition>
+```
 
-`src/services/comfort/controls/`
-- Encapsulates advanced PMV input behavior and reusable numeric control behavior.
+It owns registration and ordering only. The controller consumes runtime definitions without importing model implementations, double-casting definitions, or adding model-specific state.
 
-`src/services/units/`
-- Centralized SI to display-unit conversion helpers.
-- Keeps canonical shared state, modifier inputs, and Explore band edges in SI units, including output-specific presentation and reusable temperature, speed, and solar-radiation conversion.
+Declaration-local `ThermalZone[]` values derive Explore or Compliance bands. Zones are not copied into the runtime definition, and each numeric boundary has one source.
 
-`src/state/comfortTool/`
-- Main shared controller for the application.
-- Owns UI state, canonical base-input state, modifier configuration, model configuration, and share-state logic.
+## Canonical inputs and controls
 
-`src/views/`
-- Page-level composition only.
+`FieldKey` includes persisted inputs and derived/chart-only coordinates. `canonicalInputFieldOrder as const` is the narrower source of truth for persistent input state, share input records, behavior patches, modifier patches, and calculation context.
 
-`public/brand-media/`
-- Static media assets used by the UI.
+Humidity ratio and operative temperature are legal chart axes but are not canonical record members. Base input remains SI and survives model switches even when a model does not display every field.
 
-## Key Files And Their Roles
+Control behavior constructs an `InputControlViewModel` and applies numeric input. Model `optionHandlersByKey` is the only option-change path. Shared behavior is split by capability:
 
-`src/state/comfortTool/createComfortToolState.svelte.ts`
-- Main controller for the tool.
-- Creates canonical base-input state, exact per-input modifier state, and UI state.
-- Derives effective SI inputs through each model's declared modifier order without storing or writing the derived values back.
-- Invalidates caches by scanning modifier capability declarations; inactive modifier edits do not invalidate calculations, while active edits affect only supporting models.
-- Recomputes derived input view data from canonical inputs via Svelte `$derived.by()`.
-- Exposes actions and selectors used by the interface.
-- Tracks per-model calculation caches with explicit `empty` / `stale` / `ready` status.
-- Invalidates model caches without wiping raw results and rebuilds presentation from selectors.
-- Owns `chartSettingsByModel`, where every model independently remembers mode, axes, baseline, and its optional Explore output/working bands.
-- Builds one `ChartControlsViewModel`; selecting a mode, chart, axes, baseline, output, or working bands changes presentation only and preserves the ready cache and result identities.
-- Resolves hidden or unavailable remembered baselines to Input 1 for presentation without erasing the per-model selection.
+- `numericControl.ts` for ordinary fields and air-speed behavior;
+- `temperatureControl.ts` for explicit Air/Operative support;
+- `humidityControl.ts` for humidity modes, conversion, and RH synchronization.
 
-`src/state/comfortTool/types.ts`
-- Central type definitions for controller state, model cache state, actions, selectors, and presentation view models.
+Every model supplies complete default options and an exact parser. Missing, extra, or invalid external options are rejected; invalid internal option state is an invariant error.
 
-`src/state/comfortTool/modelConfigs/index.ts`
-- Registry of supported comfort models.
-- Connects model IDs to their model-specific definitions, including both PMV standards.
+## Requests, axes, and calculations
 
-`src/state/comfortTool/modelConfigs/builder.ts`
-- Fluent model-definition builder and declarative result-row helpers.
-- Setter calls retain declarations without cloning. Each model explicitly declares supported modifiers, including an empty list, and supplies a strict option parser; simple models accept only an exact empty object. The final `build()` call is the model-definition trust boundary: it validates capabilities, modifier IDs, required metadata, chart declarations, calculation/presentation functions, and axis defaults, then copies arrays and records once into the returned snapshot.
+`createFieldRequestAdapter()` accepts one mapping from numeric request properties to canonical fields and returns calculation mapping plus ordinary chart-axis get/set behavior.
 
-`src/models/inputModifiers.ts`
-- Owns centralized `ModifierId` and `ModifierFieldKey` values, modifier field metadata, state value types, and the generic pure `InputModifier` contract.
+`createRequestAxisAdapter()` composes that mapping when charts need aliases or explicit operative-temperature behavior. PMV aliases Wind Speed to Relative Air Speed; UTCI aliases Relative Air Speed to Wind Speed. Each supplies its standard-relevant operative get/set/range rules through the adapter.
 
-`src/models/modelCapabilities.ts`
-- Defines `ChartMode`, `ModelOutputKey`, `NumericFieldChartConfig`, generic numeric or functional Compliance contracts, `FieldChartConfig<TBand>`, `ChartBuildContext<TBand>`, editable numeric Explore bands, output declarations, and generic compliance specifications with captions and result feedback.
-- Defines `BandInputsSi` as the readonly partial canonical-SI field map required by functional edges, and provides `bandsFromThermalZones()` plus array-ordered half-open (`min <= value < max`) band resolution helpers. Adaptive edge functions always receive canonical-SI outdoor temperature, independent of displayed axis direction.
+The shared dynamic-axis solver applies two coordinates as one physical constraint. For Air/Radiant/Operative pairs, it preserves the explicitly selected component and solves the coupled component instead of allowing a later write to overwrite the earlier coordinate.
 
-`src/models/comfortDtos.ts`
-- Defines the shared `ModelChartSourceDto<TRequest>` `{ inputs }` contract. Simple models, UTCI, and Adaptive use it directly; PMV extends it with per-input comfort-zone data.
-- Defines only the supported Plotly-ready DTO surface: discriminated Scatter-marker, Scatter-line, and Contour traces plus narrow layout, axis, legend, margin, and annotation shapes.
+Calculations receive `ModelCalculationContext`, containing effective canonical-SI inputs and exact model options. Each definition returns typed results and a typed chart source. At controller level they are stored in generic `ModelCalculationCache<unknown, unknown>` records keyed by model ID.
 
-`src/models/modelCalculation.ts`
-- Defines the readonly calculation boundary exposed to models: effective canonical-SI `inputsByInput` and `modelOptionsByModel` only. The controller derives effective values before crossing this boundary.
+## Generic input modifiers
 
-`src/services/comfort/requestMapping.ts`
-- Maps model-declared request properties to canonical-SI `FieldKey` values and owns the reusable visible-input calculation loop for standard `{ inputs }` chart sources.
-- Does not select fields, interpret model options, or replace the thin request/response DTOs owned by each model.
+The controller stores three separate concepts:
 
-`src/comfortModels/pmvAshrae.ts` and `pmvIso.ts`
-- Own their standard-specific PMV calculation, applicability, operative-temperature strategy, capability declaration, and independent compliance bands.
-- Both declare measured air speed, morning clothing estimate, and solar gain in the same modifier order; every other registered model declares an empty modifier list.
-- The ISO declaration and result metadata explicitly identify ISO 7730 Category B; its Neutral `[-0.5, 0.5)` thresholds intentionally match the separate ASHRAE declaration numerically.
+```text
+base SI input
+modifier enabled/configuration state
+derived effective SI input
+```
 
-`src/comfortModels/pmvShared.ts`
-- Owns shared PMV controls, zones, request/result DTOs, result rows, comfort-zone solving, and config-builder plumbing. One descriptor-driven `buildPmvFieldChart()` supplies both psychrometric and selectable-axis views with common output classification, PMV/PPD hover data, point evaluation, markers, grid strategy, layout, and trace ordering.
-- Accepts an explicit SI standard adapter; requests and chart sources do not repeat standard or model identity, and shared mechanics contain no ASHRAE/ISO selection branch.
+`defineInputModifier()` uses tuple generics for `extraInputs` and `affectedFields`. A callback receives complete effective input and exact complete extra inputs, and may return only a patch of its declared canonical fields. Incomplete configuration is handled at the parser/application boundary; non-finite or undeclared output is rejected.
 
-`src/comfortModels/adaptiveAshrae.ts`, `adaptiveEn.ts`, and `adaptiveShared.ts`
-- Each standard declaration explicitly owns `modes`, `chartableOutputs`, `complianceSpec`, coefficients, zones, calculator adapters, and an independently generated functional band array.
-- Both registered models are Compliance-only and expose only `ChartId.Adaptive`. Their only selectable axes are outdoor temperature (ASHRAE 10–33.5 °C; EN 10–30 °C) and operative temperature (10–40 °C), in either direction.
-- Shared mechanics accept a boundary definition containing only levels, coefficients, and band sequence, then own request mapping, result rows, tooltip metadata, discontinuity samples, and config-builder plumbing without standard-mode branches. They do not build boundary curves, polygons, inverse axes, or zone grids.
+Executable modifier definitions belong to model declarations. The global catalogue contains only stable UI/share IDs and extra-input schema. Supported definitions execute in this fixed order:
 
-`src/comfortModels/utci.ts`, `heatIndex.ts`, `humidex.ts`, and `windChill.ts`
-- Declare Explore-only capabilities with presets derived from their existing `ThermalZone` definitions.
+```text
+Measured Air Speed -> Morning Clothing Estimate -> Dynamic Clothing -> Solar Gain
+```
 
-`src/state/comfortTool/shareState.ts`
-- Owns the strict v1 share snapshot schema, serialization, deserialization, and state-apply helpers.
-- Stores selected chart, options, and `{ mode, xAxis, yAxis, baselineInputId, explore }` inside every model snapshot. Compliance bands are never serialized; Explore `±Infinity` edges use explicit wire sentinels.
-- Stores exact per-input enabled flags and modifier-specific SI values, including `null` for unset required fields. Enabled incomplete modifiers, unknown keys, invalid ranges, and non-finite values are rejected.
-- Encodes JSON as UTF-8 bytes before Base64URL and uses fatal UTF-8 decoding, so Unicode labels round-trip while malformed bytes are rejected.
-- Rejects unsupported versions, unknown fields, invalid current chart IDs, invalid model/mode/axis/output/band/baseline values, non-exact model options, non-canonical compare IDs, incompatible active inputs, and incomplete registry snapshots. Validated snapshots are applied exactly without normalization or repair.
+PMV ASHRAE and PMV ISO each declare Dynamic Clothing with their own `clo_dynamic` standard. Other models do not declare it. Dynamic Clothing has no additional user input and consumes the current effective clothing/metabolic values, so it follows Morning Clothing when both are enabled.
 
-`src/services/comfort/referenceValues.ts`
-- Adapts library-backed `met` and `clo` reference datasets into UI-ready option metadata.
+Modifier output never writes back to base state. Disabling any modifier therefore recomputes the effective values from base input through the remaining chain.
 
-`src/services/comfort/inputModifiers.ts`
-- Owns the generic pure modifier registry, completeness/range validation, deterministic sequential application, and the `jsthermalcomfort` solar-gain adapter.
-- Measured air speed derives effective relative speed from the preceding effective metabolic rate; morning temperature derives effective clo; solar gain adds `delta_mrt` to the preceding effective MRT.
+## Controller composition
 
-`src/services/comfort/derivations/`
-- Handles derived values such as dew point, humidity ratio, wet-bulb temperature, vapor pressure, operative temperature, and relative air speed transformations. The shared humidity-ratio-to-RH calculation is unclamped; input synchronization alone applies the existing 0–100% limit.
+`createComfortToolState.svelte.ts` owns rune initialization, cache invalidation, calculation scheduling, and action/selector composition. Pure logic lives beside it:
 
-`src/services/comfort/charts/gridModelCharts.ts`
-- Implements the declarative typed adapter used by Heat Index, Humidex, and Wind Chill.
-- Clones typed SI baselines, writes axes through model-owned getters/setters, invokes typed evaluators, and maps fixed-axis and selectable-axis declarations into the shared field-chart frame.
+- `chartPresentation.ts` projects controls, captions, feedback, legends, and chart presentation;
+- `modifierState.ts` derives effective input and handles modifier control transitions;
+- `modelSwitch.ts` detects invalid target-model values and builds canonical-SI clamp patches.
 
-`src/services/comfort/charts/dynamicAxisPayload.ts`
-- Resolves declared selectable-axis coordinates into model payloads in canonical SI.
-- Solves the current linear coupled-axis contract from the two endpoint values, rejecting non-finite, zero-slope, out-of-range, or failed post-condition results.
-- Uses transactional axis adapters: endpoint probes restore the solved component in `finally`, successful solves commit once, and failed final commits roll back that component.
-- Preserves the independently selected Air or Radiant temperature when paired with Operative temperature, so all four directed pairs remain chartable.
+These modules receive ordinary state/config/context values. There is no dependency-injection container, service class, forwarding wrapper, or model-specific controller branch.
 
-`src/services/comfort/charts/chartEngine.ts`
-- Exposes `buildFieldChart()` as the single chart-assembly entry point used by PMV, UTCI, simple-model, and Adaptive charts.
-- Accepts a discriminated Grid or Boundary strategy. `createBandedGridStrategy()` supplies the reusable numeric Grid renderer; `createBoundaryRegionStrategy()` turns ordered functional bands into filled traces without exposing polygon machinery to model files.
-- Creates display axes from canonical-SI axis specs, then assembles traces in a fixed order: strategy traces, chart overlays, per-input overlays, and input markers.
-- Every chart consumes the active `FieldChartConfig`. Fixed views override only their declared x/y axes and ranges; selectable-axis views read axes only from `fieldChartConfig.xField/yField`. Mode, output, bands, baseline, hover classification, and legend remain shared.
-- Grid evaluators return an explicit unplottable `null`; unexpected exceptions propagate to the caller.
-- The banded Grid strategy accepts one validated `NumericFieldChartConfig`, evaluates raw canonical-SI model outputs, and performs half-open working-band assignment without repeating state or builder validation. Numeric Compliance configs use the same strategy, while Adaptive passes its general functional `Band` contract and cached baseline air speed to the boundary-region strategy.
-- Smooth continuous outputs can opt into constraint contours, which retain one raw SI grid and let Plotly interpolate finite band thresholds. Constraint fills use per-region `fillcolor` without full-grid contour backgrounds. PMV ASHRAE/ISO use this strategy; other Explore charts remain categorical.
-- Visible categorical and constraint traces skip hover. One transparent contour tooltip trace owns full per-position metadata from the original output grid: band gaps report `Unclassified`, while model-invalid `NaN` cells have no hover.
-- The banded-grid runner keeps generic hover construction as its default and accepts an explicit full-template override for models that need multiple metrics or model-specific precision.
+State stays keyed by model ID: selected charts, options, chart settings, caches, results, and chart results do not grow parallel PMV/UTCI slots.
 
-`src/services/plotlyFigure.ts`
-- Isolates the intentionally loose third-party Plotly data boundary. It converts internal hover metadata to `customdata`, removes internal zone flags, converts axis/title shapes, clones the figure before Plotly can mutate it, and preserves non-finite grid cells as Plotly gaps.
+## Charts and presentation cache
 
-`src/state/comfortTool/fieldChartState.ts`
-- Seeds each model's default mode and chart settings and owns independent Explore working copies. Explore bands are cloned only during initialization, output changes, and accepted edits; the edit entry point normalizes and validates replacements. `buildFieldChartConfig()` deterministically maps already validated internal state to a locked Compliance or editable Explore config without repeated axis, mode, or output validation.
+Each model owns one `setCharts({ defaultId, entries })` declaration. Every `ModelChartDefinition` carries its name, empty state, axis-selection capability, optional Y lock, zone-toggle visibility, and legend visibility. There is no parallel global chart metadata registry.
 
-`src/services/units/modelOutputs.ts`
-- Central registry for output display units, precision, editor steps, and reversible SI/display conversion.
+Compliance and Explore share the Field Chart engine:
 
-`src/services/comfort/charts/boundaryRegionEngine.ts`
-- Samples the canonical-SI boundary parameter, merges direction-neutral discontinuity samples, resolves ordered functional `Band` edges from `BandInputsSi`, permits gaps, rejects `NaN`, reversal, and overlap, clamps unbounded edges to the other axis, and emits direct or transposed polygons in declaration order with hover disabled.
-- Preserves `buildClosedBoundaryPolygon()` for PMV and the transparent tooltip-grid helper. Region traces are geometry-only; the tooltip grid is the sole per-point evaluator and hover source, while complete chart assembly and region → tooltip → input-overlay → marker ordering remain in `buildFieldChart()`.
+- Compliance reads fixed output/bands, caption, legend title, and feedback from `complianceSpec`.
+- Explore reads a selected `ModelOutput` and a per-model editable working copy of numeric default bands.
+- Band membership is array ordered and half open: `min <= value < max`.
 
-`src/services/units/index.ts`
-- Centralized unit conversion helpers.
-- Converts between canonical SI values and display units used by the UI. Modifier temperature, speed, radiation, angle, and fraction presentation is centralized in `modifierInputs.ts`; model files and components do not define local conversion factors.
+Chart selection, mode, axes, baseline, Explore output/bands, unit system, and zone visibility are presentation-only. They rebuild from a ready calculation cache and do not invalidate or schedule model calculation.
 
-`src/components/input-panel/InputPanel.svelte`
-- Container for the input section.
-- Combines controls, compare toggles, base-input rows, the modifier section, and the custom base-clothing editor.
+The psychrometric chart clamps its drawable domain at 100% relative humidity.
 
-`src/components/input-panel/InputModifiers.svelte`
-- Renders the supporting model's modifiers in a collapsed-by-default optional section using the current compare-input layout.
-- Prevents incomplete activation, commits modifier-specific display values through centralized conversion, and previews affected effective values without mutating base inputs.
+## Share state
 
-`src/components/input-panel/InputFieldRow.svelte`
-- Renders one logical input row across one or more visible input sets.
-- Handles numeric entry, presets, and advanced option menus.
-- Canonical state is updated on committed number-field changes instead of every keystroke.
+Share snapshots use one strict `version: 1` schema. Every registered model contributes its selected chart, exact options, and chart settings. Only Explore working bands are serialized; functional Compliance bands come from declarations. Infinite numeric edges use explicit wire sentinels.
 
-`src/components/input-panel/ToolControls.svelte`
-- Handles model selection, compare mode, and unit-system switching.
+The modifier records contain the exact stable modifier key set, including Dynamic Clothing. Missing or extra model, input, option, chart, band, or modifier keys are rejected. There is no migration reader, fallback, compatibility shim, or cutover path.
 
-`src/components/ResultsPanel.svelte`
-- Displays calculated result sections for the currently active model.
+Adding a registered model intentionally changes the exact model key set required by a version-1 snapshot. The project has no deployed legacy snapshot compatibility requirement.
 
-`src/components/chart/ChartPanel.svelte`
-- Displays the currently selected chart and composes mode caption, feedback, and capability-driven controls from one `ChartControlsViewModel` for fixed and selectable-axis views.
+## Validation
 
-`src/components/chart/ChartModeControl.svelte`, `ChartControls.svelte`, `ChartDisplayMenu.svelte`, and `ChartBandEditor.svelte`
-- `ChartModeControl` renders a keyboard-operable `Compliance | Explore` segmented control only for dual-mode models, otherwise a single-mode caption. The caption and baseline-aware feedback share one explanation line with `Your input` or `Input N` text plus pass/fail/out-of-range icons.
-- `ChartControls` renders baseline for every chart when compare mode is active, x/y controls only when chart metadata declares `supportsAxisSelection`, and Display plus threshold editing on every Explore chart; its X/Y dropdowns share one Svelte snippet and every branch callback is required.
-- `ChartDisplayMenu` and `ChartBandEditor` retain their focused output-selection and draft-based threshold-editing responsibilities.
-- The editor converts finite edges only for display, validates and sorts before atomic commit, and leaves declaration presets untouched.
+Run the complete matrix before considering an architecture or model change complete:
 
-`src/components/chart/PlotlyCanvas.svelte`
-- Hosts the Plotly chart rendering surface, filters background-zone traces before conversion, and dynamically loads Plotly through the typed figure boundary.
+```bash
+npm test
+npm run check
+npm run lint
+npm run build
+npm run test:visual
+git diff --check
+```
 
-`src/components/chart/ChartExportMenu.svelte`
-- Provides chart export actions.
-
-`src/components/ClothingEnsembleBuilder.svelte`
-- Authors base clothing insulation from clothing ensembles. The separate morning-temperature estimate is an optional modifier and does not overwrite this base value.
-
-## Current Design Principles
-
-- Canonical shared state is stored in SI units.
-- Base SI inputs, active modifier flags, and modifier-specific SI inputs are stored separately; effective SI inputs are deterministic derived values.
-- Derived input display values are recomputed from canonical inputs instead of being stored as mutable controller state.
-- Raw calculation caches are stored in SI and kept separate from result/chart presentation.
-- Result sections, chart payloads, units, and tone styling are derived in selectors or presentation builders, not stored in canonical state.
-- Model-specific formulas stay in `src/comfortModels/`; reusable comfort helpers stay in `src/services/comfort/`. Neither belongs in UI components or controller state.
-- Library reference datasets such as metabolic tasks and clothing presets are adapted in `src/services/comfort/`.
-- Views handle composition.
-- Components handle rendering and interaction.
-- State coordinates inputs, selections, cache invalidation, scheduling, and share-state application.
-- `src/models/` owns stable identifiers and cross-model metadata; each registered model declaration owns its label, description, capabilities, and standard-specific metadata.
-- Input identifiers/defaults are separated from input display/theme metadata.
-- Share URLs use the strict registry-complete current `version: 1` schema with exact-key and version validation.
-- Model modes, chartable outputs, Explore presets, and Compliance bands are declared in registered model definitions rather than controller branches.
-- Every chart builder receives one band-typed `ChartBuildContext`; axes exist only in its `fieldChartConfig`, while chart-source DTOs contain calculation-derived data rather than axis selections, baseline selection, model identity, standards, or duplicate results.
-- Every chart builder receives the active validated `FieldChartConfig`. Fixed views locally replace only their x/y fields and ranges; model files still extract raw SI outputs while the shared engine owns mode-consistent classification, conversion, trace ordering, input markers, legends, layout, and annotations.
-- Mode, chart, axis, baseline, Explore output, and working-band changes synchronously rebuild presentation from the current ready cache without invalidating or rescheduling model calculations.
-- Model request DTOs and calculators are SI-only. IP values exist in `src/services/units/` and presentation output.
-- Calculation scheduling exposes only effective canonical-SI inputs and model options through `ModelCalculationContext`; comfort models do not import full controller or modifier state.
-- Share-state v1 stores mode, axes, baseline, Explore output/working bands, and exact modifier configuration. Exact-key parsers and canonical compare-input validation reject malformed snapshots; applying a parsed snapshot restores values exactly and never serializes declaration-owned Compliance bands.
-- Comparison-dependent functional regions resolve from the selected request in the ready chart-source cache, so changing the baseline rebuilds presentation without mixing live mutable inputs into cached results.
-- Legend selection performs ordered `label + color` deduplication; functional geometry continues to consume the original band array and therefore retains repeated bands and declaration order.
-- Validation is concentrated at model `build()`, strict share parsing, accepted Explore-band edits, thermal-zone classification, and runtime functional-boundary resolution. Trusted chart assembly does not repeat those checks.
-
-## What Was Improved Recently
-
-- Each model definition keeps its concrete result and chart-source types. The controller registry deliberately stores them as `ModelCalculationCache<unknown, unknown>` because controller orchestration does not inspect model-specific payloads; raw SI data remains separate from preformatted presentation.
-- Unit switching now rebuilds result and chart presentation consistently from SI source data.
-- Share-state ownership is centralized in one strict v1 parser and codec.
-- Numeric input fields now commit on change/blur so blank values are not committed as `0`.
-- `met` and `clo` option values now come from `jsthermalcomfort` through a comfort-service adapter instead of duplicated model data.
-- Shared calculation flow remains validated through automated tests and a successful production build.
-- Model capabilities are now declarative, PMV ASHRAE and ISO are separate cached models, and share snapshots use a strict v1 registry-complete schema.
-- Explore charts now share output selection, editable SI working bands, default categorical contour generation, optional continuous constraint contours, and centralized output conversion across fixed and selectable axes.
-- Compliance is a locked configuration of the same FieldChart engine, with per-model mode/settings memory, accessible segmented controls, captions, and baseline-specific feedback on every selectable view.
-- Adaptive ASHRAE and EN share one functional-boundary Compliance chart whose outdoor and operative axes can be swapped without changing calculation cache identity.
-- Generic input modifiers now derive one reversible effective request for calculations, result generation, and chart sources. PMV's measured-speed and morning-clothing tools use this path, solar gain is available to both PMV standards, and the custom ensemble builder remains a base-clo editor.
+The production command builds only the application entry. The files under `docs/` are maintained as internal Markdown and are neither generated nor deployed by that command.

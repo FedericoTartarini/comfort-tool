@@ -35,11 +35,7 @@ import {
 } from ".";
 
 function createInputsSi(relativeAirSpeed: number): BandInputsSi {
-  const inputsSi = Object.fromEntries(
-    Object.values(FieldKey).map((fieldKey) => [fieldKey, 0]),
-  ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
-  inputsSi[FieldKey.RelativeAirSpeed] = relativeAirSpeed;
-  return inputsSi;
+  return { [FieldKey.RelativeAirSpeed]: relativeAirSpeed };
 }
 
 function expectZoneDerivedBands(modelId: ComfortModelType, zones: readonly ThermalZone[]) {
@@ -322,8 +318,8 @@ describe("comfort model capability registry", () => {
       .toBe(ModelOutputKey.OperativeTemperature);
     [ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      expect(config.chartIds).toEqual([ChartId.Adaptive]);
-      expect(config.defaultChartId).toBe(ChartId.Adaptive);
+      expect(config.charts.entries.map(({ id }) => id)).toEqual([ChartId.Adaptive]);
+      expect(config.charts.defaultId).toBe(ChartId.Adaptive);
       expect(config.dynamicAxisFields).toEqual([
         FieldKey.PrevailingMeanOutdoorTemperature,
         FieldKey.OperativeTemperature,

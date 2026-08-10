@@ -1,35 +1,30 @@
 <script lang="ts">
-  /**
-   * @component
-   * UI for selecting the active chart type and triggering image exports (PNG/SVG).
-   * Displays the current chart name in a dropdown and provides action buttons for saving the visualization.
-   */
   import { Button, Dropdown, DropdownDivider, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import { chartMetaById } from "../../models/chartOptions";
-  import type { ChartId } from "../../models/chartOptions";
+  import type {
+    ChartId,
+    ModelChartDefinition,
+  } from "../../models/chartOptions";
 
   interface Props {
-    chartOptions: Array<{ name: string; value: ChartId }>;
+    chartOptions: readonly ModelChartDefinition[];
+    currentChart: ModelChartDefinition;
     selectedChart: ChartId;
-    activeChartId: ChartId;
     onSelectChart: (chartId: ChartId) => void;
     onExport: (type: "png" | "svg") => void;
   }
 
   let {
     chartOptions,
+    currentChart,
     selectedChart,
-    activeChartId,
     onSelectChart,
     onExport,
   }: Props = $props();
-
-  const currentChartLabel = $derived(chartMetaById[activeChartId].name);
 </script>
 
 <Button
-  id={`chart-select-trigger-${activeChartId}`}
+  id={`chart-select-trigger-${currentChart.id}`}
   color="light"
   pill
   size="xs"
@@ -37,18 +32,18 @@
   class="flex items-center"
 >
   <span class="max-w-[120px] truncate">
-    {currentChartLabel}
+    {currentChart.name}
   </span>
   <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
 </Button>
 
-<Dropdown triggeredBy={`#chart-select-trigger-${activeChartId}`} class="w-48 shadow-lg">
+<Dropdown triggeredBy={`#chart-select-trigger-${currentChart.id}`} class="w-48 shadow-lg">
   {#each chartOptions as option}
     <DropdownItem
-      onclick={() => onSelectChart(option.value)}
+      onclick={() => onSelectChart(option.id)}
       class="text-left"
     >
-      <span class={selectedChart === option.value ? "font-bold text-teal-700" : "text-stone-700"}>
+      <span class={selectedChart === option.id ? "font-bold text-teal-700" : "text-stone-700"}>
         {option.name}
       </span>
     </DropdownItem>

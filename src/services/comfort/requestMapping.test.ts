@@ -1,12 +1,16 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { ComfortModel } from "../../models/comfortModels";
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import { InputId } from "../../models/inputSlots";
+import {
+  FieldKey,
+  canonicalInputFieldOrder,
+  type CanonicalInputState,
+} from "../../models/fieldKeys";
+import { InputId, inputDefaultsById } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
 import {
   calculatePerInput,
-  createFieldRequestMapper,
+  createFieldRequestAdapter,
 } from "./requestMapping";
 
 interface DemoRequest {
@@ -15,12 +19,12 @@ interface DemoRequest {
 }
 
 function createInputState(
-  values: Partial<Record<FieldKeyType, number>>,
-): Record<FieldKeyType, number> {
+  values: Partial<CanonicalInputState>,
+): CanonicalInputState {
   return {
-    ...Object.fromEntries(Object.values(FieldKey).map((fieldKey) => [fieldKey, 0])),
+    ...inputDefaultsById[InputId.Input1],
     ...values,
-  } as Record<FieldKeyType, number>;
+  };
 }
 
 function createContext(): ModelCalculationContext {
@@ -46,23 +50,49 @@ function createContext(): ModelCalculationContext {
 }
 
 describe("request mapping", () => {
-  const mapRequest = createFieldRequestMapper<DemoRequest>({
+  const adapter = createFieldRequestAdapter<DemoRequest>({
     temperature: FieldKey.DryBulbTemperature,
     humidity: FieldKey.RelativeHumidity,
   });
 
   it("maps explicitly selected canonical-SI fields", () => {
-    const request = mapRequest(createContext(), InputId.Input1);
+    const request = adapter.mapRequest(createContext(), InputId.Input1);
 
     expect(request).toEqual({ temperature: 21.5, humidity: 45 });
-    expectTypeOf(mapRequest).returns.toEqualTypeOf<DemoRequest>();
+    expectTypeOf(adapter.mapRequest).returns.toEqualTypeOf<DemoRequest>();
+  });
+
+  it("uses the same declaration for bidirectional chart-axis mapping", () => {
+    const request = { temperature: 21.5, humidity: 45 };
+
+    expect(adapter.getAxisValue(request, FieldKey.RelativeHumidity)).toBe(45);
+    adapter.setAxisValue(request, FieldKey.DryBulbTemperature, 27);
+    expect(request).toEqual({ temperature: 27, humidity: 45 });
+    expect(() => adapter.getAxisValue(request, FieldKey.WindSpeed))
+      .toThrow(/unsupported request field/i);
+  });
+
+  it("declares exactly the persisted canonical input keys", () => {
+    expect(canonicalInputFieldOrder).toEqual([
+      FieldKey.DryBulbTemperature,
+      FieldKey.MeanRadiantTemperature,
+      FieldKey.RelativeAirSpeed,
+      FieldKey.WindSpeed,
+      FieldKey.RelativeHumidity,
+      FieldKey.MetabolicRate,
+      FieldKey.ClothingInsulation,
+      FieldKey.ExternalWork,
+      FieldKey.PrevailingMeanOutdoorTemperature,
+    ]);
+    expect(canonicalInputFieldOrder).not.toContain(FieldKey.HumidityRatio);
+    expect(canonicalInputFieldOrder).not.toContain(FieldKey.OperativeTemperature);
   });
 
   it("calculates visible inputs and initializes every result slot", () => {
     const calculated = calculatePerInput({
       context: createContext(),
       visibleInputIds: [InputId.Input1, InputId.Input3],
-      mapRequest,
+      mapRequest: adapter.mapRequest,
       calculate: (request) => ({
         index: request.temperature + request.humidity,
       }),
@@ -83,10 +113,10 @@ describe("request mapping", () => {
 
   it("makes incomplete DTO mappings a type error", () => {
     // @ts-expect-error DemoRequest also requires humidity.
-    const incompleteMapper = createFieldRequestMapper<DemoRequest>({
+    const incompleteMapper = createFieldRequestAdapter<DemoRequest>({
       temperature: FieldKey.DryBulbTemperature,
     });
-    const mapperWithExtraProperty = createFieldRequestMapper<DemoRequest>({
+    const mapperWithExtraProperty = createFieldRequestAdapter<DemoRequest>({
       temperature: FieldKey.DryBulbTemperature,
       humidity: FieldKey.RelativeHumidity,
       // @ts-expect-error DTO mappings cannot add undeclared request properties.

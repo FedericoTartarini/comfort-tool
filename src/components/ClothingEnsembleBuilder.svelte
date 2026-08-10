@@ -92,7 +92,7 @@
   }
 </script>
 
-<section class="p-4 sm:p-5 md:p-6 xl:h-full xl:min-h-0">
+<div class="p-4 sm:p-5 md:p-6 xl:h-full xl:min-h-0">
   <div class="grid gap-4 sm:gap-5 xl:h-full xl:min-h-0 xl:grid-cols-3 xl:gap-6">
     <ClothingZonePicker
       {activeZoneId}
@@ -125,4 +125,4 @@
       onApply={() => applyClothingValue(totalClothingValue)}
     />
   </div>
-</section>
+</div>

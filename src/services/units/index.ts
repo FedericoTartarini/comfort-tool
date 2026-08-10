@@ -1,9 +1,11 @@
 import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
+import { convertSpeedFromSi, convertSpeedToSi } from "./physicalQuantities";
 
 export * from "./modelOutputs";
 export * from "./modifierInputs";
+export { convertHeatFluxFromSi, convertHeatFluxToSi } from "./physicalQuantities";
 
 /**
  * Centralized unit conversion helpers.
@@ -41,23 +43,9 @@ const vaporPressureDisplayMetaByUnitSystem: Record<UnitSystemType, DisplayQuanti
   },
 };
 
-/**
- * These conversion constants represent standardized mathematical offsets and multipliers, 
- * used to maintain accuracy and precision across the application.
- */
-/** Baseline scaling factor converting meters to feet mappings securely */
-const METER_TO_FEET = 0.3048;
-
-/** Total Grains allocated per IP Pound iteration */
 const GRAINS_PER_POUND = 7000;
-
-/** Total Grams strictly contained in SI KG scope */
 const GRAMS_PER_KG = 1000;
-
-/** Pascal derivation factor strictly translating from inches of Mercury (inHg) */
 const PASCALS_PER_INHG = 3386.389;
-
-/** Baseline KiloPascals to metric Pascals ratio mapping */
 const PASCALS_PER_KPA = 1000;
 
 const KILOMETERS_PER_HOUR_PER_METER_PER_SECOND = 3.6;
@@ -66,13 +54,6 @@ export function convertMetersPerSecondToKilometersPerHour(value: number): number
   return value * KILOMETERS_PER_HOUR_PER_METER_PER_SECOND;
 }
 
-/**
- * Converts a canonical SI field value into its display unit equivalent for the active unit system.
- * @param key The field key identifying the quantity type.
- * @param value The value in SI.
- * @param unitSystem The target unit system (SI/IP).
- * @returns The converted value.
- */
 export function convertFieldValueFromSi(
   key: FieldKeyType,
   value: number,
@@ -83,7 +64,7 @@ export function convertFieldValueFromSi(
   }
 
   if (
-    key === FieldKey.DryBulbTemperature || 
+    key === FieldKey.DryBulbTemperature ||
     key === FieldKey.MeanRadiantTemperature ||
     key === FieldKey.PrevailingMeanOutdoorTemperature ||
     key === FieldKey.OperativeTemperature
@@ -92,19 +73,12 @@ export function convertFieldValueFromSi(
   }
 
   if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) {
-    return value / METER_TO_FEET;
+    return convertSpeedFromSi(value);
   }
 
   return value;
 }
 
-/**
- * Converts a UI display value back into its canonical SI equivalent.
- * @param key The field key identifying the quantity type.
- * @param value The raw display value.
- * @param unitSystem The current UI unit system (SI/IP).
- * @returns The converted SI value.
- */
 export function convertFieldValueToSi(
   key: FieldKeyType,
   value: number,
@@ -115,7 +89,7 @@ export function convertFieldValueToSi(
   }
 
   if (
-    key === FieldKey.DryBulbTemperature || 
+    key === FieldKey.DryBulbTemperature ||
     key === FieldKey.MeanRadiantTemperature ||
     key === FieldKey.PrevailingMeanOutdoorTemperature ||
     key === FieldKey.OperativeTemperature
@@ -124,7 +98,7 @@ export function convertFieldValueToSi(
   }
 
   if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) {
-    return value * METER_TO_FEET;
+    return convertSpeedToSi(value);
   }
 
   return value;
@@ -146,20 +120,10 @@ export function convertVaporPressureToSi(value: number, unitSystem: UnitSystemTy
   return unitSystem === UnitSystem.IP ? value * PASCALS_PER_INHG : value * PASCALS_PER_KPA;
 }
 
-/**
- * Returns metadata (units, step, decimals) for a specific humidity ratio unit system.
- * @param unitSystem Current unit system.
- * @returns DisplayQuantityMeta object.
- */
 export function getHumidityRatioDisplayMeta(unitSystem: UnitSystemType): DisplayQuantityMeta {
   return humidityRatioDisplayMetaByUnitSystem[unitSystem];
 }
 
-/**
- * Returns metadata for a specific vapor pressure unit system.
- * @param unitSystem Current unit system.
- * @returns DisplayQuantityMeta object.
- */
 export function getVaporPressureDisplayMeta(unitSystem: UnitSystemType): DisplayQuantityMeta {
   return vaporPressureDisplayMetaByUnitSystem[unitSystem];
 }

@@ -1,5 +1,6 @@
 import { adaptive_ashrae } from "jsthermalcomfort";
 import { ComfortStandard } from "../models/calculationMetadata";
+import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import type { PresetInputOption } from "../models/inputControls";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
@@ -69,9 +70,22 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   modes: [ChartMode.Compliance],
   chartableOutputs: [],
   supportedModifiers: [],
+  charts: {
+    defaultId: ChartId.Adaptive,
+    entries: [{
+      id: ChartId.Adaptive,
+      name: "Adaptive",
+      emptyMessage: "No adaptive chart yet.",
+      allowsAxisSelection: true,
+      locksYAxis: false,
+      showsZoneToggle: false,
+      showsLegend: true,
+    }],
+  },
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),
+    legendTitle: "Adaptive Zones",
     caption: createAdaptiveComplianceCaption(
       "Green shading shows the ASHRAE 55 80% and 90% acceptability regions",
       adaptiveAshraeBoundaryDefinition,
