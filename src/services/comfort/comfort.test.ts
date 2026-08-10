@@ -18,9 +18,13 @@ import {
 } from "../../models/modelCapabilities";
 import {
   pmvChartableOutputs,
-  type PmvChartSourceDto,
 } from "../../comfortModels/pmvShared";
 import {
+  calculatePmvModel,
+  type PmvChartSourceDto,
+} from "../../comfortModels/pmvCalculation";
+import {
+  pmvAshraeAdapter,
   pmvAshraeModelConfig,
 } from "../../comfortModels/pmvAshrae";
 import {
@@ -59,7 +63,7 @@ const comfortZonePayload = {
   rhPoints: 31,
 };
 
-function calculatePmvModel(
+function calculatePmvModelForTest(
   inputs: PmvChartSourceDto["inputs"] = {
     [InputId.Input1]: comfortZonePayload,
   },
@@ -85,10 +89,10 @@ function calculatePmvModel(
       ? AirSpeedControlMode.WithLocalControl
       : AirSpeedControlMode.NoLocalControl,
   };
-  return pmvAshraeModelConfig.calculate({
+  return calculatePmvModel({
     inputsByInput: toolState.state.inputsByInput,
-    modelOptionsByModel: toolState.state.ui.modelOptionsByModel,
-  }, visibleInputIds);
+    options: toolState.state.ui.modelOptionsByModel[pmvAshraeModelConfig.id],
+  }, visibleInputIds, pmvAshraeAdapter);
 }
 
 function buildRegisteredPmvChart(
@@ -96,7 +100,7 @@ function buildRegisteredPmvChart(
   inputs: PmvChartSourceDto["inputs"],
   context: ChartBuildContext<NumericBand>,
 ) {
-  const calculation = calculatePmvModel(inputs);
+  const calculation = calculatePmvModelForTest(inputs);
   const chart = pmvAshraeModelConfig.buildChartResult(
     chartId,
     calculation.chartSource,
@@ -171,7 +175,7 @@ describe("comfort services", () => {
         airspeed_control: pmvPayload.occupantHasAirSpeedControl,
       },
     );
-    const calculation = calculatePmvModel();
+    const calculation = calculatePmvModelForTest();
     const comfortZone = calculation.chartSource.comfortZonesByInput[InputId.Input1];
 
     expect(pmvResult.pmv).toBeTypeOf("number");
@@ -213,7 +217,7 @@ describe("comfort services", () => {
         airspeed_control: constrainedPayload.occupantHasAirSpeedControl,
       });
 
-      const calculation = calculatePmvModel({
+      const calculation = calculatePmvModelForTest({
         [InputId.Input1]: {
           ...constrainedPayload,
           rhMin: 0,

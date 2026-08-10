@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../models/calculationMetadata";
-import { ChartId } from "../models/chartOptions";
 import { ComplianceStatus } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
@@ -18,11 +17,11 @@ import {
 } from "./adaptiveEn";
 import type { AdaptiveResponseDto } from "./adaptiveShared";
 import { pmvAshraeModelConfig } from "./pmvAshrae";
-import type { PmvResponseDto } from "./pmvShared";
+import { pmvZonesList, type PmvResponseDto } from "./pmvCalculation";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
-const pmvNeutralZone = pmvAshraeModelConfig.zones.find(
+const pmvNeutralZone = pmvZonesList.find(
   ({ label }) => label === "Neutral",
 );
 if (!pmvNeutralZone) throw new Error("Missing registered PMV Neutral zone.");
@@ -135,8 +134,6 @@ describe("comfort model result rows", () => {
       createResultRecord(pmvResult),
       visibleInputIds,
       UnitSystem.SI,
-      {},
-      ChartId.Psychrometric,
     );
 
     expect(sections.map((section) => section.title)).toEqual([
@@ -172,8 +169,6 @@ describe("comfort model result rows", () => {
       }),
       allVisibleInputIds,
       UnitSystem.SI,
-      {},
-      ChartId.Psychrometric,
     );
     const complianceSection = sections.find((section) => section.title === "Compliance");
 
@@ -197,8 +192,6 @@ describe("comfort model result rows", () => {
       createResultRecord(ashraeResult),
       visibleInputIds,
       UnitSystem.SI,
-      {},
-      ChartId.Adaptive,
     );
 
     expect(sections.map((section) => section.title)).toEqual([
@@ -229,8 +222,6 @@ describe("comfort model result rows", () => {
       )),
       visibleInputIds,
       UnitSystem.SI,
-      {},
-      ChartId.Adaptive,
     );
     expect(getInputCell(sectionsWithMissingStatus, adaptiveAshraeZonesList[2].label)).toEqual({
       text: "N/A",
@@ -250,8 +241,6 @@ describe("comfort model result rows", () => {
       }),
       visibleInputIds,
       UnitSystem.IP,
-      {},
-      ChartId.Adaptive,
     );
 
     expect(getInputCell(sections, adaptiveAshraeZonesList[1].label)).toEqual({
@@ -286,8 +275,6 @@ describe("comfort model result rows", () => {
       createResultRecord(result),
       visibleInputIds,
       UnitSystem.SI,
-      {},
-      ChartId.Adaptive,
     );
 
     expect(getInputCell(sections, "Compliance")).toEqual({
@@ -308,8 +295,6 @@ describe("comfort model result rows", () => {
       )),
       visibleInputIds,
       UnitSystem.SI,
-      {},
-      ChartId.Adaptive,
     );
 
     expect(getInputCell(sections, adaptiveAshraeZonesList[2].label)).toEqual({
@@ -324,8 +309,6 @@ describe("comfort model result rows", () => {
       createResultRecord(enResult),
       visibleInputIds,
       UnitSystem.SI,
-      {},
-      ChartId.Adaptive,
     );
 
     expect(sections.map((section) => section.title)).toEqual([

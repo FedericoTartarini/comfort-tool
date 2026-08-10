@@ -9,7 +9,12 @@ import {
   type CanonicalInputState,
 } from "../models/fieldKeys";
 import { InputControlId } from "../models/inputControls";
-import { OptionKey } from "../models/inputModes";
+import {
+  AirSpeedControlMode,
+  HumidityInputMode,
+  OptionKey,
+  TemperatureMode,
+} from "../models/inputModes";
 import { InputId } from "../models/inputSlots";
 import {
   ChartMode,
@@ -31,12 +36,16 @@ import {
 import {
   createPmvComplianceCaption,
   createPmvModelConfig,
-  type PmvChartSourceDto,
   type PmvModelDeclaration,
-  type PmvRequestDto,
-  type PmvResponseDto,
   type PmvStandardAdapter,
 } from "./pmvShared";
+import {
+  calculatePmvModel,
+  pmvNeutralZone,
+  type PmvChartSourceDto,
+  type PmvRequestDto,
+  type PmvResponseDto,
+} from "./pmvCalculation";
 
 const baseRequest: PmvRequestDto = {
   tdb: 25,
@@ -72,13 +81,13 @@ function setPmvInputs(
 }
 
 function calculateRegisteredModel(
-  config: ReturnType<typeof createPmvModelConfig>,
+  adapter: PmvStandardAdapter,
   toolState: ReturnType<typeof createComfortToolState>,
 ): { result: PmvResponseDto; chartSource: PmvChartSourceDto } {
-  const calculation = config.calculate({
+  const calculation = calculatePmvModel({
     inputsByInput: toolState.state.inputsByInput,
-    modelOptionsByModel: toolState.state.ui.modelOptionsByModel,
-  }, [InputId.Input1]);
+    options: toolState.state.ui.modelOptionsByModel[adapter.modelId],
+  }, [InputId.Input1], adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
   return { result, chartSource: calculation.chartSource };
@@ -114,6 +123,39 @@ describe("PMV standard declarations", () => {
     expect(pmvIsoModelConfig.description).toContain("ISO 7730 Category B");
     expect(pmvAshraeDeclaration.complianceSpec.bands)
       .not.toBe(pmvIsoDeclaration.complianceSpec.bands);
+  });
+
+  it("uses exact standard-specific option schemas", () => {
+    const commonOptions = {
+      [OptionKey.TemperatureMode]: TemperatureMode.Air,
+      [OptionKey.HumidityInputMode]: HumidityInputMode.RelativeHumidity,
+    };
+    const ashraeOptions = {
+      ...commonOptions,
+      [OptionKey.AirSpeedControlMode]: AirSpeedControlMode.WithLocalControl,
+    };
+
+    expect(pmvAshraeModelConfig.parseOptions(ashraeOptions)).toEqual(ashraeOptions);
+    expect(pmvAshraeModelConfig.parseOptions(commonOptions)).toBeNull();
+    expect(pmvAshraeModelConfig.parseOptions({ ...ashraeOptions, unknown: "value" }))
+      .toBeNull();
+
+    expect(pmvIsoModelConfig.parseOptions(commonOptions)).toEqual(commonOptions);
+    expect(pmvIsoModelConfig.parseOptions({
+      ...commonOptions,
+      [OptionKey.AirSpeedControlMode]: AirSpeedControlMode.WithLocalControl,
+    })).toBeNull();
+    expect(pmvIsoModelConfig.parseOptions({
+      [OptionKey.TemperatureMode]: TemperatureMode.Air,
+    })).toBeNull();
+  });
+
+  it("never enables occupant air-speed control for ISO requests", () => {
+    const toolState = createComfortToolState();
+    const { chartSource } = calculateRegisteredModel(pmvIsoAdapter, toolState);
+
+    expect(chartSource.inputs[InputId.Input1]?.occupantHasAirSpeedControl)
+      .toBe(false);
   });
 
   it.each(standardCases)(
@@ -193,8 +235,8 @@ describe("PMV standard declarations", () => {
       [FieldKey.MeanRadiantTemperature]: 26,
       [FieldKey.RelativeAirSpeed]: 0.8,
     });
-    const ashrae = calculateRegisteredModel(pmvAshraeModelConfig, toolState);
-    const iso = calculateRegisteredModel(pmvIsoModelConfig, toolState);
+    const ashrae = calculateRegisteredModel(pmvAshraeAdapter, toolState);
+    const iso = calculateRegisteredModel(pmvIsoAdapter, toolState);
     const ashraeRequest = ashrae.chartSource.inputs[InputId.Input1];
 
     expect(ashrae.result.standard).toBe(ComfortStandard.Ashrae55PmvPpd);
@@ -214,23 +256,20 @@ describe("PMV standard declarations", () => {
 
 describe("PMV roots and compliance", () => {
   it("rejects non-finite PMV values instead of assigning Neutral", () => {
-    const config = createPmvModelConfig({
-      ...pmvAshraeDeclaration,
-      adapter: {
+    const adapter: PmvStandardAdapter = {
         ...pmvAshraeAdapter,
         calculate: () => ({ pmv: Number.NaN, ppd: Number.NaN }),
-      },
-    });
+    };
 
-    expect(() => calculateRegisteredModel(config, createComfortToolState()))
+    expect(() => calculateRegisteredModel(adapter, createComfortToolState()))
       .toThrow(/PMV.*non-finite/i);
   });
 
   it.each(standardCases)(
     "$label brackets and bisects ordinary PMV comfort-zone roots",
-    ({ adapter, config }) => {
+    ({ adapter }) => {
       const { chartSource } = calculateRegisteredModel(
-        config,
+        adapter,
         createComfortToolState(),
       );
       const request = chartSource.inputs[InputId.Input1];
@@ -256,9 +295,8 @@ describe("PMV roots and compliance", () => {
         ppd: 0,
       }),
     };
-    const config = createPmvModelConfig({ ...pmvAshraeDeclaration, adapter });
     const { chartSource } = calculateRegisteredModel(
-      config,
+      adapter,
       createComfortToolState(),
     );
     const coolEdge = chartSource.comfortZonesByInput[InputId.Input1]?.coolEdge ?? [];
@@ -271,9 +309,8 @@ describe("PMV roots and compliance", () => {
       ...pmvAshraeAdapter,
       calculate: () => ({ pmv: 1, ppd: 0 }),
     };
-    const config = createPmvModelConfig({ ...pmvAshraeDeclaration, adapter });
     const { chartSource } = calculateRegisteredModel(
-      config,
+      adapter,
       createComfortToolState(),
     );
     const zone = chartSource.comfortZonesByInput[InputId.Input1];
@@ -333,16 +370,16 @@ describe("PMV roots and compliance", () => {
 
   it.each(standardCases)(
     "$label assigns neutral boundaries with half-open semantics",
-    ({ adapter, config }) => {
-      const neutralZone = config.zones.find(({ label }) => label === "Neutral");
-      const bands = config.complianceSpec!.bands;
+    ({ adapter, declaration }) => {
+      const neutralZone = pmvNeutralZone;
+      const bands = declaration.complianceSpec.bands;
       const { chartSource } = calculateRegisteredModel(
-        config,
+        adapter,
         createComfortToolState(),
       );
       const request = chartSource.inputs[InputId.Input1];
       const zone = chartSource.comfortZonesByInput[InputId.Input1];
-      if (!neutralZone || !request || !zone) {
+      if (!request || !zone) {
         throw new Error("Missing PMV Neutral zone calculation.");
       }
 
@@ -365,7 +402,7 @@ describe("PMV roots and compliance", () => {
   it("generates comfort-zone roots without cooling-effect warnings", () => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const { chartSource } = calculateRegisteredModel(
-      pmvAshraeModelConfig,
+      pmvAshraeAdapter,
       createComfortToolState(),
     );
     const zone = chartSource.comfortZonesByInput[InputId.Input1];

@@ -15,9 +15,9 @@ export type CalculationRequestMapper<TRequest> = (
 ) => TRequest;
 
 type NumericRequestFieldMap<TRequest extends object> = {
-  [TRequestProperty in keyof TRequest]: TRequest[TRequestProperty] extends number
-    ? CanonicalInputFieldKey
-    : never;
+  [TRequestProperty in keyof TRequest as TRequest[TRequestProperty] extends number
+    ? TRequestProperty
+    : never]: CanonicalInputFieldKey;
 };
 
 export interface FieldRequestAdapter<TRequest extends object> {

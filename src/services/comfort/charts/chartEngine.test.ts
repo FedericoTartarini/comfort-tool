@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { pmvAshraeModelConfig } from "../../../comfortModels/pmvAshrae";
+import {
+  pmvAshraeDeclaration,
+  pmvAshraeModelConfig,
+} from "../../../comfortModels/pmvAshrae";
 import { CalculationSource } from "../../../models/calculationMetadata";
 import type { PlotTraceDto } from "../../../models/comfortDtos";
 import { FieldKey } from "../../../models/fieldKeys";
@@ -37,7 +40,7 @@ function lineTrace(name: string, x: number[] = [], y: number[] = []): PlotTraceD
 
 describe("shared chart engine", () => {
   it("accepts PMV numeric Compliance bands without a cast", () => {
-    const complianceSpec = pmvAshraeModelConfig.complianceSpec;
+    const complianceSpec = pmvAshraeDeclaration.complianceSpec;
     const output = pmvAshraeModelConfig.chartableOutputs.find(
       ({ key }) => key === complianceSpec?.output,
     );

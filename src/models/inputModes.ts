@@ -32,15 +32,25 @@ export type OptionKey = (typeof OptionKey)[keyof typeof OptionKey];
 
 export type ModelOptionsRecord = Partial<Record<OptionKey, string>>;
 
-export type PmvModelOptions = {
+type PmvCommonModelOptions = {
   [OptionKey.TemperatureMode]: TemperatureMode;
-  [OptionKey.AirSpeedControlMode]: AirSpeedControlMode;
   [OptionKey.HumidityInputMode]: HumidityInputMode;
 };
 
-export const defaultPmvOptions: PmvModelOptions = {
+export type PmvAshraeModelOptions = PmvCommonModelOptions & {
+  [OptionKey.AirSpeedControlMode]: AirSpeedControlMode;
+};
+
+export type PmvIsoModelOptions = PmvCommonModelOptions;
+
+export const defaultPmvAshraeOptions: PmvAshraeModelOptions = {
   [OptionKey.TemperatureMode]: TemperatureMode.Air,
   [OptionKey.AirSpeedControlMode]: AirSpeedControlMode.WithLocalControl,
+  [OptionKey.HumidityInputMode]: HumidityInputMode.RelativeHumidity,
+};
+
+export const defaultPmvIsoOptions: PmvIsoModelOptions = {
+  [OptionKey.TemperatureMode]: TemperatureMode.Air,
   [OptionKey.HumidityInputMode]: HumidityInputMode.RelativeHumidity,
 };
 

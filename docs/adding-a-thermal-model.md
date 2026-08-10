@@ -31,7 +31,7 @@ Create the registered declaration under `src/comfortModels/`. It must make the f
 - executable input modifiers in application order;
 - chart definitions, selectable axes, and default axis pair.
 
-Use `ComfortModelBuilder<Result, ChartSource>` so result and chart-source types remain specific while the declaration is assembled. `build()` is the single boundary that returns a non-generic `RuntimeComfortModelDefinition` for the registry and controller.
+Use `ComfortModelBuilder<Result, ChartSource, ComplianceBand = NumericBand>` so result, chart-source, and Compliance-band types remain specific while the declaration is assembled. Numeric-band models normally specify only the first two type arguments; models with functional band edges, such as Adaptive, pass `Band` as the third. `build()` is the single boundary that returns a non-generic `RuntimeComfortModelDefinition` for the registry and controller.
 
 Keep each threshold in one `ThermalZone` declaration and derive numeric bands from those zones:
 
@@ -92,6 +92,8 @@ Use the shared control behaviors according to capability:
 Control behaviors construct view models and apply numeric input only. Model `optionHandlersByKey` is the sole option-change path.
 
 Models without options must declare `{}` and `parseEmptyOptions`. Other models must declare a complete default object and an exact parser that rejects missing, extra, or invalid values. Invalid internal option state is an invariant error, not a reason to fill defaults.
+
+The calculation manager runs that parser once at the model boundary. `ModelCalculationContext.options` then contains only the active model's validated options; the keyed `modelOptionsByModel` record remains controller/share state and is not exposed to model calculations.
 
 ## 5. Declare modes, outputs, and Compliance
 

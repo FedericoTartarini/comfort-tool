@@ -7,16 +7,18 @@ import {
 import { ComfortModel } from "../../../models/comfortModels";
 import { FieldKey } from "../../../models/fieldKeys";
 import { OptionKey, TemperatureMode } from "../../../models/inputModes";
-import { ModifierId } from "../../../models/inputModifiers";
+import { InputId, inputDefaultsById } from "../../../models/inputSlots";
+import type { ModelCalculationContext } from "../../../models/modelCalculation";
 import {
   ChartMode,
   ModelOutputKey,
   type ModelOutput,
   type NumericBand,
 } from "../../../models/modelCapabilities";
-import { ThermalZone } from "../../../models/thermalZone";
+import { solarGainModifier } from "../../../services/comfort/inputModifiers";
 import {
   ComfortModelBuilder,
+  buildResultSection,
   createEmptyResults,
   parseEmptyOptions,
 } from "./builder";
@@ -150,7 +152,7 @@ describe("ComfortModelBuilder capabilities", () => {
       .setDescription("Test model description.")
       .setModes([ChartMode.Compliance, ChartMode.Explore])
       .setChartableOutputs([pmvOutput])
-      .setModifiers([ModifierId.SolarGain])
+      .setModifiers([solarGainModifier])
       .setComplianceSpec(createComplianceSpec())
       .setCharts({
         defaultId: ChartId.Psychrometric,
@@ -176,8 +178,15 @@ describe("ComfortModelBuilder capabilities", () => {
 
     expect(definition.modes).toEqual([ChartMode.Compliance, ChartMode.Explore]);
     expect(definition.chartableOutputs).toEqual([pmvOutput]);
-    expect(definition.supportedModifiers).toEqual([ModifierId.SolarGain]);
-    expect(definition.complianceSpec).toEqual(createComplianceSpec());
+    expect(definition.modifiers).toEqual([solarGainModifier]);
+    expect(definition.complianceSpec).toEqual(expect.objectContaining({
+      ...createComplianceSpec(),
+      getFeedback: expect.any(Function),
+    }));
+    expect(definition.complianceSpec?.getFeedback({})).toEqual({
+      text: "Compliant",
+      passes: true,
+    });
     expect(definition.complianceSpec?.bands).not.toBe(bands);
   });
 
@@ -207,13 +216,9 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() => createExploreBuilder(["modifiers"]).build())
       .toThrow(/explicitly set supported modifiers/i);
     expect(() => createExploreBuilder()
-      .setModifiers([ModifierId.SolarGain, ModifierId.SolarGain])
+      .setModifiers([solarGainModifier, solarGainModifier])
       .build())
       .toThrow(/duplicate modifiers/i);
-    expect(() => createExploreBuilder()
-      .setModifiers(["unknownModifier" as ModifierId])
-      .build())
-      .toThrow(/unknown modifiers/i);
   });
 
   it("requires Explore models to expose an output", () => {
@@ -239,7 +244,7 @@ describe("ComfortModelBuilder capabilities", () => {
       .toThrow(/non-empty compliance specification/i);
   });
 
-  it("requires Compliance models to expose a legend title, caption, and feedback callback", () => {
+  it("requires Compliance models to expose a legend title and caption", () => {
     expect(() => createBuilder()
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
@@ -254,15 +259,6 @@ describe("ComfortModelBuilder capabilities", () => {
       .build())
       .toThrow(/non-empty compliance specification/i);
 
-    expect(() => createBuilder()
-      .setModes([ChartMode.Compliance])
-      .setChartableOutputs([])
-      .setComplianceSpec({
-        ...createComplianceSpec(),
-        getFeedback: null as never,
-      })
-      .build())
-      .toThrow(/non-empty compliance specification/i);
   });
 
   it("requires default options to satisfy the model's exact parser", () => {
@@ -386,11 +382,7 @@ describe("ComfortModelBuilder capabilities", () => {
   });
 
   it("keeps prior snapshots isolated from subsequent builder mutations", () => {
-    const originalZone = new ThermalZone({
-      label: "Original",
-      color: "#123456",
-    });
-    const builder = createExploreBuilder().setZones([originalZone]);
+    const builder = createExploreBuilder();
     const definition = builder.build();
 
     builder
@@ -414,7 +406,6 @@ describe("ComfortModelBuilder capabilities", () => {
         xAxis: FieldKey.OperativeTemperature,
         yAxis: FieldKey.RelativeHumidity,
       })
-      .setZones([])
       .addOptionHandler(OptionKey.TemperatureMode, () => null);
 
     expect(definition.label).toBe("Test model");
@@ -433,7 +424,81 @@ describe("ComfortModelBuilder capabilities", () => {
       xAxis: FieldKey.DryBulbTemperature,
       yAxis: FieldKey.RelativeHumidity,
     });
-    expect(definition.zones).toEqual([originalZone]);
     expect(definition.optionHandlersByKey).toEqual({});
+  });
+
+  it.each([
+    [0, "0"],
+    [false, "false"],
+    ["", ""],
+  ])("formats the non-null falsy result %p", (result, expectedText) => {
+    const results = {
+      [InputId.Input1]: result,
+      [InputId.Input2]: null,
+      [InputId.Input3]: null,
+    };
+    const section = buildResultSection(
+      "Falsy",
+      results,
+      [InputId.Input1],
+      (value) => ({ text: String(value) }),
+    );
+
+    expect(section.valuesByInput[InputId.Input1]).toEqual({ text: expectedText });
+  });
+
+  it("erases model-specific calculation types only at the runtime boundary", () => {
+    const definition = new ComfortModelBuilder<number, { source: string }>(
+      ComfortModel.PmvAshrae,
+    )
+      .setLabel("Typed model")
+      .setDescription("Typed result and chart source.")
+      .setModes([ChartMode.Explore])
+      .setChartableOutputs([pmvOutput])
+      .setModifiers([])
+      .setCharts({
+        defaultId: ChartId.Psychrometric,
+        entries: [createChartDefinition()],
+      })
+      .setDefaultOptions({})
+      .setOptionParser(parseEmptyOptions)
+      .setCalculator(() => ({
+        resultsByInput: {
+          [InputId.Input1]: 0,
+          [InputId.Input2]: null,
+          [InputId.Input3]: null,
+        },
+        chartSource: { source: "typed" },
+      }))
+      .setResultBuilder((results) => [{
+        title: "Value",
+        valuesByInput: {
+          [InputId.Input1]: { text: String(results[InputId.Input1]) },
+        },
+      }])
+      .setChartBuilder(() => null)
+      .setDynamicAxisFields([
+        FieldKey.DryBulbTemperature,
+        FieldKey.RelativeHumidity,
+      ])
+      .setDefaultDynamicAxes({
+        xAxis: FieldKey.DryBulbTemperature,
+        yAxis: FieldKey.RelativeHumidity,
+      })
+      .build();
+
+    const context: ModelCalculationContext = {
+      inputsByInput: inputDefaultsById,
+      options: {},
+    };
+
+    expect(definition.calculate(context, [InputId.Input1])).toEqual({
+      resultsByInput: {
+        [InputId.Input1]: 0,
+        [InputId.Input2]: null,
+        [InputId.Input3]: null,
+      },
+      chartSource: { source: "typed" },
+    });
   });
 });

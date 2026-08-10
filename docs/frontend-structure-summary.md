@@ -35,7 +35,7 @@ Simple models may keep calculation and chart code in the declaration file. Large
 - PMV: ASHRAE/ISO declarations, shared builder assembly, calculation/results, and charts;
 - Adaptive: ASHRAE/EN declarations, shared builder assembly, calculation/results, and charts.
 
-`ComfortModelDefinition<Result, ChartSource>` is the typed authoring contract in `modelConfigs/definition.ts`. Builder setters preserve the model's result and chart-source types. `build()` validates semantic invariants and erases those generics exactly once into `RuntimeComfortModelDefinition`.
+`ComfortModelDefinition<Result, ChartSource, ComplianceBand = NumericBand>` is the typed authoring contract in `modelConfigs/definition.ts`. Builder setters preserve the model's result, chart-source, and Compliance-band types. Numeric-band models normally omit the third argument; models with functional band edges use `Band`. `build()` validates semantic invariants and erases those generics exactly once into `RuntimeComfortModelDefinition`.
 
 The explicit registry is:
 
@@ -69,7 +69,7 @@ Every model supplies complete default options and an exact parser. Missing, extr
 
 The shared dynamic-axis solver applies two coordinates as one physical constraint. For Air/Radiant/Operative pairs, it preserves the explicitly selected component and solves the coupled component instead of allowing a later write to overwrite the earlier coordinate.
 
-Calculations receive `ModelCalculationContext`, containing effective canonical-SI inputs and exact model options. Each definition returns typed results and a typed chart source. At controller level they are stored in generic `ModelCalculationCache<unknown, unknown>` records keyed by model ID.
+Calculations receive `ModelCalculationContext`, containing effective canonical-SI inputs and only the active model's options after exact parsing. The keyed `modelOptionsByModel` record remains in controller/share state. Each definition returns typed results and a typed chart source. At controller level they are stored in generic `ModelCalculationCache<unknown, unknown>` records keyed by model ID.
 
 ## Generic input modifiers
 

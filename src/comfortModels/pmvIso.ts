@@ -10,19 +10,25 @@ import {
 import { ComfortStandard } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
+import { defaultPmvIsoOptions } from "../models/inputModes";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
-import { ModifierId } from "../models/inputModifiers";
 import { UnitSystem } from "../models/units";
+import {
+  createDynamicClothingModifier,
+  measuredAirSpeedModifier,
+  morningClothingEstimateModifier,
+  solarGainModifier,
+} from "../services/comfort/inputModifiers";
 import {
   createPmvComplianceBands,
   createPmvComplianceCaption,
   createPmvModelConfig,
-  getPmvComplianceFeedback,
+  parsePmvIsoOptions,
   pmvChartableOutputs,
-  pmvZonesList,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./pmvShared";
+import { getPmvComplianceFeedback } from "./pmvCalculation";
 
 const isoComplianceBands = createPmvComplianceBands();
 
@@ -70,11 +76,11 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   adapter: pmvIsoAdapter,
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
-  zones: pmvZonesList,
-  supportedModifiers: [
-    ModifierId.MeasuredAirSpeed,
-    ModifierId.MorningClothingEstimate,
-    ModifierId.SolarGain,
+  modifiers: [
+    measuredAirSpeedModifier,
+    morningClothingEstimateModifier,
+    createDynamicClothingModifier(JsThermalComfortStandard.ISO),
+    solarGainModifier,
   ],
   charts: {
     defaultId: ChartId.PmvDynamic,
@@ -106,6 +112,8 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
     caption: createPmvComplianceCaption("ISO 7730 Category B", isoComplianceBands),
     getFeedback: getPmvComplianceFeedback,
   },
+  defaultOptions: defaultPmvIsoOptions,
+  parseOptions: parsePmvIsoOptions,
 };
 
 export const pmvIsoModelConfig = createPmvModelConfig(pmvIsoDeclaration);

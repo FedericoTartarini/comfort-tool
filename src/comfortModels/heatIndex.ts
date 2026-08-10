@@ -39,7 +39,6 @@ const MODEL_LABEL = "Heat Index";
 const MODEL_DESCRIPTION =
   "Combines air temperature and relative humidity to determine the human-perceived equivalent temperature.";
 const TDB_LIMITS = { min: 20, max: 50 };
-const HEAT_INDEX_APPLICABILITY_THRESHOLD_SI = 27;
 
 export const heatIndexZonesList = [
   new ThermalZone({ label: "Safe", max: 27, color: "#e2e8f0", textColor: "#475569" }),
@@ -48,6 +47,12 @@ export const heatIndexZonesList = [
   new ThermalZone({ label: "Danger", min: 39, max: 51, color: "#f97316", textColor: "#ea580c" }),
   new ThermalZone({ label: "Extreme Danger", min: 51, color: "#dc2626", textColor: "#b91c1c" }),
 ];
+
+const heatIndexCautionZone: ThermalZone = (() => {
+  const zone = heatIndexZonesList.find(({ label }) => label === "Caution");
+  if (!zone) throw new Error("Heat Index requires a Caution zone.");
+  return zone;
+})();
 
 export interface HeatIndexRequestDto {
   tdb: number;
@@ -69,7 +74,7 @@ export function calculateHeatIndex(payload: HeatIndexRequestDto): HeatIndexRespo
   // dry-bulb temperature is the meaningful apparent temperature in that range.
   const hi = Number.isFinite(result.hi)
     ? result.hi
-    : payload.tdb < HEAT_INDEX_APPLICABILITY_THRESHOLD_SI
+    : payload.tdb < heatIndexCautionZone.min
       ? payload.tdb
       : result.hi;
   const category = requireThermalZone(heatIndexZonesList, hi, MODEL_LABEL).label;
@@ -98,8 +103,7 @@ const heatIndexChartSpec: GridModelChartSpec<
   axisRanges: {
     [FieldKey.DryBulbTemperature]: TDB_LIMITS,
   },
-  getAxisValue: requestAdapter.getAxisValue,
-  setAxisValue: requestAdapter.setAxisValue,
+  requestAdapter,
   evaluate: calculateHeatIndex,
   getOutputValue: (result) => result.hi,
   fixedView: {
@@ -213,6 +217,4 @@ builder.setDefaultDynamicAxes({
 });
 builder.setDefaultOptions({});
 builder.setOptionParser(parseEmptyOptions);
-builder.setZones(heatIndexZonesList);
-
 export const heatIndexModelConfig = builder.build();

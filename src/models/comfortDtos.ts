@@ -47,10 +47,6 @@ export type PlotContoursDto =
   | PlotLevelContoursDto
   | PlotConstraintContoursDto;
 
-export interface ComfortPointDto {
-  tdb: number;
-  rh: number;
-}
 export type CompareInputMap<T> = Partial<Record<InputIdType, T>>;
 
 /** Shared calculation-derived input payload used by model chart builders. */

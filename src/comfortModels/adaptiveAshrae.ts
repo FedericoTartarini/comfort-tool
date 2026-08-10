@@ -7,13 +7,15 @@ import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
 import {
-  createAdaptiveComplianceBands,
-  createAdaptiveComplianceCaption,
-  createAdaptiveComplianceFeedbackGetter,
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
   type AdaptiveModelDeclaration,
 } from "./adaptiveShared";
+import {
+  createAdaptiveComplianceBands,
+  createAdaptiveComplianceCaption,
+  createAdaptiveComplianceFeedbackGetter,
+} from "./adaptiveCalculation";
 
 export const adaptiveAshraeZonesList = [
   new ThermalZone({ label: "Too Cool", color: "#3b82f6", textColor: "#2563eb" }),
@@ -66,10 +68,9 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
     "ASHRAE 55 Adaptive thermal comfort model for naturally ventilated buildings.",
   resultStandard: ComfortStandard.Ashrae55Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ASHRAE,
-  zones: adaptiveAshraeZonesList,
   modes: [ChartMode.Compliance],
   chartableOutputs: [],
-  supportedModifiers: [],
+  modifiers: [],
   charts: {
     defaultId: ChartId.Adaptive,
     entries: [{

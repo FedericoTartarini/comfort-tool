@@ -9,12 +9,16 @@ import {
 } from "../../../comfortModels/pmvIso";
 import {
   createPmvModelConfig,
-  type ComfortZoneRequestDto,
-  type PmvChartSourceDto,
   type PmvModelDeclaration,
-  type PmvResponseDto,
   type PmvStandardAdapter,
 } from "../../../comfortModels/pmvShared";
+import {
+  calculatePmvModel,
+  pmvZonesList,
+  type ComfortZoneRequestDto,
+  type PmvChartSourceDto,
+  type PmvResponseDto,
+} from "../../../comfortModels/pmvCalculation";
 import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
 import { ChartId } from "../../../models/chartOptions";
 import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
@@ -70,14 +74,18 @@ function calculateModel(
   toolState.state.ui.modelOptionsByModel[config.id] = {
     ...config.defaultOptions,
     [OptionKey.TemperatureMode]: TemperatureMode.Air,
-    [OptionKey.AirSpeedControlMode]: request.occupantHasAirSpeedControl
-      ? AirSpeedControlMode.WithLocalControl
-      : AirSpeedControlMode.NoLocalControl,
+    ...(declaration.adapter.supportsOccupantAirSpeedControl
+      ? {
+          [OptionKey.AirSpeedControlMode]: request.occupantHasAirSpeedControl
+            ? AirSpeedControlMode.WithLocalControl
+            : AirSpeedControlMode.NoLocalControl,
+        }
+      : {}),
   };
-  const calculation = config.calculate({
+  const calculation = calculatePmvModel({
     inputsByInput: toolState.state.inputsByInput,
-    modelOptionsByModel: toolState.state.ui.modelOptionsByModel,
-  }, [InputId.Input1]);
+    options: toolState.state.ui.modelOptionsByModel[declaration.adapter.modelId],
+  }, [InputId.Input1], declaration.adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
   return { config, result, source: calculation.chartSource };
@@ -359,8 +367,8 @@ describe("PMV charts", () => {
   });
 
   it("keeps fixed and Explore classification consistent for the input point", () => {
-    const { config, result } = calculateModel(pmvAshraeDeclaration);
-    const expectedZone = config.zones.find(({ min, max }) => (
+    const { result } = calculateModel(pmvAshraeDeclaration);
+    const expectedZone = pmvZonesList.find(({ min, max }) => (
       result.pmv >= min && result.pmv < max
     ))?.label;
     if (!expectedZone) throw new Error("Expected a declared PMV zone.");

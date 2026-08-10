@@ -120,8 +120,7 @@ const windChillChartSpec: GridModelChartSpec<
     [FieldKey.DryBulbTemperature]: TDB_LIMITS,
     [FieldKey.WindSpeed]: WIND_LIMITS,
   },
-  getAxisValue: requestAdapter.getAxisValue,
-  setAxisValue: requestAdapter.setAxisValue,
+  requestAdapter,
   evaluate: calculateWindChill,
   getOutputValue: (result) => result.wci,
 };
@@ -233,6 +232,4 @@ builder.setDefaultDynamicAxes({
 });
 builder.setDefaultOptions({});
 builder.setOptionParser(parseEmptyOptions);
-builder.setZones(windChillZonesList);
-
 export const windChillModelConfig = builder.build();

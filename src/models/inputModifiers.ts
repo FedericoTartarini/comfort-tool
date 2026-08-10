@@ -6,6 +6,7 @@ import type {
 export const ModifierId = {
   MeasuredAirSpeed: "measuredAirSpeed",
   MorningClothingEstimate: "morningClothingEstimate",
+  DynamicClothing: "dynamicClothing",
   SolarGain: "solarGain",
 } as const;
 
@@ -14,6 +15,7 @@ export type ModifierId = (typeof ModifierId)[keyof typeof ModifierId];
 export const modifierOrder: readonly ModifierId[] = [
   ModifierId.MeasuredAirSpeed,
   ModifierId.MorningClothingEstimate,
+  ModifierId.DynamicClothing,
   ModifierId.SolarGain,
 ];
 
@@ -107,16 +109,77 @@ export const modifierFieldMetaByKey: Record<ModifierFieldKey, ModifierFieldMeta>
 };
 
 export type ModifierInputValues = Partial<Record<ModifierFieldKey, number | null>>;
-export type CompleteModifierInputValues = Partial<Record<ModifierFieldKey, number>>;
 
-export interface InputModifier {
+export type ModifierInputValueMap<
+  ExtraInputs extends readonly ModifierFieldKey[],
+> = {
+  [Key in ExtraInputs[number]]: number;
+};
+
+export type ModifierInputPatch<
+  AffectedFields extends readonly CanonicalInputFieldKey[],
+> = Partial<Pick<CanonicalInputState, AffectedFields[number]>>;
+
+export interface InputModifier<
+  ExtraInputs extends readonly ModifierFieldKey[] = readonly ModifierFieldKey[],
+  AffectedFields extends readonly CanonicalInputFieldKey[] = readonly CanonicalInputFieldKey[],
+> {
   id: ModifierId;
   label: string;
   description: string;
-  extraInputs: readonly ModifierFieldKey[];
-  affectedFields: readonly CanonicalInputFieldKey[];
+  extraInputs: ExtraInputs;
+  affectedFields: AffectedFields;
   apply: (
     inputs: Readonly<CanonicalInputState>,
-    extraInputs: Readonly<CompleteModifierInputValues>,
-  ) => Partial<CanonicalInputState>;
+    extraInputs: Readonly<ModifierInputValueMap<ExtraInputs>>,
+  ) => ModifierInputPatch<AffectedFields>;
 }
+
+export function defineInputModifier<
+  const ExtraInputs extends readonly ModifierFieldKey[],
+  const AffectedFields extends readonly CanonicalInputFieldKey[],
+>(
+  definition: InputModifier<ExtraInputs, AffectedFields>,
+): InputModifier<ExtraInputs, AffectedFields> {
+  return definition;
+}
+
+export type InputModifierCatalogueEntry = Pick<
+  InputModifier,
+  "id" | "label" | "description" | "extraInputs"
+>;
+
+/** Stable share/UI schema. Executable modifier definitions are model-owned. */
+export const inputModifierCatalogue: Record<ModifierId, InputModifierCatalogueEntry> = {
+  [ModifierId.MeasuredAirSpeed]: {
+    id: ModifierId.MeasuredAirSpeed,
+    label: "Measured air speed",
+    description: "Derive relative air speed from measured air speed and activity.",
+    extraInputs: [ModifierFieldKey.MeasuredAirSpeed],
+  },
+  [ModifierId.MorningClothingEstimate]: {
+    id: ModifierId.MorningClothingEstimate,
+    label: "Morning clothing estimate",
+    description: "Estimate clothing insulation from outdoor temperature at 6 a.m.",
+    extraInputs: [ModifierFieldKey.MorningOutdoorTemperature],
+  },
+  [ModifierId.DynamicClothing]: {
+    id: ModifierId.DynamicClothing,
+    label: "Dynamic clothing",
+    description: "Adjust clothing insulation for the current metabolic rate.",
+    extraInputs: [],
+  },
+  [ModifierId.SolarGain]: {
+    id: ModifierId.SolarGain,
+    label: "Solar gain on occupant",
+    description: "Increase effective mean radiant temperature for direct solar exposure.",
+    extraInputs: [
+      ModifierFieldKey.SolarAltitude,
+      ModifierFieldKey.SolarHorizontalAngle,
+      ModifierFieldKey.DirectSolarRadiation,
+      ModifierFieldKey.SolarTransmittance,
+      ModifierFieldKey.SkyVaultViewFraction,
+      ModifierFieldKey.BodyExposureFraction,
+    ],
+  },
+};

@@ -10,19 +10,25 @@ import {
 import { ComfortStandard } from "../models/calculationMetadata";
 import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
+import { defaultPmvAshraeOptions } from "../models/inputModes";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
-import { ModifierId } from "../models/inputModifiers";
 import { UnitSystem } from "../models/units";
+import {
+  createDynamicClothingModifier,
+  measuredAirSpeedModifier,
+  morningClothingEstimateModifier,
+  solarGainModifier,
+} from "../services/comfort/inputModifiers";
 import {
   createPmvComplianceBands,
   createPmvComplianceCaption,
   createPmvModelConfig,
-  getPmvComplianceFeedback,
+  parsePmvAshraeOptions,
   pmvChartableOutputs,
-  pmvZonesList,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./pmvShared";
+import { getPmvComplianceFeedback } from "./pmvCalculation";
 
 const ashraeComplianceBands = createPmvComplianceBands();
 
@@ -70,11 +76,11 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   adapter: pmvAshraeAdapter,
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
-  zones: pmvZonesList,
-  supportedModifiers: [
-    ModifierId.MeasuredAirSpeed,
-    ModifierId.MorningClothingEstimate,
-    ModifierId.SolarGain,
+  modifiers: [
+    measuredAirSpeedModifier,
+    morningClothingEstimateModifier,
+    createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE),
+    solarGainModifier,
   ],
   charts: {
     defaultId: ChartId.PmvDynamic,
@@ -106,6 +112,8 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
     caption: createPmvComplianceCaption("ASHRAE 55", ashraeComplianceBands),
     getFeedback: getPmvComplianceFeedback,
   },
+  defaultOptions: defaultPmvAshraeOptions,
+  parseOptions: parsePmvAshraeOptions,
 };
 
 export const pmvAshraeModelConfig = createPmvModelConfig(pmvAshraeDeclaration);

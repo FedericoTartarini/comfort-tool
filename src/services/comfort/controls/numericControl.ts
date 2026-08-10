@@ -254,12 +254,8 @@ export function createAirSpeedControlBehavior(
   });
 }
 
-export function createAirSpeedOptionHandler(
-  options: { supportsOccupantAirSpeedControl?: boolean } = {},
-): OptionChangeHandler {
-  const supportsOccupantAirSpeedControl = options.supportsOccupantAirSpeedControl ?? true;
+export function createAirSpeedOptionHandler(): OptionChangeHandler {
   return (context, nextValue) => {
-    if (!supportsOccupantAirSpeedControl) return null;
     const nextMode = requireOptionValue(
       { [OptionKey.AirSpeedControlMode]: nextValue },
       OptionKey.AirSpeedControlMode,

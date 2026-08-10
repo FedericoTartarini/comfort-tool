@@ -14,16 +14,16 @@ Primary source layout:
 
 ```text
 src/
-  comfortModels/          one file per comfort model; model-specific config, zones, calculations, charts
+  comfortModels/          model declarations plus focused calculation/chart modules
   components/
     chart/                 chart rendering and export UI
     input-panel/           comfort-tool input subcomponents
   models/                  centralized domain constants and metadata
   services/
-    comfort/               shared comfort helpers, psychrometrics, chart scaffolding, adapters
+    comfort/               shared comfort helpers, request/axis adapters, charts, modifiers
     units/                 SI <-> active-unit-system conversion helpers
   state/
-    comfortTool/           controller, model configs, derived state, share state
+    comfortTool/           controller, model configs, pure projections, share state
   views/                   page composition only
 ```
 
@@ -47,7 +47,7 @@ src/state/comfortTool/types.ts
 - Canonical shared domain state stays in SI units.
 - Views compose pages.
 - Components handle rendering and interaction.
-- State orchestrates shared UI state, mode transitions, request building, and calculation scheduling.
+- State orchestrates shared UI state, mode transitions, calculation context, and scheduling.
 - `comfortModels` own model-specific zones, request mapping, calculations, result sections, and chart builders.
 - Services own reusable calculations, derived-domain logic, unit conversion, and shared chart generation helpers.
 
@@ -55,7 +55,7 @@ src/state/comfortTool/types.ts
 
 Model-specific thermal-comfort logic belongs in `src/comfortModels/**`. Shared helpers belong in `src/services/comfort/**`.
 
-- PMV / PPD, UTCI, adaptive, heat-index, humidex, and wind-chill model calculations may live in their model files under `src/comfortModels/**`.
+- PMV / PPD, UTCI, adaptive, heat-index, humidex, and wind-chill model calculations live under `src/comfortModels/**`; larger shared families keep calculation and chart construction in focused modules beside their declarations.
 - Shared psychrometric helpers, stress-band derivation, reusable chart scaffolding, reference values, adapters, and cross-model utilities belong in `src/services/comfort/**`.
 - State and components must stay free of raw formula implementations.
 - If a helper is missing upstream, keep a thin local adapter beside the model when it is model-specific, or in `src/services/comfort/**` when it is reusable.
@@ -63,7 +63,7 @@ Model-specific thermal-comfort logic belongs in `src/comfortModels/**`. Shared h
 All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or `src/services/comfort/**`.
 
 - Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/components/**`, `src/views/**`, or top-level `src/services/*.ts`.
-- When touching legacy wrappers or shared helpers, prefer moving reusable comfort logic under `src/services/comfort/**` rather than adding more top-level service files.
+- When touching shared helpers, prefer moving reusable comfort logic under `src/services/comfort/**` rather than adding more top-level service files.
 
 ## Conversion Ownership
 
@@ -99,16 +99,16 @@ When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createCom
 
 New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; the builder and registry live in `src/state/comfortTool/modelConfigs/**`.
 
+Each registered model has one focused declaration entry that exposes its product decisions. This is not a one-physical-file rule: stable IDs remain centralized, registration remains explicit, and tests remain separate. Simple models may keep their implementation in the declaration file; larger standard families may use focused calculation/chart modules beside complete standard declarations.
+
 A model definition should own:
 
 - stable `id` and label metadata
-- input field list
-- default inputs
-- derived-input synchronization
-- request builders
+- input controls, option handlers, complete defaults, and an exact parser
+- request mapping and derived-input synchronization hooks
 - calculation execution
-- chart list and chart builders
-- comfort zone definitions (as `ThermalZone` instances — see below)
+- result builders, chart definitions/builders, and dynamic-axis defaults
+- declaration-local comfort zone definitions (as `ThermalZone` instances — see below), used to derive bands but not stored on the runtime definition
 - supported `modes`, `chartableOutputs`, and an optional fixed `complianceSpec`
 - supported input modifiers, using an explicit empty list when none apply
 
@@ -123,11 +123,11 @@ Use centralized constants and typed metadata from `src/models/` for:
 
 Do not introduce new raw domain strings for those concepts.
 
-## Capability Declarations And Next Architecture Direction
+## Capability Declarations And Runtime Architecture
 
 `26-06-29-architecture-brief.md` describes the broader target architecture; §9.5 Compliance mode, Explore controls, the shared `FieldChartConfig` engine, full per-model chart-setting memory, and §9.7 generic input modifiers are implemented.
 
-- Compliance and Explore should share one chart engine, with Compliance as the constrained version.
+- Compliance and Explore share one chart engine, with Compliance as the constrained version.
 - Every model declaration must set `modes` and `chartableOutputs`; Compliance models must also set a `complianceSpec` with non-empty bands, a caption, and a result feedback callback. Use the builder rather than controller branches.
 - `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `chartSettingsByModel` stores each model's mode, x/y axes, baseline, and optional Explore working state. Explore z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`; Compliance output and bands always come directly from `complianceSpec`.
@@ -136,12 +136,15 @@ Do not introduce new raw domain strings for those concepts.
 - Compliance models must provide `complianceSpec.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput`.
 - `InputControlBehavior` owns only view-model construction and numeric input application. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
+- Compose `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior; keep coupled temperature solving in the shared dynamic-axis solver.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
 - Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize only Explore bands plus exact modifier state, and use explicit wire sentinels for unbounded numeric edges. Do not add old-v1 migration behavior.
 - Band assignment is array-ordered and half-open (`min <= value < max`); numeric values, functional-edge X values, and band inputs are canonical SI.
-- PMV ASHRAE and PMV ISO are separate registered models with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files (`pmvAshrae.ts` and `pmvIso.ts`). ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. Shared PMV mechanics live in `pmvShared.ts`; do not merge the standards behind a runtime toggle.
-- `ModifierId`, `ModifierFieldKey`, and the generic `InputModifier` contract live in `src/models/inputModifiers.ts`; do not inline modifier strings.
-- Input sub-tools keep base SI input separate from modifier configuration. The controller derives effective SI input through the model's declared modifier order and supplies it through `ModelCalculationContext`; modifiers must never write effective values back to base state.
+- PMV ASHRAE and PMV ISO are separate registered models with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files (`pmvAshrae.ts` and `pmvIso.ts`). ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. `pmvShared.ts` owns only shared contracts/declaration data/builder assembly, `pmvCalculation.ts` owns formulas/results, and `pmvCharts.ts` owns chart construction. Adaptive uses the corresponding `adaptiveShared.ts`, `adaptiveCalculation.ts`, and `adaptiveCharts.ts` split. Do not merge standards behind a runtime toggle.
+- `ModifierId`, `ModifierFieldKey`, and the tuple-generic `InputModifier` contract live in `src/models/inputModifiers.ts`; do not inline modifier strings.
+- Builder `.setModifiers()` receives executable model-owned declarations. The global catalogue contains only stable UI/share IDs and extra-input schema.
+- Modifier execution order is Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain. PMV ASHRAE and PMV ISO each bind Dynamic Clothing to their own standard; other models do not declare it.
+- Input sub-tools keep base SI input separate from modifier configuration. Each model declares its supported subset in the fixed global order, and the controller derives effective SI input through those executable definitions before supplying `ModelCalculationContext`; modifiers must never write effective values back to base state.
 - Keep Time-series out of Analysis state until it is explicitly implemented.
 
 ## Comfort Zone Design
@@ -168,10 +171,10 @@ Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not 
 
 ## Branching And Duplication
 
-There is already repeated PMV mode branching pressure in places like:
+Avoid repeated model-mode branching across files such as:
 
 - `src/comfortModels/pmvAshrae.ts`, `pmvIso.ts`, and `pmvShared.ts`
-- `src/comfortModels/adaptive.ts`
+- `src/comfortModels/adaptiveAshrae.ts`, `adaptiveEn.ts`, and `adaptiveShared.ts`
 - `src/components/input-panel/InputFieldRow.svelte`
 - share/import-export synchronization paths
 
@@ -222,7 +225,11 @@ Validation commands:
 
 ```bash
 npm test
+npm run check
+npm run lint
 npm run build
+npm run test:visual
+git diff --check
 ```
 
 A change in this frontend is done when:
@@ -240,6 +247,8 @@ A change in this frontend is done when:
 
 - Keep this file focused on execution rules.
 - If a task materially changes state flow, model registration, or service boundaries, update architecture documentation in this repo as part of the same work.
+- Keep `docs/adding-a-thermal-model.md` and `docs/frontend-structure-summary.md` current as internal Markdown references.
+- Do not add a documentation generator, deployment step, or product UI route for these internal files unless a later task explicitly requests one.
 
 ## Code Quality
 - Code should be high quality, easy to read, maintainable over time, and suitable for collaborative development by multiple contributors.

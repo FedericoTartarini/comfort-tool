@@ -13,6 +13,13 @@ import type {
   PlotScatterMarkerTraceDto,
 } from "../../../models/comfortDtos";
 
+export function buildHoverTemplate(
+  rows: readonly (string | null | undefined)[],
+): string {
+  return rows.filter((row): row is string => row != null).join("<br>")
+    + "<extra></extra>";
+}
+
 export interface InputScatterTraceOptions {
   inputId: InputIdType;
   x: number;

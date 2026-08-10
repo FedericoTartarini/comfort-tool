@@ -92,8 +92,7 @@ const humidexChartSpec: GridModelChartSpec<HumidexRequestDto, HumidexResponseDto
   axisRanges: {
     [FieldKey.DryBulbTemperature]: TDB_LIMITS,
   },
-  getAxisValue: requestAdapter.getAxisValue,
-  setAxisValue: requestAdapter.setAxisValue,
+  requestAdapter,
   evaluate: calculateHumidex,
   getOutputValue: (result) => result.humidex,
   fixedView: {
@@ -209,6 +208,4 @@ builder.setDefaultDynamicAxes({
 });
 builder.setDefaultOptions({});
 builder.setOptionParser(parseEmptyOptions);
-builder.setZones(humidexZonesList);
-
 export const humidexModelConfig = builder.build();

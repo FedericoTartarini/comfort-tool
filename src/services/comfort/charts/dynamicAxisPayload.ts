@@ -2,6 +2,9 @@ import {
   FieldKey,
   type FieldKey as FieldKeyType,
 } from "../../../models/fieldKeys";
+import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
+import type { FieldRequestAdapter } from "../requestMapping";
+import type { ChartRange } from "./types";
 
 export interface DynamicAxisCoordinate {
   readonly field: FieldKeyType;
@@ -29,6 +32,70 @@ type TemperatureComponentField =
   | typeof FieldKey.MeanRadiantTemperature;
 
 const SOLVER_TOLERANCE = 1e-6;
+
+export interface RequestAxisAdapter<TPayload>
+  extends DynamicAxisPayloadAdapter<TPayload> {
+  getAxisRange: (field: FieldKeyType) => ChartRange;
+}
+
+interface RequestAxisAdapterOptions<TPayload extends object> {
+  fieldAdapter: Pick<
+    FieldRequestAdapter<TPayload>,
+    "getAxisValue" | "setAxisValue"
+  >;
+  aliases?: Partial<Record<FieldKeyType, FieldKeyType>>;
+  axisRanges?: Partial<Record<FieldKeyType, ChartRange>>;
+  temperatureComponentRanges?: Partial<Record<TemperatureComponentField, ChartRange>>;
+  operativeTemperature: {
+    get: (payload: TPayload) => number;
+    set: (payload: TPayload, valueSi: number) => void;
+    range: ChartRange;
+  };
+}
+
+/**
+ * Adds chart-only aliases and the standard-specific operative-temperature
+ * constraint to a canonical request mapping.
+ */
+export function createRequestAxisAdapter<TPayload extends object>({
+  fieldAdapter,
+  aliases = {},
+  axisRanges = {},
+  temperatureComponentRanges = {},
+  operativeTemperature,
+}: RequestAxisAdapterOptions<TPayload>): RequestAxisAdapter<TPayload> {
+  const resolveField = (field: FieldKeyType) => aliases[field] ?? field;
+  const getAxisRange = (field: FieldKeyType): ChartRange => {
+    if (field === FieldKey.OperativeTemperature) {
+      return operativeTemperature.range;
+    }
+    const resolvedField = resolveField(field);
+    return axisRanges[field]
+      ?? axisRanges[resolvedField]
+      ?? {
+        min: fieldMetaByKey[resolvedField].minValue,
+        max: fieldMetaByKey[resolvedField].maxValue,
+      };
+  };
+
+  return {
+    getAxisValue: (payload, field) => field === FieldKey.OperativeTemperature
+      ? operativeTemperature.get(payload)
+      : fieldAdapter.getAxisValue(payload, resolveField(field)),
+    setAxisValue: (payload, field, valueSi) => {
+      if (field === FieldKey.OperativeTemperature) {
+        operativeTemperature.set(payload, valueSi);
+        return;
+      }
+      fieldAdapter.setAxisValue(payload, resolveField(field), valueSi);
+    },
+    getOperativeTemperature: operativeTemperature.get,
+    getTemperatureComponentRange: (field) => (
+      temperatureComponentRanges[field] ?? getAxisRange(field)
+    ),
+    getAxisRange,
+  };
+}
 
 function isTemperatureComponent(
   field: FieldKeyType,

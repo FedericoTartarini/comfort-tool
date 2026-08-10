@@ -4,17 +4,14 @@ import type {
   ComfortModelDefinition,
   DynamicAxisDefaults,
   ModelOptionChangeHandler,
-} from "./index";
+  RuntimeComfortModelDefinition,
+} from "./definition";
 import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import type { ModelCharts } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
-import {
-  modifierOrder,
-  type ModifierId as ModifierIdType,
-} from "../../../models/inputModifiers";
+import type { InputModifier } from "../../../models/inputModifiers";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
-import type { ThermalZone } from "../../../models/thermalZone";
 import {
   ChartMode,
   type Band,
@@ -75,7 +72,7 @@ export function buildResultSection<T>(
       const result = resultsByInput[inputId];
       let formattedValue = null;
 
-      if (result) {
+      if (result !== null) {
         formattedValue = formatter(result);
       }
 
@@ -110,7 +107,7 @@ export class ComfortModelBuilder<
 
   private chartableOutputs?: readonly ModelOutput[];
 
-  private supportedModifiers?: readonly ModifierIdType[];
+  private modifiers?: readonly InputModifier[];
 
   private complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
 
@@ -152,8 +149,6 @@ export class ComfortModelBuilder<
 
   private defaultDynamicAxes?: DynamicAxisDefaults;
 
-  private zones: readonly ThermalZone[] = [];
-
   constructor(id: ComfortModelType) {
     this.id = id;
   }
@@ -178,8 +173,8 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setModifiers(modifiers: readonly ModifierIdType[]): this {
-    this.supportedModifiers = modifiers;
+  setModifiers(modifiers: readonly InputModifier[]): this {
+    this.modifiers = modifiers;
     return this;
   }
 
@@ -250,12 +245,7 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setZones(zones: readonly ThermalZone[]): this {
-    this.zones = zones;
-    return this;
-  }
-
-  build(): ComfortModelDefinition<ResultType, ChartSourceType, ComplianceBand> {
+  build(): RuntimeComfortModelDefinition {
     const modes = this.modes;
     if (!modes || modes.length === 0) {
       throw new Error("Comfort model declarations require at least one mode.");
@@ -275,16 +265,13 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations cannot contain duplicate output keys.");
     }
 
-    const supportedModifiers = this.supportedModifiers;
-    if (!supportedModifiers) {
+    const modifiers = this.modifiers;
+    if (!modifiers) {
       throw new Error("Comfort model declarations must explicitly set supported modifiers.");
     }
-    if (new Set(supportedModifiers).size !== supportedModifiers.length) {
+    const modifierIds = modifiers.map(({ id }) => id);
+    if (new Set(modifierIds).size !== modifierIds.length) {
       throw new Error("Comfort model declarations cannot contain duplicate modifiers.");
-    }
-    const knownModifierIds = new Set(modifierOrder);
-    if (supportedModifiers.some((modifierId) => !knownModifierIds.has(modifierId))) {
-      throw new Error("Comfort model declarations cannot contain unknown modifiers.");
     }
 
     const supportsExplore = modes.includes(ChartMode.Explore);
@@ -308,11 +295,8 @@ export class ComfortModelBuilder<
       && (
         !this.complianceSpec
         || this.complianceSpec.bands.length === 0
-        || typeof this.complianceSpec.legendTitle !== "string"
         || this.complianceSpec.legendTitle.trim().length === 0
-        || typeof this.complianceSpec.caption !== "string"
         || this.complianceSpec.caption.trim().length === 0
-        || typeof this.complianceSpec.getFeedback !== "function"
       )
     ) {
       throw new Error("Compliance mode requires a non-empty compliance specification.");
@@ -322,11 +306,11 @@ export class ComfortModelBuilder<
       throw new Error("A model without Compliance mode cannot declare a compliance specification.");
     }
 
-    if (typeof this.label !== "string" || this.label.trim().length === 0) {
+    if (!this.label || this.label.trim().length === 0) {
       throw new Error("Comfort model declarations require a non-empty label.");
     }
 
-    if (typeof this.description !== "string" || this.description.trim().length === 0) {
+    if (!this.description || this.description.trim().length === 0) {
       throw new Error("Comfort model declarations require a non-empty description.");
     }
 
@@ -336,15 +320,11 @@ export class ComfortModelBuilder<
     }
 
     const chartIds = charts.entries.map(({ id }) => id);
-    if (chartIds.some((chartId) => chartId.trim().length === 0)) {
-      throw new Error("Comfort model declarations require non-empty chart IDs.");
-    }
-
     if (new Set(chartIds).size !== chartIds.length) {
       throw new Error("Comfort model declarations cannot contain duplicate chart IDs.");
     }
 
-    if (!charts.defaultId || !chartIds.includes(charts.defaultId)) {
+    if (!chartIds.includes(charts.defaultId)) {
       throw new Error("The default chart must belong to the declared chart definitions.");
     }
 
@@ -404,6 +384,11 @@ export class ComfortModelBuilder<
       throw new Error("Default dynamic axes must be supported and distinct.");
     }
 
+    const complianceSpec = this.complianceSpec;
+    const calculate = this.calculate;
+    const buildResultSections = this.buildResultSections;
+    const buildChartResult = this.buildChartResult;
+
     return {
       id: this.id,
       label: this.label,
@@ -413,12 +398,15 @@ export class ComfortModelBuilder<
         ...output,
         defaultBands: cloneNumericBands(output.defaultBands),
       })),
-      supportedModifiers: [...supportedModifiers],
-      ...(this.complianceSpec
+      modifiers: [...modifiers],
+      ...(complianceSpec
         ? {
             complianceSpec: {
-              ...this.complianceSpec,
-              bands: this.complianceSpec.bands.map((band) => ({ ...band })),
+              ...complianceSpec,
+              bands: complianceSpec.bands.map((band) => ({ ...band })),
+              getFeedback: (result: unknown) => complianceSpec.getFeedback(
+                result as ResultType,
+              ),
             },
           }
         : {}),
@@ -430,12 +418,24 @@ export class ComfortModelBuilder<
       },
       defaultOptions: { ...defaultOptions },
       parseOptions: this.parseOptions,
-      calculate: this.calculate,
-      buildResultSections: this.buildResultSections,
-      buildChartResult: this.buildChartResult,
+      calculate: (context, visibleInputIds) => calculate(context, visibleInputIds),
+      buildResultSections: (resultsByInput, visibleInputIds, unitSystem) => (
+        buildResultSections(
+          resultsByInput as Record<InputIdType, ResultType | null>,
+          visibleInputIds,
+          unitSystem,
+        )
+      ),
+      buildChartResult: (chartId, chartSource, resultsByInput, context) => (
+        buildChartResult(
+          chartId,
+          chartSource as ChartSourceType | null,
+          resultsByInput as Record<InputIdType, ResultType | null>,
+          context as Parameters<typeof buildChartResult>[3],
+        )
+      ),
       dynamicAxisFields: [...dynamicAxisFields],
       defaultDynamicAxes: { ...defaultDynamicAxes },
-      zones: [...this.zones],
     };
   }
 }

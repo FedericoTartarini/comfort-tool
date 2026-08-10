@@ -8,6 +8,7 @@ import {
 } from "../../models/fieldKeys";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {
+  inputModifierCatalogue,
   modifierOrder,
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
@@ -22,7 +23,6 @@ import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/unit
 import { validateNumericBands } from "../../services/comfort/charts/bands";
 import { isFiniteNumber } from "../../services/comfort/helpers";
 import {
-  inputModifierById,
   isModifierConfigurationComplete,
   isModifierFieldValueValid,
 } from "../../services/comfort/inputModifiers";
@@ -199,7 +199,7 @@ function parseModifierInputsByInput(
     parsed[inputId] = {} as ModifierInputsByInputState[typeof inputId];
 
     for (const modifierId of modifierOrder) {
-      const definition = inputModifierById[modifierId];
+      const definition = inputModifierCatalogue[modifierId];
       const modifierInputs = inputsByModifier[modifierId];
       if (!isRecord(modifierInputs) || !hasExactKeys(modifierInputs, definition.extraInputs)) {
         return null;
@@ -215,7 +215,7 @@ function parseModifierInputsByInput(
       }
       if (
         activeModifiersByInput[inputId][modifierId]
-        && !isModifierConfigurationComplete(modifierId, parsedInputs)
+        && !isModifierConfigurationComplete(definition, parsedInputs)
       ) {
         return null;
       }
@@ -475,7 +475,7 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
     }, {} as ActiveModifiersByInputState),
     modifierInputsByInput: inputOrder.reduce((byInput, inputId) => {
       byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-        byModifier[modifierId] = inputModifierById[modifierId].extraInputs.reduce(
+        byModifier[modifierId] = inputModifierCatalogue[modifierId].extraInputs.reduce(
           (inputs, fieldKey) => {
             inputs[fieldKey] = state.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
             return inputs;
@@ -514,7 +514,7 @@ export function applyShareSnapshotToState(
     for (const modifierId of modifierOrder) {
       state.activeModifiersByInput[inputId][modifierId] =
         snapshot.activeModifiersByInput[inputId][modifierId];
-      for (const fieldKey of inputModifierById[modifierId].extraInputs) {
+      for (const fieldKey of inputModifierCatalogue[modifierId].extraInputs) {
         state.modifierInputsByInput[inputId][modifierId][fieldKey] =
           snapshot.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
       }

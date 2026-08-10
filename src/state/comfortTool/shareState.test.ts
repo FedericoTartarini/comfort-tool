@@ -4,7 +4,12 @@ import { ChartId } from "../../models/chartOptions";
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import { canonicalInputFieldOrder, FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
-import { HumidityInputMode, OptionKey, TemperatureMode } from "../../models/inputModes";
+import {
+  AirSpeedControlMode,
+  HumidityInputMode,
+  OptionKey,
+  TemperatureMode,
+} from "../../models/inputModes";
 import {
   ModifierFieldKey,
   ModifierId,
@@ -72,6 +77,8 @@ describe("shareState strict v1 codec", () => {
     toolState.state.modifierInputsByInput[InputId.Input2]
       [ModifierId.MorningClothingEstimate]
       [ModifierFieldKey.MorningOutdoorTemperature] = 10;
+    toolState.state.activeModifiersByInput[InputId.Input2]
+      [ModifierId.DynamicClothing] = true;
     Object.assign(
       toolState.state.modifierInputsByInput[InputId.Input3][ModifierId.SolarGain],
       {
@@ -96,6 +103,10 @@ describe("shareState strict v1 codec", () => {
       .toBe(true);
     expect(snapshot.activeModifiersByInput[InputId.Input2]
       [ModifierId.MorningClothingEstimate]).toBe(false);
+    expect(snapshot.activeModifiersByInput[InputId.Input2]
+      [ModifierId.DynamicClothing]).toBe(true);
+    expect(snapshot.modifierInputsByInput[InputId.Input2]
+      [ModifierId.DynamicClothing]).toEqual({});
     expect(snapshot.modifierInputsByInput[InputId.Input2]
       [ModifierId.MorningClothingEstimate]
       [ModifierFieldKey.MorningOutdoorTemperature]).toBe(10);
@@ -146,6 +157,8 @@ describe("shareState strict v1 codec", () => {
       .toBe(ChartId.Psychrometric);
     expect(restored?.models[ComfortModel.PmvIso].selectedChart)
       .toBe(ChartId.PmvDynamic);
+    expect(snapshot.models[ComfortModel.PmvIso].options)
+      .not.toHaveProperty(OptionKey.AirSpeedControlMode);
     expect(snapshot.models[ComfortModel.PmvAshrae].chartSettings)
       .toEqual(expect.objectContaining({
         mode: ChartMode.Explore,
@@ -314,6 +327,19 @@ describe("shareState strict v1 codec", () => {
     }))).toBeNull();
   });
 
+  it("rejects the unsupported occupant-control option for ISO PMV", () => {
+    const current = createShareStateSnapshot(createComfortToolState().state);
+
+    expect(parseShareStateSnapshot(withModelOptions(
+      current,
+      ComfortModel.PmvIso,
+      {
+        ...current.models[ComfortModel.PmvIso].options,
+        [OptionKey.AirSpeedControlMode]: AirSpeedControlMode.WithLocalControl,
+      },
+    ))).toBeNull();
+  });
+
   it.each([
     ComfortModel.HeatIndex,
     ComfortModel.Humidex,
@@ -418,6 +444,25 @@ describe("shareState strict v1 codec", () => {
       { unknownField: 1 },
     );
 
+    const missingDynamicActiveKey = structuredClone(current);
+    Reflect.deleteProperty(
+      missingDynamicActiveKey.activeModifiersByInput[InputId.Input1],
+      ModifierId.DynamicClothing,
+    );
+
+    const missingDynamicInputsKey = structuredClone(current);
+    Reflect.deleteProperty(
+      missingDynamicInputsKey.modifierInputsByInput[InputId.Input1],
+      ModifierId.DynamicClothing,
+    );
+
+    const extraDynamicInput = structuredClone(current);
+    Object.assign(
+      extraDynamicInput.modifierInputsByInput[InputId.Input1]
+        [ModifierId.DynamicClothing],
+      { [ModifierFieldKey.MeasuredAirSpeed]: 0.6 },
+    );
+
     const nonFinite = structuredClone(current);
     nonFinite.modifierInputsByInput[InputId.Input1][ModifierId.MeasuredAirSpeed]
       [ModifierFieldKey.MeasuredAirSpeed] = Infinity;
@@ -426,6 +471,9 @@ describe("shareState strict v1 codec", () => {
     expect(parseShareStateSnapshot(outOfRange)).toBeNull();
     expect(parseShareStateSnapshot(unknownModifier)).toBeNull();
     expect(parseShareStateSnapshot(unknownField)).toBeNull();
+    expect(parseShareStateSnapshot(missingDynamicActiveKey)).toBeNull();
+    expect(parseShareStateSnapshot(missingDynamicInputsKey)).toBeNull();
+    expect(parseShareStateSnapshot(extraDynamicInput)).toBeNull();
     expect(parseShareStateSnapshot(nonFinite)).toBeNull();
   });
 

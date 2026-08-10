@@ -1,6 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { ComfortModel } from "../../models/comfortModels";
 import {
   FieldKey,
   canonicalInputFieldOrder,
@@ -43,9 +42,7 @@ function createContext(): ModelCalculationContext {
         [FieldKey.RelativeHumidity]: 60,
       }),
     },
-    modelOptionsByModel: Object.fromEntries(
-      Object.values(ComfortModel).map((modelId) => [modelId, {}]),
-    ) as ModelCalculationContext["modelOptionsByModel"],
+    options: {},
   };
 }
 
