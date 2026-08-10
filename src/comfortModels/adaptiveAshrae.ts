@@ -1,18 +1,21 @@
 import { adaptive_ashrae } from "jsthermalcomfort";
 import { ComfortStandard } from "../models/calculationMetadata";
+import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import type { PresetInputOption } from "../models/inputControls";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
 import {
-  createAdaptiveComplianceBands,
-  createAdaptiveComplianceCaption,
-  createAdaptiveComplianceFeedbackGetter,
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
   type AdaptiveModelDeclaration,
 } from "./adaptiveShared";
+import {
+  createAdaptiveComplianceBands,
+  createAdaptiveComplianceCaption,
+  createAdaptiveComplianceFeedbackGetter,
+} from "./adaptiveCalculation";
 
 export const adaptiveAshraeZonesList = [
   new ThermalZone({ label: "Too Cool", color: "#3b82f6", textColor: "#2563eb" }),
@@ -65,13 +68,25 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
     "ASHRAE 55 Adaptive thermal comfort model for naturally ventilated buildings.",
   resultStandard: ComfortStandard.Ashrae55Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ASHRAE,
-  zones: adaptiveAshraeZonesList,
   modes: [ChartMode.Compliance],
   chartableOutputs: [],
-  supportedModifiers: [],
+  modifiers: [],
+  charts: {
+    defaultId: ChartId.Adaptive,
+    entries: [{
+      id: ChartId.Adaptive,
+      name: "Adaptive",
+      emptyMessage: "No adaptive chart yet.",
+      allowsAxisSelection: true,
+      locksYAxis: false,
+      showsZoneToggle: false,
+      showsLegend: true,
+    }],
+  },
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),
+    legendTitle: "Adaptive Zones",
     caption: createAdaptiveComplianceCaption(
       "Green shading shows the ASHRAE 55 80% and 90% acceptability regions",
       adaptiveAshraeBoundaryDefinition,

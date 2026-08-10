@@ -1,4 +1,7 @@
-import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import type {
+  PlotLayoutDto,
+  PlotlyChartResponseDto,
+} from "../../../models/comfortDtos";
 import { buildAxisValues, formatAxisTitle } from "./axis";
 import type { ChartResponseSpec } from "./types";
 
@@ -10,7 +13,7 @@ export function buildChartResponse({
 }: ChartResponseSpec): PlotlyChartResponseDto {
   const xValues = buildAxisValues(layout.xAxis);
   const yValues = buildAxisValues(layout.yAxis);
-  const plotLayout = {
+  const plotLayout: PlotLayoutDto = {
     title: layout.title,
     paper_bgcolor: layout.paperBgColor,
     plot_bgcolor: layout.plotBgColor,
@@ -49,7 +52,6 @@ export function buildChartResponse({
         : {}),
     },
     ...(layout.legend !== undefined ? { legend: layout.legend } : {}),
-    ...(layout.shapes !== undefined ? { shapes: layout.shapes } : {}),
     ...(layout.height !== undefined ? { height: layout.height } : {}),
   };
 

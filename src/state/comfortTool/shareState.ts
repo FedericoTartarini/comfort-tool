@@ -1,10 +1,14 @@
 /** Strict current-schema version-1 share snapshots. */
 import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import { allFieldOrder } from "../../models/inputFieldsMeta";
+import {
+  canonicalInputFieldOrder,
+  type CanonicalInputState,
+  type FieldKey as FieldKeyType,
+} from "../../models/fieldKeys";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {
+  inputModifierCatalogue,
   modifierOrder,
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
@@ -19,7 +23,6 @@ import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/unit
 import { validateNumericBands } from "../../services/comfort/charts/bands";
 import { isFiniteNumber } from "../../services/comfort/helpers";
 import {
-  inputModifierById,
   isModifierConfigurationComplete,
   isModifierFieldValueValid,
 } from "../../services/comfort/inputModifiers";
@@ -58,7 +61,7 @@ export interface ShareStateSnapshot {
   compareInputIds: InputIdType[];
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
-  inputsByInput: Record<InputIdType, Record<FieldKeyType, number>>;
+  inputsByInput: Record<InputIdType, CanonicalInputState>;
   activeModifiersByInput: ActiveModifiersByInputState;
   modifierInputsByInput: ModifierInputsByInputState;
 }
@@ -70,7 +73,6 @@ const NEGATIVE_INFINITY_WIRE = "__comfort_tool_negative_infinity__";
 const comfortModelValues = new Set<ComfortModelType>(comfortModelOrder);
 const inputIdValues = new Set<InputIdType>(Object.values(InputId));
 const unitSystemValues = new Set<UnitSystemType>(Object.values(UnitSystem));
-const fieldKeyValues = allFieldOrder;
 
 function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const actualKeys = Object.keys(value);
@@ -81,6 +83,12 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isCanonicalInputState(value: unknown): value is CanonicalInputState {
+  return isRecord(value)
+    && hasExactKeys(value, canonicalInputFieldOrder)
+    && canonicalInputFieldOrder.every((fieldKey) => isFiniteNumber(value[fieldKey]));
 }
 
 export function normalizeCompareInputIds(inputIds: InputIdType[]): InputIdType[] {
@@ -136,24 +144,22 @@ function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"]
     return null;
   }
 
-  const inputsByInput = {} as ShareStateSnapshot["inputsByInput"];
-  for (const inputId of inputOrder) {
-    const inputValues = value[inputId];
-    if (!isRecord(inputValues) || !hasExactKeys(inputValues, fieldKeyValues)) {
-      return null;
-    }
-
-    const parsedInput = {} as Record<FieldKeyType, number>;
-    for (const fieldKey of fieldKeyValues) {
-      const fieldValue = inputValues[fieldKey];
-      if (!isFiniteNumber(fieldValue)) {
-        return null;
-      }
-      parsedInput[fieldKey] = fieldValue;
-    }
-    inputsByInput[inputId] = parsedInput;
+  const input1 = value[InputId.Input1];
+  const input2 = value[InputId.Input2];
+  const input3 = value[InputId.Input3];
+  if (
+    !isCanonicalInputState(input1)
+    || !isCanonicalInputState(input2)
+    || !isCanonicalInputState(input3)
+  ) {
+    return null;
   }
-  return inputsByInput;
+
+  return {
+    [InputId.Input1]: input1,
+    [InputId.Input2]: input2,
+    [InputId.Input3]: input3,
+  };
 }
 
 function parseActiveModifiersByInput(
@@ -193,7 +199,7 @@ function parseModifierInputsByInput(
     parsed[inputId] = {} as ModifierInputsByInputState[typeof inputId];
 
     for (const modifierId of modifierOrder) {
-      const definition = inputModifierById[modifierId];
+      const definition = inputModifierCatalogue[modifierId];
       const modifierInputs = inputsByModifier[modifierId];
       if (!isRecord(modifierInputs) || !hasExactKeys(modifierInputs, definition.extraInputs)) {
         return null;
@@ -209,7 +215,7 @@ function parseModifierInputsByInput(
       }
       if (
         activeModifiersByInput[inputId][modifierId]
-        && !isModifierConfigurationComplete(modifierId, parsedInputs)
+        && !isModifierConfigurationComplete(definition, parsedInputs)
       ) {
         return null;
       }
@@ -329,7 +335,9 @@ function parseModelSnapshots(
     }
 
     const config = getComfortModelConfig(modelId);
-    if (!config.chartIds.includes(modelSnapshot.selectedChart as ChartIdType)) {
+    if (!config.charts.entries.some(
+      ({ id }) => id === modelSnapshot.selectedChart,
+    )) {
       return null;
     }
     const options = config.parseOptions(modelSnapshot.options);
@@ -453,13 +461,11 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
     compareInputIds: [...state.ui.compareInputIds],
     activeInputId: state.ui.activeInputId,
     unitSystem: state.ui.unitSystem,
-    inputsByInput: inputOrder.reduce((accumulator, inputId) => {
-      accumulator[inputId] = allFieldOrder.reduce((inputAccumulator, fieldKey) => {
-        inputAccumulator[fieldKey] = state.inputsByInput[inputId][fieldKey];
-        return inputAccumulator;
-      }, {} as ShareStateSnapshot["inputsByInput"][typeof inputId]);
-      return accumulator;
-    }, {} as ShareStateSnapshot["inputsByInput"]),
+    inputsByInput: {
+      [InputId.Input1]: { ...state.inputsByInput[InputId.Input1] },
+      [InputId.Input2]: { ...state.inputsByInput[InputId.Input2] },
+      [InputId.Input3]: { ...state.inputsByInput[InputId.Input3] },
+    },
     activeModifiersByInput: inputOrder.reduce((byInput, inputId) => {
       byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
         byModifier[modifierId] = state.activeModifiersByInput[inputId][modifierId];
@@ -469,7 +475,7 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
     }, {} as ActiveModifiersByInputState),
     modifierInputsByInput: inputOrder.reduce((byInput, inputId) => {
       byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-        byModifier[modifierId] = inputModifierById[modifierId].extraInputs.reduce(
+        byModifier[modifierId] = inputModifierCatalogue[modifierId].extraInputs.reduce(
           (inputs, fieldKey) => {
             inputs[fieldKey] = state.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
             return inputs;
@@ -502,13 +508,13 @@ export function applyShareSnapshotToState(
   state.ui.unitSystem = snapshot.unitSystem;
 
   for (const inputId of inputOrder) {
-    for (const fieldKey of allFieldOrder) {
+    for (const fieldKey of canonicalInputFieldOrder) {
       state.inputsByInput[inputId][fieldKey] = snapshot.inputsByInput[inputId][fieldKey];
     }
     for (const modifierId of modifierOrder) {
       state.activeModifiersByInput[inputId][modifierId] =
         snapshot.activeModifiersByInput[inputId][modifierId];
-      for (const fieldKey of inputModifierById[modifierId].extraInputs) {
+      for (const fieldKey of inputModifierCatalogue[modifierId].extraInputs) {
         state.modifierInputsByInput[inputId][modifierId][fieldKey] =
           snapshot.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
       }

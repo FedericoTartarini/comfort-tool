@@ -5,10 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev      # Start Vite dev server
-npm run build    # Production build (must pass before a change is done)
-npm test         # Run Vitest tests (must pass before a change is done)
-npm run preview  # Preview production build
+npm run dev         # Start the application dev server
+npm test            # Run Vitest tests
+npm run check       # Run Svelte and TypeScript checks
+npm run lint        # Run ESLint
+npm run build       # Build the application
+npm run test:visual # Run Playwright visual tests
+npm run preview     # Preview the application build
 ```
 
 To run a single test file:
@@ -26,14 +29,14 @@ Frontend-only — no backend in this repo.
 
 ```
 src/
-  comfortModels/    one file per comfort model; model-specific config, zones, calculations, charts
+  comfortModels/    declarations plus focused model-family calculation/chart modules
   components/       rendering and interaction (input-panel/, chart/, shared UI)
   models/           centralized domain constants and metadata (field keys, model IDs, units, etc.)
   services/
-    comfort/        shared comfort helpers, psychrometrics, chart scaffolding, clothing tools
+    comfort/        shared comfort helpers, request/axis adapters, charts, modifiers
     units/          SI <-> IP conversion helpers
   state/
-    comfortTool/    controller, model configs, derived state, URL share state
+    comfortTool/    controller, model definitions/registry, pure projections, URL share state
   views/            page composition only (ComfortDashboard.svelte)
   App.svelte        root component
 ```
@@ -69,23 +72,36 @@ When touching state or types, prefer keyed generic records over adding more mode
 
 ## Model Configuration
 
-Model definitions live in `src/comfortModels/`. The builder and registry live in `src/state/comfortTool/modelConfigs/`. Each model config owns: input field list, default inputs, derived-input sync, request builder, calculation function, chart list, chart builders, supported modes, chartable outputs, and any fixed compliance specification. New models must follow this config-driven pattern — do not add another hardcoded controller slice.
+Model declarations live in `src/comfortModels/`. The generic authoring/runtime
+contract is in `src/state/comfortTool/modelConfigs/definition.ts`. The builder
+depends on that contract rather than the registry, and the registry only
+registers built runtime definitions. Builder generics preserve model-specific result and chart-source
+types until `build()` erases them once for the controller. Declaration-local
+zones derive chart bands and are not runtime-definition state.
+
+Each declaration owns inputs, strict options, request mapping, calculation,
+result rows, charts, modes, outputs, executable modifiers, and any fixed
+Compliance specification. New models must follow this config-driven pattern—do
+not add another hardcoded controller slice.
+
+Each registered model has one focused declaration entry. That entry makes the
+model's product decisions readable in one place, but stable IDs, the explicit
+registry entry, shared metadata, and tests remain separate files. Simple models
+may keep all implementation in the declaration; larger standard families may
+use focused calculation/chart modules beside complete declarations.
 
 Use constants from `src/models/` for model identifiers, field identifiers, chart identifiers, and compare-input identifiers. Do not introduce new raw domain strings for these concepts.
 
-## Capability Declarations And Next Architecture Direction
+## Capabilities, axes, and modifiers
 
-`26-06-29-architecture-brief.md` describes the broader target architecture. Compliance mode UI, Explore controls, the shared `FieldChartConfig` engine, and full per-model chart-setting memory are implemented; input modifiers are not.
-
-- Compliance and Explore should share one chart engine, with Compliance as the constrained version.
-- Every declaration must call `setModes()` and `setChartableOutputs()`; Compliance models must also call `setComplianceSpec()` with non-empty bands, a caption, and a result feedback callback.
-- Use `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` from `src/models/modelCapabilities.ts`.
-- `chartSettingsByModel` stores each model's mode, axes, baseline, and optional Explore working state. Explore z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`; Compliance output and bands always come from `complianceSpec`.
-- Chart settings and chart selection are presentation-only and must reuse ready calculation caches. Strict v1 share snapshots store chart settings per model, omit Compliance bands, and do not migrate the old v1 shape.
-- Resolve bands in array order with half-open membership (`min <= value < max`); band values, functional-edge X values, and inputs are canonical SI.
-- PMV ASHRAE and PMV ISO are separate registry entries with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files. ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. Shared PMV mechanics use an injected adapter in `pmvShared.ts`, never a standard-toggle branch.
-- Future constants such as `ModifierId` should be added under `src/models/` before use; do not inline raw strings.
-- Future input sub-tools should use an `InputModifier` pattern: keep base SI input separate from effective SI input, apply reversible modifier patches, and declare supported modifiers per model.
+- Compliance and Explore share the Field Chart engine, with Compliance as the constrained mode.
+- Every declaration calls `setModes()` and `setChartableOutputs()`; Compliance models also provide fixed output, non-empty bands, caption, legend title, and feedback.
+- `chartSettingsByModel` stores per-model mode, axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation.
+- Strict share snapshots remain exact `version: 1`; only Explore working bands are serialized, and modifier records contain the complete stable key set.
+- Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
+- Use `createFieldRequestAdapter()` for canonical request mapping and `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior. Coupled temperature axes stay in the dynamic-axis solver.
+- Model `.setModifiers()` receives executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input.
+- Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO; each declaration binds its own `clo_dynamic` standard.
 - Keep Time-series out of Analysis state until it is explicitly implemented.
 
 ## UI Conventions
@@ -130,15 +146,27 @@ Do not define threshold constants separately and then repeat the same number in 
 
 ## Architecture: comfortModels/
 
-Each registered model declaration lives in its own file in `src/comfortModels/`. Same-family mechanics may be extracted to an explicitly named support module when multiple declarations reuse them: PMV uses `pmvAshrae.ts`, `pmvIso.ts`, and the non-registered `pmvShared.ts`. Standard-specific calculations stay in the declaration files and are injected into shared mechanics without runtime standard branching.
+Each registered model has one focused declaration entry. PMV uses
+`pmvAshrae.ts` and `pmvIso.ts` for complete standard decisions,
+`pmvCalculation.ts` for formulas/results, `pmvCharts.ts` for chart construction,
+and `pmvShared.ts` only for cross-standard contracts and builder assembly.
+Adaptive follows the same shape with ASHRAE/EN declarations plus
+`adaptiveCalculation.ts`, `adaptiveCharts.ts`, and `adaptiveShared.ts`. Never
+merge separate standards behind a runtime toggle.
 
 ## Done Criteria
 
 A change is complete when:
 - `npm test` passes
+- `npm run check` passes
+- `npm run lint` passes
 - `npm run build` passes
+- `npm run test:visual` passes
+- `git diff --check` passes
 - SI remains the canonical shared state
 - No new raw domain strings were introduced for model/field/chart IDs
 - No new direct `jsthermalcomfort` imports outside `src/comfortModels/**` or `src/services/comfort/**`
 - No new scattered conversion helpers outside `src/services/units/`
 - Model or chart additions do not expand the controller with more hardcoded parallel properties (unless explicitly approved)
+- Internal documentation remains in `docs/adding-a-thermal-model.md` and `docs/frontend-structure-summary.md`; it is not part of the application build
+- `26-06-29-architecture-brief.md` remains unchanged

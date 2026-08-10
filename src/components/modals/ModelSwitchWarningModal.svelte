@@ -23,6 +23,9 @@
 
   const pending = $derived(toolState.selectors.getPendingModelSwitch());
   const isOpen = $derived(!!pending);
+  const pendingModelLabel = $derived(
+    pending ? getComfortModelConfig(pending.targetModel).label : "",
+  );
 
   function handleConfirm() {
     toolState.actions.confirmModelSwitch();
@@ -32,10 +35,6 @@
     toolState.actions.cancelModelSwitch();
   }
 
-  function getModelLabel(modelId: any) {
-    if (!modelId) return "";
-    return getComfortModelConfig(modelId).label;
-  }
 </script>
 
 <Modal
@@ -50,7 +49,7 @@
     <ExclamationCircleOutline class="mx-auto mb-4 h-12 w-12 text-orange-500" />
     <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
       Switching to <strong
-        >{pending ? getModelLabel(pending.targetModel) : ""}</strong
+        >{pendingModelLabel}</strong
       > will cause some values to fall outside their allowed range.
     </h3>
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartId, chartMetaById } from "../../models/chartOptions";
+import { ChartId } from "../../models/chartOptions";
 import { ComfortModel } from "../../models/comfortModels";
 import { FieldKey } from "../../models/fieldKeys";
 import { InputControlId } from "../../models/inputControls";
@@ -17,7 +17,7 @@ import {
   pmvAshraeAdapter,
   pmvAshraeModelConfig,
 } from "../../comfortModels/pmvAshrae";
-import type { PmvChartSourceDto, PmvResponseDto } from "../../comfortModels/pmvShared";
+import type { PmvChartSourceDto, PmvResponseDto } from "../../comfortModels/pmvCalculation";
 import type { UtciResponseDto } from "../../comfortModels/utci";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
@@ -184,6 +184,111 @@ describe("createComfortToolState", () => {
     await waitForIdle(toolState);
   });
 
+  it("applies Morning then Dynamic Clothing per input and recomputes the remaining chain", async () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.compareEnabled = true;
+    toolState.state.ui.compareInputIds = [InputId.Input1, InputId.Input2];
+    toolState.actions.updateInput(
+      InputId.Input1,
+      InputControlId.MetabolicRate,
+      "1.8",
+    );
+    toolState.actions.updateInput(
+      InputId.Input2,
+      InputControlId.MetabolicRate,
+      "1.8",
+    );
+    toolState.actions.updateModifierInput(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      ModifierFieldKey.MorningOutdoorTemperature,
+      "10",
+    );
+
+    const baseInput1Clothing = toolState.state.inputsByInput[InputId.Input1]
+      [FieldKey.ClothingInsulation];
+    const baseInput2Clothing = toolState.state.inputsByInput[InputId.Input2]
+      [FieldKey.ClothingInsulation];
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      true,
+    )).toBe(true);
+    const morningClothing = toolState.selectors.getEffectiveInputsByInput()
+      [InputId.Input1][FieldKey.ClothingInsulation];
+    expect(morningClothing).toBeCloseTo(0.59, 2);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.DynamicClothing,
+      true,
+    )).toBe(true);
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input2,
+      ModifierId.DynamicClothing,
+      true,
+    )).toBe(true);
+    const chainedClothing = toolState.selectors.getEffectiveInputsByInput()
+      [InputId.Input1][FieldKey.ClothingInsulation];
+    const input2DynamicClothing = toolState.selectors.getEffectiveInputsByInput()
+      [InputId.Input2][FieldKey.ClothingInsulation];
+    expect(chainedClothing).toBeCloseTo(0.485, 3);
+    expect(input2DynamicClothing).not.toBe(baseInput2Clothing);
+    expect(toolState.state.inputsByInput[InputId.Input1]
+      [FieldKey.ClothingInsulation]).toBe(baseInput1Clothing);
+    expect(toolState.state.inputsByInput[InputId.Input2]
+      [FieldKey.ClothingInsulation]).toBe(baseInput2Clothing);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      false,
+    )).toBe(true);
+    const baseDynamicClothing = toolState.selectors.getEffectiveInputsByInput()
+      [InputId.Input1][FieldKey.ClothingInsulation];
+    expect(baseDynamicClothing).not.toBe(chainedClothing);
+    expect(baseDynamicClothing).not.toBe(baseInput1Clothing);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      true,
+    )).toBe(true);
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.DynamicClothing,
+      false,
+    )).toBe(true);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.ClothingInsulation]).toBe(morningClothing);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input2]
+      [FieldKey.ClothingInsulation]).toBe(input2DynamicClothing);
+
+    expect(toolState.actions.setModifierEnabled(
+      InputId.Input1,
+      ModifierId.MorningClothingEstimate,
+      false,
+    )).toBe(true);
+    expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+      [FieldKey.ClothingInsulation]).toBe(baseInput1Clothing);
+
+    await waitForIdle(toolState);
+  });
+
+  it("exposes Dynamic Clothing only for the two PMV declarations", () => {
+    const toolState = createComfortToolState();
+
+    for (const modelId of comfortModelOrder) {
+      toolState.state.ui.selectedModel = modelId;
+      const modifierIds = toolState.selectors.getInputModifierControls()
+        .map(({ id }) => id);
+      expect(modifierIds.includes(ModifierId.DynamicClothing)).toBe(
+        modelId === ComfortModel.PmvAshrae || modelId === ComfortModel.PmvIso,
+      );
+    }
+  });
+
   it("disables an active incomplete modifier without clearing its other inputs", async () => {
     const toolState = createComfortToolState();
     const baseRadiantTemperature = toolState.state.inputsByInput[InputId.Input1]
@@ -311,10 +416,10 @@ describe("createComfortToolState", () => {
       const modelConfig = comfortModelConfigs[modelId];
       const settings = getChartSettings(toolState, modelId);
 
-      for (const chartId of modelConfig.chartIds) {
-        toolState.actions.setSelectedChart(chartId);
+      for (const chart of modelConfig.charts.entries) {
+        toolState.actions.setSelectedChart(chart.id);
         const controls = toolState.selectors.getChartControlsViewModel();
-        const supportsAxisSelection = chartMetaById[chartId].supportsAxisSelection;
+        const supportsAxisSelection = chart.allowsAxisSelection;
         const expectedBands = settings.mode === ChartMode.Compliance
           ? modelConfig.complianceSpec?.bands
           : settings.explore?.bands;
@@ -327,7 +432,7 @@ describe("createComfortToolState", () => {
         const expectedLegendTitle = (
           output?.legendTitle
           ?? output?.label
-          ?? modelConfig.legendTitle
+          ?? modelConfig.complianceSpec?.legendTitle
         ) || "Bands";
 
         expect(controls.mode?.selectedMode).toBe(settings.mode);
@@ -337,7 +442,9 @@ describe("createComfortToolState", () => {
         expect(controls.explore === null).toBe(
           settings.mode !== ChartMode.Explore,
         );
-        const expectedLegendBands = toLegendBands(expectedBands);
+        const expectedLegendBands = chart.showsLegend
+          ? toLegendBands(expectedBands)
+          : null;
         expect(toolState.selectors.getCurrentChartLegendZones())
           .toEqual(expectedLegendBands);
         expect(toolState.selectors.getCurrentChartLegendTitle())
@@ -725,7 +832,7 @@ describe("createComfortToolState", () => {
     const controls = toolState.selectors.getChartControlsViewModel();
 
     expect(toolState.selectors.getCurrentChartOptions()).toEqual([
-      { name: "Adaptive", value: ChartId.Adaptive },
+      expect.objectContaining({ id: ChartId.Adaptive, name: "Adaptive" }),
     ]);
     expect(settings).toEqual(expect.objectContaining({
       mode: ChartMode.Compliance,
@@ -834,19 +941,22 @@ describe("createComfortToolState", () => {
     },
   );
 
-  it("ignores the unsupported occupant-control option for ISO PMV", () => {
+  it("does not store the unsupported occupant-control option for ISO PMV", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.PmvIso;
-    const initialValue = toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]
-      [OptionKey.AirSpeedControlMode];
+    const initialOptions = {
+      ...toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso],
+    };
+
+    expect(initialOptions).not.toHaveProperty(OptionKey.AirSpeedControlMode);
 
     toolState.actions.setModelOption(
       OptionKey.AirSpeedControlMode,
       AirSpeedControlMode.NoLocalControl,
     );
 
-    expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]
-      [OptionKey.AirSpeedControlMode]).toBe(initialValue);
+    expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso])
+      .toEqual(initialOptions);
     expect(toolState.state.ui.isLoading).toBe(false);
   });
 
@@ -932,6 +1042,22 @@ describe("createComfortToolState", () => {
     toolState.actions.setSelectedModel(ComfortModel.PmvAshrae);
     expect(getChartSettings(toolState).xAxis).toBe(FieldKey.MeanRadiantTemperature);
     expect(getChartSettings(toolState).yAxis).toBe(FieldKey.RelativeHumidity);
+  });
+
+  it("rejects invalid selected-model options at the calculation boundary", async () => {
+    const toolState = createComfortToolState();
+    delete toolState.state.ui.modelOptionsByModel[ComfortModel.PmvAshrae][
+      OptionKey.HumidityInputMode
+    ];
+
+    toolState.actions.scheduleCalculation({ immediate: true });
+    await waitForIdle(toolState);
+
+    expect(toolState.state.ui.errorMessage).toBe(
+      `Invariant violation: invalid options state for ${ComfortModel.PmvAshrae}.`,
+    );
+    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status)
+      .toBe("empty");
   });
 
   it("preserves ready model caches when switching between models", async () => {

@@ -6,8 +6,6 @@ import { ComfortModel } from "../models/comfortModels";
 import { FieldKey } from "../models/fieldKeys";
 import { fieldMetaByKey } from "../models/inputFieldsMeta";
 import { InputControlId } from "../models/inputControls";
-import type { InputId as InputIdType } from "../models/inputSlots";
-import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   bandsFromThermalZones,
   ChartMode,
@@ -19,8 +17,12 @@ import {
   buildGridModelChart,
   type GridModelChartSpec,
 } from "../services/comfort/charts/gridModelCharts";
-import { createControlBehavior } from "../services/comfort/controls/controlBehaviors";
+import { createControlBehavior } from "../services/comfort/controls/numericControl";
 import { requireThermalZone } from "../services/comfort/helpers";
+import {
+  calculatePerInput,
+  createFieldRequestAdapter,
+} from "../services/comfort/requestMapping";
 import {
   convertModelOutputFromSi,
   formatDisplayValue,
@@ -29,7 +31,6 @@ import {
 import {
   buildResultSection,
   ComfortModelBuilder,
-  createEmptyResults,
   parseEmptyOptions,
 } from "../state/comfortTool/modelConfigs/builder";
 
@@ -73,38 +74,10 @@ export function calculateHumidex(payload: HumidexRequestDto): HumidexResponseDto
   };
 }
 
-function getAxisValue(payload: HumidexRequestDto, field: FieldKey): number {
-  if (field === FieldKey.DryBulbTemperature) return payload.tdb;
-  if (field === FieldKey.RelativeHumidity) return payload.rh;
-  throw new Error(`Unsupported Humidex chart field: ${field}`);
-}
-
-function setAxisValue(
-  payload: HumidexRequestDto,
-  field: FieldKey,
-  valueSi: number,
-): void {
-  if (field === FieldKey.DryBulbTemperature) {
-    payload.tdb = valueSi;
-    return;
-  }
-  if (field === FieldKey.RelativeHumidity) {
-    payload.rh = valueSi;
-    return;
-  }
-  throw new Error(`Unsupported Humidex chart field: ${field}`);
-}
-
-function toRequest(
-  context: ModelCalculationContext,
-  inputId: InputIdType,
-): HumidexRequestDto {
-  const inputs = context.inputsByInput[inputId];
-  return {
-    tdb: Number(inputs[FieldKey.DryBulbTemperature]),
-    rh: Number(inputs[FieldKey.RelativeHumidity]),
-  };
-}
+const requestAdapter = createFieldRequestAdapter<HumidexRequestDto>({
+  tdb: FieldKey.DryBulbTemperature,
+  rh: FieldKey.RelativeHumidity,
+});
 
 const humidexOutput: ModelOutput = {
   key: ModelOutputKey.Humidex,
@@ -119,8 +92,7 @@ const humidexChartSpec: GridModelChartSpec<HumidexRequestDto, HumidexResponseDto
   axisRanges: {
     [FieldKey.DryBulbTemperature]: TDB_LIMITS,
   },
-  getAxisValue,
-  setAxisValue,
+  requestAdapter,
   evaluate: calculateHumidex,
   getOutputValue: (result) => result.humidex,
   fixedView: {
@@ -148,7 +120,30 @@ builder
   .setDescription(MODEL_DESCRIPTION)
   .setModes([ChartMode.Explore])
   .setChartableOutputs([humidexOutput])
-  .setModifiers([]);
+  .setModifiers([])
+  .setCharts({
+    defaultId: ChartId.HumidexDynamic,
+    entries: [
+      {
+        id: ChartId.Humidex,
+        name: "Psychrometric",
+        emptyMessage: "No psychrometric chart yet.",
+        allowsAxisSelection: false,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+      {
+        id: ChartId.HumidexDynamic,
+        name: "Dynamic",
+        emptyMessage: "No dynamic chart yet.",
+        allowsAxisSelection: true,
+        locksYAxis: true,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+    ],
+  });
 
 builder.addControl({
   id: InputControlId.Temperature,
@@ -167,18 +162,13 @@ builder.addControl({
   }),
 });
 
-builder.setCalculator((context, visibleInputIds) => {
-  const resultsByInput = createEmptyResults<HumidexResponseDto>();
-  const inputs: ModelChartSourceDto<HumidexRequestDto>["inputs"] = {};
-
-  for (const inputId of visibleInputIds) {
-    const request = toRequest(context, inputId);
-    resultsByInput[inputId] = calculateHumidex(request);
-    inputs[inputId] = request;
-  }
-
-  return { resultsByInput, chartSource: { inputs } };
-});
+builder.setCalculator((context, visibleInputIds) =>
+  calculatePerInput({
+    context,
+    visibleInputIds,
+    mapRequest: requestAdapter.mapRequest,
+    calculate: calculateHumidex,
+  }));
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Humidex, unitSystem);
@@ -208,10 +198,6 @@ builder.setChartBuilder((chartId, chartSource, resultsByInput, context) =>
     humidexChartSpec,
   ));
 
-builder.setDefaultChart(ChartId.HumidexDynamic, [
-  ChartId.Humidex,
-  ChartId.HumidexDynamic,
-]);
 builder.setDynamicAxisFields([
   FieldKey.DryBulbTemperature,
   FieldKey.RelativeHumidity,
@@ -222,9 +208,4 @@ builder.setDefaultDynamicAxes({
 });
 builder.setDefaultOptions({});
 builder.setOptionParser(parseEmptyOptions);
-builder.setZones(humidexZonesList);
-builder.setLegendChartIds([ChartId.Humidex, ChartId.HumidexDynamic]);
-builder.setLegendTitle(MODEL_LABEL);
-builder.setLockYAxisChartIds([ChartId.HumidexDynamic]);
-
 export const humidexModelConfig = builder.build();

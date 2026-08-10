@@ -1,6 +1,7 @@
 import { ModelOutputKey, type ModelOutputKey as ModelOutputKeyType } from "../../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
+import { convertHeatFluxFromSi, convertHeatFluxToSi } from "./physicalQuantities";
 
 export interface ModelOutputDisplayMeta {
   displayUnits: string;
@@ -13,9 +14,6 @@ interface ModelOutputPresentation {
   fromSi: (value: number, unitSystem: UnitSystemType) => number;
   toSi: (value: number, unitSystem: UnitSystemType) => number;
 }
-
-// 1 W/m² = 0.316998 BTU/(h·ft²).
-const WCI_TO_IP_FACTOR = 0.316998;
 
 function identity(value: number): number {
   return value;
@@ -64,10 +62,10 @@ const presentationByOutput: Record<ModelOutputKeyType, ModelOutputPresentation> 
       [UnitSystem.IP]: { displayUnits: "BTU/(h·ft²)", step: 1, decimals: 0 },
     },
     fromSi: (value, unitSystem) => (
-      unitSystem === UnitSystem.IP ? value * WCI_TO_IP_FACTOR : value
+      unitSystem === UnitSystem.IP ? convertHeatFluxFromSi(value) : value
     ),
     toSi: (value, unitSystem) => (
-      unitSystem === UnitSystem.IP ? value / WCI_TO_IP_FACTOR : value
+      unitSystem === UnitSystem.IP ? convertHeatFluxToSi(value) : value
     ),
   },
   [ModelOutputKey.OperativeTemperature]: temperaturePresentation(),

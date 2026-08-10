@@ -10,14 +10,16 @@ import {
   adaptiveEnModelConfig,
 } from "../../../comfortModels/adaptiveEn";
 import {
-  buildAdaptiveChart,
   calculateAdaptive,
   createAdaptiveComplianceCaption,
   getCe,
-  type AdaptiveLevelResult,
-  type AdaptiveModelDeclaration,
-  type AdaptiveRequestDto,
-  type AdaptiveResponseDto,
+} from "../../../comfortModels/adaptiveCalculation";
+import { buildAdaptiveChart } from "../../../comfortModels/adaptiveCharts";
+import type {
+  AdaptiveLevelResult,
+  AdaptiveModelDeclaration,
+  AdaptiveRequestDto,
+  AdaptiveResponseDto,
 } from "../../../comfortModels/adaptiveShared";
 import type {
   ModelChartSourceDto,

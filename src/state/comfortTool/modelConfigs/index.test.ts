@@ -10,6 +10,7 @@ import {
 } from "../../../comfortModels/adaptiveEn";
 import { heatIndexZonesList } from "../../../comfortModels/heatIndex";
 import { humidexZonesList } from "../../../comfortModels/humidex";
+import { pmvZonesList } from "../../../comfortModels/pmvCalculation";
 import { calculateUtci, utciZonesList } from "../../../comfortModels/utci";
 import { windChillZonesList } from "../../../comfortModels/windChill";
 import { ComfortStandard } from "../../../models/calculationMetadata";
@@ -35,11 +36,7 @@ import {
 } from ".";
 
 function createInputsSi(relativeAirSpeed: number): BandInputsSi {
-  const inputsSi = Object.fromEntries(
-    Object.values(FieldKey).map((fieldKey) => [fieldKey, 0]),
-  ) as Record<(typeof FieldKey)[keyof typeof FieldKey], number>;
-  inputsSi[FieldKey.RelativeAirSpeed] = relativeAirSpeed;
-  return inputsSi;
+  return { [FieldKey.RelativeAirSpeed]: relativeAirSpeed };
 }
 
 function expectZoneDerivedBands(modelId: ComfortModelType, zones: readonly ThermalZone[]) {
@@ -210,12 +207,13 @@ describe("comfort model capability registry", () => {
     const pmvModifiers = [
       ModifierId.MeasuredAirSpeed,
       ModifierId.MorningClothingEstimate,
+      ModifierId.DynamicClothing,
       ModifierId.SolarGain,
     ];
 
-    expect(getComfortModelConfig(ComfortModel.PmvAshrae).supportedModifiers)
+    expect(getComfortModelConfig(ComfortModel.PmvAshrae).modifiers.map(({ id }) => id))
       .toEqual(pmvModifiers);
-    expect(getComfortModelConfig(ComfortModel.PmvIso).supportedModifiers)
+    expect(getComfortModelConfig(ComfortModel.PmvIso).modifiers.map(({ id }) => id))
       .toEqual(pmvModifiers);
 
     comfortModelOrder
@@ -223,18 +221,18 @@ describe("comfort model capability registry", () => {
         modelId !== ComfortModel.PmvAshrae && modelId !== ComfortModel.PmvIso
       ))
       .forEach((modelId) => {
-        expect(getComfortModelConfig(modelId).supportedModifiers).toEqual([]);
+        expect(getComfortModelConfig(modelId).modifiers).toEqual([]);
       });
   });
 
   it("derives Explore presets from the existing model zones", () => {
     expectZoneDerivedBands(
       ComfortModel.PmvAshrae,
-      getComfortModelConfig(ComfortModel.PmvAshrae).zones,
+      pmvZonesList,
     );
     expectZoneDerivedBands(
       ComfortModel.PmvIso,
-      getComfortModelConfig(ComfortModel.PmvIso).zones,
+      pmvZonesList,
     );
     expectZoneDerivedBands(ComfortModel.Utci, utciZonesList);
     expectZoneDerivedBands(ComfortModel.HeatIndex, heatIndexZonesList);
@@ -322,8 +320,8 @@ describe("comfort model capability registry", () => {
       .toBe(ModelOutputKey.OperativeTemperature);
     [ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      expect(config.chartIds).toEqual([ChartId.Adaptive]);
-      expect(config.defaultChartId).toBe(ChartId.Adaptive);
+      expect(config.charts.entries.map(({ id }) => id)).toEqual([ChartId.Adaptive]);
+      expect(config.charts.defaultId).toBe(ChartId.Adaptive);
       expect(config.dynamicAxisFields).toEqual([
         FieldKey.PrevailingMeanOutdoorTemperature,
         FieldKey.OperativeTemperature,

@@ -1,8 +1,10 @@
 import type {
   PlotColorScaleDto,
+  PlotContourTraceDto,
   PlotContoursDto,
+  PlotHoverCellDto,
+  PlotHoverInfoDto,
   PlotLineDto,
-  PlotTraceDto,
 } from "../../../models/comfortDtos";
 import { buildContourTrace } from "./plotlyBuilders";
 import { buildAxisValues } from "./axis";
@@ -28,13 +30,10 @@ export interface GridContourLayerSpec {
   showscale?: boolean;
   zmin?: number;
   zmax?: number;
-  colorbar?: Record<string, unknown>;
   opacity?: number;
   line?: PlotLineDto;
-  isZone?: boolean;
   isBackgroundZone?: boolean;
-  isComfortZone?: boolean;
-  hoverinfo?: string;
+  hoverinfo?: PlotHoverInfoDto;
   hoverOnGaps?: boolean;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
@@ -53,12 +52,12 @@ export function evaluateGrid({
   const yAxisValues = buildAxisValues(yAxis);
   const zValues: number[][] = [];
   const textValues: string[][] = [];
-  const hoverMetadata: unknown[][] = [];
+  const hoverMetadata: PlotHoverCellDto[][] = [];
 
   for (let yIndex = 0; yIndex < yAxisValues.siValues.length; yIndex += 1) {
     const row: number[] = [];
     const textRow: string[] = [];
-    const hoverMetadataRow: unknown[] = [];
+    const hoverMetadataRow: PlotHoverCellDto[] = [];
     const ySi = yAxisValues.siValues[yIndex];
 
     for (let xIndex = 0; xIndex < xAxisValues.siValues.length; xIndex += 1) {
@@ -102,17 +101,14 @@ export function buildGridContourTrace({
   showscale = false,
   zmin,
   zmax,
-  colorbar,
   opacity,
   line,
-  isZone,
   isBackgroundZone,
-  isComfortZone,
   hoverinfo,
   hoverOnGaps,
   includeText = true,
   includeHoverMetadata = true,
-}: GridContourTraceOptions): PlotTraceDto {
+}: GridContourTraceOptions): PlotContourTraceDto {
   return buildContourTrace({
     name,
     x: grid.xValues,
@@ -126,12 +122,9 @@ export function buildGridContourTrace({
     showscale,
     zmin,
     zmax,
-    colorbar,
     opacity,
     line,
-    isZone,
     isBackgroundZone,
-    isComfortZone,
     hoverinfo,
     hoverOnGaps,
     hoverMetadata: includeHoverMetadata ? grid.hoverMetadata : undefined,

@@ -7,6 +7,7 @@ import {
   convertModelOutputToSi,
   getModelOutputDisplayMeta,
 } from "./modelOutputs";
+import { BTU_PER_HOUR_SQUARE_FOOT_PER_WATT_SQUARE_METER } from "./physicalQuantities";
 
 describe("model output display conversion", () => {
   it.each([
@@ -31,7 +32,10 @@ describe("model output display conversion", () => {
 
   it("round-trips Wind Chill Index heat flux and preserves infinities", () => {
     const display = convertModelOutputFromSi(ModelOutputKey.WindChill, 1000, UnitSystem.IP);
-    expect(display).toBeCloseTo(316.998, 6);
+    expect(display).toBeCloseTo(
+      1000 * BTU_PER_HOUR_SQUARE_FOOT_PER_WATT_SQUARE_METER,
+      12,
+    );
     expect(convertModelOutputToSi(ModelOutputKey.WindChill, display, UnitSystem.IP))
       .toBeCloseTo(1000, 8);
     expect(convertModelOutputFromSi(ModelOutputKey.WindChill, Infinity, UnitSystem.IP))

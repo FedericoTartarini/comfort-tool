@@ -1,39 +1,26 @@
-/**
- * Creates and manages the entire state for the comfort-tool application.
- * 
- * Orchestrates the following main areas:
- * - Input Management: Handles inputs for environmental parameters and personal settings.
- * - Model Options: Manages configuration for various comfort models (PMV, UTCI, etc.).
- * - UI State: Controls the layout, visibility, and selection of components (charts, panels).
- * - Calculations: Interfaces with the CalculationManager for model evaluations.
- * - Charting: Manages chart configurations and generation settings.
- * - Comparisons: Supports comparing multiple input scenarios.
- * - Sharing & Persistence: Handles sharing state via snapshots and URLs.
- * 
- * @returns A ComfortToolController object exposing state and derived selectors.
- */
 import {
   InputId,
   inputDefaultsById,
   inputOrder,
   type InputId as InputIdType,
 } from "../../models/inputSlots";
-import { chartMetaById, type ChartId as ChartIdType } from "../../models/chartOptions";
+import type {
+  ChartId as ChartIdType,
+  ModelChartDefinition,
+} from "../../models/chartOptions";
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import { allFieldOrder, fieldMetaByKey } from "../../models/inputFieldsMeta";
-import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
+import type {
+  FieldKey as FieldKeyType,
+} from "../../models/fieldKeys";
+import { canonicalInputFieldOrder } from "../../models/fieldKeys";
 import type { InputControlId as InputControlIdType } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {
-  modifierOrder,
   type ModifierFieldKey as ModifierFieldKeyType,
   type ModifierId as ModifierIdType,
 } from "../../models/inputModifiers";
 import { UnitSystem } from "../../models/units";
 import {
-  ChartMode,
-  type Band,
   type ChartMode as ChartModeType,
   type FieldChartConfig,
   type ModelOutputKey,
@@ -41,34 +28,39 @@ import {
 } from "../../models/modelCapabilities";
 import type { BehaviorPatch, ControlBehaviorContext } from "../../services/comfort/controls/types";
 import { deriveInputsDerivedState } from "../../services/comfort/syncState";
-import {
-  applyInputModifierChain,
-  inputModifierById,
-  isModifierConfigurationComplete,
-  isModifierFieldValueValid,
-} from "../../services/comfort/inputModifiers";
-import {
-  convertFieldValueFromSi,
-  convertModifierFieldValueFromSi,
-  convertModifierFieldValueToSi,
-  formatDisplayValue,
-  getModifierFieldDisplayMeta,
-} from "../../services/units";
-import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig, type ComfortModelDefinition } from "./modelConfigs";
+import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig } from "./modelConfigs";
+import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import { createCalculationManager } from "./calculationManager.svelte";
 import {
-  getDynamicAxisOptions,
   normalizeDynamicAxisPair,
   resolveDynamicAxisSelection,
 } from "./dynamicAxes";
 import {
   buildFieldChartConfig,
-  getDeclaredExploreOutput,
   replaceExploreBands,
   seedModelChartSettings,
   selectChartMode,
   selectExploreOutput,
 } from "./fieldChartState";
+import {
+  buildChartControlsViewModel,
+  getChartLegendTitle,
+  getChartLegendZones,
+  getEffectiveChartBaselineInputId as resolveChartBaselineInputId,
+} from "./chartPresentation";
+import {
+  buildInputModifierControls,
+  canEnableModifier,
+  createActiveModifiersByInput,
+  createModifierInputsByInput,
+  deriveEffectiveInputsByInput,
+  findModelModifier,
+  parseModifierInputTransition,
+} from "./modifierState";
+import {
+  buildModelSwitchClampPatches,
+  findModelSwitchViolations,
+} from "./modelSwitch";
 import {
   applyShareSnapshotToState,
   createShareStateSnapshot,
@@ -76,109 +68,41 @@ import {
   type ShareStateSnapshot,
 } from "./shareState";
 import type {
-  ChartControlsViewModel,
   ChartSettingsByModelState,
   ComfortToolController,
-  ActiveModifiersByInputState,
   InputState,
-  InputModifierControlViewModel,
   InputsByInputState,
-  ModifierInputsByInputState,
   ModelCalculationCacheByModelState,
   ModelCalculationCache,
   ModelOptionsByModelState,
   SelectedChartByModelState,
   ComfortToolStateSlice,
-  ModelSwitchViolation,
   PendingModelSwitch,
 } from "./types";
 
-/**
- * Creates a default input state for a specific input ID.
- * @param inputId The ID of the input slot (e.g., Input1, Input2).
- * @returns A record of field keys mapping to their default numeric values.
- */
 function createInputState(inputId: InputIdType): InputState {
-  return allFieldOrder.reduce((accumulator, fieldKey) => {
-    const defaults = inputDefaultsById[inputId] as Partial<Record<FieldKeyType, number>>;
-    accumulator[fieldKey] = defaults[fieldKey] ?? fieldMetaByKey[fieldKey].defaultValue;
-    return accumulator;
-  }, {} as InputState);
+  return { ...inputDefaultsById[inputId] };
 }
 
-/**
- * Initializes the initial inputs for all available input slots.
- * @returns A record mapping each InputId to its default state.
- */
-function createInputsByInput() {
-  return inputOrder.reduce((accumulator, inputId) => {
-    accumulator[inputId] = createInputState(inputId);
-    return accumulator;
-  }, {} as ComfortToolStateSlice["inputsByInput"]);
+function createInputsByInput(): InputsByInputState {
+  return {
+    [InputId.Input1]: createInputState(InputId.Input1),
+    [InputId.Input2]: createInputState(InputId.Input2),
+    [InputId.Input3]: createInputState(InputId.Input3),
+  };
 }
 
-function createActiveModifiersByInput(): ActiveModifiersByInputState {
-  return inputOrder.reduce((byInput, inputId) => {
-    byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-      byModifier[modifierId] = false;
-      return byModifier;
-    }, {} as Record<ModifierIdType, boolean>);
-    return byInput;
-  }, {} as ActiveModifiersByInputState);
-}
-
-function createModifierInputsByInput(): ModifierInputsByInputState {
-  return inputOrder.reduce((byInput, inputId) => {
-    byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-      byModifier[modifierId] = inputModifierById[modifierId].extraInputs.reduce(
-        (values, fieldKey) => {
-          values[fieldKey] = null;
-          return values;
-        },
-        {} as ModifierInputsByInputState[typeof inputId][typeof modifierId],
-      );
-      return byModifier;
-    }, {} as ModifierInputsByInputState[typeof inputId]);
-    return byInput;
-  }, {} as ModifierInputsByInputState);
-}
-
-/**
- * Returns the default set of visible input IDs used for comparisons.
- * @returns Array containing Input1 and Input2.
- */
 function createDefaultCompareInputIds(): InputIdType[] {
   return [InputId.Input1, InputId.Input2];
 }
 
-function selectLegendBands(
-  bands: readonly Band[],
-): Array<Pick<Band, "label" | "color">> {
-  const selected: Array<Pick<Band, "label" | "color">> = [];
-  for (const { label, color } of bands) {
-    if (!selected.some((band) => band.label === label && band.color === color)) {
-      selected.push({ label, color });
-    }
-  }
-  return selected;
-}
-
-
-/**
- * Initializes the default chart selection for each comfort model.
- * @returns A record mapping each model to its default chart ID.
- */
 function createSelectedChartByModel(): SelectedChartByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
-    accumulator[modelId] = comfortModelConfigs[modelId].defaultChartId;
+    accumulator[modelId] = comfortModelConfigs[modelId].charts.defaultId;
     return accumulator;
   }, {} as SelectedChartByModelState);
 }
 
-/**
- * Initializes the default options (e.g., standards, limits) for each comfort model.
- * @returns A record mapping each model to its default options.
- */
 function createModelOptionsByModel(): ModelOptionsByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
     accumulator[modelId] = { ...comfortModelConfigs[modelId].defaultOptions };
@@ -193,21 +117,14 @@ function createChartSettingsByModel(): ChartSettingsByModelState {
   }, {} as ChartSettingsByModelState);
 }
 
-/**
- * Creates an empty record of results for all available input slots.
- * @returns A record mapping each InputId to a null result.
- */
 function createEmptyInputResultRecord<T>(): Record<InputIdType, T | null> {
-  return inputOrder.reduce((accumulator, inputId) => {
-    accumulator[inputId] = null;
-    return accumulator;
-  }, {} as Record<InputIdType, T | null>);
+  return {
+    [InputId.Input1]: null,
+    [InputId.Input2]: null,
+    [InputId.Input3]: null,
+  };
 }
 
-/**
- * Creates an empty calculation cache container for a comfort model.
- * @returns An initialized calculation cache object.
- */
 function createEmptyCalculationCache<
   ResultType,
   ChartSourceType,
@@ -220,10 +137,6 @@ function createEmptyCalculationCache<
   };
 }
 
-/**
- * Initializes the calculation cache registry for all available comfort models by looping through comfort model order.
- * @returns A record mapping each model to an empty calculation cache.
- */
 function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
     accumulator[modelId] = createEmptyCalculationCache<unknown, unknown>();
@@ -231,10 +144,6 @@ function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
   }, {} as ModelCalculationCacheByModelState);
 }
 
-/**
- * Creates and initializes the root state for the comfort-tool by initializing all the state variables.
- * @returns A ComfortToolController containing the core state and action methods.
- */
 export function createComfortToolState(): ComfortToolController {
   const inputsByInput = $state(createInputsByInput());
   const activeModifiersByInput = $state(createActiveModifiersByInput());
@@ -262,11 +171,6 @@ export function createComfortToolState(): ComfortToolController {
     ui,
   };
 
-  /**
-   * Invalidates the calculation cache for a specific model, marking it as stale or empty.
-   * @param modelId The ID of the model to invalidate.
-   * @param options Configuration for invalidation (e.g., whether to keep error messages).
-   */
   function invalidateModel(modelId: ComfortModelType, options?: { keepErrorMessage?: boolean }) {
     if (!options?.keepErrorMessage) {
       state.ui.errorMessage = "";
@@ -280,10 +184,6 @@ export function createComfortToolState(): ComfortToolController {
     };
   }
 
-  /**
-   * Invalidates the calculation cache for all comfort models.
-   * @param options Configuration for invalidation.
-   */
   function invalidateAllModels(options?: { keepErrorMessage?: boolean }) {
     comfortModelOrder.forEach((modelId, index) => {
       invalidateModel(modelId, {
@@ -295,16 +195,12 @@ export function createComfortToolState(): ComfortToolController {
   function invalidateModelsSupportingModifier(modifierId: ModifierIdType) {
     let keptErrorMessage = false;
     for (const modelId of comfortModelOrder) {
-      if (!comfortModelConfigs[modelId].supportedModifiers.includes(modifierId)) continue;
+      if (!comfortModelConfigs[modelId].modifiers.some(({ id }) => id === modifierId)) continue;
       invalidateModel(modelId, { keepErrorMessage: keptErrorMessage });
       keptErrorMessage = true;
     }
   }
 
-  /**
-   * Returns the IDs of the input slots that should currently be visible in the UI.
-   * @returns Array of Input IDs.
-   */
   function getVisibleInputIds(): InputIdType[] {
     if (!state.ui.compareEnabled) {
       return [InputId.Input1];
@@ -314,101 +210,61 @@ export function createComfortToolState(): ComfortToolController {
   }
 
   function getModelContext(modelId: ComfortModelType): ControlBehaviorContext {
+    const modelConfig = getComfortModelConfig(modelId);
+    const options = modelConfig.parseOptions(state.ui.modelOptionsByModel[modelId]);
+    if (!options) {
+      throw new Error(`Invariant violation: invalid options state for ${modelId}.`);
+    }
     return {
       inputsByInput: state.inputsByInput,
       derivedByInput,
-      options: state.ui.modelOptionsByModel[modelId],
+      options,
       unitSystem: state.ui.unitSystem,
       visibleInputIds: getVisibleInputIds(),
-      selectedChartId: state.ui.selectedChartByModel[modelId],
     };
   }
 
-  function getActiveModelConfig(): ComfortModelDefinition<unknown, unknown, Band> {
-    return getComfortModelConfig(state.ui.selectedModel) as unknown as ComfortModelDefinition<
-      unknown,
-      unknown,
-      Band
-    >;
+  function getActiveModelConfig(): RuntimeComfortModelDefinition {
+    return getComfortModelConfig(state.ui.selectedModel);
   }
 
   function getEffectiveInputsByInput(
     modelId: ComfortModelType = state.ui.selectedModel,
   ): InputsByInputState {
-    const supportedModifiers = getComfortModelConfig(modelId).supportedModifiers;
-    return inputOrder.reduce((effectiveByInput, inputId) => {
-      effectiveByInput[inputId] = applyInputModifierChain(
-        state.inputsByInput[inputId],
-        supportedModifiers,
-        state.activeModifiersByInput[inputId],
-        state.modifierInputsByInput[inputId],
-      );
-      return effectiveByInput;
-    }, {} as InputsByInputState);
+    return deriveEffectiveInputsByInput(
+      state.inputsByInput,
+      state.activeModifiersByInput,
+      state.modifierInputsByInput,
+      getComfortModelConfig(modelId).modifiers,
+    );
   }
 
-  function getInputModifierControls(): InputModifierControlViewModel[] {
-    const unitSystem = state.ui.unitSystem;
-    const visibleInputIds = getVisibleInputIds();
-    const effectiveInputs = getEffectiveInputsByInput();
-
-    return getActiveModelConfig().supportedModifiers.map((modifierId) => {
-      const modifier = inputModifierById[modifierId];
-      return {
-        id: modifier.id,
-        label: modifier.label,
-        description: modifier.description,
-        activeByInput: visibleInputIds.reduce((values, inputId) => {
-          values[inputId] = state.activeModifiersByInput[inputId][modifierId];
-          return values;
-        }, {} as InputModifierControlViewModel["activeByInput"]),
-        completeByInput: visibleInputIds.reduce((values, inputId) => {
-          values[inputId] = isModifierConfigurationComplete(
-            modifierId,
-            state.modifierInputsByInput[inputId][modifierId],
-          );
-          return values;
-        }, {} as InputModifierControlViewModel["completeByInput"]),
-        extraInputs: modifier.extraInputs.map((fieldKey) => {
-          const displayMeta = getModifierFieldDisplayMeta(fieldKey, unitSystem);
-          return {
-            key: fieldKey,
-            ...displayMeta,
-            displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
-              const valueSi = state.modifierInputsByInput[inputId][modifierId][fieldKey];
-              values[inputId] = valueSi === null || valueSi === undefined
-                ? ""
-                : formatDisplayValue(
-                    convertModifierFieldValueFromSi(fieldKey, valueSi, unitSystem),
-                    displayMeta.decimals,
-                  );
-              return values;
-            }, {} as Record<InputIdType, string>),
-          };
-        }),
-        affectedFields: modifier.affectedFields.map((fieldKey) => {
-          const meta = fieldMetaByKey[fieldKey];
-          return {
-            key: fieldKey,
-            label: `Effective ${meta.label.toLowerCase()}`,
-            displayUnits: meta.displayUnits[unitSystem],
-            displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
-              const displayValue = convertFieldValueFromSi(
-                fieldKey,
-                effectiveInputs[inputId][fieldKey],
-                unitSystem,
-              );
-              values[inputId] = formatDisplayValue(displayValue, meta.decimals);
-              return values;
-            }, {} as Record<InputIdType, string>),
-          };
-        }),
-      };
+  function getInputModifierControls() {
+    return buildInputModifierControls({
+      config: getActiveModelConfig(),
+      inputsByInput: state.inputsByInput,
+      activeModifiersByInput: state.activeModifiersByInput,
+      modifierInputsByInput: state.modifierInputsByInput,
+      visibleInputIds: getVisibleInputIds(),
+      unitSystem: state.ui.unitSystem,
     });
   }
 
   function getCurrentSelectedChartId() {
     return state.ui.selectedChartByModel[state.ui.selectedModel];
+  }
+
+  function getCurrentChartDefinition(): ModelChartDefinition {
+    const selectedChartId = getCurrentSelectedChartId();
+    const definition = getActiveModelConfig().charts.entries.find(
+      ({ id }) => id === selectedChartId,
+    );
+    if (!definition) {
+      throw new Error(
+        `Invariant violation: model ${state.ui.selectedModel} does not declare chart ${selectedChartId}.`,
+      );
+    }
+    return definition;
   }
 
   function getCurrentModelCache() {
@@ -420,35 +276,39 @@ export function createComfortToolState(): ComfortToolController {
   }
 
   function getEffectiveChartBaselineInputId(): InputIdType {
-    const remembered = getCurrentChartSettings().baselineInputId;
-    return state.ui.compareEnabled && getVisibleInputIds().includes(remembered)
-      ? remembered
-      : InputId.Input1;
+    return resolveChartBaselineInputId(
+      getCurrentChartSettings(),
+      state.ui.compareEnabled,
+      getVisibleInputIds(),
+    );
   }
 
-  /**
-   * Applies a state patch calculated by a control behavior to the canonical state.
-   * @param modelId The model context for the patch.
-   * @param patch The state changes to apply.
-   */
   function applyBehaviorPatch(modelId: ComfortModelType, patch: BehaviorPatch) {
     if (patch.optionsPatch) {
-      state.ui.modelOptionsByModel[modelId] = {
+      const options = getComfortModelConfig(modelId).parseOptions({
         ...state.ui.modelOptionsByModel[modelId],
         ...patch.optionsPatch,
-      };
+      });
+      if (!options) {
+        throw new Error(`Invariant violation: invalid options patch for ${modelId}.`);
+      }
+      state.ui.modelOptionsByModel[modelId] = options;
     }
 
     if (patch.inputsPatch) {
-      Object.entries(patch.inputsPatch).forEach(([inputId, inputPatch]) => {
+      for (const inputId of inputOrder) {
+        const inputPatch = patch.inputsPatch[inputId];
         if (!inputPatch) {
-          return;
+          continue;
         }
 
-        Object.entries(inputPatch).forEach(([fieldKey, value]) => {
-          state.inputsByInput[inputId as InputIdType][fieldKey as FieldKeyType] = value;
-        });
-      });
+        for (const fieldKey of canonicalInputFieldOrder) {
+          const value = inputPatch[fieldKey];
+          if (value !== undefined) {
+            state.inputsByInput[inputId][fieldKey] = value;
+          }
+        }
+      }
     }
   }
 
@@ -458,22 +318,6 @@ export function createComfortToolState(): ComfortToolController {
       xAxis: settings.xAxis,
       yAxis: settings.yAxis,
     };
-  }
-
-  function getDynamicXAxisOptions(): FieldKeyType[] {
-    return getDynamicAxisOptions(
-      getActiveModelConfig(),
-      getCurrentDynamicAxisPair(),
-      "x",
-    );
-  }
-
-  function getDynamicYAxisOptions(): FieldKeyType[] {
-    return getDynamicAxisOptions(
-      getActiveModelConfig(),
-      getCurrentDynamicAxisPair(),
-      "y",
-    );
   }
 
   function getPendingModelSwitch(): PendingModelSwitch | null {
@@ -487,119 +331,25 @@ export function createComfortToolState(): ComfortToolController {
     );
   }
 
-  function getCurrentChartableOutputs() {
-    const config = getActiveModelConfig();
-    return config.modes.includes(ChartMode.Explore) ? config.chartableOutputs : [];
+  function getChartControlsViewModel() {
+    return buildChartControlsViewModel({
+      config: getActiveModelConfig(),
+      settings: getCurrentChartSettings(),
+      chartDefinition: getCurrentChartDefinition(),
+      cache: getCurrentModelCache(),
+      visibleInputIds: getVisibleInputIds(),
+      compareEnabled: state.ui.compareEnabled,
+      unitSystem: state.ui.unitSystem,
+      callbacks: {
+        onSelectMode: setChartMode,
+        onSelectBaseline: setChartBaselineInputId,
+        onSelectXAxis: setDynamicXAxis,
+        onSelectYAxis: setDynamicYAxis,
+        onSelectOutput: setExploreOutput,
+        onApplyBands: setExploreBands,
+      },
+    });
   }
-
-  function getCurrentExploreDefaultBands() {
-    const exploreState = getCurrentChartSettings().explore;
-    if (!exploreState) {
-      throw new Error(
-        `Comfort model ${state.ui.selectedModel} is missing its Explore state declaration.`,
-      );
-    }
-
-    const output = getDeclaredExploreOutput(
-      getActiveModelConfig(),
-      exploreState.zOutput,
-    );
-    if (!output) {
-      throw new Error(
-        `Comfort model ${state.ui.selectedModel} does not declare Explore output ${exploreState.zOutput}.`,
-      );
-    }
-    return output.defaultBands;
-  }
-
-  function getChartControlsViewModel(): ChartControlsViewModel {
-    const modelConfig = getActiveModelConfig();
-    const settings = getCurrentChartSettings();
-    const selectedChart = getCurrentSelectedChartId();
-    const supportsAxisSelection = chartMetaById[selectedChart].supportsAxisSelection;
-    const fieldChartConfig = getCurrentFieldChartConfig();
-    const chartableOutputs = getCurrentChartableOutputs();
-    const effectiveBaselineInputId = getEffectiveChartBaselineInputId();
-    const complianceSpec = settings.mode === ChartMode.Compliance
-      ? modelConfig.complianceSpec
-      : undefined;
-    if (settings.mode === ChartMode.Compliance && !complianceSpec) {
-      throw new Error(
-        `Comfort model ${modelConfig.id} declares Compliance mode without a compliance specification.`,
-      );
-    }
-    const selectedOutput = settings.mode === ChartMode.Explore
-      ? getDeclaredExploreOutput(modelConfig, fieldChartConfig.zOutput)
-      : undefined;
-    if (settings.mode === ChartMode.Explore && !selectedOutput) {
-      throw new Error(
-        `Comfort model ${modelConfig.id} does not declare Explore output ${fieldChartConfig.zOutput}.`,
-      );
-    }
-    const caption = complianceSpec
-      ? complianceSpec.caption
-      : supportsAxisSelection
-        ? `Showing ${selectedOutput!.label} over the selected axes with editable thresholds.`
-        : `Showing ${selectedOutput!.label} on this chart's fixed axes with editable thresholds.`;
-    const baselineResult = getCurrentModelCache().status === "ready"
-      ? getCurrentModelCache().resultsByInput[effectiveBaselineInputId]
-      : null;
-    const feedback = complianceSpec
-      && baselineResult !== null
-      ? {
-          ...complianceSpec.getFeedback(baselineResult),
-          ...(state.ui.compareEnabled
-            ? { inputLabel: inputDisplayMetaById[effectiveBaselineInputId].label }
-            : {}),
-        }
-      : null;
-    const mode: ChartControlsViewModel["mode"] = {
-      modes: modelConfig.modes,
-      selectedMode: settings.mode,
-      caption,
-      feedback,
-      onSelect: setChartMode,
-    };
-
-    return {
-      mode,
-      baseline: state.ui.compareEnabled
-        ? {
-            selectedInputId: effectiveBaselineInputId,
-            visibleInputIds: getVisibleInputIds(),
-            onSelect: setChartBaselineInputId,
-          }
-        : null,
-      axes: supportsAxisSelection
-        ? {
-            x: {
-              selectedField: settings.xAxis,
-              options: getDynamicXAxisOptions(),
-              locked: false,
-              onSelect: setDynamicXAxis,
-            },
-            y: {
-              selectedField: settings.yAxis,
-              options: getDynamicYAxisOptions(),
-              locked: getActiveModelConfig().lockYAxisChartIds.includes(selectedChart),
-              onSelect: setDynamicYAxis,
-            },
-          }
-        : null,
-      explore: fieldChartConfig.mode === ChartMode.Explore
-        && chartableOutputs.length > 0
-        ? {
-            config: fieldChartConfig,
-            outputs: chartableOutputs,
-            defaultBands: getCurrentExploreDefaultBands(),
-            unitSystem: state.ui.unitSystem,
-            onSelectOutput: setExploreOutput,
-            onApplyBands: setExploreBands,
-          }
-        : null,
-    };
-  }
-
   const selectors = {
     getVisibleInputIds,
     getInputControls: () => {
@@ -620,8 +370,6 @@ export function createComfortToolState(): ComfortToolController {
         cache.resultsByInput,
         getVisibleInputIds(),
         state.ui.unitSystem,
-        state.ui.modelOptionsByModel[state.ui.selectedModel],
-        getCurrentSelectedChartId(),
       );
     },
     getCurrentChartResult: () => {
@@ -637,40 +385,20 @@ export function createComfortToolState(): ComfortToolController {
         },
       );
     },
-    getCurrentChartEmptyMessage: () => chartMetaById[getCurrentSelectedChartId()].emptyMessage,
-    getCurrentChartOptions: () => getActiveModelConfig().chartIds.map((chartId) => ({
-      name: chartMetaById[chartId].name,
-      value: chartId,
-    })),
+    getCurrentChartDefinition,
+    getCurrentChartOptions: () => getActiveModelConfig().charts.entries,
     getCurrentSelectedChart: () => getCurrentSelectedChartId(),
-    getCurrentChartHeightClass: () => chartMetaById[getCurrentSelectedChartId()].heightClass,
     getCurrentCacheStatus: () => getCurrentModelCache().status,
-    getCurrentChartLegendZones: () => {
-      const config = getActiveModelConfig();
-      return config.legendChartIds.includes(getCurrentSelectedChartId())
-        ? selectLegendBands(getCurrentFieldChartConfig().bands)
-        : null;
-    },
-    getCurrentChartLegendTitle: () => {
-      const fieldChartConfig = getCurrentFieldChartConfig();
-      const modelConfig = getActiveModelConfig();
-      if (fieldChartConfig.mode === ChartMode.Compliance) {
-        if (!modelConfig.complianceSpec || !modelConfig.legendTitle) {
-          throw new Error(
-            `Comfort model ${modelConfig.id} is missing its Compliance legend declaration.`,
-          );
-        }
-        return modelConfig.legendTitle;
-      }
-
-      const output = getDeclaredExploreOutput(modelConfig, fieldChartConfig.zOutput);
-      if (!output) {
-        throw new Error(
-          `Comfort model ${modelConfig.id} does not declare Explore output ${fieldChartConfig.zOutput}.`,
-        );
-      }
-      return output.legendTitle ?? output.label;
-    },
+    getCurrentChartLegendZones: () => getChartLegendZones(
+      getActiveModelConfig(),
+      getCurrentChartSettings(),
+      getCurrentChartDefinition(),
+    ),
+    getCurrentChartLegendTitle: () => getChartLegendTitle(
+      getActiveModelConfig(),
+      getCurrentChartSettings(),
+      getCurrentChartDefinition(),
+    ),
     getChartControlsViewModel,
     getPendingModelSwitch,
   };
@@ -681,9 +409,6 @@ export function createComfortToolState(): ComfortToolController {
     getEffectiveInputsByInput,
   );
 
-  /**
-   * Performs the final state updates for a model selection.
-   */
   function completeModelSelection(nextModel: ComfortModelType) {
     state.ui.selectedModel = nextModel;
     state.ui.errorMessage = "";
@@ -693,7 +418,7 @@ export function createComfortToolState(): ComfortToolController {
 
   function ensureValidDynamicAxes(
     config: Pick<
-      ComfortModelDefinition<never, never>,
+      RuntimeComfortModelDefinition,
       "dynamicAxisFields" | "defaultDynamicAxes"
     >,
   ) {
@@ -703,53 +428,24 @@ export function createComfortToolState(): ComfortToolController {
     settings.yAxis = pair.yAxis;
   }
 
-  /**
-   * Switches the active comfort model (e.g., PMV, UTCI) and triggers a re-calculation.
-   * Performs a boundary check and interrupts with a confirmation if violations are found.
-   * @param nextModel The ID of the model to select.
-   */
   function setSelectedModel(nextModel: ComfortModelType) {
     if (state.ui.selectedModel === nextModel) {
       return;
     }
 
-    const violations: ModelSwitchViolation[] = [];
     const nextModelConfig = getComfortModelConfig(nextModel);
-    const visibleInputIds = getVisibleInputIds();
-
-    visibleInputIds.forEach((inputId) => {
-      const context: ControlBehaviorContext = {
-        inputsByInput: state.inputsByInput,
-        derivedByInput,
-        options: state.ui.modelOptionsByModel[nextModel],
-        unitSystem: state.ui.unitSystem,
-        visibleInputIds: [inputId],
-        selectedChartId: state.ui.selectedChartByModel[nextModel],
-      };
-
-      nextModelConfig.controls.forEach((control) => {
-        const vm = control.behavior.buildViewModel(context);
-        if (vm.hidden) return;
-
-        const currentValue = vm.numericValuesByInput[inputId];
-        if (currentValue === undefined) return;
-
-        // Use a small epsilon for float comparisons to avoid precision issues.
-        const epsilon = 0.0001;
-        const underMin = vm.minValue !== undefined && currentValue < vm.minValue - epsilon;
-        const overMax = vm.maxValue !== undefined && currentValue > vm.maxValue + epsilon;
-        if (underMin || overMax) {
-          violations.push({
-            inputId,
-            controlId: control.id,
-            label: vm.label,
-            currentValue,
-            minAllowed: vm.minValue ?? -Infinity,
-            maxAllowed: vm.maxValue ?? Infinity,
-            displayUnits: vm.displayUnits,
-          });
-        }
-      });
+    const nextModelOptions = nextModelConfig.parseOptions(
+      state.ui.modelOptionsByModel[nextModel],
+    );
+    if (!nextModelOptions) {
+      throw new Error(`Invariant violation: invalid options state for ${nextModel}.`);
+    }
+    const violations = findModelSwitchViolations(nextModelConfig, {
+      inputsByInput: state.inputsByInput,
+      derivedByInput,
+      options: nextModelOptions,
+      unitSystem: state.ui.unitSystem,
+      visibleInputIds: getVisibleInputIds(),
     });
 
     if (violations.length > 0) {
@@ -770,26 +466,15 @@ export function createComfortToolState(): ComfortToolController {
 
     const { targetModel, violations } = state.ui.pendingModelSwitch;
 
-    // Fix violating values by clamping them to the closest legal boundary.
-    violations.forEach((v) => {
-      const modelConfig = getComfortModelConfig(targetModel);
-      const control = modelConfig.controls.find((c) => c.id === v.controlId);
-      if (!control) return;
-
-      const context = getModelContext(targetModel);
-      const vm = control.behavior.buildViewModel(context);
-
-      const min = vm.minValue ?? -Infinity;
-      const max = vm.maxValue ?? Infinity;
-      const clampedValue = Math.max(min, Math.min(max, v.currentValue));
-
-      if (control.behavior.applyInput) {
-        const patch = control.behavior.applyInput(context, v.inputId, clampedValue.toString());
-        if (patch) {
-          applyBehaviorPatch(targetModel, patch);
-        }
-      }
-    });
+    const modelConfig = getComfortModelConfig(targetModel);
+    const context = getModelContext(targetModel);
+    for (const patch of buildModelSwitchClampPatches(
+      modelConfig,
+      context,
+      violations,
+    )) {
+      applyBehaviorPatch(targetModel, patch);
+    }
 
     state.ui.pendingModelSwitch = null;
     // The clamped values live in shared canonical input state, so every model
@@ -803,22 +488,20 @@ export function createComfortToolState(): ComfortToolController {
   }
 
   function setSelectedChart(nextChart: ChartIdType) {
-    if (!getActiveModelConfig().chartIds.includes(nextChart)) {
+    const nextDefinition = getActiveModelConfig().charts.entries.find(
+      ({ id }) => id === nextChart,
+    );
+    if (!nextDefinition) {
       return;
     }
 
     state.ui.selectedChartByModel[state.ui.selectedModel] = nextChart;
 
-    if (chartMetaById[nextChart].supportsAxisSelection) {
+    if (nextDefinition.allowsAxisSelection) {
       ensureValidDynamicAxes(getActiveModelConfig());
     }
   }
 
-  /**
-   * Updates a specific model configuration option and triggers a re-calculation.
-   * @param optionKey The key of the option to change.
-   * @param nextValue The new string value for the option.
-   */
   function setModelOption(optionKey: OptionKeyType, nextValue: string) {
     const modelConfig = getActiveModelConfig();
     const context = getModelContext(state.ui.selectedModel);
@@ -839,13 +522,9 @@ export function createComfortToolState(): ComfortToolController {
     scheduleCalculationInternal({ immediate: true });
   }
 
-  /**
-   * Enables or disables multi-input comparison mode.
-   * @param enabled Whether comparison mode is active.
-   */
   function setCompareEnabled(enabled: boolean) {
     state.ui.compareEnabled = enabled;
-    
+
     if (enabled) {
       state.ui.compareInputIds = normalizeCompareInputIds(state.ui.compareInputIds);
       if (state.ui.compareInputIds.length < 2) {
@@ -857,23 +536,15 @@ export function createComfortToolState(): ComfortToolController {
     } else {
       state.ui.activeInputId = InputId.Input1;
     }
-    
+
     invalidateAllModels();
     scheduleCalculationInternal({ immediate: true });
   }
 
-  /**
-   * Sets the currently active input slot for editing.
-   * @param nextInputId The ID of the input to activate.
-   */
   function setActiveInputId(nextInputId: InputIdType) {
     state.ui.activeInputId = nextInputId;
   }
 
-  /**
-   * Toggles the visibility of a specific input slot in comparison mode.
-   * @param inputId The ID of the input slot to toggle.
-   */
   function toggleCompareInputVisibility(inputId: InputIdType) {
     if (!state.ui.compareEnabled || inputId === InputId.Input1) {
       return;
@@ -892,9 +563,6 @@ export function createComfortToolState(): ComfortToolController {
     scheduleCalculationInternal({ immediate: true });
   }
 
-  /**
-   * Toggles the global unit system (SI vs IP).
-   */
   function toggleUnitSystem() {
     state.ui.unitSystem = state.ui.unitSystem === UnitSystem.SI ? UnitSystem.IP : UnitSystem.SI;
   }
@@ -974,12 +642,6 @@ export function createComfortToolState(): ComfortToolController {
     getCurrentChartSettings().baselineInputId = inputId;
   }
 
-  /**
-   * Updates a specific environmental or personal input variable.
-   * @param inputId The ID of the input slot being modified.
-   * @param controlId The ID of the control behavior producing the update.
-   * @param rawValue The new string value from the UI control.
-   */
   function updateInput(inputId: InputIdType, controlId: InputControlIdType, rawValue: string) {
     const control = getActiveModelConfig().controls.find((item) => item.id === controlId);
     if (!control?.behavior.applyInput) {
@@ -1002,7 +664,7 @@ export function createComfortToolState(): ComfortToolController {
     options?: { immediate?: boolean },
   ) {
     invalidateModelsSupportingModifier(modifierId);
-    if (getActiveModelConfig().supportedModifiers.includes(modifierId)) {
+    if (getActiveModelConfig().modifiers.some(({ id }) => id === modifierId)) {
       scheduleCalculationInternal({ immediate: options?.immediate });
     }
   }
@@ -1013,36 +675,27 @@ export function createComfortToolState(): ComfortToolController {
     fieldKey: ModifierFieldKeyType,
     rawValue: string,
   ): boolean {
-    const modifier = inputModifierById[modifierId];
-    if (
-      !getActiveModelConfig().supportedModifiers.includes(modifierId)
-      || !modifier.extraInputs.includes(fieldKey)
-    ) {
-      return false;
-    }
+    const modifier = findModelModifier(getActiveModelConfig(), modifierId);
+    if (!modifier) return false;
 
     const currentInputs = state.modifierInputsByInput[inputId][modifierId];
     const wasActive = state.activeModifiersByInput[inputId][modifierId];
-    if (rawValue.trim() === "") {
-      currentInputs[fieldKey] = null;
-      if (wasActive) {
-        state.activeModifiersByInput[inputId][modifierId] = false;
-        refreshAfterModifierChange(modifierId, { immediate: true });
-      }
-      return true;
-    }
-
-    const displayValue = Number(rawValue);
-    if (!Number.isFinite(displayValue)) return false;
-    const valueSi = convertModifierFieldValueToSi(
+    const transition = parseModifierInputTransition(
+      modifier,
       fieldKey,
-      displayValue,
+      rawValue,
       state.ui.unitSystem,
+      wasActive,
     );
-    if (!isModifierFieldValueValid(fieldKey, valueSi)) return false;
+    if (!transition.accepted) return false;
 
-    currentInputs[fieldKey] = valueSi;
-    if (wasActive) refreshAfterModifierChange(modifierId);
+    currentInputs[fieldKey] = transition.valueSi ?? null;
+    if (transition.disableModifier) {
+      state.activeModifiersByInput[inputId][modifierId] = false;
+      refreshAfterModifierChange(modifierId, { immediate: true });
+    } else if (wasActive) {
+      refreshAfterModifierChange(modifierId);
+    }
     return true;
   }
 
@@ -1051,13 +704,14 @@ export function createComfortToolState(): ComfortToolController {
     modifierId: ModifierIdType,
     enabled: boolean,
   ): boolean {
-    if (!getActiveModelConfig().supportedModifiers.includes(modifierId)) return false;
+    const modifier = findModelModifier(getActiveModelConfig(), modifierId);
+    if (!modifier) return false;
     const currentEnabled = state.activeModifiersByInput[inputId][modifierId];
     if (currentEnabled === enabled) return true;
     if (
       enabled
-      && !isModifierConfigurationComplete(
-        modifierId,
+      && !canEnableModifier(
+        modifier,
         state.modifierInputsByInput[inputId][modifierId],
       )
     ) {

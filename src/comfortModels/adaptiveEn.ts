@@ -1,18 +1,21 @@
 import { adaptive_en } from "jsthermalcomfort";
 import { ComfortStandard } from "../models/calculationMetadata";
+import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
 import type { PresetInputOption } from "../models/inputControls";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
 import {
-  createAdaptiveComplianceBands,
-  createAdaptiveComplianceCaption,
-  createAdaptiveComplianceFeedbackGetter,
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
   type AdaptiveModelDeclaration,
 } from "./adaptiveShared";
+import {
+  createAdaptiveComplianceBands,
+  createAdaptiveComplianceCaption,
+  createAdaptiveComplianceFeedbackGetter,
+} from "./adaptiveCalculation";
 
 export const adaptiveEnZonesList = [
   new ThermalZone({ label: "Too Cool", color: "#3b82f6", textColor: "#2563eb" }),
@@ -72,13 +75,25 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
     "EN 16798-1 Adaptive thermal comfort model for naturally ventilated buildings.",
   resultStandard: ComfortStandard.En16798Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ISO,
-  zones: adaptiveEnZonesList,
   modes: [ChartMode.Compliance],
   chartableOutputs: [],
-  supportedModifiers: [],
+  modifiers: [],
+  charts: {
+    defaultId: ChartId.Adaptive,
+    entries: [{
+      id: ChartId.Adaptive,
+      name: "Adaptive",
+      emptyMessage: "No adaptive chart yet.",
+      allowsAxisSelection: true,
+      locksYAxis: false,
+      showsZoneToggle: false,
+      showsLegend: true,
+    }],
+  },
   complianceSpec: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),
+    legendTitle: "Adaptive Zones",
     caption: createAdaptiveComplianceCaption(
       "Shading shows EN 16798-1 Categories I–III",
       adaptiveEnBoundaryDefinition,

@@ -1,15 +1,7 @@
-/**
- * Input Fields Metadata
- * 
- * This file defines the descriptive metadata for all user-adjustable input fields 
- * (e.g., Temperature, Humidity, Clothing). It centralizes display labels, 
- * unit systems (SI/IP), decimal precision, and valid range constraints used 
- * by the UI and validation logic.
- */
 import { FieldKey, type FieldKey as FieldKeyType } from "./fieldKeys";
-// Defines the schema for the metadata associated with a single input field, (e.g. display name, units, and allowed value range).
-export interface FieldMeta {
-  key: FieldKeyType;
+
+export interface FieldMeta<Key extends FieldKeyType = FieldKeyType> {
+  key: Key;
   label: string;
   units: {
     SI: string;
@@ -26,8 +18,9 @@ export interface FieldMeta {
   maxValue: number;
 }
 
-// A central registry mapping each FieldKey to its corresponding FieldMeta definition. Used to define metadata for each input field.
-export const fieldMetaByKey: Record<FieldKeyType, FieldMeta> = {
+export const fieldMetaByKey: {
+  [Key in FieldKeyType]: FieldMeta<Key>;
+} = {
   [FieldKey.DryBulbTemperature]: {
     key: FieldKey.DryBulbTemperature,
     label: "Air temperature",
@@ -150,16 +143,3 @@ export const fieldMetaByKey: Record<FieldKeyType, FieldMeta> = {
     maxValue: 40,
   },
 };
-
-// The order in which the input fields are displayed in the input panel.
-export const allFieldOrder: FieldKeyType[] = [
-  FieldKey.DryBulbTemperature,
-  FieldKey.MeanRadiantTemperature,
-  FieldKey.RelativeAirSpeed,
-  FieldKey.WindSpeed,
-  FieldKey.RelativeHumidity,
-  FieldKey.MetabolicRate,
-  FieldKey.ClothingInsulation,
-  FieldKey.ExternalWork,
-  FieldKey.PrevailingMeanOutdoorTemperature,
-];

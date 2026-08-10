@@ -46,9 +46,17 @@ export function createCalculationManager(
 
     try {
       const modelConfig = getComfortModelConfig(selectedModel);
+      const options = modelConfig.parseOptions(
+        state.ui.modelOptionsByModel[selectedModel],
+      );
+      if (!options) {
+        throw new Error(
+          `Invariant violation: invalid options state for ${selectedModel}.`,
+        );
+      }
       const calculationContext: ModelCalculationContext = {
         inputsByInput: getEffectiveInputsByInput(selectedModel),
-        modelOptionsByModel: state.ui.modelOptionsByModel,
+        options,
       };
       const calculationOutputs = modelConfig.calculate(calculationContext, visibleInputIds);
 

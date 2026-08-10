@@ -1,13 +1,3 @@
-/**
- * Field Keys and Input Identifiers
- * 
- * This file defines the keys used to identify individual input parameters 
- * (e.g., tdb, tr, rh) and derived input quantities across the application.
- * These keys ensure type-safe access to input state and consistent data mapping 
- * between the UI and calculation engines.
- */
-
-// This object is a set of unique string values used to identify each input parameter.
 export const FieldKey = {
   DryBulbTemperature: "tdb",
   MeanRadiantTemperature: "tr",
@@ -22,10 +12,24 @@ export const FieldKey = {
   OperativeTemperature: "to",
 } as const;
 
-// This type is a union of all the keys in the FieldKey object, used for type safety.
 export type FieldKey = (typeof FieldKey)[keyof typeof FieldKey];
 
-// This object is a set of unique string values used to identify each derived input parameter.
+/** Fields persisted in canonical SI input state and share snapshots, in wire order. */
+export const canonicalInputFieldOrder = [
+  FieldKey.DryBulbTemperature,
+  FieldKey.MeanRadiantTemperature,
+  FieldKey.RelativeAirSpeed,
+  FieldKey.WindSpeed,
+  FieldKey.RelativeHumidity,
+  FieldKey.MetabolicRate,
+  FieldKey.ClothingInsulation,
+  FieldKey.ExternalWork,
+  FieldKey.PrevailingMeanOutdoorTemperature,
+] as const;
+
+export type CanonicalInputFieldKey = (typeof canonicalInputFieldOrder)[number];
+export type CanonicalInputState = Record<CanonicalInputFieldKey, number>;
+
 export const DerivedInputId = {
   DewPoint: "humidity.dewPoint",
   HumidityRatio: "humidity.humidityRatio",
@@ -33,5 +37,5 @@ export const DerivedInputId = {
   VaporPressure: "humidity.vaporPressure",
 } as const;
 
-// This type is a union of all the keys in the DerivedInputId object, used for type safety
 export type DerivedInputId = (typeof DerivedInputId)[keyof typeof DerivedInputId];
+export type DerivedInputState = Record<DerivedInputId, number>;

@@ -1,44 +1,63 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { FieldKey } from "../../models/fieldKeys";
+import {
+  FieldKey,
+  type CanonicalInputState,
+} from "../../models/fieldKeys";
+import { JsThermalComfortStandard } from "../../models/comfortModels";
 import {
   ModifierFieldKey,
   ModifierId,
-  type CanonicalInputValues,
-  type InputModifier,
+  defineInputModifier,
 } from "../../models/inputModifiers";
 import {
   applyInputModifierChain,
-  applyModifierDefinitions,
-  inputModifierById,
+  createDynamicClothingModifier,
   isModifierConfigurationComplete,
+  measuredAirSpeedModifier,
+  morningClothingEstimateModifier,
+  solarGainModifier,
 } from "./inputModifiers";
 
-function createBaseInputs(): CanonicalInputValues {
+function createBaseInputs(): CanonicalInputState {
   return {
     [FieldKey.DryBulbTemperature]: 25,
     [FieldKey.MeanRadiantTemperature]: 25,
     [FieldKey.RelativeAirSpeed]: 0.1,
     [FieldKey.WindSpeed]: 1,
     [FieldKey.RelativeHumidity]: 50,
-    [FieldKey.HumidityRatio]: 9,
     [FieldKey.MetabolicRate]: 1.8,
     [FieldKey.ClothingInsulation]: 0.5,
     [FieldKey.ExternalWork]: 0,
     [FieldKey.PrevailingMeanOutdoorTemperature]: 20,
-    [FieldKey.OperativeTemperature]: 25,
   };
 }
 
 describe("input modifiers", () => {
+  it("preserves each declaration's exact input and affected-field types", () => {
+    type MeasuredExtraInputs = Parameters<
+      typeof measuredAirSpeedModifier.apply
+    >[1];
+    type MeasuredPatch = ReturnType<typeof measuredAirSpeedModifier.apply>;
+
+    expectTypeOf<MeasuredExtraInputs>().toEqualTypeOf<Readonly<{
+      [ModifierFieldKey.MeasuredAirSpeed]: number;
+    }>>();
+    expectTypeOf<MeasuredPatch>().toEqualTypeOf<Partial<Pick<
+      CanonicalInputState,
+      typeof FieldKey.RelativeAirSpeed
+    >>>();
+  });
+
   it("applies measured air speed in SI without overwriting base inputs", () => {
     const baseInputs = Object.freeze(createBaseInputs());
     const effectiveInputs = applyInputModifierChain(
       baseInputs,
-      [ModifierId.MeasuredAirSpeed],
+      [measuredAirSpeedModifier],
       {
         [ModifierId.MeasuredAirSpeed]: true,
         [ModifierId.MorningClothingEstimate]: false,
+        [ModifierId.DynamicClothing]: false,
         [ModifierId.SolarGain]: false,
       },
       {
@@ -46,6 +65,7 @@ describe("input modifiers", () => {
           [ModifierFieldKey.MeasuredAirSpeed]: 0.6,
         },
         [ModifierId.MorningClothingEstimate]: {},
+        [ModifierId.DynamicClothing]: {},
         [ModifierId.SolarGain]: {},
       },
     );
@@ -55,7 +75,7 @@ describe("input modifiers", () => {
   });
 
   it("applies the morning clothing estimate in canonical SI", () => {
-    const effectiveInputs = inputModifierById[ModifierId.MorningClothingEstimate].apply(
+    const effectiveInputs = morningClothingEstimateModifier.apply(
       createBaseInputs(),
       { [ModifierFieldKey.MorningOutdoorTemperature]: 10 },
     );
@@ -65,7 +85,7 @@ describe("input modifiers", () => {
 
   it("applies solar gain to mean radiant temperature", () => {
     const baseInputs = createBaseInputs();
-    const effectiveInputs = inputModifierById[ModifierId.SolarGain].apply(
+    const effectiveInputs = solarGainModifier.apply(
       baseInputs,
       {
         [ModifierFieldKey.SolarAltitude]: 45,
@@ -85,10 +105,10 @@ describe("input modifiers", () => {
   });
 
   it("requires every declared input before activation", () => {
-    expect(isModifierConfigurationComplete(ModifierId.SolarGain, {
+    expect(isModifierConfigurationComplete(solarGainModifier, {
       [ModifierFieldKey.SolarAltitude]: 45,
     })).toBe(false);
-    expect(isModifierConfigurationComplete(ModifierId.SolarGain, {
+    expect(isModifierConfigurationComplete(solarGainModifier, {
       [ModifierFieldKey.SolarAltitude]: 45,
       [ModifierFieldKey.SolarHorizontalAngle]: 90,
       [ModifierFieldKey.DirectSolarRadiation]: 800,
@@ -99,7 +119,7 @@ describe("input modifiers", () => {
   });
 
   it("composes modifier patches in declaration order", () => {
-    const addTwo: InputModifier = {
+    const addTwo = defineInputModifier({
       id: ModifierId.MeasuredAirSpeed,
       label: "Add two",
       description: "",
@@ -108,8 +128,8 @@ describe("input modifiers", () => {
       apply: (inputs) => ({
         [FieldKey.MeanRadiantTemperature]: inputs[FieldKey.MeanRadiantTemperature] + 2,
       }),
-    };
-    const triple: InputModifier = {
+    });
+    const triple = defineInputModifier({
       id: ModifierId.SolarGain,
       label: "Triple",
       description: "",
@@ -118,7 +138,7 @@ describe("input modifiers", () => {
       apply: (inputs) => ({
         [FieldKey.MeanRadiantTemperature]: inputs[FieldKey.MeanRadiantTemperature] * 3,
       }),
-    };
+    });
     const active = {
       [ModifierId.MeasuredAirSpeed]: true,
       [ModifierId.SolarGain]: true,
@@ -128,13 +148,13 @@ describe("input modifiers", () => {
       [ModifierId.SolarGain]: {},
     };
 
-    const forward = applyModifierDefinitions(
+    const forward = applyInputModifierChain(
       createBaseInputs(),
       [addTwo, triple],
       active,
       inputs,
     );
-    const reverse = applyModifierDefinitions(
+    const reverse = applyInputModifierChain(
       createBaseInputs(),
       [triple, addTwo],
       active,
@@ -143,5 +163,62 @@ describe("input modifiers", () => {
 
     expect(forward[FieldKey.MeanRadiantTemperature]).toBe(81);
     expect(reverse[FieldKey.MeanRadiantTemperature]).toBe(77);
+  });
+
+  it("applies ASHRAE and ISO dynamic-clothing thresholds", () => {
+    const ashrae = createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE);
+    const iso = createDynamicClothingModifier(JsThermalComfortStandard.ISO);
+    const inputs = createBaseInputs();
+    inputs[FieldKey.ClothingInsulation] = 1;
+
+    inputs[FieldKey.MetabolicRate] = 1;
+    expect(iso.apply(inputs, {})[FieldKey.ClothingInsulation]).toBe(1);
+
+    inputs[FieldKey.MetabolicRate] = 1.1;
+    expect(ashrae.apply(inputs, {})[FieldKey.ClothingInsulation]).toBe(1);
+    expect(iso.apply(inputs, {})[FieldKey.ClothingInsulation]).toBeCloseTo(0.964, 3);
+
+    inputs[FieldKey.MetabolicRate] = 1.2;
+    expect(ashrae.apply(inputs, {})[FieldKey.ClothingInsulation]).toBe(1);
+    inputs[FieldKey.MetabolicRate] = 1.21;
+    expect(ashrae.apply(inputs, {})[FieldKey.ClothingInsulation]).toBeCloseTo(0.931, 3);
+  });
+
+  it("applies Morning Clothing before Dynamic Clothing", () => {
+    const dynamic = createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE);
+    const effective = applyInputModifierChain(
+      createBaseInputs(),
+      [morningClothingEstimateModifier, dynamic],
+      {
+        [ModifierId.MorningClothingEstimate]: true,
+        [ModifierId.DynamicClothing]: true,
+      },
+      {
+        [ModifierId.MorningClothingEstimate]: {
+          [ModifierFieldKey.MorningOutdoorTemperature]: 10,
+        },
+        [ModifierId.DynamicClothing]: {},
+      },
+    );
+
+    expect(effective[FieldKey.ClothingInsulation]).toBeCloseTo(0.485, 3);
+  });
+
+  it("rejects non-finite modifier output at the application boundary", () => {
+    const invalid = defineInputModifier({
+      id: ModifierId.DynamicClothing,
+      label: "Invalid",
+      description: "Returns an invalid value.",
+      extraInputs: [],
+      affectedFields: [FieldKey.ClothingInsulation],
+      apply: () => ({ [FieldKey.ClothingInsulation]: Infinity }),
+    });
+
+    expect(() => applyInputModifierChain(
+      createBaseInputs(),
+      [invalid],
+      { [ModifierId.DynamicClothing]: true },
+      { [ModifierId.DynamicClothing]: {} },
+    )).toThrow(/invalid input patch/i);
   });
 });

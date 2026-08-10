@@ -1,4 +1,7 @@
-import { FieldKey, type FieldKey as FieldKeyType } from "./fieldKeys";
+import {
+  FieldKey,
+  type CanonicalInputState,
+} from "./fieldKeys";
 
 export const InputId = {
   Input1: "input1",
@@ -10,9 +13,7 @@ export type InputId = (typeof InputId)[keyof typeof InputId];
 
 export const inputOrder: InputId[] = [InputId.Input1, InputId.Input2, InputId.Input3];
 
-type InputDefaults = Record<Exclude<FieldKeyType, "hr" | "to">, number>;
-
-export const inputDefaultsById: Record<InputId, InputDefaults> = {
+export const inputDefaultsById: Record<InputId, CanonicalInputState> = {
   [InputId.Input1]: {
     [FieldKey.DryBulbTemperature]: 26,
     [FieldKey.MeanRadiantTemperature]: 25,

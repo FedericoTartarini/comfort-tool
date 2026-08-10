@@ -1,17 +1,23 @@
-import { solar_gain } from "jsthermalcomfort";
+import { clo_dynamic, solar_gain } from "jsthermalcomfort";
 
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import {
+  canonicalInputFieldOrder,
+  FieldKey,
+  type CanonicalInputFieldKey,
+  type CanonicalInputState,
+} from "../../models/fieldKeys";
 import {
   ModifierFieldKey,
   ModifierId,
+  defineInputModifier,
+  inputModifierCatalogue,
   modifierFieldMetaByKey,
-  type CanonicalInputValues,
-  type CompleteModifierInputValues,
   type InputModifier,
   type ModifierFieldKey as ModifierFieldKeyType,
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
 } from "../../models/inputModifiers";
+import type { JsThermalComfortStandard } from "../../models/comfortModels";
 import { deriveRelativeAirSpeedFromMeasured } from "./derivations/airSpeed";
 import { predictClothingInsulation } from "./clothingTools";
 
@@ -20,48 +26,48 @@ const SOLAR_POSTURE = "sitting";
 // Pin the installed runtime default; its generated parameter documentation is inconsistent.
 const SOLAR_FLOOR_REFLECTANCE = 0.6;
 
-function requireModifierValue(
-  values: Readonly<CompleteModifierInputValues>,
-  key: ModifierFieldKeyType,
-): number {
-  const value = values[key];
-  if (value === undefined) {
-    throw new Error(`Missing required modifier input: ${key}.`);
-  }
-  return value;
-}
-
-const measuredAirSpeedModifier: InputModifier = {
-  id: ModifierId.MeasuredAirSpeed,
-  label: "Measured air speed",
-  description: "Derive relative air speed from measured air speed and activity.",
+export const measuredAirSpeedModifier = defineInputModifier({
+  ...inputModifierCatalogue[ModifierId.MeasuredAirSpeed],
   extraInputs: [ModifierFieldKey.MeasuredAirSpeed],
   affectedFields: [FieldKey.RelativeAirSpeed],
   apply: (inputs, extraInputs) => ({
     [FieldKey.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
-      requireModifierValue(extraInputs, ModifierFieldKey.MeasuredAirSpeed),
+      extraInputs[ModifierFieldKey.MeasuredAirSpeed],
       inputs[FieldKey.MetabolicRate],
     ),
   }),
-};
+});
 
-const morningClothingEstimateModifier: InputModifier = {
-  id: ModifierId.MorningClothingEstimate,
-  label: "Morning clothing estimate",
-  description: "Estimate clothing insulation from outdoor temperature at 6 a.m.",
+export const morningClothingEstimateModifier = defineInputModifier({
+  ...inputModifierCatalogue[ModifierId.MorningClothingEstimate],
   extraInputs: [ModifierFieldKey.MorningOutdoorTemperature],
   affectedFields: [FieldKey.ClothingInsulation],
   apply: (_inputs, extraInputs) => ({
     [FieldKey.ClothingInsulation]: predictClothingInsulation(
-      requireModifierValue(extraInputs, ModifierFieldKey.MorningOutdoorTemperature),
+      extraInputs[ModifierFieldKey.MorningOutdoorTemperature],
     ),
   }),
-};
+});
 
-const solarGainModifier: InputModifier = {
-  id: ModifierId.SolarGain,
-  label: "Solar gain on occupant",
-  description: "Increase effective mean radiant temperature for direct solar exposure.",
+export function createDynamicClothingModifier(
+  standard: JsThermalComfortStandard,
+) {
+  return defineInputModifier({
+    ...inputModifierCatalogue[ModifierId.DynamicClothing],
+    extraInputs: [],
+    affectedFields: [FieldKey.ClothingInsulation],
+    apply: (inputs) => ({
+      [FieldKey.ClothingInsulation]: clo_dynamic(
+        inputs[FieldKey.ClothingInsulation],
+        inputs[FieldKey.MetabolicRate],
+        standard,
+      ),
+    }),
+  });
+}
+
+export const solarGainModifier = defineInputModifier({
+  ...inputModifierCatalogue[ModifierId.SolarGain],
   extraInputs: [
     ModifierFieldKey.SolarAltitude,
     ModifierFieldKey.SolarHorizontalAngle,
@@ -73,12 +79,12 @@ const solarGainModifier: InputModifier = {
   affectedFields: [FieldKey.MeanRadiantTemperature],
   apply: (inputs, extraInputs) => {
     const { delta_mrt: deltaMrt } = solar_gain(
-      requireModifierValue(extraInputs, ModifierFieldKey.SolarAltitude),
-      requireModifierValue(extraInputs, ModifierFieldKey.SolarHorizontalAngle),
-      requireModifierValue(extraInputs, ModifierFieldKey.DirectSolarRadiation),
-      requireModifierValue(extraInputs, ModifierFieldKey.SolarTransmittance),
-      requireModifierValue(extraInputs, ModifierFieldKey.SkyVaultViewFraction),
-      requireModifierValue(extraInputs, ModifierFieldKey.BodyExposureFraction),
+      extraInputs[ModifierFieldKey.SolarAltitude],
+      extraInputs[ModifierFieldKey.SolarHorizontalAngle],
+      extraInputs[ModifierFieldKey.DirectSolarRadiation],
+      extraInputs[ModifierFieldKey.SolarTransmittance],
+      extraInputs[ModifierFieldKey.SkyVaultViewFraction],
+      extraInputs[ModifierFieldKey.BodyExposureFraction],
       SOLAR_SHORT_WAVE_ABSORPTIVITY,
       SOLAR_POSTURE,
       SOLAR_FLOOR_REFLECTANCE,
@@ -87,13 +93,11 @@ const solarGainModifier: InputModifier = {
       [FieldKey.MeanRadiantTemperature]: inputs[FieldKey.MeanRadiantTemperature] + deltaMrt,
     };
   },
-};
+});
 
-export const inputModifierById: Record<ModifierIdType, InputModifier> = {
-  [ModifierId.MeasuredAirSpeed]: measuredAirSpeedModifier,
-  [ModifierId.MorningClothingEstimate]: morningClothingEstimateModifier,
-  [ModifierId.SolarGain]: solarGainModifier,
-};
+function isCanonicalInputFieldKey(value: string): value is CanonicalInputFieldKey {
+  return canonicalInputFieldOrder.some((fieldKey) => fieldKey === value);
+}
 
 export function isModifierFieldValueValid(
   key: ModifierFieldKeyType,
@@ -106,32 +110,32 @@ export function isModifierFieldValueValid(
 }
 
 export function getCompleteModifierInputs(
-  modifier: InputModifier,
+  modifier: Pick<InputModifier, "extraInputs">,
   values: Readonly<ModifierInputValues>,
-): CompleteModifierInputValues | null {
-  const completeValues: CompleteModifierInputValues = {};
+): Record<ModifierFieldKeyType, number> | null {
+  const completeValues: Partial<Record<ModifierFieldKeyType, number>> = {};
   for (const key of modifier.extraInputs) {
     const value = values[key];
     if (!isModifierFieldValueValid(key, value)) return null;
     completeValues[key] = value;
   }
-  return completeValues;
+  return completeValues as Record<ModifierFieldKeyType, number>;
 }
 
 export function isModifierConfigurationComplete(
-  modifierId: ModifierIdType,
+  modifier: Pick<InputModifier, "extraInputs">,
   values: Readonly<ModifierInputValues>,
 ): boolean {
-  return getCompleteModifierInputs(inputModifierById[modifierId], values) !== null;
+  return getCompleteModifierInputs(modifier, values) !== null;
 }
 
-export function applyModifierDefinitions(
-  baseInputs: Readonly<CanonicalInputValues>,
+export function applyInputModifierChain(
+  baseInputs: Readonly<CanonicalInputState>,
   modifiers: readonly InputModifier[],
   activeModifiers: Readonly<Partial<Record<ModifierIdType, boolean>>>,
   modifierInputs: Readonly<Partial<Record<ModifierIdType, ModifierInputValues>>>,
-): CanonicalInputValues {
-  let effectiveInputs: CanonicalInputValues = { ...baseInputs };
+): CanonicalInputState {
+  let effectiveInputs: CanonicalInputState = { ...baseInputs };
 
   for (const modifier of modifiers) {
     if (!activeModifiers[modifier.id]) continue;
@@ -145,27 +149,16 @@ export function applyModifierDefinitions(
 
     const patch = modifier.apply({ ...effectiveInputs }, completeInputs);
     for (const [rawField, value] of Object.entries(patch)) {
-      const field = rawField as FieldKeyType;
-      if (!modifier.affectedFields.includes(field) || !Number.isFinite(value)) {
+      if (
+        !isCanonicalInputFieldKey(rawField)
+        || !modifier.affectedFields.includes(rawField)
+        || !Number.isFinite(value)
+      ) {
         throw new Error(`Modifier ${modifier.id} returned an invalid input patch.`);
       }
-      effectiveInputs[field] = value;
+      effectiveInputs[rawField] = value;
     }
   }
 
   return effectiveInputs;
-}
-
-export function applyInputModifierChain(
-  baseInputs: Readonly<CanonicalInputValues>,
-  modifierIds: readonly ModifierIdType[],
-  activeModifiers: Readonly<Record<ModifierIdType, boolean>>,
-  modifierInputs: Readonly<Record<ModifierIdType, ModifierInputValues>>,
-): CanonicalInputValues {
-  return applyModifierDefinitions(
-    baseInputs,
-    modifierIds.map((modifierId) => inputModifierById[modifierId]),
-    activeModifiers,
-    modifierInputs,
-  );
 }

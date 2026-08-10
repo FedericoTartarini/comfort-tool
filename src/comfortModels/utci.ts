@@ -15,7 +15,7 @@ import {
   TemperatureMode,
   type UtciModelOptions,
 } from "../models/inputModes";
-import { inputOrder, type InputId as InputIdType } from "../models/inputSlots";
+import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ModelCalculationContext } from "../models/modelCalculation";
 import {
   bandsFromThermalZones,
@@ -35,16 +35,19 @@ import {
 } from "../services/comfort/charts/chartEngine";
 import {
   applyDynamicAxisCoordinates,
-  type DynamicAxisPayloadAdapter,
+  createRequestAxisAdapter,
 } from "../services/comfort/charts/dynamicAxisPayload";
 import {
   buildTextAnnotation,
 } from "../services/comfort/charts/plotlyBuilders";
 import {
   createControlBehavior,
-  createTemperatureControlBehavior,
-} from "../services/comfort/controls/controlBehaviors";
-import type { BehaviorPatch } from "../services/comfort/controls/types";
+} from "../services/comfort/controls/numericControl";
+import {
+  createOperativeTemperatureControlBehavior,
+  createTemperatureModeOptionHandler,
+  requireTemperatureMode,
+} from "../services/comfort/controls/temperatureControl";
 import {
   getBaselineInputEntry,
   getCompareInputs,
@@ -52,9 +55,9 @@ import {
   roundValue,
 } from "../services/comfort/helpers";
 import {
-  applyOperativeTemperatureMode,
-  synchronizePmvInputState,
-} from "../services/comfort/syncState";
+  calculatePerInput,
+  createFieldRequestAdapter,
+} from "../services/comfort/requestMapping";
 import {
   convertModelOutputFromSi,
   formatDisplayValue,
@@ -63,7 +66,6 @@ import {
 import {
   buildResultSection,
   ComfortModelBuilder,
-  createEmptyResults,
   hasExactKeys,
   isRecord,
 } from "../state/comfortTool/modelConfigs/builder";
@@ -168,78 +170,49 @@ function parseUtciOptions(value: unknown): UtciModelOptions | null {
   return null;
 }
 
+export const utciRequestAdapter = createFieldRequestAdapter<UtciRequestDto>({
+  tdb: FieldKey.DryBulbTemperature,
+  tr: FieldKey.MeanRadiantTemperature,
+  v: FieldKey.WindSpeed,
+  rh: FieldKey.RelativeHumidity,
+});
+
+export const utciAxisAdapter = createRequestAxisAdapter({
+  fieldAdapter: utciRequestAdapter,
+  aliases: {
+    [FieldKey.RelativeAirSpeed]: FieldKey.WindSpeed,
+  },
+  temperatureComponentRanges: {
+    [FieldKey.DryBulbTemperature]: TDB_LIMITS,
+    [FieldKey.MeanRadiantTemperature]: TR_LIMITS,
+  },
+  operativeTemperature: {
+    get: (request) => t_o(
+      request.tdb,
+      request.tr,
+      request.v,
+      JsThermalComfortStandard.ISO,
+    ),
+    set: (request, valueSi) => {
+      request.tdb = valueSi;
+      request.tr = valueSi;
+    },
+    range: {
+      min: fieldMetaByKey[FieldKey.OperativeTemperature].minValue,
+      max: fieldMetaByKey[FieldKey.OperativeTemperature].maxValue,
+    },
+  },
+});
+
 function toRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
 ): UtciRequestDto {
-  const inputs = context.inputsByInput[inputId];
-  const options = parseUtciOptions(
-    context.modelOptionsByModel[ComfortModel.Utci],
-  );
-  if (!options) {
-    throw new Error(`Invalid options state for ${ComfortModel.Utci}.`);
+  const request = utciRequestAdapter.mapRequest(context, inputId);
+  if (context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
+    request.tr = request.tdb;
   }
-  const tdb = Number(inputs[FieldKey.DryBulbTemperature]);
-
-  return {
-    tdb,
-    tr: options[OptionKey.TemperatureMode] === TemperatureMode.Operative
-      ? tdb
-      : Number(inputs[FieldKey.MeanRadiantTemperature]),
-    v: Number(inputs[FieldKey.WindSpeed]),
-    rh: Number(inputs[FieldKey.RelativeHumidity]),
-  };
-}
-
-function getAxisValue(payload: UtciRequestDto, field: FieldKey): number {
-  switch (field) {
-    case FieldKey.DryBulbTemperature:
-      return payload.tdb;
-    case FieldKey.MeanRadiantTemperature:
-      return payload.tr;
-    case FieldKey.WindSpeed:
-    case FieldKey.RelativeAirSpeed:
-      return payload.v;
-    case FieldKey.RelativeHumidity:
-      return payload.rh;
-    case FieldKey.OperativeTemperature:
-      return t_o(
-        payload.tdb,
-        payload.tr,
-        payload.v,
-        JsThermalComfortStandard.ISO,
-      );
-    default:
-      throw new Error(`Unsupported UTCI chart field: ${field}`);
-  }
-}
-
-function setAxisValue(
-  payload: UtciRequestDto,
-  field: FieldKey,
-  valueSi: number,
-): void {
-  switch (field) {
-    case FieldKey.DryBulbTemperature:
-      payload.tdb = valueSi;
-      return;
-    case FieldKey.MeanRadiantTemperature:
-      payload.tr = valueSi;
-      return;
-    case FieldKey.OperativeTemperature:
-      payload.tdb = valueSi;
-      payload.tr = valueSi;
-      return;
-    case FieldKey.WindSpeed:
-    case FieldKey.RelativeAirSpeed:
-      payload.v = valueSi;
-      return;
-    case FieldKey.RelativeHumidity:
-      payload.rh = valueSi;
-      return;
-    default:
-      throw new Error(`Unsupported UTCI chart field: ${field}`);
-  }
+  return request;
 }
 
 export function buildUtciStressChart(
@@ -334,7 +307,6 @@ export function buildUtciStressChart(
       title: `${MODEL_LABEL} stress category`,
       margin: UTCI_STRESS_CHART_MARGIN,
       legend: { orientation: "h", x: 0, y: 1.08 },
-      shapes: [],
     },
     source: CalculationSource.FrontendGenerated,
   });
@@ -355,18 +327,6 @@ export function buildUtciDynamicChart(
   const { unitSystem } = context;
   const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
-  const axisAdapter: DynamicAxisPayloadAdapter<UtciRequestDto> = {
-    setAxisValue,
-    getAxisValue,
-    getOperativeTemperature: (request) => t_o(
-      request.tdb,
-      request.tr,
-      request.v,
-      JsThermalComfortStandard.ISO,
-    ),
-    getTemperatureComponentRange: (field) =>
-      field === FieldKey.DryBulbTemperature ? TDB_LIMITS : TR_LIMITS,
-  };
   return buildFieldChart({
     unitSystem,
     xAxis: {
@@ -386,7 +346,7 @@ export function buildUtciDynamicChart(
           request,
           { field: config.xField, valueSi: xSi },
           { field: config.yField, valueSi: ySi },
-          axisAdapter,
+          utciAxisAdapter,
         );
         return hasValidCoordinates ? tryEvaluateUtciForChart(request) : null;
       },
@@ -394,8 +354,8 @@ export function buildUtciDynamicChart(
     inputGroups: ({ xAxis, yAxis }) => [{
       inputsMap: source.inputs,
       resultsByInput,
-      getXSi: (payload) => getAxisValue(payload, config.xField),
-      getYSi: (payload) => getAxisValue(payload, config.yField),
+      getXSi: (payload) => utciAxisAdapter.getAxisValue(payload, config.xField),
+      getYSi: (payload) => utciAxisAdapter.getAxisValue(payload, config.yField),
       formatXDisplay: roundValue,
       formatYDisplay: roundValue,
       getHovertemplate: ({ inputLabel, result }) => {
@@ -437,11 +397,34 @@ builder
   .setDescription(MODEL_DESCRIPTION)
   .setModes([ChartMode.Explore])
   .setChartableOutputs([utciOutput])
-  .setModifiers([]);
+  .setModifiers([])
+  .setCharts({
+    defaultId: ChartId.UtciDynamic,
+    entries: [
+      {
+        id: ChartId.Stress,
+        name: "UTCI",
+        emptyMessage: "No psychrometric chart yet.",
+        allowsAxisSelection: false,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+      {
+        id: ChartId.UtciDynamic,
+        name: "Dynamic",
+        emptyMessage: "No dynamic chart yet.",
+        allowsAxisSelection: true,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+    ],
+  });
 
 builder.addControl({
   id: InputControlId.Temperature,
-  behavior: createTemperatureControlBehavior(InputControlId.Temperature, {
+  behavior: createOperativeTemperatureControlBehavior(InputControlId.Temperature, {
     minValue: TDB_LIMITS.min,
     maxValue: TDB_LIMITS.max,
   }),
@@ -453,13 +436,8 @@ builder.addControl({
     fieldKey: FieldKey.MeanRadiantTemperature,
     minValue: TR_LIMITS.min,
     maxValue: TR_LIMITS.max,
-    hidden: (context) => {
-      const options = parseUtciOptions(context.options);
-      if (!options) {
-        throw new Error(`Invalid options state for ${ComfortModel.Utci}.`);
-      }
-      return options[OptionKey.TemperatureMode] === TemperatureMode.Operative;
-    },
+    hidden: (context) =>
+      requireTemperatureMode(context.options) === TemperatureMode.Operative,
   }),
 });
 builder.addControl({
@@ -477,38 +455,11 @@ builder.addControl({
   }),
 });
 
-builder.addOptionHandler(OptionKey.TemperatureMode, (context, nextValue) => {
-  if (nextValue !== TemperatureMode.Air && nextValue !== TemperatureMode.Operative) {
-    return null;
-  }
+builder.addOptionHandler(
+  OptionKey.TemperatureMode,
+  createTemperatureModeOptionHandler(),
+);
 
-  const nextOptions = {
-    ...context.options,
-    [OptionKey.TemperatureMode]: nextValue,
-  };
-  const inputsPatch: NonNullable<BehaviorPatch["inputsPatch"]> = {};
-  for (const inputId of inputOrder) {
-    inputsPatch[inputId] = (nextValue === TemperatureMode.Operative
-      ? applyOperativeTemperatureMode(
-          context.inputsByInput[inputId],
-          nextOptions,
-          context.derivedByInput[inputId],
-        )
-      : synchronizePmvInputState(
-          context.inputsByInput[inputId],
-          nextOptions,
-          context.derivedByInput[inputId],
-        )
-    ).inputState;
-  }
-
-  return {
-    inputsPatch,
-    optionsPatch: { [OptionKey.TemperatureMode]: nextValue },
-  };
-});
-
-builder.setDefaultChart(ChartId.UtciDynamic, [ChartId.Stress, ChartId.UtciDynamic]);
 builder.setDynamicAxisFields([...UTCI_DYNAMIC_AXIS_FIELDS]);
 builder.setDefaultDynamicAxes({
   xAxis: FieldKey.DryBulbTemperature,
@@ -517,16 +468,13 @@ builder.setDefaultDynamicAxes({
 builder.setDefaultOptions({ ...defaultUtciOptions });
 builder.setOptionParser(parseUtciOptions);
 
-builder.setCalculator((context, visibleInputIds) => {
-  const resultsByInput = createEmptyResults<UtciResponseDto>();
-  const inputs: ModelChartSourceDto<UtciRequestDto>["inputs"] = {};
-  for (const inputId of visibleInputIds) {
-    const request = toRequest(context, inputId);
-    resultsByInput[inputId] = calculateUtci(request);
-    inputs[inputId] = request;
-  }
-  return { resultsByInput, chartSource: { inputs } };
-});
+builder.setCalculator((context, visibleInputIds) =>
+  calculatePerInput({
+    context,
+    visibleInputIds,
+    mapRequest: toRequest,
+    calculate: calculateUtci,
+  }));
 
 builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
   const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Utci, unitSystem);
@@ -555,9 +503,4 @@ builder.setChartBuilder((chartId, chartSource, resultsByInput, context) => {
   }
   return null;
 });
-builder.setZones(utciZonesList);
-builder.setLegendChartIds([ChartId.Stress, ChartId.UtciDynamic]);
-builder.setLegendTitle("UTCI Zones");
-builder.setLockYAxisChartIds([]);
-
 export const utciModelConfig = builder.build();

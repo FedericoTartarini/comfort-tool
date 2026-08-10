@@ -3,6 +3,7 @@ import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type {
   CompareInputMap,
   ModelChartSourceDto,
+  PlotHoverValueDto,
   PlotlyChartResponseDto,
 } from "../../../models/comfortDtos";
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
@@ -16,6 +17,7 @@ import type {
 } from "../../../models/modelCapabilities";
 import { findNumericBandIndexForValue } from "../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import type { FieldRequestAdapter } from "../requestMapping";
 import {
   convertModelOutputFromSi,
   getModelOutputDisplayMeta,
@@ -34,7 +36,7 @@ export interface GridModelDynamicHoverExtension<TResult> {
   getMetadata: (
     result: TResult | null | undefined,
     unitSystem: UnitSystemType,
-  ) => readonly unknown[];
+  ) => readonly PlotHoverValueDto[];
 }
 
 export interface GridModelFixedViewSpec {
@@ -53,8 +55,10 @@ export interface GridModelChartSpec<TPayload extends object, TResult> {
   bandLabel?: string;
   dynamicHoverExtension?: GridModelDynamicHoverExtension<TResult>;
   axisRanges?: Partial<Record<FieldKeyType, ChartRange>>;
-  getAxisValue: (payload: TPayload, field: FieldKeyType) => number;
-  setAxisValue: (payload: TPayload, field: FieldKeyType, valueSi: number) => void;
+  requestAdapter: Pick<
+    FieldRequestAdapter<TPayload>,
+    "getAxisValue" | "setAxisValue"
+  >;
   evaluate: (payload: TPayload) => TResult;
   getOutputValue: (result: TResult) => number;
   fixedView?: GridModelFixedViewSpec;
@@ -113,8 +117,8 @@ function buildGridModelView<TPayload extends object, TResult>(
       hoverTemplateSuffix: view.hoverTemplateSuffix,
       evaluateOutput: (xSi, ySi, _zOutput, _xIndex, _yIndex, renderContext) => {
         const pointPayload = { ...baselinePayload };
-        spec.setAxisValue(pointPayload, view.config.xField, xSi);
-        spec.setAxisValue(pointPayload, view.config.yField, ySi);
+        spec.requestAdapter.setAxisValue(pointPayload, view.config.xField, xSi);
+        spec.requestAdapter.setAxisValue(pointPayload, view.config.yField, ySi);
         const result = spec.evaluate(pointPayload);
         const valueSi = spec.getOutputValue(result);
         const additionalHoverMetadata = spec.dynamicHoverExtension
@@ -128,8 +132,8 @@ function buildGridModelView<TPayload extends object, TResult>(
     inputGroups: ({ xAxis, yAxis }) => [{
       inputsMap,
       resultsByInput,
-      getXSi: (payload) => spec.getAxisValue(payload, view.config.xField),
-      getYSi: (payload) => spec.getAxisValue(payload, view.config.yField),
+      getXSi: (payload) => spec.requestAdapter.getAxisValue(payload, view.config.xField),
+      getYSi: (payload) => spec.requestAdapter.getAxisValue(payload, view.config.yField),
       getHovertemplate: ({ inputLabel, result }) => {
         const valueSi = getResultValue(result);
         const selectedBandIndex = valueSi === undefined

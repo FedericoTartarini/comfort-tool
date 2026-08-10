@@ -61,6 +61,17 @@ describe("InputModifiers", () => {
     });
     expect(measuredToggle.hasAttribute("disabled")).toBe(true);
 
+    const dynamicClothingToggle = screen.getByRole("checkbox", {
+      name: "Input 1 Dynamic clothing",
+    });
+    expect(dynamicClothingToggle.hasAttribute("disabled")).toBe(false);
+    await user.click(dynamicClothingToggle);
+    await tick();
+    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+      [ModifierId.DynamicClothing]).toBe(true);
+    expect(screen.getByRole("region", { name: "Optional input modifiers" }).textContent)
+      .toContain("Effective clothing insulation:");
+
     await user.type(measuredInput, "0.6");
     await user.tab();
     await tick();

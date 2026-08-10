@@ -8,19 +8,27 @@ import {
 } from "jsthermalcomfort";
 
 import { ComfortStandard } from "../models/calculationMetadata";
+import { ChartId } from "../models/chartOptions";
 import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels";
+import { defaultPmvAshraeOptions } from "../models/inputModes";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
-import { ModifierId } from "../models/inputModifiers";
 import { UnitSystem } from "../models/units";
+import {
+  createDynamicClothingModifier,
+  measuredAirSpeedModifier,
+  morningClothingEstimateModifier,
+  solarGainModifier,
+} from "../services/comfort/inputModifiers";
 import {
   createPmvComplianceBands,
   createPmvComplianceCaption,
   createPmvModelConfig,
-  getPmvComplianceFeedback,
+  parsePmvAshraeOptions,
   pmvChartableOutputs,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./pmvShared";
+import { getPmvComplianceFeedback } from "./pmvCalculation";
 
 const ashraeComplianceBands = createPmvComplianceBands();
 
@@ -68,17 +76,44 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   adapter: pmvAshraeAdapter,
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
-  supportedModifiers: [
-    ModifierId.MeasuredAirSpeed,
-    ModifierId.MorningClothingEstimate,
-    ModifierId.SolarGain,
+  modifiers: [
+    measuredAirSpeedModifier,
+    morningClothingEstimateModifier,
+    createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE),
+    solarGainModifier,
   ],
+  charts: {
+    defaultId: ChartId.PmvDynamic,
+    entries: [
+      {
+        id: ChartId.Psychrometric,
+        name: "Psychrometric",
+        emptyMessage: "No psychrometric chart yet.",
+        allowsAxisSelection: false,
+        locksYAxis: false,
+        showsZoneToggle: true,
+        showsLegend: true,
+      },
+      {
+        id: ChartId.PmvDynamic,
+        name: "Dynamic",
+        emptyMessage: "No dynamic chart yet.",
+        allowsAxisSelection: true,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+      },
+    ],
+  },
   complianceSpec: {
     output: ModelOutputKey.Pmv,
     bands: ashraeComplianceBands,
+    legendTitle: "PMV Zones",
     caption: createPmvComplianceCaption("ASHRAE 55", ashraeComplianceBands),
     getFeedback: getPmvComplianceFeedback,
   },
+  defaultOptions: defaultPmvAshraeOptions,
+  parseOptions: parsePmvAshraeOptions,
 };
 
 export const pmvAshraeModelConfig = createPmvModelConfig(pmvAshraeDeclaration);

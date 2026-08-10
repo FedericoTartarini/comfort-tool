@@ -34,7 +34,7 @@ export default [
       "no-undef": "off",
       "no-redeclare": "off",
       "no-unused-vars": "off",
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
@@ -44,10 +44,16 @@ export default [
   })),
   {
     files: ["src/**/*.svelte"],
+    plugins: {
+      "@typescript-eslint": tsPlugin,
+    },
     languageOptions: {
       parserOptions: {
         parser: tsParser,
       },
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
     },
   },
   {

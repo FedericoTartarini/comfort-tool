@@ -6,8 +6,14 @@
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import type { ChartId as ChartIdType } from "../../models/chartOptions";
+import type {
+  CanonicalInputState,
+  FieldKey as FieldKeyType,
+} from "../../models/fieldKeys";
+import type {
+  ChartId as ChartIdType,
+  ModelChartDefinition,
+} from "../../models/chartOptions";
 import type { InputControlId as InputControlIdType, InputControlViewModel } from "../../models/inputControls";
 import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
@@ -26,9 +32,7 @@ import type {
 } from "../../models/modelCapabilities";
 import type { ShareStateSnapshot } from "./shareState";
 
-// State for a single input.
-export type InputState = Record<FieldKeyType, number>;
-// State for multiple inputs.
+export type InputState = CanonicalInputState;
 export type InputsByInputState = Record<InputIdType, InputState>;
 export type ActiveModifiersByInputState = Record<
   InputIdType,
@@ -38,31 +42,24 @@ export type ModifierInputsByInputState = Record<
   InputIdType,
   Record<ModifierIdType, ModifierInputValues>
 >;
-// State for model options.
 export type ModelOptionsState = ModelOptionsRecord;
-// State for model options by model.
 export type ModelOptionsByModelState = Record<ComfortModelType, ModelOptionsState>;
-// State of the currently selected chart for each model.
 export type SelectedChartByModelState = Record<ComfortModelType, ChartIdType>;
 
-// View model for a single result cell.
 export type ResultCellViewModel = {
   text: string;
   subtext?: string;
   color?: string;
 };
 
-// View model for a single result section.
 export type ResultSectionViewModel = {
   title: string;
   group?: string;
   valuesByInput: Partial<Record<InputIdType, ResultCellViewModel | null>>;
 };
 
-// Cache status for calculations.
 export type CalculationCacheStatus = "empty" | "stale" | "ready";
 
-// Generic model calculation cache decoupled from individual model definitions.
 export type ModelCalculationCache<ResultType, ChartSourceType> = {
   status: CalculationCacheStatus;
   lastVisibleInputIds: InputIdType[];
@@ -70,12 +67,10 @@ export type ModelCalculationCache<ResultType, ChartSourceType> = {
   chartSource: ChartSourceType | null;
 };
 
-// Mapping of models to their respective generic calculation caches.
 export type ModelCalculationCacheByModelState = Record<
   ComfortModelType,
   ModelCalculationCache<unknown, unknown>
 >;
-// Reporting input range violations when switching models.
 export interface ModelSwitchViolation {
   inputId: InputIdType;
   controlId: InputControlIdType;
@@ -86,7 +81,6 @@ export interface ModelSwitchViolation {
   displayUnits: string;
 }
 
-// Pending model switch awaiting confirmation.
 export type PendingModelSwitch = {
   targetModel: ComfortModelType;
   violations: ModelSwitchViolation[];
@@ -177,7 +171,6 @@ export interface InputModifierControlViewModel {
   affectedFields: ModifierAffectedFieldViewModel[];
 }
 
-// UI state for the comfort tool.
 export type UiState = {
   selectedModel: ComfortModelType;
   selectedChartByModel: SelectedChartByModelState;
@@ -193,7 +186,6 @@ export type UiState = {
   pendingModelSwitch: PendingModelSwitch | null;
 };
 
-// The main state slice for the comfort tool, containing both input data and UI state.
 export type ComfortToolStateSlice = {
   inputsByInput: InputsByInputState;
   activeModifiersByInput: ActiveModifiersByInputState;
@@ -201,7 +193,6 @@ export type ComfortToolStateSlice = {
   ui: UiState;
 };
 
-// Actions for updating the comfort tool state.
 export type ComfortToolActions = {
   setSelectedModel: (nextModel: ComfortModelType) => void;
   setSelectedChart: (nextChart: ChartIdType) => void;
@@ -235,7 +226,6 @@ export type ComfortToolActions = {
   cancelModelSwitch: () => void;
 };
 
-// Selectors for retrieving computed values from the state.
 export type ComfortToolSelectors = {
   getVisibleInputIds: () => InputIdType[];
   getInputControls: () => InputControlViewModel[];
@@ -243,10 +233,9 @@ export type ComfortToolSelectors = {
   getEffectiveInputsByInput: (modelId?: ComfortModelType) => InputsByInputState;
   getResultSections: () => ResultSectionViewModel[];
   getCurrentChartResult: () => PlotlyChartResponseDto | null;
-  getCurrentChartEmptyMessage: () => string;
-  getCurrentChartOptions: () => Array<{ name: string; value: ChartIdType }>;
+  getCurrentChartDefinition: () => ModelChartDefinition;
+  getCurrentChartOptions: () => readonly ModelChartDefinition[];
   getCurrentSelectedChart: () => ChartIdType;
-  getCurrentChartHeightClass: () => string;
   getCurrentCacheStatus: () => CalculationCacheStatus;
   getCurrentChartLegendZones: () => ReadonlyArray<{ label: string; color: string }> | null;
   getCurrentChartLegendTitle: () => string;
@@ -254,7 +243,6 @@ export type ComfortToolSelectors = {
   getPendingModelSwitch: () => PendingModelSwitch | null;
 };
 
-// Controller that combines state, actions, and selectors for the comfort tool.
 export type ComfortToolController = {
   state: ComfortToolStateSlice;
   actions: ComfortToolActions;
