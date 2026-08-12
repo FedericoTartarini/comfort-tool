@@ -85,7 +85,7 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
     solarGainModifier,
   ],
   charts: {
-    defaultId: ChartId.PmvDynamic,
+    defaultId: ChartId.Psychrometric,
     entries: [
       {
         id: ChartId.Psychrometric,

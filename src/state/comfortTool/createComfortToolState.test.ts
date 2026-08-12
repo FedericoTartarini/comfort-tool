@@ -87,13 +87,13 @@ describe("createComfortToolState", () => {
 
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
     expect(toolState.state.ui.selectedChartByModel).toEqual({
-      [ComfortModel.PmvAshrae]: ChartId.PmvDynamic,
-      [ComfortModel.PmvIso]: ChartId.PmvDynamic,
-      [ComfortModel.Utci]: ChartId.UtciDynamic,
+      [ComfortModel.PmvAshrae]: ChartId.Psychrometric,
+      [ComfortModel.PmvIso]: ChartId.Psychrometric,
+      [ComfortModel.Utci]: ChartId.Stress,
       [ComfortModel.AdaptiveAshrae]: ChartId.Adaptive,
       [ComfortModel.AdaptiveEn]: ChartId.Adaptive,
-      [ComfortModel.HeatIndex]: ChartId.HeatIndexDynamic,
-      [ComfortModel.Humidex]: ChartId.HumidexDynamic,
+      [ComfortModel.HeatIndex]: ChartId.HeatIndexRanges,
+      [ComfortModel.Humidex]: ChartId.Humidex,
       [ComfortModel.WindChill]: ChartId.WindChillDynamic,
     });
     expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvAshrae])
@@ -580,6 +580,7 @@ describe("createComfortToolState", () => {
       expect(toolState.state.ui.isLoading).toBe(false);
     };
 
+    toolState.actions.setSelectedChart(ChartId.PmvDynamic);
     assertCalculationIdentity();
     expect(toolState.selectors.getCurrentChartResult()?.layout.title)
       .toContain("Dynamic Chart");
@@ -790,6 +791,7 @@ describe("createComfortToolState", () => {
 
   it("round-trips field-chart settings in the strict v1 share snapshot", async () => {
     const toolState = createComfortToolState();
+    toolState.actions.setSelectedChart(ChartId.PmvDynamic);
     toolState.actions.setChartMode(ChartMode.Explore);
     toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
     toolState.actions.setExploreBands([
@@ -803,6 +805,10 @@ describe("createComfortToolState", () => {
     await waitForIdle(toolState);
 
     expect(snapshot.version).toBe(1);
+    expect(snapshot.models[ComfortModel.PmvAshrae].selectedChart)
+      .toBe(ChartId.PmvDynamic);
+    expect(toolState.state.ui.selectedChartByModel[ComfortModel.PmvAshrae])
+      .toBe(ChartId.PmvDynamic);
     expect(snapshot.models[ComfortModel.PmvAshrae].chartSettings)
       .toEqual(expect.objectContaining({
         mode: ChartMode.Explore,
@@ -1286,6 +1292,7 @@ describe("createComfortToolState", () => {
     expect(toolState.selectors.getChartControlsViewModel().mode.feedback?.passes)
       .toBe(result.isCompliant);
 
+    toolState.actions.setSelectedChart(ChartId.PmvDynamic);
     toolState.actions.setDynamicXAxis(FieldKey.MeanRadiantTemperature);
     const marker = toolState.selectors.getCurrentChartResult()?.traces.find((trace) => (
       trace.name === "Input 1" && trace.mode === "markers"

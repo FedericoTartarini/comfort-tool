@@ -6,13 +6,68 @@ async function openModelOptions(page: Page) {
   return modelSelect;
 }
 
+async function chooseModel(page: Page, modelLabel: string) {
+  const modelSelect = await openModelOptions(page);
+  await modelSelect.fill(modelLabel);
+  await page.getByRole("button", { name: modelLabel, exact: false }).click();
+  return modelSelect;
+}
+
+async function expectSingleModelSelector(page: Page, modelLabel: string) {
+  const modelSelect = page.getByRole("combobox", { name: "Select comfort model" });
+  await expect(modelSelect).toBeEnabled();
+  await modelSelect.click();
+  const listbox = page.getByRole("listbox");
+  await expect(listbox.getByRole("button")).toHaveCount(1);
+  const option = listbox.getByRole("button", { name: modelLabel, exact: false });
+  await expect(option).toBeEnabled();
+  await option.click();
+  await expect(modelSelect).toHaveValue(modelLabel);
+}
+
+async function expectDesktopChartHeaderRows(page: Page) {
+  const summary = page.getByTestId("chart-mode-summary");
+  const toolbar = page.getByTestId("chart-toolbar");
+  const caption = page.getByTestId("chart-mode-caption");
+  await expect(summary).toBeVisible();
+  await expect(toolbar).toBeVisible();
+  await expect(caption).toBeVisible();
+
+  const summaryBox = await summary.boundingBox();
+  const toolbarBox = await toolbar.boundingBox();
+  const captionBox = await caption.boundingBox();
+  expect(summaryBox).not.toBeNull();
+  expect(toolbarBox).not.toBeNull();
+  expect(captionBox).not.toBeNull();
+  expect(Math.abs(summaryBox!.y - toolbarBox!.y)).toBeLessThanOrEqual(2);
+  expect(captionBox!.y).toBeGreaterThanOrEqual(Math.max(
+    summaryBox!.y + summaryBox!.height,
+    toolbarBox!.y + toolbarBox!.height,
+  ));
+}
+
 test.describe("workspace routing", () => {
   test("redirects and canonicalizes public URLs without losing query or hash", async ({ page }) => {
     await page.goto("/?source=test#inputs-panel");
     await expect(page).toHaveURL(/\/ASHRAE-55\/\?source=test#inputs-panel$/);
+    await expect(page.getByRole("button", { name: "Select chart type and export" }))
+      .toContainText("Psychrometric");
 
     await page.goto("/ISO-7730?source=test#inputs-panel");
     await expect(page).toHaveURL(/\/ISO-7730\/\?source=test#inputs-panel$/);
+  });
+
+  test("uses fixed-first chart defaults on fresh calculation routes", async ({ page }) => {
+    for (const [path, chartName] of [
+      ["/ASHRAE-55/", "Psychrometric"],
+      ["/ISO-7730/", "Psychrometric"],
+      ["/EN-16798-1/", "Adaptive"],
+      ["/Explore/", "Psychrometric"],
+    ] as const) {
+      await page.goto(path);
+      await expect(page.getByRole("button", { name: "Select chart type and export" }))
+        .toContainText(chartName);
+    }
   });
 
   test("coordinates workspace mode through browser history", async ({ page }) => {
@@ -37,6 +92,26 @@ test.describe("workspace routing", () => {
       "Explore",
       { exact: true },
     )).toBeVisible();
+  });
+
+  test("keeps Compliance status and chart tools above a full-width caption", async ({ page }) => {
+    await page.goto("/ASHRAE-55/");
+    await expect(page.getByLabel("Your input: Compliant")).toBeVisible();
+    await expectDesktopChartHeaderRows(page);
+
+    const modelSelect = await chooseModel(page, "Adaptive (ASHRAE-55)");
+    await expect(modelSelect).toHaveValue("Adaptive (ASHRAE-55)");
+    await expect(page.getByLabel("Your input: Compliant")).toBeVisible();
+    await expectDesktopChartHeaderRows(page);
+
+    const controlBoxes = await Promise.all([
+      page.getByRole("button", { name: "Select chart X axis" }).boundingBox(),
+      page.getByRole("button", { name: "Select chart Y axis" }).boundingBox(),
+      page.getByRole("button", { name: "Select chart type and export" }).boundingBox(),
+    ]);
+    expect(controlBoxes.every((box) => box !== null)).toBe(true);
+    const controlTops = controlBoxes.map((box) => box!.y);
+    expect(Math.max(...controlTops) - Math.min(...controlTops)).toBeLessThanOrEqual(2);
   });
 
   test("derives exact model choices and forces the workspace mode", async ({ page }) => {
@@ -65,9 +140,18 @@ test.describe("workspace routing", () => {
     await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
 
     await page.goto("/ISO-7730/");
-    const isoSelect = page.getByRole("combobox", { name: "Select comfort model" });
-    await expect(isoSelect).toBeDisabled();
-    await expect(isoSelect).toHaveValue("PMV (ISO 7730 Category B)");
+    await expectSingleModelSelector(page, "PMV (ISO 7730 Category B)");
+    await expect(page.getByTestId("comfort-chart-panel").getByText(
+      "Compliance",
+      { exact: true },
+    )).toBeVisible();
+
+    await page.goto("/EN-16798-1/");
+    await expectSingleModelSelector(page, "Adaptive (EN 16798-1)");
+    await expect(page.getByTestId("comfort-chart-panel").getByText(
+      "Compliance",
+      { exact: true },
+    )).toBeVisible();
 
     await page.goto("/Explore/");
     await openModelOptions(page);
@@ -91,8 +175,33 @@ test.describe("workspace routing", () => {
       "Explore",
       { exact: true },
     )).toBeVisible();
-    await expect(page.getByRole("button", { name: "Select chart display output" }))
+    await expect(page.getByRole("button", { name: "Select chart output" }))
       .toBeVisible();
+  });
+
+  test("uses each Explore model's declared first chart", async ({ page }) => {
+    await page.goto("/Explore/");
+    const chartTrigger = page.getByRole("button", {
+      name: "Select chart type and export",
+    });
+    await expect(chartTrigger).toContainText("Psychrometric");
+
+    for (const [modelLabel, chartName] of [
+      ["PMV (ISO 7730 Category B)", "Psychrometric"],
+      ["UTCI", "UTCI"],
+      ["Heat Index", "Psychrometric"],
+      ["Humidex", "Psychrometric"],
+    ] as const) {
+      const modelSelect = await chooseModel(page, modelLabel);
+      await expect(modelSelect).toHaveValue(modelLabel);
+      await expect(chartTrigger).toContainText(chartName);
+    }
+
+    const windChillSelect = await chooseModel(page, "Wind Chill");
+    await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
+    await expect(windChillSelect).toHaveValue("Wind Chill");
+    await expect(chartTrigger).toContainText("Dynamic");
   });
 
   test("keeps dashboard state through leaf workspaces and hides unsupported export", async ({ page }) => {
@@ -135,6 +244,19 @@ test.describe("workspace routing", () => {
     await drawer.getByRole("link", { name: "Explore", exact: true }).click();
     await expect(page).toHaveURL(/\/Explore\/$/);
     await expect(drawer).toBeHidden();
+
+    const summaryBox = await page.getByTestId("chart-mode-summary").boundingBox();
+    const captionBox = await page.getByTestId("chart-mode-caption").boundingBox();
+    const toolbarBox = await page.getByTestId("chart-toolbar").boundingBox();
+    expect(summaryBox).not.toBeNull();
+    expect(captionBox).not.toBeNull();
+    expect(toolbarBox).not.toBeNull();
+    expect(captionBox!.y).toBeGreaterThan(summaryBox!.y);
+    expect(toolbarBox!.y).toBeGreaterThan(captionBox!.y);
+    await expect.poll(() => page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))).toEqual({ clientWidth: 390, scrollWidth: 390 });
   });
 
   test("holds a guarded route change until warning confirmation", async ({ page }) => {

@@ -29,30 +29,28 @@
   }
 </script>
 
-<div class="min-w-0">
-  <div class="flex flex-wrap items-center gap-2">
-    <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
-      {selectedLabel}
-    </span>
-    <p class="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs leading-5 text-stone-600">
-      <span>{control.caption}</span>
-      {#if control.feedback}
-        <span
-          aria-live="polite"
-          aria-label={`${feedbackLabel}: ${control.feedback.text}`}
-          class={`inline-flex items-center gap-1 font-semibold ${feedbackClass}`}
-        >
-          <span>{feedbackLabel}:</span>
-          {#if control.feedback.passes}
-            <CheckCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
-          {:else if control.feedback.text === ComplianceStatus.OutOfRange}
-            <ExclamationCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
-          {:else}
-            <CloseCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
-          {/if}
-          <span>{control.feedback.text}</span>
-        </span>
+<div
+  class="flex min-w-0 flex-wrap items-center gap-2"
+  data-testid="chart-mode-summary"
+>
+  <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
+    {selectedLabel}
+  </span>
+  {#if control.feedback}
+    <span
+      aria-live="polite"
+      aria-label={`${feedbackLabel}: ${control.feedback.text}`}
+      class={`inline-flex items-center gap-1 text-xs font-semibold ${feedbackClass}`}
+    >
+      <span>{feedbackLabel}:</span>
+      {#if control.feedback.passes}
+        <CheckCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
+      {:else if control.feedback.text === ComplianceStatus.OutOfRange}
+        <ExclamationCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
+      {:else}
+        <CloseCircleOutline class="h-4 w-4 shrink-0" aria-hidden="true" />
       {/if}
-    </p>
-  </div>
+      <span>{control.feedback.text}</span>
+    </span>
+  {/if}
 </div>

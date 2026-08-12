@@ -26,6 +26,12 @@
       ? inputDisplayMetaById[controls.baseline.selectedInputId].label
       : "Input 1",
   );
+  const hasLeadingControls = $derived(
+    controls.baseline !== null || controls.axes !== null,
+  );
+  const showOutputControl = $derived(
+    (controls.explore?.outputs.length ?? 0) > 1,
+  );
 </script>
 
 {#snippet axisPicker(label: "X" | "Y", control: AxisControl, triggerId: string)}
@@ -131,13 +137,17 @@
   {/if}
 
   {#if controls.explore}
-    <div class="mx-1 h-4 w-px bg-stone-300"></div>
-    <ChartDisplayMenu
-      {idPrefix}
-      outputs={controls.explore.outputs}
-      selectedOutput={controls.explore.config.zOutput}
-      onSelect={controls.explore.onSelectOutput}
-    />
+    {#if hasLeadingControls}
+      <div class="mx-1 h-4 w-px bg-stone-300"></div>
+    {/if}
+    {#if showOutputControl}
+      <ChartDisplayMenu
+        {idPrefix}
+        outputs={controls.explore.outputs}
+        selectedOutput={controls.explore.config.zOutput}
+        onSelect={controls.explore.onSelectOutput}
+      />
+    {/if}
     <ChartBandEditor
       {idPrefix}
       outputKey={controls.explore.config.zOutput}

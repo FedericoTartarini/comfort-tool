@@ -220,6 +220,7 @@ async function openTargetPmvChart(
   const chartTrigger = page.getByRole("button", {
     name: "Select chart type and export",
   });
+  await selectDropdownOption(page, "Select chart type and export", "Dynamic");
   await expect(chartTrigger).toContainText("Dynamic");
 
   const panel = page.getByTestId("comfort-chart-panel");
@@ -233,7 +234,7 @@ async function openTargetPmvChart(
   await selectDropdownOption(page, "Select chart Y axis", "Relative humidity");
 
   if (display === "PPD (%)") {
-    await selectDropdownOption(page, "Select chart display output", display);
+    await selectDropdownOption(page, "Select chart output", display);
   }
   if (useIpUnits) {
     await unitToggle.setChecked(true, { force: true });
@@ -321,7 +322,7 @@ test.describe("PMV visual regression", () => {
     await expect(panel.getByText("Compliant", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Select chart display output" }))
+    await expect(page.getByRole("button", { name: "Select chart output" }))
       .toBeHidden();
     await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
     await expectComplianceConstraintFills(plot);
@@ -336,7 +337,7 @@ test.describe("PMV visual regression", () => {
       { exact: true },
     )).toBeVisible();
     await expect(panel.getByText("Compliant", { exact: true })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Select chart display output" }))
+    await expect(page.getByRole("button", { name: "Select chart output" }))
       .toBeVisible();
     await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeVisible();
     await expectPmvConstraintFills(plot);
@@ -366,7 +367,7 @@ test.describe("PMV visual regression", () => {
     )).toBeVisible();
     await expect(page.getByRole("button", { name: "Select chart X axis" })).toBeHidden();
     await expect(page.getByRole("button", { name: "Select chart Y axis" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Select chart display output" }))
+    await expect(page.getByRole("button", { name: "Select chart output" }))
       .toBeVisible();
     await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeVisible();
     await waitForTrace(plot, "PPD (%) bands hover");
@@ -375,7 +376,7 @@ test.describe("PMV visual regression", () => {
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
     await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
     await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Select chart display output" }))
+    await expect(page.getByRole("button", { name: "Select chart output" }))
       .toBeHidden();
     await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
     await waitForTrace(plot, "PMV bands hover");

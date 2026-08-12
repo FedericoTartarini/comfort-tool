@@ -123,7 +123,7 @@ builder
   .setChartableOutputs([humidexOutput])
   .setModifiers([])
   .setCharts({
-    defaultId: ChartId.HumidexDynamic,
+    defaultId: ChartId.Humidex,
     entries: [
       {
         id: ChartId.Humidex,

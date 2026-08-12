@@ -132,7 +132,7 @@ builder
   .setChartableOutputs([heatIndexOutput])
   .setModifiers([])
   .setCharts({
-    defaultId: ChartId.HeatIndexDynamic,
+    defaultId: ChartId.HeatIndexRanges,
     entries: [
       {
         id: ChartId.HeatIndexRanges,

@@ -15,19 +15,19 @@
 
   let { idPrefix, outputs, selectedOutput, onSelect }: Props = $props();
 
-  const triggerId = $derived(`${idPrefix}-display-trigger`);
+  const triggerId = $derived(`${idPrefix}-output-trigger`);
   const selectedLabel = $derived(
-    outputs.find(({ key }) => key === selectedOutput)?.label ?? "Display",
+    outputs.find(({ key }) => key === selectedOutput)?.label ?? "Output",
   );
 </script>
 
-<span class="ml-2 text-xs font-medium text-stone-500">Display:</span>
+<span class="ml-2 text-xs font-medium text-stone-500">Output:</span>
 <Button
   id={triggerId}
   color="light"
   pill
   size="xs"
-  aria-label="Select chart display output"
+  aria-label="Select chart output"
   class="flex items-center text-stone-700"
 >
   <span class="max-w-[120px] truncate">{selectedLabel}</span>
@@ -39,7 +39,7 @@
     divider={false}
     class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500"
   >
-    Select Display Output
+    Select Chart Output
   </DropdownHeader>
   {#each outputs as output}
     <DropdownItem

@@ -73,6 +73,24 @@ describe("comfort model capability registry", () => {
     });
   });
 
+  it("declares the current fixed-first default chart matrix", () => {
+    const expectedDefaultCharts: Record<ComfortModelType, ChartId> = {
+      [ComfortModel.PmvAshrae]: ChartId.Psychrometric,
+      [ComfortModel.PmvIso]: ChartId.Psychrometric,
+      [ComfortModel.Utci]: ChartId.Stress,
+      [ComfortModel.AdaptiveAshrae]: ChartId.Adaptive,
+      [ComfortModel.AdaptiveEn]: ChartId.Adaptive,
+      [ComfortModel.HeatIndex]: ChartId.HeatIndexRanges,
+      [ComfortModel.Humidex]: ChartId.Humidex,
+      [ComfortModel.WindChill]: ChartId.WindChillDynamic,
+    };
+
+    comfortModelOrder.forEach((modelId) => {
+      expect(getComfortModelConfig(modelId).charts.defaultId)
+        .toBe(expectedDefaultCharts[modelId]);
+    });
+  });
+
   it("identifies the ISO declaration and result metadata as ISO 7730 Category B", () => {
     const isoMeta = getComfortModelConfig(ComfortModel.PmvIso);
 

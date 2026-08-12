@@ -400,7 +400,7 @@ builder
   .setChartableOutputs([utciOutput])
   .setModifiers([])
   .setCharts({
-    defaultId: ChartId.UtciDynamic,
+    defaultId: ChartId.Stress,
     entries: [
       {
         id: ChartId.Stress,

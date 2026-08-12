@@ -101,7 +101,7 @@ async function openAdaptiveChart(
     .toContainText("Mean outdoor temperature");
   await expect(page.getByRole("button", { name: "Select chart Y axis" }))
     .toContainText("Operative temperature");
-  await expect(page.getByRole("button", { name: "Select chart display output" }))
+  await expect(page.getByRole("button", { name: "Select chart output" }))
     .toBeHidden();
   await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
 
@@ -121,11 +121,13 @@ async function openAdaptiveChart(
 
 test.describe("Adaptive visual regression", () => {
   test("ASHRAE boundary chart in SI", async ({ page }) => {
-    const { visual } = await openAdaptiveChart(page);
+    const { panel, visual } = await openAdaptiveChart(page);
     await expect(visual).toContainText("Adaptive Zones");
     await expect(visual.getByText("80% Acceptability", { exact: true })).toHaveCount(1);
     await expect(visual.getByText("90% Acceptability", { exact: true })).toHaveCount(1);
     await page.mouse.move(0, 0);
+    await expect(panel.getByTestId("chart-header"))
+      .toHaveScreenshot("adaptive-ashrae-compliance-header.png");
     await expect(visual).toHaveScreenshot("adaptive-ashrae-fixed-si.png");
   });
 

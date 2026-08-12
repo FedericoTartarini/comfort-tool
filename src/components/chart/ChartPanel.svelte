@@ -65,9 +65,21 @@
   class="mt-4 border-t border-stone-200 pt-4"
   data-testid="comfort-chart-panel"
 >
-  <header class="flex items-start justify-between gap-4">
+  <header
+    class="grid min-w-0 gap-x-4 gap-y-2 lg:grid-cols-[max-content_minmax(0,1fr)]"
+    data-testid="chart-header"
+  >
     <ChartModeControl control={chartControls.mode} />
-    <div class="flex flex-wrap items-center justify-end gap-2 pr-[24px]">
+    <p
+      class="min-w-0 text-xs leading-5 text-stone-600 lg:col-span-2 lg:row-start-2"
+      data-testid="chart-mode-caption"
+    >
+      {chartControls.mode.caption}
+    </p>
+    <div
+      class="flex min-w-0 flex-wrap items-center gap-2 lg:col-start-2 lg:row-start-1 lg:justify-end"
+      data-testid="chart-toolbar"
+    >
       {#if showChartControls}
         <ChartControls
           idPrefix={controlsIdPrefix}

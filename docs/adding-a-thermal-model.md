@@ -119,6 +119,10 @@ added to `ChartMode`.
 
 Explore requires at least one output with valid numeric SI bands. A Compliance-capable model also declares a fixed output, non-empty bands, caption, legend title, and result feedback callback. Compliance output and bands always come from `complianceSpec`; Explore uses the selected output and its editable working bands.
 
+The Explore toolbar shows an Output selector only when `chartableOutputs` contains
+more than one entry. Single-output models still expose their threshold editor without
+rendering a redundant selector.
+
 Bands are array ordered and half open: `min <= value < max`. Do not copy a standard boundary into a second numeric source.
 
 PMV ASHRAE/ISO and Adaptive ASHRAE/EN remain separate registered declarations. Never merge standards behind a runtime toggle. Shared family mechanics may be implemented once in focused modules:
@@ -171,6 +175,11 @@ builder.setCharts({
   ],
 });
 ```
+
+When a model offers both a dedicated/fixed chart and a Dynamic chart, use the
+dedicated chart as `defaultId`. Use Dynamic as the initial default only when the model
+has no other chart. This is an explicit declaration convention rather than a Builder
+invariant; do not infer the default from chart names at runtime.
 
 Then declare the complete selectable field set and a supported, distinct default pair:
 

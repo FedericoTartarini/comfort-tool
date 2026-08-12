@@ -25,7 +25,7 @@ const outputs = [
 afterEach(cleanup);
 
 describe("ChartControls Explore composition", () => {
-  it("shows declared axes, display choices, and threshold editor", async () => {
+  it("shows declared axes, output choices, and threshold editor", async () => {
     const user = userEvent.setup();
     const onSelectOutput = vi.fn();
     render(ChartControls, {
@@ -70,11 +70,11 @@ describe("ChartControls Explore composition", () => {
 
     expect(screen.getByRole("button", { name: "Select chart X axis" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Select chart Y axis" })).toBeTruthy();
-    expect(screen.getByText("Display:")).toBeTruthy();
+    expect(screen.getByText("Output:")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Edit chart thresholds" })).toBeTruthy();
     expect(screen.queryByText("UTCI")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Select chart display output" }));
+    await user.click(screen.getByRole("button", { name: "Select chart output" }));
     const selectedItem = screen.getByRole("button", { name: "PMV" });
     expect(selectedItem.hasAttribute("disabled")).toBe(true);
     await user.click(selectedItem);
@@ -84,7 +84,41 @@ describe("ChartControls Explore composition", () => {
     expect(onSelectOutput).toHaveBeenCalledWith(ModelOutputKey.Ppd);
   });
 
-  it("keeps axes and baseline but hides Display and thresholds in Compliance", () => {
+  it("hides Output but keeps thresholds for single-output Explore models", () => {
+    const output = outputs[0];
+    render(ChartControls, {
+      idPrefix: "single-output",
+      controls: {
+        mode: {
+          selectedMode: ChartMode.Explore,
+          caption: "Explore caption.",
+          feedback: null,
+        },
+        baseline: null,
+        axes: null,
+        explore: {
+          config: {
+            mode: ChartMode.Explore,
+            xField: FieldKey.DryBulbTemperature,
+            yField: FieldKey.RelativeHumidity,
+            zOutput: output.key,
+            bands: output.defaultBands,
+          },
+          outputs: [output],
+          defaultBands: output.defaultBands,
+          unitSystem: UnitSystem.SI,
+          onSelectOutput: vi.fn(),
+          onApplyBands: vi.fn(() => true),
+        },
+      },
+    });
+
+    expect(screen.queryByText("Output:")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Select chart output" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Edit chart thresholds" })).toBeTruthy();
+  });
+
+  it("keeps axes and baseline but hides Output and thresholds in Compliance", () => {
     render(ChartControls, {
       idPrefix: "compliance",
       controls: {
@@ -120,7 +154,8 @@ describe("ChartControls Explore composition", () => {
       .toBeTruthy();
     expect(screen.getByRole("button", { name: "Select chart X axis" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Select chart Y axis" })).toBeTruthy();
-    expect(screen.queryByText("Display:")).toBeNull();
+    expect(screen.queryByText("Output:")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Select chart output" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit chart thresholds" })).toBeNull();
   });
 });

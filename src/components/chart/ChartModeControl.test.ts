@@ -10,7 +10,7 @@ import ChartModeControl from "./ChartModeControl.svelte";
 afterEach(cleanup);
 
 describe("ChartModeControl", () => {
-  it("renders the route-selected mode as a read-only summary", () => {
+  it("renders the route-selected mode as a read-only status", () => {
     render(ChartModeControl, {
       control: {
         selectedMode: ChartMode.Compliance,
@@ -22,13 +22,13 @@ describe("ChartModeControl", () => {
     expect(screen.queryByRole("group", { name: "Chart mode" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Compliance" })).toBeNull();
     expect(screen.getByText("Compliance")).toBeTruthy();
-    expect(screen.getByText("Locked standard limits.")).toBeTruthy();
+    expect(screen.queryByText("Locked standard limits.")).toBeNull();
   });
 
   it.each([
     [ChartMode.Compliance, "Compliance", "Standard-specific compliance caption."],
     [ChartMode.Explore, "Explore", "Explore output caption."],
-  ])("shows a %s caption without a fake toggle for single-mode models", (
+  ])("shows a %s status without a fake toggle for route-owned modes", (
     selectedMode,
     label,
     caption,
@@ -44,7 +44,7 @@ describe("ChartModeControl", () => {
     expect(screen.queryByRole("group", { name: "Chart mode" })).toBeNull();
     expect(screen.queryByRole("button", { name: label })).toBeNull();
     expect(screen.getByText(label)).toBeTruthy();
-    expect(screen.getByText(caption)).toBeTruthy();
+    expect(screen.queryByText(caption)).toBeNull();
   });
 
   it.each([
@@ -62,12 +62,12 @@ describe("ChartModeControl", () => {
 
     const feedback = screen.getByLabelText(`Input 2: ${text}`);
     expect(feedback.getAttribute("aria-live")).toBe("polite");
-    expect(feedback.closest("p")?.textContent).toContain("Locked limits.");
-    expect(container.querySelectorAll("p")).toHaveLength(1);
+    expect(feedback.closest("[data-testid='chart-mode-summary']")).not.toBeNull();
+    expect(container.querySelectorAll("p")).toHaveLength(0);
     expect(container.querySelector("svg")).toBeTruthy();
   });
 
-  it("labels single-input feedback as Your input on the caption line", () => {
+  it("labels single-input feedback as Your input in the status group", () => {
     render(ChartModeControl, {
       control: {
         selectedMode: ChartMode.Compliance,

@@ -26,7 +26,6 @@
     value: modelId,
     description: comfortModelMetaById[modelId].description,
   })));
-  const hasSingleModel = $derived(allowedModelIds.length === 1);
 </script>
 
 <section class="mt-3 grid gap-3" aria-label="Tool controls">
@@ -39,7 +38,6 @@
       placeholder="Select model"
       searchPlaceholder="Search model..."
       ariaLabel="Select comfort model"
-      disabled={hasSingleModel}
       onSelect={(val) => onSelectModel(val as ComfortModelType)}
     />
   </div>
