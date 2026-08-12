@@ -73,24 +73,25 @@ async function expectRenderedContour(plot: Locator) {
 
 for (const modelLabel of ["Heat Index", "Humidex"]) {
   test(`${modelLabel} switches between Psychrometric and Dynamic controls`, async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/Explore/");
     const modelSelect = await selectModel(page, modelLabel);
     await expect(modelSelect).toHaveValue(modelLabel);
 
     const plot = page.getByTestId("comfort-chart-plot");
+    const panel = page.getByTestId("comfort-chart-panel");
     const chartTrigger = page.getByRole("button", {
       name: "Select chart type and export",
     });
 
     await expect(chartTrigger).toContainText("Dynamic");
     await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
-    await expect(page.getByText("Explore", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
     await expectAxisControls(page, true);
     await expectExploreControls(page, true);
 
     await selectChart(page, "Psychrometric");
-    await expect(page.getByText("Explore", { exact: true })).toBeVisible();
-    await expect(page.getByText(
+    await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
+    await expect(panel.getByText(
       `Showing ${modelLabel} on this chart's fixed axes with editable thresholds.`,
       { exact: true },
     )).toBeVisible();
@@ -99,7 +100,7 @@ for (const modelLabel of ["Heat Index", "Humidex"]) {
     await expectRenderedContour(plot);
 
     await selectChart(page, "Dynamic");
-    await expect(page.getByText("Explore", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
     await expectAxisControls(page, true);
     await expectExploreControls(page, true);
     await expectRenderedContour(plot);
@@ -109,13 +110,14 @@ for (const modelLabel of ["Heat Index", "Humidex"]) {
 test("UTCI fixed stress chart keeps Explore display and thresholds while locking axes", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/Explore/");
   const modelSelect = await selectModel(page, "UTCI");
   await expect(modelSelect).toHaveValue("UTCI");
 
   await selectChart(page, "UTCI");
-  await expect(page.getByText("Explore", { exact: true })).toBeVisible();
-  await expect(page.getByText(
+  const panel = page.getByTestId("comfort-chart-panel");
+  await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
+  await expect(panel.getByText(
     "Showing UTCI on this chart's fixed axes with editable thresholds.",
     { exact: true },
   )).toBeVisible();
@@ -127,7 +129,7 @@ test("UTCI fixed stress chart keeps Explore display and thresholds while locking
 });
 
 test("Wind Chill completes the boundary-confirmed model switch", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/Explore/");
   const modelSelect = await selectModel(page, "Wind Chill");
 
   await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
@@ -136,7 +138,10 @@ test("Wind Chill completes the boundary-confirmed model switch", async ({ page }
   await expect(modelSelect).toHaveValue("Wind Chill");
   await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeHidden();
   await expect(page.getByLabel("Input 1 Air temperature", { exact: true })).toHaveValue("0.0");
-  await expect(page.getByText("Explore", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("comfort-chart-panel").getByText(
+    "Explore",
+    { exact: true },
+  )).toBeVisible();
   await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
   await expectAxisControls(page, true);
   await expectExploreControls(page, true);

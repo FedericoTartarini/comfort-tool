@@ -6,6 +6,7 @@ import type { PresetInputOption } from "../models/inputControls";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
+import { StandardId } from "../models/workspaces";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -66,6 +67,7 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   label: "Adaptive (ASHRAE-55)",
   description:
     "ASHRAE 55 Adaptive thermal comfort model for naturally ventilated buildings.",
+  standardIds: [StandardId.Ashrae55],
   resultStandard: ComfortStandard.Ashrae55Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ASHRAE,
   modes: [ChartMode.Compliance],

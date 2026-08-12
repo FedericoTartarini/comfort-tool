@@ -341,7 +341,6 @@ export function createComfortToolState(): ComfortToolController {
       compareEnabled: state.ui.compareEnabled,
       unitSystem: state.ui.unitSystem,
       callbacks: {
-        onSelectMode: setChartMode,
         onSelectBaseline: setChartBaselineInputId,
         onSelectXAxis: setDynamicXAxis,
         onSelectYAxis: setDynamicYAxis,
@@ -409,11 +408,16 @@ export function createComfortToolState(): ComfortToolController {
     getEffectiveInputsByInput,
   );
 
-  function completeModelSelection(nextModel: ComfortModelType) {
+  function completeModelSelection(
+    nextModel: ComfortModelType,
+    options?: { schedule?: boolean },
+  ) {
     state.ui.selectedModel = nextModel;
     state.ui.errorMessage = "";
 
-    scheduleCalculationInternal({ immediate: true });
+    if (options?.schedule !== false) {
+      scheduleCalculationInternal({ immediate: true });
+    }
   }
 
   function ensureValidDynamicAxes(
@@ -428,7 +432,10 @@ export function createComfortToolState(): ComfortToolController {
     settings.yAxis = pair.yAxis;
   }
 
-  function setSelectedModel(nextModel: ComfortModelType) {
+  function setSelectedModel(
+    nextModel: ComfortModelType,
+    options?: { validateRanges?: boolean; schedule?: boolean },
+  ) {
     if (state.ui.selectedModel === nextModel) {
       return;
     }
@@ -440,13 +447,15 @@ export function createComfortToolState(): ComfortToolController {
     if (!nextModelOptions) {
       throw new Error(`Invariant violation: invalid options state for ${nextModel}.`);
     }
-    const violations = findModelSwitchViolations(nextModelConfig, {
-      inputsByInput: state.inputsByInput,
-      derivedByInput,
-      options: nextModelOptions,
-      unitSystem: state.ui.unitSystem,
-      visibleInputIds: getVisibleInputIds(),
-    });
+    const violations = options?.validateRanges === false
+      ? []
+      : findModelSwitchViolations(nextModelConfig, {
+          inputsByInput: state.inputsByInput,
+          derivedByInput,
+          options: nextModelOptions,
+          unitSystem: state.ui.unitSystem,
+          visibleInputIds: getVisibleInputIds(),
+        });
 
     if (violations.length > 0) {
       state.ui.pendingModelSwitch = {
@@ -456,10 +465,10 @@ export function createComfortToolState(): ComfortToolController {
       return;
     }
 
-    completeModelSelection(nextModel);
+    completeModelSelection(nextModel, options);
   }
 
-  function confirmModelSwitch() {
+  function confirmModelSwitch(options?: { schedule?: boolean }) {
     if (!state.ui.pendingModelSwitch) {
       return;
     }
@@ -480,7 +489,7 @@ export function createComfortToolState(): ComfortToolController {
     // The clamped values live in shared canonical input state, so every model
     // cache must be invalidated before the target model schedules its refresh.
     invalidateAllModels();
-    completeModelSelection(targetModel);
+    completeModelSelection(targetModel, options);
   }
 
   function cancelModelSwitch() {
@@ -738,10 +747,15 @@ export function createComfortToolState(): ComfortToolController {
     setExploreBands,
     setChartBaselineInputId,
     exportShareSnapshot: () => createShareStateSnapshot(state),
-    applyShareSnapshot: (snapshot: ShareStateSnapshot) => {
+    applyShareSnapshot: (
+      snapshot: ShareStateSnapshot,
+      options?: { schedule?: boolean },
+    ) => {
       applyShareSnapshotToState(state, snapshot);
       invalidateAllModels();
-      scheduleCalculationInternal({ immediate: true, force: true });
+      if (options?.schedule !== false) {
+        scheduleCalculationInternal({ immediate: true, force: true });
+      }
     },
     updateInput,
     updateModifierInput,

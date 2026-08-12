@@ -395,6 +395,7 @@ const builder = new ComfortModelBuilder<
 builder
   .setLabel(MODEL_LABEL)
   .setDescription(MODEL_DESCRIPTION)
+  .setStandardIds([])
   .setModes([ChartMode.Explore])
   .setChartableOutputs([utciOutput])
   .setModifiers([])

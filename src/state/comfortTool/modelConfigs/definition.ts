@@ -15,6 +15,7 @@ import type {
   NumericBand,
 } from "../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import type { StandardId as StandardIdType } from "../../../models/workspaces";
 import type {
   BehaviorPatch,
   ControlBehaviorContext,
@@ -50,6 +51,7 @@ export interface ComfortModelDefinition<
   id: ComfortModelType;
   label: string;
   description: string;
+  standardIds: readonly StandardIdType[];
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];

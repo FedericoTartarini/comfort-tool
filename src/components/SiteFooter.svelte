@@ -18,7 +18,7 @@
 </script>
 
 <Footer class="border-t border-stone-800 bg-stone-950 text-white rounded-none">
-  <div class="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-screen-2xl px-4 py-7 sm:px-6 lg:px-8">
     <div
       class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"
     >

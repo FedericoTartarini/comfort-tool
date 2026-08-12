@@ -13,6 +13,7 @@ import { ComfortModel, JsThermalComfortStandard } from "../models/comfortModels"
 import { defaultPmvIsoOptions } from "../models/inputModes";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { UnitSystem } from "../models/units";
+import { StandardId } from "../models/workspaces";
 import {
   createDynamicClothingModifier,
   measuredAirSpeedModifier,
@@ -74,6 +75,7 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   label: "PMV (ISO 7730 Category B)",
   description: "ISO 7730 Category B PMV/PPD with comfort zone overlays.",
   adapter: pmvIsoAdapter,
+  standardIds: [StandardId.Iso7730],
   modes: [ChartMode.Compliance, ChartMode.Explore],
   chartableOutputs: pmvChartableOutputs,
   modifiers: [

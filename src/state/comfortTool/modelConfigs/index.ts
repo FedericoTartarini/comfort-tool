@@ -8,6 +8,8 @@ import { adaptiveEnModelConfig } from "../../../comfortModels/adaptiveEn";
 import { heatIndexModelConfig } from "../../../comfortModels/heatIndex";
 import { humidexModelConfig } from "../../../comfortModels/humidex";
 import { windChillModelConfig } from "../../../comfortModels/windChill";
+import { ChartMode } from "../../../models/modelCapabilities";
+import type { StandardId as StandardIdType } from "../../../models/workspaces";
 
 export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDefinition> = {
   [ComfortModel.PmvAshrae]: pmvAshraeModelConfig,
@@ -31,4 +33,16 @@ export const comfortModelMetaById = Object.fromEntries(
 
 export function getComfortModelConfig(modelId: ComfortModelType): RuntimeComfortModelDefinition {
   return comfortModelConfigs[modelId];
+}
+
+export function getModelsForStandard(standardId: StandardIdType): ComfortModelType[] {
+  return comfortModelOrder.filter((modelId) => (
+    comfortModelConfigs[modelId].standardIds.includes(standardId)
+  ));
+}
+
+export function getExploreModels(): ComfortModelType[] {
+  return comfortModelOrder.filter((modelId) => (
+    comfortModelConfigs[modelId].modes.includes(ChartMode.Explore)
+  ));
 }

@@ -8,17 +8,21 @@
   import ResultsPanel from "../components/ResultsPanel.svelte";
   import type { ComfortToolController } from "../state/comfortTool/types";
 
+  type ComfortModelType = ComfortToolController["state"]["ui"]["selectedModel"];
+
   interface Props {
     toolState: ComfortToolController;
+    allowedModelIds: readonly ComfortModelType[];
+    onSelectModel: (modelId: ComfortModelType) => void;
   }
 
-  let { toolState }: Props = $props();
+  let { toolState, allowedModelIds, onSelectModel }: Props = $props();
 </script>
 
 <main id="overview" class="bg-stone-50 px-4 py-4 sm:px-6 lg:px-8">
-  <div class="mx-auto grid w-full max-w-7xl gap-4 xl:grid-cols-[25rem_minmax(0,1fr)]">
+  <div class="mx-auto grid w-full max-w-screen-2xl gap-4 xl:grid-cols-[24rem_minmax(0,1fr)]">
     <aside id="inputs-panel" class="min-w-0 scroll-mt-32">
-      <InputPanel {toolState} />
+      <InputPanel {toolState} {allowedModelIds} {onSelectModel} />
     </aside>
 
     <section class="grid min-w-0 gap-4">

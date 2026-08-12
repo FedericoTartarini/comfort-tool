@@ -4,24 +4,29 @@
   import { Heading, Toggle } from "flowbite-svelte";
 
   import SearchableSelect from "../SearchableSelect.svelte";
-  import { comfortModelMetaById, comfortModelOrder } from "../../state/comfortTool/modelConfigs";
+  import { comfortModelMetaById } from "../../state/comfortTool/modelConfigs";
   import { UnitSystem } from "../../models/units";
   import type { ComfortToolController } from "../../state/comfortTool/types";
-  import type { ComfortModel } from "../../models/comfortModels";
+  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 
   interface Props {
     toolState: ComfortToolController;
+    allowedModelIds: readonly ComfortModelType[];
+    onSelectModel: (modelId: ComfortModelType) => void;
   }
 
   let {
     toolState,
+    allowedModelIds,
+    onSelectModel,
   }: Props = $props();
 
-  const modelOptions = comfortModelOrder.map((modelId) => ({
+  const modelOptions = $derived(allowedModelIds.map((modelId) => ({
     name: comfortModelMetaById[modelId].label,
     value: modelId,
     description: comfortModelMetaById[modelId].description,
-  }));
+  })));
+  const hasSingleModel = $derived(allowedModelIds.length === 1);
 </script>
 
 <section class="mt-3 grid gap-3" aria-label="Tool controls">
@@ -34,7 +39,8 @@
       placeholder="Select model"
       searchPlaceholder="Search model..."
       ariaLabel="Select comfort model"
-      onSelect={(val) => toolState.actions.setSelectedModel(val as ComfortModel)}
+      disabled={hasSingleModel}
+      onSelect={(val) => onSelectModel(val as ComfortModelType)}
     />
   </div>
 

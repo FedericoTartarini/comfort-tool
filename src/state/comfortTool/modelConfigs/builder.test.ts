@@ -9,6 +9,7 @@ import { FieldKey } from "../../../models/fieldKeys";
 import { OptionKey, TemperatureMode } from "../../../models/inputModes";
 import { InputId, inputDefaultsById } from "../../../models/inputSlots";
 import type { ModelCalculationContext } from "../../../models/modelCalculation";
+import { StandardId } from "../../../models/workspaces";
 import {
   ChartMode,
   ModelOutputKey,
@@ -67,6 +68,7 @@ function createComplianceSpec(
 type BuilderPart =
   | "label"
   | "description"
+  | "standardIds"
   | "modifiers"
   | "chart"
   | "defaultOptions"
@@ -85,6 +87,7 @@ function createBuilder(omitted: readonly BuilderPart[] = []) {
 
   if (includes("label")) builder.setLabel("Test model");
   if (includes("description")) builder.setDescription("Test model description.");
+  if (includes("standardIds")) builder.setStandardIds([]);
   if (includes("modifiers")) builder.setModifiers([]);
   if (includes("chart")) {
     builder.setCharts({
@@ -150,6 +153,7 @@ describe("ComfortModelBuilder capabilities", () => {
     )
       .setLabel("Test model")
       .setDescription("Test model description.")
+      .setStandardIds([StandardId.Ashrae55])
       .setModes([ChartMode.Compliance, ChartMode.Explore])
       .setChartableOutputs([pmvOutput])
       .setModifiers([solarGainModifier])
@@ -192,6 +196,7 @@ describe("ComfortModelBuilder capabilities", () => {
 
   it("accepts an explicitly empty output list for a compliance-only model", () => {
     const definition = createBuilder()
+      .setStandardIds([StandardId.Ashrae55])
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
       .setComplianceSpec(createComplianceSpec(ModelOutputKey.OperativeTemperature))
@@ -231,12 +236,14 @@ describe("ComfortModelBuilder capabilities", () => {
 
   it("requires Compliance models to expose non-empty fixed bands", () => {
     expect(() => createBuilder()
+      .setStandardIds([StandardId.Ashrae55])
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
       .build())
       .toThrow(/non-empty compliance specification/i);
 
     expect(() => createBuilder()
+      .setStandardIds([StandardId.Ashrae55])
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
       .setComplianceSpec(createComplianceSpec(ModelOutputKey.Pmv, []))
@@ -246,6 +253,7 @@ describe("ComfortModelBuilder capabilities", () => {
 
   it("requires Compliance models to expose a legend title and caption", () => {
     expect(() => createBuilder()
+      .setStandardIds([StandardId.Ashrae55])
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
       .setComplianceSpec({ ...createComplianceSpec(), legendTitle: "  " })
@@ -253,6 +261,7 @@ describe("ComfortModelBuilder capabilities", () => {
       .toThrow(/non-empty compliance specification/i);
 
     expect(() => createBuilder()
+      .setStandardIds([StandardId.Ashrae55])
       .setModes([ChartMode.Compliance])
       .setChartableOutputs([])
       .setComplianceSpec({ ...createComplianceSpec(), caption: "  " })
@@ -290,6 +299,25 @@ describe("ComfortModelBuilder capabilities", () => {
       .setChartableOutputs([pmvOutput, { ...pmvOutput, label: "Duplicate" }])
       .build())
       .toThrow(/duplicate output keys/i);
+  });
+
+  it("requires explicit, unique standard IDs consistent with Compliance capability", () => {
+    expect(() => createExploreBuilder(["standardIds"]).build())
+      .toThrow(/explicitly set standard IDs/i);
+    expect(() => createExploreBuilder()
+      .setStandardIds([StandardId.Ashrae55, StandardId.Ashrae55])
+      .build())
+      .toThrow(/duplicate standard IDs/i);
+    expect(() => createExploreBuilder()
+      .setStandardIds([StandardId.Ashrae55])
+      .build())
+      .toThrow(/without Compliance mode/i);
+    expect(() => createBuilder()
+      .setModes([ChartMode.Compliance])
+      .setChartableOutputs([])
+      .setComplianceSpec(createComplianceSpec())
+      .build())
+      .toThrow(/at least one standard ID/i);
   });
 
   it("rejects malformed, unsorted, and overlapping Explore defaults", () => {
@@ -453,6 +481,7 @@ describe("ComfortModelBuilder capabilities", () => {
     )
       .setLabel("Typed model")
       .setDescription("Typed result and chart source.")
+      .setStandardIds([])
       .setModes([ChartMode.Explore])
       .setChartableOutputs([pmvOutput])
       .setModifiers([])

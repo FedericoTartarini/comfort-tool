@@ -40,6 +40,7 @@
     "flowbite-svelte": "^0.47.4",
     "flowbite-svelte-icons": "^3.1.0",
     "jsthermalcomfort": "^1.4.0",
-    "plotly.js-dist-min": "^3.0.1"
+    "plotly.js-dist-min": "^3.0.1",
+    "sv-router": "^0.18.0"
   }
 }

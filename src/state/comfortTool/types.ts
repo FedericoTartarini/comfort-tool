@@ -104,11 +104,9 @@ export interface ModelChartSettings {
 export type ChartSettingsByModelState = Record<ComfortModelType, ModelChartSettings>;
 
 export interface ChartModeControlViewModel {
-  modes: readonly ChartModeType[];
   selectedMode: ChartModeType;
   caption: string;
   feedback: (ComplianceFeedback & { inputLabel?: string }) | null;
-  onSelect: (mode: ChartModeType) => void;
 }
 
 export interface BaselineControl {
@@ -194,7 +192,10 @@ export type ComfortToolStateSlice = {
 };
 
 export type ComfortToolActions = {
-  setSelectedModel: (nextModel: ComfortModelType) => void;
+  setSelectedModel: (
+    nextModel: ComfortModelType,
+    options?: { validateRanges?: boolean; schedule?: boolean },
+  ) => void;
   setSelectedChart: (nextChart: ChartIdType) => void;
   setModelOption: (optionKey: OptionKeyType, nextValue: string) => void;
   setCompareEnabled: (enabled: boolean) => void;
@@ -208,7 +209,10 @@ export type ComfortToolActions = {
   setExploreBands: (bands: readonly NumericBand[]) => boolean;
   setChartBaselineInputId: (inputId: InputIdType) => void;
   exportShareSnapshot: () => ShareStateSnapshot;
-  applyShareSnapshot: (snapshot: ShareStateSnapshot) => void;
+  applyShareSnapshot: (
+    snapshot: ShareStateSnapshot,
+    options?: { schedule?: boolean },
+  ) => void;
   updateInput: (inputId: InputIdType, controlId: InputControlIdType, rawValue: string) => void;
   updateModifierInput: (
     inputId: InputIdType,
@@ -222,7 +226,7 @@ export type ComfortToolActions = {
     enabled: boolean,
   ) => boolean;
   scheduleCalculation: (options?: { immediate?: boolean; force?: boolean }) => void;
-  confirmModelSwitch: () => void;
+  confirmModelSwitch: (options?: { schedule?: boolean }) => void;
   cancelModelSwitch: () => void;
 };
 

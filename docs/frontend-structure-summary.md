@@ -10,6 +10,8 @@ See [Adding a thermal model](adding-a-thermal-model.md) for the model-authoring 
 |---|---|---|
 | `views` | Page composition | components, state |
 | `components` | Rendering and interaction | state, models, lightweight services |
+| `routes` | Explicit Browser History table, route hooks, and route-bound page adapters | views, workspace state |
+| `state/workspace` | Typed Workspace metadata, route/model/mode/share coordination, and pending navigation replay | models, comfort-tool controller/registry |
 | `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots | models, services, registered runtime definitions |
 | `comfortModels` | Model declarations, calculations, results, chart evaluators, declaration-local zones | models, comfort/unit services, model builder |
 | `services/comfort` | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines | models |
@@ -21,10 +23,42 @@ Primary entrypoints are:
 
 ```text
 src/App.svelte
+src/routes/router.ts
+src/state/workspace/routeDefinitions.ts
 src/views/ComfortDashboard.svelte
+src/state/workspace/createWorkspaceNavigation.ts
 src/state/comfortTool/createComfortToolState.svelte.ts
 src/state/comfortTool/types.ts
 ```
+
+## Workspace routing and controller lifetime
+
+The runtime topology is:
+
+```text
+sv-router Browser History
+  -> persistent SiteShell (Header + Sidebar/Drawer + Footer)
+    -> route outlet (Standard/Explore dashboard, Time-series placeholder, or 404)
+```
+
+`App.svelte` constructs one `ComfortToolController` above the route outlet. Dashboard routes
+therefore share canonical SI input, per-model chart memory, and calculation caches. Entering
+Time-series or a 404 does not create a second controller or schedule a calculation.
+
+`state/workspace/routeDefinitions.ts` is the stable navigation source of truth. Standard membership is
+derived from each model's `standardIds`; Explore membership is derived from
+`modes.includes(ChartMode.Explore)`. Standard routes force Compliance, Explore forces
+Explore, and the chart exposes only a read-only mode summary.
+
+The Workspace coordinator applies share snapshots without scheduling, resolves model/mode
+constraints from the pathname, and then schedules the final target model once. Route
+constraints win over conflicting snapshot model/mode values while the strict version-1 wire
+schema remains unchanged. Boundary-warning navigation is held pending until confirmation;
+cancellation leaves URL, model, and mode unchanged.
+
+Public paths use clean trailing-slash URLs. Production static hosting must return
+`index.html` for non-asset application paths so direct visits and refreshes reach the client
+router; no backend or host-specific deployment dependency is introduced here.
 
 ## Model authoring and runtime definitions
 
@@ -115,7 +149,7 @@ Compliance and Explore share the Field Chart engine:
 - Explore reads a selected `ModelOutput` and a per-model editable working copy of numeric default bands.
 - Band membership is array ordered and half open: `min <= value < max`.
 
-Chart selection, mode, axes, baseline, Explore output/bands, unit system, and zone visibility are presentation-only. They rebuild from a ready calculation cache and do not invalidate or schedule model calculation.
+Chart selection, route-applied mode, axes, baseline, Explore output/bands, unit system, and zone visibility are presentation-only. They rebuild from a ready calculation cache and do not invalidate or schedule model calculation.
 
 The psychrometric chart clamps its drawable domain at 100% relative humidity.
 

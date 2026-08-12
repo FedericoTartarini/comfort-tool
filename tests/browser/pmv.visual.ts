@@ -74,6 +74,9 @@ async function selectDropdownOption(
 async function selectModel(page: Page, model: PmvModel) {
   const modelSelect = page.getByRole("combobox", { name: "Select comfort model" });
   const modelLabel = MODEL_LABELS[model];
+  if ((await modelSelect.inputValue()) === modelLabel) {
+    return;
+  }
   await modelSelect.click();
   await modelSelect.fill(modelLabel);
   await page.getByRole("button", { name: modelLabel, exact: false }).click();
@@ -200,7 +203,12 @@ async function openTargetPmvChart(
     useIpUnits = false,
   }: TargetChartOptions = {},
 ) {
-  await page.goto("/");
+  const pathname = mode === "explore"
+    ? "/Explore/"
+    : model === "iso"
+      ? "/ISO-7730/"
+      : "/ASHRAE-55/";
+  await page.goto(pathname);
   await selectModel(page, model);
 
   const compareToggle = page.getByRole("checkbox", { name: "Enable input comparison" });
@@ -214,15 +222,12 @@ async function openTargetPmvChart(
   });
   await expect(chartTrigger).toContainText("Dynamic");
 
-  const modeGroup = page.getByRole("group", { name: "Chart mode" });
-  const complianceButton = modeGroup.getByRole("button", { name: "Compliance" });
-  const exploreButton = modeGroup.getByRole("button", { name: "Explore" });
-  await expect(complianceButton).toHaveAttribute("aria-pressed", "true");
-  await expect(exploreButton).toHaveAttribute("aria-pressed", "false");
-  if (mode === "explore") {
-    await exploreButton.click();
-    await expect(exploreButton).toHaveAttribute("aria-pressed", "true");
-  }
+  const panel = page.getByTestId("comfort-chart-panel");
+  await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
+  await expect(panel.getByText(
+    mode === "explore" ? "Explore" : "Compliance",
+    { exact: true },
+  )).toBeVisible();
 
   await selectDropdownOption(page, "Select chart X axis", "Air temperature");
   await selectDropdownOption(page, "Select chart Y axis", "Relative humidity");
@@ -242,7 +247,7 @@ async function openTargetPmvChart(
   await waitForXAxisTitle(plot, useIpUnits ? "°F" : "°C");
 
   return {
-    panel: page.getByTestId("comfort-chart-panel"),
+    panel,
     plot,
     visual: page.getByTestId("comfort-chart-visual"),
   };
@@ -305,12 +310,10 @@ async function expectComplianceConstraintFills(plot: Locator) {
 test.describe("PMV visual regression", () => {
   test("ASHRAE mode panel locks Compliance and exposes Explore controls", async ({ page }) => {
     const { panel, plot } = await openTargetPmvChart(page, { mode: "compliance" });
-    const modeGroup = page.getByRole("group", { name: "Chart mode" });
-    const complianceButton = modeGroup.getByRole("button", { name: "Compliance" });
-    const exploreButton = modeGroup.getByRole("button", { name: "Explore" });
 
-    await expect(complianceButton).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByText(
+    await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
+    await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
+    await expect(panel.getByText(
       "Green shading = ASHRAE 55 compliant PMV (−0.5 ≤ PMV < +0.5); red = outside the limit.",
       { exact: true },
     )).toBeVisible();
@@ -325,9 +328,10 @@ test.describe("PMV visual regression", () => {
     await page.mouse.move(0, 0);
     await expect(panel).toHaveScreenshot("pmv-ashrae-compliance-panel.png");
 
-    await exploreButton.click();
-    await expect(exploreButton).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByText(
+    await page.getByRole("link", { name: "Explore", exact: true }).click();
+    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
+    await expect(panel.getByText(
       "Showing PMV over the selected axes with editable thresholds.",
       { exact: true },
     )).toBeVisible();
@@ -354,11 +358,9 @@ test.describe("PMV visual regression", () => {
     await page.getByRole("button", { name: "Psychrometric", exact: true }).click();
     await expect(chartTrigger).toContainText("Psychrometric");
 
-    const modeGroup = panel.getByRole("group", { name: "Chart mode" });
-    const complianceButton = modeGroup.getByRole("button", { name: "Compliance" });
-    const exploreButton = modeGroup.getByRole("button", { name: "Explore" });
-    await expect(exploreButton).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByText(
+    await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
+    await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
+    await expect(panel.getByText(
       "Showing PPD (%) on this chart's fixed axes with editable thresholds.",
       { exact: true },
     )).toBeVisible();
@@ -370,8 +372,9 @@ test.describe("PMV visual regression", () => {
     await waitForTrace(plot, "PPD (%) bands hover");
     await expect(visual).toContainText("PPD Bands");
 
-    await complianceButton.click();
-    await expect(complianceButton).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
+    await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
+    await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Select chart display output" }))
       .toBeHidden();
     await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();

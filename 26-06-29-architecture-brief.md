@@ -14,13 +14,14 @@ the last section; you can delete the old file once those are addressed.
 
 ## 1. Goal in one paragraph
 
-Keep the tool simple to maintain and extend. A user picks **one model** (from
-`jsthermalcomfort`, which we maintain), enters inputs on the **left**, and sees **results
-top-right** and a **chart bottom-right**. Adding a new model should mean writing one
-focused file, not wiring code across layers. On top of that, the tool should support
-different ways of using a model: **Compliance**, **Explore**, and (later) **Time-series** —
-plus optional **input sub-tools** (e.g. solar gain) that adjust inputs for any model that
-wants them.
+Keep the tool simple to maintain and extend. A user enters a top-level **Workspace**:
+**Standard**, **Explore**, or (later) **Time-series**. Standard and Explore each select one
+eligible model, take SI-canonical inputs on the **left**, and show **results top-right** plus
+a **chart bottom-right**. Their routes own the chart mode: Standard uses Compliance and
+Explore uses Explore. Time-series is a separate future capability, not a `ChartMode`.
+Adding a model should mean registering one focused declaration (with focused companion
+modules where needed), not wiring code across layers. Optional **input sub-tools** (e.g.
+solar gain) may adjust inputs for any model that declares them.
 
 ---
 
@@ -190,19 +191,24 @@ The existing `zones` (`ThermalZone[]`) are the natural source for an output's `d
 
 ## 6. Top-level structure and mode UX
 
-Decision taken: **hybrid**.
+Decision taken: **Workspace-first navigation**.
 
-- **Analysis** (the page that exists today). Inputs left; results top-right; chart
-  bottom-right. The chart header carries a **mode control** offering the modes the current
-  model declares.
-- **Time-series** — a **separate top-level section**, deferred (§8).
+- The persistent AppShell exposes three top-level Workspaces: **Standard**, **Explore**, and
+  **Time-series**. These are navigation concepts, not `ChartMode` values.
+- **Standard** is an expandable, URL-less group. Its leaf routes are `/ASHRAE-55/`,
+  `/ISO-7730/`, and `/EN-16798-1/`; each fixes the chart mode to Compliance and derives its
+  model list from declaration-owned `standardIds`.
+- **Explore** is the direct `/Explore/` route. It fixes the chart mode to Explore and derives
+  its model list from declarations that include `ChartMode.Explore`.
+- **Time-series** is the direct `/Time-Series/` route and remains deferred (§8).
 
-### Default mode and clarity (validated with Federico)
+The route owns the final mode. The chart header therefore presents a read-only
+Compliance/Explore summary rather than a segmented mode switch. Route changes preserve an
+eligible current model; otherwise they select the route's declared default model through the
+same boundary-warning flow as an in-page model change.
 
-- **Default to Compliance when the model supports it, else Explore.** PMV opens on
-  Compliance; Heat Index opens on Explore; Adaptive only ever shows Compliance.
-- **When both modes exist, use a visible segmented toggle** ("Compliance | Explore"), not a
-  hidden dropdown — the two lenses must be obviously co-equal and discoverable.
+### Mode clarity (validated with Federico)
+
 - **One-line caption per mode**, e.g. *"Shaded = conditions where PMV stays within ASHRAE 55
   limits (−0.5 to +0.5). Your input: ✓ compliant."* This is what stops a new user from
   seeing an unexplained shaded blob.
@@ -213,8 +219,9 @@ Decision taken: **hybrid**.
   mode + axes + chosen z + edited bands per model), so switching models and back is
   predictable. Shared *inputs* still persist globally (§2).
 
-Keep shared input state across Analysis and Time-series, the same way it persists across
-models today.
+The Browser History router replaces only the route outlet. The AppShell and one
+`ComfortToolController` instance remain above it, so shared SI input, per-model presentation
+memory, and calculation caches persist across Workspace navigation.
 
 ---
 
@@ -258,11 +265,12 @@ the chart engine and result panel are unaffected.
 
 ## 8. Time-series (deferred)
 
-A separate top-level section, deferred / out of scope for now. Its inputs differ
-fundamentally (durations, sequences of conditions) and only a subset of models support it
-(e.g. PHS). Design Analysis so it does not preclude Time-series: the `chartableOutputs`
-declaration from §5 is exactly what a time-series view needs (plot a chosen output against
-time), so the work done now is forward-compatible.
+`/Time-Series/` currently renders a placeholder inside the persistent AppShell. It starts no
+new comfort calculation and introduces no Time-series state, capability, or `ChartMode`.
+Its future inputs differ fundamentally (durations, sequences of conditions), and only a
+subset of models may support it (e.g. PHS). Add a separate capability/state contract when
+those requirements are known; do not infer support from `chartableOutputs` alone or add
+Time-series to the current Analysis chart state.
 
 ---
 
@@ -282,9 +290,9 @@ Each step is shippable and testable. `npm test` and `npm run build` must pass at
 4. **Explore mode:** drive the engine from `FieldChartConfig` with user-selectable x/y/z and
    an editable working copy of `defaultBands`. Add the "Display" picker and threshold editor
    to `src/components/chart/` (extend `ChartAxisMenu.svelte`).
-5. **Compliance mode + segmented toggle (§6):** same engine, z and bands from
-   `complianceSpec`, z/threshold controls hidden; default-mode logic; per-model memory of
-   mode/axes/z/bands; captions.
+5. **Compliance mode + Workspace routing (§6):** same engine, z and bands from
+   `complianceSpec`, z/threshold controls hidden; route-owned mode; per-model memory of
+   mode/axes/z/bands; captions and feedback.
 6. **Adaptive via boundary strategy:** confirm Adaptive collapses to a small compliance-only
    file using x-axis-function bands.
 7. **Input sub-tools (§7):** introduce `InputModifier`, migrate PMV's existing tweaks to it,
@@ -327,6 +335,9 @@ All pure functions, cheap to test:
 - **Result-row formatters:** a given value yields the correct zone label and tone.
 - **Share-state round-trip:** URL encode → decode preserves everything, including chosen
   mode, z, and edited thresholds (new serialized state).
+- **Workspace routing:** each route derives an exact model set, forces its required mode,
+  resolves share-state conflicts in favour of the pathname, and keeps warning confirmation
+  or cancellation atomic with URL navigation.
 
 ---
 
@@ -370,11 +381,13 @@ against the current code on 2026-06-29:
 4. Multi-output models **declare which outputs are chartable**; all key outputs may still
    appear in the results panel, but only the selected z colours the chart.
 5. **Adaptive is compliance-only** (no Explore), drawn from two boundary lines.
-6. Default mode = **Compliance if supported, else Explore**; visible segmented toggle when
-   both exist.
+6. **Workspace routes own the active mode**: Standard routes force Compliance and Explore
+   forces Explore. The chart shows a read-only mode summary, not a segmented toggle.
 7. Sub-tools (solar gain, dynamic clothing, …) are **generic input modifiers** that patch the
    SI input store; declared per model; shown in the input panel.
 8. **Keep DTOs** but remove repetition and the `any`-typed trace/layout bags.
+9. Standard membership is declared once with `standardIds`; Explore membership is derived
+   from `modes`. Time-series will use a separate future capability contract.
 
 ---
 
@@ -479,6 +492,7 @@ function calculatePmv(args): { pmv: number; ppd: number } {           // §3: th
 
 export const pmvAshraeModelConfig = new ComfortModelBuilder(ComfortModel.PmvAshrae)
   .setLabel("PMV / PPD (ASHRAE 55)")
+  .setStandardIds([StandardId.Ashrae55])
   .addControl(/* temperature */ …)
   .addControl(/* MRT, air speed, humidity, met, clo … */ …)
 

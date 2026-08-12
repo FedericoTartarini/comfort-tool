@@ -27,6 +27,7 @@ Create the registered declaration under `src/comfortModels/`. It must make the f
 - request mapping and calculation;
 - result rows and charts;
 - declaration-local `ThermalZone` values and derived bands;
+- explicit Standard membership (including an explicit empty list);
 - supported Compliance/Explore modes and chartable outputs;
 - executable input modifiers in application order;
 - chart definitions, selectable axes, and default axis pair.
@@ -97,13 +98,24 @@ The calculation manager runs that parser once at the model boundary. `ModelCalcu
 
 ## 5. Declare modes, outputs, and Compliance
 
-Every declaration explicitly sets modes and chartable outputs:
+Every declaration explicitly sets Standard membership, modes, and chartable outputs:
 
 ```ts
 builder
+  .setStandardIds([])
   .setModes([ChartMode.Explore])
   .setChartableOutputs([output]);
 ```
+
+Use stable `StandardId` values for Compliance-capable declarations, for example
+`.setStandardIds([StandardId.Ashrae55])`. The builder rejects duplicate Standard IDs, a
+Compliance model with no Standard, and a Standard declaration without Compliance support.
+Models that do not belong to a Standard must call `.setStandardIds([])` explicitly.
+
+Standard Workspace model lists are derived from `standardIds`. Explore availability is
+independent and remains derived only from `modes.includes(ChartMode.Explore)`; do not add a
+second navigation list. Time-series has no current model capability contract and must not be
+added to `ChartMode`.
 
 Explore requires at least one output with valid numeric SI bands. A Compliance-capable model also declares a fixed output, non-empty bands, caption, legend title, and result feedback callback. Compliance output and bands always come from `complianceSpec`; Explore uses the selected output and its editable working bands.
 

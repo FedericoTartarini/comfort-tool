@@ -6,6 +6,7 @@ import type { PresetInputOption } from "../models/inputControls";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
+import { StandardId } from "../models/workspaces";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -73,6 +74,7 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   label: "Adaptive (EN 16798-1)",
   description:
     "EN 16798-1 Adaptive thermal comfort model for naturally ventilated buildings.",
+  standardIds: [StandardId.En16798],
   resultStandard: ComfortStandard.En16798Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ISO,
   modes: [ChartMode.Compliance],

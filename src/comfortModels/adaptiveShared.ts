@@ -23,6 +23,7 @@ import {
   type ModelOutput,
 } from "../models/modelCapabilities";
 import type { ThermalZone } from "../models/thermalZone";
+import type { StandardId as StandardIdType } from "../models/workspaces";
 import {
   buildDefaultPresentation,
   createControlBehavior,
@@ -85,6 +86,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   modelId: typeof ComfortModel.AdaptiveAshrae | typeof ComfortModel.AdaptiveEn;
   label: string;
   description: string;
+  standardIds: readonly StandardIdType[];
   modes: readonly ChartModeType[];
   chartableOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
@@ -126,6 +128,7 @@ export function createAdaptiveModelConfig(
   builder
     .setLabel(declaration.label)
     .setDescription(declaration.description)
+    .setStandardIds(declaration.standardIds)
     .setModes(declaration.modes)
     .setChartableOutputs(declaration.chartableOutputs)
     .setModifiers(declaration.modifiers)

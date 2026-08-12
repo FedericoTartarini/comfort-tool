@@ -15,10 +15,14 @@
 
   interface Props {
     toolState: ComfortToolController;
+    onConfirm?: () => void;
+    onCancel?: () => void;
   }
 
   let {
     toolState,
+    onConfirm = () => toolState.actions.confirmModelSwitch(),
+    onCancel = () => toolState.actions.cancelModelSwitch(),
   }: Props = $props();
 
   const pending = $derived(toolState.selectors.getPendingModelSwitch());
@@ -28,11 +32,11 @@
   );
 
   function handleConfirm() {
-    toolState.actions.confirmModelSwitch();
+    onConfirm();
   }
 
   function handleCancel() {
-    toolState.actions.cancelModelSwitch();
+    onCancel();
   }
 
 </script>

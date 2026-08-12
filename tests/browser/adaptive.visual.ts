@@ -11,6 +11,9 @@ async function selectModel(
 ) {
   const modelLabel = ADAPTIVE_MODEL_LABELS[model];
   const modelSelect = page.getByRole("combobox", { name: "Select comfort model" });
+  if ((await modelSelect.inputValue()) === modelLabel) {
+    return;
+  }
   await modelSelect.click();
   await modelSelect.fill(modelLabel);
   await page.getByRole("button", { name: modelLabel, exact: false }).click();
@@ -77,7 +80,7 @@ async function openAdaptiveChart(
     useIpUnits = false,
   } = options;
 
-  await page.goto("/");
+  await page.goto(model === "en" ? "/EN-16798-1/" : "/ASHRAE-55/");
   await selectModel(page, model);
   await page.getByRole("checkbox", { name: "Enable input comparison" }).setChecked(false);
   const unitToggle = page.getByRole("checkbox", { name: "Use IP units" });

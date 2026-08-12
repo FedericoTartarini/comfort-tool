@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Button, ButtonGroup } from "flowbite-svelte";
   import {
     CheckCircleOutline,
     CloseCircleOutline,
@@ -15,7 +14,6 @@
 
   let { control }: Props = $props();
 
-  const hasModeChoice = $derived(control.modes.length === 2);
   const selectedLabel = $derived(getModeLabel(control.selectedMode));
   const feedbackClass = $derived(
     control.feedback?.passes
@@ -33,24 +31,9 @@
 
 <div class="min-w-0">
   <div class="flex flex-wrap items-center gap-2">
-    {#if hasModeChoice}
-      <ButtonGroup role="group" aria-label="Chart mode" size="xs">
-        {#each control.modes as mode}
-          <Button
-            size="xs"
-            color={control.selectedMode === mode ? "dark" : "light"}
-            aria-pressed={control.selectedMode === mode}
-            onclick={() => control.onSelect(mode)}
-          >
-            {getModeLabel(mode)}
-          </Button>
-        {/each}
-      </ButtonGroup>
-    {:else}
-      <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
-        {selectedLabel}
-      </span>
-    {/if}
+    <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
+      {selectedLabel}
+    </span>
     <p class="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs leading-5 text-stone-600">
       <span>{control.caption}</span>
       {#if control.feedback}

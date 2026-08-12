@@ -379,31 +379,22 @@ describe("createComfortToolState", () => {
   });
 
   it.each([
-    [
-      ComfortModel.PmvAshrae,
-      ChartMode.Compliance,
-      [ChartMode.Compliance, ChartMode.Explore],
-    ],
-    [
-      ComfortModel.PmvIso,
-      ChartMode.Compliance,
-      [ChartMode.Compliance, ChartMode.Explore],
-    ],
-    [ComfortModel.Utci, ChartMode.Explore, [ChartMode.Explore]],
-    [ComfortModel.AdaptiveAshrae, ChartMode.Compliance, [ChartMode.Compliance]],
-    [ComfortModel.AdaptiveEn, ChartMode.Compliance, [ChartMode.Compliance]],
-    [ComfortModel.HeatIndex, ChartMode.Explore, [ChartMode.Explore]],
-    [ComfortModel.Humidex, ChartMode.Explore, [ChartMode.Explore]],
-    [ComfortModel.WindChill, ChartMode.Explore, [ChartMode.Explore]],
+    [ComfortModel.PmvAshrae, ChartMode.Compliance],
+    [ComfortModel.PmvIso, ChartMode.Compliance],
+    [ComfortModel.Utci, ChartMode.Explore],
+    [ComfortModel.AdaptiveAshrae, ChartMode.Compliance],
+    [ComfortModel.AdaptiveEn, ChartMode.Compliance],
+    [ComfortModel.HeatIndex, ChartMode.Explore],
+    [ComfortModel.Humidex, ChartMode.Explore],
+    [ComfortModel.WindChill, ChartMode.Explore],
   ] as const)(
     "opens %s on its declared default mode",
-    (modelId, expectedMode, expectedModes) => {
+    (modelId, expectedMode) => {
       const toolState = createComfortToolState();
       toolState.state.ui.selectedModel = modelId;
 
       const mode = getModeControl(toolState);
       expect(mode.selectedMode).toBe(expectedMode);
-      expect(mode.modes).toEqual(expectedModes);
     },
   );
 
@@ -436,7 +427,6 @@ describe("createComfortToolState", () => {
         ) || "Bands";
 
         expect(controls.mode?.selectedMode).toBe(settings.mode);
-        expect(controls.mode?.modes).toEqual(modelConfig.modes);
         expect(controls.baseline?.selectedInputId).toBe(InputId.Input1);
         expect(controls.axes === null).toBe(!supportsAxisSelection);
         expect(controls.explore === null).toBe(
@@ -523,13 +513,11 @@ describe("createComfortToolState", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.compareEnabled = true;
 
-    expect(getModeControl(toolState).modes)
-      .toEqual([ChartMode.Compliance, ChartMode.Explore]);
+    expect(getModeControl(toolState).selectedMode).toBe(ChartMode.Compliance);
 
     toolState.actions.setSelectedChart(ChartId.Psychrometric);
     const fixed = toolState.selectors.getChartControlsViewModel();
-    expect(fixed.mode?.modes)
-      .toEqual([ChartMode.Compliance, ChartMode.Explore]);
+    expect(fixed.mode?.selectedMode).toBe(ChartMode.Compliance);
     expect(fixed.baseline?.selectedInputId).toBe(InputId.Input1);
     expect(fixed.axes).toBeNull();
     expect(fixed.explore).toBeNull();
@@ -540,13 +528,12 @@ describe("createComfortToolState", () => {
     expect(fixedExplore.explore?.config.mode).toBe(ChartMode.Explore);
 
     toolState.actions.setSelectedChart(ChartId.PmvDynamic);
-    expect(getModeControl(toolState).modes)
-      .toEqual([ChartMode.Compliance, ChartMode.Explore]);
+    expect(getModeControl(toolState).selectedMode).toBe(ChartMode.Explore);
     expect(toolState.selectors.getChartControlsViewModel().axes).not.toBeNull();
 
     toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
     const adaptive = getModeControl(toolState);
-    expect(adaptive.modes).toEqual([ChartMode.Compliance]);
+    expect(adaptive.selectedMode).toBe(ChartMode.Compliance);
     expect(adaptive.caption).toContain("ASHRAE 55 80% and 90%");
     toolState.actions.setSelectedChart(ChartId.Adaptive);
     const adaptiveControls = toolState.selectors.getChartControlsViewModel();
@@ -564,7 +551,7 @@ describe("createComfortToolState", () => {
 
     toolState.state.ui.selectedModel = ComfortModel.Utci;
     const utci = getModeControl(toolState);
-    expect(utci.modes).toEqual([ChartMode.Explore]);
+    expect(utci.selectedMode).toBe(ChartMode.Explore);
     expect(utci.caption).toContain("Showing UTCI");
     toolState.actions.setSelectedChart(ChartId.Stress);
     const utciFixed = toolState.selectors.getChartControlsViewModel();

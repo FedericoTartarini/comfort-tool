@@ -5,7 +5,6 @@ import { InputId, type InputId as InputIdType } from "../../models/inputSlots";
 import {
   ChartMode,
   type Band,
-  type ChartMode as ChartModeType,
   type ModelOutputKey,
   type NumericBand,
 } from "../../models/modelCapabilities";
@@ -57,7 +56,6 @@ function getExploreDefaultBands(
 }
 
 interface ChartPresentationCallbacks {
-  onSelectMode: (mode: ChartModeType) => void;
   onSelectBaseline: (inputId: InputIdType) => void;
   onSelectXAxis: (field: FieldKeyType) => void;
   onSelectYAxis: (field: FieldKeyType) => void;
@@ -129,11 +127,9 @@ export function buildChartControlsViewModel({
 
   return {
     mode: {
-      modes: config.modes,
       selectedMode: settings.mode,
       caption,
       feedback,
-      onSelect: callbacks.onSelectMode,
     },
     baseline: compareEnabled
       ? {

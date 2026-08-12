@@ -29,10 +29,13 @@ import {
   type BandInputsSi,
 } from "../../../models/modelCapabilities";
 import type { ThermalZone } from "../../../models/thermalZone";
+import { StandardId } from "../../../models/workspaces";
 import {
   comfortModelConfigs,
   comfortModelOrder,
   getComfortModelConfig,
+  getExploreModels,
+  getModelsForStandard,
 } from ".";
 
 function createInputsSi(relativeAirSpeed: number): BandInputsSi {
@@ -201,6 +204,35 @@ describe("comfort model capability registry", () => {
       expect(config.chartableOutputs.map((output) => output.key)).toEqual(expected[modelId].outputs);
       expect(config.complianceSpec?.output).toBe(expected[modelId].complianceOutput);
     });
+  });
+
+  it("derives Standard and Explore model collections from declarations", () => {
+    expect(getModelsForStandard(StandardId.Ashrae55)).toEqual([
+      ComfortModel.PmvAshrae,
+      ComfortModel.AdaptiveAshrae,
+    ]);
+    expect(getModelsForStandard(StandardId.Iso7730)).toEqual([
+      ComfortModel.PmvIso,
+    ]);
+    expect(getModelsForStandard(StandardId.En16798)).toEqual([
+      ComfortModel.AdaptiveEn,
+    ]);
+    expect(getExploreModels()).toEqual([
+      ComfortModel.PmvAshrae,
+      ComfortModel.PmvIso,
+      ComfortModel.Utci,
+      ComfortModel.HeatIndex,
+      ComfortModel.Humidex,
+      ComfortModel.WindChill,
+    ]);
+
+    for (const modelId of comfortModelOrder) {
+      const config = getComfortModelConfig(modelId);
+      expect(new Set(config.standardIds).size).toBe(config.standardIds.length);
+      expect(config.standardIds.length > 0).toBe(
+        config.modes.includes(ChartMode.Compliance),
+      );
+    }
   });
 
   it("declares generic input-modifier availability per model", () => {

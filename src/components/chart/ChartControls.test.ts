@@ -32,11 +32,9 @@ describe("ChartControls Explore composition", () => {
       idPrefix: "test",
       controls: {
         mode: {
-          modes: [ChartMode.Compliance, ChartMode.Explore],
           selectedMode: ChartMode.Explore,
           caption: "Explore caption.",
           feedback: null,
-          onSelect: vi.fn(),
         },
         baseline: null,
         axes: {
@@ -91,11 +89,9 @@ describe("ChartControls Explore composition", () => {
       idPrefix: "compliance",
       controls: {
         mode: {
-          modes: [ChartMode.Compliance, ChartMode.Explore],
           selectedMode: ChartMode.Compliance,
           caption: "Compliance caption.",
           feedback: null,
-          onSelect: vi.fn(),
         },
         baseline: {
           selectedInputId: "input1",

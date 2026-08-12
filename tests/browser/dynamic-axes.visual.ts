@@ -46,7 +46,7 @@ async function expectChartAxes(
 }
 
 test("PMV exposes and renders every component/operative axis direction", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/ASHRAE-55/");
   await expect(page.getByRole("button", { name: "Select chart type and export" }))
     .toContainText("Dynamic");
 

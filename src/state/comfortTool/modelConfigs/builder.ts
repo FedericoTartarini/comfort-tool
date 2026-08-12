@@ -12,6 +12,7 @@ import type { ModelCharts } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import type { InputModifier } from "../../../models/inputModifiers";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
+import type { StandardId as StandardIdType } from "../../../models/workspaces";
 import {
   ChartMode,
   type Band,
@@ -103,6 +104,8 @@ export class ComfortModelBuilder<
 
   private description?: string;
 
+  private standardIds?: readonly StandardIdType[];
+
   private modes?: readonly ChartModeType[];
 
   private chartableOutputs?: readonly ModelOutput[];
@@ -160,6 +163,11 @@ export class ComfortModelBuilder<
 
   setDescription(description: string): this {
     this.description = description;
+    return this;
+  }
+
+  setStandardIds(standardIds: readonly StandardIdType[]): this {
+    this.standardIds = standardIds;
     return this;
   }
 
@@ -277,6 +285,20 @@ export class ComfortModelBuilder<
     const supportsExplore = modes.includes(ChartMode.Explore);
     const supportsCompliance = modes.includes(ChartMode.Compliance);
 
+    const standardIds = this.standardIds;
+    if (!standardIds) {
+      throw new Error("Comfort model declarations must explicitly set standard IDs.");
+    }
+    if (new Set(standardIds).size !== standardIds.length) {
+      throw new Error("Comfort model declarations cannot contain duplicate standard IDs.");
+    }
+    if (supportsCompliance && standardIds.length === 0) {
+      throw new Error("Compliance models must declare at least one standard ID.");
+    }
+    if (!supportsCompliance && standardIds.length > 0) {
+      throw new Error("Models without Compliance mode cannot declare a standard ID.");
+    }
+
     if (supportsExplore && chartableOutputs.length === 0) {
       throw new Error("Explore mode requires at least one chartable output.");
     }
@@ -393,6 +415,7 @@ export class ComfortModelBuilder<
       id: this.id,
       label: this.label,
       description: this.description,
+      standardIds: [...standardIds],
       modes: [...modes],
       chartableOutputs: chartableOutputs.map((output) => ({
         ...output,

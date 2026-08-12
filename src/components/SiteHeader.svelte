@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { Button, Heading, Img, Navbar, NavBrand, NavHamburger, NavLi, NavUl } from "flowbite-svelte";
-  import { LinkOutline } from "flowbite-svelte-icons";
+  import { Button, Heading, Img, Navbar, NavBrand, NavLi, NavUl } from "flowbite-svelte";
+  import { BarsOutline, LinkOutline } from "flowbite-svelte-icons";
   import { onDestroy } from "svelte";
 
   import { siteBrand, siteHeaderLinks } from "../models/siteShellConfig";
@@ -9,10 +9,16 @@
 
   interface Props {
     toolState: ComfortToolController;
+    showExportLink: boolean;
+    homePath: string;
+    onOpenNavigation: () => void;
   }
 
   let {
     toolState,
+    showExportLink,
+    homePath,
+    onOpenNavigation,
   }: Props = $props();
 
   let exportStatus = $state<"idle" | "copied" | "error">("idle");
@@ -78,8 +84,8 @@
 </script>
 
 <Navbar fluid={true} class="border-b border-stone-200 bg-white px-0 py-4">
-  <div class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between px-4 sm:px-6 lg:px-8">
-    <NavBrand href="/" class="flex items-center gap-6 hover:opacity-95 transition-opacity">
+  <div class="mx-auto flex w-full max-w-screen-2xl flex-wrap items-center justify-between px-4 sm:px-6 lg:px-8">
+    <NavBrand href={homePath} class="flex items-center gap-6 hover:opacity-95 transition-opacity">
       <div class="header-logo-container">
         <Img src={siteBrand.headerLogoSrc} alt={siteBrand.eyebrow} class="header-logo" />
       </div>
@@ -91,19 +97,29 @@
     </NavBrand>
 
     <div class="flex items-center gap-2 lg:order-2">
+      {#if showExportLink}
+        <Button
+          pill
+          color={exportStatus === "copied" ? "green" : exportStatus === "error" ? "red" : "light"}
+          onclick={() => void handleExportLink()}
+          class="px-4 py-2 font-semibold shadow-sm"
+        >
+          <LinkOutline class="mr-2 h-4 w-4" strokeWidth="1.7" />
+          {getExportLabel()}
+        </Button>
+      {/if}
       <Button
-        pill
-        color={exportStatus === "copied" ? "green" : exportStatus === "error" ? "red" : "light"}
-        onclick={() => void handleExportLink()}
-        class="px-4 py-2 font-semibold shadow-sm"
+        color="light"
+        class="lg:hidden"
+        aria-label="Open workspace navigation"
+        aria-controls="workspace-navigation-drawer"
+        onclick={onOpenNavigation}
       >
-        <LinkOutline class="mr-2 h-4 w-4" strokeWidth="1.7" />
-        {getExportLabel()}
+        <BarsOutline class="h-5 w-5" />
       </Button>
-      <NavHamburger />
     </div>
 
-    <NavUl class="lg:order-1">
+    <NavUl class="hidden lg:order-1 lg:flex">
       {#each siteHeaderLinks as link}
         <NavLi
           href={link.href}

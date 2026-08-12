@@ -14,12 +14,15 @@
   import { InputControlId } from "../../models/inputControls";
   import ToolControls from "./ToolControls.svelte";
   import type { ComfortToolController } from "../../state/comfortTool/types";
+  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 
   interface Props {
     toolState: ComfortToolController;
+    allowedModelIds: readonly ComfortModelType[];
+    onSelectModel: (modelId: ComfortModelType) => void;
   }
 
-  let { toolState }: Props = $props();
+  let { toolState, allowedModelIds, onSelectModel }: Props = $props();
 
   let clothingBuilderOpen = $state(false);
   const inputControls = $derived(toolState.selectors.getInputControls());
@@ -59,7 +62,7 @@
     <h2 class="text-lg font-semibold text-stone-900">Inputs</h2>
   </header>
 
-  <ToolControls {toolState} />
+  <ToolControls {toolState} {allowedModelIds} {onSelectModel} />
 
   <div class="mt-4 bg-white">
     {#if toolState.state.ui.compareEnabled}
