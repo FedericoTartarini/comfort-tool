@@ -52,9 +52,11 @@ import {
   buildInputModifierControls,
   canEnableModifier,
   createActiveModifiersByInput,
+  createInputModifierDraft,
   createModifierInputsByInput,
   deriveEffectiveInputsByInput,
   findModelModifier,
+  isInputModifierDraftValid,
   parseModifierInputTransition,
 } from "./modifierState";
 import {
@@ -70,6 +72,7 @@ import {
 import type {
   ChartSettingsByModelState,
   ComfortToolController,
+  InputModifierDraftEntry,
   InputState,
   InputsByInputState,
   ModelCalculationCacheByModelState,
@@ -192,10 +195,15 @@ export function createComfortToolState(): ComfortToolController {
     });
   }
 
-  function invalidateModelsSupportingModifier(modifierId: ModifierIdType) {
+  function invalidateModelsSupportingModifiers(
+    modifierIds: readonly ModifierIdType[],
+  ) {
+    const modifierIdSet = new Set(modifierIds);
     let keptErrorMessage = false;
     for (const modelId of comfortModelOrder) {
-      if (!comfortModelConfigs[modelId].modifiers.some(({ id }) => id === modifierId)) continue;
+      if (!comfortModelConfigs[modelId].modifiers.some(({ id }) => modifierIdSet.has(id))) {
+        continue;
+      }
       invalidateModel(modelId, { keepErrorMessage: keptErrorMessage });
       keptErrorMessage = true;
     }
@@ -239,7 +247,18 @@ export function createComfortToolState(): ComfortToolController {
     );
   }
 
-  function getInputModifierControls() {
+  function getInputModifierDraft() {
+    return createInputModifierDraft(
+      getActiveModelConfig(),
+      state.activeModifiersByInput,
+      state.modifierInputsByInput,
+      getVisibleInputIds(),
+    );
+  }
+
+  function getInputModifierControls(
+    draft?: readonly InputModifierDraftEntry[],
+  ) {
     return buildInputModifierControls({
       config: getActiveModelConfig(),
       inputsByInput: state.inputsByInput,
@@ -247,6 +266,7 @@ export function createComfortToolState(): ComfortToolController {
       modifierInputsByInput: state.modifierInputsByInput,
       visibleInputIds: getVisibleInputIds(),
       unitSystem: state.ui.unitSystem,
+      draft,
     });
   }
 
@@ -357,6 +377,7 @@ export function createComfortToolState(): ComfortToolController {
         .map((control) => control.behavior.buildViewModel(context))
         .filter((control) => !control.hidden);
     },
+    getInputModifierDraft,
     getInputModifierControls,
     getEffectiveInputsByInput,
     getResultSections: () => {
@@ -672,8 +693,17 @@ export function createComfortToolState(): ComfortToolController {
     modifierId: ModifierIdType,
     options?: { immediate?: boolean },
   ) {
-    invalidateModelsSupportingModifier(modifierId);
-    if (getActiveModelConfig().modifiers.some(({ id }) => id === modifierId)) {
+    refreshAfterModifierChanges([modifierId], options);
+  }
+
+  function refreshAfterModifierChanges(
+    modifierIds: readonly ModifierIdType[],
+    options?: { immediate?: boolean },
+  ) {
+    if (modifierIds.length === 0) return;
+    const modifierIdSet = new Set(modifierIds);
+    invalidateModelsSupportingModifiers(modifierIds);
+    if (getActiveModelConfig().modifiers.some(({ id }) => modifierIdSet.has(id))) {
       scheduleCalculationInternal({ immediate: options?.immediate });
     }
   }
@@ -732,6 +762,44 @@ export function createComfortToolState(): ComfortToolController {
     return true;
   }
 
+  function applyInputModifierDraft(
+    draft: readonly InputModifierDraftEntry[],
+  ): boolean {
+    const config = getActiveModelConfig();
+    const visibleInputIds = getVisibleInputIds();
+    if (!isInputModifierDraftValid(config, visibleInputIds, draft)) {
+      return false;
+    }
+
+    const modifiersWithEffectiveChanges = new Set<ModifierIdType>();
+    for (const entry of draft) {
+      const modifier = findModelModifier(config, entry.modifierId);
+      if (!modifier) return false;
+
+      const wasEnabled = state.activeModifiersByInput[entry.inputId][entry.modifierId];
+      const inputsChanged = modifier.extraInputs.some((fieldKey) => (
+        state.modifierInputsByInput[entry.inputId][entry.modifierId][fieldKey]
+          !== entry.inputs[fieldKey]
+      ));
+      if (wasEnabled !== entry.enabled || (inputsChanged && (wasEnabled || entry.enabled))) {
+        modifiersWithEffectiveChanges.add(entry.modifierId);
+      }
+    }
+
+    for (const entry of draft) {
+      state.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
+      state.modifierInputsByInput[entry.inputId][entry.modifierId] = {
+        ...entry.inputs,
+      };
+    }
+
+    refreshAfterModifierChanges(
+      [...modifiersWithEffectiveChanges],
+      { immediate: true },
+    );
+    return true;
+  }
+
   const actions = {
     setSelectedModel,
     setSelectedChart,
@@ -760,6 +828,7 @@ export function createComfortToolState(): ComfortToolController {
     updateInput,
     updateModifierInput,
     setModifierEnabled,
+    applyInputModifierDraft,
     scheduleCalculation: (scheduleOptions?: { immediate?: boolean; force?: boolean }) => scheduleCalculationInternal(scheduleOptions),
     confirmModelSwitch,
     cancelModelSwitch,

@@ -23,6 +23,7 @@ import {
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import type {
   ActiveModifiersByInputState,
+  InputModifierDraftEntry,
   InputModifierControlViewModel,
   InputsByInputState,
   ModifierInputsByInputState,
@@ -61,6 +62,185 @@ export function findModelModifier(
   return config.modifiers.find(({ id }) => id === modifierId);
 }
 
+function cloneModifierState(
+  activeModifiersByInput: ActiveModifiersByInputState,
+  modifierInputsByInput: ModifierInputsByInputState,
+): {
+  activeModifiersByInput: ActiveModifiersByInputState;
+  modifierInputsByInput: ModifierInputsByInputState;
+} {
+  return {
+    activeModifiersByInput: inputOrder.reduce((byInput, inputId) => {
+      byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
+        byModifier[modifierId] = activeModifiersByInput[inputId][modifierId];
+        return byModifier;
+      }, {} as Record<ModifierIdType, boolean>);
+      return byInput;
+    }, {} as ActiveModifiersByInputState),
+    modifierInputsByInput: inputOrder.reduce((byInput, inputId) => {
+      byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
+        byModifier[modifierId] = {
+          ...modifierInputsByInput[inputId][modifierId],
+        };
+        return byModifier;
+      }, {} as ModifierInputsByInputState[typeof inputId]);
+      return byInput;
+    }, {} as ModifierInputsByInputState),
+  };
+}
+
+export function createInputModifierDraft(
+  config: RuntimeComfortModelDefinition,
+  activeModifiersByInput: ActiveModifiersByInputState,
+  modifierInputsByInput: ModifierInputsByInputState,
+  visibleInputIds: readonly InputIdType[],
+): InputModifierDraftEntry[] {
+  return visibleInputIds.flatMap((inputId) => config.modifiers.map((modifier) => ({
+    inputId,
+    modifierId: modifier.id,
+    enabled: activeModifiersByInput[inputId][modifier.id],
+    inputs: modifier.extraInputs.reduce((values, fieldKey) => {
+      values[fieldKey] = modifierInputsByInput[inputId][modifier.id][fieldKey] ?? null;
+      return values;
+    }, {} as InputModifierDraftEntry["inputs"]),
+  })));
+}
+
+export function isInputModifierDraftValid(
+  config: RuntimeComfortModelDefinition,
+  visibleInputIds: readonly InputIdType[],
+  draft: readonly InputModifierDraftEntry[],
+): boolean {
+  const expectedEntryCount = visibleInputIds.length * config.modifiers.length;
+  if (draft.length !== expectedEntryCount) return false;
+
+  const expectedKeys = new Set(visibleInputIds.flatMap((inputId) => (
+    config.modifiers.map(({ id }) => `${inputId}:${id}`)
+  )));
+  const seenKeys = new Set<string>();
+
+  for (const entry of draft) {
+    const modifier = findModelModifier(config, entry.modifierId);
+    const entryKey = `${entry.inputId}:${entry.modifierId}`;
+    if (
+      !modifier
+      || !visibleInputIds.includes(entry.inputId)
+      || !expectedKeys.has(entryKey)
+      || seenKeys.has(entryKey)
+      || typeof entry.enabled !== "boolean"
+      || !entry.inputs
+      || typeof entry.inputs !== "object"
+      || Array.isArray(entry.inputs)
+    ) {
+      return false;
+    }
+
+    const inputKeys = Object.keys(entry.inputs);
+    if (
+      inputKeys.length !== modifier.extraInputs.length
+      || !modifier.extraInputs.every((fieldKey) => inputKeys.includes(fieldKey))
+    ) {
+      return false;
+    }
+
+    for (const fieldKey of modifier.extraInputs) {
+      const value = entry.inputs[fieldKey];
+      if (value !== null && !isModifierFieldValueValid(fieldKey, value)) {
+        return false;
+      }
+    }
+
+    if (entry.enabled && !isModifierConfigurationComplete(modifier, entry.inputs)) {
+      return false;
+    }
+    seenKeys.add(entryKey);
+  }
+
+  return seenKeys.size === expectedKeys.size;
+}
+
+export function mergeInputModifierDraft(
+  activeModifiersByInput: ActiveModifiersByInputState,
+  modifierInputsByInput: ModifierInputsByInputState,
+  draft: readonly InputModifierDraftEntry[],
+) {
+  const merged = cloneModifierState(
+    activeModifiersByInput,
+    modifierInputsByInput,
+  );
+
+  for (const entry of draft) {
+    merged.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
+    merged.modifierInputsByInput[entry.inputId][entry.modifierId] = {
+      ...entry.inputs,
+    };
+  }
+
+  return merged;
+}
+
+export function updateInputModifierDraftInput(
+  draft: readonly InputModifierDraftEntry[],
+  inputId: InputIdType,
+  modifierId: ModifierIdType,
+  fieldKey: ModifierFieldKeyType,
+  rawValue: string,
+  unitSystem: UnitSystemType,
+): InputModifierDraftEntry[] | null {
+  const entryIndex = draft.findIndex((entry) => (
+    entry.inputId === inputId && entry.modifierId === modifierId
+  ));
+  if (entryIndex < 0) return null;
+
+  const entry = draft[entryIndex];
+  const transition = parseModifierInputTransition(
+    inputModifierCatalogue[modifierId],
+    fieldKey,
+    rawValue,
+    unitSystem,
+    entry.enabled,
+  );
+  if (!transition.accepted) return null;
+
+  return draft.map((draftEntry, index) => index === entryIndex
+    ? {
+        ...draftEntry,
+        enabled: transition.disableModifier ? false : draftEntry.enabled,
+        inputs: {
+          ...draftEntry.inputs,
+          [fieldKey]: transition.valueSi ?? null,
+        },
+      }
+    : draftEntry);
+}
+
+export function setInputModifierDraftEnabled(
+  draft: readonly InputModifierDraftEntry[],
+  inputId: InputIdType,
+  modifierId: ModifierIdType,
+  enabled: boolean,
+): InputModifierDraftEntry[] | null {
+  const entryIndex = draft.findIndex((entry) => (
+    entry.inputId === inputId && entry.modifierId === modifierId
+  ));
+  if (entryIndex < 0) return null;
+
+  const entry = draft[entryIndex];
+  if (
+    enabled
+    && !isModifierConfigurationComplete(
+      inputModifierCatalogue[modifierId],
+      entry.inputs,
+    )
+  ) {
+    return null;
+  }
+
+  return draft.map((draftEntry, index) => index === entryIndex
+    ? { ...draftEntry, enabled }
+    : draftEntry);
+}
+
 export function deriveEffectiveInputsByInput(
   inputsByInput: InputsByInputState,
   activeModifiersByInput: ActiveModifiersByInputState,
@@ -87,6 +267,7 @@ interface ModifierControlsOptions {
   modifierInputsByInput: ModifierInputsByInputState;
   visibleInputIds: InputIdType[];
   unitSystem: UnitSystemType;
+  draft?: readonly InputModifierDraftEntry[];
 }
 
 export function buildInputModifierControls({
@@ -96,11 +277,22 @@ export function buildInputModifierControls({
   modifierInputsByInput,
   visibleInputIds,
   unitSystem,
+  draft,
 }: ModifierControlsOptions): InputModifierControlViewModel[] {
+  if (draft && !isInputModifierDraftValid(config, visibleInputIds, draft)) {
+    throw new Error("Invariant violation: invalid input modifier draft.");
+  }
+  const projectedState = draft
+    ? mergeInputModifierDraft(
+        activeModifiersByInput,
+        modifierInputsByInput,
+        draft,
+      )
+    : { activeModifiersByInput, modifierInputsByInput };
   const effectiveInputs = deriveEffectiveInputsByInput(
     inputsByInput,
-    activeModifiersByInput,
-    modifierInputsByInput,
+    projectedState.activeModifiersByInput,
+    projectedState.modifierInputsByInput,
     config.modifiers,
   );
 
@@ -111,13 +303,13 @@ export function buildInputModifierControls({
       label: modifier.label,
       description: modifier.description,
       activeByInput: visibleInputIds.reduce((values, inputId) => {
-        values[inputId] = activeModifiersByInput[inputId][modifierId];
+        values[inputId] = projectedState.activeModifiersByInput[inputId][modifierId];
         return values;
       }, {} as InputModifierControlViewModel["activeByInput"]),
       completeByInput: visibleInputIds.reduce((values, inputId) => {
         values[inputId] = isModifierConfigurationComplete(
           modifier,
-          modifierInputsByInput[inputId][modifierId],
+          projectedState.modifierInputsByInput[inputId][modifierId],
         );
         return values;
       }, {} as InputModifierControlViewModel["completeByInput"]),
@@ -127,7 +319,8 @@ export function buildInputModifierControls({
           key: fieldKey,
           ...displayMeta,
           displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
-            const valueSi = modifierInputsByInput[inputId][modifierId][fieldKey];
+            const valueSi = projectedState
+              .modifierInputsByInput[inputId][modifierId][fieldKey];
             values[inputId] = valueSi == null
               ? ""
               : formatDisplayValue(
@@ -166,7 +359,7 @@ export interface ModifierInputTransition {
 }
 
 export function parseModifierInputTransition(
-  modifier: InputModifier,
+  modifier: Pick<InputModifier, "extraInputs">,
   fieldKey: ModifierFieldKeyType,
   rawValue: string,
   unitSystem: UnitSystemType,
@@ -190,7 +383,7 @@ export function parseModifierInputTransition(
 }
 
 export function canEnableModifier(
-  modifier: InputModifier,
+  modifier: Pick<InputModifier, "extraInputs">,
   values: ModifierInputsByInputState[InputIdType][ModifierIdType],
 ): boolean {
   return isModifierConfigurationComplete(modifier, values);

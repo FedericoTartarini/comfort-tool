@@ -16,7 +16,10 @@ import {
   type ModelOutput,
   type NumericBand,
 } from "../../../models/modelCapabilities";
-import { solarGainModifier } from "../../../services/comfort/inputModifiers";
+import {
+  measuredAirSpeedModifier,
+  solarGainModifier,
+} from "../../../services/comfort/inputModifiers";
 import {
   ComfortModelBuilder,
   buildResultSection,
@@ -224,6 +227,13 @@ describe("ComfortModelBuilder capabilities", () => {
       .setModifiers([solarGainModifier, solarGainModifier])
       .build())
       .toThrow(/duplicate modifiers/i);
+  });
+
+  it("rejects modifiers declared outside the fixed global execution order", () => {
+    expect(() => createExploreBuilder()
+      .setModifiers([solarGainModifier, measuredAirSpeedModifier])
+      .build())
+      .toThrow(/global modifier order/i);
   });
 
   it("requires Explore models to expose an output", () => {

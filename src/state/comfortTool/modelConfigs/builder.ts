@@ -10,7 +10,10 @@ import type { ComfortModel as ComfortModelType } from "../../../models/comfortMo
 import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import type { ModelCharts } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
-import type { InputModifier } from "../../../models/inputModifiers";
+import {
+  modifierOrder,
+  type InputModifier,
+} from "../../../models/inputModifiers";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
 import type { StandardId as StandardIdType } from "../../../models/workspaces";
 import {
@@ -280,6 +283,17 @@ export class ComfortModelBuilder<
     const modifierIds = modifiers.map(({ id }) => id);
     if (new Set(modifierIds).size !== modifierIds.length) {
       throw new Error("Comfort model declarations cannot contain duplicate modifiers.");
+    }
+    const modifierPositions = modifierIds.map((modifierId) => (
+      modifierOrder.indexOf(modifierId)
+    ));
+    if (
+      modifierPositions.some((position) => position < 0)
+      || modifierPositions.some((position, index) => (
+        index > 0 && position <= modifierPositions[index - 1]
+      ))
+    ) {
+      throw new Error("Comfort model declarations must follow the global modifier order.");
     }
 
     const supportsExplore = modes.includes(ChartMode.Explore);

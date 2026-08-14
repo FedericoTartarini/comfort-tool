@@ -42,6 +42,14 @@ export type ModifierInputsByInputState = Record<
   InputIdType,
   Record<ModifierIdType, ModifierInputValues>
 >;
+
+/** One modal-editing draft entry; modifier input values remain canonical SI. */
+export interface InputModifierDraftEntry {
+  inputId: InputIdType;
+  modifierId: ModifierIdType;
+  enabled: boolean;
+  inputs: ModifierInputValues;
+}
 export type ModelOptionsState = ModelOptionsRecord;
 export type ModelOptionsByModelState = Record<ComfortModelType, ModelOptionsState>;
 export type SelectedChartByModelState = Record<ComfortModelType, ChartIdType>;
@@ -225,6 +233,9 @@ export type ComfortToolActions = {
     modifierId: ModifierIdType,
     enabled: boolean,
   ) => boolean;
+  applyInputModifierDraft: (
+    draft: readonly InputModifierDraftEntry[],
+  ) => boolean;
   scheduleCalculation: (options?: { immediate?: boolean; force?: boolean }) => void;
   confirmModelSwitch: (options?: { schedule?: boolean }) => void;
   cancelModelSwitch: () => void;
@@ -233,7 +244,10 @@ export type ComfortToolActions = {
 export type ComfortToolSelectors = {
   getVisibleInputIds: () => InputIdType[];
   getInputControls: () => InputControlViewModel[];
-  getInputModifierControls: () => InputModifierControlViewModel[];
+  getInputModifierDraft: () => InputModifierDraftEntry[];
+  getInputModifierControls: (
+    draft?: readonly InputModifierDraftEntry[],
+  ) => InputModifierControlViewModel[];
   getEffectiveInputsByInput: (modelId?: ComfortModelType) => InputsByInputState;
   getResultSections: () => ResultSectionViewModel[];
   getCurrentChartResult: () => PlotlyChartResponseDto | null;

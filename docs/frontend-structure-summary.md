@@ -127,6 +127,8 @@ PMV ASHRAE and PMV ISO each declare Dynamic Clothing with their own `clo_dynamic
 
 Modifier output never writes back to base state. Disabling any modifier therefore recomputes the effective values from base input through the remaining chain.
 
+The input panel exposes one **Input modifiers** button below its fields when the active model declares support. Its modal clones only the current visible-input/model-modifier matrix into a canonical-SI draft. Draft controls project the complete effective chain for preview, while **Apply** validates and commits the matrix atomically with at most one calculation refresh. **Cancel**, dismissal, or a model/unit/visible-input context change discards the draft. Disabled-but-configured values remain persistable without invalidating a ready calculation because they do not affect effective input.
+
 ## Controller composition
 
 `createComfortToolState.svelte.ts` owns rune initialization, cache invalidation, calculation scheduling, and action/selector composition. Pure logic lives beside it:

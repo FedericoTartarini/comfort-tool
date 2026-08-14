@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ChartId } from "../../models/chartOptions";
 import { ComfortModel } from "../../models/comfortModels";
@@ -182,6 +182,139 @@ describe("createComfortToolState", () => {
       [FieldKey.RelativeAirSpeed]).toBeCloseTo(0.84, 6);
 
     await waitForIdle(toolState);
+  });
+
+  it("projects a canonical-SI draft without mutating state and commits it atomically", async () => {
+    const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
+    try {
+      const toolState = createComfortToolState();
+      toolState.state.ui.compareEnabled = true;
+      toolState.state.modifierInputsByInput[InputId.Input3]
+        [ModifierId.MeasuredAirSpeed][ModifierFieldKey.MeasuredAirSpeed] = 0.9;
+      toolState.state.activeModifiersByInput[InputId.Input3]
+        [ModifierId.MeasuredAirSpeed] = true;
+      toolState.state.inputsByInput[InputId.Input2][FieldKey.MetabolicRate] = 1.8;
+      const baseInput1Speed = toolState.state.inputsByInput[InputId.Input1]
+        [FieldKey.RelativeAirSpeed];
+      const baseInput2Clothing = toolState.state.inputsByInput[InputId.Input2]
+        [FieldKey.ClothingInsulation];
+
+      const draft = toolState.selectors.getInputModifierDraft();
+      expect(draft).toHaveLength(8);
+      const measuredInput1 = draft.find((entry) => (
+        entry.inputId === InputId.Input1
+        && entry.modifierId === ModifierId.MeasuredAirSpeed
+      ));
+      const morningInput2 = draft.find((entry) => (
+        entry.inputId === InputId.Input2
+        && entry.modifierId === ModifierId.MorningClothingEstimate
+      ));
+      const dynamicInput2 = draft.find((entry) => (
+        entry.inputId === InputId.Input2
+        && entry.modifierId === ModifierId.DynamicClothing
+      ));
+      if (!measuredInput1 || !morningInput2 || !dynamicInput2) {
+        throw new Error("Expected complete visible modifier draft entries.");
+      }
+      measuredInput1.inputs[ModifierFieldKey.MeasuredAirSpeed] = 0.6;
+      measuredInput1.enabled = true;
+      morningInput2.inputs[ModifierFieldKey.MorningOutdoorTemperature] = 10;
+      morningInput2.enabled = true;
+      dynamicInput2.enabled = true;
+
+      const projectedControls = toolState.selectors.getInputModifierControls(draft);
+      expect(projectedControls.find(({ id }) => id === ModifierId.MeasuredAirSpeed)
+        ?.activeByInput[InputId.Input1]).toBe(true);
+      expect(toolState.state.modifierInputsByInput[InputId.Input1]
+        [ModifierId.MeasuredAirSpeed][ModifierFieldKey.MeasuredAirSpeed]).toBeNull();
+      expect(toolState.state.activeModifiersByInput[InputId.Input2]
+        [ModifierId.DynamicClothing]).toBe(false);
+
+      expect(toolState.actions.applyInputModifierDraft(draft)).toBe(true);
+      expect(toolState.state.inputsByInput[InputId.Input1]
+        [FieldKey.RelativeAirSpeed]).toBe(baseInput1Speed);
+      expect(toolState.state.inputsByInput[InputId.Input2]
+        [FieldKey.ClothingInsulation]).toBe(baseInput2Clothing);
+      expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input1]
+        [FieldKey.RelativeAirSpeed]).toBeCloseTo(0.6, 6);
+      expect(toolState.selectors.getEffectiveInputsByInput()[InputId.Input2]
+        [FieldKey.ClothingInsulation]).toBeCloseTo(0.485, 3);
+      expect(toolState.state.modifierInputsByInput[InputId.Input3]
+        [ModifierId.MeasuredAirSpeed][ModifierFieldKey.MeasuredAirSpeed]).toBe(0.9);
+      expect(toolState.state.activeModifiersByInput[InputId.Input3]
+        [ModifierId.MeasuredAirSpeed]).toBe(true);
+
+      await waitForIdle(toolState);
+      expect(calculateSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      calculateSpy.mockRestore();
+    }
+  });
+
+  it("rejects an invalid modifier draft without partially writing valid entries", () => {
+    const toolState = createComfortToolState();
+    const draft = toolState.selectors.getInputModifierDraft();
+    const measured = draft.find(({ modifierId }) => (
+      modifierId === ModifierId.MeasuredAirSpeed
+    ));
+    if (!measured) throw new Error("Expected a measured-air-speed draft entry.");
+    measured.inputs[ModifierFieldKey.MeasuredAirSpeed] = 0.6;
+    measured.enabled = true;
+
+    const incompleteDraft = draft.slice(0, -1);
+    const stateBeforeApply = JSON.stringify({
+      active: toolState.state.activeModifiersByInput,
+      inputs: toolState.state.modifierInputsByInput,
+    });
+    expect(toolState.actions.applyInputModifierDraft(incompleteDraft)).toBe(false);
+    expect(JSON.stringify({
+      active: toolState.state.activeModifiersByInput,
+      inputs: toolState.state.modifierInputsByInput,
+    })).toBe(stateBeforeApply);
+
+    const enabledIncompleteDraft = toolState.selectors.getInputModifierDraft();
+    const incompleteMeasured = enabledIncompleteDraft.find(({ modifierId }) => (
+      modifierId === ModifierId.MeasuredAirSpeed
+    ));
+    if (!incompleteMeasured) throw new Error("Expected a measured-air-speed draft entry.");
+    incompleteMeasured.enabled = true;
+    expect(toolState.actions.applyInputModifierDraft(enabledIncompleteDraft)).toBe(false);
+    expect(JSON.stringify({
+      active: toolState.state.activeModifiersByInput,
+      inputs: toolState.state.modifierInputsByInput,
+    })).toBe(stateBeforeApply);
+  });
+
+  it("stores disabled modifier configuration without invalidating or recalculating", async () => {
+    const toolState = createComfortToolState();
+    toolState.actions.scheduleCalculation({ immediate: true, force: true });
+    await waitForIdle(toolState);
+    const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
+    try {
+      const readyCache = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae];
+      expect(readyCache.status).toBe("ready");
+      const draft = toolState.selectors.getInputModifierDraft();
+      const measured = draft.find(({ modifierId }) => (
+        modifierId === ModifierId.MeasuredAirSpeed
+      ));
+      if (!measured) throw new Error("Expected a measured-air-speed draft entry.");
+      measured.inputs[ModifierFieldKey.MeasuredAirSpeed] = 0.6;
+
+      expect(toolState.actions.applyInputModifierDraft(draft)).toBe(true);
+      await Promise.resolve();
+
+      expect(toolState.state.modifierInputsByInput[InputId.Input1]
+        [ModifierId.MeasuredAirSpeed][ModifierFieldKey.MeasuredAirSpeed]).toBe(0.6);
+      expect(toolState.state.activeModifiersByInput[InputId.Input1]
+        [ModifierId.MeasuredAirSpeed]).toBe(false);
+      expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae])
+        .toBe(readyCache);
+      expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae].status)
+        .toBe("ready");
+      expect(calculateSpy).not.toHaveBeenCalled();
+    } finally {
+      calculateSpy.mockRestore();
+    }
   });
 
   it("applies Morning then Dynamic Clothing per input and recomputes the remaining chain", async () => {
