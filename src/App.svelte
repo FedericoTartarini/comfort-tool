@@ -34,6 +34,7 @@
 
   const unregisterNavigation = registerWorkspaceNavigation(navigation);
   onDestroy(unregisterNavigation);
+  onDestroy(timeSeriesState.actions.dispose);
 
   const exploreRoute = appRouteDefinitions.find(
     (definition) => definition.workspace === WorkspaceId.Explore,

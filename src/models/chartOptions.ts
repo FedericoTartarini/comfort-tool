@@ -1,3 +1,5 @@
+import type { ModelOutputKey } from "./modelCapabilities";
+
 export const ChartId = {
   Psychrometric: "psychrometric",
   Stress: "stress",
@@ -9,6 +11,7 @@ export const ChartId = {
   Humidex: "humidex",
   HumidexDynamic: "humidexDynamic",
   WindChillDynamic: "windChillDynamic",
+  PhsExposureHistory: "phsExposureHistory",
   PhsDynamic: "phsDynamic",
 } as const;
 
@@ -22,6 +25,12 @@ export interface ModelChartDefinition {
   readonly locksYAxis: boolean;
   readonly showsZoneToggle: boolean;
   readonly showsLegend: boolean;
+  /** Limits this chart's Explore output picker to the declared model outputs. */
+  readonly supportedExploreOutputs?: readonly ModelOutputKey[];
+  /** Output selected when this chart cannot display the model's current Explore output. */
+  readonly defaultExploreOutput?: ModelOutputKey;
+  /** Whether compare mode should expose the baseline-input picker for this chart. */
+  readonly usesBaselineInput?: boolean;
 }
 
 export interface ModelCharts {

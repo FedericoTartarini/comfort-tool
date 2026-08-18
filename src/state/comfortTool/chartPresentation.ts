@@ -12,6 +12,7 @@ import type { UnitSystem as UnitSystemType } from "../../models/units";
 import { getDynamicAxisOptions } from "./dynamicAxes";
 import {
   buildFieldChartConfig,
+  getChartExploreOutputs,
   getDeclaredExploreOutput,
 } from "./fieldChartState";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
@@ -33,8 +34,11 @@ export function getEffectiveChartBaselineInputId(
 
 function getExploreOutputs(
   config: RuntimeComfortModelDefinition,
+  chartDefinition: ModelChartDefinition,
 ) {
-  return config.modes.includes(ChartMode.Explore) ? config.chartableOutputs : [];
+  return config.modes.includes(ChartMode.Explore)
+    ? getChartExploreOutputs(config, chartDefinition)
+    : [];
 }
 
 function getExploreDefaultBands(
@@ -84,8 +88,8 @@ export function buildChartControlsViewModel({
   unitSystem,
   callbacks,
 }: BuildChartControlsOptions): ChartControlsViewModel {
-  const fieldChartConfig = buildFieldChartConfig(config, settings);
-  const outputs = getExploreOutputs(config);
+  const fieldChartConfig = buildFieldChartConfig(config, settings, chartDefinition);
+  const outputs = getExploreOutputs(config, chartDefinition);
   const baselineInputId = getEffectiveChartBaselineInputId(
     settings,
     compareEnabled,
@@ -131,7 +135,7 @@ export function buildChartControlsViewModel({
       caption,
       feedback,
     },
-    baseline: compareEnabled
+    baseline: compareEnabled && chartDefinition.usesBaselineInput !== false
       ? {
           selectedInputId: baselineInputId,
           visibleInputIds,
@@ -185,7 +189,7 @@ export function getChartLegendZones(
   chartDefinition: ModelChartDefinition,
 ): Array<Pick<Band, "label" | "color">> | null {
   return chartDefinition.showsLegend
-    ? selectLegendBands(buildFieldChartConfig(config, settings).bands)
+    ? selectLegendBands(buildFieldChartConfig(config, settings, chartDefinition).bands)
     : null;
 }
 
@@ -195,7 +199,7 @@ export function getChartLegendTitle(
   chartDefinition: ModelChartDefinition,
 ): string {
   if (!chartDefinition.showsLegend) return "";
-  const fieldChartConfig = buildFieldChartConfig(config, settings);
+  const fieldChartConfig = buildFieldChartConfig(config, settings, chartDefinition);
   if (fieldChartConfig.mode === ChartMode.Compliance) {
     if (!config.complianceSpec) {
       throw new Error(

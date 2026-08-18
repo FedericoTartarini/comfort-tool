@@ -62,7 +62,7 @@ test.describe("workspace routing", () => {
       ["/ASHRAE-55/", "Psychrometric"],
       ["/ISO-7730/", "Psychrometric"],
       ["/EN-16798-1/", "Adaptive"],
-      ["/ISO-7933/", "Dynamic"],
+      ["/ISO-7933/", "Exposure history"],
       ["/Explore/", "Psychrometric"],
     ] as const) {
       await page.goto(path);

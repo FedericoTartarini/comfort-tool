@@ -179,6 +179,36 @@ describe("shareState strict v1 codec", () => {
       .toBe(Infinity);
   });
 
+  it("preserves both PHS chart IDs in strict v1 snapshots", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.Phs2023;
+    toolState.actions.setChartMode(ChartMode.Explore);
+    toolState.actions.setSelectedChart(ChartId.PhsDynamic);
+    toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
+
+    const dynamicSnapshot = createShareStateSnapshot(toolState.state);
+    expect(dynamicSnapshot.version).toBe(1);
+    expect(deserializeShareState(serializeShareState(dynamicSnapshot)))
+      .toEqual(dynamicSnapshot);
+    expect(dynamicSnapshot.models[ComfortModel.Phs2023].selectedChart)
+      .toBe(ChartId.PhsDynamic);
+
+    toolState.actions.setSelectedChart(ChartId.PhsExposureHistory);
+    const historySnapshot = createShareStateSnapshot(toolState.state);
+    expect(historySnapshot.models[ComfortModel.Phs2023].selectedChart)
+      .toBe(ChartId.PhsExposureHistory);
+    expect(historySnapshot.models[ComfortModel.Phs2023]
+      .chartSettings.explore?.zOutput)
+      .toBe(ModelOutputKey.PhsRectalTemperature);
+    expect(deserializeShareState(serializeShareState(historySnapshot)))
+      .toEqual(historySnapshot);
+
+    const incompatible = structuredClone(historySnapshot);
+    incompatible.models[ComfortModel.Phs2023].chartSettings.explore!.zOutput =
+      ModelOutputKey.PhsWaterLoss;
+    expect(parseShareStateSnapshot(incompatible)).toBeNull();
+  });
+
   it("round-trips built-in and edited UTF-8 labels through the codec and URL", () => {
     const toolState = createComfortToolState();
     toolState.actions.setChartMode(ChartMode.Explore);

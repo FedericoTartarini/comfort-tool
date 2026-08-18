@@ -1,70 +1,76 @@
 import type {
-  PhsPersonSettingsSi,
-  PhsPosture,
-  PhsTimeSeriesResult,
-  PhsTimeSeriesSegment,
-} from "../../models/phs";
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
-import type {
-  PhsSegmentPreset,
-  TimeSeriesChartSet,
+  TimeSeriesChartViewModel,
+  TimeSeriesEditorViewModel,
+  TimeSeriesModelReference,
+  TimeSeriesSummaryItem,
 } from "../../models/timeSeries";
+import type { UnitSystem as UnitSystemType } from "../../models/units";
 import type { TimeSeriesModelId } from "./modelConfigs";
 
 export type TimeSeriesRunStatus =
-  | "idle"
-  | "dirty"
-  | "running"
+  | "waiting"
+  | "updating"
   | "ready"
   | "error";
 
 export interface TimeSeriesStateSlice {
   selectedModel: TimeSeriesModelId;
   unitSystem: UnitSystemType;
-  segments: PhsTimeSeriesSegment[];
-  person: PhsPersonSettingsSi;
-  status: TimeSeriesRunStatus;
-  validationIssues: string[];
-  lastSuccessfulResult: PhsTimeSeriesResult | null;
+  draftByModel: Record<TimeSeriesModelId, unknown>;
+  resultByModel: Record<TimeSeriesModelId, unknown | null>;
+  statusByModel: Record<TimeSeriesModelId, TimeSeriesRunStatus>;
+  errorsByModel: Record<TimeSeriesModelId, string[]>;
+  revisionByModel: Record<TimeSeriesModelId, number>;
+  progressByModel: Record<TimeSeriesModelId, number>;
+}
+
+export interface TimeSeriesModelOption {
+  readonly name: string;
+  readonly value: TimeSeriesModelId;
+}
+
+export interface TimeSeriesModelViewModel {
+  readonly label: string;
+  readonly description: string;
+  readonly standardLabel: string;
+  readonly reference?: TimeSeriesModelReference;
 }
 
 export interface TimeSeriesActions {
+  start: () => void;
+  dispose: () => void;
+  selectModel: (modelId: TimeSeriesModelId) => void;
   toggleUnitSystem: () => void;
   updateSegmentName: (segmentId: string, name: string) => void;
-  updateSegmentField: (
+  updateSegmentDuration: (segmentId: string, rawValue: string) => boolean;
+  updateSegmentControl: (
     segmentId: string,
-    field: FieldKeyType,
+    controlId: string,
     rawDisplayValue: string,
   ) => boolean;
-  updateSegmentDuration: (
-    segmentId: string,
-    rawValue: string,
-  ) => boolean;
-  addSegment: (preset: PhsSegmentPreset) => void;
+  addSegment: (presetId: string) => void;
   duplicateSegment: (segmentId: string) => void;
   removeSegment: (segmentId: string) => void;
   moveSegment: (segmentId: string, direction: -1 | 1) => void;
-  updatePersonNumber: (
-    field: "weightKg" | "heightM",
-    rawDisplayValue: string,
+  updateSettingControl: (
+    controlId: string,
+    value: string | boolean,
   ) => boolean;
-  setPosture: (posture: PhsPosture) => void;
-  setAcclimatized: (value: boolean) => void;
-  setDrinkingAllowed: (value: boolean) => void;
   reset: () => void;
-  runSimulation: () => boolean;
 }
 
 export interface TimeSeriesSelectors {
-  getSegmentDisplayValue: (
-    segment: PhsTimeSeriesSegment,
-    field: FieldKeyType,
-  ) => number;
-  getPersonDisplayValue: (field: "weightKg" | "heightM") => number;
+  getModelOptions: () => readonly TimeSeriesModelOption[];
+  getCurrentModel: () => TimeSeriesModelViewModel;
+  getEditor: () => TimeSeriesEditorViewModel;
   getTotalDurationMinutes: () => number;
+  getSelectedResult: () => unknown | null;
+  getStatus: () => TimeSeriesRunStatus;
+  getErrors: () => readonly string[];
+  getProgress: () => number;
   hasStaleResult: () => boolean;
-  getCharts: () => TimeSeriesChartSet | null;
+  getSummary: () => readonly TimeSeriesSummaryItem[];
+  getCharts: () => readonly TimeSeriesChartViewModel[];
 }
 
 export interface TimeSeriesController {

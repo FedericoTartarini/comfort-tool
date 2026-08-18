@@ -6,10 +6,12 @@ import { FieldKey } from "../models/fieldKeys";
 import { InputId } from "../models/inputSlots";
 import { ChartMode, ModelOutputKey } from "../models/modelCapabilities";
 import {
-  PHS_MAX_DURATION_MINUTES,
+  PHS_COMPLIANCE_HORIZON_MINUTES,
   PhsLimitingCriterion,
   phsReferenceEnvironment,
   phsReferencePerson,
+  type PhsHistorySample,
+  type PhsTimeSeriesDraft,
   type PhsTimeSeriesSegment,
 } from "../models/phs";
 import { UnitSystem } from "../models/units";
@@ -17,11 +19,13 @@ import {
   calculatePhs,
   calculatePhsTimeSeries,
   getPhsWaterLossLimitG,
+  simulatePhs,
   validatePhsEnvironment,
   validatePhsTimeSeries,
 } from "./phsCalculation";
 import { phsModelConfig } from "./phs";
 import { phsTimeSeriesModelDefinition } from "./phsTimeSeries";
+import { downsamplePhsHistorySamples } from "./phsTimeSeriesCharts";
 
 function segment(
   id: string,
@@ -37,23 +41,32 @@ function segment(
   };
 }
 
+function analysisResult() {
+  return simulatePhs({
+    segments: [segment("analysis", PHS_COMPLIANCE_HORIZON_MINUTES)],
+    person: phsReferencePerson,
+    recordHistory: true,
+  });
+}
+
 describe("PHS ISO 7933:2023", () => {
   it("matches the selected-library reference calculation", () => {
     const result = calculatePhs({
       ...phsReferenceEnvironment,
       person: phsReferencePerson,
-      durationMinutes: PHS_MAX_DURATION_MINUTES,
+      durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
     });
 
     expect(result.valid).toBe(true);
     expect(result.tRe).toBeCloseTo(41.42377, 4);
-    expect(result.dLimTreMinutes).toBe(54);
-    expect(result.dLimWaterLossMinutes).toBe(165);
+    expect(result.firstRectalLimitMinute).toBe(54);
+    expect(result.firstWaterLossLimitMinute).toBe(165);
     expect(result.limitingExposureTimeMinutes).toBe(54);
     expect(result.limitingCriterion).toBe(
       PhsLimitingCriterion.RectalTemperature,
     );
     expect(result.sweatLossG).toBeCloseTo(8918.95, 1);
+    expect(result.samples).toBeUndefined();
   });
 
   it("returns an explicit out-of-range result", () => {
@@ -76,7 +89,7 @@ describe("PHS ISO 7933:2023", () => {
     expect(result.tRe).toBeNaN();
   });
 
-  it("carries physiological state across segments", () => {
+  it("uses one stateful simulator for one and many segments", () => {
     const oneSegment = calculatePhsTimeSeries(
       [segment("one", 120)],
       phsReferencePerson,
@@ -91,49 +104,118 @@ describe("PHS ISO 7933:2023", () => {
       durationMinutes: 120,
     });
 
-    expect(twoSegments.points).toHaveLength(121);
-    expect(twoSegments.points[60].segmentId).toBe("first");
-    expect(twoSegments.points[61].segmentId).toBe("second");
-    expect(twoSegments.points[120].tRe).toBeCloseTo(oneSegment.points[120].tRe, 10);
-    expect(twoSegments.points[120].tRe).toBeCloseTo(direct.tRe, 10);
-    expect(twoSegments.points[120].sweatLossG)
-      .toBeCloseTo(oneSegment.points[120].sweatLossG, 8);
+    expect(twoSegments.samples).toHaveLength(121);
+    expect(twoSegments.samples?.[60].segmentId).toBe("first");
+    expect(twoSegments.samples?.[61].segmentId).toBe("second");
+    expect(twoSegments.tRe).toBeCloseTo(oneSegment.tRe, 10);
+    expect(twoSegments.tRe).toBeCloseTo(direct.tRe, 10);
+    expect(twoSegments.sweatLossG).toBeCloseTo(oneSegment.sweatLossG, 8);
   });
 
-  it("detects the first temperature and water-loss limits", () => {
-    const result = calculatePhsTimeSeries(
-      [segment("reference", 480)],
+  it("preserves physiological continuity when conditions change", () => {
+    const sequence = calculatePhsTimeSeries(
+      [
+        segment("work", 60),
+        segment("rest", 60, { met: 1.2, tdb: 25, tr: 25, rh: 50 }),
+      ],
+      phsReferencePerson,
+    );
+    const restOnly = calculatePhsTimeSeries(
+      [segment("rest", 60, { met: 1.2, tdb: 25, tr: 25, rh: 50 })],
       phsReferencePerson,
     );
 
+    expect(sequence.samples?.[61].tRe).toBeGreaterThan(
+      restOnly.samples?.[1].tRe ?? Infinity,
+    );
+    expect(sequence.tRe).not.toBeCloseTo(restOnly.tRe, 4);
+  });
+
+  it("detects both limiting criteria and accepts histories beyond eight hours", () => {
+    const result = calculatePhsTimeSeries(
+      [segment("reference", 600)],
+      phsReferencePerson,
+    );
+
+    expect(validatePhsTimeSeries(
+      [segment("one", 300), segment("two", 301)],
+      phsReferencePerson,
+    )).toEqual([]);
+    expect(result.totalDurationMinutes).toBe(600);
+    expect(result.samples).toHaveLength(601);
     expect(result.firstRectalLimitMinute).toBe(54);
     expect(result.firstWaterLossLimitMinute).toBe(165);
     expect(result.limitingMinute).toBe(54);
-    expect(result.limitingCriterion).toBe(
-      PhsLimitingCriterion.RectalTemperature,
-    );
     expect(result.waterLossLimitG).toBe(getPhsWaterLossLimitG(phsReferencePerson));
   });
 
-  it("validates total duration and per-segment applicability", () => {
+  it("still validates positive whole-minute durations and applicability", () => {
     expect(validatePhsTimeSeries(
-      [segment("one", 300), segment("two", 181)],
+      [segment("fraction", 1.5)],
       phsReferencePerson,
-    )).toContain("Total scenario duration cannot exceed 480 minutes.");
+    )[0]).toContain("positive whole number");
     expect(validatePhsTimeSeries(
       [segment("cold", 60, { tdb: 10 })],
       phsReferencePerson,
     )[0]).toContain("cold: Air temperature");
   });
 
-  it("declares Compliance and Explore and builds a bounded 31 by 31 grid", () => {
-    const result = calculatePhs({
-      ...phsReferenceEnvironment,
-      person: phsReferencePerson,
-      durationMinutes: 480,
-    });
-    const chart = phsModelConfig.buildChartResult(
+  it("declares exposure history first and retains the 31 by 31 field chart", () => {
+    const result = analysisResult();
+    const resultsByInput = {
+      [InputId.Input1]: result,
+      [InputId.Input2]: null,
+      [InputId.Input3]: null,
+    };
+    const chartSource = {
+      inputs: { [InputId.Input1]: phsReferenceEnvironment },
+    };
+    const complianceContext = {
+      unitSystem: UnitSystem.SI,
+      baselineInputId: InputId.Input1,
+      fieldChartConfig: {
+        mode: ChartMode.Compliance,
+        xField: FieldKey.DryBulbTemperature,
+        yField: FieldKey.RelativeHumidity,
+        zOutput: ModelOutputKey.PhsLimitingExposureTime,
+        bands: phsModelConfig.complianceSpec!.bands,
+      },
+    } as const;
+    const exposureChart = phsModelConfig.buildChartResult(
+      ChartId.PhsExposureHistory,
+      chartSource,
+      resultsByInput,
+      complianceContext,
+    );
+    const fieldChart = phsModelConfig.buildChartResult(
       ChartId.PhsDynamic,
+      chartSource,
+      resultsByInput,
+      complianceContext,
+    );
+
+    expect(phsModelConfig.id).toBe(ComfortModel.Phs2023);
+    expect(phsModelConfig.charts.defaultId).toBe(ChartId.PhsExposureHistory);
+    expect(phsModelConfig.charts.entries.map(({ id }) => id)).toEqual([
+      ChartId.PhsExposureHistory,
+      ChartId.PhsDynamic,
+    ]);
+    expect(exposureChart?.traces.map(({ name }) => name)).toEqual([
+      "Rectal temperature",
+      "Core temperature",
+      "Maximum rectal temperature",
+      "First rectal-temperature limit",
+    ]);
+    expect(exposureChart?.traces[1].visible).toBe("legendonly");
+    expect(fieldChart?.traces[0].type).toBe("contour");
+    expect(fieldChart?.traces[0].z).toHaveLength(31);
+    expect(fieldChart?.traces[0].z?.[0]).toHaveLength(31);
+  });
+
+  it("uses an edited Explore rectal-temperature threshold on exposure history", () => {
+    const result = analysisResult();
+    const chart = phsModelConfig.buildChartResult(
+      ChartId.PhsExposureHistory,
       { inputs: { [InputId.Input1]: phsReferenceEnvironment } },
       {
         [InputId.Input1]: result,
@@ -144,40 +226,115 @@ describe("PHS ISO 7933:2023", () => {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
-          mode: ChartMode.Compliance,
+          mode: ChartMode.Explore,
           xField: FieldKey.DryBulbTemperature,
           yField: FieldKey.RelativeHumidity,
-          zOutput: ModelOutputKey.PhsLimitingExposureTime,
-          bands: phsModelConfig.complianceSpec!.bands,
+          zOutput: ModelOutputKey.PhsRectalTemperature,
+          bands: [
+            { min: -Infinity, max: 37.5, label: "Below", color: "#bbf7d0" },
+            { min: 37.5, max: Infinity, label: "Above", color: "#fecaca" },
+          ],
         },
       },
     );
 
-    expect(phsModelConfig.id).toBe(ComfortModel.Phs2023);
-    expect(phsModelConfig.modes).toEqual([ChartMode.Compliance, ChartMode.Explore]);
-    expect(chart?.traces[0].type).toBe("contour");
-    expect(chart?.traces[0].z).toHaveLength(31);
-    expect(chart?.traces[0].z?.[0]).toHaveLength(31);
-    expect(chart?.traces.some(({ type }) => type === "scatter")).toBe(true);
-    expect(phsModelConfig.complianceSpec?.getFeedback(result).passes).toBe(false);
+    expect(chart?.traces[2].name).toBe("Editable rectal-temperature threshold");
+    expect(chart?.traces[2].y).toEqual([37.5, 37.5]);
+    expect(chart?.traces[3].name).toBe("First editable-threshold crossing");
   });
 
-  it("builds the CBE-style temperature chart and water-loss extension", () => {
-    const result = calculatePhsTimeSeries(
-      [segment("reference", 60)],
-      phsReferencePerson,
+  it("builds synchronized Time-series charts from the same history", () => {
+    const draft: PhsTimeSeriesDraft = {
+      segments: [segment("reference", 60)],
+      person: { ...phsReferencePerson },
+    };
+    const result = calculatePhsTimeSeries(draft.segments, draft.person);
+    const temperature = phsTimeSeriesModelDefinition.charts[0].build(
+      result,
+      draft,
+      UnitSystem.SI,
     );
-    const charts = phsTimeSeriesModelDefinition.buildCharts(result, UnitSystem.SI);
+    const waterLoss = phsTimeSeriesModelDefinition.charts[1].build(
+      result,
+      draft,
+      UnitSystem.SI,
+    );
 
-    expect(charts.primary.traces.map(({ name }) => name)).toEqual([
+    expect(temperature.traces.map(({ name }) => name)).toEqual([
       "Rectal temperature",
       "Core temperature",
       "Maximum rectal temperature",
     ]);
-    expect(charts.primary.traces[0].line?.color).toBe("#3BBDED");
-    expect(charts.primary.traces[1].line?.color).toBe("#1B679B");
-    expect(charts.primary.traces[1].visible).toBe("legendonly");
-    expect(charts.primary.traces[2].line?.color).toBe("#ed3b3b");
-    expect(charts.secondary.traces[1].name).toBe("Water-loss limit");
+    expect(temperature.traces[1].visible).toBe("legendonly");
+    expect(waterLoss.traces[1].name).toBe("5% body-mass limit");
+  });
+
+  it("draws matching phase boundaries on both Time-series charts", () => {
+    const draft: PhsTimeSeriesDraft = {
+      segments: [segment("work", 30), segment("rest", 30, { met: 1.2 })],
+      person: { ...phsReferencePerson },
+    };
+    const result = calculatePhsTimeSeries(draft.segments, draft.person);
+    draft.segments[0].durationMinutes = 5;
+    draft.person.drinkingAllowed = false;
+    const charts = phsTimeSeriesModelDefinition.charts.map(({ build }) => (
+      build(result, draft, UnitSystem.SI)
+    ));
+
+    for (const chart of charts) {
+      const boundaries = chart.traces.find(
+        ({ name }) => name === "Segment boundaries",
+      );
+      expect(boundaries?.x).toEqual([0.5, 0.5, Number.NaN]);
+    }
+    expect(charts[1].traces[1].name).toBe("5% body-mass limit");
+  });
+
+  it("reports asynchronous progress and honors cancellation", async () => {
+    const draft = phsTimeSeriesModelDefinition.createDefaultDraft();
+    draft.segments[0].durationMinutes = 5;
+    const progress: number[] = [];
+    const completedController = new AbortController();
+
+    const result = await phsTimeSeriesModelDefinition.simulate(draft, {
+      signal: completedController.signal,
+      onProgress: (value) => progress.push(value),
+    });
+
+    expect(result.totalDurationMinutes).toBe(5);
+    expect(progress[progress.length - 1]).toBe(1);
+
+    const cancelledController = new AbortController();
+    cancelledController.abort();
+    await expect(phsTimeSeriesModelDefinition.simulate(draft, {
+      signal: cancelledController.signal,
+      onProgress: () => undefined,
+    })).rejects.toThrow("PHS simulation cancelled");
+  });
+
+  it("downsamples large histories without losing boundaries, peaks, crossings, or final points", () => {
+    const samples: PhsHistorySample[] = Array.from({ length: 5_001 }, (_, minute) => ({
+      minute,
+      hours: minute / 60,
+      segmentId: minute <= 2_500 ? "one" : "two",
+      segmentName: minute <= 2_500 ? "One" : "Two",
+      tRe: minute === 1_234 ? 41 : 36.8 + minute / 10_000,
+      tCr: 36.8 + Math.sin(minute / 100),
+      tSk: 34,
+      sweatLossG: minute * 2,
+    }));
+    const reduced = downsamplePhsHistorySamples(samples, {
+      maxPoints: 120,
+      temperatureThresholdsC: [38],
+      waterLossThresholdsG: [3_750],
+    });
+    const retainedMinutes = new Set(reduced.map(({ minute }) => minute));
+
+    expect(reduced.length).toBeLessThanOrEqual(120);
+    expect(retainedMinutes.has(1_234)).toBe(true);
+    expect(retainedMinutes.has(2_500)).toBe(true);
+    expect(retainedMinutes.has(2_501)).toBe(true);
+    expect(retainedMinutes.has(5_000)).toBe(true);
+    expect(reduced.some(({ sweatLossG }) => sweatLossG >= 3_750)).toBe(true);
   });
 });

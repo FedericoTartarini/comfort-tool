@@ -12,7 +12,7 @@ import {
 import { ThermalZone } from "../models/thermalZone";
 import { StandardId } from "../models/workspaces";
 import {
-  PHS_MAX_DURATION_MINUTES,
+  PHS_COMPLIANCE_HORIZON_MINUTES,
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PhsLimitingCriterion,
   phsReferencePerson,
@@ -38,8 +38,8 @@ import {
   parseEmptyOptions,
 } from "../state/comfortTool/modelConfigs/builder";
 import {
-  calculatePhs,
   getPhsWaterLossLimitG,
+  simulatePhs,
 } from "./phsCalculation";
 import { buildPhsChart } from "./phsCharts";
 
@@ -51,13 +51,13 @@ const REFERENCE_WATER_LOSS_LIMIT_G = getPhsWaterLossLimitG(phsReferencePerson);
 const limitingExposureZones = [
   new ThermalZone({
     label: "Limit reached before 8 h",
-    max: PHS_MAX_DURATION_MINUTES,
+    max: PHS_COMPLIANCE_HORIZON_MINUTES,
     color: "#fecaca",
     textColor: "#b91c1c",
   }),
   new ThermalZone({
     label: "No limit reached before 8 h",
-    min: PHS_MAX_DURATION_MINUTES,
+    min: PHS_COMPLIANCE_HORIZON_MINUTES,
     color: "#bbf7d0",
     textColor: "#047857",
   }),
@@ -169,7 +169,8 @@ builder
           passes: false,
         };
       }
-      const passes = result.limitingExposureTimeMinutes >= PHS_MAX_DURATION_MINUTES;
+      const passes = result.limitingExposureTimeMinutes
+        >= PHS_COMPLIANCE_HORIZON_MINUTES;
       return {
         text: passes
           ? "No exposure limit is reached before 8 hours."
@@ -180,16 +181,33 @@ builder
   })
   .setModifiers([])
   .setCharts({
-    defaultId: ChartId.PhsDynamic,
-    entries: [{
-      id: ChartId.PhsDynamic,
-      name: "Dynamic",
-      emptyMessage: "No PHS chart yet.",
-      allowsAxisSelection: true,
-      locksYAxis: false,
-      showsZoneToggle: false,
-      showsLegend: true,
-    }],
+    defaultId: ChartId.PhsExposureHistory,
+    entries: [
+      {
+        id: ChartId.PhsExposureHistory,
+        name: "Exposure history",
+        emptyMessage: "No PHS exposure history yet.",
+        allowsAxisSelection: false,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: false,
+        supportedExploreOutputs: [ModelOutputKey.PhsRectalTemperature],
+        defaultExploreOutput: ModelOutputKey.PhsRectalTemperature,
+        usesBaselineInput: true,
+      },
+      {
+        id: ChartId.PhsDynamic,
+        name: "Dynamic",
+        emptyMessage: "No PHS field chart yet.",
+        allowsAxisSelection: true,
+        locksYAxis: false,
+        showsZoneToggle: false,
+        showsLegend: true,
+        supportedExploreOutputs: phsChartableOutputs.map(({ key }) => key),
+        defaultExploreOutput: ModelOutputKey.PhsLimitingExposureTime,
+        usesBaselineInput: true,
+      },
+    ],
   });
 
 builder.addControl({
@@ -256,10 +274,15 @@ builder.setCalculator((context, visibleInputIds) =>
     context,
     visibleInputIds,
     mapRequest: requestAdapter.mapRequest,
-    calculate: (request) => calculatePhs({
-      ...request,
-      durationMinutes: PHS_MAX_DURATION_MINUTES,
+    calculate: (request) => simulatePhs({
+      segments: [{
+        id: "analysis-exposure",
+        name: "Eight-hour assessment",
+        durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
+        ...request,
+      }],
       person: phsReferencePerson,
+      recordHistory: true,
     }),
   }));
 

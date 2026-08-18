@@ -95,7 +95,7 @@ describe("createComfortToolState", () => {
       [ComfortModel.HeatIndex]: ChartId.HeatIndexRanges,
       [ComfortModel.Humidex]: ChartId.Humidex,
       [ComfortModel.WindChill]: ChartId.WindChillDynamic,
-      [ComfortModel.Phs2023]: ChartId.PhsDynamic,
+      [ComfortModel.Phs2023]: ChartId.PhsExposureHistory,
     });
     expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvAshrae])
       .not.toBe(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]);
@@ -572,9 +572,35 @@ describe("createComfortToolState", () => {
         expect(toolState.selectors.getCurrentChartLegendZones())
           .toEqual(expectedLegendBands);
         expect(toolState.selectors.getCurrentChartLegendTitle())
-          .toBe(expectedLegendTitle);
+          .toBe(chart.showsLegend ? expectedLegendTitle : "");
       }
     }
+  });
+
+  it("constrains PHS exposure history to its declared Explore output", () => {
+    const toolState = createComfortToolState();
+    toolState.state.ui.selectedModel = ComfortModel.Phs2023;
+    toolState.actions.setChartMode(ChartMode.Explore);
+
+    expect(toolState.selectors.getCurrentSelectedChart())
+      .toBe(ChartId.PhsExposureHistory);
+    expect(getChartSettings(toolState).explore?.zOutput)
+      .toBe(ModelOutputKey.PhsRectalTemperature);
+    expect(toolState.selectors.getChartControlsViewModel().explore?.outputs.map(
+      ({ key }) => key,
+    )).toEqual([ModelOutputKey.PhsRectalTemperature]);
+
+    toolState.actions.setSelectedChart(ChartId.PhsDynamic);
+    toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
+    expect(getChartSettings(toolState).explore?.zOutput)
+      .toBe(ModelOutputKey.PhsWaterLoss);
+
+    toolState.actions.setSelectedChart(ChartId.PhsExposureHistory);
+    expect(getChartSettings(toolState).explore?.zOutput)
+      .toBe(ModelOutputKey.PhsRectalTemperature);
+    toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
+    expect(getChartSettings(toolState).explore?.zOutput)
+      .toBe(ModelOutputKey.PhsRectalTemperature);
   });
 
   it("keeps ASHRAE and ISO mode settings independent from chart selection", () => {

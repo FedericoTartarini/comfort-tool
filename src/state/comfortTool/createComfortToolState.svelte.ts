@@ -37,6 +37,7 @@ import {
 } from "./dynamicAxes";
 import {
   buildFieldChartConfig,
+  normalizeExploreStateForChart,
   replaceExploreBands,
   seedModelChartSettings,
   selectChartMode,
@@ -348,6 +349,7 @@ export function createComfortToolState(): ComfortToolController {
     return buildFieldChartConfig(
       getActiveModelConfig(),
       getCurrentChartSettings(),
+      getCurrentChartDefinition(),
     );
   }
 
@@ -527,6 +529,13 @@ export function createComfortToolState(): ComfortToolController {
 
     state.ui.selectedChartByModel[state.ui.selectedModel] = nextChart;
 
+    const settings = getCurrentChartSettings();
+    settings.explore = normalizeExploreStateForChart(
+      getActiveModelConfig(),
+      settings.explore,
+      nextDefinition,
+    );
+
     if (nextDefinition.allowsAxisSelection) {
       ensureValidDynamicAxes(getActiveModelConfig());
     }
@@ -605,6 +614,11 @@ export function createComfortToolState(): ComfortToolController {
     );
     if (nextSettings) {
       state.ui.chartSettingsByModel[state.ui.selectedModel] = nextSettings;
+      nextSettings.explore = normalizeExploreStateForChart(
+        getActiveModelConfig(),
+        nextSettings.explore,
+        getCurrentChartDefinition(),
+      );
     }
   }
 
@@ -645,6 +659,7 @@ export function createComfortToolState(): ComfortToolController {
       getActiveModelConfig(),
       getCurrentChartSettings().explore,
       outputKey,
+      getCurrentChartDefinition(),
     );
     if (nextState) {
       getCurrentChartSettings().explore = nextState;

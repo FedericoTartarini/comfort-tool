@@ -15,6 +15,7 @@ import {
 } from "../../models/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
 import {
+  ChartMode,
   type ChartMode as ChartModeType,
   type ModelOutputKey,
   type NumericBand,
@@ -335,14 +336,25 @@ function parseModelSnapshots(
     }
 
     const config = getComfortModelConfig(modelId);
-    if (!config.charts.entries.some(
+    const chartDefinition = config.charts.entries.find(
       ({ id }) => id === modelSnapshot.selectedChart,
-    )) {
+    );
+    if (!chartDefinition) {
       return null;
     }
     const options = config.parseOptions(modelSnapshot.options);
     const chartSettings = parseChartSettings(modelSnapshot.chartSettings, modelId);
     if (!options || !chartSettings) {
+      return null;
+    }
+    if (
+      chartSettings.mode === ChartMode.Explore
+      && chartSettings.explore
+      && chartDefinition.supportedExploreOutputs
+      && !chartDefinition.supportedExploreOutputs.includes(
+        chartSettings.explore.zOutput,
+      )
+    ) {
       return null;
     }
     parsed[modelId] = {

@@ -1,17 +1,52 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PhsPosture } from "../../models/phs";
-import { FieldKey } from "../../models/fieldKeys";
-import { PhsSegmentPreset } from "../../models/timeSeries";
+import { ComfortModel } from "../../models/comfortModels";
+import {
+  PhsPosture,
+  PhsSegmentPreset,
+  type PhsSimulationResult,
+  type PhsTimeSeriesDraft,
+} from "../../models/phs";
 import { UnitSystem } from "../../models/units";
 import { createTimeSeriesState } from "./createTimeSeriesState.svelte";
+import { timeSeriesModelOrder } from "./modelConfigs";
+
+function getDraft(controller: ReturnType<typeof createTimeSeriesState>) {
+  return controller.state.draftByModel[ComfortModel.Phs2023] as PhsTimeSeriesDraft;
+}
+
+function getResult(controller: ReturnType<typeof createTimeSeriesState>) {
+  return controller.state.resultByModel[ComfortModel.Phs2023] as
+    | PhsSimulationResult
+    | null;
+}
+
+async function waitForReady(
+  controller: ReturnType<typeof createTimeSeriesState>,
+) {
+  await vi.waitFor(() => {
+    expect(controller.selectors.getStatus()).toBe("ready");
+  });
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("createTimeSeriesState", () => {
-  it("starts with the editable CBE reference scenario and local SI units", () => {
-    const controller = createTimeSeriesState();
+  it("seeds generic registry-keyed state and calculates on start", async () => {
+    const controller = createTimeSeriesState({ debounceMs: 0 });
+    const draft = getDraft(controller);
 
     expect(controller.state.unitSystem).toBe(UnitSystem.SI);
-    expect(controller.state.segments).toEqual([
+    expect(Object.keys(controller.state.draftByModel)).toEqual(timeSeriesModelOrder);
+    expect(Object.keys(controller.state.resultByModel)).toEqual(timeSeriesModelOrder);
+    expect(Object.keys(controller.state.statusByModel)).toEqual(timeSeriesModelOrder);
+    expect(controller.selectors.getModelOptions()).toEqual([{
+      name: "Predicted Heat Strain (PHS)",
+      value: ComfortModel.Phs2023,
+    }]);
+    expect(draft.segments).toEqual([
       expect.objectContaining({
         name: "CBE reference exposure",
         durationMinutes: 480,
@@ -23,45 +58,55 @@ describe("createTimeSeriesState", () => {
         clo: 0.5,
       }),
     ]);
-    expect(controller.state.person).toEqual(expect.objectContaining({
+    expect(draft.person).toEqual(expect.objectContaining({
       weightKg: 75,
       heightM: 1.8,
       posture: PhsPosture.Standing,
     }));
-    expect(controller.state.lastSuccessfulResult).toBeNull();
+
+    controller.actions.start();
+    await waitForReady(controller);
+    expect(getResult(controller)?.totalDurationMinutes).toBe(480);
+    controller.actions.dispose();
   });
 
-  it("updates only on Run and retains a stale successful result", () => {
-    const controller = createTimeSeriesState();
-    expect(controller.actions.updateSegmentDuration("phs-segment-1", "60"))
+  it("debounces valid edits, commits only the latest revision, and keeps stale results", async () => {
+    vi.useFakeTimers();
+    const controller = createTimeSeriesState({ debounceMs: 300 });
+    controller.actions.start();
+    await waitForReady(controller);
+    const successfulResult = getResult(controller);
+
+    expect(controller.actions.updateSegmentDuration("phs-segment-1", "30"))
       .toBe(true);
-    expect(controller.state.lastSuccessfulResult).toBeNull();
-    expect(controller.actions.runSimulation()).toBe(true);
-    const successfulResult = controller.state.lastSuccessfulResult;
-
-    expect(successfulResult?.totalDurationMinutes).toBe(60);
-    expect(controller.state.status).toBe("ready");
-    expect(controller.actions.updateSegmentField(
-      "phs-segment-1",
-      FieldKey.MetabolicRate,
-      "2.5",
-    )).toBe(true);
-    expect(controller.state.status).toBe("dirty");
+    expect(controller.actions.updateSegmentDuration("phs-segment-1", "45"))
+      .toBe(true);
+    expect(controller.selectors.getStatus()).toBe("waiting");
     expect(controller.selectors.hasStaleResult()).toBe(true);
-    expect(controller.state.lastSuccessfulResult).toBe(successfulResult);
+    expect(getResult(controller)).toBe(successfulResult);
 
-    controller.actions.updateSegmentDuration("phs-segment-1", "481");
-    expect(controller.actions.runSimulation()).toBe(false);
-    expect(controller.state.status).toBe("error");
-    expect(controller.state.lastSuccessfulResult).toBe(successfulResult);
-    expect(controller.selectors.hasStaleResult()).toBe(true);
+    await vi.advanceTimersByTimeAsync(299);
+    expect(getResult(controller)).toBe(successfulResult);
+    await vi.advanceTimersByTimeAsync(1);
+    await vi.waitFor(() => {
+      expect(controller.selectors.getStatus()).toBe("ready");
+    });
+    expect(getResult(controller)?.totalDurationMinutes).toBe(45);
+    expect(controller.state.revisionByModel[ComfortModel.Phs2023]).toBe(3);
+
+    controller.actions.updateSegmentDuration("phs-segment-1", "0");
+    expect(controller.selectors.getStatus()).toBe("waiting");
+    expect(controller.selectors.getErrors()[0]).toContain("positive whole number");
+    expect(getResult(controller)?.totalDurationMinutes).toBe(45);
+    controller.actions.dispose();
   });
 
-  it("adds, duplicates, removes, and orders work/rest segments", () => {
-    const controller = createTimeSeriesState();
+  it("adds, duplicates, removes, and orders model-owned presets", () => {
+    const controller = createTimeSeriesState({ debounceMs: 0 });
     controller.actions.updateSegmentDuration("phs-segment-1", "60");
     controller.actions.addSegment(PhsSegmentPreset.Rest);
-    const rest = controller.state.segments[1];
+    const draft = getDraft(controller);
+    const rest = draft.segments[1];
 
     expect(rest).toEqual(expect.objectContaining({
       name: "Rest",
@@ -70,43 +115,87 @@ describe("createTimeSeriesState", () => {
       met: 1.2,
     }));
     controller.actions.duplicateSegment(rest.id);
-    expect(controller.state.segments[2].name).toBe("Rest copy");
-    controller.actions.moveSegment(controller.state.segments[2].id, -1);
-    expect(controller.state.segments[1].name).toBe("Rest copy");
-    controller.actions.removeSegment(controller.state.segments[1].id);
-    expect(controller.state.segments).toHaveLength(2);
+    expect(draft.segments[2].name).toBe("Rest copy");
+    controller.actions.moveSegment(draft.segments[2].id, -1);
+    expect(draft.segments[1].name).toBe("Rest copy");
+    controller.actions.removeSegment(draft.segments[1].id);
+    expect(draft.segments).toHaveLength(2);
+    controller.actions.dispose();
   });
 
-  it("round-trips local IP display values while preserving SI state", () => {
-    const controller = createTimeSeriesState();
+  it("round-trips generic editor values in IP while canonical drafts stay SI", () => {
+    const controller = createTimeSeriesState({ debounceMs: 0 });
     controller.actions.toggleUnitSystem();
+    let editor = controller.selectors.getEditor();
+    const airTemperature = editor.segments[0].controls.find(
+      ({ label }) => label === "Air temperature",
+    )!;
+    const weight = editor.settingsSections[0].controls.find(
+      ({ label }) => label === "Body weight",
+    )!;
+    const height = editor.settingsSections[0].controls.find(
+      ({ label }) => label === "Body height",
+    )!;
 
-    expect(controller.selectors.getSegmentDisplayValue(
-      controller.state.segments[0],
-      FieldKey.DryBulbTemperature,
-    )).toBeCloseTo(95, 8);
-    expect(controller.selectors.getPersonDisplayValue("weightKg"))
+    expect(airTemperature.value).toBeCloseTo(95, 8);
+    expect(weight.kind === "number" ? weight.value : Number.NaN)
       .toBeCloseTo(165.3467, 3);
-    expect(controller.actions.updateSegmentField(
+    expect(controller.actions.updateSegmentControl(
       "phs-segment-1",
-      FieldKey.DryBulbTemperature,
+      airTemperature.id,
       "100.4",
     )).toBe(true);
-    expect(controller.state.segments[0].tdb).toBeCloseTo(38, 8);
-    expect(controller.actions.updatePersonNumber("heightM", "6"))
-      .toBe(true);
-    expect(controller.state.person.heightM).toBeCloseTo(1.8288, 8);
+    expect(controller.actions.updateSettingControl(height.id, "6")).toBe(true);
+
+    expect(getDraft(controller).segments[0].tdb).toBeCloseTo(38, 8);
+    expect(getDraft(controller).person.heightM).toBeCloseTo(1.8288, 8);
+    editor = controller.selectors.getEditor();
+    expect(editor.segments[0].controls.find(
+      ({ label }) => label === "Air temperature",
+    )?.value).toBeCloseTo(100.4, 8);
+    controller.actions.dispose();
   });
 
-  it("builds charts from the last result and resets independently", () => {
-    const controller = createTimeSeriesState();
-    controller.actions.updateSegmentDuration("phs-segment-1", "30");
-    controller.actions.runSimulation();
+  it("does not calculate for units or phase-name presentation changes", async () => {
+    const controller = createTimeSeriesState({ debounceMs: 0 });
+    controller.actions.start();
+    await waitForReady(controller);
+    const revision = controller.state.revisionByModel[ComfortModel.Phs2023];
+    const result = getResult(controller);
 
-    expect(controller.selectors.getCharts()?.primary.traces).toHaveLength(3);
+    controller.actions.toggleUnitSystem();
+    controller.actions.updateSegmentName("phs-segment-1", "Renamed phase");
+
+    expect(controller.state.revisionByModel[ComfortModel.Phs2023]).toBe(revision);
+    expect(getResult(controller)).toBe(result);
+    expect(controller.selectors.getCharts()[0].chart?.traces[0].hoverMetadata?.[0])
+      .toEqual(["Renamed phase"]);
+    controller.actions.dispose();
+  });
+
+  it("calculates scenarios beyond the Analysis compliance horizon", async () => {
+    const controller = createTimeSeriesState({ debounceMs: 0 });
+    controller.actions.updateSegmentDuration("phs-segment-1", "600");
+    controller.actions.start();
+    await waitForReady(controller);
+
+    expect(controller.selectors.getErrors()).toEqual([]);
+    expect(controller.selectors.getTotalDurationMinutes()).toBe(600);
+    expect(getResult(controller)?.totalDurationMinutes).toBe(600);
+    controller.actions.dispose();
+  });
+
+  it("reset restores defaults and schedules automatic replacement", async () => {
+    const controller = createTimeSeriesState({ debounceMs: 0 });
+    controller.actions.updateSegmentDuration("phs-segment-1", "30");
+    controller.actions.start();
+    await waitForReady(controller);
+    expect(getResult(controller)?.totalDurationMinutes).toBe(30);
+
     controller.actions.reset();
-    expect(controller.selectors.getCharts()).toBeNull();
-    expect(controller.state.status).toBe("idle");
-    expect(controller.state.segments[0].durationMinutes).toBe(480);
+    expect(getDraft(controller).segments[0].durationMinutes).toBe(480);
+    await waitForReady(controller);
+    expect(getResult(controller)?.totalDurationMinutes).toBe(480);
+    controller.actions.dispose();
   });
 });

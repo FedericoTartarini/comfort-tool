@@ -84,13 +84,36 @@ describe("comfort model capability registry", () => {
       [ComfortModel.HeatIndex]: ChartId.HeatIndexRanges,
       [ComfortModel.Humidex]: ChartId.Humidex,
       [ComfortModel.WindChill]: ChartId.WindChillDynamic,
-      [ComfortModel.Phs2023]: ChartId.PhsDynamic,
+      [ComfortModel.Phs2023]: ChartId.PhsExposureHistory,
     };
 
     comfortModelOrder.forEach((modelId) => {
       expect(getComfortModelConfig(modelId).charts.defaultId)
         .toBe(expectedDefaultCharts[modelId]);
     });
+  });
+
+  it("declares both PHS charts and their chart-specific Explore capabilities", () => {
+    const config = getComfortModelConfig(ComfortModel.Phs2023);
+    const [history, dynamic] = config.charts.entries;
+
+    expect(config.charts.defaultId).toBe(ChartId.PhsExposureHistory);
+    expect(history).toEqual(expect.objectContaining({
+      id: ChartId.PhsExposureHistory,
+      allowsAxisSelection: false,
+      usesBaselineInput: true,
+      supportedExploreOutputs: [ModelOutputKey.PhsRectalTemperature],
+      defaultExploreOutput: ModelOutputKey.PhsRectalTemperature,
+    }));
+    expect(dynamic).toEqual(expect.objectContaining({
+      id: ChartId.PhsDynamic,
+      allowsAxisSelection: true,
+      supportedExploreOutputs: [
+        ModelOutputKey.PhsLimitingExposureTime,
+        ModelOutputKey.PhsRectalTemperature,
+        ModelOutputKey.PhsWaterLoss,
+      ],
+    }));
   });
 
   it("identifies the ISO declaration and result metadata as ISO 7730 Category B", () => {

@@ -119,9 +119,14 @@ second navigation list. Time-series support is declared separately and must not 
 
 Explore requires at least one output with valid numeric SI bands. A Compliance-capable model also declares a fixed output, non-empty bands, caption, legend title, and result feedback callback. Compliance output and bands always come from `complianceSpec`; Explore uses the selected output and its editable working bands.
 
-The Explore toolbar shows an Output selector only when `chartableOutputs` contains
-more than one entry. Single-output models still expose their threshold editor without
-rendering a redundant selector.
+The Explore toolbar shows an Output selector only when the selected chart supports more than
+one entry. By default this is the model's complete `chartableOutputs` list. A chart that can
+render only a subset declares `supportedExploreOutputs` and `defaultExploreOutput` in its
+`ModelChartDefinition`; the builder rejects unknown or inconsistent output keys. Use
+`usesBaselineInput: false` only when a chart has no meaningful baseline-input comparison.
+Single-output charts still expose their threshold editor without rendering a redundant
+selector. Chart changes are presentation-only and normalize the selected output to the
+chart's declared default without scheduling calculation.
 
 Bands are array ordered and half open: `min <= value < max`. Do not copy a standard boundary into a second numeric source.
 
@@ -135,16 +140,27 @@ Each standard declaration must still show all standard-specific decisions.
 ### Optional Time-series support
 
 Time-series is a separate product capability. To support it, add a typed
-`TimeSeriesModelDefinition` that owns default segments/settings, preset-segment creation,
-validation, sequence calculation, and chart construction, then register it in the dedicated
-Time-series registry. Do not infer support from the Analysis model's `modes` or
-`chartableOutputs`, and do not put segment durations or physiological carry state into
-canonical Analysis input/share records.
+`TimeSeriesModelDefinition<TDraft, TResult>` that owns opaque draft/result types, defaults and
+cloning, validation, editor controls and presets, asynchronous simulation, summary projection,
+and chart builders. Register it in the dedicated Time-series registry; the enabled model
+selector and all keyed controller records derive from that registry. Do not infer support from
+the Analysis model's `modes` or `chartableOutputs`, and do not put segment durations or
+physiological carry state into canonical Analysis input/share records.
 
-Model-specific sequence calculation and charts remain under `comfortModels`; public state
-shapes belong in `models`, and the Time-series controller consumes the registered runtime
-definition without importing the implementation directly. Time-series numeric state remains
-canonical SI and uses centralized unit conversion for display.
+Model-specific sequence calculation, editor metadata, and charts remain under
+`comfortModels`; generic public contracts belong in `models`, and the Time-series controller
+consumes registered runtime definitions without importing implementations directly.
+Time-series numeric state remains canonical SI and uses centralized unit conversion for
+display.
+
+`simulate()` is asynchronous and receives an `AbortSignal` plus a progress callback. The
+controller automatically runs an initial valid draft, debounces calculation-relevant edits,
+aborts or supersedes older revisions, and commits only the newest result. Invalid edits retain
+the previous successful result. Model definitions should keep presentation-only operations,
+such as units and names, independent of simulation; expensive minute-by-minute models should
+perform the complete calculation in a client-side worker and may downsample only chart DTOs.
+Do not add a generic total-duration cap unless the model's governing calculation genuinely
+requires one.
 
 ## 6. Attach executable modifiers
 

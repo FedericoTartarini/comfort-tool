@@ -2,15 +2,17 @@ import { phs } from "jsthermalcomfort";
 
 import { CalculationSource } from "../models/calculationMetadata";
 import {
-  PHS_MAX_DURATION_MINUTES,
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PHS_STANDARD_VERSION,
   PhsLimitingCriterion,
   type PhsEnvironmentSi,
+  type PhsHistorySample,
   type PhsPersonSettingsSi,
   type PhsRequestDto,
   type PhsResponseDto,
-  type PhsTimeSeriesPoint,
+  type PhsSimulationCallbacks,
+  type PhsSimulationRequest,
+  type PhsSimulationResult,
   type PhsTimeSeriesResult,
   type PhsTimeSeriesSegment,
 } from "../models/phs";
@@ -18,6 +20,8 @@ import {
 const WATTS_PER_MET = 58.15;
 const MIN_VAPOR_PRESSURE_KPA = 0.5;
 const MAX_VAPOR_PRESSURE_KPA = 4.5;
+const INITIAL_SKIN_TEMPERATURE_C = 34.1;
+const INITIAL_CORE_TEMPERATURE_C = 36.8;
 
 interface RawPhsResult {
   t_re: number;
@@ -41,6 +45,20 @@ interface PhsCarryState {
   tSkTCrWeight: number;
   sweatRateWatt: number;
   evaporativeLoadWm2Min: number;
+  sweatLossG: number;
+}
+
+export class PhsSimulationCancelledError extends Error {
+  constructor() {
+    super("PHS simulation cancelled.");
+    this.name = "PhsSimulationCancelledError";
+  }
+}
+
+function getPhsWaterLossLimitPercent(
+  person: PhsPersonSettingsSi,
+): 3 | 5 {
+  return person.drinkingAllowed ? 5 : 3;
 }
 
 function bodySurfaceAreaM2(person: PhsPersonSettingsSi): number {
@@ -50,8 +68,9 @@ function bodySurfaceAreaM2(person: PhsPersonSettingsSi): number {
 }
 
 export function getPhsWaterLossLimitG(person: PhsPersonSettingsSi): number {
-  const fraction = person.drinkingAllowed ? 0.05 : 0.03;
-  return fraction * person.weightKg * 1000;
+  return (getPhsWaterLossLimitPercent(person) / 100)
+    * person.weightKg
+    * 1000;
 }
 
 export function getPhsVaporPressureKpa(environment: PhsEnvironmentSi): number {
@@ -157,68 +176,38 @@ function runRawPhs(
   ) as RawPhsResult;
 }
 
-function invalidResponse(issues: string[]): PhsResponseDto {
+function toCarry(result: RawPhsResult): PhsCarryState {
   return {
-    valid: false,
-    issues,
-    tRe: Number.NaN,
-    tCr: Number.NaN,
-    tSk: Number.NaN,
-    dLimTreMinutes: Number.NaN,
-    dLimWaterLossMinutes: Number.NaN,
-    limitingExposureTimeMinutes: Number.NaN,
-    limitingCriterion: PhsLimitingCriterion.None,
-    sweatLossG: Number.NaN,
-    sweatRateWatt: Number.NaN,
-    source: CalculationSource.JsThermalComfort,
+    tSk: result.t_sk,
+    tCr: result.t_cr,
+    tRe: result.t_re,
+    tCrEq: result.t_cr_eq,
+    tSkTCrWeight: result.t_sk_t_cr_wg,
+    sweatRateWatt: result.sweat_rate_watt,
+    evaporativeLoadWm2Min: result.evap_load_wm2_min,
+    sweatLossG: result.sweat_loss_g,
   };
 }
 
-export function calculatePhs(request: PhsRequestDto): PhsResponseDto {
-  const issues = validatePhsEnvironment(request, request.person);
-  if (
-    !Number.isInteger(request.durationMinutes)
-    || request.durationMinutes < 1
-    || request.durationMinutes > PHS_MAX_DURATION_MINUTES
-  ) {
-    issues.push("Exposure duration must be an integer from 1 to 480 minutes.");
+function validateSegments(
+  segments: readonly PhsTimeSeriesSegment[],
+  person: PhsPersonSettingsSi,
+): string[] {
+  if (segments.length === 0) {
+    return ["Add at least one scenario segment."];
   }
-  if (issues.length > 0) return invalidResponse(issues);
 
-  const result = runRawPhs(
-    request,
-    request.person,
-    request.durationMinutes,
-  );
-  const dLimWaterLossMinutes = Math.min(
-    result.d_lim_loss_50,
-    result.d_lim_loss_95,
-  );
-  const limitingExposureTimeMinutes = Math.min(
-    result.d_lim_t_re,
-    dLimWaterLossMinutes,
-  );
-  const limitingCriterion: PhsLimitingCriterion =
-    limitingExposureTimeMinutes >= request.durationMinutes
-      ? PhsLimitingCriterion.None
-      : result.d_lim_t_re <= dLimWaterLossMinutes
-        ? PhsLimitingCriterion.RectalTemperature
-        : PhsLimitingCriterion.WaterLoss;
-
-  return {
-    valid: true,
-    issues: [],
-    tRe: result.t_re,
-    tCr: result.t_cr,
-    tSk: result.t_sk,
-    dLimTreMinutes: result.d_lim_t_re,
-    dLimWaterLossMinutes,
-    limitingExposureTimeMinutes,
-    limitingCriterion,
-    sweatLossG: result.sweat_loss_g,
-    sweatRateWatt: result.sweat_rate_watt,
-    source: CalculationSource.JsThermalComfort,
-  };
+  const issues: string[] = [];
+  segments.forEach((segment, index) => {
+    const prefix = segment.name.trim() || `Segment ${index + 1}`;
+    if (!Number.isInteger(segment.durationMinutes) || segment.durationMinutes < 1) {
+      issues.push(`${prefix}: duration must be a positive whole number of minutes.`);
+    }
+    for (const issue of validatePhsEnvironment(segment, person)) {
+      issues.push(`${prefix}: ${issue}`);
+    }
+  });
+  return issues;
 }
 
 export function validatePhsTimeSeries(
@@ -226,98 +215,158 @@ export function validatePhsTimeSeries(
   person: PhsPersonSettingsSi,
 ): string[] {
   const issues: string[] = [];
-  if (segments.length === 0) {
-    return ["Add at least one scenario segment."];
-  }
-  if (person.weightKg < 30 || person.weightKg > 200) {
+  if (!Number.isFinite(person.weightKg) || person.weightKg < 30 || person.weightKg > 200) {
     issues.push("Body weight must be between 30 and 200 kg.");
   }
-  if (person.heightM < 1.2 || person.heightM > 2.2) {
+  if (!Number.isFinite(person.heightM) || person.heightM < 1.2 || person.heightM > 2.2) {
     issues.push("Body height must be between 1.2 and 2.2 m.");
   }
-
-  let totalDurationMinutes = 0;
-  segments.forEach((segment, index) => {
-    const prefix = segment.name.trim() || `Segment ${index + 1}`;
-    if (!Number.isInteger(segment.durationMinutes) || segment.durationMinutes < 1) {
-      issues.push(`${prefix}: duration must be a positive whole number of minutes.`);
-    } else {
-      totalDurationMinutes += segment.durationMinutes;
-    }
-    for (const issue of validatePhsEnvironment(segment, person)) {
-      issues.push(`${prefix}: ${issue}`);
-    }
-  });
-  if (totalDurationMinutes > PHS_MAX_DURATION_MINUTES) {
-    issues.push("Total scenario duration cannot exceed 480 minutes.");
-  }
+  issues.push(...validateSegments(segments, person));
   return issues;
 }
 
-export function calculatePhsTimeSeries(
-  segments: readonly PhsTimeSeriesSegment[],
-  person: PhsPersonSettingsSi,
-): PhsTimeSeriesResult {
-  const issues = validatePhsTimeSeries(segments, person);
-  if (issues.length > 0) {
-    throw new Error(issues.join(" "));
-  }
+function invalidResponse(
+  issues: string[],
+  totalDurationMinutes: number,
+  waterLossLimitG: number,
+  waterLossLimitPercent: 3 | 5,
+): PhsSimulationResult {
+  return {
+    valid: false,
+    issues,
+    tRe: Number.NaN,
+    tCr: Number.NaN,
+    tSk: Number.NaN,
+    sweatLossG: Number.NaN,
+    sweatRateWatt: Number.NaN,
+    totalDurationMinutes,
+    peakRectalTemperatureC: Number.NaN,
+    waterLossLimitG,
+    waterLossLimitPercent,
+    firstRectalLimitMinute: null,
+    firstWaterLossLimitMinute: null,
+    limitingMinute: null,
+    limitingCriterion: PhsLimitingCriterion.None,
+    dLimTreMinutes: Number.NaN,
+    dLimWaterLossMinutes: Number.NaN,
+    limitingExposureTimeMinutes: Number.NaN,
+    source: CalculationSource.JsThermalComfort,
+  };
+}
 
-  const firstSegment = segments[0];
-  const points: PhsTimeSeriesPoint[] = [{
+function getLimitingCriterion(
+  firstRectalLimitMinute: number | null,
+  firstWaterLossLimitMinute: number | null,
+): PhsLimitingCriterion {
+  if (firstRectalLimitMinute === null && firstWaterLossLimitMinute === null) {
+    return PhsLimitingCriterion.None;
+  }
+  return firstRectalLimitMinute !== null
+    && firstRectalLimitMinute <= (firstWaterLossLimitMinute ?? Infinity)
+    ? PhsLimitingCriterion.RectalTemperature
+    : PhsLimitingCriterion.WaterLoss;
+}
+
+function createInitialSample(segment: PhsTimeSeriesSegment): PhsHistorySample {
+  return {
     minute: 0,
     hours: 0,
-    segmentId: firstSegment.id,
-    segmentName: firstSegment.name,
-    tRe: 36.8,
-    tCr: 36.8,
+    segmentId: segment.id,
+    segmentName: segment.name,
+    tRe: INITIAL_CORE_TEMPERATURE_C,
+    tCr: INITIAL_CORE_TEMPERATURE_C,
+    tSk: INITIAL_SKIN_TEMPERATURE_C,
     sweatLossG: 0,
-  }];
+  };
+}
+
+/**
+ * Runs the ISO 7933 state machine for ordered segments. History-disabled calls
+ * advance a whole segment at once; history calls retain each one-minute state.
+ */
+export function simulatePhs(
+  request: PhsSimulationRequest,
+  callbacks: PhsSimulationCallbacks = {},
+): PhsSimulationResult {
+  const totalDurationMinutes = request.segments.reduce(
+    (total, segment) => total + (
+      Number.isFinite(segment.durationMinutes) ? segment.durationMinutes : 0
+    ),
+    0,
+  );
+  const waterLossLimitG = getPhsWaterLossLimitG(request.person);
+  const waterLossLimitPercent = getPhsWaterLossLimitPercent(request.person);
+  const issues = validateSegments(request.segments, request.person);
+  if (issues.length > 0) {
+    return invalidResponse(
+      issues,
+      totalDurationMinutes,
+      waterLossLimitG,
+      waterLossLimitPercent,
+    );
+  }
+
+  const samples = request.recordHistory
+    ? [createInitialSample(request.segments[0])]
+    : undefined;
   let carry: PhsCarryState | undefined;
   let elapsedMinutes = 0;
-  let peakRectalTemperatureC = 36.8;
+  let peakRectalTemperatureC = INITIAL_CORE_TEMPERATURE_C;
   let firstRectalLimitMinute: number | null = null;
   let firstWaterLossLimitMinute: number | null = null;
-  const waterLossLimitG = getPhsWaterLossLimitG(person);
 
-  for (const segment of segments) {
-    for (let minute = 0; minute < segment.durationMinutes; minute += 1) {
-      const result = runRawPhs(segment, person, 1, carry);
-      carry = {
-        tSk: result.t_sk,
-        tCr: result.t_cr,
-        tRe: result.t_re,
-        tCrEq: result.t_cr_eq,
-        tSkTCrWeight: result.t_sk_t_cr_wg,
-        sweatRateWatt: result.sweat_rate_watt,
-        evaporativeLoadWm2Min: result.evap_load_wm2_min,
-      };
-      elapsedMinutes += 1;
-      peakRectalTemperatureC = Math.max(
-        peakRectalTemperatureC,
-        result.t_re,
-      );
-      if (
-        firstRectalLimitMinute === null
-        && result.t_re >= PHS_RECTAL_TEMPERATURE_LIMIT_C
-      ) {
-        firstRectalLimitMinute = elapsedMinutes;
-      }
-      if (
-        firstWaterLossLimitMinute === null
-        && result.sweat_loss_g >= waterLossLimitG
-      ) {
-        firstWaterLossLimitMinute = elapsedMinutes;
-      }
-      points.push({
+  const recordResult = (
+    result: RawPhsResult,
+    segment: PhsTimeSeriesSegment,
+    durationMinutes: number,
+  ) => {
+    const segmentStartMinute = elapsedMinutes;
+    elapsedMinutes += durationMinutes;
+    carry = toCarry(result);
+    peakRectalTemperatureC = Math.max(peakRectalTemperatureC, result.t_re);
+
+    if (
+      firstRectalLimitMinute === null
+      && result.t_re >= PHS_RECTAL_TEMPERATURE_LIMIT_C
+    ) {
+      firstRectalLimitMinute = segmentStartMinute + result.d_lim_t_re;
+    }
+    if (
+      firstWaterLossLimitMinute === null
+      && result.sweat_loss_g >= waterLossLimitG
+    ) {
+      firstWaterLossLimitMinute = segmentStartMinute
+        + Math.min(result.d_lim_loss_50, result.d_lim_loss_95);
+    }
+
+    if (samples) {
+      samples.push({
         minute: elapsedMinutes,
         hours: elapsedMinutes / 60,
         segmentId: segment.id,
         segmentName: segment.name,
         tRe: result.t_re,
         tCr: result.t_cr,
+        tSk: result.t_sk,
         sweatLossG: result.sweat_loss_g,
       });
+    }
+    callbacks.onProgress?.(elapsedMinutes, totalDurationMinutes);
+  };
+
+  for (const segment of request.segments) {
+    if (request.recordHistory) {
+      for (let minute = 0; minute < segment.durationMinutes; minute += 1) {
+        if (callbacks.isCancelled?.()) throw new PhsSimulationCancelledError();
+        recordResult(runRawPhs(segment, request.person, 1, carry), segment, 1);
+      }
+    } else {
+      if (callbacks.isCancelled?.()) throw new PhsSimulationCancelledError();
+      recordResult(
+        runRawPhs(segment, request.person, segment.durationMinutes, carry),
+        segment,
+        segment.durationMinutes,
+      );
     }
   }
 
@@ -326,23 +375,61 @@ export function calculatePhsTimeSeries(
     : firstWaterLossLimitMinute === null
       ? firstRectalLimitMinute
       : Math.min(firstRectalLimitMinute, firstWaterLossLimitMinute);
-  const limitingCriterion: PhsLimitingCriterion = limitingMinute === null
-    ? PhsLimitingCriterion.None
-    : firstRectalLimitMinute !== null
-      && firstRectalLimitMinute <= (firstWaterLossLimitMinute ?? Infinity)
-      ? PhsLimitingCriterion.RectalTemperature
-      : PhsLimitingCriterion.WaterLoss;
+  const limitingCriterion = getLimitingCriterion(
+    firstRectalLimitMinute,
+    firstWaterLossLimitMinute,
+  );
+  const finalState = carry!;
+  const dLimTreMinutes = firstRectalLimitMinute ?? elapsedMinutes;
+  const dLimWaterLossMinutes = firstWaterLossLimitMinute ?? elapsedMinutes;
 
   return {
-    points,
+    valid: true,
+    issues: [],
+    tRe: finalState.tRe,
+    tCr: finalState.tCr,
+    tSk: finalState.tSk,
+    sweatLossG: finalState.sweatLossG,
+    sweatRateWatt: finalState.sweatRateWatt,
     totalDurationMinutes: elapsedMinutes,
     peakRectalTemperatureC,
-    firstRectalLimitMinute,
-    finalWaterLossG: points[points.length - 1]?.sweatLossG ?? 0,
     waterLossLimitG,
+    waterLossLimitPercent,
+    firstRectalLimitMinute,
     firstWaterLossLimitMinute,
-    limitingCriterion,
     limitingMinute,
+    limitingCriterion,
+    dLimTreMinutes,
+    dLimWaterLossMinutes,
+    limitingExposureTimeMinutes: limitingMinute ?? elapsedMinutes,
+    ...(samples ? { samples } : {}),
     source: CalculationSource.JsThermalComfort,
   };
+}
+
+export function calculatePhs(request: PhsRequestDto): PhsResponseDto {
+  return simulatePhs({
+    segments: [{
+      id: "analysis-exposure",
+      name: "Analysis exposure",
+      durationMinutes: request.durationMinutes,
+      tdb: request.tdb,
+      tr: request.tr,
+      v: request.v,
+      rh: request.rh,
+      met: request.met,
+      clo: request.clo,
+    }],
+    person: request.person,
+    recordHistory: false,
+  });
+}
+
+export function calculatePhsTimeSeries(
+  segments: readonly PhsTimeSeriesSegment[],
+  person: PhsPersonSettingsSi,
+): PhsTimeSeriesResult {
+  const issues = validatePhsTimeSeries(segments, person);
+  if (issues.length > 0) throw new Error(issues.join(" "));
+  return simulatePhs({ segments, person, recordHistory: true });
 }

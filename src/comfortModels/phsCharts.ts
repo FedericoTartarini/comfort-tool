@@ -18,7 +18,9 @@ import {
 } from "../models/modelCapabilities";
 import type { FieldRequestAdapter } from "../services/comfort/requestMapping";
 import {
-  PHS_MAX_DURATION_MINUTES,
+  PHS_COMPLIANCE_HORIZON_MINUTES,
+  PHS_RECTAL_TEMPERATURE_LIMIT_C,
+  PhsLimitingCriterion,
   phsReferencePerson,
   type PhsEnvironmentSi,
   type PhsResponseDto,
@@ -35,6 +37,10 @@ import {
 import type { ChartRange } from "../services/comfort/charts/types";
 import { getBaselineInputEntry } from "../services/comfort/helpers";
 import { calculatePhs } from "./phsCalculation";
+import {
+  buildPhsTemperatureHistoryChart,
+  findFirstRectalThresholdCrossingMinute,
+} from "./phsTimeSeriesCharts";
 
 const GRID_POINTS = 31;
 
@@ -88,6 +94,37 @@ export function buildPhsChart({
   outputs,
   requestAdapter,
 }: BuildPhsChartOptions): PlotlyChartResponseDto | null {
+  if (chartId === ChartId.PhsExposureHistory) {
+    const baselineResult = resultsByInput[context.baselineInputId];
+    if (!baselineResult?.valid || !baselineResult.samples) return null;
+
+    const thresholdC = context.fieldChartConfig.mode === ChartMode.Compliance
+      ? PHS_RECTAL_TEMPERATURE_LIMIT_C
+      : context.fieldChartConfig.bands.find(({ max }) => Number.isFinite(max))?.max
+        ?? PHS_RECTAL_TEMPERATURE_LIMIT_C;
+    const markerMinute = context.fieldChartConfig.mode === ChartMode.Compliance
+      ? baselineResult.limitingMinute
+      : findFirstRectalThresholdCrossingMinute(
+          baselineResult.samples,
+          thresholdC,
+        );
+    const markerLabel = context.fieldChartConfig.mode === ChartMode.Compliance
+      ? baselineResult.limitingCriterion === PhsLimitingCriterion.WaterLoss
+        ? "First water-loss limit"
+        : "First rectal-temperature limit"
+      : "First editable-threshold crossing";
+
+    return buildPhsTemperatureHistoryChart(baselineResult, context.unitSystem, {
+      title: "PHS exposure history",
+      thresholdC,
+      thresholdLabel: context.fieldChartConfig.mode === ChartMode.Compliance
+        ? "Maximum rectal temperature"
+        : "Editable rectal-temperature threshold",
+      markerMinute,
+      markerLabel,
+    });
+  }
+
   if (chartId !== ChartId.PhsDynamic || !chartSource) return null;
 
   const config: NumericFieldChartConfig = context.fieldChartConfig;
@@ -129,7 +166,7 @@ export function buildPhsChart({
         requestAdapter.setAxisValue(payload, config.yField, ySi);
         const result = calculatePhs({
           ...payload,
-          durationMinutes: PHS_MAX_DURATION_MINUTES,
+          durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
           person: phsReferencePerson,
         });
         return result.valid ? getPhsOutputValue(result, output.key) : null;

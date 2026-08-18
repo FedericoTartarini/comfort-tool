@@ -1,4 +1,5 @@
 import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import type { ModelChartDefinition } from "../../models/chartOptions";
 import { InputId } from "../../models/inputSlots";
 import {
   ChartMode,
@@ -28,6 +29,10 @@ interface FieldChartModelCapabilities<TComplianceBand extends Band = Band> {
     readonly xAxis: FieldKeyType;
     readonly yAxis: FieldKeyType;
   };
+  charts?: {
+    readonly defaultId: string;
+    readonly entries: readonly ModelChartDefinition[];
+  };
 }
 
 export function getDefaultChartMode(config: FieldChartModelCapabilities): ChartModeType {
@@ -47,6 +52,44 @@ export function getDeclaredExploreOutput(
   return config.chartableOutputs.find(({ key }) => key === outputKey);
 }
 
+export function getChartExploreOutputs(
+  config: FieldChartModelCapabilities,
+  chartDefinition?: ModelChartDefinition,
+): readonly ModelOutput[] {
+  const supported = chartDefinition?.supportedExploreOutputs;
+  return supported
+    ? supported.map((outputKey) => getDeclaredExploreOutput(config, outputKey)!).filter(Boolean)
+    : config.chartableOutputs;
+}
+
+function getDefaultExploreOutput(
+  config: FieldChartModelCapabilities,
+  chartDefinition?: ModelChartDefinition,
+): ModelOutput | undefined {
+  const outputKey = chartDefinition?.defaultExploreOutput;
+  return outputKey
+    ? getDeclaredExploreOutput(config, outputKey)
+    : getChartExploreOutputs(config, chartDefinition)[0];
+}
+
+export function normalizeExploreStateForChart(
+  config: FieldChartModelCapabilities,
+  state: ExploreChartState | null,
+  chartDefinition?: ModelChartDefinition,
+): ExploreChartState | null {
+  if (!config.modes.includes(ChartMode.Explore)) return null;
+
+  const outputs = getChartExploreOutputs(config, chartDefinition);
+  if (state && outputs.some(({ key }) => key === state.zOutput)) {
+    return state;
+  }
+
+  const output = getDefaultExploreOutput(config, chartDefinition);
+  return output
+    ? { zOutput: output.key, bands: cloneNumericBands(output.defaultBands) }
+    : null;
+}
+
 export function seedExploreChartState(
   config: FieldChartModelCapabilities,
 ): ExploreChartState | null {
@@ -54,7 +97,10 @@ export function seedExploreChartState(
     return null;
   }
 
-  const output = config.chartableOutputs[0];
+  const defaultChart = config.charts?.entries.find(
+    ({ id }) => id === config.charts?.defaultId,
+  );
+  const output = getDefaultExploreOutput(config, defaultChart);
   return output
     ? { zOutput: output.key, bands: cloneNumericBands(output.defaultBands) }
     : null;
@@ -87,9 +133,14 @@ export function selectExploreOutput(
   config: FieldChartModelCapabilities,
   state: ExploreChartState | null,
   outputKey: ModelOutputKey,
+  chartDefinition?: ModelChartDefinition,
 ): ExploreChartState | null {
   const output = getDeclaredExploreOutput(config, outputKey);
-  if (!output || !config.modes.includes(ChartMode.Explore)) {
+  if (
+    !output
+    || !config.modes.includes(ChartMode.Explore)
+    || !getChartExploreOutputs(config, chartDefinition).some(({ key }) => key === outputKey)
+  ) {
     return null;
   }
   if (state?.zOutput === output.key) {
@@ -121,6 +172,7 @@ export function replaceExploreBands(
 export function buildFieldChartConfig<TComplianceBand extends Band>(
   config: FieldChartModelCapabilities<TComplianceBand>,
   settings: ModelChartSettings,
+  chartDefinition?: ModelChartDefinition,
 ): FieldChartConfig<TComplianceBand> {
   if (settings.mode === ChartMode.Compliance) {
     const spec = config.complianceSpec;
@@ -139,7 +191,12 @@ export function buildFieldChartConfig<TComplianceBand extends Band>(
   }
 
   const explore = settings.explore;
-  if (!explore || !getDeclaredExploreOutput(config, explore.zOutput)) {
+  if (
+    !explore
+    || !getChartExploreOutputs(config, chartDefinition).some(
+      ({ key }) => key === explore.zOutput,
+    )
+  ) {
     throw new Error(
       "Comfort model declaration selected Explore mode without its declared output.",
     );

@@ -9,48 +9,17 @@
     TrashBinOutline,
   } from "flowbite-svelte-icons";
 
-  import type { PhsTimeSeriesSegment } from "../../models/phs";
-  import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
-  import { fieldMetaByKey } from "../../models/inputFieldsMeta";
-  import { convertFieldValueFromSi } from "../../services/units";
+  import type { TimeSeriesSegmentViewModel } from "../../models/timeSeries";
   import type { TimeSeriesController } from "../../state/timeSeries/types";
 
   interface Props {
     controller: TimeSeriesController;
-    segment: PhsTimeSeriesSegment;
+    segment: TimeSeriesSegmentViewModel;
     index: number;
     count: number;
   }
 
   let { controller, segment, index, count }: Props = $props();
-
-  const fields = [
-    { key: FieldKey.DryBulbTemperature, label: "Air temperature", min: 15, max: 50 },
-    { key: FieldKey.MeanRadiantTemperature, label: "Radiant temperature", min: 0, max: 60 },
-    { key: FieldKey.WindSpeed, label: "Air speed", min: 0, max: 3 },
-    { key: FieldKey.RelativeHumidity, label: "Relative humidity", min: 0, max: 100 },
-    { key: FieldKey.MetabolicRate, label: "Metabolic rate", min: 0.9, max: 3.9 },
-    { key: FieldKey.ClothingInsulation, label: "Clothing insulation", min: 0.1, max: 1 },
-  ] as const satisfies readonly {
-    key: FieldKeyType;
-    label: string;
-    min: number;
-    max: number;
-  }[];
-
-  type SegmentField = (typeof fields)[number]["key"];
-
-  function fieldUnits(field: SegmentField): string {
-    return fieldMetaByKey[field].displayUnits[controller.state.unitSystem];
-  }
-
-  function fieldStep(field: SegmentField): number {
-    return fieldMetaByKey[field].step;
-  }
-
-  function displayedBoundary(field: SegmentField, valueSi: number): number {
-    return convertFieldValueFromSi(field, valueSi, controller.state.unitSystem);
-  }
 </script>
 
 <article
@@ -62,7 +31,7 @@
       {index + 1}
     </span>
     <Input
-      aria-label={`Segment ${index + 1} name`}
+      aria-label={"Segment " + (index + 1) + " name"}
       value={segment.name}
       size="sm"
       class="min-w-0 flex-1 border-stone-300 bg-white font-medium"
@@ -76,7 +45,7 @@
         color="light"
         size="xs"
         disabled={index === 0}
-        aria-label={`Move ${segment.name} up`}
+        aria-label={"Move " + segment.name + " up"}
         onclick={() => controller.actions.moveSegment(segment.id, -1)}
       >
         <ChevronUpOutline class="h-3.5 w-3.5" />
@@ -85,7 +54,7 @@
         color="light"
         size="xs"
         disabled={index === count - 1}
-        aria-label={`Move ${segment.name} down`}
+        aria-label={"Move " + segment.name + " down"}
         onclick={() => controller.actions.moveSegment(segment.id, 1)}
       >
         <ChevronDownOutline class="h-3.5 w-3.5" />
@@ -93,7 +62,7 @@
       <Button
         color="light"
         size="xs"
-        aria-label={`Duplicate ${segment.name}`}
+        aria-label={"Duplicate " + segment.name}
         onclick={() => controller.actions.duplicateSegment(segment.id)}
       >
         <FileCopyOutline class="h-3.5 w-3.5" />
@@ -102,7 +71,7 @@
         color="light"
         size="xs"
         disabled={count === 1}
-        aria-label={`Remove ${segment.name}`}
+        aria-label={"Remove " + segment.name}
         onclick={() => controller.actions.removeSegment(segment.id)}
       >
         <TrashBinOutline class="h-3.5 w-3.5" />
@@ -112,15 +81,14 @@
 
   <div class="mt-3 grid grid-cols-2 gap-2">
     <div>
-      <Label for={`${segment.id}-duration`} class="text-xs text-stone-600">
+      <Label for={segment.id + "-duration"} class="text-xs text-stone-600">
         Duration (min)
       </Label>
       <Input
-        id={`${segment.id}-duration`}
-        aria-label={`${segment.name} duration`}
+        id={segment.id + "-duration"}
+        aria-label={segment.name + " duration"}
         type="number"
         min={1}
-        max={480}
         step={1}
         size="sm"
         value={String(segment.durationMinutes)}
@@ -131,24 +99,24 @@
         )}
       />
     </div>
-    {#each fields as field}
+    {#each segment.controls as control (control.id)}
       <div>
-        <Label for={`${segment.id}-${field.key}`} class="text-xs text-stone-600">
-          {field.label} ({fieldUnits(field.key)})
+        <Label for={segment.id + "-" + control.id} class="text-xs text-stone-600">
+          {control.label}{control.displayUnits ? " (" + control.displayUnits + ")" : ""}
         </Label>
         <Input
-          id={`${segment.id}-${field.key}`}
-          aria-label={`${segment.name} ${field.label}`}
+          id={segment.id + "-" + control.id}
+          aria-label={segment.name + " " + control.label}
           type="number"
-          min={displayedBoundary(field.key, field.min)}
-          max={displayedBoundary(field.key, field.max)}
-          step={fieldStep(field.key)}
+          min={control.min}
+          max={control.max}
+          step={control.step}
           size="sm"
-          value={String(controller.selectors.getSegmentDisplayValue(segment, field.key))}
+          value={String(control.value)}
           class="mt-1 border-stone-300 bg-white"
-          onchange={(event) => controller.actions.updateSegmentField(
+          onchange={(event) => controller.actions.updateSegmentControl(
             segment.id,
-            field.key,
+            control.id,
             event.currentTarget.value,
           )}
         />

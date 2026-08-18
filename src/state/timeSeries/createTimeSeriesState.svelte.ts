@@ -1,65 +1,213 @@
 import {
-  PhsPosture,
-  type PhsTimeSeriesSegment,
-} from "../../models/phs";
-import { type PhsSegmentPreset } from "../../models/timeSeries";
-import { ComfortModel } from "../../models/comfortModels";
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
+  buildTimeSeriesEditorViewModel,
+  type RuntimeTimeSeriesModelDefinition,
+  type TimeSeriesChartViewModel,
+} from "../../models/timeSeries";
 import { UnitSystem } from "../../models/units";
 import {
-  convertFieldValueFromSi,
-  convertFieldValueToSi,
-  convertLengthFromSi,
-  convertLengthToSi,
-  convertMassFromSi,
-  convertMassToSi,
-} from "../../services/units";
-import { timeSeriesModelConfigs } from "./modelConfigs";
-import type { TimeSeriesController, TimeSeriesStateSlice } from "./types";
+  getTimeSeriesModelConfig,
+  timeSeriesModelOrder,
+  type TimeSeriesModelId,
+} from "./modelConfigs";
+import type {
+  TimeSeriesController,
+  TimeSeriesRunStatus,
+  TimeSeriesStateSlice,
+} from "./types";
 
-const segmentPropertyByField = {
-  [FieldKey.DryBulbTemperature]: "tdb",
-  [FieldKey.MeanRadiantTemperature]: "tr",
-  [FieldKey.WindSpeed]: "v",
-  [FieldKey.RelativeHumidity]: "rh",
-  [FieldKey.MetabolicRate]: "met",
-  [FieldKey.ClothingInsulation]: "clo",
-} as const satisfies Partial<Record<FieldKeyType, keyof PhsTimeSeriesSegment>>;
+const AUTO_CALCULATION_DEBOUNCE_MS = 300;
 
-type SupportedSegmentField = keyof typeof segmentPropertyByField;
-
-function isSupportedSegmentField(
-  field: FieldKeyType,
-): field is SupportedSegmentField {
-  return field in segmentPropertyByField;
+interface CreateTimeSeriesStateOptions {
+  debounceMs?: number;
 }
 
-export function createTimeSeriesState(): TimeSeriesController {
-  const definition = timeSeriesModelConfigs[ComfortModel.Phs2023];
-  let nextSegmentNumber = 2;
+function createRecord<T>(factory: (modelId: TimeSeriesModelId) => T): Record<
+  TimeSeriesModelId,
+  T
+> {
+  return timeSeriesModelOrder.reduce((record, modelId) => {
+    record[modelId] = factory(modelId);
+    return record;
+  }, {} as Record<TimeSeriesModelId, T>);
+}
+
+function isTimeSeriesModelId(value: string): value is TimeSeriesModelId {
+  return timeSeriesModelOrder.includes(value as TimeSeriesModelId);
+}
+
+export function createTimeSeriesState(
+  options: CreateTimeSeriesStateOptions = {},
+): TimeSeriesController {
+  const debounceMs = options.debounceMs ?? AUTO_CALCULATION_DEBOUNCE_MS;
+  const defaultModel = timeSeriesModelOrder[0];
+  if (!defaultModel) {
+    throw new Error("The Time-series registry requires at least one enabled model.");
+  }
+
   const state = $state<TimeSeriesStateSlice>({
-    selectedModel: ComfortModel.Phs2023,
+    selectedModel: defaultModel,
     unitSystem: UnitSystem.SI,
-    segments: definition.createDefaultSegments(),
-    person: definition.createDefaultSettings(),
-    status: "idle",
-    validationIssues: [],
-    lastSuccessfulResult: null,
+    draftByModel: createRecord((modelId) => (
+      getTimeSeriesModelConfig(modelId).createDefaultDraft()
+    )),
+    resultByModel: createRecord(() => null),
+    statusByModel: createRecord(() => "waiting"),
+    errorsByModel: createRecord(() => []),
+    revisionByModel: createRecord(() => 0),
+    progressByModel: createRecord(() => 0),
   });
+  const timerByModel: Partial<Record<
+    TimeSeriesModelId,
+    ReturnType<typeof setTimeout>
+  >> = {};
+  const abortControllerByModel: Partial<Record<
+    TimeSeriesModelId,
+    AbortController
+  >> = {};
+  const nextSegmentSequenceByModel = createRecord((modelId) => (
+    getTimeSeriesModelConfig(modelId).editor.getSegments(
+      state.draftByModel[modelId],
+    ).length + 1
+  ));
+  let started = false;
+  let disposed = false;
 
-  function markDirty() {
-    state.status = state.lastSuccessfulResult ? "dirty" : "idle";
-    state.validationIssues = [];
+  function getDefinition(
+    modelId: TimeSeriesModelId = state.selectedModel,
+  ): RuntimeTimeSeriesModelDefinition {
+    return getTimeSeriesModelConfig(modelId);
   }
 
-  function findSegment(segmentId: string): PhsTimeSeriesSegment | undefined {
-    return state.segments.find(({ id }) => id === segmentId);
+  function cancelWork(modelId: TimeSeriesModelId) {
+    const timer = timerByModel[modelId];
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      delete timerByModel[modelId];
+    }
+    abortControllerByModel[modelId]?.abort();
+    delete abortControllerByModel[modelId];
   }
 
-  function createSegmentId(): string {
-    const id = `phs-segment-${nextSegmentNumber}`;
-    nextSegmentNumber += 1;
-    return id;
+  async function runSimulation(modelId: TimeSeriesModelId, revision: number) {
+    if (disposed || revision !== state.revisionByModel[modelId]) return;
+
+    const definition = getDefinition(modelId);
+    const controller = new AbortController();
+    abortControllerByModel[modelId] = controller;
+    state.statusByModel[modelId] = "updating";
+    state.progressByModel[modelId] = 0;
+    const draft = definition.cloneDraft(state.draftByModel[modelId]);
+
+    try {
+      const result = await definition.simulate(draft, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          if (
+            !controller.signal.aborted
+            && revision === state.revisionByModel[modelId]
+          ) {
+            state.progressByModel[modelId] = Math.min(1, Math.max(0, progress));
+          }
+        },
+      });
+      if (
+        controller.signal.aborted
+        || disposed
+        || revision !== state.revisionByModel[modelId]
+      ) {
+        return;
+      }
+      state.resultByModel[modelId] = result;
+      state.errorsByModel[modelId] = [];
+      state.statusByModel[modelId] = "ready";
+      state.progressByModel[modelId] = 1;
+    } catch (error) {
+      if (
+        controller.signal.aborted
+        || disposed
+        || revision !== state.revisionByModel[modelId]
+      ) {
+        return;
+      }
+      state.statusByModel[modelId] = "error";
+      state.errorsByModel[modelId] = [
+        error instanceof Error
+          ? error.message
+          : "Time-series calculation failed.",
+      ];
+    } finally {
+      if (abortControllerByModel[modelId] === controller) {
+        delete abortControllerByModel[modelId];
+      }
+    }
+  }
+
+  function scheduleSimulation(
+    modelId: TimeSeriesModelId,
+    scheduleOptions: { immediate?: boolean } = {},
+  ) {
+    cancelWork(modelId);
+    const revision = state.revisionByModel[modelId] + 1;
+    state.revisionByModel[modelId] = revision;
+    state.progressByModel[modelId] = 0;
+
+    const definition = getDefinition(modelId);
+    const issues = definition.validate(state.draftByModel[modelId]);
+    state.errorsByModel[modelId] = [...issues];
+    if (issues.length > 0) {
+      state.statusByModel[modelId] = "waiting";
+      return;
+    }
+
+    state.statusByModel[modelId] = scheduleOptions.immediate
+      ? "updating"
+      : "waiting";
+    if (!started) return;
+
+    if (scheduleOptions.immediate || debounceMs <= 0) {
+      void runSimulation(modelId, revision);
+      return;
+    }
+    timerByModel[modelId] = setTimeout(() => {
+      delete timerByModel[modelId];
+      void runSimulation(modelId, revision);
+    }, debounceMs);
+  }
+
+  function scheduleAfterRelevantEdit(modelId: TimeSeriesModelId) {
+    scheduleSimulation(modelId);
+  }
+
+  function start() {
+    if (disposed) return;
+    started = true;
+    const modelId = state.selectedModel;
+    if (
+      state.resultByModel[modelId] === null
+      && timerByModel[modelId] === undefined
+      && !abortControllerByModel[modelId]
+    ) {
+      scheduleSimulation(modelId, { immediate: true });
+    }
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    for (const modelId of timeSeriesModelOrder) cancelWork(modelId);
+  }
+
+  function selectModel(modelId: TimeSeriesModelId) {
+    if (!isTimeSeriesModelId(modelId) || modelId === state.selectedModel) return;
+    state.selectedModel = modelId;
+    if (
+      started
+      && state.resultByModel[modelId] === null
+      && timerByModel[modelId] === undefined
+      && !abortControllerByModel[modelId]
+    ) {
+      scheduleSimulation(modelId, { immediate: true });
+    }
   }
 
   function toggleUnitSystem() {
@@ -69,204 +217,216 @@ export function createTimeSeriesState(): TimeSeriesController {
   }
 
   function updateSegmentName(segmentId: string, name: string) {
-    const segment = findSegment(segmentId);
-    if (!segment || segment.name === name) return;
-    segment.name = name;
-    markDirty();
+    getDefinition().editor.updateSegmentName(
+      state.draftByModel[state.selectedModel],
+      segmentId,
+      name,
+    );
   }
 
-  function updateSegmentField(
+  function updateSegmentDuration(
     segmentId: string,
-    field: FieldKeyType,
+    rawValue: string,
+  ): boolean {
+    const modelId = state.selectedModel;
+    const changed = getDefinition().editor.updateSegmentDuration(
+      state.draftByModel[modelId],
+      segmentId,
+      rawValue,
+    );
+    if (changed) scheduleAfterRelevantEdit(modelId);
+    return changed;
+  }
+
+  function updateSegmentControl(
+    segmentId: string,
+    controlId: string,
     rawDisplayValue: string,
   ): boolean {
-    const segment = findSegment(segmentId);
-    const displayValue = Number(rawDisplayValue);
-    if (!segment || !isSupportedSegmentField(field) || !Number.isFinite(displayValue)) {
-      return false;
-    }
-    const valueSi = convertFieldValueToSi(field, displayValue, state.unitSystem);
-    const property = segmentPropertyByField[field];
-    if (segment[property] === valueSi) return true;
-    Reflect.set(segment, property, valueSi);
-    markDirty();
-    return true;
+    const modelId = state.selectedModel;
+    const definition = getDefinition();
+    const control = definition.editor.segmentControls.find(
+      ({ id }) => id === controlId,
+    );
+    if (!control) return false;
+    const changed = control.applyDisplayValue(
+      state.draftByModel[modelId],
+      rawDisplayValue,
+      state.unitSystem,
+      segmentId,
+    );
+    if (changed) scheduleAfterRelevantEdit(modelId);
+    return changed;
   }
 
-  function updateSegmentDuration(segmentId: string, rawValue: string): boolean {
-    const segment = findSegment(segmentId);
-    const durationMinutes = Number(rawValue);
-    if (!segment || !Number.isFinite(durationMinutes)) return false;
-    if (segment.durationMinutes === durationMinutes) return true;
-    segment.durationMinutes = durationMinutes;
-    markDirty();
-    return true;
+  function createSegmentId(modelId: TimeSeriesModelId): string {
+    const sequence = nextSegmentSequenceByModel[modelId];
+    nextSegmentSequenceByModel[modelId] += 1;
+    return getDefinition(modelId).editor.createSegmentId(sequence);
   }
 
-  function addSegment(preset: PhsSegmentPreset) {
-    const previous = state.segments[state.segments.length - 1];
-    state.segments.push(definition.createPresetSegment(
-      createSegmentId(),
-      preset,
-      previous,
-    ));
-    markDirty();
+  function addSegment(presetId: string) {
+    const modelId = state.selectedModel;
+    const changed = getDefinition().editor.addSegment(
+      state.draftByModel[modelId],
+      createSegmentId(modelId),
+      presetId,
+    );
+    if (changed) scheduleAfterRelevantEdit(modelId);
   }
 
   function duplicateSegment(segmentId: string) {
-    const index = state.segments.findIndex(({ id }) => id === segmentId);
-    if (index < 0) return;
-    const original = state.segments[index];
-    state.segments.splice(index + 1, 0, {
-      ...original,
-      id: createSegmentId(),
-      name: `${original.name} copy`,
-    });
-    markDirty();
+    const modelId = state.selectedModel;
+    const changed = getDefinition().editor.duplicateSegment(
+      state.draftByModel[modelId],
+      segmentId,
+      createSegmentId(modelId),
+    );
+    if (changed) scheduleAfterRelevantEdit(modelId);
   }
 
   function removeSegment(segmentId: string) {
-    if (state.segments.length <= 1) return;
-    const index = state.segments.findIndex(({ id }) => id === segmentId);
-    if (index < 0) return;
-    state.segments.splice(index, 1);
-    markDirty();
+    const modelId = state.selectedModel;
+    const changed = getDefinition().editor.removeSegment(
+      state.draftByModel[modelId],
+      segmentId,
+    );
+    if (changed) scheduleAfterRelevantEdit(modelId);
   }
 
   function moveSegment(segmentId: string, direction: -1 | 1) {
-    const index = state.segments.findIndex(({ id }) => id === segmentId);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= state.segments.length) return;
-    const [segment] = state.segments.splice(index, 1);
-    state.segments.splice(target, 0, segment);
-    markDirty();
+    const modelId = state.selectedModel;
+    const changed = getDefinition().editor.moveSegment(
+      state.draftByModel[modelId],
+      segmentId,
+      direction,
+    );
+    if (changed) scheduleAfterRelevantEdit(modelId);
   }
 
-  function updatePersonNumber(
-    field: "weightKg" | "heightM",
-    rawDisplayValue: string,
+  function updateSettingControl(
+    controlId: string,
+    value: string | boolean,
   ): boolean {
-    const displayValue = Number(rawDisplayValue);
-    if (!Number.isFinite(displayValue)) return false;
-    const valueSi = field === "weightKg"
-      ? state.unitSystem === UnitSystem.IP
-        ? convertMassToSi(displayValue) / 1000
-        : displayValue
-      : state.unitSystem === UnitSystem.IP
-        ? convertLengthToSi(displayValue)
-        : displayValue;
-    if (state.person[field] === valueSi) return true;
-    state.person[field] = valueSi;
-    markDirty();
-    return true;
-  }
+    const modelId = state.selectedModel;
+    const definition = getDefinition();
+    const control = definition.editor.settingsSections
+      .flatMap(({ controls }) => controls)
+      .find(({ id }) => id === controlId);
+    if (!control) return false;
 
-  function setPosture(posture: PhsPosture) {
-    if (!Object.values(PhsPosture).includes(posture) || state.person.posture === posture) {
-      return;
+    let changed = false;
+    if (control.kind === "number" && typeof value === "string") {
+      changed = control.applyDisplayValue(
+        state.draftByModel[modelId],
+        value,
+        state.unitSystem,
+      );
+    } else if (control.kind === "select" && typeof value === "string") {
+      changed = control.applyValue(state.draftByModel[modelId], value);
+    } else if (control.kind === "toggle" && typeof value === "boolean") {
+      changed = control.applyValue(state.draftByModel[modelId], value);
     }
-    state.person.posture = posture;
-    markDirty();
-  }
-
-  function setAcclimatized(value: boolean) {
-    if (state.person.acclimatized === value) return;
-    state.person.acclimatized = value;
-    markDirty();
-  }
-
-  function setDrinkingAllowed(value: boolean) {
-    if (state.person.drinkingAllowed === value) return;
-    state.person.drinkingAllowed = value;
-    markDirty();
+    if (changed) scheduleAfterRelevantEdit(modelId);
+    return changed;
   }
 
   function reset() {
-    state.segments = definition.createDefaultSegments();
-    state.person = definition.createDefaultSettings();
-    state.unitSystem = UnitSystem.SI;
-    state.status = "idle";
-    state.validationIssues = [];
-    state.lastSuccessfulResult = null;
-    nextSegmentNumber = 2;
+    const modelId = state.selectedModel;
+    const definition = getDefinition();
+    state.draftByModel[modelId] = definition.createDefaultDraft();
+    nextSegmentSequenceByModel[modelId] = definition.editor.getSegments(
+      state.draftByModel[modelId],
+    ).length + 1;
+    scheduleSimulation(modelId);
   }
 
-  function runSimulation(): boolean {
-    const validationIssues = definition.validate(state.segments, state.person);
-    if (validationIssues.length > 0) {
-      state.status = "error";
-      state.validationIssues = validationIssues;
-      return false;
-    }
-    state.status = "running";
-    try {
-      state.lastSuccessfulResult = definition.calculate(
-        state.segments,
-        state.person,
-      );
-      state.status = "ready";
-      state.validationIssues = [];
-      return true;
-    } catch (error) {
-      state.status = "error";
-      state.validationIssues = [
-        error instanceof Error ? error.message : "PHS simulation failed.",
-      ];
-      return false;
-    }
+  function getEditor() {
+    const definition = getDefinition();
+    return buildTimeSeriesEditorViewModel(
+      definition,
+      state.draftByModel[state.selectedModel],
+      state.unitSystem,
+    );
   }
 
-  function getSegmentDisplayValue(
-    segment: PhsTimeSeriesSegment,
-    field: FieldKeyType,
-  ): number {
-    if (!isSupportedSegmentField(field)) {
-      throw new Error(`Unsupported PHS segment field: ${field}`);
-    }
-    const valueSi = Number(segment[segmentPropertyByField[field]]);
-    return convertFieldValueFromSi(field, valueSi, state.unitSystem);
+  function getTotalDurationMinutes(): number {
+    return getDefinition().editor.getSegments(
+      state.draftByModel[state.selectedModel],
+    ).reduce((total, segment) => total + segment.durationMinutes, 0);
   }
 
-  function getPersonDisplayValue(field: "weightKg" | "heightM"): number {
-    const valueSi = state.person[field];
-    if (state.unitSystem === UnitSystem.SI) return valueSi;
-    return field === "weightKg"
-      ? convertMassFromSi(valueSi * 1000)
-      : convertLengthFromSi(valueSi);
+  function getCharts(): readonly TimeSeriesChartViewModel[] {
+    const modelId = state.selectedModel;
+    const result = state.resultByModel[modelId];
+    const definition = getDefinition();
+    const draft = state.draftByModel[modelId];
+    return definition.charts.map((chartDefinition) => ({
+      id: chartDefinition.id,
+      title: chartDefinition.title,
+      description: chartDefinition.description,
+      emptyMessage: chartDefinition.emptyMessage,
+      heightClass: chartDefinition.heightClass,
+      ...(chartDefinition.testId ? { testId: chartDefinition.testId } : {}),
+      chart: result === null
+        ? null
+        : chartDefinition.build(result, draft, state.unitSystem),
+    }));
+  }
+
+  function getStatus(): TimeSeriesRunStatus {
+    return state.statusByModel[state.selectedModel];
   }
 
   return {
     state,
     actions: {
+      start,
+      dispose,
+      selectModel,
       toggleUnitSystem,
       updateSegmentName,
-      updateSegmentField,
       updateSegmentDuration,
+      updateSegmentControl,
       addSegment,
       duplicateSegment,
       removeSegment,
       moveSegment,
-      updatePersonNumber,
-      setPosture,
-      setAcclimatized,
-      setDrinkingAllowed,
+      updateSettingControl,
       reset,
-      runSimulation,
     },
     selectors: {
-      getSegmentDisplayValue,
-      getPersonDisplayValue,
-      getTotalDurationMinutes: () => state.segments.reduce(
-        (total, segment) => total + segment.durationMinutes,
-        0,
-      ),
+      getModelOptions: () => timeSeriesModelOrder.map((modelId) => ({
+        name: getDefinition(modelId).label,
+        value: modelId,
+      })),
+      getCurrentModel: () => {
+        const definition = getDefinition();
+        return {
+          label: definition.label,
+          description: definition.description,
+          standardLabel: definition.standardLabel,
+          ...(definition.reference ? { reference: definition.reference } : {}),
+        };
+      },
+      getEditor,
+      getTotalDurationMinutes,
+      getSelectedResult: () => state.resultByModel[state.selectedModel],
+      getStatus,
+      getErrors: () => state.errorsByModel[state.selectedModel],
+      getProgress: () => state.progressByModel[state.selectedModel],
       hasStaleResult: () => (
-        state.lastSuccessfulResult !== null
-        && (state.status === "dirty" || state.status === "error")
+        state.resultByModel[state.selectedModel] !== null
+        && getStatus() !== "ready"
       ),
-      getCharts: () => state.lastSuccessfulResult
-        ? definition.buildCharts(state.lastSuccessfulResult, state.unitSystem)
-        : null,
+      getSummary: () => {
+        const modelId = state.selectedModel;
+        const result = state.resultByModel[modelId];
+        return result === null
+          ? []
+          : getDefinition().buildSummary(result, state.unitSystem);
+      },
+      getCharts,
     },
   };
 }

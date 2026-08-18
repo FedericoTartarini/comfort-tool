@@ -371,6 +371,31 @@ export class ComfortModelBuilder<
       if (chart.locksYAxis && !chart.allowsAxisSelection) {
         throw new Error("A locked Y axis requires an axis-selectable chart.");
       }
+
+      const supportedExploreOutputs = chart.supportedExploreOutputs;
+      if (supportedExploreOutputs) {
+        if (!supportsExplore || supportedExploreOutputs.length === 0) {
+          throw new Error(
+            "Chart-specific Explore outputs require Explore mode and at least one output.",
+          );
+        }
+        if (new Set(supportedExploreOutputs).size !== supportedExploreOutputs.length) {
+          throw new Error("Chart-specific Explore outputs cannot contain duplicates.");
+        }
+        if (supportedExploreOutputs.some((outputKey) => !outputKeys.includes(outputKey))) {
+          throw new Error("Chart-specific Explore outputs must belong to the model declaration.");
+        }
+      }
+      if (
+        chart.defaultExploreOutput
+        && (
+          !outputKeys.includes(chart.defaultExploreOutput)
+          || (supportedExploreOutputs
+            && !supportedExploreOutputs.includes(chart.defaultExploreOutput))
+        )
+      ) {
+        throw new Error("A chart's default Explore output must be supported by that chart.");
+      }
     }
 
     if (this.defaultOptions === undefined) {
@@ -451,7 +476,12 @@ export class ComfortModelBuilder<
       optionHandlersByKey: { ...this.optionHandlersByKey },
       charts: {
         defaultId: charts.defaultId,
-        entries: charts.entries.map((chart) => ({ ...chart })),
+        entries: charts.entries.map((chart) => ({
+          ...chart,
+          ...(chart.supportedExploreOutputs
+            ? { supportedExploreOutputs: [...chart.supportedExploreOutputs] }
+            : {}),
+        })),
       },
       defaultOptions: { ...defaultOptions },
       parseOptions: this.parseOptions,
