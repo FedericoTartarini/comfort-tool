@@ -4,6 +4,8 @@ Svelte 5 frontend for thermal-comfort calculations and visualizations. The activ
 
 ## Development
 
+Use Node.js 24.18.0 LTS. The repository includes an `.nvmrc` for version managers that support it.
+
 ```bash
 npm install
 npm run dev

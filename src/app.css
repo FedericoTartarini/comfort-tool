@@ -22,17 +22,17 @@
   }
 }
 
-.plotly-panel :global(.js-plotly-plot),
-.plotly-panel :global(.plot-container),
-.plotly-panel :global(.svg-container) {
+.plotly-panel .js-plotly-plot,
+.plotly-panel .plot-container,
+.plotly-panel .svg-container {
   width: 100% !important;
   height: 100% !important;
   max-width: 100% !important;
   overflow: hidden !important;
 }
 
-.plotly-panel :global(.main-svg),
-.plotly-panel :global(svg) {
+.plotly-panel .main-svg,
+.plotly-panel svg {
   max-width: 100% !important;
 }
 
