@@ -145,7 +145,8 @@ Do not introduce new raw domain strings for those concepts.
 - Builder `.setModifiers()` receives executable model-owned declarations. The global catalogue contains only stable UI/share IDs and extra-input schema.
 - Modifier execution order is Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain. PMV ASHRAE and PMV ISO each bind Dynamic Clothing to their own standard; other models do not declare it.
 - Input sub-tools keep base SI input separate from modifier configuration. Each model declares its supported subset in the fixed global order, and the controller derives effective SI input through those executable definitions before supplying `ModelCalculationContext`; modifiers must never write effective values back to base state.
-- Keep Time-series out of Analysis state until it is explicitly implemented.
+- Keep Time-series out of Analysis state. It uses its own capability registry and controller;
+  do not add it to `ChartMode`, Analysis caches, or Analysis share snapshots.
 
 ## Comfort Zone Design
 

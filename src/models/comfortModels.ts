@@ -7,6 +7,7 @@ export const ComfortModel = {
   HeatIndex: "HEAT_INDEX",
   Humidex: "HUMIDEX",
   WindChill: "WIND_CHILL",
+  Phs2023: "PHS_2023",
 } as const;
 
 export type ComfortModel = (typeof ComfortModel)[keyof typeof ComfortModel];

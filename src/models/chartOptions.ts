@@ -9,6 +9,7 @@ export const ChartId = {
   Humidex: "humidex",
   HumidexDynamic: "humidexDynamic",
   WindChillDynamic: "windChillDynamic",
+  PhsDynamic: "phsDynamic",
 } as const;
 
 export type ChartId = (typeof ChartId)[keyof typeof ChartId];

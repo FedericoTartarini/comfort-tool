@@ -56,6 +56,16 @@ export const appRouteDefinitions = [
     shareEnabled: true,
   },
   {
+    id: AppRouteId.Iso7933,
+    label: "ISO 7933:2023",
+    path: "/ISO-7933/",
+    workspace: WorkspaceId.Standard,
+    standardId: StandardId.Iso7933,
+    requiredMode: ChartMode.Compliance,
+    defaultModelId: ComfortModel.Phs2023,
+    shareEnabled: true,
+  },
+  {
     id: AppRouteId.Explore,
     label: "Explore",
     path: "/Explore/",

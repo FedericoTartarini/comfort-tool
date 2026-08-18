@@ -218,6 +218,7 @@ export default [
     ignores: [
       "src/state/**/*.test.ts",
       "src/state/comfortTool/modelConfigs/index.ts",
+      "src/state/timeSeries/modelConfigs.ts",
     ],
     rules: {
       "no-restricted-imports": [

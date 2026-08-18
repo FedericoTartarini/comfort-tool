@@ -5,7 +5,14 @@ import { convertSpeedFromSi, convertSpeedToSi } from "./physicalQuantities";
 
 export * from "./modelOutputs";
 export * from "./modifierInputs";
-export { convertHeatFluxFromSi, convertHeatFluxToSi } from "./physicalQuantities";
+export {
+  convertHeatFluxFromSi,
+  convertHeatFluxToSi,
+  convertLengthFromSi,
+  convertLengthToSi,
+  convertMassFromSi,
+  convertMassToSi,
+} from "./physicalQuantities";
 
 /**
  * Centralized unit conversion helpers.

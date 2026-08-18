@@ -16,6 +16,7 @@ describe("workspace route definitions", () => {
       "/ASHRAE-55/",
       "/ISO-7730/",
       "/EN-16798-1/",
+      "/ISO-7933/",
       "/Explore/",
       "/Time-Series/",
     ]);
@@ -70,6 +71,11 @@ describe("workspace route definitions", () => {
       mode: ChartMode.Compliance,
       defaultModel: ComfortModel.AdaptiveEn,
     });
+    expect(matrix["/ISO-7933/"]).toEqual({
+      models: [ComfortModel.Phs2023],
+      mode: ChartMode.Compliance,
+      defaultModel: ComfortModel.Phs2023,
+    });
     expect(matrix["/Explore/"]).toEqual({
       models: [
         ComfortModel.PmvAshrae,
@@ -78,6 +84,7 @@ describe("workspace route definitions", () => {
         ComfortModel.HeatIndex,
         ComfortModel.Humidex,
         ComfortModel.WindChill,
+        ComfortModel.Phs2023,
       ],
       mode: ChartMode.Explore,
       defaultModel: ComfortModel.PmvAshrae,

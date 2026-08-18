@@ -13,6 +13,7 @@ See [Adding a thermal model](adding-a-thermal-model.md) for the model-authoring 
 | `routes` | Explicit Browser History table, route hooks, and route-bound page adapters | views, workspace state |
 | `state/workspace` | Typed Workspace metadata, route/model/mode/share coordination, and pending navigation replay | models, comfort-tool controller/registry |
 | `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots | models, services, registered runtime definitions |
+| `state/timeSeries` | Independent scenario drafts, run lifecycle, and Time-series model registry | models, units, registered Time-series definitions |
 | `comfortModels` | Model declarations, calculations, results, chart evaluators, declaration-local zones | models, comfort/unit services, model builder |
 | `services/comfort` | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines | models |
 | `services/units` | SI/display conversion and presentation precision | models |
@@ -38,12 +39,13 @@ The runtime topology is:
 ```text
 sv-router Browser History
   -> persistent SiteShell (Header + Sidebar/Drawer + Footer)
-    -> route outlet (Standard/Explore dashboard, Time-series placeholder, or 404)
+    -> route outlet (Standard/Explore dashboard, Time-series workspace, or 404)
 ```
 
-`App.svelte` constructs one `ComfortToolController` above the route outlet. Dashboard routes
-therefore share canonical SI input, per-model chart memory, and calculation caches. Entering
-Time-series or a 404 does not create a second controller or schedule a calculation.
+`App.svelte` constructs one `ComfortToolController` and one independent
+`TimeSeriesController` above the route outlet. Dashboard routes share canonical SI input,
+per-model chart memory, and calculation caches. Time-series retains its own scenario draft
+across navigation but neither reads nor schedules the Analysis controller.
 
 `state/workspace/routeDefinitions.ts` is the stable navigation source of truth. Standard membership is
 derived from each model's `standardIds`; Explore membership is derived from
@@ -67,7 +69,9 @@ Each registered model has one focused declaration entry under `src/comfortModels
 Simple models may keep calculation and chart code in the declaration file. Larger standard families use focused modules beside their declarations so formulas and chart construction are implemented once without hiding standard-specific decisions:
 
 - PMV: ASHRAE/ISO declarations, shared builder assembly, calculation/results, and charts;
-- Adaptive: ASHRAE/EN declarations, shared builder assembly, calculation/results, and charts.
+- Adaptive: ASHRAE/EN declarations, shared builder assembly, calculation/results, and charts;
+- PHS: Analysis declaration, ISO 7933:2023 calculation, field charts, and Time-series chart
+  construction.
 
 `ComfortModelDefinition<Result, ChartSource, ComplianceBand = NumericBand>` is the typed authoring contract in `modelConfigs/definition.ts`. Builder setters preserve the model's result, chart-source, and Compliance-band types. Numeric-band models normally omit the third argument; models with functional band edges use `Band`. `build()` validates semantic invariants and erases those generics exactly once into `RuntimeComfortModelDefinition`.
 
@@ -154,6 +158,22 @@ Compliance and Explore share the Field Chart engine:
 Chart selection, route-applied mode, axes, baseline, Explore output/bands, unit system, and zone visibility are presentation-only. They rebuild from a ready calculation cache and do not invalidate or schedule model calculation.
 
 The psychrometric chart clamps its drawable domain at 100% relative humidity.
+
+## Time-series state and charts
+
+Time-series support is declared through `TimeSeriesModelDefinition`, registered separately
+from `ComfortModelDefinition`. The contract owns defaults, preset-segment creation,
+validation, calculation, and chart construction. The first registration is PHS / ISO
+7933:2023.
+
+`createTimeSeriesState.svelte.ts` stores ordered canonical-SI segments, person settings, a
+local unit system, validation issues, and the last successful result. Editing marks that
+result stale but does not replace it; **Run simulation** is the only calculation trigger.
+The default sequence reproduces the CBE reference inputs. PHS carries skin/core/rectal
+temperature, sweat rate, and accumulated evaporative load across every one-minute step.
+
+Time-series chart DTOs reuse `PlotlyCanvas`, but they do not use `FieldChartConfig` or the
+Analysis chart cache. Time-series has no share URL in the current draft.
 
 ## Share state
 

@@ -65,6 +65,7 @@ describe("comfort model capability registry", () => {
       ComfortModel.HeatIndex,
       ComfortModel.Humidex,
       ComfortModel.WindChill,
+      ComfortModel.Phs2023,
     ]);
     expect(comfortModelOrder).toEqual(Object.values(ComfortModel));
 
@@ -83,6 +84,7 @@ describe("comfort model capability registry", () => {
       [ComfortModel.HeatIndex]: ChartId.HeatIndexRanges,
       [ComfortModel.Humidex]: ChartId.Humidex,
       [ComfortModel.WindChill]: ChartId.WindChillDynamic,
+      [ComfortModel.Phs2023]: ChartId.PhsDynamic,
     };
 
     comfortModelOrder.forEach((modelId) => {
@@ -157,6 +159,13 @@ describe("comfort model capability registry", () => {
           yAxis: FieldKey.WindSpeed,
         },
       },
+      [ComfortModel.Phs2023]: {
+        count: 30,
+        defaults: {
+          xAxis: FieldKey.DryBulbTemperature,
+          yAxis: FieldKey.RelativeHumidity,
+        },
+      },
     } as const;
 
     comfortModelOrder.forEach((modelId) => {
@@ -214,6 +223,15 @@ describe("comfort model capability registry", () => {
         outputs: [ModelOutputKey.WindChill],
         complianceOutput: undefined,
       },
+      [ComfortModel.Phs2023]: {
+        modes: [ChartMode.Compliance, ChartMode.Explore],
+        outputs: [
+          ModelOutputKey.PhsLimitingExposureTime,
+          ModelOutputKey.PhsRectalTemperature,
+          ModelOutputKey.PhsWaterLoss,
+        ],
+        complianceOutput: ModelOutputKey.PhsLimitingExposureTime,
+      },
     } as const;
 
     comfortModelOrder.forEach((modelId) => {
@@ -235,6 +253,9 @@ describe("comfort model capability registry", () => {
     expect(getModelsForStandard(StandardId.En16798)).toEqual([
       ComfortModel.AdaptiveEn,
     ]);
+    expect(getModelsForStandard(StandardId.Iso7933)).toEqual([
+      ComfortModel.Phs2023,
+    ]);
     expect(getExploreModels()).toEqual([
       ComfortModel.PmvAshrae,
       ComfortModel.PmvIso,
@@ -242,6 +263,7 @@ describe("comfort model capability registry", () => {
       ComfortModel.HeatIndex,
       ComfortModel.Humidex,
       ComfortModel.WindChill,
+      ComfortModel.Phs2023,
     ]);
 
     for (const modelId of comfortModelOrder) {

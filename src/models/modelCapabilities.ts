@@ -18,6 +18,9 @@ export const ModelOutputKey = {
   Humidex: "humidex",
   WindChill: "windChill",
   OperativeTemperature: "operativeTemperature",
+  PhsLimitingExposureTime: "phsLimitingExposureTime",
+  PhsRectalTemperature: "phsRectalTemperature",
+  PhsWaterLoss: "phsWaterLoss",
 } as const;
 
 export type ModelOutputKey = (typeof ModelOutputKey)[keyof typeof ModelOutputKey];

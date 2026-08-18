@@ -95,6 +95,7 @@ describe("createComfortToolState", () => {
       [ComfortModel.HeatIndex]: ChartId.HeatIndexRanges,
       [ComfortModel.Humidex]: ChartId.Humidex,
       [ComfortModel.WindChill]: ChartId.WindChillDynamic,
+      [ComfortModel.Phs2023]: ChartId.PhsDynamic,
     });
     expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvAshrae])
       .not.toBe(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]);

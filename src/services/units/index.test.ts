@@ -8,6 +8,10 @@ import {
   convertHumidityRatioFromSi,
   convertHumidityRatioToSi,
   convertMetersPerSecondToKilometersPerHour,
+  convertLengthFromSi,
+  convertLengthToSi,
+  convertMassFromSi,
+  convertMassToSi,
   convertVaporPressureFromSi,
   convertVaporPressureToSi,
   getHumidityRatioDisplayMeta,
@@ -55,6 +59,14 @@ describe("units helpers", () => {
 
     const vaporPressureSi = convertVaporPressureFromSi(1600, UnitSystem.SI);
     expect(convertVaporPressureToSi(vaporPressureSi, UnitSystem.SI)).toBeCloseTo(1600, 6);
+  });
+
+  it("round-trips PHS person length and mass quantities", () => {
+    const feet = convertLengthFromSi(1.8);
+    expect(convertLengthToSi(feet)).toBeCloseTo(1.8, 10);
+
+    const pounds = convertMassFromSi(75000);
+    expect(convertMassToSi(pounds)).toBeCloseTo(75000, 8);
   });
 
   it("exposes display metadata for derived humidity quantities", () => {

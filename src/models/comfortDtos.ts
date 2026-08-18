@@ -6,6 +6,7 @@ export type PlotColorScaleDto = Array<[number, string]>;
 export interface PlotLineDto {
   color?: string;
   width?: number;
+  dash?: "solid" | "dot" | "dash" | "longdash" | "dashdot" | "longdashdot";
 }
 
 export interface PlotMarkerDto {
@@ -59,6 +60,7 @@ interface PlotTraceBaseDto {
   x: number[];
   y: number[];
   showlegend?: boolean;
+  visible?: true | "legendonly";
   opacity?: number;
   hoverinfo?: PlotHoverInfoDto;
   hovertemplate?: string;

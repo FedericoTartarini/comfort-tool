@@ -23,6 +23,7 @@ describe("model output display conversion", () => {
     ModelOutputKey.Utci,
     ModelOutputKey.HeatIndex,
     ModelOutputKey.OperativeTemperature,
+    ModelOutputKey.PhsRectalTemperature,
   ])("round-trips temperature output %s", (outputKey) => {
     const display = convertModelOutputFromSi(outputKey, 20, UnitSystem.IP);
     expect(display).toBe(68);
@@ -42,5 +43,34 @@ describe("model output display conversion", () => {
       .toBe(Infinity);
     expect(convertModelOutputToSi(ModelOutputKey.WindChill, -Infinity, UnitSystem.IP))
       .toBe(-Infinity);
+  });
+
+  it("converts PHS duration and water-loss outputs", () => {
+    expect(convertModelOutputFromSi(
+      ModelOutputKey.PhsLimitingExposureTime,
+      480,
+      UnitSystem.SI,
+    )).toBe(8);
+    expect(convertModelOutputToSi(
+      ModelOutputKey.PhsLimitingExposureTime,
+      8,
+      UnitSystem.IP,
+    )).toBe(480);
+
+    const pounds = convertModelOutputFromSi(
+      ModelOutputKey.PhsWaterLoss,
+      3750,
+      UnitSystem.IP,
+    );
+    expect(pounds).toBeCloseTo(8.2673, 3);
+    expect(convertModelOutputToSi(
+      ModelOutputKey.PhsWaterLoss,
+      pounds,
+      UnitSystem.IP,
+    )).toBeCloseTo(3750, 8);
+    expect(getModelOutputDisplayMeta(
+      ModelOutputKey.PhsWaterLoss,
+      UnitSystem.SI,
+    ).displayUnits).toBe("kg");
   });
 });

@@ -62,6 +62,7 @@ test.describe("workspace routing", () => {
       ["/ASHRAE-55/", "Psychrometric"],
       ["/ISO-7730/", "Psychrometric"],
       ["/EN-16798-1/", "Adaptive"],
+      ["/ISO-7933/", "Dynamic"],
       ["/Explore/", "Psychrometric"],
     ] as const) {
       await page.goto(path);
@@ -153,6 +154,13 @@ test.describe("workspace routing", () => {
       { exact: true },
     )).toBeVisible();
 
+    await page.goto("/ISO-7933/");
+    await expectSingleModelSelector(page, "PHS (ISO 7933:2023)");
+    await expect(page.getByTestId("comfort-chart-panel").getByText(
+      "Compliance",
+      { exact: true },
+    )).toBeVisible();
+
     await page.goto("/Explore/");
     await openModelOptions(page);
     for (const modelLabel of [
@@ -162,6 +170,7 @@ test.describe("workspace routing", () => {
       "Heat Index",
       "Humidex",
       "Wind Chill",
+      "PHS (ISO 7933:2023)",
     ]) {
       await expect(page.getByRole("button", { name: modelLabel, exact: false }))
         .toBeVisible();

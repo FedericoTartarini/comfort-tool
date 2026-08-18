@@ -11,7 +11,7 @@ import {
 import ComfortWorkspaceRoute from "./ComfortWorkspaceRoute.svelte";
 import NotFoundRoute from "./NotFoundRoute.svelte";
 import RootRedirectPage from "../views/RootRedirectPage.svelte";
-import TimeSeriesPlaceholderPage from "../views/TimeSeriesPlaceholderPage.svelte";
+import TimeSeriesPage from "../views/TimeSeriesPage.svelte";
 import {
   defaultAppRoute,
   getAppRouteByPath,
@@ -26,6 +26,7 @@ type DeclaredRouterPath =
   | "/ASHRAE-55"
   | "/ISO-7730"
   | "/EN-16798-1"
+  | "/ISO-7933"
   | "/Explore"
   | "/Time-Series";
 
@@ -63,8 +64,9 @@ const routes = {
   "/ASHRAE-55": ComfortWorkspaceRoute,
   "/ISO-7730": ComfortWorkspaceRoute,
   "/EN-16798-1": ComfortWorkspaceRoute,
+  "/ISO-7933": ComfortWorkspaceRoute,
   "/Explore": ComfortWorkspaceRoute,
-  "/Time-Series": TimeSeriesPlaceholderPage,
+  "/Time-Series": TimeSeriesPage,
   "*path": NotFoundRoute,
   hooks: {
     beforeLoad(context: HooksContext) {

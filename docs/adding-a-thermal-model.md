@@ -114,8 +114,8 @@ Models that do not belong to a Standard must call `.setStandardIds([])` explicit
 
 Standard Workspace model lists are derived from `standardIds`. Explore availability is
 independent and remains derived only from `modes.includes(ChartMode.Explore)`; do not add a
-second navigation list. Time-series has no current model capability contract and must not be
-added to `ChartMode`.
+second navigation list. Time-series support is declared separately and must not be added to
+`ChartMode`.
 
 Explore requires at least one output with valid numeric SI bands. A Compliance-capable model also declares a fixed output, non-empty bands, caption, legend title, and result feedback callback. Compliance output and bands always come from `complianceSpec`; Explore uses the selected output and its editable working bands.
 
@@ -131,6 +131,20 @@ PMV ASHRAE/ISO and Adaptive ASHRAE/EN remain separate registered declarations. N
 - Adaptive declarations: `adaptiveAshrae.ts`, `adaptiveEn.ts`; shared assembly: `adaptiveShared.ts`; calculations/results: `adaptiveCalculation.ts`; charts: `adaptiveCharts.ts`.
 
 Each standard declaration must still show all standard-specific decisions.
+
+### Optional Time-series support
+
+Time-series is a separate product capability. To support it, add a typed
+`TimeSeriesModelDefinition` that owns default segments/settings, preset-segment creation,
+validation, sequence calculation, and chart construction, then register it in the dedicated
+Time-series registry. Do not infer support from the Analysis model's `modes` or
+`chartableOutputs`, and do not put segment durations or physiological carry state into
+canonical Analysis input/share records.
+
+Model-specific sequence calculation and charts remain under `comfortModels`; public state
+shapes belong in `models`, and the Time-series controller consumes the registered runtime
+definition without importing the implementation directly. Time-series numeric state remains
+canonical SI and uses centralized unit conversion for display.
 
 ## 6. Attach executable modifiers
 

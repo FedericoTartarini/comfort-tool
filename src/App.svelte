@@ -19,12 +19,14 @@
     standardRouteDefinitions,
   } from "./state/workspace/routeDefinitions";
   import { WorkspaceId } from "./models/workspaces";
+  import { createTimeSeriesState } from "./state/timeSeries/createTimeSeriesState.svelte";
 
   const toolState = createComfortToolState();
+  const timeSeriesState = createTimeSeriesState();
   const navigation = createWorkspaceNavigation(toolState, {
     navigate: navigateToUrl,
   });
-  provideWorkspaceContext({ toolState, navigation });
+  provideWorkspaceContext({ toolState, navigation, timeSeriesState });
 
   if (typeof window !== "undefined") {
     navigation.prepareUrl(new URL(window.location.href), { validateRanges: false });

@@ -8,6 +8,7 @@ import { adaptiveEnModelConfig } from "../../../comfortModels/adaptiveEn";
 import { heatIndexModelConfig } from "../../../comfortModels/heatIndex";
 import { humidexModelConfig } from "../../../comfortModels/humidex";
 import { windChillModelConfig } from "../../../comfortModels/windChill";
+import { phsModelConfig } from "../../../comfortModels/phs";
 import { ChartMode } from "../../../models/modelCapabilities";
 import type { StandardId as StandardIdType } from "../../../models/workspaces";
 
@@ -20,6 +21,7 @@ export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDe
   [ComfortModel.HeatIndex]: heatIndexModelConfig,
   [ComfortModel.Humidex]: humidexModelConfig,
   [ComfortModel.WindChill]: windChillModelConfig,
+  [ComfortModel.Phs2023]: phsModelConfig,
 } as const;
 
 export const comfortModelOrder = Object.keys(comfortModelConfigs) as ComfortModelType[];
