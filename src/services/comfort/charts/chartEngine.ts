@@ -173,6 +173,15 @@ export interface BandedGridStrategyOptions {
   hoverTemplateSuffix?: RenderText;
   opacity?: number;
   renderStrategy?: GridBandRenderStrategy;
+  /**
+   * Projects only the grid used to draw band fills and boundaries. The
+   * original evaluated grid remains the source for hover, so callers can
+   * render through masked domains without making those cells interactive.
+   */
+  projectFillGrid?: (
+    grid: GridEvaluationResult,
+    context: FieldChartRenderContext,
+  ) => GridEvaluationResult;
 }
 
 function createAxis(
@@ -340,6 +349,7 @@ export function createBandedGridStrategy({
   hoverTemplateSuffix,
   opacity,
   renderStrategy = GridBandRenderStrategy.Categorical,
+  projectFillGrid,
 }: BandedGridStrategyOptions): GridFieldChartStrategy {
   return {
     kind: "grid",
@@ -365,6 +375,7 @@ export function createBandedGridStrategy({
     },
     renderTraces: (grid, context) => {
       const { xAxis, yAxis, unitSystem } = context;
+      const fillGrid = projectFillGrid?.(grid, context) ?? grid;
       const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
       const outputUnits = outputMeta.displayUnits
         ? ` ${outputMeta.displayUnits}`
@@ -379,13 +390,13 @@ export function createBandedGridStrategy({
           ? buildConstraintBandTraces({
             name: `${output.label} bands`,
             bands: config.bands,
-            grid,
+            grid: fillGrid,
             opacity,
           })
           : buildCategoricalBandTraces({
             name: `${output.label} bands`,
             bands: config.bands,
-            grid,
+            grid: fillGrid,
             opacity,
           })),
         buildBandTooltipTrace({

@@ -26,7 +26,7 @@ Install the bundled browser once before the visual suite:
 npx playwright install chromium
 ```
 
-The 18 approved visual baselines live beside the Playwright tests. Update them only for an intentional visual change, using `npm run test:visual:update`, and inspect every expected/actual/diff image before committing.
+The 20 approved visual baselines live beside the Playwright tests. Update them only for an intentional visual change, using `npm run test:visual:update`, and inspect every expected/actual/diff image before committing.
 
 ## Architecture
 

@@ -19,7 +19,10 @@ import {
   type PmvChartSourceDto,
   type PmvResponseDto,
 } from "../../../comfortModels/pmvCalculation";
-import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import type {
+  PlotlyChartResponseDto,
+  PlotTraceDto,
+} from "../../../models/comfortDtos";
 import { ChartId } from "../../../models/chartOptions";
 import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import {
@@ -143,6 +146,8 @@ function buildPsychrometric(
   declaration: PmvModelDeclaration,
   unitSystem: UnitSystemType = UnitSystem.SI,
   source = createSource(declaration),
+  outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
+  mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
 ): PlotlyChartResponseDto {
   const { config, result } = calculateModel(declaration);
   const chart = config.buildChartResult(
@@ -153,12 +158,40 @@ function buildPsychrometric(
       declaration,
       FieldKey.DryBulbTemperature,
       FieldKey.RelativeHumidity,
-      ModelOutputKey.Pmv,
+      outputKey,
       unitSystem,
+      mode,
     ),
   );
   if (!chart) throw new Error("Expected a PMV psychrometric chart.");
   return chart;
+}
+
+function requireTrace(
+  chart: PlotlyChartResponseDto,
+  name: string,
+): PlotTraceDto {
+  const trace = chart.traces.find((candidate) => candidate.name === name);
+  if (!trace) throw new Error(`Missing chart trace: ${name}`);
+  return trace;
+}
+
+function expectSaturationMaskToMatchCurve(chart: PlotlyChartResponseDto): void {
+  const mask = requireTrace(chart, "Supersaturated region mask");
+  const saturationCurve = requireTrace(chart, "RH 100%");
+  const curveLength = saturationCurve.x.length;
+
+  expect(mask.type).toBe("scatter");
+  expect(mask.fill).toBe("toself");
+  expect(mask.fillcolor).toBe(chart.layout.plot_bgcolor);
+  expect(mask.hoverinfo).toBe("skip");
+  expect(mask.isBackgroundZone).not.toBe(true);
+  expect(mask.x.slice(0, curveLength)).toEqual(saturationCurve.x);
+  expect(mask.y.slice(0, curveLength)).toEqual(saturationCurve.y);
+  expect(mask.y.slice(-2)).toEqual([
+    chart.layout.yaxis.range[1],
+    chart.layout.yaxis.range[1],
+  ]);
 }
 
 function buildDynamic(
@@ -197,6 +230,7 @@ describe("PMV charts", () => {
     expect(tooltipTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
     expect(tooltipTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
     expect(chart.traces.filter(({ name }) => name.startsWith("RH "))).toHaveLength(10);
+    expectSaturationMaskToMatchCurve(chart);
     expect(chart.traces.some(({ name }) => name === "Input 1 comfort zone")).toBe(true);
     expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
     expect(String(chart.layout.title)).toContain("ASHRAE");
@@ -278,7 +312,7 @@ describe("PMV charts", () => {
     expect(String(ppd.layout.title)).toContain("PPD (%)");
   });
 
-  it("leaves supersaturated psychrometric cells uncolored and clamps evaluated RH to 100%", () => {
+  it("extends fills under a non-interactive saturation mask without evaluating above 100% RH", () => {
     let maximumRh = -Infinity;
     const countingAdapter: PmvStandardAdapter = {
       ...pmvAshraeAdapter,
@@ -296,12 +330,52 @@ describe("PMV charts", () => {
       UnitSystem.SI,
       createSource(pmvAshraeDeclaration),
     );
-    const zValues = chart.traces[0].z?.flat() ?? [];
+    const fillTrace = chart.traces.find(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    ));
+    const tooltipTrace = requireTrace(chart, "PMV bands hover");
+    const fillValues = fillTrace?.z?.flat() ?? [];
+    const tooltipValues = tooltipTrace.z?.flat() ?? [];
+    const maskIndex = chart.traces.findIndex(({ name }) => (
+      name === "Supersaturated region mask"
+    ));
+    const rhCurveIndex = chart.traces.findIndex(({ name }) => name === "RH 100%");
+    const comfortZoneIndex = chart.traces.findIndex(({ name }) => (
+      name === "Input 1 comfort zone"
+    ));
+    const inputIndex = chart.traces.findIndex(({ name }) => name === "Input 1");
 
-    expect(zValues.some(Number.isNaN)).toBe(true);
-    expect(zValues.some(Number.isFinite)).toBe(true);
+    expectSaturationMaskToMatchCurve(chart);
+    expect(tooltipValues.some(Number.isNaN)).toBe(true);
+    expect(tooltipValues.some((value, index) => (
+      Number.isNaN(value) && Number.isFinite(fillValues[index])
+    ))).toBe(true);
+    expect(maskIndex).toBeGreaterThan(chart.traces.indexOf(tooltipTrace));
+    expect(rhCurveIndex).toBeGreaterThan(maskIndex);
+    expect(comfortZoneIndex).toBeGreaterThan(rhCurveIndex);
+    expect(inputIndex).toBeGreaterThan(comfortZoneIndex);
     expect(maximumRh).toBeLessThanOrEqual(100);
   });
+
+  it.each([
+    ["ASHRAE Compliance", pmvAshraeDeclaration, ChartMode.Compliance, ModelOutputKey.Pmv],
+    ["ASHRAE Explore", pmvAshraeDeclaration, ChartMode.Explore, ModelOutputKey.Ppd],
+    ["ISO Compliance", pmvIsoDeclaration, ChartMode.Compliance, ModelOutputKey.Pmv],
+    ["ISO Explore", pmvIsoDeclaration, ChartMode.Explore, ModelOutputKey.Ppd],
+  ] as const)(
+    "uses the shared saturation boundary for %s",
+    (_label, declaration, mode, outputKey) => {
+      const chart = buildPsychrometric(
+        declaration,
+        UnitSystem.SI,
+        createSource(declaration),
+        outputKey,
+        mode,
+      );
+
+      expectSaturationMaskToMatchCurve(chart);
+    },
+  );
 
   it("converts psychrometric axes and markers only at the display boundary", () => {
     const siChart = buildPsychrometric(pmvAshraeDeclaration, UnitSystem.SI);
@@ -309,6 +383,8 @@ describe("PMV charts", () => {
     const siInput = siChart.traces.find(({ name }) => name === "Input 1");
     const ipInput = ipChart.traces.find(({ name }) => name === "Input 1");
 
+    expectSaturationMaskToMatchCurve(siChart);
+    expectSaturationMaskToMatchCurve(ipChart);
     expect(siInput?.x).toEqual([25]);
     expect(ipInput?.x[0]).toBeCloseTo(77, 6);
     expect(ipInput?.y[0]).not.toBe(siInput?.y[0]);

@@ -382,6 +382,10 @@ test.describe("PMV visual regression", () => {
     await waitForTrace(plot, "PMV bands hover");
     await expectComplianceConstraintFills(plot);
     await expect(visual).toContainText("PMV Zones");
+    await page.mouse.move(0, 0);
+    await expect(visual).toHaveScreenshot(
+      "pmv-ashrae-psychrometric-compliance-si.png",
+    );
   });
 
   test("ASHRAE PMV in SI", async ({ page }) => {

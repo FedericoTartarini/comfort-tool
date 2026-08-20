@@ -180,6 +180,62 @@ describe("shared chart engine", () => {
     expect(tooltip?.hoverongaps).toBe(false);
   });
 
+  it("projects band fills without removing gaps from the hover grid", () => {
+    const bands = [
+      { min: 0, max: 1, label: "Target", color: "#00ff00" },
+    ];
+    let evaluatedGridGap = false;
+    const chart = buildFieldChart({
+      unitSystem: UnitSystem.SI,
+      xAxis: {
+        field: FieldKey.DryBulbTemperature,
+        rangeSi: { min: 0, max: 1 },
+        points: 2,
+      },
+      yAxis: {
+        field: FieldKey.RelativeHumidity,
+        rangeSi: { min: 50, max: 50 },
+        points: 1,
+      },
+      strategy: createBandedGridStrategy({
+        config: {
+          xField: FieldKey.DryBulbTemperature,
+          yField: FieldKey.RelativeHumidity,
+          zOutput: ModelOutputKey.HeatIndex,
+          bands,
+        },
+        output: {
+          key: ModelOutputKey.HeatIndex,
+          label: "Heat Index",
+          defaultBands: bands,
+        },
+        renderStrategy: GridBandRenderStrategy.ConstraintContours,
+        evaluateOutput: (xSi) => (xSi === 1 ? null : 0.5),
+        projectFillGrid: (grid) => {
+          evaluatedGridGap = Number.isNaN(grid.zValues[0][1]);
+          return {
+            ...grid,
+            zValues: grid.zValues.map((row) => row.map((value) => (
+              Number.isNaN(value) ? 0.5 : value
+            ))),
+          };
+        },
+      }),
+      layout,
+      source: CalculationSource.FrontendGenerated,
+    });
+
+    const fill = chart.traces.find(({ contours }) => (
+      contours?.type === "constraint" && contours.operation !== "="
+    ));
+    const tooltip = chart.traces.find(({ name }) => name === "Heat Index bands hover");
+
+    expect(evaluatedGridGap).toBe(true);
+    expect(fill?.z).toEqual([[0.5, 0.5]]);
+    expect(tooltip?.z).toEqual([[0.5, NaN]]);
+    expect((tooltip?.hoverMetadata as unknown[][][])[0][1]).toEqual([]);
+  });
+
   it("preserves custom hover metadata in a banded grid", () => {
     const bands = [
       { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
