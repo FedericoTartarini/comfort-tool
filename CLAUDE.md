@@ -26,6 +26,13 @@ Svelte 5 (runes), TypeScript, Vite 5, Tailwind CSS + Flowbite Svelte, Plotly.js,
 
 Frontend-only — no backend in this repo.
 
+## Architecture source of truth
+
+- **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices follow that file.
+- **Historical:** `26-06-29-architecture-brief.md` is not the next design. It may stay in the repo as history; do not implement from it, and do not treat “leave the brief unchanged” as a reason to block Plan work.
+- **This file** describes **current** code. When a Plan slice deletes presets, the parallel `ChartInstanceId` tree, `spec: unknown`, or application-layer `*Dto` types, the Plan wins. Do not restore them to match older sentences here.
+- Do only the named Phase ID. Do not migrate the Plan §4 folder tree unless the task is that slice. Do not add unrelated new models during the cutover.
+
 ## Source Layout
 
 ```
@@ -99,7 +106,7 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 ## Capabilities, axes, and modifiers
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
-- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts and tables are declared via `setOutputCharts()` and `setOutputTable()`; optional Time-series output uses `setSimulation()`.
+- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts and tables are declared via `setOutputCharts()` and `setOutputTable()`; optional Time-series output uses `setSimulation()`. Plan **0t** / **0p** replace the split table/preset APIs with `tables` and `defineModel` when those slices run.
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; only Explore working bands are serialized, and modifier records contain the complete stable key set.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
@@ -107,7 +114,7 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records.
 - Model `.setModifiers()` receives executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
 - Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO; each declaration binds its own `clo_dynamic` standard.
-- Keep Time-series out of Analysis state until it is explicitly implemented.
+- Keep Time-series out of Analysis caches and Analysis share snapshots. Time-series is a separate controller (PHS only); do not generalize it unless the Plan slice says so.
 
 ## UI Conventions
 
@@ -176,5 +183,6 @@ A change is complete when:
 - No new direct `jsthermalcomfort` imports outside `src/comfortModels/**` or `src/services/comfort/**`
 - No new scattered conversion helpers outside `src/services/units/`
 - Model or chart additions do not expand the controller with more hardcoded parallel properties (unless explicitly approved)
-- Internal documentation remains in `docs/adding-a-thermal-model.md` and `docs/frontend-structure-summary.md`; it is not part of the application build
-- `26-06-29-architecture-brief.md` remains unchanged
+- Internal documentation remains in `docs/` Markdown (today `adding-a-thermal-model.md` and `frontend-structure-summary.md`); it is not part of the application build. Plan **0d** consolidates authoring docs.
+- Target architecture is `ARCHITECTURE-PLAN.md`. Do not treat `26-06-29-architecture-brief.md` as a freeze that blocks Plan slices.
+- A named Plan slice is done when that ID’s **Done when** in `ARCHITECTURE-PLAN.md` is met, without reintroducing deleted wrappers.

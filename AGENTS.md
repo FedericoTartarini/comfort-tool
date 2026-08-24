@@ -8,6 +8,15 @@ This repository contains the active product frontend at the repository root, whi
 - Do not introduce new backend dependencies or server assumptions unless a task explicitly requires that.
 - Never commit generated artifacts such as `dist/`, `node_modules/`, coverage output, or cache directories.
 
+## Architecture source of truth
+
+- **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices (`0c`, `0t`, `0q`, …) follow that file, including registry contribution, `defineModel`, and allowed deletions.
+- **Historical:** `26-06-29-architecture-brief.md` is not the next design. Do not implement from it or restore its authoring model.
+- **This file** describes the **current** tree and execution rules. When a Plan slice deletes or replaces something still named here (preset factories, the parallel `ChartInstanceId` tree, `spec: unknown`, application-layer `*Dto` types, exact `comfortModelOrder` share maps), **the Plan wins**. Do not put those back to “match AGENTS.md”.
+- Slice discipline: do only the named Phase ID. Do not migrate the Plan §4 target tree (`catalog/`, `declarations/`, `state/analysis/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
+- The product is not deployed. There is no share or URL compatibility requirement.
+- After a slice lands, update this file, `CLAUDE.md`, and `docs/` in the same change so current-state rules match the code.
+
 ## Source Tree
 
 Primary source layout:
@@ -68,7 +77,7 @@ All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or
 ## Physical Quantity Rules
 
 - `PhysicalQuantityId` in `src/models/physicalQuantities.ts` is the single application-layer catalog; state, share snapshots, and UI use these IDs exclusively.
-- Request DTO short names (`tdb`, `vr`, `rh`, …) are allowed only at the `jsthermalcomfort` boundary. Each model's `createFieldRequestAdapter()` mapping in `*Calculation.ts` is the sole catalog→DTO connection point.
+- Request short names (`tdb`, `vr`, `rh`, …) are allowed only at the `jsthermalcomfort` boundary. Each model's `createFieldRequestAdapter()` mapping in `*Calculation.ts` is the sole catalog→library connection point. Do not add new application-layer `*Dto` types; Plan retires that suffix outside the library boundary.
 - `quantitiesByInput` stores base primary SI before modifiers; `effectiveQuantitiesByInput` in `ModelCalculationContext` is what calculations and request mapping read.
 - Calculate each model once into `calculationCacheByModel`; chart builders read `resultsByInput` and `chartSource` from that cache. Presentation-only changes (mode, axes, bands) must rebuild charts without invalidating ready caches.
 - Golden regression fixtures live in `src/testSupport/goldenFixtures.ts`; do not reintroduce ad-hoc `refactor*` baseline files.
@@ -107,7 +116,7 @@ When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createCom
 
 ## Model Extension Strategy
 
-New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; the builder and registry live in `src/state/comfortTool/modelConfigs/**`.
+New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; the builder and registry live in `src/state/comfortTool/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Do not add new index models through `src/comfortModels/presets/` — Plan **0p** deletes those factories; copy a full declaration (Heat Index style after 0p) instead.
 
 Each registered model has one focused declaration entry that exposes its product decisions. This is not a one-physical-file rule: stable IDs remain centralized, registration remains explicit, and tests remain separate. Simple models may keep their implementation in the declaration file; larger standard families may use focused calculation/chart modules beside complete standard declarations.
 
@@ -135,20 +144,20 @@ Do not introduce new raw domain strings for those concepts.
 
 ## Capability Declarations And Runtime Architecture
 
-`26-06-29-architecture-brief.md` describes the broader target architecture; §9.5 Compliance mode, Explore controls, the shared `FieldChartConfig` engine, full per-model chart-setting memory, and §9.7 generic input modifiers are implemented.
+Current code already has Standard/Explore workspaces, the shared `FieldChartConfig` engine, per-model chart-setting memory, and generic input modifiers. The **target** for further architecture work is [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md), not the June 2026 brief.
 
 - Compliance and Explore share one chart engine, with Compliance as the constrained version.
 - Every model declaration must set `workspaceCapabilities` and `setExploreOutputs()`; Standard-capable models must also set `setComplianceProfile()` with non-empty bands, a caption, legend title, and result feedback callback. Use the builder rather than controller branches.
 - `ModelOutputKey`, capability types, workspace/profile metadata, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `outputSettingsByModel` stores each model's x/y axes, baseline, and optional Explore working state. Explore z comes from `exploreOutputs`, and editable numeric bands are cloned from `defaultBands`; Standard workspace output and bands always come directly from `complianceProfile`.
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set. Derive `PrimaryQuantityId` and `PrimaryInputState` from it; chart-only and derived `PhysicalQuantityId` values must not enter primary records, share primary records, behavior patches, modifiers, or calculation context.
-- Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with stable IDs from `src/models/output/chartInstances.ts` and typed `ChartKind` specs. Do not recreate a global chart metadata registry or parallel chart/legend/lock arrays.
+- Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with typed `ChartKind` specs. Today instance ids are also listed in `src/models/output/chartInstances.ts`. Plan **0c** deletes that parallel tree and derives ids from declarations — do not add new entries to the tree when doing that slice, and do not recreate a second legend/lock array beside `setOutputCharts()`.
 - Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
 - `setInputFields()` declares visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
 - Compose `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior; keep coupled temperature solving in the shared dynamic-axis solver.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
-- Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`, serialize only Explore bands plus exact modifier state, and use explicit wire sentinels for unbounded numeric edges. Reject legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads. Do not add old-v1 migration behavior.
+- Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`, serialize only Explore bands plus exact modifier state, and use explicit wire sentinels for unbounded numeric edges. Reject legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads. Do not add old-v1 migration behavior. Plan **0b** makes `models` sparse (missing known keys seed; unknown keys reject); implement that when doing 0b, and do not keep exact `comfortModelOrder` matching for compatibility.
 - Band assignment is array-ordered and half-open (`min <= value < max`); numeric values, functional-edge X values, and band inputs are canonical SI.
 - PMV ASHRAE and PMV ISO are separate registered models with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files (`pmvAshrae.ts` and `pmvIso.ts`). ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. `pmvShared.ts` owns only shared contracts/declaration data/builder assembly, `pmvCalculation.ts` owns formulas/results, and `pmvCharts.ts` owns chart construction. Adaptive uses the corresponding `adaptiveShared.ts`, `adaptiveCalculation.ts`, and `adaptiveCharts.ts` split. Do not merge standards behind a runtime toggle.
 - `ModifierId`, `PhysicalQuantityId` modifier slots, and the tuple-generic `InputModifier` contract live in `src/models/inputModifiers.ts` and `src/models/physicalQuantities.ts`; do not inline modifier strings.
@@ -253,25 +262,26 @@ A change in this frontend is done when:
 - no new scattered conversion helpers were added outside the chosen conversion module family
 - model or chart additions do not expand the controller with more hardcoded parallel properties unless explicitly approved
 - module boundaries remain clear
+- planned architecture slices match [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md) Done when for that ID, and do not reintroduce deleted wrappers to satisfy older sentences in this file
 
 ## Output Registry
 
 Analysis and Time-series output metadata lives under `src/models/output/`:
 
 - `workspaceCapabilities.ts` — Standard, Explore, and Time-series workspace membership
-- `tableLayouts.ts` — compare-matrix and metric-summary table layouts plus view-model shapes
-- `chartInstances.ts` / `chartKinds.ts` — instance IDs, chart-kind registrations, and build results
+- `tableLayouts.ts` — compare-matrix and metric-summary layouts (Plan **0t**: `TableType.Analysis` / `TimeSeries`)
+- `chartInstances.ts` / `chartKinds.ts` — today’s instance IDs and chart-kind registrations (Plan **0c** deletes the id tree)
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 
 Runtime models expose `buildTable()` and `buildChart()` through `src/state/comfortTool/modelConfigs/`. Shared table assembly helpers live in `src/services/comfort/output/`. Time-series exposure summaries render through `src/components/output/MetricSummaryPanel.svelte`.
 
-Chart instance IDs live in `src/models/output/chartInstances.ts`; share snapshots store `selectedChartInstanceId` per model.
+Share snapshots store `selectedChartInstanceId` per model. Until Plan **0c** lands, instance id constants still live in `src/models/output/chartInstances.ts`; after 0c they are derived from declarations only.
 
 ## Documentation
 
-- Keep this file focused on execution rules.
-- If a task materially changes state flow, model registration, or service boundaries, update architecture documentation in this repo as part of the same work.
-- Keep `docs/adding-a-thermal-model.md` and `docs/frontend-structure-summary.md` current as internal Markdown references.
+- Keep this file focused on execution rules. Target architecture lives in `ARCHITECTURE-PLAN.md`.
+- If a task materially changes state flow, model registration, or service boundaries, update this file and `docs/` in the same work.
+- Keep `docs/adding-a-thermal-model.md` and `docs/frontend-structure-summary.md` current until Plan **0d** replaces them with a single `docs/adding-a-model.md`.
 - Do not add a documentation generator, deployment step, or product UI route for these internal files unless a later task explicitly requests one.
 
 ## Code Quality
