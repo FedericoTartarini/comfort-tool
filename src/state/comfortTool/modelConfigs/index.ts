@@ -10,6 +10,10 @@ import { humidexModelConfig } from "../../../comfortModels/humidex";
 import { windChillModelConfig } from "../../../comfortModels/windChill";
 import { phsModelConfig } from "../../../comfortModels/phs/phs";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
+import {
+  ChartKind,
+  modelAllowsCustomCharts,
+} from "../../../models/output/chartKinds";
 import { WorkspaceId, type StandardId as StandardIdType, type WorkspaceId as WorkspaceIdType } from "../../../models/workspaces";
 import { assembleQuantityCatalog, type QuantityExtension } from "../../../models/physicalQuantities";
 
@@ -82,7 +86,42 @@ function assertUniqueDeclaredChartInstanceIds(
   }
 }
 
+function assertCustomChartsArePmvFrontend(
+  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
+): void {
+  for (const modelId of Object.keys(configs) as ComfortModelType[]) {
+    for (const registration of configs[modelId].chartKindRegistrations) {
+      if (registration.registration.kind !== ChartKind.Custom) continue;
+      if (!modelAllowsCustomCharts(modelId)) {
+        throw new Error(
+          `Custom chart "${registration.instanceId}" on ${modelId} is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
+        );
+      }
+    }
+  }
+}
+
+function assertUniqueDeclaredChartTypes(
+  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
+): void {
+  const ownersByType = new Map<string, ComfortModelType>();
+  for (const modelId of Object.keys(configs) as ComfortModelType[]) {
+    for (const entry of configs[modelId].outputCharts.entries) {
+      if (!entry.type) continue;
+      const owner = ownersByType.get(entry.type);
+      if (owner !== undefined) {
+        throw new Error(
+          `Chart type "${entry.type}" is declared by both ${owner} and ${modelId}.`,
+        );
+      }
+      ownersByType.set(entry.type, modelId);
+    }
+  }
+}
+
 assertUniqueDeclaredChartInstanceIds(comfortModelConfigs);
+assertCustomChartsArePmvFrontend(comfortModelConfigs);
+assertUniqueDeclaredChartTypes(comfortModelConfigs);
 assembleRegisteredQuantityCatalog(comfortModelConfigs);
 
 export const comfortModelOrder = Object.keys(comfortModelConfigs) as ComfortModelType[];

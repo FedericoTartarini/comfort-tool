@@ -18,7 +18,6 @@ import {
 import type { InputModifier } from "../../models/inputModifiers";
 import {
   type Band,
-  type ChartBuildContext,
   type ComplianceSpec,
   type ModelOutput,
 } from "../../models/modelCapabilities";
@@ -182,7 +181,10 @@ export function createAdaptiveModelConfig(
       },
     });
 
-  const boundaryChart: OutputChartDeclarationInput = {
+  const boundaryChart: OutputChartDeclarationInput<
+    AdaptiveResponseDto,
+    ModelChartSourceDto<AdaptiveRequestDto>
+  > = {
     instanceId: declaration.boundaryInstanceId,
     kind: ChartKind.BoundaryRegion,
     name: "Adaptive",
@@ -198,11 +200,7 @@ export function createAdaptiveModelConfig(
       showsExport: true,
     },
     spec: {
-      build: (
-        chartSource: ModelChartSourceDto<AdaptiveRequestDto> | null,
-        resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, AdaptiveResponseDto | null>>,
-        context: ChartBuildContext<Band>,
-      ) => {
+      build: (chartSource, resultsByInput, context) => {
         if (!chartSource) return null;
         return buildAdaptiveChart(
           declaration,

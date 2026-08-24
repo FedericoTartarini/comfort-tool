@@ -3,8 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   ChartKind,
   chartKindMetaById,
+  isChartKind,
+  isModelChartKind,
+  modelAllowsCustomCharts,
   resolveChartCapabilities,
 } from "./chartKinds";
+import { ComfortModel } from "../comfortModels";
 import {
   supportsExploreWorkspace,
   supportsStandardWorkspace,
@@ -14,9 +18,21 @@ import { FieldChartProfileKind } from "./fieldChartProfile";
 import { TableType } from "./tableLayouts";
 
 describe("output catalog", () => {
-  it("defines six chart kinds with defaults", () => {
-    expect(Object.keys(chartKindMetaById)).toHaveLength(6);
-    expect(chartKindMetaById[ChartKind.ParametricLine]).toBeDefined();
+  it("defines five chart kinds with defaults", () => {
+    expect(Object.keys(chartKindMetaById)).toHaveLength(5);
+    expect(chartKindMetaById[ChartKind.DynamicField]).toBeDefined();
+    expect(chartKindMetaById[ChartKind.Custom]).toBeDefined();
+    expect(isChartKind(ChartKind.DynamicField)).toBe(true);
+    expect(isChartKind("invented-engine")).toBe(false);
+    expect(isModelChartKind(ChartKind.BandScalar)).toBe(true);
+    expect(isModelChartKind(ChartKind.Custom)).toBe(false);
+  });
+
+  it("allows Custom by PMV model id rather than instance id", () => {
+    expect(modelAllowsCustomCharts(ComfortModel.PmvAshrae)).toBe(true);
+    expect(modelAllowsCustomCharts(ComfortModel.PmvIso)).toBe(true);
+    expect(modelAllowsCustomCharts(ComfortModel.HeatIndex)).toBe(false);
+    expect(modelAllowsCustomCharts(ComfortModel.Phs2023)).toBe(false);
   });
 
   it("merges capability overrides", () => {

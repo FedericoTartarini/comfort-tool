@@ -152,7 +152,7 @@ State stays keyed by model ID: selected charts, options, chart settings, caches,
 
 ## Charts and presentation cache
 
-Each model declares charts through `defineModel` `outputCharts` with instance ids that live only on the declaration and `ChartKind` specs. `ComfortModelBuilder.setOutputCharts()` remains for existing internal/family assembly (PMV, Adaptive, UTCI, PHS). The registry derives those ids (`getDeclaredChartInstanceIds`) and uniqueness tests require non-empty per model, unique per model, and unique globally. Chart capabilities (axis selection, Y lock, zone toggle, legend, baseline) are declared per instance or inherited from kind defaults. Explore output narrowing uses `supportedExploreOutputs` and `defaultExploreOutput` on chart entries. Heat Index / Humidex fixed-axis maps are `DynamicField` types with `lockedAxes`, not `Custom`.
+Each model declares charts through discriminated `ChartKind` specs (no `spec: unknown`). `defineModel` uses `ModelChartDeclaration`: a data-only union over existing engines (`DynamicField`, `BoundaryRegion`, `BandScalar`, `TimeSeriesLine`). Optional `type` names a built-in or extended chart type, is preserved on the presentation instance, and cannot escape that union. Family modules use `ComfortModelBuilder.setOutputCharts()` with `FrontendChartDeclaration`. Engine spec stays on `chartKindRegistrations`; presentation instances do not carry it. The registry derives instance ids (`getDeclaredChartInstanceIds`) and uniqueness tests require non-empty per model, unique per model, and unique globally. Chart capabilities (axis selection, Y lock, zone toggle, legend, baseline) are declared per instance or inherited from kind defaults. Explore output narrowing uses `supportedExploreOutputs` and `defaultExploreOutput` on chart entries. Heat Index / Humidex fixed-axis maps are `DynamicField` types with `lockedAxes`, not `Custom`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models. PMV Dynamic is `DynamicField`; PHS Analysis exposure history is `TimeSeriesLine`. `ParametricLine` is omitted until Phase 1. UTCI BandScalar/DynamicField specs live in `utciCharts.ts`.
 
 Standard and Explore share the field-chart engine via workspace-derived `FieldChartProfile`:
 
@@ -233,17 +233,20 @@ controller split, UTCI calculation split, B10 layout/export, full validation mat
 Round 3 on branch `better-structure` finished P0/P1 architecture without changing share
 schema, canonical persistence, or special-chart geometry:
 
-| Capability                 | Location                                                                                      | Use                                                                        |
-| -------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Index model declarations   | `defineModel` in `heatIndex.ts`, `humidex.ts`, `windChill.ts`                                 | Heat Index, Humidex, Wind Chill (no preset factory)                        |
-| Builder chart registration | `defineModel` `outputCharts` / `ComfortModelBuilder.setOutputCharts()` with `ChartKind` specs | UTCI, PHS, PMV/Adaptive families, index models                             |
-| Input field specs          | `services/comfort/controls/fieldInputBehaviors.ts` + `setInputFields()`                       | Declarative temperature, humidity, wind, preset, and model-quantity blocks |
-| PMV chart module split     | `pmvChartShared.ts`, `pmvPsychrometricChart.ts`, `pmvDynamicChart.ts`                         | Readability; `pmvCharts.ts` routes views only                              |
-| Adaptive air-speed preset  | `adaptiveShared.ts` uses `setInputFields({ kind: "preset" })`                                 | Same pattern as PMV metabolic/clothing                                     |
+| Capability                 | Location                                                                                                    | Use                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Index model declarations   | `defineModel` in `heatIndex.ts`, `humidex.ts`, `windChill.ts`                                               | Heat Index, Humidex, Wind Chill (no preset factory)                        |
+| Builder chart registration | `defineModel` `outputCharts` / `ComfortModelBuilder.setOutputCharts()` with discriminated `ChartKind` specs | UTCI, PHS, PMV/Adaptive families, index models                             |
+| Input field specs          | `services/comfort/controls/fieldInputBehaviors.ts` + `setInputFields()`                                     | Declarative temperature, humidity, wind, preset, and model-quantity blocks |
+| PMV chart module split     | `pmvChartShared.ts`, `pmvPsychrometricChart.ts`, `pmvDynamicChart.ts`                                       | Readability; `pmvCharts.ts` routes views only                              |
+| Adaptive air-speed preset  | `adaptiveShared.ts` uses `setInputFields({ kind: "preset" })`                                               | Same pattern as PMV metabolic/clothing                                     |
 
 Grid-capable models declare `ChartKind.DynamicField` entries through
-`outputCharts`, including Heat Index / Humidex fixed-axis maps. PMV psychrometric, UTCI stress, PHS exposure history, and Adaptive
-boundary charts remain special-case geometry in focused modules.
+`outputCharts`, including Heat Index / Humidex fixed-axis maps and PMV Dynamic.
+PMV psychrometric uses `ChartKind.Custom` (frontend-only; `defineModel` cannot declare it).
+UTCI stress, PHS Analysis exposure history (`TimeSeriesLine`), and Adaptive
+boundary charts remain special-case geometry in focused modules. `ParametricLine` is
+omitted until Phase 1.
 
 **Explicitly deferred (not Round 3 gaps):** CI workflow; Time-series in `FieldChartConfig`;
 sparse share schema.

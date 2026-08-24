@@ -34,11 +34,30 @@ describe("fieldInputBehaviors", () => {
       }])
       .setModifiers([])
       .setOutputCharts([{
-        instanceId: "pmv-ashrae-psychrometric",
-        kind: ChartKind.Custom,
+        instanceId: "test-dynamic-field",
+        kind: ChartKind.DynamicField,
         name: "Test",
         emptyMessage: "Empty",
-        spec: { build: () => null },
+        spec: {
+          title: "Test",
+          axisFields: [
+            PhysicalQuantityId.DryBulbTemperature,
+            PhysicalQuantityId.RelativeHumidity,
+          ],
+          resolveGridSpec: () => ({
+            output: {
+              key: ModelOutputKey.Pmv,
+              label: "PMV",
+              defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
+            },
+            requestAdapter: {
+              getAxisValue: () => 0,
+              setAxisValue: () => undefined,
+            },
+            evaluate: () => null,
+            getOutputValue: () => 0,
+          }),
+        },
       }])
       .setTables({
         analysis: {

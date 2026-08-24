@@ -1,4 +1,5 @@
-import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+import type { TimeSeriesLineChartKindSpec } from "../../services/comfort/charts/kinds/types";
+import type { ModelChartSourceDto, PlotlyChartResponseDto } from "../../models/comfortDtos";
 import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import {
@@ -130,3 +131,15 @@ export function buildPhsExposureHistoryChartResult(
     markerLabel,
   });
 }
+
+export const phsExposureHistoryChartSpec: TimeSeriesLineChartKindSpec<
+  PhsResponseDto,
+  ModelChartSourceDto<PhsEnvironmentSi>
+> = {
+  build: (_chartSource, resultsByInput, context) => (
+    buildPhsExposureHistoryChartResult(
+      resultsByInput,
+      context as ChartBuildContext<NumericBand>,
+    )
+  ),
+};

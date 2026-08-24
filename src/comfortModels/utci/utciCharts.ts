@@ -22,6 +22,10 @@ import {
 import {
   type GridModelChartSpec,
 } from "../../services/comfort/charts/gridModelCharts";
+import type {
+  BandScalarChartKindSpec,
+  DynamicFieldChartKindSpec,
+} from "../../services/comfort/charts/kinds/types";
 import { buildTextAnnotation } from "../../services/comfort/charts/plotlyBuilders";
 import {
   getCompareInputs,
@@ -174,3 +178,31 @@ export function buildUtciStressChart(
     source: CalculationSource.FrontendGenerated,
   });
 }
+
+export const UTCI_DYNAMIC_AXIS_FIELDS = [
+  PhysicalQuantityId.DryBulbTemperature,
+  PhysicalQuantityId.MeanRadiantTemperature,
+  PhysicalQuantityId.OperativeTemperature,
+  PhysicalQuantityId.WindSpeed,
+  PhysicalQuantityId.RelativeHumidity,
+] as const;
+
+export const utciStressChartSpec: BandScalarChartKindSpec<
+  UtciResponseDto,
+  ModelChartSourceDto<UtciRequestDto>
+> = {
+  build: (chartSource, resultsByInput, context) => {
+    if (!chartSource) return null;
+    return buildUtciStressChart(
+      chartSource,
+      resultsByInput,
+      context as ChartBuildContext<NumericBand>,
+    );
+  },
+};
+
+export const utciDynamicFieldChartSpec: DynamicFieldChartKindSpec<UtciResponseDto> = {
+  title: `${UTCI_MODEL_LABEL} Dynamic Chart`,
+  axisFields: [...UTCI_DYNAMIC_AXIS_FIELDS],
+  resolveGridSpec: () => createUtciDynamicChartSpec(),
+};

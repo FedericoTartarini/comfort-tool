@@ -39,19 +39,12 @@ import {
   type UtciResponseDto,
 } from "./utciCalculation";
 import {
-  buildUtciStressChart,
-  createUtciDynamicChartSpec,
+  UTCI_DYNAMIC_AXIS_FIELDS,
+  utciDynamicFieldChartSpec,
+  utciStressChartSpec,
 } from "./utciCharts";
 
 const MODEL_DESCRIPTION = "Outdoor UTCI with stress category visualization.";
-
-const UTCI_DYNAMIC_AXIS_FIELDS = [
-  PhysicalQuantityId.DryBulbTemperature,
-  PhysicalQuantityId.MeanRadiantTemperature,
-  PhysicalQuantityId.OperativeTemperature,
-  PhysicalQuantityId.WindSpeed,
-  PhysicalQuantityId.RelativeHumidity,
-] as const;
 
 function parseUtciOptions(value: unknown): UtciModelOptions | null {
   if (!isRecord(value) || !hasExactKeys(value, [OptionKey.TemperatureMode])) {
@@ -96,7 +89,10 @@ const builder = new ComfortModelBuilder<
   ComfortModel.Utci,
 );
 
-const utciOutputCharts: OutputChartDeclarationInput[] = [
+const utciOutputCharts: OutputChartDeclarationInput<
+  UtciResponseDto,
+  ModelChartSourceDto<UtciRequestDto>
+>[] = [
   {
     instanceId: "utci-stress-band",
     kind: ChartKind.BandScalar,
@@ -112,16 +108,7 @@ const utciOutputCharts: OutputChartDeclarationInput[] = [
       showsLegend: true,
       showsExport: true,
     },
-    spec: {
-      build: (
-        chartSource: import("../../models/comfortDtos").ModelChartSourceDto<import("./utciCalculation").UtciRequestDto> | null,
-        resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, import("./utciCalculation").UtciResponseDto | null>>,
-        context: import("../../models/modelCapabilities").ChartBuildContext<import("../../models/modelCapabilities").NumericBand>,
-      ) => {
-        if (!chartSource) return null;
-        return buildUtciStressChart(chartSource, resultsByInput, context);
-      },
-    },
+    spec: utciStressChartSpec,
   },
   {
     instanceId: "utci-dynamic-field",
@@ -138,11 +125,7 @@ const utciOutputCharts: OutputChartDeclarationInput[] = [
       showsLegend: true,
       showsExport: true,
     },
-    spec: {
-      title: `${UTCI_MODEL_LABEL} Dynamic Chart`,
-      axisFields: [...UTCI_DYNAMIC_AXIS_FIELDS],
-      resolveGridSpec: () => createUtciDynamicChartSpec(),
-    },
+    spec: utciDynamicFieldChartSpec,
   },
 ];
 

@@ -1,22 +1,36 @@
-import type { PlotlyChartResponseDto } from "../../../../models/comfortDtos";
+import type {
+  ModelChartSourceDto,
+  PlotlyChartResponseDto,
+} from "../../../../models/comfortDtos";
 import type { ChartBuildResult } from "../../../../models/output/chartBuildResult";
+import { ChartKind } from "../../../../models/output/chartKinds";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
-import type { ChartBuildContext } from "../../../../models/modelCapabilities";
-import { buildGridModelChart } from "../gridModelCharts";
+import type {
+  ChartBuildContext,
+  NumericBand,
+} from "../../../../models/modelCapabilities";
+import {
+  buildGridModelChart,
+  type GridModelChartSpec,
+} from "../gridModelCharts";
 import type { ChartKindRegistration } from "./types";
+import { isDynamicFieldGridSpec } from "./types";
+import {
+  buildModelBandScalarChart,
+  buildModelBoundaryRegionChart,
+  buildModelTimeSeriesLineChart,
+} from "./modelDataCharts";
 
-export function buildDynamicFieldChart<
-  TResult,
-  ChartSourceType,
-  TPayload extends object,
->(
-  registration: ChartKindRegistration<TResult, ChartSourceType, TPayload>,
+export function buildDynamicFieldChart<TResult, ChartSourceType>(
+  registration: ChartKindRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== "dynamic-field") {
-    throw new Error(`Chart ${registration.instanceId} is not a dynamic-field chart.`);
+  if (registration.registration.kind !== ChartKind.DynamicField) {
+    throw new Error(
+      `Chart ${registration.instanceId} is not a dynamic-field chart.`,
+    );
   }
   if (!chartSource) {
     return {
@@ -28,12 +42,17 @@ export function buildDynamicFieldChart<
   }
 
   const { spec } = registration.registration;
+  if (!isDynamicFieldGridSpec<TResult>(spec)) {
+    const plotly = spec.build(chartSource, resultsByInput, context);
+    return wrapPlotlyResult(plotly, registration);
+  }
+
   const gridSpec = spec.resolveGridSpec(context);
   const plotly = buildGridModelChart(
     registration.instanceId,
-    chartSource as unknown as import("../../../../models/comfortDtos").ModelChartSourceDto<TPayload>,
+    chartSource as unknown as ModelChartSourceDto<object>,
     resultsByInput,
-    context as import("../../../../models/modelCapabilities").ChartBuildContext<import("../../../../models/modelCapabilities").NumericBand>,
+    context as ChartBuildContext<NumericBand>,
     {
       ...gridSpec,
       instanceId: registration.instanceId,
@@ -47,7 +66,7 @@ export function buildDynamicFieldChart<
             },
           }
         : {}),
-    },
+    } as GridModelChartSpec<object, TResult>,
   );
 
   return wrapPlotlyResult(plotly, registration);
@@ -59,7 +78,7 @@ export function buildCustomChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== "custom") {
+  if (registration.registration.kind !== ChartKind.Custom) {
     throw new Error(`Chart ${registration.instanceId} is not a custom chart.`);
   }
   const plotly = registration.registration.spec.build(
@@ -70,33 +89,34 @@ export function buildCustomChart<TResult, ChartSourceType>(
   return wrapPlotlyResult(plotly, registration);
 }
 
-export function buildBandScalarChart<
-  TResult,
-  ChartSourceType,
-  TPayload extends object,
->(
-  registration: ChartKindRegistration<TResult, ChartSourceType, TPayload>,
+export function buildBandScalarChart<TResult, ChartSourceType>(
+  registration: ChartKindRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== "band-scalar") {
-    throw new Error(`Chart ${registration.instanceId} is not a band-scalar chart.`);
+  if (registration.registration.kind !== ChartKind.BandScalar) {
+    throw new Error(
+      `Chart ${registration.instanceId} is not a band-scalar chart.`,
+    );
   }
-  if (!chartSource) {
-    return {
-      plotly: null,
-      legend: null,
-      readiness: "empty",
-      emptyMessage: registration.emptyMessage,
-    };
+  const { spec } = registration.registration;
+  if ("build" in spec) {
+    if (!chartSource) {
+      return {
+        plotly: null,
+        legend: null,
+        readiness: "empty",
+        emptyMessage: registration.emptyMessage,
+      };
+    }
+    const plotly = spec.build(chartSource, resultsByInput, context);
+    return wrapPlotlyResult(plotly, registration);
   }
-  const plotly = registration.registration.spec.build(
-    chartSource as unknown as import("../../../../models/comfortDtos").ModelChartSourceDto<TPayload>,
-    resultsByInput,
-    context,
+  return wrapPlotlyResult(
+    buildModelBandScalarChart(spec, chartSource, resultsByInput, context),
+    registration,
   );
-  return wrapPlotlyResult(plotly, registration);
 }
 
 export function buildBoundaryRegionChart<TResult, ChartSourceType>(
@@ -105,15 +125,20 @@ export function buildBoundaryRegionChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== "boundary-region") {
-    throw new Error(`Chart ${registration.instanceId} is not a boundary-region chart.`);
+  if (registration.registration.kind !== ChartKind.BoundaryRegion) {
+    throw new Error(
+      `Chart ${registration.instanceId} is not a boundary-region chart.`,
+    );
   }
-  const plotly = registration.registration.spec.build(
-    chartSource,
-    resultsByInput,
-    context,
+  const { spec } = registration.registration;
+  if ("build" in spec) {
+    const plotly = spec.build(chartSource, resultsByInput, context);
+    return wrapPlotlyResult(plotly, registration);
+  }
+  return wrapPlotlyResult(
+    buildModelBoundaryRegionChart(spec, context),
+    registration,
   );
-  return wrapPlotlyResult(plotly, registration);
 }
 
 export function buildTimeSeriesLineChart<TResult, ChartSourceType>(
@@ -122,34 +147,25 @@ export function buildTimeSeriesLineChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== "time-series-line") {
-    throw new Error(`Chart ${registration.instanceId} is not a time-series-line chart.`);
+  if (registration.registration.kind !== ChartKind.TimeSeriesLine) {
+    throw new Error(
+      `Chart ${registration.instanceId} is not a time-series-line chart.`,
+    );
   }
-  const plotly = registration.registration.spec.build(
-    chartSource,
-    resultsByInput,
-    context,
+  const { spec } = registration.registration;
+  if ("build" in spec) {
+    const plotly = spec.build(chartSource, resultsByInput, context);
+    return wrapPlotlyResult(plotly, registration);
+  }
+  return wrapPlotlyResult(
+    buildModelTimeSeriesLineChart(spec, resultsByInput, context),
+    registration,
   );
-  return wrapPlotlyResult(plotly, registration);
 }
 
-export function buildParametricLineChart<TResult, ChartSourceType>(
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
-): ChartBuildResult {
-  if (registration.registration.kind !== "parametric-line") {
-    throw new Error(`Chart ${registration.instanceId} is not a parametric-line chart.`);
-  }
-  return {
-    plotly: null,
-    legend: null,
-    readiness: "empty",
-    emptyMessage: "Parametric line charts are not implemented yet.",
-  };
-}
-
-function wrapPlotlyResult<TResult, ChartSourceType, TPayload extends object>(
+function wrapPlotlyResult<TResult, ChartSourceType>(
   plotly: PlotlyChartResponseDto | null,
-  registration: ChartKindRegistration<TResult, ChartSourceType, TPayload>,
+  registration: ChartKindRegistration<TResult, ChartSourceType>,
 ): ChartBuildResult {
   return {
     plotly,

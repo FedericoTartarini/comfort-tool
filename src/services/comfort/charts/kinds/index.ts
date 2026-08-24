@@ -5,12 +5,12 @@ import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfi
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type { ChartBuildContext } from "../../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../../models/units";
+import { ChartKind, isChartKind } from "../../../../models/output/chartKinds";
 import {
   buildBandScalarChart,
   buildBoundaryRegionChart,
   buildCustomChart,
   buildDynamicFieldChart,
-  buildParametricLineChart,
   buildTimeSeriesLineChart,
 } from "./builders";
 import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../../../models/physicalQuantities";
@@ -21,13 +21,20 @@ import {
   readChartMemo,
   writeChartMemo,
 } from "./memo";
-import type { Band, ComplianceSpec, ModelOutput } from "../../../../models/modelCapabilities";
+import type {
+  Band,
+  ComplianceSpec,
+  ModelOutput,
+} from "../../../../models/modelCapabilities";
 import { buildChartLegendFromContext } from "./legend";
 import type { ChartKindRegistration } from "./types";
 
 export interface ResolveChartBuildOptions<TResult, ChartSourceType> {
   readonly modelId: ComfortModelType;
-  readonly registrations: readonly ChartKindRegistration<TResult, ChartSourceType>[];
+  readonly registrations: readonly ChartKindRegistration<
+    TResult,
+    ChartSourceType
+  >[];
   readonly instanceId: string;
   readonly chartSource: ChartSourceType | null;
   readonly resultsByInput: Record<InputIdType, TResult | null>;
@@ -35,7 +42,9 @@ export interface ResolveChartBuildOptions<TResult, ChartSourceType> {
   readonly unitSystem: UnitSystemType;
   readonly baselineInputId: InputIdType;
   readonly chartSourceVersion: number;
-  readonly modelInputs: Readonly<Partial<Record<PhysicalQuantityIdType, number>>>;
+  readonly modelInputs: Readonly<
+    Partial<Record<PhysicalQuantityIdType, number>>
+  >;
   readonly useMemo?: boolean;
   readonly showsLegend: boolean;
   readonly complianceProfile?: ComplianceSpec<Band, unknown>;
@@ -97,22 +106,30 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
     xAxis: options.profile.xField,
     yAxis: options.profile.yField,
     zOutput: options.profile.zOutput,
-    bandsHash: hashBands(options.profile.bands as readonly { min: number; max: number; label: string }[]),
+    bandsHash: hashBands(
+      options.profile.bands as readonly {
+        min: number;
+        max: number;
+        label: string;
+      }[],
+    ),
     baselineInputId: options.baselineInputId,
     chartSourceVersion: options.chartSourceVersion,
     profileKind: options.profile.kind,
     modelInputsHash: hashModelInputs(options.modelInputs),
   });
 
-  const context = toChartBuildContext(options as ResolveChartBuildOptions<unknown, unknown>);
+  const context = toChartBuildContext(
+    options as ResolveChartBuildOptions<unknown, unknown>,
+  );
 
   if (options.useMemo !== false) {
     const cached = readChartMemo(memoKey);
     if (cached) {
       if (
-        cached.readiness === "ready"
-        && options.showsLegend
-        && !cached.legend
+        cached.readiness === "ready" &&
+        options.showsLegend &&
+        !cached.legend
       ) {
         const legend = buildChartLegendFromContext(context, {
           showsLegend: options.showsLegend,
@@ -126,9 +143,15 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
     }
   }
 
+  if (!isChartKind(registration.registration.kind)) {
+    throw new Error(
+      `Unknown chart engine "${String(registration.registration.kind)}". ChartEngine is a closed set.`,
+    );
+  }
+
   let result: ChartBuildResult;
   switch (registration.registration.kind) {
-    case "dynamic-field":
+    case ChartKind.DynamicField:
       result = buildDynamicFieldChart(
         registration,
         options.chartSource,
@@ -136,7 +159,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case "custom":
+    case ChartKind.Custom:
       result = buildCustomChart(
         registration,
         options.chartSource,
@@ -144,7 +167,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case "band-scalar":
+    case ChartKind.BandScalar:
       result = buildBandScalarChart(
         registration,
         options.chartSource,
@@ -152,7 +175,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case "boundary-region":
+    case ChartKind.BoundaryRegion:
       result = buildBoundaryRegionChart(
         registration,
         options.chartSource,
@@ -160,7 +183,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case "time-series-line":
+    case ChartKind.TimeSeriesLine:
       result = buildTimeSeriesLineChart(
         registration,
         options.chartSource,
@@ -168,18 +191,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case "parametric-line":
-      result = buildParametricLineChart(registration);
-      break;
-    default:
-      result = {
-        plotly: null,
-        legend: null,
-        readiness: "empty",
-        emptyMessage: registration.emptyMessage,
-      };
   }
-
 
   if (result.readiness === "ready" && options.showsLegend) {
     const legend = buildChartLegendFromContext(context, {

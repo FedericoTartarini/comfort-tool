@@ -1,4 +1,7 @@
-import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
+import {
+  inputOrder,
+  type InputId as InputIdType,
+} from "../../../models/inputSlots";
 import type { ModelOptionsState, ResultCellViewModel } from "../types";
 import type {
   ComfortModelDefinition,
@@ -38,7 +41,9 @@ import {
 } from "../../../models/physicalQuantities";
 import {
   ChartKind,
-  type ChartInstanceCapabilities,
+  isChartKind,
+  isModelChartKind,
+  modelAllowsCustomCharts,
   resolveChartCapabilities,
 } from "../../../models/output/chartKinds";
 import type { ChartInstanceDeclaration } from "../../../models/output/chartKinds";
@@ -53,28 +58,24 @@ import {
   type WorkspaceCapability as WorkspaceCapabilityType,
 } from "../../../models/output/workspaceCapabilities";
 import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
-import type {
-  ChartKindRegistration,
-  RegisteredChartKindSpec,
+import {
+  modelChartSpecMatchesKind,
+  specHasPlotlyBuild,
+  type ChartKindRegistration,
+  type ModelChartDeclaration,
+  type FrontendChartDeclaration,
+  type OutputChartDeclarationInput,
+  type RegisteredChartKindSpec,
 } from "../../../services/comfort/charts/kinds/types";
 import { buildCompareMatrixTable } from "../../../services/comfort/output/tableResolver";
+
+export type { ModelChartDeclaration, FrontendChartDeclaration, OutputChartDeclarationInput };
+
 export type ResultRowDefinition<T> = {
   title: string;
   group?: string;
   formatter: (result: T) => ResultCellViewModel;
 };
-
-export interface OutputChartDeclarationInput {
-  readonly instanceId: string;
-  readonly kind: ChartKind;
-  readonly name: string;
-  readonly emptyMessage: string;
-  readonly note?: string;
-  readonly capabilities?: Partial<ChartInstanceCapabilities>;
-  readonly spec: unknown;
-  readonly supportedExploreOutputs?: readonly ModelOutput["key"][];
-  readonly defaultExploreOutput?: ModelOutput["key"];
-}
 
 interface RegisteredOutputChart<
   ResultType,
@@ -96,8 +97,10 @@ export function hasExactKeys(
 ): boolean {
   const actualKeys = Object.keys(value);
   const expected = new Set(expectedKeys);
-  return actualKeys.length === expectedKeys.length
-    && actualKeys.every((key) => expected.has(key));
+  return (
+    actualKeys.length === expectedKeys.length &&
+    actualKeys.every((key) => expected.has(key))
+  );
 }
 
 /** Strict parser for models whose complete options schema is an empty object. */
@@ -106,42 +109,39 @@ export function parseEmptyOptions(value: unknown): ModelOptionsState | null {
 }
 
 export function createEmptyResults<T>(): Record<InputIdType, T | null> {
-  return inputOrder.reduce((acc, inputId) => {
-    acc[inputId] = null;
-    return acc;
-  }, {} as Record<InputIdType, T | null>);
+  return inputOrder.reduce(
+    (acc, inputId) => {
+      acc[inputId] = null;
+      return acc;
+    },
+    {} as Record<InputIdType, T | null>,
+  );
 }
 
-function chartKindToRegistrationKind(kind: ChartKind): RegisteredChartKindSpec<
-  unknown,
-  unknown,
-  object
->["kind"] {
-  switch (kind) {
+function toRegisteredChartKindSpec<ResultType, ChartSourceType>(
+  entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
+): RegisteredChartKindSpec<ResultType, ChartSourceType> {
+  if (!isChartKind(entry.kind)) {
+    throw new Error(
+      `Unknown chart engine "${String(entry.kind)}". ChartEngine is a closed set.`,
+    );
+  }
+  switch (entry.kind) {
     case ChartKind.DynamicField:
-      return "dynamic-field";
+      return { kind: ChartKind.DynamicField, spec: entry.spec };
     case ChartKind.BoundaryRegion:
-      return "boundary-region";
+      return { kind: ChartKind.BoundaryRegion, spec: entry.spec };
     case ChartKind.BandScalar:
-      return "band-scalar";
+      return { kind: ChartKind.BandScalar, spec: entry.spec };
     case ChartKind.TimeSeriesLine:
-      return "time-series-line";
-    case ChartKind.ParametricLine:
-      return "parametric-line";
+      return { kind: ChartKind.TimeSeriesLine, spec: entry.spec };
     case ChartKind.Custom:
-      return "custom";
-    default: {
-      const exhaustive: never = kind;
-      throw new Error(`Unsupported chart kind: ${exhaustive}`);
-    }
+      return { kind: ChartKind.Custom, spec: entry.spec };
   }
 }
 
-function createChartKindRegistration<
-  ResultType,
-  ChartSourceType,
->(
-  entry: OutputChartDeclarationInput,
+function createChartKindRegistration<ResultType, ChartSourceType>(
+  entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
 ): ChartKindRegistration<ResultType, ChartSourceType> {
   return {
     instanceId: entry.instanceId,
@@ -154,15 +154,12 @@ function createChartKindRegistration<
     ...(entry.defaultExploreOutput
       ? { defaultExploreOutput: entry.defaultExploreOutput }
       : {}),
-    registration: {
-      kind: chartKindToRegistrationKind(entry.kind),
-      spec: entry.spec,
-    } as RegisteredChartKindSpec<ResultType, ChartSourceType, object>,
+    registration: toRegisteredChartKindSpec(entry),
   };
 }
 
-function createChartInstanceDeclaration(
-  entry: OutputChartDeclarationInput,
+function createChartInstanceDeclaration<ResultType, ChartSourceType>(
+  entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
 ): ChartInstanceDeclaration {
   return {
     instanceId: entry.instanceId,
@@ -170,10 +167,15 @@ function createChartInstanceDeclaration(
     name: entry.name,
     emptyMessage: entry.emptyMessage,
     ...(entry.note ? { note: entry.note } : {}),
+    ...(entry.type?.trim() ? { type: entry.type.trim() } : {}),
     ...(entry.capabilities
-      ? { capabilities: resolveChartCapabilities(entry.kind, entry.capabilities) }
+      ? {
+          capabilities: resolveChartCapabilities(
+            entry.kind,
+            entry.capabilities,
+          ),
+        }
       : {}),
-    spec: entry.spec,
   };
 }
 
@@ -252,7 +254,9 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setWorkspaceCapabilities(capabilities: readonly WorkspaceCapabilityType[]): this {
+  setWorkspaceCapabilities(
+    capabilities: readonly WorkspaceCapabilityType[],
+  ): this {
     this.workspaceCapabilities = capabilities;
     return this;
   }
@@ -295,14 +299,17 @@ export class ComfortModelBuilder<
   }
 
   setOutputCharts(
-    entries: readonly OutputChartDeclarationInput[],
+    entries: readonly FrontendChartDeclaration<ResultType, ChartSourceType>[],
     options?: { defaultInstanceId?: string },
   ): this {
     if (entries.length === 0) {
-      throw new Error("Comfort model declarations require at least one output chart.");
+      throw new Error(
+        "Comfort model declarations require at least one output chart.",
+      );
     }
 
-    const defaultInstanceId = options?.defaultInstanceId ?? entries[0]!.instanceId;
+    const defaultInstanceId =
+      options?.defaultInstanceId ?? entries[0]!.instanceId;
     this.defaultOutputChartInstanceId = defaultInstanceId;
 
     for (const entry of entries) {
@@ -325,7 +332,10 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  addOptionHandler(optionKey: OptionKeyType, handler: ModelOptionChangeHandler): this {
+  addOptionHandler(
+    optionKey: OptionKeyType,
+    handler: ModelOptionChangeHandler,
+  ): this {
     this.optionHandlersByKey[optionKey] = handler;
     return this;
   }
@@ -340,11 +350,13 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setCalculator(calculator: ComfortModelDefinition<
-    ResultType,
-    ChartSourceType,
-    ComplianceBand
-  >["calculate"]): this {
+  setCalculator(
+    calculator: ComfortModelDefinition<
+      ResultType,
+      ChartSourceType,
+      ComplianceBand
+    >["calculate"],
+  ): this {
     this.calculate = calculator;
     return this;
   }
@@ -359,10 +371,38 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  private registerOutputChart(entry: OutputChartDeclarationInput): void {
-    if (this.registeredOutputCharts.some(
-      ({ registration }) => registration.instanceId === entry.instanceId,
-    )) {
+  private registerOutputChart(
+    entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
+  ): void {
+    if (
+      entry.kind === ChartKind.Custom
+      && !modelAllowsCustomCharts(this.id)
+    ) {
+      throw new Error(
+        `Custom chart "${entry.instanceId}" is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
+      );
+    }
+    const chartType = entry.type?.trim();
+    if (entry.type !== undefined && chartType === "") {
+      throw new Error(
+        `Chart "${entry.instanceId}" has an empty type. Named chart types must be non-empty.`,
+      );
+    }
+    if (
+      chartType
+      && this.registeredOutputCharts.some(
+        ({ declaration }) => declaration.type === chartType,
+      )
+    ) {
+      throw new Error(
+        `Comfort model declarations cannot contain duplicate chart types (${chartType}).`,
+      );
+    }
+    if (
+      this.registeredOutputCharts.some(
+        ({ registration }) => registration.instanceId === entry.instanceId,
+      )
+    ) {
       throw new Error(
         `Comfort model declarations cannot contain duplicate chart instance IDs (${entry.instanceId}).`,
       );
@@ -370,7 +410,9 @@ export class ComfortModelBuilder<
 
     this.registeredOutputCharts.push({
       declaration: createChartInstanceDeclaration(entry),
-      registration: createChartKindRegistration<ResultType, ChartSourceType>(entry),
+      registration: createChartKindRegistration<ResultType, ChartSourceType>(
+        entry,
+      ),
     });
 
     if (!this.defaultOutputChartInstanceId) {
@@ -414,8 +456,8 @@ export class ComfortModelBuilder<
         );
       }
       if (
-        extension.defaultSi < extension.minSi
-        || extension.defaultSi > extension.maxSi
+        extension.defaultSi < extension.minSi ||
+        extension.defaultSi > extension.maxSi
       ) {
         throw new Error(
           `Quantity extension ${extension.id} defaultSi must lie within minSi and maxSi.`,
@@ -448,12 +490,14 @@ export class ComfortModelBuilder<
       throw new Error("Dynamic axis fields cannot contain duplicates.");
     }
 
-    const registeredFields = this.registeredOutputCharts.flatMap(({ registration }) => {
-      if (registration.registration.kind !== "dynamic-field") {
-        return [];
-      }
-      return registration.registration.spec.axisFields;
-    });
+    const registeredFields = this.registeredOutputCharts.flatMap(
+      ({ registration }) => {
+        if (registration.registration.kind !== ChartKind.DynamicField) {
+          return [];
+        }
+        return registration.registration.spec.axisFields;
+      },
+    );
 
     return [...new Set([...explicitFields, ...registeredFields])];
   }
@@ -470,9 +514,12 @@ export class ComfortModelBuilder<
         : {}),
     }));
 
-    const defaultInstanceId = this.defaultOutputChartInstanceId ?? entries[0]?.instanceId;
+    const defaultInstanceId =
+      this.defaultOutputChartInstanceId ?? entries[0]?.instanceId;
     if (!defaultInstanceId) {
-      throw new Error("Comfort model declarations require at least one output chart.");
+      throw new Error(
+        "Comfort model declarations require at least one output chart.",
+      );
     }
 
     return {
@@ -484,63 +531,90 @@ export class ComfortModelBuilder<
   build(): RuntimeComfortModelDefinition {
     const workspaceCapabilities = this.workspaceCapabilities;
     if (!workspaceCapabilities || workspaceCapabilities.length === 0) {
-      throw new Error("Comfort model declarations require at least one workspace capability.");
+      throw new Error(
+        "Comfort model declarations require at least one workspace capability.",
+      );
     }
 
     if (new Set(workspaceCapabilities).size !== workspaceCapabilities.length) {
-      throw new Error("Comfort model declarations cannot contain duplicate workspace capabilities.");
+      throw new Error(
+        "Comfort model declarations cannot contain duplicate workspace capabilities.",
+      );
     }
 
     const exploreOutputs = this.exploreOutputs;
     if (!exploreOutputs) {
-      throw new Error("Comfort model declarations must explicitly set explore outputs.");
+      throw new Error(
+        "Comfort model declarations must explicitly set explore outputs.",
+      );
     }
 
     const outputKeys = exploreOutputs.map((output) => output.key);
     if (new Set(outputKeys).size !== outputKeys.length) {
-      throw new Error("Comfort model declarations cannot contain duplicate output keys.");
+      throw new Error(
+        "Comfort model declarations cannot contain duplicate output keys.",
+      );
     }
 
     const modifiers = this.modifiers;
     if (!modifiers) {
-      throw new Error("Comfort model declarations must explicitly set supported modifiers.");
+      throw new Error(
+        "Comfort model declarations must explicitly set supported modifiers.",
+      );
     }
     const modifierIds = modifiers.map(({ id }) => id);
     if (new Set(modifierIds).size !== modifierIds.length) {
-      throw new Error("Comfort model declarations cannot contain duplicate modifiers.");
+      throw new Error(
+        "Comfort model declarations cannot contain duplicate modifiers.",
+      );
     }
-    const modifierPositions = modifierIds.map((modifierId) => (
-      modifierOrder.indexOf(modifierId)
-    ));
+    const modifierPositions = modifierIds.map((modifierId) =>
+      modifierOrder.indexOf(modifierId),
+    );
     if (
-      modifierPositions.some((position) => position < 0)
-      || modifierPositions.some((position, index) => (
-        index > 0 && position <= modifierPositions[index - 1]
-      ))
+      modifierPositions.some((position) => position < 0) ||
+      modifierPositions.some(
+        (position, index) =>
+          index > 0 && position <= modifierPositions[index - 1],
+      )
     ) {
-      throw new Error("Comfort model declarations must follow the global modifier order.");
+      throw new Error(
+        "Comfort model declarations must follow the global modifier order.",
+      );
     }
 
     const supportsStandard = supportsStandardWorkspace(workspaceCapabilities);
     const supportsExplore = supportsExploreWorkspace(workspaceCapabilities);
-    const supportsTimeSeries = supportsTimeSeriesWorkspace(workspaceCapabilities);
+    const supportsTimeSeries = supportsTimeSeriesWorkspace(
+      workspaceCapabilities,
+    );
 
     const standardIds = this.standardIds;
     if (!standardIds) {
-      throw new Error("Comfort model declarations must explicitly set standard IDs.");
+      throw new Error(
+        "Comfort model declarations must explicitly set standard IDs.",
+      );
     }
     if (new Set(standardIds).size !== standardIds.length) {
-      throw new Error("Comfort model declarations cannot contain duplicate standard IDs.");
+      throw new Error(
+        "Comfort model declarations cannot contain duplicate standard IDs.",
+      );
     }
     if (supportsStandard && standardIds.length === 0) {
-      throw new Error("Standard workspace models must declare at least one standard ID.");
+      throw new Error(
+        "Standard workspace models must declare at least one standard ID.",
+      );
     }
     if (!supportsStandard && standardIds.length > 0) {
-      throw new Error("Models without Standard workspace capability cannot declare a standard ID.");
+      throw new Error(
+        "Models without Standard workspace capability cannot declare a standard ID.",
+      );
     }
 
     if (supportsExplore && exploreOutputs.length === 0) {
-      throw new Error("Explore workspace requires at least one explore output.");
+      throw new Error(
+        "Explore workspace requires at least one explore output.",
+      );
     }
 
     for (const output of exploreOutputs) {
@@ -553,15 +627,15 @@ export class ComfortModelBuilder<
     }
 
     if (
-      supportsStandard
-      && (
-        !this.complianceProfile
-        || this.complianceProfile.bands.length === 0
-        || this.complianceProfile.legendTitle.trim().length === 0
-        || this.complianceProfile.caption.trim().length === 0
-      )
+      supportsStandard &&
+      (!this.complianceProfile ||
+        this.complianceProfile.bands.length === 0 ||
+        this.complianceProfile.legendTitle.trim().length === 0 ||
+        this.complianceProfile.caption.trim().length === 0)
     ) {
-      throw new Error("Standard workspace requires a non-empty compliance profile.");
+      throw new Error(
+        "Standard workspace requires a non-empty compliance profile.",
+      );
     }
 
     if (!supportsStandard && this.complianceProfile) {
@@ -575,7 +649,9 @@ export class ComfortModelBuilder<
     }
 
     if (!this.description || this.description.trim().length === 0) {
-      throw new Error("Comfort model declarations require a non-empty description.");
+      throw new Error(
+        "Comfort model declarations require a non-empty description.",
+      );
     }
 
     const tables = this.tables;
@@ -604,15 +680,21 @@ export class ComfortModelBuilder<
         throw new Error("tables.timeSeries requires at least one row.");
       }
     } else if (supportsTimeSeries) {
-      throw new Error("Time-series workspace capability requires tables.timeSeries.");
+      throw new Error(
+        "Time-series workspace capability requires tables.timeSeries.",
+      );
     }
 
     if (supportsTimeSeries && !this.simulationOutput) {
-      throw new Error("Time-series workspace capability requires simulation charts.");
+      throw new Error(
+        "Time-series workspace capability requires simulation charts.",
+      );
     }
 
     if (this.simulationOutput && !supportsTimeSeries) {
-      throw new Error("Simulation charts require Time-series workspace capability.");
+      throw new Error(
+        "Simulation charts require Time-series workspace capability.",
+      );
     }
 
     if (this.simulationOutput && this.simulationOutput.charts.length === 0) {
@@ -621,16 +703,24 @@ export class ComfortModelBuilder<
 
     const outputCharts = this.resolveOutputCharts();
     if (outputCharts.entries.length === 0) {
-      throw new Error("Comfort model declarations require at least one output chart.");
+      throw new Error(
+        "Comfort model declarations require at least one output chart.",
+      );
     }
 
-    const instanceIds = outputCharts.entries.map(({ instanceId }) => instanceId);
+    const instanceIds = outputCharts.entries.map(
+      ({ instanceId }) => instanceId,
+    );
     if (new Set(instanceIds).size !== instanceIds.length) {
-      throw new Error("Comfort model declarations cannot contain duplicate chart instance IDs.");
+      throw new Error(
+        "Comfort model declarations cannot contain duplicate chart instance IDs.",
+      );
     }
 
     if (!instanceIds.includes(outputCharts.defaultInstanceId)) {
-      throw new Error("The default output chart must belong to the declared chart instances.");
+      throw new Error(
+        "The default output chart must belong to the declared chart instances.",
+      );
     }
 
     for (const chart of outputCharts.entries) {
@@ -638,8 +728,8 @@ export class ComfortModelBuilder<
         throw new Error("Chart definitions require a name and empty message.");
       }
 
-      const capabilities = chart.capabilities
-        ?? resolveChartCapabilities(chart.kind);
+      const capabilities =
+        chart.capabilities ?? resolveChartCapabilities(chart.kind);
       if (capabilities.locksYAxis && !capabilities.allowsAxisSelection) {
         throw new Error("A locked Y axis requires an axis-selectable chart.");
       }
@@ -654,28 +744,41 @@ export class ComfortModelBuilder<
             "Chart-specific Explore outputs require Explore workspace capability and at least one output.",
           );
         }
-        if (new Set(supportedExploreOutputs).size !== supportedExploreOutputs.length) {
-          throw new Error("Chart-specific Explore outputs cannot contain duplicates.");
+        if (
+          new Set(supportedExploreOutputs).size !==
+          supportedExploreOutputs.length
+        ) {
+          throw new Error(
+            "Chart-specific Explore outputs cannot contain duplicates.",
+          );
         }
-        if (supportedExploreOutputs.some((outputKey) => !outputKeys.includes(outputKey))) {
-          throw new Error("Chart-specific Explore outputs must belong to the model declaration.");
+        if (
+          supportedExploreOutputs.some(
+            (outputKey) => !outputKeys.includes(outputKey),
+          )
+        ) {
+          throw new Error(
+            "Chart-specific Explore outputs must belong to the model declaration.",
+          );
         }
       }
       const defaultExploreOutput = registration?.defaultExploreOutput;
       if (
-        defaultExploreOutput
-        && (
-          !outputKeys.includes(defaultExploreOutput)
-          || (supportedExploreOutputs
-            && !supportedExploreOutputs.includes(defaultExploreOutput))
-        )
+        defaultExploreOutput &&
+        (!outputKeys.includes(defaultExploreOutput) ||
+          (supportedExploreOutputs &&
+            !supportedExploreOutputs.includes(defaultExploreOutput)))
       ) {
-        throw new Error("A chart's default Explore output must be supported by that chart.");
+        throw new Error(
+          "A chart's default Explore output must be supported by that chart.",
+        );
       }
     }
 
     if (this.defaultOptions === undefined) {
-      throw new Error("Comfort model declarations must explicitly set default options.");
+      throw new Error(
+        "Comfort model declarations must explicitly set default options.",
+      );
     }
 
     if (!this.parseOptions) {
@@ -740,9 +843,8 @@ export class ComfortModelBuilder<
             complianceProfile: {
               ...complianceProfile,
               bands: complianceProfile.bands.map((band) => ({ ...band })),
-              getFeedback: (result: unknown) => complianceProfile.getFeedback(
-                result as ResultType,
-              ),
+              getFeedback: (result: unknown) =>
+                complianceProfile.getFeedback(result as ResultType),
             },
           }
         : {}),
@@ -774,12 +876,13 @@ export class ComfortModelBuilder<
             : {}),
         })),
       },
-      chartKindRegistrations: [...chartKindRegistrations] as RuntimeComfortModelDefinition[
-        "chartKindRegistrations"
-      ],
+      chartKindRegistrations: [
+        ...chartKindRegistrations,
+      ] as RuntimeComfortModelDefinition["chartKindRegistrations"],
       defaultOptions: { ...defaultOptions },
       parseOptions: this.parseOptions,
-      calculate: (context, visibleInputIds) => calculate(context, visibleInputIds),
+      calculate: (context, visibleInputIds) =>
+        calculate(context, visibleInputIds),
       buildTable: (resultsByInput, visibleInputIds, unitSystem) => {
         return buildCompareMatrixTable(
           tables.analysis,
@@ -788,22 +891,31 @@ export class ComfortModelBuilder<
           unitSystem,
         );
       },
-      buildChart: (instanceId, chartSource, resultsByInput, profile, context) => {
+      buildChart: (
+        instanceId,
+        chartSource,
+        resultsByInput,
+        profile,
+        context,
+      ) => {
         const chartEntry = registeredOutputChartsForBuild.find(
           ({ declaration }) => declaration.instanceId === instanceId,
         );
         const showsLegend = chartEntry
           ? resolveChartCapabilities(
-            chartEntry.declaration.kind,
-            chartEntry.declaration.capabilities,
-          ).showsLegend
+              chartEntry.declaration.kind,
+              chartEntry.declaration.capabilities,
+            ).showsLegend
           : false;
         return resolveChartBuildResult({
           modelId: builtModelId,
           registrations: chartKindRegistrations,
           instanceId,
           chartSource: chartSource as ChartSourceType | null,
-          resultsByInput: resultsByInput as Record<InputIdType, ResultType | null>,
+          resultsByInput: resultsByInput as Record<
+            InputIdType,
+            ResultType | null
+          >,
           profile,
           unitSystem: context.unitSystem,
           baselineInputId: context.baselineInputId,
@@ -824,7 +936,9 @@ export class ComfortModelBuilder<
       ...(this.simulationOutput
         ? {
             simulation: {
-              charts: this.simulationOutput.charts.map((chart) => ({ ...chart })),
+              charts: this.simulationOutput.charts.map((chart) => ({
+                ...chart,
+              })),
             },
           }
         : {}),
@@ -833,8 +947,9 @@ export class ComfortModelBuilder<
 }
 
 /**
- * Complete declaration assembled into a runtime model definition.
- * Chart `spec` stays opaque here; discriminated engine specs are Plan 0a.
+ * Complete model declaration assembled into a runtime model definition.
+ * Charts are a data-only discriminated union over existing engines
+ * (`ModelChartDeclaration`). Custom and Plotly `build` are forbidden.
  */
 export interface ModelDeclaration<
   ResultType,
@@ -856,7 +971,7 @@ export interface ModelDeclaration<
   readonly optionHandlersByKey?: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   >;
-  readonly outputCharts: readonly OutputChartDeclarationInput[];
+  readonly outputCharts: readonly ModelChartDeclaration<ResultType>[];
   readonly defaultChartInstanceId?: string;
   readonly tables: ModelTables<ResultType>;
   readonly calculate: ComfortModelDefinition<
@@ -871,6 +986,28 @@ export interface ModelDeclaration<
   readonly parseOptions: (value: unknown) => ModelOptionsState | null;
 }
 
+function assertModelChartDeclarations<TResult>(
+  charts: readonly ModelChartDeclaration<TResult>[],
+): void {
+  for (const chart of charts) {
+    if (!isModelChartKind(chart.kind)) {
+      throw new Error(
+        `defineModel chart "${chart.instanceId}" uses engine "${String(chart.kind)}". defineModel cannot add ChartEngine members or declare Custom.`,
+      );
+    }
+    if (specHasPlotlyBuild(chart.spec)) {
+      throw new Error(
+        `defineModel chart "${chart.instanceId}" must be data-only. defineModel cannot provide a Plotly build.`,
+      );
+    }
+    if (!modelChartSpecMatchesKind(chart)) {
+      throw new Error(
+        `defineModel chart "${chart.instanceId}" spec does not match engine "${chart.kind}". Extended types cannot escape the ChartEngine spec union.`,
+      );
+    }
+  }
+}
+
 /** Sole assembly function for a complete model declaration. Do not add defineIndexModel(). */
 export function defineModel<
   ResultType,
@@ -879,9 +1016,13 @@ export function defineModel<
 >(
   declaration: ModelDeclaration<ResultType, ChartSourceType, ComplianceBand>,
 ): RuntimeComfortModelDefinition {
-  const builder = new ComfortModelBuilder<ResultType, ChartSourceType, ComplianceBand>(
-    declaration.id,
-  );
+  assertModelChartDeclarations(declaration.outputCharts);
+
+  const builder = new ComfortModelBuilder<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >(declaration.id);
 
   builder
     .setLabel(declaration.label)
@@ -907,7 +1048,9 @@ export function defineModel<
     builder.extendQuantities(declaration.quantities.extend);
   }
   if (declaration.optionHandlersByKey) {
-    for (const optionKey of Object.keys(declaration.optionHandlersByKey) as OptionKeyType[]) {
+    for (const optionKey of Object.keys(
+      declaration.optionHandlersByKey,
+    ) as OptionKeyType[]) {
       const handler = declaration.optionHandlersByKey[optionKey];
       if (handler) {
         builder.addOptionHandler(optionKey, handler);

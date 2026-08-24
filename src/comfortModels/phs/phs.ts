@@ -1,7 +1,6 @@
 import type { ModelChartSourceDto } from "../../models/comfortDtos";
 import { ComfortModel } from "../../models/comfortModels";
 import { PhysicalQuantityId, PhysicalQuantityScope } from "../../models/physicalQuantities";
-import { InputId } from "../../models/inputSlots";
 import { InputControlId } from "../../models/inputControls";
 import {
   bandsFromThermalZones,
@@ -48,8 +47,8 @@ import {
   simulatePhs,
 } from "./phsCalculation";
 import {
-  buildPhsExposureHistoryChartResult,
   createPhsDynamicGridSpec,
+  phsExposureHistoryChartSpec,
 } from "./phsCharts";
 import {
   buildPhsTemperatureTimeSeriesChart,
@@ -389,7 +388,7 @@ builder
   .setOutputCharts([
     {
       instanceId: "phs-exposure-history",
-      kind: ChartKind.Custom,
+      kind: ChartKind.TimeSeriesLine,
       name: "Exposure history",
       emptyMessage: "No PHS exposure history yet.",
       capabilities: {
@@ -404,18 +403,7 @@ builder
       },
       supportedExploreOutputs: [ModelOutputKey.PhsRectalTemperature],
       defaultExploreOutput: ModelOutputKey.PhsRectalTemperature,
-      spec: {
-        build: (
-          _chartSource: import("../../models/comfortDtos").ModelChartSourceDto<PhsEnvironmentSi> | null,
-          resultsByInput: Partial<Record<InputId, PhsResponseDto | null>>,
-          context: ChartBuildContext<NumericBand>,
-        ) => (
-          buildPhsExposureHistoryChartResult(
-            resultsByInput,
-            context,
-          )
-        ),
-      },
+      spec: phsExposureHistoryChartSpec,
     },
     {
       instanceId: "phs-dynamic-field",
@@ -444,14 +432,17 @@ builder
           PhysicalQuantityId.MetabolicRate,
           PhysicalQuantityId.ClothingInsulation,
         ],
-        resolveGridSpec: (context: ChartBuildContext<NumericBand>) => createPhsDynamicGridSpec(
+        resolveGridSpec: (context) => createPhsDynamicGridSpec(
           phsExploreOutputs,
           phsRequestAdapter,
-          context,
+          context as ChartBuildContext<NumericBand>,
         ),
       },
     },
-  ] satisfies OutputChartDeclarationInput[], {
+  ] satisfies OutputChartDeclarationInput<
+    PhsResponseDto,
+    ModelChartSourceDto<PhsEnvironmentSi>
+  >[], {
     defaultInstanceId: "phs-exposure-history",
   });
 

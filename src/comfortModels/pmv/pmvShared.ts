@@ -18,7 +18,6 @@ import type { StandardId as StandardIdType } from "../../models/workspaces";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
-  type ChartBuildContext,
   type ComplianceSpec,
   type ModelOutput,
   type NumericBand,
@@ -55,7 +54,7 @@ import {
   type PmvRequestDto,
   type PmvResponseDto,
 } from "./pmvCalculation";
-import { buildPmvChart } from "./pmvCharts";
+import { createPmvDynamicFieldChartSpec, createPmvPsychrometricChartSpec } from "./pmvCharts";
 
 const PMV_DYNAMIC_AXIS_FIELDS = [
   PhysicalQuantityId.DryBulbTemperature,
@@ -227,23 +226,7 @@ export function createPmvOutputCharts(
   psychrometricInstanceId: string,
   dynamicInstanceId: string,
   declaration: PmvModelDeclaration,
-): readonly OutputChartDeclarationInput[] {
-  const buildChart = (
-    chartSource: PmvChartSourceDto | null,
-    resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, PmvResponseDto | null>>,
-    context: ChartBuildContext<NumericBand>,
-    instanceId: string,
-  ) => {
-    if (!chartSource) return null;
-    return buildPmvChart(
-      instanceId,
-      declaration,
-      chartSource,
-      resultsByInput,
-      context,
-    );
-  };
-
+): readonly OutputChartDeclarationInput<PmvResponseDto, PmvChartSourceDto>[] {
   return [
     {
       instanceId: psychrometricInstanceId,
@@ -260,22 +243,11 @@ export function createPmvOutputCharts(
         showsLegend: true,
         showsExport: true,
       },
-      spec: {
-        build: (
-          chartSource: PmvChartSourceDto | null,
-          resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, PmvResponseDto | null>>,
-          context: ChartBuildContext<NumericBand>,
-        ) => buildChart(
-          chartSource,
-          resultsByInput,
-          context,
-          psychrometricInstanceId,
-        ),
-      },
+      spec: createPmvPsychrometricChartSpec(declaration, psychrometricInstanceId),
     },
     {
       instanceId: dynamicInstanceId,
-      kind: ChartKind.Custom,
+      kind: ChartKind.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
       capabilities: {
@@ -289,18 +261,11 @@ export function createPmvOutputCharts(
         showsExport: true,
       },
       supportedExploreOutputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
-      spec: {
-        build: (
-          chartSource: PmvChartSourceDto | null,
-          resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, PmvResponseDto | null>>,
-          context: ChartBuildContext<NumericBand>,
-        ) => buildChart(
-          chartSource,
-          resultsByInput,
-          context,
-          dynamicInstanceId,
-        ),
-      },
+      spec: createPmvDynamicFieldChartSpec(
+        declaration,
+        dynamicInstanceId,
+        PMV_DYNAMIC_AXIS_FIELDS,
+      ),
     },
   ];
 }

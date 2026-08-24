@@ -125,7 +125,7 @@ Use the `defineModel` output fields instead of adding controller branches:
 
 - `tables: { analysis, timeSeries? }` with `TableType.Analysis` for multi-input Analysis tables
 - `TableType.TimeSeries` on `tables.timeSeries` for PHS Time-series metric tiles (allowed only with Time-series workspace capability)
-- `outputCharts` plus `defaultChartInstanceId` with instance ids that live only on the declaration and typed `ChartKind` specs. Heat Index / Humidex fixed-axis maps use `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
+- `outputCharts` plus `defaultChartInstanceId` with instance ids that live only on the declaration. `defineModel` charts are `ModelChartDeclaration`: a data-only discriminated union over existing engines (`DynamicField`, `BoundaryRegion`, `BandScalar`, `TimeSeriesLine`). Optional `type` names an extended chart type on that same engine and is preserved on the presentation instance. Heat Index / Humidex fixed-axis maps use `DynamicField` with `lockedAxes`, not `Custom`. `defineModel` must not use `Custom spec.build` or teach Plotly. `ParametricLine` is omitted until Phase 1.
 
 Declare `workspaceCapabilities` explicitly (`Standard`, `Explore`, and/or `TimeSeries`). Compliance/Explore field charts share `fieldChartProfile` inputs; presentation-only changes rebuild from the calculation cache.
 
@@ -184,16 +184,25 @@ Reuse shared engines before adding bespoke chart or control code. Do not restore
   goes through `buildCompareMatrixTable()` in `services/comfort/output/tableResolver.ts`.
 - **Grid dynamic charts on a declaration**: `ChartKind.DynamicField` entries in `outputCharts`
   with `GridModelChartSpec` resolved per profile. The spec may be static or a `(context) => spec`
-  factory when band labels depend on presentation context (PHS).
-- **Non-grid charts**: declare the matching kind in `outputCharts` — `ChartKind.Custom`
-  (PMV psychrometric), `ChartKind.BandScalar` (UTCI stress), `ChartKind.BoundaryRegion`
-  (Adaptive), `ChartKind.TimeSeriesLine` (PHS exposure history). The ChartKind resolver in
-  `services/comfort/charts/kinds/` dispatches build logic; do not add controller branches.
+  factory when band labels depend on presentation context (PHS). Copy `heatIndex.ts`.
+- **Non-grid `defineModel` charts**: the same `ModelChartDeclaration` union. Data-only
+  `BandScalar` (`title`, `getOutputValue`), `BoundaryRegion` (`title`, two `axisFields`),
+  and `TimeSeriesLine` (`title`, `yLabel`, `getSeries`) are built by the shared model-declaration
+  engine paths — they produce a ready Plotly figure. Name an extended type with `type`;
+  assemble keeps it on the presentation instance when `kind` is an existing engine and
+  `spec` matches that engine.
+- **Frontend geometry**: family modules, via `ComfortModelBuilder` — `ChartKind.Custom`
+  (PMV psychrometric charts declared on PMV ASHRAE/ISO), Plotly `build` for UTCI `BandScalar`
+  (spec lives in `utciCharts.ts`), Adaptive `BoundaryRegion`, and PHS Analysis
+  `TimeSeriesLine`. The ChartKind resolver in
+  `services/comfort/charts/kinds/` dispatches a discriminated spec union; do not add
+  controller branches and do not use `spec: unknown`. `ParametricLine` is omitted until Phase 1.
 
 Non-grid chart geometry (PMV psychrometric, UTCI stress, PHS exposure history, Adaptive
-boundary) is declared through `outputCharts` with the appropriate `ChartKind`. Time-series
-simulation charts use `ChartKind.TimeSeriesLine` via `simulation.charts`; Analysis field
-charts use `DynamicField` or `Custom`, not a separate chart-builder API.
+boundary) is owned by frontend chart modules. Time-series
+simulation charts use `ChartKind.TimeSeriesLine` via `simulation.charts`. `defineModel` Analysis
+charts use data-only specs on existing engines. PMV Dynamic is also `DynamicField`. Only PMV
+psychrometric uses `Custom`.
 
 ### Optional Time-series support
 

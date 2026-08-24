@@ -41,7 +41,9 @@ import {
 } from "../../../models/modelCapabilities";
 import type { ThermalZone } from "../../../models/thermalZone";
 import { StandardId, WorkspaceId } from "../../../models/workspaces";
-import { ChartKind } from "../../../models/output/chartKinds";
+import {
+  ChartKind,
+} from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import {
   comfortModelConfigs,
@@ -132,6 +134,35 @@ describe("comfort model capability registry", () => {
     });
   });
 
+  it("allows Custom only on PMV models, using declaration-owned instance ids", () => {
+    const customCharts = comfortModelOrder.flatMap((modelId) => (
+      getComfortModelConfig(modelId).chartKindRegistrations
+        .filter(({ registration }) => registration.kind === ChartKind.Custom)
+        .map(({ instanceId }) => ({ modelId, instanceId }))
+    ));
+    expect(new Set(customCharts.map(({ modelId }) => modelId))).toEqual(new Set([
+      ComfortModel.PmvAshrae,
+      ComfortModel.PmvIso,
+    ]));
+    customCharts.forEach(({ modelId, instanceId }) => {
+      const entry = getComfortModelConfig(modelId).outputCharts.entries.find(
+        (chart) => chart.instanceId === instanceId,
+      );
+      expect(entry?.kind).toBe(ChartKind.Custom);
+      expect(entry?.name).toBe("Psychrometric");
+    });
+  });
+
+  it("declares PMV Dynamic as DynamicField", () => {
+    [ComfortModel.PmvAshrae, ComfortModel.PmvIso].forEach((modelId) => {
+      const config = getComfortModelConfig(modelId);
+      const dynamic = config.outputCharts.entries.find(({ name }) => name === "Dynamic");
+      expect(dynamic?.kind).toBe(ChartKind.DynamicField);
+      const psychrometric = config.outputCharts.entries.find(({ name }) => name === "Psychrometric");
+      expect(psychrometric?.kind).toBe(ChartKind.Custom);
+    });
+  });
+
   it("declares both PHS charts and their chart-specific Explore capabilities", () => {
     const config = getComfortModelConfig(ComfortModel.Phs2023);
     const [history, dynamic] = config.outputCharts.entries;
@@ -144,6 +175,7 @@ describe("comfort model capability registry", () => {
 
     expect(config.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
     expect(history.instanceId).toBe("phs-exposure-history");
+    expect(history.kind).toBe(ChartKind.TimeSeriesLine);
     expect(history.capabilities).toEqual(expect.objectContaining({
       allowsAxisSelection: false,
       allowsBaselineSelection: true,
