@@ -226,7 +226,7 @@ Round 2 architecture and finish-out work on `better-structure` is **complete** (
 controller split, UTCI calculation split, B10 layout/export, full validation matrix).
 
 **Explicitly deferred (not Round 2 gaps):** CI workflow; Time-series in
-`FieldChartProfile`; sparse share schema.
+`FieldChartProfile`. Sparse share landed in Plan 0b.
 
 ## Round 3 shared capabilities (2026-08)
 
@@ -248,8 +248,8 @@ UTCI stress, PHS Analysis exposure history (`TimeSeriesLine`), and Adaptive
 boundary charts remain special-case geometry in focused modules. `ParametricLine` is
 omitted until Phase 1.
 
-**Explicitly deferred (not Round 3 gaps):** CI workflow; Time-series in `FieldChartConfig`;
-sparse share schema.
+**Explicitly deferred (not Round 3 gaps):** CI workflow; Time-series in `FieldChartConfig`.
+Sparse share landed in Plan 0b.
 
 **Dependency baseline (post-upgrade):** Node `>=22`, Vite 8, Vitest 4, Tailwind CSS 4.3
 (`@tailwindcss/vite`), Flowbite 4, `flowbite-svelte` `0.48.x`, Plotly `3.7`,
@@ -259,11 +259,9 @@ range and Flowbite 4 incompatibility respectively).
 
 ## Share state
 
-Share snapshots use one strict `version: 1` schema. Top-level input keys are `quantitiesByInput` (full `PrimaryInputState` per input slot), sparse `auxiliaryQuantitiesByInput` (modifier `PhysicalQuantityId` values only), sparse `modelInputsByModel` (per-model quantity overrides), and `activeModifiersByInput` (complete modifier enablement matrix). Every registered model contributes its selected chart, exact options, and chart settings under `models`. Only Explore working bands are serialized; functional Compliance bands come from declarations. Infinite numeric edges use explicit wire sentinels.
+Share snapshots use one strict `version: 1` schema. Top-level input keys are `quantitiesByInput` (full `PrimaryInputState` per input slot), sparse `auxiliaryQuantitiesByInput` (modifier `PhysicalQuantityId` values only), sparse `modelInputsByModel` (per-model quantity overrides), and `activeModifiersByInput` (complete modifier enablement matrix). The `models` map is sparse: default model slices are omitted from the wire, missing known model keys seed defaults, and unknown model keys are rejected. Adding a registered model does not require existing URLs to list that model. Only Explore working bands are serialized; functional Compliance bands come from declarations. Infinite numeric edges use explicit wire sentinels.
 
-The modifier records contain the exact stable modifier key set, including Dynamic Clothing. Missing or extra model, quantity, option, chart, band, or modifier keys are rejected. Legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads are rejected. There is no migration reader, fallback, compatibility shim, or cutover path.
-
-Adding a registered model intentionally changes the exact model key set required by a version-1 snapshot. The project has no deployed legacy snapshot compatibility requirement.
+The modifier records contain the exact stable modifier key set, including Dynamic Clothing. Extra quantity, option, chart, band, modifier, or model keys are rejected. Missing known model keys seed defaults rather than requiring an exact `comfortModelOrder` map. Legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads are rejected. There is no migration reader, fallback, compatibility shim, or cutover path.
 
 ## Validation
 

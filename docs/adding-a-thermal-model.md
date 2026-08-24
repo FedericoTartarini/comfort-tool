@@ -263,9 +263,10 @@ Strict `version: 1` snapshots persist input state as:
 - `quantitiesByInput` — full `PrimaryInputState` per `InputId` (every `primaryInputOrder` key);
 - `auxiliaryQuantitiesByInput` — sparse modifier-slot `PhysicalQuantityId` values per input;
 - `modelInputsByModel` — sparse model-scoped quantity overrides per registered model;
+- `models` — sparse per-model chart/options/output settings (default slices omitted);
 - `activeModifiersByInput` — complete modifier enablement matrix per input.
 
-Only non-default model-scoped values and configured modifier quantities are serialized sparsely; unset keys are omitted. The codec requires the exact top-level key set above and rejects legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads.
+Only non-default model slices, non-default model-scoped values, and configured modifier quantities are serialized sparsely; unset keys and default model slices are omitted. Missing known model keys seed defaults. Unknown model keys are rejected. Adding a model does not require existing URLs to list that model. The codec still requires the strict top-level v1 key set (including `models` and `modelInputsByModel`, which may be empty objects) and rejects legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads.
 
 ## 7. Declare model-owned charts
 
@@ -341,7 +342,7 @@ Add focused tests for:
 - result rows, including valid falsy values;
 - modifier support, order, finite output, reversibility, and base/effective separation;
 - chart definitions and chart shapes;
-- SI/IP presentation and strict share-version-1 round trips/rejection (`quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, `activeModifiersByInput`);
+- SI/IP presentation and strict share-version-1 round trips/rejection (`quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, sparse `models`, `activeModifiersByInput`);
 - presentation-only actions preserving a ready calculation cache.
 
 Run the complete validation matrix:
