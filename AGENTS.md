@@ -83,6 +83,7 @@ All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or
 - `quantitiesByInput` stores base primary SI before modifiers; `effectiveQuantitiesByInput` in `ModelCalculationContext` is what calculations and request mapping read.
 - Calculate each model once into `calculationCacheByModel`; chart builders read `resultsByInput` and `chartSource` from that cache. Presentation-only changes (mode, axes, bands) must rebuild charts without invalidating ready caches.
 - Golden regression fixtures live in `src/testSupport/goldenFixtures.ts`; do not reintroduce ad-hoc `refactor*` baseline files.
+- Every Analysis model must pass `assertCompareContract` in `src/testSupport/assertCompareContract.ts`: 1/2/3 visible inputs, filled table columns, chart markers, and a baseline change that does not invalidate a ready cache. Three inputs must not fail silently.
 - ESLint restricted wire literals in `eslint.config.js` must stay aligned with `primaryInputOrder`; `src/models/catalogWireIds.test.ts` guards that sync.
 
 ## Conversion Ownership
@@ -118,7 +119,7 @@ When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createCom
 
 ## Model Extension Strategy
 
-New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; `defineModel` and the registry live in `src/state/comfortTool/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template). Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`.
+New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; `defineModel` and the registry live in `src/state/comfortTool/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template). Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`. After registration, `assertCompareContract` must pass for the new Analysis model.
 
 Each registered model has one focused declaration entry that exposes its product decisions. This is not a one-physical-file rule: stable IDs remain centralized, registration remains explicit, and tests remain separate. Simple models may keep their implementation in the declaration file; larger standard families may use focused calculation/chart modules beside complete standard declarations.
 

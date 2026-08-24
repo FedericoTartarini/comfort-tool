@@ -3,7 +3,10 @@ import type {
   ModelChartSourceDto,
   PlotlyChartResponseDto,
 } from "../../../../models/comfortDtos";
-import type { InputId as InputIdType } from "../../../../models/inputSlots";
+import {
+  inputOrder,
+  type InputId as InputIdType,
+} from "../../../../models/inputSlots";
 import {
   type Band,
   type ChartBuildContext,
@@ -12,6 +15,7 @@ import {
 } from "../../../../models/modelCapabilities";
 import { getPhysicalQuantityMeta } from "../../../../models/physicalQuantities";
 import { getCompareInputs } from "../../helpers";
+import { buildCompareInputMarkerTraces } from "../inputPoints";
 import {
   buildFieldChart,
   createBandedGridStrategy,
@@ -37,9 +41,9 @@ function asChartSource(
   chartSource: unknown,
 ): ModelChartSourceDto<object> | null {
   if (
-    chartSource
-    && typeof chartSource === "object"
-    && "inputs" in chartSource
+    chartSource &&
+    typeof chartSource === "object" &&
+    "inputs" in chartSource
   ) {
     return chartSource as ModelChartSourceDto<object>;
   }
@@ -48,9 +52,8 @@ function asChartSource(
 
 function toNumericBands(bands: readonly Band[]): NumericBand[] {
   return bands.filter(
-    (band): band is NumericBand => (
-      typeof band.min === "number" && typeof band.max === "number"
-    ),
+    (band): band is NumericBand =>
+      typeof band.min === "number" && typeof band.max === "number",
   );
 }
 
@@ -91,17 +94,16 @@ export function buildModelBandScalarChart<TResult>(
   context: ChartBuildContext,
 ): PlotlyChartResponseDto {
   const bands = toNumericBands(context.fieldChartConfig.bands);
-  const values = Object.values(resultsByInput).flatMap((result) => (
-    result == null ? [] : [spec.getOutputValue(result)]
-  ));
+  const values = Object.values(resultsByInput).flatMap((result) =>
+    result == null ? [] : [spec.getOutputValue(result)],
+  );
   const xRangeSi = finiteRange(bands, values);
   const output = outputFromContext(context, bands);
   const source = asChartSource(chartSource);
   const yByInput = new Map(
-    (source ? getCompareInputs(source.inputs) : []).map(({ inputId }, index) => [
-      inputId,
-      [0.78, 0.5, 0.22][index] ?? 0.5,
-    ]),
+    (source ? getCompareInputs(source.inputs) : []).map(
+      ({ inputId }, index) => [inputId, [0.78, 0.5, 0.22][index] ?? 0.5],
+    ),
   );
 
   return buildFieldChart({
@@ -134,20 +136,23 @@ export function buildModelBandScalarChart<TResult>(
       evaluateOutput: (xSi) => xSi,
     }),
     inputGroups: source
-      ? () => [{
-        inputsMap: source.inputs,
-        resultsByInput,
-        getXSi: (_payload, inputId) => {
-          const result = resultsByInput[inputId];
-          return result == null ? Number.NaN : spec.getOutputValue(result);
-        },
-        getYSi: (_payload, inputId) => yByInput.get(inputId) ?? 0.5,
-        getHovertemplate: ({ inputLabel, inputId }) => {
-          const result = resultsByInput[inputId];
-          const value = result == null ? "—" : String(spec.getOutputValue(result));
-          return `${inputLabel}<br>${output.label}: ${value}<extra></extra>`;
-        },
-      }]
+      ? () => [
+          {
+            inputsMap: source.inputs,
+            resultsByInput,
+            getXSi: (_payload, inputId) => {
+              const result = resultsByInput[inputId];
+              return result == null ? Number.NaN : spec.getOutputValue(result);
+            },
+            getYSi: (_payload, inputId) => yByInput.get(inputId) ?? 0.5,
+            getHovertemplate: ({ inputLabel, inputId }) => {
+              const result = resultsByInput[inputId];
+              const value =
+                result == null ? "—" : String(spec.getOutputValue(result));
+              return `${inputLabel}<br>${output.label}: ${value}<extra></extra>`;
+            },
+          },
+        ]
       : undefined,
     layout: {
       title: spec.title,
@@ -199,22 +204,39 @@ export function buildModelTimeSeriesLineChart<TResult>(
 ): PlotlyChartResponseDto | null {
   const result = resultsByInput[context.baselineInputId];
   if (result == null) return null;
-  const series = spec.getSeries(result).filter(({ x, y }) => (
-    Number.isFinite(x) && Number.isFinite(y)
-  ));
+  const series = spec
+    .getSeries(result)
+    .filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y));
   if (series.length === 0) return null;
 
   const xValues = series.map(({ x }) => x);
   const yValues = series.map(({ y }) => y);
+  const comparePointsByInput: Partial<
+    Record<InputIdType, { x: number; y: number }>
+  > = {};
+  for (const inputId of inputOrder) {
+    const inputResult = resultsByInput[inputId];
+    if (inputResult == null) continue;
+    const inputSeries = spec
+      .getSeries(inputResult)
+      .filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y));
+    const lastPoint = inputSeries[inputSeries.length - 1];
+    if (lastPoint) {
+      comparePointsByInput[inputId] = lastPoint;
+    }
+  }
 
   return {
-    traces: [buildTimeSeriesLineTrace({
-      name: spec.yLabel,
-      x: xValues,
-      y: yValues,
-      color: "#1B679B",
-      unit: "",
-    })],
+    traces: [
+      buildTimeSeriesLineTrace({
+        name: spec.yLabel,
+        x: xValues,
+        y: yValues,
+        color: "#1B679B",
+        unit: "",
+      }),
+      ...buildCompareInputMarkerTraces(comparePointsByInput),
+    ],
     layout: {
       title: spec.title,
       paper_bgcolor: "#ffffff",

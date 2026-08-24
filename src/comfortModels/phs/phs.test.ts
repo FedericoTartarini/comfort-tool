@@ -217,6 +217,7 @@ describe("PHS ISO 7933:2023", () => {
       "Core temperature",
       "Maximum rectal temperature",
       "First rectal-temperature limit",
+      "Input 1",
     ]);
     expect(exposureChart?.traces[1].visible).toBe("legendonly");
     expect(fieldChart?.traces[0].type).toBe("contour");

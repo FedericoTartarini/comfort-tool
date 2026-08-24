@@ -6,7 +6,10 @@ import type {
   PlotScatterMarkerTraceDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
-import type { InputId as InputIdType } from "../../../models/inputSlots";
+import {
+  inputOrder,
+  type InputId as InputIdType,
+} from "../../../models/inputSlots";
 import { getCompareInputs } from "../helpers";
 import { buildInputScatterTrace } from "./plotlyBuilders";
 import type { ChartAxisScale } from "./types";
@@ -102,4 +105,28 @@ export function buildInputTraceGroup<TPayload, TResult = unknown>({
   });
 
   return { overlays, markers };
+}
+
+/** Named scatter markers for every Compare input that has a plotted point. */
+export function buildCompareInputMarkerTraces(
+  pointsByInput: Partial<Record<InputIdType, { x: number; y: number }>>,
+): PlotScatterMarkerTraceDto[] {
+  const points = inputOrder.flatMap((inputId) => {
+    const point = pointsByInput[inputId];
+    if (
+      point === undefined
+      || !Number.isFinite(point.x)
+      || !Number.isFinite(point.y)
+    ) {
+      return [];
+    }
+    return [{ inputId, ...point }];
+  });
+  return points.map(({ inputId, x, y }) => buildInputScatterTrace({
+    inputId,
+    x,
+    y,
+    showLegend: points.length > 1,
+    hovertemplate: `${inputDisplayMetaById[inputId].label}<extra></extra>`,
+  }));
 }

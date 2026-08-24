@@ -1,7 +1,16 @@
 import type { TimeSeriesLineChartKindSpec } from "../../services/comfort/charts/kinds/types";
-import type { ModelChartSourceDto, PlotlyChartResponseDto } from "../../models/comfortDtos";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../models/physicalQuantities";
-import type { InputId as InputIdType } from "../../models/inputSlots";
+import type {
+  ModelChartSourceDto,
+  PlotlyChartResponseDto,
+} from "../../models/comfortDtos";
+import {
+  PhysicalQuantityId,
+  type ChartAxisQuantityId,
+} from "../../models/physicalQuantities";
+import {
+  inputOrder,
+  type InputId as InputIdType,
+} from "../../models/inputSlots";
 import {
   ModelOutputKey,
   type ChartBuildContext,
@@ -22,6 +31,9 @@ import {
 } from "../../models/phs";
 import type { GridModelChartSpec } from "../../services/comfort/charts/gridModelCharts";
 import type { ChartRange } from "../../services/comfort/charts/types";
+import { buildCompareInputMarkerTraces } from "../../services/comfort/charts/inputPoints";
+import { convertTemperatureFromSi } from "../../services/units/temperature";
+import { UnitSystem } from "../../models/units";
 import { calculatePhs, personFromModelInputs } from "./phsCalculation";
 import {
   buildPhsTemperatureHistoryChart,
@@ -81,20 +93,21 @@ export function createPhsDynamicGridSpec(
     exploreOutputs: outputs,
     gridPoints: PHS_GRID_POINTS,
     axisRanges: PHS_AXIS_RANGES,
-    bandLabel: context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
-      ? "8-hour assessment"
-      : "Band",
+    bandLabel:
+      context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
+        ? "8-hour assessment"
+        : "Band",
     isPlottable: (result) => result?.valid ?? false,
     outsideApplicabilityMessage: "Outside ISO 7933:2023 applicability",
     requestAdapter,
-    evaluate: (payload) => calculatePhs({
-      ...payload,
-      durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
-      person: personFromModelInputs(resolveChartModelInputs(context)),
-    }),
-    getOutputValue: (result, outputKey) => (
-      result.valid ? getPhsOutputValue(result, outputKey) : null
-    ),
+    evaluate: (payload) =>
+      calculatePhs({
+        ...payload,
+        durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
+        person: personFromModelInputs(resolveChartModelInputs(context)),
+      }),
+    getOutputValue: (result, outputKey) =>
+      result.valid ? getPhsOutputValue(result, outputKey) : null,
   };
 }
 
@@ -105,41 +118,79 @@ export function buildPhsExposureHistoryChartResult(
   const baselineResult = resultsByInput[context.baselineInputId];
   if (!baselineResult?.valid || !baselineResult.samples) return null;
 
-  const thresholdC = context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
-    ? PHS_RECTAL_TEMPERATURE_LIMIT_C
-    : context.fieldChartConfig.bands.find(({ max }) => Number.isFinite(max))?.max
-      ?? PHS_RECTAL_TEMPERATURE_LIMIT_C;
-  const markerMinute = context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
-    ? baselineResult.limitingMinute
-    : findFirstRectalThresholdCrossingMinute(
-        baselineResult.samples,
-        thresholdC,
-      );
-  const markerLabel = context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
-    ? baselineResult.limitingCriterion === PhsLimitingCriterion.WaterLoss
-      ? "First water-loss limit"
-      : "First rectal-temperature limit"
-    : "First editable-threshold crossing";
+  const thresholdC =
+    context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
+      ? PHS_RECTAL_TEMPERATURE_LIMIT_C
+      : (context.fieldChartConfig.bands.find(({ max }) => Number.isFinite(max))
+          ?.max ?? PHS_RECTAL_TEMPERATURE_LIMIT_C);
+  const markerMinute =
+    context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
+      ? baselineResult.limitingMinute
+      : findFirstRectalThresholdCrossingMinute(
+          baselineResult.samples,
+          thresholdC,
+        );
+  const markerLabel =
+    context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
+      ? baselineResult.limitingCriterion === PhsLimitingCriterion.WaterLoss
+        ? "First water-loss limit"
+        : "First rectal-temperature limit"
+      : "First editable-threshold crossing";
 
-  return buildPhsTemperatureHistoryChart(baselineResult, context.unitSystem, {
-    title: "PHS exposure history",
-    thresholdC,
-    thresholdLabel: context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
-      ? "Maximum rectal temperature"
-      : "Editable rectal-temperature threshold",
-    markerMinute,
-    markerLabel,
-  });
+  const chart = buildPhsTemperatureHistoryChart(
+    baselineResult,
+    context.unitSystem,
+    {
+      title: "PHS exposure history",
+      thresholdC,
+      thresholdLabel:
+        context.fieldChartConfig.profileKind ===
+        FieldChartProfileKind.Compliance
+          ? "Maximum rectal temperature"
+          : "Editable rectal-temperature threshold",
+      markerMinute,
+      markerLabel,
+    },
+  );
+  const comparePointsByInput: Partial<
+    Record<InputIdType, { x: number; y: number }>
+  > = {};
+  for (const inputId of inputOrder) {
+    const result = resultsByInput[inputId];
+    const samples = result?.samples;
+    const sample = samples?.[samples.length - 1];
+    if (
+      result == null ||
+      sample === undefined ||
+      !Number.isFinite(sample.hours) ||
+      !Number.isFinite(sample.tRe)
+    ) {
+      continue;
+    }
+    comparePointsByInput[inputId] = {
+      x: sample.hours,
+      y:
+        context.unitSystem === UnitSystem.IP
+          ? convertTemperatureFromSi(sample.tRe)
+          : sample.tRe,
+    };
+  }
+  return {
+    ...chart,
+    traces: [
+      ...chart.traces,
+      ...buildCompareInputMarkerTraces(comparePointsByInput),
+    ],
+  };
 }
 
 export const phsExposureHistoryChartSpec: TimeSeriesLineChartKindSpec<
   PhsResponseDto,
   ModelChartSourceDto<PhsEnvironmentSi>
 > = {
-  build: (_chartSource, resultsByInput, context) => (
+  build: (_chartSource, resultsByInput, context) =>
     buildPhsExposureHistoryChartResult(
       resultsByInput,
       context as ChartBuildContext<NumericBand>,
-    )
-  ),
+    ),
 };

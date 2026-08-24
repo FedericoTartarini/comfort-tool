@@ -343,7 +343,8 @@ Add focused tests for:
 - modifier support, order, finite output, reversibility, and base/effective separation;
 - chart definitions and chart shapes;
 - SI/IP presentation and strict share-version-1 round trips/rejection (`quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, sparse `models`, `activeModifiersByInput`);
-- presentation-only actions preserving a ready calculation cache.
+- presentation-only actions preserving a ready calculation cache;
+- `assertCompareContract` for 1/2/3 visible inputs, filled table columns, chart markers, and a baseline change that does not invalidate a ready cache. Three inputs must not fail silently.
 
 Run the complete validation matrix:
 

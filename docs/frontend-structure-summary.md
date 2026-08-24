@@ -114,6 +114,8 @@ The shared dynamic-axis solver applies two coordinates as one physical constrain
 
 Calculations receive `ModelCalculationContext`, containing `effectiveQuantitiesByInput` (modifier-adjusted primary SI), sparse `auxiliaryQuantitiesByInput`, sparse `modelInputs`, and only the active model's options after exact parsing. Base primary SI remains in `quantitiesByInput` and is not passed directly to calculations. The keyed `modelOptionsByModel` record remains in controller/share state. Each definition returns typed results and a typed chart source. At controller level they are stored in generic `ModelCalculationCache<unknown, unknown>` records keyed by model ID.
 
+Compare is three input slots, a results matrix, overlay markers, and a baseline selector. `assertCompareContract` in `src/testSupport/assertCompareContract.ts` is the Analysis-model helper for that contract: 1/2/3 visible inputs, filled table columns, chart markers, and a baseline change that does not invalidate a ready cache. Three inputs must not fail silently. Do not add a third table engine.
+
 ## Generic input modifiers
 
 The controller stores three separate concepts:

@@ -5,7 +5,7 @@ import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
 import { getBaselineInputEntry } from "../helpers";
 import { createFieldAxisScale } from "./axis";
-import { buildInputTraceGroup } from "./inputPoints";
+import { buildCompareInputMarkerTraces, buildInputTraceGroup } from "./inputPoints";
 
 describe("chart input points", () => {
   it("builds scatter traces from SI payload values", () => {
@@ -46,6 +46,19 @@ describe("chart input points", () => {
       y: [50],
     }));
     expect(traces.markers[0].hovertemplate).toContain("Neutral");
+  });
+
+  it("builds named Compare markers for every plotted input", () => {
+    const traces = buildCompareInputMarkerTraces({
+      [InputId.Input1]: { x: 1, y: 2 },
+      [InputId.Input3]: { x: 3, y: 4 },
+    });
+
+    expect(traces.map(({ name, x, y }) => ({ name, x, y }))).toEqual([
+      { name: "Input 1", x: [1], y: [2] },
+      { name: "Input 3", x: [3], y: [4] },
+    ]);
+    expect(traces.every(({ mode }) => mode === "markers")).toBe(true);
   });
 
   it("requires the baseline selected by the chart build context", () => {
