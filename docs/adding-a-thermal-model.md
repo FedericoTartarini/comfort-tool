@@ -10,14 +10,16 @@ For the current runtime boundaries and state flow, see [Frontend structure summa
 
 Add the serialized model ID to `ComfortModel`. Declare each chart instance id on `setOutputCharts()`; do not add a parallel `ChartInstanceId` tree. Instance ids must be non-empty per model, unique per model, and unique globally. Add a `ModelOutputKey` and its unit-presentation metadata only when the model exposes a genuinely new output. Reuse existing constants instead of introducing inline domain strings for model, quantity, and chart-kind identifiers.
 
-Physical quantities are declared once in `src/models/physicalQuantities.ts`:
+Physical quantities are a **system seed** in `src/models/physicalQuantities.ts` plus optional declaration contributions:
 
-- `PhysicalQuantityId` — wire-safe ids for primary, derived, modifier, and model-scoped values;
-- `physicalQuantityMetaById` — labels, SI defaults/min/max, display metadata, `scope` (`system` / `model`), and `state` (`primary` / `slot` / `model`);
+- `PhysicalQuantityId` — wire-safe ids for primary, derived, and modifier values in the system seed;
+- `systemQuantityMetaById` — labels, SI defaults/min/max, display metadata, `scope: system`, and `state` (`primary` / `slot`);
 - `primaryInputOrder` — the exact base-SI primary key set shared across input slots and share snapshots;
 - `ChartAxisQuantityId` — selectable chart-axis coordinates (primary fields plus operative temperature and humidity ratio).
 
-If the model needs a new persisted primary input, add a `PhysicalQuantityId`, metadata with `state: QuantityState.Primary` and `inPrimaryOrder: true`, and extend `primaryInputOrder`. Model-scoped inputs use `scope: PhysicalQuantityScope.Model`, `state: QuantityState.Model`, and `ownerModelId`; register them with `registerModelQuantities()` and surface them through `setInputFields({ kind: "modelQuantity", … })`.
+Runtime code reads the **assembled** catalog (`system seed ∪ declarations[].quantities.extend`). Registry assemble fails on duplicate ids or wrong owners.
+
+If the model needs a new persisted primary input, add a `PhysicalQuantityId`, metadata with `state: QuantityState.Primary` and `inPrimaryOrder: true`, and extend `primaryInputOrder`. That is frontend work, not declaration-only work. Model-scoped inputs use builder `.extendQuantities([{ id, owner: this model, scope: model, SI meta }])` and surface them through `setInputFields({ kind: "modelQuantity", … })` when they belong on the Analysis panel. Extended quantities must not enter `primaryInputOrder` or the global share primary record; they live in sparse `modelInputsByModel`.
 
 Modifier extra inputs are catalog slot quantities (`state: QuantityState.Slot`, `modifierId`). Do not add derived or chart-only coordinates, such as dew point or operative temperature, to `primaryInputOrder`.
 
@@ -26,7 +28,7 @@ Modifier extra inputs are catalog slot quantities (`state: QuantityState.Slot`, 
 Create the registered declaration under `src/comfortModels/`. It must make the following product decisions visible without inspecting the controller:
 
 - stable identity, label, and description;
-- `setInputFields()` specs, any `registerModelQuantities()` entries, option handlers, complete default options, and an exact parser;
+- `setInputFields()` specs, any `.extendQuantities()` contributions, option handlers, complete default options, and an exact parser;
 - request mapping and calculation;
 - result rows and charts;
 - declaration-local `ThermalZone` values and derived bands;
@@ -85,8 +87,9 @@ Use `fieldAdapter.mapRequest` for `calculatePerInput()` and its `getAxisValue`/`
 Connection flow:
 
 ```text
-physicalQuantities.ts (catalog)
-  -> quantitiesByInput / effectiveQuantitiesByInput (state)
+physicalQuantities.ts (system seed)
+  -> registry assemble (seed ∪ quantities.extend)
+  -> quantitiesByInput / effectiveQuantitiesByInput / modelInputsByModel (state)
   -> createFieldRequestAdapter map (model *Calculation.ts)
   -> Request DTO (jstc short names)
   -> jsthermalcomfort
@@ -105,7 +108,8 @@ Declare the visible input panel through `builder.setInputFields()` using `InputF
 - `occupantAirSpeed` / `outdoorWindSpeed` — shared air/wind menus;
 - `simpleHumidity` / `advancedHumidity` — RH-only vs multi-mode humidity;
 - `preset` — metabolic/clothing menus via `InputPresetKey`;
-- `modelQuantity` — model-scoped quantities registered with `registerModelQuantities()`.
+- `modelQuantity` — model-scoped quantities contributed with `.extendQuantities()`.
+  `.extendQuantities()` and `setInputFields({ kind: "modelQuantity" })` may be called in either order. The builder checks that every `modelQuantity` field is an extend entry owned by that declaration. Control labels, ranges, and conversion read the assembled catalog at view-model time, not while the declaration is being built.
 
 Control behaviors construct view models and apply numeric input only. Model `optionHandlersByKey` is the sole option-change path.
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import { PhysicalQuantityId, primaryInputOrder } from "../../models/physicalQuantities";
+import { PhsQuantityId } from "../../models/phs";
 import { InputControlId } from "../../models/inputControls";
 import {
   AirSpeedControlMode,
@@ -112,6 +113,35 @@ describe("shareState strict v1 codec", () => {
     expect(snapshot.auxiliaryQuantitiesByInput[InputId.Input2])
       .not.toHaveProperty(PhysicalQuantityId.ModifierSolarAltitude);
     expect(restored).toEqual(snapshot);
+  });
+
+  it("round-trips a changed PHS quantity only under modelInputsByModel", () => {
+    const toolState = createComfortToolState();
+    expect(toolState.actions.updateModelQuantity(
+      ComfortModel.Phs2023,
+      PhsQuantityId.BodyWeight,
+      90,
+    )).toBe(true);
+
+    const snapshot = createShareStateSnapshot(toolState.state);
+
+    expect(snapshot.modelInputsByModel[ComfortModel.Phs2023]).toEqual({
+      [PhsQuantityId.BodyWeight]: 90,
+    });
+    expect(snapshot.modelInputsByModel[ComfortModel.Phs2023])
+      .not.toHaveProperty(PhsQuantityId.Height);
+    expect(snapshot.modelInputsByModel[ComfortModel.PmvAshrae]).toEqual({});
+    expect(Object.keys(snapshot.quantitiesByInput[InputId.Input1]))
+      .toEqual([...primaryInputOrder]);
+    expect(snapshot.quantitiesByInput[InputId.Input1])
+      .not.toHaveProperty(PhsQuantityId.BodyWeight);
+
+    const restored = deserializeShareState(serializeShareState(snapshot));
+    expect(restored?.modelInputsByModel[ComfortModel.Phs2023]).toEqual({
+      [PhsQuantityId.BodyWeight]: 90,
+    });
+    expect(restored?.quantitiesByInput[InputId.Input1])
+      .not.toHaveProperty(PhsQuantityId.BodyWeight);
   });
 
   it("round-trips all per-model field settings and explicit Infinity edges", () => {
@@ -482,7 +512,7 @@ describe("shareState strict v1 codec", () => {
     const unknownModelInput = structuredClone(current);
     Object.assign(
       unknownModelInput.modelInputsByModel[ComfortModel.PmvAshrae],
-      { [PhysicalQuantityId.PhsBodyWeight]: 80 },
+      { [PhsQuantityId.BodyWeight]: 80 },
     );
 
     const nonFinite = structuredClone(current);

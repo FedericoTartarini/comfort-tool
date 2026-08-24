@@ -15,6 +15,7 @@ import {
   createAuxiliaryQuantitiesByInput,
   createDefaultModelInputsForModel,
 } from "../services/comfort/quantityStateRouting";
+import { PhsQuantityId } from "../models/phs";
 import type { PmvRequestDto } from "../comfortModels/pmv/pmvCalculation";
 import type { UtciRequestDto } from "../comfortModels/utci/utciCalculation";
 
@@ -148,8 +149,8 @@ export const phsBaselineInputOverrides: Partial<PrimaryInputState> = {
 };
 
 export const phsBaselineModelInputs: Partial<Record<PhysicalQuantityIdType, number>> = {
-  [PhysicalQuantityId.PhsBodyWeight]: 75,
-  [PhysicalQuantityId.PhsHeight]: 1.8,
+  [PhsQuantityId.BodyWeight]: 75,
+  [PhsQuantityId.Height]: 1.8,
 };
 
 export const adaptiveBaselineInputOverrides: Partial<PrimaryInputState> = {

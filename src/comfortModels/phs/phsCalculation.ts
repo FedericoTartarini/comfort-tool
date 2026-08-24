@@ -1,11 +1,12 @@
 import { phs, p_sat } from "jsthermalcomfort";
 
 import { CalculationSource } from "../../models/calculationMetadata";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../models/physicalQuantities";
+import { getPhysicalQuantityMeta, type PhysicalQuantityId } from "../../models/physicalQuantities";
 import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PHS_STANDARD_VERSION,
   PhsLimitingCriterion,
+  PhsQuantityId,
   defaultPhsSimulationFlags,
   type PhsEnvironmentSi,
   type PhsHistorySample,
@@ -64,8 +65,8 @@ function getPhsWaterLossLimitPercent(
 }
 
 function bodySurfaceAreaM2(person: PhsPersonSettingsSi): number {
-  const weightKg = person[PhysicalQuantityId.PhsBodyWeight];
-  const heightM = person[PhysicalQuantityId.PhsHeight];
+  const weightKg = person[PhsQuantityId.BodyWeight];
+  const heightM = person[PhsQuantityId.Height];
   return 0.202
     * Math.pow(weightKg, 0.425)
     * Math.pow(heightM, 0.725);
@@ -73,21 +74,21 @@ function bodySurfaceAreaM2(person: PhsPersonSettingsSi): number {
 
 export function getPhsWaterLossLimitG(person: PhsPersonSettingsSi): number {
   return (getPhsWaterLossLimitPercent(person) / 100)
-    * person[PhysicalQuantityId.PhsBodyWeight]
+    * person[PhsQuantityId.BodyWeight]
     * 1000;
 }
 
 export function personFromModelInputs(
   modelInputs: Readonly<Partial<Record<PhysicalQuantityId, number>>>,
 ): PhsPersonSettingsSi {
-  const weightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.PhsBodyWeight);
-  const heightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.PhsHeight);
+  const weightMeta = getPhysicalQuantityMeta(PhsQuantityId.BodyWeight);
+  const heightMeta = getPhysicalQuantityMeta(PhsQuantityId.Height);
 
   return {
-    [PhysicalQuantityId.PhsBodyWeight]:
-      modelInputs[PhysicalQuantityId.PhsBodyWeight] ?? weightMeta.defaultSi,
-    [PhysicalQuantityId.PhsHeight]:
-      modelInputs[PhysicalQuantityId.PhsHeight] ?? heightMeta.defaultSi,
+    [PhsQuantityId.BodyWeight]:
+      modelInputs[PhsQuantityId.BodyWeight] ?? weightMeta.defaultSi,
+    [PhsQuantityId.Height]:
+      modelInputs[PhsQuantityId.Height] ?? heightMeta.defaultSi,
     ...defaultPhsSimulationFlags,
   };
 }
@@ -112,12 +113,12 @@ export function validatePhsEnvironment(
   if (!values.every(Number.isFinite)) {
     return ["All PHS inputs must be finite numbers."];
   }
-  if (!Number.isFinite(person[PhysicalQuantityId.PhsBodyWeight])
-    || person[PhysicalQuantityId.PhsBodyWeight] <= 0) {
+  if (!Number.isFinite(person[PhsQuantityId.BodyWeight])
+    || person[PhsQuantityId.BodyWeight] <= 0) {
     issues.push("Body weight must be greater than zero.");
   }
-  if (!Number.isFinite(person[PhysicalQuantityId.PhsHeight])
-    || person[PhysicalQuantityId.PhsHeight] <= 0) {
+  if (!Number.isFinite(person[PhsQuantityId.Height])
+    || person[PhsQuantityId.Height] <= 0) {
     issues.push("Body height must be greater than zero.");
   }
   if (environment.tdb < 15 || environment.tdb > 50) {
@@ -137,8 +138,8 @@ export function validatePhsEnvironment(
   }
 
   if (
-    person[PhysicalQuantityId.PhsBodyWeight] > 0
-    && person[PhysicalQuantityId.PhsHeight] > 0
+    person[PhsQuantityId.BodyWeight] > 0
+    && person[PhsQuantityId.Height] > 0
   ) {
     const metabolicPowerW = environment.met
       * WATTS_PER_MET
@@ -177,8 +178,8 @@ function runRawPhs(
     PHS_STANDARD_VERSION,
     {
       duration: durationMinutes,
-      weight: person[PhysicalQuantityId.PhsBodyWeight],
-      height: person[PhysicalQuantityId.PhsHeight],
+      weight: person[PhsQuantityId.BodyWeight],
+      height: person[PhsQuantityId.Height],
       acclimatized: person.acclimatized ? 100 : 0,
       drink: person.drinkingAllowed ? 1 : 0,
       round: false,
@@ -237,10 +238,10 @@ export function validatePhsTimeSeries(
   person: PhsPersonSettingsSi,
 ): string[] {
   const issues: string[] = [];
-  const weightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.PhsBodyWeight);
-  const heightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.PhsHeight);
-  const weight = person[PhysicalQuantityId.PhsBodyWeight];
-  const height = person[PhysicalQuantityId.PhsHeight];
+  const weightMeta = getPhysicalQuantityMeta(PhsQuantityId.BodyWeight);
+  const heightMeta = getPhysicalQuantityMeta(PhsQuantityId.Height);
+  const weight = person[PhsQuantityId.BodyWeight];
+  const height = person[PhsQuantityId.Height];
   if (!Number.isFinite(weight) || weight < weightMeta.minSi || weight > weightMeta.maxSi) {
     issues.push(
       `${weightMeta.label} must be between ${weightMeta.minSi} and ${weightMeta.maxSi} ${weightMeta.display.units.SI}.`,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { InputId } from "../../models/inputSlots";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhsQuantityId } from "../../models/phs";
 import { ModifierId } from "../../models/inputModifiers";
 import {
   collectModifierInputsForModifier,
@@ -76,7 +77,7 @@ describe("quantityStateRouting", () => {
 
   it("seeds model-scoped defaults for PHS", () => {
     const modelInputs = createDefaultModelInputsForModel(ComfortModel.Phs2023);
-    expect(modelInputs[PhysicalQuantityId.PhsBodyWeight]).toBe(75);
-    expect(modelInputs[PhysicalQuantityId.PhsHeight]).toBe(1.8);
+    expect(modelInputs[PhsQuantityId.BodyWeight]).toBe(75);
+    expect(modelInputs[PhsQuantityId.Height]).toBe(1.8);
   });
 });

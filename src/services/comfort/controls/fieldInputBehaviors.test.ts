@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhsQuantityId } from "../../../models/phs";
 import { InputControlId } from "../../../models/inputControls";
 import { OptionKey, TemperatureMode } from "../../../models/inputModes";
 import {
@@ -14,6 +15,8 @@ import { ComfortModel } from "../../../models/comfortModels";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/comfortTool/modelConfigs/builder";
+import "../../../state/comfortTool/modelConfigs";
+import { convertMassFromSi } from "../../units/physicalQuantities";
 import { resolveInputField } from "./fieldInputBehaviors";
 import type { ControlBehaviorContext } from "./types";
 
@@ -188,5 +191,48 @@ describe("fieldInputBehaviors", () => {
       unitSystem: UnitSystem.SI,
       visibleInputIds: [InputId.Input1],
     } as ControlBehaviorContext).minValue).toBe(10);
+  });
+
+  it("converts model-scoped quantities from catalog SI units without model id branches", () => {
+    const control = resolveInputField({
+      kind: "modelQuantity",
+      quantityId: PhsQuantityId.BodyWeight,
+    });
+    const context = {
+      quantitiesByInput: inputDefaultsById,
+      auxiliaryQuantitiesByInput: {
+        input1: {},
+        input2: {},
+        input3: {},
+      },
+      modelInputs: { [PhsQuantityId.BodyWeight]: 75 },
+      options: {},
+      unitSystem: UnitSystem.IP,
+      visibleInputIds: [InputId.Input1],
+    } as ControlBehaviorContext;
+
+    const viewModel = control.behavior.buildViewModel(context);
+    expect(viewModel.label).toBe("Body weight");
+    expect(viewModel.displayUnits).toBe("lb");
+    expect(viewModel.numericValuesByInput[InputId.Input1])
+      .toBeCloseTo(convertMassFromSi(75000), 8);
+
+    const applyInput = control.behavior.applyInput;
+    if (!applyInput) {
+      throw new Error("modelQuantity controls must apply numeric input.");
+    }
+    const patch = applyInput(
+      context,
+      InputId.Input1,
+      String(viewModel.numericValuesByInput[InputId.Input1]),
+    );
+    expect(patch?.modelInputsPatch?.[PhsQuantityId.BodyWeight]).toBeCloseTo(75, 8);
+  });
+
+  it("constructs a modelQuantity control before the quantity is in the catalog", () => {
+    expect(() => resolveInputField({
+      kind: "modelQuantity",
+      quantityId: "audit.exampleMass",
+    })).not.toThrow();
   });
 });

@@ -1,4 +1,4 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "./comfortModels";
+import type { ComfortModel as ComfortModelType } from "./comfortModels";
 import type { UnitSystem as UnitSystemType } from "./units";
 
 /** Matches ModifierId wire values; kept here to avoid circular imports with inputModifiers. */
@@ -52,12 +52,13 @@ export const PhysicalQuantityId = {
   ModifierSolarTransmittance: "modifier.solarTransmittance",
   ModifierSkyVaultViewFraction: "modifier.skyVaultViewFraction",
   ModifierBodyExposureFraction: "modifier.bodyExposureFraction",
-  PhsBodyWeight: "phs.bodyWeight",
-  PhsHeight: "phs.height",
 } as const;
 
-export type PhysicalQuantityId =
+export type SystemPhysicalQuantityId =
   (typeof PhysicalQuantityId)[keyof typeof PhysicalQuantityId];
+
+/** Catalog id: a system-seed quantity or a model-scoped extension. */
+export type PhysicalQuantityId = SystemPhysicalQuantityId | (string & {});
 
 export const primaryInputOrder = [
   PhysicalQuantityId.DryBulbTemperature,
@@ -104,6 +105,21 @@ export interface PhysicalQuantityMeta {
   share?: boolean;
 }
 
+/**
+ * Model-scoped catalog contribution from a declaration (`quantities.extend`).
+ * Extended ids must not enter `primaryInputOrder` or the share primary record.
+ */
+export interface QuantityExtension {
+  readonly id: string;
+  readonly owner: ComfortModelType;
+  readonly scope: typeof PhysicalQuantityScope.Model;
+  readonly label: string;
+  readonly display: QuantityDisplayMeta;
+  readonly defaultSi: number;
+  readonly minSi: number;
+  readonly maxSi: number;
+}
+
 const temperatureDisplay: QuantityDisplayMeta = {
   units: { SI: "degC", IP: "degF" },
   displayUnits: { SI: "°C", IP: "°F" },
@@ -125,7 +141,7 @@ const windSpeedDisplay: QuantityDisplayMeta = {
   decimals: 1,
 };
 
-export const physicalQuantityMetaById: Record<PhysicalQuantityId, PhysicalQuantityMeta> = {
+export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQuantityMeta> = {
   [PhysicalQuantityId.DryBulbTemperature]: {
     id: PhysicalQuantityId.DryBulbTemperature,
     scope: PhysicalQuantityScope.System,
@@ -422,53 +438,108 @@ export const physicalQuantityMetaById: Record<PhysicalQuantityId, PhysicalQuanti
     maxSi: 1,
     modifierId: ModifierQuantityOwner.SolarGain,
   },
-  [PhysicalQuantityId.PhsBodyWeight]: {
-    id: PhysicalQuantityId.PhsBodyWeight,
-    scope: PhysicalQuantityScope.Model,
-    state: QuantityState.Model,
-    label: "Body weight",
-    display: {
-      units: { SI: "kg", IP: "lb" },
-      displayUnits: { SI: "kg", IP: "lb" },
-      step: 1,
-      decimals: 0,
-    },
-    defaultSi: 75,
-    minSi: 30,
-    maxSi: 200,
-    ownerModelId: ComfortModel.Phs2023,
-  },
-  [PhysicalQuantityId.PhsHeight]: {
-    id: PhysicalQuantityId.PhsHeight,
-    scope: PhysicalQuantityScope.Model,
-    state: QuantityState.Model,
-    label: "Body height",
-    display: {
-      units: { SI: "m", IP: "ft" },
-      displayUnits: { SI: "m", IP: "ft" },
-      step: 0.01,
-      decimals: 2,
-    },
-    defaultSi: 1.8,
-    minSi: 1.2,
-    maxSi: 2.2,
-    ownerModelId: ComfortModel.Phs2023,
-  },
 };
 
+const quantityCatalog: Record<string, PhysicalQuantityMeta> = {
+  ...systemQuantityMetaById,
+};
+
+/** Live assembled catalog: system seed plus every declaration `quantities.extend`. */
+export const physicalQuantityMetaById: Record<string, PhysicalQuantityMeta> =
+  quantityCatalog;
+
+export function isSystemPhysicalQuantityId(
+  value: string,
+): value is SystemPhysicalQuantityId {
+  return Object.values(PhysicalQuantityId).some((id) => id === value);
+}
+
+export function quantityMetaFromExtension(
+  extension: QuantityExtension,
+): PhysicalQuantityMeta {
+  return {
+    id: extension.id,
+    scope: PhysicalQuantityScope.Model,
+    state: QuantityState.Model,
+    label: extension.label,
+    display: extension.display,
+    defaultSi: extension.defaultSi,
+    minSi: extension.minSi,
+    maxSi: extension.maxSi,
+    ownerModelId: extension.owner,
+  };
+}
+
+function assertQuantityExtension(
+  extension: QuantityExtension,
+  catalog: Readonly<Record<string, PhysicalQuantityMeta>>,
+): void {
+  if (!extension.id.trim()) {
+    throw new Error("Quantity extensions require a non-empty id.");
+  }
+  if (extension.scope !== PhysicalQuantityScope.Model) {
+    throw new Error(
+      `Quantity extension ${extension.id} must use scope "${PhysicalQuantityScope.Model}".`,
+    );
+  }
+  if (primaryInputOrder.some((id) => id === extension.id)) {
+    throw new Error(
+      `Extended quantity ${extension.id} must not enter primaryInputOrder.`,
+    );
+  }
+  if (catalog[extension.id] !== undefined) {
+    throw new Error(`Duplicate quantity id "${extension.id}".`);
+  }
+  if (!(extension.minSi < extension.maxSi)) {
+    throw new Error(
+      `Quantity extension ${extension.id} requires minSi < maxSi.`,
+    );
+  }
+  if (
+    extension.defaultSi < extension.minSi
+    || extension.defaultSi > extension.maxSi
+  ) {
+    throw new Error(
+      `Quantity extension ${extension.id} defaultSi must lie within minSi and maxSi.`,
+    );
+  }
+}
+
+export function mergeQuantityCatalog(
+  systemSeed: Readonly<Record<string, PhysicalQuantityMeta>>,
+  extensions: readonly QuantityExtension[],
+): Record<string, PhysicalQuantityMeta> {
+  const catalog: Record<string, PhysicalQuantityMeta> = { ...systemSeed };
+  for (const extension of extensions) {
+    assertQuantityExtension(extension, catalog);
+    catalog[extension.id] = quantityMetaFromExtension(extension);
+  }
+  return catalog;
+}
+
+export function assembleQuantityCatalog(
+  extensions: readonly QuantityExtension[],
+): void {
+  const merged = mergeQuantityCatalog(systemQuantityMetaById, extensions);
+  for (const key of Object.keys(quantityCatalog)) {
+    delete quantityCatalog[key];
+  }
+  Object.assign(quantityCatalog, merged);
+}
+
 export function isPhysicalQuantityId(value: string): value is PhysicalQuantityId {
-  return Object.values(PhysicalQuantityId).includes(value as PhysicalQuantityId);
+  return Object.prototype.hasOwnProperty.call(quantityCatalog, value);
 }
 
 export function resolveQuantityState(
   id: PhysicalQuantityId,
 ): QuantityState | undefined {
-  return physicalQuantityMetaById[id].state;
+  return getPhysicalQuantityMeta(id).state;
 }
 
 export function createDefaultPrimaryInputState(): PrimaryInputState {
   return primaryInputOrder.reduce((accumulator, id) => {
-    accumulator[id] = physicalQuantityMetaById[id].defaultSi;
+    accumulator[id] = getPhysicalQuantityMeta(id).defaultSi;
     return accumulator;
   }, {} as PrimaryInputState);
 }
@@ -477,7 +548,7 @@ export function getQuantityDisplayMeta(
   id: PhysicalQuantityId,
   unitSystem: UnitSystemType,
 ): { displayUnits: string; step: number; decimals: number } {
-  const { display } = physicalQuantityMetaById[id];
+  const { display } = getPhysicalQuantityMeta(id);
   return {
     displayUnits: display.displayUnits[unitSystem],
     step: display.step,
@@ -489,7 +560,7 @@ export function getQuantityPresentationMeta(
   id: PhysicalQuantityId,
   unitSystem: UnitSystemType,
 ): QuantityPresentationMeta {
-  const meta = physicalQuantityMetaById[id];
+  const meta = getPhysicalQuantityMeta(id);
   const display = getQuantityDisplayMeta(id, unitSystem);
   return {
     label: meta.label,
@@ -548,5 +619,9 @@ export const chartAxisQuantityIds = [
 export type ChartAxisQuantityId = (typeof chartAxisQuantityIds)[number];
 
 export function getPhysicalQuantityMeta(id: PhysicalQuantityId): PhysicalQuantityMeta {
-  return physicalQuantityMetaById[id];
+  const meta = quantityCatalog[id];
+  if (!meta) {
+    throw new Error(`Unknown physical quantity: ${id}`);
+  }
+  return meta;
 }

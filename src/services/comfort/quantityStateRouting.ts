@@ -6,7 +6,7 @@ import {
   type ModifierInputValues,
 } from "../../models/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
-import { PhysicalQuantityId, QuantityState, derivedQuantityIds, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, QuantityState, derivedQuantityIds, isPhysicalQuantityId, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../models/physicalQuantities";
 const comfortModelOrder = Object.values(ComfortModel) as ComfortModelType[];
 
 export type QuantitiesByInputState = Record<InputIdType, PrimaryInputState>;
@@ -186,11 +186,13 @@ export function isPrimaryQuantityId(value: string): value is PrimaryQuantityId {
 }
 
 export function isSlotQuantityId(value: string): value is PhysicalQuantityIdType {
-  return resolveQuantityState(value as PhysicalQuantityIdType) === QuantityState.Slot;
+  return isPhysicalQuantityId(value)
+    && resolveQuantityState(value) === QuantityState.Slot;
 }
 
 export function isModelQuantityId(value: string): value is PhysicalQuantityIdType {
-  return resolveQuantityState(value as PhysicalQuantityIdType) === QuantityState.Model;
+  return isPhysicalQuantityId(value)
+    && resolveQuantityState(value) === QuantityState.Model;
 }
 
 export function slotQuantityIds(): readonly PhysicalQuantityIdType[] {

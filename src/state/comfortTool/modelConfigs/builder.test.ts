@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ComfortModel } from "../../../models/comfortModels";
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId, PhysicalQuantityScope } from "../../../models/physicalQuantities";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
@@ -127,5 +127,99 @@ describe("ComfortModelBuilder capabilities", () => {
         }],
       },
     }).build()).toThrow(/tables\.analysis must use TableType\.Analysis/i);
+  });
+
+  it("defaults quantities.extend to an empty list", () => {
+    expect(createExploreBuilder().build().quantities.extend).toEqual([]);
+  });
+
+  it("accepts model-scoped quantity extensions owned by this model", () => {
+    const extension = {
+      id: "pmv.testMass",
+      owner: ComfortModel.PmvAshrae,
+      scope: PhysicalQuantityScope.Model,
+      label: "Test mass",
+      display: {
+        units: { SI: "kg", IP: "lb" },
+        displayUnits: { SI: "kg", IP: "lb" },
+        step: 1,
+        decimals: 0,
+      },
+      defaultSi: 70,
+      minSi: 40,
+      maxSi: 120,
+    };
+    expect(createExploreBuilder().extendQuantities([extension]).build().quantities.extend)
+      .toEqual([extension]);
+  });
+
+  it("rejects quantity extensions owned by another model", () => {
+    expect(() => createExploreBuilder().extendQuantities([{
+      id: "pmv.testMass",
+      owner: ComfortModel.Phs2023,
+      scope: PhysicalQuantityScope.Model,
+      label: "Test mass",
+      display: {
+        units: { SI: "kg", IP: "lb" },
+        displayUnits: { SI: "kg", IP: "lb" },
+        step: 1,
+        decimals: 0,
+      },
+      defaultSi: 70,
+      minSi: 40,
+      maxSi: 120,
+    }]).build()).toThrow(/owner PHS_2023 does not match PMV_ASHRAE/);
+  });
+
+  it("rejects quantity extensions that collide with the system seed", () => {
+    expect(() => createExploreBuilder().extendQuantities([{
+      id: PhysicalQuantityId.DryBulbTemperature,
+      owner: ComfortModel.PmvAshrae,
+      scope: PhysicalQuantityScope.Model,
+      label: "Air temperature",
+      display: {
+        units: { SI: "degC", IP: "degF" },
+        displayUnits: { SI: "°C", IP: "°F" },
+        step: 0.5,
+        decimals: 1,
+      },
+      defaultSi: 25,
+      minSi: 10,
+      maxSi: 40,
+    }]).build()).toThrow(/collides with a system-seed quantity/);
+  });
+
+  it("contributes and exposes a model quantity before catalog assembly", () => {
+    const extension = {
+      id: "audit.exampleMass",
+      owner: ComfortModel.PmvAshrae,
+      scope: PhysicalQuantityScope.Model,
+      label: "Example mass",
+      display: {
+        units: { SI: "kg", IP: "lb" },
+        displayUnits: { SI: "kg", IP: "lb" },
+        step: 1,
+        decimals: 0,
+      },
+      defaultSi: 70,
+      minSi: 40,
+      maxSi: 120,
+    };
+
+    const definition = createExploreBuilder()
+      .extendQuantities([extension])
+      .setInputFields([{ kind: "modelQuantity", quantityId: extension.id }])
+      .build();
+
+    expect(definition.quantities.extend.map((entry) => entry.id)).toEqual([extension.id]);
+    expect(definition.controls.map(({ id }) => id)).toEqual([extension.id]);
+  });
+
+  it("rejects a modelQuantity field that is not in quantities.extend", () => {
+    expect(() => createExploreBuilder()
+      .setInputFields([{ kind: "modelQuantity", quantityId: "audit.exampleMass" }])
+      .build()).toThrow(
+      /modelQuantity field audit.exampleMass must reference a quantities.extend entry owned by PMV_ASHRAE/,
+    );
   });
 });

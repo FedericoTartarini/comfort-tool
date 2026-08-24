@@ -2,6 +2,7 @@ import { ComfortModel } from "../../models/comfortModels";
 import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import {
   PhsPosture,
+  PhsQuantityId,
   PhsSegmentPreset,
   defaultPhsPersonSettings,
   phsReferenceEnvironment,
@@ -167,11 +168,13 @@ function createPersonQuantityControl(options: {
   quantityId: PhsPersonQuantityId;
 }): TimeSeriesNumberControlDefinition<PhsTimeSeriesDraft> {
   const { quantityId } = options;
-  const meta = getPhysicalQuantityMeta(quantityId);
+  const meta = () => getPhysicalQuantityMeta(quantityId);
   return {
     kind: "number",
     id: options.id,
-    label: meta.label,
+    get label() {
+      return meta().label;
+    },
     getDisplayValue: (draft, unitSystem) => (
       convertModelQuantityFromSi(quantityId, draft.person[quantityId], unitSystem)
     ),
@@ -185,8 +188,8 @@ function createPersonQuantityControl(options: {
     },
     getDisplayUnits: (unitSystem) => getQuantityDisplayMeta(quantityId, unitSystem).displayUnits,
     getStep: (unitSystem) => getQuantityDisplayMeta(quantityId, unitSystem).step,
-    getMin: (unitSystem) => convertModelQuantityFromSi(quantityId, meta.minSi, unitSystem),
-    getMax: (unitSystem) => convertModelQuantityFromSi(quantityId, meta.maxSi, unitSystem),
+    getMin: (unitSystem) => convertModelQuantityFromSi(quantityId, meta().minSi, unitSystem),
+    getMax: (unitSystem) => convertModelQuantityFromSi(quantityId, meta().maxSi, unitSystem),
   };
 }
 
@@ -238,11 +241,11 @@ const segmentControls = [
 const personQuantityControls = [
   createPersonQuantityControl({
     id: PhsTimeSeriesControlId.Weight,
-    quantityId: PhysicalQuantityId.PhsBodyWeight,
+    quantityId: PhsQuantityId.BodyWeight,
   }),
   createPersonQuantityControl({
     id: PhsTimeSeriesControlId.Height,
-    quantityId: PhysicalQuantityId.PhsHeight,
+    quantityId: PhsQuantityId.Height,
   }),
 ] as const;
 

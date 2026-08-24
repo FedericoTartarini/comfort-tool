@@ -1,6 +1,6 @@
 import type { ModelChartSourceDto } from "../../models/comfortDtos";
 import { ComfortModel } from "../../models/comfortModels";
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, PhysicalQuantityScope } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
 import { InputControlId } from "../../models/inputControls";
 import {
@@ -19,6 +19,8 @@ import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PhsLimitingCriterion,
+  PhsQuantityId,
+  defaultPhsPersonSettings,
   type PhsEnvironmentSi,
   type PhsResponseDto,
   type PhsSimulationResult,
@@ -134,7 +136,7 @@ function buildPhsSimulationTableRows(): TableRowSpec<PhsSimulationResult>[] {
 const MODEL_LABEL = "PHS (ISO 7933:2023)";
 const MODEL_DESCRIPTION =
   "Predicts heat strain, internal temperature, sweat loss, and allowable exposure time for hot environments.";
-const REFERENCE_WATER_LOSS_LIMIT_G = getPhsWaterLossLimitG(personFromModelInputs({}));
+const REFERENCE_WATER_LOSS_LIMIT_G = getPhsWaterLossLimitG(defaultPhsPersonSettings);
 
 const limitingExposureZones = [
   new ThermalZone({
@@ -312,6 +314,39 @@ function buildPhsTableRows(): TableRowSpec<PhsResponseDto>[] {
   }));
 }
 
+const phsQuantityExtensions = [
+  {
+    id: PhsQuantityId.BodyWeight,
+    owner: ComfortModel.Phs2023,
+    scope: PhysicalQuantityScope.Model,
+    label: "Body weight",
+    display: {
+      units: { SI: "kg", IP: "lb" },
+      displayUnits: { SI: "kg", IP: "lb" },
+      step: 1,
+      decimals: 0,
+    },
+    defaultSi: 75,
+    minSi: 30,
+    maxSi: 200,
+  },
+  {
+    id: PhsQuantityId.Height,
+    owner: ComfortModel.Phs2023,
+    scope: PhysicalQuantityScope.Model,
+    label: "Body height",
+    display: {
+      units: { SI: "m", IP: "ft" },
+      displayUnits: { SI: "m", IP: "ft" },
+      step: 0.01,
+      decimals: 2,
+    },
+    defaultSi: 1.8,
+    minSi: 1.2,
+    maxSi: 2.2,
+  },
+] as const;
+
 const builder = new ComfortModelBuilder<
   PhsResponseDto,
   ModelChartSourceDto<PhsEnvironmentSi>
@@ -420,10 +455,7 @@ builder
     defaultInstanceId: "phs-exposure-history",
   });
 
-builder.registerModelQuantities([
-  PhysicalQuantityId.PhsBodyWeight,
-  PhysicalQuantityId.PhsHeight,
-]);
+builder.extendQuantities(phsQuantityExtensions);
 builder.setInputFields([
   {
     kind: "numeric",

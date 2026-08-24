@@ -22,7 +22,7 @@ import {
 } from "../../comfortModels/pmv/pmvAshrae";
 import type { PmvChartSourceDto, PmvResponseDto } from "../../comfortModels/pmv/pmvCalculation";
 import type { UtciResponseDto } from "../../comfortModels/utci/utci";
-import type { PhsResponseDto } from "../../models/phs";
+import { PhsQuantityId, type PhsResponseDto } from "../../models/phs";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
@@ -660,7 +660,7 @@ describe("createComfortToolState", () => {
     expect(
       toolState.actions.updateModelQuantity(
         ComfortModel.Phs2023,
-        PhysicalQuantityId.PhsBodyWeight,
+        PhsQuantityId.BodyWeight,
         90,
       ),
     ).toBe(true);
@@ -672,7 +672,7 @@ describe("createComfortToolState", () => {
     expect(phsAfter).toBeDefined();
     expect(phsAfter).not.toBe(phsBefore);
     expect(toolState.state.modelInputsByModel[ComfortModel.Phs2023]
-      [PhysicalQuantityId.PhsBodyWeight]).toBe(90);
+      [PhsQuantityId.BodyWeight]).toBe(90);
 
     toolState.actions.setSelectedModel(ComfortModel.Humidex);
     syncWorkspaceToModel(toolState, ComfortModel.Humidex);

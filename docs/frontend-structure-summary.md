@@ -88,7 +88,7 @@ Declaration-local `ThermalZone[]` values derive Explore or Compliance bands. Zon
 
 ## Canonical inputs and quantity catalog
 
-`src/models/physicalQuantities.ts` is the sole quantity catalog. `primaryInputOrder` defines the nine shared primary SI values persisted for every input slot. `ChartAxisQuantityId` covers selectable chart-axis coordinates, including operative temperature and humidity ratio.
+`src/models/physicalQuantities.ts` is the **system seed**. The runtime catalog is `system seed ∪ declarations[].quantities.extend`, assembled once by the model registry. Duplicate ids, wrong owners, or an extend id in `primaryInputOrder` fail assemble. `primaryInputOrder` defines the nine shared primary SI values persisted for every input slot. `ChartAxisQuantityId` covers selectable chart-axis coordinates, including operative temperature and humidity ratio. Extended quantities (today PHS body weight/height, declared on the PHS file) serialize only under sparse `modelInputsByModel`.
 
 Controller state splits quantities three ways:
 
@@ -100,7 +100,7 @@ modelInputsByModel         — sparse model-scoped SI values (e.g. PHS body weig
 
 Derived slot values (dew point, wet bulb, vapor pressure, derived humidity ratio) live in `auxiliaryQuantitiesByInput` and are recomputed from primary values. Modifier extra inputs use `PhysicalQuantityId` keys from the same catalog.
 
-Models declare visible fields with `setInputFields()` and model-scoped quantities with `registerModelQuantities()`. `fieldInputBehaviors.ts` resolves `InputFieldSpec` kinds into shared control behaviors in `numericControl.ts`, `temperatureControl.ts`, and `humidityControl.ts`.
+Models declare visible fields with `setInputFields()` and model-scoped quantities with `.extendQuantities()`. Those two calls may happen in either order; `build()` checks that every `modelQuantity` field is an extend entry owned by that declaration. Control metadata is read from the assembled catalog at view-model time. `fieldInputBehaviors.ts` resolves `InputFieldSpec` kinds into shared control behaviors in `numericControl.ts`, `temperatureControl.ts`, and `humidityControl.ts`. Model-scoped mass/length conversion reads catalog SI units; it does not branch on model id.
 
 Every model supplies complete default options and an exact parser. Missing, extra, or invalid external options are rejected; invalid internal option state is an invariant error.
 

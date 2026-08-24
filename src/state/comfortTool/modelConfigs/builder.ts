@@ -30,9 +30,11 @@ import {
   validateNumericBands,
 } from "../../../services/comfort/charts/bands";
 import {
+  PhysicalQuantityScope,
+  primaryInputOrder,
+  systemQuantityMetaById,
   type ChartAxisQuantityId,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
-  getPhysicalQuantityMeta,
+  type QuantityExtension,
 } from "../../../models/physicalQuantities";
 import {
   ChartKind,
@@ -198,7 +200,9 @@ export class ComfortModelBuilder<
 
   private readonly controls: InputControlDefinition[] = [];
 
-  private registeredModelQuantities: PhysicalQuantityIdType[] = [];
+  private readonly inputFieldSpecs: InputFieldSpec[] = [];
+
+  private quantityExtensions: QuantityExtension[] = [];
 
   private readonly optionHandlersByKey: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
@@ -310,13 +314,14 @@ export class ComfortModelBuilder<
 
   setInputFields(specs: readonly InputFieldSpec[]): this {
     for (const spec of specs) {
+      this.inputFieldSpecs.push(spec);
       this.controls.push(resolveInputField(spec));
     }
     return this;
   }
 
-  registerModelQuantities(quantityIds: readonly PhysicalQuantityIdType[]): this {
-    this.registeredModelQuantities.push(...quantityIds);
+  extendQuantities(extensions: readonly QuantityExtension[]): this {
+    this.quantityExtensions.push(...extensions);
     return this;
   }
 
@@ -370,6 +375,70 @@ export class ComfortModelBuilder<
 
     if (!this.defaultOutputChartInstanceId) {
       this.defaultOutputChartInstanceId = entry.instanceId;
+    }
+  }
+
+  private validateQuantityExtensions(): readonly QuantityExtension[] {
+    const seenIds = new Set<string>();
+    const extensions: QuantityExtension[] = [];
+
+    for (const extension of this.quantityExtensions) {
+      if (extension.owner !== this.id) {
+        throw new Error(
+          `Quantity extension ${extension.id} owner ${extension.owner} does not match ${this.id}.`,
+        );
+      }
+      if (extension.scope !== PhysicalQuantityScope.Model) {
+        throw new Error(
+          `Quantity extension ${extension.id} must use scope "${PhysicalQuantityScope.Model}".`,
+        );
+      }
+      if (extension.id in systemQuantityMetaById) {
+        throw new Error(
+          `Quantity extension ${extension.id} collides with a system-seed quantity.`,
+        );
+      }
+      if (primaryInputOrder.some((id) => id === extension.id)) {
+        throw new Error(
+          `Extended quantity ${extension.id} must not enter primaryInputOrder.`,
+        );
+      }
+      if (seenIds.has(extension.id)) {
+        throw new Error(
+          `Comfort model declarations cannot contain duplicate quantity ids (${extension.id}).`,
+        );
+      }
+      if (!(extension.minSi < extension.maxSi)) {
+        throw new Error(
+          `Quantity extension ${extension.id} requires minSi < maxSi.`,
+        );
+      }
+      if (
+        extension.defaultSi < extension.minSi
+        || extension.defaultSi > extension.maxSi
+      ) {
+        throw new Error(
+          `Quantity extension ${extension.id} defaultSi must lie within minSi and maxSi.`,
+        );
+      }
+      seenIds.add(extension.id);
+      extensions.push({ ...extension, display: { ...extension.display } });
+    }
+
+    return extensions;
+  }
+
+  private assertModelQuantityFields(
+    extensions: readonly QuantityExtension[],
+  ): void {
+    const ownedIds = new Set(extensions.map((extension) => extension.id));
+    for (const spec of this.inputFieldSpecs) {
+      if (spec.kind !== "modelQuantity") continue;
+      if (!ownedIds.has(spec.quantityId)) {
+        throw new Error(
+          `modelQuantity field ${spec.quantityId} must reference a quantities.extend entry owned by ${this.id}.`,
+        );
+      }
     }
   }
 
@@ -644,15 +713,8 @@ export class ComfortModelBuilder<
       throw new Error("Default dynamic axes must be supported and distinct.");
     }
 
-    const modelQuantities = [...new Set(this.registeredModelQuantities)];
-    for (const quantityId of modelQuantities) {
-      const meta = getPhysicalQuantityMeta(quantityId);
-      if (meta.ownerModelId !== this.id) {
-        throw new Error(
-          `Model quantity ${quantityId} is not owned by ${this.id}.`,
-        );
-      }
-    }
+    const quantityExtensions = this.validateQuantityExtensions();
+    this.assertModelQuantityFields(quantityExtensions);
 
     const complianceProfile = this.complianceProfile;
     const calculate = this.calculate;
@@ -685,7 +747,9 @@ export class ComfortModelBuilder<
           }
         : {}),
       controls: [...this.controls],
-      modelQuantities,
+      quantities: {
+        extend: quantityExtensions,
+      },
       optionHandlersByKey: { ...this.optionHandlersByKey },
       tables: {
         analysis: {

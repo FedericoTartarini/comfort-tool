@@ -18,7 +18,16 @@ import {
   ComfortModel,
   type ComfortModel as ComfortModelType,
 } from "../../../models/comfortModels";
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { defaultPhsPersonSettings, PhsQuantityId } from "../../../models/phs";
+import {
+  PhysicalQuantityId,
+  PhysicalQuantityScope,
+  QuantityState,
+  assembleQuantityCatalog,
+  getPhysicalQuantityMeta,
+  primaryInputOrder,
+  systemQuantityMetaById,
+} from "../../../models/physicalQuantities";
 import { ModifierId } from "../../../models/inputModifiers";
 import {
   WorkspaceCapability,
@@ -37,6 +46,7 @@ import { TableType } from "../../../models/output/tableLayouts";
 import {
   comfortModelConfigs,
   comfortModelOrder,
+  collectRegisteredQuantityExtensions,
   getComfortModelConfig,
   getDeclaredChartInstanceIds,
   getModelsForWorkspace,
@@ -524,5 +534,69 @@ describe("comfort model capability registry", () => {
           .toBe(boundaryValue);
       });
     });
+  });
+
+  it("assembles one quantity catalog from the system seed and declaration extensions", () => {
+    const weight = getPhysicalQuantityMeta(PhsQuantityId.BodyWeight);
+    const height = getPhysicalQuantityMeta(PhsQuantityId.Height);
+    const phsExtensions = getComfortModelConfig(ComfortModel.Phs2023).quantities.extend;
+
+    expect(systemQuantityMetaById).not.toHaveProperty(PhsQuantityId.BodyWeight);
+    expect(systemQuantityMetaById).not.toHaveProperty(PhsQuantityId.Height);
+    expect(primaryInputOrder).not.toContain(PhsQuantityId.BodyWeight);
+    expect(primaryInputOrder).not.toContain(PhsQuantityId.Height);
+
+    expect(phsExtensions.map((extension) => extension.id)).toEqual([
+      PhsQuantityId.BodyWeight,
+      PhsQuantityId.Height,
+    ]);
+    expect(weight).toMatchObject({
+      id: PhsQuantityId.BodyWeight,
+      scope: PhysicalQuantityScope.Model,
+      state: QuantityState.Model,
+      ownerModelId: ComfortModel.Phs2023,
+      defaultSi: defaultPhsPersonSettings[PhsQuantityId.BodyWeight],
+    });
+    expect(height).toMatchObject({
+      id: PhsQuantityId.Height,
+      scope: PhysicalQuantityScope.Model,
+      state: QuantityState.Model,
+      ownerModelId: ComfortModel.Phs2023,
+      defaultSi: defaultPhsPersonSettings[PhsQuantityId.Height],
+    });
+
+    for (const modelId of comfortModelOrder) {
+      if (modelId === ComfortModel.Phs2023) continue;
+      expect(getComfortModelConfig(modelId).quantities.extend).toEqual([]);
+    }
+  });
+
+  it("fails registry quantity assemble when two declarations extend the same id", () => {
+    const mass = {
+      id: "audit.exampleMass",
+      owner: ComfortModel.PmvAshrae,
+      scope: PhysicalQuantityScope.Model,
+      label: "Example mass",
+      display: {
+        units: { SI: "kg", IP: "lb" },
+        displayUnits: { SI: "kg", IP: "lb" },
+        step: 1,
+        decimals: 0,
+      },
+      defaultSi: 70,
+      minSi: 40,
+      maxSi: 120,
+    };
+
+    expect(() => assembleQuantityCatalog(collectRegisteredQuantityExtensions([
+      { id: ComfortModel.PmvAshrae, quantities: { extend: [mass] } },
+      {
+        id: ComfortModel.PmvIso,
+        quantities: { extend: [{ ...mass, owner: ComfortModel.PmvIso }] },
+      },
+    ]))).toThrow(/Duplicate quantity id "audit.exampleMass"/);
+
+    expect(getPhysicalQuantityMeta(PhsQuantityId.BodyWeight).ownerModelId)
+      .toBe(ComfortModel.Phs2023);
   });
 });

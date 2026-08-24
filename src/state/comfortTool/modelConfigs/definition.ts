@@ -26,7 +26,7 @@ import type {
 } from "../../../services/comfort/controls/types";
 import type { ChartKindRegistration } from "../../../services/comfort/charts/kinds/types";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
-import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType } from "../../../models/physicalQuantities";
+import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../models/physicalQuantities";
 
 export type ModelCalculationOutputs<ResultType, ChartSourceType> = {
   resultsByInput: Record<InputIdType, ResultType | null>;
@@ -76,7 +76,9 @@ export interface ComfortModelDefinition<
   modifiers: readonly InputModifier[];
   complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
   controls: readonly InputControlDefinition[];
-  modelQuantities: readonly PhysicalQuantityIdType[];
+  quantities: {
+    readonly extend: readonly QuantityExtension[];
+  };
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   tables: ModelTables<ResultType>;
   outputCharts: ModelChartInstances;

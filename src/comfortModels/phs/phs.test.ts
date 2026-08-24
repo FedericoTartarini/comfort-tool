@@ -7,6 +7,7 @@ import { InputId } from "../../models/inputSlots";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PhsLimitingCriterion,
+  PhsQuantityId,
   defaultPhsPersonSettings,
   phsReferenceEnvironment,
   type PhsHistorySample,
@@ -57,8 +58,8 @@ describe("PHS ISO 7933:2023", () => {
   it("builds person settings from model inputs with catalog defaults", () => {
     expect(personFromModelInputs({})).toEqual(defaultPhsPersonSettings);
     expect(personFromModelInputs({
-      [PhysicalQuantityId.PhsBodyWeight]: 80,
-    })[PhysicalQuantityId.PhsBodyWeight]).toBe(80);
+      [PhsQuantityId.BodyWeight]: 80,
+    })[PhsQuantityId.BodyWeight]).toBe(80);
   });
 
   it("matches the selected-library reference calculation", () => {

@@ -11,6 +11,7 @@ import { windChillModelConfig } from "../../../comfortModels/windChill";
 import { phsModelConfig } from "../../../comfortModels/phs/phs";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import { WorkspaceId, type StandardId as StandardIdType, type WorkspaceId as WorkspaceIdType } from "../../../models/workspaces";
+import { assembleQuantityCatalog, type QuantityExtension } from "../../../models/physicalQuantities";
 
 export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDefinition> = {
   [ComfortModel.PmvAshrae]: pmvAshraeModelConfig,
@@ -23,6 +24,29 @@ export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDe
   [ComfortModel.WindChill]: windChillModelConfig,
   [ComfortModel.Phs2023]: phsModelConfig,
 } as const;
+
+export function collectRegisteredQuantityExtensions(
+  configs: Iterable<Pick<RuntimeComfortModelDefinition, "id" | "quantities">>,
+): QuantityExtension[] {
+  const extensions: QuantityExtension[] = [];
+  for (const config of configs) {
+    for (const extension of config.quantities.extend) {
+      if (extension.owner !== config.id) {
+        throw new Error(
+          `Quantity extension "${extension.id}" is owned by ${extension.owner} but registered on ${config.id}.`,
+        );
+      }
+      extensions.push(extension);
+    }
+  }
+  return extensions;
+}
+
+function assembleRegisteredQuantityCatalog(
+  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
+): void {
+  assembleQuantityCatalog(collectRegisteredQuantityExtensions(Object.values(configs)));
+}
 
 export function getDeclaredChartInstanceIds(
   modelId: ComfortModelType,
@@ -59,6 +83,7 @@ function assertUniqueDeclaredChartInstanceIds(
 }
 
 assertUniqueDeclaredChartInstanceIds(comfortModelConfigs);
+assembleRegisteredQuantityCatalog(comfortModelConfigs);
 
 export const comfortModelOrder = Object.keys(comfortModelConfigs) as ComfortModelType[];
 

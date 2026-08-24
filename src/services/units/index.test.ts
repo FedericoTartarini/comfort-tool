@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhsQuantityId } from "../../models/phs";
 import { UnitSystem } from "../../models/units";
 import {
   convertFieldValueFromSi,
@@ -12,11 +13,14 @@ import {
   convertLengthToSi,
   convertMassFromSi,
   convertMassToSi,
+  convertModelQuantityFromSi,
+  convertModelQuantityToSi,
   convertVaporPressureFromSi,
   convertVaporPressureToSi,
   getHumidityRatioDisplayMeta,
   getVaporPressureDisplayMeta,
 } from "./index";
+import "../../state/comfortTool/modelConfigs";
 
 describe("units helpers", () => {
   it("converts metres per second to kilometres per hour", () => {
@@ -67,6 +71,38 @@ describe("units helpers", () => {
 
     const pounds = convertMassFromSi(75000);
     expect(convertMassToSi(pounds)).toBeCloseTo(75000, 8);
+  });
+
+  it("converts model-scoped mass and length from catalog SI units", () => {
+    const displayWeight = convertModelQuantityFromSi(
+      PhsQuantityId.BodyWeight,
+      75,
+      UnitSystem.IP,
+    );
+    expect(displayWeight).toBeCloseTo(convertMassFromSi(75000), 8);
+    expect(convertModelQuantityToSi(
+      PhsQuantityId.BodyWeight,
+      displayWeight,
+      UnitSystem.IP,
+    )).toBeCloseTo(75, 8);
+
+    const displayHeight = convertModelQuantityFromSi(
+      PhsQuantityId.Height,
+      1.8,
+      UnitSystem.IP,
+    );
+    expect(displayHeight).toBeCloseTo(convertLengthFromSi(1.8), 10);
+    expect(convertModelQuantityToSi(
+      PhsQuantityId.Height,
+      displayHeight,
+      UnitSystem.IP,
+    )).toBeCloseTo(1.8, 10);
+
+    expect(convertModelQuantityFromSi(
+      PhsQuantityId.BodyWeight,
+      75,
+      UnitSystem.SI,
+    )).toBe(75);
   });
 
   it("exposes display metadata for derived humidity quantities", () => {

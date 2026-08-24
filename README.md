@@ -116,7 +116,7 @@ src/
 Important invariants:
 
 - Each registered model has one focused declaration entry. Stable IDs, explicit registry entries, shared metadata, and tests remain separate concerns.
-- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Derived and chart-only quantities use `PhysicalQuantityId` / `ChartAxisQuantityId` but never enter primary records.
+- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Derived, chart-only, and model-scoped extended quantities use `PhysicalQuantityId` / `ChartAxisQuantityId` but never enter primary records.
 - Model options are complete and exact. Parsers reject missing, extra, or illegal values; internal invalid state throws.
 - Each model declares output charts via `setOutputCharts()` with instance ids that live only on the declaration. The registry derives those ids; there is no parallel `ChartInstanceId` tree.
 - Compliance and Explore use the same field-chart engine. Presentation-only changes never stale calculation caches.

@@ -16,7 +16,7 @@ import { pmvAshraeAdapter } from "../comfortModels/pmv/pmvAshrae";
 import { calculatePhs } from "../comfortModels/phs/phsCalculation";
 import { ComfortModel } from "../models/comfortModels";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
-import { PhsPosture } from "../models/phs";
+import { PhsPosture, PhsQuantityId } from "../models/phs";
 import { InputId } from "../models/inputSlots";
 import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";
 import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
@@ -96,8 +96,8 @@ describe("golden regression — direct calculation snapshots", () => {
     const result = calculatePhs({
       durationMinutes: 60,
       person: {
-        [PhysicalQuantityId.PhsBodyWeight]: 75,
-        [PhysicalQuantityId.PhsHeight]: 1.8,
+        [PhsQuantityId.BodyWeight]: 75,
+        [PhsQuantityId.Height]: 1.8,
         posture: PhsPosture.Standing,
         acclimatized: true,
         drinkingAllowed: true,

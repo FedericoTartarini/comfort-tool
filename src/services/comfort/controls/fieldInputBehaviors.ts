@@ -1,10 +1,6 @@
 import { InputControlId } from "../../../models/inputControls";
 import { TemperatureMode, type ModelOptionsRecord } from "../../../models/inputModes";
-import {
-  UnitSystem as UnitSystemType,
-  UnitSystem,
-} from "../../../models/units";
-import { formatDisplayValue } from "../../units";
+import { formatDisplayValue, convertModelQuantityFromSi, convertModelQuantityToSi } from "../../units";
 import { createHumidityControlBehavior } from "./humidityControl";
 import {
   buildDefaultPresentation,
@@ -30,12 +26,6 @@ import {
   type PrimaryInputState,
   type PrimaryQuantityId,
 } from "../../../models/physicalQuantities";
-import {
-  convertLengthFromSi,
-  convertLengthToSi,
-  convertMassFromSi,
-  convertMassToSi,
-} from "../../units/physicalQuantities";
 type PostTemperatureSynchronizer = (
   inputState: PrimaryInputState,
   derivedState: DerivedSlotQuantityState,
@@ -118,46 +108,22 @@ export type InputFieldSpec =
   | PresetInputFieldSpec
   | ModelQuantityInputFieldSpec;
 
-function convertModelQuantityFromSi(
-  quantityId: PhysicalQuantityIdType,
-  valueSi: number,
-  unitSystem: UnitSystemType,
-): number {
-  if (unitSystem === UnitSystem.SI) return valueSi;
-  if (quantityId === PhysicalQuantityId.PhsBodyWeight) {
-    return convertMassFromSi(valueSi * 1000);
-  }
-  if (quantityId === PhysicalQuantityId.PhsHeight) {
-    return convertLengthFromSi(valueSi);
-  }
-  return valueSi;
-}
-
-function convertModelQuantityToSi(
-  quantityId: PhysicalQuantityIdType,
-  value: number,
-  unitSystem: UnitSystemType,
-): number {
-  if (unitSystem === UnitSystem.SI) return value;
-  if (quantityId === PhysicalQuantityId.PhsBodyWeight) {
-    return convertMassToSi(value) / 1000;
-  }
-  if (quantityId === PhysicalQuantityId.PhsHeight) {
-    return convertLengthToSi(value);
-  }
-  return value;
-}
-
 function createModelQuantityControlBehavior(
   spec: ModelQuantityInputFieldSpec,
 ): InputControlBehavior {
-  const meta = getPhysicalQuantityMeta(spec.quantityId);
-  const minValue = spec.minValue ?? meta.minSi;
-  const maxValue = spec.maxValue ?? meta.maxSi;
-  const label = spec.label ?? meta.label;
+  const resolveMeta = () => {
+    const meta = getPhysicalQuantityMeta(spec.quantityId);
+    return {
+      meta,
+      minValue: spec.minValue ?? meta.minSi,
+      maxValue: spec.maxValue ?? meta.maxSi,
+      label: spec.label ?? meta.label,
+    };
+  };
 
   return {
     buildViewModel: (context) => {
+      const { meta, minValue, maxValue, label } = resolveMeta();
       const display = getQuantityDisplayMeta(spec.quantityId, context.unitSystem);
       const valueSi = context.modelInputs[spec.quantityId] ?? meta.defaultSi;
       const displayValue = convertModelQuantityFromSi(

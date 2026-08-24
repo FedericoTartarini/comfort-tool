@@ -76,7 +76,9 @@ All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or
 
 ## Physical Quantity Rules
 
-- `PhysicalQuantityId` in `src/models/physicalQuantities.ts` is the single application-layer catalog; state, share snapshots, and UI use these IDs exclusively.
+- `src/models/physicalQuantities.ts` is the **system seed**. Runtime code reads the assembled catalog `system seed ∪ declarations[].quantities.extend`. Duplicate ids, wrong owners, or an extend id in `primaryInputOrder` fail builder / registry assemble.
+- File A may contribute `{ id, owner: this model, scope: model, SI meta }` via builder `.extendQuantities()`. Extended quantities **must not** enter `primaryInputOrder` or the global share primary record; they live in sparse `modelInputsByModel`.
+- PHS body weight/height SI meta live on the PHS declaration. Mass/length conversion reads catalog SI units (`display.units.SI`). Field behaviors must not branch on `if (model === Phs)` or PHS quantity ids.
 - Request short names (`tdb`, `vr`, `rh`, …) are allowed only at the `jsthermalcomfort` boundary. Each model's `createFieldRequestAdapter()` mapping in `*Calculation.ts` is the sole catalog→library connection point. Do not add new application-layer `*Dto` types; Plan retires that suffix outside the library boundary.
 - `quantitiesByInput` stores base primary SI before modifiers; `effectiveQuantitiesByInput` in `ModelCalculationContext` is what calculations and request mapping read.
 - Calculate each model once into `calculationCacheByModel`; chart builders read `resultsByInput` and `chartSource` from that cache. Presentation-only changes (mode, axes, bands) must rebuild charts without invalidating ready caches.
@@ -134,7 +136,7 @@ A model definition should own:
 Use centralized constants and typed metadata from `src/models/` for:
 
 - model identifiers
-- quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes)
+- quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes). System quantities are seeded in `src/models/physicalQuantities.ts`; model-scoped ids are contributed with `.extendQuantities()` and assembled into the same catalog.
 - chart kinds (`ChartKind` in `src/models/output/chartKinds.ts`); instance ids live on each declaration’s `setOutputCharts()` entries
 - compare-input identifiers
 - chart modes and model-output identifiers
@@ -150,10 +152,10 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 - Every model declaration must set `workspaceCapabilities` and `setExploreOutputs()`; Standard-capable models must also set `setComplianceProfile()` with non-empty bands, a caption, legend title, and result feedback callback. Use the builder rather than controller branches.
 - `ModelOutputKey`, capability types, workspace/profile metadata, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `outputSettingsByModel` stores each model's x/y axes, baseline, and optional Explore working state. Explore z comes from `exploreOutputs`, and editable numeric bands are cloned from `defaultBands`; Standard workspace output and bands always come directly from `complianceProfile`.
-- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set. Derive `PrimaryQuantityId` and `PrimaryInputState` from it; chart-only and derived `PhysicalQuantityId` values must not enter primary records, share primary records, behavior patches, modifiers, or calculation context.
+- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set. Derive `PrimaryQuantityId` and `PrimaryInputState` from it; chart-only and derived `PhysicalQuantityId` values must not enter primary records, share primary records, behavior patches, modifiers, or calculation context. Model-scoped extensions from `.extendQuantities()` also stay out of that primary set and serialize only under `modelInputsByModel`.
 - Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with typed `ChartKind` specs. Tables are declared with `setTables({ analysis, timeSeries? })` using `TableType.Analysis` / `TableType.TimeSeries`. Every Analysis model must declare `tables.analysis`. PHS also declares `tables.timeSeries` plus `setSimulation({ charts })` for Time-series line charts. Instance ids live only on the declaration; the registry derives them (`getDeclaredChartInstanceIds`). Do not recreate a parallel `ChartInstanceId` tree or a second legend/lock array beside `setOutputCharts()`. Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
 - Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
-- `setInputFields()` declares visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
+- `setInputFields()` declares visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults. Model-scoped quantities use `.extendQuantities()` plus `setInputFields({ kind: "modelQuantity", … })` when they appear on the Analysis panel. `build()` checks that every `modelQuantity` field is an extend entry owned by that declaration; control metadata is read from the assembled catalog at view-model time.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
 - Compose `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior; keep coupled temperature solving in the shared dynamic-axis solver.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.

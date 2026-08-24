@@ -2,6 +2,7 @@ import {
   PhysicalQuantityId,
   type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
+  getPhysicalQuantityMeta,
 } from "../../models/physicalQuantities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
@@ -79,13 +80,14 @@ export function convertModelQuantityFromSi(
   if (unitSystem === UnitSystem.SI) {
     return valueSi;
   }
-  if (quantityId === PhysicalQuantityId.PhsBodyWeight) {
-    return convertMassFromSi(valueSi * 1000);
+  switch (getPhysicalQuantityMeta(quantityId).display.units.SI) {
+    case "kg":
+      return convertMassFromSi(valueSi * 1000);
+    case "m":
+      return convertLengthFromSi(valueSi);
+    default:
+      return valueSi;
   }
-  if (quantityId === PhysicalQuantityId.PhsHeight) {
-    return convertLengthFromSi(valueSi);
-  }
-  return valueSi;
 }
 
 export function convertModelQuantityToSi(
@@ -96,13 +98,14 @@ export function convertModelQuantityToSi(
   if (unitSystem === UnitSystem.SI) {
     return value;
   }
-  if (quantityId === PhysicalQuantityId.PhsBodyWeight) {
-    return convertMassToSi(value) / 1000;
+  switch (getPhysicalQuantityMeta(quantityId).display.units.SI) {
+    case "kg":
+      return convertMassToSi(value) / 1000;
+    case "m":
+      return convertLengthToSi(value);
+    default:
+      return value;
   }
-  if (quantityId === PhysicalQuantityId.PhsHeight) {
-    return convertLengthToSi(value);
-  }
-  return value;
 }
 
 export function convertFieldValueFromSi(

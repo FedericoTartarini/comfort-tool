@@ -5,7 +5,7 @@ import { InputId } from "../../models/inputSlots";
 import { ModelOutputKey, type ChartBuildContext, type NumericBand } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";
-import { phsReferenceEnvironment } from "../../models/phs";
+import { phsReferenceEnvironment, PhsQuantityId } from "../../models/phs";
 import {
   phsExploreOutputs,
   phsModelConfig,
@@ -13,6 +13,7 @@ import {
 } from "./phs";
 import { createPhsDynamicGridSpec } from "./phsCharts";
 import { getPhsWaterLossLimitG, personFromModelInputs } from "./phsCalculation";
+import "../../state/comfortTool/modelConfigs";
 
 function createComplianceContext(
   modelInputs: ChartBuildContext<NumericBand>["modelInputs"] = {},
@@ -42,7 +43,7 @@ describe("createPhsDynamicGridSpec", () => {
       phsExploreOutputs,
       phsRequestAdapter,
       createComplianceContext({
-        [PhysicalQuantityId.PhsBodyWeight]: 120,
+        [PhsQuantityId.BodyWeight]: 120,
       }),
     );
 
@@ -54,7 +55,7 @@ describe("createPhsDynamicGridSpec", () => {
     expect(heavyResult.waterLossLimitG).toBeGreaterThan(defaultResult.waterLossLimitG);
     expect(heavyResult.waterLossLimitG).toBe(
       getPhsWaterLossLimitG(personFromModelInputs({
-        [PhysicalQuantityId.PhsBodyWeight]: 120,
+        [PhsQuantityId.BodyWeight]: 120,
       })),
     );
   });

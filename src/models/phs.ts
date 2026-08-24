@@ -1,5 +1,4 @@
 import type { CalculationSource } from "./calculationMetadata";
-import { PhysicalQuantityId, physicalQuantityMetaById } from "./physicalQuantities";
 export const PHS_STANDARD_VERSION = "7933-2023";
 export const PHS_COMPLIANCE_HORIZON_MINUTES = 480;
 export const PHS_RECTAL_TEMPERATURE_LIMIT_C = 38;
@@ -20,17 +19,19 @@ export const PhsSegmentPreset = {
 export type PhsSegmentPreset =
   (typeof PhsSegmentPreset)[keyof typeof PhsSegmentPreset];
 
+export const PhsQuantityId = {
+  BodyWeight: "phs.bodyWeight",
+  Height: "phs.height",
+} as const;
+
 export const phsPersonQuantityIds = [
-  PhysicalQuantityId.PhsBodyWeight,
-  PhysicalQuantityId.PhsHeight,
+  PhsQuantityId.BodyWeight,
+  PhsQuantityId.Height,
 ] as const;
 
 export type PhsPersonQuantityId = (typeof phsPersonQuantityIds)[number];
 
-export type PhsPersonQuantities = Pick<
-  Record<PhysicalQuantityId, number>,
-  PhsPersonQuantityId
->;
+export type PhsPersonQuantities = Record<PhsPersonQuantityId, number>;
 
 export interface PhsPersonSettingsSi extends PhsPersonQuantities {
   posture: PhsPosture;
@@ -130,10 +131,8 @@ export const defaultPhsSimulationFlags = {
 } as const;
 
 export const defaultPhsPersonSettings: PhsPersonSettingsSi = {
-  [PhysicalQuantityId.PhsBodyWeight]:
-    physicalQuantityMetaById[PhysicalQuantityId.PhsBodyWeight].defaultSi,
-  [PhysicalQuantityId.PhsHeight]:
-    physicalQuantityMetaById[PhysicalQuantityId.PhsHeight].defaultSi,
+  [PhsQuantityId.BodyWeight]: 75,
+  [PhsQuantityId.Height]: 1.8,
   ...defaultPhsSimulationFlags,
 };
 
