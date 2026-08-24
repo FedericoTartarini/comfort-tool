@@ -157,26 +157,6 @@ export interface TimeSeriesSimulationControls {
   readonly onProgress: (progress: number) => void;
 }
 
-export interface TimeSeriesSummaryItem {
-  readonly id: string;
-  readonly label: string;
-  readonly value: string;
-  readonly subtext?: string;
-}
-
-export interface TimeSeriesChartDefinition<TDraft, TResult> {
-  readonly id: string;
-  readonly title: string;
-  readonly description: string;
-  readonly emptyMessage: string;
-  readonly heightClass: string;
-  readonly testId?: string;
-  readonly build: (
-    result: TResult,
-    draft: TDraft,
-    unitSystem: UnitSystemType,
-  ) => PlotlyChartResponseDto;
-}
 
 export interface TimeSeriesChartViewModel {
   readonly id: string;
@@ -208,11 +188,6 @@ export interface TimeSeriesModelDefinition<TDraft, TResult> {
     draft: TDraft,
     controls: TimeSeriesSimulationControls,
   ) => Promise<TResult>;
-  readonly buildSummary: (
-    result: TResult,
-    unitSystem: UnitSystemType,
-  ) => readonly TimeSeriesSummaryItem[];
-  readonly charts: readonly TimeSeriesChartDefinition<TDraft, TResult>[];
 }
 
 export type RuntimeTimeSeriesModelDefinition = TimeSeriesModelDefinition<

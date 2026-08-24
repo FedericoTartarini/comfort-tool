@@ -1,5 +1,4 @@
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import { ChartMode, type ChartMode as ChartModeType } from "../../models/modelCapabilities";
 import {
   AppRouteId,
   StandardId,
@@ -9,7 +8,7 @@ import {
   type WorkspaceId as WorkspaceIdType,
 } from "../../models/workspaces";
 import {
-  getExploreModels,
+  getModelsForWorkspace,
   getModelsForStandard,
 } from "../comfortTool/modelConfigs";
 
@@ -19,7 +18,6 @@ export interface AppRouteDefinition {
   readonly path: string;
   readonly workspace: WorkspaceIdType;
   readonly standardId?: StandardIdType;
-  readonly requiredMode?: ChartModeType;
   readonly defaultModelId?: ComfortModelType;
   readonly shareEnabled: boolean;
 }
@@ -31,7 +29,6 @@ export const appRouteDefinitions = [
     path: "/ASHRAE-55/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.Ashrae55,
-    requiredMode: ChartMode.Compliance,
     defaultModelId: ComfortModel.PmvAshrae,
     shareEnabled: true,
   },
@@ -41,7 +38,6 @@ export const appRouteDefinitions = [
     path: "/ISO-7730/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.Iso7730,
-    requiredMode: ChartMode.Compliance,
     defaultModelId: ComfortModel.PmvIso,
     shareEnabled: true,
   },
@@ -51,7 +47,6 @@ export const appRouteDefinitions = [
     path: "/EN-16798-1/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.En16798,
-    requiredMode: ChartMode.Compliance,
     defaultModelId: ComfortModel.AdaptiveEn,
     shareEnabled: true,
   },
@@ -61,7 +56,6 @@ export const appRouteDefinitions = [
     path: "/ISO-7933/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.Iso7933,
-    requiredMode: ChartMode.Compliance,
     defaultModelId: ComfortModel.Phs2023,
     shareEnabled: true,
   },
@@ -70,7 +64,6 @@ export const appRouteDefinitions = [
     label: "Explore",
     path: "/Explore/",
     workspace: WorkspaceId.Explore,
-    requiredMode: ChartMode.Explore,
     defaultModelId: ComfortModel.PmvAshrae,
     shareEnabled: true,
   },
@@ -102,7 +95,7 @@ export function getAllowedModels(definition: AppRouteDefinition): ComfortModelTy
     return getModelsForStandard(definition.standardId);
   }
   if (definition.workspace === WorkspaceId.Explore) {
-    return getExploreModels();
+    return getModelsForWorkspace(WorkspaceId.Explore);
   }
   return [];
 }
@@ -110,8 +103,12 @@ export function getAllowedModels(definition: AppRouteDefinition): ComfortModelTy
 export function isCalculationRoute(
   definition: AppRouteDefinition | undefined,
 ): definition is AppRouteDefinition & {
-  requiredMode: ChartModeType;
+  workspace: typeof WorkspaceId.Standard | typeof WorkspaceId.Explore;
   defaultModelId: ComfortModelType;
 } {
-  return Boolean(definition?.requiredMode && definition.defaultModelId);
+  return Boolean(
+    definition
+    && definition.defaultModelId
+    && (definition.workspace === WorkspaceId.Standard || definition.workspace === WorkspaceId.Explore),
+  );
 }

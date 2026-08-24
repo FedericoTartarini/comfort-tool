@@ -2,8 +2,8 @@ import type {
   TimeSeriesChartViewModel,
   TimeSeriesEditorViewModel,
   TimeSeriesModelReference,
-  TimeSeriesSummaryItem,
 } from "../../models/timeSeries";
+import type { MetricSummaryItemViewModel } from "../../models/output/tableLayouts";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import type { TimeSeriesModelId } from "./modelConfigs";
 
@@ -69,7 +69,7 @@ export interface TimeSeriesSelectors {
   getErrors: () => readonly string[];
   getProgress: () => number;
   hasStaleResult: () => boolean;
-  getSummary: () => readonly TimeSeriesSummaryItem[];
+  getSummary: () => readonly MetricSummaryItemViewModel[];
   getCharts: () => readonly TimeSeriesChartViewModel[];
 }
 

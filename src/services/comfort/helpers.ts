@@ -34,18 +34,18 @@ export function requireThermalZone(
   return zone;
 }
 
-export function getCompareInputs<T>(inputsByInput: CompareInputMap<T>): Array<{ inputId: InputIdType; payload: T }> {
+export function getCompareInputs<T>(compareInputsByInput: CompareInputMap<T>): Array<{ inputId: InputIdType; payload: T }> {
   return inputOrder.flatMap((inputId) => {
-    const payload = inputsByInput[inputId];
+    const payload = compareInputsByInput[inputId];
     return payload === undefined ? [] : [{ inputId, payload }];
   });
 }
 
 export function getBaselineInputEntry<T>(
-  inputsByInput: CompareInputMap<T>,
+  compareInputsByInput: CompareInputMap<T>,
   baselineInputId: InputIdType,
 ): { inputId: InputIdType; payload: T } {
-  const payload = inputsByInput[baselineInputId];
+  const payload = compareInputsByInput[baselineInputId];
   if (payload === undefined) {
     throw new Error(`Missing chart baseline payload for ${baselineInputId}.`);
   }

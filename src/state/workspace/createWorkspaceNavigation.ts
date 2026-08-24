@@ -88,7 +88,7 @@ export function createWorkspaceNavigation(
     }
 
     pendingTransition = null;
-    toolState.actions.setChartMode(definition.requiredMode);
+    toolState.actions.setActiveWorkspace(definition.workspace);
     return true;
   }
 
@@ -143,7 +143,7 @@ export function createWorkspaceNavigation(
     }
 
     pendingTransition = null;
-    toolState.actions.setChartMode(definition.requiredMode);
+    toolState.actions.setActiveWorkspace(definition.workspace);
     toolState.actions.scheduleCalculation({ immediate: true });
   }
 
@@ -157,7 +157,7 @@ export function createWorkspaceNavigation(
     pendingTransition = null;
     toolState.actions.confirmModelSwitch({ schedule: false });
     if (isCalculationRoute(transition.definition)) {
-      toolState.actions.setChartMode(transition.definition.requiredMode);
+      toolState.actions.setActiveWorkspace(transition.definition.workspace);
     }
 
     if (transition.navigationTarget) {

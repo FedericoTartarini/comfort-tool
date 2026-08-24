@@ -1,0 +1,52 @@
+import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import type { InputId as InputIdType } from "../models/inputSlots";
+import type { ChartBuildContext } from "../models/modelCapabilities";
+import {
+  FieldChartProfileKind,
+  type FieldChartProfile,
+} from "../models/output/fieldChartProfile";
+import type { RuntimeComfortModelDefinition } from "../state/comfortTool/modelConfigs/definition";
+
+export function chartContextToProfile(
+  context: ChartBuildContext,
+): FieldChartProfile {
+  const { fieldChartConfig } = context;
+  if (fieldChartConfig.profileKind === FieldChartProfileKind.Compliance) {
+    return {
+      kind: FieldChartProfileKind.Compliance,
+      xField: fieldChartConfig.xField,
+      yField: fieldChartConfig.yField,
+      zOutput: fieldChartConfig.zOutput,
+      bands: fieldChartConfig.bands,
+    };
+  }
+
+  return {
+    kind: FieldChartProfileKind.Explore,
+    xField: fieldChartConfig.xField,
+    yField: fieldChartConfig.yField,
+    zOutput: fieldChartConfig.zOutput,
+    bands: fieldChartConfig.bands,
+  };
+}
+
+export function buildChartPlotly<TResult>(
+  config: RuntimeComfortModelDefinition,
+  instanceId: string,
+  chartSource: unknown,
+  resultsByInput: Record<InputIdType, TResult | null>,
+  context: ChartBuildContext,
+): PlotlyChartResponseDto | null {
+  return config.buildChart(
+    instanceId,
+    chartSource,
+    resultsByInput,
+    chartContextToProfile(context),
+    {
+      unitSystem: context.unitSystem,
+      baselineInputId: context.baselineInputId,
+      chartSourceVersion: 1,
+      modelInputs: context.modelInputs ?? {},
+    },
+  ).plotly;
+}

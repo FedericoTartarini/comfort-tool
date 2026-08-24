@@ -8,14 +8,13 @@ import {
   convertFieldValueFromSi,
   convertModelOutputFromSi,
 } from "../services/units";
-import { FieldKey } from "../models/fieldKeys";
-import { ChartId } from "../models/chartOptions";
+import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { InputId } from "../models/inputSlots";
-import {
-  ChartMode,
-  ModelOutputKey,
-  type ChartBuildContext,
-} from "../models/modelCapabilities";
+import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
+import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
+import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { ChartInstanceId } from "../models/output/chartInstances";
+
 
 describe("windChill service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -29,7 +28,7 @@ describe("windChill service", () => {
       tdb: -10,
       v: 10,
     });
-    
+
     expect(result.wci).toBeGreaterThan(1400); // 30 mins to frostbite or worse
     expect(result.wciTemp).toBeLessThan(-20);
     expect(result.wciZone).not.toBe("Safe");
@@ -41,8 +40,8 @@ describe("windChill service", () => {
       tdb: -12.22, // SI representation of 10°F
       v: 3.048,    // SI representation of 10 ft/s
     });
-    
-    const wciTempF = convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.wciTemp, UnitSystem.IP);
+
+    const wciTempF = convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, result.wciTemp, UnitSystem.IP);
     expect(wciTempF).toBeLessThan(5);
     expect(result.wciZone).toBe("Safe");
   });
@@ -52,7 +51,7 @@ describe("windChill service", () => {
       tdb: 12,
       v: 5,
     });
-    
+
     expect(result.wciTemp).toBe(12);
   });
 
@@ -68,16 +67,16 @@ describe("windChill service", () => {
         unitSystem,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
-          mode: ChartMode.Explore,
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.WindSpeed,
-          zOutput: windChillModelConfig.chartableOutputs[0].key,
-          bands: windChillModelConfig.chartableOutputs[0].defaultBands,
+          profileKind: FieldChartProfileKind.Explore,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.WindSpeed,
+          zOutput: windChillModelConfig.exploreOutputs[0].key,
+          bands: windChillModelConfig.exploreOutputs[0].defaultBands,
         },
       } satisfies ChartBuildContext;
 
-      const dynamicChart = windChillModelConfig.buildChartResult(
-        ChartId.WindChillDynamic,
+      const dynamicChart = buildChartPlotly(windChillModelConfig,
+        ChartInstanceId.WindChill.DynamicField,
         chartSource,
         {
           [InputId.Input1]: result,
@@ -110,7 +109,7 @@ describe("windChill service", () => {
           unitSystem,
         ),
         convertFieldValueFromSi(
-          FieldKey.DryBulbTemperature,
+          PhysicalQuantityId.DryBulbTemperature,
           firstGridResult.wciTemp,
           unitSystem,
         ),
@@ -120,7 +119,7 @@ describe("windChill service", () => {
       expect(inputTrace?.hovertemplate).toContain("Wind Chill Temperature");
       expect(inputTrace?.hoverMetadata).toEqual([
         convertModelOutputFromSi(ModelOutputKey.WindChill, result.wci, unitSystem),
-        convertFieldValueFromSi(FieldKey.DryBulbTemperature, result.wciTemp, unitSystem),
+        convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, result.wciTemp, unitSystem),
       ]);
     },
   );

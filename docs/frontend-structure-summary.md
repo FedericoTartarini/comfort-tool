@@ -6,17 +6,17 @@ See [Adding a thermal model](adding-a-thermal-model.md) for the model-authoring 
 
 ## Source ownership
 
-| Layer | Owns | May depend on |
-|---|---|---|
-| `views` | Page composition | components, state |
-| `components` | Rendering and interaction | state, models, lightweight services |
-| `routes` | Explicit Browser History table, route hooks, and route-bound page adapters | views, workspace state |
-| `state/workspace` | Typed Workspace metadata, route/model/mode/share coordination, and pending navigation replay | models, comfort-tool controller/registry |
-| `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots | models, services, registered runtime definitions |
-| `state/timeSeries` | Independent keyed scenario state, automatic simulation lifecycle, and Time-series model registry | models, units, registered Time-series definitions |
-| `comfortModels` | Model declarations, calculations, results, chart evaluators, declaration-local zones | models, comfort/unit services, model builder |
-| `services/comfort` | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines | models |
-| `services/units` | SI/display conversion and presentation precision | models |
+| Layer               | Owns                                                                                              | May depend on                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `views`             | Page composition                                                                                  | components, state                                 |
+| `components`        | Rendering and interaction                                                                         | state, models, lightweight services               |
+| `routes`            | Explicit Browser History table, route hooks, and route-bound page adapters                        | views, workspace state                            |
+| `state/workspace`   | Typed Workspace metadata, route/model/mode/share coordination, and pending navigation replay      | models, comfort-tool controller/registry          |
+| `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots        | models, services, registered runtime definitions  |
+| `state/timeSeries`  | Independent keyed scenario state, automatic simulation lifecycle, and Time-series model registry  | models, units, registered Time-series definitions |
+| `comfortModels`     | Model declarations, calculations, results, chart evaluators, declaration-local zones              | models, comfort/unit services, model builder      |
+| `services/comfort`  | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines | models                                            |
+| `services/units`    | SI/display conversion and presentation precision                                                  | models                                            |
 
 The model registry is the intentional exception that imports registered definitions from `comfortModels`. `jsthermalcomfort` imports are restricted to `comfortModels` and `services/comfort`.
 
@@ -50,7 +50,7 @@ controller.
 
 `state/workspace/routeDefinitions.ts` is the stable navigation source of truth. Standard membership is
 derived from each model's `standardIds`; Explore membership is derived from
-`modes.includes(ChartMode.Explore)`. Standard routes force Compliance, Explore forces
+`supportsExploreWorkspace()`. Standard routes force Compliance profiles, Explore forces
 Explore, and the chart exposes only a read-only mode summary.
 
 The Workspace coordinator applies share snapshots without scheduling, resolves model/mode
@@ -79,24 +79,28 @@ Simple models may keep calculation and chart code in the declaration file. Large
 The explicit registry is:
 
 ```ts
-Record<ComfortModel, RuntimeComfortModelDefinition>
+Record<ComfortModel, RuntimeComfortModelDefinition>;
 ```
 
 It owns registration and ordering only. The controller consumes runtime definitions without importing model implementations, double-casting definitions, or adding model-specific state.
 
 Declaration-local `ThermalZone[]` values derive Explore or Compliance bands. Zones are not copied into the runtime definition, and each numeric boundary has one source.
 
-## Canonical inputs and controls
+## Canonical inputs and quantity catalog
 
-`FieldKey` includes persisted inputs and derived/chart-only coordinates. `canonicalInputFieldOrder as const` is the narrower source of truth for persistent input state, share input records, behavior patches, modifier patches, and calculation context.
+`src/models/physicalQuantities.ts` is the sole quantity catalog. `primaryInputOrder` defines the nine shared primary SI values persisted for every input slot. `ChartAxisQuantityId` covers selectable chart-axis coordinates, including operative temperature and humidity ratio.
 
-Humidity ratio and operative temperature are legal chart axes but are not canonical record members. Base input remains SI and survives model switches even when a model does not display every field.
+Controller state splits quantities three ways:
 
-Control behavior constructs an `InputControlViewModel` and applies numeric input. Model `optionHandlersByKey` is the only option-change path. Shared behavior is split by capability:
+```text
+quantitiesByInput          — base primary SI per InputId (Input1–Input3)
+auxiliaryQuantitiesByInput — sparse slot quantities (derived psychrometrics + modifier configuration)
+modelInputsByModel         — sparse model-scoped SI values (e.g. PHS body weight/height)
+```
 
-- `numericControl.ts` for ordinary fields and air-speed behavior;
-- `temperatureControl.ts` for explicit Air/Operative support;
-- `humidityControl.ts` for humidity modes, conversion, and RH synchronization.
+Derived slot values (dew point, wet bulb, vapor pressure, derived humidity ratio) live in `auxiliaryQuantitiesByInput` and are recomputed from primary values. Modifier extra inputs use `PhysicalQuantityId` keys from the same catalog.
+
+Models declare visible fields with `setInputFields()` and model-scoped quantities with `registerModelQuantities()`. `fieldInputBehaviors.ts` resolves `InputFieldSpec` kinds into shared control behaviors in `numericControl.ts`, `temperatureControl.ts`, and `humidityControl.ts`.
 
 Every model supplies complete default options and an exact parser. Missing, extra, or invalid external options are rejected; invalid internal option state is an invariant error.
 
@@ -108,19 +112,19 @@ Every model supplies complete default options and an exact parser. Missing, extr
 
 The shared dynamic-axis solver applies two coordinates as one physical constraint. For Air/Radiant/Operative pairs, it preserves the explicitly selected component and solves the coupled component instead of allowing a later write to overwrite the earlier coordinate.
 
-Calculations receive `ModelCalculationContext`, containing effective canonical-SI inputs and only the active model's options after exact parsing. The keyed `modelOptionsByModel` record remains in controller/share state. Each definition returns typed results and a typed chart source. At controller level they are stored in generic `ModelCalculationCache<unknown, unknown>` records keyed by model ID.
+Calculations receive `ModelCalculationContext`, containing `effectiveQuantitiesByInput` (modifier-adjusted primary SI), sparse `auxiliaryQuantitiesByInput`, sparse `modelInputs`, and only the active model's options after exact parsing. Base primary SI remains in `quantitiesByInput` and is not passed directly to calculations. The keyed `modelOptionsByModel` record remains in controller/share state. Each definition returns typed results and a typed chart source. At controller level they are stored in generic `ModelCalculationCache<unknown, unknown>` records keyed by model ID.
 
 ## Generic input modifiers
 
 The controller stores three separate concepts:
 
 ```text
-base SI input
-modifier enabled/configuration state
-derived effective SI input
+base primary SI (quantitiesByInput)
+modifier enabled/configuration state (activeModifiersByInput + auxiliaryQuantitiesByInput)
+derived effective SI input (calculation context)
 ```
 
-`defineInputModifier()` uses tuple generics for `extraInputs` and `affectedFields`. A callback receives complete effective input and exact complete extra inputs, and may return only a patch of its declared canonical fields. Incomplete configuration is handled at the parser/application boundary; non-finite or undeclared output is rejected.
+`defineInputModifier()` uses tuple generics for `extraInputs` (`PhysicalQuantityId[]`) and `affectedFields`. A callback receives complete effective input and exact complete extra inputs, and may return only a patch of its declared canonical fields. Incomplete configuration is handled at the parser/application boundary; non-finite or undeclared output is rejected.
 
 Executable modifier definitions belong to model declarations. The global catalogue contains only stable UI/share IDs and extra-input schema. Supported definitions execute in this fixed order:
 
@@ -144,24 +148,20 @@ The input panel exposes one **Input modifiers** button below its fields when the
 
 These modules receive ordinary state/config/context values. There is no dependency-injection container, service class, forwarding wrapper, or model-specific controller branch.
 
-State stays keyed by model ID: selected charts, options, chart settings, caches, results, and chart results do not grow parallel PMV/UTCI slots.
+State stays keyed by model ID: selected charts, options, chart settings, caches, results, and chart results do not grow parallel PMV/UTCI slots. Input quantities use `quantitiesByInput`, `auxiliaryQuantitiesByInput`, and `modelInputsByModel` rather than model-specific parallel maps.
 
 ## Charts and presentation cache
 
-Each model owns one `setCharts({ defaultId, entries })` declaration. Every
-`ModelChartDefinition` carries its name, empty state, axis-selection capability, optional Y
-lock, zone-toggle visibility, and legend visibility. A chart can also narrow the model's
-Explore outputs, choose the fallback output for that chart, and opt out of the baseline-input
-control through `supportedExploreOutputs`, `defaultExploreOutput`, and `usesBaselineInput`.
-There is no parallel global chart metadata registry.
+Each model declares charts through `setOutputCharts()` with stable `ChartInstanceId` values and `ChartKind` specs. Chart capabilities (axis selection, Y lock, zone toggle, legend, baseline) are declared per instance or inherited from kind defaults. Explore output narrowing uses `supportedExploreOutputs` and `defaultExploreOutput` on chart entries.
 
-Compliance and Explore share the Field Chart engine:
+Standard and Explore share the field-chart engine via workspace-derived `FieldChartProfile`:
 
-- Compliance reads fixed output/bands, caption, legend title, and feedback from `complianceSpec`.
+- Standard workspace reads fixed output/bands, caption, legend title, and feedback from `complianceProfile`.
 - Explore reads a selected `ModelOutput` and a per-model editable working copy of numeric default bands.
 - Band membership is array ordered and half open: `min <= value < max`.
+- Legend metadata is attached to `ChartBuildResult` at build time.
 
-Chart selection, route-applied mode, axes, baseline, Explore output/bands, unit system, and zone visibility are presentation-only. They rebuild from a ready calculation cache and do not invalidate or schedule model calculation.
+Chart selection, workspace-derived profile, axes, baseline, Explore output/bands, unit system, and zone visibility are presentation-only. They rebuild from a ready calculation cache and do not invalidate or schedule model calculation.
 
 The psychrometric chart clamps its drawable domain at 100% relative humidity.
 
@@ -177,7 +177,7 @@ only registration is PHS / ISO 7933:2023.
 `createTimeSeriesState.svelte.ts` stores `draftByModel`, `resultByModel`, status, validation
 errors, calculation revision, and progress as records keyed by registered model ID. A model
 switch therefore retains independent drafts and last successful results. Time-series has a
-local unit system, remains canonical SI, and stays outside Analysis caches, `ChartMode`, and
+local unit system, remains canonical SI, and stays outside Analysis caches and
 share snapshots.
 
 The selected model runs automatically when the workspace starts. Calculation-relevant valid
@@ -198,11 +198,66 @@ applicable 5% or 3% body-mass limit and matching boundaries.
 Time-series chart DTOs reuse `PlotlyCanvas`, but they do not use `FieldChartConfig` or the
 Analysis chart cache. Time-series has no share URL in the current implementation.
 
+## Round 2 shared capabilities (2026-08)
+
+Round 2 on branch `better-structure` added reusable building blocks without changing
+canonical SI persistence or Workspace routing:
+
+| Capability                   | Location                                                                                  | Use                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Grid dynamic charts          | `services/comfort/charts/gridModelCharts.ts`                                              | PHS, UTCI Dynamic, psychrometric index models         |
+| Chart-source extensions      | `calculatePerInputWithExtensions()` in `requestMapping.ts`                                | PMV `comfortZonesByInput`                             |
+| Input value presets          | `services/comfort/controls/inputControlPresets.ts` + `setInputFields({ kind: "preset" })` | PMV metabolic/clothing, Adaptive air speed            |
+| Psychrometric index factory  | `comfortModels/presets/psychrometricIndexModel.ts`                                        | Humidex, Heat Index                                   |
+| Plotly presentation shell    | `components/chart/PlotlyChartCard.svelte`                                                 | Analysis chart body, Time-series cards                |
+| Time-series line traces      | `services/comfort/charts/timeSeriesLineChart.ts`                                          | PHS exposure history + Time-series charts             |
+| Initial controller state     | `state/comfortTool/initialComfortToolState.ts`                                            | Factory helpers for rune entry                        |
+| Controller actions/selectors | `comfortToolActions.ts`, `comfortToolSelectors.ts`, `comfortToolInternals.ts`             | Thin rune entry in `createComfortToolState.svelte.ts` |
+| Workspace two-column shell   | `components/layout/WorkspaceTwoColumnLayout.svelte`                                       | Analysis + Time-series page grid                      |
+| Chart export (Time-series)   | `ChartExportDropdown.svelte`, `TimeSeriesChartCard.svelte`                                | Per-chart PNG/SVG on Time-series page                 |
+
+**Special-case charts** (not grid assembly): PMV psychrometric, UTCI stress, PHS exposure
+history, Adaptive boundary chart. Time-series remains outside `FieldChartConfig`.
+
+### Round 2 completion status
+
+Round 2 architecture and finish-out work on `better-structure` is **complete** (grid presets,
+controller split, UTCI calculation split, B10 layout/export, full validation matrix).
+
+**Explicitly deferred (not Round 2 gaps):** CI workflow; Time-series in
+`FieldChartProfile`; sparse share schema; chart instance registry.
+
+## Round 3 shared capabilities (2026-08)
+
+Round 3 on branch `better-structure` finished P0/P1 architecture without changing share
+schema, canonical persistence, or special-chart geometry:
+
+| Capability                 | Location                                                                | Use                                                                        |
+| -------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Outdoor wind index factory | `comfortModels/presets/outdoorWindIndexModel.ts`                        | Wind Chill (tdb + v dynamic grid)                                          |
+| Builder chart registration | `ComfortModelBuilder.setOutputCharts()` with `ChartKind` specs          | UTCI, PHS, psychrometric/outdoor presets                                   |
+| Input field specs          | `services/comfort/controls/fieldInputBehaviors.ts` + `setInputFields()` | Declarative temperature, humidity, wind, preset, and model-quantity blocks |
+| PMV chart module split     | `pmvChartShared.ts`, `pmvPsychrometricChart.ts`, `pmvDynamicChart.ts`   | Readability; `pmvCharts.ts` routes views only                              |
+| Adaptive air-speed preset  | `adaptiveShared.ts` uses `setInputFields({ kind: "preset" })`           | Same pattern as PMV metabolic/clothing                                     |
+
+Grid-capable models declare `ChartKind.DynamicField` and `ChartKind.Custom` entries through
+`setOutputCharts()`. PMV psychrometric, UTCI stress, PHS exposure history, and Adaptive
+boundary charts remain special-case geometry in focused modules.
+
+**Explicitly deferred (not Round 3 gaps):** CI workflow; Time-series in `FieldChartConfig`;
+sparse share schema; chart instance registry.
+
+**Dependency baseline (post-upgrade):** Node `>=22`, Vite 8, Vitest 4, Tailwind CSS 4.3
+(`@tailwindcss/vite`), Flowbite 4, `flowbite-svelte` `0.48.x`, Plotly `3.7`,
+`jsthermalcomfort` `1.4`, Svelte 5, `sv-router` `0.18.1`, TypeScript `6.0.x`.
+TypeScript 7 and `flowbite-svelte` 1.x are intentionally not adopted (ESLint peer
+range and Flowbite 4 incompatibility respectively).
+
 ## Share state
 
-Share snapshots use one strict `version: 1` schema. Every registered model contributes its selected chart, exact options, and chart settings. Only Explore working bands are serialized; functional Compliance bands come from declarations. Infinite numeric edges use explicit wire sentinels.
+Share snapshots use one strict `version: 1` schema. Top-level input keys are `quantitiesByInput` (full `PrimaryInputState` per input slot), sparse `auxiliaryQuantitiesByInput` (modifier `PhysicalQuantityId` values only), sparse `modelInputsByModel` (per-model quantity overrides), and `activeModifiersByInput` (complete modifier enablement matrix). Every registered model contributes its selected chart, exact options, and chart settings under `models`. Only Explore working bands are serialized; functional Compliance bands come from declarations. Infinite numeric edges use explicit wire sentinels.
 
-The modifier records contain the exact stable modifier key set, including Dynamic Clothing. Missing or extra model, input, option, chart, band, or modifier keys are rejected. There is no migration reader, fallback, compatibility shim, or cutover path.
+The modifier records contain the exact stable modifier key set, including Dynamic Clothing. Missing or extra model, quantity, option, chart, band, or modifier keys are rejected. Legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads are rejected. There is no migration reader, fallback, compatibility shim, or cutover path.
 
 Adding a registered model intentionally changes the exact model key set required by a version-1 snapshot. The project has no deployed legacy snapshot compatibility requirement.
 

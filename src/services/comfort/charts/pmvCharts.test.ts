@@ -1,30 +1,27 @@
+import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import { describe, expect, it } from "vitest";
 
 import {
   pmvAshraeAdapter,
   pmvAshraeDeclaration,
-} from "../../../comfortModels/pmvAshrae";
+} from "../../../comfortModels/pmv/pmvAshrae";
 import {
   pmvIsoDeclaration,
-} from "../../../comfortModels/pmvIso";
+} from "../../../comfortModels/pmv/pmvIso";
 import {
   createPmvModelConfig,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
-} from "../../../comfortModels/pmvShared";
+} from "../../../comfortModels/pmv/pmvShared";
 import {
   calculatePmvModel,
   pmvZonesList,
   type ComfortZoneRequestDto,
   type PmvChartSourceDto,
   type PmvResponseDto,
-} from "../../../comfortModels/pmvCalculation";
-import type {
-  PlotlyChartResponseDto,
-  PlotTraceDto,
-} from "../../../models/comfortDtos";
-import { ChartId } from "../../../models/chartOptions";
-import { FieldKey, type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
+} from "../../../comfortModels/pmv/pmvCalculation";
+import { createModelCalculationContext } from "../../../models/modelCalculation";
+import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import {
   AirSpeedControlMode,
   OptionKey,
@@ -32,7 +29,6 @@ import {
 } from "../../../models/inputModes";
 import { InputId } from "../../../models/inputSlots";
 import {
-  ChartMode,
   ModelOutputKey,
   type ChartBuildContext,
   type NumericBand,
@@ -41,6 +37,9 @@ import {
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { createComfortToolState } from "../../../state/comfortTool/createComfortToolState.svelte";
 import { convertFieldValueFromSi } from "../../units";
+import type { PlotlyChartResponseDto, PlotTraceDto } from "../../../models/comfortDtos";
+import { buildChartPlotly } from "../../../testSupport/modelChartTestHelpers";
+import { ChartInstanceId } from "../../../models/output/chartInstances";
 
 const input: ComfortZoneRequestDto = {
   tdb: 25,
@@ -66,14 +65,14 @@ function calculateModel(
 } {
   const config = createPmvModelConfig(declaration);
   const toolState = createComfortToolState();
-  const stateInput = toolState.state.inputsByInput[InputId.Input1];
-  stateInput[FieldKey.DryBulbTemperature] = request.tdb;
-  stateInput[FieldKey.MeanRadiantTemperature] = request.tr;
-  stateInput[FieldKey.RelativeAirSpeed] = request.vr;
-  stateInput[FieldKey.RelativeHumidity] = request.rh;
-  stateInput[FieldKey.MetabolicRate] = request.met;
-  stateInput[FieldKey.ClothingInsulation] = request.clo;
-  stateInput[FieldKey.ExternalWork] = request.wme;
+  const stateInput = toolState.state.quantitiesByInput[InputId.Input1];
+  stateInput[PhysicalQuantityId.DryBulbTemperature] = request.tdb;
+  stateInput[PhysicalQuantityId.MeanRadiantTemperature] = request.tr;
+  stateInput[PhysicalQuantityId.RelativeAirSpeed] = request.vr;
+  stateInput[PhysicalQuantityId.RelativeHumidity] = request.rh;
+  stateInput[PhysicalQuantityId.MetabolicRate] = request.met;
+  stateInput[PhysicalQuantityId.ClothingInsulation] = request.clo;
+  stateInput[PhysicalQuantityId.ExternalWork] = request.wme;
   toolState.state.ui.modelOptionsByModel[config.id] = {
     ...config.defaultOptions,
     [OptionKey.TemperatureMode]: TemperatureMode.Air,
@@ -85,10 +84,12 @@ function calculateModel(
         }
       : {}),
   };
-  const calculation = calculatePmvModel({
-    inputsByInput: toolState.state.inputsByInput,
+  const calculation = calculatePmvModel(createModelCalculationContext({
+    effectiveQuantitiesByInput: toolState.state.quantitiesByInput,
+    auxiliaryQuantitiesByInput: toolState.state.auxiliaryQuantitiesByInput,
+    modelInputs: toolState.state.modelInputsByModel[declaration.adapter.modelId],
     options: toolState.state.ui.modelOptionsByModel[declaration.adapter.modelId],
-  }, [InputId.Input1], declaration.adapter);
+  }), [InputId.Input1], declaration.adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
   return { config, result, source: calculation.chartSource };
@@ -113,27 +114,27 @@ function createResults(
 
 function createContext(
   declaration: PmvModelDeclaration,
-  xField: FieldKeyType,
-  yField: FieldKeyType,
+  xField: ChartAxisQuantityId,
+  yField: ChartAxisQuantityId,
   outputKey: ModelOutputKeyType,
   unitSystem: UnitSystemType = UnitSystem.SI,
-  mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
+  profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
 ): ChartBuildContext<NumericBand> {
-  const output = declaration.chartableOutputs.find(({ key }) => key === outputKey);
+  const output = declaration.exploreOutputs.find(({ key }) => key === outputKey);
   if (!output) throw new Error(`Missing PMV output: ${outputKey}`);
   return {
     unitSystem,
     baselineInputId: InputId.Input1,
-    fieldChartConfig: mode === ChartMode.Compliance
+    fieldChartConfig: profileKind === FieldChartProfileKind.Compliance
       ? {
-          mode,
+          profileKind,
           xField,
           yField,
-          zOutput: declaration.complianceSpec.output,
-          bands: declaration.complianceSpec.bands,
+          zOutput: declaration.complianceProfile.output,
+          bands: declaration.complianceProfile.bands,
         }
       : {
-          mode,
+          profileKind,
           xField,
           yField,
           zOutput: outputKey,
@@ -147,20 +148,20 @@ function buildPsychrometric(
   unitSystem: UnitSystemType = UnitSystem.SI,
   source = createSource(declaration),
   outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
-  mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
+  profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
 ): PlotlyChartResponseDto {
   const { config, result } = calculateModel(declaration);
-  const chart = config.buildChartResult(
-    ChartId.Psychrometric,
+  const chart = buildChartPlotly(config,
+    declaration.psychrometricInstanceId,
     source,
     createResults(result),
     createContext(
       declaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.RelativeHumidity,
       outputKey,
       unitSystem,
-      mode,
+      profileKind,
     ),
   );
   if (!chart) throw new Error("Expected a PMV psychrometric chart.");
@@ -171,7 +172,7 @@ function requireTrace(
   chart: PlotlyChartResponseDto,
   name: string,
 ): PlotTraceDto {
-  const trace = chart.traces.find((candidate) => candidate.name === name);
+  const trace = chart.traces.find((candidate: PlotTraceDto) => candidate.name === name);
   if (!trace) throw new Error(`Missing chart trace: ${name}`);
   return trace;
 }
@@ -196,19 +197,19 @@ function expectSaturationMaskToMatchCurve(chart: PlotlyChartResponseDto): void {
 
 function buildDynamic(
   declaration: PmvModelDeclaration,
-  xField: FieldKeyType,
-  yField: FieldKeyType,
+  xField: ChartAxisQuantityId,
+  yField: ChartAxisQuantityId,
   outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
   unitSystem: UnitSystemType = UnitSystem.SI,
   request: ComfortZoneRequestDto = input,
-  mode: typeof ChartMode.Explore | typeof ChartMode.Compliance = ChartMode.Explore,
+  profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
 ): PlotlyChartResponseDto {
   const { config, result, source } = calculateModel(declaration, request);
-  const chart = config.buildChartResult(
-    ChartId.PmvDynamic,
+  const chart = buildChartPlotly(config,
+    declaration.dynamicInstanceId,
     source,
     createResults(result),
-    createContext(declaration, xField, yField, outputKey, unitSystem, mode),
+    createContext(declaration, xField, yField, outputKey, unitSystem, profileKind),
   );
   if (!chart) throw new Error("Expected a PMV dynamic chart.");
   return chart;
@@ -240,23 +241,23 @@ describe("PMV charts", () => {
     const declaration = pmvAshraeDeclaration;
     const { config, source, result } = calculateModel(declaration);
     const results = createResults(result);
-    const compliance = config.buildChartResult(
-      ChartId.Psychrometric,
+    const compliance = buildChartPlotly(config,
+      ChartInstanceId.PmvAshrae.Psychrometric,
       source,
       results,
       createContext(
         declaration,
-        FieldKey.DryBulbTemperature,
-        FieldKey.RelativeHumidity,
+        PhysicalQuantityId.DryBulbTemperature,
+        PhysicalQuantityId.RelativeHumidity,
         ModelOutputKey.Pmv,
         UnitSystem.SI,
-        ChartMode.Compliance,
+        FieldChartProfileKind.Compliance,
       ),
     );
     const baseExplore = createContext(
       declaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.RelativeHumidity,
       ModelOutputKey.Ppd,
     );
     const editedBands = [
@@ -273,15 +274,15 @@ describe("PMV charts", () => {
         color: "#abcdef",
       },
     ];
-    const ppd = config.buildChartResult(
-      ChartId.Psychrometric,
+    const ppd = buildChartPlotly(config,
+      ChartInstanceId.PmvAshrae.Psychrometric,
       source,
       results,
       {
         ...baseExplore,
         fieldChartConfig: {
           ...baseExplore.fieldChartConfig,
-          mode: ChartMode.Explore,
+          profileKind: FieldChartProfileKind.Explore,
           zOutput: ModelOutputKey.Ppd,
           bands: editedBands,
         },
@@ -299,7 +300,7 @@ describe("PMV charts", () => {
     expect(compliance.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
     )).map(({ fillcolor }) => fillcolor)).toEqual(
-      declaration.complianceSpec.bands.map(({ color }) => color),
+      declaration.complianceProfile.bands.map(({ color }) => color),
     );
     expect(ppd.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
@@ -358,19 +359,19 @@ describe("PMV charts", () => {
   });
 
   it.each([
-    ["ASHRAE Compliance", pmvAshraeDeclaration, ChartMode.Compliance, ModelOutputKey.Pmv],
-    ["ASHRAE Explore", pmvAshraeDeclaration, ChartMode.Explore, ModelOutputKey.Ppd],
-    ["ISO Compliance", pmvIsoDeclaration, ChartMode.Compliance, ModelOutputKey.Pmv],
-    ["ISO Explore", pmvIsoDeclaration, ChartMode.Explore, ModelOutputKey.Ppd],
+    ["ASHRAE Compliance", pmvAshraeDeclaration, FieldChartProfileKind.Compliance, ModelOutputKey.Pmv],
+    ["ASHRAE Explore", pmvAshraeDeclaration, FieldChartProfileKind.Explore, ModelOutputKey.Ppd],
+    ["ISO Compliance", pmvIsoDeclaration, FieldChartProfileKind.Compliance, ModelOutputKey.Pmv],
+    ["ISO Explore", pmvIsoDeclaration, FieldChartProfileKind.Explore, ModelOutputKey.Ppd],
   ] as const)(
     "uses the shared saturation boundary for %s",
-    (_label, declaration, mode, outputKey) => {
+    (_label, declaration, profileKind, outputKey) => {
       const chart = buildPsychrometric(
         declaration,
         UnitSystem.SI,
         createSource(declaration),
         outputKey,
-        mode,
+        profileKind,
       );
 
       expectSaturationMaskToMatchCurve(chart);
@@ -396,8 +397,8 @@ describe("PMV charts", () => {
     (outputKey) => {
       const chart = buildDynamic(
         pmvAshraeDeclaration,
-        FieldKey.DryBulbTemperature,
-        FieldKey.RelativeHumidity,
+        PhysicalQuantityId.DryBulbTemperature,
+        PhysicalQuantityId.RelativeHumidity,
         outputKey,
       );
       const fillTraces = chart.traces.filter(({ contours }) => (
@@ -407,7 +408,7 @@ describe("PMV charts", () => {
       const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
       expect(fillTraces.length).toBeGreaterThan(0);
-      expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
+      expect(chart.traces.every((trace: PlotTraceDto) => !("hoveron" in trace))).toBe(true);
       expect(tooltipTraces).toHaveLength(1);
       expect(tooltipTraces[0].hoverongaps).toBe(false);
       expect(tooltipTraces[0].hovertemplate).toContain(
@@ -426,12 +427,12 @@ describe("PMV charts", () => {
   it("builds locked Compliance bands through the same PMV field engine", () => {
     const chart = buildDynamic(
       pmvAshraeDeclaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.RelativeHumidity,
       ModelOutputKey.Pmv,
       UnitSystem.SI,
       input,
-      ChartMode.Compliance,
+      FieldChartProfileKind.Compliance,
     );
     const fillTraces = chart.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
@@ -451,8 +452,8 @@ describe("PMV charts", () => {
     const fixed = buildPsychrometric(pmvAshraeDeclaration);
     const explore = buildDynamic(
       pmvAshraeDeclaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.RelativeHumidity,
     );
     const fixedInput = fixed.traces.find(({ name }) => name === "Input 1");
     const exploreInput = explore.traces.find(({ name }) => name === "Input 1");
@@ -462,10 +463,10 @@ describe("PMV charts", () => {
   });
 
   it.each([
-    [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
-    [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
+    [PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.OperativeTemperature],
+    [PhysicalQuantityId.OperativeTemperature, PhysicalQuantityId.DryBulbTemperature],
+    [PhysicalQuantityId.MeanRadiantTemperature, PhysicalQuantityId.OperativeTemperature],
+    [PhysicalQuantityId.OperativeTemperature, PhysicalQuantityId.MeanRadiantTemperature],
   ] as const)("solves operative/component axes transactionally for %s / %s", (
     xField,
     yField,
@@ -482,29 +483,29 @@ describe("PMV charts", () => {
     const operativeInput = { ...input, tdb: 20, tr: 30, vr: 0.8 };
     const ashraeOperative = buildDynamic(
       pmvAshraeDeclaration,
-      FieldKey.OperativeTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.OperativeTemperature,
+      PhysicalQuantityId.RelativeHumidity,
       ModelOutputKey.Pmv,
       UnitSystem.SI,
       operativeInput,
     );
     const isoOperative = buildDynamic(
       pmvIsoDeclaration,
-      FieldKey.OperativeTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.OperativeTemperature,
+      PhysicalQuantityId.RelativeHumidity,
       ModelOutputKey.Pmv,
       UnitSystem.SI,
       operativeInput,
     );
     const ashraeClothing = buildDynamic(
       pmvAshraeDeclaration,
-      FieldKey.ClothingInsulation,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.ClothingInsulation,
+      PhysicalQuantityId.RelativeHumidity,
     );
     const isoClothing = buildDynamic(
       pmvIsoDeclaration,
-      FieldKey.ClothingInsulation,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.ClothingInsulation,
+      PhysicalQuantityId.RelativeHumidity,
     );
     const inputX = (chart: PlotlyChartResponseDto) => chart.traces
       .find(({ name }) => name === "Input 1")?.x[0];
@@ -520,8 +521,8 @@ describe("PMV charts", () => {
     (declaration) => {
       const chart = buildDynamic(
         declaration,
-        FieldKey.DryBulbTemperature,
-        FieldKey.RelativeHumidity,
+        PhysicalQuantityId.DryBulbTemperature,
+        PhysicalQuantityId.RelativeHumidity,
       );
       const lowerBoundary = chart.traces.find(({ contours }) => (
         contours?.operation === "=" && contours.value === -0.5
@@ -555,8 +556,8 @@ describe("PMV charts", () => {
   it("keeps PMV grid hover complete in IP display", () => {
     const chart = buildDynamic(
       pmvAshraeDeclaration,
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.RelativeHumidity,
       ModelOutputKey.Pmv,
       UnitSystem.IP,
     );
@@ -570,9 +571,9 @@ describe("PMV charts", () => {
     expect(tooltipTrace?.hovertemplate).toContain("Zone:");
     expect(tooltipTrace?.hovertemplate).toContain("PMV:");
     expect(tooltipTrace?.hovertemplate).toContain("PPD:");
-    expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
+    expect(chart.traces.every((trace: PlotTraceDto) => !("hoveron" in trace))).toBe(true);
     expect(inputTrace?.x[0]).toBeCloseTo(
-      convertFieldValueFromSi(FieldKey.DryBulbTemperature, input.tdb, UnitSystem.IP),
+      convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, input.tdb, UnitSystem.IP),
       6,
     );
   });

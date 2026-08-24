@@ -1,7 +1,7 @@
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
-import type { ComfortToolStateSlice, InputsByInputState } from "./types";
+import type { ComfortToolStateSlice, QuantitiesByInputState } from "./types";
 import { getComfortModelConfig } from "./modelConfigs";
 
 type TimerId = ReturnType<typeof globalThis.setTimeout>;
@@ -19,7 +19,7 @@ async function yieldToNextFrame() {
 export function createCalculationManager(
   state: ComfortToolStateSlice,
   getVisibleInputIds: () => InputIdType[],
-  getEffectiveInputsByInput: (modelId: ComfortModelType) => InputsByInputState,
+  getEffectiveQuantitiesByInput: (modelId: ComfortModelType) => QuantitiesByInputState,
 ) {
   let calculationTimerId: TimerId | null = null;
   let latestCalculationToken = 0;
@@ -54,15 +54,21 @@ export function createCalculationManager(
           `Invariant violation: invalid options state for ${selectedModel}.`,
         );
       }
+      const effectiveInputs = getEffectiveQuantitiesByInput(selectedModel);
       const calculationContext: ModelCalculationContext = {
-        inputsByInput: getEffectiveInputsByInput(selectedModel),
+        effectiveQuantitiesByInput: effectiveInputs,
+        auxiliaryQuantitiesByInput: state.auxiliaryQuantitiesByInput,
+        modelInputs: state.modelInputsByModel[selectedModel],
         options,
       };
       const calculationOutputs = modelConfig.calculate(calculationContext, visibleInputIds);
 
+      const previousCache = state.ui.calculationCacheByModel[selectedModel];
+      const buildGeneration = previousCache.buildGeneration + 1;
       state.ui.calculationCacheByModel[selectedModel] = {
-        ...state.ui.calculationCacheByModel[selectedModel],
+        ...previousCache,
         status: "ready",
+        buildGeneration,
         lastVisibleInputIds: [...visibleInputIds],
         resultsByInput: calculationOutputs.resultsByInput,
         chartSource: calculationOutputs.chartSource,

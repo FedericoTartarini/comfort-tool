@@ -1,4 +1,4 @@
-import { phsTimeSeriesModelDefinition } from "../../comfortModels/phsTimeSeries";
+import { phsTimeSeriesModelDefinition } from "../../comfortModels/phs/phsTimeSeries";
 import { ComfortModel } from "../../models/comfortModels";
 import type { RuntimeTimeSeriesModelDefinition } from "../../models/timeSeries";
 

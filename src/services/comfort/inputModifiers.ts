@@ -1,25 +1,18 @@
 import { clo_dynamic, solar_gain } from "jsthermalcomfort";
 
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../models/physicalQuantities";
 import {
-  canonicalInputFieldOrder,
-  FieldKey,
-  type CanonicalInputFieldKey,
-  type CanonicalInputState,
-} from "../../models/fieldKeys";
-import {
-  ModifierFieldKey,
   ModifierId,
   defineInputModifier,
   inputModifierCatalogue,
-  modifierFieldMetaByKey,
   type InputModifier,
-  type ModifierFieldKey as ModifierFieldKeyType,
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
 } from "../../models/inputModifiers";
 import type { JsThermalComfortStandard } from "../../models/comfortModels";
 import { deriveRelativeAirSpeedFromMeasured } from "./derivations/airSpeed";
 import { predictClothingInsulation } from "./clothingTools";
+import { isPrimaryQuantityId } from "./quantityStateRouting";
 
 const SOLAR_SHORT_WAVE_ABSORPTIVITY = 0.7;
 const SOLAR_POSTURE = "sitting";
@@ -28,23 +21,23 @@ const SOLAR_FLOOR_REFLECTANCE = 0.6;
 
 export const measuredAirSpeedModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MeasuredAirSpeed],
-  extraInputs: [ModifierFieldKey.MeasuredAirSpeed],
-  affectedFields: [FieldKey.RelativeAirSpeed],
+  extraInputs: [PhysicalQuantityId.ModifierMeasuredAirSpeed],
+  affectedFields: [PhysicalQuantityId.RelativeAirSpeed],
   apply: (inputs, extraInputs) => ({
-    [FieldKey.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
-      extraInputs[ModifierFieldKey.MeasuredAirSpeed],
-      inputs[FieldKey.MetabolicRate],
+    [PhysicalQuantityId.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
+      extraInputs[PhysicalQuantityId.ModifierMeasuredAirSpeed],
+      inputs[PhysicalQuantityId.MetabolicRate],
     ),
   }),
 });
 
 export const morningClothingEstimateModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MorningClothingEstimate],
-  extraInputs: [ModifierFieldKey.MorningOutdoorTemperature],
-  affectedFields: [FieldKey.ClothingInsulation],
+  extraInputs: [PhysicalQuantityId.ModifierMorningOutdoorTemperature],
+  affectedFields: [PhysicalQuantityId.ClothingInsulation],
   apply: (_inputs, extraInputs) => ({
-    [FieldKey.ClothingInsulation]: predictClothingInsulation(
-      extraInputs[ModifierFieldKey.MorningOutdoorTemperature],
+    [PhysicalQuantityId.ClothingInsulation]: predictClothingInsulation(
+      extraInputs[PhysicalQuantityId.ModifierMorningOutdoorTemperature],
     ),
   }),
 });
@@ -55,11 +48,11 @@ export function createDynamicClothingModifier(
   return defineInputModifier({
     ...inputModifierCatalogue[ModifierId.DynamicClothing],
     extraInputs: [],
-    affectedFields: [FieldKey.ClothingInsulation],
+    affectedFields: [PhysicalQuantityId.ClothingInsulation],
     apply: (inputs) => ({
-      [FieldKey.ClothingInsulation]: clo_dynamic(
-        inputs[FieldKey.ClothingInsulation],
-        inputs[FieldKey.MetabolicRate],
+      [PhysicalQuantityId.ClothingInsulation]: clo_dynamic(
+        inputs[PhysicalQuantityId.ClothingInsulation],
+        inputs[PhysicalQuantityId.MetabolicRate],
         standard,
       ),
     }),
@@ -69,57 +62,52 @@ export function createDynamicClothingModifier(
 export const solarGainModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.SolarGain],
   extraInputs: [
-    ModifierFieldKey.SolarAltitude,
-    ModifierFieldKey.SolarHorizontalAngle,
-    ModifierFieldKey.DirectSolarRadiation,
-    ModifierFieldKey.SolarTransmittance,
-    ModifierFieldKey.SkyVaultViewFraction,
-    ModifierFieldKey.BodyExposureFraction,
+    PhysicalQuantityId.ModifierSolarAltitude,
+    PhysicalQuantityId.ModifierSolarHorizontalAngle,
+    PhysicalQuantityId.ModifierDirectSolarRadiation,
+    PhysicalQuantityId.ModifierSolarTransmittance,
+    PhysicalQuantityId.ModifierSkyVaultViewFraction,
+    PhysicalQuantityId.ModifierBodyExposureFraction,
   ],
-  affectedFields: [FieldKey.MeanRadiantTemperature],
+  affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
   apply: (inputs, extraInputs) => {
     const { delta_mrt: deltaMrt } = solar_gain(
-      extraInputs[ModifierFieldKey.SolarAltitude],
-      extraInputs[ModifierFieldKey.SolarHorizontalAngle],
-      extraInputs[ModifierFieldKey.DirectSolarRadiation],
-      extraInputs[ModifierFieldKey.SolarTransmittance],
-      extraInputs[ModifierFieldKey.SkyVaultViewFraction],
-      extraInputs[ModifierFieldKey.BodyExposureFraction],
+      extraInputs[PhysicalQuantityId.ModifierSolarAltitude],
+      extraInputs[PhysicalQuantityId.ModifierSolarHorizontalAngle],
+      extraInputs[PhysicalQuantityId.ModifierDirectSolarRadiation],
+      extraInputs[PhysicalQuantityId.ModifierSolarTransmittance],
+      extraInputs[PhysicalQuantityId.ModifierSkyVaultViewFraction],
+      extraInputs[PhysicalQuantityId.ModifierBodyExposureFraction],
       SOLAR_SHORT_WAVE_ABSORPTIVITY,
       SOLAR_POSTURE,
       SOLAR_FLOOR_REFLECTANCE,
     );
     return {
-      [FieldKey.MeanRadiantTemperature]: inputs[FieldKey.MeanRadiantTemperature] + deltaMrt,
+      [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] + deltaMrt,
     };
   },
 });
 
-function isCanonicalInputFieldKey(value: string): value is CanonicalInputFieldKey {
-  return canonicalInputFieldOrder.some((fieldKey) => fieldKey === value);
-}
-
 export function isModifierFieldValueValid(
-  key: ModifierFieldKeyType,
+  key: PhysicalQuantityIdType,
   value: unknown,
 ): value is number {
   if (typeof value !== "number" || !Number.isFinite(value)) return false;
-  const meta = modifierFieldMetaByKey[key];
-  return (meta.minValue === undefined || value >= meta.minValue)
-    && (meta.maxValue === undefined || value <= meta.maxValue);
+  const meta = getPhysicalQuantityMeta(key);
+  return value >= meta.minSi && value <= meta.maxSi;
 }
 
 export function getCompleteModifierInputs(
   modifier: Pick<InputModifier, "extraInputs">,
   values: Readonly<ModifierInputValues>,
-): Record<ModifierFieldKeyType, number> | null {
-  const completeValues: Partial<Record<ModifierFieldKeyType, number>> = {};
+): Record<PhysicalQuantityIdType, number> | null {
+  const completeValues: Partial<Record<PhysicalQuantityIdType, number>> = {};
   for (const key of modifier.extraInputs) {
     const value = values[key];
     if (!isModifierFieldValueValid(key, value)) return null;
     completeValues[key] = value;
   }
-  return completeValues as Record<ModifierFieldKeyType, number>;
+  return completeValues as Record<PhysicalQuantityIdType, number>;
 }
 
 export function isModifierConfigurationComplete(
@@ -130,12 +118,12 @@ export function isModifierConfigurationComplete(
 }
 
 export function applyInputModifierChain(
-  baseInputs: Readonly<CanonicalInputState>,
+  baseInputs: Readonly<PrimaryInputState>,
   modifiers: readonly InputModifier[],
   activeModifiers: Readonly<Partial<Record<ModifierIdType, boolean>>>,
   modifierInputs: Readonly<Partial<Record<ModifierIdType, ModifierInputValues>>>,
-): CanonicalInputState {
-  let effectiveInputs: CanonicalInputState = { ...baseInputs };
+): PrimaryInputState {
+  let effectiveInputs: PrimaryInputState = { ...baseInputs };
 
   for (const modifier of modifiers) {
     if (!activeModifiers[modifier.id]) continue;
@@ -150,7 +138,7 @@ export function applyInputModifierChain(
     const patch = modifier.apply({ ...effectiveInputs }, completeInputs);
     for (const [rawField, value] of Object.entries(patch)) {
       if (
-        !isCanonicalInputFieldKey(rawField)
+        !isPrimaryQuantityId(rawField)
         || !modifier.affectedFields.includes(rawField)
         || !Number.isFinite(value)
       ) {

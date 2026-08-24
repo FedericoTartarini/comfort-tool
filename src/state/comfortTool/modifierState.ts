@@ -1,9 +1,7 @@
-import { fieldMetaByKey } from "../../models/inputFieldsMeta";
 import {
   inputModifierCatalogue,
   modifierOrder,
   type InputModifier,
-  type ModifierFieldKey as ModifierFieldKeyType,
   type ModifierId as ModifierIdType,
 } from "../../models/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
@@ -21,12 +19,21 @@ import {
   getModifierFieldDisplayMeta,
 } from "../../services/units";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
+import {
+  collectModifierInputsByModifier,
+  collectModifierInputsForModifier,
+  setSlotQuantity,
+} from "../../services/comfort/quantityStateRouting";
+import {
+  getQuantityPresentationMeta,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+} from "../../models/physicalQuantities";
 import type {
   ActiveModifiersByInputState,
+  AuxiliaryQuantitiesByInputState,
   InputModifierDraftEntry,
   InputModifierControlViewModel,
-  InputsByInputState,
-  ModifierInputsByInputState,
+  QuantitiesByInputState,
 } from "./types";
 
 export function createActiveModifiersByInput(): ActiveModifiersByInputState {
@@ -39,22 +46,6 @@ export function createActiveModifiersByInput(): ActiveModifiersByInputState {
   }, {} as ActiveModifiersByInputState);
 }
 
-export function createModifierInputsByInput(): ModifierInputsByInputState {
-  return inputOrder.reduce((byInput, inputId) => {
-    byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-      byModifier[modifierId] = inputModifierCatalogue[modifierId].extraInputs.reduce(
-        (values, fieldKey) => {
-          values[fieldKey] = null;
-          return values;
-        },
-        {} as ModifierInputsByInputState[typeof inputId][typeof modifierId],
-      );
-      return byModifier;
-    }, {} as ModifierInputsByInputState[typeof inputId]);
-    return byInput;
-  }, {} as ModifierInputsByInputState);
-}
-
 export function findModelModifier(
   config: RuntimeComfortModelDefinition,
   modifierId: ModifierIdType,
@@ -62,47 +53,41 @@ export function findModelModifier(
   return config.modifiers.find(({ id }) => id === modifierId);
 }
 
-function cloneModifierState(
+function cloneActiveModifiers(
   activeModifiersByInput: ActiveModifiersByInputState,
-  modifierInputsByInput: ModifierInputsByInputState,
-): {
-  activeModifiersByInput: ActiveModifiersByInputState;
-  modifierInputsByInput: ModifierInputsByInputState;
-} {
-  return {
-    activeModifiersByInput: inputOrder.reduce((byInput, inputId) => {
-      byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-        byModifier[modifierId] = activeModifiersByInput[inputId][modifierId];
-        return byModifier;
-      }, {} as Record<ModifierIdType, boolean>);
-      return byInput;
-    }, {} as ActiveModifiersByInputState),
-    modifierInputsByInput: inputOrder.reduce((byInput, inputId) => {
-      byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-        byModifier[modifierId] = {
-          ...modifierInputsByInput[inputId][modifierId],
-        };
-        return byModifier;
-      }, {} as ModifierInputsByInputState[typeof inputId]);
-      return byInput;
-    }, {} as ModifierInputsByInputState),
-  };
+): ActiveModifiersByInputState {
+  return inputOrder.reduce((byInput, inputId) => {
+    byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
+      byModifier[modifierId] = activeModifiersByInput[inputId][modifierId];
+      return byModifier;
+    }, {} as Record<ModifierIdType, boolean>);
+    return byInput;
+  }, {} as ActiveModifiersByInputState);
+}
+
+function cloneAuxiliaryQuantities(
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
+): AuxiliaryQuantitiesByInputState {
+  return inputOrder.reduce((byInput, inputId) => {
+    byInput[inputId] = { ...auxiliaryQuantitiesByInput[inputId] };
+    return byInput;
+  }, {} as AuxiliaryQuantitiesByInputState);
 }
 
 export function createInputModifierDraft(
   config: RuntimeComfortModelDefinition,
   activeModifiersByInput: ActiveModifiersByInputState,
-  modifierInputsByInput: ModifierInputsByInputState,
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
   visibleInputIds: readonly InputIdType[],
 ): InputModifierDraftEntry[] {
   return visibleInputIds.flatMap((inputId) => config.modifiers.map((modifier) => ({
     inputId,
     modifierId: modifier.id,
     enabled: activeModifiersByInput[inputId][modifier.id],
-    inputs: modifier.extraInputs.reduce((values, fieldKey) => {
-      values[fieldKey] = modifierInputsByInput[inputId][modifier.id][fieldKey] ?? null;
-      return values;
-    }, {} as InputModifierDraftEntry["inputs"]),
+    inputs: collectModifierInputsForModifier(
+      auxiliaryQuantitiesByInput[inputId],
+      modifier.id,
+    ),
   })));
 }
 
@@ -135,17 +120,17 @@ export function isInputModifierDraftValid(
       return false;
     }
 
-    const inputKeys = Object.keys(entry.inputs);
+    const inputKeys = Object.keys(entry.inputs) as PhysicalQuantityIdType[];
     if (
-      inputKeys.length !== modifier.extraInputs.length
-      || !modifier.extraInputs.every((fieldKey) => inputKeys.includes(fieldKey))
+      !inputKeys.every((key) => modifier.extraInputs.includes(key))
+      || inputKeys.some((key) => entry.inputs[key] === undefined)
     ) {
       return false;
     }
 
-    for (const fieldKey of modifier.extraInputs) {
-      const value = entry.inputs[fieldKey];
-      if (value !== null && !isModifierFieldValueValid(fieldKey, value)) {
+    for (const quantityId of modifier.extraInputs) {
+      const value = entry.inputs[quantityId];
+      if (value !== undefined && !isModifierFieldValueValid(quantityId, value)) {
         return false;
       }
     }
@@ -161,19 +146,24 @@ export function isInputModifierDraftValid(
 
 export function mergeInputModifierDraft(
   activeModifiersByInput: ActiveModifiersByInputState,
-  modifierInputsByInput: ModifierInputsByInputState,
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
   draft: readonly InputModifierDraftEntry[],
 ) {
-  const merged = cloneModifierState(
-    activeModifiersByInput,
-    modifierInputsByInput,
-  );
+  const merged = {
+    activeModifiersByInput: cloneActiveModifiers(activeModifiersByInput),
+    auxiliaryQuantitiesByInput: cloneAuxiliaryQuantities(auxiliaryQuantitiesByInput),
+  };
 
   for (const entry of draft) {
     merged.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
-    merged.modifierInputsByInput[entry.inputId][entry.modifierId] = {
-      ...entry.inputs,
-    };
+    const modifier = inputModifierCatalogue[entry.modifierId];
+    for (const quantityId of modifier.extraInputs) {
+      setSlotQuantity(
+        merged.auxiliaryQuantitiesByInput[entry.inputId],
+        quantityId,
+        entry.inputs[quantityId],
+      );
+    }
   }
 
   return merged;
@@ -183,7 +173,7 @@ export function updateInputModifierDraftInput(
   draft: readonly InputModifierDraftEntry[],
   inputId: InputIdType,
   modifierId: ModifierIdType,
-  fieldKey: ModifierFieldKeyType,
+  quantityId: PhysicalQuantityIdType,
   rawValue: string,
   unitSystem: UnitSystemType,
 ): InputModifierDraftEntry[] | null {
@@ -195,7 +185,7 @@ export function updateInputModifierDraftInput(
   const entry = draft[entryIndex];
   const transition = parseModifierInputTransition(
     inputModifierCatalogue[modifierId],
-    fieldKey,
+    quantityId,
     rawValue,
     unitSystem,
     entry.enabled,
@@ -206,10 +196,14 @@ export function updateInputModifierDraftInput(
     ? {
         ...draftEntry,
         enabled: transition.disableModifier ? false : draftEntry.enabled,
-        inputs: {
-          ...draftEntry.inputs,
-          [fieldKey]: transition.valueSi ?? null,
-        },
+        inputs: transition.valueSi === undefined
+          ? Object.fromEntries(
+            Object.entries(draftEntry.inputs).filter(([key]) => key !== quantityId),
+          )
+          : {
+              ...draftEntry.inputs,
+              [quantityId]: transition.valueSi,
+            },
       }
     : draftEntry);
 }
@@ -242,16 +236,16 @@ export function setInputModifierDraftEnabled(
 }
 
 export function deriveEffectiveInputsByInput(
-  inputsByInput: InputsByInputState,
+  quantitiesByInput: QuantitiesByInputState,
   activeModifiersByInput: ActiveModifiersByInputState,
-  modifierInputsByInput: ModifierInputsByInputState,
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
   modifiers: readonly InputModifier[],
-): InputsByInputState {
+): QuantitiesByInputState {
   const deriveInput = (inputId: InputIdType) => applyInputModifierChain(
-    inputsByInput[inputId],
+    quantitiesByInput[inputId],
     modifiers,
     activeModifiersByInput[inputId],
-    modifierInputsByInput[inputId],
+    collectModifierInputsByModifier(auxiliaryQuantitiesByInput[inputId]),
   );
   return {
     [InputId.Input1]: deriveInput(InputId.Input1),
@@ -262,9 +256,9 @@ export function deriveEffectiveInputsByInput(
 
 interface ModifierControlsOptions {
   config: RuntimeComfortModelDefinition;
-  inputsByInput: InputsByInputState;
+  quantitiesByInput: QuantitiesByInputState;
   activeModifiersByInput: ActiveModifiersByInputState;
-  modifierInputsByInput: ModifierInputsByInputState;
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
   visibleInputIds: InputIdType[];
   unitSystem: UnitSystemType;
   draft?: readonly InputModifierDraftEntry[];
@@ -272,9 +266,9 @@ interface ModifierControlsOptions {
 
 export function buildInputModifierControls({
   config,
-  inputsByInput,
+  quantitiesByInput,
   activeModifiersByInput,
-  modifierInputsByInput,
+  auxiliaryQuantitiesByInput,
   visibleInputIds,
   unitSystem,
   draft,
@@ -285,14 +279,14 @@ export function buildInputModifierControls({
   const projectedState = draft
     ? mergeInputModifierDraft(
         activeModifiersByInput,
-        modifierInputsByInput,
+        auxiliaryQuantitiesByInput,
         draft,
       )
-    : { activeModifiersByInput, modifierInputsByInput };
+    : { activeModifiersByInput, auxiliaryQuantitiesByInput };
   const effectiveInputs = deriveEffectiveInputsByInput(
-    inputsByInput,
+    quantitiesByInput,
     projectedState.activeModifiersByInput,
-    projectedState.modifierInputsByInput,
+    projectedState.auxiliaryQuantitiesByInput,
     config.modifiers,
   );
 
@@ -309,22 +303,24 @@ export function buildInputModifierControls({
       completeByInput: visibleInputIds.reduce((values, inputId) => {
         values[inputId] = isModifierConfigurationComplete(
           modifier,
-          projectedState.modifierInputsByInput[inputId][modifierId],
+          collectModifierInputsForModifier(
+            projectedState.auxiliaryQuantitiesByInput[inputId],
+            modifierId,
+          ),
         );
         return values;
       }, {} as InputModifierControlViewModel["completeByInput"]),
-      extraInputs: modifier.extraInputs.map((fieldKey) => {
-        const displayMeta = getModifierFieldDisplayMeta(fieldKey, unitSystem);
+      extraInputs: modifier.extraInputs.map((quantityId) => {
+        const displayMeta = getModifierFieldDisplayMeta(quantityId, unitSystem);
         return {
-          key: fieldKey,
+          key: quantityId,
           ...displayMeta,
           displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
-            const valueSi = projectedState
-              .modifierInputsByInput[inputId][modifierId][fieldKey];
-            values[inputId] = valueSi == null
+            const valueSi = projectedState.auxiliaryQuantitiesByInput[inputId][quantityId];
+            values[inputId] = valueSi === undefined
               ? ""
               : formatDisplayValue(
-                  convertModifierFieldValueFromSi(fieldKey, valueSi, unitSystem),
+                  convertModifierFieldValueFromSi(quantityId, valueSi, unitSystem),
                   displayMeta.decimals,
                 );
             return values;
@@ -332,11 +328,11 @@ export function buildInputModifierControls({
         };
       }),
       affectedFields: modifier.affectedFields.map((fieldKey) => {
-        const meta = fieldMetaByKey[fieldKey];
+        const meta = getQuantityPresentationMeta(fieldKey, unitSystem);
         return {
           key: fieldKey,
           label: `Effective ${meta.label.toLowerCase()}`,
-          displayUnits: meta.displayUnits[unitSystem],
+          displayUnits: meta.displayUnits,
           displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
             const displayValue = convertFieldValueFromSi(
               fieldKey,
@@ -354,37 +350,40 @@ export function buildInputModifierControls({
 
 export interface ModifierInputTransition {
   accepted: boolean;
-  valueSi?: number | null;
+  valueSi?: number;
   disableModifier: boolean;
 }
 
 export function parseModifierInputTransition(
   modifier: Pick<InputModifier, "extraInputs">,
-  fieldKey: ModifierFieldKeyType,
+  quantityId: PhysicalQuantityIdType,
   rawValue: string,
   unitSystem: UnitSystemType,
   wasActive: boolean,
 ): ModifierInputTransition {
-  if (!modifier.extraInputs.includes(fieldKey)) {
+  if (!modifier.extraInputs.includes(quantityId)) {
     return { accepted: false, disableModifier: false };
   }
   if (rawValue.trim() === "") {
-    return { accepted: true, valueSi: null, disableModifier: wasActive };
+    return { accepted: true, valueSi: undefined, disableModifier: wasActive };
   }
 
   const displayValue = Number(rawValue);
   if (!Number.isFinite(displayValue)) {
     return { accepted: false, disableModifier: false };
   }
-  const valueSi = convertModifierFieldValueToSi(fieldKey, displayValue, unitSystem);
-  return isModifierFieldValueValid(fieldKey, valueSi)
+  const valueSi = convertModifierFieldValueToSi(quantityId, displayValue, unitSystem);
+  return isModifierFieldValueValid(quantityId, valueSi)
     ? { accepted: true, valueSi, disableModifier: false }
     : { accepted: false, disableModifier: false };
 }
 
 export function canEnableModifier(
-  modifier: Pick<InputModifier, "extraInputs">,
-  values: ModifierInputsByInputState[InputIdType][ModifierIdType],
+  modifier: Pick<InputModifier, "extraInputs" | "id">,
+  auxiliary: AuxiliaryQuantitiesByInputState[InputIdType],
 ): boolean {
-  return isModifierConfigurationComplete(modifier, values);
+  return isModifierConfigurationComplete(
+    modifier,
+    collectModifierInputsForModifier(auxiliary, modifier.id),
+  );
 }

@@ -1,11 +1,10 @@
-import { type FieldKey as FieldKeyType } from "../../../models/fieldKeys";
-import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
+import { getPhysicalQuantityMeta, getQuantityPresentationMeta, type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import { type UnitSystem as UnitSystemType } from "../../../models/units";
 import { convertFieldValueFromSi, convertFieldValueToSi } from "../../units";
 import type { ChartAxisScale, ChartAxisValues, ChartRange } from "./types";
 
 interface CreateFieldAxisScaleOptions {
-  field: FieldKeyType;
+  field: ChartAxisQuantityId;
   unitSystem: UnitSystemType;
   rangeSi?: ChartRange;
   points: number;
@@ -35,18 +34,19 @@ export function createFieldAxisScale({
   toDisplay,
   toSi,
 }: CreateFieldAxisScaleOptions): ChartAxisScale {
-  const meta = fieldMetaByKey[field];
+  const meta = getPhysicalQuantityMeta(field);
+  const presentation = getQuantityPresentationMeta(field, unitSystem);
 
   return {
     field,
     label: label ?? meta.label,
-    units: units ?? meta.displayUnits[unitSystem],
-    decimals: decimals ?? meta.decimals,
+    units: units ?? presentation.displayUnits,
+    decimals: decimals ?? presentation.decimals,
     gridColor,
     showGrid,
     zeroLine,
     showTickLabels,
-    rangeSi: rangeSi ?? { min: meta.minValue, max: meta.maxValue },
+    rangeSi: rangeSi ?? { min: meta.minSi, max: meta.maxSi },
     points,
     toDisplay: toDisplay ?? ((valueSi) => convertFieldValueFromSi(field, valueSi, unitSystem)),
     toSi: toSi ?? ((valueDisplay) => convertFieldValueToSi(field, valueDisplay, unitSystem)),

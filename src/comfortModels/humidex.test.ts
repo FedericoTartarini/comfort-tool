@@ -4,10 +4,13 @@
 import { describe, expect, it } from "vitest";
 import { calculateHumidex, humidexModelConfig } from "./humidex";
 import { UnitSystem } from "../models/units";
-import { ChartId } from "../models/chartOptions";
-import { FieldKey } from "../models/fieldKeys";
+import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { InputId } from "../models/inputSlots";
-import { ChartMode, type ChartBuildContext } from "../models/modelCapabilities";
+
+import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
+import { type ChartBuildContext } from "../models/modelCapabilities";
+import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { ChartInstanceId } from "../models/output/chartInstances";
 
 describe("humidex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -21,7 +24,7 @@ describe("humidex service", () => {
       tdb: 30,
       rh: 70,
     });
-    
+
     expect(result.humidex).toBeGreaterThan(40);
     expect(result.humidex).toBeLessThan(43);
     expect(result.humidexDiscomfort).toBe("Intense");
@@ -33,7 +36,7 @@ describe("humidex service", () => {
       tdb: 40,
       rh: 75,
     });
-    
+
     expect(result.humidex).toBeGreaterThanOrEqual(54);
     expect(result.humidexDiscomfort).toBe("Stroke Probable");
   });
@@ -43,7 +46,7 @@ describe("humidex service", () => {
       tdb: 15,
       rh: 30,
     });
-    
+
     expect(result.humidexDiscomfort).toBe("Little/None");
   });
 
@@ -62,22 +65,22 @@ describe("humidex service", () => {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
       fieldChartConfig: {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: humidexModelConfig.chartableOutputs[0].key,
-        bands: humidexModelConfig.chartableOutputs[0].defaultBands,
+        profileKind: FieldChartProfileKind.Explore,
+        xField: PhysicalQuantityId.DryBulbTemperature,
+        yField: PhysicalQuantityId.RelativeHumidity,
+        zOutput: humidexModelConfig.exploreOutputs[0].key,
+        bands: humidexModelConfig.exploreOutputs[0].defaultBands,
       },
     } satisfies ChartBuildContext;
 
-    const fixedChart = humidexModelConfig.buildChartResult(
-      ChartId.Humidex,
+    const fixedChart = buildChartPlotly(humidexModelConfig,
+      ChartInstanceId.Humidex.Ranges,
       chartSource,
       resultsByInput,
       fixedContext,
     );
-    const dynamicChart = humidexModelConfig.buildChartResult(
-      ChartId.HumidexDynamic,
+    const dynamicChart = buildChartPlotly(humidexModelConfig,
+      ChartInstanceId.Humidex.DynamicField,
       chartSource,
       resultsByInput,
       fixedContext,
@@ -112,8 +115,8 @@ describe("humidex service", () => {
         color: "#abcdef",
       },
     ];
-    const chart = humidexModelConfig.buildChartResult(
-      ChartId.Humidex,
+    const chart = buildChartPlotly(humidexModelConfig,
+      ChartInstanceId.Humidex.Ranges,
       { inputs: { [InputId.Input1]: request } },
       {
         [InputId.Input1]: result,
@@ -124,10 +127,10 @@ describe("humidex service", () => {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
-          mode: ChartMode.Explore,
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.RelativeHumidity,
-          zOutput: humidexModelConfig.chartableOutputs[0].key,
+          profileKind: FieldChartProfileKind.Explore,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
+          zOutput: humidexModelConfig.exploreOutputs[0].key,
           bands,
         },
       },

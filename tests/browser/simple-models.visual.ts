@@ -117,7 +117,7 @@ test("UTCI fixed stress chart keeps Explore thresholds while locking axes", asyn
   await expectSingleOutputExploreControls(page);
   await expectRenderedContour(page.getByTestId("comfort-chart-plot"));
   await expect(page.getByTestId("comfort-chart-visual"))
-    .toContainText("Extreme Cold Stress");
+    .toContainText("Ext.cold");
 });
 
 test("Wind Chill completes the boundary-confirmed model switch", async ({ page }) => {

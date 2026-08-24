@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button, Dropdown, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import { fieldMetaByKey } from "../../models/inputFieldsMeta";
+  import { getPhysicalQuantityMeta } from "../../models/physicalQuantities";
   import { inputOrder } from "../../models/inputSlots";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
   import type {
@@ -50,7 +50,7 @@
     disabled={control.locked}
   >
     <span class="max-w-[100px] truncate">
-      {fieldMetaByKey[control.selectedField].label}
+      {getPhysicalQuantityMeta(control.selectedField).label}
     </span>
     {#if !control.locked}
       <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
@@ -72,7 +72,7 @@
               ? "font-bold text-teal-700"
               : "text-stone-700"}
           >
-            {fieldMetaByKey[option].label}
+            {getPhysicalQuantityMeta(option).label}
           </span>
         </DropdownItem>
       {/each}
@@ -144,14 +144,14 @@
       <ChartDisplayMenu
         {idPrefix}
         outputs={controls.explore.outputs}
-        selectedOutput={controls.explore.config.zOutput}
+        selectedOutput={controls.explore.profile.zOutput}
         onSelect={controls.explore.onSelectOutput}
       />
     {/if}
     <ChartBandEditor
       {idPrefix}
-      outputKey={controls.explore.config.zOutput}
-      bands={controls.explore.config.bands}
+      outputKey={controls.explore.profile.zOutput}
+      bands={controls.explore.profile.bands as readonly import("../../models/modelCapabilities").NumericBand[]}
       defaultBands={controls.explore.defaultBands}
       unitSystem={controls.explore.unitSystem}
       onApply={controls.explore.onApplyBands}

@@ -11,6 +11,7 @@ import {
   type Band,
   type BandInputsSi,
 } from "../../../models/modelCapabilities";
+import { buildFilledPolygonTrace } from "./plotlyBuilders";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale } from "./types";
 
@@ -215,21 +216,16 @@ export function buildFilledBoundaryRegionTrace({
   opacity = 0.72,
   isBackgroundZone = true,
 }: FilledBoundaryRegionTraceOptions): PlotScatterLineTraceDto {
-  return {
-    type: "scatter",
-    mode: "lines",
+  return buildFilledPolygonTrace({
     name,
     x: polygonX,
     y: polygonY,
-    showlegend: false,
-    fill: "toself",
     fillcolor: color,
-    line: { color: lineColor, width: 0.8 },
-    marker: {},
+    lineColor,
+    lineWidth: 0.8,
     opacity,
-    hoverinfo: "skip",
     isBackgroundZone,
-  };
+  });
 }
 
 export function buildTooltipGridTrace({

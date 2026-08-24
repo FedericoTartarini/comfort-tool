@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import {
   getDynamicAxisOptions,
   isDynamicAxisPairValid,
@@ -9,103 +9,103 @@ import {
 } from "./dynamicAxes";
 
 const fields = [
-  FieldKey.DryBulbTemperature,
-  FieldKey.MeanRadiantTemperature,
-  FieldKey.OperativeTemperature,
-  FieldKey.RelativeAirSpeed,
+  PhysicalQuantityId.DryBulbTemperature,
+  PhysicalQuantityId.MeanRadiantTemperature,
+  PhysicalQuantityId.OperativeTemperature,
+  PhysicalQuantityId.RelativeAirSpeed,
 ] as const;
 
 const config = {
   dynamicAxisFields: fields,
   defaultDynamicAxes: {
-    xAxis: FieldKey.DryBulbTemperature,
-    yAxis: FieldKey.MeanRadiantTemperature,
+    xAxis: PhysicalQuantityId.DryBulbTemperature,
+    yAxis: PhysicalQuantityId.MeanRadiantTemperature,
   },
 };
 
 describe("dynamicAxes", () => {
   it("validates supported, distinct pairs", () => {
     expect(isDynamicAxisPairValid(config, {
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.MeanRadiantTemperature,
+      xAxis: PhysicalQuantityId.DryBulbTemperature,
+      yAxis: PhysicalQuantityId.MeanRadiantTemperature,
     })).toBe(true);
     expect(isDynamicAxisPairValid(config, {
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.OperativeTemperature,
+      xAxis: PhysicalQuantityId.DryBulbTemperature,
+      yAxis: PhysicalQuantityId.OperativeTemperature,
     })).toBe(true);
     expect(isDynamicAxisPairValid(config, {
-      xAxis: FieldKey.RelativeHumidity,
-      yAxis: FieldKey.MeanRadiantTemperature,
+      xAxis: PhysicalQuantityId.RelativeHumidity,
+      yAxis: PhysicalQuantityId.MeanRadiantTemperature,
     })).toBe(false);
   });
 
   it("normalizes every invalid pair to the declared default", () => {
     expect(normalizeDynamicAxisPair(config, {
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.DryBulbTemperature,
+      xAxis: PhysicalQuantityId.DryBulbTemperature,
+      yAxis: PhysicalQuantityId.DryBulbTemperature,
     })).toEqual({
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.MeanRadiantTemperature,
+      xAxis: PhysicalQuantityId.DryBulbTemperature,
+      yAxis: PhysicalQuantityId.MeanRadiantTemperature,
     });
 
     expect(normalizeDynamicAxisPair(config, {
-      xAxis: FieldKey.RelativeHumidity,
-      yAxis: FieldKey.WindSpeed,
+      xAxis: PhysicalQuantityId.RelativeHumidity,
+      yAxis: PhysicalQuantityId.WindSpeed,
     })).toEqual({
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.MeanRadiantTemperature,
+      xAxis: PhysicalQuantityId.DryBulbTemperature,
+      yAxis: PhysicalQuantityId.MeanRadiantTemperature,
     });
   });
 
   it("keeps same-field selection as a swap and rejects undeclared fields", () => {
     const pair = {
-      xAxis: FieldKey.RelativeAirSpeed,
-      yAxis: FieldKey.OperativeTemperature,
+      xAxis: PhysicalQuantityId.RelativeAirSpeed,
+      yAxis: PhysicalQuantityId.OperativeTemperature,
     };
 
     expect(resolveDynamicAxisSelection(
       config,
       pair,
       "x",
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
     )).toEqual({
-      xAxis: FieldKey.OperativeTemperature,
-      yAxis: FieldKey.RelativeAirSpeed,
+      xAxis: PhysicalQuantityId.OperativeTemperature,
+      yAxis: PhysicalQuantityId.RelativeAirSpeed,
     });
     expect(resolveDynamicAxisSelection(
       config,
       pair,
       "x",
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
     )).toEqual({
-      xAxis: FieldKey.DryBulbTemperature,
-      yAxis: FieldKey.OperativeTemperature,
+      xAxis: PhysicalQuantityId.DryBulbTemperature,
+      yAxis: PhysicalQuantityId.OperativeTemperature,
     });
     expect(resolveDynamicAxisSelection(
       config,
       pair,
       "x",
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.RelativeHumidity,
     )).toBeNull();
   });
 
   it("offers every declared field on each axis", () => {
     const pair = {
-      xAxis: FieldKey.RelativeAirSpeed,
-      yAxis: FieldKey.OperativeTemperature,
+      xAxis: PhysicalQuantityId.RelativeAirSpeed,
+      yAxis: PhysicalQuantityId.OperativeTemperature,
     };
 
     expect(getDynamicAxisOptions(config, pair, "x")).toEqual([
-      FieldKey.DryBulbTemperature,
-      FieldKey.MeanRadiantTemperature,
-      FieldKey.OperativeTemperature,
-      FieldKey.RelativeAirSpeed,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.MeanRadiantTemperature,
+      PhysicalQuantityId.OperativeTemperature,
+      PhysicalQuantityId.RelativeAirSpeed,
     ]);
     expect(getDynamicAxisOptions(config, pair, "y")).toEqual([
-      FieldKey.DryBulbTemperature,
-      FieldKey.MeanRadiantTemperature,
-      FieldKey.OperativeTemperature,
-      FieldKey.RelativeAirSpeed,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.MeanRadiantTemperature,
+      PhysicalQuantityId.OperativeTemperature,
+      PhysicalQuantityId.RelativeAirSpeed,
     ]);
   });
 });

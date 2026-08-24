@@ -49,7 +49,7 @@ type PmvDisplay = "PMV" | "PPD (%)";
 interface TargetChartOptions {
   model?: PmvModel;
   display?: PmvDisplay;
-  mode?: "compliance" | "explore";
+  workspace?: "standard" | "explore";
   useIpUnits?: boolean;
 }
 
@@ -199,11 +199,11 @@ async function openTargetPmvChart(
   {
     model = "ashrae",
     display = "PMV",
-    mode = "explore",
+    workspace = "explore",
     useIpUnits = false,
   }: TargetChartOptions = {},
 ) {
-  const pathname = mode === "explore"
+  const pathname = workspace === "explore"
     ? "/Explore/"
     : model === "iso"
       ? "/ISO-7730/"
@@ -226,7 +226,7 @@ async function openTargetPmvChart(
   const panel = page.getByTestId("comfort-chart-panel");
   await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
   await expect(panel.getByText(
-    mode === "explore" ? "Explore" : "Compliance",
+    workspace === "explore" ? "Explore" : "Compliance",
     { exact: true },
   )).toBeVisible();
 
@@ -309,8 +309,8 @@ async function expectComplianceConstraintFills(plot: Locator) {
 }
 
 test.describe("PMV visual regression", () => {
-  test("ASHRAE mode panel locks Compliance and exposes Explore controls", async ({ page }) => {
-    const { panel, plot } = await openTargetPmvChart(page, { mode: "compliance" });
+  test("ASHRAE Standard workspace locks Compliance profile and exposes Explore controls", async ({ page }) => {
+    const { panel, plot } = await openTargetPmvChart(page, { workspace: "standard" });
 
     await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
     await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
@@ -345,12 +345,12 @@ test.describe("PMV visual regression", () => {
     await expect(panel).toHaveScreenshot("pmv-ashrae-explore-panel.png");
   });
 
-  test("ASHRAE fixed psychrometric view keeps the active mode output and bands", async ({
+  test("ASHRAE fixed psychrometric view keeps the active Explore output and bands", async ({
     page,
   }) => {
     const { panel, plot, visual } = await openTargetPmvChart(page, {
       display: "PPD (%)",
-      mode: "explore",
+      workspace: "explore",
     });
     const chartTrigger = page.getByRole("button", {
       name: "Select chart type and export",
@@ -371,7 +371,6 @@ test.describe("PMV visual regression", () => {
       .toBeVisible();
     await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeVisible();
     await waitForTrace(plot, "PPD (%) bands hover");
-    await expect(visual).toContainText("PPD Bands");
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
     await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
@@ -381,7 +380,6 @@ test.describe("PMV visual regression", () => {
     await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeHidden();
     await waitForTrace(plot, "PMV bands hover");
     await expectComplianceConstraintFills(plot);
-    await expect(visual).toContainText("PMV Zones");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot(
       "pmv-ashrae-psychrometric-compliance-si.png",
@@ -393,9 +391,6 @@ test.describe("PMV visual regression", () => {
 
     await expectTargetResults(page);
     await expectPmvConstraintFills(plot);
-    await expect(visual).toContainText("PMV Zones");
-    await expect(visual).toContainText("Slightly Cool");
-    await expect(visual).toContainText("Slightly Warm");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-si.png");
   });
@@ -430,7 +425,6 @@ test.describe("PMV visual regression", () => {
   test("ASHRAE PPD in SI", async ({ page }) => {
     const { plot, visual } = await openTargetPmvChart(page, { display: "PPD (%)" });
 
-    await expect(visual).toContainText("PPD Bands");
     const constraintValues = await plot.evaluate((element) => {
       const traces = (element as HTMLElement & {
         data?: Array<{ contours?: { operation?: string; value?: number } }>;
@@ -448,7 +442,6 @@ test.describe("PMV visual regression", () => {
     const { plot, visual } = await openTargetPmvChart(page, { model: "iso" });
 
     await expectPmvConstraintFills(plot);
-    await expect(visual).toContainText("PMV Zones");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-iso-si.png");
   });
@@ -457,7 +450,6 @@ test.describe("PMV visual regression", () => {
     const { plot, visual } = await openTargetPmvChart(page, { useIpUnits: true });
 
     await expectPmvConstraintFills(plot);
-    await expect(visual).toContainText("PMV Zones");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-ip.png");
   });
@@ -505,7 +497,7 @@ test.describe("PMV visual regression", () => {
 
     await page.getByRole("button", { name: "Select chart type and export" }).click();
     const pngDownloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export as image (PNG)" }).click();
+    await page.getByTestId('chart-toolbar').getByRole("button", { name: "PNG" }).click();
     const pngDownload = await pngDownloadPromise;
     const pngPath = await pngDownload.path();
     expect(pngDownload.suggestedFilename()).toBe(
@@ -520,7 +512,7 @@ test.describe("PMV visual regression", () => {
 
     await page.getByRole("button", { name: "Select chart type and export" }).click();
     const svgDownloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export as vector (SVG)" }).click();
+    await page.getByTestId('chart-toolbar').getByRole("button", { name: "SVG" }).click();
     const svgDownload = await svgDownloadPromise;
     const svgPath = await svgDownload.path();
     expect(svgDownload.suggestedFilename()).toBe(

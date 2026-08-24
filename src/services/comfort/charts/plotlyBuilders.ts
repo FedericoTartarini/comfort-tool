@@ -109,10 +109,14 @@ export interface LineTraceOptions {
   x: number[];
   y: number[];
   color: string;
-  hovertemplate: string;
+  hovertemplate?: string;
   text?: string[];
   hoverMetadata?: PlotHoverRowDto[];
   hoverinfo?: PlotHoverInfoDto;
+  showlegend?: boolean;
+  visible?: true | "legendonly";
+  lineWidth?: number;
+  dash?: PlotLineDto["dash"];
 }
 
 export function buildLineTrace({
@@ -124,6 +128,10 @@ export function buildLineTrace({
   text,
   hoverMetadata,
   hoverinfo,
+  showlegend = false,
+  visible,
+  lineWidth = 1.2,
+  dash,
 }: LineTraceOptions): PlotScatterLineTraceDto {
   return {
     type: "scatter",
@@ -131,13 +139,57 @@ export function buildLineTrace({
     name,
     x,
     y,
-    showlegend: false,
-    line: { color, width: 1.2 },
+    showlegend,
+    visible,
+    line: { color, width: lineWidth, dash },
     marker: {},
     hovertemplate,
     text,
     hoverMetadata,
     hoverinfo,
+  };
+}
+
+export interface FilledPolygonTraceOptions {
+  name: string;
+  x: number[];
+  y: number[];
+  fillcolor: string;
+  lineColor?: string;
+  lineWidth?: number;
+  opacity?: number;
+  hoverinfo?: PlotHoverInfoDto;
+  hovertemplate?: string;
+  isBackgroundZone?: boolean;
+}
+
+export function buildFilledPolygonTrace({
+  name,
+  x,
+  y,
+  fillcolor,
+  lineColor,
+  lineWidth = 0.8,
+  opacity,
+  hoverinfo = "skip",
+  hovertemplate,
+  isBackgroundZone,
+}: FilledPolygonTraceOptions): PlotScatterLineTraceDto {
+  return {
+    type: "scatter",
+    mode: "lines",
+    name,
+    x,
+    y,
+    showlegend: false,
+    fill: "toself",
+    fillcolor,
+    line: { color: lineColor ?? fillcolor, width: lineWidth },
+    marker: {},
+    opacity,
+    hoverinfo,
+    hovertemplate,
+    isBackgroundZone,
   };
 }
 

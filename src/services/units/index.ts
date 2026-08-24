@@ -1,8 +1,18 @@
-import { FieldKey, type FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import {
+  PhysicalQuantityId,
+  type ChartAxisQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+} from "../../models/physicalQuantities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
-import { convertSpeedFromSi, convertSpeedToSi } from "./physicalQuantities";
-
+import {
+  convertLengthFromSi,
+  convertLengthToSi,
+  convertMassFromSi,
+  convertMassToSi,
+  convertSpeedFromSi,
+  convertSpeedToSi,
+} from "./physicalQuantities";
 export * from "./modelOutputs";
 export * from "./modifierInputs";
 export {
@@ -61,8 +71,42 @@ export function convertMetersPerSecondToKilometersPerHour(value: number): number
   return value * KILOMETERS_PER_HOUR_PER_METER_PER_SECOND;
 }
 
+export function convertModelQuantityFromSi(
+  quantityId: PhysicalQuantityIdType,
+  valueSi: number,
+  unitSystem: UnitSystemType,
+): number {
+  if (unitSystem === UnitSystem.SI) {
+    return valueSi;
+  }
+  if (quantityId === PhysicalQuantityId.PhsBodyWeight) {
+    return convertMassFromSi(valueSi * 1000);
+  }
+  if (quantityId === PhysicalQuantityId.PhsHeight) {
+    return convertLengthFromSi(valueSi);
+  }
+  return valueSi;
+}
+
+export function convertModelQuantityToSi(
+  quantityId: PhysicalQuantityIdType,
+  value: number,
+  unitSystem: UnitSystemType,
+): number {
+  if (unitSystem === UnitSystem.SI) {
+    return value;
+  }
+  if (quantityId === PhysicalQuantityId.PhsBodyWeight) {
+    return convertMassToSi(value) / 1000;
+  }
+  if (quantityId === PhysicalQuantityId.PhsHeight) {
+    return convertLengthToSi(value);
+  }
+  return value;
+}
+
 export function convertFieldValueFromSi(
-  key: FieldKeyType,
+  key: ChartAxisQuantityId,
   value: number,
   unitSystem: UnitSystemType,
 ): number {
@@ -71,15 +115,15 @@ export function convertFieldValueFromSi(
   }
 
   if (
-    key === FieldKey.DryBulbTemperature ||
-    key === FieldKey.MeanRadiantTemperature ||
-    key === FieldKey.PrevailingMeanOutdoorTemperature ||
-    key === FieldKey.OperativeTemperature
+    key === PhysicalQuantityId.DryBulbTemperature ||
+    key === PhysicalQuantityId.MeanRadiantTemperature ||
+    key === PhysicalQuantityId.PrevailingMeanOutdoorTemperature ||
+    key === PhysicalQuantityId.OperativeTemperature
   ) {
     return convertTemperatureFromSi(value);
   }
 
-  if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) {
+  if (key === PhysicalQuantityId.RelativeAirSpeed || key === PhysicalQuantityId.WindSpeed) {
     return convertSpeedFromSi(value);
   }
 
@@ -87,7 +131,7 @@ export function convertFieldValueFromSi(
 }
 
 export function convertFieldValueToSi(
-  key: FieldKeyType,
+  key: ChartAxisQuantityId,
   value: number,
   unitSystem: UnitSystemType,
 ): number {
@@ -96,15 +140,15 @@ export function convertFieldValueToSi(
   }
 
   if (
-    key === FieldKey.DryBulbTemperature ||
-    key === FieldKey.MeanRadiantTemperature ||
-    key === FieldKey.PrevailingMeanOutdoorTemperature ||
-    key === FieldKey.OperativeTemperature
+    key === PhysicalQuantityId.DryBulbTemperature ||
+    key === PhysicalQuantityId.MeanRadiantTemperature ||
+    key === PhysicalQuantityId.PrevailingMeanOutdoorTemperature ||
+    key === PhysicalQuantityId.OperativeTemperature
   ) {
     return convertTemperatureToSi(value);
   }
 
-  if (key === FieldKey.RelativeAirSpeed || key === FieldKey.WindSpeed) {
+  if (key === PhysicalQuantityId.RelativeAirSpeed || key === PhysicalQuantityId.WindSpeed) {
     return convertSpeedToSi(value);
   }
 

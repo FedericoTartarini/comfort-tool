@@ -1,4 +1,5 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
+import { type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import type {
   PlotAnnotationDto,
   PlotHoverCellDto,
@@ -6,15 +7,16 @@ import type {
   PlotMarginDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
-import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
-
 export interface ChartRange {
   min: number;
   max: number;
 }
 
+/** Shared SI coordinate tolerance for chart baseline matching and axis solving. */
+export const CHART_COORDINATE_TOLERANCE = 1e-6;
+
 export interface ChartAxisScale {
-  field: FieldKeyType;
+  field: ChartAxisQuantityId;
   label: string;
   units: string;
   rangeSi: ChartRange;

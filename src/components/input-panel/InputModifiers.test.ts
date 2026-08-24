@@ -6,7 +6,8 @@ import { tick } from "svelte";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ComfortModel } from "../../models/comfortModels";
-import { ModifierFieldKey, ModifierId } from "../../models/inputModifiers";
+import { ModifierId } from "../../models/inputModifiers";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
 import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
 import InputModifiers from "./InputModifiers.svelte";
@@ -65,8 +66,8 @@ describe("InputModifiers", () => {
     expect(dynamicClothingToggle.closest("label")?.classList.contains("grayscale"))
       .toBe(false);
 
-    expect(toolState.state.modifierInputsByInput[InputId.Input1]
-      [ModifierId.MeasuredAirSpeed][ModifierFieldKey.MeasuredAirSpeed]).toBeNull();
+    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+      [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBeUndefined();
     expect(toolState.state.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(false);
     expect(screen.getByRole("dialog").textContent).toContain("Effective air speed:");
@@ -75,8 +76,8 @@ describe("InputModifiers", () => {
     await tick();
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(toolState.state.modifierInputsByInput[InputId.Input1]
-      [ModifierId.MeasuredAirSpeed][ModifierFieldKey.MeasuredAirSpeed]).toBe(0.6);
+    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+      [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
     expect(toolState.state.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(true);
     expect(toolState.state.activeModifiersByInput[InputId.Input1]
@@ -114,9 +115,8 @@ describe("InputModifiers", () => {
       [ModifierId.MorningClothingEstimate]).toBe(false);
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(toolState.state.modifierInputsByInput[InputId.Input1]
-      [ModifierId.MorningClothingEstimate]
-      [ModifierFieldKey.MorningOutdoorTemperature]).toBeNull();
+    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+      [PhysicalQuantityId.ModifierMorningOutdoorTemperature]).toBeUndefined();
     expect(toolState.state.activeModifiersByInput[InputId.Input1]
       [ModifierId.MorningClothingEstimate]).toBe(false);
 

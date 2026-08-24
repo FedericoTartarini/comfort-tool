@@ -1,11 +1,4 @@
-import {
-  DerivedInputId,
-  FieldKey,
-  type CanonicalInputState,
-  type DerivedInputId as DerivedInputIdType,
-  type DerivedInputState,
-} from "../../../models/fieldKeys";
-import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
+import { PhysicalQuantityId, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../models/physicalQuantities";
 import type { InputControlId as InputControlIdType } from "../../../models/inputControls";
 import {
   HumidityInputMode,
@@ -15,6 +8,7 @@ import {
 } from "../../../models/inputModes";
 import { inputOrder } from "../../../models/inputSlots";
 import { humidityMenuItems } from "../../../models/controlMenuMeta";
+import { getDerivedFromAuxiliary } from "../quantityStateRouting";
 import {
   convertFieldValueFromSi,
   convertFieldValueToSi,
@@ -32,6 +26,7 @@ import {
   deriveRelativeHumidityFromWetBulb,
 } from "../derivations";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import { UnitSystem } from "../../../models/units";
 import type {
   ControlBehaviorContext,
   InputControlBehavior,
@@ -48,7 +43,7 @@ import {
 
 interface HumidityModeDefinition {
   label: string;
-  derivedKey: DerivedInputIdType | null;
+  derivedKey: DerivedSlotQuantityId | null;
   getPresentation: (
     context: ControlBehaviorContext,
     label: string,
@@ -61,16 +56,22 @@ interface HumidityModeDefinition {
   ) => number;
 }
 
-const temperatureMeta = fieldMetaByKey[FieldKey.DryBulbTemperature];
-const relativeHumidityMeta = fieldMetaByKey[FieldKey.RelativeHumidity];
+const relativeHumidityLabel = getQuantityPresentationMeta(
+  PhysicalQuantityId.RelativeHumidity,
+  UnitSystem.SI,
+).label;
 
 function buildTemperaturePresentation(
   context: ControlBehaviorContext,
   label: string,
 ): PresentationMeta {
+  const temperatureMeta = getQuantityPresentationMeta(
+    PhysicalQuantityId.DryBulbTemperature,
+    context.unitSystem,
+  );
   return {
     label,
-    displayUnits: temperatureMeta.displayUnits[context.unitSystem],
+    displayUnits: temperatureMeta.displayUnits,
     step: temperatureMeta.step,
     decimals: temperatureMeta.decimals,
     rangeText: "",
@@ -79,10 +80,10 @@ function buildTemperaturePresentation(
 
 const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinition> = {
   [HumidityInputMode.RelativeHumidity]: {
-    label: relativeHumidityMeta.label,
+    label: relativeHumidityLabel,
     derivedKey: null,
     getPresentation: (context, label) => ({
-      ...buildDefaultPresentation(context, relativeHumidityMeta),
+      ...buildDefaultPresentation(context, PhysicalQuantityId.RelativeHumidity),
       label,
     }),
     fromSi: (valueSi) => valueSi,
@@ -91,7 +92,7 @@ const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinit
   },
   [HumidityInputMode.HumidityRatio]: {
     label: "Humidity ratio",
-    derivedKey: DerivedInputId.HumidityRatio,
+    derivedKey: PhysicalQuantityId.DerivedHumidityRatio,
     getPresentation: (context, label) => ({
       label,
       ...getHumidityRatioDisplayMeta(context.unitSystem),
@@ -103,15 +104,15 @@ const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinit
   },
   [HumidityInputMode.DewPoint]: {
     label: "Dew point",
-    derivedKey: DerivedInputId.DewPoint,
+    derivedKey: PhysicalQuantityId.DewPoint,
     getPresentation: buildTemperaturePresentation,
     fromSi: (valueSi, unitSystem) => convertFieldValueFromSi(
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       valueSi,
       unitSystem,
     ),
     toSi: (value, unitSystem) => convertFieldValueToSi(
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       value,
       unitSystem,
     ),
@@ -119,15 +120,15 @@ const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinit
   },
   [HumidityInputMode.WetBulb]: {
     label: "Wet-bulb temperature",
-    derivedKey: DerivedInputId.WetBulb,
+    derivedKey: PhysicalQuantityId.WetBulb,
     getPresentation: buildTemperaturePresentation,
     fromSi: (valueSi, unitSystem) => convertFieldValueFromSi(
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       valueSi,
       unitSystem,
     ),
     toSi: (value, unitSystem) => convertFieldValueToSi(
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       value,
       unitSystem,
     ),
@@ -135,7 +136,7 @@ const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinit
   },
   [HumidityInputMode.VaporPressure]: {
     label: "Vapor pressure",
-    derivedKey: DerivedInputId.VaporPressure,
+    derivedKey: PhysicalQuantityId.VaporPressure,
     getPresentation: (context, label) => ({
       label,
       ...getVaporPressureDisplayMeta(context.unitSystem),
@@ -161,37 +162,37 @@ export function requireHumidityInputMode(
 
 function getHumidityValueSi(
   definition: HumidityModeDefinition,
-  inputState: CanonicalInputState,
-  derivedState: DerivedInputState,
+  inputState: PrimaryInputState,
+  derivedState: DerivedSlotQuantityState,
 ): number {
   return definition.derivedKey === null
-    ? inputState[FieldKey.RelativeHumidity]
+    ? inputState[PhysicalQuantityId.RelativeHumidity]
     : derivedState[definition.derivedKey];
 }
 
 export function synchronizeHumidityInputState(
-  inputState: CanonicalInputState,
-  derivedState: DerivedInputState,
+  inputState: PrimaryInputState,
+  derivedState: DerivedSlotQuantityState,
   humidityMode: HumidityInputModeType,
-  derivedOverrides: Partial<DerivedInputState> = {},
-): CanonicalInputState {
+  derivedOverrides: Partial<DerivedSlotQuantityState> = {},
+): PrimaryInputState {
   const definition = humidityModeDefinitions[humidityMode];
   if (definition.derivedKey === null) return { ...inputState };
   const resolvedDerivedState = { ...derivedState, ...derivedOverrides };
   return {
     ...inputState,
-    [FieldKey.RelativeHumidity]: definition.toRelativeHumidity(
-      inputState[FieldKey.DryBulbTemperature],
+    [PhysicalQuantityId.RelativeHumidity]: definition.toRelativeHumidity(
+      inputState[PhysicalQuantityId.DryBulbTemperature],
       resolvedDerivedState[definition.derivedKey],
     ),
   };
 }
 
 export function synchronizeSelectedHumidityMode(
-  inputState: CanonicalInputState,
-  derivedState: DerivedInputState,
+  inputState: PrimaryInputState,
+  derivedState: DerivedSlotQuantityState,
   options: ModelOptionsRecord,
-): CanonicalInputState {
+): PrimaryInputState {
   return synchronizeHumidityInputState(
     inputState,
     derivedState,
@@ -204,7 +205,7 @@ export function createHumidityControlBehavior(
 ): InputControlBehavior {
   return createControlBehavior({
     controlId,
-    fieldKey: FieldKey.RelativeHumidity,
+    fieldKey: PhysicalQuantityId.RelativeHumidity,
     getPresentation: (context) => {
       const definition = humidityModeDefinitions[
         requireHumidityInputMode(context.options)
@@ -226,8 +227,8 @@ export function createHumidityControlBehavior(
       return definition.fromSi(
         getHumidityValueSi(
           definition,
-          context.inputsByInput[inputId],
-          context.derivedByInput[inputId],
+          context.quantitiesByInput[inputId],
+          getDerivedFromAuxiliary(context.auxiliaryQuantitiesByInput[inputId]),
         ),
         context.unitSystem,
       );
@@ -238,18 +239,18 @@ export function createHumidityControlBehavior(
     applyInput: (context, inputId, nextValueSi) => {
       const mode = requireHumidityInputMode(context.options);
       const definition = humidityModeDefinitions[mode];
-      const nextInputState = { ...context.inputsByInput[inputId] };
-      const derivedOverrides: Partial<DerivedInputState> = {};
+      const nextInputState = { ...context.quantitiesByInput[inputId] };
+      const derivedOverrides: Partial<DerivedSlotQuantityState> = {};
       if (definition.derivedKey === null) {
-        nextInputState[FieldKey.RelativeHumidity] = nextValueSi;
+        nextInputState[PhysicalQuantityId.RelativeHumidity] = nextValueSi;
       } else {
         derivedOverrides[definition.derivedKey] = nextValueSi;
       }
       return {
-        inputsPatch: {
+        quantitiesPatch: {
           [inputId]: synchronizeHumidityInputState(
             nextInputState,
-            context.derivedByInput[inputId],
+            getDerivedFromAuxiliary(context.auxiliaryQuantitiesByInput[inputId]),
             mode,
             derivedOverrides,
           ),
@@ -270,16 +271,16 @@ export const humidityModeOptionHandler: OptionChangeHandler = (
   );
   if (requireHumidityInputMode(context.options) === nextMode) return null;
 
-  const inputsPatch = Object.fromEntries(inputOrder.map((inputId) => [
+  const quantitiesPatch = Object.fromEntries(inputOrder.map((inputId) => [
     inputId,
     synchronizeHumidityInputState(
-      context.inputsByInput[inputId],
-      context.derivedByInput[inputId],
+      context.quantitiesByInput[inputId],
+      getDerivedFromAuxiliary(context.auxiliaryQuantitiesByInput[inputId]),
       nextMode,
     ),
   ]));
   return {
-    inputsPatch,
+    quantitiesPatch,
     optionsPatch: { [OptionKey.HumidityInputMode]: nextMode },
   };
 };

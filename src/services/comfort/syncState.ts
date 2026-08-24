@@ -1,59 +1,89 @@
-import {
-  DerivedInputId,
-  FieldKey,
-  type CanonicalInputState,
-  type DerivedInputState,
-} from "../../models/fieldKeys";
+import { PhysicalQuantityId, type AuxiliaryInputState, type DerivedSlotQuantityState, type PrimaryInputState } from "../../models/physicalQuantities";
 import { InputId, type InputId as InputIdType } from "../../models/inputSlots";
 import {
   TemperatureMode,
   type TemperatureMode as TemperatureModeType,
 } from "../../models/inputModes";
-import { t_o, psy_ta_rh } from "jsthermalcomfort";
+import { t_o } from "jsthermalcomfort";
+import { derivePsychrometricSlots } from "./derivations/psychrometrics";
+import {
+  QuantitiesByInputState,
+  syncDerivedQuantitiesIntoAuxiliary,
+  syncAllDerivedQuantities,
+  type AuxiliaryQuantitiesByInputState,
+} from "./quantityStateRouting";
 
-export function deriveInputDerivedState(inputState: CanonicalInputState): DerivedInputState {
-  const psychrometricState = psy_ta_rh(
-    inputState[FieldKey.DryBulbTemperature],
-    inputState[FieldKey.RelativeHumidity],
-  );
+export { derivePsychrometricSlots } from "./derivations/psychrometrics";
 
+export function deriveInputsDerivedState(
+  quantitiesByInput: QuantitiesByInputState,
+): Record<InputIdType, DerivedSlotQuantityState> {
   return {
-    [DerivedInputId.DewPoint]: psychrometricState.t_dp,
-    [DerivedInputId.HumidityRatio]: psychrometricState.hr,
-    [DerivedInputId.WetBulb]: psychrometricState.t_wb,
-    [DerivedInputId.VaporPressure]: psychrometricState.p_vap,
+    [InputId.Input1]: derivePsychrometricSlots(quantitiesByInput[InputId.Input1]),
+    [InputId.Input2]: derivePsychrometricSlots(quantitiesByInput[InputId.Input2]),
+    [InputId.Input3]: derivePsychrometricSlots(quantitiesByInput[InputId.Input3]),
   };
 }
 
-export function deriveInputsDerivedState(
-  inputsByInput: Record<InputIdType, CanonicalInputState>,
-): Record<InputIdType, DerivedInputState> {
-  return {
-    [InputId.Input1]: deriveInputDerivedState(inputsByInput[InputId.Input1]),
-    [InputId.Input2]: deriveInputDerivedState(inputsByInput[InputId.Input2]),
-    [InputId.Input3]: deriveInputDerivedState(inputsByInput[InputId.Input3]),
-  };
+export function syncDerivedStateIntoAuxiliary(
+  quantitiesByInput: QuantitiesByInputState,
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
+): void {
+  syncAllDerivedQuantities(
+    quantitiesByInput,
+    auxiliaryQuantitiesByInput,
+    derivePsychrometricSlots,
+  );
+}
+
+export function syncDerivedStateForInput(
+  inputId: InputIdType,
+  quantitiesByInput: QuantitiesByInputState,
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
+): void {
+  syncDerivedQuantitiesIntoAuxiliary(
+    quantitiesByInput[inputId],
+    auxiliaryQuantitiesByInput[inputId],
+    derivePsychrometricSlots(quantitiesByInput[inputId]),
+  );
 }
 
 export function synchronizeTemperatureMode(
-  inputState: CanonicalInputState,
+  inputState: PrimaryInputState,
   temperatureMode: TemperatureModeType,
-): { inputState: CanonicalInputState } {
+): { inputState: PrimaryInputState } {
   if (temperatureMode === TemperatureMode.Air) {
     return { inputState: { ...inputState } };
   }
 
   const operativeTemperature = t_o(
-    inputState[FieldKey.DryBulbTemperature],
-    inputState[FieldKey.MeanRadiantTemperature],
-    inputState[FieldKey.RelativeAirSpeed],
+    inputState[PhysicalQuantityId.DryBulbTemperature],
+    inputState[PhysicalQuantityId.MeanRadiantTemperature],
+    inputState[PhysicalQuantityId.RelativeAirSpeed],
   );
 
   return {
     inputState: {
       ...inputState,
-      [FieldKey.DryBulbTemperature]: operativeTemperature,
-      [FieldKey.MeanRadiantTemperature]: operativeTemperature,
+      [PhysicalQuantityId.DryBulbTemperature]: operativeTemperature,
+      [PhysicalQuantityId.MeanRadiantTemperature]: operativeTemperature,
     },
+  };
+}
+
+export function readDerivedFromAuxiliary(
+  auxiliary: AuxiliaryInputState,
+  primary: PrimaryInputState,
+): DerivedSlotQuantityState {
+  const derived = derivePsychrometricSlots(primary);
+  return {
+    [PhysicalQuantityId.DewPoint]: auxiliary[PhysicalQuantityId.DewPoint]
+      ?? derived[PhysicalQuantityId.DewPoint],
+    [PhysicalQuantityId.DerivedHumidityRatio]: auxiliary[PhysicalQuantityId.DerivedHumidityRatio]
+      ?? derived[PhysicalQuantityId.DerivedHumidityRatio],
+    [PhysicalQuantityId.WetBulb]: auxiliary[PhysicalQuantityId.WetBulb]
+      ?? derived[PhysicalQuantityId.WetBulb],
+    [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
+      ?? derived[PhysicalQuantityId.VaporPressure],
   };
 }

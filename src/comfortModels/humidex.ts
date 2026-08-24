@@ -1,38 +1,11 @@
 import { humidex } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
-import { ChartId } from "../models/chartOptions";
-import type { ModelChartSourceDto } from "../models/comfortDtos";
 import { ComfortModel } from "../models/comfortModels";
-import { FieldKey } from "../models/fieldKeys";
-import { fieldMetaByKey } from "../models/inputFieldsMeta";
-import { InputControlId } from "../models/inputControls";
-import {
-  bandsFromThermalZones,
-  ChartMode,
-  ModelOutputKey,
-  type ModelOutput,
-} from "../models/modelCapabilities";
+import { ChartInstanceId } from "../models/output/chartInstances";
+import { ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
-import {
-  buildGridModelChart,
-  type GridModelChartSpec,
-} from "../services/comfort/charts/gridModelCharts";
-import { createControlBehavior } from "../services/comfort/controls/numericControl";
 import { requireThermalZone } from "../services/comfort/helpers";
-import {
-  calculatePerInput,
-  createFieldRequestAdapter,
-} from "../services/comfort/requestMapping";
-import {
-  convertModelOutputFromSi,
-  formatDisplayValue,
-  getModelOutputDisplayMeta,
-} from "../services/units";
-import {
-  buildResultSection,
-  ComfortModelBuilder,
-  parseEmptyOptions,
-} from "../state/comfortTool/modelConfigs/builder";
+import { buildPsychrometricIndexModelConfig } from "./presets/psychrometricIndexModel";
 
 const MODEL_LABEL = "Humidex";
 const MODEL_DESCRIPTION =
@@ -74,139 +47,18 @@ export function calculateHumidex(payload: HumidexRequestDto): HumidexResponseDto
   };
 }
 
-const requestAdapter = createFieldRequestAdapter<HumidexRequestDto>({
-  tdb: FieldKey.DryBulbTemperature,
-  rh: FieldKey.RelativeHumidity,
-});
-
-const humidexOutput: ModelOutput = {
-  key: ModelOutputKey.Humidex,
+export const humidexModelConfig = buildPsychrometricIndexModelConfig<HumidexResponseDto>({
+  comfortModel: ComfortModel.Humidex,
   label: MODEL_LABEL,
-  defaultBands: bandsFromThermalZones(humidexZonesList),
-};
-
-const humidexChartSpec: GridModelChartSpec<HumidexRequestDto, HumidexResponseDto> = {
-  dynamicChartId: ChartId.HumidexDynamic,
+  description: MODEL_DESCRIPTION,
+  outputKey: ModelOutputKey.Humidex,
+  zones: humidexZonesList,
+  tdbLimits: TDB_LIMITS,
+  fixedChartInstanceId: ChartInstanceId.Humidex.Ranges,
+  dynamicChartInstanceId: ChartInstanceId.Humidex.DynamicField,
+  fixedChartTitle: `${MODEL_LABEL} Discomfort`,
   dynamicTitle: `${MODEL_LABEL} Dynamic Chart`,
-  output: humidexOutput,
-  axisRanges: {
-    [FieldKey.DryBulbTemperature]: TDB_LIMITS,
-  },
-  requestAdapter,
-  evaluate: calculateHumidex,
+  calculate: calculateHumidex,
   getOutputValue: (result) => result.humidex,
-  fixedView: {
-    chartId: ChartId.Humidex,
-    title: `${MODEL_LABEL} Discomfort`,
-    xField: FieldKey.RelativeHumidity,
-    yField: FieldKey.DryBulbTemperature,
-    xRangeSi: {
-      min: fieldMetaByKey[FieldKey.RelativeHumidity].minValue,
-      max: fieldMetaByKey[FieldKey.RelativeHumidity].maxValue,
-    },
-    yRangeSi: TDB_LIMITS,
-  },
-};
-
-const builder = new ComfortModelBuilder<
-  HumidexResponseDto,
-  ModelChartSourceDto<HumidexRequestDto>
->(
-  ComfortModel.Humidex,
-);
-
-builder
-  .setLabel(MODEL_LABEL)
-  .setDescription(MODEL_DESCRIPTION)
-  .setStandardIds([])
-  .setModes([ChartMode.Explore])
-  .setChartableOutputs([humidexOutput])
-  .setModifiers([])
-  .setCharts({
-    defaultId: ChartId.Humidex,
-    entries: [
-      {
-        id: ChartId.Humidex,
-        name: "Psychrometric",
-        emptyMessage: "No psychrometric chart yet.",
-        allowsAxisSelection: false,
-        locksYAxis: false,
-        showsZoneToggle: false,
-        showsLegend: true,
-      },
-      {
-        id: ChartId.HumidexDynamic,
-        name: "Dynamic",
-        emptyMessage: "No dynamic chart yet.",
-        allowsAxisSelection: true,
-        locksYAxis: true,
-        showsZoneToggle: false,
-        showsLegend: true,
-      },
-    ],
-  });
-
-builder.addControl({
-  id: InputControlId.Temperature,
-  behavior: createControlBehavior({
-    controlId: InputControlId.Temperature,
-    fieldKey: FieldKey.DryBulbTemperature,
-    minValue: TDB_LIMITS.min,
-    maxValue: TDB_LIMITS.max,
-  }),
+  getResultSubtext: (result) => result.humidexDiscomfort,
 });
-builder.addControl({
-  id: InputControlId.Humidity,
-  behavior: createControlBehavior({
-    controlId: InputControlId.Humidity,
-    fieldKey: FieldKey.RelativeHumidity,
-  }),
-});
-
-builder.setCalculator((context, visibleInputIds) =>
-  calculatePerInput({
-    context,
-    visibleInputIds,
-    mapRequest: requestAdapter.mapRequest,
-    calculate: calculateHumidex,
-  }));
-
-builder.setResultBuilder((results, visibleInputIds, unitSystem) => {
-  const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Humidex, unitSystem);
-  return [
-    buildResultSection(MODEL_LABEL, results, visibleInputIds, (result) => {
-      const value = convertModelOutputFromSi(ModelOutputKey.Humidex, result.humidex, unitSystem);
-      const color = requireThermalZone(
-        humidexZonesList,
-        result.humidex,
-        MODEL_LABEL,
-      ).textColor;
-      return {
-        text: formatDisplayValue(value, outputMeta.decimals),
-        subtext: result.humidexDiscomfort,
-        color,
-      };
-    }),
-  ];
-});
-
-builder.setChartBuilder((chartId, chartSource, resultsByInput, context) =>
-  buildGridModelChart(
-    chartId,
-    chartSource,
-    resultsByInput,
-    context,
-    humidexChartSpec,
-  ));
-
-builder.setDynamicAxisFields([
-  FieldKey.DryBulbTemperature,
-  FieldKey.RelativeHumidity,
-]);
-builder.setDefaultDynamicAxes({
-  xAxis: FieldKey.DryBulbTemperature,
-  yAxis: FieldKey.RelativeHumidity,
-});
-builder.setDefaultOptions({});
-builder.setOptionParser(parseEmptyOptions);
-export const humidexModelConfig = builder.build();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ModifierFieldKey } from "../../models/inputModifiers";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { UnitSystem } from "../../models/units";
 import {
   convertModifierFieldValueFromSi,
@@ -10,9 +10,9 @@ import {
 
 describe("modifier input units", () => {
   it.each([
-    [ModifierFieldKey.MorningOutdoorTemperature, 20],
-    [ModifierFieldKey.MeasuredAirSpeed, 1],
-    [ModifierFieldKey.DirectSolarRadiation, 800],
+    [PhysicalQuantityId.ModifierMorningOutdoorTemperature, 20],
+    [PhysicalQuantityId.ModifierMeasuredAirSpeed, 1],
+    [PhysicalQuantityId.ModifierDirectSolarRadiation, 800],
   ] as const)("round-trips %s between SI and IP", (field, valueSi) => {
     const displayValue = convertModifierFieldValueFromSi(field, valueSi, UnitSystem.IP);
     expect(convertModifierFieldValueToSi(field, displayValue, UnitSystem.IP))
@@ -20,11 +20,11 @@ describe("modifier input units", () => {
   });
 
   it.each([
-    ModifierFieldKey.SolarAltitude,
-    ModifierFieldKey.SolarHorizontalAngle,
-    ModifierFieldKey.SolarTransmittance,
-    ModifierFieldKey.SkyVaultViewFraction,
-    ModifierFieldKey.BodyExposureFraction,
+    PhysicalQuantityId.ModifierSolarAltitude,
+    PhysicalQuantityId.ModifierSolarHorizontalAngle,
+    PhysicalQuantityId.ModifierSolarTransmittance,
+    PhysicalQuantityId.ModifierSkyVaultViewFraction,
+    PhysicalQuantityId.ModifierBodyExposureFraction,
   ])("keeps unit-invariant fields unchanged for %s", (field) => {
     expect(convertModifierFieldValueFromSi(field, 0.5, UnitSystem.IP)).toBe(0.5);
     expect(convertModifierFieldValueToSi(field, 0.5, UnitSystem.IP)).toBe(0.5);
@@ -32,11 +32,11 @@ describe("modifier input units", () => {
 
   it("converts display ranges and units centrally", () => {
     const temperatureMeta = getModifierFieldDisplayMeta(
-      ModifierFieldKey.MorningOutdoorTemperature,
+      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
       UnitSystem.IP,
     );
     const radiationMeta = getModifierFieldDisplayMeta(
-      ModifierFieldKey.DirectSolarRadiation,
+      PhysicalQuantityId.ModifierDirectSolarRadiation,
       UnitSystem.IP,
     );
 
@@ -49,7 +49,7 @@ describe("modifier input units", () => {
     for (const boundary of [radiationMeta.minValue, radiationMeta.maxValue]) {
       const committedDisplayValue = Number(boundary!.toFixed(radiationMeta.decimals));
       const roundTrippedSi = convertModifierFieldValueToSi(
-        ModifierFieldKey.DirectSolarRadiation,
+        PhysicalQuantityId.ModifierDirectSolarRadiation,
         committedDisplayValue,
         UnitSystem.IP,
       );

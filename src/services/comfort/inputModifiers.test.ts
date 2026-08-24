@@ -1,12 +1,8 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import {
-  FieldKey,
-  type CanonicalInputState,
-} from "../../models/fieldKeys";
+import { PhysicalQuantityId, type PrimaryInputState } from "../../models/physicalQuantities";
 import { JsThermalComfortStandard } from "../../models/comfortModels";
 import {
-  ModifierFieldKey,
   ModifierId,
   defineInputModifier,
 } from "../../models/inputModifiers";
@@ -19,17 +15,17 @@ import {
   solarGainModifier,
 } from "./inputModifiers";
 
-function createBaseInputs(): CanonicalInputState {
+function createBaseInputs(): PrimaryInputState {
   return {
-    [FieldKey.DryBulbTemperature]: 25,
-    [FieldKey.MeanRadiantTemperature]: 25,
-    [FieldKey.RelativeAirSpeed]: 0.1,
-    [FieldKey.WindSpeed]: 1,
-    [FieldKey.RelativeHumidity]: 50,
-    [FieldKey.MetabolicRate]: 1.8,
-    [FieldKey.ClothingInsulation]: 0.5,
-    [FieldKey.ExternalWork]: 0,
-    [FieldKey.PrevailingMeanOutdoorTemperature]: 20,
+    [PhysicalQuantityId.DryBulbTemperature]: 25,
+    [PhysicalQuantityId.MeanRadiantTemperature]: 25,
+    [PhysicalQuantityId.RelativeAirSpeed]: 0.1,
+    [PhysicalQuantityId.WindSpeed]: 1,
+    [PhysicalQuantityId.RelativeHumidity]: 50,
+    [PhysicalQuantityId.MetabolicRate]: 1.8,
+    [PhysicalQuantityId.ClothingInsulation]: 0.5,
+    [PhysicalQuantityId.ExternalWork]: 0,
+    [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20,
   };
 }
 
@@ -41,11 +37,11 @@ describe("input modifiers", () => {
     type MeasuredPatch = ReturnType<typeof measuredAirSpeedModifier.apply>;
 
     expectTypeOf<MeasuredExtraInputs>().toEqualTypeOf<Readonly<{
-      [ModifierFieldKey.MeasuredAirSpeed]: number;
+      [PhysicalQuantityId.ModifierMeasuredAirSpeed]: number;
     }>>();
     expectTypeOf<MeasuredPatch>().toEqualTypeOf<Partial<Pick<
-      CanonicalInputState,
-      typeof FieldKey.RelativeAirSpeed
+      PrimaryInputState,
+      typeof PhysicalQuantityId.RelativeAirSpeed
     >>>();
   });
 
@@ -62,7 +58,7 @@ describe("input modifiers", () => {
       },
       {
         [ModifierId.MeasuredAirSpeed]: {
-          [ModifierFieldKey.MeasuredAirSpeed]: 0.6,
+          [PhysicalQuantityId.ModifierMeasuredAirSpeed]: 0.6,
         },
         [ModifierId.MorningClothingEstimate]: {},
         [ModifierId.DynamicClothing]: {},
@@ -70,17 +66,17 @@ describe("input modifiers", () => {
       },
     );
 
-    expect(effectiveInputs[FieldKey.RelativeAirSpeed]).toBe(0.84);
-    expect(baseInputs[FieldKey.RelativeAirSpeed]).toBe(0.1);
+    expect(effectiveInputs[PhysicalQuantityId.RelativeAirSpeed]).toBe(0.84);
+    expect(baseInputs[PhysicalQuantityId.RelativeAirSpeed]).toBe(0.1);
   });
 
   it("applies the morning clothing estimate in canonical SI", () => {
     const effectiveInputs = morningClothingEstimateModifier.apply(
       createBaseInputs(),
-      { [ModifierFieldKey.MorningOutdoorTemperature]: 10 },
+      { [PhysicalQuantityId.ModifierMorningOutdoorTemperature]: 10 },
     );
 
-    expect(effectiveInputs[FieldKey.ClothingInsulation]).toBeCloseTo(0.59, 2);
+    expect(effectiveInputs[PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.59, 2);
   });
 
   it("applies solar gain to mean radiant temperature", () => {
@@ -88,33 +84,33 @@ describe("input modifiers", () => {
     const effectiveInputs = solarGainModifier.apply(
       baseInputs,
       {
-        [ModifierFieldKey.SolarAltitude]: 45,
-        [ModifierFieldKey.SolarHorizontalAngle]: 90,
-        [ModifierFieldKey.DirectSolarRadiation]: 800,
-        [ModifierFieldKey.SolarTransmittance]: 0.5,
-        [ModifierFieldKey.SkyVaultViewFraction]: 0.5,
-        [ModifierFieldKey.BodyExposureFraction]: 0.5,
+        [PhysicalQuantityId.ModifierSolarAltitude]: 45,
+        [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90,
+        [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800,
+        [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5,
+        [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5,
+        [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5,
       },
     );
 
-    expect(effectiveInputs[FieldKey.MeanRadiantTemperature]).toBeCloseTo(40.1, 6);
+    expect(effectiveInputs[PhysicalQuantityId.MeanRadiantTemperature]).toBeCloseTo(40.1, 6);
     expect(
-      effectiveInputs[FieldKey.MeanRadiantTemperature]!
-      - baseInputs[FieldKey.MeanRadiantTemperature],
+      effectiveInputs[PhysicalQuantityId.MeanRadiantTemperature]!
+      - baseInputs[PhysicalQuantityId.MeanRadiantTemperature],
     ).toBeCloseTo(15.1, 6);
   });
 
   it("requires every declared input before activation", () => {
     expect(isModifierConfigurationComplete(solarGainModifier, {
-      [ModifierFieldKey.SolarAltitude]: 45,
+      [PhysicalQuantityId.ModifierSolarAltitude]: 45,
     })).toBe(false);
     expect(isModifierConfigurationComplete(solarGainModifier, {
-      [ModifierFieldKey.SolarAltitude]: 45,
-      [ModifierFieldKey.SolarHorizontalAngle]: 90,
-      [ModifierFieldKey.DirectSolarRadiation]: 800,
-      [ModifierFieldKey.SolarTransmittance]: 0.5,
-      [ModifierFieldKey.SkyVaultViewFraction]: 0.5,
-      [ModifierFieldKey.BodyExposureFraction]: 0.5,
+      [PhysicalQuantityId.ModifierSolarAltitude]: 45,
+      [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90,
+      [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800,
+      [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5,
+      [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5,
+      [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5,
     })).toBe(true);
   });
 
@@ -124,9 +120,9 @@ describe("input modifiers", () => {
       label: "Add two",
       description: "",
       extraInputs: [],
-      affectedFields: [FieldKey.MeanRadiantTemperature],
+      affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
       apply: (inputs) => ({
-        [FieldKey.MeanRadiantTemperature]: inputs[FieldKey.MeanRadiantTemperature] + 2,
+        [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] + 2,
       }),
     });
     const triple = defineInputModifier({
@@ -134,9 +130,9 @@ describe("input modifiers", () => {
       label: "Triple",
       description: "",
       extraInputs: [],
-      affectedFields: [FieldKey.MeanRadiantTemperature],
+      affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
       apply: (inputs) => ({
-        [FieldKey.MeanRadiantTemperature]: inputs[FieldKey.MeanRadiantTemperature] * 3,
+        [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] * 3,
       }),
     });
     const active = {
@@ -161,27 +157,27 @@ describe("input modifiers", () => {
       inputs,
     );
 
-    expect(forward[FieldKey.MeanRadiantTemperature]).toBe(81);
-    expect(reverse[FieldKey.MeanRadiantTemperature]).toBe(77);
+    expect(forward[PhysicalQuantityId.MeanRadiantTemperature]).toBe(81);
+    expect(reverse[PhysicalQuantityId.MeanRadiantTemperature]).toBe(77);
   });
 
   it("applies ASHRAE and ISO dynamic-clothing thresholds", () => {
     const ashrae = createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE);
     const iso = createDynamicClothingModifier(JsThermalComfortStandard.ISO);
     const inputs = createBaseInputs();
-    inputs[FieldKey.ClothingInsulation] = 1;
+    inputs[PhysicalQuantityId.ClothingInsulation] = 1;
 
-    inputs[FieldKey.MetabolicRate] = 1;
-    expect(iso.apply(inputs, {})[FieldKey.ClothingInsulation]).toBe(1);
+    inputs[PhysicalQuantityId.MetabolicRate] = 1;
+    expect(iso.apply(inputs, {})[PhysicalQuantityId.ClothingInsulation]).toBe(1);
 
-    inputs[FieldKey.MetabolicRate] = 1.1;
-    expect(ashrae.apply(inputs, {})[FieldKey.ClothingInsulation]).toBe(1);
-    expect(iso.apply(inputs, {})[FieldKey.ClothingInsulation]).toBeCloseTo(0.964, 3);
+    inputs[PhysicalQuantityId.MetabolicRate] = 1.1;
+    expect(ashrae.apply(inputs, {})[PhysicalQuantityId.ClothingInsulation]).toBe(1);
+    expect(iso.apply(inputs, {})[PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.964, 3);
 
-    inputs[FieldKey.MetabolicRate] = 1.2;
-    expect(ashrae.apply(inputs, {})[FieldKey.ClothingInsulation]).toBe(1);
-    inputs[FieldKey.MetabolicRate] = 1.21;
-    expect(ashrae.apply(inputs, {})[FieldKey.ClothingInsulation]).toBeCloseTo(0.931, 3);
+    inputs[PhysicalQuantityId.MetabolicRate] = 1.2;
+    expect(ashrae.apply(inputs, {})[PhysicalQuantityId.ClothingInsulation]).toBe(1);
+    inputs[PhysicalQuantityId.MetabolicRate] = 1.21;
+    expect(ashrae.apply(inputs, {})[PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.931, 3);
   });
 
   it("applies Morning Clothing before Dynamic Clothing", () => {
@@ -195,13 +191,13 @@ describe("input modifiers", () => {
       },
       {
         [ModifierId.MorningClothingEstimate]: {
-          [ModifierFieldKey.MorningOutdoorTemperature]: 10,
+          [PhysicalQuantityId.ModifierMorningOutdoorTemperature]: 10,
         },
         [ModifierId.DynamicClothing]: {},
       },
     );
 
-    expect(effective[FieldKey.ClothingInsulation]).toBeCloseTo(0.485, 3);
+    expect(effective[PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.485, 3);
   });
 
   it("rejects non-finite modifier output at the application boundary", () => {
@@ -210,8 +206,8 @@ describe("input modifiers", () => {
       label: "Invalid",
       description: "Returns an invalid value.",
       extraInputs: [],
-      affectedFields: [FieldKey.ClothingInsulation],
-      apply: () => ({ [FieldKey.ClothingInsulation]: Infinity }),
+      affectedFields: [PhysicalQuantityId.ClothingInsulation],
+      apply: () => ({ [PhysicalQuantityId.ClothingInsulation]: Infinity }),
     });
 
     expect(() => applyInputModifierChain(

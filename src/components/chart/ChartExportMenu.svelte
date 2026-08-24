@@ -1,30 +1,27 @@
 <script lang="ts">
   import { Button, Dropdown, DropdownDivider, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import type {
-    ChartId,
-    ModelChartDefinition,
-  } from "../../models/chartOptions";
+  import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
 
   interface Props {
-    chartOptions: readonly ModelChartDefinition[];
-    currentChart: ModelChartDefinition;
-    selectedChart: ChartId;
-    onSelectChart: (chartId: ChartId) => void;
+    chartInstances: readonly ChartInstancePanelView[];
+    currentChart: ChartInstancePanelView;
+    selectedChartInstanceId: string;
+    onSelectChartInstance: (instanceId: string) => void;
     onExport: (type: "png" | "svg") => void;
   }
 
   let {
-    chartOptions,
+    chartInstances,
     currentChart,
-    selectedChart,
-    onSelectChart,
+    selectedChartInstanceId,
+    onSelectChartInstance,
     onExport,
   }: Props = $props();
 </script>
 
 <Button
-  id={`chart-select-trigger-${currentChart.id}`}
+  id={`chart-select-trigger-${currentChart.instanceId}`}
   color="light"
   pill
   size="xs"
@@ -37,26 +34,25 @@
   <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
 </Button>
 
-<Dropdown triggeredBy={`#chart-select-trigger-${currentChart.id}`} class="w-48 shadow-lg">
-  {#each chartOptions as option}
+<Dropdown triggeredBy={`#chart-select-trigger-${currentChart.instanceId}`} class="w-48 shadow-lg">
+  {#each chartInstances as option}
     <DropdownItem
-      onclick={() => onSelectChart(option.id)}
+      onclick={() => onSelectChartInstance(option.instanceId)}
       class="text-left"
     >
-      <span class={selectedChart === option.id ? "font-bold text-teal-700" : "text-stone-700"}>
+      <span class={selectedChartInstanceId === option.instanceId ? "font-bold text-teal-700" : "text-stone-700"}>
         {option.name}
       </span>
     </DropdownItem>
   {/each}
-
   <DropdownDivider />
-  <DropdownHeader divider={false} class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
-    Export options
+  <DropdownHeader
+    slot="header"
+    divider={false}
+    class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500"
+  >
+    Export
   </DropdownHeader>
-  <DropdownItem class="text-left text-sm text-stone-700" onclick={() => onExport("png")}>
-    Export as image (PNG)
-  </DropdownItem>
-  <DropdownItem class="text-left text-sm text-stone-700" onclick={() => onExport("svg")}>
-    Export as vector (SVG)
-  </DropdownItem>
+  <DropdownItem onclick={() => onExport("png")} class="text-left">PNG</DropdownItem>
+  <DropdownItem onclick={() => onExport("svg")} class="text-left">SVG</DropdownItem>
 </Dropdown>

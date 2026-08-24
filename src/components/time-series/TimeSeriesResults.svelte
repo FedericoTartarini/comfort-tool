@@ -1,10 +1,11 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-  import { Badge, Card } from "flowbite-svelte";
+  import { Badge } from "flowbite-svelte";
 
+  import MetricSummaryPanel from "../output/MetricSummaryPanel.svelte";
   import type { TimeSeriesController } from "../../state/timeSeries/types";
-  import PlotlyCanvas from "../chart/PlotlyCanvas.svelte";
+  import TimeSeriesChartCard from "./TimeSeriesChartCard.svelte";
 
   interface Props {
     controller: TimeSeriesController;
@@ -42,47 +43,23 @@
       <Badge color="blue">{model.standardLabel}</Badge>
     </header>
 
-    {#if summary.length > 0}
-      <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {#each summary as item (item.id)}
-          <Card size="none" class="border-stone-200 p-3 shadow-sm">
-            <p class="text-xs font-medium text-stone-500">{item.label}</p>
-            <p class="mt-2 text-lg font-semibold text-stone-950">{item.value}</p>
-            {#if item.subtext}
-              <p class="mt-1 text-xs text-stone-500">{item.subtext}</p>
-            {/if}
-          </Card>
-        {/each}
-      </div>
-    {:else}
-      <p class="mt-3 rounded-xl border border-stone-200 bg-white p-4 text-sm text-stone-500">
-        {status === "error"
+    <div class="mt-3">
+      <MetricSummaryPanel
+        items={summary}
+        emptyMessage={status === "error"
           ? "The calculation could not complete. Check the scenario feedback."
           : errors.length > 0
             ? "Correct the scenario inputs to calculate results."
             : "Calculating the default scenario automatically…"}
-      </p>
-    {/if}
+      />
+    </div>
   </section>
 
   {#each charts as chartDefinition (chartDefinition.id)}
-    <Card size="none" class="border-stone-300 p-3 shadow-sm">
-      <header class="px-1 pt-1">
-        <h2 class="text-base font-semibold text-stone-900">{chartDefinition.title}</h2>
-        <p class="mt-1 text-xs text-stone-500">{chartDefinition.description}</p>
-      </header>
-      <div
-        class="mt-2 min-h-[360px] overflow-hidden rounded-lg bg-white"
-        data-testid={chartDefinition.testId}
-      >
-        <PlotlyCanvas
-          chartResult={chartDefinition.chart}
-          isLoading={status === "updating"}
-          emptyMessage={chartDefinition.emptyMessage}
-          heightClass={chartDefinition.heightClass}
-        />
-      </div>
-    </Card>
+    <TimeSeriesChartCard
+      chartDefinition={chartDefinition}
+      isLoading={status === "updating"}
+    />
   {/each}
 
   {#if model.reference}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "./fieldKeys";
+import { PhysicalQuantityId } from "./physicalQuantities";
 import {
   findNumericBandIndexForValue,
   resolveBandEdge,
@@ -15,13 +15,13 @@ function createBand(min: number, max: number, label: string): NumericBand {
 describe("model capability band helpers", () => {
   it("resolves numeric and canonical-SI functional edges", () => {
     const inputsSi: BandInputsSi = {
-      [FieldKey.RelativeAirSpeed]: 0.2,
+      [PhysicalQuantityId.RelativeAirSpeed]: 0.2,
     };
 
     expect(resolveBandEdge(10, 20, inputsSi)).toBe(10);
     expect(resolveBandEdge(
       (xValueSi, currentInputsSi) => (
-        xValueSi + Number(currentInputsSi[FieldKey.RelativeAirSpeed])
+        xValueSi + Number(currentInputsSi[PhysicalQuantityId.RelativeAirSpeed])
       ),
       20,
       inputsSi,

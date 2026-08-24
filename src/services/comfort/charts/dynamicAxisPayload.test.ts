@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   pmvAshraeAdapter,
-} from "../../../comfortModels/pmvAshrae";
-import { pmvIsoAdapter } from "../../../comfortModels/pmvIso";
+} from "../../../comfortModels/pmv/pmvAshrae";
+import { pmvIsoAdapter } from "../../../comfortModels/pmv/pmvIso";
 import {
   createPmvRequestAxisAdapter,
   type PmvRequestDto,
-} from "../../../comfortModels/pmvCalculation";
+} from "../../../comfortModels/pmv/pmvCalculation";
 import {
   utciAxisAdapter,
   type UtciRequestDto,
-} from "../../../comfortModels/utci";
-import { FieldKey } from "../../../models/fieldKeys";
+} from "../../../comfortModels/utci/utci";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import {
   applyDynamicAxisCoordinates,
   type DynamicAxisPayloadAdapter,
@@ -26,18 +26,18 @@ interface TestPayload {
 
 const adapter: DynamicAxisPayloadAdapter<TestPayload> = {
   setAxisValue: (payload, field, valueSi) => {
-    if (field === FieldKey.DryBulbTemperature) payload.tdb = valueSi;
-    else if (field === FieldKey.MeanRadiantTemperature) payload.tr = valueSi;
-    else if (field === FieldKey.RelativeAirSpeed) payload.speed = valueSi;
-    else if (field === FieldKey.OperativeTemperature) {
+    if (field === PhysicalQuantityId.DryBulbTemperature) payload.tdb = valueSi;
+    else if (field === PhysicalQuantityId.MeanRadiantTemperature) payload.tr = valueSi;
+    else if (field === PhysicalQuantityId.RelativeAirSpeed) payload.speed = valueSi;
+    else if (field === PhysicalQuantityId.OperativeTemperature) {
       payload.tdb = valueSi;
       payload.tr = valueSi;
     }
   },
   getAxisValue: (payload, field) => {
-    if (field === FieldKey.DryBulbTemperature) return payload.tdb;
-    if (field === FieldKey.MeanRadiantTemperature) return payload.tr;
-    if (field === FieldKey.RelativeAirSpeed) return payload.speed;
+    if (field === PhysicalQuantityId.DryBulbTemperature) return payload.tdb;
+    if (field === PhysicalQuantityId.MeanRadiantTemperature) return payload.tr;
+    if (field === PhysicalQuantityId.RelativeAirSpeed) return payload.speed;
     return (payload.tdb + payload.tr) / 2;
   },
   getOperativeTemperature: (payload) => (
@@ -66,10 +66,10 @@ function resolve(
 
 describe("applyDynamicAxisCoordinates", () => {
   it.each([
-    [FieldKey.DryBulbTemperature, 20, FieldKey.OperativeTemperature, 25],
-    [FieldKey.OperativeTemperature, 25, FieldKey.DryBulbTemperature, 20],
-    [FieldKey.MeanRadiantTemperature, 30, FieldKey.OperativeTemperature, 25],
-    [FieldKey.OperativeTemperature, 25, FieldKey.MeanRadiantTemperature, 30],
+    [PhysicalQuantityId.DryBulbTemperature, 20, PhysicalQuantityId.OperativeTemperature, 25],
+    [PhysicalQuantityId.OperativeTemperature, 25, PhysicalQuantityId.DryBulbTemperature, 20],
+    [PhysicalQuantityId.MeanRadiantTemperature, 30, PhysicalQuantityId.OperativeTemperature, 25],
+    [PhysicalQuantityId.OperativeTemperature, 25, PhysicalQuantityId.MeanRadiantTemperature, 30],
   ] as const)("preserves both coupled coordinates for %s / %s", (
     xField,
     xValueSi,
@@ -79,14 +79,14 @@ describe("applyDynamicAxisCoordinates", () => {
     const { payload, valid } = resolve(xField, xValueSi, yField, yValueSi);
 
     expect(valid).toBe(true);
-    const expectedAir = xField === FieldKey.DryBulbTemperature
+    const expectedAir = xField === PhysicalQuantityId.DryBulbTemperature
       ? xValueSi
-      : yField === FieldKey.DryBulbTemperature
+      : yField === PhysicalQuantityId.DryBulbTemperature
         ? yValueSi
         : 20;
-    const expectedRadiant = xField === FieldKey.MeanRadiantTemperature
+    const expectedRadiant = xField === PhysicalQuantityId.MeanRadiantTemperature
       ? xValueSi
-      : yField === FieldKey.MeanRadiantTemperature
+      : yField === PhysicalQuantityId.MeanRadiantTemperature
         ? yValueSi
         : 30;
     expect(payload.tdb).toBeCloseTo(expectedAir, 6);
@@ -96,9 +96,9 @@ describe("applyDynamicAxisCoordinates", () => {
 
   it("applies speed before resolving operative temperature", () => {
     const { payload, valid } = resolve(
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
       27,
-      FieldKey.RelativeAirSpeed,
+      PhysicalQuantityId.RelativeAirSpeed,
       1,
     );
 
@@ -109,15 +109,15 @@ describe("applyDynamicAxisCoordinates", () => {
 
   it("rejects duplicate axes and physically unreachable constraints", () => {
     expect(resolve(
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       20,
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       30,
     ).valid).toBe(false);
     const unreachable = resolve(
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       50,
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
       0,
     );
     expect(unreachable.valid).toBe(false);
@@ -130,7 +130,7 @@ describe("applyDynamicAxisCoordinates", () => {
       ...adapter,
       setAxisValue: (payload, field, valueSi) => {
         adapter.setAxisValue(payload, field, valueSi);
-        if (field === FieldKey.MeanRadiantTemperature) {
+        if (field === PhysicalQuantityId.MeanRadiantTemperature) {
           solvedFieldWrites.push(valueSi);
         }
       },
@@ -139,8 +139,8 @@ describe("applyDynamicAxisCoordinates", () => {
 
     expect(applyDynamicAxisCoordinates(
       payload,
-      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
-      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      { field: PhysicalQuantityId.DryBulbTemperature, valueSi: 20 },
+      { field: PhysicalQuantityId.OperativeTemperature, valueSi: 25 },
       trackingAdapter,
     )).toBe(true);
 
@@ -161,8 +161,8 @@ describe("applyDynamicAxisCoordinates", () => {
 
     expect(applyDynamicAxisCoordinates(
       payload,
-      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
-      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      { field: PhysicalQuantityId.DryBulbTemperature, valueSi: 20 },
+      { field: PhysicalQuantityId.OperativeTemperature, valueSi: 25 },
       failingAdapter,
     )).toBe(false);
     expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
@@ -177,8 +177,8 @@ describe("applyDynamicAxisCoordinates", () => {
 
     expect(applyDynamicAxisCoordinates(
       payload,
-      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
-      { field: FieldKey.OperativeTemperature, valueSi: 30 },
+      { field: PhysicalQuantityId.DryBulbTemperature, valueSi: 20 },
+      { field: PhysicalQuantityId.OperativeTemperature, valueSi: 30 },
       flatAdapter,
     )).toBe(false);
     expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
@@ -195,8 +195,8 @@ describe("applyDynamicAxisCoordinates", () => {
 
     expect(() => applyDynamicAxisCoordinates(
       payload,
-      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
-      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      { field: PhysicalQuantityId.DryBulbTemperature, valueSi: 20 },
+      { field: PhysicalQuantityId.OperativeTemperature, valueSi: 25 },
       throwingAdapter,
     )).toThrow("probe failed");
     expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
@@ -217,8 +217,8 @@ describe("applyDynamicAxisCoordinates", () => {
 
     expect(applyDynamicAxisCoordinates(
       payload,
-      { field: FieldKey.DryBulbTemperature, valueSi: 20 },
-      { field: FieldKey.OperativeTemperature, valueSi: 25 },
+      { field: PhysicalQuantityId.DryBulbTemperature, valueSi: 20 },
+      { field: PhysicalQuantityId.OperativeTemperature, valueSi: 25 },
       postConditionAdapter,
     )).toBe(false);
     expect(payload).toEqual({ tdb: 20, tr: 25, speed: 0.1 });
@@ -238,14 +238,14 @@ describe("model request-axis adapters", () => {
   };
 
   it.each([
-    [FieldKey.DryBulbTemperature, 21],
-    [FieldKey.MeanRadiantTemperature, 22],
-    [FieldKey.RelativeAirSpeed, 0.6],
-    [FieldKey.WindSpeed, 0.7],
-    [FieldKey.RelativeHumidity, 65],
-    [FieldKey.MetabolicRate, 1.4],
-    [FieldKey.ClothingInsulation, 0.8],
-    [FieldKey.ExternalWork, 0.1],
+    [PhysicalQuantityId.DryBulbTemperature, 21],
+    [PhysicalQuantityId.MeanRadiantTemperature, 22],
+    [PhysicalQuantityId.RelativeAirSpeed, 0.6],
+    [PhysicalQuantityId.WindSpeed, 0.7],
+    [PhysicalQuantityId.RelativeHumidity, 65],
+    [PhysicalQuantityId.MetabolicRate, 1.4],
+    [PhysicalQuantityId.ClothingInsulation, 0.8],
+    [PhysicalQuantityId.ExternalWork, 0.1],
   ] as const)("maps PMV field %s through the canonical request adapter", (field, value) => {
     const request = { ...pmvRequest };
     const pmvAxisAdapter = createPmvRequestAxisAdapter(pmvAshraeAdapter);
@@ -253,7 +253,7 @@ describe("model request-axis adapters", () => {
     pmvAxisAdapter.setAxisValue(request, field, value);
 
     expect(pmvAxisAdapter.getAxisValue(request, field)).toBe(value);
-    if (field === FieldKey.WindSpeed) expect(request.vr).toBe(value);
+    if (field === PhysicalQuantityId.WindSpeed) expect(request.vr).toBe(value);
   });
 
   it("applies standard-specific PMV operative temperature and clothing ranges", () => {
@@ -261,59 +261,59 @@ describe("model request-axis adapters", () => {
     const iso = createPmvRequestAxisAdapter(pmvIsoAdapter);
     const request = { ...pmvRequest };
 
-    expect(ashrae.getAxisValue(request, FieldKey.OperativeTemperature))
+    expect(ashrae.getAxisValue(request, PhysicalQuantityId.OperativeTemperature))
       .toBe(pmvAshraeAdapter.getOperativeTemperature(request));
-    expect(iso.getAxisValue(request, FieldKey.OperativeTemperature))
+    expect(iso.getAxisValue(request, PhysicalQuantityId.OperativeTemperature))
       .toBe(pmvIsoAdapter.getOperativeTemperature(request));
-    ashrae.setAxisValue(request, FieldKey.OperativeTemperature, 27);
+    ashrae.setAxisValue(request, PhysicalQuantityId.OperativeTemperature, 27);
     expect(request).toEqual(expect.objectContaining({ tdb: 27, tr: 27 }));
-    expect(ashrae.getAxisRange(FieldKey.ClothingInsulation).max).toBe(1.5);
-    expect(iso.getAxisRange(FieldKey.ClothingInsulation).max).toBe(2);
+    expect(ashrae.getAxisRange(PhysicalQuantityId.ClothingInsulation).max).toBe(1.5);
+    expect(iso.getAxisRange(PhysicalQuantityId.ClothingInsulation).max).toBe(2);
   });
 
   it.each([
-    [FieldKey.DryBulbTemperature, 21],
-    [FieldKey.MeanRadiantTemperature, 22],
-    [FieldKey.WindSpeed, 1.5],
-    [FieldKey.RelativeAirSpeed, 1.7],
-    [FieldKey.RelativeHumidity, 65],
+    [PhysicalQuantityId.DryBulbTemperature, 21],
+    [PhysicalQuantityId.MeanRadiantTemperature, 22],
+    [PhysicalQuantityId.WindSpeed, 1.5],
+    [PhysicalQuantityId.RelativeAirSpeed, 1.7],
+    [PhysicalQuantityId.RelativeHumidity, 65],
   ] as const)("maps UTCI field %s and its air-speed alias", (field, value) => {
     const request: UtciRequestDto = { tdb: 24, tr: 26, v: 1, rh: 50 };
 
     utciAxisAdapter.setAxisValue(request, field, value);
 
     expect(utciAxisAdapter.getAxisValue(request, field)).toBe(value);
-    if (field === FieldKey.RelativeAirSpeed) expect(request.v).toBe(value);
+    if (field === PhysicalQuantityId.RelativeAirSpeed) expect(request.v).toBe(value);
   });
 
   it("sets UTCI operative temperature explicitly and retains solver component ranges", () => {
     const request: UtciRequestDto = { tdb: 24, tr: 26, v: 1, rh: 50 };
 
-    utciAxisAdapter.setAxisValue(request, FieldKey.OperativeTemperature, 25);
+    utciAxisAdapter.setAxisValue(request, PhysicalQuantityId.OperativeTemperature, 25);
 
     expect(request).toEqual({ tdb: 25, tr: 25, v: 1, rh: 50 });
-    expect(utciAxisAdapter.getAxisValue(request, FieldKey.OperativeTemperature))
+    expect(utciAxisAdapter.getAxisValue(request, PhysicalQuantityId.OperativeTemperature))
       .toBeCloseTo(25, 6);
-    expect(utciAxisAdapter.getTemperatureComponentRange(FieldKey.DryBulbTemperature))
+    expect(utciAxisAdapter.getTemperatureComponentRange(PhysicalQuantityId.DryBulbTemperature))
       .toEqual({ min: -50, max: 50 });
-    expect(utciAxisAdapter.getTemperatureComponentRange(FieldKey.MeanRadiantTemperature))
+    expect(utciAxisAdapter.getTemperatureComponentRange(PhysicalQuantityId.MeanRadiantTemperature))
       .toEqual({ min: -80, max: 120 });
   });
 
   it.each([
-    [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
-    [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
+    [PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.OperativeTemperature],
+    [PhysicalQuantityId.OperativeTemperature, PhysicalQuantityId.DryBulbTemperature],
+    [PhysicalQuantityId.MeanRadiantTemperature, PhysicalQuantityId.OperativeTemperature],
+    [PhysicalQuantityId.OperativeTemperature, PhysicalQuantityId.MeanRadiantTemperature],
   ] as const)("solves the PMV coupled axis pair %s / %s", (xField, yField) => {
     const request = { ...pmvRequest };
     const pmvAxisAdapter = createPmvRequestAxisAdapter(pmvAshraeAdapter);
-    const componentField = xField === FieldKey.OperativeTemperature ? yField : xField;
+    const componentField = xField === PhysicalQuantityId.OperativeTemperature ? yField : xField;
 
     expect(applyDynamicAxisCoordinates(
       request,
-      { field: xField, valueSi: xField === FieldKey.OperativeTemperature ? 25 : 20 },
-      { field: yField, valueSi: yField === FieldKey.OperativeTemperature ? 25 : 20 },
+      { field: xField, valueSi: xField === PhysicalQuantityId.OperativeTemperature ? 25 : 20 },
+      { field: yField, valueSi: yField === PhysicalQuantityId.OperativeTemperature ? 25 : 20 },
       pmvAxisAdapter,
     )).toBe(true);
     expect(pmvAxisAdapter.getAxisValue(request, componentField)).toBeCloseTo(20, 6);
@@ -321,18 +321,18 @@ describe("model request-axis adapters", () => {
   });
 
   it.each([
-    [FieldKey.DryBulbTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.DryBulbTemperature],
-    [FieldKey.MeanRadiantTemperature, FieldKey.OperativeTemperature],
-    [FieldKey.OperativeTemperature, FieldKey.MeanRadiantTemperature],
+    [PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.OperativeTemperature],
+    [PhysicalQuantityId.OperativeTemperature, PhysicalQuantityId.DryBulbTemperature],
+    [PhysicalQuantityId.MeanRadiantTemperature, PhysicalQuantityId.OperativeTemperature],
+    [PhysicalQuantityId.OperativeTemperature, PhysicalQuantityId.MeanRadiantTemperature],
   ] as const)("solves the UTCI coupled axis pair %s / %s", (xField, yField) => {
     const request: UtciRequestDto = { tdb: 24, tr: 26, v: 1, rh: 50 };
-    const componentField = xField === FieldKey.OperativeTemperature ? yField : xField;
+    const componentField = xField === PhysicalQuantityId.OperativeTemperature ? yField : xField;
 
     expect(applyDynamicAxisCoordinates(
       request,
-      { field: xField, valueSi: xField === FieldKey.OperativeTemperature ? 25 : 20 },
-      { field: yField, valueSi: yField === FieldKey.OperativeTemperature ? 25 : 20 },
+      { field: xField, valueSi: xField === PhysicalQuantityId.OperativeTemperature ? 25 : 20 },
+      { field: yField, valueSi: yField === PhysicalQuantityId.OperativeTemperature ? 25 : 20 },
       utciAxisAdapter,
     )).toBe(true);
     expect(utciAxisAdapter.getAxisValue(request, componentField)).toBeCloseTo(20, 6);

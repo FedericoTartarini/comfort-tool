@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { UnitSystem } from "../../../models/units";
 import { buildAxisValues, createFieldAxisScale } from "./axis";
 
 describe("chart axes", () => {
   it("preserves SI values while converting display coordinates", () => {
     const axis = createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
+      field: PhysicalQuantityId.DryBulbTemperature,
       unitSystem: UnitSystem.IP,
       rangeSi: { min: 0, max: 100 },
       points: 2,
@@ -27,7 +27,7 @@ describe("chart axes", () => {
     "rejects invalid point count %s",
     (points) => {
       const axis = createFieldAxisScale({
-        field: FieldKey.DryBulbTemperature,
+        field: PhysicalQuantityId.DryBulbTemperature,
         unitSystem: UnitSystem.SI,
         rangeSi: { min: 0, max: 1 },
         points,

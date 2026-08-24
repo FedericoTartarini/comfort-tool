@@ -1,25 +1,21 @@
-import {
-  FieldKey,
-  type FieldKey as FieldKeyType,
-} from "../../../models/fieldKeys";
-import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import type { FieldRequestAdapter } from "../requestMapping";
-import type { ChartRange } from "./types";
+import { CHART_COORDINATE_TOLERANCE, type ChartRange } from "./types";
 
 export interface DynamicAxisCoordinate {
-  readonly field: FieldKeyType;
+  readonly field: ChartAxisQuantityId;
   readonly valueSi: number;
 }
 
 export interface DynamicAxisPayloadAdapter<TPayload> {
   setAxisValue: (
     payload: TPayload,
-    field: FieldKeyType,
+    field: ChartAxisQuantityId,
     valueSi: number,
   ) => void;
   getAxisValue: (
     payload: TPayload,
-    field: FieldKeyType,
+    field: ChartAxisQuantityId,
   ) => number;
   getOperativeTemperature: (payload: TPayload) => number;
   getTemperatureComponentRange: (
@@ -28,14 +24,12 @@ export interface DynamicAxisPayloadAdapter<TPayload> {
 }
 
 type TemperatureComponentField =
-  | typeof FieldKey.DryBulbTemperature
-  | typeof FieldKey.MeanRadiantTemperature;
-
-const SOLVER_TOLERANCE = 1e-6;
+  | typeof PhysicalQuantityId.DryBulbTemperature
+  | typeof PhysicalQuantityId.MeanRadiantTemperature;
 
 export interface RequestAxisAdapter<TPayload>
   extends DynamicAxisPayloadAdapter<TPayload> {
-  getAxisRange: (field: FieldKeyType) => ChartRange;
+  getAxisRange: (field: ChartAxisQuantityId) => ChartRange;
 }
 
 interface RequestAxisAdapterOptions<TPayload extends object> {
@@ -43,8 +37,8 @@ interface RequestAxisAdapterOptions<TPayload extends object> {
     FieldRequestAdapter<TPayload>,
     "getAxisValue" | "setAxisValue"
   >;
-  aliases?: Partial<Record<FieldKeyType, FieldKeyType>>;
-  axisRanges?: Partial<Record<FieldKeyType, ChartRange>>;
+  aliases?: Partial<Record<ChartAxisQuantityId, ChartAxisQuantityId>>;
+  axisRanges?: Partial<Record<ChartAxisQuantityId, ChartRange>>;
   temperatureComponentRanges?: Partial<Record<TemperatureComponentField, ChartRange>>;
   operativeTemperature: {
     get: (payload: TPayload) => number;
@@ -64,26 +58,26 @@ export function createRequestAxisAdapter<TPayload extends object>({
   temperatureComponentRanges = {},
   operativeTemperature,
 }: RequestAxisAdapterOptions<TPayload>): RequestAxisAdapter<TPayload> {
-  const resolveField = (field: FieldKeyType) => aliases[field] ?? field;
-  const getAxisRange = (field: FieldKeyType): ChartRange => {
-    if (field === FieldKey.OperativeTemperature) {
+  const resolveField = (field: ChartAxisQuantityId) => aliases[field] ?? field;
+  const getAxisRange = (field: ChartAxisQuantityId): ChartRange => {
+    if (field === PhysicalQuantityId.OperativeTemperature) {
       return operativeTemperature.range;
     }
     const resolvedField = resolveField(field);
     return axisRanges[field]
       ?? axisRanges[resolvedField]
       ?? {
-        min: fieldMetaByKey[resolvedField].minValue,
-        max: fieldMetaByKey[resolvedField].maxValue,
+        min: getPhysicalQuantityMeta(resolvedField).minSi,
+        max: getPhysicalQuantityMeta(resolvedField).maxSi,
       };
   };
 
   return {
-    getAxisValue: (payload, field) => field === FieldKey.OperativeTemperature
+    getAxisValue: (payload, field) => field === PhysicalQuantityId.OperativeTemperature
       ? operativeTemperature.get(payload)
       : fieldAdapter.getAxisValue(payload, resolveField(field)),
     setAxisValue: (payload, field, valueSi) => {
-      if (field === FieldKey.OperativeTemperature) {
+      if (field === PhysicalQuantityId.OperativeTemperature) {
         operativeTemperature.set(payload, valueSi);
         return;
       }
@@ -98,18 +92,18 @@ export function createRequestAxisAdapter<TPayload extends object>({
 }
 
 function isTemperatureComponent(
-  field: FieldKeyType,
+  field: ChartAxisQuantityId,
 ): field is TemperatureComponentField {
-  return field === FieldKey.DryBulbTemperature ||
-    field === FieldKey.MeanRadiantTemperature;
+  return field === PhysicalQuantityId.DryBulbTemperature ||
+    field === PhysicalQuantityId.MeanRadiantTemperature;
 }
 
 function getOtherTemperatureComponent(
   field: TemperatureComponentField,
 ): TemperatureComponentField {
-  return field === FieldKey.DryBulbTemperature
-    ? FieldKey.MeanRadiantTemperature
-    : FieldKey.DryBulbTemperature;
+  return field === PhysicalQuantityId.DryBulbTemperature
+    ? PhysicalQuantityId.MeanRadiantTemperature
+    : PhysicalQuantityId.DryBulbTemperature;
 }
 
 function solveTemperatureComponent<TPayload>(
@@ -136,7 +130,7 @@ function solveTemperatureComponent<TPayload>(
       !Number.isFinite(lowValue) ||
       !Number.isFinite(highValue) ||
       !Number.isFinite(valueDelta) ||
-      Math.abs(valueDelta) <= SOLVER_TOLERANCE
+      Math.abs(valueDelta) <= CHART_COORDINATE_TOLERANCE
     ) {
       return null;
     }
@@ -150,7 +144,7 @@ function solveTemperatureComponent<TPayload>(
 
     const resolvedValue = evaluate(resolved);
     return Number.isFinite(resolvedValue) &&
-      Math.abs(resolvedValue - targetOperativeTemperatureSi) <= SOLVER_TOLERANCE
+      Math.abs(resolvedValue - targetOperativeTemperatureSi) <= CHART_COORDINATE_TOLERANCE
       ? resolved
       : null;
   } finally {
@@ -175,13 +169,13 @@ export function applyDynamicAxisCoordinates<TPayload>(
 
   const coordinates = [xCoordinate, yCoordinate];
   const operativeCoordinate = coordinates.find(
-    ({ field }) => field === FieldKey.OperativeTemperature,
+    ({ field }) => field === PhysicalQuantityId.OperativeTemperature,
   );
 
   // Apply every independent coordinate first. Air speed can affect operative
   // temperature, so this phase must precede the operative constraint.
   coordinates
-    .filter(({ field }) => field !== FieldKey.OperativeTemperature)
+    .filter(({ field }) => field !== PhysicalQuantityId.OperativeTemperature)
     .forEach(({ field, valueSi }) => {
       adapter.setAxisValue(payload, field, valueSi);
     });
@@ -196,7 +190,7 @@ export function applyDynamicAxisCoordinates<TPayload>(
   if (!temperatureComponent || !isTemperatureComponent(temperatureComponent.field)) {
     adapter.setAxisValue(
       payload,
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
       operativeCoordinate.valueSi,
     );
     return Number.isFinite(adapter.getOperativeTemperature(payload));
@@ -220,7 +214,7 @@ export function applyDynamicAxisCoordinates<TPayload>(
     const operativeTemperature = adapter.getOperativeTemperature(payload);
     postConditionSatisfied = Number.isFinite(operativeTemperature) && Math.abs(
       operativeTemperature - operativeCoordinate.valueSi,
-    ) <= SOLVER_TOLERANCE;
+    ) <= CHART_COORDINATE_TOLERANCE;
     return postConditionSatisfied;
   } finally {
     if (!postConditionSatisfied) {

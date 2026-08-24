@@ -1,0 +1,655 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`output golden — table snapshots > ADAPTIVE_ASHRAE produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "adaptive-ashrae-boundary",
+      "layoutTitle": "Adaptive (ASHRAE-55) Comfort Chart",
+      "profileKind": "compliance",
+      "traceCount": 7,
+      "traceNames": [
+        "Tooltip Layer",
+        "Input 1",
+      ],
+      "xAxisTitle": "Prevailing mean outdoor temperature (°C)",
+      "yAxisTitle": "Operative temperature (°C)",
+    },
+  ],
+  "modelId": "ADAPTIVE_ASHRAE",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "text": "Compliant",
+          },
+        ],
+        "title": "Compliance",
+      },
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "subtext": "20.5 ~ 27.5 °C",
+            "text": "80% Acceptability",
+          },
+        ],
+        "title": "80% Acceptability",
+      },
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "subtext": "21.5 ~ 26.5 °C",
+            "text": "90% Acceptability",
+          },
+        ],
+        "title": "90% Acceptability",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > ADAPTIVE_EN produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "adaptive-en-boundary",
+      "layoutTitle": "Adaptive (EN 16798-1) Comfort Chart",
+      "profileKind": "compliance",
+      "traceCount": 9,
+      "traceNames": [
+        "Tooltip Layer",
+        "Input 1",
+      ],
+      "xAxisTitle": "Running mean outdoor temperature (°C)",
+      "yAxisTitle": "Operative temperature (°C)",
+    },
+  ],
+  "modelId": "ADAPTIVE_EN",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "text": "Compliant",
+          },
+        ],
+        "title": "Compliance",
+      },
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "subtext": "22.4 ~ 27.4 °C",
+            "text": "Category I",
+          },
+        ],
+        "title": "Category I",
+      },
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "subtext": "21.4 ~ 28.4 °C",
+            "text": "Category II",
+          },
+        ],
+        "title": "Category II",
+      },
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "subtext": "20.4 ~ 29.4 °C",
+            "text": "Category III",
+          },
+        ],
+        "title": "Category III",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > HEAT_INDEX produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "heat-index-ranges",
+      "layoutTitle": "Heat Index Ranges",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Relative humidity (%)",
+      "yAxisTitle": "Air temperature (°C)",
+    },
+    {
+      "instanceId": "heat-index-dynamic-field",
+      "layoutTitle": "Heat Index Dynamic Chart — Heat Index",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+  ],
+  "modelId": "HEAT_INDEX",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "color": "#a16207",
+            "subtext": "Extreme Caution",
+            "text": "37.1 °C",
+          },
+        ],
+        "title": "Heat Index",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > HUMIDEX produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "humidex-ranges",
+      "layoutTitle": "Humidex Discomfort",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Relative humidity (%)",
+      "yAxisTitle": "Air temperature (°C)",
+    },
+    {
+      "instanceId": "humidex-dynamic-field",
+      "layoutTitle": "Humidex Dynamic Chart — Humidex",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+  ],
+  "modelId": "HUMIDEX",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "color": "#a16207",
+            "subtext": "Intense",
+            "text": "40.9",
+          },
+        ],
+        "title": "Humidex",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > PHS_2023 produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "phs-exposure-history",
+      "layoutTitle": "PHS exposure history",
+      "profileKind": "compliance",
+      "traceCount": 4,
+      "traceNames": [
+        "Rectal temperature",
+        "Core temperature",
+        "Maximum rectal temperature",
+        "First rectal-temperature limit",
+      ],
+      "xAxisTitle": "Time (hours)",
+      "yAxisTitle": "Temperature (°C)",
+    },
+    {
+      "instanceId": "phs-exposure-history",
+      "layoutTitle": "PHS exposure history",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Rectal temperature",
+        "Core temperature",
+        "Editable rectal-temperature threshold",
+        "First editable-threshold crossing",
+      ],
+      "xAxisTitle": "Time (hours)",
+      "yAxisTitle": "Temperature (°C)",
+    },
+    {
+      "instanceId": "phs-dynamic-field",
+      "layoutTitle": "PHS Dynamic Chart — Limiting exposure time",
+      "profileKind": "compliance",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+    {
+      "instanceId": "phs-dynamic-field",
+      "layoutTitle": "PHS Dynamic Chart — Rectal temperature after 8 h",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+  ],
+  "modelId": "PHS_2023",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "text": "0.90 h",
+          },
+        ],
+        "group": "Maximum allowable exposure time",
+        "title": "Rectal-temperature exposure limit",
+      },
+      {
+        "cells": [
+          {
+            "text": "2.75 h",
+          },
+        ],
+        "group": "Maximum allowable exposure time",
+        "title": "Water-loss exposure limit",
+      },
+      {
+        "cells": [
+          {
+            "subtext": "Rectal-temperature limit",
+            "text": "0.90 h",
+          },
+        ],
+        "group": "Maximum allowable exposure time",
+        "title": "Earliest limiting criterion",
+      },
+      {
+        "cells": [
+          {
+            "text": "41.4 °C",
+          },
+        ],
+        "group": "End-of-exposure state",
+        "title": "Rectal temperature after 8 h",
+      },
+      {
+        "cells": [
+          {
+            "text": "8.92 kg",
+          },
+        ],
+        "group": "End-of-exposure state",
+        "title": "Predicted water loss after 8 h",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > PMV_ASHRAE produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "pmv-ashrae-psychrometric",
+      "layoutTitle": "PMV (ASHRAE-55) Psychrometric Chart — PMV",
+      "profileKind": "compliance",
+      "traceCount": 19,
+      "traceNames": [
+        "Supersaturated region mask",
+        "RH 10%",
+        "RH 20%",
+        "RH 30%",
+        "RH 40%",
+        "RH 50%",
+        "RH 60%",
+        "RH 70%",
+        "RH 80%",
+        "RH 90%",
+        "RH 100%",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Humidity ratio (g/kg)",
+    },
+    {
+      "instanceId": "pmv-ashrae-psychrometric",
+      "layoutTitle": "PMV (ASHRAE-55) Psychrometric Chart — PMV",
+      "profileKind": "explore",
+      "traceCount": 27,
+      "traceNames": [
+        "Supersaturated region mask",
+        "RH 10%",
+        "RH 20%",
+        "RH 30%",
+        "RH 40%",
+        "RH 50%",
+        "RH 60%",
+        "RH 70%",
+        "RH 80%",
+        "RH 90%",
+        "RH 100%",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Humidity ratio (g/kg)",
+    },
+    {
+      "instanceId": "pmv-ashrae-dynamic-field",
+      "layoutTitle": "PMV (ASHRAE-55) Dynamic Chart — PMV",
+      "profileKind": "compliance",
+      "traceCount": 7,
+      "traceNames": [
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+    {
+      "instanceId": "pmv-ashrae-dynamic-field",
+      "layoutTitle": "PMV (ASHRAE-55) Dynamic Chart — PMV",
+      "profileKind": "explore",
+      "traceCount": 15,
+      "traceNames": [
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+  ],
+  "modelId": "PMV_ASHRAE",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "text": "Compliant",
+          },
+        ],
+        "title": "Compliance",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.24",
+          },
+        ],
+        "title": "PMV",
+      },
+      {
+        "cells": [
+          {
+            "color": "#475569",
+            "text": "Neutral",
+          },
+        ],
+        "title": "Zone",
+      },
+      {
+        "cells": [
+          {
+            "text": "6.2%",
+          },
+        ],
+        "title": "PPD",
+      },
+      {
+        "cells": [
+          {
+            "text": "93.8%",
+          },
+        ],
+        "title": "Acceptability",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > PMV_ISO produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "pmv-iso-psychrometric",
+      "layoutTitle": "PMV (ISO 7730 Category B) Psychrometric Chart — PMV",
+      "profileKind": "compliance",
+      "traceCount": 19,
+      "traceNames": [
+        "Supersaturated region mask",
+        "RH 10%",
+        "RH 20%",
+        "RH 30%",
+        "RH 40%",
+        "RH 50%",
+        "RH 60%",
+        "RH 70%",
+        "RH 80%",
+        "RH 90%",
+        "RH 100%",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Humidity ratio (g/kg)",
+    },
+    {
+      "instanceId": "pmv-iso-psychrometric",
+      "layoutTitle": "PMV (ISO 7730 Category B) Psychrometric Chart — PMV",
+      "profileKind": "explore",
+      "traceCount": 27,
+      "traceNames": [
+        "Supersaturated region mask",
+        "RH 10%",
+        "RH 20%",
+        "RH 30%",
+        "RH 40%",
+        "RH 50%",
+        "RH 60%",
+        "RH 70%",
+        "RH 80%",
+        "RH 90%",
+        "RH 100%",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Humidity ratio (g/kg)",
+    },
+    {
+      "instanceId": "pmv-iso-dynamic-field",
+      "layoutTitle": "PMV (ISO 7730 Category B) Dynamic Chart — PMV",
+      "profileKind": "compliance",
+      "traceCount": 7,
+      "traceNames": [
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+    {
+      "instanceId": "pmv-iso-dynamic-field",
+      "layoutTitle": "PMV (ISO 7730 Category B) Dynamic Chart — PMV",
+      "profileKind": "explore",
+      "traceCount": 15,
+      "traceNames": [
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+  ],
+  "modelId": "PMV_ISO",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "color": "#047857",
+            "text": "Compliant",
+          },
+        ],
+        "title": "Compliance",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.24",
+          },
+        ],
+        "title": "PMV",
+      },
+      {
+        "cells": [
+          {
+            "color": "#475569",
+            "text": "Neutral",
+          },
+        ],
+        "title": "Zone",
+      },
+      {
+        "cells": [
+          {
+            "text": "6.2%",
+          },
+        ],
+        "title": "PPD",
+      },
+      {
+        "cells": [
+          {
+            "text": "93.8%",
+          },
+        ],
+        "title": "Acceptability",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > UTCI produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "utci-stress-band",
+      "layoutTitle": "UTCI stress category",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "UTCI (°C)",
+      "yAxisTitle": "",
+    },
+    {
+      "instanceId": "utci-dynamic-field",
+      "layoutTitle": "UTCI Dynamic Chart — UTCI",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Relative humidity (%)",
+    },
+  ],
+  "modelId": "UTCI",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "text": "25.5 °C",
+          },
+        ],
+        "title": "UTCI",
+      },
+      {
+        "cells": [
+          {
+            "color": "#059669",
+            "text": "No Thermal Stress",
+          },
+        ],
+        "title": "Stress Category",
+      },
+    ],
+  },
+}
+`;
+
+exports[`output golden — table snapshots > WIND_CHILL produces stable table output 1`] = `
+{
+  "charts": [
+    {
+      "instanceId": "wind-chill-dynamic-field",
+      "layoutTitle": "Wind Chill Dynamic Chart — Wind Chill Index",
+      "profileKind": "explore",
+      "traceCount": 4,
+      "traceNames": [
+        "Boundaries",
+        "Input 1",
+      ],
+      "xAxisTitle": "Air temperature (°C)",
+      "yAxisTitle": "Wind speed (m/s)",
+    },
+  ],
+  "modelId": "WIND_CHILL",
+  "table": {
+    "sections": [
+      {
+        "cells": [
+          {
+            "color": "#0369a1",
+            "subtext": "Safe",
+            "text": "1391 W/m²",
+          },
+        ],
+        "title": "Wind Chill Index",
+      },
+      {
+        "cells": [
+          {
+            "color": "#0369a1",
+            "text": "-17.4 °C",
+          },
+        ],
+        "title": "Wind Chill Temperature",
+      },
+    ],
+  },
+}
+`;

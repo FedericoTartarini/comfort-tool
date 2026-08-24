@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { UnitSystem } from "../../models/units";
 import {
   convertFieldValueFromSi,
@@ -26,25 +26,25 @@ describe("units helpers", () => {
   });
 
   it("round-trips field conversions between SI and IP", () => {
-    const displayTemperature = convertFieldValueFromSi(FieldKey.DryBulbTemperature, 25, UnitSystem.IP);
+    const displayTemperature = convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, 25, UnitSystem.IP);
     expect(displayTemperature).toBeCloseTo(77, 6);
-    expect(convertFieldValueToSi(FieldKey.DryBulbTemperature, displayTemperature, UnitSystem.IP)).toBeCloseTo(25, 6);
+    expect(convertFieldValueToSi(PhysicalQuantityId.DryBulbTemperature, displayTemperature, UnitSystem.IP)).toBeCloseTo(25, 6);
 
     const displayOperativeTemperature = convertFieldValueFromSi(
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
       25,
       UnitSystem.IP,
     );
     expect(displayOperativeTemperature).toBeCloseTo(77, 6);
     expect(convertFieldValueToSi(
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
       displayOperativeTemperature,
       UnitSystem.IP,
     )).toBeCloseTo(25, 6);
 
-    const displayWindSpeed = convertFieldValueFromSi(FieldKey.WindSpeed, 1.2, UnitSystem.IP);
+    const displayWindSpeed = convertFieldValueFromSi(PhysicalQuantityId.WindSpeed, 1.2, UnitSystem.IP);
     expect(displayWindSpeed).toBeCloseTo(3.937007874, 6);
-    expect(convertFieldValueToSi(FieldKey.WindSpeed, displayWindSpeed, UnitSystem.IP)).toBeCloseTo(1.2, 6);
+    expect(convertFieldValueToSi(PhysicalQuantityId.WindSpeed, displayWindSpeed, UnitSystem.IP)).toBeCloseTo(1.2, 6);
   });
 
   it("round-trips humidity ratio and vapor pressure display conversions", () => {

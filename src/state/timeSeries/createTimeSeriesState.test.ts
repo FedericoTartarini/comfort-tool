@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ComfortModel } from "../../models/comfortModels";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import {
   PhsPosture,
   PhsSegmentPreset,
@@ -59,8 +60,8 @@ describe("createTimeSeriesState", () => {
       }),
     ]);
     expect(draft.person).toEqual(expect.objectContaining({
-      weightKg: 75,
-      heightM: 1.8,
+      [PhysicalQuantityId.PhsBodyWeight]: 75,
+      [PhysicalQuantityId.PhsHeight]: 1.8,
       posture: PhsPosture.Standing,
     }));
 
@@ -148,7 +149,7 @@ describe("createTimeSeriesState", () => {
     expect(controller.actions.updateSettingControl(height.id, "6")).toBe(true);
 
     expect(getDraft(controller).segments[0].tdb).toBeCloseTo(38, 8);
-    expect(getDraft(controller).person.heightM).toBeCloseTo(1.8288, 8);
+    expect(getDraft(controller).person[PhysicalQuantityId.PhsHeight]).toBeCloseTo(1.8288, 8);
     editor = controller.selectors.getEditor();
     expect(editor.segments[0].controls.find(
       ({ label }) => label === "Air temperature",

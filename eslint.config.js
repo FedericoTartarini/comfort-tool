@@ -3,6 +3,23 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
 
+// Must match primaryInputOrder values in src/models/physicalQuantities.ts
+// Guarded by src/models/catalogWireIds.test.ts
+const restrictedWireStringSelectors = [
+  "tdb",
+  "tr",
+  "vr",
+  "v",
+  "rh",
+  "met",
+  "clo",
+  "wme",
+  "trm",
+].map((value) => ({
+  selector: `Literal[value='${value}']`,
+  message: `Use PhysicalQuantityId instead of the wire string "${value}".`,
+}));
+
 export default [
   {
     ignores: [
@@ -239,6 +256,23 @@ export default [
             },
           ],
         },
+      ],
+    },
+  },
+  {
+    files: [
+      "src/state/**/*.{ts,svelte}",
+      "src/components/**/*.{ts,svelte}",
+      "src/views/**/*.{ts,svelte}",
+    ],
+    ignores: [
+      "**/*.test.ts",
+      "src/models/physicalQuantities.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...restrictedWireStringSelectors,
       ],
     },
   },

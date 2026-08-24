@@ -5,7 +5,12 @@
 
   import ChartPanel from "../components/chart/ChartPanel.svelte";
   import InputPanel from "../components/input-panel/InputPanel.svelte";
+  import WorkspaceTwoColumnLayout from "../components/layout/WorkspaceTwoColumnLayout.svelte";
   import ResultsPanel from "../components/ResultsPanel.svelte";
+  import {
+    toChartInstancePanelView,
+    type ChartInstancePanelView,
+  } from "../state/comfortTool/chartInstancePresentation";
   import type { ComfortToolController } from "../state/comfortTool/types";
 
   type ComfortModelType = ComfortToolController["state"]["ui"]["selectedModel"];
@@ -17,16 +22,37 @@
   }
 
   let { toolState, allowedModelIds, onSelectModel }: Props = $props();
+
+  function toPanelView(
+    instance: ReturnType<
+      ComfortToolController["selectors"]["getCurrentChartInstance"]
+    >,
+  ): ChartInstancePanelView {
+    return toChartInstancePanelView(instance);
+  }
+
+  const chartInstance = $derived(
+    toPanelView(toolState.selectors.getCurrentChartInstance()),
+  );
+  const chartInstances = $derived(
+    toolState.selectors.getCurrentChartInstances().map(toPanelView),
+  );
 </script>
 
 <main id="overview" class="bg-stone-50 px-4 py-4 sm:px-6 lg:px-8">
-  <div class="mx-auto grid w-full max-w-screen-2xl gap-4 xl:grid-cols-[24rem_minmax(0,1fr)]">
-    <aside id="inputs-panel" class="min-w-0 scroll-mt-32">
+  <WorkspaceTwoColumnLayout
+    asideId="inputs-panel"
+    asideClass="min-w-0 scroll-mt-32"
+    mainClass="grid min-w-0 gap-4"
+  >
+    {#snippet aside()}
       <InputPanel {toolState} {allowedModelIds} {onSelectModel} />
-    </aside>
-
-    <section class="grid min-w-0 gap-4">
-      <Card size="none" class="w-full min-w-0 border-stone-300 p-3 shadow-sm scroll-mt-32">
+    {/snippet}
+    {#snippet main()}
+      <Card
+        size="none"
+        class="w-full min-w-0 border-stone-300 p-3 shadow-sm scroll-mt-32"
+      >
         <ResultsPanel
           visibleInputIds={toolState.selectors.getVisibleInputIds()}
           resultSections={toolState.selectors.getResultSections()}
@@ -37,16 +63,16 @@
         <ChartPanel
           chartResult={toolState.selectors.getCurrentChartResult()}
           isLoading={toolState.state.ui.isLoading}
-          chartDefinition={toolState.selectors.getCurrentChartDefinition()}
-          chartOptions={toolState.selectors.getCurrentChartOptions()}
-          selectedChart={toolState.selectors.getCurrentSelectedChart()}
+          {chartInstance}
+          {chartInstances}
+          selectedChartInstanceId={toolState.selectors.getCurrentChartInstanceId()}
           selectedModel={toolState.state.ui.selectedModel}
-          onSelectChart={toolState.actions.setSelectedChart}
+          onSelectChartInstance={toolState.actions.setSelectedChartInstance}
           chartControls={toolState.selectors.getChartControlsViewModel()}
           legendZones={toolState.selectors.getCurrentChartLegendZones()}
           legendTitle={toolState.selectors.getCurrentChartLegendTitle()}
         />
       </Card>
-    </section>
-  </div>
+    {/snippet}
+  </WorkspaceTwoColumnLayout>
 </main>

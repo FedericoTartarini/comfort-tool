@@ -1,9 +1,4 @@
-import {
-  FieldKey,
-  type CanonicalInputState,
-  type DerivedInputState,
-} from "../../../models/fieldKeys";
-import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../models/physicalQuantities";
 import type { InputControlId as InputControlIdType } from "../../../models/inputControls";
 import {
   OptionKey,
@@ -11,9 +6,10 @@ import {
   type ModelOptionsRecord,
   type TemperatureMode as TemperatureModeType,
 } from "../../../models/inputModes";
-import { inputOrder } from "../../../models/inputSlots";
+import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
 import { temperatureMenuItems } from "../../../models/controlMenuMeta";
 import { synchronizeTemperatureMode } from "../syncState";
+import { getDerivedFromAuxiliary } from "../quantityStateRouting";
 import type {
   BehaviorPatch,
   ControlBehaviorContext,
@@ -41,10 +37,10 @@ export function requireTemperatureMode(
 }
 
 type PostTemperatureSynchronizer = (
-  inputState: CanonicalInputState,
-  derivedState: DerivedInputState,
+  inputState: PrimaryInputState,
+  derivedState: DerivedSlotQuantityState,
   options: ModelOptionsRecord,
-) => CanonicalInputState;
+) => PrimaryInputState;
 
 interface OperativeTemperatureControlOptions {
   minValue?: number;
@@ -53,15 +49,15 @@ interface OperativeTemperatureControlOptions {
 }
 
 function applyPostSynchronization(
-  inputState: CanonicalInputState,
+  inputState: PrimaryInputState,
   context: ControlBehaviorContext,
-  inputId: keyof ControlBehaviorContext["inputsByInput"],
+  inputId: InputIdType,
   options: ModelOptionsRecord,
   synchronizer?: PostTemperatureSynchronizer,
-): CanonicalInputState {
+): PrimaryInputState {
   return synchronizer?.(
     inputState,
-    context.derivedByInput[inputId],
+    getDerivedFromAuxiliary(context.auxiliaryQuantitiesByInput[inputId]),
     options,
   ) ?? inputState;
 }
@@ -70,14 +66,14 @@ export function createOperativeTemperatureControlBehavior(
   controlId: InputControlIdType,
   options: OperativeTemperatureControlOptions = {},
 ): InputControlBehavior {
-  const temperatureMeta = fieldMetaByKey[FieldKey.DryBulbTemperature];
+  const temperatureMeta = getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature);
   return createControlBehavior({
     controlId,
-    fieldKey: FieldKey.DryBulbTemperature,
+    fieldKey: PhysicalQuantityId.DryBulbTemperature,
     minValue: options.minValue,
     maxValue: options.maxValue,
     getPresentation: (context) => ({
-      ...buildDefaultPresentation(context, temperatureMeta, options),
+      ...buildDefaultPresentation(context, PhysicalQuantityId.DryBulbTemperature, options),
       label: requireTemperatureMode(context.options) === TemperatureMode.Operative
         ? "Operative temperature"
         : temperatureMeta.label,
@@ -92,15 +88,15 @@ export function createOperativeTemperatureControlBehavior(
     ]),
     applyInput: (context, inputId, nextValueSi) => {
       const mode = requireTemperatureMode(context.options);
-      const nextInputState: CanonicalInputState = {
-        ...context.inputsByInput[inputId],
-        [FieldKey.DryBulbTemperature]: nextValueSi,
+      const nextInputState: PrimaryInputState = {
+        ...context.quantitiesByInput[inputId],
+        [PhysicalQuantityId.DryBulbTemperature]: nextValueSi,
         ...(mode === TemperatureMode.Operative
-          ? { [FieldKey.MeanRadiantTemperature]: nextValueSi }
+          ? { [PhysicalQuantityId.MeanRadiantTemperature]: nextValueSi }
           : {}),
       };
       return {
-        inputsPatch: {
+        quantitiesPatch: {
           [inputId]: applyPostSynchronization(
             nextInputState,
             context,
@@ -129,13 +125,13 @@ export function createTemperatureModeOptionHandler(
       ...context.options,
       [OptionKey.TemperatureMode]: nextMode,
     };
-    const inputsPatch: NonNullable<BehaviorPatch["inputsPatch"]> = {};
+    const quantitiesPatch: NonNullable<BehaviorPatch["quantitiesPatch"]> = {};
     for (const inputId of inputOrder) {
       const temperatureSynchronized = synchronizeTemperatureMode(
-        context.inputsByInput[inputId],
+        context.quantitiesByInput[inputId],
         nextMode,
       ).inputState;
-      inputsPatch[inputId] = applyPostSynchronization(
+      quantitiesPatch[inputId] = applyPostSynchronization(
         temperatureSynchronized,
         context,
         inputId,
@@ -144,7 +140,7 @@ export function createTemperatureModeOptionHandler(
       );
     }
     return {
-      inputsPatch,
+      quantitiesPatch,
       optionsPatch: { [OptionKey.TemperatureMode]: nextMode },
     };
   };

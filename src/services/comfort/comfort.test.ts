@@ -6,44 +6,49 @@ import {
   HumidityInputMode,
   OptionKey,
 } from "../../models/inputModes";
-import { DerivedInputId, FieldKey } from "../../models/fieldKeys";
+import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import { UnitSystem } from "../../models/units";
-import { ChartId } from "../../models/chartOptions";
 import {
-  ChartMode,
   ModelOutputKey,
   type ChartBuildContext,
   type ExploreFieldChartConfig,
   type NumericBand,
 } from "../../models/modelCapabilities";
+import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+
 import {
-  pmvChartableOutputs,
-} from "../../comfortModels/pmvShared";
+  pmvExploreOutputs,
+} from "../../comfortModels/pmv/pmvShared";
 import {
   calculatePmvModel,
   type PmvChartSourceDto,
-} from "../../comfortModels/pmvCalculation";
+} from "../../comfortModels/pmv/pmvCalculation";
 import {
   pmvAshraeAdapter,
   pmvAshraeModelConfig,
-} from "../../comfortModels/pmvAshrae";
+} from "../../comfortModels/pmv/pmvAshrae";
 import {
   buildUtciStressChart,
+} from "../../comfortModels/utci/utciCharts";
+import {
   calculateUtci,
   utciModelConfig,
-} from "../../comfortModels/utci";
+} from "../../comfortModels/utci/utci";
 import {
   deriveRelativeHumidityFromDewPoint,
 } from "./derivations";
 import { check_standard_compliance, pmv_ppd_ashrae } from "jsthermalcomfort";
 import {
-  deriveInputDerivedState,
+  derivePsychrometricSlots,
 } from "./syncState";
 import { synchronizeHumidityInputState } from "./controls/humidityControl";
 import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOptions } from "./referenceValues";
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
+import { createModelCalculationContext } from "../../models/modelCalculation";
 import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
+import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
+import { ChartInstanceId } from "../../models/output/chartInstances";
 
 const pmvPayload = {
   tdb: 26,
@@ -74,14 +79,14 @@ function calculatePmvModelForTest(
   for (const inputId of visibleInputIds) {
     const request = inputs[inputId];
     if (!request) continue;
-    const inputState = toolState.state.inputsByInput[inputId];
-    inputState[FieldKey.DryBulbTemperature] = request.tdb;
-    inputState[FieldKey.MeanRadiantTemperature] = request.tr;
-    inputState[FieldKey.RelativeAirSpeed] = request.vr;
-    inputState[FieldKey.RelativeHumidity] = request.rh;
-    inputState[FieldKey.MetabolicRate] = request.met;
-    inputState[FieldKey.ClothingInsulation] = request.clo;
-    inputState[FieldKey.ExternalWork] = request.wme;
+    const inputState = toolState.state.quantitiesByInput[inputId];
+    inputState[PhysicalQuantityId.DryBulbTemperature] = request.tdb;
+    inputState[PhysicalQuantityId.MeanRadiantTemperature] = request.tr;
+    inputState[PhysicalQuantityId.RelativeAirSpeed] = request.vr;
+    inputState[PhysicalQuantityId.RelativeHumidity] = request.rh;
+    inputState[PhysicalQuantityId.MetabolicRate] = request.met;
+    inputState[PhysicalQuantityId.ClothingInsulation] = request.clo;
+    inputState[PhysicalQuantityId.ExternalWork] = request.wme;
   }
   toolState.state.ui.modelOptionsByModel[pmvAshraeModelConfig.id] = {
     ...pmvAshraeModelConfig.defaultOptions,
@@ -89,36 +94,38 @@ function calculatePmvModelForTest(
       ? AirSpeedControlMode.WithLocalControl
       : AirSpeedControlMode.NoLocalControl,
   };
-  return calculatePmvModel({
-    inputsByInput: toolState.state.inputsByInput,
+  return calculatePmvModel(createModelCalculationContext({
+    effectiveQuantitiesByInput: toolState.state.quantitiesByInput,
+    auxiliaryQuantitiesByInput: toolState.state.auxiliaryQuantitiesByInput,
+    modelInputs: toolState.state.modelInputsByModel[pmvAshraeModelConfig.id],
     options: toolState.state.ui.modelOptionsByModel[pmvAshraeModelConfig.id],
-  }, visibleInputIds, pmvAshraeAdapter);
+  }), visibleInputIds, pmvAshraeAdapter);
 }
 
 function buildRegisteredPmvChart(
-  chartId: ChartId,
+  instanceId: string,
   inputs: PmvChartSourceDto["inputs"],
   context: ChartBuildContext<NumericBand>,
 ) {
   const calculation = calculatePmvModelForTest(inputs);
-  const chart = pmvAshraeModelConfig.buildChartResult(
-    chartId,
+  const chart = buildChartPlotly(pmvAshraeModelConfig,
+    instanceId,
     calculation.chartSource,
     calculation.resultsByInput,
     context,
   );
-  if (!chart) throw new Error(`Expected registered PMV chart ${chartId}.`);
+  if (!chart) throw new Error(`Expected registered PMV chart ${instanceId}.`);
   return { calculation, chart };
 }
 
 function createPmvExploreConfig(
-  xField: FieldKey,
-  yField: FieldKey,
+  xField: ChartAxisQuantityId,
+  yField: ChartAxisQuantityId,
   zOutput = ModelOutputKey.Pmv,
 ): ExploreFieldChartConfig {
-  const output = pmvChartableOutputs.find(({ key }) => key === zOutput)!;
+  const output = pmvExploreOutputs.find(({ key }) => key === zOutput)!;
   return {
-    mode: ChartMode.Explore,
+    profileKind: FieldChartProfileKind.Explore,
     xField,
     yField,
     zOutput,
@@ -127,11 +134,11 @@ function createPmvExploreConfig(
 }
 
 function createUtciExploreConfig(): ExploreFieldChartConfig {
-  const output = utciModelConfig.chartableOutputs[0];
+  const output = utciModelConfig.exploreOutputs[0];
   return {
-    mode: ChartMode.Explore,
-    xField: FieldKey.DryBulbTemperature,
-    yField: FieldKey.RelativeHumidity,
+    profileKind: FieldChartProfileKind.Explore,
+    xField: PhysicalQuantityId.DryBulbTemperature,
+    yField: PhysicalQuantityId.RelativeHumidity,
     zOutput: output.key,
     bands: output.defaultBands,
   };
@@ -140,8 +147,8 @@ function createUtciExploreConfig(): ExploreFieldChartConfig {
 function createChartContext(
   unitSystem: UnitSystem = UnitSystem.SI,
   fieldChartConfig: ExploreFieldChartConfig = createPmvExploreConfig(
-    FieldKey.DryBulbTemperature,
-    FieldKey.RelativeHumidity,
+    PhysicalQuantityId.DryBulbTemperature,
+    PhysicalQuantityId.RelativeHumidity,
   ),
   baselineInputId: InputId = InputId.Input1,
 ): ChartBuildContext<NumericBand> {
@@ -242,7 +249,7 @@ describe("comfort services", () => {
 
   it("builds PMV and UTCI charts from typed requests", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartId.Psychrometric,
+      ChartInstanceId.PmvAshrae.Psychrometric,
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
@@ -317,7 +324,7 @@ describe("comfort services", () => {
 
   it("keeps PMV psychrometric supersaturated grid cells empty", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartId.Psychrometric,
+      ChartInstanceId.PmvAshrae.Psychrometric,
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
@@ -331,11 +338,11 @@ describe("comfort services", () => {
 
   it("builds PMV dynamic chart with selected axes and input point", () => {
     const fieldChartConfig = createPmvExploreConfig(
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.RelativeHumidity,
     );
     const { chart: dynamicChart } = buildRegisteredPmvChart(
-      ChartId.PmvDynamic,
+      ChartInstanceId.PmvAshrae.DynamicField,
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(UnitSystem.SI, fieldChartConfig),
     );
@@ -365,17 +372,17 @@ describe("comfort services", () => {
         [InputId.Input2]: alternatePayload,
     };
     const fieldChartConfig = createPmvExploreConfig(
-      FieldKey.DryBulbTemperature,
-      FieldKey.RelativeHumidity,
+      PhysicalQuantityId.DryBulbTemperature,
+      PhysicalQuantityId.RelativeHumidity,
     );
 
     const { chart: input1BaselineChart } = buildRegisteredPmvChart(
-      ChartId.PmvDynamic,
+      ChartInstanceId.PmvAshrae.DynamicField,
       chartInputs,
       createChartContext(UnitSystem.SI, fieldChartConfig, InputId.Input1),
     );
     const { chart: input2BaselineChart } = buildRegisteredPmvChart(
-      ChartId.PmvDynamic,
+      ChartInstanceId.PmvAshrae.DynamicField,
       chartInputs,
       createChartContext(UnitSystem.SI, fieldChartConfig, InputId.Input2),
     );
@@ -393,7 +400,7 @@ describe("comfort services", () => {
 
   it("rebuilds chart labels and hover text for IP units", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartId.Psychrometric,
+      ChartInstanceId.PmvAshrae.Psychrometric,
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(UnitSystem.IP),
     );
@@ -424,7 +431,7 @@ describe("comfort services", () => {
 
   it("smooths comfort-zone polygon x values while preserving solver output", () => {
     const { calculation, chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartId.Psychrometric,
+      ChartInstanceId.PmvAshrae.Psychrometric,
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
@@ -463,18 +470,18 @@ describe("comfort services", () => {
   it("synchronizes canonical relative humidity from a dew-point override", () => {
     const inputState = {
       ...inputDefaultsById[InputId.Input1],
-      [FieldKey.DryBulbTemperature]: 26,
+      [PhysicalQuantityId.DryBulbTemperature]: 26,
     };
     const synchronizedState = synchronizeHumidityInputState(
       inputState,
-      deriveInputDerivedState(inputState),
+      derivePsychrometricSlots(inputState),
       HumidityInputMode.DewPoint,
       {
-        [DerivedInputId.DewPoint]: 12,
+        [PhysicalQuantityId.DewPoint]: 12,
       },
     );
 
-    expect(synchronizedState[FieldKey.RelativeHumidity]).toBeCloseTo(
+    expect(synchronizedState[PhysicalQuantityId.RelativeHumidity]).toBeCloseTo(
       deriveRelativeHumidityFromDewPoint(26, 12),
       6,
     );

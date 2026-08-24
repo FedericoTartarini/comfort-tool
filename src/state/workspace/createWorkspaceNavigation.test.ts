@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { ComfortModel } from "../../models/comfortModels";
-import { FieldKey } from "../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
-import { ChartMode } from "../../models/modelCapabilities";
+import { WorkspaceId } from "../../models/workspaces";
 import {
   appRouteDefinitions,
   getAppRouteByPath,
@@ -25,16 +25,15 @@ function requireCalculationRoute(path: string) {
 }
 
 describe("workspace navigation coordination", () => {
-  it("preserves an eligible model while enforcing the route mode", () => {
+  it("preserves an eligible model while enforcing the route workspace", () => {
     const toolState = createComfortToolState();
     const navigate = vi.fn();
     const coordinator = createWorkspaceNavigation(toolState, { navigate });
-    toolState.actions.setChartMode(ChartMode.Explore);
+    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
 
     expect(coordinator.prepareUrl(routeUrl("/ASHRAE-55/"))).toBe(true);
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
-    expect(toolState.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae].mode)
-      .toBe(ChartMode.Compliance);
+    expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -48,11 +47,10 @@ describe("workspace navigation coordination", () => {
 
     expect(coordinator.prepareUrl(routeUrl("/ISO-7730/"))).toBe(true);
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvIso);
-    expect(toolState.state.ui.chartSettingsByModel[ComfortModel.PmvIso].mode)
-      .toBe(ChartMode.Compliance);
+    expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
   });
 
-  it("keeps model, mode, and navigation atomic across warning cancel and confirm", () => {
+  it("keeps model, workspace, and navigation atomic across warning cancel and confirm", () => {
     const toolState = createComfortToolState();
     const navigate = vi.fn();
     const coordinator = createWorkspaceNavigation(toolState, { navigate });
@@ -66,21 +64,18 @@ describe("workspace navigation coordination", () => {
 
     coordinator.cancelPendingTransition();
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
-    expect(toolState.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae].mode)
-      .toBe(ChartMode.Explore);
+    expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Explore);
     expect(navigate).not.toHaveBeenCalled();
 
     coordinator.selectModel(explore, ComfortModel.WindChill);
     coordinator.confirmPendingTransition();
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.WindChill);
-    expect(toolState.state.ui.chartSettingsByModel[ComfortModel.WindChill].mode)
-      .toBe(ChartMode.Explore);
+    expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Explore);
 
     const ashraeUrl = routeUrl("/ASHRAE-55/");
     expect(coordinator.prepareUrl(ashraeUrl)).toBe(false);
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.WindChill);
-    expect(toolState.state.ui.chartSettingsByModel[ComfortModel.WindChill].mode)
-      .toBe(ChartMode.Explore);
+    expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Explore);
 
     coordinator.cancelPendingTransition();
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.WindChill);
@@ -89,8 +84,7 @@ describe("workspace navigation coordination", () => {
     expect(coordinator.prepareUrl(ashraeUrl)).toBe(false);
     coordinator.confirmPendingTransition();
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
-    expect(toolState.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae].mode)
-      .toBe(ChartMode.Compliance);
+    expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
     expect(navigate).toHaveBeenCalledWith(expect.objectContaining({
       url: ashraeUrl,
     }));
@@ -102,13 +96,10 @@ describe("workspace navigation coordination", () => {
       validateRanges: false,
       schedule: false,
     });
-    const ashraeSettings = source.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae];
-    ashraeSettings.explore = {
-      ...ashraeSettings.explore!,
-      bands: ashraeSettings.explore!.bands.map((band, index) => (
-        index === 0 ? { ...band, max: -3.25 } : { ...band }
-      )),
-    };
+    const ashraeSettings = source.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae];
+    ashraeSettings.exploreBands = ashraeSettings.exploreBands?.map((band, index) => (
+      index === 0 ? { ...band, max: -3.25 } : { ...band }
+    )) ?? null;
     const snapshot = source.actions.exportShareSnapshot();
     const sharedUrl = new URL(buildShareUrl(
       snapshot,
@@ -120,25 +111,24 @@ describe("workspace navigation coordination", () => {
     expect(coordinator.prepareUrl(sharedUrl, { validateRanges: false })).toBe(true);
 
     expect(target.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
-    expect(target.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae].mode)
-      .toBe(ChartMode.Compliance);
-    expect(target.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae].explore!.bands[0].max)
+    expect(target.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
+    expect(target.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae].exploreBands?.[0].max)
       .toBe(-3.25);
     expect(target.actions.exportShareSnapshot().version).toBe(1);
 
-    target.state.inputsByInput[InputId.Input1][FieldKey.DryBulbTemperature] = 19;
+    target.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature] = 19;
     coordinator.prepareUrl(routeUrl("/ASHRAE-55/?state=invalid"));
     coordinator.prepareUrl(sharedUrl, { validateRanges: false });
-    expect(target.state.inputsByInput[InputId.Input1][FieldKey.DryBulbTemperature])
-      .toBe(snapshot.inputsByInput[InputId.Input1][FieldKey.DryBulbTemperature]);
+    expect(target.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature])
+      .toBe(snapshot.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature]);
   });
 
   it("keeps SI input and model presentation state across the Time-series placeholder", () => {
     const toolState = createComfortToolState();
     const coordinator = createWorkspaceNavigation(toolState, { navigate: vi.fn() });
-    toolState.state.inputsByInput[InputId.Input1][FieldKey.DryBulbTemperature] = 21.5;
-    toolState.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae].xAxis =
-      FieldKey.MeanRadiantTemperature;
+    toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature] = 21.5;
+    toolState.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae].xAxis =
+      PhysicalQuantityId.MeanRadiantTemperature;
     const cacheBefore = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae];
 
     const timeSeries = appRouteDefinitions.find(
@@ -148,10 +138,10 @@ describe("workspace navigation coordination", () => {
     coordinator.afterNavigation(routeUrl(timeSeries.path));
     expect(coordinator.prepareUrl(routeUrl("/ASHRAE-55/"))).toBe(true);
 
-    expect(toolState.state.inputsByInput[InputId.Input1][FieldKey.DryBulbTemperature])
+    expect(toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature])
       .toBe(21.5);
-    expect(toolState.state.ui.chartSettingsByModel[ComfortModel.PmvAshrae].xAxis)
-      .toBe(FieldKey.MeanRadiantTemperature);
+    expect(toolState.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae].xAxis)
+      .toBe(PhysicalQuantityId.MeanRadiantTemperature);
     expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae])
       .toBe(cacheBefore);
   });

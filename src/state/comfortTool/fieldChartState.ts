@@ -1,160 +1,144 @@
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-import type { ModelChartDefinition } from "../../models/chartOptions";
+import type { ChartKindRegistration } from "../../services/comfort/charts/kinds/types";
 import { InputId } from "../../models/inputSlots";
 import {
-  ChartMode,
   type Band,
-  type ChartMode as ChartModeType,
-  type FieldChartConfig,
   type ModelOutput,
   type ModelOutputKey,
   type NumericBand,
 } from "../../models/modelCapabilities";
 import {
+  FieldChartProfileKind,
+  type FieldChartProfile,
+} from "../../models/output/fieldChartProfile";
+import {
+  supportsExploreWorkspace,
+  supportsStandardWorkspace,
+} from "../../models/output/workspaceCapabilities";
+import { WorkspaceId, type WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
+import {
   cloneNumericBands,
   normalizeNumericBands,
   validateNumericBands,
 } from "../../services/comfort/charts/bands";
-import type { ExploreChartState, ModelChartSettings } from "./types";
-
-interface FieldChartModelCapabilities<TComplianceBand extends Band = Band> {
-  modes: readonly ChartModeType[];
-  chartableOutputs: readonly ModelOutput[];
-  complianceSpec?: {
-    readonly output: ModelOutputKey;
-    readonly bands: readonly TComplianceBand[];
-  };
-  dynamicAxisFields: readonly FieldKeyType[];
-  defaultDynamicAxes: {
-    readonly xAxis: FieldKeyType;
-    readonly yAxis: FieldKeyType;
-  };
-  charts?: {
-    readonly defaultId: string;
-    readonly entries: readonly ModelChartDefinition[];
-  };
-}
-
-export function getDefaultChartMode(config: FieldChartModelCapabilities): ChartModeType {
-  if (config.modes.includes(ChartMode.Compliance)) {
-    return ChartMode.Compliance;
-  }
-  if (config.modes.includes(ChartMode.Explore)) {
-    return ChartMode.Explore;
-  }
-  throw new Error("Comfort model declarations require at least one chart mode.");
-}
+import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
+import type { ModelOutputSettings } from "./types";
 
 export function getDeclaredExploreOutput(
-  config: FieldChartModelCapabilities,
+  config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
   outputKey: ModelOutputKey,
 ): ModelOutput | undefined {
-  return config.chartableOutputs.find(({ key }) => key === outputKey);
+  return config.exploreOutputs.find(({ key }) => key === outputKey);
 }
 
 export function getChartExploreOutputs(
-  config: FieldChartModelCapabilities,
-  chartDefinition?: ModelChartDefinition,
+  config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
+  chartRegistration?: ChartKindRegistration<unknown, unknown>,
 ): readonly ModelOutput[] {
-  const supported = chartDefinition?.supportedExploreOutputs;
+  const supported = chartRegistration?.supportedExploreOutputs;
   return supported
     ? supported.map((outputKey) => getDeclaredExploreOutput(config, outputKey)!).filter(Boolean)
-    : config.chartableOutputs;
+    : config.exploreOutputs;
 }
 
 function getDefaultExploreOutput(
-  config: FieldChartModelCapabilities,
-  chartDefinition?: ModelChartDefinition,
+  config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
+  chartRegistration?: ChartKindRegistration<unknown, unknown>,
 ): ModelOutput | undefined {
-  const outputKey = chartDefinition?.defaultExploreOutput;
+  const outputKey = chartRegistration?.defaultExploreOutput;
   return outputKey
     ? getDeclaredExploreOutput(config, outputKey)
-    : getChartExploreOutputs(config, chartDefinition)[0];
+    : getChartExploreOutputs(config, chartRegistration)[0];
 }
 
 export function normalizeExploreStateForChart(
-  config: FieldChartModelCapabilities,
-  state: ExploreChartState | null,
-  chartDefinition?: ModelChartDefinition,
-): ExploreChartState | null {
-  if (!config.modes.includes(ChartMode.Explore)) return null;
-
-  const outputs = getChartExploreOutputs(config, chartDefinition);
-  if (state && outputs.some(({ key }) => key === state.zOutput)) {
-    return state;
+  config: RuntimeComfortModelDefinition,
+  settings: ModelOutputSettings,
+  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+): ModelOutputSettings {
+  if (!supportsExploreWorkspace(config.workspaceCapabilities)) {
+    return { ...settings, exploreOutput: null, exploreBands: null };
   }
 
-  const output = getDefaultExploreOutput(config, chartDefinition);
+  const outputs = getChartExploreOutputs(config, chartRegistration);
+  if (
+    settings.exploreOutput
+    && outputs.some(({ key }) => key === settings.exploreOutput)
+  ) {
+    return settings;
+  }
+
+  const output = getDefaultExploreOutput(config, chartRegistration);
   return output
-    ? { zOutput: output.key, bands: cloneNumericBands(output.defaultBands) }
-    : null;
+    ? {
+        ...settings,
+        exploreOutput: output.key,
+        exploreBands: cloneNumericBands(output.defaultBands),
+      }
+    : { ...settings, exploreOutput: null, exploreBands: null };
 }
 
-export function seedExploreChartState(
-  config: FieldChartModelCapabilities,
-): ExploreChartState | null {
-  if (!config.modes.includes(ChartMode.Explore)) {
-    return null;
+export function seedExploreOutputSettings(
+  config: RuntimeComfortModelDefinition,
+  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+): Pick<ModelOutputSettings, "exploreOutput" | "exploreBands"> {
+  if (!supportsExploreWorkspace(config.workspaceCapabilities)) {
+    return { exploreOutput: null, exploreBands: null };
   }
 
-  const defaultChart = config.charts?.entries.find(
-    ({ id }) => id === config.charts?.defaultId,
+  const output = getDefaultExploreOutput(config, chartRegistration);
+  return output
+    ? {
+        exploreOutput: output.key,
+        exploreBands: cloneNumericBands(output.defaultBands),
+      }
+    : { exploreOutput: null, exploreBands: null };
+}
+
+export function seedModelOutputSettings(
+  config: RuntimeComfortModelDefinition,
+): ModelOutputSettings {
+  const registration = config.chartKindRegistrations.find(
+    ({ instanceId }) => instanceId === config.outputCharts.defaultInstanceId,
   );
-  const output = getDefaultExploreOutput(config, defaultChart);
-  return output
-    ? { zOutput: output.key, bands: cloneNumericBands(output.defaultBands) }
-    : null;
-}
 
-export function seedModelChartSettings(
-  config: FieldChartModelCapabilities,
-): ModelChartSettings {
   return {
-    mode: getDefaultChartMode(config),
     xAxis: config.defaultDynamicAxes.xAxis,
     yAxis: config.defaultDynamicAxes.yAxis,
-    explore: seedExploreChartState(config),
     baselineInputId: InputId.Input1,
+    ...seedExploreOutputSettings(config, registration),
   };
 }
 
-export function selectChartMode(
-  config: FieldChartModelCapabilities,
-  settings: ModelChartSettings,
-  mode: ChartModeType,
-): ModelChartSettings | null {
-  if (!config.modes.includes(mode)) {
-    return null;
-  }
-  return settings.mode === mode ? settings : { ...settings, mode };
-}
-
 export function selectExploreOutput(
-  config: FieldChartModelCapabilities,
-  state: ExploreChartState | null,
+  config: RuntimeComfortModelDefinition,
+  settings: ModelOutputSettings,
   outputKey: ModelOutputKey,
-  chartDefinition?: ModelChartDefinition,
-): ExploreChartState | null {
+  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+): ModelOutputSettings | null {
   const output = getDeclaredExploreOutput(config, outputKey);
   if (
     !output
-    || !config.modes.includes(ChartMode.Explore)
-    || !getChartExploreOutputs(config, chartDefinition).some(({ key }) => key === outputKey)
+    || !supportsExploreWorkspace(config.workspaceCapabilities)
+    || !getChartExploreOutputs(config, chartRegistration).some(({ key }) => key === outputKey)
   ) {
     return null;
   }
-  if (state?.zOutput === output.key) {
-    return state;
+  if (settings.exploreOutput === output.key) {
+    return settings;
   }
-  return { zOutput: output.key, bands: cloneNumericBands(output.defaultBands) };
+  return {
+    ...settings,
+    exploreOutput: output.key,
+    exploreBands: cloneNumericBands(output.defaultBands),
+  };
 }
 
 export function replaceExploreBands(
-  config: FieldChartModelCapabilities,
-  state: ExploreChartState | null,
+  config: RuntimeComfortModelDefinition,
+  settings: ModelOutputSettings,
   bands: readonly NumericBand[],
-): ExploreChartState | null {
-  if (!state || !getDeclaredExploreOutput(config, state.zOutput)) {
+): ModelOutputSettings | null {
+  if (!settings.exploreOutput || !getDeclaredExploreOutput(config, settings.exploreOutput)) {
     return null;
   }
 
@@ -164,48 +148,54 @@ export function replaceExploreBands(
   }
 
   return {
-    zOutput: state.zOutput,
-    bands: cloneNumericBands(normalizedBands),
+    ...settings,
+    exploreBands: cloneNumericBands(normalizedBands),
   };
 }
 
-export function buildFieldChartConfig<TComplianceBand extends Band>(
-  config: FieldChartModelCapabilities<TComplianceBand>,
-  settings: ModelChartSettings,
-  chartDefinition?: ModelChartDefinition,
-): FieldChartConfig<TComplianceBand> {
-  if (settings.mode === ChartMode.Compliance) {
-    const spec = config.complianceSpec;
-    if (!spec) {
-      throw new Error(
-        "Comfort model declaration selected Compliance mode without a compliance specification.",
-      );
+export function buildFieldChartProfile<TComplianceBand extends Band>(
+  config: RuntimeComfortModelDefinition,
+  settings: ModelOutputSettings,
+  workspace: WorkspaceIdType,
+): FieldChartProfile<TComplianceBand> {
+  if (workspace === WorkspaceId.Standard || workspace === WorkspaceId.Explore) {
+    if (workspace === WorkspaceId.Standard && supportsStandardWorkspace(config.workspaceCapabilities)) {
+      const profile = config.complianceProfile;
+      if (!profile) {
+        throw new Error(
+          "Comfort model declaration is missing its compliance profile for Standard workspace.",
+        );
+      }
+      return {
+        kind: FieldChartProfileKind.Compliance,
+        xField: settings.xAxis,
+        yField: settings.yAxis,
+        zOutput: profile.output,
+        bands: profile.bands as readonly TComplianceBand[],
+      };
     }
-    return {
-      mode: ChartMode.Compliance,
-      xField: settings.xAxis,
-      yField: settings.yAxis,
-      zOutput: spec.output,
-      bands: spec.bands,
-    };
+
+    if (workspace === WorkspaceId.Explore && supportsExploreWorkspace(config.workspaceCapabilities)) {
+      if (
+        !settings.exploreOutput
+        || !settings.exploreBands
+        || !getDeclaredExploreOutput(config, settings.exploreOutput)
+      ) {
+        throw new Error(
+          "Comfort model declaration is missing its Explore output settings.",
+        );
+      }
+      return {
+        kind: FieldChartProfileKind.Explore,
+        xField: settings.xAxis,
+        yField: settings.yAxis,
+        zOutput: settings.exploreOutput,
+        bands: settings.exploreBands,
+      };
+    }
   }
 
-  const explore = settings.explore;
-  if (
-    !explore
-    || !getChartExploreOutputs(config, chartDefinition).some(
-      ({ key }) => key === explore.zOutput,
-    )
-  ) {
-    throw new Error(
-      "Comfort model declaration selected Explore mode without its declared output.",
-    );
-  }
-  return {
-    mode: ChartMode.Explore,
-    xField: settings.xAxis,
-    yField: settings.yAxis,
-    zOutput: explore.zOutput,
-    bands: explore.bands,
-  };
+  throw new Error(
+    `Comfort model ${config.id} does not support workspace ${workspace}.`,
+  );
 }

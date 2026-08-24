@@ -1,22 +1,13 @@
 /** Strict current-schema version-1 share snapshots. */
-import type { ChartId as ChartIdType } from "../../models/chartOptions";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
-import {
-  canonicalInputFieldOrder,
-  type CanonicalInputState,
-  type FieldKey as FieldKeyType,
-} from "../../models/fieldKeys";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {
   inputModifierCatalogue,
   modifierOrder,
   type ModifierId as ModifierIdType,
-  type ModifierInputValues,
 } from "../../models/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
 import {
-  ChartMode,
-  type ChartMode as ChartModeType,
   type ModelOutputKey,
   type NumericBand,
 } from "../../models/modelCapabilities";
@@ -27,24 +18,55 @@ import {
   isModifierConfigurationComplete,
   isModifierFieldValueValid,
 } from "../../services/comfort/inputModifiers";
+import { syncDerivedStateIntoAuxiliary } from "../../services/comfort/syncState";
 import { isDynamicAxisPairValid } from "./dynamicAxes";
 import { comfortModelOrder, getComfortModelConfig } from "./modelConfigs";
+import {
+  collectModifierInputsForModifier,
+  createDefaultModelInputsForModel,
+  setModelQuantity,
+  setSlotQuantity,
+} from "../../services/comfort/quantityStateRouting";
+import {
+  QuantityState,
+  isPhysicalQuantityId,
+  physicalQuantityMetaById,
+  primaryInputOrder,
+  type AuxiliaryInputState,
+  type ChartAxisQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+  type PrimaryInputState,
+} from "../../models/physicalQuantities";
 import type {
   ActiveModifiersByInputState,
   ComfortToolStateSlice,
-  ModelChartSettings,
-  ModifierInputsByInputState,
+  ModelOutputSettings,
 } from "./types";
+type ShareAuxiliaryQuantitiesByInputState = Record<
+  InputIdType,
+  Partial<Record<PhysicalQuantityIdType, number>>
+>;
+type ShareModelInputsByModelState = Record<
+  ComfortModelType,
+  Partial<Record<PhysicalQuantityIdType, number>>
+>;
 
-interface ShareModelChartSettings {
-  mode: ChartModeType;
-  xAxis: FieldKeyType;
-  yAxis: FieldKeyType;
+const modifierQuantityIds = Object.values(physicalQuantityMetaById)
+  .filter((meta) => meta.modifierId !== undefined)
+  .map((meta) => meta.id);
+
+function modelQuantityIdsForModel(modelId: ComfortModelType): PhysicalQuantityIdType[] {
+  return Object.values(physicalQuantityMetaById)
+    .filter((meta) => meta.ownerModelId === modelId && meta.state === QuantityState.Model)
+    .map((meta) => meta.id);
+}
+
+interface ShareModelOutputSettings {
+  xAxis: ChartAxisQuantityId;
+  yAxis: ChartAxisQuantityId;
   baselineInputId: InputIdType;
-  explore: {
-    zOutput: ModelOutputKey;
-    bands: NumericBand[];
-  } | null;
+  exploreOutput: ModelOutputKey | null;
+  exploreBands: NumericBand[] | null;
 }
 
 export interface ShareStateSnapshot {
@@ -53,18 +75,19 @@ export interface ShareStateSnapshot {
   models: Record<
     ComfortModelType,
     {
-      selectedChart: ChartIdType;
+      selectedChartInstanceId: string;
       options: Partial<Record<OptionKeyType, string>>;
-      chartSettings: ShareModelChartSettings;
+      outputSettings: ShareModelOutputSettings;
     }
   >;
   compareEnabled: boolean;
   compareInputIds: InputIdType[];
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
-  inputsByInput: Record<InputIdType, CanonicalInputState>;
+  quantitiesByInput: Record<InputIdType, PrimaryInputState>;
+  auxiliaryQuantitiesByInput: ShareAuxiliaryQuantitiesByInputState;
+  modelInputsByModel: ShareModelInputsByModelState;
   activeModifiersByInput: ActiveModifiersByInputState;
-  modifierInputsByInput: ModifierInputsByInputState;
 }
 
 export const SHARE_STATE_VERSION = 1;
@@ -74,6 +97,7 @@ const NEGATIVE_INFINITY_WIRE = "__comfort_tool_negative_infinity__";
 const comfortModelValues = new Set<ComfortModelType>(comfortModelOrder);
 const inputIdValues = new Set<InputIdType>(Object.values(InputId));
 const unitSystemValues = new Set<UnitSystemType>(Object.values(UnitSystem));
+const modifierQuantityIdSet = new Set<PhysicalQuantityIdType>(modifierQuantityIds);
 
 function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const actualKeys = Object.keys(value);
@@ -86,10 +110,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isCanonicalInputState(value: unknown): value is CanonicalInputState {
+function isPrimaryInputState(value: unknown): value is PrimaryInputState {
   return isRecord(value)
-    && hasExactKeys(value, canonicalInputFieldOrder)
-    && canonicalInputFieldOrder.every((fieldKey) => isFiniteNumber(value[fieldKey]));
+    && hasExactKeys(value, primaryInputOrder)
+    && primaryInputOrder.every((quantityId) => isFiniteNumber(value[quantityId]));
 }
 
 export function normalizeCompareInputIds(inputIds: InputIdType[]): InputIdType[] {
@@ -140,7 +164,29 @@ function decodeBase64Url(value: string): string {
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
-function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"] | null {
+function parseSparseModifierQuantities(
+  value: unknown,
+): Partial<Record<PhysicalQuantityIdType, number>> | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const parsed: Partial<Record<PhysicalQuantityIdType, number>> = {};
+  for (const [rawKey, fieldValue] of Object.entries(value)) {
+    if (!isPhysicalQuantityId(rawKey) || !modifierQuantityIdSet.has(rawKey)) {
+      return null;
+    }
+    if (!isModifierFieldValueValid(rawKey, fieldValue)) {
+      return null;
+    }
+    parsed[rawKey] = fieldValue;
+  }
+  return parsed;
+}
+
+function parseQuantitiesByInput(
+  value: unknown,
+): ShareStateSnapshot["quantitiesByInput"] | null {
   if (!isRecord(value) || !hasExactKeys(value, inputOrder)) {
     return null;
   }
@@ -149,9 +195,9 @@ function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"]
   const input2 = value[InputId.Input2];
   const input3 = value[InputId.Input3];
   if (
-    !isCanonicalInputState(input1)
-    || !isCanonicalInputState(input2)
-    || !isCanonicalInputState(input3)
+    !isPrimaryInputState(input1)
+    || !isPrimaryInputState(input2)
+    || !isPrimaryInputState(input3)
   ) {
     return null;
   }
@@ -161,6 +207,60 @@ function parseInputsByInput(value: unknown): ShareStateSnapshot["inputsByInput"]
     [InputId.Input2]: input2,
     [InputId.Input3]: input3,
   };
+}
+
+function parseAuxiliaryQuantitiesByInput(
+  value: unknown,
+  activeModifiersByInput: ActiveModifiersByInputState,
+): ShareAuxiliaryQuantitiesByInputState | null {
+  if (!isRecord(value) || !hasExactKeys(value, inputOrder)) return null;
+  const parsed = {} as ShareAuxiliaryQuantitiesByInputState;
+
+  for (const inputId of inputOrder) {
+    const auxiliary = parseSparseModifierQuantities(value[inputId]);
+    if (!auxiliary) return null;
+    parsed[inputId] = auxiliary;
+
+    for (const modifierId of modifierOrder) {
+      if (!activeModifiersByInput[inputId][modifierId]) continue;
+      const definition = inputModifierCatalogue[modifierId];
+      const modifierInputs = collectModifierInputsForModifier(auxiliary, modifierId);
+      if (!isModifierConfigurationComplete(definition, modifierInputs)) {
+        return null;
+      }
+    }
+  }
+
+  return parsed;
+}
+
+function parseModelInputsByModel(value: unknown): ShareModelInputsByModelState | null {
+  if (!isRecord(value) || !hasExactKeys(value, comfortModelOrder)) {
+    return null;
+  }
+
+  const parsed = {} as ShareModelInputsByModelState;
+  for (const modelId of comfortModelOrder) {
+    const modelInputs = value[modelId];
+    if (!isRecord(modelInputs)) {
+      return null;
+    }
+
+    const allowedQuantityIds = new Set(modelQuantityIdsForModel(modelId));
+    const parsedInputs: Partial<Record<PhysicalQuantityIdType, number>> = {};
+    for (const [rawKey, fieldValue] of Object.entries(modelInputs)) {
+      if (!isPhysicalQuantityId(rawKey) || !allowedQuantityIds.has(rawKey)) {
+        return null;
+      }
+      if (!isModifierFieldValueValid(rawKey, fieldValue)) {
+        return null;
+      }
+      parsedInputs[rawKey] = fieldValue;
+    }
+    parsed[modelId] = parsedInputs;
+  }
+
+  return parsed;
 }
 
 function parseActiveModifiersByInput(
@@ -179,48 +279,6 @@ function parseActiveModifiersByInput(
       const enabled = activeByModifier[modifierId];
       if (typeof enabled !== "boolean") return null;
       parsed[inputId][modifierId] = enabled;
-    }
-  }
-
-  return parsed;
-}
-
-function parseModifierInputsByInput(
-  value: unknown,
-  activeModifiersByInput: ActiveModifiersByInputState,
-): ModifierInputsByInputState | null {
-  if (!isRecord(value) || !hasExactKeys(value, inputOrder)) return null;
-  const parsed = {} as ModifierInputsByInputState;
-
-  for (const inputId of inputOrder) {
-    const inputsByModifier = value[inputId];
-    if (!isRecord(inputsByModifier) || !hasExactKeys(inputsByModifier, modifierOrder)) {
-      return null;
-    }
-    parsed[inputId] = {} as ModifierInputsByInputState[typeof inputId];
-
-    for (const modifierId of modifierOrder) {
-      const definition = inputModifierCatalogue[modifierId];
-      const modifierInputs = inputsByModifier[modifierId];
-      if (!isRecord(modifierInputs) || !hasExactKeys(modifierInputs, definition.extraInputs)) {
-        return null;
-      }
-
-      const parsedInputs: ModifierInputValues = {};
-      for (const fieldKey of definition.extraInputs) {
-        const fieldValue = modifierInputs[fieldKey];
-        if (fieldValue !== null && !isModifierFieldValueValid(fieldKey, fieldValue)) {
-          return null;
-        }
-        parsedInputs[fieldKey] = fieldValue as number | null;
-      }
-      if (
-        activeModifiersByInput[inputId][modifierId]
-        && !isModifierConfigurationComplete(definition, parsedInputs)
-      ) {
-        return null;
-      }
-      parsed[inputId][modifierId] = parsedInputs;
     }
   }
 
@@ -259,14 +317,13 @@ function parseNumericBands(value: unknown): NumericBand[] | null {
   return validateNumericBands(bands).valid ? bands : null;
 }
 
-function parseChartSettings(
+function parseOutputSettings(
   value: unknown,
   modelId: ComfortModelType,
-): ShareModelChartSettings | null {
+): ShareModelOutputSettings | null {
   if (
     !isRecord(value)
-    || !hasExactKeys(value, ["mode", "xAxis", "yAxis", "baselineInputId", "explore"])
-    || typeof value.mode !== "string"
+    || !hasExactKeys(value, ["xAxis", "yAxis", "baselineInputId", "exploreOutput", "exploreBands"])
     || typeof value.xAxis !== "string"
     || typeof value.yAxis !== "string"
     || !inputIdValues.has(value.baselineInputId as InputIdType)
@@ -275,45 +332,37 @@ function parseChartSettings(
   }
 
   const config = getComfortModelConfig(modelId);
-  const mode = value.mode as ChartModeType;
-  const xAxis = value.xAxis as FieldKeyType;
-  const yAxis = value.yAxis as FieldKeyType;
-  if (
-    !config.modes.includes(mode)
-    || !isDynamicAxisPairValid(config, { xAxis, yAxis })
-  ) {
+  const xAxis = value.xAxis as ChartAxisQuantityId;
+  const yAxis = value.yAxis as ChartAxisQuantityId;
+  if (!isDynamicAxisPairValid(config, { xAxis, yAxis })) {
     return null;
   }
 
-  let explore: ShareModelChartSettings["explore"] = null;
-  if (config.chartableOutputs.length > 0) {
-    const exploreValue = value.explore;
-    if (
-      !isRecord(exploreValue)
-      || !hasExactKeys(exploreValue, ["zOutput", "bands"])
-      || typeof exploreValue.zOutput !== "string"
-      || !config.chartableOutputs.some(({ key }) => key === exploreValue.zOutput)
-    ) {
+  let exploreOutput: ShareModelOutputSettings["exploreOutput"] = null;
+  let exploreBands: ShareModelOutputSettings["exploreBands"] = null;
+  if (config.exploreOutputs.length > 0) {
+    if (typeof value.exploreOutput !== "string") {
       return null;
     }
-    const bands = parseNumericBands(exploreValue.bands);
+    if (!config.exploreOutputs.some(({ key }) => key === value.exploreOutput)) {
+      return null;
+    }
+    const bands = parseNumericBands(value.exploreBands);
     if (!bands) {
       return null;
     }
-    explore = {
-      zOutput: exploreValue.zOutput as ModelOutputKey,
-      bands,
-    };
-  } else if (value.explore !== null) {
+    exploreOutput = value.exploreOutput as ModelOutputKey;
+    exploreBands = bands;
+  } else if (value.exploreOutput !== null || value.exploreBands !== null) {
     return null;
   }
 
   return {
-    mode,
     xAxis,
     yAxis,
     baselineInputId: value.baselineInputId as InputIdType,
-    explore,
+    exploreOutput,
+    exploreBands,
   };
 }
 
@@ -329,41 +378,71 @@ function parseModelSnapshots(
     const modelSnapshot = value[modelId];
     if (
       !isRecord(modelSnapshot)
-      || !hasExactKeys(modelSnapshot, ["selectedChart", "options", "chartSettings"])
-      || typeof modelSnapshot.selectedChart !== "string"
+      || !hasExactKeys(modelSnapshot, ["selectedChartInstanceId", "options", "outputSettings"])
+      || typeof modelSnapshot.selectedChartInstanceId !== "string"
     ) {
       return null;
     }
 
     const config = getComfortModelConfig(modelId);
-    const chartDefinition = config.charts.entries.find(
-      ({ id }) => id === modelSnapshot.selectedChart,
+    const chartInstance = config.outputCharts.entries.find(
+      ({ instanceId }) => instanceId === modelSnapshot.selectedChartInstanceId,
     );
-    if (!chartDefinition) {
+    if (!chartInstance) {
       return null;
     }
     const options = config.parseOptions(modelSnapshot.options);
-    const chartSettings = parseChartSettings(modelSnapshot.chartSettings, modelId);
-    if (!options || !chartSettings) {
+    const outputSettings = parseOutputSettings(modelSnapshot.outputSettings, modelId);
+    if (!options || !outputSettings) {
       return null;
     }
     if (
-      chartSettings.mode === ChartMode.Explore
-      && chartSettings.explore
-      && chartDefinition.supportedExploreOutputs
-      && !chartDefinition.supportedExploreOutputs.includes(
-        chartSettings.explore.zOutput,
-      )
+      outputSettings.exploreOutput
+      && chartInstance.instanceId
     ) {
-      return null;
+      const registration = config.chartKindRegistrations.find(
+        ({ instanceId }) => instanceId === chartInstance.instanceId,
+      );
+      if (
+        registration?.supportedExploreOutputs
+        && !registration.supportedExploreOutputs.includes(outputSettings.exploreOutput)
+      ) {
+        return null;
+      }
     }
     parsed[modelId] = {
-      selectedChart: modelSnapshot.selectedChart as ChartIdType,
+      selectedChartInstanceId: modelSnapshot.selectedChartInstanceId,
       options,
-      chartSettings,
+      outputSettings,
     };
   }
   return parsed;
+}
+
+function serializeAuxiliaryForWire(
+  auxiliary: AuxiliaryInputState,
+): Partial<Record<PhysicalQuantityIdType, number>> {
+  return modifierQuantityIds.reduce((wire, quantityId) => {
+    const value = auxiliary[quantityId];
+    if (value !== undefined) {
+      wire[quantityId] = value;
+    }
+    return wire;
+  }, {} as Partial<Record<PhysicalQuantityIdType, number>>);
+}
+
+function serializeModelInputsForWire(
+  modelId: ComfortModelType,
+  modelInputs: Partial<Record<PhysicalQuantityIdType, number>>,
+): Partial<Record<PhysicalQuantityIdType, number>> {
+  const defaults = createDefaultModelInputsForModel(modelId);
+  return modelQuantityIdsForModel(modelId).reduce((wire, quantityId) => {
+    const value = modelInputs[quantityId];
+    if (value !== undefined && value !== defaults[quantityId]) {
+      wire[quantityId] = value;
+    }
+    return wire;
+  }, {} as Partial<Record<PhysicalQuantityIdType, number>>);
 }
 
 export function serializeShareState(snapshot: ShareStateSnapshot): string {
@@ -386,9 +465,10 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
       "compareInputIds",
       "activeInputId",
       "unitSystem",
-      "inputsByInput",
+      "quantitiesByInput",
+      "auxiliaryQuantitiesByInput",
+      "modelInputsByModel",
       "activeModifiersByInput",
-      "modifierInputsByInput",
     ])
     || value.version !== SHARE_STATE_VERSION
     || !comfortModelValues.has(value.selectedModel as ComfortModelType)
@@ -409,14 +489,24 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
   }
 
   const models = parseModelSnapshots(value.models);
-  const inputsByInput = parseInputsByInput(value.inputsByInput);
+  const quantitiesByInput = parseQuantitiesByInput(value.quantitiesByInput);
   const activeModifiersByInput = parseActiveModifiersByInput(
     value.activeModifiersByInput,
   );
-  const modifierInputsByInput = activeModifiersByInput
-    ? parseModifierInputsByInput(value.modifierInputsByInput, activeModifiersByInput)
+  const auxiliaryQuantitiesByInput = activeModifiersByInput
+    ? parseAuxiliaryQuantitiesByInput(
+      value.auxiliaryQuantitiesByInput,
+      activeModifiersByInput,
+    )
     : null;
-  if (!models || !inputsByInput || !activeModifiersByInput || !modifierInputsByInput) {
+  const modelInputsByModel = parseModelInputsByModel(value.modelInputsByModel);
+  if (
+    !models
+    || !quantitiesByInput
+    || !activeModifiersByInput
+    || !auxiliaryQuantitiesByInput
+    || !modelInputsByModel
+  ) {
     return null;
   }
 
@@ -428,9 +518,10 @@ export function parseShareStateSnapshot(value: unknown): ShareStateSnapshot | nu
     compareInputIds: [...value.compareInputIds],
     activeInputId,
     unitSystem: value.unitSystem as UnitSystemType,
-    inputsByInput,
+    quantitiesByInput,
+    auxiliaryQuantitiesByInput,
+    modelInputsByModel,
     activeModifiersByInput,
-    modifierInputsByInput,
   };
 }
 
@@ -442,17 +533,14 @@ export function deserializeShareState(encodedSnapshot: string): ShareStateSnapsh
   }
 }
 
-function cloneChartSettings(settings: ModelChartSettings): ShareModelChartSettings {
+function cloneOutputSettings(settings: ModelOutputSettings): ShareModelOutputSettings {
   return {
-    mode: settings.mode,
     xAxis: settings.xAxis,
     yAxis: settings.yAxis,
     baselineInputId: settings.baselineInputId,
-    explore: settings.explore
-      ? {
-          zOutput: settings.explore.zOutput,
-          bands: settings.explore.bands.map((band) => ({ ...band })),
-        }
+    exploreOutput: settings.exploreOutput,
+    exploreBands: settings.exploreBands
+      ? settings.exploreBands.map((band) => ({ ...band }))
       : null,
   };
 }
@@ -463,9 +551,9 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
     selectedModel: state.ui.selectedModel,
     models: comfortModelOrder.reduce((accumulator, modelId) => {
       accumulator[modelId] = {
-        selectedChart: state.ui.selectedChartByModel[modelId],
+        selectedChartInstanceId: state.ui.selectedChartInstanceByModel[modelId],
         options: { ...state.ui.modelOptionsByModel[modelId] },
-        chartSettings: cloneChartSettings(state.ui.chartSettingsByModel[modelId]),
+        outputSettings: cloneOutputSettings(state.ui.outputSettingsByModel[modelId]),
       };
       return accumulator;
     }, {} as ShareStateSnapshot["models"]),
@@ -473,11 +561,24 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
     compareInputIds: [...state.ui.compareInputIds],
     activeInputId: state.ui.activeInputId,
     unitSystem: state.ui.unitSystem,
-    inputsByInput: {
-      [InputId.Input1]: { ...state.inputsByInput[InputId.Input1] },
-      [InputId.Input2]: { ...state.inputsByInput[InputId.Input2] },
-      [InputId.Input3]: { ...state.inputsByInput[InputId.Input3] },
+    quantitiesByInput: {
+      [InputId.Input1]: { ...state.quantitiesByInput[InputId.Input1] },
+      [InputId.Input2]: { ...state.quantitiesByInput[InputId.Input2] },
+      [InputId.Input3]: { ...state.quantitiesByInput[InputId.Input3] },
     },
+    auxiliaryQuantitiesByInput: inputOrder.reduce((byInput, inputId) => {
+      byInput[inputId] = serializeAuxiliaryForWire(
+        state.auxiliaryQuantitiesByInput[inputId],
+      );
+      return byInput;
+    }, {} as ShareAuxiliaryQuantitiesByInputState),
+    modelInputsByModel: comfortModelOrder.reduce((byModel, modelId) => {
+      byModel[modelId] = serializeModelInputsForWire(
+        modelId,
+        state.modelInputsByModel[modelId],
+      );
+      return byModel;
+    }, {} as ShareModelInputsByModelState),
     activeModifiersByInput: inputOrder.reduce((byInput, inputId) => {
       byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
         byModifier[modifierId] = state.activeModifiersByInput[inputId][modifierId];
@@ -485,19 +586,6 @@ export function createShareStateSnapshot(state: ComfortToolStateSlice): ShareSta
       }, {} as Record<ModifierIdType, boolean>);
       return byInput;
     }, {} as ActiveModifiersByInputState),
-    modifierInputsByInput: inputOrder.reduce((byInput, inputId) => {
-      byInput[inputId] = modifierOrder.reduce((byModifier, modifierId) => {
-        byModifier[modifierId] = inputModifierCatalogue[modifierId].extraInputs.reduce(
-          (inputs, fieldKey) => {
-            inputs[fieldKey] = state.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
-            return inputs;
-          },
-          {} as ModifierInputValues,
-        );
-        return byModifier;
-      }, {} as ModifierInputsByInputState[typeof inputId]);
-      return byInput;
-    }, {} as ModifierInputsByInputState),
   };
 }
 
@@ -508,11 +596,21 @@ export function applyShareSnapshotToState(
   state.ui.selectedModel = snapshot.selectedModel;
   for (const modelId of comfortModelOrder) {
     const modelSnapshot = snapshot.models[modelId];
-    state.ui.selectedChartByModel[modelId] = modelSnapshot.selectedChart;
+    state.ui.selectedChartInstanceByModel[modelId] = modelSnapshot.selectedChartInstanceId;
     state.ui.modelOptionsByModel[modelId] = { ...modelSnapshot.options };
-    state.ui.chartSettingsByModel[modelId] = cloneChartSettings(
-      modelSnapshot.chartSettings,
+    state.ui.outputSettingsByModel[modelId] = cloneOutputSettings(
+      modelSnapshot.outputSettings,
     );
+    state.modelInputsByModel[modelId] = {
+      ...createDefaultModelInputsForModel(modelId),
+    };
+    for (const [quantityId, value] of Object.entries(snapshot.modelInputsByModel[modelId])) {
+      setModelQuantity(
+        state.modelInputsByModel[modelId],
+        quantityId as PhysicalQuantityIdType,
+        value,
+      );
+    }
   }
   state.ui.compareEnabled = snapshot.compareEnabled;
   state.ui.compareInputIds = [...snapshot.compareInputIds];
@@ -520,18 +618,32 @@ export function applyShareSnapshotToState(
   state.ui.unitSystem = snapshot.unitSystem;
 
   for (const inputId of inputOrder) {
-    for (const fieldKey of canonicalInputFieldOrder) {
-      state.inputsByInput[inputId][fieldKey] = snapshot.inputsByInput[inputId][fieldKey];
+    for (const quantityId of primaryInputOrder) {
+      state.quantitiesByInput[inputId][quantityId] =
+        snapshot.quantitiesByInput[inputId][quantityId];
+    }
+    for (const quantityId of modifierQuantityIds) {
+      setSlotQuantity(
+        state.auxiliaryQuantitiesByInput[inputId],
+        quantityId,
+        undefined,
+      );
+    }
+    for (const [quantityId, value] of Object.entries(
+      snapshot.auxiliaryQuantitiesByInput[inputId],
+    )) {
+      setSlotQuantity(
+        state.auxiliaryQuantitiesByInput[inputId],
+        quantityId as PhysicalQuantityIdType,
+        value,
+      );
     }
     for (const modifierId of modifierOrder) {
       state.activeModifiersByInput[inputId][modifierId] =
         snapshot.activeModifiersByInput[inputId][modifierId];
-      for (const fieldKey of inputModifierCatalogue[modifierId].extraInputs) {
-        state.modifierInputsByInput[inputId][modifierId][fieldKey] =
-          snapshot.modifierInputsByInput[inputId][modifierId][fieldKey] ?? null;
-      }
     }
   }
+  syncDerivedStateIntoAuxiliary(state.quantitiesByInput, state.auxiliaryQuantitiesByInput);
 }
 
 export function buildShareUrl(

@@ -15,6 +15,7 @@ npm run preview     # Preview the application build
 ```
 
 To run a single test file:
+
 ```bash
 npx vitest run src/services/comfort/comfort.test.ts
 ```
@@ -31,7 +32,7 @@ Frontend-only — no backend in this repo.
 src/
   comfortModels/    declarations plus focused model-family calculation/chart modules
   components/       rendering and interaction (input-panel/, chart/, shared UI)
-  models/           centralized domain constants and metadata (field keys, model IDs, units, etc.)
+  models/           centralized domain constants and metadata (physical quantities, model IDs, units, etc.)
   services/
     comfort/        shared comfort helpers, request/axis adapters, charts, modifiers
     units/          SI <-> IP conversion helpers
@@ -44,6 +45,7 @@ src/
 ## Architecture Rules
 
 **Import direction** — keep cross-layer imports constrained to these lanes:
+
 - `views` → `components`, `state`
 - `components` → `state`, `models`, lightweight `services`
 - `state` → `models`, `services`; the model registry imports registered configs from `comfortModels`
@@ -63,8 +65,10 @@ src/
 The controller exposes `{ state, actions, selectors }` via `createComfortToolState.svelte.ts`. Key state fields:
 
 - `selectedModel` — active comfort model
-- `selectedChartByModel: Record<ModelId, ChartId>` — per-model chart selection
-- `inputsByInput` — canonical SI-unit inputs keyed by input slot ID
+- `selectedChartInstanceByModel: Record<ModelId, string>` — per-model chart instance selection
+- `quantitiesByInput` — base primary SI per input slot
+- `auxiliaryQuantitiesByInput` — sparse slot quantities (modifiers and derived psychrometrics)
+- `modelInputsByModel` — sparse model-scoped SI values
 - `calculationCacheByModel` — async calculation results per model
 - `ui` — loading flags, unit system (SI/IP), compare mode, errors
 
@@ -90,17 +94,18 @@ registry entry, shared metadata, and tests remain separate files. Simple models
 may keep all implementation in the declaration; larger standard families may
 use focused calculation/chart modules beside complete declarations.
 
-Use constants from `src/models/` for model identifiers, field identifiers, chart identifiers, and compare-input identifiers. Do not introduce new raw domain strings for these concepts.
+Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `ChartAxisQuantityId` values, chart identifiers, and compare-input identifiers. Do not introduce new raw domain strings for these concepts.
 
 ## Capabilities, axes, and modifiers
 
-- Compliance and Explore share the Field Chart engine, with Compliance as the constrained mode.
-- Every declaration calls `setModes()` and `setChartableOutputs()`; Compliance models also provide fixed output, non-empty bands, caption, legend title, and feedback.
-- `chartSettingsByModel` stores per-model mode, axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation.
-- Strict share snapshots remain exact `version: 1`; only Explore working bands are serialized, and modifier records contain the complete stable key set.
+- Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
+- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts and tables are declared via `setOutputCharts()` and `setOutputTable()`; optional Time-series output uses `setSimulation()`.
+- `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation.
+- Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; only Explore working bands are serialized, and modifier records contain the complete stable key set.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
 - Use `createFieldRequestAdapter()` for canonical request mapping and `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior. Coupled temperature axes stay in the dynamic-axis solver.
-- Model `.setModifiers()` receives executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input.
+- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records.
+- Model `.setModifiers()` receives executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
 - Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO; each declaration binds its own `clo_dynamic` standard.
 - Keep Time-series out of Analysis state until it is explicitly implemented.
 
@@ -131,6 +136,7 @@ Use constants from `src/models/` for model identifiers, field identifiers, chart
 ## Comfort Zone Design
 
 Zones use the `ThermalZone` class in `src/models/thermalZone.ts`. Each boundary value appears exactly once, as `min` / `max` values in the config object:
+
 ```ts
 new ThermalZone({
   label: "Neutral",
@@ -142,6 +148,7 @@ new ThermalZone({
   category: "no thermal stress",
 });
 ```
+
 Do not define threshold constants separately and then repeat the same number in the zone array. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label by `ThermalZone`.
 
 ## Architecture: comfortModels/
@@ -157,6 +164,7 @@ merge separate standards behind a runtime toggle.
 ## Done Criteria
 
 A change is complete when:
+
 - `npm test` passes
 - `npm run check` passes
 - `npm run lint` passes

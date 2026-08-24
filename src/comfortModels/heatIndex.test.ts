@@ -5,14 +5,13 @@ import { describe, expect, it } from "vitest";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
 import { UnitSystem } from "../models/units";
 import { convertModelOutputFromSi } from "../services/units";
-import { FieldKey } from "../models/fieldKeys";
-import { ChartId } from "../models/chartOptions";
+import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { InputId } from "../models/inputSlots";
-import {
-  ChartMode,
-  ModelOutputKey,
-  type ChartBuildContext,
-} from "../models/modelCapabilities";
+import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
+import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
+import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { ChartInstanceId } from "../models/output/chartInstances";
+
 
 describe("heatIndex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -26,7 +25,7 @@ describe("heatIndex service", () => {
       tdb: 35,
       rh: 70,
     });
-    
+
     expect(result.hi).toBeGreaterThan(45);
     expect(result.category).toBe("Danger");
   });
@@ -61,7 +60,7 @@ describe("heatIndex service", () => {
       tdb: 40.56,
       rh: 75,
     });
-    
+
     expect(result.category).toBe("Extreme Danger");
   });
 
@@ -80,22 +79,22 @@ describe("heatIndex service", () => {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
       fieldChartConfig: {
-        mode: ChartMode.Explore,
-        xField: FieldKey.DryBulbTemperature,
-        yField: FieldKey.RelativeHumidity,
-        zOutput: heatIndexModelConfig.chartableOutputs[0].key,
-        bands: heatIndexModelConfig.chartableOutputs[0].defaultBands,
+        profileKind: FieldChartProfileKind.Explore,
+        xField: PhysicalQuantityId.DryBulbTemperature,
+        yField: PhysicalQuantityId.RelativeHumidity,
+        zOutput: heatIndexModelConfig.exploreOutputs[0].key,
+        bands: heatIndexModelConfig.exploreOutputs[0].defaultBands,
       },
     } satisfies ChartBuildContext;
 
-    const fixedChart = heatIndexModelConfig.buildChartResult(
-      ChartId.HeatIndexRanges,
+    const fixedChart = buildChartPlotly(heatIndexModelConfig,
+      ChartInstanceId.HeatIndex.Ranges,
       chartSource,
       resultsByInput,
       fixedContext,
     );
-    const dynamicChart = heatIndexModelConfig.buildChartResult(
-      ChartId.HeatIndexDynamic,
+    const dynamicChart = buildChartPlotly(heatIndexModelConfig,
+      ChartInstanceId.HeatIndex.DynamicField,
       chartSource,
       resultsByInput,
       fixedContext,
@@ -117,8 +116,8 @@ describe("heatIndex service", () => {
     const request = { tdb: 35, rh: 70 };
     const result = calculateHeatIndex(request);
 
-    const chart = heatIndexModelConfig.buildChartResult(
-      ChartId.HeatIndexDynamic,
+    const chart = buildChartPlotly(heatIndexModelConfig,
+      ChartInstanceId.HeatIndex.DynamicField,
       {
         inputs: { [InputId.Input1]: request },
       },
@@ -131,11 +130,11 @@ describe("heatIndex service", () => {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
-          mode: ChartMode.Explore,
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.DryBulbTemperature,
-          zOutput: heatIndexModelConfig.chartableOutputs[0].key,
-          bands: heatIndexModelConfig.chartableOutputs[0].defaultBands,
+          profileKind: FieldChartProfileKind.Explore,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.DryBulbTemperature,
+          zOutput: heatIndexModelConfig.exploreOutputs[0].key,
+          bands: heatIndexModelConfig.exploreOutputs[0].defaultBands,
         },
       },
     );
@@ -161,8 +160,8 @@ describe("heatIndex service", () => {
         color: "#abcdef",
       },
     ];
-    const chart = heatIndexModelConfig.buildChartResult(
-      ChartId.HeatIndexRanges,
+    const chart = buildChartPlotly(heatIndexModelConfig,
+      ChartInstanceId.HeatIndex.Ranges,
       { inputs: { [InputId.Input1]: request } },
       {
         [InputId.Input1]: result,
@@ -173,9 +172,9 @@ describe("heatIndex service", () => {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
         fieldChartConfig: {
-          mode: ChartMode.Explore,
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.RelativeHumidity,
+          profileKind: FieldChartProfileKind.Explore,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
           zOutput: ModelOutputKey.HeatIndex,
           bands,
         },

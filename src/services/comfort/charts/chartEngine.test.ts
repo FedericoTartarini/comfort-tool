@@ -3,16 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   pmvAshraeDeclaration,
   pmvAshraeModelConfig,
-} from "../../../comfortModels/pmvAshrae";
+} from "../../../comfortModels/pmv/pmvAshrae";
 import { CalculationSource } from "../../../models/calculationMetadata";
 import type { PlotTraceDto } from "../../../models/comfortDtos";
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { InputId } from "../../../models/inputSlots";
 import {
-  ChartMode,
   ModelOutputKey,
   type NumericComplianceFieldChartConfig,
 } from "../../../models/modelCapabilities";
+import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../../models/units";
 import {
   buildFieldChart,
@@ -40,19 +40,19 @@ function lineTrace(name: string, x: number[] = [], y: number[] = []): PlotTraceD
 
 describe("shared chart engine", () => {
   it("accepts PMV numeric Compliance bands without a cast", () => {
-    const complianceSpec = pmvAshraeDeclaration.complianceSpec;
-    const output = pmvAshraeModelConfig.chartableOutputs.find(
-      ({ key }) => key === complianceSpec?.output,
+    const complianceProfile = pmvAshraeDeclaration.complianceProfile;
+    const output = pmvAshraeModelConfig.exploreOutputs.find(
+      ({ key }) => key === complianceProfile?.output,
     );
-    if (!complianceSpec || !output) {
+    if (!complianceProfile || !output) {
       throw new Error("PMV must declare a chartable numeric Compliance output.");
     }
     const config: NumericComplianceFieldChartConfig = {
-      mode: ChartMode.Compliance,
-      xField: FieldKey.DryBulbTemperature,
-      yField: FieldKey.RelativeHumidity,
-      zOutput: complianceSpec.output,
-      bands: complianceSpec.bands,
+      profileKind: FieldChartProfileKind.Compliance,
+      xField: PhysicalQuantityId.DryBulbTemperature,
+      yField: PhysicalQuantityId.RelativeHumidity,
+      zOutput: complianceProfile.output,
+      bands: complianceProfile.bands,
     };
 
     const strategy = createBandedGridStrategy({
@@ -69,12 +69,12 @@ describe("shared chart engine", () => {
     const chart = buildFieldChart<TestPayload, TestResult>({
       unitSystem: UnitSystem.IP,
       xAxis: {
-        field: FieldKey.DryBulbTemperature,
+        field: PhysicalQuantityId.DryBulbTemperature,
         rangeSi: { min: 0, max: 100 },
         points: 2,
       },
       yAxis: {
-        field: FieldKey.RelativeHumidity,
+        field: PhysicalQuantityId.RelativeHumidity,
         rangeSi: { min: 0, max: 100 },
         points: 2,
       },
@@ -138,19 +138,19 @@ describe("shared chart engine", () => {
     const chart = buildFieldChart({
       unitSystem: UnitSystem.IP,
       xAxis: {
-        field: FieldKey.DryBulbTemperature,
+        field: PhysicalQuantityId.DryBulbTemperature,
         rangeSi: { min: 0, max: 30 },
         points: 4,
       },
       yAxis: {
-        field: FieldKey.RelativeHumidity,
+        field: PhysicalQuantityId.RelativeHumidity,
         rangeSi: { min: 50, max: 50 },
         points: 1,
       },
       strategy: createBandedGridStrategy({
         config: {
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.RelativeHumidity,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
           zOutput: ModelOutputKey.HeatIndex,
           bands,
         },
@@ -188,19 +188,19 @@ describe("shared chart engine", () => {
     const chart = buildFieldChart({
       unitSystem: UnitSystem.SI,
       xAxis: {
-        field: FieldKey.DryBulbTemperature,
+        field: PhysicalQuantityId.DryBulbTemperature,
         rangeSi: { min: 0, max: 1 },
         points: 2,
       },
       yAxis: {
-        field: FieldKey.RelativeHumidity,
+        field: PhysicalQuantityId.RelativeHumidity,
         rangeSi: { min: 50, max: 50 },
         points: 1,
       },
       strategy: createBandedGridStrategy({
         config: {
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.RelativeHumidity,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
           zOutput: ModelOutputKey.HeatIndex,
           bands,
         },
@@ -243,19 +243,19 @@ describe("shared chart engine", () => {
     const chart = buildFieldChart({
       unitSystem: UnitSystem.IP,
       xAxis: {
-        field: FieldKey.DryBulbTemperature,
+        field: PhysicalQuantityId.DryBulbTemperature,
         rangeSi: { min: 10, max: 10 },
         points: 1,
       },
       yAxis: {
-        field: FieldKey.RelativeHumidity,
+        field: PhysicalQuantityId.RelativeHumidity,
         rangeSi: { min: 50, max: 50 },
         points: 1,
       },
       strategy: createBandedGridStrategy({
         config: {
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.RelativeHumidity,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
           zOutput: ModelOutputKey.HeatIndex,
           bands,
         },
@@ -290,19 +290,19 @@ describe("shared chart engine", () => {
     const chart = buildFieldChart({
       unitSystem: UnitSystem.SI,
       xAxis: {
-        field: FieldKey.DryBulbTemperature,
+        field: PhysicalQuantityId.DryBulbTemperature,
         rangeSi: { min: 0, max: 1 },
         points: 2,
       },
       yAxis: {
-        field: FieldKey.RelativeHumidity,
+        field: PhysicalQuantityId.RelativeHumidity,
         rangeSi: { min: 0, max: 1 },
         points: 2,
       },
       strategy: createBandedGridStrategy({
         config: {
-          xField: FieldKey.DryBulbTemperature,
-          yField: FieldKey.RelativeHumidity,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
           zOutput: ModelOutputKey.Pmv,
           bands,
         },
@@ -337,12 +337,12 @@ describe("shared chart engine", () => {
     const chart = buildFieldChart<TestPayload, never>({
       unitSystem: UnitSystem.IP,
       xAxis: {
-        field: FieldKey.DryBulbTemperature,
+        field: PhysicalQuantityId.DryBulbTemperature,
         rangeSi: { min: 0, max: 10 },
         points: 2,
       },
       yAxis: {
-        field: FieldKey.RelativeHumidity,
+        field: PhysicalQuantityId.RelativeHumidity,
         rangeSi: { min: 0, max: 100 },
         points: 2,
       },

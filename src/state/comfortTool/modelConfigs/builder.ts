@@ -1,25 +1,26 @@
 import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
-import type { ResultSectionViewModel, ModelOptionsState, ResultCellViewModel } from "../types";
+import type { ModelOptionsState, ResultCellViewModel } from "../types";
 import type {
   ComfortModelDefinition,
   DynamicAxisDefaults,
   ModelOptionChangeHandler,
   RuntimeComfortModelDefinition,
+  SimulationOutputDeclaration,
 } from "./definition";
 import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
-import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
-import type { ModelCharts } from "../../../models/chartOptions";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import {
   modifierOrder,
   type InputModifier,
 } from "../../../models/inputModifiers";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
+import {
+  resolveInputField,
+  type InputFieldSpec,
+} from "../../../services/comfort/controls/fieldInputBehaviors";
 import type { StandardId as StandardIdType } from "../../../models/workspaces";
 import {
-  ChartMode,
   type Band,
-  type ChartMode as ChartModeType,
   type ComplianceSpec,
   type ModelOutput,
   type NumericBand,
@@ -28,12 +29,55 @@ import {
   cloneNumericBands,
   validateNumericBands,
 } from "../../../services/comfort/charts/bands";
-
+import {
+  type ChartAxisQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+  getPhysicalQuantityMeta,
+} from "../../../models/physicalQuantities";
+import {
+  ChartKind,
+  type ChartInstanceCapabilities,
+  resolveChartCapabilities,
+} from "../../../models/output/chartKinds";
+import type { ChartInstanceDeclaration } from "../../../models/output/chartInstances";
+import { TableLayout, type TableDeclaration } from "../../../models/output/tableLayouts";
+import {
+  supportsExploreWorkspace,
+  supportsStandardWorkspace,
+  type WorkspaceCapability as WorkspaceCapabilityType,
+} from "../../../models/output/workspaceCapabilities";
+import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
+import type {
+  ChartKindRegistration,
+  RegisteredChartKindSpec,
+} from "../../../services/comfort/charts/kinds/types";
+import { buildCompareMatrixTable } from "../../../services/comfort/output/tableResolver";
 export type ResultRowDefinition<T> = {
   title: string;
   group?: string;
   formatter: (result: T) => ResultCellViewModel;
 };
+
+export interface OutputChartDeclarationInput {
+  readonly instanceId: string;
+  readonly kind: ChartKind;
+  readonly name: string;
+  readonly emptyMessage: string;
+  readonly note?: string;
+  readonly capabilities?: Partial<ChartInstanceCapabilities>;
+  readonly spec: unknown;
+  readonly supportedExploreOutputs?: readonly ModelOutput["key"][];
+  readonly defaultExploreOutput?: ModelOutput["key"];
+}
+
+interface RegisteredOutputChart<
+  ResultType,
+  ChartSourceType,
+  ComplianceBand extends Band,
+> {
+  readonly declaration: ChartInstanceDeclaration;
+  readonly registration: ChartKindRegistration<ResultType, ChartSourceType>;
+}
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -62,38 +106,69 @@ export function createEmptyResults<T>(): Record<InputIdType, T | null> {
   }, {} as Record<InputIdType, T | null>);
 }
 
-export function buildResultSection<T>(
-  title: string,
-  resultsByInput: Record<InputIdType, T | null>,
-  visibleInputIds: InputIdType[],
-  formatter: (result: T) => ResultCellViewModel,
-  group?: string,
-): ResultSectionViewModel {
+function chartKindToRegistrationKind(kind: ChartKind): RegisteredChartKindSpec<
+  unknown,
+  unknown,
+  object
+>["kind"] {
+  switch (kind) {
+    case ChartKind.DynamicField:
+      return "dynamic-field";
+    case ChartKind.BoundaryRegion:
+      return "boundary-region";
+    case ChartKind.BandScalar:
+      return "band-scalar";
+    case ChartKind.TimeSeriesLine:
+      return "time-series-line";
+    case ChartKind.ParametricLine:
+      return "parametric-line";
+    case ChartKind.Custom:
+      return "custom";
+    default: {
+      const exhaustive: never = kind;
+      throw new Error(`Unsupported chart kind: ${exhaustive}`);
+    }
+  }
+}
+
+function createChartKindRegistration<
+  ResultType,
+  ChartSourceType,
+>(
+  entry: OutputChartDeclarationInput,
+): ChartKindRegistration<ResultType, ChartSourceType> {
   return {
-    title,
-    group,
-    valuesByInput: visibleInputIds.reduce((acc, inputId) => {
-      const result = resultsByInput[inputId];
-      let formattedValue = null;
-
-      if (result !== null) {
-        formattedValue = formatter(result);
-      }
-
-      acc[inputId] = formattedValue;
-      return acc;
-    }, {} as Record<InputIdType, ResultCellViewModel | null>),
+    instanceId: entry.instanceId,
+    name: entry.name,
+    emptyMessage: entry.emptyMessage,
+    ...(entry.note ? { note: entry.note } : {}),
+    ...(entry.supportedExploreOutputs
+      ? { supportedExploreOutputs: [...entry.supportedExploreOutputs] }
+      : {}),
+    ...(entry.defaultExploreOutput
+      ? { defaultExploreOutput: entry.defaultExploreOutput }
+      : {}),
+    registration: {
+      kind: chartKindToRegistrationKind(entry.kind),
+      spec: entry.spec,
+    } as RegisteredChartKindSpec<ResultType, ChartSourceType, object>,
   };
 }
 
-export function buildResultSectionsFromRows<T>(
-  rows: ResultRowDefinition<T>[],
-  resultsByInput: Record<InputIdType, T | null>,
-  visibleInputIds: InputIdType[],
-): ResultSectionViewModel[] {
-  return rows.map((row) => (
-    buildResultSection(row.title, resultsByInput, visibleInputIds, row.formatter, row.group)
-  ));
+function createChartInstanceDeclaration(
+  entry: OutputChartDeclarationInput,
+): ChartInstanceDeclaration {
+  return {
+    instanceId: entry.instanceId,
+    kind: entry.kind,
+    name: entry.name,
+    emptyMessage: entry.emptyMessage,
+    ...(entry.note ? { note: entry.note } : {}),
+    ...(entry.capabilities
+      ? { capabilities: resolveChartCapabilities(entry.kind, entry.capabilities) }
+      : {}),
+    spec: entry.spec,
+  };
 }
 
 export class ComfortModelBuilder<
@@ -107,23 +182,33 @@ export class ComfortModelBuilder<
 
   private description?: string;
 
+  private workspaceCapabilities?: readonly WorkspaceCapabilityType[];
+
   private standardIds?: readonly StandardIdType[];
 
-  private modes?: readonly ChartModeType[];
-
-  private chartableOutputs?: readonly ModelOutput[];
+  private exploreOutputs?: readonly ModelOutput[];
 
   private modifiers?: readonly InputModifier[];
 
-  private complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
+  private complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
 
   private readonly controls: InputControlDefinition[] = [];
+
+  private registeredModelQuantities: PhysicalQuantityIdType[] = [];
 
   private readonly optionHandlersByKey: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   > = {};
 
-  private charts?: ModelCharts;
+  private outputTable?: TableDeclaration<ResultType>;
+
+  private defaultOutputChartInstanceId?: string;
+
+  private readonly registeredOutputCharts: RegisteredOutputChart<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >[] = [];
 
   private defaultOptions?: Partial<Record<OptionKeyType, string>>;
 
@@ -139,19 +224,9 @@ export class ComfortModelBuilder<
     ComplianceBand
   >["calculate"];
 
-  private buildResultSections?: ComfortModelDefinition<
-    ResultType,
-    ChartSourceType,
-    ComplianceBand
-  >["buildResultSections"];
+  private simulationOutput?: SimulationOutputDeclaration<ResultType>;
 
-  private buildChartResult?: ComfortModelDefinition<
-    ResultType,
-    ChartSourceType,
-    ComplianceBand
-  >["buildChartResult"];
-
-  private dynamicAxisFields?: readonly FieldKeyType[];
+  private dynamicAxisFields?: readonly ChartAxisQuantityId[];
 
   private defaultDynamicAxes?: DynamicAxisDefaults;
 
@@ -169,18 +244,18 @@ export class ComfortModelBuilder<
     return this;
   }
 
+  setWorkspaceCapabilities(capabilities: readonly WorkspaceCapabilityType[]): this {
+    this.workspaceCapabilities = capabilities;
+    return this;
+  }
+
   setStandardIds(standardIds: readonly StandardIdType[]): this {
     this.standardIds = standardIds;
     return this;
   }
 
-  setModes(modes: readonly ChartModeType[]): this {
-    this.modes = modes;
-    return this;
-  }
-
-  setChartableOutputs(outputs: readonly ModelOutput[]): this {
-    this.chartableOutputs = outputs;
+  setExploreOutputs(outputs: readonly ModelOutput[]): this {
+    this.exploreOutputs = outputs;
     return this;
   }
 
@@ -189,23 +264,60 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setComplianceSpec(spec: ComplianceSpec<ComplianceBand, ResultType>): this {
-    this.complianceSpec = spec;
+  setComplianceProfile(spec: ComplianceSpec<ComplianceBand, ResultType>): this {
+    this.complianceProfile = spec;
     return this;
   }
 
-  addControl(definition: InputControlDefinition): this {
-    this.controls.push(definition);
+  setSimulation(simulation: SimulationOutputDeclaration<ResultType>): this {
+    for (const chart of simulation.charts) {
+      if (chart.kind !== ChartKind.TimeSeriesLine) {
+        throw new Error(
+          `Simulation chart ${chart.id} must use ChartKind.TimeSeriesLine.`,
+        );
+      }
+    }
+    this.simulationOutput = simulation;
+    return this;
+  }
+
+  setOutputTable(declaration: TableDeclaration<ResultType>): this {
+    this.outputTable = declaration;
+    return this;
+  }
+
+  setOutputCharts(
+    entries: readonly OutputChartDeclarationInput[],
+    options?: { defaultInstanceId?: string },
+  ): this {
+    if (entries.length === 0) {
+      throw new Error("Comfort model declarations require at least one output chart.");
+    }
+
+    const defaultInstanceId = options?.defaultInstanceId ?? entries[0]!.instanceId;
+    this.defaultOutputChartInstanceId = defaultInstanceId;
+
+    for (const entry of entries) {
+      this.registerOutputChart(entry);
+    }
+
+    return this;
+  }
+
+  setInputFields(specs: readonly InputFieldSpec[]): this {
+    for (const spec of specs) {
+      this.controls.push(resolveInputField(spec));
+    }
+    return this;
+  }
+
+  registerModelQuantities(quantityIds: readonly PhysicalQuantityIdType[]): this {
+    this.registeredModelQuantities.push(...quantityIds);
     return this;
   }
 
   addOptionHandler(optionKey: OptionKeyType, handler: ModelOptionChangeHandler): this {
     this.optionHandlersByKey[optionKey] = handler;
-    return this;
-  }
-
-  setCharts(charts: ModelCharts): this {
-    this.charts = charts;
     return this;
   }
 
@@ -228,25 +340,7 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setResultBuilder(builder: ComfortModelDefinition<
-    ResultType,
-    ChartSourceType,
-    ComplianceBand
-  >["buildResultSections"]): this {
-    this.buildResultSections = builder;
-    return this;
-  }
-
-  setChartBuilder(builder: ComfortModelDefinition<
-    ResultType,
-    ChartSourceType,
-    ComplianceBand
-  >["buildChartResult"]): this {
-    this.buildChartResult = builder;
-    return this;
-  }
-
-  setDynamicAxisFields(fields: readonly FieldKeyType[]): this {
+  setDynamicAxisFields(fields: readonly ChartAxisQuantityId[]): this {
     this.dynamicAxisFields = fields;
     return this;
   }
@@ -256,22 +350,80 @@ export class ComfortModelBuilder<
     return this;
   }
 
+  private registerOutputChart(entry: OutputChartDeclarationInput): void {
+    if (this.registeredOutputCharts.some(
+      ({ registration }) => registration.instanceId === entry.instanceId,
+    )) {
+      throw new Error(
+        `Comfort model declarations cannot contain duplicate chart instance IDs (${entry.instanceId}).`,
+      );
+    }
+
+    this.registeredOutputCharts.push({
+      declaration: createChartInstanceDeclaration(entry),
+      registration: createChartKindRegistration<ResultType, ChartSourceType>(entry),
+    });
+
+    if (!this.defaultOutputChartInstanceId) {
+      this.defaultOutputChartInstanceId = entry.instanceId;
+    }
+  }
+
+  private mergeDynamicAxisFields(): readonly ChartAxisQuantityId[] {
+    const explicitFields = this.dynamicAxisFields ?? [];
+    if (new Set(explicitFields).size !== explicitFields.length) {
+      throw new Error("Dynamic axis fields cannot contain duplicates.");
+    }
+
+    const registeredFields = this.registeredOutputCharts.flatMap(({ registration }) => {
+      if (registration.registration.kind !== "dynamic-field") {
+        return [];
+      }
+      return registration.registration.spec.axisFields;
+    });
+
+    return [...new Set([...explicitFields, ...registeredFields])];
+  }
+
+  private resolveOutputCharts(): ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["outputCharts"] {
+    const entries = this.registeredOutputCharts.map(({ declaration }) => ({
+      ...declaration,
+      ...(declaration.capabilities
+        ? { capabilities: { ...declaration.capabilities } }
+        : {}),
+    }));
+
+    const defaultInstanceId = this.defaultOutputChartInstanceId ?? entries[0]?.instanceId;
+    if (!defaultInstanceId) {
+      throw new Error("Comfort model declarations require at least one output chart.");
+    }
+
+    return {
+      defaultInstanceId,
+      entries,
+    };
+  }
+
   build(): RuntimeComfortModelDefinition {
-    const modes = this.modes;
-    if (!modes || modes.length === 0) {
-      throw new Error("Comfort model declarations require at least one mode.");
+    const workspaceCapabilities = this.workspaceCapabilities;
+    if (!workspaceCapabilities || workspaceCapabilities.length === 0) {
+      throw new Error("Comfort model declarations require at least one workspace capability.");
     }
 
-    if (new Set(modes).size !== modes.length) {
-      throw new Error("Comfort model declarations cannot contain duplicate modes.");
+    if (new Set(workspaceCapabilities).size !== workspaceCapabilities.length) {
+      throw new Error("Comfort model declarations cannot contain duplicate workspace capabilities.");
     }
 
-    const chartableOutputs = this.chartableOutputs;
-    if (!chartableOutputs) {
-      throw new Error("Comfort model declarations must explicitly set chartable outputs.");
+    const exploreOutputs = this.exploreOutputs;
+    if (!exploreOutputs) {
+      throw new Error("Comfort model declarations must explicitly set explore outputs.");
     }
 
-    const outputKeys = chartableOutputs.map((output) => output.key);
+    const outputKeys = exploreOutputs.map((output) => output.key);
     if (new Set(outputKeys).size !== outputKeys.length) {
       throw new Error("Comfort model declarations cannot contain duplicate output keys.");
     }
@@ -296,8 +448,8 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations must follow the global modifier order.");
     }
 
-    const supportsExplore = modes.includes(ChartMode.Explore);
-    const supportsCompliance = modes.includes(ChartMode.Compliance);
+    const supportsStandard = supportsStandardWorkspace(workspaceCapabilities);
+    const supportsExplore = supportsExploreWorkspace(workspaceCapabilities);
 
     const standardIds = this.standardIds;
     if (!standardIds) {
@@ -306,18 +458,18 @@ export class ComfortModelBuilder<
     if (new Set(standardIds).size !== standardIds.length) {
       throw new Error("Comfort model declarations cannot contain duplicate standard IDs.");
     }
-    if (supportsCompliance && standardIds.length === 0) {
-      throw new Error("Compliance models must declare at least one standard ID.");
+    if (supportsStandard && standardIds.length === 0) {
+      throw new Error("Standard workspace models must declare at least one standard ID.");
     }
-    if (!supportsCompliance && standardIds.length > 0) {
-      throw new Error("Models without Compliance mode cannot declare a standard ID.");
-    }
-
-    if (supportsExplore && chartableOutputs.length === 0) {
-      throw new Error("Explore mode requires at least one chartable output.");
+    if (!supportsStandard && standardIds.length > 0) {
+      throw new Error("Models without Standard workspace capability cannot declare a standard ID.");
     }
 
-    for (const output of chartableOutputs) {
+    if (supportsExplore && exploreOutputs.length === 0) {
+      throw new Error("Explore workspace requires at least one explore output.");
+    }
+
+    for (const output of exploreOutputs) {
       const validation = validateNumericBands(output.defaultBands);
       if (!validation.valid) {
         throw new Error(
@@ -327,19 +479,21 @@ export class ComfortModelBuilder<
     }
 
     if (
-      supportsCompliance
+      supportsStandard
       && (
-        !this.complianceSpec
-        || this.complianceSpec.bands.length === 0
-        || this.complianceSpec.legendTitle.trim().length === 0
-        || this.complianceSpec.caption.trim().length === 0
+        !this.complianceProfile
+        || this.complianceProfile.bands.length === 0
+        || this.complianceProfile.legendTitle.trim().length === 0
+        || this.complianceProfile.caption.trim().length === 0
       )
     ) {
-      throw new Error("Compliance mode requires a non-empty compliance specification.");
+      throw new Error("Standard workspace requires a non-empty compliance profile.");
     }
 
-    if (!supportsCompliance && this.complianceSpec) {
-      throw new Error("A model without Compliance mode cannot declare a compliance specification.");
+    if (!supportsStandard && this.complianceProfile) {
+      throw new Error(
+        "A model without Standard workspace capability cannot declare a compliance profile.",
+      );
     }
 
     if (!this.label || this.label.trim().length === 0) {
@@ -350,33 +504,48 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations require a non-empty description.");
     }
 
-    const charts = this.charts;
-    if (!charts || charts.entries.length === 0) {
-      throw new Error("Comfort model declarations require at least one chart definition.");
+    const outputTable = this.outputTable;
+    if (!outputTable) {
+      throw new Error("Comfort model declarations must set an output table.");
     }
 
-    const chartIds = charts.entries.map(({ id }) => id);
-    if (new Set(chartIds).size !== chartIds.length) {
-      throw new Error("Comfort model declarations cannot contain duplicate chart IDs.");
+    if (outputTable.rows.length === 0) {
+      throw new Error("Comfort model declarations require at least one output table row.");
     }
 
-    if (!chartIds.includes(charts.defaultId)) {
-      throw new Error("The default chart must belong to the declared chart definitions.");
+    const outputCharts = this.resolveOutputCharts();
+    if (outputCharts.entries.length === 0) {
+      throw new Error("Comfort model declarations require at least one output chart.");
     }
 
-    for (const chart of charts.entries) {
+    const instanceIds = outputCharts.entries.map(({ instanceId }) => instanceId);
+    if (new Set(instanceIds).size !== instanceIds.length) {
+      throw new Error("Comfort model declarations cannot contain duplicate chart instance IDs.");
+    }
+
+    if (!instanceIds.includes(outputCharts.defaultInstanceId)) {
+      throw new Error("The default output chart must belong to the declared chart instances.");
+    }
+
+    for (const chart of outputCharts.entries) {
       if (!chart.name.trim() || !chart.emptyMessage.trim()) {
         throw new Error("Chart definitions require a name and empty message.");
       }
-      if (chart.locksYAxis && !chart.allowsAxisSelection) {
+
+      const capabilities = chart.capabilities
+        ?? resolveChartCapabilities(chart.kind);
+      if (capabilities.locksYAxis && !capabilities.allowsAxisSelection) {
         throw new Error("A locked Y axis requires an axis-selectable chart.");
       }
 
-      const supportedExploreOutputs = chart.supportedExploreOutputs;
+      const registration = this.registeredOutputCharts.find(
+        ({ registration: entry }) => entry.instanceId === chart.instanceId,
+      )?.registration;
+      const supportedExploreOutputs = registration?.supportedExploreOutputs;
       if (supportedExploreOutputs) {
         if (!supportsExplore || supportedExploreOutputs.length === 0) {
           throw new Error(
-            "Chart-specific Explore outputs require Explore mode and at least one output.",
+            "Chart-specific Explore outputs require Explore workspace capability and at least one output.",
           );
         }
         if (new Set(supportedExploreOutputs).size !== supportedExploreOutputs.length) {
@@ -386,12 +555,13 @@ export class ComfortModelBuilder<
           throw new Error("Chart-specific Explore outputs must belong to the model declaration.");
         }
       }
+      const defaultExploreOutput = registration?.defaultExploreOutput;
       if (
-        chart.defaultExploreOutput
+        defaultExploreOutput
         && (
-          !outputKeys.includes(chart.defaultExploreOutput)
+          !outputKeys.includes(defaultExploreOutput)
           || (supportedExploreOutputs
-            && !supportedExploreOutputs.includes(chart.defaultExploreOutput))
+            && !supportedExploreOutputs.includes(defaultExploreOutput))
         )
       ) {
         throw new Error("A chart's default Explore output must be supported by that chart.");
@@ -417,17 +587,9 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations must set a calculator.");
     }
 
-    if (!this.buildResultSections) {
-      throw new Error("Comfort model declarations must set a result builder.");
-    }
-
-    if (!this.buildChartResult) {
-      throw new Error("Comfort model declarations must set a chart builder.");
-    }
-
-    const dynamicAxisFields = this.dynamicAxisFields;
+    const dynamicAxisFields = this.mergeDynamicAxisFields();
     const defaultDynamicAxes = this.defaultDynamicAxes;
-    if (!dynamicAxisFields || dynamicAxisFields.length < 2 || !defaultDynamicAxes) {
+    if (dynamicAxisFields.length < 2 || !defaultDynamicAxes) {
       throw new Error(
         "Comfort model declarations require dynamic axis fields and explicit default dynamic axes.",
       );
@@ -445,64 +607,125 @@ export class ComfortModelBuilder<
       throw new Error("Default dynamic axes must be supported and distinct.");
     }
 
-    const complianceSpec = this.complianceSpec;
+    const modelQuantities = [...new Set(this.registeredModelQuantities)];
+    for (const quantityId of modelQuantities) {
+      const meta = getPhysicalQuantityMeta(quantityId);
+      if (meta.ownerModelId !== this.id) {
+        throw new Error(
+          `Model quantity ${quantityId} is not owned by ${this.id}.`,
+        );
+      }
+    }
+
+    const complianceProfile = this.complianceProfile;
     const calculate = this.calculate;
-    const buildResultSections = this.buildResultSections;
-    const buildChartResult = this.buildChartResult;
+    const chartKindRegistrations = this.registeredOutputCharts.map(
+      ({ registration }) => registration,
+    );
+    const registeredOutputChartsForBuild = this.registeredOutputCharts;
+    const builtModelId = this.id;
 
     return {
       id: this.id,
       label: this.label,
       description: this.description,
+      workspaceCapabilities: [...workspaceCapabilities],
       standardIds: [...standardIds],
-      modes: [...modes],
-      chartableOutputs: chartableOutputs.map((output) => ({
+      exploreOutputs: exploreOutputs.map((output) => ({
         ...output,
         defaultBands: cloneNumericBands(output.defaultBands),
       })),
       modifiers: [...modifiers],
-      ...(complianceSpec
+      ...(complianceProfile
         ? {
-            complianceSpec: {
-              ...complianceSpec,
-              bands: complianceSpec.bands.map((band) => ({ ...band })),
-              getFeedback: (result: unknown) => complianceSpec.getFeedback(
+            complianceProfile: {
+              ...complianceProfile,
+              bands: complianceProfile.bands.map((band) => ({ ...band })),
+              getFeedback: (result: unknown) => complianceProfile.getFeedback(
                 result as ResultType,
               ),
             },
           }
         : {}),
       controls: [...this.controls],
+      modelQuantities,
       optionHandlersByKey: { ...this.optionHandlersByKey },
-      charts: {
-        defaultId: charts.defaultId,
-        entries: charts.entries.map((chart) => ({
-          ...chart,
-          ...(chart.supportedExploreOutputs
-            ? { supportedExploreOutputs: [...chart.supportedExploreOutputs] }
+      outputTable: {
+        layout: outputTable.layout,
+        rows: [...outputTable.rows],
+      } as TableDeclaration,
+      outputCharts: {
+        defaultInstanceId: outputCharts.defaultInstanceId,
+        entries: outputCharts.entries.map((entry) => ({
+          ...entry,
+          ...(entry.capabilities
+            ? { capabilities: { ...entry.capabilities } }
             : {}),
         })),
       },
+      chartKindRegistrations: [...chartKindRegistrations] as RuntimeComfortModelDefinition[
+        "chartKindRegistrations"
+      ],
       defaultOptions: { ...defaultOptions },
       parseOptions: this.parseOptions,
       calculate: (context, visibleInputIds) => calculate(context, visibleInputIds),
-      buildResultSections: (resultsByInput, visibleInputIds, unitSystem) => (
-        buildResultSections(
-          resultsByInput as Record<InputIdType, ResultType | null>,
-          visibleInputIds,
-          unitSystem,
-        )
-      ),
-      buildChartResult: (chartId, chartSource, resultsByInput, context) => (
-        buildChartResult(
-          chartId,
-          chartSource as ChartSourceType | null,
-          resultsByInput as Record<InputIdType, ResultType | null>,
-          context as Parameters<typeof buildChartResult>[3],
-        )
-      ),
+      buildTable: (resultsByInput, visibleInputIds, unitSystem) => {
+        switch (outputTable.layout) {
+          case TableLayout.CompareMatrix:
+            return buildCompareMatrixTable(
+              outputTable,
+              resultsByInput as Record<InputIdType, ResultType | null>,
+              visibleInputIds,
+              unitSystem,
+            );
+          default:
+            throw new Error(`Unsupported table layout: ${outputTable.layout}`);
+        }
+      },
+      buildChart: (instanceId, chartSource, resultsByInput, profile, context) => {
+        const chartEntry = registeredOutputChartsForBuild.find(
+          ({ declaration }) => declaration.instanceId === instanceId,
+        );
+        const showsLegend = chartEntry
+          ? resolveChartCapabilities(
+            chartEntry.declaration.kind,
+            chartEntry.declaration.capabilities,
+          ).showsLegend
+          : false;
+        return resolveChartBuildResult({
+          modelId: builtModelId,
+          registrations: chartKindRegistrations,
+          instanceId,
+          chartSource: chartSource as ChartSourceType | null,
+          resultsByInput: resultsByInput as Record<InputIdType, ResultType | null>,
+          profile,
+          unitSystem: context.unitSystem,
+          baselineInputId: context.baselineInputId,
+          chartSourceVersion: context.chartSourceVersion,
+          modelInputs: context.modelInputs,
+          showsLegend,
+          ...(complianceProfile
+            ? { complianceProfile: complianceProfile as ComplianceSpec }
+            : {}),
+          exploreOutputs: exploreOutputs.map((output) => ({
+            ...output,
+            defaultBands: cloneNumericBands(output.defaultBands),
+          })),
+        });
+      },
       dynamicAxisFields: [...dynamicAxisFields],
       defaultDynamicAxes: { ...defaultDynamicAxes },
+      ...(this.simulationOutput
+        ? {
+            simulation: {
+              table: {
+                layout: this.simulationOutput.table.layout,
+                rows: [...this.simulationOutput.table.rows],
+              },
+              charts: this.simulationOutput.charts.map((chart) => ({ ...chart })),
+            } as SimulationOutputDeclaration,
+          }
+        : {}),
     };
   }
 }

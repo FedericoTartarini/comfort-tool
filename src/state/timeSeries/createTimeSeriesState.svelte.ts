@@ -3,6 +3,10 @@ import {
   type RuntimeTimeSeriesModelDefinition,
   type TimeSeriesChartViewModel,
 } from "../../models/timeSeries";
+import type { MetricSummaryItemViewModel } from "../../models/output/tableLayouts";
+import { buildMetricSummaryTable } from "../../services/comfort/output/tableResolver";
+import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
+import { getModelSimulationOutput } from "../comfortTool/modelConfigs";
 import { UnitSystem } from "../../models/units";
 import {
   getTimeSeriesModelConfig,
@@ -76,6 +80,14 @@ export function createTimeSeriesState(
     modelId: TimeSeriesModelId = state.selectedModel,
   ): RuntimeTimeSeriesModelDefinition {
     return getTimeSeriesModelConfig(modelId);
+  }
+
+  function getSimulationOutput(modelId: TimeSeriesModelId) {
+    const simulation = getModelSimulationOutput(modelId);
+    if (!simulation) {
+      throw new Error(`Time-series model ${modelId} is missing simulation output metadata.`);
+    }
+    return simulation;
   }
 
   function cancelWork(modelId: TimeSeriesModelId) {
@@ -359,9 +371,8 @@ export function createTimeSeriesState(
   function getCharts(): readonly TimeSeriesChartViewModel[] {
     const modelId = state.selectedModel;
     const result = state.resultByModel[modelId];
-    const definition = getDefinition();
     const draft = state.draftByModel[modelId];
-    return definition.charts.map((chartDefinition) => ({
+    return getSimulationOutput(modelId).charts.map((chartDefinition) => ({
       id: chartDefinition.id,
       title: chartDefinition.title,
       description: chartDefinition.description,
@@ -370,7 +381,12 @@ export function createTimeSeriesState(
       ...(chartDefinition.testId ? { testId: chartDefinition.testId } : {}),
       chart: result === null
         ? null
-        : chartDefinition.build(result, draft, state.unitSystem),
+        : resolveSimulationChartBuild(
+            chartDefinition,
+            result,
+            draft,
+            state.unitSystem,
+          ),
     }));
   }
 
@@ -419,12 +435,15 @@ export function createTimeSeriesState(
         state.resultByModel[state.selectedModel] !== null
         && getStatus() !== "ready"
       ),
-      getSummary: () => {
+      getSummary: (): readonly MetricSummaryItemViewModel[] => {
         const modelId = state.selectedModel;
         const result = state.resultByModel[modelId];
-        return result === null
-          ? []
-          : getDefinition().buildSummary(result, state.unitSystem);
+        if (result === null) return [];
+        return buildMetricSummaryTable(
+          getSimulationOutput(modelId).table,
+          result,
+          state.unitSystem,
+        ).items;
       },
       getCharts,
     },

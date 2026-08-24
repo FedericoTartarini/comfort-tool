@@ -1,21 +1,20 @@
 import { CalculationSource } from "../../../models/calculationMetadata";
-import type { ChartId as ChartIdType } from "../../../models/chartOptions";
 import type {
   CompareInputMap,
   ModelChartSourceDto,
   PlotHoverValueDto,
   PlotlyChartResponseDto,
 } from "../../../models/comfortDtos";
-import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
-import { fieldMetaByKey } from "../../../models/inputFieldsMeta";
+import { ChartAxisQuantityId, getPhysicalQuantityMeta } from "../../../models/physicalQuantities";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
-import type {
+import {
   ChartBuildContext,
   ModelOutput,
   NumericBand,
   NumericFieldChartConfig,
+  ModelOutputKey as ModelOutputKeyType,
+  findNumericBandIndexForValue,
 } from "../../../models/modelCapabilities";
-import { findNumericBandIndexForValue } from "../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import type { FieldRequestAdapter } from "../requestMapping";
 import {
@@ -27,9 +26,10 @@ import {
   createBandedGridStrategy,
   type BandedGridOutputEvaluation,
   type FieldChartInputGroup,
+  type FieldChartLayoutSpec,
 } from "./chartEngine";
 import { getBaselineInputEntry } from "../helpers";
-import type { ChartRange } from "./types";
+import { CHART_COORDINATE_TOLERANCE, type ChartRange } from "./types";
 
 export interface GridModelDynamicHoverExtension<TResult> {
   getTemplateSuffix: (unitSystem: UnitSystemType) => string;
@@ -40,28 +40,52 @@ export interface GridModelDynamicHoverExtension<TResult> {
 }
 
 export interface GridModelFixedViewSpec {
-  chartId: ChartIdType;
+  instanceId: string;
   title: string;
-  xField: FieldKeyType;
-  yField: FieldKeyType;
+  xField: ChartAxisQuantityId;
+  yField: ChartAxisQuantityId;
   xRangeSi: ChartRange;
   yRangeSi: ChartRange;
 }
 
 export interface GridModelChartSpec<TPayload extends object, TResult> {
-  dynamicChartId: ChartIdType;
+  instanceId: string;
   dynamicTitle: string;
   output: ModelOutput;
+  /** When set, z-output metadata resolves from this list (e.g. PHS multi-output). */
+  exploreOutputs?: readonly ModelOutput[];
   bandLabel?: string;
   dynamicHoverExtension?: GridModelDynamicHoverExtension<TResult>;
-  axisRanges?: Partial<Record<FieldKeyType, ChartRange>>;
+  axisRanges?: Partial<Record<ChartAxisQuantityId, ChartRange>>;
+  gridPoints?: number;
+  isPlottable?: (result: TResult | null | undefined) => boolean;
+  outsideApplicabilityMessage?: string;
   requestAdapter: Pick<
     FieldRequestAdapter<TPayload>,
     "getAxisValue" | "setAxisValue"
   >;
+  /** Uses operative-temperature or alias-aware axis adapters when chart axes differ from request fields. */
+  chartAxisAdapter?: Pick<
+    FieldRequestAdapter<TPayload>,
+    "getAxisValue" | "setAxisValue"
+  >;
+  /** When false, the grid cell is empty. Defaults to setting both axis values on the payload. */
+  applyChartCoordinates?: (
+    payload: TPayload,
+    xField: ChartAxisQuantityId,
+    xSi: number,
+    yField: ChartAxisQuantityId,
+    ySi: number,
+  ) => boolean;
   evaluate: (payload: TPayload) => TResult;
-  getOutputValue: (result: TResult) => number;
+  /** When set, grid cells use this instead of evaluate + getOutputValue. */
+  tryEvaluatePayload?: (payload: TPayload) => number | null | undefined;
+  getOutputValue: (
+    result: TResult,
+    outputKey: ModelOutputKeyType,
+  ) => number | null | undefined;
   fixedView?: GridModelFixedViewSpec;
+  dynamicViewLayout?: Partial<FieldChartLayoutSpec>;
 }
 
 interface GridModelView {
@@ -70,16 +94,31 @@ interface GridModelView {
   xRangeSi: ChartRange;
   yRangeSi: ChartRange;
   hoverTemplateSuffix: string;
+  layout?: Partial<FieldChartLayoutSpec>;
 }
 
 function getAxisRange(
-  field: FieldKeyType,
-  ranges?: Partial<Record<FieldKeyType, ChartRange>>,
+  field: ChartAxisQuantityId,
+  ranges?: Partial<Record<ChartAxisQuantityId, ChartRange>>,
 ): ChartRange {
   return ranges?.[field] ?? {
-    min: fieldMetaByKey[field].minValue,
-    max: fieldMetaByKey[field].maxValue,
+    min: getPhysicalQuantityMeta(field).minSi,
+    max: getPhysicalQuantityMeta(field).maxSi,
   };
+}
+
+function resolveGridOutput(
+  spec: GridModelChartSpec<object, unknown>,
+  zOutput: ModelOutputKeyType,
+): ModelOutput {
+  if (spec.exploreOutputs) {
+    const match = spec.exploreOutputs.find(({ key }) => key === zOutput);
+    if (!match) {
+      throw new Error(`Missing chart output ${zOutput}.`);
+    }
+    return match;
+  }
+  return spec.output;
 }
 
 function buildGridModelView<TPayload extends object, TResult>(
@@ -91,36 +130,87 @@ function buildGridModelView<TPayload extends object, TResult>(
   view: GridModelView,
 ): PlotlyChartResponseDto {
   const { unitSystem } = context;
-  const output = spec.output;
+  const output = resolveGridOutput(
+    spec as GridModelChartSpec<object, unknown>,
+    view.config.zOutput,
+  );
   const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
   const bandLabel = spec.bandLabel ?? "Band";
-  const getResultValue = (result: TResult | null | undefined) => (
-    result == null ? undefined : spec.getOutputValue(result)
+  const gridPoints = spec.gridPoints ?? 300;
+  const chartAxisAdapter = spec.chartAxisAdapter ?? spec.requestAdapter;
+  const baselineXSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.xField);
+  const baselineYSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.yField);
+  const getResultValue = (result: TResult | null | undefined) => {
+    if (result == null) return undefined;
+    const valueSi = spec.getOutputValue(result, view.config.zOutput);
+    if (valueSi == null || !Number.isFinite(valueSi)) return undefined;
+    return valueSi;
+  };
+  const isPlottable = (result: TResult | null | undefined) => (
+    spec.isPlottable ? spec.isPlottable(result) : getResultValue(result) !== undefined
   );
   return buildFieldChart({
     unitSystem,
     xAxis: {
       field: view.config.xField,
       rangeSi: view.xRangeSi,
-      points: 300,
+      points: gridPoints,
     },
     yAxis: {
       field: view.config.yField,
       rangeSi: view.yRangeSi,
-      points: 300,
+      points: gridPoints,
     },
     strategy: createBandedGridStrategy({
       config: view.config,
       output,
       bandLabel,
       hoverTemplateSuffix: view.hoverTemplateSuffix,
-      evaluateOutput: (xSi, ySi, _zOutput, _xIndex, _yIndex, renderContext) => {
+      evaluateOutput: (xSi, ySi, zOutput, _xIndex, _yIndex, renderContext) => {
+        if (
+          Math.abs(xSi - baselineXSi) < CHART_COORDINATE_TOLERANCE
+          && Math.abs(ySi - baselineYSi) < CHART_COORDINATE_TOLERANCE
+        ) {
+          const cachedResult = resultsByInput[context.baselineInputId];
+          const cachedValue = getResultValue(cachedResult);
+          if (cachedValue !== undefined) {
+            const additionalHoverMetadata = spec.dynamicHoverExtension
+              ?.getMetadata(cachedResult, renderContext.unitSystem);
+            return additionalHoverMetadata
+              ? { valueSi: cachedValue, additionalHoverMetadata } satisfies BandedGridOutputEvaluation
+              : cachedValue;
+          }
+        }
         const pointPayload = { ...baselinePayload };
-        spec.requestAdapter.setAxisValue(pointPayload, view.config.xField, xSi);
-        spec.requestAdapter.setAxisValue(pointPayload, view.config.yField, ySi);
+        const coordinatesValid = spec.applyChartCoordinates
+          ? spec.applyChartCoordinates(
+              pointPayload,
+              view.config.xField,
+              xSi,
+              view.config.yField,
+              ySi,
+            )
+          : (() => {
+              spec.requestAdapter.setAxisValue(pointPayload, view.config.xField, xSi);
+              spec.requestAdapter.setAxisValue(pointPayload, view.config.yField, ySi);
+              return true;
+            })();
+        if (!coordinatesValid) {
+          return null;
+        }
+        if (spec.tryEvaluatePayload) {
+          const directValue = spec.tryEvaluatePayload(pointPayload);
+          if (directValue == null || !Number.isFinite(directValue)) {
+            return null;
+          }
+          return directValue;
+        }
         const result = spec.evaluate(pointPayload);
-        const valueSi = spec.getOutputValue(result);
+        const valueSi = spec.getOutputValue(result, zOutput);
+        if (valueSi == null || !Number.isFinite(valueSi)) {
+          return null;
+        }
         const additionalHoverMetadata = spec.dynamicHoverExtension
           ?.getMetadata(result, renderContext.unitSystem);
 
@@ -132,9 +222,12 @@ function buildGridModelView<TPayload extends object, TResult>(
     inputGroups: ({ xAxis, yAxis }) => [{
       inputsMap,
       resultsByInput,
-      getXSi: (payload) => spec.requestAdapter.getAxisValue(payload, view.config.xField),
-      getYSi: (payload) => spec.requestAdapter.getAxisValue(payload, view.config.yField),
+      getXSi: (payload) => chartAxisAdapter.getAxisValue(payload, view.config.xField),
+      getYSi: (payload) => chartAxisAdapter.getAxisValue(payload, view.config.yField),
       getHovertemplate: ({ inputLabel, result }) => {
+        if (!isPlottable(result) && spec.outsideApplicabilityMessage) {
+          return `${inputLabel}<br><b>${spec.outsideApplicabilityMessage}</b><extra></extra>`;
+        }
         const valueSi = getResultValue(result);
         const selectedBandIndex = valueSi === undefined
           ? undefined
@@ -160,13 +253,14 @@ function buildGridModelView<TPayload extends object, TResult>(
       paperBgColor: "rgba(0,0,0,0)",
       plotBgColor: "rgba(0,0,0,0)",
       margin: { l: 60, r: 24, t: 60, b: 60 },
+      ...view.layout,
     },
     source: CalculationSource.JsThermalComfort,
   });
 }
 
 export function buildGridModelChart<TPayload extends object, TResult>(
-  chartId: ChartIdType,
+  instanceId: string,
   chartSource: ModelChartSourceDto<TPayload> | null,
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
   context: ChartBuildContext<NumericBand>,
@@ -183,7 +277,11 @@ export function buildGridModelChart<TPayload extends object, TResult>(
   ).payload;
   const config = context.fieldChartConfig;
 
-  if (chartId === spec.dynamicChartId) {
+  if (instanceId === spec.instanceId) {
+    const resolvedOutput = resolveGridOutput(
+      spec as GridModelChartSpec<object, unknown>,
+      config.zOutput,
+    );
     return buildGridModelView(
       inputsMap,
       resultsByInput,
@@ -191,17 +289,18 @@ export function buildGridModelChart<TPayload extends object, TResult>(
       context,
       spec,
       {
-        title: `${spec.dynamicTitle} — ${spec.output.label}`,
+        title: `${spec.dynamicTitle} — ${resolvedOutput.label}`,
         config,
         xRangeSi: getAxisRange(config.xField, spec.axisRanges),
         yRangeSi: getAxisRange(config.yField, spec.axisRanges),
         hoverTemplateSuffix:
           spec.dynamicHoverExtension?.getTemplateSuffix(context.unitSystem) ?? "",
+        layout: spec.dynamicViewLayout,
       },
     );
   }
 
-  if (spec.fixedView && chartId === spec.fixedView.chartId) {
+  if (spec.fixedView && instanceId === spec.fixedView.instanceId) {
     return buildGridModelView(
       inputsMap,
       resultsByInput,

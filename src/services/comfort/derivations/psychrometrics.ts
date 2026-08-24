@@ -1,7 +1,27 @@
 import { psy_ta_rh, p_sat } from "jsthermalcomfort";
+import {
+  PhysicalQuantityId,
+  type DerivedSlotQuantityState,
+  type PrimaryInputState,
+} from "../../../models/physicalQuantities";
 
 const STANDARD_ATMOSPHERIC_PRESSURE_PA = 101325;
 const WATER_VAPOR_MOLECULAR_WEIGHT_RATIO = 0.62198;
+
+/** Forward psychrometric slot derivation from primary dry-bulb temperature and RH. */
+export function derivePsychrometricSlots(inputState: PrimaryInputState): DerivedSlotQuantityState {
+  const psychrometricState = psy_ta_rh(
+    inputState[PhysicalQuantityId.DryBulbTemperature],
+    inputState[PhysicalQuantityId.RelativeHumidity],
+  );
+
+  return {
+    [PhysicalQuantityId.DewPoint]: psychrometricState.t_dp,
+    [PhysicalQuantityId.DerivedHumidityRatio]: psychrometricState.hr,
+    [PhysicalQuantityId.WetBulb]: psychrometricState.t_wb,
+    [PhysicalQuantityId.VaporPressure]: psychrometricState.p_vap,
+  };
+}
 
 /**
  * Derives the active Relative Humidity given the Dry Bulb Temperature and a target Dew Point temperature.

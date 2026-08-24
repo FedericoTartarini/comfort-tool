@@ -1,16 +1,16 @@
 import { ComfortModel, type ComfortModel as ComfortModelType } from "../../../models/comfortModels";
-import type { RuntimeComfortModelDefinition } from "./definition";
-import { pmvAshraeModelConfig } from "../../../comfortModels/pmvAshrae";
-import { pmvIsoModelConfig } from "../../../comfortModels/pmvIso";
-import { utciModelConfig } from "../../../comfortModels/utci";
-import { adaptiveAshraeModelConfig } from "../../../comfortModels/adaptiveAshrae";
-import { adaptiveEnModelConfig } from "../../../comfortModels/adaptiveEn";
+import type { RuntimeComfortModelDefinition, SimulationOutputDeclaration } from "./definition";
+import { pmvAshraeModelConfig } from "../../../comfortModels/pmv/pmvAshrae";
+import { pmvIsoModelConfig } from "../../../comfortModels/pmv/pmvIso";
+import { utciModelConfig } from "../../../comfortModels/utci/utci";
+import { adaptiveAshraeModelConfig } from "../../../comfortModels/adaptive/adaptiveAshrae";
+import { adaptiveEnModelConfig } from "../../../comfortModels/adaptive/adaptiveEn";
 import { heatIndexModelConfig } from "../../../comfortModels/heatIndex";
 import { humidexModelConfig } from "../../../comfortModels/humidex";
 import { windChillModelConfig } from "../../../comfortModels/windChill";
-import { phsModelConfig } from "../../../comfortModels/phs";
-import { ChartMode } from "../../../models/modelCapabilities";
-import type { StandardId as StandardIdType } from "../../../models/workspaces";
+import { phsModelConfig } from "../../../comfortModels/phs/phs";
+import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
+import { WorkspaceId, type StandardId as StandardIdType, type WorkspaceId as WorkspaceIdType } from "../../../models/workspaces";
 
 export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDefinition> = {
   [ComfortModel.PmvAshrae]: pmvAshraeModelConfig,
@@ -43,8 +43,26 @@ export function getModelsForStandard(standardId: StandardIdType): ComfortModelTy
   ));
 }
 
-export function getExploreModels(): ComfortModelType[] {
-  return comfortModelOrder.filter((modelId) => (
-    comfortModelConfigs[modelId].modes.includes(ChartMode.Explore)
-  ));
+export function getModelsForWorkspace(workspaceId: WorkspaceIdType): ComfortModelType[] {
+  return comfortModelOrder.filter((modelId) => {
+    const capabilities = comfortModelConfigs[modelId].workspaceCapabilities;
+    switch (workspaceId) {
+      case WorkspaceId.Standard:
+        return capabilities.includes(WorkspaceCapability.Standard);
+      case WorkspaceId.Explore:
+        return capabilities.includes(WorkspaceCapability.Explore);
+      case WorkspaceId.TimeSeries:
+        return false;
+      default: {
+        const exhaustive: never = workspaceId;
+        throw new Error(`Unsupported workspace: ${exhaustive}`);
+      }
+    }
+  });
+}
+
+export function getModelSimulationOutput(
+  modelId: ComfortModelType,
+): SimulationOutputDeclaration | undefined {
+  return comfortModelConfigs[modelId].simulation;
 }

@@ -1,46 +1,46 @@
 /**
  * Canonical comfort-tool state types.
- * `inputsByInput` stores base SI values, modifier inputs stay SI, and `ui` stores
- * selections, chart state, and calculation lifecycle flags.
+ * `quantitiesByInput` stores base primary SI values, auxiliary slot quantities stay SI,
+ * and `ui` stores selections, chart state, and calculation lifecycle flags.
  */
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
 import type {
-  CanonicalInputState,
-  FieldKey as FieldKeyType,
-} from "../../models/fieldKeys";
-import type {
-  ChartId as ChartIdType,
-  ModelChartDefinition,
-} from "../../models/chartOptions";
-import type { InputControlId as InputControlIdType, InputControlViewModel } from "../../models/inputControls";
+  PrimaryInputState,
+  DerivedSlotQuantityState,
+  ChartAxisQuantityId,
+  AuxiliaryInputState,
+  PhysicalQuantityId as PhysicalQuantityIdType,
+} from "../../models/physicalQuantities";
+import type { InputControlKey as InputControlKeyType, InputControlViewModel } from "../../models/inputControls";
 import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import type {
-  ModifierFieldKey as ModifierFieldKeyType,
   ModifierId as ModifierIdType,
   ModifierInputValues,
 } from "../../models/inputModifiers";
 import type {
-  ChartMode as ChartModeType,
   ComplianceFeedback,
-  ExploreFieldChartConfig,
   ModelOutput,
   ModelOutputKey,
   NumericBand,
 } from "../../models/modelCapabilities";
+import type { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+import type { ChartInstanceDeclaration } from "../../models/output/chartInstances";
+import type { FieldChartProfile } from "../../models/output/fieldChartProfile";
+import type { WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
 import type { ShareStateSnapshot } from "./shareState";
+import type {
+  AuxiliaryQuantitiesByInputState,
+  ModelInputsByModelState,
+  QuantitiesByInputState,
+} from "../../services/comfort/quantityStateRouting";
 
-export type InputState = CanonicalInputState;
-export type InputsByInputState = Record<InputIdType, InputState>;
+export type InputState = PrimaryInputState;
 export type ActiveModifiersByInputState = Record<
   InputIdType,
   Record<ModifierIdType, boolean>
->;
-export type ModifierInputsByInputState = Record<
-  InputIdType,
-  Record<ModifierIdType, ModifierInputValues>
 >;
 
 /** One modal-editing draft entry; modifier input values remain canonical SI. */
@@ -52,24 +52,20 @@ export interface InputModifierDraftEntry {
 }
 export type ModelOptionsState = ModelOptionsRecord;
 export type ModelOptionsByModelState = Record<ComfortModelType, ModelOptionsState>;
-export type SelectedChartByModelState = Record<ComfortModelType, ChartIdType>;
+export type SelectedChartInstanceByModelState = Record<ComfortModelType, string>;
 
-export type ResultCellViewModel = {
-  text: string;
-  subtext?: string;
-  color?: string;
-};
+import type {
+  ResultCellViewModel,
+  ResultSectionViewModel,
+} from "../../models/output/resultSections";
 
-export type ResultSectionViewModel = {
-  title: string;
-  group?: string;
-  valuesByInput: Partial<Record<InputIdType, ResultCellViewModel | null>>;
-};
+export type { ResultCellViewModel, ResultSectionViewModel };
 
 export type CalculationCacheStatus = "empty" | "stale" | "ready";
 
 export type ModelCalculationCache<ResultType, ChartSourceType> = {
   status: CalculationCacheStatus;
+  buildGeneration: number;
   lastVisibleInputIds: InputIdType[];
   resultsByInput: Record<InputIdType, ResultType | null>;
   chartSource: ChartSourceType | null;
@@ -81,7 +77,7 @@ export type ModelCalculationCacheByModelState = Record<
 >;
 export interface ModelSwitchViolation {
   inputId: InputIdType;
-  controlId: InputControlIdType;
+  controlId: InputControlKeyType;
   label: string;
   currentValue: number;
   minAllowed: number;
@@ -94,25 +90,19 @@ export type PendingModelSwitch = {
   violations: ModelSwitchViolation[];
 };
 
-/** Transient Explore selections; numeric band edges remain canonical SI. */
-export interface ExploreChartState {
-  zOutput: ModelOutputKey;
-  bands: NumericBand[];
-}
-
-/** Per-model field-chart presentation state; all numeric values remain canonical SI. */
-export interface ModelChartSettings {
-  mode: ChartModeType;
-  xAxis: FieldKeyType;
-  yAxis: FieldKeyType;
-  explore: ExploreChartState | null;
+/** Per-model output presentation state; numeric band edges remain canonical SI. */
+export interface ModelOutputSettings {
+  xAxis: ChartAxisQuantityId;
+  yAxis: ChartAxisQuantityId;
   baselineInputId: InputIdType;
+  exploreOutput: ModelOutputKey | null;
+  exploreBands: NumericBand[] | null;
 }
 
-export type ChartSettingsByModelState = Record<ComfortModelType, ModelChartSettings>;
+export type OutputSettingsByModelState = Record<ComfortModelType, ModelOutputSettings>;
 
-export interface ChartModeControlViewModel {
-  selectedMode: ChartModeType;
+export interface ChartProfileBadgeViewModel {
+  profileKind: FieldChartProfileKind;
   caption: string;
   feedback: (ComplianceFeedback & { inputLabel?: string }) | null;
 }
@@ -124,14 +114,14 @@ export interface BaselineControl {
 }
 
 export interface AxisControl {
-  selectedField: FieldKeyType;
-  options: FieldKeyType[];
+  selectedField: ChartAxisQuantityId;
+  options: ChartAxisQuantityId[];
   locked: boolean;
-  onSelect: (fieldKey: FieldKeyType) => void;
+  onSelect: (fieldKey: ChartAxisQuantityId) => void;
 }
 
 export interface ExploreControls {
-  config: ExploreFieldChartConfig;
+  profile: FieldChartProfile;
   outputs: readonly ModelOutput[];
   defaultBands: readonly NumericBand[];
   unitSystem: UnitSystemType;
@@ -140,7 +130,7 @@ export interface ExploreControls {
 }
 
 export interface ChartControlsViewModel {
-  mode: ChartModeControlViewModel;
+  profileBadge: ChartProfileBadgeViewModel;
   baseline: BaselineControl | null;
   axes: {
     x: AxisControl;
@@ -150,7 +140,7 @@ export interface ChartControlsViewModel {
 }
 
 export interface ModifierFieldControlViewModel {
-  key: ModifierFieldKeyType;
+  key: PhysicalQuantityIdType;
   label: string;
   displayUnits: string;
   step: number;
@@ -161,7 +151,7 @@ export interface ModifierFieldControlViewModel {
 }
 
 export interface ModifierAffectedFieldViewModel {
-  key: FieldKeyType;
+  key: ChartAxisQuantityId;
   label: string;
   displayUnits: string;
   displayValuesByInput: Partial<Record<InputIdType, string>>;
@@ -179,13 +169,14 @@ export interface InputModifierControlViewModel {
 
 export type UiState = {
   selectedModel: ComfortModelType;
-  selectedChartByModel: SelectedChartByModelState;
+  selectedChartInstanceByModel: SelectedChartInstanceByModelState;
   modelOptionsByModel: ModelOptionsByModelState;
   compareEnabled: boolean;
   compareInputIds: InputIdType[];
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
-  chartSettingsByModel: ChartSettingsByModelState;
+  activeWorkspace: WorkspaceIdType;
+  outputSettingsByModel: OutputSettingsByModelState;
   isLoading: boolean;
   errorMessage: string;
   calculationCacheByModel: ModelCalculationCacheByModelState;
@@ -193,9 +184,10 @@ export type UiState = {
 };
 
 export type ComfortToolStateSlice = {
-  inputsByInput: InputsByInputState;
+  quantitiesByInput: QuantitiesByInputState;
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
+  modelInputsByModel: ModelInputsByModelState;
   activeModifiersByInput: ActiveModifiersByInputState;
-  modifierInputsByInput: ModifierInputsByInputState;
   ui: UiState;
 };
 
@@ -204,15 +196,15 @@ export type ComfortToolActions = {
     nextModel: ComfortModelType,
     options?: { validateRanges?: boolean; schedule?: boolean },
   ) => void;
-  setSelectedChart: (nextChart: ChartIdType) => void;
+  setSelectedChartInstance: (instanceId: string) => void;
   setModelOption: (optionKey: OptionKeyType, nextValue: string) => void;
   setCompareEnabled: (enabled: boolean) => void;
   setActiveInputId: (nextInputId: InputIdType) => void;
   toggleCompareInputVisibility: (inputId: InputIdType) => void;
   toggleUnitSystem: () => void;
-  setChartMode: (mode: ChartModeType) => void;
-  setDynamicXAxis: (fieldKey: FieldKeyType) => void;
-  setDynamicYAxis: (fieldKey: FieldKeyType) => void;
+  setActiveWorkspace: (workspace: WorkspaceIdType) => void;
+  setDynamicXAxis: (fieldKey: ChartAxisQuantityId) => void;
+  setDynamicYAxis: (fieldKey: ChartAxisQuantityId) => void;
   setExploreOutput: (outputKey: ModelOutputKey) => void;
   setExploreBands: (bands: readonly NumericBand[]) => boolean;
   setChartBaselineInputId: (inputId: InputIdType) => void;
@@ -221,11 +213,21 @@ export type ComfortToolActions = {
     snapshot: ShareStateSnapshot,
     options?: { schedule?: boolean },
   ) => void;
-  updateInput: (inputId: InputIdType, controlId: InputControlIdType, rawValue: string) => void;
+  updateInput: (inputId: InputIdType, controlId: InputControlKeyType, rawValue: string) => void;
+  updateBuiltinQuantity: (
+    inputId: InputIdType,
+    quantityId: PhysicalQuantityIdType,
+    valueSi: number,
+  ) => boolean;
+  updateModelQuantity: (
+    modelId: ComfortModelType,
+    quantityId: PhysicalQuantityIdType,
+    valueSi: number,
+  ) => boolean;
   updateModifierInput: (
     inputId: InputIdType,
     modifierId: ModifierIdType,
-    fieldKey: ModifierFieldKeyType,
+    quantityId: PhysicalQuantityIdType,
     rawValue: string,
   ) => boolean;
   setModifierEnabled: (
@@ -248,12 +250,12 @@ export type ComfortToolSelectors = {
   getInputModifierControls: (
     draft?: readonly InputModifierDraftEntry[],
   ) => InputModifierControlViewModel[];
-  getEffectiveInputsByInput: (modelId?: ComfortModelType) => InputsByInputState;
+  getEffectiveQuantitiesByInput: (modelId?: ComfortModelType) => QuantitiesByInputState;
   getResultSections: () => ResultSectionViewModel[];
   getCurrentChartResult: () => PlotlyChartResponseDto | null;
-  getCurrentChartDefinition: () => ModelChartDefinition;
-  getCurrentChartOptions: () => readonly ModelChartDefinition[];
-  getCurrentSelectedChart: () => ChartIdType;
+  getCurrentChartInstance: () => ChartInstanceDeclaration;
+  getCurrentChartInstances: () => readonly ChartInstanceDeclaration[];
+  getCurrentChartInstanceId: () => string;
   getCurrentCacheStatus: () => CalculationCacheStatus;
   getCurrentChartLegendZones: () => ReadonlyArray<{ label: string; color: string }> | null;
   getCurrentChartLegendTitle: () => string;
@@ -265,4 +267,13 @@ export type ComfortToolController = {
   state: ComfortToolStateSlice;
   actions: ComfortToolActions;
   selectors: ComfortToolSelectors;
+};
+
+export type {
+  AuxiliaryInputState,
+  AuxiliaryQuantitiesByInputState,
+  PrimaryInputState,
+  DerivedSlotQuantityState,
+  ModelInputsByModelState,
+  QuantitiesByInputState,
 };

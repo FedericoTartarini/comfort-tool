@@ -4,37 +4,37 @@ import {
   adaptiveAshraeDeclaration,
   adaptiveAshraeModelConfig,
   adaptiveAshraeZonesList,
-} from "../../../comfortModels/adaptiveAshrae";
+} from "../../../comfortModels/adaptive/adaptiveAshrae";
 import {
   adaptiveEnDeclaration,
   adaptiveEnModelConfig,
-} from "../../../comfortModels/adaptiveEn";
+} from "../../../comfortModels/adaptive/adaptiveEn";
 import {
   calculateAdaptive,
   createAdaptiveComplianceCaption,
   getCe,
-} from "../../../comfortModels/adaptiveCalculation";
-import { buildAdaptiveChart } from "../../../comfortModels/adaptiveCharts";
+} from "../../../comfortModels/adaptive/adaptiveCalculation";
+import { buildAdaptiveChart } from "../../../comfortModels/adaptive/adaptiveCharts";
 import type {
   AdaptiveLevelResult,
   AdaptiveModelDeclaration,
   AdaptiveRequestDto,
   AdaptiveResponseDto,
-} from "../../../comfortModels/adaptiveShared";
+} from "../../../comfortModels/adaptive/adaptiveShared";
 import type {
   ModelChartSourceDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { InputId, type InputId as InputIdType } from "../../../models/inputSlots";
 import {
-  ChartMode,
   resolveBandEdge,
   type Band,
   type BandInputsSi,
   type ChartBuildContext,
 } from "../../../models/modelCapabilities";
+import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { convertFieldValueFromSi } from "../../units";
 
@@ -52,20 +52,20 @@ function createContext(
   direction: "default" | "transposed" = "default",
 ): ChartBuildContext<Band> {
   const xField = direction === "default"
-    ? FieldKey.PrevailingMeanOutdoorTemperature
-    : FieldKey.OperativeTemperature;
+    ? PhysicalQuantityId.PrevailingMeanOutdoorTemperature
+    : PhysicalQuantityId.OperativeTemperature;
   const yField = direction === "default"
-    ? FieldKey.OperativeTemperature
-    : FieldKey.PrevailingMeanOutdoorTemperature;
+    ? PhysicalQuantityId.OperativeTemperature
+    : PhysicalQuantityId.PrevailingMeanOutdoorTemperature;
   return {
     unitSystem,
     baselineInputId,
     fieldChartConfig: {
-      mode: ChartMode.Compliance,
+      profileKind: FieldChartProfileKind.Compliance,
       xField,
       yField,
-      zOutput: declaration.complianceSpec.output,
-      bands: declaration.complianceSpec.bands,
+      zOutput: declaration.complianceProfile.output,
+      bands: declaration.complianceProfile.bands,
     },
   };
 }
@@ -268,7 +268,7 @@ describe("adaptive standard mechanics", () => {
     declaration,
     config,
   ) => {
-    const bands = config.complianceSpec!.bands;
+    const bands = config.complianceProfile!.bands;
     bands.slice(0, -1).forEach((band, index) => {
       expect(band.max).toBe(bands[index + 1].min);
     });
@@ -277,10 +277,10 @@ describe("adaptive standard mechanics", () => {
       /finite canonical-SI relative air speed/i,
     );
     expect(() => resolveBandEdge(functionalEdge, 20, {
-      [FieldKey.RelativeAirSpeed]: Number.NaN,
+      [PhysicalQuantityId.RelativeAirSpeed]: Number.NaN,
     })).toThrow(/finite canonical-SI relative air speed/i);
     expect(resolveBandEdge(functionalEdge, 20, {
-      [FieldKey.RelativeAirSpeed]: 0.1,
+      [PhysicalQuantityId.RelativeAirSpeed]: 0.1,
     })).toBeCloseTo(
       Math.min(...calculateAdaptive(
         declaration,
@@ -298,8 +298,8 @@ describe("adaptive standard mechanics", () => {
     config,
   ) => {
     const result = calculateAdaptive(declaration, { ...baselineRequest, trm: 20 });
-    const bands = config.complianceSpec!.bands;
-    const inputsSi: BandInputsSi = { [FieldKey.RelativeAirSpeed]: 0.1 };
+    const bands = config.complianceProfile!.bands;
+    const inputsSi: BandInputsSi = { [PhysicalQuantityId.RelativeAirSpeed]: 0.1 };
 
     bands.slice(0, -1).forEach((band, index) => {
       const boundary = resolveBandEdge(band.max, 20, inputsSi);
@@ -505,7 +505,7 @@ describe("single Adaptive Compliance chart", () => {
       InputId.Input2,
       "transposed",
     );
-    const expectedRegionNames = adaptiveAshraeDeclaration.complianceSpec.bands.map(
+    const expectedRegionNames = adaptiveAshraeDeclaration.complianceProfile.bands.map(
       ({ label }) => label,
     );
 
@@ -565,17 +565,17 @@ describe("single Adaptive Compliance chart", () => {
     expect(firstRegion.x[0]).toBeCloseTo(50, 8);
     expect(firstRegion.y[0]).toBeCloseTo(50, 8);
     expect(input?.x[0]).toBeCloseTo(convertFieldValueFromSi(
-      FieldKey.PrevailingMeanOutdoorTemperature,
+      PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
       baselineRequest.trm,
       UnitSystem.IP,
     ), 8);
     expect(input?.y[0]).toBeCloseTo(convertFieldValueFromSi(
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
       result.operativeTemperature,
       UnitSystem.IP,
     ), 8);
     expect(metadata[1]).toBeCloseTo(round(convertFieldValueFromSi(
-      FieldKey.DryBulbTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
       level90.lower!,
       UnitSystem.IP,
     ), 1), 8);
@@ -590,12 +590,12 @@ describe("single Adaptive Compliance chart", () => {
     expect(transposedRegion.x[0]).toBeCloseTo(50, 8);
     expect(transposedRegion.y[0]).toBeCloseTo(50, 8);
     expect(transposedInput?.x[0]).toBeCloseTo(convertFieldValueFromSi(
-      FieldKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
       result.operativeTemperature,
       UnitSystem.IP,
     ), 8);
     expect(transposedInput?.y[0]).toBeCloseTo(convertFieldValueFromSi(
-      FieldKey.PrevailingMeanOutdoorTemperature,
+      PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
       baselineRequest.trm,
       UnitSystem.IP,
     ), 8);

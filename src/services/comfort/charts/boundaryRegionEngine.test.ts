@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import type { Band } from "../../../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { createFieldAxisScale } from "./axis";
@@ -35,13 +35,13 @@ function createAxes(
   boundaryAxis: "x" | "y" = "x",
 ) {
   const outdoorAxis = createFieldAxisScale({
-    field: FieldKey.DryBulbTemperature,
+    field: PhysicalQuantityId.DryBulbTemperature,
     unitSystem,
     rangeSi: { min: 0, max: 10 },
     points: 2,
   });
   const operativeAxis = createFieldAxisScale({
-    field: FieldKey.OperativeTemperature,
+    field: PhysicalQuantityId.OperativeTemperature,
     unitSystem,
     rangeSi: { min: 10, max: 40 },
     points: 2,
@@ -68,10 +68,10 @@ describe("boundary region engine", () => {
   it("resolves functional edges with partial SI inputs and extra boundary samples", () => {
     const { xAxis, yAxis } = createAxes();
     const lowerEdge = (xSi: number, inputsSi: Readonly<Partial<Record<string, number>>>) => (
-      xSi + Number(inputsSi[FieldKey.RelativeAirSpeed]) + 10
+      xSi + Number(inputsSi[PhysicalQuantityId.RelativeAirSpeed]) + 10
     );
     const upperEdge = (xSi: number, inputsSi: Readonly<Partial<Record<string, number>>>) => (
-      xSi + Number(inputsSi[FieldKey.RelativeAirSpeed]) + 20
+      xSi + Number(inputsSi[PhysicalQuantityId.RelativeAirSpeed]) + 20
     );
     const bands: Band[] = [
       { min: -Infinity, max: lowerEdge, label: "Lower", color: "#ddd" },
@@ -81,7 +81,7 @@ describe("boundary region engine", () => {
 
     const traces = buildBoundaryRegionTraces({
       bands,
-      bandInputsSi: { [FieldKey.RelativeAirSpeed]: 0.5 },
+      bandInputsSi: { [PhysicalQuantityId.RelativeAirSpeed]: 0.5 },
       xAxis,
       yAxis,
       boundaryAxis: "x",

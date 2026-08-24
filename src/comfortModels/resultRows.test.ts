@@ -2,22 +2,30 @@ import { describe, expect, it } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../models/calculationMetadata";
 import { ComplianceStatus } from "../models/comfortModels";
-import { FieldKey } from "../models/fieldKeys";
-import { fieldMetaByKey } from "../models/inputFieldsMeta";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/physicalQuantities";
 import { InputId, type InputId as InputIdType } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
 import type { ResultCellViewModel, ResultSectionViewModel } from "../state/comfortTool/types";
 import {
   adaptiveAshraeModelConfig,
   adaptiveAshraeZonesList,
-} from "./adaptiveAshrae";
+} from "./adaptive/adaptiveAshrae";
 import {
   adaptiveEnModelConfig,
   adaptiveEnZonesList,
-} from "./adaptiveEn";
-import type { AdaptiveResponseDto } from "./adaptiveShared";
-import { pmvAshraeModelConfig } from "./pmvAshrae";
-import { pmvZonesList, type PmvResponseDto } from "./pmvCalculation";
+} from "./adaptive/adaptiveEn";
+import type { AdaptiveResponseDto } from "./adaptive/adaptiveShared";
+import { pmvAshraeModelConfig } from "./pmv/pmvAshrae";
+import { pmvZonesList, type PmvResponseDto } from "./pmv/pmvCalculation";
+import { phsModelConfig } from "./phs/phs";
+import { simulatePhs, calculatePhs } from "./phs/phsCalculation";
+import {
+  PHS_COMPLIANCE_HORIZON_MINUTES,
+  phsReferenceEnvironment,
+  defaultPhsPersonSettings,
+} from "../models/phs";
+import { utciModelConfig, calculateUtci } from "./utci/utci";
+import { windChillModelConfig, calculateWindChill } from "./windChill";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
@@ -130,7 +138,7 @@ function replaceAdaptiveLevel(
 
 describe("comfort model result rows", () => {
   it("builds PMV default rows in order with current formatting", () => {
-    const sections = pmvAshraeModelConfig.buildResultSections(
+    const sections = pmvAshraeModelConfig.buildTable(
       createResultRecord(pmvResult),
       visibleInputIds,
       UnitSystem.SI,
@@ -163,7 +171,7 @@ describe("comfort model result rows", () => {
       ppd: 35,
       isCompliant: false,
     };
-    const sections = pmvAshraeModelConfig.buildResultSections(
+    const sections = pmvAshraeModelConfig.buildTable(
       createResultRecord(pmvResult, {
         [InputId.Input3]: nonCompliantResult,
       }),
@@ -187,8 +195,11 @@ describe("comfort model result rows", () => {
   });
 
   it("builds Adaptive ASHRAE rows with compliance, band formatting, and N/A state", () => {
-    const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[UnitSystem.SI];
-    const sections = adaptiveAshraeModelConfig.buildResultSections(
+    const temperatureUnits = getQuantityPresentationMeta(
+      PhysicalQuantityId.DryBulbTemperature,
+      UnitSystem.SI,
+    ).displayUnits;
+    const sections = adaptiveAshraeModelConfig.buildTable(
       createResultRecord(ashraeResult),
       visibleInputIds,
       UnitSystem.SI,
@@ -214,7 +225,7 @@ describe("comfort model result rows", () => {
       color: adaptiveAshraeZonesList[3].textColor,
     });
 
-    const sectionsWithMissingStatus = adaptiveAshraeModelConfig.buildResultSections(
+    const sectionsWithMissingStatus = adaptiveAshraeModelConfig.buildTable(
       createResultRecord(replaceAdaptiveLevel(
         ashraeResult,
         "acceptability-90",
@@ -230,7 +241,7 @@ describe("comfort model result rows", () => {
   });
 
   it("converts Adaptive ASHRAE boundary subtext to IP and colors a cool result", () => {
-    const sections = adaptiveAshraeModelConfig.buildResultSections(
+    const sections = adaptiveAshraeModelConfig.buildTable(
       createResultRecord({
         ...replaceAdaptiveLevel(
           ashraeResult,
@@ -271,7 +282,7 @@ describe("comfort model result rows", () => {
       expectedText: ComplianceStatus.OutOfRange,
     },
   ])("formats Adaptive ASHRAE $label compliance", ({ result, expectedText }) => {
-    const sections = adaptiveAshraeModelConfig.buildResultSections(
+    const sections = adaptiveAshraeModelConfig.buildTable(
       createResultRecord(result),
       visibleInputIds,
       UnitSystem.SI,
@@ -284,7 +295,7 @@ describe("comfort model result rows", () => {
   });
 
   it("renders N/A without a misleading color when boundary data is missing", () => {
-    const sections = adaptiveAshraeModelConfig.buildResultSections(
+    const sections = adaptiveAshraeModelConfig.buildTable(
       createResultRecord(replaceAdaptiveLevel(
         { ...ashraeResult, operativeTemperature: -5 },
         "acceptability-90",
@@ -304,8 +315,11 @@ describe("comfort model result rows", () => {
   });
 
   it("builds Adaptive EN rows with accepted and non-accepted category colors", () => {
-    const temperatureUnits = fieldMetaByKey[FieldKey.DryBulbTemperature].displayUnits[UnitSystem.SI];
-    const sections = adaptiveEnModelConfig.buildResultSections(
+    const temperatureUnits = getQuantityPresentationMeta(
+      PhysicalQuantityId.DryBulbTemperature,
+      UnitSystem.SI,
+    ).displayUnits;
+    const sections = adaptiveEnModelConfig.buildTable(
       createResultRecord(enResult),
       visibleInputIds,
       UnitSystem.SI,
@@ -331,5 +345,80 @@ describe("comfort model result rows", () => {
       subtext: `19.0 ~ 29.0 ${temperatureUnits}`,
       color: adaptiveEnZonesList[1].textColor,
     });
+  });
+
+  it("builds UTCI rows with formatted value and stress color", () => {
+    const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
+    const result = calculateUtci(request);
+    const sections = utciModelConfig.buildTable(
+      createResultRecord(result),
+      visibleInputIds,
+      UnitSystem.SI,
+    );
+
+    expect(sections.map((section) => section.title)).toEqual([
+      "UTCI",
+      "Stress Category",
+    ]);
+    expect(getInputCell(sections, "UTCI")?.text).toBe("24.6 °C");
+    expect(getInputCell(sections, "Stress Category")).toEqual({
+      text: "No Thermal Stress",
+      color: "#059669",
+    });
+  });
+
+  it("builds PHS grouped rows for valid and invalid results", () => {
+    const validResult = simulatePhs({
+      segments: [{
+        id: "analysis",
+        name: "Eight-hour assessment",
+        durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
+        ...phsReferenceEnvironment,
+      }],
+      person: defaultPhsPersonSettings,
+      recordHistory: false,
+    });
+    const invalidResult = calculatePhs({
+      ...phsReferenceEnvironment,
+      tdb: 14,
+      person: defaultPhsPersonSettings,
+      durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
+    });
+    const sections = phsModelConfig.buildTable(
+      createResultRecord(validResult, { [InputId.Input2]: invalidResult }),
+      [InputId.Input1, InputId.Input2],
+      UnitSystem.SI,
+    );
+
+    expect(sections.map((section) => section.title)).toEqual([
+      "Rectal-temperature exposure limit",
+      "Water-loss exposure limit",
+      "Earliest limiting criterion",
+      "Rectal temperature after 8 h",
+      "Predicted water loss after 8 h",
+    ]);
+    expect(sections[0].group).toBe("Maximum allowable exposure time");
+    expect(getInputCell(sections, "Rectal-temperature exposure limit")?.text)
+      .toBe("0.90 h");
+    expect(getInputCell(sections, "Rectal temperature after 8 h")?.text)
+      .toContain("°C");
+    expect(getInputCell(sections, "Rectal-temperature exposure limit", InputId.Input2)?.text)
+      .toBe("Out of range");
+  });
+
+  it("builds Wind Chill rows with index and temperature cells", () => {
+    const result = calculateWindChill({ tdb: -10, v: 5 });
+    const sections = windChillModelConfig.buildTable(
+      createResultRecord(result),
+      visibleInputIds,
+      UnitSystem.SI,
+    );
+
+    expect(sections.map((section) => section.title)).toEqual([
+      "Wind Chill Index",
+      "Wind Chill Temperature",
+    ]);
+    expect(getInputCell(sections, "Wind Chill Index")?.subtext).toBe(result.wciZone);
+    expect(getInputCell(sections, "Wind Chill Temperature")?.text).toContain("°C");
   });
 });

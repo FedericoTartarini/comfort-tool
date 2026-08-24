@@ -26,9 +26,9 @@ async function expectSingleModelSelector(page: Page, modelLabel: string) {
 }
 
 async function expectDesktopChartHeaderRows(page: Page) {
-  const summary = page.getByTestId("chart-mode-summary");
+  const summary = page.getByTestId("chart-profile-summary");
   const toolbar = page.getByTestId("chart-toolbar");
-  const caption = page.getByTestId("chart-mode-caption");
+  const caption = page.getByTestId("chart-profile-caption");
   await expect(summary).toBeVisible();
   await expect(toolbar).toBeVisible();
   await expect(caption).toBeVisible();
@@ -71,7 +71,7 @@ test.describe("workspace routing", () => {
     }
   });
 
-  test("coordinates workspace mode through browser history", async ({ page }) => {
+  test("coordinates workspace through browser history", async ({ page }) => {
     await page.goto("/ASHRAE-55/");
     await page.getByRole("link", { name: "Explore", exact: true }).click();
     await expect(page).toHaveURL(/\/Explore\/$/);
@@ -115,7 +115,7 @@ test.describe("workspace routing", () => {
     expect(Math.max(...controlTops) - Math.min(...controlTops)).toBeLessThanOrEqual(2);
   });
 
-  test("derives exact model choices and forces the workspace mode", async ({ page }) => {
+  test("derives exact model choices and forces the workspace route", async ({ page }) => {
     await page.goto("/ASHRAE-55/");
     const activeStandardLink = page.getByRole("link", { name: "ASHRAE 55", exact: true });
     await expect(activeStandardLink).toHaveAttribute("aria-current", "page");
@@ -254,8 +254,8 @@ test.describe("workspace routing", () => {
     await expect(page).toHaveURL(/\/Explore\/$/);
     await expect(drawer).toBeHidden();
 
-    const summaryBox = await page.getByTestId("chart-mode-summary").boundingBox();
-    const captionBox = await page.getByTestId("chart-mode-caption").boundingBox();
+    const summaryBox = await page.getByTestId("chart-profile-summary").boundingBox();
+    const captionBox = await page.getByTestId("chart-profile-caption").boundingBox();
     const toolbarBox = await page.getByTestId("chart-toolbar").boundingBox();
     expect(summaryBox).not.toBeNull();
     expect(captionBox).not.toBeNull();

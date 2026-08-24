@@ -1,26 +1,23 @@
 <script lang="ts">
   import { Toggle } from "flowbite-svelte";
-  import PlotlyCanvas from "./PlotlyCanvas.svelte";
+  import PlotlyChartCard from "./PlotlyChartCard.svelte";
   import ChartExportMenu from "./ChartExportMenu.svelte";
   import ChartControls from "./ChartControls.svelte";
-  import ChartModeControl from "./ChartModeControl.svelte";
+  import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import type {
-    ChartId as ChartIdType,
-    ModelChartDefinition,
-  } from "../../models/chartOptions";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
   import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+  import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../state/comfortTool/types";
 
   interface Props {
     chartResult: PlotlyChartResponseDto | null;
     isLoading: boolean;
-    chartDefinition: ModelChartDefinition;
-    chartOptions: readonly ModelChartDefinition[];
-    selectedChart: ChartIdType;
+    chartInstance: ChartInstancePanelView;
+    chartInstances: readonly ChartInstancePanelView[];
+    selectedChartInstanceId: string;
     selectedModel: ComfortModelType;
-    onSelectChart: (chartId: ChartIdType) => void;
+    onSelectChartInstance: (instanceId: string) => void;
     chartControls: ChartControlsViewModel;
     legendZones: ReadonlyArray<{ label: string; color: string }> | null;
     legendTitle: string;
@@ -29,11 +26,11 @@
   let {
     chartResult,
     isLoading,
-    chartDefinition,
-    chartOptions,
-    selectedChart,
+    chartInstance,
+    chartInstances,
+    selectedChartInstanceId,
     selectedModel,
-    onSelectChart,
+    onSelectChartInstance,
     chartControls,
     legendZones,
     legendTitle,
@@ -46,7 +43,7 @@
   const chartPanelIdPrefix = `chart-panel-${Math.random().toString(36).slice(2, 10)}`;
 
   $effect(() => {
-    selectedChart;
+    selectedChartInstanceId;
     showZones = true;
   });
 
@@ -56,9 +53,9 @@
       chartControls.explore !== null,
   );
   const controlsIdPrefix = $derived(
-    `${chartPanelIdPrefix}-${selectedModel}-${selectedChart}`,
+    `${chartPanelIdPrefix}-${selectedModel}-${selectedChartInstanceId}`,
   );
-  const showZonesToggle = $derived(chartDefinition.showsZoneToggle);
+  const showZonesToggle = $derived(chartInstance.showsZoneToggle);
 </script>
 
 <div
@@ -69,12 +66,12 @@
     class="grid min-w-0 gap-x-4 gap-y-2 lg:grid-cols-[max-content_minmax(0,1fr)]"
     data-testid="chart-header"
   >
-    <ChartModeControl control={chartControls.mode} />
+    <ChartProfileBadge control={chartControls.profileBadge} />
     <p
       class="min-w-0 text-xs leading-5 text-stone-600 lg:col-span-2 lg:row-start-2"
-      data-testid="chart-mode-caption"
+      data-testid="chart-profile-caption"
     >
-      {chartControls.mode.caption}
+      {chartControls.profileBadge.caption}
     </p>
     <div
       class="flex min-w-0 flex-wrap items-center gap-2 lg:col-start-2 lg:row-start-1 lg:justify-end"
@@ -89,10 +86,10 @@
       <div class="flex items-center gap-1.5">
         <span class="text-xs font-medium text-stone-500">Chart:</span>
         <ChartExportMenu
-          {chartOptions}
-          currentChart={chartDefinition}
-          {selectedChart}
-          {onSelectChart}
+          {chartInstances}
+          currentChart={chartInstance}
+          selectedChartInstanceId={selectedChartInstanceId}
+          onSelectChartInstance={onSelectChartInstance}
           onExport={(type) => exportChart?.(type)}
         />
       </div>
@@ -110,21 +107,18 @@
     </div>
   </header>
 
-  <div class="mt-4 min-w-0" data-testid="comfort-chart-visual">
-    <div
-      class={`${heightClass} relative overflow-hidden rounded-lg bg-stone-50/50`}
-    >
-      <PlotlyCanvas
-        {chartResult}
-        {isLoading}
-        emptyMessage={chartDefinition.emptyMessage}
-        {heightClass}
-        {showZones}
-        onRegisterExport={(handler) => (exportChart = handler)}
-      />
-    </div>
+  <div class="mt-4">
+    <PlotlyChartCard
+      chartResult={chartResult}
+      isLoading={isLoading}
+      emptyMessage={chartInstance.emptyMessage}
+      heightClass={heightClass}
+      testId="comfort-chart-visual"
+      showZones={showZones}
+      onRegisterExport={(handler) => (exportChart = handler)}
+    />
 
-    {#if chartDefinition.showsLegend}
+    {#if chartInstance.showsLegend}
       <ChartLegend zones={legendZones} {legendTitle} />
     {/if}
   </div>

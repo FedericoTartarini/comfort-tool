@@ -1,13 +1,12 @@
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
-
+import { type ChartAxisQuantityId } from "../../models/physicalQuantities";
 interface DynamicAxisConfiguration {
-  dynamicAxisFields: ReadonlyArray<FieldKeyType>;
+  dynamicAxisFields: ReadonlyArray<ChartAxisQuantityId>;
   defaultDynamicAxes: DynamicAxisPair;
 }
 
 export interface DynamicAxisPair {
-  xAxis: FieldKeyType;
-  yAxis: FieldKeyType;
+  xAxis: ChartAxisQuantityId;
+  yAxis: ChartAxisQuantityId;
 }
 
 export type DynamicAxisDimension = "x" | "y";
@@ -36,7 +35,7 @@ export function resolveDynamicAxisSelection(
   config: DynamicAxisConfiguration,
   pair: DynamicAxisPair,
   dimension: DynamicAxisDimension,
-  nextField: FieldKeyType,
+  nextField: ChartAxisQuantityId,
 ): DynamicAxisPair | null {
   if (!config.dynamicAxisFields.includes(nextField)) {
     return null;
@@ -57,7 +56,7 @@ export function getDynamicAxisOptions(
   config: DynamicAxisConfiguration,
   pair: DynamicAxisPair,
   dimension: DynamicAxisDimension,
-): FieldKeyType[] {
+): ChartAxisQuantityId[] {
   return config.dynamicAxisFields.filter((field) => (
     resolveDynamicAxisSelection(config, pair, dimension, field) !== null
   ));

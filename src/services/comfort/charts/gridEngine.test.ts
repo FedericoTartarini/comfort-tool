@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { UnitSystem } from "../../../models/units";
 import { createFieldAxisScale } from "./axis";
 import { evaluateGrid } from "./gridEngine";
@@ -8,13 +8,13 @@ import { evaluateGrid } from "./gridEngine";
 function createAxes() {
   return {
     xAxis: createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
+      field: PhysicalQuantityId.DryBulbTemperature,
       unitSystem: UnitSystem.SI,
       rangeSi: { min: 0, max: 1 },
       points: 2,
     }),
     yAxis: createFieldAxisScale({
-      field: FieldKey.RelativeHumidity,
+      field: PhysicalQuantityId.RelativeHumidity,
       unitSystem: UnitSystem.SI,
       rangeSi: { min: 0, max: 1 },
       points: 2,

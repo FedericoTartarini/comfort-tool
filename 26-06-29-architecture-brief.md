@@ -2,7 +2,10 @@
 
 **Date:** 2026-06-29
 **Audience:** the developer who will implement these changes (and the AI assisting them).
-**Status:** brainstorm + specification. No code has been changed to produce this document.
+**Status:** Round 2 (2026-08) landed on local branch `better-structure`: shared grid chart
+assembly, input control presets, `calculatePerInputWithExtensions`, declarative result rows,
+`PlotlyChartCard`, Tailwind 4 + Flowbite 4. See `docs/frontend-structure-summary.md` for
+current module map and dependency matrix.
 
 This brief supersedes `26-05-11-review-federico-overall.md`. That older review proposed a
 "one file per model" refactor — **that refactor is already done** (models live in
@@ -32,7 +35,7 @@ effort and risk.
 
 - **One file per model.** `src/comfortModels/{pmv,adaptive,utci,heatIndex,humidex,windChill}.ts`
   each own their calculation, zones, result rows, charts, and config. Good.
-- **Input persistence across model switches.** `inputsByInput` in
+- **Input persistence across model switches.** `quantitiesByInput` in
   `src/state/comfortTool/createComfortToolState.svelte.ts` is a single canonical store in
   **SI units**, shared by all models. Set temperature = 25 in PMV, switch to Heat Index,
   and the 25 persists; clothing simply stops being *displayed*. This is the exact behaviour
@@ -108,8 +111,8 @@ pipeline for it. One engine takes a configuration:
 
 ```ts
 interface FieldChartConfig {
-  xField: FieldKey;            // selectable in both modes
-  yField: FieldKey;            // selectable in both modes
+  xField: ChartAxisQuantityId;   // selectable in both modes
+  yField: ChartAxisQuantityId;   // selectable in both modes
   zOutput: ModelOutputKey;     // selectable in Explore; fixed by the standard in Compliance
   bands: Band[];               // editable in Explore; fixed by the standard in Compliance
   mode: "compliance" | "explore";  // controls control-visibility and shading style
@@ -239,17 +242,21 @@ know the tool ran — it just reads the adjusted SI input.
 interface InputModifier {
   id: ModifierId;                 // constant from src/models/
   label: string;                  // "Solar gain on occupant"
-  extraInputs: FieldKey[];        // its own inputs (sun position, etc.), persisted like main inputs
-  // pure function: produces an SI patch to the canonical input store
-  apply(baseInputs: InputState, extraInputs: Record<FieldKey, number>): Partial<InputState>;
+  extraInputs: PhysicalQuantityId[];  // its own inputs (sun position, etc.), persisted like main inputs
+  // pure function: produces an SI patch to the effective input chain
+  apply(
+    baseInputs: PrimaryInputState,
+    extraInputs: Record<PhysicalQuantityId, number>,
+  ): Partial<PrimaryInputState>;
 }
 ```
 
 Rules:
 
 - **Store base input + active modifiers separately; effective input = base passed through the
-  active modifier chain.** Toggling a modifier off must restore the original value — never
-  overwrite the user's base input in place. This keeps it reversible and predictable.
+  active modifier chain and exposed as `effectiveQuantitiesByInput` in
+  `ModelCalculationContext`.** Toggling a modifier off must restore the original value —
+  never overwrite the user's base input in place. This keeps it reversible and predictable.
 - **Each model declares which modifiers it offers** (PMV offers solar gain because it uses
   MRT; Heat Index does not). A modifier appears in the input panel only when the active model
   declares it.
@@ -406,7 +413,7 @@ against the current code on 2026-06-29:
 ## Appendix A — Constant scaffolding to add in `src/models/`
 
 These are illustrative; align names/casing with the existing constant files (e.g. the
-pattern used for `ComfortModel`, `FieldKey`, `ChartId`). The point is: **every new concept
+pattern used for `ComfortModel`, `PhysicalQuantityId`, `ChartId`). The point is: **every new concept
 below is a constant, never an inline string** (per §10).
 
 ```ts
@@ -455,7 +462,7 @@ is the point.
 // src/comfortModels/pmvAshrae.ts
 import { pmv_ppd } from "jsthermalcomfort/models";          // jsthermalcomfort only here & in services/comfort
 import { ComfortModel } from "../models/comfortModels";
-import { FieldKey } from "../models/fieldKeys";
+import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { ModelOutputKey } from "../models/modelOutputs";
 import { ModifierId } from "../models/inputModifiers";
 import { ChartMode } from "../models/chartMode";
@@ -493,8 +500,14 @@ function calculatePmv(args): { pmv: number; ppd: number } {           // §3: th
 export const pmvAshraeModelConfig = new ComfortModelBuilder(ComfortModel.PmvAshrae)
   .setLabel("PMV / PPD (ASHRAE 55)")
   .setStandardIds([StandardId.Ashrae55])
-  .addControl(/* temperature */ …)
-  .addControl(/* MRT, air speed, humidity, met, clo … */ …)
+  .setInputFields([
+    { kind: "operativeTemperature" },
+    { kind: "radiantTemperature", hideWhen: "operative" },
+    { kind: "occupantAirSpeed" },
+    { kind: "advancedHumidity" },
+    { kind: "preset", presetKey: InputPresetKey.MetabolicRate, /* … */ },
+    { kind: "preset", presetKey: InputPresetKey.ClothingInsulation, /* … */ },
+  ])
 
   // §5 — what this model can display as z, and the Explore preset bands
   .setChartableOutputs([

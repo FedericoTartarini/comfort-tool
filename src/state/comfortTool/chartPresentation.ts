@@ -1,29 +1,36 @@
-import type { ModelChartDefinition } from "../../models/chartOptions";
-import type { FieldKey as FieldKeyType } from "../../models/fieldKeys";
+import { type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
 import { InputId, type InputId as InputIdType } from "../../models/inputSlots";
 import {
-  ChartMode,
-  type Band,
   type ModelOutputKey,
   type NumericBand,
 } from "../../models/modelCapabilities";
+import {
+  FieldChartProfileKind,
+} from "../../models/output/fieldChartProfile";
+import { supportsExploreWorkspace } from "../../models/output/workspaceCapabilities";
+import { WorkspaceId, type WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import { getDynamicAxisOptions } from "./dynamicAxes";
 import {
-  buildFieldChartConfig,
+  buildFieldChartProfile,
   getChartExploreOutputs,
   getDeclaredExploreOutput,
 } from "./fieldChartState";
+import {
+  findChartKindRegistration,
+  resolveChartInstanceCapabilities,
+} from "./chartInstancePresentation";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import type {
   ChartControlsViewModel,
   ModelCalculationCache,
-  ModelChartSettings,
+  ModelOutputSettings,
 } from "./types";
+import type { ChartInstanceDeclaration } from "../../models/output/chartInstances";
 
 export function getEffectiveChartBaselineInputId(
-  settings: ModelChartSettings,
+  settings: ModelOutputSettings,
   compareEnabled: boolean,
   visibleInputIds: readonly InputIdType[],
 ): InputIdType {
@@ -34,26 +41,30 @@ export function getEffectiveChartBaselineInputId(
 
 function getExploreOutputs(
   config: RuntimeComfortModelDefinition,
-  chartDefinition: ModelChartDefinition,
+  chartInstance: ChartInstanceDeclaration,
 ) {
-  return config.modes.includes(ChartMode.Explore)
-    ? getChartExploreOutputs(config, chartDefinition)
+  const registration = findChartKindRegistration(
+    config.chartKindRegistrations,
+    chartInstance.instanceId,
+  );
+  return supportsExploreWorkspace(config.workspaceCapabilities)
+    ? getChartExploreOutputs(config, registration)
     : [];
 }
 
 function getExploreDefaultBands(
   config: RuntimeComfortModelDefinition,
-  settings: ModelChartSettings,
+  settings: ModelOutputSettings,
 ): readonly NumericBand[] {
-  if (!settings.explore) {
+  if (!settings.exploreOutput) {
     throw new Error(
-      `Comfort model ${config.id} is missing its Explore state declaration.`,
+      `Comfort model ${config.id} is missing its Explore output declaration.`,
     );
   }
-  const output = getDeclaredExploreOutput(config, settings.explore.zOutput);
+  const output = getDeclaredExploreOutput(config, settings.exploreOutput);
   if (!output) {
     throw new Error(
-      `Comfort model ${config.id} does not declare Explore output ${settings.explore.zOutput}.`,
+      `Comfort model ${config.id} does not declare Explore output ${settings.exploreOutput}.`,
     );
   }
   return output.defaultBands;
@@ -61,16 +72,17 @@ function getExploreDefaultBands(
 
 interface ChartPresentationCallbacks {
   onSelectBaseline: (inputId: InputIdType) => void;
-  onSelectXAxis: (field: FieldKeyType) => void;
-  onSelectYAxis: (field: FieldKeyType) => void;
+  onSelectXAxis: (field: ChartAxisQuantityId) => void;
+  onSelectYAxis: (field: ChartAxisQuantityId) => void;
   onSelectOutput: (outputKey: ModelOutputKey) => void;
   onApplyBands: (bands: readonly NumericBand[]) => boolean;
 }
 
 interface BuildChartControlsOptions {
   config: RuntimeComfortModelDefinition;
-  settings: ModelChartSettings;
-  chartDefinition: ModelChartDefinition;
+  settings: ModelOutputSettings;
+  workspace: WorkspaceIdType;
+  chartInstance: ChartInstanceDeclaration;
   cache: ModelCalculationCache<unknown, unknown>;
   visibleInputIds: InputIdType[];
   compareEnabled: boolean;
@@ -81,48 +93,50 @@ interface BuildChartControlsOptions {
 export function buildChartControlsViewModel({
   config,
   settings,
-  chartDefinition,
+  workspace,
+  chartInstance,
   cache,
   visibleInputIds,
   compareEnabled,
   unitSystem,
   callbacks,
 }: BuildChartControlsOptions): ChartControlsViewModel {
-  const fieldChartConfig = buildFieldChartConfig(config, settings, chartDefinition);
-  const outputs = getExploreOutputs(config, chartDefinition);
+  const profile = buildFieldChartProfile(config, settings, workspace);
+  const capabilities = resolveChartInstanceCapabilities(chartInstance);
+  const outputs = getExploreOutputs(config, chartInstance);
   const baselineInputId = getEffectiveChartBaselineInputId(
     settings,
     compareEnabled,
     visibleInputIds,
   );
-  const complianceSpec = settings.mode === ChartMode.Compliance
-    ? config.complianceSpec
+  const complianceProfile = workspace === WorkspaceId.Standard
+    ? config.complianceProfile
     : undefined;
-  if (settings.mode === ChartMode.Compliance && !complianceSpec) {
+  if (workspace === WorkspaceId.Standard && !complianceProfile) {
     throw new Error(
-      `Comfort model ${config.id} declares Compliance mode without a compliance specification.`,
+      `Comfort model ${config.id} declares Standard workspace without a compliance profile.`,
     );
   }
-  const selectedOutput = settings.mode === ChartMode.Explore
-    ? getDeclaredExploreOutput(config, fieldChartConfig.zOutput)
+  const selectedOutput = workspace === WorkspaceId.Explore
+    ? getDeclaredExploreOutput(config, profile.zOutput)
     : undefined;
-  if (settings.mode === ChartMode.Explore && !selectedOutput) {
+  if (workspace === WorkspaceId.Explore && !selectedOutput) {
     throw new Error(
-      `Comfort model ${config.id} does not declare Explore output ${fieldChartConfig.zOutput}.`,
+      `Comfort model ${config.id} does not declare Explore output ${profile.zOutput}.`,
     );
   }
 
-  const caption = complianceSpec
-    ? complianceSpec.caption
-    : chartDefinition.allowsAxisSelection
+  const caption = complianceProfile
+    ? complianceProfile.caption
+    : capabilities.allowsAxisSelection
       ? `Showing ${selectedOutput!.label} over the selected axes with editable thresholds.`
       : `Showing ${selectedOutput!.label} on this chart's fixed axes with editable thresholds.`;
   const baselineResult = cache.status === "ready"
     ? cache.resultsByInput[baselineInputId]
     : null;
-  const feedback = complianceSpec && baselineResult !== null
+  const feedback = complianceProfile && baselineResult !== null
     ? {
-        ...complianceSpec.getFeedback(baselineResult),
+        ...complianceProfile.getFeedback(baselineResult),
         ...(compareEnabled
           ? { inputLabel: inputDisplayMetaById[baselineInputId].label }
           : {}),
@@ -130,19 +144,19 @@ export function buildChartControlsViewModel({
     : null;
 
   return {
-    mode: {
-      selectedMode: settings.mode,
+    profileBadge: {
+      profileKind: workspace === WorkspaceId.Explore ? FieldChartProfileKind.Explore : FieldChartProfileKind.Compliance,
       caption,
       feedback,
     },
-    baseline: compareEnabled && chartDefinition.usesBaselineInput !== false
+    baseline: compareEnabled && capabilities.allowsBaselineSelection
       ? {
           selectedInputId: baselineInputId,
           visibleInputIds,
           onSelect: callbacks.onSelectBaseline,
         }
       : null,
-    axes: chartDefinition.allowsAxisSelection
+    axes: capabilities.allowsAxisSelection
       ? {
           x: {
             selectedField: settings.xAxis,
@@ -153,14 +167,14 @@ export function buildChartControlsViewModel({
           y: {
             selectedField: settings.yAxis,
             options: getDynamicAxisOptions(config, settings, "y"),
-            locked: chartDefinition.locksYAxis,
+            locked: capabilities.locksYAxis,
             onSelect: callbacks.onSelectYAxis,
           },
         }
       : null,
-    explore: fieldChartConfig.mode === ChartMode.Explore && outputs.length > 0
+    explore: profile.kind === FieldChartProfileKind.Explore && outputs.length > 0
       ? {
-          config: fieldChartConfig,
+          profile,
           outputs,
           defaultBands: getExploreDefaultBands(config, settings),
           unitSystem,
@@ -169,50 +183,4 @@ export function buildChartControlsViewModel({
         }
       : null,
   };
-}
-
-function selectLegendBands(
-  bands: readonly Band[],
-): Array<Pick<Band, "label" | "color">> {
-  const selected: Array<Pick<Band, "label" | "color">> = [];
-  for (const { label, color } of bands) {
-    if (!selected.some((band) => band.label === label && band.color === color)) {
-      selected.push({ label, color });
-    }
-  }
-  return selected;
-}
-
-export function getChartLegendZones(
-  config: RuntimeComfortModelDefinition,
-  settings: ModelChartSettings,
-  chartDefinition: ModelChartDefinition,
-): Array<Pick<Band, "label" | "color">> | null {
-  return chartDefinition.showsLegend
-    ? selectLegendBands(buildFieldChartConfig(config, settings, chartDefinition).bands)
-    : null;
-}
-
-export function getChartLegendTitle(
-  config: RuntimeComfortModelDefinition,
-  settings: ModelChartSettings,
-  chartDefinition: ModelChartDefinition,
-): string {
-  if (!chartDefinition.showsLegend) return "";
-  const fieldChartConfig = buildFieldChartConfig(config, settings, chartDefinition);
-  if (fieldChartConfig.mode === ChartMode.Compliance) {
-    if (!config.complianceSpec) {
-      throw new Error(
-        `Comfort model ${config.id} is missing its Compliance legend declaration.`,
-      );
-    }
-    return config.complianceSpec.legendTitle;
-  }
-  const output = getDeclaredExploreOutput(config, fieldChartConfig.zOutput);
-  if (!output) {
-    throw new Error(
-      `Comfort model ${config.id} does not declare Explore output ${fieldChartConfig.zOutput}.`,
-    );
-  }
-  return output.legendTitle ?? output.label;
 }

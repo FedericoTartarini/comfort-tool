@@ -1,14 +1,11 @@
-import type { FieldKey as FieldKeyType } from "./fieldKeys";
 import type { InputId as InputIdType } from "./inputSlots";
+import {
+  type ChartAxisQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+} from "./physicalQuantities";
+import { FieldChartProfileKind } from "./output/fieldChartProfile";
 import type { ThermalZone } from "./thermalZone";
 import type { UnitSystem as UnitSystemType } from "./units";
-
-export const ChartMode = {
-  Compliance: "compliance",
-  Explore: "explore",
-} as const;
-
-export type ChartMode = (typeof ChartMode)[keyof typeof ChartMode];
 
 export const ModelOutputKey = {
   Pmv: "pmv",
@@ -25,7 +22,7 @@ export const ModelOutputKey = {
 
 export type ModelOutputKey = (typeof ModelOutputKey)[keyof typeof ModelOutputKey];
 
-export type BandInputsSi = Readonly<Partial<Record<FieldKeyType, number>>>;
+export type BandInputsSi = Readonly<Partial<Record<ChartAxisQuantityId, number>>>;
 
 /**
  * A numeric edge is already in canonical SI. A functional edge receives its
@@ -69,8 +66,8 @@ export interface ComplianceSpec<TBand extends Band = Band, TResult = unknown> {
 }
 
 interface FieldChartConfigBase {
-  readonly xField: FieldKeyType;
-  readonly yField: FieldKeyType;
+  readonly xField: ChartAxisQuantityId;
+  readonly yField: ChartAxisQuantityId;
   readonly zOutput: ModelOutputKey;
 }
 
@@ -80,14 +77,14 @@ export interface NumericFieldChartConfig extends FieldChartConfigBase {
 }
 
 export interface ExploreFieldChartConfig extends NumericFieldChartConfig {
-  readonly mode: typeof ChartMode.Explore;
+  readonly profileKind: typeof FieldChartProfileKind.Explore;
 }
 
 /** Locked field-chart configuration declared by a compliance-capable model. */
 export interface ComplianceFieldChartConfig<
   TBand extends Band = Band,
 > extends FieldChartConfigBase {
-  readonly mode: typeof ChartMode.Compliance;
+  readonly profileKind: typeof FieldChartProfileKind.Compliance;
   readonly bands: readonly TBand[];
 }
 
@@ -103,7 +100,14 @@ export type FieldChartConfig<TComplianceBand extends Band = Band> =
 export interface ChartBuildContext<TComplianceBand extends Band = Band> {
   readonly unitSystem: UnitSystemType;
   readonly baselineInputId: InputIdType;
+  readonly modelInputs?: Readonly<Partial<Record<PhysicalQuantityIdType, number>>>;
   readonly fieldChartConfig: FieldChartConfig<TComplianceBand>;
+}
+
+export function resolveChartModelInputs(
+  context: ChartBuildContext,
+): Readonly<Partial<Record<PhysicalQuantityIdType, number>>> {
+  return context.modelInputs ?? {};
 }
 
 export function resolveBandEdge(

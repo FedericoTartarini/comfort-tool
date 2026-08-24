@@ -5,6 +5,7 @@
 
   import TimeSeriesInputPanel from "../components/time-series/TimeSeriesInputPanel.svelte";
   import TimeSeriesResults from "../components/time-series/TimeSeriesResults.svelte";
+  import WorkspaceTwoColumnLayout from "../components/layout/WorkspaceTwoColumnLayout.svelte";
   import { getWorkspaceContext } from "../state/workspace/context";
 
   const { timeSeriesState } = getWorkspaceContext();
@@ -13,12 +14,14 @@
 </script>
 
 <main class="bg-stone-50 px-4 py-4 sm:px-6 lg:px-8">
-  <div class="mx-auto grid w-full max-w-screen-2xl items-start gap-4 xl:grid-cols-[32rem_minmax(0,1fr)]">
-    <aside class="min-w-0">
+  <WorkspaceTwoColumnLayout
+    gridColsClass="xl:grid-cols-[32rem_minmax(0,1fr)]"
+  >
+    {#snippet aside()}
       <TimeSeriesInputPanel controller={timeSeriesState} />
-    </aside>
-    <section class="min-w-0">
+    {/snippet}
+    {#snippet main()}
       <TimeSeriesResults controller={timeSeriesState} />
-    </section>
-  </div>
+    {/snippet}
+  </WorkspaceTwoColumnLayout>
 </main>

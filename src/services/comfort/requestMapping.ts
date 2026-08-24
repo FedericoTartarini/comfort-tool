@@ -1,8 +1,5 @@
 import type { ModelChartSourceDto } from "../../models/comfortDtos";
-import type {
-  CanonicalInputFieldKey,
-  FieldKey as FieldKeyType,
-} from "../../models/fieldKeys";
+import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../models/physicalQuantities";
 import {
   InputId,
   type InputId as InputIdType,
@@ -17,15 +14,15 @@ export type CalculationRequestMapper<TRequest> = (
 type NumericRequestFieldMap<TRequest extends object> = {
   [TRequestProperty in keyof TRequest as TRequest[TRequestProperty] extends number
     ? TRequestProperty
-    : never]: CanonicalInputFieldKey;
+    : never]: PrimaryQuantityId;
 };
 
 export interface FieldRequestAdapter<TRequest extends object> {
   readonly mapRequest: CalculationRequestMapper<TRequest>;
-  readonly getAxisValue: (request: TRequest, field: FieldKeyType) => number;
+  readonly getAxisValue: (request: TRequest, field: ChartAxisQuantityId) => number;
   readonly setAxisValue: (
     request: TRequest,
-    field: FieldKeyType,
+    field: ChartAxisQuantityId,
     valueSi: number,
   ) => void;
 }
@@ -35,10 +32,10 @@ export function createFieldRequestAdapter<TRequest extends object>(
   fieldByRequestProperty: NumericRequestFieldMap<TRequest>,
 ): FieldRequestAdapter<TRequest> {
   const entries = Object.entries(fieldByRequestProperty) as Array<
-    [keyof TRequest & string, CanonicalInputFieldKey]
+    [keyof TRequest & string, PrimaryQuantityId]
   >;
 
-  function getRequestProperty(field: FieldKeyType): keyof TRequest & string {
+  function getRequestProperty(field: ChartAxisQuantityId): keyof TRequest & string {
     const entry = entries.find(([, mappedField]) => mappedField === field);
     if (!entry) {
       throw new Error(`Unsupported request field: ${field}`);
@@ -47,7 +44,7 @@ export function createFieldRequestAdapter<TRequest extends object>(
   }
 
   const mapRequest: CalculationRequestMapper<TRequest> = (context, inputId) => {
-    const input = context.inputsByInput[inputId];
+    const input = context.effectiveQuantitiesByInput[inputId];
     return Object.fromEntries(
       entries.map(([requestProperty, fieldKey]) => [
         requestProperty,
@@ -101,4 +98,84 @@ export function calculatePerInput<TRequest, TResult>({
   }
 
   return { resultsByInput, chartSource: { inputs } };
+}
+
+export interface PerInputCalculationContext<
+  TRequest,
+  TResult,
+  TChartRequest,
+  TChartSource extends ModelChartSourceDto<TChartRequest>,
+> {
+  inputId: InputIdType;
+  request: TRequest;
+  chartRequest: TChartRequest;
+  result: TResult;
+  chartSource: TChartSource;
+}
+
+interface CalculatePerInputWithExtensionsOptions<
+  TRequest,
+  TResult,
+  TChartRequest,
+  TChartSource extends ModelChartSourceDto<TChartRequest>,
+> {
+  context: ModelCalculationContext;
+  visibleInputIds: readonly InputIdType[];
+  mapRequest: CalculationRequestMapper<TRequest>;
+  mapChartRequest: (request: TRequest) => TChartRequest;
+  calculate: (request: TRequest) => TResult;
+  createChartSource: () => TChartSource;
+  afterCalculate?: (
+    iteration: PerInputCalculationContext<TRequest, TResult, TChartRequest, TChartSource>,
+  ) => void;
+}
+
+/** Extends `calculatePerInput` for chart sources with per-input maps beyond `inputs`. */
+export function calculatePerInputWithExtensions<
+  TRequest,
+  TResult,
+  TChartRequest,
+  TChartSource extends ModelChartSourceDto<TChartRequest>,
+>({
+  context,
+  visibleInputIds,
+  mapRequest,
+  mapChartRequest,
+  calculate,
+  createChartSource,
+  afterCalculate,
+}: CalculatePerInputWithExtensionsOptions<
+  TRequest,
+  TResult,
+  TChartRequest,
+  TChartSource
+>): {
+  resultsByInput: Record<InputIdType, TResult | null>;
+  chartSource: TChartSource;
+} {
+  const resultsByInput: Record<InputIdType, TResult | null> = {
+    [InputId.Input1]: null,
+    [InputId.Input2]: null,
+    [InputId.Input3]: null,
+  };
+  const chartSource = createChartSource();
+
+  for (const inputId of visibleInputIds) {
+    const request = mapRequest(context, inputId);
+    const chartRequest = mapChartRequest(request);
+    const result = calculate(request);
+    resultsByInput[inputId] = result;
+    chartSource.inputs[inputId] = chartRequest;
+    if (afterCalculate) {
+      afterCalculate({
+        inputId,
+        request,
+        chartRequest,
+        result,
+        chartSource,
+      });
+    }
+  }
+
+  return { resultsByInput, chartSource };
 }

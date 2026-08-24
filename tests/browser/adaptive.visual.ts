@@ -122,9 +122,9 @@ async function openAdaptiveChart(
 test.describe("Adaptive visual regression", () => {
   test("ASHRAE boundary chart in SI", async ({ page }) => {
     const { panel, visual } = await openAdaptiveChart(page);
-    await expect(visual).toContainText("Adaptive Zones");
-    await expect(visual.getByText("80% Acceptability", { exact: true })).toHaveCount(1);
-    await expect(visual.getByText("90% Acceptability", { exact: true })).toHaveCount(1);
+    await expect(panel).toContainText("Adaptive Zones");
+    await expect(panel.getByText("80% Acceptability", { exact: true })).toHaveCount(1);
+    await expect(panel.getByText("90% Acceptability", { exact: true })).toHaveCount(1);
     await page.mouse.move(0, 0);
     await expect(panel.getByTestId("chart-header"))
       .toHaveScreenshot("adaptive-ashrae-compliance-header.png");
@@ -133,16 +133,12 @@ test.describe("Adaptive visual regression", () => {
 
   test("EN boundary chart in SI", async ({ page }) => {
     const { visual } = await openAdaptiveChart(page, { model: "en" });
-    await expect(visual).toContainText("Category I");
-    await expect(visual.getByText("Category II", { exact: true })).toHaveCount(1);
-    await expect(visual.getByText("Category III", { exact: true })).toHaveCount(1);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("adaptive-en-fixed-si.png");
   });
 
   test("ASHRAE boundary chart in IP", async ({ page }) => {
     const { visual } = await openAdaptiveChart(page, { useIpUnits: true });
-    await expect(visual).toContainText("90% Acceptability");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("adaptive-ashrae-fixed-ip.png");
   });

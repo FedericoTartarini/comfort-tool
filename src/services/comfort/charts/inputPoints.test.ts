@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
 import { getBaselineInputEntry } from "../helpers";
@@ -10,13 +10,13 @@ import { buildInputTraceGroup } from "./inputPoints";
 describe("chart input points", () => {
   it("builds scatter traces from SI payload values", () => {
     const xAxis = createFieldAxisScale({
-      field: FieldKey.DryBulbTemperature,
+      field: PhysicalQuantityId.DryBulbTemperature,
       unitSystem: UnitSystem.SI,
       rangeSi: { min: 0, max: 40 },
       points: 2,
     });
     const yAxis = createFieldAxisScale({
-      field: FieldKey.RelativeHumidity,
+      field: PhysicalQuantityId.RelativeHumidity,
       unitSystem: UnitSystem.SI,
       rangeSi: { min: 0, max: 100 },
       points: 2,

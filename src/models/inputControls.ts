@@ -1,5 +1,6 @@
 import type { OptionKey as OptionKeyType } from "./inputModes";
 import type { InputId as InputIdType } from "./inputSlots";
+import type { PhysicalQuantityId as PhysicalQuantityIdType } from "./physicalQuantities";
 
 export const InputControlId = {
   Temperature: "temperature",
@@ -40,8 +41,10 @@ export type AdvancedOptionMenu = {
   sections: AdvancedOptionSection[];
 } | null;
 
+export type InputControlKey = InputControlId | PhysicalQuantityIdType;
+
 export type InputControlViewModel = {
-  id: InputControlId;
+  id: InputControlKey;
   label: string;
   displayUnits: string;
   rangeText: string;

@@ -3,47 +3,50 @@ import { describe, expect, it } from "vitest";
 import {
   adaptiveAshraeDeclaration,
   adaptiveAshraeZonesList,
-} from "../../../comfortModels/adaptiveAshrae";
+} from "../../../comfortModels/adaptive/adaptiveAshrae";
 import {
   adaptiveEnDeclaration,
   adaptiveEnZonesList,
-} from "../../../comfortModels/adaptiveEn";
+} from "../../../comfortModels/adaptive/adaptiveEn";
 import { heatIndexZonesList } from "../../../comfortModels/heatIndex";
 import { humidexZonesList } from "../../../comfortModels/humidex";
-import { pmvZonesList } from "../../../comfortModels/pmvCalculation";
-import { calculateUtci, utciZonesList } from "../../../comfortModels/utci";
+import { pmvZonesList } from "../../../comfortModels/pmv/pmvCalculation";
+import { calculateUtci, utciZonesList } from "../../../comfortModels/utci/utci";
 import { windChillZonesList } from "../../../comfortModels/windChill";
 import { ComfortStandard } from "../../../models/calculationMetadata";
-import { ChartId } from "../../../models/chartOptions";
 import {
   ComfortModel,
   type ComfortModel as ComfortModelType,
 } from "../../../models/comfortModels";
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { ModifierId } from "../../../models/inputModifiers";
 import {
-  ChartMode,
+  WorkspaceCapability,
+  supportsStandardWorkspace,
+} from "../../../models/output/workspaceCapabilities";
+import {
   findNumericBandIndexForValue,
   ModelOutputKey,
   resolveBandEdge,
   type BandInputsSi,
 } from "../../../models/modelCapabilities";
 import type { ThermalZone } from "../../../models/thermalZone";
-import { StandardId } from "../../../models/workspaces";
+import { StandardId, WorkspaceId } from "../../../models/workspaces";
+import { ChartInstanceId } from "../../../models/output/chartInstances";
 import {
   comfortModelConfigs,
   comfortModelOrder,
   getComfortModelConfig,
-  getExploreModels,
+  getModelsForWorkspace,
   getModelsForStandard,
 } from ".";
 
 function createInputsSi(relativeAirSpeed: number): BandInputsSi {
-  return { [FieldKey.RelativeAirSpeed]: relativeAirSpeed };
+  return { [PhysicalQuantityId.RelativeAirSpeed]: relativeAirSpeed };
 }
 
 function expectZoneDerivedBands(modelId: ComfortModelType, zones: readonly ThermalZone[]) {
-  const output = getComfortModelConfig(modelId).chartableOutputs[0];
+  const output = getComfortModelConfig(modelId).exploreOutputs[0];
   expect(output.defaultBands).toEqual(zones.map((zone) => ({
     min: zone.min,
     max: zone.max,
@@ -75,45 +78,54 @@ describe("comfort model capability registry", () => {
   });
 
   it("declares the current fixed-first default chart matrix", () => {
-    const expectedDefaultCharts: Record<ComfortModelType, ChartId> = {
-      [ComfortModel.PmvAshrae]: ChartId.Psychrometric,
-      [ComfortModel.PmvIso]: ChartId.Psychrometric,
-      [ComfortModel.Utci]: ChartId.Stress,
-      [ComfortModel.AdaptiveAshrae]: ChartId.Adaptive,
-      [ComfortModel.AdaptiveEn]: ChartId.Adaptive,
-      [ComfortModel.HeatIndex]: ChartId.HeatIndexRanges,
-      [ComfortModel.Humidex]: ChartId.Humidex,
-      [ComfortModel.WindChill]: ChartId.WindChillDynamic,
-      [ComfortModel.Phs2023]: ChartId.PhsExposureHistory,
+    const expectedDefaultCharts: Record<ComfortModelType, string> = {
+      [ComfortModel.PmvAshrae]: ChartInstanceId.PmvAshrae.Psychrometric,
+      [ComfortModel.PmvIso]: ChartInstanceId.PmvIso.Psychrometric,
+      [ComfortModel.Utci]: ChartInstanceId.Utci.StressBand,
+      [ComfortModel.AdaptiveAshrae]: ChartInstanceId.AdaptiveAshrae.Boundary,
+      [ComfortModel.AdaptiveEn]: ChartInstanceId.AdaptiveEn.Boundary,
+      [ComfortModel.HeatIndex]: ChartInstanceId.HeatIndex.Ranges,
+      [ComfortModel.Humidex]: ChartInstanceId.Humidex.Ranges,
+      [ComfortModel.WindChill]: ChartInstanceId.WindChill.DynamicField,
+      [ComfortModel.Phs2023]: ChartInstanceId.Phs2023.ExposureHistory,
     };
 
     comfortModelOrder.forEach((modelId) => {
-      expect(getComfortModelConfig(modelId).charts.defaultId)
+      expect(getComfortModelConfig(modelId).outputCharts.defaultInstanceId)
         .toBe(expectedDefaultCharts[modelId]);
     });
   });
 
   it("declares both PHS charts and their chart-specific Explore capabilities", () => {
     const config = getComfortModelConfig(ComfortModel.Phs2023);
-    const [history, dynamic] = config.charts.entries;
+    const [history, dynamic] = config.outputCharts.entries;
+    const historyRegistration = config.chartKindRegistrations.find(
+      ({ instanceId }) => instanceId === ChartInstanceId.Phs2023.ExposureHistory,
+    );
+    const dynamicRegistration = config.chartKindRegistrations.find(
+      ({ instanceId }) => instanceId === ChartInstanceId.Phs2023.DynamicField,
+    );
 
-    expect(config.charts.defaultId).toBe(ChartId.PhsExposureHistory);
-    expect(history).toEqual(expect.objectContaining({
-      id: ChartId.PhsExposureHistory,
+    expect(config.outputCharts.defaultInstanceId).toBe(ChartInstanceId.Phs2023.ExposureHistory);
+    expect(history.instanceId).toBe(ChartInstanceId.Phs2023.ExposureHistory);
+    expect(history.capabilities).toEqual(expect.objectContaining({
       allowsAxisSelection: false,
-      usesBaselineInput: true,
-      supportedExploreOutputs: [ModelOutputKey.PhsRectalTemperature],
-      defaultExploreOutput: ModelOutputKey.PhsRectalTemperature,
+      allowsBaselineSelection: true,
     }));
-    expect(dynamic).toEqual(expect.objectContaining({
-      id: ChartId.PhsDynamic,
+    expect(historyRegistration?.supportedExploreOutputs).toEqual([
+      ModelOutputKey.PhsRectalTemperature,
+    ]);
+    expect(historyRegistration?.defaultExploreOutput)
+      .toBe(ModelOutputKey.PhsRectalTemperature);
+    expect(dynamic.instanceId).toBe(ChartInstanceId.Phs2023.DynamicField);
+    expect(dynamic.capabilities).toEqual(expect.objectContaining({
       allowsAxisSelection: true,
-      supportedExploreOutputs: [
-        ModelOutputKey.PhsLimitingExposureTime,
-        ModelOutputKey.PhsRectalTemperature,
-        ModelOutputKey.PhsWaterLoss,
-      ],
     }));
+    expect(dynamicRegistration?.supportedExploreOutputs).toEqual([
+      ModelOutputKey.PhsLimitingExposureTime,
+      ModelOutputKey.PhsRectalTemperature,
+      ModelOutputKey.PhsWaterLoss,
+    ]);
   });
 
   it("identifies the ISO declaration and result metadata as ISO 7730 Category B", () => {
@@ -129,64 +141,64 @@ describe("comfort model capability registry", () => {
       [ComfortModel.PmvAshrae]: {
         count: 42,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.RelativeHumidity,
+          xAxis: PhysicalQuantityId.DryBulbTemperature,
+          yAxis: PhysicalQuantityId.RelativeHumidity,
         },
       },
       [ComfortModel.PmvIso]: {
         count: 42,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.RelativeHumidity,
+          xAxis: PhysicalQuantityId.DryBulbTemperature,
+          yAxis: PhysicalQuantityId.RelativeHumidity,
         },
       },
       [ComfortModel.Utci]: {
         count: 20,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.RelativeHumidity,
+          xAxis: PhysicalQuantityId.DryBulbTemperature,
+          yAxis: PhysicalQuantityId.RelativeHumidity,
         },
       },
       [ComfortModel.AdaptiveAshrae]: {
         count: 2,
         defaults: {
-          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
-          yAxis: FieldKey.OperativeTemperature,
+          xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+          yAxis: PhysicalQuantityId.OperativeTemperature,
         },
       },
       [ComfortModel.AdaptiveEn]: {
         count: 2,
         defaults: {
-          xAxis: FieldKey.PrevailingMeanOutdoorTemperature,
-          yAxis: FieldKey.OperativeTemperature,
+          xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+          yAxis: PhysicalQuantityId.OperativeTemperature,
         },
       },
       [ComfortModel.HeatIndex]: {
         count: 2,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.RelativeHumidity,
+          xAxis: PhysicalQuantityId.DryBulbTemperature,
+          yAxis: PhysicalQuantityId.RelativeHumidity,
         },
       },
       [ComfortModel.Humidex]: {
         count: 2,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.RelativeHumidity,
+          xAxis: PhysicalQuantityId.DryBulbTemperature,
+          yAxis: PhysicalQuantityId.RelativeHumidity,
         },
       },
       [ComfortModel.WindChill]: {
         count: 2,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.WindSpeed,
+          xAxis: PhysicalQuantityId.DryBulbTemperature,
+          yAxis: PhysicalQuantityId.WindSpeed,
         },
       },
       [ComfortModel.Phs2023]: {
         count: 30,
         defaults: {
-          xAxis: FieldKey.DryBulbTemperature,
-          yAxis: FieldKey.RelativeHumidity,
+          xAxis: PhysicalQuantityId.DryBulbTemperature,
+          yAxis: PhysicalQuantityId.RelativeHumidity,
         },
       },
     } as const;
@@ -207,47 +219,47 @@ describe("comfort model capability registry", () => {
   it("declares the exact mode, output, and compliance matrix", () => {
     const expected = {
       [ComfortModel.PmvAshrae]: {
-        modes: [ChartMode.Compliance, ChartMode.Explore],
+        capabilities: [WorkspaceCapability.Standard, WorkspaceCapability.Explore],
         outputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
         complianceOutput: ModelOutputKey.Pmv,
       },
       [ComfortModel.PmvIso]: {
-        modes: [ChartMode.Compliance, ChartMode.Explore],
+        capabilities: [WorkspaceCapability.Standard, WorkspaceCapability.Explore],
         outputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
         complianceOutput: ModelOutputKey.Pmv,
       },
       [ComfortModel.Utci]: {
-        modes: [ChartMode.Explore],
+        capabilities: [WorkspaceCapability.Explore],
         outputs: [ModelOutputKey.Utci],
         complianceOutput: undefined,
       },
       [ComfortModel.AdaptiveAshrae]: {
-        modes: [ChartMode.Compliance],
+        capabilities: [WorkspaceCapability.Standard],
         outputs: [],
         complianceOutput: ModelOutputKey.OperativeTemperature,
       },
       [ComfortModel.AdaptiveEn]: {
-        modes: [ChartMode.Compliance],
+        capabilities: [WorkspaceCapability.Standard],
         outputs: [],
         complianceOutput: ModelOutputKey.OperativeTemperature,
       },
       [ComfortModel.HeatIndex]: {
-        modes: [ChartMode.Explore],
+        capabilities: [WorkspaceCapability.Explore],
         outputs: [ModelOutputKey.HeatIndex],
         complianceOutput: undefined,
       },
       [ComfortModel.Humidex]: {
-        modes: [ChartMode.Explore],
+        capabilities: [WorkspaceCapability.Explore],
         outputs: [ModelOutputKey.Humidex],
         complianceOutput: undefined,
       },
       [ComfortModel.WindChill]: {
-        modes: [ChartMode.Explore],
+        capabilities: [WorkspaceCapability.Explore],
         outputs: [ModelOutputKey.WindChill],
         complianceOutput: undefined,
       },
       [ComfortModel.Phs2023]: {
-        modes: [ChartMode.Compliance, ChartMode.Explore],
+        capabilities: [WorkspaceCapability.Standard, WorkspaceCapability.Explore],
         outputs: [
           ModelOutputKey.PhsLimitingExposureTime,
           ModelOutputKey.PhsRectalTemperature,
@@ -259,9 +271,9 @@ describe("comfort model capability registry", () => {
 
     comfortModelOrder.forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      expect(config.modes).toEqual(expected[modelId].modes);
-      expect(config.chartableOutputs.map((output) => output.key)).toEqual(expected[modelId].outputs);
-      expect(config.complianceSpec?.output).toBe(expected[modelId].complianceOutput);
+      expect(config.workspaceCapabilities).toEqual(expected[modelId].capabilities);
+      expect(config.exploreOutputs.map((output) => output.key)).toEqual(expected[modelId].outputs);
+      expect(config.complianceProfile?.output).toBe(expected[modelId].complianceOutput);
     });
   });
 
@@ -279,7 +291,7 @@ describe("comfort model capability registry", () => {
     expect(getModelsForStandard(StandardId.Iso7933)).toEqual([
       ComfortModel.Phs2023,
     ]);
-    expect(getExploreModels()).toEqual([
+    expect(getModelsForWorkspace(WorkspaceId.Explore)).toEqual([
       ComfortModel.PmvAshrae,
       ComfortModel.PmvIso,
       ComfortModel.Utci,
@@ -293,7 +305,7 @@ describe("comfort model capability registry", () => {
       const config = getComfortModelConfig(modelId);
       expect(new Set(config.standardIds).size).toBe(config.standardIds.length);
       expect(config.standardIds.length > 0).toBe(
-        config.modes.includes(ChartMode.Compliance),
+        supportsStandardWorkspace(config.workspaceCapabilities),
       );
     }
   });
@@ -336,7 +348,7 @@ describe("comfort model capability registry", () => {
   });
 
   it("covers finite UTCI results with unbounded outer Explore bands", () => {
-    const bands = getComfortModelConfig(ComfortModel.Utci).chartableOutputs[0].defaultBands;
+    const bands = getComfortModelConfig(ComfortModel.Utci).exploreOutputs[0].defaultBands;
     const coldResult = calculateUtci({
       tdb: -50,
       tr: -80,
@@ -366,8 +378,8 @@ describe("comfort model capability registry", () => {
   it("declares independent PMV bands and assigns PMV/PPD edges half-open", () => {
     const ashrae = getComfortModelConfig(ComfortModel.PmvAshrae);
     const iso = getComfortModelConfig(ComfortModel.PmvIso);
-    const pmvOutput = ashrae.chartableOutputs.find((output) => output.key === ModelOutputKey.Pmv);
-    const ppdOutput = ashrae.chartableOutputs.find((output) => output.key === ModelOutputKey.Ppd);
+    const pmvOutput = ashrae.exploreOutputs.find((output) => output.key === ModelOutputKey.Pmv);
+    const ppdOutput = ashrae.exploreOutputs.find((output) => output.key === ModelOutputKey.Ppd);
     const ppdBands = ppdOutput?.defaultBands;
 
     expect(pmvOutput?.legendTitle).toBe("PMV Zones");
@@ -383,13 +395,13 @@ describe("comfort model capability registry", () => {
       throw new Error("PMV must declare PPD Explore bands.");
     }
 
-    expect(ashrae.complianceSpec).not.toBe(iso.complianceSpec);
-    expect(ashrae.complianceSpec?.bands).not.toBe(iso.complianceSpec?.bands);
-    expect(ashrae.complianceSpec?.bands[1]).not.toBe(iso.complianceSpec?.bands[1]);
-    expect(ashrae.complianceSpec?.bands).toEqual(iso.complianceSpec?.bands);
+    expect(ashrae.complianceProfile).not.toBe(iso.complianceProfile);
+    expect(ashrae.complianceProfile?.bands).not.toBe(iso.complianceProfile?.bands);
+    expect(ashrae.complianceProfile?.bands[1]).not.toBe(iso.complianceProfile?.bands[1]);
+    expect(ashrae.complianceProfile?.bands).toEqual(iso.complianceProfile?.bands);
 
     [ashrae, iso].forEach((config) => {
-      const bands = config.complianceSpec!.bands;
+      const bands = config.complianceProfile!.bands;
       expect(bands[1]).toEqual(expect.objectContaining({
         min: -0.5,
         max: 0.5,
@@ -402,31 +414,36 @@ describe("comfort model capability registry", () => {
   it("evaluates Adaptive functional bands from the existing standard boundaries", () => {
     const inputsSi = createInputsSi(0.1);
     const xValueSi = 20;
-    const ashraeBands = adaptiveAshraeDeclaration.complianceSpec.bands;
-    const enBands = adaptiveEnDeclaration.complianceSpec.bands;
+    const ashraeBands = adaptiveAshraeDeclaration.complianceProfile.bands;
+    const enBands = adaptiveEnDeclaration.complianceProfile.bands;
 
-    expect(adaptiveAshraeDeclaration.modes).toEqual([ChartMode.Compliance]);
-    expect(adaptiveEnDeclaration.modes).toEqual([ChartMode.Compliance]);
-    expect(adaptiveAshraeDeclaration.chartableOutputs).toEqual([]);
-    expect(adaptiveEnDeclaration.chartableOutputs).toEqual([]);
-    expect(adaptiveAshraeDeclaration.complianceSpec.output)
+    expect(adaptiveAshraeDeclaration.workspaceCapabilities).toEqual([WorkspaceCapability.Standard]);
+    expect(adaptiveEnDeclaration.workspaceCapabilities).toEqual([WorkspaceCapability.Standard]);
+    expect(adaptiveAshraeDeclaration.exploreOutputs).toEqual([]);
+    expect(adaptiveEnDeclaration.exploreOutputs).toEqual([]);
+    expect(adaptiveAshraeDeclaration.complianceProfile.output)
       .toBe(ModelOutputKey.OperativeTemperature);
-    expect(adaptiveEnDeclaration.complianceSpec.output)
+    expect(adaptiveEnDeclaration.complianceProfile.output)
       .toBe(ModelOutputKey.OperativeTemperature);
+    const adaptiveChartInstance: Record<typeof ComfortModel.AdaptiveAshrae | typeof ComfortModel.AdaptiveEn, string> = {
+      [ComfortModel.AdaptiveAshrae]: ChartInstanceId.AdaptiveAshrae.Boundary,
+      [ComfortModel.AdaptiveEn]: ChartInstanceId.AdaptiveEn.Boundary,
+    };
     [ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      expect(config.charts.entries.map(({ id }) => id)).toEqual([ChartId.Adaptive]);
-      expect(config.charts.defaultId).toBe(ChartId.Adaptive);
+      const chartInstanceId = adaptiveChartInstance[modelId];
+      expect(config.outputCharts.entries.map(({ instanceId }) => instanceId)).toEqual([chartInstanceId]);
+      expect(config.outputCharts.defaultInstanceId).toBe(chartInstanceId);
       expect(config.dynamicAxisFields).toEqual([
-        FieldKey.PrevailingMeanOutdoorTemperature,
-        FieldKey.OperativeTemperature,
+        PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+        PhysicalQuantityId.OperativeTemperature,
       ]);
     });
     expect(ashraeBands).not.toBe(enBands);
     expect(ashraeBands[0]).not.toBe(enBands[0]);
-    expect(getComfortModelConfig(ComfortModel.AdaptiveAshrae).complianceSpec?.bands)
+    expect(getComfortModelConfig(ComfortModel.AdaptiveAshrae).complianceProfile?.bands)
       .toEqual(ashraeBands);
-    expect(getComfortModelConfig(ComfortModel.AdaptiveEn).complianceSpec?.bands)
+    expect(getComfortModelConfig(ComfortModel.AdaptiveEn).complianceProfile?.bands)
       .toEqual(enBands);
 
     expect(ashraeBands.map((band) => resolveBandEdge(band.max, xValueSi, inputsSi)))

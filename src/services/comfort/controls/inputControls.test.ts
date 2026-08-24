@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ComfortModel } from "../../../models/comfortModels";
-import { FieldKey } from "../../../models/fieldKeys";
+import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { InputControlId } from "../../../models/inputControls";
 import {
   HumidityInputMode,
@@ -42,16 +42,16 @@ describe("input control ownership", () => {
 
   it("keeps Air and Operative edits reversible through the model option handler", () => {
     const toolState = createComfortToolState();
-    const input = toolState.state.inputsByInput[InputId.Input1];
-    input[FieldKey.DryBulbTemperature] = 26;
-    input[FieldKey.MeanRadiantTemperature] = 22;
+    const input = toolState.state.quantitiesByInput[InputId.Input1];
+    input[PhysicalQuantityId.DryBulbTemperature] = 26;
+    input[PhysicalQuantityId.MeanRadiantTemperature] = 22;
 
     toolState.actions.setModelOption(
       OptionKey.TemperatureMode,
       TemperatureMode.Operative,
     );
-    expect(input[FieldKey.DryBulbTemperature]).toBe(
-      input[FieldKey.MeanRadiantTemperature],
+    expect(input[PhysicalQuantityId.DryBulbTemperature]).toBe(
+      input[PhysicalQuantityId.MeanRadiantTemperature],
     );
 
     toolState.actions.updateInput(
@@ -59,8 +59,8 @@ describe("input control ownership", () => {
       InputControlId.Temperature,
       "24",
     );
-    expect(input[FieldKey.DryBulbTemperature]).toBe(24);
-    expect(input[FieldKey.MeanRadiantTemperature]).toBe(24);
+    expect(input[PhysicalQuantityId.DryBulbTemperature]).toBe(24);
+    expect(input[PhysicalQuantityId.MeanRadiantTemperature]).toBe(24);
 
     toolState.actions.setModelOption(
       OptionKey.TemperatureMode,
@@ -71,8 +71,8 @@ describe("input control ownership", () => {
       InputControlId.Temperature,
       "25",
     );
-    expect(input[FieldKey.DryBulbTemperature]).toBe(25);
-    expect(input[FieldKey.MeanRadiantTemperature]).toBe(24);
+    expect(input[PhysicalQuantityId.DryBulbTemperature]).toBe(25);
+    expect(input[PhysicalQuantityId.MeanRadiantTemperature]).toBe(24);
   });
 
   it.each([
@@ -119,8 +119,8 @@ describe("input control ownership", () => {
     expectedRh,
   }) => {
     const toolState = createComfortToolState();
-    const input = toolState.state.inputsByInput[InputId.Input1];
-    input[FieldKey.DryBulbTemperature] = 26;
+    const input = toolState.state.quantitiesByInput[InputId.Input1];
+    input[PhysicalQuantityId.DryBulbTemperature] = 26;
 
     toolState.actions.setModelOption(
       OptionKey.HumidityInputMode,
@@ -132,7 +132,7 @@ describe("input control ownership", () => {
       rawValue,
     );
 
-    expect(input[FieldKey.RelativeHumidity]).toBeCloseTo(expectedRh, 6);
+    expect(input[PhysicalQuantityId.RelativeHumidity]).toBeCloseTo(expectedRh, 6);
     expect(getControl(toolState, InputControlId.Humidity)).toEqual(
       expect.objectContaining({ label, displayUnits }),
     );
@@ -145,14 +145,14 @@ describe("input control ownership", () => {
   ])("does not route %s temperature changes through PMV humidity behavior", (modelId) => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = modelId;
-    const input = toolState.state.inputsByInput[InputId.Input1];
-    input[FieldKey.RelativeHumidity] = 63;
+    const input = toolState.state.quantitiesByInput[InputId.Input1];
+    input[PhysicalQuantityId.RelativeHumidity] = 63;
 
     toolState.actions.setModelOption(
       OptionKey.TemperatureMode,
       TemperatureMode.Operative,
     );
-    expect(input[FieldKey.RelativeHumidity]).toBe(63);
+    expect(input[PhysicalQuantityId.RelativeHumidity]).toBe(63);
   });
 
   it("throws for illegal or incomplete internal options instead of repairing them", () => {

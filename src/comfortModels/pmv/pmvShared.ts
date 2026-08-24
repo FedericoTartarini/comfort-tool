@@ -1,0 +1,410 @@
+import type { ComfortStandard } from "../../models/calculationMetadata";
+import {
+  ComfortModel,
+} from "../../models/comfortModels";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { InputControlId } from "../../models/inputControls";
+import {
+  AirSpeedControlMode,
+  HumidityInputMode,
+  OptionKey,
+  TemperatureMode,
+  type ModelOptionsRecord,
+  type PmvAshraeModelOptions,
+  type PmvIsoModelOptions,
+} from "../../models/inputModes";
+import type { InputModifier } from "../../models/inputModifiers";
+import type { StandardId as StandardIdType } from "../../models/workspaces";
+import {
+  bandsFromThermalZones,
+  ModelOutputKey,
+  type ChartBuildContext,
+  type ComplianceSpec,
+  type ModelOutput,
+  type NumericBand,
+} from "../../models/modelCapabilities";
+import {
+  createAirSpeedOptionHandler,
+} from "../../services/comfort/controls/numericControl";
+import {
+  humidityModeOptionHandler,
+  synchronizeSelectedHumidityMode,
+} from "../../services/comfort/controls/humidityControl";
+import {
+  InputPresetKey,
+} from "../../services/comfort/controls/inputControlPresets";
+import {
+  createTemperatureModeOptionHandler,
+} from "../../services/comfort/controls/temperatureControl";
+import { createSingleInputPatch } from "../../services/comfort/controls/types";
+import { getDerivedFromAuxiliary } from "../../services/comfort/quantityStateRouting";
+import {
+  ComfortModelBuilder,
+  hasExactKeys,
+  isRecord,
+  type OutputChartDeclarationInput,
+} from "../../state/comfortTool/modelConfigs/builder";
+import { ChartKind } from "../../models/output/chartKinds";
+import { TableLayout } from "../../models/output/tableLayouts";
+import {
+  buildPmvResultRows,
+  calculatePmvModel,
+  pmvNeutralZone,
+  pmvZonesList,
+  type PmvChartSourceDto,
+  type PmvRequestDto,
+  type PmvResponseDto,
+} from "./pmvCalculation";
+import { buildPmvChart } from "./pmvCharts";
+
+const PMV_DYNAMIC_AXIS_FIELDS = [
+  PhysicalQuantityId.DryBulbTemperature,
+  PhysicalQuantityId.MeanRadiantTemperature,
+  PhysicalQuantityId.OperativeTemperature,
+  PhysicalQuantityId.RelativeAirSpeed,
+  PhysicalQuantityId.RelativeHumidity,
+  PhysicalQuantityId.MetabolicRate,
+  PhysicalQuantityId.ClothingInsulation,
+] as const;
+
+export type PmvModelId = typeof ComfortModel.PmvAshrae | typeof ComfortModel.PmvIso;
+
+export interface PmvStandardAdapter {
+  readonly modelId: PmvModelId;
+  readonly resultStandard: ComfortStandard;
+  readonly clothingInsulationMaxSi: number;
+  readonly supportsOccupantAirSpeedControl: boolean;
+  readonly calculate: (request: PmvRequestDto) => { pmv: number; ppd: number };
+  readonly checkApplicability: (request: PmvRequestDto) => readonly string[];
+  readonly getOperativeTemperature: (request: PmvRequestDto) => number;
+}
+
+export interface PmvModelDeclaration {
+  readonly label: string;
+  readonly description: string;
+  readonly adapter: PmvStandardAdapter;
+  readonly standardIds: readonly StandardIdType[];
+  readonly workspaceCapabilities: readonly import("../../models/output/workspaceCapabilities").WorkspaceCapability[];
+  readonly exploreOutputs: readonly ModelOutput[];
+  readonly modifiers: readonly InputModifier[];
+  readonly psychrometricInstanceId: string;
+  readonly dynamicInstanceId: string;
+  readonly complianceProfile: ComplianceSpec<NumericBand, PmvResponseDto>;
+  readonly defaultOptions: PmvAshraeModelOptions | PmvIsoModelOptions;
+  readonly parseOptions: (value: unknown) => ModelOptionsRecord | null;
+}
+
+const temperatureModeValues = new Set<string>(Object.values(TemperatureMode));
+const humidityInputModeValues = new Set<string>(Object.values(HumidityInputMode));
+const airSpeedControlModeValues = new Set<string>(Object.values(AirSpeedControlMode));
+const pmvIsoOptionKeys = [
+  OptionKey.TemperatureMode,
+  OptionKey.HumidityInputMode,
+];
+const pmvAshraeOptionKeys = [
+  ...pmvIsoOptionKeys,
+  OptionKey.AirSpeedControlMode,
+];
+
+function parsePmvCommonOptions(
+  value: Record<string, unknown>,
+): PmvIsoModelOptions | null {
+  const temperatureMode = value[OptionKey.TemperatureMode];
+  const humidityInputMode = value[OptionKey.HumidityInputMode];
+  if (
+    typeof temperatureMode !== "string"
+    || !temperatureModeValues.has(temperatureMode)
+    || typeof humidityInputMode !== "string"
+    || !humidityInputModeValues.has(humidityInputMode)
+  ) {
+    return null;
+  }
+  return {
+    [OptionKey.TemperatureMode]: temperatureMode as TemperatureMode,
+    [OptionKey.HumidityInputMode]: humidityInputMode as HumidityInputMode,
+  };
+}
+
+export function parsePmvIsoOptions(value: unknown): PmvIsoModelOptions | null {
+  if (!isRecord(value) || !hasExactKeys(value, pmvIsoOptionKeys)) return null;
+  return parsePmvCommonOptions(value);
+}
+
+export function parsePmvAshraeOptions(
+  value: unknown,
+): PmvAshraeModelOptions | null {
+  if (!isRecord(value) || !hasExactKeys(value, pmvAshraeOptionKeys)) return null;
+  const commonOptions = parsePmvCommonOptions(value);
+  const airSpeedControlMode = value[OptionKey.AirSpeedControlMode];
+  if (
+    !commonOptions
+    || typeof airSpeedControlMode !== "string"
+    || !airSpeedControlModeValues.has(airSpeedControlMode)
+  ) {
+    return null;
+  }
+  return {
+    ...commonOptions,
+    [OptionKey.AirSpeedControlMode]: airSpeedControlMode as AirSpeedControlMode,
+  };
+}
+
+const ppdExploreBands: readonly NumericBand[] = [
+  {
+    min: -Infinity,
+    max: 10,
+    label: "Acceptable dissatisfaction (< 10%)",
+    color: "#86efac",
+  },
+  {
+    min: 10,
+    max: Infinity,
+    label: "Elevated dissatisfaction (≥ 10%)",
+    color: "#fca5a5",
+  },
+];
+
+export const pmvExploreOutputs: readonly ModelOutput[] = [
+  {
+    key: ModelOutputKey.Pmv,
+    label: "PMV",
+    legendTitle: "PMV Zones",
+    defaultBands: bandsFromThermalZones(pmvZonesList),
+  },
+  {
+    key: ModelOutputKey.Ppd,
+    label: "PPD (%)",
+    legendTitle: "PPD Bands",
+    defaultBands: ppdExploreBands,
+  },
+];
+
+export function createPmvComplianceBands(): readonly NumericBand[] {
+  return [
+    {
+      min: -Infinity,
+      max: pmvNeutralZone.min,
+      label: "Outside acceptable PMV range",
+      color: "#fecaca",
+    },
+    {
+      min: pmvNeutralZone.min,
+      max: pmvNeutralZone.max,
+      label: "Acceptable PMV range",
+      color: "#86efac",
+    },
+    {
+      min: pmvNeutralZone.max,
+      max: Infinity,
+      label: "Outside acceptable PMV range",
+      color: "#fecaca",
+    },
+  ];
+}
+
+function formatPmvBoundary(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new Error(`PMV compliance boundaries must be finite; received ${value}.`);
+  }
+  if (value < 0) return `−${Math.abs(value)}`;
+  return value > 0 ? `+${value}` : "0";
+}
+
+export function createPmvComplianceCaption(
+  standardLabel: string,
+  bands: readonly NumericBand[],
+): string {
+  const neutralBand = bands.find(({ min, max }) => (
+    Number.isFinite(min) && Number.isFinite(max)
+  ));
+  if (!neutralBand) {
+    throw new Error(`${standardLabel} requires a finite Neutral compliance band.`);
+  }
+  return `Green shading = ${standardLabel} compliant PMV (${formatPmvBoundary(neutralBand.min)} ≤ PMV < ${formatPmvBoundary(neutralBand.max)}); red = outside the limit.`;
+}
+
+export function createPmvOutputCharts(
+  psychrometricInstanceId: string,
+  dynamicInstanceId: string,
+  declaration: PmvModelDeclaration,
+): readonly OutputChartDeclarationInput[] {
+  const buildChart = (
+    chartSource: PmvChartSourceDto | null,
+    resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, PmvResponseDto | null>>,
+    context: ChartBuildContext<NumericBand>,
+    instanceId: string,
+  ) => {
+    if (!chartSource) return null;
+    return buildPmvChart(
+      instanceId,
+      declaration,
+      chartSource,
+      resultsByInput,
+      context,
+    );
+  };
+
+  return [
+    {
+      instanceId: psychrometricInstanceId,
+      kind: ChartKind.Custom,
+      name: "Psychrometric",
+      emptyMessage: "No psychrometric chart yet.",
+      capabilities: {
+        allowsAxisSelection: false,
+        locksYAxis: false,
+        allowsOutputSelection: false,
+        allowsBandEditing: false,
+        allowsBaselineSelection: true,
+        showsZoneToggle: true,
+        showsLegend: true,
+        showsExport: true,
+      },
+      spec: {
+        build: (
+          chartSource: PmvChartSourceDto | null,
+          resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, PmvResponseDto | null>>,
+          context: ChartBuildContext<NumericBand>,
+        ) => buildChart(
+          chartSource,
+          resultsByInput,
+          context,
+          psychrometricInstanceId,
+        ),
+      },
+    },
+    {
+      instanceId: dynamicInstanceId,
+      kind: ChartKind.Custom,
+      name: "Dynamic",
+      emptyMessage: "No dynamic chart yet.",
+      capabilities: {
+        allowsAxisSelection: true,
+        locksYAxis: false,
+        allowsOutputSelection: true,
+        allowsBandEditing: true,
+        allowsBaselineSelection: true,
+        showsZoneToggle: false,
+        showsLegend: true,
+        showsExport: true,
+      },
+      supportedExploreOutputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
+      spec: {
+        build: (
+          chartSource: PmvChartSourceDto | null,
+          resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, PmvResponseDto | null>>,
+          context: ChartBuildContext<NumericBand>,
+        ) => buildChart(
+          chartSource,
+          resultsByInput,
+          context,
+          dynamicInstanceId,
+        ),
+      },
+    },
+  ];
+}
+
+export function createPmvModelConfig(declaration: PmvModelDeclaration) {
+  const { adapter } = declaration;
+  const builder = new ComfortModelBuilder<
+    PmvResponseDto,
+    PmvChartSourceDto,
+    NumericBand
+  >(
+    adapter.modelId,
+  );
+  const temperatureModeOptionHandler = createTemperatureModeOptionHandler({
+    postSynchronize: synchronizeSelectedHumidityMode,
+  });
+
+  builder
+    .setLabel(declaration.label)
+    .setDescription(declaration.description)
+    .setStandardIds(declaration.standardIds)
+    .setWorkspaceCapabilities([...declaration.workspaceCapabilities])
+    .setExploreOutputs(declaration.exploreOutputs)
+    .setModifiers(declaration.modifiers)
+    .setComplianceProfile(declaration.complianceProfile)
+    .setInputFields([
+      {
+        kind: "operativeTemperature",
+        postSynchronize: synchronizeSelectedHumidityMode,
+      },
+      {
+        kind: "radiantTemperature",
+        hideWhen: "operative",
+      },
+      {
+        kind: "occupantAirSpeed",
+        supportsOccupantAirSpeedControl: adapter.supportsOccupantAirSpeedControl,
+      },
+      { kind: "advancedHumidity" },
+      {
+        kind: "preset",
+        presetKey: InputPresetKey.MetabolicRate,
+        controlId: InputControlId.MetabolicRate,
+        fieldKey: PhysicalQuantityId.MetabolicRate,
+        applyInput: (context, inputId, nextValue) => {
+          if (nextValue === null) return null;
+          const nextInputState = {
+            ...context.quantitiesByInput[inputId],
+            [PhysicalQuantityId.MetabolicRate]: nextValue,
+          };
+          const synchronized = synchronizeSelectedHumidityMode(
+            nextInputState,
+            getDerivedFromAuxiliary(context.auxiliaryQuantitiesByInput[inputId]),
+            context.options,
+          );
+          return createSingleInputPatch(inputId, synchronized);
+        },
+      },
+      {
+        kind: "preset",
+        presetKey: InputPresetKey.ClothingInsulation,
+        controlId: InputControlId.ClothingInsulation,
+        fieldKey: PhysicalQuantityId.ClothingInsulation,
+        presetDecimals: 2,
+        showClothingBuilder: true,
+        maxValue: adapter.clothingInsulationMaxSi,
+      },
+    ])
+    .addOptionHandler(OptionKey.TemperatureMode, temperatureModeOptionHandler)
+    .addOptionHandler(OptionKey.HumidityInputMode, humidityModeOptionHandler)
+    .setDefaultOptions({ ...declaration.defaultOptions })
+    .setOptionParser(declaration.parseOptions)
+    .setDynamicAxisFields([...PMV_DYNAMIC_AXIS_FIELDS])
+    .setDefaultDynamicAxes({
+      xAxis: PhysicalQuantityId.DryBulbTemperature,
+      yAxis: PhysicalQuantityId.RelativeHumidity,
+    })
+    .setCalculator((context, visibleInputIds) => (
+      calculatePmvModel(context, visibleInputIds, adapter)
+    ))
+    .setOutputTable({
+      layout: TableLayout.CompareMatrix,
+      rows: buildPmvResultRows().map((row) => ({
+        id: row.title.toLowerCase().replace(/\s+/g, "-"),
+        label: row.title,
+        ...(row.group ? { group: row.group } : {}),
+        format: (result) => row.formatter(result),
+      })),
+    })
+    .setOutputCharts(
+      createPmvOutputCharts(
+        declaration.psychrometricInstanceId,
+        declaration.dynamicInstanceId,
+        declaration,
+      ),
+      { defaultInstanceId: declaration.psychrometricInstanceId },
+    );
+
+  if (adapter.supportsOccupantAirSpeedControl) {
+    builder.addOptionHandler(
+      OptionKey.AirSpeedControlMode,
+      createAirSpeedOptionHandler(),
+    );
+  }
+
+  return builder.build();
+}

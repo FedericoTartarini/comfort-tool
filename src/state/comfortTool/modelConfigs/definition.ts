@@ -1,19 +1,22 @@
-import type { ChartId as ChartIdType, ModelCharts } from "../../../models/chartOptions";
 import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
-import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
-import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import type { InputModifier } from "../../../models/inputModifiers";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
 import type { ModelCalculationContext } from "../../../models/modelCalculation";
 import type {
   Band,
-  ChartBuildContext,
-  ChartMode as ChartModeType,
   ComplianceSpec,
   ModelOutput,
   NumericBand,
 } from "../../../models/modelCapabilities";
+import type { ChartBuildResult } from "../../../models/output/chartBuildResult";
+import type { ModelChartInstances } from "../../../models/output/chartInstances";
+import type { FieldChartProfile } from "../../../models/output/fieldChartProfile";
+import type { TableDeclaration } from "../../../models/output/tableLayouts";
+import type {
+  SimulationOutputDeclaration,
+} from "../../../models/output/simulationCharts";
+import type { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import type { StandardId as StandardIdType } from "../../../models/workspaces";
 import type {
@@ -21,7 +24,9 @@ import type {
   ControlBehaviorContext,
   InputControlDefinition,
 } from "../../../services/comfort/controls/types";
+import type { ChartKindRegistration } from "../../../services/comfort/charts/kinds/types";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
+import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType } from "../../../models/physicalQuantities";
 
 export type ModelCalculationOutputs<ResultType, ChartSourceType> = {
   resultsByInput: Record<InputIdType, ResultType | null>;
@@ -34,9 +39,23 @@ export type ModelOptionChangeHandler = (
 ) => BehaviorPatch | null;
 
 export interface DynamicAxisDefaults {
-  readonly xAxis: FieldKeyType;
-  readonly yAxis: FieldKeyType;
+  readonly xAxis: ChartAxisQuantityId;
+  readonly yAxis: ChartAxisQuantityId;
 }
+
+export interface ChartBuildRequestContext {
+  readonly unitSystem: UnitSystemType;
+  readonly baselineInputId: InputIdType;
+  readonly chartSourceVersion: number;
+  readonly modelInputs: Readonly<Partial<Record<PhysicalQuantityIdType, number>>>;
+}
+
+
+export type {
+  SimulationChartDeclaration,
+  SimulationOutputDeclaration,
+  SimulationTimeSeriesLineChartSpec,
+} from "../../../models/output/simulationCharts";
 
 /**
  * Strongly typed declaration used while assembling one model. The builder
@@ -51,33 +70,41 @@ export interface ComfortModelDefinition<
   id: ComfortModelType;
   label: string;
   description: string;
+  workspaceCapabilities: readonly WorkspaceCapability[];
   standardIds: readonly StandardIdType[];
-  modes: readonly ChartModeType[];
-  chartableOutputs: readonly ModelOutput[];
+  exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
-  complianceSpec?: ComplianceSpec<ComplianceBand, ResultType>;
+  complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
   controls: readonly InputControlDefinition[];
+  modelQuantities: readonly PhysicalQuantityIdType[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
-  charts: ModelCharts;
+  outputTable: TableDeclaration<ResultType>;
+  outputCharts: ModelChartInstances;
+  chartKindRegistrations: readonly ChartKindRegistration<
+    ResultType,
+    ChartSourceType
+  >[];
   defaultOptions: Partial<Record<OptionKeyType, string>>;
   parseOptions: (value: unknown) => ModelOptionsState | null;
   calculate: (
     context: ModelCalculationContext,
     visibleInputIds: InputIdType[],
   ) => ModelCalculationOutputs<ResultType, ChartSourceType>;
-  buildResultSections: (
+  buildTable: (
     resultsByInput: Record<InputIdType, ResultType | null>,
     visibleInputIds: InputIdType[],
     unitSystem: UnitSystemType,
   ) => ResultSectionViewModel[];
-  buildChartResult: (
-    chartId: ChartIdType,
+  buildChart: (
+    instanceId: string,
     chartSource: ChartSourceType | null,
     resultsByInput: Record<InputIdType, ResultType | null>,
-    context: ChartBuildContext<ComplianceBand>,
-  ) => PlotlyChartResponseDto | null;
-  dynamicAxisFields: readonly FieldKeyType[];
+    profile: FieldChartProfile<ComplianceBand>,
+    context: ChartBuildRequestContext,
+  ) => ChartBuildResult;
+  dynamicAxisFields: readonly ChartAxisQuantityId[];
   defaultDynamicAxes: DynamicAxisDefaults;
+  simulation?: SimulationOutputDeclaration<unknown>;
 }
 
 /** Non-generic controller boundary shared by every registered model. */

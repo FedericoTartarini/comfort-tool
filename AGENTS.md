@@ -14,7 +14,7 @@ Primary source layout:
 
 ```text
 src/
-  comfortModels/          model declarations plus focused calculation/chart modules
+  comfortModels/          model declarations plus family folders (pmv/, adaptive/, phs/, utci/)
   components/
     chart/                 chart rendering and export UI
     input-panel/           comfort-tool input subcomponents
@@ -65,6 +65,15 @@ All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or
 - Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/components/**`, `src/views/**`, or top-level `src/services/*.ts`.
 - When touching shared helpers, prefer moving reusable comfort logic under `src/services/comfort/**` rather than adding more top-level service files.
 
+## Physical Quantity Rules
+
+- `PhysicalQuantityId` in `src/models/physicalQuantities.ts` is the single application-layer catalog; state, share snapshots, and UI use these IDs exclusively.
+- Request DTO short names (`tdb`, `vr`, `rh`, …) are allowed only at the `jsthermalcomfort` boundary. Each model's `createFieldRequestAdapter()` mapping in `*Calculation.ts` is the sole catalog→DTO connection point.
+- `quantitiesByInput` stores base primary SI before modifiers; `effectiveQuantitiesByInput` in `ModelCalculationContext` is what calculations and request mapping read.
+- Calculate each model once into `calculationCacheByModel`; chart builders read `resultsByInput` and `chartSource` from that cache. Presentation-only changes (mode, axes, bands) must rebuild charts without invalidating ready caches.
+- Golden regression fixtures live in `src/testSupport/goldenFixtures.ts`; do not reintroduce ad-hoc `refactor*` baseline files.
+- ESLint restricted wire literals in `eslint.config.js` must stay aligned with `primaryInputOrder`; `src/models/catalogWireIds.test.ts` guards that sync.
+
 ## Conversion Ownership
 
 - Canonical state remains SI.
@@ -86,11 +95,12 @@ Current risks to avoid extending:
 Preferred direction for refactors and new model work:
 
 - `selectedModel`
-- `selectedChartByModel: Record<ModelId, ChartId>`
-- `inputsByInput` in canonical SI
-- `derivedByInput`
+- `selectedChartInstanceId` inside each model snapshot
+- `quantitiesByInput` — base primary SI per input slot
+- `auxiliaryQuantitiesByInput` — sparse slot quantities (modifiers and derived psychrometrics)
+- `modelInputsByModel` — sparse model-scoped SI values
 - `resultsByModel`
-- `chartResultsByModel: Record<ModelId, Record<ChartId, ChartResult | null>>`
+- chart builds resolved on demand from calculation cache + output settings
 - shared UI flags for loading, errors, compare settings, and unit system
 
 When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createComfortToolState.svelte.ts`, `src/state/comfortTool/shareState.ts`, or `src/state/comfortTool/modelConfigs/**`, prefer extracting keyed records and generic helpers instead of copying another PMV/UTCI-specific property or branch.
@@ -109,17 +119,17 @@ A model definition should own:
 - calculation execution
 - result builders, chart definitions/builders, and dynamic-axis defaults
 - declaration-local comfort zone definitions (as `ThermalZone` instances — see below), used to derive bands but not stored on the runtime definition
-- supported `modes`, `chartableOutputs`, and an optional fixed `complianceSpec`
+- `workspaceCapabilities`, `exploreOutputs`, and an optional fixed `complianceProfile` via `setComplianceProfile()`
 - supported input modifiers, using an explicit empty list when none apply
 
 Use centralized constants and typed metadata from `src/models/` for:
 
 - model identifiers
-- field identifiers
+- quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes)
 - chart identifiers
 - compare-input identifiers
 - chart modes and model-output identifiers
-- modifier and modifier-field identifiers
+- modifier identifiers (`ModifierId`, modifier `PhysicalQuantityId` slots)
 
 Do not introduce new raw domain strings for those concepts.
 
@@ -128,25 +138,25 @@ Do not introduce new raw domain strings for those concepts.
 `26-06-29-architecture-brief.md` describes the broader target architecture; §9.5 Compliance mode, Explore controls, the shared `FieldChartConfig` engine, full per-model chart-setting memory, and §9.7 generic input modifiers are implemented.
 
 - Compliance and Explore share one chart engine, with Compliance as the constrained version.
-- Every model declaration must set `modes` and `chartableOutputs`; Compliance models must also set a `complianceSpec` with non-empty bands, a caption, and a result feedback callback. Use the builder rather than controller branches.
-- `ChartMode`, `ModelOutputKey`, capability types, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
-- `chartSettingsByModel` stores each model's mode, x/y axes, baseline, and optional Explore working state. Explore z comes from `chartableOutputs`, and editable numeric bands are cloned from `defaultBands`; Compliance output and bands always come directly from `complianceSpec`.
-- `canonicalInputFieldOrder as const` is the exact persisted input-key set. Derive `CanonicalInputFieldKey` and `CanonicalInputState` from it; chart-only and derived `FieldKey` values must not enter canonical records, share input records, behavior patches, modifiers, or calculation context.
-- Every model owns a single `setCharts({ defaultId, entries })` declaration. `ModelChartDefinition` carries chart name, empty state, axis selection/Y locking, zone-toggle, and legend capability; do not recreate a global chart metadata registry or parallel chart/legend/lock arrays.
-- Compliance models must provide `complianceSpec.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput`.
-- `InputControlBehavior` owns only view-model construction and numeric input application. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
+- Every model declaration must set `workspaceCapabilities` and `setExploreOutputs()`; Standard-capable models must also set `setComplianceProfile()` with non-empty bands, a caption, legend title, and result feedback callback. Use the builder rather than controller branches.
+- `ModelOutputKey`, capability types, workspace/profile metadata, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
+- `outputSettingsByModel` stores each model's x/y axes, baseline, and optional Explore working state. Explore z comes from `exploreOutputs`, and editable numeric bands are cloned from `defaultBands`; Standard workspace output and bands always come directly from `complianceProfile`.
+- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set. Derive `PrimaryQuantityId` and `PrimaryInputState` from it; chart-only and derived `PhysicalQuantityId` values must not enter primary records, share primary records, behavior patches, modifiers, or calculation context.
+- Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with stable IDs from `src/models/output/chartInstances.ts` and typed `ChartKind` specs. Do not recreate a global chart metadata registry or parallel chart/legend/lock arrays.
+- Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
+- `setInputFields()` declares visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
 - Compose `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior; keep coupled temperature solving in the shared dynamic-axis solver.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
-- Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize only Explore bands plus exact modifier state, and use explicit wire sentinels for unbounded numeric edges. Do not add old-v1 migration behavior.
+- Share snapshots retain strict `version: 1`, store chart settings inside each model snapshot, serialize `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`, serialize only Explore bands plus exact modifier state, and use explicit wire sentinels for unbounded numeric edges. Reject legacy `inputsByInput`, `derivedByInput`, and `modifierInputsByInput` payloads. Do not add old-v1 migration behavior.
 - Band assignment is array-ordered and half-open (`min <= value < max`); numeric values, functional-edge X values, and band inputs are canonical SI.
 - PMV ASHRAE and PMV ISO are separate registered models with explicit serialized IDs (`"PMV_ASHRAE"` and `"PMV_ISO"`) and declaration files (`pmvAshrae.ts` and `pmvIso.ts`). ISO is explicitly ISO 7730 Category B; its Neutral `[-0.5, 0.5)` range intentionally matches ASHRAE numerically, while each declaration derives an independent band array from the Neutral zone. `pmvShared.ts` owns only shared contracts/declaration data/builder assembly, `pmvCalculation.ts` owns formulas/results, and `pmvCharts.ts` owns chart construction. Adaptive uses the corresponding `adaptiveShared.ts`, `adaptiveCalculation.ts`, and `adaptiveCharts.ts` split. Do not merge standards behind a runtime toggle.
-- `ModifierId`, `ModifierFieldKey`, and the tuple-generic `InputModifier` contract live in `src/models/inputModifiers.ts`; do not inline modifier strings.
+- `ModifierId`, `PhysicalQuantityId` modifier slots, and the tuple-generic `InputModifier` contract live in `src/models/inputModifiers.ts` and `src/models/physicalQuantities.ts`; do not inline modifier strings.
 - Builder `.setModifiers()` receives executable model-owned declarations. The global catalogue contains only stable UI/share IDs and extra-input schema.
 - Modifier execution order is Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain. PMV ASHRAE and PMV ISO each bind Dynamic Clothing to their own standard; other models do not declare it.
-- Input sub-tools keep base SI input separate from modifier configuration. Each model declares its supported subset in the fixed global order, and the controller derives effective SI input through those executable definitions before supplying `ModelCalculationContext`; modifiers must never write effective values back to base state.
+- Input sub-tools keep base SI input separate from modifier configuration. Each model declares its supported subset in the fixed global order, and the controller derives effective SI input through those executable definitions before supplying `ModelCalculationContext` (`effectiveQuantitiesByInput`, `auxiliaryQuantitiesByInput`, `modelInputs`, `options`); modifiers must never write effective values back to base state.
 - Keep Time-series out of Analysis state. It uses its own capability registry and controller;
-  do not add it to `ChartMode`, Analysis caches, or Analysis share snapshots.
+  do not add it to Analysis caches or Analysis share snapshots.
 
 ## Comfort Zone Design
 
@@ -174,8 +184,8 @@ Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not 
 
 Avoid repeated model-mode branching across files such as:
 
-- `src/comfortModels/pmvAshrae.ts`, `pmvIso.ts`, and `pmvShared.ts`
-- `src/comfortModels/adaptiveAshrae.ts`, `adaptiveEn.ts`, and `adaptiveShared.ts`
+- `src/comfortModels/pmv/` (`pmvAshrae.ts`, `pmvIso.ts`, `pmvShared.ts`, and focused calculation/chart modules)
+- `src/comfortModels/adaptive/` (`adaptiveAshrae.ts`, `adaptiveEn.ts`, `adaptiveShared.ts`, and focused calculation/chart modules)
 - `src/components/input-panel/InputFieldRow.svelte`
 - share/import-export synchronization paths
 
@@ -244,6 +254,19 @@ A change in this frontend is done when:
 - model or chart additions do not expand the controller with more hardcoded parallel properties unless explicitly approved
 - module boundaries remain clear
 
+## Output Registry
+
+Analysis and Time-series output metadata lives under `src/models/output/`:
+
+- `workspaceCapabilities.ts` — Standard, Explore, and Time-series workspace membership
+- `tableLayouts.ts` — compare-matrix and metric-summary table layouts plus view-model shapes
+- `chartInstances.ts` / `chartKinds.ts` — instance IDs, chart-kind registrations, and build results
+- `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
+
+Runtime models expose `buildTable()` and `buildChart()` through `src/state/comfortTool/modelConfigs/`. Shared table assembly helpers live in `src/services/comfort/output/`. Time-series exposure summaries render through `src/components/output/MetricSummaryPanel.svelte`.
+
+Chart instance IDs live in `src/models/output/chartInstances.ts`; share snapshots store `selectedChartInstanceId` per model.
+
 ## Documentation
 
 - Keep this file focused on execution rules.
@@ -252,4 +275,5 @@ A change in this frontend is done when:
 - Do not add a documentation generator, deployment step, or product UI route for these internal files unless a later task explicitly requests one.
 
 ## Code Quality
+
 - Code should be high quality, easy to read, maintainable over time, and suitable for collaborative development by multiple contributors.

@@ -4,8 +4,9 @@ import { cleanup, render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { FieldKey } from "../../models/fieldKeys";
-import { ChartMode, ModelOutputKey } from "../../models/modelCapabilities";
+import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { ModelOutputKey } from "../../models/modelCapabilities";
+import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";
 import ChartControls from "./ChartControls.svelte";
 
@@ -31,31 +32,31 @@ describe("ChartControls Explore composition", () => {
     render(ChartControls, {
       idPrefix: "test",
       controls: {
-        mode: {
-          selectedMode: ChartMode.Explore,
+        profileBadge: {
+          profileKind: FieldChartProfileKind.Explore,
           caption: "Explore caption.",
           feedback: null,
         },
         baseline: null,
         axes: {
           x: {
-            selectedField: FieldKey.DryBulbTemperature,
-            options: [FieldKey.DryBulbTemperature],
+            selectedField: PhysicalQuantityId.DryBulbTemperature,
+            options: [PhysicalQuantityId.DryBulbTemperature],
             locked: false,
             onSelect: vi.fn(),
           },
           y: {
-            selectedField: FieldKey.RelativeHumidity,
-            options: [FieldKey.RelativeHumidity],
+            selectedField: PhysicalQuantityId.RelativeHumidity,
+            options: [PhysicalQuantityId.RelativeHumidity],
             locked: false,
             onSelect: vi.fn(),
           },
         },
         explore: {
-          config: {
-            mode: ChartMode.Explore,
-            xField: FieldKey.DryBulbTemperature,
-            yField: FieldKey.RelativeHumidity,
+          profile: {
+            kind: FieldChartProfileKind.Explore,
+            xField: PhysicalQuantityId.DryBulbTemperature,
+            yField: PhysicalQuantityId.RelativeHumidity,
             zOutput: ModelOutputKey.Pmv,
             bands: outputs[0].defaultBands,
           },
@@ -89,18 +90,18 @@ describe("ChartControls Explore composition", () => {
     render(ChartControls, {
       idPrefix: "single-output",
       controls: {
-        mode: {
-          selectedMode: ChartMode.Explore,
+        profileBadge: {
+          profileKind: FieldChartProfileKind.Explore,
           caption: "Explore caption.",
           feedback: null,
         },
         baseline: null,
         axes: null,
         explore: {
-          config: {
-            mode: ChartMode.Explore,
-            xField: FieldKey.DryBulbTemperature,
-            yField: FieldKey.RelativeHumidity,
+          profile: {
+            kind: FieldChartProfileKind.Explore,
+            xField: PhysicalQuantityId.DryBulbTemperature,
+            yField: PhysicalQuantityId.RelativeHumidity,
             zOutput: output.key,
             bands: output.defaultBands,
           },
@@ -122,8 +123,8 @@ describe("ChartControls Explore composition", () => {
     render(ChartControls, {
       idPrefix: "compliance",
       controls: {
-        mode: {
-          selectedMode: ChartMode.Compliance,
+        profileBadge: {
+          profileKind: FieldChartProfileKind.Compliance,
           caption: "Compliance caption.",
           feedback: null,
         },
@@ -134,14 +135,14 @@ describe("ChartControls Explore composition", () => {
         },
         axes: {
           x: {
-            selectedField: FieldKey.DryBulbTemperature,
-            options: [FieldKey.DryBulbTemperature],
+            selectedField: PhysicalQuantityId.DryBulbTemperature,
+            options: [PhysicalQuantityId.DryBulbTemperature],
             locked: false,
             onSelect: vi.fn(),
           },
           y: {
-            selectedField: FieldKey.RelativeHumidity,
-            options: [FieldKey.RelativeHumidity],
+            selectedField: PhysicalQuantityId.RelativeHumidity,
+            options: [PhysicalQuantityId.RelativeHumidity],
             locked: false,
             onSelect: vi.fn(),
           },

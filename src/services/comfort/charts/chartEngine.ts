@@ -1,4 +1,5 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
+import { type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import type {
   PlotAnnotationDto,
   PlotHoverValueDto,
@@ -7,7 +8,6 @@ import type {
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
-import type { FieldKey as FieldKeyType } from "../../../models/fieldKeys";
 import {
   type Band,
   type BandInputsSi,
@@ -52,7 +52,7 @@ const DEFAULT_GRID_COLOR = "#e2e8f0";
 const DEFAULT_CHART_HEIGHT = 480;
 
 export interface FieldChartAxisSpec {
-  field: FieldKeyType;
+  field: ChartAxisQuantityId;
   rangeSi?: ChartRange;
   points: number;
   label?: string;
