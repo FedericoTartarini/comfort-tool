@@ -6,17 +6,17 @@ See [Adding a thermal model](adding-a-thermal-model.md) for the model-authoring 
 
 ## Source ownership
 
-| Layer               | Owns                                                                                              | May depend on                                     |
-| ------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `views`             | Page composition                                                                                  | components, state                                 |
-| `components`        | Rendering and interaction                                                                         | state, models, lightweight services               |
-| `routes`            | Explicit Browser History table, route hooks, and route-bound page adapters                        | views, workspace state                            |
-| `state/workspace`   | Typed Workspace metadata, route/model/mode/share coordination, and pending navigation replay      | models, comfort-tool controller/registry          |
-| `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots        | models, services, registered runtime definitions  |
-| `state/timeSeries`  | Independent keyed scenario state, automatic simulation lifecycle, and Time-series model registry  | models, units, registered Time-series definitions |
-| `comfortModels`     | Model declarations, calculations, results, chart evaluators, declaration-local zones              | models, comfort/unit services, model builder      |
-| `services/comfort`  | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines | models                                            |
-| `services/units`    | SI/display conversion and presentation precision                                                  | models                                            |
+| Layer               | Owns                                                                                                               | May depend on                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `views`             | Page composition                                                                                                   | components, state                                |
+| `components`        | Rendering and interaction                                                                                          | state, models, lightweight services              |
+| `routes`            | Explicit Browser History table, route hooks, and route-bound page adapters                                         | views, workspace state                           |
+| `state/workspace`   | Typed Workspace metadata, route/model/mode/share coordination, and pending navigation replay                       | models, comfort-tool controller/registry         |
+| `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots                         | models, services, registered runtime definitions |
+| `state/timeSeries`  | Independent keyed scenario state and simulation lifecycle; membership from the PHS `tables.timeSeries` declaration | models, units, PHS Time-series simulator         |
+| `comfortModels`     | Model declarations, calculations, results, chart evaluators, declaration-local zones                               | models, comfort/unit services, model builder     |
+| `services/comfort`  | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines                  | models                                           |
+| `services/units`    | SI/display conversion and presentation precision                                                                   | models                                           |
 
 The model registry is the intentional exception that imports registered definitions from `comfortModels`. `jsthermalcomfort` imports are restricted to `comfortModels` and `services/comfort`.
 
@@ -167,12 +167,13 @@ The psychrometric chart clamps its drawable domain at 100% relative humidity.
 
 ## Time-series state and charts
 
-Time-series support is declared through generic `TimeSeriesModelDefinition<TDraft, TResult>`
-entries registered separately from `ComfortModelDefinition`. Each model owns its opaque
+Time-series support is declared on the PHS Analysis declaration as `tables.timeSeries`
+(`TableType.TimeSeries`) plus `setSimulation({ charts })`. The Time-series controller stays
+separate. `state/timeSeries/modelConfigs.ts` reads that PHS declaration for membership; it is
+not a second product registry. The PHS simulator remains in `phsTimeSeries.ts`. Declaring the
+table does not create a simulator. Each simulator owns its opaque
 draft/result types, defaults and cloning, validation, editor controls and presets,
-asynchronous simulation, summary projection, chart builders, and optional reference link.
-Registry order is the only source for the enabled model selector. The first and currently
-only registration is PHS / ISO 7933:2023.
+and asynchronous simulation. The first and currently only Time-series model is PHS / ISO 7933:2023.
 
 `createTimeSeriesState.svelte.ts` stores `draftByModel`, `resultByModel`, status, validation
 errors, calculation revision, and progress as records keyed by registered model ID. A model

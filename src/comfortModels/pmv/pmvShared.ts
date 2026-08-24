@@ -45,7 +45,7 @@ import {
   type OutputChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
 import { ChartKind } from "../../models/output/chartKinds";
-import { TableLayout } from "../../models/output/tableLayouts";
+import { TableType } from "../../models/output/tableLayouts";
 import {
   buildPmvResultRows,
   calculatePmvModel,
@@ -381,14 +381,16 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
     .setCalculator((context, visibleInputIds) => (
       calculatePmvModel(context, visibleInputIds, adapter)
     ))
-    .setOutputTable({
-      layout: TableLayout.CompareMatrix,
-      rows: buildPmvResultRows().map((row) => ({
-        id: row.title.toLowerCase().replace(/\s+/g, "-"),
-        label: row.title,
-        ...(row.group ? { group: row.group } : {}),
-        format: (result) => row.formatter(result),
-      })),
+    .setTables({
+      analysis: {
+        type: TableType.Analysis,
+        rows: buildPmvResultRows().map((row) => ({
+          id: row.title.toLowerCase().replace(/\s+/g, "-"),
+          label: row.title,
+          ...(row.group ? { group: row.group } : {}),
+          format: (result) => row.formatter(result),
+        })),
+      },
     })
     .setOutputCharts(
       createPmvOutputCharts(

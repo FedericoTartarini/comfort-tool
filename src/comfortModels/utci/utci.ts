@@ -14,7 +14,7 @@ import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
 import { ChartKind } from "../../models/output/chartKinds";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
-import { TableLayout, type TableRowSpec } from "../../models/output/tableLayouts";
+import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   createTemperatureModeOptionHandler,
 } from "../../services/comfort/controls/temperatureControl";
@@ -198,9 +198,11 @@ builder.setCalculator((context, visibleInputIds) =>
     calculate: calculateUtci,
   }));
 
-builder.setOutputTable({
-  layout: TableLayout.CompareMatrix,
-  rows: buildUtciTableRows(),
+builder.setTables({
+  analysis: {
+    type: TableType.Analysis,
+    rows: buildUtciTableRows(),
+  },
 });
 
 export const utciModelConfig = builder.build();

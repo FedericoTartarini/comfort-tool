@@ -11,7 +11,7 @@ import {
   WorkspaceCapability,
 } from "./workspaceCapabilities";
 import { FieldChartProfileKind } from "./fieldChartProfile";
-import { TableLayout } from "./tableLayouts";
+import { TableType } from "./tableLayouts";
 
 describe("output catalog", () => {
   it("defines six chart kinds with defaults", () => {
@@ -36,8 +36,9 @@ describe("output catalog", () => {
     expect(supportsExploreWorkspace(capabilities)).toBe(true);
   });
 
-  it("exports table layouts and profile kinds", () => {
-    expect(TableLayout.CompareMatrix).toBe("compare-matrix");
+  it("exports table types and profile kinds", () => {
+    expect(TableType.Analysis).toBe("analysis");
+    expect(TableType.TimeSeries).toBe("time-series");
     expect(FieldChartProfileKind.Compliance).toBe("compliance");
   });
 });

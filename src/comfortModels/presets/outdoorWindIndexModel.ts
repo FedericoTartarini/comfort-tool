@@ -10,7 +10,7 @@ import {
 import type { ThermalZone } from "../../models/thermalZone";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
-import { TableLayout, type TableRowSpec } from "../../models/output/tableLayouts";
+import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   type GridModelChartSpec,
   type GridModelDynamicHoverExtension,
@@ -227,9 +227,11 @@ export function buildOutdoorWindIndexModelConfig<TResult>(
       calculate: options.calculate,
     }));
 
-  builder.setOutputTable({
-    layout: TableLayout.CompareMatrix,
-    rows: buildOutdoorWindTableRows(options),
+  builder.setTables({
+    analysis: {
+      type: TableType.Analysis,
+      rows: buildOutdoorWindTableRows(options),
+    },
   });
 
   builder.setDynamicAxisFields([

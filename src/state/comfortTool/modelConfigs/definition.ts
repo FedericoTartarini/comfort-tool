@@ -12,7 +12,7 @@ import type {
 import type { ChartBuildResult } from "../../../models/output/chartBuildResult";
 import type { ModelChartInstances } from "../../../models/output/chartKinds";
 import type { FieldChartProfile } from "../../../models/output/fieldChartProfile";
-import type { TableDeclaration } from "../../../models/output/tableLayouts";
+import type { ModelTables } from "../../../models/output/tableLayouts";
 import type {
   SimulationOutputDeclaration,
 } from "../../../models/output/simulationCharts";
@@ -78,7 +78,7 @@ export interface ComfortModelDefinition<
   controls: readonly InputControlDefinition[];
   modelQuantities: readonly PhysicalQuantityIdType[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
-  outputTable: TableDeclaration<ResultType>;
+  tables: ModelTables<ResultType>;
   outputCharts: ModelChartInstances;
   chartKindRegistrations: readonly ChartKindRegistration<
     ResultType,
@@ -104,7 +104,7 @@ export interface ComfortModelDefinition<
   ) => ChartBuildResult;
   dynamicAxisFields: readonly ChartAxisQuantityId[];
   defaultDynamicAxes: DynamicAxisDefaults;
-  simulation?: SimulationOutputDeclaration<unknown>;
+  simulation?: SimulationOutputDeclaration;
 }
 
 /** Non-generic controller boundary shared by every registered model. */

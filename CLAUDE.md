@@ -106,7 +106,7 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 ## Capabilities, axes, and modifiers
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
-- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts and tables are declared via `setOutputCharts()` and `setOutputTable()`; optional Time-series output uses `setSimulation()`. Instance ids are declared on `setOutputCharts()` and derived by the registry. Heat Index / Humidex maps are `ChartKind.DynamicField`. Plan **0t** / **0p** replace the split table/preset APIs with `tables` and `defineModel` when those slices run.
+- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts are declared via `setOutputCharts()`. Tables are declared via `setTables({ analysis, timeSeries? })` with `TableType.Analysis` / `TableType.TimeSeries`. PHS Time-series charts stay on `setSimulation({ charts })`. Instance ids are declared on `setOutputCharts()` and derived by the registry. Heat Index / Humidex maps are `ChartKind.DynamicField`. Plan **0p** replaces preset factories with `defineModel` when that slice runs.
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; only Explore working bands are serialized, and modifier records contain the complete stable key set.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
@@ -114,7 +114,7 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records.
 - Model `.setModifiers()` receives executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
 - Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO; each declaration binds its own `clo_dynamic` standard.
-- Keep Time-series out of Analysis caches and Analysis share snapshots. Time-series is a separate controller (PHS only); do not generalize it unless the Plan slice says so.
+- Keep Time-series out of Analysis caches and Analysis share snapshots. Time-series is a separate controller (PHS only). `state/timeSeries/modelConfigs.ts` reads the PHS declaration’s `tables.timeSeries`; declaring the table does not create a simulator.
 
 ## UI Conventions
 

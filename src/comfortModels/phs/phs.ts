@@ -14,7 +14,7 @@ import { ThermalZone } from "../../models/thermalZone";
 import { StandardId } from "../../models/workspaces";
 import { ChartKind } from "../../models/output/chartKinds";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
-import { TableLayout, type TableRowSpec } from "../../models/output/tableLayouts";
+import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
@@ -324,6 +324,7 @@ builder
   .setWorkspaceCapabilities([
     WorkspaceCapability.Standard,
     WorkspaceCapability.Explore,
+    WorkspaceCapability.TimeSeries,
   ])
   .setExploreOutputs(phsExploreOutputs)
   .setComplianceProfile({
@@ -486,9 +487,15 @@ builder.setCalculator((context, visibleInputIds) =>
     }),
   }));
 
-builder.setOutputTable({
-  layout: TableLayout.CompareMatrix,
-  rows: buildPhsTableRows(),
+builder.setTables({
+  analysis: {
+    type: TableType.Analysis,
+    rows: buildPhsTableRows(),
+  },
+  timeSeries: {
+    type: TableType.TimeSeries,
+    rows: buildPhsSimulationTableRows(),
+  },
 });
 
 builder.setDynamicAxisFields([
@@ -504,10 +511,6 @@ builder.setDefaultDynamicAxes({
   yAxis: PhysicalQuantityId.RelativeHumidity,
 });
 builder.setSimulation({
-  table: {
-    layout: TableLayout.MetricSummary,
-    rows: buildPhsSimulationTableRows(),
-  },
   charts: [
     {
       id: "phs-temperature-history",

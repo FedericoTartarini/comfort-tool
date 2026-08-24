@@ -1,7 +1,6 @@
 import { ChartKind } from "./chartKinds";
 import type { PlotlyChartResponseDto } from "../comfortDtos";
 import type { UnitSystem as UnitSystemType } from "../units";
-import type { TableDeclaration } from "./tableLayouts";
 
 export interface SimulationTimeSeriesLineChartSpec {
   readonly build: (
@@ -22,7 +21,6 @@ export interface SimulationChartDeclaration {
   readonly spec: SimulationTimeSeriesLineChartSpec;
 }
 
-export interface SimulationOutputDeclaration<TResult = unknown> {
-  readonly table: TableDeclaration<TResult>;
+export interface SimulationOutputDeclaration {
   readonly charts: readonly SimulationChartDeclaration[];
 }

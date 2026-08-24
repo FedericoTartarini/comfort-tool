@@ -151,7 +151,7 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 - `ModelOutputKey`, capability types, workspace/profile metadata, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `outputSettingsByModel` stores each model's x/y axes, baseline, and optional Explore working state. Explore z comes from `exploreOutputs`, and editable numeric bands are cloned from `defaultBands`; Standard workspace output and bands always come directly from `complianceProfile`.
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set. Derive `PrimaryQuantityId` and `PrimaryInputState` from it; chart-only and derived `PhysicalQuantityId` values must not enter primary records, share primary records, behavior patches, modifiers, or calculation context.
-- Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with typed `ChartKind` specs. Instance ids live only on the declaration; the registry derives them (`getDeclaredChartInstanceIds`). Do not recreate a parallel `ChartInstanceId` tree or a second legend/lock array beside `setOutputCharts()`. Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
+- Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with typed `ChartKind` specs. Tables are declared with `setTables({ analysis, timeSeries? })` using `TableType.Analysis` / `TableType.TimeSeries`. Every Analysis model must declare `tables.analysis`. PHS also declares `tables.timeSeries` plus `setSimulation({ charts })` for Time-series line charts. Instance ids live only on the declaration; the registry derives them (`getDeclaredChartInstanceIds`). Do not recreate a parallel `ChartInstanceId` tree or a second legend/lock array beside `setOutputCharts()`. Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
 - Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
 - `setInputFields()` declares visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
@@ -164,8 +164,7 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 - Builder `.setModifiers()` receives executable model-owned declarations. The global catalogue contains only stable UI/share IDs and extra-input schema.
 - Modifier execution order is Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain. PMV ASHRAE and PMV ISO each bind Dynamic Clothing to their own standard; other models do not declare it.
 - Input sub-tools keep base SI input separate from modifier configuration. Each model declares its supported subset in the fixed global order, and the controller derives effective SI input through those executable definitions before supplying `ModelCalculationContext` (`effectiveQuantitiesByInput`, `auxiliaryQuantitiesByInput`, `modelInputs`, `options`); modifiers must never write effective values back to base state.
-- Keep Time-series out of Analysis state. It uses its own capability registry and controller;
-  do not add it to Analysis caches or Analysis share snapshots.
+- Keep Time-series out of Analysis state. It uses its own controller. Membership comes from the PHS declaration’s `tables.timeSeries`; `state/timeSeries/modelConfigs.ts` reads that declaration instead of listing models as a second product registry. Declaring the table does not create a simulator. Do not add it to Analysis caches or Analysis share snapshots.
 
 ## Comfort Zone Design
 
@@ -269,7 +268,7 @@ A change in this frontend is done when:
 Analysis and Time-series output metadata lives under `src/models/output/`:
 
 - `workspaceCapabilities.ts` — Standard, Explore, and Time-series workspace membership
-- `tableLayouts.ts` — compare-matrix and metric-summary layouts (Plan **0t**: `TableType.Analysis` / `TimeSeries`)
+- `tableLayouts.ts` — `TableType.Analysis` / `TimeSeries`. Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`.
 - `chartKinds.ts` — chart engines/kinds, instance declaration types, and capability defaults. Instance ids are derived from `setOutputCharts()` on each model declaration.
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 

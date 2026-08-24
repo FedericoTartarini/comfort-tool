@@ -2,12 +2,12 @@ import type { InputId as InputIdType } from "../inputSlots";
 import type { UnitSystem as UnitSystemType } from "../units";
 import type { ResultCellViewModel } from "../../state/comfortTool/types";
 
-export const TableLayout = {
-  CompareMatrix: "compare-matrix",
-  MetricSummary: "metric-summary",
+export const TableType = {
+  Analysis: "analysis",
+  TimeSeries: "time-series",
 } as const;
 
-export type TableLayout = (typeof TableLayout)[keyof typeof TableLayout];
+export type TableType = (typeof TableType)[keyof typeof TableType];
 
 export type TableCellFormatter<TResult> = (
   result: TResult,
@@ -22,8 +22,13 @@ export interface TableRowSpec<TResult> {
 }
 
 export interface TableDeclaration<TResult = unknown> {
-  readonly layout: TableLayout;
+  readonly type: TableType;
   readonly rows: readonly TableRowSpec<TResult>[];
+}
+
+export interface ModelTables<TResult = unknown> {
+  readonly analysis: TableDeclaration<TResult>;
+  readonly timeSeries?: TableDeclaration<TResult>;
 }
 
 export interface MetricSummaryItemViewModel {

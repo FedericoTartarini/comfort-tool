@@ -6,7 +6,7 @@ import {
 import type { MetricSummaryItemViewModel } from "../../models/output/tableLayouts";
 import { buildMetricSummaryTable } from "../../services/comfort/output/tableResolver";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
-import { getModelSimulationOutput } from "../comfortTool/modelConfigs";
+import { getComfortModelConfig, getModelSimulationOutput } from "../comfortTool/modelConfigs";
 import { UnitSystem } from "../../models/units";
 import {
   getTimeSeriesModelConfig,
@@ -439,8 +439,12 @@ export function createTimeSeriesState(
         const modelId = state.selectedModel;
         const result = state.resultByModel[modelId];
         if (result === null) return [];
+        const table = getComfortModelConfig(modelId).tables.timeSeries;
+        if (!table) {
+          throw new Error(`Time-series model ${modelId} is missing tables.timeSeries.`);
+        }
         return buildMetricSummaryTable(
-          getSimulationOutput(modelId).table,
+          table,
           result,
           state.unitSystem,
         ).items;

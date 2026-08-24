@@ -117,8 +117,8 @@ The calculation manager runs that parser once at the model boundary. `ModelCalcu
 
 Use the model builder output APIs instead of adding controller branches:
 
-- `.setOutputTable({ layout, rows })` with `TableLayout.CompareMatrix` for multi-input Analysis tables
-- `TableLayout.MetricSummary` for single-result metric tiles (Time-series style summaries use the same item shape)
+- `.setTables({ analysis, timeSeries? })` with `TableType.Analysis` for multi-input Analysis tables
+- `TableType.TimeSeries` on `tables.timeSeries` for PHS Time-series metric tiles (allowed only with Time-series workspace capability)
 - `.setOutputCharts([...], { defaultInstanceId })` with instance ids that live only on the declaration and typed `ChartKind` specs. Heat Index / Humidex fixed-axis maps use `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
 
 Declare `workspaceCapabilities` explicitly (`Standard`, `Explore`, and/or `TimeSeries`). Compliance/Explore field charts share `fieldChartProfile` inputs; presentation-only changes rebuild from the calculation cache.
@@ -141,7 +141,7 @@ Models that do not belong to a Standard must call `.setStandardIds([])` explicit
 
 Standard workspace model lists are derived from `standardIds`. Explore availability is
 independent and comes from `workspaceCapabilities.includes(WorkspaceCapability.Explore)`; do not add a
-second navigation list. Time-series support is declared separately via `setSimulation()` and must not be mixed into Analysis share snapshots.
+second navigation list. Time-series support is declared with `tables.timeSeries` plus `setSimulation({ charts })` on the PHS declaration and must not be mixed into Analysis share snapshots.
 
 Explore requires at least one output with valid numeric SI bands. A Standard-capable model also declares a fixed output, non-empty bands, caption, legend title, and result feedback callback through `setComplianceProfile()`. Standard workspace output and bands always come from `complianceProfile`; Explore uses the selected output and its editable working bands.
 
@@ -176,7 +176,7 @@ Reuse shared capabilities before adding bespoke chart or control code:
   per-input maps beyond `inputs` (PMV comfort zones).
 - **Input value presets**: `InputPresetKey` catalog in
   `services/comfort/controls/inputControlPresets.ts` with `setInputFields({ kind: "preset", … })`.
-- **Declarative result rows**: `setOutputTable({ layout: TableLayout.CompareMatrix, rows })`; runtime assembly goes through `buildCompareMatrixTable()` in `services/comfort/output/tableResolver.ts`.
+- **Declarative result rows**: `setTables({ analysis: { type: TableType.Analysis, rows } })`; runtime assembly goes through `buildCompareMatrixTable()` in `services/comfort/output/tableResolver.ts`.
 
 Non-grid chart geometry (PMV psychrometric, UTCI stress, PHS exposure history, Adaptive
 boundary) is declared through `setOutputCharts()` with the appropriate `ChartKind` (`Custom`,
@@ -201,17 +201,17 @@ Reuse builder registration APIs before wiring charts manually:
 
 ### Optional Time-series support
 
-Time-series is a separate product capability. Add a typed
-`TimeSeriesModelDefinition<TDraft, TResult>` for editor controls, draft validation, and
-asynchronous `simulate()`. Register it in the dedicated Time-series registry; the enabled model
-selector and keyed controller records derive from that registry.
+Time-series is a separate product controller. PHS is the only Time-series model.
+Declare `tables.timeSeries` with `TableType.TimeSeries` on the PHS Analysis declaration,
+together with Time-series workspace capability. `state/timeSeries/modelConfigs.ts` reads
+that declaration to decide which models are enabled. Declaring the table does not create a
+simulator; the PHS simulator stays in `phsTimeSeries.ts`.
 
-Declare simulation **output** (metric-summary table rows and time-series-line charts) on the
-unified comfort model config via `setSimulation({ table, charts })`. The Time-series controller
-reads summary and chart builders through `getModelSimulationOutput(modelId)` from the comfort
-model registry. Do not infer Time-series support from Analysis `workspaceCapabilities` or
-`exploreOutputs`, and do not put segment durations or physiological carry state into canonical
-Analysis input/share records.
+Keep editor controls, draft validation, and asynchronous `simulate()` on the Time-series
+simulator module. Declare Time-series **charts** on the unified comfort model config via
+`setSimulation({ charts })`. The Time-series controller reads summary rows from
+`tables.timeSeries` and chart builders from `getModelSimulationOutput(modelId)`. Do not put
+segment durations or physiological carry state into canonical Analysis input/share records.
 
 Model-specific sequence calculation and editor metadata remain under `comfortModels`; generic
 public contracts belong in `models`, and the Time-series controller consumes registered

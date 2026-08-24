@@ -4,7 +4,7 @@ import { ComfortModel } from "../../../models/comfortModels";
 import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import { ChartKind } from "../../../models/output/chartKinds";
-import { TableLayout } from "../../../models/output/tableLayouts";
+import { TableType } from "../../../models/output/tableLayouts";
 import { ModelOutputKey, type ModelOutput, type NumericBand } from "../../../models/modelCapabilities";
 import {
   ComfortModelBuilder,
@@ -44,13 +44,15 @@ function createExploreBuilder() {
     .setExploreOutputs([pmvOutput])
     .setModifiers([])
     .setOutputCharts([createCustomOutputChart()])
-    .setOutputTable({
-      layout: TableLayout.CompareMatrix,
-      rows: [{
-        id: "test-row",
-        label: "Test row",
-        format: () => ({ text: "value" }),
-      }],
+    .setTables({
+      analysis: {
+        type: TableType.Analysis,
+        rows: [{
+          id: "test-row",
+          label: "Test row",
+          format: () => ({ text: "value" }),
+        }],
+      },
     })
     .setDefaultOptions({})
     .setOptionParser(parseEmptyOptions)
@@ -84,5 +86,46 @@ describe("ComfortModelBuilder capabilities", () => {
     }).build()).toThrow(/without Standard workspace/i);
   });
 
+  it("rejects a Time-series table without Time-series capability", () => {
+    expect(() => createExploreBuilder().setTables({
+      analysis: {
+        type: TableType.Analysis,
+        rows: [{
+          id: "test-row",
+          label: "Test row",
+          format: () => ({ text: "value" }),
+        }],
+      },
+      timeSeries: {
+        type: TableType.TimeSeries,
+        rows: [{
+          id: "summary-row",
+          label: "Summary row",
+          format: () => ({ text: "value" }),
+        }],
+      },
+    }).build()).toThrow(/tables\.timeSeries is allowed only with Time-series workspace capability/i);
+  });
 
+  it("rejects Time-series capability without a Time-series table", () => {
+    expect(() => createExploreBuilder()
+      .setWorkspaceCapabilities([
+        WorkspaceCapability.Explore,
+        WorkspaceCapability.TimeSeries,
+      ])
+      .build()).toThrow(/Time-series workspace capability requires tables\.timeSeries/i);
+  });
+
+  it("rejects analysis tables that are not TableType.Analysis", () => {
+    expect(() => createExploreBuilder().setTables({
+      analysis: {
+        type: TableType.TimeSeries,
+        rows: [{
+          id: "test-row",
+          label: "Test row",
+          format: () => ({ text: "value" }),
+        }],
+      },
+    }).build()).toThrow(/tables\.analysis must use TableType\.Analysis/i);
+  });
 });

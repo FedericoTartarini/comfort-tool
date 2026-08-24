@@ -40,10 +40,14 @@ import {
   resolveChartCapabilities,
 } from "../../../models/output/chartKinds";
 import type { ChartInstanceDeclaration } from "../../../models/output/chartKinds";
-import { TableLayout, type TableDeclaration } from "../../../models/output/tableLayouts";
+import {
+  TableType,
+  type ModelTables,
+} from "../../../models/output/tableLayouts";
 import {
   supportsExploreWorkspace,
   supportsStandardWorkspace,
+  supportsTimeSeriesWorkspace,
   type WorkspaceCapability as WorkspaceCapabilityType,
 } from "../../../models/output/workspaceCapabilities";
 import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
@@ -200,7 +204,7 @@ export class ComfortModelBuilder<
     Record<OptionKeyType, ModelOptionChangeHandler>
   > = {};
 
-  private outputTable?: TableDeclaration<ResultType>;
+  private tables?: ModelTables<ResultType>;
 
   private defaultOutputChartInstanceId?: string;
 
@@ -224,7 +228,7 @@ export class ComfortModelBuilder<
     ComplianceBand
   >["calculate"];
 
-  private simulationOutput?: SimulationOutputDeclaration<ResultType>;
+  private simulationOutput?: SimulationOutputDeclaration;
 
   private dynamicAxisFields?: readonly ChartAxisQuantityId[];
 
@@ -269,7 +273,7 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setSimulation(simulation: SimulationOutputDeclaration<ResultType>): this {
+  setSimulation(simulation: SimulationOutputDeclaration): this {
     for (const chart of simulation.charts) {
       if (chart.kind !== ChartKind.TimeSeriesLine) {
         throw new Error(
@@ -281,8 +285,8 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setOutputTable(declaration: TableDeclaration<ResultType>): this {
-    this.outputTable = declaration;
+  setTables(tables: ModelTables<ResultType>): this {
+    this.tables = tables;
     return this;
   }
 
@@ -450,6 +454,7 @@ export class ComfortModelBuilder<
 
     const supportsStandard = supportsStandardWorkspace(workspaceCapabilities);
     const supportsExplore = supportsExploreWorkspace(workspaceCapabilities);
+    const supportsTimeSeries = supportsTimeSeriesWorkspace(workspaceCapabilities);
 
     const standardIds = this.standardIds;
     if (!standardIds) {
@@ -504,13 +509,45 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations require a non-empty description.");
     }
 
-    const outputTable = this.outputTable;
-    if (!outputTable) {
-      throw new Error("Comfort model declarations must set an output table.");
+    const tables = this.tables;
+    if (!tables) {
+      throw new Error("Comfort model declarations must set tables.");
     }
 
-    if (outputTable.rows.length === 0) {
-      throw new Error("Comfort model declarations require at least one output table row.");
+    if (tables.analysis.type !== TableType.Analysis) {
+      throw new Error("tables.analysis must use TableType.Analysis.");
+    }
+
+    if (tables.analysis.rows.length === 0) {
+      throw new Error("tables.analysis requires at least one row.");
+    }
+
+    if (tables.timeSeries) {
+      if (!supportsTimeSeries) {
+        throw new Error(
+          "tables.timeSeries is allowed only with Time-series workspace capability.",
+        );
+      }
+      if (tables.timeSeries.type !== TableType.TimeSeries) {
+        throw new Error("tables.timeSeries must use TableType.TimeSeries.");
+      }
+      if (tables.timeSeries.rows.length === 0) {
+        throw new Error("tables.timeSeries requires at least one row.");
+      }
+    } else if (supportsTimeSeries) {
+      throw new Error("Time-series workspace capability requires tables.timeSeries.");
+    }
+
+    if (supportsTimeSeries && !this.simulationOutput) {
+      throw new Error("Time-series workspace capability requires simulation charts.");
+    }
+
+    if (this.simulationOutput && !supportsTimeSeries) {
+      throw new Error("Simulation charts require Time-series workspace capability.");
+    }
+
+    if (this.simulationOutput && this.simulationOutput.charts.length === 0) {
+      throw new Error("Simulation output requires at least one chart.");
     }
 
     const outputCharts = this.resolveOutputCharts();
@@ -650,10 +687,20 @@ export class ComfortModelBuilder<
       controls: [...this.controls],
       modelQuantities,
       optionHandlersByKey: { ...this.optionHandlersByKey },
-      outputTable: {
-        layout: outputTable.layout,
-        rows: [...outputTable.rows],
-      } as TableDeclaration,
+      tables: {
+        analysis: {
+          type: tables.analysis.type,
+          rows: [...tables.analysis.rows],
+        },
+        ...(tables.timeSeries
+          ? {
+              timeSeries: {
+                type: tables.timeSeries.type,
+                rows: [...tables.timeSeries.rows],
+              },
+            }
+          : {}),
+      } as ModelTables,
       outputCharts: {
         defaultInstanceId: outputCharts.defaultInstanceId,
         entries: outputCharts.entries.map((entry) => ({
@@ -670,17 +717,12 @@ export class ComfortModelBuilder<
       parseOptions: this.parseOptions,
       calculate: (context, visibleInputIds) => calculate(context, visibleInputIds),
       buildTable: (resultsByInput, visibleInputIds, unitSystem) => {
-        switch (outputTable.layout) {
-          case TableLayout.CompareMatrix:
-            return buildCompareMatrixTable(
-              outputTable,
-              resultsByInput as Record<InputIdType, ResultType | null>,
-              visibleInputIds,
-              unitSystem,
-            );
-          default:
-            throw new Error(`Unsupported table layout: ${outputTable.layout}`);
-        }
+        return buildCompareMatrixTable(
+          tables.analysis,
+          resultsByInput as Record<InputIdType, ResultType | null>,
+          visibleInputIds,
+          unitSystem,
+        );
       },
       buildChart: (instanceId, chartSource, resultsByInput, profile, context) => {
         const chartEntry = registeredOutputChartsForBuild.find(
@@ -718,12 +760,8 @@ export class ComfortModelBuilder<
       ...(this.simulationOutput
         ? {
             simulation: {
-              table: {
-                layout: this.simulationOutput.table.layout,
-                rows: [...this.simulationOutput.table.rows],
-              },
               charts: this.simulationOutput.charts.map((chart) => ({ ...chart })),
-            } as SimulationOutputDeclaration,
+            },
           }
         : {}),
     };

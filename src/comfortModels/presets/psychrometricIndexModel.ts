@@ -9,7 +9,7 @@ import {
 } from "../../models/modelCapabilities";
 import type { ThermalZone } from "../../models/thermalZone";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
-import { TableLayout } from "../../models/output/tableLayouts";
+import { TableType } from "../../models/output/tableLayouts";
 import { type GridModelChartSpec } from "../../services/comfort/charts/gridModelCharts";
 import type { ChartRange } from "../../services/comfort/charts/types";
 import { requireThermalZone } from "../../services/comfort/helpers";
@@ -187,9 +187,10 @@ export function buildPsychrometricIndexModelConfig<TResult>(
       calculate: options.calculate,
     }));
 
-  builder.setOutputTable({
-    layout: TableLayout.CompareMatrix,
-    rows: [{
+  builder.setTables({
+    analysis: {
+      type: TableType.Analysis,
+      rows: [{
       id: options.label.toLowerCase().replace(/\s+/g, "-"),
       label: options.label,
       format: (result, unitSystem) => {
@@ -215,6 +216,7 @@ export function buildPsychrometricIndexModelConfig<TResult>(
         return cell;
       },
     }],
+    },
   });
 
   builder.setDefaultDynamicAxes({

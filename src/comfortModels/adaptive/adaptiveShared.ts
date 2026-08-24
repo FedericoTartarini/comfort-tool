@@ -24,7 +24,7 @@ import {
 } from "../../models/modelCapabilities";
 import type { ThermalZone } from "../../models/thermalZone";
 import type { StandardId as StandardIdType } from "../../models/workspaces";
-import { TableLayout, type TableRowSpec } from "../../models/output/tableLayouts";
+import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   createTemperatureModeOptionHandler,
 } from "../../services/comfort/controls/temperatureControl";
@@ -175,9 +175,11 @@ export function createAdaptiveModelConfig(
     .setCalculator((context, visibleInputIds) => (
       calculateAdaptiveModel(context, visibleInputIds, declaration)
     ))
-    .setOutputTable({
-      layout: TableLayout.CompareMatrix,
-      rows: buildAdaptiveTableRows(declaration),
+    .setTables({
+      analysis: {
+        type: TableType.Analysis,
+        rows: buildAdaptiveTableRows(declaration),
+      },
     });
 
   const boundaryChart: OutputChartDeclarationInput = {

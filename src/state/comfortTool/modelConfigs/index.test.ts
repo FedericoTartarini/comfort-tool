@@ -33,6 +33,7 @@ import {
 import type { ThermalZone } from "../../../models/thermalZone";
 import { StandardId, WorkspaceId } from "../../../models/workspaces";
 import { ChartKind } from "../../../models/output/chartKinds";
+import { TableType } from "../../../models/output/tableLayouts";
 import {
   comfortModelConfigs,
   comfortModelOrder,
@@ -284,7 +285,11 @@ describe("comfort model capability registry", () => {
         complianceOutput: undefined,
       },
       [ComfortModel.Phs2023]: {
-        capabilities: [WorkspaceCapability.Standard, WorkspaceCapability.Explore],
+        capabilities: [
+          WorkspaceCapability.Standard,
+          WorkspaceCapability.Explore,
+          WorkspaceCapability.TimeSeries,
+        ],
         outputs: [
           ModelOutputKey.PhsLimitingExposureTime,
           ModelOutputKey.PhsRectalTemperature,
@@ -326,6 +331,8 @@ describe("comfort model capability registry", () => {
       ComfortModel.Phs2023,
     ]);
 
+    expect(getModelsForWorkspace(WorkspaceId.TimeSeries)).toEqual([]);
+
     for (const modelId of comfortModelOrder) {
       const config = getComfortModelConfig(modelId);
       expect(new Set(config.standardIds).size).toBe(config.standardIds.length);
@@ -333,6 +340,20 @@ describe("comfort model capability registry", () => {
         supportsStandardWorkspace(config.workspaceCapabilities),
       );
     }
+  });
+
+  it("declares Analysis tables for every model and a TimeSeries table only on PHS", () => {
+    comfortModelOrder.forEach((modelId) => {
+      const { tables } = getComfortModelConfig(modelId);
+      expect(tables.analysis.type).toBe(TableType.Analysis);
+      expect(tables.analysis.rows.length).toBeGreaterThan(0);
+      if (modelId === ComfortModel.Phs2023) {
+        expect(tables.timeSeries?.type).toBe(TableType.TimeSeries);
+        expect(tables.timeSeries?.rows.length).toBeGreaterThan(0);
+      } else {
+        expect(tables.timeSeries).toBeUndefined();
+      }
+    });
   });
 
   it("declares generic input-modifier availability per model", () => {

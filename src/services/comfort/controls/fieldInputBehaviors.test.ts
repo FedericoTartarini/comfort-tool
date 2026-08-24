@@ -12,7 +12,7 @@ import { UnitSystem } from "../../../models/units";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import { ComfortModel } from "../../../models/comfortModels";
 import { ChartKind } from "../../../models/output/chartKinds";
-import { TableLayout } from "../../../models/output/tableLayouts";
+import { TableType } from "../../../models/output/tableLayouts";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/comfortTool/modelConfigs/builder";
 import { resolveInputField } from "./fieldInputBehaviors";
 import type { ControlBehaviorContext } from "./types";
@@ -37,13 +37,15 @@ describe("fieldInputBehaviors", () => {
         emptyMessage: "Empty",
         spec: { build: () => null },
       }])
-      .setOutputTable({
-        layout: TableLayout.CompareMatrix,
-        rows: [{
-          id: "row",
-          label: "Row",
-          format: () => ({ text: "x" }),
-        }],
+      .setTables({
+        analysis: {
+          type: TableType.Analysis,
+          rows: [{
+            id: "row",
+            label: "Row",
+            format: () => ({ text: "x" }),
+          }],
+        },
       })
       .setCalculator(() => ({
         resultsByInput: { input1: null, input2: null, input3: null },
