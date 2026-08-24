@@ -9,6 +9,7 @@ import { ModelOutputKey, type ModelOutput, type NumericBand } from "../../../mod
 import {
   ComfortModelBuilder,
   createEmptyResults,
+  defineModel,
   parseEmptyOptions,
   type OutputChartDeclarationInput,
 } from "./builder";
@@ -221,5 +222,47 @@ describe("ComfortModelBuilder capabilities", () => {
       .build()).toThrow(
       /modelQuantity field audit.exampleMass must reference a quantities.extend entry owned by PMV_ASHRAE/,
     );
+  });
+});
+
+describe("defineModel", () => {
+  it("assembles a complete declaration into a runtime definition", () => {
+    const definition = defineModel({
+      id: ComfortModel.PmvAshrae,
+      label: "Test model",
+      description: "Test model description.",
+      standardIds: [],
+      workspaceCapabilities: [WorkspaceCapability.Explore],
+      exploreOutputs: [pmvOutput],
+      modifiers: [],
+      inputFields: [],
+      outputCharts: [createCustomOutputChart()],
+      tables: {
+        analysis: {
+          type: TableType.Analysis,
+          rows: [{
+            id: "test-row",
+            label: "Test row",
+            format: () => ({ text: "value" }),
+          }],
+        },
+      },
+      calculate: () => ({ resultsByInput: createEmptyResults<unknown>(), chartSource: null }),
+      dynamicAxisFields: [
+        PhysicalQuantityId.DryBulbTemperature,
+        PhysicalQuantityId.RelativeHumidity,
+      ],
+      defaultDynamicAxes: {
+        xAxis: PhysicalQuantityId.DryBulbTemperature,
+        yAxis: PhysicalQuantityId.RelativeHumidity,
+      },
+      defaultOptions: {},
+      parseOptions: parseEmptyOptions,
+    });
+
+    expect(definition.id).toBe(ComfortModel.PmvAshrae);
+    expect(definition.outputCharts.defaultInstanceId).toBe("pmv-ashrae-psychrometric");
+    expect(definition.buildChart).toBeTypeOf("function");
+    expect(definition.buildTable).toBeTypeOf("function");
   });
 });

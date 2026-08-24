@@ -84,35 +84,39 @@ When touching state or types, prefer keyed generic records over adding more mode
 ## Model Configuration
 
 Model declarations live in `src/comfortModels/`. The generic authoring/runtime
-contract is in `src/state/comfortTool/modelConfigs/definition.ts`. The builder
-depends on that contract rather than the registry, and the registry only
-registers built runtime definitions. Builder generics preserve model-specific result and chart-source
-types until `build()` erases them once for the controller. Declaration-local
-zones derive chart bands and are not runtime-definition state.
+contract is in `src/state/comfortTool/modelConfigs/definition.ts`. `defineModel`
+is the assembly function for a complete declaration; it uses `ComfortModelBuilder`
+internally. The registry only registers built runtime definitions. Generics
+preserve model-specific result and chart-source types until `build()` erases
+them once for the controller. Declaration-local zones derive chart bands and
+are not runtime-definition state.
 
 Each declaration owns inputs, strict options, request mapping, calculation,
 result rows, charts, modes, outputs, executable modifiers, and any fixed
 Compliance specification. New models must follow this config-driven pattern—do
-not add another hardcoded controller slice.
+not add another hardcoded controller slice. Copy `heatIndex.ts`; do not add
+`defineIndexModel()` or restore preset factories.
 
 Each registered model has one focused declaration entry. That entry makes the
 model's product decisions readable in one place, but stable IDs, the explicit
 registry entry, shared metadata, and tests remain separate files. Simple models
 may keep all implementation in the declaration; larger standard families may
-use focused calculation/chart modules beside complete declarations.
+use focused calculation/chart modules beside complete declarations. PMV and
+Adaptive family modules (two standards, one calculation/chart core) are not
+presets; they may still assemble with `ComfortModelBuilder`.
 
-Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `ChartAxisQuantityId` values, `ChartKind` values, and compare-input identifiers. Chart instance ids live on each declaration’s `setOutputCharts()` entries; do not recreate a parallel `ChartInstanceId` tree. Do not introduce new raw domain strings for those concepts.
+Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `ChartAxisQuantityId` values, `ChartKind` values, and compare-input identifiers. Chart instance ids live on each declaration’s `outputCharts` entries; do not recreate a parallel `ChartInstanceId` tree. Do not introduce new raw domain strings for those concepts.
 
 ## Capabilities, axes, and modifiers
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
-- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts are declared via `setOutputCharts()`. Tables are declared via `setTables({ analysis, timeSeries? })` with `TableType.Analysis` / `TableType.TimeSeries`. PHS Time-series charts stay on `setSimulation({ charts })`. Instance ids are declared on `setOutputCharts()` and derived by the registry. Heat Index / Humidex maps are `ChartKind.DynamicField`. Plan **0p** replaces preset factories with `defineModel` when that slice runs.
+- Every declaration sets `workspaceCapabilities` and `exploreOutputs`; Standard-capable models also set `complianceProfile` with fixed output, non-empty bands, caption, legend title, and feedback. Assemble with `defineModel` (`outputCharts`, `tables`, optional PHS `simulation`). Family modules may still use `ComfortModelBuilder` internally (`setOutputCharts()`, `setTables()`, `setSimulation()`). Instance ids are declared on the model and derived by the registry. Heat Index / Humidex maps are `ChartKind.DynamicField`. Do not restore `src/comfortModels/presets/` or add `defineIndexModel()`.
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; only Explore working bands are serialized, and modifier records contain the complete stable key set.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
 - Use `createFieldRequestAdapter()` for canonical request mapping and `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior. Coupled temperature axes stay in the dynamic-axis solver.
-- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records. Model-scoped extensions come from declaration `.extendQuantities()` (`quantities.extend`); they assemble into the same catalog, stay out of `primaryInputOrder`, and live in sparse `modelInputsByModel`. PHS weight/height SI meta live on the PHS declaration. Mass/length conversion reads catalog SI units; field behaviors must not branch on PHS. `modelQuantity` fields may be declared before assemble; `build()` checks they match that declaration’s extend list, and view-models read catalog meta after assemble.
-- Model `.setModifiers()` receives executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
+- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records. Model-scoped extensions come from declaration `quantities.extend`; they assemble into the same catalog, stay out of `primaryInputOrder`, and live in sparse `modelInputsByModel`. PHS weight/height SI meta live on the PHS declaration. Mass/length conversion reads catalog SI units; field behaviors must not branch on PHS. `modelQuantity` fields may be declared before assemble; `build()` checks they match that declaration’s extend list, and view-models read catalog meta after assemble.
+- `defineModel` `modifiers` (or builder `.setModifiers()`) receive executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
 - Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO; each declaration binds its own `clo_dynamic` standard.
 - Keep Time-series out of Analysis caches and Analysis share snapshots. Time-series is a separate controller (PHS only). `state/timeSeries/modelConfigs.ts` reads the PHS declaration’s `tables.timeSeries`; declaring the table does not create a simulator.
 

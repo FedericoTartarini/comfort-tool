@@ -831,3 +831,95 @@ export class ComfortModelBuilder<
     };
   }
 }
+
+/**
+ * Complete declaration assembled into a runtime model definition.
+ * Chart `spec` stays opaque here; discriminated engine specs are Plan 0a.
+ */
+export interface ModelDeclaration<
+  ResultType,
+  ChartSourceType,
+  ComplianceBand extends Band = NumericBand,
+> {
+  readonly id: ComfortModelType;
+  readonly label: string;
+  readonly description: string;
+  readonly standardIds: readonly StandardIdType[];
+  readonly workspaceCapabilities: readonly WorkspaceCapabilityType[];
+  readonly exploreOutputs: readonly ModelOutput[];
+  readonly modifiers: readonly InputModifier[];
+  readonly complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
+  readonly inputFields: readonly InputFieldSpec[];
+  readonly quantities?: {
+    readonly extend?: readonly QuantityExtension[];
+  };
+  readonly optionHandlersByKey?: Partial<
+    Record<OptionKeyType, ModelOptionChangeHandler>
+  >;
+  readonly outputCharts: readonly OutputChartDeclarationInput[];
+  readonly defaultChartInstanceId?: string;
+  readonly tables: ModelTables<ResultType>;
+  readonly calculate: ComfortModelDefinition<
+    ResultType,
+    ChartSourceType,
+    ComplianceBand
+  >["calculate"];
+  readonly simulation?: SimulationOutputDeclaration;
+  readonly dynamicAxisFields?: readonly ChartAxisQuantityId[];
+  readonly defaultDynamicAxes: DynamicAxisDefaults;
+  readonly defaultOptions: Partial<Record<OptionKeyType, string>>;
+  readonly parseOptions: (value: unknown) => ModelOptionsState | null;
+}
+
+/** Sole assembly function for a complete model declaration. Do not add defineIndexModel(). */
+export function defineModel<
+  ResultType,
+  ChartSourceType,
+  ComplianceBand extends Band = NumericBand,
+>(
+  declaration: ModelDeclaration<ResultType, ChartSourceType, ComplianceBand>,
+): RuntimeComfortModelDefinition {
+  const builder = new ComfortModelBuilder<ResultType, ChartSourceType, ComplianceBand>(
+    declaration.id,
+  );
+
+  builder
+    .setLabel(declaration.label)
+    .setDescription(declaration.description)
+    .setStandardIds(declaration.standardIds)
+    .setWorkspaceCapabilities(declaration.workspaceCapabilities)
+    .setExploreOutputs(declaration.exploreOutputs)
+    .setModifiers(declaration.modifiers)
+    .setOutputCharts(declaration.outputCharts, {
+      defaultInstanceId: declaration.defaultChartInstanceId,
+    })
+    .setInputFields(declaration.inputFields)
+    .setTables(declaration.tables)
+    .setCalculator(declaration.calculate)
+    .setDefaultDynamicAxes(declaration.defaultDynamicAxes)
+    .setDefaultOptions(declaration.defaultOptions)
+    .setOptionParser(declaration.parseOptions);
+
+  if (declaration.complianceProfile) {
+    builder.setComplianceProfile(declaration.complianceProfile);
+  }
+  if (declaration.quantities?.extend) {
+    builder.extendQuantities(declaration.quantities.extend);
+  }
+  if (declaration.optionHandlersByKey) {
+    for (const optionKey of Object.keys(declaration.optionHandlersByKey) as OptionKeyType[]) {
+      const handler = declaration.optionHandlersByKey[optionKey];
+      if (handler) {
+        builder.addOptionHandler(optionKey, handler);
+      }
+    }
+  }
+  if (declaration.simulation) {
+    builder.setSimulation(declaration.simulation);
+  }
+  if (declaration.dynamicAxisFields) {
+    builder.setDynamicAxisFields(declaration.dynamicAxisFields);
+  }
+
+  return builder.build();
+}

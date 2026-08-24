@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { adaptiveRequestAdapter } from "../../comfortModels/adaptive/adaptiveCalculation";
+import { heatIndexRequestAdapter } from "../../comfortModels/heatIndex";
+import { humidexRequestAdapter } from "../../comfortModels/humidex";
 import { phsRequestAdapter } from "../../comfortModels/phs/phs";
 import { pmvRequestAdapter } from "../../comfortModels/pmv/pmvCalculation";
 import { utciRequestAdapter } from "../../comfortModels/utci/utciCalculation";
-import { createFieldRequestAdapter, type FieldRequestAdapter } from "./requestMapping";
+import { windChillRequestAdapter } from "../../comfortModels/windChill";
+import { type FieldRequestAdapter } from "./requestMapping";
 import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../models/physicalQuantities";
 import type { PrimaryQuantityId } from "../../models/physicalQuantities";
 import { InputId, inputDefaultsById } from "../../models/inputSlots";
@@ -13,18 +16,6 @@ import {
   type ModelCalculationContext,
 } from "../../models/modelCalculation";
 import { createAuxiliaryQuantitiesByInput } from "./quantityStateRouting";
-import type { PsychrometricIndexRequestDto } from "../../comfortModels/presets/psychrometricIndexModel";
-import type { OutdoorWindIndexRequestDto } from "../../comfortModels/presets/outdoorWindIndexModel";
-
-const psychrometricIndexRequestAdapter = createFieldRequestAdapter<PsychrometricIndexRequestDto>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  rh: PhysicalQuantityId.RelativeHumidity,
-});
-
-const outdoorWindIndexRequestAdapter = createFieldRequestAdapter<OutdoorWindIndexRequestDto>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  v: PhysicalQuantityId.WindSpeed,
-});
 
 function createContractContext(
   overrides: Partial<Record<PrimaryQuantityId, number>> = {},
@@ -109,6 +100,7 @@ describe("request mapping contract", () => {
   testRequestAdapterContract("UTCI", utciRequestAdapter);
   testRequestAdapterContract("ADAPTIVE", adaptiveRequestAdapter);
   testRequestAdapterContract("PHS", phsRequestAdapter);
-  testRequestAdapterContract("PSYCHROMETRIC_INDEX", psychrometricIndexRequestAdapter);
-  testRequestAdapterContract("OUTDOOR_WIND_INDEX", outdoorWindIndexRequestAdapter);
+  testRequestAdapterContract("HEAT_INDEX", heatIndexRequestAdapter);
+  testRequestAdapterContract("HUMIDEX", humidexRequestAdapter);
+  testRequestAdapterContract("WIND_CHILL", windChillRequestAdapter);
 });

@@ -3,12 +3,14 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
+import { ComfortModel } from "../models/comfortModels";
 import { UnitSystem } from "../models/units";
 import { convertModelOutputFromSi } from "../services/units";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
+import { ChartKind } from "../models/output/chartKinds";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
 
 describe("heatIndex service", () => {
@@ -188,5 +190,17 @@ describe("heatIndex service", () => {
     expect(inputTrace?.hovertemplate).toContain("At or above target");
     expect(String(chart?.layout.xaxis.title)).toContain("Relative humidity");
     expect(String(chart?.layout.yaxis.title)).toContain("Air temperature");
+  });
+
+  it("declares fixed-axis and dynamic field charts from defineModel", () => {
+    expect(heatIndexModelConfig.id).toBe(ComfortModel.HeatIndex);
+    expect(heatIndexModelConfig.outputCharts.defaultInstanceId).toBe("heat-index-ranges");
+    expect(heatIndexModelConfig.outputCharts.entries.map(({ instanceId, kind }) => ({
+      instanceId,
+      kind,
+    }))).toEqual([
+      { instanceId: "heat-index-ranges", kind: ChartKind.DynamicField },
+      { instanceId: "heat-index-dynamic-field", kind: ChartKind.DynamicField },
+    ]);
   });
 });

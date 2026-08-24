@@ -14,7 +14,7 @@ See [Adding a thermal model](adding-a-thermal-model.md) for the model-authoring 
 | `state/workspace`   | Typed Workspace metadata, route/model/mode/share coordination, and pending navigation replay                       | models, comfort-tool controller/registry         |
 | `state/comfortTool` | Rune state, keyed model memory, cache scheduling, pure projections, strict share snapshots                         | models, services, registered runtime definitions |
 | `state/timeSeries`  | Independent keyed scenario state and simulation lifecycle; membership from the PHS `tables.timeSeries` declaration | models, units, PHS Time-series simulator         |
-| `comfortModels`     | Model declarations, calculations, results, chart evaluators, declaration-local zones                               | models, comfort/unit services, model builder     |
+| `comfortModels`     | Model declarations, calculations, results, chart evaluators, declaration-local zones                               | models, comfort/unit services, `defineModel`     |
 | `services/comfort`  | Reusable comfort logic, modifiers, controls, psychrometrics, request/axis adapters, chart engines                  | models                                           |
 | `services/units`    | SI/display conversion and presentation precision                                                                   | models                                           |
 
@@ -152,7 +152,7 @@ State stays keyed by model ID: selected charts, options, chart settings, caches,
 
 ## Charts and presentation cache
 
-Each model declares charts through `setOutputCharts()` with instance ids that live only on the declaration and `ChartKind` specs. The registry derives those ids (`getDeclaredChartInstanceIds`) and uniqueness tests require non-empty per model, unique per model, and unique globally. Chart capabilities (axis selection, Y lock, zone toggle, legend, baseline) are declared per instance or inherited from kind defaults. Explore output narrowing uses `supportedExploreOutputs` and `defaultExploreOutput` on chart entries. Heat Index / Humidex fixed-axis maps are `DynamicField` types with `lockedAxes`, not `Custom`.
+Each model declares charts through `defineModel` `outputCharts` with instance ids that live only on the declaration and `ChartKind` specs. `ComfortModelBuilder.setOutputCharts()` remains for existing internal/family assembly (PMV, Adaptive, UTCI, PHS). The registry derives those ids (`getDeclaredChartInstanceIds`) and uniqueness tests require non-empty per model, unique per model, and unique globally. Chart capabilities (axis selection, Y lock, zone toggle, legend, baseline) are declared per instance or inherited from kind defaults. Explore output narrowing uses `supportedExploreOutputs` and `defaultExploreOutput` on chart entries. Heat Index / Humidex fixed-axis maps are `DynamicField` types with `lockedAxes`, not `Custom`.
 
 Standard and Explore share the field-chart engine via workspace-derived `FieldChartProfile`:
 
@@ -204,25 +204,25 @@ Analysis chart cache. Time-series has no share URL in the current implementation
 Round 2 on branch `better-structure` added reusable building blocks without changing
 canonical SI persistence or Workspace routing:
 
-| Capability                   | Location                                                                                  | Use                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Grid dynamic charts          | `services/comfort/charts/gridModelCharts.ts`                                              | PHS, UTCI Dynamic, psychrometric index models         |
-| Chart-source extensions      | `calculatePerInputWithExtensions()` in `requestMapping.ts`                                | PMV `comfortZonesByInput`                             |
-| Input value presets          | `services/comfort/controls/inputControlPresets.ts` + `setInputFields({ kind: "preset" })` | PMV metabolic/clothing, Adaptive air speed            |
-| Psychrometric index factory  | `comfortModels/presets/psychrometricIndexModel.ts`                                        | Humidex, Heat Index                                   |
-| Plotly presentation shell    | `components/chart/PlotlyChartCard.svelte`                                                 | Analysis chart body, Time-series cards                |
-| Time-series line traces      | `services/comfort/charts/timeSeriesLineChart.ts`                                          | PHS exposure history + Time-series charts             |
-| Initial controller state     | `state/comfortTool/initialComfortToolState.ts`                                            | Factory helpers for rune entry                        |
-| Controller actions/selectors | `comfortToolActions.ts`, `comfortToolSelectors.ts`, `comfortToolInternals.ts`             | Thin rune entry in `createComfortToolState.svelte.ts` |
-| Workspace two-column shell   | `components/layout/WorkspaceTwoColumnLayout.svelte`                                       | Analysis + Time-series page grid                      |
-| Chart export (Time-series)   | `ChartExportDropdown.svelte`, `TimeSeriesChartCard.svelte`                                | Per-chart PNG/SVG on Time-series page                 |
+| Capability                   | Location                                                                               | Use                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Grid dynamic charts          | `services/comfort/charts/gridModelCharts.ts`                                           | PHS, UTCI Dynamic, psychrometric index models         |
+| Chart-source extensions      | `calculatePerInputWithExtensions()` in `requestMapping.ts`                             | PMV `comfortZonesByInput`                             |
+| Input value presets          | `services/comfort/controls/inputControlPresets.ts` + `{ kind: "preset" }` input fields | PMV metabolic/clothing, Adaptive air speed            |
+| Index model declarations     | `comfortModels/heatIndex.ts`, `humidex.ts`, `windChill.ts` via `defineModel`           | Heat Index, Humidex, Wind Chill                       |
+| Plotly presentation shell    | `components/chart/PlotlyChartCard.svelte`                                              | Analysis chart body, Time-series cards                |
+| Time-series line traces      | `services/comfort/charts/timeSeriesLineChart.ts`                                       | PHS exposure history + Time-series charts             |
+| Initial controller state     | `state/comfortTool/initialComfortToolState.ts`                                         | Factory helpers for rune entry                        |
+| Controller actions/selectors | `comfortToolActions.ts`, `comfortToolSelectors.ts`, `comfortToolInternals.ts`          | Thin rune entry in `createComfortToolState.svelte.ts` |
+| Workspace two-column shell   | `components/layout/WorkspaceTwoColumnLayout.svelte`                                    | Analysis + Time-series page grid                      |
+| Chart export (Time-series)   | `ChartExportDropdown.svelte`, `TimeSeriesChartCard.svelte`                             | Per-chart PNG/SVG on Time-series page                 |
 
 **Special-case charts** (not grid assembly): PMV psychrometric, UTCI stress, PHS exposure
 history, Adaptive boundary chart. Time-series remains outside `FieldChartConfig`.
 
 ### Round 2 completion status
 
-Round 2 architecture and finish-out work on `better-structure` is **complete** (grid presets,
+Round 2 architecture and finish-out work on `better-structure` is **complete** (grid helpers,
 controller split, UTCI calculation split, B10 layout/export, full validation matrix).
 
 **Explicitly deferred (not Round 2 gaps):** CI workflow; Time-series in
@@ -233,16 +233,16 @@ controller split, UTCI calculation split, B10 layout/export, full validation mat
 Round 3 on branch `better-structure` finished P0/P1 architecture without changing share
 schema, canonical persistence, or special-chart geometry:
 
-| Capability                 | Location                                                                | Use                                                                        |
-| -------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Outdoor wind index factory | `comfortModels/presets/outdoorWindIndexModel.ts`                        | Wind Chill (tdb + v dynamic grid)                                          |
-| Builder chart registration | `ComfortModelBuilder.setOutputCharts()` with `ChartKind` specs          | UTCI, PHS, psychrometric/outdoor presets                                   |
-| Input field specs          | `services/comfort/controls/fieldInputBehaviors.ts` + `setInputFields()` | Declarative temperature, humidity, wind, preset, and model-quantity blocks |
-| PMV chart module split     | `pmvChartShared.ts`, `pmvPsychrometricChart.ts`, `pmvDynamicChart.ts`   | Readability; `pmvCharts.ts` routes views only                              |
-| Adaptive air-speed preset  | `adaptiveShared.ts` uses `setInputFields({ kind: "preset" })`           | Same pattern as PMV metabolic/clothing                                     |
+| Capability                 | Location                                                                                      | Use                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Index model declarations   | `defineModel` in `heatIndex.ts`, `humidex.ts`, `windChill.ts`                                 | Heat Index, Humidex, Wind Chill (no preset factory)                        |
+| Builder chart registration | `defineModel` `outputCharts` / `ComfortModelBuilder.setOutputCharts()` with `ChartKind` specs | UTCI, PHS, PMV/Adaptive families, index models                             |
+| Input field specs          | `services/comfort/controls/fieldInputBehaviors.ts` + `setInputFields()`                       | Declarative temperature, humidity, wind, preset, and model-quantity blocks |
+| PMV chart module split     | `pmvChartShared.ts`, `pmvPsychrometricChart.ts`, `pmvDynamicChart.ts`                         | Readability; `pmvCharts.ts` routes views only                              |
+| Adaptive air-speed preset  | `adaptiveShared.ts` uses `setInputFields({ kind: "preset" })`                                 | Same pattern as PMV metabolic/clothing                                     |
 
 Grid-capable models declare `ChartKind.DynamicField` entries through
-`setOutputCharts()`, including Heat Index / Humidex fixed-axis maps. PMV psychrometric, UTCI stress, PHS exposure history, and Adaptive
+`outputCharts`, including Heat Index / Humidex fixed-axis maps. PMV psychrometric, UTCI stress, PHS exposure history, and Adaptive
 boundary charts remain special-case geometry in focused modules.
 
 **Explicitly deferred (not Round 3 gaps):** CI workflow; Time-series in `FieldChartConfig`;

@@ -8,7 +8,7 @@ For the current runtime boundaries and state flow, see [Frontend structure summa
 
 ## 1. Add stable IDs and shared metadata
 
-Add the serialized model ID to `ComfortModel`. Declare each chart instance id on `setOutputCharts()`; do not add a parallel `ChartInstanceId` tree. Instance ids must be non-empty per model, unique per model, and unique globally. Add a `ModelOutputKey` and its unit-presentation metadata only when the model exposes a genuinely new output. Reuse existing constants instead of introducing inline domain strings for model, quantity, and chart-kind identifiers.
+Add the serialized model ID to `ComfortModel`. Declare each chart instance id on `outputCharts`; do not add a parallel `ChartInstanceId` tree. Instance ids must be non-empty per model, unique per model, and unique globally. Add a `ModelOutputKey` and its unit-presentation metadata only when the model exposes a genuinely new output. Reuse existing constants instead of introducing inline domain strings for model, quantity, and chart-kind identifiers.
 
 Physical quantities are a **system seed** in `src/models/physicalQuantities.ts` plus optional declaration contributions:
 
@@ -19,7 +19,7 @@ Physical quantities are a **system seed** in `src/models/physicalQuantities.ts` 
 
 Runtime code reads the **assembled** catalog (`system seed ∪ declarations[].quantities.extend`). Registry assemble fails on duplicate ids or wrong owners.
 
-If the model needs a new persisted primary input, add a `PhysicalQuantityId`, metadata with `state: QuantityState.Primary` and `inPrimaryOrder: true`, and extend `primaryInputOrder`. That is frontend work, not declaration-only work. Model-scoped inputs use builder `.extendQuantities([{ id, owner: this model, scope: model, SI meta }])` and surface them through `setInputFields({ kind: "modelQuantity", … })` when they belong on the Analysis panel. Extended quantities must not enter `primaryInputOrder` or the global share primary record; they live in sparse `modelInputsByModel`.
+If the model needs a new persisted primary input, add a `PhysicalQuantityId`, metadata with `state: QuantityState.Primary` and `inPrimaryOrder: true`, and extend `primaryInputOrder`. That is frontend work, not declaration-only work. Model-scoped inputs use `quantities.extend: [{ id, owner: this model, scope: model, SI meta }]` and surface them through `inputFields: [{ kind: "modelQuantity", … }]` when they belong on the Analysis panel. Extended quantities must not enter `primaryInputOrder` or the global share primary record; they live in sparse `modelInputsByModel`.
 
 Modifier extra inputs are catalog slot quantities (`state: QuantityState.Slot`, `modifierId`). Do not add derived or chart-only coordinates, such as dew point or operative temperature, to `primaryInputOrder`.
 
@@ -28,7 +28,7 @@ Modifier extra inputs are catalog slot quantities (`state: QuantityState.Slot`, 
 Create the registered declaration under `src/comfortModels/`. It must make the following product decisions visible without inspecting the controller:
 
 - stable identity, label, and description;
-- `setInputFields()` specs, any `.extendQuantities()` contributions, option handlers, complete default options, and an exact parser;
+- `inputFields` specs, any `quantities.extend` contributions, option handlers, complete default options, and an exact parser;
 - request mapping and calculation;
 - result rows and charts;
 - declaration-local `ThermalZone` values and derived bands;
@@ -37,7 +37,9 @@ Create the registered declaration under `src/comfortModels/`. It must make the f
 - executable input modifiers in application order;
 - chart definitions, selectable axes, and default axis pair.
 
-Use `ComfortModelBuilder<Result, ChartSource, ComplianceBand = NumericBand>` so result, chart-source, and Compliance-band types remain specific while the declaration is assembled. Numeric-band models normally specify only the first two type arguments; models with functional band edges, such as Adaptive, pass `Band` as the third. `build()` is the single boundary that returns a non-generic `RuntimeComfortModelDefinition` for the registry and controller.
+Use `defineModel<Result, ChartSource, ComplianceBand = NumericBand>({ ... })` so result, chart-source, and Compliance-band types remain specific while the declaration is assembled. Numeric-band models normally specify only the first two type arguments; models with functional band edges, such as Adaptive, pass `Band` as the third. `defineModel` is the sole assembly function; it erases those generics once into a `RuntimeComfortModelDefinition` for the registry and controller. Copy `src/comfortModels/heatIndex.ts` as a full declaration. Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`.
+
+PMV and Adaptive keep family modules (two standards, one calculation/chart core). Those are not presets. They may still assemble with `ComfortModelBuilder` internally.
 
 Keep each threshold in one `ThermalZone` declaration and derive numeric bands from those zones:
 
@@ -90,7 +92,7 @@ Connection flow:
 physicalQuantities.ts (system seed)
   -> registry assemble (seed ∪ quantities.extend)
   -> quantitiesByInput / effectiveQuantitiesByInput / modelInputsByModel (state)
-  -> createFieldRequestAdapter map (model *Calculation.ts)
+  -> createFieldRequestAdapter map (declaration file, or family *Calculation.ts)
   -> Request DTO (jstc short names)
   -> jsthermalcomfort
 ```
@@ -101,15 +103,15 @@ All requests, chart coordinates, calculations, and band edges are canonical SI.
 
 ## 4. Declare controls and exact options
 
-Declare the visible input panel through `builder.setInputFields()` using `InputFieldSpec` kinds resolved in `services/comfort/controls/fieldInputBehaviors.ts`:
+Declare the visible input panel through `defineModel` `inputFields` (or builder `setInputFields()`) using `InputFieldSpec` kinds resolved in `services/comfort/controls/fieldInputBehaviors.ts`:
 
 - `numeric` — ordinary canonical primary fields;
 - `operativeTemperature` / `radiantTemperature` — explicit Air/Operative support;
 - `occupantAirSpeed` / `outdoorWindSpeed` — shared air/wind menus;
 - `simpleHumidity` / `advancedHumidity` — RH-only vs multi-mode humidity;
 - `preset` — metabolic/clothing menus via `InputPresetKey`;
-- `modelQuantity` — model-scoped quantities contributed with `.extendQuantities()`.
-  `.extendQuantities()` and `setInputFields({ kind: "modelQuantity" })` may be called in either order. The builder checks that every `modelQuantity` field is an extend entry owned by that declaration. Control labels, ranges, and conversion read the assembled catalog at view-model time, not while the declaration is being built.
+- `modelQuantity` — model-scoped quantities contributed with `quantities.extend`.
+  `quantities.extend` and `{ kind: "modelQuantity" }` fields may be declared in either order. Assemble checks that every `modelQuantity` field is an extend entry owned by that declaration. Control labels, ranges, and conversion read the assembled catalog at view-model time, not while the declaration is being built.
 
 Control behaviors construct view models and apply numeric input only. Model `optionHandlersByKey` is the sole option-change path.
 
@@ -119,11 +121,11 @@ The calculation manager runs that parser once at the model boundary. `ModelCalcu
 
 ## 5b. Declare output tables and charts
 
-Use the model builder output APIs instead of adding controller branches:
+Use the `defineModel` output fields instead of adding controller branches:
 
-- `.setTables({ analysis, timeSeries? })` with `TableType.Analysis` for multi-input Analysis tables
+- `tables: { analysis, timeSeries? }` with `TableType.Analysis` for multi-input Analysis tables
 - `TableType.TimeSeries` on `tables.timeSeries` for PHS Time-series metric tiles (allowed only with Time-series workspace capability)
-- `.setOutputCharts([...], { defaultInstanceId })` with instance ids that live only on the declaration and typed `ChartKind` specs. Heat Index / Humidex fixed-axis maps use `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
+- `outputCharts` plus `defaultChartInstanceId` with instance ids that live only on the declaration and typed `ChartKind` specs. Heat Index / Humidex fixed-axis maps use `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
 
 Declare `workspaceCapabilities` explicitly (`Standard`, `Explore`, and/or `TimeSeries`). Compliance/Explore field charts share `fieldChartProfile` inputs; presentation-only changes rebuild from the calculation cache.
 
@@ -132,27 +134,26 @@ Declare `workspaceCapabilities` explicitly (`Standard`, `Explore`, and/or `TimeS
 Every declaration explicitly sets Standard membership, workspace capabilities, and explore outputs:
 
 ```ts
-builder
-  .setStandardIds([])
-  .setWorkspaceCapabilities([WorkspaceCapability.Explore])
-  .setExploreOutputs([output]);
+standardIds: [],
+workspaceCapabilities: [WorkspaceCapability.Explore],
+exploreOutputs: [output],
 ```
 
 Use stable `StandardId` values for Standard-capable declarations, for example
-`.setStandardIds([StandardId.Ashrae55])`. The builder rejects duplicate Standard IDs, a
+`standardIds: [StandardId.Ashrae55]`. Assemble rejects duplicate Standard IDs, a
 Standard model with no Standard ID, and a Standard declaration without compliance support.
-Models that do not belong to a Standard must call `.setStandardIds([])` explicitly.
+Models that do not belong to a Standard must set `standardIds: []` explicitly.
 
 Standard workspace model lists are derived from `standardIds`. Explore availability is
 independent and comes from `workspaceCapabilities.includes(WorkspaceCapability.Explore)`; do not add a
-second navigation list. Time-series support is declared with `tables.timeSeries` plus `setSimulation({ charts })` on the PHS declaration and must not be mixed into Analysis share snapshots.
+second navigation list. Time-series support is declared with `tables.timeSeries` plus `simulation.charts` on the PHS declaration and must not be mixed into Analysis share snapshots.
 
-Explore requires at least one output with valid numeric SI bands. A Standard-capable model also declares a fixed output, non-empty bands, caption, legend title, and result feedback callback through `setComplianceProfile()`. Standard workspace output and bands always come from `complianceProfile`; Explore uses the selected output and its editable working bands.
+Explore requires at least one output with valid numeric SI bands. A Standard-capable model also declares a fixed output, non-empty bands, caption, legend title, and result feedback callback through `complianceProfile`. Standard workspace output and bands always come from `complianceProfile`; Explore uses the selected output and its editable working bands.
 
 The Explore toolbar shows an Output selector only when the selected chart supports more than
 one entry. By default this is the model's complete `exploreOutputs` list. A chart that can
 render only a subset declares `supportedExploreOutputs` and `defaultExploreOutput` on its
-`setOutputCharts` entry; the builder rejects unknown or inconsistent output keys. Use
+`outputCharts` entry; the assembler rejects unknown or inconsistent output keys. Use
 `allowsBaselineSelection: false` in chart capabilities only when a chart has no meaningful baseline-input comparison.
 Single-output charts still expose their threshold editor without rendering a redundant
 selector. Chart changes are presentation-only and normalize the selected output to the
@@ -167,41 +168,32 @@ PMV ASHRAE/ISO and Adaptive ASHRAE/EN remain separate registered declarations. N
 
 Each standard declaration must still show all standard-specific decisions.
 
-### Shared presets and grid charts (Round 2)
+### Shared engines and grid charts
 
-Reuse shared capabilities before adding bespoke chart or control code:
+Reuse shared engines before adding bespoke chart or control code. Do not restore preset factories.
 
-- **Psychrometric index models** (tdb + rh): `buildPsychrometricIndexModelConfig()` in
-  `comfortModels/presets/psychrometricIndexModel.ts` (Humidex / Heat Index pattern).
 - **Grid Dynamic charts**: `GridModelChartSpec` + `buildGridModelChart()` in
   `services/comfort/charts/gridModelCharts.ts` for two-axis banded field charts.
+  Copy `heatIndex.ts` for a tdb + rh index; copy `windChill.ts` for a tdb + v index.
   Heat Index / Humidex maps are `ChartKind.DynamicField` with `lockedAxes`.
 - **Extended chart sources**: `calculatePerInputWithExtensions()` when `chartSource` needs
   per-input maps beyond `inputs` (PMV comfort zones).
 - **Input value presets**: `InputPresetKey` catalog in
-  `services/comfort/controls/inputControlPresets.ts` with `setInputFields({ kind: "preset", … })`.
-- **Declarative result rows**: `setTables({ analysis: { type: TableType.Analysis, rows } })`; runtime assembly goes through `buildCompareMatrixTable()` in `services/comfort/output/tableResolver.ts`.
-
-Non-grid chart geometry (PMV psychrometric, UTCI stress, PHS exposure history, Adaptive
-boundary) is declared through `setOutputCharts()` with the appropriate `ChartKind` (`Custom`,
-`BandScalar`, `BoundaryRegion`, `TimeSeriesLine`). Time-series simulation charts use
-`ChartKind.TimeSeriesLine` via `setSimulation()`; Analysis field charts use `DynamicField` or
-`Custom`, not a separate chart-builder API.
-
-### Shared presets and builder chart registration (Round 3)
-
-Reuse builder registration APIs before wiring charts manually:
-
-- **Outdoor wind index models** (tdb + v): `buildOutdoorWindIndexModelConfig()` in
-  `comfortModels/presets/outdoorWindIndexModel.ts` (Wind Chill pattern).
-- **Grid dynamic charts**: declare `ChartKind.DynamicField` entries in `setOutputCharts()` with
-  `GridModelChartSpec` resolved per profile. The spec may be static or a `(context) => spec`
-  factory when band labels depend on presentation context (PHS). Fixed-axis Heat Index /
-  Humidex maps also use `DynamicField` with `lockedAxes`.
-- **Non-grid charts**: declare the matching kind in `setOutputCharts()` — `ChartKind.Custom`
+  `services/comfort/controls/inputControlPresets.ts` with `{ kind: "preset", … }` input fields.
+- **Declarative result rows**: `tables.analysis` with `TableType.Analysis`; runtime assembly
+  goes through `buildCompareMatrixTable()` in `services/comfort/output/tableResolver.ts`.
+- **Grid dynamic charts on a declaration**: `ChartKind.DynamicField` entries in `outputCharts`
+  with `GridModelChartSpec` resolved per profile. The spec may be static or a `(context) => spec`
+  factory when band labels depend on presentation context (PHS).
+- **Non-grid charts**: declare the matching kind in `outputCharts` — `ChartKind.Custom`
   (PMV psychrometric), `ChartKind.BandScalar` (UTCI stress), `ChartKind.BoundaryRegion`
   (Adaptive), `ChartKind.TimeSeriesLine` (PHS exposure history). The ChartKind resolver in
   `services/comfort/charts/kinds/` dispatches build logic; do not add controller branches.
+
+Non-grid chart geometry (PMV psychrometric, UTCI stress, PHS exposure history, Adaptive
+boundary) is declared through `outputCharts` with the appropriate `ChartKind`. Time-series
+simulation charts use `ChartKind.TimeSeriesLine` via `simulation.charts`; Analysis field
+charts use `DynamicField` or `Custom`, not a separate chart-builder API.
 
 ### Optional Time-series support
 
@@ -213,7 +205,7 @@ simulator; the PHS simulator stays in `phsTimeSeries.ts`.
 
 Keep editor controls, draft validation, and asynchronous `simulate()` on the Time-series
 simulator module. Declare Time-series **charts** on the unified comfort model config via
-`setSimulation({ charts })`. The Time-series controller reads summary rows from
+`simulation: { charts }`. The Time-series controller reads summary rows from
 `tables.timeSeries` and chart builders from `getModelSimulationOutput(modelId)`. Do not put
 segment durations or physiological carry state into canonical Analysis input/share records.
 
@@ -234,9 +226,9 @@ requires one.
 
 ## 6. Attach executable modifiers
 
-`setModifiers()` receives actual `InputModifier` declarations, not IDs. The global catalogue contains only the stable UI/share ID and extra-input schema.
+`setModifiers()` / `defineModel` `modifiers` receive actual `InputModifier` declarations, not IDs. The global catalogue contains only the stable UI/share ID and extra-input schema.
 
-Models with no modifiers call `.setModifiers([])`. Supported modifiers must appear in the fixed global order:
+Models with no modifiers call `.setModifiers([])` or `modifiers: []`. Supported modifiers must appear in the fixed global order:
 
 ```text
 Measured Air Speed -> Morning Clothing Estimate -> Dynamic Clothing -> Solar Gain
@@ -268,39 +260,37 @@ Only non-default model-scoped values and configured modifier quantities are seri
 
 ## 7. Declare model-owned charts
 
-All chart output belongs to `setOutputCharts()` with declaration-owned instance ids and typed kind specs. The registry derives those ids from `outputCharts.entries`; do not recreate a second legend/lock array or id tree beside `setOutputCharts()`.
+All chart output belongs to `outputCharts` with declaration-owned instance ids and typed kind specs. The registry derives those ids from `outputCharts.entries`; do not recreate a second legend/lock array or id tree beside `outputCharts`.
 
 ```ts
 import { ChartKind } from "../models/output/chartKinds";
 
-builder.setOutputCharts(
-  [
-    {
-      instanceId: "example-dynamic-field",
-      kind: ChartKind.DynamicField,
-      name: "Dynamic",
-      emptyMessage: "No dynamic chart yet.",
-      capabilities: {
-        allowsAxisSelection: true,
-        locksYAxis: false,
-        showsLegend: true,
-      },
-      spec: {
-        title: "Example Dynamic Chart",
-        axisFields: [
-          PhysicalQuantityId.DryBulbTemperature,
-          PhysicalQuantityId.RelativeHumidity,
-        ],
-        resolveGridSpec: () => gridSpec,
-      },
+outputCharts: [
+  {
+    instanceId: "example-dynamic-field",
+    kind: ChartKind.DynamicField,
+    name: "Dynamic",
+    emptyMessage: "No dynamic chart yet.",
+    capabilities: {
+      allowsAxisSelection: true,
+      locksYAxis: false,
+      showsLegend: true,
     },
-  ],
-  { defaultInstanceId: "example-dynamic-field" },
-);
+    spec: {
+      title: "Example Dynamic Chart",
+      axisFields: [
+        PhysicalQuantityId.DryBulbTemperature,
+        PhysicalQuantityId.RelativeHumidity,
+      ],
+      resolveGridSpec: () => gridSpec,
+    },
+  },
+],
+defaultChartInstanceId: "example-dynamic-field",
 ```
 
 When a model offers both a dedicated/fixed chart and a Dynamic chart, use the
-dedicated chart as `defaultId`. Use Dynamic as the initial default only when the model
+dedicated chart as `defaultChartInstanceId`. Use Dynamic as the initial default only when the model
 has no other chart. This is an explicit declaration convention rather than a Builder
 invariant; do not infer the default from chart names at runtime.
 
@@ -309,25 +299,27 @@ Then declare the complete selectable field set and a supported, distinct default
 ```ts
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 
-builder
-  .setDynamicAxisFields([
-    PhysicalQuantityId.DryBulbTemperature,
-    PhysicalQuantityId.RelativeHumidity,
-  ])
-  .setDefaultDynamicAxes({
-    xAxis: PhysicalQuantityId.DryBulbTemperature,
-    yAxis: PhysicalQuantityId.RelativeHumidity,
-  });
+dynamicAxisFields: [
+  PhysicalQuantityId.DryBulbTemperature,
+  PhysicalQuantityId.RelativeHumidity,
+],
+defaultDynamicAxes: {
+  xAxis: PhysicalQuantityId.DryBulbTemperature,
+  yAxis: PhysicalQuantityId.RelativeHumidity,
+},
 ```
 
 Fixed and selectable field charts consume the same active `FieldChartConfig`. Mode, chart, axis, baseline, Explore output/bands, unit, and zone visibility are presentation-only and rebuild from a ready cache without scheduling a calculation.
 
 ## 8. Build, register, and test
 
-Set the calculator, result builder, chart builder, complete defaults/parser, axes, and other required declarations, then export the built runtime definition:
+Export the assembled runtime definition from `defineModel`:
 
 ```ts
-export const exampleModelConfig = builder.build();
+export const exampleModelConfig = defineModel({
+  id: ComfortModel.HeatIndex,
+  /* complete declaration — copy heatIndex.ts */
+});
 ```
 
 Import it into `src/state/comfortTool/modelConfigs/index.ts` and add one explicit `comfortModelConfigs` entry. The registry must remain `Record<ComfortModel, RuntimeComfortModelDefinition>`; the controller consumes that runtime contract without model-specific casts or branches.
