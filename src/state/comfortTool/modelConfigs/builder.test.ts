@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { ComfortModel } from "../../../models/comfortModels";
 import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
-import { ChartInstanceId } from "../../../models/output/chartInstances";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableLayout } from "../../../models/output/tableLayouts";
 import { ModelOutputKey, type ModelOutput, type NumericBand } from "../../../models/modelCapabilities";
@@ -25,7 +24,7 @@ const pmvOutput: ModelOutput = {
 };
 
 function createCustomOutputChart(
-  instanceId: string = ChartInstanceId.PmvAshrae.Psychrometric,
+  instanceId: string = "pmv-ashrae-psychrometric",
 ): OutputChartDeclarationInput {
   return {
     instanceId,
@@ -70,7 +69,7 @@ describe("ComfortModelBuilder capabilities", () => {
   it("builds a complete minimal validated configuration snapshot", () => {
     const definition = createExploreBuilder().build();
     expect(definition.outputCharts.defaultInstanceId).toBe(
-      ChartInstanceId.PmvAshrae.Psychrometric,
+      "pmv-ashrae-psychrometric",
     );
     expect(definition.buildChart).toBeTypeOf("function");
   });

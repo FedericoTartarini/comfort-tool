@@ -31,8 +31,6 @@ import { downsamplePhsHistorySamples } from "./phsTimeSeriesCharts";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
-import { ChartInstanceId } from "../../models/output/chartInstances";
-
 function segment(
   id: string,
   durationMinutes: number,
@@ -195,23 +193,23 @@ describe("PHS ISO 7933:2023", () => {
       },
     } as const;
     const exposureChart = buildChartPlotly(phsModelConfig,
-      ChartInstanceId.Phs2023.ExposureHistory,
+      "phs-exposure-history",
       chartSource,
       resultsByInput,
       complianceContext,
     );
     const fieldChart = buildChartPlotly(phsModelConfig,
-      ChartInstanceId.Phs2023.DynamicField,
+      "phs-dynamic-field",
       chartSource,
       resultsByInput,
       complianceContext,
     );
 
     expect(phsModelConfig.id).toBe(ComfortModel.Phs2023);
-    expect(phsModelConfig.outputCharts.defaultInstanceId).toBe(ChartInstanceId.Phs2023.ExposureHistory);
+    expect(phsModelConfig.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
     expect(phsModelConfig.outputCharts.entries.map(({ instanceId }) => instanceId)).toEqual([
-      ChartInstanceId.Phs2023.ExposureHistory,
-      ChartInstanceId.Phs2023.DynamicField,
+      "phs-exposure-history",
+      "phs-dynamic-field",
     ]);
     expect(exposureChart?.traces.map(({ name }) => name)).toEqual([
       "Rectal temperature",
@@ -228,7 +226,7 @@ describe("PHS ISO 7933:2023", () => {
   it("uses an edited Explore rectal-temperature threshold on exposure history", () => {
     const result = analysisResult();
     const chart = buildChartPlotly(phsModelConfig,
-      ChartInstanceId.Phs2023.ExposureHistory,
+      "phs-exposure-history",
       { inputs: { [InputId.Input1]: phsReferenceEnvironment } },
       {
         [InputId.Input1]: result,

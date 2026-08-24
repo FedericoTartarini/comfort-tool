@@ -118,7 +118,7 @@ Important invariants:
 - Each registered model has one focused declaration entry. Stable IDs, explicit registry entries, shared metadata, and tests remain separate concerns.
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Derived and chart-only quantities use `PhysicalQuantityId` / `ChartAxisQuantityId` but never enter primary records.
 - Model options are complete and exact. Parsers reject missing, extra, or illegal values; internal invalid state throws.
-- Each model declares output charts via `setOutputCharts()` with stable `ChartInstanceId` values. There is no global chart metadata registry.
+- Each model declares output charts via `setOutputCharts()` with instance ids that live only on the declaration. The registry derives those ids; there is no parallel `ChartInstanceId` tree.
 - Compliance and Explore use the same field-chart engine. Presentation-only changes never stale calculation caches.
 - Base inputs (`quantitiesByInput`) and modifier configuration are stored separately; effective SI inputs are derived through Measured Air Speed, Morning Clothing Estimate, Dynamic Clothing, and Solar Gain in that fixed order when declared by the model, then exposed as `effectiveQuantitiesByInput` in `ModelCalculationContext`.
 - `createRequestAxisAdapter()` extends one canonical request map with field aliases and explicit operative-temperature behavior instead of duplicating chart-axis switches.

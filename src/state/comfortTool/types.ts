@@ -27,7 +27,7 @@ import type {
   NumericBand,
 } from "../../models/modelCapabilities";
 import type { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
-import type { ChartInstanceDeclaration } from "../../models/output/chartInstances";
+import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
 import type { FieldChartProfile } from "../../models/output/fieldChartProfile";
 import type { WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
 import type { ShareStateSnapshot } from "./shareState";

@@ -26,8 +26,6 @@ import type { PhsResponseDto } from "../../models/phs";
 import { createComfortToolState } from "./createComfortToolState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
-import { ChartInstanceId } from "../../models/output/chartInstances";
-
 function syncWorkspaceToModel(
   toolState: ReturnType<typeof createComfortToolState>,
   modelId: ComfortModel,
@@ -105,15 +103,15 @@ describe("createComfortToolState", () => {
 
     expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
     expect(toolState.state.ui.selectedChartInstanceByModel).toEqual({
-      [ComfortModel.PmvAshrae]: ChartInstanceId.PmvAshrae.Psychrometric,
-      [ComfortModel.PmvIso]: ChartInstanceId.PmvIso.Psychrometric,
-      [ComfortModel.Utci]: ChartInstanceId.Utci.StressBand,
-      [ComfortModel.AdaptiveAshrae]: ChartInstanceId.AdaptiveAshrae.Boundary,
-      [ComfortModel.AdaptiveEn]: ChartInstanceId.AdaptiveEn.Boundary,
-      [ComfortModel.HeatIndex]: ChartInstanceId.HeatIndex.Ranges,
-      [ComfortModel.Humidex]: ChartInstanceId.Humidex.Ranges,
-      [ComfortModel.WindChill]: ChartInstanceId.WindChill.DynamicField,
-      [ComfortModel.Phs2023]: ChartInstanceId.Phs2023.ExposureHistory,
+      [ComfortModel.PmvAshrae]: "pmv-ashrae-psychrometric",
+      [ComfortModel.PmvIso]: "pmv-iso-psychrometric",
+      [ComfortModel.Utci]: "utci-stress-band",
+      [ComfortModel.AdaptiveAshrae]: "adaptive-ashrae-boundary",
+      [ComfortModel.AdaptiveEn]: "adaptive-en-boundary",
+      [ComfortModel.HeatIndex]: "heat-index-ranges",
+      [ComfortModel.Humidex]: "humidex-ranges",
+      [ComfortModel.WindChill]: "wind-chill-dynamic-field",
+      [ComfortModel.Phs2023]: "phs-exposure-history",
     });
     expect(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvAshrae])
       .not.toBe(toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]);
@@ -622,19 +620,19 @@ describe("createComfortToolState", () => {
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
 
     expect(toolState.selectors.getCurrentChartInstanceId())
-      .toBe(ChartInstanceId.Phs2023.ExposureHistory);
+      .toBe("phs-exposure-history");
     expect(getOutputSettings(toolState).exploreOutput)
       .toBe(ModelOutputKey.PhsRectalTemperature);
     expect(toolState.selectors.getChartControlsViewModel().explore?.outputs.map(
       ({ key }) => key,
     )).toEqual([ModelOutputKey.PhsRectalTemperature]);
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.Phs2023.DynamicField);
+    toolState.actions.setSelectedChartInstance("phs-dynamic-field");
     toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
     expect(getOutputSettings(toolState).exploreOutput)
       .toBe(ModelOutputKey.PhsWaterLoss);
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.Phs2023.ExposureHistory);
+    toolState.actions.setSelectedChartInstance("phs-exposure-history");
     expect(getOutputSettings(toolState).exploreOutput)
       .toBe(ModelOutputKey.PhsRectalTemperature);
     toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
@@ -710,7 +708,7 @@ describe("createComfortToolState", () => {
     const toolState = createComfortToolState();
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setChartBaselineInputId(InputId.Input2);
 
     expect(toolState.selectors.getChartControlsViewModel().baseline?.selectedInputId)
@@ -732,7 +730,7 @@ describe("createComfortToolState", () => {
     const toolState = createComfortToolState();
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setChartBaselineInputId(InputId.Input2);
 
     const compliance = getProfileBadgeControl(toolState);
@@ -757,7 +755,7 @@ describe("createComfortToolState", () => {
 
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Compliance);
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.Psychrometric);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-psychrometric");
     const fixed = toolState.selectors.getChartControlsViewModel();
     expect(fixed.profileBadge?.profileKind).toBe(FieldChartProfileKind.Compliance);
     expect(fixed.baseline?.selectedInputId).toBe(InputId.Input1);
@@ -769,7 +767,7 @@ describe("createComfortToolState", () => {
     expect(fixedExplore.profileBadge?.caption).toContain("fixed axes");
     expect(fixedExplore.explore?.profile.kind).toBe(FieldChartProfileKind.Explore);
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Explore);
     expect(toolState.selectors.getChartControlsViewModel().axes).not.toBeUndefined();
 
@@ -778,7 +776,7 @@ describe("createComfortToolState", () => {
     const adaptive = getProfileBadgeControl(toolState);
     expect(adaptive.profileKind).toBe(FieldChartProfileKind.Compliance);
     expect(adaptive.caption).toContain("ASHRAE 55 80% and 90%");
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.AdaptiveAshrae.Boundary);
+    toolState.actions.setSelectedChartInstance("adaptive-ashrae-boundary");
     const adaptiveControls = toolState.selectors.getChartControlsViewModel();
     expect(adaptiveControls.profileBadge?.profileKind).toBe(FieldChartProfileKind.Compliance);
     expect(adaptiveControls.baseline?.selectedInputId).toBe(InputId.Input1);
@@ -797,7 +795,7 @@ describe("createComfortToolState", () => {
     const utci = getProfileBadgeControl(toolState);
     expect(utci.profileKind).toBe(FieldChartProfileKind.Explore);
     expect(utci.caption).toContain("Showing UTCI");
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.Utci.StressBand);
+    toolState.actions.setSelectedChartInstance("utci-stress-band");
     const utciFixed = toolState.selectors.getChartControlsViewModel();
     expect(utciFixed.profileBadge?.profileKind).toBe(FieldChartProfileKind.Explore);
     expect(utciFixed.baseline?.selectedInputId).toBe(InputId.Input1);
@@ -824,7 +822,7 @@ describe("createComfortToolState", () => {
       expect(toolState.state.ui.isLoading).toBe(false);
     };
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     assertCalculationIdentity();
     expect(toolState.selectors.getCurrentChartResult()?.layout.title)
       .toContain("Dynamic Chart");
@@ -986,8 +984,8 @@ describe("createComfortToolState", () => {
       { min: 15, max: Infinity, label: "Other", color: "#f00" },
     ]);
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.Psychrometric);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-psychrometric");
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
     toolState.actions.setChartBaselineInputId(InputId.Input2);
     expect(getOutputSettings(toolState).exploreBands![0].label).toBe("Preferred");
@@ -1024,9 +1022,9 @@ describe("createComfortToolState", () => {
     expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Ppd);
     expect(getOutputSettings(toolState).exploreBands![0].label).toBe("Preferred");
     expect(toolState.state.ui.selectedChartInstanceByModel[ComfortModel.PmvAshrae])
-      .toBe(ChartInstanceId.PmvAshrae.Psychrometric);
+      .toBe("pmv-ashrae-psychrometric");
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Explore);
     expect(toolState.selectors.getChartControlsViewModel().axes?.x.selectedField)
       .toBe(PhysicalQuantityId.MeanRadiantTemperature);
@@ -1040,7 +1038,7 @@ describe("createComfortToolState", () => {
 
   it("round-trips field-chart settings in the strict v1 share snapshot", async () => {
     const toolState = createComfortToolState();
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
     toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
     toolState.actions.setExploreBands([
@@ -1055,9 +1053,9 @@ describe("createComfortToolState", () => {
 
     expect(snapshot.version).toBe(1);
     expect(snapshot.models[ComfortModel.PmvAshrae].selectedChartInstanceId)
-      .toBe(ChartInstanceId.PmvAshrae.DynamicField);
+      .toBe("pmv-ashrae-dynamic-field");
     expect(toolState.state.ui.selectedChartInstanceByModel[ComfortModel.PmvAshrae])
-      .toBe(ChartInstanceId.PmvAshrae.DynamicField);
+      .toBe("pmv-ashrae-dynamic-field");
     expect(snapshot.models[ComfortModel.PmvAshrae].outputSettings)
       .toEqual(expect.objectContaining({
         baselineInputId: InputId.Input2,
@@ -1075,7 +1073,7 @@ describe("createComfortToolState", () => {
     const controls = toolState.selectors.getChartControlsViewModel();
 
     expect(toolState.selectors.getCurrentChartInstances()).toEqual([
-      expect.objectContaining({ instanceId: ChartInstanceId.AdaptiveAshrae.Boundary, name: "Adaptive" }),
+      expect.objectContaining({ instanceId: "adaptive-ashrae-boundary", name: "Adaptive" }),
     ]);
     expect(settings).toEqual(expect.objectContaining({
       xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
@@ -1141,7 +1139,7 @@ describe("createComfortToolState", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.Utci;
     syncWorkspaceToModel(toolState, ComfortModel.Utci);
-    toolState.state.ui.selectedChartInstanceByModel[ComfortModel.Utci] = ChartInstanceId.Utci.DynamicField;
+    toolState.state.ui.selectedChartInstanceByModel[ComfortModel.Utci] = "utci-dynamic-field";
     const settings = getOutputSettings(toolState);
     settings.xAxis = PhysicalQuantityId.WindSpeed;
     settings.yAxis = PhysicalQuantityId.OperativeTemperature;
@@ -1176,8 +1174,8 @@ describe("createComfortToolState", () => {
       const toolState = createComfortToolState();
       toolState.state.ui.selectedModel = modelId;
       toolState.state.ui.selectedChartInstanceByModel[modelId] = modelId === ComfortModel.PmvIso
-        ? ChartInstanceId.PmvIso.DynamicField
-        : ChartInstanceId.PmvAshrae.DynamicField;
+        ? "pmv-iso-dynamic-field"
+        : "pmv-ashrae-dynamic-field";
       const settings = getOutputSettings(toolState, modelId);
       settings.xAxis = PhysicalQuantityId.RelativeAirSpeed;
       settings.yAxis = PhysicalQuantityId.OperativeTemperature;
@@ -1561,7 +1559,7 @@ describe("createComfortToolState", () => {
     expect(toolState.selectors.getChartControlsViewModel().profileBadge.feedback?.passes)
       .toBe(result.isCompliant);
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
     const marker = toolState.selectors.getCurrentChartResult()?.traces.find((trace) => (
       trace.name === "Input 1" && trace.mode === "markers"
@@ -1702,7 +1700,7 @@ describe("createComfortToolState", () => {
 
   it("rebuilds chart markers after input changes instead of reusing memoized chart builds", async () => {
     const toolState = createComfortToolState();
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.DryBulbTemperature);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);

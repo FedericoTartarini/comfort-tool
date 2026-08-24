@@ -48,8 +48,6 @@ import { predictClothingInsulation as predictClothingInsulationFromService } fro
 import { createModelCalculationContext } from "../../models/modelCalculation";
 import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
-import { ChartInstanceId } from "../../models/output/chartInstances";
-
 const pmvPayload = {
   tdb: 26,
   tr: 26,
@@ -249,7 +247,7 @@ describe("comfort services", () => {
 
   it("builds PMV and UTCI charts from typed requests", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartInstanceId.PmvAshrae.Psychrometric,
+      "pmv-ashrae-psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
@@ -324,7 +322,7 @@ describe("comfort services", () => {
 
   it("keeps PMV psychrometric supersaturated grid cells empty", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartInstanceId.PmvAshrae.Psychrometric,
+      "pmv-ashrae-psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
@@ -342,7 +340,7 @@ describe("comfort services", () => {
       PhysicalQuantityId.RelativeHumidity,
     );
     const { chart: dynamicChart } = buildRegisteredPmvChart(
-      ChartInstanceId.PmvAshrae.DynamicField,
+      "pmv-ashrae-dynamic-field",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(UnitSystem.SI, fieldChartConfig),
     );
@@ -377,12 +375,12 @@ describe("comfort services", () => {
     );
 
     const { chart: input1BaselineChart } = buildRegisteredPmvChart(
-      ChartInstanceId.PmvAshrae.DynamicField,
+      "pmv-ashrae-dynamic-field",
       chartInputs,
       createChartContext(UnitSystem.SI, fieldChartConfig, InputId.Input1),
     );
     const { chart: input2BaselineChart } = buildRegisteredPmvChart(
-      ChartInstanceId.PmvAshrae.DynamicField,
+      "pmv-ashrae-dynamic-field",
       chartInputs,
       createChartContext(UnitSystem.SI, fieldChartConfig, InputId.Input2),
     );
@@ -400,7 +398,7 @@ describe("comfort services", () => {
 
   it("rebuilds chart labels and hover text for IP units", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartInstanceId.PmvAshrae.Psychrometric,
+      "pmv-ashrae-psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(UnitSystem.IP),
     );
@@ -431,7 +429,7 @@ describe("comfort services", () => {
 
   it("smooths comfort-zone polygon x values while preserving solver output", () => {
     const { calculation, chart: psychrometricChart } = buildRegisteredPmvChart(
-      ChartInstanceId.PmvAshrae.Psychrometric,
+      "pmv-ashrae-psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );

@@ -1,7 +1,6 @@
 import { humidex } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import { ComfortModel } from "../models/comfortModels";
-import { ChartInstanceId } from "../models/output/chartInstances";
 import { ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import { requireThermalZone } from "../services/comfort/helpers";
@@ -54,8 +53,8 @@ export const humidexModelConfig = buildPsychrometricIndexModelConfig<HumidexResp
   outputKey: ModelOutputKey.Humidex,
   zones: humidexZonesList,
   tdbLimits: TDB_LIMITS,
-  fixedChartInstanceId: ChartInstanceId.Humidex.Ranges,
-  dynamicChartInstanceId: ChartInstanceId.Humidex.DynamicField,
+  fixedChartInstanceId: "humidex-ranges",
+  dynamicChartInstanceId: "humidex-dynamic-field",
   fixedChartTitle: `${MODEL_LABEL} Discomfort`,
   dynamicTitle: `${MODEL_LABEL} Dynamic Chart`,
   calculate: calculateHumidex,

@@ -6,7 +6,6 @@ import { InputPresetKey } from "../../services/comfort/controls/inputControlPres
 import { ThermalZone } from "../../models/thermalZone";
 import { UnitSystem } from "../../models/units";
 import { StandardId } from "../../models/workspaces";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
 import {
   createAdaptiveModelConfig,
@@ -74,7 +73,7 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   workspaceCapabilities: [WorkspaceCapability.Standard],
   exploreOutputs: [],
   modifiers: [],
-  boundaryInstanceId: ChartInstanceId.AdaptiveEn.Boundary,
+  boundaryInstanceId: "adaptive-en-boundary",
   complianceProfile: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),

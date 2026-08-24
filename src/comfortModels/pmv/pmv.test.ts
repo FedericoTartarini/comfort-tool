@@ -17,8 +17,6 @@ import {
   ModelOutputKey,
 } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
-import { ChartInstanceId } from "../../models/output/chartInstances";
-
 import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
@@ -340,7 +338,7 @@ describe("PMV roots and compliance", () => {
       const declaration: PmvModelDeclaration = { ...pmvAshraeDeclaration, adapter };
       const config = createPmvModelConfig(declaration);
       return buildChartPlotly(config,
-        ChartInstanceId.PmvAshrae.DynamicField,
+        "pmv-ashrae-dynamic-field",
         {
           inputs: {
             [InputId.Input1]: {

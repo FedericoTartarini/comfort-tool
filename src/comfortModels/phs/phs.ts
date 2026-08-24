@@ -12,7 +12,6 @@ import {
 } from "../../models/modelCapabilities";
 import { ThermalZone } from "../../models/thermalZone";
 import { StandardId } from "../../models/workspaces";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import { ChartKind } from "../../models/output/chartKinds";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
 import { TableLayout, type TableRowSpec } from "../../models/output/tableLayouts";
@@ -353,7 +352,7 @@ builder
   .setModifiers([])
   .setOutputCharts([
     {
-      instanceId: ChartInstanceId.Phs2023.ExposureHistory,
+      instanceId: "phs-exposure-history",
       kind: ChartKind.Custom,
       name: "Exposure history",
       emptyMessage: "No PHS exposure history yet.",
@@ -383,7 +382,7 @@ builder
       },
     },
     {
-      instanceId: ChartInstanceId.Phs2023.DynamicField,
+      instanceId: "phs-dynamic-field",
       kind: ChartKind.DynamicField,
       name: "Dynamic",
       emptyMessage: "No PHS field chart yet.",
@@ -417,7 +416,7 @@ builder
       },
     },
   ] satisfies OutputChartDeclarationInput[], {
-    defaultInstanceId: ChartInstanceId.Phs2023.ExposureHistory,
+    defaultInstanceId: "phs-exposure-history",
   });
 
 builder.registerModelQuantities([

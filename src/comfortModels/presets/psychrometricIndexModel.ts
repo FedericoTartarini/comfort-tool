@@ -10,10 +10,7 @@ import {
 import type { ThermalZone } from "../../models/thermalZone";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
 import { TableLayout } from "../../models/output/tableLayouts";
-import {
-  buildGridModelChart,
-  type GridModelChartSpec,
-} from "../../services/comfort/charts/gridModelCharts";
+import { type GridModelChartSpec } from "../../services/comfort/charts/gridModelCharts";
 import type { ChartRange } from "../../services/comfort/charts/types";
 import { requireThermalZone } from "../../services/comfort/helpers";
 import {
@@ -74,17 +71,6 @@ function createPsychrometricIndexChartSpec<TResult>(
     requestAdapter,
     evaluate: options.calculate,
     getOutputValue: (result, _outputKey) => options.getOutputValue(result),
-    fixedView: {
-      instanceId: options.fixedChartInstanceId,
-      title: options.fixedChartTitle,
-      xField: PhysicalQuantityId.RelativeHumidity,
-      yField: PhysicalQuantityId.DryBulbTemperature,
-      xRangeSi: {
-        min: getPhysicalQuantityMeta(PhysicalQuantityId.RelativeHumidity).minSi,
-        max: getPhysicalQuantityMeta(PhysicalQuantityId.RelativeHumidity).maxSi,
-      },
-      yRangeSi: options.tdbLimits,
-    },
   };
 }
 
@@ -108,21 +94,19 @@ export function buildPsychrometricIndexModelConfig<TResult>(
     output,
   );
 
-  const gridModelSpec: GridModelChartSpec<PsychrometricIndexRequestDto, TResult> = {
-    ...chartSpec,
-    instanceId: options.dynamicChartInstanceId,
-    dynamicTitle: options.dynamicTitle,
-  };
-
   const builder = new ComfortModelBuilder<
     TResult,
     ModelChartSourceDto<PsychrometricIndexRequestDto>
   >(options.comfortModel);
 
+  const psychrometricAxisFields = [
+    PhysicalQuantityId.DryBulbTemperature,
+    PhysicalQuantityId.RelativeHumidity,
+  ] as const;
   const outputCharts: OutputChartDeclarationInput[] = [
     {
       instanceId: options.fixedChartInstanceId,
-      kind: ChartKind.Custom,
+      kind: ChartKind.DynamicField,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
       capabilities: {
@@ -136,20 +120,18 @@ export function buildPsychrometricIndexModelConfig<TResult>(
         showsExport: true,
       },
       spec: {
-        build: (
-          chartSource: import("../../models/comfortDtos").ModelChartSourceDto<PsychrometricIndexRequestDto> | null,
-          resultsByInput: Partial<Record<import("../../models/inputSlots").InputId, TResult | null>>,
-          context: import("../../models/modelCapabilities").ChartBuildContext<import("../../models/modelCapabilities").NumericBand>,
-        ) => {
-          if (!chartSource) return null;
-          return buildGridModelChart(
-            options.fixedChartInstanceId,
-            chartSource,
-            resultsByInput,
-context,
-            gridModelSpec,
-          );
+        title: options.fixedChartTitle,
+        axisFields: [...psychrometricAxisFields],
+        lockedAxes: {
+          xField: PhysicalQuantityId.RelativeHumidity,
+          yField: PhysicalQuantityId.DryBulbTemperature,
+          xRangeSi: {
+            min: getPhysicalQuantityMeta(PhysicalQuantityId.RelativeHumidity).minSi,
+            max: getPhysicalQuantityMeta(PhysicalQuantityId.RelativeHumidity).maxSi,
+          },
+          yRangeSi: options.tdbLimits,
         },
+        resolveGridSpec: () => chartSpec,
       },
     },
     {
@@ -169,10 +151,7 @@ context,
       },
       spec: {
         title: options.dynamicTitle,
-        axisFields: [
-          PhysicalQuantityId.DryBulbTemperature,
-          PhysicalQuantityId.RelativeHumidity,
-        ],
+        axisFields: [...psychrometricAxisFields],
         resolveGridSpec: () => chartSpec,
       },
     },

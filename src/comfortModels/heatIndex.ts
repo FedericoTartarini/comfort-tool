@@ -1,7 +1,6 @@
 import { heat_index } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import { ComfortModel } from "../models/comfortModels";
-import { ChartInstanceId } from "../models/output/chartInstances";
 import { ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
 import { UnitSystem } from "../models/units";
@@ -60,8 +59,8 @@ export const heatIndexModelConfig = buildPsychrometricIndexModelConfig<HeatIndex
   outputKey: ModelOutputKey.HeatIndex,
   zones: heatIndexZonesList,
   tdbLimits: TDB_LIMITS,
-  fixedChartInstanceId: ChartInstanceId.HeatIndex.Ranges,
-  dynamicChartInstanceId: ChartInstanceId.HeatIndex.DynamicField,
+  fixedChartInstanceId: "heat-index-ranges",
+  dynamicChartInstanceId: "heat-index-dynamic-field",
   fixedChartTitle: `${MODEL_LABEL} Ranges`,
   dynamicTitle: `${MODEL_LABEL} Dynamic Chart`,
   calculate: calculateHeatIndex,

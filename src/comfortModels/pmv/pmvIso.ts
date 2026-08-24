@@ -13,7 +13,6 @@ import { defaultPmvIsoOptions } from "../../models/inputModes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
 import { StandardId } from "../../models/workspaces";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
 import {
   createDynamicClothingModifier,
@@ -85,8 +84,8 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
     createDynamicClothingModifier(JsThermalComfortStandard.ISO),
     solarGainModifier,
   ],
-  psychrometricInstanceId: ChartInstanceId.PmvIso.Psychrometric,
-  dynamicInstanceId: ChartInstanceId.PmvIso.DynamicField,
+  psychrometricInstanceId: "pmv-iso-psychrometric",
+  dynamicInstanceId: "pmv-iso-dynamic-field",
   complianceProfile: {
     output: ModelOutputKey.Pmv,
     bands: isoComplianceBands,

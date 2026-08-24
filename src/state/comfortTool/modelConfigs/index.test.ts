@@ -32,11 +32,12 @@ import {
 } from "../../../models/modelCapabilities";
 import type { ThermalZone } from "../../../models/thermalZone";
 import { StandardId, WorkspaceId } from "../../../models/workspaces";
-import { ChartInstanceId } from "../../../models/output/chartInstances";
+import { ChartKind } from "../../../models/output/chartKinds";
 import {
   comfortModelConfigs,
   comfortModelOrder,
   getComfortModelConfig,
+  getDeclaredChartInstanceIds,
   getModelsForWorkspace,
   getModelsForStandard,
 } from ".";
@@ -79,15 +80,15 @@ describe("comfort model capability registry", () => {
 
   it("declares the current fixed-first default chart matrix", () => {
     const expectedDefaultCharts: Record<ComfortModelType, string> = {
-      [ComfortModel.PmvAshrae]: ChartInstanceId.PmvAshrae.Psychrometric,
-      [ComfortModel.PmvIso]: ChartInstanceId.PmvIso.Psychrometric,
-      [ComfortModel.Utci]: ChartInstanceId.Utci.StressBand,
-      [ComfortModel.AdaptiveAshrae]: ChartInstanceId.AdaptiveAshrae.Boundary,
-      [ComfortModel.AdaptiveEn]: ChartInstanceId.AdaptiveEn.Boundary,
-      [ComfortModel.HeatIndex]: ChartInstanceId.HeatIndex.Ranges,
-      [ComfortModel.Humidex]: ChartInstanceId.Humidex.Ranges,
-      [ComfortModel.WindChill]: ChartInstanceId.WindChill.DynamicField,
-      [ComfortModel.Phs2023]: ChartInstanceId.Phs2023.ExposureHistory,
+      [ComfortModel.PmvAshrae]: "pmv-ashrae-psychrometric",
+      [ComfortModel.PmvIso]: "pmv-iso-psychrometric",
+      [ComfortModel.Utci]: "utci-stress-band",
+      [ComfortModel.AdaptiveAshrae]: "adaptive-ashrae-boundary",
+      [ComfortModel.AdaptiveEn]: "adaptive-en-boundary",
+      [ComfortModel.HeatIndex]: "heat-index-ranges",
+      [ComfortModel.Humidex]: "humidex-ranges",
+      [ComfortModel.WindChill]: "wind-chill-dynamic-field",
+      [ComfortModel.Phs2023]: "phs-exposure-history",
     };
 
     comfortModelOrder.forEach((modelId) => {
@@ -96,18 +97,42 @@ describe("comfort model capability registry", () => {
     });
   });
 
+  it("derives non-empty unique chart instance ids from declarations", () => {
+    const globalIds: string[] = [];
+
+    comfortModelOrder.forEach((modelId) => {
+      const instanceIds = getDeclaredChartInstanceIds(modelId);
+      expect(instanceIds.length).toBeGreaterThan(0);
+      expect(new Set(instanceIds).size).toBe(instanceIds.length);
+      globalIds.push(...instanceIds);
+    });
+
+    expect(new Set(globalIds).size).toBe(globalIds.length);
+  });
+
+  it("declares Heat Index and Humidex maps as DynamicField", () => {
+    [ComfortModel.HeatIndex, ComfortModel.Humidex].forEach((modelId) => {
+      const config = getComfortModelConfig(modelId);
+      const [mapChart, dynamicChart] = config.outputCharts.entries;
+      expect(mapChart.kind).toBe(ChartKind.DynamicField);
+      expect(mapChart.capabilities?.allowsAxisSelection).toBe(false);
+      expect(dynamicChart.kind).toBe(ChartKind.DynamicField);
+      expect(dynamicChart.capabilities?.allowsAxisSelection).toBe(true);
+    });
+  });
+
   it("declares both PHS charts and their chart-specific Explore capabilities", () => {
     const config = getComfortModelConfig(ComfortModel.Phs2023);
     const [history, dynamic] = config.outputCharts.entries;
     const historyRegistration = config.chartKindRegistrations.find(
-      ({ instanceId }) => instanceId === ChartInstanceId.Phs2023.ExposureHistory,
+      ({ instanceId }) => instanceId === "phs-exposure-history",
     );
     const dynamicRegistration = config.chartKindRegistrations.find(
-      ({ instanceId }) => instanceId === ChartInstanceId.Phs2023.DynamicField,
+      ({ instanceId }) => instanceId === "phs-dynamic-field",
     );
 
-    expect(config.outputCharts.defaultInstanceId).toBe(ChartInstanceId.Phs2023.ExposureHistory);
-    expect(history.instanceId).toBe(ChartInstanceId.Phs2023.ExposureHistory);
+    expect(config.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
+    expect(history.instanceId).toBe("phs-exposure-history");
     expect(history.capabilities).toEqual(expect.objectContaining({
       allowsAxisSelection: false,
       allowsBaselineSelection: true,
@@ -117,7 +142,7 @@ describe("comfort model capability registry", () => {
     ]);
     expect(historyRegistration?.defaultExploreOutput)
       .toBe(ModelOutputKey.PhsRectalTemperature);
-    expect(dynamic.instanceId).toBe(ChartInstanceId.Phs2023.DynamicField);
+    expect(dynamic.instanceId).toBe("phs-dynamic-field");
     expect(dynamic.capabilities).toEqual(expect.objectContaining({
       allowsAxisSelection: true,
     }));
@@ -426,8 +451,8 @@ describe("comfort model capability registry", () => {
     expect(adaptiveEnDeclaration.complianceProfile.output)
       .toBe(ModelOutputKey.OperativeTemperature);
     const adaptiveChartInstance: Record<typeof ComfortModel.AdaptiveAshrae | typeof ComfortModel.AdaptiveEn, string> = {
-      [ComfortModel.AdaptiveAshrae]: ChartInstanceId.AdaptiveAshrae.Boundary,
-      [ComfortModel.AdaptiveEn]: ChartInstanceId.AdaptiveEn.Boundary,
+      [ComfortModel.AdaptiveAshrae]: "adaptive-ashrae-boundary",
+      [ComfortModel.AdaptiveEn]: "adaptive-en-boundary",
     };
     [ComfortModel.AdaptiveAshrae, ComfortModel.AdaptiveEn].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);

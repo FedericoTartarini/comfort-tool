@@ -152,7 +152,7 @@ State stays keyed by model ID: selected charts, options, chart settings, caches,
 
 ## Charts and presentation cache
 
-Each model declares charts through `setOutputCharts()` with stable `ChartInstanceId` values and `ChartKind` specs. Chart capabilities (axis selection, Y lock, zone toggle, legend, baseline) are declared per instance or inherited from kind defaults. Explore output narrowing uses `supportedExploreOutputs` and `defaultExploreOutput` on chart entries.
+Each model declares charts through `setOutputCharts()` with instance ids that live only on the declaration and `ChartKind` specs. The registry derives those ids (`getDeclaredChartInstanceIds`) and uniqueness tests require non-empty per model, unique per model, and unique globally. Chart capabilities (axis selection, Y lock, zone toggle, legend, baseline) are declared per instance or inherited from kind defaults. Explore output narrowing uses `supportedExploreOutputs` and `defaultExploreOutput` on chart entries. Heat Index / Humidex fixed-axis maps are `DynamicField` types with `lockedAxes`, not `Custom`.
 
 Standard and Explore share the field-chart engine via workspace-derived `FieldChartProfile`:
 
@@ -225,7 +225,7 @@ Round 2 architecture and finish-out work on `better-structure` is **complete** (
 controller split, UTCI calculation split, B10 layout/export, full validation matrix).
 
 **Explicitly deferred (not Round 2 gaps):** CI workflow; Time-series in
-`FieldChartProfile`; sparse share schema; chart instance registry.
+`FieldChartProfile`; sparse share schema.
 
 ## Round 3 shared capabilities (2026-08)
 
@@ -240,12 +240,12 @@ schema, canonical persistence, or special-chart geometry:
 | PMV chart module split     | `pmvChartShared.ts`, `pmvPsychrometricChart.ts`, `pmvDynamicChart.ts`   | Readability; `pmvCharts.ts` routes views only                              |
 | Adaptive air-speed preset  | `adaptiveShared.ts` uses `setInputFields({ kind: "preset" })`           | Same pattern as PMV metabolic/clothing                                     |
 
-Grid-capable models declare `ChartKind.DynamicField` and `ChartKind.Custom` entries through
-`setOutputCharts()`. PMV psychrometric, UTCI stress, PHS exposure history, and Adaptive
+Grid-capable models declare `ChartKind.DynamicField` entries through
+`setOutputCharts()`, including Heat Index / Humidex fixed-axis maps. PMV psychrometric, UTCI stress, PHS exposure history, and Adaptive
 boundary charts remain special-case geometry in focused modules.
 
 **Explicitly deferred (not Round 3 gaps):** CI workflow; Time-series in `FieldChartConfig`;
-sparse share schema; chart instance registry.
+sparse share schema.
 
 **Dependency baseline (post-upgrade):** Node `>=22`, Vite 8, Vitest 4, Tailwind CSS 4.3
 (`@tailwindcss/vite`), Flowbite 4, `flowbite-svelte` `0.48.x`, Plotly `3.7`,

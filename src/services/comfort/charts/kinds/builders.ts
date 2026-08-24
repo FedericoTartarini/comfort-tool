@@ -27,7 +27,8 @@ export function buildDynamicFieldChart<
     };
   }
 
-  const gridSpec = registration.registration.spec.resolveGridSpec(context);
+  const { spec } = registration.registration;
+  const gridSpec = spec.resolveGridSpec(context);
   const plotly = buildGridModelChart(
     registration.instanceId,
     chartSource as unknown as import("../../../../models/comfortDtos").ModelChartSourceDto<TPayload>,
@@ -36,7 +37,16 @@ export function buildDynamicFieldChart<
     {
       ...gridSpec,
       instanceId: registration.instanceId,
-      dynamicTitle: registration.registration.spec.title,
+      dynamicTitle: spec.title,
+      ...(spec.lockedAxes
+        ? {
+            fixedView: {
+              instanceId: registration.instanceId,
+              title: spec.title,
+              ...spec.lockedAxes,
+            },
+          }
+        : {}),
     },
   );
 

@@ -10,8 +10,6 @@ import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { ChartInstanceId } from "../models/output/chartInstances";
-
 
 describe("heatIndex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -88,13 +86,13 @@ describe("heatIndex service", () => {
     } satisfies ChartBuildContext;
 
     const fixedChart = buildChartPlotly(heatIndexModelConfig,
-      ChartInstanceId.HeatIndex.Ranges,
+      "heat-index-ranges",
       chartSource,
       resultsByInput,
       fixedContext,
     );
     const dynamicChart = buildChartPlotly(heatIndexModelConfig,
-      ChartInstanceId.HeatIndex.DynamicField,
+      "heat-index-dynamic-field",
       chartSource,
       resultsByInput,
       fixedContext,
@@ -117,7 +115,7 @@ describe("heatIndex service", () => {
     const result = calculateHeatIndex(request);
 
     const chart = buildChartPlotly(heatIndexModelConfig,
-      ChartInstanceId.HeatIndex.DynamicField,
+      "heat-index-dynamic-field",
       {
         inputs: { [InputId.Input1]: request },
       },
@@ -161,7 +159,7 @@ describe("heatIndex service", () => {
       },
     ];
     const chart = buildChartPlotly(heatIndexModelConfig,
-      ChartInstanceId.HeatIndex.Ranges,
+      "heat-index-ranges",
       { inputs: { [InputId.Input1]: request } },
       {
         [InputId.Input1]: result,

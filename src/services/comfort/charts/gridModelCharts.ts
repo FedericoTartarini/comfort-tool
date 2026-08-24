@@ -277,6 +277,28 @@ export function buildGridModelChart<TPayload extends object, TResult>(
   ).payload;
   const config = context.fieldChartConfig;
 
+  if (spec.fixedView && instanceId === spec.fixedView.instanceId) {
+    return buildGridModelView(
+      inputsMap,
+      resultsByInput,
+      baselinePayload,
+      context,
+      spec,
+      {
+        title: spec.fixedView.title,
+        config: {
+          ...config,
+          xField: spec.fixedView.xField,
+          yField: spec.fixedView.yField,
+        },
+        xRangeSi: spec.fixedView.xRangeSi,
+        yRangeSi: spec.fixedView.yRangeSi,
+        hoverTemplateSuffix:
+          spec.dynamicHoverExtension?.getTemplateSuffix(context.unitSystem) ?? "",
+      },
+    );
+  }
+
   if (instanceId === spec.instanceId) {
     const resolvedOutput = resolveGridOutput(
       spec as GridModelChartSpec<object, unknown>,
@@ -296,28 +318,6 @@ export function buildGridModelChart<TPayload extends object, TResult>(
         hoverTemplateSuffix:
           spec.dynamicHoverExtension?.getTemplateSuffix(context.unitSystem) ?? "",
         layout: spec.dynamicViewLayout,
-      },
-    );
-  }
-
-  if (spec.fixedView && instanceId === spec.fixedView.instanceId) {
-    return buildGridModelView(
-      inputsMap,
-      resultsByInput,
-      baselinePayload,
-      context,
-      spec,
-      {
-        title: spec.fixedView.title,
-        config: {
-          ...config,
-          xField: spec.fixedView.xField,
-          yField: spec.fixedView.yField,
-        },
-        xRangeSi: spec.fixedView.xRangeSi,
-        yRangeSi: spec.fixedView.yRangeSi,
-        hoverTemplateSuffix:
-          spec.dynamicHoverExtension?.getTemplateSuffix(context.unitSystem) ?? "",
       },
     );
   }

@@ -39,7 +39,7 @@ import {
   type ChartInstanceCapabilities,
   resolveChartCapabilities,
 } from "../../../models/output/chartKinds";
-import type { ChartInstanceDeclaration } from "../../../models/output/chartInstances";
+import type { ChartInstanceDeclaration } from "../../../models/output/chartKinds";
 import { TableLayout, type TableDeclaration } from "../../../models/output/tableLayouts";
 import {
   supportsExploreWorkspace,

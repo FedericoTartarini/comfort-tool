@@ -13,7 +13,6 @@ import { defaultPmvAshraeOptions } from "../../models/inputModes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
 import { StandardId } from "../../models/workspaces";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
 import {
   createDynamicClothingModifier,
@@ -85,8 +84,8 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
     createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE),
     solarGainModifier,
   ],
-  psychrometricInstanceId: ChartInstanceId.PmvAshrae.Psychrometric,
-  dynamicInstanceId: ChartInstanceId.PmvAshrae.DynamicField,
+  psychrometricInstanceId: "pmv-ashrae-psychrometric",
+  dynamicInstanceId: "pmv-ashrae-dynamic-field",
   complianceProfile: {
     output: ModelOutputKey.Pmv,
     bands: ashraeComplianceBands,

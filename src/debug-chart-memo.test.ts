@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartInstanceId } from "./models/output/chartInstances";
 import { InputControlId } from "./models/inputControls";
 import { InputId } from "./models/inputSlots";
 import { PhysicalQuantityId } from "./models/physicalQuantities";
@@ -20,7 +19,7 @@ async function waitForIdle(
 describe("chart memo debug", () => {
   it("chart marker moves after input change", async () => {
     const toolState = createComfortToolState();
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.PmvAshrae.DynamicField);
+    toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.DryBulbTemperature);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);

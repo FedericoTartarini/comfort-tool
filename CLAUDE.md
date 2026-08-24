@@ -101,12 +101,12 @@ registry entry, shared metadata, and tests remain separate files. Simple models
 may keep all implementation in the declaration; larger standard families may
 use focused calculation/chart modules beside complete declarations.
 
-Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `ChartAxisQuantityId` values, chart identifiers, and compare-input identifiers. Do not introduce new raw domain strings for these concepts.
+Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `ChartAxisQuantityId` values, `ChartKind` values, and compare-input identifiers. Chart instance ids live on each declaration’s `setOutputCharts()` entries; do not recreate a parallel `ChartInstanceId` tree. Do not introduce new raw domain strings for those concepts.
 
 ## Capabilities, axes, and modifiers
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
-- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts and tables are declared via `setOutputCharts()` and `setOutputTable()`; optional Time-series output uses `setSimulation()`. Plan **0t** / **0p** replace the split table/preset APIs with `tables` and `defineModel` when those slices run.
+- Every declaration calls `setWorkspaceCapabilities()` and `setExploreOutputs()`; Standard-capable models also call `setComplianceProfile()` with fixed output, non-empty bands, caption, legend title, and feedback. Charts and tables are declared via `setOutputCharts()` and `setOutputTable()`; optional Time-series output uses `setSimulation()`. Instance ids are declared on `setOutputCharts()` and derived by the registry. Heat Index / Humidex maps are `ChartKind.DynamicField`. Plan **0t** / **0p** replace the split table/preset APIs with `tables` and `defineModel` when those slices run.
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; only Explore working bands are serialized, and modifier records contain the complete stable key set.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.

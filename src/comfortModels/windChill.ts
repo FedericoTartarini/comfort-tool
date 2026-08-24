@@ -1,7 +1,6 @@
 import { wc, wind_chill_temperature } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import { ComfortModel } from "../models/comfortModels";
-import { ChartInstanceId } from "../models/output/chartInstances";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/physicalQuantities";
 import { ModelOutputKey } from "../models/modelCapabilities";
 import { ThermalZone } from "../models/thermalZone";
@@ -109,7 +108,7 @@ export const windChillModelConfig = buildOutdoorWindIndexModelConfig<WindChillRe
   zones: windChillZonesList,
   tdbLimits: TDB_LIMITS,
   windLimits: WIND_LIMITS,
-  dynamicChartInstanceId: ChartInstanceId.WindChill.DynamicField,
+  dynamicChartInstanceId: "wind-chill-dynamic-field",
   dynamicTitle: `${MODEL_LABEL} Dynamic Chart`,
   bandLabel: "Frostbite Risk",
   calculate: calculateWindChill,

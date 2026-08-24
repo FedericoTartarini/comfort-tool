@@ -19,7 +19,6 @@ import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
 import { WorkspaceId } from "../../models/workspaces";
 import { createComfortToolState } from "./createComfortToolState.svelte";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import {
   applyShareSnapshotToState,
@@ -119,8 +118,8 @@ describe("shareState strict v1 codec", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.PmvIso;
     toolState.state.ui.selectedChartInstanceByModel[ComfortModel.PmvAshrae] =
-      ChartInstanceId.PmvAshrae.Psychrometric;
-    toolState.state.ui.selectedChartInstanceByModel[ComfortModel.PmvIso] = ChartInstanceId.PmvIso.DynamicField;
+      "pmv-ashrae-psychrometric";
+    toolState.state.ui.selectedChartInstanceByModel[ComfortModel.PmvIso] = "pmv-iso-dynamic-field";
     toolState.state.ui.unitSystem = UnitSystem.IP;
     toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso]
       [OptionKey.TemperatureMode] = TemperatureMode.Operative;
@@ -148,11 +147,11 @@ describe("shareState strict v1 codec", () => {
     expect(snapshot).not.toHaveProperty("dynamicXAxis");
     expect(snapshot).not.toHaveProperty("dynamicYAxis");
     expect(snapshot.models[ComfortModel.PmvAshrae].selectedChartInstanceId)
-      .toBe(ChartInstanceId.PmvAshrae.Psychrometric);
+      .toBe("pmv-ashrae-psychrometric");
     expect(restored?.models[ComfortModel.PmvAshrae].selectedChartInstanceId)
-      .toBe(ChartInstanceId.PmvAshrae.Psychrometric);
+      .toBe("pmv-ashrae-psychrometric");
     expect(restored?.models[ComfortModel.PmvIso].selectedChartInstanceId)
-      .toBe(ChartInstanceId.PmvIso.DynamicField);
+      .toBe("pmv-iso-dynamic-field");
     expect(snapshot.models[ComfortModel.PmvIso].options)
       .not.toHaveProperty(OptionKey.AirSpeedControlMode);
     expect(snapshot.models[ComfortModel.PmvAshrae].outputSettings)
@@ -178,7 +177,7 @@ describe("shareState strict v1 codec", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.Phs2023;
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.Phs2023.DynamicField);
+    toolState.actions.setSelectedChartInstance("phs-dynamic-field");
     toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
 
     const dynamicSnapshot = createShareStateSnapshot(toolState.state);
@@ -186,12 +185,12 @@ describe("shareState strict v1 codec", () => {
     expect(deserializeShareState(serializeShareState(dynamicSnapshot)))
       .toEqual(dynamicSnapshot);
     expect(dynamicSnapshot.models[ComfortModel.Phs2023].selectedChartInstanceId)
-      .toBe(ChartInstanceId.Phs2023.DynamicField);
+      .toBe("phs-dynamic-field");
 
-    toolState.actions.setSelectedChartInstance(ChartInstanceId.Phs2023.ExposureHistory);
+    toolState.actions.setSelectedChartInstance("phs-exposure-history");
     const historySnapshot = createShareStateSnapshot(toolState.state);
     expect(historySnapshot.models[ComfortModel.Phs2023].selectedChartInstanceId)
-      .toBe(ChartInstanceId.Phs2023.ExposureHistory);
+      .toBe("phs-exposure-history");
     expect(historySnapshot.models[ComfortModel.Phs2023]
       .outputSettings.exploreOutput)
       .toBe(ModelOutputKey.PhsRectalTemperature);
@@ -252,7 +251,7 @@ describe("shareState strict v1 codec", () => {
     const restored = deserializeShareState(serializeShareState(snapshot));
 
     expect(snapshot.models[ComfortModel.AdaptiveAshrae]).toEqual(expect.objectContaining({
-      selectedChartInstanceId: ChartInstanceId.AdaptiveAshrae.Boundary,
+      selectedChartInstanceId: "adaptive-ashrae-boundary",
       outputSettings: expect.objectContaining({
         xAxis: PhysicalQuantityId.OperativeTemperature,
         yAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
@@ -261,7 +260,7 @@ describe("shareState strict v1 codec", () => {
       }),
     }));
     expect(snapshot.models[ComfortModel.AdaptiveEn]).toEqual(expect.objectContaining({
-      selectedChartInstanceId: ChartInstanceId.AdaptiveEn.Boundary,
+      selectedChartInstanceId: "adaptive-en-boundary",
       outputSettings: expect.objectContaining({
         xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
         yAxis: PhysicalQuantityId.OperativeTemperature,
@@ -566,7 +565,7 @@ describe("shareState strict v1 codec", () => {
         [ComfortModel.PmvAshrae]: {
           options: current.models[ComfortModel.PmvAshrae].options,
           outputSettings: current.models[ComfortModel.PmvAshrae].outputSettings,
-          selectedChart: ChartInstanceId.PmvAshrae.DynamicField,
+          selectedChart: "pmv-ashrae-dynamic-field",
         },
       },
     };
@@ -610,7 +609,7 @@ describe("shareState strict v1 codec", () => {
         ...current.models,
         [ComfortModel.PmvIso]: {
           ...current.models[ComfortModel.PmvIso],
-          selectedChartInstanceId: ChartInstanceId.Utci.DynamicField,
+          selectedChartInstanceId: "utci-dynamic-field",
         },
       },
     };

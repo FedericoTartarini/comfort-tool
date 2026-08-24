@@ -8,7 +8,7 @@ For the current runtime boundaries and state flow, see [Frontend structure summa
 
 ## 1. Add stable IDs and shared metadata
 
-Add the serialized model ID to `ComfortModel` and each new chart instance ID to `ChartInstanceId`. Add a `ModelOutputKey` and its unit-presentation metadata only when the model exposes a genuinely new output. Reuse existing constants instead of introducing inline domain strings.
+Add the serialized model ID to `ComfortModel`. Declare each chart instance id on `setOutputCharts()`; do not add a parallel `ChartInstanceId` tree. Instance ids must be non-empty per model, unique per model, and unique globally. Add a `ModelOutputKey` and its unit-presentation metadata only when the model exposes a genuinely new output. Reuse existing constants instead of introducing inline domain strings for model, quantity, and chart-kind identifiers.
 
 Physical quantities are declared once in `src/models/physicalQuantities.ts`:
 
@@ -119,7 +119,7 @@ Use the model builder output APIs instead of adding controller branches:
 
 - `.setOutputTable({ layout, rows })` with `TableLayout.CompareMatrix` for multi-input Analysis tables
 - `TableLayout.MetricSummary` for single-result metric tiles (Time-series style summaries use the same item shape)
-- `.setOutputCharts([...], { defaultInstanceId })` with chart instance IDs from `src/models/output/chartInstances.ts` and typed `ChartKind` specs
+- `.setOutputCharts([...], { defaultInstanceId })` with instance ids that live only on the declaration and typed `ChartKind` specs. Heat Index / Humidex fixed-axis maps use `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
 
 Declare `workspaceCapabilities` explicitly (`Standard`, `Explore`, and/or `TimeSeries`). Compliance/Explore field charts share `fieldChartProfile` inputs; presentation-only changes rebuild from the calculation cache.
 
@@ -171,6 +171,7 @@ Reuse shared capabilities before adding bespoke chart or control code:
   `comfortModels/presets/psychrometricIndexModel.ts` (Humidex / Heat Index pattern).
 - **Grid Dynamic charts**: `GridModelChartSpec` + `buildGridModelChart()` in
   `services/comfort/charts/gridModelCharts.ts` for two-axis banded field charts.
+  Heat Index / Humidex maps are `ChartKind.DynamicField` with `lockedAxes`.
 - **Extended chart sources**: `calculatePerInputWithExtensions()` when `chartSource` needs
   per-input maps beyond `inputs` (PMV comfort zones).
 - **Input value presets**: `InputPresetKey` catalog in
@@ -191,7 +192,8 @@ Reuse builder registration APIs before wiring charts manually:
   `comfortModels/presets/outdoorWindIndexModel.ts` (Wind Chill pattern).
 - **Grid dynamic charts**: declare `ChartKind.DynamicField` entries in `setOutputCharts()` with
   `GridModelChartSpec` resolved per profile. The spec may be static or a `(context) => spec`
-  factory when band labels depend on presentation context (PHS).
+  factory when band labels depend on presentation context (PHS). Fixed-axis Heat Index /
+  Humidex maps also use `DynamicField` with `lockedAxes`.
 - **Non-grid charts**: declare the matching kind in `setOutputCharts()` — `ChartKind.Custom`
   (PMV psychrometric), `ChartKind.BandScalar` (UTCI stress), `ChartKind.BoundaryRegion`
   (Adaptive), `ChartKind.TimeSeriesLine` (PHS exposure history). The ChartKind resolver in
@@ -262,16 +264,15 @@ Only non-default model-scoped values and configured modifier quantities are seri
 
 ## 7. Declare model-owned charts
 
-All chart output belongs to `setOutputCharts()` with stable IDs from `ChartInstanceId` and typed kind specs:
+All chart output belongs to `setOutputCharts()` with declaration-owned instance ids and typed kind specs. The registry derives those ids from `outputCharts.entries`; do not recreate a second legend/lock array or id tree beside `setOutputCharts()`.
 
 ```ts
 import { ChartKind } from "../models/output/chartKinds";
-import { ChartInstanceId } from "../models/output/chartInstances";
 
 builder.setOutputCharts(
   [
     {
-      instanceId: ChartInstanceId.Example.DynamicField,
+      instanceId: "example-dynamic-field",
       kind: ChartKind.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
@@ -290,7 +291,7 @@ builder.setOutputCharts(
       },
     },
   ],
-  { defaultInstanceId: ChartInstanceId.Example.DynamicField },
+  { defaultInstanceId: "example-dynamic-field" },
 );
 ```
 

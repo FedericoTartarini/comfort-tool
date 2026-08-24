@@ -6,7 +6,6 @@ import { InputPresetKey } from "../../services/comfort/controls/inputControlPres
 import { ThermalZone } from "../../models/thermalZone";
 import { UnitSystem } from "../../models/units";
 import { StandardId } from "../../models/workspaces";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
 import {
   createAdaptiveModelConfig,
@@ -67,7 +66,7 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   workspaceCapabilities: [WorkspaceCapability.Standard],
   exploreOutputs: [],
   modifiers: [],
-  boundaryInstanceId: ChartInstanceId.AdaptiveAshrae.Boundary,
+  boundaryInstanceId: "adaptive-ashrae-boundary",
   complianceProfile: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),

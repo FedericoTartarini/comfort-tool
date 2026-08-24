@@ -24,6 +24,42 @@ export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDe
   [ComfortModel.Phs2023]: phsModelConfig,
 } as const;
 
+export function getDeclaredChartInstanceIds(
+  modelId: ComfortModelType,
+): readonly string[] {
+  return comfortModelConfigs[modelId].outputCharts.entries.map(
+    ({ instanceId }) => instanceId,
+  );
+}
+
+function assertUniqueDeclaredChartInstanceIds(
+  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
+): void {
+  const ownersByInstanceId = new Map<string, ComfortModelType>();
+  for (const modelId of Object.keys(configs) as ComfortModelType[]) {
+    const instanceIds = configs[modelId].outputCharts.entries.map(
+      ({ instanceId }) => instanceId,
+    );
+    if (instanceIds.length === 0) {
+      throw new Error(`${modelId} must declare at least one chart instance.`);
+    }
+    if (new Set(instanceIds).size !== instanceIds.length) {
+      throw new Error(`${modelId} declares duplicate chart instance IDs.`);
+    }
+    for (const instanceId of instanceIds) {
+      const owner = ownersByInstanceId.get(instanceId);
+      if (owner !== undefined) {
+        throw new Error(
+          `Chart instance ID "${instanceId}" is declared by both ${owner} and ${modelId}.`,
+        );
+      }
+      ownersByInstanceId.set(instanceId, modelId);
+    }
+  }
+}
+
+assertUniqueDeclaredChartInstanceIds(comfortModelConfigs);
+
 export const comfortModelOrder = Object.keys(comfortModelConfigs) as ComfortModelType[];
 
 export const comfortModelMetaById = Object.fromEntries(

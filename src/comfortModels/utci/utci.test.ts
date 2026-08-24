@@ -10,7 +10,6 @@ import {
 import { ModelOutputKey, type ChartBuildContext } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import {
   calculateUtci,
   getUtciZoneMeta,
@@ -111,7 +110,7 @@ describe("UTCI Explore chart", () => {
     const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
     const result = calculateUtci(request);
     const chart = buildChartPlotly(utciModelConfig,
-      ChartInstanceId.Utci.DynamicField,
+      "utci-dynamic-field",
       { inputs: { [InputId.Input1]: request } },
       { [InputId.Input1]: result, [InputId.Input2]: null, [InputId.Input3]: null },
       {
@@ -152,7 +151,7 @@ describe("UTCI Explore chart", () => {
       },
     } satisfies ChartBuildContext;
     const chart = buildChartPlotly(utciModelConfig,
-      ChartInstanceId.Utci.DynamicField,
+      "utci-dynamic-field",
       { inputs: { [InputId.Input1]: request } },
       { [InputId.Input1]: result, [InputId.Input2]: null, [InputId.Input3]: null },
       context,

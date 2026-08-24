@@ -10,7 +10,6 @@ import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../models/modelCapabilities";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { ChartInstanceId } from "../models/output/chartInstances";
 
 describe("humidex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -74,13 +73,13 @@ describe("humidex service", () => {
     } satisfies ChartBuildContext;
 
     const fixedChart = buildChartPlotly(humidexModelConfig,
-      ChartInstanceId.Humidex.Ranges,
+      "humidex-ranges",
       chartSource,
       resultsByInput,
       fixedContext,
     );
     const dynamicChart = buildChartPlotly(humidexModelConfig,
-      ChartInstanceId.Humidex.DynamicField,
+      "humidex-dynamic-field",
       chartSource,
       resultsByInput,
       fixedContext,
@@ -116,7 +115,7 @@ describe("humidex service", () => {
       },
     ];
     const chart = buildChartPlotly(humidexModelConfig,
-      ChartInstanceId.Humidex.Ranges,
+      "humidex-ranges",
       { inputs: { [InputId.Input1]: request } },
       {
         [InputId.Input1]: result,

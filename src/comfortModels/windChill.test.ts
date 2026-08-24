@@ -13,8 +13,6 @@ import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { ChartInstanceId } from "../models/output/chartInstances";
-
 
 describe("windChill service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -76,7 +74,7 @@ describe("windChill service", () => {
       } satisfies ChartBuildContext;
 
       const dynamicChart = buildChartPlotly(windChillModelConfig,
-        ChartInstanceId.WindChill.DynamicField,
+        "wind-chill-dynamic-field",
         chartSource,
         {
           [InputId.Input1]: result,

@@ -89,3 +89,18 @@ export function resolveChartCapabilities(
 ): ChartInstanceCapabilities {
   return { ...chartKindMetaById[kind], ...overrides };
 }
+
+export interface ChartInstanceDeclaration {
+  readonly instanceId: string;
+  readonly kind: ChartKind;
+  readonly name: string;
+  readonly emptyMessage: string;
+  readonly note?: string;
+  readonly capabilities?: Partial<ChartInstanceCapabilities>;
+  readonly spec: unknown;
+}
+
+export interface ModelChartInstances {
+  readonly defaultInstanceId: string;
+  readonly entries: readonly ChartInstanceDeclaration[];
+}

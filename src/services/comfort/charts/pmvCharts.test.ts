@@ -39,8 +39,6 @@ import { createComfortToolState } from "../../../state/comfortTool/createComfort
 import { convertFieldValueFromSi } from "../../units";
 import type { PlotlyChartResponseDto, PlotTraceDto } from "../../../models/comfortDtos";
 import { buildChartPlotly } from "../../../testSupport/modelChartTestHelpers";
-import { ChartInstanceId } from "../../../models/output/chartInstances";
-
 const input: ComfortZoneRequestDto = {
   tdb: 25,
   tr: 25,
@@ -242,7 +240,7 @@ describe("PMV charts", () => {
     const { config, source, result } = calculateModel(declaration);
     const results = createResults(result);
     const compliance = buildChartPlotly(config,
-      ChartInstanceId.PmvAshrae.Psychrometric,
+      "pmv-ashrae-psychrometric",
       source,
       results,
       createContext(
@@ -275,7 +273,7 @@ describe("PMV charts", () => {
       },
     ];
     const ppd = buildChartPlotly(config,
-      ChartInstanceId.PmvAshrae.Psychrometric,
+      "pmv-ashrae-psychrometric",
       source,
       results,
       {

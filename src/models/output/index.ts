@@ -1,5 +1,4 @@
 export * from "./chartKinds";
-export * from "./chartInstances";
 export * from "./tableLayouts";
 export * from "./workspaceCapabilities";
 export * from "./fieldChartProfile";

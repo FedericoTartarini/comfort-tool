@@ -135,12 +135,12 @@ Use centralized constants and typed metadata from `src/models/` for:
 
 - model identifiers
 - quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes)
-- chart identifiers
+- chart kinds (`ChartKind` in `src/models/output/chartKinds.ts`); instance ids live on each declaration’s `setOutputCharts()` entries
 - compare-input identifiers
 - chart modes and model-output identifiers
 - modifier identifiers (`ModifierId`, modifier `PhysicalQuantityId` slots)
 
-Do not introduce new raw domain strings for those concepts.
+Do not introduce new raw domain strings for those concepts, and do not recreate a parallel `ChartInstanceId` tree.
 
 ## Capability Declarations And Runtime Architecture
 
@@ -151,7 +151,7 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 - `ModelOutputKey`, capability types, workspace/profile metadata, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `outputSettingsByModel` stores each model's x/y axes, baseline, and optional Explore working state. Explore z comes from `exploreOutputs`, and editable numeric bands are cloned from `defaultBands`; Standard workspace output and bands always come directly from `complianceProfile`.
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set. Derive `PrimaryQuantityId` and `PrimaryInputState` from it; chart-only and derived `PhysicalQuantityId` values must not enter primary records, share primary records, behavior patches, modifiers, or calculation context.
-- Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with typed `ChartKind` specs. Today instance ids are also listed in `src/models/output/chartInstances.ts`. Plan **0c** deletes that parallel tree and derives ids from declarations — do not add new entries to the tree when doing that slice, and do not recreate a second legend/lock array beside `setOutputCharts()`.
+- Every model owns chart output through `setOutputCharts([...], { defaultInstanceId })` with typed `ChartKind` specs. Instance ids live only on the declaration; the registry derives them (`getDeclaredChartInstanceIds`). Do not recreate a parallel `ChartInstanceId` tree or a second legend/lock array beside `setOutputCharts()`. Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
 - Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
 - `setInputFields()` declares visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
@@ -270,12 +270,12 @@ Analysis and Time-series output metadata lives under `src/models/output/`:
 
 - `workspaceCapabilities.ts` — Standard, Explore, and Time-series workspace membership
 - `tableLayouts.ts` — compare-matrix and metric-summary layouts (Plan **0t**: `TableType.Analysis` / `TimeSeries`)
-- `chartInstances.ts` / `chartKinds.ts` — today’s instance IDs and chart-kind registrations (Plan **0c** deletes the id tree)
+- `chartKinds.ts` — chart engines/kinds, instance declaration types, and capability defaults. Instance ids are derived from `setOutputCharts()` on each model declaration.
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 
 Runtime models expose `buildTable()` and `buildChart()` through `src/state/comfortTool/modelConfigs/`. Shared table assembly helpers live in `src/services/comfort/output/`. Time-series exposure summaries render through `src/components/output/MetricSummaryPanel.svelte`.
 
-Share snapshots store `selectedChartInstanceId` per model. Until Plan **0c** lands, instance id constants still live in `src/models/output/chartInstances.ts`; after 0c they are derived from declarations only.
+Share snapshots store `selectedChartInstanceId` per model. Instance ids are derived from declarations only; there is no parallel `ChartInstanceId` tree.
 
 ## Documentation
 

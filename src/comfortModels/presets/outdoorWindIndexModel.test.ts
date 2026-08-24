@@ -6,7 +6,6 @@ import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { ThermalZone } from "../../models/thermalZone";
 import { buildOutdoorWindIndexModelConfig } from "./outdoorWindIndexModel";
-import { ChartInstanceId } from "../../models/output/chartInstances";
 
 const testZones = [
   new ThermalZone({ label: "Low", max: 10, color: "#e2e8f0" }),
@@ -28,7 +27,7 @@ describe("outdoorWindIndexModel preset", () => {
       zones: testZones,
       tdbLimits: { min: -45, max: 0 },
       windLimits: { min: 1, max: 20 },
-      dynamicChartInstanceId: ChartInstanceId.WindChill.DynamicField,
+      dynamicChartInstanceId: "wind-chill-dynamic-field",
       dynamicTitle: "Test Dynamic Chart",
       calculate: ({ tdb, v }) => ({
         value: tdb + v,
@@ -39,9 +38,9 @@ describe("outdoorWindIndexModel preset", () => {
     });
 
     expect(config.id).toBe(ComfortModel.WindChill);
-    expect(config.outputCharts.defaultInstanceId).toBe(ChartInstanceId.WindChill.DynamicField);
+    expect(config.outputCharts.defaultInstanceId).toBe("wind-chill-dynamic-field");
     expect(config.outputCharts.entries).toHaveLength(1);
-    expect(config.outputCharts.entries[0]?.instanceId).toBe(ChartInstanceId.WindChill.DynamicField);
+    expect(config.outputCharts.entries[0]?.instanceId).toBe("wind-chill-dynamic-field");
     expect(config.dynamicAxisFields).toEqual([
       PhysicalQuantityId.DryBulbTemperature,
       PhysicalQuantityId.WindSpeed,

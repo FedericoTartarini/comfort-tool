@@ -1,4 +1,3 @@
-import { ChartInstanceId } from "../../models/output/chartInstances";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ChartBuildContext, NumericBand } from "../../models/modelCapabilities";
 import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
@@ -8,12 +7,18 @@ import { buildPmvFieldChart, type PmvChartViewDescriptorFactory } from "./pmvCha
 import { createPsychrometricViewDescriptor } from "./pmvPsychrometricChart";
 import { createDynamicViewDescriptor } from "./pmvDynamicChart";
 
-const pmvChartViewByInstanceId: Partial<Record<string, PmvChartViewDescriptorFactory>> = {
-  [ChartInstanceId.PmvAshrae.Psychrometric]: createPsychrometricViewDescriptor,
-  [ChartInstanceId.PmvAshrae.DynamicField]: createDynamicViewDescriptor,
-  [ChartInstanceId.PmvIso.Psychrometric]: createPsychrometricViewDescriptor,
-  [ChartInstanceId.PmvIso.DynamicField]: createDynamicViewDescriptor,
-};
+function resolvePmvChartView(
+  instanceId: string,
+  declaration: PmvModelDeclaration,
+): PmvChartViewDescriptorFactory | undefined {
+  if (instanceId === declaration.psychrometricInstanceId) {
+    return createPsychrometricViewDescriptor;
+  }
+  if (instanceId === declaration.dynamicInstanceId) {
+    return createDynamicViewDescriptor;
+  }
+  return undefined;
+}
 
 export function buildPmvChart(
   instanceId: string,
@@ -22,7 +27,7 @@ export function buildPmvChart(
   resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
   context: ChartBuildContext<NumericBand>,
 ): PlotlyChartResponseDto | null {
-  const createDescriptor = pmvChartViewByInstanceId[instanceId];
+  const createDescriptor = resolvePmvChartView(instanceId, declaration);
   return createDescriptor
     ? buildPmvFieldChart(
         declaration,

@@ -10,7 +10,7 @@ import type {
   NumericBand,
 } from "../../../models/modelCapabilities";
 import type { ChartBuildResult } from "../../../models/output/chartBuildResult";
-import type { ModelChartInstances } from "../../../models/output/chartInstances";
+import type { ModelChartInstances } from "../../../models/output/chartKinds";
 import type { FieldChartProfile } from "../../../models/output/fieldChartProfile";
 import type { TableDeclaration } from "../../../models/output/tableLayouts";
 import type {

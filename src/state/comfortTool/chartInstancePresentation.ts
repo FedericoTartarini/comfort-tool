@@ -1,4 +1,4 @@
-import type { ChartInstanceDeclaration } from "../../models/output/chartInstances";
+import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
 import {
   resolveChartCapabilities,
   type ChartInstanceCapabilities,

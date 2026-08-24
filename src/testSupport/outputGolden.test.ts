@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartInstanceId } from "../models/output/chartInstances";
 import { comfortModelOrder } from "../state/comfortTool/modelConfigs";
 import {
   buildAllModelOutputGoldenSnapshots,
@@ -29,7 +28,7 @@ describe("output golden — chart snapshots", () => {
         expect(chart.traceCount).toBeGreaterThan(0);
         expect(chart.layoutTitle.length).toBeGreaterThan(0);
         expect(chart.xAxisTitle.length).toBeGreaterThan(0);
-        if (chart.instanceId !== ChartInstanceId.Utci.StressBand) {
+        if (chart.instanceId !== "utci-stress-band") {
           expect(chart.yAxisTitle.length).toBeGreaterThan(0);
         }
       });

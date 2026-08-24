@@ -16,7 +16,6 @@ import { TableLayout } from "../../../models/output/tableLayouts";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/comfortTool/modelConfigs/builder";
 import { resolveInputField } from "./fieldInputBehaviors";
 import type { ControlBehaviorContext } from "./types";
-import { ChartInstanceId } from "../../../models/output/chartInstances";
 
 describe("fieldInputBehaviors", () => {
   function createBuilder() {
@@ -32,7 +31,7 @@ describe("fieldInputBehaviors", () => {
       }])
       .setModifiers([])
       .setOutputCharts([{
-        instanceId: ChartInstanceId.PmvAshrae.Psychrometric,
+        instanceId: "pmv-ashrae-psychrometric",
         kind: ChartKind.Custom,
         name: "Test",
         emptyMessage: "Empty",

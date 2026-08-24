@@ -5,9 +5,17 @@ import type { ChartAxisQuantityId } from "../../../../models/physicalQuantities"
 import type { GridModelChartSpec } from "../gridModelCharts";
 import type { ChartRange } from "../types";
 
+export interface DynamicFieldLockedAxes {
+  readonly xField: ChartAxisQuantityId;
+  readonly yField: ChartAxisQuantityId;
+  readonly xRangeSi: ChartRange;
+  readonly yRangeSi: ChartRange;
+}
+
 export interface DynamicFieldChartKindSpec<TPayload extends object, TResult> {
   readonly title: string;
   readonly axisFields: readonly ChartAxisQuantityId[];
+  readonly lockedAxes?: DynamicFieldLockedAxes;
   readonly resolveGridSpec: (
     context: ChartBuildContext,
   ) => Omit<GridModelChartSpec<TPayload, TResult>, "instanceId" | "dynamicTitle">;
