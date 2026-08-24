@@ -8,13 +8,12 @@ reader, and no obligation to preserve today’s file names, folder names, or
 parallel registries. This plan **may** rename modules, delete wrapper APIs, and
 reassemble catalogs in place.
 
-This file is the target contract. [AGENTS.md](AGENTS.md),
-[docs/frontend-structure-summary.md](docs/frontend-structure-summary.md), and
-[docs/adding-a-thermal-model.md](docs/adding-a-thermal-model.md) describe
-current code until they are updated to match. They must not be used to keep
-presets, parallel id trees, or `*Dto` naming after this plan lands.
+This file is the target contract. [AGENTS.md](AGENTS.md) and
+[CLAUDE.md](CLAUDE.md) describe current code. Authoring a model is
+[docs/adding-a-model.md](docs/adding-a-model.md). Those files must not be used
+to keep presets, parallel id trees, or `*Dto` naming after this plan lands.
 
-[26-06-29-architecture-brief.md](26-06-29-architecture-brief.md) is historical.
+`26-06-29-architecture-brief.md` is historical.
 Do not treat it as the next design.
 
 ## 1. Goals
@@ -395,22 +394,22 @@ Phase 3–4
 
 ## 10. Module map (current → target)
 
-| Current                                         | Phase  | Change                                                     |
-| ----------------------------------------------- | ------ | ---------------------------------------------------------- |
-| `src/comfortModels/presets/`                    | 0p     | Delete as authoring API                                    |
-| `src/models/output/chartInstances.ts`           | 0c     | Delete id tree; derive from declarations                   |
-| `src/models/physicalQuantities.ts`              | 0q, 3n | System seed only; model quantities move to declarations    |
-| `src/models/output/tableLayouts.ts`             | 0t, 3n | Become `TableType.Analysis` / `TimeSeries`                 |
-| `src/models/output/workspaceCapabilities.ts`    | 3n     | Fold into `WorkspaceId`                                    |
-| `src/state/comfortTool/`                        | 3n     | `src/state/analysis/`                                      |
-| `src/state/comfortTool/shareState.ts`           | 0b     | Sparse codec                                               |
-| `src/state/comfortTool/modelConfigs/builder.ts` | 0p, 0a | `defineModel` + discriminated chart spec                   |
-| `src/state/timeSeries/modelConfigs.ts`          | 0t     | Stop being a second product registry; read PHS declaration |
-| `docs/adding-a-thermal-model.md`                | 0d     | Replace with a single `docs/adding-a-model.md`             |
-| `src/services/comfort/charts/kinds/`            | 0f, 1a | Slim geometry; implement ParametricLine                    |
-| `src/services/plotlyFigure.ts`                  | 0g     | Clone boundary                                             |
-| `src/comfortModels/utci/`                       | 0f     | Drop 450² Dynamic grid                                     |
-| `src/components/chart/PlotlyCanvas.svelte`      | 0h, 2a | Export from a dedicated figure                             |
+| Current                                         | Phase  | Change                                                              |
+| ----------------------------------------------- | ------ | ------------------------------------------------------------------- |
+| `src/comfortModels/presets/`                    | 0p     | Delete as authoring API                                             |
+| `src/models/output/chartInstances.ts`           | 0c     | Delete id tree; derive from declarations                            |
+| `src/models/physicalQuantities.ts`              | 0q, 3n | System seed only; model quantities move to declarations             |
+| `src/models/output/tableLayouts.ts`             | 0t, 3n | Become `TableType.Analysis` / `TimeSeries`                          |
+| `src/models/output/workspaceCapabilities.ts`    | 3n     | Fold into `WorkspaceId`                                             |
+| `src/state/comfortTool/`                        | 3n     | `src/state/analysis/`                                               |
+| `src/state/comfortTool/shareState.ts`           | 0b     | Sparse codec                                                        |
+| `src/state/comfortTool/modelConfigs/builder.ts` | 0p, 0a | `defineModel` + discriminated chart spec                            |
+| `src/state/timeSeries/modelConfigs.ts`          | 0t     | Stop being a second product registry; read PHS declaration          |
+| `docs/adding-a-model.md`                        | 0d     | Single authoring guide (replaced the two prior adding-a-model docs) |
+| `src/services/comfort/charts/kinds/`            | 0f, 1a | Slim geometry; implement ParametricLine                             |
+| `src/services/plotlyFigure.ts`                  | 0g     | Clone boundary                                                      |
+| `src/comfortModels/utci/`                       | 0f     | Drop 450² Dynamic grid                                              |
+| `src/components/chart/PlotlyCanvas.svelte`      | 0h, 2a | Export from a dedicated figure                                      |
 
 **Do not casually rewrite:** Compare UI layout, calculation scheduling vs
 presentation rebuild, Time-series controller lifetime. Control widgets stay

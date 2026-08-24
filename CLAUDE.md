@@ -187,7 +187,7 @@ A change is complete when:
 - No new direct `jsthermalcomfort` imports outside `src/comfortModels/**` or `src/services/comfort/**`
 - No new scattered conversion helpers outside `src/services/units/`
 - Model or chart additions do not expand the controller with more hardcoded parallel properties (unless explicitly approved)
-- Internal documentation remains in `docs/` Markdown (today `adding-a-thermal-model.md` and `frontend-structure-summary.md`); it is not part of the application build. Plan **0d** consolidates authoring docs.
+- Internal documentation remains in `docs/` Markdown (`docs/adding-a-model.md`); it is not part of the application build. Do not add a docs generator, deploy step, or product UI route for these files.
 - Target architecture is `ARCHITECTURE-PLAN.md`. Do not treat `26-06-29-architecture-brief.md` as a freeze that blocks Plan slices.
 - A named Plan slice is done when that ID’s **Done when** in `ARCHITECTURE-PLAN.md` is met, without reintroducing deleted wrappers.
 - Every Analysis model must pass `assertCompareContract` (1/2/3 visible inputs, filled table columns, chart markers, baseline change keeps a ready cache). Three inputs must not fail silently.

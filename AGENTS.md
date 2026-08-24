@@ -119,7 +119,7 @@ When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createCom
 
 ## Model Extension Strategy
 
-New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; `defineModel` and the registry live in `src/state/comfortTool/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template). Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`. After registration, `assertCompareContract` must pass for the new Analysis model.
+New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; `defineModel` and the registry live in `src/state/comfortTool/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template; see [docs/adding-a-model.md](docs/adding-a-model.md)). Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`. After registration, `assertCompareContract` must pass for the new Analysis model.
 
 Each registered model has one focused declaration entry that exposes its product decisions. This is not a one-physical-file rule: stable IDs remain centralized, registration remains explicit, and tests remain separate. Simple models may keep their implementation in the declaration file; larger standard families may use focused calculation/chart modules beside complete standard declarations.
 
@@ -283,7 +283,7 @@ Share snapshots store `selectedChartInstanceId` per model. Instance ids are deri
 
 - Keep this file focused on execution rules. Target architecture lives in `ARCHITECTURE-PLAN.md`.
 - If a task materially changes state flow, model registration, or service boundaries, update this file and `docs/` in the same work.
-- Keep `docs/adding-a-thermal-model.md` and `docs/frontend-structure-summary.md` current until Plan **0d** replaces them with a single `docs/adding-a-model.md`.
+- Authoring a model: [docs/adding-a-model.md](docs/adding-a-model.md). Copy `heatIndex.ts`, add a `ComfortModel` member, register once. Hard stops: new chart engine, new primary, new modifier, new Time-series controller.
 - Do not add a documentation generator, deployment step, or product UI route for these internal files unless a later task explicitly requests one.
 
 ## Code Quality

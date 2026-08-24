@@ -128,7 +128,7 @@ Important invariants:
 
 Public paths use clean trailing-slash URLs. Production static hosting must return `index.html` for non-asset application paths so direct visits and refreshes reach the client router.
 
-See [Frontend structure summary](docs/frontend-structure-summary.md) and [Adding a thermal model](docs/adding-a-thermal-model.md) for the implementation contracts. Repository execution rules are in [AGENTS.md](AGENTS.md).
+See [Adding a model](docs/adding-a-model.md) for the authoring contract. Repository execution rules are in [AGENTS.md](AGENTS.md).
 
 ## Documentation
 
