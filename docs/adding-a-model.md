@@ -117,6 +117,12 @@ Time-series does not read or schedule Analysis.
 Runtime catalogs assemble once from frontend seeds plus every registered
 declaration. Duplicate ids, wrong owners, unknown engines, or a Time-series
 table without Time-series capability fail `defineModel` / registry assemble.
+Assembled catalogs expose optional `assembledCatalogs.validate.model` for
+those checks. The type is optional; `assembleCatalogs` installs the hook on
+the returned instance. It is not a second authoring API — still copy
+`heatIndex.ts`, add a `ComfortModel` member, and register once.
+`assembleCatalogs` merges each model's `quantities.extend` with the system
+seed, so duplicate extend ids fail assemble without a pre-merged quantity map.
 
 **Quantities.** `src/models/physicalQuantities.ts` is the system seed.
 `primaryInputOrder` is the exact persisted primary-key set. Chart-only and

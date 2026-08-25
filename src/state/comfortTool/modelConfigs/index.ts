@@ -1,5 +1,11 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../../../models/comfortModels";
-import type { RuntimeComfortModelDefinition, SimulationOutputDeclaration } from "./definition";
+import {
+  ComfortModel,
+  type ComfortModel as ComfortModelType,
+} from "../../../models/comfortModels";
+import type {
+  RuntimeComfortModelDefinition,
+  SimulationOutputDeclaration,
+} from "./definition";
 import { pmvAshraeModelConfig } from "../../../comfortModels/pmv/pmvAshrae";
 import { pmvIsoModelConfig } from "../../../comfortModels/pmv/pmvIso";
 import { utciModelConfig } from "../../../comfortModels/utci/utci";
@@ -11,13 +17,23 @@ import { windChillModelConfig } from "../../../comfortModels/windChill";
 import { phsModelConfig } from "../../../comfortModels/phs/phs";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import {
-  ChartKind,
-  modelAllowsCustomCharts,
-} from "../../../models/output/chartKinds";
-import { WorkspaceId, type StandardId as StandardIdType, type WorkspaceId as WorkspaceIdType } from "../../../models/workspaces";
-import { assembleQuantityCatalog, type QuantityExtension } from "../../../models/physicalQuantities";
+  WorkspaceId,
+  type StandardId as StandardIdType,
+  type WorkspaceId as WorkspaceIdType,
+} from "../../../models/workspaces";
+import { assembleQuantityCatalog } from "../../../models/physicalQuantities";
+import {
+  assembleCatalogs,
+  collectRegisteredQuantityExtensions,
+  validateModel,
+} from "./validateModel";
+export { assembleCatalogs, collectRegisteredQuantityExtensions, validateModel };
+export type { AssembledCatalogs, CatalogModelSlice } from "./validateModel";
 
-export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDefinition> = {
+export const comfortModelConfigs: Record<
+  ComfortModelType,
+  RuntimeComfortModelDefinition
+> = {
   [ComfortModel.PmvAshrae]: pmvAshraeModelConfig,
   [ComfortModel.PmvIso]: pmvIsoModelConfig,
   [ComfortModel.Utci]: utciModelConfig,
@@ -29,29 +45,6 @@ export const comfortModelConfigs: Record<ComfortModelType, RuntimeComfortModelDe
   [ComfortModel.Phs2023]: phsModelConfig,
 } as const;
 
-export function collectRegisteredQuantityExtensions(
-  configs: Iterable<Pick<RuntimeComfortModelDefinition, "id" | "quantities">>,
-): QuantityExtension[] {
-  const extensions: QuantityExtension[] = [];
-  for (const config of configs) {
-    for (const extension of config.quantities.extend) {
-      if (extension.owner !== config.id) {
-        throw new Error(
-          `Quantity extension "${extension.id}" is owned by ${extension.owner} but registered on ${config.id}.`,
-        );
-      }
-      extensions.push(extension);
-    }
-  }
-  return extensions;
-}
-
-function assembleRegisteredQuantityCatalog(
-  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
-): void {
-  assembleQuantityCatalog(collectRegisteredQuantityExtensions(Object.values(configs)));
-}
-
 export function getDeclaredChartInstanceIds(
   modelId: ComfortModelType,
 ): readonly string[] {
@@ -60,90 +53,42 @@ export function getDeclaredChartInstanceIds(
   );
 }
 
-function assertUniqueDeclaredChartInstanceIds(
-  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
-): void {
-  const ownersByInstanceId = new Map<string, ComfortModelType>();
-  for (const modelId of Object.keys(configs) as ComfortModelType[]) {
-    const instanceIds = configs[modelId].outputCharts.entries.map(
-      ({ instanceId }) => instanceId,
-    );
-    if (instanceIds.length === 0) {
-      throw new Error(`${modelId} must declare at least one chart instance.`);
-    }
-    if (new Set(instanceIds).size !== instanceIds.length) {
-      throw new Error(`${modelId} declares duplicate chart instance IDs.`);
-    }
-    for (const instanceId of instanceIds) {
-      const owner = ownersByInstanceId.get(instanceId);
-      if (owner !== undefined) {
-        throw new Error(
-          `Chart instance ID "${instanceId}" is declared by both ${owner} and ${modelId}.`,
-        );
-      }
-      ownersByInstanceId.set(instanceId, modelId);
-    }
-  }
-}
+assembleQuantityCatalog(
+  collectRegisteredQuantityExtensions(Object.values(comfortModelConfigs)),
+);
 
-function assertCustomChartsArePmvFrontend(
-  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
-): void {
-  for (const modelId of Object.keys(configs) as ComfortModelType[]) {
-    for (const registration of configs[modelId].chartKindRegistrations) {
-      if (registration.registration.kind !== ChartKind.Custom) continue;
-      if (!modelAllowsCustomCharts(modelId)) {
-        throw new Error(
-          `Custom chart "${registration.instanceId}" on ${modelId} is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
-        );
-      }
-    }
-  }
-}
+export const assembledCatalogs = assembleCatalogs(
+  Object.values(comfortModelConfigs),
+);
 
-function assertUniqueDeclaredChartTypes(
-  configs: Record<ComfortModelType, RuntimeComfortModelDefinition>,
-): void {
-  const ownersByType = new Map<string, ComfortModelType>();
-  for (const modelId of Object.keys(configs) as ComfortModelType[]) {
-    for (const entry of configs[modelId].outputCharts.entries) {
-      if (!entry.type) continue;
-      const owner = ownersByType.get(entry.type);
-      if (owner !== undefined) {
-        throw new Error(
-          `Chart type "${entry.type}" is declared by both ${owner} and ${modelId}.`,
-        );
-      }
-      ownersByType.set(entry.type, modelId);
-    }
-  }
-}
-
-assertUniqueDeclaredChartInstanceIds(comfortModelConfigs);
-assertCustomChartsArePmvFrontend(comfortModelConfigs);
-assertUniqueDeclaredChartTypes(comfortModelConfigs);
-assembleRegisteredQuantityCatalog(comfortModelConfigs);
-
-export const comfortModelOrder = Object.keys(comfortModelConfigs) as ComfortModelType[];
+export const comfortModelOrder = Object.keys(
+  comfortModelConfigs,
+) as ComfortModelType[];
 
 export const comfortModelMetaById = Object.fromEntries(
   Object.entries(comfortModelConfigs).map(([id, config]) => [
     id,
-    { label: config.label, description: config.description }
-  ])
+    { label: config.label, description: config.description },
+  ]),
 );
 
-export function getComfortModelConfig(modelId: ComfortModelType): RuntimeComfortModelDefinition {
+export function getComfortModelConfig(
+  modelId: ComfortModelType,
+): RuntimeComfortModelDefinition {
   return comfortModelConfigs[modelId];
 }
 
-export function getModelsForStandard(standardId: StandardIdType): ComfortModelType[] {
-  return comfortModelOrder.filter((modelId) => (
-    comfortModelConfigs[modelId].standardIds.includes(standardId)
-  ));
+export function getModelsForStandard(
+  standardId: StandardIdType,
+): ComfortModelType[] {
+  return comfortModelOrder.filter((modelId) =>
+    comfortModelConfigs[modelId].standardIds.includes(standardId),
+  );
 }
 
-export function getModelsForWorkspace(workspaceId: WorkspaceIdType): ComfortModelType[] {
+export function getModelsForWorkspace(
+  workspaceId: WorkspaceIdType,
+): ComfortModelType[] {
   return comfortModelOrder.filter((modelId) => {
     const capabilities = comfortModelConfigs[modelId].workspaceCapabilities;
     switch (workspaceId) {
