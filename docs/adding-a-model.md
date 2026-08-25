@@ -67,6 +67,7 @@ work, not “add a model” work:
 | New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/models/catalogWireIds.test.ts`).                    |
 | New modifier                          | Global catalogue, execution order, and share schema.                                                                                 |
 | New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                  |
+| New SI unit dimension (`SiUnit`)      | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/services/units/`; declarations only select known units. |
 
 Also forbidden in a declaration:
 
@@ -114,7 +115,8 @@ registry is the exception that imports `comfortModels`); `comfortModels` →
 `models`, `services`, `state/comfortTool/modelConfigs`; `services` → `models`.
 
 Canonical state is SI. Calculations run in SI. Display converts through
-`src/services/units/`.
+`src/services/units/` by reading assembled catalog SI units
+(`convertQuantityFromSi`). Control widgets stay generic.
 
 `App.svelte` constructs one Analysis controller
 (`createComfortToolState`) and one Time-series controller. Dashboard routes
@@ -153,8 +155,11 @@ Extensions serialize only under sparse `modelInputsByModel`. They must not
 enter `primaryInputOrder`. Surface them on the Analysis panel with
 `{ kind: "modelQuantity", … }`. Assemble checks that every `modelQuantity`
 field is an extend entry owned by that declaration. PHS body weight/height
-are the existing example; mass/length conversion reads catalog SI units and
-must not branch on PHS.
+are the existing example; all quantity conversion reads catalog SI units
+(`display.units.SI`) and must not branch on PHS or quantity-id lists.
+`display.units.SI` is canonical storage (`kg`, `m`, `kg/kg`, `Pa`, …);
+display labels such as g/kg live in `display.displayUnits`. Unknown SI units
+fail assemble.
 
 **Charts.** Closed engines: `ChartKind.DynamicField`, `BoundaryRegion`,
 `ParametricLine`, `BandScalar`, `TimeSeriesLine`, and frontend-only `Custom`
@@ -259,7 +264,8 @@ validated `options`. It must not read raw `quantitiesByInput`.
 `outdoorWindSpeed`, `simpleHumidity` / `advancedHumidity`, `preset`,
 `modelQuantity`. The Analysis input panel reads those controls through
 `getInputPanelViewModel`; do not add conversion or model branches in
-`src/components/input-panel/`. Option changes go only through
+`src/components/input-panel/`. Control widgets stay generic; unit conversion
+reads the assembled quantity catalog (`convertQuantityFromSi`). Option changes go only through
 `optionHandlersByKey`.
 Missing, extra, or invalid options are rejected; invalid internal option
 state is an invariant.

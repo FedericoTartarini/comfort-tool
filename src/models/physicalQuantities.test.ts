@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ComfortModel } from "./comfortModels";
 import { PhsQuantityId } from "./phs";
+import { SiUnit } from "./units";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
@@ -18,7 +19,7 @@ const massExtension = {
   scope: PhysicalQuantityScope.Model,
   label: "Body mass",
   display: {
-    units: { SI: "kg", IP: "lb" },
+    units: { SI: SiUnit.Kilogram, IP: "lb" },
     displayUnits: { SI: "kg", IP: "lb" },
     step: 1,
     decimals: 0,
@@ -84,5 +85,31 @@ describe("physicalQuantities metadata", () => {
       ...massExtension,
       id: PhysicalQuantityId.DryBulbTemperature,
     }])).toThrow(/must not enter primaryInputOrder/);
+    expect(() => mergeQuantityCatalog(systemQuantityMetaById, [{
+      ...massExtension,
+      id: "test.unknownUnit",
+      display: {
+        ...massExtension.display,
+        units: { SI: "stone" as SiUnit, IP: "lb" },
+      },
+    }])).toThrow(/unknown SI unit "stone"/);
+  });
+
+  it("stores humidity ratio as kg/kg and vapor pressure as Pa", () => {
+    expect(systemQuantityMetaById[PhysicalQuantityId.HumidityRatio].display.units.SI)
+      .toBe(SiUnit.KilogramPerKilogram);
+    expect(systemQuantityMetaById[PhysicalQuantityId.DerivedHumidityRatio].display.units.SI)
+      .toBe(SiUnit.KilogramPerKilogram);
+    expect(systemQuantityMetaById[PhysicalQuantityId.HumidityRatio].defaultSi).toBe(0.009);
+    expect(systemQuantityMetaById[PhysicalQuantityId.VaporPressure].display.units.SI)
+      .toBe(SiUnit.Pascal);
+    expect(systemQuantityMetaById[PhysicalQuantityId.VaporPressure].defaultSi).toBe(1500);
+  });
+
+  it("uses a known SiUnit for every system-seed quantity", () => {
+    const knownSiUnits = new Set(Object.values(SiUnit));
+    for (const meta of Object.values(systemQuantityMetaById)) {
+      expect(knownSiUnits.has(meta.display.units.SI)).toBe(true);
+    }
   });
 });

@@ -12,9 +12,9 @@ import {
   isModifierFieldValueValid,
 } from "../../services/comfort/inputModifiers";
 import {
-  convertFieldValueFromSi,
   convertModifierFieldValueFromSi,
   convertModifierFieldValueToSi,
+  convertQuantityFromSi,
   formatDisplayValue,
   getModifierFieldDisplayMeta,
 } from "../../services/units";
@@ -334,7 +334,7 @@ export function buildInputModifierControls({
           label: `Effective ${meta.label.toLowerCase()}`,
           displayUnits: meta.displayUnits,
           displayValuesByInput: visibleInputIds.reduce((values, inputId) => {
-            const displayValue = convertFieldValueFromSi(
+            const displayValue = convertQuantityFromSi(
               fieldKey,
               effectiveInputs[inputId][fieldKey],
               unitSystem,

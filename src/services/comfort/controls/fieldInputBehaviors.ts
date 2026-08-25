@@ -1,6 +1,6 @@
 import { InputControlId } from "../../../models/inputControls";
 import { TemperatureMode, type ModelOptionsRecord } from "../../../models/inputModes";
-import { formatDisplayValue, convertModelQuantityFromSi, convertModelQuantityToSi } from "../../units";
+import { formatDisplayValue, convertQuantityFromSi, convertQuantityToSi } from "../../units";
 import { createHumidityControlBehavior } from "./humidityControl";
 import {
   buildDefaultPresentation,
@@ -197,17 +197,17 @@ function createModelQuantityControlBehavior(
       const { meta, minValue, maxValue, label } = resolveMeta();
       const display = getQuantityDisplayMeta(spec.quantityId, context.unitSystem);
       const valueSi = context.modelInputs[spec.quantityId] ?? meta.defaultSi;
-      const displayValue = convertModelQuantityFromSi(
+      const displayValue = convertQuantityFromSi(
         spec.quantityId,
         valueSi,
         context.unitSystem,
       );
-      const minDisplay = convertModelQuantityFromSi(
+      const minDisplay = convertQuantityFromSi(
         spec.quantityId,
         minValue,
         context.unitSystem,
       );
-      const maxDisplay = convertModelQuantityFromSi(
+      const maxDisplay = convertQuantityFromSi(
         spec.quantityId,
         maxValue,
         context.unitSystem,
@@ -243,7 +243,7 @@ function createModelQuantityControlBehavior(
       if (!rawValue.trim()) return null;
       const parsedValue = Number(rawValue);
       if (!Number.isFinite(parsedValue)) return null;
-      const nextValue = convertModelQuantityToSi(
+      const nextValue = convertQuantityToSi(
         spec.quantityId,
         parsedValue,
         context.unitSystem,

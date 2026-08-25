@@ -23,6 +23,28 @@ describe("chart axes", () => {
     });
   });
 
+  it("converts humidity-ratio axes from catalog kg/kg storage", () => {
+    const axis = createFieldAxisScale({
+      field: PhysicalQuantityId.HumidityRatio,
+      unitSystem: UnitSystem.SI,
+      rangeSi: { min: 0, max: 0.025 },
+      points: 2,
+    });
+
+    expect(axis.units).toBe("g/kg");
+    expect(axis.toDisplay(0.009)).toBeCloseTo(9, 8);
+    expect(axis.toSi(9)).toBeCloseTo(0.009, 8);
+
+    const ipAxis = createFieldAxisScale({
+      field: PhysicalQuantityId.HumidityRatio,
+      unitSystem: UnitSystem.IP,
+      rangeSi: { min: 0, max: 0.025 },
+      points: 2,
+    });
+    expect(ipAxis.units).toBe("gr/lb");
+    expect(ipAxis.toDisplay(0.009)).toBeCloseTo(63, 8);
+  });
+
   it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
     "rejects invalid point count %s",
     (points) => {

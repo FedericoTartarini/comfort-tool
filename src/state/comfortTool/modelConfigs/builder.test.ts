@@ -6,9 +6,7 @@ import {
   PhysicalQuantityScope,
 } from "../../../models/physicalQuantities";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
-import {
-  ChartKind,
-} from "../../../models/output/chartKinds";
+import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import {
@@ -17,7 +15,7 @@ import {
   type NumericBand,
 } from "../../../models/modelCapabilities";
 import { InputId } from "../../../models/inputSlots";
-import { UnitSystem } from "../../../models/units";
+import { SiUnit, UnitSystem } from "../../../models/units";
 import { ParametricYUnit } from "../../../services/comfort/charts/kinds/types";
 import {
   ComfortModelBuilder,
@@ -399,7 +397,7 @@ describe("ComfortModelBuilder capabilities", () => {
       scope: PhysicalQuantityScope.Model,
       label: "Test mass",
       display: {
-        units: { SI: "kg", IP: "lb" },
+        units: { SI: SiUnit.Kilogram, IP: "lb" },
         displayUnits: { SI: "kg", IP: "lb" },
         step: 1,
         decimals: 0,
@@ -424,7 +422,7 @@ describe("ComfortModelBuilder capabilities", () => {
             scope: PhysicalQuantityScope.Model,
             label: "Test mass",
             display: {
-              units: { SI: "kg", IP: "lb" },
+              units: { SI: SiUnit.Kilogram, IP: "lb" },
               displayUnits: { SI: "kg", IP: "lb" },
               step: 1,
               decimals: 0,
@@ -448,7 +446,7 @@ describe("ComfortModelBuilder capabilities", () => {
             scope: PhysicalQuantityScope.Model,
             label: "Air temperature",
             display: {
-              units: { SI: "degC", IP: "degF" },
+              units: { SI: SiUnit.DegreeCelsius, IP: "degF" },
               displayUnits: { SI: "°C", IP: "°F" },
               step: 0.5,
               decimals: 1,
@@ -469,7 +467,7 @@ describe("ComfortModelBuilder capabilities", () => {
       scope: PhysicalQuantityScope.Model,
       label: "Example mass",
       display: {
-        units: { SI: "kg", IP: "lb" },
+        units: { SI: SiUnit.Kilogram, IP: "lb" },
         displayUnits: { SI: "kg", IP: "lb" },
         step: 1,
         decimals: 0,

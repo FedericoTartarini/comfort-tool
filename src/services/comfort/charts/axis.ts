@@ -1,6 +1,6 @@
 import { getPhysicalQuantityMeta, getQuantityPresentationMeta, type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import { type UnitSystem as UnitSystemType } from "../../../models/units";
-import { convertFieldValueFromSi, convertFieldValueToSi } from "../../units";
+import { convertQuantityFromSi, convertQuantityToSi } from "../../units";
 import type { ChartAxisScale, ChartAxisValues, ChartRange } from "./types";
 
 interface CreateFieldAxisScaleOptions {
@@ -48,8 +48,8 @@ export function createFieldAxisScale({
     showTickLabels,
     rangeSi: rangeSi ?? { min: meta.minSi, max: meta.maxSi },
     points,
-    toDisplay: toDisplay ?? ((valueSi) => convertFieldValueFromSi(field, valueSi, unitSystem)),
-    toSi: toSi ?? ((valueDisplay) => convertFieldValueToSi(field, valueDisplay, unitSystem)),
+    toDisplay: toDisplay ?? ((valueSi) => convertQuantityFromSi(field, valueSi, unitSystem)),
+    toSi: toSi ?? ((valueDisplay) => convertQuantityToSi(field, valueDisplay, unitSystem)),
   };
 }
 

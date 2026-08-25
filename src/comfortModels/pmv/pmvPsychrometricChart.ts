@@ -3,7 +3,7 @@ import type {
   PlotHoverRowDto,
   PlotTraceDto,
 } from "../../models/comfortDtos";
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, getQuantityDisplayMeta } from "../../models/physicalQuantities";
 import {
   buildComfortPolygonTrace,
   buildFilledPolygonTrace,
@@ -14,11 +14,6 @@ import type {
   GridEvaluationResult,
 } from "../../services/comfort/charts/types";
 import { getBaselineInputEntry, roundValue } from "../../services/comfort/helpers";
-import {
-  convertHumidityRatioFromSi,
-  convertHumidityRatioToSi,
-  getHumidityRatioDisplayMeta,
-} from "../../services/units";
 import {
   PMV_PSYCHROMETRIC_VIEW,
   tryEvaluatePmvForChart,
@@ -364,7 +359,10 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
   const { adapter } = declaration;
   const { unitSystem } = context;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
-  const humidityRatioMeta = getHumidityRatioDisplayMeta(unitSystem);
+  const humidityRatioMeta = getQuantityDisplayMeta(
+    PhysicalQuantityId.HumidityRatio,
+    unitSystem,
+  );
   const config: PmvFieldChartConfig = {
     ...context.fieldChartConfig,
     xField: PhysicalQuantityId.DryBulbTemperature,
@@ -383,10 +381,6 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
       field: config.yField,
       rangeSi: PMV_PSYCHROMETRIC_VIEW.humidityRatioRangeSi,
       points: CONTOUR_GRID_RESOLUTION,
-      units: humidityRatioMeta.displayUnits,
-      decimals: humidityRatioMeta.decimals,
-      toDisplay: convertHumidityRatioFromSi,
-      toSi: convertHumidityRatioToSi,
     },
     coordinateDecimals: humidityRatioMeta.decimals,
     opacity: 0.8,

@@ -1,5 +1,5 @@
 import type { ComfortModel as ComfortModelType } from "./comfortModels";
-import type { UnitSystem as UnitSystemType } from "./units";
+import { SiUnit, isSiUnit, type UnitSystem as UnitSystemType } from "./units";
 
 /** Matches ModifierId wire values; kept here to avoid circular imports with inputModifiers. */
 export const ModifierQuantityOwner = {
@@ -76,7 +76,7 @@ export type PrimaryQuantityId = (typeof primaryInputOrder)[number];
 export type PrimaryInputState = Record<PrimaryQuantityId, number>;
 
 export interface QuantityDisplayMeta {
-  units: { SI: string; IP: string };
+  units: { SI: SiUnit; IP: string };
   displayUnits: { SI: string; IP: string };
   step: number;
   decimals: number | { SI: number; IP: number };
@@ -121,24 +121,38 @@ export interface QuantityExtension {
 }
 
 const temperatureDisplay: QuantityDisplayMeta = {
-  units: { SI: "degC", IP: "degF" },
+  units: { SI: SiUnit.DegreeCelsius, IP: "degF" },
   displayUnits: { SI: "°C", IP: "°F" },
   step: 0.5,
   decimals: 1,
 };
 
 const speedDisplay: QuantityDisplayMeta = {
-  units: { SI: "m/s", IP: "ft/s" },
+  units: { SI: SiUnit.MeterPerSecond, IP: "ft/s" },
   displayUnits: { SI: "m/s", IP: "ft/s" },
   step: 0.01,
   decimals: 2,
 };
 
 const windSpeedDisplay: QuantityDisplayMeta = {
-  units: { SI: "m/s", IP: "ft/s" },
+  units: { SI: SiUnit.MeterPerSecond, IP: "ft/s" },
   displayUnits: { SI: "m/s", IP: "ft/s" },
   step: 0.1,
   decimals: 1,
+};
+
+const humidityRatioDisplay: QuantityDisplayMeta = {
+  units: { SI: SiUnit.KilogramPerKilogram, IP: "gr/lb" },
+  displayUnits: { SI: "g/kg", IP: "gr/lb" },
+  step: 0.1,
+  decimals: { SI: 1, IP: 0 },
+};
+
+const vaporPressureDisplay: QuantityDisplayMeta = {
+  units: { SI: SiUnit.Pascal, IP: "inHg" },
+  displayUnits: { SI: "kPa", IP: "inHg" },
+  step: 0.01,
+  decimals: 2,
 };
 
 export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQuantityMeta> = {
@@ -192,7 +206,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     state: QuantityState.Primary,
     label: "Relative humidity",
     display: {
-      units: { SI: "%", IP: "%" },
+      units: { SI: SiUnit.Percent, IP: "%" },
       displayUnits: { SI: "%", IP: "%" },
       step: 1,
       decimals: 0,
@@ -206,15 +220,10 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     id: PhysicalQuantityId.HumidityRatio,
     scope: PhysicalQuantityScope.System,
     label: "Humidity ratio",
-    display: {
-      units: { SI: "g/kg", IP: "gr/lb" },
-      displayUnits: { SI: "g/kg", IP: "gr/lb" },
-      step: 1,
-      decimals: 0,
-    },
-    defaultSi: 9,
+    display: humidityRatioDisplay,
+    defaultSi: 0.009,
     minSi: 0,
-    maxSi: 25,
+    maxSi: 0.025,
   },
   [PhysicalQuantityId.MetabolicRate]: {
     id: PhysicalQuantityId.MetabolicRate,
@@ -222,7 +231,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     state: QuantityState.Primary,
     label: "Metabolic rate",
     display: {
-      units: { SI: "met", IP: "met" },
+      units: { SI: SiUnit.Met, IP: "met" },
       displayUnits: { SI: "met", IP: "met" },
       step: 0.1,
       decimals: 1,
@@ -238,7 +247,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     state: QuantityState.Primary,
     label: "Clothing insulation",
     display: {
-      units: { SI: "clo", IP: "clo" },
+      units: { SI: SiUnit.Clo, IP: "clo" },
       displayUnits: { SI: "clo", IP: "clo" },
       step: 0.1,
       decimals: 1,
@@ -254,7 +263,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     state: QuantityState.Primary,
     label: "External work",
     display: {
-      units: { SI: "met", IP: "met" },
+      units: { SI: SiUnit.Met, IP: "met" },
       displayUnits: { SI: "met", IP: "met" },
       step: 0.1,
       decimals: 1,
@@ -303,15 +312,10 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Humidity ratio",
-    display: {
-      units: { SI: "g/kg", IP: "gr/lb" },
-      displayUnits: { SI: "g/kg", IP: "gr/lb" },
-      step: 0.1,
-      decimals: 1,
-    },
-    defaultSi: 9,
+    display: humidityRatioDisplay,
+    defaultSi: 0.009,
     minSi: 0,
-    maxSi: 25,
+    maxSi: 0.025,
     derivedFrom: [
       PhysicalQuantityId.RelativeHumidity,
       PhysicalQuantityId.DryBulbTemperature,
@@ -336,15 +340,10 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Vapor pressure",
-    display: {
-      units: { SI: "kPa", IP: "inHg" },
-      displayUnits: { SI: "kPa", IP: "inHg" },
-      step: 0.01,
-      decimals: 2,
-    },
-    defaultSi: 1.5,
+    display: vaporPressureDisplay,
+    defaultSi: 1500,
     minSi: 0,
-    maxSi: 10,
+    maxSi: 10000,
     derivedFrom: [
       PhysicalQuantityId.RelativeHumidity,
       PhysicalQuantityId.DryBulbTemperature,
@@ -377,7 +376,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Solar altitude",
-    display: { units: { SI: "deg", IP: "deg" }, displayUnits: { SI: "°", IP: "°" }, step: 1, decimals: 0 },
+    display: { units: { SI: SiUnit.Degree, IP: "deg" }, displayUnits: { SI: "°", IP: "°" }, step: 1, decimals: 0 },
     defaultSi: 45,
     minSi: 0,
     maxSi: 90,
@@ -388,7 +387,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Solar horizontal angle (SHARP)",
-    display: { units: { SI: "deg", IP: "deg" }, displayUnits: { SI: "°", IP: "°" }, step: 1, decimals: 0 },
+    display: { units: { SI: SiUnit.Degree, IP: "deg" }, displayUnits: { SI: "°", IP: "°" }, step: 1, decimals: 0 },
     defaultSi: 0,
     minSi: 0,
     maxSi: 180,
@@ -399,7 +398,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Direct-beam solar radiation",
-    display: { units: { SI: "W/m2", IP: "Btu/(h·ft2)" }, displayUnits: { SI: "W/m²", IP: "Btu/(h·ft²)" }, step: 10, decimals: { SI: 0, IP: 3 } },
+    display: { units: { SI: SiUnit.WattPerSquareMeter, IP: "Btu/(h·ft2)" }, displayUnits: { SI: "W/m²", IP: "Btu/(h·ft²)" }, step: 10, decimals: { SI: 0, IP: 3 } },
     defaultSi: 500,
     minSi: 200,
     maxSi: 1000,
@@ -410,7 +409,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Total solar transmittance",
-    display: { units: { SI: "1", IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 0.05, decimals: 2 },
+    display: { units: { SI: SiUnit.Dimensionless, IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 0.05, decimals: 2 },
     defaultSi: 0.5,
     minSi: 0,
     maxSi: 1,
@@ -421,7 +420,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Sky-vault view fraction",
-    display: { units: { SI: "1", IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 0.05, decimals: 2 },
+    display: { units: { SI: SiUnit.Dimensionless, IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 0.05, decimals: 2 },
     defaultSi: 0.5,
     minSi: 0,
     maxSi: 1,
@@ -432,7 +431,7 @@ export const systemQuantityMetaById: Record<SystemPhysicalQuantityId, PhysicalQu
     scope: PhysicalQuantityScope.System,
     state: QuantityState.Slot,
     label: "Body surface exposed to sun",
-    display: { units: { SI: "1", IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 0.05, decimals: 2 },
+    display: { units: { SI: SiUnit.Dimensionless, IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 0.05, decimals: 2 },
     defaultSi: 0.25,
     minSi: 0,
     maxSi: 1,
@@ -485,6 +484,11 @@ function assertQuantityExtension(
   if (primaryInputOrder.some((id) => id === extension.id)) {
     throw new Error(
       `Extended quantity ${extension.id} must not enter primaryInputOrder.`,
+    );
+  }
+  if (!isSiUnit(extension.display.units.SI)) {
+    throw new Error(
+      `Quantity extension ${extension.id} uses unknown SI unit "${extension.display.units.SI}". New unit dimensions are frontend catalog work.`,
     );
   }
   if (catalog[extension.id] !== undefined) {

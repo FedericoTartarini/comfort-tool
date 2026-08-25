@@ -1,19 +1,8 @@
 import {
   PhysicalQuantityId,
-  type ChartAxisQuantityId,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
-  getPhysicalQuantityMeta,
+  getQuantityDisplayMeta,
 } from "../../models/physicalQuantities";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
-import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
-import {
-  convertLengthFromSi,
-  convertLengthToSi,
-  convertMassFromSi,
-  convertMassToSi,
-  convertSpeedFromSi,
-  convertSpeedToSi,
-} from "./physicalQuantities";
+import { type UnitSystem as UnitSystemType } from "../../models/units";
 export * from "./modelOutputs";
 export * from "./modifierInputs";
 export {
@@ -25,15 +14,30 @@ export {
 export {
   convertHeatFluxFromSi,
   convertHeatFluxToSi,
+  convertHumidityRatioFromSi,
+  convertHumidityRatioToSi,
   convertLengthFromSi,
   convertLengthToSi,
   convertMassFromSi,
   convertMassToSi,
+  convertVaporPressureFromSi,
+  convertVaporPressureToSi,
 } from "./physicalQuantities";
+export {
+  convertCanonicalSiUnitFromSi,
+  convertCanonicalSiUnitToSi,
+  convertQuantityFromSi,
+  convertQuantityToSi,
+  convertQuantityFromSi as convertFieldValueFromSi,
+  convertQuantityToSi as convertFieldValueToSi,
+  convertQuantityFromSi as convertModelQuantityFromSi,
+  convertQuantityToSi as convertModelQuantityToSi,
+} from "./quantityConversion";
 
 /**
  * Centralized unit conversion helpers.
  * Canonical shared state stays in SI; these helpers map values to and from the active UI unit system.
+ * Quantity conversion reads `display.units.SI` from the assembled catalog.
  */
 export type DisplayQuantityMeta = {
   displayUnits: string;
@@ -41,151 +45,18 @@ export type DisplayQuantityMeta = {
   decimals: number;
 };
 
-const humidityRatioDisplayMetaByUnitSystem: Record<UnitSystemType, DisplayQuantityMeta> = {
-  [UnitSystem.SI]: {
-    displayUnits: "g/kg",
-    step: 0.1,
-    decimals: 1,
-  },
-  [UnitSystem.IP]: {
-    displayUnits: "gr/lb",
-    step: 1,
-    decimals: 0,
-  },
-};
-
-const vaporPressureDisplayMetaByUnitSystem: Record<UnitSystemType, DisplayQuantityMeta> = {
-  [UnitSystem.SI]: {
-    displayUnits: "kPa",
-    step: 0.01,
-    decimals: 2,
-  },
-  [UnitSystem.IP]: {
-    displayUnits: "inHg",
-    step: 0.01,
-    decimals: 2,
-  },
-};
-
-const GRAINS_PER_POUND = 7000;
-const GRAMS_PER_KG = 1000;
-const PASCALS_PER_INHG = 3386.389;
-const PASCALS_PER_KPA = 1000;
-
 const KILOMETERS_PER_HOUR_PER_METER_PER_SECOND = 3.6;
 
 export function convertMetersPerSecondToKilometersPerHour(value: number): number {
   return value * KILOMETERS_PER_HOUR_PER_METER_PER_SECOND;
 }
 
-export function convertModelQuantityFromSi(
-  quantityId: PhysicalQuantityIdType,
-  valueSi: number,
-  unitSystem: UnitSystemType,
-): number {
-  if (unitSystem === UnitSystem.SI) {
-    return valueSi;
-  }
-  switch (getPhysicalQuantityMeta(quantityId).display.units.SI) {
-    case "kg":
-      return convertMassFromSi(valueSi * 1000);
-    case "m":
-      return convertLengthFromSi(valueSi);
-    default:
-      return valueSi;
-  }
-}
-
-export function convertModelQuantityToSi(
-  quantityId: PhysicalQuantityIdType,
-  value: number,
-  unitSystem: UnitSystemType,
-): number {
-  if (unitSystem === UnitSystem.SI) {
-    return value;
-  }
-  switch (getPhysicalQuantityMeta(quantityId).display.units.SI) {
-    case "kg":
-      return convertMassToSi(value) / 1000;
-    case "m":
-      return convertLengthToSi(value);
-    default:
-      return value;
-  }
-}
-
-export function convertFieldValueFromSi(
-  key: ChartAxisQuantityId,
-  value: number,
-  unitSystem: UnitSystemType,
-): number {
-  if (unitSystem === UnitSystem.SI) {
-    return value;
-  }
-
-  if (
-    key === PhysicalQuantityId.DryBulbTemperature ||
-    key === PhysicalQuantityId.MeanRadiantTemperature ||
-    key === PhysicalQuantityId.PrevailingMeanOutdoorTemperature ||
-    key === PhysicalQuantityId.OperativeTemperature
-  ) {
-    return convertTemperatureFromSi(value);
-  }
-
-  if (key === PhysicalQuantityId.RelativeAirSpeed || key === PhysicalQuantityId.WindSpeed) {
-    return convertSpeedFromSi(value);
-  }
-
-  return value;
-}
-
-export function convertFieldValueToSi(
-  key: ChartAxisQuantityId,
-  value: number,
-  unitSystem: UnitSystemType,
-): number {
-  if (unitSystem === UnitSystem.SI) {
-    return value;
-  }
-
-  if (
-    key === PhysicalQuantityId.DryBulbTemperature ||
-    key === PhysicalQuantityId.MeanRadiantTemperature ||
-    key === PhysicalQuantityId.PrevailingMeanOutdoorTemperature ||
-    key === PhysicalQuantityId.OperativeTemperature
-  ) {
-    return convertTemperatureToSi(value);
-  }
-
-  if (key === PhysicalQuantityId.RelativeAirSpeed || key === PhysicalQuantityId.WindSpeed) {
-    return convertSpeedToSi(value);
-  }
-
-  return value;
-}
-
-export function convertHumidityRatioFromSi(value: number, unitSystem: UnitSystemType): number {
-  return unitSystem === UnitSystem.IP ? value * GRAINS_PER_POUND : value * GRAMS_PER_KG;
-}
-
-export function convertHumidityRatioToSi(value: number, unitSystem: UnitSystemType): number {
-  return unitSystem === UnitSystem.IP ? value / GRAINS_PER_POUND : value / GRAMS_PER_KG;
-}
-
-export function convertVaporPressureFromSi(value: number, unitSystem: UnitSystemType): number {
-  return unitSystem === UnitSystem.IP ? value / PASCALS_PER_INHG : value / PASCALS_PER_KPA;
-}
-
-export function convertVaporPressureToSi(value: number, unitSystem: UnitSystemType): number {
-  return unitSystem === UnitSystem.IP ? value * PASCALS_PER_INHG : value * PASCALS_PER_KPA;
-}
-
 export function getHumidityRatioDisplayMeta(unitSystem: UnitSystemType): DisplayQuantityMeta {
-  return humidityRatioDisplayMetaByUnitSystem[unitSystem];
+  return getQuantityDisplayMeta(PhysicalQuantityId.DerivedHumidityRatio, unitSystem);
 }
 
 export function getVaporPressureDisplayMeta(unitSystem: UnitSystemType): DisplayQuantityMeta {
-  return vaporPressureDisplayMetaByUnitSystem[unitSystem];
+  return getQuantityDisplayMeta(PhysicalQuantityId.VaporPressure, unitSystem);
 }
 
 export function formatDisplayValue(value: number, decimals: number): string {

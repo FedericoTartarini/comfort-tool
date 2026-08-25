@@ -1,17 +1,11 @@
 import {
-  PhysicalQuantityId,
   getPhysicalQuantityMeta,
   getQuantityDisplayMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../models/physicalQuantities";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
-import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
-import {
-  convertHeatFluxFromSi,
-  convertHeatFluxToSi,
-  convertSpeedFromSi,
-  convertSpeedToSi,
-} from "./physicalQuantities";
+import { type UnitSystem as UnitSystemType } from "../../models/units";
+import { convertQuantityFromSi, convertQuantityToSi } from "./quantityConversion";
+
 export interface ModifierFieldDisplayMeta {
   label: string;
   displayUnits: string;
@@ -21,30 +15,12 @@ export interface ModifierFieldDisplayMeta {
   maxValue?: number;
 }
 
-function isTemperatureQuantity(key: PhysicalQuantityIdType): boolean {
-  return key === PhysicalQuantityId.ModifierMorningOutdoorTemperature;
-}
-
-function isAirSpeedQuantity(key: PhysicalQuantityIdType): boolean {
-  return key === PhysicalQuantityId.ModifierMeasuredAirSpeed;
-}
-
-function isSolarRadiationQuantity(key: PhysicalQuantityIdType): boolean {
-  return key === PhysicalQuantityId.ModifierDirectSolarRadiation;
-}
-
 export function convertModifierFieldValueFromSi(
   key: PhysicalQuantityIdType,
   value: number,
   unitSystem: UnitSystemType,
 ): number {
-  if (unitSystem === UnitSystem.SI) return value;
-  if (isTemperatureQuantity(key)) return convertTemperatureFromSi(value);
-  if (isAirSpeedQuantity(key)) return convertSpeedFromSi(value);
-  if (isSolarRadiationQuantity(key)) {
-    return convertHeatFluxFromSi(value);
-  }
-  return value;
+  return convertQuantityFromSi(key, value, unitSystem);
 }
 
 export function convertModifierFieldValueToSi(
@@ -52,13 +28,7 @@ export function convertModifierFieldValueToSi(
   value: number,
   unitSystem: UnitSystemType,
 ): number {
-  if (unitSystem === UnitSystem.SI) return value;
-  if (isTemperatureQuantity(key)) return convertTemperatureToSi(value);
-  if (isAirSpeedQuantity(key)) return convertSpeedToSi(value);
-  if (isSolarRadiationQuantity(key)) {
-    return convertHeatFluxToSi(value);
-  }
-  return value;
+  return convertQuantityToSi(key, value, unitSystem);
 }
 
 export function getModifierFieldDisplayMeta(

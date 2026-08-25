@@ -48,7 +48,7 @@ export const PHS_AXIS_RANGES: Record<ChartAxisQuantityId, ChartRange> = {
   [PhysicalQuantityId.RelativeAirSpeed]: { min: 0, max: 2 },
   [PhysicalQuantityId.WindSpeed]: { min: 0, max: 3 },
   [PhysicalQuantityId.RelativeHumidity]: { min: 0, max: 100 },
-  [PhysicalQuantityId.HumidityRatio]: { min: 0, max: 25 },
+  [PhysicalQuantityId.HumidityRatio]: { min: 0, max: 0.025 },
   [PhysicalQuantityId.MetabolicRate]: { min: 0.9, max: 3.9 },
   [PhysicalQuantityId.ClothingInsulation]: { min: 0.1, max: 1 },
   [PhysicalQuantityId.ExternalWork]: { min: 0, max: 0 },

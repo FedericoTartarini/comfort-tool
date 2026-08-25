@@ -19,10 +19,8 @@ import type {
   TimeSeriesSimulationControls,
 } from "../../models/timeSeries";
 import {
-  convertFieldValueFromSi,
-  convertFieldValueToSi,
-  convertModelQuantityFromSi,
-  convertModelQuantityToSi,
+  convertQuantityFromSi,
+  convertQuantityToSi,
 } from "../../services/units";
 import {
   PhsSimulationCancelledError,
@@ -145,21 +143,21 @@ function createSegmentControl(options: {
     getDisplayValue: (draft, unitSystem, segmentId) => {
       const segment = findSegment(draft, segmentId);
       if (!segment) return Number.NaN;
-      return convertFieldValueFromSi(field, Number(segment[property]), unitSystem);
+      return convertQuantityFromSi(field, Number(segment[property]), unitSystem);
     },
     applyDisplayValue: (draft, rawValue, unitSystem, segmentId) => {
       const segment = findSegment(draft, segmentId);
       const displayValue = Number(rawValue);
       if (!segment || !Number.isFinite(displayValue)) return false;
-      const valueSi = convertFieldValueToSi(field, displayValue, unitSystem);
+      const valueSi = convertQuantityToSi(field, displayValue, unitSystem);
       if (segment[property] === valueSi) return false;
       Reflect.set(segment, property, valueSi);
       return true;
     },
     getDisplayUnits: (unitSystem) => getQuantityDisplayMeta(field, unitSystem).displayUnits,
     getStep: (unitSystem) => getQuantityDisplayMeta(field, unitSystem).step,
-    getMin: (unitSystem) => convertFieldValueFromSi(field, options.min, unitSystem),
-    getMax: (unitSystem) => convertFieldValueFromSi(field, options.max, unitSystem),
+    getMin: (unitSystem) => convertQuantityFromSi(field, options.min, unitSystem),
+    getMax: (unitSystem) => convertQuantityFromSi(field, options.max, unitSystem),
   };
 }
 
@@ -176,20 +174,20 @@ function createPersonQuantityControl(options: {
       return meta().label;
     },
     getDisplayValue: (draft, unitSystem) => (
-      convertModelQuantityFromSi(quantityId, draft.person[quantityId], unitSystem)
+      convertQuantityFromSi(quantityId, draft.person[quantityId], unitSystem)
     ),
     applyDisplayValue: (draft, rawValue, unitSystem) => {
       const displayValue = Number(rawValue);
       if (!Number.isFinite(displayValue)) return false;
-      const valueSi = convertModelQuantityToSi(quantityId, displayValue, unitSystem);
+      const valueSi = convertQuantityToSi(quantityId, displayValue, unitSystem);
       if (draft.person[quantityId] === valueSi) return false;
       draft.person[quantityId] = valueSi;
       return true;
     },
     getDisplayUnits: (unitSystem) => getQuantityDisplayMeta(quantityId, unitSystem).displayUnits,
     getStep: (unitSystem) => getQuantityDisplayMeta(quantityId, unitSystem).step,
-    getMin: (unitSystem) => convertModelQuantityFromSi(quantityId, meta().minSi, unitSystem),
-    getMax: (unitSystem) => convertModelQuantityFromSi(quantityId, meta().maxSi, unitSystem),
+    getMin: (unitSystem) => convertQuantityFromSi(quantityId, meta().minSi, unitSystem),
+    getMax: (unitSystem) => convertQuantityFromSi(quantityId, meta().maxSi, unitSystem),
   };
 }
 

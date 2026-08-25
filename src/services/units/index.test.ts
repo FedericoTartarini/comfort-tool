@@ -4,19 +4,23 @@ import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { PhsQuantityId } from "../../models/phs";
 import { UnitSystem } from "../../models/units";
 import {
+  convertCanonicalSiUnitFromSi,
   convertFieldValueFromSi,
   convertFieldValueToSi,
-  convertTemperatureDeltaFromSi,
-  convertTemperatureDeltaToSi,
   convertHumidityRatioFromSi,
   convertHumidityRatioToSi,
-  convertMetersPerSecondToKilometersPerHour,
   convertLengthFromSi,
   convertLengthToSi,
   convertMassFromSi,
   convertMassToSi,
+  convertMetersPerSecondToKilometersPerHour,
   convertModelQuantityFromSi,
   convertModelQuantityToSi,
+  convertModifierFieldValueFromSi,
+  convertQuantityFromSi,
+  convertQuantityToSi,
+  convertTemperatureDeltaFromSi,
+  convertTemperatureDeltaToSi,
   convertVaporPressureFromSi,
   convertVaporPressureToSi,
   getHumidityRatioDisplayMeta,
@@ -31,7 +35,7 @@ describe("units helpers", () => {
     expect(convertMetersPerSecondToKilometersPerHour(10)).toBe(36);
   });
 
-  it("round-trips field conversions between SI and IP", () => {
+  it("round-trips field conversions between SI and IP through the catalog", () => {
     const displayTemperature = convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, 25, UnitSystem.IP);
     expect(displayTemperature).toBeCloseTo(77, 6);
     expect(convertFieldValueToSi(PhysicalQuantityId.DryBulbTemperature, displayTemperature, UnitSystem.IP)).toBeCloseTo(25, 6);
@@ -53,6 +57,23 @@ describe("units helpers", () => {
     expect(convertFieldValueToSi(PhysicalQuantityId.WindSpeed, displayWindSpeed, UnitSystem.IP)).toBeCloseTo(1.2, 6);
   });
 
+  it("converts dew point and solar radiation from catalog SI units, not quantity-id lists", () => {
+    expect(convertQuantityFromSi(PhysicalQuantityId.DewPoint, 0, UnitSystem.IP)).toBe(32);
+    expect(convertQuantityToSi(PhysicalQuantityId.DewPoint, 32, UnitSystem.IP)).toBeCloseTo(0, 10);
+
+    const displayRadiation = convertQuantityFromSi(
+      PhysicalQuantityId.ModifierDirectSolarRadiation,
+      1000,
+      UnitSystem.IP,
+    );
+    expect(displayRadiation).toBeCloseTo(316.9983306281505, 8);
+    expect(convertQuantityToSi(
+      PhysicalQuantityId.ModifierDirectSolarRadiation,
+      displayRadiation,
+      UnitSystem.IP,
+    )).toBeCloseTo(1000, 8);
+  });
+
   it("converts temperature differences without the Fahrenheit offset", () => {
     expect(convertTemperatureDeltaFromSi(1.64)).toBeCloseTo(2.952, 6);
     expect(convertTemperatureDeltaToSi(2.952)).toBeCloseTo(1.64, 6);
@@ -64,13 +85,55 @@ describe("units helpers", () => {
     expect(convertHumidityRatioToSi(humidityRatioIp, UnitSystem.IP)).toBeCloseTo(0.0085, 8);
 
     const humidityRatioSi = convertHumidityRatioFromSi(0.0085, UnitSystem.SI);
+    expect(humidityRatioSi).toBeCloseTo(8.5, 8);
     expect(convertHumidityRatioToSi(humidityRatioSi, UnitSystem.SI)).toBeCloseTo(0.0085, 8);
 
     const vaporPressureIp = convertVaporPressureFromSi(1600, UnitSystem.IP);
     expect(convertVaporPressureToSi(vaporPressureIp, UnitSystem.IP)).toBeCloseTo(1600, 6);
 
     const vaporPressureSi = convertVaporPressureFromSi(1600, UnitSystem.SI);
+    expect(vaporPressureSi).toBeCloseTo(1.6, 8);
     expect(convertVaporPressureToSi(vaporPressureSi, UnitSystem.SI)).toBeCloseTo(1600, 6);
+  });
+
+  it("converts humidity ratio and vapor pressure through assembled catalog ids", () => {
+    expect(convertQuantityFromSi(
+      PhysicalQuantityId.DerivedHumidityRatio,
+      0.0085,
+      UnitSystem.SI,
+    )).toBeCloseTo(8.5, 8);
+    expect(convertQuantityFromSi(
+      PhysicalQuantityId.HumidityRatio,
+      0.009,
+      UnitSystem.IP,
+    )).toBeCloseTo(63, 8);
+    expect(convertQuantityFromSi(
+      PhysicalQuantityId.VaporPressure,
+      1600,
+      UnitSystem.SI,
+    )).toBeCloseTo(1.6, 8);
+    expect(convertQuantityToSi(
+      PhysicalQuantityId.VaporPressure,
+      1.8,
+      UnitSystem.SI,
+    )).toBeCloseTo(1800, 8);
+  });
+
+  it("uses the same catalog conversion for fields, modifiers, and model quantities", () => {
+    const valueSi = 20;
+    expect(convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, valueSi, UnitSystem.IP))
+      .toBe(convertQuantityFromSi(PhysicalQuantityId.DryBulbTemperature, valueSi, UnitSystem.IP));
+    expect(convertModifierFieldValueFromSi(
+      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      valueSi,
+      UnitSystem.IP,
+    )).toBe(convertQuantityFromSi(
+      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      valueSi,
+      UnitSystem.IP,
+    ));
+    expect(convertModelQuantityFromSi(PhsQuantityId.BodyWeight, 75, UnitSystem.IP))
+      .toBe(convertQuantityFromSi(PhsQuantityId.BodyWeight, 75, UnitSystem.IP));
   });
 
   it("round-trips PHS person length and mass quantities", () => {
@@ -113,7 +176,12 @@ describe("units helpers", () => {
     )).toBe(75);
   });
 
-  it("exposes display metadata for derived humidity quantities", () => {
+  it("rejects unknown canonical SI units", () => {
+    expect(() => convertCanonicalSiUnitFromSi("stone", 1, UnitSystem.IP))
+      .toThrow(/Unknown SI unit "stone"/);
+  });
+
+  it("exposes display metadata for derived humidity quantities from the catalog", () => {
     expect(getHumidityRatioDisplayMeta(UnitSystem.SI)).toEqual({
       displayUnits: "g/kg",
       step: 0.1,
@@ -122,7 +190,7 @@ describe("units helpers", () => {
 
     expect(getHumidityRatioDisplayMeta(UnitSystem.IP)).toEqual({
       displayUnits: "gr/lb",
-      step: 1,
+      step: 0.1,
       decimals: 0,
     });
 

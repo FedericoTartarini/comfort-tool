@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId, getQuantityDisplayMeta, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../../models/physicalQuantities";
 import type { InputControlId as InputControlIdType } from "../../../models/inputControls";
 import {
   HumidityInputMode,
@@ -10,14 +10,8 @@ import { inputOrder } from "../../../models/inputSlots";
 import { humidityMenuItems } from "../../../models/controlMenuMeta";
 import { getDerivedFromAuxiliary } from "../quantityStateRouting";
 import {
-  convertFieldValueFromSi,
-  convertFieldValueToSi,
-  convertHumidityRatioFromSi,
-  convertHumidityRatioToSi,
-  convertVaporPressureFromSi,
-  convertVaporPressureToSi,
-  getHumidityRatioDisplayMeta,
-  getVaporPressureDisplayMeta,
+  convertQuantityFromSi,
+  convertQuantityToSi,
 } from "../../units";
 import {
   deriveRelativeHumidityFromDewPoint,
@@ -25,7 +19,6 @@ import {
   deriveRelativeHumidityFromVaporPressure,
   deriveRelativeHumidityFromWetBulb,
 } from "../derivations";
-import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import { UnitSystem } from "../../../models/units";
 import type {
   ControlBehaviorContext,
@@ -43,13 +36,12 @@ import {
 
 interface HumidityModeDefinition {
   label: string;
+  quantityId: PhysicalQuantityIdType;
   derivedKey: DerivedSlotQuantityId | null;
   getPresentation: (
     context: ControlBehaviorContext,
     label: string,
   ) => PresentationMeta;
-  fromSi: (valueSi: number, unitSystem: UnitSystemType) => number;
-  toSi: (value: number, unitSystem: UnitSystemType) => number;
   toRelativeHumidity: (
     dryBulbTemperatureSi: number,
     valueSi: number,
@@ -61,19 +53,14 @@ const relativeHumidityLabel = getQuantityPresentationMeta(
   UnitSystem.SI,
 ).label;
 
-function buildTemperaturePresentation(
+function catalogPresentation(
   context: ControlBehaviorContext,
+  quantityId: PhysicalQuantityIdType,
   label: string,
 ): PresentationMeta {
-  const temperatureMeta = getQuantityPresentationMeta(
-    PhysicalQuantityId.DryBulbTemperature,
-    context.unitSystem,
-  );
   return {
     label,
-    displayUnits: temperatureMeta.displayUnits,
-    step: temperatureMeta.step,
-    decimals: temperatureMeta.decimals,
+    ...getQuantityDisplayMeta(quantityId, context.unitSystem),
     rangeText: "",
   };
 }
@@ -81,69 +68,56 @@ function buildTemperaturePresentation(
 const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinition> = {
   [HumidityInputMode.RelativeHumidity]: {
     label: relativeHumidityLabel,
+    quantityId: PhysicalQuantityId.RelativeHumidity,
     derivedKey: null,
     getPresentation: (context, label) => ({
       ...buildDefaultPresentation(context, PhysicalQuantityId.RelativeHumidity),
       label,
     }),
-    fromSi: (valueSi) => valueSi,
-    toSi: (value) => value,
     toRelativeHumidity: (_temperature, valueSi) => valueSi,
   },
   [HumidityInputMode.HumidityRatio]: {
     label: "Humidity ratio",
+    quantityId: PhysicalQuantityId.DerivedHumidityRatio,
     derivedKey: PhysicalQuantityId.DerivedHumidityRatio,
-    getPresentation: (context, label) => ({
+    getPresentation: (context, label) => catalogPresentation(
+      context,
+      PhysicalQuantityId.DerivedHumidityRatio,
       label,
-      ...getHumidityRatioDisplayMeta(context.unitSystem),
-      rangeText: "",
-    }),
-    fromSi: convertHumidityRatioFromSi,
-    toSi: convertHumidityRatioToSi,
+    ),
     toRelativeHumidity: deriveRelativeHumidityFromHumidityRatio,
   },
   [HumidityInputMode.DewPoint]: {
     label: "Dew point",
+    quantityId: PhysicalQuantityId.DewPoint,
     derivedKey: PhysicalQuantityId.DewPoint,
-    getPresentation: buildTemperaturePresentation,
-    fromSi: (valueSi, unitSystem) => convertFieldValueFromSi(
-      PhysicalQuantityId.DryBulbTemperature,
-      valueSi,
-      unitSystem,
-    ),
-    toSi: (value, unitSystem) => convertFieldValueToSi(
-      PhysicalQuantityId.DryBulbTemperature,
-      value,
-      unitSystem,
+    getPresentation: (context, label) => catalogPresentation(
+      context,
+      PhysicalQuantityId.DewPoint,
+      label,
     ),
     toRelativeHumidity: deriveRelativeHumidityFromDewPoint,
   },
   [HumidityInputMode.WetBulb]: {
     label: "Wet-bulb temperature",
+    quantityId: PhysicalQuantityId.WetBulb,
     derivedKey: PhysicalQuantityId.WetBulb,
-    getPresentation: buildTemperaturePresentation,
-    fromSi: (valueSi, unitSystem) => convertFieldValueFromSi(
-      PhysicalQuantityId.DryBulbTemperature,
-      valueSi,
-      unitSystem,
-    ),
-    toSi: (value, unitSystem) => convertFieldValueToSi(
-      PhysicalQuantityId.DryBulbTemperature,
-      value,
-      unitSystem,
+    getPresentation: (context, label) => catalogPresentation(
+      context,
+      PhysicalQuantityId.WetBulb,
+      label,
     ),
     toRelativeHumidity: deriveRelativeHumidityFromWetBulb,
   },
   [HumidityInputMode.VaporPressure]: {
     label: "Vapor pressure",
+    quantityId: PhysicalQuantityId.VaporPressure,
     derivedKey: PhysicalQuantityId.VaporPressure,
-    getPresentation: (context, label) => ({
+    getPresentation: (context, label) => catalogPresentation(
+      context,
+      PhysicalQuantityId.VaporPressure,
       label,
-      ...getVaporPressureDisplayMeta(context.unitSystem),
-      rangeText: "",
-    }),
-    fromSi: convertVaporPressureFromSi,
-    toSi: convertVaporPressureToSi,
+    ),
     toRelativeHumidity: deriveRelativeHumidityFromVaporPressure,
   },
 };
@@ -224,7 +198,8 @@ export function createHumidityControlBehavior(
       const definition = humidityModeDefinitions[
         requireHumidityInputMode(context.options)
       ];
-      return definition.fromSi(
+      return convertQuantityFromSi(
+        definition.quantityId,
         getHumidityValueSi(
           definition,
           context.quantitiesByInput[inputId],
@@ -233,9 +208,16 @@ export function createHumidityControlBehavior(
         context.unitSystem,
       );
     },
-    parseInput: (context, value) => humidityModeDefinitions[
-      requireHumidityInputMode(context.options)
-    ].toSi(value, context.unitSystem),
+    parseInput: (context, value) => {
+      const definition = humidityModeDefinitions[
+        requireHumidityInputMode(context.options)
+      ];
+      return convertQuantityToSi(
+        definition.quantityId,
+        value,
+        context.unitSystem,
+      );
+    },
     applyInput: (context, inputId, nextValueSi) => {
       const mode = requireHumidityInputMode(context.options);
       const definition = humidityModeDefinitions[mode];

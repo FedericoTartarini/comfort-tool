@@ -82,7 +82,7 @@ All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or
 
 - `src/models/physicalQuantities.ts` is the **system seed**. Runtime code reads the assembled catalog `system seed ∪ declarations[].quantities.extend`. Duplicate ids, wrong owners, or an extend id in `primaryInputOrder` fail builder / registry assemble. `assembleCatalogs` merges those extensions from the models it is given. Registry assemble exposes optional `assembledCatalogs.validate.model` for those catalog checks (not a second authoring API); `assembleCatalogs` installs the hook on the returned instance.
 - A model declaration may contribute `{ id, owner: this model, scope: model, SI meta }` via `quantities.extend`. Extended quantities **must not** enter `primaryInputOrder` or the global share primary record; they live in sparse `modelInputsByModel`.
-- PHS body weight/height SI meta live on the PHS declaration. Mass/length conversion reads catalog SI units (`display.units.SI`). Field behaviors must not branch on `if (model === Phs)` or PHS quantity ids.
+- PHS body weight/height SI meta live on the PHS declaration. All quantity conversion (fields, modifiers, model-scoped extensions, chart axes) reads assembled catalog SI units (`display.units.SI` / `SiUnit`) in `src/services/units/` via `convertQuantityFromSi`. Control widgets stay generic and must not branch on quantity-id lists, `if (model === Phs)`, or PHS quantity ids. Canonical state remains SI. `display.units.SI` is the storage unit (for example `kg/kg`, `Pa`, `kg`, `m`, `degC`); SI/IP display labels such as g/kg and kPa live in `display.displayUnits`. New unit dimensions are frontend catalog work (`SiUnit` plus a converter), not declaration-only work.
 - Request short names (`tdb`, `vr`, `rh`, …) are allowed only at the `jsthermalcomfort` boundary. Each model's `createFieldRequestAdapter()` mapping is the sole catalog→library connection point. Simple models keep that mapping in the declaration file (`heatIndex.ts`, `humidex.ts`, `windChill.ts`); larger families keep it in `*Calculation.ts`. Do not add new application-layer `*Dto` types; Plan retires that suffix outside the library boundary.
 - `quantitiesByInput` stores base primary SI before modifiers; `effectiveQuantitiesByInput` in `ModelCalculationContext` is what calculations and request mapping read.
 - Calculate each model once into `calculationCacheByModel`; chart builders read `resultsByInput` and `chartSource` from that cache. Presentation-only changes (mode, axes, bands) must rebuild charts without invalidating ready caches.
@@ -93,9 +93,10 @@ All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or
 ## Conversion Ownership
 
 - Canonical state remains SI.
-- All unit conversion should live in one conversion module family under `src/services/`.
+- All unit conversion should live in one conversion module family under `src/services/units/`.
+- Quantity SI ↔ display conversion reads `display.units.SI` from the assembled catalog (`convertQuantityFromSi`). Do not add quantity-id lists in control widgets.
 - Do not scatter new temperature, speed, humidity-ratio, or vapor-pressure conversions across components or state helpers.
-- Components may format values for display, but conversion rules should come from centralized helpers and metadata.
+- Components may format values for display, but conversion rules should come from centralized helpers and catalog metadata.
 
 ## State Rules
 
@@ -289,7 +290,7 @@ Share snapshots store `selectedChartInstanceId` per model. Instance ids are deri
 
 - Keep this file focused on execution rules. Target architecture lives in `ARCHITECTURE-PLAN.md`.
 - If a task materially changes state flow, model registration, or service boundaries, update this file and `docs/` in the same work.
-- Authoring a model: [docs/adding-a-model.md](docs/adding-a-model.md). Copy `heatIndex.ts`, add a `ComfortModel` member, register once. Hard stops: new chart engine, new primary, new modifier, new Time-series controller.
+- Authoring a model: [docs/adding-a-model.md](docs/adding-a-model.md). Copy `heatIndex.ts`, add a `ComfortModel` member, register once. Hard stops: new chart engine, new primary, new modifier, new Time-series controller, new SI unit dimension.
 - Do not add a documentation generator, deployment step, or product UI route for these internal files unless a later task explicitly requests one.
 
 ## Code Quality

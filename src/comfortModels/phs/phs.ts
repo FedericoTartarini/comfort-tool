@@ -1,6 +1,7 @@
 import type { ModelChartSourceDto } from "../../models/comfortDtos";
 import { ComfortModel } from "../../models/comfortModels";
 import { PhysicalQuantityId, PhysicalQuantityScope } from "../../models/physicalQuantities";
+import { SiUnit } from "../../models/units";
 import { InputControlId } from "../../models/inputControls";
 import {
   bandsFromThermalZones,
@@ -315,7 +316,7 @@ const phsQuantityExtensions = [
     scope: PhysicalQuantityScope.Model,
     label: "Body weight",
     display: {
-      units: { SI: "kg", IP: "lb" },
+      units: { SI: SiUnit.Kilogram, IP: "lb" },
       displayUnits: { SI: "kg", IP: "lb" },
       step: 1,
       decimals: 0,
@@ -330,7 +331,7 @@ const phsQuantityExtensions = [
     scope: PhysicalQuantityScope.Model,
     label: "Body height",
     display: {
-      units: { SI: "m", IP: "ft" },
+      units: { SI: SiUnit.Meter, IP: "ft" },
       displayUnits: { SI: "m", IP: "ft" },
       step: 0.01,
       decimals: 2,

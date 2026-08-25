@@ -19,8 +19,8 @@ import {
   type MenuItemDefinition,
 } from "../../../models/controlMenuMeta";
 import {
-  convertFieldValueFromSi,
-  convertFieldValueToSi,
+  convertQuantityFromSi,
+  convertQuantityToSi,
   formatDisplayValue,
 } from "../../units";
 import {
@@ -97,11 +97,11 @@ function buildRangeText(
   context: ControlBehaviorContext,
 ): string {
   const minimum = formatDisplayValue(
-    convertFieldValueFromSi(fieldKey, minValue, context.unitSystem),
+    convertQuantityFromSi(fieldKey, minValue, context.unitSystem),
     decimals,
   );
   const maximum = formatDisplayValue(
-    convertFieldValueFromSi(fieldKey, maxValue, context.unitSystem),
+    convertQuantityFromSi(fieldKey, maxValue, context.unitSystem),
     decimals,
   );
   return `From ${minimum} to ${maximum}`;
@@ -127,8 +127,8 @@ export function buildDefaultPresentation(
       meta.decimals,
       context,
     ),
-    minValue: convertFieldValueFromSi(quantityId, minValue, context.unitSystem),
-    maxValue: convertFieldValueFromSi(quantityId, maxValue, context.unitSystem),
+    minValue: convertQuantityFromSi(quantityId, minValue, context.unitSystem),
+    maxValue: convertQuantityFromSi(quantityId, maxValue, context.unitSystem),
   };
 }
 
@@ -173,7 +173,7 @@ export function createControlBehavior(
         });
       const getDisplayValue = (inputId: InputIdType) => (
         config.getDisplayValue?.(context, inputId)
-        ?? convertFieldValueFromSi(
+        ?? convertQuantityFromSi(
           config.fieldKey,
           context.quantitiesByInput[inputId][config.fieldKey],
           context.unitSystem,
@@ -214,7 +214,7 @@ export function createControlBehavior(
       const parsedValue = Number(rawValue);
       if (!Number.isFinite(parsedValue)) return null;
       const nextValue = config.parseInput?.(context, parsedValue)
-        ?? convertFieldValueToSi(config.fieldKey, parsedValue, context.unitSystem);
+        ?? convertQuantityToSi(config.fieldKey, parsedValue, context.unitSystem);
       if (nextValue === null || !Number.isFinite(nextValue)) return null;
       return config.applyInput?.(context, inputId, nextValue)
         ?? createSingleInputPatch(inputId, { [config.fieldKey]: nextValue });
