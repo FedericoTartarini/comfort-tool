@@ -8,6 +8,7 @@ import type {
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../models/comfortDtos";
+import { remapZoneFill } from "../models/zoneTokens";
 import {
   CHART_LAYOUT_DPI,
   ChartThemeKind,
@@ -97,7 +98,7 @@ type PlotlyGapNumber = number | null;
  * Non-finite grid `z` cells (NaN / ±Infinity) become `null` Plotly gaps. Do
  * not `JSON.parse(JSON.stringify(figure))`. Publication export builds a
  * separate figure from `chartTheme` (mm/pt/dpi, single/double column, no
- * mode bar).
+ * mode bar). Zone fills remap through the token table in `zoneTokens.ts`.
  */
 export function toPlotlyFigure(
   chart: PlotlyChartResponseDto,
@@ -105,7 +106,7 @@ export function toPlotlyFigure(
 ): PlotlyFigure {
   const theme = options.theme ?? screenChartTheme;
   return {
-    data: chart.traces.map(toPlotlyTrace),
+    data: chart.traces.map((trace) => toPlotlyTrace(trace, theme)),
     layout: toPlotlyLayout(chart, theme, options.showPlotTitle !== false),
     config: {
       responsive: theme.responsive,
@@ -115,9 +116,13 @@ export function toPlotlyFigure(
   };
 }
 
-function toPlotlyTrace(trace: PlotTraceDto): Record<string, unknown> {
+function toPlotlyTrace(
+  trace: PlotTraceDto,
+  theme: ChartTheme,
+): Record<string, unknown> {
   const { hoverMetadata, isBackgroundZone: _isBackgroundZone, ...rest } = trace;
   const plotlyTrace: Record<string, unknown> = { ...rest };
+  const zonePalette = theme.zonePalette;
 
   if (hoverMetadata !== undefined) {
     plotlyTrace.customdata = hoverMetadata;
@@ -140,7 +145,13 @@ function toPlotlyTrace(trace: PlotTraceDto): Record<string, unknown> {
   }
 
   if (Array.isArray(rest.colorscale)) {
-    plotlyTrace.colorscale = cloneColorScale(rest.colorscale);
+    plotlyTrace.colorscale = cloneColorScale(rest.colorscale).map(
+      ([stop, color]) => [stop, remapZoneFill(color, zonePalette)],
+    );
+  }
+
+  if (typeof rest.fillcolor === "string") {
+    plotlyTrace.fillcolor = remapZoneFill(rest.fillcolor, zonePalette);
   }
 
   if (rest.marker) {

@@ -13,6 +13,7 @@ import { TableType } from "../models/output/tableLayouts";
 import { WorkspaceCapability } from "../models/output/workspaceCapabilities";
 import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../models/physicalQuantities";
 import { ThermalZone } from "../models/thermalZone";
+import { ZoneToken } from "../models/zoneTokens";
 import type { GridModelChartSpec } from "../services/comfort/charts/gridModelCharts";
 import { requireThermalZone } from "../services/comfort/helpers";
 import {
@@ -41,12 +42,12 @@ const PSYCHROMETRIC_AXIS_FIELDS = [
 ] as const;
 
 export const humidexZonesList = [
-  new ThermalZone({ label: "Little/None", max: 30, color: "#e2e8f0", textColor: "#475569" }),
-  new ThermalZone({ label: "Noticeable", min: 30, max: 35, color: "#fef08a", textColor: "#854d0e" }),
-  new ThermalZone({ label: "Evident", min: 35, max: 40, color: "#fde047", textColor: "#a16207" }),
-  new ThermalZone({ label: "Intense", min: 40, max: 45, color: "#facc15", textColor: "#a16207" }),
-  new ThermalZone({ label: "Dangerous", min: 45, max: 54, color: "#f97316", textColor: "#ea580c" }),
-  new ThermalZone({ label: "Stroke Probable", min: 54, color: "#dc2626", textColor: "#b91c1c" }),
+  new ThermalZone({ label: "Little/None", max: 30, token: ZoneToken.Safe }),
+  new ThermalZone({ label: "Noticeable", min: 30, max: 35, token: ZoneToken.Caution }),
+  new ThermalZone({ label: "Evident", min: 35, max: 40, token: ZoneToken.StrongCaution }),
+  new ThermalZone({ label: "Intense", min: 40, max: 45, token: ZoneToken.Intense }),
+  new ThermalZone({ label: "Dangerous", min: 45, max: 54, token: ZoneToken.Danger }),
+  new ThermalZone({ label: "Stroke Probable", min: 54, token: ZoneToken.ExtremeDanger }),
 ];
 
 export interface HumidexRequestDto {

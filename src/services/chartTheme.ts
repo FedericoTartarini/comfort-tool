@@ -1,12 +1,18 @@
 /**
- * Screen and publication chart theme (Plan 0h / 2a).
+ * Screen and publication chart theme (Plan 0h / 2a / 2c).
  *
  * Geometry stays Plotly-agnostic. This module sizes the two surfaces:
  * screen (CSS pixels, hover mode bar) and publication (explicit mm / pt / dpi,
  * no mode bar). Export builds a separate figure; it must not capture the
  * on-screen plot. Publication widths are journal single- and double-column
- * profiles on the same type tokens (font, pt, dpi).
+ * profiles on the same type tokens (font, pt, dpi). Zone fills remap through
+ * `src/models/zoneTokens.ts` (screen / publication / colour-blind).
  */
+
+import {
+  ZonePaletteKind,
+  type ZonePaletteKind as ZonePaletteKindType,
+} from "../models/zoneTokens";
 
 export const ChartThemeKind = {
   Screen: "screen",
@@ -57,6 +63,7 @@ const PUBLICATION_TYPE = {
   displayModeBar: false,
   responsive: false,
   displaylogo: false,
+  zonePalette: ZonePaletteKind.Publication,
 } as const;
 
 export interface ScreenChartTheme {
@@ -68,6 +75,7 @@ export interface ScreenChartTheme {
   displayModeBar: "hover";
   responsive: true;
   displaylogo: false;
+  zonePalette: ZonePaletteKindType;
 }
 
 export interface PublicationChartTheme {
@@ -83,6 +91,7 @@ export interface PublicationChartTheme {
   displayModeBar: false;
   responsive: false;
   displaylogo: false;
+  zonePalette: ZonePaletteKindType;
 }
 
 export type ChartTheme = ScreenChartTheme | PublicationChartTheme;
@@ -105,7 +114,16 @@ export const screenChartTheme: ScreenChartTheme = {
   displayModeBar: "hover",
   responsive: true,
   displaylogo: false,
+  zonePalette: ZonePaletteKind.Screen,
 };
+
+/** Apply a zone palette (for example colour-blind) without changing type tokens. */
+export function chartThemeWithZonePalette<T extends ChartTheme>(
+  theme: T,
+  zonePalette: ZonePaletteKindType,
+): T {
+  return { ...theme, zonePalette };
+}
 
 export function publicationChartThemeFor(
   column: PublicationColumn,

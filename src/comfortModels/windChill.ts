@@ -13,6 +13,7 @@ import { TableType } from "../models/output/tableLayouts";
 import { WorkspaceCapability } from "../models/output/workspaceCapabilities";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/physicalQuantities";
 import { ThermalZone } from "../models/thermalZone";
+import { ZoneToken } from "../models/zoneTokens";
 import type { GridModelChartSpec } from "../services/comfort/charts/gridModelCharts";
 import { requireThermalZone } from "../services/comfort/helpers";
 import {
@@ -43,10 +44,10 @@ const WIND_AXIS_FIELDS = [
 ] as const;
 
 export const windChillZonesList = [
-  new ThermalZone({ label: "Safe", max: 1400, color: "#e0f2fe", textColor: "#0369a1" }),
-  new ThermalZone({ label: "30 mins to frostbite", min: 1400, max: 1600, color: "#64b5f5", textColor: "#1d4ed8" }),
-  new ThermalZone({ label: "10 mins to frostbite", min: 1600, max: 2300, color: "#5c6bc0", textColor: "#3730a3" }),
-  new ThermalZone({ label: "2 mins to frostbite", min: 2300, color: "#8e24aa", textColor: "#6b21a8" }),
+  new ThermalZone({ label: "Safe", max: 1400, token: ZoneToken.FrostbiteSafe }),
+  new ThermalZone({ label: "30 mins to frostbite", min: 1400, max: 1600, token: ZoneToken.Frostbite30Min }),
+  new ThermalZone({ label: "10 mins to frostbite", min: 1600, max: 2300, token: ZoneToken.Frostbite10Min }),
+  new ThermalZone({ label: "2 mins to frostbite", min: 2300, token: ZoneToken.Frostbite2Min }),
 ];
 
 export interface WindChillRequestDto {

@@ -6,6 +6,11 @@ import {
 import { FieldChartProfileKind } from "./output/fieldChartProfile";
 import type { ThermalZone } from "./thermalZone";
 import type { UnitSystem as UnitSystemType } from "./units";
+import {
+  resolveZoneAppearance,
+  ZonePaletteKind,
+  type ZoneToken,
+} from "./zoneTokens";
 
 export const ModelOutputKey = {
   Pmv: "pmv",
@@ -137,4 +142,15 @@ export function bandsFromThermalZones(zones: readonly ThermalZone[]): readonly N
     label: zone.label,
     color: zone.color,
   }));
+}
+
+/** Build an Explore/Compliance numeric band from a zone token's screen fill. */
+export function numericBandFromToken(
+  token: ZoneToken,
+  band: Omit<NumericBand, "color">,
+): NumericBand {
+  return {
+    ...band,
+    color: resolveZoneAppearance(token, ZonePaletteKind.Screen).fill,
+  };
 }

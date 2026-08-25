@@ -1,10 +1,19 @@
+import {
+  resolveZoneAppearance,
+  ZonePaletteKind,
+  type ZoneToken,
+} from "./zoneTokens";
+
 export interface ThermalZoneConfig {
   id?: string;
   label: string;
   legendText?: string;
   min?: number;
   max?: number;
-  color: string;
+  /** Models select a catalog token; screen/print/colour-blind hex live on the theme table. */
+  token?: ZoneToken;
+  /** Hex fallback for tests and leftover custom colours. Prefer `token`. */
+  color?: string;
   textColor?: string;
   cssClass?: string;
   category?: string;
@@ -16,6 +25,7 @@ export class ThermalZone {
   public readonly legendText?: string;
   public readonly min: number;
   public readonly max: number;
+  public readonly token?: ZoneToken;
   public readonly color: string;
   public readonly textColor: string;
   public readonly cssClass: string;
@@ -28,9 +38,19 @@ export class ThermalZone {
     this.legendText = config.legendText;
     this.min = config.min ?? -Infinity;
     this.max = config.max ?? Infinity;
-    this.color = config.color;
-    this.textColor = config.textColor ?? config.color;
-    this.cssClass = config.cssClass ?? derivedId;
+    this.token = config.token;
+    const appearance = config.token === undefined
+      ? undefined
+      : resolveZoneAppearance(config.token, ZonePaletteKind.Screen);
+    const color = config.color ?? appearance?.fill;
+    if (color === undefined || color.trim().length === 0) {
+      throw new Error(
+        `Thermal zone "${config.label}" requires a zone token or a color.`,
+      );
+    }
+    this.color = color;
+    this.textColor = config.textColor ?? appearance?.text ?? color;
+    this.cssClass = config.cssClass ?? config.token ?? derivedId;
     this.category = config.category;
   }
 

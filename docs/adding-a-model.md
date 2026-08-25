@@ -53,12 +53,12 @@ and ISO each register ParametricLine heat-loss and SET chart instances.
 A declaration must not do any of the following. They are frontend catalog
 work, not “add a model” work:
 
-| Stop                                  | Why                                                                                                               |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Stop                                  | Why                                                                                                                                  |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | New chart engine (`ChartKind` member) | Closed engine set. `ParametricLine` is implemented (polylines and optional limit bands). Do not add a new engine from a declaration. |
-| New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/models/catalogWireIds.test.ts`). |
-| New modifier                          | Global catalogue, execution order, and share schema.                                                              |
-| New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                               |
+| New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/models/catalogWireIds.test.ts`).                    |
+| New modifier                          | Global catalogue, execution order, and share schema.                                                                                 |
+| New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                  |
 
 Also forbidden in a declaration:
 
@@ -83,12 +83,12 @@ src/
                      folders for PMV, Adaptive, UTCI, PHS
   components/        rendering and interaction; no model-id branches
   models/            system quantity seed, ComfortModel, ChartKind, TableType,
-                     modifiers, workspace ids
+                     modifiers, workspace ids, zone tokens
   routes/            client router
   services/
     comfort/         adapters, engines, modifiers, psychrometrics, table assembly
     units/           SI ↔ display conversion
-    chartTheme.ts    Screen and publication chart theme (mm/pt/dpi, single/double column)
+    chartTheme.ts    Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
     plotlyFigure.ts  Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
@@ -165,7 +165,9 @@ field. Screen and publication figures share `src/services/chartTheme.ts`.
 Export builds a separate publication figure (PNG ~300 DPI equivalent, SVG of
 the same geometry, no mode bar) and must not capture the on-screen plot.
 Publication widths are journal single- and double-column profiles on that
-same theme; Compare legends stay readable at both widths.
+same theme; Compare legends stay readable at both widths. Models select
+`ZoneToken` values; screen, publication, and colour-blind fills live in
+`src/models/zoneTokens.ts` and remap at `toPlotlyFigure`.
 
 **Tables.** `tables.analysis` (`TableType.Analysis`) is required for every
 Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only
@@ -197,8 +199,11 @@ Visible product decisions:
   (`parseEmptyOptions` when there are no options)
 - `modifiers` in global order, or `[]`
 - request mapping + `calculate`
-- declaration-local `ThermalZone` values; derive bands with
-  `bandsFromThermalZones`. Each boundary appears once as zone `min` / `max`.
+- declaration-local `ThermalZone` values that select a `ZoneToken`; derive
+  bands with `bandsFromThermalZones` or `numericBandFromToken`. Colours come
+  from `src/models/zoneTokens.ts` (screen / publication / colour-blind).
+  Each boundary appears once as zone `min` / `max`. Do not put hex in the
+  declaration.
 - `outputCharts` with declaration-owned `instanceId`s and
   `defaultChartInstanceId` (dedicated/fixed chart first; Dynamic only when
   there is no other chart)

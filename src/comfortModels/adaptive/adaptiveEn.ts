@@ -4,6 +4,7 @@ import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortMode
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { InputPresetKey } from "../../services/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../models/thermalZone";
+import { ZoneToken } from "../../models/zoneTokens";
 import { UnitSystem } from "../../models/units";
 import { StandardId } from "../../models/workspaces";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
@@ -19,11 +20,11 @@ import {
 } from "./adaptiveCalculation";
 
 export const adaptiveEnZonesList = [
-  new ThermalZone({ label: "Too Cool", color: "#3b82f6", textColor: "#2563eb" }),
-  new ThermalZone({ label: "Category III", color: "#fde047", textColor: "#047857" }),
-  new ThermalZone({ label: "Category II", color: "#86efac", textColor: "#047857" }),
-  new ThermalZone({ label: "Category I", color: "#22c55e", textColor: "#047857" }),
-  new ThermalZone({ label: "Too Warm", color: "#ef4444", textColor: "#b91c1c" }),
+  new ThermalZone({ label: "Too Cool", token: ZoneToken.TooCool }),
+  new ThermalZone({ label: "Category III", token: ZoneToken.WideAcceptable }),
+  new ThermalZone({ label: "Category II", token: ZoneToken.Acceptable }),
+  new ThermalZone({ label: "Category I", token: ZoneToken.Preferred }),
+  new ThermalZone({ label: "Too Warm", token: ZoneToken.TooWarm }),
 ];
 
 const adaptiveEnBoundaryDefinition: AdaptiveBoundaryDefinition = {

@@ -39,11 +39,11 @@ Frontend-only — no backend in this repo.
 src/
   comfortModels/    declarations plus focused model-family calculation/chart modules
   components/       rendering and interaction (input-panel/, chart/, shared UI)
-  models/           centralized domain constants and metadata (physical quantities, model IDs, units, etc.)
+  models/           centralized domain constants and metadata (physical quantities, zone tokens, model IDs, units, etc.)
   services/
     comfort/        shared comfort helpers, request/axis adapters, charts, modifiers
     units/          SI <-> IP conversion helpers
-    chartTheme.ts   Screen and publication chart theme (mm/pt/dpi, single/double column)
+    chartTheme.ts   Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
     plotlyFigure.ts Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts Publication PNG/SVG from a dedicated figure
   state/
@@ -108,13 +108,13 @@ use focused calculation/chart modules beside complete declarations. PMV and
 Adaptive family modules (two standards, one calculation/chart core) are not
 presets; they may still assemble with `ComfortModelBuilder`.
 
-Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `ChartAxisQuantityId` values, `ChartKind` values, and compare-input identifiers. `defineModel` charts are `ModelChartDeclaration`: a data-only discriminated union over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`). Optional `type` names an extended chart type on that same engine. Family modules use `FrontendChartDeclaration`. Do not use `spec: unknown`. Chart instance ids live on each declaration’s `outputCharts` entries; do not recreate a parallel `ChartInstanceId` tree. `ParametricLine` interchange is polylines and optional limit bands. Do not introduce new raw domain strings for those concepts.
+Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `ChartAxisQuantityId` values, `ChartKind` values, compare-input identifiers, and `ZoneToken` values. `defineModel` charts are `ModelChartDeclaration`: a data-only discriminated union over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`). Optional `type` names an extended chart type on that same engine. Family modules use `FrontendChartDeclaration`. Do not use `spec: unknown`. Chart instance ids live on each declaration’s `outputCharts` entries; do not recreate a parallel `ChartInstanceId` tree. `ParametricLine` interchange is polylines and optional limit bands. Do not introduce new raw domain strings for those concepts.
 
 ## Capabilities, axes, and modifiers
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
 - Every declaration sets `workspaceCapabilities` and `exploreOutputs`; Standard-capable models also set `complianceProfile` with fixed output, non-empty bands, caption, legend title, and feedback. Assemble with `defineModel` (data-only `ModelChartDeclaration` union, `tables`, optional PHS `simulation`). Family modules may still use `ComfortModelBuilder` internally (`setOutputCharts()`, `setTables()`, `setSimulation()`). Instance ids are declared on the model and derived by the registry. Heat Index / Humidex maps are `ChartKind.DynamicField`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build`. A model declaration may name an extended type with `type`; assemble preserves it on the presentation instance. PMV Dynamic is `DynamicField`; PHS Analysis exposure history is `TimeSeriesLine`. `ParametricLine` is implemented (polylines and optional limit bands). Heat-loss vs temperature and SET series builders live in `pmvHeatLossSeries.ts` / `pmvSetSeries.ts`; ASHRAE and ISO PMV declarations each register those ParametricLine instances. PMV Analysis tables include SET, cooling effect, relative air speed, and dynamic clothing as Compare-matrix rows. Explore still colours PMV and PPD; do not add a SET explore output key. UTCI chart specs live in `utciCharts.ts`. Do not restore `src/comfortModels/presets/` or add `defineIndexModel()`.
-- Interactive Dynamic 2-D grids are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`, including UTCI Dynamic). BandScalar / 1-D may keep high sampling (for example 450 x-points). `ParametricLine` interchange is polylines and optional limit bands. Hover overlays do not attach per-cell `customdata` unless extra hover fields exist. `toPlotlyFigure` clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly mutates, and maps non-finite grid `z` to `null` gaps; it must not stringify the figure. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not capture the on-screen plot. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths.
+- Interactive Dynamic 2-D grids are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`, including UTCI Dynamic). BandScalar / 1-D may keep high sampling (for example 450 x-points). `ParametricLine` interchange is polylines and optional limit bands. Hover overlays do not attach per-cell `customdata` unless extra hover fields exist. `toPlotlyFigure` clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly mutates, and maps non-finite grid `z` to `null` gaps; it must not stringify the figure. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not capture the on-screen plot. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths. Zone fills remap through `src/models/zoneTokens.ts` (models select tokens; print and colour-blind updates happen in that table).
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation. `assertCompareContract` covers 1/2/3 Compare inputs, filled table columns, chart markers, and a baseline change that keeps a ready cache.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; `models` is sparse (omit default slices; missing known keys seed defaults; unknown keys reject); only Explore working bands are serialized, and modifier records contain the complete stable key set. Do not keep exact `comfortModelOrder` matching.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
@@ -150,21 +150,20 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 
 ## Comfort Zone Design
 
-Zones use the `ThermalZone` class in `src/models/thermalZone.ts`. Each boundary value appears exactly once, as `min` / `max` values in the config object:
+Zones use the `ThermalZone` class in `src/models/thermalZone.ts`. Models select a `ZoneToken`; fill and text colours come from `src/models/zoneTokens.ts` (screen, publication, and colour-blind columns). Hex may remain as a test/custom fallback. Each boundary value appears exactly once, as `min` / `max` values in the config object:
 
 ```ts
 new ThermalZone({
   label: "Neutral",
   min: -0.5,
   max: 0.5,
-  color: "#f2f2f2",
-  textColor: "#475569",
+  token: ZoneToken.Neutral,
   cssClass: "neutral",
   category: "no thermal stress",
 });
 ```
 
-Do not define threshold constants separately and then repeat the same number in the zone array. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label by `ThermalZone`.
+Do not define threshold constants separately and then repeat the same number in the zone array. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label or token by `ThermalZone`. Explore/Compliance bands that are not `ThermalZone` instances use `numericBandFromToken()`. Print and colour-blind updates happen in the token table, not in model files.
 
 ## Architecture: comfortModels/
 

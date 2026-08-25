@@ -13,6 +13,7 @@ import { TableType } from "../models/output/tableLayouts";
 import { WorkspaceCapability } from "../models/output/workspaceCapabilities";
 import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../models/physicalQuantities";
 import { ThermalZone } from "../models/thermalZone";
+import { ZoneToken } from "../models/zoneTokens";
 import { UnitSystem } from "../models/units";
 import type { GridModelChartSpec } from "../services/comfort/charts/gridModelCharts";
 import { requireThermalZone } from "../services/comfort/helpers";
@@ -42,11 +43,11 @@ const PSYCHROMETRIC_AXIS_FIELDS = [
 ] as const;
 
 export const heatIndexZonesList = [
-  new ThermalZone({ label: "Safe", max: 27, color: "#e2e8f0", textColor: "#475569" }),
-  new ThermalZone({ label: "Caution", min: 27, max: 32, color: "#fef08a", textColor: "#854d0e" }),
-  new ThermalZone({ label: "Extreme Caution", min: 32, max: 39, color: "#fde047", textColor: "#a16207" }),
-  new ThermalZone({ label: "Danger", min: 39, max: 51, color: "#f97316", textColor: "#ea580c" }),
-  new ThermalZone({ label: "Extreme Danger", min: 51, color: "#dc2626", textColor: "#b91c1c" }),
+  new ThermalZone({ label: "Safe", max: 27, token: ZoneToken.Safe }),
+  new ThermalZone({ label: "Caution", min: 27, max: 32, token: ZoneToken.Caution }),
+  new ThermalZone({ label: "Extreme Caution", min: 32, max: 39, token: ZoneToken.StrongCaution }),
+  new ThermalZone({ label: "Danger", min: 39, max: 51, token: ZoneToken.Danger }),
+  new ThermalZone({ label: "Extreme Danger", min: 51, token: ZoneToken.ExtremeDanger }),
 ];
 
 const heatIndexCautionZone: ThermalZone = (() => {

@@ -7,6 +7,7 @@ import {
   PUBLICATION_COLUMN_SIZE_MM,
   PUBLICATION_DPI,
   PublicationColumn,
+  chartThemeWithZonePalette,
   mmToPx,
   publicationChartTheme,
   publicationChartThemeFor,
@@ -17,6 +18,7 @@ import {
   ptToPx,
   screenChartTheme,
 } from "./chartTheme";
+import { ZonePaletteKind } from "../models/zoneTokens";
 
 describe("chartTheme", () => {
   it("keeps screen interactive and publication print-sized", () => {
@@ -53,6 +55,13 @@ describe("chartTheme", () => {
     expect(double.displayModeBar).toBe(false);
     expect(double.responsive).toBe(false);
     expect(publicationChartTheme).toEqual(single);
+    expect(screenChartTheme.zonePalette).toBe(ZonePaletteKind.Screen);
+    expect(single.zonePalette).toBe(ZonePaletteKind.Publication);
+    expect(double.zonePalette).toBe(ZonePaletteKind.Publication);
+    expect(
+      chartThemeWithZonePalette(screenChartTheme, ZonePaletteKind.ColourBlind)
+        .zonePalette,
+    ).toBe(ZonePaletteKind.ColourBlind);
   });
 
   it("converts publication millimetres and points through explicit dpi", () => {

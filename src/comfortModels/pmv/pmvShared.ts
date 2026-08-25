@@ -19,6 +19,7 @@ import type { StandardId as StandardIdType } from "../../models/workspaces";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
+  numericBandFromToken,
   type ComplianceSpec,
   type ModelOutput,
   type NumericBand,
@@ -46,6 +47,7 @@ import {
 } from "../../state/comfortTool/modelConfigs/builder";
 import { ChartKind } from "../../models/output/chartKinds";
 import { TableType } from "../../models/output/tableLayouts";
+import { ZoneToken } from "../../models/zoneTokens";
 import {
   buildPmvResultRows,
   calculatePmvModel,
@@ -155,18 +157,16 @@ export function parsePmvAshraeOptions(
 }
 
 const ppdExploreBands: readonly NumericBand[] = [
-  {
+  numericBandFromToken(ZoneToken.Acceptable, {
     min: -Infinity,
     max: 10,
     label: "Acceptable dissatisfaction (< 10%)",
-    color: "#86efac",
-  },
-  {
+  }),
+  numericBandFromToken(ZoneToken.ElevatedFail, {
     min: 10,
     max: Infinity,
     label: "Elevated dissatisfaction (≥ 10%)",
-    color: "#fca5a5",
-  },
+  }),
 ];
 
 export const pmvExploreOutputs: readonly ModelOutput[] = [
@@ -186,24 +186,21 @@ export const pmvExploreOutputs: readonly ModelOutput[] = [
 
 export function createPmvComplianceBands(): readonly NumericBand[] {
   return [
-    {
+    numericBandFromToken(ZoneToken.FailFill, {
       min: -Infinity,
       max: pmvNeutralZone.min,
       label: "Outside acceptable PMV range",
-      color: "#fecaca",
-    },
-    {
+    }),
+    numericBandFromToken(ZoneToken.Acceptable, {
       min: pmvNeutralZone.min,
       max: pmvNeutralZone.max,
       label: "Acceptable PMV range",
-      color: "#86efac",
-    },
-    {
+    }),
+    numericBandFromToken(ZoneToken.FailFill, {
       min: pmvNeutralZone.max,
       max: Infinity,
       label: "Outside acceptable PMV range",
-      color: "#fecaca",
-    },
+    }),
   ];
 }
 

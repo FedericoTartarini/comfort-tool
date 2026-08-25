@@ -10,6 +10,7 @@ import {
   type NumericBand,
 } from "../../models/modelCapabilities";
 import { ThermalZone } from "../../models/thermalZone";
+import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
 import { StandardId } from "../../models/workspaces";
 import { ChartKind } from "../../models/output/chartKinds";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
@@ -141,14 +142,12 @@ const limitingExposureZones = [
   new ThermalZone({
     label: "Limit reached before 8 h",
     max: PHS_COMPLIANCE_HORIZON_MINUTES,
-    color: "#fecaca",
-    textColor: "#b91c1c",
+    token: ZoneToken.FailFill,
   }),
   new ThermalZone({
     label: "No limit reached before 8 h",
     min: PHS_COMPLIANCE_HORIZON_MINUTES,
-    color: "#bbf7d0",
-    textColor: "#047857",
+    token: ZoneToken.PassFill,
   }),
 ];
 
@@ -156,14 +155,12 @@ const rectalTemperatureZones = [
   new ThermalZone({
     label: "Below 38 °C",
     max: PHS_RECTAL_TEMPERATURE_LIMIT_C,
-    color: "#bbf7d0",
-    textColor: "#047857",
+    token: ZoneToken.PassFill,
   }),
   new ThermalZone({
     label: "At or above 38 °C",
     min: PHS_RECTAL_TEMPERATURE_LIMIT_C,
-    color: "#fecaca",
-    textColor: "#b91c1c",
+    token: ZoneToken.FailFill,
   }),
 ];
 
@@ -171,14 +168,12 @@ const waterLossZones = [
   new ThermalZone({
     label: "Below 5% body mass",
     max: REFERENCE_WATER_LOSS_LIMIT_G,
-    color: "#bbf7d0",
-    textColor: "#047857",
+    token: ZoneToken.PassFill,
   }),
   new ThermalZone({
     label: "At or above 5% body mass",
     min: REFERENCE_WATER_LOSS_LIMIT_G,
-    color: "#fecaca",
-    textColor: "#b91c1c",
+    token: ZoneToken.FailFill,
   }),
 ];
 
@@ -230,7 +225,7 @@ function invalidCell(result: PhsResponseDto) {
   return {
     text: "Out of range",
     subtext: result.issues[0] ?? "Outside ISO 7933:2023 applicability.",
-    color: "#b91c1c",
+    color: resolveZoneAppearance(ZoneToken.FailFill).text,
   };
 }
 

@@ -27,6 +27,7 @@ import {
   UnitSystem,
   type UnitSystem as UnitSystemType,
 } from "../../models/units";
+import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
 import { createRequestAxisAdapter } from "../../services/comfort/charts/dynamicAxisPayload";
 import { requireThermalZone } from "../../services/comfort/helpers";
 import { getDerivedFromAuxiliary } from "../../services/comfort/quantityStateRouting";
@@ -51,58 +52,49 @@ export const PMV_PSYCHROMETRIC_VIEW = {
 const ROOT_SCAN_POINTS = 101;
 const ROOT_MAX_BISECTION_EVALUATIONS = 30;
 const ROOT_TOLERANCE = 5e-4;
-const COLOR_COMPLIANT_GREEN = "#047857";
-const COLOR_NON_COMPLIANT_RED = "#dc2626";
 
 export const pmvNeutralZone = new ThermalZone({
   label: "Neutral",
   min: -0.5,
   max: 0.5,
-  color: "#f2f2f2",
-  textColor: "#475569",
+  token: ZoneToken.Neutral,
 });
 
 export const pmvZonesList = [
   new ThermalZone({
     label: "Cold",
     max: -2.5,
-    color: "#0571b0",
-    textColor: "#1d4ed8",
+    token: ZoneToken.Cold,
   }),
   new ThermalZone({
     label: "Cool",
     min: -2.5,
     max: -1.5,
-    color: "#4c78a8",
-    textColor: "#2563eb",
+    token: ZoneToken.Cool,
   }),
   new ThermalZone({
     label: "Slightly Cool",
     min: -1.5,
     max: -0.5,
-    color: "#92c5de",
-    textColor: "#0369a1",
+    token: ZoneToken.SlightlyCool,
   }),
   pmvNeutralZone,
   new ThermalZone({
     label: "Slightly Warm",
     min: 0.5,
     max: 1.5,
-    color: "#f4a582",
-    textColor: "#ea580c",
+    token: ZoneToken.SlightlyWarm,
   }),
   new ThermalZone({
     label: "Warm",
     min: 1.5,
     max: 2.5,
-    color: "#e15759",
-    textColor: "#b91c1c",
+    token: ZoneToken.Warm,
   }),
   new ThermalZone({
     label: "Hot",
     min: 2.5,
-    color: "#cc79a7",
-    textColor: "#701a75",
+    token: ZoneToken.Hot,
   }),
 ];
 
@@ -517,8 +509,8 @@ export function buildPmvResultRows(): TableRowSpec<PmvResponseDto>[] {
         return {
           text: feedback.text,
           color: feedback.passes
-            ? COLOR_COMPLIANT_GREEN
-            : COLOR_NON_COMPLIANT_RED,
+            ? resolveZoneAppearance(ZoneToken.PassFill).text
+            : resolveZoneAppearance(ZoneToken.ExtremeDanger).fill,
         };
       },
     },

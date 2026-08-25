@@ -5,6 +5,7 @@ import type { PlotlyChartResponseDto } from "../models/comfortDtos";
 import {
   CHART_LAYOUT_DPI,
   PublicationColumn,
+  chartThemeWithZonePalette,
   publicationChartTheme,
   publicationChartThemeFor,
   publicationLayoutSizePx,
@@ -13,6 +14,12 @@ import {
   screenChartTheme,
 } from "./chartTheme";
 import { toPlotlyFigure } from "./plotlyFigure";
+import {
+  remapZoneFill,
+  resolveZoneAppearance,
+  ZonePaletteKind,
+  ZoneToken,
+} from "../models/zoneTokens";
 
 function contourChart(
   z: number[][],
@@ -370,6 +377,77 @@ describe("toPlotlyFigure", () => {
     expect(doubleColors).toEqual(singleColors);
     expect(single.data.map((trace) => (trace.marker as { size: number }).size)).toEqual(
       [12, 12, 12],
+    );
+  });
+
+  it("remaps zone fills on publication and colour-blind themes without touching Compare markers", () => {
+    const screenFill = resolveZoneAppearance(ZoneToken.Neutral).fill;
+    const failFill = resolveZoneAppearance(ZoneToken.FailFill).fill;
+    const chart: PlotlyChartResponseDto = {
+      traces: [
+        {
+          type: "contour",
+          name: "Zones",
+          x: [0, 1],
+          y: [0, 1],
+          z: [[0, 1], [1, 0]],
+          fillcolor: screenFill,
+          colorscale: [[0, screenFill], [1, failFill]],
+          contours: { type: "levels", coloring: "fill" },
+        },
+        {
+          type: "scatter",
+          mode: "markers",
+          name: "Input 1",
+          x: [24],
+          y: [50],
+          marker: {
+            color: "#1e40af",
+            size: 12,
+            line: { color: "#000000", width: 1.5 },
+          },
+        },
+      ],
+      layout: {
+        title: "Zone chart",
+        paper_bgcolor: "#fff",
+        plot_bgcolor: "#fff",
+        showlegend: false,
+        margin: { l: 56, r: 16, t: 48, b: 52 },
+        xaxis: { title: "X", range: [0, 1] },
+        yaxis: { title: "Y", range: [0, 1] },
+      },
+      annotations: [],
+      source: CalculationSource.FrontendGenerated,
+    };
+
+    const screen = toPlotlyFigure(chart);
+    const publication = toPlotlyFigure(chart, { theme: publicationChartTheme });
+    const colourBlind = toPlotlyFigure(chart, {
+      theme: chartThemeWithZonePalette(
+        screenChartTheme,
+        ZonePaletteKind.ColourBlind,
+      ),
+    });
+
+    expect(screen.data[0].fillcolor).toBe(screenFill);
+    expect(publication.data[0].fillcolor).toBe(
+      remapZoneFill(screenFill, ZonePaletteKind.Publication),
+    );
+    expect(colourBlind.data[0].fillcolor).toBe(
+      remapZoneFill(screenFill, ZonePaletteKind.ColourBlind),
+    );
+    expect(publication.data[0].fillcolor).not.toBe(screenFill);
+    expect(colourBlind.data[0].fillcolor).not.toBe(screenFill);
+    expect(publication.data[0].colorscale).toEqual([
+      [0, remapZoneFill(screenFill, ZonePaletteKind.Publication)],
+      [1, remapZoneFill(failFill, ZonePaletteKind.Publication)],
+    ]);
+    expect((publication.data[1].marker as { color: string }).color).toBe(
+      "#1e40af",
+    );
+    expect((colourBlind.data[1].marker as { color: string }).color).toBe(
+      "#1e40af",
     );
   });
 });

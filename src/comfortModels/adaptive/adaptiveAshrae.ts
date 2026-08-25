@@ -4,6 +4,7 @@ import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortMode
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { InputPresetKey } from "../../services/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../models/thermalZone";
+import { ZoneToken } from "../../models/zoneTokens";
 import { UnitSystem } from "../../models/units";
 import { StandardId } from "../../models/workspaces";
 import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
@@ -19,10 +20,10 @@ import {
 } from "./adaptiveCalculation";
 
 export const adaptiveAshraeZonesList = [
-  new ThermalZone({ label: "Too Cool", color: "#3b82f6", textColor: "#2563eb" }),
-  new ThermalZone({ label: "80% Acceptability", color: "#86efac", textColor: "#047857" }),
-  new ThermalZone({ label: "90% Acceptability", color: "#22c55e", textColor: "#047857" }),
-  new ThermalZone({ label: "Too Warm", color: "#ef4444", textColor: "#b91c1c" }),
+  new ThermalZone({ label: "Too Cool", token: ZoneToken.TooCool }),
+  new ThermalZone({ label: "80% Acceptability", token: ZoneToken.Acceptable }),
+  new ThermalZone({ label: "90% Acceptability", token: ZoneToken.Preferred }),
+  new ThermalZone({ label: "Too Warm", token: ZoneToken.TooWarm }),
 ];
 
 const adaptiveAshraeBoundaryDefinition: AdaptiveBoundaryDefinition = {

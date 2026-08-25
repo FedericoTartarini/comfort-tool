@@ -27,11 +27,11 @@ src/
   components/
     chart/                 chart rendering and export UI
     input-panel/           comfort-tool input subcomponents
-  models/                  centralized domain constants and metadata
+  models/                  centralized domain constants and metadata (including zone tokens)
   services/
     comfort/               shared comfort helpers, request/axis adapters, charts, modifiers
     units/                 SI <-> active-unit-system conversion helpers
-    chartTheme.ts          Screen and publication chart theme (mm/pt/dpi, single/double column)
+    chartTheme.ts          Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
     plotlyFigure.ts        Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts        Publication PNG/SVG from a dedicated figure
   state/
@@ -145,6 +145,7 @@ Use centralized constants and typed metadata from `src/models/` for:
 - compare-input identifiers
 - chart modes and model-output identifiers
 - modifier identifiers (`ModifierId`, modifier `PhysicalQuantityId` slots)
+- zone tokens (`ZoneToken` in `src/models/zoneTokens.ts`). Models select tokens; screen, publication, and colour-blind hex live in that table. `toPlotlyFigure` remaps zone fills for print and colour-blind palettes. Sweeping leftover series/marker hex is not required.
 
 Do not introduce new raw domain strings for those concepts, and do not recreate a parallel `ChartInstanceId` tree.
 
@@ -154,11 +155,11 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 
 - Compliance and Explore share one chart engine, with Compliance as the constrained version.
 - Every model declaration must set `workspaceCapabilities` and `exploreOutputs`; Standard-capable models must also set `complianceProfile` with non-empty bands, a caption, legend title, and result feedback callback. Assemble with `defineModel`. Family modules (PMV, Adaptive) may still use `ComfortModelBuilder` internally. Do not branch in the controller.
-- `ModelOutputKey`, capability types, workspace/profile metadata, and `bandsFromThermalZones()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
+- `ModelOutputKey`, capability types, workspace/profile metadata, `bandsFromThermalZones()`, and `numericBandFromToken()` live in `src/models/modelCapabilities.ts`. Reuse them instead of inline strings or copied zone thresholds.
 - `outputSettingsByModel` stores each model's x/y axes, baseline, and optional Explore working state. Explore z comes from `exploreOutputs`, and editable numeric bands are cloned from `defaultBands`; Standard workspace output and bands always come directly from `complianceProfile`.
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set. Derive `PrimaryQuantityId` and `PrimaryInputState` from it; chart-only and derived `PhysicalQuantityId` values must not enter primary records, share primary records, behavior patches, modifiers, or calculation context. Model-scoped extensions from `quantities.extend` also stay out of that primary set and serialize only under `modelInputsByModel`.
 - Every model owns chart output through `defineModel` `outputCharts` (data-only `ModelChartDeclaration` union over existing engines) or family `ComfortModelBuilder.setOutputCharts()`. Tables are declared with `tables: { analysis, timeSeries? }` using `TableType.Analysis` / `TableType.TimeSeries`. Every Analysis model must declare `tables.analysis`. PHS also declares `tables.timeSeries` plus `simulation.charts` for Time-series line charts. Instance ids live only on the declaration; the registry derives them (`getDeclaredChartInstanceIds`). Presentation instances do not carry engine spec. Do not recreate a parallel `ChartInstanceId` tree or a second legend/lock array beside `outputCharts`. Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build` or teach Plotly. A model declaration may name an extended chart type with `type`; assemble preserves it on the presentation instance and rejects empty or duplicate types. PMV Dynamic and PHS Analysis exposure history are `DynamicField` and `TimeSeriesLine` respectively. `ParametricLine` is implemented (polylines and optional limit bands). Heat-loss vs temperature and SET series builders live in `pmvHeatLossSeries.ts` / `pmvSetSeries.ts`; ASHRAE and ISO PMV declarations each register those ParametricLine instances. PMV Analysis tables include SET, cooling effect, relative air speed, and dynamic clothing as Compare-matrix rows. Explore still colours PMV and PPD; do not add a SET explore output key. UTCI BandScalar/DynamicField specs live in `utciCharts.ts`.
-- Interactive Dynamic 2-D field charts are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS` in `src/services/comfort/charts/types.ts`, including UTCI Dynamic). BandScalar / 1-D charts may keep high sampling along one axis (for example UTCI stress at 450 x-points). `ParametricLine` interchange is polylines and optional limit bands, not a dense grid. Hover overlays use display `z` for the primary output and do not attach per-cell `customdata` unless extra hover fields exist. Do not LRU / faster-clone a 200k-cell DTO — shrink the DTO. `toPlotlyFigure` clones Plotly-owned data arrays (`x`, `y`, `z`, `text`) and nested records Plotly mutates (trace/layout/axis/margin/legend/annotation/style objects). Non-finite grid `z` cells become `null` locally. Hover `customdata` is shared. Do not `JSON.parse(JSON.stringify(figure))`. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not `downloadImage` the on-screen DOM. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths.
+- Interactive Dynamic 2-D field charts are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS` in `src/services/comfort/charts/types.ts`, including UTCI Dynamic). BandScalar / 1-D charts may keep high sampling along one axis (for example UTCI stress at 450 x-points). `ParametricLine` interchange is polylines and optional limit bands, not a dense grid. Hover overlays use display `z` for the primary output and do not attach per-cell `customdata` unless extra hover fields exist. Do not LRU / faster-clone a 200k-cell DTO — shrink the DTO. `toPlotlyFigure` clones Plotly-owned data arrays (`x`, `y`, `z`, `text`) and nested records Plotly mutates (trace/layout/axis/margin/legend/annotation/style objects). Non-finite grid `z` cells become `null` locally. Hover `customdata` is shared. Do not `JSON.parse(JSON.stringify(figure))`. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not `downloadImage` the on-screen DOM. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths. Zone fills remap through `src/models/zoneTokens.ts` (models select tokens; print and colour-blind updates happen in that table).
 - Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
 - `setInputFields()` / `defineModel` `inputFields` declare visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults. Model-scoped quantities use `quantities.extend` plus `{ kind: "modelQuantity", … }` when they appear on the Analysis panel. `build()` checks that every `modelQuantity` field is an extend entry owned by that declaration; control metadata is read from the assembled catalog at view-model time.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
@@ -175,21 +176,20 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 
 ## Comfort Zone Design
 
-Comfort zones are defined using the `ThermalZone` class in `src/models/thermalZone.ts`:
+Comfort zones are defined using the `ThermalZone` class in `src/models/thermalZone.ts`. Models select a `ZoneToken`; fill and text colours come from `src/models/zoneTokens.ts` (screen, publication, and colour-blind columns). Hex may remain as a test/custom fallback.
 
 ```ts
 new ThermalZone({
   label: "Neutral",
   min: -0.5,
   max: 0.5,
-  color: "#f2f2f2",
-  textColor: "#475569",
+  token: ZoneToken.Neutral,
   cssClass: "neutral",
   category: "no thermal stress",
 });
 ```
 
-Zone boundaries appear **once** — as `min` / `max` values in the zone config. Do not also define them as separate named constants. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label by `ThermalZone`.
+Zone boundaries appear **once** — as `min` / `max` values in the zone config. Do not also define them as separate named constants. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label or token by `ThermalZone`. Explore/Compliance bands that are not `ThermalZone` instances use `numericBandFromToken()`. Print and colour-blind updates happen in the token table, not in model files.
 
 ## Generic Calculation Cache
 
