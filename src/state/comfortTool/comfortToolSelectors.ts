@@ -5,8 +5,14 @@ import type {
 } from "../../models/modelCapabilities";
 import { ChartLegendKind } from "../../models/output/chartBuildResult";
 import type { InputId as InputIdType } from "../../models/inputSlots";
+import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
 import { buildChartControlsViewModel } from "./chartPresentation";
 import type { ComfortToolInternals } from "./comfortToolInternals";
+import {
+  buildInputControlViewModels,
+  buildInputPanelViewModel,
+  type InputPanelActionCallbacks,
+} from "./inputPresentation";
 import type {
   ComfortToolSelectors,
   ComfortToolStateSlice,
@@ -24,6 +30,7 @@ export function createComfortToolSelectors(
   state: ComfortToolStateSlice,
   internals: ComfortToolInternals,
   chartControlCallbacks: ChartControlCallbacks,
+  inputPanelActionCallbacks: InputPanelActionCallbacks,
 ): ComfortToolSelectors {
   function getCurrentChartBuildResult() {
     const cache = internals.getCurrentModelCache();
@@ -59,11 +66,28 @@ export function createComfortToolSelectors(
 
   return {
     getVisibleInputIds: internals.getVisibleInputIds,
-    getInputControls: () => {
-      const context = internals.getModelContext(state.ui.selectedModel);
-      return internals.getActiveModelConfig().controls
-        .map((control) => control.behavior.buildViewModel(context))
-        .filter((control) => !control.hidden);
+    getInputControls: () => buildInputControlViewModels(
+      internals.getActiveModelConfig(),
+      internals.getModelContext(state.ui.selectedModel),
+    ),
+    getInputPanelViewModel: (
+      allowedModelIds: readonly ComfortModelType[],
+      onSelectModel: (modelId: ComfortModelType) => void,
+    ) => {
+      const config = internals.getActiveModelConfig();
+      return buildInputPanelViewModel({
+        selectedModel: state.ui.selectedModel,
+        compareEnabled: state.ui.compareEnabled,
+        unitSystem: state.ui.unitSystem,
+        activeInputId: state.ui.activeInputId,
+        visibleInputIds: internals.getVisibleInputIds(),
+        allowedModelIds,
+        config,
+        context: internals.getModelContext(state.ui.selectedModel),
+        committedModifierControls: internals.getInputModifierControls(),
+        callbacks: inputPanelActionCallbacks,
+        onSelectModel,
+      });
     },
     getInputModifierDraft: internals.getInputModifierDraft,
     getInputModifierControls: internals.getInputModifierControls,

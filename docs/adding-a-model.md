@@ -11,7 +11,9 @@ constant), and register once. Do not add `defineIndexModel()`, restore
 `src/comfortModels/presets/`, or put Plotly in the declaration.
 
 UI, share, Compare, and the Analysis controller must not grow a branch on the
-new model id.
+new model id. Analysis input rows, Compare toggles, and modifiers render from
+`getInputPanelViewModel` (`src/state/comfortTool/inputPresentation.ts`). Do not
+edit `src/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
@@ -98,7 +100,8 @@ src/
     plotlyFigure.ts  Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
-    comfortTool/     Analysis controller, defineModel, registry, share codec
+    comfortTool/     Analysis controller, defineModel, registry, share codec,
+                     pure projections (chartPresentation, inputPresentation)
     timeSeries/      separate PHS Time-series controller
     workspace/       route / model / mode coordination
   views/             page composition
@@ -254,7 +257,10 @@ validated `options`. It must not read raw `quantitiesByInput`.
 `src/services/comfort/controls/fieldInputBehaviors.ts`: `numeric`,
 `operativeTemperature` / `radiantTemperature`, `occupantAirSpeed` /
 `outdoorWindSpeed`, `simpleHumidity` / `advancedHumidity`, `preset`,
-`modelQuantity`. Option changes go only through `optionHandlersByKey`.
+`modelQuantity`. The Analysis input panel reads those controls through
+`getInputPanelViewModel`; do not add conversion or model branches in
+`src/components/input-panel/`. Option changes go only through
+`optionHandlersByKey`.
 Missing, extra, or invalid options are rejected; invalid internal option
 state is an invariant.
 

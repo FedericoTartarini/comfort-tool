@@ -72,6 +72,16 @@ export function createComfortToolState(): ComfortToolController {
     onSelectYAxis: actions.setDynamicYAxis,
     onSelectOutput: actions.setExploreOutput,
     onApplyBands: actions.setExploreBands,
+  }, {
+    onSetCompareEnabled: actions.setCompareEnabled,
+    onToggleUnitSystem: actions.toggleUnitSystem,
+    onToggleCompareInputVisibility: actions.toggleCompareInputVisibility,
+    onActivateInput: actions.setActiveInputId,
+    onUpdateInput: actions.updateInput,
+    onSetModelOption: actions.setModelOption,
+    getInputModifierDraft: internals.getInputModifierDraft,
+    projectInputModifierDraft: internals.getInputModifierControls,
+    onApplyInputModifierDraft: actions.applyInputModifierDraft,
   });
 
   return {

@@ -11,42 +11,25 @@
     type InputId as InputIdType,
   } from "../../models/inputSlots";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
-  import { InputControlId } from "../../models/inputControls";
   import ToolControls from "./ToolControls.svelte";
-  import type { ComfortToolController } from "../../state/comfortTool/types";
-  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+  import type { InputPanelViewModel } from "../../state/comfortTool/types";
 
   interface Props {
-    toolState: ComfortToolController;
-    allowedModelIds: readonly ComfortModelType[];
-    onSelectModel: (modelId: ComfortModelType) => void;
+    panel: InputPanelViewModel;
   }
 
-  let { toolState, allowedModelIds, onSelectModel }: Props = $props();
+  let { panel }: Props = $props();
 
   let clothingBuilderOpen = $state(false);
-  const inputControls = $derived(toolState.selectors.getInputControls());
-  const maxClothingValue = $derived(
-    inputControls.find((control) => control.id === InputControlId.ClothingInsulation)?.maxValue,
-  );
 
   $effect(() => {
-    if (maxClothingValue === undefined) {
+    if (panel.clothingBuilder === null) {
       clothingBuilderOpen = false;
     }
   });
 
-  function handleApplyClothingValue(inputId: InputIdType, value: number) {
-    toolState.actions.setActiveInputId(inputId);
-    toolState.actions.updateInput(
-      inputId,
-      InputControlId.ClothingInsulation,
-      value.toFixed(2),
-    );
-  }
-
   function isInputVisible(inputId: InputIdType) {
-    return toolState.selectors.getVisibleInputIds().includes(inputId);
+    return panel.compare?.visibleInputIds.includes(inputId) ?? false;
   }
 
   function getCompareToggleClasses(inputId: InputIdType) {
@@ -62,10 +45,11 @@
     <h2 class="text-lg font-semibold text-stone-900">Inputs</h2>
   </header>
 
-  <ToolControls {toolState} {allowedModelIds} {onSelectModel} />
+  <ToolControls tool={panel.tool} />
 
   <div class="mt-4 bg-white">
-    {#if toolState.state.ui.compareEnabled}
+    {#if panel.compare}
+      {@const compare = panel.compare}
       <fieldset class="px-1 pb-2">
         <legend class="sr-only">Visible compare inputs</legend>
         <ul class="grid gap-2 md:grid-cols-3">
@@ -74,8 +58,7 @@
               <Button
                 color="none"
                 class={`w-full rounded-sm border px-2 py-1.5 text-left ${getCompareToggleClasses(inputId)}`}
-                onclick={() =>
-                  toolState.actions.toggleCompareInputVisibility(inputId)}
+                onclick={() => compare.onToggle(inputId)}
               >
                 <span class="text-sm font-semibold"
                   >{inputDisplayMetaById[inputId].label}</span
@@ -88,10 +71,9 @@
     {/if}
 
     <div class="grid gap-1" aria-label="Input fields">
-      {#each inputControls as control}
+      {#each panel.fields as field}
         <InputFieldRow
-          {toolState}
-          {control}
+          {field}
           onOpenClothingBuilder={() => {
             clothingBuilderOpen = true;
           }}
@@ -99,11 +81,14 @@
       {/each}
     </div>
 
-    <InputModifiers {toolState} />
+    {#if panel.modifiers}
+      <InputModifiers modifiers={panel.modifiers} />
+    {/if}
   </div>
 </Card>
 
-{#if maxClothingValue !== undefined}
+{#if panel.clothingBuilder}
+  {@const clothingBuilder = panel.clothingBuilder}
   <Modal
     bind:open={clothingBuilderOpen}
     size="xl"
@@ -114,11 +99,11 @@
     classBody="max-h-[84svh] overflow-y-auto p-0 xl:h-[84svh] xl:overflow-hidden"
   >
     <ClothingEnsembleBuilder
-      activeInputId={toolState.state.ui.activeInputId}
-      visibleInputIds={toolState.selectors.getVisibleInputIds()}
-      {maxClothingValue}
-      onSelectInput={toolState.actions.setActiveInputId}
-      onApplyClothingValue={handleApplyClothingValue}
+      activeInputId={clothingBuilder.activeInputId}
+      visibleInputIds={clothingBuilder.visibleInputIds}
+      maxClothingValue={clothingBuilder.maxValue}
+      onSelectInput={clothingBuilder.onSelectInput}
+      onApplyClothingValue={clothingBuilder.onApplyClothingValue}
       onClose={() => {
         clothingBuilderOpen = false;
       }}

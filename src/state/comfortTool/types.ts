@@ -167,6 +167,77 @@ export interface InputModifierControlViewModel {
   affectedFields: ModifierAffectedFieldViewModel[];
 }
 
+export interface ToolControlsViewModel {
+  selectedModel: ComfortModelType;
+  modelOptions: ReadonlyArray<{
+    name: string;
+    value: ComfortModelType;
+    description: string;
+  }>;
+  compareEnabled: boolean;
+  unitSystem: UnitSystemType;
+  onSelectModel: (modelId: ComfortModelType) => void;
+  onSetCompareEnabled: (enabled: boolean) => void;
+  onToggleUnitSystem: () => void;
+}
+
+export interface CompareInputsViewModel {
+  visibleInputIds: InputIdType[];
+  onToggle: (inputId: InputIdType) => void;
+}
+
+export interface InputFieldRowViewModel {
+  control: InputControlViewModel;
+  visibleInputIds: InputIdType[];
+  activeInputId: InputIdType;
+  onActivateInput: (inputId: InputIdType) => void;
+  onCommitValue: (inputId: InputIdType, rawValue: string) => string | null;
+  onCommitPreset: (inputId: InputIdType, value: number) => void;
+  onSelectOption: (optionKey: OptionKeyType, value: string) => void;
+}
+
+export interface ClothingBuilderViewModel {
+  maxValue: number;
+  activeInputId: InputIdType;
+  visibleInputIds: InputIdType[];
+  onSelectInput: (inputId: InputIdType) => void;
+  onApplyClothingValue: (inputId: InputIdType, value: number) => void;
+}
+
+export interface InputModifiersViewModel {
+  editorContextKey: string;
+  visibleInputIds: InputIdType[];
+  activeCount: number;
+  availableCount: number;
+  controls: InputModifierControlViewModel[];
+  getDraft: () => InputModifierDraftEntry[];
+  projectDraft: (
+    draft: readonly InputModifierDraftEntry[],
+  ) => InputModifierControlViewModel[];
+  applyDraft: (draft: readonly InputModifierDraftEntry[]) => boolean;
+  setDraftEnabled: (
+    draft: readonly InputModifierDraftEntry[],
+    inputId: InputIdType,
+    modifierId: ModifierIdType,
+    enabled: boolean,
+  ) => InputModifierDraftEntry[] | null;
+  updateDraftInput: (
+    draft: readonly InputModifierDraftEntry[],
+    inputId: InputIdType,
+    modifierId: ModifierIdType,
+    quantityId: PhysicalQuantityIdType,
+    rawValue: string,
+  ) => InputModifierDraftEntry[] | null;
+}
+
+export interface InputPanelViewModel {
+  tool: ToolControlsViewModel;
+  compare: CompareInputsViewModel | null;
+  fields: InputFieldRowViewModel[];
+  clothingBuilder: ClothingBuilderViewModel | null;
+  modifiers: InputModifiersViewModel | null;
+}
+
 export type UiState = {
   selectedModel: ComfortModelType;
   selectedChartInstanceByModel: SelectedChartInstanceByModelState;
@@ -246,6 +317,10 @@ export type ComfortToolActions = {
 export type ComfortToolSelectors = {
   getVisibleInputIds: () => InputIdType[];
   getInputControls: () => InputControlViewModel[];
+  getInputPanelViewModel: (
+    allowedModelIds: readonly ComfortModelType[],
+    onSelectModel: (modelId: ComfortModelType) => void,
+  ) => InputPanelViewModel;
   getInputModifierDraft: () => InputModifierDraftEntry[];
   getInputModifierControls: (
     draft?: readonly InputModifierDraftEntry[],

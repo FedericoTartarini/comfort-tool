@@ -10,7 +10,7 @@ import { ModifierId } from "../../models/inputModifiers";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
 import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
-import InputModifiers from "./InputModifiers.svelte";
+import InputPanelHost from "./InputPanel.test.host.svelte";
 
 afterEach(cleanup);
 
@@ -18,7 +18,7 @@ describe("InputModifiers", () => {
   it("keeps modal edits in a draft and commits every change on Apply", async () => {
     const user = userEvent.setup();
     const toolState = createComfortToolState();
-    render(InputModifiers, { toolState });
+    render(InputPanelHost, { toolState });
 
     expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
@@ -89,7 +89,7 @@ describe("InputModifiers", () => {
   it("discards Cancel and Escape edits without changing calculation state", async () => {
     const user = userEvent.setup();
     const toolState = createComfortToolState();
-    render(InputModifiers, { toolState });
+    render(InputPanelHost, { toolState });
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
     const morningInput = screen.getByRole("spinbutton", {
@@ -137,7 +137,7 @@ describe("InputModifiers", () => {
     const user = userEvent.setup();
     const toolState = createComfortToolState();
     toolState.state.ui.compareEnabled = true;
-    render(InputModifiers, { toolState });
+    render(InputPanelHost, { toolState });
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
     expect(screen.getByRole("spinbutton", {
@@ -161,7 +161,7 @@ describe("InputModifiers", () => {
   it("does not render an entry for models without declared modifiers", () => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = ComfortModel.Utci;
-    render(InputModifiers, { toolState });
+    render(InputPanelHost, { toolState });
 
     expect(screen.queryByRole("region", { name: "Input modifiers" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Open input modifiers" })).toBeNull();

@@ -26,7 +26,7 @@ src/
   comfortModels/          model declarations plus family folders (pmv/, adaptive/, phs/, utci/)
   components/
     chart/                 chart rendering and export UI
-    input-panel/           comfort-tool input subcomponents
+    input-panel/           presentational Analysis input UI
   models/                  centralized domain constants and metadata (including zone tokens)
   services/
     comfort/               shared comfort helpers, request/axis adapters, charts, modifiers
@@ -35,7 +35,8 @@ src/
     plotlyFigure.ts        Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts        Publication PNG/SVG from a dedicated figure
   state/
-    comfortTool/           controller, model configs, pure projections, share state
+    comfortTool/           controller, model configs, share state, pure
+                           projections (chartPresentation, inputPresentation)
   views/                   page composition only
 ```
 
@@ -161,7 +162,7 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 - Every model owns chart output through `defineModel` `outputCharts` (data-only `ModelChartDeclaration` union over existing engines) or family `ComfortModelBuilder.setOutputCharts()`. Tables are declared with `tables: { analysis, timeSeries? }` using `TableType.Analysis` / `TableType.TimeSeries`. Every Analysis model must declare `tables.analysis`. PHS also declares `tables.timeSeries` plus `simulation.charts` for Time-series line charts. Instance ids live only on the declaration; the registry derives them (`getDeclaredChartInstanceIds`). Duplicate ids, wrong owners, unknown engines, or a TimeSeries table without Time-series capability fail `defineModel` / registry assemble. Optional `assembledCatalogs.validate.model` covers those checks; `assembleCatalogs` installs the hook on the returned instance. Do not treat `validate.model` as a second authoring API. Presentation instances do not carry engine spec. Do not recreate a parallel `ChartInstanceId` tree or a second legend/lock array beside `outputCharts`. Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build` or teach Plotly. A model declaration may name an extended chart type with `type`; assemble preserves it on the presentation instance and rejects empty or duplicate types. PMV Dynamic and PHS Analysis exposure history are `DynamicField` and `TimeSeriesLine` respectively. `ParametricLine` is implemented (polylines and optional limit bands). Heat-loss vs temperature and SET series builders live in `pmvHeatLossSeries.ts` / `pmvSetSeries.ts`; ASHRAE and ISO PMV declarations each register those ParametricLine instances. PMV Analysis tables include SET, cooling effect, relative air speed, and dynamic clothing as Compare-matrix rows. Explore still colours PMV and PPD; do not add a SET explore output key. UTCI BandScalar/DynamicField specs live in `utciCharts.ts`.
 - Interactive Dynamic 2-D field charts are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS` in `src/services/comfort/charts/types.ts`, including UTCI Dynamic). BandScalar / 1-D charts may keep high sampling along one axis (for example UTCI stress at 450 x-points). `ParametricLine` interchange is polylines and optional limit bands, not a dense grid. Hover overlays use display `z` for the primary output and do not attach per-cell `customdata` unless extra hover fields exist. Do not LRU / faster-clone a 200k-cell DTO — shrink the DTO. `toPlotlyFigure` clones Plotly-owned data arrays (`x`, `y`, `z`, `text`) and nested records Plotly mutates (trace/layout/axis/margin/legend/annotation/style objects). Non-finite grid `z` cells become `null` locally. Hover `customdata` is shared. Do not `JSON.parse(JSON.stringify(figure))`. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not `downloadImage` the on-screen DOM. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths. Zone fills remap through `src/models/zoneTokens.ts` (models select tokens; print and colour-blind updates happen in that table).
 - Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
-- `setInputFields()` / `defineModel` `inputFields` declare visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Assembled runtime definitions keep `inputFields` so tests can derive Compare golden values from the registry. Required control IDs are independently authored and pinned in focused model tests; do not derive that expected side from `inputFields`. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults. Model-scoped quantities use `quantities.extend` plus `{ kind: "modelQuantity", … }` when they appear on the Analysis panel. `build()` checks that every `modelQuantity` field is an extend entry owned by that declaration; control metadata is read from the assembled catalog at view-model time.
+- `setInputFields()` / `defineModel` `inputFields` declare visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Assembled runtime definitions keep `inputFields` so tests can derive Compare golden values from the registry. Required control IDs are independently authored and pinned in focused model tests; do not derive that expected side from `inputFields`. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults. Model-scoped quantities use `quantities.extend` plus `{ kind: "modelQuantity", … }` when they appear on the Analysis panel. `build()` checks that every `modelQuantity` field is an extend entry owned by that declaration; control metadata is read from the assembled catalog at view-model time. Analysis input-panel UI is presentational, matching chart controls: `buildInputPanelViewModel` / `getInputPanelViewModel` in `src/state/comfortTool/inputPresentation.ts` project tool controls, Compare toggles, field rows, clothing-builder bindings, and modifiers. Components must not receive the Analysis controller or implement conversion, clamp, or modifier-draft merge.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
 - Compose `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior; keep coupled temperature solving in the shared dynamic-axis solver.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
@@ -201,7 +202,7 @@ Avoid repeated model-mode branching across files such as:
 
 - `src/comfortModels/pmv/` (`pmvAshrae.ts`, `pmvIso.ts`, `pmvShared.ts`, and focused calculation/chart modules)
 - `src/comfortModels/adaptive/` (`adaptiveAshrae.ts`, `adaptiveEn.ts`, `adaptiveShared.ts`, and focused calculation/chart modules)
-- `src/components/input-panel/InputFieldRow.svelte`
+- `src/components/input-panel/` (presentational; field/option branching belongs in control behaviors and `inputPresentation.ts`)
 - share/import-export synchronization paths
 
 Do not add more repeated `if/else` chains per mode if a config table, model descriptor, or shared helper can express the rule once.
@@ -217,6 +218,7 @@ Do not reintroduce pure comfort-tool barrel files unless they provide a real sta
 - Add handwritten CSS only when there is a clear need.
 - Preserve the current UI language unless a task explicitly asks for a redesign.
 - Components should remain presentational or interaction-focused.
+- Analysis input-panel components consume `InputPanelViewModel` the same way chart controls consume `ChartControlsViewModel`. Do not put formula implementations, unit conversion, display-range clamp, or modifier-draft merge in those components.
 - If a component combines layout, modal state, domain branching, and data shaping, split it.
 - New shared components should usually have at least two real call sites. Otherwise keep them feature-local first.
 

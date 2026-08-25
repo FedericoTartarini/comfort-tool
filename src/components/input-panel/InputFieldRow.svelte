@@ -12,34 +12,28 @@
   import PresetNumericInput from "../PresetNumericInput.svelte";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
   import type { InputId as InputIdType } from "../../models/inputSlots";
-  import type { InputControlViewModel } from "../../models/inputControls";
-  import type { OptionKey } from "../../models/inputModes";
-  import type { ComfortToolController } from "../../state/comfortTool/types";
+  import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+  import type { InputFieldRowViewModel } from "../../state/comfortTool/types";
 
   interface Props {
-    toolState: ComfortToolController;
-    control: InputControlViewModel;
-    onOpenClothingBuilder: () => void;
+    field: InputFieldRowViewModel;
+    onOpenClothingBuilder?: () => void;
   }
 
   let {
-    toolState,
-    control,
+    field,
     onOpenClothingBuilder,
   }: Props = $props();
 
+  let control = $derived(field.control);
   let menu = $derived(control.menu);
-
-  function getVisibleInputIds() {
-    return toolState.selectors.getVisibleInputIds();
-  }
 
   function getAdvancedMenuTriggerId() {
     return `advanced-input-${control.id}`;
   }
 
   function getMatrixTemplateColumns() {
-    return `repeat(${getVisibleInputIds().length}, minmax(0, 1fr))`;
+    return `repeat(${field.visibleInputIds.length}, minmax(0, 1fr))`;
   }
 
   const dropdownClass = "w-72 overflow-hidden rounded-xl py-1 shadow-lg";
@@ -48,48 +42,15 @@
   const dropdownItemClass = "flex flex-col items-start gap-0.5 px-4 py-2 text-left";
   const subtleButtonClass = "tool-button-subtle focus:ring-0";
 
-  function clampToRange(value: number) {
-    if (control.minValue !== undefined && value < control.minValue) {
-      return control.minValue;
-    }
-
-    if (control.maxValue !== undefined && value > control.maxValue) {
-      return control.maxValue;
-    }
-
-    return value;
+  function commitFieldValue(inputId: InputIdType, inputElement: HTMLInputElement) {
+    const nextValue = field.onCommitValue(inputId, inputElement.value);
+    inputElement.value = nextValue ?? control.displayValuesByInput[inputId] ?? "";
   }
 
-  function commitFieldValue(
-    inputId: InputIdType,
-    inputElement: HTMLInputElement,
-  ) {
-    const rawValue = inputElement.value.trim();
-    toolState.actions.setActiveInputId(inputId);
-
-    if (!rawValue || !Number.isFinite(Number(rawValue))) {
-      inputElement.value = control.displayValuesByInput[inputId] ?? "";
-      return;
-    }
-
-    const nextValue = clampToRange(Number(rawValue));
-    const normalizedValue = String(nextValue);
-    inputElement.value = normalizedValue;
-    toolState.actions.updateInput(inputId, control.id, normalizedValue);
-  }
-
-  function handleApplyPresetValue(inputId: InputIdType, value: number) {
-    toolState.actions.setActiveInputId(inputId);
-    toolState.actions.updateInput(
-      inputId,
-      control.id,
-      clampToRange(value).toFixed(control.presetDecimals),
-    );
-  }
   let dropdownOpen = $state(false);
 
-  function handleSelectItem(optionKey: OptionKey, value: string) {
-    toolState.actions.setModelOption(optionKey, value);
+  function handleSelectItem(optionKey: OptionKeyType, value: string) {
+    field.onSelectOption(optionKey, value);
     dropdownOpen = false;
   }
 </script>
@@ -154,7 +115,7 @@
           color="none"
           pill
           class={subtleButtonClass}
-          onclick={onOpenClothingBuilder}
+          onclick={() => onOpenClothingBuilder?.()}
         >
           Custom clothing
         </Button>
@@ -172,9 +133,9 @@
     class="mt-1 grid gap-2"
     style={`grid-template-columns: ${getMatrixTemplateColumns()};`}
   >
-    {#each getVisibleInputIds() as inputId}
+    {#each field.visibleInputIds as inputId}
       <li
-        class={toolState.state.ui.activeInputId === inputId
+        class={field.activeInputId === inputId
           ? "rounded-lg bg-sky-50/50 py-1"
           : "py-1"}
       >
@@ -187,8 +148,8 @@
             placeholder={`Enter ${control.displayUnits} or search preset`}
             searchPlaceholder={`Search ${control.label.toLowerCase()} presets`}
             ariaLabel={`${inputDisplayMetaById[inputId].label} ${control.label}`}
-            onActivate={() => toolState.actions.setActiveInputId(inputId)}
-            onCommit={(value) => handleApplyPresetValue(inputId, value)}
+            onActivate={() => field.onActivateInput(inputId)}
+            onCommit={(value) => field.onCommitPreset(inputId, value)}
             disabled={control.disabled}
           />
         {:else}
@@ -202,7 +163,7 @@
             value={control.displayValuesByInput[inputId] ?? ""}
             aria-label={`${inputDisplayMetaById[inputId].label} ${control.label}`}
             disabled={control.disabled}
-            onfocus={() => toolState.actions.setActiveInputId(inputId)}
+            onfocus={() => field.onActivateInput(inputId)}
             onchange={(event) => commitFieldValue(inputId, event.currentTarget)}
             onblur={(event) => {
               if (!event.currentTarget.value.trim()) {

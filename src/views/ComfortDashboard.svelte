@@ -46,7 +46,9 @@
     mainClass="grid min-w-0 gap-4"
   >
     {#snippet aside()}
-      <InputPanel {toolState} {allowedModelIds} {onSelectModel} />
+      <InputPanel
+        panel={toolState.selectors.getInputPanelViewModel(allowedModelIds, onSelectModel)}
+      />
     {/snippet}
     {#snippet main()}
       <Card

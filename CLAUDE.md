@@ -47,7 +47,8 @@ src/
     plotlyFigure.ts Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts Publication PNG/SVG from a dedicated figure
   state/
-    comfortTool/    controller, model definitions/registry, pure projections, URL share state
+    comfortTool/    controller, model definitions/registry, share codec,
+                    pure projections (chartPresentation, inputPresentation)
   views/            page composition only (ComfortDashboard.svelte)
   App.svelte        root component
 ```
@@ -120,6 +121,7 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
 - Use `createFieldRequestAdapter()` for canonical request mapping and `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior. Coupled temperature axes stay in the dynamic-axis solver.
 - `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records. Model-scoped extensions come from declaration `quantities.extend`; they assemble into the same catalog, stay out of `primaryInputOrder`, and live in sparse `modelInputsByModel`. PHS weight/height SI meta live on the PHS declaration. Mass/length conversion reads catalog SI units; field behaviors must not branch on PHS. `modelQuantity` fields may be declared before assemble; `build()` checks they match that declaration’s extend list, and view-models read catalog meta after assemble.
+- Analysis input-panel UI is presentational, matching chart controls. `buildInputPanelViewModel` / `getInputPanelViewModel` in `src/state/comfortTool/inputPresentation.ts` project tool controls, Compare toggles, field rows, clothing-builder bindings, and modifiers. Components must not receive the Analysis controller or implement conversion, clamp, or modifier-draft merge.
 - `defineModel` `modifiers` (or builder `.setModifiers()`) receive executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
 - Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO; each declaration binds its own `clo_dynamic` standard.
 - Keep Time-series out of Analysis caches and Analysis share snapshots. Time-series is a separate controller (PHS only). `state/timeSeries/modelConfigs.ts` reads the PHS declaration’s `tables.timeSeries`; declaring the table does not create a simulator.
@@ -130,6 +132,7 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 - Use Flowbite components for UI patterns they cover: `DropdownHeader`, `DropdownDivider` for dropdown sections; icon components from `flowbite-svelte-icons` instead of Unicode characters.
 - Add handwritten CSS only when necessary.
 - Components should be presentational or interaction-focused. If a component mixes layout, modal state, domain branching, and data shaping, split it.
+- Analysis input-panel components consume `InputPanelViewModel` the same way chart controls consume `ChartControlsViewModel`. Do not put formula implementations, unit conversion, display-range clamp, or modifier-draft merge in those components.
 - New shared components should have at least two real call sites; otherwise keep them feature-local.
 - Semantic HTML: use `<div>` for layout-only wrappers. Only use `<section>` / `<article>` for genuine landmark/self-contained content. Never place `<header>` inside `<footer>`.
 

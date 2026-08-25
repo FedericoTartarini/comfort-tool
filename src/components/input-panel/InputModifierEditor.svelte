@@ -5,11 +5,8 @@
 
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
   import type { InputId as InputIdType } from "../../models/inputSlots";
-  import type { UnitSystem as UnitSystemType } from "../../models/units";
-  import {
-    setInputModifierDraftEnabled,
-    updateInputModifierDraftInput,
-  } from "../../state/comfortTool/modifierState";
+  import type { ModifierId as ModifierIdType } from "../../models/inputModifiers";
+  import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../models/physicalQuantities";
   import type {
     InputModifierControlViewModel,
     InputModifierDraftEntry,
@@ -19,9 +16,21 @@
   interface Props {
     modifierControls: InputModifierControlViewModel[];
     visibleInputIds: InputIdType[];
-    unitSystem: UnitSystemType;
     draft: readonly InputModifierDraftEntry[];
     applyError: string;
+    onSetDraftEnabled: (
+      draft: readonly InputModifierDraftEntry[],
+      inputId: InputIdType,
+      modifierId: ModifierIdType,
+      enabled: boolean,
+    ) => InputModifierDraftEntry[] | null;
+    onUpdateDraftInput: (
+      draft: readonly InputModifierDraftEntry[],
+      inputId: InputIdType,
+      modifierId: ModifierIdType,
+      quantityId: PhysicalQuantityIdType,
+      rawValue: string,
+    ) => InputModifierDraftEntry[] | null;
     onDraftChange: (draft: InputModifierDraftEntry[]) => void;
     onCancel: () => void;
     onApply: () => void;
@@ -30,9 +39,10 @@
   let {
     modifierControls,
     visibleInputIds,
-    unitSystem,
     draft,
     applyError,
+    onSetDraftEnabled,
+    onUpdateDraftInput,
     onDraftChange,
     onCancel,
     onApply,
@@ -55,7 +65,7 @@
     inputId: InputIdType,
     enabled: boolean,
   ) {
-    const nextDraft = setInputModifierDraftEnabled(
+    const nextDraft = onSetDraftEnabled(
       draft,
       inputId,
       modifier.id,
@@ -70,13 +80,12 @@
     inputId: InputIdType,
     input: HTMLInputElement,
   ) {
-    const nextDraft = updateInputModifierDraftInput(
+    const nextDraft = onUpdateDraftInput(
       draft,
       inputId,
       modifier.id,
       field.key,
       input.value,
-      unitSystem,
     );
     if (!nextDraft) {
       input.value = field.displayValuesByInput[inputId] ?? "";
