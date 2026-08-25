@@ -435,6 +435,38 @@ exports[`output golden — table snapshots > PMV_ASHRAE produces stable table ou
         ],
         "title": "Acceptability",
       },
+      {
+        "cells": [
+          {
+            "text": "24.8 °C",
+          },
+        ],
+        "title": "SET",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.00 °C",
+          },
+        ],
+        "title": "Cooling effect",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.10 m/s",
+          },
+        ],
+        "title": "Relative air speed",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.50 clo",
+          },
+        ],
+        "title": "Dynamic clothing",
+      },
     ],
   },
 }
@@ -554,6 +586,38 @@ exports[`output golden — table snapshots > PMV_ISO produces stable table outpu
           },
         ],
         "title": "Acceptability",
+      },
+      {
+        "cells": [
+          {
+            "text": "24.8 °C",
+          },
+        ],
+        "title": "SET",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.00 °C",
+          },
+        ],
+        "title": "Cooling effect",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.10 m/s",
+          },
+        ],
+        "title": "Relative air speed",
+      },
+      {
+        "cells": [
+          {
+            "text": "0.50 clo",
+          },
+        ],
+        "title": "Dynamic clothing",
       },
     ],
   },

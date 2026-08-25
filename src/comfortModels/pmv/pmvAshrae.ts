@@ -36,6 +36,7 @@ const ashraeComplianceBands = createPmvComplianceBands();
 export const pmvAshraeAdapter: PmvStandardAdapter = {
   modelId: ComfortModel.PmvAshrae,
   resultStandard: ComfortStandard.Ashrae55PmvPpd,
+  clothingStandard: JsThermalComfortStandard.ASHRAE,
   clothingInsulationMaxSi: 1.5,
   supportsOccupantAirSpeedControl: true,
   calculate: (request) => pmv_ppd_ashrae(

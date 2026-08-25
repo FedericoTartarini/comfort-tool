@@ -1,6 +1,7 @@
 import type { ComfortStandard } from "../../models/calculationMetadata";
 import {
   ComfortModel,
+  type JsThermalComfortStandard,
 } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputControlId } from "../../models/inputControls";
@@ -71,6 +72,7 @@ export type PmvModelId = typeof ComfortModel.PmvAshrae | typeof ComfortModel.Pmv
 export interface PmvStandardAdapter {
   readonly modelId: PmvModelId;
   readonly resultStandard: ComfortStandard;
+  readonly clothingStandard: JsThermalComfortStandard;
   readonly clothingInsulationMaxSi: number;
   readonly supportsOccupantAirSpeedControl: boolean;
   readonly calculate: (request: PmvRequestDto) => { pmv: number; ppd: number };
@@ -349,12 +351,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
     .setTables({
       analysis: {
         type: TableType.Analysis,
-        rows: buildPmvResultRows().map((row) => ({
-          id: row.title.toLowerCase().replace(/\s+/g, "-"),
-          label: row.title,
-          ...(row.group ? { group: row.group } : {}),
-          format: (result) => row.formatter(result),
-        })),
+        rows: buildPmvResultRows(),
       },
     })
     .setOutputCharts(

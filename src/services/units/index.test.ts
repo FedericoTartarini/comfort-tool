@@ -6,6 +6,8 @@ import { UnitSystem } from "../../models/units";
 import {
   convertFieldValueFromSi,
   convertFieldValueToSi,
+  convertTemperatureDeltaFromSi,
+  convertTemperatureDeltaToSi,
   convertHumidityRatioFromSi,
   convertHumidityRatioToSi,
   convertMetersPerSecondToKilometersPerHour,
@@ -49,6 +51,12 @@ describe("units helpers", () => {
     const displayWindSpeed = convertFieldValueFromSi(PhysicalQuantityId.WindSpeed, 1.2, UnitSystem.IP);
     expect(displayWindSpeed).toBeCloseTo(3.937007874, 6);
     expect(convertFieldValueToSi(PhysicalQuantityId.WindSpeed, displayWindSpeed, UnitSystem.IP)).toBeCloseTo(1.2, 6);
+  });
+
+  it("converts temperature differences without the Fahrenheit offset", () => {
+    expect(convertTemperatureDeltaFromSi(1.64)).toBeCloseTo(2.952, 6);
+    expect(convertTemperatureDeltaToSi(2.952)).toBeCloseTo(1.64, 6);
+    expect(convertTemperatureDeltaFromSi(Number.NaN)).toBeNaN();
   });
 
   it("round-trips humidity ratio and vapor pressure display conversions", () => {

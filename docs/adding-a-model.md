@@ -44,7 +44,8 @@ Then, only if the model actually needs them:
 PMV and Adaptive stay family modules (one declaration per standard, shared
 calculation/chart core). Those are not presets. They may still assemble with
 `ComfortModelBuilder` internally. Do not merge ASHRAE/ISO or ASHRAE/EN behind
-a runtime toggle.
+a runtime toggle. PMV Analysis tables include SET, cooling effect, relative
+air speed, and dynamic clothing; Explore still colours PMV and PPD.
 
 ## Hard stops (frontend first)
 
@@ -167,7 +168,11 @@ Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only
 with Time-series workspace capability (PHS). Declaring that table does not
 create a simulator; `src/state/timeSeries/modelConfigs.ts` reads the PHS
 declaration for membership. PHS Time-series line charts are declared on
-`simulation.charts`.
+`simulation.charts`. PMV ASHRAE and ISO Analysis tables include SET, cooling
+effect, relative air speed, and dynamic clothing as Compare-matrix rows.
+Do not add SET as an `exploreOutputs` key unless Explore must colour SET.
+Do not add local discomfort as a table type. Do not register ParametricLine
+chart instances until Phase 1c.
 
 ## What the declaration must show
 

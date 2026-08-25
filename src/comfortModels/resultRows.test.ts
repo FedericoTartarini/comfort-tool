@@ -58,6 +58,9 @@ const pmvResult: PmvResponseDto = {
   pmv: 0.24,
   ppd: 5.25,
   vr: 0.6,
+  set: 24.3,
+  coolingEffect: 1.64,
+  dynamicClothing: 0.5,
   isCompliant: true,
   standard: ComfortStandard.Ashrae55PmvPpd,
   source: CalculationSource.JsThermalComfort,
@@ -150,6 +153,10 @@ describe("comfort model result rows", () => {
       "Zone",
       "PPD",
       "Acceptability",
+      "SET",
+      "Cooling effect",
+      "Relative air speed",
+      "Dynamic clothing",
     ]);
     expect(getInputCell(sections, "Compliance")).toEqual({
       text: ComplianceStatus.Compliant,
@@ -162,6 +169,23 @@ describe("comfort model result rows", () => {
     });
     expect(getInputCell(sections, "PPD")?.text).toBe("5.3%");
     expect(getInputCell(sections, "Acceptability")?.text).toBe("94.8%");
+    expect(getInputCell(sections, "SET")?.text).toBe("24.3 °C");
+    expect(getInputCell(sections, "Cooling effect")?.text).toBe("1.64 °C");
+    expect(getInputCell(sections, "Relative air speed")?.text).toBe("0.60 m/s");
+    expect(getInputCell(sections, "Dynamic clothing")?.text).toBe("0.50 clo");
+  });
+
+  it("converts PMV SET, cooling effect, and relative air speed to IP", () => {
+    const sections = pmvAshraeModelConfig.buildTable(
+      createResultRecord(pmvResult),
+      visibleInputIds,
+      UnitSystem.IP,
+    );
+
+    expect(getInputCell(sections, "SET")?.text).toBe("75.7 °F");
+    expect(getInputCell(sections, "Cooling effect")?.text).toBe("2.95 °F");
+    expect(getInputCell(sections, "Relative air speed")?.text).toBe("1.97 ft/s");
+    expect(getInputCell(sections, "Dynamic clothing")?.text).toBe("0.50 clo");
   });
 
   it("maps multiple PMV inputs while preserving null and noncompliant cells", () => {

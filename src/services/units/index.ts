@@ -17,6 +17,12 @@ import {
 export * from "./modelOutputs";
 export * from "./modifierInputs";
 export {
+  convertTemperatureDeltaFromSi,
+  convertTemperatureDeltaToSi,
+  convertTemperatureFromSi,
+  convertTemperatureToSi,
+} from "./temperature";
+export {
   convertHeatFluxFromSi,
   convertHeatFluxToSi,
   convertLengthFromSi,

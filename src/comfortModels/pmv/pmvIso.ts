@@ -36,6 +36,7 @@ const isoComplianceBands = createPmvComplianceBands();
 export const pmvIsoAdapter: PmvStandardAdapter = {
   modelId: ComfortModel.PmvIso,
   resultStandard: ComfortStandard.Iso7730PmvPpd,
+  clothingStandard: JsThermalComfortStandard.ISO,
   // ISO 7730 applicability includes the upper boundary of 2 clo.
   clothingInsulationMaxSi: 2,
   supportsOccupantAirSpeedControl: false,

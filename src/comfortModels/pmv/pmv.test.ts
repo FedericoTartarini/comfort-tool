@@ -12,6 +12,7 @@ import {
   TemperatureMode,
 } from "../../models/inputModes";
 import { InputId } from "../../models/inputSlots";
+import { ModifierId } from "../../models/inputModifiers";
 import {
   findNumericBandIndexForValue,
   ModelOutputKey,
@@ -21,6 +22,10 @@ import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
+import {
+  applyInputModifierChain,
+  createDynamicClothingModifier,
+} from "../../services/comfort/inputModifiers";
 import {
   pmvAshraeAdapter,
   pmvAshraeDeclaration,
@@ -40,6 +45,7 @@ import {
 import { createDynamicViewDescriptor } from "./pmvDynamicChart";
 import {
   calculatePmvModel,
+  derivePmvAnalysisOutputs,
   pmvNeutralZone,
   type PmvChartSourceDto,
   type PmvRequestDto,
@@ -82,9 +88,10 @@ function setPmvInputs(
 function calculateRegisteredModel(
   adapter: PmvStandardAdapter,
   toolState: ReturnType<typeof createComfortToolState>,
+  effectiveQuantitiesByInput = toolState.state.quantitiesByInput,
 ): { result: PmvResponseDto; chartSource: PmvChartSourceDto } {
   const calculation = calculatePmvModel(createModelCalculationContext({
-    effectiveQuantitiesByInput: toolState.state.quantitiesByInput,
+    effectiveQuantitiesByInput,
     auxiliaryQuantitiesByInput: toolState.state.auxiliaryQuantitiesByInput,
     modelInputs: toolState.state.modelInputsByModel[adapter.modelId],
     options: toolState.state.ui.modelOptionsByModel[adapter.modelId],
@@ -92,6 +99,33 @@ function calculateRegisteredModel(
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
   return { result, chartSource: calculation.chartSource };
+}
+
+function calculateWithDynamicClothingModifier(
+  adapter: PmvStandardAdapter,
+  clothingSi: number,
+  metSi: number,
+): { result: PmvResponseDto; effectiveClo: number } {
+  const toolState = createComfortToolState();
+  const base = {
+    ...toolState.state.quantitiesByInput[InputId.Input1],
+    [PhysicalQuantityId.ClothingInsulation]: clothingSi,
+    [PhysicalQuantityId.MetabolicRate]: metSi,
+  };
+  const effective = applyInputModifierChain(
+    base,
+    [createDynamicClothingModifier(adapter.clothingStandard)],
+    { [ModifierId.DynamicClothing]: true },
+    { [ModifierId.DynamicClothing]: {} },
+  );
+  const { result } = calculateRegisteredModel(adapter, toolState, {
+    ...toolState.state.quantitiesByInput,
+    [InputId.Input1]: effective,
+  });
+  return {
+    result,
+    effectiveClo: effective[PhysicalQuantityId.ClothingInsulation],
+  };
 }
 
 function emptyPmvResults(): Record<InputId, PmvResponseDto | null> {
@@ -254,6 +288,92 @@ describe("PMV standard declarations", () => {
     expect(ashrae.chartSource).not.toHaveProperty("modelId");
     expect(ashrae.result.pmv).not.toBe(iso.result.pmv);
   });
+
+  it.each(standardCases)(
+    "$label stores SET, cooling effect, relative air speed, and dynamic clothing",
+    ({ adapter }) => {
+      const { result, chartSource } = calculateRegisteredModel(
+        adapter,
+        createComfortToolState(),
+      );
+      const request = chartSource.inputs[InputId.Input1];
+      if (!request) throw new Error("Missing PMV request for Input 1.");
+      const expected = derivePmvAnalysisOutputs(request);
+
+      expect(result.set).toBe(expected.set);
+      expect(result.coolingEffect).toBe(expected.coolingEffect);
+      expect(result.vr).toBe(request.vr);
+      expect(result.dynamicClothing).toBe(expected.dynamicClothing);
+    },
+  );
+
+  it("keeps ASHRAE and ISO dynamic-clothing modifiers independent", () => {
+    const ashrae = calculateWithDynamicClothingModifier(pmvAshraeAdapter, 1, 1.1);
+    const iso = calculateWithDynamicClothingModifier(pmvIsoAdapter, 1, 1.1);
+
+    expect(ashrae.effectiveClo).toBe(1);
+    expect(iso.effectiveClo).toBeCloseTo(0.964, 3);
+    expect(ashrae.result.dynamicClothing).toBe(ashrae.effectiveClo);
+    expect(iso.result.dynamicClothing).toBe(iso.effectiveClo);
+  });
+
+  it.each(standardCases)(
+    "$label reports modifier-adjusted clothing instead of applying clo_dynamic twice",
+    ({ adapter, config }) => {
+      const { result, effectiveClo } = calculateWithDynamicClothingModifier(
+        adapter,
+        1,
+        1.8,
+      );
+      const sections = config.buildTable(
+        {
+          [InputId.Input1]: result,
+          [InputId.Input2]: null,
+          [InputId.Input3]: null,
+        },
+        [InputId.Input1],
+        UnitSystem.SI,
+      );
+      const cell = sections.find((section) => section.title === "Dynamic clothing")
+        ?.valuesByInput[InputId.Input1];
+
+      expect(effectiveClo).toBeCloseTo(0.822, 3);
+      expect(result.dynamicClothing).toBe(effectiveClo);
+      expect(result.dynamicClothing).not.toBeCloseTo(0.676, 3);
+      expect(cell?.text).toBe("0.82 clo");
+    },
+  );
+
+  it("reports zero cooling effect at still-air speed and a positive value when elevated", () => {
+    const still = derivePmvAnalysisOutputs(baseRequest);
+    const elevated = derivePmvAnalysisOutputs(
+      { ...baseRequest, vr: 0.3 },
+    );
+
+    expect(still.coolingEffect).toBe(0);
+    expect(elevated.coolingEffect).toBeGreaterThan(0);
+  });
+
+  it.each(standardCases)(
+    "$label Compare-matrix includes SET, cooling effect, relative air speed, and dynamic clothing",
+    ({ config }) => {
+      expect(config.tables.analysis.rows.map((row) => row.label)).toEqual([
+        "Compliance",
+        "PMV",
+        "Zone",
+        "PPD",
+        "Acceptability",
+        "SET",
+        "Cooling effect",
+        "Relative air speed",
+        "Dynamic clothing",
+      ]);
+      expect(config.exploreOutputs.map((output) => output.key)).toEqual([
+        ModelOutputKey.Pmv,
+        ModelOutputKey.Ppd,
+      ]);
+    },
+  );
 });
 
 describe("PMV roots and compliance", () => {
