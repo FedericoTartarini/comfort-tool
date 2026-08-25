@@ -95,8 +95,8 @@ describe("windChill service", () => {
         v: 1,
       });
 
-      expect(contourTrace?.z).toHaveLength(300);
-      expect(contourTrace?.z?.[0]).toHaveLength(300);
+      expect(contourTrace?.z).toHaveLength(100);
+      expect(contourTrace?.z?.[0]).toHaveLength(100);
       expect(contourTrace?.hoverongaps).toBe(false);
       expect(contourTrace?.hovertemplate).toContain("Frostbite Risk");
       expect(contourTrace?.hovertemplate).toContain("Wind Chill Index");

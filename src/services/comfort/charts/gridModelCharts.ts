@@ -29,7 +29,11 @@ import {
   type FieldChartLayoutSpec,
 } from "./chartEngine";
 import { getBaselineInputEntry } from "../helpers";
-import { CHART_COORDINATE_TOLERANCE, type ChartRange } from "./types";
+import {
+  CHART_COORDINATE_TOLERANCE,
+  resolveInteractiveDynamicGridPoints,
+  type ChartRange,
+} from "./types";
 
 export interface GridModelDynamicHoverExtension<TResult> {
   getTemplateSuffix: (unitSystem: UnitSystemType) => string;
@@ -57,6 +61,7 @@ export interface GridModelChartSpec<TPayload extends object, TResult> {
   bandLabel?: string;
   dynamicHoverExtension?: GridModelDynamicHoverExtension<TResult>;
   axisRanges?: Partial<Record<ChartAxisQuantityId, ChartRange>>;
+  /** Samples per axis. Interactive Dynamic 2-D is capped at INTERACTIVE_DYNAMIC_GRID_POINTS. */
   gridPoints?: number;
   isPlottable?: (result: TResult | null | undefined) => boolean;
   outsideApplicabilityMessage?: string;
@@ -137,7 +142,7 @@ function buildGridModelView<TPayload extends object, TResult>(
   const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
   const bandLabel = spec.bandLabel ?? "Band";
-  const gridPoints = spec.gridPoints ?? 300;
+  const gridPoints = resolveInteractiveDynamicGridPoints(spec.gridPoints);
   const chartAxisAdapter = spec.chartAxisAdapter ?? spec.requestAdapter;
   const baselineXSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.xField);
   const baselineYSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.yField);

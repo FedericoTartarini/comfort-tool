@@ -22,6 +22,7 @@ import {
 import {
   type GridModelChartSpec,
 } from "../../services/comfort/charts/gridModelCharts";
+import { INTERACTIVE_DYNAMIC_GRID_POINTS } from "../../services/comfort/charts/types";
 import type {
   BandScalarChartKindSpec,
   DynamicFieldChartKindSpec,
@@ -45,7 +46,7 @@ import {
 
 const MODEL_LABEL = UTCI_MODEL_LABEL;
 const STRESS_BAND_Y_RESOLUTION = 50;
-const CONTOUR_GRID_RESOLUTION = 450;
+const STRESS_BAND_X_RESOLUTION = 450;
 const MULTI_INPUT_MARKER_Y_POSITIONS = [0.78, 0.5, 0.22];
 const SINGLE_INPUT_MARKER_Y_POSITION = [0.5];
 const ZONE_ANNOTATION_Y_STAGGER = { even: 0.05, odd: 0.16 };
@@ -58,7 +59,7 @@ export function createUtciDynamicChartSpec(): Omit<
 > {
   return {
     output: utciOutput,
-    gridPoints: CONTOUR_GRID_RESOLUTION,
+    gridPoints: INTERACTIVE_DYNAMIC_GRID_POINTS,
     requestAdapter: utciAxisAdapter,
     chartAxisAdapter: utciAxisAdapter,
     applyChartCoordinates: (payload, xField, xSi, yField, ySi) => (
@@ -128,7 +129,7 @@ export function buildUtciStressChart(
     xAxis: {
       field: PhysicalQuantityId.DryBulbTemperature,
       rangeSi: UTCI_CHART_RANGE_SI,
-      points: CONTOUR_GRID_RESOLUTION,
+      points: STRESS_BAND_X_RESOLUTION,
       label: MODEL_LABEL,
       showGrid: false,
       zeroLine: false,

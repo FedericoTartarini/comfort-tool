@@ -144,6 +144,11 @@ that same engine; assemble preserves it and rejects empty or duplicate types.
 Instance ids live only on the declaration (`instanceId`); the registry
 derives them (`getDeclaredChartInstanceIds`). Heat Index / Humidex
 fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
+Interactive Dynamic 2-D grids are capped near 100² by the engine
+(`INTERACTIVE_DYNAMIC_GRID_POINTS`); do not pass 300 or 450. BandScalar
+1-D sampling may stay high (for example UTCI stress at 450 x-points).
+Hover overlays use display `z` for the primary output and must not attach
+a per-cell `customdata` matrix unless extra hover fields exist.
 
 **Tables.** `tables.analysis` (`TableType.Analysis`) is required for every
 Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only

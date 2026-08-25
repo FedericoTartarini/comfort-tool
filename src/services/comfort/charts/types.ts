@@ -15,6 +15,21 @@ export interface ChartRange {
 /** Shared SI coordinate tolerance for chart baseline matching and axis solving. */
 export const CHART_COORDINATE_TOLERANCE = 1e-6;
 
+/**
+ * Max samples per axis for interactive Dynamic 2-D fields (Plan 0f).
+ * BandScalar / 1-D charts may sample more densely along a single axis.
+ */
+export const INTERACTIVE_DYNAMIC_GRID_POINTS = 100;
+
+export function resolveInteractiveDynamicGridPoints(
+  requested?: number,
+): number {
+  return Math.min(
+    requested ?? INTERACTIVE_DYNAMIC_GRID_POINTS,
+    INTERACTIVE_DYNAMIC_GRID_POINTS,
+  );
+}
+
 export interface ChartAxisScale {
   field: ChartAxisQuantityId;
   label: string;

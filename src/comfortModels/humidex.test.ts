@@ -88,12 +88,12 @@ describe("humidex service", () => {
     );
 
     expect(fixedChart?.traces[0].type).toBe("contour");
-    expect(fixedChart?.traces[0].z).toHaveLength(300);
-    expect(fixedChart?.traces[0].z?.[0]).toHaveLength(300);
+    expect(fixedChart?.traces[0].z).toHaveLength(100);
+    expect(fixedChart?.traces[0].z?.[0]).toHaveLength(100);
     expect(fixedChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
     expect(fixedChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces[0].type).toBe("contour");
-    expect(dynamicChart?.traces[0].z).toHaveLength(300);
+    expect(dynamicChart?.traces[0].z).toHaveLength(100);
     expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
     expect(dynamicChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);

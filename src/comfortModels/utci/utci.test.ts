@@ -96,6 +96,9 @@ describe("UTCI Explore chart", () => {
     )) ?? -1;
 
     expect(gapIndex).toBeGreaterThanOrEqual(0);
+    expect(fillTrace?.z).toHaveLength(50);
+    expect(fillTrace?.z?.[0]).toHaveLength(450);
+    expect(hoverTrace?.hoverMetadata).toBeUndefined();
     expect(fillTrace?.z?.every((row) => Number.isNaN(row[gapIndex]))).toBe(true);
     expect(hoverTrace?.text?.every((row) => row[gapIndex] === "Unclassified"))
       .toBe(true);
@@ -128,8 +131,9 @@ describe("UTCI Explore chart", () => {
 
     const tooltipTrace = chart.traces.find(({ name }) => name === "UTCI bands hover");
     expect(tooltipTrace?.type).toBe("contour");
-    expect(tooltipTrace?.z).toHaveLength(450);
-    expect(tooltipTrace?.z?.[0]).toHaveLength(450);
+    expect(tooltipTrace?.z).toHaveLength(100);
+    expect(tooltipTrace?.z?.[0]).toHaveLength(100);
+    expect(tooltipTrace?.hoverMetadata).toBeUndefined();
     expect(tooltipTrace?.hovertemplate).toContain("UTCI");
     expect(tooltipTrace?.hoverongaps).toBe(false);
     expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);

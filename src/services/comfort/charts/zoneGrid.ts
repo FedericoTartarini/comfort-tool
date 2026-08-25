@@ -196,6 +196,7 @@ interface BandTooltipTraceOptions {
   name: string;
   grid: GridEvaluationResult;
   hovertemplate: string;
+  includeHoverMetadata?: boolean;
 }
 
 const TRANSPARENT_COLORSCALE: PlotColorScaleDto = [
@@ -207,6 +208,7 @@ export function buildBandTooltipTrace({
   name,
   grid,
   hovertemplate,
+  includeHoverMetadata = true,
 }: BandTooltipTraceOptions): PlotTraceDto {
   return buildGridContourTrace({
     name,
@@ -222,6 +224,7 @@ export function buildBandTooltipTrace({
     showscale: false,
     line: { width: 0 },
     isBackgroundZone: true,
+    includeHoverMetadata,
   });
 }
 

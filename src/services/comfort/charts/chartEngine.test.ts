@@ -19,6 +19,7 @@ import {
   createBandedGridStrategy,
   GridBandRenderStrategy,
 } from "./chartEngine";
+import { resolveInteractiveDynamicGridPoints } from "./types";
 
 interface TestPayload {
   tdb: number;
@@ -34,7 +35,11 @@ const layout = {
   margin: { l: 0, r: 0, t: 0, b: 0 },
 };
 
-function lineTrace(name: string, x: number[] = [], y: number[] = []): PlotTraceDto {
+function lineTrace(
+  name: string,
+  x: number[] = [],
+  y: number[] = [],
+): PlotTraceDto {
   return { type: "scatter", mode: "lines", name, x, y };
 }
 
@@ -45,7 +50,9 @@ describe("shared chart engine", () => {
       ({ key }) => key === complianceProfile?.output,
     );
     if (!complianceProfile || !output) {
-      throw new Error("PMV must declare a chartable numeric Compliance output.");
+      throw new Error(
+        "PMV must declare a chartable numeric Compliance output.",
+      );
     }
     const config: NumericComplianceFieldChartConfig = {
       profileKind: FieldChartProfileKind.Compliance,
@@ -84,30 +91,34 @@ describe("shared chart engine", () => {
           xValuesSeen.push(xSi);
           return { z: xSi + ySi, text: "grid" };
         },
-        renderTraces: (grid) => [{
-          type: "contour",
-          name: "Grid",
-          x: grid.xValues,
-          y: grid.yValues,
-          z: grid.zValues,
-          text: grid.textValues,
-          contours: { type: "levels" },
-          hovertemplate: "%{text}<extra></extra>",
-        }],
+        renderTraces: (grid) => [
+          {
+            type: "contour",
+            name: "Grid",
+            x: grid.xValues,
+            y: grid.yValues,
+            z: grid.zValues,
+            text: grid.textValues,
+            contours: { type: "levels" },
+            hovertemplate: "%{text}<extra></extra>",
+          },
+        ],
       },
       chartOverlays: () => [lineTrace("Chart overlay")],
-      inputGroups: () => [{
-        inputsMap: {
-          [InputId.Input1]: { tdb: 25, rh: 50 },
-          [InputId.Input2]: { tdb: 30, rh: 60 },
+      inputGroups: () => [
+        {
+          inputsMap: {
+            [InputId.Input1]: { tdb: 25, rh: 50 },
+            [InputId.Input2]: { tdb: 30, rh: 60 },
+          },
+          getXSi: (payload) => payload.tdb,
+          getYSi: (payload) => payload.rh,
+          buildOverlayTraces: ({ inputLabel, xDisplay, yDisplay }) => [
+            lineTrace(`${inputLabel} overlay`, [xDisplay], [yDisplay]),
+          ],
+          getHovertemplate: ({ inputLabel }) => `${inputLabel}<extra></extra>`,
         },
-        getXSi: (payload) => payload.tdb,
-        getYSi: (payload) => payload.rh,
-        buildOverlayTraces: ({ inputLabel, xDisplay, yDisplay }) => [
-          lineTrace(`${inputLabel} overlay`, [xDisplay], [yDisplay]),
-        ],
-        getHovertemplate: ({ inputLabel }) => `${inputLabel}<extra></extra>`,
-      }],
+      ],
       layout,
       source: CalculationSource.FrontendGenerated,
     });
@@ -172,18 +183,18 @@ describe("shared chart engine", () => {
     expect(xValuesSeen).toEqual([0, 10, 20, 30]);
     expect(chart.traces[0].z).toEqual([[0, NaN, 1, NaN]]);
     expect(chart.traces[0].hoverinfo).toBe("skip");
-    const tooltip = chart.traces.find(({ name }) => name === "Heat Index bands hover");
-    expect(tooltip?.z).toEqual([[0, 10, 20, NaN]]);
+    const tooltip = chart.traces.find(
+      ({ name }) => name === "Heat Index bands hover",
+    );
+    expect(tooltip?.z).toEqual([[32, 50, 68, NaN]]);
     expect(tooltip?.text).toEqual([["Low", "Unclassified", "High", ""]]);
-    expect((tooltip?.hoverMetadata as unknown[][][])[0][0]).toEqual([32]);
-    expect((tooltip?.hoverMetadata as unknown[][][])[0][3]).toEqual([]);
+    expect(tooltip?.hoverMetadata).toBeUndefined();
+    expect(tooltip?.hovertemplate).toContain("%{z:");
     expect(tooltip?.hoverongaps).toBe(false);
   });
 
   it("projects band fills without removing gaps from the hover grid", () => {
-    const bands = [
-      { min: 0, max: 1, label: "Target", color: "#00ff00" },
-    ];
+    const bands = [{ min: 0, max: 1, label: "Target", color: "#00ff00" }];
     let evaluatedGridGap = false;
     const chart = buildFieldChart({
       unitSystem: UnitSystem.SI,
@@ -215,9 +226,9 @@ describe("shared chart engine", () => {
           evaluatedGridGap = Number.isNaN(grid.zValues[0][1]);
           return {
             ...grid,
-            zValues: grid.zValues.map((row) => row.map((value) => (
-              Number.isNaN(value) ? 0.5 : value
-            ))),
+            zValues: grid.zValues.map((row) =>
+              row.map((value) => (Number.isNaN(value) ? 0.5 : value)),
+            ),
           };
         },
       }),
@@ -225,15 +236,18 @@ describe("shared chart engine", () => {
       source: CalculationSource.FrontendGenerated,
     });
 
-    const fill = chart.traces.find(({ contours }) => (
-      contours?.type === "constraint" && contours.operation !== "="
-    ));
-    const tooltip = chart.traces.find(({ name }) => name === "Heat Index bands hover");
+    const fill = chart.traces.find(
+      ({ contours }) =>
+        contours?.type === "constraint" && contours.operation !== "=",
+    );
+    const tooltip = chart.traces.find(
+      ({ name }) => name === "Heat Index bands hover",
+    );
 
     expect(evaluatedGridGap).toBe(true);
     expect(fill?.z).toEqual([[0.5, 0.5]]);
     expect(tooltip?.z).toEqual([[0.5, NaN]]);
-    expect((tooltip?.hoverMetadata as unknown[][][])[0][1]).toEqual([]);
+    expect(tooltip?.hoverMetadata).toBeUndefined();
   });
 
   it("preserves custom hover metadata in a banded grid", () => {
@@ -274,8 +288,12 @@ describe("shared chart engine", () => {
       source: CalculationSource.FrontendGenerated,
     });
 
-    const tooltip = chart.traces.find(({ name }) => name === "Heat Index bands hover");
-    expect((tooltip?.hoverMetadata as unknown[][][])[0][0]).toEqual([50, 123.4]);
+    const tooltip = chart.traces.find(
+      ({ name }) => name === "Heat Index bands hover",
+    );
+    expect((tooltip?.hoverMetadata as unknown[][][])[0][0]).toEqual([
+      50, 123.4,
+    ]);
     expect(tooltip?.hovertemplate).toBe(
       "Custom: %{customdata[1]:.1f}<extra></extra>",
     );
@@ -322,14 +340,21 @@ describe("shared chart engine", () => {
     });
 
     expect(evaluationCount).toBe(4);
-    expect(chart.traces.filter((trace) => (
-      trace.contours?.type === "constraint" && trace.contours.operation !== "="
-    ))).toHaveLength(2);
-    const tooltips = chart.traces.filter((trace) => (
-      trace.type === "contour" && trace.name.endsWith(" hover")
-    ));
+    expect(
+      chart.traces.filter(
+        (trace) =>
+          trace.contours?.type === "constraint" &&
+          trace.contours.operation !== "=",
+      ),
+    ).toHaveLength(2);
+    const tooltips = chart.traces.filter(
+      (trace) => trace.type === "contour" && trace.name.endsWith(" hover"),
+    );
     expect(tooltips).toHaveLength(1);
-    expect(tooltips[0].z).toEqual([[0, 1], [1, 2]]);
+    expect(tooltips[0].z).toEqual([
+      [0, 1],
+      [1, 2],
+    ]);
     expect(tooltips[0].hoverongaps).toBe(false);
   });
 
@@ -354,17 +379,19 @@ describe("shared chart engine", () => {
         },
       },
       chartOverlays: () => [lineTrace("Chart overlay")],
-      inputGroups: () => [{
-        inputsMap: {
-          [InputId.Input1]: { tdb: 5, rh: 50 },
+      inputGroups: () => [
+        {
+          inputsMap: {
+            [InputId.Input1]: { tdb: 5, rh: 50 },
+          },
+          getXSi: (payload) => payload.tdb,
+          getYSi: (payload) => payload.rh,
+          buildOverlayTraces: ({ inputLabel }) => [
+            lineTrace(`${inputLabel} overlay`),
+          ],
+          getHovertemplate: ({ inputLabel }) => `${inputLabel}<extra></extra>`,
         },
-        getXSi: (payload) => payload.tdb,
-        getYSi: (payload) => payload.rh,
-        buildOverlayTraces: ({ inputLabel }) => [
-          lineTrace(`${inputLabel} overlay`),
-        ],
-        getHovertemplate: ({ inputLabel }) => `${inputLabel}<extra></extra>`,
-      }],
+      ],
       layout,
       source: CalculationSource.FrontendGenerated,
     });
@@ -376,9 +403,19 @@ describe("shared chart engine", () => {
       "Input 1",
     ]);
     expect(chart.traces[0].x).toEqual([32]);
-    expect(chart.traces[3]).toEqual(expect.objectContaining({
-      x: [41],
-      y: [50],
-    }));
+    expect(chart.traces[3]).toEqual(
+      expect.objectContaining({
+        x: [41],
+        y: [50],
+      }),
+    );
+  });
+});
+
+describe("interactive Dynamic grid cap", () => {
+  it("defaults to 100 and clamps higher 2-D requests", () => {
+    expect(resolveInteractiveDynamicGridPoints()).toBe(100);
+    expect(resolveInteractiveDynamicGridPoints(31)).toBe(31);
+    expect(resolveInteractiveDynamicGridPoints(450)).toBe(100);
   });
 });

@@ -225,6 +225,29 @@ function normalizeBandedGridOutputEvaluation(
   return typeof evaluation === "number" ? { valueSi: evaluation } : evaluation;
 }
 
+function hoverGridHasMetadata(grid: GridEvaluationResult): boolean {
+  return grid.hoverMetadata.some((row) => (
+    row.some((cell) => (Array.isArray(cell) ? cell.length > 0 : cell !== ""))
+  ));
+}
+
+function toDisplayOutputGrid(
+  grid: GridEvaluationResult,
+  outputKey: ModelOutputKey,
+  unitSystem: UnitSystemType,
+): GridEvaluationResult {
+  return {
+    ...grid,
+    zValues: grid.zValues.map((row) => (
+      row.map((value) => (
+        Number.isFinite(value)
+          ? convertModelOutputFromSi(outputKey, value, unitSystem)
+          : value
+      ))
+    )),
+  };
+}
+
 function buildStrategyTraces(
   strategy: FieldChartStrategy,
   context: FieldChartRenderContext,
@@ -360,17 +383,18 @@ export function createBandedGridStrategy({
       if (evaluation === null) return null;
 
       const bandIndex = findNumericBandIndexForValue(config.bands, evaluation.valueSi);
+      const additionalHoverMetadata = evaluation.additionalHoverMetadata ?? [];
+      const displayValue = convertModelOutputFromSi(
+        output.key,
+        evaluation.valueSi,
+        context.unitSystem,
+      );
       return {
         z: evaluation.valueSi,
         text: bandIndex === undefined ? "Unclassified" : config.bands[bandIndex].label,
-        hoverMetadata: [
-          convertModelOutputFromSi(
-            output.key,
-            evaluation.valueSi,
-            context.unitSystem,
-          ),
-          ...(evaluation.additionalHoverMetadata ?? []),
-        ],
+        hoverMetadata: additionalHoverMetadata.length > 0
+          ? [displayValue, ...additionalHoverMetadata]
+          : undefined,
       };
     },
     renderTraces: (grid, context) => {
@@ -380,10 +404,14 @@ export function createBandedGridStrategy({
       const outputUnits = outputMeta.displayUnits
         ? ` ${outputMeta.displayUnits}`
         : "";
+      const usesHoverMetadata = hoverGridHasMetadata(grid);
+      const outputValueToken = usesHoverMetadata
+        ? `%{customdata[0]:.${outputMeta.decimals}f}`
+        : `%{z:.${outputMeta.decimals}f}`;
       const resolvedHoverTemplate = resolveText(
         hoverTemplate,
         context,
-        `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${resolveText(hoverTemplateSuffix, context)}<extra></extra>`,
+        `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: ${outputValueToken}${outputUnits}${resolveText(hoverTemplateSuffix, context)}<extra></extra>`,
       );
       return [
         ...(renderStrategy === GridBandRenderStrategy.ConstraintContours
@@ -401,8 +429,11 @@ export function createBandedGridStrategy({
           })),
         buildBandTooltipTrace({
           name: `${output.label} bands hover`,
-          grid,
+          grid: usesHoverMetadata
+            ? grid
+            : toDisplayOutputGrid(grid, output.key, unitSystem),
           hovertemplate: resolvedHoverTemplate,
+          includeHoverMetadata: usesHoverMetadata,
         }),
       ];
     },
