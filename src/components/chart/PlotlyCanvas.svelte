@@ -3,12 +3,17 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
 
-  import { downloadPublicationChart } from "../../services/plotlyExport";
+  import {
+    downloadPublicationChart,
+    type ChartExportFormat,
+    type PublicationExportHandler,
+  } from "../../services/plotlyExport";
   import {
     toPlotlyFigure,
     type PlotlyFigure,
   } from "../../services/plotlyFigure";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+  import type { PublicationColumn } from "../../services/chartTheme";
 
   interface Props {
     chartResult: PlotlyChartResponseDto | null;
@@ -18,7 +23,7 @@
     showPlotTitle?: boolean;
     showZones?: boolean;
     onRegisterExport?:
-      | ((handler: (type: "png" | "svg") => void) => void)
+      | ((handler: PublicationExportHandler) => void)
       | undefined;
   }
 
@@ -47,7 +52,7 @@
         config: PlotlyFigure["config"];
       },
       options: {
-        format: "png" | "svg";
+        format: ChartExportFormat;
         width: number;
         height: number;
         scale: number;
@@ -90,7 +95,10 @@
     };
   }
 
-  async function exportChart(format: "png" | "svg") {
+  async function exportChart(
+    format: ChartExportFormat,
+    column: PublicationColumn,
+  ) {
     if (!chartResult) return;
     try {
       const plotly = await loadPlotly();
@@ -98,6 +106,7 @@
         plotly,
         chartWithVisibleZones(chartResult),
         format,
+        column,
       );
     } catch (error) {
       chartError =

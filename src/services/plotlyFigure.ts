@@ -4,6 +4,7 @@ import type {
   PlotColorScaleDto,
   PlotContoursDto,
   PlotLayoutDto,
+  PlotLegendDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../models/comfortDtos";
@@ -11,9 +12,11 @@ import {
   CHART_LAYOUT_DPI,
   ChartThemeKind,
   publicationLayoutSizePx,
+  publicationLegendStyle,
   ptToPx,
   screenChartTheme,
   type ChartTheme,
+  type PublicationChartTheme,
 } from "./chartTheme";
 
 type PlotlyAxisTitle = string | { text: string; standoff?: number };
@@ -32,15 +35,29 @@ export type PlotlyFigureTitle =
       };
     };
 
+export interface PlotlyFigureLegend {
+  orientation?: "h" | "v";
+  x?: number;
+  y?: number;
+  font?: {
+    family?: string;
+    size?: number;
+  };
+  itemsizing?: "trace" | "constant";
+  itemwidth?: number;
+  tracegroupgap?: number;
+}
+
 export type PlotlyFigureLayout = Omit<
   PlotLayoutDto,
-  "title" | "xaxis" | "yaxis" | "yaxis2"
+  "title" | "xaxis" | "yaxis" | "yaxis2" | "legend"
 > & {
   title?: PlotlyFigureTitle;
   xaxis: PlotlyFigureAxis;
   yaxis: PlotlyFigureAxis;
   yaxis2?: PlotlyFigureAxis;
   annotations: PlotAnnotationDto[];
+  legend?: PlotlyFigureLegend;
   width?: number;
   font?: {
     family?: string;
@@ -79,7 +96,8 @@ type PlotlyGapNumber = number | null;
  *
  * Non-finite grid `z` cells (NaN / ±Infinity) become `null` Plotly gaps. Do
  * not `JSON.parse(JSON.stringify(figure))`. Publication export builds a
- * separate figure from `chartTheme` (mm/pt/dpi, no mode bar).
+ * separate figure from `chartTheme` (mm/pt/dpi, single/double column, no
+ * mode bar).
  */
 export function toPlotlyFigure(
   chart: PlotlyChartResponseDto,
@@ -184,26 +202,13 @@ function toPlotlyLayout(
     ...(yaxis2 ? { yaxis2 } : {}),
     margin: { ...chart.layout.margin },
     annotations: chart.annotations.map(cloneAnnotation),
-    ...(chart.layout.legend ? { legend: { ...chart.layout.legend } } : {}),
+    ...(chart.layout.legend
+      ? { legend: cloneLegend(chart.layout.legend) }
+      : {}),
   };
 
   if (theme.kind === ChartThemeKind.Publication) {
-    const { width, height } = publicationLayoutSizePx(theme);
-    const fontSize = ptToPx(theme.fontPt, CHART_LAYOUT_DPI);
-    const titleFontSize = ptToPx(theme.titleFontPt, CHART_LAYOUT_DPI);
-    layout.width = width;
-    layout.height = height;
-    layout.autosize = false;
-    layout.font = {
-      family: theme.fontFamily,
-      size: fontSize,
-    };
-    if (layout.title && typeof layout.title === "object") {
-      layout.title = {
-        ...layout.title,
-        font: { family: theme.fontFamily, size: titleFontSize },
-      };
-    }
+    applyPublicationLayout(layout, theme, chart.layout.showlegend);
   }
 
   if (!showPlotTitle) {
@@ -214,6 +219,56 @@ function toPlotlyLayout(
   }
 
   return layout;
+}
+
+function applyPublicationLayout(
+  layout: PlotlyFigureLayout,
+  theme: PublicationChartTheme,
+  showlegend: boolean,
+): void {
+  const { width, height } = publicationLayoutSizePx(theme);
+  const fontSize = ptToPx(theme.fontPt, CHART_LAYOUT_DPI);
+  const titleFontSize = ptToPx(theme.titleFontPt, CHART_LAYOUT_DPI);
+  layout.width = width;
+  layout.height = height;
+  layout.autosize = false;
+  layout.font = {
+    family: theme.fontFamily,
+    size: fontSize,
+  };
+  if (layout.title && typeof layout.title === "object") {
+    layout.title = {
+      ...layout.title,
+      font: { family: theme.fontFamily, size: titleFontSize },
+    };
+  }
+
+  if (!showlegend) {
+    return;
+  }
+
+  const legendStyle = publicationLegendStyle(theme);
+  layout.legend = {
+    ...(layout.legend ?? { orientation: "h", x: 0, y: -0.18 }),
+    font: {
+      family: legendStyle.fontFamily,
+      size: legendStyle.fontSizePx,
+    },
+    itemsizing: legendStyle.itemsizing,
+    itemwidth: legendStyle.itemwidth,
+    tracegroupgap: legendStyle.tracegroupgap,
+  };
+
+  const legendY = layout.legend.y ?? 0;
+  if (legendY < 0) {
+    layout.margin.b = Math.max(layout.margin.b, legendStyle.extraMarginPx + 48);
+  } else if (legendY > 1) {
+    layout.margin.t = Math.max(layout.margin.t, legendStyle.extraMarginPx + 32);
+  }
+}
+
+function cloneLegend(legend: PlotLegendDto): PlotlyFigureLegend {
+  return { ...legend };
 }
 
 function cloneAxis(axis: PlotAxisDto): PlotlyFigureAxis {

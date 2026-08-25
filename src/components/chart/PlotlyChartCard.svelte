@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+  import type { PublicationExportHandler } from "../../services/plotlyExport";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
 
   interface Props {
@@ -11,7 +12,7 @@
     heightClass?: string;
     testId?: string;
     showZones?: boolean;
-    onRegisterExport?: (handler: ((type: "png" | "svg") => void) | undefined) => void;
+    onRegisterExport?: (handler: PublicationExportHandler | undefined) => void;
   }
 
   let {

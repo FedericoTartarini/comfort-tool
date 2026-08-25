@@ -9,6 +9,7 @@
   import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
   import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../state/comfortTool/types";
+  import type { PublicationExportHandler } from "../../services/plotlyExport";
 
   interface Props {
     chartResult: PlotlyChartResponseDto | null;
@@ -36,8 +37,7 @@
     legendTitle,
   }: Props = $props();
 
-  let exportChart: ((type: "png" | "svg") => void) | undefined =
-    $state(undefined);
+  let exportChart: PublicationExportHandler | undefined = $state(undefined);
   let showZones = $state(true);
   const heightClass = "h-[480px] xl:h-[480px]";
   const chartPanelIdPrefix = `chart-panel-${Math.random().toString(36).slice(2, 10)}`;
@@ -90,7 +90,7 @@
           currentChart={chartInstance}
           selectedChartInstanceId={selectedChartInstanceId}
           onSelectChartInstance={onSelectChartInstance}
-          onExport={(type) => exportChart?.(type)}
+          onExport={(format, column) => exportChart?.(format, column)}
         />
       </div>
       {#if showZonesToggle}

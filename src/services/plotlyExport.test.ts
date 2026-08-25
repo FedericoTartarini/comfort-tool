@@ -2,10 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CalculationSource } from "../models/calculationMetadata";
 import type { PlotlyChartResponseDto } from "../models/comfortDtos";
-import { publicationImageSize } from "./chartTheme";
+import {
+  PublicationColumn,
+  publicationChartThemeFor,
+  publicationImageSize,
+} from "./chartTheme";
 import {
   chartExportFilename,
   downloadPublicationChart,
+  publicationExportMenuItems,
   publicationToImageOptions,
 } from "./plotlyExport";
 
@@ -43,10 +48,38 @@ describe("plotlyExport", () => {
     vi.restoreAllMocks();
   });
 
-  it("slugifies the chart title for download filenames", () => {
+  it("slugifies the chart title and column for download filenames", () => {
     expect(chartExportFilename(contourChart())).toBe(
-      "pmv-ashrae-55-dynamic-chart-pmv",
+      "pmv-ashrae-55-dynamic-chart-pmv-single",
     );
+    expect(
+      chartExportFilename(contourChart(), PublicationColumn.Double),
+    ).toBe("pmv-ashrae-55-dynamic-chart-pmv-double");
+  });
+
+  it("lists single- and double-column PNG and SVG export profiles", () => {
+    expect(publicationExportMenuItems).toEqual([
+      {
+        format: "png",
+        column: PublicationColumn.Single,
+        label: "PNG, single column",
+      },
+      {
+        format: "png",
+        column: PublicationColumn.Double,
+        label: "PNG, double column",
+      },
+      {
+        format: "svg",
+        column: PublicationColumn.Single,
+        label: "SVG, single column",
+      },
+      {
+        format: "svg",
+        column: PublicationColumn.Double,
+        label: "SVG, double column",
+      },
+    ]);
   });
 
   it("gives PNG and SVG the same layout size, with PNG scaled to 300 DPI", () => {
@@ -73,7 +106,9 @@ describe("plotlyExport", () => {
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(function (this: HTMLAnchorElement) {
-        expect(this.download).toBe("pmv-ashrae-55-dynamic-chart-pmv.png");
+        expect(this.download).toBe(
+          "pmv-ashrae-55-dynamic-chart-pmv-single.png",
+        );
       });
     const graphDiv = document.createElement("div");
     document.body.appendChild(graphDiv);
@@ -99,7 +134,9 @@ describe("plotlyExport", () => {
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(function (this: HTMLAnchorElement) {
-        expect(this.download).toBe("pmv-ashrae-55-dynamic-chart-pmv.svg");
+        expect(this.download).toBe(
+          "pmv-ashrae-55-dynamic-chart-pmv-single.svg",
+        );
       });
 
     await downloadPublicationChart({ toImage }, contourChart(), "svg");
@@ -110,6 +147,40 @@ describe("plotlyExport", () => {
     expect(options).toEqual(publicationToImageOptions("svg"));
     expect(options.width).toBe(publicationToImageOptions("png").width);
     expect(options.height).toBe(publicationToImageOptions("png").height);
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it("exports double column on the same theme as a wider dedicated figure", async () => {
+    const toImage = vi.fn().mockResolvedValue("data:image/png;base64,aaa");
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        expect(this.download).toBe(
+          "pmv-ashrae-55-dynamic-chart-pmv-double.png",
+        );
+      });
+    const doubleTheme = publicationChartThemeFor(PublicationColumn.Double);
+    const singleTheme = publicationChartThemeFor(PublicationColumn.Single);
+
+    await downloadPublicationChart(
+      { toImage },
+      contourChart(),
+      "png",
+      PublicationColumn.Double,
+    );
+
+    const [figure, options] = toImage.mock.calls[0];
+    expect(figure).not.toBeInstanceOf(HTMLElement);
+    expect(figure.layout.width).toBe(
+      publicationImageSize("png", doubleTheme).width,
+    );
+    expect(figure.layout.width).toBeGreaterThan(
+      publicationImageSize("png", singleTheme).width,
+    );
+    expect(figure.layout.font.family).toBe(singleTheme.fontFamily);
+    expect(figure.layout.font.size).toBe(12);
+    expect(figure.config.displayModeBar).toBe(false);
+    expect(options).toEqual(publicationToImageOptions("png", doubleTheme));
     expect(click).toHaveBeenCalledOnce();
   });
 });

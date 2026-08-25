@@ -1,15 +1,54 @@
 import type { PlotlyChartResponseDto } from "../models/comfortDtos";
 import {
-  publicationChartTheme,
+  PublicationColumn,
+  publicationChartThemeFor,
   publicationImageSize,
+  type PublicationChartTheme,
+  type PublicationColumn as PublicationColumnType,
 } from "./chartTheme";
 import {
   toPlotlyFigure,
   type PlotlyFigure,
 } from "./plotlyFigure";
 
+export type ChartExportFormat = "png" | "svg";
+
+export type PublicationExportHandler = (
+  format: ChartExportFormat,
+  column: PublicationColumnType,
+) => void;
+
+export interface PublicationExportMenuItem {
+  format: ChartExportFormat;
+  column: PublicationColumnType;
+  label: string;
+}
+
+export const publicationExportMenuItems: readonly PublicationExportMenuItem[] = [
+  {
+    format: "png",
+    column: PublicationColumn.Single,
+    label: "PNG, single column",
+  },
+  {
+    format: "png",
+    column: PublicationColumn.Double,
+    label: "PNG, double column",
+  },
+  {
+    format: "svg",
+    column: PublicationColumn.Single,
+    label: "SVG, single column",
+  },
+  {
+    format: "svg",
+    column: PublicationColumn.Double,
+    label: "SVG, double column",
+  },
+];
+
 export interface PlotlyToImageOptions {
-  format: "png" | "svg";
+  format: ChartExportFormat;
   width: number;
   height: number;
   scale: number;
@@ -26,22 +65,28 @@ export interface PlotlyToImageApi {
   ) => Promise<string>;
 }
 
-export function chartExportFilename(chart: PlotlyChartResponseDto): string {
+export function chartExportFilename(
+  chart: PlotlyChartResponseDto,
+  column: PublicationColumnType = PublicationColumn.Single,
+): string {
   const titleText = chart.layout.title.trim() || "cbe-thermal-comfort-chart";
-  return (
+  const slug =
     titleText
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "cbe-thermal-comfort-chart"
-  );
+      .replace(/^-+|-+$/g, "") || "cbe-thermal-comfort-chart";
+  return `${slug}-${column}`;
 }
 
 export function publicationToImageOptions(
-  format: "png" | "svg",
+  format: ChartExportFormat,
+  theme: PublicationChartTheme = publicationChartThemeFor(
+    PublicationColumn.Single,
+  ),
 ): PlotlyToImageOptions {
   return {
     format,
-    ...publicationImageSize(format),
+    ...publicationImageSize(format, theme),
   };
 }
 
@@ -74,9 +119,11 @@ function triggerBrowserDownload(url: string, filename: string): void {
 export async function downloadPublicationChart(
   plotly: PlotlyToImageApi,
   chart: PlotlyChartResponseDto,
-  format: "png" | "svg",
+  format: ChartExportFormat,
+  column: PublicationColumnType = PublicationColumn.Single,
 ): Promise<void> {
-  const figure = toPlotlyFigure(chart, { theme: publicationChartTheme });
+  const theme = publicationChartThemeFor(column);
+  const figure = toPlotlyFigure(chart, { theme });
   const dedicatedFigure = {
     data: figure.data,
     layout: figure.layout,
@@ -86,7 +133,7 @@ export async function downloadPublicationChart(
 
   const url = await plotly.toImage(
     dedicatedFigure,
-    publicationToImageOptions(format),
+    publicationToImageOptions(format, theme),
   );
-  triggerBrowserDownload(url, `${chartExportFilename(chart)}.${format}`);
+  triggerBrowserDownload(url, `${chartExportFilename(chart, column)}.${format}`);
 }

@@ -2,13 +2,17 @@
   import { Button, Dropdown, DropdownDivider, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
   import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
+  import {
+    publicationExportMenuItems,
+    type PublicationExportHandler,
+  } from "../../services/plotlyExport";
 
   interface Props {
     chartInstances: readonly ChartInstancePanelView[];
     currentChart: ChartInstancePanelView;
     selectedChartInstanceId: string;
     onSelectChartInstance: (instanceId: string) => void;
-    onExport: (type: "png" | "svg") => void;
+    onExport: PublicationExportHandler;
   }
 
   let {
@@ -34,7 +38,7 @@
   <ChevronDownOutline class="ms-1 h-3 w-3 flex-shrink-0" strokeWidth="2" />
 </Button>
 
-<Dropdown triggeredBy={`#chart-select-trigger-${currentChart.instanceId}`} class="w-48 shadow-lg">
+<Dropdown triggeredBy={`#chart-select-trigger-${currentChart.instanceId}`} class="w-56 shadow-lg">
   {#each chartInstances as option}
     <DropdownItem
       onclick={() => onSelectChartInstance(option.instanceId)}
@@ -53,6 +57,12 @@
   >
     Export
   </DropdownHeader>
-  <DropdownItem onclick={() => onExport("png")} class="text-left">PNG</DropdownItem>
-  <DropdownItem onclick={() => onExport("svg")} class="text-left">SVG</DropdownItem>
+  {#each publicationExportMenuItems as item}
+    <DropdownItem
+      onclick={() => onExport(item.format, item.column)}
+      class="text-left"
+    >
+      {item.label}
+    </DropdownItem>
+  {/each}
 </Dropdown>

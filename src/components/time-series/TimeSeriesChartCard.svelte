@@ -4,6 +4,7 @@
   import { Card } from "flowbite-svelte";
 
   import type { TimeSeriesChartViewModel } from "../../models/timeSeries";
+  import type { PublicationExportHandler } from "../../services/plotlyExport";
   import ChartExportDropdown from "../chart/ChartExportDropdown.svelte";
   import PlotlyChartCard from "../chart/PlotlyChartCard.svelte";
 
@@ -14,7 +15,7 @@
 
   let { chartDefinition, isLoading }: Props = $props();
 
-  let exportChart: ((type: "png" | "svg") => void) | undefined = $state(undefined);
+  let exportChart: PublicationExportHandler | undefined = $state(undefined);
   const exportTriggerId = $derived(`time-series-export-${chartDefinition.id}`);
 </script>
 
@@ -22,7 +23,7 @@
   <header class="mb-2 flex flex-wrap items-center justify-end gap-2">
     <ChartExportDropdown
       triggerId={exportTriggerId}
-      onExport={(type) => exportChart?.(type)}
+      onExport={(format, column) => exportChart?.(format, column)}
     />
   </header>
   <PlotlyChartCard

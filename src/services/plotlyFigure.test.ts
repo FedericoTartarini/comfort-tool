@@ -4,8 +4,11 @@ import { CalculationSource } from "../models/calculationMetadata";
 import type { PlotlyChartResponseDto } from "../models/comfortDtos";
 import {
   CHART_LAYOUT_DPI,
+  PublicationColumn,
   publicationChartTheme,
+  publicationChartThemeFor,
   publicationLayoutSizePx,
+  publicationLegendStyle,
   ptToPx,
   screenChartTheme,
 } from "./chartTheme";
@@ -274,5 +277,99 @@ describe("toPlotlyFigure", () => {
     expect(publication.data[0].z).toEqual(screen.data[0].z);
     expect(publication.data[0].z).not.toBe(chart.traces[0].z);
     expect(publication.data[0].x).not.toBe(screen.data[0].x);
+  });
+
+  it("keeps Compare legends readable on single- and double-column publication figures", () => {
+    const chart: PlotlyChartResponseDto = {
+      traces: [
+        {
+          type: "scatter",
+          mode: "markers",
+          name: "Input 1",
+          x: [24],
+          y: [50],
+          showlegend: true,
+          marker: {
+            color: "#1e40af",
+            size: 12,
+            line: { color: "#000000", width: 1.5 },
+          },
+        },
+        {
+          type: "scatter",
+          mode: "markers",
+          name: "Input 2",
+          x: [26],
+          y: [45],
+          showlegend: true,
+          marker: {
+            color: "#991b1b",
+            size: 12,
+            line: { color: "#000000", width: 1.5 },
+          },
+        },
+        {
+          type: "scatter",
+          mode: "markers",
+          name: "Input 3",
+          x: [22],
+          y: [55],
+          showlegend: true,
+          marker: {
+            color: "#047857",
+            size: 12,
+            line: { color: "#000000", width: 1.5 },
+          },
+        },
+      ],
+      layout: {
+        title: "Compare chart",
+        paper_bgcolor: "#fff",
+        plot_bgcolor: "#fff",
+        showlegend: true,
+        margin: { l: 56, r: 16, t: 48, b: 52 },
+        xaxis: { title: "Air temperature", range: [10, 40] },
+        yaxis: { title: "Relative humidity", range: [0, 100] },
+        legend: { orientation: "h", x: 0, y: 1.1 },
+      },
+      annotations: [],
+      source: CalculationSource.FrontendGenerated,
+    };
+
+    const singleTheme = publicationChartThemeFor(PublicationColumn.Single);
+    const doubleTheme = publicationChartThemeFor(PublicationColumn.Double);
+    const single = toPlotlyFigure(chart, { theme: singleTheme });
+    const double = toPlotlyFigure(chart, { theme: doubleTheme });
+    const singleLegend = publicationLegendStyle(singleTheme);
+    const doubleLegend = publicationLegendStyle(doubleTheme);
+
+    expect(single.layout.width).toBeLessThan(double.layout.width ?? 0);
+    expect(single.layout.font).toEqual(double.layout.font);
+    expect(single.layout.legend?.font).toEqual({
+      family: singleTheme.fontFamily,
+      size: 12,
+    });
+    expect(double.layout.legend?.font).toEqual(single.layout.legend?.font);
+    expect(single.layout.legend?.itemsizing).toBe("constant");
+    expect(double.layout.legend?.itemsizing).toBe("constant");
+    expect(single.layout.legend?.orientation).toBe("h");
+    expect(single.layout.margin.t).toBeGreaterThanOrEqual(
+      singleLegend.extraMarginPx + 32,
+    );
+    expect(double.layout.margin.t).toBeGreaterThanOrEqual(
+      doubleLegend.extraMarginPx + 32,
+    );
+
+    const singleColors = single.data.map(
+      (trace) => (trace.marker as { color: string }).color,
+    );
+    const doubleColors = double.data.map(
+      (trace) => (trace.marker as { color: string }).color,
+    );
+    expect(new Set(singleColors).size).toBe(3);
+    expect(doubleColors).toEqual(singleColors);
+    expect(single.data.map((trace) => (trace.marker as { size: number }).size)).toEqual(
+      [12, 12, 12],
+    );
   });
 });

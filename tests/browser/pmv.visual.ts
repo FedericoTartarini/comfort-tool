@@ -497,11 +497,11 @@ test.describe("PMV visual regression", () => {
 
     await page.getByRole("button", { name: "Select chart type and export" }).click();
     const pngDownloadPromise = page.waitForEvent("download");
-    await page.getByTestId('chart-toolbar').getByRole("button", { name: "PNG" }).click();
+    await page.getByTestId('chart-toolbar').getByRole("button", { name: "PNG, single column" }).click();
     const pngDownload = await pngDownloadPromise;
     const pngPath = await pngDownload.path();
     expect(pngDownload.suggestedFilename()).toBe(
-      "pmv-ashrae-55-dynamic-chart-pmv.png",
+      "pmv-ashrae-55-dynamic-chart-pmv-single.png",
     );
     expect(pngPath).not.toBeNull();
     const pngBytes = await readFile(pngPath!);
@@ -512,11 +512,11 @@ test.describe("PMV visual regression", () => {
 
     await page.getByRole("button", { name: "Select chart type and export" }).click();
     const svgDownloadPromise = page.waitForEvent("download");
-    await page.getByTestId('chart-toolbar').getByRole("button", { name: "SVG" }).click();
+    await page.getByTestId('chart-toolbar').getByRole("button", { name: "SVG, double column" }).click();
     const svgDownload = await svgDownloadPromise;
     const svgPath = await svgDownload.path();
     expect(svgDownload.suggestedFilename()).toBe(
-      "pmv-ashrae-55-dynamic-chart-pmv.svg",
+      "pmv-ashrae-55-dynamic-chart-pmv-double.svg",
     );
     expect(svgPath).not.toBeNull();
     const svgText = await readFile(svgPath!, "utf8");

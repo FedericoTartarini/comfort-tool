@@ -88,7 +88,7 @@ src/
   services/
     comfort/         adapters, engines, modifiers, psychrometrics, table assembly
     units/           SI ↔ display conversion
-    chartTheme.ts    Screen and publication chart theme (mm/pt/dpi)
+    chartTheme.ts    Screen and publication chart theme (mm/pt/dpi, single/double column)
     plotlyFigure.ts  Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
@@ -164,6 +164,8 @@ cells to `null` gaps. Do not `JSON.parse(JSON.stringify(figure))` a dense
 field. Screen and publication figures share `src/services/chartTheme.ts`.
 Export builds a separate publication figure (PNG ~300 DPI equivalent, SVG of
 the same geometry, no mode bar) and must not capture the on-screen plot.
+Publication widths are journal single- and double-column profiles on that
+same theme; Compare legends stay readable at both widths.
 
 **Tables.** `tables.analysis` (`TableType.Analysis`) is required for every
 Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only
