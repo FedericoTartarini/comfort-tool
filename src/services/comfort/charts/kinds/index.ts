@@ -11,6 +11,7 @@ import {
   buildBoundaryRegionChart,
   buildCustomChart,
   buildDynamicFieldChart,
+  buildParametricLineChart,
   buildTimeSeriesLineChart,
 } from "./builders";
 import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../../../models/physicalQuantities";
@@ -177,6 +178,14 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
       break;
     case ChartKind.BoundaryRegion:
       result = buildBoundaryRegionChart(
+        registration,
+        options.chartSource,
+        options.resultsByInput,
+        context,
+      );
+      break;
+    case ChartKind.ParametricLine:
+      result = buildParametricLineChart(
         registration,
         options.chartSource,
         options.resultsByInput,

@@ -131,6 +131,8 @@ function toRegisteredChartKindSpec<ResultType, ChartSourceType>(
       return { kind: ChartKind.DynamicField, spec: entry.spec };
     case ChartKind.BoundaryRegion:
       return { kind: ChartKind.BoundaryRegion, spec: entry.spec };
+    case ChartKind.ParametricLine:
+      return { kind: ChartKind.ParametricLine, spec: entry.spec };
     case ChartKind.BandScalar:
       return { kind: ChartKind.BandScalar, spec: entry.spec };
     case ChartKind.TimeSeriesLine:

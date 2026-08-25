@@ -20,6 +20,7 @@ import {
   buildModelBoundaryRegionChart,
   buildModelTimeSeriesLineChart,
 } from "./modelDataCharts";
+import { buildModelParametricLineChart } from "./parametricLine";
 
 export function buildDynamicFieldChart<TResult, ChartSourceType>(
   registration: ChartKindRegistration<TResult, ChartSourceType>,
@@ -159,6 +160,28 @@ export function buildTimeSeriesLineChart<TResult, ChartSourceType>(
   }
   return wrapPlotlyResult(
     buildModelTimeSeriesLineChart(spec, resultsByInput, context),
+    registration,
+  );
+}
+
+export function buildParametricLineChart<TResult, ChartSourceType>(
+  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  chartSource: ChartSourceType | null,
+  resultsByInput: Record<InputIdType, TResult | null>,
+  context: ChartBuildContext,
+): ChartBuildResult {
+  if (registration.registration.kind !== ChartKind.ParametricLine) {
+    throw new Error(
+      `Chart ${registration.instanceId} is not a parametric-line chart.`,
+    );
+  }
+  return wrapPlotlyResult(
+    buildModelParametricLineChart(
+      registration.registration.spec,
+      chartSource,
+      resultsByInput,
+      context,
+    ),
     registration,
   );
 }

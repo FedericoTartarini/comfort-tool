@@ -53,7 +53,7 @@ work, not “add a model” work:
 
 | Stop                                  | Why                                                                                                               |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| New chart engine (`ChartKind` member) | Closed engine set. `ParametricLine` is omitted until Phase 1. Do not restore an empty stub.                       |
+| New chart engine (`ChartKind` member) | Closed engine set. `ParametricLine` is implemented (polylines and optional limit bands). Do not add a new engine from a declaration. |
 | New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/models/catalogWireIds.test.ts`). |
 | New modifier                          | Global catalogue, execution order, and share schema.                                                              |
 | New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                               |
@@ -140,13 +140,16 @@ are the existing example; mass/length conversion reads catalog SI units and
 must not branch on PHS.
 
 **Charts.** Closed engines: `ChartKind.DynamicField`, `BoundaryRegion`,
-`BandScalar`, `TimeSeriesLine`, and frontend-only `Custom` (PMV psychrometric
-geometry). `defineModel` `outputCharts` is a data-only `ModelChartDeclaration`
-union over the non-Custom engines. Optional `type` names an extended type on
-that same engine; assemble preserves it and rejects empty or duplicate types.
-Instance ids live only on the declaration (`instanceId`); the registry
-derives them (`getDeclaredChartInstanceIds`). Heat Index / Humidex
-fixed-axis maps are `ChartKind.DynamicField` with `lockedAxes`, not `Custom`.
+`ParametricLine`, `BandScalar`, `TimeSeriesLine`, and frontend-only `Custom`
+(PMV psychrometric geometry). `defineModel` `outputCharts` is a data-only
+`ModelChartDeclaration` union over the non-Custom engines. Optional `type`
+names an extended type on that same engine; assemble preserves it and rejects
+empty or duplicate types. Instance ids live only on the declaration
+(`instanceId`); the registry derives them (`getDeclaredChartInstanceIds`).
+Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with
+`lockedAxes`, not `Custom`. `ParametricLine` interchange is polylines and
+optional limit bands (heat-loss vs temperature and SET series builders live
+beside the PMV family; declarations register those instances in Phase 1c).
 Interactive Dynamic 2-D grids are capped near 100² by the engine
 (`INTERACTIVE_DYNAMIC_GRID_POINTS`); do not pass 300 or 450. BandScalar
 1-D sampling may stay high (for example UTCI stress at 450 x-points).

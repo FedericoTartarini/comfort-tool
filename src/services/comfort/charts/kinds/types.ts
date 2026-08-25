@@ -91,6 +91,7 @@ export function isBandScalarDataSpec<TResult>(
   return (
     "getOutputValue" in spec &&
     !("getSeries" in spec) &&
+    !("getGeometry" in spec) &&
     !specHasPlotlyBuild(spec)
   );
 }
@@ -147,7 +148,72 @@ export type TimeSeriesLineChartKindSpec<TResult, ChartSourceType = unknown> =
 export function isTimeSeriesLineDataSpec<TResult>(
   spec: object,
 ): spec is TimeSeriesLineDataSpec<TResult> {
-  return "getSeries" in spec && !specHasPlotlyBuild(spec);
+  return (
+    "getSeries" in spec &&
+    !("getGeometry" in spec) &&
+    !specHasPlotlyBuild(spec)
+  );
+}
+
+export const ParametricYUnit = {
+  Temperature: "temperature",
+  HeatFlux: "heat-flux",
+  Identity: "identity",
+} as const;
+
+export type ParametricYUnit =
+  (typeof ParametricYUnit)[keyof typeof ParametricYUnit];
+
+export interface ParametricLinePoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface ParametricPolyline {
+  readonly id: string;
+  readonly label: string;
+  readonly color: string;
+  readonly points: readonly ParametricLinePoint[];
+  readonly yUnit: ParametricYUnit;
+  readonly yAxis?: "y" | "y2";
+  readonly visible?: boolean;
+  readonly dash?: "solid" | "dot" | "dash";
+}
+
+export interface ParametricLimitBand {
+  readonly label: string;
+  readonly color: string;
+  readonly min: number;
+  readonly max: number;
+  readonly yUnit: ParametricYUnit;
+  readonly yAxis?: "y" | "y2";
+}
+
+export interface ParametricLineGeometry {
+  readonly polylines: readonly ParametricPolyline[];
+  readonly limitBands?: readonly ParametricLimitBand[];
+  readonly comparePoints?: Partial<
+    Record<InputIdType, { x: number; y: number }>
+  >;
+}
+
+/** Data-only ParametricLine spec. Geometry stays in the ParametricLine engine. */
+export interface ParametricLineDataSpec<TResult> {
+  readonly title: string;
+  readonly xField: ChartAxisQuantityId;
+  readonly yLabel: string;
+  readonly y2Label?: string;
+  readonly getGeometry: (
+    chartSource: unknown,
+    resultsByInput: Record<InputIdType, TResult | null>,
+    context: ChartBuildContext,
+  ) => ParametricLineGeometry | null;
+}
+
+export function isParametricLineDataSpec<TResult>(
+  spec: object,
+): spec is ParametricLineDataSpec<TResult> {
+  return "getGeometry" in spec && !specHasPlotlyBuild(spec);
 }
 
 export interface CustomChartKindSpec<TResult, ChartSourceType> {
@@ -156,11 +222,12 @@ export interface CustomChartKindSpec<TResult, ChartSourceType> {
 
 /**
  * Closed model-declaration engine→data-spec map. Extended types must pick a key here.
- * Custom is omitted. ParametricLine is omitted until Phase 1.
+ * Custom is omitted. ParametricLine interchange is polylines and optional limit bands.
  */
 export interface ModelChartKindSpecMap<TResult> {
   readonly [ChartKind.DynamicField]: DynamicFieldGridSpec<TResult>;
   readonly [ChartKind.BoundaryRegion]: BoundaryRegionDataSpec;
+  readonly [ChartKind.ParametricLine]: ParametricLineDataSpec<TResult>;
   readonly [ChartKind.BandScalar]: BandScalarDataSpec<TResult>;
   readonly [ChartKind.TimeSeriesLine]: TimeSeriesLineDataSpec<TResult>;
 }
@@ -174,7 +241,8 @@ export type ModelChartKindSpec<TResult> = {
 
 /**
  * Closed ChartEngine spec union for frontend registrations.
- * Custom is PMV psychrometric geometry only. ParametricLine is omitted until Phase 1.
+ * Custom is PMV psychrometric geometry only.
+ * ParametricLine is data-only (polylines and optional limit bands).
  */
 export type RegisteredChartKindSpec<TResult, ChartSourceType> =
   | {
@@ -184,6 +252,10 @@ export type RegisteredChartKindSpec<TResult, ChartSourceType> =
   | {
       kind: typeof ChartKind.BoundaryRegion;
       spec: BoundaryRegionChartKindSpec<TResult, ChartSourceType>;
+    }
+  | {
+      kind: typeof ChartKind.ParametricLine;
+      spec: ParametricLineDataSpec<TResult>;
     }
   | {
       kind: typeof ChartKind.BandScalar;
@@ -254,6 +326,8 @@ export function modelChartSpecMatchesKind(chart: {
       return isBandScalarDataSpec(chart.spec);
     case ChartKind.BoundaryRegion:
       return isBoundaryRegionDataSpec(chart.spec);
+    case ChartKind.ParametricLine:
+      return isParametricLineDataSpec(chart.spec);
     case ChartKind.TimeSeriesLine:
       return isTimeSeriesLineDataSpec(chart.spec);
   }

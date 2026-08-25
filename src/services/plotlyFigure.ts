@@ -34,11 +34,12 @@ export type PlotlyFigureTitle =
 
 export type PlotlyFigureLayout = Omit<
   PlotLayoutDto,
-  "title" | "xaxis" | "yaxis"
+  "title" | "xaxis" | "yaxis" | "yaxis2"
 > & {
   title?: PlotlyFigureTitle;
   xaxis: PlotlyFigureAxis;
   yaxis: PlotlyFigureAxis;
+  yaxis2?: PlotlyFigureAxis;
   annotations: PlotAnnotationDto[];
   width?: number;
   font?: {
@@ -157,6 +158,9 @@ function toPlotlyLayout(
   const standoff = axisTitleStandoffPx(theme);
   const xaxis: PlotlyFigureAxis = cloneAxis(chart.layout.xaxis);
   const yaxis: PlotlyFigureAxis = cloneAxis(chart.layout.yaxis);
+  const yaxis2 = chart.layout.yaxis2
+    ? cloneAxis(chart.layout.yaxis2)
+    : undefined;
 
   if (typeof xaxis.title === "string") {
     xaxis.title = { text: xaxis.title, standoff };
@@ -166,6 +170,10 @@ function toPlotlyLayout(
     yaxis.title = { text: yaxis.title, standoff };
   }
 
+  if (yaxis2 && typeof yaxis2.title === "string") {
+    yaxis2.title = { text: yaxis2.title, standoff };
+  }
+
   const layout: PlotlyFigureLayout = {
     ...chart.layout,
     title: chart.layout.title
@@ -173,6 +181,7 @@ function toPlotlyLayout(
       : chart.layout.title,
     xaxis,
     yaxis,
+    ...(yaxis2 ? { yaxis2 } : {}),
     margin: { ...chart.layout.margin },
     annotations: chart.annotations.map(cloneAnnotation),
     ...(chart.layout.legend ? { legend: { ...chart.layout.legend } } : {}),

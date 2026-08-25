@@ -16,12 +16,13 @@ describe("chart engine spec union", () => {
     expectTypeOf<ChartInstanceDeclaration["type"]>().toEqualTypeOf<string | undefined>();
   });
 
-  it("omits ParametricLine until Phase 1", () => {
-    expectTypeOf<typeof ChartKind>().not.toHaveProperty("ParametricLine");
+  it("includes ParametricLine as an implemented engine", () => {
+    expectTypeOf<typeof ChartKind>().toHaveProperty("ParametricLine");
     type EngineKind = RegisteredChartKindSpec<unknown, unknown>["kind"];
     expectTypeOf<EngineKind>().toEqualTypeOf<
       | typeof ChartKind.DynamicField
       | typeof ChartKind.BoundaryRegion
+      | typeof ChartKind.ParametricLine
       | typeof ChartKind.BandScalar
       | typeof ChartKind.TimeSeriesLine
       | typeof ChartKind.Custom
@@ -49,11 +50,16 @@ describe("chart engine spec union", () => {
       ModelChartDeclaration,
       { kind: typeof ChartKind.TimeSeriesLine }
     >["spec"];
+    type ParametricSpec = Extract<
+      ModelChartDeclaration,
+      { kind: typeof ChartKind.ParametricLine }
+    >["spec"];
 
     expectTypeOf<DeclaredKind>().toEqualTypeOf<DeclaredMapKeys>();
     expectTypeOf<DeclaredKind>().toEqualTypeOf<
       | typeof ChartKind.DynamicField
       | typeof ChartKind.BoundaryRegion
+      | typeof ChartKind.ParametricLine
       | typeof ChartKind.BandScalar
       | typeof ChartKind.TimeSeriesLine
     >();
@@ -68,6 +74,8 @@ describe("chart engine spec union", () => {
     expectTypeOf<BoundarySpec>().not.toHaveProperty("build");
     expectTypeOf<TimeSeriesSpec>().toHaveProperty("getSeries");
     expectTypeOf<TimeSeriesSpec>().not.toHaveProperty("build");
+    expectTypeOf<ParametricSpec>().toHaveProperty("getGeometry");
+    expectTypeOf<ParametricSpec>().not.toHaveProperty("build");
 
     type AuthoringChart = ModelDeclaration<unknown, unknown>["outputCharts"][number];
     expectTypeOf<AuthoringChart>().toEqualTypeOf<ModelChartDeclaration>();

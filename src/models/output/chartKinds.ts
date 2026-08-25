@@ -2,12 +2,12 @@ import { ComfortModel, type ComfortModel as ComfortModelType } from "../comfortM
 
 /**
  * Closed chart-engine set (Plan ChartEngine). Model declarations cannot add members.
- * ParametricLine is omitted until Phase 1; do not restore an empty stub.
  * Custom is frontend-only for PMV psychrometric non-grid geometry.
  */
 export const ChartKind = {
   DynamicField: "dynamic-field",
   BoundaryRegion: "boundary-region",
+  ParametricLine: "parametric-line",
   BandScalar: "band-scalar",
   TimeSeriesLine: "time-series-line",
   Custom: "custom",
@@ -19,6 +19,7 @@ export type ChartKind = (typeof ChartKind)[keyof typeof ChartKind];
 export const MODEL_CHART_KINDS = [
   ChartKind.DynamicField,
   ChartKind.BoundaryRegion,
+  ChartKind.ParametricLine,
   ChartKind.BandScalar,
   ChartKind.TimeSeriesLine,
 ] as const;
@@ -63,6 +64,16 @@ export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
     allowsBaselineSelection: true,
     showsZoneToggle: true,
     showsLegend: true,
+    showsExport: true,
+  },
+  [ChartKind.ParametricLine]: {
+    allowsAxisSelection: false,
+    locksYAxis: false,
+    allowsOutputSelection: false,
+    allowsBandEditing: false,
+    allowsBaselineSelection: true,
+    showsZoneToggle: false,
+    showsLegend: false,
     showsExport: true,
   },
   [ChartKind.BandScalar]: {

@@ -6,7 +6,9 @@ import {
   PhysicalQuantityScope,
 } from "../../../models/physicalQuantities";
 import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
-import { ChartKind } from "../../../models/output/chartKinds";
+import {
+  ChartKind,
+} from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import {
@@ -16,6 +18,7 @@ import {
 } from "../../../models/modelCapabilities";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
+import { ParametricYUnit } from "../../../services/comfort/charts/kinds/types";
 import {
   ComfortModelBuilder,
   createEmptyResults,
@@ -135,12 +138,52 @@ function createModelBoundaryChart(
   };
 }
 
+function createModelParametricChart(
+  instanceId = "test-parametric-line",
+): ModelChartDeclaration {
+  return {
+    instanceId,
+    kind: ChartKind.ParametricLine,
+    name: "Parametric",
+    emptyMessage: "No parametric chart yet.",
+    spec: {
+      title: "Parametric",
+      xField: PhysicalQuantityId.DryBulbTemperature,
+      yLabel: "Heat loss",
+      getGeometry: () => ({
+        polylines: [
+          {
+            id: "total",
+            label: "Total heat loss",
+            color: "#000000",
+            yUnit: ParametricYUnit.HeatFlux,
+            points: [
+              { x: 10, y: 50 },
+              { x: 40, y: 80 },
+            ],
+          },
+        ],
+        limitBands: [
+          {
+            label: "Limit",
+            color: "#86efac",
+            min: 40,
+            max: 90,
+            yUnit: ParametricYUnit.HeatFlux,
+          },
+        ],
+      }),
+    },
+  };
+}
+
 function createModelEngineCharts(): ModelChartDeclaration[] {
   return [
     createModelDynamicFieldChart(),
     createModelBandScalarChart(),
     createModelBoundaryChart(),
     createModelTimeSeriesChart(),
+    createModelParametricChart(),
   ];
 }
 
@@ -527,6 +570,7 @@ describe("defineModel", () => {
       ChartKind.BandScalar,
       ChartKind.BoundaryRegion,
       ChartKind.TimeSeriesLine,
+      ChartKind.ParametricLine,
     ]);
   });
 

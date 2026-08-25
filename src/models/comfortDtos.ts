@@ -65,6 +65,7 @@ interface PlotTraceBaseDto {
   opacity?: number;
   hoverinfo?: PlotHoverInfoDto;
   hovertemplate?: string;
+  yaxis?: "y" | "y2";
   /** When true, this trace represents a colored background region. */
   isBackgroundZone?: boolean;
 }
@@ -155,6 +156,8 @@ export interface PlotAxisDto {
   showgrid?: boolean;
   zeroline?: boolean;
   showticklabels?: boolean;
+  side?: "left" | "right";
+  overlaying?: "y";
 }
 
 export interface PlotLegendDto {
@@ -171,6 +174,7 @@ export interface PlotLayoutDto {
   margin: PlotMarginDto;
   xaxis: PlotAxisDto;
   yaxis: PlotAxisDto;
+  yaxis2?: PlotAxisDto;
   legend?: PlotLegendDto;
   height?: number;
 }

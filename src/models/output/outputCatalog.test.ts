@@ -18,13 +18,15 @@ import { FieldChartProfileKind } from "./fieldChartProfile";
 import { TableType } from "./tableLayouts";
 
 describe("output catalog", () => {
-  it("defines five chart kinds with defaults", () => {
-    expect(Object.keys(chartKindMetaById)).toHaveLength(5);
+  it("defines six chart kinds with defaults", () => {
+    expect(Object.keys(chartKindMetaById)).toHaveLength(6);
     expect(chartKindMetaById[ChartKind.DynamicField]).toBeDefined();
+    expect(chartKindMetaById[ChartKind.ParametricLine]).toBeDefined();
     expect(chartKindMetaById[ChartKind.Custom]).toBeDefined();
     expect(isChartKind(ChartKind.DynamicField)).toBe(true);
     expect(isChartKind("invented-engine")).toBe(false);
     expect(isModelChartKind(ChartKind.BandScalar)).toBe(true);
+    expect(isModelChartKind(ChartKind.ParametricLine)).toBe(true);
     expect(isModelChartKind(ChartKind.Custom)).toBe(false);
   });
 
