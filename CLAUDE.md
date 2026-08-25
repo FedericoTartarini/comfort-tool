@@ -43,7 +43,9 @@ src/
   services/
     comfort/        shared comfort helpers, request/axis adapters, charts, modifiers
     units/          SI <-> IP conversion helpers
-    plotlyFigure.ts Plotly screen adapter (clone boundary)
+    chartTheme.ts   Screen and publication chart theme (mm/pt/dpi)
+    plotlyFigure.ts Plotly adapter (clone boundary; screen vs publication theme)
+    plotlyExport.ts Publication PNG/SVG from a dedicated figure
   state/
     comfortTool/    controller, model definitions/registry, pure projections, URL share state
   views/            page composition only (ComfortDashboard.svelte)
@@ -112,7 +114,7 @@ Use constants from `src/models/` for model identifiers, `PhysicalQuantityId` / `
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
 - Every declaration sets `workspaceCapabilities` and `exploreOutputs`; Standard-capable models also set `complianceProfile` with fixed output, non-empty bands, caption, legend title, and feedback. Assemble with `defineModel` (data-only `ModelChartDeclaration` union, `tables`, optional PHS `simulation`). Family modules may still use `ComfortModelBuilder` internally (`setOutputCharts()`, `setTables()`, `setSimulation()`). Instance ids are declared on the model and derived by the registry. Heat Index / Humidex maps are `ChartKind.DynamicField`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build`. A model declaration may name an extended type with `type`; assemble preserves it on the presentation instance. PMV Dynamic is `DynamicField`; PHS Analysis exposure history is `TimeSeriesLine`. UTCI chart specs live in `utciCharts.ts`. `ParametricLine` is omitted until Phase 1. Do not restore `src/comfortModels/presets/` or add `defineIndexModel()`.
-- Interactive Dynamic 2-D grids are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`, including UTCI Dynamic). BandScalar / 1-D may keep high sampling (for example 450 x-points). Hover overlays do not attach per-cell `customdata` unless extra hover fields exist. `toPlotlyFigure` clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly mutates, and maps non-finite grid `z` to `null` gaps; it must not stringify the figure.
+- Interactive Dynamic 2-D grids are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`, including UTCI Dynamic). BandScalar / 1-D may keep high sampling (for example 450 x-points). Hover overlays do not attach per-cell `customdata` unless extra hover fields exist. `toPlotlyFigure` clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly mutates, and maps non-finite grid `z` to `null` gaps; it must not stringify the figure. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not capture the on-screen plot.
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation. `assertCompareContract` covers 1/2/3 Compare inputs, filled table columns, chart markers, and a baseline change that keeps a ready cache.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; `models` is sparse (omit default slices; missing known keys seed defaults; unknown keys reject); only Explore working bands are serialized, and modifier records contain the complete stable key set. Do not keep exact `comfortModelOrder` matching.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.

@@ -3,6 +3,7 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
 
+  import { downloadPublicationChart } from "../../services/plotlyExport";
   import {
     toPlotlyFigure,
     type PlotlyFigure,
@@ -39,19 +40,22 @@
       config: PlotlyFigure["config"],
     ) => Promise<void>;
     purge: (root: HTMLDivElement) => void;
-    downloadImage: (
-      root: HTMLDivElement,
-      options: PlotlyDownloadOptions,
-    ) => Promise<void>;
+    toImage: (
+      figure: {
+        data: PlotlyFigure["data"];
+        layout: PlotlyFigure["layout"];
+        config: PlotlyFigure["config"];
+      },
+      options: {
+        format: "png" | "svg";
+        width: number;
+        height: number;
+        scale: number;
+      },
+    ) => Promise<string>;
     Plots?: {
       resize: (root: HTMLDivElement) => Promise<void> | void;
     };
-  }
-
-  interface PlotlyDownloadOptions {
-    format: "png" | "svg";
-    filename: string;
-    scale?: number;
   }
 
   let chartElement = $state<HTMLDivElement | null>(null);
@@ -76,26 +80,25 @@
     return plotlyModule;
   }
 
-  function getExportFilename() {
-    const titleText =
-      chartResult?.layout?.title?.trim() || "cbe-thermal-comfort-chart";
-    return (
-      titleText
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "") || "cbe-thermal-comfort-chart"
-    );
+  function chartWithVisibleZones(
+    chart: PlotlyChartResponseDto,
+  ): PlotlyChartResponseDto {
+    if (showZones) return chart;
+    return {
+      ...chart,
+      traces: chart.traces.filter((trace) => !trace.isBackgroundZone),
+    };
   }
 
   async function exportChart(format: "png" | "svg") {
-    if (!chartElement || !chartResult) return;
+    if (!chartResult) return;
     try {
       const plotly = await loadPlotly();
-      await plotly.downloadImage(chartElement, {
+      await downloadPublicationChart(
+        plotly,
+        chartWithVisibleZones(chartResult),
         format,
-        filename: getExportFilename(),
-        ...(format === "png" ? { scale: 2 } : {}),
-      });
+      );
     } catch (error) {
       chartError =
         error instanceof Error ? error.message : "Chart export failed.";
@@ -186,21 +189,8 @@
 
     try {
       const plotly = await loadPlotly();
-      const chartPayload = showZones
-        ? chartResult
-        : {
-            ...chartResult,
-            traces: chartResult.traces.filter(
-              (trace) => !trace.isBackgroundZone,
-            ),
-          };
-      const figure = toPlotlyFigure(chartPayload);
-      if (!showPlotTitle) {
-        figure.layout.title = undefined;
-        if (typeof figure.layout.margin?.t === "number") {
-          figure.layout.margin.t = Math.max(24, figure.layout.margin.t - 24);
-        }
-      }
+      const chartPayload = chartWithVisibleZones(chartResult);
+      const figure = toPlotlyFigure(chartPayload, { showPlotTitle });
 
       if (hasRenderedChart && prevChartResult) {
         const updateType = classifyUpdate(prevChartResult, chartResult);

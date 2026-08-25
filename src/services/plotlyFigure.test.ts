@@ -2,6 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CalculationSource } from "../models/calculationMetadata";
 import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import {
+  CHART_LAYOUT_DPI,
+  publicationChartTheme,
+  publicationLayoutSizePx,
+  ptToPx,
+  screenChartTheme,
+} from "./chartTheme";
 import { toPlotlyFigure } from "./plotlyFigure";
 
 function contourChart(
@@ -219,5 +226,53 @@ describe("toPlotlyFigure", () => {
     expect(figure.data[0].x).toEqual([0, Number.NaN, 1]);
     expect((figure.data[0].x as number[])[1]).toBeNaN();
     expect(x[1]).toBeNaN();
+  });
+
+  it("applies the screen theme by default, including a hover mode bar", () => {
+    const figure = toPlotlyFigure(contourChart([[1]]));
+    expect(figure.config).toEqual({
+      responsive: screenChartTheme.responsive,
+      displaylogo: screenChartTheme.displaylogo,
+      displayModeBar: screenChartTheme.displayModeBar,
+    });
+    expect(figure.layout.width).toBeUndefined();
+    expect(figure.layout.autosize).toBeUndefined();
+    expect(figure.layout.font).toBeUndefined();
+  });
+
+  it("hides the plot title and tightens the top margin on screen", () => {
+    const figure = toPlotlyFigure(contourChart([[1]]), { showPlotTitle: false });
+    expect(figure.layout.title).toBeUndefined();
+    expect(figure.layout.margin.t).toBe(24);
+  });
+
+  it("builds a separate publication figure with mm/pt/dpi and no mode bar", () => {
+    const chart = contourChart([[1, 2], [3, 4]]);
+    const screen = toPlotlyFigure(chart);
+    const publication = toPlotlyFigure(chart, { theme: publicationChartTheme });
+    const size = publicationLayoutSizePx();
+
+    expect(publication.config).toEqual({
+      responsive: false,
+      displaylogo: false,
+      displayModeBar: false,
+    });
+    expect(publication.layout.width).toBe(size.width);
+    expect(publication.layout.height).toBe(size.height);
+    expect(publication.layout.autosize).toBe(false);
+    expect(publication.layout.font).toEqual({
+      family: publicationChartTheme.fontFamily,
+      size: ptToPx(publicationChartTheme.fontPt, CHART_LAYOUT_DPI),
+    });
+    expect(publication.layout.title).toEqual({
+      text: "Comfort chart",
+      font: {
+        family: publicationChartTheme.fontFamily,
+        size: ptToPx(publicationChartTheme.titleFontPt, CHART_LAYOUT_DPI),
+      },
+    });
+    expect(publication.data[0].z).toEqual(screen.data[0].z);
+    expect(publication.data[0].z).not.toBe(chart.traces[0].z);
+    expect(publication.data[0].x).not.toBe(screen.data[0].x);
   });
 });

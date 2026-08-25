@@ -86,7 +86,9 @@ src/
   services/
     comfort/         adapters, engines, modifiers, psychrometrics, table assembly
     units/           SI ↔ display conversion
-    plotlyFigure.ts  Plotly screen adapter (clone boundary)
+    chartTheme.ts    Screen and publication chart theme (mm/pt/dpi)
+    plotlyFigure.ts  Plotly adapter (clone boundary; screen vs publication theme)
+    plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
     comfortTool/     Analysis controller, defineModel, registry, share codec
     timeSeries/      separate PHS Time-series controller
@@ -153,7 +155,9 @@ a per-cell `customdata` matrix unless extra hover fields exist. The Plotly
 adapter (`src/services/plotlyFigure.ts`) clones Plotly-owned `x`/`y`/`z`/`text`
 arrays and nested records Plotly mutates, and converts non-finite grid `z`
 cells to `null` gaps. Do not `JSON.parse(JSON.stringify(figure))` a dense
-field.
+field. Screen and publication figures share `src/services/chartTheme.ts`.
+Export builds a separate publication figure (PNG ~300 DPI equivalent, SVG of
+the same geometry, no mode bar) and must not capture the on-screen plot.
 
 **Tables.** `tables.analysis` (`TableType.Analysis`) is required for every
 Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only

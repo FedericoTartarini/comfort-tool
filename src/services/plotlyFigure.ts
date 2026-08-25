@@ -7,6 +7,14 @@ import type {
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../models/comfortDtos";
+import {
+  CHART_LAYOUT_DPI,
+  ChartThemeKind,
+  publicationLayoutSizePx,
+  ptToPx,
+  screenChartTheme,
+  type ChartTheme,
+} from "./chartTheme";
 
 type PlotlyAxisTitle = string | { text: string; standoff?: number };
 
@@ -14,20 +22,36 @@ export type PlotlyFigureAxis = Omit<PlotAxisDto, "title"> & {
   title?: PlotlyAxisTitle;
 };
 
+export type PlotlyFigureTitle =
+  | string
+  | {
+      text: string;
+      font?: {
+        family?: string;
+        size?: number;
+      };
+    };
+
 export type PlotlyFigureLayout = Omit<
   PlotLayoutDto,
   "title" | "xaxis" | "yaxis"
 > & {
-  title?: string | { text: string };
+  title?: PlotlyFigureTitle;
   xaxis: PlotlyFigureAxis;
   yaxis: PlotlyFigureAxis;
   annotations: PlotAnnotationDto[];
+  width?: number;
+  font?: {
+    family?: string;
+    size?: number;
+  };
+  autosize?: boolean;
 };
 
 export interface PlotlyFigureConfig {
-  responsive: true;
+  responsive: boolean;
   displaylogo: false;
-  displayModeBar: "hover";
+  displayModeBar: false | "hover";
 }
 
 export interface PlotlyFigure {
@@ -36,10 +60,15 @@ export interface PlotlyFigure {
   config: PlotlyFigureConfig;
 }
 
+export interface PlotlyFigureOptions {
+  theme?: ChartTheme;
+  showPlotTitle?: boolean;
+}
+
 type PlotlyGapNumber = number | null;
 
 /**
- * Plotly screen adapter (Plan 0g).
+ * Plotly adapter (Plan 0g clone boundary, Plan 0h screen/publication theme).
  *
  * `Plotly.react` aliases `x` / `y` / `z` / `text` as calcdata identity. Each
  * call must receive fresh arrays or a later react skips recalc and then reads
@@ -48,17 +77,21 @@ type PlotlyGapNumber = number | null;
  * Hover `customdata` is shared.
  *
  * Non-finite grid `z` cells (NaN / ±Infinity) become `null` Plotly gaps. Do
- * not `JSON.parse(JSON.stringify(figure))`. Publication export (0h) is a
- * separate figure.
+ * not `JSON.parse(JSON.stringify(figure))`. Publication export builds a
+ * separate figure from `chartTheme` (mm/pt/dpi, no mode bar).
  */
-export function toPlotlyFigure(chart: PlotlyChartResponseDto): PlotlyFigure {
+export function toPlotlyFigure(
+  chart: PlotlyChartResponseDto,
+  options: PlotlyFigureOptions = {},
+): PlotlyFigure {
+  const theme = options.theme ?? screenChartTheme;
   return {
     data: chart.traces.map(toPlotlyTrace),
-    layout: toPlotlyLayout(chart),
+    layout: toPlotlyLayout(chart, theme, options.showPlotTitle !== false),
     config: {
-      responsive: true,
-      displaylogo: false,
-      displayModeBar: "hover",
+      responsive: theme.responsive,
+      displaylogo: theme.displaylogo,
+      displayModeBar: theme.displayModeBar,
     },
   };
 }
@@ -109,19 +142,31 @@ function toPlotlyTrace(trace: PlotTraceDto): Record<string, unknown> {
   return plotlyTrace;
 }
 
-function toPlotlyLayout(chart: PlotlyChartResponseDto): PlotlyFigureLayout {
+function axisTitleStandoffPx(theme: ChartTheme): number {
+  if (theme.kind === ChartThemeKind.Publication) {
+    return ptToPx(theme.axisTitleStandoffPt, CHART_LAYOUT_DPI);
+  }
+  return theme.axisTitleStandoffPx;
+}
+
+function toPlotlyLayout(
+  chart: PlotlyChartResponseDto,
+  theme: ChartTheme,
+  showPlotTitle: boolean,
+): PlotlyFigureLayout {
+  const standoff = axisTitleStandoffPx(theme);
   const xaxis: PlotlyFigureAxis = cloneAxis(chart.layout.xaxis);
   const yaxis: PlotlyFigureAxis = cloneAxis(chart.layout.yaxis);
 
   if (typeof xaxis.title === "string") {
-    xaxis.title = { text: xaxis.title, standoff: 12 };
+    xaxis.title = { text: xaxis.title, standoff };
   }
 
   if (typeof yaxis.title === "string") {
-    yaxis.title = { text: yaxis.title, standoff: 12 };
+    yaxis.title = { text: yaxis.title, standoff };
   }
 
-  return {
+  const layout: PlotlyFigureLayout = {
     ...chart.layout,
     title: chart.layout.title
       ? { text: chart.layout.title }
@@ -132,6 +177,34 @@ function toPlotlyLayout(chart: PlotlyChartResponseDto): PlotlyFigureLayout {
     annotations: chart.annotations.map(cloneAnnotation),
     ...(chart.layout.legend ? { legend: { ...chart.layout.legend } } : {}),
   };
+
+  if (theme.kind === ChartThemeKind.Publication) {
+    const { width, height } = publicationLayoutSizePx(theme);
+    const fontSize = ptToPx(theme.fontPt, CHART_LAYOUT_DPI);
+    const titleFontSize = ptToPx(theme.titleFontPt, CHART_LAYOUT_DPI);
+    layout.width = width;
+    layout.height = height;
+    layout.autosize = false;
+    layout.font = {
+      family: theme.fontFamily,
+      size: fontSize,
+    };
+    if (layout.title && typeof layout.title === "object") {
+      layout.title = {
+        ...layout.title,
+        font: { family: theme.fontFamily, size: titleFontSize },
+      };
+    }
+  }
+
+  if (!showPlotTitle) {
+    layout.title = undefined;
+    if (typeof layout.margin.t === "number") {
+      layout.margin.t = Math.max(24, layout.margin.t - 24);
+    }
+  }
+
+  return layout;
 }
 
 function cloneAxis(axis: PlotAxisDto): PlotlyFigureAxis {
@@ -174,7 +247,9 @@ function clonePlotlyText(
   text: ReadonlyArray<string> | ReadonlyArray<ReadonlyArray<string>>,
 ): string[] | string[][] {
   if (text.length > 0 && Array.isArray(text[0])) {
-    return (text as ReadonlyArray<ReadonlyArray<string>>).map((row) => row.slice());
+    return (text as ReadonlyArray<ReadonlyArray<string>>).map((row) =>
+      row.slice(),
+    );
   }
 
   return (text as ReadonlyArray<string>).slice();

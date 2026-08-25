@@ -1,0 +1,115 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { CalculationSource } from "../models/calculationMetadata";
+import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import { publicationImageSize } from "./chartTheme";
+import {
+  chartExportFilename,
+  downloadPublicationChart,
+  publicationToImageOptions,
+} from "./plotlyExport";
+
+function contourChart(): PlotlyChartResponseDto {
+  return {
+    traces: [
+      {
+        type: "contour",
+        name: "Temperature field",
+        x: [0, 1],
+        y: [0, 1],
+        z: [
+          [1, 2],
+          [3, 4],
+        ],
+        contours: { type: "levels", coloring: "heatmap" },
+      },
+    ],
+    layout: {
+      title: "PMV ASHRAE 55 Dynamic Chart (PMV)",
+      paper_bgcolor: "#fff",
+      plot_bgcolor: "#fff",
+      showlegend: false,
+      margin: { l: 56, r: 16, t: 48, b: 52 },
+      xaxis: { title: "Air temperature", range: [10, 40] },
+      yaxis: { title: "Relative humidity", range: [0, 100] },
+    },
+    annotations: [],
+    source: CalculationSource.FrontendGenerated,
+  };
+}
+
+describe("plotlyExport", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("slugifies the chart title for download filenames", () => {
+    expect(chartExportFilename(contourChart())).toBe(
+      "pmv-ashrae-55-dynamic-chart-pmv",
+    );
+  });
+
+  it("gives PNG and SVG the same layout size, with PNG scaled to 300 DPI", () => {
+    const png = publicationToImageOptions("png");
+    const svg = publicationToImageOptions("svg");
+    const geometry = publicationImageSize("png");
+
+    expect(png).toEqual({
+      format: "png",
+      width: geometry.width,
+      height: geometry.height,
+      scale: geometry.scale,
+    });
+    expect(svg).toEqual({
+      format: "svg",
+      width: png.width,
+      height: png.height,
+      scale: 1,
+    });
+  });
+
+  it("exports from a dedicated publication figure, not the on-screen graph div", async () => {
+    const toImage = vi.fn().mockResolvedValue("data:image/png;base64,aaa");
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        expect(this.download).toBe("pmv-ashrae-55-dynamic-chart-pmv.png");
+      });
+    const graphDiv = document.createElement("div");
+    document.body.appendChild(graphDiv);
+
+    await downloadPublicationChart({ toImage }, contourChart(), "png");
+
+    expect(toImage).toHaveBeenCalledOnce();
+    const [figure, options] = toImage.mock.calls[0];
+    expect(figure).not.toBeInstanceOf(HTMLElement);
+    expect(figure).not.toBe(graphDiv);
+    expect(Array.isArray(figure.data)).toBe(true);
+    expect(figure.layout.width).toBe(publicationImageSize("png").width);
+    expect(figure.config.displayModeBar).toBe(false);
+    expect(options).toEqual(publicationToImageOptions("png"));
+    expect(click).toHaveBeenCalledOnce();
+    expect(document.body.querySelector("a[download]")).toBeNull();
+
+    graphDiv.remove();
+  });
+
+  it("downloads SVG from the same publication figure geometry", async () => {
+    const toImage = vi.fn().mockResolvedValue("data:image/svg+xml,<svg></svg>");
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        expect(this.download).toBe("pmv-ashrae-55-dynamic-chart-pmv.svg");
+      });
+
+    await downloadPublicationChart({ toImage }, contourChart(), "svg");
+
+    const [figure, options] = toImage.mock.calls[0];
+    expect(figure).not.toBeInstanceOf(HTMLElement);
+    expect(figure.config.displayModeBar).toBe(false);
+    expect(options).toEqual(publicationToImageOptions("svg"));
+    expect(options.width).toBe(publicationToImageOptions("png").width);
+    expect(options.height).toBe(publicationToImageOptions("png").height);
+    expect(click).toHaveBeenCalledOnce();
+  });
+});
