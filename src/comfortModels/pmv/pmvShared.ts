@@ -56,6 +56,8 @@ import {
   type PmvResponseDto,
 } from "./pmvCalculation";
 import { createPmvDynamicFieldChartSpec, createPmvPsychrometricChartSpec } from "./pmvCharts";
+import { createPmvHeatLossParametricSpec } from "./pmvHeatLossSeries";
+import { createPmvSetParametricSpec } from "./pmvSetSeries";
 
 const PMV_DYNAMIC_AXIS_FIELDS = [
   PhysicalQuantityId.DryBulbTemperature,
@@ -90,6 +92,8 @@ export interface PmvModelDeclaration {
   readonly modifiers: readonly InputModifier[];
   readonly psychrometricInstanceId: string;
   readonly dynamicInstanceId: string;
+  readonly heatLossInstanceId: string;
+  readonly setInstanceId: string;
   readonly complianceProfile: ComplianceSpec<NumericBand, PmvResponseDto>;
   readonly defaultOptions: PmvAshraeModelOptions | PmvIsoModelOptions;
   readonly parseOptions: (value: unknown) => ModelOptionsRecord | null;
@@ -224,14 +228,23 @@ export function createPmvComplianceCaption(
   return `Green shading = ${standardLabel} compliant PMV (${formatPmvBoundary(neutralBand.min)} ≤ PMV < ${formatPmvBoundary(neutralBand.max)}); red = outside the limit.`;
 }
 
+const PMV_PARAMETRIC_CHART_CAPABILITIES = {
+  allowsAxisSelection: false,
+  locksYAxis: false,
+  allowsOutputSelection: false,
+  allowsBandEditing: false,
+  allowsBaselineSelection: true,
+  showsZoneToggle: false,
+  showsLegend: false,
+  showsExport: true,
+} as const;
+
 export function createPmvOutputCharts(
-  psychrometricInstanceId: string,
-  dynamicInstanceId: string,
   declaration: PmvModelDeclaration,
 ): readonly OutputChartDeclarationInput<PmvResponseDto, PmvChartSourceDto>[] {
   return [
     {
-      instanceId: psychrometricInstanceId,
+      instanceId: declaration.psychrometricInstanceId,
       kind: ChartKind.Custom,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
@@ -245,10 +258,13 @@ export function createPmvOutputCharts(
         showsLegend: true,
         showsExport: true,
       },
-      spec: createPmvPsychrometricChartSpec(declaration, psychrometricInstanceId),
+      spec: createPmvPsychrometricChartSpec(
+        declaration,
+        declaration.psychrometricInstanceId,
+      ),
     },
     {
-      instanceId: dynamicInstanceId,
+      instanceId: declaration.dynamicInstanceId,
       kind: ChartKind.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
@@ -265,9 +281,25 @@ export function createPmvOutputCharts(
       supportedExploreOutputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
       spec: createPmvDynamicFieldChartSpec(
         declaration,
-        dynamicInstanceId,
+        declaration.dynamicInstanceId,
         PMV_DYNAMIC_AXIS_FIELDS,
       ),
+    },
+    {
+      instanceId: declaration.heatLossInstanceId,
+      kind: ChartKind.ParametricLine,
+      name: "Heat Loss",
+      emptyMessage: "No heat-loss chart yet.",
+      capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
+      spec: createPmvHeatLossParametricSpec(),
+    },
+    {
+      instanceId: declaration.setInstanceId,
+      kind: ChartKind.ParametricLine,
+      name: "SET",
+      emptyMessage: "No SET chart yet.",
+      capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
+      spec: createPmvSetParametricSpec(),
     },
   ];
 }
@@ -355,11 +387,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
       },
     })
     .setOutputCharts(
-      createPmvOutputCharts(
-        declaration.psychrometricInstanceId,
-        declaration.dynamicInstanceId,
-        declaration,
-      ),
+      createPmvOutputCharts(declaration),
       { defaultInstanceId: declaration.psychrometricInstanceId },
     );
 

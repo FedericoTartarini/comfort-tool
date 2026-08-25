@@ -87,6 +87,8 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   ],
   psychrometricInstanceId: "pmv-iso-psychrometric",
   dynamicInstanceId: "pmv-iso-dynamic-field",
+  heatLossInstanceId: "pmv-iso-heat-loss",
+  setInstanceId: "pmv-iso-set",
   complianceProfile: {
     output: ModelOutputKey.Pmv,
     bands: isoComplianceBands,

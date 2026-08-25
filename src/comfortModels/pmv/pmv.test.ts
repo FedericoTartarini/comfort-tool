@@ -17,6 +17,7 @@ import {
   findNumericBandIndexForValue,
   ModelOutputKey,
 } from "../../models/modelCapabilities";
+import { ChartKind } from "../../models/output/chartKinds";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";
@@ -158,6 +159,10 @@ describe("PMV standard declarations", () => {
     expect(pmvIsoModelConfig.description).toContain("ISO 7730 Category B");
     expect(pmvAshraeDeclaration.complianceProfile.bands)
       .not.toBe(pmvIsoDeclaration.complianceProfile.bands);
+    expect(pmvAshraeDeclaration.heatLossInstanceId)
+      .not.toBe(pmvIsoDeclaration.heatLossInstanceId);
+    expect(pmvAshraeDeclaration.setInstanceId)
+      .not.toBe(pmvIsoDeclaration.setInstanceId);
   });
 
   it("uses exact standard-specific option schemas", () => {
@@ -372,6 +377,83 @@ describe("PMV standard declarations", () => {
         ModelOutputKey.Pmv,
         ModelOutputKey.Ppd,
       ]);
+    },
+  );
+
+  it.each(standardCases)(
+    "$label registers independent ParametricLine heat-loss and SET charts",
+    ({ config, declaration }) => {
+      expect(config.outputCharts.defaultInstanceId)
+        .toBe(declaration.psychrometricInstanceId);
+      expect(config.outputCharts.entries.map(({ instanceId, kind, name }) => ({
+        instanceId,
+        kind,
+        name,
+      }))).toEqual([
+        {
+          instanceId: declaration.psychrometricInstanceId,
+          kind: ChartKind.Custom,
+          name: "Psychrometric",
+        },
+        {
+          instanceId: declaration.dynamicInstanceId,
+          kind: ChartKind.DynamicField,
+          name: "Dynamic",
+        },
+        {
+          instanceId: declaration.heatLossInstanceId,
+          kind: ChartKind.ParametricLine,
+          name: "Heat Loss",
+        },
+        {
+          instanceId: declaration.setInstanceId,
+          kind: ChartKind.ParametricLine,
+          name: "SET",
+        },
+      ]);
+    },
+  );
+
+  it.each(standardCases)(
+    "$label builds heat-loss and SET charts from the calculation cache",
+    ({ adapter, config, declaration }) => {
+      const { chartSource } = calculateRegisteredModel(
+        adapter,
+        createComfortToolState(),
+      );
+      const context = {
+        unitSystem: UnitSystem.SI,
+        baselineInputId: InputId.Input1,
+        fieldChartConfig: {
+          profileKind: FieldChartProfileKind.Explore,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
+          zOutput: ModelOutputKey.Pmv,
+          bands: declaration.exploreOutputs[0].defaultBands,
+        },
+      };
+      const heatLoss = buildChartPlotly(
+        config,
+        declaration.heatLossInstanceId,
+        chartSource,
+        emptyPmvResults(),
+        context,
+      );
+      const set = buildChartPlotly(
+        config,
+        declaration.setInstanceId,
+        chartSource,
+        emptyPmvResults(),
+        context,
+      );
+
+      expect(heatLoss?.layout.title).toBe("Heat Loss Components");
+      expect(heatLoss?.traces.some((trace) => trace.type === "contour")).toBe(false);
+      expect(heatLoss?.traces.some((trace) => trace.name === "Total heat loss"))
+        .toBe(true);
+      expect(set?.layout.title).toBe("SET outputs");
+      expect(set?.traces.some((trace) => trace.type === "contour")).toBe(false);
+      expect(set?.traces.some((trace) => trace.name === "SET temperature")).toBe(true);
     },
   );
 });

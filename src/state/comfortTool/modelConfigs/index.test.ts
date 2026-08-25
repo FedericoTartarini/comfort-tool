@@ -163,6 +163,34 @@ describe("comfort model capability registry", () => {
     });
   });
 
+  it("registers ParametricLine heat-loss and SET instances on both PMV standards", () => {
+    expect(getDeclaredChartInstanceIds(ComfortModel.PmvAshrae)).toEqual([
+      "pmv-ashrae-psychrometric",
+      "pmv-ashrae-dynamic-field",
+      "pmv-ashrae-heat-loss",
+      "pmv-ashrae-set",
+    ]);
+    expect(getDeclaredChartInstanceIds(ComfortModel.PmvIso)).toEqual([
+      "pmv-iso-psychrometric",
+      "pmv-iso-dynamic-field",
+      "pmv-iso-heat-loss",
+      "pmv-iso-set",
+    ]);
+
+    [ComfortModel.PmvAshrae, ComfortModel.PmvIso].forEach((modelId) => {
+      const config = getComfortModelConfig(modelId);
+      const heatLoss = config.outputCharts.entries.find(({ name }) => name === "Heat Loss");
+      const set = config.outputCharts.entries.find(({ name }) => name === "SET");
+      expect(heatLoss?.kind).toBe(ChartKind.ParametricLine);
+      expect(set?.kind).toBe(ChartKind.ParametricLine);
+      expect(heatLoss?.capabilities).toEqual(expect.objectContaining({
+        allowsAxisSelection: false,
+        allowsBaselineSelection: true,
+        showsLegend: false,
+      }));
+    });
+  });
+
   it("declares both PHS charts and their chart-specific Explore capabilities", () => {
     const config = getComfortModelConfig(ComfortModel.Phs2023);
     const [history, dynamic] = config.outputCharts.entries;

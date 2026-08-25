@@ -45,7 +45,8 @@ PMV and Adaptive stay family modules (one declaration per standard, shared
 calculation/chart core). Those are not presets. They may still assemble with
 `ComfortModelBuilder` internally. Do not merge ASHRAE/ISO or ASHRAE/EN behind
 a runtime toggle. PMV Analysis tables include SET, cooling effect, relative
-air speed, and dynamic clothing; Explore still colours PMV and PPD.
+air speed, and dynamic clothing; Explore still colours PMV and PPD. ASHRAE
+and ISO each register ParametricLine heat-loss and SET chart instances.
 
 ## Hard stops (frontend first)
 
@@ -150,7 +151,8 @@ empty or duplicate types. Instance ids live only on the declaration
 Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with
 `lockedAxes`, not `Custom`. `ParametricLine` interchange is polylines and
 optional limit bands (heat-loss vs temperature and SET series builders live
-beside the PMV family; declarations register those instances in Phase 1c).
+beside the PMV family; ASHRAE and ISO declarations each register those
+instances).
 Interactive Dynamic 2-D grids are capped near 100² by the engine
 (`INTERACTIVE_DYNAMIC_GRID_POINTS`); do not pass 300 or 450. BandScalar
 1-D sampling may stay high (for example UTCI stress at 450 x-points).
@@ -171,8 +173,9 @@ declaration for membership. PHS Time-series line charts are declared on
 `simulation.charts`. PMV ASHRAE and ISO Analysis tables include SET, cooling
 effect, relative air speed, and dynamic clothing as Compare-matrix rows.
 Do not add SET as an `exploreOutputs` key unless Explore must colour SET.
-Do not add local discomfort as a table type. Do not register ParametricLine
-chart instances until Phase 1c.
+Do not add local discomfort as a table type. ASHRAE and ISO already register
+ParametricLine heat-loss and SET chart instances; copy that pattern rather
+than merging standards behind a runtime flag.
 
 ## What the declaration must show
 
@@ -250,8 +253,9 @@ editable working bands. Band membership is array-ordered and half-open:
 `min <= value < max`.
 
 `ChartKind.Custom` is frontend-only on PMV ASHRAE/ISO psychrometric charts
-via `ComfortModelBuilder`. UTCI chart specs live in
-`src/comfortModels/utci/utciCharts.ts`. PHS Analysis exposure history is
+via `ComfortModelBuilder`. PMV heat-loss and SET charts are
+`ChartKind.ParametricLine` on those same declarations. UTCI chart specs live
+in `src/comfortModels/utci/utciCharts.ts`. PHS Analysis exposure history is
 `ChartKind.TimeSeriesLine`.
 
 ### Modifiers

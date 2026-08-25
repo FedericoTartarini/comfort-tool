@@ -87,6 +87,8 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   ],
   psychrometricInstanceId: "pmv-ashrae-psychrometric",
   dynamicInstanceId: "pmv-ashrae-dynamic-field",
+  heatLossInstanceId: "pmv-ashrae-heat-loss",
+  setInstanceId: "pmv-ashrae-set",
   complianceProfile: {
     output: ModelOutputKey.Pmv,
     bands: ashraeComplianceBands,
