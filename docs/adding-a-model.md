@@ -38,8 +38,14 @@ Then, only if the model actually needs them:
 - a new `ModelOutputKey` plus presentation in
   `src/services/units/modelOutputs.ts`
 - `quantities.extend` for model-scoped SI inputs (not a new primary)
-- focused tests beside the declaration, plus golden SI overrides in
-  `src/testSupport/assertCompareContract.ts`
+- focused tests beside the declaration. Pin required Analysis control IDs
+  there against the independently authored lists in
+  `src/testSupport/requiredModelControls.ts` — do not derive the expected
+  side from `inputFields`. Compare golden **values** are derived from the
+  registry (`inputFields` + `standardPrimaryFixture`); add an explicit SI
+  override in `src/testSupport/goldenFixtures.ts` only if the fixture is
+  outside the new model's declared range. Do not invent values from min/max
+  or catalog `defaultSi`, and do not add a per-model golden-input switch.
 
 PMV and Adaptive stay family modules (one declaration per standard, shared
 calculation/chart core). Those are not presets. They may still assemble with
@@ -96,7 +102,7 @@ src/
     timeSeries/      separate PHS Time-series controller
     workspace/       route / model / mode coordination
   views/             page composition
-  testSupport/       Compare helper and golden fixtures
+  testSupport/       Compare helper; golden inputs/control counts from the registry
 ```
 
 Import lanes: `views` → `components`, `state`; `components` → `state`,
@@ -297,17 +303,26 @@ require existing URLs to list that model. There is no migration reader.
 Every Analysis model must pass `assertCompareContract` in
 `src/testSupport/assertCompareContract.ts`: 1, 2, and 3 visible inputs,
 filled table columns, chart markers, and a baseline change that keeps a
-ready cache. Three inputs must not fail silently. Add golden SI overrides
-for the new id in that helper’s model switch.
+ready cache. Three inputs must not fail silently. Compare golden values come
+from the registered `inputFields` and `standardPrimaryFixture` in
+`src/testSupport/goldenFixtures.ts`. If the fixture is outside the new
+model's declared range, add an explicit quantity override there — do not
+invent one from min/max or catalog `defaultSi`, and do not add a model
+switch. Pin known calculation values in the model's tests. Focused model
+tests must also pin required control IDs against
+`src/testSupport/requiredModelControls.ts` so dropping a required field
+(for example Heat Index humidity) fails. Do not derive that expected list
+from `inputFields`.
 
 ## Tests
 
 Cover known calculation values and half-open zone boundaries; request
 mapping; exact option parsing; result rows (including valid falsy values);
 modifiers if declared; chart instance ids (non-empty, unique per model,
-unique globally — registry assemble already checks this); SI/IP
-presentation; strict share round-trip; presentation-only actions that keep
-a ready cache; `assertCompareContract`.
+unique globally — registry assemble already checks this); independently
+authored required-control pins; SI/IP presentation; strict share
+round-trip; presentation-only actions that keep a ready cache;
+`assertCompareContract`.
 
 ```bash
 npm test

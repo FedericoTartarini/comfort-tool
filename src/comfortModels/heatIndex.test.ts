@@ -12,6 +12,15 @@ import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
 import { ChartKind } from "../models/output/chartKinds";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { InputControlId } from "../models/inputControls";
+import {
+  requiredControlIdsByModel,
+  requiredPrimaryQuantitiesByModel,
+} from "../testSupport/requiredModelControls";
+import {
+  inputFieldControlId,
+  primaryQuantityIdsForInputField,
+} from "../services/comfort/controls/fieldInputBehaviors";
 
 describe("heatIndex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -204,5 +213,29 @@ describe("heatIndex service", () => {
       { instanceId: "heat-index-ranges", kind: ChartKind.DynamicField },
       { instanceId: "heat-index-dynamic-field", kind: ChartKind.DynamicField },
     ]);
+  });
+
+  it("pins required Analysis controls independently of inputFields", () => {
+    expect(heatIndexModelConfig.controls.map(({ id }) => id)).toEqual([
+      ...requiredControlIdsByModel[ComfortModel.HeatIndex],
+    ]);
+  });
+
+  it("fails if Heat Index drops the required humidity field", () => {
+    const requiredControlIds = [...requiredControlIdsByModel[ComfortModel.HeatIndex]];
+    const requiredQuantities = [...requiredPrimaryQuantitiesByModel[ComfortModel.HeatIndex]];
+    const withoutHumidity = heatIndexModelConfig.inputFields.filter(
+      (spec) => spec.kind !== "simpleHumidity",
+    );
+    const droppedControlIds = withoutHumidity.map(inputFieldControlId);
+    const droppedQuantities = withoutHumidity.flatMap((spec) => [
+      ...primaryQuantityIdsForInputField(spec),
+    ]);
+
+    expect(droppedControlIds).not.toEqual(requiredControlIds);
+    expect(droppedQuantities).not.toContain(PhysicalQuantityId.RelativeHumidity);
+    expect(requiredQuantities).toContain(PhysicalQuantityId.RelativeHumidity);
+    expect(droppedControlIds).not.toContain(InputControlId.Humidity);
+    expect(heatIndexModelConfig.controls.map(({ id }) => id)).toEqual(requiredControlIds);
   });
 });

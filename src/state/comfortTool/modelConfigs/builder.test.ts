@@ -487,6 +487,9 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(definition.quantities.extend.map((entry) => entry.id)).toEqual([
       extension.id,
     ]);
+    expect(definition.inputFields).toEqual([
+      { kind: "modelQuantity", quantityId: extension.id },
+    ]);
     expect(definition.controls.map(({ id }) => id)).toEqual([extension.id]);
   });
 
@@ -548,6 +551,7 @@ describe("defineModel", () => {
     });
 
     expect(definition.id).toBe(ComfortModel.PmvAshrae);
+    expect(definition.inputFields).toEqual([]);
     expect(definition.outputCharts.defaultInstanceId).toBe(
       "test-dynamic-field",
     );

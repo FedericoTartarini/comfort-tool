@@ -23,6 +23,7 @@ import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
+import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 import {
   applyInputModifierChain,
   createDynamicClothingModifier,
@@ -163,6 +164,15 @@ describe("PMV standard declarations", () => {
       .not.toBe(pmvIsoDeclaration.heatLossInstanceId);
     expect(pmvAshraeDeclaration.setInstanceId)
       .not.toBe(pmvIsoDeclaration.setInstanceId);
+  });
+
+  it("pins required Analysis controls independently of inputFields", () => {
+    expect(pmvAshraeModelConfig.controls.map(({ id }) => id)).toEqual([
+      ...requiredControlIdsByModel[ComfortModel.PmvAshrae],
+    ]);
+    expect(pmvIsoModelConfig.controls.map(({ id }) => id)).toEqual([
+      ...requiredControlIdsByModel[ComfortModel.PmvIso],
+    ]);
   });
 
   it("uses exact standard-specific option schemas", () => {

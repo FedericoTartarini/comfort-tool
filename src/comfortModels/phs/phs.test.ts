@@ -25,6 +25,7 @@ import {
   validatePhsTimeSeries,
 } from "./phsCalculation";
 import { phsModelConfig } from "./phs";
+import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 import { getModelSimulationOutput } from "../../state/comfortTool/modelConfigs";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
 import { phsTimeSeriesModelDefinition } from "./phsTimeSeries";
@@ -207,6 +208,9 @@ describe("PHS ISO 7933:2023", () => {
     );
 
     expect(phsModelConfig.id).toBe(ComfortModel.Phs2023);
+    expect(phsModelConfig.controls.map(({ id }) => id)).toEqual([
+      ...requiredControlIdsByModel[ComfortModel.Phs2023],
+    ]);
     expect(phsModelConfig.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
     expect(phsModelConfig.outputCharts.entries.map(({ instanceId }) => instanceId)).toEqual([
       "phs-exposure-history",

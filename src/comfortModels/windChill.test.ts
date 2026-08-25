@@ -14,6 +14,7 @@ import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
 describe("windChill service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -141,8 +142,7 @@ describe("windChill service", () => {
       yAxis: PhysicalQuantityId.WindSpeed,
     });
     expect(windChillModelConfig.controls.map(({ id }) => id)).toEqual([
-      "temperature",
-      "windSpeed",
+      ...requiredControlIdsByModel[ComfortModel.WindChill],
     ]);
   });
 });

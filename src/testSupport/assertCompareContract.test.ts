@@ -7,14 +7,19 @@ import { createComfortToolState } from "../state/comfortTool/createComfortToolSt
 import { comfortModelOrder } from "../state/comfortTool/modelConfigs";
 import {
   assertCompareContract,
-  getGoldenInputOverrides,
 } from "./assertCompareContract";
+import {
+  getGoldenInputOverrides,
+} from "./goldenFixtures";
+import { requiredPrimaryQuantitiesByModel } from "./requiredModelControls";
 
 describe("assertCompareContract", () => {
   it("covers every registered Analysis model", () => {
     expect(comfortModelOrder.length).toBeGreaterThan(0);
     for (const modelId of comfortModelOrder) {
-      expect(getGoldenInputOverrides(modelId)).toBeTruthy();
+      expect(Object.keys(getGoldenInputOverrides(modelId)).sort()).toEqual(
+        [...requiredPrimaryQuantitiesByModel[modelId]].sort(),
+      );
     }
   });
 

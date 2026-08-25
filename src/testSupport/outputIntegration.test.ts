@@ -25,7 +25,7 @@ import {
 } from "./outputGoldenFixtures";
 import {
   createGoldenCalculationContext,
-  pmvBaselineInputOverrides,
+  getGoldenInputOverrides,
 } from "./goldenFixtures";
 import { clearChartMemo } from "../services/comfort/charts/kinds/memo";
 import { resolveChartInstanceCapabilities } from "../state/comfortTool/chartInstancePresentation";
@@ -121,7 +121,7 @@ describe("output integration", () => {
     const calculateSpy = vi.spyOn(config, "calculate");
     const context = createGoldenCalculationContext(
       ComfortModel.PmvAshrae,
-      pmvBaselineInputOverrides,
+      getGoldenInputOverrides(ComfortModel.PmvAshrae),
       {},
     );
     const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);

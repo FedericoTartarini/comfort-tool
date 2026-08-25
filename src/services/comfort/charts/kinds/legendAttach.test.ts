@@ -8,7 +8,7 @@ import { ChartLegendKind } from "../../../../models/output/chartBuildResult";
 import { buildFieldChartProfile, seedModelOutputSettings } from "../../../../state/comfortTool/fieldChartState";
 import { getComfortModelConfig } from "../../../../state/comfortTool/modelConfigs";
 import { clearChartMemo } from "./memo";
-import { createGoldenCalculationContext, pmvBaselineInputOverrides } from "../../../../testSupport/goldenFixtures";
+import { createGoldenCalculationContext, getGoldenInputOverrides } from "../../../../testSupport/goldenFixtures";
 
 describe("chart legend attachment", () => {
   beforeEach(() => {
@@ -19,7 +19,7 @@ describe("chart legend attachment", () => {
     const config = getComfortModelConfig(ComfortModel.PmvAshrae);
     const context = createGoldenCalculationContext(
       ComfortModel.PmvAshrae,
-      pmvBaselineInputOverrides,
+      getGoldenInputOverrides(ComfortModel.PmvAshrae),
       {},
     );
     const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);

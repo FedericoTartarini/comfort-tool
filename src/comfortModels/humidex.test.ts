@@ -12,6 +12,7 @@ import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../models/modelCapabilities";
 import { ChartKind } from "../models/output/chartKinds";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
 describe("humidex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -157,6 +158,12 @@ describe("humidex service", () => {
     }))).toEqual([
       { instanceId: "humidex-ranges", kind: ChartKind.DynamicField },
       { instanceId: "humidex-dynamic-field", kind: ChartKind.DynamicField },
+    ]);
+  });
+
+  it("pins required Analysis controls independently of inputFields", () => {
+    expect(humidexModelConfig.controls.map(({ id }) => id)).toEqual([
+      ...requiredControlIdsByModel[ComfortModel.Humidex],
     ]);
   });
 });

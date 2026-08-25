@@ -15,6 +15,8 @@ import {
   getUtciZoneMeta,
   utciModelConfig,
 } from "./utci";
+import { ComfortModel } from "../../models/comfortModels";
+import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 
 describe("UTCI stress zones", () => {
   it.each([
@@ -165,6 +167,12 @@ describe("UTCI Explore chart", () => {
     expect(chart.layout.title).toContain("Dynamic Chart");
     expect(contour).toBeDefined();
     expect(contour?.z?.flat().some(Number.isFinite)).toBe(true);
+  });
+
+  it("pins required Analysis controls independently of inputFields", () => {
+    expect(utciModelConfig.controls.map(({ id }) => id)).toEqual([
+      ...requiredControlIdsByModel[ComfortModel.Utci],
+    ]);
   });
 
 });

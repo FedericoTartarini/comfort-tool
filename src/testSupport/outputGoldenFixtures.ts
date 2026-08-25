@@ -1,7 +1,5 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../models/comfortModels";
+import { type ComfortModel as ComfortModelType } from "../models/comfortModels";
 import type { PlotlyChartResponseDto } from "../models/comfortDtos";
-import { PhysicalQuantityId } from "../models/physicalQuantities";
-
 import { InputId } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
@@ -17,51 +15,12 @@ import {
 import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";
 import type { ResultSectionViewModel } from "../state/comfortTool/types";
 import {
-  adaptiveBaselineInputOverrides,
   createGoldenCalculationContext,
-  phsBaselineInputOverrides,
-  phsBaselineModelInputs,
-  pmvBaselineInputOverrides,
-  utciBaselineInputOverrides,
+  getGoldenInputOverrides,
+  getGoldenModelInputOverrides,
 } from "./goldenFixtures";
 
 const visibleInputIds = [InputId.Input1];
-
-function getGoldenInputOverrides(modelId: ComfortModelType) {
-  switch (modelId) {
-    case ComfortModel.PmvAshrae:
-    case ComfortModel.PmvIso:
-      return pmvBaselineInputOverrides;
-    case ComfortModel.Utci:
-      return utciBaselineInputOverrides;
-    case ComfortModel.AdaptiveAshrae:
-    case ComfortModel.AdaptiveEn:
-      return adaptiveBaselineInputOverrides;
-    case ComfortModel.Phs2023:
-      return phsBaselineInputOverrides;
-    case ComfortModel.HeatIndex:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: 32,
-        [PhysicalQuantityId.RelativeHumidity]: 60,
-      };
-    case ComfortModel.Humidex:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: 30,
-        [PhysicalQuantityId.RelativeHumidity]: 70,
-      };
-    case ComfortModel.WindChill:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: -10,
-        [PhysicalQuantityId.WindSpeed]: 5,
-      };
-    default:
-      return {};
-  }
-}
-
-function getGoldenModelInputOverrides(modelId: ComfortModelType) {
-  return modelId === ComfortModel.Phs2023 ? phsBaselineModelInputs : {};
-}
 
 export interface TableGoldenSnapshot {
   sections: Array<{

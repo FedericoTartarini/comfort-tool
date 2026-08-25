@@ -150,9 +150,9 @@ exports[`output golden — table snapshots > HEAT_INDEX produces stable table ou
       {
         "cells": [
           {
-            "color": "#a16207",
-            "subtext": "Extreme Caution",
-            "text": "37.1 °C",
+            "color": "#475569",
+            "subtext": "Safe",
+            "text": "26.0 °C",
           },
         ],
         "title": "Heat Index",
@@ -196,9 +196,9 @@ exports[`output golden — table snapshots > HUMIDEX produces stable table outpu
       {
         "cells": [
           {
-            "color": "#a16207",
-            "subtext": "Intense",
-            "text": "40.9",
+            "color": "#475569",
+            "subtext": "Little/None",
+            "text": "29.8",
           },
         ],
         "title": "Humidex",
@@ -215,12 +215,11 @@ exports[`output golden — table snapshots > PHS_2023 produces stable table outp
       "instanceId": "phs-exposure-history",
       "layoutTitle": "PHS exposure history",
       "profileKind": "compliance",
-      "traceCount": 5,
+      "traceCount": 4,
       "traceNames": [
         "Rectal temperature",
         "Core temperature",
         "Maximum rectal temperature",
-        "First rectal-temperature limit",
         "Input 1",
       ],
       "xAxisTitle": "Time (hours)",
@@ -230,12 +229,11 @@ exports[`output golden — table snapshots > PHS_2023 produces stable table outp
       "instanceId": "phs-exposure-history",
       "layoutTitle": "PHS exposure history",
       "profileKind": "explore",
-      "traceCount": 5,
+      "traceCount": 4,
       "traceNames": [
         "Rectal temperature",
         "Core temperature",
         "Editable rectal-temperature threshold",
-        "First editable-threshold crossing",
         "Input 1",
       ],
       "xAxisTitle": "Time (hours)",
@@ -272,7 +270,7 @@ exports[`output golden — table snapshots > PHS_2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "0.90 h",
+            "text": "8.00 h",
           },
         ],
         "group": "Maximum allowable exposure time",
@@ -281,7 +279,7 @@ exports[`output golden — table snapshots > PHS_2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "2.75 h",
+            "text": "8.00 h",
           },
         ],
         "group": "Maximum allowable exposure time",
@@ -290,8 +288,8 @@ exports[`output golden — table snapshots > PHS_2023 produces stable table outp
       {
         "cells": [
           {
-            "subtext": "Rectal-temperature limit",
-            "text": "0.90 h",
+            "subtext": "No limit reached before 8 h",
+            "text": "8.00 h",
           },
         ],
         "group": "Maximum allowable exposure time",
@@ -300,7 +298,7 @@ exports[`output golden — table snapshots > PHS_2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "41.4 °C",
+            "text": "37.1 °C",
           },
         ],
         "group": "End-of-exposure state",
@@ -309,7 +307,7 @@ exports[`output golden — table snapshots > PHS_2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "8.92 kg",
+            "text": "0.30 kg",
           },
         ],
         "group": "End-of-exposure state",
@@ -873,7 +871,7 @@ exports[`output golden — table snapshots > WIND_CHILL produces stable table ou
           {
             "color": "#0369a1",
             "subtext": "Safe",
-            "text": "1391 W/m²",
+            "text": "973 W/m²",
           },
         ],
         "title": "Wind Chill Index",
@@ -882,7 +880,7 @@ exports[`output golden — table snapshots > WIND_CHILL produces stable table ou
         "cells": [
           {
             "color": "#0369a1",
-            "text": "-17.4 °C",
+            "text": "-10.0 °C",
           },
         ],
         "title": "Wind Chill Temperature",

@@ -851,6 +851,7 @@ export class ComfortModelBuilder<
           }
         : {}),
       controls: [...this.controls],
+      inputFields: [...this.inputFieldSpecs],
       quantities: {
         extend: quantityExtensions,
       },

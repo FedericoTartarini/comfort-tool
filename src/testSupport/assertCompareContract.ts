@@ -1,7 +1,6 @@
 import { expect } from "vitest";
 
 import {
-  ComfortModel,
   type ComfortModel as ComfortModelType,
 } from "../models/comfortModels";
 import { inputDisplayMetaById } from "../models/inputSlotPresentation";
@@ -18,51 +17,14 @@ import { createComfortToolState } from "../state/comfortTool/createComfortToolSt
 import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";
 import type { ComfortToolController } from "../state/comfortTool/types";
 import {
-  adaptiveBaselineInputOverrides,
-  phsBaselineInputOverrides,
-  phsBaselineModelInputs,
-  pmvBaselineInputOverrides,
-  utciBaselineInputOverrides,
+  getGoldenInputOverrides,
+  getGoldenModelInputOverrides,
 } from "./goldenFixtures";
+
+export { getGoldenInputOverrides };
 
 const VISIBLE_INPUT_COUNTS = [1, 2, 3] as const;
 const SLOT_DRY_BULB_OFFSETS_C = [0, 1, 2] as const;
-
-export function getGoldenInputOverrides(
-  modelId: ComfortModelType,
-): Partial<PrimaryInputState> {
-  switch (modelId) {
-    case ComfortModel.PmvAshrae:
-    case ComfortModel.PmvIso:
-      return pmvBaselineInputOverrides;
-    case ComfortModel.Utci:
-      return utciBaselineInputOverrides;
-    case ComfortModel.AdaptiveAshrae:
-    case ComfortModel.AdaptiveEn:
-      return adaptiveBaselineInputOverrides;
-    case ComfortModel.Phs2023:
-      return phsBaselineInputOverrides;
-    case ComfortModel.HeatIndex:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: 32,
-        [PhysicalQuantityId.RelativeHumidity]: 60,
-      };
-    case ComfortModel.Humidex:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: 30,
-        [PhysicalQuantityId.RelativeHumidity]: 70,
-      };
-    case ComfortModel.WindChill:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: -10,
-        [PhysicalQuantityId.WindSpeed]: 5,
-      };
-    default: {
-      const exhaustive: never = modelId;
-      throw new Error(`Missing Compare golden inputs for ${exhaustive}.`);
-    }
-  }
-}
 
 async function waitForIdle(controller: ComfortToolController) {
   const modelId = controller.state.ui.selectedModel;
@@ -128,21 +90,19 @@ function applyGoldenInputs(
       controller.state.auxiliaryQuantitiesByInput,
     );
   });
-  if (modelId === ComfortModel.Phs2023) {
-    for (const [quantityId, value] of Object.entries(phsBaselineModelInputs)) {
-      if (value === undefined) continue;
-      if (
-        !controller.actions.updateModelQuantity(
-          modelId,
-          quantityId as PhysicalQuantityIdType,
-          value,
-        )
-      ) {
-        failSilently(
-          modelId,
-          `could not apply model input ${quantityId}=${value}.`,
-        );
-      }
+  for (const [quantityId, value] of Object.entries(getGoldenModelInputOverrides(modelId))) {
+    if (value === undefined) continue;
+    if (
+      !controller.actions.updateModelQuantity(
+        modelId,
+        quantityId as PhysicalQuantityIdType,
+        value,
+      )
+    ) {
+      failSilently(
+        modelId,
+        `could not apply model input ${quantityId}=${value}.`,
+      );
     }
   }
 }

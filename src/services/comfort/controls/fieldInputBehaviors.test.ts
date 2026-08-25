@@ -17,7 +17,7 @@ import { TableType } from "../../../models/output/tableLayouts";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/comfortTool/modelConfigs/builder";
 import "../../../state/comfortTool/modelConfigs";
 import { convertMassFromSi } from "../../units/physicalQuantities";
-import { resolveInputField } from "./fieldInputBehaviors";
+import { resolveInputField, declaredSiRangeForInputField, inputFieldControlId, primaryQuantityIdsForInputField } from "./fieldInputBehaviors";
 import type { ControlBehaviorContext } from "./types";
 
 describe("fieldInputBehaviors", () => {
@@ -100,6 +100,9 @@ describe("fieldInputBehaviors", () => {
       InputControlId.Temperature,
       InputControlId.Humidity,
     ]);
+    expect(config.inputFields.map(inputFieldControlId)).toEqual(
+      config.controls.map(({ id }) => id),
+    );
   });
 
   it("registers outdoor wind index controls", () => {
@@ -246,6 +249,42 @@ describe("fieldInputBehaviors", () => {
       String(viewModel.numericValuesByInput[InputId.Input1]),
     );
     expect(patch?.modelInputsPatch?.[PhsQuantityId.BodyWeight]).toBeCloseTo(75, 8);
+  });
+
+  it("maps each input field kind to its control id, primary quantities, and SI range", () => {
+    expect(inputFieldControlId({ kind: "simpleHumidity" })).toBe(InputControlId.Humidity);
+    expect(primaryQuantityIdsForInputField({ kind: "simpleHumidity" })).toEqual([
+      PhysicalQuantityId.RelativeHumidity,
+    ]);
+    expect(declaredSiRangeForInputField(
+      { kind: "simpleHumidity" },
+      PhysicalQuantityId.RelativeHumidity,
+    )).toEqual({ minSi: 0, maxSi: 100 });
+
+    const windChillTemperature = {
+      kind: "numeric" as const,
+      controlId: InputControlId.Temperature,
+      fieldKey: PhysicalQuantityId.DryBulbTemperature,
+      minValue: -45,
+      maxValue: 0,
+    };
+    expect(inputFieldControlId(windChillTemperature)).toBe(InputControlId.Temperature);
+    expect(primaryQuantityIdsForInputField(windChillTemperature)).toEqual([
+      PhysicalQuantityId.DryBulbTemperature,
+    ]);
+    expect(declaredSiRangeForInputField(
+      windChillTemperature,
+      PhysicalQuantityId.DryBulbTemperature,
+    )).toEqual({ minSi: -45, maxSi: 0 });
+
+    expect(primaryQuantityIdsForInputField({
+      kind: "modelQuantity",
+      quantityId: PhsQuantityId.BodyWeight,
+    })).toEqual([]);
+    expect(inputFieldControlId({
+      kind: "modelQuantity",
+      quantityId: PhsQuantityId.BodyWeight,
+    })).toBe(PhsQuantityId.BodyWeight);
   });
 
   it("constructs a modelQuantity control before the quantity is in the catalog", () => {

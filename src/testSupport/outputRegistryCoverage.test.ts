@@ -8,51 +8,10 @@ import {
   supportsStandardWorkspace,
 } from "../models/output/workspaceCapabilities";
 import {
-  adaptiveBaselineInputOverrides,
   createGoldenCalculationContext,
-  phsBaselineInputOverrides,
-  phsBaselineModelInputs,
-  pmvBaselineInputOverrides,
-  utciBaselineInputOverrides,
+  getGoldenInputOverrides,
+  getGoldenModelInputOverrides,
 } from "./goldenFixtures";
-import { ComfortModel } from "../models/comfortModels";
-import { PhysicalQuantityId } from "../models/physicalQuantities";
-
-function getGoldenInputOverrides(modelId: typeof comfortModelOrder[number]) {
-  switch (modelId) {
-    case ComfortModel.PmvAshrae:
-    case ComfortModel.PmvIso:
-      return pmvBaselineInputOverrides;
-    case ComfortModel.Utci:
-      return utciBaselineInputOverrides;
-    case ComfortModel.AdaptiveAshrae:
-    case ComfortModel.AdaptiveEn:
-      return adaptiveBaselineInputOverrides;
-    case ComfortModel.Phs2023:
-      return phsBaselineInputOverrides;
-    case ComfortModel.HeatIndex:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: 32,
-        [PhysicalQuantityId.RelativeHumidity]: 60,
-      };
-    case ComfortModel.Humidex:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: 30,
-        [PhysicalQuantityId.RelativeHumidity]: 70,
-      };
-    case ComfortModel.WindChill:
-      return {
-        [PhysicalQuantityId.DryBulbTemperature]: -10,
-        [PhysicalQuantityId.WindSpeed]: 5,
-      };
-    default:
-      return {};
-  }
-}
-
-function getGoldenModelInputOverrides(modelId: typeof comfortModelOrder[number]) {
-  return modelId === ComfortModel.Phs2023 ? phsBaselineModelInputs : {};
-}
 
 describe("output registry coverage", () => {
   for (const modelId of comfortModelOrder) {

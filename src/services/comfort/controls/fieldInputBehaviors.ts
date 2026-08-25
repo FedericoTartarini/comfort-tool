@@ -108,6 +108,77 @@ export type InputFieldSpec =
   | PresetInputFieldSpec
   | ModelQuantityInputFieldSpec;
 
+export type InputFieldControlId = InputControlDefinition["id"];
+
+export function inputFieldControlId(spec: InputFieldSpec): InputFieldControlId {
+  switch (spec.kind) {
+    case "numeric":
+    case "preset":
+      return spec.controlId;
+    case "operativeTemperature":
+      return InputControlId.Temperature;
+    case "radiantTemperature":
+      return InputControlId.RadiantTemperature;
+    case "simpleHumidity":
+    case "advancedHumidity":
+      return InputControlId.Humidity;
+    case "occupantAirSpeed":
+      return InputControlId.AirSpeed;
+    case "outdoorWindSpeed":
+      return InputControlId.WindSpeed;
+    case "modelQuantity":
+      return spec.quantityId;
+    default: {
+      const unknownSpec: never = spec;
+      throw new Error(`Unknown input field spec: ${unknownSpec}`);
+    }
+  }
+}
+
+export function primaryQuantityIdsForInputField(
+  spec: InputFieldSpec,
+): readonly PrimaryQuantityId[] {
+  switch (spec.kind) {
+    case "numeric":
+    case "preset":
+      return [spec.fieldKey];
+    case "operativeTemperature":
+      return [PhysicalQuantityId.DryBulbTemperature];
+    case "radiantTemperature":
+      return [PhysicalQuantityId.MeanRadiantTemperature];
+    case "simpleHumidity":
+    case "advancedHumidity":
+      return [PhysicalQuantityId.RelativeHumidity];
+    case "occupantAirSpeed":
+      return [PhysicalQuantityId.RelativeAirSpeed];
+    case "outdoorWindSpeed":
+      return [PhysicalQuantityId.WindSpeed];
+    case "modelQuantity":
+      return [];
+    default: {
+      const unknownSpec: never = spec;
+      throw new Error(`Unknown input field spec: ${unknownSpec}`);
+    }
+  }
+}
+
+export function declaredSiRangeForInputField(
+  spec: InputFieldSpec,
+  quantityId: PrimaryQuantityId,
+): { minSi: number; maxSi: number } {
+  if (!primaryQuantityIdsForInputField(spec).includes(quantityId)) {
+    throw new Error(
+      `Quantity ${quantityId} is not declared by input field kind "${spec.kind}".`,
+    );
+  }
+  const meta = getPhysicalQuantityMeta(quantityId);
+  const minSi =
+    "minValue" in spec && spec.minValue !== undefined ? spec.minValue : meta.minSi;
+  const maxSi =
+    "maxValue" in spec && spec.maxValue !== undefined ? spec.maxValue : meta.maxSi;
+  return { minSi, maxSi };
+}
+
 function createModelQuantityControlBehavior(
   spec: ModelQuantityInputFieldSpec,
 ): InputControlBehavior {
@@ -191,7 +262,7 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
   switch (spec.kind) {
     case "numeric":
       return {
-        id: spec.controlId,
+        id: inputFieldControlId(spec),
         behavior: createControlBehavior({
           controlId: spec.controlId,
           fieldKey: spec.fieldKey,
@@ -212,7 +283,7 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
       };
     case "operativeTemperature":
       return {
-        id: InputControlId.Temperature,
+        id: inputFieldControlId(spec),
         behavior: createOperativeTemperatureControlBehavior(
           InputControlId.Temperature,
           spec,
@@ -220,7 +291,7 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
       };
     case "radiantTemperature":
       return {
-        id: InputControlId.RadiantTemperature,
+        id: inputFieldControlId(spec),
         behavior: createControlBehavior({
           controlId: InputControlId.RadiantTemperature,
           fieldKey: PhysicalQuantityId.MeanRadiantTemperature,
@@ -247,7 +318,7 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
       };
     case "simpleHumidity":
       return {
-        id: InputControlId.Humidity,
+        id: inputFieldControlId(spec),
         behavior: createControlBehavior({
           controlId: InputControlId.Humidity,
           fieldKey: PhysicalQuantityId.RelativeHumidity,
@@ -255,19 +326,19 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
       };
     case "advancedHumidity":
       return {
-        id: InputControlId.Humidity,
+        id: inputFieldControlId(spec),
         behavior: createHumidityControlBehavior(InputControlId.Humidity),
       };
     case "occupantAirSpeed":
       return {
-        id: InputControlId.AirSpeed,
+        id: inputFieldControlId(spec),
         behavior: createAirSpeedControlBehavior(InputControlId.AirSpeed, {
           supportsOccupantAirSpeedControl: spec.supportsOccupantAirSpeedControl,
         }),
       };
     case "outdoorWindSpeed":
       return {
-        id: InputControlId.WindSpeed,
+        id: inputFieldControlId(spec),
         behavior: createControlBehavior({
           controlId: InputControlId.WindSpeed,
           fieldKey: PhysicalQuantityId.WindSpeed,
@@ -286,7 +357,7 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
       };
     case "preset":
       return {
-        id: spec.controlId,
+        id: inputFieldControlId(spec),
         behavior: createControlBehavior({
           controlId: spec.controlId,
           fieldKey: spec.fieldKey,
@@ -309,7 +380,7 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
       };
     case "modelQuantity":
       return {
-        id: spec.quantityId,
+        id: inputFieldControlId(spec),
         behavior: createModelQuantityControlBehavior(spec),
       };
     default: {
