@@ -1,8 +1,11 @@
 import type {
   PlotAnnotationDto,
   PlotAxisDto,
+  PlotColorScaleDto,
+  PlotContoursDto,
   PlotLayoutDto,
   PlotlyChartResponseDto,
+  PlotTraceDto,
 } from "../models/comfortDtos";
 
 type PlotlyAxisTitle = string | { text: string; standoff?: number };
@@ -33,9 +36,82 @@ export interface PlotlyFigure {
   config: PlotlyFigureConfig;
 }
 
+type PlotlyGapNumber = number | null;
+
+/**
+ * Plotly screen adapter (Plan 0g).
+ *
+ * `Plotly.react` aliases `x` / `y` / `z` / `text` as calcdata identity. Each
+ * call must receive fresh arrays or a later react skips recalc and then reads
+ * `undefined.z`. Clone those series and the nested records Plotly mutates
+ * (traces, layout, axes, margin, legend, annotations, marker/line/contours).
+ * Hover `customdata` is shared.
+ *
+ * Non-finite grid `z` cells (NaN / ±Infinity) become `null` Plotly gaps. Do
+ * not `JSON.parse(JSON.stringify(figure))`. Publication export (0h) is a
+ * separate figure.
+ */
 export function toPlotlyFigure(chart: PlotlyChartResponseDto): PlotlyFigure {
-  const xaxis: PlotlyFigureAxis = { ...chart.layout.xaxis };
-  const yaxis: PlotlyFigureAxis = { ...chart.layout.yaxis };
+  return {
+    data: chart.traces.map(toPlotlyTrace),
+    layout: toPlotlyLayout(chart),
+    config: {
+      responsive: true,
+      displaylogo: false,
+      displayModeBar: "hover",
+    },
+  };
+}
+
+function toPlotlyTrace(trace: PlotTraceDto): Record<string, unknown> {
+  const { hoverMetadata, isBackgroundZone: _isBackgroundZone, ...rest } = trace;
+  const plotlyTrace: Record<string, unknown> = { ...rest };
+
+  if (hoverMetadata !== undefined) {
+    plotlyTrace.customdata = hoverMetadata;
+  }
+
+  if (Array.isArray(rest.x)) {
+    plotlyTrace.x = rest.x.slice();
+  }
+
+  if (Array.isArray(rest.y)) {
+    plotlyTrace.y = rest.y.slice();
+  }
+
+  if (Array.isArray(rest.z)) {
+    plotlyTrace.z = toPlotlyZGaps(rest.z);
+  }
+
+  if (Array.isArray(rest.text)) {
+    plotlyTrace.text = clonePlotlyText(rest.text);
+  }
+
+  if (Array.isArray(rest.colorscale)) {
+    plotlyTrace.colorscale = cloneColorScale(rest.colorscale);
+  }
+
+  if (rest.marker) {
+    plotlyTrace.marker = {
+      ...rest.marker,
+      ...(rest.marker.line ? { line: { ...rest.marker.line } } : {}),
+    };
+  }
+
+  if (rest.line) {
+    plotlyTrace.line = { ...rest.line };
+  }
+
+  if (rest.contours) {
+    plotlyTrace.contours = cloneContours(rest.contours);
+  }
+
+  return plotlyTrace;
+}
+
+function toPlotlyLayout(chart: PlotlyChartResponseDto): PlotlyFigureLayout {
+  const xaxis: PlotlyFigureAxis = cloneAxis(chart.layout.xaxis);
+  const yaxis: PlotlyFigureAxis = cloneAxis(chart.layout.yaxis);
 
   if (typeof xaxis.title === "string") {
     xaxis.title = { text: xaxis.title, standoff: 12 };
@@ -45,34 +121,77 @@ export function toPlotlyFigure(chart: PlotlyChartResponseDto): PlotlyFigure {
     yaxis.title = { text: yaxis.title, standoff: 12 };
   }
 
-  const figure: PlotlyFigure = {
-    data: chart.traces.map((trace) => {
-      const plotlyTrace = { ...trace };
-      const customdata = plotlyTrace.hoverMetadata;
-      delete plotlyTrace.hoverMetadata;
-      delete plotlyTrace.isBackgroundZone;
-      return {
-        ...plotlyTrace,
-        customdata,
-      };
-    }),
-    layout: {
-      ...chart.layout,
-      title: chart.layout.title
-        ? { text: chart.layout.title }
-        : chart.layout.title,
-      xaxis,
-      yaxis,
-      annotations: chart.annotations,
-    },
-    config: {
-      responsive: true,
-      displaylogo: false,
-      displayModeBar: "hover",
-    },
+  return {
+    ...chart.layout,
+    title: chart.layout.title
+      ? { text: chart.layout.title }
+      : chart.layout.title,
+    xaxis,
+    yaxis,
+    margin: { ...chart.layout.margin },
+    annotations: chart.annotations.map(cloneAnnotation),
+    ...(chart.layout.legend ? { legend: { ...chart.layout.legend } } : {}),
   };
+}
 
-  // Plotly mutates nested figure data. Preserve the existing JSON-clone
-  // boundary, including conversion of non-finite grid cells into Plotly gaps.
-  return JSON.parse(JSON.stringify(figure)) as PlotlyFigure;
+function cloneAxis(axis: PlotAxisDto): PlotlyFigureAxis {
+  return {
+    ...axis,
+    range: [axis.range[0], axis.range[1]],
+  };
+}
+
+function cloneAnnotation(annotation: PlotAnnotationDto): PlotAnnotationDto {
+  return {
+    ...annotation,
+    font: { ...annotation.font },
+  };
+}
+
+function cloneContours(contours: PlotContoursDto): PlotContoursDto {
+  if (contours.type === "constraint") {
+    const value: number | [number, number] = Array.isArray(contours.value)
+      ? [contours.value[0], contours.value[1]]
+      : contours.value;
+    return {
+      ...contours,
+      value,
+      ...(contours.line ? { line: { ...contours.line } } : {}),
+    };
+  }
+
+  return {
+    ...contours,
+    ...(contours.line ? { line: { ...contours.line } } : {}),
+  };
+}
+
+function cloneColorScale(colorscale: PlotColorScaleDto): PlotColorScaleDto {
+  return colorscale.map((stop) => [stop[0], stop[1]]);
+}
+
+function clonePlotlyText(
+  text: ReadonlyArray<string> | ReadonlyArray<ReadonlyArray<string>>,
+): string[] | string[][] {
+  if (text.length > 0 && Array.isArray(text[0])) {
+    return (text as ReadonlyArray<ReadonlyArray<string>>).map((row) => row.slice());
+  }
+
+  return (text as ReadonlyArray<string>).slice();
+}
+
+function toPlotlyZGaps(
+  z: ReadonlyArray<number> | ReadonlyArray<ReadonlyArray<number>>,
+): Array<PlotlyGapNumber> | Array<Array<PlotlyGapNumber>> {
+  if (z.length > 0 && Array.isArray(z[0])) {
+    return (z as ReadonlyArray<ReadonlyArray<number>>).map(toPlotlyNumericGaps);
+  }
+
+  return toPlotlyNumericGaps(z as ReadonlyArray<number>);
+}
+
+function toPlotlyNumericGaps(
+  values: ReadonlyArray<number>,
+): Array<PlotlyGapNumber> {
+  return values.map((value) => (Number.isFinite(value) ? value : null));
 }

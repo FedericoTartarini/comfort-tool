@@ -86,6 +86,7 @@ src/
   services/
     comfort/         adapters, engines, modifiers, psychrometrics, table assembly
     units/           SI ↔ display conversion
+    plotlyFigure.ts  Plotly screen adapter (clone boundary)
   state/
     comfortTool/     Analysis controller, defineModel, registry, share codec
     timeSeries/      separate PHS Time-series controller
@@ -148,7 +149,11 @@ Interactive Dynamic 2-D grids are capped near 100² by the engine
 (`INTERACTIVE_DYNAMIC_GRID_POINTS`); do not pass 300 or 450. BandScalar
 1-D sampling may stay high (for example UTCI stress at 450 x-points).
 Hover overlays use display `z` for the primary output and must not attach
-a per-cell `customdata` matrix unless extra hover fields exist.
+a per-cell `customdata` matrix unless extra hover fields exist. The Plotly
+adapter (`src/services/plotlyFigure.ts`) clones Plotly-owned `x`/`y`/`z`/`text`
+arrays and nested records Plotly mutates, and converts non-finite grid `z`
+cells to `null` gaps. Do not `JSON.parse(JSON.stringify(figure))` a dense
+field.
 
 **Tables.** `tables.analysis` (`TableType.Analysis`) is required for every
 Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only
