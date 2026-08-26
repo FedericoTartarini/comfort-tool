@@ -6,7 +6,7 @@ import {
   PhysicalQuantityScope,
 } from "../../../models/quantities";
 import { WorkspaceId } from "../../../models/workspaces";
-import { ChartEngine } from "../../../models/output/chartKinds";
+import { ChartEngine } from "../../../models/chartEngines";
 import { TableType } from "../../../models/output/tableLayouts";
 import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import {

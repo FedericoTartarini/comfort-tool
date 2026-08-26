@@ -51,8 +51,8 @@ import {
   isModelChartEngine,
   modelAllowsCustomCharts,
   resolveChartCapabilities,
-} from "../../../models/output/chartKinds";
-import type { ChartInstanceDeclaration } from "../../../models/output/chartKinds";
+} from "../../../models/chartEngines";
+import type { ChartInstanceDeclaration } from "../../../models/chartEngines";
 import {
   TableType,
   type ModelTables,

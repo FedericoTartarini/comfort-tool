@@ -17,7 +17,7 @@ import {
   findNumericBandIndexForValue,
   ModelOutputKey,
 } from "../../models/modelCapabilities";
-import { ChartEngine } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/chartEngines";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";

@@ -34,7 +34,7 @@ import {
   ComfortModelBuilder,
   type ChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
-import { ChartEngine } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/chartEngines";
 import {
   buildAdaptiveResultRows,
   calculateAdaptiveModel,

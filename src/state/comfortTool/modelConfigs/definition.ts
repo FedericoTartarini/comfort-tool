@@ -9,7 +9,7 @@ import type {
   ModelOutput,
   NumericBand,
 } from "../../../models/modelCapabilities";
-import type { ModelChartInstances } from "../../../models/output/chartKinds";
+import type { ModelChartInstances } from "../../../models/chartEngines";
 import type { FieldChartProfile } from "../../../models/output/fieldChartProfile";
 import type { ModelTables } from "../../../models/output/tableLayouts";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";

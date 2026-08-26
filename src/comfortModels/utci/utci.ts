@@ -10,7 +10,7 @@ import {
 } from "../../models/inputModes";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
-import { ChartEngine } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/chartEngines";
 import { WorkspaceId } from "../../models/workspaces";
 import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {

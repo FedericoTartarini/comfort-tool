@@ -5,7 +5,7 @@ import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfi
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type { ChartBuildContext } from "../../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../../models/units";
-import { ChartEngine, isChartEngine } from "../../../../models/output/chartKinds";
+import { ChartEngine, isChartEngine } from "../../../../models/chartEngines";
 import {
   buildBandScalarChart,
   buildBoundaryRegionChart,

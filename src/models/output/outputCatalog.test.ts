@@ -7,7 +7,7 @@ import {
   isModelChartEngine,
   modelAllowsCustomCharts,
   resolveChartCapabilities,
-} from "./chartKinds";
+} from "../chartEngines";
 import { ModelId } from "../modelIds";
 import {
   WorkspaceId,

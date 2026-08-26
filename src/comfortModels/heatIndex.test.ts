@@ -10,7 +10,7 @@ import { PhysicalQuantityId } from "../models/quantities";
 import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
-import { ChartEngine } from "../models/output/chartKinds";
+import { ChartEngine } from "../models/chartEngines";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
 import { InputControlId } from "../models/inputControls";
 import {

@@ -1,4 +1,4 @@
-import { ModelId, type ModelId as ModelIdType } from "../modelIds";
+import { ModelId, type ModelId as ModelIdType } from "./modelIds";
 
 /**
  * Closed chart-engine set (Plan ChartEngine). Model declarations cannot add members.

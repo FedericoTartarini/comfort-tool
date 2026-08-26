@@ -147,7 +147,7 @@ Use centralized constants and typed metadata from `src/models/` for:
 
 - model identifiers (`ModelId` in `src/models/modelIds.ts`)
 - quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes). System quantities are seeded in `src/models/quantities.ts`; model-scoped ids are contributed with `quantities.extend` and assembled into the same catalog.
-- chart engines (`ChartEngine` in `src/models/output/chartKinds.ts` is the closed engine set). `defineModel` charts are `ModelChartDeclaration`: a data-only union discriminated on `engine:` over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`) in `services/comfort/charts/kinds/types.ts`. Specs never include Plotly `build`. `Custom` is omitted from `defineModel`. An optional `type` names a built-in or extended chart type, is preserved on the presentation instance, and must stay on that same engine/spec pair. Family modules use `FrontendChartDeclaration` / `ComfortModelBuilder`. Chart ids live on each declaration’s `charts` entries (`id`); the builder maps them to runtime `instanceId`. Do not use `spec: unknown`. `ParametricLine` interchange is polylines and optional limit bands.
+- chart engines (`ChartEngine` in `src/models/chartEngines.ts` is the closed engine set). `defineModel` charts are `ModelChartDeclaration`: a data-only union discriminated on `engine:` over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`) in `services/comfort/charts/kinds/types.ts`. Specs never include Plotly `build`. `Custom` is omitted from `defineModel`. An optional `type` names a built-in or extended chart type, is preserved on the presentation instance, and must stay on that same engine/spec pair. Family modules use `FrontendChartDeclaration` / `ComfortModelBuilder`. Chart ids live on each declaration’s `charts` entries (`id`); the builder maps them to runtime `instanceId`. Do not use `spec: unknown`. `ParametricLine` interchange is polylines and optional limit bands.
 - compare-input identifiers
 - chart modes and model-output identifiers
 - modifier identifiers (`ModifierId`, modifier `PhysicalQuantityId` slots)
@@ -279,10 +279,9 @@ A change in this frontend is done when:
 
 ## Output Registry
 
-Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, Explore, Time-series). Analysis and Time-series table/engine metadata lives under `src/models/output/`:
+Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, Explore, Time-series). Closed chart engines live in `src/models/chartEngines.ts` (`ChartEngine`, instance presentation types, and capability defaults). Discriminated engine specs live in `services/comfort/charts/kinds/types.ts`. Chart ids are derived from `charts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances. Analysis and Time-series table/profile metadata lives under `src/models/output/`:
 
 - `tableLayouts.ts` — `TableType.Analysis` / `TimeSeries`. Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`.
-- `chartKinds.ts` — closed chart engines (`ChartEngine`), instance presentation types, and capability defaults. Discriminated engine specs live in `services/comfort/charts/kinds/types.ts`. Chart ids are derived from `charts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances.
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 
 `ChartBuildResult` (including legend view-models) and Time-series `simulation.charts` declarations live in `src/services/comfort/charts/` (`chartBuildResult.ts`, `simulationCharts.ts`). Time-series editor and Plotly-typed chart view models live in `src/state/timeSeries/viewModels.ts`; pure Time-series declaration contracts stay in `src/models/timeSeries.ts`. Site shell branding/links live in `src/components/siteShellConfig.ts`.

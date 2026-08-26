@@ -1,5 +1,5 @@
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
-import { ChartEngine } from "../../../../models/output/chartKinds";
+import { ChartEngine } from "../../../../models/chartEngines";
 import type { UnitSystem as UnitSystemType } from "../../../../models/units";
 import type { SimulationChartDeclaration } from "../simulationCharts";
 

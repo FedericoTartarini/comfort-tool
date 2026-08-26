@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartEngine } from "../../../../models/output/chartKinds";
+import { ChartEngine } from "../../../../models/chartEngines";
 import { CalculationSource } from "../../../../models/calculationMetadata";
 import { UnitSystem } from "../../../../models/units";
 import type { SimulationChartDeclaration } from "../simulationCharts";

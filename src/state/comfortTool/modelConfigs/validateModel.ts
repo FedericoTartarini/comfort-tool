@@ -2,7 +2,7 @@ import { type ModelId as ModelIdType } from "../../../models/modelIds";
 import {
   ChartEngine,
   modelAllowsCustomCharts,
-} from "../../../models/output/chartKinds";
+} from "../../../models/chartEngines";
 import {
   TableType,
   type ModelTables,

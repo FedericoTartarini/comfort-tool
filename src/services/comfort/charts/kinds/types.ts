@@ -8,7 +8,7 @@ import {
   ChartEngine,
   type ChartInstanceCapabilities,
   type ModelChartEngine,
-} from "../../../../models/output/chartKinds";
+} from "../../../../models/chartEngines";
 import type { ChartAxisQuantityId } from "../../../../models/quantities";
 import type { GridModelChartSpec } from "../gridModelCharts";
 import type { ChartRange } from "../types";

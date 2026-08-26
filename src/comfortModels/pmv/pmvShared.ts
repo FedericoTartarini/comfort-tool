@@ -48,7 +48,7 @@ import {
   isRecord,
   type ChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
-import { ChartEngine } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/chartEngines";
 import { TableType } from "../../models/output/tableLayouts";
 import { ZoneToken } from "../../models/zoneTokens";
 import {

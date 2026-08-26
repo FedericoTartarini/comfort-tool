@@ -1,7 +1,7 @@
 import type { ModelChartSource } from "../../../../models/chartSource";
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import type { ChartBuildResult } from "../chartBuildResult";
-import { ChartEngine } from "../../../../models/output/chartKinds";
+import { ChartEngine } from "../../../../models/chartEngines";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type {
   ChartBuildContext,

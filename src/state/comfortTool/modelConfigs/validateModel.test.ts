@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { ModelId } from "../../../models/modelIds";
-import { ChartEngine } from "../../../models/output/chartKinds";
+import { ChartEngine } from "../../../models/chartEngines";
 import { TableType } from "../../../models/output/tableLayouts";
 import { WorkspaceId } from "../../../models/workspaces";
 import {

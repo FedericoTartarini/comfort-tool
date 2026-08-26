@@ -8,7 +8,7 @@ import {
   ModelOutputKey,
   type ModelOutput,
 } from "../models/modelCapabilities";
-import { ChartEngine } from "../models/output/chartKinds";
+import { ChartEngine } from "../models/chartEngines";
 import { TableType } from "../models/output/tableLayouts";
 import { WorkspaceId } from "../models/workspaces";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/quantities";

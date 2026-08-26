@@ -13,7 +13,7 @@ import {
 import { ThermalZone } from "../../models/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
 import { StandardId, WorkspaceId } from "../../models/workspaces";
-import { ChartEngine } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/chartEngines";
 import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,

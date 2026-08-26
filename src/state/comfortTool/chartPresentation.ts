@@ -30,7 +30,7 @@ import type {
   ModelCalculationCache,
   ModelOutputSettings,
 } from "./types";
-import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
+import type { ChartInstanceDeclaration } from "../../models/chartEngines";
 
 export function getEffectiveChartBaselineInputId(
   settings: ModelOutputSettings,

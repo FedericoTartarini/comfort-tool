@@ -42,7 +42,7 @@ import {
   WorkspaceId,
   supportsStandardWorkspace,
 } from "../../../models/workspaces";
-import { ChartEngine } from "../../../models/output/chartKinds";
+import { ChartEngine } from "../../../models/chartEngines";
 import { TableType } from "../../../models/output/tableLayouts";
 import {
   comfortModelConfigs,

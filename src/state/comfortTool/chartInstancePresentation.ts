@@ -1,8 +1,8 @@
-import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
+import type { ChartInstanceDeclaration } from "../../models/chartEngines";
 import {
   resolveChartCapabilities,
   type ChartInstanceCapabilities,
-} from "../../models/output/chartKinds";
+} from "../../models/chartEngines";
 import type { ChartEngineRegistration } from "../../services/comfort/charts/kinds/types";
 
 export interface ChartInstancePanelView {

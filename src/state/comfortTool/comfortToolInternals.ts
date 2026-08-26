@@ -3,7 +3,7 @@ import {
   inputOrder,
   type InputId as InputIdType,
 } from "../../models/inputSlots";
-import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
+import type { ChartInstanceDeclaration } from "../../models/chartEngines";
 import type { ModelId as ModelIdType } from "../../models/modelIds";
 import { primaryInputOrder, type ChartAxisQuantityId } from "../../models/quantities";
 import {

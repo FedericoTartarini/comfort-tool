@@ -10,7 +10,7 @@ import { InputId } from "../models/inputSlots";
 
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../models/modelCapabilities";
-import { ChartEngine } from "../models/output/chartKinds";
+import { ChartEngine } from "../models/chartEngines";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
