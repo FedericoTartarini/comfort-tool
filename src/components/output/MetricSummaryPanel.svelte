@@ -6,7 +6,7 @@
   import type {
     MetricSummaryGroupViewModel,
     MetricSummaryItemViewModel,
-  } from "../../models/output/tableLayouts";
+  } from "../../models/tableTypes";
   import {
     layoutMetricSummaryGroups,
     layoutMetricSummaryItems,

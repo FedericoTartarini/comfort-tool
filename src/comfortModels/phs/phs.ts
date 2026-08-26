@@ -14,7 +14,7 @@ import { ThermalZone } from "../../models/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
 import { StandardId, WorkspaceId } from "../../models/workspaces";
 import { ChartEngine } from "../../models/chartEngines";
-import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
+import { TableType, type TableRowSpec } from "../../models/tableTypes";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PHS_RECTAL_TEMPERATURE_LIMIT_C,

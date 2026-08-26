@@ -6,7 +6,7 @@ import {
 import {
   TableType,
   type ModelTables,
-} from "../../../models/output/tableLayouts";
+} from "../../../models/tableTypes";
 import {
   supportsTimeSeriesWorkspace,
   type WorkspaceId,

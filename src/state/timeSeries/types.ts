@@ -3,7 +3,7 @@ import type {
   TimeSeriesChartViewModel,
   TimeSeriesEditorViewModel,
 } from "./viewModels";
-import type { MetricSummaryItemViewModel } from "../../models/output/tableLayouts";
+import type { MetricSummaryItemViewModel } from "../../models/tableTypes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import type { TimeSeriesModelId } from "./modelConfigs";
 

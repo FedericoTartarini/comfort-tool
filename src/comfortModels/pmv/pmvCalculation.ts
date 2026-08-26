@@ -20,7 +20,7 @@ import { AirSpeedControlMode, OptionKey } from "../../models/inputModes";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
 import type { ComplianceFeedback } from "../../models/modelCapabilities";
-import type { TableRowSpec } from "../../models/output/tableLayouts";
+import type { TableRowSpec } from "../../models/tableTypes";
 import type { ResultCellViewModel } from "../../models/output/resultSections";
 import { ThermalZone } from "../../models/thermalZone";
 import {

@@ -49,7 +49,7 @@ import {
   type ChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
 import { ChartEngine } from "../../models/chartEngines";
-import { TableType } from "../../models/output/tableLayouts";
+import { TableType } from "../../models/tableTypes";
 import { ZoneToken } from "../../models/zoneTokens";
 import {
   buildPmvResultRows,

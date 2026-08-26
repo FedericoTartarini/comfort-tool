@@ -15,7 +15,7 @@ import {
   supportsStandardWorkspace,
 } from "../workspaces";
 import { FieldChartProfileKind } from "./fieldChartProfile";
-import { TableType } from "./tableLayouts";
+import { TableType } from "../tableTypes";
 
 describe("output catalog", () => {
   it("defines six chart engines with defaults", () => {

@@ -26,7 +26,7 @@ import type {
   StandardId as StandardIdType,
   WorkspaceId as WorkspaceIdType,
 } from "../../models/workspaces";
-import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
+import { TableType, type TableRowSpec } from "../../models/tableTypes";
 import {
   createTemperatureModeOptionHandler,
 } from "../../services/comfort/controls/temperatureControl";

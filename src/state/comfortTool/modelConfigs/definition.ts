@@ -11,7 +11,7 @@ import type {
 } from "../../../models/modelCapabilities";
 import type { ModelChartInstances } from "../../../models/chartEngines";
 import type { FieldChartProfile } from "../../../models/output/fieldChartProfile";
-import type { ModelTables } from "../../../models/output/tableLayouts";
+import type { ModelTables } from "../../../models/tableTypes";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import type {
   StandardId as StandardIdType,

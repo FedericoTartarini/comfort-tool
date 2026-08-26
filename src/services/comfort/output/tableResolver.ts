@@ -5,7 +5,7 @@ import type {
   MetricSummaryGroupViewModel,
   MetricSummaryItemViewModel,
   TableDeclaration,
-} from "../../../models/output/tableLayouts";
+} from "../../../models/tableTypes";
 import type { ResultSectionViewModel } from "../../../models/output/resultSections";
 import { buildResultSection } from "./resultSections";
 

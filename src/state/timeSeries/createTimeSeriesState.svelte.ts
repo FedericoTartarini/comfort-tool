@@ -3,7 +3,7 @@ import {
   buildTimeSeriesEditorViewModel,
   type TimeSeriesChartViewModel,
 } from "./viewModels";
-import type { MetricSummaryItemViewModel } from "../../models/output/tableLayouts";
+import type { MetricSummaryItemViewModel } from "../../models/tableTypes";
 import { buildMetricSummaryTable } from "../../services/comfort/output/tableResolver";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
 import { getComfortModelConfig, getModelSimulationOutput } from "../comfortTool/modelConfigs";

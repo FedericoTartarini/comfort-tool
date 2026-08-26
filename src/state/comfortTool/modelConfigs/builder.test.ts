@@ -7,7 +7,7 @@ import {
 } from "../../../models/quantities";
 import { WorkspaceId } from "../../../models/workspaces";
 import { ChartEngine } from "../../../models/chartEngines";
-import { TableType } from "../../../models/output/tableLayouts";
+import { TableType } from "../../../models/tableTypes";
 import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import {
   ModelOutputKey,

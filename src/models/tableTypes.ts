@@ -1,6 +1,6 @@
-import type { InputId as InputIdType } from "../inputSlots";
-import type { UnitSystem as UnitSystemType } from "../units";
-import type { ResultCellViewModel } from "../../state/comfortTool/types";
+import type { InputId as InputIdType } from "./inputSlots";
+import type { UnitSystem as UnitSystemType } from "./units";
+import type { ResultCellViewModel } from "./output/resultSections";
 
 export const TableType = {
   Analysis: "analysis",

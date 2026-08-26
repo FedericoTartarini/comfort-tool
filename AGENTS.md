@@ -279,9 +279,8 @@ A change in this frontend is done when:
 
 ## Output Registry
 
-Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, Explore, Time-series). Closed chart engines live in `src/models/chartEngines.ts` (`ChartEngine`, instance presentation types, and capability defaults). Discriminated engine specs live in `services/comfort/charts/kinds/types.ts`. Chart ids are derived from `charts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances. Analysis and Time-series table/profile metadata lives under `src/models/output/`:
+Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, Explore, Time-series). Closed chart engines live in `src/models/chartEngines.ts` (`ChartEngine`, instance presentation types, and capability defaults). Table types live in `src/models/tableTypes.ts` (`TableType.Analysis` / `TimeSeries`). Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`. Discriminated engine specs live in `services/comfort/charts/kinds/types.ts`. Chart ids are derived from `charts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances. Field-chart profile metadata lives under `src/models/output/`:
 
-- `tableLayouts.ts` — `TableType.Analysis` / `TimeSeries`. Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`.
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 
 `ChartBuildResult` (including legend view-models) and Time-series `simulation.charts` declarations live in `src/services/comfort/charts/` (`chartBuildResult.ts`, `simulationCharts.ts`). Time-series editor and Plotly-typed chart view models live in `src/state/timeSeries/viewModels.ts`; pure Time-series declaration contracts stay in `src/models/timeSeries.ts`. Site shell branding/links live in `src/components/siteShellConfig.ts`.

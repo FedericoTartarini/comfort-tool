@@ -56,7 +56,7 @@ import type { ChartInstanceDeclaration } from "../../../models/chartEngines";
 import {
   TableType,
   type ModelTables,
-} from "../../../models/output/tableLayouts";
+} from "../../../models/tableTypes";
 import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
 import {
   modelChartSpecMatchesEngine,

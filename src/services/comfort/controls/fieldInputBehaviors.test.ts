@@ -13,7 +13,7 @@ import { UnitSystem } from "../../../models/units";
 import { WorkspaceId } from "../../../models/workspaces";
 import { ModelId } from "../../../models/modelIds";
 import { ChartEngine } from "../../../models/chartEngines";
-import { TableType } from "../../../models/output/tableLayouts";
+import { TableType } from "../../../models/tableTypes";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/comfortTool/modelConfigs/builder";
 import "../../../state/comfortTool/modelConfigs";
 import { convertMassFromSi } from "../../units/physicalQuantities";
