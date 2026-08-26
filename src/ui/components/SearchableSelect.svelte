@@ -3,7 +3,7 @@
 <script lang="ts">
   import { Button, Heading } from "flowbite-svelte";
   import { ChevronDownOutline, ChevronUpOutline } from "flowbite-svelte-icons";
-  import { clickOutside } from "../../utils/clickOutside";
+  import { clickOutside } from "../utils/clickOutside";
 
   type SelectOption<TValue> = {
     name: string | number;

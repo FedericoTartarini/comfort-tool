@@ -13,7 +13,7 @@ This repository contains the active product frontend at the repository root, whi
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices (`0c`, `0t`, `0q`, …) follow that file, including registry contribution, `defineModel`, and allowed deletions.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. Do not implement from it or restore its authoring model.
 - **This file** describes the **current** tree and execution rules. When a Plan slice deletes or replaces something still named here (preset factories, the parallel `ChartInstanceId` tree, `spec: unknown`, exact `comfortModelOrder` share maps), **the Plan wins**. Do not put those back to “match AGENTS.md”.
-- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`src/utils/` into `ui/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
+- Slice discipline: do only the named Phase ID. Do not add unrelated new models during the cutover.
 - The product is not deployed. There is no share or URL compatibility requirement.
 - After a slice lands, update this file, `CLAUDE.md`, and `docs/` in the same change so current-state rules match the code.
 
@@ -31,6 +31,7 @@ src/
       siteShellConfig.ts   site branding and footer/header links
     routes/                client router
     views/                 page composition only
+    utils/                 UI actions (`clickOutside`)
   catalog/                 centralized domain constants and metadata (including zone tokens)
   engines/
     comfort/               shared comfort helpers, request/axis adapters, charts

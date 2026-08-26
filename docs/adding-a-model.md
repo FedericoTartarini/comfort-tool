@@ -17,7 +17,7 @@ edit `src/ui/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. `src/ui/components/` is the live components tree. `src/ui/routes/` is the live client router. `src/ui/views/` is the live page-composition tree. Remaining Plan §4 ui folder (`utils/`) is not yet moved.
+`26-06-29-architecture-brief.md`. `src/ui/components/` is the live components tree. `src/ui/routes/` is the live client router. `src/ui/views/` is the live page-composition tree. `src/ui/utils/` is the live UI-actions tree.
 Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`. Catalog lives at `src/catalog/`. Engines live at `src/engines/`.
 
 ## Recipe
@@ -94,6 +94,7 @@ src/
                      site shell branding/links (`siteShellConfig.ts`)
     routes/          client router
     views/           page composition
+    utils/           UI actions (`clickOutside`)
   catalog/           system quantity seed, ModelId, ChartEngine, TableType,
                      modifiers, workspace ids, zone tokens;
                      Time-series declaration contracts (`timeSeries.ts`);
