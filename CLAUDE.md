@@ -31,7 +31,7 @@ Frontend-only — no backend in this repo.
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices follow that file.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. It may stay in the repo as history; do not implement from it, and do not treat “leave the brief unchanged” as a reason to block Plan work.
 - **This file** describes **current** code. When a Plan slice deletes presets, the parallel `ChartInstanceId` tree, or `spec: unknown`, the Plan wins. Do not restore application-layer `*Dto` types or `src/catalog/comfortDtos.ts` to match older sentences here.
-- Do only the named Phase ID. Do not migrate remaining Plan §4 folders (`src/routes/`, `src/views/`, `src/utils/` into `ui/`) unless the task is that slice. Do not add unrelated new models during the cutover.
+- Do only the named Phase ID. Do not migrate remaining Plan §4 folders (`src/views/`, `src/utils/` into `ui/`) unless the task is that slice. Do not add unrelated new models during the cutover.
 
 ## Source Layout
 
@@ -41,6 +41,7 @@ src/
   ui/
     components/     rendering and interaction (input-panel/, chart/, shared UI);
                     site shell branding/links (`siteShellConfig.ts`)
+    routes/         client router
   catalog/          centralized domain constants and metadata (physical quantities, zone tokens, model IDs, units, etc.)
   engines/
     comfort/        shared comfort helpers, request/axis adapters, charts

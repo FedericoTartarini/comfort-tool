@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Card, Heading } from "flowbite-svelte";
   import { ExclamationCircleOutline } from "flowbite-svelte-icons";
-  import { defaultAppRoute } from "../state/workspace/routeDefinitions";
+  import { defaultAppRoute } from "../../state/workspace/routeDefinitions";
 </script>
 
 <div class="mx-auto w-full max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">

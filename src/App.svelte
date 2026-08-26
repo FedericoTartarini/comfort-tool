@@ -9,7 +9,7 @@
     navigateToUrl,
     registerWorkspaceNavigation,
     route,
-  } from "./routes/router";
+  } from "./ui/routes/router";
   import { createWorkspaceNavigation } from "./state/workspace/createWorkspaceNavigation";
   import { provideWorkspaceContext } from "./state/workspace/context";
   import {
