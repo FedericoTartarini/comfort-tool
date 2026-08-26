@@ -9,12 +9,12 @@ import {
   type ParametricLineGeometry,
   type ParametricPolyline,
 } from "../../services/comfort/charts/kinds/types";
-import type { PmvRequest, PmvResponse } from "./pmvCalculation";
+import type { PmvRequest, PmvResponse } from "./calculation";
 import {
   readPmvRequestFromChartSource,
   readPmvRequestsByInput,
   sampleParametricDryBulbSi,
-} from "./pmvParametricShared";
+} from "./parametricShared";
 
 export const PmvSetSeriesId = {
   Set: "set",

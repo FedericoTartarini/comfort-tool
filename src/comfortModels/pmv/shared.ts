@@ -59,10 +59,10 @@ import {
   type PmvChartSource,
   type PmvRequest,
   type PmvResponse,
-} from "./pmvCalculation";
-import { createPmvDynamicFieldChartSpec, createPmvPsychrometricChartSpec } from "./pmvCharts";
-import { createPmvHeatLossParametricSpec } from "./pmvHeatLossSeries";
-import { createPmvSetParametricSpec } from "./pmvSetSeries";
+} from "./calculation";
+import { createPmvDynamicFieldChartSpec, createPmvPsychrometricChartSpec } from "./charts";
+import { createPmvHeatLossParametricSpec } from "./heatLossSeries";
+import { createPmvSetParametricSpec } from "./setSeries";
 
 const PMV_DYNAMIC_AXIS_FIELDS = [
   PhysicalQuantityId.DryBulbTemperature,

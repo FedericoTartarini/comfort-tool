@@ -1,15 +1,15 @@
 /**
- * ASHRAE 55 PMV/PPD model declaration and standard-specific calculation strategy.
+ * ISO 7730 Category B PMV/PPD declaration and standard-specific calculation strategy.
  */
 import {
   check_standard_compliance,
-  pmv_ppd_ashrae,
+  pmv_ppd,
   t_o,
 } from "jsthermalcomfort";
 
 import { ComfortStandard } from "../../models/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
-import { defaultPmvAshraeOptions } from "../../models/inputModes";
+import { defaultPmvIsoOptions } from "../../models/inputModes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
 import { StandardId, WorkspaceId } from "../../models/workspaces";
@@ -23,22 +23,23 @@ import {
   createPmvComplianceBands,
   createPmvComplianceCaption,
   createPmvModelConfig,
-  parsePmvAshraeOptions,
+  parsePmvIsoOptions,
   pmvExploreOutputs,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
-} from "./pmvShared";
-import { getPmvComplianceFeedback } from "./pmvCalculation";
+} from "./shared";
+import { getPmvComplianceFeedback } from "./calculation";
 
-const ashraeComplianceBands = createPmvComplianceBands();
+const isoComplianceBands = createPmvComplianceBands();
 
-export const pmvAshraeAdapter: PmvStandardAdapter = {
-  modelId: ModelId.PmvAshrae,
-  resultStandard: ComfortStandard.Ashrae55PmvPpd,
-  clothingStandard: JsThermalComfortStandard.ASHRAE,
-  clothingInsulationMaxSi: 1.5,
-  supportsOccupantAirSpeedControl: true,
-  calculate: (request) => pmv_ppd_ashrae(
+export const pmvIsoAdapter: PmvStandardAdapter = {
+  modelId: ModelId.PmvIso,
+  resultStandard: ComfortStandard.Iso7730PmvPpd,
+  clothingStandard: JsThermalComfortStandard.ISO,
+  // ISO 7730 applicability includes the upper boundary of 2 clo.
+  clothingInsulationMaxSi: 2,
+  supportsOccupantAirSpeedControl: false,
+  calculate: (request) => pmv_ppd(
     request.tdb,
     request.tr,
     request.vr,
@@ -46,57 +47,56 @@ export const pmvAshraeAdapter: PmvStandardAdapter = {
     request.met,
     request.clo,
     request.wme,
+    JsThermalComfortStandard.ISO,
     {
       units: UnitSystem.SI,
       limit_inputs: false,
-      airspeed_control: request.occupantHasAirSpeedControl,
     },
   ),
   checkApplicability: (request) => check_standard_compliance(
-    JsThermalComfortStandard.ASHRAE,
+    JsThermalComfortStandard.ISO,
     {
       tdb: request.tdb,
       tr: request.tr,
       v: request.vr,
       met: request.met,
       clo: request.clo,
-      airspeed_control: request.occupantHasAirSpeedControl,
     },
   ),
   getOperativeTemperature: (request) => t_o(
     request.tdb,
     request.tr,
     request.vr,
-    JsThermalComfortStandard.ASHRAE,
+    JsThermalComfortStandard.ISO,
   ),
 };
 
-export const pmvAshraeDeclaration: PmvModelDeclaration = {
-  label: "PMV (ASHRAE-55)",
-  description: "ASHRAE 55 PMV/PPD with comfort zone overlays.",
-  adapter: pmvAshraeAdapter,
-  standardIds: [StandardId.Ashrae55],
+export const pmvIsoDeclaration: PmvModelDeclaration = {
+  label: "PMV (ISO 7730 Category B)",
+  description: "ISO 7730 Category B PMV/PPD with comfort zone overlays.",
+  adapter: pmvIsoAdapter,
+  standardIds: [StandardId.Iso7730],
   workspaceCapabilities: [WorkspaceId.Standard, WorkspaceId.Explore],
   exploreOutputs: pmvExploreOutputs,
   modifiers: [
     measuredAirSpeedModifier,
     morningClothingEstimateModifier,
-    createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE),
+    createDynamicClothingModifier(JsThermalComfortStandard.ISO),
     solarGainModifier,
   ],
-  psychrometricChartId: "pmv-ashrae-psychrometric",
-  dynamicChartId: "pmv-ashrae-dynamic-field",
-  heatLossChartId: "pmv-ashrae-heat-loss",
-  setChartId: "pmv-ashrae-set",
+  psychrometricChartId: "pmv-iso-psychrometric",
+  dynamicChartId: "pmv-iso-dynamic-field",
+  heatLossChartId: "pmv-iso-heat-loss",
+  setChartId: "pmv-iso-set",
   complianceProfile: {
     output: ModelOutputKey.Pmv,
-    bands: ashraeComplianceBands,
+    bands: isoComplianceBands,
     legendTitle: "PMV Zones",
-    caption: createPmvComplianceCaption("ASHRAE 55", ashraeComplianceBands),
+    caption: createPmvComplianceCaption("ISO 7730 Category B", isoComplianceBands),
     getFeedback: getPmvComplianceFeedback,
   },
-  defaultOptions: defaultPmvAshraeOptions,
-  parseOptions: parsePmvAshraeOptions,
+  defaultOptions: defaultPmvIsoOptions,
+  parseOptions: parsePmvIsoOptions,
 };
 
-export const pmvAshraeModelConfig = createPmvModelConfig(pmvAshraeDeclaration);
+export const pmvIsoModelConfig = createPmvModelConfig(pmvIsoDeclaration);

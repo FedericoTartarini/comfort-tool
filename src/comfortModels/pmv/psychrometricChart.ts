@@ -21,8 +21,8 @@ import {
   type PmvChartEvaluation,
   type PmvChartSource,
   type PmvRequest,
-} from "./pmvCalculation";
-import type { PmvStandardAdapter } from "./pmvShared";
+} from "./calculation";
+import type { PmvStandardAdapter } from "./shared";
 import {
   CONTOUR_GRID_RESOLUTION,
   axisHoverSpec,
@@ -32,7 +32,7 @@ import {
   type PmvChartViewDescriptorFactory,
   type PmvFieldChartConfig,
   type PmvInputOverlayBuilder,
-} from "./pmvChartShared";
+} from "./chartShared";
 import { buildClosedBoundaryPolygon } from "../../services/comfort/charts/boundaryRegionEngine";
 import { calculateRelativeHumidityFromHumidityRatio } from "../../services/comfort/derivations";
 

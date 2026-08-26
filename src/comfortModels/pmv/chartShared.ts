@@ -35,8 +35,8 @@ import {
   type PmvChartEvaluation,
   type PmvChartSource,
   type PmvResponse,
-} from "./pmvCalculation";
-import type { PmvModelDeclaration, PmvStandardAdapter } from "./pmvShared";
+} from "./calculation";
+import type { PmvModelDeclaration, PmvStandardAdapter } from "./shared";
 
 export const CONTOUR_GRID_RESOLUTION = 50;
 

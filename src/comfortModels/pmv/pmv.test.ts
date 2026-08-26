@@ -32,19 +32,19 @@ import {
   pmvAshraeAdapter,
   pmvAshraeDeclaration,
   pmvAshraeModelConfig,
-} from "./pmvAshrae";
+} from "./ashrae";
 import {
   pmvIsoAdapter,
   pmvIsoDeclaration,
   pmvIsoModelConfig,
-} from "./pmvIso";
+} from "./iso";
 import {
   createPmvComplianceCaption,
   createPmvModelConfig,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
-} from "./pmvShared";
-import { createDynamicViewDescriptor } from "./pmvDynamicChart";
+} from "./shared";
+import { createDynamicViewDescriptor } from "./dynamicChart";
 import {
   calculatePmvModel,
   derivePmvAnalysisOutputs,
@@ -52,7 +52,7 @@ import {
   type PmvChartSource,
   type PmvRequest,
   type PmvResponse,
-} from "./pmvCalculation";
+} from "./calculation";
 
 const baseRequest: PmvRequest = {
   tdb: 25,

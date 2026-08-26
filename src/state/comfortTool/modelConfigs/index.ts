@@ -6,8 +6,8 @@ import type {
   RuntimeComfortModelDefinition,
   SimulationOutputDeclaration,
 } from "./definition";
-import { pmvAshraeModelConfig } from "../../../comfortModels/pmv/pmvAshrae";
-import { pmvIsoModelConfig } from "../../../comfortModels/pmv/pmvIso";
+import { pmvAshraeModelConfig } from "../../../comfortModels/pmv/ashrae";
+import { pmvIsoModelConfig } from "../../../comfortModels/pmv/iso";
 import { utciModelConfig } from "../../../comfortModels/utci/utci";
 import { adaptiveAshraeModelConfig } from "../../../comfortModels/adaptive/adaptiveAshrae";
 import { adaptiveEnModelConfig } from "../../../comfortModels/adaptive/adaptiveEn";

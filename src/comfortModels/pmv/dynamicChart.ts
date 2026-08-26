@@ -8,13 +8,13 @@ import {
   tryEvaluatePmvForChart,
   type PmvChartSource,
   type PmvResponse,
-} from "./pmvCalculation";
-import type { PmvModelDeclaration } from "./pmvShared";
+} from "./calculation";
+import type { PmvModelDeclaration } from "./shared";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import {
   CONTOUR_GRID_RESOLUTION,
   type PmvChartViewDescriptorFactory,
-} from "./pmvChartShared";
+} from "./chartShared";
 
 export const createDynamicViewDescriptor: PmvChartViewDescriptorFactory = (
   declaration: PmvModelDeclaration,

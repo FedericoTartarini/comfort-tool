@@ -14,7 +14,7 @@ import { buildModelParametricLineChart } from "../../services/comfort/charts/kin
 import {
   calculatePmvSetOutputs,
   createPmvSetParametricSpec,
-} from "./pmvSetSeries";
+} from "./setSeries";
 
 function createContext(): ChartBuildContext {
   return {

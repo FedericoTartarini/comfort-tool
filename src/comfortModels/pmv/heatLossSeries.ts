@@ -7,12 +7,12 @@ import {
   type ParametricLineGeometry,
   type ParametricPolyline,
 } from "../../services/comfort/charts/kinds/types";
-import type { PmvRequest, PmvResponse } from "./pmvCalculation";
+import type { PmvRequest, PmvResponse } from "./calculation";
 import {
   readPmvRequestFromChartSource,
   readPmvRequestsByInput,
   sampleParametricDryBulbSi,
-} from "./pmvParametricShared";
+} from "./parametricShared";
 
 /** ISO 7730 conversion from met to W/m². */
 export const PMV_MET_TO_HEAT_FLUX = 58.15;

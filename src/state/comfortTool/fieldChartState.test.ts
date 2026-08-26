@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { adaptiveAshraeModelConfig } from "../../comfortModels/adaptive/adaptiveAshrae";
-import { pmvAshraeModelConfig } from "../../comfortModels/pmv/pmvAshrae";
+import { pmvAshraeModelConfig } from "../../comfortModels/pmv/ashrae";
 import { utciModelConfig } from "../../comfortModels/utci/utci";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { WorkspaceId } from "../../models/workspaces";

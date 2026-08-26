@@ -10,7 +10,7 @@ import {
 } from "../../../comfortModels/adaptive/adaptiveEn";
 import { heatIndexZonesList } from "../../../comfortModels/heatIndex";
 import { humidexZonesList } from "../../../comfortModels/humidex";
-import { pmvZonesList } from "../../../comfortModels/pmv/pmvCalculation";
+import { pmvZonesList } from "../../../comfortModels/pmv/calculation";
 import { calculateUtci, utciZonesList } from "../../../comfortModels/utci/utci";
 import { windChillZonesList } from "../../../comfortModels/windChill";
 import { ComfortStandard } from "../../../models/calculationMetadata";

@@ -4,7 +4,7 @@ import { adaptiveAshraeZonesList } from "../comfortModels/adaptive/adaptiveAshra
 import { adaptiveEnZonesList } from "../comfortModels/adaptive/adaptiveEn";
 import { heatIndexZonesList } from "../comfortModels/heatIndex";
 import { humidexZonesList } from "../comfortModels/humidex";
-import { pmvZonesList } from "../comfortModels/pmv/pmvCalculation";
+import { pmvZonesList } from "../comfortModels/pmv/calculation";
 import { utciZonesList } from "../comfortModels/utci/utciCalculation";
 import { windChillZonesList } from "../comfortModels/windChill";
 import {

@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   pmvAshraeAdapter,
-} from "../../../comfortModels/pmv/pmvAshrae";
-import { pmvIsoAdapter } from "../../../comfortModels/pmv/pmvIso";
+} from "../../../comfortModels/pmv/ashrae";
+import { pmvIsoAdapter } from "../../../comfortModels/pmv/iso";
 import {
   createPmvRequestAxisAdapter,
   type PmvRequest,
-} from "../../../comfortModels/pmv/pmvCalculation";
+} from "../../../comfortModels/pmv/calculation";
 import {
   utciAxisAdapter,
   type UtciRequest,

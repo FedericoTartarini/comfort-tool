@@ -2,7 +2,7 @@ import {
   inputOrder,
   type InputId as InputIdType,
 } from "../../models/inputSlots";
-import type { PmvChartSource, PmvRequest } from "./pmvCalculation";
+import type { PmvChartSource, PmvRequest } from "./calculation";
 
 export const PARAMETRIC_TDB_RANGE_SI = { min: 10, max: 40 } as const;
 export const PARAMETRIC_TDB_POINTS = 31;

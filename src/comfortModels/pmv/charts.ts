@@ -6,11 +6,11 @@ import type {
   CustomChartEngineSpec,
   DynamicFieldGeometrySpec,
 } from "../../services/comfort/charts/kinds/types";
-import type { PmvChartSource, PmvResponse } from "./pmvCalculation";
-import type { PmvModelDeclaration } from "./pmvShared";
-import { buildPmvFieldChart, type PmvChartViewDescriptorFactory } from "./pmvChartShared";
-import { createPsychrometricViewDescriptor } from "./pmvPsychrometricChart";
-import { createDynamicViewDescriptor } from "./pmvDynamicChart";
+import type { PmvChartSource, PmvResponse } from "./calculation";
+import type { PmvModelDeclaration } from "./shared";
+import { buildPmvFieldChart, type PmvChartViewDescriptorFactory } from "./chartShared";
+import { createPsychrometricViewDescriptor } from "./psychrometricChart";
+import { createDynamicViewDescriptor } from "./dynamicChart";
 
 function resolvePmvChartView(
   instanceId: string,

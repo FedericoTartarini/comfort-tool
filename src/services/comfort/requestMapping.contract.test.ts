@@ -4,7 +4,7 @@ import { adaptiveRequestAdapter } from "../../comfortModels/adaptive/adaptiveCal
 import { heatIndexRequestAdapter } from "../../comfortModels/heatIndex";
 import { humidexRequestAdapter } from "../../comfortModels/humidex";
 import { phsRequestAdapter } from "../../comfortModels/phs/phs";
-import { pmvRequestAdapter } from "../../comfortModels/pmv/pmvCalculation";
+import { pmvRequestAdapter } from "../../comfortModels/pmv/calculation";
 import { utciRequestAdapter } from "../../comfortModels/utci/utciCalculation";
 import { windChillRequestAdapter } from "../../comfortModels/windChill";
 import { type FieldRequestAdapter } from "./requestMapping";

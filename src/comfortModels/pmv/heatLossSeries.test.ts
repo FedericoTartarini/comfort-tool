@@ -15,7 +15,7 @@ import {
   PMV_MET_TO_HEAT_FLUX,
   calculatePmvHeatLossComponents,
   createPmvHeatLossParametricSpec,
-} from "./pmvHeatLossSeries";
+} from "./heatLossSeries";
 
 function createContext(): ChartBuildContext {
   return {

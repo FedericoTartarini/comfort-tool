@@ -40,7 +40,7 @@ import {
   convertTemperatureDeltaFromSi,
   formatDisplayValue,
 } from "../../services/units";
-import type { PmvStandardAdapter } from "./pmvShared";
+import type { PmvStandardAdapter } from "./shared";
 
 export const PMV_PSYCHROMETRIC_VIEW = {
   tdbRangeSi: { min: 10, max: 40 },

@@ -18,15 +18,15 @@ import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 
 import {
   pmvExploreOutputs,
-} from "../../comfortModels/pmv/pmvShared";
+} from "../../comfortModels/pmv/shared";
 import {
   calculatePmvModel,
   type PmvChartSource,
-} from "../../comfortModels/pmv/pmvCalculation";
+} from "../../comfortModels/pmv/calculation";
 import {
   pmvAshraeAdapter,
   pmvAshraeModelConfig,
-} from "../../comfortModels/pmv/pmvAshrae";
+} from "../../comfortModels/pmv/ashrae";
 import {
   buildUtciStressChart,
 } from "../../comfortModels/utci/utciCharts";

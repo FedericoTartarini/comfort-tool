@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   pmvAshraeDeclaration,
   pmvAshraeModelConfig,
-} from "../../../comfortModels/pmv/pmvAshrae";
+} from "../../../comfortModels/pmv/ashrae";
 import { CalculationSource } from "../../../models/calculationMetadata";
 import type { PlotTrace } from "../../plotlyTypes";
 import { PhysicalQuantityId } from "../../../models/quantities";

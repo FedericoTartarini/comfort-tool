@@ -15,8 +15,8 @@ import {
   adaptiveEnZonesList,
 } from "./adaptive/adaptiveEn";
 import type { AdaptiveResponse } from "./adaptive/adaptiveShared";
-import { pmvAshraeModelConfig } from "./pmv/pmvAshrae";
-import { pmvZonesList, type PmvResponse } from "./pmv/pmvCalculation";
+import { pmvAshraeModelConfig } from "./pmv/ashrae";
+import { pmvZonesList, type PmvResponse } from "./pmv/calculation";
 import { phsModelConfig } from "./phs/phs";
 import { simulatePhs, calculatePhs } from "./phs/phsCalculation";
 import {
