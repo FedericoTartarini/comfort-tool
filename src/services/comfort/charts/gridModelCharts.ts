@@ -27,7 +27,7 @@ import {
   type BandedGridOutputEvaluation,
   type FieldChartInputGroup,
   type FieldChartLayoutSpec,
-} from "./chartEngine";
+} from "./fieldChartEngine";
 import { getBaselineInputEntry } from "../helpers";
 import {
   CHART_COORDINATE_TOLERANCE,

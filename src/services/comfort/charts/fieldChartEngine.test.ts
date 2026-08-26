@@ -18,7 +18,7 @@ import {
   buildFieldChart,
   createBandedGridStrategy,
   GridBandRenderStrategy,
-} from "./chartEngine";
+} from "./fieldChartEngine";
 import { resolveInteractiveDynamicGridPoints } from "./types";
 
 interface TestPayload {

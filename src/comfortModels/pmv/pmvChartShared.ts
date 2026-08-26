@@ -21,7 +21,7 @@ import {
   type FieldChartAxisSpec,
   type FieldChartInputGroup,
   type FieldChartRenderContext,
-} from "../../services/comfort/charts/chartEngine";
+} from "../../services/comfort/charts/fieldChartEngine";
 import { buildHoverTemplate } from "../../services/comfort/charts/plotlyBuilders";
 import type {
   ChartAxisScale,

@@ -15,7 +15,7 @@ import {
   buildFieldChart,
   createBandedGridStrategy,
   type FieldChartInputGroup,
-} from "../../services/comfort/charts/chartEngine";
+} from "../../services/comfort/charts/fieldChartEngine";
 import {
   applyDynamicAxisCoordinates,
 } from "../../services/comfort/charts/dynamicAxisPayload";

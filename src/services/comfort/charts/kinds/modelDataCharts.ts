@@ -20,7 +20,7 @@ import {
   buildFieldChart,
   createBandedGridStrategy,
   createBoundaryRegionStrategy,
-} from "../chartEngine";
+} from "../fieldChartEngine";
 import {
   buildTimeSeriesLineTrace,
   paddedSeriesRange,

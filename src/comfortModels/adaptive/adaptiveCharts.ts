@@ -15,7 +15,7 @@ import {
   buildFieldChart,
   createBoundaryRegionStrategy,
   type FieldChartInputGroup,
-} from "../../services/comfort/charts/chartEngine";
+} from "../../services/comfort/charts/fieldChartEngine";
 import type { ChartAxisScale } from "../../services/comfort/charts/types";
 import { buildHoverTemplate } from "../../services/comfort/charts/plotlyBuilders";
 import { getBaselineInputEntry, roundValue } from "../../services/comfort/helpers";
