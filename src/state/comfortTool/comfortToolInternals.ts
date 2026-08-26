@@ -29,13 +29,13 @@ import {
 } from "./modifierState";
 import { normalizeCompareInputIds } from "./shareState";
 import type {
-  ComfortToolStateSlice,
+  AnalysisStateSlice,
   InputModifierDraftEntry,
   QuantitiesByInputState,
   PendingModelSwitch,
 } from "./types";
 
-export interface ComfortToolInternals {
+export interface AnalysisInternals {
   invalidateModel: (
     modelId: ModelIdType,
     options?: { keepErrorMessage?: boolean },
@@ -52,8 +52,8 @@ export interface ComfortToolInternals {
   ) => ReturnType<typeof buildInputModifierControls>;
   getCurrentSelectedChartInstanceId: () => string;
   getCurrentChartInstance: () => ChartInstanceDeclaration;
-  getCurrentModelCache: () => ComfortToolStateSlice["ui"]["calculationCacheByModel"][ModelIdType];
-  getCurrentOutputSettings: () => ComfortToolStateSlice["ui"]["outputSettingsByModel"][ModelIdType];
+  getCurrentModelCache: () => AnalysisStateSlice["ui"]["calculationCacheByModel"][ModelIdType];
+  getCurrentOutputSettings: () => AnalysisStateSlice["ui"]["outputSettingsByModel"][ModelIdType];
   getEffectiveChartBaselineInputId: () => InputIdType;
   applyBehaviorPatch: (modelId: ModelIdType, patch: BehaviorPatch) => void;
   getCurrentDynamicAxisPair: () => { xAxis: ChartAxisQuantityId; yAxis: ChartAxisQuantityId };
@@ -61,9 +61,9 @@ export interface ComfortToolInternals {
   getCurrentFieldChartProfile: () => FieldChartProfile;
 }
 
-export function createComfortToolInternals(
-  state: ComfortToolStateSlice,
-): ComfortToolInternals {
+export function createAnalysisInternals(
+  state: AnalysisStateSlice,
+): AnalysisInternals {
   function invalidateModel(
     modelId: ModelIdType,
     options?: { keepErrorMessage?: boolean },

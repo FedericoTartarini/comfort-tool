@@ -6,7 +6,7 @@ import {
   type AppRouteDefinition,
 } from "./routeDefinitions";
 import { readShareStateFromUrl } from "../comfortTool/shareState";
-import type { ComfortToolController } from "../comfortTool/types";
+import type { AnalysisController } from "../comfortTool/types";
 
 export interface WorkspaceNavigationTarget {
   readonly url: URL;
@@ -38,7 +38,7 @@ function navigationKey(url: URL): string {
 }
 
 export function createWorkspaceNavigation(
-  toolState: ComfortToolController,
+  toolState: AnalysisController,
   port: WorkspaceNavigationPort,
 ): WorkspaceNavigationCoordinator {
   let pendingTransition: PendingWorkspaceTransition | null = null;

@@ -22,7 +22,7 @@ import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
-import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../state/comfortTool/createComfortToolState.svelte";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 import {
   applyInputModifierChain,
@@ -81,7 +81,7 @@ const standardCases = [
 ] as const;
 
 function setPmvInputs(
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
   values: Partial<PrimaryInputState>,
 ): void {
   Object.assign(toolState.state.quantitiesByInput[InputId.Input1], values);
@@ -89,7 +89,7 @@ function setPmvInputs(
 
 function calculateRegisteredModel(
   adapter: PmvStandardAdapter,
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
   effectiveQuantitiesByInput = toolState.state.quantitiesByInput,
 ): { result: PmvResponseDto; chartSource: PmvChartSourceDto } {
   const calculation = calculatePmvModel(createModelCalculationContext({
@@ -108,7 +108,7 @@ function calculateWithDynamicClothingModifier(
   clothingSi: number,
   metSi: number,
 ): { result: PmvResponseDto; effectiveClo: number } {
-  const toolState = createComfortToolState();
+  const toolState = createAnalysisState();
   const base = {
     ...toolState.state.quantitiesByInput[InputId.Input1],
     [PhysicalQuantityId.ClothingInsulation]: clothingSi,
@@ -201,7 +201,7 @@ describe("PMV standard declarations", () => {
   });
 
   it("never enables occupant air-speed control for ISO requests", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const { chartSource } = calculateRegisteredModel(pmvIsoAdapter, toolState);
 
     expect(chartSource.inputs[InputId.Input1]?.occupantHasAirSpeedControl)
@@ -211,7 +211,7 @@ describe("PMV standard declarations", () => {
   it.each(standardCases)(
     "$label exposes its clothing and occupant-air-speed capabilities",
     ({ adapter, config }) => {
-      const toolState = createComfortToolState();
+      const toolState = createAnalysisState();
       toolState.state.ui.selectedModel = config.id;
       const controls = toolState.selectors.getInputControls();
       const clothingControl = controls.find(
@@ -279,7 +279,7 @@ describe("PMV standard declarations", () => {
   });
 
   it("keeps standard identity out of requests and chart sources", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     setPmvInputs(toolState, {
       [PhysicalQuantityId.DryBulbTemperature]: 26,
       [PhysicalQuantityId.MeanRadiantTemperature]: 26,
@@ -309,7 +309,7 @@ describe("PMV standard declarations", () => {
     ({ adapter }) => {
       const { result, chartSource } = calculateRegisteredModel(
         adapter,
-        createComfortToolState(),
+        createAnalysisState(),
       );
       const request = chartSource.inputs[InputId.Input1];
       if (!request) throw new Error("Missing PMV request for Input 1.");
@@ -429,7 +429,7 @@ describe("PMV standard declarations", () => {
     ({ adapter, config, declaration }) => {
       const { chartSource } = calculateRegisteredModel(
         adapter,
-        createComfortToolState(),
+        createAnalysisState(),
       );
       const context = {
         unitSystem: UnitSystem.SI,
@@ -475,7 +475,7 @@ describe("PMV roots and compliance", () => {
         calculate: () => ({ pmv: Number.NaN, ppd: Number.NaN }),
     };
 
-    expect(() => calculateRegisteredModel(adapter, createComfortToolState()))
+    expect(() => calculateRegisteredModel(adapter, createAnalysisState()))
       .toThrow(/PMV.*non-finite/i);
   });
 
@@ -484,7 +484,7 @@ describe("PMV roots and compliance", () => {
     ({ adapter }) => {
       const { chartSource } = calculateRegisteredModel(
         adapter,
-        createComfortToolState(),
+        createAnalysisState(),
       );
       const request = chartSource.inputs[InputId.Input1];
       const zone = chartSource.comfortZonesByInput[InputId.Input1];
@@ -511,7 +511,7 @@ describe("PMV roots and compliance", () => {
     };
     const { chartSource } = calculateRegisteredModel(
       adapter,
-      createComfortToolState(),
+      createAnalysisState(),
     );
     const coolEdge = chartSource.comfortZonesByInput[InputId.Input1]?.coolEdge ?? [];
 
@@ -525,7 +525,7 @@ describe("PMV roots and compliance", () => {
     };
     const { chartSource } = calculateRegisteredModel(
       adapter,
-      createComfortToolState(),
+      createAnalysisState(),
     );
     const zone = chartSource.comfortZonesByInput[InputId.Input1];
 
@@ -583,10 +583,10 @@ describe("PMV roots and compliance", () => {
       adapter: unexpectedFailureAdapter,
     }).calculate(
       createModelCalculationContext({
-        effectiveQuantitiesByInput: createComfortToolState().state.quantitiesByInput,
-        auxiliaryQuantitiesByInput: createComfortToolState().state.auxiliaryQuantitiesByInput,
+        effectiveQuantitiesByInput: createAnalysisState().state.quantitiesByInput,
+        auxiliaryQuantitiesByInput: createAnalysisState().state.auxiliaryQuantitiesByInput,
         modelInputs: {},
-        options: createComfortToolState().state.ui.modelOptionsByModel[ModelId.PmvAshrae],
+        options: createAnalysisState().state.ui.modelOptionsByModel[ModelId.PmvAshrae],
       }),
       [InputId.Input1],
     )).toThrow("broken adapter");
@@ -599,7 +599,7 @@ describe("PMV roots and compliance", () => {
       const bands = declaration.complianceProfile.bands;
       const { chartSource } = calculateRegisteredModel(
         adapter,
-        createComfortToolState(),
+        createAnalysisState(),
       );
       const request = chartSource.inputs[InputId.Input1];
       const zone = chartSource.comfortZonesByInput[InputId.Input1];
@@ -627,7 +627,7 @@ describe("PMV roots and compliance", () => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const { chartSource } = calculateRegisteredModel(
       pmvAshraeAdapter,
-      createComfortToolState(),
+      createAnalysisState(),
     );
     const zone = chartSource.comfortZonesByInput[InputId.Input1];
     if (!zone) throw new Error("Missing PMV comfort zone.");
@@ -642,7 +642,7 @@ describe("PMV roots and compliance", () => {
   it("stores derived psychrometric slots on chartSource", () => {
     const { chartSource } = calculateRegisteredModel(
       pmvAshraeAdapter,
-      createComfortToolState(),
+      createAnalysisState(),
     );
     const derived = chartSource.derivedSlotsByInput?.[InputId.Input1];
     expect(derived?.[PhysicalQuantityId.DerivedHumidityRatio]).toBeTypeOf("number");
@@ -650,7 +650,7 @@ describe("PMV roots and compliance", () => {
   });
 
   it("reuses cached PMV results at the baseline dynamic-chart coordinate", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const { result, chartSource } = calculateRegisteredModel(pmvAshraeAdapter, toolState);
     const calculateSpy = vi.spyOn(pmvAshraeAdapter, "calculate");
     try {

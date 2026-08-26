@@ -17,12 +17,12 @@ import {
   createActiveModifiersByInput,
 } from "./modifierState";
 import { createCalculationManager } from "./calculationManager.svelte";
-import { createComfortToolActions } from "./comfortToolActions";
-import { createComfortToolInternals } from "./comfortToolInternals";
-import { createComfortToolSelectors } from "./comfortToolSelectors";
-import type { ComfortToolController, ComfortToolStateSlice } from "./types";
+import { createAnalysisActions } from "./comfortToolActions";
+import { createAnalysisInternals } from "./comfortToolInternals";
+import { createAnalysisSelectors } from "./comfortToolSelectors";
+import type { AnalysisController, AnalysisStateSlice } from "./types";
 
-export function createComfortToolState(): ComfortToolController {
+export function createAnalysisState(): AnalysisController {
   const quantitiesByInput = $state(createQuantitiesByInput());
   const auxiliaryQuantitiesByInput = $state(createAuxiliaryQuantitiesByInput());
   const modelInputsByModel = $state(createModelInputsByModel());
@@ -44,7 +44,7 @@ export function createComfortToolState(): ComfortToolController {
     pendingModelSwitch: null,
   });
 
-  const state: ComfortToolStateSlice = {
+  const state: AnalysisStateSlice = {
     quantitiesByInput,
     auxiliaryQuantitiesByInput,
     modelInputsByModel,
@@ -52,7 +52,7 @@ export function createComfortToolState(): ComfortToolController {
     ui,
   };
 
-  const internals = createComfortToolInternals(state);
+  const internals = createAnalysisInternals(state);
 
   const { scheduleCalculation: scheduleCalculationInternal } = createCalculationManager(
     state,
@@ -60,13 +60,13 @@ export function createComfortToolState(): ComfortToolController {
     internals.getEffectiveQuantitiesByInput,
   );
 
-  const actions = createComfortToolActions(
+  const actions = createAnalysisActions(
     state,
     internals,
     scheduleCalculationInternal,
   );
 
-  const selectors = createComfortToolSelectors(state, internals, {
+  const selectors = createAnalysisSelectors(state, internals, {
     onSelectBaseline: actions.setChartBaselineInputId,
     onSelectXAxis: actions.setDynamicXAxis,
     onSelectYAxis: actions.setDynamicYAxis,

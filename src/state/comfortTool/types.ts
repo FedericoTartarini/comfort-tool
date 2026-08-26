@@ -254,7 +254,7 @@ export type UiState = {
   pendingModelSwitch: PendingModelSwitch | null;
 };
 
-export type ComfortToolStateSlice = {
+export type AnalysisStateSlice = {
   quantitiesByInput: QuantitiesByInputState;
   auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
   modelInputsByModel: ModelInputsByModelState;
@@ -262,7 +262,7 @@ export type ComfortToolStateSlice = {
   ui: UiState;
 };
 
-export type ComfortToolActions = {
+export type AnalysisActions = {
   setSelectedModel: (
     nextModel: ModelIdType,
     options?: { validateRanges?: boolean; schedule?: boolean },
@@ -314,7 +314,7 @@ export type ComfortToolActions = {
   cancelModelSwitch: () => void;
 };
 
-export type ComfortToolSelectors = {
+export type AnalysisSelectors = {
   getVisibleInputIds: () => InputIdType[];
   getInputControls: () => InputControlViewModel[];
   getInputPanelViewModel: (
@@ -338,10 +338,10 @@ export type ComfortToolSelectors = {
   getPendingModelSwitch: () => PendingModelSwitch | null;
 };
 
-export type ComfortToolController = {
-  state: ComfortToolStateSlice;
-  actions: ComfortToolActions;
-  selectors: ComfortToolSelectors;
+export type AnalysisController = {
+  state: AnalysisStateSlice;
+  actions: AnalysisActions;
+  selectors: AnalysisSelectors;
 };
 
 export type {

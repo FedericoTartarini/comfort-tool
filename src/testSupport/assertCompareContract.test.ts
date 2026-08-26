@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ModelId } from "../models/comfortModels";
 import { InputId } from "../models/inputSlots";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
-import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../state/comfortTool/createComfortToolState.svelte";
 import { comfortModelOrder } from "../state/comfortTool/modelConfigs";
 import {
   assertCompareContract,
@@ -30,7 +30,7 @@ describe("assertCompareContract", () => {
   }
 
   it("does not skip a third input that produced no result", async () => {
-    const controller = createComfortToolState();
+    const controller = createAnalysisState();
     await assertCompareContract(ModelId.PmvAshrae, controller);
     expect(controller.selectors.getVisibleInputIds()).toEqual([
       InputId.Input1,

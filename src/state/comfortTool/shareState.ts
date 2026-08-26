@@ -47,7 +47,7 @@ import {
 } from "../../models/physicalQuantities";
 import type {
   ActiveModifiersByInputState,
-  ComfortToolStateSlice,
+  AnalysisStateSlice,
   ModelOutputSettings,
 } from "./types";
 type ShareAuxiliaryQuantitiesByInputState = Record<
@@ -744,7 +744,7 @@ function toSparseShareWire(snapshot: ShareStateSnapshot): ShareStateSnapshot {
 }
 
 export function createShareStateSnapshot(
-  state: ComfortToolStateSlice,
+  state: AnalysisStateSlice,
 ): ShareStateSnapshot {
   return {
     version: SHARE_STATE_VERSION,
@@ -800,7 +800,7 @@ export function createShareStateSnapshot(
 }
 
 export function applyShareSnapshotToState(
-  state: ComfortToolStateSlice,
+  state: AnalysisStateSlice,
   snapshot: ShareStateSnapshot,
 ) {
   state.ui.selectedModel = snapshot.selectedModel;

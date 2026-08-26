@@ -8,7 +8,7 @@ import {
   getAppRouteByPath,
   isCalculationRoute,
 } from "./routeDefinitions";
-import { createComfortToolState } from "../comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../comfortTool/createComfortToolState.svelte";
 import { buildShareUrl } from "../comfortTool/shareState";
 import { createWorkspaceNavigation } from "./createWorkspaceNavigation";
 
@@ -26,7 +26,7 @@ function requireCalculationRoute(path: string) {
 
 describe("workspace navigation coordination", () => {
   it("preserves an eligible model while enforcing the route workspace", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const navigate = vi.fn();
     const coordinator = createWorkspaceNavigation(toolState, { navigate });
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
@@ -38,7 +38,7 @@ describe("workspace navigation coordination", () => {
   });
 
   it("selects an ineligible route's default model without duplicating route lists", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const coordinator = createWorkspaceNavigation(toolState, { navigate: vi.fn() });
     toolState.actions.setSelectedModel(ModelId.Utci, {
       validateRanges: false,
@@ -51,7 +51,7 @@ describe("workspace navigation coordination", () => {
   });
 
   it("keeps model, workspace, and navigation atomic across warning cancel and confirm", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const navigate = vi.fn();
     const coordinator = createWorkspaceNavigation(toolState, { navigate });
     const explore = requireCalculationRoute("/Explore/");
@@ -91,7 +91,7 @@ describe("workspace navigation coordination", () => {
   });
 
   it("lets pathname constraints win over a valid v1 share snapshot", () => {
-    const source = createComfortToolState();
+    const source = createAnalysisState();
     source.actions.setSelectedModel(ModelId.Utci, {
       validateRanges: false,
       schedule: false,
@@ -106,7 +106,7 @@ describe("workspace navigation coordination", () => {
       "http://localhost:5174/ASHRAE-55/",
     ));
 
-    const target = createComfortToolState();
+    const target = createAnalysisState();
     const coordinator = createWorkspaceNavigation(target, { navigate: vi.fn() });
     expect(coordinator.prepareUrl(sharedUrl, { validateRanges: false })).toBe(true);
 
@@ -124,7 +124,7 @@ describe("workspace navigation coordination", () => {
   });
 
   it("keeps SI input and model presentation state across the Time-series placeholder", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const coordinator = createWorkspaceNavigation(toolState, { navigate: vi.fn() });
     toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature] = 21.5;
     toolState.state.ui.outputSettingsByModel[ModelId.PmvAshrae].xAxis =

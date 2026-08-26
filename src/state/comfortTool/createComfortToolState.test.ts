@@ -22,11 +22,11 @@ import {
 import type { PmvChartSourceDto, PmvResponseDto } from "../../comfortModels/pmv/pmvCalculation";
 import type { UtciResponseDto } from "../../comfortModels/utci/utci";
 import { PhsQuantityId, type PhsResponseDto } from "../../models/phs";
-import { createComfortToolState } from "./createComfortToolState.svelte";
+import { createAnalysisState } from "./createComfortToolState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 function syncWorkspaceToModel(
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
   modelId: ModelId,
 ) {
   const capabilities = comfortModelConfigs[modelId].workspaceCapabilities;
@@ -37,7 +37,7 @@ function syncWorkspaceToModel(
   );
 }
 
-async function waitForIdle(toolState: ReturnType<typeof createComfortToolState>) {
+async function waitForIdle(toolState: ReturnType<typeof createAnalysisState>) {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -51,13 +51,13 @@ async function waitForIdle(toolState: ReturnType<typeof createComfortToolState>)
 }
 
 function getOutputSettings(
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
   modelId = toolState.state.ui.selectedModel,
 ) {
   return toolState.state.ui.outputSettingsByModel[modelId];
 }
 
-function getProfileBadgeControl(toolState: ReturnType<typeof createComfortToolState>) {
+function getProfileBadgeControl(toolState: ReturnType<typeof createAnalysisState>) {
   return toolState.selectors.getChartControlsViewModel().profileBadge;
 }
 
@@ -81,7 +81,7 @@ const solarModifierFixture = [
 ] as const;
 
 function populateSolarModifier(
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
   inputId: InputId,
 ) {
   for (const [fieldKey, value] of solarModifierFixture) {
@@ -96,9 +96,9 @@ function populateSolarModifier(
   }
 }
 
-describe("createComfortToolState", () => {
+describe("createAnalysisState", () => {
   it("initializes model chart defaults and independent PMV variants", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     expect(toolState.state.ui.selectedModel).toBe(ModelId.PmvAshrae);
     expect(toolState.state.ui.selectedChartInstanceByModel).toEqual({
@@ -128,7 +128,7 @@ describe("createComfortToolState", () => {
   });
 
   it("keeps base air speed separate from reversible per-input modifier state", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const baseInput1 = toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.RelativeAirSpeed];
     const baseInput2 = toolState.state.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed];
 
@@ -203,7 +203,7 @@ describe("createComfortToolState", () => {
   it("projects a canonical-SI draft without mutating state and commits it atomically", async () => {
     const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
     try {
-      const toolState = createComfortToolState();
+      const toolState = createAnalysisState();
       toolState.state.ui.compareEnabled = true;
       toolState.state.auxiliaryQuantitiesByInput[InputId.Input3]
         [PhysicalQuantityId.ModifierMeasuredAirSpeed] = 0.9;
@@ -268,7 +268,7 @@ describe("createComfortToolState", () => {
   });
 
   it("rejects an invalid modifier draft without partially writing valid entries", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const draft = toolState.selectors.getInputModifierDraft();
     const measured = draft.find(({ modifierId }) => (
       modifierId === ModifierId.MeasuredAirSpeed
@@ -302,7 +302,7 @@ describe("createComfortToolState", () => {
   });
 
   it("stores disabled modifier configuration without invalidating or recalculating", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
     const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
@@ -334,7 +334,7 @@ describe("createComfortToolState", () => {
   });
 
   it("applies Morning then Dynamic Clothing per input and recomputes the remaining chain", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.compareEnabled = true;
     toolState.state.ui.compareInputIds = [InputId.Input1, InputId.Input2];
     toolState.actions.updateInput(
@@ -426,7 +426,7 @@ describe("createComfortToolState", () => {
   });
 
   it("exposes Dynamic Clothing only for the two PMV declarations", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     for (const modelId of comfortModelOrder) {
       toolState.state.ui.selectedModel = modelId;
@@ -439,7 +439,7 @@ describe("createComfortToolState", () => {
   });
 
   it("disables an active incomplete modifier without clearing its other inputs", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const baseRadiantTemperature = toolState.state.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.MeanRadiantTemperature];
     populateSolarModifier(toolState, InputId.Input1);
@@ -472,7 +472,7 @@ describe("createComfortToolState", () => {
   });
 
   it("keeps stored and effective SI values invariant when display units change", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
@@ -539,7 +539,7 @@ describe("createComfortToolState", () => {
   ] as const)(
     "opens %s on its declared default mode",
     (modelId, expectedMode) => {
-      const toolState = createComfortToolState();
+      const toolState = createAnalysisState();
       toolState.state.ui.selectedModel = modelId;
       toolState.actions.setActiveWorkspace(
         expectedMode === FieldChartProfileKind.Explore
@@ -553,7 +553,7 @@ describe("createComfortToolState", () => {
   );
 
   it("provides one active mode config for every registered selectable chart", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.compareEnabled = true;
     await waitForIdle(toolState);
 
@@ -614,7 +614,7 @@ describe("createComfortToolState", () => {
   });
 
   it("constrains PHS exposure history to its declared Explore output", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.Phs2023;
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
 
@@ -640,7 +640,7 @@ describe("createComfortToolState", () => {
   });
 
   it("recalculates PHS when a model quantity changes without affecting other models", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setSelectedModel(ModelId.Humidex);
     syncWorkspaceToModel(toolState, ModelId.Humidex);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
@@ -682,7 +682,7 @@ describe("createComfortToolState", () => {
   });
 
   it("keeps ASHRAE and ISO mode settings independent from chart selection", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const ashraeChart = toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae];
 
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
@@ -704,7 +704,7 @@ describe("createComfortToolState", () => {
   });
 
   it("falls back to Input 1 without erasing a temporarily hidden baseline", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
@@ -726,7 +726,7 @@ describe("createComfortToolState", () => {
   });
 
   it("builds mode captions and baseline-specific Compliance feedback", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
@@ -749,7 +749,7 @@ describe("createComfortToolState", () => {
   });
 
   it("keeps mode and baseline controls on fixed views and exposes declared axes", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.compareEnabled = true;
 
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Compliance);
@@ -803,7 +803,7 @@ describe("createComfortToolState", () => {
   });
 
   it("rebuilds chart presentation without invalidating or replacing ready calculations", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
 
@@ -918,7 +918,7 @@ describe("createComfortToolState", () => {
   });
 
   it("rebuilds Adaptive regions from the selected cached comparison baseline", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setSelectedModel(ModelId.AdaptiveAshrae);
     await waitForIdle(toolState);
     toolState.state.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed] = 1.2;
@@ -973,7 +973,7 @@ describe("createComfortToolState", () => {
   });
 
   it("retains independent mode, axes, output, bands, baseline, and chart selections", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
@@ -1036,7 +1036,7 @@ describe("createComfortToolState", () => {
   });
 
   it("round-trips field-chart settings in the strict v1 share snapshot", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
     toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
@@ -1065,7 +1065,7 @@ describe("createComfortToolState", () => {
   });
 
   it("keeps Adaptive on one Compliance chart with only its two semantic axes", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.AdaptiveAshrae;
     syncWorkspaceToModel(toolState, ModelId.AdaptiveAshrae);
     const settings = getOutputSettings(toolState);
@@ -1098,7 +1098,7 @@ describe("createComfortToolState", () => {
   });
 
   it("deduplicates legend entries by label and color without changing geometry bands", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
 
     const assertions = [
@@ -1135,7 +1135,7 @@ describe("createComfortToolState", () => {
   });
 
   it("exposes coupled UTCI temperature axes in both directions", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.Utci;
     syncWorkspaceToModel(toolState, ModelId.Utci);
     toolState.state.ui.selectedChartInstanceByModel[ModelId.Utci] = "utci-dynamic-field";
@@ -1170,7 +1170,7 @@ describe("createComfortToolState", () => {
   it.each([ModelId.PmvAshrae, ModelId.PmvIso])(
     "exposes coupled operative-temperature axes for %s",
     (modelId) => {
-      const toolState = createComfortToolState();
+      const toolState = createAnalysisState();
       toolState.state.ui.selectedModel = modelId;
       toolState.state.ui.selectedChartInstanceByModel[modelId] = modelId === ModelId.PmvIso
         ? "pmv-iso-dynamic-field"
@@ -1192,7 +1192,7 @@ describe("createComfortToolState", () => {
   );
 
   it("does not store the unsupported occupant-control option for ISO PMV", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.PmvIso;
     const initialOptions = {
       ...toolState.state.ui.modelOptionsByModel[ModelId.PmvIso],
@@ -1211,7 +1211,7 @@ describe("createComfortToolState", () => {
   });
 
   it("allows ISO clothing values above 1.5 clo and flags them when switching to ASHRAE", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.PmvIso;
 
     toolState.actions.updateInput(
@@ -1237,7 +1237,7 @@ describe("createComfortToolState", () => {
   });
 
   it("completes a boundary-confirmed switch to Wind Chill and refreshes its cache", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     toolState.actions.setSelectedModel(ModelId.WindChill);
 
@@ -1277,7 +1277,7 @@ describe("createComfortToolState", () => {
   });
 
   it("restores each model's own dynamic axes when switching models", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const pmvSettings = getOutputSettings(toolState);
     pmvSettings.xAxis = PhysicalQuantityId.MeanRadiantTemperature;
     pmvSettings.yAxis = PhysicalQuantityId.RelativeHumidity;
@@ -1296,7 +1296,7 @@ describe("createComfortToolState", () => {
   });
 
   it("rejects invalid selected-model options at the calculation boundary", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     delete toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae][
       OptionKey.HumidityInputMode
     ];
@@ -1312,7 +1312,7 @@ describe("createComfortToolState", () => {
   });
 
   it("preserves ready model caches when switching between models", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
@@ -1333,7 +1333,7 @@ describe("createComfortToolState", () => {
   });
 
   it("keeps ASHRAE and ISO PMV calculations in isolated registry caches", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
@@ -1366,7 +1366,7 @@ describe("createComfortToolState", () => {
   });
 
   it("stales every model cache when an option patch rewrites shared inputs", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     toolState.actions.updateInput(InputId.Input1, InputControlId.Temperature, "28");
     toolState.actions.updateInput(InputId.Input1, InputControlId.RadiantTemperature, "20");
@@ -1406,7 +1406,7 @@ describe("createComfortToolState", () => {
   });
 
   it("stales only the active model cache for a pure option patch", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
@@ -1432,7 +1432,7 @@ describe("createComfortToolState", () => {
   });
 
   it("invalidates supporting model caches only when modifier state is effective", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
     toolState.actions.setSelectedModel(ModelId.PmvIso);
@@ -1497,7 +1497,7 @@ describe("createComfortToolState", () => {
   });
 
   it("feeds one effective PMV request to results and chart generation in operative mode", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setModelOption(OptionKey.TemperatureMode, TemperatureMode.Operative);
     toolState.actions.updateInput(InputId.Input1, InputControlId.Temperature, "24");
     toolState.actions.updateModifierInput(
@@ -1567,7 +1567,7 @@ describe("createComfortToolState", () => {
   });
 
   it("retains modifier configuration while unsupported models ignore and hide it", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
@@ -1599,7 +1599,7 @@ describe("createComfortToolState", () => {
   });
 
   it("stales all model caches after shared input updates and only refreshes the selected model", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
@@ -1623,7 +1623,7 @@ describe("createComfortToolState", () => {
   });
 
   it("rebuilds result and chart presentation on unit toggle without mutating cached SI results", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
 
     toolState.actions.setSelectedModel(ModelId.Utci);
     syncWorkspaceToModel(toolState, ModelId.Utci);
@@ -1655,7 +1655,7 @@ describe("createComfortToolState", () => {
   });
 
   it("skips recalculation when scheduleCalculation is called on a ready cache without force", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
     const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
@@ -1672,7 +1672,7 @@ describe("createComfortToolState", () => {
   });
 
   it("invalidates and recalculates when a primary quantity changes", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
     const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
@@ -1698,7 +1698,7 @@ describe("createComfortToolState", () => {
   });
 
   it("rebuilds chart markers after input changes instead of reusing memoized chart builds", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.DryBulbTemperature);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });

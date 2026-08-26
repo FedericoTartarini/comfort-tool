@@ -11,12 +11,12 @@
     toChartInstancePanelView,
     type ChartInstancePanelView,
   } from "../state/comfortTool/chartInstancePresentation";
-  import type { ComfortToolController } from "../state/comfortTool/types";
+  import type { AnalysisController } from "../state/comfortTool/types";
 
-  type ModelIdType = ComfortToolController["state"]["ui"]["selectedModel"];
+  type ModelIdType = AnalysisController["state"]["ui"]["selectedModel"];
 
   interface Props {
-    toolState: ComfortToolController;
+    toolState: AnalysisController;
     allowedModelIds: readonly ModelIdType[];
     onSelectModel: (modelId: ModelIdType) => void;
   }
@@ -25,7 +25,7 @@
 
   function toPanelView(
     instance: ReturnType<
-      ComfortToolController["selectors"]["getCurrentChartInstance"]
+      AnalysisController["selectors"]["getCurrentChartInstance"]
     >,
   ): ChartInstancePanelView {
     return toChartInstancePanelView(instance);

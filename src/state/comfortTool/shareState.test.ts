@@ -22,7 +22,7 @@ import { ModelOutputKey } from "../../models/modelCapabilities";
 
 import { UnitSystem } from "../../models/units";
 import { WorkspaceId } from "../../models/workspaces";
-import { createComfortToolState } from "./createComfortToolState.svelte";
+import { createAnalysisState } from "./createComfortToolState.svelte";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import {
   applyShareSnapshotToState,
@@ -82,7 +82,7 @@ function withModelOptions(
 
 describe("shareState strict v1 codec", () => {
   it("round-trips enabled, disabled-but-configured, unset, and per-input modifier state", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.auxiliaryQuantitiesByInput[InputId.Input1][
       PhysicalQuantityId.ModifierMeasuredAirSpeed
     ] = 0.6;
@@ -146,7 +146,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("round-trips a changed PHS quantity only under modelInputsByModel", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     expect(
       toolState.actions.updateModelQuantity(
         ModelId.Phs2023,
@@ -186,7 +186,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("round-trips all per-model field settings and explicit Infinity edges", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.PmvIso;
     toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae] =
       "pmv-ashrae-psychrometric";
@@ -260,7 +260,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("preserves both PHS chart IDs in strict v1 snapshots", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.Phs2023;
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
     toolState.actions.setSelectedChartInstance("phs-dynamic-field");
@@ -294,7 +294,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("round-trips built-in and edited UTF-8 labels through the codec and URL", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
     toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
 
@@ -339,7 +339,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("round-trips both Adaptive models and a transposed axis direction", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.AdaptiveAshrae;
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.OperativeTemperature);
     const snapshot = createShareStateSnapshot(toolState.state);
@@ -388,7 +388,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("applies a complete snapshot without reseeding any model settings", () => {
-    const original = createComfortToolState();
+    const original = createAnalysisState();
     original.state.ui.compareEnabled = true;
     original.state.ui.compareInputIds = [InputId.Input1, InputId.Input3];
     original.state.ui.activeInputId = InputId.Input3;
@@ -403,7 +403,7 @@ describe("shareState strict v1 codec", () => {
     ].baselineInputId = InputId.Input3;
 
     const snapshot = createShareStateSnapshot(original.state);
-    const restored = createComfortToolState();
+    const restored = createAnalysisState();
     applyShareSnapshotToState(restored.state, snapshot);
 
     expect(createShareStateSnapshot(restored.state)).toEqual(snapshot);
@@ -421,7 +421,7 @@ describe("shareState strict v1 codec", () => {
   it.each(Object.values(ModelId))(
     "rejects non-object and unknown-key options for %s",
     (modelId) => {
-      const current = createShareStateSnapshot(createComfortToolState().state);
+      const current = createShareStateSnapshot(createAnalysisState().state);
 
       expect(
         parseShareStateSnapshot(withModelOptions(current, modelId, null)),
@@ -449,7 +449,7 @@ describe("shareState strict v1 codec", () => {
   ] as const)(
     "rejects missing, empty, and invalid-enum options for %s",
     (modelId) => {
-      const current = createShareStateSnapshot(createComfortToolState().state);
+      const current = createShareStateSnapshot(createAnalysisState().state);
       const options = { ...current.models[modelId].options } as Record<
         string,
         string
@@ -478,7 +478,7 @@ describe("shareState strict v1 codec", () => {
   );
 
   it("rejects the unsupported occupant-control option for ISO PMV", () => {
-    const current = createShareStateSnapshot(createComfortToolState().state);
+    const current = createShareStateSnapshot(createAnalysisState().state);
 
     expect(
       parseShareStateSnapshot(
@@ -497,7 +497,7 @@ describe("shareState strict v1 codec", () => {
   ] as const)(
     "accepts only the exact empty options object for %s",
     (modelId) => {
-      const current = createShareStateSnapshot(createComfortToolState().state);
+      const current = createShareStateSnapshot(createAnalysisState().state);
 
       expect(
         parseShareStateSnapshot(withModelOptions(current, modelId, {})),
@@ -513,7 +513,7 @@ describe("shareState strict v1 codec", () => {
   );
 
   it("rejects non-canonical compare IDs and inconsistent active inputs", () => {
-    const current = createShareStateSnapshot(createComfortToolState().state);
+    const current = createShareStateSnapshot(createAnalysisState().state);
     const comparing = {
       ...current,
       compareEnabled: true,
@@ -556,7 +556,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("rejects unknown versions and unknown current-schema fields", () => {
-    const current = createShareStateSnapshot(createComfortToolState().state);
+    const current = createShareStateSnapshot(createAnalysisState().state);
     expect(parseShareStateSnapshot({ ...current, version: 2 })).toBeNull();
     expect(parseShareStateSnapshot({ ...current, version: 999 })).toBeNull();
     expect(parseShareStateSnapshot({ ...current, unknown: true })).toBeNull();
@@ -597,7 +597,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("strictly validates modifier keys, ranges, and enabled completeness", () => {
-    const current = createShareStateSnapshot(createComfortToolState().state);
+    const current = createShareStateSnapshot(createAnalysisState().state);
     const incomplete = structuredClone(current);
     incomplete.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain] =
       true;
@@ -651,7 +651,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("strictly validates output settings axes, output, bands, and baseline", () => {
-    const current = createShareStateSnapshot(createComfortToolState().state);
+    const current = createShareStateSnapshot(createAnalysisState().state);
 
     expect(
       parseShareStateSnapshot(
@@ -716,7 +716,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("rejects legacy chart wire keys selectedChart, chartSettings, and outputSettings.mode", () => {
-    const current = createShareStateSnapshot(createComfortToolState().state);
+    const current = createShareStateSnapshot(createAnalysisState().state);
 
     const legacySelectedChart = {
       ...current,
@@ -760,7 +760,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("seeds omitted registered models and rejects unknown model keys", () => {
-    const current = createShareStateSnapshot(createComfortToolState().state);
+    const current = createShareStateSnapshot(createAnalysisState().state);
     const missingIso = structuredClone(current);
     Reflect.deleteProperty(missingIso.models, ModelId.PmvIso);
 
@@ -808,7 +808,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("omits default model slices and unset model inputs on the wire", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const defaultSnapshot = createShareStateSnapshot(toolState.state);
     const defaultWire = decodeShareWire(serializeShareState(defaultSnapshot));
 
@@ -843,7 +843,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("recomputes derived displays after applying canonical shared inputs", () => {
-    const original = createComfortToolState();
+    const original = createAnalysisState();
     original.actions.setModelOption(
       OptionKey.HumidityInputMode,
       HumidityInputMode.DewPoint,
@@ -854,7 +854,7 @@ describe("shareState strict v1 codec", () => {
       "10",
     );
     const snapshot = createShareStateSnapshot(original.state);
-    const restored = createComfortToolState();
+    const restored = createAnalysisState();
 
     applyShareSnapshotToState(restored.state, snapshot);
     const humidityControl = restored.selectors
@@ -864,7 +864,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("restores modifier configuration even when the selected model does not support it", () => {
-    const original = createComfortToolState();
+    const original = createAnalysisState();
     original.state.ui.selectedModel = ModelId.Utci;
     original.state.auxiliaryQuantitiesByInput[InputId.Input1][
       PhysicalQuantityId.ModifierMeasuredAirSpeed
@@ -876,7 +876,7 @@ describe("shareState strict v1 codec", () => {
     const restoredSnapshot = deserializeShareState(
       serializeShareState(snapshot),
     );
-    const restored = createComfortToolState();
+    const restored = createAnalysisState();
 
     if (!restoredSnapshot)
       throw new Error("Expected a valid modifier snapshot.");
@@ -902,7 +902,7 @@ describe("shareState strict v1 codec", () => {
   });
 
   it("rejects legacy wire keys inputsByInput, modifierInputsByInput, and derivedByInput", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const snapshot = createShareStateSnapshot(
       toolState.state,
     ) as unknown as Record<string, unknown>;

@@ -7,15 +7,15 @@ import { ChartLegendKind } from "../../models/output/chartBuildResult";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import { buildChartControlsViewModel } from "./chartPresentation";
-import type { ComfortToolInternals } from "./comfortToolInternals";
+import type { AnalysisInternals } from "./comfortToolInternals";
 import {
   buildInputControlViewModels,
   buildInputPanelViewModel,
   type InputPanelActionCallbacks,
 } from "./inputPresentation";
 import type {
-  ComfortToolSelectors,
-  ComfortToolStateSlice,
+  AnalysisSelectors,
+  AnalysisStateSlice,
 } from "./types";
 
 export interface ChartControlCallbacks {
@@ -26,12 +26,12 @@ export interface ChartControlCallbacks {
   onApplyBands: (bands: readonly NumericBand[]) => boolean;
 }
 
-export function createComfortToolSelectors(
-  state: ComfortToolStateSlice,
-  internals: ComfortToolInternals,
+export function createAnalysisSelectors(
+  state: AnalysisStateSlice,
+  internals: AnalysisInternals,
   chartControlCallbacks: ChartControlCallbacks,
   inputPanelActionCallbacks: InputPanelActionCallbacks,
-): ComfortToolSelectors {
+): AnalysisSelectors {
   function getCurrentChartBuildResult() {
     const cache = internals.getCurrentModelCache();
     const config = internals.getActiveModelConfig();

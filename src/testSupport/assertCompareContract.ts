@@ -12,9 +12,9 @@ import {
 } from "../models/physicalQuantities";
 import { supportsStandardWorkspace, WorkspaceId } from "../models/workspaces";
 import { syncDerivedStateForInput } from "../services/comfort/syncState";
-import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../state/comfortTool/createComfortToolState.svelte";
 import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";
-import type { ComfortToolController } from "../state/comfortTool/types";
+import type { AnalysisController } from "../state/comfortTool/types";
 import {
   getGoldenInputOverrides,
   getGoldenModelInputOverrides,
@@ -25,7 +25,7 @@ export { getGoldenInputOverrides };
 const VISIBLE_INPUT_COUNTS = [1, 2, 3] as const;
 const SLOT_DRY_BULB_OFFSETS_C = [0, 1, 2] as const;
 
-async function waitForIdle(controller: ComfortToolController) {
+async function waitForIdle(controller: AnalysisController) {
   const modelId = controller.state.ui.selectedModel;
   for (let attempt = 0; attempt < 200; attempt += 1) {
     await Promise.resolve();
@@ -46,7 +46,7 @@ function failSilently(modelId: ModelIdType, detail: string): never {
 }
 
 async function configureVisibleInputs(
-  controller: ComfortToolController,
+  controller: AnalysisController,
   count: 1 | 2 | 3,
 ) {
   if (count === 1) {
@@ -69,7 +69,7 @@ async function configureVisibleInputs(
 }
 
 function applyGoldenInputs(
-  controller: ComfortToolController,
+  controller: AnalysisController,
   modelId: ModelIdType,
 ) {
   const overrides = getGoldenInputOverrides(modelId);
@@ -107,7 +107,7 @@ function applyGoldenInputs(
 }
 
 function assertTableColumnsFilled(
-  controller: ComfortToolController,
+  controller: AnalysisController,
   modelId: ModelIdType,
   visibleInputIds: readonly string[],
 ) {
@@ -129,7 +129,7 @@ function assertTableColumnsFilled(
 }
 
 function assertChartMarkers(
-  controller: ComfortToolController,
+  controller: AnalysisController,
   modelId: ModelIdType,
   visibleInputIds: readonly string[],
 ) {
@@ -160,7 +160,7 @@ function assertChartMarkers(
  */
 export async function assertCompareContract(
   modelId: ModelIdType,
-  controller: ComfortToolController = createComfortToolState(),
+  controller: AnalysisController = createAnalysisState(),
 ): Promise<void> {
   const config = comfortModelConfigs[modelId];
   controller.actions.setActiveWorkspace(

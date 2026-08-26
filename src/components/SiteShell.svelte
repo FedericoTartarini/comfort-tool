@@ -8,7 +8,7 @@
   import SiteFooter from "./SiteFooter.svelte";
   import SiteHeader from "./SiteHeader.svelte";
   import WorkspaceSidebar from "./WorkspaceSidebar.svelte";
-  import type { ComfortToolController } from "../state/comfortTool/types";
+  import type { AnalysisController } from "../state/comfortTool/types";
 
   interface NavigationItem {
     label: string;
@@ -16,7 +16,7 @@
   }
 
   interface Props {
-    toolState: ComfortToolController;
+    toolState: AnalysisController;
     activePath: string;
     showExportLink: boolean;
     homePath: string;

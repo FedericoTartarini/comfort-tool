@@ -46,7 +46,7 @@ import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOpti
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
 import { createModelCalculationContext } from "../../models/modelCalculation";
-import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../state/comfortTool/createComfortToolState.svelte";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 const pmvPayload = {
   tdb: 26,
@@ -72,7 +72,7 @@ function calculatePmvModelForTest(
   },
   occupantHasAirSpeedControl = true,
 ) {
-  const toolState = createComfortToolState();
+  const toolState = createAnalysisState();
   const visibleInputIds = Object.keys(inputs) as InputId[];
   for (const inputId of visibleInputIds) {
     const request = inputs[inputId];

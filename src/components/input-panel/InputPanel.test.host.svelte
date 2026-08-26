@@ -6,10 +6,10 @@
     ModelId,
     type ModelId as ModelIdType,
   } from "../../models/comfortModels";
-  import type { ComfortToolController } from "../../state/comfortTool/types";
+  import type { AnalysisController } from "../../state/comfortTool/types";
 
   interface Props {
-    toolState: ComfortToolController;
+    toolState: AnalysisController;
     allowedModelIds?: readonly ModelIdType[];
   }
 

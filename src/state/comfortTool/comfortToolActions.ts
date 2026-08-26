@@ -36,7 +36,7 @@ import {
   replaceExploreBands,
   selectExploreOutput,
 } from "./fieldChartState";
-import type { ComfortToolInternals } from "./comfortToolInternals";
+import type { AnalysisInternals } from "./comfortToolInternals";
 import {
   canEnableModifier,
   findModelModifier,
@@ -65,8 +65,8 @@ import {
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../models/physicalQuantities";
 import type {
-  ComfortToolActions,
-  ComfortToolStateSlice,
+  AnalysisActions,
+  AnalysisStateSlice,
   InputModifierDraftEntry,
 } from "./types";
 
@@ -74,11 +74,11 @@ export type ScheduleCalculation = (
   options?: { immediate?: boolean; force?: boolean },
 ) => void;
 
-export function createComfortToolActions(
-  state: ComfortToolStateSlice,
-  internals: ComfortToolInternals,
+export function createAnalysisActions(
+  state: AnalysisStateSlice,
+  internals: AnalysisInternals,
   scheduleCalculation: ScheduleCalculation,
-): ComfortToolActions {
+): AnalysisActions {
   function completeModelSelection(
     nextModel: ModelIdType,
     options?: { schedule?: boolean },

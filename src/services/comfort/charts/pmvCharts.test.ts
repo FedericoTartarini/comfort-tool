@@ -35,7 +35,7 @@ import {
   type ModelOutputKey as ModelOutputKeyType,
 } from "../../../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
-import { createComfortToolState } from "../../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../../state/comfortTool/createComfortToolState.svelte";
 import { convertFieldValueFromSi } from "../../units";
 import type { PlotlyChartResponseDto, PlotTraceDto } from "../../../models/comfortDtos";
 import { buildChartPlotly } from "../../../testSupport/modelChartTestHelpers";
@@ -62,7 +62,7 @@ function calculateModel(
   source: PmvChartSourceDto;
 } {
   const config = createPmvModelConfig(declaration);
-  const toolState = createComfortToolState();
+  const toolState = createAnalysisState();
   const stateInput = toolState.state.quantitiesByInput[InputId.Input1];
   stateInput[PhysicalQuantityId.DryBulbTemperature] = request.tdb;
   stateInput[PhysicalQuantityId.MeanRadiantTemperature] = request.tr;

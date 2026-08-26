@@ -19,7 +19,7 @@ import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { PhsPosture, PhsQuantityId } from "../models/phs";
 import { InputId } from "../models/inputSlots";
 import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";
-import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../state/comfortTool/createComfortToolState.svelte";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,
@@ -200,7 +200,7 @@ describe("golden regression — calculate via model config", () => {
 
 describe("golden regression — controller default primary inputs", () => {
   it("input1 defaults match catalog primary defaults", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const input1 = toolState.state.quantitiesByInput[InputId.Input1];
     expect(input1[PhysicalQuantityId.DryBulbTemperature]).toBe(26);
     expect(input1[PhysicalQuantityId.RelativeHumidity]).toBe(50);

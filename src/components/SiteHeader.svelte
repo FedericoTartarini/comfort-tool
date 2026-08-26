@@ -5,10 +5,10 @@
 
   import { siteBrand, siteHeaderLinks } from "../models/siteShellConfig";
   import { buildShareUrl } from "../state/comfortTool/shareState";
-  import type { ComfortToolController } from "../state/comfortTool/types";
+  import type { AnalysisController } from "../state/comfortTool/types";
 
   interface Props {
-    toolState: ComfortToolController;
+    toolState: AnalysisController;
     showExportLink: boolean;
     homePath: string;
     onOpenNavigation: () => void;

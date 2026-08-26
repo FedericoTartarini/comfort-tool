@@ -1,10 +1,10 @@
 import { getContext, setContext } from "svelte";
-import type { ComfortToolController } from "../comfortTool/types";
+import type { AnalysisController } from "../comfortTool/types";
 import type { WorkspaceNavigationCoordinator } from "./createWorkspaceNavigation";
 import type { TimeSeriesController } from "../timeSeries/types";
 
 export interface WorkspaceContext {
-  readonly toolState: ComfortToolController;
+  readonly toolState: AnalysisController;
   readonly navigation: WorkspaceNavigationCoordinator;
   readonly timeSeriesState: TimeSeriesController;
 }

@@ -119,7 +119,7 @@ Canonical state is SI. Calculations run in SI. Display converts through
 (`convertQuantityFromSi`). Control widgets stay generic.
 
 `App.svelte` constructs one Analysis controller
-(`createComfortToolState`) and one Time-series controller. Dashboard routes
+(`createAnalysisState`) and one Time-series controller. Dashboard routes
 share Analysis SI input, per-model chart memory, and calculation caches.
 Time-series does not read or schedule Analysis.
 

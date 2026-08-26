@@ -2,7 +2,7 @@
   import { onDestroy } from "svelte";
 
   import SiteShell from "./components/SiteShell.svelte";
-  import { createComfortToolState } from "./state/comfortTool/createComfortToolState.svelte";
+  import { createAnalysisState } from "./state/comfortTool/createComfortToolState.svelte";
   import ModelSwitchWarningModal from "./components/modals/ModelSwitchWarningModal.svelte";
   import {
     Router,
@@ -21,7 +21,7 @@
   import { WorkspaceId } from "./models/workspaces";
   import { createTimeSeriesState } from "./state/timeSeries/createTimeSeriesState.svelte";
 
-  const toolState = createComfortToolState();
+  const toolState = createAnalysisState();
   const timeSeriesState = createTimeSeriesState();
   const navigation = createWorkspaceNavigation(toolState, {
     navigate: navigateToUrl,

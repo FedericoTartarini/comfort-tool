@@ -9,7 +9,7 @@ import {
   TemperatureMode,
 } from "../../../models/inputModes";
 import { InputId } from "../../../models/inputSlots";
-import { createComfortToolState } from "../../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../../state/comfortTool/createComfortToolState.svelte";
 import {
   deriveRelativeHumidityFromDewPoint,
   deriveRelativeHumidityFromHumidityRatio,
@@ -18,7 +18,7 @@ import {
 } from "../derivations";
 
 function getControl(
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
   controlId: InputControlId,
 ) {
   const control = toolState.selectors.getInputControls().find(
@@ -30,7 +30,7 @@ function getControl(
 
 describe("input control ownership", () => {
   it("opts models into operative temperature without affecting ordinary temperature controls", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     expect(getControl(toolState, InputControlId.Temperature).menu?.title)
       .toBe("Temperature input");
 
@@ -41,7 +41,7 @@ describe("input control ownership", () => {
   });
 
   it("keeps Air and Operative edits reversible through the model option handler", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const input = toolState.state.quantitiesByInput[InputId.Input1];
     input[PhysicalQuantityId.DryBulbTemperature] = 26;
     input[PhysicalQuantityId.MeanRadiantTemperature] = 22;
@@ -118,7 +118,7 @@ describe("input control ownership", () => {
     displayUnits,
     expectedRh,
   }) => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const input = toolState.state.quantitiesByInput[InputId.Input1];
     input[PhysicalQuantityId.DryBulbTemperature] = 26;
 
@@ -143,7 +143,7 @@ describe("input control ownership", () => {
     ModelId.AdaptiveAshrae,
     ModelId.AdaptiveEn,
   ])("does not route %s temperature changes through PMV humidity behavior", (modelId) => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = modelId;
     const input = toolState.state.quantitiesByInput[InputId.Input1];
     input[PhysicalQuantityId.RelativeHumidity] = 63;
@@ -156,7 +156,7 @@ describe("input control ownership", () => {
   });
 
   it("throws for illegal or incomplete internal options instead of repairing them", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     expect(() => toolState.actions.setModelOption(
       OptionKey.TemperatureMode,
       "invalid-mode",
@@ -168,7 +168,7 @@ describe("input control ownership", () => {
     expect(() => toolState.selectors.getInputControls())
       .toThrow(/invalid options state/i);
 
-    const switchingToolState = createComfortToolState();
+    const switchingToolState = createAnalysisState();
     switchingToolState.state.ui.modelOptionsByModel[ModelId.WindChill][
       OptionKey.TemperatureMode
     ] = TemperatureMode.Air;

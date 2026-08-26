@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import { ModelId } from "../../models/comfortModels";
 import { InputControlId } from "../../models/inputControls";
 import { InputId } from "../../models/inputSlots";
-import { createComfortToolState } from "./createComfortToolState.svelte";
+import { createAnalysisState } from "./createComfortToolState.svelte";
 import {
   clampDisplayValue,
   normalizeInputFieldDisplayValue,
 } from "./inputPresentation";
 
 function getPanel(
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
   allowedModelIds: readonly ModelId[] = [toolState.state.ui.selectedModel],
 ) {
   return toolState.selectors.getInputPanelViewModel(allowedModelIds, vi.fn());
@@ -33,7 +33,7 @@ describe("input panel display-value projection", () => {
 describe("buildInputPanelViewModel", () => {
   it("projects tool options, Compare toggles, and field callbacks like chart controls", () => {
     const onSelectModel = vi.fn();
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const panel = toolState.selectors.getInputPanelViewModel(
       [ModelId.PmvAshrae, ModelId.Utci],
       onSelectModel,
@@ -61,7 +61,7 @@ describe("buildInputPanelViewModel", () => {
   });
 
   it("omits clothing builder and modifiers for models that do not declare them", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.Utci;
     const panel = getPanel(toolState);
 
@@ -72,7 +72,7 @@ describe("buildInputPanelViewModel", () => {
   });
 
   it("clamps committed field values in the projection, not the component", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     const panel = getPanel(toolState);
     const temperature = panel.fields.find(
       (field) => field.control.id === InputControlId.Temperature,

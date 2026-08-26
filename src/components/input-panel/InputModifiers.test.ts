@@ -9,7 +9,7 @@ import { ModelId } from "../../models/comfortModels";
 import { ModifierId } from "../../models/inputModifiers";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
-import { createComfortToolState } from "../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../state/comfortTool/createComfortToolState.svelte";
 import InputPanelHost from "./InputPanel.test.host.svelte";
 
 afterEach(cleanup);
@@ -17,7 +17,7 @@ afterEach(cleanup);
 describe("InputModifiers", () => {
   it("keeps modal edits in a draft and commits every change on Apply", async () => {
     const user = userEvent.setup();
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     render(InputPanelHost, { toolState });
 
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -88,7 +88,7 @@ describe("InputModifiers", () => {
 
   it("discards Cancel and Escape edits without changing calculation state", async () => {
     const user = userEvent.setup();
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     render(InputPanelHost, { toolState });
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
@@ -135,7 +135,7 @@ describe("InputModifiers", () => {
 
   it("uses visible compare inputs and closes a stale draft when context changes", async () => {
     const user = userEvent.setup();
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.compareEnabled = true;
     render(InputPanelHost, { toolState });
 
@@ -159,7 +159,7 @@ describe("InputModifiers", () => {
   });
 
   it("does not render an entry for models without declared modifiers", () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.state.ui.selectedModel = ModelId.Utci;
     render(InputPanelHost, { toolState });
 

@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { InputControlId } from "./models/inputControls";
 import { InputId } from "./models/inputSlots";
 import { PhysicalQuantityId } from "./models/physicalQuantities";
-import { createComfortToolState } from "./state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "./state/comfortTool/createComfortToolState.svelte";
 
 async function waitForIdle(
-  toolState: ReturnType<typeof createComfortToolState>,
+  toolState: ReturnType<typeof createAnalysisState>,
 ) {
   for (let index = 0; index < 50; index += 1) {
     if (!toolState.state.ui.isLoading) {
@@ -18,7 +18,7 @@ async function waitForIdle(
 
 describe("chart memo debug", () => {
   it("chart marker moves after input change", async () => {
-    const toolState = createComfortToolState();
+    const toolState = createAnalysisState();
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.DryBulbTemperature);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
