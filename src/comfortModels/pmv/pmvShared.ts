@@ -1,6 +1,6 @@
 import type { ComfortStandard } from "../../models/calculationMetadata";
 import {
-  ComfortModel,
+  ModelId,
   type JsThermalComfortStandard,
 } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
@@ -74,7 +74,7 @@ const PMV_DYNAMIC_AXIS_FIELDS = [
   PhysicalQuantityId.ClothingInsulation,
 ] as const;
 
-export type PmvModelId = typeof ComfortModel.PmvAshrae | typeof ComfortModel.PmvIso;
+export type PmvModelId = typeof ModelId.PmvAshrae | typeof ModelId.PmvIso;
 
 export interface PmvStandardAdapter {
   readonly modelId: PmvModelId;

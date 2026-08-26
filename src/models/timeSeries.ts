@@ -1,4 +1,4 @@
-import type { ComfortModel as ComfortModelType } from "./comfortModels";
+import type { ModelId as ModelIdType } from "./comfortModels";
 import type { PlotlyChartResponseDto } from "./comfortDtos";
 import type { UnitSystem as UnitSystemType } from "./units";
 
@@ -175,7 +175,7 @@ export interface TimeSeriesModelReference {
 }
 
 export interface TimeSeriesModelDefinition<TDraft, TResult> {
-  readonly id: ComfortModelType;
+  readonly id: ModelIdType;
   readonly label: string;
   readonly description: string;
   readonly standardLabel: string;

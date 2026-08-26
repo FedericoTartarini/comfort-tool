@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { InputId } from "../models/inputSlots";
 import { ModelOutputKey, type NumericBand } from "../models/modelCapabilities";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
@@ -117,11 +117,11 @@ describe("output integration", () => {
   });
 
   it("rebuilds Explore charts after band edits without recalculating", () => {
-    const config = comfortModelConfigs[ComfortModel.PmvAshrae];
+    const config = comfortModelConfigs[ModelId.PmvAshrae];
     const calculateSpy = vi.spyOn(config, "calculate");
     const context = createGoldenCalculationContext(
-      ComfortModel.PmvAshrae,
-      getGoldenInputOverrides(ComfortModel.PmvAshrae),
+      ModelId.PmvAshrae,
+      getGoldenInputOverrides(ModelId.PmvAshrae),
       {},
     );
     const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);

@@ -15,7 +15,7 @@ import {
   getUtciZoneMeta,
   utciModelConfig,
 } from "./utci";
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 
 describe("UTCI stress zones", () => {
@@ -171,7 +171,7 @@ describe("UTCI Explore chart", () => {
 
   it("pins required Analysis controls independently of inputFields", () => {
     expect(utciModelConfig.controls.map(({ id }) => id)).toEqual([
-      ...requiredControlIdsByModel[ComfortModel.Utci],
+      ...requiredControlIdsByModel[ModelId.Utci],
     ]);
   });
 

@@ -17,7 +17,7 @@ import {
 import { createQuantitiesByInput } from "../../state/comfortTool/initialComfortToolState";
 import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import { syncDerivedStateForInput } from "./syncState";
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 
 describe("quantityStateRouting", () => {
   it("reads and writes primary quantities", () => {
@@ -76,7 +76,7 @@ describe("quantityStateRouting", () => {
   });
 
   it("seeds model-scoped defaults for PHS", () => {
-    const modelInputs = createDefaultModelInputsForModel(ComfortModel.Phs2023);
+    const modelInputs = createDefaultModelInputsForModel(ModelId.Phs2023);
     expect(modelInputs[PhsQuantityId.BodyWeight]).toBe(75);
     expect(modelInputs[PhsQuantityId.Height]).toBe(1.8);
   });

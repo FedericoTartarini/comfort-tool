@@ -5,7 +5,7 @@
 
   import SearchableSelect from "../SearchableSelect.svelte";
   import { UnitSystem } from "../../models/units";
-  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+  import type { ModelId as ModelIdType } from "../../models/comfortModels";
   import type { ToolControlsViewModel } from "../../state/comfortTool/types";
 
   interface Props {
@@ -25,7 +25,7 @@
       placeholder="Select model"
       searchPlaceholder="Search model..."
       ariaLabel="Select comfort model"
-      onSelect={(val) => tool.onSelectModel(val as ComfortModelType)}
+      onSelect={(val) => tool.onSelectModel(val as ModelIdType)}
     />
   </div>
 

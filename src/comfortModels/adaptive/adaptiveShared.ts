@@ -4,7 +4,7 @@ import type {
 } from "../../models/calculationMetadata";
 import type { ModelChartSourceDto } from "../../models/comfortDtos";
 import {
-  ComfortModel,
+  ModelId,
   type JsThermalComfortStandard,
 } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
@@ -81,7 +81,7 @@ export interface AdaptiveBoundaryDefinition {
 }
 
 export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
-  modelId: typeof ComfortModel.AdaptiveAshrae | typeof ComfortModel.AdaptiveEn;
+  modelId: typeof ModelId.AdaptiveAshrae | typeof ModelId.AdaptiveEn;
   label: string;
   description: string;
   standardIds: readonly StandardIdType[];

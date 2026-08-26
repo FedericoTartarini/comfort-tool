@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateWindChill, windChillModelConfig } from "./windChill";
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { UnitSystem } from "../models/units";
 import {
   convertFieldValueFromSi,
@@ -125,7 +125,7 @@ describe("windChill service", () => {
   );
 
   it("declares a dynamic-only Explore model with air-temperature and wind axes", () => {
-    expect(windChillModelConfig.id).toBe(ComfortModel.WindChill);
+    expect(windChillModelConfig.id).toBe(ModelId.WindChill);
     expect(windChillModelConfig.outputCharts.defaultInstanceId).toBe(
       "wind-chill-dynamic-field",
     );
@@ -142,7 +142,7 @@ describe("windChill service", () => {
       yAxis: PhysicalQuantityId.WindSpeed,
     });
     expect(windChillModelConfig.controls.map(({ id }) => id)).toEqual([
-      ...requiredControlIdsByModel[ComfortModel.WindChill],
+      ...requiredControlIdsByModel[ModelId.WindChill],
     ]);
   });
 });

@@ -1,4 +1,4 @@
-import { type ComfortModel as ComfortModelType } from "../../../models/comfortModels";
+import { type ModelId as ModelIdType } from "../../../models/comfortModels";
 import {
   ChartKind,
   modelAllowsCustomCharts,
@@ -26,7 +26,7 @@ import {
  * registration.
  */
 export interface CatalogModelSlice {
-  readonly id: ComfortModelType;
+  readonly id: ModelIdType;
   readonly quantities: {
     readonly extend: readonly QuantityExtension[];
   };
@@ -47,8 +47,8 @@ export interface CatalogModelSlice {
 
 export interface AssembledCatalogs {
   readonly quantities: Readonly<Record<string, PhysicalQuantityMeta>>;
-  readonly chartInstanceOwners: ReadonlyMap<string, ComfortModelType>;
-  readonly chartTypeOwners: ReadonlyMap<string, ComfortModelType>;
+  readonly chartInstanceOwners: ReadonlyMap<string, ModelIdType>;
+  readonly chartTypeOwners: ReadonlyMap<string, ModelIdType>;
   readonly chartEngines: ReadonlySet<string>;
   readonly tableTypes: ReadonlySet<string>;
   /**
@@ -62,11 +62,11 @@ export interface AssembledCatalogs {
 }
 
 function indexChartOwners(models: readonly CatalogModelSlice[]): {
-  chartInstanceOwners: Map<string, ComfortModelType>;
-  chartTypeOwners: Map<string, ComfortModelType>;
+  chartInstanceOwners: Map<string, ModelIdType>;
+  chartTypeOwners: Map<string, ModelIdType>;
 } {
-  const chartInstanceOwners = new Map<string, ComfortModelType>();
-  const chartTypeOwners = new Map<string, ComfortModelType>();
+  const chartInstanceOwners = new Map<string, ModelIdType>();
+  const chartTypeOwners = new Map<string, ModelIdType>();
 
   for (const model of models) {
     const instanceIds = model.outputCharts.entries.map(

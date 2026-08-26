@@ -4,7 +4,7 @@
  * and `ui` stores selections, chart state, and calculation lifecycle flags.
  */
 import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
 import type {
   PrimaryInputState,
@@ -51,8 +51,8 @@ export interface InputModifierDraftEntry {
   inputs: ModifierInputValues;
 }
 export type ModelOptionsState = ModelOptionsRecord;
-export type ModelOptionsByModelState = Record<ComfortModelType, ModelOptionsState>;
-export type SelectedChartInstanceByModelState = Record<ComfortModelType, string>;
+export type ModelOptionsByModelState = Record<ModelIdType, ModelOptionsState>;
+export type SelectedChartInstanceByModelState = Record<ModelIdType, string>;
 
 import type {
   ResultCellViewModel,
@@ -72,7 +72,7 @@ export type ModelCalculationCache<ResultType, ChartSourceType> = {
 };
 
 export type ModelCalculationCacheByModelState = Record<
-  ComfortModelType,
+  ModelIdType,
   ModelCalculationCache<unknown, unknown>
 >;
 export interface ModelSwitchViolation {
@@ -86,7 +86,7 @@ export interface ModelSwitchViolation {
 }
 
 export type PendingModelSwitch = {
-  targetModel: ComfortModelType;
+  targetModel: ModelIdType;
   violations: ModelSwitchViolation[];
 };
 
@@ -99,7 +99,7 @@ export interface ModelOutputSettings {
   exploreBands: NumericBand[] | null;
 }
 
-export type OutputSettingsByModelState = Record<ComfortModelType, ModelOutputSettings>;
+export type OutputSettingsByModelState = Record<ModelIdType, ModelOutputSettings>;
 
 export interface ChartProfileBadgeViewModel {
   profileKind: FieldChartProfileKind;
@@ -168,15 +168,15 @@ export interface InputModifierControlViewModel {
 }
 
 export interface ToolControlsViewModel {
-  selectedModel: ComfortModelType;
+  selectedModel: ModelIdType;
   modelOptions: ReadonlyArray<{
     name: string;
-    value: ComfortModelType;
+    value: ModelIdType;
     description: string;
   }>;
   compareEnabled: boolean;
   unitSystem: UnitSystemType;
-  onSelectModel: (modelId: ComfortModelType) => void;
+  onSelectModel: (modelId: ModelIdType) => void;
   onSetCompareEnabled: (enabled: boolean) => void;
   onToggleUnitSystem: () => void;
 }
@@ -239,7 +239,7 @@ export interface InputPanelViewModel {
 }
 
 export type UiState = {
-  selectedModel: ComfortModelType;
+  selectedModel: ModelIdType;
   selectedChartInstanceByModel: SelectedChartInstanceByModelState;
   modelOptionsByModel: ModelOptionsByModelState;
   compareEnabled: boolean;
@@ -264,7 +264,7 @@ export type ComfortToolStateSlice = {
 
 export type ComfortToolActions = {
   setSelectedModel: (
-    nextModel: ComfortModelType,
+    nextModel: ModelIdType,
     options?: { validateRanges?: boolean; schedule?: boolean },
   ) => void;
   setSelectedChartInstance: (instanceId: string) => void;
@@ -291,7 +291,7 @@ export type ComfortToolActions = {
     valueSi: number,
   ) => boolean;
   updateModelQuantity: (
-    modelId: ComfortModelType,
+    modelId: ModelIdType,
     quantityId: PhysicalQuantityIdType,
     valueSi: number,
   ) => boolean;
@@ -318,14 +318,14 @@ export type ComfortToolSelectors = {
   getVisibleInputIds: () => InputIdType[];
   getInputControls: () => InputControlViewModel[];
   getInputPanelViewModel: (
-    allowedModelIds: readonly ComfortModelType[],
-    onSelectModel: (modelId: ComfortModelType) => void,
+    allowedModelIds: readonly ModelIdType[],
+    onSelectModel: (modelId: ModelIdType) => void,
   ) => InputPanelViewModel;
   getInputModifierDraft: () => InputModifierDraftEntry[];
   getInputModifierControls: (
     draft?: readonly InputModifierDraftEntry[],
   ) => InputModifierControlViewModel[];
-  getEffectiveQuantitiesByInput: (modelId?: ComfortModelType) => QuantitiesByInputState;
+  getEffectiveQuantitiesByInput: (modelId?: ModelIdType) => QuantitiesByInputState;
   getResultSections: () => ResultSectionViewModel[];
   getCurrentChartResult: () => PlotlyChartResponseDto | null;
   getCurrentChartInstance: () => ChartInstanceDeclaration;

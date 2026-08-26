@@ -1,4 +1,4 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../../models/comfortModels";
 import {
   AppRouteId,
   StandardId,
@@ -18,7 +18,7 @@ export interface AppRouteDefinition {
   readonly path: string;
   readonly workspace: WorkspaceIdType;
   readonly standardId?: StandardIdType;
-  readonly defaultModelId?: ComfortModelType;
+  readonly defaultModelId?: ModelIdType;
   readonly shareEnabled: boolean;
 }
 
@@ -29,7 +29,7 @@ export const appRouteDefinitions = [
     path: "/ASHRAE-55/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.Ashrae55,
-    defaultModelId: ComfortModel.PmvAshrae,
+    defaultModelId: ModelId.PmvAshrae,
     shareEnabled: true,
   },
   {
@@ -38,7 +38,7 @@ export const appRouteDefinitions = [
     path: "/ISO-7730/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.Iso7730,
-    defaultModelId: ComfortModel.PmvIso,
+    defaultModelId: ModelId.PmvIso,
     shareEnabled: true,
   },
   {
@@ -47,7 +47,7 @@ export const appRouteDefinitions = [
     path: "/EN-16798-1/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.En16798,
-    defaultModelId: ComfortModel.AdaptiveEn,
+    defaultModelId: ModelId.AdaptiveEn,
     shareEnabled: true,
   },
   {
@@ -56,7 +56,7 @@ export const appRouteDefinitions = [
     path: "/ISO-7933/",
     workspace: WorkspaceId.Standard,
     standardId: StandardId.Iso7933,
-    defaultModelId: ComfortModel.Phs2023,
+    defaultModelId: ModelId.Phs2023,
     shareEnabled: true,
   },
   {
@@ -64,7 +64,7 @@ export const appRouteDefinitions = [
     label: "Explore",
     path: "/Explore/",
     workspace: WorkspaceId.Explore,
-    defaultModelId: ComfortModel.PmvAshrae,
+    defaultModelId: ModelId.PmvAshrae,
     shareEnabled: true,
   },
   {
@@ -90,7 +90,7 @@ export function getAppRouteByPath(pathname: string): AppRouteDefinition | undefi
   );
 }
 
-export function getAllowedModels(definition: AppRouteDefinition): ComfortModelType[] {
+export function getAllowedModels(definition: AppRouteDefinition): ModelIdType[] {
   if (definition.standardId) {
     return getModelsForStandard(definition.standardId);
   }
@@ -104,7 +104,7 @@ export function isCalculationRoute(
   definition: AppRouteDefinition | undefined,
 ): definition is AppRouteDefinition & {
   workspace: typeof WorkspaceId.Standard | typeof WorkspaceId.Explore;
-  defaultModelId: ComfortModelType;
+  defaultModelId: ModelIdType;
 } {
   return Boolean(
     definition

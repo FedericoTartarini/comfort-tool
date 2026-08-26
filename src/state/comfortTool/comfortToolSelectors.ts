@@ -5,7 +5,7 @@ import type {
 } from "../../models/modelCapabilities";
 import { ChartLegendKind } from "../../models/output/chartBuildResult";
 import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import { buildChartControlsViewModel } from "./chartPresentation";
 import type { ComfortToolInternals } from "./comfortToolInternals";
 import {
@@ -71,8 +71,8 @@ export function createComfortToolSelectors(
       internals.getModelContext(state.ui.selectedModel),
     ),
     getInputPanelViewModel: (
-      allowedModelIds: readonly ComfortModelType[],
-      onSelectModel: (modelId: ComfortModelType) => void,
+      allowedModelIds: readonly ModelIdType[],
+      onSelectModel: (modelId: ModelIdType) => void,
     ) => {
       const config = internals.getActiveModelConfig();
       return buildInputPanelViewModel({

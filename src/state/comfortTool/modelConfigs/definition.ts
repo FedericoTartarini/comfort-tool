@@ -1,4 +1,4 @@
-import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../../models/comfortModels";
 import type { InputModifier } from "../../../models/inputModifiers";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
@@ -70,7 +70,7 @@ export interface ComfortModelDefinition<
   ChartSourceType,
   ComplianceBand extends Band = NumericBand,
 > {
-  id: ComfortModelType;
+  id: ModelIdType;
   label: string;
   description: string;
   workspaceCapabilities: readonly WorkspaceId[];

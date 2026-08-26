@@ -1,7 +1,7 @@
 import { humidex } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import type { ModelChartSourceDto } from "../models/comfortDtos";
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { InputControlId } from "../models/inputControls";
 import {
   bandsFromThermalZones,
@@ -104,7 +104,7 @@ export const humidexModelConfig = defineModel<
   HumidexResponseDto,
   ModelChartSourceDto<HumidexRequestDto>
 >({
-  id: ComfortModel.Humidex,
+  id: ModelId.Humidex,
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],

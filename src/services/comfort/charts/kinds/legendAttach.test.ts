@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
-import { ComfortModel } from "../../../../models/comfortModels";
+import { ModelId } from "../../../../models/comfortModels";
 import { InputId } from "../../../../models/inputSlots";
 import { UnitSystem } from "../../../../models/units";
 import { WorkspaceId } from "../../../../models/workspaces";
@@ -16,10 +16,10 @@ describe("chart legend attachment", () => {
   });
 
   it("attaches band legends for ready PMV compliance charts", () => {
-    const config = getComfortModelConfig(ComfortModel.PmvAshrae);
+    const config = getComfortModelConfig(ModelId.PmvAshrae);
     const context = createGoldenCalculationContext(
-      ComfortModel.PmvAshrae,
-      getGoldenInputOverrides(ComfortModel.PmvAshrae),
+      ModelId.PmvAshrae,
+      getGoldenInputOverrides(ModelId.PmvAshrae),
       {},
     );
     const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);

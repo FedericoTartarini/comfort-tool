@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ComfortModel,
-  type ComfortModel as ComfortModelType,
+  ModelId,
+  type ModelId as ModelIdType,
 } from "../../models/comfortModels";
 import {
   PhysicalQuantityId,
@@ -45,7 +45,7 @@ function decodeShareWire(encoded: string): Record<string, unknown> {
 
 function withOutputSettings(
   snapshot: ShareStateSnapshot,
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   patch: Record<string, unknown>,
 ): unknown {
   return {
@@ -65,7 +65,7 @@ function withOutputSettings(
 
 function withModelOptions(
   snapshot: ShareStateSnapshot,
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   options: unknown,
 ): unknown {
   return {
@@ -149,7 +149,7 @@ describe("shareState strict v1 codec", () => {
     const toolState = createComfortToolState();
     expect(
       toolState.actions.updateModelQuantity(
-        ComfortModel.Phs2023,
+        ModelId.Phs2023,
         PhsQuantityId.BodyWeight,
         90,
       ),
@@ -157,17 +157,17 @@ describe("shareState strict v1 codec", () => {
 
     const snapshot = createShareStateSnapshot(toolState.state);
 
-    expect(snapshot.modelInputsByModel[ComfortModel.Phs2023]).toEqual({
+    expect(snapshot.modelInputsByModel[ModelId.Phs2023]).toEqual({
       [PhsQuantityId.BodyWeight]: 90,
     });
     expect(
-      snapshot.modelInputsByModel[ComfortModel.Phs2023],
+      snapshot.modelInputsByModel[ModelId.Phs2023],
     ).not.toHaveProperty(PhsQuantityId.Height);
-    expect(snapshot.modelInputsByModel[ComfortModel.PmvAshrae]).toEqual({});
+    expect(snapshot.modelInputsByModel[ModelId.PmvAshrae]).toEqual({});
     expect(
       decodeShareWire(serializeShareState(snapshot)).modelInputsByModel,
     ).toEqual({
-      [ComfortModel.Phs2023]: { [PhsQuantityId.BodyWeight]: 90 },
+      [ModelId.Phs2023]: { [PhsQuantityId.BodyWeight]: 90 },
     });
     expect(Object.keys(snapshot.quantitiesByInput[InputId.Input1])).toEqual([
       ...primaryInputOrder,
@@ -177,7 +177,7 @@ describe("shareState strict v1 codec", () => {
     );
 
     const restored = deserializeShareState(serializeShareState(snapshot));
-    expect(restored?.modelInputsByModel[ComfortModel.Phs2023]).toEqual({
+    expect(restored?.modelInputsByModel[ModelId.Phs2023]).toEqual({
       [PhsQuantityId.BodyWeight]: 90,
     });
     expect(restored?.quantitiesByInput[InputId.Input1]).not.toHaveProperty(
@@ -187,13 +187,13 @@ describe("shareState strict v1 codec", () => {
 
   it("round-trips all per-model field settings and explicit Infinity edges", () => {
     const toolState = createComfortToolState();
-    toolState.state.ui.selectedModel = ComfortModel.PmvIso;
-    toolState.state.ui.selectedChartInstanceByModel[ComfortModel.PmvAshrae] =
+    toolState.state.ui.selectedModel = ModelId.PmvIso;
+    toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae] =
       "pmv-ashrae-psychrometric";
-    toolState.state.ui.selectedChartInstanceByModel[ComfortModel.PmvIso] =
+    toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvIso] =
       "pmv-iso-dynamic-field";
     toolState.state.ui.unitSystem = UnitSystem.IP;
-    toolState.state.ui.modelOptionsByModel[ComfortModel.PmvIso][
+    toolState.state.ui.modelOptionsByModel[ModelId.PmvIso][
       OptionKey.TemperatureMode
     ] = TemperatureMode.Operative;
     toolState.state.quantitiesByInput[InputId.Input1][
@@ -201,7 +201,7 @@ describe("shareState strict v1 codec", () => {
     ] = 2;
 
     const ashrae =
-      toolState.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae];
+      toolState.state.ui.outputSettingsByModel[ModelId.PmvAshrae];
     ashrae.xAxis = PhysicalQuantityId.MeanRadiantTemperature;
     ashrae.yAxis = PhysicalQuantityId.RelativeHumidity;
     ashrae.baselineInputId = InputId.Input3;
@@ -211,7 +211,7 @@ describe("shareState strict v1 codec", () => {
       { min: 12, max: Infinity, label: "Other", color: "#f00" },
     ];
 
-    const iso = toolState.state.ui.outputSettingsByModel[ComfortModel.PmvIso];
+    const iso = toolState.state.ui.outputSettingsByModel[ModelId.PmvIso];
     iso.xAxis = PhysicalQuantityId.OperativeTemperature;
     iso.yAxis = PhysicalQuantityId.RelativeAirSpeed;
     iso.baselineInputId = InputId.Input2;
@@ -223,18 +223,18 @@ describe("shareState strict v1 codec", () => {
     expect(snapshot).not.toHaveProperty("dynamicXAxis");
     expect(snapshot).not.toHaveProperty("dynamicYAxis");
     expect(
-      snapshot.models[ComfortModel.PmvAshrae].selectedChartInstanceId,
+      snapshot.models[ModelId.PmvAshrae].selectedChartInstanceId,
     ).toBe("pmv-ashrae-psychrometric");
     expect(
-      restored?.models[ComfortModel.PmvAshrae].selectedChartInstanceId,
+      restored?.models[ModelId.PmvAshrae].selectedChartInstanceId,
     ).toBe("pmv-ashrae-psychrometric");
-    expect(restored?.models[ComfortModel.PmvIso].selectedChartInstanceId).toBe(
+    expect(restored?.models[ModelId.PmvIso].selectedChartInstanceId).toBe(
       "pmv-iso-dynamic-field",
     );
-    expect(snapshot.models[ComfortModel.PmvIso].options).not.toHaveProperty(
+    expect(snapshot.models[ModelId.PmvIso].options).not.toHaveProperty(
       OptionKey.AirSpeedControlMode,
     );
-    expect(snapshot.models[ComfortModel.PmvAshrae].outputSettings).toEqual(
+    expect(snapshot.models[ModelId.PmvAshrae].outputSettings).toEqual(
       expect.objectContaining({
         xAxis: PhysicalQuantityId.MeanRadiantTemperature,
         yAxis: PhysicalQuantityId.RelativeHumidity,
@@ -242,7 +242,7 @@ describe("shareState strict v1 codec", () => {
         exploreOutput: ModelOutputKey.Ppd,
       }),
     );
-    expect(snapshot.models[ComfortModel.PmvIso].outputSettings).toEqual(
+    expect(snapshot.models[ModelId.PmvIso].outputSettings).toEqual(
       expect.objectContaining({
         xAxis: PhysicalQuantityId.OperativeTemperature,
         baselineInputId: InputId.Input2,
@@ -250,18 +250,18 @@ describe("shareState strict v1 codec", () => {
     );
     expect(restored).toEqual(snapshot);
     expect(
-      restored?.models[ComfortModel.PmvAshrae].outputSettings.exploreBands?.[0]
+      restored?.models[ModelId.PmvAshrae].outputSettings.exploreBands?.[0]
         .min,
     ).toBe(-Infinity);
     expect(
-      restored?.models[ComfortModel.PmvAshrae].outputSettings.exploreBands?.[1]
+      restored?.models[ModelId.PmvAshrae].outputSettings.exploreBands?.[1]
         .max,
     ).toBe(Infinity);
   });
 
   it("preserves both PHS chart IDs in strict v1 snapshots", () => {
     const toolState = createComfortToolState();
-    toolState.state.ui.selectedModel = ComfortModel.Phs2023;
+    toolState.state.ui.selectedModel = ModelId.Phs2023;
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
     toolState.actions.setSelectedChartInstance("phs-dynamic-field");
     toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
@@ -272,23 +272,23 @@ describe("shareState strict v1 codec", () => {
       dynamicSnapshot,
     );
     expect(
-      dynamicSnapshot.models[ComfortModel.Phs2023].selectedChartInstanceId,
+      dynamicSnapshot.models[ModelId.Phs2023].selectedChartInstanceId,
     ).toBe("phs-dynamic-field");
 
     toolState.actions.setSelectedChartInstance("phs-exposure-history");
     const historySnapshot = createShareStateSnapshot(toolState.state);
     expect(
-      historySnapshot.models[ComfortModel.Phs2023].selectedChartInstanceId,
+      historySnapshot.models[ModelId.Phs2023].selectedChartInstanceId,
     ).toBe("phs-exposure-history");
     expect(
-      historySnapshot.models[ComfortModel.Phs2023].outputSettings.exploreOutput,
+      historySnapshot.models[ModelId.Phs2023].outputSettings.exploreOutput,
     ).toBe(ModelOutputKey.PhsRectalTemperature);
     expect(deserializeShareState(serializeShareState(historySnapshot))).toEqual(
       historySnapshot,
     );
 
     const incompatible = structuredClone(historySnapshot);
-    incompatible.models[ComfortModel.Phs2023].outputSettings.exploreOutput =
+    incompatible.models[ModelId.Phs2023].outputSettings.exploreOutput =
       ModelOutputKey.PhsWaterLoss;
     expect(parseShareStateSnapshot(incompatible)).toBeNull();
   });
@@ -300,7 +300,7 @@ describe("shareState strict v1 codec", () => {
 
     const builtInSnapshot = createShareStateSnapshot(toolState.state);
     const builtInBands =
-      builtInSnapshot.models[ComfortModel.PmvAshrae].outputSettings
+      builtInSnapshot.models[ModelId.PmvAshrae].outputSettings
         .exploreBands;
     expect(builtInBands?.[1].label).toContain("≥");
     expect(deserializeShareState(serializeShareState(builtInSnapshot))).toEqual(
@@ -332,7 +332,7 @@ describe("shareState strict v1 codec", () => {
 
     expect(restored).toEqual(editedSnapshot);
     expect(
-      restored?.models[ComfortModel.PmvAshrae].outputSettings.exploreBands?.map(
+      restored?.models[ModelId.PmvAshrae].outputSettings.exploreBands?.map(
         ({ label }) => label,
       ),
     ).toEqual(["舒适区 ✅", "偏高 🥵（≥ 10%）"]);
@@ -340,12 +340,12 @@ describe("shareState strict v1 codec", () => {
 
   it("round-trips both Adaptive models and a transposed axis direction", () => {
     const toolState = createComfortToolState();
-    toolState.state.ui.selectedModel = ComfortModel.AdaptiveAshrae;
+    toolState.state.ui.selectedModel = ModelId.AdaptiveAshrae;
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.OperativeTemperature);
     const snapshot = createShareStateSnapshot(toolState.state);
     const restored = deserializeShareState(serializeShareState(snapshot));
 
-    expect(snapshot.models[ComfortModel.AdaptiveAshrae]).toEqual(
+    expect(snapshot.models[ModelId.AdaptiveAshrae]).toEqual(
       expect.objectContaining({
         selectedChartInstanceId: "adaptive-ashrae-boundary",
         outputSettings: expect.objectContaining({
@@ -356,7 +356,7 @@ describe("shareState strict v1 codec", () => {
         }),
       }),
     );
-    expect(snapshot.models[ComfortModel.AdaptiveEn]).toEqual(
+    expect(snapshot.models[ModelId.AdaptiveEn]).toEqual(
       expect.objectContaining({
         selectedChartInstanceId: "adaptive-en-boundary",
         outputSettings: expect.objectContaining({
@@ -367,11 +367,11 @@ describe("shareState strict v1 codec", () => {
         }),
       }),
     );
-    expect(restored?.models[ComfortModel.AdaptiveAshrae]).toEqual(
-      snapshot.models[ComfortModel.AdaptiveAshrae],
+    expect(restored?.models[ModelId.AdaptiveAshrae]).toEqual(
+      snapshot.models[ModelId.AdaptiveAshrae],
     );
-    expect(restored?.models[ComfortModel.AdaptiveEn]).toEqual(
-      snapshot.models[ComfortModel.AdaptiveEn],
+    expect(restored?.models[ModelId.AdaptiveEn]).toEqual(
+      snapshot.models[ModelId.AdaptiveEn],
     );
   });
 
@@ -393,13 +393,13 @@ describe("shareState strict v1 codec", () => {
     original.state.ui.compareInputIds = [InputId.Input1, InputId.Input3];
     original.state.ui.activeInputId = InputId.Input3;
     original.state.ui.unitSystem = UnitSystem.IP;
-    original.state.ui.outputSettingsByModel[ComfortModel.Utci].xAxis =
+    original.state.ui.outputSettingsByModel[ModelId.Utci].xAxis =
       PhysicalQuantityId.WindSpeed;
-    original.state.ui.outputSettingsByModel[ComfortModel.Utci].yAxis =
+    original.state.ui.outputSettingsByModel[ModelId.Utci].yAxis =
       PhysicalQuantityId.MeanRadiantTemperature;
     original.state.ui.activeWorkspace = WorkspaceId.Explore;
     original.state.ui.outputSettingsByModel[
-      ComfortModel.PmvIso
+      ModelId.PmvIso
     ].baselineInputId = InputId.Input3;
 
     const snapshot = createShareStateSnapshot(original.state);
@@ -408,7 +408,7 @@ describe("shareState strict v1 codec", () => {
 
     expect(createShareStateSnapshot(restored.state)).toEqual(snapshot);
     expect(
-      restored.state.ui.outputSettingsByModel[ComfortModel.PmvIso]
+      restored.state.ui.outputSettingsByModel[ModelId.PmvIso]
         .baselineInputId,
     ).toBe(InputId.Input3);
     expect(restored.state.ui.compareInputIds).toEqual([
@@ -418,7 +418,7 @@ describe("shareState strict v1 codec", () => {
     expect(restored.state.ui.activeInputId).toBe(InputId.Input3);
   });
 
-  it.each(Object.values(ComfortModel))(
+  it.each(Object.values(ModelId))(
     "rejects non-object and unknown-key options for %s",
     (modelId) => {
       const current = createShareStateSnapshot(createComfortToolState().state);
@@ -441,11 +441,11 @@ describe("shareState strict v1 codec", () => {
   );
 
   it.each([
-    ComfortModel.PmvAshrae,
-    ComfortModel.PmvIso,
-    ComfortModel.Utci,
-    ComfortModel.AdaptiveAshrae,
-    ComfortModel.AdaptiveEn,
+    ModelId.PmvAshrae,
+    ModelId.PmvIso,
+    ModelId.Utci,
+    ModelId.AdaptiveAshrae,
+    ModelId.AdaptiveEn,
   ] as const)(
     "rejects missing, empty, and invalid-enum options for %s",
     (modelId) => {
@@ -482,8 +482,8 @@ describe("shareState strict v1 codec", () => {
 
     expect(
       parseShareStateSnapshot(
-        withModelOptions(current, ComfortModel.PmvIso, {
-          ...current.models[ComfortModel.PmvIso].options,
+        withModelOptions(current, ModelId.PmvIso, {
+          ...current.models[ModelId.PmvIso].options,
           [OptionKey.AirSpeedControlMode]: AirSpeedControlMode.WithLocalControl,
         }),
       ),
@@ -491,9 +491,9 @@ describe("shareState strict v1 codec", () => {
   });
 
   it.each([
-    ComfortModel.HeatIndex,
-    ComfortModel.Humidex,
-    ComfortModel.WindChill,
+    ModelId.HeatIndex,
+    ModelId.Humidex,
+    ModelId.WindChill,
   ] as const)(
     "accepts only the exact empty options object for %s",
     (modelId) => {
@@ -565,8 +565,8 @@ describe("shareState strict v1 codec", () => {
         ...current,
         models: {
           ...current.models,
-          [ComfortModel.AdaptiveAshrae]: {
-            ...current.models[ComfortModel.AdaptiveAshrae],
+          [ModelId.AdaptiveAshrae]: {
+            ...current.models[ModelId.AdaptiveAshrae],
             unknown: true,
           },
         },
@@ -574,7 +574,7 @@ describe("shareState strict v1 codec", () => {
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.AdaptiveAshrae, {
+        withOutputSettings(current, ModelId.AdaptiveAshrae, {
           unknown: true,
         }),
       ),
@@ -588,8 +588,8 @@ describe("shareState strict v1 codec", () => {
 
     expect(
       parseShareStateSnapshot(
-        withModelOptions(current, ComfortModel.PmvAshrae, {
-          ...current.models[ComfortModel.PmvAshrae].options,
+        withModelOptions(current, ModelId.PmvAshrae, {
+          ...current.models[ModelId.PmvAshrae].options,
           "airSpeed.inputMode": "relative",
         }),
       ),
@@ -631,7 +631,7 @@ describe("shareState strict v1 codec", () => {
 
     const unknownModelInput = structuredClone(current);
     Object.assign(
-      unknownModelInput.modelInputsByModel[ComfortModel.PmvAshrae],
+      unknownModelInput.modelInputsByModel[ModelId.PmvAshrae],
       { [PhsQuantityId.BodyWeight]: 80 },
     );
 
@@ -655,14 +655,14 @@ describe("shareState strict v1 codec", () => {
 
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.AdaptiveAshrae, {
+        withOutputSettings(current, ModelId.AdaptiveAshrae, {
           profileKind: FieldChartProfileKind.Explore,
         }),
       ),
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.AdaptiveAshrae, {
+        withOutputSettings(current, ModelId.AdaptiveAshrae, {
           xAxis: PhysicalQuantityId.DryBulbTemperature,
           yAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
         }),
@@ -670,7 +670,7 @@ describe("shareState strict v1 codec", () => {
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.PmvAshrae, {
+        withOutputSettings(current, ModelId.PmvAshrae, {
           xAxis: PhysicalQuantityId.DryBulbTemperature,
           yAxis: PhysicalQuantityId.DryBulbTemperature,
         }),
@@ -678,11 +678,11 @@ describe("shareState strict v1 codec", () => {
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.PmvAshrae, {
+        withOutputSettings(current, ModelId.PmvAshrae, {
           explore: {
             zOutput: ModelOutputKey.Utci,
             bands:
-              current.models[ComfortModel.PmvAshrae].outputSettings
+              current.models[ModelId.PmvAshrae].outputSettings
                 .exploreBands,
           },
         }),
@@ -690,7 +690,7 @@ describe("shareState strict v1 codec", () => {
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.PmvAshrae, {
+        withOutputSettings(current, ModelId.PmvAshrae, {
           explore: {
             zOutput: ModelOutputKey.Pmv,
             bands: [
@@ -703,14 +703,14 @@ describe("shareState strict v1 codec", () => {
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.PmvAshrae, {
+        withOutputSettings(current, ModelId.PmvAshrae, {
           baselineInputId: "not-an-input",
         }),
       ),
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.PmvAshrae, { explore: null }),
+        withOutputSettings(current, ModelId.PmvAshrae, { explore: null }),
       ),
     ).toBeNull();
   });
@@ -722,9 +722,9 @@ describe("shareState strict v1 codec", () => {
       ...current,
       models: {
         ...current.models,
-        [ComfortModel.PmvAshrae]: {
-          options: current.models[ComfortModel.PmvAshrae].options,
-          outputSettings: current.models[ComfortModel.PmvAshrae].outputSettings,
+        [ModelId.PmvAshrae]: {
+          options: current.models[ModelId.PmvAshrae].options,
+          outputSettings: current.models[ModelId.PmvAshrae].outputSettings,
           selectedChart: "pmv-ashrae-dynamic-field",
         },
       },
@@ -734,23 +734,23 @@ describe("shareState strict v1 codec", () => {
       ...current,
       models: {
         ...current.models,
-        [ComfortModel.PmvAshrae]: {
-          ...current.models[ComfortModel.PmvAshrae],
-          chartSettings: current.models[ComfortModel.PmvAshrae].outputSettings,
+        [ModelId.PmvAshrae]: {
+          ...current.models[ModelId.PmvAshrae],
+          chartSettings: current.models[ModelId.PmvAshrae].outputSettings,
         },
       },
     };
 
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.PmvAshrae, {
+        withOutputSettings(current, ModelId.PmvAshrae, {
           mode: FieldChartProfileKind.Explore,
         }),
       ),
     ).toBeNull();
     expect(
       parseShareStateSnapshot(
-        withOutputSettings(current, ComfortModel.PmvAshrae, {
+        withOutputSettings(current, ModelId.PmvAshrae, {
           profileKind: FieldChartProfileKind.Explore,
         }),
       ),
@@ -762,21 +762,21 @@ describe("shareState strict v1 codec", () => {
   it("seeds omitted registered models and rejects unknown model keys", () => {
     const current = createShareStateSnapshot(createComfortToolState().state);
     const missingIso = structuredClone(current);
-    Reflect.deleteProperty(missingIso.models, ComfortModel.PmvIso);
+    Reflect.deleteProperty(missingIso.models, ModelId.PmvIso);
 
     const emptyModels = { ...current, models: {} };
     const missingPhsInputs = structuredClone(current);
     Reflect.deleteProperty(
       missingPhsInputs.modelInputsByModel,
-      ComfortModel.Phs2023,
+      ModelId.Phs2023,
     );
 
     const invalidIsoChart = {
       ...current,
       models: {
         ...current.models,
-        [ComfortModel.PmvIso]: {
-          ...current.models[ComfortModel.PmvIso],
+        [ModelId.PmvIso]: {
+          ...current.models[ModelId.PmvIso],
           selectedChartInstanceId: "utci-dynamic-field",
         },
       },
@@ -785,7 +785,7 @@ describe("shareState strict v1 codec", () => {
       ...current,
       models: {
         ...current.models,
-        UNKNOWN_MODEL: current.models[ComfortModel.Utci],
+        UNKNOWN_MODEL: current.models[ModelId.Utci],
       },
     };
     const unknownModelInputs = {
@@ -821,7 +821,7 @@ describe("shareState strict v1 codec", () => {
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     expect(
       toolState.actions.updateModelQuantity(
-        ComfortModel.Phs2023,
+        ModelId.Phs2023,
         PhsQuantityId.BodyWeight,
         90,
       ),
@@ -831,11 +831,11 @@ describe("shareState strict v1 codec", () => {
     const changedWire = decodeShareWire(serializeShareState(changedSnapshot));
 
     expect(Object.keys(changedWire.models as object)).toEqual([
-      ComfortModel.PmvAshrae,
+      ModelId.PmvAshrae,
     ]);
-    expect(changedWire.models).not.toHaveProperty(ComfortModel.PmvIso);
+    expect(changedWire.models).not.toHaveProperty(ModelId.PmvIso);
     expect(changedWire.modelInputsByModel).toEqual({
-      [ComfortModel.Phs2023]: { [PhsQuantityId.BodyWeight]: 90 },
+      [ModelId.Phs2023]: { [PhsQuantityId.BodyWeight]: 90 },
     });
     expect(deserializeShareState(serializeShareState(changedSnapshot))).toEqual(
       changedSnapshot,
@@ -865,7 +865,7 @@ describe("shareState strict v1 codec", () => {
 
   it("restores modifier configuration even when the selected model does not support it", () => {
     const original = createComfortToolState();
-    original.state.ui.selectedModel = ComfortModel.Utci;
+    original.state.ui.selectedModel = ModelId.Utci;
     original.state.auxiliaryQuantitiesByInput[InputId.Input1][
       PhysicalQuantityId.ModifierMeasuredAirSpeed
     ] = 0.6;
@@ -884,7 +884,7 @@ describe("shareState strict v1 codec", () => {
 
     expect(restored.selectors.getInputModifierControls()).toEqual([]);
     expect(
-      restored.selectors.getEffectiveQuantitiesByInput(ComfortModel.Utci)[
+      restored.selectors.getEffectiveQuantitiesByInput(ModelId.Utci)[
         InputId.Input1
       ][PhysicalQuantityId.RelativeAirSpeed],
     ).toBe(
@@ -893,7 +893,7 @@ describe("shareState strict v1 codec", () => {
       ],
     );
 
-    restored.state.ui.selectedModel = ComfortModel.PmvAshrae;
+    restored.state.ui.selectedModel = ModelId.PmvAshrae;
     expect(
       restored.selectors.getEffectiveQuantitiesByInput()[InputId.Input1][
         PhysicalQuantityId.RelativeAirSpeed

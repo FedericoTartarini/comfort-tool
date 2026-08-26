@@ -1,7 +1,7 @@
 import { expect } from "vitest";
 
 import {
-  type ComfortModel as ComfortModelType,
+  type ModelId as ModelIdType,
 } from "../models/comfortModels";
 import { inputDisplayMetaById } from "../models/inputSlotPresentation";
 import { InputId, inputOrder } from "../models/inputSlots";
@@ -41,7 +41,7 @@ async function waitForIdle(controller: ComfortToolController) {
   throw new Error("Controller did not finish calculating.");
 }
 
-function failSilently(modelId: ComfortModelType, detail: string): never {
+function failSilently(modelId: ModelIdType, detail: string): never {
   throw new Error(`${modelId}: ${detail}`);
 }
 
@@ -70,7 +70,7 @@ async function configureVisibleInputs(
 
 function applyGoldenInputs(
   controller: ComfortToolController,
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ) {
   const overrides = getGoldenInputOverrides(modelId);
   inputOrder.forEach((inputId, index) => {
@@ -108,7 +108,7 @@ function applyGoldenInputs(
 
 function assertTableColumnsFilled(
   controller: ComfortToolController,
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   visibleInputIds: readonly string[],
 ) {
   const sections = controller.selectors.getResultSections();
@@ -130,7 +130,7 @@ function assertTableColumnsFilled(
 
 function assertChartMarkers(
   controller: ComfortToolController,
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   visibleInputIds: readonly string[],
 ) {
   const instanceId = controller.selectors.getCurrentChartInstanceId();
@@ -159,7 +159,7 @@ function assertChartMarkers(
  * being skipped.
  */
 export async function assertCompareContract(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   controller: ComfortToolController = createComfortToolState(),
 ): Promise<void> {
   const config = comfortModelConfigs[modelId];

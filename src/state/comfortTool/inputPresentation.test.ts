@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { InputControlId } from "../../models/inputControls";
 import { InputId } from "../../models/inputSlots";
 import { createComfortToolState } from "./createComfortToolState.svelte";
@@ -11,7 +11,7 @@ import {
 
 function getPanel(
   toolState: ReturnType<typeof createComfortToolState>,
-  allowedModelIds: readonly ComfortModel[] = [toolState.state.ui.selectedModel],
+  allowedModelIds: readonly ModelId[] = [toolState.state.ui.selectedModel],
 ) {
   return toolState.selectors.getInputPanelViewModel(allowedModelIds, vi.fn());
 }
@@ -35,22 +35,22 @@ describe("buildInputPanelViewModel", () => {
     const onSelectModel = vi.fn();
     const toolState = createComfortToolState();
     const panel = toolState.selectors.getInputPanelViewModel(
-      [ComfortModel.PmvAshrae, ComfortModel.Utci],
+      [ModelId.PmvAshrae, ModelId.Utci],
       onSelectModel,
     );
 
-    expect(panel.tool.selectedModel).toBe(ComfortModel.PmvAshrae);
+    expect(panel.tool.selectedModel).toBe(ModelId.PmvAshrae);
     expect(panel.tool.modelOptions.map((option) => option.value)).toEqual([
-      ComfortModel.PmvAshrae,
-      ComfortModel.Utci,
+      ModelId.PmvAshrae,
+      ModelId.Utci,
     ]);
     expect(panel.compare).toBeNull();
     expect(panel.fields.length).toBeGreaterThan(0);
     expect(panel.clothingBuilder?.maxValue).toBeGreaterThan(0);
     expect(panel.modifiers?.availableCount).toBeGreaterThan(0);
 
-    panel.tool.onSelectModel(ComfortModel.Utci);
-    expect(onSelectModel).toHaveBeenCalledWith(ComfortModel.Utci);
+    panel.tool.onSelectModel(ModelId.Utci);
+    expect(onSelectModel).toHaveBeenCalledWith(ModelId.Utci);
 
     toolState.actions.setCompareEnabled(true);
     const compared = getPanel(toolState);
@@ -62,7 +62,7 @@ describe("buildInputPanelViewModel", () => {
 
   it("omits clothing builder and modifiers for models that do not declare them", () => {
     const toolState = createComfortToolState();
-    toolState.state.ui.selectedModel = ComfortModel.Utci;
+    toolState.state.ui.selectedModel = ModelId.Utci;
     const panel = getPanel(toolState);
 
     expect(panel.clothingBuilder).toBeNull();

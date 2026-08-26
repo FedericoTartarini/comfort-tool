@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ComfortModel } from "./comfortModels";
+import { ModelId } from "./comfortModels";
 import { PhsQuantityId } from "./phs";
 import { SiUnit } from "./units";
 import {
@@ -15,7 +15,7 @@ import {
 
 const massExtension = {
   id: "test.bodyMass",
-  owner: ComfortModel.Phs2023,
+  owner: ModelId.Phs2023,
   scope: PhysicalQuantityScope.Model,
   label: "Body mass",
   display: {
@@ -64,7 +64,7 @@ describe("physicalQuantities metadata", () => {
       id: massExtension.id,
       scope: PhysicalQuantityScope.Model,
       state: QuantityState.Model,
-      ownerModelId: ComfortModel.Phs2023,
+      ownerModelId: ModelId.Phs2023,
       defaultSi: 75,
     });
     expect(catalog[PhysicalQuantityId.DryBulbTemperature])

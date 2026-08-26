@@ -1,4 +1,4 @@
-export const ComfortModel = {
+export const ModelId = {
   PmvAshrae: "PMV_ASHRAE",
   PmvIso: "PMV_ISO",
   Utci: "UTCI",
@@ -10,7 +10,7 @@ export const ComfortModel = {
   Phs2023: "PHS_2023",
 } as const;
 
-export type ComfortModel = (typeof ComfortModel)[keyof typeof ComfortModel];
+export type ModelId = (typeof ModelId)[keyof typeof ModelId];
 
 export const JsThermalComfortStandard = {
   ASHRAE: "ASHRAE",

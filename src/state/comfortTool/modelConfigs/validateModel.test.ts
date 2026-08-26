@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { ComfortModel } from "../../../models/comfortModels";
+import { ModelId } from "../../../models/comfortModels";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { WorkspaceId } from "../../../models/workspaces";
@@ -65,7 +65,7 @@ function installedValidateModel(catalogs: AssembledCatalogs) {
 
 const exampleMass = {
   id: "audit.exampleMass",
-  owner: ComfortModel.HeatIndex,
+  owner: ModelId.HeatIndex,
   scope: PhysicalQuantityScope.Model,
   label: "Example mass",
   display: {
@@ -125,7 +125,7 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       assembleCatalogs([
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           outputCharts: {
             entries: [
               { instanceId: sharedInstanceId, kind: ChartKind.DynamicField },
@@ -139,7 +139,7 @@ describe("assembled catalog validate.model", () => {
           ],
         }),
         createCatalogSlice({
-          id: ComfortModel.Humidex,
+          id: ModelId.Humidex,
           outputCharts: {
             entries: [
               { instanceId: sharedInstanceId, kind: ChartKind.DynamicField },
@@ -160,7 +160,7 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       installedValidateModel(assembledCatalogs)(
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           outputCharts: {
             entries: [
               {
@@ -186,7 +186,7 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       assembleCatalogs([
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           outputCharts: {
             entries: [
               {
@@ -198,7 +198,7 @@ describe("assembled catalog validate.model", () => {
           },
         }),
         createCatalogSlice({
-          id: ComfortModel.Humidex,
+          id: ModelId.Humidex,
           outputCharts: {
             entries: [
               {
@@ -219,13 +219,13 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       assembleCatalogs([
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           quantities: { extend: [exampleMass] },
         }),
         createCatalogSlice({
-          id: ComfortModel.Humidex,
+          id: ModelId.Humidex,
           quantities: {
-            extend: [{ ...exampleMass, owner: ComfortModel.Humidex }],
+            extend: [{ ...exampleMass, owner: ModelId.Humidex }],
           },
         }),
       ]),
@@ -238,7 +238,7 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       validateModelHook(
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           quantities: { extend: [exampleMass, { ...exampleMass }] },
         }),
       ),
@@ -247,7 +247,7 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       validateModelHook(
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           quantities: {
             extend: [{ ...exampleMass, id: PhysicalQuantityId.HumidityRatio }],
           },
@@ -262,12 +262,12 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       validateModelHook(
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           quantities: {
             extend: [
               {
                 id: PhsQuantityId.BodyWeight,
-                owner: ComfortModel.Phs2023,
+                owner: ModelId.Phs2023,
                 scope: PhysicalQuantityScope.Model,
                 label: "Body weight",
                 display: {
@@ -291,12 +291,12 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       validateModelHook(
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           quantities: {
             extend: [
               {
                 id: PhsQuantityId.BodyWeight,
-                owner: ComfortModel.HeatIndex,
+                owner: ModelId.HeatIndex,
                 scope: PhysicalQuantityScope.Model,
                 label: "Body weight",
                 display: {
@@ -322,7 +322,7 @@ describe("assembled catalog validate.model", () => {
     expect(() =>
       installedValidateModel(assembledCatalogs)(
         createCatalogSlice({
-          id: ComfortModel.HeatIndex,
+          id: ModelId.HeatIndex,
           outputCharts: {
             entries: [{ instanceId: "invented", kind: "invented-engine" }],
           },
@@ -339,7 +339,7 @@ describe("assembled catalog validate.model", () => {
 
   it("fails assemble when a TimeSeries table lacks Time-series capability", () => {
     const slice = createCatalogSlice({
-      id: ComfortModel.HeatIndex,
+      id: ModelId.HeatIndex,
       workspaceCapabilities: [WorkspaceId.Explore],
       tables: {
         analysis: analysisTable.analysis,

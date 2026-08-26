@@ -3,19 +3,19 @@
 <script lang="ts">
   import InputPanel from "./InputPanel.svelte";
   import {
-    ComfortModel,
-    type ComfortModel as ComfortModelType,
+    ModelId,
+    type ModelId as ModelIdType,
   } from "../../models/comfortModels";
   import type { ComfortToolController } from "../../state/comfortTool/types";
 
   interface Props {
     toolState: ComfortToolController;
-    allowedModelIds?: readonly ComfortModelType[];
+    allowedModelIds?: readonly ModelIdType[];
   }
 
   let {
     toolState,
-    allowedModelIds = [ComfortModel.PmvAshrae, ComfortModel.Utci],
+    allowedModelIds = [ModelId.PmvAshrae, ModelId.Utci],
   }: Props = $props();
 </script>
 

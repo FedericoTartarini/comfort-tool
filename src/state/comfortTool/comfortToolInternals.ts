@@ -4,7 +4,7 @@ import {
   type InputId as InputIdType,
 } from "../../models/inputSlots";
 import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
-import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import { primaryInputOrder, type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import {
   type ModifierId as ModifierIdType,
@@ -37,25 +37,25 @@ import type {
 
 export interface ComfortToolInternals {
   invalidateModel: (
-    modelId: ComfortModelType,
+    modelId: ModelIdType,
     options?: { keepErrorMessage?: boolean },
   ) => void;
   invalidateAllModels: (options?: { keepErrorMessage?: boolean }) => void;
   invalidateModelsSupportingModifiers: (modifierIds: readonly ModifierIdType[]) => void;
   getVisibleInputIds: () => InputIdType[];
-  getModelContext: (modelId: ComfortModelType) => ControlBehaviorContext;
+  getModelContext: (modelId: ModelIdType) => ControlBehaviorContext;
   getActiveModelConfig: () => RuntimeComfortModelDefinition;
-  getEffectiveQuantitiesByInput: (modelId?: ComfortModelType) => QuantitiesByInputState;
+  getEffectiveQuantitiesByInput: (modelId?: ModelIdType) => QuantitiesByInputState;
   getInputModifierDraft: () => InputModifierDraftEntry[];
   getInputModifierControls: (
     draft?: readonly InputModifierDraftEntry[],
   ) => ReturnType<typeof buildInputModifierControls>;
   getCurrentSelectedChartInstanceId: () => string;
   getCurrentChartInstance: () => ChartInstanceDeclaration;
-  getCurrentModelCache: () => ComfortToolStateSlice["ui"]["calculationCacheByModel"][ComfortModelType];
-  getCurrentOutputSettings: () => ComfortToolStateSlice["ui"]["outputSettingsByModel"][ComfortModelType];
+  getCurrentModelCache: () => ComfortToolStateSlice["ui"]["calculationCacheByModel"][ModelIdType];
+  getCurrentOutputSettings: () => ComfortToolStateSlice["ui"]["outputSettingsByModel"][ModelIdType];
   getEffectiveChartBaselineInputId: () => InputIdType;
-  applyBehaviorPatch: (modelId: ComfortModelType, patch: BehaviorPatch) => void;
+  applyBehaviorPatch: (modelId: ModelIdType, patch: BehaviorPatch) => void;
   getCurrentDynamicAxisPair: () => { xAxis: ChartAxisQuantityId; yAxis: ChartAxisQuantityId };
   getPendingModelSwitch: () => PendingModelSwitch | null;
   getCurrentFieldChartProfile: () => FieldChartProfile;
@@ -65,7 +65,7 @@ export function createComfortToolInternals(
   state: ComfortToolStateSlice,
 ): ComfortToolInternals {
   function invalidateModel(
-    modelId: ComfortModelType,
+    modelId: ModelIdType,
     options?: { keepErrorMessage?: boolean },
   ) {
     if (!options?.keepErrorMessage) {
@@ -110,7 +110,7 @@ export function createComfortToolInternals(
     return normalizeCompareInputIds(state.ui.compareInputIds);
   }
 
-  function getModelContext(modelId: ComfortModelType): ControlBehaviorContext {
+  function getModelContext(modelId: ModelIdType): ControlBehaviorContext {
     const modelConfig = getComfortModelConfig(modelId);
     const options = modelConfig.parseOptions(state.ui.modelOptionsByModel[modelId]);
     if (!options) {
@@ -131,7 +131,7 @@ export function createComfortToolInternals(
   }
 
   function getEffectiveQuantitiesByInput(
-    modelId: ComfortModelType = state.ui.selectedModel,
+    modelId: ModelIdType = state.ui.selectedModel,
   ): QuantitiesByInputState {
     return deriveEffectiveInputsByInput(
       state.quantitiesByInput,
@@ -197,7 +197,7 @@ export function createComfortToolInternals(
     );
   }
 
-  function applyBehaviorPatch(modelId: ComfortModelType, patch: BehaviorPatch) {
+  function applyBehaviorPatch(modelId: ModelIdType, patch: BehaviorPatch) {
     if (patch.optionsPatch) {
       const options = getComfortModelConfig(modelId).parseOptions({
         ...state.ui.modelOptionsByModel[modelId],

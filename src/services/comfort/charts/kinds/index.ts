@@ -1,4 +1,4 @@
-import type { ComfortModel as ComfortModelType } from "../../../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../../../models/comfortModels";
 import type { ChartBuildResult } from "../../../../models/output/chartBuildResult";
 import type { FieldChartProfile } from "../../../../models/output/fieldChartProfile";
 import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfile";
@@ -31,7 +31,7 @@ import { buildChartLegendFromContext } from "./legend";
 import type { ChartKindRegistration } from "./types";
 
 export interface ResolveChartBuildOptions<TResult, ChartSourceType> {
-  readonly modelId: ComfortModelType;
+  readonly modelId: ModelIdType;
   readonly registrations: readonly ChartKindRegistration<
     TResult,
     ChartSourceType

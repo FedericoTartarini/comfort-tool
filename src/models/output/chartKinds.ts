@@ -1,4 +1,4 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../comfortModels";
 
 /**
  * Closed chart-engine set (Plan ChartEngine). Model declarations cannot add members.
@@ -119,8 +119,8 @@ export function resolveChartCapabilities(
  * Custom is frontend-only for PMV psychrometric geometry.
  * Instance ids live on the PMV declarations, not in this module.
  */
-export function modelAllowsCustomCharts(modelId: ComfortModelType): boolean {
-  return modelId === ComfortModel.PmvAshrae || modelId === ComfortModel.PmvIso;
+export function modelAllowsCustomCharts(modelId: ModelIdType): boolean {
+  return modelId === ModelId.PmvAshrae || modelId === ModelId.PmvIso;
 }
 
 /** Presentation metadata for one declared chart instance. Engine spec lives on registrations. */

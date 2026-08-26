@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ComfortModel } from "../../../models/comfortModels";
+import { ModelId } from "../../../models/comfortModels";
 import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { InputControlId } from "../../../models/inputControls";
 import {
@@ -34,7 +34,7 @@ describe("input control ownership", () => {
     expect(getControl(toolState, InputControlId.Temperature).menu?.title)
       .toBe("Temperature input");
 
-    toolState.state.ui.selectedModel = ComfortModel.WindChill;
+    toolState.state.ui.selectedModel = ModelId.WindChill;
     expect(getControl(toolState, InputControlId.Temperature).menu).toBeNull();
     expect(getControl(toolState, InputControlId.Temperature).label)
       .toBe("Air temperature");
@@ -139,9 +139,9 @@ describe("input control ownership", () => {
   });
 
   it.each([
-    ComfortModel.Utci,
-    ComfortModel.AdaptiveAshrae,
-    ComfortModel.AdaptiveEn,
+    ModelId.Utci,
+    ModelId.AdaptiveAshrae,
+    ModelId.AdaptiveEn,
   ])("does not route %s temperature changes through PMV humidity behavior", (modelId) => {
     const toolState = createComfortToolState();
     toolState.state.ui.selectedModel = modelId;
@@ -162,17 +162,17 @@ describe("input control ownership", () => {
       "invalid-mode",
     )).toThrow(/invalid option/i);
 
-    delete toolState.state.ui.modelOptionsByModel[ComfortModel.PmvAshrae][
+    delete toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae][
       OptionKey.HumidityInputMode
     ];
     expect(() => toolState.selectors.getInputControls())
       .toThrow(/invalid options state/i);
 
     const switchingToolState = createComfortToolState();
-    switchingToolState.state.ui.modelOptionsByModel[ComfortModel.WindChill][
+    switchingToolState.state.ui.modelOptionsByModel[ModelId.WindChill][
       OptionKey.TemperatureMode
     ] = TemperatureMode.Air;
-    expect(() => switchingToolState.actions.setSelectedModel(ComfortModel.WindChill))
+    expect(() => switchingToolState.actions.setSelectedModel(ModelId.WindChill))
       .toThrow(/invalid options state/i);
   });
 });

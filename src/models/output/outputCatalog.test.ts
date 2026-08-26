@@ -8,7 +8,7 @@ import {
   modelAllowsCustomCharts,
   resolveChartCapabilities,
 } from "./chartKinds";
-import { ComfortModel } from "../comfortModels";
+import { ModelId } from "../comfortModels";
 import {
   WorkspaceId,
   supportsExploreWorkspace,
@@ -31,10 +31,10 @@ describe("output catalog", () => {
   });
 
   it("allows Custom by PMV model id rather than instance id", () => {
-    expect(modelAllowsCustomCharts(ComfortModel.PmvAshrae)).toBe(true);
-    expect(modelAllowsCustomCharts(ComfortModel.PmvIso)).toBe(true);
-    expect(modelAllowsCustomCharts(ComfortModel.HeatIndex)).toBe(false);
-    expect(modelAllowsCustomCharts(ComfortModel.Phs2023)).toBe(false);
+    expect(modelAllowsCustomCharts(ModelId.PmvAshrae)).toBe(true);
+    expect(modelAllowsCustomCharts(ModelId.PmvIso)).toBe(true);
+    expect(modelAllowsCustomCharts(ModelId.HeatIndex)).toBe(false);
+    expect(modelAllowsCustomCharts(ModelId.Phs2023)).toBe(false);
   });
 
   it("merges capability overrides", () => {

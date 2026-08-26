@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
 
@@ -207,9 +207,9 @@ describe("PHS ISO 7933:2023", () => {
       complianceContext,
     );
 
-    expect(phsModelConfig.id).toBe(ComfortModel.Phs2023);
+    expect(phsModelConfig.id).toBe(ModelId.Phs2023);
     expect(phsModelConfig.controls.map(({ id }) => id)).toEqual([
-      ...requiredControlIdsByModel[ComfortModel.Phs2023],
+      ...requiredControlIdsByModel[ModelId.Phs2023],
     ]);
     expect(phsModelConfig.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
     expect(phsModelConfig.outputCharts.entries.map(({ instanceId }) => instanceId)).toEqual([
@@ -267,13 +267,13 @@ describe("PHS ISO 7933:2023", () => {
     };
     const result = calculatePhsTimeSeries(draft.segments, draft.person);
     const temperature = resolveSimulationChartBuild(
-      getModelSimulationOutput(ComfortModel.Phs2023)!.charts[0],
+      getModelSimulationOutput(ModelId.Phs2023)!.charts[0],
       result,
       draft,
       UnitSystem.SI,
     );
     const waterLoss = resolveSimulationChartBuild(
-      getModelSimulationOutput(ComfortModel.Phs2023)!.charts[1],
+      getModelSimulationOutput(ModelId.Phs2023)!.charts[1],
       result,
       draft,
       UnitSystem.SI,
@@ -296,7 +296,7 @@ describe("PHS ISO 7933:2023", () => {
     const result = calculatePhsTimeSeries(draft.segments, draft.person);
     draft.segments[0].durationMinutes = 5;
     draft.person.drinkingAllowed = false;
-    const charts = getModelSimulationOutput(ComfortModel.Phs2023)!.charts.map((chart) => (
+    const charts = getModelSimulationOutput(ModelId.Phs2023)!.charts.map((chart) => (
       resolveSimulationChartBuild(chart, result, draft, UnitSystem.SI)
     ));
 

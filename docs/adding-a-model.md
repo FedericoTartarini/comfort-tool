@@ -6,7 +6,7 @@ build.
 
 A Heat Index–class model is three edits: copy
 [`src/comfortModels/heatIndex.ts`](../src/comfortModels/heatIndex.ts) as a full
-`defineModel` declaration, add one `ComfortModel` member (the live model-id
+`defineModel` declaration, add one `ModelId` member (the live model-id
 constant), and register once. Do not add `defineIndexModel()`, restore
 `src/comfortModels/presets/`, or put Plotly in the declaration.
 
@@ -28,12 +28,12 @@ tree.
    zones, `calculate`, `tables.analysis`, and `outputCharts`. For air
    temperature plus wind, copy `windChill.ts` instead. Humidex is the other
    tdb+rh sibling.
-2. **Add the model id** to `ComfortModel` in `src/models/comfortModels.ts`.
-   That object is the current ModelId constant. Wire values follow existing
-   members (`"HEAT_INDEX"`, `"HUMIDEX"`, …). Do not invent a second id tree.
+2. **Add the model id** to `ModelId` in `src/models/comfortModels.ts`.
+   Wire values follow existing members (`"HEAT_INDEX"`, `"HUMIDEX"`, …).
+   Do not invent a second id tree.
 3. **Register once** in `src/state/comfortTool/modelConfigs/index.ts`: import
    the config and add one `comfortModelConfigs` entry. The registry type is
-   `Record<ComfortModel, RuntimeComfortModelDefinition>`.
+   `Record<ModelId, RuntimeComfortModelDefinition>`.
 
 Then, only if the model actually needs them:
 
@@ -81,7 +81,7 @@ Also forbidden in a declaration:
 - writing modifier output back onto base `quantitiesByInput`
 
 Globe temperature, local discomfort, and CBE-style CSV exceedance are tools
-or a separate product surface, not new `ComfortModel` entries.
+or a separate product surface, not new `ModelId` entries.
 
 ## Current tree
 
@@ -91,7 +91,7 @@ src/
   comfortModels/     one declaration entry per registered model; family
                      folders for PMV, Adaptive, UTCI, PHS
   components/        rendering and interaction; no model-id branches
-  models/            system quantity seed, ComfortModel, ChartKind, TableType,
+  models/            system quantity seed, ModelId, ChartKind, TableType,
                      modifiers, workspace ids, zone tokens
   routes/            client router
   services/
@@ -131,7 +131,7 @@ table without Time-series capability fail `defineModel` / registry assemble.
 Assembled catalogs expose optional `assembledCatalogs.validate.model` for
 those checks. The type is optional; `assembleCatalogs` installs the hook on
 the returned instance. It is not a second authoring API — still copy
-`heatIndex.ts`, add a `ComfortModel` member, and register once.
+`heatIndex.ts`, add a `ModelId` member, and register once.
 `assembleCatalogs` merges each model's `quantities.extend` with the system
 seed, so duplicate extend ids fail assemble without a pre-merged quantity map.
 
@@ -144,7 +144,7 @@ declaration may contribute model-scoped extensions:
 quantities: {
   extend: [{
     id: "example-body-mass",
-    owner: ComfortModel.Example,
+    owner: ModelId.Example,
     scope: PhysicalQuantityScope.Model,
     /* SI label, units, default, min, max */
   }],

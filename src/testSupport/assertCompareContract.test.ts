@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { InputId } from "../models/inputSlots";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
@@ -31,14 +31,14 @@ describe("assertCompareContract", () => {
 
   it("does not skip a third input that produced no result", async () => {
     const controller = createComfortToolState();
-    await assertCompareContract(ComfortModel.PmvAshrae, controller);
+    await assertCompareContract(ModelId.PmvAshrae, controller);
     expect(controller.selectors.getVisibleInputIds()).toEqual([
       InputId.Input1,
       InputId.Input2,
       InputId.Input3,
     ]);
     expect(
-      controller.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae]
+      controller.state.ui.calculationCacheByModel[ModelId.PmvAshrae]
         .resultsByInput[InputId.Input3],
     ).not.toBeNull();
     expect(

@@ -10,7 +10,7 @@ import type {
   RuntimeComfortModelDefinition,
   SimulationOutputDeclaration,
 } from "./definition";
-import type { ComfortModel as ComfortModelType } from "../../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../../models/comfortModels";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import {
   modifierOrder,
@@ -186,7 +186,7 @@ export class ComfortModelBuilder<
   ChartSourceType,
   ComplianceBand extends Band = NumericBand,
 > {
-  private readonly id: ComfortModelType;
+  private readonly id: ModelIdType;
 
   private label?: string;
 
@@ -242,7 +242,7 @@ export class ComfortModelBuilder<
 
   private defaultDynamicAxes?: DynamicAxisDefaults;
 
-  constructor(id: ComfortModelType) {
+  constructor(id: ModelIdType) {
     this.id = id;
   }
 
@@ -959,7 +959,7 @@ export interface ModelDeclaration<
   ChartSourceType,
   ComplianceBand extends Band = NumericBand,
 > {
-  readonly id: ComfortModelType;
+  readonly id: ModelIdType;
   readonly label: string;
   readonly description: string;
   readonly standardIds: readonly StandardIdType[];

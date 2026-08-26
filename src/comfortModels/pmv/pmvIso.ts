@@ -8,7 +8,7 @@ import {
 } from "jsthermalcomfort";
 
 import { ComfortStandard } from "../../models/calculationMetadata";
-import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
 import { defaultPmvIsoOptions } from "../../models/inputModes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
@@ -33,7 +33,7 @@ import { getPmvComplianceFeedback } from "./pmvCalculation";
 const isoComplianceBands = createPmvComplianceBands();
 
 export const pmvIsoAdapter: PmvStandardAdapter = {
-  modelId: ComfortModel.PmvIso,
+  modelId: ModelId.PmvIso,
   resultStandard: ComfortStandard.Iso7730PmvPpd,
   clothingStandard: JsThermalComfortStandard.ISO,
   // ISO 7730 applicability includes the upper boundary of 2 clo.

@@ -1,4 +1,4 @@
-import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import {
   getAllowedModels,
   getAppRouteByPath,
@@ -27,7 +27,7 @@ export interface WorkspaceNavigationCoordinator {
   afterNavigation: (url: URL) => void;
   selectModel: (
     definition: AppRouteDefinition,
-    modelId: ComfortModelType,
+    modelId: ModelIdType,
   ) => void;
   confirmPendingTransition: () => void;
   cancelPendingTransition: () => void;
@@ -122,7 +122,7 @@ export function createWorkspaceNavigation(
 
   function selectModel(
     definition: AppRouteDefinition,
-    modelId: ComfortModelType,
+    modelId: ModelIdType,
   ) {
     if (!isCalculationRoute(definition)) {
       return;

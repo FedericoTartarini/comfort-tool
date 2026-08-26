@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateHumidex, humidexModelConfig } from "./humidex";
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { UnitSystem } from "../models/units";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { InputId } from "../models/inputSlots";
@@ -150,7 +150,7 @@ describe("humidex service", () => {
   });
 
   it("declares fixed-axis and dynamic field charts from defineModel", () => {
-    expect(humidexModelConfig.id).toBe(ComfortModel.Humidex);
+    expect(humidexModelConfig.id).toBe(ModelId.Humidex);
     expect(humidexModelConfig.outputCharts.defaultInstanceId).toBe("humidex-ranges");
     expect(humidexModelConfig.outputCharts.entries.map(({ instanceId, kind }) => ({
       instanceId,
@@ -163,7 +163,7 @@ describe("humidex service", () => {
 
   it("pins required Analysis controls independently of inputFields", () => {
     expect(humidexModelConfig.controls.map(({ id }) => id)).toEqual([
-      ...requiredControlIdsByModel[ComfortModel.Humidex],
+      ...requiredControlIdsByModel[ModelId.Humidex],
     ]);
   });
 });

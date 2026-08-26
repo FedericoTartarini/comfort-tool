@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import {
   PhysicalQuantityId,
   getPhysicalQuantityMeta,
@@ -93,12 +93,12 @@ describe("golden fixtures — registry derivation", () => {
 
   it("keeps Wind Chill air temperature as an explicit in-range golden", () => {
     expect(
-      getGoldenInputOverrides(ComfortModel.WindChill)[
+      getGoldenInputOverrides(ModelId.WindChill)[
         PhysicalQuantityId.DryBulbTemperature
       ],
     ).toBe(-10);
     expect(
-      getGoldenInputOverrides(ComfortModel.HeatIndex)[
+      getGoldenInputOverrides(ModelId.HeatIndex)[
         PhysicalQuantityId.DryBulbTemperature
       ],
     ).toBe(standardPrimaryFixture[PhysicalQuantityId.DryBulbTemperature]);
@@ -117,8 +117,8 @@ describe("golden fixtures — registry derivation", () => {
   });
 
   it("derives model-scoped golden inputs from the assembled catalog for that model", () => {
-    const phsInputs = getGoldenModelInputOverrides(ComfortModel.Phs2023);
+    const phsInputs = getGoldenModelInputOverrides(ModelId.Phs2023);
     expect(Object.keys(phsInputs).length).toBeGreaterThan(0);
-    expect(getGoldenModelInputOverrides(ComfortModel.HeatIndex)).toEqual({});
+    expect(getGoldenModelInputOverrides(ModelId.HeatIndex)).toEqual({});
   });
 });

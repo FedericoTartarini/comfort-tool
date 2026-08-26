@@ -11,7 +11,7 @@ import {
 import { ModelOutputKey } from "../../../models/modelCapabilities";
 import { UnitSystem } from "../../../models/units";
 import { WorkspaceId } from "../../../models/workspaces";
-import { ComfortModel } from "../../../models/comfortModels";
+import { ModelId } from "../../../models/comfortModels";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/comfortTool/modelConfigs/builder";
@@ -22,7 +22,7 @@ import type { ControlBehaviorContext } from "./types";
 
 describe("fieldInputBehaviors", () => {
   function createBuilder() {
-    return new ComfortModelBuilder<unknown, unknown>(ComfortModel.PmvAshrae)
+    return new ComfortModelBuilder<unknown, unknown>(ModelId.PmvAshrae)
       .setLabel("Test")
       .setDescription("Test model")
       .setStandardIds([])

@@ -1,4 +1,4 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../models/comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../models/comfortModels";
 import { InputControlId, type InputControlId as InputControlIdType } from "../models/inputControls";
 import {
   PhysicalQuantityId,
@@ -52,23 +52,23 @@ const tdbRhRequiredPrimaryQuantities = [
  * from `inputFields` or assembled `controls`.
  */
 export const requiredControlIdsByModel = {
-  [ComfortModel.PmvAshrae]: pmvRequiredControlIds,
-  [ComfortModel.PmvIso]: pmvRequiredControlIds,
-  [ComfortModel.Utci]: [
+  [ModelId.PmvAshrae]: pmvRequiredControlIds,
+  [ModelId.PmvIso]: pmvRequiredControlIds,
+  [ModelId.Utci]: [
     InputControlId.Temperature,
     InputControlId.RadiantTemperature,
     InputControlId.WindSpeed,
     InputControlId.Humidity,
   ],
-  [ComfortModel.AdaptiveAshrae]: adaptiveRequiredControlIds,
-  [ComfortModel.AdaptiveEn]: adaptiveRequiredControlIds,
-  [ComfortModel.HeatIndex]: tdbRhRequiredControlIds,
-  [ComfortModel.Humidex]: tdbRhRequiredControlIds,
-  [ComfortModel.WindChill]: [
+  [ModelId.AdaptiveAshrae]: adaptiveRequiredControlIds,
+  [ModelId.AdaptiveEn]: adaptiveRequiredControlIds,
+  [ModelId.HeatIndex]: tdbRhRequiredControlIds,
+  [ModelId.Humidex]: tdbRhRequiredControlIds,
+  [ModelId.WindChill]: [
     InputControlId.Temperature,
     InputControlId.WindSpeed,
   ],
-  [ComfortModel.Phs2023]: [
+  [ModelId.Phs2023]: [
     InputControlId.Temperature,
     InputControlId.RadiantTemperature,
     InputControlId.AirSpeed,
@@ -76,30 +76,30 @@ export const requiredControlIdsByModel = {
     InputControlId.MetabolicRate,
     InputControlId.ClothingInsulation,
   ],
-} as const satisfies Record<ComfortModelType, readonly InputControlIdType[]>;
+} as const satisfies Record<ModelIdType, readonly InputControlIdType[]>;
 
 /**
  * Independently authored required primary quantities. Do not generate these
  * from `inputFields`. Golden-key coverage must use this list.
  */
 export const requiredPrimaryQuantitiesByModel = {
-  [ComfortModel.PmvAshrae]: pmvRequiredPrimaryQuantities,
-  [ComfortModel.PmvIso]: pmvRequiredPrimaryQuantities,
-  [ComfortModel.Utci]: [
+  [ModelId.PmvAshrae]: pmvRequiredPrimaryQuantities,
+  [ModelId.PmvIso]: pmvRequiredPrimaryQuantities,
+  [ModelId.Utci]: [
     PhysicalQuantityId.DryBulbTemperature,
     PhysicalQuantityId.MeanRadiantTemperature,
     PhysicalQuantityId.WindSpeed,
     PhysicalQuantityId.RelativeHumidity,
   ],
-  [ComfortModel.AdaptiveAshrae]: adaptiveRequiredPrimaryQuantities,
-  [ComfortModel.AdaptiveEn]: adaptiveRequiredPrimaryQuantities,
-  [ComfortModel.HeatIndex]: tdbRhRequiredPrimaryQuantities,
-  [ComfortModel.Humidex]: tdbRhRequiredPrimaryQuantities,
-  [ComfortModel.WindChill]: [
+  [ModelId.AdaptiveAshrae]: adaptiveRequiredPrimaryQuantities,
+  [ModelId.AdaptiveEn]: adaptiveRequiredPrimaryQuantities,
+  [ModelId.HeatIndex]: tdbRhRequiredPrimaryQuantities,
+  [ModelId.Humidex]: tdbRhRequiredPrimaryQuantities,
+  [ModelId.WindChill]: [
     PhysicalQuantityId.DryBulbTemperature,
     PhysicalQuantityId.WindSpeed,
   ],
-  [ComfortModel.Phs2023]: [
+  [ModelId.Phs2023]: [
     PhysicalQuantityId.DryBulbTemperature,
     PhysicalQuantityId.MeanRadiantTemperature,
     PhysicalQuantityId.WindSpeed,
@@ -107,4 +107,4 @@ export const requiredPrimaryQuantitiesByModel = {
     PhysicalQuantityId.MetabolicRate,
     PhysicalQuantityId.ClothingInsulation,
   ],
-} as const satisfies Record<ComfortModelType, readonly PrimaryQuantityId[]>;
+} as const satisfies Record<ModelIdType, readonly PrimaryQuantityId[]>;

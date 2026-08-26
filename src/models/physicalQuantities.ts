@@ -1,4 +1,4 @@
-import type { ComfortModel as ComfortModelType } from "./comfortModels";
+import type { ModelId as ModelIdType } from "./comfortModels";
 import { SiUnit, isSiUnit, type UnitSystem as UnitSystemType } from "./units";
 
 /** Matches ModifierId wire values; kept here to avoid circular imports with inputModifiers. */
@@ -101,7 +101,7 @@ export interface PhysicalQuantityMeta {
   inPrimaryOrder?: boolean;
   derivedFrom?: readonly PhysicalQuantityId[];
   modifierId?: ModifierQuantityOwner;
-  ownerModelId?: ComfortModelType;
+  ownerModelId?: ModelIdType;
   share?: boolean;
 }
 
@@ -111,7 +111,7 @@ export interface PhysicalQuantityMeta {
  */
 export interface QuantityExtension {
   readonly id: string;
-  readonly owner: ComfortModelType;
+  readonly owner: ModelIdType;
   readonly scope: typeof PhysicalQuantityScope.Model;
   readonly label: string;
   readonly display: QuantityDisplayMeta;

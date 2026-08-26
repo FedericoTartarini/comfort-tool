@@ -1,4 +1,4 @@
-import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import type { InputControlKey as InputControlKeyType } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {
@@ -80,7 +80,7 @@ export function createComfortToolActions(
   scheduleCalculation: ScheduleCalculation,
 ): ComfortToolActions {
   function completeModelSelection(
-    nextModel: ComfortModelType,
+    nextModel: ModelIdType,
     options?: { schedule?: boolean },
   ) {
     state.ui.selectedModel = nextModel;
@@ -104,7 +104,7 @@ export function createComfortToolActions(
   }
 
   function setSelectedModel(
-    nextModel: ComfortModelType,
+    nextModel: ModelIdType,
     options?: { validateRanges?: boolean; schedule?: boolean },
   ) {
     if (state.ui.selectedModel === nextModel) {
@@ -355,7 +355,7 @@ export function createComfortToolActions(
   }
 
   function updateModelQuantity(
-    modelId: ComfortModelType,
+    modelId: ModelIdType,
     quantityId: PhysicalQuantityIdType,
     valueSi: number,
   ): boolean {

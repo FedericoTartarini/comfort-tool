@@ -1,4 +1,4 @@
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import {
   PhsPosture,
@@ -373,7 +373,7 @@ export const phsTimeSeriesModelDefinition: TimeSeriesModelDefinition<
   PhsTimeSeriesDraft,
   PhsSimulationResult
 > = {
-  id: ComfortModel.Phs2023,
+  id: ModelId.Phs2023,
   label: "Predicted Heat Strain (PHS)",
   description:
     "Build an ordered work sequence and calculate ISO 7933:2023 minute by minute.",

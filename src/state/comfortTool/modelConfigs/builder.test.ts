@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ComfortModel } from "../../../models/comfortModels";
+import { ModelId } from "../../../models/comfortModels";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
@@ -208,7 +208,7 @@ function createPmvPsychrometricCustomChart(): FrontendChartDeclaration {
 
 function createExploreBuilder(
   chart: FrontendChartDeclaration = createModelDynamicFieldChart(),
-  modelId: ComfortModel = ComfortModel.PmvAshrae,
+  modelId: ModelId = ModelId.PmvAshrae,
 ) {
   return new ComfortModelBuilder<unknown, unknown>(modelId)
     .setLabel("Test model")
@@ -279,7 +279,7 @@ describe("ComfortModelBuilder capabilities", () => {
           emptyMessage: "No chart.",
           spec: { build: () => null },
         },
-        ComfortModel.HeatIndex,
+        ModelId.HeatIndex,
       ),
     ).toThrow(/Custom is frontend-only for PMV psychrometric geometry/);
   });
@@ -393,7 +393,7 @@ describe("ComfortModelBuilder capabilities", () => {
   it("accepts model-scoped quantity extensions owned by this model", () => {
     const extension = {
       id: "pmv.testMass",
-      owner: ComfortModel.PmvAshrae,
+      owner: ModelId.PmvAshrae,
       scope: PhysicalQuantityScope.Model,
       label: "Test mass",
       display: {
@@ -418,7 +418,7 @@ describe("ComfortModelBuilder capabilities", () => {
         .extendQuantities([
           {
             id: "pmv.testMass",
-            owner: ComfortModel.Phs2023,
+            owner: ModelId.Phs2023,
             scope: PhysicalQuantityScope.Model,
             label: "Test mass",
             display: {
@@ -442,7 +442,7 @@ describe("ComfortModelBuilder capabilities", () => {
         .extendQuantities([
           {
             id: PhysicalQuantityId.DryBulbTemperature,
-            owner: ComfortModel.PmvAshrae,
+            owner: ModelId.PmvAshrae,
             scope: PhysicalQuantityScope.Model,
             label: "Air temperature",
             display: {
@@ -463,7 +463,7 @@ describe("ComfortModelBuilder capabilities", () => {
   it("contributes and exposes a model quantity before catalog assembly", () => {
     const extension = {
       id: "audit.exampleMass",
-      owner: ComfortModel.PmvAshrae,
+      owner: ModelId.PmvAshrae,
       scope: PhysicalQuantityScope.Model,
       label: "Example mass",
       display: {
@@ -506,7 +506,7 @@ describe("ComfortModelBuilder capabilities", () => {
 
 describe("defineModel", () => {
   const defineModelBase = {
-    id: ComfortModel.PmvAshrae,
+    id: ModelId.PmvAshrae,
     label: "Test model",
     description: "Test model description.",
     standardIds: [] as const,
@@ -548,7 +548,7 @@ describe("defineModel", () => {
       outputCharts: [createModelDynamicFieldChart()],
     });
 
-    expect(definition.id).toBe(ComfortModel.PmvAshrae);
+    expect(definition.id).toBe(ModelId.PmvAshrae);
     expect(definition.inputFields).toEqual([]);
     expect(definition.outputCharts.defaultInstanceId).toBe(
       "test-dynamic-field",

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import {
   PhsPosture,
   PhsQuantityId,
@@ -13,11 +13,11 @@ import { createTimeSeriesState } from "./createTimeSeriesState.svelte";
 import { timeSeriesModelOrder } from "./modelConfigs";
 
 function getDraft(controller: ReturnType<typeof createTimeSeriesState>) {
-  return controller.state.draftByModel[ComfortModel.Phs2023] as PhsTimeSeriesDraft;
+  return controller.state.draftByModel[ModelId.Phs2023] as PhsTimeSeriesDraft;
 }
 
 function getResult(controller: ReturnType<typeof createTimeSeriesState>) {
-  return controller.state.resultByModel[ComfortModel.Phs2023] as
+  return controller.state.resultByModel[ModelId.Phs2023] as
     | PhsSimulationResult
     | null;
 }
@@ -45,7 +45,7 @@ describe("createTimeSeriesState", () => {
     expect(Object.keys(controller.state.statusByModel)).toEqual(timeSeriesModelOrder);
     expect(controller.selectors.getModelOptions()).toEqual([{
       name: "Predicted Heat Strain (PHS)",
-      value: ComfortModel.Phs2023,
+      value: ModelId.Phs2023,
     }]);
     expect(draft.segments).toEqual([
       expect.objectContaining({
@@ -93,7 +93,7 @@ describe("createTimeSeriesState", () => {
       expect(controller.selectors.getStatus()).toBe("ready");
     });
     expect(getResult(controller)?.totalDurationMinutes).toBe(45);
-    expect(controller.state.revisionByModel[ComfortModel.Phs2023]).toBe(3);
+    expect(controller.state.revisionByModel[ModelId.Phs2023]).toBe(3);
 
     controller.actions.updateSegmentDuration("phs-segment-1", "0");
     expect(controller.selectors.getStatus()).toBe("waiting");
@@ -161,13 +161,13 @@ describe("createTimeSeriesState", () => {
     const controller = createTimeSeriesState({ debounceMs: 0 });
     controller.actions.start();
     await waitForReady(controller);
-    const revision = controller.state.revisionByModel[ComfortModel.Phs2023];
+    const revision = controller.state.revisionByModel[ModelId.Phs2023];
     const result = getResult(controller);
 
     controller.actions.toggleUnitSystem();
     controller.actions.updateSegmentName("phs-segment-1", "Renamed phase");
 
-    expect(controller.state.revisionByModel[ComfortModel.Phs2023]).toBe(revision);
+    expect(controller.state.revisionByModel[ModelId.Phs2023]).toBe(revision);
     expect(getResult(controller)).toBe(result);
     expect(controller.selectors.getCharts()[0].chart?.traces[0].hoverMetadata?.[0])
       .toEqual(["Renamed phase"]);

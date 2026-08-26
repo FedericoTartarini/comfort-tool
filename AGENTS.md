@@ -141,7 +141,7 @@ A model definition should own:
 
 Use centralized constants and typed metadata from `src/models/` for:
 
-- model identifiers
+- model identifiers (`ModelId`)
 - quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes). System quantities are seeded in `src/models/physicalQuantities.ts`; model-scoped ids are contributed with `quantities.extend` and assembled into the same catalog.
 - chart kinds (`ChartKind` in `src/models/output/chartKinds.ts` is the closed engine set). `defineModel` charts are `ModelChartDeclaration`: a data-only discriminated union over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`) in `services/comfort/charts/kinds/types.ts`. Specs never include Plotly `build`. `Custom` is omitted from `defineModel`. An optional `type` names a built-in or extended chart type, is preserved on the presentation instance, and must stay on that same engine/spec pair. Family modules use `FrontendChartDeclaration` / `ComfortModelBuilder`. Instance ids live on each declaration’s `outputCharts` entries. Do not use `spec: unknown`. `ParametricLine` interchange is polylines and optional limit bands.
 - compare-input identifiers
@@ -195,7 +195,7 @@ Zone boundaries appear **once** — as `min` / `max` values in the zone config. 
 
 ## Generic Calculation Cache
 
-Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not add new named per-model cache types (`PmvCalculationCache`, etc.). At the state controller level, store caches as `Record<ComfortModelType, ModelCalculationCache<unknown, unknown>>` — the controller does not need to know what `R` and `C` are.
+Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not add new named per-model cache types (`PmvCalculationCache`, etc.). At the state controller level, store caches as `Record<ModelIdType, ModelCalculationCache<unknown, unknown>>` — the controller does not need to know what `R` and `C` are.
 
 ## Branching And Duplication
 
@@ -289,7 +289,7 @@ Share snapshots store `selectedChartInstanceId` per model. Instance ids are deri
 
 - Keep this file focused on execution rules. Target architecture lives in `ARCHITECTURE-PLAN.md`.
 - If a task materially changes state flow, model registration, or service boundaries, update this file and `docs/` in the same work.
-- Authoring a model: [docs/adding-a-model.md](docs/adding-a-model.md). Copy `heatIndex.ts`, add a `ComfortModel` member, register once. Hard stops: new chart engine, new primary, new modifier, new Time-series controller, new SI unit dimension.
+- Authoring a model: [docs/adding-a-model.md](docs/adding-a-model.md). Copy `heatIndex.ts`, add a `ModelId` member, register once. Hard stops: new chart engine, new primary, new modifier, new Time-series controller, new SI unit dimension.
 - Do not add a documentation generator, deployment step, or product UI route for these internal files unless a later task explicitly requests one.
 
 ## Code Quality

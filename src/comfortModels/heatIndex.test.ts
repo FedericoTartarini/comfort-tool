@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { UnitSystem } from "../models/units";
 import { convertModelOutputFromSi } from "../services/units";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
@@ -204,7 +204,7 @@ describe("heatIndex service", () => {
   });
 
   it("declares fixed-axis and dynamic field charts from defineModel", () => {
-    expect(heatIndexModelConfig.id).toBe(ComfortModel.HeatIndex);
+    expect(heatIndexModelConfig.id).toBe(ModelId.HeatIndex);
     expect(heatIndexModelConfig.outputCharts.defaultInstanceId).toBe("heat-index-ranges");
     expect(heatIndexModelConfig.outputCharts.entries.map(({ instanceId, kind }) => ({
       instanceId,
@@ -217,13 +217,13 @@ describe("heatIndex service", () => {
 
   it("pins required Analysis controls independently of inputFields", () => {
     expect(heatIndexModelConfig.controls.map(({ id }) => id)).toEqual([
-      ...requiredControlIdsByModel[ComfortModel.HeatIndex],
+      ...requiredControlIdsByModel[ModelId.HeatIndex],
     ]);
   });
 
   it("fails if Heat Index drops the required humidity field", () => {
-    const requiredControlIds = [...requiredControlIdsByModel[ComfortModel.HeatIndex]];
-    const requiredQuantities = [...requiredPrimaryQuantitiesByModel[ComfortModel.HeatIndex]];
+    const requiredControlIds = [...requiredControlIdsByModel[ModelId.HeatIndex]];
+    const requiredQuantities = [...requiredPrimaryQuantitiesByModel[ModelId.HeatIndex]];
     const withoutHumidity = heatIndexModelConfig.inputFields.filter(
       (spec) => spec.kind !== "simpleHumidity",
     );

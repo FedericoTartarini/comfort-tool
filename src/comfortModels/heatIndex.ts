@@ -1,7 +1,7 @@
 import { heat_index } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import type { ModelChartSourceDto } from "../models/comfortDtos";
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { InputControlId } from "../models/inputControls";
 import {
   bandsFromThermalZones,
@@ -110,7 +110,7 @@ export const heatIndexModelConfig = defineModel<
   HeatIndexResponseDto,
   ModelChartSourceDto<HeatIndexRequestDto>
 >({
-  id: ComfortModel.HeatIndex,
+  id: ModelId.HeatIndex,
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],

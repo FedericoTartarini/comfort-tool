@@ -1,4 +1,4 @@
-import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import type {
   InputControlKey as InputControlKeyType,
   InputControlViewModel,
@@ -76,17 +76,17 @@ export interface InputPanelActionCallbacks {
 }
 
 interface BuildInputPanelOptions {
-  selectedModel: ComfortModelType;
+  selectedModel: ModelIdType;
   compareEnabled: boolean;
   unitSystem: UnitSystemType;
   activeInputId: InputIdType;
   visibleInputIds: InputIdType[];
-  allowedModelIds: readonly ComfortModelType[];
+  allowedModelIds: readonly ModelIdType[];
   config: RuntimeComfortModelDefinition;
   context: ControlBehaviorContext;
   committedModifierControls: InputModifierControlViewModel[];
   callbacks: InputPanelActionCallbacks;
-  onSelectModel: (modelId: ComfortModelType) => void;
+  onSelectModel: (modelId: ModelIdType) => void;
 }
 
 function countActiveModifiers(
@@ -132,7 +132,7 @@ function buildFieldRowViewModel(
 }
 
 function buildModifiersViewModel(
-  selectedModel: ComfortModelType,
+  selectedModel: ModelIdType,
   unitSystem: UnitSystemType,
   visibleInputIds: InputIdType[],
   committedModifierControls: InputModifierControlViewModel[],

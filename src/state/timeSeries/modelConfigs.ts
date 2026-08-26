@@ -1,5 +1,5 @@
 import { phsTimeSeriesModelDefinition } from "../../comfortModels/phs/phsTimeSeries";
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../../models/comfortModels";
 import type { RuntimeTimeSeriesModelDefinition } from "../../models/timeSeries";
 import {
   comfortModelConfigs,
@@ -7,7 +7,7 @@ import {
 } from "../comfortTool/modelConfigs";
 
 const timeSeriesSimulators = {
-  [ComfortModel.Phs2023]: phsTimeSeriesModelDefinition,
+  [ModelId.Phs2023]: phsTimeSeriesModelDefinition,
 } as const;
 
 const declaredTimeSeriesModelIds = comfortModelOrder.filter(
@@ -49,7 +49,7 @@ export const timeSeriesModelMetaById = Object.fromEntries(
 export function getTimeSeriesModelConfig(
   modelId: TimeSeriesModelId,
 ): RuntimeTimeSeriesModelDefinition {
-  const declaration = comfortModelConfigs[modelId as ComfortModelType];
+  const declaration = comfortModelConfigs[modelId as ModelIdType];
   if (declaration.tables.timeSeries === undefined) {
     throw new Error(`${modelId} is not a Time-series model (missing tables.timeSeries).`);
   }

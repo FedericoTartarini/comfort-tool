@@ -1,7 +1,7 @@
 import { wc, wind_chill_temperature } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import type { ModelChartSourceDto } from "../models/comfortDtos";
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { InputControlId } from "../models/inputControls";
 import {
   bandsFromThermalZones,
@@ -132,7 +132,7 @@ export const windChillModelConfig = defineModel<
   WindChillResponseDto,
   ModelChartSourceDto<WindChillRequestDto>
 >({
-  id: ComfortModel.WindChill,
+  id: ModelId.WindChill,
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],

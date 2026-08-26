@@ -1,6 +1,6 @@
 import {
-  ComfortModel,
-  type ComfortModel as ComfortModelType,
+  ModelId,
+  type ModelId as ModelIdType,
 } from "../../../models/comfortModels";
 import type {
   RuntimeComfortModelDefinition,
@@ -30,22 +30,22 @@ export { assembleCatalogs, collectRegisteredQuantityExtensions, validateModel };
 export type { AssembledCatalogs, CatalogModelSlice } from "./validateModel";
 
 export const comfortModelConfigs: Record<
-  ComfortModelType,
+  ModelIdType,
   RuntimeComfortModelDefinition
 > = {
-  [ComfortModel.PmvAshrae]: pmvAshraeModelConfig,
-  [ComfortModel.PmvIso]: pmvIsoModelConfig,
-  [ComfortModel.Utci]: utciModelConfig,
-  [ComfortModel.AdaptiveAshrae]: adaptiveAshraeModelConfig,
-  [ComfortModel.AdaptiveEn]: adaptiveEnModelConfig,
-  [ComfortModel.HeatIndex]: heatIndexModelConfig,
-  [ComfortModel.Humidex]: humidexModelConfig,
-  [ComfortModel.WindChill]: windChillModelConfig,
-  [ComfortModel.Phs2023]: phsModelConfig,
+  [ModelId.PmvAshrae]: pmvAshraeModelConfig,
+  [ModelId.PmvIso]: pmvIsoModelConfig,
+  [ModelId.Utci]: utciModelConfig,
+  [ModelId.AdaptiveAshrae]: adaptiveAshraeModelConfig,
+  [ModelId.AdaptiveEn]: adaptiveEnModelConfig,
+  [ModelId.HeatIndex]: heatIndexModelConfig,
+  [ModelId.Humidex]: humidexModelConfig,
+  [ModelId.WindChill]: windChillModelConfig,
+  [ModelId.Phs2023]: phsModelConfig,
 } as const;
 
 export function getDeclaredChartInstanceIds(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): readonly string[] {
   return comfortModelConfigs[modelId].outputCharts.entries.map(
     ({ instanceId }) => instanceId,
@@ -62,7 +62,7 @@ export const assembledCatalogs = assembleCatalogs(
 
 export const comfortModelOrder = Object.keys(
   comfortModelConfigs,
-) as ComfortModelType[];
+) as ModelIdType[];
 
 export const comfortModelMetaById = Object.fromEntries(
   Object.entries(comfortModelConfigs).map(([id, config]) => [
@@ -72,14 +72,14 @@ export const comfortModelMetaById = Object.fromEntries(
 );
 
 export function getComfortModelConfig(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): RuntimeComfortModelDefinition {
   return comfortModelConfigs[modelId];
 }
 
 export function getModelsForStandard(
   standardId: StandardIdType,
-): ComfortModelType[] {
+): ModelIdType[] {
   return comfortModelOrder.filter((modelId) =>
     comfortModelConfigs[modelId].standardIds.includes(standardId),
   );
@@ -87,7 +87,7 @@ export function getModelsForStandard(
 
 export function getModelsForWorkspace(
   workspaceId: WorkspaceIdType,
-): ComfortModelType[] {
+): ModelIdType[] {
   return comfortModelOrder.filter((modelId) => {
     const capabilities = comfortModelConfigs[modelId].workspaceCapabilities;
     switch (workspaceId) {
@@ -106,7 +106,7 @@ export function getModelsForWorkspace(
 }
 
 export function getModelSimulationOutput(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): SimulationOutputDeclaration | undefined {
   return comfortModelConfigs[modelId].simulation;
 }

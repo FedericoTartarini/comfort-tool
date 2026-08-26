@@ -1,4 +1,4 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../models/comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../models/comfortModels";
 import {
   createModelCalculationContext,
   type ModelCalculationContext,
@@ -47,9 +47,9 @@ export const standardPrimaryFixture = {
  * `defaultSi`.
  */
 export const explicitGoldenPrimaryOverrides: Partial<
-  Record<ComfortModelType, Partial<PrimaryInputState>>
+  Record<ModelIdType, Partial<PrimaryInputState>>
 > = {
-  [ComfortModel.WindChill]: {
+  [ModelId.WindChill]: {
     [PhysicalQuantityId.DryBulbTemperature]: -10,
   },
 };
@@ -78,7 +78,7 @@ function isValueInDeclaredRange(
 }
 
 export function declaredPrimaryQuantityIdsForModel(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): PrimaryQuantityId[] {
   const seen = new Set<PrimaryQuantityId>();
   const quantityIds: PrimaryQuantityId[] = [];
@@ -93,13 +93,13 @@ export function declaredPrimaryQuantityIdsForModel(
 }
 
 export function declaredControlIdsForModel(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): ReturnType<typeof inputFieldControlId>[] {
   return comfortModelConfigs[modelId].inputFields.map(inputFieldControlId);
 }
 
 function declaredRangeForModelPrimary(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   quantityId: PrimaryQuantityId,
 ): { minSi: number; maxSi: number } {
   for (const spec of comfortModelConfigs[modelId].inputFields) {
@@ -115,7 +115,7 @@ function declaredRangeForModelPrimary(
  * `standardPrimaryFixture` when that value is inside the declared range.
  */
 export function getGoldenInputOverrides(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): Partial<PrimaryInputState> {
   const overrides: Partial<PrimaryInputState> = {};
   const explicit = explicitGoldenPrimaryOverrides[modelId] ?? {};
@@ -147,7 +147,7 @@ export function getGoldenInputOverrides(
 
 /** Registry-derived model-scoped SI (catalog defaults for that model's extend list). */
 export function getGoldenModelInputOverrides(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): Partial<Record<PhysicalQuantityIdType, number>> {
   return createDefaultModelInputsForModel(modelId);
 }
@@ -193,7 +193,7 @@ export function pickPmvRequest(
 }
 
 export function createGoldenCalculationContext(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   inputOverrides: Partial<PrimaryInputState> = {},
   modelInputOverrides: Partial<Record<PhysicalQuantityIdType, number>> = {},
 ): ModelCalculationContext {

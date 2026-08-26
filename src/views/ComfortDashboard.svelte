@@ -13,12 +13,12 @@
   } from "../state/comfortTool/chartInstancePresentation";
   import type { ComfortToolController } from "../state/comfortTool/types";
 
-  type ComfortModelType = ComfortToolController["state"]["ui"]["selectedModel"];
+  type ModelIdType = ComfortToolController["state"]["ui"]["selectedModel"];
 
   interface Props {
     toolState: ComfortToolController;
-    allowedModelIds: readonly ComfortModelType[];
-    onSelectModel: (modelId: ComfortModelType) => void;
+    allowedModelIds: readonly ModelIdType[];
+    onSelectModel: (modelId: ModelIdType) => void;
   }
 
   let { toolState, allowedModelIds, onSelectModel }: Props = $props();

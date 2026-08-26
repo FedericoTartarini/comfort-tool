@@ -6,7 +6,7 @@
   import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
   import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
-  import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+  import type { ModelId as ModelIdType } from "../../models/comfortModels";
   import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../state/comfortTool/types";
   import type { PublicationExportHandler } from "../../services/plotlyExport";
@@ -17,7 +17,7 @@
     chartInstance: ChartInstancePanelView;
     chartInstances: readonly ChartInstancePanelView[];
     selectedChartInstanceId: string;
-    selectedModel: ComfortModelType;
+    selectedModel: ModelIdType;
     onSelectChartInstance: (instanceId: string) => void;
     chartControls: ChartControlsViewModel;
     legendZones: ReadonlyArray<{ label: string; color: string }> | null;

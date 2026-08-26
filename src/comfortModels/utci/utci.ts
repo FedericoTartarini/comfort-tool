@@ -1,7 +1,7 @@
 import type {
   ModelChartSourceDto,
 } from "../../models/comfortDtos";
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputControlId } from "../../models/inputControls";
 import {
@@ -86,7 +86,7 @@ const builder = new ComfortModelBuilder<
   UtciResponseDto,
   ModelChartSourceDto<UtciRequestDto>
 >(
-  ComfortModel.Utci,
+  ModelId.Utci,
 );
 
 const utciOutputCharts: OutputChartDeclarationInput<

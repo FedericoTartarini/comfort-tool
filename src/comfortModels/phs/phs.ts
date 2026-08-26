@@ -1,5 +1,5 @@
 import type { ModelChartSourceDto } from "../../models/comfortDtos";
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId, PhysicalQuantityScope } from "../../models/physicalQuantities";
 import { SiUnit } from "../../models/units";
 import { InputControlId } from "../../models/inputControls";
@@ -311,7 +311,7 @@ function buildPhsTableRows(): TableRowSpec<PhsResponseDto>[] {
 const phsQuantityExtensions = [
   {
     id: PhsQuantityId.BodyWeight,
-    owner: ComfortModel.Phs2023,
+    owner: ModelId.Phs2023,
     scope: PhysicalQuantityScope.Model,
     label: "Body weight",
     display: {
@@ -326,7 +326,7 @@ const phsQuantityExtensions = [
   },
   {
     id: PhsQuantityId.Height,
-    owner: ComfortModel.Phs2023,
+    owner: ModelId.Phs2023,
     scope: PhysicalQuantityScope.Model,
     label: "Body height",
     display: {
@@ -344,7 +344,7 @@ const phsQuantityExtensions = [
 const builder = new ComfortModelBuilder<
   PhsResponseDto,
   ModelChartSourceDto<PhsEnvironmentSi>
->(ComfortModel.Phs2023);
+>(ModelId.Phs2023);
 
 builder
   .setLabel(MODEL_LABEL)

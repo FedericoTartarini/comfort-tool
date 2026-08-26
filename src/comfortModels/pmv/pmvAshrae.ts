@@ -8,7 +8,7 @@ import {
 } from "jsthermalcomfort";
 
 import { ComfortStandard } from "../../models/calculationMetadata";
-import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
 import { defaultPmvAshraeOptions } from "../../models/inputModes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
@@ -33,7 +33,7 @@ import { getPmvComplianceFeedback } from "./pmvCalculation";
 const ashraeComplianceBands = createPmvComplianceBands();
 
 export const pmvAshraeAdapter: PmvStandardAdapter = {
-  modelId: ComfortModel.PmvAshrae,
+  modelId: ModelId.PmvAshrae,
   resultStandard: ComfortStandard.Ashrae55PmvPpd,
   clothingStandard: JsThermalComfortStandard.ASHRAE,
   clothingInsulationMaxSi: 1.5,

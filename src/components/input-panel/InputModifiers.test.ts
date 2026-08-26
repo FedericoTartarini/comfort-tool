@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { tick } from "svelte";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { ModifierId } from "../../models/inputModifiers";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
@@ -151,7 +151,7 @@ describe("InputModifiers", () => {
     await tick();
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    toolState.state.ui.selectedModel = ComfortModel.Utci;
+    toolState.state.ui.selectedModel = ModelId.Utci;
     await tick();
     await waitFor(() => {
       expect(screen.queryByRole("region", { name: "Input modifiers" })).toBeNull();
@@ -160,7 +160,7 @@ describe("InputModifiers", () => {
 
   it("does not render an entry for models without declared modifiers", () => {
     const toolState = createComfortToolState();
-    toolState.state.ui.selectedModel = ComfortModel.Utci;
+    toolState.state.ui.selectedModel = ModelId.Utci;
     render(InputPanelHost, { toolState });
 
     expect(screen.queryByRole("region", { name: "Input modifiers" })).toBeNull();

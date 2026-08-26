@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";
 import { WorkspaceId } from "../../models/workspaces";
@@ -32,7 +32,7 @@ describe("workspace navigation coordination", () => {
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
 
     expect(coordinator.prepareUrl(routeUrl("/ASHRAE-55/"))).toBe(true);
-    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
+    expect(toolState.state.ui.selectedModel).toBe(ModelId.PmvAshrae);
     expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
     expect(navigate).not.toHaveBeenCalled();
   });
@@ -40,13 +40,13 @@ describe("workspace navigation coordination", () => {
   it("selects an ineligible route's default model without duplicating route lists", () => {
     const toolState = createComfortToolState();
     const coordinator = createWorkspaceNavigation(toolState, { navigate: vi.fn() });
-    toolState.actions.setSelectedModel(ComfortModel.Utci, {
+    toolState.actions.setSelectedModel(ModelId.Utci, {
       validateRanges: false,
       schedule: false,
     });
 
     expect(coordinator.prepareUrl(routeUrl("/ISO-7730/"))).toBe(true);
-    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvIso);
+    expect(toolState.state.ui.selectedModel).toBe(ModelId.PmvIso);
     expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
   });
 
@@ -57,33 +57,33 @@ describe("workspace navigation coordination", () => {
     const explore = requireCalculationRoute("/Explore/");
 
     coordinator.prepareUrl(routeUrl(explore.path));
-    coordinator.selectModel(explore, ComfortModel.WindChill);
+    coordinator.selectModel(explore, ModelId.WindChill);
     expect(toolState.selectors.getPendingModelSwitch()?.targetModel)
-      .toBe(ComfortModel.WindChill);
+      .toBe(ModelId.WindChill);
     expect(coordinator.prepareUrl(routeUrl("/Time-Series/"))).toBe(false);
 
     coordinator.cancelPendingTransition();
-    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
+    expect(toolState.state.ui.selectedModel).toBe(ModelId.PmvAshrae);
     expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Explore);
     expect(navigate).not.toHaveBeenCalled();
 
-    coordinator.selectModel(explore, ComfortModel.WindChill);
+    coordinator.selectModel(explore, ModelId.WindChill);
     coordinator.confirmPendingTransition();
-    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.WindChill);
+    expect(toolState.state.ui.selectedModel).toBe(ModelId.WindChill);
     expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Explore);
 
     const ashraeUrl = routeUrl("/ASHRAE-55/");
     expect(coordinator.prepareUrl(ashraeUrl)).toBe(false);
-    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.WindChill);
+    expect(toolState.state.ui.selectedModel).toBe(ModelId.WindChill);
     expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Explore);
 
     coordinator.cancelPendingTransition();
-    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.WindChill);
+    expect(toolState.state.ui.selectedModel).toBe(ModelId.WindChill);
     expect(navigate).not.toHaveBeenCalled();
 
     expect(coordinator.prepareUrl(ashraeUrl)).toBe(false);
     coordinator.confirmPendingTransition();
-    expect(toolState.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
+    expect(toolState.state.ui.selectedModel).toBe(ModelId.PmvAshrae);
     expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
     expect(navigate).toHaveBeenCalledWith(expect.objectContaining({
       url: ashraeUrl,
@@ -92,11 +92,11 @@ describe("workspace navigation coordination", () => {
 
   it("lets pathname constraints win over a valid v1 share snapshot", () => {
     const source = createComfortToolState();
-    source.actions.setSelectedModel(ComfortModel.Utci, {
+    source.actions.setSelectedModel(ModelId.Utci, {
       validateRanges: false,
       schedule: false,
     });
-    const ashraeSettings = source.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae];
+    const ashraeSettings = source.state.ui.outputSettingsByModel[ModelId.PmvAshrae];
     ashraeSettings.exploreBands = ashraeSettings.exploreBands?.map((band, index) => (
       index === 0 ? { ...band, max: -3.25 } : { ...band }
     )) ?? null;
@@ -110,9 +110,9 @@ describe("workspace navigation coordination", () => {
     const coordinator = createWorkspaceNavigation(target, { navigate: vi.fn() });
     expect(coordinator.prepareUrl(sharedUrl, { validateRanges: false })).toBe(true);
 
-    expect(target.state.ui.selectedModel).toBe(ComfortModel.PmvAshrae);
+    expect(target.state.ui.selectedModel).toBe(ModelId.PmvAshrae);
     expect(target.state.ui.activeWorkspace).toBe(WorkspaceId.Standard);
-    expect(target.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae].exploreBands?.[0].max)
+    expect(target.state.ui.outputSettingsByModel[ModelId.PmvAshrae].exploreBands?.[0].max)
       .toBe(-3.25);
     expect(target.actions.exportShareSnapshot().version).toBe(1);
 
@@ -127,9 +127,9 @@ describe("workspace navigation coordination", () => {
     const toolState = createComfortToolState();
     const coordinator = createWorkspaceNavigation(toolState, { navigate: vi.fn() });
     toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature] = 21.5;
-    toolState.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae].xAxis =
+    toolState.state.ui.outputSettingsByModel[ModelId.PmvAshrae].xAxis =
       PhysicalQuantityId.MeanRadiantTemperature;
-    const cacheBefore = toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae];
+    const cacheBefore = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae];
 
     const timeSeries = appRouteDefinitions.find(
       ({ path }) => path === "/Time-Series/",
@@ -140,9 +140,9 @@ describe("workspace navigation coordination", () => {
 
     expect(toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature])
       .toBe(21.5);
-    expect(toolState.state.ui.outputSettingsByModel[ComfortModel.PmvAshrae].xAxis)
+    expect(toolState.state.ui.outputSettingsByModel[ModelId.PmvAshrae].xAxis)
       .toBe(PhysicalQuantityId.MeanRadiantTemperature);
-    expect(toolState.state.ui.calculationCacheByModel[ComfortModel.PmvAshrae])
+    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae])
       .toBe(cacheBefore);
   });
 });

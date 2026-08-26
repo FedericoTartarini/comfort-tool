@@ -1,4 +1,4 @@
-import { ComfortModel, type ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../../models/comfortModels";
 import {
   inputModifierCatalogue,
   modifierOrder,
@@ -7,12 +7,12 @@ import {
 } from "../../models/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
 import { PhysicalQuantityId, QuantityState, derivedQuantityIds, isPhysicalQuantityId, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../models/physicalQuantities";
-const comfortModelOrder = Object.values(ComfortModel) as ComfortModelType[];
+const comfortModelOrder = Object.values(ModelId) as ModelIdType[];
 
 export type QuantitiesByInputState = Record<InputIdType, PrimaryInputState>;
 export type AuxiliaryQuantitiesByInputState = Record<InputIdType, AuxiliaryInputState>;
 export type ModelInputsByModelState = Record<
-  ComfortModelType,
+  ModelIdType,
   Partial<Record<PhysicalQuantityIdType, number>>
 >;
 
@@ -28,7 +28,7 @@ export function createAuxiliaryQuantitiesByInput(): AuxiliaryQuantitiesByInputSt
 }
 
 export function createDefaultModelInputsForModel(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): Partial<Record<PhysicalQuantityIdType, number>> {
   return Object.values(physicalQuantityMetaById)
     .filter((meta) => meta.ownerModelId === modelId && meta.state === QuantityState.Model)

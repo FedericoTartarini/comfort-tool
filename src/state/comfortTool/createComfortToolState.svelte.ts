@@ -1,5 +1,5 @@
 import { InputId } from "../../models/inputSlots";
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { UnitSystem } from "../../models/units";
 import { syncDerivedStateIntoAuxiliary } from "../../services/comfort/syncState";
 import {
@@ -29,7 +29,7 @@ export function createComfortToolState(): ComfortToolController {
   syncDerivedStateIntoAuxiliary(quantitiesByInput, auxiliaryQuantitiesByInput);
   const activeModifiersByInput = $state(createActiveModifiersByInput());
   const ui = $state({
-    selectedModel: ComfortModel.PmvAshrae,
+    selectedModel: ModelId.PmvAshrae,
     selectedChartInstanceByModel: createSelectedChartInstanceByModel(),
     modelOptionsByModel: createModelOptionsByModel(),
     compareEnabled: false,

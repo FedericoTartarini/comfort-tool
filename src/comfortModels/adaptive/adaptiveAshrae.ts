@@ -1,6 +1,6 @@
 import { adaptive_ashrae } from "jsthermalcomfort";
 import { ComfortStandard } from "../../models/calculationMetadata";
-import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { InputPresetKey } from "../../services/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../models/thermalZone";
@@ -56,7 +56,7 @@ const getAdaptiveAshraeFeedback = createAdaptiveComplianceFeedbackGetter(
 
 export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   ...adaptiveAshraeBoundaryDefinition,
-  modelId: ComfortModel.AdaptiveAshrae,
+  modelId: ModelId.AdaptiveAshrae,
   label: "Adaptive (ASHRAE-55)",
   description:
     "ASHRAE 55 Adaptive thermal comfort model for naturally ventilated buildings.",

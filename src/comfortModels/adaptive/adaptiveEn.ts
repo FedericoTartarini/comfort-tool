@@ -1,6 +1,6 @@
 import { adaptive_en } from "jsthermalcomfort";
 import { ComfortStandard } from "../../models/calculationMetadata";
-import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { InputPresetKey } from "../../services/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../models/thermalZone";
@@ -63,7 +63,7 @@ const getAdaptiveEnFeedback = createAdaptiveComplianceFeedbackGetter("category-i
 
 export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   ...adaptiveEnBoundaryDefinition,
-  modelId: ComfortModel.AdaptiveEn,
+  modelId: ModelId.AdaptiveEn,
   label: "Adaptive (EN 16798-1)",
   description:
     "EN 16798-1 Adaptive thermal comfort model for naturally ventilated buildings.",

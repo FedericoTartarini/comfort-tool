@@ -1,4 +1,4 @@
-import { type ComfortModel as ComfortModelType } from "../models/comfortModels";
+import { type ModelId as ModelIdType } from "../models/comfortModels";
 import type { PlotlyChartResponseDto } from "../models/comfortDtos";
 import { InputId } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
@@ -45,7 +45,7 @@ export interface ChartGoldenSnapshot {
 }
 
 export interface ModelOutputGoldenSnapshot {
-  modelId: ComfortModelType;
+  modelId: ModelIdType;
   table: TableGoldenSnapshot;
   charts: ChartGoldenSnapshot[];
 }
@@ -89,7 +89,7 @@ function serializeChart(
 }
 
 export function buildModelOutputGoldenSnapshot(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): ModelOutputGoldenSnapshot {
   const config = comfortModelConfigs[modelId];
   const context = createGoldenCalculationContext(

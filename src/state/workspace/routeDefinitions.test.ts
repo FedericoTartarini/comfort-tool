@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ComfortModel } from "../../models/comfortModels";
+import { ModelId } from "../../models/comfortModels";
 import { WorkspaceId } from "../../models/workspaces";
 import {
   appRouteDefinitions,
@@ -60,37 +60,37 @@ describe("workspace route definitions", () => {
     ]));
 
     expect(matrix["/ASHRAE-55/"]).toEqual({
-      models: [ComfortModel.PmvAshrae, ComfortModel.AdaptiveAshrae],
+      models: [ModelId.PmvAshrae, ModelId.AdaptiveAshrae],
       workspace: WorkspaceId.Standard,
-      defaultModel: ComfortModel.PmvAshrae,
+      defaultModel: ModelId.PmvAshrae,
     });
     expect(matrix["/ISO-7730/"]).toEqual({
-      models: [ComfortModel.PmvIso],
+      models: [ModelId.PmvIso],
       workspace: WorkspaceId.Standard,
-      defaultModel: ComfortModel.PmvIso,
+      defaultModel: ModelId.PmvIso,
     });
     expect(matrix["/EN-16798-1/"]).toEqual({
-      models: [ComfortModel.AdaptiveEn],
+      models: [ModelId.AdaptiveEn],
       workspace: WorkspaceId.Standard,
-      defaultModel: ComfortModel.AdaptiveEn,
+      defaultModel: ModelId.AdaptiveEn,
     });
     expect(matrix["/ISO-7933/"]).toEqual({
-      models: [ComfortModel.Phs2023],
+      models: [ModelId.Phs2023],
       workspace: WorkspaceId.Standard,
-      defaultModel: ComfortModel.Phs2023,
+      defaultModel: ModelId.Phs2023,
     });
     expect(matrix["/Explore/"]).toEqual({
       models: [
-        ComfortModel.PmvAshrae,
-        ComfortModel.PmvIso,
-        ComfortModel.Utci,
-        ComfortModel.HeatIndex,
-        ComfortModel.Humidex,
-        ComfortModel.WindChill,
-        ComfortModel.Phs2023,
+        ModelId.PmvAshrae,
+        ModelId.PmvIso,
+        ModelId.Utci,
+        ModelId.HeatIndex,
+        ModelId.Humidex,
+        ModelId.WindChill,
+        ModelId.Phs2023,
       ],
       workspace: WorkspaceId.Explore,
-      defaultModel: ComfortModel.PmvAshrae,
+      defaultModel: ModelId.PmvAshrae,
     });
   });
 });

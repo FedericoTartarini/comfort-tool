@@ -2,7 +2,7 @@ import { pmv_ppd, pmv_ppd_ashrae } from "jsthermalcomfort";
 import { describe, expect, it, vi } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
-import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
 import { PhysicalQuantityId, type PrimaryInputState } from "../../models/physicalQuantities";
 import { InputControlId } from "../../models/inputControls";
 import {
@@ -153,8 +153,8 @@ describe("PMV standard declarations", () => {
 
   it("registers independent ASHRAE and ISO models with declaration-owned metadata", () => {
     expect(pmvAshraeModelConfig).not.toBe(pmvIsoModelConfig);
-    expect(pmvAshraeModelConfig.id).toBe(ComfortModel.PmvAshrae);
-    expect(pmvIsoModelConfig.id).toBe(ComfortModel.PmvIso);
+    expect(pmvAshraeModelConfig.id).toBe(ModelId.PmvAshrae);
+    expect(pmvIsoModelConfig.id).toBe(ModelId.PmvIso);
     expect(pmvAshraeModelConfig.label).toBe(pmvAshraeDeclaration.label);
     expect(pmvIsoModelConfig.label).toBe(pmvIsoDeclaration.label);
     expect(pmvIsoModelConfig.description).toContain("ISO 7730 Category B");
@@ -168,10 +168,10 @@ describe("PMV standard declarations", () => {
 
   it("pins required Analysis controls independently of inputFields", () => {
     expect(pmvAshraeModelConfig.controls.map(({ id }) => id)).toEqual([
-      ...requiredControlIdsByModel[ComfortModel.PmvAshrae],
+      ...requiredControlIdsByModel[ModelId.PmvAshrae],
     ]);
     expect(pmvIsoModelConfig.controls.map(({ id }) => id)).toEqual([
-      ...requiredControlIdsByModel[ComfortModel.PmvIso],
+      ...requiredControlIdsByModel[ModelId.PmvIso],
     ]);
   });
 
@@ -586,7 +586,7 @@ describe("PMV roots and compliance", () => {
         effectiveQuantitiesByInput: createComfortToolState().state.quantitiesByInput,
         auxiliaryQuantitiesByInput: createComfortToolState().state.auxiliaryQuantitiesByInput,
         modelInputs: {},
-        options: createComfortToolState().state.ui.modelOptionsByModel[ComfortModel.PmvAshrae],
+        options: createComfortToolState().state.ui.modelOptionsByModel[ModelId.PmvAshrae],
       }),
       [InputId.Input1],
     )).toThrow("broken adapter");

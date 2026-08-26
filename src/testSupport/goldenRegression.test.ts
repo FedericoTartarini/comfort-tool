@@ -14,7 +14,7 @@ import { calculateUtci } from "../comfortModels/utci/utciCalculation";
 import { evaluatePmvCondition } from "../comfortModels/pmv/pmvCalculation";
 import { pmvAshraeAdapter } from "../comfortModels/pmv/pmvAshrae";
 import { calculatePhs } from "../comfortModels/phs/phsCalculation";
-import { ComfortModel } from "../models/comfortModels";
+import { ModelId } from "../models/comfortModels";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { PhsPosture, PhsQuantityId } from "../models/phs";
 import { InputId } from "../models/inputSlots";
@@ -31,7 +31,7 @@ import {
 import { requiredControlIdsByModel } from "./requiredModelControls";
 
 function calculatePrimaryResult<T>(
-  modelId: ComfortModel,
+  modelId: ModelId,
   inputOverrides: Parameters<typeof createGoldenCalculationContext>[1] = {},
   modelInputOverrides: Parameters<typeof createGoldenCalculationContext>[2] = {},
 ): T {
@@ -115,7 +115,7 @@ describe("golden regression — direct calculation snapshots", () => {
 
 describe("golden regression — calculate via model config", () => {
   it("Humidex matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HumidexResponseDto>(ComfortModel.Humidex, {
+    const result = calculatePrimaryResult<HumidexResponseDto>(ModelId.Humidex, {
       [PhysicalQuantityId.DryBulbTemperature]: 30,
       [PhysicalQuantityId.RelativeHumidity]: 70,
     });
@@ -124,7 +124,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("Heat Index matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HeatIndexResponseDto>(ComfortModel.HeatIndex, {
+    const result = calculatePrimaryResult<HeatIndexResponseDto>(ModelId.HeatIndex, {
       [PhysicalQuantityId.DryBulbTemperature]: 32,
       [PhysicalQuantityId.RelativeHumidity]: 60,
     });
@@ -133,7 +133,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("Wind Chill matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<WindChillResponseDto>(ComfortModel.WindChill, {
+    const result = calculatePrimaryResult<WindChillResponseDto>(ModelId.WindChill, {
       [PhysicalQuantityId.DryBulbTemperature]: -10,
       [PhysicalQuantityId.WindSpeed]: 5,
     });
@@ -142,8 +142,8 @@ describe("golden regression — calculate via model config", () => {
 
   it("UTCI matches golden baseline via model config", () => {
     const result = calculatePrimaryResult<UtciResponseDto>(
-      ComfortModel.Utci,
-      getGoldenInputOverrides(ComfortModel.Utci),
+      ModelId.Utci,
+      getGoldenInputOverrides(ModelId.Utci),
     );
     expect(result.utci).toBeCloseTo(25.5, 1);
     expect(result.stressCategory).toBe("no thermal stress");
@@ -151,8 +151,8 @@ describe("golden regression — calculate via model config", () => {
 
   it("PMV ASHRAE matches golden baseline via model config", () => {
     const result = calculatePrimaryResult<PmvResponseDto>(
-      ComfortModel.PmvAshrae,
-      getGoldenInputOverrides(ComfortModel.PmvAshrae),
+      ModelId.PmvAshrae,
+      getGoldenInputOverrides(ModelId.PmvAshrae),
     );
     expect(result.pmv).toBeCloseTo(0.24, 2);
     expect(result.ppd).toBeCloseTo(6.2, 1);
@@ -160,8 +160,8 @@ describe("golden regression — calculate via model config", () => {
 
   it("PMV ISO matches golden baseline via model config", () => {
     const result = calculatePrimaryResult<PmvResponseDto>(
-      ComfortModel.PmvIso,
-      getGoldenInputOverrides(ComfortModel.PmvIso),
+      ModelId.PmvIso,
+      getGoldenInputOverrides(ModelId.PmvIso),
     );
     expect(result.pmv).toBeCloseTo(0.24, 2);
     expect(result.ppd).toBeCloseTo(6.2, 1);
@@ -169,8 +169,8 @@ describe("golden regression — calculate via model config", () => {
 
   it("Adaptive ASHRAE calculates from standard fixture inputs", () => {
     const result = calculatePrimaryResult<AdaptiveResponseDto>(
-      ComfortModel.AdaptiveAshrae,
-      getGoldenInputOverrides(ComfortModel.AdaptiveAshrae),
+      ModelId.AdaptiveAshrae,
+      getGoldenInputOverrides(ModelId.AdaptiveAshrae),
     );
     expect(result.tCmf).toBeCloseTo(24, 1);
     expect(result.isApplicable).toBe(true);
@@ -179,8 +179,8 @@ describe("golden regression — calculate via model config", () => {
 
   it("Adaptive EN calculates from standard fixture inputs", () => {
     const result = calculatePrimaryResult<AdaptiveResponseDto>(
-      ComfortModel.AdaptiveEn,
-      getGoldenInputOverrides(ComfortModel.AdaptiveEn),
+      ModelId.AdaptiveEn,
+      getGoldenInputOverrides(ModelId.AdaptiveEn),
     );
     expect(result.tCmf).toBeCloseTo(25.4, 1);
     expect(result.isApplicable).toBe(true);
@@ -189,7 +189,7 @@ describe("golden regression — calculate via model config", () => {
 
   it("PHS uses model inputs for person settings via model config", () => {
     const result = calculatePrimaryResult<PhsResponseDto>(
-      ComfortModel.Phs2023,
+      ModelId.Phs2023,
       phsBaselineInputOverrides,
       phsBaselineModelInputs,
     );

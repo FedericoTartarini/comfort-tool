@@ -1,5 +1,5 @@
 /** Strict current-schema version-1 share snapshots. */
-import type { ComfortModel as ComfortModelType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {
   inputModifierCatalogue,
@@ -55,7 +55,7 @@ type ShareAuxiliaryQuantitiesByInputState = Record<
   Partial<Record<PhysicalQuantityIdType, number>>
 >;
 type ShareModelInputsByModelState = Record<
-  ComfortModelType,
+  ModelIdType,
   Partial<Record<PhysicalQuantityIdType, number>>
 >;
 
@@ -64,7 +64,7 @@ const modifierQuantityIds = Object.values(physicalQuantityMetaById)
   .map((meta) => meta.id);
 
 function modelQuantityIdsForModel(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): PhysicalQuantityIdType[] {
   return Object.values(physicalQuantityMetaById)
     .filter(
@@ -84,9 +84,9 @@ interface ShareModelOutputSettings {
 
 export interface ShareStateSnapshot {
   version: 1;
-  selectedModel: ComfortModelType;
+  selectedModel: ModelIdType;
   models: Record<
-    ComfortModelType,
+    ModelIdType,
     {
       selectedChartInstanceId: string;
       options: Partial<Record<OptionKeyType, string>>;
@@ -107,7 +107,7 @@ export const SHARE_STATE_VERSION = 1;
 const SHARE_STATE_PARAM = "state";
 const POSITIVE_INFINITY_WIRE = "__comfort_tool_positive_infinity__";
 const NEGATIVE_INFINITY_WIRE = "__comfort_tool_negative_infinity__";
-const comfortModelValues = new Set<ComfortModelType>(comfortModelOrder);
+const comfortModelValues = new Set<ModelIdType>(comfortModelOrder);
 const inputIdValues = new Set<InputIdType>(Object.values(InputId));
 const unitSystemValues = new Set<UnitSystemType>(Object.values(UnitSystem));
 const modifierQuantityIdSet = new Set<PhysicalQuantityIdType>(
@@ -265,12 +265,12 @@ function parseAuxiliaryQuantitiesByInput(
   return parsed;
 }
 
-function isRegisteredModelId(value: string): value is ComfortModelType {
-  return comfortModelValues.has(value as ComfortModelType);
+function isRegisteredModelId(value: string): value is ModelIdType {
+  return comfortModelValues.has(value as ModelIdType);
 }
 
 function parseModelInputsForModel(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   value: unknown,
 ): Partial<Record<PhysicalQuantityIdType, number>> | null {
   if (!isRecord(value)) {
@@ -378,7 +378,7 @@ function parseNumericBands(value: unknown): NumericBand[] | null {
 
 function parseOutputSettings(
   value: unknown,
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): ShareModelOutputSettings | null {
   if (
     !isRecord(value) ||
@@ -431,10 +431,10 @@ function parseOutputSettings(
   };
 }
 
-type ShareModelSnapshot = ShareStateSnapshot["models"][ComfortModelType];
+type ShareModelSnapshot = ShareStateSnapshot["models"][ModelIdType];
 
 function parseModelSnapshot(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   value: unknown,
 ): ShareModelSnapshot | null {
   if (
@@ -524,7 +524,7 @@ function serializeAuxiliaryForWire(
 }
 
 function serializeModelInputsForWire(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
   modelInputs: Partial<Record<PhysicalQuantityIdType, number>>,
 ): Partial<Record<PhysicalQuantityIdType, number>> {
   const defaults = createDefaultModelInputsForModel(modelId);
@@ -571,7 +571,7 @@ export function parseShareStateSnapshot(
       "activeModifiersByInput",
     ]) ||
     value.version !== SHARE_STATE_VERSION ||
-    !comfortModelValues.has(value.selectedModel as ComfortModelType) ||
+    !comfortModelValues.has(value.selectedModel as ModelIdType) ||
     typeof value.compareEnabled !== "boolean" ||
     !isCanonicalCompareInputIds(value.compareInputIds) ||
     !inputIdValues.has(value.activeInputId as InputIdType) ||
@@ -612,7 +612,7 @@ export function parseShareStateSnapshot(
 
   return {
     version: SHARE_STATE_VERSION,
-    selectedModel: value.selectedModel as ComfortModelType,
+    selectedModel: value.selectedModel as ModelIdType,
     models,
     compareEnabled: value.compareEnabled,
     compareInputIds: [...value.compareInputIds],
@@ -652,7 +652,7 @@ function cloneOutputSettings(
 }
 
 function createDefaultModelSnapshot(
-  modelId: ComfortModelType,
+  modelId: ModelIdType,
 ): ShareModelSnapshot {
   const config = getComfortModelConfig(modelId);
   return {
