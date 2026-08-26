@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ModelId } from "../../models/modelIds";
-import { InputControlId } from "../../models/inputControls";
-import { InputId } from "../../models/inputSlots";
+import { ModelId } from "../../catalog/modelIds";
+import { InputControlId } from "../../catalog/inputControls";
+import { InputId } from "../../catalog/inputSlots";
 import { createAnalysisState } from "./createAnalysisState.svelte";
 import {
   clampDisplayValue,

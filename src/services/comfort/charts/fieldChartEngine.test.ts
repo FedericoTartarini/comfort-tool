@@ -4,16 +4,16 @@ import {
   pmvAshraeDeclaration,
   pmvAshraeModelConfig,
 } from "../../../declarations/pmv/ashrae";
-import { CalculationSource } from "../../../models/calculationMetadata";
+import { CalculationSource } from "../../../catalog/calculationMetadata";
 import type { PlotTrace } from "../../plotlyTypes";
-import { PhysicalQuantityId } from "../../../models/quantities";
-import { InputId } from "../../../models/inputSlots";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
+import { InputId } from "../../../catalog/inputSlots";
 import {
   ModelOutputKey,
   type NumericComplianceFieldChartConfig,
-} from "../../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
-import { UnitSystem } from "../../../models/units";
+} from "../../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
+import { UnitSystem } from "../../../catalog/units";
 import {
   buildFieldChart,
   createBandedGridStrategy,

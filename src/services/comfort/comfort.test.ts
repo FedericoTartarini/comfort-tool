@@ -1,20 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { inputDefaultsById, InputId } from "../../models/inputSlots";
+import { inputDefaultsById, InputId } from "../../catalog/inputSlots";
 import {
   AirSpeedControlMode,
   HumidityInputMode,
   OptionKey,
-} from "../../models/inputModes";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../models/quantities";
-import { UnitSystem } from "../../models/units";
+} from "../../catalog/inputModes";
+import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../catalog/quantities";
+import { UnitSystem } from "../../catalog/units";
 import {
   ModelOutputKey,
   type ChartBuildContext,
   type ExploreFieldChartConfig,
   type NumericBand,
-} from "../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+} from "../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 
 import {
   pmvExploreOutputs,
@@ -43,9 +43,9 @@ import {
 } from "./syncState";
 import { synchronizeHumidityInputState } from "./controls/humidityControl";
 import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOptions } from "./referenceValues";
-import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
+import { CalculationSource, ComfortStandard } from "../../catalog/calculationMetadata";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
-import { createModelCalculationContext } from "../../models/modelCalculation";
+import { createModelCalculationContext } from "../../catalog/modelCalculation";
 import { createAnalysisState } from "../../state/analysis/createAnalysisState.svelte";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 const pmvPayload = {

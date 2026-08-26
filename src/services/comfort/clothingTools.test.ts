@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ClothingZone } from "../../models/clothingZones";
+import { ClothingZone } from "../../catalog/clothingZones";
 import {
   buildSelectedClothingSections,
   filterClothingGarments,

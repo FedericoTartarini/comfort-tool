@@ -1,5 +1,5 @@
-import { ModelId } from "../../models/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../models/quantities";
+import { ModelId } from "../../catalog/modelIds";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../catalog/quantities";
 import {
   PhsPosture,
   PhsQuantityId,
@@ -11,13 +11,13 @@ import {
   type PhsSimulationResult,
   type PhsTimeSeriesDraft,
   type PhsTimeSeriesSegment,
-} from "../../models/phs";
+} from "../../catalog/phs";
 import type {
   TimeSeriesControlDefinition,
   TimeSeriesModelDefinition,
   TimeSeriesNumberControlDefinition,
   TimeSeriesSimulationControls,
-} from "../../models/timeSeries";
+} from "../../catalog/timeSeries";
 import {
   convertQuantityFromSi,
   convertQuantityToSi,

@@ -1,5 +1,5 @@
-import type { CalculationSource } from "../../../models/calculationMetadata";
-import { type ChartAxisQuantityId } from "../../../models/quantities";
+import type { CalculationSource } from "../../../catalog/calculationMetadata";
+import { type ChartAxisQuantityId } from "../../../catalog/quantities";
 import type {
   PlotAnnotation,
   PlotHoverValue,
@@ -15,8 +15,8 @@ import {
   type ModelOutput,
   type ModelOutputKey,
   type NumericFieldChartConfig,
-} from "../../../models/modelCapabilities";
-import type { UnitSystem as UnitSystemType } from "../../../models/units";
+} from "../../../catalog/modelCapabilities";
+import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import {
   convertModelOutputFromSi,
   getModelOutputDisplayMeta,

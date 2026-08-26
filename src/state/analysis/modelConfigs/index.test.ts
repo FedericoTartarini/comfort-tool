@@ -13,13 +13,13 @@ import { humidexZonesList } from "../../../declarations/humidex";
 import { pmvZonesList } from "../../../declarations/pmv/calculation";
 import { calculateUtci, utciZonesList } from "../../../declarations/utci/utci";
 import { windChillZonesList } from "../../../declarations/windChill";
-import { ComfortStandard } from "../../../models/calculationMetadata";
+import { ComfortStandard } from "../../../catalog/calculationMetadata";
 import {
   ModelId,
   type ModelId as ModelIdType,
-} from "../../../models/modelIds";
-import { defaultPhsPersonSettings, PhsQuantityId } from "../../../models/phs";
-import { SiUnit } from "../../../models/units";
+} from "../../../catalog/modelIds";
+import { defaultPhsPersonSettings, PhsQuantityId } from "../../../catalog/phs";
+import { SiUnit } from "../../../catalog/units";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
@@ -28,22 +28,22 @@ import {
   getPhysicalQuantityMeta,
   primaryInputOrder,
   systemQuantityMetaById,
-} from "../../../models/quantities";
-import { ModifierId } from "../../../models/inputModifiers";
+} from "../../../catalog/quantities";
+import { ModifierId } from "../../../catalog/inputModifiers";
 import {
   findNumericBandIndexForValue,
   ModelOutputKey,
   resolveBandEdge,
   type BandInputsSi,
-} from "../../../models/modelCapabilities";
-import type { ThermalZone } from "../../../models/thermalZone";
+} from "../../../catalog/modelCapabilities";
+import type { ThermalZone } from "../../../catalog/thermalZone";
 import {
   StandardId,
   WorkspaceId,
   supportsStandardWorkspace,
-} from "../../../models/workspaces";
-import { ChartEngine } from "../../../models/chartEngines";
-import { TableType } from "../../../models/tableTypes";
+} from "../../../catalog/workspaces";
+import { ChartEngine } from "../../../catalog/chartEngines";
+import { TableType } from "../../../catalog/tableTypes";
 import {
   comfortModelConfigs,
   comfortModelOrder,

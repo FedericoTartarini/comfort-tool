@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { CalculationSource, ComfortStandard } from "../models/calculationMetadata";
-import { ComplianceStatus } from "../models/modelIds";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/quantities";
-import { InputId, type InputId as InputIdType } from "../models/inputSlots";
-import { UnitSystem } from "../models/units";
+import { CalculationSource, ComfortStandard } from "../catalog/calculationMetadata";
+import { ComplianceStatus } from "../catalog/modelIds";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../catalog/quantities";
+import { InputId, type InputId as InputIdType } from "../catalog/inputSlots";
+import { UnitSystem } from "../catalog/units";
 import type { ResultCellViewModel, ResultSectionViewModel } from "../state/analysis/types";
 import {
   adaptiveAshraeModelConfig,
@@ -23,7 +23,7 @@ import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   phsReferenceEnvironment,
   defaultPhsPersonSettings,
-} from "../models/phs";
+} from "../catalog/phs";
 import { utciModelConfig, calculateUtci } from "./utci/utci";
 import { windChillModelConfig, calculateWindChill } from "./windChill";
 

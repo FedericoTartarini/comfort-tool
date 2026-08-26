@@ -1,14 +1,14 @@
 import type { TimeSeriesLineChartEngineSpec } from "../../services/comfort/charts/kinds/types";
-import type { ModelChartSource } from "../../models/chartSource";
+import type { ModelChartSource } from "../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import {
   PhysicalQuantityId,
   type ChartAxisQuantityId,
-} from "../../models/quantities";
+} from "../../catalog/quantities";
 import {
   inputOrder,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
+} from "../../catalog/inputSlots";
 import {
   ModelOutputKey,
   type ChartBuildContext,
@@ -16,8 +16,8 @@ import {
   type ModelOutputKey as ModelOutputKeyType,
   type NumericBand,
   resolveChartModelInputs,
-} from "../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+} from "../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 
 import type { FieldRequestAdapter } from "../../services/comfort/requestMapping";
 import {
@@ -26,12 +26,12 @@ import {
   PhsLimitingCriterion,
   type PhsEnvironmentSi,
   type PhsResponse,
-} from "../../models/phs";
+} from "../../catalog/phs";
 import type { GridModelChartSpec } from "../../services/comfort/charts/gridModelCharts";
 import type { ChartRange } from "../../services/comfort/charts/types";
 import { buildCompareInputMarkerTraces } from "../../services/comfort/charts/inputPoints";
 import { convertTemperatureFromSi } from "../../services/units/temperature";
-import { UnitSystem } from "../../models/units";
+import { UnitSystem } from "../../catalog/units";
 import { calculatePhs, personFromModelInputs } from "./calculation";
 import {
   buildPhsTemperatureHistoryChart,

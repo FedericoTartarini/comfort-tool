@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputId } from "../../models/inputSlots";
-import { UnitSystem } from "../../models/units";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputId } from "../../catalog/inputSlots";
+import { UnitSystem } from "../../catalog/units";
 import {
   buildUtciStressChart,
 } from "./charts";
-import { ModelOutputKey, type ChartBuildContext } from "../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+import { ModelOutputKey, type ChartBuildContext } from "../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import {
   calculateUtci,
   getUtciZoneMeta,
   utciModelConfig,
 } from "./utci";
-import { ModelId } from "../../models/modelIds";
+import { ModelId } from "../../catalog/modelIds";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 
 describe("UTCI stress zones", () => {

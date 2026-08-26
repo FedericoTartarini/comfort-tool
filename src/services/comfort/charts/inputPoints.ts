@@ -1,5 +1,5 @@
-import { inputDisplayMetaById } from "../../../models/inputSlotPresentation";
-import type { CompareInputMap } from "../../../models/chartSource";
+import { inputDisplayMetaById } from "../../../catalog/inputSlotPresentation";
+import type { CompareInputMap } from "../../../catalog/chartSource";
 import type {
   PlotHoverInfo,
   PlotHoverRow,
@@ -9,7 +9,7 @@ import type {
 import {
   inputOrder,
   type InputId as InputIdType,
-} from "../../../models/inputSlots";
+} from "../../../catalog/inputSlots";
 import { getCompareInputs } from "../helpers";
 import { buildInputScatterTrace } from "./plotlyBuilders";
 import type { ChartAxisScale } from "./types";

@@ -1,15 +1,15 @@
-import { CalculationSource } from "../../models/calculationMetadata";
-import type { ModelChartSource } from "../../models/chartSource";
+import { CalculationSource } from "../../catalog/calculationMetadata";
+import type { ModelChartSource } from "../../catalog/chartSource";
 import type {
   PlotHoverRow,
   PlotlyChartSpec,
   PlotTrace,
 } from "../../services/plotlyTypes";
-import { ComplianceStatus } from "../../models/modelIds";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/quantities";
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { Band, ChartBuildContext } from "../../models/modelCapabilities";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+import { ComplianceStatus } from "../../catalog/modelIds";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import type { Band, ChartBuildContext } from "../../catalog/modelCapabilities";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import { buildTooltipGridTrace } from "../../services/comfort/charts/boundaryRegionEngine";
 import {
   buildFieldChart,

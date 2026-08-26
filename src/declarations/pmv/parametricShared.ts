@@ -1,7 +1,7 @@
 import {
   inputOrder,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
+} from "../../catalog/inputSlots";
 import type { PmvChartSource, PmvRequest } from "./calculation";
 
 export const PARAMETRIC_TDB_RANGE_SI = { min: 10, max: 40 } as const;

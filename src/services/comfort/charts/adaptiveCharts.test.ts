@@ -21,21 +21,21 @@ import type {
   AdaptiveRequest,
   AdaptiveResponse,
 } from "../../../declarations/adaptive/shared";
-import type { ModelChartSource } from "../../../models/chartSource";
+import type { ModelChartSource } from "../../../catalog/chartSource";
 import type {
   PlotlyChartSpec,
   PlotTrace,
 } from "../../plotlyTypes";
-import { PhysicalQuantityId } from "../../../models/quantities";
-import { InputId, type InputId as InputIdType } from "../../../models/inputSlots";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
+import { InputId, type InputId as InputIdType } from "../../../catalog/inputSlots";
 import {
   resolveBandEdge,
   type Band,
   type BandInputsSi,
   type ChartBuildContext,
-} from "../../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
+} from "../../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { convertFieldValueFromSi } from "../../units";
 
 const baselineRequest: AdaptiveRequest = {

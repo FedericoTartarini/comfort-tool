@@ -7,12 +7,12 @@ import {
   t_o,
 } from "jsthermalcomfort";
 
-import { ComfortStandard } from "../../models/calculationMetadata";
-import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
-import { defaultPmvAshraeOptions } from "../../models/inputModes";
-import { ModelOutputKey } from "../../models/modelCapabilities";
-import { UnitSystem } from "../../models/units";
-import { StandardId, WorkspaceId } from "../../models/workspaces";
+import { ComfortStandard } from "../../catalog/calculationMetadata";
+import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
+import { defaultPmvAshraeOptions } from "../../catalog/inputModes";
+import { ModelOutputKey } from "../../catalog/modelCapabilities";
+import { UnitSystem } from "../../catalog/units";
+import { StandardId, WorkspaceId } from "../../catalog/workspaces";
 import {
   createDynamicClothingModifier,
   measuredAirSpeedModifier,

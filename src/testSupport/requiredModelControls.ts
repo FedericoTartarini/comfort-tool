@@ -1,9 +1,9 @@
-import { ModelId, type ModelId as ModelIdType } from "../models/modelIds";
-import { InputControlId, type InputControlId as InputControlIdType } from "../models/inputControls";
+import { ModelId, type ModelId as ModelIdType } from "../catalog/modelIds";
+import { InputControlId, type InputControlId as InputControlIdType } from "../catalog/inputControls";
 import {
   PhysicalQuantityId,
   type PrimaryQuantityId,
-} from "../models/quantities";
+} from "../catalog/quantities";
 
 const pmvRequiredControlIds = [
   InputControlId.Temperature,

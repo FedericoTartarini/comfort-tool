@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../../../models/modelIds";
-import { PhysicalQuantityId } from "../../../models/quantities";
-import { InputControlId } from "../../../models/inputControls";
+import { ModelId } from "../../../catalog/modelIds";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
+import { InputControlId } from "../../../catalog/inputControls";
 import {
   HumidityInputMode,
   OptionKey,
   TemperatureMode,
-} from "../../../models/inputModes";
-import { InputId } from "../../../models/inputSlots";
+} from "../../../catalog/inputModes";
+import { InputId } from "../../../catalog/inputSlots";
 import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
 import {
   deriveRelativeHumidityFromDewPoint,

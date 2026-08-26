@@ -1,5 +1,5 @@
-import { InputControlId } from "../../../models/inputControls";
-import { TemperatureMode, type ModelOptionsRecord } from "../../../models/inputModes";
+import { InputControlId } from "../../../catalog/inputControls";
+import { TemperatureMode, type ModelOptionsRecord } from "../../../catalog/inputModes";
 import { formatDisplayValue, convertQuantityFromSi, convertQuantityToSi } from "../../units";
 import { createHumidityControlBehavior } from "./humidityControl";
 import {
@@ -25,7 +25,7 @@ import {
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
   type PrimaryQuantityId,
-} from "../../../models/quantities";
+} from "../../../catalog/quantities";
 type PostTemperatureSynchronizer = (
   inputState: PrimaryInputState,
   derivedState: DerivedSlotQuantityState,

@@ -4,7 +4,7 @@
   import { Button, Card, Input, Label, Select, Toggle } from "flowbite-svelte";
   import { PlusOutline, RefreshOutline } from "flowbite-svelte-icons";
 
-  import { UnitSystem } from "../../models/units";
+  import { UnitSystem } from "../../catalog/units";
   import type { TimeSeriesModelId } from "../../state/timeSeries/modelConfigs";
   import type { TimeSeriesController } from "../../state/timeSeries/types";
   import TimeSeriesSegmentEditor from "./TimeSeriesSegmentEditor.svelte";

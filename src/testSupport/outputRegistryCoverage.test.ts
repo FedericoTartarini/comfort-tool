@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
-import { InputId } from "../models/inputSlots";
-import { UnitSystem } from "../models/units";
+import { InputId } from "../catalog/inputSlots";
+import { UnitSystem } from "../catalog/units";
 import {
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-} from "../models/workspaces";
+} from "../catalog/workspaces";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,

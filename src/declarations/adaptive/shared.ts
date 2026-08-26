@@ -1,32 +1,32 @@
 import type {
   CalculationSource,
   ComfortStandard,
-} from "../../models/calculationMetadata";
-import type { ModelChartSource } from "../../models/chartSource";
+} from "../../catalog/calculationMetadata";
+import type { ModelChartSource } from "../../catalog/chartSource";
 import {
   ModelId,
   type JsThermalComfortStandard,
-} from "../../models/modelIds";
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputControlId } from "../../models/inputControls";
+} from "../../catalog/modelIds";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputControlId } from "../../catalog/inputControls";
 import type { InputPresetKey as InputPresetKeyType } from "../../services/comfort/controls/inputControlPresets";
 import {
   defaultAdaptiveOptions,
   OptionKey,
   TemperatureMode,
-} from "../../models/inputModes";
-import type { InputModifier } from "../../models/inputModifiers";
+} from "../../catalog/inputModes";
+import type { InputModifier } from "../../catalog/inputModifiers";
 import {
   type Band,
   type ComplianceSpec,
   type ModelOutput,
-} from "../../models/modelCapabilities";
-import type { ThermalZone } from "../../models/thermalZone";
+} from "../../catalog/modelCapabilities";
+import type { ThermalZone } from "../../catalog/thermalZone";
 import type {
   StandardId as StandardIdType,
   WorkspaceId as WorkspaceIdType,
-} from "../../models/workspaces";
-import { TableType, type TableRowSpec } from "../../models/tableTypes";
+} from "../../catalog/workspaces";
+import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
 import {
   createTemperatureModeOptionHandler,
 } from "../../services/comfort/controls/temperatureControl";
@@ -34,7 +34,7 @@ import {
   ComfortModelBuilder,
   type ChartDeclarationInput,
 } from "../../state/analysis/modelConfigs/builder";
-import { ChartEngine } from "../../models/chartEngines";
+import { ChartEngine } from "../../catalog/chartEngines";
 import {
   buildAdaptiveResultRows,
   calculateAdaptiveModel,

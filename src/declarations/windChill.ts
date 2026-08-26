@@ -1,19 +1,19 @@
 import { wc, wind_chill_temperature } from "jsthermalcomfort";
-import { CalculationSource } from "../models/calculationMetadata";
-import type { ModelChartSource } from "../models/chartSource";
-import { ModelId } from "../models/modelIds";
-import { InputControlId } from "../models/inputControls";
+import { CalculationSource } from "../catalog/calculationMetadata";
+import type { ModelChartSource } from "../catalog/chartSource";
+import { ModelId } from "../catalog/modelIds";
+import { InputControlId } from "../catalog/inputControls";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
   type ModelOutput,
-} from "../models/modelCapabilities";
-import { ChartEngine } from "../models/chartEngines";
-import { TableType } from "../models/tableTypes";
-import { WorkspaceId } from "../models/workspaces";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/quantities";
-import { ThermalZone } from "../models/thermalZone";
-import { ZoneToken } from "../models/zoneTokens";
+} from "../catalog/modelCapabilities";
+import { ChartEngine } from "../catalog/chartEngines";
+import { TableType } from "../catalog/tableTypes";
+import { WorkspaceId } from "../catalog/workspaces";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../catalog/quantities";
+import { ThermalZone } from "../catalog/thermalZone";
+import { ZoneToken } from "../catalog/zoneTokens";
 import type { GridModelChartSpec } from "../services/comfort/charts/gridModelCharts";
 import { requireThermalZone } from "../services/comfort/helpers";
 import {

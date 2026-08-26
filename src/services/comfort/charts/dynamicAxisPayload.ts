@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type ChartAxisQuantityId } from "../../../models/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type ChartAxisQuantityId } from "../../../catalog/quantities";
 import type { FieldRequestAdapter } from "../requestMapping";
 import { CHART_COORDINATE_TOLERANCE, type ChartRange } from "./types";
 

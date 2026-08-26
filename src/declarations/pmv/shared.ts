@@ -1,10 +1,10 @@
-import type { ComfortStandard } from "../../models/calculationMetadata";
+import type { ComfortStandard } from "../../catalog/calculationMetadata";
 import {
   ModelId,
   type JsThermalComfortStandard,
-} from "../../models/modelIds";
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputControlId } from "../../models/inputControls";
+} from "../../catalog/modelIds";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputControlId } from "../../catalog/inputControls";
 import {
   AirSpeedControlMode,
   HumidityInputMode,
@@ -13,12 +13,12 @@ import {
   type ModelOptionsRecord,
   type PmvAshraeModelOptions,
   type PmvIsoModelOptions,
-} from "../../models/inputModes";
-import type { InputModifier } from "../../models/inputModifiers";
+} from "../../catalog/inputModes";
+import type { InputModifier } from "../../catalog/inputModifiers";
 import type {
   StandardId as StandardIdType,
   WorkspaceId as WorkspaceIdType,
-} from "../../models/workspaces";
+} from "../../catalog/workspaces";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
@@ -26,7 +26,7 @@ import {
   type ComplianceSpec,
   type ModelOutput,
   type NumericBand,
-} from "../../models/modelCapabilities";
+} from "../../catalog/modelCapabilities";
 import {
   createAirSpeedOptionHandler,
 } from "../../services/comfort/controls/numericControl";
@@ -48,9 +48,9 @@ import {
   isRecord,
   type ChartDeclarationInput,
 } from "../../state/analysis/modelConfigs/builder";
-import { ChartEngine } from "../../models/chartEngines";
-import { TableType } from "../../models/tableTypes";
-import { ZoneToken } from "../../models/zoneTokens";
+import { ChartEngine } from "../../catalog/chartEngines";
+import { TableType } from "../../catalog/tableTypes";
+import { ZoneToken } from "../../catalog/zoneTokens";
 import {
   buildPmvResultRows,
   calculatePmvModel,

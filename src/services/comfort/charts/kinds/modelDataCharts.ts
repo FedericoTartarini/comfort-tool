@@ -1,17 +1,17 @@
-import { CalculationSource } from "../../../../models/calculationMetadata";
-import type { ModelChartSource } from "../../../../models/chartSource";
+import { CalculationSource } from "../../../../catalog/calculationMetadata";
+import type { ModelChartSource } from "../../../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import {
   inputOrder,
   type InputId as InputIdType,
-} from "../../../../models/inputSlots";
+} from "../../../../catalog/inputSlots";
 import {
   type Band,
   type ChartBuildContext,
   type ModelOutput,
   type NumericBand,
-} from "../../../../models/modelCapabilities";
-import { getPhysicalQuantityMeta } from "../../../../models/quantities";
+} from "../../../../catalog/modelCapabilities";
+import { getPhysicalQuantityMeta } from "../../../../catalog/quantities";
 import { getCompareInputs } from "../../helpers";
 import { buildCompareInputMarkerTraces } from "../inputPoints";
 import {

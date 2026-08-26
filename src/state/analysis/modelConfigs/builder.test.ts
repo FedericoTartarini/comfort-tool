@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../../../models/modelIds";
+import { ModelId } from "../../../catalog/modelIds";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
-} from "../../../models/quantities";
-import { WorkspaceId } from "../../../models/workspaces";
-import { ChartEngine } from "../../../models/chartEngines";
-import { TableType } from "../../../models/tableTypes";
-import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
+} from "../../../catalog/quantities";
+import { WorkspaceId } from "../../../catalog/workspaces";
+import { ChartEngine } from "../../../catalog/chartEngines";
+import { TableType } from "../../../catalog/tableTypes";
+import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
 import {
   ModelOutputKey,
   type ModelOutput,
   type NumericBand,
-} from "../../../models/modelCapabilities";
-import { InputId } from "../../../models/inputSlots";
-import { SiUnit, UnitSystem } from "../../../models/units";
+} from "../../../catalog/modelCapabilities";
+import { InputId } from "../../../catalog/inputSlots";
+import { SiUnit, UnitSystem } from "../../../catalog/units";
 import { ParametricYUnit } from "../../../services/comfort/charts/kinds/types";
 import {
   ComfortModelBuilder,

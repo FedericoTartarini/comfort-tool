@@ -1,13 +1,13 @@
-import type { Band, ModelOutput } from "../../../../models/modelCapabilities";
-import type { ComplianceSpec } from "../../../../models/modelCapabilities";
+import type { Band, ModelOutput } from "../../../../catalog/modelCapabilities";
+import type { ComplianceSpec } from "../../../../catalog/modelCapabilities";
 import {
   ChartLegendKind,
   type ChartLegendViewModel,
 } from "../chartBuildResult";
 import {
   FieldChartProfileKind,
-} from "../../../../models/output/fieldChartProfile";
-import type { ChartBuildContext } from "../../../../models/modelCapabilities";
+} from "../../../../catalog/output/fieldChartProfile";
+import type { ChartBuildContext } from "../../../../catalog/modelCapabilities";
 
 function selectLegendBands(
   bands: readonly Band[],

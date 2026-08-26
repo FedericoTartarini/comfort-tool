@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { ModelId } from "../../models/modelIds";
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputId } from "../../models/inputSlots";
-import { WorkspaceId } from "../../models/workspaces";
+import { ModelId } from "../../catalog/modelIds";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputId } from "../../catalog/inputSlots";
+import { WorkspaceId } from "../../catalog/workspaces";
 import {
   appRouteDefinitions,
   getAppRouteByPath,

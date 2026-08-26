@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { NumericBand } from "../../../models/modelCapabilities";
+import type { NumericBand } from "../../../catalog/modelCapabilities";
 import {
   cloneNumericBands,
   normalizeNumericBands,

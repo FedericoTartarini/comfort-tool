@@ -1,10 +1,10 @@
 import type { PlotlyChartSpec } from "../services/plotlyTypes";
-import type { InputId as InputIdType } from "../models/inputSlots";
-import type { ChartBuildContext } from "../models/modelCapabilities";
+import type { InputId as InputIdType } from "../catalog/inputSlots";
+import type { ChartBuildContext } from "../catalog/modelCapabilities";
 import {
   FieldChartProfileKind,
   type FieldChartProfile,
-} from "../models/output/fieldChartProfile";
+} from "../catalog/output/fieldChartProfile";
 import type { RuntimeComfortModelDefinition } from "../state/analysis/modelConfigs/definition";
 
 export function chartContextToProfile(

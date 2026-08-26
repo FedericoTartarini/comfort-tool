@@ -2,15 +2,15 @@ import { expect } from "vitest";
 
 import {
   type ModelId as ModelIdType,
-} from "../models/modelIds";
-import { inputDisplayMetaById } from "../models/inputSlotPresentation";
-import { InputId, inputOrder } from "../models/inputSlots";
+} from "../catalog/modelIds";
+import { inputDisplayMetaById } from "../catalog/inputSlotPresentation";
+import { InputId, inputOrder } from "../catalog/inputSlots";
 import {
   PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
-} from "../models/quantities";
-import { supportsStandardWorkspace, WorkspaceId } from "../models/workspaces";
+} from "../catalog/quantities";
+import { supportsStandardWorkspace, WorkspaceId } from "../catalog/workspaces";
 import { syncDerivedStateForInput } from "../services/comfort/syncState";
 import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
 import { comfortModelConfigs } from "../state/analysis/modelConfigs";

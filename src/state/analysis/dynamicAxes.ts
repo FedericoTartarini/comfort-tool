@@ -1,4 +1,4 @@
-import { type ChartAxisQuantityId } from "../../models/quantities";
+import { type ChartAxisQuantityId } from "../../catalog/quantities";
 interface DynamicAxisConfiguration {
   dynamicAxisFields: ReadonlyArray<ChartAxisQuantityId>;
   defaultDynamicAxes: DynamicAxisPair;

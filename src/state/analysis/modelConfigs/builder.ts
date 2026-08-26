@@ -1,7 +1,7 @@
 import {
   inputOrder,
   type InputId as InputIdType,
-} from "../../../models/inputSlots";
+} from "../../../catalog/inputSlots";
 import type { ModelOptionsState, ResultCellViewModel } from "../types";
 import type {
   ComfortModelDefinition,
@@ -10,12 +10,12 @@ import type {
   RuntimeComfortModelDefinition,
   SimulationOutputDeclaration,
 } from "./definition";
-import type { ModelId as ModelIdType } from "../../../models/modelIds";
-import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
+import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
+import type { OptionKey as OptionKeyType } from "../../../catalog/inputModes";
 import {
   modifierOrder,
   type InputModifier,
-} from "../../../models/inputModifiers";
+} from "../../../catalog/inputModifiers";
 import type { InputControlDefinition } from "../../../services/comfort/controls/types";
 import {
   resolveInputField,
@@ -27,13 +27,13 @@ import {
   supportsTimeSeriesWorkspace,
   type StandardId as StandardIdType,
   type WorkspaceId as WorkspaceIdType,
-} from "../../../models/workspaces";
+} from "../../../catalog/workspaces";
 import {
   type Band,
   type ComplianceSpec,
   type ModelOutput,
   type NumericBand,
-} from "../../../models/modelCapabilities";
+} from "../../../catalog/modelCapabilities";
 import {
   cloneNumericBands,
   validateNumericBands,
@@ -44,19 +44,19 @@ import {
   systemQuantityMetaById,
   type ChartAxisQuantityId,
   type QuantityExtension,
-} from "../../../models/quantities";
+} from "../../../catalog/quantities";
 import {
   ChartEngine,
   isChartEngine,
   isModelChartEngine,
   modelAllowsCustomCharts,
   resolveChartCapabilities,
-} from "../../../models/chartEngines";
-import type { ChartInstanceDeclaration } from "../../../models/chartEngines";
+} from "../../../catalog/chartEngines";
+import type { ChartInstanceDeclaration } from "../../../catalog/chartEngines";
 import {
   TableType,
   type ModelTables,
-} from "../../../models/tableTypes";
+} from "../../../catalog/tableTypes";
 import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
 import {
   modelChartSpecMatchesEngine,

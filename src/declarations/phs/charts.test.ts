@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputId } from "../../models/inputSlots";
-import { ModelOutputKey, type ChartBuildContext, type NumericBand } from "../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
-import { UnitSystem } from "../../models/units";
-import { phsReferenceEnvironment, PhsQuantityId } from "../../models/phs";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputId } from "../../catalog/inputSlots";
+import { ModelOutputKey, type ChartBuildContext, type NumericBand } from "../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import { UnitSystem } from "../../catalog/units";
+import { phsReferenceEnvironment, PhsQuantityId } from "../../catalog/phs";
 import {
   phsExploreOutputs,
   phsModelConfig,

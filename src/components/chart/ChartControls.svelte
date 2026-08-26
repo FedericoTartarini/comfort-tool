@@ -1,9 +1,9 @@
 <script lang="ts">
   import { Button, Dropdown, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import { getPhysicalQuantityMeta } from "../../models/quantities";
-  import { inputOrder } from "../../models/inputSlots";
-  import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
+  import { getPhysicalQuantityMeta } from "../../catalog/quantities";
+  import { inputOrder } from "../../catalog/inputSlots";
+  import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
   import type {
     AxisControl,
     ChartControlsViewModel,
@@ -151,7 +151,7 @@
     <ChartBandEditor
       {idPrefix}
       outputKey={controls.explore.profile.zOutput}
-      bands={controls.explore.profile.bands as readonly import("../../models/modelCapabilities").NumericBand[]}
+      bands={controls.explore.profile.bands as readonly import("../../catalog/modelCapabilities").NumericBand[]}
       defaultBands={controls.explore.defaultBands}
       unitSystem={controls.explore.unitSystem}
       onApply={controls.explore.onApplyBands}

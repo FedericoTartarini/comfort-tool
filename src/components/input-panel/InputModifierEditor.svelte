@@ -3,10 +3,10 @@
 <script lang="ts">
   import { Button, Input, Label, Toggle } from "flowbite-svelte";
 
-  import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
-  import type { InputId as InputIdType } from "../../models/inputSlots";
-  import type { ModifierId as ModifierIdType } from "../../models/inputModifiers";
-  import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../models/quantities";
+  import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
+  import type { InputId as InputIdType } from "../../catalog/inputSlots";
+  import type { ModifierId as ModifierIdType } from "../../catalog/inputModifiers";
+  import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
   import type {
     InputModifierControlViewModel,
     InputModifierDraftEntry,

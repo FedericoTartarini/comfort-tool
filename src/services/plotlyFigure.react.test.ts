@@ -4,10 +4,10 @@ import { calculateAdaptive } from "../declarations/adaptive/calculation";
 import { buildAdaptiveChart } from "../declarations/adaptive/charts";
 import { adaptiveEnDeclaration } from "../declarations/adaptive/en";
 import type { AdaptiveRequest } from "../declarations/adaptive/shared";
-import { InputId } from "../models/inputSlots";
-import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { PhysicalQuantityId } from "../models/quantities";
-import { UnitSystem } from "../models/units";
+import { InputId } from "../catalog/inputSlots";
+import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
+import { PhysicalQuantityId } from "../catalog/quantities";
+import { UnitSystem } from "../catalog/units";
 import {
   toPlotlyFigure,
   type PlotlyFigure,

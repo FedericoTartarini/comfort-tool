@@ -3,8 +3,8 @@
 <script lang="ts">
   import { Badge, Button, ButtonGroup } from "flowbite-svelte";
 
-  import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
-  import type { InputId as InputIdType } from "../../models/inputSlots";
+  import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
+  import type { InputId as InputIdType } from "../../catalog/inputSlots";
   import type { ClothingSelectionSection } from "../../services/comfort/clothingTools";
 
   interface Props {

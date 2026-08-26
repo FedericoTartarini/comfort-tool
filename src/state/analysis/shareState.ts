@@ -1,24 +1,24 @@
 /** Strict current-schema version-1 share snapshots. */
-import type { ModelId as ModelIdType } from "../../models/modelIds";
-import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+import type { ModelId as ModelIdType } from "../../catalog/modelIds";
+import type { OptionKey as OptionKeyType } from "../../catalog/inputModes";
 import {
   inputModifierCatalogue,
   modifierOrder,
   type ModifierId as ModifierIdType,
-} from "../../models/inputModifiers";
+} from "../../catalog/inputModifiers";
 import {
   InputId,
   inputOrder,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
+} from "../../catalog/inputSlots";
 import {
   type ModelOutputKey,
   type NumericBand,
-} from "../../models/modelCapabilities";
+} from "../../catalog/modelCapabilities";
 import {
   UnitSystem,
   type UnitSystem as UnitSystemType,
-} from "../../models/units";
+} from "../../catalog/units";
 import { validateNumericBands } from "../../services/comfort/charts/bands";
 import { isFiniteNumber } from "../../services/comfort/helpers";
 import {
@@ -44,7 +44,7 @@ import {
   type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
-} from "../../models/quantities";
+} from "../../catalog/quantities";
 import type {
   ActiveModifiersByInputState,
   AnalysisStateSlice,

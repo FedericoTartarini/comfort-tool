@@ -1,7 +1,7 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../../models/quantities";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 import {
   calculateRelativeHumidityFromHumidityRatio,
   derivePsychrometricSlots,

@@ -7,8 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ModelOutputKey,
   type NumericBand,
-} from "../../models/modelCapabilities";
-import { UnitSystem } from "../../models/units";
+} from "../../catalog/modelCapabilities";
+import { UnitSystem } from "../../catalog/units";
 import ChartBandEditor from "./ChartBandEditor.svelte";
 
 const bands = [

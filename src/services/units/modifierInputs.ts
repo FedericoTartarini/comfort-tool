@@ -2,8 +2,8 @@ import {
   getPhysicalQuantityMeta,
   getQuantityDisplayMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/quantities";
-import { type UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/quantities";
+import { type UnitSystem as UnitSystemType } from "../../catalog/units";
 import { convertQuantityFromSi, convertQuantityToSi } from "./quantityConversion";
 
 export interface ModifierFieldDisplayMeta {

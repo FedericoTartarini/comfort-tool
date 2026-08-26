@@ -1,11 +1,11 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { PhysicalQuantityId, type PrimaryInputState } from "../../models/quantities";
-import { JsThermalComfortStandard } from "../../models/modelIds";
+import { PhysicalQuantityId, type PrimaryInputState } from "../../catalog/quantities";
+import { JsThermalComfortStandard } from "../../catalog/modelIds";
 import {
   ModifierId,
   defineInputModifier,
-} from "../../models/inputModifiers";
+} from "../../catalog/inputModifiers";
 import {
   applyInputModifierChain,
   createDynamicClothingModifier,

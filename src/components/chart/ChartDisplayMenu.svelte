@@ -4,7 +4,7 @@
   import type {
     ModelOutput,
     ModelOutputKey,
-  } from "../../models/modelCapabilities";
+  } from "../../catalog/modelCapabilities";
 
   interface Props {
     idPrefix: string;

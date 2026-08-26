@@ -1,16 +1,16 @@
-import { type ModelId as ModelIdType } from "../../../models/modelIds";
+import { type ModelId as ModelIdType } from "../../../catalog/modelIds";
 import {
   ChartEngine,
   modelAllowsCustomCharts,
-} from "../../../models/chartEngines";
+} from "../../../catalog/chartEngines";
 import {
   TableType,
   type ModelTables,
-} from "../../../models/tableTypes";
+} from "../../../catalog/tableTypes";
 import {
   supportsTimeSeriesWorkspace,
   type WorkspaceId,
-} from "../../../models/workspaces";
+} from "../../../catalog/workspaces";
 import {
   mergeQuantityCatalog,
   PhysicalQuantityScope,
@@ -18,7 +18,7 @@ import {
   systemQuantityMetaById,
   type PhysicalQuantityMeta,
   type QuantityExtension,
-} from "../../../models/quantities";
+} from "../../../catalog/quantities";
 
 /**
  * Contribution slice that assembled catalogs can check. This is not a second

@@ -8,13 +8,13 @@
  * mm / pt / dpi, no mode bar). Export builds a separate figure; it must not
  * capture the on-screen plot. Publication widths are journal single- and
  * double-column profiles on the same type tokens (font, pt, dpi). Zone fills
- * remap through `src/models/zoneTokens.ts` (screen / publication / colour-blind).
+ * remap through `src/catalog/zoneTokens.ts` (screen / publication / colour-blind).
  */
 
 import {
   ZonePaletteKind,
   type ZonePaletteKind as ZonePaletteKindType,
-} from "../models/zoneTokens";
+} from "../catalog/zoneTokens";
 
 export const ChartThemeKind = {
   Screen: "screen",

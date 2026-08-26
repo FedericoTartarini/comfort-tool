@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ModelId } from "../../models/modelIds";
+import { ModelId } from "../../catalog/modelIds";
 import {
   PhsPosture,
   PhsQuantityId,
   PhsSegmentPreset,
   type PhsSimulationResult,
   type PhsTimeSeriesDraft,
-} from "../../models/phs";
-import { UnitSystem } from "../../models/units";
+} from "../../catalog/phs";
+import { UnitSystem } from "../../catalog/units";
 import { createTimeSeriesState } from "./createTimeSeriesState.svelte";
 import { timeSeriesModelOrder } from "./modelConfigs";
 

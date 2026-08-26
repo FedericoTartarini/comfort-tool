@@ -1,26 +1,26 @@
 import { pmv_ppd, pmv_ppd_ashrae } from "jsthermalcomfort";
 import { describe, expect, it, vi } from "vitest";
 
-import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
-import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
-import { PhysicalQuantityId, type PrimaryInputState } from "../../models/quantities";
-import { InputControlId } from "../../models/inputControls";
+import { CalculationSource, ComfortStandard } from "../../catalog/calculationMetadata";
+import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
+import { PhysicalQuantityId, type PrimaryInputState } from "../../catalog/quantities";
+import { InputControlId } from "../../catalog/inputControls";
 import {
   AirSpeedControlMode,
   HumidityInputMode,
   OptionKey,
   TemperatureMode,
-} from "../../models/inputModes";
-import { InputId } from "../../models/inputSlots";
-import { ModifierId } from "../../models/inputModifiers";
+} from "../../catalog/inputModes";
+import { InputId } from "../../catalog/inputSlots";
+import { ModifierId } from "../../catalog/inputModifiers";
 import {
   findNumericBandIndexForValue,
   ModelOutputKey,
-} from "../../models/modelCapabilities";
-import { ChartEngine } from "../../models/chartEngines";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
-import { UnitSystem } from "../../models/units";
-import { createModelCalculationContext } from "../../models/modelCalculation";
+} from "../../catalog/modelCapabilities";
+import { ChartEngine } from "../../catalog/chartEngines";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import { UnitSystem } from "../../catalog/units";
+import { createModelCalculationContext } from "../../catalog/modelCalculation";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import { createAnalysisState } from "../../state/analysis/createAnalysisState.svelte";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";

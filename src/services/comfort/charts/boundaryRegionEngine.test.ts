@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../../models/quantities";
-import type { Band } from "../../../models/modelCapabilities";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
+import type { Band } from "../../../catalog/modelCapabilities";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { createFieldAxisScale } from "./axis";
 import {
   buildBoundaryRegionTraces,

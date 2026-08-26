@@ -17,8 +17,8 @@ edit `src/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. Plan §4 folder names (`catalog/`) are not the live tree.
-Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`.
+`26-06-29-architecture-brief.md`. Plan §4 folder names (`engines/`, `ui/`) are not the live tree.
+Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`. Catalog lives at `src/catalog/`.
 
 ## Recipe
 
@@ -27,7 +27,7 @@ Analysis state lives at `src/state/analysis/`. Declarations live at `src/declara
    zones, `calculate`, `tables.analysis`, and `charts`. For air
    temperature plus wind, copy `windChill.ts` instead. Humidex is the other
    tdb+rh sibling.
-2. **Add the model id** to `ModelId` in `src/models/modelIds.ts`.
+2. **Add the model id** to `ModelId` in `src/catalog/modelIds.ts`.
    Wire values follow existing members (`"heat-index"`, `"humidex"`, …).
    Do not invent a second id tree.
 3. **Register once** in `src/state/analysis/modelConfigs/index.ts`: import
@@ -63,7 +63,7 @@ work, not “add a model” work:
 | Stop                                  | Why                                                                                                                                  |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | New chart engine (`ChartEngine` member) | Closed engine set. `ParametricLine` is implemented (polylines and optional limit bands). Do not add a new engine from a declaration. |
-| New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/models/catalogWireIds.test.ts`).                    |
+| New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`).                    |
 | New modifier                          | Global catalogue, execution order, and share schema.                                                                                 |
 | New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                  |
 | New SI unit dimension (`SiUnit`)      | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/services/units/`; declarations only select known units. |
@@ -91,9 +91,10 @@ src/
                      folders for PMV, Adaptive, UTCI, PHS
   components/        rendering and interaction; no model-id branches;
                      site shell branding/links (`siteShellConfig.ts`)
-  models/            system quantity seed, ModelId, ChartEngine, TableType,
+  catalog/           system quantity seed, ModelId, ChartEngine, TableType,
                      modifiers, workspace ids, zone tokens;
-                     Time-series declaration contracts (`timeSeries.ts`)
+                     Time-series declaration contracts (`timeSeries.ts`);
+                     output/ field-chart profile metadata
   routes/            client router
   services/
     comfort/         adapters, engines, modifiers, psychrometrics, table assembly;
@@ -113,9 +114,9 @@ src/
 ```
 
 Import lanes: `views` → `components`, `state`; `components` → `state`,
-`models`, lightweight `services`; `state` → `models`, `services` (the
+`catalog`, lightweight `services`; `state` → `catalog`, `services` (the
 registry is the exception that imports `declarations`); `declarations` →
-`models`, `services`, `state/analysis/modelConfigs`; `services` → `models`.
+`catalog`, `services`, `state/analysis/modelConfigs`; `services` → `catalog`.
 
 Canonical state is SI. Calculations run in SI. Display converts through
 `src/services/units/` by reading assembled catalog SI units
@@ -138,7 +139,7 @@ the returned instance. It is not a second authoring API — still copy
 `assembleCatalogs` merges each model's `quantities.extend` with the system
 seed, so duplicate extend ids fail assemble without a pre-merged quantity map.
 
-**Quantities.** `src/models/quantities.ts` is the system seed.
+**Quantities.** `src/catalog/quantities.ts` is the system seed.
 `primaryInputOrder` is the exact persisted primary-key set. Chart-only and
 derived ids stay in the catalog but never enter primary records. A
 declaration may contribute model-scoped extensions:
@@ -191,7 +192,7 @@ the same geometry, no mode bar) and must not capture the on-screen plot.
 Publication widths are journal single- and double-column profiles on that
 same theme; Compare legends stay readable at both widths. Models select
 `ZoneToken` values; screen, publication, and colour-blind fills live in
-`src/models/zoneTokens.ts` and remap at `toPlotlyFigure`.
+`src/catalog/zoneTokens.ts` and remap at `toPlotlyFigure`.
 
 **Tables.** `tables.analysis` (`TableType.Analysis`) is required for every
 Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only
@@ -225,7 +226,7 @@ Visible product decisions:
 - request mapping + `calculate`
 - declaration-local `ThermalZone` values that select a `ZoneToken`; derive
   bands with `bandsFromThermalZones` or `numericBandFromToken`. Colours come
-  from `src/models/zoneTokens.ts` (screen / publication / colour-blind).
+  from `src/catalog/zoneTokens.ts` (screen / publication / colour-blind).
   Each boundary appears once as zone `min` / `max`. Do not put hex in the
   declaration.
 - `charts` with declaration-owned `id`s and
@@ -298,7 +299,7 @@ in `src/declarations/utci/charts.ts`. PHS chart specs live in
 ### Modifiers
 
 `modifiers` receive executable `InputModifier` declarations, not ids. The
-global catalogue in `src/models/inputModifiers.ts` holds only UI/share ids
+global catalogue in `src/catalog/inputModifiers.ts` holds only UI/share ids
 and extra-input schema. Order is fixed:
 
 ```text

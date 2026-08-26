@@ -3,8 +3,8 @@
  * `quantitiesByInput` stores base primary SI values, auxiliary slot quantities stay SI,
  * and `ui` stores selections, chart state, and calculation lifecycle flags.
  */
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ModelId as ModelIdType } from "../../models/modelIds";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import type {
   PrimaryInputState,
@@ -12,24 +12,24 @@ import type {
   ChartAxisQuantityId,
   AuxiliaryInputState,
   PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/quantities";
-import type { InputControlKey as InputControlKeyType, InputControlViewModel } from "../../models/inputControls";
-import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../models/inputModes";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/quantities";
+import type { InputControlKey as InputControlKeyType, InputControlViewModel } from "../../catalog/inputControls";
+import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../catalog/inputModes";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import type {
   ModifierId as ModifierIdType,
   ModifierInputValues,
-} from "../../models/inputModifiers";
+} from "../../catalog/inputModifiers";
 import type {
   ComplianceFeedback,
   ModelOutput,
   ModelOutputKey,
   NumericBand,
-} from "../../models/modelCapabilities";
-import type { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
-import type { ChartInstanceDeclaration } from "../../models/chartEngines";
-import type { FieldChartProfile } from "../../models/output/fieldChartProfile";
-import type { WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
+} from "../../catalog/modelCapabilities";
+import type { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import type { ChartInstanceDeclaration } from "../../catalog/chartEngines";
+import type { FieldChartProfile } from "../../catalog/output/fieldChartProfile";
+import type { WorkspaceId as WorkspaceIdType } from "../../catalog/workspaces";
 import type { ShareStateSnapshot } from "./shareState";
 import type {
   AuxiliaryQuantitiesByInputState,
@@ -57,7 +57,7 @@ export type SelectedChartInstanceByModelState = Record<ModelIdType, string>;
 import type {
   ResultCellViewModel,
   ResultSectionViewModel,
-} from "../../models/output/resultSections";
+} from "../../catalog/output/resultSections";
 
 export type { ResultCellViewModel, ResultSectionViewModel };
 

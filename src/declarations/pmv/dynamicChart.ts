@@ -1,4 +1,4 @@
-import type { ChartBuildContext, NumericBand } from "../../models/modelCapabilities";
+import type { ChartBuildContext, NumericBand } from "../../catalog/modelCapabilities";
 import { applyDynamicAxisCoordinates } from "../../services/comfort/charts/dynamicAxisPayload";
 import { CHART_COORDINATE_TOLERANCE } from "../../services/comfort/charts/types";
 import { getBaselineInputEntry } from "../../services/comfort/helpers";
@@ -10,7 +10,7 @@ import {
   type PmvResponse,
 } from "./calculation";
 import type { PmvModelDeclaration } from "./shared";
-import type { InputId as InputIdType } from "../../models/inputSlots";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import {
   CONTOUR_GRID_RESOLUTION,
   type PmvChartViewDescriptorFactory,

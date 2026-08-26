@@ -1,13 +1,13 @@
-import type { RuntimeTimeSeriesModelDefinition } from "../../models/timeSeries";
+import type { RuntimeTimeSeriesModelDefinition } from "../../catalog/timeSeries";
 import {
   buildTimeSeriesEditorViewModel,
   type TimeSeriesChartViewModel,
 } from "./viewModels";
-import type { MetricSummaryItemViewModel } from "../../models/tableTypes";
+import type { MetricSummaryItemViewModel } from "../../catalog/tableTypes";
 import { buildMetricSummaryTable } from "../../services/comfort/output/tableResolver";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
 import { getComfortModelConfig, getModelSimulationOutput } from "../analysis/modelConfigs";
-import { UnitSystem } from "../../models/units";
+import { UnitSystem } from "../../catalog/units";
 import {
   getTimeSeriesModelConfig,
   timeSeriesModelOrder,

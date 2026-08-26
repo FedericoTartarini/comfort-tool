@@ -1,6 +1,6 @@
-import { InputId } from "../../models/inputSlots";
-import { ModelId } from "../../models/modelIds";
-import { UnitSystem } from "../../models/units";
+import { InputId } from "../../catalog/inputSlots";
+import { ModelId } from "../../catalog/modelIds";
+import { UnitSystem } from "../../catalog/units";
 import { syncDerivedStateIntoAuxiliary } from "../../services/comfort/syncState";
 import {
   createAuxiliaryQuantitiesByInput,

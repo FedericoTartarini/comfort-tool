@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { CalculationSource } from "../models/calculationMetadata";
+import { CalculationSource } from "../catalog/calculationMetadata";
 import type { PlotlyChartSpec } from "./plotlyTypes";
 import {
   CHART_LAYOUT_DPI,
@@ -19,7 +19,7 @@ import {
   resolveZoneAppearance,
   ZonePaletteKind,
   ZoneToken,
-} from "../models/zoneTokens";
+} from "../catalog/zoneTokens";
 
 function contourChart(
   z: number[][],

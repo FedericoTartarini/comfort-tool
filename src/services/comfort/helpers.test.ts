@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ThermalZone } from "../../models/thermalZone";
+import { ThermalZone } from "../../catalog/thermalZone";
 import { requireThermalZone } from "./helpers";
 
 const lower = new ThermalZone({

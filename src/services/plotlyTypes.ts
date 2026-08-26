@@ -7,7 +7,7 @@
  * vendor-neutral geometry types.
  */
 
-import type { CalculationSource } from "../models/calculationMetadata";
+import type { CalculationSource } from "../catalog/calculationMetadata";
 
 export type PlotColorScale = Array<[number, string]>;
 

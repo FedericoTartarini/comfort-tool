@@ -1,5 +1,5 @@
-import { inputChartStyleById, inputDisplayMetaById } from "../../../models/inputSlotPresentation";
-import type { InputId as InputIdType } from "../../../models/inputSlots";
+import { inputChartStyleById, inputDisplayMetaById } from "../../../catalog/inputSlotPresentation";
+import type { InputId as InputIdType } from "../../../catalog/inputSlots";
 import type {
   PlotAnnotation,
   PlotColorScale,

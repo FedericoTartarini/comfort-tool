@@ -1,7 +1,7 @@
 import {
   ModelId,
   type ModelId as ModelIdType,
-} from "../../../models/modelIds";
+} from "../../../catalog/modelIds";
 import type {
   RuntimeComfortModelDefinition,
   SimulationOutputDeclaration,
@@ -19,8 +19,8 @@ import {
   WorkspaceId,
   type StandardId as StandardIdType,
   type WorkspaceId as WorkspaceIdType,
-} from "../../../models/workspaces";
-import { assembleQuantityCatalog } from "../../../models/quantities";
+} from "../../../catalog/workspaces";
+import { assembleQuantityCatalog } from "../../../catalog/quantities";
 import {
   assembleCatalogs,
   collectRegisteredQuantityExtensions,

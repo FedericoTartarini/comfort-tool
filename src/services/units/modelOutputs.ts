@@ -1,5 +1,5 @@
-import { ModelOutputKey, type ModelOutputKey as ModelOutputKeyType } from "../../models/modelCapabilities";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+import { ModelOutputKey, type ModelOutputKey as ModelOutputKeyType } from "../../catalog/modelCapabilities";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
 import {
   convertHeatFluxFromSi,

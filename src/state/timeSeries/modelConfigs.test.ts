@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../../models/modelIds";
-import { TableType } from "../../models/tableTypes";
+import { ModelId } from "../../catalog/modelIds";
+import { TableType } from "../../catalog/tableTypes";
 import { getComfortModelConfig } from "../analysis/modelConfigs";
 import {
   getTimeSeriesModelConfig,

@@ -1,11 +1,11 @@
-import type { ModelId as ModelIdType } from "../../../../models/modelIds";
+import type { ModelId as ModelIdType } from "../../../../catalog/modelIds";
 import type { ChartBuildResult } from "../chartBuildResult";
-import type { FieldChartProfile } from "../../../../models/output/fieldChartProfile";
-import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfile";
-import type { InputId as InputIdType } from "../../../../models/inputSlots";
-import type { ChartBuildContext } from "../../../../models/modelCapabilities";
-import type { UnitSystem as UnitSystemType } from "../../../../models/units";
-import { ChartEngine, isChartEngine } from "../../../../models/chartEngines";
+import type { FieldChartProfile } from "../../../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../../catalog/output/fieldChartProfile";
+import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
+import type { ChartBuildContext } from "../../../../catalog/modelCapabilities";
+import type { UnitSystem as UnitSystemType } from "../../../../catalog/units";
+import { ChartEngine, isChartEngine } from "../../../../catalog/chartEngines";
 import {
   buildBandScalarChart,
   buildBoundaryRegionChart,
@@ -14,7 +14,7 @@ import {
   buildParametricLineChart,
   buildTimeSeriesLineChart,
 } from "./builders";
-import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../../../models/quantities";
+import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../../../catalog/quantities";
 import {
   buildChartMemoKey,
   hashBands,
@@ -26,7 +26,7 @@ import type {
   Band,
   ComplianceSpec,
   ModelOutput,
-} from "../../../../models/modelCapabilities";
+} from "../../../../catalog/modelCapabilities";
 import { buildChartLegendFromContext } from "./legend";
 import type { ChartEngineRegistration } from "./types";
 

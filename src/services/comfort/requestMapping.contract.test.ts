@@ -8,13 +8,13 @@ import { pmvRequestAdapter } from "../../declarations/pmv/calculation";
 import { utciRequestAdapter } from "../../declarations/utci/calculation";
 import { windChillRequestAdapter } from "../../declarations/windChill";
 import { type FieldRequestAdapter } from "./requestMapping";
-import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../models/quantities";
-import type { PrimaryQuantityId } from "../../models/quantities";
-import { InputId, inputDefaultsById } from "../../models/inputSlots";
+import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../catalog/quantities";
+import type { PrimaryQuantityId } from "../../catalog/quantities";
+import { InputId, inputDefaultsById } from "../../catalog/inputSlots";
 import {
   createModelCalculationContext,
   type ModelCalculationContext,
-} from "../../models/modelCalculation";
+} from "../../catalog/modelCalculation";
 import { createAuxiliaryQuantitiesByInput } from "./quantityStateRouting";
 
 function createContractContext(

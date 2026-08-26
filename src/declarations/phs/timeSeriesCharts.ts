@@ -2,14 +2,14 @@ import type {
   PlotlyChartSpec,
   PlotScatterLineTrace,
 } from "../../services/plotlyTypes";
-import { ModelOutputKey } from "../../models/modelCapabilities";
+import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   type PhsHistorySample,
   type PhsSimulationResult,
   type PhsTimeSeriesDraft,
-} from "../../models/phs";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/phs";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   buildTimeSeriesLineTrace,
   crossesSeriesThreshold,

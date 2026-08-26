@@ -4,8 +4,8 @@
   import { Heading, Toggle } from "flowbite-svelte";
 
   import SearchableSelect from "../SearchableSelect.svelte";
-  import { UnitSystem } from "../../models/units";
-  import type { ModelId as ModelIdType } from "../../models/modelIds";
+  import { UnitSystem } from "../../catalog/units";
+  import type { ModelId as ModelIdType } from "../../catalog/modelIds";
   import type { ToolControlsViewModel } from "../../state/analysis/types";
 
   interface Props {

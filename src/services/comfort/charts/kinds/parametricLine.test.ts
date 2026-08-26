@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { CalculationSource } from "../../../../models/calculationMetadata";
-import { InputId } from "../../../../models/inputSlots";
+import { CalculationSource } from "../../../../catalog/calculationMetadata";
+import { InputId } from "../../../../catalog/inputSlots";
 import {
   ModelOutputKey,
   type ChartBuildContext,
-} from "../../../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfile";
-import { PhysicalQuantityId } from "../../../../models/quantities";
-import { UnitSystem } from "../../../../models/units";
+} from "../../../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../../../catalog/output/fieldChartProfile";
+import { PhysicalQuantityId } from "../../../../catalog/quantities";
+import { UnitSystem } from "../../../../catalog/units";
 import { ParametricYUnit, type ParametricLineGeometry } from "./types";
 import { renderParametricLineGeometry } from "./parametricLine";
 

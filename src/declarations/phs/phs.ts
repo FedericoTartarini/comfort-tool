@@ -1,20 +1,20 @@
-import type { ModelChartSource } from "../../models/chartSource";
-import { ModelId } from "../../models/modelIds";
-import { PhysicalQuantityId, PhysicalQuantityScope } from "../../models/quantities";
-import { SiUnit } from "../../models/units";
-import { InputControlId } from "../../models/inputControls";
+import type { ModelChartSource } from "../../catalog/chartSource";
+import { ModelId } from "../../catalog/modelIds";
+import { PhysicalQuantityId, PhysicalQuantityScope } from "../../catalog/quantities";
+import { SiUnit } from "../../catalog/units";
+import { InputControlId } from "../../catalog/inputControls";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
   type ChartBuildContext,
   type ModelOutput,
   type NumericBand,
-} from "../../models/modelCapabilities";
-import { ThermalZone } from "../../models/thermalZone";
-import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
-import { StandardId, WorkspaceId } from "../../models/workspaces";
-import { ChartEngine } from "../../models/chartEngines";
-import { TableType, type TableRowSpec } from "../../models/tableTypes";
+} from "../../catalog/modelCapabilities";
+import { ThermalZone } from "../../catalog/thermalZone";
+import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
+import { StandardId, WorkspaceId } from "../../catalog/workspaces";
+import { ChartEngine } from "../../catalog/chartEngines";
+import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
@@ -25,7 +25,7 @@ import {
   type PhsResponse,
   type PhsSimulationResult,
   type PhsTimeSeriesDraft,
-} from "../../models/phs";
+} from "../../catalog/phs";
 import {
   calculatePerInput,
   createFieldRequestAdapter,
@@ -35,7 +35,7 @@ import {
   formatDisplayValue,
   getModelOutputDisplayMeta,
 } from "../../services/units";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   ComfortModelBuilder,
   parseEmptyOptions,

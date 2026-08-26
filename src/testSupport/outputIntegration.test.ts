@@ -1,15 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import { ModelId } from "../models/modelIds";
-import { InputId } from "../models/inputSlots";
-import { ModelOutputKey, type NumericBand } from "../models/modelCapabilities";
-import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { ModelId } from "../catalog/modelIds";
+import { InputId } from "../catalog/inputSlots";
+import { ModelOutputKey, type NumericBand } from "../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import {
   WorkspaceId,
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-} from "../models/workspaces";
-import { UnitSystem } from "../models/units";
+} from "../catalog/workspaces";
+import { UnitSystem } from "../catalog/units";
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,

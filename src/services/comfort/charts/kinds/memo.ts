@@ -1,7 +1,7 @@
 import type { ChartBuildResult } from "../chartBuildResult";
-import type { FieldChartProfile } from "../../../../models/output/fieldChartProfile";
-import type { InputId as InputIdType } from "../../../../models/inputSlots";
-import type { UnitSystem as UnitSystemType } from "../../../../models/units";
+import type { FieldChartProfile } from "../../../../catalog/output/fieldChartProfile";
+import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
+import type { UnitSystem as UnitSystemType } from "../../../../catalog/units";
 
 export interface ChartBuildMemoKey {
   readonly modelId: string;

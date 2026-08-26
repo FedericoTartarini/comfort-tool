@@ -4,7 +4,7 @@
   import {
     ClothingZone,
     type ClothingDisplayZoneId,
-  } from "../../models/clothingZones";
+  } from "../../catalog/clothingZones";
 
   interface Props {
     activeZoneId: ClothingDisplayZoneId;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ModelId } from "../../models/modelIds";
-import { WorkspaceId } from "../../models/workspaces";
+import { ModelId } from "../../catalog/modelIds";
+import { WorkspaceId } from "../../catalog/workspaces";
 import {
   appRouteDefinitions,
   getAllowedModels,

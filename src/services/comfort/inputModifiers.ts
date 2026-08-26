@@ -1,6 +1,6 @@
 import { clo_dynamic, solar_gain } from "jsthermalcomfort";
 
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../models/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../catalog/quantities";
 import {
   ModifierId,
   defineInputModifier,
@@ -8,8 +8,8 @@ import {
   type InputModifier,
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
-} from "../../models/inputModifiers";
-import type { JsThermalComfortStandard } from "../../models/modelIds";
+} from "../../catalog/inputModifiers";
+import type { JsThermalComfortStandard } from "../../catalog/modelIds";
 import { deriveRelativeAirSpeedFromMeasured } from "./derivations/airSpeed";
 import { predictClothingInsulation } from "./clothingTools";
 import { isPrimaryQuantityId } from "./quantityStateRouting";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelOutputKey } from "../../models/modelCapabilities";
-import { UnitSystem } from "../../models/units";
+import { ModelOutputKey } from "../../catalog/modelCapabilities";
+import { UnitSystem } from "../../catalog/units";
 import {
   convertModelOutputFromSi,
   convertModelOutputToSi,

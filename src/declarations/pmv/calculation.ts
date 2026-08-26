@@ -3,31 +3,31 @@ import { cooling_effect, set_tmp } from "jsthermalcomfort";
 import {
   CalculationSource,
   type ComfortStandard,
-} from "../../models/calculationMetadata";
+} from "../../catalog/calculationMetadata";
 import type {
   CompareInputMap,
   ModelChartSource,
-} from "../../models/chartSource";
-import { ComplianceStatus } from "../../models/modelIds";
+} from "../../catalog/chartSource";
+import { ComplianceStatus } from "../../catalog/modelIds";
 import {
   PhysicalQuantityId,
   getQuantityPresentationMeta,
   type ChartAxisQuantityId,
   type DerivedSlotQuantityState,
   getPhysicalQuantityMeta,
-} from "../../models/quantities";
-import { AirSpeedControlMode, OptionKey } from "../../models/inputModes";
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ModelCalculationContext } from "../../models/modelCalculation";
-import type { ComplianceFeedback } from "../../models/modelCapabilities";
-import type { TableRowSpec } from "../../models/tableTypes";
-import type { ResultCellViewModel } from "../../models/output/resultSections";
-import { ThermalZone } from "../../models/thermalZone";
+} from "../../catalog/quantities";
+import { AirSpeedControlMode, OptionKey } from "../../catalog/inputModes";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import type { ModelCalculationContext } from "../../catalog/modelCalculation";
+import type { ComplianceFeedback } from "../../catalog/modelCapabilities";
+import type { TableRowSpec } from "../../catalog/tableTypes";
+import type { ResultCellViewModel } from "../../catalog/output/resultSections";
+import { ThermalZone } from "../../catalog/thermalZone";
 import {
   UnitSystem,
   type UnitSystem as UnitSystemType,
-} from "../../models/units";
-import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
+} from "../../catalog/units";
+import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
 import { createRequestAxisAdapter } from "../../services/comfort/charts/dynamicAxisPayload";
 import { requireThermalZone } from "../../services/comfort/helpers";
 import { getDerivedFromAuxiliary } from "../../services/comfort/quantityStateRouting";

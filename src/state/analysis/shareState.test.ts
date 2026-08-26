@@ -3,27 +3,27 @@ import { describe, expect, it } from "vitest";
 import {
   ModelId,
   type ModelId as ModelIdType,
-} from "../../models/modelIds";
+} from "../../catalog/modelIds";
 import {
   PhysicalQuantityId,
   primaryInputOrder,
-} from "../../models/quantities";
-import { PhsQuantityId } from "../../models/phs";
-import { InputControlId } from "../../models/inputControls";
+} from "../../catalog/quantities";
+import { PhsQuantityId } from "../../catalog/phs";
+import { InputControlId } from "../../catalog/inputControls";
 import {
   AirSpeedControlMode,
   HumidityInputMode,
   OptionKey,
   TemperatureMode,
-} from "../../models/inputModes";
-import { ModifierId, modifierOrder } from "../../models/inputModifiers";
-import { InputId } from "../../models/inputSlots";
-import { ModelOutputKey } from "../../models/modelCapabilities";
+} from "../../catalog/inputModes";
+import { ModifierId, modifierOrder } from "../../catalog/inputModifiers";
+import { InputId } from "../../catalog/inputSlots";
+import { ModelOutputKey } from "../../catalog/modelCapabilities";
 
-import { UnitSystem } from "../../models/units";
-import { WorkspaceId } from "../../models/workspaces";
+import { UnitSystem } from "../../catalog/units";
+import { WorkspaceId } from "../../catalog/workspaces";
 import { createAnalysisState } from "./createAnalysisState.svelte";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import {
   applyShareSnapshotToState,
   buildShareUrl,

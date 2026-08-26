@@ -1,7 +1,7 @@
 import { phs, p_sat } from "jsthermalcomfort";
 
-import { CalculationSource } from "../../models/calculationMetadata";
-import { getPhysicalQuantityMeta, type PhysicalQuantityId } from "../../models/quantities";
+import { CalculationSource } from "../../catalog/calculationMetadata";
+import { getPhysicalQuantityMeta, type PhysicalQuantityId } from "../../catalog/quantities";
 import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PHS_STANDARD_VERSION,
@@ -18,7 +18,7 @@ import {
   type PhsSimulationResult,
   type PhsTimeSeriesResult,
   type PhsTimeSeriesSegment,
-} from "../../models/phs";
+} from "../../catalog/phs";
 
 const WATTS_PER_MET = 58.15;
 const MIN_VAPOR_PRESSURE_KPA = 0.5;

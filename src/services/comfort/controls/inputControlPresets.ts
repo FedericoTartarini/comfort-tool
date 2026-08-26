@@ -1,4 +1,4 @@
-import type { PresetInputOption } from "../../../models/inputControls";
+import type { PresetInputOption } from "../../../catalog/inputControls";
 import {
   clothingTypicalEnsembles,
   metabolicActivityOptions,

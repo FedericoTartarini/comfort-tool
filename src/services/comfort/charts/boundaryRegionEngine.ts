@@ -10,7 +10,7 @@ import {
   resolveBandEdge,
   type Band,
   type BandInputsSi,
-} from "../../../models/modelCapabilities";
+} from "../../../catalog/modelCapabilities";
 import { buildFilledPolygonTrace } from "./plotlyBuilders";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale } from "./types";

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CalculationSource } from "../models/calculationMetadata";
+import { CalculationSource } from "../catalog/calculationMetadata";
 import type { PlotlyChartSpec } from "./plotlyTypes";
 import {
   PublicationColumn,

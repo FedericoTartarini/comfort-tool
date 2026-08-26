@@ -4,7 +4,7 @@ import {
   met_typical_tasks,
 } from "jsthermalcomfort";
 
-import { ClothingZone, type ClothingZoneId } from "../../models/clothingZones";
+import { ClothingZone, type ClothingZoneId } from "../../catalog/clothingZones";
 
 type NumericReferenceMap = Record<string, number>;
 type TypicalEnsembleLabel = Parameters<typeof clo_typical_ensembles>[0] | "Trousers, short-sleeve shirt, socks, shoes, underwear";

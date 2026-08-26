@@ -1,7 +1,7 @@
 import {
   findNumericBandIndexForValue,
   type NumericBand,
-} from "../../../models/modelCapabilities";
+} from "../../../catalog/modelCapabilities";
 import type {
   PlotColorScale,
   PlotConstraintOperation,

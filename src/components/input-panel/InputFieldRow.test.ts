@@ -4,8 +4,8 @@ import { cleanup, render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { InputControlId } from "../../models/inputControls";
-import { InputId } from "../../models/inputSlots";
+import { InputControlId } from "../../catalog/inputControls";
+import { InputId } from "../../catalog/inputSlots";
 import type { InputFieldRowViewModel } from "../../state/analysis/types";
 import InputFieldRow from "./InputFieldRow.svelte";
 

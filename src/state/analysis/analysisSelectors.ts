@@ -1,10 +1,10 @@
-import type { ModelId as ModelIdType } from "../../models/modelIds";
-import type { InputId as InputIdType } from "../../models/inputSlots";
+import type { ModelId as ModelIdType } from "../../catalog/modelIds";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type {
   ModelOutputKey,
   NumericBand,
-} from "../../models/modelCapabilities";
-import type { ChartAxisQuantityId } from "../../models/quantities";
+} from "../../catalog/modelCapabilities";
+import type { ChartAxisQuantityId } from "../../catalog/quantities";
 import { ChartLegendKind } from "../../services/comfort/charts/chartBuildResult";
 import { buildChartControlsViewModel } from "./chartPresentation";
 import type { AnalysisInternals } from "./analysisInternals";

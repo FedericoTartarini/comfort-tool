@@ -3,17 +3,17 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateWindChill, windChillModelConfig } from "./windChill";
-import { ModelId } from "../models/modelIds";
-import { UnitSystem } from "../models/units";
+import { ModelId } from "../catalog/modelIds";
+import { UnitSystem } from "../catalog/units";
 import {
   convertFieldValueFromSi,
   convertModelOutputFromSi,
 } from "../services/units";
-import { PhysicalQuantityId } from "../models/quantities";
-import { InputId } from "../models/inputSlots";
+import { PhysicalQuantityId } from "../catalog/quantities";
+import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
-import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
-import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { ModelOutputKey, type ChartBuildContext } from "../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
 describe("windChill service", () => {

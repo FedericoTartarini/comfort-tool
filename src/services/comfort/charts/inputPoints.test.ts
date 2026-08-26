@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../../models/quantities";
-import { InputId } from "../../../models/inputSlots";
-import { UnitSystem } from "../../../models/units";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
+import { InputId } from "../../../catalog/inputSlots";
+import { UnitSystem } from "../../../catalog/units";
 import { getBaselineInputEntry } from "../helpers";
 import { createFieldAxisScale } from "./axis";
 import { buildCompareInputMarkerTraces, buildInputTraceGroup } from "./inputPoints";

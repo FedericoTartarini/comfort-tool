@@ -10,9 +10,9 @@
   } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
   import PresetNumericInput from "../PresetNumericInput.svelte";
-  import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
-  import type { InputId as InputIdType } from "../../models/inputSlots";
-  import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+  import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
+  import type { InputId as InputIdType } from "../../catalog/inputSlots";
+  import type { OptionKey as OptionKeyType } from "../../catalog/inputModes";
   import type { InputFieldRowViewModel } from "../../state/analysis/types";
 
   interface Props {

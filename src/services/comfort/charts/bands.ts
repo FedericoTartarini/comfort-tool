@@ -1,4 +1,4 @@
-import type { NumericBand } from "../../../models/modelCapabilities";
+import type { NumericBand } from "../../../catalog/modelCapabilities";
 
 export type NumericBandField = "min" | "max" | "label" | "color";
 

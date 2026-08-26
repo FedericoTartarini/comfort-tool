@@ -2,14 +2,14 @@ import {
   InputId,
   inputOrder,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
-import type { ChartInstanceDeclaration } from "../../models/chartEngines";
-import type { ModelId as ModelIdType } from "../../models/modelIds";
-import { primaryInputOrder, type ChartAxisQuantityId } from "../../models/quantities";
+} from "../../catalog/inputSlots";
+import type { ChartInstanceDeclaration } from "../../catalog/chartEngines";
+import type { ModelId as ModelIdType } from "../../catalog/modelIds";
+import { primaryInputOrder, type ChartAxisQuantityId } from "../../catalog/quantities";
 import {
   type ModifierId as ModifierIdType,
-} from "../../models/inputModifiers";
-import type { FieldChartProfile } from "../../models/output/fieldChartProfile";
+} from "../../catalog/inputModifiers";
+import type { FieldChartProfile } from "../../catalog/output/fieldChartProfile";
 import {
   createControlBehaviorContext,
   type BehaviorPatch,

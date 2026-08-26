@@ -1,9 +1,9 @@
-import { PhysicalQuantityId, type AuxiliaryInputState, type DerivedSlotQuantityState, type PrimaryInputState } from "../../models/quantities";
-import { InputId, type InputId as InputIdType } from "../../models/inputSlots";
+import { PhysicalQuantityId, type AuxiliaryInputState, type DerivedSlotQuantityState, type PrimaryInputState } from "../../catalog/quantities";
+import { InputId, type InputId as InputIdType } from "../../catalog/inputSlots";
 import {
   TemperatureMode,
   type TemperatureMode as TemperatureModeType,
-} from "../../models/inputModes";
+} from "../../catalog/inputModes";
 import { t_o } from "jsthermalcomfort";
 import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import {

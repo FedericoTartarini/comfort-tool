@@ -1,15 +1,15 @@
 import { t_o, utci } from "jsthermalcomfort";
-import { CalculationSource } from "../../models/calculationMetadata";
-import { JsThermalComfortStandard } from "../../models/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../models/quantities";
+import { CalculationSource } from "../../catalog/calculationMetadata";
+import { JsThermalComfortStandard } from "../../catalog/modelIds";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
   type ModelOutput,
-} from "../../models/modelCapabilities";
-import { ThermalZone } from "../../models/thermalZone";
-import { ZoneToken } from "../../models/zoneTokens";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/modelCapabilities";
+import { ThermalZone } from "../../catalog/thermalZone";
+import { ZoneToken } from "../../catalog/zoneTokens";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   createRequestAxisAdapter,
 } from "../../services/comfort/charts/dynamicAxisPayload";

@@ -6,8 +6,8 @@ import {
   clothingZoneMetaById,
   clothingZoneOrder,
   type ClothingZoneId,
-} from "../../models/clothingZones";
-import { UnitSystem } from "../../models/units";
+} from "../../catalog/clothingZones";
+import { UnitSystem } from "../../catalog/units";
 import type { ClothingGarmentOption } from "./referenceValues";
 
 export interface ClothingSelectionSection {

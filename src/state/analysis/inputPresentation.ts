@@ -1,11 +1,11 @@
-import type { ModelId as ModelIdType } from "../../models/modelIds";
+import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type {
   InputControlKey as InputControlKeyType,
   InputControlViewModel,
-} from "../../models/inputControls";
-import type { OptionKey as OptionKeyType } from "../../models/inputModes";
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/inputControls";
+import type { OptionKey as OptionKeyType } from "../../catalog/inputModes";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import type { ControlBehaviorContext } from "../../services/comfort/controls/types";
 import { comfortModelMetaById } from "./modelConfigs";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";

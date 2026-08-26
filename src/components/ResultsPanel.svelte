@@ -8,8 +8,8 @@
    * model outputs never stack into two lines inside one cell.
    */
   import { Card } from "flowbite-svelte";
-  import { inputDisplayMetaById } from "../models/inputSlotPresentation";
-  import type { InputId as InputIdType } from "../models/inputSlots";
+  import { inputDisplayMetaById } from "../catalog/inputSlotPresentation";
+  import type { InputId as InputIdType } from "../catalog/inputSlots";
   import type { ResultSectionViewModel } from "../state/analysis/types";
 
   interface Props {

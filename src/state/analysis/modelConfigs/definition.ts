@@ -1,22 +1,22 @@
-import type { ModelId as ModelIdType } from "../../../models/modelIds";
-import type { InputModifier } from "../../../models/inputModifiers";
-import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
-import type { InputId as InputIdType } from "../../../models/inputSlots";
-import type { ModelCalculationContext } from "../../../models/modelCalculation";
+import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
+import type { InputModifier } from "../../../catalog/inputModifiers";
+import type { OptionKey as OptionKeyType } from "../../../catalog/inputModes";
+import type { InputId as InputIdType } from "../../../catalog/inputSlots";
+import type { ModelCalculationContext } from "../../../catalog/modelCalculation";
 import type {
   Band,
   ComplianceSpec,
   ModelOutput,
   NumericBand,
-} from "../../../models/modelCapabilities";
-import type { ModelChartInstances } from "../../../models/chartEngines";
-import type { FieldChartProfile } from "../../../models/output/fieldChartProfile";
-import type { ModelTables } from "../../../models/tableTypes";
-import type { UnitSystem as UnitSystemType } from "../../../models/units";
+} from "../../../catalog/modelCapabilities";
+import type { ModelChartInstances } from "../../../catalog/chartEngines";
+import type { FieldChartProfile } from "../../../catalog/output/fieldChartProfile";
+import type { ModelTables } from "../../../catalog/tableTypes";
+import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import type {
   StandardId as StandardIdType,
   WorkspaceId,
-} from "../../../models/workspaces";
+} from "../../../catalog/workspaces";
 import type { ChartBuildResult } from "../../../services/comfort/charts/chartBuildResult";
 import type {
   SimulationOutputDeclaration,
@@ -29,7 +29,7 @@ import type {
 } from "../../../services/comfort/controls/types";
 import type { InputFieldSpec } from "../../../services/comfort/controls/fieldInputBehaviors";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
-import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../models/quantities";
+import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../catalog/quantities";
 
 export type ModelCalculationOutputs<ResultType, ChartSourceType> = {
   resultsByInput: Record<InputIdType, ResultType | null>;

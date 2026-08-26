@@ -1,13 +1,13 @@
 import {
   getPhysicalQuantityMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/quantities";
+} from "../../catalog/quantities";
 import {
   SiUnit,
   UnitSystem,
   isSiUnit,
   type UnitSystem as UnitSystemType,
-} from "../../models/units";
+} from "../../catalog/units";
 import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
 import {
   convertHeatFluxFromSi,

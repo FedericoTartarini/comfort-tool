@@ -1,7 +1,7 @@
 import type {
   MetricSummaryGroupViewModel,
   MetricSummaryItemViewModel,
-} from "../../../models/tableTypes";
+} from "../../../catalog/tableTypes";
 
 export interface MetricSummaryLayoutViewModel {
   readonly overview: readonly MetricSummaryItemViewModel[];

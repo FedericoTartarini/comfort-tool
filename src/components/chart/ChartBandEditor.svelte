@@ -4,8 +4,8 @@
   import type {
     ModelOutputKey,
     NumericBand,
-  } from "../../models/modelCapabilities";
-  import type { UnitSystem as UnitSystemType } from "../../models/units";
+  } from "../../catalog/modelCapabilities";
+  import type { UnitSystem as UnitSystemType } from "../../catalog/units";
   import {
     normalizeNumericBands,
     validateNumericBands,

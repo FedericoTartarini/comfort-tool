@@ -9,8 +9,8 @@
   import {
     inputOrder,
     type InputId as InputIdType,
-  } from "../../models/inputSlots";
-  import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
+  } from "../../catalog/inputSlots";
+  import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
   import ToolControls from "./ToolControls.svelte";
   import type { InputPanelViewModel } from "../../state/analysis/types";
 

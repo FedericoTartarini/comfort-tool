@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import type { PhsTimeSeriesDraft } from "../../models/phs";
+import type { PhsTimeSeriesDraft } from "../../catalog/phs";
 import { simulatePhs } from "./calculation";
 
 const workerScope = self as DedicatedWorkerGlobalScope;

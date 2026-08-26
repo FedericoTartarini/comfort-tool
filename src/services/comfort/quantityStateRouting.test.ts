@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { InputId } from "../../models/inputSlots";
-import { PhysicalQuantityId } from "../../models/quantities";
-import { PhsQuantityId } from "../../models/phs";
-import { ModifierId } from "../../models/inputModifiers";
+import { InputId } from "../../catalog/inputSlots";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { PhsQuantityId } from "../../catalog/phs";
+import { ModifierId } from "../../catalog/inputModifiers";
 import {
   collectModifierInputsForModifier,
   createAuxiliaryQuantitiesByInput,
@@ -17,7 +17,7 @@ import {
 import { createQuantitiesByInput } from "../../state/analysis/initialAnalysisState";
 import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import { syncDerivedStateForInput } from "./syncState";
-import { ModelId } from "../../models/modelIds";
+import { ModelId } from "../../catalog/modelIds";
 
 describe("quantityStateRouting", () => {
   it("reads and writes primary quantities", () => {

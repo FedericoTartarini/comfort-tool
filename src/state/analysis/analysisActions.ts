@@ -1,19 +1,19 @@
-import type { ModelId as ModelIdType } from "../../models/modelIds";
-import type { InputControlKey as InputControlKeyType } from "../../models/inputControls";
-import type { OptionKey as OptionKeyType } from "../../models/inputModes";
+import type { ModelId as ModelIdType } from "../../catalog/modelIds";
+import type { InputControlKey as InputControlKeyType } from "../../catalog/inputControls";
+import type { OptionKey as OptionKeyType } from "../../catalog/inputModes";
 import {
   type ModifierId as ModifierIdType,
-} from "../../models/inputModifiers";
+} from "../../catalog/inputModifiers";
 import {
   InputId,
   inputOrder,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
+} from "../../catalog/inputSlots";
 import {
   type ModelOutputKey,
   type NumericBand,
-} from "../../models/modelCapabilities";
-import type { WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
+} from "../../catalog/modelCapabilities";
+import type { WorkspaceId as WorkspaceIdType } from "../../catalog/workspaces";
 import { syncDerivedStateForInput } from "../../services/comfort/syncState";
 import { getComfortModelConfig } from "./modelConfigs";
 import {
@@ -53,7 +53,7 @@ import {
   normalizeCompareInputIds,
   type ShareStateSnapshot,
 } from "./shareState";
-import { UnitSystem } from "../../models/units";
+import { UnitSystem } from "../../catalog/units";
 import {
   createDefaultCompareInputIds,
 } from "./initialAnalysisState";
@@ -63,7 +63,7 @@ import {
   resolveQuantityState,
   type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/quantities";
+} from "../../catalog/quantities";
 import type {
   AnalysisActions,
   AnalysisStateSlice,

@@ -1,21 +1,21 @@
 import { t_o } from "jsthermalcomfort";
-import { CalculationSource } from "../../models/calculationMetadata";
-import { ComplianceStatus } from "../../models/modelIds";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/quantities";
+import { CalculationSource } from "../../catalog/calculationMetadata";
+import { ComplianceStatus } from "../../catalog/modelIds";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
 import {
   OptionKey,
   TemperatureMode,
   type AdaptiveModelOptions,
-} from "../../models/inputModes";
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ModelCalculationContext } from "../../models/modelCalculation";
+} from "../../catalog/inputModes";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 import {
   type Band,
   type BandEdge,
   type BandInputsSi,
   type ComplianceFeedback,
-} from "../../models/modelCapabilities";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/modelCapabilities";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import { calculatePerInput, createFieldRequestAdapter } from "../../services/comfort/requestMapping";
 import { convertFieldValueFromSi } from "../../services/units";
 import {

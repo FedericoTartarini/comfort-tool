@@ -1,12 +1,12 @@
-import type { ModelChartSource } from "../../../../models/chartSource";
+import type { ModelChartSource } from "../../../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import type { ChartBuildResult } from "../chartBuildResult";
-import { ChartEngine } from "../../../../models/chartEngines";
-import type { InputId as InputIdType } from "../../../../models/inputSlots";
+import { ChartEngine } from "../../../../catalog/chartEngines";
+import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 import type {
   ChartBuildContext,
   NumericBand,
-} from "../../../../models/modelCapabilities";
+} from "../../../../catalog/modelCapabilities";
 import {
   buildGridModelChart,
   type GridModelChartSpec,

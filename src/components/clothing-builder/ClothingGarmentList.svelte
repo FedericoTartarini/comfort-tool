@@ -3,7 +3,7 @@
 <script lang="ts">
   import { Input, Label } from "flowbite-svelte";
 
-  import { clothingZoneMetaById, type ClothingZoneId } from "../../models/clothingZones";
+  import { clothingZoneMetaById, type ClothingZoneId } from "../../catalog/clothingZones";
   import type { ClothingGarmentOption } from "../../services/comfort/referenceValues";
 
   interface Props {

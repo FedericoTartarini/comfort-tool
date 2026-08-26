@@ -4,11 +4,11 @@
     CloseCircleOutline,
     ExclamationCircleOutline,
   } from "flowbite-svelte-icons";
-  import { ComplianceStatus } from "../../models/modelIds";
+  import { ComplianceStatus } from "../../catalog/modelIds";
   import {
     FieldChartProfileKind,
     type FieldChartProfileKind as FieldChartProfileKindType,
-  } from "../../models/output/fieldChartProfile";
+  } from "../../catalog/output/fieldChartProfile";
   import type { ChartProfileBadgeViewModel } from "../../state/analysis/types";
 
   interface Props {

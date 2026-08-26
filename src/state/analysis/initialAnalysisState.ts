@@ -2,9 +2,9 @@ import {
   InputId,
   inputDefaultsById,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
-import { WorkspaceId } from "../../models/workspaces";
-import { createDefaultPrimaryInputState } from "../../models/quantities";
+} from "../../catalog/inputSlots";
+import { WorkspaceId } from "../../catalog/workspaces";
+import { createDefaultPrimaryInputState } from "../../catalog/quantities";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import {
   seedModelOutputSettings,

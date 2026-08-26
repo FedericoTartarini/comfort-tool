@@ -1,22 +1,22 @@
-import { ModelId, type ModelId as ModelIdType } from "../models/modelIds";
+import { ModelId, type ModelId as ModelIdType } from "../catalog/modelIds";
 import {
   createModelCalculationContext,
   type ModelCalculationContext,
-} from "../models/modelCalculation";
+} from "../catalog/modelCalculation";
 import {
   PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
   type PrimaryQuantityId,
-} from "../models/quantities";
-import { InputId } from "../models/inputSlots";
+} from "../catalog/quantities";
+import { InputId } from "../catalog/inputSlots";
 import { comfortModelConfigs } from "../state/analysis/modelConfigs";
 import { createQuantitiesByInput } from "../state/analysis/initialAnalysisState";
 import {
   createAuxiliaryQuantitiesByInput,
   createDefaultModelInputsForModel,
 } from "../services/comfort/quantityStateRouting";
-import { PhsQuantityId } from "../models/phs";
+import { PhsQuantityId } from "../catalog/phs";
 import type { PmvRequest } from "../declarations/pmv/calculation";
 import type { UtciRequest } from "../declarations/utci/calculation";
 import {

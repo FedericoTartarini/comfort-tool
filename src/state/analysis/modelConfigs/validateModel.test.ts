@@ -1,14 +1,14 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { ModelId } from "../../../models/modelIds";
-import { ChartEngine } from "../../../models/chartEngines";
-import { TableType } from "../../../models/tableTypes";
-import { WorkspaceId } from "../../../models/workspaces";
+import { ModelId } from "../../../catalog/modelIds";
+import { ChartEngine } from "../../../catalog/chartEngines";
+import { TableType } from "../../../catalog/tableTypes";
+import { WorkspaceId } from "../../../catalog/workspaces";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
-} from "../../../models/quantities";
-import { PhsQuantityId } from "../../../models/phs";
+} from "../../../catalog/quantities";
+import { PhsQuantityId } from "../../../catalog/phs";
 import { assembledCatalogs, comfortModelOrder, getComfortModelConfig } from ".";
 import {
   assembleCatalogs,

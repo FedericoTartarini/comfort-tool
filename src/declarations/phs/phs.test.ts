@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../../models/modelIds";
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputId } from "../../models/inputSlots";
+import { ModelId } from "../../catalog/modelIds";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputId } from "../../catalog/inputSlots";
 
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
@@ -13,8 +13,8 @@ import {
   type PhsHistorySample,
   type PhsTimeSeriesDraft,
   type PhsTimeSeriesSegment,
-} from "../../models/phs";
-import { UnitSystem } from "../../models/units";
+} from "../../catalog/phs";
+import { UnitSystem } from "../../catalog/units";
 import {
   calculatePhs,
   calculatePhsTimeSeries,
@@ -31,8 +31,8 @@ import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds
 import { phsTimeSeriesModelDefinition } from "./timeSeries";
 import { downsamplePhsHistorySamples } from "./timeSeriesCharts";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
-import { ModelOutputKey } from "../../models/modelCapabilities";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+import { ModelOutputKey } from "../../catalog/modelCapabilities";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 function segment(
   id: string,
   durationMinutes: number,

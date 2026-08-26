@@ -1,7 +1,7 @@
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ChartBuildContext, NumericBand } from "../../models/modelCapabilities";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import type { ChartBuildContext, NumericBand } from "../../catalog/modelCapabilities";
 import type { PlotlyChartSpec } from "../../services/plotlyTypes";
-import type { ChartAxisQuantityId } from "../../models/quantities";
+import type { ChartAxisQuantityId } from "../../catalog/quantities";
 import type {
   CustomChartEngineSpec,
   DynamicFieldGeometrySpec,

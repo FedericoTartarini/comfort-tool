@@ -1,12 +1,12 @@
-import { ModelId, type ModelId as ModelIdType } from "../../models/modelIds";
+import { ModelId, type ModelId as ModelIdType } from "../../catalog/modelIds";
 import {
   inputModifierCatalogue,
   modifierOrder,
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
-} from "../../models/inputModifiers";
-import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
-import { PhysicalQuantityId, QuantityState, derivedQuantityIds, isPhysicalQuantityId, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../models/quantities";
+} from "../../catalog/inputModifiers";
+import { InputId, inputOrder, type InputId as InputIdType } from "../../catalog/inputSlots";
+import { PhysicalQuantityId, QuantityState, derivedQuantityIds, isPhysicalQuantityId, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../catalog/quantities";
 const comfortModelOrder = Object.values(ModelId) as ModelIdType[];
 
 export type QuantitiesByInputState = Record<InputIdType, PrimaryInputState>;

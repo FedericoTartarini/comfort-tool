@@ -1,13 +1,13 @@
-import { type ModelId as ModelIdType } from "../models/modelIds";
+import { type ModelId as ModelIdType } from "../catalog/modelIds";
 import type { PlotlyChartSpec } from "../services/plotlyTypes";
-import { InputId } from "../models/inputSlots";
-import { UnitSystem } from "../models/units";
-import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
+import { InputId } from "../catalog/inputSlots";
+import { UnitSystem } from "../catalog/units";
+import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import {
   WorkspaceId,
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-} from "../models/workspaces";
+} from "../catalog/workspaces";
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,

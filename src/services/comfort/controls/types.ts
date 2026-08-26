@@ -1,14 +1,14 @@
 import type {
   PrimaryInputState,
   PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../../models/quantities";
+} from "../../../catalog/quantities";
 import type {
   InputControlViewModel,
   InputControlId as InputControlIdType,
-} from "../../../models/inputControls";
-import type { ModelOptionsRecord } from "../../../models/inputModes";
-import type { InputId as InputIdType } from "../../../models/inputSlots";
-import type { UnitSystem as UnitSystemType } from "../../../models/units";
+} from "../../../catalog/inputControls";
+import type { ModelOptionsRecord } from "../../../catalog/inputModes";
+import type { InputId as InputIdType } from "../../../catalog/inputSlots";
+import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import {
   AuxiliaryQuantitiesByInputState,
   QuantitiesByInputState,

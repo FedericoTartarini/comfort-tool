@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartEngine } from "../../../../models/chartEngines";
-import { CalculationSource } from "../../../../models/calculationMetadata";
-import { UnitSystem } from "../../../../models/units";
+import { ChartEngine } from "../../../../catalog/chartEngines";
+import { CalculationSource } from "../../../../catalog/calculationMetadata";
+import { UnitSystem } from "../../../../catalog/units";
 import type { SimulationChartDeclaration } from "../simulationCharts";
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import { resolveSimulationChartBuild } from "./simulation";

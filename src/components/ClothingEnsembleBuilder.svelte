@@ -4,8 +4,8 @@
   import {
     ClothingZone,
     type ClothingDisplayZoneId,
-  } from "../models/clothingZones";
-  import { InputId, type InputId as InputIdType } from "../models/inputSlots";
+  } from "../catalog/clothingZones";
+  import { InputId, type InputId as InputIdType } from "../catalog/inputSlots";
   import {
     buildSelectedClothingSections,
     filterClothingGarments,

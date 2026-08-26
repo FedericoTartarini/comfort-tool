@@ -1,10 +1,10 @@
-import type { TimeSeriesModelReference } from "../../models/timeSeries";
+import type { TimeSeriesModelReference } from "../../catalog/timeSeries";
 import type {
   TimeSeriesChartViewModel,
   TimeSeriesEditorViewModel,
 } from "./viewModels";
-import type { MetricSummaryItemViewModel } from "../../models/tableTypes";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+import type { MetricSummaryItemViewModel } from "../../catalog/tableTypes";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import type { TimeSeriesModelId } from "./modelConfigs";
 
 export type TimeSeriesRunStatus =

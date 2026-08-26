@@ -1,13 +1,13 @@
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../models/quantities";
-import type { InputControlId as InputControlIdType } from "../../../models/inputControls";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../catalog/quantities";
+import type { InputControlId as InputControlIdType } from "../../../catalog/inputControls";
 import {
   OptionKey,
   TemperatureMode,
   type ModelOptionsRecord,
   type TemperatureMode as TemperatureModeType,
-} from "../../../models/inputModes";
-import { inputOrder, type InputId as InputIdType } from "../../../models/inputSlots";
-import { temperatureMenuItems } from "../../../models/controlMenuMeta";
+} from "../../../catalog/inputModes";
+import { inputOrder, type InputId as InputIdType } from "../../../catalog/inputSlots";
+import { temperatureMenuItems } from "../../../catalog/controlMenuMeta";
 import { synchronizeTemperatureMode } from "../syncState";
 import { getDerivedFromAuxiliary } from "../quantityStateRouting";
 import type {

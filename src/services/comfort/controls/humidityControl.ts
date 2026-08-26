@@ -1,13 +1,13 @@
-import { PhysicalQuantityId, getQuantityDisplayMeta, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../../models/quantities";
-import type { InputControlId as InputControlIdType } from "../../../models/inputControls";
+import { PhysicalQuantityId, getQuantityDisplayMeta, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../../catalog/quantities";
+import type { InputControlId as InputControlIdType } from "../../../catalog/inputControls";
 import {
   HumidityInputMode,
   OptionKey,
   type HumidityInputMode as HumidityInputModeType,
   type ModelOptionsRecord,
-} from "../../../models/inputModes";
-import { inputOrder } from "../../../models/inputSlots";
-import { humidityMenuItems } from "../../../models/controlMenuMeta";
+} from "../../../catalog/inputModes";
+import { inputOrder } from "../../../catalog/inputSlots";
+import { humidityMenuItems } from "../../../catalog/controlMenuMeta";
 import { getDerivedFromAuxiliary } from "../quantityStateRouting";
 import {
   convertQuantityFromSi,
@@ -19,7 +19,7 @@ import {
   deriveRelativeHumidityFromVaporPressure,
   deriveRelativeHumidityFromWetBulb,
 } from "../derivations";
-import { UnitSystem } from "../../../models/units";
+import { UnitSystem } from "../../../catalog/units";
 import type {
   ControlBehaviorContext,
   InputControlBehavior,

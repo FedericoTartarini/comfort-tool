@@ -3,16 +3,16 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
-import { ModelId } from "../models/modelIds";
-import { UnitSystem } from "../models/units";
+import { ModelId } from "../catalog/modelIds";
+import { UnitSystem } from "../catalog/units";
 import { convertModelOutputFromSi } from "../services/units";
-import { PhysicalQuantityId } from "../models/quantities";
-import { InputId } from "../models/inputSlots";
+import { PhysicalQuantityId } from "../catalog/quantities";
+import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
-import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
-import { ChartEngine } from "../models/chartEngines";
-import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { InputControlId } from "../models/inputControls";
+import { ModelOutputKey, type ChartBuildContext } from "../catalog/modelCapabilities";
+import { ChartEngine } from "../catalog/chartEngines";
+import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
+import { InputControlId } from "../catalog/inputControls";
 import {
   requiredControlIdsByModel,
   requiredPrimaryQuantitiesByModel,

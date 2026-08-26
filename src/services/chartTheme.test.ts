@@ -18,7 +18,7 @@ import {
   ptToPx,
   screenChartTheme,
 } from "./chartTheme";
-import { ZonePaletteKind } from "../models/zoneTokens";
+import { ZonePaletteKind } from "../catalog/zoneTokens";
 
 describe("chartTheme", () => {
   it("keeps screen interactive and publication print-sized", () => {

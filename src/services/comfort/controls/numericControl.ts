@@ -1,23 +1,23 @@
-import { PhysicalQuantityId, PrimaryQuantityId, getQuantityPresentationMeta, type QuantityPresentationMeta } from "../../../models/quantities";
+import { PhysicalQuantityId, PrimaryQuantityId, getQuantityPresentationMeta, type QuantityPresentationMeta } from "../../../catalog/quantities";
 import type {
   AdvancedOptionMenu,
   AdvancedOptionSection,
   InputControlId as InputControlIdType,
   InputControlViewModel,
   PresetInputOption,
-} from "../../../models/inputControls";
+} from "../../../catalog/inputControls";
 import {
   AirSpeedControlMode,
   OptionKey,
   type AirSpeedControlMode as AirSpeedControlModeType,
   type ModelOptionsRecord,
   type OptionKey as OptionKeyType,
-} from "../../../models/inputModes";
-import type { InputId as InputIdType } from "../../../models/inputSlots";
+} from "../../../catalog/inputModes";
+import type { InputId as InputIdType } from "../../../catalog/inputSlots";
 import {
   airSpeedControlMenuItems,
   type MenuItemDefinition,
-} from "../../../models/controlMenuMeta";
+} from "../../../catalog/controlMenuMeta";
 import {
   convertQuantityFromSi,
   convertQuantityToSi,

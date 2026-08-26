@@ -1,4 +1,4 @@
-import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -20,21 +20,21 @@ import {
   type PmvChartSource,
   type PmvResponse,
 } from "../../../declarations/pmv/calculation";
-import { createModelCalculationContext } from "../../../models/modelCalculation";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../models/quantities";
+import { createModelCalculationContext } from "../../../catalog/modelCalculation";
+import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../catalog/quantities";
 import {
   AirSpeedControlMode,
   OptionKey,
   TemperatureMode,
-} from "../../../models/inputModes";
-import { InputId } from "../../../models/inputSlots";
+} from "../../../catalog/inputModes";
+import { InputId } from "../../../catalog/inputSlots";
 import {
   ModelOutputKey,
   type ChartBuildContext,
   type NumericBand,
   type ModelOutputKey as ModelOutputKeyType,
-} from "../../../models/modelCapabilities";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
+} from "../../../catalog/modelCapabilities";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
 import { convertFieldValueFromSi } from "../../units";
 import type { PlotlyChartSpec, PlotTrace } from "../../plotlyTypes";

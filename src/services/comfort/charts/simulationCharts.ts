@@ -1,6 +1,6 @@
 import type { PlotlyChartSpec } from "../../plotlyTypes";
-import { ChartEngine } from "../../../models/chartEngines";
-import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import { ChartEngine } from "../../../catalog/chartEngines";
+import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 
 export interface SimulationTimeSeriesLineChartSpec {
   readonly build: (

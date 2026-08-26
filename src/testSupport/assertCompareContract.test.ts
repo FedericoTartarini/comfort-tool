@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../models/modelIds";
-import { InputId } from "../models/inputSlots";
-import { PhysicalQuantityId } from "../models/quantities";
+import { ModelId } from "../catalog/modelIds";
+import { InputId } from "../catalog/inputSlots";
+import { PhysicalQuantityId } from "../catalog/quantities";
 import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
 import { comfortModelOrder } from "../state/analysis/modelConfigs";
 import {

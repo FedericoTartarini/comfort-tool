@@ -1,4 +1,4 @@
-import { ModelId, type ModelId as ModelIdType } from "../../models/modelIds";
+import { ModelId, type ModelId as ModelIdType } from "../../catalog/modelIds";
 import {
   AppRouteId,
   StandardId,
@@ -6,7 +6,7 @@ import {
   type AppRouteId as AppRouteIdType,
   type StandardId as StandardIdType,
   type WorkspaceId as WorkspaceIdType,
-} from "../../models/workspaces";
+} from "../../catalog/workspaces";
 import {
   getModelsForWorkspace,
   getModelsForStandard,

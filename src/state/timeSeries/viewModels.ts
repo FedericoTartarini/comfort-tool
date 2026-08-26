@@ -5,8 +5,8 @@ import type {
   TimeSeriesPresetDefinition,
   TimeSeriesSegmentReference,
   TimeSeriesSelectItem,
-} from "../../models/timeSeries";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/timeSeries";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 
 export interface TimeSeriesNumberControlViewModel {
   readonly kind: "number";

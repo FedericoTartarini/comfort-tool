@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../models/quantities";
-import { PhsQuantityId } from "../../models/phs";
-import { UnitSystem } from "../../models/units";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { PhsQuantityId } from "../../catalog/phs";
+import { UnitSystem } from "../../catalog/units";
 import {
   convertCanonicalSiUnitFromSi,
   convertFieldValueFromSi,

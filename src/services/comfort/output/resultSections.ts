@@ -1,5 +1,5 @@
-import type { InputId as InputIdType } from "../../../models/inputSlots";
-import type { ResultCellViewModel, ResultSectionViewModel } from "../../../models/output/resultSections";
+import type { InputId as InputIdType } from "../../../catalog/inputSlots";
+import type { ResultCellViewModel, ResultSectionViewModel } from "../../../catalog/output/resultSections";
 
 export function buildResultSection<T>(
   title: string,

@@ -1,11 +1,11 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { PhysicalQuantityId, primaryInputOrder, type PrimaryInputState } from "../../models/quantities";
-import { InputId, inputDefaultsById } from "../../models/inputSlots";
+import { PhysicalQuantityId, primaryInputOrder, type PrimaryInputState } from "../../catalog/quantities";
+import { InputId, inputDefaultsById } from "../../catalog/inputSlots";
 import {
   ModelCalculationContext,
   createModelCalculationContext,
-} from "../../models/modelCalculation";
+} from "../../catalog/modelCalculation";
 import { createAuxiliaryQuantitiesByInput } from "../../services/comfort/quantityStateRouting";
 import {
   calculatePerInput,

@@ -1,14 +1,14 @@
-import { CalculationSource } from "../../../../models/calculationMetadata";
+import { CalculationSource } from "../../../../catalog/calculationMetadata";
 import type {
   PlotAxis,
   PlotlyChartSpec,
   PlotScatterLineTrace,
 } from "../../../plotlyTypes";
-import type { ChartBuildContext } from "../../../../models/modelCapabilities";
+import type { ChartBuildContext } from "../../../../catalog/modelCapabilities";
 import {
   UnitSystem,
   type UnitSystem as UnitSystemType,
-} from "../../../../models/units";
+} from "../../../../catalog/units";
 import { convertFieldValueFromSi } from "../../../units";
 import { convertHeatFluxFromSi } from "../../../units/physicalQuantities";
 import { convertTemperatureFromSi } from "../../../units/temperature";
@@ -24,7 +24,7 @@ import type {
   ParametricYUnit as ParametricYUnitType,
 } from "./types";
 import { ParametricYUnit } from "./types";
-import type { InputId as InputIdType } from "../../../../models/inputSlots";
+import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 
 const LIMIT_BAND_OPACITY = 0.22;
 const DEFAULT_MARGIN = { l: 56, r: 24, t: 48, b: 88 };

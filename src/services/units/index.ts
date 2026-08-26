@@ -1,8 +1,8 @@
 import {
   PhysicalQuantityId,
   getQuantityDisplayMeta,
-} from "../../models/quantities";
-import { type UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/quantities";
+import { type UnitSystem as UnitSystemType } from "../../catalog/units";
 export * from "./modelOutputs";
 export * from "./modifierInputs";
 export {

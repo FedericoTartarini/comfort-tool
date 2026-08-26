@@ -1,9 +1,9 @@
 import {
   inputOrder,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
-import type { CompareInputMap } from "../../models/chartSource";
-import type { ThermalZone } from "../../models/thermalZone";
+} from "../../catalog/inputSlots";
+import type { CompareInputMap } from "../../catalog/chartSource";
+import type { ThermalZone } from "../../catalog/thermalZone";
 
 export function roundValue(value: number, decimals = 3): number {
   return Number(value.toFixed(decimals));

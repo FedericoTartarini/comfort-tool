@@ -5,7 +5,7 @@ import {
   resolveZoneAppearance,
   ZonePaletteKind,
   ZoneToken,
-} from "../../src/models/zoneTokens";
+} from "../../src/catalog/zoneTokens";
 
 const TARGET_INPUTS = {
   "Air temperature": "26",

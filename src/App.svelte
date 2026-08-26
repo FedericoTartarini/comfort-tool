@@ -18,7 +18,7 @@
     getAppRouteByPath,
     standardRouteDefinitions,
   } from "./state/workspace/routeDefinitions";
-  import { WorkspaceId } from "./models/workspaces";
+  import { WorkspaceId } from "./catalog/workspaces";
   import { createTimeSeriesState } from "./state/timeSeries/createTimeSeriesState.svelte";
 
   const toolState = createAnalysisState();

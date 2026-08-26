@@ -1,20 +1,20 @@
 import { heat_index } from "jsthermalcomfort";
-import { CalculationSource } from "../models/calculationMetadata";
-import type { ModelChartSource } from "../models/chartSource";
-import { ModelId } from "../models/modelIds";
-import { InputControlId } from "../models/inputControls";
+import { CalculationSource } from "../catalog/calculationMetadata";
+import type { ModelChartSource } from "../catalog/chartSource";
+import { ModelId } from "../catalog/modelIds";
+import { InputControlId } from "../catalog/inputControls";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
   type ModelOutput,
-} from "../models/modelCapabilities";
-import { ChartEngine } from "../models/chartEngines";
-import { TableType } from "../models/tableTypes";
-import { WorkspaceId } from "../models/workspaces";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../models/quantities";
-import { ThermalZone } from "../models/thermalZone";
-import { ZoneToken } from "../models/zoneTokens";
-import { UnitSystem } from "../models/units";
+} from "../catalog/modelCapabilities";
+import { ChartEngine } from "../catalog/chartEngines";
+import { TableType } from "../catalog/tableTypes";
+import { WorkspaceId } from "../catalog/workspaces";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantities";
+import { ThermalZone } from "../catalog/thermalZone";
+import { ZoneToken } from "../catalog/zoneTokens";
+import { UnitSystem } from "../catalog/units";
 import type { GridModelChartSpec } from "../services/comfort/charts/gridModelCharts";
 import { requireThermalZone } from "../services/comfort/helpers";
 import {

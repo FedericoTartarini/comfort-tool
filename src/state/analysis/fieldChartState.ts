@@ -1,21 +1,21 @@
 import type { ChartEngineRegistration } from "../../services/comfort/charts/kinds/types";
-import { InputId } from "../../models/inputSlots";
+import { InputId } from "../../catalog/inputSlots";
 import {
   type Band,
   type ModelOutput,
   type ModelOutputKey,
   type NumericBand,
-} from "../../models/modelCapabilities";
+} from "../../catalog/modelCapabilities";
 import {
   FieldChartProfileKind,
   type FieldChartProfile,
-} from "../../models/output/fieldChartProfile";
+} from "../../catalog/output/fieldChartProfile";
 import {
   WorkspaceId,
   supportsExploreWorkspace,
   supportsStandardWorkspace,
   type WorkspaceId as WorkspaceIdType,
-} from "../../models/workspaces";
+} from "../../catalog/workspaces";
 import {
   cloneNumericBands,
   normalizeNumericBands,

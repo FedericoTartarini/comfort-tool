@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../models/modelIds";
+import { ModelId } from "../catalog/modelIds";
 import {
   PhysicalQuantityId,
   getPhysicalQuantityMeta,
   type PrimaryQuantityId,
-} from "../models/quantities";
+} from "../catalog/quantities";
 import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
 import {
   declaredPrimaryQuantityIdsForModel,

@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
-import { ModelId } from "../../../../models/modelIds";
-import { InputId } from "../../../../models/inputSlots";
-import { UnitSystem } from "../../../../models/units";
-import { WorkspaceId } from "../../../../models/workspaces";
+import { ModelId } from "../../../../catalog/modelIds";
+import { InputId } from "../../../../catalog/inputSlots";
+import { UnitSystem } from "../../../../catalog/units";
+import { WorkspaceId } from "../../../../catalog/workspaces";
 import { ChartLegendKind } from "../chartBuildResult";
 import { buildFieldChartProfile, seedModelOutputSettings } from "../../../../state/analysis/fieldChartState";
 import { getComfortModelConfig } from "../../../../state/analysis/modelConfigs";

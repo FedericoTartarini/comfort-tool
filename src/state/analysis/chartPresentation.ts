@@ -1,19 +1,19 @@
-import { type ChartAxisQuantityId } from "../../models/quantities";
-import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
-import { InputId, type InputId as InputIdType } from "../../models/inputSlots";
+import { type ChartAxisQuantityId } from "../../catalog/quantities";
+import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
+import { InputId, type InputId as InputIdType } from "../../catalog/inputSlots";
 import {
   type ModelOutputKey,
   type NumericBand,
-} from "../../models/modelCapabilities";
+} from "../../catalog/modelCapabilities";
 import {
   FieldChartProfileKind,
-} from "../../models/output/fieldChartProfile";
+} from "../../catalog/output/fieldChartProfile";
 import {
   WorkspaceId,
   supportsExploreWorkspace,
   type WorkspaceId as WorkspaceIdType,
-} from "../../models/workspaces";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/workspaces";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import { getDynamicAxisOptions } from "./dynamicAxes";
 import {
   buildFieldChartProfile,
@@ -30,7 +30,7 @@ import type {
   ModelCalculationCache,
   ModelOutputSettings,
 } from "./types";
-import type { ChartInstanceDeclaration } from "../../models/chartEngines";
+import type { ChartInstanceDeclaration } from "../../catalog/chartEngines";
 
 export function getEffectiveChartBaselineInputId(
   settings: ModelOutputSettings,

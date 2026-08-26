@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { InputControlId } from "./models/inputControls";
-import { InputId } from "./models/inputSlots";
-import { PhysicalQuantityId } from "./models/quantities";
+import { InputControlId } from "./catalog/inputControls";
+import { InputId } from "./catalog/inputSlots";
+import { PhysicalQuantityId } from "./catalog/quantities";
 import { createAnalysisState } from "./state/analysis/createAnalysisState.svelte";
 
 async function waitForIdle(

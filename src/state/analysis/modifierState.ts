@@ -3,9 +3,9 @@ import {
   modifierOrder,
   type InputModifier,
   type ModifierId as ModifierIdType,
-} from "../../models/inputModifiers";
-import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
-import type { UnitSystem as UnitSystemType } from "../../models/units";
+} from "../../catalog/inputModifiers";
+import { InputId, inputOrder, type InputId as InputIdType } from "../../catalog/inputSlots";
+import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   applyInputModifierChain,
   isModifierConfigurationComplete,
@@ -27,7 +27,7 @@ import {
 import {
   getQuantityPresentationMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/quantities";
+} from "../../catalog/quantities";
 import type {
   ActiveModifiersByInputState,
   AuxiliaryQuantitiesByInputState,

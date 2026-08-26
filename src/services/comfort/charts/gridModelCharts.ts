@@ -1,14 +1,14 @@
-import { CalculationSource } from "../../../models/calculationMetadata";
+import { CalculationSource } from "../../../catalog/calculationMetadata";
 import type {
   CompareInputMap,
   ModelChartSource,
-} from "../../../models/chartSource";
+} from "../../../catalog/chartSource";
 import type {
   PlotHoverValue,
   PlotlyChartSpec,
 } from "../../plotlyTypes";
-import { ChartAxisQuantityId, getPhysicalQuantityMeta } from "../../../models/quantities";
-import type { InputId as InputIdType } from "../../../models/inputSlots";
+import { ChartAxisQuantityId, getPhysicalQuantityMeta } from "../../../catalog/quantities";
+import type { InputId as InputIdType } from "../../../catalog/inputSlots";
 import {
   ChartBuildContext,
   ModelOutput,
@@ -16,8 +16,8 @@ import {
   NumericFieldChartConfig,
   ModelOutputKey as ModelOutputKeyType,
   findNumericBandIndexForValue,
-} from "../../../models/modelCapabilities";
-import type { UnitSystem as UnitSystemType } from "../../../models/units";
+} from "../../../catalog/modelCapabilities";
+import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import type { FieldRequestAdapter } from "../requestMapping";
 import {
   convertModelOutputFromSi,

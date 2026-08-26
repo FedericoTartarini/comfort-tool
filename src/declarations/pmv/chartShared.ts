@@ -1,19 +1,19 @@
-import { CalculationSource } from "../../models/calculationMetadata";
-import type { CompareInputMap } from "../../models/chartSource";
+import { CalculationSource } from "../../catalog/calculationMetadata";
+import type { CompareInputMap } from "../../catalog/chartSource";
 import type {
   PlotHoverRow,
   PlotMargin,
   PlotlyChartSpec,
   PlotTrace,
 } from "../../services/plotlyTypes";
-import type { InputId as InputIdType } from "../../models/inputSlots";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import {
   findNumericBandIndexForValue,
   ModelOutputKey,
   type ChartBuildContext,
   type FieldChartConfig,
   type NumericBand,
-} from "../../models/modelCapabilities";
+} from "../../catalog/modelCapabilities";
 import {
   buildFieldChart,
   createBandedGridStrategy,

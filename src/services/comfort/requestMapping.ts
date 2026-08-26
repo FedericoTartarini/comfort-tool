@@ -1,10 +1,10 @@
-import type { ModelChartSource } from "../../models/chartSource";
-import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../models/quantities";
+import type { ModelChartSource } from "../../catalog/chartSource";
+import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../catalog/quantities";
 import {
   InputId,
   type InputId as InputIdType,
-} from "../../models/inputSlots";
-import type { ModelCalculationContext } from "../../models/modelCalculation";
+} from "../../catalog/inputSlots";
+import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 
 export type CalculationRequestMapper<TRequest> = (
   context: ModelCalculationContext,

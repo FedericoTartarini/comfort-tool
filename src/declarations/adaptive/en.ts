@@ -1,12 +1,12 @@
 import { adaptive_en } from "jsthermalcomfort";
-import { ComfortStandard } from "../../models/calculationMetadata";
-import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
-import { ModelOutputKey } from "../../models/modelCapabilities";
+import { ComfortStandard } from "../../catalog/calculationMetadata";
+import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
+import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import { InputPresetKey } from "../../services/comfort/controls/inputControlPresets";
-import { ThermalZone } from "../../models/thermalZone";
-import { ZoneToken } from "../../models/zoneTokens";
-import { UnitSystem } from "../../models/units";
-import { StandardId, WorkspaceId } from "../../models/workspaces";
+import { ThermalZone } from "../../catalog/thermalZone";
+import { ZoneToken } from "../../catalog/zoneTokens";
+import { UnitSystem } from "../../catalog/units";
+import { StandardId, WorkspaceId } from "../../catalog/workspaces";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,

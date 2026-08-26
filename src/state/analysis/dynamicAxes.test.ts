@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../models/quantities";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import {
   getDynamicAxisOptions,
   isDynamicAxisPairValid,

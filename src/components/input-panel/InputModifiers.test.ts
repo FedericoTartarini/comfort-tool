@@ -5,10 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { tick } from "svelte";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ModelId } from "../../models/modelIds";
-import { ModifierId } from "../../models/inputModifiers";
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputId } from "../../models/inputSlots";
+import { ModelId } from "../../catalog/modelIds";
+import { ModifierId } from "../../catalog/inputModifiers";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputId } from "../../catalog/inputSlots";
 import { createAnalysisState } from "../../state/analysis/createAnalysisState.svelte";
 import InputPanelHost from "./InputPanel.test.host.svelte";
 

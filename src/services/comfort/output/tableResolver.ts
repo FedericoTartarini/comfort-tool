@@ -1,12 +1,12 @@
-import type { InputId as InputIdType } from "../../../models/inputSlots";
-import type { UnitSystem as UnitSystemType } from "../../../models/units";
+import type { InputId as InputIdType } from "../../../catalog/inputSlots";
+import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import type {
   CompareMatrixRowViewModel,
   MetricSummaryGroupViewModel,
   MetricSummaryItemViewModel,
   TableDeclaration,
-} from "../../../models/tableTypes";
-import type { ResultSectionViewModel } from "../../../models/output/resultSections";
+} from "../../../catalog/tableTypes";
+import type { ResultSectionViewModel } from "../../../catalog/output/resultSections";
 import { buildResultSection } from "./resultSections";
 
 export function buildCompareMatrixTable<TResult>(

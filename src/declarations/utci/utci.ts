@@ -1,18 +1,18 @@
-import type { ModelChartSource } from "../../models/chartSource";
-import { ModelId } from "../../models/modelIds";
-import { PhysicalQuantityId } from "../../models/quantities";
-import { InputControlId } from "../../models/inputControls";
+import type { ModelChartSource } from "../../catalog/chartSource";
+import { ModelId } from "../../catalog/modelIds";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { InputControlId } from "../../catalog/inputControls";
 import {
   defaultUtciOptions,
   OptionKey,
   TemperatureMode,
   type UtciModelOptions,
-} from "../../models/inputModes";
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ModelCalculationContext } from "../../models/modelCalculation";
-import { ChartEngine } from "../../models/chartEngines";
-import { WorkspaceId } from "../../models/workspaces";
-import { TableType, type TableRowSpec } from "../../models/tableTypes";
+} from "../../catalog/inputModes";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import type { ModelCalculationContext } from "../../catalog/modelCalculation";
+import { ChartEngine } from "../../catalog/chartEngines";
+import { WorkspaceId } from "../../catalog/workspaces";
+import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
 import {
   createTemperatureModeOptionHandler,
 } from "../../services/comfort/controls/temperatureControl";

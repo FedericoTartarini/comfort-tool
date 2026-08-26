@@ -8,7 +8,7 @@ import type {
   PlotlyChartSpec,
   PlotTrace,
 } from "./plotlyTypes";
-import { remapZoneFill } from "../models/zoneTokens";
+import { remapZoneFill } from "../catalog/zoneTokens";
 import {
   CHART_LAYOUT_DPI,
   ChartThemeKind,

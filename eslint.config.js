@@ -3,8 +3,8 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
 
-// Must match primaryInputOrder values in src/models/quantities.ts
-// Guarded by src/models/catalogWireIds.test.ts
+// Must match primaryInputOrder values in src/catalog/quantities.ts
+// Guarded by src/catalog/catalogWireIds.test.ts
 const restrictedWireStringSelectors = [
   "tdb",
   "tr",
@@ -110,7 +110,7 @@ export default [
         {
           patterns: [
             {
-              group: ["**/models/**", "**/services/**", "**/declarations/**"],
+              group: ["**/catalog/**", "**/services/**", "**/declarations/**"],
               message: "Views may compose components and state, but may not own domain or service logic.",
             },
             {
@@ -158,7 +158,7 @@ export default [
                 "**/views/**",
                 "**/declarations/**",
               ],
-              message: "Services may depend on models and other services, not higher application layers.",
+              message: "Services may depend on catalog and other services, not higher application layers.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
@@ -183,7 +183,7 @@ export default [
               "**/views/**",
               "**/declarations/**",
             ],
-            message: "Services may depend on models and other services, not higher application layers.",
+            message: "Services may depend on catalog and other services, not higher application layers.",
           }],
         },
       ],
@@ -204,6 +204,28 @@ export default [
             {
               regex: "^(?:\\.\\./)+state/(?!analysis/modelConfigs(?:/|$))",
               message: "Comfort models may only use builder helpers from state/analysis/modelConfigs.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/catalog/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/declarations/**",
+                "**/engines/**",
+                "**/state/**",
+                "**/ui/**",
+              ],
+              message: "catalog/ must not import from declarations/, engines/, state/, or ui/.",
             },
           ],
         },
@@ -267,7 +289,7 @@ export default [
     ],
     ignores: [
       "**/*.test.ts",
-      "src/models/quantities.ts",
+      "src/catalog/quantities.ts",
     ],
     rules: {
       "no-restricted-syntax": [

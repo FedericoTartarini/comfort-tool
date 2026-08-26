@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ModelId } from "../../models/modelIds";
-import { InputControlId } from "../../models/inputControls";
+import { ModelId } from "../../catalog/modelIds";
+import { InputControlId } from "../../catalog/inputControls";
 import {
   AirSpeedControlMode,
   OptionKey,
   TemperatureMode,
-} from "../../models/inputModes";
-import { InputId } from "../../models/inputSlots";
-import { UnitSystem } from "../../models/units";
-import { ModelOutputKey } from "../../models/modelCapabilities";
-import { WorkspaceId, supportsStandardWorkspace } from "../../models/workspaces";
-import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
+} from "../../catalog/inputModes";
+import { InputId } from "../../catalog/inputSlots";
+import { UnitSystem } from "../../catalog/units";
+import { ModelOutputKey } from "../../catalog/modelCapabilities";
+import { WorkspaceId, supportsStandardWorkspace } from "../../catalog/workspaces";
+import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { resolveChartInstanceCapabilities } from "./chartInstancePresentation";
-import { ModifierId } from "../../models/inputModifiers";
+import { ModifierId } from "../../catalog/inputModifiers";
 
 import {
   pmvAshraeAdapter,
@@ -21,10 +21,10 @@ import {
 } from "../../declarations/pmv/ashrae";
 import type { PmvChartSource, PmvResponse } from "../../declarations/pmv/calculation";
 import type { UtciResponse } from "../../declarations/utci/utci";
-import { PhsQuantityId, type PhsResponse } from "../../models/phs";
+import { PhsQuantityId, type PhsResponse } from "../../catalog/phs";
 import { createAnalysisState } from "./createAnalysisState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
-import { PhysicalQuantityId } from "../../models/quantities";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 function syncWorkspaceToModel(
   toolState: ReturnType<typeof createAnalysisState>,
   modelId: ModelId,

@@ -1,14 +1,14 @@
-import { CalculationSource } from "../../models/calculationMetadata";
-import type { ModelChartSource } from "../../models/chartSource";
+import { CalculationSource } from "../../catalog/calculationMetadata";
+import type { ModelChartSource } from "../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../services/plotlyTypes";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/quantities";
-import type { InputId as InputIdType } from "../../models/inputSlots";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import {
   findNumericBandIndexForValue,
   ModelOutputKey,
   type ChartBuildContext,
   type NumericBand,
-} from "../../models/modelCapabilities";
+} from "../../catalog/modelCapabilities";
 import {
   buildFieldChart,
   createBandedGridStrategy,

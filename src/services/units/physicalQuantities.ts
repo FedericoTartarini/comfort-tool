@@ -1,4 +1,4 @@
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/units";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 
 export const METERS_PER_FOOT = 0.3048;
 export const GRAMS_PER_POUND = 453.59237;

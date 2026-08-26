@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../../models/quantities";
-import { PhsQuantityId } from "../../../models/phs";
-import { InputControlId } from "../../../models/inputControls";
-import { OptionKey, TemperatureMode } from "../../../models/inputModes";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
+import { PhsQuantityId } from "../../../catalog/phs";
+import { InputControlId } from "../../../catalog/inputControls";
+import { OptionKey, TemperatureMode } from "../../../catalog/inputModes";
 import {
   inputDefaultsById,
   InputId,
-} from "../../../models/inputSlots";
-import { ModelOutputKey } from "../../../models/modelCapabilities";
-import { UnitSystem } from "../../../models/units";
-import { WorkspaceId } from "../../../models/workspaces";
-import { ModelId } from "../../../models/modelIds";
-import { ChartEngine } from "../../../models/chartEngines";
-import { TableType } from "../../../models/tableTypes";
+} from "../../../catalog/inputSlots";
+import { ModelOutputKey } from "../../../catalog/modelCapabilities";
+import { UnitSystem } from "../../../catalog/units";
+import { WorkspaceId } from "../../../catalog/workspaces";
+import { ModelId } from "../../../catalog/modelIds";
+import { ChartEngine } from "../../../catalog/chartEngines";
+import { TableType } from "../../../catalog/tableTypes";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/analysis/modelConfigs/builder";
 import "../../../state/analysis/modelConfigs";
 import { convertMassFromSi } from "../../units/physicalQuantities";
