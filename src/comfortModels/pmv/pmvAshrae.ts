@@ -12,8 +12,7 @@ import { ComfortModel, JsThermalComfortStandard } from "../../models/comfortMode
 import { defaultPmvAshraeOptions } from "../../models/inputModes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";
-import { StandardId } from "../../models/workspaces";
-import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
+import { StandardId, WorkspaceId } from "../../models/workspaces";
 import {
   createDynamicClothingModifier,
   measuredAirSpeedModifier,
@@ -77,7 +76,7 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   description: "ASHRAE 55 PMV/PPD with comfort zone overlays.",
   adapter: pmvAshraeAdapter,
   standardIds: [StandardId.Ashrae55],
-  workspaceCapabilities: [WorkspaceCapability.Standard, WorkspaceCapability.Explore],
+  workspaceCapabilities: [WorkspaceId.Standard, WorkspaceId.Explore],
   exploreOutputs: pmvExploreOutputs,
   modifiers: [
     measuredAirSpeedModifier,

@@ -12,9 +12,8 @@ import {
 } from "../../models/modelCapabilities";
 import { ThermalZone } from "../../models/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
-import { StandardId } from "../../models/workspaces";
+import { StandardId, WorkspaceId } from "../../models/workspaces";
 import { ChartKind } from "../../models/output/chartKinds";
-import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
 import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
@@ -352,9 +351,9 @@ builder
   .setDescription(MODEL_DESCRIPTION)
   .setStandardIds([StandardId.Iso7933])
   .setWorkspaceCapabilities([
-    WorkspaceCapability.Standard,
-    WorkspaceCapability.Explore,
-    WorkspaceCapability.TimeSeries,
+    WorkspaceId.Standard,
+    WorkspaceId.Explore,
+    WorkspaceId.TimeSeries,
   ])
   .setExploreOutputs(phsExploreOutputs)
   .setComplianceProfile({

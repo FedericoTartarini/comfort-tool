@@ -10,7 +10,7 @@ import {
 } from "../../../models/inputSlots";
 import { ModelOutputKey } from "../../../models/modelCapabilities";
 import { UnitSystem } from "../../../models/units";
-import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
+import { WorkspaceId } from "../../../models/workspaces";
 import { ComfortModel } from "../../../models/comfortModels";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
@@ -26,7 +26,7 @@ describe("fieldInputBehaviors", () => {
       .setLabel("Test")
       .setDescription("Test model")
       .setStandardIds([])
-      .setWorkspaceCapabilities([WorkspaceCapability.Explore])
+      .setWorkspaceCapabilities([WorkspaceId.Explore])
       .setExploreOutputs([{
         key: ModelOutputKey.Pmv,
         label: "PMV",

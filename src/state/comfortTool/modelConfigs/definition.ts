@@ -16,9 +16,11 @@ import type { ModelTables } from "../../../models/output/tableLayouts";
 import type {
   SimulationOutputDeclaration,
 } from "../../../models/output/simulationCharts";
-import type { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
-import type { StandardId as StandardIdType } from "../../../models/workspaces";
+import type {
+  StandardId as StandardIdType,
+  WorkspaceId,
+} from "../../../models/workspaces";
 import type {
   BehaviorPatch,
   ControlBehaviorContext,
@@ -71,7 +73,7 @@ export interface ComfortModelDefinition<
   id: ComfortModelType;
   label: string;
   description: string;
-  workspaceCapabilities: readonly WorkspaceCapability[];
+  workspaceCapabilities: readonly WorkspaceId[];
   standardIds: readonly StandardIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];

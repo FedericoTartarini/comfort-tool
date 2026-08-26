@@ -13,7 +13,7 @@ import {
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
 import { ChartKind } from "../../models/output/chartKinds";
-import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
+import { WorkspaceId } from "../../models/workspaces";
 import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   createTemperatureModeOptionHandler,
@@ -133,7 +133,7 @@ builder
   .setLabel(UTCI_MODEL_LABEL)
   .setDescription(MODEL_DESCRIPTION)
   .setStandardIds([])
-  .setWorkspaceCapabilities([WorkspaceCapability.Explore])
+  .setWorkspaceCapabilities([WorkspaceId.Explore])
   .setExploreOutputs([utciOutput])
   .setModifiers([])
   .setOutputCharts(utciOutputCharts, {

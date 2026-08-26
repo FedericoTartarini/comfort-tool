@@ -15,7 +15,10 @@ import {
   type PmvIsoModelOptions,
 } from "../../models/inputModes";
 import type { InputModifier } from "../../models/inputModifiers";
-import type { StandardId as StandardIdType } from "../../models/workspaces";
+import type {
+  StandardId as StandardIdType,
+  WorkspaceId as WorkspaceIdType,
+} from "../../models/workspaces";
 import {
   bandsFromThermalZones,
   ModelOutputKey,
@@ -89,7 +92,7 @@ export interface PmvModelDeclaration {
   readonly description: string;
   readonly adapter: PmvStandardAdapter;
   readonly standardIds: readonly StandardIdType[];
-  readonly workspaceCapabilities: readonly import("../../models/output/workspaceCapabilities").WorkspaceCapability[];
+  readonly workspaceCapabilities: readonly WorkspaceIdType[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
   readonly psychrometricInstanceId: string;

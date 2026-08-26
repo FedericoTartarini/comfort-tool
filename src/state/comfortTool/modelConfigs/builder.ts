@@ -21,7 +21,13 @@ import {
   resolveInputField,
   type InputFieldSpec,
 } from "../../../services/comfort/controls/fieldInputBehaviors";
-import type { StandardId as StandardIdType } from "../../../models/workspaces";
+import {
+  supportsExploreWorkspace,
+  supportsStandardWorkspace,
+  supportsTimeSeriesWorkspace,
+  type StandardId as StandardIdType,
+  type WorkspaceId as WorkspaceIdType,
+} from "../../../models/workspaces";
 import {
   type Band,
   type ComplianceSpec,
@@ -51,12 +57,6 @@ import {
   TableType,
   type ModelTables,
 } from "../../../models/output/tableLayouts";
-import {
-  supportsExploreWorkspace,
-  supportsStandardWorkspace,
-  supportsTimeSeriesWorkspace,
-  type WorkspaceCapability as WorkspaceCapabilityType,
-} from "../../../models/output/workspaceCapabilities";
 import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
 import {
   modelChartSpecMatchesKind,
@@ -192,7 +192,7 @@ export class ComfortModelBuilder<
 
   private description?: string;
 
-  private workspaceCapabilities?: readonly WorkspaceCapabilityType[];
+  private workspaceCapabilities?: readonly WorkspaceIdType[];
 
   private standardIds?: readonly StandardIdType[];
 
@@ -257,7 +257,7 @@ export class ComfortModelBuilder<
   }
 
   setWorkspaceCapabilities(
-    capabilities: readonly WorkspaceCapabilityType[],
+    capabilities: readonly WorkspaceIdType[],
   ): this {
     this.workspaceCapabilities = capabilities;
     return this;
@@ -963,7 +963,7 @@ export interface ModelDeclaration<
   readonly label: string;
   readonly description: string;
   readonly standardIds: readonly StandardIdType[];
-  readonly workspaceCapabilities: readonly WorkspaceCapabilityType[];
+  readonly workspaceCapabilities: readonly WorkspaceIdType[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
   readonly complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;

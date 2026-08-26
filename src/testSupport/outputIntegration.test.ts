@@ -4,11 +4,11 @@ import { ComfortModel } from "../models/comfortModels";
 import { InputId } from "../models/inputSlots";
 import { ModelOutputKey, type NumericBand } from "../models/modelCapabilities";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { WorkspaceId } from "../models/workspaces";
 import {
+  WorkspaceId,
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-} from "../models/output/workspaceCapabilities";
+} from "../models/workspaces";
 import { UnitSystem } from "../models/units";
 import {
   buildFieldChartProfile,

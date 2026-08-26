@@ -5,7 +5,7 @@ import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
 } from "../../../models/physicalQuantities";
-import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
+import { WorkspaceId } from "../../../models/workspaces";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
@@ -214,7 +214,7 @@ function createExploreBuilder(
     .setLabel("Test model")
     .setDescription("Test model description.")
     .setStandardIds([])
-    .setWorkspaceCapabilities([WorkspaceCapability.Explore])
+    .setWorkspaceCapabilities([WorkspaceId.Explore])
     .setExploreOutputs([pmvOutput])
     .setModifiers([])
     .setOutputCharts([chart])
@@ -360,8 +360,8 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() =>
       createExploreBuilder()
         .setWorkspaceCapabilities([
-          WorkspaceCapability.Explore,
-          WorkspaceCapability.TimeSeries,
+          WorkspaceId.Explore,
+          WorkspaceId.TimeSeries,
         ])
         .build(),
     ).toThrow(/Time-series workspace capability requires tables\.timeSeries/i);
@@ -510,7 +510,7 @@ describe("defineModel", () => {
     label: "Test model",
     description: "Test model description.",
     standardIds: [] as const,
-    workspaceCapabilities: [WorkspaceCapability.Explore],
+    workspaceCapabilities: [WorkspaceId.Explore],
     exploreOutputs: [pmvOutput],
     modifiers: [],
     inputFields: [],

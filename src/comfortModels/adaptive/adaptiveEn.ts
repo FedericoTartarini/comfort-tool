@@ -6,8 +6,7 @@ import { InputPresetKey } from "../../services/comfort/controls/inputControlPres
 import { ThermalZone } from "../../models/thermalZone";
 import { ZoneToken } from "../../models/zoneTokens";
 import { UnitSystem } from "../../models/units";
-import { StandardId } from "../../models/workspaces";
-import { WorkspaceCapability } from "../../models/output/workspaceCapabilities";
+import { StandardId, WorkspaceId } from "../../models/workspaces";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -71,7 +70,7 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   standardIds: [StandardId.En16798],
   resultStandard: ComfortStandard.En16798Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ISO,
-  workspaceCapabilities: [WorkspaceCapability.Standard],
+  workspaceCapabilities: [WorkspaceId.Standard],
   exploreOutputs: [],
   modifiers: [],
   boundaryInstanceId: "adaptive-en-boundary",

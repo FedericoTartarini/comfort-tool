@@ -11,10 +11,11 @@ import {
   type FieldChartProfile,
 } from "../../models/output/fieldChartProfile";
 import {
+  WorkspaceId,
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-} from "../../models/output/workspaceCapabilities";
-import { WorkspaceId, type WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
+  type WorkspaceId as WorkspaceIdType,
+} from "../../models/workspaces";
 import {
   cloneNumericBands,
   normalizeNumericBands,

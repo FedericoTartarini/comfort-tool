@@ -6,6 +6,31 @@ export const WorkspaceId = {
 
 export type WorkspaceId = (typeof WorkspaceId)[keyof typeof WorkspaceId];
 
+export function supportsWorkspace(
+  capabilities: readonly WorkspaceId[],
+  workspace: WorkspaceId,
+): boolean {
+  return capabilities.includes(workspace);
+}
+
+export function supportsStandardWorkspace(
+  capabilities: readonly WorkspaceId[],
+): boolean {
+  return supportsWorkspace(capabilities, WorkspaceId.Standard);
+}
+
+export function supportsExploreWorkspace(
+  capabilities: readonly WorkspaceId[],
+): boolean {
+  return supportsWorkspace(capabilities, WorkspaceId.Explore);
+}
+
+export function supportsTimeSeriesWorkspace(
+  capabilities: readonly WorkspaceId[],
+): boolean {
+  return supportsWorkspace(capabilities, WorkspaceId.TimeSeries);
+}
+
 export const StandardId = {
   Ashrae55: "ashrae-55",
   Iso7730: "iso-7730",

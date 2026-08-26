@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { ComfortModel } from "../../models/comfortModels";
 import { WorkspaceId } from "../../models/workspaces";
 import {
-  WorkspaceCapability,
-} from "../../models/output/workspaceCapabilities";
-import {
   appRouteDefinitions,
   getAllowedModels,
   getAppRouteByPath,
@@ -39,8 +36,8 @@ describe("workspace route definitions", () => {
       expect(allowedModels).toContain(definition.defaultModelId);
       const routeWorkspace = definition.workspace as typeof WorkspaceId.Standard | typeof WorkspaceId.Explore;
       const expectedCapability = routeWorkspace === WorkspaceId.Explore
-        ? WorkspaceCapability.Explore
-        : WorkspaceCapability.Standard;
+        ? WorkspaceId.Explore
+        : WorkspaceId.Standard;
       expect(getComfortModelConfig(definition.defaultModelId).workspaceCapabilities)
         .toContain(expectedCapability);
       for (const modelId of allowedModels) {

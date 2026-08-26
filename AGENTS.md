@@ -275,9 +275,8 @@ A change in this frontend is done when:
 
 ## Output Registry
 
-Analysis and Time-series output metadata lives under `src/models/output/`:
+Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, Explore, Time-series). Analysis and Time-series output metadata lives under `src/models/output/`:
 
-- `workspaceCapabilities.ts` — Standard, Explore, and Time-series workspace membership
 - `tableLayouts.ts` — `TableType.Analysis` / `TimeSeries`. Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`.
 - `chartKinds.ts` — closed chart engines (`ChartKind`), instance presentation types, and capability defaults. Discriminated engine specs live in `services/comfort/charts/kinds/types.ts`. Instance ids are derived from `outputCharts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances.
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs

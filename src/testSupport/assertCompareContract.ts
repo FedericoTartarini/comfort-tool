@@ -10,8 +10,7 @@ import {
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
 } from "../models/physicalQuantities";
-import { supportsStandardWorkspace } from "../models/output/workspaceCapabilities";
-import { WorkspaceId } from "../models/workspaces";
+import { supportsStandardWorkspace, WorkspaceId } from "../models/workspaces";
 import { syncDerivedStateForInput } from "../services/comfort/syncState";
 import { createComfortToolState } from "../state/comfortTool/createComfortToolState.svelte";
 import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";

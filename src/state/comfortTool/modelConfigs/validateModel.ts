@@ -9,8 +9,8 @@ import {
 } from "../../../models/output/tableLayouts";
 import {
   supportsTimeSeriesWorkspace,
-  type WorkspaceCapability,
-} from "../../../models/output/workspaceCapabilities";
+  type WorkspaceId,
+} from "../../../models/workspaces";
 import {
   mergeQuantityCatalog,
   PhysicalQuantityScope,
@@ -42,7 +42,7 @@ export interface CatalogModelSlice {
     readonly registration: { readonly kind: string };
   }[];
   readonly tables: ModelTables;
-  readonly workspaceCapabilities: readonly WorkspaceCapability[];
+  readonly workspaceCapabilities: readonly WorkspaceId[];
 }
 
 export interface AssembledCatalogs {

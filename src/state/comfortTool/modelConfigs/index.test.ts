@@ -31,17 +31,17 @@ import {
 } from "../../../models/physicalQuantities";
 import { ModifierId } from "../../../models/inputModifiers";
 import {
-  WorkspaceCapability,
-  supportsStandardWorkspace,
-} from "../../../models/output/workspaceCapabilities";
-import {
   findNumericBandIndexForValue,
   ModelOutputKey,
   resolveBandEdge,
   type BandInputsSi,
 } from "../../../models/modelCapabilities";
 import type { ThermalZone } from "../../../models/thermalZone";
-import { StandardId, WorkspaceId } from "../../../models/workspaces";
+import {
+  StandardId,
+  WorkspaceId,
+  supportsStandardWorkspace,
+} from "../../../models/workspaces";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import {
@@ -338,55 +338,55 @@ describe("comfort model capability registry", () => {
     const expected = {
       [ComfortModel.PmvAshrae]: {
         capabilities: [
-          WorkspaceCapability.Standard,
-          WorkspaceCapability.Explore,
+          WorkspaceId.Standard,
+          WorkspaceId.Explore,
         ],
         outputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
         complianceOutput: ModelOutputKey.Pmv,
       },
       [ComfortModel.PmvIso]: {
         capabilities: [
-          WorkspaceCapability.Standard,
-          WorkspaceCapability.Explore,
+          WorkspaceId.Standard,
+          WorkspaceId.Explore,
         ],
         outputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
         complianceOutput: ModelOutputKey.Pmv,
       },
       [ComfortModel.Utci]: {
-        capabilities: [WorkspaceCapability.Explore],
+        capabilities: [WorkspaceId.Explore],
         outputs: [ModelOutputKey.Utci],
         complianceOutput: undefined,
       },
       [ComfortModel.AdaptiveAshrae]: {
-        capabilities: [WorkspaceCapability.Standard],
+        capabilities: [WorkspaceId.Standard],
         outputs: [],
         complianceOutput: ModelOutputKey.OperativeTemperature,
       },
       [ComfortModel.AdaptiveEn]: {
-        capabilities: [WorkspaceCapability.Standard],
+        capabilities: [WorkspaceId.Standard],
         outputs: [],
         complianceOutput: ModelOutputKey.OperativeTemperature,
       },
       [ComfortModel.HeatIndex]: {
-        capabilities: [WorkspaceCapability.Explore],
+        capabilities: [WorkspaceId.Explore],
         outputs: [ModelOutputKey.HeatIndex],
         complianceOutput: undefined,
       },
       [ComfortModel.Humidex]: {
-        capabilities: [WorkspaceCapability.Explore],
+        capabilities: [WorkspaceId.Explore],
         outputs: [ModelOutputKey.Humidex],
         complianceOutput: undefined,
       },
       [ComfortModel.WindChill]: {
-        capabilities: [WorkspaceCapability.Explore],
+        capabilities: [WorkspaceId.Explore],
         outputs: [ModelOutputKey.WindChill],
         complianceOutput: undefined,
       },
       [ComfortModel.Phs2023]: {
         capabilities: [
-          WorkspaceCapability.Standard,
-          WorkspaceCapability.Explore,
-          WorkspaceCapability.TimeSeries,
+          WorkspaceId.Standard,
+          WorkspaceId.Explore,
+          WorkspaceId.TimeSeries,
         ],
         outputs: [
           ModelOutputKey.PhsLimitingExposureTime,
@@ -586,10 +586,10 @@ describe("comfort model capability registry", () => {
     const enBands = adaptiveEnDeclaration.complianceProfile.bands;
 
     expect(adaptiveAshraeDeclaration.workspaceCapabilities).toEqual([
-      WorkspaceCapability.Standard,
+      WorkspaceId.Standard,
     ]);
     expect(adaptiveEnDeclaration.workspaceCapabilities).toEqual([
-      WorkspaceCapability.Standard,
+      WorkspaceId.Standard,
     ]);
     expect(adaptiveAshraeDeclaration.exploreOutputs).toEqual([]);
     expect(adaptiveEnDeclaration.exploreOutputs).toEqual([]);

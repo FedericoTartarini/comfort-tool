@@ -3,11 +3,11 @@ import type { PlotlyChartResponseDto } from "../models/comfortDtos";
 import { InputId } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { WorkspaceId } from "../models/workspaces";
 import {
+  WorkspaceId,
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-} from "../models/output/workspaceCapabilities";
+} from "../models/workspaces";
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,

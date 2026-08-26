@@ -15,7 +15,6 @@ import { heatIndexModelConfig } from "../../../comfortModels/heatIndex";
 import { humidexModelConfig } from "../../../comfortModels/humidex";
 import { windChillModelConfig } from "../../../comfortModels/windChill";
 import { phsModelConfig } from "../../../comfortModels/phs/phs";
-import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
 import {
   WorkspaceId,
   type StandardId as StandardIdType,
@@ -93,9 +92,9 @@ export function getModelsForWorkspace(
     const capabilities = comfortModelConfigs[modelId].workspaceCapabilities;
     switch (workspaceId) {
       case WorkspaceId.Standard:
-        return capabilities.includes(WorkspaceCapability.Standard);
+        return capabilities.includes(WorkspaceId.Standard);
       case WorkspaceId.Explore:
-        return capabilities.includes(WorkspaceCapability.Explore);
+        return capabilities.includes(WorkspaceId.Explore);
       case WorkspaceId.TimeSeries:
         return false;
       default: {

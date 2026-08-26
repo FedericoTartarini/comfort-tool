@@ -22,7 +22,10 @@ import {
   type ModelOutput,
 } from "../../models/modelCapabilities";
 import type { ThermalZone } from "../../models/thermalZone";
-import type { StandardId as StandardIdType } from "../../models/workspaces";
+import type {
+  StandardId as StandardIdType,
+  WorkspaceId as WorkspaceIdType,
+} from "../../models/workspaces";
 import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   createTemperatureModeOptionHandler,
@@ -32,7 +35,6 @@ import {
   type OutputChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
 import { ChartKind } from "../../models/output/chartKinds";
-import type { WorkspaceCapability as WorkspaceCapabilityType } from "../../models/output/workspaceCapabilities";
 import {
   buildAdaptiveResultRows,
   calculateAdaptiveModel,
@@ -83,7 +85,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   label: string;
   description: string;
   standardIds: readonly StandardIdType[];
-  workspaceCapabilities: readonly WorkspaceCapabilityType[];
+  workspaceCapabilities: readonly WorkspaceIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
   boundaryInstanceId: string;

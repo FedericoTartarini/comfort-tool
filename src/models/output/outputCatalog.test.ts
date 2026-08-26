@@ -10,10 +10,10 @@ import {
 } from "./chartKinds";
 import { ComfortModel } from "../comfortModels";
 import {
+  WorkspaceId,
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-  WorkspaceCapability,
-} from "./workspaceCapabilities";
+} from "../workspaces";
 import { FieldChartProfileKind } from "./fieldChartProfile";
 import { TableType } from "./tableLayouts";
 
@@ -47,8 +47,8 @@ describe("output catalog", () => {
 
   it("workspace capability helpers match workspace ids", () => {
     const capabilities = [
-      WorkspaceCapability.Standard,
-      WorkspaceCapability.Explore,
+      WorkspaceId.Standard,
+      WorkspaceId.Explore,
     ] as const;
     expect(supportsStandardWorkspace(capabilities)).toBe(true);
     expect(supportsExploreWorkspace(capabilities)).toBe(true);

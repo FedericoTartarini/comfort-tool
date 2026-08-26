@@ -10,7 +10,7 @@ import {
 } from "../models/modelCapabilities";
 import { ChartKind } from "../models/output/chartKinds";
 import { TableType } from "../models/output/tableLayouts";
-import { WorkspaceCapability } from "../models/output/workspaceCapabilities";
+import { WorkspaceId } from "../models/workspaces";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/physicalQuantities";
 import { ThermalZone } from "../models/thermalZone";
 import { ZoneToken } from "../models/zoneTokens";
@@ -136,7 +136,7 @@ export const windChillModelConfig = defineModel<
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],
-  workspaceCapabilities: [WorkspaceCapability.Explore],
+  workspaceCapabilities: [WorkspaceId.Explore],
   exploreOutputs: [windChillOutput],
   modifiers: [],
   inputFields: [

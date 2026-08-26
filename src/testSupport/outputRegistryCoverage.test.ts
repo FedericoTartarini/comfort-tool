@@ -6,7 +6,7 @@ import { UnitSystem } from "../models/units";
 import {
   supportsExploreWorkspace,
   supportsStandardWorkspace,
-} from "../models/output/workspaceCapabilities";
+} from "../models/workspaces";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,

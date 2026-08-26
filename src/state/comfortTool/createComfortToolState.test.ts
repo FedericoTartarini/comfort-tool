@@ -10,8 +10,7 @@ import {
 import { InputId } from "../../models/inputSlots";
 import { UnitSystem } from "../../models/units";
 import { ModelOutputKey } from "../../models/modelCapabilities";
-import { WorkspaceId } from "../../models/workspaces";
-import { supportsStandardWorkspace } from "../../models/output/workspaceCapabilities";
+import { WorkspaceId, supportsStandardWorkspace } from "../../models/workspaces";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { resolveChartInstanceCapabilities } from "./chartInstancePresentation";
 import { ModifierId } from "../../models/inputModifiers";

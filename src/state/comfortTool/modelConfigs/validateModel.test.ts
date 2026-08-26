@@ -3,7 +3,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import { ComfortModel } from "../../../models/comfortModels";
 import { ChartKind } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
-import { WorkspaceCapability } from "../../../models/output/workspaceCapabilities";
+import { WorkspaceId } from "../../../models/workspaces";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
@@ -50,7 +50,7 @@ function createCatalogSlice(
       },
     ],
     tables: analysisTable,
-    workspaceCapabilities: [WorkspaceCapability.Explore],
+    workspaceCapabilities: [WorkspaceId.Explore],
     ...overrides,
   };
 }
@@ -340,7 +340,7 @@ describe("assembled catalog validate.model", () => {
   it("fails assemble when a TimeSeries table lacks Time-series capability", () => {
     const slice = createCatalogSlice({
       id: ComfortModel.HeatIndex,
-      workspaceCapabilities: [WorkspaceCapability.Explore],
+      workspaceCapabilities: [WorkspaceId.Explore],
       tables: {
         analysis: analysisTable.analysis,
         timeSeries: {

@@ -8,8 +8,11 @@ import {
 import {
   FieldChartProfileKind,
 } from "../../models/output/fieldChartProfile";
-import { supportsExploreWorkspace } from "../../models/output/workspaceCapabilities";
-import { WorkspaceId, type WorkspaceId as WorkspaceIdType } from "../../models/workspaces";
+import {
+  WorkspaceId,
+  supportsExploreWorkspace,
+  type WorkspaceId as WorkspaceIdType,
+} from "../../models/workspaces";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import { getDynamicAxisOptions } from "./dynamicAxes";
 import {
