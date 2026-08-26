@@ -12,18 +12,18 @@ import { ZoneToken } from "../../catalog/zoneTokens";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   createRequestAxisAdapter,
-} from "../../services/comfort/charts/dynamicAxisPayload";
+} from "../../engines/comfort/charts/dynamicAxisPayload";
 import {
   requireThermalZone,
-} from "../../services/comfort/helpers";
+} from "../../engines/comfort/helpers";
 import {
   createFieldRequestAdapter,
-} from "../../services/comfort/requestMapping";
+} from "../../engines/comfort/requestMapping";
 import {
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
-} from "../../services/units";
+} from "../../engines/units";
 import type { ResultRowDefinition } from "../../state/analysis/modelConfigs/builder";
 
 export const UTCI_MODEL_LABEL = "UTCI";

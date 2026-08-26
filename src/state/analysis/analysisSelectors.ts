@@ -5,7 +5,7 @@ import type {
   NumericBand,
 } from "../../catalog/modelCapabilities";
 import type { ChartAxisQuantityId } from "../../catalog/quantities";
-import { ChartLegendKind } from "../../services/comfort/charts/chartBuildResult";
+import { ChartLegendKind } from "../../engines/comfort/charts/chartBuildResult";
 import { buildChartControlsViewModel } from "./chartPresentation";
 import type { AnalysisInternals } from "./analysisInternals";
 import {

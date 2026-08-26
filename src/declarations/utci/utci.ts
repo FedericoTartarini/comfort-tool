@@ -15,10 +15,10 @@ import { WorkspaceId } from "../../catalog/workspaces";
 import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
 import {
   createTemperatureModeOptionHandler,
-} from "../../services/comfort/controls/temperatureControl";
+} from "../../engines/comfort/controls/temperatureControl";
 import {
   calculatePerInput,
-} from "../../services/comfort/requestMapping";
+} from "../../engines/comfort/requestMapping";
 import {
   ComfortModelBuilder,
   hasExactKeys,

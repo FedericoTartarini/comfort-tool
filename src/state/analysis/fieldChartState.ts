@@ -1,4 +1,4 @@
-import type { ChartEngineRegistration } from "../../services/comfort/charts/kinds/types";
+import type { ChartEngineRegistration } from "../../engines/comfort/charts/kinds/types";
 import { InputId } from "../../catalog/inputSlots";
 import {
   type Band,
@@ -20,7 +20,7 @@ import {
   cloneNumericBands,
   normalizeNumericBands,
   validateNumericBands,
-} from "../../services/comfort/charts/bands";
+} from "../../engines/comfort/charts/bands";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import type { ModelOutputSettings } from "./types";
 

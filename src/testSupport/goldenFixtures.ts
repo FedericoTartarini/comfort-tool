@@ -15,7 +15,7 @@ import { createQuantitiesByInput } from "../state/analysis/initialAnalysisState"
 import {
   createAuxiliaryQuantitiesByInput,
   createDefaultModelInputsForModel,
-} from "../services/comfort/quantityStateRouting";
+} from "../engines/comfort/quantityStateRouting";
 import { PhsQuantityId } from "../catalog/phs";
 import type { PmvRequest } from "../declarations/pmv/calculation";
 import type { UtciRequest } from "../declarations/utci/calculation";
@@ -23,7 +23,7 @@ import {
   declaredSiRangeForInputField,
   inputFieldControlId,
   primaryQuantityIdsForInputField,
-} from "../services/comfort/controls/fieldInputBehaviors";
+} from "../engines/comfort/controls/fieldInputBehaviors";
 
 /**
  * Independent SI primary goldens used across regression tests.

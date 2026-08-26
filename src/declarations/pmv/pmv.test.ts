@@ -27,7 +27,7 @@ import { requiredControlIdsByModel } from "../../testSupport/requiredModelContro
 import {
   applyInputModifierChain,
   createDynamicClothingModifier,
-} from "../../services/comfort/inputModifiers";
+} from "../../engines/comfort/inputModifiers";
 import {
   pmvAshraeAdapter,
   pmvAshraeDeclaration,

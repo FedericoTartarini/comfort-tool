@@ -27,7 +27,7 @@ import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,
 } from "./goldenFixtures";
-import { clearChartMemo } from "../services/comfort/charts/kinds/memo";
+import { clearChartMemo } from "../engines/comfort/charts/kinds/memo";
 import { resolveChartInstanceCapabilities } from "../state/analysis/chartInstancePresentation";
 
 describe("output integration", () => {

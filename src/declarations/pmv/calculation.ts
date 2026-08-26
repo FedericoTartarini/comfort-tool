@@ -28,18 +28,18 @@ import {
   type UnitSystem as UnitSystemType,
 } from "../../catalog/units";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
-import { createRequestAxisAdapter } from "../../services/comfort/charts/dynamicAxisPayload";
-import { requireThermalZone } from "../../services/comfort/helpers";
-import { getDerivedFromAuxiliary } from "../../services/comfort/quantityStateRouting";
+import { createRequestAxisAdapter } from "../../engines/comfort/charts/dynamicAxisPayload";
+import { requireThermalZone } from "../../engines/comfort/helpers";
+import { getDerivedFromAuxiliary } from "../../engines/comfort/quantityStateRouting";
 import {
   createFieldRequestAdapter,
   calculatePerInputWithExtensions,
-} from "../../services/comfort/requestMapping";
+} from "../../engines/comfort/requestMapping";
 import {
   convertFieldValueFromSi,
   convertTemperatureDeltaFromSi,
   formatDisplayValue,
-} from "../../services/units";
+} from "../../engines/units";
 import type { PmvStandardAdapter } from "./shared";
 
 export const PMV_PSYCHROMETRIC_VIEW = {

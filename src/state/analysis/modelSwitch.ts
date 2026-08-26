@@ -1,7 +1,7 @@
 import type {
   BehaviorPatch,
   ControlBehaviorContext,
-} from "../../services/comfort/controls/types";
+} from "../../engines/comfort/controls/types";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import type { ModelSwitchViolation } from "./types";
 

@@ -5,7 +5,7 @@
  */
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
-import type { PlotlyChartSpec } from "../../services/plotlyTypes";
+import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
 import type {
   PrimaryInputState,
   DerivedSlotQuantityState,
@@ -35,7 +35,7 @@ import type {
   AuxiliaryQuantitiesByInputState,
   ModelInputsByModelState,
   QuantitiesByInputState,
-} from "../../services/comfort/quantityStateRouting";
+} from "../../engines/comfort/quantityStateRouting";
 
 export type InputState = PrimaryInputState;
 export type ActiveModifiersByInputState = Record<

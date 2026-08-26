@@ -7,13 +7,13 @@
     downloadPublicationChart,
     type ChartExportFormat,
     type PublicationExportHandler,
-  } from "../../services/plotlyExport";
+  } from "../../engines/plotlyExport";
   import {
     toPlotlyFigure,
     type PlotlyFigure,
-  } from "../../services/plotlyFigure";
-  import type { PlotlyChartSpec } from "../../services/plotlyTypes";
-  import type { PublicationColumn } from "../../services/chartTheme";
+  } from "../../engines/plotlyFigure";
+  import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
+  import type { PublicationColumn } from "../../engines/chartTheme";
 
   interface Props {
     chartResult: PlotlyChartSpec | null;

@@ -14,14 +14,14 @@ import {
   type NumericBand,
 } from "../../catalog/modelCapabilities";
 import type { WorkspaceId as WorkspaceIdType } from "../../catalog/workspaces";
-import { syncDerivedStateForInput } from "../../services/comfort/syncState";
+import { syncDerivedStateForInput } from "../../engines/comfort/syncState";
 import { getComfortModelConfig } from "./modelConfigs";
 import {
   applyPrimaryPatch,
   collectModifierInputsForModifier,
   setModelQuantity,
   setSlotQuantity,
-} from "../../services/comfort/quantityStateRouting";
+} from "../../engines/comfort/quantityStateRouting";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import {
   normalizeDynamicAxisPair,

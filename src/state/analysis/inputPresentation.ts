@@ -6,7 +6,7 @@ import type {
 import type { OptionKey as OptionKeyType } from "../../catalog/inputModes";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
-import type { ControlBehaviorContext } from "../../services/comfort/controls/types";
+import type { ControlBehaviorContext } from "../../engines/comfort/controls/types";
 import { comfortModelMetaById } from "./modelConfigs";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import {

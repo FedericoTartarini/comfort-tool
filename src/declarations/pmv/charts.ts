@@ -1,11 +1,11 @@
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ChartBuildContext, NumericBand } from "../../catalog/modelCapabilities";
-import type { PlotlyChartSpec } from "../../services/plotlyTypes";
+import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
 import type { ChartAxisQuantityId } from "../../catalog/quantities";
 import type {
   CustomChartEngineSpec,
   DynamicFieldGeometrySpec,
-} from "../../services/comfort/charts/kinds/types";
+} from "../../engines/comfort/charts/kinds/types";
 import type { PmvChartSource, PmvResponse } from "./calculation";
 import type { PmvModelDeclaration } from "./shared";
 import { buildPmvFieldChart, type PmvChartViewDescriptorFactory } from "./chartShared";

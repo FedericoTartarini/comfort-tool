@@ -3,7 +3,7 @@ import {
   resolveChartCapabilities,
   type ChartInstanceCapabilities,
 } from "../../catalog/chartEngines";
-import type { ChartEngineRegistration } from "../../services/comfort/charts/kinds/types";
+import type { ChartEngineRegistration } from "../../engines/comfort/charts/kinds/types";
 
 export interface ChartInstancePanelView {
   readonly instanceId: string;

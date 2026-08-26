@@ -1,7 +1,7 @@
 import type { ChartBuildContext, NumericBand } from "../../catalog/modelCapabilities";
-import { applyDynamicAxisCoordinates } from "../../services/comfort/charts/dynamicAxisPayload";
-import { CHART_COORDINATE_TOLERANCE } from "../../services/comfort/charts/types";
-import { getBaselineInputEntry } from "../../services/comfort/helpers";
+import { applyDynamicAxisCoordinates } from "../../engines/comfort/charts/dynamicAxisPayload";
+import { CHART_COORDINATE_TOLERANCE } from "../../engines/comfort/charts/types";
+import { getBaselineInputEntry } from "../../engines/comfort/helpers";
 import {
   createPmvRequestAxisAdapter,
   getPmvZoneMeta,

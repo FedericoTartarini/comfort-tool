@@ -21,7 +21,7 @@ import type {
 import {
   convertQuantityFromSi,
   convertQuantityToSi,
-} from "../../services/units";
+} from "../../engines/units";
 import {
   PhsSimulationCancelledError,
   simulatePhs,

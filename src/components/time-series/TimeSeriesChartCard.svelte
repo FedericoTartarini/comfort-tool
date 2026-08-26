@@ -4,7 +4,7 @@
   import { Card } from "flowbite-svelte";
 
   import type { TimeSeriesChartViewModel } from "../../state/timeSeries/viewModels";
-  import type { PublicationExportHandler } from "../../services/plotlyExport";
+  import type { PublicationExportHandler } from "../../engines/plotlyExport";
   import ChartExportDropdown from "../chart/ChartExportDropdown.svelte";
   import PlotlyChartCard from "../chart/PlotlyChartCard.svelte";
 

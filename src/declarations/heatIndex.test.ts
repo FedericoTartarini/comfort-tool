@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
 import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
-import { convertModelOutputFromSi } from "../services/units";
+import { convertModelOutputFromSi } from "../engines/units";
 import { PhysicalQuantityId } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
@@ -20,7 +20,7 @@ import {
 import {
   inputFieldControlId,
   primaryQuantityIdsForInputField,
-} from "../services/comfort/controls/fieldInputBehaviors";
+} from "../engines/comfort/controls/fieldInputBehaviors";
 
 describe("heatIndex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {

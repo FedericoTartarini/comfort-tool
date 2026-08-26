@@ -16,8 +16,8 @@ import {
   type ComplianceFeedback,
 } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
-import { calculatePerInput, createFieldRequestAdapter } from "../../services/comfort/requestMapping";
-import { convertFieldValueFromSi } from "../../services/units";
+import { calculatePerInput, createFieldRequestAdapter } from "../../engines/comfort/requestMapping";
+import { convertFieldValueFromSi } from "../../engines/units";
 import {
   hasExactKeys,
   isRecord,

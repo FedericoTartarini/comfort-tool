@@ -1,4 +1,4 @@
-import type { PlotlyChartSpec } from "../../services/plotlyTypes";
+import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
 import type {
   TimeSeriesControlDefinition,
   TimeSeriesModelDefinition,

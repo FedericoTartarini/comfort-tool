@@ -5,7 +5,7 @@
 
   import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
   import type { InputId as InputIdType } from "../../catalog/inputSlots";
-  import type { ClothingSelectionSection } from "../../services/comfort/clothingTools";
+  import type { ClothingSelectionSection } from "../../engines/comfort/clothingTools";
 
   interface Props {
     visibleInputIds: InputIdType[];

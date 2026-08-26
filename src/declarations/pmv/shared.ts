@@ -29,19 +29,19 @@ import {
 } from "../../catalog/modelCapabilities";
 import {
   createAirSpeedOptionHandler,
-} from "../../services/comfort/controls/numericControl";
+} from "../../engines/comfort/controls/numericControl";
 import {
   humidityModeOptionHandler,
   synchronizeSelectedHumidityMode,
-} from "../../services/comfort/controls/humidityControl";
+} from "../../engines/comfort/controls/humidityControl";
 import {
   InputPresetKey,
-} from "../../services/comfort/controls/inputControlPresets";
+} from "../../engines/comfort/controls/inputControlPresets";
 import {
   createTemperatureModeOptionHandler,
-} from "../../services/comfort/controls/temperatureControl";
-import { createSingleInputPatch } from "../../services/comfort/controls/types";
-import { getDerivedFromAuxiliary } from "../../services/comfort/quantityStateRouting";
+} from "../../engines/comfort/controls/temperatureControl";
+import { createSingleInputPatch } from "../../engines/comfort/controls/types";
+import { getDerivedFromAuxiliary } from "../../engines/comfort/quantityStateRouting";
 import {
   ComfortModelBuilder,
   hasExactKeys,

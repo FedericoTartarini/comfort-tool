@@ -29,12 +29,12 @@ import {
 import {
   calculatePerInput,
   createFieldRequestAdapter,
-} from "../../services/comfort/requestMapping";
+} from "../../engines/comfort/requestMapping";
 import {
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
-} from "../../services/units";
+} from "../../engines/units";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   ComfortModelBuilder,

@@ -9,12 +9,12 @@
   import {
     normalizeNumericBands,
     validateNumericBands,
-  } from "../../services/comfort/charts/bands";
+  } from "../../engines/comfort/charts/bands";
   import {
     convertModelOutputFromSi,
     convertModelOutputToSi,
     getModelOutputDisplayMeta,
-  } from "../../services/units";
+  } from "../../engines/units";
 
   interface Props {
     idPrefix: string;

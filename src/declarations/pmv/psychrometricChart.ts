@@ -2,18 +2,18 @@ import { psy_ta_rh } from "jsthermalcomfort";
 import type {
   PlotHoverRow,
   PlotTrace,
-} from "../../services/plotlyTypes";
+} from "../../engines/plotlyTypes";
 import { PhysicalQuantityId, getQuantityDisplayMeta } from "../../catalog/quantities";
 import {
   buildComfortPolygonTrace,
   buildFilledPolygonTrace,
   buildLineTrace,
-} from "../../services/comfort/charts/plotlyBuilders";
+} from "../../engines/comfort/charts/plotlyBuilders";
 import type {
   ChartAxisScale,
   GridEvaluationResult,
-} from "../../services/comfort/charts/types";
-import { getBaselineInputEntry, roundValue } from "../../services/comfort/helpers";
+} from "../../engines/comfort/charts/types";
+import { getBaselineInputEntry, roundValue } from "../../engines/comfort/helpers";
 import {
   PMV_PSYCHROMETRIC_VIEW,
   tryEvaluatePmvForChart,
@@ -33,8 +33,8 @@ import {
   type PmvFieldChartConfig,
   type PmvInputOverlayBuilder,
 } from "./chartShared";
-import { buildClosedBoundaryPolygon } from "../../services/comfort/charts/boundaryRegionEngine";
-import { calculateRelativeHumidityFromHumidityRatio } from "../../services/comfort/derivations";
+import { buildClosedBoundaryPolygon } from "../../engines/comfort/charts/boundaryRegionEngine";
+import { calculateRelativeHumidityFromHumidityRatio } from "../../engines/comfort/derivations";
 
 const CHART_COLOR_RH_LINE = "#94a3b8";
 const PSYCHROMETRIC_PLOT_BACKGROUND = "#f8fafc";

@@ -1,4 +1,4 @@
-import type { PlotlyChartSpec } from "../services/plotlyTypes";
+import type { PlotlyChartSpec } from "../engines/plotlyTypes";
 import type { InputId as InputIdType } from "../catalog/inputSlots";
 import type { ChartBuildContext } from "../catalog/modelCapabilities";
 import {

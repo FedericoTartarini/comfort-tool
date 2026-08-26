@@ -1,7 +1,7 @@
 import type {
   PlotlyChartSpec,
   PlotScatterLineTrace,
-} from "../../services/plotlyTypes";
+} from "../../engines/plotlyTypes";
 import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
@@ -14,9 +14,9 @@ import {
   buildTimeSeriesLineTrace,
   crossesSeriesThreshold,
   paddedSeriesRange,
-} from "../../services/comfort/charts/timeSeriesLineChart";
-import { convertModelOutputFromSi } from "../../services/units";
-import { convertTemperatureFromSi } from "../../services/units/temperature";
+} from "../../engines/comfort/charts/timeSeriesLineChart";
+import { convertModelOutputFromSi } from "../../engines/units";
+import { convertTemperatureFromSi } from "../../engines/units/temperature";
 
 const RECTAL_COLOR = "#3BBDED";
 const CORE_COLOR = "#1B679B";

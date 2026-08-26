@@ -9,7 +9,7 @@ import {
 } from "../../catalog/modelIds";
 import { PhysicalQuantityId } from "../../catalog/quantities";
 import { InputControlId } from "../../catalog/inputControls";
-import type { InputPresetKey as InputPresetKeyType } from "../../services/comfort/controls/inputControlPresets";
+import type { InputPresetKey as InputPresetKeyType } from "../../engines/comfort/controls/inputControlPresets";
 import {
   defaultAdaptiveOptions,
   OptionKey,
@@ -29,7 +29,7 @@ import type {
 import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
 import {
   createTemperatureModeOptionHandler,
-} from "../../services/comfort/controls/temperatureControl";
+} from "../../engines/comfort/controls/temperatureControl";
 import {
   ComfortModelBuilder,
   type ChartDeclarationInput,

@@ -18,7 +18,7 @@ import {
   measuredAirSpeedModifier,
   morningClothingEstimateModifier,
   solarGainModifier,
-} from "../../services/comfort/inputModifiers";
+} from "../../engines/comfort/inputModifiers";
 import {
   createPmvComplianceBands,
   createPmvComplianceCaption,

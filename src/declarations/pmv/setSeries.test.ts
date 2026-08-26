@@ -10,7 +10,7 @@ import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { PhysicalQuantityId } from "../../catalog/quantities";
 import { UnitSystem } from "../../catalog/units";
 import { createEmptyResults } from "../../state/analysis/modelConfigs/builder";
-import { buildModelParametricLineChart } from "../../services/comfort/charts/kinds/parametricLine";
+import { buildModelParametricLineChart } from "../../engines/comfort/charts/kinds/parametricLine";
 import {
   calculatePmvSetOutputs,
   createPmvSetParametricSpec,

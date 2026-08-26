@@ -1,5 +1,5 @@
 import { type ModelId as ModelIdType } from "../catalog/modelIds";
-import type { PlotlyChartSpec } from "../services/plotlyTypes";
+import type { PlotlyChartSpec } from "../engines/plotlyTypes";
 import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";

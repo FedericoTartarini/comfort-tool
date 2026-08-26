@@ -1,6 +1,6 @@
 import { CalculationSource } from "../../catalog/calculationMetadata";
 import type { ModelChartSource } from "../../catalog/chartSource";
-import type { PlotlyChartSpec } from "../../services/plotlyTypes";
+import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import {
@@ -13,23 +13,23 @@ import {
   buildFieldChart,
   createBandedGridStrategy,
   type FieldChartInputGroup,
-} from "../../services/comfort/charts/fieldChartEngine";
+} from "../../engines/comfort/charts/fieldChartEngine";
 import {
   applyDynamicAxisCoordinates,
-} from "../../services/comfort/charts/dynamicAxisPayload";
+} from "../../engines/comfort/charts/dynamicAxisPayload";
 import {
   type GridModelChartSpec,
-} from "../../services/comfort/charts/gridModelCharts";
-import { INTERACTIVE_DYNAMIC_GRID_POINTS } from "../../services/comfort/charts/types";
+} from "../../engines/comfort/charts/gridModelCharts";
+import { INTERACTIVE_DYNAMIC_GRID_POINTS } from "../../engines/comfort/charts/types";
 import type {
   BandScalarChartEngineSpec,
   DynamicFieldChartEngineSpec,
-} from "../../services/comfort/charts/kinds/types";
-import { buildTextAnnotation } from "../../services/comfort/charts/plotlyBuilders";
+} from "../../engines/comfort/charts/kinds/types";
+import { buildTextAnnotation } from "../../engines/comfort/charts/plotlyBuilders";
 import {
   getCompareInputs,
-} from "../../services/comfort/helpers";
-import { convertModelOutputFromSi } from "../../services/units";
+} from "../../engines/comfort/helpers";
+import { convertModelOutputFromSi } from "../../engines/units";
 import {
   calculateUtci,
   tryEvaluateUtciForChart,

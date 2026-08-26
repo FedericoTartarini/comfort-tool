@@ -22,7 +22,7 @@ import {
 import {
   declaredSiRangeForInputField,
   primaryQuantityIdsForInputField,
-} from "../services/comfort/controls/fieldInputBehaviors";
+} from "../engines/comfort/controls/fieldInputBehaviors";
 
 function rangeForDeclaredPrimary(
   modelId: (typeof comfortModelOrder)[number],

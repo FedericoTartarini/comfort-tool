@@ -19,13 +19,13 @@ import {
   UnitSystem,
   type UnitSystem as UnitSystemType,
 } from "../../catalog/units";
-import { validateNumericBands } from "../../services/comfort/charts/bands";
-import { isFiniteNumber } from "../../services/comfort/helpers";
+import { validateNumericBands } from "../../engines/comfort/charts/bands";
+import { isFiniteNumber } from "../../engines/comfort/helpers";
 import {
   isModifierConfigurationComplete,
   isModifierFieldValueValid,
-} from "../../services/comfort/inputModifiers";
-import { syncDerivedStateIntoAuxiliary } from "../../services/comfort/syncState";
+} from "../../engines/comfort/inputModifiers";
+import { syncDerivedStateIntoAuxiliary } from "../../engines/comfort/syncState";
 import { isDynamicAxisPairValid } from "./dynamicAxes";
 import { seedModelOutputSettings } from "./fieldChartState";
 import { comfortModelOrder, getComfortModelConfig } from "./modelConfigs";
@@ -34,7 +34,7 @@ import {
   createDefaultModelInputsForModel,
   setModelQuantity,
   setSlotQuantity,
-} from "../../services/comfort/quantityStateRouting";
+} from "../../engines/comfort/quantityStateRouting";
 import {
   QuantityState,
   isPhysicalQuantityId,

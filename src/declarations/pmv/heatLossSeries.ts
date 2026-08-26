@@ -6,7 +6,7 @@ import {
   type ParametricLineDataSpec,
   type ParametricLineGeometry,
   type ParametricPolyline,
-} from "../../services/comfort/charts/kinds/types";
+} from "../../engines/comfort/charts/kinds/types";
 import type { PmvRequest, PmvResponse } from "./calculation";
 import {
   readPmvRequestFromChartSource,

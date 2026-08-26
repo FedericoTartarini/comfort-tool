@@ -11,7 +11,7 @@
     layoutMetricSummaryGroups,
     layoutMetricSummaryItems,
     type MetricSummaryLayoutViewModel,
-  } from "../../services/comfort/output/metricSummaryLayout";
+  } from "../../engines/comfort/output/metricSummaryLayout";
 
   interface Props {
     items?: readonly MetricSummaryItemViewModel[];

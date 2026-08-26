@@ -16,7 +16,7 @@ import {
 } from "../../../catalog/modelCapabilities";
 import { InputId } from "../../../catalog/inputSlots";
 import { SiUnit, UnitSystem } from "../../../catalog/units";
-import { ParametricYUnit } from "../../../services/comfort/charts/kinds/types";
+import { ParametricYUnit } from "../../../engines/comfort/charts/kinds/types";
 import {
   ComfortModelBuilder,
   createEmptyResults,

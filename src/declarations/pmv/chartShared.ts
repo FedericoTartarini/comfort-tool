@@ -5,7 +5,7 @@ import type {
   PlotMargin,
   PlotlyChartSpec,
   PlotTrace,
-} from "../../services/plotlyTypes";
+} from "../../engines/plotlyTypes";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import {
   findNumericBandIndexForValue,
@@ -21,13 +21,13 @@ import {
   type FieldChartAxisSpec,
   type FieldChartInputGroup,
   type FieldChartRenderContext,
-} from "../../services/comfort/charts/fieldChartEngine";
-import { buildHoverTemplate } from "../../services/comfort/charts/plotlyBuilders";
+} from "../../engines/comfort/charts/fieldChartEngine";
+import { buildHoverTemplate } from "../../engines/comfort/charts/plotlyBuilders";
 import type {
   ChartAxisScale,
   GridEvaluationResult,
-} from "../../services/comfort/charts/types";
-import { roundValue } from "../../services/comfort/helpers";
+} from "../../engines/comfort/charts/types";
+import { roundValue } from "../../engines/comfort/helpers";
 import {
   getPmvZoneMeta,
   tryEvaluatePmvForChart,

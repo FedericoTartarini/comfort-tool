@@ -5,11 +5,11 @@
   import ChartControls from "./ChartControls.svelte";
   import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import type { PlotlyChartSpec } from "../../services/plotlyTypes";
+  import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
   import type { ModelId as ModelIdType } from "../../catalog/modelIds";
   import type { ChartInstancePanelView } from "../../state/analysis/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../state/analysis/types";
-  import type { PublicationExportHandler } from "../../services/plotlyExport";
+  import type { PublicationExportHandler } from "../../engines/plotlyExport";
 
   interface Props {
     chartResult: PlotlyChartSpec | null;

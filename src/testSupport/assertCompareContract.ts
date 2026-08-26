@@ -11,7 +11,7 @@ import {
   type PrimaryInputState,
 } from "../catalog/quantities";
 import { supportsStandardWorkspace, WorkspaceId } from "../catalog/workspaces";
-import { syncDerivedStateForInput } from "../services/comfort/syncState";
+import { syncDerivedStateForInput } from "../engines/comfort/syncState";
 import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
 import { comfortModelConfigs } from "../state/analysis/modelConfigs";
 import type { AnalysisController } from "../state/analysis/types";

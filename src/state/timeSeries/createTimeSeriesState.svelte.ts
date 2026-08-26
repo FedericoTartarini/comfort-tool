@@ -4,8 +4,8 @@ import {
   type TimeSeriesChartViewModel,
 } from "./viewModels";
 import type { MetricSummaryItemViewModel } from "../../catalog/tableTypes";
-import { buildMetricSummaryTable } from "../../services/comfort/output/tableResolver";
-import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
+import { buildMetricSummaryTable } from "../../engines/comfort/output/tableResolver";
+import { resolveSimulationChartBuild } from "../../engines/comfort/charts/kinds/simulation";
 import { getComfortModelConfig, getModelSimulationOutput } from "../analysis/modelConfigs";
 import { UnitSystem } from "../../catalog/units";
 import {

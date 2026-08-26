@@ -10,8 +10,8 @@
     buildSelectedClothingSections,
     filterClothingGarments,
     sumSelectedGarmentClo,
-  } from "../services/comfort/clothingTools";
-  import { clothingGarmentOptions } from "../services/comfort/referenceValues";
+  } from "../engines/comfort/clothingTools";
+  import { clothingGarmentOptions } from "../engines/comfort/referenceValues";
   import ClothingGarmentList from "./clothing-builder/ClothingGarmentList.svelte";
   import ClothingSelectionSummary from "./clothing-builder/ClothingSelectionSummary.svelte";
   import ClothingZonePicker from "./clothing-builder/ClothingZonePicker.svelte";

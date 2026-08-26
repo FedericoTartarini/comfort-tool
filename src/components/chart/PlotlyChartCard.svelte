@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { PlotlyChartSpec } from "../../services/plotlyTypes";
-  import type { PublicationExportHandler } from "../../services/plotlyExport";
+  import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
+  import type { PublicationExportHandler } from "../../engines/plotlyExport";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
 
   interface Props {

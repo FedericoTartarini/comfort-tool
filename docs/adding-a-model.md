@@ -17,8 +17,8 @@ edit `src/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. Plan §4 folder names (`engines/`, `ui/`) are not the live tree.
-Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`. Catalog lives at `src/catalog/`.
+`26-06-29-architecture-brief.md`. Plan §4 folder names (`ui/`) are not the live tree.
+Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`. Catalog lives at `src/catalog/`. Engines live at `src/engines/`.
 
 ## Recipe
 
@@ -37,7 +37,7 @@ Analysis state lives at `src/state/analysis/`. Declarations live at `src/declara
 Then, only if the model actually needs them:
 
 - a new `ModelOutputKey` plus presentation in
-  `src/services/units/modelOutputs.ts`
+  `src/engines/units/modelOutputs.ts`
 - `quantities.extend` for model-scoped SI inputs (not a new primary)
 - focused tests beside the declaration. Pin required Analysis control IDs
   there against the independently authored lists in
@@ -66,7 +66,7 @@ work, not “add a model” work:
 | New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`).                    |
 | New modifier                          | Global catalogue, execution order, and share schema.                                                                                 |
 | New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                  |
-| New SI unit dimension (`SiUnit`)      | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/services/units/`; declarations only select known units. |
+| New SI unit dimension (`SiUnit`)      | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/engines/units/`; declarations only select known units. |
 
 Also forbidden in a declaration:
 
@@ -75,7 +75,7 @@ Also forbidden in a declaration:
 - a parallel `ChartInstanceId` tree
 - a third `TableType`
 - a `jsthermalcomfort` import outside `src/declarations/**` or
-  `src/services/comfort/**`
+  `src/engines/comfort/**`
 - UI, route, or controller `if (model === …)` branches
 - writing modifier output back onto base `quantitiesByInput`
 
@@ -96,7 +96,7 @@ src/
                      Time-series declaration contracts (`timeSeries.ts`);
                      output/ field-chart profile metadata
   routes/            client router
-  services/
+  engines/
     comfort/         adapters, engines, modifiers, psychrometrics, table assembly;
                      ChartBuildResult and simulation chart declarations
     units/           SI ↔ display conversion
@@ -114,12 +114,12 @@ src/
 ```
 
 Import lanes: `views` → `components`, `state`; `components` → `state`,
-`catalog`, lightweight `services`; `state` → `catalog`, `services` (the
+`catalog`, lightweight `engines`; `state` → `catalog`, `engines` (the
 registry is the exception that imports `declarations`); `declarations` →
-`catalog`, `services`, `state/analysis/modelConfigs`; `services` → `catalog`.
+`catalog`, `engines`, `state/analysis/modelConfigs`; `engines` → `catalog`.
 
 Canonical state is SI. Calculations run in SI. Display converts through
-`src/services/units/` by reading assembled catalog SI units
+`src/engines/units/` by reading assembled catalog SI units
 (`convertQuantityFromSi`). Control widgets stay generic.
 
 `App.svelte` constructs one Analysis controller
@@ -183,10 +183,10 @@ Interactive Dynamic 2-D grids are capped near 100² by the engine
 1-D sampling may stay high (for example UTCI stress at 450 x-points).
 Hover overlays use display `z` for the primary output and must not attach
 a per-cell `customdata` matrix unless extra hover fields exist. The Plotly
-adapter (`src/services/plotlyFigure.ts`) clones Plotly-owned `x`/`y`/`z`/`text`
+adapter (`src/engines/plotlyFigure.ts`) clones Plotly-owned `x`/`y`/`z`/`text`
 arrays and nested records Plotly mutates, and converts non-finite grid `z`
 cells to `null` gaps. Do not `JSON.parse(JSON.stringify(figure))` a dense
-field. Screen and publication figures share `src/services/chartTheme.ts`.
+field. Screen and publication figures share `src/engines/chartTheme.ts`.
 Export builds a separate publication figure (PNG ~300 DPI equivalent, SVG of
 the same geometry, no mode bar) and must not capture the on-screen plot.
 Publication widths are journal single- and double-column profiles on that
@@ -241,11 +241,11 @@ Zones generate bands; they are not stored on the runtime definition.
 ### Inputs, requests, and calculation
 
 Map catalog fields to the library payload with
-`createFieldRequestAdapter()` in `src/services/comfort/requestMapping.ts`.
+`createFieldRequestAdapter()` in `src/engines/comfort/requestMapping.ts`.
 jsthermalcomfort short names (`tdb`, `rh`, `vr`, …) belong only at that
 boundary. Copying Heat Index may copy its request type (`HeatIndexRequest`);
 do not add a `Dto` suffix on application request or chart-source types.
-Plotly-compatible adapter types live in `src/services/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …).
+Plotly-compatible adapter types live in `src/engines/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …).
 
 ```ts
 const fieldAdapter = createFieldRequestAdapter<ExampleRequest>({
@@ -265,7 +265,7 @@ stays in the shared dynamic-axis solver.
 validated `options`. It must not read raw `quantitiesByInput`.
 
 `inputFields` kinds are resolved in
-`src/services/comfort/controls/fieldInputBehaviors.ts`: `numeric`,
+`src/engines/comfort/controls/fieldInputBehaviors.ts`: `numeric`,
 `operativeTemperature` / `radiantTemperature`, `occupantAirSpeed` /
 `outdoorWindSpeed`, `simpleHumidity` / `advancedHumidity`, `preset`,
 `modelQuantity`. The Analysis input panel reads those controls through
@@ -279,7 +279,7 @@ state is an invariant.
 ### Charts and tables
 
 Reuse `GridModelChartSpec` + `buildGridModelChart()` in
-`src/services/comfort/charts/gridModelCharts.ts` for two-axis banded fields.
+`src/engines/comfort/charts/gridModelCharts.ts` for two-axis banded fields.
 Presentation-only changes (mode, axes, bands, chart, Explore output, units,
 zone visibility) rebuild from a ready calculation cache and must not
 schedule calculation.

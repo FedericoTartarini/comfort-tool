@@ -14,8 +14,8 @@ import {
   createControlBehaviorContext,
   type BehaviorPatch,
   type ControlBehaviorContext,
-} from "../../services/comfort/controls/types";
-import { syncDerivedStateForInput } from "../../services/comfort/syncState";
+} from "../../engines/comfort/controls/types";
+import { syncDerivedStateForInput } from "../../engines/comfort/syncState";
 import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig } from "./modelConfigs";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import { buildFieldChartProfile } from "./fieldChartState";

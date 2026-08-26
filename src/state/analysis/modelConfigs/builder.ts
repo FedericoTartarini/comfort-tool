@@ -16,11 +16,11 @@ import {
   modifierOrder,
   type InputModifier,
 } from "../../../catalog/inputModifiers";
-import type { InputControlDefinition } from "../../../services/comfort/controls/types";
+import type { InputControlDefinition } from "../../../engines/comfort/controls/types";
 import {
   resolveInputField,
   type InputFieldSpec,
-} from "../../../services/comfort/controls/fieldInputBehaviors";
+} from "../../../engines/comfort/controls/fieldInputBehaviors";
 import {
   supportsExploreWorkspace,
   supportsStandardWorkspace,
@@ -37,7 +37,7 @@ import {
 import {
   cloneNumericBands,
   validateNumericBands,
-} from "../../../services/comfort/charts/bands";
+} from "../../../engines/comfort/charts/bands";
 import {
   PhysicalQuantityScope,
   primaryInputOrder,
@@ -57,7 +57,7 @@ import {
   TableType,
   type ModelTables,
 } from "../../../catalog/tableTypes";
-import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
+import { resolveChartBuildResult } from "../../../engines/comfort/charts/kinds/index";
 import {
   modelChartSpecMatchesEngine,
   specHasPlotlyBuild,
@@ -66,8 +66,8 @@ import {
   type FrontendChartDeclaration,
   type ChartDeclarationInput,
   type RegisteredChartEngineSpec,
-} from "../../../services/comfort/charts/kinds/types";
-import { buildCompareMatrixTable } from "../../../services/comfort/output/tableResolver";
+} from "../../../engines/comfort/charts/kinds/types";
+import { buildCompareMatrixTable } from "../../../engines/comfort/output/tableResolver";
 
 export type { ModelChartDeclaration, FrontendChartDeclaration, ChartDeclarationInput };
 

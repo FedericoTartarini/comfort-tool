@@ -2,7 +2,7 @@ import { adaptive_en } from "jsthermalcomfort";
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
 import { ModelOutputKey } from "../../catalog/modelCapabilities";
-import { InputPresetKey } from "../../services/comfort/controls/inputControlPresets";
+import { InputPresetKey } from "../../engines/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import { UnitSystem } from "../../catalog/units";

@@ -17,7 +17,7 @@ npm run preview     # Preview the application build
 To run a single test file:
 
 ```bash
-npx vitest run src/services/comfort/comfort.test.ts
+npx vitest run src/engines/comfort/comfort.test.ts
 ```
 
 ## Stack
@@ -41,7 +41,7 @@ src/
   components/       rendering and interaction (input-panel/, chart/, shared UI);
                     site shell branding/links (`siteShellConfig.ts`)
   catalog/          centralized domain constants and metadata (physical quantities, zone tokens, model IDs, units, etc.)
-  services/
+  engines/
     comfort/        shared comfort helpers, request/axis adapters, charts
                     (ChartBuildResult, simulation chart declarations), modifiers
     units/          SI <-> IP conversion helpers
@@ -62,18 +62,18 @@ src/
 **Import direction** — keep cross-layer imports constrained to these lanes:
 
 - `views` → `components`, `state`
-- `components` → `state`, `catalog`, lightweight `services`
-- `state` → `catalog`, `services`; the model registry imports registered configs from `declarations`
-- `declarations` → `catalog`, `services`, and builder helpers from `state/analysis/modelConfigs`
-- `services` → `catalog`
+- `components` → `state`, `catalog`, lightweight `engines`
+- `state` → `catalog`, `engines`; the model registry imports registered configs from `declarations`
+- `declarations` → `catalog`, `engines`, and builder helpers from `state/analysis/modelConfigs`
+- `engines` → `catalog`
 
-**Canonical state is always SI.** All user input is converted to SI on entry; all calculations run in SI; display converts from SI via `src/services/units/`.
+**Canonical state is always SI.** All user input is converted to SI on entry; all calculations run in SI; display converts from SI via `src/engines/units/`.
 
-**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/declarations/**`. Shared psychrometric helpers, stress-band derivation, chart scaffolding, adapters, reference values, and cross-model utilities belong in `src/services/comfort/**`. State and components must not contain raw formula implementations.
+**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/declarations/**`. Shared psychrometric helpers, stress-band derivation, chart scaffolding, adapters, reference values, and cross-model utilities belong in `src/engines/comfort/**`. State and components must not contain raw formula implementations.
 
-**`jsthermalcomfort` imports** are restricted to `src/declarations/**` and `src/services/comfort/**`. Do not add them to `src/state/**`, `src/components/**`, `src/views/**`, or top-level service files.
+**`jsthermalcomfort` imports** are restricted to `src/declarations/**` and `src/engines/comfort/**`. Do not add them to `src/state/**`, `src/components/**`, `src/views/**`, or top-level engine files.
 
-**Unit conversion** belongs in `src/services/units/`. Quantity conversion reads `display.units.SI` from the assembled catalog (`convertQuantityFromSi`). Control widgets stay generic. Do not scatter temperature, speed, humidity-ratio, or vapor-pressure conversions across components or state helpers. Canonical state remains SI.
+**Unit conversion** belongs in `src/engines/units/`. Quantity conversion reads `display.units.SI` from the assembled catalog (`convertQuantityFromSi`). Control widgets stay generic. Do not scatter temperature, speed, humidity-ratio, or vapor-pressure conversions across components or state helpers. Canonical state remains SI.
 
 ## State Shape
 
@@ -119,11 +119,11 @@ Use constants from `src/catalog/` for `ModelId` model identifiers (`src/catalog/
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
 - Every declaration sets `workspaceCapabilities` and `exploreOutputs`; Standard-capable models also set `complianceProfile` with fixed output, non-empty bands, caption, legend title, and feedback. Assemble with `defineModel` (data-only `ModelChartDeclaration` union, `tables`, optional PHS `simulation`). Family modules may still use `ComfortModelBuilder` internally (`setCharts()`, `setTables()`, `setSimulation()`). Chart ids (`id`) are declared on the model’s `charts` entries; the builder maps them to runtime `instanceId` and the registry derives those. Duplicate ids, wrong owners, unknown engines, or a TimeSeries table without Time-series capability fail `defineModel` / registry assemble. Assembled catalogs expose optional `assembledCatalogs.validate.model` for those checks (`assembleCatalogs` installs the hook on the returned instance); it is not a second authoring API. Heat Index / Humidex maps are `ChartEngine.DynamicField`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build`. A model declaration may name an extended type with `type`; assemble preserves it on the presentation instance. PMV Dynamic is `DynamicField`; PHS Analysis exposure history is `TimeSeriesLine`. `ParametricLine` is implemented (polylines and optional limit bands). Heat-loss vs temperature and SET series builders live in `heatLossSeries.ts` / `setSeries.ts`; ASHRAE and ISO PMV declarations each register those ParametricLine instances. PMV Analysis tables include SET, cooling effect, relative air speed, and dynamic clothing as Compare-matrix rows. Explore still colours PMV and PPD; do not add a SET explore output key. UTCI chart specs live in `utci/charts.ts`. PHS chart specs live in `phs/charts.ts`. Do not restore `src/declarations/presets/` or add `defineIndexModel()`.
-- Interactive Dynamic 2-D grids are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`, including UTCI Dynamic). BandScalar / 1-D may keep high sampling (for example 450 x-points). `ParametricLine` interchange is polylines and optional limit bands. Hover overlays do not attach per-cell `customdata` unless extra hover fields exist. `toPlotlyFigure` clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly mutates, and maps non-finite grid `z` to `null` gaps; it must not stringify the figure. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not capture the on-screen plot. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths. Zone fills remap through `src/catalog/zoneTokens.ts` (models select tokens; print and colour-blind updates happen in that table).
+- Interactive Dynamic 2-D grids are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`, including UTCI Dynamic). BandScalar / 1-D may keep high sampling (for example 450 x-points). `ParametricLine` interchange is polylines and optional limit bands. Hover overlays do not attach per-cell `customdata` unless extra hover fields exist. `toPlotlyFigure` clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly mutates, and maps non-finite grid `z` to `null` gaps; it must not stringify the figure. Screen and publication figures share `src/engines/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not capture the on-screen plot. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths. Zone fills remap through `src/catalog/zoneTokens.ts` (models select tokens; print and colour-blind updates happen in that table).
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation. `assertCompareContract` covers 1/2/3 Compare inputs, filled table columns, chart markers, and a baseline change that keeps a ready cache. Compare/coverage golden **values** are derived from each registered model's `inputFields` plus `standardPrimaryFixture` in `src/testSupport/goldenFixtures.ts`. Required control IDs and primary quantities are independently authored in `src/testSupport/requiredModelControls.ts` and pinned in focused model tests; do not derive that expected side from `inputFields`. Explicit SI overrides exist only when that fixture is outside a declared range; do not invent values from min/max or catalog `defaultSi`. Known-value calculation snapshots stay explicit numbers.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; `models` is sparse (omit default slices; missing known keys seed defaults; unknown keys reject); only Explore working bands are serialized, and modifier records contain the complete stable key set. Do not keep exact `comfortModelOrder` matching.
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
-- Use `createFieldRequestAdapter()` for canonical request mapping and `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior. Coupled temperature axes stay in the dynamic-axis solver. Application request and chart-source types do not use a `Dto` suffix. Plotly-compatible adapter types live in `src/services/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …).
+- Use `createFieldRequestAdapter()` for canonical request mapping and `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior. Coupled temperature axes stay in the dynamic-axis solver. Application request and chart-source types do not use a `Dto` suffix. Plotly-compatible adapter types live in `src/engines/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …).
 - `primaryInputOrder` in `src/catalog/quantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records. Model-scoped extensions come from declaration `quantities.extend`; they assemble into the same catalog, stay out of `primaryInputOrder`, and live in sparse `modelInputsByModel`. PHS weight/height SI meta live on the PHS declaration. All quantity conversion reads catalog SI units (`SiUnit` / `display.units.SI`) through `convertQuantityFromSi`; field behaviors must not branch on PHS or quantity-id lists. `modelQuantity` fields may be declared before assemble; `build()` checks they match that declaration’s extend list, and view-models read catalog meta after assemble.
 - Analysis input-panel UI is presentational, matching chart controls. `buildInputPanelViewModel` / `getInputPanelViewModel` in `src/state/analysis/inputPresentation.ts` project tool controls, Compare toggles, field rows, clothing-builder bindings, and modifiers. Components must not receive the Analysis controller or implement conversion, clamp, or modifier-draft merge.
 - `defineModel` `modifiers` (or builder `.setModifiers()`) receive executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
@@ -201,8 +201,8 @@ A change is complete when:
 - `git diff --check` passes
 - SI remains the canonical shared state
 - No new raw domain strings were introduced for model/field/chart IDs
-- No new direct `jsthermalcomfort` imports outside `src/declarations/**` or `src/services/comfort/**`
-- No new scattered conversion helpers outside `src/services/units/`
+- No new direct `jsthermalcomfort` imports outside `src/declarations/**` or `src/engines/comfort/**`
+- No new scattered conversion helpers outside `src/engines/units/`
 - Model or chart additions do not expand the controller with more hardcoded parallel properties (unless explicitly approved)
 - Internal documentation remains in `docs/` Markdown (`docs/adding-a-model.md`); it is not part of the application build. Do not add a docs generator, deploy step, or product UI route for these files.
 - Target architecture is `ARCHITECTURE-PLAN.md`. Do not treat `26-06-29-architecture-brief.md` as a freeze that blocks Plan slices.

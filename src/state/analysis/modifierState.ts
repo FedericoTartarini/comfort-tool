@@ -10,20 +10,20 @@ import {
   applyInputModifierChain,
   isModifierConfigurationComplete,
   isModifierFieldValueValid,
-} from "../../services/comfort/inputModifiers";
+} from "../../engines/comfort/inputModifiers";
 import {
   convertModifierFieldValueFromSi,
   convertModifierFieldValueToSi,
   convertQuantityFromSi,
   formatDisplayValue,
   getModifierFieldDisplayMeta,
-} from "../../services/units";
+} from "../../engines/units";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import {
   collectModifierInputsByModifier,
   collectModifierInputsForModifier,
   setSlotQuantity,
-} from "../../services/comfort/quantityStateRouting";
+} from "../../engines/comfort/quantityStateRouting";
 import {
   getQuantityPresentationMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,

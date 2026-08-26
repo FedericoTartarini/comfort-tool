@@ -6,7 +6,7 @@ import {
   ModelCalculationContext,
   createModelCalculationContext,
 } from "../../catalog/modelCalculation";
-import { createAuxiliaryQuantitiesByInput } from "../../services/comfort/quantityStateRouting";
+import { createAuxiliaryQuantitiesByInput } from "../../engines/comfort/quantityStateRouting";
 import {
   calculatePerInput,
   calculatePerInputWithExtensions,

@@ -17,17 +17,17 @@ import type {
   StandardId as StandardIdType,
   WorkspaceId,
 } from "../../../catalog/workspaces";
-import type { ChartBuildResult } from "../../../services/comfort/charts/chartBuildResult";
+import type { ChartBuildResult } from "../../../engines/comfort/charts/chartBuildResult";
 import type {
   SimulationOutputDeclaration,
-} from "../../../services/comfort/charts/simulationCharts";
-import type { ChartEngineRegistration } from "../../../services/comfort/charts/kinds/types";
+} from "../../../engines/comfort/charts/simulationCharts";
+import type { ChartEngineRegistration } from "../../../engines/comfort/charts/kinds/types";
 import type {
   BehaviorPatch,
   ControlBehaviorContext,
   InputControlDefinition,
-} from "../../../services/comfort/controls/types";
-import type { InputFieldSpec } from "../../../services/comfort/controls/fieldInputBehaviors";
+} from "../../../engines/comfort/controls/types";
+import type { InputFieldSpec } from "../../../engines/comfort/controls/fieldInputBehaviors";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
 import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../catalog/quantities";
 
@@ -58,7 +58,7 @@ export type {
   SimulationChartDeclaration,
   SimulationOutputDeclaration,
   SimulationTimeSeriesLineChartSpec,
-} from "../../../services/comfort/charts/simulationCharts";
+} from "../../../engines/comfort/charts/simulationCharts";
 
 /**
  * Strongly typed declaration used while assembling one model. The builder

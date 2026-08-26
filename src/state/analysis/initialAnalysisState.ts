@@ -13,7 +13,7 @@ import {
   createAuxiliaryQuantitiesByInput,
   createModelInputsByModel,
   type QuantitiesByInputState,
-} from "../../services/comfort/quantityStateRouting";
+} from "../../engines/comfort/quantityStateRouting";
 import type {
   OutputSettingsByModelState,
   InputState,

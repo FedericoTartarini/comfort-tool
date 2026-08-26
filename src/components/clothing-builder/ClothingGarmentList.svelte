@@ -4,7 +4,7 @@
   import { Input, Label } from "flowbite-svelte";
 
   import { clothingZoneMetaById, type ClothingZoneId } from "../../catalog/clothingZones";
-  import type { ClothingGarmentOption } from "../../services/comfort/referenceValues";
+  import type { ClothingGarmentOption } from "../../engines/comfort/referenceValues";
 
   interface Props {
     activeZoneId: ClothingZoneId;

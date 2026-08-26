@@ -15,17 +15,17 @@ import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantiti
 import { ThermalZone } from "../catalog/thermalZone";
 import { ZoneToken } from "../catalog/zoneTokens";
 import { UnitSystem } from "../catalog/units";
-import type { GridModelChartSpec } from "../services/comfort/charts/gridModelCharts";
-import { requireThermalZone } from "../services/comfort/helpers";
+import type { GridModelChartSpec } from "../engines/comfort/charts/gridModelCharts";
+import { requireThermalZone } from "../engines/comfort/helpers";
 import {
   calculatePerInput,
   createFieldRequestAdapter,
-} from "../services/comfort/requestMapping";
+} from "../engines/comfort/requestMapping";
 import {
   convertModelOutputFromSi,
   formatDisplayValue,
   getModelOutputDisplayMeta,
-} from "../services/units";
+} from "../engines/units";
 import {
   defineModel,
   parseEmptyOptions,

@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ChartInstancePanelView } from "../../state/analysis/chartInstancePresentation";
-import { PublicationColumn } from "../../services/chartTheme";
+import { PublicationColumn } from "../../engines/chartTheme";
 import ChartExportMenu from "./ChartExportMenu.svelte";
 
 const currentChart: ChartInstancePanelView = {

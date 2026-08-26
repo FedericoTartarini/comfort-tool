@@ -8,7 +8,7 @@ import { UnitSystem } from "../catalog/units";
 import {
   convertFieldValueFromSi,
   convertModelOutputFromSi,
-} from "../services/units";
+} from "../engines/units";
 import { PhysicalQuantityId } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";

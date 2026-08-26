@@ -4,22 +4,22 @@ import type {
   PlotHoverRow,
   PlotlyChartSpec,
   PlotTrace,
-} from "../../services/plotlyTypes";
+} from "../../engines/plotlyTypes";
 import { ComplianceStatus } from "../../catalog/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { Band, ChartBuildContext } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
-import { buildTooltipGridTrace } from "../../services/comfort/charts/boundaryRegionEngine";
+import { buildTooltipGridTrace } from "../../engines/comfort/charts/boundaryRegionEngine";
 import {
   buildFieldChart,
   createBoundaryRegionStrategy,
   type FieldChartInputGroup,
-} from "../../services/comfort/charts/fieldChartEngine";
-import type { ChartAxisScale } from "../../services/comfort/charts/types";
-import { buildHoverTemplate } from "../../services/comfort/charts/plotlyBuilders";
-import { getBaselineInputEntry, roundValue } from "../../services/comfort/helpers";
-import { convertFieldValueFromSi } from "../../services/units";
+} from "../../engines/comfort/charts/fieldChartEngine";
+import type { ChartAxisScale } from "../../engines/comfort/charts/types";
+import { buildHoverTemplate } from "../../engines/comfort/charts/plotlyBuilders";
+import { getBaselineInputEntry, roundValue } from "../../engines/comfort/helpers";
+import { convertFieldValueFromSi } from "../../engines/units";
 import {
   calculateAdaptive,
   getLevelResult,

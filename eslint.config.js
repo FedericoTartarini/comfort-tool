@@ -89,14 +89,14 @@ export default [
   },
   {
     files: ["src/**/*.{js,ts,svelte}"],
-    ignores: ["src/declarations/**", "src/services/comfort/**"],
+    ignores: ["src/declarations/**", "src/engines/comfort/**"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [{
             group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-            message: "jsthermalcomfort belongs in declarations or services/comfort.",
+            message: "jsthermalcomfort belongs in declarations or engines/comfort.",
           }],
         },
       ],
@@ -110,12 +110,12 @@ export default [
         {
           patterns: [
             {
-              group: ["**/catalog/**", "**/services/**", "**/declarations/**"],
+              group: ["**/catalog/**", "**/engines/**", "**/declarations/**"],
               message: "Views may compose components and state, but may not own domain or service logic.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
             },
           ],
         },
@@ -136,7 +136,7 @@ export default [
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
             },
           ],
         },
@@ -144,8 +144,8 @@ export default [
     },
   },
   {
-    files: ["src/services/**/*.{ts,svelte}"],
-    ignores: ["src/services/**/*.test.ts", "src/services/comfort/**"],
+    files: ["src/engines/**/*.{ts,svelte}"],
+    ignores: ["src/engines/**/*.test.ts", "src/engines/comfort/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -158,11 +158,11 @@ export default [
                 "**/views/**",
                 "**/declarations/**",
               ],
-              message: "Services may depend on catalog and other services, not higher application layers.",
+              message: "Engines may depend on catalog and other engines, not higher application layers.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in services/comfort or declarations.",
+              message: "jsthermalcomfort belongs in engines/comfort or declarations.",
             },
           ],
         },
@@ -170,8 +170,8 @@ export default [
     },
   },
   {
-    files: ["src/services/comfort/**/*.{ts,svelte}"],
-    ignores: ["src/services/comfort/**/*.test.ts"],
+    files: ["src/engines/comfort/**/*.{ts,svelte}"],
+    ignores: ["src/engines/comfort/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -183,7 +183,7 @@ export default [
               "**/views/**",
               "**/declarations/**",
             ],
-            message: "Services may depend on catalog and other services, not higher application layers.",
+            message: "Engines may depend on catalog and other engines, not higher application layers.",
           }],
         },
       ],
@@ -245,7 +245,7 @@ export default [
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
             },
           ],
         },
@@ -274,7 +274,7 @@ export default [
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
             },
           ],
         },
