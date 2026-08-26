@@ -13,7 +13,7 @@ This repository contains the active product frontend at the repository root, whi
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices (`0c`, `0t`, `0q`, …) follow that file, including registry contribution, `defineModel`, and allowed deletions.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. Do not implement from it or restore its authoring model.
 - **This file** describes the **current** tree and execution rules. When a Plan slice deletes or replaces something still named here (preset factories, the parallel `ChartInstanceId` tree, `spec: unknown`, exact `comfortModelOrder` share maps), **the Plan wins**. Do not put those back to “match AGENTS.md”.
-- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`src/views/`, `src/utils/` into `ui/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
+- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`src/utils/` into `ui/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
 - The product is not deployed. There is no share or URL compatibility requirement.
 - After a slice lands, update this file, `CLAUDE.md`, and `docs/` in the same change so current-state rules match the code.
 
@@ -30,6 +30,7 @@ src/
       input-panel/         presentational Analysis input UI
       siteShellConfig.ts   site branding and footer/header links
     routes/                client router
+    views/                 page composition only
   catalog/                 centralized domain constants and metadata (including zone tokens)
   engines/
     comfort/               shared comfort helpers, request/axis adapters, charts
@@ -43,14 +44,13 @@ src/
     analysis/              controller, model configs, share state, pure
                            projections (chartPresentation, inputPresentation)
     timeSeries/            separate PHS controller; editor/chart view models
-  views/                   page composition only
 ```
 
 Key entrypoints:
 
 ```text
 src/App.svelte
-src/views/ComfortDashboard.svelte
+src/ui/views/ComfortDashboard.svelte
 src/state/analysis/createAnalysisState.svelte.ts
 src/state/analysis/types.ts
 ```
@@ -58,7 +58,7 @@ src/state/analysis/types.ts
 ## Architecture Priorities
 
 - Keep cross-layer imports constrained to these lanes:
-  - `views` -> `ui/components`, `state`
+  - `ui/views` -> `ui/components`, `state`
   - `ui/components` -> `state`, `catalog`, lightweight `engines`
   - `state` -> `catalog`, `engines`; the model registry imports registered configs from `declarations`
   - `declarations` -> `catalog`, `engines`, and builder helpers from `state/analysis/modelConfigs`
@@ -81,7 +81,7 @@ Model-specific thermal-comfort logic belongs in `src/declarations/**`. Shared he
 
 All direct `jsthermalcomfort` imports must stay inside `src/declarations/**` or `src/engines/comfort/**`.
 
-- Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/ui/components/**`, `src/views/**`, or top-level `src/engines/*.ts`.
+- Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/ui/components/**`, `src/ui/views/**`, or top-level `src/engines/*.ts`.
 - When touching shared helpers, prefer moving reusable comfort logic under `src/engines/comfort/**` rather than adding more top-level engine files.
 
 ## Physical Quantity Rules

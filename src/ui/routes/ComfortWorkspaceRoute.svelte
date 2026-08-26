@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ComfortDashboard from "../../views/ComfortDashboard.svelte";
+  import ComfortDashboard from "../views/ComfortDashboard.svelte";
   import { route } from "./router";
   import {
     getAllowedModels,

@@ -77,7 +77,7 @@ export default [
     files: [
       "src/App.svelte",
       "src/ui/components/**/*.{ts,svelte}",
-      "src/views/**/*.{ts,svelte}",
+      "src/ui/views/**/*.{ts,svelte}",
     ],
     rules: {
       "no-undef": "off",
@@ -103,7 +103,7 @@ export default [
     },
   },
   {
-    files: ["src/views/**/*.{ts,svelte}"],
+    files: ["src/ui/views/**/*.{ts,svelte}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -285,7 +285,7 @@ export default [
     files: [
       "src/state/**/*.{ts,svelte}",
       "src/ui/components/**/*.{ts,svelte}",
-      "src/views/**/*.{ts,svelte}",
+      "src/ui/views/**/*.{ts,svelte}",
     ],
     ignores: [
       "**/*.test.ts",

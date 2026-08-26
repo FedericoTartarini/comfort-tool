@@ -17,7 +17,7 @@ edit `src/ui/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. `src/ui/components/` is the live components tree. `src/ui/routes/` is the live client router. Remaining Plan §4 ui folders (`views/`, `utils/`) are not yet moved.
+`26-06-29-architecture-brief.md`. `src/ui/components/` is the live components tree. `src/ui/routes/` is the live client router. `src/ui/views/` is the live page-composition tree. Remaining Plan §4 ui folder (`utils/`) is not yet moved.
 Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`. Catalog lives at `src/catalog/`. Engines live at `src/engines/`.
 
 ## Recipe
@@ -93,6 +93,7 @@ src/
     components/      rendering and interaction; no model-id branches;
                      site shell branding/links (`siteShellConfig.ts`)
     routes/          client router
+    views/           page composition
   catalog/           system quantity seed, ModelId, ChartEngine, TableType,
                      modifiers, workspace ids, zone tokens;
                      Time-series declaration contracts (`timeSeries.ts`);
@@ -110,11 +111,10 @@ src/
                      pure projections (chartPresentation, inputPresentation)
     timeSeries/      separate PHS Time-series controller; editor/chart view models
     workspace/       route / model / mode coordination
-  views/             page composition
   testSupport/       Compare helper; golden inputs/control counts from the registry
 ```
 
-Import lanes: `views` → `ui/components`, `state`; `ui/components` → `state`,
+Import lanes: `ui/views` → `ui/components`, `state`; `ui/components` → `state`,
 `catalog`, lightweight `engines`; `state` → `catalog`, `engines` (the
 registry is the exception that imports `declarations`); `declarations` →
 `catalog`, `engines`, `state/analysis/modelConfigs`; `engines` → `catalog`.

@@ -10,8 +10,8 @@ import {
 } from "sv-router";
 import ComfortWorkspaceRoute from "./ComfortWorkspaceRoute.svelte";
 import NotFoundRoute from "./NotFoundRoute.svelte";
-import RootRedirectPage from "../../views/RootRedirectPage.svelte";
-import TimeSeriesPage from "../../views/TimeSeriesPage.svelte";
+import RootRedirectPage from "../views/RootRedirectPage.svelte";
+import TimeSeriesPage from "../views/TimeSeriesPage.svelte";
 import {
   defaultAppRoute,
   getAppRouteByPath,
