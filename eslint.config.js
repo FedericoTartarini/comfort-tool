@@ -111,7 +111,7 @@ export default [
           patterns: [
             {
               group: ["**/catalog/**", "**/engines/**", "**/declarations/**"],
-              message: "Views may compose components and state, but may not own domain or service logic.",
+              message: "Views may compose components and state, but may not own domain or engine logic.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],

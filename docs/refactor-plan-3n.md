@@ -23,7 +23,7 @@ In scope (the Plan §4 rows marked `3n`):
 | Catalog anchor file renames                     | 4 files                       |
 | Family file de-prefixing (`pmvAshrae.ts` → `ashrae.ts`, …) | pmv/, adaptive/, utci/, phs/ |
 | Folder moves (`catalog/`, `declarations/`, `engines/`, `state/analysis/`, `ui/`) | whole tree |
-| Docs / lint-glob sync                           | `AGENTS.md`, `CLAUDE.md`, `docs/`, `.cursor/rules/`, `eslint.config.js` |
+| Docs / lint-glob sync                           | `AGENTS.md`, `CLAUDE.md`, `docs/`, `eslint.config.js` (local `.cursor/rules/` is not a committed gate) |
 
 Out of scope:
 
@@ -89,8 +89,10 @@ The builder maps authoring `id` → runtime `instanceId` during assemble.
    aliases, so `npm run check` catches every missed import — including Svelte
    templates that Vitest does not execute. It is mandatory in every gate.
 5. **Docs move with the code.** Each round updates the sentences it
-   invalidates in `AGENTS.md`, `CLAUDE.md`, `docs/adding-a-model.md`, and
-   `.cursor/rules/architecture-plan.mdc`. The final round is only a
+   invalidates in `AGENTS.md`, `CLAUDE.md`, and `docs/adding-a-model.md`.
+   Local Cursor rules in `.cursor/rules/architecture-plan.mdc` should stay
+   aligned for the working agent, but `.cursor/` is gitignored: that file
+   is not a committed or CI acceptance artifact. The final round is only a
    consistency pass, not the place where doc updates start.
 6. **Commits belong to the user.** Each green round lands as one commit so it
    can be reverted alone; the user makes the commit (or explicitly authorizes
@@ -199,7 +201,8 @@ Then classify the remaining literal occurrences:
 - Leftover grep:
   `PMV_ASHRAE|PMV_ISO|ADAPTIVE_ASHRAE|ADAPTIVE_EN|HEAT_INDEX|HUMIDEX|WIND_CHILL|PHS_2023`
   over `src/`, `docs/adding-a-model.md`, `AGENTS.md`, `CLAUDE.md`, and
-  `.cursor/rules/` → zero, with one listed exception: the three descriptive
+  `.cursor/rules/` (the last is local-only: `.cursor/` is gitignored) →
+  zero, with one listed exception: the three descriptive
   `testRequestAdapterContract("HEAT_INDEX" | "HUMIDEX" | "WIND_CHILL", …)`
   describe labels in `requestMapping.contract.test.ts` (test text only,
   never compared to `ModelId`). `UTCI` is not grepped — it is display text.
@@ -433,9 +436,12 @@ glob and comment that names the moved folder (the config currently
 references `src/components`, `src/views`, `src/services`,
 `src/comfortModels`, `src/state/comfortTool`, and `src/models` in ~20
 places), update doc sentences, then run **Gate B**. Close each round with
-`rg "<old path>" src eslint.config.js docs/adding-a-model.md AGENTS.md CLAUDE.md .cursor/rules`
-→ zero matches. `docs/refactor-plan-3n.md` is excluded by design — it is
-the migration record and names every old path.
+`rg "<old path>" src eslint.config.js docs/adding-a-model.md AGENTS.md CLAUDE.md`
+→ zero matches in layout, glob, and import-path references.
+`docs/refactor-plan-3n.md` is excluded by design — it is the migration
+record and names every old path. That leftover grep is not a standing ban
+on naming retired folders in do-not-restore sentences. `.cursor/` is
+gitignored, so `.cursor/rules` is not a CI gate.
 
 - **R9a** — `src/state/comfortTool/` → `src/state/analysis/`.
 - **R9b** — `src/comfortModels/` → `src/declarations/`.
@@ -464,10 +470,15 @@ not contain it).
 
 ## R10 — Docs and guard consistency pass
 
-- Sweep `AGENTS.md`, `CLAUDE.md`, `docs/adding-a-model.md`, and
-  `.cursor/rules/architecture-plan.mdc` so every path, symbol, and layout
-  description matches the new tree (earlier rounds already fixed what they
-  broke; this is verification, not the first edit).
+- Sweep `AGENTS.md`, `CLAUDE.md`, and `docs/adding-a-model.md` so every
+  layout description uses the new tree (earlier rounds already fixed what
+  they broke; this is verification, not the first edit). Prohibition
+  sentences may still name deleted symbols and old directories
+  (`ChartInstanceId`, `comfortDtos.ts`, pre-3n folders, application-layer
+  `*Dto` types) so agents do not restore them.
+- Keep local `.cursor/rules/architecture-plan.mdc` aligned with that
+  wording when present. `.cursor/` is gitignored, so that file is not a
+  committed or CI acceptance artifact and does not block 3n closeout.
 - Sweep ARCHITECTURE-PLAN.md for stale "type catalog" / old-name phrasing
   and mark the completed §4 / §10 rows as done.
 - Full **Gate B**.
@@ -482,9 +493,9 @@ not contain it).
   `setInstanceId`, `boundaryInstanceId`, `PlotlyChartResponseDto`,
   and `Dto`-suffixed type names.
 - Old wire values gone: the R3 leftover grep (`PMV_ASHRAE|…|PHS_2023` over
-  `src/`, `docs/adding-a-model.md`, `AGENTS.md`, `CLAUDE.md`,
-  `.cursor/rules/`) is still zero apart from its listed exception (the
-  three descriptive `requestMapping.contract.test.ts` labels).
+  `src/`, `docs/adding-a-model.md`, `AGENTS.md`, and `CLAUDE.md`) is still
+  zero apart from its listed exception (the three descriptive
+  `requestMapping.contract.test.ts` labels). `.cursor/rules/` is local-only.
 - Preserved names still present exactly as decided (sanity check):
   `selectedChartInstanceId` in state and share, runtime `instanceId` /
   `defaultInstanceId` (including `GridModelChartSpec.instanceId`, chart
@@ -500,10 +511,16 @@ not contain it).
 - Model wire ids are kebab-case; share-codec tests are green; display
   labels ("UTCI" etc.) unchanged.
 - The ESLint catalog-lane restriction is in place; `eslint.config.js`
-  globs and the current-state docs (`AGENTS.md`, `CLAUDE.md`,
-  `docs/adding-a-model.md`, `.cursor/rules/`) reference only new paths and
-  names. This execution plan and `ARCHITECTURE-PLAN.md` may keep
-  current→target mappings as the migration record.
+  globs use the new tree. Current-state **layout** descriptions in
+  `AGENTS.md`, `CLAUDE.md`, and `docs/adding-a-model.md` use only new
+  paths and names. Those files (and local `.cursor/rules/` when present)
+  may name deleted symbols and old directories in prohibition sentences
+  (do not restore / do not recreate). This execution plan and
+  `ARCHITECTURE-PLAN.md` may keep current→target mappings as the
+  migration record. `.cursor/` is gitignored: Cursor rules are not a
+  committed or CI gate. Onboarding copy in `README.md` was not on the R10
+  file list; after 3n landed it was updated to the new tree so humans are
+  not pointed at retired folders. That update does not reopen 3n.
 - Full Gate B green: `npm test`, `npm run check`, `npm run lint`,
   `npm run build`, `npm run test:visual`, `git diff --check`.
 - No behavior change beyond the model wire-id strings (visual baselines

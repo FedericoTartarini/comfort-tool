@@ -89,40 +89,43 @@ The 20 approved visual baselines live beside the Playwright tests. Update them o
 
 ```text
 src/
-  comfortModels/   model declarations, calculations, charts, and modifier definitions
-  components/      rendering and interaction
-  models/          centralized IDs, metadata, units, and output registry
-  routes/          client router and route-bound page adapters
-  services/
+  catalog/         centralized IDs, quantity seed, units, and output metadata
+  declarations/    model declarations, calculations, charts, and modifier definitions
+  engines/
     comfort/       shared comfort helpers, adapters, modifiers, and chart engines
-    units/         SI <-> IP conversion
+    units/         SI <-> display conversion
   state/
-    comfortTool/   Analysis controller, keyed model memory, share snapshots
+    analysis/      Analysis controller, keyed model memory, share snapshots
     timeSeries/    independent Time-series controller and scenario state
     workspace/     route/model/mode coordination and navigation
-  views/           page composition (ComfortDashboard)
+  ui/
+    components/    rendering and interaction
+    routes/        client router and route-bound page adapters
+    views/         page composition (ComfortDashboard)
+    utils/         UI actions (`clickOutside`)
+  testSupport/     Compare helper; golden inputs/control counts from the registry
 ```
 
 ## Architecture
 
-- `src/comfortModels/` owns model identity, inputs, strict options, declaration-local zones, calculations, result rows, charts, capabilities, and executable modifier declarations. Shared PMV and Adaptive assembly is separated from their calculation and chart modules.
-- `src/services/comfort/` owns reusable comfort, psychrometric, control, modifier, canonical request/axis-adapter, and chart-engine behavior.
-- `src/services/units/` is the only unit-conversion family. Shared inputs, modifier values, and editable chart bands remain canonical SI.
-- `src/state/comfortTool/` owns generic Analysis orchestration, keyed model memory, calculation caches, pure chart/modifier/model-switch projections, and strict version-1 share snapshots.
+- `src/declarations/` owns model identity, inputs, strict options, declaration-local zones, calculations, result rows, charts, capabilities, and executable modifier declarations. Shared PMV and Adaptive assembly is separated from their calculation and chart modules.
+- `src/engines/comfort/` owns reusable comfort, psychrometric, control, modifier, canonical request/axis-adapter, and chart-engine behavior.
+- `src/engines/units/` is the only unit-conversion family. Shared inputs, modifier values, and editable chart bands remain canonical SI.
+- `src/state/analysis/` owns generic Analysis orchestration, keyed model memory, calculation caches, pure chart/modifier/model-switch projections, and strict version-1 share snapshots.
 - `src/state/timeSeries/` owns an independent keyed scenario state and simulation lifecycle for the Time-series workspace.
 - `src/state/workspace/` coordinates route constraints, model/mode selection, and share import without scheduling calculations.
-- `src/components/` renders and handles interaction; `src/views/` composes pages.
+- `src/ui/components/` renders and handles interaction; `src/ui/views/` composes pages.
 
 Important invariants:
 
 - Each registered model has one focused declaration entry. Stable IDs, explicit registry entries, shared metadata, and tests remain separate concerns.
-- `primaryInputOrder` in `src/models/physicalQuantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Derived, chart-only, and model-scoped extended quantities use `PhysicalQuantityId` / `ChartAxisQuantityId` but never enter primary records.
+- `primaryInputOrder` in `src/catalog/quantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Derived, chart-only, and model-scoped extended quantities use `PhysicalQuantityId` / `ChartAxisQuantityId` but never enter primary records.
 - Model options are complete and exact. Parsers reject missing, extra, or illegal values; internal invalid state throws.
-- Each model declares output charts via `defineModel` `outputCharts` with instance ids that live only on the declaration. Family modules may still use `ComfortModelBuilder.setOutputCharts()` internally. The registry derives those ids; there is no parallel `ChartInstanceId` tree.
+- Each model declares charts via `defineModel` `charts` with ids that live only on the declaration. Family modules may still use `ComfortModelBuilder.setCharts()` internally. The registry derives those ids; there is no parallel `ChartInstanceId` tree.
 - Compliance and Explore use the same field-chart engine. Presentation-only changes never stale calculation caches.
 - Base inputs (`quantitiesByInput`) and modifier configuration are stored separately; effective SI inputs are derived through Measured Air Speed, Morning Clothing Estimate, Dynamic Clothing, and Solar Gain in that fixed order when declared by the model, then exposed as `effectiveQuantitiesByInput` in `ModelCalculationContext`.
 - `createRequestAxisAdapter()` extends one canonical request map with field aliases and explicit operative-temperature behavior instead of duplicating chart-axis switches.
-- Direct `jsthermalcomfort` imports stay under `src/comfortModels/` or `src/services/comfort/`.
+- Direct `jsthermalcomfort` imports stay under `src/declarations/` or `src/engines/comfort/`.
 
 ### Static hosting
 
