@@ -5,7 +5,7 @@ import { heatIndexRequestAdapter } from "../../comfortModels/heatIndex";
 import { humidexRequestAdapter } from "../../comfortModels/humidex";
 import { phsRequestAdapter } from "../../comfortModels/phs/phs";
 import { pmvRequestAdapter } from "../../comfortModels/pmv/calculation";
-import { utciRequestAdapter } from "../../comfortModels/utci/utciCalculation";
+import { utciRequestAdapter } from "../../comfortModels/utci/calculation";
 import { windChillRequestAdapter } from "../../comfortModels/windChill";
 import { type FieldRequestAdapter } from "./requestMapping";
 import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../models/quantities";

@@ -10,7 +10,7 @@ import type { PhsResponse } from "../models/phs";
 import { calculateHeatIndex } from "../comfortModels/heatIndex";
 import { calculateHumidex } from "../comfortModels/humidex";
 import { calculateWindChill } from "../comfortModels/windChill";
-import { calculateUtci } from "../comfortModels/utci/utciCalculation";
+import { calculateUtci } from "../comfortModels/utci/calculation";
 import { evaluatePmvCondition } from "../comfortModels/pmv/calculation";
 import { pmvAshraeAdapter } from "../comfortModels/pmv/ashrae";
 import { calculatePhs } from "../comfortModels/phs/phsCalculation";

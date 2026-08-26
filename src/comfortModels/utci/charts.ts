@@ -40,7 +40,7 @@ import {
   utciZonesList,
   type UtciRequest,
   type UtciResponse,
-} from "./utciCalculation";
+} from "./calculation";
 
 const MODEL_LABEL = UTCI_MODEL_LABEL;
 const STRESS_BAND_Y_RESOLUTION = 50;

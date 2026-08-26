@@ -29,7 +29,7 @@ import {
 } from "../../comfortModels/pmv/ashrae";
 import {
   buildUtciStressChart,
-} from "../../comfortModels/utci/utciCharts";
+} from "../../comfortModels/utci/charts";
 import {
   calculateUtci,
   utciModelConfig,

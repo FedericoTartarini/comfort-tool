@@ -35,12 +35,12 @@ import {
   utciRequestAdapter,
   type UtciRequest,
   type UtciResponse,
-} from "./utciCalculation";
+} from "./calculation";
 import {
   UTCI_DYNAMIC_AXIS_FIELDS,
   utciDynamicFieldChartSpec,
   utciStressChartSpec,
-} from "./utciCharts";
+} from "./charts";
 
 const MODEL_DESCRIPTION = "Outdoor UTCI with stress category visualization.";
 
@@ -200,4 +200,4 @@ export {
   utciZonesList,
   type UtciRequest,
   type UtciResponse,
-} from "./utciCalculation";
+} from "./calculation";

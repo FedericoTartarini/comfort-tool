@@ -5,7 +5,7 @@ import { adaptiveEnZonesList } from "../comfortModels/adaptive/en";
 import { heatIndexZonesList } from "../comfortModels/heatIndex";
 import { humidexZonesList } from "../comfortModels/humidex";
 import { pmvZonesList } from "../comfortModels/pmv/calculation";
-import { utciZonesList } from "../comfortModels/utci/utciCalculation";
+import { utciZonesList } from "../comfortModels/utci/calculation";
 import { windChillZonesList } from "../comfortModels/windChill";
 import {
   remapZoneFill,

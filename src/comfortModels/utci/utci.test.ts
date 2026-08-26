@@ -6,7 +6,7 @@ import { InputId } from "../../models/inputSlots";
 import { UnitSystem } from "../../models/units";
 import {
   buildUtciStressChart,
-} from "./utciCharts";
+} from "./charts";
 import { ModelOutputKey, type ChartBuildContext } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
