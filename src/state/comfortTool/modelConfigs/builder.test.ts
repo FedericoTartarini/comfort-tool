@@ -433,7 +433,7 @@ describe("ComfortModelBuilder capabilities", () => {
           },
         ])
         .build(),
-    ).toThrow(/owner PHS_2023 does not match PMV_ASHRAE/);
+    ).toThrow(/owner phs-2023 does not match pmv-ashrae/);
   });
 
   it("rejects quantity extensions that collide with the system seed", () => {
@@ -499,7 +499,7 @@ describe("ComfortModelBuilder capabilities", () => {
         ])
         .build(),
     ).toThrow(
-      /modelQuantity field audit.exampleMass must reference a quantities.extend entry owned by PMV_ASHRAE/,
+      /modelQuantity field audit.exampleMass must reference a quantities.extend entry owned by pmv-ashrae/,
     );
   });
 });

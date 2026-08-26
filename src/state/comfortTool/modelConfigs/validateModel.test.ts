@@ -154,7 +154,7 @@ describe("assembled catalog validate.model", () => {
         }),
       ]),
     ).toThrow(
-      /Chart instance ID "audit-shared-instance" is declared by both HEAT_INDEX and HUMIDEX/,
+      /Chart instance ID "audit-shared-instance" is declared by both heat-index and humidex/,
     );
 
     expect(() =>
@@ -178,7 +178,7 @@ describe("assembled catalog validate.model", () => {
         }),
       ),
     ).toThrow(
-      /Chart instance ID "pmv-ashrae-psychrometric" is declared by both PMV_ASHRAE and HEAT_INDEX/,
+      /Chart instance ID "pmv-ashrae-psychrometric" is declared by both pmv-ashrae and heat-index/,
     );
   });
 
@@ -211,7 +211,7 @@ describe("assembled catalog validate.model", () => {
         }),
       ]),
     ).toThrow(
-      /Chart type "audit.shared-type" is declared by both HEAT_INDEX and HUMIDEX/,
+      /Chart type "audit.shared-type" is declared by both heat-index and humidex/,
     );
   });
 
@@ -285,7 +285,7 @@ describe("assembled catalog validate.model", () => {
         }),
       ),
     ).toThrow(
-      'Quantity extension "phs.bodyWeight" is owned by PHS_2023 but registered on HEAT_INDEX.',
+      'Quantity extension "phs.bodyWeight" is owned by phs-2023 but registered on heat-index.',
     );
 
     expect(() =>
@@ -314,7 +314,7 @@ describe("assembled catalog validate.model", () => {
         }),
       ),
     ).toThrow(
-      'Quantity extension "phs.bodyWeight" is owned by PHS_2023 but registered on HEAT_INDEX.',
+      'Quantity extension "phs.bodyWeight" is owned by phs-2023 but registered on heat-index.',
     );
   });
 

@@ -1,13 +1,13 @@
 export const ModelId = {
-  PmvAshrae: "PMV_ASHRAE",
-  PmvIso: "PMV_ISO",
-  Utci: "UTCI",
-  AdaptiveAshrae: "ADAPTIVE_ASHRAE",
-  AdaptiveEn: "ADAPTIVE_EN",
-  HeatIndex: "HEAT_INDEX",
-  Humidex: "HUMIDEX",
-  WindChill: "WIND_CHILL",
-  Phs2023: "PHS_2023",
+  PmvAshrae: "pmv-ashrae",
+  PmvIso: "pmv-iso",
+  Utci: "utci",
+  AdaptiveAshrae: "adaptive-ashrae",
+  AdaptiveEn: "adaptive-en",
+  HeatIndex: "heat-index",
+  Humidex: "humidex",
+  WindChill: "wind-chill",
+  Phs2023: "phs-2023",
 } as const;
 
 export type ModelId = (typeof ModelId)[keyof typeof ModelId];

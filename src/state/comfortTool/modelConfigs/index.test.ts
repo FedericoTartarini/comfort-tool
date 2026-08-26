@@ -75,8 +75,8 @@ function expectZoneDerivedBands(
 
 describe("comfort model capability registry", () => {
   it("registers every model exactly once with matching IDs and stable PMV ordering", () => {
-    expect(ModelId.PmvAshrae).toBe("PMV_ASHRAE");
-    expect(ModelId.PmvIso).toBe("PMV_ISO");
+    expect(ModelId.PmvAshrae).toBe("pmv-ashrae");
+    expect(ModelId.PmvIso).toBe("pmv-iso");
     expect(comfortModelOrder).toEqual([
       ModelId.PmvAshrae,
       ModelId.PmvIso,

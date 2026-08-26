@@ -29,7 +29,7 @@ tree.
    temperature plus wind, copy `windChill.ts` instead. Humidex is the other
    tdb+rh sibling.
 2. **Add the model id** to `ModelId` in `src/models/comfortModels.ts`.
-   Wire values follow existing members (`"HEAT_INDEX"`, `"HUMIDEX"`, …).
+   Wire values follow existing members (`"heat-index"`, `"humidex"`, …).
    Do not invent a second id tree.
 3. **Register once** in `src/state/comfortTool/modelConfigs/index.ts`: import
    the config and add one `comfortModelConfigs` entry. The registry type is
