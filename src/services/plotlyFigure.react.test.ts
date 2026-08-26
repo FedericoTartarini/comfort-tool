@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { calculateAdaptive } from "../comfortModels/adaptive/adaptiveCalculation";
-import { buildAdaptiveChart } from "../comfortModels/adaptive/adaptiveCharts";
-import { adaptiveEnDeclaration } from "../comfortModels/adaptive/adaptiveEn";
-import type { AdaptiveRequest } from "../comfortModels/adaptive/adaptiveShared";
+import { calculateAdaptive } from "../comfortModels/adaptive/calculation";
+import { buildAdaptiveChart } from "../comfortModels/adaptive/charts";
+import { adaptiveEnDeclaration } from "../comfortModels/adaptive/en";
+import type { AdaptiveRequest } from "../comfortModels/adaptive/shared";
 import { InputId } from "../models/inputSlots";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
 import { PhysicalQuantityId } from "../models/quantities";

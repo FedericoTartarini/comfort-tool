@@ -23,12 +23,12 @@ import { convertFieldValueFromSi } from "../../services/units";
 import {
   calculateAdaptive,
   getLevelResult,
-} from "./adaptiveCalculation";
+} from "./calculation";
 import type {
   AdaptiveModelDeclaration,
   AdaptiveRequest,
   AdaptiveResponse,
-} from "./adaptiveShared";
+} from "./shared";
 
 const FIXED_OPERATIVE_RANGE_SI = { min: 10, max: 40 };
 const BOUNDARY_POINTS = 240;

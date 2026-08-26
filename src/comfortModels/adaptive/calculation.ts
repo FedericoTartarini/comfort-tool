@@ -30,7 +30,7 @@ import type {
   AdaptiveModelDeclaration,
   AdaptiveRequest,
   AdaptiveResponse,
-} from "./adaptiveShared";
+} from "./shared";
 
 export function getCe(airSpeed: number, unadjustedUpperBoundary: number): number {
   if (airSpeed < 0.6 || unadjustedUpperBoundary < 25) return 0;

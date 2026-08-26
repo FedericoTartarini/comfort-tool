@@ -184,7 +184,7 @@ contracts and builder assembly. PMV Analysis tables include SET, cooling
 effect, relative air speed, and dynamic clothing; Explore outputs remain
 PMV and PPD.
 Adaptive follows the same shape with ASHRAE/EN declarations plus
-`adaptiveCalculation.ts`, `adaptiveCharts.ts`, and `adaptiveShared.ts`. Never
+`calculation.ts`, `charts.ts`, and `shared.ts`. Never
 merge separate standards behind a runtime toggle.
 
 ## Done Criteria

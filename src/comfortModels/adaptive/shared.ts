@@ -39,8 +39,8 @@ import {
   buildAdaptiveResultRows,
   calculateAdaptiveModel,
   parseAdaptiveOptions,
-} from "./adaptiveCalculation";
-import { buildAdaptiveChart } from "./adaptiveCharts";
+} from "./calculation";
+import { buildAdaptiveChart } from "./charts";
 
 export interface AdaptiveRequest {
   tdb: number;

@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   adaptiveAshraeDeclaration,
   adaptiveAshraeZonesList,
-} from "../../../comfortModels/adaptive/adaptiveAshrae";
+} from "../../../comfortModels/adaptive/ashrae";
 import {
   adaptiveEnDeclaration,
   adaptiveEnZonesList,
-} from "../../../comfortModels/adaptive/adaptiveEn";
+} from "../../../comfortModels/adaptive/en";
 import { heatIndexZonesList } from "../../../comfortModels/heatIndex";
 import { humidexZonesList } from "../../../comfortModels/humidex";
 import { pmvZonesList } from "../../../comfortModels/pmv/calculation";

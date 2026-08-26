@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { adaptiveAshraeZonesList } from "../comfortModels/adaptive/adaptiveAshrae";
-import { adaptiveEnZonesList } from "../comfortModels/adaptive/adaptiveEn";
+import { adaptiveAshraeZonesList } from "../comfortModels/adaptive/ashrae";
+import { adaptiveEnZonesList } from "../comfortModels/adaptive/en";
 import { heatIndexZonesList } from "../comfortModels/heatIndex";
 import { humidexZonesList } from "../comfortModels/humidex";
 import { pmvZonesList } from "../comfortModels/pmv/calculation";

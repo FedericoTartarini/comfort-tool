@@ -11,12 +11,12 @@ import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
   type AdaptiveModelDeclaration,
-} from "./adaptiveShared";
+} from "./shared";
 import {
   createAdaptiveComplianceBands,
   createAdaptiveComplianceCaption,
   createAdaptiveComplianceFeedbackGetter,
-} from "./adaptiveCalculation";
+} from "./calculation";
 
 export const adaptiveEnZonesList = [
   new ThermalZone({ label: "Too Cool", token: ZoneToken.TooCool }),

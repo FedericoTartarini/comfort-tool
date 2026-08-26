@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adaptiveRequestAdapter } from "../../comfortModels/adaptive/adaptiveCalculation";
+import { adaptiveRequestAdapter } from "../../comfortModels/adaptive/calculation";
 import { heatIndexRequestAdapter } from "../../comfortModels/heatIndex";
 import { humidexRequestAdapter } from "../../comfortModels/humidex";
 import { phsRequestAdapter } from "../../comfortModels/phs/phs";

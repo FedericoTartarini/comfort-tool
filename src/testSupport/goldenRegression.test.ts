@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AdaptiveResponse } from "../comfortModels/adaptive/adaptiveShared";
+import type { AdaptiveResponse } from "../comfortModels/adaptive/shared";
 import type { HumidexResponse } from "../comfortModels/humidex";
 import type { HeatIndexResponse } from "../comfortModels/heatIndex";
 import type { WindChillResponse } from "../comfortModels/windChill";
