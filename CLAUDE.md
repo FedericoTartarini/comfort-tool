@@ -31,14 +31,15 @@ Frontend-only — no backend in this repo.
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices follow that file.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. It may stay in the repo as history; do not implement from it, and do not treat “leave the brief unchanged” as a reason to block Plan work.
 - **This file** describes **current** code. When a Plan slice deletes presets, the parallel `ChartInstanceId` tree, or `spec: unknown`, the Plan wins. Do not restore application-layer `*Dto` types or `src/catalog/comfortDtos.ts` to match older sentences here.
-- Do only the named Phase ID. Do not migrate the Plan §4 folder tree unless the task is that slice. Do not add unrelated new models during the cutover.
+- Do only the named Phase ID. Do not migrate remaining Plan §4 folders (`src/routes/`, `src/views/`, `src/utils/` into `ui/`) unless the task is that slice. Do not add unrelated new models during the cutover.
 
 ## Source Layout
 
 ```
 src/
   declarations/    declarations plus focused model-family calculation/chart modules
-  components/       rendering and interaction (input-panel/, chart/, shared UI);
+  ui/
+    components/     rendering and interaction (input-panel/, chart/, shared UI);
                     site shell branding/links (`siteShellConfig.ts`)
   catalog/          centralized domain constants and metadata (physical quantities, zone tokens, model IDs, units, etc.)
   engines/
@@ -61,8 +62,8 @@ src/
 
 **Import direction** — keep cross-layer imports constrained to these lanes:
 
-- `views` → `components`, `state`
-- `components` → `state`, `catalog`, lightweight `engines`
+- `views` → `ui/components`, `state`
+- `ui/components` → `state`, `catalog`, lightweight `engines`
 - `state` → `catalog`, `engines`; the model registry imports registered configs from `declarations`
 - `declarations` → `catalog`, `engines`, and builder helpers from `state/analysis/modelConfigs`
 - `engines` → `catalog`
@@ -71,7 +72,7 @@ src/
 
 **Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/declarations/**`. Shared psychrometric helpers, stress-band derivation, chart scaffolding, adapters, reference values, and cross-model utilities belong in `src/engines/comfort/**`. State and components must not contain raw formula implementations.
 
-**`jsthermalcomfort` imports** are restricted to `src/declarations/**` and `src/engines/comfort/**`. Do not add them to `src/state/**`, `src/components/**`, `src/views/**`, or top-level engine files.
+**`jsthermalcomfort` imports** are restricted to `src/declarations/**` and `src/engines/comfort/**`. Do not add them to `src/state/**`, `src/ui/components/**`, `src/views/**`, or top-level engine files.
 
 **Unit conversion** belongs in `src/engines/units/`. Quantity conversion reads `display.units.SI` from the assembled catalog (`convertQuantityFromSi`). Control widgets stay generic. Do not scatter temperature, speed, humidity-ratio, or vapor-pressure conversions across components or state helpers. Canonical state remains SI.
 

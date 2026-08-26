@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
 
-  import SiteShell from "./components/SiteShell.svelte";
+  import SiteShell from "./ui/components/SiteShell.svelte";
   import { createAnalysisState } from "./state/analysis/createAnalysisState.svelte";
-  import ModelSwitchWarningModal from "./components/modals/ModelSwitchWarningModal.svelte";
+  import ModelSwitchWarningModal from "./ui/components/modals/ModelSwitchWarningModal.svelte";
   import {
     Router,
     navigateToUrl,

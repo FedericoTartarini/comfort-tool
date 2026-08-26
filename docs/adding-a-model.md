@@ -13,11 +13,11 @@ constant), and register once. Do not add `defineIndexModel()`, restore
 UI, share, Compare, and the Analysis controller must not grow a branch on the
 new model id. Analysis input rows, Compare toggles, and modifiers render from
 `getInputPanelViewModel` (`src/state/analysis/inputPresentation.ts`). Do not
-edit `src/components/input-panel/` for a new model.
+edit `src/ui/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. Plan §4 folder names (`ui/`) are not the live tree.
+`26-06-29-architecture-brief.md`. `src/ui/components/` is the live components tree. Remaining Plan §4 ui folders (`routes/`, `views/`, `utils/`) are not yet moved.
 Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`. Catalog lives at `src/catalog/`. Engines live at `src/engines/`.
 
 ## Recipe
@@ -89,7 +89,8 @@ src/
   App.svelte
   declarations/     one declaration entry per registered model; family
                      folders for PMV, Adaptive, UTCI, PHS
-  components/        rendering and interaction; no model-id branches;
+  ui/
+    components/      rendering and interaction; no model-id branches;
                      site shell branding/links (`siteShellConfig.ts`)
   catalog/           system quantity seed, ModelId, ChartEngine, TableType,
                      modifiers, workspace ids, zone tokens;
@@ -113,7 +114,7 @@ src/
   testSupport/       Compare helper; golden inputs/control counts from the registry
 ```
 
-Import lanes: `views` → `components`, `state`; `components` → `state`,
+Import lanes: `views` → `ui/components`, `state`; `ui/components` → `state`,
 `catalog`, lightweight `engines`; `state` → `catalog`, `engines` (the
 registry is the exception that imports `declarations`); `declarations` →
 `catalog`, `engines`, `state/analysis/modelConfigs`; `engines` → `catalog`.
@@ -270,7 +271,7 @@ validated `options`. It must not read raw `quantitiesByInput`.
 `outdoorWindSpeed`, `simpleHumidity` / `advancedHumidity`, `preset`,
 `modelQuantity`. The Analysis input panel reads those controls through
 `getInputPanelViewModel`; do not add conversion or model branches in
-`src/components/input-panel/`. Control widgets stay generic; unit conversion
+`src/ui/components/input-panel/`. Control widgets stay generic; unit conversion
 reads the assembled quantity catalog (`convertQuantityFromSi`). Option changes go only through
 `optionHandlersByKey`.
 Missing, extra, or invalid options are rejected; invalid internal option

@@ -13,7 +13,7 @@ This repository contains the active product frontend at the repository root, whi
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices (`0c`, `0t`, `0q`, …) follow that file, including registry contribution, `defineModel`, and allowed deletions.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. Do not implement from it or restore its authoring model.
 - **This file** describes the **current** tree and execution rules. When a Plan slice deletes or replaces something still named here (preset factories, the parallel `ChartInstanceId` tree, `spec: unknown`, exact `comfortModelOrder` share maps), **the Plan wins**. Do not put those back to “match AGENTS.md”.
-- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`ui/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
+- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`src/routes/`, `src/views/`, `src/utils/` into `ui/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
 - The product is not deployed. There is no share or URL compatibility requirement.
 - After a slice lands, update this file, `CLAUDE.md`, and `docs/` in the same change so current-state rules match the code.
 
@@ -24,10 +24,11 @@ Primary source layout:
 ```text
 src/
   declarations/          model declarations plus family folders (pmv/, adaptive/, phs/, utci/)
-  components/
-    chart/                 chart rendering and export UI
-    input-panel/           presentational Analysis input UI
-    siteShellConfig.ts     site branding and footer/header links
+  ui/
+    components/
+      chart/               chart rendering and export UI
+      input-panel/         presentational Analysis input UI
+      siteShellConfig.ts   site branding and footer/header links
   catalog/                 centralized domain constants and metadata (including zone tokens)
   engines/
     comfort/               shared comfort helpers, request/axis adapters, charts
@@ -56,8 +57,8 @@ src/state/analysis/types.ts
 ## Architecture Priorities
 
 - Keep cross-layer imports constrained to these lanes:
-  - `views` -> `components`, `state`
-  - `components` -> `state`, `catalog`, lightweight `engines`
+  - `views` -> `ui/components`, `state`
+  - `ui/components` -> `state`, `catalog`, lightweight `engines`
   - `state` -> `catalog`, `engines`; the model registry imports registered configs from `declarations`
   - `declarations` -> `catalog`, `engines`, and builder helpers from `state/analysis/modelConfigs`
   - `engines` -> `catalog`
@@ -79,7 +80,7 @@ Model-specific thermal-comfort logic belongs in `src/declarations/**`. Shared he
 
 All direct `jsthermalcomfort` imports must stay inside `src/declarations/**` or `src/engines/comfort/**`.
 
-- Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/components/**`, `src/views/**`, or top-level `src/engines/*.ts`.
+- Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/ui/components/**`, `src/views/**`, or top-level `src/engines/*.ts`.
 - When touching shared helpers, prefer moving reusable comfort logic under `src/engines/comfort/**` rather than adding more top-level engine files.
 
 ## Physical Quantity Rules
@@ -207,7 +208,7 @@ Avoid repeated model-mode branching across files such as:
 
 - `src/declarations/pmv/` (`ashrae.ts`, `iso.ts`, `shared.ts`, and focused calculation/chart modules)
 - `src/declarations/adaptive/` (`ashrae.ts`, `en.ts`, `shared.ts`, and focused calculation/chart modules)
-- `src/components/input-panel/` (presentational; field/option branching belongs in control behaviors and `inputPresentation.ts`)
+- `src/ui/components/input-panel/` (presentational; field/option branching belongs in control behaviors and `inputPresentation.ts`)
 - share/import-export synchronization paths
 
 Do not add more repeated `if/else` chains per mode if a config table, model descriptor, or shared helper can express the rule once.
@@ -283,9 +284,9 @@ Workspace membership is `WorkspaceId` in `src/catalog/workspaces.ts` (Standard, 
 
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 
-`ChartBuildResult` (including legend view-models) and Time-series `simulation.charts` declarations live in `src/engines/comfort/charts/` (`chartBuildResult.ts`, `simulationCharts.ts`). Time-series editor and Plotly-typed chart view models live in `src/state/timeSeries/viewModels.ts`; pure Time-series declaration contracts stay in `src/catalog/timeSeries.ts`. Site shell branding/links live in `src/components/siteShellConfig.ts`.
+`ChartBuildResult` (including legend view-models) and Time-series `simulation.charts` declarations live in `src/engines/comfort/charts/` (`chartBuildResult.ts`, `simulationCharts.ts`). Time-series editor and Plotly-typed chart view models live in `src/state/timeSeries/viewModels.ts`; pure Time-series declaration contracts stay in `src/catalog/timeSeries.ts`. Site shell branding/links live in `src/ui/components/siteShellConfig.ts`.
 
-Runtime models expose `buildTable()` and `buildChart()` through `src/state/analysis/modelConfigs/`. Shared table assembly helpers live in `src/engines/comfort/output/`. Time-series exposure summaries render through `src/components/output/MetricSummaryPanel.svelte`.
+Runtime models expose `buildTable()` and `buildChart()` through `src/state/analysis/modelConfigs/`. Shared table assembly helpers live in `src/engines/comfort/output/`. Time-series exposure summaries render through `src/ui/components/output/MetricSummaryPanel.svelte`.
 
 Share snapshots store `selectedChartInstanceId` per model. Instance ids are derived from declarations only; there is no parallel `ChartInstanceId` tree.
 

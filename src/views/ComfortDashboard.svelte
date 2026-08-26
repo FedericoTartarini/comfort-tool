@@ -3,10 +3,10 @@
 <script lang="ts">
   import { Card } from "flowbite-svelte";
 
-  import ChartPanel from "../components/chart/ChartPanel.svelte";
-  import InputPanel from "../components/input-panel/InputPanel.svelte";
-  import WorkspaceTwoColumnLayout from "../components/layout/WorkspaceTwoColumnLayout.svelte";
-  import ResultsPanel from "../components/ResultsPanel.svelte";
+  import ChartPanel from "../ui/components/chart/ChartPanel.svelte";
+  import InputPanel from "../ui/components/input-panel/InputPanel.svelte";
+  import WorkspaceTwoColumnLayout from "../ui/components/layout/WorkspaceTwoColumnLayout.svelte";
+  import ResultsPanel from "../ui/components/ResultsPanel.svelte";
   import {
     toChartInstancePanelView,
     type ChartInstancePanelView,
