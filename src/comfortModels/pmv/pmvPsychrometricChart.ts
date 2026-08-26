@@ -3,7 +3,7 @@ import type {
   PlotHoverRow,
   PlotTrace,
 } from "../../services/plotlyTypes";
-import { PhysicalQuantityId, getQuantityDisplayMeta } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, getQuantityDisplayMeta } from "../../models/quantities";
 import {
   buildComfortPolygonTrace,
   buildFilledPolygonTrace,

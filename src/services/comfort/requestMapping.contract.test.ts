@@ -8,8 +8,8 @@ import { pmvRequestAdapter } from "../../comfortModels/pmv/pmvCalculation";
 import { utciRequestAdapter } from "../../comfortModels/utci/utciCalculation";
 import { windChillRequestAdapter } from "../../comfortModels/windChill";
 import { type FieldRequestAdapter } from "./requestMapping";
-import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../models/physicalQuantities";
-import type { PrimaryQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../models/quantities";
+import type { PrimaryQuantityId } from "../../models/quantities";
 import { InputId, inputDefaultsById } from "../../models/inputSlots";
 import {
   createModelCalculationContext,

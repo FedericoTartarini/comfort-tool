@@ -1,5 +1,5 @@
 import { ModelId } from "../../models/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../models/quantities";
 import {
   PhsPosture,
   PhsQuantityId,

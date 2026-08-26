@@ -26,7 +26,7 @@ import type {
   PlotlyChartSpec,
   PlotTrace,
 } from "../../plotlyTypes";
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../../models/quantities";
 import { InputId, type InputId as InputIdType } from "../../../models/inputSlots";
 import {
   resolveBandEdge,

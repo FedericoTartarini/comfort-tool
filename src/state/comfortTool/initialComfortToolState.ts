@@ -4,7 +4,7 @@ import {
   type InputId as InputIdType,
 } from "../../models/inputSlots";
 import { WorkspaceId } from "../../models/workspaces";
-import { createDefaultPrimaryInputState } from "../../models/physicalQuantities";
+import { createDefaultPrimaryInputState } from "../../models/quantities";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import {
   seedModelOutputSettings,

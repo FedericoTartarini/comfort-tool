@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { ModelId } from "../../models/modelIds";
 import { ModifierId } from "../../models/inputModifiers";
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../models/quantities";
 import { InputId } from "../../models/inputSlots";
 import { createAnalysisState } from "../../state/comfortTool/createComfortToolState.svelte";
 import InputPanelHost from "./InputPanel.test.host.svelte";

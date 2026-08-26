@@ -7,7 +7,7 @@ import type {
   PlotHoverValue,
   PlotlyChartSpec,
 } from "../../plotlyTypes";
-import { ChartAxisQuantityId, getPhysicalQuantityMeta } from "../../../models/physicalQuantities";
+import { ChartAxisQuantityId, getPhysicalQuantityMeta } from "../../../models/quantities";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
 import {
   ChartBuildContext,

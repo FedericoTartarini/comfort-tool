@@ -1,4 +1,4 @@
-import { getPhysicalQuantityMeta, getQuantityPresentationMeta, type ChartAxisQuantityId } from "../../../models/physicalQuantities";
+import { getPhysicalQuantityMeta, getQuantityPresentationMeta, type ChartAxisQuantityId } from "../../../models/quantities";
 import { type UnitSystem as UnitSystemType } from "../../../models/units";
 import { convertQuantityFromSi, convertQuantityToSi } from "../../units";
 import type { ChartAxisScale, ChartAxisValues, ChartRange } from "./types";

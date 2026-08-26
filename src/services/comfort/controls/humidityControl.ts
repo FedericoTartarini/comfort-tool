@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, getQuantityDisplayMeta, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId, getQuantityDisplayMeta, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../../models/quantities";
 import type { InputControlId as InputControlIdType } from "../../../models/inputControls";
 import {
   HumidityInputMode,

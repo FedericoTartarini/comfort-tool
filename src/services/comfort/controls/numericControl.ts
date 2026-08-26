@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, PrimaryQuantityId, getQuantityPresentationMeta, type QuantityPresentationMeta } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId, PrimaryQuantityId, getQuantityPresentationMeta, type QuantityPresentationMeta } from "../../../models/quantities";
 import type {
   AdvancedOptionMenu,
   AdvancedOptionSection,

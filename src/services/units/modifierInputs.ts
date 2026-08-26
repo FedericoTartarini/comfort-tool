@@ -2,7 +2,7 @@ import {
   getPhysicalQuantityMeta,
   getQuantityDisplayMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import { type UnitSystem as UnitSystemType } from "../../models/units";
 import { convertQuantityFromSi, convertQuantityToSi } from "./quantityConversion";
 

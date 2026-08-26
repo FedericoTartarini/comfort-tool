@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ModelId } from "../../../models/modelIds";
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../../models/quantities";
 import { InputControlId } from "../../../models/inputControls";
 import {
   HumidityInputMode,

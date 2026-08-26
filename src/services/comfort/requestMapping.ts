@@ -1,5 +1,5 @@
 import type { ModelChartSource } from "../../models/chartSource";
-import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../models/physicalQuantities";
+import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../models/quantities";
 import {
   InputId,
   type InputId as InputIdType,

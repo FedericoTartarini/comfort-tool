@@ -4,7 +4,7 @@ import type {
   AuxiliaryInputState,
   PhysicalQuantityId,
   PrimaryInputState,
-} from "./physicalQuantities";
+} from "./quantities";
 
 /** Canonical-SI data exposed to a comfort model during calculation. */
 export interface ModelCalculationContext {

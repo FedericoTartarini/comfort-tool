@@ -5,7 +5,7 @@ import {
   PhysicalQuantityId,
   getPhysicalQuantityMeta,
   type PrimaryQuantityId,
-} from "../models/physicalQuantities";
+} from "../models/quantities";
 import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";
 import {
   declaredPrimaryQuantityIdsForModel,

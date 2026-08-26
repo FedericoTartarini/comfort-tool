@@ -3,7 +3,7 @@ import {
   PhysicalQuantityId,
   type DerivedSlotQuantityState,
   type PrimaryInputState,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 
 const STANDARD_ATMOSPHERIC_PRESSURE_PA = 101325;
 const WATER_VAPOR_MOLECULAR_WEIGHT_RATIO = 0.62198;

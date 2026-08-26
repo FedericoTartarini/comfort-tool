@@ -15,7 +15,7 @@ import {
   type ChartAxisQuantityId,
   type DerivedSlotQuantityState,
   getPhysicalQuantityMeta,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import { AirSpeedControlMode, OptionKey } from "../../models/inputModes";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";

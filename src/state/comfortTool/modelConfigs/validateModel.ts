@@ -18,7 +18,7 @@ import {
   systemQuantityMetaById,
   type PhysicalQuantityMeta,
   type QuantityExtension,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 
 /**
  * Contribution slice that assembled catalogs can check. This is not a second

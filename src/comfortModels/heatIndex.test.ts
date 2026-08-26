@@ -6,7 +6,7 @@ import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
 import { ModelId } from "../models/modelIds";
 import { UnitSystem } from "../models/units";
 import { convertModelOutputFromSi } from "../services/units";
-import { PhysicalQuantityId } from "../models/physicalQuantities";
+import { PhysicalQuantityId } from "../models/quantities";
 import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../models/quantities";
 import { InputId } from "../../models/inputSlots";
 import { ModelOutputKey, type ChartBuildContext, type NumericBand } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";

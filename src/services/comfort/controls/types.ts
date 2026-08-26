@@ -1,7 +1,7 @@
 import type {
   PrimaryInputState,
   PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 import type {
   InputControlViewModel,
   InputControlId as InputControlIdType,

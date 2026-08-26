@@ -14,7 +14,7 @@ import {
   buildParametricLineChart,
   buildTimeSeriesLineChart,
 } from "./builders";
-import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../../../models/physicalQuantities";
+import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../../../models/quantities";
 import {
   buildChartMemoKey,
   hashBands,

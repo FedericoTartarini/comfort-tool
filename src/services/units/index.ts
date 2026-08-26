@@ -1,7 +1,7 @@
 import {
   PhysicalQuantityId,
   getQuantityDisplayMeta,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import { type UnitSystem as UnitSystemType } from "../../models/units";
 export * from "./modelOutputs";
 export * from "./modifierInputs";

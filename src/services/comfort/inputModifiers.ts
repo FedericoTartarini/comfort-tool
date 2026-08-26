@@ -1,6 +1,6 @@
 import { clo_dynamic, solar_gain } from "jsthermalcomfort";
 
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../models/quantities";
 import {
   ModifierId,
   defineInputModifier,

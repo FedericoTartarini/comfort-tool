@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button, Dropdown, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import { getPhysicalQuantityMeta } from "../../models/physicalQuantities";
+  import { getPhysicalQuantityMeta } from "../../models/quantities";
   import { inputOrder } from "../../models/inputSlots";
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
   import type {

@@ -21,7 +21,7 @@ import {
   type PmvResponse,
 } from "../../../comfortModels/pmv/pmvCalculation";
 import { createModelCalculationContext } from "../../../models/modelCalculation";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../models/quantities";
 import {
   AirSpeedControlMode,
   OptionKey,

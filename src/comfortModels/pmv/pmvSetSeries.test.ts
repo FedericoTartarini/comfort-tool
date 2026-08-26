@@ -7,7 +7,7 @@ import {
   type ChartBuildContext,
 } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../models/quantities";
 import { UnitSystem } from "../../models/units";
 import { createEmptyResults } from "../../state/comfortTool/modelConfigs/builder";
 import { buildModelParametricLineChart } from "../../services/comfort/charts/kinds/parametricLine";

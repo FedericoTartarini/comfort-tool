@@ -12,7 +12,7 @@ import {
   utciAxisAdapter,
   type UtciRequest,
 } from "../../../comfortModels/utci/utci";
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../../models/quantities";
 import {
   applyDynamicAxisCoordinates,
   type DynamicAxisPayloadAdapter,

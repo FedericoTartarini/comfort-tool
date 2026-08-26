@@ -20,7 +20,7 @@ import {
   type StandardId as StandardIdType,
   type WorkspaceId as WorkspaceIdType,
 } from "../../../models/workspaces";
-import { assembleQuantityCatalog } from "../../../models/physicalQuantities";
+import { assembleQuantityCatalog } from "../../../models/quantities";
 import {
   assembleCatalogs,
   collectRegisteredQuantityExtensions,

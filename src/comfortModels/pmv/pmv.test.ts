@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
-import { PhysicalQuantityId, type PrimaryInputState } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, type PrimaryInputState } from "../../models/quantities";
 import { InputControlId } from "../../models/inputControls";
 import {
   AirSpeedControlMode,

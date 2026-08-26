@@ -6,7 +6,7 @@ import {
 } from "../../../comfortModels/pmv/pmvAshrae";
 import { CalculationSource } from "../../../models/calculationMetadata";
 import type { PlotTrace } from "../../plotlyTypes";
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../../models/quantities";
 import { InputId } from "../../../models/inputSlots";
 import {
   ModelOutputKey,

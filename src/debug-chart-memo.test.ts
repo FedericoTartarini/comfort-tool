@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { InputControlId } from "./models/inputControls";
 import { InputId } from "./models/inputSlots";
-import { PhysicalQuantityId } from "./models/physicalQuantities";
+import { PhysicalQuantityId } from "./models/quantities";
 import { createAnalysisState } from "./state/comfortTool/createComfortToolState.svelte";
 
 async function waitForIdle(

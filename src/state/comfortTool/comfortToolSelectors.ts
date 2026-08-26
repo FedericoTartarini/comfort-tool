@@ -4,7 +4,7 @@ import type {
   ModelOutputKey,
   NumericBand,
 } from "../../models/modelCapabilities";
-import type { ChartAxisQuantityId } from "../../models/physicalQuantities";
+import type { ChartAxisQuantityId } from "../../models/quantities";
 import { ChartLegendKind } from "../../services/comfort/charts/chartBuildResult";
 import { buildChartControlsViewModel } from "./chartPresentation";
 import type { AnalysisInternals } from "./comfortToolInternals";

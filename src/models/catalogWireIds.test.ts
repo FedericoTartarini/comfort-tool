@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { primaryInputOrder } from "./physicalQuantities";
+import { primaryInputOrder } from "./quantities";
 
 function parseEslintRestrictedWireStrings(): string[] {
   const source = readFileSync(resolve(process.cwd(), "eslint.config.js"), "utf8");

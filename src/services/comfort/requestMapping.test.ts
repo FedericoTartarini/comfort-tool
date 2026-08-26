@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { PhysicalQuantityId, primaryInputOrder, type PrimaryInputState } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, primaryInputOrder, type PrimaryInputState } from "../../models/quantities";
 import { InputId, inputDefaultsById } from "../../models/inputSlots";
 import {
   ModelCalculationContext,

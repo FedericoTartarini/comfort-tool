@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../models/quantities";
 import type { InputControlId as InputControlIdType } from "../../../models/inputControls";
 import {
   OptionKey,

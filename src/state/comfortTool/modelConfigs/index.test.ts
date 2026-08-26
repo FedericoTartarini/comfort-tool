@@ -28,7 +28,7 @@ import {
   getPhysicalQuantityMeta,
   primaryInputOrder,
   systemQuantityMetaById,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 import { ModifierId } from "../../../models/inputModifiers";
 import {
   findNumericBandIndexForValue,

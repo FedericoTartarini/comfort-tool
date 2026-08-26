@@ -2,7 +2,7 @@ import type { InputId as InputIdType } from "./inputSlots";
 import {
   type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "./physicalQuantities";
+} from "./quantities";
 import { FieldChartProfileKind } from "./output/fieldChartProfile";
 import type { ThermalZone } from "./thermalZone";
 import type { UnitSystem as UnitSystemType } from "./units";

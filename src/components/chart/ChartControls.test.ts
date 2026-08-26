@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../models/quantities";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";

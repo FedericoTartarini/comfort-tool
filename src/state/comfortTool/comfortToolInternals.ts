@@ -5,7 +5,7 @@ import {
 } from "../../models/inputSlots";
 import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
 import type { ModelId as ModelIdType } from "../../models/modelIds";
-import { primaryInputOrder, type ChartAxisQuantityId } from "../../models/physicalQuantities";
+import { primaryInputOrder, type ChartAxisQuantityId } from "../../models/quantities";
 import {
   type ModifierId as ModifierIdType,
 } from "../../models/inputModifiers";

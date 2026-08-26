@@ -11,7 +11,7 @@ import {
 import { ChartEngine } from "../models/output/chartKinds";
 import { TableType } from "../models/output/tableLayouts";
 import { WorkspaceId } from "../models/workspaces";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../models/physicalQuantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../models/quantities";
 import { ThermalZone } from "../models/thermalZone";
 import { ZoneToken } from "../models/zoneTokens";
 import type { GridModelChartSpec } from "../services/comfort/charts/gridModelCharts";

@@ -6,7 +6,7 @@
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
   import type { InputId as InputIdType } from "../../models/inputSlots";
   import type { ModifierId as ModifierIdType } from "../../models/inputModifiers";
-  import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../models/physicalQuantities";
+  import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../models/quantities";
   import type {
     InputModifierControlViewModel,
     InputModifierDraftEntry,

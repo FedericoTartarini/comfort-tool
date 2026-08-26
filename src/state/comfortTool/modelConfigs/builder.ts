@@ -44,7 +44,7 @@ import {
   systemQuantityMetaById,
   type ChartAxisQuantityId,
   type QuantityExtension,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 import {
   ChartEngine,
   isChartEngine,

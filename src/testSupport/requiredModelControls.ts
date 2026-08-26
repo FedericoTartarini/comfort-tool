@@ -3,7 +3,7 @@ import { InputControlId, type InputControlId as InputControlIdType } from "../mo
 import {
   PhysicalQuantityId,
   type PrimaryQuantityId,
-} from "../models/physicalQuantities";
+} from "../models/quantities";
 
 const pmvRequiredControlIds = [
   InputControlId.Temperature,

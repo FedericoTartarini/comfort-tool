@@ -11,7 +11,7 @@ import {
   type ModelOutput,
   type NumericBand,
 } from "../../../../models/modelCapabilities";
-import { getPhysicalQuantityMeta } from "../../../../models/physicalQuantities";
+import { getPhysicalQuantityMeta } from "../../../../models/quantities";
 import { getCompareInputs } from "../../helpers";
 import { buildCompareInputMarkerTraces } from "../inputPoints";
 import {

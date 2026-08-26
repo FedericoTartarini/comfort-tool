@@ -6,7 +6,7 @@ import {
   type ModifierInputValues,
 } from "../../models/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../models/inputSlots";
-import { PhysicalQuantityId, QuantityState, derivedQuantityIds, isPhysicalQuantityId, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, QuantityState, derivedQuantityIds, isPhysicalQuantityId, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../models/quantities";
 const comfortModelOrder = Object.values(ModelId) as ModelIdType[];
 
 export type QuantitiesByInputState = Record<InputIdType, PrimaryInputState>;

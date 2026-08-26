@@ -139,7 +139,7 @@ the returned instance. It is not a second authoring API — still copy
 `assembleCatalogs` merges each model's `quantities.extend` with the system
 seed, so duplicate extend ids fail assemble without a pre-merged quantity map.
 
-**Quantities.** `src/models/physicalQuantities.ts` is the system seed.
+**Quantities.** `src/models/quantities.ts` is the system seed.
 `primaryInputOrder` is the exact persisted primary-key set. Chart-only and
 derived ids stay in the catalog but never enter primary records. A
 declaration may contribute model-scoped extensions:

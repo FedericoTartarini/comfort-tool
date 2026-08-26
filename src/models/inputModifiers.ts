@@ -3,7 +3,7 @@ import {
   type PrimaryInputState,
   type PrimaryQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "./physicalQuantities";
+} from "./quantities";
 export const ModifierId = {
   MeasuredAirSpeed: "measuredAirSpeed",
   MorningClothingEstimate: "morningClothingEstimate",

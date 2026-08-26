@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, type AuxiliaryInputState, type DerivedSlotQuantityState, type PrimaryInputState } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, type AuxiliaryInputState, type DerivedSlotQuantityState, type PrimaryInputState } from "../../models/quantities";
 import { InputId, type InputId as InputIdType } from "../../models/inputSlots";
 import {
   TemperatureMode,

@@ -1,7 +1,7 @@
 import { t_o, utci } from "jsthermalcomfort";
 import { CalculationSource } from "../../models/calculationMetadata";
 import { JsThermalComfortStandard } from "../../models/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../models/quantities";
 import {
   bandsFromThermalZones,
   ModelOutputKey,

@@ -6,7 +6,7 @@ import { adaptiveEnDeclaration } from "../comfortModels/adaptive/adaptiveEn";
 import type { AdaptiveRequest } from "../comfortModels/adaptive/adaptiveShared";
 import { InputId } from "../models/inputSlots";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
-import { PhysicalQuantityId } from "../models/physicalQuantities";
+import { PhysicalQuantityId } from "../models/quantities";
 import { UnitSystem } from "../models/units";
 import {
   toPlotlyFigure,

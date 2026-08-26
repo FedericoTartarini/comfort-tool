@@ -44,7 +44,7 @@ import {
   type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import type {
   ActiveModifiersByInputState,
   AnalysisStateSlice,

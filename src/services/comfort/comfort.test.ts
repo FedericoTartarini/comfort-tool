@@ -6,7 +6,7 @@ import {
   HumidityInputMode,
   OptionKey,
 } from "../../models/inputModes";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../models/quantities";
 import { UnitSystem } from "../../models/units";
 import {
   ModelOutputKey,

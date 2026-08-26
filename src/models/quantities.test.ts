@@ -11,7 +11,7 @@ import {
   mergeQuantityCatalog,
   primaryInputOrder,
   systemQuantityMetaById,
-} from "./physicalQuantities";
+} from "./quantities";
 
 const massExtension = {
   id: "test.bodyMass",
@@ -29,7 +29,7 @@ const massExtension = {
   maxSi: 200,
 } as const;
 
-describe("physicalQuantities metadata", () => {
+describe("quantities metadata", () => {
   it("defines system-seed metadata for every system catalog id", () => {
     for (const id of Object.values(PhysicalQuantityId)) {
       expect(systemQuantityMetaById[id].id).toBe(id);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../../models/quantities";
 import type { Band } from "../../../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { createFieldAxisScale } from "./axis";

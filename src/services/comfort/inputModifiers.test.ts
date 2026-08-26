@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { PhysicalQuantityId, type PrimaryInputState } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, type PrimaryInputState } from "../../models/quantities";
 import { JsThermalComfortStandard } from "../../models/modelIds";
 import {
   ModifierId,

@@ -15,7 +15,7 @@ import { evaluatePmvCondition } from "../comfortModels/pmv/pmvCalculation";
 import { pmvAshraeAdapter } from "../comfortModels/pmv/pmvAshrae";
 import { calculatePhs } from "../comfortModels/phs/phsCalculation";
 import { ModelId } from "../models/modelIds";
-import { PhysicalQuantityId } from "../models/physicalQuantities";
+import { PhysicalQuantityId } from "../models/quantities";
 import { PhsPosture, PhsQuantityId } from "../models/phs";
 import { InputId } from "../models/inputSlots";
 import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";

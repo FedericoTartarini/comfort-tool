@@ -1,6 +1,6 @@
 import type { OptionKey as OptionKeyType } from "./inputModes";
 import type { InputId as InputIdType } from "./inputSlots";
-import type { PhysicalQuantityId as PhysicalQuantityIdType } from "./physicalQuantities";
+import type { PhysicalQuantityId as PhysicalQuantityIdType } from "./quantities";
 
 export const InputControlId = {
   Temperature: "temperature",

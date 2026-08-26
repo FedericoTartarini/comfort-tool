@@ -6,7 +6,7 @@ import type {
   PlotTrace,
 } from "../../services/plotlyTypes";
 import { ComplianceStatus } from "../../models/modelIds";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/quantities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { Band, ChartBuildContext } from "../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../models/units";

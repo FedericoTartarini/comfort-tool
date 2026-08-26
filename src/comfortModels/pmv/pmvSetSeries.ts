@@ -1,6 +1,6 @@
 import { two_nodes } from "jsthermalcomfort";
 
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../models/quantities";
 import type { ChartBuildContext } from "../../models/modelCapabilities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import {

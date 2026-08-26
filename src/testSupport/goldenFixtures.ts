@@ -8,7 +8,7 @@ import {
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
   type PrimaryQuantityId,
-} from "../models/physicalQuantities";
+} from "../models/quantities";
 import { InputId } from "../models/inputSlots";
 import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";
 import { createQuantitiesByInput } from "../state/comfortTool/initialComfortToolState";

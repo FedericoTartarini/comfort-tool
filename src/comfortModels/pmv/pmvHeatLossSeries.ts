@@ -1,4 +1,4 @@
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../models/quantities";
 import type { ChartBuildContext } from "../../models/modelCapabilities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import {

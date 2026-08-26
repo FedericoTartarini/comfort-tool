@@ -25,7 +25,7 @@ import {
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
   type PrimaryQuantityId,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 type PostTemperatureSynchronizer = (
   inputState: PrimaryInputState,
   derivedState: DerivedSlotQuantityState,

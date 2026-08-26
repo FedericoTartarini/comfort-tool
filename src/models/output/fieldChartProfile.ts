@@ -1,4 +1,4 @@
-import type { ChartAxisQuantityId } from "../physicalQuantities";
+import type { ChartAxisQuantityId } from "../quantities";
 import type { Band, ModelOutputKey, NumericBand } from "../modelCapabilities";
 
 export const FieldChartProfileKind = {

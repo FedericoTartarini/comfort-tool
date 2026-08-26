@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../../models/quantities";
 import { InputId } from "../../../models/inputSlots";
 import { UnitSystem } from "../../../models/units";
 import { getBaselineInputEntry } from "../helpers";

@@ -4,7 +4,7 @@ import { ModelId } from "../../../models/modelIds";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 import { WorkspaceId } from "../../../models/workspaces";
 import { ChartEngine } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";

@@ -27,7 +27,7 @@ import {
 import {
   getQuantityPresentationMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import type {
   ActiveModifiersByInputState,
   AuxiliaryQuantitiesByInputState,

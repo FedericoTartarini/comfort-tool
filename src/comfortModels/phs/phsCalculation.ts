@@ -1,7 +1,7 @@
 import { phs, p_sat } from "jsthermalcomfort";
 
 import { CalculationSource } from "../../models/calculationMetadata";
-import { getPhysicalQuantityMeta, type PhysicalQuantityId } from "../../models/physicalQuantities";
+import { getPhysicalQuantityMeta, type PhysicalQuantityId } from "../../models/quantities";
 import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PHS_STANDARD_VERSION,

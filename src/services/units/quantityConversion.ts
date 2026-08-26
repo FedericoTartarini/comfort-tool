@@ -1,7 +1,7 @@
 import {
   getPhysicalQuantityMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import {
   SiUnit,
   UnitSystem,

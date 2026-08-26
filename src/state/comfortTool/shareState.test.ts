@@ -7,7 +7,7 @@ import {
 import {
   PhysicalQuantityId,
   primaryInputOrder,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import { PhsQuantityId } from "../../models/phs";
 import { InputControlId } from "../../models/inputControls";
 import {

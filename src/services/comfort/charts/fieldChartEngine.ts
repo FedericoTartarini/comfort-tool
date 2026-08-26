@@ -1,5 +1,5 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
-import { type ChartAxisQuantityId } from "../../../models/physicalQuantities";
+import { type ChartAxisQuantityId } from "../../../models/quantities";
 import type {
   PlotAnnotation,
   PlotHoverValue,

@@ -63,7 +63,7 @@ import {
   resolveQuantityState,
   type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import type {
   AnalysisActions,
   AnalysisStateSlice,

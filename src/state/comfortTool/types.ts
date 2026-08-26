@@ -12,7 +12,7 @@ import type {
   ChartAxisQuantityId,
   AuxiliaryInputState,
   PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import type { InputControlKey as InputControlKeyType, InputControlViewModel } from "../../models/inputControls";
 import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../models/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../models/units";

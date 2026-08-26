@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ModelId } from "../../models/modelIds";
-import { PhysicalQuantityId } from "../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../models/quantities";
 import { InputId } from "../../models/inputSlots";
 import { WorkspaceId } from "../../models/workspaces";
 import {

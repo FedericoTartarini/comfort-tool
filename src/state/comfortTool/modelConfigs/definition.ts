@@ -29,7 +29,7 @@ import type {
 } from "../../../services/comfort/controls/types";
 import type { InputFieldSpec } from "../../../services/comfort/controls/fieldInputBehaviors";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
-import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../models/physicalQuantities";
+import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../models/quantities";
 
 export type ModelCalculationOutputs<ResultType, ChartSourceType> = {
   resultsByInput: Record<InputIdType, ResultType | null>;

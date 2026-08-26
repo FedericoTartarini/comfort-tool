@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "./physicalQuantities";
+import { PhysicalQuantityId } from "./quantities";
 import {
   findNumericBandIndexForValue,
   numericBandFromToken,

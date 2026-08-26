@@ -7,7 +7,7 @@ import { WorkspaceId } from "../../../models/workspaces";
 import {
   PhysicalQuantityId,
   PhysicalQuantityScope,
-} from "../../../models/physicalQuantities";
+} from "../../../models/quantities";
 import { PhsQuantityId } from "../../../models/phs";
 import { assembledCatalogs, comfortModelOrder, getComfortModelConfig } from ".";
 import {

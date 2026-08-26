@@ -4,7 +4,7 @@ import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import {
   PhysicalQuantityId,
   type ChartAxisQuantityId,
-} from "../../models/physicalQuantities";
+} from "../../models/quantities";
 import {
   inputOrder,
   type InputId as InputIdType,

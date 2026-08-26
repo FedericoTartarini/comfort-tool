@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, type PrimaryInputState } from "./physicalQuantities";
+import { PhysicalQuantityId, type PrimaryInputState } from "./quantities";
 export const InputId = {
   Input1: "input1",
   Input2: "input2",

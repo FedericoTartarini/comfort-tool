@@ -1,7 +1,7 @@
 import { CalculationSource } from "../../models/calculationMetadata";
 import type { ModelChartSource } from "../../models/chartSource";
 import type { PlotlyChartSpec } from "../../services/plotlyTypes";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/physicalQuantities";
+import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/quantities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import {
   findNumericBandIndexForValue,

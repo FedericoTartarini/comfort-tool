@@ -7,7 +7,7 @@ import {
   type ChartBuildContext,
 } from "../../../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfile";
-import { PhysicalQuantityId } from "../../../../models/physicalQuantities";
+import { PhysicalQuantityId } from "../../../../models/quantities";
 import { UnitSystem } from "../../../../models/units";
 import { ParametricYUnit, type ParametricLineGeometry } from "./types";
 import { renderParametricLineGeometry } from "./parametricLine";

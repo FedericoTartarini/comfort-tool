@@ -3,7 +3,7 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
 
-// Must match primaryInputOrder values in src/models/physicalQuantities.ts
+// Must match primaryInputOrder values in src/models/quantities.ts
 // Guarded by src/models/catalogWireIds.test.ts
 const restrictedWireStringSelectors = [
   "tdb",
@@ -267,7 +267,7 @@ export default [
     ],
     ignores: [
       "**/*.test.ts",
-      "src/models/physicalQuantities.ts",
+      "src/models/quantities.ts",
     ],
     rules: {
       "no-restricted-syntax": [

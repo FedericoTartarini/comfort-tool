@@ -1,4 +1,4 @@
-import { type ChartAxisQuantityId } from "../../models/physicalQuantities";
+import { type ChartAxisQuantityId } from "../../models/quantities";
 import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
 import { InputId, type InputId as InputIdType } from "../../models/inputSlots";
 import {
