@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { adaptiveAshraeZonesList } from "../comfortModels/adaptive/ashrae";
-import { adaptiveEnZonesList } from "../comfortModels/adaptive/en";
-import { heatIndexZonesList } from "../comfortModels/heatIndex";
-import { humidexZonesList } from "../comfortModels/humidex";
-import { pmvZonesList } from "../comfortModels/pmv/calculation";
-import { utciZonesList } from "../comfortModels/utci/calculation";
-import { windChillZonesList } from "../comfortModels/windChill";
+import { adaptiveAshraeZonesList } from "../declarations/adaptive/ashrae";
+import { adaptiveEnZonesList } from "../declarations/adaptive/en";
+import { heatIndexZonesList } from "../declarations/heatIndex";
+import { humidexZonesList } from "../declarations/humidex";
+import { pmvZonesList } from "../declarations/pmv/calculation";
+import { utciZonesList } from "../declarations/utci/calculation";
+import { windChillZonesList } from "../declarations/windChill";
 import {
   remapZoneFill,
   resolveZoneAppearance,

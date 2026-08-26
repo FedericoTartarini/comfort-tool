@@ -4,22 +4,22 @@ import { describe, expect, it } from "vitest";
 import {
   pmvAshraeAdapter,
   pmvAshraeDeclaration,
-} from "../../../comfortModels/pmv/ashrae";
+} from "../../../declarations/pmv/ashrae";
 import {
   pmvIsoDeclaration,
-} from "../../../comfortModels/pmv/iso";
+} from "../../../declarations/pmv/iso";
 import {
   createPmvModelConfig,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
-} from "../../../comfortModels/pmv/shared";
+} from "../../../declarations/pmv/shared";
 import {
   calculatePmvModel,
   pmvZonesList,
   type ComfortZoneRequest,
   type PmvChartSource,
   type PmvResponse,
-} from "../../../comfortModels/pmv/calculation";
+} from "../../../declarations/pmv/calculation";
 import { createModelCalculationContext } from "../../../models/modelCalculation";
 import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../models/quantities";
 import {

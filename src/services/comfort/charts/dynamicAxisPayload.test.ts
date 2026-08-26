@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   pmvAshraeAdapter,
-} from "../../../comfortModels/pmv/ashrae";
-import { pmvIsoAdapter } from "../../../comfortModels/pmv/iso";
+} from "../../../declarations/pmv/ashrae";
+import { pmvIsoAdapter } from "../../../declarations/pmv/iso";
 import {
   createPmvRequestAxisAdapter,
   type PmvRequest,
-} from "../../../comfortModels/pmv/calculation";
+} from "../../../declarations/pmv/calculation";
 import {
   utciAxisAdapter,
   type UtciRequest,
-} from "../../../comfortModels/utci/utci";
+} from "../../../declarations/utci/utci";
 import { PhysicalQuantityId } from "../../../models/quantities";
 import {
   applyDynamicAxisCoordinates,

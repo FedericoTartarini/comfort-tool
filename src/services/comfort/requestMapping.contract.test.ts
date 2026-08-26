@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { adaptiveRequestAdapter } from "../../comfortModels/adaptive/calculation";
-import { heatIndexRequestAdapter } from "../../comfortModels/heatIndex";
-import { humidexRequestAdapter } from "../../comfortModels/humidex";
-import { phsRequestAdapter } from "../../comfortModels/phs/phs";
-import { pmvRequestAdapter } from "../../comfortModels/pmv/calculation";
-import { utciRequestAdapter } from "../../comfortModels/utci/calculation";
-import { windChillRequestAdapter } from "../../comfortModels/windChill";
+import { adaptiveRequestAdapter } from "../../declarations/adaptive/calculation";
+import { heatIndexRequestAdapter } from "../../declarations/heatIndex";
+import { humidexRequestAdapter } from "../../declarations/humidex";
+import { phsRequestAdapter } from "../../declarations/phs/phs";
+import { pmvRequestAdapter } from "../../declarations/pmv/calculation";
+import { utciRequestAdapter } from "../../declarations/utci/calculation";
+import { windChillRequestAdapter } from "../../declarations/windChill";
 import { type FieldRequestAdapter } from "./requestMapping";
 import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../models/quantities";
 import type { PrimaryQuantityId } from "../../models/quantities";

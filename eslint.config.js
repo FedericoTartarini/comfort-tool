@@ -89,14 +89,14 @@ export default [
   },
   {
     files: ["src/**/*.{js,ts,svelte}"],
-    ignores: ["src/comfortModels/**", "src/services/comfort/**"],
+    ignores: ["src/declarations/**", "src/services/comfort/**"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [{
             group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-            message: "jsthermalcomfort belongs in comfortModels or services/comfort.",
+            message: "jsthermalcomfort belongs in declarations or services/comfort.",
           }],
         },
       ],
@@ -110,12 +110,12 @@ export default [
         {
           patterns: [
             {
-              group: ["**/models/**", "**/services/**", "**/comfortModels/**"],
+              group: ["**/models/**", "**/services/**", "**/declarations/**"],
               message: "Views may compose components and state, but may not own domain or service logic.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in comfortModels or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or services/comfort.",
             },
           ],
         },
@@ -131,12 +131,12 @@ export default [
         {
           patterns: [
             {
-              group: ["**/views/**", "**/comfortModels/**"],
+              group: ["**/views/**", "**/declarations/**"],
               message: "Components may not depend on views or model implementations.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in comfortModels or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or services/comfort.",
             },
           ],
         },
@@ -156,13 +156,13 @@ export default [
                 "**/state/**",
                 "**/components/**",
                 "**/views/**",
-                "**/comfortModels/**",
+                "**/declarations/**",
               ],
               message: "Services may depend on models and other services, not higher application layers.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in services/comfort or comfortModels.",
+              message: "jsthermalcomfort belongs in services/comfort or declarations.",
             },
           ],
         },
@@ -181,7 +181,7 @@ export default [
               "**/state/**",
               "**/components/**",
               "**/views/**",
-              "**/comfortModels/**",
+              "**/declarations/**",
             ],
             message: "Services may depend on models and other services, not higher application layers.",
           }],
@@ -190,8 +190,8 @@ export default [
     },
   },
   {
-    files: ["src/comfortModels/**/*.ts"],
-    ignores: ["src/comfortModels/**/*.test.ts"],
+    files: ["src/declarations/**/*.ts"],
+    ignores: ["src/declarations/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -223,7 +223,7 @@ export default [
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in comfortModels or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or services/comfort.",
             },
           ],
         },
@@ -247,12 +247,12 @@ export default [
               message: "State may not depend on presentation layers.",
             },
             {
-              group: ["**/comfortModels/**"],
+              group: ["**/declarations/**"],
               message: "Only the model registry may import comfort-model implementations.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in comfortModels or services/comfort.",
+              message: "jsthermalcomfort belongs in declarations or services/comfort.",
             },
           ],
         },

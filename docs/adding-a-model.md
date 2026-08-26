@@ -5,10 +5,10 @@ not generated, not linked from the product UI, and not part of the production
 build.
 
 A Heat Index–class model is three edits: copy
-[`src/comfortModels/heatIndex.ts`](../src/comfortModels/heatIndex.ts) as a full
+[`src/declarations/heatIndex.ts`](../src/declarations/heatIndex.ts) as a full
 `defineModel` declaration, add one `ModelId` member (the live model-id
 constant), and register once. Do not add `defineIndexModel()`, restore
-`src/comfortModels/presets/`, or put Plotly in the declaration.
+`src/declarations/presets/`, or put Plotly in the declaration.
 
 UI, share, Compare, and the Analysis controller must not grow a branch on the
 new model id. Analysis input rows, Compare toggles, and modifiers render from
@@ -17,13 +17,13 @@ edit `src/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. Plan §4 folder names (`catalog/`, `declarations/`) are not the live tree.
-Analysis state lives at `src/state/analysis/`.
+`26-06-29-architecture-brief.md`. Plan §4 folder names (`catalog/`) are not the live tree.
+Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`.
 
 ## Recipe
 
-1. **Copy** `src/comfortModels/heatIndex.ts` to a new file under
-   `src/comfortModels/`. Keep a complete `defineModel` object: `inputFields`,
+1. **Copy** `src/declarations/heatIndex.ts` to a new file under
+   `src/declarations/`. Keep a complete `defineModel` object: `inputFields`,
    zones, `calculate`, `tables.analysis`, and `charts`. For air
    temperature plus wind, copy `windChill.ts` instead. Humidex is the other
    tdb+rh sibling.
@@ -74,7 +74,7 @@ Also forbidden in a declaration:
 - `spec: unknown`
 - a parallel `ChartInstanceId` tree
 - a third `TableType`
-- a `jsthermalcomfort` import outside `src/comfortModels/**` or
+- a `jsthermalcomfort` import outside `src/declarations/**` or
   `src/services/comfort/**`
 - UI, route, or controller `if (model === …)` branches
 - writing modifier output back onto base `quantitiesByInput`
@@ -87,7 +87,7 @@ or a separate product surface, not new `ModelId` entries.
 ```text
 src/
   App.svelte
-  comfortModels/     one declaration entry per registered model; family
+  declarations/     one declaration entry per registered model; family
                      folders for PMV, Adaptive, UTCI, PHS
   components/        rendering and interaction; no model-id branches;
                      site shell branding/links (`siteShellConfig.ts`)
@@ -114,7 +114,7 @@ src/
 
 Import lanes: `views` → `components`, `state`; `components` → `state`,
 `models`, lightweight `services`; `state` → `models`, `services` (the
-registry is the exception that imports `comfortModels`); `comfortModels` →
+registry is the exception that imports `declarations`); `declarations` →
 `models`, `services`, `state/analysis/modelConfigs`; `services` → `models`.
 
 Canonical state is SI. Calculations run in SI. Display converts through
@@ -291,8 +291,8 @@ editable working bands. Band membership is array-ordered and half-open:
 `ChartEngine.Custom` is frontend-only on PMV ASHRAE/ISO psychrometric charts
 via `ComfortModelBuilder`. PMV heat-loss and SET charts are
 `ChartEngine.ParametricLine` on those same declarations. UTCI chart specs live
-in `src/comfortModels/utci/charts.ts`. PHS chart specs live in
-`src/comfortModels/phs/charts.ts`. PHS Analysis exposure history is
+in `src/declarations/utci/charts.ts`. PHS chart specs live in
+`src/declarations/phs/charts.ts`. PHS Analysis exposure history is
 `ChartEngine.TimeSeriesLine`.
 
 ### Modifiers

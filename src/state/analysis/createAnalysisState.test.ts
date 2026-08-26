@@ -18,9 +18,9 @@ import { ModifierId } from "../../models/inputModifiers";
 import {
   pmvAshraeAdapter,
   pmvAshraeModelConfig,
-} from "../../comfortModels/pmv/ashrae";
-import type { PmvChartSource, PmvResponse } from "../../comfortModels/pmv/calculation";
-import type { UtciResponse } from "../../comfortModels/utci/utci";
+} from "../../declarations/pmv/ashrae";
+import type { PmvChartSource, PmvResponse } from "../../declarations/pmv/calculation";
+import type { UtciResponse } from "../../declarations/utci/utci";
 import { PhsQuantityId, type PhsResponse } from "../../models/phs";
 import { createAnalysisState } from "./createAnalysisState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";

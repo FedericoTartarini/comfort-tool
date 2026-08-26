@@ -17,8 +17,8 @@ import {
   createDefaultModelInputsForModel,
 } from "../services/comfort/quantityStateRouting";
 import { PhsQuantityId } from "../models/phs";
-import type { PmvRequest } from "../comfortModels/pmv/calculation";
-import type { UtciRequest } from "../comfortModels/utci/calculation";
+import type { PmvRequest } from "../declarations/pmv/calculation";
+import type { UtciRequest } from "../declarations/utci/calculation";
 import {
   declaredSiRangeForInputField,
   inputFieldControlId,

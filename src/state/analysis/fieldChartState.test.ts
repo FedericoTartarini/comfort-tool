@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { adaptiveAshraeModelConfig } from "../../comfortModels/adaptive/ashrae";
-import { pmvAshraeModelConfig } from "../../comfortModels/pmv/ashrae";
-import { utciModelConfig } from "../../comfortModels/utci/utci";
+import { adaptiveAshraeModelConfig } from "../../declarations/adaptive/ashrae";
+import { pmvAshraeModelConfig } from "../../declarations/pmv/ashrae";
+import { utciModelConfig } from "../../declarations/utci/utci";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { WorkspaceId } from "../../models/workspaces";
 import {

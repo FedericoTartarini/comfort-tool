@@ -4,23 +4,23 @@ import {
   adaptiveAshraeDeclaration,
   adaptiveAshraeModelConfig,
   adaptiveAshraeZonesList,
-} from "../../../comfortModels/adaptive/ashrae";
+} from "../../../declarations/adaptive/ashrae";
 import {
   adaptiveEnDeclaration,
   adaptiveEnModelConfig,
-} from "../../../comfortModels/adaptive/en";
+} from "../../../declarations/adaptive/en";
 import {
   calculateAdaptive,
   createAdaptiveComplianceCaption,
   getCe,
-} from "../../../comfortModels/adaptive/calculation";
-import { buildAdaptiveChart } from "../../../comfortModels/adaptive/charts";
+} from "../../../declarations/adaptive/calculation";
+import { buildAdaptiveChart } from "../../../declarations/adaptive/charts";
 import type {
   AdaptiveLevelResult,
   AdaptiveModelDeclaration,
   AdaptiveRequest,
   AdaptiveResponse,
-} from "../../../comfortModels/adaptive/shared";
+} from "../../../declarations/adaptive/shared";
 import type { ModelChartSource } from "../../../models/chartSource";
 import type {
   PlotlyChartSpec,

@@ -13,7 +13,7 @@ This repository contains the active product frontend at the repository root, whi
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices (`0c`, `0t`, `0q`, …) follow that file, including registry contribution, `defineModel`, and allowed deletions.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. Do not implement from it or restore its authoring model.
 - **This file** describes the **current** tree and execution rules. When a Plan slice deletes or replaces something still named here (preset factories, the parallel `ChartInstanceId` tree, `spec: unknown`, exact `comfortModelOrder` share maps), **the Plan wins**. Do not put those back to “match AGENTS.md”.
-- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`catalog/`, `declarations/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
+- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`catalog/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
 - The product is not deployed. There is no share or URL compatibility requirement.
 - After a slice lands, update this file, `CLAUDE.md`, and `docs/` in the same change so current-state rules match the code.
 
@@ -23,7 +23,7 @@ Primary source layout:
 
 ```text
 src/
-  comfortModels/          model declarations plus family folders (pmv/, adaptive/, phs/, utci/)
+  declarations/          model declarations plus family folders (pmv/, adaptive/, phs/, utci/)
   components/
     chart/                 chart rendering and export UI
     input-panel/           presentational Analysis input UI
@@ -58,26 +58,26 @@ src/state/analysis/types.ts
 - Keep cross-layer imports constrained to these lanes:
   - `views` -> `components`, `state`
   - `components` -> `state`, `models`, lightweight `services`
-  - `state` -> `models`, `services`; the model registry imports registered configs from `comfortModels`
-  - `comfortModels` -> `models`, `services`, and builder helpers from `state/analysis/modelConfigs`
+  - `state` -> `models`, `services`; the model registry imports registered configs from `declarations`
+  - `declarations` -> `models`, `services`, and builder helpers from `state/analysis/modelConfigs`
   - `services` -> `models`
 - Canonical shared domain state stays in SI units.
 - Views compose pages.
 - Components handle rendering and interaction.
 - State orchestrates shared UI state, mode transitions, calculation context, and scheduling.
-- `comfortModels` own model-specific zones, request mapping, calculations, result sections, and chart builders.
+- `declarations` own model-specific zones, request mapping, calculations, result sections, and chart builders.
 - Services own reusable calculations, derived-domain logic, unit conversion, and shared chart generation helpers.
 
 ## Calculation Ownership
 
-Model-specific thermal-comfort logic belongs in `src/comfortModels/**`. Shared helpers belong in `src/services/comfort/**`.
+Model-specific thermal-comfort logic belongs in `src/declarations/**`. Shared helpers belong in `src/services/comfort/**`.
 
-- PMV / PPD, UTCI, adaptive, heat-index, humidex, and wind-chill model calculations live under `src/comfortModels/**`; larger shared families keep calculation and chart construction in focused modules beside their declarations.
+- PMV / PPD, UTCI, adaptive, heat-index, humidex, and wind-chill model calculations live under `src/declarations/**`; larger shared families keep calculation and chart construction in focused modules beside their declarations.
 - Shared psychrometric helpers, stress-band derivation, reusable chart scaffolding, reference values, adapters, and cross-model utilities belong in `src/services/comfort/**`.
 - State and components must stay free of raw formula implementations.
 - If a helper is missing upstream, keep a thin local adapter beside the model when it is model-specific, or in `src/services/comfort/**` when it is reusable.
 
-All direct `jsthermalcomfort` imports must stay inside `src/comfortModels/**` or `src/services/comfort/**`.
+All direct `jsthermalcomfort` imports must stay inside `src/declarations/**` or `src/services/comfort/**`.
 
 - Do not add new direct `jsthermalcomfort` imports in `src/state/**`, `src/components/**`, `src/views/**`, or top-level `src/services/*.ts`.
 - When touching shared helpers, prefer moving reusable comfort logic under `src/services/comfort/**` rather than adding more top-level service files.
@@ -128,7 +128,7 @@ When touching `src/state/analysis/types.ts`, `src/state/analysis/createAnalysisS
 
 ## Model Extension Strategy
 
-New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; `defineModel` and the registry live in `src/state/analysis/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template; see [docs/adding-a-model.md](docs/adding-a-model.md)). Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`. After registration, `assertCompareContract` must pass for the new Analysis model.
+New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/declarations/**`; `defineModel` and the registry live in `src/state/analysis/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template; see [docs/adding-a-model.md](docs/adding-a-model.md)). Do not add `defineIndexModel()` or restore `src/declarations/presets/`. After registration, `assertCompareContract` must pass for the new Analysis model.
 
 Each registered model has one focused declaration entry that exposes its product decisions. This is not a one-physical-file rule: stable IDs remain centralized, registration remains explicit, and tests remain separate. Simple models may keep their implementation in the declaration file; larger standard families may use focused calculation/chart modules beside complete standard declarations.
 
@@ -205,8 +205,8 @@ Use the generic `ModelCalculationCache<R, C>` type for all model caches. Do not 
 
 Avoid repeated model-mode branching across files such as:
 
-- `src/comfortModels/pmv/` (`ashrae.ts`, `iso.ts`, `shared.ts`, and focused calculation/chart modules)
-- `src/comfortModels/adaptive/` (`ashrae.ts`, `en.ts`, `shared.ts`, and focused calculation/chart modules)
+- `src/declarations/pmv/` (`ashrae.ts`, `iso.ts`, `shared.ts`, and focused calculation/chart modules)
+- `src/declarations/adaptive/` (`ashrae.ts`, `en.ts`, `shared.ts`, and focused calculation/chart modules)
 - `src/components/input-panel/` (presentational; field/option branching belongs in control behaviors and `inputPresentation.ts`)
 - share/import-export synchronization paths
 
@@ -271,7 +271,7 @@ A change in this frontend is done when:
 - production build passes
 - SI remains the canonical shared state
 - no new raw domain strings were introduced
-- no new direct `jsthermalcomfort` imports were added outside `src/comfortModels/**` or `src/services/comfort/**`
+- no new direct `jsthermalcomfort` imports were added outside `src/declarations/**` or `src/services/comfort/**`
 - no new scattered conversion helpers were added outside the chosen conversion module family
 - model or chart additions do not expand the controller with more hardcoded parallel properties unless explicitly approved
 - module boundaries remain clear

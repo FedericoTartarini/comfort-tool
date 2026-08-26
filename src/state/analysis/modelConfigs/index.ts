@@ -6,15 +6,15 @@ import type {
   RuntimeComfortModelDefinition,
   SimulationOutputDeclaration,
 } from "./definition";
-import { pmvAshraeModelConfig } from "../../../comfortModels/pmv/ashrae";
-import { pmvIsoModelConfig } from "../../../comfortModels/pmv/iso";
-import { utciModelConfig } from "../../../comfortModels/utci/utci";
-import { adaptiveAshraeModelConfig } from "../../../comfortModels/adaptive/ashrae";
-import { adaptiveEnModelConfig } from "../../../comfortModels/adaptive/en";
-import { heatIndexModelConfig } from "../../../comfortModels/heatIndex";
-import { humidexModelConfig } from "../../../comfortModels/humidex";
-import { windChillModelConfig } from "../../../comfortModels/windChill";
-import { phsModelConfig } from "../../../comfortModels/phs/phs";
+import { pmvAshraeModelConfig } from "../../../declarations/pmv/ashrae";
+import { pmvIsoModelConfig } from "../../../declarations/pmv/iso";
+import { utciModelConfig } from "../../../declarations/utci/utci";
+import { adaptiveAshraeModelConfig } from "../../../declarations/adaptive/ashrae";
+import { adaptiveEnModelConfig } from "../../../declarations/adaptive/en";
+import { heatIndexModelConfig } from "../../../declarations/heatIndex";
+import { humidexModelConfig } from "../../../declarations/humidex";
+import { windChillModelConfig } from "../../../declarations/windChill";
+import { phsModelConfig } from "../../../declarations/phs/phs";
 import {
   WorkspaceId,
   type StandardId as StandardIdType,

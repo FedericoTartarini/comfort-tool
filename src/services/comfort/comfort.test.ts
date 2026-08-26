@@ -18,22 +18,22 @@ import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 
 import {
   pmvExploreOutputs,
-} from "../../comfortModels/pmv/shared";
+} from "../../declarations/pmv/shared";
 import {
   calculatePmvModel,
   type PmvChartSource,
-} from "../../comfortModels/pmv/calculation";
+} from "../../declarations/pmv/calculation";
 import {
   pmvAshraeAdapter,
   pmvAshraeModelConfig,
-} from "../../comfortModels/pmv/ashrae";
+} from "../../declarations/pmv/ashrae";
 import {
   buildUtciStressChart,
-} from "../../comfortModels/utci/charts";
+} from "../../declarations/utci/charts";
 import {
   calculateUtci,
   utciModelConfig,
-} from "../../comfortModels/utci/utci";
+} from "../../declarations/utci/utci";
 import {
   deriveRelativeHumidityFromDewPoint,
 } from "./derivations";

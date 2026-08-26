@@ -3,16 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   adaptiveAshraeDeclaration,
   adaptiveAshraeZonesList,
-} from "../../../comfortModels/adaptive/ashrae";
+} from "../../../declarations/adaptive/ashrae";
 import {
   adaptiveEnDeclaration,
   adaptiveEnZonesList,
-} from "../../../comfortModels/adaptive/en";
-import { heatIndexZonesList } from "../../../comfortModels/heatIndex";
-import { humidexZonesList } from "../../../comfortModels/humidex";
-import { pmvZonesList } from "../../../comfortModels/pmv/calculation";
-import { calculateUtci, utciZonesList } from "../../../comfortModels/utci/utci";
-import { windChillZonesList } from "../../../comfortModels/windChill";
+} from "../../../declarations/adaptive/en";
+import { heatIndexZonesList } from "../../../declarations/heatIndex";
+import { humidexZonesList } from "../../../declarations/humidex";
+import { pmvZonesList } from "../../../declarations/pmv/calculation";
+import { calculateUtci, utciZonesList } from "../../../declarations/utci/utci";
+import { windChillZonesList } from "../../../declarations/windChill";
 import { ComfortStandard } from "../../../models/calculationMetadata";
 import {
   ModelId,

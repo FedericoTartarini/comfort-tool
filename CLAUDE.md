@@ -37,7 +37,7 @@ Frontend-only — no backend in this repo.
 
 ```
 src/
-  comfortModels/    declarations plus focused model-family calculation/chart modules
+  declarations/    declarations plus focused model-family calculation/chart modules
   components/       rendering and interaction (input-panel/, chart/, shared UI);
                     site shell branding/links (`siteShellConfig.ts`)
   models/           centralized domain constants and metadata (physical quantities, zone tokens, model IDs, units, etc.)
@@ -63,15 +63,15 @@ src/
 
 - `views` → `components`, `state`
 - `components` → `state`, `models`, lightweight `services`
-- `state` → `models`, `services`; the model registry imports registered configs from `comfortModels`
-- `comfortModels` → `models`, `services`, and builder helpers from `state/analysis/modelConfigs`
+- `state` → `models`, `services`; the model registry imports registered configs from `declarations`
+- `declarations` → `models`, `services`, and builder helpers from `state/analysis/modelConfigs`
 - `services` → `models`
 
 **Canonical state is always SI.** All user input is converted to SI on entry; all calculations run in SI; display converts from SI via `src/services/units/`.
 
-**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/comfortModels/**`. Shared psychrometric helpers, stress-band derivation, chart scaffolding, adapters, reference values, and cross-model utilities belong in `src/services/comfort/**`. State and components must not contain raw formula implementations.
+**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/declarations/**`. Shared psychrometric helpers, stress-band derivation, chart scaffolding, adapters, reference values, and cross-model utilities belong in `src/services/comfort/**`. State and components must not contain raw formula implementations.
 
-**`jsthermalcomfort` imports** are restricted to `src/comfortModels/**` and `src/services/comfort/**`. Do not add them to `src/state/**`, `src/components/**`, `src/views/**`, or top-level service files.
+**`jsthermalcomfort` imports** are restricted to `src/declarations/**` and `src/services/comfort/**`. Do not add them to `src/state/**`, `src/components/**`, `src/views/**`, or top-level service files.
 
 **Unit conversion** belongs in `src/services/units/`. Quantity conversion reads `display.units.SI` from the assembled catalog (`convertQuantityFromSi`). Control widgets stay generic. Do not scatter temperature, speed, humidity-ratio, or vapor-pressure conversions across components or state helpers. Canonical state remains SI.
 
@@ -91,7 +91,7 @@ When touching state or types, prefer keyed generic records over adding more mode
 
 ## Model Configuration
 
-Model declarations live in `src/comfortModels/`. The generic authoring/runtime
+Model declarations live in `src/declarations/`. The generic authoring/runtime
 contract is in `src/state/analysis/modelConfigs/definition.ts`. `defineModel`
 is the assembly function for a complete declaration; it uses `ComfortModelBuilder`
 internally. The registry only registers built runtime definitions. Generics
@@ -118,7 +118,7 @@ Use constants from `src/models/` for `ModelId` model identifiers (`src/models/mo
 ## Capabilities, axes, and modifiers
 
 - Compliance and Explore share the Field Chart engine, with Compliance as the constrained profile.
-- Every declaration sets `workspaceCapabilities` and `exploreOutputs`; Standard-capable models also set `complianceProfile` with fixed output, non-empty bands, caption, legend title, and feedback. Assemble with `defineModel` (data-only `ModelChartDeclaration` union, `tables`, optional PHS `simulation`). Family modules may still use `ComfortModelBuilder` internally (`setCharts()`, `setTables()`, `setSimulation()`). Chart ids (`id`) are declared on the model’s `charts` entries; the builder maps them to runtime `instanceId` and the registry derives those. Duplicate ids, wrong owners, unknown engines, or a TimeSeries table without Time-series capability fail `defineModel` / registry assemble. Assembled catalogs expose optional `assembledCatalogs.validate.model` for those checks (`assembleCatalogs` installs the hook on the returned instance); it is not a second authoring API. Heat Index / Humidex maps are `ChartEngine.DynamicField`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build`. A model declaration may name an extended type with `type`; assemble preserves it on the presentation instance. PMV Dynamic is `DynamicField`; PHS Analysis exposure history is `TimeSeriesLine`. `ParametricLine` is implemented (polylines and optional limit bands). Heat-loss vs temperature and SET series builders live in `heatLossSeries.ts` / `setSeries.ts`; ASHRAE and ISO PMV declarations each register those ParametricLine instances. PMV Analysis tables include SET, cooling effect, relative air speed, and dynamic clothing as Compare-matrix rows. Explore still colours PMV and PPD; do not add a SET explore output key. UTCI chart specs live in `utci/charts.ts`. PHS chart specs live in `phs/charts.ts`. Do not restore `src/comfortModels/presets/` or add `defineIndexModel()`.
+- Every declaration sets `workspaceCapabilities` and `exploreOutputs`; Standard-capable models also set `complianceProfile` with fixed output, non-empty bands, caption, legend title, and feedback. Assemble with `defineModel` (data-only `ModelChartDeclaration` union, `tables`, optional PHS `simulation`). Family modules may still use `ComfortModelBuilder` internally (`setCharts()`, `setTables()`, `setSimulation()`). Chart ids (`id`) are declared on the model’s `charts` entries; the builder maps them to runtime `instanceId` and the registry derives those. Duplicate ids, wrong owners, unknown engines, or a TimeSeries table without Time-series capability fail `defineModel` / registry assemble. Assembled catalogs expose optional `assembledCatalogs.validate.model` for those checks (`assembleCatalogs` installs the hook on the returned instance); it is not a second authoring API. Heat Index / Humidex maps are `ChartEngine.DynamicField`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build`. A model declaration may name an extended type with `type`; assemble preserves it on the presentation instance. PMV Dynamic is `DynamicField`; PHS Analysis exposure history is `TimeSeriesLine`. `ParametricLine` is implemented (polylines and optional limit bands). Heat-loss vs temperature and SET series builders live in `heatLossSeries.ts` / `setSeries.ts`; ASHRAE and ISO PMV declarations each register those ParametricLine instances. PMV Analysis tables include SET, cooling effect, relative air speed, and dynamic clothing as Compare-matrix rows. Explore still colours PMV and PPD; do not add a SET explore output key. UTCI chart specs live in `utci/charts.ts`. PHS chart specs live in `phs/charts.ts`. Do not restore `src/declarations/presets/` or add `defineIndexModel()`.
 - Interactive Dynamic 2-D grids are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`, including UTCI Dynamic). BandScalar / 1-D may keep high sampling (for example 450 x-points). `ParametricLine` interchange is polylines and optional limit bands. Hover overlays do not attach per-cell `customdata` unless extra hover fields exist. `toPlotlyFigure` clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly mutates, and maps non-finite grid `z` to `null` gaps; it must not stringify the figure. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not capture the on-screen plot. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths. Zone fills remap through `src/models/zoneTokens.ts` (models select tokens; print and colour-blind updates happen in that table).
 - `outputSettingsByModel` stores per-model axes, baseline, and optional Explore working state. Presentation-only changes rebuild from a ready cache without scheduling calculation. `assertCompareContract` covers 1/2/3 Compare inputs, filled table columns, chart markers, and a baseline change that keeps a ready cache. Compare/coverage golden **values** are derived from each registered model's `inputFields` plus `standardPrimaryFixture` in `src/testSupport/goldenFixtures.ts`. Required control IDs and primary quantities are independently authored in `src/testSupport/requiredModelControls.ts` and pinned in focused model tests; do not derive that expected side from `inputFields`. Explicit SI overrides exist only when that fixture is outside a declared range; do not invent values from min/max or catalog `defaultSi`. Known-value calculation snapshots stay explicit numbers.
 - Strict share snapshots remain exact `version: 1`; input state uses `quantitiesByInput`, sparse `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, and `activeModifiersByInput`; `models` is sparse (omit default slices; missing known keys seed defaults; unknown keys reject); only Explore working bands are serialized, and modifier records contain the complete stable key set. Do not keep exact `comfortModelOrder` matching.
@@ -172,7 +172,7 @@ new ThermalZone({
 
 Do not define threshold constants separately and then repeat the same number in the zone array. `id`, `textColor`, `cssClass`, and `category` are optional; `id` and `cssClass` can be derived from the label or token by `ThermalZone`. Explore/Compliance bands that are not `ThermalZone` instances use `numericBandFromToken()`. Print and colour-blind updates happen in the token table, not in model files.
 
-## Architecture: comfortModels/
+## Architecture: declarations/
 
 Each registered model has one focused declaration entry. PMV uses
 `ashrae.ts` and `iso.ts` for complete standard decisions,
@@ -201,7 +201,7 @@ A change is complete when:
 - `git diff --check` passes
 - SI remains the canonical shared state
 - No new raw domain strings were introduced for model/field/chart IDs
-- No new direct `jsthermalcomfort` imports outside `src/comfortModels/**` or `src/services/comfort/**`
+- No new direct `jsthermalcomfort` imports outside `src/declarations/**` or `src/services/comfort/**`
 - No new scattered conversion helpers outside `src/services/units/`
 - Model or chart additions do not expand the controller with more hardcoded parallel properties (unless explicitly approved)
 - Internal documentation remains in `docs/` Markdown (`docs/adding-a-model.md`); it is not part of the application build. Do not add a docs generator, deploy step, or product UI route for these files.
