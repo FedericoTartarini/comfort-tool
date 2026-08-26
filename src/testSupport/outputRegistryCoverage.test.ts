@@ -19,9 +19,9 @@ describe("output registry coverage", () => {
 
     it(`${modelId} declares workspace capabilities, charts, and table builder`, () => {
       expect(config.workspaceCapabilities.length).toBeGreaterThan(0);
-      expect(config.outputCharts.entries.length).toBeGreaterThan(0);
-      expect(config.outputCharts.entries.map(({ instanceId }) => instanceId)).toEqual(
-        [...new Set(config.outputCharts.entries.map(({ instanceId }) => instanceId))],
+      expect(config.chartInstances.entries.length).toBeGreaterThan(0);
+      expect(config.chartInstances.entries.map(({ instanceId }) => instanceId)).toEqual(
+        [...new Set(config.chartInstances.entries.map(({ instanceId }) => instanceId))],
       );
       if (supportsExploreWorkspace(config.workspaceCapabilities)) {
         expect(config.exploreOutputs.length).toBeGreaterThan(0);

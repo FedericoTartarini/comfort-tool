@@ -46,7 +46,7 @@ import {
   ComfortModelBuilder,
   hasExactKeys,
   isRecord,
-  type OutputChartDeclarationInput,
+  type ChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
 import { ChartEngine } from "../../models/output/chartKinds";
 import { TableType } from "../../models/output/tableLayouts";
@@ -95,10 +95,10 @@ export interface PmvModelDeclaration {
   readonly workspaceCapabilities: readonly WorkspaceIdType[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
-  readonly psychrometricInstanceId: string;
-  readonly dynamicInstanceId: string;
-  readonly heatLossInstanceId: string;
-  readonly setInstanceId: string;
+  readonly psychrometricChartId: string;
+  readonly dynamicChartId: string;
+  readonly heatLossChartId: string;
+  readonly setChartId: string;
   readonly complianceProfile: ComplianceSpec<NumericBand, PmvResponseDto>;
   readonly defaultOptions: PmvAshraeModelOptions | PmvIsoModelOptions;
   readonly parseOptions: (value: unknown) => ModelOptionsRecord | null;
@@ -239,12 +239,12 @@ const PMV_PARAMETRIC_CHART_CAPABILITIES = {
   showsExport: true,
 } as const;
 
-export function createPmvOutputCharts(
+export function createPmvCharts(
   declaration: PmvModelDeclaration,
-): readonly OutputChartDeclarationInput<PmvResponseDto, PmvChartSourceDto>[] {
+): readonly ChartDeclarationInput<PmvResponseDto, PmvChartSourceDto>[] {
   return [
     {
-      instanceId: declaration.psychrometricInstanceId,
+      id: declaration.psychrometricChartId,
       engine: ChartEngine.Custom,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
@@ -260,11 +260,11 @@ export function createPmvOutputCharts(
       },
       spec: createPmvPsychrometricChartSpec(
         declaration,
-        declaration.psychrometricInstanceId,
+        declaration.psychrometricChartId,
       ),
     },
     {
-      instanceId: declaration.dynamicInstanceId,
+      id: declaration.dynamicChartId,
       engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
@@ -281,12 +281,12 @@ export function createPmvOutputCharts(
       supportedExploreOutputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
       spec: createPmvDynamicFieldChartSpec(
         declaration,
-        declaration.dynamicInstanceId,
+        declaration.dynamicChartId,
         PMV_DYNAMIC_AXIS_FIELDS,
       ),
     },
     {
-      instanceId: declaration.heatLossInstanceId,
+      id: declaration.heatLossChartId,
       engine: ChartEngine.ParametricLine,
       name: "Heat Loss",
       emptyMessage: "No heat-loss chart yet.",
@@ -294,7 +294,7 @@ export function createPmvOutputCharts(
       spec: createPmvHeatLossParametricSpec(),
     },
     {
-      instanceId: declaration.setInstanceId,
+      id: declaration.setChartId,
       engine: ChartEngine.ParametricLine,
       name: "SET",
       emptyMessage: "No SET chart yet.",
@@ -386,9 +386,9 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
         rows: buildPmvResultRows(),
       },
     })
-    .setOutputCharts(
-      createPmvOutputCharts(declaration),
-      { defaultInstanceId: declaration.psychrometricInstanceId },
+    .setCharts(
+      createPmvCharts(declaration),
+      { defaultChartId: declaration.psychrometricChartId },
     );
 
   if (adapter.supportsOccupantAirSpeedControl) {

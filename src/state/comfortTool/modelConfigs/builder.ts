@@ -64,12 +64,12 @@ import {
   type ChartEngineRegistration,
   type ModelChartDeclaration,
   type FrontendChartDeclaration,
-  type OutputChartDeclarationInput,
+  type ChartDeclarationInput,
   type RegisteredChartEngineSpec,
 } from "../../../services/comfort/charts/kinds/types";
 import { buildCompareMatrixTable } from "../../../services/comfort/output/tableResolver";
 
-export type { ModelChartDeclaration, FrontendChartDeclaration, OutputChartDeclarationInput };
+export type { ModelChartDeclaration, FrontendChartDeclaration, ChartDeclarationInput };
 
 export type ResultRowDefinition<T> = {
   title: string;
@@ -77,7 +77,7 @@ export type ResultRowDefinition<T> = {
   formatter: (result: T) => ResultCellViewModel;
 };
 
-interface RegisteredOutputChart<
+interface RegisteredChart<
   ResultType,
   ChartSourceType,
   ComplianceBand extends Band,
@@ -146,7 +146,7 @@ function createChartEngineRegistration<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
 ): ChartEngineRegistration<ResultType, ChartSourceType> {
   return {
-    instanceId: entry.instanceId,
+    instanceId: entry.id,
     name: entry.name,
     emptyMessage: entry.emptyMessage,
     ...(entry.note ? { note: entry.note } : {}),
@@ -164,7 +164,7 @@ function createChartInstanceDeclaration<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
 ): ChartInstanceDeclaration {
   return {
-    instanceId: entry.instanceId,
+    instanceId: entry.id,
     engine: entry.engine,
     name: entry.name,
     emptyMessage: entry.emptyMessage,
@@ -214,9 +214,9 @@ export class ComfortModelBuilder<
 
   private tables?: ModelTables<ResultType>;
 
-  private defaultOutputChartInstanceId?: string;
+  private defaultChartId?: string;
 
-  private readonly registeredOutputCharts: RegisteredOutputChart<
+  private readonly registeredCharts: RegisteredChart<
     ResultType,
     ChartSourceType,
     ComplianceBand
@@ -300,9 +300,9 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setOutputCharts(
+  setCharts(
     entries: readonly FrontendChartDeclaration<ResultType, ChartSourceType>[],
-    options?: { defaultInstanceId?: string },
+    options?: { defaultChartId?: string },
   ): this {
     if (entries.length === 0) {
       throw new Error(
@@ -310,12 +310,11 @@ export class ComfortModelBuilder<
       );
     }
 
-    const defaultInstanceId =
-      options?.defaultInstanceId ?? entries[0]!.instanceId;
-    this.defaultOutputChartInstanceId = defaultInstanceId;
+    const defaultChartId = options?.defaultChartId ?? entries[0]!.id;
+    this.defaultChartId = defaultChartId;
 
     for (const entry of entries) {
-      this.registerOutputChart(entry);
+      this.registerChart(entry);
     }
 
     return this;
@@ -373,7 +372,7 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  private registerOutputChart(
+  private registerChart(
     entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
   ): void {
     if (
@@ -381,18 +380,18 @@ export class ComfortModelBuilder<
       && !modelAllowsCustomCharts(this.id)
     ) {
       throw new Error(
-        `Custom chart "${entry.instanceId}" is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
+        `Custom chart "${entry.id}" is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
       );
     }
     const chartType = entry.type?.trim();
     if (entry.type !== undefined && chartType === "") {
       throw new Error(
-        `Chart "${entry.instanceId}" has an empty type. Named chart types must be non-empty.`,
+        `Chart "${entry.id}" has an empty type. Named chart types must be non-empty.`,
       );
     }
     if (
       chartType
-      && this.registeredOutputCharts.some(
+      && this.registeredCharts.some(
         ({ declaration }) => declaration.type === chartType,
       )
     ) {
@@ -401,24 +400,24 @@ export class ComfortModelBuilder<
       );
     }
     if (
-      this.registeredOutputCharts.some(
-        ({ registration }) => registration.instanceId === entry.instanceId,
+      this.registeredCharts.some(
+        ({ registration }) => registration.instanceId === entry.id,
       )
     ) {
       throw new Error(
-        `Comfort model declarations cannot contain duplicate chart instance IDs (${entry.instanceId}).`,
+        `Comfort model declarations cannot contain duplicate chart instance IDs (${entry.id}).`,
       );
     }
 
-    this.registeredOutputCharts.push({
+    this.registeredCharts.push({
       declaration: createChartInstanceDeclaration(entry),
       registration: createChartEngineRegistration<ResultType, ChartSourceType>(
         entry,
       ),
     });
 
-    if (!this.defaultOutputChartInstanceId) {
-      this.defaultOutputChartInstanceId = entry.instanceId;
+    if (!this.defaultChartId) {
+      this.defaultChartId = entry.id;
     }
   }
 
@@ -492,7 +491,7 @@ export class ComfortModelBuilder<
       throw new Error("Dynamic axis fields cannot contain duplicates.");
     }
 
-    const registeredFields = this.registeredOutputCharts.flatMap(
+    const registeredFields = this.registeredCharts.flatMap(
       ({ registration }) => {
         if (registration.registration.engine !== ChartEngine.DynamicField) {
           return [];
@@ -504,12 +503,12 @@ export class ComfortModelBuilder<
     return [...new Set([...explicitFields, ...registeredFields])];
   }
 
-  private resolveOutputCharts(): ComfortModelDefinition<
+  private resolveChartInstances(): ComfortModelDefinition<
     ResultType,
     ChartSourceType,
     ComplianceBand
-  >["outputCharts"] {
-    const entries = this.registeredOutputCharts.map(({ declaration }) => ({
+  >["chartInstances"] {
+    const entries = this.registeredCharts.map(({ declaration }) => ({
       ...declaration,
       ...(declaration.capabilities
         ? { capabilities: { ...declaration.capabilities } }
@@ -517,7 +516,7 @@ export class ComfortModelBuilder<
     }));
 
     const defaultInstanceId =
-      this.defaultOutputChartInstanceId ?? entries[0]?.instanceId;
+      this.defaultChartId ?? entries[0]?.instanceId;
     if (!defaultInstanceId) {
       throw new Error(
         "Comfort model declarations require at least one output chart.",
@@ -703,14 +702,14 @@ export class ComfortModelBuilder<
       throw new Error("Simulation output requires at least one chart.");
     }
 
-    const outputCharts = this.resolveOutputCharts();
-    if (outputCharts.entries.length === 0) {
+    const chartInstances = this.resolveChartInstances();
+    if (chartInstances.entries.length === 0) {
       throw new Error(
         "Comfort model declarations require at least one output chart.",
       );
     }
 
-    const instanceIds = outputCharts.entries.map(
+    const instanceIds = chartInstances.entries.map(
       ({ instanceId }) => instanceId,
     );
     if (new Set(instanceIds).size !== instanceIds.length) {
@@ -719,13 +718,13 @@ export class ComfortModelBuilder<
       );
     }
 
-    if (!instanceIds.includes(outputCharts.defaultInstanceId)) {
+    if (!instanceIds.includes(chartInstances.defaultInstanceId)) {
       throw new Error(
         "The default output chart must belong to the declared chart instances.",
       );
     }
 
-    for (const chart of outputCharts.entries) {
+    for (const chart of chartInstances.entries) {
       if (!chart.name.trim() || !chart.emptyMessage.trim()) {
         throw new Error("Chart definitions require a name and empty message.");
       }
@@ -736,7 +735,7 @@ export class ComfortModelBuilder<
         throw new Error("A locked Y axis requires an axis-selectable chart.");
       }
 
-      const registration = this.registeredOutputCharts.find(
+      const registration = this.registeredCharts.find(
         ({ registration: entry }) => entry.instanceId === chart.instanceId,
       )?.registration;
       const supportedExploreOutputs = registration?.supportedExploreOutputs;
@@ -823,10 +822,10 @@ export class ComfortModelBuilder<
 
     const complianceProfile = this.complianceProfile;
     const calculate = this.calculate;
-    const chartEngineRegistrations = this.registeredOutputCharts.map(
+    const chartEngineRegistrations = this.registeredCharts.map(
       ({ registration }) => registration,
     );
-    const registeredOutputChartsForBuild = this.registeredOutputCharts;
+    const registeredChartsForBuild = this.registeredCharts;
     const builtModelId = this.id;
 
     return {
@@ -870,9 +869,9 @@ export class ComfortModelBuilder<
             }
           : {}),
       } as ModelTables,
-      outputCharts: {
-        defaultInstanceId: outputCharts.defaultInstanceId,
-        entries: outputCharts.entries.map((entry) => ({
+      chartInstances: {
+        defaultInstanceId: chartInstances.defaultInstanceId,
+        entries: chartInstances.entries.map((entry) => ({
           ...entry,
           ...(entry.capabilities
             ? { capabilities: { ...entry.capabilities } }
@@ -901,7 +900,7 @@ export class ComfortModelBuilder<
         profile,
         context,
       ) => {
-        const chartEntry = registeredOutputChartsForBuild.find(
+        const chartEntry = registeredChartsForBuild.find(
           ({ declaration }) => declaration.instanceId === instanceId,
         );
         const showsLegend = chartEntry
@@ -974,8 +973,8 @@ export interface ModelDeclaration<
   readonly optionHandlersByKey?: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   >;
-  readonly outputCharts: readonly ModelChartDeclaration<ResultType>[];
-  readonly defaultChartInstanceId?: string;
+  readonly charts: readonly ModelChartDeclaration<ResultType>[];
+  readonly defaultChartId?: string;
   readonly tables: ModelTables<ResultType>;
   readonly calculate: ComfortModelDefinition<
     ResultType,
@@ -995,17 +994,17 @@ function assertModelChartDeclarations<TResult>(
   for (const chart of charts) {
     if (!isModelChartEngine(chart.engine)) {
       throw new Error(
-        `defineModel chart "${chart.instanceId}" uses engine "${String(chart.engine)}". defineModel cannot add ChartEngine members or declare Custom.`,
+        `defineModel chart "${chart.id}" uses engine "${String(chart.engine)}". defineModel cannot add ChartEngine members or declare Custom.`,
       );
     }
     if (specHasPlotlyBuild(chart.spec)) {
       throw new Error(
-        `defineModel chart "${chart.instanceId}" must be data-only. defineModel cannot provide a Plotly build.`,
+        `defineModel chart "${chart.id}" must be data-only. defineModel cannot provide a Plotly build.`,
       );
     }
     if (!modelChartSpecMatchesEngine(chart)) {
       throw new Error(
-        `defineModel chart "${chart.instanceId}" spec does not match engine "${chart.engine}". Extended types cannot escape the ChartEngine spec union.`,
+        `defineModel chart "${chart.id}" spec does not match engine "${chart.engine}". Extended types cannot escape the ChartEngine spec union.`,
       );
     }
   }
@@ -1019,7 +1018,7 @@ export function defineModel<
 >(
   declaration: ModelDeclaration<ResultType, ChartSourceType, ComplianceBand>,
 ): RuntimeComfortModelDefinition {
-  assertModelChartDeclarations(declaration.outputCharts);
+  assertModelChartDeclarations(declaration.charts);
 
   const builder = new ComfortModelBuilder<
     ResultType,
@@ -1034,8 +1033,8 @@ export function defineModel<
     .setWorkspaceCapabilities(declaration.workspaceCapabilities)
     .setExploreOutputs(declaration.exploreOutputs)
     .setModifiers(declaration.modifiers)
-    .setOutputCharts(declaration.outputCharts, {
-      defaultInstanceId: declaration.defaultChartInstanceId,
+    .setCharts(declaration.charts, {
+      defaultChartId: declaration.defaultChartId,
     })
     .setInputFields(declaration.inputFields)
     .setTables(declaration.tables)

@@ -37,7 +37,7 @@ const MODEL_DESCRIPTION =
   "Index that measures how cold it feels when wind is factored in with the actual air temperature.";
 const TDB_LIMITS = { min: -45, max: 0 };
 const WIND_LIMITS = { min: 1, max: 20 };
-const DYNAMIC_CHART_INSTANCE_ID = "wind-chill-dynamic-field";
+const DYNAMIC_CHART_ID = "wind-chill-dynamic-field";
 const WIND_AXIS_FIELDS = [
   PhysicalQuantityId.DryBulbTemperature,
   PhysicalQuantityId.WindSpeed,
@@ -153,9 +153,9 @@ export const windChillModelConfig = defineModel<
       maxValue: WIND_LIMITS.max,
     },
   ],
-  outputCharts: [
+  charts: [
     {
-      instanceId: DYNAMIC_CHART_INSTANCE_ID,
+      id: DYNAMIC_CHART_ID,
       engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
@@ -176,7 +176,7 @@ export const windChillModelConfig = defineModel<
       },
     },
   ],
-  defaultChartInstanceId: DYNAMIC_CHART_INSTANCE_ID,
+  defaultChartId: DYNAMIC_CHART_ID,
   tables: {
     analysis: {
       type: TableType.Analysis,

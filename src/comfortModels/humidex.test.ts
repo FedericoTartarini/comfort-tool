@@ -151,8 +151,8 @@ describe("humidex service", () => {
 
   it("declares fixed-axis and dynamic field charts from defineModel", () => {
     expect(humidexModelConfig.id).toBe(ModelId.Humidex);
-    expect(humidexModelConfig.outputCharts.defaultInstanceId).toBe("humidex-ranges");
-    expect(humidexModelConfig.outputCharts.entries.map(({ instanceId, engine }) => ({
+    expect(humidexModelConfig.chartInstances.defaultInstanceId).toBe("humidex-ranges");
+    expect(humidexModelConfig.chartInstances.entries.map(({ instanceId, engine }) => ({
       instanceId,
       engine,
     }))).toEqual([

@@ -34,8 +34,8 @@ const MODEL_LABEL = "Humidex";
 const MODEL_DESCRIPTION =
   "Canadian index used to describe how hot the weather feels to the average person, by combining the effects of heat and humidity.";
 const TDB_LIMITS = { min: 20, max: 50 };
-const FIXED_CHART_INSTANCE_ID = "humidex-ranges";
-const DYNAMIC_CHART_INSTANCE_ID = "humidex-dynamic-field";
+const FIXED_CHART_ID = "humidex-ranges";
+const DYNAMIC_CHART_ID = "humidex-dynamic-field";
 const PSYCHROMETRIC_AXIS_FIELDS = [
   PhysicalQuantityId.DryBulbTemperature,
   PhysicalQuantityId.RelativeHumidity,
@@ -121,9 +121,9 @@ export const humidexModelConfig = defineModel<
     },
     { kind: "simpleHumidity" },
   ],
-  outputCharts: [
+  charts: [
     {
-      instanceId: FIXED_CHART_INSTANCE_ID,
+      id: FIXED_CHART_ID,
       engine: ChartEngine.DynamicField,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
@@ -153,7 +153,7 @@ export const humidexModelConfig = defineModel<
       },
     },
     {
-      instanceId: DYNAMIC_CHART_INSTANCE_ID,
+      id: DYNAMIC_CHART_ID,
       engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
@@ -174,7 +174,7 @@ export const humidexModelConfig = defineModel<
       },
     },
   ],
-  defaultChartInstanceId: FIXED_CHART_INSTANCE_ID,
+  defaultChartId: FIXED_CHART_ID,
   tables: {
     analysis: {
       type: TableType.Analysis,

@@ -85,7 +85,7 @@ export interface ComfortModelDefinition<
   };
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   tables: ModelTables<ResultType>;
-  outputCharts: ModelChartInstances;
+  chartInstances: ModelChartInstances;
   chartEngineRegistrations: readonly ChartEngineRegistration<
     ResultType,
     ChartSourceType

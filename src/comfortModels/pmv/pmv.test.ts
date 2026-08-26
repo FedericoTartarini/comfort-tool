@@ -160,10 +160,10 @@ describe("PMV standard declarations", () => {
     expect(pmvIsoModelConfig.description).toContain("ISO 7730 Category B");
     expect(pmvAshraeDeclaration.complianceProfile.bands)
       .not.toBe(pmvIsoDeclaration.complianceProfile.bands);
-    expect(pmvAshraeDeclaration.heatLossInstanceId)
-      .not.toBe(pmvIsoDeclaration.heatLossInstanceId);
-    expect(pmvAshraeDeclaration.setInstanceId)
-      .not.toBe(pmvIsoDeclaration.setInstanceId);
+    expect(pmvAshraeDeclaration.heatLossChartId)
+      .not.toBe(pmvIsoDeclaration.heatLossChartId);
+    expect(pmvAshraeDeclaration.setChartId)
+      .not.toBe(pmvIsoDeclaration.setChartId);
   });
 
   it("pins required Analysis controls independently of inputFields", () => {
@@ -393,30 +393,30 @@ describe("PMV standard declarations", () => {
   it.each(standardCases)(
     "$label registers independent ParametricLine heat-loss and SET charts",
     ({ config, declaration }) => {
-      expect(config.outputCharts.defaultInstanceId)
-        .toBe(declaration.psychrometricInstanceId);
-      expect(config.outputCharts.entries.map(({ instanceId, engine, name }) => ({
+      expect(config.chartInstances.defaultInstanceId)
+        .toBe(declaration.psychrometricChartId);
+      expect(config.chartInstances.entries.map(({ instanceId, engine, name }) => ({
         instanceId,
         engine,
         name,
       }))).toEqual([
         {
-          instanceId: declaration.psychrometricInstanceId,
+          instanceId: declaration.psychrometricChartId,
           engine: ChartEngine.Custom,
           name: "Psychrometric",
         },
         {
-          instanceId: declaration.dynamicInstanceId,
+          instanceId: declaration.dynamicChartId,
           engine: ChartEngine.DynamicField,
           name: "Dynamic",
         },
         {
-          instanceId: declaration.heatLossInstanceId,
+          instanceId: declaration.heatLossChartId,
           engine: ChartEngine.ParametricLine,
           name: "Heat Loss",
         },
         {
-          instanceId: declaration.setInstanceId,
+          instanceId: declaration.setChartId,
           engine: ChartEngine.ParametricLine,
           name: "SET",
         },
@@ -444,14 +444,14 @@ describe("PMV standard declarations", () => {
       };
       const heatLoss = buildChartPlotly(
         config,
-        declaration.heatLossInstanceId,
+        declaration.heatLossChartId,
         chartSource,
         emptyPmvResults(),
         context,
       );
       const set = buildChartPlotly(
         config,
-        declaration.setInstanceId,
+        declaration.setChartId,
         chartSource,
         emptyPmvResults(),
         context,

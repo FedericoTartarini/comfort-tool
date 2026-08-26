@@ -66,7 +66,7 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   workspaceCapabilities: [WorkspaceId.Standard],
   exploreOutputs: [],
   modifiers: [],
-  boundaryInstanceId: "adaptive-ashrae-boundary",
+  boundaryChartId: "adaptive-ashrae-boundary",
   complianceProfile: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),

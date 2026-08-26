@@ -26,7 +26,7 @@ describe("chart legend attachment", () => {
     const settings = seedModelOutputSettings(config);
     const profile = buildFieldChartProfile(config, settings, WorkspaceId.Standard);
     const buildResult = config.buildChart(
-      config.outputCharts.defaultInstanceId,
+      config.chartInstances.defaultInstanceId,
       chartSource,
       resultsByInput,
       profile,

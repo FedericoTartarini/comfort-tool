@@ -30,7 +30,7 @@ export interface CatalogModelSlice {
   readonly quantities: {
     readonly extend: readonly QuantityExtension[];
   };
-  readonly outputCharts: {
+  readonly chartInstances: {
     readonly entries: readonly {
       readonly instanceId: string;
       readonly engine: string;
@@ -69,7 +69,7 @@ function indexChartOwners(models: readonly CatalogModelSlice[]): {
   const chartTypeOwners = new Map<string, ModelIdType>();
 
   for (const model of models) {
-    const instanceIds = model.outputCharts.entries.map(
+    const instanceIds = model.chartInstances.entries.map(
       ({ instanceId }) => instanceId,
     );
     if (instanceIds.length === 0) {
@@ -87,7 +87,7 @@ function indexChartOwners(models: readonly CatalogModelSlice[]): {
       }
       chartInstanceOwners.set(instanceId, model.id);
     }
-    for (const entry of model.outputCharts.entries) {
+    for (const entry of model.chartInstances.entries) {
       if (!entry.type) continue;
       const owner = chartTypeOwners.get(entry.type);
       if (owner !== undefined) {
@@ -161,7 +161,7 @@ export function validateModel(
 
   const seenInstanceIds = new Set<string>();
   const seenTypes = new Set<string>();
-  for (const entry of model.outputCharts.entries) {
+  for (const entry of model.chartInstances.entries) {
     if (!catalogs.chartEngines.has(entry.engine)) {
       throw new Error(
         `Unknown chart engine "${String(entry.engine)}". ChartEngine is a closed set.`,

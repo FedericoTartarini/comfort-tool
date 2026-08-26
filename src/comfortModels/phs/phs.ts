@@ -39,7 +39,7 @@ import { UnitSystem, type UnitSystem as UnitSystemType } from "../../models/unit
 import {
   ComfortModelBuilder,
   parseEmptyOptions,
-  type OutputChartDeclarationInput,
+  type ChartDeclarationInput,
   type ResultRowDefinition,
 } from "../../state/comfortTool/modelConfigs/builder";
 import {
@@ -380,9 +380,9 @@ builder
     },
   })
   .setModifiers([])
-  .setOutputCharts([
+  .setCharts([
     {
-      instanceId: "phs-exposure-history",
+      id: "phs-exposure-history",
       engine: ChartEngine.TimeSeriesLine,
       name: "Exposure history",
       emptyMessage: "No PHS exposure history yet.",
@@ -401,7 +401,7 @@ builder
       spec: phsExposureHistoryChartSpec,
     },
     {
-      instanceId: "phs-dynamic-field",
+      id: "phs-dynamic-field",
       engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No PHS field chart yet.",
@@ -434,11 +434,11 @@ builder
         ),
       },
     },
-  ] satisfies OutputChartDeclarationInput<
+  ] satisfies ChartDeclarationInput<
     PhsResponseDto,
     ModelChartSourceDto<PhsEnvironmentSi>
   >[], {
-    defaultInstanceId: "phs-exposure-history",
+    defaultChartId: "phs-exposure-history",
   });
 
 builder.extendQuantities(phsQuantityExtensions);

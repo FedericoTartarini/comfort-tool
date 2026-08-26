@@ -126,11 +126,11 @@ describe("windChill service", () => {
 
   it("declares a dynamic-only Explore model with air-temperature and wind axes", () => {
     expect(windChillModelConfig.id).toBe(ModelId.WindChill);
-    expect(windChillModelConfig.outputCharts.defaultInstanceId).toBe(
+    expect(windChillModelConfig.chartInstances.defaultInstanceId).toBe(
       "wind-chill-dynamic-field",
     );
-    expect(windChillModelConfig.outputCharts.entries).toHaveLength(1);
-    expect(windChillModelConfig.outputCharts.entries[0]?.instanceId).toBe(
+    expect(windChillModelConfig.chartInstances.entries).toHaveLength(1);
+    expect(windChillModelConfig.chartInstances.entries[0]?.instanceId).toBe(
       "wind-chill-dynamic-field",
     );
     expect(windChillModelConfig.dynamicAxisFields).toEqual([

@@ -270,8 +270,8 @@ export type RegisteredChartEngineSpec<TResult, ChartSourceType> =
       spec: CustomChartEngineSpec<TResult, ChartSourceType>;
     };
 
-interface OutputChartCommonFields {
-  readonly instanceId: string;
+interface ChartCommonFields {
+  readonly id: string;
   readonly name: string;
   readonly emptyMessage: string;
   readonly note?: string;
@@ -290,17 +290,17 @@ interface OutputChartCommonFields {
  * `defineModel` chart entry. Data-only discriminated union over existing
  * engines. No Custom, no Plotly `build`.
  */
-export type ModelChartDeclaration<TResult = unknown> = OutputChartCommonFields &
+export type ModelChartDeclaration<TResult = unknown> = ChartCommonFields &
   ModelChartEngineSpec<TResult>;
 
 /** Family / ComfortModelBuilder chart entry. May include frontend-owned Plotly geometry. */
 export type FrontendChartDeclaration<
   TResult = unknown,
   ChartSourceType = unknown,
-> = OutputChartCommonFields & RegisteredChartEngineSpec<TResult, ChartSourceType>;
+> = ChartCommonFields & RegisteredChartEngineSpec<TResult, ChartSourceType>;
 
 /** Family / ComfortModelBuilder chart entry. Alias of FrontendChartDeclaration. */
-export type OutputChartDeclarationInput<
+export type ChartDeclarationInput<
   TResult = unknown,
   ChartSourceType = unknown,
 > = FrontendChartDeclaration<TResult, ChartSourceType>;

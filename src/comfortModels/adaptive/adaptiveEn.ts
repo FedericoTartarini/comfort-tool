@@ -73,7 +73,7 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   workspaceCapabilities: [WorkspaceId.Standard],
   exploreOutputs: [],
   modifiers: [],
-  boundaryInstanceId: "adaptive-en-boundary",
+  boundaryChartId: "adaptive-en-boundary",
   complianceProfile: {
     output: ModelOutputKey.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),

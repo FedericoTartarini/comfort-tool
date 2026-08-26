@@ -106,7 +106,7 @@ export function createComfortToolSelectors(
     },
     getCurrentChartResult: () => getCurrentChartBuildResult().plotly,
     getCurrentChartInstance: internals.getCurrentChartInstance,
-    getCurrentChartInstances: () => internals.getActiveModelConfig().outputCharts.entries,
+    getCurrentChartInstances: () => internals.getActiveModelConfig().chartInstances.entries,
     getCurrentChartInstanceId: () => internals.getCurrentSelectedChartInstanceId(),
     getCurrentCacheStatus: () => internals.getCurrentModelCache().status,
     getCurrentChartLegendZones: () => {

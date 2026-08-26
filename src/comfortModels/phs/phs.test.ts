@@ -211,8 +211,8 @@ describe("PHS ISO 7933:2023", () => {
     expect(phsModelConfig.controls.map(({ id }) => id)).toEqual([
       ...requiredControlIdsByModel[ModelId.Phs2023],
     ]);
-    expect(phsModelConfig.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
-    expect(phsModelConfig.outputCharts.entries.map(({ instanceId }) => instanceId)).toEqual([
+    expect(phsModelConfig.chartInstances.defaultInstanceId).toBe("phs-exposure-history");
+    expect(phsModelConfig.chartInstances.entries.map(({ instanceId }) => instanceId)).toEqual([
       "phs-exposure-history",
       "phs-dynamic-field",
     ]);

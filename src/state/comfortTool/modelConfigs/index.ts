@@ -47,7 +47,7 @@ export const comfortModelConfigs: Record<
 export function getDeclaredChartInstanceIds(
   modelId: ModelIdType,
 ): readonly string[] {
-  return comfortModelConfigs[modelId].outputCharts.entries.map(
+  return comfortModelConfigs[modelId].chartInstances.entries.map(
     ({ instanceId }) => instanceId,
   );
 }

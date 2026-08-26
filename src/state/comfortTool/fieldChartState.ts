@@ -99,7 +99,7 @@ export function seedModelOutputSettings(
   config: RuntimeComfortModelDefinition,
 ): ModelOutputSettings {
   const registration = config.chartEngineRegistrations.find(
-    ({ instanceId }) => instanceId === config.outputCharts.defaultInstanceId,
+    ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
   );
 
   return {

@@ -16,10 +16,10 @@ function resolvePmvChartView(
   instanceId: string,
   declaration: PmvModelDeclaration,
 ): PmvChartViewDescriptorFactory | undefined {
-  if (instanceId === declaration.psychrometricInstanceId) {
+  if (instanceId === declaration.psychrometricChartId) {
     return createPsychrometricViewDescriptor;
   }
-  if (instanceId === declaration.dynamicInstanceId) {
+  if (instanceId === declaration.dynamicChartId) {
     return createDynamicViewDescriptor;
   }
   return undefined;
@@ -46,13 +46,13 @@ export function buildPmvChart(
 
 export function createPmvPsychrometricChartSpec(
   declaration: PmvModelDeclaration,
-  psychrometricInstanceId: string,
+  psychrometricChartId: string,
 ): CustomChartEngineSpec<PmvResponseDto, PmvChartSourceDto> {
   return {
     build: (chartSource, resultsByInput, context) => {
       if (!chartSource) return null;
       return buildPmvChart(
-        psychrometricInstanceId,
+        psychrometricChartId,
         declaration,
         chartSource,
         resultsByInput,
@@ -64,7 +64,7 @@ export function createPmvPsychrometricChartSpec(
 
 export function createPmvDynamicFieldChartSpec(
   declaration: PmvModelDeclaration,
-  dynamicInstanceId: string,
+  dynamicChartId: string,
   axisFields: readonly ChartAxisQuantityId[],
 ): DynamicFieldGeometrySpec<PmvResponseDto, PmvChartSourceDto> {
   return {
@@ -73,7 +73,7 @@ export function createPmvDynamicFieldChartSpec(
     build: (chartSource, resultsByInput, context) => {
       if (!chartSource) return null;
       return buildPmvChart(
-        dynamicInstanceId,
+        dynamicChartId,
         declaration,
         chartSource,
         resultsByInput,

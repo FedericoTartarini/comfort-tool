@@ -37,10 +37,10 @@ const pmvOutput: ModelOutput = {
 };
 
 function createModelDynamicFieldChart(
-  instanceId = "test-dynamic-field",
+  id = "test-dynamic-field",
 ): ModelChartDeclaration {
   return {
-    instanceId,
+    id,
     engine: ChartEngine.DynamicField,
     name: "Test chart",
     emptyMessage: "No test chart yet.",
@@ -65,10 +65,10 @@ function createModelDynamicFieldChart(
 }
 
 function createModelBandScalarChart(
-  instanceId = "test-band-scalar",
+  id = "test-band-scalar",
 ): ModelChartDeclaration {
   return {
-    instanceId,
+    id,
     engine: ChartEngine.BandScalar,
     name: "Stress",
     emptyMessage: "No stress chart yet.",
@@ -90,10 +90,10 @@ function createModelBandScalarChart(
 }
 
 function createModelTimeSeriesChart(
-  instanceId = "test-time-series-line",
+  id = "test-time-series-line",
 ): ModelChartDeclaration {
   return {
-    instanceId,
+    id,
     engine: ChartEngine.TimeSeriesLine,
     name: "History",
     emptyMessage: "No history chart yet.",
@@ -119,10 +119,10 @@ function createModelTimeSeriesChart(
 }
 
 function createModelBoundaryChart(
-  instanceId = "test-boundary-region",
+  id = "test-boundary-region",
 ): ModelChartDeclaration {
   return {
-    instanceId,
+    id,
     engine: ChartEngine.BoundaryRegion,
     name: "Boundary",
     emptyMessage: "No boundary chart yet.",
@@ -137,10 +137,10 @@ function createModelBoundaryChart(
 }
 
 function createModelParametricChart(
-  instanceId = "test-parametric-line",
+  id = "test-parametric-line",
 ): ModelChartDeclaration {
   return {
-    instanceId,
+    id,
     engine: ChartEngine.ParametricLine,
     name: "Parametric",
     emptyMessage: "No parametric chart yet.",
@@ -198,7 +198,7 @@ const modelChartBuildProfile = {
 
 function createPmvPsychrometricCustomChart(): FrontendChartDeclaration {
   return {
-    instanceId: "test-pmv-custom",
+    id: "test-pmv-custom",
     engine: ChartEngine.Custom,
     name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
@@ -217,7 +217,7 @@ function createExploreBuilder(
     .setWorkspaceCapabilities([WorkspaceId.Explore])
     .setExploreOutputs([pmvOutput])
     .setModifiers([])
-    .setOutputCharts([chart])
+    .setCharts([chart])
     .setTables({
       analysis: {
         type: TableType.Analysis,
@@ -249,11 +249,11 @@ function createExploreBuilder(
 describe("ComfortModelBuilder capabilities", () => {
   it("builds a complete minimal validated configuration snapshot", () => {
     const definition = createExploreBuilder().build();
-    expect(definition.outputCharts.defaultInstanceId).toBe(
+    expect(definition.chartInstances.defaultInstanceId).toBe(
       "test-dynamic-field",
     );
     expect(definition.buildChart).toBeTypeOf("function");
-    expect(definition.outputCharts.entries[0]).not.toHaveProperty("spec");
+    expect(definition.chartInstances.entries[0]).not.toHaveProperty("spec");
     expect(definition.chartEngineRegistrations[0]?.registration.engine).toBe(
       ChartEngine.DynamicField,
     );
@@ -266,14 +266,14 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(definition.chartEngineRegistrations[0]?.registration.engine).toBe(
       ChartEngine.Custom,
     );
-    expect(definition.outputCharts.defaultInstanceId).toBe("test-pmv-custom");
+    expect(definition.chartInstances.defaultInstanceId).toBe("test-pmv-custom");
   });
 
   it("rejects Custom charts on non-PMV models", () => {
     expect(() =>
       createExploreBuilder(
         {
-          instanceId: "not-psychrometric",
+          id: "not-psychrometric",
           engine: ChartEngine.Custom,
           name: "Nope",
           emptyMessage: "No chart.",
@@ -287,7 +287,7 @@ describe("ComfortModelBuilder capabilities", () => {
   it("rejects unknown chart engines", () => {
     expect(() =>
       createExploreBuilder({
-        instanceId: "invented",
+        id: "invented",
         engine: "invented-engine",
         name: "Nope",
         emptyMessage: "No chart.",
@@ -545,12 +545,12 @@ describe("defineModel", () => {
   it("assembles a complete declaration into a runtime definition", () => {
     const definition = defineModel({
       ...defineModelBase,
-      outputCharts: [createModelDynamicFieldChart()],
+      charts: [createModelDynamicFieldChart()],
     });
 
     expect(definition.id).toBe(ModelId.PmvAshrae);
     expect(definition.inputFields).toEqual([]);
-    expect(definition.outputCharts.defaultInstanceId).toBe(
+    expect(definition.chartInstances.defaultInstanceId).toBe(
       "test-dynamic-field",
     );
     expect(definition.buildChart).toBeTypeOf("function");
@@ -560,7 +560,7 @@ describe("defineModel", () => {
   it("accepts data-only defineModel charts for every permitted engine", () => {
     const definition = defineModel({
       ...defineModelBase,
-      outputCharts: createModelEngineCharts(),
+      charts: createModelEngineCharts(),
     });
 
     expect(
@@ -579,7 +579,7 @@ describe("defineModel", () => {
   it("builds a ready non-empty chart for every defineModel engine", () => {
     const definition = defineModel({
       ...defineModelBase,
-      outputCharts: createModelEngineCharts(),
+      charts: createModelEngineCharts(),
     });
     const resultsByInput = {
       ...createEmptyResults<unknown>(),
@@ -587,7 +587,7 @@ describe("defineModel", () => {
     };
     const chartSource = { inputs: { [InputId.Input1]: {} } };
 
-    for (const { instanceId } of definition.outputCharts.entries) {
+    for (const { instanceId } of definition.chartInstances.entries) {
       const result = definition.buildChart(
         instanceId,
         chartSource,
@@ -609,7 +609,7 @@ describe("defineModel", () => {
   it("accepts a named extended type on an existing defineModel engine", () => {
     const definition = defineModel({
       ...defineModelBase,
-      outputCharts: [
+      charts: [
         {
           ...createModelBandScalarChart(),
           type: "audit.stress-band",
@@ -617,7 +617,7 @@ describe("defineModel", () => {
       ],
     });
 
-    expect(definition.outputCharts.entries[0]?.type).toBe("audit.stress-band");
+    expect(definition.chartInstances.entries[0]?.type).toBe("audit.stress-band");
     expect(definition.chartEngineRegistrations[0]?.registration.engine).toBe(
       ChartEngine.BandScalar,
     );
@@ -627,7 +627,7 @@ describe("defineModel", () => {
     expect(() =>
       defineModel({
         ...defineModelBase,
-        outputCharts: [
+        charts: [
           { ...createModelBandScalarChart("type-a"), type: "audit.dup" },
           { ...createModelBandScalarChart("type-b"), type: "audit.dup" },
         ],
@@ -639,7 +639,7 @@ describe("defineModel", () => {
     expect(() =>
       defineModel({
         ...defineModelBase,
-        outputCharts: [{ ...createModelBandScalarChart(), type: "   " }],
+        charts: [{ ...createModelBandScalarChart(), type: "   " }],
       }),
     ).toThrow(/empty type/);
   });
@@ -648,7 +648,7 @@ describe("defineModel", () => {
     expect(() =>
       defineModel({
         ...defineModelBase,
-        outputCharts: [
+        charts: [
           createPmvPsychrometricCustomChart() as unknown as ModelChartDeclaration,
         ],
       }),
@@ -659,7 +659,7 @@ describe("defineModel", () => {
     expect(() =>
       defineModel({
         ...defineModelBase,
-        outputCharts: [
+        charts: [
           {
             ...createPmvPsychrometricCustomChart(),
             type: "audit.escape",
@@ -673,9 +673,9 @@ describe("defineModel", () => {
     expect(() =>
       defineModel({
         ...defineModelBase,
-        outputCharts: [
+        charts: [
           {
-            instanceId: "mixed",
+            id: "mixed",
             engine: ChartEngine.BandScalar,
             name: "Nope",
             emptyMessage: "No chart.",
@@ -690,7 +690,7 @@ describe("defineModel", () => {
     expect(() =>
       defineModel({
         ...defineModelBase,
-        outputCharts: [
+        charts: [
           {
             ...createModelDynamicFieldChart(),
             spec: {

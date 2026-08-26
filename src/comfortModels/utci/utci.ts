@@ -25,7 +25,7 @@ import {
   ComfortModelBuilder,
   hasExactKeys,
   isRecord,
-  type OutputChartDeclarationInput,
+  type ChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
 import {
   buildUtciResultRows,
@@ -89,12 +89,12 @@ const builder = new ComfortModelBuilder<
   ModelId.Utci,
 );
 
-const utciOutputCharts: OutputChartDeclarationInput<
+const utciCharts: ChartDeclarationInput<
   UtciResponseDto,
   ModelChartSourceDto<UtciRequestDto>
 >[] = [
   {
-    instanceId: "utci-stress-band",
+    id: "utci-stress-band",
     engine: ChartEngine.BandScalar,
     name: "UTCI",
     emptyMessage: "No psychrometric chart yet.",
@@ -111,7 +111,7 @@ const utciOutputCharts: OutputChartDeclarationInput<
     spec: utciStressChartSpec,
   },
   {
-    instanceId: "utci-dynamic-field",
+    id: "utci-dynamic-field",
     engine: ChartEngine.DynamicField,
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
@@ -136,8 +136,8 @@ builder
   .setWorkspaceCapabilities([WorkspaceId.Explore])
   .setExploreOutputs([utciOutput])
   .setModifiers([])
-  .setOutputCharts(utciOutputCharts, {
-    defaultInstanceId: "utci-stress-band",
+  .setCharts(utciCharts, {
+    defaultChartId: "utci-stress-band",
   });
 
 builder.setInputFields([

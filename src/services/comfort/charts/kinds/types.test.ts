@@ -77,21 +77,21 @@ describe("chart engine spec union", () => {
     expectTypeOf<ParametricSpec>().toHaveProperty("getGeometry");
     expectTypeOf<ParametricSpec>().not.toHaveProperty("build");
 
-    type AuthoringChart = ModelDeclaration<unknown, unknown>["outputCharts"][number];
+    type AuthoringChart = ModelDeclaration<unknown, unknown>["charts"][number];
     expectTypeOf<AuthoringChart>().toEqualTypeOf<ModelChartDeclaration>();
     expectTypeOf<Extract<AuthoringChart, { engine: typeof ChartEngine.Custom }>>().toBeNever();
   });
 
   it("rejects mixed engine/spec pairing on model declarations", () => {
     type BandScalarWithGridSpec = {
-      instanceId: string;
+      id: string;
       name: string;
       emptyMessage: string;
       engine: typeof ChartEngine.BandScalar;
       spec: DynamicFieldGridSpec<unknown>;
     };
     type DynamicWithBandSpec = {
-      instanceId: string;
+      id: string;
       name: string;
       emptyMessage: string;
       engine: typeof ChartEngine.DynamicField;
@@ -106,7 +106,7 @@ describe("chart engine spec union", () => {
     type ExtendedModelChart = ModelChartDeclaration & { type: "audit.named-map" };
     type ExtendedKind = ExtendedModelChart["engine"];
     type EscapingExtended = {
-      instanceId: string;
+      id: string;
       name: string;
       emptyMessage: string;
       type: "audit.escape";

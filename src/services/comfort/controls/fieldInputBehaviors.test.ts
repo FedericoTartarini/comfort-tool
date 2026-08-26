@@ -33,8 +33,8 @@ describe("fieldInputBehaviors", () => {
         defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
       }])
       .setModifiers([])
-      .setOutputCharts([{
-        instanceId: "test-dynamic-field",
+      .setCharts([{
+        id: "test-dynamic-field",
         engine: ChartEngine.DynamicField,
         name: "Test",
         emptyMessage: "Empty",

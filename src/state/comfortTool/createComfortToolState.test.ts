@@ -562,7 +562,7 @@ describe("createComfortToolState", () => {
       const modelConfig = comfortModelConfigs[modelId];
       const settings = getOutputSettings(toolState, modelId);
 
-      for (const chart of modelConfig.outputCharts.entries) {
+      for (const chart of modelConfig.chartInstances.entries) {
         const registration = modelConfig.chartEngineRegistrations.find(
           ({ instanceId }) => instanceId === chart.instanceId,
         );

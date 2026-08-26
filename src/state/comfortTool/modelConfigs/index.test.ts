@@ -110,7 +110,7 @@ describe("comfort model capability registry", () => {
 
     comfortModelOrder.forEach((modelId) => {
       expect(
-        getComfortModelConfig(modelId).outputCharts.defaultInstanceId,
+        getComfortModelConfig(modelId).chartInstances.defaultInstanceId,
       ).toBe(expectedDefaultCharts[modelId]);
     });
   });
@@ -131,7 +131,7 @@ describe("comfort model capability registry", () => {
   it("declares Heat Index and Humidex maps as DynamicField", () => {
     [ModelId.HeatIndex, ModelId.Humidex].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      const [mapChart, dynamicChart] = config.outputCharts.entries;
+      const [mapChart, dynamicChart] = config.chartInstances.entries;
       expect(mapChart.engine).toBe(ChartEngine.DynamicField);
       expect(mapChart.capabilities?.allowsAxisSelection).toBe(false);
       expect(dynamicChart.engine).toBe(ChartEngine.DynamicField);
@@ -151,7 +151,7 @@ describe("comfort model capability registry", () => {
       new Set([ModelId.PmvAshrae, ModelId.PmvIso]),
     );
     customCharts.forEach(({ modelId, instanceId }) => {
-      const entry = getComfortModelConfig(modelId).outputCharts.entries.find(
+      const entry = getComfortModelConfig(modelId).chartInstances.entries.find(
         (chart) => chart.instanceId === instanceId,
       );
       expect(entry?.engine).toBe(ChartEngine.Custom);
@@ -162,11 +162,11 @@ describe("comfort model capability registry", () => {
   it("declares PMV Dynamic as DynamicField", () => {
     [ModelId.PmvAshrae, ModelId.PmvIso].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      const dynamic = config.outputCharts.entries.find(
+      const dynamic = config.chartInstances.entries.find(
         ({ name }) => name === "Dynamic",
       );
       expect(dynamic?.engine).toBe(ChartEngine.DynamicField);
-      const psychrometric = config.outputCharts.entries.find(
+      const psychrometric = config.chartInstances.entries.find(
         ({ name }) => name === "Psychrometric",
       );
       expect(psychrometric?.engine).toBe(ChartEngine.Custom);
@@ -189,10 +189,10 @@ describe("comfort model capability registry", () => {
 
     [ModelId.PmvAshrae, ModelId.PmvIso].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      const heatLoss = config.outputCharts.entries.find(
+      const heatLoss = config.chartInstances.entries.find(
         ({ name }) => name === "Heat Loss",
       );
-      const set = config.outputCharts.entries.find(
+      const set = config.chartInstances.entries.find(
         ({ name }) => name === "SET",
       );
       expect(heatLoss?.engine).toBe(ChartEngine.ParametricLine);
@@ -209,7 +209,7 @@ describe("comfort model capability registry", () => {
 
   it("declares both PHS charts and their chart-specific Explore capabilities", () => {
     const config = getComfortModelConfig(ModelId.Phs2023);
-    const [history, dynamic] = config.outputCharts.entries;
+    const [history, dynamic] = config.chartInstances.entries;
     const historyRegistration = config.chartEngineRegistrations.find(
       ({ instanceId }) => instanceId === "phs-exposure-history",
     );
@@ -217,7 +217,7 @@ describe("comfort model capability registry", () => {
       ({ instanceId }) => instanceId === "phs-dynamic-field",
     );
 
-    expect(config.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
+    expect(config.chartInstances.defaultInstanceId).toBe("phs-exposure-history");
     expect(history.instanceId).toBe("phs-exposure-history");
     expect(history.engine).toBe(ChartEngine.TimeSeriesLine);
     expect(history.capabilities).toEqual(
@@ -611,9 +611,9 @@ describe("comfort model capability registry", () => {
         const config = getComfortModelConfig(modelId);
         const chartInstanceId = adaptiveChartInstance[modelId];
         expect(
-          config.outputCharts.entries.map(({ instanceId }) => instanceId),
+          config.chartInstances.entries.map(({ instanceId }) => instanceId),
         ).toEqual([chartInstanceId]);
-        expect(config.outputCharts.defaultInstanceId).toBe(chartInstanceId);
+        expect(config.chartInstances.defaultInstanceId).toBe(chartInstanceId);
         expect(config.dynamicAxisFields).toEqual([
           PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
           PhysicalQuantityId.OperativeTemperature,

@@ -35,8 +35,8 @@ const MODEL_LABEL = "Heat Index";
 const MODEL_DESCRIPTION =
   "Combines air temperature and relative humidity to determine the human-perceived equivalent temperature.";
 const TDB_LIMITS = { min: 20, max: 50 };
-const FIXED_CHART_INSTANCE_ID = "heat-index-ranges";
-const DYNAMIC_CHART_INSTANCE_ID = "heat-index-dynamic-field";
+const FIXED_CHART_ID = "heat-index-ranges";
+const DYNAMIC_CHART_ID = "heat-index-dynamic-field";
 const PSYCHROMETRIC_AXIS_FIELDS = [
   PhysicalQuantityId.DryBulbTemperature,
   PhysicalQuantityId.RelativeHumidity,
@@ -127,9 +127,9 @@ export const heatIndexModelConfig = defineModel<
     },
     { kind: "simpleHumidity" },
   ],
-  outputCharts: [
+  charts: [
     {
-      instanceId: FIXED_CHART_INSTANCE_ID,
+      id: FIXED_CHART_ID,
       engine: ChartEngine.DynamicField,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
@@ -159,7 +159,7 @@ export const heatIndexModelConfig = defineModel<
       },
     },
     {
-      instanceId: DYNAMIC_CHART_INSTANCE_ID,
+      id: DYNAMIC_CHART_ID,
       engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
@@ -180,7 +180,7 @@ export const heatIndexModelConfig = defineModel<
       },
     },
   ],
-  defaultChartInstanceId: FIXED_CHART_INSTANCE_ID,
+  defaultChartId: FIXED_CHART_ID,
   tables: {
     analysis: {
       type: TableType.Analysis,

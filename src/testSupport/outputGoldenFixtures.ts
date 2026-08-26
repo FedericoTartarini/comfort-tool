@@ -109,7 +109,7 @@ export function buildModelOutputGoldenSnapshot(
   supportsExploreWorkspace(config.workspaceCapabilities) ? WorkspaceId.Explore : null,
   ].filter((workspace) => workspace !== null);
 
-  for (const chartInstance of config.outputCharts.entries) {
+  for (const chartInstance of config.chartInstances.entries) {
     for (const workspace of workspaces) {
       const mode = workspace === WorkspaceId.Explore ? FieldChartProfileKind.Explore : FieldChartProfileKind.Compliance;
       const profile = buildFieldChartProfile(config, baseSettings, workspace);

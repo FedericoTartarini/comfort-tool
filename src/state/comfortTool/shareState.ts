@@ -450,7 +450,7 @@ function parseModelSnapshot(
   }
 
   const config = getComfortModelConfig(modelId);
-  const chartInstance = config.outputCharts.entries.find(
+  const chartInstance = config.chartInstances.entries.find(
     ({ instanceId }) => instanceId === value.selectedChartInstanceId,
   );
   if (!chartInstance) {
@@ -656,7 +656,7 @@ function createDefaultModelSnapshot(
 ): ShareModelSnapshot {
   const config = getComfortModelConfig(modelId);
   return {
-    selectedChartInstanceId: config.outputCharts.defaultInstanceId,
+    selectedChartInstanceId: config.chartInstances.defaultInstanceId,
     options: { ...config.defaultOptions },
     outputSettings: cloneOutputSettings(seedModelOutputSettings(config)),
   };

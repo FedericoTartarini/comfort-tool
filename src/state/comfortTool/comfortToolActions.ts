@@ -161,7 +161,7 @@ export function createComfortToolActions(
 
   function setSelectedChartInstance(instanceId: string) {
     const config = internals.getActiveModelConfig();
-    const nextInstance = config.outputCharts.entries.find(
+    const nextInstance = config.chartInstances.entries.find(
       (entry) => entry.instanceId === instanceId,
     );
     if (!nextInstance) {

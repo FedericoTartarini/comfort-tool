@@ -62,12 +62,12 @@ describe("output integration", () => {
       const settings = seedModelOutputSettings(config);
 
       if (supportsStandardWorkspace(config.workspaceCapabilities)) {
-        const chartInstance = config.outputCharts.entries.find(
-          ({ instanceId }) => instanceId === config.outputCharts.defaultInstanceId,
+        const chartInstance = config.chartInstances.entries.find(
+          ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;
         const profile = buildFieldChartProfile(config, settings, WorkspaceId.Standard);
         const buildResult = config.buildChart(
-          config.outputCharts.defaultInstanceId,
+          config.chartInstances.defaultInstanceId,
           chartSource,
           resultsByInput,
           profile,
@@ -89,12 +89,12 @@ describe("output integration", () => {
       }
 
       if (supportsExploreWorkspace(config.workspaceCapabilities)) {
-        const chartInstance = config.outputCharts.entries.find(
-          ({ instanceId }) => instanceId === config.outputCharts.defaultInstanceId,
+        const chartInstance = config.chartInstances.entries.find(
+          ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;
         const profile = buildFieldChartProfile(config, settings, WorkspaceId.Explore);
         const buildResult = config.buildChart(
-          config.outputCharts.defaultInstanceId,
+          config.chartInstances.defaultInstanceId,
           chartSource,
           resultsByInput,
           profile,
@@ -130,7 +130,7 @@ describe("output integration", () => {
     const settings = seedModelOutputSettings(config);
     const baseProfile = buildFieldChartProfile(config, settings, WorkspaceId.Explore);
     const first = config.buildChart(
-      config.outputCharts.defaultInstanceId,
+      config.chartInstances.defaultInstanceId,
       chartSource,
       resultsByInput,
       baseProfile,
@@ -151,7 +151,7 @@ describe("output integration", () => {
       zOutput: ModelOutputKey.Pmv,
     };
     const second = config.buildChart(
-      config.outputCharts.defaultInstanceId,
+      config.chartInstances.defaultInstanceId,
       chartSource,
       resultsByInput,
       editedProfile,

@@ -46,7 +46,7 @@ export function createDefaultCompareInputIds(): InputIdType[] {
 
 export function createSelectedChartInstanceByModel(): SelectedChartInstanceByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
-    accumulator[modelId] = comfortModelConfigs[modelId].outputCharts.defaultInstanceId;
+    accumulator[modelId] = comfortModelConfigs[modelId].chartInstances.defaultInstanceId;
     return accumulator;
   }, {} as SelectedChartInstanceByModelState);
 }

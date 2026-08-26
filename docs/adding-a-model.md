@@ -25,7 +25,7 @@ tree.
 
 1. **Copy** `src/comfortModels/heatIndex.ts` to a new file under
    `src/comfortModels/`. Keep a complete `defineModel` object: `inputFields`,
-   zones, `calculate`, `tables.analysis`, and `outputCharts`. For air
+   zones, `calculate`, `tables.analysis`, and `charts`. For air
    temperature plus wind, copy `windChill.ts` instead. Humidex is the other
    tdb+rh sibling.
 2. **Add the model id** to `ModelId` in `src/models/comfortModels.ts`.
@@ -163,12 +163,12 @@ fail assemble.
 
 **Charts.** Closed engines: `ChartEngine.DynamicField`, `BoundaryRegion`,
 `ParametricLine`, `BandScalar`, `TimeSeriesLine`, and frontend-only `Custom`
-(PMV psychrometric geometry). `defineModel` `outputCharts` is a data-only
+(PMV psychrometric geometry). `defineModel` `charts` is a data-only
 `ModelChartDeclaration` union discriminated on `engine:` over the non-Custom
 engines. Optional `type`
 names an extended type on that same engine; assemble preserves it and rejects
-empty or duplicate types. Instance ids live only on the declaration
-(`instanceId`); the registry derives them (`getDeclaredChartInstanceIds`).
+empty or duplicate types. Chart ids live only on the declaration
+(`id`); the registry derives them (`getDeclaredChartInstanceIds`).
 Heat Index / Humidex fixed-axis maps are `ChartEngine.DynamicField` with
 `lockedAxes`, not `Custom`. `ParametricLine` interchange is polylines and
 optional limit bands (heat-loss vs temperature and SET series builders live
@@ -225,8 +225,8 @@ Visible product decisions:
   from `src/models/zoneTokens.ts` (screen / publication / colour-blind).
   Each boundary appears once as zone `min` / `max`. Do not put hex in the
   declaration.
-- `outputCharts` with declaration-owned `instanceId`s and
-  `defaultChartInstanceId` (dedicated/fixed chart first; Dynamic only when
+- `charts` with declaration-owned `id`s and
+  `defaultChartId` (dedicated/fixed chart first; Dynamic only when
   there is no other chart)
 - `tables: { analysis, timeSeries? }`
 - `dynamicAxisFields` and `defaultDynamicAxes` when the model has a Dynamic

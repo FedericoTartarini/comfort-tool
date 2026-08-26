@@ -150,7 +150,7 @@ function buildPsychrometric(
 ): PlotlyChartResponseDto {
   const { config, result } = calculateModel(declaration);
   const chart = buildChartPlotly(config,
-    declaration.psychrometricInstanceId,
+    declaration.psychrometricChartId,
     source,
     createResults(result),
     createContext(
@@ -204,7 +204,7 @@ function buildDynamic(
 ): PlotlyChartResponseDto {
   const { config, result, source } = calculateModel(declaration, request);
   const chart = buildChartPlotly(config,
-    declaration.dynamicInstanceId,
+    declaration.dynamicChartId,
     source,
     createResults(result),
     createContext(declaration, xField, yField, outputKey, unitSystem, profileKind),

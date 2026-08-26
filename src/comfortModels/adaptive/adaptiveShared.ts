@@ -32,7 +32,7 @@ import {
 } from "../../services/comfort/controls/temperatureControl";
 import {
   ComfortModelBuilder,
-  type OutputChartDeclarationInput,
+  type ChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
 import { ChartEngine } from "../../models/output/chartKinds";
 import {
@@ -88,7 +88,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   workspaceCapabilities: readonly WorkspaceIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
-  boundaryInstanceId: string;
+  boundaryChartId: string;
   complianceProfile: ComplianceSpec<Band, AdaptiveResponseDto>;
   resultStandard: ComfortStandard;
   operativeTemperatureStandard: JsThermalComfortStandard;
@@ -183,11 +183,11 @@ export function createAdaptiveModelConfig(
       },
     });
 
-  const boundaryChart: OutputChartDeclarationInput<
+  const boundaryChart: ChartDeclarationInput<
     AdaptiveResponseDto,
     ModelChartSourceDto<AdaptiveRequestDto>
   > = {
-    instanceId: declaration.boundaryInstanceId,
+    id: declaration.boundaryChartId,
     engine: ChartEngine.BoundaryRegion,
     name: "Adaptive",
     emptyMessage: "No adaptive chart yet.",
@@ -214,8 +214,8 @@ export function createAdaptiveModelConfig(
     },
   };
 
-  builder.setOutputCharts([boundaryChart], {
-    defaultInstanceId: declaration.boundaryInstanceId,
+  builder.setCharts([boundaryChart], {
+    defaultChartId: declaration.boundaryChartId,
   });
 
   return builder.build();

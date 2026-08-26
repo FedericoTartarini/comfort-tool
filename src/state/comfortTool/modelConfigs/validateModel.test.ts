@@ -35,7 +35,7 @@ function createCatalogSlice(
   const instanceId = `${overrides.id}-audit-chart`;
   return {
     quantities: { extend: [] },
-    outputCharts: {
+    chartInstances: {
       entries: [
         {
           instanceId,
@@ -126,7 +126,7 @@ describe("assembled catalog validate.model", () => {
       assembleCatalogs([
         createCatalogSlice({
           id: ModelId.HeatIndex,
-          outputCharts: {
+          chartInstances: {
             entries: [
               { instanceId: sharedInstanceId, engine: ChartEngine.DynamicField },
             ],
@@ -140,7 +140,7 @@ describe("assembled catalog validate.model", () => {
         }),
         createCatalogSlice({
           id: ModelId.Humidex,
-          outputCharts: {
+          chartInstances: {
             entries: [
               { instanceId: sharedInstanceId, engine: ChartEngine.DynamicField },
             ],
@@ -161,7 +161,7 @@ describe("assembled catalog validate.model", () => {
       installedValidateModel(assembledCatalogs)(
         createCatalogSlice({
           id: ModelId.HeatIndex,
-          outputCharts: {
+          chartInstances: {
             entries: [
               {
                 instanceId: "pmv-ashrae-psychrometric",
@@ -187,7 +187,7 @@ describe("assembled catalog validate.model", () => {
       assembleCatalogs([
         createCatalogSlice({
           id: ModelId.HeatIndex,
-          outputCharts: {
+          chartInstances: {
             entries: [
               {
                 instanceId: "heat-audit",
@@ -199,7 +199,7 @@ describe("assembled catalog validate.model", () => {
         }),
         createCatalogSlice({
           id: ModelId.Humidex,
-          outputCharts: {
+          chartInstances: {
             entries: [
               {
                 instanceId: "humidex-audit",
@@ -323,7 +323,7 @@ describe("assembled catalog validate.model", () => {
       installedValidateModel(assembledCatalogs)(
         createCatalogSlice({
           id: ModelId.HeatIndex,
-          outputCharts: {
+          chartInstances: {
             entries: [{ instanceId: "invented", engine: "invented-engine" }],
           },
           chartEngineRegistrations: [

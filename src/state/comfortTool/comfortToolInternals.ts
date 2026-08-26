@@ -170,7 +170,7 @@ export function createComfortToolInternals(
 
   function getCurrentChartInstance(): ChartInstanceDeclaration {
     const selectedInstanceId = getCurrentSelectedChartInstanceId();
-    const instance = getActiveModelConfig().outputCharts.entries.find(
+    const instance = getActiveModelConfig().chartInstances.entries.find(
       ({ instanceId }) => instanceId === selectedInstanceId,
     );
     if (!instance) {
