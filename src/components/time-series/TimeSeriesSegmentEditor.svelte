@@ -9,7 +9,7 @@
     TrashBinOutline,
   } from "flowbite-svelte-icons";
 
-  import type { TimeSeriesSegmentViewModel } from "../../models/timeSeries";
+  import type { TimeSeriesSegmentViewModel } from "../../state/timeSeries/viewModels";
   import type { TimeSeriesController } from "../../state/timeSeries/types";
 
   interface Props {

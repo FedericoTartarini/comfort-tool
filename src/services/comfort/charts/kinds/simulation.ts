@@ -1,7 +1,7 @@
 import type { PlotlyChartResponseDto } from "../../../../models/comfortDtos";
 import { ChartEngine } from "../../../../models/output/chartKinds";
 import type { UnitSystem as UnitSystemType } from "../../../../models/units";
-import type { SimulationChartDeclaration } from "../../../../models/output/simulationCharts";
+import type { SimulationChartDeclaration } from "../simulationCharts";
 
 export function resolveSimulationChartBuild(
   chart: SimulationChartDeclaration,

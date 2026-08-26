@@ -1,6 +1,6 @@
-import { ChartEngine } from "./chartKinds";
-import type { PlotlyChartResponseDto } from "../comfortDtos";
-import type { UnitSystem as UnitSystemType } from "../units";
+import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import { ChartEngine } from "../../../models/output/chartKinds";
+import type { UnitSystem as UnitSystemType } from "../../../models/units";
 
 export interface SimulationTimeSeriesLineChartSpec {
   readonly build: (

@@ -2,7 +2,7 @@ import type {
   ModelChartSourceDto,
   PlotlyChartResponseDto,
 } from "../../../../models/comfortDtos";
-import type { ChartBuildResult } from "../../../../models/output/chartBuildResult";
+import type { ChartBuildResult } from "../chartBuildResult";
 import { ChartEngine } from "../../../../models/output/chartKinds";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type {

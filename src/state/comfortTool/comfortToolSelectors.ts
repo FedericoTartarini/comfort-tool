@@ -1,11 +1,11 @@
-import type { ChartAxisQuantityId } from "../../models/physicalQuantities";
+import type { ModelId as ModelIdType } from "../../models/comfortModels";
+import type { InputId as InputIdType } from "../../models/inputSlots";
 import type {
   ModelOutputKey,
   NumericBand,
 } from "../../models/modelCapabilities";
-import { ChartLegendKind } from "../../models/output/chartBuildResult";
-import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ModelId as ModelIdType } from "../../models/comfortModels";
+import type { ChartAxisQuantityId } from "../../models/physicalQuantities";
+import { ChartLegendKind } from "../../services/comfort/charts/chartBuildResult";
 import { buildChartControlsViewModel } from "./chartPresentation";
 import type { AnalysisInternals } from "./comfortToolInternals";
 import {

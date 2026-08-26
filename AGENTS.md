@@ -27,9 +27,11 @@ src/
   components/
     chart/                 chart rendering and export UI
     input-panel/           presentational Analysis input UI
+    siteShellConfig.ts     site branding and footer/header links
   models/                  centralized domain constants and metadata (including zone tokens)
   services/
-    comfort/               shared comfort helpers, request/axis adapters, charts, modifiers
+    comfort/               shared comfort helpers, request/axis adapters, charts
+                           (ChartBuildResult, simulation chart declarations), modifiers
     units/                 SI <-> active-unit-system conversion helpers
     chartTheme.ts          Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
     plotlyFigure.ts        Plotly adapter (clone boundary; screen vs publication theme)
@@ -37,6 +39,7 @@ src/
   state/
     comfortTool/           controller, model configs, share state, pure
                            projections (chartPresentation, inputPresentation)
+    timeSeries/            separate PHS controller; editor/chart view models
   views/                   page composition only
 ```
 
@@ -275,11 +278,13 @@ A change in this frontend is done when:
 
 ## Output Registry
 
-Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, Explore, Time-series). Analysis and Time-series output metadata lives under `src/models/output/`:
+Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, Explore, Time-series). Analysis and Time-series table/engine metadata lives under `src/models/output/`:
 
 - `tableLayouts.ts` — `TableType.Analysis` / `TimeSeries`. Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`.
 - `chartKinds.ts` — closed chart engines (`ChartEngine`), instance presentation types, and capability defaults. Discriminated engine specs live in `services/comfort/charts/kinds/types.ts`. Chart ids are derived from `charts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances.
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
+
+`ChartBuildResult` (including legend view-models) and Time-series `simulation.charts` declarations live in `src/services/comfort/charts/` (`chartBuildResult.ts`, `simulationCharts.ts`). Time-series editor and Plotly-typed chart view models live in `src/state/timeSeries/viewModels.ts`; pure Time-series declaration contracts stay in `src/models/timeSeries.ts`. Site shell branding/links live in `src/components/siteShellConfig.ts`.
 
 Runtime models expose `buildTable()` and `buildChart()` through `src/state/comfortTool/modelConfigs/`. Shared table assembly helpers live in `src/services/comfort/output/`. Time-series exposure summaries render through `src/components/output/MetricSummaryPanel.svelte`.
 

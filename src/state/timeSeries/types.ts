@@ -1,8 +1,8 @@
+import type { TimeSeriesModelReference } from "../../models/timeSeries";
 import type {
   TimeSeriesChartViewModel,
   TimeSeriesEditorViewModel,
-  TimeSeriesModelReference,
-} from "../../models/timeSeries";
+} from "./viewModels";
 import type { MetricSummaryItemViewModel } from "../../models/output/tableLayouts";
 import type { UnitSystem as UnitSystemType } from "../../models/units";
 import type { TimeSeriesModelId } from "./modelConfigs";

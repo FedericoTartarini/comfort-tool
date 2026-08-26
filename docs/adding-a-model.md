@@ -90,12 +90,15 @@ src/
   App.svelte
   comfortModels/     one declaration entry per registered model; family
                      folders for PMV, Adaptive, UTCI, PHS
-  components/        rendering and interaction; no model-id branches
+  components/        rendering and interaction; no model-id branches;
+                     site shell branding/links (`siteShellConfig.ts`)
   models/            system quantity seed, ModelId, ChartEngine, TableType,
-                     modifiers, workspace ids, zone tokens
+                     modifiers, workspace ids, zone tokens;
+                     Time-series declaration contracts (`timeSeries.ts`)
   routes/            client router
   services/
-    comfort/         adapters, engines, modifiers, psychrometrics, table assembly
+    comfort/         adapters, engines, modifiers, psychrometrics, table assembly;
+                     ChartBuildResult and simulation chart declarations
     units/           SI ↔ display conversion
     chartTheme.ts    Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
     plotlyFigure.ts  Plotly adapter (clone boundary; screen vs publication theme)
@@ -103,7 +106,7 @@ src/
   state/
     comfortTool/     Analysis controller, defineModel, registry, share codec,
                      pure projections (chartPresentation, inputPresentation)
-    timeSeries/      separate PHS Time-series controller
+    timeSeries/      separate PHS Time-series controller; editor/chart view models
     workspace/       route / model / mode coordination
   views/             page composition
   testSupport/       Compare helper; golden inputs/control counts from the registry

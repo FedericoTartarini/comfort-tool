@@ -3,7 +3,7 @@ import type { ComplianceSpec } from "../../../../models/modelCapabilities";
 import {
   ChartLegendKind,
   type ChartLegendViewModel,
-} from "../../../../models/output/chartBuildResult";
+} from "../chartBuildResult";
 import {
   FieldChartProfileKind,
 } from "../../../../models/output/fieldChartProfile";

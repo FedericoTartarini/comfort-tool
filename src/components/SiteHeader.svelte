@@ -3,7 +3,7 @@
   import { BarsOutline, LinkOutline } from "flowbite-svelte-icons";
   import { onDestroy } from "svelte";
 
-  import { siteBrand, siteHeaderLinks } from "../models/siteShellConfig";
+  import { siteBrand, siteHeaderLinks } from "./siteShellConfig";
   import { buildShareUrl } from "../state/comfortTool/shareState";
   import type { AnalysisController } from "../state/comfortTool/types";
 

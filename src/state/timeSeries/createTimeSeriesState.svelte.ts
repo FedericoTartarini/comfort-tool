@@ -1,8 +1,8 @@
+import type { RuntimeTimeSeriesModelDefinition } from "../../models/timeSeries";
 import {
   buildTimeSeriesEditorViewModel,
-  type RuntimeTimeSeriesModelDefinition,
   type TimeSeriesChartViewModel,
-} from "../../models/timeSeries";
+} from "./viewModels";
 import type { MetricSummaryItemViewModel } from "../../models/output/tableLayouts";
 import { buildMetricSummaryTable } from "../../services/comfort/output/tableResolver";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";

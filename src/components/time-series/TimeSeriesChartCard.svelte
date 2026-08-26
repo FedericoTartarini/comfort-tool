@@ -3,7 +3,7 @@
 <script lang="ts">
   import { Card } from "flowbite-svelte";
 
-  import type { TimeSeriesChartViewModel } from "../../models/timeSeries";
+  import type { TimeSeriesChartViewModel } from "../../state/timeSeries/viewModels";
   import type { PublicationExportHandler } from "../../services/plotlyExport";
   import ChartExportDropdown from "../chart/ChartExportDropdown.svelte";
   import PlotlyChartCard from "../chart/PlotlyChartCard.svelte";

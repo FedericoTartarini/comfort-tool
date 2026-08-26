@@ -1,4 +1,4 @@
-import type { ChartBuildResult } from "../../../../models/output/chartBuildResult";
+import type { ChartBuildResult } from "../chartBuildResult";
 import type { FieldChartProfile } from "../../../../models/output/fieldChartProfile";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type { UnitSystem as UnitSystemType } from "../../../../models/units";

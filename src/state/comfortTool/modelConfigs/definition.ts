@@ -9,25 +9,25 @@ import type {
   ModelOutput,
   NumericBand,
 } from "../../../models/modelCapabilities";
-import type { ChartBuildResult } from "../../../models/output/chartBuildResult";
 import type { ModelChartInstances } from "../../../models/output/chartKinds";
 import type { FieldChartProfile } from "../../../models/output/fieldChartProfile";
 import type { ModelTables } from "../../../models/output/tableLayouts";
-import type {
-  SimulationOutputDeclaration,
-} from "../../../models/output/simulationCharts";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 import type {
   StandardId as StandardIdType,
   WorkspaceId,
 } from "../../../models/workspaces";
+import type { ChartBuildResult } from "../../../services/comfort/charts/chartBuildResult";
+import type {
+  SimulationOutputDeclaration,
+} from "../../../services/comfort/charts/simulationCharts";
+import type { ChartEngineRegistration } from "../../../services/comfort/charts/kinds/types";
 import type {
   BehaviorPatch,
   ControlBehaviorContext,
   InputControlDefinition,
 } from "../../../services/comfort/controls/types";
 import type { InputFieldSpec } from "../../../services/comfort/controls/fieldInputBehaviors";
-import type { ChartEngineRegistration } from "../../../services/comfort/charts/kinds/types";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
 import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../models/physicalQuantities";
 
@@ -58,7 +58,7 @@ export type {
   SimulationChartDeclaration,
   SimulationOutputDeclaration,
   SimulationTimeSeriesLineChartSpec,
-} from "../../../models/output/simulationCharts";
+} from "../../../services/comfort/charts/simulationCharts";
 
 /**
  * Strongly typed declaration used while assembling one model. The builder

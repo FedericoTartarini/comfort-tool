@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfile";
 import { InputId } from "../../../../models/inputSlots";
 import { UnitSystem } from "../../../../models/units";
-import { ChartLegendKind } from "../../../../models/output/chartBuildResult";
+import { ChartLegendKind } from "../chartBuildResult";
 import {
   buildChartMemoKey,
   clearChartMemo,

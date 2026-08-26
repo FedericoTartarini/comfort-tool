@@ -1,5 +1,5 @@
 import type { ModelId as ModelIdType } from "../../../../models/comfortModels";
-import type { ChartBuildResult } from "../../../../models/output/chartBuildResult";
+import type { ChartBuildResult } from "../chartBuildResult";
 import type { FieldChartProfile } from "../../../../models/output/fieldChartProfile";
 import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfile";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";

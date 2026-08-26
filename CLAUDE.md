@@ -38,10 +38,12 @@ Frontend-only — no backend in this repo.
 ```
 src/
   comfortModels/    declarations plus focused model-family calculation/chart modules
-  components/       rendering and interaction (input-panel/, chart/, shared UI)
+  components/       rendering and interaction (input-panel/, chart/, shared UI);
+                    site shell branding/links (`siteShellConfig.ts`)
   models/           centralized domain constants and metadata (physical quantities, zone tokens, model IDs, units, etc.)
   services/
-    comfort/        shared comfort helpers, request/axis adapters, charts, modifiers
+    comfort/        shared comfort helpers, request/axis adapters, charts
+                    (ChartBuildResult, simulation chart declarations), modifiers
     units/          SI <-> IP conversion helpers
     chartTheme.ts   Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
     plotlyFigure.ts Plotly adapter (clone boundary; screen vs publication theme)
@@ -49,6 +51,7 @@ src/
   state/
     comfortTool/    controller, model definitions/registry, share codec,
                     pure projections (chartPresentation, inputPresentation)
+    timeSeries/     separate PHS controller; editor/chart view models
   views/            page composition only (ComfortDashboard.svelte)
   App.svelte        root component
 ```

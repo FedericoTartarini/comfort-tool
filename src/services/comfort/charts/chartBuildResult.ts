@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../comfortDtos";
+import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
 
 export const ChartLegendKind = {
   Bands: "bands",

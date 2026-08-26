@@ -14,7 +14,7 @@
     siteFooterDocumentationLink,
     siteFooterGithubLink,
     siteFooterSummary,
-  } from "../models/siteShellConfig";
+  } from "./siteShellConfig";
 </script>
 
 <Footer class="border-t border-stone-800 bg-stone-950 text-white rounded-none">
