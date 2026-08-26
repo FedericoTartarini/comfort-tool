@@ -1,4 +1,4 @@
-import { ModelId, type ModelId as ModelIdType } from "../models/comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../models/modelIds";
 import { InputControlId, type InputControlId as InputControlIdType } from "../models/inputControls";
 import {
   PhysicalQuantityId,

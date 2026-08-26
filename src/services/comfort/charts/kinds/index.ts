@@ -1,4 +1,4 @@
-import type { ModelId as ModelIdType } from "../../../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../../../models/modelIds";
 import type { ChartBuildResult } from "../chartBuildResult";
 import type { FieldChartProfile } from "../../../../models/output/fieldChartProfile";
 import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfile";

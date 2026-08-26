@@ -8,7 +8,7 @@ import {
 } from "jsthermalcomfort";
 
 import { ComfortStandard } from "../../models/calculationMetadata";
-import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
 import { defaultPmvIsoOptions } from "../../models/inputModes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { UnitSystem } from "../../models/units";

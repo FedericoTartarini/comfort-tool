@@ -4,7 +4,7 @@ import {
   type InputId as InputIdType,
 } from "../../models/inputSlots";
 import type { ChartInstanceDeclaration } from "../../models/output/chartKinds";
-import type { ModelId as ModelIdType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/modelIds";
 import { primaryInputOrder, type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import {
   type ModifierId as ModifierIdType,

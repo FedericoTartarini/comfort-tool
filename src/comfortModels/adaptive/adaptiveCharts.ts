@@ -5,7 +5,7 @@ import type {
   PlotlyChartSpec,
   PlotTrace,
 } from "../../services/plotlyTypes";
-import { ComplianceStatus } from "../../models/comfortModels";
+import { ComplianceStatus } from "../../models/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/physicalQuantities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { Band, ChartBuildContext } from "../../models/modelCapabilities";

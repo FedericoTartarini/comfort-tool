@@ -4,7 +4,7 @@
     CloseCircleOutline,
     ExclamationCircleOutline,
   } from "flowbite-svelte-icons";
-  import { ComplianceStatus } from "../../models/comfortModels";
+  import { ComplianceStatus } from "../../models/modelIds";
   import {
     FieldChartProfileKind,
     type FieldChartProfileKind as FieldChartProfileKindType,

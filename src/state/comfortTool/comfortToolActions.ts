@@ -1,4 +1,4 @@
-import type { ModelId as ModelIdType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/modelIds";
 import type { InputControlKey as InputControlKeyType } from "../../models/inputControls";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {

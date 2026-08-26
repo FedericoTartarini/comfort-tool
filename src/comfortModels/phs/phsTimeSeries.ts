@@ -1,4 +1,4 @@
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../models/physicalQuantities";
 import {
   PhsPosture,

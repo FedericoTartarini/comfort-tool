@@ -5,7 +5,7 @@
   import {
     ModelId,
     type ModelId as ModelIdType,
-  } from "../../models/comfortModels";
+  } from "../../models/modelIds";
   import type { AnalysisController } from "../../state/comfortTool/types";
 
   interface Props {

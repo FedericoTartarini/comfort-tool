@@ -8,7 +8,7 @@ import type {
   CompareInputMap,
   ModelChartSource,
 } from "../../models/chartSource";
-import { ComplianceStatus } from "../../models/comfortModels";
+import { ComplianceStatus } from "../../models/modelIds";
 import {
   PhysicalQuantityId,
   getQuantityPresentationMeta,

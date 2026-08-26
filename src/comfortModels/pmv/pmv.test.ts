@@ -2,7 +2,7 @@ import { pmv_ppd, pmv_ppd_ashrae } from "jsthermalcomfort";
 import { describe, expect, it, vi } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
-import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
 import { PhysicalQuantityId, type PrimaryInputState } from "../../models/physicalQuantities";
 import { InputControlId } from "../../models/inputControls";
 import {

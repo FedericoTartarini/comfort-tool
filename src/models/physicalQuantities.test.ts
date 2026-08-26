@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "./comfortModels";
+import { ModelId } from "./modelIds";
 import { PhsQuantityId } from "./phs";
 import { SiUnit } from "./units";
 import {

@@ -6,7 +6,7 @@ import type { ModelChartSource } from "../../models/chartSource";
 import {
   ModelId,
   type JsThermalComfortStandard,
-} from "../../models/comfortModels";
+} from "../../models/modelIds";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputControlId } from "../../models/inputControls";
 import type { InputPresetKey as InputPresetKeyType } from "../../services/comfort/controls/inputControlPresets";

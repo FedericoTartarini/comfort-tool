@@ -6,7 +6,7 @@
   import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
   import type { PlotlyChartSpec } from "../../services/plotlyTypes";
-  import type { ModelId as ModelIdType } from "../../models/comfortModels";
+  import type { ModelId as ModelIdType } from "../../models/modelIds";
   import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../state/comfortTool/types";
   import type { PublicationExportHandler } from "../../services/plotlyExport";

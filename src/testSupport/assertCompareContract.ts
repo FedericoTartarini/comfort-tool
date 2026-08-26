@@ -2,7 +2,7 @@ import { expect } from "vitest";
 
 import {
   type ModelId as ModelIdType,
-} from "../models/comfortModels";
+} from "../models/modelIds";
 import { inputDisplayMetaById } from "../models/inputSlotPresentation";
 import { InputId, inputOrder } from "../models/inputSlots";
 import {

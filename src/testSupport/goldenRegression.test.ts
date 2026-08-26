@@ -14,7 +14,7 @@ import { calculateUtci } from "../comfortModels/utci/utciCalculation";
 import { evaluatePmvCondition } from "../comfortModels/pmv/pmvCalculation";
 import { pmvAshraeAdapter } from "../comfortModels/pmv/pmvAshrae";
 import { calculatePhs } from "../comfortModels/phs/phsCalculation";
-import { ModelId } from "../models/comfortModels";
+import { ModelId } from "../models/modelIds";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { PhsPosture, PhsQuantityId } from "../models/phs";
 import { InputId } from "../models/inputSlots";

@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateHumidex, humidexModelConfig } from "./humidex";
-import { ModelId } from "../models/comfortModels";
+import { ModelId } from "../models/modelIds";
 import { UnitSystem } from "../models/units";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { InputId } from "../models/inputSlots";

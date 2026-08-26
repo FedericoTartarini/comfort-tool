@@ -1,4 +1,4 @@
-import type { ModelId as ModelIdType } from "./comfortModels";
+import type { ModelId as ModelIdType } from "./modelIds";
 import type { UnitSystem as UnitSystemType } from "./units";
 
 export interface TimeSeriesPresetDefinition {

@@ -5,7 +5,7 @@
 
   import SearchableSelect from "../SearchableSelect.svelte";
   import { UnitSystem } from "../../models/units";
-  import type { ModelId as ModelIdType } from "../../models/comfortModels";
+  import type { ModelId as ModelIdType } from "../../models/modelIds";
   import type { ToolControlsViewModel } from "../../state/comfortTool/types";
 
   interface Props {

@@ -9,7 +9,7 @@ import {
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
 } from "../../models/inputModifiers";
-import type { JsThermalComfortStandard } from "../../models/comfortModels";
+import type { JsThermalComfortStandard } from "../../models/modelIds";
 import { deriveRelativeAirSpeedFromMeasured } from "./derivations/airSpeed";
 import { predictClothingInsulation } from "./clothingTools";
 import { isPrimaryQuantityId } from "./quantityStateRouting";

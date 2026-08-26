@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import {
   PhsPosture,
   PhsQuantityId,

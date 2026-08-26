@@ -1,7 +1,7 @@
 import { humidex } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
 import type { ModelChartSource } from "../models/chartSource";
-import { ModelId } from "../models/comfortModels";
+import { ModelId } from "../models/modelIds";
 import { InputControlId } from "../models/inputControls";
 import {
   bandsFromThermalZones,

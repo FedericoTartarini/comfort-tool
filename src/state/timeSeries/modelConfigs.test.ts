@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import { TableType } from "../../models/output/tableLayouts";
 import { getComfortModelConfig } from "../comfortTool/modelConfigs";
 import {

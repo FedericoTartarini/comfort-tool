@@ -1,6 +1,6 @@
 import { adaptive_en } from "jsthermalcomfort";
 import { ComfortStandard } from "../../models/calculationMetadata";
-import { ModelId, JsThermalComfortStandard } from "../../models/comfortModels";
+import { ModelId, JsThermalComfortStandard } from "../../models/modelIds";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { InputPresetKey } from "../../services/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../models/thermalZone";

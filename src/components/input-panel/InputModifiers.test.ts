@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { tick } from "svelte";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import { ModifierId } from "../../models/inputModifiers";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputId } from "../../models/inputSlots";

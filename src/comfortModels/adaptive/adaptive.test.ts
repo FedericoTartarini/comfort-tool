@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 import { adaptiveAshraeModelConfig } from "./adaptiveAshrae";
 import { adaptiveEnModelConfig } from "./adaptiveEn";

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
-import { ModelId } from "../../../../models/comfortModels";
+import { ModelId } from "../../../../models/modelIds";
 import { InputId } from "../../../../models/inputSlots";
 import { UnitSystem } from "../../../../models/units";
 import { WorkspaceId } from "../../../../models/workspaces";

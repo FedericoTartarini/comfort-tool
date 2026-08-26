@@ -17,7 +17,7 @@ import { ComfortStandard } from "../../../models/calculationMetadata";
 import {
   ModelId,
   type ModelId as ModelIdType,
-} from "../../../models/comfortModels";
+} from "../../../models/modelIds";
 import { defaultPhsPersonSettings, PhsQuantityId } from "../../../models/phs";
 import { SiUnit } from "../../../models/units";
 import {

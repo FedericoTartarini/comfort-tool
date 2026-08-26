@@ -10,7 +10,7 @@ import type {
   RuntimeComfortModelDefinition,
   SimulationOutputDeclaration,
 } from "./definition";
-import type { ModelId as ModelIdType } from "../../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../../models/modelIds";
 import type { OptionKey as OptionKeyType } from "../../../models/inputModes";
 import {
   modifierOrder,

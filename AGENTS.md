@@ -145,7 +145,7 @@ A model definition should own:
 
 Use centralized constants and typed metadata from `src/models/` for:
 
-- model identifiers (`ModelId`)
+- model identifiers (`ModelId` in `src/models/modelIds.ts`)
 - quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes). System quantities are seeded in `src/models/physicalQuantities.ts`; model-scoped ids are contributed with `quantities.extend` and assembled into the same catalog.
 - chart engines (`ChartEngine` in `src/models/output/chartKinds.ts` is the closed engine set). `defineModel` charts are `ModelChartDeclaration`: a data-only union discriminated on `engine:` over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`) in `services/comfort/charts/kinds/types.ts`. Specs never include Plotly `build`. `Custom` is omitted from `defineModel`. An optional `type` names a built-in or extended chart type, is preserved on the presentation instance, and must stay on that same engine/spec pair. Family modules use `FrontendChartDeclaration` / `ComfortModelBuilder`. Chart ids live on each declaration’s `charts` entries (`id`); the builder maps them to runtime `instanceId`. Do not use `spec: unknown`. `ParametricLine` interchange is polylines and optional limit bands.
 - compare-input identifiers

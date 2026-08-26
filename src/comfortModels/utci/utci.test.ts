@@ -15,7 +15,7 @@ import {
   getUtciZoneMeta,
   utciModelConfig,
 } from "./utci";
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 
 describe("UTCI stress zones", () => {

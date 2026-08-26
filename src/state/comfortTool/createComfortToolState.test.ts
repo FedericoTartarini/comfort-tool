@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import { InputControlId } from "../../models/inputControls";
 import {
   AirSpeedControlMode,

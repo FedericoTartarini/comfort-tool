@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../models/calculationMetadata";
-import { ComplianceStatus } from "../models/comfortModels";
+import { ComplianceStatus } from "../models/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/physicalQuantities";
 import { InputId, type InputId as InputIdType } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";

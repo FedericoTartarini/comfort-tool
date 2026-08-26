@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateWindChill, windChillModelConfig } from "./windChill";
-import { ModelId } from "../models/comfortModels";
+import { ModelId } from "../models/modelIds";
 import { UnitSystem } from "../models/units";
 import {
   convertFieldValueFromSi,

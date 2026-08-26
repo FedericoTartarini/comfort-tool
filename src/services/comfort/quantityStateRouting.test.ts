@@ -17,7 +17,7 @@ import {
 import { createQuantitiesByInput } from "../../state/comfortTool/initialComfortToolState";
 import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import { syncDerivedStateForInput } from "./syncState";
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 
 describe("quantityStateRouting", () => {
   it("reads and writes primary quantities", () => {

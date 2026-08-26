@@ -1,4 +1,4 @@
-import type { ModelId as ModelIdType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/modelIds";
 import {
   getAllowedModels,
   getAppRouteByPath,

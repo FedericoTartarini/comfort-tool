@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ModelId,
   type ModelId as ModelIdType,
-} from "../../models/comfortModels";
+} from "../../models/modelIds";
 import {
   PhysicalQuantityId,
   primaryInputOrder,

@@ -8,7 +8,7 @@ import {
   modelAllowsCustomCharts,
   resolveChartCapabilities,
 } from "./chartKinds";
-import { ModelId } from "../comfortModels";
+import { ModelId } from "../modelIds";
 import {
   WorkspaceId,
   supportsExploreWorkspace,

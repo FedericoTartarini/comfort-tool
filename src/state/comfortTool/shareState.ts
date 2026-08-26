@@ -1,5 +1,5 @@
 /** Strict current-schema version-1 share snapshots. */
-import type { ModelId as ModelIdType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/modelIds";
 import type { OptionKey as OptionKeyType } from "../../models/inputModes";
 import {
   inputModifierCatalogue,

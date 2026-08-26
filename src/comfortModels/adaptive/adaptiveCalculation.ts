@@ -1,6 +1,6 @@
 import { t_o } from "jsthermalcomfort";
 import { CalculationSource } from "../../models/calculationMetadata";
-import { ComplianceStatus } from "../../models/comfortModels";
+import { ComplianceStatus } from "../../models/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/physicalQuantities";
 import {
   OptionKey,

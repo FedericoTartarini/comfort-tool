@@ -3,7 +3,7 @@
 import { cleanup, render, screen } from "@testing-library/svelte";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { ComplianceStatus } from "../../models/comfortModels";
+import { ComplianceStatus } from "../../models/modelIds";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 
 import ChartProfileBadge from "./ChartProfileBadge.svelte";

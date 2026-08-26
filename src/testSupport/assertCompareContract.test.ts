@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ModelId } from "../models/comfortModels";
+import { ModelId } from "../models/modelIds";
 import { InputId } from "../models/inputSlots";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { createAnalysisState } from "../state/comfortTool/createComfortToolState.svelte";

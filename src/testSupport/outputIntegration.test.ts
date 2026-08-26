@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import { ModelId } from "../models/comfortModels";
+import { ModelId } from "../models/modelIds";
 import { InputId } from "../models/inputSlots";
 import { ModelOutputKey, type NumericBand } from "../models/modelCapabilities";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";

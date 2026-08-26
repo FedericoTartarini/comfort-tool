@@ -1,5 +1,5 @@
 import type { InputId as InputIdType } from "../../models/inputSlots";
-import type { ModelId as ModelIdType } from "../../models/comfortModels";
+import type { ModelId as ModelIdType } from "../../models/modelIds";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
 import type { AnalysisStateSlice, QuantitiesByInputState } from "./types";
 import { getComfortModelConfig } from "./modelConfigs";

@@ -1,5 +1,5 @@
 import { phsTimeSeriesModelDefinition } from "../../comfortModels/phs/phsTimeSeries";
-import { ModelId, type ModelId as ModelIdType } from "../../models/comfortModels";
+import { ModelId, type ModelId as ModelIdType } from "../../models/modelIds";
 import type { RuntimeTimeSeriesModelDefinition } from "../../models/timeSeries";
 import {
   comfortModelConfigs,

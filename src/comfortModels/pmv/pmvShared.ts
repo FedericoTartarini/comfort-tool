@@ -2,7 +2,7 @@ import type { ComfortStandard } from "../../models/calculationMetadata";
 import {
   ModelId,
   type JsThermalComfortStandard,
-} from "../../models/comfortModels";
+} from "../../models/modelIds";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputControlId } from "../../models/inputControls";
 import {

@@ -1,5 +1,5 @@
 import { InputId } from "../../models/inputSlots";
-import { ModelId } from "../../models/comfortModels";
+import { ModelId } from "../../models/modelIds";
 import { UnitSystem } from "../../models/units";
 import { syncDerivedStateIntoAuxiliary } from "../../services/comfort/syncState";
 import {

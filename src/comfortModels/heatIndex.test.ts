@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
-import { ModelId } from "../models/comfortModels";
+import { ModelId } from "../models/modelIds";
 import { UnitSystem } from "../models/units";
 import { convertModelOutputFromSi } from "../services/units";
 import { PhysicalQuantityId } from "../models/physicalQuantities";

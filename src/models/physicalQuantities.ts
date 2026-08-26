@@ -1,4 +1,4 @@
-import type { ModelId as ModelIdType } from "./comfortModels";
+import type { ModelId as ModelIdType } from "./modelIds";
 import { SiUnit, isSiUnit, type UnitSystem as UnitSystemType } from "./units";
 
 /** Matches ModifierId wire values; kept here to avoid circular imports with inputModifiers. */
