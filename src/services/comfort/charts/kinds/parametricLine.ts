@@ -182,7 +182,7 @@ function collectDisplayValues(
   return { x, y };
 }
 
-function toAxisDto(
+function toPlotAxis(
   title: string,
   values: readonly number[],
   extras: Partial<PlotAxis> = {},
@@ -307,18 +307,18 @@ export function renderParametricLineGeometry(
         r: hasSecondary ? 72 : DEFAULT_MARGIN.r,
       },
       legend: { orientation: "h", x: 0, y: -0.22 },
-      xaxis: toAxisDto(formatAxisTitle(xAxis), xDisplay, {
+      xaxis: toPlotAxis(formatAxisTitle(xAxis), xDisplay, {
         showgrid: true,
         zeroline: false,
       }),
-      yaxis: toAxisDto(
+      yaxis: toPlotAxis(
         axisTitleWithUnits(spec.yLabel, primaryUnits),
         primaryValues.y,
         { showgrid: true, zeroline: false },
       ),
       ...(hasSecondary
         ? {
-            yaxis2: toAxisDto(
+            yaxis2: toPlotAxis(
               axisTitleWithUnits(spec.y2Label ?? "", secondaryUnits),
               secondaryValues.y,
               {
