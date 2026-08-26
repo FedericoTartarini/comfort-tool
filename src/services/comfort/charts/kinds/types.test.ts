@@ -18,7 +18,7 @@ describe("chart engine spec union", () => {
 
   it("includes ParametricLine as an implemented engine", () => {
     expectTypeOf<typeof ChartEngine>().toHaveProperty("ParametricLine");
-    type EngineKind = RegisteredChartEngineSpec<unknown, unknown>["kind"];
+    type EngineKind = RegisteredChartEngineSpec<unknown, unknown>["engine"];
     expectTypeOf<EngineKind>().toEqualTypeOf<
       | typeof ChartEngine.DynamicField
       | typeof ChartEngine.BoundaryRegion
@@ -30,29 +30,29 @@ describe("chart engine spec union", () => {
   });
 
   it("keeps defineModel charts on the closed data-only engine/spec union", () => {
-    type DeclaredKind = ModelChartDeclaration["kind"];
-    type DeclaredCustom = Extract<ModelChartDeclaration, { kind: typeof ChartEngine.Custom }>;
+    type DeclaredKind = ModelChartDeclaration["engine"];
+    type DeclaredCustom = Extract<ModelChartDeclaration, { engine: typeof ChartEngine.Custom }>;
     type DeclaredMapKeys = keyof ModelChartEngineSpecMap<unknown>;
     type UnknownEngineInKind = "invented-engine" extends ChartEngine ? true : false;
     type DynamicSpec = Extract<
       ModelChartDeclaration,
-      { kind: typeof ChartEngine.DynamicField }
+      { engine: typeof ChartEngine.DynamicField }
     >["spec"];
     type BandScalarSpec = Extract<
       ModelChartDeclaration,
-      { kind: typeof ChartEngine.BandScalar }
+      { engine: typeof ChartEngine.BandScalar }
     >["spec"];
     type BoundarySpec = Extract<
       ModelChartDeclaration,
-      { kind: typeof ChartEngine.BoundaryRegion }
+      { engine: typeof ChartEngine.BoundaryRegion }
     >["spec"];
     type TimeSeriesSpec = Extract<
       ModelChartDeclaration,
-      { kind: typeof ChartEngine.TimeSeriesLine }
+      { engine: typeof ChartEngine.TimeSeriesLine }
     >["spec"];
     type ParametricSpec = Extract<
       ModelChartDeclaration,
-      { kind: typeof ChartEngine.ParametricLine }
+      { engine: typeof ChartEngine.ParametricLine }
     >["spec"];
 
     expectTypeOf<DeclaredKind>().toEqualTypeOf<DeclaredMapKeys>();
@@ -79,7 +79,7 @@ describe("chart engine spec union", () => {
 
     type AuthoringChart = ModelDeclaration<unknown, unknown>["outputCharts"][number];
     expectTypeOf<AuthoringChart>().toEqualTypeOf<ModelChartDeclaration>();
-    expectTypeOf<Extract<AuthoringChart, { kind: typeof ChartEngine.Custom }>>().toBeNever();
+    expectTypeOf<Extract<AuthoringChart, { engine: typeof ChartEngine.Custom }>>().toBeNever();
   });
 
   it("rejects mixed engine/spec pairing on model declarations", () => {
@@ -87,14 +87,14 @@ describe("chart engine spec union", () => {
       instanceId: string;
       name: string;
       emptyMessage: string;
-      kind: typeof ChartEngine.BandScalar;
+      engine: typeof ChartEngine.BandScalar;
       spec: DynamicFieldGridSpec<unknown>;
     };
     type DynamicWithBandSpec = {
       instanceId: string;
       name: string;
       emptyMessage: string;
-      kind: typeof ChartEngine.DynamicField;
+      engine: typeof ChartEngine.DynamicField;
       spec: { title: string; getOutputValue: (result: unknown) => number };
     };
 
@@ -104,25 +104,25 @@ describe("chart engine spec union", () => {
 
   it("keeps named extended types inside the model-declaration engine/spec union", () => {
     type ExtendedModelChart = ModelChartDeclaration & { type: "audit.named-map" };
-    type ExtendedKind = ExtendedModelChart["kind"];
+    type ExtendedKind = ExtendedModelChart["engine"];
     type EscapingExtended = {
       instanceId: string;
       name: string;
       emptyMessage: string;
       type: "audit.escape";
-      kind: typeof ChartEngine.Custom;
+      engine: typeof ChartEngine.Custom;
       spec: { build: () => null };
     };
 
     expectTypeOf<ExtendedKind>().toEqualTypeOf<keyof ModelChartEngineSpecMap<unknown>>();
-    expectTypeOf<Extract<ExtendedModelChart, { kind: typeof ChartEngine.Custom }>>().toBeNever();
+    expectTypeOf<Extract<ExtendedModelChart, { engine: typeof ChartEngine.Custom }>>().toBeNever();
     expectTypeOf<EscapingExtended>().not.toMatchTypeOf<ModelChartDeclaration>();
   });
 
   it("keeps Custom Plotly builders on the frontend-internal union only", () => {
     type CustomChart = Extract<
       FrontendChartDeclaration,
-      { kind: typeof ChartEngine.Custom }
+      { engine: typeof ChartEngine.Custom }
     >;
     expectTypeOf<CustomChart["spec"]>().toHaveProperty("build");
     expectTypeOf<CustomChart["spec"]>().not.toHaveProperty("resolveGridSpec");

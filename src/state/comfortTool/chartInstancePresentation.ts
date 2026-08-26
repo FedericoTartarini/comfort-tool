@@ -19,7 +19,7 @@ export interface ChartInstancePanelView {
 export function resolveChartInstanceCapabilities(
   instance: ChartInstanceDeclaration,
 ): ChartInstanceCapabilities {
-  return resolveChartCapabilities(instance.kind, instance.capabilities);
+  return resolveChartCapabilities(instance.engine, instance.capabilities);
 }
 
 export function toChartInstancePanelView(

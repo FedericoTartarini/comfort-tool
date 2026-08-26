@@ -206,12 +206,12 @@ describe("heatIndex service", () => {
   it("declares fixed-axis and dynamic field charts from defineModel", () => {
     expect(heatIndexModelConfig.id).toBe(ModelId.HeatIndex);
     expect(heatIndexModelConfig.outputCharts.defaultInstanceId).toBe("heat-index-ranges");
-    expect(heatIndexModelConfig.outputCharts.entries.map(({ instanceId, kind }) => ({
+    expect(heatIndexModelConfig.outputCharts.entries.map(({ instanceId, engine }) => ({
       instanceId,
-      kind,
+      engine,
     }))).toEqual([
-      { instanceId: "heat-index-ranges", kind: ChartEngine.DynamicField },
-      { instanceId: "heat-index-dynamic-field", kind: ChartEngine.DynamicField },
+      { instanceId: "heat-index-ranges", engine: ChartEngine.DynamicField },
+      { instanceId: "heat-index-dynamic-field", engine: ChartEngine.DynamicField },
     ]);
   });
 

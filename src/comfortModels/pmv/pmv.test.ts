@@ -395,29 +395,29 @@ describe("PMV standard declarations", () => {
     ({ config, declaration }) => {
       expect(config.outputCharts.defaultInstanceId)
         .toBe(declaration.psychrometricInstanceId);
-      expect(config.outputCharts.entries.map(({ instanceId, kind, name }) => ({
+      expect(config.outputCharts.entries.map(({ instanceId, engine, name }) => ({
         instanceId,
-        kind,
+        engine,
         name,
       }))).toEqual([
         {
           instanceId: declaration.psychrometricInstanceId,
-          kind: ChartEngine.Custom,
+          engine: ChartEngine.Custom,
           name: "Psychrometric",
         },
         {
           instanceId: declaration.dynamicInstanceId,
-          kind: ChartEngine.DynamicField,
+          engine: ChartEngine.DynamicField,
           name: "Dynamic",
         },
         {
           instanceId: declaration.heatLossInstanceId,
-          kind: ChartEngine.ParametricLine,
+          engine: ChartEngine.ParametricLine,
           name: "Heat Loss",
         },
         {
           instanceId: declaration.setInstanceId,
-          kind: ChartEngine.ParametricLine,
+          engine: ChartEngine.ParametricLine,
           name: "SET",
         },
       ]);

@@ -109,10 +109,10 @@ export const chartEngineMetaById: Record<ChartEngine, ChartInstanceCapabilities>
 };
 
 export function resolveChartCapabilities(
-  kind: ChartEngine,
+  engine: ChartEngine,
   overrides?: Partial<ChartInstanceCapabilities>,
 ): ChartInstanceCapabilities {
-  return { ...chartEngineMetaById[kind], ...overrides };
+  return { ...chartEngineMetaById[engine], ...overrides };
 }
 
 /**
@@ -126,7 +126,7 @@ export function modelAllowsCustomCharts(modelId: ModelIdType): boolean {
 /** Presentation metadata for one declared chart instance. Engine spec lives on registrations. */
 export interface ChartInstanceDeclaration {
   readonly instanceId: string;
-  readonly kind: ChartEngine;
+  readonly engine: ChartEngine;
   readonly name: string;
   readonly emptyMessage: string;
   readonly note?: string;

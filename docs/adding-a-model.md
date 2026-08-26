@@ -164,7 +164,8 @@ fail assemble.
 **Charts.** Closed engines: `ChartEngine.DynamicField`, `BoundaryRegion`,
 `ParametricLine`, `BandScalar`, `TimeSeriesLine`, and frontend-only `Custom`
 (PMV psychrometric geometry). `defineModel` `outputCharts` is a data-only
-`ModelChartDeclaration` union over the non-Custom engines. Optional `type`
+`ModelChartDeclaration` union discriminated on `engine:` over the non-Custom
+engines. Optional `type`
 names an extended type on that same engine; assemble preserves it and rejects
 empty or duplicate types. Instance ids live only on the declaration
 (`instanceId`); the registry derives them (`getDeclaredChartInstanceIds`).

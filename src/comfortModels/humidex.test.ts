@@ -152,12 +152,12 @@ describe("humidex service", () => {
   it("declares fixed-axis and dynamic field charts from defineModel", () => {
     expect(humidexModelConfig.id).toBe(ModelId.Humidex);
     expect(humidexModelConfig.outputCharts.defaultInstanceId).toBe("humidex-ranges");
-    expect(humidexModelConfig.outputCharts.entries.map(({ instanceId, kind }) => ({
+    expect(humidexModelConfig.outputCharts.entries.map(({ instanceId, engine }) => ({
       instanceId,
-      kind,
+      engine,
     }))).toEqual([
-      { instanceId: "humidex-ranges", kind: ChartEngine.DynamicField },
-      { instanceId: "humidex-dynamic-field", kind: ChartEngine.DynamicField },
+      { instanceId: "humidex-ranges", engine: ChartEngine.DynamicField },
+      { instanceId: "humidex-dynamic-field", engine: ChartEngine.DynamicField },
     ]);
   });
 

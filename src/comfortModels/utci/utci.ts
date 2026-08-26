@@ -95,7 +95,7 @@ const utciOutputCharts: OutputChartDeclarationInput<
 >[] = [
   {
     instanceId: "utci-stress-band",
-    kind: ChartEngine.BandScalar,
+    engine: ChartEngine.BandScalar,
     name: "UTCI",
     emptyMessage: "No psychrometric chart yet.",
     capabilities: {
@@ -112,7 +112,7 @@ const utciOutputCharts: OutputChartDeclarationInput<
   },
   {
     instanceId: "utci-dynamic-field",
-    kind: ChartEngine.DynamicField,
+    engine: ChartEngine.DynamicField,
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     capabilities: {

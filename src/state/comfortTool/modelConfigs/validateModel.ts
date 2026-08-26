@@ -33,13 +33,13 @@ export interface CatalogModelSlice {
   readonly outputCharts: {
     readonly entries: readonly {
       readonly instanceId: string;
-      readonly kind: string;
+      readonly engine: string;
       readonly type?: string;
     }[];
   };
   readonly chartEngineRegistrations: readonly {
     readonly instanceId: string;
-    readonly registration: { readonly kind: string };
+    readonly registration: { readonly engine: string };
   }[];
   readonly tables: ModelTables;
   readonly workspaceCapabilities: readonly WorkspaceId[];
@@ -162,9 +162,9 @@ export function validateModel(
   const seenInstanceIds = new Set<string>();
   const seenTypes = new Set<string>();
   for (const entry of model.outputCharts.entries) {
-    if (!catalogs.chartEngines.has(entry.kind)) {
+    if (!catalogs.chartEngines.has(entry.engine)) {
       throw new Error(
-        `Unknown chart engine "${String(entry.kind)}". ChartEngine is a closed set.`,
+        `Unknown chart engine "${String(entry.engine)}". ChartEngine is a closed set.`,
       );
     }
     if (seenInstanceIds.has(entry.instanceId)) {
@@ -193,13 +193,13 @@ export function validateModel(
   }
 
   for (const registration of model.chartEngineRegistrations) {
-    const kind = registration.registration.kind;
-    if (!catalogs.chartEngines.has(kind)) {
+    const engine = registration.registration.engine;
+    if (!catalogs.chartEngines.has(engine)) {
       throw new Error(
-        `Unknown chart engine "${String(kind)}". ChartEngine is a closed set.`,
+        `Unknown chart engine "${String(engine)}". ChartEngine is a closed set.`,
       );
     }
-    if (kind === ChartEngine.Custom && !modelAllowsCustomCharts(model.id)) {
+    if (engine === ChartEngine.Custom && !modelAllowsCustomCharts(model.id)) {
       throw new Error(
         `Custom chart "${registration.instanceId}" on ${model.id} is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
       );

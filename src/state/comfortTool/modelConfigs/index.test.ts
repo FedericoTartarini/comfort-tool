@@ -132,9 +132,9 @@ describe("comfort model capability registry", () => {
     [ModelId.HeatIndex, ModelId.Humidex].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
       const [mapChart, dynamicChart] = config.outputCharts.entries;
-      expect(mapChart.kind).toBe(ChartEngine.DynamicField);
+      expect(mapChart.engine).toBe(ChartEngine.DynamicField);
       expect(mapChart.capabilities?.allowsAxisSelection).toBe(false);
-      expect(dynamicChart.kind).toBe(ChartEngine.DynamicField);
+      expect(dynamicChart.engine).toBe(ChartEngine.DynamicField);
       expect(dynamicChart.capabilities?.allowsAxisSelection).toBe(true);
     });
   });
@@ -143,7 +143,7 @@ describe("comfort model capability registry", () => {
     const customCharts = comfortModelOrder.flatMap((modelId) =>
       getComfortModelConfig(modelId)
         .chartEngineRegistrations.filter(
-          ({ registration }) => registration.kind === ChartEngine.Custom,
+          ({ registration }) => registration.engine === ChartEngine.Custom,
         )
         .map(({ instanceId }) => ({ modelId, instanceId })),
     );
@@ -154,7 +154,7 @@ describe("comfort model capability registry", () => {
       const entry = getComfortModelConfig(modelId).outputCharts.entries.find(
         (chart) => chart.instanceId === instanceId,
       );
-      expect(entry?.kind).toBe(ChartEngine.Custom);
+      expect(entry?.engine).toBe(ChartEngine.Custom);
       expect(entry?.name).toBe("Psychrometric");
     });
   });
@@ -165,11 +165,11 @@ describe("comfort model capability registry", () => {
       const dynamic = config.outputCharts.entries.find(
         ({ name }) => name === "Dynamic",
       );
-      expect(dynamic?.kind).toBe(ChartEngine.DynamicField);
+      expect(dynamic?.engine).toBe(ChartEngine.DynamicField);
       const psychrometric = config.outputCharts.entries.find(
         ({ name }) => name === "Psychrometric",
       );
-      expect(psychrometric?.kind).toBe(ChartEngine.Custom);
+      expect(psychrometric?.engine).toBe(ChartEngine.Custom);
     });
   });
 
@@ -195,8 +195,8 @@ describe("comfort model capability registry", () => {
       const set = config.outputCharts.entries.find(
         ({ name }) => name === "SET",
       );
-      expect(heatLoss?.kind).toBe(ChartEngine.ParametricLine);
-      expect(set?.kind).toBe(ChartEngine.ParametricLine);
+      expect(heatLoss?.engine).toBe(ChartEngine.ParametricLine);
+      expect(set?.engine).toBe(ChartEngine.ParametricLine);
       expect(heatLoss?.capabilities).toEqual(
         expect.objectContaining({
           allowsAxisSelection: false,
@@ -219,7 +219,7 @@ describe("comfort model capability registry", () => {
 
     expect(config.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
     expect(history.instanceId).toBe("phs-exposure-history");
-    expect(history.kind).toBe(ChartEngine.TimeSeriesLine);
+    expect(history.engine).toBe(ChartEngine.TimeSeriesLine);
     expect(history.capabilities).toEqual(
       expect.objectContaining({
         allowsAxisSelection: false,

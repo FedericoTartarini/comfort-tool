@@ -12,7 +12,7 @@ export interface SimulationTimeSeriesLineChartSpec {
 
 export interface SimulationChartDeclaration {
   readonly id: string;
-  readonly kind: typeof ChartEngine.TimeSeriesLine;
+  readonly engine: typeof ChartEngine.TimeSeriesLine;
   readonly title: string;
   readonly description: string;
   readonly emptyMessage: string;

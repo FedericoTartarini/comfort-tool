@@ -144,14 +144,14 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
     }
   }
 
-  if (!isChartEngine(registration.registration.kind)) {
+  if (!isChartEngine(registration.registration.engine)) {
     throw new Error(
-      `Unknown chart engine "${String(registration.registration.kind)}". ChartEngine is a closed set.`,
+      `Unknown chart engine "${String(registration.registration.engine)}". ChartEngine is a closed set.`,
     );
   }
 
   let result: ChartBuildResult;
-  switch (registration.registration.kind) {
+  switch (registration.registration.engine) {
     case ChartEngine.DynamicField:
       result = buildDynamicFieldChart(
         registration,

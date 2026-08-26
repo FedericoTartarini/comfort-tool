@@ -245,7 +245,7 @@ export function createPmvOutputCharts(
   return [
     {
       instanceId: declaration.psychrometricInstanceId,
-      kind: ChartEngine.Custom,
+      engine: ChartEngine.Custom,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
       capabilities: {
@@ -265,7 +265,7 @@ export function createPmvOutputCharts(
     },
     {
       instanceId: declaration.dynamicInstanceId,
-      kind: ChartEngine.DynamicField,
+      engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
       capabilities: {
@@ -287,7 +287,7 @@ export function createPmvOutputCharts(
     },
     {
       instanceId: declaration.heatLossInstanceId,
-      kind: ChartEngine.ParametricLine,
+      engine: ChartEngine.ParametricLine,
       name: "Heat Loss",
       emptyMessage: "No heat-loss chart yet.",
       capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
@@ -295,7 +295,7 @@ export function createPmvOutputCharts(
     },
     {
       instanceId: declaration.setInstanceId,
-      kind: ChartEngine.ParametricLine,
+      engine: ChartEngine.ParametricLine,
       name: "SET",
       emptyMessage: "No SET chart yet.",
       capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,

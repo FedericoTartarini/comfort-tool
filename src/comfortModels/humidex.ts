@@ -124,7 +124,7 @@ export const humidexModelConfig = defineModel<
   outputCharts: [
     {
       instanceId: FIXED_CHART_INSTANCE_ID,
-      kind: ChartEngine.DynamicField,
+      engine: ChartEngine.DynamicField,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
       capabilities: {
@@ -154,7 +154,7 @@ export const humidexModelConfig = defineModel<
     },
     {
       instanceId: DYNAMIC_CHART_INSTANCE_ID,
-      kind: ChartEngine.DynamicField,
+      engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
       capabilities: {

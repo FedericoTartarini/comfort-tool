@@ -28,7 +28,7 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartEngine.DynamicField) {
+  if (registration.registration.engine !== ChartEngine.DynamicField) {
     throw new Error(
       `Chart ${registration.instanceId} is not a dynamic-field chart.`,
     );
@@ -79,7 +79,7 @@ export function buildCustomChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartEngine.Custom) {
+  if (registration.registration.engine !== ChartEngine.Custom) {
     throw new Error(`Chart ${registration.instanceId} is not a custom chart.`);
   }
   const plotly = registration.registration.spec.build(
@@ -96,7 +96,7 @@ export function buildBandScalarChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartEngine.BandScalar) {
+  if (registration.registration.engine !== ChartEngine.BandScalar) {
     throw new Error(
       `Chart ${registration.instanceId} is not a band-scalar chart.`,
     );
@@ -126,7 +126,7 @@ export function buildBoundaryRegionChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartEngine.BoundaryRegion) {
+  if (registration.registration.engine !== ChartEngine.BoundaryRegion) {
     throw new Error(
       `Chart ${registration.instanceId} is not a boundary-region chart.`,
     );
@@ -148,7 +148,7 @@ export function buildTimeSeriesLineChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartEngine.TimeSeriesLine) {
+  if (registration.registration.engine !== ChartEngine.TimeSeriesLine) {
     throw new Error(
       `Chart ${registration.instanceId} is not a time-series-line chart.`,
     );
@@ -170,7 +170,7 @@ export function buildParametricLineChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartEngine.ParametricLine) {
+  if (registration.registration.engine !== ChartEngine.ParametricLine) {
     throw new Error(
       `Chart ${registration.instanceId} is not a parametric-line chart.`,
     );

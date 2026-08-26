@@ -156,7 +156,7 @@ export const windChillModelConfig = defineModel<
   outputCharts: [
     {
       instanceId: DYNAMIC_CHART_INSTANCE_ID,
-      kind: ChartEngine.DynamicField,
+      engine: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
       capabilities: {

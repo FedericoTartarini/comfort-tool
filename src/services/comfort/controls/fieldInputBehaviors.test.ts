@@ -35,7 +35,7 @@ describe("fieldInputBehaviors", () => {
       .setModifiers([])
       .setOutputCharts([{
         instanceId: "test-dynamic-field",
-        kind: ChartEngine.DynamicField,
+        engine: ChartEngine.DynamicField,
         name: "Test",
         emptyMessage: "Empty",
         spec: {

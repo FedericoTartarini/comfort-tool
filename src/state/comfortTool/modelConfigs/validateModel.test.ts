@@ -39,14 +39,14 @@ function createCatalogSlice(
       entries: [
         {
           instanceId,
-          kind: ChartEngine.DynamicField,
+          engine: ChartEngine.DynamicField,
         },
       ],
     },
     chartEngineRegistrations: [
       {
         instanceId,
-        registration: { kind: ChartEngine.DynamicField },
+        registration: { engine: ChartEngine.DynamicField },
       },
     ],
     tables: analysisTable,
@@ -128,13 +128,13 @@ describe("assembled catalog validate.model", () => {
           id: ModelId.HeatIndex,
           outputCharts: {
             entries: [
-              { instanceId: sharedInstanceId, kind: ChartEngine.DynamicField },
+              { instanceId: sharedInstanceId, engine: ChartEngine.DynamicField },
             ],
           },
           chartEngineRegistrations: [
             {
               instanceId: sharedInstanceId,
-              registration: { kind: ChartEngine.DynamicField },
+              registration: { engine: ChartEngine.DynamicField },
             },
           ],
         }),
@@ -142,13 +142,13 @@ describe("assembled catalog validate.model", () => {
           id: ModelId.Humidex,
           outputCharts: {
             entries: [
-              { instanceId: sharedInstanceId, kind: ChartEngine.DynamicField },
+              { instanceId: sharedInstanceId, engine: ChartEngine.DynamicField },
             ],
           },
           chartEngineRegistrations: [
             {
               instanceId: sharedInstanceId,
-              registration: { kind: ChartEngine.DynamicField },
+              registration: { engine: ChartEngine.DynamicField },
             },
           ],
         }),
@@ -165,14 +165,14 @@ describe("assembled catalog validate.model", () => {
             entries: [
               {
                 instanceId: "pmv-ashrae-psychrometric",
-                kind: ChartEngine.DynamicField,
+                engine: ChartEngine.DynamicField,
               },
             ],
           },
           chartEngineRegistrations: [
             {
               instanceId: "pmv-ashrae-psychrometric",
-              registration: { kind: ChartEngine.DynamicField },
+              registration: { engine: ChartEngine.DynamicField },
             },
           ],
         }),
@@ -191,7 +191,7 @@ describe("assembled catalog validate.model", () => {
             entries: [
               {
                 instanceId: "heat-audit",
-                kind: ChartEngine.DynamicField,
+                engine: ChartEngine.DynamicField,
                 type: "audit.shared-type",
               },
             ],
@@ -203,7 +203,7 @@ describe("assembled catalog validate.model", () => {
             entries: [
               {
                 instanceId: "humidex-audit",
-                kind: ChartEngine.DynamicField,
+                engine: ChartEngine.DynamicField,
                 type: "audit.shared-type",
               },
             ],
@@ -324,12 +324,12 @@ describe("assembled catalog validate.model", () => {
         createCatalogSlice({
           id: ModelId.HeatIndex,
           outputCharts: {
-            entries: [{ instanceId: "invented", kind: "invented-engine" }],
+            entries: [{ instanceId: "invented", engine: "invented-engine" }],
           },
           chartEngineRegistrations: [
             {
               instanceId: "invented",
-              registration: { kind: "invented-engine" },
+              registration: { engine: "invented-engine" },
             },
           ],
         }),

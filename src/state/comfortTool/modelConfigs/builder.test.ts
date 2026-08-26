@@ -41,7 +41,7 @@ function createModelDynamicFieldChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartEngine.DynamicField,
+    engine: ChartEngine.DynamicField,
     name: "Test chart",
     emptyMessage: "No test chart yet.",
     spec: {
@@ -69,7 +69,7 @@ function createModelBandScalarChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartEngine.BandScalar,
+    engine: ChartEngine.BandScalar,
     name: "Stress",
     emptyMessage: "No stress chart yet.",
     capabilities: {
@@ -94,7 +94,7 @@ function createModelTimeSeriesChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartEngine.TimeSeriesLine,
+    engine: ChartEngine.TimeSeriesLine,
     name: "History",
     emptyMessage: "No history chart yet.",
     capabilities: {
@@ -123,7 +123,7 @@ function createModelBoundaryChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartEngine.BoundaryRegion,
+    engine: ChartEngine.BoundaryRegion,
     name: "Boundary",
     emptyMessage: "No boundary chart yet.",
     spec: {
@@ -141,7 +141,7 @@ function createModelParametricChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartEngine.ParametricLine,
+    engine: ChartEngine.ParametricLine,
     name: "Parametric",
     emptyMessage: "No parametric chart yet.",
     spec: {
@@ -199,7 +199,7 @@ const modelChartBuildProfile = {
 function createPmvPsychrometricCustomChart(): FrontendChartDeclaration {
   return {
     instanceId: "test-pmv-custom",
-    kind: ChartEngine.Custom,
+    engine: ChartEngine.Custom,
     name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     spec: { build: () => null },
@@ -254,7 +254,7 @@ describe("ComfortModelBuilder capabilities", () => {
     );
     expect(definition.buildChart).toBeTypeOf("function");
     expect(definition.outputCharts.entries[0]).not.toHaveProperty("spec");
-    expect(definition.chartEngineRegistrations[0]?.registration.kind).toBe(
+    expect(definition.chartEngineRegistrations[0]?.registration.engine).toBe(
       ChartEngine.DynamicField,
     );
   });
@@ -263,7 +263,7 @@ describe("ComfortModelBuilder capabilities", () => {
     const definition = createExploreBuilder(
       createPmvPsychrometricCustomChart(),
     ).build();
-    expect(definition.chartEngineRegistrations[0]?.registration.kind).toBe(
+    expect(definition.chartEngineRegistrations[0]?.registration.engine).toBe(
       ChartEngine.Custom,
     );
     expect(definition.outputCharts.defaultInstanceId).toBe("test-pmv-custom");
@@ -274,7 +274,7 @@ describe("ComfortModelBuilder capabilities", () => {
       createExploreBuilder(
         {
           instanceId: "not-psychrometric",
-          kind: ChartEngine.Custom,
+          engine: ChartEngine.Custom,
           name: "Nope",
           emptyMessage: "No chart.",
           spec: { build: () => null },
@@ -288,7 +288,7 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() =>
       createExploreBuilder({
         instanceId: "invented",
-        kind: "invented-engine",
+        engine: "invented-engine",
         name: "Nope",
         emptyMessage: "No chart.",
         spec: {
@@ -565,7 +565,7 @@ describe("defineModel", () => {
 
     expect(
       definition.chartEngineRegistrations.map(
-        ({ registration }) => registration.kind,
+        ({ registration }) => registration.engine,
       ),
     ).toEqual([
       ChartEngine.DynamicField,
@@ -618,7 +618,7 @@ describe("defineModel", () => {
     });
 
     expect(definition.outputCharts.entries[0]?.type).toBe("audit.stress-band");
-    expect(definition.chartEngineRegistrations[0]?.registration.kind).toBe(
+    expect(definition.chartEngineRegistrations[0]?.registration.engine).toBe(
       ChartEngine.BandScalar,
     );
   });
@@ -676,7 +676,7 @@ describe("defineModel", () => {
         outputCharts: [
           {
             instanceId: "mixed",
-            kind: ChartEngine.BandScalar,
+            engine: ChartEngine.BandScalar,
             name: "Nope",
             emptyMessage: "No chart.",
             spec: createModelDynamicFieldChart().spec,

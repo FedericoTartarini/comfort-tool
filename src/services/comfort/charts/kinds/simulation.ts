@@ -9,12 +9,12 @@ export function resolveSimulationChartBuild(
   draft: unknown,
   unitSystem: UnitSystemType,
 ): PlotlyChartResponseDto {
-  switch (chart.kind) {
+  switch (chart.engine) {
     case ChartEngine.TimeSeriesLine:
       return chart.spec.build(result, draft, unitSystem);
     default: {
-      const exhaustive: never = chart.kind;
-      throw new Error(`Unsupported simulation chart kind: ${exhaustive}`);
+      const exhaustive: never = chart.engine;
+      throw new Error(`Unsupported simulation chart engine: ${exhaustive}`);
     }
   }
 }

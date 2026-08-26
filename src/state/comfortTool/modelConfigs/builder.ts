@@ -121,24 +121,24 @@ export function createEmptyResults<T>(): Record<InputIdType, T | null> {
 function toRegisteredChartEngineSpec<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
 ): RegisteredChartEngineSpec<ResultType, ChartSourceType> {
-  if (!isChartEngine(entry.kind)) {
+  if (!isChartEngine(entry.engine)) {
     throw new Error(
-      `Unknown chart engine "${String(entry.kind)}". ChartEngine is a closed set.`,
+      `Unknown chart engine "${String(entry.engine)}". ChartEngine is a closed set.`,
     );
   }
-  switch (entry.kind) {
+  switch (entry.engine) {
     case ChartEngine.DynamicField:
-      return { kind: ChartEngine.DynamicField, spec: entry.spec };
+      return { engine: ChartEngine.DynamicField, spec: entry.spec };
     case ChartEngine.BoundaryRegion:
-      return { kind: ChartEngine.BoundaryRegion, spec: entry.spec };
+      return { engine: ChartEngine.BoundaryRegion, spec: entry.spec };
     case ChartEngine.ParametricLine:
-      return { kind: ChartEngine.ParametricLine, spec: entry.spec };
+      return { engine: ChartEngine.ParametricLine, spec: entry.spec };
     case ChartEngine.BandScalar:
-      return { kind: ChartEngine.BandScalar, spec: entry.spec };
+      return { engine: ChartEngine.BandScalar, spec: entry.spec };
     case ChartEngine.TimeSeriesLine:
-      return { kind: ChartEngine.TimeSeriesLine, spec: entry.spec };
+      return { engine: ChartEngine.TimeSeriesLine, spec: entry.spec };
     case ChartEngine.Custom:
-      return { kind: ChartEngine.Custom, spec: entry.spec };
+      return { engine: ChartEngine.Custom, spec: entry.spec };
   }
 }
 
@@ -165,7 +165,7 @@ function createChartInstanceDeclaration<ResultType, ChartSourceType>(
 ): ChartInstanceDeclaration {
   return {
     instanceId: entry.instanceId,
-    kind: entry.kind,
+    engine: entry.engine,
     name: entry.name,
     emptyMessage: entry.emptyMessage,
     ...(entry.note ? { note: entry.note } : {}),
@@ -173,7 +173,7 @@ function createChartInstanceDeclaration<ResultType, ChartSourceType>(
     ...(entry.capabilities
       ? {
           capabilities: resolveChartCapabilities(
-            entry.kind,
+            entry.engine,
             entry.capabilities,
           ),
         }
@@ -285,7 +285,7 @@ export class ComfortModelBuilder<
 
   setSimulation(simulation: SimulationOutputDeclaration): this {
     for (const chart of simulation.charts) {
-      if (chart.kind !== ChartEngine.TimeSeriesLine) {
+      if (chart.engine !== ChartEngine.TimeSeriesLine) {
         throw new Error(
           `Simulation chart ${chart.id} must use ChartEngine.TimeSeriesLine.`,
         );
@@ -377,7 +377,7 @@ export class ComfortModelBuilder<
     entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
   ): void {
     if (
-      entry.kind === ChartEngine.Custom
+      entry.engine === ChartEngine.Custom
       && !modelAllowsCustomCharts(this.id)
     ) {
       throw new Error(
@@ -494,7 +494,7 @@ export class ComfortModelBuilder<
 
     const registeredFields = this.registeredOutputCharts.flatMap(
       ({ registration }) => {
-        if (registration.registration.kind !== ChartEngine.DynamicField) {
+        if (registration.registration.engine !== ChartEngine.DynamicField) {
           return [];
         }
         return registration.registration.spec.axisFields;
@@ -731,7 +731,7 @@ export class ComfortModelBuilder<
       }
 
       const capabilities =
-        chart.capabilities ?? resolveChartCapabilities(chart.kind);
+        chart.capabilities ?? resolveChartCapabilities(chart.engine);
       if (capabilities.locksYAxis && !capabilities.allowsAxisSelection) {
         throw new Error("A locked Y axis requires an axis-selectable chart.");
       }
@@ -906,7 +906,7 @@ export class ComfortModelBuilder<
         );
         const showsLegend = chartEntry
           ? resolveChartCapabilities(
-              chartEntry.declaration.kind,
+              chartEntry.declaration.engine,
               chartEntry.declaration.capabilities,
             ).showsLegend
           : false;
@@ -993,9 +993,9 @@ function assertModelChartDeclarations<TResult>(
   charts: readonly ModelChartDeclaration<TResult>[],
 ): void {
   for (const chart of charts) {
-    if (!isModelChartEngine(chart.kind)) {
+    if (!isModelChartEngine(chart.engine)) {
       throw new Error(
-        `defineModel chart "${chart.instanceId}" uses engine "${String(chart.kind)}". defineModel cannot add ChartEngine members or declare Custom.`,
+        `defineModel chart "${chart.instanceId}" uses engine "${String(chart.engine)}". defineModel cannot add ChartEngine members or declare Custom.`,
       );
     }
     if (specHasPlotlyBuild(chart.spec)) {
@@ -1005,7 +1005,7 @@ function assertModelChartDeclarations<TResult>(
     }
     if (!modelChartSpecMatchesEngine(chart)) {
       throw new Error(
-        `defineModel chart "${chart.instanceId}" spec does not match engine "${chart.kind}". Extended types cannot escape the ChartEngine spec union.`,
+        `defineModel chart "${chart.instanceId}" spec does not match engine "${chart.engine}". Extended types cannot escape the ChartEngine spec union.`,
       );
     }
   }

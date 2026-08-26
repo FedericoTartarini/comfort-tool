@@ -188,7 +188,7 @@ export function createAdaptiveModelConfig(
     ModelChartSourceDto<AdaptiveRequestDto>
   > = {
     instanceId: declaration.boundaryInstanceId,
-    kind: ChartEngine.BoundaryRegion,
+    engine: ChartEngine.BoundaryRegion,
     name: "Adaptive",
     emptyMessage: "No adaptive chart yet.",
     capabilities: {

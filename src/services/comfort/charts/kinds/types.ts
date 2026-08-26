@@ -234,7 +234,7 @@ export interface ModelChartEngineSpecMap<TResult> {
 
 export type ModelChartEngineSpec<TResult> = {
   [K in ModelChartEngine]: {
-    readonly kind: K;
+    readonly engine: K;
     readonly spec: ModelChartEngineSpecMap<TResult>[K];
   };
 }[ModelChartEngine];
@@ -246,27 +246,27 @@ export type ModelChartEngineSpec<TResult> = {
  */
 export type RegisteredChartEngineSpec<TResult, ChartSourceType> =
   | {
-      kind: typeof ChartEngine.DynamicField;
+      engine: typeof ChartEngine.DynamicField;
       spec: DynamicFieldChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartEngine.BoundaryRegion;
+      engine: typeof ChartEngine.BoundaryRegion;
       spec: BoundaryRegionChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartEngine.ParametricLine;
+      engine: typeof ChartEngine.ParametricLine;
       spec: ParametricLineDataSpec<TResult>;
     }
   | {
-      kind: typeof ChartEngine.BandScalar;
+      engine: typeof ChartEngine.BandScalar;
       spec: BandScalarChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartEngine.TimeSeriesLine;
+      engine: typeof ChartEngine.TimeSeriesLine;
       spec: TimeSeriesLineChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartEngine.Custom;
+      engine: typeof ChartEngine.Custom;
       spec: CustomChartEngineSpec<TResult, ChartSourceType>;
     };
 
@@ -316,10 +316,10 @@ export interface ChartEngineRegistration<TResult, ChartSourceType> {
 }
 
 export function modelChartSpecMatchesEngine(chart: {
-  readonly kind: ModelChartEngine;
+  readonly engine: ModelChartEngine;
   readonly spec: object;
 }): boolean {
-  switch (chart.kind) {
+  switch (chart.engine) {
     case ChartEngine.DynamicField:
       return isDynamicFieldGridSpec(chart.spec);
     case ChartEngine.BandScalar:

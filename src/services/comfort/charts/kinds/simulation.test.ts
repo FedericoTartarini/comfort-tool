@@ -11,7 +11,7 @@ describe("simulation chart resolver", () => {
   it("routes time-series-line simulation charts through their spec builder", () => {
     const chart: SimulationChartDeclaration = {
       id: "test-chart",
-      kind: ChartEngine.TimeSeriesLine,
+      engine: ChartEngine.TimeSeriesLine,
       title: "Test chart",
       description: "Test description",
       emptyMessage: "Empty",
