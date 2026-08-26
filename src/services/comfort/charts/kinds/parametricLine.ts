@@ -1,9 +1,9 @@
 import { CalculationSource } from "../../../../models/calculationMetadata";
 import type {
-  PlotAxisDto,
-  PlotlyChartResponseDto,
-  PlotScatterLineTraceDto,
-} from "../../../../models/comfortDtos";
+  PlotAxis,
+  PlotlyChartSpec,
+  PlotScatterLineTrace,
+} from "../../../plotlyTypes";
 import type { ChartBuildContext } from "../../../../models/modelCapabilities";
 import {
   UnitSystem,
@@ -90,7 +90,7 @@ function buildLimitBandTrace(
   band: ParametricLimitBand,
   xDisplay: readonly number[],
   unitSystem: UnitSystemType,
-): PlotScatterLineTraceDto | null {
+): PlotScatterLineTrace | null {
   if (
     !Number.isFinite(band.min) ||
     !Number.isFinite(band.max) ||
@@ -124,7 +124,7 @@ function buildPolylineTrace(
   xUnits: string,
   unitSystem: UnitSystemType,
   convertX: (valueSi: number) => number,
-): PlotScatterLineTraceDto | null {
+): PlotScatterLineTrace | null {
   const points = finitePoints(polyline);
   if (points.length === 0) return null;
   const yUnits = unitsForParametricY(polyline.yUnit, unitSystem);
@@ -185,8 +185,8 @@ function collectDisplayValues(
 function toAxisDto(
   title: string,
   values: readonly number[],
-  extras: Partial<PlotAxisDto> = {},
-): PlotAxisDto {
+  extras: Partial<PlotAxis> = {},
+): PlotAxis {
   const range: [number, number] =
     values.length > 0 ? paddedSeriesRange(values, 0.1) : [0, 1];
   return {
@@ -201,7 +201,7 @@ export function buildModelParametricLineChart<TResult>(
   chartSource: unknown,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-): PlotlyChartResponseDto | null {
+): PlotlyChartSpec | null {
   const geometry = spec.getGeometry(chartSource, resultsByInput, context);
   if (!geometry) return null;
   return renderParametricLineGeometry(spec, geometry, context);
@@ -214,7 +214,7 @@ export function renderParametricLineGeometry(
   >,
   geometry: ParametricLineGeometry,
   context: ChartBuildContext,
-): PlotlyChartResponseDto | null {
+): PlotlyChartSpec | null {
   const xAxis = createFieldAxisScale({
     field: spec.xField,
     unitSystem: context.unitSystem,

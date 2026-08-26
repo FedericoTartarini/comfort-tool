@@ -37,7 +37,7 @@ import {
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { createAnalysisState } from "../../../state/comfortTool/createComfortToolState.svelte";
 import { convertFieldValueFromSi } from "../../units";
-import type { PlotlyChartResponseDto, PlotTraceDto } from "../../../models/comfortDtos";
+import type { PlotlyChartSpec, PlotTrace } from "../../plotlyTypes";
 import { buildChartPlotly } from "../../../testSupport/modelChartTestHelpers";
 const input: ComfortZoneRequest = {
   tdb: 25,
@@ -147,7 +147,7 @@ function buildPsychrometric(
   source = createSource(declaration),
   outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const { config, result } = calculateModel(declaration);
   const chart = buildChartPlotly(config,
     declaration.psychrometricChartId,
@@ -167,15 +167,15 @@ function buildPsychrometric(
 }
 
 function requireTrace(
-  chart: PlotlyChartResponseDto,
+  chart: PlotlyChartSpec,
   name: string,
-): PlotTraceDto {
-  const trace = chart.traces.find((candidate: PlotTraceDto) => candidate.name === name);
+): PlotTrace {
+  const trace = chart.traces.find((candidate: PlotTrace) => candidate.name === name);
   if (!trace) throw new Error(`Missing chart trace: ${name}`);
   return trace;
 }
 
-function expectSaturationMaskToMatchCurve(chart: PlotlyChartResponseDto): void {
+function expectSaturationMaskToMatchCurve(chart: PlotlyChartSpec): void {
   const mask = requireTrace(chart, "Supersaturated region mask");
   const saturationCurve = requireTrace(chart, "RH 100%");
   const curveLength = saturationCurve.x.length;
@@ -201,7 +201,7 @@ function buildDynamic(
   unitSystem: UnitSystemType = UnitSystem.SI,
   request: ComfortZoneRequest = input,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const { config, result, source } = calculateModel(declaration, request);
   const chart = buildChartPlotly(config,
     declaration.dynamicChartId,
@@ -406,7 +406,7 @@ describe("PMV charts", () => {
       const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
       expect(fillTraces.length).toBeGreaterThan(0);
-      expect(chart.traces.every((trace: PlotTraceDto) => !("hoveron" in trace))).toBe(true);
+      expect(chart.traces.every((trace: PlotTrace) => !("hoveron" in trace))).toBe(true);
       expect(tooltipTraces).toHaveLength(1);
       expect(tooltipTraces[0].hoverongaps).toBe(false);
       expect(tooltipTraces[0].hovertemplate).toContain(
@@ -505,7 +505,7 @@ describe("PMV charts", () => {
       PhysicalQuantityId.ClothingInsulation,
       PhysicalQuantityId.RelativeHumidity,
     );
-    const inputX = (chart: PlotlyChartResponseDto) => chart.traces
+    const inputX = (chart: PlotlyChartSpec) => chart.traces
       .find(({ name }) => name === "Input 1")?.x[0];
 
     expect(inputX(ashraeOperative)).toBe(23);
@@ -569,7 +569,7 @@ describe("PMV charts", () => {
     expect(tooltipTrace?.hovertemplate).toContain("Zone:");
     expect(tooltipTrace?.hovertemplate).toContain("PMV:");
     expect(tooltipTrace?.hovertemplate).toContain("PPD:");
-    expect(chart.traces.every((trace: PlotTraceDto) => !("hoveron" in trace))).toBe(true);
+    expect(chart.traces.every((trace: PlotTrace) => !("hoveron" in trace))).toBe(true);
     expect(inputTrace?.x[0]).toBeCloseTo(
       convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, input.tdb, UnitSystem.IP),
       6,

@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../../../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import { ChartEngine } from "../../../../models/output/chartKinds";
 import type { UnitSystem as UnitSystemType } from "../../../../models/units";
 import type { SimulationChartDeclaration } from "../simulationCharts";
@@ -8,7 +8,7 @@ export function resolveSimulationChartBuild(
   result: unknown,
   draft: unknown,
   unitSystem: UnitSystemType,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   switch (chart.engine) {
     case ChartEngine.TimeSeriesLine:
       return chart.spec.build(result, draft, unitSystem);

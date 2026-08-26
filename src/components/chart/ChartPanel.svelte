@@ -5,14 +5,14 @@
   import ChartControls from "./ChartControls.svelte";
   import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+  import type { PlotlyChartSpec } from "../../services/plotlyTypes";
   import type { ModelId as ModelIdType } from "../../models/comfortModels";
   import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../state/comfortTool/types";
   import type { PublicationExportHandler } from "../../services/plotlyExport";
 
   interface Props {
-    chartResult: PlotlyChartResponseDto | null;
+    chartResult: PlotlyChartSpec | null;
     isLoading: boolean;
     chartInstance: ChartInstancePanelView;
     chartInstances: readonly ChartInstancePanelView[];

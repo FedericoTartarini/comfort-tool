@@ -1,6 +1,6 @@
 import { humidex } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
-import type { ModelChartSource } from "../models/comfortDtos";
+import type { ModelChartSource } from "../models/chartSource";
 import { ModelId } from "../models/comfortModels";
 import { InputControlId } from "../models/inputControls";
 import {

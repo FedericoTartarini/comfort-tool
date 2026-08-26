@@ -4,7 +4,7 @@ import { ChartEngine } from "../../../../models/output/chartKinds";
 import { CalculationSource } from "../../../../models/calculationMetadata";
 import { UnitSystem } from "../../../../models/units";
 import type { SimulationChartDeclaration } from "../simulationCharts";
-import type { PlotlyChartResponseDto } from "../../../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import { resolveSimulationChartBuild } from "./simulation";
 
 describe("simulation chart resolver", () => {
@@ -30,7 +30,7 @@ describe("simulation chart resolver", () => {
           },
           annotations: [],
           source: CalculationSource.JsThermalComfort,
-        } satisfies PlotlyChartResponseDto),
+        } satisfies PlotlyChartSpec),
       },
     };
 

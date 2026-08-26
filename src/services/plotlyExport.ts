@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import type { PlotlyChartSpec } from "./plotlyTypes";
 import {
   PublicationColumn,
   publicationChartThemeFor,
@@ -66,7 +66,7 @@ export interface PlotlyToImageApi {
 }
 
 export function chartExportFilename(
-  chart: PlotlyChartResponseDto,
+  chart: PlotlyChartSpec,
   column: PublicationColumnType = PublicationColumn.Single,
 ): string {
   const titleText = chart.layout.title.trim() || "cbe-thermal-comfort-chart";
@@ -118,7 +118,7 @@ function triggerBrowserDownload(url: string, filename: string): void {
  */
 export async function downloadPublicationChart(
   plotly: PlotlyToImageApi,
-  chart: PlotlyChartResponseDto,
+  chart: PlotlyChartSpec,
   format: ChartExportFormat,
   column: PublicationColumnType = PublicationColumn.Single,
 ): Promise<void> {

@@ -1,12 +1,12 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
 import { type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import type {
-  PlotAnnotationDto,
-  PlotHoverCellDto,
-  PlotLegendDto,
-  PlotMarginDto,
-  PlotTraceDto,
-} from "../../../models/comfortDtos";
+  PlotAnnotation,
+  PlotHoverCell,
+  PlotLegend,
+  PlotMargin,
+  PlotTrace,
+} from "../../plotlyTypes";
 export interface ChartRange {
   min: number;
   max: number;
@@ -58,7 +58,7 @@ export interface GridPointEvaluation {
    * Per-cell Plotly customdata. Models may return a scalar or a tuple; the grid
    * engine preserves the shape so hover templates can reference it directly.
    */
-  hoverMetadata?: PlotHoverCellDto;
+  hoverMetadata?: PlotHoverCell;
 }
 
 export interface GridEvaluationResult {
@@ -68,7 +68,7 @@ export interface GridEvaluationResult {
   yValuesSi: number[];
   zValues: number[][];
   textValues: string[][];
-  hoverMetadata: PlotHoverCellDto[][];
+  hoverMetadata: PlotHoverCell[][];
 }
 
 export interface ChartLayoutSpec {
@@ -76,20 +76,20 @@ export interface ChartLayoutSpec {
   paperBgColor: string;
   plotBgColor: string;
   showLegend: boolean;
-  margin: PlotMarginDto;
+  margin: PlotMargin;
   gridColor?: string;
   showGrid?: boolean;
   zeroLine?: boolean;
-  legend?: PlotLegendDto;
+  legend?: PlotLegend;
   height?: number;
 }
 
 export interface ChartResponseSpec {
-  traces: PlotTraceDto[];
+  traces: PlotTrace[];
   layout: ChartLayoutSpec & {
     xAxis: ChartAxisScale;
     yAxis: ChartAxisScale;
   };
-  annotations?: PlotAnnotationDto[];
+  annotations?: PlotAnnotation[];
   source: CalculationSource;
 }

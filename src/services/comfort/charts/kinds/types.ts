@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../../../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type {
   ChartBuildContext,
@@ -43,7 +43,7 @@ type FrontendChartBuild<TResult, ChartSourceType> = (
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-) => PlotlyChartResponseDto | null;
+) => PlotlyChartSpec | null;
 
 /**
  * Frontend-internal DynamicField geometry. Not part of the model-declaration

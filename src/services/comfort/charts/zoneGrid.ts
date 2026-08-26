@@ -3,12 +3,12 @@ import {
   type NumericBand,
 } from "../../../models/modelCapabilities";
 import type {
-  PlotColorScaleDto,
-  PlotConstraintOperationDto,
-  PlotHoverInfoDto,
-  PlotLevelContoursDto,
-  PlotTraceDto,
-} from "../../../models/comfortDtos";
+  PlotColorScale,
+  PlotConstraintOperation,
+  PlotHoverInfo,
+  PlotLevelContours,
+  PlotTrace,
+} from "../../plotlyTypes";
 import {
   buildGridContourTrace,
   type GridContourLayerSpec,
@@ -21,17 +21,17 @@ type ZoneColorSource = {
 
 interface BoundaryLayerOptions {
   name?: string;
-  contours?: PlotLevelContoursDto;
+  contours?: PlotLevelContours;
   hovertemplate?: string;
-  hoverinfo?: PlotHoverInfoDto;
+  hoverinfo?: PlotHoverInfo;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
 }
 
 interface ZoneContourLayersOptions {
   name: string;
-  colorscale: PlotColorScaleDto;
-  contours: PlotLevelContoursDto;
+  colorscale: PlotColorScale;
+  contours: PlotLevelContours;
   hovertemplate: string;
   showscale?: boolean;
   zmin?: number;
@@ -39,7 +39,7 @@ interface ZoneContourLayersOptions {
   opacity?: number;
   line?: GridContourLayerSpec["line"];
   isBackgroundZone?: boolean;
-  hoverinfo?: PlotHoverInfoDto;
+  hoverinfo?: PlotHoverInfo;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
   boundaryLayer?: BoundaryLayerOptions;
@@ -129,7 +129,7 @@ function buildCategoricalBandLayers({
   bands,
   opacity = 0.8,
 }: CategoricalBandLayersOptions): GridContourLayerSpec[] {
-  const contours: PlotLevelContoursDto = bands.length === 1
+  const contours: PlotLevelContours = bands.length === 1
     ? {
       coloring: "fill",
       showlines: false,
@@ -179,7 +179,7 @@ export function buildCategoricalBandTraces({
   bands,
   grid,
   opacity,
-}: CategoricalBandTracesOptions): PlotTraceDto[] {
+}: CategoricalBandTracesOptions): PlotTrace[] {
   const classifiedGrid: GridEvaluationResult = {
     ...grid,
     zValues: grid.zValues.map((row) => row.map((value) => (
@@ -199,7 +199,7 @@ interface BandTooltipTraceOptions {
   includeHoverMetadata?: boolean;
 }
 
-const TRANSPARENT_COLORSCALE: PlotColorScaleDto = [
+const TRANSPARENT_COLORSCALE: PlotColorScale = [
   [0, "rgba(0, 0, 0, 0)"],
   [1, "rgba(0, 0, 0, 0)"],
 ];
@@ -209,7 +209,7 @@ export function buildBandTooltipTrace({
   grid,
   hovertemplate,
   includeHoverMetadata = true,
-}: BandTooltipTraceOptions): PlotTraceDto {
+}: BandTooltipTraceOptions): PlotTrace {
   return buildGridContourTrace({
     name,
     grid,
@@ -261,7 +261,7 @@ function getFiniteUpperCoverValue(range: { min: number; max: number }): number {
 function buildBandConstraint(
   band: NumericBand,
   finiteRange: { min: number; max: number },
-): { operation: PlotConstraintOperationDto; value: number | [number, number] } {
+): { operation: PlotConstraintOperation; value: number | [number, number] } {
   const hasFiniteMin = Number.isFinite(band.min);
   const hasFiniteMax = Number.isFinite(band.max);
 
@@ -289,7 +289,7 @@ export function buildConstraintBandTraces({
   bands,
   grid,
   opacity = 0.8,
-}: ConstraintBandTracesOptions): PlotTraceDto[] {
+}: ConstraintBandTracesOptions): PlotTrace[] {
   const finiteRange = getFiniteGridRange(grid);
   if (!finiteRange) {
     return [];

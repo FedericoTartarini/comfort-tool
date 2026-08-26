@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+  import type { PlotlyChartSpec } from "../../services/plotlyTypes";
   import type { PublicationExportHandler } from "../../services/plotlyExport";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
 
   interface Props {
     title?: string;
     description?: string;
-    chartResult: PlotlyChartResponseDto | null;
+    chartResult: PlotlyChartSpec | null;
     isLoading: boolean;
     emptyMessage?: string;
     heightClass?: string;

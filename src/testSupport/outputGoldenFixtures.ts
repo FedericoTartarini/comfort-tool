@@ -1,5 +1,5 @@
 import { type ModelId as ModelIdType } from "../models/comfortModels";
-import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import type { PlotlyChartSpec } from "../services/plotlyTypes";
 import { InputId } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
@@ -70,7 +70,7 @@ function serializeTable(sections: ResultSectionViewModel[]): TableGoldenSnapshot
 }
 
 function serializeChart(
-  chart: PlotlyChartResponseDto | null,
+  chart: PlotlyChartSpec | null,
   instanceId: string,
   profileKind: typeof FieldChartProfileKind.Compliance | typeof FieldChartProfileKind.Explore,
 ): ChartGoldenSnapshot | null {

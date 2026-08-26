@@ -1,10 +1,10 @@
 import { CalculationSource } from "../../models/calculationMetadata";
+import type { ModelChartSource } from "../../models/chartSource";
 import type {
-  ModelChartSource,
-  PlotHoverRowDto,
-  PlotlyChartResponseDto,
-  PlotTraceDto,
-} from "../../models/comfortDtos";
+  PlotHoverRow,
+  PlotlyChartSpec,
+  PlotTrace,
+} from "../../services/plotlyTypes";
 import { ComplianceStatus } from "../../models/comfortModels";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/physicalQuantities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
@@ -70,7 +70,7 @@ function getAdaptiveHoverMetadata(
   declaration: AdaptiveModelDeclaration,
   result: AdaptiveResponse,
   unitSystem: UnitSystemType,
-): PlotHoverRowDto {
+): PlotHoverRow {
   const complianceLevel = getLevelResult(result, declaration.complianceLevelId);
   return [
     result.isApplicable && complianceLevel.accepted
@@ -183,7 +183,7 @@ function buildAdaptiveTooltipTrace(
   xAxis: ChartAxisScale,
   yAxis: ChartAxisScale,
   boundaryAxis: "x" | "y",
-): PlotTraceDto {
+): PlotTrace {
   return buildTooltipGridTrace({
     xAxis: { ...xAxis, points: TOOLTIP_GRID_POINTS },
     yAxis: { ...yAxis, points: TOOLTIP_GRID_POINTS },
@@ -213,7 +213,7 @@ export function buildAdaptiveChart(
   source: ModelChartSource<AdaptiveRequest>,
   resultsByInput: Partial<Record<InputIdType, AdaptiveResponse | null>>,
   context: ChartBuildContext<Band>,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const config = context.fieldChartConfig;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
   const { unitSystem } = context;

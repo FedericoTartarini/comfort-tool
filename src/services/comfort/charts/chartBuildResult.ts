@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../plotlyTypes";
 
 export const ChartLegendKind = {
   Bands: "bands",
@@ -23,7 +23,7 @@ export interface ChartLegendViewModel {
 export type ChartOutputReadiness = "empty" | "stale" | "ready";
 
 export interface ChartBuildResult {
-  readonly plotly: PlotlyChartResponseDto | null;
+  readonly plotly: PlotlyChartSpec | null;
   readonly legend: ChartLegendViewModel | null;
   readonly readiness: ChartOutputReadiness;
   readonly emptyMessage: string;

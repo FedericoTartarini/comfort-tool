@@ -1,17 +1,17 @@
 import { inputChartStyleById, inputDisplayMetaById } from "../../../models/inputSlotPresentation";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
 import type {
-  PlotAnnotationDto,
-  PlotColorScaleDto,
-  PlotContourTraceDto,
-  PlotContoursDto,
-  PlotHoverCellDto,
-  PlotHoverInfoDto,
-  PlotHoverRowDto,
-  PlotLineDto,
-  PlotScatterLineTraceDto,
-  PlotScatterMarkerTraceDto,
-} from "../../../models/comfortDtos";
+  PlotAnnotation,
+  PlotColorScale,
+  PlotContourTrace,
+  PlotContours,
+  PlotHoverCell,
+  PlotHoverInfo,
+  PlotHoverRow,
+  PlotLine,
+  PlotScatterLineTrace,
+  PlotScatterMarkerTrace,
+} from "../../plotlyTypes";
 
 export function buildHoverTemplate(
   rows: readonly (string | null | undefined)[],
@@ -28,8 +28,8 @@ export interface InputScatterTraceOptions {
   hovertemplate: string;
   markerSize?: number;
   color?: string;
-  hoverMetadata?: PlotHoverRowDto;
-  hoverinfo?: PlotHoverInfoDto;
+  hoverMetadata?: PlotHoverRow;
+  hoverinfo?: PlotHoverInfo;
 }
 
 export function buildInputScatterTrace({
@@ -42,7 +42,7 @@ export function buildInputScatterTrace({
   color,
   hoverMetadata,
   hoverinfo,
-}: InputScatterTraceOptions): PlotScatterMarkerTraceDto {
+}: InputScatterTraceOptions): PlotScatterMarkerTrace {
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;
   const markerColor = color ?? inputStyle.marker;
@@ -69,8 +69,8 @@ export interface ComfortPolygonTraceOptions {
   polygonY: number[];
   hovertemplate: string;
   isBackgroundZone?: boolean;
-  hoverMetadata?: PlotHoverRowDto[];
-  hoverinfo?: PlotHoverInfoDto;
+  hoverMetadata?: PlotHoverRow[];
+  hoverinfo?: PlotHoverInfo;
 }
 
 export function buildComfortPolygonTrace({
@@ -82,7 +82,7 @@ export function buildComfortPolygonTrace({
   isBackgroundZone,
   hoverMetadata,
   hoverinfo,
-}: ComfortPolygonTraceOptions): PlotScatterLineTraceDto {
+}: ComfortPolygonTraceOptions): PlotScatterLineTrace {
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;
 
@@ -111,12 +111,12 @@ export interface LineTraceOptions {
   color: string;
   hovertemplate?: string;
   text?: string[];
-  hoverMetadata?: PlotHoverRowDto[];
-  hoverinfo?: PlotHoverInfoDto;
+  hoverMetadata?: PlotHoverRow[];
+  hoverinfo?: PlotHoverInfo;
   showlegend?: boolean;
   visible?: true | "legendonly";
   lineWidth?: number;
-  dash?: PlotLineDto["dash"];
+  dash?: PlotLine["dash"];
 }
 
 export function buildLineTrace({
@@ -132,7 +132,7 @@ export function buildLineTrace({
   visible,
   lineWidth = 1.2,
   dash,
-}: LineTraceOptions): PlotScatterLineTraceDto {
+}: LineTraceOptions): PlotScatterLineTrace {
   return {
     type: "scatter",
     mode: "lines",
@@ -158,7 +158,7 @@ export interface FilledPolygonTraceOptions {
   lineColor?: string;
   lineWidth?: number;
   opacity?: number;
-  hoverinfo?: PlotHoverInfoDto;
+  hoverinfo?: PlotHoverInfo;
   hovertemplate?: string;
   isBackgroundZone?: boolean;
 }
@@ -174,7 +174,7 @@ export function buildFilledPolygonTrace({
   hoverinfo = "skip",
   hovertemplate,
   isBackgroundZone,
-}: FilledPolygonTraceOptions): PlotScatterLineTraceDto {
+}: FilledPolygonTraceOptions): PlotScatterLineTrace {
   return {
     type: "scatter",
     mode: "lines",
@@ -207,7 +207,7 @@ export function buildTextAnnotation({
   text,
   textSize = 8,
   color = "#1f2937",
-}: TextAnnotationOptions): PlotAnnotationDto {
+}: TextAnnotationOptions): PlotAnnotation {
   return {
     x,
     y,
@@ -223,19 +223,19 @@ export interface ContourTraceOptions {
   y: number[];
   z: number[][];
   text?: string[][];
-  colorscale?: PlotColorScaleDto;
+  colorscale?: PlotColorScale;
   fillcolor?: string;
-  contours: PlotContoursDto;
+  contours: PlotContours;
   hovertemplate: string;
   showscale?: boolean;
   zmin?: number;
   zmax?: number;
   opacity?: number;
-  line?: PlotLineDto;
+  line?: PlotLine;
   isBackgroundZone?: boolean;
-  hoverinfo?: PlotHoverInfoDto;
+  hoverinfo?: PlotHoverInfo;
   hoverOnGaps?: boolean;
-  hoverMetadata?: PlotHoverCellDto[][];
+  hoverMetadata?: PlotHoverCell[][];
 }
 
 export function buildContourTrace({
@@ -257,7 +257,7 @@ export function buildContourTrace({
   hoverinfo,
   hoverOnGaps,
   hoverMetadata,
-}: ContourTraceOptions): PlotContourTraceDto {
+}: ContourTraceOptions): PlotContourTrace {
   return {
     type: "contour",
     name,

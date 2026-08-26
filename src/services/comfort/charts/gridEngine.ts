@@ -1,11 +1,11 @@
 import type {
-  PlotColorScaleDto,
-  PlotContourTraceDto,
-  PlotContoursDto,
-  PlotHoverCellDto,
-  PlotHoverInfoDto,
-  PlotLineDto,
-} from "../../../models/comfortDtos";
+  PlotColorScale,
+  PlotContourTrace,
+  PlotContours,
+  PlotHoverCell,
+  PlotHoverInfo,
+  PlotLine,
+} from "../../plotlyTypes";
 import { buildContourTrace } from "./plotlyBuilders";
 import { buildAxisValues } from "./axis";
 import type { ChartAxisScale, GridEvaluationResult, GridPointEvaluation } from "./types";
@@ -23,17 +23,17 @@ interface EvaluateGridOptions {
 
 export interface GridContourLayerSpec {
   name: string;
-  colorscale?: PlotColorScaleDto;
+  colorscale?: PlotColorScale;
   fillcolor?: string;
-  contours: PlotContoursDto;
+  contours: PlotContours;
   hovertemplate: string;
   showscale?: boolean;
   zmin?: number;
   zmax?: number;
   opacity?: number;
-  line?: PlotLineDto;
+  line?: PlotLine;
   isBackgroundZone?: boolean;
-  hoverinfo?: PlotHoverInfoDto;
+  hoverinfo?: PlotHoverInfo;
   hoverOnGaps?: boolean;
   includeText?: boolean;
   includeHoverMetadata?: boolean;
@@ -52,12 +52,12 @@ export function evaluateGrid({
   const yAxisValues = buildAxisValues(yAxis);
   const zValues: number[][] = [];
   const textValues: string[][] = [];
-  const hoverMetadata: PlotHoverCellDto[][] = [];
+  const hoverMetadata: PlotHoverCell[][] = [];
 
   for (let yIndex = 0; yIndex < yAxisValues.siValues.length; yIndex += 1) {
     const row: number[] = [];
     const textRow: string[] = [];
-    const hoverMetadataRow: PlotHoverCellDto[] = [];
+    const hoverMetadataRow: PlotHoverCell[] = [];
     const ySi = yAxisValues.siValues[yIndex];
 
     for (let xIndex = 0; xIndex < xAxisValues.siValues.length; xIndex += 1) {
@@ -108,7 +108,7 @@ export function buildGridContourTrace({
   hoverOnGaps,
   includeText = true,
   includeHoverMetadata = true,
-}: GridContourTraceOptions): PlotContourTraceDto {
+}: GridContourTraceOptions): PlotContourTrace {
   return buildContourTrace({
     name,
     x: grid.xValues,

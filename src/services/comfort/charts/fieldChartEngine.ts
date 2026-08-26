@@ -1,13 +1,13 @@
 import type { CalculationSource } from "../../../models/calculationMetadata";
 import { type ChartAxisQuantityId } from "../../../models/physicalQuantities";
 import type {
-  PlotAnnotationDto,
-  PlotHoverValueDto,
-  PlotLegendDto,
-  PlotMarginDto,
-  PlotlyChartResponseDto,
-  PlotTraceDto,
-} from "../../../models/comfortDtos";
+  PlotAnnotation,
+  PlotHoverValue,
+  PlotLegend,
+  PlotMargin,
+  PlotlyChartSpec,
+  PlotTrace,
+} from "../../plotlyTypes";
 import {
   type Band,
   type BandInputsSi,
@@ -84,12 +84,12 @@ export interface GridFieldChartStrategy {
   renderTraces: (
     grid: GridEvaluationResult,
     context: FieldChartRenderContext,
-  ) => PlotTraceDto[];
+  ) => PlotTrace[];
 }
 
 export interface BoundaryFieldChartStrategy {
   kind: "boundary";
-  buildTraces: (context: FieldChartRenderContext) => PlotTraceDto[];
+  buildTraces: (context: FieldChartRenderContext) => PlotTrace[];
 }
 
 export interface BoundaryRegionStyle {
@@ -118,13 +118,13 @@ export type FieldChartInputGroup<TPayload, TResult> = Omit<
 
 export interface FieldChartLayoutSpec {
   title: string;
-  margin: PlotMarginDto;
+  margin: PlotMargin;
   paperBgColor?: string;
   plotBgColor?: string;
   gridColor?: string;
   showGrid?: boolean;
   zeroLine?: boolean;
-  legend?: PlotLegendDto;
+  legend?: PlotLegend;
   height?: number;
 }
 
@@ -133,18 +133,18 @@ export interface FieldChartOptions<TPayload, TResult> {
   xAxis: FieldChartAxisSpec;
   yAxis: FieldChartAxisSpec;
   strategy: FieldChartStrategy;
-  chartOverlays?: (context: FieldChartRenderContext) => PlotTraceDto[];
+  chartOverlays?: (context: FieldChartRenderContext) => PlotTrace[];
   inputGroups?: (
     context: FieldChartRenderContext,
   ) => Array<FieldChartInputGroup<TPayload, TResult>>;
   layout: FieldChartLayoutSpec;
   source: CalculationSource;
-  annotations?: PlotAnnotationDto[];
+  annotations?: PlotAnnotation[];
 }
 
 export interface BandedGridOutputEvaluation {
   valueSi: number;
-  additionalHoverMetadata?: readonly PlotHoverValueDto[];
+  additionalHoverMetadata?: readonly PlotHoverValue[];
 }
 
 export const GridBandRenderStrategy = {
@@ -251,7 +251,7 @@ function toDisplayOutputGrid(
 function buildStrategyTraces(
   strategy: FieldChartStrategy,
   context: FieldChartRenderContext,
-): PlotTraceDto[] {
+): PlotTrace[] {
   if (strategy.kind === "boundary") {
     return strategy.buildTraces(context);
   }
@@ -298,7 +298,7 @@ export function buildFieldChart<TPayload = unknown, TResult = unknown>({
   layout,
   source,
   annotations = [],
-}: FieldChartOptions<TPayload, TResult>): PlotlyChartResponseDto {
+}: FieldChartOptions<TPayload, TResult>): PlotlyChartSpec {
   const context: FieldChartRenderContext = {
     xAxis: createAxis(xAxisSpec, unitSystem),
     yAxis: createAxis(yAxisSpec, unitSystem),

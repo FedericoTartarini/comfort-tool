@@ -1,11 +1,11 @@
 import { inputDisplayMetaById } from "../../../models/inputSlotPresentation";
+import type { CompareInputMap } from "../../../models/chartSource";
 import type {
-  CompareInputMap,
-  PlotHoverInfoDto,
-  PlotHoverRowDto,
-  PlotScatterMarkerTraceDto,
-  PlotTraceDto,
-} from "../../../models/comfortDtos";
+  PlotHoverInfo,
+  PlotHoverRow,
+  PlotScatterMarkerTrace,
+  PlotTrace,
+} from "../../plotlyTypes";
 import {
   inputOrder,
   type InputId as InputIdType,
@@ -36,18 +36,18 @@ export interface BuildInputTraceGroupsOptions<TPayload, TResult> {
   formatXDisplay?: (value: number) => number;
   formatYDisplay?: (value: number) => number;
   getHovertemplate: (context: InputTraceContext<TPayload, TResult>) => string;
-  buildOverlayTraces?: (context: InputTraceContext<TPayload, TResult>) => PlotTraceDto[];
+  buildOverlayTraces?: (context: InputTraceContext<TPayload, TResult>) => PlotTrace[];
   markerSize?: number;
   color?: string;
   hoverMetadata?: (
     context: InputTraceContext<TPayload, TResult>,
-  ) => PlotHoverRowDto;
-  hoverinfo?: PlotHoverInfoDto;
+  ) => PlotHoverRow;
+  hoverinfo?: PlotHoverInfo;
 }
 
 interface InputTraceGroup {
-  overlays: PlotTraceDto[];
-  markers: PlotScatterMarkerTraceDto[];
+  overlays: PlotTrace[];
+  markers: PlotScatterMarkerTrace[];
 }
 
 export function buildInputTraceGroup<TPayload, TResult = unknown>({
@@ -69,8 +69,8 @@ export function buildInputTraceGroup<TPayload, TResult = unknown>({
 }: BuildInputTraceGroupsOptions<TPayload, TResult>): InputTraceGroup {
   const inputs = getCompareInputs(inputsMap);
   const resolvedShowLegend = showLegend ?? inputs.length > 1;
-  const overlays: PlotTraceDto[] = [];
-  const markers: PlotScatterMarkerTraceDto[] = [];
+  const overlays: PlotTrace[] = [];
+  const markers: PlotScatterMarkerTrace[] = [];
 
   inputs.forEach(({ inputId, payload }) => {
     const result = resultsByInput[inputId];
@@ -110,7 +110,7 @@ export function buildInputTraceGroup<TPayload, TResult = unknown>({
 /** Named scatter markers for every Compare input that has a plotted point. */
 export function buildCompareInputMarkerTraces(
   pointsByInput: Partial<Record<InputIdType, { x: number; y: number }>>,
-): PlotScatterMarkerTraceDto[] {
+): PlotScatterMarkerTrace[] {
   const points = inputOrder.flatMap((inputId) => {
     const point = pointsByInput[inputId];
     if (

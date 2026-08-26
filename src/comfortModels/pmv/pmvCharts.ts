@@ -1,6 +1,6 @@
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ChartBuildContext, NumericBand } from "../../models/modelCapabilities";
-import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import type { ChartAxisQuantityId } from "../../models/physicalQuantities";
 import type {
   CustomChartEngineSpec,
@@ -31,7 +31,7 @@ export function buildPmvChart(
   source: PmvChartSource,
   resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>,
   context: ChartBuildContext<NumericBand>,
-): PlotlyChartResponseDto | null {
+): PlotlyChartSpec | null {
   const createDescriptor = resolvePmvChartView(instanceId, declaration);
   return createDescriptor
     ? buildPmvFieldChart(

@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import type {
   TimeSeriesControlDefinition,
   TimeSeriesModelDefinition,
@@ -63,7 +63,7 @@ export interface TimeSeriesChartViewModel {
   readonly emptyMessage: string;
   readonly heightClass: string;
   readonly testId?: string;
-  readonly chart: PlotlyChartResponseDto | null;
+  readonly chart: PlotlyChartSpec | null;
 }
 
 function buildControlViewModel<TDraft>(

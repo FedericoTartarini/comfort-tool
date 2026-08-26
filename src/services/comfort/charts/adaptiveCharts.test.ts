@@ -21,11 +21,11 @@ import type {
   AdaptiveRequest,
   AdaptiveResponse,
 } from "../../../comfortModels/adaptive/adaptiveShared";
+import type { ModelChartSource } from "../../../models/chartSource";
 import type {
-  ModelChartSource,
-  PlotlyChartResponseDto,
-  PlotTraceDto,
-} from "../../../models/comfortDtos";
+  PlotlyChartSpec,
+  PlotTrace,
+} from "../../plotlyTypes";
 import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { InputId, type InputId as InputIdType } from "../../../models/inputSlots";
 import {
@@ -78,7 +78,7 @@ function buildChart(
   unitSystem: UnitSystemType = UnitSystem.SI,
   baselineInputId: InputIdType = InputId.Input1,
   direction: "default" | "transposed" = "default",
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const resultsByInput: Partial<Record<InputIdType, AdaptiveResponse | null>> = {};
   Object.entries(requests).forEach(([inputId, request]) => {
     if (request) {
@@ -103,7 +103,7 @@ function getLevel(
   return level;
 }
 
-function getRegionTraces(chart: PlotlyChartResponseDto): PlotTraceDto[] {
+function getRegionTraces(chart: PlotlyChartSpec): PlotTrace[] {
   return chart.traces.filter(
     ({ type, fill }) => type === "scatter" && fill === "toself",
   );
@@ -114,7 +114,7 @@ function round(value: number, decimals = 3): number {
   return Math.round(value * factor) / factor;
 }
 
-function summarizeRegions(chart: PlotlyChartResponseDto) {
+function summarizeRegions(chart: PlotlyChartSpec) {
   return getRegionTraces(chart).map((trace) => ({
     name: trace.name,
     color: trace.fillcolor,
@@ -125,7 +125,7 @@ function summarizeRegions(chart: PlotlyChartResponseDto) {
 }
 
 function getBoundaryPoint(
-  chart: PlotlyChartResponseDto,
+  chart: PlotlyChartSpec,
   traceName: string,
   targetOutdoorTemperature: number,
   side: "lower" | "upper",

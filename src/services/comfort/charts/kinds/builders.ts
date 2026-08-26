@@ -1,7 +1,5 @@
-import type {
-  ModelChartSource,
-  PlotlyChartResponseDto,
-} from "../../../../models/comfortDtos";
+import type { ModelChartSource } from "../../../../models/chartSource";
+import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import type { ChartBuildResult } from "../chartBuildResult";
 import { ChartEngine } from "../../../../models/output/chartKinds";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
@@ -187,7 +185,7 @@ export function buildParametricLineChart<TResult, ChartSourceType>(
 }
 
 function wrapPlotlyResult<TResult, ChartSourceType>(
-  plotly: PlotlyChartResponseDto | null,
+  plotly: PlotlyChartSpec | null,
   registration: ChartEngineRegistration<TResult, ChartSourceType>,
 ): ChartBuildResult {
   return {

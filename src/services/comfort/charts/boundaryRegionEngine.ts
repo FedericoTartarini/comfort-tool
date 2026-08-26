@@ -1,11 +1,11 @@
 import type {
-  PlotColorScaleDto,
-  PlotContourTraceDto,
-  PlotContoursDto,
-  PlotHoverRowDto,
-  PlotScatterLineTraceDto,
-  PlotTraceDto,
-} from "../../../models/comfortDtos";
+  PlotColorScale,
+  PlotContourTrace,
+  PlotContours,
+  PlotHoverRow,
+  PlotScatterLineTrace,
+  PlotTrace,
+} from "../../plotlyTypes";
 import {
   resolveBandEdge,
   type Band,
@@ -15,7 +15,7 @@ import { buildFilledPolygonTrace } from "./plotlyBuilders";
 import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale } from "./types";
 
-type BoundaryHoverRow = PlotHoverRowDto;
+type BoundaryHoverRow = PlotHoverRow;
 
 interface BoundaryPolygonTraceContext {
   polygonX: number[];
@@ -33,7 +33,7 @@ interface BuildBoundaryRegionTracesOptions {
   additionalBoundaryValuesSi?: readonly number[];
   buildTrace: (
     context: BoundaryPolygonTraceContext & { band: Band; bandIndex: number },
-  ) => PlotTraceDto;
+  ) => PlotTrace;
 }
 
 interface FilledBoundaryRegionTraceOptions {
@@ -52,8 +52,8 @@ interface TooltipGridTraceOptions {
   yAxis: ChartAxisScale;
   hovertemplate: string;
   getHoverMetadata: (xSi: number, ySi: number, xIndex: number, yIndex: number) => BoundaryHoverRow;
-  colorscale?: PlotColorScaleDto;
-  contours?: PlotContoursDto;
+  colorscale?: PlotColorScale;
+  contours?: PlotContours;
 }
 
 interface ClosedBoundaryPolygonOptions {
@@ -114,7 +114,7 @@ export function buildBoundaryRegionTraces({
   boundaryAxis,
   additionalBoundaryValuesSi = [],
   buildTrace,
-}: BuildBoundaryRegionTracesOptions): PlotTraceDto[] {
+}: BuildBoundaryRegionTracesOptions): PlotTrace[] {
   if (bands.length === 0) {
     return [];
   }
@@ -167,7 +167,7 @@ export function buildBoundaryRegionTraces({
   });
 
   const boundaryDisplayValues = boundaryValuesSi.map(parameterAxis.toDisplay);
-  const traces: PlotTraceDto[] = [];
+  const traces: PlotTrace[] = [];
 
   bands.forEach((band, bandIndex) => {
     const { min: lowerValuesSi, max: upperValuesSi } = resolvedEdges[bandIndex];
@@ -215,7 +215,7 @@ export function buildFilledBoundaryRegionTrace({
   lineColor,
   opacity = 0.72,
   isBackgroundZone = true,
-}: FilledBoundaryRegionTraceOptions): PlotScatterLineTraceDto {
+}: FilledBoundaryRegionTraceOptions): PlotScatterLineTrace {
   return buildFilledPolygonTrace({
     name,
     x: polygonX,
@@ -236,7 +236,7 @@ export function buildTooltipGridTrace({
   getHoverMetadata,
   colorscale = [[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
   contours = { coloring: "none", showlines: false },
-}: TooltipGridTraceOptions): PlotContourTraceDto {
+}: TooltipGridTraceOptions): PlotContourTrace {
   const grid = evaluateGrid({
     xAxis,
     yAxis,

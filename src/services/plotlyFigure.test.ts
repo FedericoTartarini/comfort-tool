@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { CalculationSource } from "../models/calculationMetadata";
-import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import type { PlotlyChartSpec } from "./plotlyTypes";
 import {
   CHART_LAYOUT_DPI,
   PublicationColumn,
@@ -23,8 +23,8 @@ import {
 
 function contourChart(
   z: number[][],
-  extras: Partial<PlotlyChartResponseDto> = {},
-): PlotlyChartResponseDto {
+  extras: Partial<PlotlyChartSpec> = {},
+): PlotlyChartSpec {
   return {
     traces: [
       {
@@ -54,7 +54,7 @@ function contourChart(
 describe("toPlotlyFigure", () => {
   it("maps internal chart metadata at the isolated Plotly boundary", () => {
     const hoverMetadata: Array<Array<Array<string>>> = [[["gap"]]];
-    const chart: PlotlyChartResponseDto = {
+    const chart: PlotlyChartSpec = {
       traces: [
         {
           type: "scatter",
@@ -204,7 +204,7 @@ describe("toPlotlyFigure", () => {
   it("clones scatter vertices but leaves NaN as line gaps", () => {
     const x = [0, Number.NaN, 1];
     const y = [10, 20, 30];
-    const chart: PlotlyChartResponseDto = {
+    const chart: PlotlyChartSpec = {
       traces: [
         {
           type: "scatter",
@@ -287,7 +287,7 @@ describe("toPlotlyFigure", () => {
   });
 
   it("keeps Compare legends readable on single- and double-column publication figures", () => {
-    const chart: PlotlyChartResponseDto = {
+    const chart: PlotlyChartSpec = {
       traces: [
         {
           type: "scatter",
@@ -383,7 +383,7 @@ describe("toPlotlyFigure", () => {
   it("remaps zone fills on publication and colour-blind themes without touching Compare markers", () => {
     const screenFill = resolveZoneAppearance(ZoneToken.Neutral).fill;
     const failFill = resolveZoneAppearance(ZoneToken.FailFill).fill;
-    const chart: PlotlyChartResponseDto = {
+    const chart: PlotlyChartSpec = {
       traces: [
         {
           type: "contour",

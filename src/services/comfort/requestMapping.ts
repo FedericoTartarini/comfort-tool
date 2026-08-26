@@ -1,4 +1,4 @@
-import type { ModelChartSource } from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/chartSource";
 import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../models/physicalQuantities";
 import {
   InputId,

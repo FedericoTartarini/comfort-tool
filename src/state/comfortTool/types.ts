@@ -5,7 +5,7 @@
  */
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelId as ModelIdType } from "../../models/comfortModels";
-import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import type {
   PrimaryInputState,
   DerivedSlotQuantityState,
@@ -327,7 +327,7 @@ export type AnalysisSelectors = {
   ) => InputModifierControlViewModel[];
   getEffectiveQuantitiesByInput: (modelId?: ModelIdType) => QuantitiesByInputState;
   getResultSections: () => ResultSectionViewModel[];
-  getCurrentChartResult: () => PlotlyChartResponseDto | null;
+  getCurrentChartResult: () => PlotlyChartSpec | null;
   getCurrentChartInstance: () => ChartInstanceDeclaration;
   getCurrentChartInstances: () => readonly ChartInstanceDeclaration[];
   getCurrentChartInstanceId: () => string;

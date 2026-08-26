@@ -1,8 +1,8 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import type {
-  PlotHoverRowDto,
-  PlotTraceDto,
-} from "../../models/comfortDtos";
+  PlotHoverRow,
+  PlotTrace,
+} from "../../services/plotlyTypes";
 import { PhysicalQuantityId, getQuantityDisplayMeta } from "../../models/physicalQuantities";
 import {
   buildComfortPolygonTrace,
@@ -185,7 +185,7 @@ function buildSupersaturatedRegionMask(
   saturationCurve: DisplayedPsychrometricCurve,
   temperatureAxis: ChartAxisScale,
   humidityRatioAxis: ChartAxisScale,
-): PlotTraceDto | null {
+): PlotTrace | null {
   if (saturationCurve.x.length === 0) return null;
 
   const lastCurveX = saturationCurve.x[saturationCurve.x.length - 1];
@@ -215,9 +215,9 @@ function buildRelativeHumidityCurveTrace(
   curve: DisplayedPsychrometricCurve,
   temperatureAxis: ChartAxisScale,
   humidityRatioAxis: ChartAxisScale,
-): PlotTraceDto {
+): PlotTrace {
   const presentation = createPmvOutputPresentation(config);
-  const hoverMetadata: PlotHoverRowDto[] = [];
+  const hoverMetadata: PlotHoverRow[] = [];
   const text: string[] = [];
 
   curve.points.forEach(({ temperatureSi }) => {
@@ -256,7 +256,7 @@ function buildPsychrometricOverlays(
   config: PmvFieldChartConfig,
   temperatureAxis: ChartAxisScale,
   humidityRatioAxis: ChartAxisScale,
-): PlotTraceDto[] {
+): PlotTrace[] {
   const curves = PMV_PSYCHROMETRIC_VIEW.rhCurves.map((relativeHumidity) => (
     buildDisplayedRelativeHumidityCurve(
       relativeHumidity,

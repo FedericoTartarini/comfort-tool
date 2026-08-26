@@ -1,6 +1,4 @@
-import type {
-  ModelChartSource,
-} from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/chartSource";
 import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
 import { InputControlId } from "../../models/inputControls";

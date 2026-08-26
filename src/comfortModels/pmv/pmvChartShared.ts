@@ -1,11 +1,11 @@
 import { CalculationSource } from "../../models/calculationMetadata";
+import type { CompareInputMap } from "../../models/chartSource";
 import type {
-  CompareInputMap,
-  PlotHoverRowDto,
-  PlotMarginDto,
-  PlotlyChartResponseDto,
-  PlotTraceDto,
-} from "../../models/comfortDtos";
+  PlotHoverRow,
+  PlotMargin,
+  PlotlyChartSpec,
+  PlotTrace,
+} from "../../services/plotlyTypes";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import {
   findNumericBandIndexForValue,
@@ -160,7 +160,7 @@ interface PmvOutputPresentation {
   getClassification: (evaluation: PmvChartEvaluation) => string;
   pmvHoverToken: string;
   ppdHoverToken: string;
-  getHoverMetadata: (evaluation: PmvChartEvaluation | null) => PlotHoverRowDto;
+  getHoverMetadata: (evaluation: PmvChartEvaluation | null) => PlotHoverRow;
   getAdditionalHoverMetadata: (evaluation: PmvChartEvaluation) => number;
 }
 
@@ -211,12 +211,12 @@ export interface PmvFieldChartDescriptor {
   ) => GridEvaluationResult;
   getInputXSi: (payload: ComfortZoneRequest) => number;
   getInputYSi: (payload: ComfortZoneRequest) => number;
-  chartOverlays?: (context: FieldChartRenderContext) => PlotTraceDto[];
+  chartOverlays?: (context: FieldChartRenderContext) => PlotTrace[];
   getInputOverlayBuilder?: (
     xAxis: ChartAxisScale,
     yAxis: ChartAxisScale,
   ) => PmvInputOverlayBuilder;
-  margin: PlotMarginDto;
+  margin: PlotMargin;
 }
 
 export function buildPmvFieldChart(
@@ -225,7 +225,7 @@ export function buildPmvFieldChart(
   resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>,
   context: ChartBuildContext<NumericBand>,
   descriptor: PmvFieldChartDescriptor,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const { adapter } = declaration;
   const { config } = descriptor;
   const output = declaration.exploreOutputs.find(({ key }) => key === config.zOutput);

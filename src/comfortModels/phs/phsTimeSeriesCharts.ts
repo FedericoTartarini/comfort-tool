@@ -1,7 +1,7 @@
 import type {
-  PlotlyChartResponseDto,
-  PlotScatterLineTraceDto,
-} from "../../models/comfortDtos";
+  PlotlyChartSpec,
+  PlotScatterLineTrace,
+} from "../../services/plotlyTypes";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
@@ -56,7 +56,7 @@ function lineTrace(options: {
   showLegend?: boolean;
   dash?: "solid" | "dot" | "dash";
   width?: number;
-}): PlotScatterLineTraceDto {
+}): PlotScatterLineTrace {
   return buildTimeSeriesLineTrace(options);
 }
 
@@ -170,7 +170,7 @@ function requireHistory(result: PhsSimulationResult): readonly PhsHistorySample[
 function buildBoundaryTrace(
   boundariesMinutes: readonly number[],
   yRange: [number, number],
-): PlotScatterLineTraceDto | null {
+): PlotScatterLineTrace | null {
   if (boundariesMinutes.length === 0) return null;
   const x: number[] = [];
   const y: number[] = [];
@@ -195,7 +195,7 @@ export function buildPhsTemperatureHistoryChart(
   result: PhsSimulationResult,
   unitSystem: UnitSystemType,
   options: TemperatureHistoryChartOptions,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const samples = downsamplePhsHistorySamples(requireHistory(result), {
     temperatureThresholdsC: [options.thresholdC],
     waterLossThresholdsG: [result.waterLossLimitG],
@@ -213,7 +213,7 @@ export function buildPhsTemperatureHistoryChart(
     [...tRe, ...tCr, threshold],
     unitSystem === UnitSystem.IP ? 1 : 0.5,
   );
-  const traces: PlotScatterLineTraceDto[] = [
+  const traces: PlotScatterLineTrace[] = [
     lineTrace({
       name: "Rectal temperature",
       x,
@@ -313,7 +313,7 @@ export function buildPhsTemperatureTimeSeriesChart(
   result: PhsSimulationResult,
   draft: PhsTimeSeriesDraft,
   unitSystem: UnitSystemType,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const presentation = getSegmentPresentation(result, draft);
   return buildPhsTemperatureHistoryChart(result, unitSystem, {
     title: "PHS temperature over time",
@@ -327,7 +327,7 @@ export function buildPhsWaterLossTimeSeriesChart(
   result: PhsSimulationResult,
   draft: PhsTimeSeriesDraft,
   unitSystem: UnitSystemType,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const { segmentBoundariesMinutes, segmentNamesById } = getSegmentPresentation(
     result,
     draft,
@@ -351,7 +351,7 @@ export function buildPhsWaterLossTimeSeriesChart(
   const unit = unitSystem === UnitSystem.IP ? "lb" : "kg";
   const maxHours = Math.max(result.totalDurationMinutes / 60, 1 / 60);
   const yRange: [number, number] = [0, Math.max(limit, ...waterLoss) * 1.08];
-  const traces: PlotScatterLineTraceDto[] = [
+  const traces: PlotScatterLineTrace[] = [
     lineTrace({
       name: "Predicted cumulative water loss",
       x,

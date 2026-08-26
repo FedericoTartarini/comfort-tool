@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../../../models/comfortDtos";
+import type { PlotlyChartSpec } from "../../plotlyTypes";
 import { ChartEngine } from "../../../models/output/chartKinds";
 import type { UnitSystem as UnitSystemType } from "../../../models/units";
 
@@ -7,7 +7,7 @@ export interface SimulationTimeSeriesLineChartSpec {
     result: unknown,
     draft: unknown,
     unitSystem: UnitSystemType,
-  ) => PlotlyChartResponseDto;
+  ) => PlotlyChartSpec;
 }
 
 export interface SimulationChartDeclaration {

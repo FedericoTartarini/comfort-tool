@@ -1,13 +1,13 @@
 import type {
-  PlotAnnotationDto,
-  PlotAxisDto,
-  PlotColorScaleDto,
-  PlotContoursDto,
-  PlotLayoutDto,
-  PlotLegendDto,
-  PlotlyChartResponseDto,
-  PlotTraceDto,
-} from "../models/comfortDtos";
+  PlotAnnotation,
+  PlotAxis,
+  PlotColorScale,
+  PlotContours,
+  PlotLayout,
+  PlotLegend,
+  PlotlyChartSpec,
+  PlotTrace,
+} from "./plotlyTypes";
 import { remapZoneFill } from "../models/zoneTokens";
 import {
   CHART_LAYOUT_DPI,
@@ -22,7 +22,7 @@ import {
 
 type PlotlyAxisTitle = string | { text: string; standoff?: number };
 
-export type PlotlyFigureAxis = Omit<PlotAxisDto, "title"> & {
+export type PlotlyFigureAxis = Omit<PlotAxis, "title"> & {
   title?: PlotlyAxisTitle;
 };
 
@@ -50,14 +50,14 @@ export interface PlotlyFigureLegend {
 }
 
 export type PlotlyFigureLayout = Omit<
-  PlotLayoutDto,
+  PlotLayout,
   "title" | "xaxis" | "yaxis" | "yaxis2" | "legend"
 > & {
   title?: PlotlyFigureTitle;
   xaxis: PlotlyFigureAxis;
   yaxis: PlotlyFigureAxis;
   yaxis2?: PlotlyFigureAxis;
-  annotations: PlotAnnotationDto[];
+  annotations: PlotAnnotation[];
   legend?: PlotlyFigureLegend;
   width?: number;
   font?: {
@@ -101,7 +101,7 @@ type PlotlyGapNumber = number | null;
  * mode bar). Zone fills remap through the token table in `zoneTokens.ts`.
  */
 export function toPlotlyFigure(
-  chart: PlotlyChartResponseDto,
+  chart: PlotlyChartSpec,
   options: PlotlyFigureOptions = {},
 ): PlotlyFigure {
   const theme = options.theme ?? screenChartTheme;
@@ -117,7 +117,7 @@ export function toPlotlyFigure(
 }
 
 function toPlotlyTrace(
-  trace: PlotTraceDto,
+  trace: PlotTrace,
   theme: ChartTheme,
 ): Record<string, unknown> {
   const { hoverMetadata, isBackgroundZone: _isBackgroundZone, ...rest } = trace;
@@ -180,7 +180,7 @@ function axisTitleStandoffPx(theme: ChartTheme): number {
 }
 
 function toPlotlyLayout(
-  chart: PlotlyChartResponseDto,
+  chart: PlotlyChartSpec,
   theme: ChartTheme,
   showPlotTitle: boolean,
 ): PlotlyFigureLayout {
@@ -278,25 +278,25 @@ function applyPublicationLayout(
   }
 }
 
-function cloneLegend(legend: PlotLegendDto): PlotlyFigureLegend {
+function cloneLegend(legend: PlotLegend): PlotlyFigureLegend {
   return { ...legend };
 }
 
-function cloneAxis(axis: PlotAxisDto): PlotlyFigureAxis {
+function cloneAxis(axis: PlotAxis): PlotlyFigureAxis {
   return {
     ...axis,
     range: [axis.range[0], axis.range[1]],
   };
 }
 
-function cloneAnnotation(annotation: PlotAnnotationDto): PlotAnnotationDto {
+function cloneAnnotation(annotation: PlotAnnotation): PlotAnnotation {
   return {
     ...annotation,
     font: { ...annotation.font },
   };
 }
 
-function cloneContours(contours: PlotContoursDto): PlotContoursDto {
+function cloneContours(contours: PlotContours): PlotContours {
   if (contours.type === "constraint") {
     const value: number | [number, number] = Array.isArray(contours.value)
       ? [contours.value[0], contours.value[1]]
@@ -314,7 +314,7 @@ function cloneContours(contours: PlotContoursDto): PlotContoursDto {
   };
 }
 
-function cloneColorScale(colorscale: PlotColorScaleDto): PlotColorScaleDto {
+function cloneColorScale(colorscale: PlotColorScale): PlotColorScale {
   return colorscale.map((stop) => [stop[0], stop[1]]);
 }
 

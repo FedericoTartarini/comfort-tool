@@ -2,9 +2,7 @@ import {
   inputOrder,
   type InputId as InputIdType,
 } from "../../models/inputSlots";
-import type {
-  CompareInputMap,
-} from "../../models/comfortDtos";
+import type { CompareInputMap } from "../../models/chartSource";
 import type { ThermalZone } from "../../models/thermalZone";
 
 export function roundValue(value: number, decimals = 3): number {

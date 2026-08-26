@@ -5,7 +5,7 @@ import {
   pmvAshraeModelConfig,
 } from "../../../comfortModels/pmv/pmvAshrae";
 import { CalculationSource } from "../../../models/calculationMetadata";
-import type { PlotTraceDto } from "../../../models/comfortDtos";
+import type { PlotTrace } from "../../plotlyTypes";
 import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import { InputId } from "../../../models/inputSlots";
 import {
@@ -39,7 +39,7 @@ function lineTrace(
   name: string,
   x: number[] = [],
   y: number[] = [],
-): PlotTraceDto {
+): PlotTrace {
   return { type: "scatter", mode: "lines", name, x, y };
 }
 

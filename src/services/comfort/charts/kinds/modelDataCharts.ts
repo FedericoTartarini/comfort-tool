@@ -1,8 +1,6 @@
 import { CalculationSource } from "../../../../models/calculationMetadata";
-import type {
-  ModelChartSource,
-  PlotlyChartResponseDto,
-} from "../../../../models/comfortDtos";
+import type { ModelChartSource } from "../../../../models/chartSource";
+import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import {
   inputOrder,
   type InputId as InputIdType,
@@ -92,7 +90,7 @@ export function buildModelBandScalarChart<TResult>(
   chartSource: unknown,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const bands = toNumericBands(context.fieldChartConfig.bands);
   const values = Object.values(resultsByInput).flatMap((result) =>
     result == null ? [] : [spec.getOutputValue(result)],
@@ -166,7 +164,7 @@ export function buildModelBandScalarChart<TResult>(
 export function buildModelBoundaryRegionChart(
   spec: BoundaryRegionDataSpec,
   context: ChartBuildContext,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const [xField, yField] = spec.axisFields;
   const xMeta = getPhysicalQuantityMeta(xField);
   const yMeta = getPhysicalQuantityMeta(yField);
@@ -201,7 +199,7 @@ export function buildModelTimeSeriesLineChart<TResult>(
   spec: TimeSeriesLineDataSpec<TResult>,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-): PlotlyChartResponseDto | null {
+): PlotlyChartSpec | null {
   const result = resultsByInput[context.baselineInputId];
   if (result == null) return null;
   const series = spec

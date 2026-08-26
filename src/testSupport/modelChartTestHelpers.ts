@@ -1,4 +1,4 @@
-import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import type { PlotlyChartSpec } from "../services/plotlyTypes";
 import type { InputId as InputIdType } from "../models/inputSlots";
 import type { ChartBuildContext } from "../models/modelCapabilities";
 import {
@@ -36,7 +36,7 @@ export function buildChartPlotly<TResult>(
   chartSource: unknown,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-): PlotlyChartResponseDto | null {
+): PlotlyChartSpec | null {
   return config.buildChart(
     instanceId,
     chartSource,

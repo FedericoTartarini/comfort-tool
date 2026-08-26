@@ -1,7 +1,7 @@
 import type {
-  PlotLayoutDto,
-  PlotlyChartResponseDto,
-} from "../../../models/comfortDtos";
+  PlotLayout,
+  PlotlyChartSpec,
+} from "../../plotlyTypes";
 import { buildAxisValues, formatAxisTitle } from "./axis";
 import type { ChartResponseSpec } from "./types";
 
@@ -10,10 +10,10 @@ export function buildChartResponse({
   layout,
   annotations = [],
   source,
-}: ChartResponseSpec): PlotlyChartResponseDto {
+}: ChartResponseSpec): PlotlyChartSpec {
   const xValues = buildAxisValues(layout.xAxis);
   const yValues = buildAxisValues(layout.yAxis);
-  const plotLayout: PlotLayoutDto = {
+  const plotLayout: PlotLayout = {
     title: layout.title,
     paper_bgcolor: layout.paperBgColor,
     plot_bgcolor: layout.plotBgColor,

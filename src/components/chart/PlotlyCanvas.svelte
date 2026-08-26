@@ -12,11 +12,11 @@
     toPlotlyFigure,
     type PlotlyFigure,
   } from "../../services/plotlyFigure";
-  import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
+  import type { PlotlyChartSpec } from "../../services/plotlyTypes";
   import type { PublicationColumn } from "../../services/chartTheme";
 
   interface Props {
-    chartResult: PlotlyChartResponseDto | null;
+    chartResult: PlotlyChartSpec | null;
     isLoading: boolean;
     emptyMessage: string;
     heightClass?: string;
@@ -86,8 +86,8 @@
   }
 
   function chartWithVisibleZones(
-    chart: PlotlyChartResponseDto,
-  ): PlotlyChartResponseDto {
+    chart: PlotlyChartSpec,
+  ): PlotlyChartSpec {
     if (showZones) return chart;
     return {
       ...chart,

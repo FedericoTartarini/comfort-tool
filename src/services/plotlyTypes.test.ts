@@ -1,30 +1,30 @@
 import { describe, expectTypeOf, it } from "vitest";
 
 import type {
-  PlotContourTraceDto,
-  PlotLayoutDto,
-  PlotScatterLineTraceDto,
-  PlotScatterMarkerTraceDto,
-  PlotTraceDto,
-} from "./comfortDtos";
+  PlotContourTrace,
+  PlotLayout,
+  PlotScatterLineTrace,
+  PlotScatterMarkerTrace,
+  PlotTrace,
+} from "./plotlyTypes";
 
-describe("comfort DTO types", () => {
+describe("PlotlyChartSpec types", () => {
   it("discriminates each supported trace shape", () => {
     expectTypeOf<
-      Extract<PlotTraceDto, { type: "contour" }>
-    >().toEqualTypeOf<PlotContourTraceDto>();
+      Extract<PlotTrace, { type: "contour" }>
+    >().toEqualTypeOf<PlotContourTrace>();
     expectTypeOf<
-      Extract<PlotTraceDto, { type: "scatter"; mode: "markers" }>
-    >().toEqualTypeOf<PlotScatterMarkerTraceDto>();
+      Extract<PlotTrace, { type: "scatter"; mode: "markers" }>
+    >().toEqualTypeOf<PlotScatterMarkerTrace>();
     expectTypeOf<
-      Extract<PlotTraceDto, { type: "scatter"; mode: "lines" }>
-    >().toEqualTypeOf<PlotScatterLineTraceDto>();
+      Extract<PlotTrace, { type: "scatter"; mode: "lines" }>
+    >().toEqualTypeOf<PlotScatterLineTrace>();
   });
 
   it("rejects unsupported trace and layout properties", () => {
     // @ts-expect-error Heatmap is a contour coloring mode, not a supported trace.
-    const unsupportedHeatmap: PlotTraceDto = { type: "heatmap" };
-    const markerWithGrid: PlotScatterMarkerTraceDto = {
+    const unsupportedHeatmap: PlotTrace = { type: "heatmap" };
+    const markerWithGrid: PlotScatterMarkerTrace = {
       type: "scatter",
       mode: "markers",
       name: "Input 1",
@@ -34,7 +34,7 @@ describe("comfort DTO types", () => {
       // @ts-expect-error Marker traces cannot carry a contour grid.
       z: [[1]],
     };
-    const markerWithObjectMetadata: PlotScatterMarkerTraceDto = {
+    const markerWithObjectMetadata: PlotScatterMarkerTrace = {
       type: "scatter",
       mode: "markers",
       name: "Input 1",
@@ -46,7 +46,7 @@ describe("comfort DTO types", () => {
         { arbitrary: true },
       ],
     };
-    const layoutWithLooseAxis: PlotLayoutDto = {
+    const layoutWithLooseAxis: PlotLayout = {
       title: "Chart",
       paper_bgcolor: "#fff",
       plot_bgcolor: "#fff",
@@ -55,7 +55,7 @@ describe("comfort DTO types", () => {
       xaxis: {
         title: "X",
         range: [0, 1],
-        // @ts-expect-error Arbitrary Plotly axis keys do not cross the DTO boundary.
+        // @ts-expect-error Arbitrary Plotly axis keys do not cross the PlotlyChartSpec boundary.
         arbitrary: true,
       },
       yaxis: { title: "Y", range: [0, 1] },

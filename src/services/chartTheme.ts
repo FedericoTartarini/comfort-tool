@@ -1,12 +1,14 @@
 /**
- * Screen and publication chart theme (Plan 0h / 2a / 2c).
+ * Screen and publication chart theme (Plan 0h / 2a / 2c; §5.2).
  *
- * Geometry stays Plotly-agnostic. This module sizes the two surfaces:
- * screen (CSS pixels, hover mode bar) and publication (explicit mm / pt / dpi,
- * no mode bar). Export builds a separate figure; it must not capture the
- * on-screen plot. Publication widths are journal single- and double-column
- * profiles on the same type tokens (font, pt, dpi). Zone fills remap through
- * `src/models/zoneTokens.ts` (screen / publication / colour-blind).
+ * Engines emit a compact, Plotly-compatible PlotlyChartSpec (theme-ready:
+ * baseline style fields stay on the payload). toPlotlyFigure owns theming,
+ * zone palette remapping, and the clone boundary. This module sizes the two
+ * surfaces: screen (CSS pixels, hover mode bar) and publication (explicit
+ * mm / pt / dpi, no mode bar). Export builds a separate figure; it must not
+ * capture the on-screen plot. Publication widths are journal single- and
+ * double-column profiles on the same type tokens (font, pt, dpi). Zone fills
+ * remap through `src/models/zoneTokens.ts` (screen / publication / colour-blind).
  */
 
 import {

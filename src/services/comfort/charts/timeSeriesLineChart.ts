@@ -1,6 +1,4 @@
-import type {
-  PlotScatterLineTraceDto,
-} from "../../../models/comfortDtos";
+import type { PlotScatterLineTrace } from "../../plotlyTypes";
 import { buildLineTrace } from "./plotlyBuilders";
 
 export interface TimeSeriesLineTraceOptions {
@@ -19,7 +17,7 @@ export interface TimeSeriesLineTraceOptions {
 
 export function buildTimeSeriesLineTrace(
   options: TimeSeriesLineTraceOptions,
-): PlotScatterLineTraceDto {
+): PlotScatterLineTrace {
   return buildLineTrace({
     name: options.name,
     x: options.x,

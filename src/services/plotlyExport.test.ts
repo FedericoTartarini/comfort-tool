@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CalculationSource } from "../models/calculationMetadata";
-import type { PlotlyChartResponseDto } from "../models/comfortDtos";
+import type { PlotlyChartSpec } from "./plotlyTypes";
 import {
   PublicationColumn,
   publicationChartThemeFor,
@@ -14,7 +14,7 @@ import {
   publicationToImageOptions,
 } from "./plotlyExport";
 
-function contourChart(): PlotlyChartResponseDto {
+function contourChart(): PlotlyChartSpec {
   return {
     traces: [
       {

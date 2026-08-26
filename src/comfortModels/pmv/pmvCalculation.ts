@@ -7,7 +7,7 @@ import {
 import type {
   CompareInputMap,
   ModelChartSource,
-} from "../../models/comfortDtos";
+} from "../../models/chartSource";
 import { ComplianceStatus } from "../../models/comfortModels";
 import {
   PhysicalQuantityId,

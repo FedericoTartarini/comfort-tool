@@ -2,7 +2,7 @@ import type {
   CalculationSource,
   ComfortStandard,
 } from "../../models/calculationMetadata";
-import type { ModelChartSource } from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/chartSource";
 import {
   ModelId,
   type JsThermalComfortStandard,

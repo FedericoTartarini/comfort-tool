@@ -1,8 +1,6 @@
 import type { TimeSeriesLineChartEngineSpec } from "../../services/comfort/charts/kinds/types";
-import type {
-  ModelChartSource,
-  PlotlyChartResponseDto,
-} from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/chartSource";
+import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import {
   PhysicalQuantityId,
   type ChartAxisQuantityId,
@@ -114,7 +112,7 @@ export function createPhsDynamicGridSpec(
 export function buildPhsExposureHistoryChartResult(
   resultsByInput: Partial<Record<InputIdType, PhsResponse | null>>,
   context: ChartBuildContext<NumericBand>,
-): PlotlyChartResponseDto | null {
+): PlotlyChartSpec | null {
   const baselineResult = resultsByInput[context.baselineInputId];
   if (!baselineResult?.valid || !baselineResult.samples) return null;
 

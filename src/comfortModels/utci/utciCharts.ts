@@ -1,8 +1,6 @@
 import { CalculationSource } from "../../models/calculationMetadata";
-import type {
-  ModelChartSource,
-  PlotlyChartResponseDto,
-} from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/chartSource";
+import type { PlotlyChartSpec } from "../../services/plotlyTypes";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/physicalQuantities";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import {
@@ -87,7 +85,7 @@ export function buildUtciStressChart(
   source: ModelChartSource<UtciRequest>,
   resultsByInput: Partial<Record<InputIdType, UtciResponse | null>>,
   context: ChartBuildContext<NumericBand>,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const config = context.fieldChartConfig;
   const fixedConfig = {
     ...config,

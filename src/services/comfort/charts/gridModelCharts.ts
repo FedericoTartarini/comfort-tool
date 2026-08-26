@@ -2,9 +2,11 @@ import { CalculationSource } from "../../../models/calculationMetadata";
 import type {
   CompareInputMap,
   ModelChartSource,
-  PlotHoverValueDto,
-  PlotlyChartResponseDto,
-} from "../../../models/comfortDtos";
+} from "../../../models/chartSource";
+import type {
+  PlotHoverValue,
+  PlotlyChartSpec,
+} from "../../plotlyTypes";
 import { ChartAxisQuantityId, getPhysicalQuantityMeta } from "../../../models/physicalQuantities";
 import type { InputId as InputIdType } from "../../../models/inputSlots";
 import {
@@ -40,7 +42,7 @@ export interface GridModelDynamicHoverExtension<TResult> {
   getMetadata: (
     result: TResult | null | undefined,
     unitSystem: UnitSystemType,
-  ) => readonly PlotHoverValueDto[];
+  ) => readonly PlotHoverValue[];
 }
 
 export interface GridModelFixedViewSpec {
@@ -133,7 +135,7 @@ function buildGridModelView<TPayload extends object, TResult>(
   context: ChartBuildContext<NumericBand>,
   spec: GridModelChartSpec<TPayload, TResult>,
   view: GridModelView,
-): PlotlyChartResponseDto {
+): PlotlyChartSpec {
   const { unitSystem } = context;
   const output = resolveGridOutput(
     spec as GridModelChartSpec<object, unknown>,
@@ -270,7 +272,7 @@ export function buildGridModelChart<TPayload extends object, TResult>(
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
   context: ChartBuildContext<NumericBand>,
   spec: GridModelChartSpec<TPayload, TResult>,
-): PlotlyChartResponseDto | null {
+): PlotlyChartSpec | null {
   if (!chartSource) {
     return null;
   }

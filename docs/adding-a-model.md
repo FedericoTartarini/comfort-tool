@@ -101,6 +101,7 @@ src/
                      ChartBuildResult and simulation chart declarations
     units/           SI ↔ display conversion
     chartTheme.ts    Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
+    plotlyTypes.ts   Plotly-compatible, theme-ready adapter types (PlotlyChartSpec)
     plotlyFigure.ts  Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
@@ -244,7 +245,7 @@ Map catalog fields to the library payload with
 jsthermalcomfort short names (`tdb`, `rh`, `vr`, …) belong only at that
 boundary. Copying Heat Index may copy its request type (`HeatIndexRequest`);
 do not add a `Dto` suffix on application request or chart-source types.
-Plotly-shaped types in `src/models/comfortDtos.ts` still use that suffix.
+Plotly-compatible adapter types live in `src/services/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …).
 
 ```ts
 const fieldAdapter = createFieldRequestAdapter<ExampleRequest>({
