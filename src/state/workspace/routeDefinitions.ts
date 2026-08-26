@@ -10,7 +10,7 @@ import {
 import {
   getModelsForWorkspace,
   getModelsForStandard,
-} from "../comfortTool/modelConfigs";
+} from "../analysis/modelConfigs";
 
 export interface AppRouteDefinition {
   readonly id: AppRouteIdType;

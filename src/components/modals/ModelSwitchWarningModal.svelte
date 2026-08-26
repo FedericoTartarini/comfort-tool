@@ -10,8 +10,8 @@
     TableHeadCell,
   } from "flowbite-svelte";
   import { ExclamationCircleOutline } from "flowbite-svelte-icons";
-  import type { AnalysisController } from "../../state/comfortTool/types";
-  import { getComfortModelConfig } from "../../state/comfortTool/modelConfigs";
+  import type { AnalysisController } from "../../state/analysis/types";
+  import { getComfortModelConfig } from "../../state/analysis/modelConfigs";
 
   interface Props {
     toolState: AnalysisController;

@@ -28,7 +28,7 @@ import {
 import {
   defineModel,
   parseEmptyOptions,
-} from "../state/comfortTool/modelConfigs/builder";
+} from "../state/analysis/modelConfigs/builder";
 
 const MODEL_LABEL = "Humidex";
 const MODEL_DESCRIPTION =

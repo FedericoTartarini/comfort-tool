@@ -10,7 +10,7 @@
   import { Card } from "flowbite-svelte";
   import { inputDisplayMetaById } from "../models/inputSlotPresentation";
   import type { InputId as InputIdType } from "../models/inputSlots";
-  import type { ResultSectionViewModel } from "../state/comfortTool/types";
+  import type { ResultSectionViewModel } from "../state/analysis/types";
 
   interface Props {
     visibleInputIds: InputIdType[];

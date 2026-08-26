@@ -6,7 +6,7 @@
     ModelId,
     type ModelId as ModelIdType,
   } from "../../models/modelIds";
-  import type { AnalysisController } from "../../state/comfortTool/types";
+  import type { AnalysisController } from "../../state/analysis/types";
 
   interface Props {
     toolState: AnalysisController;

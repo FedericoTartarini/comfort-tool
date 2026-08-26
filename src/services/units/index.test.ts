@@ -26,7 +26,7 @@ import {
   getHumidityRatioDisplayMeta,
   getVaporPressureDisplayMeta,
 } from "./index";
-import "../../state/comfortTool/modelConfigs";
+import "../../state/analysis/modelConfigs";
 
 describe("units helpers", () => {
   it("converts metres per second to kilometres per hour", () => {

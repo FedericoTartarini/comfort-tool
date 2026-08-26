@@ -33,7 +33,7 @@ import {
 import {
   ComfortModelBuilder,
   type ChartDeclarationInput,
-} from "../../state/comfortTool/modelConfigs/builder";
+} from "../../state/analysis/modelConfigs/builder";
 import { ChartEngine } from "../../models/chartEngines";
 import {
   buildAdaptiveResultRows,

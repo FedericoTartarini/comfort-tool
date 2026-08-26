@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
+import type { ChartInstancePanelView } from "../../state/analysis/chartInstancePresentation";
 import { PublicationColumn } from "../../services/chartTheme";
 import ChartExportMenu from "./ChartExportMenu.svelte";
 

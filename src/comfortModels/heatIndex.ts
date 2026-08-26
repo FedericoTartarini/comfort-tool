@@ -29,7 +29,7 @@ import {
 import {
   defineModel,
   parseEmptyOptions,
-} from "../state/comfortTool/modelConfigs/builder";
+} from "../state/analysis/modelConfigs/builder";
 
 const MODEL_LABEL = "Heat Index";
 const MODEL_DESCRIPTION =

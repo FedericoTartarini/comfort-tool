@@ -47,7 +47,7 @@ import {
   hasExactKeys,
   isRecord,
   type ChartDeclarationInput,
-} from "../../state/comfortTool/modelConfigs/builder";
+} from "../../state/analysis/modelConfigs/builder";
 import { ChartEngine } from "../../models/chartEngines";
 import { TableType } from "../../models/tableTypes";
 import { ZoneToken } from "../../models/zoneTokens";

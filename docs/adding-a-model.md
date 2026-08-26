@@ -12,14 +12,13 @@ constant), and register once. Do not add `defineIndexModel()`, restore
 
 UI, share, Compare, and the Analysis controller must not grow a branch on the
 new model id. Analysis input rows, Compare toggles, and modifiers render from
-`getInputPanelViewModel` (`src/state/comfortTool/inputPresentation.ts`). Do not
+`getInputPanelViewModel` (`src/state/analysis/inputPresentation.ts`). Do not
 edit `src/components/input-panel/` for a new model.
 
 Target architecture is [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
 Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. Plan §4
-folder names (`catalog/`, `declarations/`, `state/analysis/`) are not the live
-tree.
+`26-06-29-architecture-brief.md`. Plan §4 folder names (`catalog/`, `declarations/`) are not the live tree.
+Analysis state lives at `src/state/analysis/`.
 
 ## Recipe
 
@@ -31,7 +30,7 @@ tree.
 2. **Add the model id** to `ModelId` in `src/models/modelIds.ts`.
    Wire values follow existing members (`"heat-index"`, `"humidex"`, …).
    Do not invent a second id tree.
-3. **Register once** in `src/state/comfortTool/modelConfigs/index.ts`: import
+3. **Register once** in `src/state/analysis/modelConfigs/index.ts`: import
    the config and add one `comfortModelConfigs` entry. The registry type is
    `Record<ModelId, RuntimeComfortModelDefinition>`.
 
@@ -105,7 +104,7 @@ src/
     plotlyFigure.ts  Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
-    comfortTool/     Analysis controller, defineModel, registry, share codec,
+    analysis/        Analysis controller, defineModel, registry, share codec,
                      pure projections (chartPresentation, inputPresentation)
     timeSeries/      separate PHS Time-series controller; editor/chart view models
     workspace/       route / model / mode coordination
@@ -116,7 +115,7 @@ src/
 Import lanes: `views` → `components`, `state`; `components` → `state`,
 `models`, lightweight `services`; `state` → `models`, `services` (the
 registry is the exception that imports `comfortModels`); `comfortModels` →
-`models`, `services`, `state/comfortTool/modelConfigs`; `services` → `models`.
+`models`, `services`, `state/analysis/modelConfigs`; `services` → `models`.
 
 Canonical state is SI. Calculations run in SI. Display converts through
 `src/services/units/` by reading assembled catalog SI units

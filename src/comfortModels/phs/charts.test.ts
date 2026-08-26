@@ -13,7 +13,7 @@ import {
 } from "./phs";
 import { createPhsDynamicGridSpec } from "./charts";
 import { getPhsWaterLossLimitG, personFromModelInputs } from "./calculation";
-import "../../state/comfortTool/modelConfigs";
+import "../../state/analysis/modelConfigs";
 
 function createComplianceContext(
   modelInputs: ChartBuildContext<NumericBand>["modelInputs"] = {},

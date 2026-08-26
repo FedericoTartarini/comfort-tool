@@ -202,8 +202,8 @@ export default [
               message: "Comfort models may not depend on presentation layers.",
             },
             {
-              regex: "^(?:\\.\\./)+state/(?!comfortTool/modelConfigs(?:/|$))",
-              message: "Comfort models may only use builder helpers from state/comfortTool/modelConfigs.",
+              regex: "^(?:\\.\\./)+state/(?!analysis/modelConfigs(?:/|$))",
+              message: "Comfort models may only use builder helpers from state/analysis/modelConfigs.",
             },
           ],
         },
@@ -211,7 +211,7 @@ export default [
     },
   },
   {
-    files: ["src/state/comfortTool/modelConfigs/index.ts"],
+    files: ["src/state/analysis/modelConfigs/index.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -234,7 +234,7 @@ export default [
     files: ["src/state/**/*.{ts,svelte}"],
     ignores: [
       "src/state/**/*.test.ts",
-      "src/state/comfortTool/modelConfigs/index.ts",
+      "src/state/analysis/modelConfigs/index.ts",
       "src/state/timeSeries/modelConfigs.ts",
     ],
     rules: {

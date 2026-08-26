@@ -24,7 +24,7 @@ import {
   formatDisplayValue,
   getModelOutputDisplayMeta,
 } from "../../services/units";
-import type { ResultRowDefinition } from "../../state/comfortTool/modelConfigs/builder";
+import type { ResultRowDefinition } from "../../state/analysis/modelConfigs/builder";
 
 export const UTCI_MODEL_LABEL = "UTCI";
 

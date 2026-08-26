@@ -24,7 +24,7 @@ import {
   hasExactKeys,
   isRecord,
   type ChartDeclarationInput,
-} from "../../state/comfortTool/modelConfigs/builder";
+} from "../../state/analysis/modelConfigs/builder";
 import {
   buildUtciResultRows,
   calculateUtci,

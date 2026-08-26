@@ -11,7 +11,7 @@
     InputModifierControlViewModel,
     InputModifierDraftEntry,
     ModifierFieldControlViewModel,
-  } from "../../state/comfortTool/types";
+  } from "../../state/analysis/types";
 
   interface Props {
     modifierControls: InputModifierControlViewModel[];

@@ -13,12 +13,12 @@ import { UnitSystem } from "../models/units";
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,
-} from "../state/comfortTool/fieldChartState";
+} from "../state/analysis/fieldChartState";
 import {
   comfortModelConfigs,
   comfortModelOrder,
   getComfortModelConfig,
-} from "../state/comfortTool/modelConfigs";
+} from "../state/analysis/modelConfigs";
 import {
   buildAllModelOutputGoldenSnapshots,
   buildModelOutputGoldenSnapshot,
@@ -28,7 +28,7 @@ import {
   getGoldenInputOverrides,
 } from "./goldenFixtures";
 import { clearChartMemo } from "../services/comfort/charts/kinds/memo";
-import { resolveChartInstanceCapabilities } from "../state/comfortTool/chartInstancePresentation";
+import { resolveChartInstanceCapabilities } from "../state/analysis/chartInstancePresentation";
 
 describe("output integration", () => {
   beforeEach(() => {

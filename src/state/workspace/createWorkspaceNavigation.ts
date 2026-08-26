@@ -5,8 +5,8 @@ import {
   isCalculationRoute,
   type AppRouteDefinition,
 } from "./routeDefinitions";
-import { readShareStateFromUrl } from "../comfortTool/shareState";
-import type { AnalysisController } from "../comfortTool/types";
+import { readShareStateFromUrl } from "../analysis/shareState";
+import type { AnalysisController } from "../analysis/types";
 
 export interface WorkspaceNavigationTarget {
   readonly url: URL;

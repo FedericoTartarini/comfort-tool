@@ -13,7 +13,7 @@ This repository contains the active product frontend at the repository root, whi
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices (`0c`, `0t`, `0q`, …) follow that file, including registry contribution, `defineModel`, and allowed deletions.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. Do not implement from it or restore its authoring model.
 - **This file** describes the **current** tree and execution rules. When a Plan slice deletes or replaces something still named here (preset factories, the parallel `ChartInstanceId` tree, `spec: unknown`, exact `comfortModelOrder` share maps), **the Plan wins**. Do not put those back to “match AGENTS.md”.
-- Slice discipline: do only the named Phase ID. Do not migrate the Plan §4 target tree (`catalog/`, `declarations/`, `state/analysis/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
+- Slice discipline: do only the named Phase ID. Do not migrate remaining Plan §4 folders (`catalog/`, `declarations/`) unless the task is that slice (`3n` or an ID that names the rename). Do not add unrelated new models during the cutover.
 - The product is not deployed. There is no share or URL compatibility requirement.
 - After a slice lands, update this file, `CLAUDE.md`, and `docs/` in the same change so current-state rules match the code.
 
@@ -38,7 +38,7 @@ src/
     plotlyFigure.ts        Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts        Publication PNG/SVG from a dedicated figure
   state/
-    comfortTool/           controller, model configs, share state, pure
+    analysis/              controller, model configs, share state, pure
                            projections (chartPresentation, inputPresentation)
     timeSeries/            separate PHS controller; editor/chart view models
   views/                   page composition only
@@ -49,8 +49,8 @@ Key entrypoints:
 ```text
 src/App.svelte
 src/views/ComfortDashboard.svelte
-src/state/comfortTool/createAnalysisState.svelte.ts
-src/state/comfortTool/types.ts
+src/state/analysis/createAnalysisState.svelte.ts
+src/state/analysis/types.ts
 ```
 
 ## Architecture Priorities
@@ -59,7 +59,7 @@ src/state/comfortTool/types.ts
   - `views` -> `components`, `state`
   - `components` -> `state`, `models`, lightweight `services`
   - `state` -> `models`, `services`; the model registry imports registered configs from `comfortModels`
-  - `comfortModels` -> `models`, `services`, and builder helpers from `state/comfortTool/modelConfigs`
+  - `comfortModels` -> `models`, `services`, and builder helpers from `state/analysis/modelConfigs`
   - `services` -> `models`
 - Canonical shared domain state stays in SI units.
 - Views compose pages.
@@ -124,11 +124,11 @@ Preferred direction for refactors and new model work:
 - chart builds resolved on demand from calculation cache + output settings
 - shared UI flags for loading, errors, compare settings, and unit system
 
-When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createAnalysisState.svelte.ts`, `src/state/comfortTool/shareState.ts`, or `src/state/comfortTool/modelConfigs/**`, prefer extracting keyed records and generic helpers instead of copying another PMV/UTCI-specific property or branch.
+When touching `src/state/analysis/types.ts`, `src/state/analysis/createAnalysisState.svelte.ts`, `src/state/analysis/shareState.ts`, or `src/state/analysis/modelConfigs/**`, prefer extracting keyed records and generic helpers instead of copying another PMV/UTCI-specific property or branch.
 
 ## Model Extension Strategy
 
-New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; `defineModel` and the registry live in `src/state/comfortTool/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template; see [docs/adding-a-model.md](docs/adding-a-model.md)). Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`. After registration, `assertCompareContract` must pass for the new Analysis model.
+New models should be added through config-driven registration, not by hardcoding another controller slice. Model definitions live in `src/comfortModels/**`; `defineModel` and the registry live in `src/state/analysis/modelConfigs/**`. During the Plan cutover, do not add unrelated models. Copy a full `defineModel` declaration (`heatIndex.ts` is the template; see [docs/adding-a-model.md](docs/adding-a-model.md)). Do not add `defineIndexModel()` or restore `src/comfortModels/presets/`. After registration, `assertCompareContract` must pass for the new Analysis model.
 
 Each registered model has one focused declaration entry that exposes its product decisions. This is not a one-physical-file rule: stable IDs remain centralized, registration remains explicit, and tests remain separate. Simple models may keep their implementation in the declaration file; larger standard families may use focused calculation/chart modules beside complete standard declarations.
 
@@ -167,7 +167,7 @@ Current code already has Standard/Explore workspaces, the shared `FieldChartConf
 - Every model owns chart output through `defineModel` `charts` (data-only `ModelChartDeclaration` union over existing engines) or family `ComfortModelBuilder.setCharts()`. Tables are declared with `tables: { analysis, timeSeries? }` using `TableType.Analysis` / `TableType.TimeSeries`. Every Analysis model must declare `tables.analysis`. PHS also declares `tables.timeSeries` plus `simulation.charts` for Time-series line charts. Chart ids live on each declaration’s `charts` entries (`id`); the builder maps them to runtime `instanceId` and the registry derives those (`getDeclaredChartInstanceIds`). Duplicate ids, wrong owners, unknown engines, or a TimeSeries table without Time-series capability fail `defineModel` / registry assemble. Optional `assembledCatalogs.validate.model` covers those checks; `assembleCatalogs` installs the hook on the returned instance. Do not treat `validate.model` as a second authoring API. Presentation instances do not carry engine spec. Do not recreate a parallel `ChartInstanceId` tree or a second legend/lock array beside `charts`. Heat Index / Humidex fixed-axis maps are `ChartEngine.DynamicField` with `lockedAxes`, not `Custom`. `Custom` is frontend-only for PMV ASHRAE/ISO psychrometric charts declared on those models; `defineModel` must not use `Custom spec.build` or teach Plotly. A model declaration may name an extended chart type with `type`; assemble preserves it on the presentation instance and rejects empty or duplicate types. PMV Dynamic and PHS Analysis exposure history are `DynamicField` and `TimeSeriesLine` respectively. `ParametricLine` is implemented (polylines and optional limit bands). Heat-loss vs temperature and SET series builders live in `heatLossSeries.ts` / `setSeries.ts`; ASHRAE and ISO PMV declarations each register those ParametricLine instances. PMV Analysis tables include SET, cooling effect, relative air speed, and dynamic clothing as Compare-matrix rows. Explore still colours PMV and PPD; do not add a SET explore output key. UTCI BandScalar/DynamicField specs live in `utci/charts.ts`. PHS DynamicField and TimeSeriesLine specs live in `phs/charts.ts`.
 - Interactive Dynamic 2-D field charts are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS` in `src/services/comfort/charts/types.ts`, including UTCI Dynamic). BandScalar / 1-D charts may keep high sampling along one axis (for example UTCI stress at 450 x-points). `ParametricLine` interchange is polylines and optional limit bands, not a dense grid. Hover overlays use display `z` for the primary output and do not attach per-cell `customdata` unless extra hover fields exist. Do not LRU / faster-clone a 200k-cell DTO — shrink the DTO. `toPlotlyFigure` clones Plotly-owned data arrays (`x`, `y`, `z`, `text`) and nested records Plotly mutates (trace/layout/axis/margin/legend/annotation/style objects). Non-finite grid `z` cells become `null` locally. Hover `customdata` is shared. Do not `JSON.parse(JSON.stringify(figure))`. Screen and publication figures share `src/services/chartTheme.ts`. Export builds a separate publication figure (explicit mm/pt/dpi, PNG ~300 DPI equivalent, SVG of the same geometry, no mode bar) and must not `downloadImage` the on-screen DOM. Publication widths are journal single- and double-column profiles on that same theme; Compare legends stay readable at both widths. Zone fills remap through `src/models/zoneTokens.ts` (models select tokens; print and colour-blind updates happen in that table).
 - Standard workspace models must provide `complianceProfile.legendTitle` in addition to fixed output, bands, caption, and feedback. Explore legends come from the selected `ModelOutput` via `ChartBuildResult.legend`.
-- `setInputFields()` / `defineModel` `inputFields` declare visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Assembled runtime definitions keep `inputFields` so tests can derive Compare golden values from the registry. Required control IDs are independently authored and pinned in focused model tests; do not derive that expected side from `inputFields`. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults. Model-scoped quantities use `quantities.extend` plus `{ kind: "modelQuantity", … }` when they appear on the Analysis panel. `build()` checks that every `modelQuantity` field is an extend entry owned by that declaration; control metadata is read from the assembled catalog at view-model time. Analysis input-panel UI is presentational, matching chart controls: `buildInputPanelViewModel` / `getInputPanelViewModel` in `src/state/comfortTool/inputPresentation.ts` project tool controls, Compare toggles, field rows, clothing-builder bindings, and modifiers. Components must not receive the Analysis controller or implement conversion, clamp, or modifier-draft merge.
+- `setInputFields()` / `defineModel` `inputFields` declare visible inputs; `fieldInputBehaviors.ts` resolves each `InputFieldSpec` into shared control behaviors. Assembled runtime definitions keep `inputFields` so tests can derive Compare golden values from the registry. Required control IDs are independently authored and pinned in focused model tests; do not derive that expected side from `inputFields`. Model `optionHandlersByKey` is the sole option-change path. Models must provide complete defaults and exact parsers; invalid internal options are invariants, not occasions to fill defaults. Model-scoped quantities use `quantities.extend` plus `{ kind: "modelQuantity", … }` when they appear on the Analysis panel. `build()` checks that every `modelQuantity` field is an extend entry owned by that declaration; control metadata is read from the assembled catalog at view-model time. Analysis input-panel UI is presentational, matching chart controls: `buildInputPanelViewModel` / `getInputPanelViewModel` in `src/state/analysis/inputPresentation.ts` project tool controls, Compare toggles, field rows, clothing-builder bindings, and modifiers. Components must not receive the Analysis controller or implement conversion, clamp, or modifier-draft merge.
 - Use `createFieldRequestAdapter()` to derive request mapping and ordinary chart-axis get/set behavior from one canonical field declaration.
 - Compose `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior; keep coupled temperature solving in the shared dynamic-axis solver.
 - Mode, axis, baseline, Explore output, band, and chart changes are presentation-only. They must rebuild from a ready cache without invalidating or scheduling calculations.
@@ -285,7 +285,7 @@ Workspace membership is `WorkspaceId` in `src/models/workspaces.ts` (Standard, E
 
 `ChartBuildResult` (including legend view-models) and Time-series `simulation.charts` declarations live in `src/services/comfort/charts/` (`chartBuildResult.ts`, `simulationCharts.ts`). Time-series editor and Plotly-typed chart view models live in `src/state/timeSeries/viewModels.ts`; pure Time-series declaration contracts stay in `src/models/timeSeries.ts`. Site shell branding/links live in `src/components/siteShellConfig.ts`.
 
-Runtime models expose `buildTable()` and `buildChart()` through `src/state/comfortTool/modelConfigs/`. Shared table assembly helpers live in `src/services/comfort/output/`. Time-series exposure summaries render through `src/components/output/MetricSummaryPanel.svelte`.
+Runtime models expose `buildTable()` and `buildChart()` through `src/state/analysis/modelConfigs/`. Shared table assembly helpers live in `src/services/comfort/output/`. Time-series exposure summaries render through `src/components/output/MetricSummaryPanel.svelte`.
 
 Share snapshots store `selectedChartInstanceId` per model. Instance ids are derived from declarations only; there is no parallel `ChartInstanceId` tree.
 

@@ -7,7 +7,7 @@ import {
   getAppRouteByPath,
   isCalculationRoute,
 } from "./routeDefinitions";
-import { getComfortModelConfig } from "../comfortTool/modelConfigs";
+import { getComfortModelConfig } from "../analysis/modelConfigs";
 
 describe("workspace route definitions", () => {
   it("declares stable canonical paths and resolves missing slashes", () => {

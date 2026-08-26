@@ -8,8 +8,8 @@ import {
   getAppRouteByPath,
   isCalculationRoute,
 } from "./routeDefinitions";
-import { createAnalysisState } from "../comfortTool/createAnalysisState.svelte";
-import { buildShareUrl } from "../comfortTool/shareState";
+import { createAnalysisState } from "../analysis/createAnalysisState.svelte";
+import { buildShareUrl } from "../analysis/shareState";
 import { createWorkspaceNavigation } from "./createWorkspaceNavigation";
 
 function routeUrl(path: string): URL {

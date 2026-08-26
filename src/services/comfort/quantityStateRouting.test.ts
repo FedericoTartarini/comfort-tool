@@ -14,7 +14,7 @@ import {
   setSlotQuantity,
   syncAllDerivedQuantities,
 } from "./quantityStateRouting";
-import { createQuantitiesByInput } from "../../state/comfortTool/initialAnalysisState";
+import { createQuantitiesByInput } from "../../state/analysis/initialAnalysisState";
 import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import { syncDerivedStateForInput } from "./syncState";
 import { ModelId } from "../../models/modelIds";

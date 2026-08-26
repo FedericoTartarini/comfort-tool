@@ -26,7 +26,7 @@ import {
 } from "./calculation";
 import { phsModelConfig } from "./phs";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
-import { getModelSimulationOutput } from "../../state/comfortTool/modelConfigs";
+import { getModelSimulationOutput } from "../../state/analysis/modelConfigs";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
 import { phsTimeSeriesModelDefinition } from "./timeSeries";
 import { downsamplePhsHistorySamples } from "./timeSeriesCharts";

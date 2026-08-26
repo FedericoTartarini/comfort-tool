@@ -5,7 +5,7 @@ import {
   FieldChartProfileKind,
   type FieldChartProfile,
 } from "../models/output/fieldChartProfile";
-import type { RuntimeComfortModelDefinition } from "../state/comfortTool/modelConfigs/definition";
+import type { RuntimeComfortModelDefinition } from "../state/analysis/modelConfigs/definition";
 
 export function chartContextToProfile(
   context: ChartBuildContext,

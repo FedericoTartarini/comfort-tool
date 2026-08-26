@@ -10,8 +10,8 @@
   import {
     toChartInstancePanelView,
     type ChartInstancePanelView,
-  } from "../state/comfortTool/chartInstancePresentation";
-  import type { AnalysisController } from "../state/comfortTool/types";
+  } from "../state/analysis/chartInstancePresentation";
+  import type { AnalysisController } from "../state/analysis/types";
 
   type ModelIdType = AnalysisController["state"]["ui"]["selectedModel"];
 

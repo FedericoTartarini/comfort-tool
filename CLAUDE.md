@@ -50,7 +50,7 @@ src/
     plotlyFigure.ts Plotly adapter (clone boundary; screen vs publication theme)
     plotlyExport.ts Publication PNG/SVG from a dedicated figure
   state/
-    comfortTool/    controller, model definitions/registry, share codec,
+    analysis/       controller, model definitions/registry, share codec,
                     pure projections (chartPresentation, inputPresentation)
     timeSeries/     separate PHS controller; editor/chart view models
   views/            page composition only (ComfortDashboard.svelte)
@@ -64,7 +64,7 @@ src/
 - `views` → `components`, `state`
 - `components` → `state`, `models`, lightweight `services`
 - `state` → `models`, `services`; the model registry imports registered configs from `comfortModels`
-- `comfortModels` → `models`, `services`, and builder helpers from `state/comfortTool/modelConfigs`
+- `comfortModels` → `models`, `services`, and builder helpers from `state/analysis/modelConfigs`
 - `services` → `models`
 
 **Canonical state is always SI.** All user input is converted to SI on entry; all calculations run in SI; display converts from SI via `src/services/units/`.
@@ -92,7 +92,7 @@ When touching state or types, prefer keyed generic records over adding more mode
 ## Model Configuration
 
 Model declarations live in `src/comfortModels/`. The generic authoring/runtime
-contract is in `src/state/comfortTool/modelConfigs/definition.ts`. `defineModel`
+contract is in `src/state/analysis/modelConfigs/definition.ts`. `defineModel`
 is the assembly function for a complete declaration; it uses `ComfortModelBuilder`
 internally. The registry only registers built runtime definitions. Generics
 preserve model-specific result and chart-source types until `build()` erases
@@ -125,7 +125,7 @@ Use constants from `src/models/` for `ModelId` model identifiers (`src/models/mo
 - Bands resolve in array order with half-open membership (`min <= value < max`), and all numeric band/input values are canonical SI.
 - Use `createFieldRequestAdapter()` for canonical request mapping and `createRequestAxisAdapter()` for chart-only aliases and explicit Operative Temperature behavior. Coupled temperature axes stay in the dynamic-axis solver. Application request and chart-source types do not use a `Dto` suffix. Plotly-compatible adapter types live in `src/services/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …).
 - `primaryInputOrder` in `src/models/quantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). Chart-only and derived quantities stay in the `PhysicalQuantityId` catalog but never enter primary records or share primary records. Model-scoped extensions come from declaration `quantities.extend`; they assemble into the same catalog, stay out of `primaryInputOrder`, and live in sparse `modelInputsByModel`. PHS weight/height SI meta live on the PHS declaration. All quantity conversion reads catalog SI units (`SiUnit` / `display.units.SI`) through `convertQuantityFromSi`; field behaviors must not branch on PHS or quantity-id lists. `modelQuantity` fields may be declared before assemble; `build()` checks they match that declaration’s extend list, and view-models read catalog meta after assemble.
-- Analysis input-panel UI is presentational, matching chart controls. `buildInputPanelViewModel` / `getInputPanelViewModel` in `src/state/comfortTool/inputPresentation.ts` project tool controls, Compare toggles, field rows, clothing-builder bindings, and modifiers. Components must not receive the Analysis controller or implement conversion, clamp, or modifier-draft merge.
+- Analysis input-panel UI is presentational, matching chart controls. `buildInputPanelViewModel` / `getInputPanelViewModel` in `src/state/analysis/inputPresentation.ts` project tool controls, Compare toggles, field rows, clothing-builder bindings, and modifiers. Components must not receive the Analysis controller or implement conversion, clamp, or modifier-draft merge.
 - `defineModel` `modifiers` (or builder `.setModifiers()`) receive executable declarations. The global catalogue contains only stable IDs and UI/share input schema. Effective SI input runs in the fixed order Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain without overwriting base input. Calculations receive `ModelCalculationContext` with `effectiveQuantitiesByInput` (modifier-adjusted primary SI), not raw `quantitiesByInput`.
 - Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO; each declaration binds its own `clo_dynamic` standard.
 - Keep Time-series out of Analysis caches and Analysis share snapshots. Time-series is a separate controller (PHS only). `state/timeSeries/modelConfigs.ts` reads the PHS declaration’s `tables.timeSeries`; declaring the table does not create a simulator.

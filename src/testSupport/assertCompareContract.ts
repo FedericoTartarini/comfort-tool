@@ -12,9 +12,9 @@ import {
 } from "../models/quantities";
 import { supportsStandardWorkspace, WorkspaceId } from "../models/workspaces";
 import { syncDerivedStateForInput } from "../services/comfort/syncState";
-import { createAnalysisState } from "../state/comfortTool/createAnalysisState.svelte";
-import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";
-import type { AnalysisController } from "../state/comfortTool/types";
+import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
+import { comfortModelConfigs } from "../state/analysis/modelConfigs";
+import type { AnalysisController } from "../state/analysis/types";
 import {
   getGoldenInputOverrides,
   getGoldenModelInputOverrides,

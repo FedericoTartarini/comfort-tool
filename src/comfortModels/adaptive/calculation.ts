@@ -22,7 +22,7 @@ import {
   hasExactKeys,
   isRecord,
   type ResultRowDefinition,
-} from "../../state/comfortTool/modelConfigs/builder";
+} from "../../state/analysis/modelConfigs/builder";
 import type {
   AdaptiveBoundaryDefinition,
   AdaptiveLevelDefinition,

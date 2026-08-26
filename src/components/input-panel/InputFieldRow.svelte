@@ -13,7 +13,7 @@
   import { inputDisplayMetaById } from "../../models/inputSlotPresentation";
   import type { InputId as InputIdType } from "../../models/inputSlots";
   import type { OptionKey as OptionKeyType } from "../../models/inputModes";
-  import type { InputFieldRowViewModel } from "../../state/comfortTool/types";
+  import type { InputFieldRowViewModel } from "../../state/analysis/types";
 
   interface Props {
     field: InputFieldRowViewModel;

@@ -11,9 +11,9 @@ import {
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,
-} from "../state/comfortTool/fieldChartState";
-import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";
-import type { ResultSectionViewModel } from "../state/comfortTool/types";
+} from "../state/analysis/fieldChartState";
+import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
+import type { ResultSectionViewModel } from "../state/analysis/types";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,

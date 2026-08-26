@@ -9,7 +9,7 @@ import {
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { PhysicalQuantityId } from "../../models/quantities";
 import { UnitSystem } from "../../models/units";
-import { createEmptyResults } from "../../state/comfortTool/modelConfigs/builder";
+import { createEmptyResults } from "../../state/analysis/modelConfigs/builder";
 import { buildModelParametricLineChart } from "../../services/comfort/charts/kinds/parametricLine";
 import {
   calculatePmvSetOutputs,

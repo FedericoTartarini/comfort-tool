@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";
+import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
 import { InputId } from "../models/inputSlots";
 import { UnitSystem } from "../models/units";
 import {

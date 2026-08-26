@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 
 import { ChartEngine, type ChartInstanceDeclaration } from "../../../../models/chartEngines";
-import type { ModelDeclaration } from "../../../../state/comfortTool/modelConfigs/builder";
+import type { ModelDeclaration } from "../../../../state/analysis/modelConfigs/builder";
 import type {
   DynamicFieldGridSpec,
   ModelChartDeclaration,

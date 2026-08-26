@@ -41,7 +41,7 @@ import {
   parseEmptyOptions,
   type ChartDeclarationInput,
   type ResultRowDefinition,
-} from "../../state/comfortTool/modelConfigs/builder";
+} from "../../state/analysis/modelConfigs/builder";
 import {
   getPhsWaterLossLimitG,
   personFromModelInputs,

@@ -8,7 +8,7 @@
   import SiteFooter from "./SiteFooter.svelte";
   import SiteHeader from "./SiteHeader.svelte";
   import WorkspaceSidebar from "./WorkspaceSidebar.svelte";
-  import type { AnalysisController } from "../state/comfortTool/types";
+  import type { AnalysisController } from "../state/analysis/types";
 
   interface NavigationItem {
     label: string;

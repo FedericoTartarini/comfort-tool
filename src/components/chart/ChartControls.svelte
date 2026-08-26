@@ -7,7 +7,7 @@
   import type {
     AxisControl,
     ChartControlsViewModel,
-  } from "../../state/comfortTool/types";
+  } from "../../state/analysis/types";
   import ChartBandEditor from "./ChartBandEditor.svelte";
   import ChartDisplayMenu from "./ChartDisplayMenu.svelte";
 

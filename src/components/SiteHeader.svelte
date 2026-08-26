@@ -4,8 +4,8 @@
   import { onDestroy } from "svelte";
 
   import { siteBrand, siteHeaderLinks } from "./siteShellConfig";
-  import { buildShareUrl } from "../state/comfortTool/shareState";
-  import type { AnalysisController } from "../state/comfortTool/types";
+  import { buildShareUrl } from "../state/analysis/shareState";
+  import type { AnalysisController } from "../state/analysis/types";
 
   interface Props {
     toolState: AnalysisController;

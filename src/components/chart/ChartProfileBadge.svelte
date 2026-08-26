@@ -9,7 +9,7 @@
     FieldChartProfileKind,
     type FieldChartProfileKind as FieldChartProfileKindType,
   } from "../../models/output/fieldChartProfile";
-  import type { ChartProfileBadgeViewModel } from "../../state/comfortTool/types";
+  import type { ChartProfileBadgeViewModel } from "../../state/analysis/types";
 
   interface Props {
     control: ChartProfileBadgeViewModel;

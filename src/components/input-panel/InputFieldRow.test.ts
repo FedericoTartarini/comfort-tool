@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { InputControlId } from "../../models/inputControls";
 import { InputId } from "../../models/inputSlots";
-import type { InputFieldRowViewModel } from "../../state/comfortTool/types";
+import type { InputFieldRowViewModel } from "../../state/analysis/types";
 import InputFieldRow from "./InputFieldRow.svelte";
 
 function createField(

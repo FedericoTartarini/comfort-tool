@@ -10,8 +10,8 @@ import {
   type PrimaryQuantityId,
 } from "../models/quantities";
 import { InputId } from "../models/inputSlots";
-import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";
-import { createQuantitiesByInput } from "../state/comfortTool/initialAnalysisState";
+import { comfortModelConfigs } from "../state/analysis/modelConfigs";
+import { createQuantitiesByInput } from "../state/analysis/initialAnalysisState";
 import {
   createAuxiliaryQuantitiesByInput,
   createDefaultModelInputsForModel,

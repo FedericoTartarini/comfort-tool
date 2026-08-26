@@ -9,7 +9,7 @@ import { ModelId } from "../../models/modelIds";
 import { ModifierId } from "../../models/inputModifiers";
 import { PhysicalQuantityId } from "../../models/quantities";
 import { InputId } from "../../models/inputSlots";
-import { createAnalysisState } from "../../state/comfortTool/createAnalysisState.svelte";
+import { createAnalysisState } from "../../state/analysis/createAnalysisState.svelte";
 import InputPanelHost from "./InputPanel.test.host.svelte";
 
 afterEach(cleanup);

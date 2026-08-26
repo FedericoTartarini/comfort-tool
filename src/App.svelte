@@ -2,7 +2,7 @@
   import { onDestroy } from "svelte";
 
   import SiteShell from "./components/SiteShell.svelte";
-  import { createAnalysisState } from "./state/comfortTool/createAnalysisState.svelte";
+  import { createAnalysisState } from "./state/analysis/createAnalysisState.svelte";
   import ModelSwitchWarningModal from "./components/modals/ModelSwitchWarningModal.svelte";
   import {
     Router,

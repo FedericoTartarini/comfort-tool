@@ -1,5 +1,5 @@
 import { getContext, setContext } from "svelte";
-import type { AnalysisController } from "../comfortTool/types";
+import type { AnalysisController } from "../analysis/types";
 import type { WorkspaceNavigationCoordinator } from "./createWorkspaceNavigation";
 import type { TimeSeriesController } from "../timeSeries/types";
 

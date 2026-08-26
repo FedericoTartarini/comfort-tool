@@ -6,7 +6,7 @@ import {
 import type { MetricSummaryItemViewModel } from "../../models/tableTypes";
 import { buildMetricSummaryTable } from "../../services/comfort/output/tableResolver";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
-import { getComfortModelConfig, getModelSimulationOutput } from "../comfortTool/modelConfigs";
+import { getComfortModelConfig, getModelSimulationOutput } from "../analysis/modelConfigs";
 import { UnitSystem } from "../../models/units";
 import {
   getTimeSeriesModelConfig,

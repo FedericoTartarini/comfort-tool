@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button, Dropdown, DropdownDivider, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import type { ChartInstancePanelView } from "../../state/comfortTool/chartInstancePresentation";
+  import type { ChartInstancePanelView } from "../../state/analysis/chartInstancePresentation";
   import {
     publicationExportMenuItems,
     type PublicationExportHandler,
