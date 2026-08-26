@@ -22,7 +22,7 @@ import {
 import type { PmvChartSource, PmvResponse } from "../../comfortModels/pmv/pmvCalculation";
 import type { UtciResponse } from "../../comfortModels/utci/utci";
 import { PhsQuantityId, type PhsResponse } from "../../models/phs";
-import { createAnalysisState } from "./createComfortToolState.svelte";
+import { createAnalysisState } from "./createAnalysisState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import { PhysicalQuantityId } from "../../models/quantities";
 function syncWorkspaceToModel(

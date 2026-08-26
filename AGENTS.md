@@ -49,7 +49,7 @@ Key entrypoints:
 ```text
 src/App.svelte
 src/views/ComfortDashboard.svelte
-src/state/comfortTool/createComfortToolState.svelte.ts
+src/state/comfortTool/createAnalysisState.svelte.ts
 src/state/comfortTool/types.ts
 ```
 
@@ -124,7 +124,7 @@ Preferred direction for refactors and new model work:
 - chart builds resolved on demand from calculation cache + output settings
 - shared UI flags for loading, errors, compare settings, and unit system
 
-When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createComfortToolState.svelte.ts`, `src/state/comfortTool/shareState.ts`, or `src/state/comfortTool/modelConfigs/**`, prefer extracting keyed records and generic helpers instead of copying another PMV/UTCI-specific property or branch.
+When touching `src/state/comfortTool/types.ts`, `src/state/comfortTool/createAnalysisState.svelte.ts`, `src/state/comfortTool/shareState.ts`, or `src/state/comfortTool/modelConfigs/**`, prefer extracting keyed records and generic helpers instead of copying another PMV/UTCI-specific property or branch.
 
 ## Model Extension Strategy
 

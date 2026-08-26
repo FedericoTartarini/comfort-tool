@@ -46,7 +46,7 @@ import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOpti
 import { CalculationSource, ComfortStandard } from "../../models/calculationMetadata";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
 import { createModelCalculationContext } from "../../models/modelCalculation";
-import { createAnalysisState } from "../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../state/comfortTool/createAnalysisState.svelte";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 const pmvPayload = {
   tdb: 26,

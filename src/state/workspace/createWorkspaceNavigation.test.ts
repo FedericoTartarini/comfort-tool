@@ -8,7 +8,7 @@ import {
   getAppRouteByPath,
   isCalculationRoute,
 } from "./routeDefinitions";
-import { createAnalysisState } from "../comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../comfortTool/createAnalysisState.svelte";
 import { buildShareUrl } from "../comfortTool/shareState";
 import { createWorkspaceNavigation } from "./createWorkspaceNavigation";
 

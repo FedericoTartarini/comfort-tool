@@ -9,7 +9,7 @@ import {
   TemperatureMode,
 } from "../../../models/inputModes";
 import { InputId } from "../../../models/inputSlots";
-import { createAnalysisState } from "../../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../../state/comfortTool/createAnalysisState.svelte";
 import {
   deriveRelativeHumidityFromDewPoint,
   deriveRelativeHumidityFromHumidityRatio,

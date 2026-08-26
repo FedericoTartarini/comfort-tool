@@ -12,7 +12,7 @@ import {
 } from "../models/quantities";
 import { supportsStandardWorkspace, WorkspaceId } from "../models/workspaces";
 import { syncDerivedStateForInput } from "../services/comfort/syncState";
-import { createAnalysisState } from "../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../state/comfortTool/createAnalysisState.svelte";
 import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";
 import type { AnalysisController } from "../state/comfortTool/types";
 import {

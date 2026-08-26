@@ -36,7 +36,7 @@ import {
   replaceExploreBands,
   selectExploreOutput,
 } from "./fieldChartState";
-import type { AnalysisInternals } from "./comfortToolInternals";
+import type { AnalysisInternals } from "./analysisInternals";
 import {
   canEnableModifier,
   findModelModifier,
@@ -56,7 +56,7 @@ import {
 import { UnitSystem } from "../../models/units";
 import {
   createDefaultCompareInputIds,
-} from "./initialComfortToolState";
+} from "./initialAnalysisState";
 import {
   QuantityState,
   getPhysicalQuantityMeta,

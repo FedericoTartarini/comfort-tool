@@ -7,7 +7,7 @@ import type {
 import type { ChartAxisQuantityId } from "../../models/quantities";
 import { ChartLegendKind } from "../../services/comfort/charts/chartBuildResult";
 import { buildChartControlsViewModel } from "./chartPresentation";
-import type { AnalysisInternals } from "./comfortToolInternals";
+import type { AnalysisInternals } from "./analysisInternals";
 import {
   buildInputControlViewModels,
   buildInputPanelViewModel,

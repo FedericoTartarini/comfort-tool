@@ -11,7 +11,7 @@ import {
 } from "../models/quantities";
 import { InputId } from "../models/inputSlots";
 import { comfortModelConfigs } from "../state/comfortTool/modelConfigs";
-import { createQuantitiesByInput } from "../state/comfortTool/initialComfortToolState";
+import { createQuantitiesByInput } from "../state/comfortTool/initialAnalysisState";
 import {
   createAuxiliaryQuantitiesByInput,
   createDefaultModelInputsForModel,

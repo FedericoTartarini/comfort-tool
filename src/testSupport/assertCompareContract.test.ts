@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ModelId } from "../models/modelIds";
 import { InputId } from "../models/inputSlots";
 import { PhysicalQuantityId } from "../models/quantities";
-import { createAnalysisState } from "../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../state/comfortTool/createAnalysisState.svelte";
 import { comfortModelOrder } from "../state/comfortTool/modelConfigs";
 import {
   assertCompareContract,

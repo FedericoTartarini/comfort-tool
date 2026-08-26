@@ -12,14 +12,14 @@ import {
   createQuantitiesByInput,
   createSelectedChartInstanceByModel,
   defaultActiveWorkspace,
-} from "./initialComfortToolState";
+} from "./initialAnalysisState";
 import {
   createActiveModifiersByInput,
 } from "./modifierState";
 import { createCalculationManager } from "./calculationManager.svelte";
-import { createAnalysisActions } from "./comfortToolActions";
-import { createAnalysisInternals } from "./comfortToolInternals";
-import { createAnalysisSelectors } from "./comfortToolSelectors";
+import { createAnalysisActions } from "./analysisActions";
+import { createAnalysisInternals } from "./analysisInternals";
+import { createAnalysisSelectors } from "./analysisSelectors";
 import type { AnalysisController, AnalysisStateSlice } from "./types";
 
 export function createAnalysisState(): AnalysisController {

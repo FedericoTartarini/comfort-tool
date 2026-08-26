@@ -77,7 +77,7 @@ src/
 
 ## State Shape
 
-The controller exposes `{ state, actions, selectors }` via `createAnalysisState` in `createComfortToolState.svelte.ts`. Key state fields:
+The controller exposes `{ state, actions, selectors }` via `createAnalysisState` in `createAnalysisState.svelte.ts`. Key state fields:
 
 - `selectedModel` — active comfort model
 - `selectedChartInstanceByModel: Record<ModelId, string>` — per-model chart instance selection

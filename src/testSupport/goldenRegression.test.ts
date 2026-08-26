@@ -19,7 +19,7 @@ import { PhysicalQuantityId } from "../models/quantities";
 import { PhsPosture, PhsQuantityId } from "../models/phs";
 import { InputId } from "../models/inputSlots";
 import { comfortModelConfigs, comfortModelOrder } from "../state/comfortTool/modelConfigs";
-import { createAnalysisState } from "../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../state/comfortTool/createAnalysisState.svelte";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,

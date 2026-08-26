@@ -35,7 +35,7 @@ import {
   type ModelOutputKey as ModelOutputKeyType,
 } from "../../../models/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
-import { createAnalysisState } from "../../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../../state/comfortTool/createAnalysisState.svelte";
 import { convertFieldValueFromSi } from "../../units";
 import type { PlotlyChartSpec, PlotTrace } from "../../plotlyTypes";
 import { buildChartPlotly } from "../../../testSupport/modelChartTestHelpers";

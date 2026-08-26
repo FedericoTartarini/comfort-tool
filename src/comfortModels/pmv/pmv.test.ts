@@ -22,7 +22,7 @@ import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
-import { createAnalysisState } from "../../state/comfortTool/createComfortToolState.svelte";
+import { createAnalysisState } from "../../state/comfortTool/createAnalysisState.svelte";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 import {
   applyInputModifierChain,

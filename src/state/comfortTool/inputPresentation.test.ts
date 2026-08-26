@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ModelId } from "../../models/modelIds";
 import { InputControlId } from "../../models/inputControls";
 import { InputId } from "../../models/inputSlots";
-import { createAnalysisState } from "./createComfortToolState.svelte";
+import { createAnalysisState } from "./createAnalysisState.svelte";
 import {
   clampDisplayValue,
   normalizeInputFieldDisplayValue,

@@ -22,7 +22,7 @@ import { ModelOutputKey } from "../../models/modelCapabilities";
 
 import { UnitSystem } from "../../models/units";
 import { WorkspaceId } from "../../models/workspaces";
-import { createAnalysisState } from "./createComfortToolState.svelte";
+import { createAnalysisState } from "./createAnalysisState.svelte";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import {
   applyShareSnapshotToState,
