@@ -1,4 +1,4 @@
-import { ChartKind } from "./chartKinds";
+import { ChartEngine } from "./chartKinds";
 import type { PlotlyChartResponseDto } from "../comfortDtos";
 import type { UnitSystem as UnitSystemType } from "../units";
 
@@ -12,7 +12,7 @@ export interface SimulationTimeSeriesLineChartSpec {
 
 export interface SimulationChartDeclaration {
   readonly id: string;
-  readonly kind: typeof ChartKind.TimeSeriesLine;
+  readonly kind: typeof ChartEngine.TimeSeriesLine;
   readonly title: string;
   readonly description: string;
   readonly emptyMessage: string;

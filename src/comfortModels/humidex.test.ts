@@ -10,7 +10,7 @@ import { InputId } from "../models/inputSlots";
 
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../models/modelCapabilities";
-import { ChartKind } from "../models/output/chartKinds";
+import { ChartEngine } from "../models/output/chartKinds";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
@@ -156,8 +156,8 @@ describe("humidex service", () => {
       instanceId,
       kind,
     }))).toEqual([
-      { instanceId: "humidex-ranges", kind: ChartKind.DynamicField },
-      { instanceId: "humidex-dynamic-field", kind: ChartKind.DynamicField },
+      { instanceId: "humidex-ranges", kind: ChartEngine.DynamicField },
+      { instanceId: "humidex-dynamic-field", kind: ChartEngine.DynamicField },
     ]);
   });
 

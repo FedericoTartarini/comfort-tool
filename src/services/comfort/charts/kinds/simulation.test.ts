@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartKind } from "../../../../models/output/chartKinds";
+import { ChartEngine } from "../../../../models/output/chartKinds";
 import { CalculationSource } from "../../../../models/calculationMetadata";
 import { UnitSystem } from "../../../../models/units";
 import type { SimulationChartDeclaration } from "../../../../models/output/simulationCharts";
@@ -11,7 +11,7 @@ describe("simulation chart resolver", () => {
   it("routes time-series-line simulation charts through their spec builder", () => {
     const chart: SimulationChartDeclaration = {
       id: "test-chart",
-      kind: ChartKind.TimeSeriesLine,
+      kind: ChartEngine.TimeSeriesLine,
       title: "Test chart",
       description: "Test description",
       emptyMessage: "Empty",

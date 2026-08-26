@@ -21,7 +21,7 @@ import {
   getDeclaredExploreOutput,
 } from "./fieldChartState";
 import {
-  findChartKindRegistration,
+  findChartEngineRegistration,
   resolveChartInstanceCapabilities,
 } from "./chartInstancePresentation";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
@@ -46,8 +46,8 @@ function getExploreOutputs(
   config: RuntimeComfortModelDefinition,
   chartInstance: ChartInstanceDeclaration,
 ) {
-  const registration = findChartKindRegistration(
-    config.chartKindRegistrations,
+  const registration = findChartEngineRegistration(
+    config.chartEngineRegistrations,
     chartInstance.instanceId,
   );
   return supportsExploreWorkspace(config.workspaceCapabilities)

@@ -24,8 +24,8 @@ import {
 } from "../../services/comfort/charts/gridModelCharts";
 import { INTERACTIVE_DYNAMIC_GRID_POINTS } from "../../services/comfort/charts/types";
 import type {
-  BandScalarChartKindSpec,
-  DynamicFieldChartKindSpec,
+  BandScalarChartEngineSpec,
+  DynamicFieldChartEngineSpec,
 } from "../../services/comfort/charts/kinds/types";
 import { buildTextAnnotation } from "../../services/comfort/charts/plotlyBuilders";
 import {
@@ -188,7 +188,7 @@ export const UTCI_DYNAMIC_AXIS_FIELDS = [
   PhysicalQuantityId.RelativeHumidity,
 ] as const;
 
-export const utciStressChartSpec: BandScalarChartKindSpec<
+export const utciStressChartSpec: BandScalarChartEngineSpec<
   UtciResponseDto,
   ModelChartSourceDto<UtciRequestDto>
 > = {
@@ -202,7 +202,7 @@ export const utciStressChartSpec: BandScalarChartKindSpec<
   },
 };
 
-export const utciDynamicFieldChartSpec: DynamicFieldChartKindSpec<UtciResponseDto> = {
+export const utciDynamicFieldChartSpec: DynamicFieldChartEngineSpec<UtciResponseDto> = {
   title: `${UTCI_MODEL_LABEL} Dynamic Chart`,
   axisFields: [...UTCI_DYNAMIC_AXIS_FIELDS],
   resolveGridSpec: () => createUtciDynamicChartSpec(),

@@ -63,7 +63,7 @@ work, not “add a model” work:
 
 | Stop                                  | Why                                                                                                                                  |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| New chart engine (`ChartKind` member) | Closed engine set. `ParametricLine` is implemented (polylines and optional limit bands). Do not add a new engine from a declaration. |
+| New chart engine (`ChartEngine` member) | Closed engine set. `ParametricLine` is implemented (polylines and optional limit bands). Do not add a new engine from a declaration. |
 | New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/models/catalogWireIds.test.ts`).                    |
 | New modifier                          | Global catalogue, execution order, and share schema.                                                                                 |
 | New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                  |
@@ -71,7 +71,7 @@ work, not “add a model” work:
 
 Also forbidden in a declaration:
 
-- `ChartKind.Custom` / `spec.build` / Plotly imports (`defineModel` is data-only)
+- `ChartEngine.Custom` / `spec.build` / Plotly imports (`defineModel` is data-only)
 - `spec: unknown`
 - a parallel `ChartInstanceId` tree
 - a third `TableType`
@@ -91,7 +91,7 @@ src/
   comfortModels/     one declaration entry per registered model; family
                      folders for PMV, Adaptive, UTCI, PHS
   components/        rendering and interaction; no model-id branches
-  models/            system quantity seed, ModelId, ChartKind, TableType,
+  models/            system quantity seed, ModelId, ChartEngine, TableType,
                      modifiers, workspace ids, zone tokens
   routes/            client router
   services/
@@ -161,14 +161,14 @@ are the existing example; all quantity conversion reads catalog SI units
 display labels such as g/kg live in `display.displayUnits`. Unknown SI units
 fail assemble.
 
-**Charts.** Closed engines: `ChartKind.DynamicField`, `BoundaryRegion`,
+**Charts.** Closed engines: `ChartEngine.DynamicField`, `BoundaryRegion`,
 `ParametricLine`, `BandScalar`, `TimeSeriesLine`, and frontend-only `Custom`
 (PMV psychrometric geometry). `defineModel` `outputCharts` is a data-only
 `ModelChartDeclaration` union over the non-Custom engines. Optional `type`
 names an extended type on that same engine; assemble preserves it and rejects
 empty or duplicate types. Instance ids live only on the declaration
 (`instanceId`); the registry derives them (`getDeclaredChartInstanceIds`).
-Heat Index / Humidex fixed-axis maps are `ChartKind.DynamicField` with
+Heat Index / Humidex fixed-axis maps are `ChartEngine.DynamicField` with
 `lockedAxes`, not `Custom`. `ParametricLine` interchange is polylines and
 optional limit bands (heat-loss vs temperature and SET series builders live
 beside the PMV family; ASHRAE and ISO declarations each register those
@@ -283,11 +283,11 @@ Standard workspace reads output, bands, caption, legend, and feedback from
 editable working bands. Band membership is array-ordered and half-open:
 `min <= value < max`.
 
-`ChartKind.Custom` is frontend-only on PMV ASHRAE/ISO psychrometric charts
+`ChartEngine.Custom` is frontend-only on PMV ASHRAE/ISO psychrometric charts
 via `ComfortModelBuilder`. PMV heat-loss and SET charts are
-`ChartKind.ParametricLine` on those same declarations. UTCI chart specs live
+`ChartEngine.ParametricLine` on those same declarations. UTCI chart specs live
 in `src/comfortModels/utci/utciCharts.ts`. PHS Analysis exposure history is
-`ChartKind.TimeSeriesLine`.
+`ChartEngine.TimeSeriesLine`.
 
 ### Modifiers
 

@@ -5,9 +5,9 @@ import type {
   ModelOutput,
 } from "../../../../models/modelCapabilities";
 import {
-  ChartKind,
+  ChartEngine,
   type ChartInstanceCapabilities,
-  type ModelChartKind,
+  type ModelChartEngine,
 } from "../../../../models/output/chartKinds";
 import type { ChartAxisQuantityId } from "../../../../models/physicalQuantities";
 import type { GridModelChartSpec } from "../gridModelCharts";
@@ -57,7 +57,7 @@ export interface DynamicFieldGeometrySpec<TResult, ChartSourceType> {
   readonly build: FrontendChartBuild<TResult, ChartSourceType>;
 }
 
-export type DynamicFieldChartKindSpec<TResult, ChartSourceType = unknown> =
+export type DynamicFieldChartEngineSpec<TResult, ChartSourceType = unknown> =
   | DynamicFieldGridSpec<TResult>
   | DynamicFieldGeometrySpec<TResult, ChartSourceType>;
 
@@ -81,7 +81,7 @@ export interface BandScalarGeometrySpec<TResult, ChartSourceType> {
   readonly build: FrontendChartBuild<TResult, ChartSourceType>;
 }
 
-export type BandScalarChartKindSpec<TResult, ChartSourceType = unknown> =
+export type BandScalarChartEngineSpec<TResult, ChartSourceType = unknown> =
   | BandScalarDataSpec<TResult>
   | BandScalarGeometrySpec<TResult, ChartSourceType>;
 
@@ -106,7 +106,7 @@ export interface BoundaryRegionGeometrySpec<TResult, ChartSourceType> {
   readonly build: FrontendChartBuild<TResult, ChartSourceType>;
 }
 
-export type BoundaryRegionChartKindSpec<TResult, ChartSourceType = unknown> =
+export type BoundaryRegionChartEngineSpec<TResult, ChartSourceType = unknown> =
   | BoundaryRegionDataSpec
   | BoundaryRegionGeometrySpec<TResult, ChartSourceType>;
 
@@ -141,7 +141,7 @@ export interface TimeSeriesLineGeometrySpec<TResult, ChartSourceType> {
   readonly build: FrontendChartBuild<TResult, ChartSourceType>;
 }
 
-export type TimeSeriesLineChartKindSpec<TResult, ChartSourceType = unknown> =
+export type TimeSeriesLineChartEngineSpec<TResult, ChartSourceType = unknown> =
   | TimeSeriesLineDataSpec<TResult>
   | TimeSeriesLineGeometrySpec<TResult, ChartSourceType>;
 
@@ -216,7 +216,7 @@ export function isParametricLineDataSpec<TResult>(
   return "getGeometry" in spec && !specHasPlotlyBuild(spec);
 }
 
-export interface CustomChartKindSpec<TResult, ChartSourceType> {
+export interface CustomChartEngineSpec<TResult, ChartSourceType> {
   readonly build: FrontendChartBuild<TResult, ChartSourceType>;
 }
 
@@ -224,50 +224,50 @@ export interface CustomChartKindSpec<TResult, ChartSourceType> {
  * Closed model-declaration engine→data-spec map. Extended types must pick a key here.
  * Custom is omitted. ParametricLine interchange is polylines and optional limit bands.
  */
-export interface ModelChartKindSpecMap<TResult> {
-  readonly [ChartKind.DynamicField]: DynamicFieldGridSpec<TResult>;
-  readonly [ChartKind.BoundaryRegion]: BoundaryRegionDataSpec;
-  readonly [ChartKind.ParametricLine]: ParametricLineDataSpec<TResult>;
-  readonly [ChartKind.BandScalar]: BandScalarDataSpec<TResult>;
-  readonly [ChartKind.TimeSeriesLine]: TimeSeriesLineDataSpec<TResult>;
+export interface ModelChartEngineSpecMap<TResult> {
+  readonly [ChartEngine.DynamicField]: DynamicFieldGridSpec<TResult>;
+  readonly [ChartEngine.BoundaryRegion]: BoundaryRegionDataSpec;
+  readonly [ChartEngine.ParametricLine]: ParametricLineDataSpec<TResult>;
+  readonly [ChartEngine.BandScalar]: BandScalarDataSpec<TResult>;
+  readonly [ChartEngine.TimeSeriesLine]: TimeSeriesLineDataSpec<TResult>;
 }
 
-export type ModelChartKindSpec<TResult> = {
-  [K in ModelChartKind]: {
+export type ModelChartEngineSpec<TResult> = {
+  [K in ModelChartEngine]: {
     readonly kind: K;
-    readonly spec: ModelChartKindSpecMap<TResult>[K];
+    readonly spec: ModelChartEngineSpecMap<TResult>[K];
   };
-}[ModelChartKind];
+}[ModelChartEngine];
 
 /**
  * Closed ChartEngine spec union for frontend registrations.
  * Custom is PMV psychrometric geometry only.
  * ParametricLine is data-only (polylines and optional limit bands).
  */
-export type RegisteredChartKindSpec<TResult, ChartSourceType> =
+export type RegisteredChartEngineSpec<TResult, ChartSourceType> =
   | {
-      kind: typeof ChartKind.DynamicField;
-      spec: DynamicFieldChartKindSpec<TResult, ChartSourceType>;
+      kind: typeof ChartEngine.DynamicField;
+      spec: DynamicFieldChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartKind.BoundaryRegion;
-      spec: BoundaryRegionChartKindSpec<TResult, ChartSourceType>;
+      kind: typeof ChartEngine.BoundaryRegion;
+      spec: BoundaryRegionChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartKind.ParametricLine;
+      kind: typeof ChartEngine.ParametricLine;
       spec: ParametricLineDataSpec<TResult>;
     }
   | {
-      kind: typeof ChartKind.BandScalar;
-      spec: BandScalarChartKindSpec<TResult, ChartSourceType>;
+      kind: typeof ChartEngine.BandScalar;
+      spec: BandScalarChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartKind.TimeSeriesLine;
-      spec: TimeSeriesLineChartKindSpec<TResult, ChartSourceType>;
+      kind: typeof ChartEngine.TimeSeriesLine;
+      spec: TimeSeriesLineChartEngineSpec<TResult, ChartSourceType>;
     }
   | {
-      kind: typeof ChartKind.Custom;
-      spec: CustomChartKindSpec<TResult, ChartSourceType>;
+      kind: typeof ChartEngine.Custom;
+      spec: CustomChartEngineSpec<TResult, ChartSourceType>;
     };
 
 interface OutputChartCommonFields {
@@ -291,13 +291,13 @@ interface OutputChartCommonFields {
  * engines. No Custom, no Plotly `build`.
  */
 export type ModelChartDeclaration<TResult = unknown> = OutputChartCommonFields &
-  ModelChartKindSpec<TResult>;
+  ModelChartEngineSpec<TResult>;
 
 /** Family / ComfortModelBuilder chart entry. May include frontend-owned Plotly geometry. */
 export type FrontendChartDeclaration<
   TResult = unknown,
   ChartSourceType = unknown,
-> = OutputChartCommonFields & RegisteredChartKindSpec<TResult, ChartSourceType>;
+> = OutputChartCommonFields & RegisteredChartEngineSpec<TResult, ChartSourceType>;
 
 /** Family / ComfortModelBuilder chart entry. Alias of FrontendChartDeclaration. */
 export type OutputChartDeclarationInput<
@@ -305,30 +305,30 @@ export type OutputChartDeclarationInput<
   ChartSourceType = unknown,
 > = FrontendChartDeclaration<TResult, ChartSourceType>;
 
-export interface ChartKindRegistration<TResult, ChartSourceType> {
+export interface ChartEngineRegistration<TResult, ChartSourceType> {
   readonly instanceId: string;
   readonly name: string;
   readonly emptyMessage: string;
   readonly note?: string;
   readonly supportedExploreOutputs?: readonly ModelOutput["key"][];
   readonly defaultExploreOutput?: ModelOutput["key"];
-  readonly registration: RegisteredChartKindSpec<TResult, ChartSourceType>;
+  readonly registration: RegisteredChartEngineSpec<TResult, ChartSourceType>;
 }
 
-export function modelChartSpecMatchesKind(chart: {
-  readonly kind: ModelChartKind;
+export function modelChartSpecMatchesEngine(chart: {
+  readonly kind: ModelChartEngine;
   readonly spec: object;
 }): boolean {
   switch (chart.kind) {
-    case ChartKind.DynamicField:
+    case ChartEngine.DynamicField:
       return isDynamicFieldGridSpec(chart.spec);
-    case ChartKind.BandScalar:
+    case ChartEngine.BandScalar:
       return isBandScalarDataSpec(chart.spec);
-    case ChartKind.BoundaryRegion:
+    case ChartEngine.BoundaryRegion:
       return isBoundaryRegionDataSpec(chart.spec);
-    case ChartKind.ParametricLine:
+    case ChartEngine.ParametricLine:
       return isParametricLineDataSpec(chart.spec);
-    case ChartKind.TimeSeriesLine:
+    case ChartEngine.TimeSeriesLine:
       return isTimeSeriesLineDataSpec(chart.spec);
   }
 }

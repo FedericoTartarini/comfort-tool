@@ -13,7 +13,7 @@ import {
 import { ThermalZone } from "../../models/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../models/zoneTokens";
 import { StandardId, WorkspaceId } from "../../models/workspaces";
-import { ChartKind } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/output/chartKinds";
 import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
@@ -383,7 +383,7 @@ builder
   .setOutputCharts([
     {
       instanceId: "phs-exposure-history",
-      kind: ChartKind.TimeSeriesLine,
+      kind: ChartEngine.TimeSeriesLine,
       name: "Exposure history",
       emptyMessage: "No PHS exposure history yet.",
       capabilities: {
@@ -402,7 +402,7 @@ builder
     },
     {
       instanceId: "phs-dynamic-field",
-      kind: ChartKind.DynamicField,
+      kind: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No PHS field chart yet.",
       capabilities: {
@@ -532,7 +532,7 @@ builder.setSimulation({
   charts: [
     {
       id: "phs-temperature-history",
-      kind: ChartKind.TimeSeriesLine,
+      kind: ChartEngine.TimeSeriesLine,
       title: "Body temperature",
       description:
         "Rectal temperature, optional core temperature, the 38 °C limit, and phase boundaries.",
@@ -551,7 +551,7 @@ builder.setSimulation({
     },
     {
       id: "phs-water-loss-history",
-      kind: ChartKind.TimeSeriesLine,
+      kind: ChartEngine.TimeSeriesLine,
       title: "Predicted water loss",
       description:
         "Cumulative water loss against the applicable 5% or 3% body-mass limit.",

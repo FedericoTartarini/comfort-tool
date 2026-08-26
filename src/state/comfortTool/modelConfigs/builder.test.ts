@@ -6,7 +6,7 @@ import {
   PhysicalQuantityScope,
 } from "../../../models/physicalQuantities";
 import { WorkspaceId } from "../../../models/workspaces";
-import { ChartKind } from "../../../models/output/chartKinds";
+import { ChartEngine } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile";
 import {
@@ -41,7 +41,7 @@ function createModelDynamicFieldChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartKind.DynamicField,
+    kind: ChartEngine.DynamicField,
     name: "Test chart",
     emptyMessage: "No test chart yet.",
     spec: {
@@ -69,7 +69,7 @@ function createModelBandScalarChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartKind.BandScalar,
+    kind: ChartEngine.BandScalar,
     name: "Stress",
     emptyMessage: "No stress chart yet.",
     capabilities: {
@@ -94,7 +94,7 @@ function createModelTimeSeriesChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartKind.TimeSeriesLine,
+    kind: ChartEngine.TimeSeriesLine,
     name: "History",
     emptyMessage: "No history chart yet.",
     capabilities: {
@@ -123,7 +123,7 @@ function createModelBoundaryChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartKind.BoundaryRegion,
+    kind: ChartEngine.BoundaryRegion,
     name: "Boundary",
     emptyMessage: "No boundary chart yet.",
     spec: {
@@ -141,7 +141,7 @@ function createModelParametricChart(
 ): ModelChartDeclaration {
   return {
     instanceId,
-    kind: ChartKind.ParametricLine,
+    kind: ChartEngine.ParametricLine,
     name: "Parametric",
     emptyMessage: "No parametric chart yet.",
     spec: {
@@ -199,7 +199,7 @@ const modelChartBuildProfile = {
 function createPmvPsychrometricCustomChart(): FrontendChartDeclaration {
   return {
     instanceId: "test-pmv-custom",
-    kind: ChartKind.Custom,
+    kind: ChartEngine.Custom,
     name: "Psychrometric",
     emptyMessage: "No psychrometric chart yet.",
     spec: { build: () => null },
@@ -254,8 +254,8 @@ describe("ComfortModelBuilder capabilities", () => {
     );
     expect(definition.buildChart).toBeTypeOf("function");
     expect(definition.outputCharts.entries[0]).not.toHaveProperty("spec");
-    expect(definition.chartKindRegistrations[0]?.registration.kind).toBe(
-      ChartKind.DynamicField,
+    expect(definition.chartEngineRegistrations[0]?.registration.kind).toBe(
+      ChartEngine.DynamicField,
     );
   });
 
@@ -263,8 +263,8 @@ describe("ComfortModelBuilder capabilities", () => {
     const definition = createExploreBuilder(
       createPmvPsychrometricCustomChart(),
     ).build();
-    expect(definition.chartKindRegistrations[0]?.registration.kind).toBe(
-      ChartKind.Custom,
+    expect(definition.chartEngineRegistrations[0]?.registration.kind).toBe(
+      ChartEngine.Custom,
     );
     expect(definition.outputCharts.defaultInstanceId).toBe("test-pmv-custom");
   });
@@ -274,7 +274,7 @@ describe("ComfortModelBuilder capabilities", () => {
       createExploreBuilder(
         {
           instanceId: "not-psychrometric",
-          kind: ChartKind.Custom,
+          kind: ChartEngine.Custom,
           name: "Nope",
           emptyMessage: "No chart.",
           spec: { build: () => null },
@@ -564,15 +564,15 @@ describe("defineModel", () => {
     });
 
     expect(
-      definition.chartKindRegistrations.map(
+      definition.chartEngineRegistrations.map(
         ({ registration }) => registration.kind,
       ),
     ).toEqual([
-      ChartKind.DynamicField,
-      ChartKind.BandScalar,
-      ChartKind.BoundaryRegion,
-      ChartKind.TimeSeriesLine,
-      ChartKind.ParametricLine,
+      ChartEngine.DynamicField,
+      ChartEngine.BandScalar,
+      ChartEngine.BoundaryRegion,
+      ChartEngine.TimeSeriesLine,
+      ChartEngine.ParametricLine,
     ]);
   });
 
@@ -618,8 +618,8 @@ describe("defineModel", () => {
     });
 
     expect(definition.outputCharts.entries[0]?.type).toBe("audit.stress-band");
-    expect(definition.chartKindRegistrations[0]?.registration.kind).toBe(
-      ChartKind.BandScalar,
+    expect(definition.chartEngineRegistrations[0]?.registration.kind).toBe(
+      ChartEngine.BandScalar,
     );
   });
 
@@ -676,7 +676,7 @@ describe("defineModel", () => {
         outputCharts: [
           {
             instanceId: "mixed",
-            kind: ChartKind.BandScalar,
+            kind: ChartEngine.BandScalar,
             name: "Nope",
             emptyMessage: "No chart.",
             spec: createModelDynamicFieldChart().spec,

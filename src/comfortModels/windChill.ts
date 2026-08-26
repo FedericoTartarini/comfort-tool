@@ -8,7 +8,7 @@ import {
   ModelOutputKey,
   type ModelOutput,
 } from "../models/modelCapabilities";
-import { ChartKind } from "../models/output/chartKinds";
+import { ChartEngine } from "../models/output/chartKinds";
 import { TableType } from "../models/output/tableLayouts";
 import { WorkspaceId } from "../models/workspaces";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../models/physicalQuantities";
@@ -156,7 +156,7 @@ export const windChillModelConfig = defineModel<
   outputCharts: [
     {
       instanceId: DYNAMIC_CHART_INSTANCE_ID,
-      kind: ChartKind.DynamicField,
+      kind: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
       capabilities: {

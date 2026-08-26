@@ -8,7 +8,7 @@ import {
   ModelOutputKey,
   type ModelOutput,
 } from "../models/modelCapabilities";
-import { ChartKind } from "../models/output/chartKinds";
+import { ChartEngine } from "../models/output/chartKinds";
 import { TableType } from "../models/output/tableLayouts";
 import { WorkspaceId } from "../models/workspaces";
 import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../models/physicalQuantities";
@@ -124,7 +124,7 @@ export const humidexModelConfig = defineModel<
   outputCharts: [
     {
       instanceId: FIXED_CHART_INSTANCE_ID,
-      kind: ChartKind.DynamicField,
+      kind: ChartEngine.DynamicField,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
       capabilities: {
@@ -154,7 +154,7 @@ export const humidexModelConfig = defineModel<
     },
     {
       instanceId: DYNAMIC_CHART_INSTANCE_ID,
-      kind: ChartKind.DynamicField,
+      kind: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
       capabilities: {

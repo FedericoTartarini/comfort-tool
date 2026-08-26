@@ -4,7 +4,7 @@ import { ModelId, type ModelId as ModelIdType } from "../comfortModels";
  * Closed chart-engine set (Plan ChartEngine). Model declarations cannot add members.
  * Custom is frontend-only for PMV psychrometric non-grid geometry.
  */
-export const ChartKind = {
+export const ChartEngine = {
   DynamicField: "dynamic-field",
   BoundaryRegion: "boundary-region",
   ParametricLine: "parametric-line",
@@ -13,25 +13,25 @@ export const ChartKind = {
   Custom: "custom",
 } as const;
 
-export type ChartKind = (typeof ChartKind)[keyof typeof ChartKind];
+export type ChartEngine = (typeof ChartEngine)[keyof typeof ChartEngine];
 
 /** Engines a model declaration (`defineModel`) may name. Custom is frontend-only. */
-export const MODEL_CHART_KINDS = [
-  ChartKind.DynamicField,
-  ChartKind.BoundaryRegion,
-  ChartKind.ParametricLine,
-  ChartKind.BandScalar,
-  ChartKind.TimeSeriesLine,
+export const MODEL_CHART_ENGINES = [
+  ChartEngine.DynamicField,
+  ChartEngine.BoundaryRegion,
+  ChartEngine.ParametricLine,
+  ChartEngine.BandScalar,
+  ChartEngine.TimeSeriesLine,
 ] as const;
 
-export type ModelChartKind = (typeof MODEL_CHART_KINDS)[number];
+export type ModelChartEngine = (typeof MODEL_CHART_ENGINES)[number];
 
-export function isChartKind(value: string): value is ChartKind {
-  return (Object.values(ChartKind) as readonly string[]).includes(value);
+export function isChartEngine(value: string): value is ChartEngine {
+  return (Object.values(ChartEngine) as readonly string[]).includes(value);
 }
 
-export function isModelChartKind(value: string): value is ModelChartKind {
-  return (MODEL_CHART_KINDS as readonly string[]).includes(value);
+export function isModelChartEngine(value: string): value is ModelChartEngine {
+  return (MODEL_CHART_ENGINES as readonly string[]).includes(value);
 }
 
 export interface ChartInstanceCapabilities {
@@ -45,8 +45,8 @@ export interface ChartInstanceCapabilities {
   readonly showsExport: boolean;
 }
 
-export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
-  [ChartKind.DynamicField]: {
+export const chartEngineMetaById: Record<ChartEngine, ChartInstanceCapabilities> = {
+  [ChartEngine.DynamicField]: {
     allowsAxisSelection: true,
     locksYAxis: false,
     allowsOutputSelection: true,
@@ -56,7 +56,7 @@ export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
     showsLegend: true,
     showsExport: true,
   },
-  [ChartKind.BoundaryRegion]: {
+  [ChartEngine.BoundaryRegion]: {
     allowsAxisSelection: true,
     locksYAxis: false,
     allowsOutputSelection: false,
@@ -66,7 +66,7 @@ export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
     showsLegend: true,
     showsExport: true,
   },
-  [ChartKind.ParametricLine]: {
+  [ChartEngine.ParametricLine]: {
     allowsAxisSelection: false,
     locksYAxis: false,
     allowsOutputSelection: false,
@@ -76,7 +76,7 @@ export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
     showsLegend: false,
     showsExport: true,
   },
-  [ChartKind.BandScalar]: {
+  [ChartEngine.BandScalar]: {
     allowsAxisSelection: false,
     locksYAxis: true,
     allowsOutputSelection: true,
@@ -86,7 +86,7 @@ export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
     showsLegend: true,
     showsExport: true,
   },
-  [ChartKind.TimeSeriesLine]: {
+  [ChartEngine.TimeSeriesLine]: {
     allowsAxisSelection: false,
     locksYAxis: true,
     allowsOutputSelection: false,
@@ -96,7 +96,7 @@ export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
     showsLegend: true,
     showsExport: true,
   },
-  [ChartKind.Custom]: {
+  [ChartEngine.Custom]: {
     allowsAxisSelection: false,
     locksYAxis: false,
     allowsOutputSelection: false,
@@ -109,10 +109,10 @@ export const chartKindMetaById: Record<ChartKind, ChartInstanceCapabilities> = {
 };
 
 export function resolveChartCapabilities(
-  kind: ChartKind,
+  kind: ChartEngine,
   overrides?: Partial<ChartInstanceCapabilities>,
 ): ChartInstanceCapabilities {
-  return { ...chartKindMetaById[kind], ...overrides };
+  return { ...chartEngineMetaById[kind], ...overrides };
 }
 
 /**
@@ -126,7 +126,7 @@ export function modelAllowsCustomCharts(modelId: ModelIdType): boolean {
 /** Presentation metadata for one declared chart instance. Engine spec lives on registrations. */
 export interface ChartInstanceDeclaration {
   readonly instanceId: string;
-  readonly kind: ChartKind;
+  readonly kind: ChartEngine;
   readonly name: string;
   readonly emptyMessage: string;
   readonly note?: string;

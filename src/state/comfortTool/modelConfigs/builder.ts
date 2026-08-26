@@ -46,9 +46,9 @@ import {
   type QuantityExtension,
 } from "../../../models/physicalQuantities";
 import {
-  ChartKind,
-  isChartKind,
-  isModelChartKind,
+  ChartEngine,
+  isChartEngine,
+  isModelChartEngine,
   modelAllowsCustomCharts,
   resolveChartCapabilities,
 } from "../../../models/output/chartKinds";
@@ -59,13 +59,13 @@ import {
 } from "../../../models/output/tableLayouts";
 import { resolveChartBuildResult } from "../../../services/comfort/charts/kinds/index";
 import {
-  modelChartSpecMatchesKind,
+  modelChartSpecMatchesEngine,
   specHasPlotlyBuild,
-  type ChartKindRegistration,
+  type ChartEngineRegistration,
   type ModelChartDeclaration,
   type FrontendChartDeclaration,
   type OutputChartDeclarationInput,
-  type RegisteredChartKindSpec,
+  type RegisteredChartEngineSpec,
 } from "../../../services/comfort/charts/kinds/types";
 import { buildCompareMatrixTable } from "../../../services/comfort/output/tableResolver";
 
@@ -83,7 +83,7 @@ interface RegisteredOutputChart<
   ComplianceBand extends Band,
 > {
   readonly declaration: ChartInstanceDeclaration;
-  readonly registration: ChartKindRegistration<ResultType, ChartSourceType>;
+  readonly registration: ChartEngineRegistration<ResultType, ChartSourceType>;
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -118,33 +118,33 @@ export function createEmptyResults<T>(): Record<InputIdType, T | null> {
   );
 }
 
-function toRegisteredChartKindSpec<ResultType, ChartSourceType>(
+function toRegisteredChartEngineSpec<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
-): RegisteredChartKindSpec<ResultType, ChartSourceType> {
-  if (!isChartKind(entry.kind)) {
+): RegisteredChartEngineSpec<ResultType, ChartSourceType> {
+  if (!isChartEngine(entry.kind)) {
     throw new Error(
       `Unknown chart engine "${String(entry.kind)}". ChartEngine is a closed set.`,
     );
   }
   switch (entry.kind) {
-    case ChartKind.DynamicField:
-      return { kind: ChartKind.DynamicField, spec: entry.spec };
-    case ChartKind.BoundaryRegion:
-      return { kind: ChartKind.BoundaryRegion, spec: entry.spec };
-    case ChartKind.ParametricLine:
-      return { kind: ChartKind.ParametricLine, spec: entry.spec };
-    case ChartKind.BandScalar:
-      return { kind: ChartKind.BandScalar, spec: entry.spec };
-    case ChartKind.TimeSeriesLine:
-      return { kind: ChartKind.TimeSeriesLine, spec: entry.spec };
-    case ChartKind.Custom:
-      return { kind: ChartKind.Custom, spec: entry.spec };
+    case ChartEngine.DynamicField:
+      return { kind: ChartEngine.DynamicField, spec: entry.spec };
+    case ChartEngine.BoundaryRegion:
+      return { kind: ChartEngine.BoundaryRegion, spec: entry.spec };
+    case ChartEngine.ParametricLine:
+      return { kind: ChartEngine.ParametricLine, spec: entry.spec };
+    case ChartEngine.BandScalar:
+      return { kind: ChartEngine.BandScalar, spec: entry.spec };
+    case ChartEngine.TimeSeriesLine:
+      return { kind: ChartEngine.TimeSeriesLine, spec: entry.spec };
+    case ChartEngine.Custom:
+      return { kind: ChartEngine.Custom, spec: entry.spec };
   }
 }
 
-function createChartKindRegistration<ResultType, ChartSourceType>(
+function createChartEngineRegistration<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
-): ChartKindRegistration<ResultType, ChartSourceType> {
+): ChartEngineRegistration<ResultType, ChartSourceType> {
   return {
     instanceId: entry.instanceId,
     name: entry.name,
@@ -156,7 +156,7 @@ function createChartKindRegistration<ResultType, ChartSourceType>(
     ...(entry.defaultExploreOutput
       ? { defaultExploreOutput: entry.defaultExploreOutput }
       : {}),
-    registration: toRegisteredChartKindSpec(entry),
+    registration: toRegisteredChartEngineSpec(entry),
   };
 }
 
@@ -285,9 +285,9 @@ export class ComfortModelBuilder<
 
   setSimulation(simulation: SimulationOutputDeclaration): this {
     for (const chart of simulation.charts) {
-      if (chart.kind !== ChartKind.TimeSeriesLine) {
+      if (chart.kind !== ChartEngine.TimeSeriesLine) {
         throw new Error(
-          `Simulation chart ${chart.id} must use ChartKind.TimeSeriesLine.`,
+          `Simulation chart ${chart.id} must use ChartEngine.TimeSeriesLine.`,
         );
       }
     }
@@ -377,7 +377,7 @@ export class ComfortModelBuilder<
     entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
   ): void {
     if (
-      entry.kind === ChartKind.Custom
+      entry.kind === ChartEngine.Custom
       && !modelAllowsCustomCharts(this.id)
     ) {
       throw new Error(
@@ -412,7 +412,7 @@ export class ComfortModelBuilder<
 
     this.registeredOutputCharts.push({
       declaration: createChartInstanceDeclaration(entry),
-      registration: createChartKindRegistration<ResultType, ChartSourceType>(
+      registration: createChartEngineRegistration<ResultType, ChartSourceType>(
         entry,
       ),
     });
@@ -494,7 +494,7 @@ export class ComfortModelBuilder<
 
     const registeredFields = this.registeredOutputCharts.flatMap(
       ({ registration }) => {
-        if (registration.registration.kind !== ChartKind.DynamicField) {
+        if (registration.registration.kind !== ChartEngine.DynamicField) {
           return [];
         }
         return registration.registration.spec.axisFields;
@@ -823,7 +823,7 @@ export class ComfortModelBuilder<
 
     const complianceProfile = this.complianceProfile;
     const calculate = this.calculate;
-    const chartKindRegistrations = this.registeredOutputCharts.map(
+    const chartEngineRegistrations = this.registeredOutputCharts.map(
       ({ registration }) => registration,
     );
     const registeredOutputChartsForBuild = this.registeredOutputCharts;
@@ -879,9 +879,9 @@ export class ComfortModelBuilder<
             : {}),
         })),
       },
-      chartKindRegistrations: [
-        ...chartKindRegistrations,
-      ] as RuntimeComfortModelDefinition["chartKindRegistrations"],
+      chartEngineRegistrations: [
+        ...chartEngineRegistrations,
+      ] as RuntimeComfortModelDefinition["chartEngineRegistrations"],
       defaultOptions: { ...defaultOptions },
       parseOptions: this.parseOptions,
       calculate: (context, visibleInputIds) =>
@@ -912,7 +912,7 @@ export class ComfortModelBuilder<
           : false;
         return resolveChartBuildResult({
           modelId: builtModelId,
-          registrations: chartKindRegistrations,
+          registrations: chartEngineRegistrations,
           instanceId,
           chartSource: chartSource as ChartSourceType | null,
           resultsByInput: resultsByInput as Record<
@@ -993,7 +993,7 @@ function assertModelChartDeclarations<TResult>(
   charts: readonly ModelChartDeclaration<TResult>[],
 ): void {
   for (const chart of charts) {
-    if (!isModelChartKind(chart.kind)) {
+    if (!isModelChartEngine(chart.kind)) {
       throw new Error(
         `defineModel chart "${chart.instanceId}" uses engine "${String(chart.kind)}". defineModel cannot add ChartEngine members or declare Custom.`,
       );
@@ -1003,7 +1003,7 @@ function assertModelChartDeclarations<TResult>(
         `defineModel chart "${chart.instanceId}" must be data-only. defineModel cannot provide a Plotly build.`,
       );
     }
-    if (!modelChartSpecMatchesKind(chart)) {
+    if (!modelChartSpecMatchesEngine(chart)) {
       throw new Error(
         `defineModel chart "${chart.instanceId}" spec does not match engine "${chart.kind}". Extended types cannot escape the ChartEngine spec union.`,
       );

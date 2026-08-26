@@ -27,7 +27,7 @@ import type {
   InputControlDefinition,
 } from "../../../services/comfort/controls/types";
 import type { InputFieldSpec } from "../../../services/comfort/controls/fieldInputBehaviors";
-import type { ChartKindRegistration } from "../../../services/comfort/charts/kinds/types";
+import type { ChartEngineRegistration } from "../../../services/comfort/charts/kinds/types";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
 import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../models/physicalQuantities";
 
@@ -86,7 +86,7 @@ export interface ComfortModelDefinition<
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   tables: ModelTables<ResultType>;
   outputCharts: ModelChartInstances;
-  chartKindRegistrations: readonly ChartKindRegistration<
+  chartEngineRegistrations: readonly ChartEngineRegistration<
     ResultType,
     ChartSourceType
   >[];

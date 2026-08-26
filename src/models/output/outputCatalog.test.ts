@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ChartKind,
-  chartKindMetaById,
-  isChartKind,
-  isModelChartKind,
+  ChartEngine,
+  chartEngineMetaById,
+  isChartEngine,
+  isModelChartEngine,
   modelAllowsCustomCharts,
   resolveChartCapabilities,
 } from "./chartKinds";
@@ -18,16 +18,16 @@ import { FieldChartProfileKind } from "./fieldChartProfile";
 import { TableType } from "./tableLayouts";
 
 describe("output catalog", () => {
-  it("defines six chart kinds with defaults", () => {
-    expect(Object.keys(chartKindMetaById)).toHaveLength(6);
-    expect(chartKindMetaById[ChartKind.DynamicField]).toBeDefined();
-    expect(chartKindMetaById[ChartKind.ParametricLine]).toBeDefined();
-    expect(chartKindMetaById[ChartKind.Custom]).toBeDefined();
-    expect(isChartKind(ChartKind.DynamicField)).toBe(true);
-    expect(isChartKind("invented-engine")).toBe(false);
-    expect(isModelChartKind(ChartKind.BandScalar)).toBe(true);
-    expect(isModelChartKind(ChartKind.ParametricLine)).toBe(true);
-    expect(isModelChartKind(ChartKind.Custom)).toBe(false);
+  it("defines six chart engines with defaults", () => {
+    expect(Object.keys(chartEngineMetaById)).toHaveLength(6);
+    expect(chartEngineMetaById[ChartEngine.DynamicField]).toBeDefined();
+    expect(chartEngineMetaById[ChartEngine.ParametricLine]).toBeDefined();
+    expect(chartEngineMetaById[ChartEngine.Custom]).toBeDefined();
+    expect(isChartEngine(ChartEngine.DynamicField)).toBe(true);
+    expect(isChartEngine("invented-engine")).toBe(false);
+    expect(isModelChartEngine(ChartEngine.BandScalar)).toBe(true);
+    expect(isModelChartEngine(ChartEngine.ParametricLine)).toBe(true);
+    expect(isModelChartEngine(ChartEngine.Custom)).toBe(false);
   });
 
   it("allows Custom by PMV model id rather than instance id", () => {
@@ -38,7 +38,7 @@ describe("output catalog", () => {
   });
 
   it("merges capability overrides", () => {
-    const capabilities = resolveChartCapabilities(ChartKind.DynamicField, {
+    const capabilities = resolveChartCapabilities(ChartEngine.DynamicField, {
       locksYAxis: true,
     });
     expect(capabilities.locksYAxis).toBe(true);

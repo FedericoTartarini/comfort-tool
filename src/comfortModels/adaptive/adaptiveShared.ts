@@ -34,7 +34,7 @@ import {
   ComfortModelBuilder,
   type OutputChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
-import { ChartKind } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/output/chartKinds";
 import {
   buildAdaptiveResultRows,
   calculateAdaptiveModel,
@@ -188,7 +188,7 @@ export function createAdaptiveModelConfig(
     ModelChartSourceDto<AdaptiveRequestDto>
   > = {
     instanceId: declaration.boundaryInstanceId,
-    kind: ChartKind.BoundaryRegion,
+    kind: ChartEngine.BoundaryRegion,
     name: "Adaptive",
     emptyMessage: "No adaptive chart yet.",
     capabilities: {

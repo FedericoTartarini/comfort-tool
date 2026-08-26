@@ -28,7 +28,7 @@ import {
   resolveDynamicAxisSelection,
 } from "./dynamicAxes";
 import {
-  findChartKindRegistration,
+  findChartEngineRegistration,
   resolveChartInstanceCapabilities,
 } from "./chartInstancePresentation";
 import {
@@ -170,8 +170,8 @@ export function createComfortToolActions(
 
     state.ui.selectedChartInstanceByModel[state.ui.selectedModel] = instanceId;
 
-    const registration = findChartKindRegistration(
-      config.chartKindRegistrations,
+    const registration = findChartEngineRegistration(
+      config.chartEngineRegistrations,
       instanceId,
     );
     const settings = internals.getCurrentOutputSettings();
@@ -285,8 +285,8 @@ export function createComfortToolActions(
 
   function setExploreOutput(outputKey: ModelOutputKey) {
     const config = internals.getActiveModelConfig();
-    const registration = findChartKindRegistration(
-      config.chartKindRegistrations,
+    const registration = findChartEngineRegistration(
+      config.chartEngineRegistrations,
       internals.getCurrentSelectedChartInstanceId(),
     );
     const nextSettings = selectExploreOutput(

@@ -5,7 +5,7 @@ import { FieldChartProfileKind } from "../../../../models/output/fieldChartProfi
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type { ChartBuildContext } from "../../../../models/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../../models/units";
-import { ChartKind, isChartKind } from "../../../../models/output/chartKinds";
+import { ChartEngine, isChartEngine } from "../../../../models/output/chartKinds";
 import {
   buildBandScalarChart,
   buildBoundaryRegionChart,
@@ -28,11 +28,11 @@ import type {
   ModelOutput,
 } from "../../../../models/modelCapabilities";
 import { buildChartLegendFromContext } from "./legend";
-import type { ChartKindRegistration } from "./types";
+import type { ChartEngineRegistration } from "./types";
 
 export interface ResolveChartBuildOptions<TResult, ChartSourceType> {
   readonly modelId: ModelIdType;
-  readonly registrations: readonly ChartKindRegistration<
+  readonly registrations: readonly ChartEngineRegistration<
     TResult,
     ChartSourceType
   >[];
@@ -144,7 +144,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
     }
   }
 
-  if (!isChartKind(registration.registration.kind)) {
+  if (!isChartEngine(registration.registration.kind)) {
     throw new Error(
       `Unknown chart engine "${String(registration.registration.kind)}". ChartEngine is a closed set.`,
     );
@@ -152,7 +152,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
 
   let result: ChartBuildResult;
   switch (registration.registration.kind) {
-    case ChartKind.DynamicField:
+    case ChartEngine.DynamicField:
       result = buildDynamicFieldChart(
         registration,
         options.chartSource,
@@ -160,7 +160,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case ChartKind.Custom:
+    case ChartEngine.Custom:
       result = buildCustomChart(
         registration,
         options.chartSource,
@@ -168,7 +168,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case ChartKind.BandScalar:
+    case ChartEngine.BandScalar:
       result = buildBandScalarChart(
         registration,
         options.chartSource,
@@ -176,7 +176,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case ChartKind.BoundaryRegion:
+    case ChartEngine.BoundaryRegion:
       result = buildBoundaryRegionChart(
         registration,
         options.chartSource,
@@ -184,7 +184,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case ChartKind.ParametricLine:
+    case ChartEngine.ParametricLine:
       result = buildParametricLineChart(
         registration,
         options.chartSource,
@@ -192,7 +192,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case ChartKind.TimeSeriesLine:
+    case ChartEngine.TimeSeriesLine:
       result = buildTimeSeriesLineChart(
         registration,
         options.chartSource,

@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { ModelId } from "../../../models/comfortModels";
-import { ChartKind } from "../../../models/output/chartKinds";
+import { ChartEngine } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { WorkspaceId } from "../../../models/workspaces";
 import {
@@ -39,14 +39,14 @@ function createCatalogSlice(
       entries: [
         {
           instanceId,
-          kind: ChartKind.DynamicField,
+          kind: ChartEngine.DynamicField,
         },
       ],
     },
-    chartKindRegistrations: [
+    chartEngineRegistrations: [
       {
         instanceId,
-        registration: { kind: ChartKind.DynamicField },
+        registration: { kind: ChartEngine.DynamicField },
       },
     ],
     tables: analysisTable,
@@ -108,7 +108,7 @@ describe("assembled catalog validate.model", () => {
 
   it("exists on assembled catalogs and accepts every registered model", () => {
     const validateModelHook = installedValidateModel(assembledCatalogs);
-    expect(assembledCatalogs.chartEngines.has(ChartKind.DynamicField)).toBe(
+    expect(assembledCatalogs.chartEngines.has(ChartEngine.DynamicField)).toBe(
       true,
     );
     expect(assembledCatalogs.tableTypes.has(TableType.Analysis)).toBe(true);
@@ -128,13 +128,13 @@ describe("assembled catalog validate.model", () => {
           id: ModelId.HeatIndex,
           outputCharts: {
             entries: [
-              { instanceId: sharedInstanceId, kind: ChartKind.DynamicField },
+              { instanceId: sharedInstanceId, kind: ChartEngine.DynamicField },
             ],
           },
-          chartKindRegistrations: [
+          chartEngineRegistrations: [
             {
               instanceId: sharedInstanceId,
-              registration: { kind: ChartKind.DynamicField },
+              registration: { kind: ChartEngine.DynamicField },
             },
           ],
         }),
@@ -142,13 +142,13 @@ describe("assembled catalog validate.model", () => {
           id: ModelId.Humidex,
           outputCharts: {
             entries: [
-              { instanceId: sharedInstanceId, kind: ChartKind.DynamicField },
+              { instanceId: sharedInstanceId, kind: ChartEngine.DynamicField },
             ],
           },
-          chartKindRegistrations: [
+          chartEngineRegistrations: [
             {
               instanceId: sharedInstanceId,
-              registration: { kind: ChartKind.DynamicField },
+              registration: { kind: ChartEngine.DynamicField },
             },
           ],
         }),
@@ -165,14 +165,14 @@ describe("assembled catalog validate.model", () => {
             entries: [
               {
                 instanceId: "pmv-ashrae-psychrometric",
-                kind: ChartKind.DynamicField,
+                kind: ChartEngine.DynamicField,
               },
             ],
           },
-          chartKindRegistrations: [
+          chartEngineRegistrations: [
             {
               instanceId: "pmv-ashrae-psychrometric",
-              registration: { kind: ChartKind.DynamicField },
+              registration: { kind: ChartEngine.DynamicField },
             },
           ],
         }),
@@ -191,7 +191,7 @@ describe("assembled catalog validate.model", () => {
             entries: [
               {
                 instanceId: "heat-audit",
-                kind: ChartKind.DynamicField,
+                kind: ChartEngine.DynamicField,
                 type: "audit.shared-type",
               },
             ],
@@ -203,7 +203,7 @@ describe("assembled catalog validate.model", () => {
             entries: [
               {
                 instanceId: "humidex-audit",
-                kind: ChartKind.DynamicField,
+                kind: ChartEngine.DynamicField,
                 type: "audit.shared-type",
               },
             ],
@@ -326,7 +326,7 @@ describe("assembled catalog validate.model", () => {
           outputCharts: {
             entries: [{ instanceId: "invented", kind: "invented-engine" }],
           },
-          chartKindRegistrations: [
+          chartEngineRegistrations: [
             {
               instanceId: "invented",
               registration: { kind: "invented-engine" },

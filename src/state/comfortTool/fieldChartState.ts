@@ -1,4 +1,4 @@
-import type { ChartKindRegistration } from "../../services/comfort/charts/kinds/types";
+import type { ChartEngineRegistration } from "../../services/comfort/charts/kinds/types";
 import { InputId } from "../../models/inputSlots";
 import {
   type Band,
@@ -33,7 +33,7 @@ export function getDeclaredExploreOutput(
 
 export function getChartExploreOutputs(
   config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
-  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): readonly ModelOutput[] {
   const supported = chartRegistration?.supportedExploreOutputs;
   return supported
@@ -43,7 +43,7 @@ export function getChartExploreOutputs(
 
 function getDefaultExploreOutput(
   config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
-  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): ModelOutput | undefined {
   const outputKey = chartRegistration?.defaultExploreOutput;
   return outputKey
@@ -54,7 +54,7 @@ function getDefaultExploreOutput(
 export function normalizeExploreStateForChart(
   config: RuntimeComfortModelDefinition,
   settings: ModelOutputSettings,
-  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): ModelOutputSettings {
   if (!supportsExploreWorkspace(config.workspaceCapabilities)) {
     return { ...settings, exploreOutput: null, exploreBands: null };
@@ -80,7 +80,7 @@ export function normalizeExploreStateForChart(
 
 export function seedExploreOutputSettings(
   config: RuntimeComfortModelDefinition,
-  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): Pick<ModelOutputSettings, "exploreOutput" | "exploreBands"> {
   if (!supportsExploreWorkspace(config.workspaceCapabilities)) {
     return { exploreOutput: null, exploreBands: null };
@@ -98,7 +98,7 @@ export function seedExploreOutputSettings(
 export function seedModelOutputSettings(
   config: RuntimeComfortModelDefinition,
 ): ModelOutputSettings {
-  const registration = config.chartKindRegistrations.find(
+  const registration = config.chartEngineRegistrations.find(
     ({ instanceId }) => instanceId === config.outputCharts.defaultInstanceId,
   );
 
@@ -114,7 +114,7 @@ export function selectExploreOutput(
   config: RuntimeComfortModelDefinition,
   settings: ModelOutputSettings,
   outputKey: ModelOutputKey,
-  chartRegistration?: ChartKindRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): ModelOutputSettings | null {
   const output = getDeclaredExploreOutput(config, outputKey);
   if (

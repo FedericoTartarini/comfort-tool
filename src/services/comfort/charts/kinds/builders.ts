@@ -3,7 +3,7 @@ import type {
   PlotlyChartResponseDto,
 } from "../../../../models/comfortDtos";
 import type { ChartBuildResult } from "../../../../models/output/chartBuildResult";
-import { ChartKind } from "../../../../models/output/chartKinds";
+import { ChartEngine } from "../../../../models/output/chartKinds";
 import type { InputId as InputIdType } from "../../../../models/inputSlots";
 import type {
   ChartBuildContext,
@@ -13,7 +13,7 @@ import {
   buildGridModelChart,
   type GridModelChartSpec,
 } from "../gridModelCharts";
-import type { ChartKindRegistration } from "./types";
+import type { ChartEngineRegistration } from "./types";
 import { isDynamicFieldGridSpec } from "./types";
 import {
   buildModelBandScalarChart,
@@ -23,12 +23,12 @@ import {
 import { buildModelParametricLineChart } from "./parametricLine";
 
 export function buildDynamicFieldChart<TResult, ChartSourceType>(
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartKind.DynamicField) {
+  if (registration.registration.kind !== ChartEngine.DynamicField) {
     throw new Error(
       `Chart ${registration.instanceId} is not a dynamic-field chart.`,
     );
@@ -74,12 +74,12 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
 }
 
 export function buildCustomChart<TResult, ChartSourceType>(
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartKind.Custom) {
+  if (registration.registration.kind !== ChartEngine.Custom) {
     throw new Error(`Chart ${registration.instanceId} is not a custom chart.`);
   }
   const plotly = registration.registration.spec.build(
@@ -91,12 +91,12 @@ export function buildCustomChart<TResult, ChartSourceType>(
 }
 
 export function buildBandScalarChart<TResult, ChartSourceType>(
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartKind.BandScalar) {
+  if (registration.registration.kind !== ChartEngine.BandScalar) {
     throw new Error(
       `Chart ${registration.instanceId} is not a band-scalar chart.`,
     );
@@ -121,12 +121,12 @@ export function buildBandScalarChart<TResult, ChartSourceType>(
 }
 
 export function buildBoundaryRegionChart<TResult, ChartSourceType>(
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartKind.BoundaryRegion) {
+  if (registration.registration.kind !== ChartEngine.BoundaryRegion) {
     throw new Error(
       `Chart ${registration.instanceId} is not a boundary-region chart.`,
     );
@@ -143,12 +143,12 @@ export function buildBoundaryRegionChart<TResult, ChartSourceType>(
 }
 
 export function buildTimeSeriesLineChart<TResult, ChartSourceType>(
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartKind.TimeSeriesLine) {
+  if (registration.registration.kind !== ChartEngine.TimeSeriesLine) {
     throw new Error(
       `Chart ${registration.instanceId} is not a time-series-line chart.`,
     );
@@ -165,12 +165,12 @@ export function buildTimeSeriesLineChart<TResult, ChartSourceType>(
 }
 
 export function buildParametricLineChart<TResult, ChartSourceType>(
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.kind !== ChartKind.ParametricLine) {
+  if (registration.registration.kind !== ChartEngine.ParametricLine) {
     throw new Error(
       `Chart ${registration.instanceId} is not a parametric-line chart.`,
     );
@@ -188,7 +188,7 @@ export function buildParametricLineChart<TResult, ChartSourceType>(
 
 function wrapPlotlyResult<TResult, ChartSourceType>(
   plotly: PlotlyChartResponseDto | null,
-  registration: ChartKindRegistration<TResult, ChartSourceType>,
+  registration: ChartEngineRegistration<TResult, ChartSourceType>,
 ): ChartBuildResult {
   return {
     plotly,

@@ -462,7 +462,7 @@ function parseModelSnapshot(
     return null;
   }
   if (outputSettings.exploreOutput && chartInstance.instanceId) {
-    const registration = config.chartKindRegistrations.find(
+    const registration = config.chartEngineRegistrations.find(
       ({ instanceId }) => instanceId === chartInstance.instanceId,
     );
     if (

@@ -17,7 +17,7 @@ import {
   findNumericBandIndexForValue,
   ModelOutputKey,
 } from "../../models/modelCapabilities";
-import { ChartKind } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/output/chartKinds";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";
 import { UnitSystem } from "../../models/units";
 import { createModelCalculationContext } from "../../models/modelCalculation";
@@ -402,22 +402,22 @@ describe("PMV standard declarations", () => {
       }))).toEqual([
         {
           instanceId: declaration.psychrometricInstanceId,
-          kind: ChartKind.Custom,
+          kind: ChartEngine.Custom,
           name: "Psychrometric",
         },
         {
           instanceId: declaration.dynamicInstanceId,
-          kind: ChartKind.DynamicField,
+          kind: ChartEngine.DynamicField,
           name: "Dynamic",
         },
         {
           instanceId: declaration.heatLossInstanceId,
-          kind: ChartKind.ParametricLine,
+          kind: ChartEngine.ParametricLine,
           name: "Heat Loss",
         },
         {
           instanceId: declaration.setInstanceId,
-          kind: ChartKind.ParametricLine,
+          kind: ChartEngine.ParametricLine,
           name: "SET",
         },
       ]);

@@ -3,7 +3,7 @@ import type { ChartBuildContext, NumericBand } from "../../models/modelCapabilit
 import type { PlotlyChartResponseDto } from "../../models/comfortDtos";
 import type { ChartAxisQuantityId } from "../../models/physicalQuantities";
 import type {
-  CustomChartKindSpec,
+  CustomChartEngineSpec,
   DynamicFieldGeometrySpec,
 } from "../../services/comfort/charts/kinds/types";
 import type { PmvChartSourceDto, PmvResponseDto } from "./pmvCalculation";
@@ -47,7 +47,7 @@ export function buildPmvChart(
 export function createPmvPsychrometricChartSpec(
   declaration: PmvModelDeclaration,
   psychrometricInstanceId: string,
-): CustomChartKindSpec<PmvResponseDto, PmvChartSourceDto> {
+): CustomChartEngineSpec<PmvResponseDto, PmvChartSourceDto> {
   return {
     build: (chartSource, resultsByInput, context) => {
       if (!chartSource) return null;

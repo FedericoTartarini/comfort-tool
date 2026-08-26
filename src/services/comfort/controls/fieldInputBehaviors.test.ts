@@ -12,7 +12,7 @@ import { ModelOutputKey } from "../../../models/modelCapabilities";
 import { UnitSystem } from "../../../models/units";
 import { WorkspaceId } from "../../../models/workspaces";
 import { ModelId } from "../../../models/comfortModels";
-import { ChartKind } from "../../../models/output/chartKinds";
+import { ChartEngine } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/comfortTool/modelConfigs/builder";
 import "../../../state/comfortTool/modelConfigs";
@@ -35,7 +35,7 @@ describe("fieldInputBehaviors", () => {
       .setModifiers([])
       .setOutputCharts([{
         instanceId: "test-dynamic-field",
-        kind: ChartKind.DynamicField,
+        kind: ChartEngine.DynamicField,
         name: "Test",
         emptyMessage: "Empty",
         spec: {

@@ -48,7 +48,7 @@ import {
   isRecord,
   type OutputChartDeclarationInput,
 } from "../../state/comfortTool/modelConfigs/builder";
-import { ChartKind } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/output/chartKinds";
 import { TableType } from "../../models/output/tableLayouts";
 import { ZoneToken } from "../../models/zoneTokens";
 import {
@@ -245,7 +245,7 @@ export function createPmvOutputCharts(
   return [
     {
       instanceId: declaration.psychrometricInstanceId,
-      kind: ChartKind.Custom,
+      kind: ChartEngine.Custom,
       name: "Psychrometric",
       emptyMessage: "No psychrometric chart yet.",
       capabilities: {
@@ -265,7 +265,7 @@ export function createPmvOutputCharts(
     },
     {
       instanceId: declaration.dynamicInstanceId,
-      kind: ChartKind.DynamicField,
+      kind: ChartEngine.DynamicField,
       name: "Dynamic",
       emptyMessage: "No dynamic chart yet.",
       capabilities: {
@@ -287,7 +287,7 @@ export function createPmvOutputCharts(
     },
     {
       instanceId: declaration.heatLossInstanceId,
-      kind: ChartKind.ParametricLine,
+      kind: ChartEngine.ParametricLine,
       name: "Heat Loss",
       emptyMessage: "No heat-loss chart yet.",
       capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
@@ -295,7 +295,7 @@ export function createPmvOutputCharts(
     },
     {
       instanceId: declaration.setInstanceId,
-      kind: ChartKind.ParametricLine,
+      kind: ChartEngine.ParametricLine,
       name: "SET",
       emptyMessage: "No SET chart yet.",
       capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,

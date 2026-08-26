@@ -12,7 +12,7 @@ import {
 } from "../../models/inputModes";
 import type { InputId as InputIdType } from "../../models/inputSlots";
 import type { ModelCalculationContext } from "../../models/modelCalculation";
-import { ChartKind } from "../../models/output/chartKinds";
+import { ChartEngine } from "../../models/output/chartKinds";
 import { WorkspaceId } from "../../models/workspaces";
 import { TableType, type TableRowSpec } from "../../models/output/tableLayouts";
 import {
@@ -95,7 +95,7 @@ const utciOutputCharts: OutputChartDeclarationInput<
 >[] = [
   {
     instanceId: "utci-stress-band",
-    kind: ChartKind.BandScalar,
+    kind: ChartEngine.BandScalar,
     name: "UTCI",
     emptyMessage: "No psychrometric chart yet.",
     capabilities: {
@@ -112,7 +112,7 @@ const utciOutputCharts: OutputChartDeclarationInput<
   },
   {
     instanceId: "utci-dynamic-field",
-    kind: ChartKind.DynamicField,
+    kind: ChartEngine.DynamicField,
     name: "Dynamic",
     emptyMessage: "No dynamic chart yet.",
     capabilities: {

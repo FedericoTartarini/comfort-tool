@@ -42,7 +42,7 @@ import {
   WorkspaceId,
   supportsStandardWorkspace,
 } from "../../../models/workspaces";
-import { ChartKind } from "../../../models/output/chartKinds";
+import { ChartEngine } from "../../../models/output/chartKinds";
 import { TableType } from "../../../models/output/tableLayouts";
 import {
   comfortModelConfigs,
@@ -132,9 +132,9 @@ describe("comfort model capability registry", () => {
     [ModelId.HeatIndex, ModelId.Humidex].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
       const [mapChart, dynamicChart] = config.outputCharts.entries;
-      expect(mapChart.kind).toBe(ChartKind.DynamicField);
+      expect(mapChart.kind).toBe(ChartEngine.DynamicField);
       expect(mapChart.capabilities?.allowsAxisSelection).toBe(false);
-      expect(dynamicChart.kind).toBe(ChartKind.DynamicField);
+      expect(dynamicChart.kind).toBe(ChartEngine.DynamicField);
       expect(dynamicChart.capabilities?.allowsAxisSelection).toBe(true);
     });
   });
@@ -142,8 +142,8 @@ describe("comfort model capability registry", () => {
   it("allows Custom only on PMV models, using declaration-owned instance ids", () => {
     const customCharts = comfortModelOrder.flatMap((modelId) =>
       getComfortModelConfig(modelId)
-        .chartKindRegistrations.filter(
-          ({ registration }) => registration.kind === ChartKind.Custom,
+        .chartEngineRegistrations.filter(
+          ({ registration }) => registration.kind === ChartEngine.Custom,
         )
         .map(({ instanceId }) => ({ modelId, instanceId })),
     );
@@ -154,7 +154,7 @@ describe("comfort model capability registry", () => {
       const entry = getComfortModelConfig(modelId).outputCharts.entries.find(
         (chart) => chart.instanceId === instanceId,
       );
-      expect(entry?.kind).toBe(ChartKind.Custom);
+      expect(entry?.kind).toBe(ChartEngine.Custom);
       expect(entry?.name).toBe("Psychrometric");
     });
   });
@@ -165,11 +165,11 @@ describe("comfort model capability registry", () => {
       const dynamic = config.outputCharts.entries.find(
         ({ name }) => name === "Dynamic",
       );
-      expect(dynamic?.kind).toBe(ChartKind.DynamicField);
+      expect(dynamic?.kind).toBe(ChartEngine.DynamicField);
       const psychrometric = config.outputCharts.entries.find(
         ({ name }) => name === "Psychrometric",
       );
-      expect(psychrometric?.kind).toBe(ChartKind.Custom);
+      expect(psychrometric?.kind).toBe(ChartEngine.Custom);
     });
   });
 
@@ -195,8 +195,8 @@ describe("comfort model capability registry", () => {
       const set = config.outputCharts.entries.find(
         ({ name }) => name === "SET",
       );
-      expect(heatLoss?.kind).toBe(ChartKind.ParametricLine);
-      expect(set?.kind).toBe(ChartKind.ParametricLine);
+      expect(heatLoss?.kind).toBe(ChartEngine.ParametricLine);
+      expect(set?.kind).toBe(ChartEngine.ParametricLine);
       expect(heatLoss?.capabilities).toEqual(
         expect.objectContaining({
           allowsAxisSelection: false,
@@ -210,16 +210,16 @@ describe("comfort model capability registry", () => {
   it("declares both PHS charts and their chart-specific Explore capabilities", () => {
     const config = getComfortModelConfig(ModelId.Phs2023);
     const [history, dynamic] = config.outputCharts.entries;
-    const historyRegistration = config.chartKindRegistrations.find(
+    const historyRegistration = config.chartEngineRegistrations.find(
       ({ instanceId }) => instanceId === "phs-exposure-history",
     );
-    const dynamicRegistration = config.chartKindRegistrations.find(
+    const dynamicRegistration = config.chartEngineRegistrations.find(
       ({ instanceId }) => instanceId === "phs-dynamic-field",
     );
 
     expect(config.outputCharts.defaultInstanceId).toBe("phs-exposure-history");
     expect(history.instanceId).toBe("phs-exposure-history");
-    expect(history.kind).toBe(ChartKind.TimeSeriesLine);
+    expect(history.kind).toBe(ChartEngine.TimeSeriesLine);
     expect(history.capabilities).toEqual(
       expect.objectContaining({
         allowsAxisSelection: false,

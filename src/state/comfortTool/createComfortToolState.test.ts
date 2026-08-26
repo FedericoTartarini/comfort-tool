@@ -563,7 +563,7 @@ describe("createComfortToolState", () => {
       const settings = getOutputSettings(toolState, modelId);
 
       for (const chart of modelConfig.outputCharts.entries) {
-        const registration = modelConfig.chartKindRegistrations.find(
+        const registration = modelConfig.chartEngineRegistrations.find(
           ({ instanceId }) => instanceId === chart.instanceId,
         );
         toolState.actions.setActiveWorkspace(

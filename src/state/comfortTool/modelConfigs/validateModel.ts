@@ -1,6 +1,6 @@
 import { type ModelId as ModelIdType } from "../../../models/comfortModels";
 import {
-  ChartKind,
+  ChartEngine,
   modelAllowsCustomCharts,
 } from "../../../models/output/chartKinds";
 import {
@@ -37,7 +37,7 @@ export interface CatalogModelSlice {
       readonly type?: string;
     }[];
   };
-  readonly chartKindRegistrations: readonly {
+  readonly chartEngineRegistrations: readonly {
     readonly instanceId: string;
     readonly registration: { readonly kind: string };
   }[];
@@ -192,14 +192,14 @@ export function validateModel(
     }
   }
 
-  for (const registration of model.chartKindRegistrations) {
+  for (const registration of model.chartEngineRegistrations) {
     const kind = registration.registration.kind;
     if (!catalogs.chartEngines.has(kind)) {
       throw new Error(
         `Unknown chart engine "${String(kind)}". ChartEngine is a closed set.`,
       );
     }
-    if (kind === ChartKind.Custom && !modelAllowsCustomCharts(model.id)) {
+    if (kind === ChartEngine.Custom && !modelAllowsCustomCharts(model.id)) {
       throw new Error(
         `Custom chart "${registration.instanceId}" on ${model.id} is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
       );
@@ -234,7 +234,7 @@ export function assembleCatalogs(
     quantities,
     chartInstanceOwners,
     chartTypeOwners,
-    chartEngines: new Set<string>(Object.values(ChartKind)),
+    chartEngines: new Set<string>(Object.values(ChartEngine)),
     tableTypes: new Set<string>(Object.values(TableType)),
     validate: {
       model: (model) => {

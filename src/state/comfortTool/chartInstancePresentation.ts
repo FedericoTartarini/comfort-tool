@@ -3,7 +3,7 @@ import {
   resolveChartCapabilities,
   type ChartInstanceCapabilities,
 } from "../../models/output/chartKinds";
-import type { ChartKindRegistration } from "../../services/comfort/charts/kinds/types";
+import type { ChartEngineRegistration } from "../../services/comfort/charts/kinds/types";
 
 export interface ChartInstancePanelView {
   readonly instanceId: string;
@@ -38,9 +38,9 @@ export function toChartInstancePanelView(
   };
 }
 
-export function findChartKindRegistration(
-  registrations: readonly ChartKindRegistration<unknown, unknown>[],
+export function findChartEngineRegistration(
+  registrations: readonly ChartEngineRegistration<unknown, unknown>[],
   instanceId: string,
-): ChartKindRegistration<unknown, unknown> | undefined {
+): ChartEngineRegistration<unknown, unknown> | undefined {
   return registrations.find((registration) => registration.instanceId === instanceId);
 }

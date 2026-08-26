@@ -1,4 +1,4 @@
-import type { TimeSeriesLineChartKindSpec } from "../../services/comfort/charts/kinds/types";
+import type { TimeSeriesLineChartEngineSpec } from "../../services/comfort/charts/kinds/types";
 import type {
   ModelChartSourceDto,
   PlotlyChartResponseDto,
@@ -184,7 +184,7 @@ export function buildPhsExposureHistoryChartResult(
   };
 }
 
-export const phsExposureHistoryChartSpec: TimeSeriesLineChartKindSpec<
+export const phsExposureHistoryChartSpec: TimeSeriesLineChartEngineSpec<
   PhsResponseDto,
   ModelChartSourceDto<PhsEnvironmentSi>
 > = {

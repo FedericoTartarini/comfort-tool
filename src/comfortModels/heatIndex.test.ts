@@ -10,7 +10,7 @@ import { PhysicalQuantityId } from "../models/physicalQuantities";
 import { InputId } from "../models/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { ModelOutputKey, type ChartBuildContext } from "../models/modelCapabilities";
-import { ChartKind } from "../models/output/chartKinds";
+import { ChartEngine } from "../models/output/chartKinds";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
 import { InputControlId } from "../models/inputControls";
 import {
@@ -210,8 +210,8 @@ describe("heatIndex service", () => {
       instanceId,
       kind,
     }))).toEqual([
-      { instanceId: "heat-index-ranges", kind: ChartKind.DynamicField },
-      { instanceId: "heat-index-dynamic-field", kind: ChartKind.DynamicField },
+      { instanceId: "heat-index-ranges", kind: ChartEngine.DynamicField },
+      { instanceId: "heat-index-dynamic-field", kind: ChartEngine.DynamicField },
     ]);
   });
 
