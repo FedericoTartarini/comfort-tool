@@ -45,6 +45,8 @@ src/
     analysis/              controller, model configs, share state, pure
                            projections (chartPresentation, inputPresentation)
     timeSeries/            separate PHS controller; editor/chart view models
+    workspace/             route / model / mode coordination
+  testSupport/             Compare helper; golden inputs/control counts from the registry
 ```
 
 Key entrypoints:
@@ -90,7 +92,7 @@ All direct `jsthermalcomfort` imports must stay inside `src/declarations/**` or 
 - `src/catalog/quantities.ts` is the **system seed**. Runtime code reads the assembled catalog `system seed ∪ declarations[].quantities.extend`. Duplicate ids, wrong owners, or an extend id in `primaryInputOrder` fail builder / registry assemble. `assembleCatalogs` merges those extensions from the models it is given. Registry assemble exposes optional `assembledCatalogs.validate.model` for those catalog checks (not a second authoring API); `assembleCatalogs` installs the hook on the returned instance.
 - A model declaration may contribute `{ id, owner: this model, scope: model, SI meta }` via `quantities.extend`. Extended quantities **must not** enter `primaryInputOrder` or the global share primary record; they live in sparse `modelInputsByModel`.
 - PHS body weight/height SI meta live on the PHS declaration. All quantity conversion (fields, modifiers, model-scoped extensions, chart axes) reads assembled catalog SI units (`display.units.SI` / `SiUnit`) in `src/engines/units/` via `convertQuantityFromSi`. Control widgets stay generic and must not branch on quantity-id lists, `if (model === Phs)`, or PHS quantity ids. Canonical state remains SI. `display.units.SI` is the storage unit (for example `kg/kg`, `Pa`, `kg`, `m`, `degC`); SI/IP display labels such as g/kg and kPa live in `display.displayUnits`. New unit dimensions are frontend catalog work (`SiUnit` plus a converter), not declaration-only work.
-- Request short names (`tdb`, `vr`, `rh`, …) are allowed only at the `jsthermalcomfort` boundary. Each model's `createFieldRequestAdapter()` mapping is the sole catalog→library connection point. Simple models keep that mapping in the declaration file (`heatIndex.ts`, `humidex.ts`, `windChill.ts`); larger families keep it in `*Calculation.ts`. Application request and chart-source types do not use a `Dto` suffix (`PmvRequest`, `ModelChartSource`, …). Cross-layer chart-source types live in `src/catalog/chartSource.ts`. Plotly-compatible, theme-ready adapter types live in `src/engines/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …). Do not add application-layer `*Dto` types.
+- Request short names (`tdb`, `vr`, `rh`, …) are allowed only at the `jsthermalcomfort` boundary. Each model's `createFieldRequestAdapter()` mapping is the sole catalog→library connection point. Simple models keep that mapping in the declaration file (`heatIndex.ts`, `humidex.ts`, `windChill.ts`); larger families keep it in `calculation.ts`. Application request and chart-source types do not use a `Dto` suffix (`PmvRequest`, `ModelChartSource`, …). Cross-layer chart-source types live in `src/catalog/chartSource.ts`. Plotly-compatible, theme-ready adapter types live in `src/engines/plotlyTypes.ts` (`PlotlyChartSpec`, `PlotTrace`, …). Do not add application-layer `*Dto` types.
 - `quantitiesByInput` stores base primary SI before modifiers; `effectiveQuantitiesByInput` in `ModelCalculationContext` is what calculations and request mapping read.
 - Calculate each model once into `calculationCacheByModel`; chart builders read `resultsByInput` and `chartSource` from that cache. Presentation-only changes (mode, axes, bands) must rebuild charts without invalidating ready caches.
 - Golden regression fixtures live in `src/testSupport/goldenFixtures.ts`. Compare/coverage golden **values** are derived from each registered model's `inputFields` plus the shared `standardPrimaryFixture`. Explicit SI overrides exist only when that fixture is outside a declared range — do not invent values from min/max or catalog `defaultSi`. Required control IDs and primary quantities are independently authored in `src/testSupport/requiredModelControls.ts` and pinned in focused model tests; do not derive that expected side from `inputFields`. Known-value calculation snapshots stay explicit numbers. Do not reintroduce ad-hoc `refactor*` baseline files or a per-model golden-input switch.
@@ -150,7 +152,7 @@ Use centralized constants and typed metadata from `src/catalog/` for:
 
 - model identifiers (`ModelId` in `src/catalog/modelIds.ts`)
 - quantity identifiers (`PhysicalQuantityId`, `ChartAxisQuantityId` for selectable chart axes). System quantities are seeded in `src/catalog/quantities.ts`; model-scoped ids are contributed with `quantities.extend` and assembled into the same catalog.
-- chart engines (`ChartEngine` in `src/catalog/chartEngines.ts` is the closed engine set). `defineModel` charts are `ModelChartDeclaration`: a data-only union discriminated on `engine:` over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`) in `engines/comfort/charts/kinds/types.ts`. Specs never include Plotly `build`. `Custom` is omitted from `defineModel`. An optional `type` names a built-in or extended chart type, is preserved on the presentation instance, and must stay on that same engine/spec pair. Family modules use `FrontendChartDeclaration` / `ComfortModelBuilder`. Chart ids live on each declaration’s `charts` entries (`id`); the builder maps them to runtime `instanceId`. Do not use `spec: unknown`. `ParametricLine` interchange is polylines and optional limit bands.
+- chart engines (`ChartEngine` in `src/catalog/chartEngines.ts` is the closed engine set). `defineModel` charts are `ModelChartDeclaration`: a data-only union discriminated on `engine:` over existing engines (`DynamicField`, `BoundaryRegion`, `ParametricLine`, `BandScalar`, `TimeSeriesLine`) in `src/engines/comfort/charts/kinds/types.ts`. Specs never include Plotly `build`. `Custom` is omitted from `defineModel`. An optional `type` names a built-in or extended chart type, is preserved on the presentation instance, and must stay on that same engine/spec pair. Family modules use `FrontendChartDeclaration` / `ComfortModelBuilder`. Chart ids live on each declaration’s `charts` entries (`id`); the builder maps them to runtime `instanceId`. Do not use `spec: unknown`. `ParametricLine` interchange is polylines and optional limit bands.
 - compare-input identifiers
 - chart modes and model-output identifiers
 - modifier identifiers (`ModifierId`, modifier `PhysicalQuantityId` slots)
@@ -215,7 +217,7 @@ Avoid repeated model-mode branching across files such as:
 
 Do not add more repeated `if/else` chains per mode if a config table, model descriptor, or shared helper can express the rule once.
 
-Component helpers should not become hidden domain engines. If a helper is deciding labels, units, display values, ranges, steps, and derivations based on multiple modes, that logic likely belongs in metadata or a service adapter.
+Component helpers should not become hidden domain engines. If a helper is deciding labels, units, display values, ranges, steps, and derivations based on multiple modes, that logic likely belongs in metadata or an engine adapter.
 
 Do not reintroduce pure comfort-tool barrel files unless they provide a real stable public API boundary.
 
@@ -282,7 +284,7 @@ A change in this frontend is done when:
 
 ## Output Registry
 
-Workspace membership is `WorkspaceId` in `src/catalog/workspaces.ts` (Standard, Explore, Time-series). Closed chart engines live in `src/catalog/chartEngines.ts` (`ChartEngine`, instance presentation types, and capability defaults). Table types live in `src/catalog/tableTypes.ts` (`TableType.Analysis` / `TimeSeries`). Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`. Discriminated engine specs live in `engines/comfort/charts/kinds/types.ts`. Chart ids are derived from `charts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances. Field-chart profile metadata lives under `src/catalog/output/`:
+Workspace membership is `WorkspaceId` in `src/catalog/workspaces.ts` (Standard, Explore, Time-series). Closed chart engines live in `src/catalog/chartEngines.ts` (`ChartEngine`, instance presentation types, and capability defaults). Table types live in `src/catalog/tableTypes.ts` (`TableType.Analysis` / `TimeSeries`). Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`. Discriminated engine specs live in `src/engines/comfort/charts/kinds/types.ts`. Chart ids are derived from `charts` on each model declaration. `ParametricLine` is implemented (polylines and optional limit bands). ASHRAE and ISO PMV register heat-loss and SET instances. Field-chart profile metadata lives under `src/catalog/output/`:
 
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 
@@ -295,7 +297,7 @@ Share snapshots store `selectedChartInstanceId` per model. Instance ids are deri
 ## Documentation
 
 - Keep this file focused on execution rules. Target architecture lives in `ARCHITECTURE-PLAN.md`.
-- If a task materially changes state flow, model registration, or service boundaries, update this file and `docs/` in the same work.
+- If a task materially changes state flow, model registration, or layer boundaries, update this file and `docs/` in the same work.
 - Authoring a model: [docs/adding-a-model.md](docs/adding-a-model.md). Copy `heatIndex.ts`, add a `ModelId` member, register once. Hard stops: new chart engine, new primary, new modifier, new Time-series controller, new SI unit dimension.
 - Do not add a documentation generator, deployment step, or product UI route for these internal files unless a later task explicitly requests one.
 

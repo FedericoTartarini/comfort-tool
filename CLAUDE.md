@@ -30,7 +30,7 @@ Frontend-only — no backend in this repo.
 
 - **Target:** [ARCHITECTURE-PLAN.md](ARCHITECTURE-PLAN.md). Named Plan slices follow that file.
 - **Historical:** `26-06-29-architecture-brief.md` is not the next design. It may stay in the repo as history; do not implement from it, and do not treat “leave the brief unchanged” as a reason to block Plan work.
-- **This file** describes **current** code. When a Plan slice deletes presets, the parallel `ChartInstanceId` tree, or `spec: unknown`, the Plan wins. Do not restore application-layer `*Dto` types or `src/catalog/comfortDtos.ts` to match older sentences here.
+- **This file** describes **current** code. When a Plan slice deletes presets, the parallel `ChartInstanceId` tree, or `spec: unknown`, the Plan wins. Do not restore application-layer `*Dto` types or `comfortDtos.ts` to match older sentences here.
 - Do only the named Phase ID. Do not add unrelated new models during the cutover.
 
 ## Source Layout
@@ -57,6 +57,8 @@ src/
     analysis/       controller, model definitions/registry, share codec,
                     pure projections (chartPresentation, inputPresentation)
     timeSeries/     separate PHS controller; editor/chart view models
+    workspace/      route / model / mode coordination
+  testSupport/      Compare helper; golden inputs/control counts from the registry
   App.svelte        root component
 ```
 
