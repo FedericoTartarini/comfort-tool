@@ -26,7 +26,7 @@ import {
   PhsSimulationCancelledError,
   simulatePhs,
   validatePhsTimeSeries,
-} from "./phsCalculation";
+} from "./calculation";
 
 const PhsTimeSeriesControlId = {
   DryBulbTemperature: "phs-dry-bulb-temperature",
@@ -338,7 +338,7 @@ function simulateInWorker(
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL("./phsTimeSeries.worker.ts", import.meta.url),
+      new URL("./timeSeries.worker.ts", import.meta.url),
       { type: "module" },
     );
     const abort = () => {

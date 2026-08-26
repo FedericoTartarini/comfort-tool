@@ -292,7 +292,8 @@ editable working bands. Band membership is array-ordered and half-open:
 `ChartEngine.Custom` is frontend-only on PMV ASHRAE/ISO psychrometric charts
 via `ComfortModelBuilder`. PMV heat-loss and SET charts are
 `ChartEngine.ParametricLine` on those same declarations. UTCI chart specs live
-in `src/comfortModels/utci/charts.ts`. PHS Analysis exposure history is
+in `src/comfortModels/utci/charts.ts`. PHS chart specs live in
+`src/comfortModels/phs/charts.ts`. PHS Analysis exposure history is
 `ChartEngine.TimeSeriesLine`.
 
 ### Modifiers

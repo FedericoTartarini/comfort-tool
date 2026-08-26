@@ -23,13 +23,13 @@ import {
   simulatePhs,
   validatePhsEnvironment,
   validatePhsTimeSeries,
-} from "./phsCalculation";
+} from "./calculation";
 import { phsModelConfig } from "./phs";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
 import { getModelSimulationOutput } from "../../state/comfortTool/modelConfigs";
 import { resolveSimulationChartBuild } from "../../services/comfort/charts/kinds/simulation";
-import { phsTimeSeriesModelDefinition } from "./phsTimeSeries";
-import { downsamplePhsHistorySamples } from "./phsTimeSeriesCharts";
+import { phsTimeSeriesModelDefinition } from "./timeSeries";
+import { downsamplePhsHistorySamples } from "./timeSeriesCharts";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import { ModelOutputKey } from "../../models/modelCapabilities";
 import { FieldChartProfileKind } from "../../models/output/fieldChartProfile";

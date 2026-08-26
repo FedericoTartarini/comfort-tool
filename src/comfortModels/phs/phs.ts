@@ -46,15 +46,15 @@ import {
   getPhsWaterLossLimitG,
   personFromModelInputs,
   simulatePhs,
-} from "./phsCalculation";
+} from "./calculation";
 import {
   createPhsDynamicGridSpec,
   phsExposureHistoryChartSpec,
-} from "./phsCharts";
+} from "./charts";
 import {
   buildPhsTemperatureTimeSeriesChart,
   buildPhsWaterLossTimeSeriesChart,
-} from "./phsTimeSeriesCharts";
+} from "./timeSeriesCharts";
 
 
 

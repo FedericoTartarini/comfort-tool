@@ -11,8 +11,8 @@ import {
   phsModelConfig,
   phsRequestAdapter,
 } from "./phs";
-import { createPhsDynamicGridSpec } from "./phsCharts";
-import { getPhsWaterLossLimitG, personFromModelInputs } from "./phsCalculation";
+import { createPhsDynamicGridSpec } from "./charts";
+import { getPhsWaterLossLimitG, personFromModelInputs } from "./calculation";
 import "../../state/comfortTool/modelConfigs";
 
 function createComplianceContext(

@@ -32,11 +32,11 @@ import type { ChartRange } from "../../services/comfort/charts/types";
 import { buildCompareInputMarkerTraces } from "../../services/comfort/charts/inputPoints";
 import { convertTemperatureFromSi } from "../../services/units/temperature";
 import { UnitSystem } from "../../models/units";
-import { calculatePhs, personFromModelInputs } from "./phsCalculation";
+import { calculatePhs, personFromModelInputs } from "./calculation";
 import {
   buildPhsTemperatureHistoryChart,
   findFirstRectalThresholdCrossingMinute,
-} from "./phsTimeSeriesCharts";
+} from "./timeSeriesCharts";
 
 const PHS_GRID_POINTS = 31;
 

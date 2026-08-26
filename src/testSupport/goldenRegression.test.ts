@@ -13,7 +13,7 @@ import { calculateWindChill } from "../comfortModels/windChill";
 import { calculateUtci } from "../comfortModels/utci/calculation";
 import { evaluatePmvCondition } from "../comfortModels/pmv/calculation";
 import { pmvAshraeAdapter } from "../comfortModels/pmv/ashrae";
-import { calculatePhs } from "../comfortModels/phs/phsCalculation";
+import { calculatePhs } from "../comfortModels/phs/calculation";
 import { ModelId } from "../models/modelIds";
 import { PhysicalQuantityId } from "../models/quantities";
 import { PhsPosture, PhsQuantityId } from "../models/phs";

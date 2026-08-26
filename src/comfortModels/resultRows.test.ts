@@ -18,7 +18,7 @@ import type { AdaptiveResponse } from "./adaptive/shared";
 import { pmvAshraeModelConfig } from "./pmv/ashrae";
 import { pmvZonesList, type PmvResponse } from "./pmv/calculation";
 import { phsModelConfig } from "./phs/phs";
-import { simulatePhs, calculatePhs } from "./phs/phsCalculation";
+import { simulatePhs, calculatePhs } from "./phs/calculation";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   phsReferenceEnvironment,
