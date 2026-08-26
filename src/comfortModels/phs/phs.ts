@@ -1,4 +1,4 @@
-import type { ModelChartSourceDto } from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/comfortDtos";
 import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId, PhysicalQuantityScope } from "../../models/physicalQuantities";
 import { SiUnit } from "../../models/units";
@@ -22,7 +22,7 @@ import {
   PhsQuantityId,
   defaultPhsPersonSettings,
   type PhsEnvironmentSi,
-  type PhsResponseDto,
+  type PhsResponse,
   type PhsSimulationResult,
   type PhsTimeSeriesDraft,
 } from "../../models/phs";
@@ -211,7 +211,7 @@ function formatHours(minutes: number): string {
   return `${formatDisplayValue(minutes / 60, 2)} h`;
 }
 
-function criterionLabel(result: PhsResponseDto): string {
+function criterionLabel(result: PhsResponse): string {
   if (result.limitingCriterion === PhsLimitingCriterion.RectalTemperature) {
     return "Rectal-temperature limit";
   }
@@ -221,7 +221,7 @@ function criterionLabel(result: PhsResponseDto): string {
   return "No limit reached before 8 h";
 }
 
-function invalidCell(result: PhsResponseDto) {
+function invalidCell(result: PhsResponse) {
   return {
     text: "Out of range",
     subtext: result.issues[0] ?? "Outside ISO 7933:2023 applicability.",
@@ -229,7 +229,7 @@ function invalidCell(result: PhsResponseDto) {
   };
 }
 
-function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<PhsResponseDto>[] {
+function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<PhsResponse>[] {
   const temperatureMeta = getModelOutputDisplayMeta(
     ModelOutputKey.PhsRectalTemperature,
     unitSystem,
@@ -296,7 +296,7 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
   ];
 }
 
-function buildPhsTableRows(): TableRowSpec<PhsResponseDto>[] {
+function buildPhsTableRows(): TableRowSpec<PhsResponse>[] {
   return buildPhsResultRows(UnitSystem.SI).map((row) => ({
     id: row.title.toLowerCase().replace(/\s+/g, "-"),
     label: row.title,
@@ -342,8 +342,8 @@ const phsQuantityExtensions = [
 ] as const;
 
 const builder = new ComfortModelBuilder<
-  PhsResponseDto,
-  ModelChartSourceDto<PhsEnvironmentSi>
+  PhsResponse,
+  ModelChartSource<PhsEnvironmentSi>
 >(ModelId.Phs2023);
 
 builder
@@ -435,8 +435,8 @@ builder
       },
     },
   ] satisfies ChartDeclarationInput<
-    PhsResponseDto,
-    ModelChartSourceDto<PhsEnvironmentSi>
+    PhsResponse,
+    ModelChartSource<PhsEnvironmentSi>
   >[], {
     defaultChartId: "phs-exposure-history",
   });

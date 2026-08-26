@@ -6,7 +6,7 @@ import {
 } from "../../models/calculationMetadata";
 import type {
   CompareInputMap,
-  ModelChartSourceDto,
+  ModelChartSource,
 } from "../../models/comfortDtos";
 import { ComplianceStatus } from "../../models/comfortModels";
 import {
@@ -98,12 +98,12 @@ export const pmvZonesList = [
   }),
 ];
 
-export interface ComfortPointDto {
+export interface ComfortPoint {
   tdb: number;
   rh: number;
 }
 
-export interface PmvRequestDto {
+export interface PmvRequest {
   tdb: number;
   tr: number;
   vr: number;
@@ -114,19 +114,19 @@ export interface PmvRequestDto {
   occupantHasAirSpeedControl: boolean;
 }
 
-export interface ComfortZoneRequestDto extends PmvRequestDto {
+export interface ComfortZoneRequest extends PmvRequest {
   rhMin: number;
   rhMax: number;
   rhPoints: number;
 }
 
-export interface ComfortZoneResponseDto {
-  coolEdge: ComfortPointDto[];
-  warmEdge: ComfortPointDto[];
+export interface ComfortZoneResponse {
+  coolEdge: ComfortPoint[];
+  warmEdge: ComfortPoint[];
   source: CalculationSource;
 }
 
-export interface PmvResponseDto {
+export interface PmvResponse {
   pmv: number;
   ppd: number;
   vr: number;
@@ -138,8 +138,8 @@ export interface PmvResponseDto {
   source: CalculationSource;
 }
 
-export interface PmvChartSourceDto extends ModelChartSourceDto<ComfortZoneRequestDto> {
-  comfortZonesByInput: CompareInputMap<ComfortZoneResponseDto>;
+export interface PmvChartSource extends ModelChartSource<ComfortZoneRequest> {
+  comfortZonesByInput: CompareInputMap<ComfortZoneResponse>;
   derivedSlotsByInput?: CompareInputMap<DerivedSlotQuantityState>;
 }
 
@@ -159,7 +159,7 @@ export function getPmvZoneMeta(pmv: number): ThermalZone {
 
 export function evaluatePmvCondition(
   adapter: PmvStandardAdapter,
-  payload: PmvRequestDto,
+  payload: PmvRequest,
 ): PmvChartEvaluation {
   const result = adapter.calculate(payload);
   if (!Number.isFinite(result.pmv) || !Number.isFinite(result.ppd)) {
@@ -184,7 +184,7 @@ function isKnownPmvDomainFailure(error: unknown): boolean {
 /** Returns null only for known library-domain failures at chart sample points. */
 export function tryEvaluatePmvForChart(
   adapter: PmvStandardAdapter,
-  payload: PmvRequestDto,
+  payload: PmvRequest,
 ): PmvChartEvaluation | null {
   try {
     return evaluatePmvCondition(adapter, payload);
@@ -198,7 +198,7 @@ function evaluatePmvDeltaAtTemperature(
   adapter: PmvStandardAdapter,
   targetPmv: number,
   rh: number,
-  payload: PmvRequestDto,
+  payload: PmvRequest,
   temperature: number,
 ): number | null {
   const evaluation = tryEvaluatePmvForChart(adapter, {
@@ -224,7 +224,7 @@ function findTemperatureBracket(
   adapter: PmvStandardAdapter,
   targetPmv: number,
   rh: number,
-  payload: PmvRequestDto,
+  payload: PmvRequest,
 ): TemperatureBracket | null {
   let previousTemperature: number | null = null;
   let previousDelta: number | null = null;
@@ -266,7 +266,7 @@ function solveDryBulbForTargetPmv(
   adapter: PmvStandardAdapter,
   targetPmv: number,
   rh: number,
-  payload: PmvRequestDto,
+  payload: PmvRequest,
 ): number | null {
   const bracket = findTemperatureBracket(adapter, targetPmv, rh, payload);
   if (!bracket) return null;
@@ -308,8 +308,8 @@ function solveDryBulbForTargetPmv(
 
 export function calculateComfortZone(
   adapter: PmvStandardAdapter,
-  payload: ComfortZoneRequestDto,
-): ComfortZoneResponseDto {
+  payload: ComfortZoneRequest,
+): ComfortZoneResponse {
   const rhMinimum = Math.min(payload.rhMin, payload.rhMax);
   const rhMaximum = Math.max(payload.rhMin, payload.rhMax);
   const rhValues =
@@ -321,8 +321,8 @@ export function calculateComfortZone(
             rhMinimum +
             ((rhMaximum - rhMinimum) * index) / (payload.rhPoints - 1),
         );
-  const coolEdge: ComfortPointDto[] = [];
-  const warmEdge: ComfortPointDto[] = [];
+  const coolEdge: ComfortPoint[] = [];
+  const warmEdge: ComfortPoint[] = [];
 
   for (const relativeHumidity of rhValues) {
     const coolTemperature = solveDryBulbForTargetPmv(
@@ -349,7 +349,7 @@ export function calculateComfortZone(
   };
 }
 
-export const pmvRequestAdapter = createFieldRequestAdapter<PmvRequestDto>({
+export const pmvRequestAdapter = createFieldRequestAdapter<PmvRequest>({
   tdb: PhysicalQuantityId.DryBulbTemperature,
   tr: PhysicalQuantityId.MeanRadiantTemperature,
   vr: PhysicalQuantityId.RelativeAirSpeed,
@@ -392,7 +392,7 @@ export function toPmvRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
   adapter: PmvStandardAdapter,
-): PmvRequestDto {
+): PmvRequest {
   const requestFields = pmvRequestAdapter.mapRequest(context, inputId);
   return {
     ...requestFields,
@@ -404,7 +404,7 @@ export function toPmvRequest(
 }
 
 export function getPmvComplianceFeedback(
-  result: PmvResponseDto,
+  result: PmvResponse,
 ): ComplianceFeedback {
   return {
     text: result.isCompliant
@@ -457,8 +457,8 @@ function formatCoolingEffectCell(
 }
 
 export function derivePmvAnalysisOutputs(
-  request: PmvRequestDto,
-): Pick<PmvResponseDto, "set" | "coolingEffect" | "vr" | "dynamicClothing"> {
+  request: PmvRequest,
+): Pick<PmvResponse, "set" | "coolingEffect" | "vr" | "dynamicClothing"> {
   const set = requireFiniteOutput(
     set_tmp(
       request.tdb,
@@ -499,7 +499,7 @@ export function derivePmvAnalysisOutputs(
   };
 }
 
-export function buildPmvResultRows(): TableRowSpec<PmvResponseDto>[] {
+export function buildPmvResultRows(): TableRowSpec<PmvResponse>[] {
   return [
     {
       id: "compliance",
@@ -609,7 +609,7 @@ export function calculatePmvModel(
         source: CalculationSource.JsThermalComfort,
       };
     },
-    createChartSource: (): PmvChartSourceDto => ({
+    createChartSource: (): PmvChartSource => ({
       inputs: {},
       comfortZonesByInput: {},
       derivedSlotsByInput: {},

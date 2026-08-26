@@ -1,6 +1,6 @@
 import { CalculationSource } from "../../../../models/calculationMetadata";
 import type {
-  ModelChartSourceDto,
+  ModelChartSource,
   PlotlyChartResponseDto,
 } from "../../../../models/comfortDtos";
 import {
@@ -39,13 +39,13 @@ const BOUNDARY_LINE = "#334155";
 
 function asChartSource(
   chartSource: unknown,
-): ModelChartSourceDto<object> | null {
+): ModelChartSource<object> | null {
   if (
     chartSource &&
     typeof chartSource === "object" &&
     "inputs" in chartSource
   ) {
-    return chartSource as ModelChartSourceDto<object>;
+    return chartSource as ModelChartSource<object>;
   }
   return null;
 }

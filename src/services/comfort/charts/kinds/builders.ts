@@ -1,5 +1,5 @@
 import type {
-  ModelChartSourceDto,
+  ModelChartSource,
   PlotlyChartResponseDto,
 } from "../../../../models/comfortDtos";
 import type { ChartBuildResult } from "../chartBuildResult";
@@ -51,7 +51,7 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
   const gridSpec = spec.resolveGridSpec(context);
   const plotly = buildGridModelChart(
     registration.instanceId,
-    chartSource as unknown as ModelChartSourceDto<object>,
+    chartSource as unknown as ModelChartSource<object>,
     resultsByInput,
     context as ChartBuildContext<NumericBand>,
     {

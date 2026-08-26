@@ -7,7 +7,7 @@ import {
   type ParametricLineGeometry,
   type ParametricPolyline,
 } from "../../services/comfort/charts/kinds/types";
-import type { PmvRequestDto, PmvResponseDto } from "./pmvCalculation";
+import type { PmvRequest, PmvResponse } from "./pmvCalculation";
 import {
   readPmvRequestFromChartSource,
   readPmvRequestsByInput,
@@ -51,7 +51,7 @@ export interface PmvHeatLossComponents {
  * Same clothing-temperature iteration as jsthermalcomfort `pmv_calculation`.
  */
 export function calculatePmvHeatLossComponents(
-  request: PmvRequestDto,
+  request: PmvRequest,
 ): PmvHeatLossComponents | null {
   const pa = request.rh * 10 * Math.exp(16.6536 - 4030.183 / (request.tdb + 235));
   const icl = 0.155 * request.clo;
@@ -199,8 +199,8 @@ const HEAT_LOSS_SERIES: readonly HeatLossSeriesDefinition[] = [
 ];
 
 export function buildPmvHeatLossGeometry(
-  baseline: PmvRequestDto,
-  compareRequests: Partial<Record<InputIdType, PmvRequestDto>> = {},
+  baseline: PmvRequest,
+  compareRequests: Partial<Record<InputIdType, PmvRequest>> = {},
 ): ParametricLineGeometry | null {
   const temperatures = sampleParametricDryBulbSi();
   const valuesBySeries = new Map<PmvHeatLossSeriesId, Array<{ x: number; y: number }>>(
@@ -233,7 +233,7 @@ export function buildPmvHeatLossGeometry(
 
   const comparePoints: Partial<Record<InputIdType, { x: number; y: number }>> = {};
   for (const [inputId, request] of Object.entries(compareRequests) as Array<
-    [InputIdType, PmvRequestDto]
+    [InputIdType, PmvRequest]
   >) {
     const components = calculatePmvHeatLossComponents(request);
     if (!components) continue;
@@ -243,7 +243,7 @@ export function buildPmvHeatLossGeometry(
   return { polylines, comparePoints };
 }
 
-export function createPmvHeatLossParametricSpec(): ParametricLineDataSpec<PmvResponseDto> {
+export function createPmvHeatLossParametricSpec(): ParametricLineDataSpec<PmvResponse> {
   return {
     title: "Heat Loss Components",
     xField: PhysicalQuantityId.DryBulbTemperature,

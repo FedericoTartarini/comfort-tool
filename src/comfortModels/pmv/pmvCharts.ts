@@ -6,7 +6,7 @@ import type {
   CustomChartEngineSpec,
   DynamicFieldGeometrySpec,
 } from "../../services/comfort/charts/kinds/types";
-import type { PmvChartSourceDto, PmvResponseDto } from "./pmvCalculation";
+import type { PmvChartSource, PmvResponse } from "./pmvCalculation";
 import type { PmvModelDeclaration } from "./pmvShared";
 import { buildPmvFieldChart, type PmvChartViewDescriptorFactory } from "./pmvChartShared";
 import { createPsychrometricViewDescriptor } from "./pmvPsychrometricChart";
@@ -28,8 +28,8 @@ function resolvePmvChartView(
 export function buildPmvChart(
   instanceId: string,
   declaration: PmvModelDeclaration,
-  source: PmvChartSourceDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
+  source: PmvChartSource,
+  resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>,
   context: ChartBuildContext<NumericBand>,
 ): PlotlyChartResponseDto | null {
   const createDescriptor = resolvePmvChartView(instanceId, declaration);
@@ -47,7 +47,7 @@ export function buildPmvChart(
 export function createPmvPsychrometricChartSpec(
   declaration: PmvModelDeclaration,
   psychrometricChartId: string,
-): CustomChartEngineSpec<PmvResponseDto, PmvChartSourceDto> {
+): CustomChartEngineSpec<PmvResponse, PmvChartSource> {
   return {
     build: (chartSource, resultsByInput, context) => {
       if (!chartSource) return null;
@@ -66,7 +66,7 @@ export function createPmvDynamicFieldChartSpec(
   declaration: PmvModelDeclaration,
   dynamicChartId: string,
   axisFields: readonly ChartAxisQuantityId[],
-): DynamicFieldGeometrySpec<PmvResponseDto, PmvChartSourceDto> {
+): DynamicFieldGeometrySpec<PmvResponse, PmvChartSource> {
   return {
     title: `${declaration.label} Dynamic Chart`,
     axisFields,

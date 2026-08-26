@@ -18,11 +18,11 @@ import { buildAdaptiveChart } from "../../../comfortModels/adaptive/adaptiveChar
 import type {
   AdaptiveLevelResult,
   AdaptiveModelDeclaration,
-  AdaptiveRequestDto,
-  AdaptiveResponseDto,
+  AdaptiveRequest,
+  AdaptiveResponse,
 } from "../../../comfortModels/adaptive/adaptiveShared";
 import type {
-  ModelChartSourceDto,
+  ModelChartSource,
   PlotlyChartResponseDto,
   PlotTraceDto,
 } from "../../../models/comfortDtos";
@@ -38,7 +38,7 @@ import { FieldChartProfileKind } from "../../../models/output/fieldChartProfile"
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../models/units";
 import { convertFieldValueFromSi } from "../../units";
 
-const baselineRequest: AdaptiveRequestDto = {
+const baselineRequest: AdaptiveRequest = {
   tdb: 24,
   tr: 24,
   trm: 20.16,
@@ -72,14 +72,14 @@ function createContext(
 
 function buildChart(
   declaration: AdaptiveModelDeclaration,
-  requests: Partial<Record<InputIdType, AdaptiveRequestDto>> = {
+  requests: Partial<Record<InputIdType, AdaptiveRequest>> = {
     [InputId.Input1]: baselineRequest,
   },
   unitSystem: UnitSystemType = UnitSystem.SI,
   baselineInputId: InputIdType = InputId.Input1,
   direction: "default" | "transposed" = "default",
 ): PlotlyChartResponseDto {
-  const resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>> = {};
+  const resultsByInput: Partial<Record<InputIdType, AdaptiveResponse | null>> = {};
   Object.entries(requests).forEach(([inputId, request]) => {
     if (request) {
       resultsByInput[inputId as InputIdType] = calculateAdaptive(declaration, request);
@@ -88,14 +88,14 @@ function buildChart(
 
   return buildAdaptiveChart(
     declaration,
-    { inputs: requests } as ModelChartSourceDto<AdaptiveRequestDto>,
+    { inputs: requests } as ModelChartSource<AdaptiveRequest>,
     resultsByInput,
     createContext(declaration, unitSystem, baselineInputId, direction),
   );
 }
 
 function getLevel(
-  result: AdaptiveResponseDto,
+  result: AdaptiveResponse,
   id: string,
 ): AdaptiveLevelResult {
   const level = result.levels.find((candidate) => candidate.id === id);

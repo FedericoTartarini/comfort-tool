@@ -1,6 +1,6 @@
 import { CalculationSource } from "../../models/calculationMetadata";
 import type {
-  ModelChartSourceDto,
+  ModelChartSource,
   PlotlyChartResponseDto,
 } from "../../models/comfortDtos";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../models/physicalQuantities";
@@ -40,8 +40,8 @@ import {
   utciAxisAdapter,
   utciOutput,
   utciZonesList,
-  type UtciRequestDto,
-  type UtciResponseDto,
+  type UtciRequest,
+  type UtciResponse,
 } from "./utciCalculation";
 
 const MODEL_LABEL = UTCI_MODEL_LABEL;
@@ -54,7 +54,7 @@ const UTCI_STRESS_CHART_MARGIN = { l: 56, r: 24, t: 48, b: 80 };
 const UTCI_DYNAMIC_CHART_MARGIN = { l: 64, r: 24, t: 48, b: 64 };
 
 export function createUtciDynamicChartSpec(): Omit<
-  GridModelChartSpec<UtciRequestDto, UtciResponseDto>,
+  GridModelChartSpec<UtciRequest, UtciResponse>,
   "instanceId" | "dynamicTitle"
 > {
   return {
@@ -84,8 +84,8 @@ export function createUtciDynamicChartSpec(): Omit<
 
 
 export function buildUtciStressChart(
-  source: ModelChartSourceDto<UtciRequestDto>,
-  resultsByInput: Partial<Record<InputIdType, UtciResponseDto | null>>,
+  source: ModelChartSource<UtciRequest>,
+  resultsByInput: Partial<Record<InputIdType, UtciResponse | null>>,
   context: ChartBuildContext<NumericBand>,
 ): PlotlyChartResponseDto {
   const config = context.fieldChartConfig;
@@ -121,7 +121,7 @@ export function buildUtciStressChart(
       text: defaultZone?.legendText ?? band.label,
     })];
   });
-  const getResult = (payload: UtciRequestDto, inputId: InputIdType) =>
+  const getResult = (payload: UtciRequest, inputId: InputIdType) =>
     resultsByInput[inputId] ?? calculateUtci(payload);
 
   return buildFieldChart({
@@ -169,7 +169,7 @@ export function buildUtciStressChart(
         return `${inputLabel}<br>UTCI: %{x:.1f} ${temperatureUnits}<br><b>Stress Category: ${bandLabel}</b><extra></extra>`;
       },
       markerSize: 14,
-    } satisfies FieldChartInputGroup<UtciRequestDto, UtciResponseDto>],
+    } satisfies FieldChartInputGroup<UtciRequest, UtciResponse>],
     annotations,
     layout: {
       title: `${MODEL_LABEL} stress category`,
@@ -189,8 +189,8 @@ export const UTCI_DYNAMIC_AXIS_FIELDS = [
 ] as const;
 
 export const utciStressChartSpec: BandScalarChartEngineSpec<
-  UtciResponseDto,
-  ModelChartSourceDto<UtciRequestDto>
+  UtciResponse,
+  ModelChartSource<UtciRequest>
 > = {
   build: (chartSource, resultsByInput, context) => {
     if (!chartSource) return null;
@@ -202,7 +202,7 @@ export const utciStressChartSpec: BandScalarChartEngineSpec<
   },
 };
 
-export const utciDynamicFieldChartSpec: DynamicFieldChartEngineSpec<UtciResponseDto> = {
+export const utciDynamicFieldChartSpec: DynamicFieldChartEngineSpec<UtciResponse> = {
   title: `${UTCI_MODEL_LABEL} Dynamic Chart`,
   axisFields: [...UTCI_DYNAMIC_AXIS_FIELDS],
   resolveGridSpec: () => createUtciDynamicChartSpec(),

@@ -21,7 +21,7 @@ import {
 } from "../../comfortModels/pmv/pmvShared";
 import {
   calculatePmvModel,
-  type PmvChartSourceDto,
+  type PmvChartSource,
 } from "../../comfortModels/pmv/pmvCalculation";
 import {
   pmvAshraeAdapter,
@@ -67,7 +67,7 @@ const comfortZonePayload = {
 };
 
 function calculatePmvModelForTest(
-  inputs: PmvChartSourceDto["inputs"] = {
+  inputs: PmvChartSource["inputs"] = {
     [InputId.Input1]: comfortZonePayload,
   },
   occupantHasAirSpeedControl = true,
@@ -102,7 +102,7 @@ function calculatePmvModelForTest(
 
 function buildRegisteredPmvChart(
   instanceId: string,
-  inputs: PmvChartSourceDto["inputs"],
+  inputs: PmvChartSource["inputs"],
   context: ChartBuildContext<NumericBand>,
 ) {
   const calculation = calculatePmvModelForTest(inputs);
@@ -365,7 +365,7 @@ describe("comfort services", () => {
       met: 2.0,
       clo: 1.0,
     };
-    const chartInputs: PmvChartSourceDto["inputs"] = {
+    const chartInputs: PmvChartSource["inputs"] = {
         [InputId.Input1]: comfortZonePayload,
         [InputId.Input2]: alternatePayload,
     };

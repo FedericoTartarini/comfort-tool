@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { calculateAdaptive } from "../comfortModels/adaptive/adaptiveCalculation";
 import { buildAdaptiveChart } from "../comfortModels/adaptive/adaptiveCharts";
 import { adaptiveEnDeclaration } from "../comfortModels/adaptive/adaptiveEn";
-import type { AdaptiveRequestDto } from "../comfortModels/adaptive/adaptiveShared";
+import type { AdaptiveRequest } from "../comfortModels/adaptive/adaptiveShared";
 import { InputId } from "../models/inputSlots";
 import { FieldChartProfileKind } from "../models/output/fieldChartProfile";
 import { PhysicalQuantityId } from "../models/physicalQuantities";
@@ -23,7 +23,7 @@ interface PlotlyModule {
   purge: (root: HTMLDivElement) => void;
 }
 
-const baselineRequest: AdaptiveRequestDto = {
+const baselineRequest: AdaptiveRequest = {
   tdb: 24,
   tr: 24,
   trm: 20.16,

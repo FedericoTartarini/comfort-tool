@@ -49,12 +49,12 @@ import {
   calculatePmvModel,
   derivePmvAnalysisOutputs,
   pmvNeutralZone,
-  type PmvChartSourceDto,
-  type PmvRequestDto,
-  type PmvResponseDto,
+  type PmvChartSource,
+  type PmvRequest,
+  type PmvResponse,
 } from "./pmvCalculation";
 
-const baseRequest: PmvRequestDto = {
+const baseRequest: PmvRequest = {
   tdb: 25,
   tr: 25,
   vr: 0.1,
@@ -91,7 +91,7 @@ function calculateRegisteredModel(
   adapter: PmvStandardAdapter,
   toolState: ReturnType<typeof createAnalysisState>,
   effectiveQuantitiesByInput = toolState.state.quantitiesByInput,
-): { result: PmvResponseDto; chartSource: PmvChartSourceDto } {
+): { result: PmvResponse; chartSource: PmvChartSource } {
   const calculation = calculatePmvModel(createModelCalculationContext({
     effectiveQuantitiesByInput,
     auxiliaryQuantitiesByInput: toolState.state.auxiliaryQuantitiesByInput,
@@ -107,7 +107,7 @@ function calculateWithDynamicClothingModifier(
   adapter: PmvStandardAdapter,
   clothingSi: number,
   metSi: number,
-): { result: PmvResponseDto; effectiveClo: number } {
+): { result: PmvResponse; effectiveClo: number } {
   const toolState = createAnalysisState();
   const base = {
     ...toolState.state.quantitiesByInput[InputId.Input1],
@@ -130,7 +130,7 @@ function calculateWithDynamicClothingModifier(
   };
 }
 
-function emptyPmvResults(): Record<InputId, PmvResponseDto | null> {
+function emptyPmvResults(): Record<InputId, PmvResponse | null> {
   return {
     [InputId.Input1]: null,
     [InputId.Input2]: null,

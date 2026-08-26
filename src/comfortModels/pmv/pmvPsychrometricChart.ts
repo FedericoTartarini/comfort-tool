@@ -17,10 +17,10 @@ import { getBaselineInputEntry, roundValue } from "../../services/comfort/helper
 import {
   PMV_PSYCHROMETRIC_VIEW,
   tryEvaluatePmvForChart,
-  type ComfortPointDto,
+  type ComfortPoint,
   type PmvChartEvaluation,
-  type PmvChartSourceDto,
-  type PmvRequestDto,
+  type PmvChartSource,
+  type PmvRequest,
 } from "./pmvCalculation";
 import type { PmvStandardAdapter } from "./pmvShared";
 import {
@@ -64,10 +64,10 @@ function smoothComfortZoneXValues(xValues: number[]): number[] {
 }
 
 function buildComfortZonePolygon(
-  coolEdge: ComfortPointDto[],
-  warmEdge: ComfortPointDto[],
-  getX: (point: ComfortPointDto) => number,
-  getY: (point: ComfortPointDto) => number,
+  coolEdge: ComfortPoint[],
+  warmEdge: ComfortPoint[],
+  getX: (point: ComfortPoint) => number,
+  getY: (point: ComfortPoint) => number,
 ): { polygonX: number[]; polygonY: number[] } {
   return buildClosedBoundaryPolygon({
     lowerX: smoothComfortZoneXValues(coolEdge.map(getX)),
@@ -78,7 +78,7 @@ function buildComfortZonePolygon(
 }
 function evaluatePsychrometricPoint(
   adapter: PmvStandardAdapter,
-  baseline: PmvRequestDto,
+  baseline: PmvRequest,
   tdb: number,
   humidityRatio: number,
 ): PmvChartEvaluation | null {
@@ -210,7 +210,7 @@ function buildSupersaturatedRegionMask(
 
 function buildRelativeHumidityCurveTrace(
   adapter: PmvStandardAdapter,
-  baseline: PmvRequestDto,
+  baseline: PmvRequest,
   config: PmvFieldChartConfig,
   curve: DisplayedPsychrometricCurve,
   temperatureAxis: ChartAxisScale,
@@ -252,7 +252,7 @@ function buildRelativeHumidityCurveTrace(
 
 function buildPsychrometricOverlays(
   adapter: PmvStandardAdapter,
-  baseline: PmvRequestDto,
+  baseline: PmvRequest,
   config: PmvFieldChartConfig,
   temperatureAxis: ChartAxisScale,
   humidityRatioAxis: ChartAxisScale,
@@ -291,7 +291,7 @@ function buildPsychrometricOverlays(
 
 function projectPsychrometricFillGrid(
   adapter: PmvStandardAdapter,
-  baseline: PmvRequestDto,
+  baseline: PmvRequest,
   config: PmvFieldChartConfig,
   grid: GridEvaluationResult,
 ): GridEvaluationResult {
@@ -321,7 +321,7 @@ function projectPsychrometricFillGrid(
   };
 }
 function createPsychrometricComfortZoneOverlayBuilder(
-  source: PmvChartSourceDto,
+  source: PmvChartSource,
   xAxis: ChartAxisScale,
   yAxis: ChartAxisScale,
 ): PmvInputOverlayBuilder {

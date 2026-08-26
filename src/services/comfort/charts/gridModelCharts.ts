@@ -1,7 +1,7 @@
 import { CalculationSource } from "../../../models/calculationMetadata";
 import type {
   CompareInputMap,
-  ModelChartSourceDto,
+  ModelChartSource,
   PlotHoverValueDto,
   PlotlyChartResponseDto,
 } from "../../../models/comfortDtos";
@@ -266,7 +266,7 @@ function buildGridModelView<TPayload extends object, TResult>(
 
 export function buildGridModelChart<TPayload extends object, TResult>(
   instanceId: string,
-  chartSource: ModelChartSourceDto<TPayload> | null,
+  chartSource: ModelChartSource<TPayload> | null,
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
   context: ChartBuildContext<NumericBand>,
   spec: GridModelChartSpec<TPayload, TResult>,

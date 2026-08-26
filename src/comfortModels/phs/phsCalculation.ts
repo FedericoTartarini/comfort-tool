@@ -11,8 +11,8 @@ import {
   type PhsEnvironmentSi,
   type PhsHistorySample,
   type PhsPersonSettingsSi,
-  type PhsRequestDto,
-  type PhsResponseDto,
+  type PhsRequest,
+  type PhsResponse,
   type PhsSimulationCallbacks,
   type PhsSimulationRequest,
   type PhsSimulationResult,
@@ -438,7 +438,7 @@ export function simulatePhs(
   };
 }
 
-export function calculatePhs(request: PhsRequestDto): PhsResponseDto {
+export function calculatePhs(request: PhsRequest): PhsResponse {
   return simulatePhs({
     segments: [{
       id: "analysis-exposure",

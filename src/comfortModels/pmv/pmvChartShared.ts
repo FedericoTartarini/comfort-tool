@@ -31,10 +31,10 @@ import { roundValue } from "../../services/comfort/helpers";
 import {
   getPmvZoneMeta,
   tryEvaluatePmvForChart,
-  type ComfortZoneRequestDto,
+  type ComfortZoneRequest,
   type PmvChartEvaluation,
-  type PmvChartSourceDto,
-  type PmvResponseDto,
+  type PmvChartSource,
+  type PmvResponse,
 } from "./pmvCalculation";
 import type { PmvModelDeclaration, PmvStandardAdapter } from "./pmvShared";
 
@@ -92,18 +92,18 @@ export function getPmvOutputValue(
 
 interface PmvInputGroupOptions {
   adapter: PmvStandardAdapter;
-  inputsMap: CompareInputMap<ComfortZoneRequestDto>;
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>;
+  inputsMap: CompareInputMap<ComfortZoneRequest>;
+  resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>;
   xAxis: ChartAxisScale;
   yAxis: ChartAxisScale;
-  getXSi: (payload: ComfortZoneRequestDto) => number;
-  getYSi: (payload: ComfortZoneRequestDto) => number;
+  getXSi: (payload: ComfortZoneRequest) => number;
+  getYSi: (payload: ComfortZoneRequest) => number;
   coordinateDecimals: number;
   classificationLabel?: string;
   getClassification?: (evaluation: PmvChartEvaluation) => string;
   buildOverlayTraces?: FieldChartInputGroup<
-    ComfortZoneRequestDto,
-    PmvResponseDto
+    ComfortZoneRequest,
+    PmvResponse
   >["buildOverlayTraces"];
 }
 
@@ -120,8 +120,8 @@ function createPmvInputGroup({
   getClassification = (evaluation) => evaluation.zone.label,
   buildOverlayTraces,
 }: PmvInputGroupOptions): FieldChartInputGroup<
-  ComfortZoneRequestDto,
-  PmvResponseDto
+  ComfortZoneRequest,
+  PmvResponse
 > {
   return {
     inputsMap,
@@ -192,8 +192,8 @@ export function createPmvOutputPresentation(
   };
 }
 export type PmvInputOverlayBuilder = NonNullable<FieldChartInputGroup<
-  ComfortZoneRequestDto,
-  PmvResponseDto
+  ComfortZoneRequest,
+  PmvResponse
 >["buildOverlayTraces"]>;
 
 export interface PmvFieldChartDescriptor {
@@ -209,8 +209,8 @@ export interface PmvFieldChartDescriptor {
     grid: GridEvaluationResult,
     context: FieldChartRenderContext,
   ) => GridEvaluationResult;
-  getInputXSi: (payload: ComfortZoneRequestDto) => number;
-  getInputYSi: (payload: ComfortZoneRequestDto) => number;
+  getInputXSi: (payload: ComfortZoneRequest) => number;
+  getInputYSi: (payload: ComfortZoneRequest) => number;
   chartOverlays?: (context: FieldChartRenderContext) => PlotTraceDto[];
   getInputOverlayBuilder?: (
     xAxis: ChartAxisScale,
@@ -221,8 +221,8 @@ export interface PmvFieldChartDescriptor {
 
 export function buildPmvFieldChart(
   declaration: PmvModelDeclaration,
-  source: PmvChartSourceDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
+  source: PmvChartSource,
+  resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>,
   context: ChartBuildContext<NumericBand>,
   descriptor: PmvFieldChartDescriptor,
 ): PlotlyChartResponseDto {
@@ -296,7 +296,7 @@ export function buildPmvFieldChart(
 
 export type PmvChartViewDescriptorFactory = (
   declaration: PmvModelDeclaration,
-  source: PmvChartSourceDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
+  source: PmvChartSource,
+  resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>,
   context: ChartBuildContext<NumericBand>,
 ) => PmvFieldChartDescriptor;

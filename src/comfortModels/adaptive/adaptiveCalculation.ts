@@ -28,8 +28,8 @@ import type {
   AdaptiveLevelDefinition,
   AdaptiveLevelResult,
   AdaptiveModelDeclaration,
-  AdaptiveRequestDto,
-  AdaptiveResponseDto,
+  AdaptiveRequest,
+  AdaptiveResponse,
 } from "./adaptiveShared";
 
 export function getCe(airSpeed: number, unadjustedUpperBoundary: number): number {
@@ -76,8 +76,8 @@ function getAdaptiveTemperatureBoundaries(
 
 export function calculateAdaptive(
   declaration: AdaptiveModelDeclaration,
-  payload: AdaptiveRequestDto,
-): AdaptiveResponseDto {
+  payload: AdaptiveRequest,
+): AdaptiveResponse {
   const operativeTemperature = t_o(
     payload.tdb,
     payload.tr,
@@ -132,7 +132,7 @@ export function calculateAdaptive(
 }
 
 export function getLevelResult(
-  result: AdaptiveResponseDto,
+  result: AdaptiveResponse,
   levelId: string,
 ): AdaptiveLevelResult {
   const level = result.levels.find(({ id }) => id === levelId);
@@ -142,7 +142,7 @@ export function getLevelResult(
 
 export function createAdaptiveComplianceFeedbackGetter(
   complianceLevelId: string,
-): (result: AdaptiveResponseDto) => ComplianceFeedback {
+): (result: AdaptiveResponse) => ComplianceFeedback {
   return (result) => {
     if (!result.isApplicable) {
       return { text: ComplianceStatus.OutOfRange, passes: false };
@@ -189,7 +189,7 @@ export function parseAdaptiveOptions(value: unknown): AdaptiveModelOptions | nul
   return { [OptionKey.TemperatureMode]: temperatureMode };
 }
 
-export const adaptiveRequestAdapter = createFieldRequestAdapter<AdaptiveRequestDto>({
+export const adaptiveRequestAdapter = createFieldRequestAdapter<AdaptiveRequest>({
   tdb: PhysicalQuantityId.DryBulbTemperature,
   tr: PhysicalQuantityId.MeanRadiantTemperature,
   trm: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
@@ -199,7 +199,7 @@ export const adaptiveRequestAdapter = createFieldRequestAdapter<AdaptiveRequestD
 export function toAdaptiveRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
-): AdaptiveRequestDto {
+): AdaptiveRequest {
   const request = adaptiveRequestAdapter.mapRequest(context, inputId);
   if (context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
     request.tr = request.tdb;
@@ -243,7 +243,7 @@ export function createAdaptiveComplianceBands(
 export function buildAdaptiveResultRows(
   declaration: AdaptiveModelDeclaration,
   unitSystem: UnitSystemType,
-): ResultRowDefinition<AdaptiveResponseDto>[] {
+): ResultRowDefinition<AdaptiveResponse>[] {
   const temperatureUnits = getQuantityPresentationMeta(
     PhysicalQuantityId.DryBulbTemperature,
     unitSystem,
@@ -261,7 +261,7 @@ export function buildAdaptiveResultRows(
         };
       },
     },
-    ...declaration.levels.map((definition): ResultRowDefinition<AdaptiveResponseDto> => ({
+    ...declaration.levels.map((definition): ResultRowDefinition<AdaptiveResponse> => ({
       title: definition.label,
       formatter: (result) => {
         const level = getLevelResult(result, definition.id);

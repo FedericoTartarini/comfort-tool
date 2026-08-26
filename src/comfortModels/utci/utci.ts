@@ -1,5 +1,5 @@
 import type {
-  ModelChartSourceDto,
+  ModelChartSource,
 } from "../../models/comfortDtos";
 import { ModelId } from "../../models/comfortModels";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
@@ -35,8 +35,8 @@ import {
   UTCI_TR_LIMITS,
   utciOutput,
   utciRequestAdapter,
-  type UtciRequestDto,
-  type UtciResponseDto,
+  type UtciRequest,
+  type UtciResponse,
 } from "./utciCalculation";
 import {
   UTCI_DYNAMIC_AXIS_FIELDS,
@@ -60,7 +60,7 @@ function parseUtciOptions(value: unknown): UtciModelOptions | null {
 function toRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
-): UtciRequestDto {
+): UtciRequest {
   const request = utciRequestAdapter.mapRequest(context, inputId);
   if (context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
     request.tr = request.tdb;
@@ -68,7 +68,7 @@ function toRequest(
   return request;
 }
 
-function buildUtciTableRows(): TableRowSpec<UtciResponseDto>[] {
+function buildUtciTableRows(): TableRowSpec<UtciResponse>[] {
   const rowMeta = [
     { id: "utci", label: UTCI_MODEL_LABEL },
     { id: "stress-category", label: "Stress Category" },
@@ -83,15 +83,15 @@ function buildUtciTableRows(): TableRowSpec<UtciResponseDto>[] {
 }
 
 const builder = new ComfortModelBuilder<
-  UtciResponseDto,
-  ModelChartSourceDto<UtciRequestDto>
+  UtciResponse,
+  ModelChartSource<UtciRequest>
 >(
   ModelId.Utci,
 );
 
 const utciCharts: ChartDeclarationInput<
-  UtciResponseDto,
-  ModelChartSourceDto<UtciRequestDto>
+  UtciResponse,
+  ModelChartSource<UtciRequest>
 >[] = [
   {
     id: "utci-stress-band",
@@ -200,6 +200,6 @@ export {
   utciOutput,
   utciRequestAdapter,
   utciZonesList,
-  type UtciRequestDto,
-  type UtciResponseDto,
+  type UtciRequest,
+  type UtciResponse,
 } from "./utciCalculation";

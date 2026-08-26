@@ -6,11 +6,11 @@ import {
 import { pmvIsoAdapter } from "../../../comfortModels/pmv/pmvIso";
 import {
   createPmvRequestAxisAdapter,
-  type PmvRequestDto,
+  type PmvRequest,
 } from "../../../comfortModels/pmv/pmvCalculation";
 import {
   utciAxisAdapter,
-  type UtciRequestDto,
+  type UtciRequest,
 } from "../../../comfortModels/utci/utci";
 import { PhysicalQuantityId } from "../../../models/physicalQuantities";
 import {
@@ -226,7 +226,7 @@ describe("applyDynamicAxisCoordinates", () => {
 });
 
 describe("model request-axis adapters", () => {
-  const pmvRequest: PmvRequestDto = {
+  const pmvRequest: PmvRequest = {
     tdb: 24,
     tr: 26,
     vr: 0.3,
@@ -278,7 +278,7 @@ describe("model request-axis adapters", () => {
     [PhysicalQuantityId.RelativeAirSpeed, 1.7],
     [PhysicalQuantityId.RelativeHumidity, 65],
   ] as const)("maps UTCI field %s and its air-speed alias", (field, value) => {
-    const request: UtciRequestDto = { tdb: 24, tr: 26, v: 1, rh: 50 };
+    const request: UtciRequest = { tdb: 24, tr: 26, v: 1, rh: 50 };
 
     utciAxisAdapter.setAxisValue(request, field, value);
 
@@ -287,7 +287,7 @@ describe("model request-axis adapters", () => {
   });
 
   it("sets UTCI operative temperature explicitly and retains solver component ranges", () => {
-    const request: UtciRequestDto = { tdb: 24, tr: 26, v: 1, rh: 50 };
+    const request: UtciRequest = { tdb: 24, tr: 26, v: 1, rh: 50 };
 
     utciAxisAdapter.setAxisValue(request, PhysicalQuantityId.OperativeTemperature, 25);
 
@@ -326,7 +326,7 @@ describe("model request-axis adapters", () => {
     [PhysicalQuantityId.MeanRadiantTemperature, PhysicalQuantityId.OperativeTemperature],
     [PhysicalQuantityId.OperativeTemperature, PhysicalQuantityId.MeanRadiantTemperature],
   ] as const)("solves the UTCI coupled axis pair %s / %s", (xField, yField) => {
-    const request: UtciRequestDto = { tdb: 24, tr: 26, v: 1, rh: 50 };
+    const request: UtciRequest = { tdb: 24, tr: 26, v: 1, rh: 50 };
     const componentField = xField === PhysicalQuantityId.OperativeTemperature ? yField : xField;
 
     expect(applyDynamicAxisCoordinates(

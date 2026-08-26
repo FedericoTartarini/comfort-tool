@@ -17,8 +17,8 @@ import {
   createDefaultModelInputsForModel,
 } from "../services/comfort/quantityStateRouting";
 import { PhsQuantityId } from "../models/phs";
-import type { PmvRequestDto } from "../comfortModels/pmv/pmvCalculation";
-import type { UtciRequestDto } from "../comfortModels/utci/utciCalculation";
+import type { PmvRequest } from "../comfortModels/pmv/pmvCalculation";
+import type { UtciRequest } from "../comfortModels/utci/utciCalculation";
 import {
   declaredSiRangeForInputField,
   inputFieldControlId,
@@ -163,7 +163,7 @@ function mergePrimaryFixture(
 
 export function pickUtciRequest(
   overrides: Partial<PrimaryInputState> = {},
-): UtciRequestDto {
+): UtciRequest {
   const base = mergePrimaryFixture(overrides);
   return {
     tdb: base[PhysicalQuantityId.DryBulbTemperature],
@@ -175,10 +175,10 @@ export function pickUtciRequest(
 
 export function pickPmvRequest(
   overrides: Partial<PrimaryInputState> = {},
-  options: Pick<PmvRequestDto, "occupantHasAirSpeedControl"> = {
+  options: Pick<PmvRequest, "occupantHasAirSpeedControl"> = {
     occupantHasAirSpeedControl: true,
   },
-): PmvRequestDto {
+): PmvRequest {
   const base = mergePrimaryFixture(overrides);
   return {
     tdb: base[PhysicalQuantityId.DryBulbTemperature],

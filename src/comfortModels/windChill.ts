@@ -1,6 +1,6 @@
 import { wc, wind_chill_temperature } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
-import type { ModelChartSourceDto } from "../models/comfortDtos";
+import type { ModelChartSource } from "../models/comfortDtos";
 import { ModelId } from "../models/comfortModels";
 import { InputControlId } from "../models/inputControls";
 import {
@@ -50,19 +50,19 @@ export const windChillZonesList = [
   new ThermalZone({ label: "2 mins to frostbite", min: 2300, token: ZoneToken.Frostbite2Min }),
 ];
 
-export interface WindChillRequestDto {
+export interface WindChillRequest {
   tdb: number;
   v: number;
 }
 
-export interface WindChillResponseDto {
+export interface WindChillResponse {
   wci: number;
   wciTemp: number;
   wciZone: string;
   source: CalculationSource;
 }
 
-export const windChillRequestAdapter = createFieldRequestAdapter<WindChillRequestDto>({
+export const windChillRequestAdapter = createFieldRequestAdapter<WindChillRequest>({
   tdb: PhysicalQuantityId.DryBulbTemperature,
   v: PhysicalQuantityId.WindSpeed,
 });
@@ -73,11 +73,11 @@ const windChillOutput: ModelOutput = {
   defaultBands: bandsFromThermalZones(windChillZonesList),
 };
 
-function getWindChillColor(result: WindChillResponseDto): string | undefined {
+function getWindChillColor(result: WindChillResponse): string | undefined {
   return requireThermalZone(windChillZonesList, result.wci, MODEL_LABEL).textColor;
 }
 
-export function calculateWindChill(payload: WindChillRequestDto): WindChillResponseDto {
+export function calculateWindChill(payload: WindChillRequest): WindChillResponse {
   const wci = wc(payload.tdb, payload.v).wci;
   const wciTemp = payload.v > 1.33 && payload.tdb <= 10
     ? wind_chill_temperature(
@@ -96,7 +96,7 @@ export function calculateWindChill(payload: WindChillRequestDto): WindChillRespo
 }
 
 const windChillGridSpec: Omit<
-  GridModelChartSpec<WindChillRequestDto, WindChillResponseDto>,
+  GridModelChartSpec<WindChillRequest, WindChillResponse>,
   "instanceId" | "dynamicTitle"
 > = {
   output: windChillOutput,
@@ -129,8 +129,8 @@ const windChillGridSpec: Omit<
 };
 
 export const windChillModelConfig = defineModel<
-  WindChillResponseDto,
-  ModelChartSourceDto<WindChillRequestDto>
+  WindChillResponse,
+  ModelChartSource<WindChillRequest>
 >({
   id: ModelId.WindChill,
   label: MODEL_LABEL,

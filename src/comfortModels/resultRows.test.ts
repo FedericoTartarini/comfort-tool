@@ -14,9 +14,9 @@ import {
   adaptiveEnModelConfig,
   adaptiveEnZonesList,
 } from "./adaptive/adaptiveEn";
-import type { AdaptiveResponseDto } from "./adaptive/adaptiveShared";
+import type { AdaptiveResponse } from "./adaptive/adaptiveShared";
 import { pmvAshraeModelConfig } from "./pmv/pmvAshrae";
-import { pmvZonesList, type PmvResponseDto } from "./pmv/pmvCalculation";
+import { pmvZonesList, type PmvResponse } from "./pmv/pmvCalculation";
 import { phsModelConfig } from "./phs/phs";
 import { simulatePhs, calculatePhs } from "./phs/phsCalculation";
 import {
@@ -54,7 +54,7 @@ function getInputCell(
   return sections.find((section) => section.title === title)?.valuesByInput[inputId];
 }
 
-const pmvResult: PmvResponseDto = {
+const pmvResult: PmvResponse = {
   pmv: 0.24,
   ppd: 5.25,
   vr: 0.6,
@@ -66,7 +66,7 @@ const pmvResult: PmvResponseDto = {
   source: CalculationSource.JsThermalComfort,
 };
 
-const ashraeResult: AdaptiveResponseDto = {
+const ashraeResult: AdaptiveResponse = {
   tCmf: 25,
   operativeTemperature: 28,
   levels: [
@@ -92,7 +92,7 @@ const ashraeResult: AdaptiveResponseDto = {
   source: CalculationSource.JsThermalComfort,
 };
 
-const enResult: AdaptiveResponseDto = {
+const enResult: AdaptiveResponse = {
   tCmf: 24,
   operativeTemperature: 28,
   levels: [
@@ -127,10 +127,10 @@ const enResult: AdaptiveResponseDto = {
 };
 
 function replaceAdaptiveLevel(
-  result: AdaptiveResponseDto,
+  result: AdaptiveResponse,
   levelId: string,
-  patch: Partial<AdaptiveResponseDto["levels"][number]>,
-): AdaptiveResponseDto {
+  patch: Partial<AdaptiveResponse["levels"][number]>,
+): AdaptiveResponse {
   return {
     ...result,
     levels: result.levels.map((level) => (
@@ -189,7 +189,7 @@ describe("comfort model result rows", () => {
   });
 
   it("maps multiple PMV inputs while preserving null and noncompliant cells", () => {
-    const nonCompliantResult: PmvResponseDto = {
+    const nonCompliantResult: PmvResponse = {
       ...pmvResult,
       pmv: -1.2,
       ppd: 35,

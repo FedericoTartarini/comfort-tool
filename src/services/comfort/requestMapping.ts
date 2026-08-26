@@ -1,4 +1,4 @@
-import type { ModelChartSourceDto } from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/comfortDtos";
 import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../models/physicalQuantities";
 import {
   InputId,
@@ -82,14 +82,14 @@ export function calculatePerInput<TRequest, TResult>({
   calculate,
 }: CalculatePerInputOptions<TRequest, TResult>): {
   resultsByInput: Record<InputIdType, TResult | null>;
-  chartSource: ModelChartSourceDto<TRequest>;
+  chartSource: ModelChartSource<TRequest>;
 } {
   const resultsByInput: Record<InputIdType, TResult | null> = {
     [InputId.Input1]: null,
     [InputId.Input2]: null,
     [InputId.Input3]: null,
   };
-  const inputs: ModelChartSourceDto<TRequest>["inputs"] = {};
+  const inputs: ModelChartSource<TRequest>["inputs"] = {};
 
   for (const inputId of visibleInputIds) {
     const request = mapRequest(context, inputId);
@@ -104,7 +104,7 @@ export interface PerInputCalculationContext<
   TRequest,
   TResult,
   TChartRequest,
-  TChartSource extends ModelChartSourceDto<TChartRequest>,
+  TChartSource extends ModelChartSource<TChartRequest>,
 > {
   inputId: InputIdType;
   request: TRequest;
@@ -117,7 +117,7 @@ interface CalculatePerInputWithExtensionsOptions<
   TRequest,
   TResult,
   TChartRequest,
-  TChartSource extends ModelChartSourceDto<TChartRequest>,
+  TChartSource extends ModelChartSource<TChartRequest>,
 > {
   context: ModelCalculationContext;
   visibleInputIds: readonly InputIdType[];
@@ -135,7 +135,7 @@ export function calculatePerInputWithExtensions<
   TRequest,
   TResult,
   TChartRequest,
-  TChartSource extends ModelChartSourceDto<TChartRequest>,
+  TChartSource extends ModelChartSource<TChartRequest>,
 >({
   context,
   visibleInputIds,

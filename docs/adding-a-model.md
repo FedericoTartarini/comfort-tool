@@ -242,8 +242,9 @@ Zones generate bands; they are not stored on the runtime definition.
 Map catalog fields to the library payload with
 `createFieldRequestAdapter()` in `src/services/comfort/requestMapping.ts`.
 jsthermalcomfort short names (`tdb`, `rh`, `vr`, …) belong only at that
-boundary. Copying Heat Index may copy its request type; do not add new
-application-layer `*Dto` types.
+boundary. Copying Heat Index may copy its request type (`HeatIndexRequest`);
+do not add a `Dto` suffix on application request or chart-source types.
+Plotly-shaped types in `src/models/comfortDtos.ts` still use that suffix.
 
 ```ts
 const fieldAdapter = createFieldRequestAdapter<ExampleRequest>({

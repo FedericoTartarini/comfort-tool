@@ -1,6 +1,6 @@
 import type { TimeSeriesLineChartEngineSpec } from "../../services/comfort/charts/kinds/types";
 import type {
-  ModelChartSourceDto,
+  ModelChartSource,
   PlotlyChartResponseDto,
 } from "../../models/comfortDtos";
 import {
@@ -27,7 +27,7 @@ import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PhsLimitingCriterion,
   type PhsEnvironmentSi,
-  type PhsResponseDto,
+  type PhsResponse,
 } from "../../models/phs";
 import type { GridModelChartSpec } from "../../services/comfort/charts/gridModelCharts";
 import type { ChartRange } from "../../services/comfort/charts/types";
@@ -57,7 +57,7 @@ export const PHS_AXIS_RANGES: Record<ChartAxisQuantityId, ChartRange> = {
 };
 
 export function getPhsOutputValue(
-  result: PhsResponseDto,
+  result: PhsResponse,
   outputKey: ModelOutputKeyType,
 ): number {
   switch (outputKey) {
@@ -80,7 +80,7 @@ export function createPhsDynamicGridSpec(
   >,
   context: ChartBuildContext<NumericBand>,
 ): Omit<
-  GridModelChartSpec<PhsEnvironmentSi, PhsResponseDto>,
+  GridModelChartSpec<PhsEnvironmentSi, PhsResponse>,
   "instanceId" | "dynamicTitle"
 > {
   const fallbackOutput = outputs[0];
@@ -112,7 +112,7 @@ export function createPhsDynamicGridSpec(
 }
 
 export function buildPhsExposureHistoryChartResult(
-  resultsByInput: Partial<Record<InputIdType, PhsResponseDto | null>>,
+  resultsByInput: Partial<Record<InputIdType, PhsResponse | null>>,
   context: ChartBuildContext<NumericBand>,
 ): PlotlyChartResponseDto | null {
   const baselineResult = resultsByInput[context.baselineInputId];
@@ -185,8 +185,8 @@ export function buildPhsExposureHistoryChartResult(
 }
 
 export const phsExposureHistoryChartSpec: TimeSeriesLineChartEngineSpec<
-  PhsResponseDto,
-  ModelChartSourceDto<PhsEnvironmentSi>
+  PhsResponse,
+  ModelChartSource<PhsEnvironmentSi>
 > = {
   build: (_chartSource, resultsByInput, context) =>
     buildPhsExposureHistoryChartResult(

@@ -52,14 +52,14 @@ export const utciOutput: ModelOutput = {
   defaultBands: bandsFromThermalZones(utciZonesList),
 };
 
-export interface UtciRequestDto {
+export interface UtciRequest {
   tdb: number;
   tr: number;
   v: number;
   rh: number;
 }
 
-export interface UtciResponseDto {
+export interface UtciResponse {
   utci: number;
   stressCategory: string;
   source: CalculationSource;
@@ -69,7 +69,7 @@ export function getUtciZoneMeta(value: number): ThermalZone {
   return requireThermalZone(utciZonesList, value, UTCI_MODEL_LABEL);
 }
 
-function evaluateUtciSi(payload: UtciRequestDto): number {
+function evaluateUtciSi(payload: UtciRequest): number {
   return utci(
     payload.tdb,
     payload.tr,
@@ -81,7 +81,7 @@ function evaluateUtciSi(payload: UtciRequestDto): number {
   ).utci;
 }
 
-export function calculateUtci(payload: UtciRequestDto): UtciResponseDto {
+export function calculateUtci(payload: UtciRequest): UtciResponse {
   const value = evaluateUtciSi(payload);
   const zone = getUtciZoneMeta(value);
   if (!zone.category) {
@@ -96,12 +96,12 @@ export function calculateUtci(payload: UtciRequestDto): UtciResponseDto {
 }
 
 /** Returns null only for a model-domain point that cannot be plotted. */
-export function tryEvaluateUtciForChart(payload: UtciRequestDto): number | null {
+export function tryEvaluateUtciForChart(payload: UtciRequest): number | null {
   const value = evaluateUtciSi(payload);
   return Number.isFinite(value) ? value : null;
 }
 
-export const utciRequestAdapter = createFieldRequestAdapter<UtciRequestDto>({
+export const utciRequestAdapter = createFieldRequestAdapter<UtciRequest>({
   tdb: PhysicalQuantityId.DryBulbTemperature,
   tr: PhysicalQuantityId.MeanRadiantTemperature,
   v: PhysicalQuantityId.WindSpeed,
@@ -137,7 +137,7 @@ export const utciAxisAdapter = createRequestAxisAdapter({
 
 export function buildUtciResultRows(
   unitSystem: UnitSystemType,
-): ResultRowDefinition<UtciResponseDto>[] {
+): ResultRowDefinition<UtciResponse>[] {
   const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Utci, unitSystem);
   return [
     {

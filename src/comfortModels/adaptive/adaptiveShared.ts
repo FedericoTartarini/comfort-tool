@@ -2,7 +2,7 @@ import type {
   CalculationSource,
   ComfortStandard,
 } from "../../models/calculationMetadata";
-import type { ModelChartSourceDto } from "../../models/comfortDtos";
+import type { ModelChartSource } from "../../models/comfortDtos";
 import {
   ModelId,
   type JsThermalComfortStandard,
@@ -42,7 +42,7 @@ import {
 } from "./adaptiveCalculation";
 import { buildAdaptiveChart } from "./adaptiveCharts";
 
-export interface AdaptiveRequestDto {
+export interface AdaptiveRequest {
   tdb: number;
   tr: number;
   trm: number;
@@ -65,7 +65,7 @@ export interface AdaptiveLevelResult {
   upper: number | null;
 }
 
-export interface AdaptiveResponseDto {
+export interface AdaptiveResponse {
   tCmf: number;
   operativeTemperature: number;
   levels: AdaptiveLevelResult[];
@@ -89,7 +89,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
   boundaryChartId: string;
-  complianceProfile: ComplianceSpec<Band, AdaptiveResponseDto>;
+  complianceProfile: ComplianceSpec<Band, AdaptiveResponse>;
   resultStandard: ComfortStandard;
   operativeTemperatureStandard: JsThermalComfortStandard;
   hoverLevelIds: readonly string[];
@@ -99,12 +99,12 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   airSpeedPresetKey: InputPresetKeyType;
   colorByStatus: Readonly<Record<string, string>>;
   complianceColors: { compliant: string; nonCompliant: string };
-  evaluateApplicability: (request: AdaptiveRequestDto) => number;
+  evaluateApplicability: (request: AdaptiveRequest) => number;
 }
 
 function buildAdaptiveTableRows(
   declaration: AdaptiveModelDeclaration,
-): TableRowSpec<AdaptiveResponseDto>[] {
+): TableRowSpec<AdaptiveResponse>[] {
   const rowMeta = [
     { id: "compliance", label: "Compliance" },
     ...declaration.levels.map((level) => ({ id: level.id, label: level.label })),
@@ -122,8 +122,8 @@ export function createAdaptiveModelConfig(
   declaration: AdaptiveModelDeclaration,
 ) {
   const builder = new ComfortModelBuilder<
-    AdaptiveResponseDto,
-    ModelChartSourceDto<AdaptiveRequestDto>,
+    AdaptiveResponse,
+    ModelChartSource<AdaptiveRequest>,
     Band
   >(declaration.modelId);
 
@@ -184,8 +184,8 @@ export function createAdaptiveModelConfig(
     });
 
   const boundaryChart: ChartDeclarationInput<
-    AdaptiveResponseDto,
-    ModelChartSourceDto<AdaptiveRequestDto>
+    AdaptiveResponse,
+    ModelChartSource<AdaptiveRequest>
   > = {
     id: declaration.boundaryChartId,
     engine: ChartEngine.BoundaryRegion,

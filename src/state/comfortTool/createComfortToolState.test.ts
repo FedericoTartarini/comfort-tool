@@ -19,9 +19,9 @@ import {
   pmvAshraeAdapter,
   pmvAshraeModelConfig,
 } from "../../comfortModels/pmv/pmvAshrae";
-import type { PmvChartSourceDto, PmvResponseDto } from "../../comfortModels/pmv/pmvCalculation";
-import type { UtciResponseDto } from "../../comfortModels/utci/utci";
-import { PhsQuantityId, type PhsResponseDto } from "../../models/phs";
+import type { PmvChartSource, PmvResponse } from "../../comfortModels/pmv/pmvCalculation";
+import type { UtciResponse } from "../../comfortModels/utci/utci";
+import { PhsQuantityId, type PhsResponse } from "../../models/phs";
 import { createAnalysisState } from "./createComfortToolState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import { PhysicalQuantityId } from "../../models/physicalQuantities";
@@ -654,7 +654,7 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
 
     const phsBefore = (toolState.state.ui.calculationCacheByModel[ModelId.Phs2023]
-      .resultsByInput[InputId.Input1] as PhsResponseDto | null)?.waterLossLimitG;
+      .resultsByInput[InputId.Input1] as PhsResponse | null)?.waterLossLimitG;
 
     expect(
       toolState.actions.updateModelQuantity(
@@ -667,7 +667,7 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
 
     const phsAfter = (toolState.state.ui.calculationCacheByModel[ModelId.Phs2023]
-      .resultsByInput[InputId.Input1] as PhsResponseDto | null)?.waterLossLimitG;
+      .resultsByInput[InputId.Input1] as PhsResponse | null)?.waterLossLimitG;
     expect(phsAfter).toBeDefined();
     expect(phsAfter).not.toBe(phsBefore);
     expect(toolState.state.modelInputsByModel[ModelId.Phs2023]
@@ -1338,12 +1338,12 @@ describe("createAnalysisState", () => {
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
     const ashraeSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae]
-      .chartSource as PmvChartSourceDto;
+      .chartSource as PmvChartSource;
 
     toolState.actions.setSelectedModel(ModelId.PmvIso);
     await waitForIdle(toolState);
     const isoSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvIso]
-      .chartSource as PmvChartSourceDto;
+      .chartSource as PmvChartSource;
 
     expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
     expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status).toBe("ready");
@@ -1395,7 +1395,7 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
 
     const currentIsoChartSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvIso]
-      .chartSource as PmvChartSourceDto;
+      .chartSource as PmvChartSource;
     const currentInput = toolState.state.quantitiesByInput[InputId.Input1];
 
     expect(currentIsoChartSource).not.toBe(previousIsoChartSource);
@@ -1533,9 +1533,9 @@ describe("createAnalysisState", () => {
     const baseInputs = toolState.state.quantitiesByInput[InputId.Input1];
     const effectiveInputs = toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input1];
     const cache = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae];
-    const chartSource = cache.chartSource as PmvChartSourceDto;
+    const chartSource = cache.chartSource as PmvChartSource;
     const request = chartSource.inputs[InputId.Input1];
-    const result = cache.resultsByInput[InputId.Input1] as PmvResponseDto;
+    const result = cache.resultsByInput[InputId.Input1] as PmvResponse;
 
     expect(baseInputs[PhysicalQuantityId.DryBulbTemperature]).toBe(24);
     expect(baseInputs[PhysicalQuantityId.MeanRadiantTemperature]).toBe(24);
@@ -1631,7 +1631,7 @@ describe("createAnalysisState", () => {
 
     const rawUtci = (
       toolState.state.ui.calculationCacheByModel[ModelId.Utci]
-        .resultsByInput.input1 as UtciResponseDto | null
+        .resultsByInput.input1 as UtciResponse | null
     )?.utci;
     const chartSource = toolState.state.ui.calculationCacheByModel[ModelId.Utci].chartSource;
     const siResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
@@ -1644,7 +1644,7 @@ describe("createAnalysisState", () => {
 
     expect(rawUtci).toBe((
       toolState.state.ui.calculationCacheByModel[ModelId.Utci]
-        .resultsByInput.input1 as UtciResponseDto | null
+        .resultsByInput.input1 as UtciResponse | null
     )?.utci);
     expect(chartSource).toBe(toolState.state.ui.calculationCacheByModel[ModelId.Utci].chartSource);
     expect(siResultText).toContain("°C");

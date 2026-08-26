@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { AdaptiveResponseDto } from "../comfortModels/adaptive/adaptiveShared";
-import type { HumidexResponseDto } from "../comfortModels/humidex";
-import type { HeatIndexResponseDto } from "../comfortModels/heatIndex";
-import type { WindChillResponseDto } from "../comfortModels/windChill";
-import type { UtciResponseDto } from "../comfortModels/utci/utci";
-import type { PmvResponseDto } from "../comfortModels/pmv/pmvCalculation";
-import type { PhsResponseDto } from "../models/phs";
+import type { AdaptiveResponse } from "../comfortModels/adaptive/adaptiveShared";
+import type { HumidexResponse } from "../comfortModels/humidex";
+import type { HeatIndexResponse } from "../comfortModels/heatIndex";
+import type { WindChillResponse } from "../comfortModels/windChill";
+import type { UtciResponse } from "../comfortModels/utci/utci";
+import type { PmvResponse } from "../comfortModels/pmv/pmvCalculation";
+import type { PhsResponse } from "../models/phs";
 import { calculateHeatIndex } from "../comfortModels/heatIndex";
 import { calculateHumidex } from "../comfortModels/humidex";
 import { calculateWindChill } from "../comfortModels/windChill";
@@ -115,7 +115,7 @@ describe("golden regression — direct calculation snapshots", () => {
 
 describe("golden regression — calculate via model config", () => {
   it("Humidex matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HumidexResponseDto>(ModelId.Humidex, {
+    const result = calculatePrimaryResult<HumidexResponse>(ModelId.Humidex, {
       [PhysicalQuantityId.DryBulbTemperature]: 30,
       [PhysicalQuantityId.RelativeHumidity]: 70,
     });
@@ -124,7 +124,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("Heat Index matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HeatIndexResponseDto>(ModelId.HeatIndex, {
+    const result = calculatePrimaryResult<HeatIndexResponse>(ModelId.HeatIndex, {
       [PhysicalQuantityId.DryBulbTemperature]: 32,
       [PhysicalQuantityId.RelativeHumidity]: 60,
     });
@@ -133,7 +133,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("Wind Chill matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<WindChillResponseDto>(ModelId.WindChill, {
+    const result = calculatePrimaryResult<WindChillResponse>(ModelId.WindChill, {
       [PhysicalQuantityId.DryBulbTemperature]: -10,
       [PhysicalQuantityId.WindSpeed]: 5,
     });
@@ -141,7 +141,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("UTCI matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<UtciResponseDto>(
+    const result = calculatePrimaryResult<UtciResponse>(
       ModelId.Utci,
       getGoldenInputOverrides(ModelId.Utci),
     );
@@ -150,7 +150,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("PMV ASHRAE matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<PmvResponseDto>(
+    const result = calculatePrimaryResult<PmvResponse>(
       ModelId.PmvAshrae,
       getGoldenInputOverrides(ModelId.PmvAshrae),
     );
@@ -159,7 +159,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("PMV ISO matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<PmvResponseDto>(
+    const result = calculatePrimaryResult<PmvResponse>(
       ModelId.PmvIso,
       getGoldenInputOverrides(ModelId.PmvIso),
     );
@@ -168,7 +168,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("Adaptive ASHRAE calculates from standard fixture inputs", () => {
-    const result = calculatePrimaryResult<AdaptiveResponseDto>(
+    const result = calculatePrimaryResult<AdaptiveResponse>(
       ModelId.AdaptiveAshrae,
       getGoldenInputOverrides(ModelId.AdaptiveAshrae),
     );
@@ -178,7 +178,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("Adaptive EN calculates from standard fixture inputs", () => {
-    const result = calculatePrimaryResult<AdaptiveResponseDto>(
+    const result = calculatePrimaryResult<AdaptiveResponse>(
       ModelId.AdaptiveEn,
       getGoldenInputOverrides(ModelId.AdaptiveEn),
     );
@@ -188,7 +188,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("PHS uses model inputs for person settings via model config", () => {
-    const result = calculatePrimaryResult<PhsResponseDto>(
+    const result = calculatePrimaryResult<PhsResponse>(
       ModelId.Phs2023,
       phsBaselineInputOverrides,
       phsBaselineModelInputs,

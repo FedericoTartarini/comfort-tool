@@ -6,8 +6,8 @@ import {
   createPmvRequestAxisAdapter,
   getPmvZoneMeta,
   tryEvaluatePmvForChart,
-  type PmvChartSourceDto,
-  type PmvResponseDto,
+  type PmvChartSource,
+  type PmvResponse,
 } from "./pmvCalculation";
 import type { PmvModelDeclaration } from "./pmvShared";
 import type { InputId as InputIdType } from "../../models/inputSlots";
@@ -18,8 +18,8 @@ import {
 
 export const createDynamicViewDescriptor: PmvChartViewDescriptorFactory = (
   declaration: PmvModelDeclaration,
-  source: PmvChartSourceDto,
-  resultsByInput: Partial<Record<InputIdType, PmvResponseDto | null>>,
+  source: PmvChartSource,
+  resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>,
   context: ChartBuildContext<NumericBand>,
 ) => {
   const { adapter } = declaration;

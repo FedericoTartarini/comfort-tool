@@ -1,6 +1,6 @@
 import { heat_index } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
-import type { ModelChartSourceDto } from "../models/comfortDtos";
+import type { ModelChartSource } from "../models/comfortDtos";
 import { ModelId } from "../models/comfortModels";
 import { InputControlId } from "../models/inputControls";
 import {
@@ -56,18 +56,18 @@ const heatIndexCautionZone: ThermalZone = (() => {
   return zone;
 })();
 
-export interface HeatIndexRequestDto {
+export interface HeatIndexRequest {
   tdb: number;
   rh: number;
 }
 
-export interface HeatIndexResponseDto {
+export interface HeatIndexResponse {
   hi: number;
   category: string;
   source: CalculationSource;
 }
 
-export const heatIndexRequestAdapter = createFieldRequestAdapter<HeatIndexRequestDto>({
+export const heatIndexRequestAdapter = createFieldRequestAdapter<HeatIndexRequest>({
   tdb: PhysicalQuantityId.DryBulbTemperature,
   rh: PhysicalQuantityId.RelativeHumidity,
 });
@@ -78,7 +78,7 @@ const heatIndexOutput: ModelOutput = {
   defaultBands: bandsFromThermalZones(heatIndexZonesList),
 };
 
-export function calculateHeatIndex(payload: HeatIndexRequestDto): HeatIndexResponseDto {
+export function calculateHeatIndex(payload: HeatIndexRequest): HeatIndexResponse {
   const result = heat_index(payload.tdb, payload.rh, {
     units: UnitSystem.SI,
     round: true,
@@ -94,7 +94,7 @@ export function calculateHeatIndex(payload: HeatIndexRequestDto): HeatIndexRespo
 }
 
 const heatIndexGridSpec: Omit<
-  GridModelChartSpec<HeatIndexRequestDto, HeatIndexResponseDto>,
+  GridModelChartSpec<HeatIndexRequest, HeatIndexResponse>,
   "instanceId" | "dynamicTitle"
 > = {
   output: heatIndexOutput,
@@ -107,8 +107,8 @@ const heatIndexGridSpec: Omit<
 };
 
 export const heatIndexModelConfig = defineModel<
-  HeatIndexResponseDto,
-  ModelChartSourceDto<HeatIndexRequestDto>
+  HeatIndexResponse,
+  ModelChartSource<HeatIndexRequest>
 >({
   id: ModelId.HeatIndex,
   label: MODEL_LABEL,

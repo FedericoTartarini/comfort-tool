@@ -2,7 +2,7 @@ import {
   inputOrder,
   type InputId as InputIdType,
 } from "../../models/inputSlots";
-import type { PmvChartSourceDto, PmvRequestDto } from "./pmvCalculation";
+import type { PmvChartSource, PmvRequest } from "./pmvCalculation";
 
 export const PARAMETRIC_TDB_RANGE_SI = { min: 10, max: 40 } as const;
 export const PARAMETRIC_TDB_POINTS = 31;
@@ -14,9 +14,9 @@ export function sampleParametricDryBulbSi(): number[] {
   ));
 }
 
-export function isPmvRequest(value: unknown): value is PmvRequestDto {
+export function isPmvRequest(value: unknown): value is PmvRequest {
   if (!value || typeof value !== "object") return false;
-  const request = value as PmvRequestDto;
+  const request = value as PmvRequest;
   return (
     Number.isFinite(request.tdb)
     && Number.isFinite(request.tr)
@@ -28,27 +28,27 @@ export function isPmvRequest(value: unknown): value is PmvRequestDto {
   );
 }
 
-function asChartSource(chartSource: unknown): PmvChartSourceDto | null {
+function asChartSource(chartSource: unknown): PmvChartSource | null {
   if (!chartSource || typeof chartSource !== "object" || !("inputs" in chartSource)) {
     return null;
   }
-  return chartSource as PmvChartSourceDto;
+  return chartSource as PmvChartSource;
 }
 
 export function readPmvRequestFromChartSource(
   chartSource: unknown,
   inputId: InputIdType,
-): PmvRequestDto | null {
+): PmvRequest | null {
   const payload = asChartSource(chartSource)?.inputs[inputId];
   return isPmvRequest(payload) ? payload : null;
 }
 
 export function readPmvRequestsByInput(
   chartSource: unknown,
-): Partial<Record<InputIdType, PmvRequestDto>> {
+): Partial<Record<InputIdType, PmvRequest>> {
   const source = asChartSource(chartSource);
   if (!source) return {};
-  const requests: Partial<Record<InputIdType, PmvRequestDto>> = {};
+  const requests: Partial<Record<InputIdType, PmvRequest>> = {};
   for (const inputId of inputOrder) {
     const payload = source.inputs[inputId];
     if (isPmvRequest(payload)) {

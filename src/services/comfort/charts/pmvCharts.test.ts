@@ -16,9 +16,9 @@ import {
 import {
   calculatePmvModel,
   pmvZonesList,
-  type ComfortZoneRequestDto,
-  type PmvChartSourceDto,
-  type PmvResponseDto,
+  type ComfortZoneRequest,
+  type PmvChartSource,
+  type PmvResponse,
 } from "../../../comfortModels/pmv/pmvCalculation";
 import { createModelCalculationContext } from "../../../models/modelCalculation";
 import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../models/physicalQuantities";
@@ -39,7 +39,7 @@ import { createAnalysisState } from "../../../state/comfortTool/createComfortToo
 import { convertFieldValueFromSi } from "../../units";
 import type { PlotlyChartResponseDto, PlotTraceDto } from "../../../models/comfortDtos";
 import { buildChartPlotly } from "../../../testSupport/modelChartTestHelpers";
-const input: ComfortZoneRequestDto = {
+const input: ComfortZoneRequest = {
   tdb: 25,
   tr: 25,
   vr: 0.1,
@@ -55,11 +55,11 @@ const input: ComfortZoneRequestDto = {
 
 function calculateModel(
   declaration: PmvModelDeclaration,
-  request: ComfortZoneRequestDto = input,
+  request: ComfortZoneRequest = input,
 ): {
   config: ReturnType<typeof createPmvModelConfig>;
-  result: PmvResponseDto;
-  source: PmvChartSourceDto;
+  result: PmvResponse;
+  source: PmvChartSource;
 } {
   const config = createPmvModelConfig(declaration);
   const toolState = createAnalysisState();
@@ -95,14 +95,14 @@ function calculateModel(
 
 function createSource(
   declaration: PmvModelDeclaration,
-  request: ComfortZoneRequestDto = input,
-): PmvChartSourceDto {
+  request: ComfortZoneRequest = input,
+): PmvChartSource {
   return calculateModel(declaration, request).source;
 }
 
 function createResults(
-  result: PmvResponseDto,
-): Record<InputId, PmvResponseDto | null> {
+  result: PmvResponse,
+): Record<InputId, PmvResponse | null> {
   return {
     [InputId.Input1]: result,
     [InputId.Input2]: null,
@@ -199,7 +199,7 @@ function buildDynamic(
   yField: ChartAxisQuantityId,
   outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
   unitSystem: UnitSystemType = UnitSystem.SI,
-  request: ComfortZoneRequestDto = input,
+  request: ComfortZoneRequest = input,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
 ): PlotlyChartResponseDto {
   const { config, result, source } = calculateModel(declaration, request);

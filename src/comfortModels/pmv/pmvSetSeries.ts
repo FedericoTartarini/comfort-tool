@@ -9,7 +9,7 @@ import {
   type ParametricLineGeometry,
   type ParametricPolyline,
 } from "../../services/comfort/charts/kinds/types";
-import type { PmvRequestDto, PmvResponseDto } from "./pmvCalculation";
+import type { PmvRequest, PmvResponse } from "./pmvCalculation";
 import {
   readPmvRequestFromChartSource,
   readPmvRequestsByInput,
@@ -81,7 +81,7 @@ function asTwoNodesFields(value: unknown): TwoNodesFields | null {
 }
 
 export function calculatePmvSetOutputs(
-  request: PmvRequestDto,
+  request: PmvRequest,
 ): PmvSetOutputs | null {
   const result = asTwoNodesFields(two_nodes(
     request.tdb,
@@ -226,8 +226,8 @@ const SET_SERIES: readonly SetSeriesDefinition[] = [
 ];
 
 export function buildPmvSetGeometry(
-  baseline: PmvRequestDto,
-  compareRequests: Partial<Record<InputIdType, PmvRequestDto>> = {},
+  baseline: PmvRequest,
+  compareRequests: Partial<Record<InputIdType, PmvRequest>> = {},
 ): ParametricLineGeometry | null {
   const temperatures = sampleParametricDryBulbSi();
   const valuesBySeries = new Map<PmvSetSeriesId, Array<{ x: number; y: number }>>(
@@ -262,7 +262,7 @@ export function buildPmvSetGeometry(
 
   const comparePoints: Partial<Record<InputIdType, { x: number; y: number }>> = {};
   for (const [inputId, request] of Object.entries(compareRequests) as Array<
-    [InputIdType, PmvRequestDto]
+    [InputIdType, PmvRequest]
   >) {
     const outputs = calculatePmvSetOutputs(request);
     if (!outputs) continue;
@@ -272,7 +272,7 @@ export function buildPmvSetGeometry(
   return { polylines, comparePoints };
 }
 
-export function createPmvSetParametricSpec(): ParametricLineDataSpec<PmvResponseDto> {
+export function createPmvSetParametricSpec(): ParametricLineDataSpec<PmvResponse> {
   return {
     title: "SET outputs",
     xField: PhysicalQuantityId.DryBulbTemperature,

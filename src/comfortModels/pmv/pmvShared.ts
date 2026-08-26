@@ -56,9 +56,9 @@ import {
   calculatePmvModel,
   pmvNeutralZone,
   pmvZonesList,
-  type PmvChartSourceDto,
-  type PmvRequestDto,
-  type PmvResponseDto,
+  type PmvChartSource,
+  type PmvRequest,
+  type PmvResponse,
 } from "./pmvCalculation";
 import { createPmvDynamicFieldChartSpec, createPmvPsychrometricChartSpec } from "./pmvCharts";
 import { createPmvHeatLossParametricSpec } from "./pmvHeatLossSeries";
@@ -82,9 +82,9 @@ export interface PmvStandardAdapter {
   readonly clothingStandard: JsThermalComfortStandard;
   readonly clothingInsulationMaxSi: number;
   readonly supportsOccupantAirSpeedControl: boolean;
-  readonly calculate: (request: PmvRequestDto) => { pmv: number; ppd: number };
-  readonly checkApplicability: (request: PmvRequestDto) => readonly string[];
-  readonly getOperativeTemperature: (request: PmvRequestDto) => number;
+  readonly calculate: (request: PmvRequest) => { pmv: number; ppd: number };
+  readonly checkApplicability: (request: PmvRequest) => readonly string[];
+  readonly getOperativeTemperature: (request: PmvRequest) => number;
 }
 
 export interface PmvModelDeclaration {
@@ -99,7 +99,7 @@ export interface PmvModelDeclaration {
   readonly dynamicChartId: string;
   readonly heatLossChartId: string;
   readonly setChartId: string;
-  readonly complianceProfile: ComplianceSpec<NumericBand, PmvResponseDto>;
+  readonly complianceProfile: ComplianceSpec<NumericBand, PmvResponse>;
   readonly defaultOptions: PmvAshraeModelOptions | PmvIsoModelOptions;
   readonly parseOptions: (value: unknown) => ModelOptionsRecord | null;
 }
@@ -241,7 +241,7 @@ const PMV_PARAMETRIC_CHART_CAPABILITIES = {
 
 export function createPmvCharts(
   declaration: PmvModelDeclaration,
-): readonly ChartDeclarationInput<PmvResponseDto, PmvChartSourceDto>[] {
+): readonly ChartDeclarationInput<PmvResponse, PmvChartSource>[] {
   return [
     {
       id: declaration.psychrometricChartId,
@@ -307,8 +307,8 @@ export function createPmvCharts(
 export function createPmvModelConfig(declaration: PmvModelDeclaration) {
   const { adapter } = declaration;
   const builder = new ComfortModelBuilder<
-    PmvResponseDto,
-    PmvChartSourceDto,
+    PmvResponse,
+    PmvChartSource,
     NumericBand
   >(
     adapter.modelId,

@@ -1,6 +1,6 @@
 import { humidex } from "jsthermalcomfort";
 import { CalculationSource } from "../models/calculationMetadata";
-import type { ModelChartSourceDto } from "../models/comfortDtos";
+import type { ModelChartSource } from "../models/comfortDtos";
 import { ModelId } from "../models/comfortModels";
 import { InputControlId } from "../models/inputControls";
 import {
@@ -50,18 +50,18 @@ export const humidexZonesList = [
   new ThermalZone({ label: "Stroke Probable", min: 54, token: ZoneToken.ExtremeDanger }),
 ];
 
-export interface HumidexRequestDto {
+export interface HumidexRequest {
   tdb: number;
   rh: number;
 }
 
-export interface HumidexResponseDto {
+export interface HumidexResponse {
   humidex: number;
   humidexDiscomfort: string;
   source: CalculationSource;
 }
 
-export const humidexRequestAdapter = createFieldRequestAdapter<HumidexRequestDto>({
+export const humidexRequestAdapter = createFieldRequestAdapter<HumidexRequest>({
   tdb: PhysicalQuantityId.DryBulbTemperature,
   rh: PhysicalQuantityId.RelativeHumidity,
 });
@@ -72,7 +72,7 @@ const humidexOutput: ModelOutput = {
   defaultBands: bandsFromThermalZones(humidexZonesList),
 };
 
-export function calculateHumidex(payload: HumidexRequestDto): HumidexResponseDto {
+export function calculateHumidex(payload: HumidexRequest): HumidexResponse {
   const value = humidex(payload.tdb, payload.rh, { round: true }).humidex;
   const humidexDiscomfort = requireThermalZone(
     humidexZonesList,
@@ -88,7 +88,7 @@ export function calculateHumidex(payload: HumidexRequestDto): HumidexResponseDto
 }
 
 const humidexGridSpec: Omit<
-  GridModelChartSpec<HumidexRequestDto, HumidexResponseDto>,
+  GridModelChartSpec<HumidexRequest, HumidexResponse>,
   "instanceId" | "dynamicTitle"
 > = {
   output: humidexOutput,
@@ -101,8 +101,8 @@ const humidexGridSpec: Omit<
 };
 
 export const humidexModelConfig = defineModel<
-  HumidexResponseDto,
-  ModelChartSourceDto<HumidexRequestDto>
+  HumidexResponse,
+  ModelChartSource<HumidexRequest>
 >({
   id: ModelId.Humidex,
   label: MODEL_LABEL,

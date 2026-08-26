@@ -48,7 +48,7 @@ export interface PhsEnvironmentSi {
   clo: number;
 }
 
-export interface PhsRequestDto extends PhsEnvironmentSi {
+export interface PhsRequest extends PhsEnvironmentSi {
   durationMinutes: number;
   person: PhsPersonSettingsSi;
 }
@@ -121,7 +121,7 @@ export interface PhsSimulationResult {
   source: CalculationSource;
 }
 
-export type PhsResponseDto = PhsSimulationResult;
+export type PhsResponse = PhsSimulationResult;
 export type PhsTimeSeriesResult = PhsSimulationResult;
 
 export const defaultPhsSimulationFlags = {

@@ -1,6 +1,6 @@
 import { CalculationSource } from "../../models/calculationMetadata";
 import type {
-  ModelChartSourceDto,
+  ModelChartSource,
   PlotHoverRowDto,
   PlotlyChartResponseDto,
   PlotTraceDto,
@@ -26,8 +26,8 @@ import {
 } from "./adaptiveCalculation";
 import type {
   AdaptiveModelDeclaration,
-  AdaptiveRequestDto,
-  AdaptiveResponseDto,
+  AdaptiveRequest,
+  AdaptiveResponse,
 } from "./adaptiveShared";
 
 const FIXED_OPERATIVE_RANGE_SI = { min: 10, max: 40 };
@@ -68,7 +68,7 @@ function convertBoundaryValue(
 
 function getAdaptiveHoverMetadata(
   declaration: AdaptiveModelDeclaration,
-  result: AdaptiveResponseDto,
+  result: AdaptiveResponse,
   unitSystem: UnitSystemType,
 ): PlotHoverRowDto {
   const complianceLevel = getLevelResult(result, declaration.complianceLevelId);
@@ -112,23 +112,23 @@ function buildAdaptiveHoverTemplate(
 
 function getInputResult(
   declaration: AdaptiveModelDeclaration,
-  payload: AdaptiveRequestDto,
+  payload: AdaptiveRequest,
   inputId: InputIdType,
-  resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
-): AdaptiveResponseDto {
+  resultsByInput: Partial<Record<InputIdType, AdaptiveResponse | null>>,
+): AdaptiveResponse {
   return resultsByInput[inputId] ?? calculateAdaptive(declaration, payload);
 }
 
 function createAdaptiveInputGroup(
   declaration: AdaptiveModelDeclaration,
-  source: ModelChartSourceDto<AdaptiveRequestDto>,
-  resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
+  source: ModelChartSource<AdaptiveRequest>,
+  resultsByInput: Partial<Record<InputIdType, AdaptiveResponse | null>>,
   unitSystem: UnitSystemType,
   xAxis: ChartAxisScale,
   yAxis: ChartAxisScale,
   boundaryAxis: "x" | "y",
-): FieldChartInputGroup<AdaptiveRequestDto, AdaptiveResponseDto> {
-  const getResult = (payload: AdaptiveRequestDto, inputId: InputIdType) => (
+): FieldChartInputGroup<AdaptiveRequest, AdaptiveResponse> {
+  const getResult = (payload: AdaptiveRequest, inputId: InputIdType) => (
     getInputResult(declaration, payload, inputId, resultsByInput)
   );
   return {
@@ -160,11 +160,11 @@ function createAdaptiveInputGroup(
 
 function evaluateAdaptiveChartPoint(
   declaration: AdaptiveModelDeclaration,
-  baseline: AdaptiveRequestDto,
+  baseline: AdaptiveRequest,
   boundaryAxis: "x" | "y",
   xSi: number,
   ySi: number,
-): AdaptiveResponseDto | null {
+): AdaptiveResponse | null {
   const outdoorTemperatureSi = boundaryAxis === "x" ? xSi : ySi;
   const operativeTemperatureSi = boundaryAxis === "x" ? ySi : xSi;
   const result = calculateAdaptive(declaration, {
@@ -178,7 +178,7 @@ function evaluateAdaptiveChartPoint(
 
 function buildAdaptiveTooltipTrace(
   declaration: AdaptiveModelDeclaration,
-  baseline: AdaptiveRequestDto,
+  baseline: AdaptiveRequest,
   unitSystem: UnitSystemType,
   xAxis: ChartAxisScale,
   yAxis: ChartAxisScale,
@@ -210,8 +210,8 @@ function buildAdaptiveTooltipTrace(
 
 export function buildAdaptiveChart(
   declaration: AdaptiveModelDeclaration,
-  source: ModelChartSourceDto<AdaptiveRequestDto>,
-  resultsByInput: Partial<Record<InputIdType, AdaptiveResponseDto | null>>,
+  source: ModelChartSource<AdaptiveRequest>,
+  resultsByInput: Partial<Record<InputIdType, AdaptiveResponse | null>>,
   context: ChartBuildContext<Band>,
 ): PlotlyChartResponseDto {
   const config = context.fieldChartConfig;
