@@ -36,7 +36,7 @@
     <header class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <p class="text-eyebrow">Simulation results</p>
-        <h2 id="time-series-summary-heading" class="mt-1 text-xl font-semibold text-stone-950">
+        <h2 id="time-series-summary-heading" class="mt-1 text-lg font-semibold text-stone-950">
           Exposure summary
         </h2>
       </div>

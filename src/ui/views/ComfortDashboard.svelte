@@ -39,7 +39,7 @@
   );
 </script>
 
-<main id="overview" class="bg-stone-50 px-4 py-4 sm:px-6 lg:px-8">
+<div id="overview">
   <WorkspaceTwoColumnLayout
     asideId="inputs-panel"
     asideClass="min-w-0 scroll-mt-32"
@@ -77,4 +77,4 @@
       </Card>
     {/snippet}
   </WorkspaceTwoColumnLayout>
-</main>
+</div>

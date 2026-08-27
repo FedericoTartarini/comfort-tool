@@ -22,7 +22,7 @@
   }: Props = $props();
 </script>
 
-<div class="mx-auto grid w-full max-w-screen-2xl items-start gap-4 {gridColsClass}">
+<div class="grid w-full items-start gap-workspace {gridColsClass}">
   <aside id={asideId} class={asideClass}>
     {@render aside()}
   </aside>

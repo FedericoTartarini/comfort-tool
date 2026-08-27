@@ -31,54 +31,28 @@
       : layoutMetricSummaryItems(items)
   ));
 
-  const hasMetrics = $derived(
-    layout.overview.length > 0 || layout.groups.some(({ items: groupItems }) => groupItems.length > 0),
-  );
+  const tiles = $derived([
+    ...layout.overview,
+    ...layout.groups.flatMap(({ items: groupItems }) => groupItems),
+  ]);
 </script>
 
-{#snippet metricTile(item: MetricSummaryItemViewModel, compact = false)}
-  <Card size="none" class={`border-stone-200 shadow-sm ${compact ? "p-2.5" : "p-3"}`}>
-    <p class={`font-medium text-stone-500 ${compact ? "text-[11px] leading-4" : "text-xs"}`}>
-      {item.label}
-    </p>
-    <p class={`mt-1.5 font-semibold text-stone-950 ${compact ? "text-base" : "text-lg"}`}>
-      {item.value}
-    </p>
-    {#if item.subtext}
-      <p class={`mt-1 text-stone-500 ${compact ? "text-[11px] leading-4" : "text-xs"}`}>
-        {item.subtext}
-      </p>
-    {/if}
-  </Card>
-{/snippet}
-
-{#if hasMetrics}
-  {#if layout.overview.length > 0}
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      {#each layout.overview as item (item.id)}
-        {@render metricTile(item, false)}
-      {/each}
-    </div>
-  {/if}
-
-  {#if layout.groups.length > 0}
-    <div class={`grid gap-4 ${layout.overview.length > 0 ? "mt-4" : ""}`}>
-      {#each layout.groups as group (group.id)}
-        <div class="flex flex-col gap-2">
-          {#if group.title}
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-stone-400">
-              {group.title}
-            </h3>
+{#if tiles.length > 0}
+  <div class="grid grid-cols-5 gap-2">
+    {#each tiles as item (item.id)}
+      <Card size="none" class="min-w-0 w-full border-stone-200 p-2! shadow-sm">
+        <p class="text-[11px] font-medium leading-tight text-stone-500">
+          {item.label}
+        </p>
+        <p class="mt-0.5 text-sm font-semibold leading-tight text-stone-950">
+          {item.value}
+          {#if item.subtext}
+            <span class="ml-1 text-[11px] font-medium text-stone-500">{item.subtext}</span>
           {/if}
-          <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {#each group.items as item (item.id)}
-              {@render metricTile(item, true)}
-            {/each}
-          </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
+        </p>
+      </Card>
+    {/each}
+  </div>
 {:else}
   <p class="rounded-xl border border-stone-200 bg-white p-4 text-sm text-stone-500">
     {emptyMessage}

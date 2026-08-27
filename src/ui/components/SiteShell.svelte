@@ -62,7 +62,7 @@
       </div>
     </div>
 
-    <main class="min-w-0 flex-1 bg-stone-50">
+    <main class="min-w-0 flex-1 bg-stone-50 p-workspace">
       {@render children?.()}
     </main>
   </div>

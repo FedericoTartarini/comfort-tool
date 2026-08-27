@@ -13,15 +13,13 @@
   onMount(timeSeriesState.actions.start);
 </script>
 
-<main class="bg-stone-50 px-4 py-4 sm:px-6 lg:px-8">
-  <WorkspaceTwoColumnLayout
-    gridColsClass="xl:grid-cols-[32rem_minmax(0,1fr)]"
-  >
-    {#snippet aside()}
-      <TimeSeriesInputPanel controller={timeSeriesState} />
-    {/snippet}
-    {#snippet main()}
-      <TimeSeriesResults controller={timeSeriesState} />
-    {/snippet}
-  </WorkspaceTwoColumnLayout>
-</main>
+<WorkspaceTwoColumnLayout
+  gridColsClass="xl:grid-cols-[26rem_minmax(0,1fr)]"
+>
+  {#snippet aside()}
+    <TimeSeriesInputPanel controller={timeSeriesState} />
+  {/snippet}
+  {#snippet main()}
+    <TimeSeriesResults controller={timeSeriesState} />
+  {/snippet}
+</WorkspaceTwoColumnLayout>

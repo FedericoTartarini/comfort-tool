@@ -4,7 +4,7 @@
   import { defaultAppRoute } from "../../state/workspace/routeDefinitions";
 </script>
 
-<div class="mx-auto w-full max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+<div class="w-full">
   <Card class="max-w-3xl border-stone-200 shadow-sm">
     <ExclamationCircleOutline class="h-10 w-10 text-orange-500" />
     <p class="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
