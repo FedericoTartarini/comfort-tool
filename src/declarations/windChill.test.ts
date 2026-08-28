@@ -2,13 +2,13 @@
  * Unit tests for the standalone Wind Chill calculation service.
  */
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../catalog/quantities";
 import { calculateWindChill, windChillModelConfig } from "./windChill";
 import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
 import {
   convertFieldValueFromSi,
 } from "../engines/units";
-import { PhysicalQuantityId } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../catalog/modelCapabilities";
@@ -65,13 +65,7 @@ describe("windChill service", () => {
       const context = {
         unitSystem,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          profileKind: FieldChartProfileKind.Explore,
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.WindSpeed,
-          zOutput: windChillModelConfig.exploreOutputs[0].key,
-          bands: windChillModelConfig.exploreOutputs[0].defaultBands,
-        },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.WindSpeed, zOutput: windChillModelConfig.exploreOutputs[0].key, bands: windChillModelConfig.exploreOutputs[0].defaultBands },
       } satisfies ChartBuildContext;
 
       const dynamicChart = buildChartPlotly(windChillModelConfig,
@@ -113,10 +107,7 @@ describe("windChill service", () => {
       PhysicalQuantityId.DryBulbTemperature,
       PhysicalQuantityId.WindSpeed,
     ]);
-    expect(windChillModelConfig.defaultDynamicAxes).toEqual({
-      xAxis: PhysicalQuantityId.DryBulbTemperature,
-      yAxis: PhysicalQuantityId.WindSpeed,
-    });
+    expect(windChillModelConfig.defaultDynamicAxes).toEqual({ xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.WindSpeed });
     expect(windChillModelConfig.controls.map(({ id }) => id)).toEqual([
       ...requiredControlIdsByModel[ModelId.WindChill],
     ]);

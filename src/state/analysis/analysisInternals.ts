@@ -52,8 +52,8 @@ export interface AnalysisInternals {
   ) => ReturnType<typeof buildInputModifierControls>;
   getCurrentSelectedChartInstanceId: () => string;
   getCurrentChartInstance: () => ChartInstanceDeclaration;
-  getCurrentModelCache: () => AnalysisStateSlice["ui"]["calculationCacheByModel"][ModelIdType];
-  getCurrentOutputSettings: () => AnalysisStateSlice["ui"]["outputSettingsByModel"][ModelIdType];
+  getCurrentModelCache: () => AnalysisStateSlice["output"]["calculationCacheByModel"][ModelIdType];
+  getCurrentOutputSettings: () => AnalysisStateSlice["setting"]["outputSettingsByModel"][ModelIdType];
   getEffectiveChartBaselineInputId: () => InputIdType;
   applyBehaviorPatch: (modelId: ModelIdType, patch: BehaviorPatch) => void;
   getCurrentDynamicAxisPair: () => { xAxis: ChartAxisQuantityId; yAxis: ChartAxisQuantityId };
@@ -69,14 +69,17 @@ export function createAnalysisInternals(
     options?: { keepErrorMessage?: boolean },
   ) {
     if (!options?.keepErrorMessage) {
-      state.ui.errorMessage = "";
+      state.output.errorMessage = "";
     }
 
-    const cache = state.ui.calculationCacheByModel[modelId];
+    const cache = state.output.calculationCacheByModel[modelId];
     const nextStatus = cache.chartSource ? "stale" : "empty";
-    state.ui.calculationCacheByModel[modelId] = {
-      ...cache,
-      status: nextStatus,
+    state.output.calculationCacheByModel = {
+      ...state.output.calculationCacheByModel,
+      [modelId]: {
+        ...cache,
+        status: nextStatus,
+      },
     };
   }
 
@@ -103,40 +106,40 @@ export function createAnalysisInternals(
   }
 
   function getVisibleInputIds(): InputIdType[] {
-    if (!state.ui.compareEnabled) {
+    if (!state.setting.compareEnabled) {
       return [InputId.Input1];
     }
 
-    return normalizeCompareInputIds(state.ui.compareInputIds);
+    return normalizeCompareInputIds(state.setting.compareInputIds);
   }
 
   function getModelContext(modelId: ModelIdType): ControlBehaviorContext {
     const modelConfig = getComfortModelConfig(modelId);
-    const options = modelConfig.parseOptions(state.ui.modelOptionsByModel[modelId]);
+    const options = modelConfig.parseOptions(state.setting.modelOptionsByModel[modelId]);
     if (!options) {
       throw new Error(`Invariant violation: invalid options state for ${modelId}.`);
     }
     return createControlBehaviorContext({
-      quantitiesByInput: state.quantitiesByInput,
-      auxiliaryQuantitiesByInput: state.auxiliaryQuantitiesByInput,
-      modelInputs: state.modelInputsByModel[modelId],
+      quantitiesByInput: state.input.quantitiesByInput,
+      auxiliaryQuantitiesByInput: state.input.auxiliaryQuantitiesByInput,
+      modelInputs: state.input.modelInputsByModel[modelId],
       options,
-      unitSystem: state.ui.unitSystem,
+      unitSystem: state.setting.unitSystem,
       visibleInputIds: getVisibleInputIds(),
     });
   }
 
   function getActiveModelConfig(): RuntimeComfortModelDefinition {
-    return getComfortModelConfig(state.ui.selectedModel);
+    return getComfortModelConfig(state.setting.selectedModel);
   }
 
   function getEffectiveQuantitiesByInput(
-    modelId: ModelIdType = state.ui.selectedModel,
+    modelId: ModelIdType = state.setting.selectedModel,
   ): QuantitiesByInputState {
     return deriveEffectiveInputsByInput(
-      state.quantitiesByInput,
-      state.activeModifiersByInput,
-      state.auxiliaryQuantitiesByInput,
+      state.input.quantitiesByInput,
+      state.input.activeModifiersByInput,
+      state.input.auxiliaryQuantitiesByInput,
       getComfortModelConfig(modelId).modifiers,
     );
   }
@@ -144,8 +147,8 @@ export function createAnalysisInternals(
   function getInputModifierDraft() {
     return createInputModifierDraft(
       getActiveModelConfig(),
-      state.activeModifiersByInput,
-      state.auxiliaryQuantitiesByInput,
+      state.input.activeModifiersByInput,
+      state.input.auxiliaryQuantitiesByInput,
       getVisibleInputIds(),
     );
   }
@@ -155,17 +158,17 @@ export function createAnalysisInternals(
   ) {
     return buildInputModifierControls({
       config: getActiveModelConfig(),
-      quantitiesByInput: state.quantitiesByInput,
-      activeModifiersByInput: state.activeModifiersByInput,
-      auxiliaryQuantitiesByInput: state.auxiliaryQuantitiesByInput,
+      quantitiesByInput: state.input.quantitiesByInput,
+      activeModifiersByInput: state.input.activeModifiersByInput,
+      auxiliaryQuantitiesByInput: state.input.auxiliaryQuantitiesByInput,
       visibleInputIds: getVisibleInputIds(),
-      unitSystem: state.ui.unitSystem,
+      unitSystem: state.setting.unitSystem,
       draft,
     });
   }
 
   function getCurrentSelectedChartInstanceId() {
-    return state.ui.selectedChartInstanceByModel[state.ui.selectedModel];
+    return state.setting.selectedChartInstanceByModel[state.setting.selectedModel];
   }
 
   function getCurrentChartInstance(): ChartInstanceDeclaration {
@@ -175,24 +178,24 @@ export function createAnalysisInternals(
     );
     if (!instance) {
       throw new Error(
-        `Invariant violation: model ${state.ui.selectedModel} does not declare chart instance ${selectedInstanceId}.`,
+        `Invariant violation: model ${state.setting.selectedModel} does not declare chart instance ${selectedInstanceId}.`,
       );
     }
     return instance;
   }
 
   function getCurrentModelCache() {
-    return state.ui.calculationCacheByModel[state.ui.selectedModel];
+    return state.output.calculationCacheByModel[state.setting.selectedModel];
   }
 
   function getCurrentOutputSettings() {
-    return state.ui.outputSettingsByModel[state.ui.selectedModel];
+    return state.setting.outputSettingsByModel[state.setting.selectedModel];
   }
 
   function getEffectiveChartBaselineInputId(): InputIdType {
     return resolveChartBaselineInputId(
       getCurrentOutputSettings(),
-      state.ui.compareEnabled,
+      state.setting.compareEnabled,
       getVisibleInputIds(),
     );
   }
@@ -200,13 +203,13 @@ export function createAnalysisInternals(
   function applyBehaviorPatch(modelId: ModelIdType, patch: BehaviorPatch) {
     if (patch.optionsPatch) {
       const options = getComfortModelConfig(modelId).parseOptions({
-        ...state.ui.modelOptionsByModel[modelId],
+        ...state.setting.modelOptionsByModel[modelId],
         ...patch.optionsPatch,
       });
       if (!options) {
         throw new Error(`Invariant violation: invalid options patch for ${modelId}.`);
       }
-      state.ui.modelOptionsByModel[modelId] = options;
+      state.setting.modelOptionsByModel[modelId] = options;
     }
 
     if (patch.quantitiesPatch) {
@@ -219,19 +222,19 @@ export function createAnalysisInternals(
         for (const fieldKey of primaryInputOrder) {
           const value = inputPatch[fieldKey];
           if (value !== undefined) {
-            state.quantitiesByInput[inputId][fieldKey] = value;
+            state.input.quantitiesByInput[inputId][fieldKey] = value;
           }
         }
         syncDerivedStateForInput(
           inputId,
-          state.quantitiesByInput,
-          state.auxiliaryQuantitiesByInput,
+          state.input.quantitiesByInput,
+          state.input.auxiliaryQuantitiesByInput,
         );
       }
     }
 
     if (patch.modelInputsPatch) {
-      const modelInputs = state.modelInputsByModel[modelId];
+      const modelInputs = state.input.modelInputsByModel[modelId];
       for (const [quantityId, value] of Object.entries(patch.modelInputsPatch)) {
         if (value !== undefined) {
           modelInputs[quantityId as keyof typeof modelInputs] = value;
@@ -249,14 +252,14 @@ export function createAnalysisInternals(
   }
 
   function getPendingModelSwitch(): PendingModelSwitch | null {
-    return state.ui.pendingModelSwitch;
+    return state.setting.pendingModelSwitch;
   }
 
   function getCurrentFieldChartProfile(): FieldChartProfile {
     return buildFieldChartProfile(
       getActiveModelConfig(),
       getCurrentOutputSettings(),
-      state.ui.activeWorkspace,
+      state.setting.activeSurface,
     );
   }
 

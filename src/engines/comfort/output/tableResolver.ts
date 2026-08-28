@@ -4,18 +4,18 @@ import type {
   CompareMatrixRowViewModel,
   MetricSummaryGroupViewModel,
   MetricSummaryItemViewModel,
-  TableDeclaration,
+  TableRowSpec,
 } from "../../../catalog/tableTypes";
 import type { ResultSectionViewModel } from "../../../catalog/output/resultSections";
 import { buildResultSection } from "./resultSections";
 
 export function buildCompareMatrixTable<TResult>(
-  declaration: TableDeclaration<TResult>,
+  rows: readonly TableRowSpec<TResult>[],
   resultsByInput: Record<InputIdType, TResult | null>,
   visibleInputIds: InputIdType[],
   unitSystem: UnitSystemType,
 ): ResultSectionViewModel[] {
-  return declaration.rows.map((row) => (
+  return rows.map((row) => (
     buildResultSection(
       row.label,
       resultsByInput,
@@ -27,12 +27,12 @@ export function buildCompareMatrixTable<TResult>(
 }
 
 export function buildMetricSummaryTable<TResult>(
-  declaration: TableDeclaration<TResult>,
+  rows: readonly TableRowSpec<TResult>[],
   result: TResult,
   unitSystem: UnitSystemType,
   groupId = "default",
 ): MetricSummaryGroupViewModel {
-  const items: MetricSummaryItemViewModel[] = declaration.rows.map((row) => {
+  const items: MetricSummaryItemViewModel[] = rows.map((row) => {
     const cell = row.format(result, unitSystem);
     return {
       id: row.id,

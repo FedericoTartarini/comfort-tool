@@ -2,10 +2,10 @@
  * Unit tests for the Humidex comfort model calculation service.
  */
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../catalog/quantities";
 import { calculateHumidex, humidexModelConfig } from "./humidex";
 import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
-import { PhysicalQuantityId } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
 
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
@@ -65,13 +65,7 @@ describe("humidex service", () => {
     const fixedContext = {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
-      fieldChartConfig: {
-        profileKind: FieldChartProfileKind.Explore,
-        xField: PhysicalQuantityId.DryBulbTemperature,
-        yField: PhysicalQuantityId.RelativeHumidity,
-        zOutput: humidexModelConfig.exploreOutputs[0].key,
-        bands: humidexModelConfig.exploreOutputs[0].defaultBands,
-      },
+      fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: humidexModelConfig.exploreOutputs[0].key, bands: humidexModelConfig.exploreOutputs[0].defaultBands },
     } satisfies ChartBuildContext;
 
     const dynamicChart = buildChartPlotly(humidexModelConfig,
@@ -116,13 +110,7 @@ describe("humidex service", () => {
       {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          profileKind: FieldChartProfileKind.Explore,
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: humidexModelConfig.exploreOutputs[0].key,
-          bands,
-        },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: humidexModelConfig.exploreOutputs[0].key, bands },
       },
     );
     const fillTraces = chart?.traces.filter(

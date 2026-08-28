@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 import userEvent from "@testing-library/user-event";
 import { tick } from "svelte";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ModelId } from "../../../catalog/modelIds";
 import { ModifierId } from "../../../catalog/inputModifiers";
-import { PhysicalQuantityId } from "../../../catalog/quantities";
 import { InputId } from "../../../catalog/inputSlots";
 import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
 import InputPanelHost from "./InputPanel.test.host.svelte";
@@ -40,7 +40,7 @@ describe("InputModifiers", () => {
     await user.click(dynamicClothingToggle);
     await tick();
 
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.DynamicClothing]).toBe(false);
     expect(screen.getByRole("dialog").textContent)
       .toContain("Effective clothing insulation:");
@@ -66,9 +66,9 @@ describe("InputModifiers", () => {
     expect(dynamicClothingToggle.closest("label")?.classList.contains("grayscale"))
       .toBe(false);
 
-    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBeUndefined();
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(false);
     expect(screen.getByRole("dialog").textContent).toContain("Effective air speed:");
 
@@ -76,11 +76,11 @@ describe("InputModifiers", () => {
     await tick();
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(true);
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.DynamicClothing]).toBe(true);
     expect(screen.getByRole("button", { name: "Open input modifiers" }).textContent)
       .toContain("2 active");
@@ -111,13 +111,13 @@ describe("InputModifiers", () => {
       expect(disabledMorningToggle.closest("label")?.classList.contains("grayscale"))
         .toBe(true);
     });
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MorningClothingEstimate]).toBe(false);
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierMorningOutdoorTemperature]).toBeUndefined();
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MorningClothingEstimate]).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
@@ -129,14 +129,14 @@ describe("InputModifiers", () => {
     }));
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.DynamicClothing]).toBe(false);
   });
 
   it("uses visible compare inputs and closes a stale draft when context changes", async () => {
     const user = userEvent.setup();
     const toolState = createAnalysisState();
-    toolState.state.ui.compareEnabled = true;
+    toolState.state.setting.compareEnabled = true;
     render(InputPanelHost, { toolState });
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
@@ -151,7 +151,7 @@ describe("InputModifiers", () => {
     await tick();
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    toolState.state.ui.selectedModel = ModelId.Utci;
+    toolState.state.setting.selectedModel = ModelId.Utci;
     await tick();
     await waitFor(() => {
       expect(screen.queryByRole("region", { name: "Input modifiers" })).toBeNull();
@@ -160,7 +160,7 @@ describe("InputModifiers", () => {
 
   it("does not render an entry for models without declared modifiers", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.Utci;
+    toolState.state.setting.selectedModel = ModelId.Utci;
     render(InputPanelHost, { toolState });
 
     expect(screen.queryByRole("region", { name: "Input modifiers" })).toBeNull();

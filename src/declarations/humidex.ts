@@ -1,17 +1,12 @@
 import { humidex } from "jsthermalcomfort";
+import { PhysicalQuantityId } from "../catalog/quantities";
 import { CalculationSource } from "../catalog/calculationMetadata";
 import type { ModelChartSource } from "../catalog/chartSource";
 import { ModelId } from "../catalog/modelIds";
 import { InputControlId } from "../catalog/inputControls";
-import {
-  bandsFromThermalZones,
-  ModelOutputKey,
-  type ModelOutput,
-} from "../catalog/modelCapabilities";
+import { bandsFromThermalZones, type ModelOutput } from "../catalog/modelCapabilities";
 import { ChartType } from "../catalog/chartTypes";
-import { TableType } from "../catalog/tableTypes";
-import { WorkspaceId } from "../catalog/workspaces";
-import { PhysicalQuantityId } from "../catalog/quantities";
+import { SurfaceId } from "../catalog/surfaces";
 import { ThermalZone } from "../catalog/thermalZone";
 import { ZoneToken } from "../catalog/zoneTokens";
 import type { GridModelChartSpec } from "../engines/comfort/charts/gridModelCharts";
@@ -20,11 +15,6 @@ import {
   calculatePerInput,
   createFieldRequestAdapter,
 } from "../engines/comfort/requestMapping";
-import {
-  convertModelOutputFromSi,
-  formatDisplayValue,
-  getModelOutputDisplayMeta,
-} from "../engines/units";
 import {
   defineModel,
   parseEmptyOptions,
@@ -60,13 +50,10 @@ export interface HumidexResponse {
   source: CalculationSource;
 }
 
-export const humidexRequestAdapter = createFieldRequestAdapter<HumidexRequest>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  rh: PhysicalQuantityId.RelativeHumidity,
-});
+export const humidexRequestAdapter = createFieldRequestAdapter<HumidexRequest>({ tdb: PhysicalQuantityId.DryBulbTemperature, rh: PhysicalQuantityId.RelativeHumidity });
 
 const humidexOutput: ModelOutput = {
-  key: ModelOutputKey.Humidex,
+  key: PhysicalQuantityId.Humidex,
   label: MODEL_LABEL,
   defaultBands: bandsFromThermalZones(humidexZonesList),
 };
@@ -107,7 +94,7 @@ export const humidexModelConfig = defineModel<
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],
-  workspaceCapabilities: [WorkspaceId.Explore],
+  workspaceCapabilities: [SurfaceId.Explore],
   exploreOutputs: [humidexOutput],
   modifiers: [],
   inputFields: [
@@ -125,15 +112,6 @@ export const humidexModelConfig = defineModel<
       id: DYNAMIC_CHART_ID,
       type: ChartType.Dynamic,
       emptyMessage: "No dynamic chart yet.",
-      capabilities: {
-        allowsAxisSelection: true,
-        locksYAxis: false,
-        allowsOutputSelection: true,
-        allowsBandEditing: true,
-        allowsBaselineSelection: true,
-        showsLegend: true,
-        showsExport: true,
-      },
       spec: {
         title: `${MODEL_LABEL} Dynamic Chart`,
         axisFields: [...AXIS_FIELDS],
@@ -143,35 +121,18 @@ export const humidexModelConfig = defineModel<
   ],
   defaultChartId: DYNAMIC_CHART_ID,
   tables: {
-    analysis: {
-      type: TableType.Analysis,
-      rows: [{
-        id: "humidex",
+    results: [
+      {
+        quantity: PhysicalQuantityId.Humidex,
         label: MODEL_LABEL,
-        format: (result, unitSystem) => {
-          const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Humidex, unitSystem);
-          const value = convertModelOutputFromSi(
-            ModelOutputKey.Humidex,
-            result.humidex,
-            unitSystem,
-          );
-          const color = requireThermalZone(
-            humidexZonesList,
-            result.humidex,
-            MODEL_LABEL,
-          ).textColor;
-          const cell = {
-            text: formatDisplayValue(value, outputMeta.decimals),
-            subtext: result.humidexDiscomfort,
-            color,
-          };
-          if (outputMeta.displayUnits) {
-            cell.text = `${cell.text} ${outputMeta.displayUnits}`;
-          }
-          return cell;
-        },
-      }],
-    },
+        subtext: (result) => result.humidexDiscomfort,
+        color: (result) => requireThermalZone(
+          humidexZonesList,
+          result.humidex,
+          MODEL_LABEL,
+        ).textColor,
+      },
+    ],
   },
   calculate: (context, visibleInputIds) =>
     calculatePerInput({
@@ -180,10 +141,7 @@ export const humidexModelConfig = defineModel<
       mapRequest: humidexRequestAdapter.mapRequest,
       calculate: calculateHumidex,
     }),
-  defaultDynamicAxes: {
-    xAxis: PhysicalQuantityId.DryBulbTemperature,
-    yAxis: PhysicalQuantityId.RelativeHumidity,
-  },
+  defaultDynamicAxes: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
   defaultOptions: {},
   parseOptions: parseEmptyOptions,
 });

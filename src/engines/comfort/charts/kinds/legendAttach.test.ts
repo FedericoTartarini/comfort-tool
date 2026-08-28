@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { ModelId } from "../../../../catalog/modelIds";
 import { InputId } from "../../../../catalog/inputSlots";
 import { UnitSystem } from "../../../../catalog/units";
-import { WorkspaceId } from "../../../../catalog/workspaces";
+import { SurfaceId } from "../../../../catalog/surfaces";
 import { ChartLegendKind } from "../chartBuildResult";
 import { buildFieldChartProfile, seedModelOutputSettings } from "../../../../state/analysis/fieldChartState";
 import { getComfortModelConfig } from "../../../../state/analysis/modelConfigs";
@@ -24,7 +24,7 @@ describe("chart legend attachment", () => {
     );
     const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);
     const settings = seedModelOutputSettings(config);
-    const profile = buildFieldChartProfile(config, settings, WorkspaceId.Standard);
+    const profile = buildFieldChartProfile(config, settings, SurfaceId.Standard);
     const buildResult = config.buildChart(
       config.chartInstances.defaultInstanceId,
       chartSource,

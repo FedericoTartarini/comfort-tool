@@ -1,8 +1,8 @@
 import type { PlotTrace } from "../../engines/plotlyTypes";
-import { PhysicalQuantityId, getQuantityDisplayMeta } from "../../catalog/quantities";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import { UnitSystem } from "../../catalog/units";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
-import { ModelOutputKey, type NumericBand } from "../../catalog/modelCapabilities";
+import { type NumericBand } from "../../catalog/modelCapabilities";
 import {
   buildRelativeHumidityCurvePoints,
   humidityRatioSi,
@@ -71,10 +71,10 @@ function evaluatePmvField(
 
 function pmvIsolineTargetsForBands(
   bands: readonly NumericBand[],
-  zOutput: ModelOutputKey,
+  zOutput: PhysicalQuantityId,
 ): number[] {
   const edges = uniqueSorted(bands.flatMap((band) => [band.min, band.max]));
-  if (zOutput === ModelOutputKey.Ppd) {
+  if (zOutput === PhysicalQuantityId.Ppd) {
     return uniqueSorted(edges.flatMap((ppd) => {
       const absPmv = ppdThresholdToAbsPmv(ppd);
       if (!Number.isFinite(absPmv) || absPmv === 0) return [];
@@ -86,7 +86,7 @@ function pmvIsolineTargetsForBands(
 
 function isolineTargetsIncludingComfort(
   bands: readonly NumericBand[],
-  zOutput: ModelOutputKey,
+  zOutput: PhysicalQuantityId,
 ): number[] {
   return uniqueSorted([
     ...pmvIsolineTargetsForBands(bands, zOutput),
@@ -233,20 +233,9 @@ function buildPsychrometricOverlays(
       )
     : null;
   const bandFills = buildBandFillTraces(
-    buildPsychrometricBandFills({
-      bands: config.bands,
-      isolines,
-      outputLabel,
-      xScale: temperatureAxis,
-      yScale: humidityRatioAxis,
-      extents: PMV_PSYCHROMETRIC_VIEW,
-      layout: config.zOutput === ModelOutputKey.Ppd ? "radial" : "monotonic",
-      evaluate,
-      rhValues,
-      absFromThreshold: config.zOutput === ModelOutputKey.Ppd
+    buildPsychrometricBandFills({ bands: config.bands, isolines, outputLabel, xScale: temperatureAxis, yScale: humidityRatioAxis, extents: PMV_PSYCHROMETRIC_VIEW, layout: config.zOutput === PhysicalQuantityId.Ppd ? "radial" : "monotonic", evaluate, rhValues, absFromThreshold: config.zOutput === PhysicalQuantityId.Ppd
         ? ppdThresholdToAbsPmv
-        : undefined,
-    }),
+        : undefined }),
     opacity,
   );
   return [
@@ -307,18 +296,10 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
   const { adapter } = declaration;
   const { unitSystem } = context;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
-  const humidityRatioMeta = getQuantityDisplayMeta(
-    PhysicalQuantityId.HumidityRatio,
-    unitSystem,
-  );
   const trEqualsTdb = source.psychrometricTrEqualsTdb;
-  const config: PmvFieldChartConfig = {
-    ...context.fieldChartConfig,
-    xField: trEqualsTdb
+  const config: PmvFieldChartConfig = { ...context.fieldChartConfig, xField: trEqualsTdb
       ? PhysicalQuantityId.OperativeTemperature
-      : PhysicalQuantityId.DryBulbTemperature,
-    yField: PhysicalQuantityId.HumidityRatio,
-  };
+      : PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.HumidityRatio };
   const output = declaration.exploreOutputs.find(({ key }) => key === config.zOutput);
   const outputLabel = output?.label ?? "PMV";
   const rhValues = sampleRelativeHumidityValues(PMV_PSYCHROMETRIC_VIEW.tdbPoints);
@@ -345,7 +326,7 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
       rangeSi: PMV_PSYCHROMETRIC_VIEW.humidityRatioRangeSi,
       points: EMPTY_AXIS_POINTS,
     },
-    coordinateDecimals: humidityRatioMeta.decimals,
+    coordinateDecimals: 2,
     opacity: 0.8,
     plotBgColor: PSYCHROMETRIC_PLOT_BACKGROUND,
     evaluatePoint: (tdb, humidityRatio) => evaluatePsychrometricPoint(
@@ -358,7 +339,7 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
     getInputXSi: (payload) => payload.tdb,
     getInputYSi: (payload) => {
       const derived = source.derivedSlotsByInput?.[context.baselineInputId];
-      const humidityRatio = derived?.[PhysicalQuantityId.DerivedHumidityRatio];
+      const humidityRatio = derived?.[PhysicalQuantityId.HumidityRatio];
       if (typeof humidityRatio === "number" && Number.isFinite(humidityRatio)) {
         return humidityRatio;
       }

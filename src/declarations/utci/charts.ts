@@ -3,12 +3,7 @@ import type { ModelChartSource } from "../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
-import {
-  findNumericBandIndexForValue,
-  ModelOutputKey,
-  type ChartBuildContext,
-  type NumericBand,
-} from "../../catalog/modelCapabilities";
+import { findNumericBandIndexForValue, type ChartBuildContext, type NumericBand } from "../../catalog/modelCapabilities";
 import {
   buildFieldChart,
   createBandedGridStrategy,
@@ -29,7 +24,7 @@ import { buildTextAnnotation } from "../../engines/comfort/charts/plotlyBuilders
 import {
   getCompareInputs,
 } from "../../engines/comfort/helpers";
-import { convertModelOutputFromSi } from "../../engines/units";
+import { convertQuantityFromSi } from "../../engines/units";
 import {
   calculateUtci,
   tryEvaluateUtciForChart,
@@ -87,11 +82,7 @@ export function buildUtciStressChart(
   context: ChartBuildContext<NumericBand>,
 ): PlotlyChartSpec {
   const config = context.fieldChartConfig;
-  const fixedConfig = {
-    ...config,
-    xField: PhysicalQuantityId.DryBulbTemperature,
-    yField: PhysicalQuantityId.RelativeHumidity,
-  };
+  const fixedConfig = { ...config, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity };
   const { unitSystem } = context;
   const inputs = getCompareInputs(source.inputs);
   const markerPositions = inputs.length > 1
@@ -108,8 +99,8 @@ export function buildUtciStressChart(
     if (min >= max) return [];
     const defaultZone = utciZonesList.find(({ label }) => label === band.label);
     return [buildTextAnnotation({
-      x: convertModelOutputFromSi(
-        ModelOutputKey.Utci,
+      x: convertQuantityFromSi(
+        PhysicalQuantityId.Utci,
         (min + max) / 2,
         unitSystem,
       ),

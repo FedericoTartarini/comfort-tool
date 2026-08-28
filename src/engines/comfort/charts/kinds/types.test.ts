@@ -4,8 +4,6 @@ import { ChartType, type ChartInstanceDeclaration } from "../../../../catalog/ch
 import type { ModelDeclaration } from "../../../../state/analysis/modelConfigs/builder";
 import type {
   DynamicFieldGridSpec,
-  ModelChartDeclaration,
-  ModelChartTypeSpecMap,
   FrontendChartDeclaration,
   RegisteredChartBindSpec,
 } from "./types";
@@ -16,28 +14,19 @@ describe("chart type spec union", () => {
     expectTypeOf<ChartInstanceDeclaration["type"]>().toEqualTypeOf<ChartType>();
   });
 
-  it("keeps defineModel charts on data-only Dynamic", () => {
-    type DeclaredKind = ModelChartDeclaration["type"];
+  it("lets defineModel select any closed ChartType", () => {
+    type AuthoringChart = ModelDeclaration<unknown, unknown>["charts"][number];
+    type DeclaredKind = AuthoringChart["type"];
     type DeclaredPsychrometric = Extract<
-      ModelChartDeclaration,
+      AuthoringChart,
       { type: typeof ChartType.Psychrometric }
     >;
-    type DeclaredMapKeys = keyof ModelChartTypeSpecMap<unknown>;
     type UnknownTypeInKind = "invented-type" extends ChartType ? true : false;
-    type DynamicSpec = ModelChartDeclaration["spec"];
 
-    expectTypeOf<DeclaredKind>().toEqualTypeOf<DeclaredMapKeys>();
-    expectTypeOf<DeclaredKind>().toEqualTypeOf<typeof ChartType.Dynamic>();
-    expectTypeOf<DeclaredPsychrometric>().toBeNever();
+    expectTypeOf<AuthoringChart>().toEqualTypeOf<FrontendChartDeclaration>();
+    expectTypeOf<DeclaredKind>().toEqualTypeOf<ChartType>();
+    expectTypeOf<DeclaredPsychrometric>().not.toBeNever();
     expectTypeOf<UnknownTypeInKind>().toEqualTypeOf<false>();
-    expectTypeOf<DynamicSpec>().toHaveProperty("resolveGridSpec");
-    expectTypeOf<DynamicSpec>().not.toHaveProperty("build");
-
-    type AuthoringChart = ModelDeclaration<unknown, unknown>["charts"][number];
-    expectTypeOf<AuthoringChart>().toEqualTypeOf<ModelChartDeclaration>();
-    expectTypeOf<
-      Extract<AuthoringChart, { type: typeof ChartType.Psychrometric }>
-    >().toBeNever();
   });
 
   it("rejects mixed type/spec pairing on model declarations", () => {
@@ -54,11 +43,11 @@ describe("chart type spec union", () => {
       spec: { title: string; getOutputValue: (result: unknown) => number };
     };
 
-    expectTypeOf<UtciWithGridSpec>().not.toMatchTypeOf<ModelChartDeclaration>();
-    expectTypeOf<DynamicWithUtciSpec>().not.toMatchTypeOf<ModelChartDeclaration>();
+    expectTypeOf<UtciWithGridSpec>().not.toMatchTypeOf<FrontendChartDeclaration>();
+    expectTypeOf<DynamicWithUtciSpec>().not.toMatchTypeOf<FrontendChartDeclaration>();
   });
 
-  it("keeps Psychrometric Plotly builders on the frontend-internal union only", () => {
+  it("keeps Psychrometric Plotly builders on the ChartType spec union", () => {
     type PsychrometricChart = Extract<
       FrontendChartDeclaration,
       { type: typeof ChartType.Psychrometric }

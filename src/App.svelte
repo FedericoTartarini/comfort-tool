@@ -18,7 +18,7 @@
     getAppRouteByPath,
     standardRouteDefinitions,
   } from "./state/workspace/routeDefinitions";
-  import { WorkspaceId } from "./catalog/workspaces";
+  import { SurfaceId } from "./catalog/surfaces";
   import { createTimeSeriesState } from "./state/timeSeries/createTimeSeriesState.svelte";
 
   const toolState = createAnalysisState();
@@ -37,10 +37,10 @@
   onDestroy(timeSeriesState.actions.dispose);
 
   const exploreRoute = appRouteDefinitions.find(
-    (definition) => definition.workspace === WorkspaceId.Explore,
+    (definition) => definition.workspace === SurfaceId.Explore,
   )!;
   const timeSeriesRoute = appRouteDefinitions.find(
-    (definition) => definition.workspace === WorkspaceId.TimeSeries,
+    (definition) => definition.workspace === SurfaceId.TimeSeries,
   )!;
   const currentRouteDefinition = $derived(getAppRouteByPath(route.pathname));
   const activePath = $derived(currentRouteDefinition?.path ?? "");

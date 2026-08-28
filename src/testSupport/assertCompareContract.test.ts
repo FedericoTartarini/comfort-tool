@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../catalog/quantities";
 
 import { ModelId } from "../catalog/modelIds";
 import { InputId } from "../catalog/inputSlots";
-import { PhysicalQuantityId } from "../catalog/quantities";
 import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
 import { comfortModelOrder } from "../state/analysis/modelConfigs";
 import {
@@ -29,26 +29,18 @@ describe("assertCompareContract", () => {
     }, 20_000);
   }
 
-  it("does not skip a third input that produced no result", async () => {
-    const controller = createAnalysisState();
+  it("does not skip a third input that produced no result", async () => { const controller = createAnalysisState();
     await assertCompareContract(ModelId.PmvAshrae, controller);
     expect(controller.selectors.getVisibleInputIds()).toEqual([
-      InputId.Input1,
-      InputId.Input2,
-      InputId.Input3,
-    ]);
+      InputId.Input1, InputId.Input2, InputId.Input3, ]);
     expect(
-      controller.state.ui.calculationCacheByModel[ModelId.PmvAshrae]
-        .resultsByInput[InputId.Input3],
-    ).not.toBeNull();
+      controller.state.output.calculationCacheByModel[ModelId.PmvAshrae]
+        .resultsByInput[InputId.Input3], ).not.toBeNull();
     expect(
-      controller.state.quantitiesByInput[InputId.Input3][
+      controller.state.input.quantitiesByInput[InputId.Input3][
         PhysicalQuantityId.DryBulbTemperature
-      ],
-    ).not.toBe(
-      controller.state.quantitiesByInput[InputId.Input1][
+      ], ).not.toBe(
+      controller.state.input.quantitiesByInput[InputId.Input1][
         PhysicalQuantityId.DryBulbTemperature
-      ],
-    );
-  });
+      ], ); });
 });

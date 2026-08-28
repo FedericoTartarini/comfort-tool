@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-
 import { PhysicalQuantityId } from "../../../catalog/quantities";
+
 import { UnitSystem } from "../../../catalog/units";
 import { buildAxisValues, createFieldAxisScale } from "./axis";
 

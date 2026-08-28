@@ -5,6 +5,7 @@
   import { PlusOutline, RefreshOutline } from "flowbite-svelte-icons";
 
   import { UnitSystem } from "../../../catalog/units";
+  import { formatDisplayValue } from "../../../engines/units";
   import type { TimeSeriesModelId } from "../../../state/timeSeries/modelConfigs";
   import type { TimeSeriesController } from "../../../state/timeSeries/types";
   import TimeSeriesSegmentEditor from "./TimeSeriesSegmentEditor.svelte";
@@ -53,7 +54,7 @@
       <Select
         id="time-series-model"
         items={[...modelItems]}
-        value={controller.state.selectedModel}
+        value={controller.state.setting.selectedModel}
         size="sm"
         class="mt-1.5"
         aria-label="Select time-series model"
@@ -66,15 +67,15 @@
     <fieldset>
       <legend class="text-eyebrow">Units</legend>
       <div class="mt-1.5 flex h-[38px] items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-3">
-        <span class={controller.state.unitSystem === UnitSystem.SI ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>SI</span>
+        <span class={controller.state.setting.unitSystem === UnitSystem.SI ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>SI</span>
         <Toggle
-          checked={controller.state.unitSystem === UnitSystem.IP}
+          checked={controller.state.setting.unitSystem === UnitSystem.IP}
           onchange={controller.actions.toggleUnitSystem}
           aria-label="Use IP units for time-series"
           color="teal"
           size="small"
         />
-        <span class={controller.state.unitSystem === UnitSystem.IP ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>IP</span>
+        <span class={controller.state.setting.unitSystem === UnitSystem.IP ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>IP</span>
       </div>
     </fieldset>
   </div>
@@ -86,7 +87,7 @@
           Scenario segments
         </h2>
         <p class="mt-1 text-xs text-stone-500">
-          {totalDurationMinutes} minutes ({totalDurationHours.toFixed(2)} hours)
+          {totalDurationMinutes} minutes ({formatDisplayValue(totalDurationHours)} hours)
         </p>
       </div>
       <div class="flex gap-2">

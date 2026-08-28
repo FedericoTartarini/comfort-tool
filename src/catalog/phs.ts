@@ -1,4 +1,6 @@
 import type { CalculationSource } from "./calculationMetadata";
+import { PhysicalQuantityId } from "./quantities";
+
 export const PHS_STANDARD_VERSION = "7933-2023";
 export const PHS_COMPLIANCE_HORIZON_MINUTES = 480;
 export const PHS_RECTAL_TEMPERATURE_LIMIT_C = 38;
@@ -19,14 +21,9 @@ export const PhsSegmentPreset = {
 export type PhsSegmentPreset =
   (typeof PhsSegmentPreset)[keyof typeof PhsSegmentPreset];
 
-export const PhsQuantityId = {
-  BodyWeight: "phs.bodyWeight",
-  Height: "phs.height",
-} as const;
-
 export const phsPersonQuantityIds = [
-  PhsQuantityId.BodyWeight,
-  PhsQuantityId.Height,
+  PhysicalQuantityId.BodyWeight,
+  PhysicalQuantityId.Height,
 ] as const;
 
 export type PhsPersonQuantityId = (typeof phsPersonQuantityIds)[number];
@@ -130,11 +127,7 @@ export const defaultPhsSimulationFlags = {
   drinkingAllowed: true,
 } as const;
 
-export const defaultPhsPersonSettings: PhsPersonSettingsSi = {
-  [PhsQuantityId.BodyWeight]: 75,
-  [PhsQuantityId.Height]: 1.8,
-  ...defaultPhsSimulationFlags,
-};
+export const defaultPhsPersonSettings: PhsPersonSettingsSi = { [PhysicalQuantityId.BodyWeight]: 75, [PhysicalQuantityId.Height]: 1.8, ...defaultPhsSimulationFlags };
 
 export const phsReferenceEnvironment: PhsEnvironmentSi = {
   tdb: 35,

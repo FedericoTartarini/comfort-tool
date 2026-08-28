@@ -34,7 +34,7 @@ describe("input control ownership", () => {
     expect(getControl(toolState, InputControlId.Temperature).menu?.title)
       .toBe("Temperature input");
 
-    toolState.state.ui.selectedModel = ModelId.WindChill;
+    toolState.state.setting.selectedModel = ModelId.WindChill;
     expect(getControl(toolState, InputControlId.Temperature).menu).toBeNull();
     expect(getControl(toolState, InputControlId.Temperature).label)
       .toBe("Air temperature");
@@ -42,7 +42,7 @@ describe("input control ownership", () => {
 
   it("keeps Air and Operative edits reversible through the model option handler", () => {
     const toolState = createAnalysisState();
-    const input = toolState.state.quantitiesByInput[InputId.Input1];
+    const input = toolState.state.input.quantitiesByInput[InputId.Input1];
     input[PhysicalQuantityId.DryBulbTemperature] = 26;
     input[PhysicalQuantityId.MeanRadiantTemperature] = 22;
 
@@ -119,7 +119,7 @@ describe("input control ownership", () => {
     expectedRh,
   }) => {
     const toolState = createAnalysisState();
-    const input = toolState.state.quantitiesByInput[InputId.Input1];
+    const input = toolState.state.input.quantitiesByInput[InputId.Input1];
     input[PhysicalQuantityId.DryBulbTemperature] = 26;
 
     toolState.actions.setModelOption(
@@ -144,8 +144,8 @@ describe("input control ownership", () => {
     ModelId.AdaptiveEn,
   ])("does not route %s temperature changes through PMV humidity behavior", (modelId) => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = modelId;
-    const input = toolState.state.quantitiesByInput[InputId.Input1];
+    toolState.state.setting.selectedModel = modelId;
+    const input = toolState.state.input.quantitiesByInput[InputId.Input1];
     input[PhysicalQuantityId.RelativeHumidity] = 63;
 
     toolState.actions.setModelOption(
@@ -162,14 +162,14 @@ describe("input control ownership", () => {
       "invalid-mode",
     )).toThrow(/invalid option/i);
 
-    delete toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae][
+    delete toolState.state.setting.modelOptionsByModel[ModelId.PmvAshrae][
       OptionKey.HumidityInputMode
     ];
     expect(() => toolState.selectors.getInputControls())
       .toThrow(/invalid options state/i);
 
     const switchingToolState = createAnalysisState();
-    switchingToolState.state.ui.modelOptionsByModel[ModelId.WindChill][
+    switchingToolState.state.setting.modelOptionsByModel[ModelId.WindChill][
       OptionKey.TemperatureMode
     ] = TemperatureMode.Air;
     expect(() => switchingToolState.actions.setSelectedModel(ModelId.WindChill))

@@ -3,18 +3,24 @@ import {
   inputDefaultsById,
   type InputId as InputIdType,
 } from "../../catalog/inputSlots";
-import { WorkspaceId } from "../../catalog/workspaces";
-import { createDefaultPrimaryInputState } from "../../catalog/quantities";
-import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
+import { SurfaceId } from "../../catalog/surfaces";
+import { ModelId } from "../../catalog/modelIds";
+import { UnitSystem } from "../../catalog/units";
+import { createDefaultExtraInputs, createDefaultPrimaryInputState } from "../../catalog/quantities";
+import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig } from "./modelConfigs";
 import {
   seedModelOutputSettings,
 } from "./fieldChartState";
+import { createActiveModifiersByInput } from "./modifierState";
 import {
   createAuxiliaryQuantitiesByInput,
-  createModelInputsByModel,
+  type ModelInputsByModelState,
   type QuantitiesByInputState,
 } from "../../engines/comfort/quantityStateRouting";
 import type {
+  AnalysisInputState,
+  AnalysisOutputState,
+  AnalysisSettingState,
   OutputSettingsByModelState,
   InputState,
   ModelCalculationCache,
@@ -38,7 +44,20 @@ export function createQuantitiesByInput(): QuantitiesByInputState {
   };
 }
 
-export { createAuxiliaryQuantitiesByInput, createModelInputsByModel };
+export function createDefaultModelInputsForModel(
+  modelId: (typeof comfortModelOrder)[number],
+) {
+  return createDefaultExtraInputs(getComfortModelConfig(modelId).extraQuantities);
+}
+
+export function createModelInputsByModel(): ModelInputsByModelState {
+  return comfortModelOrder.reduce((accumulator, modelId) => {
+    accumulator[modelId] = createDefaultModelInputsForModel(modelId);
+    return accumulator;
+  }, {} as ModelInputsByModelState);
+}
+
+export { createAuxiliaryQuantitiesByInput };
 
 export function createDefaultCompareInputIds(): InputIdType[] {
   return [InputId.Input1, InputId.Input2];
@@ -93,4 +112,36 @@ export function createCalculationCacheByModel(): ModelCalculationCacheByModelSta
   }, {} as ModelCalculationCacheByModelState);
 }
 
-export const defaultActiveWorkspace = WorkspaceId.Standard;
+export const defaultActiveSurface = SurfaceId.Standard;
+
+export function createAnalysisInputState(): AnalysisInputState {
+  return {
+    quantitiesByInput: createQuantitiesByInput(),
+    auxiliaryQuantitiesByInput: createAuxiliaryQuantitiesByInput(),
+    modelInputsByModel: createModelInputsByModel(),
+    activeModifiersByInput: createActiveModifiersByInput(),
+  };
+}
+
+export function createAnalysisSettingState(): AnalysisSettingState {
+  return {
+    selectedModel: ModelId.PmvAshrae,
+    selectedChartInstanceByModel: createSelectedChartInstanceByModel(),
+    modelOptionsByModel: createModelOptionsByModel(),
+    compareEnabled: false,
+    compareInputIds: createDefaultCompareInputIds(),
+    activeInputId: InputId.Input1,
+    unitSystem: UnitSystem.SI,
+    activeSurface: defaultActiveSurface,
+    outputSettingsByModel: createOutputSettingsByModel(),
+    pendingModelSwitch: null,
+  };
+}
+
+export function createAnalysisOutputState(): AnalysisOutputState {
+  return {
+    calculationCacheByModel: createCalculationCacheByModel(),
+    isLoading: false,
+    errorMessage: "",
+  };
+}

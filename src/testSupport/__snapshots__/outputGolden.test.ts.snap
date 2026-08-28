@@ -154,7 +154,7 @@ exports[`output golden — table snapshots > heat-index produces stable table ou
           {
             "color": "#475569",
             "subtext": "Safe",
-            "text": "26.0 °C",
+            "text": "26 °C",
           },
         ],
         "title": "Heat Index",
@@ -267,7 +267,7 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "8.00 h",
+            "text": "8 h",
           },
         ],
         "group": "Maximum allowable exposure time",
@@ -276,7 +276,7 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "8.00 h",
+            "text": "8 h",
           },
         ],
         "group": "Maximum allowable exposure time",
@@ -286,7 +286,7 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
         "cells": [
           {
             "subtext": "No limit reached before 8 h",
-            "text": "8.00 h",
+            "text": "8 h",
           },
         ],
         "group": "Maximum allowable exposure time",
@@ -295,7 +295,7 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "37.1 °C",
+            "text": "37.05 °C",
           },
         ],
         "group": "End-of-exposure state",
@@ -304,7 +304,7 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
       {
         "cells": [
           {
-            "text": "0.30 kg",
+            "text": "0.3 kg",
           },
         ],
         "group": "End-of-exposure state",
@@ -549,7 +549,7 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       {
         "cells": [
           {
-            "text": "0.00 °C",
+            "text": "0 °C",
           },
         ],
         "title": "Cooling effect",
@@ -557,7 +557,7 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       {
         "cells": [
           {
-            "text": "0.10 m/s",
+            "text": "0.1 m/s",
           },
         ],
         "title": "Relative air speed",
@@ -565,7 +565,7 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       {
         "cells": [
           {
-            "text": "0.50 clo",
+            "text": "0.5 clo",
           },
         ],
         "title": "Dynamic clothing",
@@ -809,7 +809,7 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       {
         "cells": [
           {
-            "text": "0.00 °C",
+            "text": "0 °C",
           },
         ],
         "title": "Cooling effect",
@@ -817,7 +817,7 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       {
         "cells": [
           {
-            "text": "0.10 m/s",
+            "text": "0.1 m/s",
           },
         ],
         "title": "Relative air speed",
@@ -825,7 +825,7 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       {
         "cells": [
           {
-            "text": "0.50 clo",
+            "text": "0.5 clo",
           },
         ],
         "title": "Dynamic clothing",
@@ -920,7 +920,7 @@ exports[`output golden — table snapshots > wind-chill produces stable table ou
           {
             "color": "#0369a1",
             "subtext": "Safe",
-            "text": "973 W/m²",
+            "text": "972.7 W/m²",
           },
         ],
         "title": "Wind Chill Index",
@@ -929,7 +929,7 @@ exports[`output golden — table snapshots > wind-chill produces stable table ou
         "cells": [
           {
             "color": "#0369a1",
-            "text": "-10.0 °C",
+            "text": "-10 °C",
           },
         ],
         "title": "Wind Chill Temperature",

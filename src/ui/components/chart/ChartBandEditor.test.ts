@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ModelOutputKey,
-  type NumericBand,
-} from "../../../catalog/modelCapabilities";
+import { type NumericBand } from "../../../catalog/modelCapabilities";
 import { UnitSystem } from "../../../catalog/units";
 import ChartBandEditor from "./ChartBandEditor.svelte";
 
@@ -31,7 +29,7 @@ describe("ChartBandEditor", () => {
     const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
-      outputKey: ModelOutputKey.Utci,
+      outputKey: PhysicalQuantityId.Utci,
       bands,
       defaultBands: bands,
       unitSystem: UnitSystem.IP,
@@ -71,10 +69,10 @@ describe("ChartBandEditor", () => {
   });
 
   it.each([
-    [ModelOutputKey.Utci, 12.3456, 9.8765],
-    [ModelOutputKey.HeatIndex, 26.1234, 41.2345],
-    [ModelOutputKey.WindChill, 1600, 1400],
-    [ModelOutputKey.OperativeTemperature, 23.4567, 18.7654],
+    [PhysicalQuantityId.Utci, 12.3456, 9.8765],
+    [PhysicalQuantityId.HeatIndex, 26.1234, 41.2345],
+    [PhysicalQuantityId.WindChill, 1600, 1400],
+    [PhysicalQuantityId.OperativeTemperature, 23.4567, 18.7654],
   ] as const)(
     "preserves exact %s SI edges for unchanged and reset IP drafts",
     async (outputKey, workingBoundarySi, defaultBoundarySi) => {
@@ -121,7 +119,7 @@ describe("ChartBandEditor", () => {
 
     render(ChartBandEditor, {
       idPrefix: "test-unsorted",
-      outputKey: ModelOutputKey.Utci,
+      outputKey: PhysicalQuantityId.Utci,
       bands: unsortedBands,
       defaultBands: unsortedBands,
       unitSystem: UnitSystem.IP,
@@ -143,7 +141,7 @@ describe("ChartBandEditor", () => {
     const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
-      outputKey: ModelOutputKey.Pmv,
+      outputKey: PhysicalQuantityId.Pmv,
       bands,
       defaultBands: bands,
       unitSystem: UnitSystem.SI,
@@ -183,7 +181,7 @@ describe("ChartBandEditor", () => {
     const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
-      outputKey: ModelOutputKey.Pmv,
+      outputKey: PhysicalQuantityId.Pmv,
       bands,
       defaultBands: bands,
       unitSystem: UnitSystem.SI,

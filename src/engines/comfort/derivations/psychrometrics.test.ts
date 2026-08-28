@@ -1,7 +1,7 @@
 import { psy_ta_rh } from "jsthermalcomfort";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 import { describe, expect, it } from "vitest";
 
-import { PhysicalQuantityId } from "../../../catalog/quantities";
 import {
   calculateRelativeHumidityFromHumidityRatio,
   derivePsychrometricSlots,
@@ -19,24 +19,12 @@ describe("psychrometric derivations", () => {
   });
 
   it("keeps derivePsychrometricSlots aligned with psy_ta_rh for RH mode", () => {
-    const primary = {
-      [PhysicalQuantityId.DryBulbTemperature]: 25,
-      [PhysicalQuantityId.RelativeHumidity]: 50,
-    } as const;
+    const primary = { [PhysicalQuantityId.DryBulbTemperature]: 25, [PhysicalQuantityId.RelativeHumidity]: 50 } as const;
     const psychrometric = psy_ta_rh(25, 50);
-    const derived = derivePsychrometricSlots({
-      ...primary,
-      [PhysicalQuantityId.MeanRadiantTemperature]: 24,
-      [PhysicalQuantityId.RelativeAirSpeed]: 0.1,
-      [PhysicalQuantityId.WindSpeed]: 1,
-      [PhysicalQuantityId.MetabolicRate]: 1,
-      [PhysicalQuantityId.ClothingInsulation]: 0.5,
-      [PhysicalQuantityId.ExternalWork]: 0,
-      [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20,
-    });
+    const derived = derivePsychrometricSlots({ ...primary, [PhysicalQuantityId.MeanRadiantTemperature]: 24, [PhysicalQuantityId.RelativeAirSpeed]: 0.1, [PhysicalQuantityId.WindSpeed]: 1, [PhysicalQuantityId.MetabolicRate]: 1, [PhysicalQuantityId.ClothingInsulation]: 0.5, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20 });
 
     expect(derived[PhysicalQuantityId.DewPoint]).toBeCloseTo(psychrometric.t_dp, 4);
-    expect(derived[PhysicalQuantityId.DerivedHumidityRatio]).toBeCloseTo(psychrometric.hr, 6);
+    expect(derived[PhysicalQuantityId.HumidityRatio]).toBeCloseTo(psychrometric.hr, 6);
     expect(derived[PhysicalQuantityId.WetBulb]).toBeCloseTo(psychrometric.t_wb, 4);
     expect(derived[PhysicalQuantityId.VaporPressure]).toBeCloseTo(psychrometric.p_vap, 2);
   });

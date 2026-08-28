@@ -17,6 +17,7 @@ import {
   convertQuantityFromSi,
   formatDisplayValue,
   getModifierFieldDisplayMeta,
+  roundToDisplay,
 } from "../../engines/units";
 import type { RuntimeComfortModelDefinition } from "./modelConfigs/definition";
 import {
@@ -321,7 +322,6 @@ export function buildInputModifierControls({
               ? ""
               : formatDisplayValue(
                   convertModifierFieldValueFromSi(quantityId, valueSi, unitSystem),
-                  displayMeta.decimals,
                 );
             return values;
           }, {} as Record<InputIdType, string>),
@@ -339,7 +339,7 @@ export function buildInputModifierControls({
               effectiveInputs[inputId][fieldKey],
               unitSystem,
             );
-            values[inputId] = formatDisplayValue(displayValue, meta.decimals);
+            values[inputId] = formatDisplayValue(displayValue);
             return values;
           }, {} as Record<InputIdType, string>),
         };
@@ -368,7 +368,7 @@ export function parseModifierInputTransition(
     return { accepted: true, valueSi: undefined, disableModifier: wasActive };
   }
 
-  const displayValue = Number(rawValue);
+  const displayValue = roundToDisplay(Number(rawValue));
   if (!Number.isFinite(displayValue)) {
     return { accepted: false, disableModifier: false };
   }

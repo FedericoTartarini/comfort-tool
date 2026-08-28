@@ -1,18 +1,13 @@
 /**
- * Canonical comfort-tool state types.
- * `quantitiesByInput` stores base primary SI values, auxiliary slot quantities stay SI,
- * and `ui` stores selections, chart state, and calculation lifecycle flags.
+ * Canonical point-session state types.
+ * `input` stores base primary SI, auxiliary slots, extras, and modifiers.
+ * `setting` stores model, chart, Compare, unit system, surface, and axes.
+ * `output` stores calculation cache and loading/error.
  */
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type { ChartPayload } from "../../charts/types";
-import type {
-  PrimaryInputState,
-  DerivedSlotQuantityState,
-  ChartAxisQuantityId,
-  AuxiliaryInputState,
-  PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../catalog/quantities";
+import type { PrimaryInputState, DerivedSlotQuantityState, ChartAxisQuantityId, AuxiliaryInputState, PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
 import type { InputControlKey as InputControlKeyType, InputControlViewModel } from "../../catalog/inputControls";
 import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../catalog/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
@@ -20,16 +15,11 @@ import type {
   ModifierId as ModifierIdType,
   ModifierInputValues,
 } from "../../catalog/inputModifiers";
-import type {
-  ComplianceFeedback,
-  ModelOutput,
-  ModelOutputKey,
-  NumericBand,
-} from "../../catalog/modelCapabilities";
+import type { ComplianceFeedback, ModelOutput, NumericBand } from "../../catalog/modelCapabilities";
 import type { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import type { ChartInstanceDeclaration } from "../../catalog/chartTypes";
 import type { FieldChartProfile } from "../../catalog/output/fieldChartProfile";
-import type { WorkspaceId as WorkspaceIdType } from "../../catalog/workspaces";
+import type { SurfaceId as SurfaceIdType } from "../../catalog/surfaces";
 import type { ShareStateSnapshot } from "./shareState";
 import type {
   AuxiliaryQuantitiesByInputState,
@@ -95,7 +85,7 @@ export interface ModelOutputSettings {
   xAxis: ChartAxisQuantityId;
   yAxis: ChartAxisQuantityId;
   baselineInputId: InputIdType;
-  exploreOutput: ModelOutputKey | null;
+  exploreOutput: PhysicalQuantityIdType | null;
   exploreBands: NumericBand[] | null;
 }
 
@@ -125,7 +115,7 @@ export interface ExploreControls {
   outputs: readonly ModelOutput[];
   defaultBands: readonly NumericBand[];
   unitSystem: UnitSystemType;
-  onSelectOutput: (outputKey: ModelOutputKey) => void;
+  onSelectOutput: (outputKey: PhysicalQuantityIdType) => void;
   onApplyBands: (bands: readonly NumericBand[]) => boolean;
 }
 
@@ -144,7 +134,6 @@ export interface ModifierFieldControlViewModel {
   label: string;
   displayUnits: string;
   step: number;
-  decimals: number;
   minValue?: number;
   maxValue?: number;
   displayValuesByInput: Partial<Record<InputIdType, string>>;
@@ -238,7 +227,14 @@ export interface InputPanelViewModel {
   modifiers: InputModifiersViewModel | null;
 }
 
-export type UiState = {
+export type AnalysisInputState = {
+  quantitiesByInput: QuantitiesByInputState;
+  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
+  modelInputsByModel: ModelInputsByModelState;
+  activeModifiersByInput: ActiveModifiersByInputState;
+};
+
+export type AnalysisSettingState = {
   selectedModel: ModelIdType;
   selectedChartInstanceByModel: SelectedChartInstanceByModelState;
   modelOptionsByModel: ModelOptionsByModelState;
@@ -246,20 +242,21 @@ export type UiState = {
   compareInputIds: InputIdType[];
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
-  activeWorkspace: WorkspaceIdType;
+  activeSurface: SurfaceIdType;
   outputSettingsByModel: OutputSettingsByModelState;
-  isLoading: boolean;
-  errorMessage: string;
-  calculationCacheByModel: ModelCalculationCacheByModelState;
   pendingModelSwitch: PendingModelSwitch | null;
 };
 
+export type AnalysisOutputState = {
+  calculationCacheByModel: ModelCalculationCacheByModelState;
+  isLoading: boolean;
+  errorMessage: string;
+};
+
 export type AnalysisStateSlice = {
-  quantitiesByInput: QuantitiesByInputState;
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
-  modelInputsByModel: ModelInputsByModelState;
-  activeModifiersByInput: ActiveModifiersByInputState;
-  ui: UiState;
+  input: AnalysisInputState;
+  setting: AnalysisSettingState;
+  output: AnalysisOutputState;
 };
 
 export type AnalysisActions = {
@@ -273,10 +270,10 @@ export type AnalysisActions = {
   setActiveInputId: (nextInputId: InputIdType) => void;
   toggleCompareInputVisibility: (inputId: InputIdType) => void;
   toggleUnitSystem: () => void;
-  setActiveWorkspace: (workspace: WorkspaceIdType) => void;
+  setActiveSurface: (workspace: SurfaceIdType) => void;
   setDynamicXAxis: (fieldKey: ChartAxisQuantityId) => void;
   setDynamicYAxis: (fieldKey: ChartAxisQuantityId) => void;
-  setExploreOutput: (outputKey: ModelOutputKey) => void;
+  setExploreOutput: (outputKey: PhysicalQuantityIdType) => void;
   setExploreBands: (bands: readonly NumericBand[]) => boolean;
   setChartBaselineInputId: (inputId: InputIdType) => void;
   exportShareSnapshot: () => ShareStateSnapshot;

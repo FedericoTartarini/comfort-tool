@@ -4,9 +4,9 @@ import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelC
 import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
 import {
-  supportsExploreWorkspace,
-  supportsStandardWorkspace,
-} from "../catalog/workspaces";
+  supportsExploreSurface,
+  supportsStandardSurface,
+} from "../catalog/surfaces";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,
@@ -23,7 +23,7 @@ describe("output registry coverage", () => {
       expect(config.chartInstances.entries.map(({ instanceId }) => instanceId)).toEqual(
         [...new Set(config.chartInstances.entries.map(({ instanceId }) => instanceId))],
       );
-      if (supportsExploreWorkspace(config.workspaceCapabilities)) {
+      if (supportsExploreSurface(config.workspaceCapabilities)) {
         expect(config.exploreOutputs.length).toBeGreaterThan(0);
       }
     });
@@ -45,14 +45,14 @@ describe("output registry coverage", () => {
     });
 
     it(`${modelId} compliance models declare standard IDs`, () => {
-      if (supportsStandardWorkspace(config.workspaceCapabilities)) {
+      if (supportsStandardSurface(config.workspaceCapabilities)) {
         expect(config.standardIds.length).toBeGreaterThan(0);
         expect(config.complianceProfile).toBeDefined();
       }
     });
 
     it(`${modelId} explore models declare explore outputs`, () => {
-      if (supportsExploreWorkspace(config.workspaceCapabilities)) {
+      if (supportsExploreSurface(config.workspaceCapabilities)) {
         expect(config.exploreOutputs.length).toBeGreaterThan(0);
       }
     });

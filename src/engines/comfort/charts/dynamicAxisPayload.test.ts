@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 
 import {
   pmvAshraeAdapter,
@@ -12,7 +13,6 @@ import {
   utciAxisAdapter,
   type UtciRequest,
 } from "../../../declarations/utci/utci";
-import { PhysicalQuantityId } from "../../../catalog/quantities";
 import {
   applyDynamicAxisCoordinates,
   type DynamicAxisPayloadAdapter,
@@ -34,12 +34,10 @@ const adapter: DynamicAxisPayloadAdapter<TestPayload> = {
       payload.tr = valueSi;
     }
   },
-  getAxisValue: (payload, field) => {
-    if (field === PhysicalQuantityId.DryBulbTemperature) return payload.tdb;
+  getAxisValue: (payload, field) => { if (field === PhysicalQuantityId.DryBulbTemperature) return payload.tdb;
     if (field === PhysicalQuantityId.MeanRadiantTemperature) return payload.tr;
     if (field === PhysicalQuantityId.RelativeAirSpeed) return payload.speed;
-    return (payload.tdb + payload.tr) / 2;
-  },
+    return (payload.tdb + payload.tr) / 2; },
   getOperativeTemperature: (payload) => (
     payload.speed >= 1
       ? payload.tdb * 0.4 + payload.tr * 0.6

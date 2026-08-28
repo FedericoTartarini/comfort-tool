@@ -24,15 +24,15 @@ import {
 import type { ThermalZone } from "../../catalog/thermalZone";
 import type {
   StandardId as StandardIdType,
-  WorkspaceId as WorkspaceIdType,
-} from "../../catalog/workspaces";
-import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
+  SurfaceId as SurfaceIdType,
+} from "../../catalog/surfaces";
+import type { TableRowSpec } from "../../catalog/tableTypes";
 import {
   createTemperatureModeOptionHandler,
 } from "../../engines/comfort/controls/temperatureControl";
 import {
   ComfortModelBuilder,
-  type ChartDeclarationInput,
+  type FrontendChartDeclaration,
 } from "../../state/analysis/modelConfigs/builder";
 import { ChartType } from "../../catalog/chartTypes";
 import {
@@ -85,7 +85,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   label: string;
   description: string;
   standardIds: readonly StandardIdType[];
-  workspaceCapabilities: readonly WorkspaceIdType[];
+  workspaceCapabilities: readonly SurfaceIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
   boundaryChartId: string;
@@ -177,28 +177,16 @@ export function createAdaptiveModelConfig(
       calculateAdaptiveModel(context, visibleInputIds, declaration)
     ))
     .setTables({
-      analysis: {
-        type: TableType.Analysis,
-        rows: buildAdaptiveTableRows(declaration),
-      },
+      results: buildAdaptiveTableRows(declaration),
     });
 
-  const boundaryChart: ChartDeclarationInput<
+  const boundaryChart: FrontendChartDeclaration<
     AdaptiveResponse,
     ModelChartSource<AdaptiveRequest>
   > = {
     id: declaration.boundaryChartId,
     type: ChartType.Adaptive,
     emptyMessage: "No adaptive chart yet.",
-    capabilities: {
-      allowsAxisSelection: true,
-      locksYAxis: false,
-      allowsOutputSelection: false,
-      allowsBandEditing: false,
-      allowsBaselineSelection: true,
-      showsLegend: true,
-      showsExport: true,
-    },
     spec: {
       build: (chartSource, resultsByInput, context) => {
         if (!chartSource) return null;

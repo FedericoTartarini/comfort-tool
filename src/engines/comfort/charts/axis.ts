@@ -43,7 +43,7 @@ export function createFieldAxisScale({
     field,
     label: label ?? meta.label,
     units: units ?? presentation.displayUnits,
-    decimals: decimals ?? presentation.decimals,
+    decimals: decimals ?? 2,
     gridColor,
     showGrid,
     zeroLine,

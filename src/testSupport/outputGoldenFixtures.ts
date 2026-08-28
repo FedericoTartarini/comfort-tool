@@ -5,10 +5,10 @@ import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import {
-  WorkspaceId,
-  supportsExploreWorkspace,
-  supportsStandardWorkspace,
-} from "../catalog/workspaces";
+  SurfaceId,
+  supportsExploreSurface,
+  supportsStandardSurface,
+} from "../catalog/surfaces";
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,
@@ -105,13 +105,13 @@ export function buildModelOutputGoldenSnapshot(
   const charts: ChartGoldenSnapshot[] = [];
   const baseSettings = seedModelOutputSettings(config);
   const workspaces = [
-  supportsStandardWorkspace(config.workspaceCapabilities) ? WorkspaceId.Standard : null,
-  supportsExploreWorkspace(config.workspaceCapabilities) ? WorkspaceId.Explore : null,
+  supportsStandardSurface(config.workspaceCapabilities) ? SurfaceId.Standard : null,
+  supportsExploreSurface(config.workspaceCapabilities) ? SurfaceId.Explore : null,
   ].filter((workspace) => workspace !== null);
 
   for (const chartInstance of config.chartInstances.entries) {
     for (const workspace of workspaces) {
-      const mode = workspace === WorkspaceId.Explore ? FieldChartProfileKind.Explore : FieldChartProfileKind.Compliance;
+      const mode = workspace === SurfaceId.Explore ? FieldChartProfileKind.Explore : FieldChartProfileKind.Compliance;
       const profile = buildFieldChartProfile(config, baseSettings, workspace);
       const buildResult = config.buildChart(
         chartInstance.instanceId,

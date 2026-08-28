@@ -1,17 +1,13 @@
 <script lang="ts">
   import { Button, Dropdown, DropdownHeader, DropdownItem } from "flowbite-svelte";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import type {
-    ModelOutput,
-    ModelOutputKey,
-  } from "../../../catalog/modelCapabilities";
+  import type { ModelOutput } from "../../../catalog/modelCapabilities";
 
-  interface Props {
-    idPrefix: string;
+  interface Props { idPrefix: string;
     outputs: readonly ModelOutput[];
-    selectedOutput: ModelOutputKey;
-    onSelect: (outputKey: ModelOutputKey) => void;
-  }
+    selectedOutput: PhysicalQuantityId;
+    onSelect: (outputKey: PhysicalQuantityId) => void; }
 
   let { idPrefix, outputs, selectedOutput, onSelect }: Props = $props();
 

@@ -13,10 +13,7 @@ import {
 } from "../../catalog/inputModes";
 import { InputId } from "../../catalog/inputSlots";
 import { ModifierId } from "../../catalog/inputModifiers";
-import {
-  findNumericBandIndexForValue,
-  ModelOutputKey,
-} from "../../catalog/modelCapabilities";
+import { findNumericBandIndexForValue } from "../../catalog/modelCapabilities";
 import { ChartType } from "../../catalog/chartTypes";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { UnitSystem } from "../../catalog/units";
@@ -86,19 +83,19 @@ function setPmvInputs(
   toolState: ReturnType<typeof createAnalysisState>,
   values: Partial<PrimaryInputState>,
 ): void {
-  Object.assign(toolState.state.quantitiesByInput[InputId.Input1], values);
+  Object.assign(toolState.state.input.quantitiesByInput[InputId.Input1], values);
 }
 
 function calculateRegisteredModel(
   adapter: PmvStandardAdapter,
   toolState: ReturnType<typeof createAnalysisState>,
-  effectiveQuantitiesByInput = toolState.state.quantitiesByInput,
+  effectiveQuantitiesByInput = toolState.state.input.quantitiesByInput,
 ): { result: PmvResponse; chartSource: PmvChartSource } {
   const calculation = calculatePmvModel(createModelCalculationContext({
     effectiveQuantitiesByInput,
-    auxiliaryQuantitiesByInput: toolState.state.auxiliaryQuantitiesByInput,
-    modelInputs: toolState.state.modelInputsByModel[adapter.modelId],
-    options: toolState.state.ui.modelOptionsByModel[adapter.modelId],
+    auxiliaryQuantitiesByInput: toolState.state.input.auxiliaryQuantitiesByInput,
+    modelInputs: toolState.state.input.modelInputsByModel[adapter.modelId],
+    options: toolState.state.setting.modelOptionsByModel[adapter.modelId],
   }), [InputId.Input1], adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
@@ -111,11 +108,7 @@ function calculateWithDynamicClothingModifier(
   metSi: number,
 ): { result: PmvResponse; effectiveClo: number } {
   const toolState = createAnalysisState();
-  const base = {
-    ...toolState.state.quantitiesByInput[InputId.Input1],
-    [PhysicalQuantityId.ClothingInsulation]: clothingSi,
-    [PhysicalQuantityId.MetabolicRate]: metSi,
-  };
+  const base = { ...toolState.state.input.quantitiesByInput[InputId.Input1], [PhysicalQuantityId.ClothingInsulation]: clothingSi, [PhysicalQuantityId.MetabolicRate]: metSi };
   const effective = applyInputModifierChain(
     base,
     [createDynamicClothingModifier(adapter.clothingStandard)],
@@ -123,7 +116,7 @@ function calculateWithDynamicClothingModifier(
     { [ModifierId.DynamicClothing]: {} },
   );
   const { result } = calculateRegisteredModel(adapter, toolState, {
-    ...toolState.state.quantitiesByInput,
+    ...toolState.state.input.quantitiesByInput,
     [InputId.Input1]: effective,
   });
   return {
@@ -214,7 +207,7 @@ describe("PMV standard declarations", () => {
     "$label exposes its clothing and occupant-air-speed capabilities",
     ({ adapter, config }) => {
       const toolState = createAnalysisState();
-      toolState.state.ui.selectedModel = config.id;
+      toolState.state.setting.selectedModel = config.id;
       const controls = toolState.selectors.getInputControls();
       const clothingControl = controls.find(
         ({ id }) => id === InputControlId.ClothingInsulation,
@@ -282,11 +275,7 @@ describe("PMV standard declarations", () => {
 
   it("keeps standard identity out of requests and chart sources", () => {
     const toolState = createAnalysisState();
-    setPmvInputs(toolState, {
-      [PhysicalQuantityId.DryBulbTemperature]: 26,
-      [PhysicalQuantityId.MeanRadiantTemperature]: 26,
-      [PhysicalQuantityId.RelativeAirSpeed]: 0.8,
-    });
+    setPmvInputs(toolState, { [PhysicalQuantityId.DryBulbTemperature]: 26, [PhysicalQuantityId.MeanRadiantTemperature]: 26, [PhysicalQuantityId.RelativeAirSpeed]: 0.8 });
     const ashrae = calculateRegisteredModel(pmvAshraeAdapter, toolState);
     const iso = calculateRegisteredModel(pmvIsoAdapter, toolState);
     const ashraeRequest = ashrae.chartSource.inputs[InputId.Input1];
@@ -375,23 +364,10 @@ describe("PMV standard declarations", () => {
 
   it.each(standardCases)(
     "$label Compare-matrix includes SET, cooling effect, relative air speed, and dynamic clothing",
-    ({ config }) => {
-      expect(config.tables.analysis.rows.map((row) => row.label)).toEqual([
-        "Compliance",
-        "PMV",
-        "Zone",
-        "PPD",
-        "Acceptability",
-        "SET",
-        "Cooling effect",
-        "Relative air speed",
-        "Dynamic clothing",
-      ]);
+    ({ config }) => { expect(config.tables.results.map((row) => row.label)).toEqual([
+        "Compliance", "PMV", "Zone", "PPD", "Acceptability", "SET", "Cooling effect", "Relative air speed", "Dynamic clothing", ]);
       expect(config.exploreOutputs.map((output) => output.key)).toEqual([
-        ModelOutputKey.Pmv,
-        ModelOutputKey.Ppd,
-      ]);
-    },
+        PhysicalQuantityId.Pmv, PhysicalQuantityId.Ppd, ]); },
   );
 
   it.each(standardCases)(
@@ -433,13 +409,7 @@ describe("PMV standard declarations", () => {
       const context = {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          profileKind: FieldChartProfileKind.Explore,
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.Pmv,
-          bands: declaration.exploreOutputs[0].defaultBands,
-        },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands: declaration.exploreOutputs[0].defaultBands },
       };
       const heatLoss = buildChartPlotly(
         config,
@@ -571,13 +541,7 @@ describe("PMV roots and compliance", () => {
         {
           unitSystem: UnitSystem.SI,
           baselineInputId: InputId.Input1,
-          fieldChartConfig: {
-            profileKind: FieldChartProfileKind.Explore,
-            xField: PhysicalQuantityId.DryBulbTemperature,
-            yField: PhysicalQuantityId.RelativeHumidity,
-            zOutput: ModelOutputKey.Pmv,
-            bands: declaration.exploreOutputs[0].defaultBands,
-          },
+          fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands: declaration.exploreOutputs[0].defaultBands },
         },
       );
     };
@@ -588,10 +552,10 @@ describe("PMV roots and compliance", () => {
       adapter: unexpectedFailureAdapter,
     }).calculate(
       createModelCalculationContext({
-        effectiveQuantitiesByInput: createAnalysisState().state.quantitiesByInput,
-        auxiliaryQuantitiesByInput: createAnalysisState().state.auxiliaryQuantitiesByInput,
+        effectiveQuantitiesByInput: createAnalysisState().state.input.quantitiesByInput,
+        auxiliaryQuantitiesByInput: createAnalysisState().state.input.auxiliaryQuantitiesByInput,
         modelInputs: {},
-        options: createAnalysisState().state.ui.modelOptionsByModel[ModelId.PmvAshrae],
+        options: createAnalysisState().state.setting.modelOptionsByModel[ModelId.PmvAshrae],
       }),
       [InputId.Input1],
     )).toThrow("broken adapter");
@@ -646,14 +610,11 @@ describe("PMV roots and compliance", () => {
 
   it("evaluates Operative comfort-zone roots with tr equal to tdb", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae] = {
-      ...toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae],
+    toolState.state.setting.modelOptionsByModel[ModelId.PmvAshrae] = {
+      ...toolState.state.setting.modelOptionsByModel[ModelId.PmvAshrae],
       [OptionKey.TemperatureMode]: TemperatureMode.Operative,
     };
-    setPmvInputs(toolState, {
-      [PhysicalQuantityId.DryBulbTemperature]: 25,
-      [PhysicalQuantityId.MeanRadiantTemperature]: 25,
-    });
+    setPmvInputs(toolState, { [PhysicalQuantityId.DryBulbTemperature]: 25, [PhysicalQuantityId.MeanRadiantTemperature]: 25 });
     const { chartSource } = calculateRegisteredModel(pmvAshraeAdapter, toolState);
     const request = chartSource.inputs[InputId.Input1];
     const zone = chartSource.comfortZonesByInput[InputId.Input1];
@@ -684,7 +645,7 @@ describe("PMV roots and compliance", () => {
       createAnalysisState(),
     );
     const derived = chartSource.derivedSlotsByInput?.[InputId.Input1];
-    expect(derived?.[PhysicalQuantityId.DerivedHumidityRatio]).toBeTypeOf("number");
+    expect(derived?.[PhysicalQuantityId.HumidityRatio]).toBeTypeOf("number");
     expect(derived?.[PhysicalQuantityId.DewPoint]).toBeTypeOf("number");
   });
 
@@ -702,13 +663,7 @@ describe("PMV roots and compliance", () => {
         {
           baselineInputId: InputId.Input1,
           unitSystem: UnitSystem.SI,
-          fieldChartConfig: {
-            profileKind: FieldChartProfileKind.Explore,
-            xField: PhysicalQuantityId.DryBulbTemperature,
-            yField: PhysicalQuantityId.RelativeHumidity,
-            zOutput: ModelOutputKey.Pmv,
-            bands: pmvAshraeDeclaration.complianceProfile.bands,
-          },
+          fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands: pmvAshraeDeclaration.complianceProfile.bands },
         },
       );
       const evaluation = descriptor.evaluatePoint(

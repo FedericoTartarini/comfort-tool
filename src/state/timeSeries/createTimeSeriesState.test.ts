@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 
 import { ModelId } from "../../catalog/modelIds";
 import {
   PhsPosture,
-  PhsQuantityId,
   PhsSegmentPreset,
   type PhsSimulationResult,
   type PhsTimeSeriesDraft,
@@ -14,11 +14,11 @@ import { createTimeSeriesState } from "./createTimeSeriesState.svelte";
 import { timeSeriesModelOrder } from "./modelConfigs";
 
 function getDraft(controller: ReturnType<typeof createTimeSeriesState>) {
-  return controller.state.draftByModel[ModelId.Phs2023] as PhsTimeSeriesDraft;
+  return controller.state.input.draftByModel[ModelId.Phs2023] as PhsTimeSeriesDraft;
 }
 
 function getResult(controller: ReturnType<typeof createTimeSeriesState>) {
-  return controller.state.resultByModel[ModelId.Phs2023] as
+  return controller.state.output.resultByModel[ModelId.Phs2023] as
     | PhsSimulationResult
     | null;
 }
@@ -40,10 +40,10 @@ describe("createTimeSeriesState", () => {
     const controller = createTimeSeriesState({ debounceMs: 0 });
     const draft = getDraft(controller);
 
-    expect(controller.state.unitSystem).toBe(UnitSystem.SI);
-    expect(Object.keys(controller.state.draftByModel)).toEqual(timeSeriesModelOrder);
-    expect(Object.keys(controller.state.resultByModel)).toEqual(timeSeriesModelOrder);
-    expect(Object.keys(controller.state.statusByModel)).toEqual(timeSeriesModelOrder);
+    expect(controller.state.setting.unitSystem).toBe(UnitSystem.SI);
+    expect(Object.keys(controller.state.input.draftByModel)).toEqual(timeSeriesModelOrder);
+    expect(Object.keys(controller.state.output.resultByModel)).toEqual(timeSeriesModelOrder);
+    expect(Object.keys(controller.state.output.statusByModel)).toEqual(timeSeriesModelOrder);
     expect(controller.selectors.getModelOptions()).toEqual([{
       name: "Predicted Heat Strain (PHS)",
       value: ModelId.Phs2023,
@@ -60,11 +60,7 @@ describe("createTimeSeriesState", () => {
         clo: 0.5,
       }),
     ]);
-    expect(draft.person).toEqual(expect.objectContaining({
-      [PhsQuantityId.BodyWeight]: 75,
-      [PhsQuantityId.Height]: 1.8,
-      posture: PhsPosture.Standing,
-    }));
+    expect(draft.person).toEqual(expect.objectContaining({ [PhysicalQuantityId.BodyWeight]: 75, [PhysicalQuantityId.Height]: 1.8, posture: PhsPosture.Standing }));
 
     controller.actions.start();
     await waitForReady(controller);
@@ -94,7 +90,7 @@ describe("createTimeSeriesState", () => {
       expect(controller.selectors.getStatus()).toBe("ready");
     });
     expect(getResult(controller)?.totalDurationMinutes).toBe(45);
-    expect(controller.state.revisionByModel[ModelId.Phs2023]).toBe(3);
+    expect(controller.state.output.revisionByModel[ModelId.Phs2023]).toBe(3);
 
     controller.actions.updateSegmentDuration("phs-segment-1", "0");
     expect(controller.selectors.getStatus()).toBe("waiting");
@@ -150,7 +146,7 @@ describe("createTimeSeriesState", () => {
     expect(controller.actions.updateSettingControl(height.id, "6")).toBe(true);
 
     expect(getDraft(controller).segments[0].tdb).toBeCloseTo(38, 8);
-    expect(getDraft(controller).person[PhsQuantityId.Height]).toBeCloseTo(1.8288, 8);
+    expect(getDraft(controller).person[PhysicalQuantityId.Height]).toBeCloseTo(1.8288, 8);
     editor = controller.selectors.getEditor();
     expect(editor.segments[0].controls.find(
       ({ label }) => label === "Air temperature",
@@ -162,13 +158,13 @@ describe("createTimeSeriesState", () => {
     const controller = createTimeSeriesState({ debounceMs: 0 });
     controller.actions.start();
     await waitForReady(controller);
-    const revision = controller.state.revisionByModel[ModelId.Phs2023];
+    const revision = controller.state.output.revisionByModel[ModelId.Phs2023];
     const result = getResult(controller);
 
     controller.actions.toggleUnitSystem();
     controller.actions.updateSegmentName("phs-segment-1", "Renamed phase");
 
-    expect(controller.state.revisionByModel[ModelId.Phs2023]).toBe(revision);
+    expect(controller.state.output.revisionByModel[ModelId.Phs2023]).toBe(revision);
     expect(getResult(controller)).toBe(result);
     expect(chartFigure(controller.selectors.getCharts()[0].chart)?.traces[0].customdata?.[0])
       .toEqual(["Renamed phase"]);

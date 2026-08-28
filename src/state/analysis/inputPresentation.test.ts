@@ -11,7 +11,7 @@ import {
 
 function getPanel(
   toolState: ReturnType<typeof createAnalysisState>,
-  allowedModelIds: readonly ModelId[] = [toolState.state.ui.selectedModel],
+  allowedModelIds: readonly ModelId[] = [toolState.state.setting.selectedModel],
 ) {
   return toolState.selectors.getInputPanelViewModel(allowedModelIds, vi.fn());
 }
@@ -62,7 +62,7 @@ describe("buildInputPanelViewModel", () => {
 
   it("omits clothing builder and modifiers for models that do not declare them", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.Utci;
+    toolState.state.setting.selectedModel = ModelId.Utci;
     const panel = getPanel(toolState);
 
     expect(panel.clothingBuilder).toBeNull();

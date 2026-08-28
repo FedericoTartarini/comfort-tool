@@ -16,7 +16,7 @@ In scope (the Plan §4 rows marked `3n`):
 | Wire values → kebab-case (`"pmv-ashrae"`)       | see R3 semantic classification |
 | `ChartKind` → `ChartEngine` (+ chart `kind:` → `engine:`) | ~34 files           |
 | Chart authoring contract A′ (`outputCharts` → `charts`, entry `instanceId` → `id`, `defaultChartId`, `setCharts()`; runtime `chartInstances` / `chartEngineRegistrations`) | authoring + builder + runtime consumers |
-| `WorkspaceCapability` → fold into `WorkspaceId` | ~22 files                     |
+| `WorkspaceCapability` → fold into `SurfaceId` | ~22 files                     |
 | `createComfortToolState` → `createAnalysisState` | ~15 files                    |
 | Drop `*Dto`; `PlotlyChartResponseDto` → `PlotlyChartSpec`; dissolve `comfortDtos.ts` | ~68 files |
 | Mis-layered modules to their true home (`chartBuildResult`, `simulationCharts`, `timeSeries` view models, `siteShellConfig`) | 4 modules |
@@ -129,17 +129,17 @@ stop and investigate before proceeding.
 - Run full Gate B once and record it green. Do not start R1 on a red or
   dirty baseline.
 
-## R1 — Fold `WorkspaceCapability` into `WorkspaceId`
+## R1 — Fold `WorkspaceCapability` into `SurfaceId`
 
 `src/models/output/workspaceCapabilities.ts` is a thin alias of
-`WorkspaceId` plus four helpers.
+`SurfaceId` plus four helpers.
 
-- Move `supportsWorkspace`, `supportsStandardWorkspace`,
-  `supportsExploreWorkspace`, `supportsTimeSeriesWorkspace` into
-  `src/models/workspaces.ts`, typed against `WorkspaceId`.
+- Move `supportsWorkspace`, `supportsStandardSurface`,
+  `supportsExploreSurface`, `supportsTimeSeriesSurface` into
+  `src/models/workspaces.ts`, typed against `SurfaceId`.
 - Delete `workspaceCapabilities.ts`; update the `src/models/output/index.ts`
   barrel.
-- Replace `WorkspaceCapability` with `WorkspaceId` in all ~22 referencing
+- Replace `WorkspaceCapability` with `SurfaceId` in all ~22 referencing
   files (declarations, `modelConfigs/`, workspace routing, tests).
 - Leftover grep: `WorkspaceCapability` → zero matches.
 - Expected diff: type-level only; no snapshot or behavior change. **Gate A.**

@@ -1,4 +1,5 @@
 import type { PlotScatterLineTrace } from "../../plotlyTypes";
+import { plotlyHoverNumber } from "../../units";
 import { buildLineTrace } from "./plotlyBuilders";
 
 export interface TimeSeriesLineTraceOptions {
@@ -30,7 +31,7 @@ export function buildTimeSeriesLineTrace(
     hoverinfo: options.hoverInfo ?? "all",
     hovertemplate: options.hoverInfo === "skip"
       ? undefined
-      : `%{customdata[0]}<br>Time: %{x:.2f} h<br>${options.name}: %{y:.2f} ${options.unit}<extra></extra>`,
+      : `%{customdata[0]}<br>Time: ${plotlyHoverNumber("x")} h<br>${options.name}: ${plotlyHoverNumber("y")} ${options.unit}<extra></extra>`,
     hoverMetadata: options.segmentNames?.map((name) => [name]),
   });
 }

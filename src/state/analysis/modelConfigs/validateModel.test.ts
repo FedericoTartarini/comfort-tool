@@ -1,32 +1,24 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 
 import { ModelId } from "../../../catalog/modelIds";
 import { ChartType } from "../../../catalog/chartTypes";
-import { TableType } from "../../../catalog/tableTypes";
-import { WorkspaceId } from "../../../catalog/workspaces";
-import {
-  PhysicalQuantityId,
-  PhysicalQuantityScope,
-} from "../../../catalog/quantities";
-import { PhsQuantityId } from "../../../catalog/phs";
+import { SurfaceId } from "../../../catalog/surfaces";
 import { assembledCatalogs, comfortModelOrder, getComfortModelConfig } from ".";
 import {
   assembleCatalogs,
-  type AssembledCatalogs,
+  validateModel,
   type CatalogModelSlice,
 } from "./validateModel";
 
-const analysisTable = {
-  analysis: {
-    type: TableType.Analysis,
-    rows: [
-      {
-        id: "audit-row",
-        label: "Audit row",
-        format: () => ({ text: "value" }),
-      },
-    ],
-  },
+const resultsTable = {
+  results: [
+    {
+      id: "audit-row",
+      label: "Audit row",
+      format: () => ({ text: "value" }),
+    },
+  ],
 } as const;
 
 function createCatalogSlice(
@@ -34,7 +26,7 @@ function createCatalogSlice(
 ): CatalogModelSlice {
   const instanceId = `${overrides.id}-audit-chart`;
   return {
-    quantities: { extend: [] },
+    extraQuantities: [],
     chartInstances: {
       entries: [
         {
@@ -49,70 +41,19 @@ function createCatalogSlice(
         registration: { type: ChartType.Dynamic },
       },
     ],
-    tables: analysisTable,
-    workspaceCapabilities: [WorkspaceId.Explore],
+    tables: resultsTable,
+    workspaceCapabilities: [SurfaceId.Explore],
     ...overrides,
   };
 }
 
-function installedValidateModel(catalogs: AssembledCatalogs) {
-  const hook = catalogs.validate?.model;
-  if (hook === undefined) {
-    throw new Error("assembleCatalogs must install validate.model");
-  }
-  return hook;
-}
-
-const exampleMass = {
-  id: "audit.exampleMass",
-  owner: ModelId.HeatIndex,
-  scope: PhysicalQuantityScope.Model,
-  label: "Example mass",
-  display: {
-    units: { SI: "kg", IP: "lb" },
-    displayUnits: { SI: "kg", IP: "lb" },
-    step: 1,
-    decimals: 0,
-  },
-  defaultSi: 70,
-  minSi: 40,
-  maxSi: 120,
-} as const;
-
-describe("assembled catalog validate.model", () => {
-  it("types validate.model as an optional catalog hook", () => {
-    expectTypeOf<AssembledCatalogs["validate"]>().toEqualTypeOf<
-      | {
-          readonly model?: (model: CatalogModelSlice) => void;
-        }
-      | undefined
-    >();
-    expectTypeOf<
-      NonNullable<AssembledCatalogs["validate"]>["model"]
-    >().toEqualTypeOf<((model: CatalogModelSlice) => void) | undefined>();
-
-    const withoutHook: AssembledCatalogs = {
-      quantities: {},
-      chartInstanceOwners: new Map(),
-      chartTypes: new Set(),
-      tableTypes: new Set(),
-    };
-    const validateWithoutModel: AssembledCatalogs = {
-      ...withoutHook,
-      validate: {},
-    };
-    expect(withoutHook.validate).toBeUndefined();
-    expect(validateWithoutModel.validate?.model).toBeUndefined();
-  });
-
-  it("exists on assembled catalogs and accepts every registered model", () => {
-    const validateModelHook = installedValidateModel(assembledCatalogs);
+describe("assembleCatalogs", () => {
+  it("validates every registered model during assemble", () => {
     expect(assembledCatalogs.chartTypes.has(ChartType.Dynamic)).toBe(true);
-    expect(assembledCatalogs.tableTypes.has(TableType.Analysis)).toBe(true);
 
     for (const modelId of comfortModelOrder) {
       expect(() =>
-        validateModelHook(getComfortModelConfig(modelId)),
+        validateModel(getComfortModelConfig(modelId), assembledCatalogs),
       ).not.toThrow();
     }
   });
@@ -155,7 +96,7 @@ describe("assembled catalog validate.model", () => {
     );
 
     expect(() =>
-      installedValidateModel(assembledCatalogs)(
+      validateModel(
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
@@ -173,15 +114,16 @@ describe("assembled catalog validate.model", () => {
             },
           ],
         }),
+        assembledCatalogs,
       ),
     ).toThrow(
       /Chart instance ID "pmv-ashrae-psychrometric" is declared by both pmv-ashrae and heat-index/,
     );
   });
 
-  it("fails validate.model on duplicate ChartType on one model", () => {
+  it("fails validateModel on duplicate ChartType on one model", () => {
     expect(() =>
-      installedValidateModel(assembledCatalogs)(
+      validateModel(
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
@@ -191,13 +133,14 @@ describe("assembled catalog validate.model", () => {
             ],
           },
         }),
+        assembledCatalogs,
       ),
     ).toThrow(/duplicate chart types \(dynamic\)/);
   });
 
-  it("fails validate.model on unknown chart types", () => {
+  it("fails validateModel on unknown chart types", () => {
     expect(() =>
-      installedValidateModel(assembledCatalogs)(
+      validateModel(
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
@@ -210,116 +153,39 @@ describe("assembled catalog validate.model", () => {
             },
           ],
         }),
+        assembledCatalogs,
       ),
     ).toThrow(/Unknown chart type "invented-type"/);
   });
 
-  it("fails assemble on duplicate quantity ids across declarations", () => {
+  it("fails validateModel on extra quantities that are not Extra catalog ids", () => {
     expect(() =>
-      assembleCatalogs([
+      validateModel(
         createCatalogSlice({
           id: ModelId.HeatIndex,
-          quantities: { extend: [exampleMass] },
+          extraQuantities: [PhysicalQuantityId.DryBulbTemperature],
         }),
+        assembledCatalogs,
+      ),
+    ).toThrow(/is not an Extra catalog quantity/);
+
+    expect(() =>
+      validateModel(
         createCatalogSlice({
-          id: ModelId.Humidex,
-          quantities: {
-            extend: [{ ...exampleMass, owner: ModelId.Humidex }],
-          },
+          id: ModelId.HeatIndex,
+          extraQuantities: [
+            PhysicalQuantityId.BodyWeight,
+            PhysicalQuantityId.BodyWeight,
+          ],
         }),
-      ]),
-    ).toThrow(/Duplicate quantity id "audit.exampleMass"/);
+        assembledCatalogs,
+      ),
+    ).toThrow(/duplicate extra quantity/);
   });
 
-  it("fails validate.model on duplicate quantity ids", () => {
-    const validateModelHook = installedValidateModel(assembledCatalogs);
-
+  it("fails validateModel on unknown chart types in registrations", () => {
     expect(() =>
-      validateModelHook(
-        createCatalogSlice({
-          id: ModelId.HeatIndex,
-          quantities: { extend: [exampleMass, { ...exampleMass }] },
-        }),
-      ),
-    ).toThrow(/Duplicate quantity id "audit.exampleMass"/);
-
-    expect(() =>
-      validateModelHook(
-        createCatalogSlice({
-          id: ModelId.HeatIndex,
-          quantities: {
-            extend: [{ ...exampleMass, id: PhysicalQuantityId.HumidityRatio }],
-          },
-        }),
-      ),
-    ).toThrow(/Duplicate quantity id "hr"/);
-  });
-
-  it("fails validate.model on wrong quantity owners", () => {
-    const validateModelHook = installedValidateModel(assembledCatalogs);
-
-    expect(() =>
-      validateModelHook(
-        createCatalogSlice({
-          id: ModelId.HeatIndex,
-          quantities: {
-            extend: [
-              {
-                id: PhsQuantityId.BodyWeight,
-                owner: ModelId.Phs2023,
-                scope: PhysicalQuantityScope.Model,
-                label: "Body weight",
-                display: {
-                  units: { SI: "kg", IP: "lb" },
-                  displayUnits: { SI: "kg", IP: "lb" },
-                  step: 1,
-                  decimals: 1,
-                },
-                defaultSi: 75,
-                minSi: 30,
-                maxSi: 200,
-              },
-            ],
-          },
-        }),
-      ),
-    ).toThrow(
-      'Quantity extension "phs.bodyWeight" is owned by phs-2023 but registered on heat-index.',
-    );
-
-    expect(() =>
-      validateModelHook(
-        createCatalogSlice({
-          id: ModelId.HeatIndex,
-          quantities: {
-            extend: [
-              {
-                id: PhsQuantityId.BodyWeight,
-                owner: ModelId.HeatIndex,
-                scope: PhysicalQuantityScope.Model,
-                label: "Body weight",
-                display: {
-                  units: { SI: "kg", IP: "lb" },
-                  displayUnits: { SI: "kg", IP: "lb" },
-                  step: 1,
-                  decimals: 1,
-                },
-                defaultSi: 75,
-                minSi: 30,
-                maxSi: 200,
-              },
-            ],
-          },
-        }),
-      ),
-    ).toThrow(
-      'Quantity extension "phs.bodyWeight" is owned by phs-2023 but registered on heat-index.',
-    );
-  });
-
-  it("fails validate.model on unknown chart types in registrations", () => {
-    expect(() =>
-      installedValidateModel(assembledCatalogs)(
+      validateModel(
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
@@ -332,30 +198,28 @@ describe("assembled catalog validate.model", () => {
             },
           ],
         }),
+        assembledCatalogs,
       ),
     ).toThrow(/Unknown chart type "invented-type"/);
   });
 
-  it("fails assemble when a TimeSeries table lacks Time-series capability", () => {
+  it("fails assemble when a Time-series table lacks Time-series capability", () => {
     const slice = createCatalogSlice({
       id: ModelId.HeatIndex,
-      workspaceCapabilities: [WorkspaceId.Explore],
+      workspaceCapabilities: [SurfaceId.Explore],
       tables: {
-        analysis: analysisTable.analysis,
-        timeSeries: {
-          type: TableType.TimeSeries,
-          rows: [
-            {
-              id: "summary-row",
-              label: "Summary row",
-              format: () => ({ text: "value" }),
-            },
-          ],
-        },
+        results: resultsTable.results,
+        timeSeries: [
+          {
+            id: "summary-row",
+            label: "Summary row",
+            format: () => ({ text: "value" }),
+          },
+        ],
       },
     });
 
-    expect(() => installedValidateModel(assembledCatalogs)(slice)).toThrow(
+    expect(() => validateModel(slice, assembledCatalogs)).toThrow(
       /tables\.timeSeries is allowed only with Time-series workspace capability/,
     );
     expect(() => assembleCatalogs([slice])).toThrow(

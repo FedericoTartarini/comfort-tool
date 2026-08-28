@@ -11,7 +11,7 @@ import {
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
 } from "../catalog/quantities";
-import { supportsStandardWorkspace, WorkspaceId } from "../catalog/workspaces";
+import { supportsStandardSurface, SurfaceId } from "../catalog/surfaces";
 import { syncDerivedStateForInput } from "../engines/comfort/syncState";
 import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
 import { comfortModelConfigs } from "../state/analysis/modelConfigs";
@@ -27,16 +27,16 @@ const VISIBLE_INPUT_COUNTS = [1, 2, 3] as const;
 const SLOT_DRY_BULB_OFFSETS_C = [0, 1, 2] as const;
 
 async function waitForIdle(controller: AnalysisController) {
-  const modelId = controller.state.ui.selectedModel;
+  const modelId = controller.state.setting.selectedModel;
   for (let attempt = 0; attempt < 200; attempt += 1) {
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 10));
-    const cache = controller.state.ui.calculationCacheByModel[modelId];
-    if (!controller.state.ui.isLoading && cache.status === "ready") {
+    const cache = controller.state.output.calculationCacheByModel[modelId];
+    if (!controller.state.output.isLoading && cache.status === "ready") {
       return;
     }
-    if (controller.state.ui.errorMessage) {
-      throw new Error(controller.state.ui.errorMessage);
+    if (controller.state.output.errorMessage) {
+      throw new Error(controller.state.output.errorMessage);
     }
   }
   throw new Error("Controller did not finish calculating.");
@@ -55,7 +55,7 @@ async function configureVisibleInputs(
   } else {
     controller.actions.setCompareEnabled(true);
     await waitForIdle(controller);
-    const input3Visible = controller.state.ui.compareInputIds.includes(
+    const input3Visible = controller.state.setting.compareInputIds.includes(
       InputId.Input3,
     );
     if (count === 2 && input3Visible) {
@@ -75,7 +75,7 @@ function applyGoldenInputs(
 ) {
   const overrides = getGoldenInputOverrides(modelId);
   inputOrder.forEach((inputId, index) => {
-    const quantities = controller.state.quantitiesByInput[inputId];
+    const quantities = controller.state.input.quantitiesByInput[inputId];
     for (const [quantityId, value] of Object.entries(overrides)) {
       if (value === undefined) continue;
       const applied =
@@ -86,8 +86,8 @@ function applyGoldenInputs(
     }
     syncDerivedStateForInput(
       inputId,
-      controller.state.quantitiesByInput,
-      controller.state.auxiliaryQuantitiesByInput,
+      controller.state.input.quantitiesByInput,
+      controller.state.input.auxiliaryQuantitiesByInput,
     );
   });
   for (const [quantityId, value] of Object.entries(getGoldenModelInputOverrides(modelId))) {
@@ -162,26 +162,26 @@ export async function assertCompareContract(
   controller: AnalysisController = createAnalysisState(),
 ): Promise<void> {
   const config = comfortModelConfigs[modelId];
-  controller.actions.setActiveWorkspace(
-    supportsStandardWorkspace(config.workspaceCapabilities)
-      ? WorkspaceId.Standard
-      : WorkspaceId.Explore,
+  controller.actions.setActiveSurface(
+    supportsStandardSurface(config.workspaceCapabilities)
+      ? SurfaceId.Standard
+      : SurfaceId.Explore,
   );
   controller.actions.setSelectedModel(modelId, {
     validateRanges: false,
     schedule: false,
   });
-  if (controller.state.ui.pendingModelSwitch) {
+  if (controller.state.setting.pendingModelSwitch) {
     failSilently(modelId, "model switch is pending; Compare cannot run.");
   }
   applyGoldenInputs(controller, modelId);
 
   for (const count of VISIBLE_INPUT_COUNTS) {
     await configureVisibleInputs(controller, count);
-    if (controller.state.ui.errorMessage) {
+    if (controller.state.output.errorMessage) {
       failSilently(
         modelId,
-        `calculation error with ${count} inputs: ${controller.state.ui.errorMessage}`,
+        `calculation error with ${count} inputs: ${controller.state.output.errorMessage}`,
       );
     }
     const visibleInputIds = controller.selectors.getVisibleInputIds();
@@ -191,7 +191,7 @@ export async function assertCompareContract(
         `expected ${count} visible inputs, received ${visibleInputIds.join(", ")}.`,
       );
     }
-    const cache = controller.state.ui.calculationCacheByModel[modelId];
+    const cache = controller.state.output.calculationCacheByModel[modelId];
     if (cache.status !== "ready") {
       failSilently(
         modelId,
@@ -210,14 +210,14 @@ export async function assertCompareContract(
     assertChartMarkers(controller, modelId, visibleInputIds);
   }
 
-  const readyCache = controller.state.ui.calculationCacheByModel[modelId];
+  const readyCache = controller.state.output.calculationCacheByModel[modelId];
   const visibleInputIds = controller.selectors.getVisibleInputIds();
   const nextBaseline =
     visibleInputIds.find((inputId) => inputId !== InputId.Input1) ??
     InputId.Input1;
   controller.actions.setChartBaselineInputId(nextBaseline);
-  expect(controller.state.ui.isLoading).toBe(false);
-  expect(controller.state.ui.calculationCacheByModel[modelId]).toBe(readyCache);
+  expect(controller.state.output.isLoading).toBe(false);
+  expect(controller.state.output.calculationCacheByModel[modelId]).toBe(readyCache);
   expect(readyCache.status).toBe("ready");
   expect(controller.selectors.getCurrentCacheStatus()).toBe("ready");
   assertTableColumnsFilled(controller, modelId, visibleInputIds);

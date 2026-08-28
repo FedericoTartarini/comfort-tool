@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../../../../catalog/quantities";
 
 import { CalculationSource } from "../../../../catalog/calculationMetadata";
 import { InputId } from "../../../../catalog/inputSlots";
-import {
-  ModelOutputKey,
-  type ChartBuildContext,
-} from "../../../../catalog/modelCapabilities";
+import { type ChartBuildContext } from "../../../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../../../catalog/output/fieldChartProfile";
-import { PhysicalQuantityId } from "../../../../catalog/quantities";
 import { UnitSystem } from "../../../../catalog/units";
 import { ParametricYUnit, type ParametricLineGeometry } from "./types";
 import { renderParametricLineGeometry } from "./parametricLine";
@@ -22,7 +19,7 @@ function createContext(
       profileKind: FieldChartProfileKind.Explore,
       xField: PhysicalQuantityId.DryBulbTemperature,
       yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: ModelOutputKey.Pmv,
+      zOutput: PhysicalQuantityId.Pmv,
       bands: [{ min: 0, max: 1, label: "All", color: "#ffffff" }],
     },
   };

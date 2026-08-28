@@ -38,18 +38,9 @@ function createInputState(
 
 function createContext(): ModelCalculationContext {
   const quantitiesByInput = {
-    [InputId.Input1]: createInputState({
-      [PhysicalQuantityId.DryBulbTemperature]: 21.5,
-      [PhysicalQuantityId.RelativeHumidity]: 45,
-    }),
-    [InputId.Input2]: createInputState({
-      [PhysicalQuantityId.DryBulbTemperature]: 23,
-      [PhysicalQuantityId.RelativeHumidity]: 50,
-    }),
-    [InputId.Input3]: createInputState({
-      [PhysicalQuantityId.DryBulbTemperature]: 26.25,
-      [PhysicalQuantityId.RelativeHumidity]: 60,
-    }),
+    [InputId.Input1]: createInputState({ [PhysicalQuantityId.DryBulbTemperature]: 21.5, [PhysicalQuantityId.RelativeHumidity]: 45 }),
+    [InputId.Input2]: createInputState({ [PhysicalQuantityId.DryBulbTemperature]: 23, [PhysicalQuantityId.RelativeHumidity]: 50 }),
+    [InputId.Input3]: createInputState({ [PhysicalQuantityId.DryBulbTemperature]: 26.25, [PhysicalQuantityId.RelativeHumidity]: 60 }),
   };
   return createModelCalculationContext({
     effectiveQuantitiesByInput: quantitiesByInput,
@@ -60,10 +51,7 @@ function createContext(): ModelCalculationContext {
 }
 
 describe("request mapping", () => {
-  const adapter = createFieldRequestAdapter<DemoRequest>({
-    temperature: PhysicalQuantityId.DryBulbTemperature,
-    humidity: PhysicalQuantityId.RelativeHumidity,
-  });
+  const adapter = createFieldRequestAdapter<DemoRequest>({ temperature: PhysicalQuantityId.DryBulbTemperature, humidity: PhysicalQuantityId.RelativeHumidity });
 
   it("maps explicitly selected canonical-SI fields", () => {
     const request = adapter.mapRequest(createContext(), InputId.Input1);
@@ -82,21 +70,10 @@ describe("request mapping", () => {
       .toThrow(/unsupported request field/i);
   });
 
-  it("declares exactly the persisted canonical input keys", () => {
-    expect(primaryInputOrder).toEqual([
-      PhysicalQuantityId.DryBulbTemperature,
-      PhysicalQuantityId.MeanRadiantTemperature,
-      PhysicalQuantityId.RelativeAirSpeed,
-      PhysicalQuantityId.WindSpeed,
-      PhysicalQuantityId.RelativeHumidity,
-      PhysicalQuantityId.MetabolicRate,
-      PhysicalQuantityId.ClothingInsulation,
-      PhysicalQuantityId.ExternalWork,
-      PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
-    ]);
+  it("declares exactly the persisted canonical input keys", () => { expect(primaryInputOrder).toEqual([
+      PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.MeanRadiantTemperature, PhysicalQuantityId.RelativeAirSpeed, PhysicalQuantityId.WindSpeed, PhysicalQuantityId.RelativeHumidity, PhysicalQuantityId.MetabolicRate, PhysicalQuantityId.ClothingInsulation, PhysicalQuantityId.ExternalWork, PhysicalQuantityId.PrevailingMeanOutdoorTemperature, ]);
     expect(primaryInputOrder).not.toContain(PhysicalQuantityId.HumidityRatio);
-    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.OperativeTemperature);
-  });
+    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.OperativeTemperature); });
 
   it("calculates visible inputs and initializes every result slot", () => {
     const calculated = calculatePerInput({
@@ -160,12 +137,8 @@ describe("request mapping", () => {
     const incompleteMapper = createFieldRequestAdapter<DemoRequest>({
       temperature: PhysicalQuantityId.DryBulbTemperature,
     });
-    const mapperWithExtraProperty = createFieldRequestAdapter<DemoRequest>({
-      temperature: PhysicalQuantityId.DryBulbTemperature,
-      humidity: PhysicalQuantityId.RelativeHumidity,
-      // @ts-expect-error DTO mappings cannot add undeclared request properties.
-      wind: PhysicalQuantityId.WindSpeed,
-    });
+    const mapperWithExtraProperty = createFieldRequestAdapter<DemoRequest>({ temperature: PhysicalQuantityId.DryBulbTemperature, humidity: PhysicalQuantityId.RelativeHumidity, // @ts-expect-error DTO mappings cannot add undeclared request properties.
+      wind: PhysicalQuantityId.WindSpeed });
     void incompleteMapper;
     void mapperWithExtraProperty;
   });

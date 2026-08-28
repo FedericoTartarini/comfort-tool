@@ -8,7 +8,6 @@ import {
   PhysicalQuantityId,
   primaryInputOrder,
 } from "../../catalog/quantities";
-import { PhsQuantityId } from "../../catalog/phs";
 import { InputControlId } from "../../catalog/inputControls";
 import {
   AirSpeedControlMode,
@@ -18,10 +17,9 @@ import {
 } from "../../catalog/inputModes";
 import { ModifierId, modifierOrder } from "../../catalog/inputModifiers";
 import { InputId } from "../../catalog/inputSlots";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
 
 import { UnitSystem } from "../../catalog/units";
-import { WorkspaceId } from "../../catalog/workspaces";
+import { SurfaceId } from "../../catalog/surfaces";
 import { createAnalysisState } from "./createAnalysisState.svelte";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import {
@@ -83,19 +81,19 @@ function withModelOptions(
 describe("shareState strict v1 codec", () => {
   it("round-trips enabled, disabled-but-configured, unset, and per-input modifier state", () => {
     const toolState = createAnalysisState();
-    toolState.state.auxiliaryQuantitiesByInput[InputId.Input1][
+    toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1][
       PhysicalQuantityId.ModifierMeasuredAirSpeed
     ] = 0.6;
-    toolState.state.activeModifiersByInput[InputId.Input1][
+    toolState.state.input.activeModifiersByInput[InputId.Input1][
       ModifierId.MeasuredAirSpeed
     ] = true;
-    toolState.state.auxiliaryQuantitiesByInput[InputId.Input2][
+    toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input2][
       PhysicalQuantityId.ModifierMorningOutdoorTemperature
     ] = 10;
-    toolState.state.activeModifiersByInput[InputId.Input2][
+    toolState.state.input.activeModifiersByInput[InputId.Input2][
       ModifierId.DynamicClothing
     ] = true;
-    Object.assign(toolState.state.auxiliaryQuantitiesByInput[InputId.Input3], {
+    Object.assign(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input3], {
       [PhysicalQuantityId.ModifierSolarAltitude]: 45,
       [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90,
       [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800,
@@ -103,7 +101,7 @@ describe("shareState strict v1 codec", () => {
       [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5,
       [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5,
     });
-    toolState.state.activeModifiersByInput[InputId.Input3][
+    toolState.state.input.activeModifiersByInput[InputId.Input3][
       ModifierId.SolarGain
     ] = true;
 
@@ -150,7 +148,7 @@ describe("shareState strict v1 codec", () => {
     expect(
       toolState.actions.updateModelQuantity(
         ModelId.Phs2023,
-        PhsQuantityId.BodyWeight,
+        PhysicalQuantityId.BodyWeight,
         90,
       ),
     ).toBe(true);
@@ -158,60 +156,60 @@ describe("shareState strict v1 codec", () => {
     const snapshot = createShareStateSnapshot(toolState.state);
 
     expect(snapshot.modelInputsByModel[ModelId.Phs2023]).toEqual({
-      [PhsQuantityId.BodyWeight]: 90,
+      [PhysicalQuantityId.BodyWeight]: 90,
     });
     expect(
       snapshot.modelInputsByModel[ModelId.Phs2023],
-    ).not.toHaveProperty(PhsQuantityId.Height);
+    ).not.toHaveProperty(PhysicalQuantityId.Height);
     expect(snapshot.modelInputsByModel[ModelId.PmvAshrae]).toEqual({});
     expect(
       decodeShareWire(serializeShareState(snapshot)).modelInputsByModel,
     ).toEqual({
-      [ModelId.Phs2023]: { [PhsQuantityId.BodyWeight]: 90 },
+      [ModelId.Phs2023]: { [PhysicalQuantityId.BodyWeight]: 90 },
     });
     expect(Object.keys(snapshot.quantitiesByInput[InputId.Input1])).toEqual([
       ...primaryInputOrder,
     ]);
     expect(snapshot.quantitiesByInput[InputId.Input1]).not.toHaveProperty(
-      PhsQuantityId.BodyWeight,
+      PhysicalQuantityId.BodyWeight,
     );
 
     const restored = deserializeShareState(serializeShareState(snapshot));
     expect(restored?.modelInputsByModel[ModelId.Phs2023]).toEqual({
-      [PhsQuantityId.BodyWeight]: 90,
+      [PhysicalQuantityId.BodyWeight]: 90,
     });
     expect(restored?.quantitiesByInput[InputId.Input1]).not.toHaveProperty(
-      PhsQuantityId.BodyWeight,
+      PhysicalQuantityId.BodyWeight,
     );
   });
 
   it("round-trips all per-model field settings and explicit Infinity edges", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.PmvIso;
-    toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae] =
+    toolState.state.setting.selectedModel = ModelId.PmvIso;
+    toolState.state.setting.selectedChartInstanceByModel[ModelId.PmvAshrae] =
       "pmv-ashrae-psychrometric";
-    toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvIso] =
+    toolState.state.setting.selectedChartInstanceByModel[ModelId.PmvIso] =
       "pmv-iso-dynamic-field";
-    toolState.state.ui.unitSystem = UnitSystem.IP;
-    toolState.state.ui.modelOptionsByModel[ModelId.PmvIso][
+    toolState.state.setting.unitSystem = UnitSystem.IP;
+    toolState.state.setting.modelOptionsByModel[ModelId.PmvIso][
       OptionKey.TemperatureMode
     ] = TemperatureMode.Operative;
-    toolState.state.quantitiesByInput[InputId.Input1][
+    toolState.state.input.quantitiesByInput[InputId.Input1][
       PhysicalQuantityId.ClothingInsulation
     ] = 2;
 
     const ashrae =
-      toolState.state.ui.outputSettingsByModel[ModelId.PmvAshrae];
+      toolState.state.setting.outputSettingsByModel[ModelId.PmvAshrae];
     ashrae.xAxis = PhysicalQuantityId.MeanRadiantTemperature;
     ashrae.yAxis = PhysicalQuantityId.RelativeHumidity;
     ashrae.baselineInputId = InputId.Input3;
-    ashrae.exploreOutput = ModelOutputKey.Ppd;
+    ashrae.exploreOutput = PhysicalQuantityId.Ppd;
     ashrae.exploreBands = [
       { min: -Infinity, max: 12, label: "Preferred", color: "#0f0" },
       { min: 12, max: Infinity, label: "Other", color: "#f00" },
     ];
 
-    const iso = toolState.state.ui.outputSettingsByModel[ModelId.PmvIso];
+    const iso = toolState.state.setting.outputSettingsByModel[ModelId.PmvIso];
     iso.xAxis = PhysicalQuantityId.OperativeTemperature;
     iso.yAxis = PhysicalQuantityId.RelativeAirSpeed;
     iso.baselineInputId = InputId.Input2;
@@ -239,7 +237,7 @@ describe("shareState strict v1 codec", () => {
         xAxis: PhysicalQuantityId.MeanRadiantTemperature,
         yAxis: PhysicalQuantityId.RelativeHumidity,
         baselineInputId: InputId.Input3,
-        exploreOutput: ModelOutputKey.Ppd,
+        exploreOutput: PhysicalQuantityId.Ppd,
       }),
     );
     expect(snapshot.models[ModelId.PmvIso].outputSettings).toEqual(
@@ -261,10 +259,10 @@ describe("shareState strict v1 codec", () => {
 
   it("preserves both PHS chart IDs in strict v1 snapshots", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.Phs2023;
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.state.setting.selectedModel = ModelId.Phs2023;
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     toolState.actions.setSelectedChartInstance("phs-dynamic-field");
-    toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.PhsWaterLoss);
 
     const dynamicSnapshot = createShareStateSnapshot(toolState.state);
     expect(dynamicSnapshot.version).toBe(1);
@@ -282,21 +280,21 @@ describe("shareState strict v1 codec", () => {
     ).toBe("phs-exposure-history");
     expect(
       historySnapshot.models[ModelId.Phs2023].outputSettings.exploreOutput,
-    ).toBe(ModelOutputKey.PhsRectalTemperature);
+    ).toBe(PhysicalQuantityId.PhsRectalTemperature);
     expect(deserializeShareState(serializeShareState(historySnapshot))).toEqual(
       historySnapshot,
     );
 
     const incompatible = structuredClone(historySnapshot);
     incompatible.models[ModelId.Phs2023].outputSettings.exploreOutput =
-      ModelOutputKey.PhsWaterLoss;
+      PhysicalQuantityId.PhsWaterLoss;
     expect(parseShareStateSnapshot(incompatible)).toBeNull();
   });
 
   it("round-trips built-in and edited UTF-8 labels through the codec and URL", () => {
     const toolState = createAnalysisState();
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
-    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Ppd);
 
     const builtInSnapshot = createShareStateSnapshot(toolState.state);
     const builtInBands =
@@ -340,7 +338,7 @@ describe("shareState strict v1 codec", () => {
 
   it("round-trips both Adaptive models and a transposed axis direction", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.AdaptiveAshrae;
+    toolState.state.setting.selectedModel = ModelId.AdaptiveAshrae;
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.OperativeTemperature);
     const snapshot = createShareStateSnapshot(toolState.state);
     const restored = deserializeShareState(serializeShareState(snapshot));
@@ -389,16 +387,16 @@ describe("shareState strict v1 codec", () => {
 
   it("applies a complete snapshot without reseeding any model settings", () => {
     const original = createAnalysisState();
-    original.state.ui.compareEnabled = true;
-    original.state.ui.compareInputIds = [InputId.Input1, InputId.Input3];
-    original.state.ui.activeInputId = InputId.Input3;
-    original.state.ui.unitSystem = UnitSystem.IP;
-    original.state.ui.outputSettingsByModel[ModelId.Utci].xAxis =
+    original.state.setting.compareEnabled = true;
+    original.state.setting.compareInputIds = [InputId.Input1, InputId.Input3];
+    original.state.setting.activeInputId = InputId.Input3;
+    original.state.setting.unitSystem = UnitSystem.IP;
+    original.state.setting.outputSettingsByModel[ModelId.Utci].xAxis =
       PhysicalQuantityId.WindSpeed;
-    original.state.ui.outputSettingsByModel[ModelId.Utci].yAxis =
+    original.state.setting.outputSettingsByModel[ModelId.Utci].yAxis =
       PhysicalQuantityId.MeanRadiantTemperature;
-    original.state.ui.activeWorkspace = WorkspaceId.Explore;
-    original.state.ui.outputSettingsByModel[
+    original.state.setting.activeSurface = SurfaceId.Explore;
+    original.state.setting.outputSettingsByModel[
       ModelId.PmvIso
     ].baselineInputId = InputId.Input3;
 
@@ -408,14 +406,14 @@ describe("shareState strict v1 codec", () => {
 
     expect(createShareStateSnapshot(restored.state)).toEqual(snapshot);
     expect(
-      restored.state.ui.outputSettingsByModel[ModelId.PmvIso]
+      restored.state.setting.outputSettingsByModel[ModelId.PmvIso]
         .baselineInputId,
     ).toBe(InputId.Input3);
-    expect(restored.state.ui.compareInputIds).toEqual([
+    expect(restored.state.setting.compareInputIds).toEqual([
       InputId.Input1,
       InputId.Input3,
     ]);
-    expect(restored.state.ui.activeInputId).toBe(InputId.Input3);
+    expect(restored.state.setting.activeInputId).toBe(InputId.Input3);
   });
 
   it.each(Object.values(ModelId))(
@@ -632,7 +630,7 @@ describe("shareState strict v1 codec", () => {
     const unknownModelInput = structuredClone(current);
     Object.assign(
       unknownModelInput.modelInputsByModel[ModelId.PmvAshrae],
-      { [PhsQuantityId.BodyWeight]: 80 },
+      { [PhysicalQuantityId.BodyWeight]: 80 },
     );
 
     const nonFinite = structuredClone(current);
@@ -680,7 +678,7 @@ describe("shareState strict v1 codec", () => {
       parseShareStateSnapshot(
         withOutputSettings(current, ModelId.PmvAshrae, {
           explore: {
-            zOutput: ModelOutputKey.Utci,
+            zOutput: PhysicalQuantityId.Utci,
             bands:
               current.models[ModelId.PmvAshrae].outputSettings
                 .exploreBands,
@@ -692,7 +690,7 @@ describe("shareState strict v1 codec", () => {
       parseShareStateSnapshot(
         withOutputSettings(current, ModelId.PmvAshrae, {
           explore: {
-            zOutput: ModelOutputKey.Pmv,
+            zOutput: PhysicalQuantityId.Pmv,
             bands: [
               { min: 0, max: 2, label: "One", color: "#000" },
               { min: 1, max: 3, label: "Two", color: "#fff" },
@@ -822,7 +820,7 @@ describe("shareState strict v1 codec", () => {
     expect(
       toolState.actions.updateModelQuantity(
         ModelId.Phs2023,
-        PhsQuantityId.BodyWeight,
+        PhysicalQuantityId.BodyWeight,
         90,
       ),
     ).toBe(true);
@@ -835,7 +833,7 @@ describe("shareState strict v1 codec", () => {
     ]);
     expect(changedWire.models).not.toHaveProperty(ModelId.PmvIso);
     expect(changedWire.modelInputsByModel).toEqual({
-      [ModelId.Phs2023]: { [PhsQuantityId.BodyWeight]: 90 },
+      [ModelId.Phs2023]: { [PhysicalQuantityId.BodyWeight]: 90 },
     });
     expect(deserializeShareState(serializeShareState(changedSnapshot))).toEqual(
       changedSnapshot,
@@ -849,7 +847,7 @@ describe("shareState strict v1 codec", () => {
       HumidityInputMode.DewPoint,
     );
     original.actions.updateInput(
-      original.state.ui.activeInputId,
+      original.state.setting.activeInputId,
       InputControlId.Humidity,
       "10",
     );
@@ -865,11 +863,11 @@ describe("shareState strict v1 codec", () => {
 
   it("restores modifier configuration even when the selected model does not support it", () => {
     const original = createAnalysisState();
-    original.state.ui.selectedModel = ModelId.Utci;
-    original.state.auxiliaryQuantitiesByInput[InputId.Input1][
+    original.state.setting.selectedModel = ModelId.Utci;
+    original.state.input.auxiliaryQuantitiesByInput[InputId.Input1][
       PhysicalQuantityId.ModifierMeasuredAirSpeed
     ] = 0.6;
-    original.state.activeModifiersByInput[InputId.Input1][
+    original.state.input.activeModifiersByInput[InputId.Input1][
       ModifierId.MeasuredAirSpeed
     ] = true;
     const snapshot = createShareStateSnapshot(original.state);
@@ -888,12 +886,12 @@ describe("shareState strict v1 codec", () => {
         InputId.Input1
       ][PhysicalQuantityId.RelativeAirSpeed],
     ).toBe(
-      restored.state.quantitiesByInput[InputId.Input1][
+      restored.state.input.quantitiesByInput[InputId.Input1][
         PhysicalQuantityId.RelativeAirSpeed
       ],
     );
 
-    restored.state.ui.selectedModel = ModelId.PmvAshrae;
+    restored.state.setting.selectedModel = ModelId.PmvAshrae;
     expect(
       restored.selectors.getEffectiveQuantitiesByInput()[InputId.Input1][
         PhysicalQuantityId.RelativeAirSpeed

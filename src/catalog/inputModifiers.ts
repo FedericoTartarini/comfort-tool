@@ -4,6 +4,7 @@ import {
   type PrimaryQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "./quantities";
+
 export const ModifierId = {
   MeasuredAirSpeed: "measuredAirSpeed",
   MorningClothingEstimate: "morningClothingEstimate",
@@ -81,17 +82,6 @@ export const inputModifierCatalogue: Record<ModifierId, InputModifierCatalogueEn
     description: "Adjust clothing insulation for the current metabolic rate.",
     extraInputs: [],
   },
-  [ModifierId.SolarGain]: {
-    id: ModifierId.SolarGain,
-    label: "Solar gain on occupant",
-    description: "Increase effective mean radiant temperature for direct solar exposure.",
-    extraInputs: [
-      PhysicalQuantityId.ModifierSolarAltitude,
-      PhysicalQuantityId.ModifierSolarHorizontalAngle,
-      PhysicalQuantityId.ModifierDirectSolarRadiation,
-      PhysicalQuantityId.ModifierSolarTransmittance,
-      PhysicalQuantityId.ModifierSkyVaultViewFraction,
-      PhysicalQuantityId.ModifierBodyExposureFraction,
-    ],
-  },
+  [ModifierId.SolarGain]: { id: ModifierId.SolarGain, label: "Solar gain on occupant", description: "Increase effective mean radiant temperature for direct solar exposure.", extraInputs: [
+      PhysicalQuantityId.ModifierSolarAltitude, PhysicalQuantityId.ModifierSolarHorizontalAngle, PhysicalQuantityId.ModifierDirectSolarRadiation, PhysicalQuantityId.ModifierSolarTransmittance, PhysicalQuantityId.ModifierSkyVaultViewFraction, PhysicalQuantityId.ModifierBodyExposureFraction, ] },
 };

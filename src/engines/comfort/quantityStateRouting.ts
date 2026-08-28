@@ -1,4 +1,3 @@
-import { ModelId, type ModelId as ModelIdType } from "../../catalog/modelIds";
 import {
   inputModifierCatalogue,
   modifierOrder,
@@ -6,8 +5,21 @@ import {
   type ModifierInputValues,
 } from "../../catalog/inputModifiers";
 import { InputId, inputOrder, type InputId as InputIdType } from "../../catalog/inputSlots";
-import { PhysicalQuantityId, QuantityState, derivedQuantityIds, isPhysicalQuantityId, physicalQuantityMetaById, primaryInputOrder, resolveQuantityState, type AuxiliaryInputState, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState, type PrimaryQuantityId } from "../../catalog/quantities";
-const comfortModelOrder = Object.values(ModelId) as ModelIdType[];
+import {
+  PhysicalQuantityId,
+  QuantityState,
+  derivedQuantityIds,
+  isPhysicalQuantityId,
+  physicalQuantityMetaById,
+  primaryInputOrder,
+  resolveQuantityState,
+  type AuxiliaryInputState,
+  type DerivedSlotQuantityState,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+  type PrimaryInputState,
+  type PrimaryQuantityId,
+} from "../../catalog/quantities";
+import { type ModelId as ModelIdType } from "../../catalog/modelIds";
 
 export type QuantitiesByInputState = Record<InputIdType, PrimaryInputState>;
 export type AuxiliaryQuantitiesByInputState = Record<InputIdType, AuxiliaryInputState>;
@@ -25,24 +37,6 @@ export function createAuxiliaryQuantitiesByInput(): AuxiliaryQuantitiesByInputSt
     byInput[inputId] = createEmptyAuxiliaryInputState();
     return byInput;
   }, {} as AuxiliaryQuantitiesByInputState);
-}
-
-export function createDefaultModelInputsForModel(
-  modelId: ModelIdType,
-): Partial<Record<PhysicalQuantityIdType, number>> {
-  return Object.values(physicalQuantityMetaById)
-    .filter((meta) => meta.ownerModelId === modelId && meta.state === QuantityState.Model)
-    .reduce((accumulator, meta) => {
-      accumulator[meta.id] = meta.defaultSi;
-      return accumulator;
-    }, {} as Partial<Record<PhysicalQuantityIdType, number>>);
-}
-
-export function createModelInputsByModel(): ModelInputsByModelState {
-  return comfortModelOrder.reduce((accumulator, modelId) => {
-    accumulator[modelId] = createDefaultModelInputsForModel(modelId);
-    return accumulator;
-  }, {} as ModelInputsByModelState);
 }
 
 export function getPrimaryQuantity(
@@ -99,16 +93,11 @@ export function setModelQuantity(
 }
 
 export function getDerivedFromAuxiliary(auxiliary: AuxiliaryInputState): DerivedSlotQuantityState {
-  return {
-    [PhysicalQuantityId.DewPoint]: auxiliary[PhysicalQuantityId.DewPoint]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.DewPoint].defaultSi,
-    [PhysicalQuantityId.DerivedHumidityRatio]: auxiliary[PhysicalQuantityId.DerivedHumidityRatio]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.DerivedHumidityRatio].defaultSi,
-    [PhysicalQuantityId.WetBulb]: auxiliary[PhysicalQuantityId.WetBulb]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.WetBulb].defaultSi,
-    [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.VaporPressure].defaultSi,
-  };
+  return { [PhysicalQuantityId.DewPoint]: auxiliary[PhysicalQuantityId.DewPoint]
+      ?? physicalQuantityMetaById[PhysicalQuantityId.DewPoint].defaultSi, [PhysicalQuantityId.HumidityRatio]: auxiliary[PhysicalQuantityId.HumidityRatio]
+      ?? physicalQuantityMetaById[PhysicalQuantityId.HumidityRatio].defaultSi, [PhysicalQuantityId.WetBulb]: auxiliary[PhysicalQuantityId.WetBulb]
+      ?? physicalQuantityMetaById[PhysicalQuantityId.WetBulb].defaultSi, [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
+      ?? physicalQuantityMetaById[PhysicalQuantityId.VaporPressure].defaultSi };
 }
 
 export function getDerivedByInputFromAuxiliary(
@@ -125,12 +114,10 @@ export function syncDerivedQuantitiesIntoAuxiliary(
   primary: PrimaryInputState,
   auxiliary: AuxiliaryInputState,
   derived: DerivedSlotQuantityState,
-): void {
-  auxiliary[PhysicalQuantityId.DewPoint] = derived[PhysicalQuantityId.DewPoint];
-  auxiliary[PhysicalQuantityId.DerivedHumidityRatio] = derived[PhysicalQuantityId.DerivedHumidityRatio];
+): void { auxiliary[PhysicalQuantityId.DewPoint] = derived[PhysicalQuantityId.DewPoint];
+  auxiliary[PhysicalQuantityId.HumidityRatio] = derived[PhysicalQuantityId.HumidityRatio];
   auxiliary[PhysicalQuantityId.WetBulb] = derived[PhysicalQuantityId.WetBulb];
-  auxiliary[PhysicalQuantityId.VaporPressure] = derived[PhysicalQuantityId.VaporPressure];
-}
+  auxiliary[PhysicalQuantityId.VaporPressure] = derived[PhysicalQuantityId.VaporPressure]; }
 
 export function syncAllDerivedQuantities(
   quantitiesByInput: QuantitiesByInputState,
@@ -190,9 +177,9 @@ export function isSlotQuantityId(value: string): value is PhysicalQuantityIdType
     && resolveQuantityState(value) === QuantityState.Slot;
 }
 
-export function isModelQuantityId(value: string): value is PhysicalQuantityIdType {
+export function isExtraQuantityId(value: string): value is PhysicalQuantityIdType {
   return isPhysicalQuantityId(value)
-    && resolveQuantityState(value) === QuantityState.Model;
+    && resolveQuantityState(value) === QuantityState.Extra;
 }
 
 export function slotQuantityIds(): readonly PhysicalQuantityIdType[] {

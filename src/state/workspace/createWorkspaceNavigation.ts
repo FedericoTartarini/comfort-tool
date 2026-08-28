@@ -1,5 +1,5 @@
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
-import { WorkspaceId } from "../../catalog/workspaces";
+import { SurfaceId } from "../../catalog/surfaces";
 import {
   buildCalculationPath,
   buildCanonicalPathname,
@@ -69,7 +69,7 @@ export function createWorkspaceNavigation(
 
     const allowedModels = getAllowedModels(definition);
     const pathModelId = parseAppLocation(url.pathname)?.modelId;
-    const selectedModel = timeSeries.state.selectedModel;
+    const selectedModel = timeSeries.state.setting.selectedModel;
     const targetModel = pathModelId && allowedModels.includes(pathModelId)
       ? pathModelId
       : allowedModels.includes(selectedModel)
@@ -106,7 +106,7 @@ export function createWorkspaceNavigation(
 
     const allowedModels = getAllowedModels(definition);
     const pathModelId = parseAppLocation(url.pathname)?.modelId;
-    const selectedModel = toolState.state.ui.selectedModel;
+    const selectedModel = toolState.state.setting.selectedModel;
     const targetModel = pathModelId && allowedModels.includes(pathModelId)
       ? pathModelId
       : allowedModels.includes(selectedModel)
@@ -127,7 +127,7 @@ export function createWorkspaceNavigation(
     }
 
     pendingTransition = null;
-    toolState.actions.setActiveWorkspace(definition.workspace);
+    toolState.actions.setActiveSurface(definition.workspace);
     return true;
   }
 
@@ -142,7 +142,7 @@ export function createWorkspaceNavigation(
       return true;
     }
 
-    if (parsed.definition.workspace === WorkspaceId.TimeSeries) {
+    if (parsed.definition.workspace === SurfaceId.TimeSeries) {
       return applyTimeSeriesRoute(parsed.definition, url);
     }
 
@@ -165,9 +165,9 @@ export function createWorkspaceNavigation(
 
   function getCanonicalPathname(url: URL): string | undefined {
     const parsed = parseAppLocation(url.pathname);
-    const selectedModel = parsed?.definition.workspace === WorkspaceId.TimeSeries
-      ? timeSeries?.state.selectedModel ?? parsed.definition.defaultModelId
-      : toolState.state.ui.selectedModel;
+    const selectedModel = parsed?.definition.workspace === SurfaceId.TimeSeries
+      ? timeSeries?.state.setting.selectedModel ?? parsed.definition.defaultModelId
+      : toolState.state.setting.selectedModel;
     if (!selectedModel) {
       return undefined;
     }
@@ -205,7 +205,7 @@ export function createWorkspaceNavigation(
     pendingTransition = null;
     toolState.actions.confirmModelSwitch({ schedule: false });
     if (isCalculationRoute(transition.definition)) {
-      toolState.actions.setActiveWorkspace(transition.definition.workspace);
+      toolState.actions.setActiveSurface(transition.definition.workspace);
     }
 
     if (transition.navigationTarget) {

@@ -1,9 +1,9 @@
 import type { ComfortStandard } from "../../catalog/calculationMetadata";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import {
   ModelId,
   type JsThermalComfortStandard,
 } from "../../catalog/modelIds";
-import { PhysicalQuantityId } from "../../catalog/quantities";
 import { InputControlId } from "../../catalog/inputControls";
 import {
   AirSpeedControlMode,
@@ -17,16 +17,9 @@ import {
 import type { InputModifier } from "../../catalog/inputModifiers";
 import type {
   StandardId as StandardIdType,
-  WorkspaceId as WorkspaceIdType,
-} from "../../catalog/workspaces";
-import {
-  bandsFromThermalZones,
-  ModelOutputKey,
-  numericBandFromToken,
-  type ComplianceSpec,
-  type ModelOutput,
-  type NumericBand,
-} from "../../catalog/modelCapabilities";
+  SurfaceId as SurfaceIdType,
+} from "../../catalog/surfaces";
+import { bandsFromThermalZones, numericBandFromToken, type ComplianceSpec, type ModelOutput, type NumericBand } from "../../catalog/modelCapabilities";
 import {
   createAirSpeedOptionHandler,
 } from "../../engines/comfort/controls/numericControl";
@@ -46,10 +39,9 @@ import {
   ComfortModelBuilder,
   hasExactKeys,
   isRecord,
-  type ChartDeclarationInput,
+  type FrontendChartDeclaration,
 } from "../../state/analysis/modelConfigs/builder";
 import { ChartType } from "../../catalog/chartTypes";
-import { TableType } from "../../catalog/tableTypes";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import {
   buildPmvResultRows,
@@ -92,7 +84,7 @@ export interface PmvModelDeclaration {
   readonly description: string;
   readonly adapter: PmvStandardAdapter;
   readonly standardIds: readonly StandardIdType[];
-  readonly workspaceCapabilities: readonly WorkspaceIdType[];
+  readonly workspaceCapabilities: readonly SurfaceIdType[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
   readonly psychrometricChartId: string;
@@ -174,13 +166,13 @@ const ppdExploreBands: readonly NumericBand[] = [
 
 export const pmvExploreOutputs: readonly ModelOutput[] = [
   {
-    key: ModelOutputKey.Pmv,
+    key: PhysicalQuantityId.Pmv,
     label: "PMV",
     legendTitle: "PMV Zones",
     defaultBands: bandsFromThermalZones(pmvZonesList),
   },
   {
-    key: ModelOutputKey.Ppd,
+    key: PhysicalQuantityId.Ppd,
     label: "PPD (%)",
     legendTitle: "PPD Bands",
     defaultBands: ppdExploreBands,
@@ -228,33 +220,14 @@ export function createPmvComplianceCaption(
   return `Green shading = ${standardLabel} compliant PMV (${formatPmvBoundary(neutralBand.min)} ≤ PMV < ${formatPmvBoundary(neutralBand.max)}); red = outside the limit.`;
 }
 
-const PMV_PARAMETRIC_CHART_CAPABILITIES = {
-  allowsAxisSelection: false,
-  locksYAxis: false,
-  allowsOutputSelection: false,
-  allowsBandEditing: false,
-  allowsBaselineSelection: true,
-  showsLegend: false,
-  showsExport: true,
-} as const;
-
 export function createPmvCharts(
   declaration: PmvModelDeclaration,
-): readonly ChartDeclarationInput<PmvResponse, PmvChartSource>[] {
+): readonly FrontendChartDeclaration<PmvResponse, PmvChartSource>[] {
   return [
     {
       id: declaration.psychrometricChartId,
       type: ChartType.Psychrometric,
       emptyMessage: "No psychrometric chart yet.",
-      capabilities: {
-        allowsAxisSelection: false,
-        locksYAxis: false,
-        allowsOutputSelection: false,
-        allowsBandEditing: false,
-        allowsBaselineSelection: true,
-        showsLegend: true,
-        showsExport: true,
-      },
       spec: createPmvPsychrometricChartSpec(
         declaration,
         declaration.psychrometricChartId,
@@ -264,16 +237,7 @@ export function createPmvCharts(
       id: declaration.dynamicChartId,
       type: ChartType.Dynamic,
       emptyMessage: "No dynamic chart yet.",
-      capabilities: {
-        allowsAxisSelection: true,
-        locksYAxis: false,
-        allowsOutputSelection: true,
-        allowsBandEditing: true,
-        allowsBaselineSelection: true,
-        showsLegend: true,
-        showsExport: true,
-      },
-      supportedExploreOutputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
+      supportedExploreOutputs: [PhysicalQuantityId.Pmv, PhysicalQuantityId.Ppd],
       spec: createPmvDynamicFieldChartSpec(
         declaration,
         declaration.dynamicChartId,
@@ -284,14 +248,12 @@ export function createPmvCharts(
       id: declaration.heatLossChartId,
       type: ChartType.HeatLoss,
       emptyMessage: "No heat-loss chart yet.",
-      capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
       spec: createPmvHeatLossParametricSpec(),
     },
     {
       id: declaration.setChartId,
       type: ChartType.Set,
       emptyMessage: "No SET chart yet.",
-      capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
       spec: createPmvSetParametricSpec(),
     },
   ];
@@ -366,18 +328,12 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
     .setDefaultOptions({ ...declaration.defaultOptions })
     .setOptionParser(declaration.parseOptions)
     .setDynamicAxisFields([...PMV_DYNAMIC_AXIS_FIELDS])
-    .setDefaultDynamicAxes({
-      xAxis: PhysicalQuantityId.DryBulbTemperature,
-      yAxis: PhysicalQuantityId.RelativeHumidity,
-    })
+    .setDefaultDynamicAxes({ xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity })
     .setCalculator((context, visibleInputIds) => (
       calculatePmvModel(context, visibleInputIds, adapter)
     ))
     .setTables({
-      analysis: {
-        type: TableType.Analysis,
-        rows: buildPmvResultRows(),
-      },
+      results: buildPmvResultRows(),
     })
     .setCharts(
       createPmvCharts(declaration),

@@ -28,9 +28,9 @@ describe("chart build memo", () => {
 
   it("hashes model inputs in stable key order", () => {
     expect(hashModelInputs({
-      "phs.height": 1.8,
-      "phs.bodyWeight": 80,
-    })).toBe("phs.bodyWeight:80|phs.height:1.8");
+      height: 1.8,
+      bodyWeight: 80,
+    })).toBe("bodyWeight:80|height:1.8");
     expect(hashModelInputs({})).toBe("");
   });
 
@@ -53,7 +53,7 @@ describe("chart build memo", () => {
     });
     const editedKey = buildChartMemoKey({
       ...shared,
-      modelInputsHash: hashModelInputs({ "phs.bodyWeight": 90 }),
+      modelInputsHash: hashModelInputs({ bodyWeight: 90 }),
     });
     expect(defaultKey).not.toBe(editedKey);
   });

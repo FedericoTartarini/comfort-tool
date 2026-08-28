@@ -1,6 +1,11 @@
 import { InputControlId } from "../../../catalog/inputControls";
 import { TemperatureMode, type ModelOptionsRecord } from "../../../catalog/inputModes";
-import { formatDisplayValue, convertQuantityFromSi, convertQuantityToSi } from "../../units";
+import {
+  convertQuantityFromSi,
+  convertQuantityToSi,
+  formatDisplayValue,
+  roundToDisplay,
+} from "../../units";
 import { createHumidityControlBehavior } from "./humidityControl";
 import {
   buildDefaultPresentation,
@@ -74,7 +79,6 @@ export type OutdoorWindSpeedInputFieldSpec = {
   minValue: number;
   maxValue: number;
   step?: number;
-  decimals?: number;
 };
 
 export type PresetInputFieldSpec = {
@@ -89,8 +93,8 @@ export type PresetInputFieldSpec = {
   applyInput?: NumericControlBehaviorConfig["applyInput"];
 };
 
-export type ModelQuantityInputFieldSpec = {
-  kind: "modelQuantity";
+export type ExtraQuantityInputFieldSpec = {
+  kind: "quantity";
   quantityId: PhysicalQuantityIdType;
   minValue?: number;
   maxValue?: number;
@@ -106,7 +110,7 @@ export type InputFieldSpec =
   | OccupantAirSpeedInputFieldSpec
   | OutdoorWindSpeedInputFieldSpec
   | PresetInputFieldSpec
-  | ModelQuantityInputFieldSpec;
+  | ExtraQuantityInputFieldSpec;
 
 export type InputFieldControlId = InputControlDefinition["id"];
 
@@ -126,7 +130,7 @@ export function inputFieldControlId(spec: InputFieldSpec): InputFieldControlId {
       return InputControlId.AirSpeed;
     case "outdoorWindSpeed":
       return InputControlId.WindSpeed;
-    case "modelQuantity":
+    case "quantity":
       return spec.quantityId;
     default: {
       const unknownSpec: never = spec;
@@ -153,7 +157,7 @@ export function primaryQuantityIdsForInputField(
       return [PhysicalQuantityId.RelativeAirSpeed];
     case "outdoorWindSpeed":
       return [PhysicalQuantityId.WindSpeed];
-    case "modelQuantity":
+    case "quantity":
       return [];
     default: {
       const unknownSpec: never = spec;
@@ -179,8 +183,8 @@ export function declaredSiRangeForInputField(
   return { minSi, maxSi };
 }
 
-function createModelQuantityControlBehavior(
-  spec: ModelQuantityInputFieldSpec,
+function createExtraQuantityControlBehavior(
+  spec: ExtraQuantityInputFieldSpec,
 ): InputControlBehavior {
   const resolveMeta = () => {
     const meta = getPhysicalQuantityMeta(spec.quantityId);
@@ -212,12 +216,12 @@ function createModelQuantityControlBehavior(
         maxValue,
         context.unitSystem,
       );
-      const rangeText = `From ${formatDisplayValue(minDisplay, display.decimals)} to ${formatDisplayValue(maxDisplay, display.decimals)}`;
+      const rangeText = `From ${formatDisplayValue(minDisplay)} to ${formatDisplayValue(maxDisplay)}`;
       const numericValuesByInput: Record<string, number> = {};
       const displayValuesByInput: Record<string, string> = {};
       for (const inputId of context.visibleInputIds) {
         numericValuesByInput[inputId] = displayValue;
-        displayValuesByInput[inputId] = formatDisplayValue(displayValue, display.decimals);
+        displayValuesByInput[inputId] = formatDisplayValue(displayValue);
       }
 
       return {
@@ -233,7 +237,7 @@ function createModelQuantityControlBehavior(
         step: display.step,
         menu: null,
         presetOptions: [],
-        presetDecimals: display.decimals,
+        presetDecimals: 2,
         showClothingBuilder: false,
         displayValuesByInput,
         numericValuesByInput,
@@ -243,9 +247,17 @@ function createModelQuantityControlBehavior(
       if (!rawValue.trim()) return null;
       const parsedValue = Number(rawValue);
       if (!Number.isFinite(parsedValue)) return null;
+      const currentSi = context.modelInputs[spec.quantityId]
+        ?? getPhysicalQuantityMeta(spec.quantityId).defaultSi;
+      const currentDisplay = formatDisplayValue(
+        convertQuantityFromSi(spec.quantityId, currentSi, context.unitSystem),
+      );
+      if (rawValue.trim() === currentDisplay) return null;
+      const displayValue = roundToDisplay(parsedValue);
+      if (formatDisplayValue(displayValue) === currentDisplay) return null;
       const nextValue = convertQuantityToSi(
         spec.quantityId,
-        parsedValue,
+        displayValue,
         context.unitSystem,
       );
       if (!Number.isFinite(nextValue)) return null;
@@ -344,13 +356,12 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
           fieldKey: PhysicalQuantityId.WindSpeed,
           minValue: spec.minValue,
           maxValue: spec.maxValue,
-          getPresentation: (context, meta) => {
+          getPresentation: (context) => {
             const presentation = buildDefaultPresentation(context, PhysicalQuantityId.WindSpeed, {
               minValue: spec.minValue,
               maxValue: spec.maxValue,
             });
             presentation.step = spec.step ?? 1;
-            presentation.decimals = spec.decimals ?? 0;
             return presentation;
           },
         }),
@@ -378,10 +389,10 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
             : {}),
         }),
       };
-    case "modelQuantity":
+    case "quantity":
       return {
         id: inputFieldControlId(spec),
-        behavior: createModelQuantityControlBehavior(spec),
+        behavior: createExtraQuantityControlBehavior(spec),
       };
     default: {
       const unknownSpec: never = spec;

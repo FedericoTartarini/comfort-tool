@@ -3,14 +3,9 @@ import { CalculationSource } from "../catalog/calculationMetadata";
 import type { ModelChartSource } from "../catalog/chartSource";
 import { ModelId } from "../catalog/modelIds";
 import { InputControlId } from "../catalog/inputControls";
-import {
-  bandsFromThermalZones,
-  ModelOutputKey,
-  type ModelOutput,
-} from "../catalog/modelCapabilities";
+import { bandsFromThermalZones, type ModelOutput } from "../catalog/modelCapabilities";
 import { ChartType } from "../catalog/chartTypes";
-import { TableType } from "../catalog/tableTypes";
-import { WorkspaceId } from "../catalog/workspaces";
+import { SurfaceId } from "../catalog/surfaces";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../catalog/quantities";
 import { ThermalZone } from "../catalog/thermalZone";
 import { ZoneToken } from "../catalog/zoneTokens";
@@ -23,9 +18,6 @@ import {
 import {
   convertFieldValueFromSi,
   convertMetersPerSecondToKilometersPerHour,
-  convertModelOutputFromSi,
-  formatDisplayValue,
-  getModelOutputDisplayMeta,
 } from "../engines/units";
 import {
   defineModel,
@@ -62,13 +54,10 @@ export interface WindChillResponse {
   source: CalculationSource;
 }
 
-export const windChillRequestAdapter = createFieldRequestAdapter<WindChillRequest>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  v: PhysicalQuantityId.WindSpeed,
-});
+export const windChillRequestAdapter = createFieldRequestAdapter<WindChillRequest>({ tdb: PhysicalQuantityId.DryBulbTemperature, v: PhysicalQuantityId.WindSpeed });
 
 const windChillOutput: ModelOutput = {
-  key: ModelOutputKey.WindChill,
+  key: PhysicalQuantityId.WindChill,
   label: "Wind Chill Index",
   defaultBands: bandsFromThermalZones(windChillZonesList),
 };
@@ -119,10 +108,7 @@ const windChillGridSpec: Omit<
           ),
     ],
   },
-  axisRanges: {
-    [PhysicalQuantityId.DryBulbTemperature]: TDB_LIMITS,
-    [PhysicalQuantityId.WindSpeed]: WIND_LIMITS,
-  },
+  axisRanges: { [PhysicalQuantityId.DryBulbTemperature]: TDB_LIMITS, [PhysicalQuantityId.WindSpeed]: WIND_LIMITS },
   requestAdapter: windChillRequestAdapter,
   evaluate: calculateWindChill,
   getOutputValue: (result) => result.wci,
@@ -136,7 +122,7 @@ export const windChillModelConfig = defineModel<
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],
-  workspaceCapabilities: [WorkspaceId.Explore],
+  workspaceCapabilities: [SurfaceId.Explore],
   exploreOutputs: [windChillOutput],
   modifiers: [],
   inputFields: [
@@ -159,13 +145,7 @@ export const windChillModelConfig = defineModel<
       type: ChartType.Dynamic,
       emptyMessage: "No dynamic chart yet.",
       capabilities: {
-        allowsAxisSelection: true,
         locksYAxis: true,
-        allowsOutputSelection: true,
-        allowsBandEditing: true,
-        allowsBaselineSelection: true,
-        showsLegend: true,
-        showsExport: true,
       },
       spec: {
         title: `${MODEL_LABEL} Dynamic Chart`,
@@ -176,47 +156,23 @@ export const windChillModelConfig = defineModel<
   ],
   defaultChartId: DYNAMIC_CHART_ID,
   tables: {
-    analysis: {
-      type: TableType.Analysis,
-      rows: [
-        {
-          id: "wind-chill-index",
-          label: `${MODEL_LABEL} Index`,
-          format: (result, unitSystem) => {
-            const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.WindChill, unitSystem);
-            const value = convertModelOutputFromSi(
-              ModelOutputKey.WindChill,
-              result.wci,
-              unitSystem,
-            );
-            return {
-              text: `${formatDisplayValue(value, outputMeta.decimals)} ${outputMeta.displayUnits}`,
-              subtext: result.wciZone,
-              color: getWindChillColor(result),
-            };
-          },
-        },
-        {
-          id: "wind-chill-temperature",
-          label: `${MODEL_LABEL} Temperature`,
-          format: (result, unitSystem) => {
-            const temperatureUnits = getQuantityPresentationMeta(
-              PhysicalQuantityId.DryBulbTemperature,
-              unitSystem,
-            ).displayUnits;
-            const value = convertFieldValueFromSi(
-              PhysicalQuantityId.DryBulbTemperature,
-              result.wciTemp,
-              unitSystem,
-            );
-            return {
-              text: `${formatDisplayValue(value, 1)} ${temperatureUnits}`,
-              color: getWindChillColor(result),
-            };
-          },
-        },
-      ],
-    },
+    results: [
+      {
+        quantity: PhysicalQuantityId.WindChill,
+        id: "wind-chill-index",
+        label: `${MODEL_LABEL} Index`,
+        value: (result) => result.wci,
+        subtext: (result) => result.wciZone,
+        color: getWindChillColor,
+      },
+      {
+        quantity: PhysicalQuantityId.DryBulbTemperature,
+        id: "wind-chill-temperature",
+        label: `${MODEL_LABEL} Temperature`,
+        value: (result) => result.wciTemp,
+        color: getWindChillColor,
+      },
+    ],
   },
   calculate: (context, visibleInputIds) =>
     calculatePerInput({
@@ -226,10 +182,7 @@ export const windChillModelConfig = defineModel<
       calculate: calculateWindChill,
     }),
   dynamicAxisFields: [...WIND_AXIS_FIELDS],
-  defaultDynamicAxes: {
-    xAxis: PhysicalQuantityId.DryBulbTemperature,
-    yAxis: PhysicalQuantityId.WindSpeed,
-  },
+  defaultDynamicAxes: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.WindSpeed },
   defaultOptions: {},
   parseOptions: parseEmptyOptions,
 });

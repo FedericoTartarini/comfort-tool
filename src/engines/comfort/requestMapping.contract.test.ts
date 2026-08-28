@@ -8,8 +8,7 @@ import { pmvRequestAdapter } from "../../declarations/pmv/calculation";
 import { utciRequestAdapter } from "../../declarations/utci/calculation";
 import { windChillRequestAdapter } from "../../declarations/windChill";
 import { type FieldRequestAdapter } from "./requestMapping";
-import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder } from "../../catalog/quantities";
-import type { PrimaryQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder, type PrimaryQuantityId } from "../../catalog/quantities";
 import { InputId, inputDefaultsById } from "../../catalog/inputSlots";
 import {
   createModelCalculationContext,
@@ -41,17 +40,7 @@ function testRequestAdapterContract<TRequest extends object>(
 ): void {
   describe(`${modelId} request adapter`, () => {
     it("maps every numeric DTO field to finite SI values", () => {
-      const context = createContractContext({
-        [PhysicalQuantityId.DryBulbTemperature]: 24,
-        [PhysicalQuantityId.MeanRadiantTemperature]: 23,
-        [PhysicalQuantityId.RelativeAirSpeed]: 0.15,
-        [PhysicalQuantityId.WindSpeed]: 1.2,
-        [PhysicalQuantityId.RelativeHumidity]: 55,
-        [PhysicalQuantityId.MetabolicRate]: 1.3,
-        [PhysicalQuantityId.ClothingInsulation]: 0.6,
-        [PhysicalQuantityId.ExternalWork]: 0,
-        [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 18,
-      });
+      const context = createContractContext({ [PhysicalQuantityId.DryBulbTemperature]: 24, [PhysicalQuantityId.MeanRadiantTemperature]: 23, [PhysicalQuantityId.RelativeAirSpeed]: 0.15, [PhysicalQuantityId.WindSpeed]: 1.2, [PhysicalQuantityId.RelativeHumidity]: 55, [PhysicalQuantityId.MetabolicRate]: 1.3, [PhysicalQuantityId.ClothingInsulation]: 0.6, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 18 });
       const request = adapter.mapRequest(context, InputId.Input1);
 
       for (const value of Object.values(request)) {
@@ -69,17 +58,7 @@ function testRequestAdapterContract<TRequest extends object>(
     });
 
     it("reads canonical SI from effectiveQuantitiesByInput", () => {
-      const context = createContractContext({
-        [PhysicalQuantityId.DryBulbTemperature]: 27.5,
-        [PhysicalQuantityId.RelativeHumidity]: 42,
-        [PhysicalQuantityId.WindSpeed]: 2.5,
-        [PhysicalQuantityId.RelativeAirSpeed]: 0.2,
-        [PhysicalQuantityId.MeanRadiantTemperature]: 26,
-        [PhysicalQuantityId.MetabolicRate]: 1.1,
-        [PhysicalQuantityId.ClothingInsulation]: 0.55,
-        [PhysicalQuantityId.ExternalWork]: 0,
-        [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 19,
-      });
+      const context = createContractContext({ [PhysicalQuantityId.DryBulbTemperature]: 27.5, [PhysicalQuantityId.RelativeHumidity]: 42, [PhysicalQuantityId.WindSpeed]: 2.5, [PhysicalQuantityId.RelativeAirSpeed]: 0.2, [PhysicalQuantityId.MeanRadiantTemperature]: 26, [PhysicalQuantityId.MetabolicRate]: 1.1, [PhysicalQuantityId.ClothingInsulation]: 0.55, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 19 });
       const request = adapter.mapRequest(context, InputId.Input1);
       const input = context.effectiveQuantitiesByInput[InputId.Input1];
 

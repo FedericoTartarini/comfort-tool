@@ -220,18 +220,6 @@ export interface CustomChartEngineSpec<TResult, ChartSourceType> {
 }
 
 /**
- * Closed ChartType bind-spec map. defineModel may only use data-only Dynamic.
- */
-export interface ModelChartTypeSpecMap<TResult> {
-  readonly [ChartType.Dynamic]: DynamicFieldGridSpec<TResult>;
-}
-
-export type ModelChartDeclaration<TResult = unknown> = ChartCommonFields & {
-  readonly type: typeof ChartType.Dynamic;
-  readonly spec: ModelChartTypeSpecMap<TResult>[typeof ChartType.Dynamic];
-};
-
-/**
  * Closed ChartType spec union for frontend registrations.
  */
 export type RegisteredChartBindSpec<TResult, ChartSourceType> =
@@ -277,17 +265,11 @@ interface ChartCommonFields {
   readonly defaultExploreOutput?: ModelOutput["key"];
 }
 
-/** Family / ComfortModelBuilder chart entry. */
+/** Family / ComfortModelBuilder / defineModel chart entry. */
 export type FrontendChartDeclaration<
   TResult = unknown,
   ChartSourceType = unknown,
 > = ChartCommonFields & RegisteredChartBindSpec<TResult, ChartSourceType>;
-
-/** Family / ComfortModelBuilder chart entry. Alias of FrontendChartDeclaration. */
-export type ChartDeclarationInput<
-  TResult = unknown,
-  ChartSourceType = unknown,
-> = FrontendChartDeclaration<TResult, ChartSourceType>;
 
 export interface ChartEngineRegistration<TResult, ChartSourceType> {
   readonly instanceId: string;
@@ -301,13 +283,6 @@ export interface ChartEngineRegistration<TResult, ChartSourceType> {
 
 export type RegisteredChartEngineSpec<TResult, ChartSourceType> =
   RegisteredChartBindSpec<TResult, ChartSourceType>;
-
-export function modelChartSpecMatchesEngine(chart: {
-  readonly type: ChartType;
-  readonly spec: object;
-}): boolean {
-  return modelChartSpecMatchesType(chart);
-}
 
 export function modelChartSpecMatchesType(chart: {
   readonly type: ChartType;

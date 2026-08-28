@@ -1,17 +1,12 @@
 import { heat_index } from "jsthermalcomfort";
+import { PhysicalQuantityId } from "../catalog/quantities";
 import { CalculationSource } from "../catalog/calculationMetadata";
 import type { ModelChartSource } from "../catalog/chartSource";
 import { ModelId } from "../catalog/modelIds";
 import { InputControlId } from "../catalog/inputControls";
-import {
-  bandsFromThermalZones,
-  ModelOutputKey,
-  type ModelOutput,
-} from "../catalog/modelCapabilities";
+import { bandsFromThermalZones, type ModelOutput } from "../catalog/modelCapabilities";
 import { ChartType } from "../catalog/chartTypes";
-import { TableType } from "../catalog/tableTypes";
-import { WorkspaceId } from "../catalog/workspaces";
-import { PhysicalQuantityId } from "../catalog/quantities";
+import { SurfaceId } from "../catalog/surfaces";
 import { ThermalZone } from "../catalog/thermalZone";
 import { ZoneToken } from "../catalog/zoneTokens";
 import { UnitSystem } from "../catalog/units";
@@ -21,11 +16,6 @@ import {
   calculatePerInput,
   createFieldRequestAdapter,
 } from "../engines/comfort/requestMapping";
-import {
-  convertModelOutputFromSi,
-  formatDisplayValue,
-  getModelOutputDisplayMeta,
-} from "../engines/units";
 import {
   defineModel,
   parseEmptyOptions,
@@ -66,13 +56,10 @@ export interface HeatIndexResponse {
   source: CalculationSource;
 }
 
-export const heatIndexRequestAdapter = createFieldRequestAdapter<HeatIndexRequest>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  rh: PhysicalQuantityId.RelativeHumidity,
-});
+export const heatIndexRequestAdapter = createFieldRequestAdapter<HeatIndexRequest>({ tdb: PhysicalQuantityId.DryBulbTemperature, rh: PhysicalQuantityId.RelativeHumidity });
 
 const heatIndexOutput: ModelOutput = {
-  key: ModelOutputKey.HeatIndex,
+  key: PhysicalQuantityId.HeatIndex,
   label: MODEL_LABEL,
   defaultBands: bandsFromThermalZones(heatIndexZonesList),
 };
@@ -113,7 +100,7 @@ export const heatIndexModelConfig = defineModel<
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],
-  workspaceCapabilities: [WorkspaceId.Explore],
+  workspaceCapabilities: [SurfaceId.Explore],
   exploreOutputs: [heatIndexOutput],
   modifiers: [],
   inputFields: [
@@ -131,15 +118,6 @@ export const heatIndexModelConfig = defineModel<
       id: DYNAMIC_CHART_ID,
       type: ChartType.Dynamic,
       emptyMessage: "No dynamic chart yet.",
-      capabilities: {
-        allowsAxisSelection: true,
-        locksYAxis: false,
-        allowsOutputSelection: true,
-        allowsBandEditing: true,
-        allowsBaselineSelection: true,
-        showsLegend: true,
-        showsExport: true,
-      },
       spec: {
         title: `${MODEL_LABEL} Dynamic Chart`,
         axisFields: [...AXIS_FIELDS],
@@ -149,35 +127,19 @@ export const heatIndexModelConfig = defineModel<
   ],
   defaultChartId: DYNAMIC_CHART_ID,
   tables: {
-    analysis: {
-      type: TableType.Analysis,
-      rows: [{
-        id: "heat-index",
+    results: [
+      {
+        quantity: PhysicalQuantityId.HeatIndex,
         label: MODEL_LABEL,
-        format: (result, unitSystem) => {
-          const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.HeatIndex, unitSystem);
-          const value = convertModelOutputFromSi(
-            ModelOutputKey.HeatIndex,
-            result.hi,
-            unitSystem,
-          );
-          const color = requireThermalZone(
-            heatIndexZonesList,
-            result.hi,
-            MODEL_LABEL,
-          ).textColor;
-          const cell = {
-            text: formatDisplayValue(value, outputMeta.decimals),
-            subtext: result.category,
-            color,
-          };
-          if (outputMeta.displayUnits) {
-            cell.text = `${cell.text} ${outputMeta.displayUnits}`;
-          }
-          return cell;
-        },
-      }],
-    },
+        value: (result) => result.hi,
+        subtext: (result) => result.category,
+        color: (result) => requireThermalZone(
+          heatIndexZonesList,
+          result.hi,
+          MODEL_LABEL,
+        ).textColor,
+      },
+    ],
   },
   calculate: (context, visibleInputIds) =>
     calculatePerInput({
@@ -186,10 +148,7 @@ export const heatIndexModelConfig = defineModel<
       mapRequest: heatIndexRequestAdapter.mapRequest,
       calculate: calculateHeatIndex,
     }),
-  defaultDynamicAxes: {
-    xAxis: PhysicalQuantityId.DryBulbTemperature,
-    yAxis: PhysicalQuantityId.RelativeHumidity,
-  },
+  defaultDynamicAxes: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
   defaultOptions: {},
   parseOptions: parseEmptyOptions,
 });

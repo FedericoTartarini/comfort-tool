@@ -5,6 +5,7 @@
 
   import { clothingZoneMetaById, type ClothingZoneId } from "../../../catalog/clothingZones";
   import type { ClothingGarmentOption } from "../../../engines/comfort/referenceValues";
+  import { formatDisplayValue } from "../../../engines/units";
 
   interface Props {
     activeZoneId: ClothingZoneId;
@@ -75,7 +76,7 @@
           <div class="min-w-0">
             <p class="truncate text-sm font-semibold">{garment.article}</p>
             <p class={isSelected(garment.id) ? "mt-1 text-xs text-stone-300" : "mt-1 text-xs text-stone-500"}>
-              {garment.clo.toFixed(2)} clo
+              {formatDisplayValue(garment.clo)} clo
             </p>
           </div>
           <span

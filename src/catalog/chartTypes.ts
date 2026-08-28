@@ -1,5 +1,3 @@
-import { ModelId, type ModelId as ModelIdType } from "./modelIds";
-
 /**
  * Closed product chart types. Dropdown labels are the type in title case.
  * Figure modules in src/charts/ must not import models or quantities.
@@ -123,20 +121,6 @@ export function resolveChartCapabilities(
   overrides?: Partial<ChartInstanceCapabilities>,
 ): ChartInstanceCapabilities {
   return { ...chartTypeCapabilities[type], ...overrides };
-}
-
-/** defineModel may only declare data-only Dynamic charts. */
-export const MODEL_CHART_TYPES = [ChartType.Dynamic] as const;
-
-export type ModelChartType = (typeof MODEL_CHART_TYPES)[number];
-
-export function isModelChartType(value: string): value is ModelChartType {
-  return (MODEL_CHART_TYPES as readonly string[]).includes(value);
-}
-
-/** Psychrometric is frontend-only for PMV ASHRAE/ISO. */
-export function modelAllowsPsychrometricCharts(modelId: ModelIdType): boolean {
-  return modelId === ModelId.PmvAshrae || modelId === ModelId.PmvIso;
 }
 
 /** Presentation metadata for one declared chart instance. */

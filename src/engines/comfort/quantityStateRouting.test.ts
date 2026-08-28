@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { InputId } from "../../catalog/inputSlots";
-import { PhysicalQuantityId } from "../../catalog/quantities";
-import { PhsQuantityId } from "../../catalog/phs";
+import { PhysicalQuantityId, createDefaultExtraInputs } from "../../catalog/quantities";
 import { ModifierId } from "../../catalog/inputModifiers";
 import {
   collectModifierInputsForModifier,
   createAuxiliaryQuantitiesByInput,
-  createDefaultModelInputsForModel,
   getPrimaryQuantity,
   getSlotQuantity,
   setPrimaryQuantity,
@@ -17,21 +15,15 @@ import {
 import { createQuantitiesByInput } from "../../state/analysis/initialAnalysisState";
 import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import { syncDerivedStateForInput } from "./syncState";
-import { ModelId } from "../../catalog/modelIds";
 
 describe("quantityStateRouting", () => {
-  it("reads and writes primary quantities", () => {
-    const quantitiesByInput = createQuantitiesByInput();
+  it("reads and writes primary quantities", () => { const quantitiesByInput = createQuantitiesByInput();
     setPrimaryQuantity(
-      quantitiesByInput[InputId.Input1],
-      PhysicalQuantityId.DryBulbTemperature,
-      27,
-    );
+      quantitiesByInput[InputId.Input1], PhysicalQuantityId.DryBulbTemperature, 27, );
     expect(getPrimaryQuantity(
       quantitiesByInput[InputId.Input1],
       PhysicalQuantityId.DryBulbTemperature,
-    )).toBe(27);
-  });
+    )).toBe(27); });
 
   it("stores modifier slot quantities in auxiliary state", () => {
     const auxiliaryQuantitiesByInput = createAuxiliaryQuantitiesByInput();
@@ -64,20 +56,17 @@ describe("quantityStateRouting", () => {
       .toBeTypeOf("number");
   });
 
-  it("aligns auxiliary derived slots with primary RH-mode psychrometrics", () => {
-    const quantitiesByInput = createQuantitiesByInput();
+  it("aligns auxiliary derived slots with primary RH-mode psychrometrics", () => { const quantitiesByInput = createQuantitiesByInput();
     const auxiliaryQuantitiesByInput = createAuxiliaryQuantitiesByInput();
     syncDerivedStateForInput(InputId.Input1, quantitiesByInput, auxiliaryQuantitiesByInput);
     const derived = derivePsychrometricSlots(quantitiesByInput[InputId.Input1]);
-    expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.DerivedHumidityRatio])
-      .toBeCloseTo(derived[PhysicalQuantityId.DerivedHumidityRatio], 4);
+    expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.HumidityRatio])
+      .toBeCloseTo(derived[PhysicalQuantityId.HumidityRatio], 4);
     expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.DewPoint])
-      .toBeCloseTo(derived[PhysicalQuantityId.DewPoint], 4);
-  });
+      .toBeCloseTo(derived[PhysicalQuantityId.DewPoint], 4); });
 
-  it("seeds model-scoped defaults for PHS", () => {
-    const modelInputs = createDefaultModelInputsForModel(ModelId.Phs2023);
-    expect(modelInputs[PhsQuantityId.BodyWeight]).toBe(75);
-    expect(modelInputs[PhsQuantityId.Height]).toBe(1.8);
-  });
+  it("seeds extra quantity defaults from catalog ids", () => { const modelInputs = createDefaultExtraInputs([
+      PhysicalQuantityId.BodyWeight, PhysicalQuantityId.Height, ]);
+    expect(modelInputs[PhysicalQuantityId.BodyWeight]).toBe(75);
+    expect(modelInputs[PhysicalQuantityId.Height]).toBe(1.8); });
 });

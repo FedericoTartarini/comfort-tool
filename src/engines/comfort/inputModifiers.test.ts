@@ -16,17 +16,7 @@ import {
 } from "./inputModifiers";
 
 function createBaseInputs(): PrimaryInputState {
-  return {
-    [PhysicalQuantityId.DryBulbTemperature]: 25,
-    [PhysicalQuantityId.MeanRadiantTemperature]: 25,
-    [PhysicalQuantityId.RelativeAirSpeed]: 0.1,
-    [PhysicalQuantityId.WindSpeed]: 1,
-    [PhysicalQuantityId.RelativeHumidity]: 50,
-    [PhysicalQuantityId.MetabolicRate]: 1.8,
-    [PhysicalQuantityId.ClothingInsulation]: 0.5,
-    [PhysicalQuantityId.ExternalWork]: 0,
-    [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20,
-  };
+  return { [PhysicalQuantityId.DryBulbTemperature]: 25, [PhysicalQuantityId.MeanRadiantTemperature]: 25, [PhysicalQuantityId.RelativeAirSpeed]: 0.1, [PhysicalQuantityId.WindSpeed]: 1, [PhysicalQuantityId.RelativeHumidity]: 50, [PhysicalQuantityId.MetabolicRate]: 1.8, [PhysicalQuantityId.ClothingInsulation]: 0.5, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20 };
 }
 
 describe("input modifiers", () => {
@@ -83,14 +73,7 @@ describe("input modifiers", () => {
     const baseInputs = createBaseInputs();
     const effectiveInputs = solarGainModifier.apply(
       baseInputs,
-      {
-        [PhysicalQuantityId.ModifierSolarAltitude]: 45,
-        [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90,
-        [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800,
-        [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5,
-        [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5,
-        [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5,
-      },
+      { [PhysicalQuantityId.ModifierSolarAltitude]: 45, [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90, [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800, [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5, [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5, [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5 },
     );
 
     expect(effectiveInputs[PhysicalQuantityId.MeanRadiantTemperature]).toBeCloseTo(40.1, 6);
@@ -104,14 +87,7 @@ describe("input modifiers", () => {
     expect(isModifierConfigurationComplete(solarGainModifier, {
       [PhysicalQuantityId.ModifierSolarAltitude]: 45,
     })).toBe(false);
-    expect(isModifierConfigurationComplete(solarGainModifier, {
-      [PhysicalQuantityId.ModifierSolarAltitude]: 45,
-      [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90,
-      [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800,
-      [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5,
-      [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5,
-      [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5,
-    })).toBe(true);
+    expect(isModifierConfigurationComplete(solarGainModifier, { [PhysicalQuantityId.ModifierSolarAltitude]: 45, [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90, [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800, [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5, [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5, [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5 })).toBe(true);
   });
 
   it("composes modifier patches in declaration order", () => {
@@ -121,9 +97,7 @@ describe("input modifiers", () => {
       description: "",
       extraInputs: [],
       affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
-      apply: (inputs) => ({
-        [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] + 2,
-      }),
+      apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] + 2 }),
     });
     const triple = defineInputModifier({
       id: ModifierId.SolarGain,
@@ -131,9 +105,7 @@ describe("input modifiers", () => {
       description: "",
       extraInputs: [],
       affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
-      apply: (inputs) => ({
-        [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] * 3,
-      }),
+      apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] * 3 }),
     });
     const active = {
       [ModifierId.MeasuredAirSpeed]: true,

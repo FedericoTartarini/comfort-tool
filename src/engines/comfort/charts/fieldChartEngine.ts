@@ -1,5 +1,5 @@
 import type { CalculationSource } from "../../../catalog/calculationMetadata";
-import { type ChartAxisQuantityId } from "../../../catalog/quantities";
+import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../catalog/quantities";
 import type {
   PlotAnnotation,
   PlotLegend,
@@ -7,13 +7,7 @@ import type {
   PlotlyChartSpec,
   PlotTrace,
 } from "../../plotlyTypes";
-import {
-  type Band,
-  type BandInputsSi,
-  type ModelOutput,
-  type ModelOutputKey,
-  type NumericFieldChartConfig,
-} from "../../../catalog/modelCapabilities";
+import { type Band, type BandInputsSi, type ModelOutput, type NumericFieldChartConfig } from "../../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import {
   buildBoundaryRegionTraces,
@@ -163,7 +157,7 @@ export interface BandedGridStrategyOptions {
   evaluateOutput: (
     xSi: number,
     ySi: number,
-    zOutput: ModelOutputKey,
+    zOutput: PhysicalQuantityId,
     xIndex: number,
     yIndex: number,
     context: FieldChartRenderContext,

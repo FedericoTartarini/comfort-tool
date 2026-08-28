@@ -17,7 +17,7 @@ import {
 import type { ChartAxisScale } from "../../engines/comfort/charts/types";
 import { buildHoverTemplate } from "../../engines/comfort/charts/plotlyBuilders";
 import { getBaselineInputEntry, roundValue } from "../../engines/comfort/helpers";
-import { convertFieldValueFromSi } from "../../engines/units";
+import { convertFieldValueFromSi, plotlyHoverNumber } from "../../engines/units";
 import {
   calculateAdaptive,
   getLevelResult,
@@ -97,12 +97,12 @@ function buildAdaptiveHoverTemplate(
     const level = declaration.levels.find(({ id }) => id === levelId);
     if (!level) throw new Error(`Unknown Adaptive hover level: ${levelId}`);
     const metadataIndex = 1 + index * 2;
-    return `${level.label}: %{customdata[${metadataIndex}]:.1f} to %{customdata[${metadataIndex + 1}]:.1f} ${boundaryUnits}`;
+    return `${level.label}: ${plotlyHoverNumber(`customdata[${metadataIndex}]`)} to ${plotlyHoverNumber(`customdata[${metadataIndex + 1}]`)} ${boundaryUnits}`;
   });
   return buildHoverTemplate([
     inputLabel,
-    `${xAxis.label}: %{x:.${coordinateDecimals}f} ${xAxis.units}`,
-    `${yAxis.label}: %{y:.${coordinateDecimals}f} ${yAxis.units}`,
+    `${xAxis.label}: ${plotlyHoverNumber("x")} ${xAxis.units}`,
+    `${yAxis.label}: ${plotlyHoverNumber("y")} ${yAxis.units}`,
     ...rows,
   ]);
 }
@@ -167,27 +167,12 @@ export function buildAdaptiveChart(
   const boundaryAxis = config.xField === PhysicalQuantityId.PrevailingMeanOutdoorTemperature
     ? "x"
     : "y";
-  const outdoorAxisSpec = {
-    field: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
-    rangeSi: declaration.outdoorTemperatureRangeSi,
-    points: BOUNDARY_POINTS,
-    label: declaration.outdoorTemperatureLabel,
-    units: (activeUnitSystem: UnitSystemType) =>
+  const outdoorAxisSpec = { field: PhysicalQuantityId.PrevailingMeanOutdoorTemperature, rangeSi: declaration.outdoorTemperatureRangeSi, points: BOUNDARY_POINTS, label: declaration.outdoorTemperatureLabel, units: (activeUnitSystem: UnitSystemType) =>
       getQuantityPresentationMeta(
-        PhysicalQuantityId.DryBulbTemperature,
-        activeUnitSystem,
-      ).displayUnits,
-  };
-  const operativeAxisSpec = {
-    field: PhysicalQuantityId.OperativeTemperature,
-    rangeSi: FIXED_OPERATIVE_RANGE_SI,
-    points: 2,
-    units: (activeUnitSystem: UnitSystemType) =>
+        PhysicalQuantityId.DryBulbTemperature, activeUnitSystem, ).displayUnits };
+  const operativeAxisSpec = { field: PhysicalQuantityId.OperativeTemperature, rangeSi: FIXED_OPERATIVE_RANGE_SI, points: 2, units: (activeUnitSystem: UnitSystemType) =>
       getQuantityPresentationMeta(
-        PhysicalQuantityId.DryBulbTemperature,
-        activeUnitSystem,
-      ).displayUnits,
-  };
+        PhysicalQuantityId.DryBulbTemperature, activeUnitSystem, ).displayUnits };
 
   return buildFieldChart({
     unitSystem,

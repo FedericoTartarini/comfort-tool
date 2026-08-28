@@ -32,11 +32,11 @@ export function createCalculationManager(
   }
 
   async function calculate(calculationToken: number) {
-    const selectedModel = state.ui.selectedModel;
+    const selectedModel = state.setting.selectedModel;
     const visibleInputIds = getVisibleInputIds();
 
-    state.ui.isLoading = true;
-    state.ui.errorMessage = "";
+    state.output.isLoading = true;
+    state.output.errorMessage = "";
 
     await yieldToNextFrame();
 
@@ -47,7 +47,7 @@ export function createCalculationManager(
     try {
       const modelConfig = getComfortModelConfig(selectedModel);
       const options = modelConfig.parseOptions(
-        state.ui.modelOptionsByModel[selectedModel],
+        state.setting.modelOptionsByModel[selectedModel],
       );
       if (!options) {
         throw new Error(
@@ -57,33 +57,42 @@ export function createCalculationManager(
       const effectiveInputs = getEffectiveQuantitiesByInput(selectedModel);
       const calculationContext: ModelCalculationContext = {
         effectiveQuantitiesByInput: effectiveInputs,
-        auxiliaryQuantitiesByInput: state.auxiliaryQuantitiesByInput,
-        modelInputs: state.modelInputsByModel[selectedModel],
+        auxiliaryQuantitiesByInput: state.input.auxiliaryQuantitiesByInput,
+        modelInputs: state.input.modelInputsByModel[selectedModel],
         options,
       };
       const calculationOutputs = modelConfig.calculate(calculationContext, visibleInputIds);
 
-      const previousCache = state.ui.calculationCacheByModel[selectedModel];
+      const previousCache = state.output.calculationCacheByModel[selectedModel];
       const buildGeneration = previousCache.buildGeneration + 1;
-      state.ui.calculationCacheByModel[selectedModel] = {
-        ...previousCache,
-        status: "ready",
-        buildGeneration,
-        lastVisibleInputIds: [...visibleInputIds],
-        resultsByInput: calculationOutputs.resultsByInput,
-        chartSource: calculationOutputs.chartSource,
+      state.output.calculationCacheByModel = {
+        ...state.output.calculationCacheByModel,
+        [selectedModel]: {
+          ...previousCache,
+          status: "ready",
+          buildGeneration,
+          lastVisibleInputIds: [...visibleInputIds],
+          resultsByInput: calculationOutputs.resultsByInput,
+          chartSource: calculationOutputs.chartSource,
+        },
       };
     } catch (error) {
-      const cache = state.ui.calculationCacheByModel[selectedModel];
-      cache.status = cache.chartSource ? "stale" : "empty";
-      state.ui.errorMessage = error instanceof Error ? error.message : "Calculation failed.";
+      const cache = state.output.calculationCacheByModel[selectedModel];
+      state.output.calculationCacheByModel = {
+        ...state.output.calculationCacheByModel,
+        [selectedModel]: {
+          ...cache,
+          status: cache.chartSource ? "stale" : "empty",
+        },
+      };
+      state.output.errorMessage = error instanceof Error ? error.message : "Calculation failed.";
     } finally {
-      if (calculationToken === latestCalculationToken) state.ui.isLoading = false;
+      if (calculationToken === latestCalculationToken) state.output.isLoading = false;
     }
   }
 
   function scheduleCalculation(options?: { immediate?: boolean; force?: boolean }) {
-    if (!options?.force && state.ui.calculationCacheByModel[state.ui.selectedModel].status === "ready") {
+    if (!options?.force && state.output.calculationCacheByModel[state.setting.selectedModel].status === "ready") {
       return;
     }
 

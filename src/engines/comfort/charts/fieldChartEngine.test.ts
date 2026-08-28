@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 
 import {
   pmvAshraeDeclaration,
@@ -6,12 +7,8 @@ import {
 } from "../../../declarations/pmv/ashrae";
 import { CalculationSource } from "../../../catalog/calculationMetadata";
 import type { PlotTrace } from "../../plotlyTypes";
-import { PhysicalQuantityId } from "../../../catalog/quantities";
 import { InputId } from "../../../catalog/inputSlots";
-import {
-  ModelOutputKey,
-  type NumericComplianceFieldChartConfig,
-} from "../../../catalog/modelCapabilities";
+import { type NumericComplianceFieldChartConfig } from "../../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
 import { UnitSystem } from "../../../catalog/units";
 import {
@@ -54,13 +51,7 @@ describe("shared chart engine", () => {
         "PMV must declare a chartable numeric Compliance output.",
       );
     }
-    const config: NumericComplianceFieldChartConfig = {
-      profileKind: FieldChartProfileKind.Compliance,
-      xField: PhysicalQuantityId.DryBulbTemperature,
-      yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: complianceProfile.output,
-      bands: complianceProfile.bands,
-    };
+    const config: NumericComplianceFieldChartConfig = { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: complianceProfile.output, bands: complianceProfile.bands };
 
     const strategy = createBandedGridStrategy({
       config,
@@ -159,20 +150,15 @@ describe("shared chart engine", () => {
         points: 1,
       },
       strategy: createBandedGridStrategy({
-        config: {
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.HeatIndex,
-          bands,
-        },
+        config: { xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.HeatIndex, bands },
         output: {
-          key: ModelOutputKey.HeatIndex,
+          key: PhysicalQuantityId.HeatIndex,
           label: "Heat Index",
           defaultBands: bands,
         },
         evaluateOutput: (xSi, _ySi, zOutput) => {
           xValuesSeen.push(xSi);
-          expect(zOutput).toBe(ModelOutputKey.HeatIndex);
+          expect(zOutput).toBe(PhysicalQuantityId.HeatIndex);
           return xSi === 30 ? null : xSi;
         },
       }),
@@ -203,14 +189,9 @@ describe("shared chart engine", () => {
         points: 1,
       },
       strategy: createBandedGridStrategy({
-        config: {
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.HeatIndex,
-          bands,
-        },
+        config: { xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.HeatIndex, bands },
         output: {
-          key: ModelOutputKey.HeatIndex,
+          key: PhysicalQuantityId.HeatIndex,
           label: "Heat Index",
           defaultBands: bands,
         },
@@ -260,14 +241,9 @@ describe("shared chart engine", () => {
         points: 2,
       },
       strategy: createBandedGridStrategy({
-        config: {
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.Pmv,
-          bands,
-        },
+        config: { xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands },
         output: {
-          key: ModelOutputKey.Pmv,
+          key: PhysicalQuantityId.Pmv,
           label: "PMV",
           defaultBands: bands,
         },

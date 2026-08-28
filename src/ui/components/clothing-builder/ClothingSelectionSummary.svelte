@@ -6,6 +6,7 @@
   import { inputDisplayMetaById } from "../../../catalog/inputSlotPresentation";
   import type { InputId as InputIdType } from "../../../catalog/inputSlots";
   import type { ClothingSelectionSection } from "../../../engines/comfort/clothingTools";
+  import { formatDisplayValue } from "../../../engines/units";
 
   interface Props {
     visibleInputIds: InputIdType[];
@@ -69,10 +70,10 @@
 
   <div class="panel-muted mt-4 shrink-0 px-4 py-4">
     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Total Clothing Insulation</p>
-    <p class="mt-2 text-sm font-semibold text-stone-900">{totalClothingValue.toFixed(2)} clo</p>
+    <p class="mt-2 text-sm font-semibold text-stone-900">{formatDisplayValue(totalClothingValue)} clo</p>
     {#if totalClothingValue > maxClothingValue}
       <Badge color="yellow" class="mt-3 text-xs">
-        Exceeds the recommended input range ({maxClothingValue.toFixed(1)} clo)
+        Exceeds the recommended input range ({formatDisplayValue(maxClothingValue)} clo)
       </Badge>
     {/if}
   </div>
@@ -95,7 +96,7 @@
               <li class="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 px-3 py-2">
                 <div class="min-w-0">
                   <p class="truncate text-sm font-semibold text-stone-900">{garment.article}</p>
-                  <p class="mt-1 text-xs text-stone-500">{garment.clo.toFixed(2)} clo</p>
+                  <p class="mt-1 text-xs text-stone-500">{formatDisplayValue(garment.clo)} clo</p>
                 </div>
                 <button
                   type="button"

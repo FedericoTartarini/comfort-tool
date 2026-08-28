@@ -1,16 +1,13 @@
 import { ModelId, type ModelId as ModelIdType } from "../../catalog/modelIds";
 import {
-  AppRouteId,
   StandardId,
-  WorkspaceId,
+  SurfaceId,
   type AppRouteId as AppRouteIdType,
   type StandardId as StandardIdType,
-  type WorkspaceId as WorkspaceIdType,
-} from "../../catalog/workspaces";
+  type SurfaceId as SurfaceIdType,
+} from "../../catalog/surfaces";
 import {
-  comfortModelConfigs,
-  comfortModelOrder,
-  getModelsForWorkspace,
+  getModelsForSurface,
   getModelsForStandard,
 } from "../analysis/modelConfigs";
 
@@ -18,7 +15,7 @@ export interface AppRouteDefinition {
   readonly id: AppRouteIdType;
   readonly label: string;
   readonly path: string;
-  readonly workspace: WorkspaceIdType;
+  readonly workspace: SurfaceIdType;
   readonly standardId?: StandardIdType;
   readonly defaultModelId?: ModelIdType;
   readonly shareEnabled: boolean;
@@ -37,76 +34,76 @@ function standardRootPath<T extends StandardIdType>(
 
 export const appRouteDefinitions = [
   {
-    id: AppRouteId.Ashrae55,
+    id: StandardId.Ashrae55,
     label: "ASHRAE 55",
     path: standardRootPath(StandardId.Ashrae55),
-    workspace: WorkspaceId.Standard,
+    workspace: SurfaceId.Standard,
     standardId: StandardId.Ashrae55,
     defaultModelId: ModelId.PmvAshrae,
     shareEnabled: true,
   },
   {
-    id: AppRouteId.Iso7730,
+    id: StandardId.Iso7730,
     label: "ISO 7730",
     path: standardRootPath(StandardId.Iso7730),
-    workspace: WorkspaceId.Standard,
+    workspace: SurfaceId.Standard,
     standardId: StandardId.Iso7730,
     defaultModelId: ModelId.PmvIso,
     shareEnabled: true,
   },
   {
-    id: AppRouteId.En16798,
+    id: StandardId.En16798,
     label: "EN 16798-1",
     path: standardRootPath(StandardId.En16798),
-    workspace: WorkspaceId.Standard,
+    workspace: SurfaceId.Standard,
     standardId: StandardId.En16798,
     defaultModelId: ModelId.AdaptiveEn,
     shareEnabled: true,
   },
   {
-    id: AppRouteId.Iso7933,
+    id: StandardId.Iso7933,
     label: "ISO 7933:2023",
     path: standardRootPath(StandardId.Iso7933),
-    workspace: WorkspaceId.Standard,
+    workspace: SurfaceId.Standard,
     standardId: StandardId.Iso7933,
     defaultModelId: ModelId.Phs2023,
     shareEnabled: true,
   },
   {
-    id: AppRouteId.Explore,
+    id: SurfaceId.Explore,
     label: "Explore",
     path: "/explore/",
-    workspace: WorkspaceId.Explore,
+    workspace: SurfaceId.Explore,
     defaultModelId: ModelId.PmvAshrae,
     shareEnabled: true,
   },
   {
-    id: AppRouteId.TimeSeries,
+    id: SurfaceId.TimeSeries,
     label: "Time-series",
     path: "/time-series/",
-    workspace: WorkspaceId.TimeSeries,
+    workspace: SurfaceId.TimeSeries,
     defaultModelId: ModelId.Phs2023,
     shareEnabled: false,
   },
 ] as const satisfies readonly AppRouteDefinition[];
 
 export const standardRouteDefinitions = appRouteDefinitions.filter(
-  (definition) => definition.workspace === WorkspaceId.Standard,
+  (definition) => definition.workspace === SurfaceId.Standard,
 );
 
 export const defaultAppRoute = appRouteDefinitions[0];
 
 const modelIdValues = new Set<string>(Object.values(ModelId));
 const standardIdValues = new Set<string>(Object.values(StandardId));
-const workspaceIdValues = new Set<string>(Object.values(WorkspaceId));
+const surfaceIdValues = new Set<string>(Object.values(SurfaceId));
 
 function pathSegments(pathname: string): string[] {
   return pathname.split("/").filter((segment) => segment.length > 0);
 }
 
-function asWorkspaceId(segment: string): WorkspaceIdType | undefined {
+function asSurfaceId(segment: string): SurfaceIdType | undefined {
   const lower = segment.toLowerCase();
-  return workspaceIdValues.has(lower) ? lower as WorkspaceIdType : undefined;
+  return surfaceIdValues.has(lower) ? lower as SurfaceIdType : undefined;
 }
 
 function asStandardId(segment: string): StandardIdType | undefined {
@@ -123,7 +120,7 @@ function getDefinitionByStandardId(
 }
 
 function getDefinitionByWorkspace(
-  workspace: WorkspaceIdType,
+  workspace: SurfaceIdType,
 ): AppRouteDefinition | undefined {
   return appRouteDefinitions.find(
     (definition: AppRouteDefinition) =>
@@ -194,12 +191,12 @@ export function parseAppLocation(pathname: string): ParsedAppLocation | undefine
     return undefined;
   }
 
-  const workspace = asWorkspaceId(segments[0]);
+  const workspace = asSurfaceId(segments[0]);
   if (!workspace) {
     return undefined;
   }
 
-  if (workspace === WorkspaceId.Standard) {
+  if (workspace === SurfaceId.Standard) {
     return parseStandardLocation(segments);
   }
 
@@ -215,7 +212,7 @@ export function isMalformedAppPath(pathname: string): boolean {
   if (segments.length === 0) {
     return false;
   }
-  return Boolean(asWorkspaceId(segments[0]) && !parseAppLocation(pathname));
+  return Boolean(asSurfaceId(segments[0]) && !parseAppLocation(pathname));
 }
 
 export function getAppRouteByPath(pathname: string): AppRouteDefinition | undefined {
@@ -256,13 +253,11 @@ export function getAllowedModels(definition: AppRouteDefinition): ModelIdType[] 
   if (definition.standardId) {
     return getModelsForStandard(definition.standardId);
   }
-  if (definition.workspace === WorkspaceId.Explore) {
-    return getModelsForWorkspace(WorkspaceId.Explore);
+  if (definition.workspace === SurfaceId.Explore) {
+    return getModelsForSurface(SurfaceId.Explore);
   }
-  if (definition.workspace === WorkspaceId.TimeSeries) {
-    return comfortModelOrder.filter(
-      (modelId) => comfortModelConfigs[modelId].tables.timeSeries !== undefined,
-    );
+  if (definition.workspace === SurfaceId.TimeSeries) {
+    return getModelsForSurface(SurfaceId.TimeSeries);
   }
   return [];
 }
@@ -270,25 +265,25 @@ export function getAllowedModels(definition: AppRouteDefinition): ModelIdType[] 
 export function isCalculationRoute(
   definition: AppRouteDefinition | undefined,
 ): definition is AppRouteDefinition & {
-  workspace: typeof WorkspaceId.Standard | typeof WorkspaceId.Explore;
+  workspace: typeof SurfaceId.Standard | typeof SurfaceId.Explore;
   defaultModelId: ModelIdType;
 } {
   return Boolean(
     definition
     && definition.defaultModelId
-    && (definition.workspace === WorkspaceId.Standard || definition.workspace === WorkspaceId.Explore),
+    && (definition.workspace === SurfaceId.Standard || definition.workspace === SurfaceId.Explore),
   );
 }
 
 export function isTimeSeriesRoute(
   definition: AppRouteDefinition | undefined,
 ): definition is AppRouteDefinition & {
-  workspace: typeof WorkspaceId.TimeSeries;
+  workspace: typeof SurfaceId.TimeSeries;
   defaultModelId: ModelIdType;
 } {
   return Boolean(
     definition
     && definition.defaultModelId
-    && definition.workspace === WorkspaceId.TimeSeries
+    && definition.workspace === SurfaceId.TimeSeries
   );
 }

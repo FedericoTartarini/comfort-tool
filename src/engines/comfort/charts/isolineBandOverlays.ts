@@ -30,10 +30,8 @@ export function resolveIsolineIndependentAxis(
   const yTemperature = ROOT_TEMPERATURE_FIELDS.has(yField);
   if (xTemperature && !yTemperature) return "x";
   if (yTemperature && !xTemperature) return "y";
-  if (xTemperature && yTemperature) {
-    if (xField === PhysicalQuantityId.OperativeTemperature) return "x";
-    if (yField === PhysicalQuantityId.OperativeTemperature) return "y";
-  }
+  if (xTemperature && yTemperature) { if (xField === PhysicalQuantityId.OperativeTemperature) return "x";
+    if (yField === PhysicalQuantityId.OperativeTemperature) return "y"; }
   return "x";
 }
 

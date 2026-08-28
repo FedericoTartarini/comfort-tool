@@ -1,5 +1,4 @@
 import { cooling_effect, set_tmp } from "jsthermalcomfort";
-
 import { sampleIsoline } from "../../charts/psychrometric/isolines";
 import {
   CalculationSource,
@@ -12,8 +11,6 @@ import type {
 import { ComplianceStatus } from "../../catalog/modelIds";
 import {
   PhysicalQuantityId,
-  getQuantityPresentationMeta,
-  type ChartAxisQuantityId,
   type DerivedSlotQuantityState,
   getPhysicalQuantityMeta,
 } from "../../catalog/quantities";
@@ -21,13 +18,9 @@ import { AirSpeedControlMode, OptionKey, TemperatureMode } from "../../catalog/i
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 import type { ComplianceFeedback } from "../../catalog/modelCapabilities";
-import type { TableRowSpec } from "../../catalog/tableTypes";
-import type { ResultCellViewModel } from "../../catalog/output/resultSections";
+import type { TableRowAuthoring } from "../../catalog/tableTypes";
 import { ThermalZone } from "../../catalog/thermalZone";
-import {
-  UnitSystem,
-  type UnitSystem as UnitSystemType,
-} from "../../catalog/units";
+import { UnitSystem } from "../../catalog/units";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
 import { createRequestAxisAdapter } from "../../engines/comfort/charts/dynamicAxisPayload";
 import { requireThermalZone } from "../../engines/comfort/helpers";
@@ -36,11 +29,7 @@ import {
   createFieldRequestAdapter,
   calculatePerInputWithExtensions,
 } from "../../engines/comfort/requestMapping";
-import {
-  convertFieldValueFromSi,
-  convertTemperatureDeltaFromSi,
-  formatDisplayValue,
-} from "../../engines/units";
+import { formatDisplayValue } from "../../engines/units";
 import type { PmvStandardAdapter } from "./shared";
 
 export const PMV_PSYCHROMETRIC_VIEW = {
@@ -291,22 +280,12 @@ export function calculateComfortZone(
   };
 }
 
-export const pmvRequestAdapter = createFieldRequestAdapter<PmvRequest>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  tr: PhysicalQuantityId.MeanRadiantTemperature,
-  vr: PhysicalQuantityId.RelativeAirSpeed,
-  rh: PhysicalQuantityId.RelativeHumidity,
-  met: PhysicalQuantityId.MetabolicRate,
-  clo: PhysicalQuantityId.ClothingInsulation,
-  wme: PhysicalQuantityId.ExternalWork,
-});
+export const pmvRequestAdapter = createFieldRequestAdapter<PmvRequest>({ tdb: PhysicalQuantityId.DryBulbTemperature, tr: PhysicalQuantityId.MeanRadiantTemperature, vr: PhysicalQuantityId.RelativeAirSpeed, rh: PhysicalQuantityId.RelativeHumidity, met: PhysicalQuantityId.MetabolicRate, clo: PhysicalQuantityId.ClothingInsulation, wme: PhysicalQuantityId.ExternalWork });
 
 export function createPmvRequestAxisAdapter(adapter: PmvStandardAdapter) {
   return createRequestAxisAdapter({
     fieldAdapter: pmvRequestAdapter,
-    aliases: {
-      [PhysicalQuantityId.WindSpeed]: PhysicalQuantityId.RelativeAirSpeed,
-    },
+    aliases: { [PhysicalQuantityId.WindSpeed]: PhysicalQuantityId.RelativeAirSpeed },
     axisRanges: {
       [PhysicalQuantityId.ClothingInsulation]: {
         min: getPhysicalQuantityMeta(PhysicalQuantityId.ClothingInsulation)
@@ -320,12 +299,9 @@ export function createPmvRequestAxisAdapter(adapter: PmvStandardAdapter) {
         request.tdb = valueSi;
         request.tr = valueSi;
       },
-      range: {
-        min: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature)
-          .minSi,
-        max: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature)
-          .maxSi,
-      },
+      range: { min: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature)
+          .minSi, max: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature)
+          .maxSi },
     },
   });
 }
@@ -356,9 +332,6 @@ export function getPmvComplianceFeedback(
   };
 }
 
-const DYNAMIC_CLOTHING_DECIMALS = 2;
-const COOLING_EFFECT_DECIMALS = 2;
-
 function requireFiniteOutput(value: number, label: string): number {
   if (!Number.isFinite(value)) {
     throw new Error(`${label} evaluation returned a non-finite result.`);
@@ -366,36 +339,53 @@ function requireFiniteOutput(value: number, label: string): number {
   return value;
 }
 
-function formatQuantityCell(
-  quantityId: ChartAxisQuantityId,
-  valueSi: number,
-  unitSystem: UnitSystemType,
-  decimals?: number,
-): ResultCellViewModel {
-  const meta = getQuantityPresentationMeta(quantityId, unitSystem);
-  const value = convertFieldValueFromSi(quantityId, valueSi, unitSystem);
-  return {
-    text: `${formatDisplayValue(value, decimals ?? meta.decimals)} ${meta.displayUnits}`,
-    color: "",
-  };
-}
-
-function formatCoolingEffectCell(
-  valueSi: number,
-  unitSystem: UnitSystemType,
-): ResultCellViewModel {
-  const units = getQuantityPresentationMeta(
-    PhysicalQuantityId.DryBulbTemperature,
-    unitSystem,
-  ).displayUnits;
-  const value =
-    unitSystem === UnitSystem.IP
-      ? convertTemperatureDeltaFromSi(valueSi)
-      : valueSi;
-  return {
-    text: `${formatDisplayValue(value, COOLING_EFFECT_DECIMALS)} ${units}`,
-    color: "",
-  };
+export function buildPmvResultRows(): TableRowAuthoring<PmvResponse>[] {
+  return [
+    {
+      id: "compliance",
+      label: "Compliance",
+      format: (result) => {
+        const feedback = getPmvComplianceFeedback(result);
+        return {
+          text: feedback.text,
+          color: feedback.passes
+            ? resolveZoneAppearance(ZoneToken.PassFill).text
+            : resolveZoneAppearance(ZoneToken.ExtremeDanger).fill,
+        };
+      },
+    },
+    PhysicalQuantityId.Pmv,
+    {
+      id: "zone",
+      label: "Zone",
+      format: (result) => {
+        const zone = getPmvZoneMeta(result.pmv);
+        return { text: zone.label, color: zone.textColor };
+      },
+    },
+    PhysicalQuantityId.Ppd,
+    {
+      id: "acceptability",
+      label: "Acceptability",
+      format: (result) => ({
+        text: `${formatDisplayValue(100 - result.ppd)}%`,
+      }),
+    },
+    PhysicalQuantityId.Set,
+    PhysicalQuantityId.CoolingEffect,
+    {
+      quantity: PhysicalQuantityId.RelativeAirSpeed,
+      id: "relative-air-speed",
+      label: "Relative air speed",
+      value: (result) => result.vr,
+    },
+    {
+      quantity: PhysicalQuantityId.ClothingInsulation,
+      id: "dynamic-clothing",
+      label: "Dynamic clothing",
+      value: (result) => result.dynamicClothing,
+    },
+  ];
 }
 
 export function derivePmvAnalysisOutputs(
@@ -439,87 +429,6 @@ export function derivePmvAnalysisOutputs(
     // the Dynamic Clothing modifier already wrote that value onto request.clo.
     dynamicClothing: requireFiniteOutput(request.clo, "Dynamic clothing"),
   };
-}
-
-export function buildPmvResultRows(): TableRowSpec<PmvResponse>[] {
-  return [
-    {
-      id: "compliance",
-      label: "Compliance",
-      format: (result) => {
-        const feedback = getPmvComplianceFeedback(result);
-        return {
-          text: feedback.text,
-          color: feedback.passes
-            ? resolveZoneAppearance(ZoneToken.PassFill).text
-            : resolveZoneAppearance(ZoneToken.ExtremeDanger).fill,
-        };
-      },
-    },
-    {
-      id: "pmv",
-      label: "PMV",
-      format: (result) => ({ text: result.pmv.toFixed(2), color: "" }),
-    },
-    {
-      id: "zone",
-      label: "Zone",
-      format: (result) => {
-        const zone = getPmvZoneMeta(result.pmv);
-        return { text: zone.label, color: zone.textColor };
-      },
-    },
-    {
-      id: "ppd",
-      label: "PPD",
-      format: (result) => ({ text: `${result.ppd.toFixed(1)}%`, color: "" }),
-    },
-    {
-      id: "acceptability",
-      label: "Acceptability",
-      format: (result) => ({
-        text: `${(100 - result.ppd).toFixed(1)}%`,
-        color: "",
-      }),
-    },
-    {
-      id: "set",
-      label: "SET",
-      format: (result, unitSystem) =>
-        formatQuantityCell(
-          PhysicalQuantityId.DryBulbTemperature,
-          result.set,
-          unitSystem,
-        ),
-    },
-    {
-      id: "cooling-effect",
-      label: "Cooling effect",
-      format: (result, unitSystem) =>
-        formatCoolingEffectCell(result.coolingEffect, unitSystem),
-    },
-    {
-      id: "relative-air-speed",
-      label: "Relative air speed",
-      format: (result, unitSystem) =>
-        formatQuantityCell(
-          PhysicalQuantityId.RelativeAirSpeed,
-          result.vr,
-          unitSystem,
-        ),
-    },
-    {
-      id: "dynamic-clothing",
-      label: "Dynamic clothing",
-      format: (result) =>
-        formatQuantityCell(
-          PhysicalQuantityId.ClothingInsulation,
-          result.dynamicClothing,
-          UnitSystem.SI,
-          DYNAMIC_CLOTHING_DECIMALS,
-        ),
-    },
-  ];
 }
 
 export function calculatePmvModel(

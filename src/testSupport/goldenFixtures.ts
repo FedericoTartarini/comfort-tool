@@ -11,12 +11,13 @@ import {
 } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
 import { comfortModelConfigs } from "../state/analysis/modelConfigs";
-import { createQuantitiesByInput } from "../state/analysis/initialAnalysisState";
+import {
+  createQuantitiesByInput,
+  createDefaultModelInputsForModel,
+} from "../state/analysis/initialAnalysisState";
 import {
   createAuxiliaryQuantitiesByInput,
-  createDefaultModelInputsForModel,
 } from "../engines/comfort/quantityStateRouting";
-import { PhsQuantityId } from "../catalog/phs";
 import type { PmvRequest } from "../declarations/pmv/calculation";
 import type { UtciRequest } from "../declarations/utci/calculation";
 import {
@@ -66,8 +67,8 @@ export const phsBaselineInputOverrides: Partial<PrimaryInputState> = {
 
 /** Known-value PHS reference person. Not Compare goldens. */
 export const phsBaselineModelInputs: Partial<Record<PhysicalQuantityIdType, number>> = {
-  [PhsQuantityId.BodyWeight]: 75,
-  [PhsQuantityId.Height]: 1.8,
+  [PhysicalQuantityId.BodyWeight]: 75,
+  [PhysicalQuantityId.Height]: 1.8,
 };
 
 function isValueInDeclaredRange(

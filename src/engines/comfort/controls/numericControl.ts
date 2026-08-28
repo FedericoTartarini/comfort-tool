@@ -22,6 +22,7 @@ import {
   convertQuantityFromSi,
   convertQuantityToSi,
   formatDisplayValue,
+  roundToDisplay,
 } from "../../units";
 import {
   BehaviorPatch,
@@ -36,7 +37,6 @@ export interface PresentationMeta {
   label: string;
   displayUnits: string;
   step: number;
-  decimals: number;
   rangeText: string;
   minValue?: number;
   maxValue?: number;
@@ -93,16 +93,13 @@ function buildRangeText(
   fieldKey: PrimaryQuantityId,
   minValue: number,
   maxValue: number,
-  decimals: number,
   context: ControlBehaviorContext,
 ): string {
   const minimum = formatDisplayValue(
     convertQuantityFromSi(fieldKey, minValue, context.unitSystem),
-    decimals,
   );
   const maximum = formatDisplayValue(
     convertQuantityFromSi(fieldKey, maxValue, context.unitSystem),
-    decimals,
   );
   return `From ${minimum} to ${maximum}`;
 }
@@ -119,12 +116,10 @@ export function buildDefaultPresentation(
     label: meta.label,
     displayUnits: meta.displayUnits,
     step: meta.step,
-    decimals: meta.decimals,
     rangeText: buildRangeText(
       quantityId,
       minValue,
       maxValue,
-      meta.decimals,
       context,
     ),
     minValue: convertQuantityFromSi(quantityId, minValue, context.unitSystem),
@@ -160,6 +155,17 @@ export function buildAdvancedOptionMenu(
 export function createControlBehavior(
   config: NumericControlBehaviorConfig,
 ): InputControlBehavior {
+  const resolveDisplayValue = (
+    context: ControlBehaviorContext,
+    inputId: InputIdType,
+  ) => (
+    config.getDisplayValue?.(context, inputId)
+    ?? convertQuantityFromSi(
+      config.fieldKey,
+      context.quantitiesByInput[inputId][config.fieldKey],
+      context.unitSystem,
+    )
+  );
   return {
     buildViewModel: (context): InputControlViewModel => {
       const presentationMeta = getQuantityPresentationMeta(
@@ -171,23 +177,12 @@ export function createControlBehavior(
           minValue: config.minValue,
           maxValue: config.maxValue,
         });
-      const getDisplayValue = (inputId: InputIdType) => (
-        config.getDisplayValue?.(context, inputId)
-        ?? convertQuantityFromSi(
-          config.fieldKey,
-          context.quantitiesByInput[inputId][config.fieldKey],
-          context.unitSystem,
-        )
-      );
       const numericValuesByInput: InputControlViewModel["numericValuesByInput"] = {};
       const displayValuesByInput: InputControlViewModel["displayValuesByInput"] = {};
       for (const inputId of context.visibleInputIds) {
-        const value = getDisplayValue(inputId);
+        const value = resolveDisplayValue(context, inputId);
         numericValuesByInput[inputId] = value;
-        displayValuesByInput[inputId] = formatDisplayValue(
-          value,
-          presentation.decimals,
-        );
+        displayValuesByInput[inputId] = formatDisplayValue(value);
       }
 
       return {
@@ -203,7 +198,7 @@ export function createControlBehavior(
         step: presentation.step,
         menu: config.getMenu?.(context) ?? null,
         presetOptions: [...(config.presetOptions ?? [])],
-        presetDecimals: config.presetDecimals ?? presentation.decimals,
+        presetDecimals: config.presetDecimals ?? 2,
         showClothingBuilder: config.showClothingBuilder ?? false,
         displayValuesByInput,
         numericValuesByInput,
@@ -213,8 +208,12 @@ export function createControlBehavior(
       if (!rawValue.trim()) return null;
       const parsedValue = Number(rawValue);
       if (!Number.isFinite(parsedValue)) return null;
-      const nextValue = config.parseInput?.(context, parsedValue)
-        ?? convertQuantityToSi(config.fieldKey, parsedValue, context.unitSystem);
+      const currentDisplay = formatDisplayValue(resolveDisplayValue(context, inputId));
+      if (rawValue.trim() === currentDisplay) return null;
+      const displayValue = roundToDisplay(parsedValue);
+      if (formatDisplayValue(displayValue) === currentDisplay) return null;
+      const nextValue = config.parseInput?.(context, displayValue)
+        ?? convertQuantityToSi(config.fieldKey, displayValue, context.unitSystem);
       if (nextValue === null || !Number.isFinite(nextValue)) return null;
       return config.applyInput?.(context, inputId, nextValue)
         ?? createSingleInputPatch(inputId, { [config.fieldKey]: nextValue });

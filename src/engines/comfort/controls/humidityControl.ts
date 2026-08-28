@@ -58,9 +58,11 @@ function catalogPresentation(
   quantityId: PhysicalQuantityIdType,
   label: string,
 ): PresentationMeta {
+  const display = getQuantityDisplayMeta(quantityId, context.unitSystem);
   return {
     label,
-    ...getQuantityDisplayMeta(quantityId, context.unitSystem),
+    displayUnits: display.displayUnits,
+    step: display.step,
     rangeText: "",
   };
 }
@@ -76,50 +78,14 @@ const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinit
     }),
     toRelativeHumidity: (_temperature, valueSi) => valueSi,
   },
-  [HumidityInputMode.HumidityRatio]: {
-    label: "Humidity ratio",
-    quantityId: PhysicalQuantityId.DerivedHumidityRatio,
-    derivedKey: PhysicalQuantityId.DerivedHumidityRatio,
-    getPresentation: (context, label) => catalogPresentation(
-      context,
-      PhysicalQuantityId.DerivedHumidityRatio,
-      label,
-    ),
-    toRelativeHumidity: deriveRelativeHumidityFromHumidityRatio,
-  },
-  [HumidityInputMode.DewPoint]: {
-    label: "Dew point",
-    quantityId: PhysicalQuantityId.DewPoint,
-    derivedKey: PhysicalQuantityId.DewPoint,
-    getPresentation: (context, label) => catalogPresentation(
-      context,
-      PhysicalQuantityId.DewPoint,
-      label,
-    ),
-    toRelativeHumidity: deriveRelativeHumidityFromDewPoint,
-  },
-  [HumidityInputMode.WetBulb]: {
-    label: "Wet-bulb temperature",
-    quantityId: PhysicalQuantityId.WetBulb,
-    derivedKey: PhysicalQuantityId.WetBulb,
-    getPresentation: (context, label) => catalogPresentation(
-      context,
-      PhysicalQuantityId.WetBulb,
-      label,
-    ),
-    toRelativeHumidity: deriveRelativeHumidityFromWetBulb,
-  },
-  [HumidityInputMode.VaporPressure]: {
-    label: "Vapor pressure",
-    quantityId: PhysicalQuantityId.VaporPressure,
-    derivedKey: PhysicalQuantityId.VaporPressure,
-    getPresentation: (context, label) => catalogPresentation(
-      context,
-      PhysicalQuantityId.VaporPressure,
-      label,
-    ),
-    toRelativeHumidity: deriveRelativeHumidityFromVaporPressure,
-  },
+  [HumidityInputMode.HumidityRatio]: { label: "Humidity ratio", quantityId: PhysicalQuantityId.HumidityRatio, derivedKey: PhysicalQuantityId.HumidityRatio, getPresentation: (context, label) => catalogPresentation(
+      context, PhysicalQuantityId.HumidityRatio, label, ), toRelativeHumidity: deriveRelativeHumidityFromHumidityRatio },
+  [HumidityInputMode.DewPoint]: { label: "Dew point", quantityId: PhysicalQuantityId.DewPoint, derivedKey: PhysicalQuantityId.DewPoint, getPresentation: (context, label) => catalogPresentation(
+      context, PhysicalQuantityId.DewPoint, label, ), toRelativeHumidity: deriveRelativeHumidityFromDewPoint },
+  [HumidityInputMode.WetBulb]: { label: "Wet-bulb temperature", quantityId: PhysicalQuantityId.WetBulb, derivedKey: PhysicalQuantityId.WetBulb, getPresentation: (context, label) => catalogPresentation(
+      context, PhysicalQuantityId.WetBulb, label, ), toRelativeHumidity: deriveRelativeHumidityFromWetBulb },
+  [HumidityInputMode.VaporPressure]: { label: "Vapor pressure", quantityId: PhysicalQuantityId.VaporPressure, derivedKey: PhysicalQuantityId.VaporPressure, getPresentation: (context, label) => catalogPresentation(
+      context, PhysicalQuantityId.VaporPressure, label, ), toRelativeHumidity: deriveRelativeHumidityFromVaporPressure },
 };
 
 const humidityModeValues = Object.values(HumidityInputMode);
@@ -153,13 +119,8 @@ export function synchronizeHumidityInputState(
   const definition = humidityModeDefinitions[humidityMode];
   if (definition.derivedKey === null) return { ...inputState };
   const resolvedDerivedState = { ...derivedState, ...derivedOverrides };
-  return {
-    ...inputState,
-    [PhysicalQuantityId.RelativeHumidity]: definition.toRelativeHumidity(
-      inputState[PhysicalQuantityId.DryBulbTemperature],
-      resolvedDerivedState[definition.derivedKey],
-    ),
-  };
+  return { ...inputState, [PhysicalQuantityId.RelativeHumidity]: definition.toRelativeHumidity(
+      inputState[PhysicalQuantityId.DryBulbTemperature], resolvedDerivedState[definition.derivedKey], ) };
 }
 
 export function synchronizeSelectedHumidityMode(

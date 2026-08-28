@@ -1,6 +1,6 @@
 import type { ModelChartSource } from "../../catalog/chartSource";
-import { ModelId } from "../../catalog/modelIds";
 import { PhysicalQuantityId } from "../../catalog/quantities";
+import { ModelId } from "../../catalog/modelIds";
 import { InputControlId } from "../../catalog/inputControls";
 import {
   defaultUtciOptions,
@@ -11,8 +11,8 @@ import {
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 import { ChartType } from "../../catalog/chartTypes";
-import { WorkspaceId } from "../../catalog/workspaces";
-import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
+import { SurfaceId } from "../../catalog/surfaces";
+import type { TableRowAuthoring } from "../../catalog/tableTypes";
 import {
   createTemperatureModeOptionHandler,
 } from "../../engines/comfort/controls/temperatureControl";
@@ -23,11 +23,11 @@ import {
   ComfortModelBuilder,
   hasExactKeys,
   isRecord,
-  type ChartDeclarationInput,
+  type FrontendChartDeclaration,
 } from "../../state/analysis/modelConfigs/builder";
 import {
-  buildUtciResultRows,
   calculateUtci,
+  getUtciZoneMeta,
   UTCI_MODEL_LABEL,
   UTCI_TDB_LIMITS,
   UTCI_TR_LIMITS,
@@ -66,18 +66,21 @@ function toRequest(
   return request;
 }
 
-function buildUtciTableRows(): TableRowSpec<UtciResponse>[] {
-  const rowMeta = [
-    { id: "utci", label: UTCI_MODEL_LABEL },
-    { id: "stress-category", label: "Stress Category" },
+function buildUtciTableRows(): TableRowAuthoring<UtciResponse>[] {
+  return [
+    {
+      quantity: PhysicalQuantityId.Utci,
+      label: UTCI_MODEL_LABEL,
+    },
+    {
+      id: "stress-category",
+      label: "Stress Category",
+      format: (result) => {
+        const zone = getUtciZoneMeta(result.utci);
+        return { text: zone.label, color: zone.textColor };
+      },
+    },
   ];
-  return rowMeta.map((meta, index) => ({
-    id: meta.id,
-    label: meta.label,
-    format: (result, unitSystem) => (
-      buildUtciResultRows(unitSystem)[index].formatter(result)
-    ),
-  }));
 }
 
 const builder = new ComfortModelBuilder<
@@ -87,7 +90,7 @@ const builder = new ComfortModelBuilder<
   ModelId.Utci,
 );
 
-const utciCharts: ChartDeclarationInput<
+const utciCharts: FrontendChartDeclaration<
   UtciResponse,
   ModelChartSource<UtciRequest>
 >[] = [
@@ -95,30 +98,12 @@ const utciCharts: ChartDeclarationInput<
     id: "utci-stress-band",
     type: ChartType.Utci,
     emptyMessage: "No psychrometric chart yet.",
-    capabilities: {
-      allowsAxisSelection: false,
-      locksYAxis: false,
-      allowsOutputSelection: false,
-      allowsBandEditing: false,
-      allowsBaselineSelection: true,
-      showsLegend: true,
-      showsExport: true,
-    },
     spec: utciStressChartSpec,
   },
   {
     id: "utci-dynamic-field",
     type: ChartType.Dynamic,
     emptyMessage: "No dynamic chart yet.",
-    capabilities: {
-      allowsAxisSelection: true,
-      locksYAxis: false,
-      allowsOutputSelection: true,
-      allowsBandEditing: true,
-      allowsBaselineSelection: true,
-      showsLegend: true,
-      showsExport: true,
-    },
     spec: utciDynamicFieldChartSpec,
   },
 ];
@@ -127,7 +112,7 @@ builder
   .setLabel(UTCI_MODEL_LABEL)
   .setDescription(MODEL_DESCRIPTION)
   .setStandardIds([])
-  .setWorkspaceCapabilities([WorkspaceId.Explore])
+  .setWorkspaceCapabilities([SurfaceId.Explore])
   .setExploreOutputs([utciOutput])
   .setModifiers([])
   .setCharts(utciCharts, {
@@ -160,10 +145,7 @@ builder.addOptionHandler(
 );
 
 builder.setDynamicAxisFields([...UTCI_DYNAMIC_AXIS_FIELDS]);
-builder.setDefaultDynamicAxes({
-  xAxis: PhysicalQuantityId.DryBulbTemperature,
-  yAxis: PhysicalQuantityId.RelativeHumidity,
-});
+builder.setDefaultDynamicAxes({ xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity });
 builder.setDefaultOptions({ ...defaultUtciOptions });
 builder.setOptionParser(parseUtciOptions);
 
@@ -176,10 +158,7 @@ builder.setCalculator((context, visibleInputIds) =>
   }));
 
 builder.setTables({
-  analysis: {
-    type: TableType.Analysis,
-    rows: buildUtciTableRows(),
-  },
+  results: buildUtciTableRows(),
 });
 
 export const utciModelConfig = builder.build();

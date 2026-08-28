@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-
 import { PhysicalQuantityId } from "../../catalog/quantities";
+
 import { InputId } from "../../catalog/inputSlots";
-import { ModelOutputKey, type ChartBuildContext, type NumericBand } from "../../catalog/modelCapabilities";
+import { type ChartBuildContext, type NumericBand } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { UnitSystem } from "../../catalog/units";
-import { phsReferenceEnvironment, PhsQuantityId } from "../../catalog/phs";
+import { phsReferenceEnvironment } from "../../catalog/phs";
 import {
   phsExploreOutputs,
   phsModelConfig,
@@ -22,13 +22,7 @@ function createComplianceContext(
     unitSystem: UnitSystem.SI,
     baselineInputId: InputId.Input1,
     modelInputs,
-    fieldChartConfig: {
-      profileKind: FieldChartProfileKind.Compliance,
-      xField: PhysicalQuantityId.DryBulbTemperature,
-      yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: ModelOutputKey.PhsLimitingExposureTime,
-      bands: phsModelConfig.complianceProfile!.bands as readonly NumericBand[],
-    },
+    fieldChartConfig: { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PhsLimitingExposureTime, bands: phsModelConfig.complianceProfile!.bands as readonly NumericBand[] },
   };
 }
 
@@ -43,7 +37,7 @@ describe("createPhsDynamicGridSpec", () => {
       phsExploreOutputs,
       phsRequestAdapter,
       createComplianceContext({
-        [PhsQuantityId.BodyWeight]: 120,
+        [PhysicalQuantityId.BodyWeight]: 120,
       }),
     );
 
@@ -55,7 +49,7 @@ describe("createPhsDynamicGridSpec", () => {
     expect(heavyResult.waterLossLimitG).toBeGreaterThan(defaultResult.waterLossLimitG);
     expect(heavyResult.waterLossLimitG).toBe(
       getPhsWaterLossLimitG(personFromModelInputs({
-        [PhsQuantityId.BodyWeight]: 120,
+        [PhysicalQuantityId.BodyWeight]: 120,
       })),
     );
   });

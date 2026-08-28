@@ -25,10 +25,10 @@ Do not treat it as the next design.
 | Item            | Decision                                                                                                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Product         | Replace the CBE Thermal Comfort Tool                                                                                                                                |
-| Maintainability | One declaration file per model configures and may contribute to three unique registries. Frontend owns engines, Compare, and export. UI never branches on model id. |
-| Core Analysis   | Standard, Explore, **Compare with three input slots**                                                                                                               |
+| Maintainability | One declaration file per model selects two closed catalogs (quantities, ChartTypes). Frontend owns engines, Compare, and export. UI never branches on model id. |
+| Product surfaces | Standard, Explore, Time-series. Compare is a three-slot switch inside the point session, not a fourth surface. |
 | Figures         | Publication export (size, type, Compare markers), not a screenshot of the live plot                                                                                 |
-| Time-series     | PHS only. Separate controller. Do not generalize the simulator.                                                                                                     |
+| Sessions        | Point session (Standard + Explore, shared SI inputs / cache / share). Time-series session (PHS only). Do not merge; do not split Standard and Explore into two stores. |
 | Legacy          | None. Sparse share. Missing known keys seed defaults. Unknown keys are rejected.                                                                                    |
 | Authoring       | One `defineModel` assembly. No preset factory. No second index-model API.                                                                                           |
 
@@ -38,70 +38,109 @@ remaining `engines/comfort` helpers, and `src/charts/psychrometric/humidity.ts`
 rebuilds.
 
 Refactoring **is** allowed to be large. It is not a rewrite of the thermal
-models or a merge of Analysis and Time-series.
+models or a merge of the point session and the Time-series session.
 
 ## 2. Product surfaces (frozen)
 
 ```text
-L3  Product surfaces
-    Standard | Explore | Compare(3) | Time-series = PHS only
+L3  Product surfaces (SurfaceId)
+    Standard | Explore | Time-series = PHS only
+    Compare(3) is a point-session switch, not a surface
     Tools (globe, local discomfort, CSV) ≠ models
 
 L2  Charts (frontend, closed)
     ChartType: psychrometric | dynamic | heat-loss | set | adaptive | utci
                | body-temperature | water-loss
-    TableType:   Analysis | TimeSeries
+    Tables: slots `results` (point session) and optional `timeSeries` (PHS)
+            — no TableType catalog
     Geometry → screen theme | publication theme
     Compare projection | export profile
 
 L1  Declaration (model file A)
-    Select built-in catalog entries
-    Contribute model-scoped quantities, optional chart semantic tags (type?),
-    table row configs
+    Select built-in catalog entries (quantities including outputs, ChartTypes, Extra ids)
+    Table rows (quantity ids and/or custom formatters)
     Zones + calculate + charts + tables
     Forbidden: Plotly in declarations, share codec, new ChartType,
-               new primaryInputOrder keys, new modifiers, new Time-series controller
+               new primaryInputOrder keys, new modifiers, new Time-series session
 ```
+
+Surfaces vs sessions:
+
+- **Surface** is the user-facing page family (`/standard/…`, `/explore/…`,
+  `/time-series/…`) and model membership.
+- **Point session** (code under `state/analysis/`) serves Standard and Explore
+  with one SI input tree, one calculation cache, and one share snapshot.
+- **Time-series session** (`state/timeSeries/`) is a separate draft + worker
+  for PHS. Declaring `tables.timeSeries` does not create a simulator.
 
 Invariants:
 
 - A new Humidex-class model must not edit input rows, chart panels, or the
-  Analysis controller.
+  point session.
 - Compare remains three slots, a results matrix, overlay markers, and a
   baseline selector.
 - `calculate` writes a per-model cache. Axis, band, unit, chart, and Explore
   output changes rebuild from a ready cache.
-- Time-series stays outside Analysis caches and Analysis share snapshots.
+- Time-series stays outside point-session caches and share snapshots.
 - Globe temperature, local discomfort, barometric pressure, and CBE-style CSV
   exceedance are tools or a separate product surface, not `ModelId` entries
   and not PHS Time-series.
 
-## 3. Three registries
+### 2.1 Point-session state buckets
 
-Runtime state is assembled **once** from frontend seeds plus every registered
-declaration. UI and share code read only the assembled catalogs. Duplicate ids,
-wrong owners, unknown ChartTypes, or a TimeSeries table without Time-series
-capability fail `defineModel` / registry assemble.
+Svelte 5: a class (or factory) with `$state` fields, typed context, `$derived`
+projections. No store library. Calculation caches use `$state.raw`.
+
+| Bucket | Holds |
+| ------ | ----- |
+| input | `quantitiesByInput`, auxiliary slots, `modelInputsByModel`, modifiers |
+| setting | model, chart instance, options, Compare, unit system, Surface, axes / baseline / Explore bands |
+| output | calculation cache, loading / error |
+
+Quantity occupancy is declared by models (which ids are inputs, outputs, axes).
+The quantity catalog does not stamp input vs output.
+
+## 3. Two registries
+
+Quantities and ChartTypes are **closed frontend catalogs**. Models select ids;
+they do not own, extend, or invent them. There is no table-type catalog.
+`assembleCatalogs` indexes chart-instance owners and validates models.
+Extra ids that are not Extra, unknown ChartTypes, duplicate ChartType on one
+model, or a Time-series table without Time-series capability fail `defineModel`
+/ registry assemble.
 
 ### 3.1 Physical quantities
 
-One catalog. Built-in (system) quantities are seeded by frontend. Model file A
-selects which built-ins it uses and **may declare model-scoped extensions**.
+One closed catalog in `src/catalog/quantities.ts` for **inputs and outputs**.
+Occupancy lists (not a second type system): `primaryInputOrder`,
+`chartAxisQuantityIds`, `extraQuantityIds`, derived/modifier slot lists.
+Body weight and height are Extra catalog ids (`bodyWeight`, `height`).
+Output keys such as PMV, PPD, SET, heat index live in this catalog.
+`ModelOutputKey` is deleted. Conversion is `convertQuantityFromSi` only.
 
 ```text
-quantityCatalog = system seed  ∪  declarations[].quantities.extend
+quantityCatalog = src/catalog/quantities.ts
 ```
+
+Display (locked): round and format only at the human boundary. Canonical SI
+and `calculate` / isoline geometry stay full-precision floats. Visible numbers
+use at most two fraction digits with trailing zeros stripped (`25.50` →
+`25.5`). Catalog metadata drops per-quantity `decimals`; `step` stays.
 
 Rules:
 
 - File A configures built-ins (which fields, controls, min/max).
-- File A may contribute `{ id, owner: this model, scope: model, SI meta }`.
-- Extended quantities **must not** enter `primaryInputOrder` or the global
+- File A may select Extra catalog ids via `extraQuantities` (PHS uses
+  `phsPersonQuantityIds`). It must not contribute quantity metadata.
+- Extra quantities **must not** enter `primaryInputOrder` or the global
   share primary record. They live in sparse `modelInputsByModel`.
+- Explore / compliance `zOutput` and table quantity rows are catalog ids.
+  Band thresholds stay on the model declaration.
 - New unit dimensions, new modifiers, and new persisted primaries are
   frontend work, not declaration-only work.
 - PHS mass/length conversion reads this catalog. No `if (model === Phs)`
-  branches in field behaviors.
+  branches in field behaviors. Do not add PHS weight/height to the point-session
+  input panel.
 
 ### 3.2 Charts
 
@@ -110,7 +149,7 @@ One chart catalog with three layers. Only one engine set exists.
 | Layer               | Who writes it     | What it is                                                                        |
 | ------------------- | ----------------- | --------------------------------------------------------------------------------- |
 | Engine              | Frontend, closed  | How geometry is built (`DynamicField`, `BoundaryRegion`, …)                       |
-| Authoring chart     | File A (`charts`) | `{ id, type?, engine, spec }` — data spec for that engine, never a Plotly builder |
+| Authoring chart     | File A (`charts`) | `{ id, type, spec }` — `type` is closed `ChartType`; spec must match that type |
 | Runtime projections | Builder-derived   | Chart instance presentation (no spec) + chart engine registration (engine + spec) |
 
 The authoring entry is the single source. The builder derives both runtime
@@ -138,10 +177,11 @@ Rules:
 
 - File A configures built-in ChartTypes (axes, bands, titles) and binds SI
   calculations into numeric arrays.
-- File A must not add a ChartType and must not teach Plotly. `defineModel`
-  declarations are data-only Dynamic.
+- File A must not add a ChartType. There is no ModelId allowlist.
+  `defineModel` may use any closed ChartType whose spec matches.
 - Heat Index / Humidex use a single Dynamic instance (not Psychrometric).
-- Psychrometric remains frontend-only for PMV ASHRAE/ISO geometry.
+- Psychrometric is a ChartType currently used by PMV ASHRAE/ISO. Keep the
+  eight ChartType product names (do not rename Utci).
 - Heat Loss and SET are two ChartTypes (SET uses a second y-axis).
 - Parallel `ChartInstanceId` trees are deleted. The registry derives instance
   ids from declarations. Tests: non-empty per model, unique per model, unique
@@ -149,24 +189,24 @@ Rules:
 
 ### 3.3 Tables
 
-One table-type catalog with exactly two implementation types:
+No table-type catalog. Slot names choose the renderer.
 
-| TableType    | Engine                       | Product surface              |
-| ------------ | ---------------------------- | ---------------------------- |
-| `Analysis`   | Compare matrix (three slots) | Standard / Explore / Compare |
-| `TimeSeries` | Metric summary               | Time-series (PHS)            |
+| Slot | Engine | Product surface |
+| ---- | ------ | --------------- |
+| `results` | Compare matrix | Point session (Standard / Explore) |
+| `timeSeries` | Metric summary | Time-series (PHS); same row semantics |
 
-File A declares which types it needs and configures **form** (rows, groups,
-labels, formatters). It does not invent a third table engine.
+File A declares slots. Rows are quantity ids (label / units / conversion from
+the catalog) and optional custom formatters (compliance text, zone names).
 
 Rules:
 
-- Every Analysis model declares `tables.analysis`.
+- Every point-session model declares non-empty `tables.results`.
 - `tables.timeSeries` is allowed only with Time-series capability. Today that
-  is PHS. Declaring the table does not create a second simulator.
-- Unify today’s split table APIs into `tables: { analysis, timeSeries? }`.
-- Do not add `CriteriaMatrix` until a local-discomfort tool exists and
-  Analysis rows are proven insufficient.
+  is PHS. Declaring the table does not create a second simulator. The two
+  sessions stay separate.
+- Do not add a second table type until a local-discomfort tool exists and
+  quantity rows are proven insufficient.
 
 ### 3.4 Authoring: `defineModel`, not presets
 
@@ -183,34 +223,29 @@ A model is one declaration object assembled by `defineModel`:
 ```ts
 export default defineModel({
   id: ModelId.HeatIndex,
-  quantities: {
-    extend: [], // model-scoped contributions only
-  },
+  extraQuantities: [], // Extra catalog ids this model selects, if any
   charts: [
     {
       id: "heat-index-dynamic-field",
       type: ChartType.Dynamic,
       spec: {
-        /* data, not Plotly */
+        /* data matching ChartType.Dynamic */
       },
     },
   ],
   defaultChartId: "heat-index-dynamic-field",
   tables: {
-    analysis: {
-      type: TableType.Analysis,
-      rows: [
-        /* … */
-      ],
-    },
+    results: [
+      /* quantity ids and/or custom rows */
+    ],
   },
   calculate,
 });
 ```
 
-There is no `quantities.use` list. Which built-in quantities a model uses is
-expressed by its `inputFields` (and axis declarations); `quantities.extend`
-exists only for model-scoped contributions.
+There is no `quantities.use` list and no `quantities.extend`. Which catalog
+quantities a model uses is expressed by its `inputFields`, axis declarations,
+and `extraQuantities`.
 
 Adding a Heat Index–class model: declaration file + `ModelId` constant + one
 registry line. Copy `heatIndex.ts` as a full declaration, not a factory call.
@@ -229,9 +264,9 @@ is gone.
 src/
   catalog/         Frontend-owned constants and metadata
                    (formerly src/models, renamed as one layer)
-    quantities.ts    system quantity seed (formerly physicalQuantities.ts)
+    quantities.ts    closed PhysicalQuantityId catalog (formerly physicalQuantities.ts)
     chartTypes.ts    closed ChartType set (replaces chartEngines.ts)
-    tableTypes.ts    table-type catalog (formerly output/tableLayouts.ts)
+    tableTypes.ts    table row/view-model types (no TableType enum)
     modelIds.ts      ModelId constants (formerly comfortModels.ts)
     ...              every other former src/models module moved with the layer
                      (thermalZone, zoneTokens, inputModifiers, inputSlots,
@@ -249,9 +284,9 @@ src/
                    field-chart bind, chart theme, publication export.
                    Do not add new ChartType geometry here.
   state/
-    analysis/      formerly state/comfortTool
-    timeSeries/    separate controller (keep)
-    workspace/     workspace navigation and routes (keep)
+    analysis/      point session (Standard + Explore); folder name may stay
+    timeSeries/    Time-series session (keep separate)
+    workspace/     surface navigation and routes (SurfaceId)
   ui/              formerly components + routes + views (+ UI actions/utils)
 ```
 
@@ -343,15 +378,15 @@ behind a runtime flag.
   fills, and applies screen vs publication theme. Bind geometry may still
   pass through a compact Plotly-shaped DTO before wrapping; figure modules
   must not mention models or quantities.
-- `TableType.Analysis` / `TableType.TimeSeries` already landed (0t); the
-  file rename `tableLayouts.ts` → `tableTypes.ts` landed in 3n.
+- Table slots `results` / `timeSeries` remain; the `TableType` enum is
+  deleted (5t). `tableTypes.ts` keeps row and view-model types.
 
 ### 4.3 Execution notes
 
 - Wire values moved to kebab-case (`"PMV_ASHRAE"` → `"pmv-ashrae"`). That
   changed share-codec output and golden snapshots, so it landed as its own
   reviewed step with intentional snapshot regeneration — never mixed into a
-  symbol-rename diff. Workspace path segments are `WorkspaceId` values
+  symbol-rename diff. Workspace path segments are `SurfaceId` values
   (`standard`, `explore`, `time-series`). Standard calculation routes are
   `/standard/{standard}/{model}/` (`/standard/ashrae-55/pmv-ashrae/`).
   Explore is `/explore/{model}/`. Time-series is `/time-series/{model}/`.
@@ -367,10 +402,10 @@ behind a runtime flag.
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------- |
 | `ComfortModel` / `PMV_ASHRAE`                                            | `ModelId.PmvAshrae`, wire `"pmv-ashrae"`                                    | done (3n)                                             |
 | `ChartKind` + `ChartInstanceId` tree                                     | `ChartType` (closed) + declaration `charts[].id`                            | done (3n; id tree deleted in 0c; ChartEngine removed) |
-| `TableLayout.CompareMatrix`                                              | `TableType.Analysis`                                                        | done (0t)                                             |
-| `TableLayout.MetricSummary`                                              | `TableType.TimeSeries`                                                      | done (0t)                                             |
-| `WorkspaceCapability` clone                                              | `WorkspaceId[]` on the declaration                                          | done (3n)                                             |
-| `createComfortToolState`                                                 | `createAnalysisState`                                                       | done (3n)                                             |
+| `TableLayout.CompareMatrix`                                              | `tables.results` slot (TableType enum deleted in 5t)                        | done (0t; 5t)                                         |
+| `TableLayout.MetricSummary`                                              | `tables.timeSeries` slot                                                    | done (0t; 5t)                                         |
+| `WorkspaceCapability` clone                                              | `SurfaceId[]` on the declaration (`SurfaceId` renamed in 5n)              | done (3n; 5n)                                         |
+| `createComfortToolState`                                                 | point session (`createAnalysisState` / class)                               | done (3n; 5s)                                         |
 | `setOutputCharts` / `setOutputTable` / `setSimulation`                   | `charts` + `tables` + optional PHS `simulation`                             | done (0t/0a/3n)                                       |
 | Authoring `outputCharts` / entry `instanceId` / `defaultChartInstanceId` | `charts` / entry `id` / `defaultChartId` (authoring only)                   | done (3n)                                             |
 | Builder `setOutputCharts()`                                              | `setCharts()` (maps `id` → runtime `instanceId`)                            | done (3n)                                             |
@@ -447,8 +482,8 @@ swap it.
 NaN-to-gap belongs on `z` (or equivalent), not a full-document JSON clone.
 Clone only what Plotly mutates.
 
-`ChartType` is a closed catalog. `defineModel` may only declare Dynamic.
-No `spec: unknown`.
+`ChartType` is a closed catalog. `defineModel` may use any ChartType whose
+spec matches. No ModelId allowlists. No `spec: unknown`.
 
 ## 6. Share
 
@@ -456,7 +491,7 @@ No compatibility with current URLs.
 
 - Serialize sparsely (omit default model slices; omit unset model inputs).
 - Parse: missing known model → seed defaults; unknown key → **reject**.
-- Extended quantities serialize only under that model’s sparse map.
+- Extra quantities serialize only under that model’s sparse `modelInputsByModel` map.
 - Adding a model must not require every existing URL to list that model.
 
 `ModelId` remains an explicit constant. Wire values use kebab-case.
@@ -474,8 +509,8 @@ are allowed.
 | ID  | Work                    | Done when                                                                                                                                                                                          |
 | --- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0c  | One chart catalog       | `ChartInstanceId` tree deleted. Instance ids derived from declarations. Heat Index / Humidex maps are `Dynamic`. Uniqueness tests pass.                                                            |
-| 0q  | Quantity contributions  | System seed vs `quantities.extend`. PHS weight/height move to the PHS declaration. Assemble tests prove one catalog.                                                                               |
-| 0t  | `tables` API            | `TableType.Analysis` / `TimeSeries`. Every Analysis model has `tables.analysis`. PHS declares TimeSeries table.                                                                                    |
+| 0q  | Closed quantities       | All `PhysicalQuantityId` values live in `quantities.ts`. Extra state for BodyWeight/Height. Models select via `extraQuantities` (PHS). No `quantities.extend`.                                      |
+| 0t  | `tables` API            | **Superseded by 5t.** Historically one `TableType.Results`. Every point-session model has `tables.results`. PHS also declares `tables.timeSeries`. |
 | 0p  | Delete preset authoring | Preset factories gone. Heat Index, Humidex, Wind Chill are full `defineModel` declarations. Shared grid helpers remain.                                                                            |
 | 0b  | Sparse share            | Missing known keys seed. Unknown keys rejected. Test a snapshot that omits a registered model.                                                                                                     |
 | 0d  | One authoring doc       | `docs/adding-a-model.md`: copy `heatIndex.ts`, add `ModelId`, register once. Hard stops: new ChartType, new primary, new modifier, new TS controller. Replace the two current adding-a-model docs. |
@@ -495,8 +530,9 @@ hex is not required for 0′.
 
 **Authoring ready:** a Humidex-class model is a declaration + `ModelId` +
 registry line. Compare helper is green. Share does not break when a model is
-added. Dynamic charts do not default to 300²/450² DTOs. The three registries
-accept declaration contributions.
+added. Dynamic charts do not default to 300²/450² DTOs. Models select closed
+catalog ids; they do not contribute quantity, chart-type, or table-type
+metadata.
 
 ### Phase 1 — PMV CBE curves (after 0 + 0′, parallel with new index models)
 
@@ -520,11 +556,21 @@ Local discomfort is not a Phase 1 table type.
 
 | ID  | Work                                                                                                                                               |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 3a  | Optional `validate:model` on assembled catalogs                                                                                                    |
+| 3a  | Optional `validate:model` on assembled catalogs — **superseded by 5x** (assemble calls `validateModel` directly)                                    |
 | 3b  | Golden inputs / control counts derived from the registry where honest                                                                              |
 | 3c  | Input-panel view models (same projection style as chart controls)                                                                                  |
 | 3d  | All quantity conversion through the assembled catalog (depends on 0q)                                                                              |
 | 3n  | Finish tree/name migration in §4 if anything still uses old paths. Execution plan: [docs/refactor-plan-3n.md](docs/refactor-plan-3n.md). **Done.** |
+
+### Phase 5 — Unify catalogs and sessions
+
+| ID  | Work | Done when |
+| --- | ---- | --------- |
+| 5q  | One quantity catalog including outputs; display max two fraction digits, strip trailing zeros; no `ModelOutputKey` / `modelOutputs.ts`; one humidity-ratio id | Conversion is `convertQuantityFromSi` only; `formatDisplayValue(25.50)==="25.5"`; geometry and `calculate` unrounded |
+| 5t  | Delete `TableType`; slots + quantity-id / custom rows | No `TableType` in declarations or assemble; every point-session model has `tables.results` |
+| 5x  | Delete capability copies, `ChartDeclarationInput` alias, `validate.model` hook ceremony | Heat Index does not paste `chartTypeCapabilities` |
+| 5s  | Point session `input` / `setting` / `output`; class + context; cache `$state.raw` | No `state.ui` bag; Time-series stays a second session |
+| 5n  | `WorkspaceId` → `SurfaceId`; Analysis = point session in docs; Time-series membership from `tables.timeSeries` | Product docs do not list Analysis as a fourth nav item |
 
 ### Phase 4 — CBE tools (features, not model architecture)
 
@@ -538,7 +584,7 @@ Local discomfort is not a Phase 1 table type.
 
 ```text
 Phase 0 + 0′
-    → index models and contribution-based models may be added
+    → index models and Extra-selecting models may be added
         → Phase 1 (PMV curves) can run in parallel
 Phase 2
     → safe to promise publication export and heavier field charts
@@ -549,18 +595,20 @@ Phase 3–4
 | Action                                                                                 | Earliest                |
 | -------------------------------------------------------------------------------------- | ----------------------- |
 | Heat Index–class model (built-in quantities, existing engines)                         | After Phase 0 and 0′    |
-| Model with `quantities.extend` or a chart semantic tag (`type?`) on an existing engine | After Phase 0 and 0′    |
+| Model that selects Extra catalog ids or any matching ChartType                         | After Phase 0 and 0′    |
 | PHS-family TimeSeries table                                                            | Already PHS; keep gated |
 | New ChartType, new primary, new modifier, new TS controller                            | Frontend first          |
 | Globe / local discomfort / CSV                                                         | Phase 4                 |
 
 ## 9. Out of scope
 
-- Merging Analysis and Time-series **controllers or pages**
+- Merging the point session and Time-series **sessions or pages**
+- Splitting Standard and Explore into two parallel stores
 - Merging PMV ASHRAE/ISO or Adaptive ASHRAE/EN behind a runtime flag
 - A generic simulator for a second Time-series model that does not exist
 - Researcher `Custom spec.build` or inline `import("...")` chart types
-- New ChartType or third TableType because a tool might need it later
+- New ChartType or a table-type enum because a tool might need it later
+- Rounding SI storage, `calculate`, isoline vertices, or Plotly geometry to two decimals
 - LRU / faster clone of a 200k-cell DTO instead of shrinking the DTO
 - CBE CSV exceedance on the PHS Time-series path
 - Keeping presets, `*Dto` app types, or `ChartInstanceId` trees for familiarity
@@ -572,9 +620,9 @@ Phase 3–4
 | -------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------- |
 | `src/comfortModels/presets/`                                   | done (0p)     | Delete as authoring API                                                |
 | `src/models/output/chartInstances.ts`                          | done (0c)     | Delete id tree; derive from declarations                               |
-| `src/models/physicalQuantities.ts`                             | done (0q, 3n) | System seed only; model quantities move to declarations                |
-| `src/models/output/tableLayouts.ts`                            | done (0t, 3n) | Become `TableType.Analysis` / `TimeSeries`                             |
-| `src/models/output/workspaceCapabilities.ts`                   | done (3n)     | Fold into `WorkspaceId`                                                |
+| `src/models/physicalQuantities.ts`                             | done (0q, 3n) | Closed catalog in `quantities.ts`; Extra BodyWeight/Height; models select |
+| `src/models/output/tableLayouts.ts`                            | done (0t, 3n, 5t) | Slots `results` / `timeSeries`; no TableType enum                  |
+| `src/models/output/workspaceCapabilities.ts`                   | done (3n, 5n) | Fold into `SurfaceId`                                              |
 | `src/state/comfortTool/`                                       | done (3n)     | `src/state/analysis/`                                                  |
 | `src/state/comfortTool/shareState.ts`                          | done (0b)     | Sparse codec                                                           |
 | `src/state/comfortTool/modelConfigs/builder.ts`                | done (0p, 0a) | `defineModel` + discriminated chart spec                               |
@@ -603,7 +651,7 @@ generic; their unit conversion must start reading the quantity catalog (0q/3d).
 | Lens         | Criterion                                                                                                                                      |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Declaration  | File A selects built-ins and can contribute extended quantities, chart semantic tags (`type?`), and table forms.                               |
-| Registries   | One quantity catalog, one chart catalog (closed ChartTypes + declaration chart entries), one table-type catalog. Assemble fails on collisions. |
+| Registries   | One quantity catalog (inputs and outputs), one ChartType catalog. Table slots without a type enum. Assemble fails on collisions. |
 | Authoring    | Copy `heatIndex.ts`; add `ModelId`; register once. No preset factory. Compare helper green.                                                    |
 | Compare      | Every Analysis model runs the helper; three inputs do not fail silently.                                                                       |
 | CBE Analysis | PMV: psychrometric + heat-loss + SET curves + SET/CE rows. Adaptive boundary remains.                                                          |
@@ -614,8 +662,8 @@ generic; their unit conversion must start reading the quantity catalog (0q/3d).
 
 ## 12. Summary
 
-Delete the second authoring stack. Keep the kitchen closed. Open the three
-catalogs to declaration contributions.
+Delete the second authoring stack. Keep the kitchen closed. Two catalogs
+(quantities, ChartTypes); table slots; two sessions.
 
 1. Unique registries + `defineModel` + no presets + sparse share + Compare helper.
 2. Honest chart interchange (grid cap, clone, one export theme, typed ChartTypes).

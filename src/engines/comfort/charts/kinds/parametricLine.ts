@@ -9,7 +9,7 @@ import {
   UnitSystem,
   type UnitSystem as UnitSystemType,
 } from "../../../../catalog/units";
-import { convertFieldValueFromSi } from "../../../units";
+import { convertFieldValueFromSi, plotlyHoverNumber } from "../../../units";
 import { convertHeatFluxFromSi } from "../../../units/physicalQuantities";
 import { convertTemperatureFromSi } from "../../../units/temperature";
 import { createFieldAxisScale, formatAxisTitle } from "../axis";
@@ -144,8 +144,8 @@ function buildPolylineTrace(
       dash: polyline.dash,
       hovertemplate:
         `${polyline.label}<br>` +
-        `${xFieldLabel}: %{x:.1f} ${xUnits}<br>` +
-        `${polyline.label}: %{y:.1f}${yUnits ? ` ${yUnits}` : ""}` +
+        `${xFieldLabel}: ${plotlyHoverNumber("x")} ${xUnits}<br>` +
+        `${polyline.label}: ${plotlyHoverNumber("y")}${yUnits ? ` ${yUnits}` : ""}` +
         `<extra></extra>`,
     }),
     yaxis: polylineAxis(polyline),

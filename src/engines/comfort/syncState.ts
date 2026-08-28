@@ -63,11 +63,7 @@ export function synchronizeTemperatureMode(
   );
 
   return {
-    inputState: {
-      ...inputState,
-      [PhysicalQuantityId.DryBulbTemperature]: operativeTemperature,
-      [PhysicalQuantityId.MeanRadiantTemperature]: operativeTemperature,
-    },
+    inputState: { ...inputState, [PhysicalQuantityId.DryBulbTemperature]: operativeTemperature, [PhysicalQuantityId.MeanRadiantTemperature]: operativeTemperature },
   };
 }
 
@@ -76,14 +72,9 @@ export function readDerivedFromAuxiliary(
   primary: PrimaryInputState,
 ): DerivedSlotQuantityState {
   const derived = derivePsychrometricSlots(primary);
-  return {
-    [PhysicalQuantityId.DewPoint]: auxiliary[PhysicalQuantityId.DewPoint]
-      ?? derived[PhysicalQuantityId.DewPoint],
-    [PhysicalQuantityId.DerivedHumidityRatio]: auxiliary[PhysicalQuantityId.DerivedHumidityRatio]
-      ?? derived[PhysicalQuantityId.DerivedHumidityRatio],
-    [PhysicalQuantityId.WetBulb]: auxiliary[PhysicalQuantityId.WetBulb]
-      ?? derived[PhysicalQuantityId.WetBulb],
-    [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
-      ?? derived[PhysicalQuantityId.VaporPressure],
-  };
+  return { [PhysicalQuantityId.DewPoint]: auxiliary[PhysicalQuantityId.DewPoint]
+      ?? derived[PhysicalQuantityId.DewPoint], [PhysicalQuantityId.HumidityRatio]: auxiliary[PhysicalQuantityId.HumidityRatio]
+      ?? derived[PhysicalQuantityId.HumidityRatio], [PhysicalQuantityId.WetBulb]: auxiliary[PhysicalQuantityId.WetBulb]
+      ?? derived[PhysicalQuantityId.WetBulb], [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
+      ?? derived[PhysicalQuantityId.VaporPressure] };
 }

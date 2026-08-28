@@ -1,21 +1,17 @@
 import type { ChartEngineRegistration } from "../../engines/comfort/charts/kinds/types";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import { InputId } from "../../catalog/inputSlots";
-import {
-  type Band,
-  type ModelOutput,
-  type ModelOutputKey,
-  type NumericBand,
-} from "../../catalog/modelCapabilities";
+import { type Band, type ModelOutput, type NumericBand } from "../../catalog/modelCapabilities";
 import {
   FieldChartProfileKind,
   type FieldChartProfile,
 } from "../../catalog/output/fieldChartProfile";
 import {
-  WorkspaceId,
-  supportsExploreWorkspace,
-  supportsStandardWorkspace,
-  type WorkspaceId as WorkspaceIdType,
-} from "../../catalog/workspaces";
+  SurfaceId,
+  supportsExploreSurface,
+  supportsStandardSurface,
+  type SurfaceId as SurfaceIdType,
+} from "../../catalog/surfaces";
 import {
   cloneNumericBands,
   normalizeNumericBands,
@@ -26,7 +22,7 @@ import type { ModelOutputSettings } from "./types";
 
 export function getDeclaredExploreOutput(
   config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
-  outputKey: ModelOutputKey,
+  outputKey: PhysicalQuantityId,
 ): ModelOutput | undefined {
   return config.exploreOutputs.find(({ key }) => key === outputKey);
 }
@@ -56,7 +52,7 @@ export function normalizeExploreStateForChart(
   settings: ModelOutputSettings,
   chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): ModelOutputSettings {
-  if (!supportsExploreWorkspace(config.workspaceCapabilities)) {
+  if (!supportsExploreSurface(config.workspaceCapabilities)) {
     return { ...settings, exploreOutput: null, exploreBands: null };
   }
 
@@ -82,7 +78,7 @@ export function seedExploreOutputSettings(
   config: RuntimeComfortModelDefinition,
   chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): Pick<ModelOutputSettings, "exploreOutput" | "exploreBands"> {
-  if (!supportsExploreWorkspace(config.workspaceCapabilities)) {
+  if (!supportsExploreSurface(config.workspaceCapabilities)) {
     return { exploreOutput: null, exploreBands: null };
   }
 
@@ -113,13 +109,13 @@ export function seedModelOutputSettings(
 export function selectExploreOutput(
   config: RuntimeComfortModelDefinition,
   settings: ModelOutputSettings,
-  outputKey: ModelOutputKey,
+  outputKey: PhysicalQuantityId,
   chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): ModelOutputSettings | null {
   const output = getDeclaredExploreOutput(config, outputKey);
   if (
     !output
-    || !supportsExploreWorkspace(config.workspaceCapabilities)
+    || !supportsExploreSurface(config.workspaceCapabilities)
     || !getChartExploreOutputs(config, chartRegistration).some(({ key }) => key === outputKey)
   ) {
     return null;
@@ -157,10 +153,10 @@ export function replaceExploreBands(
 export function buildFieldChartProfile<TComplianceBand extends Band>(
   config: RuntimeComfortModelDefinition,
   settings: ModelOutputSettings,
-  workspace: WorkspaceIdType,
+  workspace: SurfaceIdType,
 ): FieldChartProfile<TComplianceBand> {
-  if (workspace === WorkspaceId.Standard || workspace === WorkspaceId.Explore) {
-    if (workspace === WorkspaceId.Standard && supportsStandardWorkspace(config.workspaceCapabilities)) {
+  if (workspace === SurfaceId.Standard || workspace === SurfaceId.Explore) {
+    if (workspace === SurfaceId.Standard && supportsStandardSurface(config.workspaceCapabilities)) {
       const profile = config.complianceProfile;
       if (!profile) {
         throw new Error(
@@ -176,7 +172,7 @@ export function buildFieldChartProfile<TComplianceBand extends Band>(
       };
     }
 
-    if (workspace === WorkspaceId.Explore && supportsExploreWorkspace(config.workspaceCapabilities)) {
+    if (workspace === SurfaceId.Explore && supportsExploreSurface(config.workspaceCapabilities)) {
       if (
         !settings.exploreOutput
         || !settings.exploreBands

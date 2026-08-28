@@ -2,11 +2,7 @@ import { t_o, utci } from "jsthermalcomfort";
 import { CalculationSource } from "../../catalog/calculationMetadata";
 import { JsThermalComfortStandard } from "../../catalog/modelIds";
 import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
-import {
-  bandsFromThermalZones,
-  ModelOutputKey,
-  type ModelOutput,
-} from "../../catalog/modelCapabilities";
+import { bandsFromThermalZones, type ModelOutput } from "../../catalog/modelCapabilities";
 import { ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
@@ -20,9 +16,9 @@ import {
   createFieldRequestAdapter,
 } from "../../engines/comfort/requestMapping";
 import {
-  convertModelOutputFromSi,
+  convertQuantityFromSi,
   formatDisplayValue,
-  getModelOutputDisplayMeta,
+  getQuantityDisplayMeta,
 } from "../../engines/units";
 import type { ResultRowDefinition } from "../../state/analysis/modelConfigs/builder";
 
@@ -47,7 +43,7 @@ export const utciZonesList = [
 ];
 
 export const utciOutput: ModelOutput = {
-  key: ModelOutputKey.Utci,
+  key: PhysicalQuantityId.Utci,
   label: UTCI_MODEL_LABEL,
   defaultBands: bandsFromThermalZones(utciZonesList),
 };
@@ -101,22 +97,12 @@ export function tryEvaluateUtciForChart(payload: UtciRequest): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-export const utciRequestAdapter = createFieldRequestAdapter<UtciRequest>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  tr: PhysicalQuantityId.MeanRadiantTemperature,
-  v: PhysicalQuantityId.WindSpeed,
-  rh: PhysicalQuantityId.RelativeHumidity,
-});
+export const utciRequestAdapter = createFieldRequestAdapter<UtciRequest>({ tdb: PhysicalQuantityId.DryBulbTemperature, tr: PhysicalQuantityId.MeanRadiantTemperature, v: PhysicalQuantityId.WindSpeed, rh: PhysicalQuantityId.RelativeHumidity });
 
 export const utciAxisAdapter = createRequestAxisAdapter({
   fieldAdapter: utciRequestAdapter,
-  aliases: {
-    [PhysicalQuantityId.RelativeAirSpeed]: PhysicalQuantityId.WindSpeed,
-  },
-  temperatureComponentRanges: {
-    [PhysicalQuantityId.DryBulbTemperature]: UTCI_TDB_LIMITS,
-    [PhysicalQuantityId.MeanRadiantTemperature]: UTCI_TR_LIMITS,
-  },
+  aliases: { [PhysicalQuantityId.RelativeAirSpeed]: PhysicalQuantityId.WindSpeed },
+  temperatureComponentRanges: { [PhysicalQuantityId.DryBulbTemperature]: UTCI_TDB_LIMITS, [PhysicalQuantityId.MeanRadiantTemperature]: UTCI_TR_LIMITS },
   operativeTemperature: {
     get: (request) => t_o(
       request.tdb,
@@ -128,24 +114,21 @@ export const utciAxisAdapter = createRequestAxisAdapter({
       request.tdb = valueSi;
       request.tr = valueSi;
     },
-    range: {
-      min: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature).minSi,
-      max: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature).maxSi,
-    },
+    range: { min: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature).minSi, max: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature).maxSi },
   },
 });
 
 export function buildUtciResultRows(
   unitSystem: UnitSystemType,
 ): ResultRowDefinition<UtciResponse>[] {
-  const outputMeta = getModelOutputDisplayMeta(ModelOutputKey.Utci, unitSystem);
+  const outputMeta = getQuantityDisplayMeta(PhysicalQuantityId.Utci, unitSystem);
   return [
     {
       title: UTCI_MODEL_LABEL,
       formatter: (result) => {
-        const value = convertModelOutputFromSi(ModelOutputKey.Utci, result.utci, unitSystem);
+        const value = convertQuantityFromSi(PhysicalQuantityId.Utci, result.utci, unitSystem);
         return {
-          text: `${formatDisplayValue(value, outputMeta.decimals)} ${outputMeta.displayUnits}`,
+          text: `${formatDisplayValue(value)} ${outputMeta.displayUnits}`,
           color: "",
         };
       },

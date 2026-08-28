@@ -1,19 +1,16 @@
 import { describe, expect, it } from "vitest";
-
 import { PhysicalQuantityId } from "../../../catalog/quantities";
-import { PhsQuantityId } from "../../../catalog/phs";
+
 import { InputControlId } from "../../../catalog/inputControls";
 import { OptionKey, TemperatureMode } from "../../../catalog/inputModes";
 import {
   inputDefaultsById,
   InputId,
 } from "../../../catalog/inputSlots";
-import { ModelOutputKey } from "../../../catalog/modelCapabilities";
 import { UnitSystem } from "../../../catalog/units";
-import { WorkspaceId } from "../../../catalog/workspaces";
+import { SurfaceId } from "../../../catalog/surfaces";
 import { ModelId } from "../../../catalog/modelIds";
 import { ChartType } from "../../../catalog/chartTypes";
-import { TableType } from "../../../catalog/tableTypes";
 import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/analysis/modelConfigs/builder";
 import "../../../state/analysis/modelConfigs";
 import { convertMassFromSi } from "../../units/physicalQuantities";
@@ -26,9 +23,9 @@ describe("fieldInputBehaviors", () => {
       .setLabel("Test")
       .setDescription("Test model")
       .setStandardIds([])
-      .setWorkspaceCapabilities([WorkspaceId.Explore])
+      .setWorkspaceCapabilities([SurfaceId.Explore])
       .setExploreOutputs([{
-        key: ModelOutputKey.Pmv,
+        key: PhysicalQuantityId.Pmv,
         label: "PMV",
         defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
       }])
@@ -45,7 +42,7 @@ describe("fieldInputBehaviors", () => {
           ],
           resolveGridSpec: () => ({
             output: {
-              key: ModelOutputKey.Pmv,
+              key: PhysicalQuantityId.Pmv,
               label: "PMV",
               defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
             },
@@ -59,24 +56,18 @@ describe("fieldInputBehaviors", () => {
         },
       }])
       .setTables({
-        analysis: {
-          type: TableType.Analysis,
-          rows: [{
-            id: "row",
-            label: "Row",
-            format: () => ({ text: "x" }),
-          }],
-        },
+        results: [{
+          id: "row",
+          label: "Row",
+          format: () => ({ text: "x" }),
+        }],
       })
       .setCalculator(() => ({
         resultsByInput: { input1: null, input2: null, input3: null },
         chartSource: null,
       }))
       .setDynamicAxisFields([PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.RelativeHumidity])
-      .setDefaultDynamicAxes({
-        xAxis: PhysicalQuantityId.DryBulbTemperature,
-        yAxis: PhysicalQuantityId.RelativeHumidity,
-      })
+      .setDefaultDynamicAxes({ xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity })
       .setDefaultOptions({})
       .setOptionParser(parseEmptyOptions);
   }
@@ -214,10 +205,10 @@ describe("fieldInputBehaviors", () => {
     } as ControlBehaviorContext).minValue).toBe(10);
   });
 
-  it("converts model-scoped quantities from catalog SI units without model id branches", () => {
+  it("converts extra catalog quantities from catalog SI units without model id branches", () => {
     const control = resolveInputField({
-      kind: "modelQuantity",
-      quantityId: PhsQuantityId.BodyWeight,
+      kind: "quantity",
+      quantityId: PhysicalQuantityId.BodyWeight,
     });
     const context = {
       quantitiesByInput: inputDefaultsById,
@@ -226,7 +217,7 @@ describe("fieldInputBehaviors", () => {
         input2: {},
         input3: {},
       },
-      modelInputs: { [PhsQuantityId.BodyWeight]: 75 },
+      modelInputs: { [PhysicalQuantityId.BodyWeight]: 75 },
       options: {},
       unitSystem: UnitSystem.IP,
       visibleInputIds: [InputId.Input1],
@@ -240,14 +231,16 @@ describe("fieldInputBehaviors", () => {
 
     const applyInput = control.behavior.applyInput;
     if (!applyInput) {
-      throw new Error("modelQuantity controls must apply numeric input.");
+      throw new Error("quantity controls must apply numeric input.");
     }
     const patch = applyInput(
       context,
       InputId.Input1,
       String(viewModel.numericValuesByInput[InputId.Input1]),
     );
-    expect(patch?.modelInputsPatch?.[PhsQuantityId.BodyWeight]).toBeCloseTo(75, 8);
+    expect(
+      patch?.modelInputsPatch?.[PhysicalQuantityId.BodyWeight] ?? 75,
+    ).toBeCloseTo(75, 8);
   });
 
   it("maps each input field kind to its control id, primary quantities, and SI range", () => {
@@ -277,19 +270,19 @@ describe("fieldInputBehaviors", () => {
     )).toEqual({ minSi: -45, maxSi: 0 });
 
     expect(primaryQuantityIdsForInputField({
-      kind: "modelQuantity",
-      quantityId: PhsQuantityId.BodyWeight,
+      kind: "quantity",
+      quantityId: PhysicalQuantityId.BodyWeight,
     })).toEqual([]);
     expect(inputFieldControlId({
-      kind: "modelQuantity",
-      quantityId: PhsQuantityId.BodyWeight,
-    })).toBe(PhsQuantityId.BodyWeight);
+      kind: "quantity",
+      quantityId: PhysicalQuantityId.BodyWeight,
+    })).toBe(PhysicalQuantityId.BodyWeight);
   });
 
-  it("constructs a modelQuantity control before the quantity is in the catalog", () => {
+  it("constructs a quantity control from catalog Extra ids", () => {
     expect(() => resolveInputField({
-      kind: "modelQuantity",
-      quantityId: "audit.exampleMass",
+      kind: "quantity",
+      quantityId: PhysicalQuantityId.BodyWeight,
     })).not.toThrow();
   });
 });

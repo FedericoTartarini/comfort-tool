@@ -23,23 +23,16 @@ export const measuredAirSpeedModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MeasuredAirSpeed],
   extraInputs: [PhysicalQuantityId.ModifierMeasuredAirSpeed],
   affectedFields: [PhysicalQuantityId.RelativeAirSpeed],
-  apply: (inputs, extraInputs) => ({
-    [PhysicalQuantityId.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
-      extraInputs[PhysicalQuantityId.ModifierMeasuredAirSpeed],
-      inputs[PhysicalQuantityId.MetabolicRate],
-    ),
-  }),
+  apply: (inputs, extraInputs) => ({ [PhysicalQuantityId.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
+      extraInputs[PhysicalQuantityId.ModifierMeasuredAirSpeed], inputs[PhysicalQuantityId.MetabolicRate], ) }),
 });
 
 export const morningClothingEstimateModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MorningClothingEstimate],
   extraInputs: [PhysicalQuantityId.ModifierMorningOutdoorTemperature],
   affectedFields: [PhysicalQuantityId.ClothingInsulation],
-  apply: (_inputs, extraInputs) => ({
-    [PhysicalQuantityId.ClothingInsulation]: predictClothingInsulation(
-      extraInputs[PhysicalQuantityId.ModifierMorningOutdoorTemperature],
-    ),
-  }),
+  apply: (_inputs, extraInputs) => ({ [PhysicalQuantityId.ClothingInsulation]: predictClothingInsulation(
+      extraInputs[PhysicalQuantityId.ModifierMorningOutdoorTemperature], ) }),
 });
 
 export function createDynamicClothingModifier(
@@ -49,13 +42,8 @@ export function createDynamicClothingModifier(
     ...inputModifierCatalogue[ModifierId.DynamicClothing],
     extraInputs: [],
     affectedFields: [PhysicalQuantityId.ClothingInsulation],
-    apply: (inputs) => ({
-      [PhysicalQuantityId.ClothingInsulation]: clo_dynamic(
-        inputs[PhysicalQuantityId.ClothingInsulation],
-        inputs[PhysicalQuantityId.MetabolicRate],
-        standard,
-      ),
-    }),
+    apply: (inputs) => ({ [PhysicalQuantityId.ClothingInsulation]: clo_dynamic(
+        inputs[PhysicalQuantityId.ClothingInsulation], inputs[PhysicalQuantityId.MetabolicRate], standard, ) }),
   });
 }
 
@@ -82,9 +70,7 @@ export const solarGainModifier = defineInputModifier({
       SOLAR_POSTURE,
       SOLAR_FLOOR_REFLECTANCE,
     );
-    return {
-      [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] + deltaMrt,
-    };
+    return { [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] + deltaMrt };
   },
 });
 
@@ -135,7 +121,10 @@ export function applyInputModifierChain(
       throw new Error(`Enabled modifier ${modifier.id} has incomplete inputs.`);
     }
 
-    const patch = modifier.apply({ ...effectiveInputs }, completeInputs);
+    const patch = modifier.apply(
+      { ...effectiveInputs },
+      completeInputs as Parameters<InputModifier["apply"]>[1],
+    );
     for (const [rawField, value] of Object.entries(patch)) {
       if (
         !isPrimaryQuantityId(rawField)

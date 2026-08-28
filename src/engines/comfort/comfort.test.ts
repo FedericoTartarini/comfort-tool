@@ -9,12 +9,7 @@ import {
 } from "../../catalog/inputModes";
 import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../catalog/quantities";
 import { UnitSystem } from "../../catalog/units";
-import {
-  ModelOutputKey,
-  type ChartBuildContext,
-  type ExploreFieldChartConfig,
-  type NumericBand,
-} from "../../catalog/modelCapabilities";
+import { type ChartBuildContext, type ExploreFieldChartConfig, type NumericBand } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 
 import {
@@ -75,29 +70,27 @@ function calculatePmvModelForTest(
 ) {
   const toolState = createAnalysisState();
   const visibleInputIds = Object.keys(inputs) as InputId[];
-  for (const inputId of visibleInputIds) {
-    const request = inputs[inputId];
+  for (const inputId of visibleInputIds) { const request = inputs[inputId];
     if (!request) continue;
-    const inputState = toolState.state.quantitiesByInput[inputId];
+    const inputState = toolState.state.input.quantitiesByInput[inputId];
     inputState[PhysicalQuantityId.DryBulbTemperature] = request.tdb;
     inputState[PhysicalQuantityId.MeanRadiantTemperature] = request.tr;
     inputState[PhysicalQuantityId.RelativeAirSpeed] = request.vr;
     inputState[PhysicalQuantityId.RelativeHumidity] = request.rh;
     inputState[PhysicalQuantityId.MetabolicRate] = request.met;
     inputState[PhysicalQuantityId.ClothingInsulation] = request.clo;
-    inputState[PhysicalQuantityId.ExternalWork] = request.wme;
-  }
-  toolState.state.ui.modelOptionsByModel[pmvAshraeModelConfig.id] = {
+    inputState[PhysicalQuantityId.ExternalWork] = request.wme; }
+  toolState.state.setting.modelOptionsByModel[pmvAshraeModelConfig.id] = {
     ...pmvAshraeModelConfig.defaultOptions,
     [OptionKey.AirSpeedControlMode]: occupantHasAirSpeedControl
       ? AirSpeedControlMode.WithLocalControl
       : AirSpeedControlMode.NoLocalControl,
   };
   return calculatePmvModel(createModelCalculationContext({
-    effectiveQuantitiesByInput: toolState.state.quantitiesByInput,
-    auxiliaryQuantitiesByInput: toolState.state.auxiliaryQuantitiesByInput,
-    modelInputs: toolState.state.modelInputsByModel[pmvAshraeModelConfig.id],
-    options: toolState.state.ui.modelOptionsByModel[pmvAshraeModelConfig.id],
+    effectiveQuantitiesByInput: toolState.state.input.quantitiesByInput,
+    auxiliaryQuantitiesByInput: toolState.state.input.auxiliaryQuantitiesByInput,
+    modelInputs: toolState.state.input.modelInputsByModel[pmvAshraeModelConfig.id],
+    options: toolState.state.setting.modelOptionsByModel[pmvAshraeModelConfig.id],
   }), visibleInputIds, pmvAshraeAdapter);
 }
 
@@ -120,7 +113,7 @@ function buildRegisteredPmvChart(
 function createPmvExploreConfig(
   xField: ChartAxisQuantityId,
   yField: ChartAxisQuantityId,
-  zOutput = ModelOutputKey.Pmv,
+  zOutput = PhysicalQuantityId.Pmv,
 ): ExploreFieldChartConfig {
   const output = pmvExploreOutputs.find(({ key }) => key === zOutput)!;
   return {
@@ -134,13 +127,7 @@ function createPmvExploreConfig(
 
 function createUtciExploreConfig(): ExploreFieldChartConfig {
   const output = utciModelConfig.exploreOutputs[0];
-  return {
-    profileKind: FieldChartProfileKind.Explore,
-    xField: PhysicalQuantityId.DryBulbTemperature,
-    yField: PhysicalQuantityId.RelativeHumidity,
-    zOutput: output.key,
-    bands: output.defaultBands,
-  };
+  return { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: output.key, bands: output.defaultBands };
 }
 
 function createChartContext(

@@ -1,28 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 
 import { ModelId } from "../../../catalog/modelIds";
-import {
-  PhysicalQuantityId,
-  PhysicalQuantityScope,
-} from "../../../catalog/quantities";
-import { WorkspaceId } from "../../../catalog/workspaces";
+import { SurfaceId } from "../../../catalog/surfaces";
 import { ChartType } from "../../../catalog/chartTypes";
-import { TableType } from "../../../catalog/tableTypes";
 import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
-import {
-  ModelOutputKey,
-  type ModelOutput,
-  type NumericBand,
-} from "../../../catalog/modelCapabilities";
+import { type ModelOutput, type NumericBand } from "../../../catalog/modelCapabilities";
 import { InputId } from "../../../catalog/inputSlots";
-import { SiUnit, UnitSystem } from "../../../catalog/units";
+import { UnitSystem } from "../../../catalog/units";
 import { ParametricYUnit } from "../../../engines/comfort/charts/kinds/types";
 import {
   ComfortModelBuilder,
   createEmptyResults,
   defineModel,
   parseEmptyOptions,
-  type ModelChartDeclaration,
   type FrontendChartDeclaration,
 } from "./builder";
 
@@ -31,14 +22,14 @@ const bands: readonly NumericBand[] = [
 ];
 
 const pmvOutput: ModelOutput = {
-  key: ModelOutputKey.Pmv,
+  key: PhysicalQuantityId.Pmv,
   label: "PMV",
   defaultBands: bands,
 };
 
 function createModelDynamicFieldChart(
   id = "test-dynamic-field",
-): ModelChartDeclaration {
+): FrontendChartDeclaration {
   return {
     id,
     type: ChartType.Dynamic,
@@ -120,13 +111,8 @@ function createModelAdaptiveChart(
     id,
     type: ChartType.Adaptive,
     emptyMessage: "No boundary chart yet.",
-    spec: {
-      title: "Boundary",
-      axisFields: [
-        PhysicalQuantityId.DryBulbTemperature,
-        PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
-      ],
-    },
+    spec: { title: "Boundary", axisFields: [
+        PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.PrevailingMeanOutdoorTemperature, ] },
   };
 }
 
@@ -182,12 +168,20 @@ const modelChartBuildProfile = {
   kind: FieldChartProfileKind.Explore,
   xField: PhysicalQuantityId.DryBulbTemperature,
   yField: PhysicalQuantityId.RelativeHumidity,
-  zOutput: ModelOutputKey.Pmv,
+  zOutput: PhysicalQuantityId.Pmv,
   bands: [
     { min: 10, max: 20, label: "Low", color: "#eeeeee" },
     { min: 20, max: 40, label: "High", color: "#cccccc" },
   ],
 } as const;
+
+const testTableRows = [
+  {
+    id: "test-row",
+    label: "Test row",
+    format: () => ({ text: "value" }),
+  },
+];
 
 function createPmvPsychrometricChart(): FrontendChartDeclaration {
   return {
@@ -206,21 +200,12 @@ function createExploreBuilder(
     .setLabel("Test model")
     .setDescription("Test model description.")
     .setStandardIds([])
-    .setWorkspaceCapabilities([WorkspaceId.Explore])
+    .setWorkspaceCapabilities([SurfaceId.Explore])
     .setExploreOutputs([pmvOutput])
     .setModifiers([])
     .setCharts([chart])
     .setTables({
-      analysis: {
-        type: TableType.Analysis,
-        rows: [
-          {
-            id: "test-row",
-            label: "Test row",
-            format: () => ({ text: "value" }),
-          },
-        ],
-      },
+      results: testTableRows,
     })
     .setDefaultOptions({})
     .setOptionParser(parseEmptyOptions)
@@ -232,10 +217,7 @@ function createExploreBuilder(
       PhysicalQuantityId.DryBulbTemperature,
       PhysicalQuantityId.RelativeHumidity,
     ])
-    .setDefaultDynamicAxes({
-      xAxis: PhysicalQuantityId.DryBulbTemperature,
-      yAxis: PhysicalQuantityId.RelativeHumidity,
-    });
+    .setDefaultDynamicAxes({ xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity });
 }
 
 describe("ComfortModelBuilder capabilities", () => {
@@ -251,28 +233,14 @@ describe("ComfortModelBuilder capabilities", () => {
     );
   });
 
-  it("accepts Psychrometric on PMV models", () => {
+  it("accepts Psychrometric on any model when the spec matches ChartType", () => {
     const definition = createExploreBuilder(
       createPmvPsychrometricChart(),
+      ModelId.HeatIndex,
     ).build();
     expect(definition.chartEngineRegistrations[0]?.registration.type).toBe(
       ChartType.Psychrometric,
     );
-    expect(definition.chartInstances.defaultInstanceId).toBe("test-pmv-custom");
-  });
-
-  it("rejects Psychrometric charts on non-PMV models", () => {
-    expect(() =>
-      createExploreBuilder(
-        {
-          id: "not-psychrometric",
-          type: ChartType.Psychrometric,
-          emptyMessage: "No chart.",
-          spec: { build: () => null },
-        },
-        ModelId.HeatIndex,
-      ),
-    ).toThrow(/Psychrometric is frontend-only for PMV geometry/);
   });
 
   it("rejects unknown chart types", () => {
@@ -305,7 +273,7 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() =>
       createExploreBuilder()
         .setComplianceProfile({
-          output: ModelOutputKey.Pmv,
+          output: PhysicalQuantityId.Pmv,
           bands,
           legendTitle: "Bands",
           caption: "Caption",
@@ -319,26 +287,14 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() =>
       createExploreBuilder()
         .setTables({
-          analysis: {
-            type: TableType.Analysis,
-            rows: [
-              {
-                id: "test-row",
-                label: "Test row",
-                format: () => ({ text: "value" }),
-              },
-            ],
-          },
-          timeSeries: {
-            type: TableType.TimeSeries,
-            rows: [
-              {
-                id: "summary-row",
-                label: "Summary row",
-                format: () => ({ text: "value" }),
-              },
-            ],
-          },
+          results: testTableRows,
+          timeSeries: [
+            {
+              id: "summary-row",
+              label: "Summary row",
+              format: () => ({ text: "value" }),
+            },
+          ],
         })
         .build(),
     ).toThrow(
@@ -350,146 +306,56 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() =>
       createExploreBuilder()
         .setWorkspaceCapabilities([
-          WorkspaceId.Explore,
-          WorkspaceId.TimeSeries,
+          SurfaceId.Explore,
+          SurfaceId.TimeSeries,
         ])
         .build(),
     ).toThrow(/Time-series workspace capability requires tables\.timeSeries/i);
   });
 
-  it("rejects analysis tables that are not TableType.Analysis", () => {
+  it("defaults extraQuantities to an empty list", () => {
+    expect(createExploreBuilder().build().extraQuantities).toEqual([]);
+  });
+
+  it("accepts Extra catalog quantities selected by the model", () => { expect(
+      createExploreBuilder()
+        .setExtraQuantities([PhysicalQuantityId.BodyWeight])
+        .build().extraQuantities, ).toEqual([PhysicalQuantityId.BodyWeight]); });
+
+  it("rejects extra quantities that are not Extra catalog ids", () => {
     expect(() =>
       createExploreBuilder()
-        .setTables({
-          analysis: {
-            type: TableType.TimeSeries,
-            rows: [
-              {
-                id: "test-row",
-                label: "Test row",
-                format: () => ({ text: "value" }),
-              },
-            ],
-          },
-        })
+        .setExtraQuantities([PhysicalQuantityId.DryBulbTemperature])
         .build(),
-    ).toThrow(/tables\.analysis must use TableType\.Analysis/i);
+    ).toThrow(/catalog Extra/);
   });
 
-  it("defaults quantities.extend to an empty list", () => {
-    expect(createExploreBuilder().build().quantities.extend).toEqual([]);
-  });
-
-  it("accepts model-scoped quantity extensions owned by this model", () => {
-    const extension = {
-      id: "pmv.testMass",
-      owner: ModelId.PmvAshrae,
-      scope: PhysicalQuantityScope.Model,
-      label: "Test mass",
-      display: {
-        units: { SI: SiUnit.Kilogram, IP: "lb" },
-        displayUnits: { SI: "kg", IP: "lb" },
-        step: 1,
-        decimals: 0,
-      },
-      defaultSi: 70,
-      minSi: 40,
-      maxSi: 120,
-    };
-    expect(
-      createExploreBuilder().extendQuantities([extension]).build().quantities
-        .extend,
-    ).toEqual([extension]);
-  });
-
-  it("rejects quantity extensions owned by another model", () => {
-    expect(() =>
-      createExploreBuilder()
-        .extendQuantities([
-          {
-            id: "pmv.testMass",
-            owner: ModelId.Phs2023,
-            scope: PhysicalQuantityScope.Model,
-            label: "Test mass",
-            display: {
-              units: { SI: SiUnit.Kilogram, IP: "lb" },
-              displayUnits: { SI: "kg", IP: "lb" },
-              step: 1,
-              decimals: 0,
-            },
-            defaultSi: 70,
-            minSi: 40,
-            maxSi: 120,
-          },
-        ])
-        .build(),
-    ).toThrow(/owner phs-2023 does not match pmv-ashrae/);
-  });
-
-  it("rejects quantity extensions that collide with the system seed", () => {
-    expect(() =>
-      createExploreBuilder()
-        .extendQuantities([
-          {
-            id: PhysicalQuantityId.DryBulbTemperature,
-            owner: ModelId.PmvAshrae,
-            scope: PhysicalQuantityScope.Model,
-            label: "Air temperature",
-            display: {
-              units: { SI: SiUnit.DegreeCelsius, IP: "degF" },
-              displayUnits: { SI: "°C", IP: "°F" },
-              step: 0.5,
-              decimals: 1,
-            },
-            defaultSi: 25,
-            minSi: 10,
-            maxSi: 40,
-          },
-        ])
-        .build(),
-    ).toThrow(/collides with a system-seed quantity/);
-  });
-
-  it("contributes and exposes a model quantity before catalog assembly", () => {
-    const extension = {
-      id: "audit.exampleMass",
-      owner: ModelId.PmvAshrae,
-      scope: PhysicalQuantityScope.Model,
-      label: "Example mass",
-      display: {
-        units: { SI: SiUnit.Kilogram, IP: "lb" },
-        displayUnits: { SI: "kg", IP: "lb" },
-        step: 1,
-        decimals: 0,
-      },
-      defaultSi: 70,
-      minSi: 40,
-      maxSi: 120,
-    };
-
+  it("exposes a quantity input field for a selected Extra catalog id", () => {
     const definition = createExploreBuilder()
-      .extendQuantities([extension])
-      .setInputFields([{ kind: "modelQuantity", quantityId: extension.id }])
+      .setExtraQuantities([PhysicalQuantityId.BodyWeight])
+      .setInputFields([
+        { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight },
+      ])
       .build();
 
-    expect(definition.quantities.extend.map((entry) => entry.id)).toEqual([
-      extension.id,
-    ]);
+    expect(definition.extraQuantities).toEqual([PhysicalQuantityId.BodyWeight]);
     expect(definition.inputFields).toEqual([
-      { kind: "modelQuantity", quantityId: extension.id },
+      { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight },
     ]);
-    expect(definition.controls.map(({ id }) => id)).toEqual([extension.id]);
+    expect(definition.controls.map(({ id }) => id)).toEqual([
+      PhysicalQuantityId.BodyWeight,
+    ]);
   });
 
-  it("rejects a modelQuantity field that is not in quantities.extend", () => {
+  it("rejects a quantity field that is not listed in extraQuantities", () => {
     expect(() =>
       createExploreBuilder()
         .setInputFields([
-          { kind: "modelQuantity", quantityId: "audit.exampleMass" },
+          { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight },
         ])
         .build(),
     ).toThrow(
-      /modelQuantity field audit.exampleMass must reference a quantities.extend entry owned by pmv-ashrae/,
+      /quantity field bodyWeight must be listed in extraQuantities/,
     );
   });
 });
@@ -500,21 +366,12 @@ describe("defineModel", () => {
     label: "Test model",
     description: "Test model description.",
     standardIds: [] as const,
-    workspaceCapabilities: [WorkspaceId.Explore],
+    workspaceCapabilities: [SurfaceId.Explore],
     exploreOutputs: [pmvOutput],
     modifiers: [],
     inputFields: [],
     tables: {
-      analysis: {
-        type: TableType.Analysis,
-        rows: [
-          {
-            id: "test-row",
-            label: "Test row",
-            format: () => ({ text: "value" }),
-          },
-        ],
-      },
+      results: testTableRows,
     },
     calculate: () => ({
       resultsByInput: createEmptyResults<unknown>(),
@@ -524,10 +381,7 @@ describe("defineModel", () => {
       PhysicalQuantityId.DryBulbTemperature,
       PhysicalQuantityId.RelativeHumidity,
     ],
-    defaultDynamicAxes: {
-      xAxis: PhysicalQuantityId.DryBulbTemperature,
-      yAxis: PhysicalQuantityId.RelativeHumidity,
-    },
+    defaultDynamicAxes: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
     defaultOptions: {},
     parseOptions: parseEmptyOptions,
   };
@@ -595,18 +449,17 @@ describe("defineModel", () => {
     ).toThrow(/duplicate chart types/);
   });
 
-  it("rejects defineModel Psychrometric charts even when the type is bypassed", () => {
-    expect(() =>
-      defineModel({
-        ...defineModelBase,
-        charts: [
-          createPmvPsychrometricChart() as unknown as ModelChartDeclaration,
-        ],
-      }),
-    ).toThrow(/defineModel can only declare Dynamic/);
+  it("accepts defineModel Psychrometric charts when the spec matches", () => {
+    const definition = defineModel({
+      ...defineModelBase,
+      charts: [createPmvPsychrometricChart()],
+    });
+    expect(definition.chartEngineRegistrations[0]?.registration.type).toBe(
+      ChartType.Psychrometric,
+    );
   });
 
-  it("rejects mixed defineModel type/spec pairing even when the type is bypassed", () => {
+  it("rejects mixed defineModel type/spec pairing", () => {
     expect(() =>
       defineModel({
         ...defineModelBase,
@@ -616,30 +469,25 @@ describe("defineModel", () => {
             type: ChartType.Utci,
             emptyMessage: "No chart.",
             spec: createModelDynamicFieldChart().spec,
-          } as unknown as ModelChartDeclaration,
+          } as unknown as FrontendChartDeclaration,
         ],
       }),
-    ).toThrow(/defineModel can only declare Dynamic/);
+    ).toThrow(/spec does not match type/);
   });
 
-  it("rejects defineModel Plotly builders even when the type is bypassed", () => {
-    expect(() =>
-      defineModel({
-        ...defineModelBase,
-        charts: [
-          {
-            ...createModelDynamicFieldChart(),
-            spec: {
-              title: "Test",
-              axisFields: [
-                PhysicalQuantityId.DryBulbTemperature,
-                PhysicalQuantityId.RelativeHumidity,
-              ],
-              build: () => null,
-            },
-          } as unknown as ModelChartDeclaration,
-        ],
-      }),
-    ).toThrow(/defineModel cannot provide a Plotly build/);
+  it("accepts defineModel Dynamic charts whose spec is a Plotly geometry spec", () => {
+    const definition = defineModel({
+      ...defineModelBase,
+      charts: [
+        {
+          ...createModelDynamicFieldChart(),
+          spec: { title: "Test", axisFields: [
+              PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.RelativeHumidity, ], build: () => null },
+        } as unknown as FrontendChartDeclaration,
+      ],
+    });
+    expect(definition.chartEngineRegistrations[0]?.registration.type).toBe(
+      ChartType.Dynamic,
+    );
   });
 });

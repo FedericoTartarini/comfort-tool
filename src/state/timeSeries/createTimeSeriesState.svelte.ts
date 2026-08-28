@@ -14,8 +14,10 @@ import {
   type TimeSeriesModelId,
 } from "./modelConfigs";
 import type {
+  TimeSeriesActions,
   TimeSeriesController,
   TimeSeriesRunStatus,
+  TimeSeriesSelectors,
   TimeSeriesStateSlice,
 } from "./types";
 
@@ -39,9 +41,12 @@ function isTimeSeriesModelId(value: string): value is TimeSeriesModelId {
   return timeSeriesModelOrder.includes(value as TimeSeriesModelId);
 }
 
-export function createTimeSeriesState(
-  options: CreateTimeSeriesStateOptions = {},
-): TimeSeriesController {
+export class TimeSeriesSession implements TimeSeriesController {
+  readonly state: TimeSeriesStateSlice;
+  readonly actions: TimeSeriesActions;
+  readonly selectors: TimeSeriesSelectors;
+
+  constructor(options: CreateTimeSeriesStateOptions = {}) {
   const debounceMs = options.debounceMs ?? AUTO_CALCULATION_DEBOUNCE_MS;
   const defaultModel = timeSeriesModelOrder[0];
   if (!defaultModel) {
@@ -49,16 +54,22 @@ export function createTimeSeriesState(
   }
 
   const state = $state<TimeSeriesStateSlice>({
-    selectedModel: defaultModel,
-    unitSystem: UnitSystem.SI,
-    draftByModel: createRecord((modelId) => (
-      getTimeSeriesModelConfig(modelId).createDefaultDraft()
-    )),
-    resultByModel: createRecord(() => null),
-    statusByModel: createRecord(() => "waiting"),
-    errorsByModel: createRecord(() => []),
-    revisionByModel: createRecord(() => 0),
-    progressByModel: createRecord(() => 0),
+    input: {
+      draftByModel: createRecord((modelId) => (
+        getTimeSeriesModelConfig(modelId).createDefaultDraft()
+      )),
+    },
+    setting: {
+      selectedModel: defaultModel,
+      unitSystem: UnitSystem.SI,
+    },
+    output: {
+      resultByModel: createRecord(() => null),
+      statusByModel: createRecord(() => "waiting"),
+      errorsByModel: createRecord(() => []),
+      revisionByModel: createRecord(() => 0),
+      progressByModel: createRecord(() => 0),
+    },
   });
   const timerByModel: Partial<Record<
     TimeSeriesModelId,
@@ -70,14 +81,14 @@ export function createTimeSeriesState(
   >> = {};
   const nextSegmentSequenceByModel = createRecord((modelId) => (
     getTimeSeriesModelConfig(modelId).editor.getSegments(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
     ).length + 1
   ));
   let started = false;
   let disposed = false;
 
   function getDefinition(
-    modelId: TimeSeriesModelId = state.selectedModel,
+    modelId: TimeSeriesModelId = state.setting.selectedModel,
   ): RuntimeTimeSeriesModelDefinition {
     return getTimeSeriesModelConfig(modelId);
   }
@@ -101,14 +112,14 @@ export function createTimeSeriesState(
   }
 
   async function runSimulation(modelId: TimeSeriesModelId, revision: number) {
-    if (disposed || revision !== state.revisionByModel[modelId]) return;
+    if (disposed || revision !== state.output.revisionByModel[modelId]) return;
 
     const definition = getDefinition(modelId);
     const controller = new AbortController();
     abortControllerByModel[modelId] = controller;
-    state.statusByModel[modelId] = "updating";
-    state.progressByModel[modelId] = 0;
-    const draft = definition.cloneDraft(state.draftByModel[modelId]);
+    state.output.statusByModel[modelId] = "updating";
+    state.output.progressByModel[modelId] = 0;
+    const draft = definition.cloneDraft(state.input.draftByModel[modelId]);
 
     try {
       const result = await definition.simulate(draft, {
@@ -116,33 +127,33 @@ export function createTimeSeriesState(
         onProgress: (progress) => {
           if (
             !controller.signal.aborted
-            && revision === state.revisionByModel[modelId]
+            && revision === state.output.revisionByModel[modelId]
           ) {
-            state.progressByModel[modelId] = Math.min(1, Math.max(0, progress));
+            state.output.progressByModel[modelId] = Math.min(1, Math.max(0, progress));
           }
         },
       });
       if (
         controller.signal.aborted
         || disposed
-        || revision !== state.revisionByModel[modelId]
+        || revision !== state.output.revisionByModel[modelId]
       ) {
         return;
       }
-      state.resultByModel[modelId] = result;
-      state.errorsByModel[modelId] = [];
-      state.statusByModel[modelId] = "ready";
-      state.progressByModel[modelId] = 1;
+      state.output.resultByModel[modelId] = result;
+      state.output.errorsByModel[modelId] = [];
+      state.output.statusByModel[modelId] = "ready";
+      state.output.progressByModel[modelId] = 1;
     } catch (error) {
       if (
         controller.signal.aborted
         || disposed
-        || revision !== state.revisionByModel[modelId]
+        || revision !== state.output.revisionByModel[modelId]
       ) {
         return;
       }
-      state.statusByModel[modelId] = "error";
-      state.errorsByModel[modelId] = [
+      state.output.statusByModel[modelId] = "error";
+      state.output.errorsByModel[modelId] = [
         error instanceof Error
           ? error.message
           : "Time-series calculation failed.",
@@ -159,19 +170,19 @@ export function createTimeSeriesState(
     scheduleOptions: { immediate?: boolean } = {},
   ) {
     cancelWork(modelId);
-    const revision = state.revisionByModel[modelId] + 1;
-    state.revisionByModel[modelId] = revision;
-    state.progressByModel[modelId] = 0;
+    const revision = state.output.revisionByModel[modelId] + 1;
+    state.output.revisionByModel[modelId] = revision;
+    state.output.progressByModel[modelId] = 0;
 
     const definition = getDefinition(modelId);
-    const issues = definition.validate(state.draftByModel[modelId]);
-    state.errorsByModel[modelId] = [...issues];
+    const issues = definition.validate(state.input.draftByModel[modelId]);
+    state.output.errorsByModel[modelId] = [...issues];
     if (issues.length > 0) {
-      state.statusByModel[modelId] = "waiting";
+      state.output.statusByModel[modelId] = "waiting";
       return;
     }
 
-    state.statusByModel[modelId] = scheduleOptions.immediate
+    state.output.statusByModel[modelId] = scheduleOptions.immediate
       ? "updating"
       : "waiting";
     if (!started) return;
@@ -193,9 +204,9 @@ export function createTimeSeriesState(
   function start() {
     if (disposed) return;
     started = true;
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     if (
-      state.resultByModel[modelId] === null
+      state.output.resultByModel[modelId] === null
       && timerByModel[modelId] === undefined
       && !abortControllerByModel[modelId]
     ) {
@@ -210,11 +221,11 @@ export function createTimeSeriesState(
   }
 
   function selectModel(modelId: TimeSeriesModelId) {
-    if (!isTimeSeriesModelId(modelId) || modelId === state.selectedModel) return;
-    state.selectedModel = modelId;
+    if (!isTimeSeriesModelId(modelId) || modelId === state.setting.selectedModel) return;
+    state.setting.selectedModel = modelId;
     if (
       started
-      && state.resultByModel[modelId] === null
+      && state.output.resultByModel[modelId] === null
       && timerByModel[modelId] === undefined
       && !abortControllerByModel[modelId]
     ) {
@@ -223,14 +234,14 @@ export function createTimeSeriesState(
   }
 
   function toggleUnitSystem() {
-    state.unitSystem = state.unitSystem === UnitSystem.SI
+    state.setting.unitSystem = state.setting.unitSystem === UnitSystem.SI
       ? UnitSystem.IP
       : UnitSystem.SI;
   }
 
   function updateSegmentName(segmentId: string, name: string) {
     getDefinition().editor.updateSegmentName(
-      state.draftByModel[state.selectedModel],
+      state.input.draftByModel[state.setting.selectedModel],
       segmentId,
       name,
     );
@@ -240,9 +251,9 @@ export function createTimeSeriesState(
     segmentId: string,
     rawValue: string,
   ): boolean {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const changed = getDefinition().editor.updateSegmentDuration(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
       segmentId,
       rawValue,
     );
@@ -255,16 +266,16 @@ export function createTimeSeriesState(
     controlId: string,
     rawDisplayValue: string,
   ): boolean {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const definition = getDefinition();
     const control = definition.editor.segmentControls.find(
       ({ id }) => id === controlId,
     );
     if (!control) return false;
     const changed = control.applyDisplayValue(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
       rawDisplayValue,
-      state.unitSystem,
+      state.setting.unitSystem,
       segmentId,
     );
     if (changed) scheduleAfterRelevantEdit(modelId);
@@ -278,9 +289,9 @@ export function createTimeSeriesState(
   }
 
   function addSegment(presetId: string) {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const changed = getDefinition().editor.addSegment(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
       createSegmentId(modelId),
       presetId,
     );
@@ -288,9 +299,9 @@ export function createTimeSeriesState(
   }
 
   function duplicateSegment(segmentId: string) {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const changed = getDefinition().editor.duplicateSegment(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
       segmentId,
       createSegmentId(modelId),
     );
@@ -298,18 +309,18 @@ export function createTimeSeriesState(
   }
 
   function removeSegment(segmentId: string) {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const changed = getDefinition().editor.removeSegment(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
       segmentId,
     );
     if (changed) scheduleAfterRelevantEdit(modelId);
   }
 
   function moveSegment(segmentId: string, direction: -1 | 1) {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const changed = getDefinition().editor.moveSegment(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
       segmentId,
       direction,
     );
@@ -320,7 +331,7 @@ export function createTimeSeriesState(
     controlId: string,
     value: string | boolean,
   ): boolean {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const definition = getDefinition();
     const control = definition.editor.settingsSections
       .flatMap(({ controls }) => controls)
@@ -330,25 +341,25 @@ export function createTimeSeriesState(
     let changed = false;
     if (control.kind === "number" && typeof value === "string") {
       changed = control.applyDisplayValue(
-        state.draftByModel[modelId],
+        state.input.draftByModel[modelId],
         value,
-        state.unitSystem,
+        state.setting.unitSystem,
       );
     } else if (control.kind === "select" && typeof value === "string") {
-      changed = control.applyValue(state.draftByModel[modelId], value);
+      changed = control.applyValue(state.input.draftByModel[modelId], value);
     } else if (control.kind === "toggle" && typeof value === "boolean") {
-      changed = control.applyValue(state.draftByModel[modelId], value);
+      changed = control.applyValue(state.input.draftByModel[modelId], value);
     }
     if (changed) scheduleAfterRelevantEdit(modelId);
     return changed;
   }
 
   function reset() {
-    const modelId = state.selectedModel;
+    const modelId = state.setting.selectedModel;
     const definition = getDefinition();
-    state.draftByModel[modelId] = definition.createDefaultDraft();
+    state.input.draftByModel[modelId] = definition.createDefaultDraft();
     nextSegmentSequenceByModel[modelId] = definition.editor.getSegments(
-      state.draftByModel[modelId],
+      state.input.draftByModel[modelId],
     ).length + 1;
     scheduleSimulation(modelId);
   }
@@ -357,21 +368,21 @@ export function createTimeSeriesState(
     const definition = getDefinition();
     return buildTimeSeriesEditorViewModel(
       definition,
-      state.draftByModel[state.selectedModel],
-      state.unitSystem,
+      state.input.draftByModel[state.setting.selectedModel],
+      state.setting.unitSystem,
     );
   }
 
   function getTotalDurationMinutes(): number {
     return getDefinition().editor.getSegments(
-      state.draftByModel[state.selectedModel],
+      state.input.draftByModel[state.setting.selectedModel],
     ).reduce((total, segment) => total + segment.durationMinutes, 0);
   }
 
   function getCharts(): readonly TimeSeriesChartViewModel[] {
-    const modelId = state.selectedModel;
-    const result = state.resultByModel[modelId];
-    const draft = state.draftByModel[modelId];
+    const modelId = state.setting.selectedModel;
+    const result = state.output.resultByModel[modelId];
+    const draft = state.input.draftByModel[modelId];
     return getSimulationOutput(modelId).charts.map((chartDefinition) => ({
       id: chartDefinition.id,
       title: chartDefinition.title,
@@ -385,18 +396,17 @@ export function createTimeSeriesState(
             chartDefinition,
             result,
             draft,
-            state.unitSystem,
+            state.setting.unitSystem,
           ),
     }));
   }
 
   function getStatus(): TimeSeriesRunStatus {
-    return state.statusByModel[state.selectedModel];
+    return state.output.statusByModel[state.setting.selectedModel];
   }
 
-  return {
-    state,
-    actions: {
+  this.state = state;
+  this.actions = {
       start,
       dispose,
       selectModel,
@@ -410,8 +420,8 @@ export function createTimeSeriesState(
       moveSegment,
       updateSettingControl,
       reset,
-    },
-    selectors: {
+    };
+  this.selectors = {
       getModelOptions: () => timeSeriesModelOrder.map((modelId) => ({
         name: getDefinition(modelId).label,
         value: modelId,
@@ -427,17 +437,17 @@ export function createTimeSeriesState(
       },
       getEditor,
       getTotalDurationMinutes,
-      getSelectedResult: () => state.resultByModel[state.selectedModel],
+      getSelectedResult: () => state.output.resultByModel[state.setting.selectedModel],
       getStatus,
-      getErrors: () => state.errorsByModel[state.selectedModel],
-      getProgress: () => state.progressByModel[state.selectedModel],
+      getErrors: () => state.output.errorsByModel[state.setting.selectedModel],
+      getProgress: () => state.output.progressByModel[state.setting.selectedModel],
       hasStaleResult: () => (
-        state.resultByModel[state.selectedModel] !== null
+        state.output.resultByModel[state.setting.selectedModel] !== null
         && getStatus() !== "ready"
       ),
       getSummary: (): readonly MetricSummaryItemViewModel[] => {
-        const modelId = state.selectedModel;
-        const result = state.resultByModel[modelId];
+        const modelId = state.setting.selectedModel;
+        const result = state.output.resultByModel[modelId];
         if (result === null) return [];
         const table = getComfortModelConfig(modelId).tables.timeSeries;
         if (!table) {
@@ -446,10 +456,16 @@ export function createTimeSeriesState(
         return buildMetricSummaryTable(
           table,
           result,
-          state.unitSystem,
+          state.setting.unitSystem,
         ).items;
       },
       getCharts,
-    },
-  };
+    };
+  }
+}
+
+export function createTimeSeriesState(
+  options: CreateTimeSeriesStateOptions = {},
+): TimeSeriesController {
+  return new TimeSeriesSession(options);
 }

@@ -9,8 +9,7 @@ import {
 } from "../../catalog/inputModes";
 import { InputId } from "../../catalog/inputSlots";
 import { UnitSystem } from "../../catalog/units";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
-import { WorkspaceId, supportsStandardWorkspace } from "../../catalog/workspaces";
+import { SurfaceId, supportsStandardSurface } from "../../catalog/surfaces";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { resolveChartInstanceCapabilities } from "./chartInstancePresentation";
 import { ModifierId } from "../../catalog/inputModifiers";
@@ -21,10 +20,11 @@ import {
 } from "../../declarations/pmv/ashrae";
 import type { PmvChartSource, PmvResponse } from "../../declarations/pmv/calculation";
 import type { UtciResponse } from "../../declarations/utci/utci";
-import { PhsQuantityId, type PhsResponse } from "../../catalog/phs";
+import { type PhsResponse } from "../../catalog/phs";
 import { createAnalysisState } from "./createAnalysisState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import { PhysicalQuantityId } from "../../catalog/quantities";
+import { formatDisplayValue } from "../../engines/units";
 import { chartFigure } from "../../testSupport/modelChartTestHelpers";
 
 function currentChart(toolState: ReturnType<typeof createAnalysisState>) {
@@ -36,10 +36,10 @@ function syncWorkspaceToModel(
   modelId: ModelId,
 ) {
   const capabilities = comfortModelConfigs[modelId].workspaceCapabilities;
-  toolState.actions.setActiveWorkspace(
-    supportsStandardWorkspace(capabilities)
-      ? WorkspaceId.Standard
-      : WorkspaceId.Explore,
+  toolState.actions.setActiveSurface(
+    supportsStandardSurface(capabilities)
+      ? SurfaceId.Standard
+      : SurfaceId.Explore,
   );
 }
 
@@ -48,7 +48,7 @@ async function waitForIdle(toolState: ReturnType<typeof createAnalysisState>) {
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    if (!toolState.state.ui.isLoading) {
+    if (!toolState.state.output.isLoading) {
       return;
     }
   }
@@ -58,9 +58,9 @@ async function waitForIdle(toolState: ReturnType<typeof createAnalysisState>) {
 
 function getOutputSettings(
   toolState: ReturnType<typeof createAnalysisState>,
-  modelId = toolState.state.ui.selectedModel,
+  modelId = toolState.state.setting.selectedModel,
 ) {
-  return toolState.state.ui.outputSettingsByModel[modelId];
+  return toolState.state.setting.outputSettingsByModel[modelId];
 }
 
 function getProfileBadgeControl(toolState: ReturnType<typeof createAnalysisState>) {
@@ -106,8 +106,8 @@ describe("createAnalysisState", () => {
   it("initializes model chart defaults and independent PMV variants", () => {
     const toolState = createAnalysisState();
 
-    expect(toolState.state.ui.selectedModel).toBe(ModelId.PmvAshrae);
-    expect(toolState.state.ui.selectedChartInstanceByModel).toEqual({
+    expect(toolState.state.setting.selectedModel).toBe(ModelId.PmvAshrae);
+    expect(toolState.state.setting.selectedChartInstanceByModel).toEqual({
       [ModelId.PmvAshrae]: "pmv-ashrae-psychrometric",
       [ModelId.PmvIso]: "pmv-iso-psychrometric",
       [ModelId.Utci]: "utci-stress-band",
@@ -118,15 +118,15 @@ describe("createAnalysisState", () => {
       [ModelId.WindChill]: "wind-chill-dynamic-field",
       [ModelId.Phs2023]: "phs-exposure-history",
     });
-    expect(toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae])
-      .not.toBe(toolState.state.ui.modelOptionsByModel[ModelId.PmvIso]);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae])
-      .not.toBe(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso]);
-    expect(toolState.state.ui.activeWorkspace)
-      .toBe(WorkspaceId.Standard);
-    expect(toolState.state.ui.activeWorkspace)
-      .toBe(WorkspaceId.Standard);
-    expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Pmv);
+    expect(toolState.state.setting.modelOptionsByModel[ModelId.PmvAshrae])
+      .not.toBe(toolState.state.setting.modelOptionsByModel[ModelId.PmvIso]);
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae])
+      .not.toBe(toolState.state.output.calculationCacheByModel[ModelId.PmvIso]);
+    expect(toolState.state.setting.activeSurface)
+      .toBe(SurfaceId.Standard);
+    expect(toolState.state.setting.activeSurface)
+      .toBe(SurfaceId.Standard);
+    expect(getOutputSettings(toolState).exploreOutput).toBe(PhysicalQuantityId.Pmv);
     expect(getOutputSettings(toolState).exploreBands)
       .not.toBe(pmvAshraeModelConfig.exploreOutputs[0].defaultBands);
     expect(getOutputSettings(toolState, ModelId.PmvAshrae).exploreBands)
@@ -135,8 +135,8 @@ describe("createAnalysisState", () => {
 
   it("keeps base air speed separate from reversible per-input modifier state", async () => {
     const toolState = createAnalysisState();
-    const baseInput1 = toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.RelativeAirSpeed];
-    const baseInput2 = toolState.state.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed];
+    const baseInput1 = toolState.state.input.quantitiesByInput[InputId.Input1][PhysicalQuantityId.RelativeAirSpeed];
+    const baseInput2 = toolState.state.input.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed];
 
     expect(toolState.actions.setModifierEnabled(
       InputId.Input1,
@@ -166,9 +166,9 @@ describe("createAnalysisState", () => {
       true,
     )).toBe(true);
 
-    expect(toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.RelativeAirSpeed])
+    expect(toolState.state.input.quantitiesByInput[InputId.Input1][PhysicalQuantityId.RelativeAirSpeed])
       .toBe(baseInput1);
-    expect(toolState.state.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed])
+    expect(toolState.state.input.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed])
       .toBe(baseInput2);
     expect(toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input1]
       [PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(0.6, 6);
@@ -178,7 +178,7 @@ describe("createAnalysisState", () => {
     toolState.actions.updateInput(InputId.Input1, InputControlId.AirSpeed, "0.3");
     toolState.actions.updateInput(InputId.Input1, InputControlId.MetabolicRate, "1.8");
 
-    expect(toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.RelativeAirSpeed])
+    expect(toolState.state.input.quantitiesByInput[InputId.Input1][PhysicalQuantityId.RelativeAirSpeed])
       .toBe(0.3);
     expect(toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input1]
       [PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(0.84, 6);
@@ -192,7 +192,7 @@ describe("createAnalysisState", () => {
       [PhysicalQuantityId.RelativeAirSpeed]).toBe(0.3);
     expect(toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input2]
       [PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(0.83, 6);
-    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
 
     expect(toolState.actions.setModifierEnabled(
@@ -210,15 +210,15 @@ describe("createAnalysisState", () => {
     const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
     try {
       const toolState = createAnalysisState();
-      toolState.state.ui.compareEnabled = true;
-      toolState.state.auxiliaryQuantitiesByInput[InputId.Input3]
+      toolState.state.setting.compareEnabled = true;
+      toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input3]
         [PhysicalQuantityId.ModifierMeasuredAirSpeed] = 0.9;
-      toolState.state.activeModifiersByInput[InputId.Input3]
+      toolState.state.input.activeModifiersByInput[InputId.Input3]
         [ModifierId.MeasuredAirSpeed] = true;
-      toolState.state.quantitiesByInput[InputId.Input2][PhysicalQuantityId.MetabolicRate] = 1.8;
-      const baseInput1Speed = toolState.state.quantitiesByInput[InputId.Input1]
+      toolState.state.input.quantitiesByInput[InputId.Input2][PhysicalQuantityId.MetabolicRate] = 1.8;
+      const baseInput1Speed = toolState.state.input.quantitiesByInput[InputId.Input1]
         [PhysicalQuantityId.RelativeAirSpeed];
-      const baseInput2Clothing = toolState.state.quantitiesByInput[InputId.Input2]
+      const baseInput2Clothing = toolState.state.input.quantitiesByInput[InputId.Input2]
         [PhysicalQuantityId.ClothingInsulation];
 
       const draft = toolState.selectors.getInputModifierDraft();
@@ -247,23 +247,23 @@ describe("createAnalysisState", () => {
       const projectedControls = toolState.selectors.getInputModifierControls(draft);
       expect(projectedControls.find(({ id }) => id === ModifierId.MeasuredAirSpeed)
         ?.activeByInput[InputId.Input1]).toBe(true);
-      expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+      expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
         [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBeUndefined();
-      expect(toolState.state.activeModifiersByInput[InputId.Input2]
+      expect(toolState.state.input.activeModifiersByInput[InputId.Input2]
         [ModifierId.DynamicClothing]).toBe(false);
 
       expect(toolState.actions.applyInputModifierDraft(draft)).toBe(true);
-      expect(toolState.state.quantitiesByInput[InputId.Input1]
+      expect(toolState.state.input.quantitiesByInput[InputId.Input1]
         [PhysicalQuantityId.RelativeAirSpeed]).toBe(baseInput1Speed);
-      expect(toolState.state.quantitiesByInput[InputId.Input2]
+      expect(toolState.state.input.quantitiesByInput[InputId.Input2]
         [PhysicalQuantityId.ClothingInsulation]).toBe(baseInput2Clothing);
       expect(toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input1]
         [PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(0.6, 6);
       expect(toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input2]
         [PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.485, 3);
-      expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input3]
+      expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input3]
         [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.9);
-      expect(toolState.state.activeModifiersByInput[InputId.Input3]
+      expect(toolState.state.input.activeModifiersByInput[InputId.Input3]
         [ModifierId.MeasuredAirSpeed]).toBe(true);
 
       await waitForIdle(toolState);
@@ -285,13 +285,13 @@ describe("createAnalysisState", () => {
 
     const incompleteDraft = draft.slice(0, -1);
     const stateBeforeApply = JSON.stringify({
-      active: toolState.state.activeModifiersByInput,
-      inputs: toolState.state.auxiliaryQuantitiesByInput,
+      active: toolState.state.input.activeModifiersByInput,
+      inputs: toolState.state.input.auxiliaryQuantitiesByInput,
     });
     expect(toolState.actions.applyInputModifierDraft(incompleteDraft)).toBe(false);
     expect(JSON.stringify({
-      active: toolState.state.activeModifiersByInput,
-      inputs: toolState.state.auxiliaryQuantitiesByInput,
+      active: toolState.state.input.activeModifiersByInput,
+      inputs: toolState.state.input.auxiliaryQuantitiesByInput,
     })).toBe(stateBeforeApply);
 
     const enabledIncompleteDraft = toolState.selectors.getInputModifierDraft();
@@ -302,8 +302,8 @@ describe("createAnalysisState", () => {
     incompleteMeasured.enabled = true;
     expect(toolState.actions.applyInputModifierDraft(enabledIncompleteDraft)).toBe(false);
     expect(JSON.stringify({
-      active: toolState.state.activeModifiersByInput,
-      inputs: toolState.state.auxiliaryQuantitiesByInput,
+      active: toolState.state.input.activeModifiersByInput,
+      inputs: toolState.state.input.auxiliaryQuantitiesByInput,
     })).toBe(stateBeforeApply);
   });
 
@@ -313,7 +313,7 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
     const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
     try {
-      const readyCache = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae];
+      const readyCache = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae];
       expect(readyCache.status).toBe("ready");
       const draft = toolState.selectors.getInputModifierDraft();
       const measured = draft.find(({ modifierId }) => (
@@ -325,13 +325,13 @@ describe("createAnalysisState", () => {
       expect(toolState.actions.applyInputModifierDraft(draft)).toBe(true);
       await Promise.resolve();
 
-      expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+      expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
         [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
-      expect(toolState.state.activeModifiersByInput[InputId.Input1]
+      expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
         [ModifierId.MeasuredAirSpeed]).toBe(false);
-      expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae])
+      expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae])
         .toBe(readyCache);
-      expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+      expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
         .toBe("ready");
       expect(calculateSpy).not.toHaveBeenCalled();
     } finally {
@@ -341,8 +341,8 @@ describe("createAnalysisState", () => {
 
   it("applies Morning then Dynamic Clothing per input and recomputes the remaining chain", async () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.compareEnabled = true;
-    toolState.state.ui.compareInputIds = [InputId.Input1, InputId.Input2];
+    toolState.state.setting.compareEnabled = true;
+    toolState.state.setting.compareInputIds = [InputId.Input1, InputId.Input2];
     toolState.actions.updateInput(
       InputId.Input1,
       InputControlId.MetabolicRate,
@@ -360,9 +360,9 @@ describe("createAnalysisState", () => {
       "10",
     );
 
-    const baseInput1Clothing = toolState.state.quantitiesByInput[InputId.Input1]
+    const baseInput1Clothing = toolState.state.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ClothingInsulation];
-    const baseInput2Clothing = toolState.state.quantitiesByInput[InputId.Input2]
+    const baseInput2Clothing = toolState.state.input.quantitiesByInput[InputId.Input2]
       [PhysicalQuantityId.ClothingInsulation];
 
     expect(toolState.actions.setModifierEnabled(
@@ -390,9 +390,9 @@ describe("createAnalysisState", () => {
       [InputId.Input2][PhysicalQuantityId.ClothingInsulation];
     expect(chainedClothing).toBeCloseTo(0.485, 3);
     expect(input2DynamicClothing).not.toBe(baseInput2Clothing);
-    expect(toolState.state.quantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ClothingInsulation]).toBe(baseInput1Clothing);
-    expect(toolState.state.quantitiesByInput[InputId.Input2]
+    expect(toolState.state.input.quantitiesByInput[InputId.Input2]
       [PhysicalQuantityId.ClothingInsulation]).toBe(baseInput2Clothing);
 
     expect(toolState.actions.setModifierEnabled(
@@ -435,7 +435,7 @@ describe("createAnalysisState", () => {
     const toolState = createAnalysisState();
 
     for (const modelId of comfortModelOrder) {
-      toolState.state.ui.selectedModel = modelId;
+      toolState.state.setting.selectedModel = modelId;
       const modifierIds = toolState.selectors.getInputModifierControls()
         .map(({ id }) => id);
       expect(modifierIds.includes(ModifierId.DynamicClothing)).toBe(
@@ -446,7 +446,7 @@ describe("createAnalysisState", () => {
 
   it("disables an active incomplete modifier without clearing its other inputs", async () => {
     const toolState = createAnalysisState();
-    const baseRadiantTemperature = toolState.state.quantitiesByInput[InputId.Input1]
+    const baseRadiantTemperature = toolState.state.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.MeanRadiantTemperature];
     populateSolarModifier(toolState, InputId.Input1);
 
@@ -465,11 +465,11 @@ describe("createAnalysisState", () => {
       "",
     )).toBe(true);
 
-    expect(toolState.state.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain])
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain])
       .toBe(false);
-    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierSolarTransmittance]).toBeUndefined();
-    expect(toolState.state.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierDirectSolarRadiation]).toBe(800);
     expect(toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input1]
       [PhysicalQuantityId.MeanRadiantTemperature]).toBe(baseRadiantTemperature);
@@ -509,13 +509,13 @@ describe("createAnalysisState", () => {
     );
     await waitForIdle(toolState);
 
-    const storedSi = JSON.stringify(toolState.state.auxiliaryQuantitiesByInput);
+    const storedSi = JSON.stringify(toolState.state.input.auxiliaryQuantitiesByInput);
     const effectiveSi = toolState.selectors.getEffectiveQuantitiesByInput();
 
     toolState.actions.toggleUnitSystem();
 
-    expect(toolState.state.ui.unitSystem).toBe(UnitSystem.IP);
-    expect(JSON.stringify(toolState.state.auxiliaryQuantitiesByInput)).toBe(storedSi);
+    expect(toolState.state.setting.unitSystem).toBe(UnitSystem.IP);
+    expect(JSON.stringify(toolState.state.input.auxiliaryQuantitiesByInput)).toBe(storedSi);
     expect(toolState.selectors.getEffectiveQuantitiesByInput()).toEqual(effectiveSi);
 
     const controls = toolState.selectors.getInputModifierControls();
@@ -523,13 +523,13 @@ describe("createAnalysisState", () => {
     const clothing = controls.find(({ id }) => id === ModifierId.MorningClothingEstimate);
     const solar = controls.find(({ id }) => id === ModifierId.SolarGain);
     expect(measured?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("1.97");
-    expect(clothing?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("50.0");
+    expect(clothing?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("50");
     expect(solar?.extraInputs.find(({ key }) => (
       key === PhysicalQuantityId.ModifierDirectSolarRadiation
-    ))?.displayValuesByInput[InputId.Input1]).toBe("253.599");
+    ))?.displayValuesByInput[InputId.Input1]).toBe("253.6");
 
     toolState.actions.toggleUnitSystem();
-    expect(JSON.stringify(toolState.state.auxiliaryQuantitiesByInput)).toBe(storedSi);
+    expect(JSON.stringify(toolState.state.input.auxiliaryQuantitiesByInput)).toBe(storedSi);
     expect(toolState.selectors.getEffectiveQuantitiesByInput()).toEqual(effectiveSi);
   });
 
@@ -546,11 +546,11 @@ describe("createAnalysisState", () => {
     "opens %s on its declared default mode",
     (modelId, expectedMode) => {
       const toolState = createAnalysisState();
-      toolState.state.ui.selectedModel = modelId;
-      toolState.actions.setActiveWorkspace(
+      toolState.state.setting.selectedModel = modelId;
+      toolState.actions.setActiveSurface(
         expectedMode === FieldChartProfileKind.Explore
-          ? WorkspaceId.Explore
-          : WorkspaceId.Standard,
+          ? SurfaceId.Explore
+          : SurfaceId.Standard,
       );
 
       const mode = getProfileBadgeControl(toolState);
@@ -560,11 +560,11 @@ describe("createAnalysisState", () => {
 
   it("provides one active mode config for every registered selectable chart", async () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.compareEnabled = true;
+    toolState.state.setting.compareEnabled = true;
     await waitForIdle(toolState);
 
     for (const modelId of comfortModelOrder) {
-      toolState.state.ui.selectedModel = modelId;
+      toolState.state.setting.selectedModel = modelId;
       const modelConfig = comfortModelConfigs[modelId];
       const settings = getOutputSettings(toolState, modelId);
 
@@ -572,17 +572,17 @@ describe("createAnalysisState", () => {
         const registration = modelConfig.chartEngineRegistrations.find(
           ({ instanceId }) => instanceId === chart.instanceId,
         );
-        toolState.actions.setActiveWorkspace(
+        toolState.actions.setActiveSurface(
           registration?.supportedExploreOutputs?.length
-            ? WorkspaceId.Explore
-            : supportsStandardWorkspace(modelConfig.workspaceCapabilities)
-              ? WorkspaceId.Standard
-              : WorkspaceId.Explore,
+            ? SurfaceId.Explore
+            : supportsStandardSurface(modelConfig.workspaceCapabilities)
+              ? SurfaceId.Standard
+              : SurfaceId.Explore,
         );
         toolState.actions.setSelectedChartInstance(chart.instanceId);
         const controls = toolState.selectors.getChartControlsViewModel();
         const supportsAxisSelection = resolveChartInstanceCapabilities(chart).allowsAxisSelection;
-        const onExploreWorkspace = toolState.state.ui.activeWorkspace === WorkspaceId.Explore;
+        const onExploreWorkspace = toolState.state.setting.activeSurface === SurfaceId.Explore;
         const expectedBands = onExploreWorkspace
           ? modelConfig.complianceProfile?.bands
           : settings.exploreBands;
@@ -599,7 +599,7 @@ describe("createAnalysisState", () => {
         ) || "Bands";
 
         expect(controls.profileBadge?.profileKind).toBe(
-          toolState.state.ui.activeWorkspace === WorkspaceId.Explore
+          toolState.state.setting.activeSurface === SurfaceId.Explore
             ? FieldChartProfileKind.Explore
             : FieldChartProfileKind.Compliance,
         );
@@ -621,28 +621,28 @@ describe("createAnalysisState", () => {
 
   it("constrains PHS exposure history to its declared Explore output", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.Phs2023;
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.state.setting.selectedModel = ModelId.Phs2023;
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
 
     expect(toolState.selectors.getCurrentChartInstanceId())
       .toBe("phs-exposure-history");
     expect(getOutputSettings(toolState).exploreOutput)
-      .toBe(ModelOutputKey.PhsRectalTemperature);
+      .toBe(PhysicalQuantityId.PhsRectalTemperature);
     expect(toolState.selectors.getChartControlsViewModel().explore?.outputs.map(
       ({ key }) => key,
-    )).toEqual([ModelOutputKey.PhsRectalTemperature]);
+    )).toEqual([PhysicalQuantityId.PhsRectalTemperature]);
 
     toolState.actions.setSelectedChartInstance("phs-dynamic-field");
-    toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.PhsWaterLoss);
     expect(getOutputSettings(toolState).exploreOutput)
-      .toBe(ModelOutputKey.PhsWaterLoss);
+      .toBe(PhysicalQuantityId.PhsWaterLoss);
 
     toolState.actions.setSelectedChartInstance("phs-exposure-history");
     expect(getOutputSettings(toolState).exploreOutput)
-      .toBe(ModelOutputKey.PhsRectalTemperature);
-    toolState.actions.setExploreOutput(ModelOutputKey.PhsWaterLoss);
+      .toBe(PhysicalQuantityId.PhsRectalTemperature);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.PhsWaterLoss);
     expect(getOutputSettings(toolState).exploreOutput)
-      .toBe(ModelOutputKey.PhsRectalTemperature);
+      .toBe(PhysicalQuantityId.PhsRectalTemperature);
   });
 
   it("recalculates PHS when a model quantity changes without affecting other models", async () => {
@@ -651,62 +651,62 @@ describe("createAnalysisState", () => {
     syncWorkspaceToModel(toolState, ModelId.Humidex);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
-    const humidexBefore = toolState.state.ui.calculationCacheByModel[ModelId.Humidex]
+    const humidexBefore = toolState.state.output.calculationCacheByModel[ModelId.Humidex]
       .resultsByInput[InputId.Input1];
 
     toolState.actions.setSelectedModel(ModelId.Phs2023);
-    toolState.actions.setActiveWorkspace(WorkspaceId.Standard);
+    toolState.actions.setActiveSurface(SurfaceId.Standard);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
 
-    const phsBefore = (toolState.state.ui.calculationCacheByModel[ModelId.Phs2023]
+    const phsBefore = (toolState.state.output.calculationCacheByModel[ModelId.Phs2023]
       .resultsByInput[InputId.Input1] as PhsResponse | null)?.waterLossLimitG;
 
     expect(
       toolState.actions.updateModelQuantity(
         ModelId.Phs2023,
-        PhsQuantityId.BodyWeight,
+        PhysicalQuantityId.BodyWeight,
         90,
       ),
     ).toBe(true);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
 
-    const phsAfter = (toolState.state.ui.calculationCacheByModel[ModelId.Phs2023]
+    const phsAfter = (toolState.state.output.calculationCacheByModel[ModelId.Phs2023]
       .resultsByInput[InputId.Input1] as PhsResponse | null)?.waterLossLimitG;
     expect(phsAfter).toBeDefined();
     expect(phsAfter).not.toBe(phsBefore);
-    expect(toolState.state.modelInputsByModel[ModelId.Phs2023]
-      [PhsQuantityId.BodyWeight]).toBe(90);
+    expect(toolState.state.input.modelInputsByModel[ModelId.Phs2023]
+      [PhysicalQuantityId.BodyWeight]).toBe(90);
 
     toolState.actions.setSelectedModel(ModelId.Humidex);
     syncWorkspaceToModel(toolState, ModelId.Humidex);
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Humidex]
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Humidex]
       .resultsByInput[InputId.Input1]).toEqual(humidexBefore);
   });
 
   it("keeps ASHRAE and ISO mode settings independent from chart selection", () => {
     const toolState = createAnalysisState();
-    const ashraeChart = toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae];
+    const ashraeChart = toolState.state.setting.selectedChartInstanceByModel[ModelId.PmvAshrae];
 
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
-    expect(toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae])
+    expect(toolState.state.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
       .toBe(ashraeChart);
 
-    toolState.state.ui.selectedModel = ModelId.PmvIso;
-    toolState.actions.setActiveWorkspace(WorkspaceId.Standard);
+    toolState.state.setting.selectedModel = ModelId.PmvIso;
+    toolState.actions.setActiveSurface(SurfaceId.Standard);
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Compliance);
     expect(getOutputSettings(toolState).xAxis).toBe(PhysicalQuantityId.DryBulbTemperature);
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
-    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Ppd);
 
-    toolState.state.ui.selectedModel = ModelId.PmvAshrae;
+    toolState.state.setting.selectedModel = ModelId.PmvAshrae;
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Explore);
     expect(getOutputSettings(toolState).xAxis).toBe(PhysicalQuantityId.MeanRadiantTemperature);
-    expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Pmv);
+    expect(getOutputSettings(toolState).exploreOutput).toBe(PhysicalQuantityId.Pmv);
   });
 
   it("falls back to Input 1 without erasing a temporarily hidden baseline", async () => {
@@ -746,7 +746,7 @@ describe("createAnalysisState", () => {
       passes: expect.any(Boolean),
     }));
 
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     const explore = getProfileBadgeControl(toolState);
     expect(explore.caption).toBe(
       "Showing PMV over the selected axes with editable thresholds.",
@@ -756,7 +756,7 @@ describe("createAnalysisState", () => {
 
   it("keeps mode and baseline controls on fixed views and exposes declared axes", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.compareEnabled = true;
+    toolState.state.setting.compareEnabled = true;
 
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Compliance);
 
@@ -767,7 +767,7 @@ describe("createAnalysisState", () => {
     expect(fixed.axes).toBeNull();
     expect(fixed.explore).toBeNull();
 
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     const fixedExplore = toolState.selectors.getChartControlsViewModel();
     expect(fixedExplore.profileBadge?.caption).toContain("fixed axes");
     expect(fixedExplore.explore?.profile.kind).toBe(FieldChartProfileKind.Explore);
@@ -776,7 +776,7 @@ describe("createAnalysisState", () => {
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Explore);
     expect(toolState.selectors.getChartControlsViewModel().axes).not.toBeUndefined();
 
-    toolState.state.ui.selectedModel = ModelId.AdaptiveAshrae;
+    toolState.state.setting.selectedModel = ModelId.AdaptiveAshrae;
     syncWorkspaceToModel(toolState, ModelId.AdaptiveAshrae);
     const adaptive = getProfileBadgeControl(toolState);
     expect(adaptive.profileKind).toBe(FieldChartProfileKind.Compliance);
@@ -795,7 +795,7 @@ describe("createAnalysisState", () => {
     ]);
     expect(adaptiveControls.explore).toBeNull();
 
-    toolState.state.ui.selectedModel = ModelId.Utci;
+    toolState.state.setting.selectedModel = ModelId.Utci;
     syncWorkspaceToModel(toolState, ModelId.Utci);
     const utci = getProfileBadgeControl(toolState);
     expect(utci.profileKind).toBe(FieldChartProfileKind.Explore);
@@ -805,7 +805,7 @@ describe("createAnalysisState", () => {
     expect(utciFixed.profileBadge?.profileKind).toBe(FieldChartProfileKind.Explore);
     expect(utciFixed.baseline?.selectedInputId).toBe(InputId.Input1);
     expect(utciFixed.axes).toBeNull();
-    expect(utciFixed.explore?.profile.zOutput).toBe(ModelOutputKey.Utci);
+    expect(utciFixed.explore?.profile.zOutput).toBe(PhysicalQuantityId.Utci);
   });
 
   it("rebuilds chart presentation without invalidating or replacing ready calculations", async () => {
@@ -813,18 +813,18 @@ describe("createAnalysisState", () => {
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
 
-    const cache = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae];
+    const cache = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae];
     const chartSource = cache.chartSource;
     const resultsByInput = cache.resultsByInput;
     const input1Result = cache.resultsByInput[InputId.Input1];
     const assertCalculationIdentity = () => {
-      const current = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae];
+      const current = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae];
       expect(current).toBe(cache);
       expect(current.status).toBe("ready");
       expect(current.chartSource).toBe(chartSource);
       expect(current.resultsByInput).toBe(resultsByInput);
       expect(current.resultsByInput[InputId.Input1]).toBe(input1Result);
-      expect(toolState.state.ui.isLoading).toBe(false);
+      expect(toolState.state.output.isLoading).toBe(false);
     };
 
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
@@ -842,7 +842,7 @@ describe("createAnalysisState", () => {
       expect(complianceLegend).toEqual(toLegendBands(complianceBands));
     }
 
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     assertCalculationIdentity();
 
     const exploreChart = currentChart(toolState);
@@ -855,7 +855,7 @@ describe("createAnalysisState", () => {
     ).toEqual(expect.objectContaining({
       xField: PhysicalQuantityId.DryBulbTemperature,
       yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: ModelOutputKey.Pmv,
+      zOutput: PhysicalQuantityId.Pmv,
     }));
     expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PMV Zones");
 
@@ -866,15 +866,15 @@ describe("createAnalysisState", () => {
     toolState.actions.setChartBaselineInputId(InputId.Input2);
     assertCalculationIdentity();
 
-    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Ppd);
     assertCalculationIdentity();
-    expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Ppd);
+    expect(getOutputSettings(toolState).exploreOutput).toBe(PhysicalQuantityId.Ppd);
     expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PPD Bands");
 
     const ppdBands = getOutputSettings(toolState).exploreBands?.map((band) => ({ ...band })) ?? [];
-    toolState.actions.setExploreOutput(ModelOutputKey.Utci);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Utci);
     assertCalculationIdentity();
-    expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Ppd);
+    expect(getOutputSettings(toolState).exploreOutput).toBe(PhysicalQuantityId.Ppd);
 
     expect(toolState.actions.setExploreBands([
       { min: 0, max: 20, label: "One", color: "#000" },
@@ -891,7 +891,7 @@ describe("createAnalysisState", () => {
     expect(getOutputSettings(toolState).exploreBands?.map(({ label }) => label))
       .toEqual(["Low", "High"]);
 
-    toolState.actions.setActiveWorkspace(WorkspaceId.Standard);
+    toolState.actions.setActiveSurface(SurfaceId.Standard);
     assertCalculationIdentity();
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Compliance);
     const complianceLegendAfterStandard = toolState.selectors.getCurrentChartLegendZones();
@@ -905,7 +905,7 @@ describe("createAnalysisState", () => {
       .toBeUndefined();
     expect(toolState.selectors.getChartControlsViewModel().explore).toBeNull();
 
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     assertCalculationIdentity();
     expect(toolState.selectors.getCurrentChartLegendZones())
       .toEqual(toLegendBands(getOutputSettings(toolState).exploreBands ?? undefined));
@@ -914,7 +914,7 @@ describe("createAnalysisState", () => {
       .toEqual(["Low", "High"]);
 
     const editedBands = getOutputSettings(toolState).exploreBands;
-    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Ppd);
     expect(getOutputSettings(toolState).exploreBands).toBe(editedBands);
 
     toolState.actions.toggleUnitSystem();
@@ -927,11 +927,11 @@ describe("createAnalysisState", () => {
     const toolState = createAnalysisState();
     toolState.actions.setSelectedModel(ModelId.AdaptiveAshrae);
     await waitForIdle(toolState);
-    toolState.state.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed] = 1.2;
+    toolState.state.input.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed] = 1.2;
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
 
-    const cache = toolState.state.ui.calculationCacheByModel[ModelId.AdaptiveAshrae];
+    const cache = toolState.state.output.calculationCacheByModel[ModelId.AdaptiveAshrae];
     const chartSource = cache.chartSource;
     const resultsByInput = cache.resultsByInput;
     const getTooWarmBoundary = () => currentChart(toolState)?.traces
@@ -940,19 +940,19 @@ describe("createAnalysisState", () => {
 
     toolState.actions.setChartBaselineInputId(InputId.Input2);
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.AdaptiveAshrae])
+    expect(toolState.state.output.calculationCacheByModel[ModelId.AdaptiveAshrae])
       .toBe(cache);
     expect(cache.status).toBe("ready");
     expect(cache.chartSource).toBe(chartSource);
     expect(cache.resultsByInput).toBe(resultsByInput);
-    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.state.output.isLoading).toBe(false);
     const input2Boundary = getTooWarmBoundary();
     expect(input2Boundary).not.toEqual(input1Boundary);
     expect(currentChart(toolState)?.traces
       .filter(({ mode }) => mode === "markers")
       .map(({ name }) => name)).toEqual(["Input 1", "Input 2"]);
 
-    toolState.state.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed] = 0.1;
+    toolState.state.input.quantitiesByInput[InputId.Input2][PhysicalQuantityId.RelativeAirSpeed] = 0.1;
     expect(getTooWarmBoundary()).toEqual(input2Boundary);
 
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.OperativeTemperature);
@@ -960,20 +960,20 @@ describe("createAnalysisState", () => {
       xAxis: PhysicalQuantityId.OperativeTemperature,
       yAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
     }));
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.AdaptiveAshrae])
+    expect(toolState.state.output.calculationCacheByModel[ModelId.AdaptiveAshrae])
       .toBe(cache);
     expect(cache.chartSource).toBe(chartSource);
     expect(cache.resultsByInput).toBe(resultsByInput);
-    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.state.output.isLoading).toBe(false);
     expect(currentChart(toolState)?.layout.xaxis.title)
       .toContain("Operative temperature");
 
     toolState.actions.toggleUnitSystem();
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.AdaptiveAshrae])
+    expect(toolState.state.output.calculationCacheByModel[ModelId.AdaptiveAshrae])
       .toBe(cache);
     expect(cache.chartSource).toBe(chartSource);
     expect(cache.resultsByInput).toBe(resultsByInput);
-    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.state.output.isLoading).toBe(false);
     expect(currentChart(toolState)?.layout.xaxis.title)
       .toContain("°F");
   });
@@ -982,8 +982,8 @@ describe("createAnalysisState", () => {
     const toolState = createAnalysisState();
     toolState.actions.setCompareEnabled(true);
     await waitForIdle(toolState);
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
-    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Ppd);
     toolState.actions.setExploreBands([
       { min: -Infinity, max: 15, label: "Preferred", color: "#0f0" },
       { min: 15, max: Infinity, label: "Other", color: "#f00" },
@@ -998,7 +998,7 @@ describe("createAnalysisState", () => {
       .toBe(FieldChartProfileKind.Explore);
     expect(toolState.selectors.getChartControlsViewModel().explore?.profile)
       .toEqual(expect.objectContaining({
-        zOutput: ModelOutputKey.Ppd,
+        zOutput: PhysicalQuantityId.Ppd,
         bands: expect.arrayContaining([
           expect.objectContaining({ label: "Preferred" }),
         ]),
@@ -1008,7 +1008,7 @@ describe("createAnalysisState", () => {
     syncWorkspaceToModel(toolState, ModelId.Utci);
     await waitForIdle(toolState);
     expect(getProfileBadgeControl(toolState).profileKind).toBe(FieldChartProfileKind.Explore);
-    expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Utci);
+    expect(getOutputSettings(toolState).exploreOutput).toBe(PhysicalQuantityId.Utci);
 
     toolState.actions.setSelectedModel(ModelId.AdaptiveAshrae);
     syncWorkspaceToModel(toolState, ModelId.AdaptiveAshrae);
@@ -1018,15 +1018,15 @@ describe("createAnalysisState", () => {
     expect(toolState.selectors.getChartControlsViewModel().explore).toBeNull();
 
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     expect(getOutputSettings(toolState)).toEqual(expect.objectContaining({
       xAxis: PhysicalQuantityId.MeanRadiantTemperature,
       baselineInputId: InputId.Input2,
     }));
-    expect(toolState.state.ui.activeWorkspace).toBe(WorkspaceId.Explore);
-    expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Ppd);
+    expect(toolState.state.setting.activeSurface).toBe(SurfaceId.Explore);
+    expect(getOutputSettings(toolState).exploreOutput).toBe(PhysicalQuantityId.Ppd);
     expect(getOutputSettings(toolState).exploreBands![0].label).toBe("Preferred");
-    expect(toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae])
+    expect(toolState.state.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
       .toBe("pmv-ashrae-psychrometric");
 
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
@@ -1036,7 +1036,7 @@ describe("createAnalysisState", () => {
     expect(toolState.selectors.getChartControlsViewModel().baseline?.selectedInputId)
       .toBe(InputId.Input2);
     expect(toolState.selectors.getChartControlsViewModel().explore?.profile.zOutput)
-      .toBe(ModelOutputKey.Ppd);
+      .toBe(PhysicalQuantityId.Ppd);
     expect(toolState.selectors.getChartControlsViewModel().explore?.profile.bands[0].label)
       .toBe("Preferred");
   });
@@ -1044,35 +1044,35 @@ describe("createAnalysisState", () => {
   it("round-trips field-chart settings in the strict v1 share snapshot", async () => {
     const toolState = createAnalysisState();
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
-    toolState.actions.setExploreOutput(ModelOutputKey.Ppd);
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Ppd);
     toolState.actions.setExploreBands([
       { min: -Infinity, max: 20, label: "Edited", color: "#0f0" },
       { min: 20, max: Infinity, label: "Other", color: "#f00" },
     ]);
     toolState.actions.setChartBaselineInputId(InputId.Input2);
     const snapshot = toolState.actions.exportShareSnapshot();
-    toolState.actions.setExploreOutput(ModelOutputKey.Pmv);
+    toolState.actions.setExploreOutput(PhysicalQuantityId.Pmv);
     toolState.actions.applyShareSnapshot(snapshot);
     await waitForIdle(toolState);
 
     expect(snapshot.version).toBe(1);
     expect(snapshot.models[ModelId.PmvAshrae].selectedChartInstanceId)
       .toBe("pmv-ashrae-dynamic-field");
-    expect(toolState.state.ui.selectedChartInstanceByModel[ModelId.PmvAshrae])
+    expect(toolState.state.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
       .toBe("pmv-ashrae-dynamic-field");
     expect(snapshot.models[ModelId.PmvAshrae].outputSettings)
       .toEqual(expect.objectContaining({
         baselineInputId: InputId.Input2,
-        exploreOutput: ModelOutputKey.Ppd,
+        exploreOutput: PhysicalQuantityId.Ppd,
       }));
-    expect(getOutputSettings(toolState).exploreOutput).toBe(ModelOutputKey.Ppd);
+    expect(getOutputSettings(toolState).exploreOutput).toBe(PhysicalQuantityId.Ppd);
     expect(getOutputSettings(toolState).exploreBands![0].label).toBe("Edited");
   });
 
   it("keeps Adaptive on one Compliance chart with only its two semantic axes", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.AdaptiveAshrae;
+    toolState.state.setting.selectedModel = ModelId.AdaptiveAshrae;
     syncWorkspaceToModel(toolState, ModelId.AdaptiveAshrae);
     const settings = getOutputSettings(toolState);
     const controls = toolState.selectors.getChartControlsViewModel();
@@ -1114,7 +1114,7 @@ describe("createAnalysisState", () => {
     ] as const;
     await waitForIdle(toolState);
     for (const [modelId, geometryCount, legendCount] of assertions) {
-      toolState.state.ui.selectedModel = modelId;
+      toolState.state.setting.selectedModel = modelId;
       syncWorkspaceToModel(toolState, modelId);
       toolState.actions.scheduleCalculation({ immediate: true, force: true });
       await waitForIdle(toolState);
@@ -1127,8 +1127,8 @@ describe("createAnalysisState", () => {
       expect(legendZones?.length ?? 0).toBe(legendCount);
     }
 
-    toolState.state.ui.selectedModel = ModelId.PmvAshrae;
-    toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
+    toolState.state.setting.selectedModel = ModelId.PmvAshrae;
+    toolState.actions.setActiveSurface(SurfaceId.Explore);
     expect(toolState.actions.setExploreBands([
       { min: -Infinity, max: 0, label: "Same label", color: "#00ff00" },
       { min: 0, max: Infinity, label: "Same label", color: "#ff0000" },
@@ -1142,9 +1142,9 @@ describe("createAnalysisState", () => {
 
   it("exposes coupled UTCI temperature axes in both directions", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.Utci;
+    toolState.state.setting.selectedModel = ModelId.Utci;
     syncWorkspaceToModel(toolState, ModelId.Utci);
-    toolState.state.ui.selectedChartInstanceByModel[ModelId.Utci] = "utci-dynamic-field";
+    toolState.state.setting.selectedChartInstanceByModel[ModelId.Utci] = "utci-dynamic-field";
     const settings = getOutputSettings(toolState);
     settings.xAxis = PhysicalQuantityId.WindSpeed;
     settings.yAxis = PhysicalQuantityId.OperativeTemperature;
@@ -1177,8 +1177,8 @@ describe("createAnalysisState", () => {
     "exposes coupled operative-temperature axes for %s",
     (modelId) => {
       const toolState = createAnalysisState();
-      toolState.state.ui.selectedModel = modelId;
-      toolState.state.ui.selectedChartInstanceByModel[modelId] = modelId === ModelId.PmvIso
+      toolState.state.setting.selectedModel = modelId;
+      toolState.state.setting.selectedChartInstanceByModel[modelId] = modelId === ModelId.PmvIso
         ? "pmv-iso-dynamic-field"
         : "pmv-ashrae-dynamic-field";
       const settings = getOutputSettings(toolState, modelId);
@@ -1199,9 +1199,9 @@ describe("createAnalysisState", () => {
 
   it("does not store the unsupported occupant-control option for ISO PMV", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.PmvIso;
+    toolState.state.setting.selectedModel = ModelId.PmvIso;
     const initialOptions = {
-      ...toolState.state.ui.modelOptionsByModel[ModelId.PmvIso],
+      ...toolState.state.setting.modelOptionsByModel[ModelId.PmvIso],
     };
 
     expect(initialOptions).not.toHaveProperty(OptionKey.AirSpeedControlMode);
@@ -1211,14 +1211,14 @@ describe("createAnalysisState", () => {
       AirSpeedControlMode.NoLocalControl,
     );
 
-    expect(toolState.state.ui.modelOptionsByModel[ModelId.PmvIso])
+    expect(toolState.state.setting.modelOptionsByModel[ModelId.PmvIso])
       .toEqual(initialOptions);
-    expect(toolState.state.ui.isLoading).toBe(false);
+    expect(toolState.state.output.isLoading).toBe(false);
   });
 
   it("allows ISO clothing values above 1.5 clo and flags them when switching to ASHRAE", () => {
     const toolState = createAnalysisState();
-    toolState.state.ui.selectedModel = ModelId.PmvIso;
+    toolState.state.setting.selectedModel = ModelId.PmvIso;
 
     toolState.actions.updateInput(
       InputId.Input1,
@@ -1227,7 +1227,7 @@ describe("createAnalysisState", () => {
     );
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
 
-    expect(toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.ClothingInsulation])
+    expect(toolState.state.input.quantitiesByInput[InputId.Input1][PhysicalQuantityId.ClothingInsulation])
       .toBe(1.8);
     expect(toolState.selectors.getPendingModelSwitch()).toEqual(expect.objectContaining({
       targetModel: ModelId.PmvAshrae,
@@ -1247,7 +1247,7 @@ describe("createAnalysisState", () => {
 
     toolState.actions.setSelectedModel(ModelId.WindChill);
 
-    expect(toolState.state.ui.selectedModel).toBe(ModelId.PmvAshrae);
+    expect(toolState.state.setting.selectedModel).toBe(ModelId.PmvAshrae);
     expect(toolState.selectors.getPendingModelSwitch()).toEqual(expect.objectContaining({
       targetModel: ModelId.WindChill,
       violations: expect.arrayContaining([
@@ -1269,15 +1269,15 @@ describe("createAnalysisState", () => {
     toolState.actions.confirmModelSwitch();
     syncWorkspaceToModel(toolState, ModelId.WindChill);
 
-    expect(toolState.state.ui.selectedModel).toBe(ModelId.WindChill);
+    expect(toolState.state.setting.selectedModel).toBe(ModelId.WindChill);
     expect(toolState.selectors.getPendingModelSwitch()).toBeNull();
-    expect(toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature])
+    expect(toolState.state.input.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature])
       .toBe(0);
-    expect(toolState.state.quantitiesByInput[InputId.Input1][PhysicalQuantityId.WindSpeed]).toBe(1);
+    expect(toolState.state.input.quantitiesByInput[InputId.Input1][PhysicalQuantityId.WindSpeed]).toBe(1);
 
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.WindChill].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.WindChill].status)
       .toBe("ready");
     expect(currentChart(toolState)?.traces[0].type).toBe("scatter");
   });
@@ -1291,7 +1291,7 @@ describe("createAnalysisState", () => {
     toolState.actions.setSelectedModel(ModelId.AdaptiveAshrae);
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.selectedModel).toBe(ModelId.AdaptiveAshrae);
+    expect(toolState.state.setting.selectedModel).toBe(ModelId.AdaptiveAshrae);
     expect(getOutputSettings(toolState).xAxis)
       .toBe(PhysicalQuantityId.PrevailingMeanOutdoorTemperature);
     expect(getOutputSettings(toolState).yAxis).toBe(PhysicalQuantityId.OperativeTemperature);
@@ -1303,17 +1303,17 @@ describe("createAnalysisState", () => {
 
   it("rejects invalid selected-model options at the calculation boundary", async () => {
     const toolState = createAnalysisState();
-    delete toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae][
+    delete toolState.state.setting.modelOptionsByModel[ModelId.PmvAshrae][
       OptionKey.HumidityInputMode
     ];
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.errorMessage).toBe(
+    expect(toolState.state.output.errorMessage).toBe(
       `Invariant violation: invalid options state for ${ModelId.PmvAshrae}.`,
     );
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
       .toBe("empty");
   });
 
@@ -1323,19 +1323,19 @@ describe("createAnalysisState", () => {
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
 
-    const pmvChartSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].chartSource;
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Utci].status).toBe("empty");
+    const pmvChartSource = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].chartSource;
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Utci].status).toBe("empty");
 
     toolState.actions.setSelectedModel(ModelId.Utci);
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Utci].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Utci].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
 
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
-    expect(toolState.state.ui.isLoading).toBe(false);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].chartSource).toBe(pmvChartSource);
+    expect(toolState.state.output.isLoading).toBe(false);
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].chartSource).toBe(pmvChartSource);
   });
 
   it("keeps ASHRAE and ISO PMV calculations in isolated registry caches", async () => {
@@ -1343,16 +1343,16 @@ describe("createAnalysisState", () => {
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
-    const ashraeSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae]
+    const ashraeSource = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae]
       .chartSource as PmvChartSource;
 
     toolState.actions.setSelectedModel(ModelId.PmvIso);
     await waitForIdle(toolState);
-    const isoSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvIso]
+    const isoSource = toolState.state.output.calculationCacheByModel[ModelId.PmvIso]
       .chartSource as PmvChartSource;
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status).toBe("ready");
     expect(ashraeSource).not.toBe(isoSource);
     expect(Object.keys(ashraeSource).sort()).toEqual([
       "comfortZonesByInput",
@@ -1369,8 +1369,8 @@ describe("createAnalysisState", () => {
     expect(ashraeSource.inputs).not.toBe(isoSource.inputs);
 
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
-    expect(toolState.state.ui.isLoading).toBe(false);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].chartSource).toBe(ashraeSource);
+    expect(toolState.state.output.isLoading).toBe(false);
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].chartSource).toBe(ashraeSource);
   });
 
   it("stales every model cache when an option patch rewrites shared inputs", async () => {
@@ -1385,26 +1385,26 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
 
-    const previousIsoChartSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].chartSource;
+    const previousIsoChartSource = toolState.state.output.calculationCacheByModel[ModelId.PmvIso].chartSource;
 
     toolState.actions.setModelOption(OptionKey.TemperatureMode, TemperatureMode.Operative);
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status).toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].chartSource)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("stale");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status).toBe("stale");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].chartSource)
       .toBe(previousIsoChartSource);
 
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status).toBe("stale");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status).toBe("stale");
 
     toolState.actions.setSelectedModel(ModelId.PmvIso);
     await waitForIdle(toolState);
 
-    const currentIsoChartSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvIso]
+    const currentIsoChartSource = toolState.state.output.calculationCacheByModel[ModelId.PmvIso]
       .chartSource as PmvChartSource;
-    const currentInput = toolState.state.quantitiesByInput[InputId.Input1];
+    const currentInput = toolState.state.input.quantitiesByInput[InputId.Input1];
 
     expect(currentIsoChartSource).not.toBe(previousIsoChartSource);
     expect(currentIsoChartSource.inputs[InputId.Input1]?.tdb)
@@ -1422,21 +1422,21 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
 
-    const isoChartSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].chartSource;
+    const isoChartSource = toolState.state.output.calculationCacheByModel[ModelId.PmvIso].chartSource;
 
     toolState.actions.setModelOption(
       OptionKey.AirSpeedControlMode,
       AirSpeedControlMode.NoLocalControl,
     );
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].chartSource)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("stale");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].chartSource)
       .toBe(isoChartSource);
 
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
   });
 
   it("invalidates supporting model caches only when modifier state is effective", async () => {
@@ -1447,9 +1447,9 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
 
-    const ashraeSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae]
+    const ashraeSource = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae]
       .chartSource;
-    const isoSource = toolState.state.ui.calculationCacheByModel[ModelId.PmvIso]
+    const isoSource = toolState.state.output.calculationCacheByModel[ModelId.PmvIso]
       .chartSource;
 
     expect(toolState.actions.updateModifierInput(
@@ -1458,13 +1458,13 @@ describe("createAnalysisState", () => {
       PhysicalQuantityId.ModifierMeasuredAirSpeed,
       "0.6",
     )).toBe(true);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
       .toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status)
       .toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].chartSource)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].chartSource)
       .toBe(ashraeSource);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].chartSource)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].chartSource)
       .toBe(isoSource);
 
     expect(toolState.actions.setModifierEnabled(
@@ -1472,17 +1472,17 @@ describe("createAnalysisState", () => {
       ModifierId.MeasuredAirSpeed,
       true,
     )).toBe(true);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
       .toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status)
       .toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Utci].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Utci].status)
       .toBe("empty");
 
     await waitForIdle(toolState);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
       .toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status)
       .toBe("stale");
 
     expect(toolState.actions.updateModifierInput(
@@ -1491,16 +1491,16 @@ describe("createAnalysisState", () => {
       PhysicalQuantityId.ModifierMeasuredAirSpeed,
       "0.7",
     )).toBe(true);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
       .toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvIso].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvIso].status)
       .toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Utci].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Utci].status)
       .toBe("empty");
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
       .toBe("ready");
   });
 
@@ -1538,9 +1538,9 @@ describe("createAnalysisState", () => {
     );
     await waitForIdle(toolState);
 
-    const baseInputs = toolState.state.quantitiesByInput[InputId.Input1];
+    const baseInputs = toolState.state.input.quantitiesByInput[InputId.Input1];
     const effectiveInputs = toolState.selectors.getEffectiveQuantitiesByInput()[InputId.Input1];
-    const cache = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae];
+    const cache = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae];
     const chartSource = cache.chartSource as PmvChartSource;
     const request = chartSource.inputs[InputId.Input1];
     const result = cache.resultsByInput[InputId.Input1] as PmvResponse;
@@ -1562,7 +1562,7 @@ describe("createAnalysisState", () => {
     expect(result.ppd).toBeCloseTo(expectedPmv.ppd, 8);
     expect(toolState.selectors.getResultSections()
       .find(({ title }) => title === "PMV")?.valuesByInput[InputId.Input1]?.text)
-      .toBe(result.pmv.toFixed(2));
+      .toBe(formatDisplayValue(result.pmv));
     expect(toolState.selectors.getChartControlsViewModel().profileBadge.feedback?.passes)
       .toBe(result.isCompliant);
 
@@ -1588,13 +1588,13 @@ describe("createAnalysisState", () => {
       true,
     );
     await waitForIdle(toolState);
-    const baseAirSpeed = toolState.state.quantitiesByInput[InputId.Input1]
+    const baseAirSpeed = toolState.state.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.RelativeAirSpeed];
 
     toolState.actions.setSelectedModel(ModelId.Utci);
     await waitForIdle(toolState);
 
-    expect(toolState.state.activeModifiersByInput[InputId.Input1]
+    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(true);
     expect(toolState.selectors.getInputModifierControls()).toEqual([]);
     expect(toolState.selectors.getEffectiveQuantitiesByInput(ModelId.Utci)[InputId.Input1]
@@ -1615,19 +1615,19 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
     toolState.actions.setSelectedModel(ModelId.PmvAshrae);
 
-    const previousUtciChartSource = toolState.state.ui.calculationCacheByModel[ModelId.Utci].chartSource;
+    const previousUtciChartSource = toolState.state.output.calculationCacheByModel[ModelId.Utci].chartSource;
 
-    toolState.actions.updateInput(toolState.state.ui.activeInputId, InputControlId.Temperature, "27");
+    toolState.actions.updateInput(toolState.state.setting.activeInputId, InputControlId.Temperature, "27");
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Utci].status).toBe("stale");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("stale");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Utci].status).toBe("stale");
 
     toolState.actions.scheduleCalculation({ immediate: true });
     await waitForIdle(toolState);
 
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Utci].status).toBe("stale");
-    expect(toolState.state.ui.calculationCacheByModel[ModelId.Utci].chartSource).toBe(previousUtciChartSource);
+    expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("ready");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Utci].status).toBe("stale");
+    expect(toolState.state.output.calculationCacheByModel[ModelId.Utci].chartSource).toBe(previousUtciChartSource);
   });
 
   it("rebuilds result and chart presentation on unit toggle without mutating cached SI results", async () => {
@@ -1638,10 +1638,10 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
 
     const rawUtci = (
-      toolState.state.ui.calculationCacheByModel[ModelId.Utci]
+      toolState.state.output.calculationCacheByModel[ModelId.Utci]
         .resultsByInput.input1 as UtciResponse | null
     )?.utci;
-    const chartSource = toolState.state.ui.calculationCacheByModel[ModelId.Utci].chartSource;
+    const chartSource = toolState.state.output.calculationCacheByModel[ModelId.Utci].chartSource;
     const siResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
     const siChartTitle = String(currentChart(toolState)?.layout.xaxis.title ?? "");
 
@@ -1651,15 +1651,15 @@ describe("createAnalysisState", () => {
     const ipChartTitle = String(currentChart(toolState)?.layout.xaxis.title ?? "");
 
     expect(rawUtci).toBe((
-      toolState.state.ui.calculationCacheByModel[ModelId.Utci]
+      toolState.state.output.calculationCacheByModel[ModelId.Utci]
         .resultsByInput.input1 as UtciResponse | null
     )?.utci);
-    expect(chartSource).toBe(toolState.state.ui.calculationCacheByModel[ModelId.Utci].chartSource);
+    expect(chartSource).toBe(toolState.state.output.calculationCacheByModel[ModelId.Utci].chartSource);
     expect(siResultText).toContain("°C");
     expect(ipResultText).toContain("°F");
     expect(siChartTitle).toContain("°C");
     expect(ipChartTitle).toContain("°F");
-    expect(toolState.state.ui.unitSystem).toBe(UnitSystem.IP);
+    expect(toolState.state.setting.unitSystem).toBe(UnitSystem.IP);
   });
 
   it("skips recalculation when scheduleCalculation is called on a ready cache without force", async () => {
@@ -1668,12 +1668,12 @@ describe("createAnalysisState", () => {
     await waitForIdle(toolState);
     const calculateSpy = vi.spyOn(pmvAshraeModelConfig, "calculate");
     try {
-      const readyCache = toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae];
+      const readyCache = toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae];
       expect(readyCache.status).toBe("ready");
       toolState.actions.scheduleCalculation({ immediate: true, force: false });
       await waitForIdle(toolState);
       expect(calculateSpy).not.toHaveBeenCalled();
-      expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae]).toBe(readyCache);
+      expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae]).toBe(readyCache);
     } finally {
       calculateSpy.mockRestore();
     }
@@ -1691,14 +1691,14 @@ describe("createAnalysisState", () => {
         InputControlId.Temperature,
         "32",
       );
-      expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+      expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
         .toBe("stale");
       await new Promise((resolve) => setTimeout(resolve, 250));
       await waitForIdle(toolState);
-      expect(toolState.state.quantitiesByInput[InputId.Input1]
+      expect(toolState.state.input.quantitiesByInput[InputId.Input1]
         [PhysicalQuantityId.DryBulbTemperature]).toBe(32);
       expect(calculateSpy).toHaveBeenCalled();
-      expect(toolState.state.ui.calculationCacheByModel[ModelId.PmvAshrae].status)
+      expect(toolState.state.output.calculationCacheByModel[ModelId.PmvAshrae].status)
         .toBe("ready");
     } finally {
       calculateSpy.mockRestore();
@@ -1722,7 +1722,7 @@ describe("createAnalysisState", () => {
     const chartAfter = currentChart(toolState);
     const markerAfter = chartAfter?.traces.find((trace) => trace.name === "Input 1");
 
-    expect(toolState.state.quantitiesByInput[InputId.Input1]
+    expect(toolState.state.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.DryBulbTemperature]).toBe(32);
     expect(chartAfter).not.toBe(chartBefore);
     expect(markerAfter?.x?.[0]).not.toBe(markerBefore?.x?.[0]);

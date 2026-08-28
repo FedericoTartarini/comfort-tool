@@ -17,7 +17,7 @@ import {
 } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import { calculatePerInput, createFieldRequestAdapter } from "../../engines/comfort/requestMapping";
-import { convertFieldValueFromSi } from "../../engines/units";
+import { convertFieldValueFromSi, formatDisplayValue } from "../../engines/units";
 import {
   hasExactKeys,
   isRecord,
@@ -189,12 +189,7 @@ export function parseAdaptiveOptions(value: unknown): AdaptiveModelOptions | nul
   return { [OptionKey.TemperatureMode]: temperatureMode };
 }
 
-export const adaptiveRequestAdapter = createFieldRequestAdapter<AdaptiveRequest>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  tr: PhysicalQuantityId.MeanRadiantTemperature,
-  trm: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
-  v: PhysicalQuantityId.RelativeAirSpeed,
-});
+export const adaptiveRequestAdapter = createFieldRequestAdapter<AdaptiveRequest>({ tdb: PhysicalQuantityId.DryBulbTemperature, tr: PhysicalQuantityId.MeanRadiantTemperature, trm: PhysicalQuantityId.PrevailingMeanOutdoorTemperature, v: PhysicalQuantityId.RelativeAirSpeed });
 
 export function toAdaptiveRequest(
   context: ModelCalculationContext,
@@ -280,7 +275,7 @@ export function buildAdaptiveResultRows(
         );
         return {
           text: level.status,
-          subtext: `${lower.toFixed(1)} ~ ${upper.toFixed(1)} ${temperatureUnits}`,
+          subtext: `${formatDisplayValue(lower)} ~ ${formatDisplayValue(upper)} ${temperatureUnits}`,
           color: declaration.colorByStatus[level.status] ?? "",
         };
       },

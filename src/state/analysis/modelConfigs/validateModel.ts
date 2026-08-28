@@ -2,35 +2,29 @@ import { type ModelId as ModelIdType } from "../../../catalog/modelIds";
 import {
   ChartType,
   isChartType,
-  modelAllowsPsychrometricCharts,
 } from "../../../catalog/chartTypes";
+import type { ModelTables } from "../../../catalog/tableTypes";
 import {
-  TableType,
-  type ModelTables,
-} from "../../../catalog/tableTypes";
+  supportsTimeSeriesSurface,
+  type SurfaceId,
+} from "../../../catalog/surfaces";
 import {
-  supportsTimeSeriesWorkspace,
-  type WorkspaceId,
-} from "../../../catalog/workspaces";
-import {
-  mergeQuantityCatalog,
-  PhysicalQuantityScope,
-  primaryInputOrder,
-  systemQuantityMetaById,
+  isPhysicalQuantityId,
+  physicalQuantityMetaById,
+  resolveQuantityState,
+  QuantityState,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
   type PhysicalQuantityMeta,
-  type QuantityExtension,
 } from "../../../catalog/quantities";
 
 /**
- * Contribution slice that assembled catalogs can check. This is not a second
+ * Model slice that assembled catalogs can check. This is not a second
  * authoring API — declarations still go through `defineModel` and registry
  * registration.
  */
 export interface CatalogModelSlice {
   readonly id: ModelIdType;
-  readonly quantities: {
-    readonly extend: readonly QuantityExtension[];
-  };
+  readonly extraQuantities: readonly PhysicalQuantityIdType[];
   readonly chartInstances: {
     readonly entries: readonly {
       readonly instanceId: string;
@@ -42,22 +36,13 @@ export interface CatalogModelSlice {
     readonly registration: { readonly type: string };
   }[];
   readonly tables: ModelTables;
-  readonly workspaceCapabilities: readonly WorkspaceId[];
+  readonly workspaceCapabilities: readonly SurfaceId[];
 }
 
 export interface AssembledCatalogs {
   readonly quantities: Readonly<Record<string, PhysicalQuantityMeta>>;
   readonly chartInstanceOwners: ReadonlyMap<string, ModelIdType>;
   readonly chartTypes: ReadonlySet<string>;
-  readonly tableTypes: ReadonlySet<string>;
-  /**
-   * Optional catalog hook. `assembleCatalogs` installs `validate.model` on the
-   * returned instance; the type stays optional so this is not a required
-   * authoring API.
-   */
-  readonly validate?: {
-    readonly model?: (model: CatalogModelSlice) => void;
-  };
 }
 
 function indexChartOwners(models: readonly CatalogModelSlice[]): {
@@ -89,61 +74,31 @@ function indexChartOwners(models: readonly CatalogModelSlice[]): {
   return { chartInstanceOwners };
 }
 
-export function collectRegisteredQuantityExtensions(
-  configs: Iterable<Pick<CatalogModelSlice, "id" | "quantities">>,
-): QuantityExtension[] {
-  const extensions: QuantityExtension[] = [];
-  for (const config of configs) {
-    for (const extension of config.quantities.extend) {
-      if (extension.owner !== config.id) {
-        throw new Error(
-          `Quantity extension "${extension.id}" is owned by ${extension.owner} but registered on ${config.id}.`,
-        );
-      }
-      extensions.push(extension);
-    }
-  }
-  return extensions;
-}
-
 /**
- * Checks one model contribution against assembled catalogs. Duplicate ids,
- * wrong owners, unknown chart types, and a TimeSeries table without Time-series
- * capability fail.
+ * Checks one model against assembled catalogs. Unknown extra
+ * quantity ids, unknown chart types, and a Time-series table without
+ * Time-series capability fail.
  */
 export function validateModel(
   model: CatalogModelSlice,
   catalogs: AssembledCatalogs,
 ): void {
-  const seenQuantityIds = new Set<string>();
-  for (const extension of model.quantities.extend) {
-    if (extension.owner !== model.id) {
+  const seenExtraIds = new Set<string>();
+  for (const quantityId of model.extraQuantities) {
+    if (!isPhysicalQuantityId(quantityId) || catalogs.quantities[quantityId] === undefined) {
       throw new Error(
-        `Quantity extension "${extension.id}" is owned by ${extension.owner} but registered on ${model.id}.`,
+        `Unknown extra quantity "${String(quantityId)}" on ${model.id}. Extra quantities must be catalog Extra ids.`,
       );
     }
-    if (seenQuantityIds.has(extension.id)) {
-      throw new Error(`Duplicate quantity id "${extension.id}".`);
-    }
-    seenQuantityIds.add(extension.id);
-    if (primaryInputOrder.some((id) => id === extension.id)) {
+    if (resolveQuantityState(quantityId) !== QuantityState.Extra) {
       throw new Error(
-        `Extended quantity ${extension.id} must not enter primaryInputOrder.`,
+        `Quantity "${quantityId}" on ${model.id} is not an Extra catalog quantity.`,
       );
     }
-    const existing = catalogs.quantities[extension.id];
-    if (existing === undefined) continue;
-    if (existing.scope === PhysicalQuantityScope.System) {
-      throw new Error(`Duplicate quantity id "${extension.id}".`);
+    if (seenExtraIds.has(quantityId)) {
+      throw new Error(`${model.id} declares duplicate extra quantity "${quantityId}".`);
     }
-    if (
-      existing.ownerModelId !== undefined &&
-      existing.ownerModelId !== model.id
-    ) {
-      throw new Error(
-        `Quantity extension "${extension.id}" is owned by ${existing.ownerModelId} but registered on ${model.id}.`,
-      );
-    }
+    seenExtraIds.add(quantityId);
   }
 
   const seenInstanceIds = new Set<string>();
@@ -179,50 +134,42 @@ export function validateModel(
         `Unknown chart type "${String(type)}". ChartType is a closed set.`,
       );
     }
-    if (type === ChartType.Psychrometric && !modelAllowsPsychrometricCharts(model.id)) {
-      throw new Error(
-        `Psychrometric chart "${registration.instanceId}" on ${model.id} is not allowed. Psychrometric is frontend-only for PMV geometry.`,
-      );
-    }
   }
 
   if (
     model.tables.timeSeries &&
-    !supportsTimeSeriesWorkspace(model.workspaceCapabilities)
+    !supportsTimeSeriesSurface(model.workspaceCapabilities)
   ) {
     throw new Error(
       "tables.timeSeries is allowed only with Time-series workspace capability.",
     );
   }
+
+  if (model.tables.results.length === 0) {
+    throw new Error("tables.results requires at least one row.");
+  }
+  if (model.tables.timeSeries && model.tables.timeSeries.length === 0) {
+    throw new Error("tables.timeSeries requires at least one row.");
+  }
 }
 
 /**
- * Assemble quantity and chart-owner catalogs from the models themselves.
- * Duplicate extend ids fail here via `mergeQuantityCatalog`; the returned
- * instance installs optional `validate.model`.
+ * Assemble chart-owner catalogs from the models themselves. Quantity metadata
+ * is the closed catalog in quantities.ts. Each model is checked with
+ * `validateModel` during assemble.
  */
 export function assembleCatalogs(
   models: Iterable<CatalogModelSlice>,
 ): AssembledCatalogs {
   const modelList = [...models];
-  const quantities = mergeQuantityCatalog(
-    systemQuantityMetaById,
-    collectRegisteredQuantityExtensions(modelList),
-  );
   const { chartInstanceOwners } = indexChartOwners(modelList);
   const catalogs: AssembledCatalogs = {
-    quantities,
+    quantities: physicalQuantityMetaById,
     chartInstanceOwners,
     chartTypes: new Set<string>(Object.values(ChartType)),
-    tableTypes: new Set<string>(Object.values(TableType)),
-    validate: {
-      model: (model) => {
-        validateModel(model, catalogs);
-      },
-    },
   };
   for (const model of modelList) {
-    catalogs.validate?.model?.(model);
+    validateModel(model, catalogs);
   }
   return catalogs;
 }

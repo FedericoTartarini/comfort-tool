@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 
 import {
   adaptiveAshraeDeclaration,
@@ -26,7 +27,6 @@ import type {
   PlotlyChartSpec,
   PlotTrace,
 } from "../../plotlyTypes";
-import { PhysicalQuantityId } from "../../../catalog/quantities";
 import { InputId, type InputId as InputIdType } from "../../../catalog/inputSlots";
 import {
   resolveBandEdge,

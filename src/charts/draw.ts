@@ -170,6 +170,7 @@ const AXIS_CHROME = {
   ticklen: 4,
   tickwidth: 1,
   tickcolor: AXIS_LINE_COLOR,
+  tickformat: ".2~f",
 } as const;
 
 /** Plotly layout.template: axis lines and tick marks only (not simple_white). */

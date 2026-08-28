@@ -167,12 +167,12 @@ describe("comfort model result rows", () => {
       text: pmvNeutralZone.label,
       color: pmvNeutralZone.textColor,
     });
-    expect(getInputCell(sections, "PPD")?.text).toBe("5.3%");
-    expect(getInputCell(sections, "Acceptability")?.text).toBe("94.8%");
+    expect(getInputCell(sections, "PPD")?.text).toBe("5.25%");
+    expect(getInputCell(sections, "Acceptability")?.text).toBe("94.75%");
     expect(getInputCell(sections, "SET")?.text).toBe("24.3 °C");
     expect(getInputCell(sections, "Cooling effect")?.text).toBe("1.64 °C");
-    expect(getInputCell(sections, "Relative air speed")?.text).toBe("0.60 m/s");
-    expect(getInputCell(sections, "Dynamic clothing")?.text).toBe("0.50 clo");
+    expect(getInputCell(sections, "Relative air speed")?.text).toBe("0.6 m/s");
+    expect(getInputCell(sections, "Dynamic clothing")?.text).toBe("0.5 clo");
   });
 
   it("converts PMV SET, cooling effect, and relative air speed to IP", () => {
@@ -182,10 +182,10 @@ describe("comfort model result rows", () => {
       UnitSystem.IP,
     );
 
-    expect(getInputCell(sections, "SET")?.text).toBe("75.7 °F");
+    expect(getInputCell(sections, "SET")?.text).toBe("75.74 °F");
     expect(getInputCell(sections, "Cooling effect")?.text).toBe("2.95 °F");
     expect(getInputCell(sections, "Relative air speed")?.text).toBe("1.97 ft/s");
-    expect(getInputCell(sections, "Dynamic clothing")?.text).toBe("0.50 clo");
+    expect(getInputCell(sections, "Dynamic clothing")?.text).toBe("0.5 clo");
   });
 
   it("maps multiple PMV inputs while preserving null and noncompliant cells", () => {
@@ -215,7 +215,7 @@ describe("comfort model result rows", () => {
       color: "#dc2626",
     });
     expect(getInputCell(sections, "PMV", InputId.Input1)?.text).toBe("0.24");
-    expect(getInputCell(sections, "PMV", InputId.Input3)?.text).toBe("-1.20");
+    expect(getInputCell(sections, "PMV", InputId.Input3)?.text).toBe("-1.2");
   });
 
   it("builds Adaptive ASHRAE rows with compliance, band formatting, and N/A state", () => {
@@ -361,12 +361,12 @@ describe("comfort model result rows", () => {
     });
     expect(getInputCell(sections, adaptiveEnZonesList[3].label)).toEqual({
       text: adaptiveEnZonesList[4].label,
-      subtext: `21.0 ~ 27.0 ${temperatureUnits}`,
+      subtext: `21 ~ 27 ${temperatureUnits}`,
       color: adaptiveEnZonesList[4].textColor,
     });
     expect(getInputCell(sections, adaptiveEnZonesList[1].label)).toEqual({
       text: adaptiveEnZonesList[1].label,
-      subtext: `19.0 ~ 29.0 ${temperatureUnits}`,
+      subtext: `19 ~ 29 ${temperatureUnits}`,
       color: adaptiveEnZonesList[1].textColor,
     });
   });
@@ -423,7 +423,7 @@ describe("comfort model result rows", () => {
     ]);
     expect(sections[0].group).toBe("Maximum allowable exposure time");
     expect(getInputCell(sections, "Rectal-temperature exposure limit")?.text)
-      .toBe("0.90 h");
+      .toBe("0.9 h");
     expect(getInputCell(sections, "Rectal temperature after 8 h")?.text)
       .toContain("°C");
     expect(getInputCell(sections, "Rectal-temperature exposure limit", InputId.Input2)?.text)

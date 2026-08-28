@@ -22,12 +22,12 @@ import {
   type InputFieldSpec,
 } from "../../../engines/comfort/controls/fieldInputBehaviors";
 import {
-  supportsExploreWorkspace,
-  supportsStandardWorkspace,
-  supportsTimeSeriesWorkspace,
+  supportsExploreSurface,
+  supportsStandardSurface,
+  supportsTimeSeriesSurface,
   type StandardId as StandardIdType,
-  type WorkspaceId as WorkspaceIdType,
-} from "../../../catalog/workspaces";
+  type SurfaceId as SurfaceIdType,
+} from "../../../catalog/surfaces";
 import {
   type Band,
   type ComplianceSpec,
@@ -39,37 +39,32 @@ import {
   validateNumericBands,
 } from "../../../engines/comfort/charts/bands";
 import {
-  PhysicalQuantityScope,
-  primaryInputOrder,
-  systemQuantityMetaById,
+  isExtraQuantityId,
+  isPhysicalQuantityId,
   type ChartAxisQuantityId,
-  type QuantityExtension,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../../catalog/quantities";
 import {
   ChartType,
   isChartType,
-  isModelChartType,
-  modelAllowsPsychrometricCharts,
   resolveChartCapabilities,
   type ChartInstanceDeclaration,
 } from "../../../catalog/chartTypes";
 import {
-  TableType,
   type ModelTables,
+  type ModelTablesAuthoring,
 } from "../../../catalog/tableTypes";
 import { resolveChartBuildResult } from "../../../engines/comfort/charts/kinds/index";
 import {
   modelChartSpecMatchesType,
-  specHasPlotlyBuild,
   type ChartEngineRegistration,
-  type ModelChartDeclaration,
   type FrontendChartDeclaration,
-  type ChartDeclarationInput,
   type RegisteredChartEngineSpec,
 } from "../../../engines/comfort/charts/kinds/types";
+import { compileModelTables } from "../../../engines/comfort/output/compileTableRows";
 import { buildCompareMatrixTable } from "../../../engines/comfort/output/tableResolver";
 
-export type { ModelChartDeclaration, FrontendChartDeclaration, ChartDeclarationInput };
+export type { FrontendChartDeclaration };
 
 export type ResultRowDefinition<T> = {
   title: string;
@@ -126,24 +121,10 @@ function toRegisteredChartBindSpec<ResultType, ChartSourceType>(
       `Unknown chart type "${String(entry.type)}". ChartType is a closed set.`,
     );
   }
-  switch (entry.type) {
-    case ChartType.Dynamic:
-      return { type: ChartType.Dynamic, spec: entry.spec };
-    case ChartType.Adaptive:
-      return { type: ChartType.Adaptive, spec: entry.spec };
-    case ChartType.HeatLoss:
-      return { type: ChartType.HeatLoss, spec: entry.spec };
-    case ChartType.Set:
-      return { type: ChartType.Set, spec: entry.spec };
-    case ChartType.Utci:
-      return { type: ChartType.Utci, spec: entry.spec };
-    case ChartType.BodyTemperature:
-      return { type: ChartType.BodyTemperature, spec: entry.spec };
-    case ChartType.WaterLoss:
-      return { type: ChartType.WaterLoss, spec: entry.spec };
-    case ChartType.Psychrometric:
-      return { type: ChartType.Psychrometric, spec: entry.spec };
-  }
+  return { type: entry.type, spec: entry.spec } as RegisteredChartEngineSpec<
+    ResultType,
+    ChartSourceType
+  >;
 }
 
 function createChartEngineRegistration<ResultType, ChartSourceType>(
@@ -200,7 +181,7 @@ export class ComfortModelBuilder<
 
   private description?: string;
 
-  private workspaceCapabilities?: readonly WorkspaceIdType[];
+  private workspaceCapabilities?: readonly SurfaceIdType[];
 
   private standardIds?: readonly StandardIdType[];
 
@@ -214,7 +195,7 @@ export class ComfortModelBuilder<
 
   private readonly inputFieldSpecs: InputFieldSpec[] = [];
 
-  private quantityExtensions: QuantityExtension[] = [];
+  private extraQuantities: PhysicalQuantityIdType[] = [];
 
   private readonly optionHandlersByKey: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
@@ -265,7 +246,7 @@ export class ComfortModelBuilder<
   }
 
   setWorkspaceCapabilities(
-    capabilities: readonly WorkspaceIdType[],
+    capabilities: readonly SurfaceIdType[],
   ): this {
     this.workspaceCapabilities = capabilities;
     return this;
@@ -306,8 +287,8 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setTables(tables: ModelTables<ResultType>): this {
-    this.tables = tables;
+  setTables(tables: ModelTablesAuthoring<ResultType>): this {
+    this.tables = compileModelTables(tables);
     return this;
   }
 
@@ -339,8 +320,8 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  extendQuantities(extensions: readonly QuantityExtension[]): this {
-    this.quantityExtensions.push(...extensions);
+  setExtraQuantities(ids: readonly PhysicalQuantityIdType[]): this {
+    this.extraQuantities = [...ids];
     return this;
   }
 
@@ -386,12 +367,14 @@ export class ComfortModelBuilder<
   private registerChart(
     entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
   ): void {
-    if (
-      entry.type === ChartType.Psychrometric
-      && !modelAllowsPsychrometricCharts(this.id)
-    ) {
+    if (!isChartType(entry.type)) {
       throw new Error(
-        `Psychrometric chart "${entry.id}" is not allowed. Psychrometric is frontend-only for PMV geometry.`,
+        `Unknown chart type "${String(entry.type)}". ChartType is a closed set.`,
+      );
+    }
+    if (!modelChartSpecMatchesType(entry)) {
+      throw new Error(
+        `Chart "${entry.id}" spec does not match type "${entry.type}".`,
       );
     }
     if (
@@ -425,65 +408,42 @@ export class ComfortModelBuilder<
     }
   }
 
-  private validateQuantityExtensions(): readonly QuantityExtension[] {
+  private validateExtraQuantities(): readonly PhysicalQuantityIdType[] {
     const seenIds = new Set<string>();
-    const extensions: QuantityExtension[] = [];
+    const extras: PhysicalQuantityIdType[] = [];
 
-    for (const extension of this.quantityExtensions) {
-      if (extension.owner !== this.id) {
+    for (const quantityId of this.extraQuantities) {
+      if (!isPhysicalQuantityId(quantityId) || !isExtraQuantityId(quantityId)) {
         throw new Error(
-          `Quantity extension ${extension.id} owner ${extension.owner} does not match ${this.id}.`,
+          `Unknown extra quantity "${String(quantityId)}". Extra quantities must be catalog Extra ids.`,
         );
       }
-      if (extension.scope !== PhysicalQuantityScope.Model) {
+      if (seenIds.has(quantityId)) {
         throw new Error(
-          `Quantity extension ${extension.id} must use scope "${PhysicalQuantityScope.Model}".`,
+          `Comfort model declarations cannot contain duplicate extra quantities (${quantityId}).`,
         );
       }
-      if (extension.id in systemQuantityMetaById) {
-        throw new Error(
-          `Quantity extension ${extension.id} collides with a system-seed quantity.`,
-        );
-      }
-      if (primaryInputOrder.some((id) => id === extension.id)) {
-        throw new Error(
-          `Extended quantity ${extension.id} must not enter primaryInputOrder.`,
-        );
-      }
-      if (seenIds.has(extension.id)) {
-        throw new Error(
-          `Comfort model declarations cannot contain duplicate quantity ids (${extension.id}).`,
-        );
-      }
-      if (!(extension.minSi < extension.maxSi)) {
-        throw new Error(
-          `Quantity extension ${extension.id} requires minSi < maxSi.`,
-        );
-      }
-      if (
-        extension.defaultSi < extension.minSi ||
-        extension.defaultSi > extension.maxSi
-      ) {
-        throw new Error(
-          `Quantity extension ${extension.id} defaultSi must lie within minSi and maxSi.`,
-        );
-      }
-      seenIds.add(extension.id);
-      extensions.push({ ...extension, display: { ...extension.display } });
+      seenIds.add(quantityId);
+      extras.push(quantityId);
     }
 
-    return extensions;
+    return extras;
   }
 
-  private assertModelQuantityFields(
-    extensions: readonly QuantityExtension[],
+  private assertQuantityFields(
+    extras: readonly PhysicalQuantityIdType[],
   ): void {
-    const ownedIds = new Set(extensions.map((extension) => extension.id));
+    const selectedIds = new Set(extras);
     for (const spec of this.inputFieldSpecs) {
-      if (spec.kind !== "modelQuantity") continue;
-      if (!ownedIds.has(spec.quantityId)) {
+      if (spec.kind !== "quantity") continue;
+      if (!isPhysicalQuantityId(spec.quantityId) || !isExtraQuantityId(spec.quantityId)) {
         throw new Error(
-          `modelQuantity field ${spec.quantityId} must reference a quantities.extend entry owned by ${this.id}.`,
+          `quantity field ${spec.quantityId} must reference a catalog Extra quantity.`,
+        );
+      }
+      if (!selectedIds.has(spec.quantityId)) {
+        throw new Error(
+          `quantity field ${spec.quantityId} must be listed in extraQuantities.`,
         );
       }
     }
@@ -588,9 +548,9 @@ export class ComfortModelBuilder<
       );
     }
 
-    const supportsStandard = supportsStandardWorkspace(workspaceCapabilities);
-    const supportsExplore = supportsExploreWorkspace(workspaceCapabilities);
-    const supportsTimeSeries = supportsTimeSeriesWorkspace(
+    const supportsStandard = supportsStandardSurface(workspaceCapabilities);
+    const supportsExplore = supportsExploreSurface(workspaceCapabilities);
+    const supportsTimeSeries = supportsTimeSeriesSurface(
       workspaceCapabilities,
     );
 
@@ -664,12 +624,8 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations must set tables.");
     }
 
-    if (tables.analysis.type !== TableType.Analysis) {
-      throw new Error("tables.analysis must use TableType.Analysis.");
-    }
-
-    if (tables.analysis.rows.length === 0) {
-      throw new Error("tables.analysis requires at least one row.");
+    if (tables.results.length === 0) {
+      throw new Error("tables.results requires at least one row.");
     }
 
     if (tables.timeSeries) {
@@ -678,10 +634,7 @@ export class ComfortModelBuilder<
           "tables.timeSeries is allowed only with Time-series workspace capability.",
         );
       }
-      if (tables.timeSeries.type !== TableType.TimeSeries) {
-        throw new Error("tables.timeSeries must use TableType.TimeSeries.");
-      }
-      if (tables.timeSeries.rows.length === 0) {
+      if (tables.timeSeries.length === 0) {
         throw new Error("tables.timeSeries requires at least one row.");
       }
     } else if (supportsTimeSeries) {
@@ -821,8 +774,8 @@ export class ComfortModelBuilder<
       throw new Error("Default dynamic axes must be supported and distinct.");
     }
 
-    const quantityExtensions = this.validateQuantityExtensions();
-    this.assertModelQuantityFields(quantityExtensions);
+    const extraQuantities = this.validateExtraQuantities();
+    this.assertQuantityFields(extraQuantities);
 
     const complianceProfile = this.complianceProfile;
     const calculate = this.calculate;
@@ -855,21 +808,13 @@ export class ComfortModelBuilder<
         : {}),
       controls: [...this.controls],
       inputFields: [...this.inputFieldSpecs],
-      quantities: {
-        extend: quantityExtensions,
-      },
+      extraQuantities: [...extraQuantities],
       optionHandlersByKey: { ...this.optionHandlersByKey },
       tables: {
-        analysis: {
-          type: tables.analysis.type,
-          rows: [...tables.analysis.rows],
-        },
+        results: [...tables.results],
         ...(tables.timeSeries
           ? {
-              timeSeries: {
-                type: tables.timeSeries.type,
-                rows: [...tables.timeSeries.rows],
-              },
+              timeSeries: [...tables.timeSeries],
             }
           : {}),
       } as ModelTables,
@@ -891,7 +836,7 @@ export class ComfortModelBuilder<
         calculate(context, visibleInputIds),
       buildTable: (resultsByInput, visibleInputIds, unitSystem) => {
         return buildCompareMatrixTable(
-          tables.analysis,
+          tables.results,
           resultsByInput as Record<InputIdType, ResultType | null>,
           visibleInputIds,
           unitSystem,
@@ -954,8 +899,7 @@ export class ComfortModelBuilder<
 
 /**
  * Complete model declaration assembled into a runtime model definition.
- * Charts are a data-only discriminated union over ChartType
- * (`ModelChartDeclaration`). defineModel may only declare Dynamic.
+ * Charts are a discriminated union over ChartType (`FrontendChartDeclaration`).
  */
 export interface ModelDeclaration<
   ResultType,
@@ -966,20 +910,18 @@ export interface ModelDeclaration<
   readonly label: string;
   readonly description: string;
   readonly standardIds: readonly StandardIdType[];
-  readonly workspaceCapabilities: readonly WorkspaceIdType[];
+  readonly workspaceCapabilities: readonly SurfaceIdType[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
   readonly complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
   readonly inputFields: readonly InputFieldSpec[];
-  readonly quantities?: {
-    readonly extend?: readonly QuantityExtension[];
-  };
+  readonly extraQuantities?: readonly PhysicalQuantityIdType[];
   readonly optionHandlersByKey?: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   >;
-  readonly charts: readonly ModelChartDeclaration<ResultType>[];
+  readonly charts: readonly FrontendChartDeclaration<ResultType, ChartSourceType>[];
   readonly defaultChartId?: string;
-  readonly tables: ModelTables<ResultType>;
+  readonly tables: ModelTablesAuthoring<ResultType>;
   readonly calculate: ComfortModelDefinition<
     ResultType,
     ChartSourceType,
@@ -992,18 +934,13 @@ export interface ModelDeclaration<
   readonly parseOptions: (value: unknown) => ModelOptionsState | null;
 }
 
-function assertModelChartDeclarations<TResult>(
-  charts: readonly ModelChartDeclaration<TResult>[],
+function assertChartDeclarations<TResult, ChartSourceType>(
+  charts: readonly FrontendChartDeclaration<TResult, ChartSourceType>[],
 ): void {
   for (const chart of charts) {
-    if (!isModelChartType(chart.type)) {
+    if (!isChartType(chart.type)) {
       throw new Error(
-        `defineModel chart "${chart.id}" uses type "${String(chart.type)}". defineModel can only declare Dynamic.`,
-      );
-    }
-    if (specHasPlotlyBuild(chart.spec)) {
-      throw new Error(
-        `defineModel chart "${chart.id}" must be data-only. defineModel cannot provide a Plotly build.`,
+        `Unknown chart type "${String(chart.type)}". ChartType is a closed set.`,
       );
     }
     if (!modelChartSpecMatchesType(chart)) {
@@ -1022,7 +959,7 @@ export function defineModel<
 >(
   declaration: ModelDeclaration<ResultType, ChartSourceType, ComplianceBand>,
 ): RuntimeComfortModelDefinition {
-  assertModelChartDeclarations(declaration.charts);
+  assertChartDeclarations(declaration.charts);
 
   const builder = new ComfortModelBuilder<
     ResultType,
@@ -1050,8 +987,8 @@ export function defineModel<
   if (declaration.complianceProfile) {
     builder.setComplianceProfile(declaration.complianceProfile);
   }
-  if (declaration.quantities?.extend) {
-    builder.extendQuantities(declaration.quantities.extend);
+  if (declaration.extraQuantities) {
+    builder.setExtraQuantities(declaration.extraQuantities);
   }
   if (declaration.optionHandlersByKey) {
     for (const optionKey of Object.keys(

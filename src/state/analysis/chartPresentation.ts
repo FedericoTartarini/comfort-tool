@@ -1,18 +1,15 @@
-import { type ChartAxisQuantityId } from "../../catalog/quantities";
+import { type ChartAxisQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
 import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
 import { InputId, type InputId as InputIdType } from "../../catalog/inputSlots";
-import {
-  type ModelOutputKey,
-  type NumericBand,
-} from "../../catalog/modelCapabilities";
+import { type NumericBand } from "../../catalog/modelCapabilities";
 import {
   FieldChartProfileKind,
 } from "../../catalog/output/fieldChartProfile";
 import {
-  WorkspaceId,
-  supportsExploreWorkspace,
-  type WorkspaceId as WorkspaceIdType,
-} from "../../catalog/workspaces";
+  SurfaceId,
+  supportsExploreSurface,
+  type SurfaceId as SurfaceIdType,
+} from "../../catalog/surfaces";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import { getDynamicAxisOptions } from "./dynamicAxes";
 import {
@@ -50,7 +47,7 @@ function getExploreOutputs(
     config.chartEngineRegistrations,
     chartInstance.instanceId,
   );
-  return supportsExploreWorkspace(config.workspaceCapabilities)
+  return supportsExploreSurface(config.workspaceCapabilities)
     ? getChartExploreOutputs(config, registration)
     : [];
 }
@@ -77,14 +74,14 @@ interface ChartPresentationCallbacks {
   onSelectBaseline: (inputId: InputIdType) => void;
   onSelectXAxis: (field: ChartAxisQuantityId) => void;
   onSelectYAxis: (field: ChartAxisQuantityId) => void;
-  onSelectOutput: (outputKey: ModelOutputKey) => void;
+  onSelectOutput: (outputKey: PhysicalQuantityIdType) => void;
   onApplyBands: (bands: readonly NumericBand[]) => boolean;
 }
 
 interface BuildChartControlsOptions {
   config: RuntimeComfortModelDefinition;
   settings: ModelOutputSettings;
-  workspace: WorkspaceIdType;
+  workspace: SurfaceIdType;
   chartInstance: ChartInstanceDeclaration;
   cache: ModelCalculationCache<unknown, unknown>;
   visibleInputIds: InputIdType[];
@@ -112,18 +109,18 @@ export function buildChartControlsViewModel({
     compareEnabled,
     visibleInputIds,
   );
-  const complianceProfile = workspace === WorkspaceId.Standard
+  const complianceProfile = workspace === SurfaceId.Standard
     ? config.complianceProfile
     : undefined;
-  if (workspace === WorkspaceId.Standard && !complianceProfile) {
+  if (workspace === SurfaceId.Standard && !complianceProfile) {
     throw new Error(
       `Comfort model ${config.id} declares Standard workspace without a compliance profile.`,
     );
   }
-  const selectedOutput = workspace === WorkspaceId.Explore
+  const selectedOutput = workspace === SurfaceId.Explore
     ? getDeclaredExploreOutput(config, profile.zOutput)
     : undefined;
-  if (workspace === WorkspaceId.Explore && !selectedOutput) {
+  if (workspace === SurfaceId.Explore && !selectedOutput) {
     throw new Error(
       `Comfort model ${config.id} does not declare Explore output ${profile.zOutput}.`,
     );
@@ -148,7 +145,7 @@ export function buildChartControlsViewModel({
 
   return {
     profileBadge: {
-      profileKind: workspace === WorkspaceId.Explore ? FieldChartProfileKind.Explore : FieldChartProfileKind.Compliance,
+      profileKind: workspace === SurfaceId.Explore ? FieldChartProfileKind.Explore : FieldChartProfileKind.Compliance,
       caption,
       feedback,
     },

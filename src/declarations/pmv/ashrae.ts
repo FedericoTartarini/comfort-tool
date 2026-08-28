@@ -1,6 +1,7 @@
 /**
  * ASHRAE 55 PMV/PPD model declaration and standard-specific calculation strategy.
  */
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import {
   check_standard_compliance,
   pmv_ppd_ashrae,
@@ -10,9 +11,8 @@ import {
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
 import { defaultPmvAshraeOptions } from "../../catalog/inputModes";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import { UnitSystem } from "../../catalog/units";
-import { StandardId, WorkspaceId } from "../../catalog/workspaces";
+import { StandardId, SurfaceId } from "../../catalog/surfaces";
 import {
   createDynamicClothingModifier,
   measuredAirSpeedModifier,
@@ -76,7 +76,7 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   description: "ASHRAE 55 PMV/PPD with comfort zone overlays.",
   adapter: pmvAshraeAdapter,
   standardIds: [StandardId.Ashrae55],
-  workspaceCapabilities: [WorkspaceId.Standard, WorkspaceId.Explore],
+  workspaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
   exploreOutputs: pmvExploreOutputs,
   modifiers: [
     measuredAirSpeedModifier,
@@ -89,7 +89,7 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   heatLossChartId: "pmv-ashrae-heat-loss",
   setChartId: "pmv-ashrae-set",
   complianceProfile: {
-    output: ModelOutputKey.Pmv,
+    output: PhysicalQuantityId.Pmv,
     bands: ashraeComplianceBands,
     legendTitle: "PMV Zones",
     caption: createPmvComplianceCaption("ASHRAE 55", ashraeComplianceBands),

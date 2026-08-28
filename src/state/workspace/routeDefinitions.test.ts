@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ModelId } from "../../catalog/modelIds";
-import { StandardId, WorkspaceId } from "../../catalog/workspaces";
+import { StandardId, SurfaceId } from "../../catalog/surfaces";
 import {
   appRouteDefinitions,
   buildCalculationPath,
@@ -68,7 +68,7 @@ describe("workspace route definitions", () => {
 
   it("keeps every calculation route default inside its derived model set", () => {
     for (const definition of appRouteDefinitions) {
-      if (definition.workspace === WorkspaceId.TimeSeries) {
+      if (definition.workspace === SurfaceId.TimeSeries) {
         expect(getAllowedModels(definition)).toEqual([ModelId.Phs2023]);
         expect(definition.defaultModelId).toBe(ModelId.Phs2023);
         continue;
@@ -80,10 +80,10 @@ describe("workspace route definitions", () => {
 
       const allowedModels = getAllowedModels(definition);
       expect(allowedModels).toContain(definition.defaultModelId);
-      const routeWorkspace = definition.workspace as typeof WorkspaceId.Standard | typeof WorkspaceId.Explore;
-      const expectedCapability = routeWorkspace === WorkspaceId.Explore
-        ? WorkspaceId.Explore
-        : WorkspaceId.Standard;
+      const routeWorkspace = definition.workspace as typeof SurfaceId.Standard | typeof SurfaceId.Explore;
+      const expectedCapability = routeWorkspace === SurfaceId.Explore
+        ? SurfaceId.Explore
+        : SurfaceId.Standard;
       expect(getComfortModelConfig(definition.defaultModelId).workspaceCapabilities)
         .toContain(expectedCapability);
       for (const modelId of allowedModels) {
@@ -105,22 +105,22 @@ describe("workspace route definitions", () => {
 
     expect(matrix["/standard/ashrae-55/"]).toEqual({
       models: [ModelId.PmvAshrae, ModelId.AdaptiveAshrae],
-      workspace: WorkspaceId.Standard,
+      workspace: SurfaceId.Standard,
       defaultModel: ModelId.PmvAshrae,
     });
     expect(matrix["/standard/iso-7730/"]).toEqual({
       models: [ModelId.PmvIso],
-      workspace: WorkspaceId.Standard,
+      workspace: SurfaceId.Standard,
       defaultModel: ModelId.PmvIso,
     });
     expect(matrix["/standard/en-16798-1/"]).toEqual({
       models: [ModelId.AdaptiveEn],
-      workspace: WorkspaceId.Standard,
+      workspace: SurfaceId.Standard,
       defaultModel: ModelId.AdaptiveEn,
     });
     expect(matrix["/standard/iso-7933/"]).toEqual({
       models: [ModelId.Phs2023],
-      workspace: WorkspaceId.Standard,
+      workspace: SurfaceId.Standard,
       defaultModel: ModelId.Phs2023,
     });
     expect(matrix["/explore/"]).toEqual({
@@ -133,12 +133,12 @@ describe("workspace route definitions", () => {
         ModelId.WindChill,
         ModelId.Phs2023,
       ],
-      workspace: WorkspaceId.Explore,
+      workspace: SurfaceId.Explore,
       defaultModel: ModelId.PmvAshrae,
     });
     expect(matrix["/time-series/"]).toEqual({
       models: [ModelId.Phs2023],
-      workspace: WorkspaceId.TimeSeries,
+      workspace: SurfaceId.TimeSeries,
       defaultModel: ModelId.Phs2023,
     });
   });

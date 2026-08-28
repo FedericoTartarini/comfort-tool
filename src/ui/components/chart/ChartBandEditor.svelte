@@ -1,24 +1,24 @@
 <script lang="ts">
   import { Button, Input, Label, Modal } from "flowbite-svelte";
+  import { PhysicalQuantityId } from "../../../catalog/quantities";
   import { PlusOutline, TrashBinOutline } from "flowbite-svelte-icons";
-  import type {
-    ModelOutputKey,
-    NumericBand,
-  } from "../../../catalog/modelCapabilities";
+  import type { NumericBand } from "../../../catalog/modelCapabilities";
   import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
   import {
     normalizeNumericBands,
     validateNumericBands,
   } from "../../../engines/comfort/charts/bands";
   import {
-    convertModelOutputFromSi,
-    convertModelOutputToSi,
-    getModelOutputDisplayMeta,
+    convertQuantityFromSi,
+    convertQuantityToSi,
+    formatDisplayValue,
+    getQuantityDisplayMeta,
+    roundToDisplay,
   } from "../../../engines/units";
 
   interface Props {
     idPrefix: string;
-    outputKey: ModelOutputKey;
+    outputKey: PhysicalQuantityId;
     bands: readonly NumericBand[];
     defaultBands: readonly NumericBand[];
     unitSystem: UnitSystemType;
@@ -49,7 +49,7 @@
   let drafts = $state<BandDraft[]>([]);
   let listErrors = $state<string[]>([]);
 
-  const outputMeta = $derived(getModelOutputDisplayMeta(outputKey, unitSystem));
+  const outputMeta = $derived(getQuantityDisplayMeta(outputKey, unitSystem));
   const unitSuffix = $derived(outputMeta.displayUnits ? ` (${outputMeta.displayUnits})` : "");
   const draftBands = $derived(drafts.map(draftToBand));
   const draftValidation = $derived(validateNumericBands(
@@ -63,8 +63,8 @@
   });
 
   function formatFiniteEdge(valueSi: number): string {
-    const displayValue = convertModelOutputFromSi(outputKey, valueSi, unitSystem);
-    return Number(displayValue.toFixed(outputMeta.decimals)).toString();
+    const displayValue = convertQuantityFromSi(outputKey, valueSi, unitSystem);
+    return formatDisplayValue(displayValue);
   }
 
   function toDrafts(sourceBands: readonly NumericBand[]): BandDraft[] {
@@ -92,7 +92,7 @@
       return NaN;
     }
 
-    const displayValue = Number(value);
+    const displayValue = roundToDisplay(Number(value));
     // An unchanged rounded display value must retain its exact SI source boundary.
     if (
       sourceValueSi !== undefined &&
@@ -101,7 +101,7 @@
       return sourceValueSi;
     }
 
-    return convertModelOutputToSi(outputKey, displayValue, unitSystem);
+    return convertQuantityToSi(outputKey, displayValue, unitSystem);
   }
 
   function draftToBand(draft: BandDraft): NumericBand {

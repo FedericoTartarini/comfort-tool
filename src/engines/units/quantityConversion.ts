@@ -8,7 +8,7 @@ import {
   isSiUnit,
   type UnitSystem as UnitSystemType,
 } from "../../catalog/units";
-import { convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
+import { convertTemperatureDeltaFromSi, convertTemperatureDeltaToSi, convertTemperatureFromSi, convertTemperatureToSi } from "./temperature";
 import {
   convertHeatFluxFromSi,
   convertHeatFluxToSi,
@@ -33,18 +33,27 @@ export function convertCanonicalSiUnitFromSi(
   valueSi: number,
   unitSystem: UnitSystemType,
 ): number {
+  if (!Number.isFinite(valueSi)) {
+    return valueSi;
+  }
   if (!isSiUnit(siUnit)) {
     throw new Error(`Unknown SI unit "${siUnit}".`);
   }
   switch (siUnit) {
     case SiUnit.DegreeCelsius:
       return unitSystem === UnitSystem.IP ? convertTemperatureFromSi(valueSi) : valueSi;
+    case SiUnit.KelvinDelta:
+      return unitSystem === UnitSystem.IP ? convertTemperatureDeltaFromSi(valueSi) : valueSi;
+    case SiUnit.Minute:
+      return valueSi / 60;
     case SiUnit.MeterPerSecond:
       return unitSystem === UnitSystem.IP ? convertSpeedFromSi(valueSi) : valueSi;
     case SiUnit.WattPerSquareMeter:
       return unitSystem === UnitSystem.IP ? convertHeatFluxFromSi(valueSi) : valueSi;
     case SiUnit.Kilogram:
       return unitSystem === UnitSystem.IP ? convertMassFromSi(valueSi * 1000) : valueSi;
+    case SiUnit.Gram:
+      return unitSystem === UnitSystem.IP ? convertMassFromSi(valueSi) : valueSi / 1000;
     case SiUnit.Meter:
       return unitSystem === UnitSystem.IP ? convertLengthFromSi(valueSi) : valueSi;
     case SiUnit.KilogramPerKilogram:
@@ -69,18 +78,27 @@ export function convertCanonicalSiUnitToSi(
   value: number,
   unitSystem: UnitSystemType,
 ): number {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
   if (!isSiUnit(siUnit)) {
     throw new Error(`Unknown SI unit "${siUnit}".`);
   }
   switch (siUnit) {
     case SiUnit.DegreeCelsius:
       return unitSystem === UnitSystem.IP ? convertTemperatureToSi(value) : value;
+    case SiUnit.KelvinDelta:
+      return unitSystem === UnitSystem.IP ? convertTemperatureDeltaToSi(value) : value;
+    case SiUnit.Minute:
+      return value * 60;
     case SiUnit.MeterPerSecond:
       return unitSystem === UnitSystem.IP ? convertSpeedToSi(value) : value;
     case SiUnit.WattPerSquareMeter:
       return unitSystem === UnitSystem.IP ? convertHeatFluxToSi(value) : value;
     case SiUnit.Kilogram:
       return unitSystem === UnitSystem.IP ? convertMassToSi(value) / 1000 : value;
+    case SiUnit.Gram:
+      return unitSystem === UnitSystem.IP ? convertMassToSi(value) : value * 1000;
     case SiUnit.Meter:
       return unitSystem === UnitSystem.IP ? convertLengthToSi(value) : value;
     case SiUnit.KilogramPerKilogram:

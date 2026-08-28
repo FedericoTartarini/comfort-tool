@@ -18,39 +18,29 @@ import {
   ModelId,
   type ModelId as ModelIdType,
 } from "../../../catalog/modelIds";
-import { defaultPhsPersonSettings, PhsQuantityId } from "../../../catalog/phs";
-import { SiUnit } from "../../../catalog/units";
+import { defaultPhsPersonSettings } from "../../../catalog/phs";
 import {
   PhysicalQuantityId,
-  PhysicalQuantityScope,
   QuantityState,
-  assembleQuantityCatalog,
   getPhysicalQuantityMeta,
   primaryInputOrder,
-  systemQuantityMetaById,
+  resolveQuantityState,
 } from "../../../catalog/quantities";
 import { ModifierId } from "../../../catalog/inputModifiers";
-import {
-  findNumericBandIndexForValue,
-  ModelOutputKey,
-  resolveBandEdge,
-  type BandInputsSi,
-} from "../../../catalog/modelCapabilities";
+import { findNumericBandIndexForValue, resolveBandEdge, type BandInputsSi } from "../../../catalog/modelCapabilities";
 import type { ThermalZone } from "../../../catalog/thermalZone";
 import {
   StandardId,
-  WorkspaceId,
-  supportsStandardWorkspace,
-} from "../../../catalog/workspaces";
-import { ChartType } from "../../../catalog/chartTypes";
-import { TableType } from "../../../catalog/tableTypes";
+  SurfaceId,
+  supportsStandardSurface,
+} from "../../../catalog/surfaces";
+import { ChartType, resolveChartCapabilities } from "../../../catalog/chartTypes";
 import {
   comfortModelConfigs,
   comfortModelOrder,
-  collectRegisteredQuantityExtensions,
   getComfortModelConfig,
   getDeclaredChartInstanceIds,
-  getModelsForWorkspace,
+  getModelsForSurface,
   getModelsForStandard,
 } from ".";
 
@@ -134,7 +124,10 @@ describe("comfort model capability registry", () => {
       expect(config.chartInstances.entries).toHaveLength(1);
       const [dynamicChart] = config.chartInstances.entries;
       expect(dynamicChart.type).toBe(ChartType.Dynamic);
-      expect(dynamicChart.capabilities?.allowsAxisSelection).toBe(true);
+      expect(
+        resolveChartCapabilities(dynamicChart.type, dynamicChart.capabilities)
+          .allowsAxisSelection,
+      ).toBe(true);
     });
   });
 
@@ -195,7 +188,9 @@ describe("comfort model capability registry", () => {
       );
       expect(heatLoss?.type).toBe(ChartType.HeatLoss);
       expect(set?.type).toBe(ChartType.Set);
-      expect(heatLoss?.capabilities).toEqual(
+      expect(
+        resolveChartCapabilities(heatLoss!.type, heatLoss?.capabilities),
+      ).toEqual(
         expect.objectContaining({
           allowsAxisSelection: false,
           allowsBaselineSelection: true,
@@ -218,28 +213,29 @@ describe("comfort model capability registry", () => {
     expect(config.chartInstances.defaultInstanceId).toBe("phs-exposure-history");
     expect(history.instanceId).toBe("phs-exposure-history");
     expect(history.type).toBe(ChartType.BodyTemperature);
-    expect(history.capabilities).toEqual(
+    expect(
+      resolveChartCapabilities(history.type, history.capabilities),
+    ).toEqual(
       expect.objectContaining({
         allowsAxisSelection: false,
         allowsBaselineSelection: true,
       }),
     );
     expect(historyRegistration?.supportedExploreOutputs).toEqual([
-      ModelOutputKey.PhsRectalTemperature,
+      PhysicalQuantityId.PhsRectalTemperature,
     ]);
     expect(historyRegistration?.defaultExploreOutput).toBe(
-      ModelOutputKey.PhsRectalTemperature,
+      PhysicalQuantityId.PhsRectalTemperature,
     );
     expect(dynamic.instanceId).toBe("phs-dynamic-field");
-    expect(dynamic.capabilities).toEqual(
-      expect.objectContaining({
-        allowsAxisSelection: true,
-      }),
-    );
+    expect(
+      resolveChartCapabilities(dynamic.type, dynamic.capabilities)
+        .allowsAxisSelection,
+    ).toBe(true);
     expect(dynamicRegistration?.supportedExploreOutputs).toEqual([
-      ModelOutputKey.PhsLimitingExposureTime,
-      ModelOutputKey.PhsRectalTemperature,
-      ModelOutputKey.PhsWaterLoss,
+      PhysicalQuantityId.PhsLimitingExposureTime,
+      PhysicalQuantityId.PhsRectalTemperature,
+      PhysicalQuantityId.PhsWaterLoss,
     ]);
   });
 
@@ -255,66 +251,39 @@ describe("comfort model capability registry", () => {
     const expected = {
       [ModelId.PmvAshrae]: {
         count: 42,
-        defaults: {
-          xAxis: PhysicalQuantityId.DryBulbTemperature,
-          yAxis: PhysicalQuantityId.RelativeHumidity,
-        },
+        defaults: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
       },
       [ModelId.PmvIso]: {
         count: 42,
-        defaults: {
-          xAxis: PhysicalQuantityId.DryBulbTemperature,
-          yAxis: PhysicalQuantityId.RelativeHumidity,
-        },
+        defaults: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
       },
       [ModelId.Utci]: {
         count: 20,
-        defaults: {
-          xAxis: PhysicalQuantityId.DryBulbTemperature,
-          yAxis: PhysicalQuantityId.RelativeHumidity,
-        },
+        defaults: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
       },
       [ModelId.AdaptiveAshrae]: {
         count: 2,
-        defaults: {
-          xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
-          yAxis: PhysicalQuantityId.OperativeTemperature,
-        },
+        defaults: { xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature, yAxis: PhysicalQuantityId.OperativeTemperature },
       },
       [ModelId.AdaptiveEn]: {
         count: 2,
-        defaults: {
-          xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
-          yAxis: PhysicalQuantityId.OperativeTemperature,
-        },
+        defaults: { xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature, yAxis: PhysicalQuantityId.OperativeTemperature },
       },
       [ModelId.HeatIndex]: {
         count: 2,
-        defaults: {
-          xAxis: PhysicalQuantityId.DryBulbTemperature,
-          yAxis: PhysicalQuantityId.RelativeHumidity,
-        },
+        defaults: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
       },
       [ModelId.Humidex]: {
         count: 2,
-        defaults: {
-          xAxis: PhysicalQuantityId.DryBulbTemperature,
-          yAxis: PhysicalQuantityId.RelativeHumidity,
-        },
+        defaults: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
       },
       [ModelId.WindChill]: {
         count: 2,
-        defaults: {
-          xAxis: PhysicalQuantityId.DryBulbTemperature,
-          yAxis: PhysicalQuantityId.WindSpeed,
-        },
+        defaults: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.WindSpeed },
       },
       [ModelId.Phs2023]: {
         count: 30,
-        defaults: {
-          xAxis: PhysicalQuantityId.DryBulbTemperature,
-          yAxis: PhysicalQuantityId.RelativeHumidity,
-        },
+        defaults: { xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity },
       },
     } as const;
 
@@ -334,64 +303,52 @@ describe("comfort model capability registry", () => {
 
   it("declares the exact mode, output, and compliance matrix", () => {
     const expected = {
-      [ModelId.PmvAshrae]: {
-        capabilities: [
-          WorkspaceId.Standard,
-          WorkspaceId.Explore,
-        ],
-        outputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
-        complianceOutput: ModelOutputKey.Pmv,
-      },
-      [ModelId.PmvIso]: {
-        capabilities: [
-          WorkspaceId.Standard,
-          WorkspaceId.Explore,
-        ],
-        outputs: [ModelOutputKey.Pmv, ModelOutputKey.Ppd],
-        complianceOutput: ModelOutputKey.Pmv,
-      },
+      [ModelId.PmvAshrae]: { capabilities: [
+          SurfaceId.Standard, SurfaceId.Explore, ], outputs: [PhysicalQuantityId.Pmv, PhysicalQuantityId.Ppd], complianceOutput: PhysicalQuantityId.Pmv },
+      [ModelId.PmvIso]: { capabilities: [
+          SurfaceId.Standard, SurfaceId.Explore, ], outputs: [PhysicalQuantityId.Pmv, PhysicalQuantityId.Ppd], complianceOutput: PhysicalQuantityId.Pmv },
       [ModelId.Utci]: {
-        capabilities: [WorkspaceId.Explore],
-        outputs: [ModelOutputKey.Utci],
+        capabilities: [SurfaceId.Explore],
+        outputs: [PhysicalQuantityId.Utci],
         complianceOutput: undefined,
       },
       [ModelId.AdaptiveAshrae]: {
-        capabilities: [WorkspaceId.Standard],
+        capabilities: [SurfaceId.Standard],
         outputs: [],
-        complianceOutput: ModelOutputKey.OperativeTemperature,
+        complianceOutput: PhysicalQuantityId.OperativeTemperature,
       },
       [ModelId.AdaptiveEn]: {
-        capabilities: [WorkspaceId.Standard],
+        capabilities: [SurfaceId.Standard],
         outputs: [],
-        complianceOutput: ModelOutputKey.OperativeTemperature,
+        complianceOutput: PhysicalQuantityId.OperativeTemperature,
       },
       [ModelId.HeatIndex]: {
-        capabilities: [WorkspaceId.Explore],
-        outputs: [ModelOutputKey.HeatIndex],
+        capabilities: [SurfaceId.Explore],
+        outputs: [PhysicalQuantityId.HeatIndex],
         complianceOutput: undefined,
       },
       [ModelId.Humidex]: {
-        capabilities: [WorkspaceId.Explore],
-        outputs: [ModelOutputKey.Humidex],
+        capabilities: [SurfaceId.Explore],
+        outputs: [PhysicalQuantityId.Humidex],
         complianceOutput: undefined,
       },
       [ModelId.WindChill]: {
-        capabilities: [WorkspaceId.Explore],
-        outputs: [ModelOutputKey.WindChill],
+        capabilities: [SurfaceId.Explore],
+        outputs: [PhysicalQuantityId.WindChill],
         complianceOutput: undefined,
       },
       [ModelId.Phs2023]: {
         capabilities: [
-          WorkspaceId.Standard,
-          WorkspaceId.Explore,
-          WorkspaceId.TimeSeries,
+          SurfaceId.Standard,
+          SurfaceId.Explore,
+          SurfaceId.TimeSeries,
         ],
         outputs: [
-          ModelOutputKey.PhsLimitingExposureTime,
-          ModelOutputKey.PhsRectalTemperature,
-          ModelOutputKey.PhsWaterLoss,
+          PhysicalQuantityId.PhsLimitingExposureTime,
+          PhysicalQuantityId.PhsRectalTemperature,
+          PhysicalQuantityId.PhsWaterLoss,
         ],
-        complianceOutput: ModelOutputKey.PhsLimitingExposureTime,
+        complianceOutput: PhysicalQuantityId.PhsLimitingExposureTime,
       },
     } as const;
 
@@ -423,7 +380,7 @@ describe("comfort model capability registry", () => {
     expect(getModelsForStandard(StandardId.Iso7933)).toEqual([
       ModelId.Phs2023,
     ]);
-    expect(getModelsForWorkspace(WorkspaceId.Explore)).toEqual([
+    expect(getModelsForSurface(SurfaceId.Explore)).toEqual([
       ModelId.PmvAshrae,
       ModelId.PmvIso,
       ModelId.Utci,
@@ -433,25 +390,25 @@ describe("comfort model capability registry", () => {
       ModelId.Phs2023,
     ]);
 
-    expect(getModelsForWorkspace(WorkspaceId.TimeSeries)).toEqual([]);
+    expect(getModelsForSurface(SurfaceId.TimeSeries)).toEqual([
+      ModelId.Phs2023,
+    ]);
 
     for (const modelId of comfortModelOrder) {
       const config = getComfortModelConfig(modelId);
       expect(new Set(config.standardIds).size).toBe(config.standardIds.length);
       expect(config.standardIds.length > 0).toBe(
-        supportsStandardWorkspace(config.workspaceCapabilities),
+        supportsStandardSurface(config.workspaceCapabilities),
       );
     }
   });
 
-  it("declares Analysis tables for every model and a TimeSeries table only on PHS", () => {
+  it("declares Results tables for every model and a Time-series slot only on PHS", () => {
     comfortModelOrder.forEach((modelId) => {
       const { tables } = getComfortModelConfig(modelId);
-      expect(tables.analysis.type).toBe(TableType.Analysis);
-      expect(tables.analysis.rows.length).toBeGreaterThan(0);
+      expect(tables.results.length).toBeGreaterThan(0);
       if (modelId === ModelId.Phs2023) {
-        expect(tables.timeSeries?.type).toBe(TableType.TimeSeries);
-        expect(tables.timeSeries?.rows.length).toBeGreaterThan(0);
+        expect(tables.timeSeries?.length).toBeGreaterThan(0);
       } else {
         expect(tables.timeSeries).toBeUndefined();
       }
@@ -533,10 +490,10 @@ describe("comfort model capability registry", () => {
     const ashrae = getComfortModelConfig(ModelId.PmvAshrae);
     const iso = getComfortModelConfig(ModelId.PmvIso);
     const pmvOutput = ashrae.exploreOutputs.find(
-      (output) => output.key === ModelOutputKey.Pmv,
+      (output) => output.key === PhysicalQuantityId.Pmv,
     );
     const ppdOutput = ashrae.exploreOutputs.find(
-      (output) => output.key === ModelOutputKey.Ppd,
+      (output) => output.key === PhysicalQuantityId.Ppd,
     );
     const ppdBands = ppdOutput?.defaultBands;
 
@@ -584,18 +541,18 @@ describe("comfort model capability registry", () => {
     const enBands = adaptiveEnDeclaration.complianceProfile.bands;
 
     expect(adaptiveAshraeDeclaration.workspaceCapabilities).toEqual([
-      WorkspaceId.Standard,
+      SurfaceId.Standard,
     ]);
     expect(adaptiveEnDeclaration.workspaceCapabilities).toEqual([
-      WorkspaceId.Standard,
+      SurfaceId.Standard,
     ]);
     expect(adaptiveAshraeDeclaration.exploreOutputs).toEqual([]);
     expect(adaptiveEnDeclaration.exploreOutputs).toEqual([]);
     expect(adaptiveAshraeDeclaration.complianceProfile.output).toBe(
-      ModelOutputKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
     );
     expect(adaptiveEnDeclaration.complianceProfile.output).toBe(
-      ModelOutputKey.OperativeTemperature,
+      PhysicalQuantityId.OperativeTemperature,
     );
     const adaptiveChartInstance: Record<
       typeof ModelId.AdaptiveAshrae | typeof ModelId.AdaptiveEn,
@@ -665,73 +622,30 @@ describe("comfort model capability registry", () => {
     });
   });
 
-  it("assembles one quantity catalog from the system seed and declaration extensions", () => {
-    const weight = getPhysicalQuantityMeta(PhsQuantityId.BodyWeight);
-    const height = getPhysicalQuantityMeta(PhsQuantityId.Height);
-    const phsExtensions = getComfortModelConfig(ModelId.Phs2023).quantities
-      .extend;
+  it("keeps body weight and height as Extra catalog quantities that only PHS selects", () => {
+    const weight = getPhysicalQuantityMeta(PhysicalQuantityId.BodyWeight);
+    const height = getPhysicalQuantityMeta(PhysicalQuantityId.Height);
 
-    expect(systemQuantityMetaById).not.toHaveProperty(PhsQuantityId.BodyWeight);
-    expect(systemQuantityMetaById).not.toHaveProperty(PhsQuantityId.Height);
-    expect(primaryInputOrder).not.toContain(PhsQuantityId.BodyWeight);
-    expect(primaryInputOrder).not.toContain(PhsQuantityId.Height);
-
-    expect(phsExtensions.map((extension) => extension.id)).toEqual([
-      PhsQuantityId.BodyWeight,
-      PhsQuantityId.Height,
-    ]);
+    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.BodyWeight);
+    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.Height);
     expect(weight).toMatchObject({
-      id: PhsQuantityId.BodyWeight,
-      scope: PhysicalQuantityScope.Model,
-      state: QuantityState.Model,
-      ownerModelId: ModelId.Phs2023,
-      defaultSi: defaultPhsPersonSettings[PhsQuantityId.BodyWeight],
+      id: PhysicalQuantityId.BodyWeight,
+      defaultSi: defaultPhsPersonSettings[PhysicalQuantityId.BodyWeight],
     });
     expect(height).toMatchObject({
-      id: PhsQuantityId.Height,
-      scope: PhysicalQuantityScope.Model,
-      state: QuantityState.Model,
-      ownerModelId: ModelId.Phs2023,
-      defaultSi: defaultPhsPersonSettings[PhsQuantityId.Height],
+      id: PhysicalQuantityId.Height,
+      defaultSi: defaultPhsPersonSettings[PhysicalQuantityId.Height],
     });
+    expect(resolveQuantityState(PhysicalQuantityId.BodyWeight)).toBe(QuantityState.Extra);
+    expect(resolveQuantityState(PhysicalQuantityId.Height)).toBe(QuantityState.Extra);
+    expect(getComfortModelConfig(ModelId.Phs2023).extraQuantities).toEqual([
+      PhysicalQuantityId.BodyWeight,
+      PhysicalQuantityId.Height,
+    ]);
 
     for (const modelId of comfortModelOrder) {
       if (modelId === ModelId.Phs2023) continue;
-      expect(getComfortModelConfig(modelId).quantities.extend).toEqual([]);
+      expect(getComfortModelConfig(modelId).extraQuantities).toEqual([]);
     }
-  });
-
-  it("fails registry quantity assemble when two declarations extend the same id", () => {
-    const mass = {
-      id: "audit.exampleMass",
-      owner: ModelId.PmvAshrae,
-      scope: PhysicalQuantityScope.Model,
-      label: "Example mass",
-      display: {
-        units: { SI: SiUnit.Kilogram, IP: "lb" },
-        displayUnits: { SI: "kg", IP: "lb" },
-        step: 1,
-        decimals: 0,
-      },
-      defaultSi: 70,
-      minSi: 40,
-      maxSi: 120,
-    };
-
-    expect(() =>
-      assembleQuantityCatalog(
-        collectRegisteredQuantityExtensions([
-          { id: ModelId.PmvAshrae, quantities: { extend: [mass] } },
-          {
-            id: ModelId.PmvIso,
-            quantities: { extend: [{ ...mass, owner: ModelId.PmvIso }] },
-          },
-        ]),
-      ),
-    ).toThrow(/Duplicate quantity id "audit.exampleMass"/);
-
-    expect(getPhysicalQuantityMeta(PhsQuantityId.BodyWeight).ownerModelId).toBe(
-      ModelId.Phs2023,
-    );
   });
 });

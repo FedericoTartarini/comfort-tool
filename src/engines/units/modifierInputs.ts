@@ -10,7 +10,6 @@ export interface ModifierFieldDisplayMeta {
   label: string;
   displayUnits: string;
   step: number;
-  decimals: number;
   minValue?: number;
   maxValue?: number;
 }
@@ -41,7 +40,6 @@ export function getModifierFieldDisplayMeta(
     label: meta.label,
     displayUnits: display.displayUnits,
     step: display.step,
-    decimals: display.decimals,
     minValue: convertModifierFieldValueFromSi(key, meta.minSi, unitSystem),
     maxValue: convertModifierFieldValueFromSi(key, meta.maxSi, unitSystem),
   };

@@ -9,11 +9,8 @@ import {
   inputOrder,
   type InputId as InputIdType,
 } from "../../catalog/inputSlots";
-import {
-  type ModelOutputKey,
-  type NumericBand,
-} from "../../catalog/modelCapabilities";
-import type { WorkspaceId as WorkspaceIdType } from "../../catalog/workspaces";
+import { type NumericBand } from "../../catalog/modelCapabilities";
+import type { SurfaceId as SurfaceIdType } from "../../catalog/surfaces";
 import { syncDerivedStateForInput } from "../../engines/comfort/syncState";
 import { getComfortModelConfig } from "./modelConfigs";
 import {
@@ -83,8 +80,8 @@ export function createAnalysisActions(
     nextModel: ModelIdType,
     options?: { schedule?: boolean },
   ) {
-    state.ui.selectedModel = nextModel;
-    state.ui.errorMessage = "";
+    state.setting.selectedModel = nextModel;
+    state.output.errorMessage = "";
 
     if (options?.schedule !== false) {
       scheduleCalculation({ immediate: true });
@@ -107,13 +104,13 @@ export function createAnalysisActions(
     nextModel: ModelIdType,
     options?: { validateRanges?: boolean; schedule?: boolean },
   ) {
-    if (state.ui.selectedModel === nextModel) {
+    if (state.setting.selectedModel === nextModel) {
       return;
     }
 
     const nextModelConfig = getComfortModelConfig(nextModel);
     const nextModelOptions = nextModelConfig.parseOptions(
-      state.ui.modelOptionsByModel[nextModel],
+      state.setting.modelOptionsByModel[nextModel],
     );
     if (!nextModelOptions) {
       throw new Error(`Invariant violation: invalid options state for ${nextModel}.`);
@@ -123,7 +120,7 @@ export function createAnalysisActions(
       : findModelSwitchViolations(nextModelConfig, internals.getModelContext(nextModel));
 
     if (violations.length > 0) {
-      state.ui.pendingModelSwitch = {
+      state.setting.pendingModelSwitch = {
         targetModel: nextModel,
         violations,
       };
@@ -134,11 +131,11 @@ export function createAnalysisActions(
   }
 
   function confirmModelSwitch(options?: { schedule?: boolean }) {
-    if (!state.ui.pendingModelSwitch) {
+    if (!state.setting.pendingModelSwitch) {
       return;
     }
 
-    const { targetModel, violations } = state.ui.pendingModelSwitch;
+    const { targetModel, violations } = state.setting.pendingModelSwitch;
 
     const modelConfig = getComfortModelConfig(targetModel);
     const context = internals.getModelContext(targetModel);
@@ -150,13 +147,13 @@ export function createAnalysisActions(
       internals.applyBehaviorPatch(targetModel, patch);
     }
 
-    state.ui.pendingModelSwitch = null;
+    state.setting.pendingModelSwitch = null;
     internals.invalidateAllModels();
     completeModelSelection(targetModel, options);
   }
 
   function cancelModelSwitch() {
-    state.ui.pendingModelSwitch = null;
+    state.setting.pendingModelSwitch = null;
   }
 
   function setSelectedChartInstance(instanceId: string) {
@@ -168,7 +165,7 @@ export function createAnalysisActions(
       return;
     }
 
-    state.ui.selectedChartInstanceByModel[state.ui.selectedModel] = instanceId;
+    state.setting.selectedChartInstanceByModel[state.setting.selectedModel] = instanceId;
 
     const registration = findChartEngineRegistration(
       config.chartEngineRegistrations,
@@ -186,35 +183,35 @@ export function createAnalysisActions(
 
   function setModelOption(optionKey: OptionKeyType, nextValue: string) {
     const modelConfig = internals.getActiveModelConfig();
-    const context = internals.getModelContext(state.ui.selectedModel);
+    const context = internals.getModelContext(state.setting.selectedModel);
     const patch = modelConfig.optionHandlersByKey[optionKey]?.(context, nextValue) ?? null;
 
     if (!patch) {
       return;
     }
 
-    internals.applyBehaviorPatch(state.ui.selectedModel, patch);
+    internals.applyBehaviorPatch(state.setting.selectedModel, patch);
     if (patch.quantitiesPatch) {
       internals.invalidateAllModels();
     } else {
-      internals.invalidateModel(state.ui.selectedModel);
+      internals.invalidateModel(state.setting.selectedModel);
     }
     scheduleCalculation({ immediate: true });
   }
 
   function setCompareEnabled(enabled: boolean) {
-    state.ui.compareEnabled = enabled;
+    state.setting.compareEnabled = enabled;
 
     if (enabled) {
-      state.ui.compareInputIds = normalizeCompareInputIds(state.ui.compareInputIds);
-      if (state.ui.compareInputIds.length < 2) {
-        state.ui.compareInputIds = createDefaultCompareInputIds();
+      state.setting.compareInputIds = normalizeCompareInputIds(state.setting.compareInputIds);
+      if (state.setting.compareInputIds.length < 2) {
+        state.setting.compareInputIds = createDefaultCompareInputIds();
       }
-      if (!state.ui.compareInputIds.includes(state.ui.activeInputId)) {
-        state.ui.activeInputId = state.ui.compareInputIds[0] ?? InputId.Input1;
+      if (!state.setting.compareInputIds.includes(state.setting.activeInputId)) {
+        state.setting.activeInputId = state.setting.compareInputIds[0] ?? InputId.Input1;
       }
     } else {
-      state.ui.activeInputId = InputId.Input1;
+      state.setting.activeInputId = InputId.Input1;
     }
 
     internals.invalidateAllModels();
@@ -222,21 +219,21 @@ export function createAnalysisActions(
   }
 
   function setActiveInputId(nextInputId: InputIdType) {
-    state.ui.activeInputId = nextInputId;
+    state.setting.activeInputId = nextInputId;
   }
 
   function toggleCompareInputVisibility(inputId: InputIdType) {
-    if (!state.ui.compareEnabled || inputId === InputId.Input1) {
+    if (!state.setting.compareEnabled || inputId === InputId.Input1) {
       return;
     }
 
-    if (state.ui.compareInputIds.includes(inputId)) {
-      state.ui.compareInputIds = state.ui.compareInputIds.filter((visibleInputId) => visibleInputId !== inputId);
-      if (state.ui.activeInputId === inputId) {
-        state.ui.activeInputId = state.ui.compareInputIds[0] ?? InputId.Input1;
+    if (state.setting.compareInputIds.includes(inputId)) {
+      state.setting.compareInputIds = state.setting.compareInputIds.filter((visibleInputId) => visibleInputId !== inputId);
+      if (state.setting.activeInputId === inputId) {
+        state.setting.activeInputId = state.setting.compareInputIds[0] ?? InputId.Input1;
       }
     } else {
-      state.ui.compareInputIds = normalizeCompareInputIds([...state.ui.compareInputIds, inputId]);
+      state.setting.compareInputIds = normalizeCompareInputIds([...state.setting.compareInputIds, inputId]);
     }
 
     internals.invalidateAllModels();
@@ -244,11 +241,11 @@ export function createAnalysisActions(
   }
 
   function toggleUnitSystem() {
-    state.ui.unitSystem = state.ui.unitSystem === UnitSystem.SI ? UnitSystem.IP : UnitSystem.SI;
+    state.setting.unitSystem = state.setting.unitSystem === UnitSystem.SI ? UnitSystem.IP : UnitSystem.SI;
   }
 
-  function setActiveWorkspace(workspace: WorkspaceIdType) {
-    state.ui.activeWorkspace = workspace;
+  function setActiveSurface(workspace: SurfaceIdType) {
+    state.setting.activeSurface = workspace;
   }
 
   function setDynamicXAxis(fieldKey: ChartAxisQuantityId) {
@@ -283,7 +280,7 @@ export function createAnalysisActions(
     settings.yAxis = pair.yAxis;
   }
 
-  function setExploreOutput(outputKey: ModelOutputKey) {
+  function setExploreOutput(outputKey: PhysicalQuantityIdType) {
     const config = internals.getActiveModelConfig();
     const registration = findChartEngineRegistration(
       config.chartEngineRegistrations,
@@ -337,14 +334,14 @@ export function createAnalysisActions(
 
     const storage = resolveQuantityState(quantityId);
     if (storage === QuantityState.Primary) {
-      applyPrimaryPatch(state.quantitiesByInput, inputId, { [quantityId]: valueSi });
+      applyPrimaryPatch(state.input.quantitiesByInput, inputId, { [quantityId]: valueSi });
       syncDerivedStateForInput(
         inputId,
-        state.quantitiesByInput,
-        state.auxiliaryQuantitiesByInput,
+        state.input.quantitiesByInput,
+        state.input.auxiliaryQuantitiesByInput,
       );
     } else if (storage === QuantityState.Slot) {
-      setSlotQuantity(state.auxiliaryQuantitiesByInput[inputId], quantityId, valueSi);
+      setSlotQuantity(state.input.auxiliaryQuantitiesByInput[inputId], quantityId, valueSi);
     } else {
       return false;
     }
@@ -361,8 +358,8 @@ export function createAnalysisActions(
   ): boolean {
     const meta = getPhysicalQuantityMeta(quantityId);
     if (
-      resolveQuantityState(quantityId) !== QuantityState.Model
-      || meta.ownerModelId !== modelId
+      resolveQuantityState(quantityId) !== QuantityState.Extra
+      || !getComfortModelConfig(modelId).extraQuantities.some((id) => id === quantityId)
       || !Number.isFinite(valueSi)
       || valueSi < meta.minSi
       || valueSi > meta.maxSi
@@ -370,8 +367,8 @@ export function createAnalysisActions(
       return false;
     }
 
-    setModelQuantity(state.modelInputsByModel[modelId], quantityId, valueSi);
-    if (state.ui.selectedModel === modelId) {
+    setModelQuantity(state.input.modelInputsByModel[modelId], quantityId, valueSi);
+    if (state.setting.selectedModel === modelId) {
       internals.invalidateAllModels();
       scheduleCalculation();
     }
@@ -385,7 +382,7 @@ export function createAnalysisActions(
     }
 
     const patch = control.behavior.applyInput(
-      internals.getModelContext(state.ui.selectedModel),
+      internals.getModelContext(state.setting.selectedModel),
       inputId,
       rawValue,
     );
@@ -393,7 +390,7 @@ export function createAnalysisActions(
       return;
     }
 
-    internals.applyBehaviorPatch(state.ui.selectedModel, patch);
+    internals.applyBehaviorPatch(state.setting.selectedModel, patch);
 
     internals.invalidateAllModels();
     scheduleCalculation();
@@ -427,20 +424,20 @@ export function createAnalysisActions(
     const modifier = findModelModifier(internals.getActiveModelConfig(), modifierId);
     if (!modifier) return false;
 
-    const auxiliary = state.auxiliaryQuantitiesByInput[inputId];
-    const wasActive = state.activeModifiersByInput[inputId][modifierId];
+    const auxiliary = state.input.auxiliaryQuantitiesByInput[inputId];
+    const wasActive = state.input.activeModifiersByInput[inputId][modifierId];
     const transition = parseModifierInputTransition(
       modifier,
       quantityId,
       rawValue,
-      state.ui.unitSystem,
+      state.setting.unitSystem,
       wasActive,
     );
     if (!transition.accepted) return false;
 
     setSlotQuantity(auxiliary, quantityId, transition.valueSi);
     if (transition.disableModifier) {
-      state.activeModifiersByInput[inputId][modifierId] = false;
+      state.input.activeModifiersByInput[inputId][modifierId] = false;
       refreshAfterModifierChange(modifierId, { immediate: true });
     } else if (wasActive) {
       refreshAfterModifierChange(modifierId);
@@ -455,19 +452,19 @@ export function createAnalysisActions(
   ): boolean {
     const modifier = findModelModifier(internals.getActiveModelConfig(), modifierId);
     if (!modifier) return false;
-    const currentEnabled = state.activeModifiersByInput[inputId][modifierId];
+    const currentEnabled = state.input.activeModifiersByInput[inputId][modifierId];
     if (currentEnabled === enabled) return true;
     if (
       enabled
       && !canEnableModifier(
         modifier,
-        state.auxiliaryQuantitiesByInput[inputId],
+        state.input.auxiliaryQuantitiesByInput[inputId],
       )
     ) {
       return false;
     }
 
-    state.activeModifiersByInput[inputId][modifierId] = enabled;
+    state.input.activeModifiersByInput[inputId][modifierId] = enabled;
     refreshAfterModifierChange(modifierId, { immediate: true });
     return true;
   }
@@ -486,9 +483,9 @@ export function createAnalysisActions(
       const modifier = findModelModifier(config, entry.modifierId);
       if (!modifier) return false;
 
-      const wasEnabled = state.activeModifiersByInput[entry.inputId][entry.modifierId];
+      const wasEnabled = state.input.activeModifiersByInput[entry.inputId][entry.modifierId];
       const currentInputs = collectModifierInputsForModifier(
-        state.auxiliaryQuantitiesByInput[entry.inputId],
+        state.input.auxiliaryQuantitiesByInput[entry.inputId],
         entry.modifierId,
       );
       const inputsChanged = modifier.extraInputs.some((quantityId) => (
@@ -500,11 +497,11 @@ export function createAnalysisActions(
     }
 
     for (const entry of draft) {
-      state.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
+      state.input.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
       for (const quantityId of config.modifiers
         .find(({ id }) => id === entry.modifierId)?.extraInputs ?? []) {
         setSlotQuantity(
-          state.auxiliaryQuantitiesByInput[entry.inputId],
+          state.input.auxiliaryQuantitiesByInput[entry.inputId],
           quantityId,
           entry.inputs[quantityId],
         );
@@ -526,7 +523,7 @@ export function createAnalysisActions(
     setActiveInputId,
     toggleCompareInputVisibility,
     toggleUnitSystem,
-    setActiveWorkspace,
+    setActiveSurface,
     setDynamicXAxis,
     setDynamicYAxis,
     setExploreOutput,

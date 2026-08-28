@@ -1,10 +1,6 @@
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
-import type {
-  ModelOutputKey,
-  NumericBand,
-} from "../../catalog/modelCapabilities";
-import type { ChartAxisQuantityId } from "../../catalog/quantities";
+import type { NumericBand } from "../../catalog/modelCapabilities";
 import { ChartLegendKind } from "../../engines/comfort/charts/chartBuildResult";
 import { buildChartControlsViewModel } from "./chartPresentation";
 import type { AnalysisInternals } from "./analysisInternals";
@@ -17,12 +13,16 @@ import type {
   AnalysisSelectors,
   AnalysisStateSlice,
 } from "./types";
+import type {
+  ChartAxisQuantityId,
+  PhysicalQuantityId as PhysicalQuantityIdType,
+} from "../../catalog/quantities";
 
 export interface ChartControlCallbacks {
   onSelectBaseline: (inputId: InputIdType) => void;
   onSelectXAxis: (fieldKey: ChartAxisQuantityId) => void;
   onSelectYAxis: (fieldKey: ChartAxisQuantityId) => void;
-  onSelectOutput: (outputKey: ModelOutputKey) => void;
+  onSelectOutput: (outputKey: PhysicalQuantityIdType) => void;
   onApplyBands: (bands: readonly NumericBand[]) => boolean;
 }
 
@@ -42,10 +42,10 @@ export function createAnalysisSelectors(
       cache.resultsByInput,
       internals.getCurrentFieldChartProfile(),
       {
-        unitSystem: state.ui.unitSystem,
+        unitSystem: state.setting.unitSystem,
         baselineInputId: internals.getEffectiveChartBaselineInputId(),
         chartSourceVersion,
-        modelInputs: state.modelInputsByModel[state.ui.selectedModel],
+        modelInputs: state.input.modelInputsByModel[state.setting.selectedModel],
       },
     );
   }
@@ -54,12 +54,12 @@ export function createAnalysisSelectors(
     return buildChartControlsViewModel({
       config: internals.getActiveModelConfig(),
       settings: internals.getCurrentOutputSettings(),
-      workspace: state.ui.activeWorkspace,
+      workspace: state.setting.activeSurface,
       chartInstance: internals.getCurrentChartInstance(),
       cache: internals.getCurrentModelCache(),
       visibleInputIds: internals.getVisibleInputIds(),
-      compareEnabled: state.ui.compareEnabled,
-      unitSystem: state.ui.unitSystem,
+      compareEnabled: state.setting.compareEnabled,
+      unitSystem: state.setting.unitSystem,
       callbacks: chartControlCallbacks,
     });
   }
@@ -68,7 +68,7 @@ export function createAnalysisSelectors(
     getVisibleInputIds: internals.getVisibleInputIds,
     getInputControls: () => buildInputControlViewModels(
       internals.getActiveModelConfig(),
-      internals.getModelContext(state.ui.selectedModel),
+      internals.getModelContext(state.setting.selectedModel),
     ),
     getInputPanelViewModel: (
       allowedModelIds: readonly ModelIdType[],
@@ -76,14 +76,14 @@ export function createAnalysisSelectors(
     ) => {
       const config = internals.getActiveModelConfig();
       return buildInputPanelViewModel({
-        selectedModel: state.ui.selectedModel,
-        compareEnabled: state.ui.compareEnabled,
-        unitSystem: state.ui.unitSystem,
-        activeInputId: state.ui.activeInputId,
+        selectedModel: state.setting.selectedModel,
+        compareEnabled: state.setting.compareEnabled,
+        unitSystem: state.setting.unitSystem,
+        activeInputId: state.setting.activeInputId,
         visibleInputIds: internals.getVisibleInputIds(),
         allowedModelIds,
         config,
-        context: internals.getModelContext(state.ui.selectedModel),
+        context: internals.getModelContext(state.setting.selectedModel),
         committedModifierControls: internals.getInputModifierControls(),
         callbacks: inputPanelActionCallbacks,
         onSelectModel,
@@ -101,7 +101,7 @@ export function createAnalysisSelectors(
       return internals.getActiveModelConfig().buildTable(
         cache.resultsByInput,
         internals.getVisibleInputIds(),
-        state.ui.unitSystem,
+        state.setting.unitSystem,
       );
     },
     getCurrentChartResult: () => getCurrentChartBuildResult().payload,

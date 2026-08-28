@@ -21,7 +21,7 @@ import {
   type PmvResponse,
 } from "../../../declarations/pmv/calculation";
 import { createModelCalculationContext } from "../../../catalog/modelCalculation";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../catalog/quantities";
+import { PhysicalQuantityId, type ChartAxisQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
 import {
   AirSpeedControlMode,
   OptionKey,
@@ -29,12 +29,7 @@ import {
 } from "../../../catalog/inputModes";
 import { InputId } from "../../../catalog/inputSlots";
 import { inputChartStyleById } from "../../../catalog/inputSlotPresentation";
-import {
-  ModelOutputKey,
-  type ChartBuildContext,
-  type NumericBand,
-  type ModelOutputKey as ModelOutputKeyType,
-} from "../../../catalog/modelCapabilities";
+import { type ChartBuildContext, type NumericBand } from "../../../catalog/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
 import { convertFieldValueFromSi } from "../../units";
@@ -67,7 +62,7 @@ function calculateModel(
 } {
   const config = createPmvModelConfig(declaration);
   const toolState = createAnalysisState();
-  const stateInput = toolState.state.quantitiesByInput[InputId.Input1];
+  const stateInput = toolState.state.input.quantitiesByInput[InputId.Input1];
   stateInput[PhysicalQuantityId.DryBulbTemperature] = request.tdb;
   stateInput[PhysicalQuantityId.MeanRadiantTemperature] = request.tr;
   stateInput[PhysicalQuantityId.RelativeAirSpeed] = request.vr;
@@ -75,7 +70,7 @@ function calculateModel(
   stateInput[PhysicalQuantityId.MetabolicRate] = request.met;
   stateInput[PhysicalQuantityId.ClothingInsulation] = request.clo;
   stateInput[PhysicalQuantityId.ExternalWork] = request.wme;
-  toolState.state.ui.modelOptionsByModel[config.id] = {
+  toolState.state.setting.modelOptionsByModel[config.id] = {
     ...config.defaultOptions,
     [OptionKey.TemperatureMode]: temperatureMode,
     ...(declaration.adapter.supportsOccupantAirSpeedControl
@@ -87,10 +82,10 @@ function calculateModel(
       : {}),
   };
   const calculation = calculatePmvModel(createModelCalculationContext({
-    effectiveQuantitiesByInput: toolState.state.quantitiesByInput,
-    auxiliaryQuantitiesByInput: toolState.state.auxiliaryQuantitiesByInput,
-    modelInputs: toolState.state.modelInputsByModel[declaration.adapter.modelId],
-    options: toolState.state.ui.modelOptionsByModel[declaration.adapter.modelId],
+    effectiveQuantitiesByInput: toolState.state.input.quantitiesByInput,
+    auxiliaryQuantitiesByInput: toolState.state.input.auxiliaryQuantitiesByInput,
+    modelInputs: toolState.state.input.modelInputsByModel[declaration.adapter.modelId],
+    options: toolState.state.setting.modelOptionsByModel[declaration.adapter.modelId],
   }), [InputId.Input1], declaration.adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
@@ -118,7 +113,7 @@ function createContext(
   declaration: PmvModelDeclaration,
   xField: ChartAxisQuantityId,
   yField: ChartAxisQuantityId,
-  outputKey: ModelOutputKeyType,
+  outputKey: PhysicalQuantityIdType,
   unitSystem: UnitSystemType = UnitSystem.SI,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
 ): ChartBuildContext<NumericBand> {
@@ -149,7 +144,7 @@ function buildPsychrometric(
   declaration: PmvModelDeclaration,
   unitSystem: UnitSystemType = UnitSystem.SI,
   source = createSource(declaration),
-  outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
+  outputKey: PhysicalQuantityIdType = PhysicalQuantityId.Pmv,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
 ): ChartFigure {
   const { config, result } = calculateModel(declaration);
@@ -219,7 +214,7 @@ function buildDynamic(
   declaration: PmvModelDeclaration,
   xField: ChartAxisQuantityId,
   yField: ChartAxisQuantityId,
-  outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
+  outputKey: PhysicalQuantityIdType = PhysicalQuantityId.Pmv,
   unitSystem: UnitSystemType = UnitSystem.SI,
   request: ComfortZoneRequest = input,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
@@ -327,7 +322,7 @@ describe("PMV charts", () => {
       pmvAshraeDeclaration,
       UnitSystem.SI,
       createSource(pmvAshraeDeclaration),
-      ModelOutputKey.Ppd,
+      PhysicalQuantityId.Ppd,
       FieldChartProfileKind.Explore,
     );
     const outer = chart.traces.filter(({ name, fill }) => (
@@ -356,7 +351,7 @@ describe("PMV charts", () => {
         declaration,
         PhysicalQuantityId.DryBulbTemperature,
         PhysicalQuantityId.RelativeHumidity,
-        ModelOutputKey.Pmv,
+        PhysicalQuantityId.Pmv,
         UnitSystem.SI,
         FieldChartProfileKind.Compliance,
       ),
@@ -365,7 +360,7 @@ describe("PMV charts", () => {
       declaration,
       PhysicalQuantityId.DryBulbTemperature,
       PhysicalQuantityId.RelativeHumidity,
-      ModelOutputKey.Ppd,
+      PhysicalQuantityId.Ppd,
     );
     const editedBands = [
       {
@@ -390,7 +385,7 @@ describe("PMV charts", () => {
         fieldChartConfig: {
           ...baseExplore.fieldChartConfig,
           profileKind: FieldChartProfileKind.Explore,
-          zOutput: ModelOutputKey.Ppd,
+          zOutput: PhysicalQuantityId.Ppd,
           bands: editedBands,
         },
       },
@@ -482,10 +477,10 @@ describe("PMV charts", () => {
   });
 
   it.each([
-    ["ASHRAE Compliance", pmvAshraeDeclaration, FieldChartProfileKind.Compliance, ModelOutputKey.Pmv],
-    ["ASHRAE Explore", pmvAshraeDeclaration, FieldChartProfileKind.Explore, ModelOutputKey.Ppd],
-    ["ISO Compliance", pmvIsoDeclaration, FieldChartProfileKind.Compliance, ModelOutputKey.Pmv],
-    ["ISO Explore", pmvIsoDeclaration, FieldChartProfileKind.Explore, ModelOutputKey.Ppd],
+    ["ASHRAE Compliance", pmvAshraeDeclaration, FieldChartProfileKind.Compliance, PhysicalQuantityId.Pmv],
+    ["ASHRAE Explore", pmvAshraeDeclaration, FieldChartProfileKind.Explore, PhysicalQuantityId.Ppd],
+    ["ISO Compliance", pmvIsoDeclaration, FieldChartProfileKind.Compliance, PhysicalQuantityId.Pmv],
+    ["ISO Explore", pmvIsoDeclaration, FieldChartProfileKind.Explore, PhysicalQuantityId.Ppd],
   ] as const)(
     "uses the shared saturation boundary for %s",
     (_label, declaration, profileKind, outputKey) => {
@@ -544,7 +539,7 @@ describe("PMV charts", () => {
         declaration,
         PhysicalQuantityId.DryBulbTemperature,
         PhysicalQuantityId.HumidityRatio,
-        ModelOutputKey.Pmv,
+        PhysicalQuantityId.Pmv,
       ),
     );
     if (!airChart) throw new Error("Expected an Air psychrometric chart.");
@@ -570,7 +565,7 @@ describe("PMV charts", () => {
         declaration,
         PhysicalQuantityId.DryBulbTemperature,
         PhysicalQuantityId.HumidityRatio,
-        ModelOutputKey.Pmv,
+        PhysicalQuantityId.Pmv,
       ),
     );
     if (!operativeChart) throw new Error("Expected an Operative psychrometric chart.");
@@ -590,7 +585,7 @@ describe("PMV charts", () => {
     expect(neutralFill?.y).toEqual(comfortOutline?.y);
   });
 
-  it.each([ModelOutputKey.Pmv, ModelOutputKey.Ppd])(
+  it.each([PhysicalQuantityId.Pmv, PhysicalQuantityId.Ppd])(
     "builds the %s Explore output through continuous band constraints",
     (outputKey) => {
       const chart = buildDynamic(
@@ -599,7 +594,7 @@ describe("PMV charts", () => {
         PhysicalQuantityId.RelativeHumidity,
         outputKey,
       );
-      const fillTraces = bandFillTraces(chart, `${outputKey === ModelOutputKey.Pmv ? "PMV" : "PPD (%)"} bands:`);
+      const fillTraces = bandFillTraces(chart, `${outputKey === PhysicalQuantityId.Pmv ? "PMV" : "PPD (%)"} bands:`);
       const tooltipTraces = chart.traces.filter(({ name }) => name?.endsWith(" hover"));
       const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
@@ -607,7 +602,7 @@ describe("PMV charts", () => {
       expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
       expect(tooltipTraces).toHaveLength(0);
       expectInputMarkerHover(chart, [
-        outputKey === ModelOutputKey.Pmv ? "Zone:" : "Band:",
+        outputKey === PhysicalQuantityId.Pmv ? "Zone:" : "Band:",
         "PMV:",
         "PPD:",
       ]);
@@ -620,7 +615,7 @@ describe("PMV charts", () => {
       pmvAshraeDeclaration,
       PhysicalQuantityId.DryBulbTemperature,
       PhysicalQuantityId.RelativeHumidity,
-      ModelOutputKey.Pmv,
+      PhysicalQuantityId.Pmv,
       UnitSystem.SI,
       input,
       FieldChartProfileKind.Compliance,
@@ -673,7 +668,7 @@ describe("PMV charts", () => {
       pmvAshraeDeclaration,
       PhysicalQuantityId.OperativeTemperature,
       PhysicalQuantityId.RelativeHumidity,
-      ModelOutputKey.Pmv,
+      PhysicalQuantityId.Pmv,
       UnitSystem.SI,
       operativeInput,
     );
@@ -681,7 +676,7 @@ describe("PMV charts", () => {
       pmvIsoDeclaration,
       PhysicalQuantityId.OperativeTemperature,
       PhysicalQuantityId.RelativeHumidity,
-      ModelOutputKey.Pmv,
+      PhysicalQuantityId.Pmv,
       UnitSystem.SI,
       operativeInput,
     );
@@ -735,7 +730,7 @@ describe("PMV charts", () => {
       pmvAshraeDeclaration,
       PhysicalQuantityId.DryBulbTemperature,
       PhysicalQuantityId.RelativeHumidity,
-      ModelOutputKey.Pmv,
+      PhysicalQuantityId.Pmv,
       UnitSystem.IP,
     );
     const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
@@ -760,7 +755,7 @@ describe("PMV charts", () => {
       pmvAshraeDeclaration,
       PhysicalQuantityId.OperativeTemperature,
       PhysicalQuantityId.RelativeAirSpeed,
-      ModelOutputKey.Pmv,
+      PhysicalQuantityId.Pmv,
       UnitSystem.SI,
       { ...input, occupantHasAirSpeedControl: false },
     );
@@ -789,7 +784,7 @@ describe("PMV charts", () => {
         pmvAshraeDeclaration,
         PhysicalQuantityId.OperativeTemperature,
         PhysicalQuantityId.RelativeAirSpeed,
-        ModelOutputKey.Pmv,
+        PhysicalQuantityId.Pmv,
       ),
     ).clipAirSpeedWithoutOccupantControl).toBe(false);
   });

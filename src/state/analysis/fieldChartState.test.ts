@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { adaptiveAshraeModelConfig } from "../../declarations/adaptive/ashrae";
 import { pmvAshraeModelConfig } from "../../declarations/pmv/ashrae";
 import { utciModelConfig } from "../../declarations/utci/utci";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
-import { WorkspaceId } from "../../catalog/workspaces";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { SurfaceId } from "../../catalog/surfaces";
 import {
   buildFieldChartProfile,
   replaceExploreBands,
@@ -16,7 +16,7 @@ describe("field chart state helpers", () => {
   it("seeds Explore output settings for Explore-capable models and omits them otherwise", () => {
     expect(seedModelOutputSettings(adaptiveAshraeModelConfig).exploreOutput).toBeNull();
     expect(seedModelOutputSettings(utciModelConfig).exploreOutput)
-      .toBe(ModelOutputKey.Utci);
+      .toBe(PhysicalQuantityId.Utci);
   });
 
   it("seeds independent Explore bands and reseeds defaults when output changes", () => {
@@ -29,14 +29,14 @@ describe("field chart state helpers", () => {
     const ppd = selectExploreOutput(
       pmvAshraeModelConfig,
       settings,
-      ModelOutputKey.Ppd,
+      PhysicalQuantityId.Ppd,
     );
-    expect(ppd?.exploreOutput).toBe(ModelOutputKey.Ppd);
+    expect(ppd?.exploreOutput).toBe(PhysicalQuantityId.Ppd);
     expect(ppd?.exploreBands).toEqual(pmvAshraeModelConfig.exploreOutputs[1].defaultBands);
     expect(selectExploreOutput(
       pmvAshraeModelConfig,
       settings,
-      ModelOutputKey.Utci,
+      PhysicalQuantityId.Utci,
     )).toBeNull();
   });
 
@@ -57,12 +57,12 @@ describe("field chart state helpers", () => {
     const exploreProfile = buildFieldChartProfile(
       pmvAshraeModelConfig,
       exploreSettings,
-      WorkspaceId.Explore,
+      SurfaceId.Explore,
     );
     const complianceProfile = buildFieldChartProfile(
       pmvAshraeModelConfig,
       exploreSettings,
-      WorkspaceId.Standard,
+      SurfaceId.Standard,
     );
 
     expect(exploreProfile.bands[0].label).toBe("Edited");
@@ -84,13 +84,13 @@ describe("field chart state helpers", () => {
     expect(() => buildFieldChartProfile(
       { ...pmvAshraeModelConfig, complianceProfile: undefined },
       complianceSettings,
-      WorkspaceId.Standard,
+      SurfaceId.Standard,
     )).toThrow(/missing its compliance profile/i);
 
     expect(() => buildFieldChartProfile(pmvAshraeModelConfig, {
       ...complianceSettings,
-      exploreOutput: ModelOutputKey.Utci,
+      exploreOutput: PhysicalQuantityId.Utci,
       exploreBands: [],
-    }, WorkspaceId.Explore)).toThrow(/missing its Explore output settings/i);
+    }, SurfaceId.Explore)).toThrow(/missing its Explore output settings/i);
   });
 });

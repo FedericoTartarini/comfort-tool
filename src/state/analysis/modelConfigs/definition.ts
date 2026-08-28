@@ -15,8 +15,8 @@ import type { ModelTables } from "../../../catalog/tableTypes";
 import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import type {
   StandardId as StandardIdType,
-  WorkspaceId,
-} from "../../../catalog/workspaces";
+  SurfaceId,
+} from "../../../catalog/surfaces";
 import type { ChartBuildResult } from "../../../engines/comfort/charts/chartBuildResult";
 import type {
   SimulationOutputDeclaration,
@@ -29,7 +29,7 @@ import type {
 } from "../../../engines/comfort/controls/types";
 import type { InputFieldSpec } from "../../../engines/comfort/controls/fieldInputBehaviors";
 import type { ModelOptionsState, ResultSectionViewModel } from "../types";
-import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType, type QuantityExtension } from "../../../catalog/quantities";
+import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
 
 export type ModelCalculationOutputs<ResultType, ChartSourceType> = {
   resultsByInput: Record<InputIdType, ResultType | null>;
@@ -73,16 +73,14 @@ export interface ComfortModelDefinition<
   id: ModelIdType;
   label: string;
   description: string;
-  workspaceCapabilities: readonly WorkspaceId[];
+  workspaceCapabilities: readonly SurfaceId[];
   standardIds: readonly StandardIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
   complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
   controls: readonly InputControlDefinition[];
   inputFields: readonly InputFieldSpec[];
-  quantities: {
-    readonly extend: readonly QuantityExtension[];
-  };
+  extraQuantities: readonly PhysicalQuantityIdType[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   tables: ModelTables<ResultType>;
   chartInstances: ModelChartInstances;

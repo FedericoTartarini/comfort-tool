@@ -24,7 +24,7 @@ Analysis state lives at `src/state/analysis/`. Declarations live at `src/declara
 
 1. **Copy** `src/declarations/heatIndex.ts` to a new file under
    `src/declarations/`. Keep a complete `defineModel` object: `inputFields`,
-   zones, `calculate`, `tables.analysis`, and `charts`. For air
+   zones, `calculate`, `tables.results`, and `charts`. For air
    temperature plus wind, copy `windChill.ts` instead. Humidex is the other
    tdb+rh sibling.
 2. **Add the model id** to `ModelId` in `src/catalog/modelIds.ts`.
@@ -36,9 +36,7 @@ Analysis state lives at `src/state/analysis/`. Declarations live at `src/declara
 
 Then, only if the model actually needs them:
 
-- a new `ModelOutputKey` plus presentation in
-  `src/engines/units/modelOutputs.ts`
-- `quantities.extend` for model-scoped SI inputs (not a new primary)
+- extraQuantities to select Extra catalog ids (not a new primary; BodyWeight/Height already live in `quantities.ts`)
 - focused tests beside the declaration. Pin required Analysis control IDs
   there against the independently authored lists in
   `src/testSupport/requiredModelControls.ts` — do not derive the expected
@@ -70,9 +68,9 @@ work, not “add a model” work:
 
 Also forbidden in a declaration:
 
-- Plotly imports inside `defineModel` (`defineModel` is data-only Dynamic)
+- Plotly imports inside a Heat Index–class `defineModel` file (keep a data spec; Plotly assemble stays in `src/charts/`)
 - a parallel `ChartInstanceId` tree
-- a third `TableType`
+- a second ChartType, primary, or modifier catalog
 - a `jsthermalcomfort` import outside `src/declarations/**`,
   `src/engines/comfort/**`, or `src/charts/psychrometric/humidity.ts`
   (humidity ratio only)
@@ -95,8 +93,8 @@ src/
     routes/          client router
     views/           page composition
     utils/           UI actions (`clickOutside`)
-  catalog/           system quantity seed, ModelId, ChartType, TableType,
-                     modifiers, workspace ids, zone tokens;
+  catalog/           quantities (inputs and outputs), ModelId, ChartType,
+                     modifiers, SurfaceId, zone tokens;
                      Time-series declaration contracts (`timeSeries.ts`);
                      output/ field-chart profile metadata
   charts/            ChartType figure functions, draw/clone/export (native Plotly);
@@ -108,10 +106,10 @@ src/
     chartTheme.ts    Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
     plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
-    analysis/        Analysis controller, defineModel, registry, share codec,
-                     pure projections (chartPresentation, inputPresentation)
-    timeSeries/      separate PHS Time-series controller; editor/chart view models
-    workspace/       route / model / mode coordination
+    analysis/        point session (Standard+Explore): defineModel, registry, share,
+                     projections (chartPresentation, inputPresentation)
+    timeSeries/      Time-series session (PHS); editor/chart view models
+    workspace/       route / model / surface coordination
   testSupport/       Compare helper; golden inputs/control counts from the registry
 ```
 
@@ -128,59 +126,50 @@ geometry must not import models, quantities, or declarations. `engines/` is
 shrinking; do not add new ChartType geometry there.
 
 Canonical state is SI. Calculations run in SI. Display converts through
-`src/engines/units/` by reading assembled catalog SI units
+`src/engines/units/` by reading closed catalog SI units
 (`convertQuantityFromSi`). Control widgets stay generic.
 
-`App.svelte` constructs one Analysis controller
-(`createAnalysisState`) and one Time-series controller. Dashboard routes
-share Analysis SI input, per-model chart memory, and calculation caches.
-Time-series does not read or schedule Analysis.
+`App.svelte` constructs one point session
+(`createAnalysisState` / `PointSession`) and one Time-series session. Dashboard
+routes share point-session SI input, per-model chart memory, and calculation
+caches. Time-series does not read or schedule the point session.
 
-## Catalogs the declaration may use or contribute to
+## Catalogs the declaration may select
 
-Runtime catalogs assemble once from frontend seeds plus every registered
-declaration. Duplicate ids, wrong owners, unknown ChartTypes, or a Time-series
-table without Time-series capability fail `defineModel` / registry assemble.
-Assembled catalogs expose optional `assembledCatalogs.validate.model` for
-those checks. The type is optional; `assembleCatalogs` installs the hook on
-the returned instance. It is not a second authoring API — still copy
-`heatIndex.ts`, add a `ModelId` member, and register once.
-`assembleCatalogs` merges each model's `quantities.extend` with the system
-seed, so duplicate extend ids fail assemble without a pre-merged quantity map.
+Quantities and ChartTypes are closed frontend catalogs. Models select ids;
+they do not own, extend, or invent them. Extra ids that are not Extra,
+unknown ChartTypes, or a Time-series table without Time-series capability
+fail `defineModel` / `assembleCatalogs`. There is no `validate.model` hook
+and no TableType catalog. Copy `heatIndex.ts`, add a `ModelId` member, and
+register once.
 
-**Quantities.** `src/catalog/quantities.ts` is the system seed.
-`primaryInputOrder` is the exact persisted primary-key set. Chart-only and
-derived ids stay in the catalog but never enter primary records. A
-declaration may contribute model-scoped extensions:
+**Quantities.** `src/catalog/quantities.ts` is the closed catalog for inputs
+and outputs. `primaryInputOrder` is the exact persisted primary-key set.
+Occupancy is derived from lists, not stamped on catalog rows. Humidity ratio
+is one id (`hr`). BodyWeight and Height are Extra catalog ids
+(`bodyWeight`, `height`). A declaration may select Extra ids:
 
 ```ts
-quantities: {
-  extend: [{
-    id: "example-body-mass",
-    owner: ModelId.Example,
-    scope: PhysicalQuantityScope.Model,
-    /* SI label, units, default, min, max */
-  }],
-}
+extraQuantities: [PhysicalQuantityId.BodyWeight, PhysicalQuantityId.Height],
 ```
 
-Extensions serialize only under sparse `modelInputsByModel`. They must not
-enter `primaryInputOrder`. Surface them on the Analysis panel with
-`{ kind: "modelQuantity", … }`. Assemble checks that every `modelQuantity`
-field is an extend entry owned by that declaration. PHS body weight/height
-are the existing example; all quantity conversion reads catalog SI units
-(`display.units.SI`) and must not branch on PHS or quantity-id lists.
+PHS does this via `phsPersonQuantityIds`. Extra values serialize only under
+sparse `modelInputsByModel`. They must not enter `primaryInputOrder`. Do not
+add PHS weight/height to the Analysis input panel. Surface an Extra id on a
+panel only with `{ kind: "quantity", … }` listed in `extraQuantities`.
+All quantity conversion reads catalog SI units (`display.units.SI`) and must
+not branch on PHS or quantity-id lists.
 `display.units.SI` is canonical storage (`kg`, `m`, `kg/kg`, `Pa`, …);
-display labels such as g/kg live in `display.displayUnits`. Unknown SI units
-fail assemble.
+display labels such as g/kg live in `display.displayUnits`.
 
 **Charts.** Closed ChartTypes live in `src/catalog/chartTypes.ts`. Dropdown
 labels are `chartTypeLabel[type]` (Heat Loss, Body Temperature, SET).
-`defineModel` may only declare Dynamic. Family modules use
-`FrontendChartDeclaration` with `type: ChartType`. One model registers each
-ChartType at most once. Heat Index / Humidex use a single Dynamic instance.
-Psychrometric is frontend-only for PMV ASHRAE/ISO. Do not solve PMV isoline
-roots in a declaration; pass `evaluate(T, RH)` and band thresholds to
+`defineModel` may use any ChartType whose spec matches. Family modules use
+the same `FrontendChartDeclaration` union. There is no ModelId allowlist.
+One model registers each ChartType at most once. Heat Index / Humidex use
+a single Dynamic instance. Psychrometric is a ChartType currently used by
+PMV ASHRAE/ISO. Keep the eight ChartType product names. Do not solve PMV
+isoline roots in a declaration; pass `evaluate(T, RH)` and band thresholds to
 `src/charts/psychrometric/` helpers. 2-D Dynamic charts share
 `src/charts/isolines.ts` (Cartesian linear caps). Hover is Plotly closest on Compare markers and data lines.
 TemperatureMode Air keeps `tr` from
@@ -202,17 +191,17 @@ legends stay readable at both widths. Models select `ZoneToken` values;
 screen, publication, and colour-blind fills live in
 `src/catalog/zoneTokens.ts` and remap at draw/export.
 
-**Tables.** `tables.analysis` (`TableType.Analysis`) is required for every
-Analysis model. `tables.timeSeries` (`TableType.TimeSeries`) is allowed only
-with Time-series workspace capability (PHS). Declaring that table does not
-create a simulator; `src/state/timeSeries/modelConfigs.ts` reads the PHS
-declaration for membership. PHS Time-series line charts are declared on
-`simulation.charts`. PMV ASHRAE and ISO Analysis tables include SET, cooling
-effect, relative air speed, and dynamic clothing as Compare-matrix rows.
-Do not add SET as an `exploreOutputs` key unless Explore must colour SET.
-Do not add local discomfort as a table type. ASHRAE and ISO already register
-Heat Loss and SET chart instances; copy that pattern rather
-than merging standards behind a runtime flag.
+**Tables.** `tables.results` is a non-empty row array required for every
+point-session model. Rows may be a quantity id, `{ quantity }`, or a custom
+`{ id, label, format }`. `tables.timeSeries` is the same row semantics in a
+Time-series slot; surface membership is that slot (`getModelsForSurface`).
+Declaring that table does not create a simulator. PHS Time-series line
+charts are declared on `simulation.charts`. PMV ASHRAE and ISO tables
+include SET, cooling effect, relative air speed, and dynamic clothing as
+Compare-matrix rows. Do not add SET as an `exploreOutputs` key unless
+Explore must colour SET. Do not add a TableType catalog. ASHRAE and ISO
+already register Heat Loss and SET chart instances; copy that pattern
+rather than merging standards behind a runtime flag.
 
 ## What the declaration must show
 
@@ -240,7 +229,7 @@ Visible product decisions:
 - `charts` with declaration-owned `id`s and
   `defaultChartId` (dedicated/fixed chart first; Dynamic only when
   there is no other chart)
-- `tables: { analysis, timeSeries? }`
+- `tables: { results, timeSeries? }`
 - `dynamicAxisFields` and `defaultDynamicAxes` when the model has a Dynamic
   chart
 
@@ -276,10 +265,10 @@ validated `options`. It must not read raw `quantitiesByInput`.
 `src/engines/comfort/controls/fieldInputBehaviors.ts`: `numeric`,
 `operativeTemperature` / `radiantTemperature`, `occupantAirSpeed` /
 `outdoorWindSpeed`, `simpleHumidity` / `advancedHumidity`, `preset`,
-`modelQuantity`. The Analysis input panel reads those controls through
+`quantity`. The Analysis input panel reads those controls through
 `getInputPanelViewModel`; do not add conversion or model branches in
 `src/ui/components/input-panel/`. Control widgets stay generic; unit conversion
-reads the assembled quantity catalog (`convertQuantityFromSi`). Option changes go only through
+reads the closed quantity catalog (`convertQuantityFromSi`). Option changes go only through
 `optionHandlersByKey`.
 Missing, extra, or invalid options are rejected; invalid internal option
 state is an invariant.

@@ -1,4 +1,5 @@
 import { CalculationSource } from "../../catalog/calculationMetadata";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import type { CompareInputMap } from "../../catalog/chartSource";
 import type {
   PlotHoverRow,
@@ -7,13 +8,7 @@ import type {
   PlotTrace,
 } from "../../engines/plotlyTypes";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
-import {
-  findNumericBandIndexForValue,
-  ModelOutputKey,
-  type ChartBuildContext,
-  type FieldChartConfig,
-  type NumericBand,
-} from "../../catalog/modelCapabilities";
+import { findNumericBandIndexForValue, type ChartBuildContext, type FieldChartConfig, type NumericBand } from "../../catalog/modelCapabilities";
 import {
   buildFieldChart,
   createEmptyFieldStrategy,
@@ -27,6 +22,10 @@ import type {
   ChartAxisScale,
 } from "../../engines/comfort/charts/types";
 import { roundValue } from "../../engines/comfort/helpers";
+import {
+  formatDisplayValue,
+  plotlyHoverNumber,
+} from "../../engines/units";
 import {
   getPmvZoneMeta,
   ppdThresholdToAbsPmv,
@@ -43,7 +42,6 @@ export type PmvFieldChartConfig = FieldChartConfig<NumericBand>;
 interface PmvHoverAxis {
   label: string;
   units: string;
-  decimals: number;
 }
 
 interface PmvHoverSpec {
@@ -65,8 +63,8 @@ export function buildPmvHoverTemplate({
 }: PmvHoverSpec): string {
   return buildHoverTemplate([
     inputLabel,
-    `${xAxis.label}: %{x:.${xAxis.decimals}f} ${xAxis.units}`,
-    `${yAxis.label}: %{y:.${yAxis.decimals}f} ${yAxis.units}`,
+    `${xAxis.label}: ${plotlyHoverNumber("x")} ${xAxis.units}`,
+    `${yAxis.label}: ${plotlyHoverNumber("y")} ${yAxis.units}`,
     classification.value === null
       ? null
       : `<b>${classification.label}: ${classification.value}</b>`,
@@ -75,16 +73,16 @@ export function buildPmvHoverTemplate({
   ]);
 }
 
-export function axisHoverSpec(axis: ChartAxisScale, decimals = axis.decimals ?? 2): PmvHoverAxis {
-  return { label: axis.label, units: axis.units, decimals };
+export function axisHoverSpec(axis: ChartAxisScale): PmvHoverAxis {
+  return { label: axis.label, units: axis.units };
 }
 
 export function getPmvOutputValue(
-  outputKey: ModelOutputKey,
+  outputKey: PhysicalQuantityId,
   evaluation: PmvChartEvaluation,
 ): number {
-  if (outputKey === ModelOutputKey.Pmv) return evaluation.pmv;
-  if (outputKey === ModelOutputKey.Ppd) return evaluation.ppd;
+  if (outputKey === PhysicalQuantityId.Pmv) return evaluation.pmv;
+  if (outputKey === PhysicalQuantityId.Ppd) return evaluation.ppd;
   throw new Error(`Unsupported PMV chart output: ${outputKey}`);
 }
 
@@ -140,14 +138,14 @@ function createPmvInputGroup({
         : tryEvaluatePmvForChart(adapter, payload);
       return buildPmvHoverTemplate({
         inputLabel,
-        xAxis: axisHoverSpec(xAxis, 1),
-        yAxis: axisHoverSpec(yAxis, coordinateDecimals),
+        xAxis: axisHoverSpec(xAxis),
+        yAxis: axisHoverSpec(yAxis),
         classification: {
           label: classificationLabel,
           value: evaluation ? getClassification(evaluation) : null,
         },
-        pmv: evaluation ? evaluation.pmv.toFixed(2) : null,
-        ppd: evaluation ? `${evaluation.ppd.toFixed(1)}%` : null,
+        pmv: evaluation ? formatDisplayValue(evaluation.pmv) : null,
+        ppd: evaluation ? `${formatDisplayValue(evaluation.ppd)}%` : null,
       });
     },
   };
@@ -165,7 +163,7 @@ interface PmvOutputPresentation {
 export function createPmvOutputPresentation(
   config: PmvFieldChartConfig,
 ): PmvOutputPresentation {
-  const isPmvOutput = config.zOutput === ModelOutputKey.Pmv;
+  const isPmvOutput = config.zOutput === PhysicalQuantityId.Pmv;
   const classificationLabel = isPmvOutput ? "Zone" : "Band";
   return {
     isPmvOutput,
@@ -175,8 +173,10 @@ export function createPmvOutputPresentation(
       const bandIndex = findNumericBandIndexForValue(config.bands, valueSi);
       return bandIndex === undefined ? "Unclassified" : config.bands[bandIndex].label;
     },
-    pmvHoverToken: isPmvOutput ? "%{customdata[0]:.2f}" : "%{customdata[1]:.2f}",
-    ppdHoverToken: isPmvOutput ? "%{customdata[1]:.1f}%" : "%{customdata[0]:.1f}%",
+    pmvHoverToken: isPmvOutput ? plotlyHoverNumber("customdata[0]") : plotlyHoverNumber("customdata[1]"),
+    ppdHoverToken: isPmvOutput
+      ? `${plotlyHoverNumber("customdata[1]")}%`
+      : `${plotlyHoverNumber("customdata[0]")}%`,
     getHoverMetadata: (evaluation) => (
       evaluation
         ? isPmvOutput
@@ -230,8 +230,8 @@ export function buildPmvFieldChart(
     );
   }
   const presentation = createPmvOutputPresentation(config);
-  const layout = config.zOutput === ModelOutputKey.Ppd ? "radial" as const : "monotonic";
-  const absFromThreshold = config.zOutput === ModelOutputKey.Ppd
+  const layout = config.zOutput === PhysicalQuantityId.Ppd ? "radial" as const : "monotonic";
+  const absFromThreshold = config.zOutput === PhysicalQuantityId.Ppd
     ? ppdThresholdToAbsPmv
     : undefined;
 

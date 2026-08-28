@@ -1,6 +1,7 @@
 /**
  * ISO 7730 Category B PMV/PPD declaration and standard-specific calculation strategy.
  */
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import {
   check_standard_compliance,
   pmv_ppd,
@@ -10,9 +11,8 @@ import {
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
 import { defaultPmvIsoOptions } from "../../catalog/inputModes";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import { UnitSystem } from "../../catalog/units";
-import { StandardId, WorkspaceId } from "../../catalog/workspaces";
+import { StandardId, SurfaceId } from "../../catalog/surfaces";
 import {
   createDynamicClothingModifier,
   measuredAirSpeedModifier,
@@ -76,7 +76,7 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   description: "ISO 7730 Category B PMV/PPD with comfort zone overlays.",
   adapter: pmvIsoAdapter,
   standardIds: [StandardId.Iso7730],
-  workspaceCapabilities: [WorkspaceId.Standard, WorkspaceId.Explore],
+  workspaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
   exploreOutputs: pmvExploreOutputs,
   modifiers: [
     measuredAirSpeedModifier,
@@ -89,7 +89,7 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   heatLossChartId: "pmv-iso-heat-loss",
   setChartId: "pmv-iso-set",
   complianceProfile: {
-    output: ModelOutputKey.Pmv,
+    output: PhysicalQuantityId.Pmv,
     bands: isoComplianceBands,
     legendTitle: "PMV Zones",
     caption: createPmvComplianceCaption("ISO 7730 Category B", isoComplianceBands),

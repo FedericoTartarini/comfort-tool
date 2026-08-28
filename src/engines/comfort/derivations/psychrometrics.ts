@@ -15,12 +15,7 @@ export function derivePsychrometricSlots(inputState: PrimaryInputState): Derived
     inputState[PhysicalQuantityId.RelativeHumidity],
   );
 
-  return {
-    [PhysicalQuantityId.DewPoint]: psychrometricState.t_dp,
-    [PhysicalQuantityId.DerivedHumidityRatio]: psychrometricState.hr,
-    [PhysicalQuantityId.WetBulb]: psychrometricState.t_wb,
-    [PhysicalQuantityId.VaporPressure]: psychrometricState.p_vap,
-  };
+  return { [PhysicalQuantityId.DewPoint]: psychrometricState.t_dp, [PhysicalQuantityId.HumidityRatio]: psychrometricState.hr, [PhysicalQuantityId.WetBulb]: psychrometricState.t_wb, [PhysicalQuantityId.VaporPressure]: psychrometricState.p_vap };
 }
 
 /**

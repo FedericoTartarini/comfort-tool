@@ -1,12 +1,12 @@
 import { adaptive_en } from "jsthermalcomfort";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import { InputPresetKey } from "../../engines/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import { UnitSystem } from "../../catalog/units";
-import { StandardId, WorkspaceId } from "../../catalog/workspaces";
+import { StandardId, SurfaceId } from "../../catalog/surfaces";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -70,12 +70,12 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   standardIds: [StandardId.En16798],
   resultStandard: ComfortStandard.En16798Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ISO,
-  workspaceCapabilities: [WorkspaceId.Standard],
+  workspaceCapabilities: [SurfaceId.Standard],
   exploreOutputs: [],
   modifiers: [],
   boundaryChartId: "adaptive-en-boundary",
   complianceProfile: {
-    output: ModelOutputKey.OperativeTemperature,
+    output: PhysicalQuantityId.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),
     legendTitle: "Adaptive Zones",
     caption: createAdaptiveComplianceCaption(

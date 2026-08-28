@@ -1,14 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { PhysicalQuantityId } from "../catalog/quantities";
 
 import { ModelId } from "../catalog/modelIds";
 import { InputId } from "../catalog/inputSlots";
-import { ModelOutputKey, type NumericBand } from "../catalog/modelCapabilities";
+import { type NumericBand } from "../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import {
-  WorkspaceId,
-  supportsExploreWorkspace,
-  supportsStandardWorkspace,
-} from "../catalog/workspaces";
+  SurfaceId,
+  supportsExploreSurface,
+  supportsStandardSurface,
+} from "../catalog/surfaces";
 import { UnitSystem } from "../catalog/units";
 import {
   buildFieldChartProfile,
@@ -61,11 +62,11 @@ describe("output integration", () => {
       const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);
       const settings = seedModelOutputSettings(config);
 
-      if (supportsStandardWorkspace(config.workspaceCapabilities)) {
+      if (supportsStandardSurface(config.workspaceCapabilities)) {
         const chartInstance = config.chartInstances.entries.find(
           ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;
-        const profile = buildFieldChartProfile(config, settings, WorkspaceId.Standard);
+        const profile = buildFieldChartProfile(config, settings, SurfaceId.Standard);
         const buildResult = config.buildChart(
           config.chartInstances.defaultInstanceId,
           chartSource,
@@ -88,11 +89,11 @@ describe("output integration", () => {
         expect(profile.kind).toBe(FieldChartProfileKind.Compliance);
       }
 
-      if (supportsExploreWorkspace(config.workspaceCapabilities)) {
+      if (supportsExploreSurface(config.workspaceCapabilities)) {
         const chartInstance = config.chartInstances.entries.find(
           ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;
-        const profile = buildFieldChartProfile(config, settings, WorkspaceId.Explore);
+        const profile = buildFieldChartProfile(config, settings, SurfaceId.Explore);
         const buildResult = config.buildChart(
           config.chartInstances.defaultInstanceId,
           chartSource,
@@ -128,7 +129,7 @@ describe("output integration", () => {
     expect(calculateSpy).toHaveBeenCalledTimes(1);
 
     const settings = seedModelOutputSettings(config);
-    const baseProfile = buildFieldChartProfile(config, settings, WorkspaceId.Explore);
+    const baseProfile = buildFieldChartProfile(config, settings, SurfaceId.Explore);
     const first = config.buildChart(
       config.chartInstances.defaultInstanceId,
       chartSource,
@@ -148,7 +149,7 @@ describe("output integration", () => {
     const editedProfile = {
       ...baseProfile,
       bands: editedBands as readonly NumericBand[],
-      zOutput: ModelOutputKey.Pmv,
+      zOutput: PhysicalQuantityId.Pmv,
     };
     const second = config.buildChart(
       config.chartInstances.defaultInstanceId,

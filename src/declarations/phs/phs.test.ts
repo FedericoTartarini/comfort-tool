@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 
 import { ModelId } from "../../catalog/modelIds";
-import { PhysicalQuantityId } from "../../catalog/quantities";
 import { InputId } from "../../catalog/inputSlots";
 
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PhsLimitingCriterion,
-  PhsQuantityId,
   defaultPhsPersonSettings,
   phsReferenceEnvironment,
   type PhsHistorySample,
@@ -31,7 +30,6 @@ import { resolveSimulationChartBuild } from "../../engines/comfort/charts/kinds/
 import { phsTimeSeriesModelDefinition } from "./timeSeries";
 import { downsamplePhsHistorySamples } from "./timeSeriesCharts";
 import { buildChartPlotly, chartFigure } from "../../testSupport/modelChartTestHelpers";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 function segment(
   id: string,
@@ -59,8 +57,8 @@ describe("PHS ISO 7933:2023", () => {
   it("builds person settings from model inputs with catalog defaults", () => {
     expect(personFromModelInputs({})).toEqual(defaultPhsPersonSettings);
     expect(personFromModelInputs({
-      [PhsQuantityId.BodyWeight]: 80,
-    })[PhsQuantityId.BodyWeight]).toBe(80);
+      [PhysicalQuantityId.BodyWeight]: 80,
+    })[PhysicalQuantityId.BodyWeight]).toBe(80);
   });
 
   it("matches the selected-library reference calculation", () => {
@@ -186,13 +184,7 @@ describe("PHS ISO 7933:2023", () => {
     const complianceContext = {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
-      fieldChartConfig: {
-        profileKind: FieldChartProfileKind.Compliance,
-        xField: PhysicalQuantityId.DryBulbTemperature,
-        yField: PhysicalQuantityId.RelativeHumidity,
-        zOutput: ModelOutputKey.PhsLimitingExposureTime,
-        bands: phsModelConfig.complianceProfile!.bands,
-      },
+      fieldChartConfig: { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PhsLimitingExposureTime, bands: phsModelConfig.complianceProfile!.bands },
     } as const;
     const exposureChart = buildChartPlotly(phsModelConfig,
       "phs-exposure-history",
@@ -246,7 +238,7 @@ describe("PHS ISO 7933:2023", () => {
           profileKind: FieldChartProfileKind.Explore,
           xField: PhysicalQuantityId.DryBulbTemperature,
           yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.PhsRectalTemperature,
+          zOutput: PhysicalQuantityId.PhsRectalTemperature,
           bands: [
             { min: -Infinity, max: 37.5, label: "Below", color: "#bbf7d0" },
             { min: 37.5, max: Infinity, label: "Above", color: "#fecaca" },

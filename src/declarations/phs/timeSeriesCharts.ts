@@ -2,7 +2,7 @@ import type {
   PlotlyChartSpec,
   PlotScatterLineTrace,
 } from "../../engines/plotlyTypes";
-import { ModelOutputKey } from "../../catalog/modelCapabilities";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 import {
   PHS_RECTAL_TEMPERATURE_LIMIT_C,
   type PhsHistorySample,
@@ -15,7 +15,7 @@ import {
   crossesSeriesThreshold,
   paddedSeriesRange,
 } from "../../engines/comfort/charts/timeSeriesLineChart";
-import { convertModelOutputFromSi } from "../../engines/units";
+import { convertQuantityFromSi } from "../../engines/units";
 import { convertTemperatureFromSi } from "../../engines/units/temperature";
 
 const RECTAL_COLOR = "#3BBDED";
@@ -341,10 +341,10 @@ export function buildPhsWaterLossTimeSeriesChart(
     segmentNamesById[segmentId] ?? segmentName
   ));
   const waterLoss = samples.map(({ sweatLossG }) => (
-    convertModelOutputFromSi(ModelOutputKey.PhsWaterLoss, sweatLossG, unitSystem)
+    convertQuantityFromSi(PhysicalQuantityId.PhsWaterLoss, sweatLossG, unitSystem)
   ));
-  const limit = convertModelOutputFromSi(
-    ModelOutputKey.PhsWaterLoss,
+  const limit = convertQuantityFromSi(
+    PhysicalQuantityId.PhsWaterLoss,
     result.waterLossLimitG,
     unitSystem,
   );

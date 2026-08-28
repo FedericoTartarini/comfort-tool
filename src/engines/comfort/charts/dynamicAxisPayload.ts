@@ -93,18 +93,14 @@ export function createRequestAxisAdapter<TPayload extends object>({
 
 function isTemperatureComponent(
   field: ChartAxisQuantityId,
-): field is TemperatureComponentField {
-  return field === PhysicalQuantityId.DryBulbTemperature ||
-    field === PhysicalQuantityId.MeanRadiantTemperature;
-}
+): field is TemperatureComponentField { return field === PhysicalQuantityId.DryBulbTemperature ||
+    field === PhysicalQuantityId.MeanRadiantTemperature; }
 
 function getOtherTemperatureComponent(
   field: TemperatureComponentField,
-): TemperatureComponentField {
-  return field === PhysicalQuantityId.DryBulbTemperature
+): TemperatureComponentField { return field === PhysicalQuantityId.DryBulbTemperature
     ? PhysicalQuantityId.MeanRadiantTemperature
-    : PhysicalQuantityId.DryBulbTemperature;
-}
+    : PhysicalQuantityId.DryBulbTemperature; }
 
 function solveTemperatureComponent<TPayload>(
   payload: TPayload,

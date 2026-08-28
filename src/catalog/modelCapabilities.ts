@@ -1,6 +1,7 @@
 import type { InputId as InputIdType } from "./inputSlots";
 import {
   type ChartAxisQuantityId,
+  type PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "./quantities";
 import { FieldChartProfileKind } from "./output/fieldChartProfile";
@@ -11,21 +12,6 @@ import {
   ZonePaletteKind,
   type ZoneToken,
 } from "./zoneTokens";
-
-export const ModelOutputKey = {
-  Pmv: "pmv",
-  Ppd: "ppd",
-  Utci: "utci",
-  HeatIndex: "heatIndex",
-  Humidex: "humidex",
-  WindChill: "windChill",
-  OperativeTemperature: "operativeTemperature",
-  PhsLimitingExposureTime: "phsLimitingExposureTime",
-  PhsRectalTemperature: "phsRectalTemperature",
-  PhsWaterLoss: "phsWaterLoss",
-} as const;
-
-export type ModelOutputKey = (typeof ModelOutputKey)[keyof typeof ModelOutputKey];
 
 export type BandInputsSi = Readonly<Partial<Record<ChartAxisQuantityId, number>>>;
 
@@ -51,7 +37,7 @@ export interface NumericBand extends Band {
 }
 
 export interface ModelOutput {
-  readonly key: ModelOutputKey;
+  readonly key: PhysicalQuantityId;
   readonly label: string;
   readonly legendTitle?: string;
   readonly defaultBands: readonly NumericBand[];
@@ -63,7 +49,7 @@ export interface ComplianceFeedback {
 }
 
 export interface ComplianceSpec<TBand extends Band = Band, TResult = unknown> {
-  readonly output: ModelOutputKey;
+  readonly output: PhysicalQuantityId;
   readonly bands: readonly TBand[];
   readonly legendTitle: string;
   readonly caption: string;
@@ -73,7 +59,7 @@ export interface ComplianceSpec<TBand extends Band = Band, TResult = unknown> {
 interface FieldChartConfigBase {
   readonly xField: ChartAxisQuantityId;
   readonly yField: ChartAxisQuantityId;
-  readonly zOutput: ModelOutputKey;
+  readonly zOutput: PhysicalQuantityId;
 }
 
 /** Numeric-band field chart shared by fixed charts and Explore charts. */

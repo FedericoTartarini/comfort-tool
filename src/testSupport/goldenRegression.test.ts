@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../catalog/quantities";
 
 import type { AdaptiveResponse } from "../declarations/adaptive/shared";
 import type { HumidexResponse } from "../declarations/humidex";
@@ -15,8 +16,7 @@ import { evaluatePmvCondition } from "../declarations/pmv/calculation";
 import { pmvAshraeAdapter } from "../declarations/pmv/ashrae";
 import { calculatePhs } from "../declarations/phs/calculation";
 import { ModelId } from "../catalog/modelIds";
-import { PhysicalQuantityId } from "../catalog/quantities";
-import { PhsPosture, PhsQuantityId } from "../catalog/phs";
+import { PhsPosture } from "../catalog/phs";
 import { InputId } from "../catalog/inputSlots";
 import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
 import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
@@ -94,13 +94,7 @@ describe("golden regression — direct calculation snapshots", () => {
   it("PHS baseline with reference person", () => {
     const result = calculatePhs({
       durationMinutes: 60,
-      person: {
-        [PhsQuantityId.BodyWeight]: 75,
-        [PhsQuantityId.Height]: 1.8,
-        posture: PhsPosture.Standing,
-        acclimatized: true,
-        drinkingAllowed: true,
-      },
+      person: { [PhysicalQuantityId.BodyWeight]: 75, [PhysicalQuantityId.Height]: 1.8, posture: PhsPosture.Standing, acclimatized: true, drinkingAllowed: true },
       tdb: 35,
       tr: 35,
       v: 0.1,
@@ -115,28 +109,19 @@ describe("golden regression — direct calculation snapshots", () => {
 
 describe("golden regression — calculate via model config", () => {
   it("Humidex matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HumidexResponse>(ModelId.Humidex, {
-      [PhysicalQuantityId.DryBulbTemperature]: 30,
-      [PhysicalQuantityId.RelativeHumidity]: 70,
-    });
+    const result = calculatePrimaryResult<HumidexResponse>(ModelId.Humidex, { [PhysicalQuantityId.DryBulbTemperature]: 30, [PhysicalQuantityId.RelativeHumidity]: 70 });
     expect(result.humidex).toBeCloseTo(40.9, 1);
     expect(result.humidexDiscomfort).toBe("Intense");
   });
 
   it("Heat Index matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HeatIndexResponse>(ModelId.HeatIndex, {
-      [PhysicalQuantityId.DryBulbTemperature]: 32,
-      [PhysicalQuantityId.RelativeHumidity]: 60,
-    });
+    const result = calculatePrimaryResult<HeatIndexResponse>(ModelId.HeatIndex, { [PhysicalQuantityId.DryBulbTemperature]: 32, [PhysicalQuantityId.RelativeHumidity]: 60 });
     expect(result.hi).toBeCloseTo(37.1, 1);
     expect(result.category).toBe("Extreme Caution");
   });
 
   it("Wind Chill matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<WindChillResponse>(ModelId.WindChill, {
-      [PhysicalQuantityId.DryBulbTemperature]: -10,
-      [PhysicalQuantityId.WindSpeed]: 5,
-    });
+    const result = calculatePrimaryResult<WindChillResponse>(ModelId.WindChill, { [PhysicalQuantityId.DryBulbTemperature]: -10, [PhysicalQuantityId.WindSpeed]: 5 });
     expect(result.wciTemp).toBeCloseTo(-17.4, 1);
   });
 
@@ -199,11 +184,9 @@ describe("golden regression — calculate via model config", () => {
 });
 
 describe("golden regression — controller default primary inputs", () => {
-  it("input1 defaults match catalog primary defaults", () => {
-    const toolState = createAnalysisState();
-    const input1 = toolState.state.quantitiesByInput[InputId.Input1];
+  it("input1 defaults match catalog primary defaults", () => { const toolState = createAnalysisState();
+    const input1 = toolState.state.input.quantitiesByInput[InputId.Input1];
     expect(input1[PhysicalQuantityId.DryBulbTemperature]).toBe(26);
     expect(input1[PhysicalQuantityId.RelativeHumidity]).toBe(50);
-    expect(input1[PhysicalQuantityId.MetabolicRate]).toBe(1.0);
-  });
+    expect(input1[PhysicalQuantityId.MetabolicRate]).toBe(1.0); });
 });

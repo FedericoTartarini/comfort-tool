@@ -2,7 +2,6 @@ import { ModelId } from "../../catalog/modelIds";
 import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../catalog/quantities";
 import {
   PhsPosture,
-  PhsQuantityId,
   PhsSegmentPreset,
   defaultPhsPersonSettings,
   phsReferenceEnvironment,
@@ -42,14 +41,7 @@ const PhsTimeSeriesControlId = {
   DrinkingAllowed: "phs-drinking-allowed",
 } as const;
 
-const segmentPropertyByField = {
-  [PhysicalQuantityId.DryBulbTemperature]: "tdb",
-  [PhysicalQuantityId.MeanRadiantTemperature]: "tr",
-  [PhysicalQuantityId.WindSpeed]: "v",
-  [PhysicalQuantityId.RelativeHumidity]: "rh",
-  [PhysicalQuantityId.MetabolicRate]: "met",
-  [PhysicalQuantityId.ClothingInsulation]: "clo",
-} as const satisfies Partial<Record<ChartAxisQuantityId, keyof PhsTimeSeriesSegment>>;
+const segmentPropertyByField = { [PhysicalQuantityId.DryBulbTemperature]: "tdb", [PhysicalQuantityId.MeanRadiantTemperature]: "tr", [PhysicalQuantityId.WindSpeed]: "v", [PhysicalQuantityId.RelativeHumidity]: "rh", [PhysicalQuantityId.MetabolicRate]: "met", [PhysicalQuantityId.ClothingInsulation]: "clo" } as const satisfies Partial<Record<ChartAxisQuantityId, keyof PhsTimeSeriesSegment>>;
 
 type PhsSegmentField = keyof typeof segmentPropertyByField;
 
@@ -239,11 +231,11 @@ const segmentControls = [
 const personQuantityControls = [
   createPersonQuantityControl({
     id: PhsTimeSeriesControlId.Weight,
-    quantityId: PhsQuantityId.BodyWeight,
+    quantityId: PhysicalQuantityId.BodyWeight,
   }),
   createPersonQuantityControl({
     id: PhsTimeSeriesControlId.Height,
-    quantityId: PhsQuantityId.Height,
+    quantityId: PhysicalQuantityId.Height,
   }),
 ] as const;
 

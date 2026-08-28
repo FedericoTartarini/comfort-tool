@@ -4,6 +4,7 @@
   import { Button, Heading } from "flowbite-svelte";
   import { ChevronDownOutline, ChevronUpOutline } from "flowbite-svelte-icons";
   import { clickOutside } from "../utils/clickOutside";
+  import { formatDisplayValue, roundToDisplay } from "../../engines/units";
 
   export interface NumericPresetOption {
     id: string;
@@ -59,10 +60,11 @@
 
     return items.filter((item) => (
       item.label.toLowerCase().includes(normalizedQuery) ||
-      item.value.toFixed(decimals).includes(normalizedQuery)
+      item.value.toFixed(decimals).includes(normalizedQuery) ||
+      formatDisplayValue(item.value).includes(normalizedQuery)
     ));
   });
-  const displayValue = $derived(value.toFixed(decimals));
+  const displayValue = $derived(formatDisplayValue(value));
   const inputValue = $derived(isOpen ? query : displayValue);
 
   function getSelectedIndex() {
@@ -74,7 +76,7 @@
   }
 
   function formatValue(value: number): string {
-    return `${value.toFixed(decimals)}${valueSuffix ? ` ${valueSuffix}` : ""}`;
+    return `${formatDisplayValue(value)}${valueSuffix ? ` ${valueSuffix}` : ""}`;
   }
 
   function parseNumericQuery(rawValue: string): number | null {
@@ -84,7 +86,7 @@
     }
 
     const parsedValue = Number(normalizedValue);
-    return Number.isFinite(parsedValue) ? parsedValue : null;
+    return Number.isFinite(parsedValue) ? roundToDisplay(parsedValue) : null;
   }
 
   function getExactPresetMatch(rawValue: string) {
@@ -96,6 +98,7 @@
     return items.find((item) => (
       item.label.toLowerCase() === normalizedValue ||
       item.value.toFixed(decimals) === normalizedValue ||
+      formatDisplayValue(item.value) === normalizedValue ||
       formatValue(item.value).toLowerCase() === normalizedValue
     )) ?? null;
   }

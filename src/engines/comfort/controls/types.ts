@@ -1,7 +1,4 @@
-import type {
-  PrimaryInputState,
-  PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../../catalog/quantities";
+import type { PrimaryInputState, PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
 import type {
   InputControlViewModel,
   InputControlId as InputControlIdType,

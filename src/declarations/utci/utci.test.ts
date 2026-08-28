@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-
-
 import { PhysicalQuantityId } from "../../catalog/quantities";
+
+
 import { InputId } from "../../catalog/inputSlots";
 import { UnitSystem } from "../../catalog/units";
 import {
   buildUtciStressChart,
 } from "./charts";
-import { ModelOutputKey, type ChartBuildContext } from "../../catalog/modelCapabilities";
+import { type ChartBuildContext } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import {
@@ -79,13 +79,7 @@ describe("UTCI Explore chart", () => {
       {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          profileKind: FieldChartProfileKind.Explore,
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.Utci,
-          bands,
-        },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Utci, bands },
       },
     );
     const fillTrace = chart.traces.find(({ name }) => name === "UTCI bands");
@@ -117,13 +111,7 @@ describe("UTCI Explore chart", () => {
       {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          profileKind: FieldChartProfileKind.Explore,
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.Utci,
-          bands: utciModelConfig.exploreOutputs[0].defaultBands,
-        },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Utci, bands: utciModelConfig.exploreOutputs[0].defaultBands },
       },
     )!;
 
@@ -143,13 +131,7 @@ describe("UTCI Explore chart", () => {
     const context = {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
-      fieldChartConfig: {
-        profileKind: FieldChartProfileKind.Explore,
-        xField: PhysicalQuantityId.DryBulbTemperature,
-        yField: PhysicalQuantityId.OperativeTemperature,
-        zOutput: ModelOutputKey.Utci,
-        bands: utciModelConfig.exploreOutputs[0].defaultBands,
-      },
+      fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.OperativeTemperature, zOutput: PhysicalQuantityId.Utci, bands: utciModelConfig.exploreOutputs[0].defaultBands },
     } satisfies ChartBuildContext;
     const chart = buildChartPlotly(utciModelConfig,
       "utci-dynamic-field",

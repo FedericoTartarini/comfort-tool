@@ -2,14 +2,14 @@
  * Unit tests for the Heat Index calculation service.
  */
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../catalog/quantities";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
 import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
-import { convertModelOutputFromSi } from "../engines/units";
-import { PhysicalQuantityId } from "../catalog/quantities";
+import { convertQuantityFromSi } from "../engines/units";
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
-import { ModelOutputKey, type ChartBuildContext } from "../catalog/modelCapabilities";
+import { type ChartBuildContext } from "../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import { InputControlId } from "../catalog/inputControls";
 import {
@@ -52,8 +52,8 @@ describe("heatIndex service", () => {
       rh: 70,
     });
 
-    const hiF = convertModelOutputFromSi(
-      ModelOutputKey.HeatIndex,
+    const hiF = convertQuantityFromSi(
+      PhysicalQuantityId.HeatIndex,
       result.hi,
       UnitSystem.IP,
     );
@@ -86,13 +86,7 @@ describe("heatIndex service", () => {
     const fixedContext = {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
-      fieldChartConfig: {
-        profileKind: FieldChartProfileKind.Explore,
-        xField: PhysicalQuantityId.DryBulbTemperature,
-        yField: PhysicalQuantityId.RelativeHumidity,
-        zOutput: heatIndexModelConfig.exploreOutputs[0].key,
-        bands: heatIndexModelConfig.exploreOutputs[0].defaultBands,
-      },
+      fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: heatIndexModelConfig.exploreOutputs[0].key, bands: heatIndexModelConfig.exploreOutputs[0].defaultBands },
     } satisfies ChartBuildContext;
 
     const dynamicChart = buildChartPlotly(heatIndexModelConfig,
@@ -129,13 +123,7 @@ describe("heatIndex service", () => {
       {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          profileKind: FieldChartProfileKind.Explore,
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.DryBulbTemperature,
-          zOutput: heatIndexModelConfig.exploreOutputs[0].key,
-          bands: heatIndexModelConfig.exploreOutputs[0].defaultBands,
-        },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.DryBulbTemperature, zOutput: heatIndexModelConfig.exploreOutputs[0].key, bands: heatIndexModelConfig.exploreOutputs[0].defaultBands },
       },
     );
 
@@ -171,13 +159,7 @@ describe("heatIndex service", () => {
       {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: {
-          profileKind: FieldChartProfileKind.Explore,
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.HeatIndex,
-          bands,
-        },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.HeatIndex, bands },
       },
     );
     const fillTraces = chart?.traces.filter(

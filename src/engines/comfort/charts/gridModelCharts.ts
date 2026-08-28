@@ -1,4 +1,9 @@
 import { CalculationSource } from "../../../catalog/calculationMetadata";
+import {
+  getPhysicalQuantityMeta,
+  type ChartAxisQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+} from "../../../catalog/quantities";
 import type {
   CompareInputMap,
   ModelChartSource,
@@ -7,21 +12,14 @@ import type {
   PlotHoverValue,
   PlotlyChartSpec,
 } from "../../plotlyTypes";
-import { ChartAxisQuantityId, getPhysicalQuantityMeta } from "../../../catalog/quantities";
 import type { InputId as InputIdType } from "../../../catalog/inputSlots";
-import {
-  ChartBuildContext,
-  ModelOutput,
-  NumericBand,
-  NumericFieldChartConfig,
-  ModelOutputKey as ModelOutputKeyType,
-  findNumericBandIndexForValue,
-} from "../../../catalog/modelCapabilities";
+import { ChartBuildContext, ModelOutput, NumericBand, NumericFieldChartConfig, findNumericBandIndexForValue } from "../../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import type { FieldRequestAdapter } from "../requestMapping";
 import {
-  convertModelOutputFromSi,
-  getModelOutputDisplayMeta,
+  convertQuantityFromSi,
+  getQuantityDisplayMeta,
+  plotlyHoverNumber,
 } from "../../units";
 import {
   buildFieldChart,
@@ -90,7 +88,7 @@ export interface GridModelChartSpec<TPayload extends object, TResult> {
   tryEvaluatePayload?: (payload: TPayload) => number | null | undefined;
   getOutputValue: (
     result: TResult,
-    outputKey: ModelOutputKeyType,
+    outputKey: PhysicalQuantityIdType,
   ) => number | null | undefined;
   fixedView?: GridModelFixedViewSpec;
   dynamicViewLayout?: Partial<FieldChartLayoutSpec>;
@@ -117,7 +115,7 @@ function getAxisRange(
 
 function resolveGridOutput(
   spec: GridModelChartSpec<object, unknown>,
-  zOutput: ModelOutputKeyType,
+  zOutput: PhysicalQuantityIdType,
 ): ModelOutput {
   if (spec.exploreOutputs) {
     const match = spec.exploreOutputs.find(({ key }) => key === zOutput);
@@ -142,7 +140,7 @@ function buildGridModelView<TPayload extends object, TResult>(
     spec as GridModelChartSpec<object, unknown>,
     view.config.zOutput,
   );
-  const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
+  const outputMeta = getQuantityDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
   const bandLabel = spec.bandLabel ?? "Band";
   const chartAxisAdapter = spec.chartAxisAdapter ?? spec.requestAdapter;
@@ -230,14 +228,14 @@ function buildGridModelView<TPayload extends object, TResult>(
           ? "Unclassified"
           : view.config.bands[selectedBandIndex].label;
 
-        return `${inputLabel}<br>${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: ${selectedBandLabel}</b><br>${output.label}: %{customdata[0]:.${outputMeta.decimals}f}${outputUnits}${view.hoverTemplateSuffix}<extra></extra>`;
+        return `${inputLabel}<br>${xAxis.label}: ${plotlyHoverNumber("x")} ${xAxis.units}<br>${yAxis.label}: ${plotlyHoverNumber("y")} ${yAxis.units}<br><b>${bandLabel}: ${selectedBandLabel}</b><br>${output.label}: ${plotlyHoverNumber("customdata[0]")}${outputUnits}${view.hoverTemplateSuffix}<extra></extra>`;
       },
       hoverMetadata: ({ result }) => {
         const valueSi = getResultValue(result);
         return [
           valueSi === undefined
             ? ""
-            : convertModelOutputFromSi(output.key, valueSi, unitSystem),
+            : convertQuantityFromSi(output.key, valueSi, unitSystem),
           ...(spec.dynamicHoverExtension?.getMetadata(result, unitSystem) ?? []),
         ];
       },

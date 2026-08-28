@@ -13,7 +13,7 @@
   } from "../../state/analysis/chartInstancePresentation";
   import type { AnalysisController } from "../../state/analysis/types";
 
-  type ModelIdType = AnalysisController["state"]["ui"]["selectedModel"];
+  type ModelIdType = AnalysisController["state"]["setting"]["selectedModel"];
 
   interface Props {
     toolState: AnalysisController;
@@ -58,17 +58,17 @@
         <ResultsPanel
           visibleInputIds={toolState.selectors.getVisibleInputIds()}
           resultSections={toolState.selectors.getResultSections()}
-          isLoading={toolState.state.ui.isLoading}
+          isLoading={toolState.state.output.isLoading}
           embedded={true}
         />
 
         <ChartPanel
           chartResult={toolState.selectors.getCurrentChartResult()}
-          isLoading={toolState.state.ui.isLoading}
+          isLoading={toolState.state.output.isLoading}
           {chartInstance}
           {chartInstances}
           selectedChartInstanceId={toolState.selectors.getCurrentChartInstanceId()}
-          selectedModel={toolState.state.ui.selectedModel}
+          selectedModel={toolState.state.setting.selectedModel}
           onSelectChartInstance={toolState.actions.setSelectedChartInstance}
           chartControls={toolState.selectors.getChartControlsViewModel()}
           legendZones={toolState.selectors.getCurrentChartLegendZones()}

@@ -1,5 +1,5 @@
-import type { ChartAxisQuantityId } from "../quantities";
-import type { Band, ModelOutputKey, NumericBand } from "../modelCapabilities";
+import type { ChartAxisQuantityId, PhysicalQuantityId } from "../quantities";
+import type { Band, NumericBand } from "../modelCapabilities";
 
 export const FieldChartProfileKind = {
   Compliance: "compliance",
@@ -13,7 +13,7 @@ interface FieldChartProfileBase {
   readonly kind: FieldChartProfileKind;
   readonly xField: ChartAxisQuantityId;
   readonly yField: ChartAxisQuantityId;
-  readonly zOutput: ModelOutputKey;
+  readonly zOutput: PhysicalQuantityId;
 }
 
 export interface ComplianceFieldChartProfile<TBand extends Band = Band>

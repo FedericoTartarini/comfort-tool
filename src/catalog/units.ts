@@ -22,7 +22,10 @@ export const SiUnit = {
   WattPerSquareMeter: "W/m2",
   Dimensionless: "1",
   Kilogram: "kg",
+  Gram: "g",
   Meter: "m",
+  Minute: "min",
+  KelvinDelta: "deltaK",
 } as const;
 
 export type SiUnit = (typeof SiUnit)[keyof typeof SiUnit];

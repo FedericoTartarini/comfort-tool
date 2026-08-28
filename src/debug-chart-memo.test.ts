@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "./catalog/quantities";
 
 import { InputControlId } from "./catalog/inputControls";
 import { InputId } from "./catalog/inputSlots";
-import { PhysicalQuantityId } from "./catalog/quantities";
 import { createAnalysisState } from "./state/analysis/createAnalysisState.svelte";
 import { chartFigure } from "./testSupport/modelChartTestHelpers";
 
@@ -10,7 +10,7 @@ async function waitForIdle(
   toolState: ReturnType<typeof createAnalysisState>,
 ) {
   for (let index = 0; index < 50; index += 1) {
-    if (!toolState.state.ui.isLoading) {
+    if (!toolState.state.output.isLoading) {
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -34,7 +34,7 @@ describe("chart memo debug", () => {
 
     const chart2 = chartFigure(toolState.selectors.getCurrentChartResult());
     const marker2 = chart2?.traces?.find((trace) => trace.name === "Input 1");
-    const temperature = toolState.state.quantitiesByInput[InputId.Input1][
+    const temperature = toolState.state.input.quantitiesByInput[InputId.Input1][
       PhysicalQuantityId.DryBulbTemperature
     ];
 

@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { PhysicalQuantityId } from "../../catalog/quantities";
 
 import { pickPmvRequest } from "../../testSupport/goldenFixtures";
 import { InputId } from "../../catalog/inputSlots";
-import {
-  ModelOutputKey,
-  type ChartBuildContext,
-} from "../../catalog/modelCapabilities";
+import { type ChartBuildContext } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
-import { PhysicalQuantityId } from "../../catalog/quantities";
 import { UnitSystem } from "../../catalog/units";
 import { createEmptyResults } from "../../state/analysis/modelConfigs/builder";
 import { buildModelParametricLineChart } from "../../engines/comfort/charts/kinds/parametricLine";
@@ -25,7 +22,7 @@ function createContext(): ChartBuildContext {
       profileKind: FieldChartProfileKind.Explore,
       xField: PhysicalQuantityId.DryBulbTemperature,
       yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: ModelOutputKey.Pmv,
+      zOutput: PhysicalQuantityId.Pmv,
       bands: [{ min: -0.5, max: 0.5, label: "Neutral", color: "#f2f2f2" }],
     },
   };
@@ -106,15 +103,8 @@ describe("PMV heat-loss vs temperature series", () => {
       {
         inputs: {
           [InputId.Input1]: pickPmvRequest(),
-          [InputId.Input2]: pickPmvRequest({
-            [PhysicalQuantityId.DryBulbTemperature]: 18,
-            [PhysicalQuantityId.MetabolicRate]: 4,
-          }),
-          [InputId.Input3]: pickPmvRequest({
-            [PhysicalQuantityId.DryBulbTemperature]: 35,
-            [PhysicalQuantityId.MetabolicRate]: 4,
-            [PhysicalQuantityId.ClothingInsulation]: 1.5,
-          }),
+          [InputId.Input2]: pickPmvRequest({ [PhysicalQuantityId.DryBulbTemperature]: 18, [PhysicalQuantityId.MetabolicRate]: 4 }),
+          [InputId.Input3]: pickPmvRequest({ [PhysicalQuantityId.DryBulbTemperature]: 35, [PhysicalQuantityId.MetabolicRate]: 4, [PhysicalQuantityId.ClothingInsulation]: 1.5 }),
         },
       },
       createEmptyResults(),

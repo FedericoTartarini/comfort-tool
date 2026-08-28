@@ -1,22 +1,12 @@
 import type { TimeSeriesLineChartEngineSpec } from "../../engines/comfort/charts/kinds/types";
+import { PhysicalQuantityId, type ChartAxisQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
 import type { ModelChartSource } from "../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
-import {
-  PhysicalQuantityId,
-  type ChartAxisQuantityId,
-} from "../../catalog/quantities";
 import {
   inputOrder,
   type InputId as InputIdType,
 } from "../../catalog/inputSlots";
-import {
-  ModelOutputKey,
-  type ChartBuildContext,
-  type ModelOutput,
-  type ModelOutputKey as ModelOutputKeyType,
-  type NumericBand,
-  resolveChartModelInputs,
-} from "../../catalog/modelCapabilities";
+import { type ChartBuildContext, type ModelOutput, type NumericBand, resolveChartModelInputs } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 
 import type { FieldRequestAdapter } from "../../engines/comfort/requestMapping";
@@ -56,14 +46,14 @@ export const PHS_AXIS_RANGES: Record<ChartAxisQuantityId, ChartRange> = {
 
 export function getPhsOutputValue(
   result: PhsResponse,
-  outputKey: ModelOutputKeyType,
+  outputKey: PhysicalQuantityIdType,
 ): number {
   switch (outputKey) {
-    case ModelOutputKey.PhsLimitingExposureTime:
+    case PhysicalQuantityId.PhsLimitingExposureTime:
       return result.limitingExposureTimeMinutes;
-    case ModelOutputKey.PhsRectalTemperature:
+    case PhysicalQuantityId.PhsRectalTemperature:
       return result.tRe;
-    case ModelOutputKey.PhsWaterLoss:
+    case PhysicalQuantityId.PhsWaterLoss:
       return result.sweatLossG;
     default:
       throw new Error(`Unsupported PHS output: ${outputKey}`);

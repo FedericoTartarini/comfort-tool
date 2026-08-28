@@ -16,17 +16,15 @@ import { humidexModelConfig } from "../../../declarations/humidex";
 import { windChillModelConfig } from "../../../declarations/windChill";
 import { phsModelConfig } from "../../../declarations/phs/phs";
 import {
-  WorkspaceId,
+  SurfaceId,
   type StandardId as StandardIdType,
-  type WorkspaceId as WorkspaceIdType,
-} from "../../../catalog/workspaces";
-import { assembleQuantityCatalog } from "../../../catalog/quantities";
+  type SurfaceId as SurfaceIdType,
+} from "../../../catalog/surfaces";
 import {
   assembleCatalogs,
-  collectRegisteredQuantityExtensions,
   validateModel,
 } from "./validateModel";
-export { assembleCatalogs, collectRegisteredQuantityExtensions, validateModel };
+export { assembleCatalogs, validateModel };
 export type { AssembledCatalogs, CatalogModelSlice } from "./validateModel";
 
 export const comfortModelConfigs: Record<
@@ -51,10 +49,6 @@ export function getDeclaredChartInstanceIds(
     ({ instanceId }) => instanceId,
   );
 }
-
-assembleQuantityCatalog(
-  collectRegisteredQuantityExtensions(Object.values(comfortModelConfigs)),
-);
 
 export const assembledCatalogs = assembleCatalogs(
   Object.values(comfortModelConfigs),
@@ -85,21 +79,21 @@ export function getModelsForStandard(
   );
 }
 
-export function getModelsForWorkspace(
-  workspaceId: WorkspaceIdType,
+export function getModelsForSurface(
+  surfaceId: SurfaceIdType,
 ): ModelIdType[] {
   return comfortModelOrder.filter((modelId) => {
-    const capabilities = comfortModelConfigs[modelId].workspaceCapabilities;
-    switch (workspaceId) {
-      case WorkspaceId.Standard:
-        return capabilities.includes(WorkspaceId.Standard);
-      case WorkspaceId.Explore:
-        return capabilities.includes(WorkspaceId.Explore);
-      case WorkspaceId.TimeSeries:
-        return false;
+    const config = comfortModelConfigs[modelId];
+    switch (surfaceId) {
+      case SurfaceId.Standard:
+        return config.workspaceCapabilities.includes(SurfaceId.Standard);
+      case SurfaceId.Explore:
+        return config.workspaceCapabilities.includes(SurfaceId.Explore);
+      case SurfaceId.TimeSeries:
+        return config.tables.timeSeries !== undefined;
       default: {
-        const exhaustive: never = workspaceId;
-        throw new Error(`Unsupported workspace: ${exhaustive}`);
+        const exhaustive: never = surfaceId;
+        throw new Error(`Unsupported surface: ${exhaustive}`);
       }
     }
   });

@@ -13,15 +13,27 @@ export type TimeSeriesRunStatus =
   | "ready"
   | "error";
 
-export interface TimeSeriesStateSlice {
+export type TimeSeriesInputState = {
+  draftByModel: Record<TimeSeriesModelId, unknown>;
+};
+
+export type TimeSeriesSettingState = {
   selectedModel: TimeSeriesModelId;
   unitSystem: UnitSystemType;
-  draftByModel: Record<TimeSeriesModelId, unknown>;
+};
+
+export type TimeSeriesOutputState = {
   resultByModel: Record<TimeSeriesModelId, unknown | null>;
   statusByModel: Record<TimeSeriesModelId, TimeSeriesRunStatus>;
   errorsByModel: Record<TimeSeriesModelId, string[]>;
   revisionByModel: Record<TimeSeriesModelId, number>;
   progressByModel: Record<TimeSeriesModelId, number>;
+};
+
+export interface TimeSeriesStateSlice {
+  input: TimeSeriesInputState;
+  setting: TimeSeriesSettingState;
+  output: TimeSeriesOutputState;
 }
 
 export interface TimeSeriesModelOption {
