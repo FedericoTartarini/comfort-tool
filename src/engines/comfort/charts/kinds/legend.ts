@@ -6,7 +6,7 @@ import {
 } from "../chartBuildResult";
 import {
   FieldChartProfileKind,
-} from "../../../../catalog/output/fieldChartProfile";
+} from "../../../../catalog/fieldChartProfile";
 import type { ChartBuildContext } from "../../../../catalog/modelCapabilities";
 
 function selectLegendBands(

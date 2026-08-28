@@ -22,7 +22,7 @@ import {
 import {
   defineModel,
   parseEmptyOptions,
-} from "../state/analysis/modelConfigs/builder";
+} from "../state/modelRegistry/builder";
 
 const MODEL_LABEL = "Wind Chill";
 const MODEL_DESCRIPTION =
@@ -122,7 +122,7 @@ export const windChillModelConfig = defineModel<
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],
-  workspaceCapabilities: [SurfaceId.Explore],
+  surfaceCapabilities: [SurfaceId.Explore],
   exploreOutputs: [windChillOutput],
   modifiers: [],
   inputFields: [

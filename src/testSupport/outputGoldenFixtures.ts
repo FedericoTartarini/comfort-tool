@@ -3,7 +3,7 @@ import type { ChartPayload } from "../charts/types";
 import { assembleChart } from "../charts";
 import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
-import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import {
   SurfaceId,
   supportsExploreSurface,
@@ -12,9 +12,9 @@ import {
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,
-} from "../state/analysis/fieldChartState";
-import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
-import type { ResultSectionViewModel } from "../state/analysis/types";
+} from "../state/pointSession/fieldChartState";
+import { comfortModelConfigs, comfortModelOrder } from "../state/modelRegistry";
+import type { ResultSectionViewModel } from "../state/pointSession/types";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,
@@ -105,8 +105,8 @@ export function buildModelOutputGoldenSnapshot(
   const charts: ChartGoldenSnapshot[] = [];
   const baseSettings = seedModelOutputSettings(config);
   const workspaces = [
-  supportsStandardSurface(config.workspaceCapabilities) ? SurfaceId.Standard : null,
-  supportsExploreSurface(config.workspaceCapabilities) ? SurfaceId.Explore : null,
+  supportsStandardSurface(config.surfaceCapabilities) ? SurfaceId.Standard : null,
+  supportsExploreSurface(config.surfaceCapabilities) ? SurfaceId.Explore : null,
   ].filter((workspace) => workspace !== null);
 
   for (const chartInstance of config.chartInstances.entries) {

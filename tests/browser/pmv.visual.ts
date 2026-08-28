@@ -85,7 +85,7 @@ type PmvDisplay = "PMV" | "PPD (%)";
 interface TargetChartOptions {
   model?: PmvModel;
   display?: PmvDisplay;
-  workspace?: "standard" | "explore";
+  surface?: "standard" | "explore";
   useIpUnits?: boolean;
 }
 
@@ -219,12 +219,12 @@ async function openTargetPmvChart(
   {
     model = "ashrae",
     display = "PMV",
-    workspace = "explore",
+    surface = "explore",
     useIpUnits = false,
   }: TargetChartOptions = {},
 ) {
   const pathname =
-    workspace === "explore"
+    surface === "explore"
       ? "/Explore/"
       : model === "iso"
         ? "/standard/iso-7730/"
@@ -249,7 +249,7 @@ async function openTargetPmvChart(
   const panel = page.getByTestId("comfort-chart-panel");
   await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
   await expect(
-    panel.getByText(workspace === "explore" ? "Explore" : "Compliance", {
+    panel.getByText(surface === "explore" ? "Explore" : "Compliance", {
       exact: true,
     }),
   ).toBeVisible();
@@ -336,7 +336,7 @@ test.describe("PMV visual regression", () => {
     page,
   }) => {
     const { panel, plot } = await openTargetPmvChart(page, {
-      workspace: "standard",
+      surface: "standard",
     });
 
     await expect(panel.getByRole("group", { name: "Chart mode" })).toBeHidden();
@@ -391,7 +391,7 @@ test.describe("PMV visual regression", () => {
   }) => {
     const { panel, plot, visual } = await openTargetPmvChart(page, {
       display: "PPD (%)",
-      workspace: "explore",
+      surface: "explore",
     });
     const chartTrigger = page.getByRole("button", {
       name: "Select chart type and export",
@@ -461,7 +461,7 @@ test.describe("PMV visual regression", () => {
   test("ASHRAE psychrometric hover is native on the Compare marker", async ({
     page,
   }) => {
-    const { plot } = await openTargetPmvChart(page, { workspace: "standard" });
+    const { plot } = await openTargetPmvChart(page, { surface: "standard" });
     const chartTrigger = page.getByRole("button", {
       name: "Select chart type and export",
     });

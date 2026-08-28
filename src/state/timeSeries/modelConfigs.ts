@@ -4,7 +4,7 @@ import type { RuntimeTimeSeriesModelDefinition } from "../../catalog/timeSeries"
 import {
   comfortModelConfigs,
   comfortModelOrder,
-} from "../analysis/modelConfigs";
+} from "../modelRegistry";
 
 const timeSeriesSimulators = {
   [ModelId.Phs2023]: phsTimeSeriesModelDefinition,

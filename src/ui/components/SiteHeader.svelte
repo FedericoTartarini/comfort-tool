@@ -4,18 +4,17 @@
   import { onDestroy } from "svelte";
 
   import { siteBrand, siteHeaderLinks } from "./siteShellConfig";
-  import { buildShareUrl } from "../../state/analysis/shareState";
-  import type { AnalysisController } from "../../state/analysis/types";
+  import type { PointSession } from "../../state/pointSession/types";
 
   interface Props {
-    toolState: AnalysisController;
+    pointSession: PointSession;
     showExportLink: boolean;
     homePath: string;
     onOpenNavigation: () => void;
   }
 
   let {
-    toolState,
+    pointSession,
     showExportLink,
     homePath,
     onOpenNavigation,
@@ -66,7 +65,7 @@
 
   async function handleExportLink() {
     try {
-      const shareUrl = buildShareUrl(toolState.actions.exportShareSnapshot(), window.location.href);
+      const shareUrl = pointSession.actions.exportShareUrl(window.location.href);
       await copyTextToClipboard(shareUrl);
       exportStatus = "copied";
     } catch {
@@ -111,8 +110,8 @@
       <Button
         color="light"
         class="lg:hidden"
-        aria-label="Open workspace navigation"
-        aria-controls="workspace-navigation-drawer"
+        aria-label="Open surface navigation"
+        aria-controls="surface-navigation-drawer"
         onclick={onOpenNavigation}
       >
         <BarsOutline class="h-5 w-5" />
@@ -120,7 +119,7 @@
     </div>
 
     <NavUl class="hidden lg:order-1 lg:flex">
-      {#each siteHeaderLinks as link}
+      {#each siteHeaderLinks as link (link.href)}
         <NavLi
           href={link.href}
           target={link.external ? "_blank" : undefined}

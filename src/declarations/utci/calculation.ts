@@ -20,7 +20,7 @@ import {
   formatDisplayValue,
   getQuantityDisplayMeta,
 } from "../../engines/units";
-import type { ResultRowDefinition } from "../../state/analysis/modelConfigs/builder";
+import type { ResultRowDefinition } from "../../state/modelRegistry/builder";
 
 export const UTCI_MODEL_LABEL = "UTCI";
 

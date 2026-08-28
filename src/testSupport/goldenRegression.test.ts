@@ -18,8 +18,8 @@ import { calculatePhs } from "../declarations/phs/calculation";
 import { ModelId } from "../catalog/modelIds";
 import { PhsPosture } from "../catalog/phs";
 import { InputId } from "../catalog/inputSlots";
-import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
-import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
+import { comfortModelConfigs, comfortModelOrder } from "../state/modelRegistry";
+import { createPointSession } from "../state/pointSession/createPointSession.svelte";
 import {
   createGoldenCalculationContext,
   getGoldenInputOverrides,
@@ -184,8 +184,8 @@ describe("golden regression — calculate via model config", () => {
 });
 
 describe("golden regression — controller default primary inputs", () => {
-  it("input1 defaults match catalog primary defaults", () => { const toolState = createAnalysisState();
-    const input1 = toolState.state.input.quantitiesByInput[InputId.Input1];
+  it("input1 defaults match catalog primary defaults", () => { const session = createPointSession();
+    const input1 = session.input.quantitiesByInput[InputId.Input1];
     expect(input1[PhysicalQuantityId.DryBulbTemperature]).toBe(26);
     expect(input1[PhysicalQuantityId.RelativeHumidity]).toBe(50);
     expect(input1[PhysicalQuantityId.MetabolicRate]).toBe(1.0); });

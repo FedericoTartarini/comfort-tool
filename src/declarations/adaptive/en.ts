@@ -70,7 +70,7 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   standardIds: [StandardId.En16798],
   resultStandard: ComfortStandard.En16798Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ISO,
-  workspaceCapabilities: [SurfaceId.Standard],
+  surfaceCapabilities: [SurfaceId.Standard],
   exploreOutputs: [],
   modifiers: [],
   boundaryChartId: "adaptive-en-boundary",

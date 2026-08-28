@@ -7,35 +7,32 @@
   import { UnitSystem } from "../../../catalog/units";
   import { formatDisplayValue } from "../../../engines/units";
   import type { TimeSeriesModelId } from "../../../state/timeSeries/modelConfigs";
-  import type { TimeSeriesController } from "../../../state/timeSeries/types";
+  import type {
+    TimeSeriesActions,
+    TimeSeriesInputPanelViewModel,
+  } from "../../../state/timeSeries/types";
   import TimeSeriesSegmentEditor from "./TimeSeriesSegmentEditor.svelte";
 
   interface Props {
-    controller: TimeSeriesController;
+    panel: TimeSeriesInputPanelViewModel;
+    actions: TimeSeriesActions;
     onSelectModel?: (modelId: TimeSeriesModelId) => void;
   }
 
-  let { controller, onSelectModel }: Props = $props();
+  let { panel, actions, onSelectModel }: Props = $props();
 
-  const modelItems = $derived(controller.selectors.getModelOptions());
-  const currentModel = $derived(controller.selectors.getCurrentModel());
-  const editor = $derived(controller.selectors.getEditor());
-  const totalDurationMinutes = $derived(controller.selectors.getTotalDurationMinutes());
-  const totalDurationHours = $derived(totalDurationMinutes / 60);
-  const status = $derived(controller.selectors.getStatus());
-  const progress = $derived(controller.selectors.getProgress());
-  const errors = $derived(controller.selectors.getErrors());
+  const totalDurationHours = $derived(panel.totalDurationMinutes / 60);
   const statusText = $derived(
-    status === "updating" && progress > 0
-      ? "Updating " + Math.round(progress * 100) + "%"
-      : status.charAt(0).toUpperCase() + status.slice(1),
+    panel.status === "updating" && panel.progress > 0
+      ? "Updating " + Math.round(panel.progress * 100) + "%"
+      : panel.status.charAt(0).toUpperCase() + panel.status.slice(1),
   );
   const statusClass = $derived(
-    status === "ready"
+    panel.status === "ready"
       ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-      : status === "error"
+      : panel.status === "error"
         ? "border-red-200 bg-red-50 text-red-800"
-        : status === "updating"
+        : panel.status === "updating"
           ? "border-sky-200 bg-sky-50 text-sky-800"
           : "border-amber-200 bg-amber-50 text-amber-800",
   );
@@ -43,9 +40,9 @@
 
 <Card size="none" class="w-full border-stone-300 p-4 shadow-sm">
   <header>
-    <p class="text-eyebrow">{currentModel.label} scenario</p>
+    <p class="text-eyebrow">{panel.currentModel.label} scenario</p>
     <h1 class="mt-1 text-xl font-semibold text-stone-950">Time-series</h1>
-    <p class="mt-1 text-sm leading-6 text-stone-600">{currentModel.description}</p>
+    <p class="mt-1 text-sm leading-6 text-stone-600">{panel.currentModel.description}</p>
   </header>
 
   <div class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
@@ -53,29 +50,29 @@
       <Label for="time-series-model" class="text-eyebrow">Model</Label>
       <Select
         id="time-series-model"
-        items={[...modelItems]}
-        value={controller.state.setting.selectedModel}
+        items={[...panel.modelItems]}
+        value={panel.selectedModel}
         size="sm"
         class="mt-1.5"
         aria-label="Select time-series model"
         onchange={(event) => {
           const modelId = event.currentTarget.value as TimeSeriesModelId;
-          (onSelectModel ?? controller.actions.selectModel)(modelId);
+          (onSelectModel ?? actions.selectModel)(modelId);
         }}
       />
     </div>
     <fieldset>
       <legend class="text-eyebrow">Units</legend>
       <div class="mt-1.5 flex h-[38px] items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-3">
-        <span class={controller.state.setting.unitSystem === UnitSystem.SI ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>SI</span>
+        <span class={panel.unitSystem === UnitSystem.SI ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>SI</span>
         <Toggle
-          checked={controller.state.setting.unitSystem === UnitSystem.IP}
-          onchange={controller.actions.toggleUnitSystem}
+          checked={panel.unitSystem === UnitSystem.IP}
+          onchange={actions.toggleUnitSystem}
           aria-label="Use IP units for time-series"
           color="teal"
           size="small"
         />
-        <span class={controller.state.setting.unitSystem === UnitSystem.IP ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>IP</span>
+        <span class={panel.unitSystem === UnitSystem.IP ? "text-xs font-semibold text-stone-900" : "text-xs text-stone-500"}>IP</span>
       </div>
     </fieldset>
   </div>
@@ -87,15 +84,15 @@
           Scenario segments
         </h2>
         <p class="mt-1 text-xs text-stone-500">
-          {totalDurationMinutes} minutes ({formatDisplayValue(totalDurationHours)} hours)
+          {panel.totalDurationMinutes} minutes ({formatDisplayValue(totalDurationHours)} hours)
         </p>
       </div>
       <div class="flex gap-2">
-        {#each editor.presets as preset (preset.id)}
+        {#each panel.editor.presets as preset (preset.id)}
           <Button
             color="light"
             size="xs"
-            onclick={() => controller.actions.addSegment(preset.id)}
+            onclick={() => actions.addSegment(preset.id)}
           >
             <PlusOutline class="mr-1 h-3.5 w-3.5" /> {preset.label}
           </Button>
@@ -104,18 +101,18 @@
     </header>
 
     <div class="mt-3 grid gap-3">
-      {#each editor.segments as segment, index (segment.id)}
+      {#each panel.editor.segments as segment, index (segment.id)}
         <TimeSeriesSegmentEditor
-          {controller}
+          {actions}
           {segment}
           {index}
-          count={editor.segments.length}
+          count={panel.editor.segments.length}
         />
       {/each}
     </div>
   </section>
 
-  {#each editor.settingsSections as section (section.id)}
+  {#each panel.editor.settingsSections as section (section.id)}
     <details
       class="mt-4 rounded-xl border border-stone-200 bg-stone-50"
       data-testid={section.testId}
@@ -139,7 +136,7 @@
                 step={control.step}
                 value={String(control.value)}
                 class="mt-1 border-stone-300 bg-white"
-                onchange={(event) => controller.actions.updateSettingControl(
+                onchange={(event) => actions.updateSettingControl(
                   control.id,
                   event.currentTarget.value,
                 )}
@@ -154,7 +151,7 @@
                 value={control.value}
                 size="sm"
                 class="mt-1"
-                onchange={(event) => controller.actions.updateSettingControl(
+                onchange={(event) => actions.updateSettingControl(
                   control.id,
                   event.currentTarget.value,
                 )}
@@ -165,7 +162,7 @@
               {control.label}
               <Toggle
                 checked={control.value}
-                onchange={(event) => controller.actions.updateSettingControl(
+                onchange={(event) => actions.updateSettingControl(
                   control.id,
                   event.currentTarget.checked,
                 )}
@@ -180,13 +177,13 @@
     </details>
   {/each}
 
-  {#if errors.length > 0}
+  {#if panel.errors.length > 0}
     <div class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3" role="alert">
       <p class="text-sm font-semibold text-red-800">
-        {status === "error" ? "Calculation error" : "Check the scenario"}
+        {panel.status === "error" ? "Calculation error" : "Check the scenario"}
       </p>
       <ul class="mt-1 list-disc space-y-1 pl-5 text-xs leading-5 text-red-700">
-        {#each errors as error}
+        {#each panel.errors as error (error)}
           <li>{error}</li>
         {/each}
       </ul>
@@ -201,7 +198,7 @@
     >
       {statusText}
     </span>
-    <Button color="light" onclick={controller.actions.reset}>
+    <Button color="light" onclick={actions.reset}>
       <RefreshOutline class="mr-2 h-4 w-4" /> Reset
     </Button>
   </footer>

@@ -71,22 +71,32 @@ export interface TimeSeriesActions {
   reset: () => void;
 }
 
-export interface TimeSeriesSelectors {
-  getModelOptions: () => readonly TimeSeriesModelOption[];
-  getCurrentModel: () => TimeSeriesModelViewModel;
-  getEditor: () => TimeSeriesEditorViewModel;
-  getTotalDurationMinutes: () => number;
-  getSelectedResult: () => unknown | null;
-  getStatus: () => TimeSeriesRunStatus;
-  getErrors: () => readonly string[];
-  getProgress: () => number;
-  hasStaleResult: () => boolean;
-  getSummary: () => readonly MetricSummaryItemViewModel[];
-  getCharts: () => readonly TimeSeriesChartViewModel[];
+export interface TimeSeriesInputPanelViewModel {
+  selectedModel: TimeSeriesModelId;
+  unitSystem: UnitSystemType;
+  modelItems: readonly TimeSeriesModelOption[];
+  currentModel: TimeSeriesModelViewModel;
+  editor: TimeSeriesEditorViewModel;
+  totalDurationMinutes: number;
+  status: TimeSeriesRunStatus;
+  progress: number;
+  errors: readonly string[];
 }
 
-export interface TimeSeriesController {
-  state: TimeSeriesStateSlice;
+export interface TimeSeriesResultsViewModel {
+  model: TimeSeriesModelViewModel;
+  summary: readonly MetricSummaryItemViewModel[];
+  charts: readonly TimeSeriesChartViewModel[];
+  status: TimeSeriesRunStatus;
+  errors: readonly string[];
+  hasStaleResult: boolean;
+}
+
+export interface TimeSeriesSession {
+  input: TimeSeriesInputState;
+  setting: TimeSeriesSettingState;
+  output: TimeSeriesOutputState;
   actions: TimeSeriesActions;
-  selectors: TimeSeriesSelectors;
+  inputPanel: TimeSeriesInputPanelViewModel;
+  results: TimeSeriesResultsViewModel;
 }

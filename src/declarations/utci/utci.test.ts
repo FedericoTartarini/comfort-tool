@@ -8,7 +8,7 @@ import {
   buildUtciStressChart,
 } from "./charts";
 import { type ChartBuildContext } from "../../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import {
   calculateUtci,

@@ -8,7 +8,8 @@ Svelte 5 frontend for thermal-comfort calculations and visualizations. The activ
 
 ## Features
 
-The app is organized into three workspaces, each with its own route and controller lifetime:
+The app is organized into three surfaces. Point session (Standard + Explore)
+and Time-series are two session classes, created once in `App.svelte`:
 
 | Workspace       | Route                                                     | Purpose                                                                                         |
 | --------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -18,17 +19,17 @@ The app is organized into three workspaces, each with its own route and controll
 
 `{standard}` is a `StandardId` (`ashrae-55`, `iso-7730`, `en-16798-1`, `iso-7933`); `{model}` is a `ModelId`.
 
-Across Analysis workspaces:
+Across Standard and Explore:
 
 - Up to three input slots with optional **compare mode**
 - **SI / IP** unit switching with canonical SI state
 - **Input modifiers** (Measured Air Speed, Morning Clothing Estimate, Dynamic Clothing, Solar Gain) where declared by the model
-- **URL share snapshots** (strict version-1 codec) for Standard and Explore routes
+- **URL share snapshots** (strict version-1 JSON → Base64URL → `?state=`; input + setting only) for Standard and Explore routes
 - Result tables, psychrometric and dynamic charts, and chart export
 
 ## Supported models
 
-| Model                           | Standard workspace | Explore | Time-series |
+| Model                           | Standard | Explore | Time-series |
 | ------------------------------- | :----------------: | :-----: | :---------: |
 | PMV / PPD (ASHRAE 55)           |         ✓          |    ✓    |             |
 | PMV / PPD (ISO 7730 Category B) |         ✓          |    ✓    |             |
@@ -91,19 +92,23 @@ The 20 approved visual baselines live beside the Playwright tests. Update them o
 
 ```text
 src/
-  catalog/         centralized IDs, quantity seed, units, and output metadata
+  catalog/         centralized IDs, quantity seed, units, field-chart profile,
+                   and result-section types
+  charts/          ChartType figure geometry, draw/clone/export, chartTheme,
+                   plotlyExport
   declarations/    model declarations, calculations, charts, and modifier definitions
   engines/
-    comfort/       shared comfort helpers, adapters, modifiers, and chart engines
+    comfort/       shared comfort helpers, adapters, modifiers, and chart binds
     units/         SI <-> display conversion
   state/
-    analysis/      Analysis controller, keyed model memory, share snapshots
-    timeSeries/    independent Time-series controller and scenario state
-    workspace/     route/model/mode coordination and navigation
+    modelRegistry/ defineModel, ComfortModelBuilder, registered runtime configs
+    pointSession/  PointSession: three buckets, actions, $derived view-models,
+                   share snapshot/codec/url (JSON + Base64URL + ?state=)
+    timeSeries/    independent Time-series session (PHS)
+    app/           route identity, navigation, AppContext
   ui/
     components/    rendering and interaction
-    routes/        client router and route-bound page adapters
-    views/         page composition (ComfortDashboard)
+    routes/        client router and page composition
     utils/         UI actions (`clickOutside`)
   testSupport/     Compare helper; golden inputs/control counts from the registry
 ```
@@ -113,10 +118,11 @@ src/
 - `src/declarations/` owns model identity, inputs, strict options, declaration-local zones, calculations, result rows, charts, capabilities, and executable modifier declarations. Shared PMV and Adaptive assembly is separated from their calculation and chart modules.
 - `src/engines/comfort/` owns reusable comfort, psychrometric, control, modifier, canonical request/axis-adapter, and chart-engine behavior.
 - `src/engines/units/` is the only unit-conversion family. Shared inputs, modifier values, and editable chart bands remain canonical SI.
-- `src/state/analysis/` owns generic Analysis orchestration, keyed model memory, calculation caches, pure chart/modifier/model-switch projections, and strict version-1 share snapshots.
-- `src/state/timeSeries/` owns an independent keyed scenario state and simulation lifecycle for the Time-series workspace.
-- `src/state/workspace/` coordinates route constraints, model/mode selection, and share import without scheduling calculations.
-- `src/ui/components/` renders and handles interaction; `src/ui/views/` composes pages.
+- `src/state/pointSession/` owns the Standard+Explore session: three SI buckets, `actions` writes, `$derived` view-model projections, and strict version-1 share snapshots.
+- `src/state/timeSeries/` owns an independent keyed scenario state and simulation lifecycle for the Time-series surface.
+- `src/state/app/` coordinates pathname identity, optional `?state=` hydrate, and model-switch intercept without treating the address bar as a live store.
+- `src/state/modelRegistry/` registers built runtime definitions; it is not session state.
+- `src/ui/components/` renders and handles interaction; `src/ui/routes/` composes pages.
 
 Important invariants:
 
@@ -133,7 +139,7 @@ Important invariants:
 
 Public paths use clean trailing-slash URLs. Production static hosting must return `index.html` for non-asset application paths so direct visits and refreshes reach the client router.
 
-See [Adding a model](docs/adding-a-model.md) for the authoring contract. Repository execution rules are in [AGENTS.md](AGENTS.md).
+See [Architecture](docs/architecture.md) and [Adding a model](docs/adding-a-model.md). Repository execution rules are in [AGENTS.md](AGENTS.md).
 
 ## Documentation
 

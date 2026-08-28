@@ -1,5 +1,5 @@
 import type { ChartBuildResult } from "../chartBuildResult";
-import type { FieldChartProfile } from "../../../../catalog/output/fieldChartProfile";
+import type { FieldChartProfile } from "../../../../catalog/fieldChartProfile";
 import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 import type { UnitSystem as UnitSystemType } from "../../../../catalog/units";
 

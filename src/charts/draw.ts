@@ -8,7 +8,7 @@ import {
   CHART_LAYOUT_DPI,
   type ChartTheme,
   type PublicationChartTheme,
-} from "../engines/chartTheme";
+} from "./chartTheme";
 import type { AssembleResult } from "./types";
 
 export type PlotlyModule = {

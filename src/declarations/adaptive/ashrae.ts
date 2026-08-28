@@ -63,7 +63,7 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   standardIds: [StandardId.Ashrae55],
   resultStandard: ComfortStandard.Ashrae55Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ASHRAE,
-  workspaceCapabilities: [SurfaceId.Standard],
+  surfaceCapabilities: [SurfaceId.Standard],
   exploreOutputs: [],
   modifiers: [],
   boundaryChartId: "adaptive-ashrae-boundary",

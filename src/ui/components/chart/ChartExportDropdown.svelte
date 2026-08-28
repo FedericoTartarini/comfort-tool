@@ -4,7 +4,7 @@
   import {
     publicationExportMenuItems,
     type PublicationExportHandler,
-  } from "../../../engines/plotlyExport";
+  } from "../../../charts/plotlyExport";
 
   interface Props {
     triggerId: string;

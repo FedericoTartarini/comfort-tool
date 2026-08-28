@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
+import { comfortModelConfigs, comfortModelOrder } from "../state/modelRegistry";
 import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
 import {
@@ -18,12 +18,12 @@ describe("output registry coverage", () => {
     const config = comfortModelConfigs[modelId];
 
     it(`${modelId} declares workspace capabilities, charts, and table builder`, () => {
-      expect(config.workspaceCapabilities.length).toBeGreaterThan(0);
+      expect(config.surfaceCapabilities.length).toBeGreaterThan(0);
       expect(config.chartInstances.entries.length).toBeGreaterThan(0);
       expect(config.chartInstances.entries.map(({ instanceId }) => instanceId)).toEqual(
         [...new Set(config.chartInstances.entries.map(({ instanceId }) => instanceId))],
       );
-      if (supportsExploreSurface(config.workspaceCapabilities)) {
+      if (supportsExploreSurface(config.surfaceCapabilities)) {
         expect(config.exploreOutputs.length).toBeGreaterThan(0);
       }
     });
@@ -45,14 +45,14 @@ describe("output registry coverage", () => {
     });
 
     it(`${modelId} compliance models declare standard IDs`, () => {
-      if (supportsStandardSurface(config.workspaceCapabilities)) {
+      if (supportsStandardSurface(config.surfaceCapabilities)) {
         expect(config.standardIds.length).toBeGreaterThan(0);
         expect(config.complianceProfile).toBeDefined();
       }
     });
 
     it(`${modelId} explore models declare explore outputs`, () => {
-      if (supportsExploreSurface(config.workspaceCapabilities)) {
+      if (supportsExploreSurface(config.surfaceCapabilities)) {
         expect(config.exploreOutputs.length).toBeGreaterThan(0);
       }
     });

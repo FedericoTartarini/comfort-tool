@@ -5,7 +5,7 @@ import { ComplianceStatus } from "../catalog/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../catalog/quantities";
 import { InputId, type InputId as InputIdType } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
-import type { ResultCellViewModel, ResultSectionViewModel } from "../state/analysis/types";
+import type { ResultCellViewModel, ResultSectionViewModel } from "../state/pointSession/types";
 import {
   adaptiveAshraeModelConfig,
   adaptiveAshraeZonesList,

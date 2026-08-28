@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --spacing-workspace: 0.5rem;
+  --spacing-dashboard: 0.5rem;
 }
 
 @source "../node_modules/flowbite-svelte/dist";

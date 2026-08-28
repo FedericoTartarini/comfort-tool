@@ -1,7 +1,7 @@
 import type { InputId as InputIdType } from "./inputSlots";
 import type { PhysicalQuantityId } from "./quantities";
 import type { UnitSystem as UnitSystemType } from "./units";
-import type { ResultCellViewModel } from "./output/resultSections";
+import type { ResultCellViewModel } from "./resultSections";
 
 export type TableCellFormatter<TResult> = (
   result: TResult,

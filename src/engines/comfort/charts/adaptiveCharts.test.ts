@@ -34,7 +34,7 @@ import {
   type BandInputsSi,
   type ChartBuildContext,
 } from "../../../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../catalog/fieldChartProfile";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { convertFieldValueFromSi } from "../../units";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { comfortModelOrder } from "../state/analysis/modelConfigs";
+import { comfortModelOrder } from "../state/modelRegistry";
 import {
   buildAllModelOutputGoldenSnapshots,
   buildModelOutputGoldenSnapshot,

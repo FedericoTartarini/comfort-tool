@@ -1,4 +1,4 @@
-import type { ResultCellViewModel } from "../../../catalog/output/resultSections";
+import type { ResultCellViewModel } from "../../../catalog/resultSections";
 import {
   getPhysicalQuantityMeta,
   isPhysicalQuantityId,

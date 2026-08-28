@@ -10,22 +10,22 @@
     TableHeadCell,
   } from "flowbite-svelte";
   import { ExclamationCircleOutline } from "flowbite-svelte-icons";
-  import type { AnalysisController } from "../../../state/analysis/types";
-  import { getComfortModelConfig } from "../../../state/analysis/modelConfigs";
+  import type { PointSession } from "../../../state/pointSession/types";
+  import { getComfortModelConfig } from "../../../state/modelRegistry";
 
   interface Props {
-    toolState: AnalysisController;
+    pointSession: PointSession;
     onConfirm?: () => void;
     onCancel?: () => void;
   }
 
   let {
-    toolState,
-    onConfirm = () => toolState.actions.confirmModelSwitch(),
-    onCancel = () => toolState.actions.cancelModelSwitch(),
+    pointSession,
+    onConfirm = () => pointSession.actions.confirmModelSwitch(),
+    onCancel = () => pointSession.actions.cancelModelSwitch(),
   }: Props = $props();
 
-  const pending = $derived(toolState.selectors.getPendingModelSwitch());
+  const pending = $derived(pointSession.pendingModelSwitch);
   const isOpen = $derived(!!pending);
   const pendingModelLabel = $derived(
     pending ? getComfortModelConfig(pending.targetModel).label : "",

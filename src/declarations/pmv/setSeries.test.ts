@@ -4,9 +4,9 @@ import { PhysicalQuantityId } from "../../catalog/quantities";
 import { pickPmvRequest } from "../../testSupport/goldenFixtures";
 import { InputId } from "../../catalog/inputSlots";
 import { type ChartBuildContext } from "../../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 import { UnitSystem } from "../../catalog/units";
-import { createEmptyResults } from "../../state/analysis/modelConfigs/builder";
+import { createEmptyResults } from "../../state/modelRegistry/builder";
 import { buildModelParametricLineChart } from "../../engines/comfort/charts/kinds/parametricLine";
 import {
   calculatePmvSetOutputs,

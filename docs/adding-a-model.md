@@ -7,18 +7,20 @@ build.
 A Heat Index–class model is three edits: copy
 [`src/declarations/heatIndex.ts`](../src/declarations/heatIndex.ts) as a full
 `defineModel` declaration, add one `ModelId` member (the live model-id
-constant), and register once. Do not add `defineIndexModel()`, restore
-`src/declarations/presets/`, or put Plotly in the declaration.
+constant), and register once. Declarations do not import Plotly.
 
-UI, share, Compare, and the Analysis controller must not grow a branch on the
-new model id. Analysis input rows, Compare toggles, and modifiers render from
-`getInputPanelViewModel` (`src/state/analysis/inputPresentation.ts`). Do not
-edit `src/ui/components/input-panel/` for a new model.
+UI, share, Compare, and the point session must not grow a branch on the
+new model id. Input rows, Compare toggles, and modifiers render from
+`buildInputPanelViewModel` (`src/state/pointSession/inputPresentation.ts`).
+Components under `src/ui/components/input-panel/` stay presentational.
 
-Target architecture is the living [ARCHITECTURE-PLAN.md](../ARCHITECTURE-PLAN.md).
-Execution rules are in [AGENTS.md](../AGENTS.md). Do not implement from
-`26-06-29-architecture-brief.md`. `src/ui/components/` is the live components tree. `src/ui/routes/` is the live client router. `src/ui/views/` is the live page-composition tree. `src/ui/utils/` is the live UI-actions tree.
-Analysis state lives at `src/state/analysis/`. Declarations live at `src/declarations/`. Catalog lives at `src/catalog/`. ChartType geometry and assemble live at `src/charts/`. Remaining shared comfort/units/theme live at `src/engines/` (shrinking).
+Architecture is [docs/architecture.md](architecture.md). Execution rules are
+in [AGENTS.md](../AGENTS.md). Point-session state lives at
+`src/state/pointSession/` (`createPointSession.svelte.ts`). The model
+registry lives at `src/state/modelRegistry/`. Declarations live at
+`src/declarations/`. Catalog lives at `src/catalog/`. ChartType geometry,
+assemble, theme, and publication export live at `src/charts/`. Remaining
+shared comfort/units live at `src/engines/`.
 
 ## Recipe
 
@@ -30,7 +32,7 @@ Analysis state lives at `src/state/analysis/`. Declarations live at `src/declara
 2. **Add the model id** to `ModelId` in `src/catalog/modelIds.ts`.
    Wire values follow existing members (`"heat-index"`, `"humidex"`, …).
    Do not invent a second id tree.
-3. **Register once** in `src/state/analysis/modelConfigs/index.ts`: import
+3. **Register once** in `src/state/modelRegistry/index.ts`: import
    the config and add one `comfortModelConfigs` entry. The registry type is
    `Record<ModelId, RuntimeComfortModelDefinition>`.
 
@@ -47,9 +49,9 @@ Then, only if the model actually needs them:
   or catalog `defaultSi`, and do not add a per-model golden-input switch.
 
 PMV and Adaptive stay family modules (one declaration per standard, shared
-calculation/chart core). Those are not presets. They may still assemble with
-`ComfortModelBuilder` internally. Do not merge ASHRAE/ISO or ASHRAE/EN behind
-a runtime toggle. PMV Analysis tables include SET, cooling effect, relative
+calculation/chart core). They may still assemble with `ComfortModelBuilder`
+internally. ASHRAE and ISO (and ASHRAE/EN Adaptive) stay separate registered
+models. PMV Analysis tables include SET, cooling effect, relative
 air speed, and dynamic clothing; Explore still colours PMV and PPD. ASHRAE
 and ISO each register Heat Loss and SET chart instances.
 
@@ -63,19 +65,20 @@ work, not “add a model” work:
 | New ChartType (`ChartType` member) | Closed product set in `src/catalog/chartTypes.ts`. Do not add a ChartType from a declaration.                                              |
 | New `primaryInputOrder` key        | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`).                         |
 | New modifier                       | Global catalogue, execution order, and share schema.                                                                                       |
-| New Time-series controller         | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                        |
+| New Time-series session            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                        |
 | New SI unit dimension (`SiUnit`)   | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/engines/units/`; declarations only select known units. |
 
 Also forbidden in a declaration:
 
 - Plotly imports inside a Heat Index–class `defineModel` file (keep a data spec; Plotly assemble stays in `src/charts/`)
-- a parallel `ChartInstanceId` tree
 - a second ChartType, primary, or modifier catalog
 - a `jsthermalcomfort` import outside `src/declarations/**`,
   `src/engines/comfort/**`, or `src/charts/psychrometric/humidity.ts`
   (humidity ratio only)
-- UI, route, or controller `if (model === …)` branches
+- UI, route, or session `if (model === …)` branches
 - writing modifier output back onto base `quantitiesByInput`
+
+Chart instance ids are derived from declaration `charts[].id`.
 
 Globe temperature, local discomfort, and CBE-style CSV exceedance are tools
 or a separate product surface, not new `ModelId` entries.
@@ -90,26 +93,25 @@ src/
   ui/
     components/      rendering and interaction; no model-id branches;
                      site shell branding/links (`siteShellConfig.ts`)
-    routes/          client router
-    views/           page composition
+    routes/          client router and page composition
     utils/           UI actions (`clickOutside`)
   catalog/           quantities (inputs and outputs), ModelId, ChartType,
                      modifiers, SurfaceId, zone tokens;
                      Time-series declaration contracts (`timeSeries.ts`);
-                     output/ field-chart profile metadata
+                     fieldChartProfile.ts, resultSections.ts
   charts/            ChartType figure functions, draw/clone/export (native Plotly);
+                     chartTheme.ts, plotlyExport.ts;
                      Psychrometric humidity/isoline helpers in psychrometric/
   engines/
-    comfort/         adapters, binds, modifiers, psychrometrics, table assembly;
+    comfort/         adapters, binds, modifiers, leftover comfort helpers;
                      ChartBuildResult and simulation chart declarations
     units/           SI ↔ display conversion
-    chartTheme.ts    Screen and publication chart theme (mm/pt/dpi, single/double column; zone palettes applied here)
-    plotlyExport.ts  Publication PNG/SVG from a dedicated figure
   state/
-    analysis/        point session (Standard+Explore): defineModel, registry, share,
-                     projections (chartPresentation, inputPresentation)
+    modelRegistry/   defineModel, ComfortModelBuilder, registered configs
+    pointSession/    Standard+Explore session: three buckets, actions,
+                     $derived view-models, share snapshot/codec/url
     timeSeries/      Time-series session (PHS); editor/chart view models
-    workspace/       route / model / surface coordination
+    app/             route identity, navigation, AppContext
   testSupport/       Compare helper; golden inputs/control counts from the registry
 ```
 
@@ -117,10 +119,10 @@ Canonical Standard URLs are `/standard/{standard}/{model}/` (for example
 `/standard/ashrae-55/pmv-ashrae/`). Explore is `/explore/{model}/`. Time-series is
 `/time-series/{model}/`.
 
-Import lanes: `ui/views` → `ui/components`, `state`; `ui/components` → `state`,
+Import lanes: `ui/routes` → `ui/components`, `state`; `ui/components` → `state`,
 `catalog`, lightweight `engines`; `state` → `catalog`, `engines` (the
 registry is the exception that imports `declarations`); `declarations` →
-`catalog`, `engines`, `state/analysis/modelConfigs`, and `charts/<ChartType>`
+`catalog`, `engines`, `state/modelRegistry`, and `charts/<ChartType>`
 geometry helpers (not Plotly assemble); `engines` → `catalog`. `charts`
 geometry must not import models, quantities, or declarations. `engines/` is
 shrinking; do not add new ChartType geometry there.
@@ -130,9 +132,11 @@ Canonical state is SI. Calculations run in SI. Display converts through
 (`convertQuantityFromSi`). Control widgets stay generic.
 
 `App.svelte` constructs one point session
-(`createAnalysisState` / `PointSession`) and one Time-series session. Dashboard
+(`createPointSession` / `PointSession`) and one Time-series session. Dashboard
 routes share point-session SI input, per-model chart memory, and calculation
-caches. Time-series does not read or schedule the point session.
+caches. Time-series does not read or schedule the point session. View-models
+are `$derived` projections, not a second store. Share is JSON → Base64URL →
+`?state=` of input + setting only.
 
 ## Catalogs the declaration may select
 
@@ -183,7 +187,7 @@ per-cell `customdata` matrix. `src/charts/draw.ts`
 clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly
 mutates, applies axis lines/ticks via `layout.template`, and converts non-finite grid `z` cells to `null` gaps. Do not
 `JSON.parse(JSON.stringify(figure))` a dense field. Screen and publication
-figures share `src/engines/chartTheme.ts`. Export builds a separate
+figures share `src/charts/chartTheme.ts`. Export builds a separate
 publication figure (PNG ~300 DPI equivalent, SVG of the same geometry, no
 mode bar) and must not capture the on-screen plot. Publication widths are
 journal single- and double-column profiles on that same theme; Compare
@@ -214,7 +218,7 @@ Visible product decisions:
 
 - `id`, `label`, `description`
 - `standardIds` — `[]` when the model is not a Standard model
-- `workspaceCapabilities`, `exploreOutputs`
+- `surfaceCapabilities`, `exploreOutputs`
 - `complianceProfile` when Standard-capable (fixed output, non-empty bands,
   `caption`, `legendTitle`, feedback callback)
 - `inputFields`, complete `defaultOptions`, exact `parseOptions`
@@ -312,11 +316,12 @@ Strict `version: 1`. Serialize `quantitiesByInput`, sparse
 `auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, sparse `models`
 (omit default slices), and `activeModifiersByInput`. Missing known model
 keys seed defaults; unknown keys are rejected. Adding a model must not
-require existing URLs to list that model. There is no migration reader.
+require existing URLs to list that model. The codec accepts only that
+version-1 field set.
 
 ## Compare
 
-Every Analysis model must pass `assertCompareContract` in
+Every point-session model must pass `assertCompareContract` in
 `src/testSupport/assertCompareContract.ts`: 1, 2, and 3 visible inputs,
 filled table columns, chart markers, and a baseline change that keeps a
 ready cache. Three inputs must not fail silently. Compare golden values come

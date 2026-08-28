@@ -2,45 +2,45 @@
   import { onDestroy } from "svelte";
 
   import SiteShell from "./ui/components/SiteShell.svelte";
-  import { createAnalysisState } from "./state/analysis/createAnalysisState.svelte";
+  import { createPointSession } from "./state/pointSession/createPointSession.svelte";
   import ModelSwitchWarningModal from "./ui/components/modals/ModelSwitchWarningModal.svelte";
   import {
     Router,
     navigateToUrl,
-    registerWorkspaceNavigation,
+    registerAppNavigation,
     route,
   } from "./ui/routes/router";
-  import { createWorkspaceNavigation } from "./state/workspace/createWorkspaceNavigation";
-  import { provideWorkspaceContext } from "./state/workspace/context";
+  import { createAppNavigation } from "./state/app/createAppNavigation";
+  import { provideAppContext } from "./state/app/context";
   import {
     appRouteDefinitions,
     defaultAppRoute,
     getAppRouteByPath,
     standardRouteDefinitions,
-  } from "./state/workspace/routeDefinitions";
+  } from "./state/app/routeDefinitions";
   import { SurfaceId } from "./catalog/surfaces";
-  import { createTimeSeriesState } from "./state/timeSeries/createTimeSeriesState.svelte";
+  import { createTimeSeriesSession } from "./state/timeSeries/createTimeSeriesSession.svelte";
 
-  const toolState = createAnalysisState();
-  const timeSeriesState = createTimeSeriesState();
-  const navigation = createWorkspaceNavigation(toolState, {
+  const pointSession = createPointSession();
+  const timeSeriesSession = createTimeSeriesSession();
+  const navigation = createAppNavigation(pointSession, {
     navigate: navigateToUrl,
-  }, timeSeriesState);
-  provideWorkspaceContext({ toolState, navigation, timeSeriesState });
+  }, timeSeriesSession);
+  provideAppContext({ pointSession, navigation, timeSeriesSession });
 
   if (typeof window !== "undefined") {
     navigation.prepareUrl(new URL(window.location.href), { validateRanges: false });
   }
 
-  const unregisterNavigation = registerWorkspaceNavigation(navigation);
+  const unregisterNavigation = registerAppNavigation(navigation);
   onDestroy(unregisterNavigation);
-  onDestroy(timeSeriesState.actions.dispose);
+  onDestroy(timeSeriesSession.actions.dispose);
 
   const exploreRoute = appRouteDefinitions.find(
-    (definition) => definition.workspace === SurfaceId.Explore,
+    (definition) => definition.surface === SurfaceId.Explore,
   )!;
   const timeSeriesRoute = appRouteDefinitions.find(
-    (definition) => definition.workspace === SurfaceId.TimeSeries,
+    (definition) => definition.surface === SurfaceId.TimeSeries,
   )!;
   const currentRouteDefinition = $derived(getAppRouteByPath(route.pathname));
   const activePath = $derived(currentRouteDefinition?.path ?? "");
@@ -48,7 +48,7 @@
 </script>
 
 <SiteShell
-  {toolState}
+  {pointSession}
   {activePath}
   {showExportLink}
   homePath={defaultAppRoute.path}
@@ -60,7 +60,7 @@
 </SiteShell>
 
 <ModelSwitchWarningModal
-  {toolState}
+  {pointSession}
   onConfirm={navigation.confirmPendingTransition}
   onCancel={navigation.cancelPendingTransition}
 />

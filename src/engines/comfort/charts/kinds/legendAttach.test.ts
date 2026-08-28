@@ -5,8 +5,8 @@ import { InputId } from "../../../../catalog/inputSlots";
 import { UnitSystem } from "../../../../catalog/units";
 import { SurfaceId } from "../../../../catalog/surfaces";
 import { ChartLegendKind } from "../chartBuildResult";
-import { buildFieldChartProfile, seedModelOutputSettings } from "../../../../state/analysis/fieldChartState";
-import { getComfortModelConfig } from "../../../../state/analysis/modelConfigs";
+import { buildFieldChartProfile, seedModelOutputSettings } from "../../../../state/pointSession/fieldChartState";
+import { getComfortModelConfig } from "../../../../state/modelRegistry";
 import { clearChartMemo } from "./memo";
 import { createGoldenCalculationContext, getGoldenInputOverrides } from "../../../../testSupport/goldenFixtures";
 

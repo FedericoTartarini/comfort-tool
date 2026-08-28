@@ -11,7 +11,7 @@
     InputModifierControlViewModel,
     InputModifierDraftEntry,
     ModifierFieldControlViewModel,
-  } from "../../../state/analysis/types";
+  } from "../../../state/pointSession/types";
 
   interface Props {
     modifierControls: InputModifierControlViewModel[];

@@ -1,7 +1,7 @@
 import type { ModelId as ModelIdType } from "../../../../catalog/modelIds";
 import type { ChartBuildResult } from "../chartBuildResult";
-import type { FieldChartProfile } from "../../../../catalog/output/fieldChartProfile";
-import { FieldChartProfileKind } from "../../../../catalog/output/fieldChartProfile";
+import type { FieldChartProfile } from "../../../../catalog/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../../catalog/fieldChartProfile";
 import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 import type { ChartBuildContext } from "../../../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../../catalog/units";

@@ -8,8 +8,8 @@
   import {
     FieldChartProfileKind,
     type FieldChartProfileKind as FieldChartProfileKindType,
-  } from "../../../catalog/output/fieldChartProfile";
-  import type { ChartProfileBadgeViewModel } from "../../../state/analysis/types";
+  } from "../../../catalog/fieldChartProfile";
+  import type { ChartProfileBadgeViewModel } from "../../../state/pointSession/types";
 
   interface Props {
     control: ChartProfileBadgeViewModel;

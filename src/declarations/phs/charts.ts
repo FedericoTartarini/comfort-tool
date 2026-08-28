@@ -7,7 +7,7 @@ import {
   type InputId as InputIdType,
 } from "../../catalog/inputSlots";
 import { type ChartBuildContext, type ModelOutput, type NumericBand, resolveChartModelInputs } from "../../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 
 import type { FieldRequestAdapter } from "../../engines/comfort/requestMapping";
 import {

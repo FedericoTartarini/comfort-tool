@@ -7,7 +7,7 @@
   import type {
     InputModifierDraftEntry,
     InputModifiersViewModel,
-  } from "../../../state/analysis/types";
+  } from "../../../state/pointSession/types";
   import InputModifierEditor from "./InputModifierEditor.svelte";
 
   interface Props {

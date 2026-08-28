@@ -11,8 +11,8 @@ import { UnitSystem } from "../../../catalog/units";
 import { SurfaceId } from "../../../catalog/surfaces";
 import { ModelId } from "../../../catalog/modelIds";
 import { ChartType } from "../../../catalog/chartTypes";
-import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/analysis/modelConfigs/builder";
-import "../../../state/analysis/modelConfigs";
+import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/modelRegistry/builder";
+import "../../../state/modelRegistry";
 import { convertMassFromSi } from "../../units/physicalQuantities";
 import { resolveInputField, declaredSiRangeForInputField, inputFieldControlId, primaryQuantityIdsForInputField } from "./fieldInputBehaviors";
 import type { ControlBehaviorContext } from "./types";
@@ -23,7 +23,7 @@ describe("fieldInputBehaviors", () => {
       .setLabel("Test")
       .setDescription("Test model")
       .setStandardIds([])
-      .setWorkspaceCapabilities([SurfaceId.Explore])
+      .setSurfaceCapabilities([SurfaceId.Explore])
       .setExploreOutputs([{
         key: PhysicalQuantityId.Pmv,
         label: "PMV",

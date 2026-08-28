@@ -6,22 +6,24 @@
     ModelId,
     type ModelId as ModelIdType,
   } from "../../../catalog/modelIds";
-  import type { AnalysisController } from "../../../state/analysis/types";
+  import type { PointSession } from "../../../state/pointSession/types";
 
   interface Props {
-    toolState: AnalysisController;
+    session: PointSession;
     allowedModelIds?: readonly ModelIdType[];
   }
 
   let {
-    toolState,
+    session,
     allowedModelIds = [ModelId.PmvAshrae, ModelId.Utci],
   }: Props = $props();
+
+  $effect(() => {
+    session.actions.setAllowedModelIds(allowedModelIds);
+    session.bindSelectModel((modelId) => {
+      session.actions.setSelectedModel(modelId);
+    });
+  });
 </script>
 
-<InputPanel
-  panel={toolState.selectors.getInputPanelViewModel(
-    allowedModelIds,
-    (modelId) => toolState.actions.setSelectedModel(modelId),
-  )}
-/>
+<InputPanel panel={session.inputPanel} />

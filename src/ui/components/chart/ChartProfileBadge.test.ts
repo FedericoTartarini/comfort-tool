@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/svelte";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ComplianceStatus } from "../../../catalog/modelIds";
-import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../catalog/fieldChartProfile";
 
 import ChartProfileBadge from "./ChartProfileBadge.svelte";
 

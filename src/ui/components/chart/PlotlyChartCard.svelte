@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ChartPayload } from "../../../charts/types";
-  import type { PublicationExportHandler } from "../../../engines/plotlyExport";
+  import type { PublicationExportHandler } from "../../../charts/plotlyExport";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
 
   interface Props {

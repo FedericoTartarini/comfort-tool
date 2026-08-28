@@ -10,7 +10,7 @@ import {
 import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../catalog/quantities";
 import { UnitSystem } from "../../catalog/units";
 import { type ChartBuildContext, type ExploreFieldChartConfig, type NumericBand } from "../../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 
 import {
   pmvExploreOutputs,
@@ -42,7 +42,7 @@ import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOpti
 import { CalculationSource, ComfortStandard } from "../../catalog/calculationMetadata";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
 import { createModelCalculationContext } from "../../catalog/modelCalculation";
-import { createAnalysisState } from "../../state/analysis/createAnalysisState.svelte";
+import { createPointSession } from "../../state/pointSession/createPointSession.svelte";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 const pmvPayload = {
   tdb: 26,
@@ -68,11 +68,11 @@ function calculatePmvModelForTest(
   },
   occupantHasAirSpeedControl = true,
 ) {
-  const toolState = createAnalysisState();
+  const session = createPointSession();
   const visibleInputIds = Object.keys(inputs) as InputId[];
   for (const inputId of visibleInputIds) { const request = inputs[inputId];
     if (!request) continue;
-    const inputState = toolState.state.input.quantitiesByInput[inputId];
+    const inputState = session.input.quantitiesByInput[inputId];
     inputState[PhysicalQuantityId.DryBulbTemperature] = request.tdb;
     inputState[PhysicalQuantityId.MeanRadiantTemperature] = request.tr;
     inputState[PhysicalQuantityId.RelativeAirSpeed] = request.vr;
@@ -80,17 +80,17 @@ function calculatePmvModelForTest(
     inputState[PhysicalQuantityId.MetabolicRate] = request.met;
     inputState[PhysicalQuantityId.ClothingInsulation] = request.clo;
     inputState[PhysicalQuantityId.ExternalWork] = request.wme; }
-  toolState.state.setting.modelOptionsByModel[pmvAshraeModelConfig.id] = {
+  session.setting.modelOptionsByModel[pmvAshraeModelConfig.id] = {
     ...pmvAshraeModelConfig.defaultOptions,
     [OptionKey.AirSpeedControlMode]: occupantHasAirSpeedControl
       ? AirSpeedControlMode.WithLocalControl
       : AirSpeedControlMode.NoLocalControl,
   };
   return calculatePmvModel(createModelCalculationContext({
-    effectiveQuantitiesByInput: toolState.state.input.quantitiesByInput,
-    auxiliaryQuantitiesByInput: toolState.state.input.auxiliaryQuantitiesByInput,
-    modelInputs: toolState.state.input.modelInputsByModel[pmvAshraeModelConfig.id],
-    options: toolState.state.setting.modelOptionsByModel[pmvAshraeModelConfig.id],
+    effectiveQuantitiesByInput: session.input.quantitiesByInput,
+    auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
+    modelInputs: session.input.modelInputsByModel[pmvAshraeModelConfig.id],
+    options: session.setting.modelOptionsByModel[pmvAshraeModelConfig.id],
   }), visibleInputIds, pmvAshraeAdapter);
 }
 

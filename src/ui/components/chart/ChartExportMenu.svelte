@@ -1,11 +1,11 @@
 <script lang="ts">
   import { Button, Dropdown, DropdownDivider, DropdownHeader, DropdownItem } from "flowbite-svelte";
   import { ChevronDownOutline } from "flowbite-svelte-icons";
-  import type { ChartInstancePanelView } from "../../../state/analysis/chartInstancePresentation";
+  import type { ChartInstancePanelView } from "../../../state/pointSession/chartInstancePresentation";
   import {
     publicationExportMenuItems,
     type PublicationExportHandler,
-  } from "../../../engines/plotlyExport";
+  } from "../../../charts/plotlyExport";
 
   interface Props {
     chartInstances: readonly ChartInstancePanelView[];

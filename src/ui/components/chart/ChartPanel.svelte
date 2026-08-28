@@ -5,10 +5,9 @@
   import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
   import type { ChartPayload } from "../../../charts/types";
-  import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
-  import type { ChartInstancePanelView } from "../../../state/analysis/chartInstancePresentation";
-  import type { ChartControlsViewModel } from "../../../state/analysis/types";
-  import type { PublicationExportHandler } from "../../../engines/plotlyExport";
+  import type { ChartInstancePanelView } from "../../../state/pointSession/chartInstancePresentation";
+  import type { ChartControlsViewModel } from "../../../state/pointSession/types";
+  import type { PublicationExportHandler } from "../../../charts/plotlyExport";
 
   interface Props {
     chartResult: ChartPayload | null;
@@ -16,7 +15,6 @@
     chartInstance: ChartInstancePanelView;
     chartInstances: readonly ChartInstancePanelView[];
     selectedChartInstanceId: string;
-    selectedModel: ModelIdType;
     onSelectChartInstance: (instanceId: string) => void;
     chartControls: ChartControlsViewModel;
     legendZones: ReadonlyArray<{ label: string; color: string }> | null;
@@ -29,7 +27,6 @@
     chartInstance,
     chartInstances,
     selectedChartInstanceId,
-    selectedModel,
     onSelectChartInstance,
     chartControls,
     legendZones,
@@ -46,7 +43,7 @@
       chartControls.explore !== null,
   );
   const controlsIdPrefix = $derived(
-    `${chartPanelIdPrefix}-${selectedModel}-${selectedChartInstanceId}`,
+    `${chartPanelIdPrefix}-${selectedChartInstanceId}`,
   );
 </script>
 

@@ -6,7 +6,7 @@ import type {
   MetricSummaryItemViewModel,
   TableRowSpec,
 } from "../../../catalog/tableTypes";
-import type { ResultSectionViewModel } from "../../../catalog/output/resultSections";
+import type { ResultSectionViewModel } from "../../../catalog/resultSections";
 import { buildResultSection } from "./resultSections";
 
 export function buildCompareMatrixTable<TResult>(

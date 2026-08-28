@@ -25,12 +25,12 @@ import {
 } from "./calculation";
 import { phsModelConfig } from "./phs";
 import { requiredControlIdsByModel } from "../../testSupport/requiredModelControls";
-import { getModelSimulationOutput } from "../../state/analysis/modelConfigs";
+import { getModelSimulationOutput } from "../../state/modelRegistry";
 import { resolveSimulationChartBuild } from "../../engines/comfort/charts/kinds/simulation";
 import { phsTimeSeriesModelDefinition } from "./timeSeries";
 import { downsamplePhsHistorySamples } from "./timeSeriesCharts";
 import { buildChartPlotly, chartFigure } from "../../testSupport/modelChartTestHelpers";
-import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 function segment(
   id: string,
   durationMinutes: number,

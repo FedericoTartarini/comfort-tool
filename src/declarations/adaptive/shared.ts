@@ -33,7 +33,7 @@ import {
 import {
   ComfortModelBuilder,
   type FrontendChartDeclaration,
-} from "../../state/analysis/modelConfigs/builder";
+} from "../../state/modelRegistry/builder";
 import { ChartType } from "../../catalog/chartTypes";
 import {
   buildAdaptiveResultRows,
@@ -85,7 +85,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   label: string;
   description: string;
   standardIds: readonly StandardIdType[];
-  workspaceCapabilities: readonly SurfaceIdType[];
+  surfaceCapabilities: readonly SurfaceIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
   boundaryChartId: string;
@@ -131,7 +131,7 @@ export function createAdaptiveModelConfig(
     .setLabel(declaration.label)
     .setDescription(declaration.description)
     .setStandardIds(declaration.standardIds)
-    .setWorkspaceCapabilities([...declaration.workspaceCapabilities])
+    .setSurfaceCapabilities([...declaration.surfaceCapabilities])
     .setExploreOutputs(declaration.exploreOutputs)
     .setModifiers(declaration.modifiers)
     .setComplianceProfile(declaration.complianceProfile)

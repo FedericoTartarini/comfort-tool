@@ -22,7 +22,7 @@ import {
   hasExactKeys,
   isRecord,
   type ResultRowDefinition,
-} from "../../state/analysis/modelConfigs/builder";
+} from "../../state/modelRegistry/builder";
 import type {
   AdaptiveBoundaryDefinition,
   AdaptiveLevelDefinition,

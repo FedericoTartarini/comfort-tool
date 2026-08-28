@@ -76,7 +76,7 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   description: "ASHRAE 55 PMV/PPD with comfort zone overlays.",
   adapter: pmvAshraeAdapter,
   standardIds: [StandardId.Ashrae55],
-  workspaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
+  surfaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
   exploreOutputs: pmvExploreOutputs,
   modifiers: [
     measuredAirSpeedModifier,

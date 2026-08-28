@@ -6,7 +6,7 @@ import {
   getPhysicalQuantityMeta,
   type PrimaryQuantityId,
 } from "../catalog/quantities";
-import { comfortModelConfigs, comfortModelOrder } from "../state/analysis/modelConfigs";
+import { comfortModelConfigs, comfortModelOrder } from "../state/modelRegistry";
 import {
   declaredPrimaryQuantityIdsForModel,
   declaredControlIdsForModel,

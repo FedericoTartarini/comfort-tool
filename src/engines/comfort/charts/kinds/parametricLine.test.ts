@@ -4,7 +4,7 @@ import { PhysicalQuantityId } from "../../../../catalog/quantities";
 import { CalculationSource } from "../../../../catalog/calculationMetadata";
 import { InputId } from "../../../../catalog/inputSlots";
 import { type ChartBuildContext } from "../../../../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../../../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../../catalog/fieldChartProfile";
 import { UnitSystem } from "../../../../catalog/units";
 import { ParametricYUnit, type ParametricLineGeometry } from "./types";
 import { renderParametricLineGeometry } from "./parametricLine";

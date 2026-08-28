@@ -24,7 +24,7 @@ import {
   hasExactKeys,
   isRecord,
   type FrontendChartDeclaration,
-} from "../../state/analysis/modelConfigs/builder";
+} from "../../state/modelRegistry/builder";
 import {
   calculateUtci,
   getUtciZoneMeta,
@@ -112,7 +112,7 @@ builder
   .setLabel(UTCI_MODEL_LABEL)
   .setDescription(MODEL_DESCRIPTION)
   .setStandardIds([])
-  .setWorkspaceCapabilities([SurfaceId.Explore])
+  .setSurfaceCapabilities([SurfaceId.Explore])
   .setExploreOutputs([utciOutput])
   .setModifiers([])
   .setCharts(utciCharts, {

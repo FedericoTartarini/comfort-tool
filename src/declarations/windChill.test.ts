@@ -12,7 +12,7 @@ import {
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
 describe("windChill service", () => {

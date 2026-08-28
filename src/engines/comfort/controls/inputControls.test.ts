@@ -9,7 +9,8 @@ import {
   TemperatureMode,
 } from "../../../catalog/inputModes";
 import { InputId } from "../../../catalog/inputSlots";
-import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
+import { createPointSession } from "../../../state/pointSession/createPointSession.svelte";
+import { seedSelectedModel, seedPrimaryQuantity } from "../../../testSupport/seedPointSession";
 import {
   deriveRelativeHumidityFromDewPoint,
   deriveRelativeHumidityFromHumidityRatio,
@@ -18,10 +19,10 @@ import {
 } from "../derivations";
 
 function getControl(
-  toolState: ReturnType<typeof createAnalysisState>,
+  session: ReturnType<typeof createPointSession>,
   controlId: InputControlId,
 ) {
-  const control = toolState.selectors.getInputControls().find(
+  const control = session.inputControls.find(
     ({ id }) => id === controlId,
   );
   if (!control) throw new Error(`Missing control ${controlId}.`);
@@ -30,23 +31,33 @@ function getControl(
 
 describe("input control ownership", () => {
   it("opts models into operative temperature without affecting ordinary temperature controls", () => {
-    const toolState = createAnalysisState();
-    expect(getControl(toolState, InputControlId.Temperature).menu?.title)
+    const session = createPointSession();
+    expect(getControl(session, InputControlId.Temperature).menu?.title)
       .toBe("Temperature input");
 
-    toolState.state.setting.selectedModel = ModelId.WindChill;
-    expect(getControl(toolState, InputControlId.Temperature).menu).toBeNull();
-    expect(getControl(toolState, InputControlId.Temperature).label)
+    seedSelectedModel(session, ModelId.WindChill);
+    expect(getControl(session, InputControlId.Temperature).menu).toBeNull();
+    expect(getControl(session, InputControlId.Temperature).label)
       .toBe("Air temperature");
   });
 
   it("keeps Air and Operative edits reversible through the model option handler", () => {
-    const toolState = createAnalysisState();
-    const input = toolState.state.input.quantitiesByInput[InputId.Input1];
-    input[PhysicalQuantityId.DryBulbTemperature] = 26;
-    input[PhysicalQuantityId.MeanRadiantTemperature] = 22;
+    const session = createPointSession();
+    const input = session.input.quantitiesByInput[InputId.Input1];
+    seedPrimaryQuantity(
+      session,
+      InputId.Input1,
+      PhysicalQuantityId.DryBulbTemperature,
+      26,
+    );
+    seedPrimaryQuantity(
+      session,
+      InputId.Input1,
+      PhysicalQuantityId.MeanRadiantTemperature,
+      22,
+    );
 
-    toolState.actions.setModelOption(
+    session.actions.setModelOption(
       OptionKey.TemperatureMode,
       TemperatureMode.Operative,
     );
@@ -54,7 +65,7 @@ describe("input control ownership", () => {
       input[PhysicalQuantityId.MeanRadiantTemperature],
     );
 
-    toolState.actions.updateInput(
+    session.actions.updateInput(
       InputId.Input1,
       InputControlId.Temperature,
       "24",
@@ -62,11 +73,11 @@ describe("input control ownership", () => {
     expect(input[PhysicalQuantityId.DryBulbTemperature]).toBe(24);
     expect(input[PhysicalQuantityId.MeanRadiantTemperature]).toBe(24);
 
-    toolState.actions.setModelOption(
+    session.actions.setModelOption(
       OptionKey.TemperatureMode,
       TemperatureMode.Air,
     );
-    toolState.actions.updateInput(
+    session.actions.updateInput(
       InputId.Input1,
       InputControlId.Temperature,
       "25",
@@ -118,22 +129,27 @@ describe("input control ownership", () => {
     displayUnits,
     expectedRh,
   }) => {
-    const toolState = createAnalysisState();
-    const input = toolState.state.input.quantitiesByInput[InputId.Input1];
-    input[PhysicalQuantityId.DryBulbTemperature] = 26;
+    const session = createPointSession();
+    const input = session.input.quantitiesByInput[InputId.Input1];
+    seedPrimaryQuantity(
+      session,
+      InputId.Input1,
+      PhysicalQuantityId.DryBulbTemperature,
+      26,
+    );
 
-    toolState.actions.setModelOption(
+    session.actions.setModelOption(
       OptionKey.HumidityInputMode,
       mode,
     );
-    toolState.actions.updateInput(
+    session.actions.updateInput(
       InputId.Input1,
       InputControlId.Humidity,
       rawValue,
     );
 
     expect(input[PhysicalQuantityId.RelativeHumidity]).toBeCloseTo(expectedRh, 6);
-    expect(getControl(toolState, InputControlId.Humidity)).toEqual(
+    expect(getControl(session, InputControlId.Humidity)).toEqual(
       expect.objectContaining({ label, displayUnits }),
     );
   });
@@ -143,12 +159,17 @@ describe("input control ownership", () => {
     ModelId.AdaptiveAshrae,
     ModelId.AdaptiveEn,
   ])("does not route %s temperature changes through PMV humidity behavior", (modelId) => {
-    const toolState = createAnalysisState();
-    toolState.state.setting.selectedModel = modelId;
-    const input = toolState.state.input.quantitiesByInput[InputId.Input1];
-    input[PhysicalQuantityId.RelativeHumidity] = 63;
+    const session = createPointSession();
+    seedSelectedModel(session, modelId);
+    const input = session.input.quantitiesByInput[InputId.Input1];
+    seedPrimaryQuantity(
+      session,
+      InputId.Input1,
+      PhysicalQuantityId.RelativeHumidity,
+      63,
+    );
 
-    toolState.actions.setModelOption(
+    session.actions.setModelOption(
       OptionKey.TemperatureMode,
       TemperatureMode.Operative,
     );
@@ -156,23 +177,23 @@ describe("input control ownership", () => {
   });
 
   it("throws for illegal or incomplete internal options instead of repairing them", () => {
-    const toolState = createAnalysisState();
-    expect(() => toolState.actions.setModelOption(
+    const session = createPointSession();
+    expect(() => session.actions.setModelOption(
       OptionKey.TemperatureMode,
       "invalid-mode",
     )).toThrow(/invalid option/i);
 
-    delete toolState.state.setting.modelOptionsByModel[ModelId.PmvAshrae][
+    delete session.setting.modelOptionsByModel[ModelId.PmvAshrae][
       OptionKey.HumidityInputMode
     ];
-    expect(() => toolState.selectors.getInputControls())
+    expect(() => session.inputControls)
       .toThrow(/invalid options state/i);
 
-    const switchingToolState = createAnalysisState();
-    switchingToolState.state.setting.modelOptionsByModel[ModelId.WindChill][
+    const switchingSession = createPointSession();
+    switchingSession.setting.modelOptionsByModel[ModelId.WindChill][
       OptionKey.TemperatureMode
     ] = TemperatureMode.Air;
-    expect(() => switchingToolState.actions.setSelectedModel(ModelId.WindChill))
+    expect(() => switchingSession.actions.setSelectedModel(ModelId.WindChill))
       .toThrow(/invalid options state/i);
   });
 });

@@ -9,7 +9,7 @@ import { CalculationSource } from "../../../catalog/calculationMetadata";
 import type { PlotTrace } from "../../plotlyTypes";
 import { InputId } from "../../../catalog/inputSlots";
 import { type NumericComplianceFieldChartConfig } from "../../../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../catalog/fieldChartProfile";
 import { UnitSystem } from "../../../catalog/units";
 import {
   buildFieldChart,

@@ -10,11 +10,11 @@ import {
   type PrimaryQuantityId,
 } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
-import { comfortModelConfigs } from "../state/analysis/modelConfigs";
+import { comfortModelConfigs } from "../state/modelRegistry";
 import {
   createQuantitiesByInput,
   createDefaultModelInputsForModel,
-} from "../state/analysis/initialAnalysisState";
+} from "../state/pointSession/initialPointSessionState";
 import {
   createAuxiliaryQuantitiesByInput,
 } from "../engines/comfort/quantityStateRouting";

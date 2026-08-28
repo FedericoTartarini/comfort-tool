@@ -12,7 +12,7 @@ import {
   setSlotQuantity,
   syncAllDerivedQuantities,
 } from "./quantityStateRouting";
-import { createQuantitiesByInput } from "../../state/analysis/initialAnalysisState";
+import { createQuantitiesByInput } from "../../state/pointSession/initialPointSessionState";
 import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import { syncDerivedStateForInput } from "./syncState";
 

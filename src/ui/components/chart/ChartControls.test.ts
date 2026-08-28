@@ -5,7 +5,7 @@ import { PhysicalQuantityId } from "../../../catalog/quantities";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../catalog/fieldChartProfile";
 import { UnitSystem } from "../../../catalog/units";
 import ChartControls from "./ChartControls.svelte";
 

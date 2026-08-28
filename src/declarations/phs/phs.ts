@@ -34,7 +34,7 @@ import {
   parseEmptyOptions,
   type FrontendChartDeclaration,
   type ResultRowDefinition,
-} from "../../state/analysis/modelConfigs/builder";
+} from "../../state/modelRegistry/builder";
 import {
   getPhsWaterLossLimitG,
   personFromModelInputs,
@@ -285,7 +285,7 @@ builder
   .setLabel(MODEL_LABEL)
   .setDescription(MODEL_DESCRIPTION)
   .setStandardIds([StandardId.Iso7933])
-  .setWorkspaceCapabilities([
+  .setSurfaceCapabilities([
     SurfaceId.Standard,
     SurfaceId.Explore,
     SurfaceId.TimeSeries,

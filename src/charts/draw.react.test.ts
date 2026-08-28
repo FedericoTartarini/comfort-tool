@@ -7,7 +7,7 @@ import { adaptiveEnDeclaration } from "../declarations/adaptive/en";
 import type { AdaptiveRequest } from "../declarations/adaptive/shared";
 import { ChartType } from "../catalog/chartTypes";
 import { InputId } from "../catalog/inputSlots";
-import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { UnitSystem } from "../catalog/units";
 import { assembleChart, draw, destroy, loadPlotly } from "./index";
 import { chartPayloadFromSpec } from "../engines/comfort/charts/toChartPayload";

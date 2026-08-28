@@ -10,7 +10,7 @@ import { convertQuantityFromSi } from "../engines/units";
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { InputControlId } from "../catalog/inputControls";
 import {
   requiredControlIdsByModel,

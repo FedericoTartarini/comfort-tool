@@ -6,7 +6,7 @@
   import SearchableSelect from "../SearchableSelect.svelte";
   import { UnitSystem } from "../../../catalog/units";
   import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
-  import type { ToolControlsViewModel } from "../../../state/analysis/types";
+  import type { ToolControlsViewModel } from "../../../state/pointSession/types";
 
   interface Props {
     tool: ToolControlsViewModel;

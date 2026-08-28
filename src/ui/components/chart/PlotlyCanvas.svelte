@@ -15,8 +15,8 @@
     downloadPublicationChart,
     type ChartExportFormat,
     type PublicationExportHandler,
-  } from "../../../engines/plotlyExport";
-  import type { PublicationColumn } from "../../../engines/chartTheme";
+  } from "../../../charts/plotlyExport";
+  import type { PublicationColumn } from "../../../charts/chartTheme";
 
   interface Props {
     chartResult: ChartPayload | null;

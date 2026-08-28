@@ -1,4 +1,4 @@
-import { FieldChartProfileKind } from "../../../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../../../catalog/fieldChartProfile";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -31,7 +31,7 @@ import { InputId } from "../../../catalog/inputSlots";
 import { inputChartStyleById } from "../../../catalog/inputSlotPresentation";
 import { type ChartBuildContext, type NumericBand } from "../../../catalog/modelCapabilities";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
-import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
+import { createPointSession } from "../../../state/pointSession/createPointSession.svelte";
 import { convertFieldValueFromSi } from "../../units";
 import { maxRelativeAirSpeedWithoutOccupantControl } from "./ashraeAirSpeedLimits";
 import { buildChartPlotly, type ChartFigure } from "../../../testSupport/modelChartTestHelpers";
@@ -61,8 +61,8 @@ function calculateModel(
   source: PmvChartSource;
 } {
   const config = createPmvModelConfig(declaration);
-  const toolState = createAnalysisState();
-  const stateInput = toolState.state.input.quantitiesByInput[InputId.Input1];
+  const session = createPointSession();
+  const stateInput = session.input.quantitiesByInput[InputId.Input1];
   stateInput[PhysicalQuantityId.DryBulbTemperature] = request.tdb;
   stateInput[PhysicalQuantityId.MeanRadiantTemperature] = request.tr;
   stateInput[PhysicalQuantityId.RelativeAirSpeed] = request.vr;
@@ -70,7 +70,7 @@ function calculateModel(
   stateInput[PhysicalQuantityId.MetabolicRate] = request.met;
   stateInput[PhysicalQuantityId.ClothingInsulation] = request.clo;
   stateInput[PhysicalQuantityId.ExternalWork] = request.wme;
-  toolState.state.setting.modelOptionsByModel[config.id] = {
+  session.setting.modelOptionsByModel[config.id] = {
     ...config.defaultOptions,
     [OptionKey.TemperatureMode]: temperatureMode,
     ...(declaration.adapter.supportsOccupantAirSpeedControl
@@ -82,10 +82,10 @@ function calculateModel(
       : {}),
   };
   const calculation = calculatePmvModel(createModelCalculationContext({
-    effectiveQuantitiesByInput: toolState.state.input.quantitiesByInput,
-    auxiliaryQuantitiesByInput: toolState.state.input.auxiliaryQuantitiesByInput,
-    modelInputs: toolState.state.input.modelInputsByModel[declaration.adapter.modelId],
-    options: toolState.state.setting.modelOptionsByModel[declaration.adapter.modelId],
+    effectiveQuantitiesByInput: session.input.quantitiesByInput,
+    auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
+    modelInputs: session.input.modelInputsByModel[declaration.adapter.modelId],
+    options: session.setting.modelOptionsByModel[declaration.adapter.modelId],
   }), [InputId.Input1], declaration.adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");

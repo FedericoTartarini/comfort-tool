@@ -25,7 +25,7 @@ import {
   getVaporPressureDisplayMeta,
   roundToDisplay,
 } from "./index";
-import "../../state/analysis/modelConfigs";
+import "../../state/modelRegistry";
 
 describe("units helpers", () => {
   it("converts metres per second to kilometres per hour", () => {

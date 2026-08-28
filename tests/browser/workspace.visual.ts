@@ -252,8 +252,8 @@ test.describe("workspace routing", () => {
   test("uses a mobile Drawer and closes it after navigation", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/standard/ashrae-55/");
-    await page.getByRole("button", { name: "Open workspace navigation" }).click();
-    const drawer = page.locator("#workspace-navigation-drawer");
+    await page.getByRole("button", { name: "Open surface navigation" }).click();
+    const drawer = page.locator("#surface-navigation-drawer");
     await expect(drawer).toBeVisible();
     await drawer.getByRole("link", { name: "Explore", exact: true }).click();
     await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
@@ -303,10 +303,10 @@ test.describe("workspace routing", () => {
 
   test("collapses the desktop workspace navigation to a left rail", async ({ page }) => {
     await page.goto("/standard/ashrae-55/");
-    const rail = page.getByTestId("workspace-navigation-rail");
+    const rail = page.getByTestId("surface-navigation-rail");
     await expect(rail.getByRole("link", { name: "Explore", exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "Collapse workspace navigation" }).click();
+    await page.getByRole("button", { name: "Collapse surface navigation" }).click();
     await expect.poll(() => rail.evaluate((element) => element.getBoundingClientRect().width))
       .toBeLessThan(80);
     await expect(rail.getByRole("link", { name: "Explore", exact: true })).toBeVisible();
@@ -319,7 +319,7 @@ test.describe("workspace routing", () => {
     await rail.getByRole("link", { name: "Standard", exact: true }).click();
     await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
 
-    await page.getByRole("button", { name: "Expand workspace navigation" }).click();
+    await page.getByRole("button", { name: "Expand surface navigation" }).click();
     await expect(rail.getByRole("link", { name: "Explore", exact: true })).toBeVisible();
     await expect(rail.getByRole("button", { name: "Standard", exact: true })).toBeVisible();
   });

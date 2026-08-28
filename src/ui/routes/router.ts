@@ -8,19 +8,19 @@ import {
   type NavigateOptions,
   type Routes,
 } from "sv-router";
-import ComfortWorkspaceRoute from "./ComfortWorkspaceRoute.svelte";
+import PointSessionRoute from "./PointSessionRoute.svelte";
 import NotFoundRoute from "./NotFoundRoute.svelte";
-import RootRedirectPage from "../views/RootRedirectPage.svelte";
-import TimeSeriesPage from "../views/TimeSeriesPage.svelte";
+import RootRedirectPage from "./RootRedirectPage.svelte";
+import TimeSeriesPage from "./TimeSeriesPage.svelte";
 import {
   buildCanonicalPathname,
   defaultAppRoute,
   parseAppLocation,
-} from "../../state/workspace/routeDefinitions";
+} from "../../state/app/routeDefinitions";
 import type {
-  WorkspaceNavigationCoordinator,
-  WorkspaceNavigationTarget,
-} from "../../state/workspace/createWorkspaceNavigation";
+  AppNavigationCoordinator,
+  AppNavigationTarget,
+} from "../../state/app/createAppNavigation";
 
 type DeclaredRouterPath =
   | "/"
@@ -30,7 +30,7 @@ type DeclaredRouterPath =
 
 class WorkspaceRouteBlocked extends Error {}
 
-let workspaceNavigation: WorkspaceNavigationCoordinator | null = null;
+let appNavigation: AppNavigationCoordinator | null = null;
 let clearNavigationBlock: (() => void) | null = null;
 let skipNextNavigationBlock = false;
 
@@ -60,7 +60,7 @@ function shouldReplaceCanonical(canonicalPathname: string): boolean {
 }
 
 function navigateWithCanonicalUrl(
-  target: WorkspaceNavigationTarget,
+  target: AppNavigationTarget,
 ): Promise<Navigation> {
   skipNextNavigationBlock = true;
   const options: NavigateOptions = {
@@ -78,11 +78,11 @@ function navigateWithCanonicalUrl(
 
 const routes = {
   "/": RootRedirectPage,
-  "/standard": ComfortWorkspaceRoute,
-  "/standard/:standard": ComfortWorkspaceRoute,
-  "/standard/:standard/:model": ComfortWorkspaceRoute,
-  "/explore": ComfortWorkspaceRoute,
-  "/explore/:model": ComfortWorkspaceRoute,
+  "/standard": PointSessionRoute,
+  "/standard/:standard": PointSessionRoute,
+  "/standard/:standard/:model": PointSessionRoute,
+  "/explore": PointSessionRoute,
+  "/explore/:model": PointSessionRoute,
   "/time-series": TimeSeriesPage,
   "/time-series/:model": TimeSeriesPage,
   "*path": NotFoundRoute,
@@ -94,13 +94,13 @@ const routes = {
         throw navigateWithCanonicalUrl({ url: targetUrl, replace: true });
       }
 
-      if (workspaceNavigation && !workspaceNavigation.prepareUrl(targetUrl)) {
+      if (appNavigation && !appNavigation.prepareUrl(targetUrl)) {
         throw new WorkspaceRouteBlocked();
       }
 
       const parsed = parseAppLocation(targetUrl.pathname);
-      const canonical = workspaceNavigation
-        ? workspaceNavigation.getCanonicalPathname(targetUrl)
+      const canonical = appNavigation
+        ? appNavigation.getCanonicalPathname(targetUrl)
         : parsed
           ? buildCanonicalPathname(
             targetUrl.pathname,
@@ -117,7 +117,7 @@ const routes = {
       }
     },
     afterLoad(context: HooksContext) {
-      workspaceNavigation?.afterNavigation(urlFromHookContext(context));
+      appNavigation?.afterNavigation(urlFromHookContext(context));
     },
   },
 } as const satisfies Routes;
@@ -127,34 +127,34 @@ const routerApi = createRouter(routes);
 export const { route } = routerApi;
 export { Router };
 
-export function navigateToUrl(target: WorkspaceNavigationTarget) {
-  if (workspaceNavigation && !workspaceNavigation.prepareUrl(target.url)) {
+export function navigateToUrl(target: AppNavigationTarget) {
+  if (appNavigation && !appNavigation.prepareUrl(target.url)) {
     return;
   }
   void navigateWithCanonicalUrl(target);
 }
 
-export function registerWorkspaceNavigation(
-  coordinator: WorkspaceNavigationCoordinator,
+export function registerAppNavigation(
+  coordinator: AppNavigationCoordinator,
 ): () => void {
-  workspaceNavigation = coordinator;
+  appNavigation = coordinator;
   clearNavigationBlock?.();
   clearNavigationBlock = blockNavigation(() => {
     if (skipNextNavigationBlock) {
       skipNextNavigationBlock = false;
       return true;
     }
-    if (!workspaceNavigation || typeof window === "undefined") {
+    if (!appNavigation || typeof window === "undefined") {
       return true;
     }
-    return workspaceNavigation.prepareUrl(new URL(window.location.href));
+    return appNavigation.prepareUrl(new URL(window.location.href));
   });
 
   return () => {
     clearNavigationBlock?.();
     clearNavigationBlock = null;
-    if (workspaceNavigation === coordinator) {
-      workspaceNavigation = null;
+    if (appNavigation === coordinator) {
+      appNavigation = null;
     }
   };
 }

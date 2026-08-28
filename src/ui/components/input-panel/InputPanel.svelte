@@ -12,7 +12,7 @@
   } from "../../../catalog/inputSlots";
   import { inputDisplayMetaById } from "../../../catalog/inputSlotPresentation";
   import ToolControls from "./ToolControls.svelte";
-  import type { InputPanelViewModel } from "../../../state/analysis/types";
+  import type { InputPanelViewModel } from "../../../state/pointSession/types";
 
   interface Props {
     panel: InputPanelViewModel;

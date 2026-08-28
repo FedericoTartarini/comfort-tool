@@ -4,7 +4,7 @@ import { PhysicalQuantityId } from "../catalog/quantities";
 import { ModelId } from "../catalog/modelIds";
 import { InputId } from "../catalog/inputSlots";
 import { type NumericBand } from "../catalog/modelCapabilities";
-import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
+import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import {
   SurfaceId,
   supportsExploreSurface,
@@ -14,12 +14,12 @@ import { UnitSystem } from "../catalog/units";
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,
-} from "../state/analysis/fieldChartState";
+} from "../state/pointSession/fieldChartState";
 import {
   comfortModelConfigs,
   comfortModelOrder,
   getComfortModelConfig,
-} from "../state/analysis/modelConfigs";
+} from "../state/modelRegistry";
 import {
   buildAllModelOutputGoldenSnapshots,
   buildModelOutputGoldenSnapshot,
@@ -29,7 +29,7 @@ import {
   getGoldenInputOverrides,
 } from "./goldenFixtures";
 import { clearChartMemo } from "../engines/comfort/charts/kinds/memo";
-import { resolveChartInstanceCapabilities } from "../state/analysis/chartInstancePresentation";
+import { resolveChartInstanceCapabilities } from "../state/pointSession/chartInstancePresentation";
 
 describe("output integration", () => {
   beforeEach(() => {
@@ -62,7 +62,7 @@ describe("output integration", () => {
       const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);
       const settings = seedModelOutputSettings(config);
 
-      if (supportsStandardSurface(config.workspaceCapabilities)) {
+      if (supportsStandardSurface(config.surfaceCapabilities)) {
         const chartInstance = config.chartInstances.entries.find(
           ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;
@@ -89,7 +89,7 @@ describe("output integration", () => {
         expect(profile.kind).toBe(FieldChartProfileKind.Compliance);
       }
 
-      if (supportsExploreSurface(config.workspaceCapabilities)) {
+      if (supportsExploreSurface(config.surfaceCapabilities)) {
         const chartInstance = config.chartInstances.entries.find(
           ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;

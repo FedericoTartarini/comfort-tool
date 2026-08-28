@@ -40,7 +40,7 @@ import {
   hasExactKeys,
   isRecord,
   type FrontendChartDeclaration,
-} from "../../state/analysis/modelConfigs/builder";
+} from "../../state/modelRegistry/builder";
 import { ChartType } from "../../catalog/chartTypes";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import {
@@ -84,7 +84,7 @@ export interface PmvModelDeclaration {
   readonly description: string;
   readonly adapter: PmvStandardAdapter;
   readonly standardIds: readonly StandardIdType[];
-  readonly workspaceCapabilities: readonly SurfaceIdType[];
+  readonly surfaceCapabilities: readonly SurfaceIdType[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
   readonly psychrometricChartId: string;
@@ -276,7 +276,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
     .setLabel(declaration.label)
     .setDescription(declaration.description)
     .setStandardIds(declaration.standardIds)
-    .setWorkspaceCapabilities([...declaration.workspaceCapabilities])
+    .setSurfaceCapabilities([...declaration.surfaceCapabilities])
     .setExploreOutputs(declaration.exploreOutputs)
     .setModifiers(declaration.modifiers)
     .setComplianceProfile(declaration.complianceProfile)

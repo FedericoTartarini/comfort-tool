@@ -77,7 +77,7 @@ export default [
     files: [
       "src/App.svelte",
       "src/ui/components/**/*.{ts,svelte}",
-      "src/ui/views/**/*.{ts,svelte}",
+      "src/ui/routes/**/*.{ts,svelte}",
     ],
     rules: {
       "no-undef": "off",
@@ -107,7 +107,7 @@ export default [
     },
   },
   {
-    files: ["src/ui/views/**/*.{ts,svelte}"],
+    files: ["src/ui/routes/**/*.{ts,svelte}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -135,8 +135,8 @@ export default [
         {
           patterns: [
             {
-              group: ["**/views/**", "**/declarations/**"],
-              message: "Components may not depend on views or model implementations.",
+              group: ["**/routes/**", "**/declarations/**"],
+              message: "Components may not depend on routes or model implementations.",
             },
             {
               group: ["jsthermalcomfort", "jsthermalcomfort/**"],
@@ -159,7 +159,7 @@ export default [
               group: [
                 "**/state/**",
                 "**/components/**",
-                "**/views/**",
+                "**/routes/**",
                 "**/declarations/**",
               ],
               message: "Engines may depend on catalog and other engines, not higher application layers.",
@@ -184,7 +184,7 @@ export default [
             group: [
               "**/state/**",
               "**/components/**",
-              "**/views/**",
+              "**/routes/**",
               "**/declarations/**",
             ],
             message: "Engines may depend on catalog and other engines, not higher application layers.",
@@ -202,12 +202,12 @@ export default [
         {
           patterns: [
             {
-              group: ["**/components/**", "**/views/**"],
+              group: ["**/components/**", "**/routes/**"],
               message: "Comfort models may not depend on presentation layers.",
             },
             {
-              regex: "^(?:\\.\\./)+state/(?!analysis/modelConfigs(?:/|$))",
-              message: "Comfort models may only use builder helpers from state/analysis/modelConfigs.",
+              regex: "^(?:\\.\\./)+state/(?!modelRegistry(?:/|$))",
+              message: "Comfort models may only use builder helpers from state/modelRegistry.",
             },
           ],
         },
@@ -237,14 +237,14 @@ export default [
     },
   },
   {
-    files: ["src/state/analysis/modelConfigs/index.ts"],
+    files: ["src/state/modelRegistry/index.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
             {
-              group: ["**/components/**", "**/views/**"],
+              group: ["**/components/**", "**/routes/**"],
               message: "State may not depend on presentation layers.",
             },
             {
@@ -260,7 +260,7 @@ export default [
     files: ["src/state/**/*.{ts,svelte}"],
     ignores: [
       "src/state/**/*.test.ts",
-      "src/state/analysis/modelConfigs/index.ts",
+      "src/state/modelRegistry/index.ts",
       "src/state/timeSeries/modelConfigs.ts",
     ],
     rules: {
@@ -269,7 +269,7 @@ export default [
         {
           patterns: [
             {
-              group: ["**/components/**", "**/views/**"],
+              group: ["**/components/**", "**/routes/**"],
               message: "State may not depend on presentation layers.",
             },
             {
@@ -289,7 +289,7 @@ export default [
     files: [
       "src/state/**/*.{ts,svelte}",
       "src/ui/components/**/*.{ts,svelte}",
-      "src/ui/views/**/*.{ts,svelte}",
+      "src/ui/routes/**/*.{ts,svelte}",
     ],
     ignores: [
       "**/*.test.ts",

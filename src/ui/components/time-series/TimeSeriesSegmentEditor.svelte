@@ -10,16 +10,16 @@
   } from "flowbite-svelte-icons";
 
   import type { TimeSeriesSegmentViewModel } from "../../../state/timeSeries/viewModels";
-  import type { TimeSeriesController } from "../../../state/timeSeries/types";
+  import type { TimeSeriesActions } from "../../../state/timeSeries/types";
 
   interface Props {
-    controller: TimeSeriesController;
+    actions: TimeSeriesActions;
     segment: TimeSeriesSegmentViewModel;
     index: number;
     count: number;
   }
 
-  let { controller, segment, index, count }: Props = $props();
+  let { actions, segment, index, count }: Props = $props();
 </script>
 
 <article
@@ -35,7 +35,7 @@
       value={segment.name}
       size="sm"
       class="min-w-0 flex-1 border-stone-300 bg-white font-medium"
-      onchange={(event) => controller.actions.updateSegmentName(
+      onchange={(event) => actions.updateSegmentName(
         segment.id,
         event.currentTarget.value,
       )}
@@ -46,7 +46,7 @@
         size="xs"
         disabled={index === 0}
         aria-label={"Move " + segment.name + " up"}
-        onclick={() => controller.actions.moveSegment(segment.id, -1)}
+        onclick={() => actions.moveSegment(segment.id, -1)}
       >
         <ChevronUpOutline class="h-3.5 w-3.5" />
       </Button>
@@ -55,7 +55,7 @@
         size="xs"
         disabled={index === count - 1}
         aria-label={"Move " + segment.name + " down"}
-        onclick={() => controller.actions.moveSegment(segment.id, 1)}
+        onclick={() => actions.moveSegment(segment.id, 1)}
       >
         <ChevronDownOutline class="h-3.5 w-3.5" />
       </Button>
@@ -63,7 +63,7 @@
         color="light"
         size="xs"
         aria-label={"Duplicate " + segment.name}
-        onclick={() => controller.actions.duplicateSegment(segment.id)}
+        onclick={() => actions.duplicateSegment(segment.id)}
       >
         <FileCopyOutline class="h-3.5 w-3.5" />
       </Button>
@@ -72,7 +72,7 @@
         size="xs"
         disabled={count === 1}
         aria-label={"Remove " + segment.name}
-        onclick={() => controller.actions.removeSegment(segment.id)}
+        onclick={() => actions.removeSegment(segment.id)}
       >
         <TrashBinOutline class="h-3.5 w-3.5" />
       </Button>
@@ -93,7 +93,7 @@
         size="sm"
         value={String(segment.durationMinutes)}
         class="mt-1 border-stone-300 bg-white"
-        onchange={(event) => controller.actions.updateSegmentDuration(
+        onchange={(event) => actions.updateSegmentDuration(
           segment.id,
           event.currentTarget.value,
         )}
@@ -114,7 +114,7 @@
           size="sm"
           value={String(control.value)}
           class="mt-1 border-stone-300 bg-white"
-          onchange={(event) => controller.actions.updateSegmentControl(
+          onchange={(event) => actions.updateSegmentControl(
             segment.id,
             control.id,
             event.currentTarget.value,

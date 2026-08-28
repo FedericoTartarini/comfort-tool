@@ -18,7 +18,7 @@ import {
 import {
   defineModel,
   parseEmptyOptions,
-} from "../state/analysis/modelConfigs/builder";
+} from "../state/modelRegistry/builder";
 
 const MODEL_LABEL = "Humidex";
 const MODEL_DESCRIPTION =
@@ -94,7 +94,7 @@ export const humidexModelConfig = defineModel<
   label: MODEL_LABEL,
   description: MODEL_DESCRIPTION,
   standardIds: [],
-  workspaceCapabilities: [SurfaceId.Explore],
+  surfaceCapabilities: [SurfaceId.Explore],
   exploreOutputs: [humidexOutput],
   modifiers: [],
   inputFields: [

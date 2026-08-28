@@ -76,7 +76,7 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   description: "ISO 7730 Category B PMV/PPD with comfort zone overlays.",
   adapter: pmvIsoAdapter,
   standardIds: [StandardId.Iso7730],
-  workspaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
+  surfaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
   exploreOutputs: pmvExploreOutputs,
   modifiers: [
     measuredAirSpeedModifier,

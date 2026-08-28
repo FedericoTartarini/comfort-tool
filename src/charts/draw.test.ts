@@ -16,7 +16,7 @@ import {
   publicationChartThemeFor,
   publicationLayoutSizePx,
   screenChartTheme,
-} from "../engines/chartTheme";
+} from "./chartTheme";
 import type { PlotlyChartSpec } from "../engines/plotlyTypes";
 import { assembleChart } from "./index";
 import { loadPlotly, prepareFigure } from "./draw";

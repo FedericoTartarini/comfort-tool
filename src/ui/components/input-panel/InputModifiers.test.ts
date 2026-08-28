@@ -9,7 +9,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ModelId } from "../../../catalog/modelIds";
 import { ModifierId } from "../../../catalog/inputModifiers";
 import { InputId } from "../../../catalog/inputSlots";
-import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
+import { createPointSession } from "../../../state/pointSession/createPointSession.svelte";
+import { seedSelectedModel } from "../../../testSupport/seedPointSession";
 import InputPanelHost from "./InputPanel.test.host.svelte";
 
 afterEach(cleanup);
@@ -17,8 +18,8 @@ afterEach(cleanup);
 describe("InputModifiers", () => {
   it("keeps modal edits in a draft and commits every change on Apply", async () => {
     const user = userEvent.setup();
-    const toolState = createAnalysisState();
-    render(InputPanelHost, { toolState });
+    const session = createPointSession();
+    render(InputPanelHost, { session });
 
     expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
@@ -40,7 +41,7 @@ describe("InputModifiers", () => {
     await user.click(dynamicClothingToggle);
     await tick();
 
-    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
+    expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.DynamicClothing]).toBe(false);
     expect(screen.getByRole("dialog").textContent)
       .toContain("Effective clothing insulation:");
@@ -66,9 +67,9 @@ describe("InputModifiers", () => {
     expect(dynamicClothingToggle.closest("label")?.classList.contains("grayscale"))
       .toBe(false);
 
-    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBeUndefined();
-    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
+    expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(false);
     expect(screen.getByRole("dialog").textContent).toContain("Effective air speed:");
 
@@ -76,11 +77,11 @@ describe("InputModifiers", () => {
     await tick();
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
-    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
+    expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(true);
-    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
+    expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.DynamicClothing]).toBe(true);
     expect(screen.getByRole("button", { name: "Open input modifiers" }).textContent)
       .toContain("2 active");
@@ -88,8 +89,8 @@ describe("InputModifiers", () => {
 
   it("discards Cancel and Escape edits without changing calculation state", async () => {
     const user = userEvent.setup();
-    const toolState = createAnalysisState();
-    render(InputPanelHost, { toolState });
+    const session = createPointSession();
+    render(InputPanelHost, { session });
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
     const morningInput = screen.getByRole("spinbutton", {
@@ -111,13 +112,13 @@ describe("InputModifiers", () => {
       expect(disabledMorningToggle.closest("label")?.classList.contains("grayscale"))
         .toBe(true);
     });
-    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
+    expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MorningClothingEstimate]).toBe(false);
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(toolState.state.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.ModifierMorningOutdoorTemperature]).toBeUndefined();
-    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
+    expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MorningClothingEstimate]).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
@@ -129,15 +130,15 @@ describe("InputModifiers", () => {
     }));
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(toolState.state.input.activeModifiersByInput[InputId.Input1]
+    expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.DynamicClothing]).toBe(false);
   });
 
   it("uses visible compare inputs and closes a stale draft when context changes", async () => {
     const user = userEvent.setup();
-    const toolState = createAnalysisState();
-    toolState.state.setting.compareEnabled = true;
-    render(InputPanelHost, { toolState });
+    const session = createPointSession();
+    session.actions.setCompareEnabled(true);
+    render(InputPanelHost, { session });
 
     await user.click(screen.getByRole("button", { name: "Open input modifiers" }));
     expect(screen.getByRole("spinbutton", {
@@ -147,11 +148,11 @@ describe("InputModifiers", () => {
       name: "Input 2 Measured air speed",
     })).toBeTruthy();
 
-    toolState.actions.toggleUnitSystem();
+    session.actions.toggleUnitSystem();
     await tick();
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    toolState.state.setting.selectedModel = ModelId.Utci;
+    seedSelectedModel(session, ModelId.Utci);
     await tick();
     await waitFor(() => {
       expect(screen.queryByRole("region", { name: "Input modifiers" })).toBeNull();
@@ -159,9 +160,9 @@ describe("InputModifiers", () => {
   });
 
   it("does not render an entry for models without declared modifiers", () => {
-    const toolState = createAnalysisState();
-    toolState.state.setting.selectedModel = ModelId.Utci;
-    render(InputPanelHost, { toolState });
+    const session = createPointSession();
+    seedSelectedModel(session, ModelId.Utci);
+    render(InputPanelHost, { session });
 
     expect(screen.queryByRole("region", { name: "Input modifiers" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Open input modifiers" })).toBeNull();

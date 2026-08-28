@@ -4,7 +4,7 @@ import {
   type PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "./quantities";
-import { FieldChartProfileKind } from "./output/fieldChartProfile";
+import { FieldChartProfileKind } from "./fieldChartProfile";
 import type { ThermalZone } from "./thermalZone";
 import type { UnitSystem as UnitSystemType } from "./units";
 import {

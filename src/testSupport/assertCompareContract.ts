@@ -13,9 +13,9 @@ import {
 } from "../catalog/quantities";
 import { supportsStandardSurface, SurfaceId } from "../catalog/surfaces";
 import { syncDerivedStateForInput } from "../engines/comfort/syncState";
-import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
-import { comfortModelConfigs } from "../state/analysis/modelConfigs";
-import type { AnalysisController } from "../state/analysis/types";
+import { createPointSession } from "../state/pointSession/createPointSession.svelte";
+import { comfortModelConfigs } from "../state/modelRegistry";
+import type { PointSession } from "../state/pointSession/types";
 import {
   getGoldenInputOverrides,
   getGoldenModelInputOverrides,
@@ -26,17 +26,17 @@ export { getGoldenInputOverrides };
 const VISIBLE_INPUT_COUNTS = [1, 2, 3] as const;
 const SLOT_DRY_BULB_OFFSETS_C = [0, 1, 2] as const;
 
-async function waitForIdle(controller: AnalysisController) {
-  const modelId = controller.state.setting.selectedModel;
+async function waitForIdle(session: PointSession) {
+  const modelId = session.setting.selectedModel;
   for (let attempt = 0; attempt < 200; attempt += 1) {
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 10));
-    const cache = controller.state.output.calculationCacheByModel[modelId];
-    if (!controller.state.output.isLoading && cache.status === "ready") {
+    const cache = session.calculationCacheByModel[modelId];
+    if (!session.output.isLoading && cache.status === "ready") {
       return;
     }
-    if (controller.state.output.errorMessage) {
-      throw new Error(controller.state.output.errorMessage);
+    if (session.output.errorMessage) {
+      throw new Error(session.output.errorMessage);
     }
   }
   throw new Error("Controller did not finish calculating.");
@@ -47,35 +47,35 @@ function failSilently(modelId: ModelIdType, detail: string): never {
 }
 
 async function configureVisibleInputs(
-  controller: AnalysisController,
+  session: PointSession,
   count: 1 | 2 | 3,
 ) {
   if (count === 1) {
-    controller.actions.setCompareEnabled(false);
+    session.actions.setCompareEnabled(false);
   } else {
-    controller.actions.setCompareEnabled(true);
-    await waitForIdle(controller);
-    const input3Visible = controller.state.setting.compareInputIds.includes(
+    session.actions.setCompareEnabled(true);
+    await waitForIdle(session);
+    const input3Visible = session.setting.compareInputIds.includes(
       InputId.Input3,
     );
     if (count === 2 && input3Visible) {
-      controller.actions.toggleCompareInputVisibility(InputId.Input3);
+      session.actions.toggleCompareInputVisibility(InputId.Input3);
     }
     if (count === 3 && !input3Visible) {
-      controller.actions.toggleCompareInputVisibility(InputId.Input3);
+      session.actions.toggleCompareInputVisibility(InputId.Input3);
     }
   }
-  controller.actions.scheduleCalculation({ immediate: true, force: true });
-  await waitForIdle(controller);
+  session.actions.scheduleCalculation({ immediate: true, force: true });
+  await waitForIdle(session);
 }
 
 function applyGoldenInputs(
-  controller: AnalysisController,
+  session: PointSession,
   modelId: ModelIdType,
 ) {
   const overrides = getGoldenInputOverrides(modelId);
   inputOrder.forEach((inputId, index) => {
-    const quantities = controller.state.input.quantitiesByInput[inputId];
+    const quantities = session.input.quantitiesByInput[inputId];
     for (const [quantityId, value] of Object.entries(overrides)) {
       if (value === undefined) continue;
       const applied =
@@ -86,14 +86,14 @@ function applyGoldenInputs(
     }
     syncDerivedStateForInput(
       inputId,
-      controller.state.input.quantitiesByInput,
-      controller.state.input.auxiliaryQuantitiesByInput,
+      session.input.quantitiesByInput,
+      session.input.auxiliaryQuantitiesByInput,
     );
   });
   for (const [quantityId, value] of Object.entries(getGoldenModelInputOverrides(modelId))) {
     if (value === undefined) continue;
     if (
-      !controller.actions.updateModelQuantity(
+      !session.actions.updateModelQuantity(
         modelId,
         quantityId as PhysicalQuantityIdType,
         value,
@@ -108,11 +108,11 @@ function applyGoldenInputs(
 }
 
 function assertTableColumnsFilled(
-  controller: AnalysisController,
+  session: PointSession,
   modelId: ModelIdType,
   visibleInputIds: readonly string[],
 ) {
-  const sections = controller.selectors.getResultSections();
+  const sections = session.resultSections;
   if (sections.length === 0) {
     failSilently(modelId, "result table has no rows.");
   }
@@ -130,12 +130,12 @@ function assertTableColumnsFilled(
 }
 
 function assertChartMarkers(
-  controller: AnalysisController,
+  session: PointSession,
   modelId: ModelIdType,
   visibleInputIds: readonly string[],
 ) {
-  const instanceId = controller.selectors.getCurrentChartInstanceId();
-  const chart = controller.selectors.getCurrentChartResult();
+  const instanceId = session.chartInstanceId;
+  const chart = session.chartBuild.payload;
   if (chart == null) {
     failSilently(modelId, `chart ${instanceId} returned no figure.`);
   }
@@ -159,39 +159,39 @@ function assertChartMarkers(
  */
 export async function assertCompareContract(
   modelId: ModelIdType,
-  controller: AnalysisController = createAnalysisState(),
+  session: PointSession = createPointSession(),
 ): Promise<void> {
   const config = comfortModelConfigs[modelId];
-  controller.actions.setActiveSurface(
-    supportsStandardSurface(config.workspaceCapabilities)
+  session.actions.setActiveSurface(
+    supportsStandardSurface(config.surfaceCapabilities)
       ? SurfaceId.Standard
       : SurfaceId.Explore,
   );
-  controller.actions.setSelectedModel(modelId, {
+  session.actions.setSelectedModel(modelId, {
     validateRanges: false,
     schedule: false,
   });
-  if (controller.state.setting.pendingModelSwitch) {
+  if (session.setting.pendingModelSwitch) {
     failSilently(modelId, "model switch is pending; Compare cannot run.");
   }
-  applyGoldenInputs(controller, modelId);
+  applyGoldenInputs(session, modelId);
 
   for (const count of VISIBLE_INPUT_COUNTS) {
-    await configureVisibleInputs(controller, count);
-    if (controller.state.output.errorMessage) {
+    await configureVisibleInputs(session, count);
+    if (session.output.errorMessage) {
       failSilently(
         modelId,
-        `calculation error with ${count} inputs: ${controller.state.output.errorMessage}`,
+        `calculation error with ${count} inputs: ${session.output.errorMessage}`,
       );
     }
-    const visibleInputIds = controller.selectors.getVisibleInputIds();
+    const visibleInputIds = session.visibleInputIds;
     if (visibleInputIds.length !== count) {
       failSilently(
         modelId,
         `expected ${count} visible inputs, received ${visibleInputIds.join(", ")}.`,
       );
     }
-    const cache = controller.state.output.calculationCacheByModel[modelId];
+    const cache = session.calculationCacheByModel[modelId];
     if (cache.status !== "ready") {
       failSilently(
         modelId,
@@ -206,20 +206,20 @@ export async function assertCompareContract(
         );
       }
     }
-    assertTableColumnsFilled(controller, modelId, visibleInputIds);
-    assertChartMarkers(controller, modelId, visibleInputIds);
+    assertTableColumnsFilled(session, modelId, visibleInputIds);
+    assertChartMarkers(session, modelId, visibleInputIds);
   }
 
-  const readyCache = controller.state.output.calculationCacheByModel[modelId];
-  const visibleInputIds = controller.selectors.getVisibleInputIds();
+  const readyCache = session.calculationCacheByModel[modelId];
+  const visibleInputIds = session.visibleInputIds;
   const nextBaseline =
     visibleInputIds.find((inputId) => inputId !== InputId.Input1) ??
     InputId.Input1;
-  controller.actions.setChartBaselineInputId(nextBaseline);
-  expect(controller.state.output.isLoading).toBe(false);
-  expect(controller.state.output.calculationCacheByModel[modelId]).toBe(readyCache);
+  session.actions.setChartBaselineInputId(nextBaseline);
+  expect(session.output.isLoading).toBe(false);
+  expect(session.calculationCacheByModel[modelId]).toBe(readyCache);
   expect(readyCache.status).toBe("ready");
-  expect(controller.selectors.getCurrentCacheStatus()).toBe("ready");
-  assertTableColumnsFilled(controller, modelId, visibleInputIds);
-  assertChartMarkers(controller, modelId, visibleInputIds);
+  expect(session.cacheStatus).toBe("ready");
+  assertTableColumnsFilled(session, modelId, visibleInputIds);
+  assertChartMarkers(session, modelId, visibleInputIds);
 }

@@ -3,8 +3,8 @@ import { PhysicalQuantityId } from "../catalog/quantities";
 
 import { ModelId } from "../catalog/modelIds";
 import { InputId } from "../catalog/inputSlots";
-import { createAnalysisState } from "../state/analysis/createAnalysisState.svelte";
-import { comfortModelOrder } from "../state/analysis/modelConfigs";
+import { createPointSession } from "../state/pointSession/createPointSession.svelte";
+import { comfortModelOrder } from "../state/modelRegistry";
 import {
   assertCompareContract,
 } from "./assertCompareContract";
@@ -29,18 +29,18 @@ describe("assertCompareContract", () => {
     }, 20_000);
   }
 
-  it("does not skip a third input that produced no result", async () => { const controller = createAnalysisState();
-    await assertCompareContract(ModelId.PmvAshrae, controller);
-    expect(controller.selectors.getVisibleInputIds()).toEqual([
+  it("does not skip a third input that produced no result", async () => { const session = createPointSession();
+    await assertCompareContract(ModelId.PmvAshrae, session);
+    expect(session.visibleInputIds).toEqual([
       InputId.Input1, InputId.Input2, InputId.Input3, ]);
     expect(
-      controller.state.output.calculationCacheByModel[ModelId.PmvAshrae]
+      session.calculationCacheByModel[ModelId.PmvAshrae]
         .resultsByInput[InputId.Input3], ).not.toBeNull();
     expect(
-      controller.state.input.quantitiesByInput[InputId.Input3][
+      session.input.quantitiesByInput[InputId.Input3][
         PhysicalQuantityId.DryBulbTemperature
       ], ).not.toBe(
-      controller.state.input.quantitiesByInput[InputId.Input1][
+      session.input.quantitiesByInput[InputId.Input1][
         PhysicalQuantityId.DryBulbTemperature
       ], ); });
 });

@@ -11,8 +11,8 @@
 
   import SiteFooter from "./SiteFooter.svelte";
   import SiteHeader from "./SiteHeader.svelte";
-  import WorkspaceSidebar from "./WorkspaceSidebar.svelte";
-  import type { AnalysisController } from "../../state/analysis/types";
+  import SurfaceSidebar from "./SurfaceSidebar.svelte";
+  import type { PointSession } from "../../state/pointSession/types";
 
   interface NavigationItem {
     label: string;
@@ -20,7 +20,7 @@
   }
 
   interface Props {
-    toolState: AnalysisController;
+    pointSession: PointSession;
     activePath: string;
     showExportLink: boolean;
     homePath: string;
@@ -31,7 +31,7 @@
   }
 
   let {
-    toolState,
+    pointSession,
     activePath,
     showExportLink,
     homePath,
@@ -46,8 +46,8 @@
 
   const collapseButtonLabel = $derived(
     navigationCollapsed
-      ? "Expand workspace navigation"
-      : "Collapse workspace navigation",
+      ? "Expand surface navigation"
+      : "Collapse surface navigation",
   );
   const railInnerClass = $derived(
     navigationCollapsed ? "sticky top-0 px-2 py-4" : "sticky top-0 p-4",
@@ -59,7 +59,7 @@
 
 <div class="flex min-h-screen flex-col bg-stone-950">
   <SiteHeader
-    {toolState}
+    {pointSession}
     {showExportLink}
     {homePath}
     onOpenNavigation={() => {
@@ -69,9 +69,9 @@
 
   <div class="flex flex-1 bg-stone-50">
     <div
-      id="workspace-navigation"
-      data-testid="workspace-navigation-rail"
-      class="workspace-nav-rail relative z-20 hidden border-r border-stone-200 bg-white lg:block"
+      id="surface-navigation"
+      data-testid="surface-navigation-rail"
+      class="surface-nav-rail relative z-20 hidden border-r border-stone-200 bg-white lg:block"
       class:is-collapsed={navigationCollapsed}
     >
       <div class={railInnerClass}>
@@ -82,7 +82,7 @@
             class="p-2.5"
             aria-label={collapseButtonLabel}
             aria-expanded={!navigationCollapsed}
-            aria-controls="workspace-navigation"
+            aria-controls="surface-navigation"
             onclick={() => {
               navigationCollapsed = !navigationCollapsed;
             }}
@@ -94,7 +94,7 @@
             {/if}
           </Button>
         </div>
-        <WorkspaceSidebar
+        <SurfaceSidebar
           {activePath}
           {standardItems}
           {exploreItem}
@@ -104,25 +104,25 @@
       </div>
     </div>
 
-    <main class="min-w-0 flex-1 bg-stone-50 p-workspace">
+    <main class="min-w-0 flex-1 bg-stone-50 p-dashboard">
       {@render children?.()}
     </main>
   </div>
 
   <Drawer
     bind:hidden={navigationDrawerHidden}
-    id="workspace-navigation-drawer"
+    id="surface-navigation-drawer"
     placement="left"
     width="w-72"
     divClass="z-50 overflow-y-auto bg-white p-4"
     class="lg:hidden"
   >
     <div class="mb-4 flex items-center justify-between border-b border-stone-200 pb-3">
-      <p class="text-sm font-semibold text-stone-900">Workspaces</p>
+      <p class="text-sm font-semibold text-stone-900">Surfaces</p>
       <Button
         color="light"
         size="xs"
-        aria-label="Close workspace navigation"
+        aria-label="Close surface navigation"
         onclick={() => {
           navigationDrawerHidden = true;
         }}
@@ -130,7 +130,7 @@
         <CloseOutline class="h-4 w-4" />
       </Button>
     </div>
-    <WorkspaceSidebar
+    <SurfaceSidebar
       {activePath}
       {standardItems}
       {exploreItem}
@@ -145,12 +145,12 @@
 </div>
 
 <style>
-  .workspace-nav-rail {
+  .surface-nav-rail {
     width: 15rem;
     flex: 0 0 15rem;
   }
 
-  .workspace-nav-rail.is-collapsed {
+  .surface-nav-rail.is-collapsed {
     width: 4rem;
     flex: 0 0 4rem;
   }
