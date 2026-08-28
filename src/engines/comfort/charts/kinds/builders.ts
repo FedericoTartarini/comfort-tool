@@ -1,11 +1,11 @@
 import type { ModelChartSource } from "../../../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import type { ChartBuildResult } from "../chartBuildResult";
-import { ChartEngine } from "../../../../catalog/chartEngines";
+import { ChartType } from "../../../../catalog/chartTypes";
 import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
-import type {
-  ChartBuildContext,
-  NumericBand,
+import {
+  type ChartBuildContext,
+  type NumericBand,
 } from "../../../../catalog/modelCapabilities";
 import {
   buildGridModelChart,
@@ -19,6 +19,30 @@ import {
   buildModelTimeSeriesLineChart,
 } from "./modelDataCharts";
 import { buildModelParametricLineChart } from "./parametricLine";
+import { chartPayloadFromSpec } from "../toChartPayload";
+
+function emptyResult(emptyMessage: string): ChartBuildResult {
+  return {
+    payload: null,
+    legend: null,
+    readiness: "empty",
+    emptyMessage,
+  };
+}
+
+function wrapPlotlyResult(
+  type: ChartType,
+  plotly: PlotlyChartSpec | null,
+  emptyMessage: string,
+): ChartBuildResult {
+  if (!plotly) return emptyResult(emptyMessage);
+  return {
+    payload: chartPayloadFromSpec(type, plotly),
+    legend: null,
+    readiness: "ready",
+    emptyMessage,
+  };
+}
 
 export function buildDynamicFieldChart<TResult, ChartSourceType>(
   registration: ChartEngineRegistration<TResult, ChartSourceType>,
@@ -26,24 +50,20 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.engine !== ChartEngine.DynamicField) {
+  if (registration.registration.type !== ChartType.Dynamic) {
     throw new Error(
-      `Chart ${registration.instanceId} is not a dynamic-field chart.`,
+      `Chart ${registration.instanceId} is not a dynamic chart.`,
     );
   }
-  if (!chartSource) {
-    return {
-      plotly: null,
-      legend: null,
-      readiness: "empty",
-      emptyMessage: registration.emptyMessage,
-    };
-  }
+  if (!chartSource) return emptyResult(registration.emptyMessage);
 
   const { spec } = registration.registration;
   if (!isDynamicFieldGridSpec<TResult>(spec)) {
-    const plotly = spec.build(chartSource, resultsByInput, context);
-    return wrapPlotlyResult(plotly, registration);
+    return wrapPlotlyResult(
+      ChartType.Dynamic,
+      spec.build(chartSource, resultsByInput, context),
+      registration.emptyMessage,
+    );
   }
 
   const gridSpec = spec.resolveGridSpec(context);
@@ -68,130 +88,117 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
     } as GridModelChartSpec<object, TResult>,
   );
 
-  return wrapPlotlyResult(plotly, registration);
+  return wrapPlotlyResult(ChartType.Dynamic, plotly, registration.emptyMessage);
 }
 
-export function buildCustomChart<TResult, ChartSourceType>(
+export function buildPsychrometricChart<TResult, ChartSourceType>(
   registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.engine !== ChartEngine.Custom) {
-    throw new Error(`Chart ${registration.instanceId} is not a custom chart.`);
+  if (registration.registration.type !== ChartType.Psychrometric) {
+    throw new Error(`Chart ${registration.instanceId} is not a psychrometric chart.`);
   }
-  const plotly = registration.registration.spec.build(
-    chartSource,
-    resultsByInput,
-    context,
+  return wrapPlotlyResult(
+    ChartType.Psychrometric,
+    registration.registration.spec.build(chartSource, resultsByInput, context),
+    registration.emptyMessage,
   );
-  return wrapPlotlyResult(plotly, registration);
 }
 
-export function buildBandScalarChart<TResult, ChartSourceType>(
+export function buildUtciChart<TResult, ChartSourceType>(
   registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.engine !== ChartEngine.BandScalar) {
-    throw new Error(
-      `Chart ${registration.instanceId} is not a band-scalar chart.`,
-    );
+  if (registration.registration.type !== ChartType.Utci) {
+    throw new Error(`Chart ${registration.instanceId} is not a UTCI chart.`);
   }
   const { spec } = registration.registration;
   if ("build" in spec) {
-    if (!chartSource) {
-      return {
-        plotly: null,
-        legend: null,
-        readiness: "empty",
-        emptyMessage: registration.emptyMessage,
-      };
-    }
-    const plotly = spec.build(chartSource, resultsByInput, context);
-    return wrapPlotlyResult(plotly, registration);
+    if (!chartSource) return emptyResult(registration.emptyMessage);
+    return wrapPlotlyResult(
+      ChartType.Utci,
+      spec.build(chartSource, resultsByInput, context),
+      registration.emptyMessage,
+    );
   }
   return wrapPlotlyResult(
+    ChartType.Utci,
     buildModelBandScalarChart(spec, chartSource, resultsByInput, context),
-    registration,
+    registration.emptyMessage,
   );
 }
 
-export function buildBoundaryRegionChart<TResult, ChartSourceType>(
+export function buildAdaptiveChartKind<TResult, ChartSourceType>(
   registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.engine !== ChartEngine.BoundaryRegion) {
-    throw new Error(
-      `Chart ${registration.instanceId} is not a boundary-region chart.`,
-    );
+  if (registration.registration.type !== ChartType.Adaptive) {
+    throw new Error(`Chart ${registration.instanceId} is not an adaptive chart.`);
   }
   const { spec } = registration.registration;
   if ("build" in spec) {
-    const plotly = spec.build(chartSource, resultsByInput, context);
-    return wrapPlotlyResult(plotly, registration);
+    return wrapPlotlyResult(
+      ChartType.Adaptive,
+      spec.build(chartSource, resultsByInput, context),
+      registration.emptyMessage,
+    );
   }
   return wrapPlotlyResult(
+    ChartType.Adaptive,
     buildModelBoundaryRegionChart(spec, context),
-    registration,
+    registration.emptyMessage,
   );
 }
 
-export function buildTimeSeriesLineChart<TResult, ChartSourceType>(
+export function buildBodyTemperatureChart<TResult, ChartSourceType>(
   registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.engine !== ChartEngine.TimeSeriesLine) {
-    throw new Error(
-      `Chart ${registration.instanceId} is not a time-series-line chart.`,
-    );
+  const type = registration.registration.type;
+  if (type !== ChartType.BodyTemperature && type !== ChartType.WaterLoss) {
+    throw new Error(`Chart ${registration.instanceId} is not a time-series chart.`);
   }
   const { spec } = registration.registration;
   if ("build" in spec) {
-    const plotly = spec.build(chartSource, resultsByInput, context);
-    return wrapPlotlyResult(plotly, registration);
+    return wrapPlotlyResult(
+      type,
+      spec.build(chartSource, resultsByInput, context),
+      registration.emptyMessage,
+    );
   }
   return wrapPlotlyResult(
+    type,
     buildModelTimeSeriesLineChart(spec, resultsByInput, context),
-    registration,
+    registration.emptyMessage,
   );
 }
 
-export function buildParametricLineChart<TResult, ChartSourceType>(
+export function buildParametricChart<TResult, ChartSourceType>(
   registration: ChartEngineRegistration<TResult, ChartSourceType>,
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ): ChartBuildResult {
-  if (registration.registration.engine !== ChartEngine.ParametricLine) {
-    throw new Error(
-      `Chart ${registration.instanceId} is not a parametric-line chart.`,
-    );
+  const type = registration.registration.type;
+  if (type !== ChartType.HeatLoss && type !== ChartType.Set) {
+    throw new Error(`Chart ${registration.instanceId} is not a series chart.`);
   }
   return wrapPlotlyResult(
+    type,
     buildModelParametricLineChart(
       registration.registration.spec,
       chartSource,
       resultsByInput,
       context,
     ),
-    registration,
+    registration.emptyMessage,
   );
-}
-
-function wrapPlotlyResult<TResult, ChartSourceType>(
-  plotly: PlotlyChartSpec | null,
-  registration: ChartEngineRegistration<TResult, ChartSourceType>,
-): ChartBuildResult {
-  return {
-    plotly,
-    legend: null,
-    readiness: plotly ? "ready" : "empty",
-    emptyMessage: registration.emptyMessage,
-  };
 }

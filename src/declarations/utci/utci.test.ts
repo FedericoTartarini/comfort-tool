@@ -106,7 +106,7 @@ describe("UTCI Explore chart", () => {
       .toBe(true);
     expect(fillTrace?.colorscale?.map(([, color]) => color))
       .toEqual(expect.arrayContaining(["#123456", "#abcdef", "#fedcba"]));
-    expect(inputTrace?.hovertemplate).toContain("Marker band");
+    expect(inputTrace?.hoverinfo).toBe("skip");
     expect(chart.annotations.map(({ text }) => text))
       .toEqual(expect.arrayContaining(["Below marker", "Marker band", "Above gap"]));
   });
@@ -135,7 +135,7 @@ describe("UTCI Explore chart", () => {
     expect(tooltipTrace?.type).toBe("contour");
     expect(tooltipTrace?.z).toHaveLength(100);
     expect(tooltipTrace?.z?.[0]).toHaveLength(100);
-    expect(tooltipTrace?.hoverMetadata).toBeUndefined();
+    expect(tooltipTrace?.customdata).toBeUndefined();
     expect(tooltipTrace?.hovertemplate).toContain("UTCI");
     expect(tooltipTrace?.hoverongaps).toBe(false);
     expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);

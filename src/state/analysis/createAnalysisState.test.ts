@@ -25,6 +25,12 @@ import { PhsQuantityId, type PhsResponse } from "../../catalog/phs";
 import { createAnalysisState } from "./createAnalysisState.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "./modelConfigs";
 import { PhysicalQuantityId } from "../../catalog/quantities";
+import { chartFigure } from "../../testSupport/modelChartTestHelpers";
+
+function currentChart(toolState: ReturnType<typeof createAnalysisState>) {
+  return chartFigure(toolState.selectors.getCurrentChartResult());
+}
+
 function syncWorkspaceToModel(
   toolState: ReturnType<typeof createAnalysisState>,
   modelId: ModelId,
@@ -107,8 +113,8 @@ describe("createAnalysisState", () => {
       [ModelId.Utci]: "utci-stress-band",
       [ModelId.AdaptiveAshrae]: "adaptive-ashrae-boundary",
       [ModelId.AdaptiveEn]: "adaptive-en-boundary",
-      [ModelId.HeatIndex]: "heat-index-ranges",
-      [ModelId.Humidex]: "humidex-ranges",
+      [ModelId.HeatIndex]: "heat-index-dynamic-field",
+      [ModelId.Humidex]: "humidex-dynamic-field",
       [ModelId.WindChill]: "wind-chill-dynamic-field",
       [ModelId.Phs2023]: "phs-exposure-history",
     });
@@ -823,11 +829,11 @@ describe("createAnalysisState", () => {
 
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     assertCalculationIdentity();
-    expect(toolState.selectors.getCurrentChartResult()?.layout.title)
+    expect(currentChart(toolState)?.layout.title)
       .toContain("Dynamic Chart");
 
     const complianceBands = pmvAshraeModelConfig.complianceProfile?.bands;
-    const complianceChart = toolState.selectors.getCurrentChartResult();
+    const complianceChart = currentChart(toolState);
     expect(getProfileBadgeControl(toolState).profileKind)
       .toBe(FieldChartProfileKind.Compliance);
     expect(toolState.selectors.getChartControlsViewModel().explore).toBeNull();
@@ -839,7 +845,7 @@ describe("createAnalysisState", () => {
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
     assertCalculationIdentity();
 
-    const exploreChart = toolState.selectors.getCurrentChartResult();
+    const exploreChart = currentChart(toolState);
     expect(exploreChart?.traces).not.toEqual(complianceChart?.traces);
     expect(toolState.selectors.getCurrentChartLegendZones())
       .toEqual(toLegendBands(getOutputSettings(toolState).exploreBands ?? undefined));
@@ -893,7 +899,7 @@ describe("createAnalysisState", () => {
       expect(complianceLegendAfterStandard).toEqual(toLegendBands(complianceBands));
     }
     expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PMV Zones");
-    expect(toolState.selectors.getCurrentChartResult()?.traces)
+    expect(currentChart(toolState)?.traces)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({ name: "PMV bands hover" }),
       ]));
@@ -914,7 +920,7 @@ describe("createAnalysisState", () => {
     toolState.actions.toggleUnitSystem();
     assertCalculationIdentity();
     expect(getOutputSettings(toolState).exploreBands![1].min).toBe(10);
-    expect(toolState.selectors.getCurrentChartResult()).not.toBeUndefined();
+    expect(currentChart(toolState)).not.toBeUndefined();
   });
 
   it("rebuilds Adaptive regions from the selected cached comparison baseline", async () => {
@@ -928,7 +934,7 @@ describe("createAnalysisState", () => {
     const cache = toolState.state.ui.calculationCacheByModel[ModelId.AdaptiveAshrae];
     const chartSource = cache.chartSource;
     const resultsByInput = cache.resultsByInput;
-    const getTooWarmBoundary = () => toolState.selectors.getCurrentChartResult()?.traces
+    const getTooWarmBoundary = () => currentChart(toolState)?.traces
       .find(({ name, fill }) => name === "Too Warm" && fill === "toself")?.y;
     const input1Boundary = getTooWarmBoundary();
 
@@ -942,7 +948,7 @@ describe("createAnalysisState", () => {
     expect(toolState.state.ui.isLoading).toBe(false);
     const input2Boundary = getTooWarmBoundary();
     expect(input2Boundary).not.toEqual(input1Boundary);
-    expect(toolState.selectors.getCurrentChartResult()?.traces
+    expect(currentChart(toolState)?.traces
       .filter(({ mode }) => mode === "markers")
       .map(({ name }) => name)).toEqual(["Input 1", "Input 2"]);
 
@@ -959,7 +965,7 @@ describe("createAnalysisState", () => {
     expect(cache.chartSource).toBe(chartSource);
     expect(cache.resultsByInput).toBe(resultsByInput);
     expect(toolState.state.ui.isLoading).toBe(false);
-    expect(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title)
+    expect(currentChart(toolState)?.layout.xaxis.title)
       .toContain("Operative temperature");
 
     toolState.actions.toggleUnitSystem();
@@ -968,7 +974,7 @@ describe("createAnalysisState", () => {
     expect(cache.chartSource).toBe(chartSource);
     expect(cache.resultsByInput).toBe(resultsByInput);
     expect(toolState.state.ui.isLoading).toBe(false);
-    expect(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title)
+    expect(currentChart(toolState)?.layout.xaxis.title)
       .toContain("°F");
   });
 
@@ -1072,7 +1078,7 @@ describe("createAnalysisState", () => {
     const controls = toolState.selectors.getChartControlsViewModel();
 
     expect(toolState.selectors.getCurrentChartInstances()).toEqual([
-      expect.objectContaining({ instanceId: "adaptive-ashrae-boundary", name: "Adaptive" }),
+      expect.objectContaining({ instanceId: "adaptive-ashrae-boundary", type: "adaptive" }),
     ]);
     expect(settings).toEqual(expect.objectContaining({
       xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
@@ -1273,7 +1279,7 @@ describe("createAnalysisState", () => {
 
     expect(toolState.state.ui.calculationCacheByModel[ModelId.WindChill].status)
       .toBe("ready");
-    expect(toolState.selectors.getCurrentChartResult()?.traces[0].type).toBe("contour");
+    expect(currentChart(toolState)?.traces[0].type).toBe("contour");
   });
 
   it("restores each model's own dynamic axes when switching models", async () => {
@@ -1352,11 +1358,13 @@ describe("createAnalysisState", () => {
       "comfortZonesByInput",
       "derivedSlotsByInput",
       "inputs",
+      "psychrometricTrEqualsTdb",
     ]);
     expect(Object.keys(isoSource).sort()).toEqual([
       "comfortZonesByInput",
       "derivedSlotsByInput",
       "inputs",
+      "psychrometricTrEqualsTdb",
     ]);
     expect(ashraeSource.inputs).not.toBe(isoSource.inputs);
 
@@ -1560,7 +1568,7 @@ describe("createAnalysisState", () => {
 
     toolState.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
     toolState.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
-    const marker = toolState.selectors.getCurrentChartResult()?.traces.find((trace) => (
+    const marker = currentChart(toolState)?.traces.find((trace) => (
       trace.name === "Input 1" && trace.mode === "markers"
     ));
     expect(Number(marker?.x?.[0])).toBeCloseTo(request!.tr, 6);
@@ -1635,12 +1643,12 @@ describe("createAnalysisState", () => {
     )?.utci;
     const chartSource = toolState.state.ui.calculationCacheByModel[ModelId.Utci].chartSource;
     const siResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
-    const siChartTitle = String(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title ?? "");
+    const siChartTitle = String(currentChart(toolState)?.layout.xaxis.title ?? "");
 
     toolState.actions.toggleUnitSystem();
 
     const ipResultText = toolState.selectors.getResultSections()[0].valuesByInput.input1?.text;
-    const ipChartTitle = String(toolState.selectors.getCurrentChartResult()?.layout.xaxis.title ?? "");
+    const ipChartTitle = String(currentChart(toolState)?.layout.xaxis.title ?? "");
 
     expect(rawUtci).toBe((
       toolState.state.ui.calculationCacheByModel[ModelId.Utci]
@@ -1704,14 +1712,14 @@ describe("createAnalysisState", () => {
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
 
-    const chartBefore = toolState.selectors.getCurrentChartResult();
+    const chartBefore = currentChart(toolState);
     const markerBefore = chartBefore?.traces.find((trace) => trace.name === "Input 1");
 
     toolState.actions.updateInput(InputId.Input1, InputControlId.Temperature, "32");
     await new Promise((resolve) => setTimeout(resolve, 250));
     await waitForIdle(toolState);
 
-    const chartAfter = toolState.selectors.getCurrentChartResult();
+    const chartAfter = currentChart(toolState);
     const markerAfter = chartAfter?.traces.find((trace) => trace.name === "Input 1");
 
     expect(toolState.state.quantitiesByInput[InputId.Input1]

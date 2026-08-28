@@ -89,14 +89,18 @@ export default [
   },
   {
     files: ["src/**/*.{js,ts,svelte}"],
-    ignores: ["src/declarations/**", "src/engines/comfort/**"],
+    ignores: [
+      "src/declarations/**",
+      "src/engines/comfort/**",
+      "src/charts/psychrometric/humidity.ts",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [{
             group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-            message: "jsthermalcomfort belongs in declarations or engines/comfort.",
+            message: "jsthermalcomfort belongs in declarations, engines/comfort, or charts/psychrometric/humidity.ts.",
           }],
         },
       ],

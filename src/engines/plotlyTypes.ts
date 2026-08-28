@@ -1,7 +1,8 @@
 /**
  * Plotly-compatible, theme-ready adapter types (Plan §5.2).
  *
- * Engines emit a compact PlotlyChartSpec; toPlotlyFigure owns theming.
+ * Bind-side Plotly-shaped geometry. Figure modules in src/charts/ consume
+ * generic arrays; this spec is converted at the bind wrap.
  * The payload keeps baseline style fields (`paper_bgcolor`, `plot_bgcolor`,
  * margins, annotation fonts). Do not strip those fields or invent
  * vendor-neutral geometry types.
@@ -49,6 +50,7 @@ export interface PlotConstraintContours {
   value: number | [number, number];
   coloring?: "none";
   showlines?: boolean;
+  smoothing?: number;
   line?: PlotLine;
 }
 
@@ -68,6 +70,8 @@ interface PlotTraceBase {
   yaxis?: "y" | "y2";
   /** When true, this trace represents a colored background region. */
   isBackgroundZone?: boolean;
+  /** When true, assemble stacks this contour above decorative overlays. */
+  isHoverLayer?: boolean;
 }
 
 export interface PlotScatterMarkerTrace extends PlotTraceBase {
@@ -156,6 +160,7 @@ export interface PlotAxis {
   showgrid?: boolean;
   zeroline?: boolean;
   showticklabels?: boolean;
+  dtick?: number;
   side?: "left" | "right";
   overlaying?: "y";
 }

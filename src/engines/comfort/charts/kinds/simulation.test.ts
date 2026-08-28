@@ -1,54 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import { ChartEngine } from "../../../../catalog/chartEngines";
-import { CalculationSource } from "../../../../catalog/calculationMetadata";
+import { ChartType } from "../../../../catalog/chartTypes";
 import { UnitSystem } from "../../../../catalog/units";
+import type { ChartPayload } from "../../../../charts/types";
 import type { SimulationChartDeclaration } from "../simulationCharts";
-import type { PlotlyChartSpec } from "../../../plotlyTypes";
 import { resolveSimulationChartBuild } from "./simulation";
 
 describe("simulation chart resolver", () => {
-  it("routes time-series-line simulation charts through their spec builder", () => {
+  it("routes body-temperature simulation charts through their spec builder", () => {
+    const payload: ChartPayload = {
+      type: ChartType.BodyTemperature,
+      input: {
+        xAxis: { title: "", range: [0, 1] },
+        yAxis: { title: "", range: [0, 1] },
+        series: [],
+      },
+    };
     const chart: SimulationChartDeclaration = {
       id: "test-chart",
-      engine: ChartEngine.TimeSeriesLine,
+      type: ChartType.BodyTemperature,
       title: "Test chart",
       description: "Test description",
       emptyMessage: "Empty",
       heightClass: "h-[200px]",
       spec: {
-        build: () => ({
-          traces: [],
-          layout: {
-            title: "",
-            paper_bgcolor: "#ffffff",
-            plot_bgcolor: "#ffffff",
-            showlegend: false,
-            xaxis: { title: "", range: [0, 1] },
-            yaxis: { title: "", range: [0, 1] },
-            margin: { l: 0, r: 0, t: 0, b: 0 },
-          },
-          annotations: [],
-          source: CalculationSource.JsThermalComfort,
-        } satisfies PlotlyChartSpec),
+        build: () => payload,
       },
     };
 
     const result = resolveSimulationChartBuild(chart, {}, {}, UnitSystem.SI);
 
-    expect(result).toEqual({
-      traces: [],
-      layout: {
-        title: "",
-        paper_bgcolor: "#ffffff",
-        plot_bgcolor: "#ffffff",
-        showlegend: false,
-        xaxis: { title: "", range: [0, 1] },
-        yaxis: { title: "", range: [0, 1] },
-        margin: { l: 0, r: 0, t: 0, b: 0 },
-      },
-      annotations: [],
-      source: CalculationSource.JsThermalComfort,
-    });
+    expect(result).toEqual(payload);
   });
 });

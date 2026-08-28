@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GridEvaluationResult } from "./types";
 import {
   buildBandTooltipTrace,
+  buildCategoricalBandTraces,
   buildConstraintBandTraces,
   buildZoneColorscale,
 } from "./zoneGrid";
@@ -73,9 +74,11 @@ describe("zone grid", () => {
     ]);
     expect(fillTraces.every((trace) => trace.z === grid.zValues)).toBe(true);
     expect(fillTraces.every((trace) => trace.hoverinfo === "skip")).toBe(true);
+    expect(fillTraces.every((trace) => trace.contours?.smoothing === 1)).toBe(true);
     expect(boundaryTraces.map((trace) => trace.contours?.value)).toEqual([5, 10, 25]);
     expect(boundaryTraces.every((trace) => trace.hoverinfo === "skip")).toBe(true);
     expect(boundaryTraces.every((trace) => trace.line?.color === "#333333")).toBe(true);
+    expect(boundaryTraces.every((trace) => trace.contours?.smoothing === 1)).toBe(true);
     expect(traces.every((trace) => trace.type === "contour")).toBe(true);
   });
 
@@ -95,6 +98,7 @@ describe("zone grid", () => {
       text: grid.textValues,
       hoverMetadata: grid.hoverMetadata,
       hoverongaps: false,
+      isHoverLayer: true,
     }));
     expect(trace.colorscale).toEqual([
       [0, "rgba(0, 0, 0, 0)"],
@@ -134,5 +138,22 @@ describe("zone grid", () => {
       ],
       grid: createGrid([[NaN, NaN], [NaN, NaN]]),
     })).toEqual([]);
+  });
+
+  it("smooths categorical fill and boundary isolines", () => {
+    const traces = buildCategoricalBandTraces({
+      name: "Output bands",
+      bands: [
+        { min: -Infinity, max: 10, label: "Low", color: "#0000ff" },
+        { min: 10, max: Infinity, label: "High", color: "#ff0000" },
+      ],
+      grid: createGrid([[0, 5, 15], [0, 12, 20]]),
+    });
+    const fillTrace = traces.find((trace) => trace.contours?.coloring === "fill");
+    const boundaryTrace = traces.find((trace) => trace.contours?.coloring === "none");
+
+    expect(fillTrace?.contours?.smoothing).toBe(1);
+    expect(boundaryTrace?.contours?.smoothing).toBe(1);
+    expect(boundaryTrace?.contours?.showlines).toBe(true);
   });
 });

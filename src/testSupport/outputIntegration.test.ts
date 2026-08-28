@@ -79,7 +79,7 @@ describe("output integration", () => {
           },
         );
         expect(buildResult.readiness).toBe("ready");
-        expect(buildResult.plotly).not.toBeNull();
+        expect(buildResult.payload).not.toBeNull();
         if (resolveChartInstanceCapabilities(chartInstance).showsLegend) {
           expect((buildResult.legend?.title?.length ?? 0)).toBeGreaterThan(0);
         } else {

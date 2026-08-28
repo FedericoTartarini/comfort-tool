@@ -1,8 +1,9 @@
-import type { ChartInstanceDeclaration } from "../../catalog/chartEngines";
+import type { ChartInstanceDeclaration } from "../../catalog/chartTypes";
 import {
+  chartTypeLabel,
   resolveChartCapabilities,
   type ChartInstanceCapabilities,
-} from "../../catalog/chartEngines";
+} from "../../catalog/chartTypes";
 import type { ChartEngineRegistration } from "../../engines/comfort/charts/kinds/types";
 
 export interface ChartInstancePanelView {
@@ -11,7 +12,6 @@ export interface ChartInstancePanelView {
   readonly emptyMessage: string;
   readonly allowsAxisSelection: boolean;
   readonly locksYAxis: boolean;
-  readonly showsZoneToggle: boolean;
   readonly showsLegend: boolean;
   readonly usesBaselineInput: boolean;
 }
@@ -19,7 +19,7 @@ export interface ChartInstancePanelView {
 export function resolveChartInstanceCapabilities(
   instance: ChartInstanceDeclaration,
 ): ChartInstanceCapabilities {
-  return resolveChartCapabilities(instance.engine, instance.capabilities);
+  return resolveChartCapabilities(instance.type, instance.capabilities);
 }
 
 export function toChartInstancePanelView(
@@ -28,11 +28,10 @@ export function toChartInstancePanelView(
   const capabilities = resolveChartInstanceCapabilities(instance);
   return {
     instanceId: instance.instanceId,
-    name: instance.name,
+    name: chartTypeLabel[instance.type],
     emptyMessage: instance.emptyMessage,
     allowsAxisSelection: capabilities.allowsAxisSelection,
     locksYAxis: capabilities.locksYAxis,
-    showsZoneToggle: capabilities.showsZoneToggle,
     showsLegend: capabilities.showsLegend,
     usesBaselineInput: capabilities.allowsBaselineSelection,
   };

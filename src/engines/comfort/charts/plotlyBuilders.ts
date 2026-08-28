@@ -41,7 +41,7 @@ export function buildInputScatterTrace({
   markerSize = 12,
   color,
   hoverMetadata,
-  hoverinfo,
+  hoverinfo = "skip",
 }: InputScatterTraceOptions): PlotScatterMarkerTrace {
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;
@@ -117,6 +117,7 @@ export interface LineTraceOptions {
   visible?: true | "legendonly";
   lineWidth?: number;
   dash?: PlotLine["dash"];
+  isBackgroundZone?: boolean;
 }
 
 export function buildLineTrace({
@@ -132,6 +133,7 @@ export function buildLineTrace({
   visible,
   lineWidth = 1.2,
   dash,
+  isBackgroundZone,
 }: LineTraceOptions): PlotScatterLineTrace {
   return {
     type: "scatter",
@@ -147,6 +149,7 @@ export function buildLineTrace({
     text,
     hoverMetadata,
     hoverinfo,
+    isBackgroundZone,
   };
 }
 
@@ -233,6 +236,7 @@ export interface ContourTraceOptions {
   opacity?: number;
   line?: PlotLine;
   isBackgroundZone?: boolean;
+  isHoverLayer?: boolean;
   hoverinfo?: PlotHoverInfo;
   hoverOnGaps?: boolean;
   hoverMetadata?: PlotHoverCell[][];
@@ -254,6 +258,7 @@ export function buildContourTrace({
   opacity,
   line,
   isBackgroundZone,
+  isHoverLayer,
   hoverinfo,
   hoverOnGaps,
   hoverMetadata,
@@ -277,6 +282,7 @@ export function buildContourTrace({
     hoverongaps: hoverOnGaps,
     hovertemplate,
     isBackgroundZone,
+    isHoverLayer,
     hoverMetadata,
   };
 }

@@ -8,17 +8,6 @@ async function selectModel(page: Page, modelLabel: string) {
   return modelSelect;
 }
 
-async function selectChart(page: Page, chartLabel: string) {
-  const trigger = page.getByRole("button", { name: "Select chart type and export" });
-  await trigger.click();
-  const option = page.getByRole("button", { name: chartLabel, exact: true });
-  await expect(option).toBeVisible();
-  await option.click();
-  await expect(trigger).toContainText(chartLabel);
-  await page.mouse.click(1, 1);
-  await expect(option).toBeHidden();
-}
-
 async function expectAxisControls(page: Page, visible: boolean) {
   const controls = [
     page.getByRole("button", { name: "Select chart X axis" }),
@@ -62,7 +51,7 @@ async function expectRenderedContour(plot: Locator) {
 }
 
 for (const modelLabel of ["Heat Index", "Humidex"]) {
-  test(`${modelLabel} switches between Psychrometric and Dynamic controls`, async ({ page }) => {
+  test(`${modelLabel} renders a Dynamic chart with axis and threshold controls`, async ({ page }) => {
     await page.goto("/Explore/");
     const modelSelect = await selectModel(page, modelLabel);
     await expect(modelSelect).toHaveValue(modelLabel);
@@ -73,26 +62,14 @@ for (const modelLabel of ["Heat Index", "Humidex"]) {
       name: "Select chart type and export",
     });
 
-    await expect(chartTrigger).toContainText("Psychrometric");
+    await expect(chartTrigger).toContainText("Dynamic");
     await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
     await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
     await expect(panel.getByText(
-      `Showing ${modelLabel} on this chart's fixed axes with editable thresholds.`,
+      `Showing ${modelLabel} over the selected axes with editable thresholds.`,
       { exact: true },
     )).toBeVisible();
-    await expectAxisControls(page, false);
-    await expectSingleOutputExploreControls(page);
-    await expectRenderedContour(plot);
-
-    await selectChart(page, "Dynamic");
-    await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
     await expectAxisControls(page, true);
-    await expectSingleOutputExploreControls(page);
-    await expectRenderedContour(plot);
-
-    await selectChart(page, "Psychrometric");
-    await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
-    await expectAxisControls(page, false);
     await expectSingleOutputExploreControls(page);
     await expectRenderedContour(plot);
   });

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CalculationSource } from "../catalog/calculationMetadata";
-import type { PlotlyChartSpec } from "./plotlyTypes";
+import { ChartType } from "../catalog/chartTypes";
+import type { ChartPayload } from "../charts/types";
 import {
   PublicationColumn,
   publicationChartThemeFor,
@@ -14,32 +14,31 @@ import {
   publicationToImageOptions,
 } from "./plotlyExport";
 
-function contourChart(): PlotlyChartSpec {
+function contourChart(): ChartPayload {
   return {
-    traces: [
-      {
-        type: "contour",
-        name: "Temperature field",
-        x: [0, 1],
-        y: [0, 1],
-        z: [
-          [1, 2],
-          [3, 4],
-        ],
-        contours: { type: "levels", coloring: "heatmap" },
-      },
-    ],
-    layout: {
+    type: ChartType.Dynamic,
+    input: {
       title: "PMV ASHRAE 55 Dynamic Chart (PMV)",
-      paper_bgcolor: "#fff",
-      plot_bgcolor: "#fff",
+      paperBgColor: "#fff",
+      plotBgColor: "#fff",
       showlegend: false,
       margin: { l: 56, r: 16, t: 48, b: 52 },
-      xaxis: { title: "Air temperature", range: [10, 40] },
-      yaxis: { title: "Relative humidity", range: [0, 100] },
+      xAxis: { title: "Air temperature", range: [10, 40] },
+      yAxis: { title: "Relative humidity", range: [0, 100] },
+      fills: [
+        {
+          name: "Temperature field",
+          x: [0, 1],
+          y: [0, 1],
+          z: [
+            [1, 2],
+            [3, 4],
+          ],
+          contours: { type: "levels", coloring: "heatmap" },
+        },
+      ],
+      points: [],
     },
-    annotations: [],
-    source: CalculationSource.FrontendGenerated,
   };
 }
 

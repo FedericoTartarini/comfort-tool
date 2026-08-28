@@ -1,5 +1,6 @@
 import { type ModelId as ModelIdType } from "../catalog/modelIds";
-import type { PlotlyChartSpec } from "../engines/plotlyTypes";
+import type { ChartPayload } from "../charts/types";
+import { assembleChart } from "../charts";
 import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
@@ -70,21 +71,20 @@ function serializeTable(sections: ResultSectionViewModel[]): TableGoldenSnapshot
 }
 
 function serializeChart(
-  chart: PlotlyChartSpec | null,
+  chart: ChartPayload | null,
   instanceId: string,
   profileKind: typeof FieldChartProfileKind.Compliance | typeof FieldChartProfileKind.Explore,
 ): ChartGoldenSnapshot | null {
   if (!chart) return null;
+  const assembled = assembleChart(chart);
   return {
     instanceId,
     profileKind,
-    traceCount: chart.traces.length,
-    traceNames: chart.traces
-      .filter((trace) => !trace.isBackgroundZone)
-      .map((trace) => trace.name),
-    layoutTitle: chart.layout.title,
-    xAxisTitle: String(chart.layout.xaxis.title ?? ""),
-    yAxisTitle: String(chart.layout.yaxis.title ?? ""),
+    traceCount: assembled.data.length,
+    traceNames: assembled.data.map((trace) => String(trace.name ?? "")),
+    layoutTitle: chart.input.title ?? "",
+    xAxisTitle: chart.input.xAxis.title,
+    yAxisTitle: chart.input.yAxis.title,
   };
 }
 
@@ -125,7 +125,7 @@ export function buildModelOutputGoldenSnapshot(
           modelInputs: context.modelInputs,
         },
       );
-      const snapshot = serializeChart(buildResult.plotly, chartInstance.instanceId, mode);
+      const snapshot = serializeChart(buildResult.payload, chartInstance.instanceId, mode);
       if (snapshot) charts.push(snapshot);
     }
   }

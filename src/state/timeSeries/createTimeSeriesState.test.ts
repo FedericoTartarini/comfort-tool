@@ -9,6 +9,7 @@ import {
   type PhsTimeSeriesDraft,
 } from "../../catalog/phs";
 import { UnitSystem } from "../../catalog/units";
+import { chartFigure } from "../../testSupport/modelChartTestHelpers";
 import { createTimeSeriesState } from "./createTimeSeriesState.svelte";
 import { timeSeriesModelOrder } from "./modelConfigs";
 
@@ -169,7 +170,7 @@ describe("createTimeSeriesState", () => {
 
     expect(controller.state.revisionByModel[ModelId.Phs2023]).toBe(revision);
     expect(getResult(controller)).toBe(result);
-    expect(controller.selectors.getCharts()[0].chart?.traces[0].hoverMetadata?.[0])
+    expect(chartFigure(controller.selectors.getCharts()[0].chart)?.traces[0].customdata?.[0])
       .toEqual(["Renamed phase"]);
     controller.actions.dispose();
   });

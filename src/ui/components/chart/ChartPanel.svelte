@@ -1,18 +1,17 @@
 <script lang="ts">
-  import { Toggle } from "flowbite-svelte";
   import PlotlyChartCard from "./PlotlyChartCard.svelte";
   import ChartExportMenu from "./ChartExportMenu.svelte";
   import ChartControls from "./ChartControls.svelte";
   import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
-  import type { PlotlyChartSpec } from "../../../engines/plotlyTypes";
+  import type { ChartPayload } from "../../../charts/types";
   import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
   import type { ChartInstancePanelView } from "../../../state/analysis/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../../state/analysis/types";
   import type { PublicationExportHandler } from "../../../engines/plotlyExport";
 
   interface Props {
-    chartResult: PlotlyChartSpec | null;
+    chartResult: ChartPayload | null;
     isLoading: boolean;
     chartInstance: ChartInstancePanelView;
     chartInstances: readonly ChartInstancePanelView[];
@@ -38,14 +37,8 @@
   }: Props = $props();
 
   let exportChart: PublicationExportHandler | undefined = $state(undefined);
-  let showZones = $state(true);
   const heightClass = "h-[480px] xl:h-[480px]";
   const chartPanelIdPrefix = `chart-panel-${Math.random().toString(36).slice(2, 10)}`;
-
-  $effect(() => {
-    selectedChartInstanceId;
-    showZones = true;
-  });
 
   const showChartControls = $derived(
     chartControls.baseline !== null ||
@@ -55,7 +48,6 @@
   const controlsIdPrefix = $derived(
     `${chartPanelIdPrefix}-${selectedModel}-${selectedChartInstanceId}`,
   );
-  const showZonesToggle = $derived(chartInstance.showsZoneToggle);
 </script>
 
 <div
@@ -93,17 +85,6 @@
           onExport={(format, column) => exportChart?.(format, column)}
         />
       </div>
-      {#if showZonesToggle}
-        <div class="flex items-center gap-1.5">
-          <span class="text-xs font-medium text-stone-500">Zones:</span>
-          <Toggle
-            checked={showZones}
-            onchange={(e) => (showZones = e.currentTarget.checked)}
-            color="teal"
-            size="small"
-          />
-        </div>
-      {/if}
     </div>
   </header>
 
@@ -114,7 +95,6 @@
       emptyMessage={chartInstance.emptyMessage}
       heightClass={heightClass}
       testId="comfort-chart-visual"
-      showZones={showZones}
       onRegisterExport={(handler) => (exportChart = handler)}
     />
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { inputDefaultsById, InputId } from "../../catalog/inputSlots";
+import { inputChartStyleById } from "../../catalog/inputSlotPresentation";
 import {
   AirSpeedControlMode,
   HumidityInputMode,
@@ -266,18 +267,28 @@ describe("comfort services", () => {
     );
 
     expect(psychrometricChart.traces.length).toBeGreaterThan(1);
-    expect(psychrometricChart.traces[0].name).toContain("PMV");
-    expect(psychrometricChart.traces[0].z).toHaveLength(50);
-    expect(psychrometricChart.traces[0].z?.[0]).toHaveLength(50);
-    expect(psychrometricChart.traces[0].isBackgroundZone).toBe(true);
-    expect(psychrometricChart.traces.filter((trace) => trace.name.startsWith("RH "))).toHaveLength(10);
-    const comfortZoneTrace = psychrometricChart.traces.find((trace) => trace.name.includes("comfort zone"));
-    expect(comfortZoneTrace?.isBackgroundZone).toBe(true);
+    const hoverTrace = psychrometricChart.traces.find(
+      ({ name }) => name === "PMV bands hover",
+    );
+    expect(hoverTrace?.name).toContain("PMV");
+    expect(hoverTrace?.z).toHaveLength(100);
+    expect(hoverTrace?.z?.[0]).toHaveLength(100);
+    expect(psychrometricChart.traces.filter((trace) => typeof trace.name === "string" && trace.name.startsWith("RH "))).toHaveLength(10);
+    expect(
+      psychrometricChart.payload.type === "psychrometric"
+        ? psychrometricChart.payload.input.zones.some((zone) => (
+          zone.name?.includes("comfort zone")
+        ))
+        : false,
+    ).toBe(true);
     expect(psychrometricChart.traces[psychrometricChart.traces.length - 1]?.type)
       .toBe("scatter");
     expect(psychrometricChart.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
-    ))).not.toHaveLength(0);
+    ))).toHaveLength(0);
+    expect(psychrometricChart.traces.filter(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
+    )).length).toBeGreaterThan(0);
     expect(psychrometricChart.traces.find(({ name }) => name === "PMV bands hover"))
       .toBeDefined();
     expect(psychrometricChart.traces.find(({ name }) => name === "Input 1"))
@@ -330,7 +341,7 @@ describe("comfort services", () => {
     const hoverTrace = psychrometricChart.traces.find(
       ({ name }) => name === "PMV bands hover",
     );
-    expect(Number.isNaN(hoverTrace?.z?.[49]?.[0])).toBe(true);
+    expect(hoverTrace?.z?.[49]?.[0]).toBeNull();
     expect(hoverTrace?.text?.[49]?.[0]).toBe("");
   });
 
@@ -349,14 +360,13 @@ describe("comfort services", () => {
       trace.contours?.type === "constraint" && trace.contours.operation !== "="
     ));
 
-    expect(rawGridTrace?.isBackgroundZone).toBe(true);
-    expect(rawGridTrace?.z).toHaveLength(50);
-    expect(rawGridTrace?.z?.[0]).toHaveLength(50);
+    expect(rawGridTrace?.z).toHaveLength(100);
+    expect(rawGridTrace?.z?.[0]).toHaveLength(100);
     expect(String(dynamicChart.layout.xaxis.title)).toContain("Air temperature");
     expect(String(dynamicChart.layout.yaxis.title)).toContain("Relative humidity");
     expect(inputTrace?.x).toEqual([26]);
     expect(inputTrace?.y).toEqual([50]);
-    expect(inputTrace?.hovertemplate).toContain("PMV");
+    expect(inputTrace?.hoverinfo).toBe("skip");
   });
 
   it("uses the selected baseline input for PMV dynamic contour evaluation", () => {
@@ -424,10 +434,10 @@ describe("comfort services", () => {
     expect(String(utciChart.layout.xaxis.title)).toContain("°F");
     const utciInputTrace = utciChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
     expect(utciInputTrace).toBeDefined();
-    expect(utciInputTrace?.hovertemplate).toContain("°F");
+    expect(utciInputTrace?.hoverinfo).toBe("skip");
   });
 
-  it("smooths comfort-zone polygon x values while preserving solver output", () => {
+  it("closes the comfort-zone overlay along RH caps", () => {
     const { calculation, chart: psychrometricChart } = buildRegisteredPmvChart(
       "pmv-ashrae-psychrometric",
       { [InputId.Input1]: comfortZonePayload },
@@ -436,18 +446,19 @@ describe("comfort services", () => {
 
     const comfortZone = calculation.chartSource.comfortZonesByInput[InputId.Input1];
     const comfortPolygon = psychrometricChart.traces.find(
-      (trace) => trace.name.includes("comfort zone"),
+      (trace) => trace.name?.includes("comfort zone"),
     );
-    if (!comfortZone || !comfortPolygon?.x) {
+    if (!comfortZone || !comfortPolygon?.x || !comfortPolygon.y) {
       throw new Error("Expected a registered PMV comfort-zone polygon.");
     }
-    const middleIndex = Math.floor(comfortZone.coolEdge.length / 2);
 
-    expect(comfortPolygon.x).toHaveLength(
+    expect(comfortPolygon.fill).toBe("toself");
+    expect(comfortPolygon.fillcolor).toBe(inputChartStyleById[InputId.Input1].fill);
+    expect(comfortPolygon.x[0]).toBe(comfortPolygon.x[comfortPolygon.x.length - 1]);
+    expect(comfortPolygon.y[0]).toBe(comfortPolygon.y[comfortPolygon.y.length - 1]);
+    expect(comfortPolygon.x.length).toBeGreaterThan(
       comfortZone.coolEdge.length + comfortZone.warmEdge.length,
     );
-    expect(comfortZone.coolEdge[middleIndex].tdb)
-      .not.toBe(comfortPolygon.x[middleIndex]);
   });
 
   it("normalizes clothing prediction results from jsthermalcomfort", () => {

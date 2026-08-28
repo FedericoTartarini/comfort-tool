@@ -48,7 +48,7 @@ import {
   isRecord,
   type ChartDeclarationInput,
 } from "../../state/analysis/modelConfigs/builder";
-import { ChartEngine } from "../../catalog/chartEngines";
+import { ChartType } from "../../catalog/chartTypes";
 import { TableType } from "../../catalog/tableTypes";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import {
@@ -234,7 +234,6 @@ const PMV_PARAMETRIC_CHART_CAPABILITIES = {
   allowsOutputSelection: false,
   allowsBandEditing: false,
   allowsBaselineSelection: true,
-  showsZoneToggle: false,
   showsLegend: false,
   showsExport: true,
 } as const;
@@ -245,8 +244,7 @@ export function createPmvCharts(
   return [
     {
       id: declaration.psychrometricChartId,
-      engine: ChartEngine.Custom,
-      name: "Psychrometric",
+      type: ChartType.Psychrometric,
       emptyMessage: "No psychrometric chart yet.",
       capabilities: {
         allowsAxisSelection: false,
@@ -254,7 +252,6 @@ export function createPmvCharts(
         allowsOutputSelection: false,
         allowsBandEditing: false,
         allowsBaselineSelection: true,
-        showsZoneToggle: true,
         showsLegend: true,
         showsExport: true,
       },
@@ -265,8 +262,7 @@ export function createPmvCharts(
     },
     {
       id: declaration.dynamicChartId,
-      engine: ChartEngine.DynamicField,
-      name: "Dynamic",
+      type: ChartType.Dynamic,
       emptyMessage: "No dynamic chart yet.",
       capabilities: {
         allowsAxisSelection: true,
@@ -274,7 +270,6 @@ export function createPmvCharts(
         allowsOutputSelection: true,
         allowsBandEditing: true,
         allowsBaselineSelection: true,
-        showsZoneToggle: false,
         showsLegend: true,
         showsExport: true,
       },
@@ -287,16 +282,14 @@ export function createPmvCharts(
     },
     {
       id: declaration.heatLossChartId,
-      engine: ChartEngine.ParametricLine,
-      name: "Heat Loss",
+      type: ChartType.HeatLoss,
       emptyMessage: "No heat-loss chart yet.",
       capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
       spec: createPmvHeatLossParametricSpec(),
     },
     {
       id: declaration.setChartId,
-      engine: ChartEngine.ParametricLine,
-      name: "SET",
+      type: ChartType.Set,
       emptyMessage: "No SET chart yet.",
       capabilities: PMV_PARAMETRIC_CHART_CAPABILITIES,
       spec: createPmvSetParametricSpec(),

@@ -5,7 +5,7 @@
  */
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
-import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
+import type { ChartPayload } from "../../charts/types";
 import type {
   PrimaryInputState,
   DerivedSlotQuantityState,
@@ -27,7 +27,7 @@ import type {
   NumericBand,
 } from "../../catalog/modelCapabilities";
 import type { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
-import type { ChartInstanceDeclaration } from "../../catalog/chartEngines";
+import type { ChartInstanceDeclaration } from "../../catalog/chartTypes";
 import type { FieldChartProfile } from "../../catalog/output/fieldChartProfile";
 import type { WorkspaceId as WorkspaceIdType } from "../../catalog/workspaces";
 import type { ShareStateSnapshot } from "./shareState";
@@ -327,7 +327,7 @@ export type AnalysisSelectors = {
   ) => InputModifierControlViewModel[];
   getEffectiveQuantitiesByInput: (modelId?: ModelIdType) => QuantitiesByInputState;
   getResultSections: () => ResultSectionViewModel[];
-  getCurrentChartResult: () => PlotlyChartSpec | null;
+  getCurrentChartResult: () => ChartPayload | null;
   getCurrentChartInstance: () => ChartInstanceDeclaration;
   getCurrentChartInstances: () => readonly ChartInstanceDeclaration[];
   getCurrentChartInstanceId: () => string;

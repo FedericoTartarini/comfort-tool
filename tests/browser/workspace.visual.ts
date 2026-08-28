@@ -62,7 +62,7 @@ test.describe("workspace routing", () => {
       ["/ASHRAE-55/", "Psychrometric"],
       ["/ISO-7730/", "Psychrometric"],
       ["/EN-16798-1/", "Adaptive"],
-      ["/ISO-7933/", "Exposure history"],
+      ["/ISO-7933/", "Body Temperature"],
       ["/Explore/", "Psychrometric"],
     ] as const) {
       await page.goto(path);
@@ -198,8 +198,8 @@ test.describe("workspace routing", () => {
     for (const [modelLabel, chartName] of [
       ["PMV (ISO 7730 Category B)", "Psychrometric"],
       ["UTCI", "UTCI"],
-      ["Heat Index", "Psychrometric"],
-      ["Humidex", "Psychrometric"],
+      ["Heat Index", "Dynamic"],
+      ["Humidex", "Dynamic"],
     ] as const) {
       const modelSelect = await chooseModel(page, modelLabel);
       await expect(modelSelect).toHaveValue(modelLabel);

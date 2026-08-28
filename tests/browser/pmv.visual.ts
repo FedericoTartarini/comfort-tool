@@ -42,6 +42,24 @@ const COMPLIANCE_COLORS = [
   resolveZoneAppearance(ZoneToken.FailFill).fill,
 ];
 
+const PSYCHROMETRIC_PLOT_BACKGROUND = "#f8fafc";
+const PSYCHROMETRIC_BAND_OPACITY = 0.8;
+
+function blendHexOntoPlot(foreground: string, background: string, opacity: number): string {
+  const channel = (hex: string, shift: number) => (
+    (Number.parseInt(hex.slice(1), 16) >> shift) & 255
+  );
+  const mix = (fg: number, bg: number) => Math.round(fg * opacity + bg * (1 - opacity));
+  const toHex = (value: number) => value.toString(16).padStart(2, "0");
+  return `#${toHex(mix(channel(foreground, 16), channel(background, 16)))}${
+    toHex(mix(channel(foreground, 8), channel(background, 8)))
+  }${toHex(mix(channel(foreground, 0), channel(background, 0)))}`;
+}
+
+const PSYCHROMETRIC_COMPLIANCE_FILLCOLORS = COMPLIANCE_COLORS.map((fill) => (
+  blendHexOntoPlot(fill, PSYCHROMETRIC_PLOT_BACKGROUND, PSYCHROMETRIC_BAND_OPACITY)
+));
+
 function hexToCssRgb(hex: string): string {
   const normalized = hex.trim().replace(/^#/, "");
   const value = Number.parseInt(normalized, 16);
@@ -145,6 +163,21 @@ async function waitForXAxisTitle(plot: Locator, titleFragment: string) {
       }),
     )
     .toContain(titleFragment);
+}
+
+async function waitForXAxisDtick(plot: Locator, dtick: number) {
+  await expect
+    .poll(() =>
+      plot.evaluate((element) => {
+        const axis = (
+          element as HTMLElement & {
+            _fullLayout?: { xaxis?: { dtick?: number; tickmode?: string } };
+          }
+        )._fullLayout?.xaxis;
+        return `${axis?.tickmode ?? ""}:${axis?.dtick ?? ""}`;
+      }),
+    )
+    .toBe(`linear:${dtick}`);
 }
 
 async function hoverPlotCoordinate(
@@ -380,6 +413,30 @@ async function expectComplianceConstraintFills(plot: Locator) {
   await expect(plot.locator(".contourbg path")).toHaveCount(0);
 }
 
+async function readPsychrometricBandFillcolors(plot: Locator): Promise<string[]> {
+  return plot.evaluate((element) => {
+    const traces =
+      (
+        element as HTMLElement & {
+          data?: Array<{ name?: string; fill?: string; fillcolor?: string }>;
+        }
+      ).data ?? [];
+    return traces
+      .filter(({ name, fill }) => (
+        fill === "toself"
+        && typeof name === "string"
+        && name.startsWith("PMV bands:")
+      ))
+      .map(({ fillcolor }) => fillcolor ?? "");
+  });
+}
+
+async function expectPsychrometricComplianceBandFills(plot: Locator) {
+  await expect
+    .poll(() => readPsychrometricBandFillcolors(plot))
+    .toEqual(PSYCHROMETRIC_COMPLIANCE_FILLCOLORS);
+}
+
 test.describe("PMV visual regression", () => {
   test("ASHRAE Standard workspace locks Compliance profile and exposes Explore controls", async ({
     page,
@@ -472,6 +529,11 @@ test.describe("PMV visual regression", () => {
       page.getByRole("button", { name: "Edit chart thresholds" }),
     ).toBeVisible();
     await waitForTrace(plot, "PPD (%) bands hover");
+    await waitForXAxisDtick(plot, 2);
+    await page.mouse.move(0, 0);
+    await expect(visual).toHaveScreenshot(
+      "pmv-ashrae-psychrometric-explore-si.png",
+    );
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
     await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
@@ -483,11 +545,59 @@ test.describe("PMV visual regression", () => {
       page.getByRole("button", { name: "Edit chart thresholds" }),
     ).toBeHidden();
     await waitForTrace(plot, "PMV bands hover");
-    await expectComplianceConstraintFills(plot);
+    await expectPsychrometricComplianceBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot(
       "pmv-ashrae-psychrometric-compliance-si.png",
     );
+
+    await page.locator("#advanced-input-temperature").click();
+    await page.getByRole("button", { name: /Operative temp/ }).click();
+    await expect(
+      page.getByLabel("Input 1 Operative temperature", { exact: true }),
+    ).toBeVisible();
+    await waitForXAxisTitle(plot, "Operative temperature");
+    await waitForTrace(plot, "PMV bands hover");
+    await page.mouse.move(0, 0);
+    await expect(visual).toHaveScreenshot(
+      "pmv-ashrae-psychrometric-operative-si.png",
+    );
+  });
+
+  test("ASHRAE psychrometric hover covers the plot, not only RH curves", async ({
+    page,
+  }) => {
+    const { plot } = await openTargetPmvChart(page, { workspace: "standard" });
+    const chartTrigger = page.getByRole("button", {
+      name: "Select chart type and export",
+    });
+    await chartTrigger.click();
+    await page
+      .getByRole("button", { name: "Psychrometric", exact: true })
+      .click();
+    await expect(chartTrigger).toContainText("Psychrometric");
+    await waitForTrace(plot, "PMV bands hover");
+    await waitForXAxisDtick(plot, 2);
+
+    const hoverLayer = plot.locator(".hoverlayer");
+    // 22 °C / 7.5 g/kg sits between the 40% and 50% RH curves.
+    await hoverPlotCoordinate(page, plot, 22, 7.5);
+    await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
+    await expect(hoverLayer).toContainText(/Humidity ratio: \d+\.\d g\/kg/);
+    await expect(hoverLayer).toContainText(/Zone:/);
+    await expect(hoverLayer).toContainText(/PMV:/);
+    await expect(hoverLayer).toContainText(/PPD:/);
+
+    const inputPoint = plot.locator(".scatterlayer path.point");
+    await expect(inputPoint).toHaveCount(1);
+    const inputPointBox = await inputPoint.boundingBox();
+    expect(inputPointBox).not.toBeNull();
+    await page.mouse.move(
+      inputPointBox!.x + inputPointBox!.width / 2 + 16,
+      inputPointBox!.y + inputPointBox!.height / 2,
+    );
+    await expect(hoverLayer).toContainText(/Humidity ratio:/);
+    await expect(hoverLayer).not.toContainText("Input 1");
   });
 
   test("ASHRAE PMV in SI", async ({ page }) => {
@@ -511,11 +621,12 @@ test.describe("PMV visual regression", () => {
       inputPointBox!.y + inputPointBox!.height / 2,
     );
     const hoverLayer = plot.locator(".hoverlayer");
-    await expect(hoverLayer).toContainText("Air temperature: 26.0 °C");
-    await expect(hoverLayer).toContainText("Relative humidity: 50.00 %");
+    await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
+    await expect(hoverLayer).toContainText(/Relative humidity: \d+(\.\d+)? %/);
     await expect(hoverLayer).toContainText("Zone: Neutral");
-    await expect(hoverLayer).toContainText("PMV: -0.19");
-    await expect(hoverLayer).toContainText("PPD: 5.7%");
+    await expect(hoverLayer).toContainText(/PMV: -0\.\d{2}/);
+    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
+    await expect(hoverLayer).not.toContainText("Input 1");
     await expect(visual).toHaveScreenshot("pmv-ashrae-si-hover.png");
 
     await hoverPlotCoordinate(page, plot, 28, 50);

@@ -8,10 +8,10 @@ import {
   ModelOutputKey,
   type ModelOutput,
 } from "../catalog/modelCapabilities";
-import { ChartEngine } from "../catalog/chartEngines";
+import { ChartType } from "../catalog/chartTypes";
 import { TableType } from "../catalog/tableTypes";
 import { WorkspaceId } from "../catalog/workspaces";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantities";
+import { PhysicalQuantityId } from "../catalog/quantities";
 import { ThermalZone } from "../catalog/thermalZone";
 import { ZoneToken } from "../catalog/zoneTokens";
 import type { GridModelChartSpec } from "../engines/comfort/charts/gridModelCharts";
@@ -34,9 +34,8 @@ const MODEL_LABEL = "Humidex";
 const MODEL_DESCRIPTION =
   "Canadian index used to describe how hot the weather feels to the average person, by combining the effects of heat and humidity.";
 const TDB_LIMITS = { min: 20, max: 50 };
-const FIXED_CHART_ID = "humidex-ranges";
 const DYNAMIC_CHART_ID = "humidex-dynamic-field";
-const PSYCHROMETRIC_AXIS_FIELDS = [
+const AXIS_FIELDS = [
   PhysicalQuantityId.DryBulbTemperature,
   PhysicalQuantityId.RelativeHumidity,
 ] as const;
@@ -123,58 +122,26 @@ export const humidexModelConfig = defineModel<
   ],
   charts: [
     {
-      id: FIXED_CHART_ID,
-      engine: ChartEngine.DynamicField,
-      name: "Psychrometric",
-      emptyMessage: "No psychrometric chart yet.",
-      capabilities: {
-        allowsAxisSelection: false,
-        locksYAxis: false,
-        allowsOutputSelection: false,
-        allowsBandEditing: false,
-        allowsBaselineSelection: true,
-        showsZoneToggle: false,
-        showsLegend: true,
-        showsExport: true,
-      },
-      spec: {
-        title: `${MODEL_LABEL} Discomfort`,
-        axisFields: [...PSYCHROMETRIC_AXIS_FIELDS],
-        lockedAxes: {
-          xField: PhysicalQuantityId.RelativeHumidity,
-          yField: PhysicalQuantityId.DryBulbTemperature,
-          xRangeSi: {
-            min: getPhysicalQuantityMeta(PhysicalQuantityId.RelativeHumidity).minSi,
-            max: getPhysicalQuantityMeta(PhysicalQuantityId.RelativeHumidity).maxSi,
-          },
-          yRangeSi: TDB_LIMITS,
-        },
-        resolveGridSpec: () => humidexGridSpec,
-      },
-    },
-    {
       id: DYNAMIC_CHART_ID,
-      engine: ChartEngine.DynamicField,
-      name: "Dynamic",
+      type: ChartType.Dynamic,
       emptyMessage: "No dynamic chart yet.",
       capabilities: {
         allowsAxisSelection: true,
-        locksYAxis: true,
+        locksYAxis: false,
         allowsOutputSelection: true,
         allowsBandEditing: true,
         allowsBaselineSelection: true,
-        showsZoneToggle: false,
         showsLegend: true,
         showsExport: true,
       },
       spec: {
         title: `${MODEL_LABEL} Dynamic Chart`,
-        axisFields: [...PSYCHROMETRIC_AXIS_FIELDS],
+        axisFields: [...AXIS_FIELDS],
         resolveGridSpec: () => humidexGridSpec,
       },
     },
   ],
-  defaultChartId: FIXED_CHART_ID,
+  defaultChartId: DYNAMIC_CHART_ID,
   tables: {
     analysis: {
       type: TableType.Analysis,

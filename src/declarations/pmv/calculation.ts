@@ -1,5 +1,6 @@
 import { cooling_effect, set_tmp } from "jsthermalcomfort";
 
+import { sampleIsoline } from "../../charts/psychrometric/isolines";
 import {
   CalculationSource,
   type ComfortStandard,
@@ -16,7 +17,7 @@ import {
   type DerivedSlotQuantityState,
   getPhysicalQuantityMeta,
 } from "../../catalog/quantities";
-import { AirSpeedControlMode, OptionKey } from "../../catalog/inputModes";
+import { AirSpeedControlMode, OptionKey, TemperatureMode } from "../../catalog/inputModes";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 import type { ComplianceFeedback } from "../../catalog/modelCapabilities";
@@ -49,9 +50,7 @@ export const PMV_PSYCHROMETRIC_VIEW = {
   rhCurves: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
 } as const;
 
-const ROOT_SCAN_POINTS = 101;
-const ROOT_MAX_BISECTION_EVALUATIONS = 30;
-const ROOT_TOLERANCE = 5e-4;
+const DEFAULT_PPD_COMFORT_THRESHOLD = 10;
 
 export const pmvNeutralZone = new ThermalZone({
   label: "Neutral",
@@ -141,6 +140,8 @@ export interface PmvResponse {
 export interface PmvChartSource extends ModelChartSource<ComfortZoneRequest> {
   comfortZonesByInput: CompareInputMap<ComfortZoneResponse>;
   derivedSlotsByInput?: CompareInputMap<DerivedSlotQuantityState>;
+  /** When true, Psychrometric samples use tr = tdb (CBE psychtop / Operative). */
+  psychrometricTrEqualsTdb: boolean;
 }
 
 export interface PmvChartEvaluation {
@@ -148,10 +149,6 @@ export interface PmvChartEvaluation {
   ppd: number;
   zone: ThermalZone;
 }
-
-type TemperatureBracket =
-  | { exactTemperature: number }
-  | { low: number; high: number; lowDelta: number; highDelta: number };
 
 export function getPmvZoneMeta(pmv: number): ThermalZone {
   return requireThermalZone(pmvZonesList, pmv, "PMV");
@@ -194,121 +191,58 @@ export function tryEvaluatePmvForChart(
   }
 }
 
-function evaluatePmvDeltaAtTemperature(
-  adapter: PmvStandardAdapter,
-  targetPmv: number,
-  rh: number,
+/**
+ * Inverts ISO 7730 / ASHRAE PPD(PMV) for |PMV|. PPD 5% is the formula
+ * minimum at PMV = 0.
+ */
+export function invertPpdToAbsPmv(ppd: number): number {
+  if (ppd <= 5) return 0;
+  if (ppd >= 100) return Number.POSITIVE_INFINITY;
+  const ratio = (100 - ppd) / 95;
+  if (ratio <= 0) return Number.POSITIVE_INFINITY;
+  const logRatio = Math.log(ratio);
+  const a = 0.03353;
+  const b = 0.2179;
+  const discriminant = b * b - 4 * a * logRatio;
+  if (discriminant < 0) return 0;
+  const pmvSquared = (-b + Math.sqrt(discriminant)) / (2 * a);
+  return pmvSquared <= 0 ? 0 : Math.sqrt(pmvSquared);
+}
+
+export function ppdThresholdToAbsPmv(ppd: number): number {
+  if (ppd === DEFAULT_PPD_COMFORT_THRESHOLD) return pmvNeutralZone.max;
+  return invertPpdToAbsPmv(ppd);
+}
+
+export function psychrometricPmvRequest(
   payload: PmvRequest,
-  temperature: number,
+  tdb: number,
+  rh: number,
+  trEqualsTdb: boolean,
+): PmvRequest {
+  return trEqualsTdb
+    ? { ...payload, tdb, tr: tdb, rh }
+    : { ...payload, tdb, rh };
+}
+
+export function evaluatePsychrometricPmv(
+  adapter: PmvStandardAdapter,
+  payload: PmvRequest,
+  tdb: number,
+  rh: number,
+  trEqualsTdb: boolean,
 ): number | null {
-  const evaluation = tryEvaluatePmvForChart(adapter, {
-    ...payload,
-    tdb: temperature,
-    rh,
-  });
-  return evaluation ? evaluation.pmv - targetPmv : null;
-}
-
-function createTemperatureBracket(
-  low: number,
-  lowDelta: number,
-  high: number,
-  highDelta: number,
-): TemperatureBracket | null {
-  if (Math.abs(lowDelta) <= ROOT_TOLERANCE) return { exactTemperature: low };
-  if (Math.abs(highDelta) <= ROOT_TOLERANCE) return { exactTemperature: high };
-  return lowDelta * highDelta <= 0 ? { low, high, lowDelta, highDelta } : null;
-}
-
-function findTemperatureBracket(
-  adapter: PmvStandardAdapter,
-  targetPmv: number,
-  rh: number,
-  payload: PmvRequest,
-): TemperatureBracket | null {
-  let previousTemperature: number | null = null;
-  let previousDelta: number | null = null;
-  const { min, max } = PMV_PSYCHROMETRIC_VIEW.tdbRangeSi;
-
-  for (let index = 0; index < ROOT_SCAN_POINTS; index += 1) {
-    const temperature = min + ((max - min) * index) / (ROOT_SCAN_POINTS - 1);
-    const delta = evaluatePmvDeltaAtTemperature(
-      adapter,
-      targetPmv,
-      rh,
-      payload,
-      temperature,
-    );
-    if (delta === null) {
-      previousTemperature = null;
-      previousDelta = null;
-      continue;
-    }
-    if (Math.abs(delta) <= ROOT_TOLERANCE) {
-      return { exactTemperature: temperature };
-    }
-    if (previousTemperature !== null && previousDelta !== null) {
-      const bracket = createTemperatureBracket(
-        previousTemperature,
-        previousDelta,
-        temperature,
-        delta,
-      );
-      if (bracket) return bracket;
-    }
-    previousTemperature = temperature;
-    previousDelta = delta;
-  }
-  return null;
-}
-
-function solveDryBulbForTargetPmv(
-  adapter: PmvStandardAdapter,
-  targetPmv: number,
-  rh: number,
-  payload: PmvRequest,
-): number | null {
-  const bracket = findTemperatureBracket(adapter, targetPmv, rh, payload);
-  if (!bracket) return null;
-  if ("exactTemperature" in bracket) return bracket.exactTemperature;
-
-  let { low, high, lowDelta } = bracket;
-  let closestTemperature =
-    Math.abs(lowDelta) <= Math.abs(bracket.highDelta) ? low : high;
-  let closestDelta = Math.min(Math.abs(lowDelta), Math.abs(bracket.highDelta));
-
-  for (let index = 0; index < ROOT_MAX_BISECTION_EVALUATIONS; index += 1) {
-    const midpoint = (low + high) / 2;
-    const midpointDelta = evaluatePmvDeltaAtTemperature(
-      adapter,
-      targetPmv,
-      rh,
-      payload,
-      midpoint,
-    );
-    if (midpointDelta === null) break;
-
-    const absoluteDelta = Math.abs(midpointDelta);
-    if (absoluteDelta < closestDelta) {
-      closestTemperature = midpoint;
-      closestDelta = absoluteDelta;
-    }
-    if (absoluteDelta <= ROOT_TOLERANCE) return midpoint;
-
-    if (lowDelta * midpointDelta <= 0) {
-      high = midpoint;
-    } else {
-      low = midpoint;
-      lowDelta = midpointDelta;
-    }
-  }
-
-  return closestDelta <= ROOT_TOLERANCE ? closestTemperature : null;
+  const evaluation = tryEvaluatePmvForChart(
+    adapter,
+    psychrometricPmvRequest(payload, tdb, rh, trEqualsTdb),
+  );
+  return evaluation ? evaluation.pmv : null;
 }
 
 export function calculateComfortZone(
   adapter: PmvStandardAdapter,
   payload: ComfortZoneRequest,
+  trEqualsTdb = false,
 ): ComfortZoneResponse {
   const rhMinimum = Math.min(payload.rhMin, payload.rhMax);
   const rhMaximum = Math.max(payload.rhMin, payload.rhMax);
@@ -321,26 +255,34 @@ export function calculateComfortZone(
             rhMinimum +
             ((rhMaximum - rhMinimum) * index) / (payload.rhPoints - 1),
         );
+  const evaluate = (tdb: number, rh: number) => (
+    evaluatePsychrometricPmv(adapter, payload, tdb, rh, trEqualsTdb)
+  );
+  const coolByRh = new Map(
+    sampleIsoline(
+      evaluate,
+      pmvNeutralZone.min,
+      rhValues,
+      PMV_PSYCHROMETRIC_VIEW.tdbRangeSi,
+    ).map((point) => [point.rh, point]),
+  );
+  const warmByRh = new Map(
+    sampleIsoline(
+      evaluate,
+      pmvNeutralZone.max,
+      rhValues,
+      PMV_PSYCHROMETRIC_VIEW.tdbRangeSi,
+    ).map((point) => [point.rh, point]),
+  );
   const coolEdge: ComfortPoint[] = [];
   const warmEdge: ComfortPoint[] = [];
-
-  for (const relativeHumidity of rhValues) {
-    const coolTemperature = solveDryBulbForTargetPmv(
-      adapter,
-      pmvNeutralZone.min,
-      relativeHumidity,
-      payload,
-    );
-    const warmTemperature = solveDryBulbForTargetPmv(
-      adapter,
-      pmvNeutralZone.max,
-      relativeHumidity,
-      payload,
-    );
-    if (coolTemperature === null || warmTemperature === null) continue;
-    coolEdge.push({ tdb: coolTemperature, rh: relativeHumidity });
-    warmEdge.push({ tdb: warmTemperature, rh: relativeHumidity });
-  }
+  rhValues.forEach((relativeHumidity) => {
+    const cool = coolByRh.get(relativeHumidity);
+    const warm = warmByRh.get(relativeHumidity);
+    if (!cool || !warm) return;
+    coolEdge.push(cool);
+    warmEdge.push(warm);
+  });
 
   return {
     coolEdge,
@@ -613,11 +555,14 @@ export function calculatePmvModel(
       inputs: {},
       comfortZonesByInput: {},
       derivedSlotsByInput: {},
+      psychrometricTrEqualsTdb:
+        context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative,
     }),
     afterCalculate: ({ inputId, chartRequest, chartSource }) => {
       chartSource.comfortZonesByInput[inputId] = calculateComfortZone(
         adapter,
         chartRequest,
+        chartSource.psychrometricTrEqualsTdb,
       );
       if (!chartSource.derivedSlotsByInput) {
         chartSource.derivedSlotsByInput = {};

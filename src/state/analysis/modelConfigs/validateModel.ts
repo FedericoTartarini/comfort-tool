@@ -1,8 +1,9 @@
 import { type ModelId as ModelIdType } from "../../../catalog/modelIds";
 import {
-  ChartEngine,
-  modelAllowsCustomCharts,
-} from "../../../catalog/chartEngines";
+  ChartType,
+  isChartType,
+  modelAllowsPsychrometricCharts,
+} from "../../../catalog/chartTypes";
 import {
   TableType,
   type ModelTables,
@@ -33,13 +34,12 @@ export interface CatalogModelSlice {
   readonly chartInstances: {
     readonly entries: readonly {
       readonly instanceId: string;
-      readonly engine: string;
-      readonly type?: string;
+      readonly type: string;
     }[];
   };
   readonly chartEngineRegistrations: readonly {
     readonly instanceId: string;
-    readonly registration: { readonly engine: string };
+    readonly registration: { readonly type: string };
   }[];
   readonly tables: ModelTables;
   readonly workspaceCapabilities: readonly WorkspaceId[];
@@ -48,8 +48,7 @@ export interface CatalogModelSlice {
 export interface AssembledCatalogs {
   readonly quantities: Readonly<Record<string, PhysicalQuantityMeta>>;
   readonly chartInstanceOwners: ReadonlyMap<string, ModelIdType>;
-  readonly chartTypeOwners: ReadonlyMap<string, ModelIdType>;
-  readonly chartEngines: ReadonlySet<string>;
+  readonly chartTypes: ReadonlySet<string>;
   readonly tableTypes: ReadonlySet<string>;
   /**
    * Optional catalog hook. `assembleCatalogs` installs `validate.model` on the
@@ -63,10 +62,8 @@ export interface AssembledCatalogs {
 
 function indexChartOwners(models: readonly CatalogModelSlice[]): {
   chartInstanceOwners: Map<string, ModelIdType>;
-  chartTypeOwners: Map<string, ModelIdType>;
 } {
   const chartInstanceOwners = new Map<string, ModelIdType>();
-  const chartTypeOwners = new Map<string, ModelIdType>();
 
   for (const model of models) {
     const instanceIds = model.chartInstances.entries.map(
@@ -87,19 +84,9 @@ function indexChartOwners(models: readonly CatalogModelSlice[]): {
       }
       chartInstanceOwners.set(instanceId, model.id);
     }
-    for (const entry of model.chartInstances.entries) {
-      if (!entry.type) continue;
-      const owner = chartTypeOwners.get(entry.type);
-      if (owner !== undefined) {
-        throw new Error(
-          `Chart type "${entry.type}" is declared by both ${owner} and ${model.id}.`,
-        );
-      }
-      chartTypeOwners.set(entry.type, model.id);
-    }
   }
 
-  return { chartInstanceOwners, chartTypeOwners };
+  return { chartInstanceOwners };
 }
 
 export function collectRegisteredQuantityExtensions(
@@ -121,7 +108,7 @@ export function collectRegisteredQuantityExtensions(
 
 /**
  * Checks one model contribution against assembled catalogs. Duplicate ids,
- * wrong owners, unknown engines, and a TimeSeries table without Time-series
+ * wrong owners, unknown chart types, and a TimeSeries table without Time-series
  * capability fail.
  */
 export function validateModel(
@@ -162,9 +149,9 @@ export function validateModel(
   const seenInstanceIds = new Set<string>();
   const seenTypes = new Set<string>();
   for (const entry of model.chartInstances.entries) {
-    if (!catalogs.chartEngines.has(entry.engine)) {
+    if (!catalogs.chartTypes.has(entry.type) || !isChartType(entry.type)) {
       throw new Error(
-        `Unknown chart engine "${String(entry.engine)}". ChartEngine is a closed set.`,
+        `Unknown chart type "${String(entry.type)}". ChartType is a closed set.`,
       );
     }
     if (seenInstanceIds.has(entry.instanceId)) {
@@ -177,31 +164,24 @@ export function validateModel(
         `Chart instance ID "${entry.instanceId}" is declared by both ${instanceOwner} and ${model.id}.`,
       );
     }
-    if (!entry.type) continue;
     if (seenTypes.has(entry.type)) {
       throw new Error(
         `Comfort model declarations cannot contain duplicate chart types (${entry.type}).`,
       );
     }
     seenTypes.add(entry.type);
-    const typeOwner = catalogs.chartTypeOwners.get(entry.type);
-    if (typeOwner !== undefined && typeOwner !== model.id) {
-      throw new Error(
-        `Chart type "${entry.type}" is declared by both ${typeOwner} and ${model.id}.`,
-      );
-    }
   }
 
   for (const registration of model.chartEngineRegistrations) {
-    const engine = registration.registration.engine;
-    if (!catalogs.chartEngines.has(engine)) {
+    const type = registration.registration.type;
+    if (!catalogs.chartTypes.has(type) || !isChartType(type)) {
       throw new Error(
-        `Unknown chart engine "${String(engine)}". ChartEngine is a closed set.`,
+        `Unknown chart type "${String(type)}". ChartType is a closed set.`,
       );
     }
-    if (engine === ChartEngine.Custom && !modelAllowsCustomCharts(model.id)) {
+    if (type === ChartType.Psychrometric && !modelAllowsPsychrometricCharts(model.id)) {
       throw new Error(
-        `Custom chart "${registration.instanceId}" on ${model.id} is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
+        `Psychrometric chart "${registration.instanceId}" on ${model.id} is not allowed. Psychrometric is frontend-only for PMV geometry.`,
       );
     }
   }
@@ -229,12 +209,11 @@ export function assembleCatalogs(
     systemQuantityMetaById,
     collectRegisteredQuantityExtensions(modelList),
   );
-  const { chartInstanceOwners, chartTypeOwners } = indexChartOwners(modelList);
+  const { chartInstanceOwners } = indexChartOwners(modelList);
   const catalogs: AssembledCatalogs = {
     quantities,
     chartInstanceOwners,
-    chartTypeOwners,
-    chartEngines: new Set<string>(Object.values(ChartEngine)),
+    chartTypes: new Set<string>(Object.values(ChartType)),
     tableTypes: new Set<string>(Object.values(TableType)),
     validate: {
       model: (model) => {

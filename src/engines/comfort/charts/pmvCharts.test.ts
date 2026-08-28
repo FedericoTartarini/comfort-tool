@@ -28,6 +28,7 @@ import {
   TemperatureMode,
 } from "../../../catalog/inputModes";
 import { InputId } from "../../../catalog/inputSlots";
+import { inputChartStyleById } from "../../../catalog/inputSlotPresentation";
 import {
   ModelOutputKey,
   type ChartBuildContext,
@@ -37,8 +38,8 @@ import {
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
 import { convertFieldValueFromSi } from "../../units";
-import type { PlotlyChartSpec, PlotTrace } from "../../plotlyTypes";
-import { buildChartPlotly } from "../../../testSupport/modelChartTestHelpers";
+import { buildChartPlotly, type ChartFigure } from "../../../testSupport/modelChartTestHelpers";
+import { assembleChart } from "../../../charts";
 const input: ComfortZoneRequest = {
   tdb: 25,
   tr: 25,
@@ -56,6 +57,7 @@ const input: ComfortZoneRequest = {
 function calculateModel(
   declaration: PmvModelDeclaration,
   request: ComfortZoneRequest = input,
+  temperatureMode: typeof TemperatureMode[keyof typeof TemperatureMode] = TemperatureMode.Air,
 ): {
   config: ReturnType<typeof createPmvModelConfig>;
   result: PmvResponse;
@@ -73,7 +75,7 @@ function calculateModel(
   stateInput[PhysicalQuantityId.ExternalWork] = request.wme;
   toolState.state.ui.modelOptionsByModel[config.id] = {
     ...config.defaultOptions,
-    [OptionKey.TemperatureMode]: TemperatureMode.Air,
+    [OptionKey.TemperatureMode]: temperatureMode,
     ...(declaration.adapter.supportsOccupantAirSpeedControl
       ? {
           [OptionKey.AirSpeedControlMode]: request.occupantHasAirSpeedControl
@@ -147,7 +149,7 @@ function buildPsychrometric(
   source = createSource(declaration),
   outputKey: ModelOutputKeyType = ModelOutputKey.Pmv,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
-): PlotlyChartSpec {
+): ChartFigure {
   const { config, result } = calculateModel(declaration);
   const chart = buildChartPlotly(config,
     declaration.psychrometricChartId,
@@ -167,27 +169,26 @@ function buildPsychrometric(
 }
 
 function requireTrace(
-  chart: PlotlyChartSpec,
+  chart: ChartFigure,
   name: string,
-): PlotTrace {
-  const trace = chart.traces.find((candidate: PlotTrace) => candidate.name === name);
+): ChartFigure["traces"][number] {
+  const trace = chart.traces.find((candidate) => candidate.name === name);
   if (!trace) throw new Error(`Missing chart trace: ${name}`);
   return trace;
 }
 
-function expectSaturationMaskToMatchCurve(chart: PlotlyChartSpec): void {
+function expectSaturationMaskToMatchCurve(chart: ChartFigure): void {
   const mask = requireTrace(chart, "Supersaturated region mask");
   const saturationCurve = requireTrace(chart, "RH 100%");
-  const curveLength = saturationCurve.x.length;
+  const curveLength = saturationCurve.x?.length ?? 0;
 
   expect(mask.type).toBe("scatter");
   expect(mask.fill).toBe("toself");
   expect(mask.fillcolor).toBe(chart.layout.plot_bgcolor);
   expect(mask.hoverinfo).toBe("skip");
-  expect(mask.isBackgroundZone).not.toBe(true);
-  expect(mask.x.slice(0, curveLength)).toEqual(saturationCurve.x);
-  expect(mask.y.slice(0, curveLength)).toEqual(saturationCurve.y);
-  expect(mask.y.slice(-2)).toEqual([
+  expect(mask.x?.slice(0, curveLength)).toEqual(saturationCurve.x);
+  expect(mask.y?.slice(0, curveLength)).toEqual(saturationCurve.y);
+  expect(mask.y?.slice(-2)).toEqual([
     chart.layout.yaxis.range[1],
     chart.layout.yaxis.range[1],
   ]);
@@ -201,7 +202,7 @@ function buildDynamic(
   unitSystem: UnitSystemType = UnitSystem.SI,
   request: ComfortZoneRequest = input,
   profileKind: typeof FieldChartProfileKind.Explore | typeof FieldChartProfileKind.Compliance = FieldChartProfileKind.Explore,
-): PlotlyChartSpec {
+): ChartFigure {
   const { config, result, source } = calculateModel(declaration, request);
   const chart = buildChartPlotly(config,
     declaration.dynamicChartId,
@@ -219,20 +220,113 @@ describe("PMV charts", () => {
     const fillTraces = chart.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
     ));
+    const bandFills = chart.traces.filter(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
+    ));
     const tooltipTrace = chart.traces.find(({ name }) => name === "PMV bands hover");
 
-    expect(fillTraces.length).toBeGreaterThan(0);
+    expect(fillTraces).toHaveLength(0);
+    expect(bandFills).toHaveLength(pmvZonesList.length);
     expect(tooltipTrace?.type).toBe("contour");
-    expect(tooltipTrace?.z).toHaveLength(50);
-    expect(tooltipTrace?.z?.[0]).toHaveLength(50);
+    expect(tooltipTrace?.z).toHaveLength(100);
+    expect(tooltipTrace?.z?.[0]).toHaveLength(100);
     expect(tooltipTrace?.hovertemplate).toContain("Zone: %{text}");
     expect(tooltipTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
     expect(tooltipTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
-    expect(chart.traces.filter(({ name }) => name.startsWith("RH "))).toHaveLength(10);
+    expect(chart.traces.filter(({ name }) => name?.startsWith("RH "))).toHaveLength(10);
     expectSaturationMaskToMatchCurve(chart);
     expect(chart.traces.some(({ name }) => name === "Input 1 comfort zone")).toBe(true);
+    const comfortOutline = chart.traces.find(({ name }) => name === "Input 1 comfort zone");
+    const neutralFill = bandFills.find(({ name }) => name?.includes("Neutral"));
+    expect(comfortOutline?.fill).toBe("toself");
+    expect(comfortOutline?.fillcolor).toBe(inputChartStyleById[InputId.Input1].fill);
+    expect(neutralFill?.x).toEqual(comfortOutline?.x);
+    expect(neutralFill?.y).toEqual(comfortOutline?.y);
     expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
+    expect(chart.traces.find(({ name }) => name === "Input 1")?.hoverinfo).toBe("skip");
     expect(String(chart.layout.title)).toContain("ASHRAE");
+    expect(chart.layout.xaxis.dtick).toBe(2);
+    const assembled = assembleChart(chart.payload);
+    const assembledNames = assembled.data.map(({ name }) => name);
+    expect(assembled.layout.xaxis).toEqual(expect.objectContaining({
+      dtick: 2,
+      tickmode: "linear",
+      tick0: 10,
+    }));
+    expect(assembledNames.indexOf("PMV bands: Neutral")).toBeGreaterThan(
+      assembledNames.indexOf("Supersaturated region mask"),
+    );
+    expect(assembledNames.indexOf("RH 100%")).toBeGreaterThan(
+      assembledNames.indexOf("PMV bands: Neutral"),
+    );
+    expect(assembledNames.indexOf("Input 1 comfort zone")).toBeGreaterThan(
+      assembledNames.indexOf("RH 100%"),
+    );
+    expect(assembledNames.indexOf("PMV bands hover")).toBeGreaterThan(
+      assembledNames.indexOf("Input 1 comfort zone"),
+    );
+    expect(assembledNames.indexOf("Input 1")).toBeGreaterThan(
+      assembledNames.indexOf("PMV bands hover"),
+    );
+    expect(
+      assembled.data
+        .filter(({ name }) => String(name).startsWith("RH "))
+        .every((trace) => trace.hoverinfo === "skip"),
+    ).toBe(true);
+  });
+
+  it("strokes adjacent psychrometric band fills so shared isolines do not show plot-background gaps", () => {
+    const chart = buildPsychrometric(pmvAshraeDeclaration);
+    const bandFills = chart.traces.filter(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
+    ));
+    expect(bandFills.length).toBeGreaterThan(1);
+    bandFills.forEach((fill) => {
+      expect(fill.line?.color).toBe(fill.fillcolor);
+      expect(fill.line?.width).toBeGreaterThanOrEqual(1.5);
+    });
+  });
+
+  it("keeps psychrometric band fills inside the axes including the dry high-T corner", () => {
+    const chart = buildPsychrometric(pmvAshraeDeclaration);
+    const bandFills = chart.traces.filter(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
+    ));
+    const [yMin, yMax] = chart.layout.yaxis.range;
+    const [xMin, xMax] = chart.layout.xaxis.range;
+    const warm = bandFills.find(({ name }) => name === "PMV bands: Warm");
+    if (!warm?.x || !warm.y) throw new Error("Expected a Warm band fill.");
+
+    bandFills.forEach((fill) => {
+      expect(Math.min(...(fill.y ?? []))).toBeGreaterThanOrEqual(yMin);
+      expect(Math.max(...(fill.y ?? []))).toBeLessThanOrEqual(yMax);
+      expect(Math.min(...(fill.x ?? []))).toBeGreaterThanOrEqual(xMin);
+      expect(Math.max(...(fill.x ?? []))).toBeLessThanOrEqual(xMax);
+    });
+    expect(Math.max(...warm.x)).toBe(xMax);
+    expect(Math.min(...warm.y)).toBe(yMin);
+  });
+
+  it("covers the dry high-T corner on PPD psychrometric fills", () => {
+    const chart = buildPsychrometric(
+      pmvAshraeDeclaration,
+      UnitSystem.SI,
+      createSource(pmvAshraeDeclaration),
+      ModelOutputKey.Ppd,
+      FieldChartProfileKind.Explore,
+    );
+    const outer = chart.traces.filter(({ name, fill }) => (
+      typeof name === "string"
+      && name.startsWith("PPD (%) bands:")
+      && fill === "toself"
+    ));
+    const [yMin] = chart.layout.yaxis.range;
+    const [, xMax] = chart.layout.xaxis.range;
+    const coversCorner = outer.some((fill) => (
+      Math.max(...(fill.x ?? [])) === xMax
+      && Math.min(...(fill.y ?? [])) === yMin
+    ));
+    expect(coversCorner).toBe(true);
   });
 
   it("uses locked Compliance and edited PPD configs in the fixed psychrometric view", () => {
@@ -297,17 +391,40 @@ describe("PMV charts", () => {
 
     expect(compliance.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
-    )).map(({ fillcolor }) => fillcolor)).toEqual(
-      declaration.complianceProfile.bands.map(({ color }) => color),
-    );
+    ))).toHaveLength(0);
+    expect(
+      compliance.traces
+        .filter(({ name, fill }) => (
+          typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
+        ))
+        .map(({ fillcolor }) => fillcolor),
+    ).toEqual([
+      declaration.complianceProfile.bands[0].color,
+      declaration.complianceProfile.bands[1].color,
+      declaration.complianceProfile.bands[2].color,
+    ]);
+    const acceptableFill = compliance.traces.find(({ name }) => (
+      typeof name === "string" && name.includes("Acceptable PMV range")
+    ));
+    const comfortOutline = compliance.traces.find(({ name }) => (
+      name === "Input 1 comfort zone"
+    ));
+    expect(acceptableFill?.fillcolor).toBe(declaration.complianceProfile.bands[1].color);
+    expect(acceptableFill?.x).toEqual(comfortOutline?.x);
     expect(ppd.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
-    )).map(({ fillcolor }) => fillcolor)).toEqual(["#123456", "#abcdef"]);
+    ))).toHaveLength(0);
+    const ppdBandFills = ppd.traces.filter(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("PPD (%) bands:") && fill === "toself"
+    ));
+    expect(ppdBandFills.map(({ fillcolor }) => fillcolor)).toEqual(
+      expect.arrayContaining(["#123456", "#abcdef"]),
+    );
     expect(ppdHover?.hovertemplate).toContain("Band: %{text}");
     expect(ppdHover?.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
     expect(ppdHover?.hovertemplate).toContain("PMV: %{customdata[1]:.2f}");
-    expect(ppdInput?.hovertemplate).toContain("Boundary PPD");
-    expect(rhCurve?.text?.some((label) => label === "Lower PPD")).toBe(true);
+    expect(ppdInput?.hoverinfo).toBe("skip");
+    expect(rhCurve?.hoverinfo).toBe("skip");
     expect(String(ppd.layout.title)).toContain("PPD (%)");
   });
 
@@ -329,11 +446,7 @@ describe("PMV charts", () => {
       UnitSystem.SI,
       createSource(pmvAshraeDeclaration),
     );
-    const fillTrace = chart.traces.find(({ contours }) => (
-      contours?.type === "constraint" && contours.operation !== "="
-    ));
     const tooltipTrace = requireTrace(chart, "PMV bands hover");
-    const fillValues = fillTrace?.z?.flat() ?? [];
     const tooltipValues = tooltipTrace.z?.flat() ?? [];
     const maskIndex = chart.traces.findIndex(({ name }) => (
       name === "Supersaturated region mask"
@@ -343,16 +456,17 @@ describe("PMV charts", () => {
       name === "Input 1 comfort zone"
     ));
     const inputIndex = chart.traces.findIndex(({ name }) => name === "Input 1");
+    const bandFillIndex = chart.traces.findIndex(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
+    ));
 
     expectSaturationMaskToMatchCurve(chart);
-    expect(tooltipValues.some(Number.isNaN)).toBe(true);
-    expect(tooltipValues.some((value, index) => (
-      Number.isNaN(value) && Number.isFinite(fillValues[index])
-    ))).toBe(true);
-    expect(maskIndex).toBeGreaterThan(chart.traces.indexOf(tooltipTrace));
-    expect(rhCurveIndex).toBeGreaterThan(maskIndex);
+    expect(tooltipValues.some((value) => value === null)).toBe(true);
+    expect(bandFillIndex).toBeGreaterThan(maskIndex);
+    expect(rhCurveIndex).toBeGreaterThan(bandFillIndex);
     expect(comfortZoneIndex).toBeGreaterThan(rhCurveIndex);
-    expect(inputIndex).toBeGreaterThan(comfortZoneIndex);
+    expect(chart.traces.indexOf(tooltipTrace)).toBeGreaterThan(comfortZoneIndex);
+    expect(inputIndex).toBeGreaterThan(chart.traces.indexOf(tooltipTrace));
     expect(maximumRh).toBeLessThanOrEqual(100);
   });
 
@@ -385,9 +499,84 @@ describe("PMV charts", () => {
     expectSaturationMaskToMatchCurve(siChart);
     expectSaturationMaskToMatchCurve(ipChart);
     expect(siInput?.x).toEqual([25]);
-    expect(ipInput?.x[0]).toBeCloseTo(77, 6);
-    expect(ipInput?.y[0]).not.toBe(siInput?.y[0]);
+    expect(ipInput?.x?.[0]).toBeCloseTo(77, 6);
+    expect(ipInput?.y?.[0]).not.toBe(siInput?.y?.[0]);
     expect(String(ipChart.layout.xaxis.title)).toContain("°F");
+    expect(siChart.layout.xaxis.dtick).toBe(2);
+    expect(ipChart.layout.xaxis.dtick).toBe(5);
+  });
+
+  it("uses Air temperature with fixed tr and Operative temperature with tr=tdb", () => {
+    const sampleTdb = 30;
+    const airRequest = { ...input, tdb: 25, tr: 20 };
+    const seen: Array<{ tdb: number; tr: number }> = [];
+    const spyAdapter: PmvStandardAdapter = {
+      ...pmvAshraeAdapter,
+      calculate: (request) => {
+        seen.push({ tdb: request.tdb, tr: request.tr });
+        return pmvAshraeAdapter.calculate(request);
+      },
+    };
+    const declaration: PmvModelDeclaration = {
+      ...pmvAshraeDeclaration,
+      adapter: spyAdapter,
+    };
+
+    const airModel = calculateModel(declaration, airRequest, TemperatureMode.Air);
+    seen.length = 0;
+    const airChart = buildChartPlotly(
+      airModel.config,
+      declaration.psychrometricChartId,
+      airModel.source,
+      createResults(airModel.result),
+      createContext(
+        declaration,
+        PhysicalQuantityId.DryBulbTemperature,
+        PhysicalQuantityId.HumidityRatio,
+        ModelOutputKey.Pmv,
+      ),
+    );
+    if (!airChart) throw new Error("Expected an Air psychrometric chart.");
+    const airSample = seen.find(({ tdb }) => Math.abs(tdb - sampleTdb) < 0.2);
+
+    expect(airModel.source.psychrometricTrEqualsTdb).toBe(false);
+    expect(String(airChart.layout.xaxis.title)).toContain("Air temperature");
+    expect(String(airChart.layout.yaxis.title)).toContain("Humidity ratio");
+    expect(airSample?.tr).toBe(20);
+
+    const operativeModel = calculateModel(
+      declaration,
+      { ...input, tdb: 25, tr: 25 },
+      TemperatureMode.Operative,
+    );
+    seen.length = 0;
+    const operativeChart = buildChartPlotly(
+      operativeModel.config,
+      declaration.psychrometricChartId,
+      operativeModel.source,
+      createResults(operativeModel.result),
+      createContext(
+        declaration,
+        PhysicalQuantityId.DryBulbTemperature,
+        PhysicalQuantityId.HumidityRatio,
+        ModelOutputKey.Pmv,
+      ),
+    );
+    if (!operativeChart) throw new Error("Expected an Operative psychrometric chart.");
+    const operativeSample = seen.find(({ tdb }) => Math.abs(tdb - sampleTdb) < 0.2);
+    const comfortOutline = operativeChart.traces.find(({ name }) => (
+      name === "Input 1 comfort zone"
+    ));
+    const neutralFill = operativeChart.traces.find(({ name, fill }) => (
+      typeof name === "string" && name.includes("Neutral") && fill === "toself"
+    ));
+
+    expect(operativeModel.source.psychrometricTrEqualsTdb).toBe(true);
+    expect(String(operativeChart.layout.xaxis.title)).toContain("Operative temperature");
+    expect(String(operativeChart.layout.yaxis.title)).toContain("Humidity ratio");
+    expect(operativeSample?.tr).toBeCloseTo(operativeSample?.tdb ?? Number.NaN, 6);
+    expect(neutralFill?.x).toEqual(comfortOutline?.x);
+    expect(neutralFill?.y).toEqual(comfortOutline?.y);
   });
 
   it.each([ModelOutputKey.Pmv, ModelOutputKey.Ppd])(
@@ -402,11 +591,11 @@ describe("PMV charts", () => {
       const fillTraces = chart.traces.filter(({ contours }) => (
         contours?.type === "constraint" && contours.operation !== "="
       ));
-      const tooltipTraces = chart.traces.filter(({ name }) => name.endsWith(" hover"));
+      const tooltipTraces = chart.traces.filter(({ name }) => name?.endsWith(" hover"));
       const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
       expect(fillTraces.length).toBeGreaterThan(0);
-      expect(chart.traces.every((trace: PlotTrace) => !("hoveron" in trace))).toBe(true);
+      expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
       expect(tooltipTraces).toHaveLength(1);
       expect(tooltipTraces[0].hoverongaps).toBe(false);
       expect(tooltipTraces[0].hovertemplate).toContain(
@@ -414,11 +603,7 @@ describe("PMV charts", () => {
       );
       expect(tooltipTraces[0].hovertemplate).toContain("PMV:");
       expect(tooltipTraces[0].hovertemplate).toContain("PPD:");
-      expect(inputTrace?.hovertemplate).toContain(
-        outputKey === ModelOutputKey.Pmv ? "Zone:" : "Band:",
-      );
-      expect(inputTrace?.hovertemplate).toContain("PMV:");
-      expect(inputTrace?.hovertemplate).toContain("PPD:");
+      expect(inputTrace?.hoverinfo).toBe("skip");
     },
   );
 
@@ -437,8 +622,8 @@ describe("PMV charts", () => {
     ));
 
     expect(fillTraces.length).toBeGreaterThan(0);
-    expect(chart.traces.find(({ name }) => name === "Input 1")?.hovertemplate)
-      .toContain("PMV:");
+    expect(chart.traces.find(({ name }) => name === "Input 1")?.hoverinfo)
+      .toBe("skip");
   });
 
   it("keeps fixed and Explore classification consistent for the input point", () => {
@@ -456,8 +641,11 @@ describe("PMV charts", () => {
     const fixedInput = fixed.traces.find(({ name }) => name === "Input 1");
     const exploreInput = explore.traces.find(({ name }) => name === "Input 1");
 
-    expect(fixedInput?.hovertemplate).toContain(`Zone: ${expectedZone}`);
-    expect(exploreInput?.hovertemplate).toContain(`Zone: ${expectedZone}`);
+    expect(fixedInput?.hoverinfo).toBe("skip");
+    expect(exploreInput?.hoverinfo).toBe("skip");
+    expect(
+      explore.traces.find(({ name }) => name === "PMV bands hover")?.text?.flat(),
+    ).toEqual(expect.arrayContaining([expectedZone]));
   });
 
   it.each([
@@ -505,8 +693,8 @@ describe("PMV charts", () => {
       PhysicalQuantityId.ClothingInsulation,
       PhysicalQuantityId.RelativeHumidity,
     );
-    const inputX = (chart: PlotlyChartSpec) => chart.traces
-      .find(({ name }) => name === "Input 1")?.x[0];
+    const inputX = (chart: ChartFigure) => chart.traces
+      .find(({ name }) => name === "Input 1")?.x?.[0];
 
     expect(inputX(ashraeOperative)).toBe(23);
     expect(inputX(isoOperative)).toBeCloseTo(22.612, 3);
@@ -525,7 +713,7 @@ describe("PMV charts", () => {
       const lowerBoundary = chart.traces.find(({ contours }) => (
         contours?.operation === "=" && contours.value === -0.5
       ));
-      if (!lowerBoundary?.z) {
+      if (!lowerBoundary?.z || !lowerBoundary.y || !lowerBoundary.x) {
         throw new Error("Missing PMV boundary.");
       }
       const yValues = lowerBoundary.y;
@@ -533,12 +721,17 @@ describe("PMV charts", () => {
         Math.abs(value - 50) < Math.abs(yValues[bestIndex] - 50) ? index : bestIndex
       ), 0);
       const row = lowerBoundary.z[rowIndex];
-      const crossingIndex = row.findIndex((value, index) => (
-        index > 0
-        && Number.isFinite(value)
-        && Number.isFinite(row[index - 1])
-        && (row[index - 1] + 0.5) * (value + 0.5) <= 0
-      ));
+      const crossingIndex = row.findIndex((value, index) => {
+        const previous = row[index - 1];
+        return (
+          index > 0
+          && value !== null
+          && previous !== null
+          && Number.isFinite(value)
+          && Number.isFinite(previous)
+          && (previous + 0.5) * (value + 0.5) <= 0
+        );
+      });
       const xValues = lowerBoundary.x;
       expect(crossingIndex).toBeGreaterThan(0);
       const closestDelta = Math.min(
@@ -569,8 +762,8 @@ describe("PMV charts", () => {
     expect(tooltipTrace?.hovertemplate).toContain("Zone:");
     expect(tooltipTrace?.hovertemplate).toContain("PMV:");
     expect(tooltipTrace?.hovertemplate).toContain("PPD:");
-    expect(chart.traces.every((trace: PlotTrace) => !("hoveron" in trace))).toBe(true);
-    expect(inputTrace?.x[0]).toBeCloseTo(
+    expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
+    expect(inputTrace?.x?.[0]).toBeCloseTo(
       convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, input.tdb, UnitSystem.IP),
       6,
     );

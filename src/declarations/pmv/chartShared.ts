@@ -38,7 +38,7 @@ import {
 } from "./calculation";
 import type { PmvModelDeclaration, PmvStandardAdapter } from "./shared";
 
-export const CONTOUR_GRID_RESOLUTION = 50;
+export const CONTOUR_GRID_RESOLUTION = 100;
 
 export type PmvFieldChartConfig = FieldChartConfig<NumericBand>;
 
@@ -216,6 +216,7 @@ export interface PmvFieldChartDescriptor {
     xAxis: ChartAxisScale,
     yAxis: ChartAxisScale,
   ) => PmvInputOverlayBuilder;
+  omitBandFillTraces?: boolean;
   margin: PlotMargin;
 }
 
@@ -258,6 +259,7 @@ export function buildPmvFieldChart(
       }),
       opacity: descriptor.opacity,
       projectFillGrid: descriptor.projectFillGrid,
+      omitBandFillTraces: descriptor.omitBandFillTraces,
       evaluateOutput: (xSi, ySi) => {
         const evaluation = descriptor.evaluatePoint(xSi, ySi);
         return evaluation

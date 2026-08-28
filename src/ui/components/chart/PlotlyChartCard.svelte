@@ -1,17 +1,16 @@
 <script lang="ts">
-  import type { PlotlyChartSpec } from "../../../engines/plotlyTypes";
+  import type { ChartPayload } from "../../../charts/types";
   import type { PublicationExportHandler } from "../../../engines/plotlyExport";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
 
   interface Props {
     title?: string;
     description?: string;
-    chartResult: PlotlyChartSpec | null;
+    chartResult: ChartPayload | null;
     isLoading: boolean;
     emptyMessage?: string;
     heightClass?: string;
     testId?: string;
-    showZones?: boolean;
     onRegisterExport?: (handler: PublicationExportHandler | undefined) => void;
   }
 
@@ -23,7 +22,6 @@
     emptyMessage = "No chart yet.",
     heightClass = "h-[480px] xl:h-[480px]",
     testId,
-    showZones = true,
     onRegisterExport,
   }: Props = $props();
 </script>
@@ -49,7 +47,6 @@
         {isLoading}
         emptyMessage={emptyMessage}
         {heightClass}
-        {showZones}
         onRegisterExport={onRegisterExport}
       />
     </div>

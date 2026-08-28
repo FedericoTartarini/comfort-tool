@@ -4,24 +4,13 @@ import { calculateAdaptive } from "../declarations/adaptive/calculation";
 import { buildAdaptiveChart } from "../declarations/adaptive/charts";
 import { adaptiveEnDeclaration } from "../declarations/adaptive/en";
 import type { AdaptiveRequest } from "../declarations/adaptive/shared";
+import { ChartType } from "../catalog/chartTypes";
 import { InputId } from "../catalog/inputSlots";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import { PhysicalQuantityId } from "../catalog/quantities";
 import { UnitSystem } from "../catalog/units";
-import {
-  toPlotlyFigure,
-  type PlotlyFigure,
-} from "./plotlyFigure";
-
-interface PlotlyModule {
-  react: (
-    root: HTMLDivElement,
-    data: PlotlyFigure["data"],
-    layout: PlotlyFigure["layout"],
-    config: PlotlyFigure["config"],
-  ) => Promise<void>;
-  purge: (root: HTMLDivElement) => void;
-}
+import { assembleChart, draw, destroy, loadPlotly } from "./index";
+import { chartPayloadFromSpec } from "../engines/comfort/charts/toChartPayload";
 
 const baselineRequest: AdaptiveRequest = {
   tdb: 24,
@@ -30,9 +19,9 @@ const baselineRequest: AdaptiveRequest = {
   v: 0.1,
 };
 
-function buildAdaptiveEnChart() {
+function buildAdaptiveEnPayload() {
   const result = calculateAdaptive(adaptiveEnDeclaration, baselineRequest);
-  return buildAdaptiveChart(
+  const spec = buildAdaptiveChart(
     adaptiveEnDeclaration,
     { inputs: { [InputId.Input1]: baselineRequest } },
     { [InputId.Input1]: result },
@@ -48,26 +37,25 @@ function buildAdaptiveEnChart() {
       },
     },
   );
+  return chartPayloadFromSpec(ChartType.Adaptive, spec);
 }
 
-describe("toPlotlyFigure with Plotly.react", () => {
+describe("draw with Plotly.react", () => {
   let root: HTMLDivElement | null = null;
-  let plotly: PlotlyModule | null = null;
 
-  afterEach(() => {
-    if (root && plotly) {
-      plotly.purge(root);
+  afterEach(async () => {
+    if (root) {
+      await destroy(root);
       root.remove();
     }
     root = null;
-    plotly = null;
   });
 
   it("renders Adaptive EN through repeated Plotly.react calls", async () => {
-    const imported = await import("plotly.js-dist-min");
-    plotly = (imported.default ?? imported) as PlotlyModule;
-    const chart = buildAdaptiveEnChart();
-    const contour = chart.traces.find((trace) => trace.type === "contour");
+    await loadPlotly();
+    const payload = buildAdaptiveEnPayload();
+    const assembled = assembleChart(payload);
+    const contour = assembled.data.find((trace) => trace.type === "contour");
     if (!contour) {
       throw new Error("Expected Adaptive EN tooltip contour");
     }
@@ -77,10 +65,8 @@ describe("toPlotlyFigure with Plotly.react", () => {
     root.style.height = "480px";
     document.body.appendChild(root);
 
-    const first = toPlotlyFigure(chart);
-    await plotly.react(root, first.data, first.layout, first.config);
-    const second = toPlotlyFigure(chart);
-    await plotly.react(root, second.data, second.layout, second.config);
+    await draw(root, assembled);
+    await draw(root, assembled);
 
     const gd = root as HTMLDivElement & {
       data?: Array<{ name?: string; x?: unknown[]; z?: unknown }>;
@@ -91,8 +77,6 @@ describe("toPlotlyFigure with Plotly.react", () => {
     expect(gd.data?.some((trace) => (
       trace.name === "Tooltip Layer" && Array.isArray(trace.z)
     ))).toBe(true);
-    expect(contour.z?.[0]?.[0]).toBe(1);
-    expect(second.data.find((trace) => trace.name === "Tooltip Layer")?.z)
-      .not.toBe(contour.z);
+    expect((contour.z as number[][])?.[0]?.[0]).toBe(1);
   });
 });

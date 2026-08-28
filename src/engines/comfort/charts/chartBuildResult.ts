@@ -1,4 +1,4 @@
-import type { PlotlyChartSpec } from "../../plotlyTypes";
+import type { ChartPayload } from "../../../charts/types";
 
 export const ChartLegendKind = {
   Bands: "bands",
@@ -23,7 +23,7 @@ export interface ChartLegendViewModel {
 export type ChartOutputReadiness = "empty" | "stale" | "ready";
 
 export interface ChartBuildResult {
-  readonly plotly: PlotlyChartSpec | null;
+  readonly payload: ChartPayload | null;
   readonly legend: ChartLegendViewModel | null;
   readonly readiness: ChartOutputReadiness;
   readonly emptyMessage: string;

@@ -15,6 +15,7 @@ interface CreateFieldAxisScaleOptions {
   showGrid?: boolean;
   zeroLine?: boolean;
   showTickLabels?: boolean;
+  dtick?: number;
   toDisplay?: (valueSi: number) => number;
   toSi?: (valueDisplay: number) => number;
 }
@@ -31,6 +32,7 @@ export function createFieldAxisScale({
   showGrid,
   zeroLine,
   showTickLabels,
+  dtick,
   toDisplay,
   toSi,
 }: CreateFieldAxisScaleOptions): ChartAxisScale {
@@ -46,6 +48,7 @@ export function createFieldAxisScale({
     showGrid,
     zeroLine,
     showTickLabels,
+    dtick,
     rangeSi: rangeSi ?? { min: meta.minSi, max: meta.maxSi },
     points,
     toDisplay: toDisplay ?? ((valueSi) => convertQuantityFromSi(field, valueSi, unitSystem)),

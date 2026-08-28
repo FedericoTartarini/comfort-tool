@@ -35,7 +35,7 @@ test("PHS Standard defaults to locked exposure history and retains Dynamic", asy
     name: "Select chart type and export",
   });
 
-  await expect(chartTrigger).toContainText("Exposure history");
+  await expect(chartTrigger).toContainText("Body Temperature");
   await expect(page.getByRole("button", { name: "Edit chart thresholds" }))
     .toBeHidden();
   await expect(page.getByRole("button", { name: "Select chart X axis" }))
@@ -65,7 +65,7 @@ test("PHS Explore edits the exposure threshold and exposes all Dynamic outputs",
   const plot = page.getByTestId("comfort-chart-plot");
 
   await expect(page.getByRole("button", { name: "Select chart type and export" }))
-    .toContainText("Exposure history");
+    .toContainText("Body Temperature");
   await expect(page.getByRole("button", { name: "Select chart output" })).toBeHidden();
   await page.getByRole("button", { name: "Edit chart thresholds" }).click();
   await page.getByLabel("Band 1 upper bound").fill("37.5");

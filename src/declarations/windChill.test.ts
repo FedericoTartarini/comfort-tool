@@ -90,7 +90,7 @@ describe("windChill service", () => {
         name === "Wind Chill Index bands hover"
       ));
       const inputTrace = dynamicChart?.traces.find((trace) => trace.type === "scatter");
-      const gridHoverMetadata = contourTrace?.hoverMetadata as unknown[][][] | undefined;
+      const gridHoverMetadata = contourTrace?.customdata as unknown[][][] | undefined;
       const firstGridResult = calculateWindChill({
         tdb: -45,
         v: 1,
@@ -114,13 +114,7 @@ describe("windChill service", () => {
           unitSystem,
         ),
       ]);
-      expect(inputTrace?.hovertemplate).toContain("Frostbite Risk");
-      expect(inputTrace?.hovertemplate).toContain("Wind Chill Index");
-      expect(inputTrace?.hovertemplate).toContain("Wind Chill Temperature");
-      expect(inputTrace?.hoverMetadata).toEqual([
-        convertModelOutputFromSi(ModelOutputKey.WindChill, result.wci, unitSystem),
-        convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, result.wciTemp, unitSystem),
-      ]);
+      expect(inputTrace?.hoverinfo).toBe("skip");
     },
   );
 

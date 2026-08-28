@@ -13,7 +13,7 @@ import {
 import { ThermalZone } from "../../catalog/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
 import { StandardId, WorkspaceId } from "../../catalog/workspaces";
-import { ChartEngine } from "../../catalog/chartEngines";
+import { ChartType } from "../../catalog/chartTypes";
 import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
@@ -51,6 +51,7 @@ import {
   createPhsDynamicGridSpec,
   phsExposureHistoryChartSpec,
 } from "./charts";
+import { chartPayloadFromSpec } from "../../engines/comfort/charts/toChartPayload";
 import {
   buildPhsTemperatureTimeSeriesChart,
   buildPhsWaterLossTimeSeriesChart,
@@ -383,8 +384,7 @@ builder
   .setCharts([
     {
       id: "phs-exposure-history",
-      engine: ChartEngine.TimeSeriesLine,
-      name: "Exposure history",
+      type: ChartType.BodyTemperature,
       emptyMessage: "No PHS exposure history yet.",
       capabilities: {
         allowsAxisSelection: false,
@@ -392,7 +392,6 @@ builder
         allowsOutputSelection: true,
         allowsBandEditing: false,
         allowsBaselineSelection: true,
-        showsZoneToggle: false,
         showsLegend: false,
         showsExport: true,
       },
@@ -402,8 +401,7 @@ builder
     },
     {
       id: "phs-dynamic-field",
-      engine: ChartEngine.DynamicField,
-      name: "Dynamic",
+      type: ChartType.Dynamic,
       emptyMessage: "No PHS field chart yet.",
       capabilities: {
         allowsAxisSelection: true,
@@ -411,7 +409,6 @@ builder
         allowsOutputSelection: true,
         allowsBandEditing: true,
         allowsBaselineSelection: true,
-        showsZoneToggle: false,
         showsLegend: true,
         showsExport: true,
       },
@@ -532,7 +529,7 @@ builder.setSimulation({
   charts: [
     {
       id: "phs-temperature-history",
-      engine: ChartEngine.TimeSeriesLine,
+      type: ChartType.BodyTemperature,
       title: "Body temperature",
       description:
         "Rectal temperature, optional core temperature, the 38 °C limit, and phase boundaries.",
@@ -541,17 +538,20 @@ builder.setSimulation({
       testId: "phs-temperature-chart",
       spec: {
         build: (result, draft, unitSystem) => (
-          buildPhsTemperatureTimeSeriesChart(
-            result as PhsSimulationResult,
-            draft as PhsTimeSeriesDraft,
-            unitSystem,
+          chartPayloadFromSpec(
+            ChartType.BodyTemperature,
+            buildPhsTemperatureTimeSeriesChart(
+              result as PhsSimulationResult,
+              draft as PhsTimeSeriesDraft,
+              unitSystem,
+            ),
           )
         ),
       },
     },
     {
       id: "phs-water-loss-history",
-      engine: ChartEngine.TimeSeriesLine,
+      type: ChartType.WaterLoss,
       title: "Predicted water loss",
       description:
         "Cumulative water loss against the applicable 5% or 3% body-mass limit.",
@@ -560,10 +560,13 @@ builder.setSimulation({
       testId: "phs-water-loss-chart",
       spec: {
         build: (result, draft, unitSystem) => (
-          buildPhsWaterLossTimeSeriesChart(
-            result as PhsSimulationResult,
-            draft as PhsTimeSeriesDraft,
-            unitSystem,
+          chartPayloadFromSpec(
+            ChartType.WaterLoss,
+            buildPhsWaterLossTimeSeriesChart(
+              result as PhsSimulationResult,
+              draft as PhsTimeSeriesDraft,
+              unitSystem,
+            ),
           )
         ),
       },

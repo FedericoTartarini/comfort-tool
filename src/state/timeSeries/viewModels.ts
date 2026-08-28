@@ -1,4 +1,4 @@
-import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
+import type { ChartPayload } from "../../charts/types";
 import type {
   TimeSeriesControlDefinition,
   TimeSeriesModelDefinition,
@@ -63,7 +63,7 @@ export interface TimeSeriesChartViewModel {
   readonly emptyMessage: string;
   readonly heightClass: string;
   readonly testId?: string;
-  readonly chart: PlotlyChartSpec | null;
+  readonly chart: ChartPayload | null;
 }
 
 function buildControlViewModel<TDraft>(

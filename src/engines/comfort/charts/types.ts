@@ -41,6 +41,7 @@ export interface ChartAxisScale {
   showGrid?: boolean;
   zeroLine?: boolean;
   showTickLabels?: boolean;
+  dtick?: number;
   toDisplay: (valueSi: number) => number;
   toSi: (valueDisplay: number) => number;
 }

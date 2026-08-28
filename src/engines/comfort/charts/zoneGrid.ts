@@ -134,6 +134,7 @@ function buildCategoricalBandLayers({
       coloring: "fill",
       showlines: false,
       type: "levels",
+      smoothing: 1,
     }
     : {
       coloring: "fill",
@@ -142,7 +143,7 @@ function buildCategoricalBandLayers({
       start: 0.5,
       end: bands.length - 1.5,
       size: 1,
-      smoothing: 0,
+      smoothing: 1,
     };
 
   return buildZoneContourLayers({
@@ -224,6 +225,7 @@ export function buildBandTooltipTrace({
     showscale: false,
     line: { width: 0 },
     isBackgroundZone: true,
+    isHoverLayer: true,
     includeHoverMetadata,
   });
 }
@@ -311,6 +313,7 @@ export function buildConstraintBandTraces({
         // `coloring: "none"` avoids adding a full-grid contour background.
         coloring: "none",
         showlines: false,
+        smoothing: 1,
       },
       hovertemplate: "",
       hoverinfo: "skip",
@@ -335,6 +338,7 @@ export function buildConstraintBandTraces({
       value: boundary,
       coloring: "none",
       showlines: true,
+      smoothing: 1,
     },
     hovertemplate: "",
     hoverinfo: "skip",

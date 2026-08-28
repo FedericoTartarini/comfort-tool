@@ -1,5 +1,5 @@
-import type { PlotlyChartSpec } from "../../plotlyTypes";
-import { ChartEngine } from "../../../catalog/chartEngines";
+import type { ChartPayload } from "../../../charts/types";
+import { ChartType } from "../../../catalog/chartTypes";
 import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 
 export interface SimulationTimeSeriesLineChartSpec {
@@ -7,12 +7,12 @@ export interface SimulationTimeSeriesLineChartSpec {
     result: unknown,
     draft: unknown,
     unitSystem: UnitSystemType,
-  ) => PlotlyChartSpec;
+  ) => ChartPayload;
 }
 
 export interface SimulationChartDeclaration {
   readonly id: string;
-  readonly engine: typeof ChartEngine.TimeSeriesLine;
+  readonly type: typeof ChartType.BodyTemperature | typeof ChartType.WaterLoss;
   readonly title: string;
   readonly description: string;
   readonly emptyMessage: string;

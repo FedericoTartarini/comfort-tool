@@ -58,6 +58,24 @@ describe("chart build memo", () => {
     expect(defaultKey).not.toBe(editedKey);
   });
 
+  it("uses distinct memo keys for Psychrometric Air vs Operative sources", () => {
+    const shared = {
+      modelId: "pmv-ashrae",
+      instanceId: "pmv-psychrometric",
+      unitSystem: UnitSystem.SI,
+      xAxis: "tdb",
+      yAxis: "hr",
+      zOutput: "pmv",
+      bandsHash: hashBands([{ min: -0.5, max: 0.5, label: "Neutral" }]),
+      baselineInputId: InputId.Input1,
+      chartSourceVersion: 1,
+      profileKind: FieldChartProfileKind.Explore,
+      modelInputsHash: hashModelInputs({}),
+    };
+    expect(buildChartMemoKey({ ...shared, sourceHash: "" }))
+      .not.toBe(buildChartMemoKey({ ...shared, sourceHash: "psychtop" }));
+  });
+
   it("stores and reads memoized chart build results", () => {
     const key = buildChartMemoKey({
       modelId: "pmv-ashrae",
@@ -75,7 +93,7 @@ describe("chart build memo", () => {
     expect(readChartMemo(key)).toBeUndefined();
 
     const cached = {
-      plotly: null,
+      payload: null,
       legend: {
         kind: ChartLegendKind.Bands,
         title: "PMV Zones",

@@ -33,6 +33,7 @@ export interface GridContourLayerSpec {
   opacity?: number;
   line?: PlotLine;
   isBackgroundZone?: boolean;
+  isHoverLayer?: boolean;
   hoverinfo?: PlotHoverInfo;
   hoverOnGaps?: boolean;
   includeText?: boolean;
@@ -104,6 +105,7 @@ export function buildGridContourTrace({
   opacity,
   line,
   isBackgroundZone,
+  isHoverLayer,
   hoverinfo,
   hoverOnGaps,
   includeText = true,
@@ -125,6 +127,7 @@ export function buildGridContourTrace({
     opacity,
     line,
     isBackgroundZone,
+    isHoverLayer,
     hoverinfo,
     hoverOnGaps,
     hoverMetadata: includeHoverMetadata ? grid.hoverMetadata : undefined,

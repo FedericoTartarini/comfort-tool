@@ -62,6 +62,7 @@ export interface FieldChartAxisSpec {
   showGrid?: boolean;
   zeroLine?: boolean;
   showTickLabels?: boolean;
+  dtick?: number;
   toDisplay?: (valueSi: number, unitSystem: UnitSystemType) => number;
   toSi?: (valueDisplay: number, unitSystem: UnitSystemType) => number;
 }
@@ -182,6 +183,8 @@ export interface BandedGridStrategyOptions {
     grid: GridEvaluationResult,
     context: FieldChartRenderContext,
   ) => GridEvaluationResult;
+  /** When true, only the hover grid is emitted (psychrometric polygon fills). */
+  omitBandFillTraces?: boolean;
 }
 
 function createAxis(
@@ -200,6 +203,7 @@ function createAxis(
     showGrid: spec.showGrid,
     zeroLine: spec.zeroLine,
     showTickLabels: spec.showTickLabels,
+    dtick: spec.dtick,
     toDisplay: spec.toDisplay
       ? (valueSi) => spec.toDisplay!(valueSi, unitSystem)
       : undefined,
@@ -373,6 +377,7 @@ export function createBandedGridStrategy({
   opacity,
   renderStrategy = GridBandRenderStrategy.Categorical,
   projectFillGrid,
+  omitBandFillTraces = false,
 }: BandedGridStrategyOptions): GridFieldChartStrategy {
   return {
     kind: "grid",
@@ -399,7 +404,6 @@ export function createBandedGridStrategy({
     },
     renderTraces: (grid, context) => {
       const { xAxis, yAxis, unitSystem } = context;
-      const fillGrid = projectFillGrid?.(grid, context) ?? grid;
       const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
       const outputUnits = outputMeta.displayUnits
         ? ` ${outputMeta.displayUnits}`
@@ -413,20 +417,25 @@ export function createBandedGridStrategy({
         context,
         `${xAxis.label}: %{x:.${xAxis.decimals ?? 2}f} ${xAxis.units}<br>${yAxis.label}: %{y:.${yAxis.decimals ?? 2}f} ${yAxis.units}<br><b>${bandLabel}: %{text}</b><br>${output.label}: ${outputValueToken}${outputUnits}${resolveText(hoverTemplateSuffix, context)}<extra></extra>`,
       );
+      const fillGrid = omitBandFillTraces
+        ? undefined
+        : projectFillGrid?.(grid, context) ?? grid;
       return [
-        ...(renderStrategy === GridBandRenderStrategy.ConstraintContours
-          ? buildConstraintBandTraces({
-            name: `${output.label} bands`,
-            bands: config.bands,
-            grid: fillGrid,
-            opacity,
-          })
-          : buildCategoricalBandTraces({
-            name: `${output.label} bands`,
-            bands: config.bands,
-            grid: fillGrid,
-            opacity,
-          })),
+        ...(omitBandFillTraces || !fillGrid
+          ? []
+          : renderStrategy === GridBandRenderStrategy.ConstraintContours
+            ? buildConstraintBandTraces({
+              name: `${output.label} bands`,
+              bands: config.bands,
+              grid: fillGrid,
+              opacity,
+            })
+            : buildCategoricalBandTraces({
+              name: `${output.label} bands`,
+              bands: config.bands,
+              grid: fillGrid,
+              opacity,
+            })),
         buildBandTooltipTrace({
           name: `${output.label} bands hover`,
           grid: usesHoverMetadata

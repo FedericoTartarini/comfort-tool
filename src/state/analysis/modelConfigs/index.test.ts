@@ -42,7 +42,7 @@ import {
   WorkspaceId,
   supportsStandardWorkspace,
 } from "../../../catalog/workspaces";
-import { ChartEngine } from "../../../catalog/chartEngines";
+import { ChartType } from "../../../catalog/chartTypes";
 import { TableType } from "../../../catalog/tableTypes";
 import {
   comfortModelConfigs,
@@ -102,8 +102,8 @@ describe("comfort model capability registry", () => {
       [ModelId.Utci]: "utci-stress-band",
       [ModelId.AdaptiveAshrae]: "adaptive-ashrae-boundary",
       [ModelId.AdaptiveEn]: "adaptive-en-boundary",
-      [ModelId.HeatIndex]: "heat-index-ranges",
-      [ModelId.Humidex]: "humidex-ranges",
+      [ModelId.HeatIndex]: "heat-index-dynamic-field",
+      [ModelId.Humidex]: "humidex-dynamic-field",
       [ModelId.WindChill]: "wind-chill-dynamic-field",
       [ModelId.Phs2023]: "phs-exposure-history",
     };
@@ -128,52 +128,50 @@ describe("comfort model capability registry", () => {
     expect(new Set(globalIds).size).toBe(globalIds.length);
   });
 
-  it("declares Heat Index and Humidex maps as DynamicField", () => {
+  it("declares Heat Index and Humidex as a single Dynamic chart", () => {
     [ModelId.HeatIndex, ModelId.Humidex].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      const [mapChart, dynamicChart] = config.chartInstances.entries;
-      expect(mapChart.engine).toBe(ChartEngine.DynamicField);
-      expect(mapChart.capabilities?.allowsAxisSelection).toBe(false);
-      expect(dynamicChart.engine).toBe(ChartEngine.DynamicField);
+      expect(config.chartInstances.entries).toHaveLength(1);
+      const [dynamicChart] = config.chartInstances.entries;
+      expect(dynamicChart.type).toBe(ChartType.Dynamic);
       expect(dynamicChart.capabilities?.allowsAxisSelection).toBe(true);
     });
   });
 
-  it("allows Custom only on PMV models, using declaration-owned instance ids", () => {
-    const customCharts = comfortModelOrder.flatMap((modelId) =>
+  it("allows Psychrometric only on PMV models, using declaration-owned instance ids", () => {
+    const psychrometricCharts = comfortModelOrder.flatMap((modelId) =>
       getComfortModelConfig(modelId)
         .chartEngineRegistrations.filter(
-          ({ registration }) => registration.engine === ChartEngine.Custom,
+          ({ registration }) => registration.type === ChartType.Psychrometric,
         )
         .map(({ instanceId }) => ({ modelId, instanceId })),
     );
-    expect(new Set(customCharts.map(({ modelId }) => modelId))).toEqual(
+    expect(new Set(psychrometricCharts.map(({ modelId }) => modelId))).toEqual(
       new Set([ModelId.PmvAshrae, ModelId.PmvIso]),
     );
-    customCharts.forEach(({ modelId, instanceId }) => {
+    psychrometricCharts.forEach(({ modelId, instanceId }) => {
       const entry = getComfortModelConfig(modelId).chartInstances.entries.find(
         (chart) => chart.instanceId === instanceId,
       );
-      expect(entry?.engine).toBe(ChartEngine.Custom);
-      expect(entry?.name).toBe("Psychrometric");
+      expect(entry?.type).toBe(ChartType.Psychrometric);
     });
   });
 
-  it("declares PMV Dynamic as DynamicField", () => {
+  it("declares PMV Dynamic and Psychrometric types", () => {
     [ModelId.PmvAshrae, ModelId.PmvIso].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
       const dynamic = config.chartInstances.entries.find(
-        ({ name }) => name === "Dynamic",
+        ({ type }) => type === ChartType.Dynamic,
       );
-      expect(dynamic?.engine).toBe(ChartEngine.DynamicField);
+      expect(dynamic?.type).toBe(ChartType.Dynamic);
       const psychrometric = config.chartInstances.entries.find(
-        ({ name }) => name === "Psychrometric",
+        ({ type }) => type === ChartType.Psychrometric,
       );
-      expect(psychrometric?.engine).toBe(ChartEngine.Custom);
+      expect(psychrometric?.type).toBe(ChartType.Psychrometric);
     });
   });
 
-  it("registers ParametricLine heat-loss and SET instances on both PMV standards", () => {
+  it("registers Heat Loss and SET instances on both PMV standards", () => {
     expect(getDeclaredChartInstanceIds(ModelId.PmvAshrae)).toEqual([
       "pmv-ashrae-psychrometric",
       "pmv-ashrae-dynamic-field",
@@ -190,13 +188,13 @@ describe("comfort model capability registry", () => {
     [ModelId.PmvAshrae, ModelId.PmvIso].forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
       const heatLoss = config.chartInstances.entries.find(
-        ({ name }) => name === "Heat Loss",
+        ({ type }) => type === ChartType.HeatLoss,
       );
       const set = config.chartInstances.entries.find(
-        ({ name }) => name === "SET",
+        ({ type }) => type === ChartType.Set,
       );
-      expect(heatLoss?.engine).toBe(ChartEngine.ParametricLine);
-      expect(set?.engine).toBe(ChartEngine.ParametricLine);
+      expect(heatLoss?.type).toBe(ChartType.HeatLoss);
+      expect(set?.type).toBe(ChartType.Set);
       expect(heatLoss?.capabilities).toEqual(
         expect.objectContaining({
           allowsAxisSelection: false,
@@ -219,7 +217,7 @@ describe("comfort model capability registry", () => {
 
     expect(config.chartInstances.defaultInstanceId).toBe("phs-exposure-history");
     expect(history.instanceId).toBe("phs-exposure-history");
-    expect(history.engine).toBe(ChartEngine.TimeSeriesLine);
+    expect(history.type).toBe(ChartType.BodyTemperature);
     expect(history.capabilities).toEqual(
       expect.objectContaining({
         allowsAxisSelection: false,

@@ -125,7 +125,7 @@ Important invariants:
 - Compliance and Explore use the same field-chart engine. Presentation-only changes never stale calculation caches.
 - Base inputs (`quantitiesByInput`) and modifier configuration are stored separately; effective SI inputs are derived through Measured Air Speed, Morning Clothing Estimate, Dynamic Clothing, and Solar Gain in that fixed order when declared by the model, then exposed as `effectiveQuantitiesByInput` in `ModelCalculationContext`.
 - `createRequestAxisAdapter()` extends one canonical request map with field aliases and explicit operative-temperature behavior instead of duplicating chart-axis switches.
-- Direct `jsthermalcomfort` imports stay under `src/declarations/` or `src/engines/comfort/`.
+- Direct `jsthermalcomfort` imports stay under `src/declarations/`, remaining `src/engines/comfort/`, or `src/charts/psychrometric/humidity.ts` (humidity ratio only).
 
 ### Static hosting
 

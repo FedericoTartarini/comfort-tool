@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { ModelId } from "../../../catalog/modelIds";
-import { ChartEngine } from "../../../catalog/chartEngines";
+import { ChartType } from "../../../catalog/chartTypes";
 import { TableType } from "../../../catalog/tableTypes";
 import { WorkspaceId } from "../../../catalog/workspaces";
 import {
@@ -39,14 +39,14 @@ function createCatalogSlice(
       entries: [
         {
           instanceId,
-          engine: ChartEngine.DynamicField,
+          type: ChartType.Dynamic,
         },
       ],
     },
     chartEngineRegistrations: [
       {
         instanceId,
-        registration: { engine: ChartEngine.DynamicField },
+        registration: { type: ChartType.Dynamic },
       },
     ],
     tables: analysisTable,
@@ -94,8 +94,7 @@ describe("assembled catalog validate.model", () => {
     const withoutHook: AssembledCatalogs = {
       quantities: {},
       chartInstanceOwners: new Map(),
-      chartTypeOwners: new Map(),
-      chartEngines: new Set(),
+      chartTypes: new Set(),
       tableTypes: new Set(),
     };
     const validateWithoutModel: AssembledCatalogs = {
@@ -108,9 +107,7 @@ describe("assembled catalog validate.model", () => {
 
   it("exists on assembled catalogs and accepts every registered model", () => {
     const validateModelHook = installedValidateModel(assembledCatalogs);
-    expect(assembledCatalogs.chartEngines.has(ChartEngine.DynamicField)).toBe(
-      true,
-    );
+    expect(assembledCatalogs.chartTypes.has(ChartType.Dynamic)).toBe(true);
     expect(assembledCatalogs.tableTypes.has(TableType.Analysis)).toBe(true);
 
     for (const modelId of comfortModelOrder) {
@@ -128,13 +125,13 @@ describe("assembled catalog validate.model", () => {
           id: ModelId.HeatIndex,
           chartInstances: {
             entries: [
-              { instanceId: sharedInstanceId, engine: ChartEngine.DynamicField },
+              { instanceId: sharedInstanceId, type: ChartType.Dynamic },
             ],
           },
           chartEngineRegistrations: [
             {
               instanceId: sharedInstanceId,
-              registration: { engine: ChartEngine.DynamicField },
+              registration: { type: ChartType.Dynamic },
             },
           ],
         }),
@@ -142,13 +139,13 @@ describe("assembled catalog validate.model", () => {
           id: ModelId.Humidex,
           chartInstances: {
             entries: [
-              { instanceId: sharedInstanceId, engine: ChartEngine.DynamicField },
+              { instanceId: sharedInstanceId, type: ChartType.Dynamic },
             ],
           },
           chartEngineRegistrations: [
             {
               instanceId: sharedInstanceId,
-              registration: { engine: ChartEngine.DynamicField },
+              registration: { type: ChartType.Dynamic },
             },
           ],
         }),
@@ -165,14 +162,14 @@ describe("assembled catalog validate.model", () => {
             entries: [
               {
                 instanceId: "pmv-ashrae-psychrometric",
-                engine: ChartEngine.DynamicField,
+                type: ChartType.Dynamic,
               },
             ],
           },
           chartEngineRegistrations: [
             {
               instanceId: "pmv-ashrae-psychrometric",
-              registration: { engine: ChartEngine.DynamicField },
+              registration: { type: ChartType.Dynamic },
             },
           ],
         }),
@@ -182,37 +179,39 @@ describe("assembled catalog validate.model", () => {
     );
   });
 
-  it("fails assemble on duplicate named chart types", () => {
+  it("fails validate.model on duplicate ChartType on one model", () => {
     expect(() =>
-      assembleCatalogs([
+      installedValidateModel(assembledCatalogs)(
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
             entries: [
-              {
-                instanceId: "heat-audit",
-                engine: ChartEngine.DynamicField,
-                type: "audit.shared-type",
-              },
+              { instanceId: "heat-audit-a", type: ChartType.Dynamic },
+              { instanceId: "heat-audit-b", type: ChartType.Dynamic },
             ],
           },
         }),
+      ),
+    ).toThrow(/duplicate chart types \(dynamic\)/);
+  });
+
+  it("fails validate.model on unknown chart types", () => {
+    expect(() =>
+      installedValidateModel(assembledCatalogs)(
         createCatalogSlice({
-          id: ModelId.Humidex,
+          id: ModelId.HeatIndex,
           chartInstances: {
-            entries: [
-              {
-                instanceId: "humidex-audit",
-                engine: ChartEngine.DynamicField,
-                type: "audit.shared-type",
-              },
-            ],
+            entries: [{ instanceId: "invented", type: "invented-type" }],
           },
+          chartEngineRegistrations: [
+            {
+              instanceId: "invented",
+              registration: { type: "invented-type" },
+            },
+          ],
         }),
-      ]),
-    ).toThrow(
-      /Chart type "audit.shared-type" is declared by both heat-index and humidex/,
-    );
+      ),
+    ).toThrow(/Unknown chart type "invented-type"/);
   });
 
   it("fails assemble on duplicate quantity ids across declarations", () => {
@@ -318,23 +317,23 @@ describe("assembled catalog validate.model", () => {
     );
   });
 
-  it("fails validate.model on unknown chart engines", () => {
+  it("fails validate.model on unknown chart types in registrations", () => {
     expect(() =>
       installedValidateModel(assembledCatalogs)(
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
-            entries: [{ instanceId: "invented", engine: "invented-engine" }],
+            entries: [{ instanceId: "invented", type: ChartType.Dynamic }],
           },
           chartEngineRegistrations: [
             {
               instanceId: "invented",
-              registration: { engine: "invented-engine" },
+              registration: { type: "invented-type" },
             },
           ],
         }),
       ),
-    ).toThrow(/Unknown chart engine "invented-engine"/);
+    ).toThrow(/Unknown chart type "invented-type"/);
   });
 
   it("fails assemble when a TimeSeries table lacks Time-series capability", () => {

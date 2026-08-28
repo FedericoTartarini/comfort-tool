@@ -104,7 +104,7 @@ export function createAnalysisSelectors(
         state.ui.unitSystem,
       );
     },
-    getCurrentChartResult: () => getCurrentChartBuildResult().plotly,
+    getCurrentChartResult: () => getCurrentChartBuildResult().payload,
     getCurrentChartInstance: internals.getCurrentChartInstance,
     getCurrentChartInstances: () => internals.getActiveModelConfig().chartInstances.entries,
     getCurrentChartInstanceId: () => internals.getCurrentSelectedChartInstanceId(),

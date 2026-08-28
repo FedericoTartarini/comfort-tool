@@ -5,19 +5,20 @@ import { FieldChartProfileKind } from "../../../../catalog/output/fieldChartProf
 import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 import type { ChartBuildContext } from "../../../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../../catalog/units";
-import { ChartEngine, isChartEngine } from "../../../../catalog/chartEngines";
+import { ChartType, isChartType } from "../../../../catalog/chartTypes";
 import {
-  buildBandScalarChart,
-  buildBoundaryRegionChart,
-  buildCustomChart,
+  buildAdaptiveChartKind,
+  buildBodyTemperatureChart,
   buildDynamicFieldChart,
-  buildParametricLineChart,
-  buildTimeSeriesLineChart,
+  buildParametricChart,
+  buildPsychrometricChart,
+  buildUtciChart,
 } from "./builders";
 import type { PhysicalQuantityId as PhysicalQuantityIdType } from "../../../../catalog/quantities";
 import {
   buildChartMemoKey,
   hashBands,
+  hashChartSourceMemo,
   hashModelInputs,
   readChartMemo,
   writeChartMemo,
@@ -93,7 +94,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
   );
   if (!registration) {
     return {
-      plotly: null,
+      payload: null,
       legend: null,
       readiness: "empty",
       emptyMessage: "Chart not found.",
@@ -118,6 +119,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
     chartSourceVersion: options.chartSourceVersion,
     profileKind: options.profile.kind,
     modelInputsHash: hashModelInputs(options.modelInputs),
+    sourceHash: hashChartSourceMemo(options.chartSource),
   });
 
   const context = toChartBuildContext(
@@ -144,15 +146,15 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
     }
   }
 
-  if (!isChartEngine(registration.registration.engine)) {
+  if (!isChartType(registration.registration.type)) {
     throw new Error(
-      `Unknown chart engine "${String(registration.registration.engine)}". ChartEngine is a closed set.`,
+      `Unknown chart type "${String(registration.registration.type)}".`,
     );
   }
 
   let result: ChartBuildResult;
-  switch (registration.registration.engine) {
-    case ChartEngine.DynamicField:
+  switch (registration.registration.type) {
+    case ChartType.Dynamic:
       result = buildDynamicFieldChart(
         registration,
         options.chartSource,
@@ -160,40 +162,42 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
         context,
       );
       break;
-    case ChartEngine.Custom:
-      result = buildCustomChart(
+    case ChartType.Psychrometric:
+      result = buildPsychrometricChart(
         registration,
         options.chartSource,
         options.resultsByInput,
         context,
       );
       break;
-    case ChartEngine.BandScalar:
-      result = buildBandScalarChart(
+    case ChartType.Utci:
+      result = buildUtciChart(
         registration,
         options.chartSource,
         options.resultsByInput,
         context,
       );
       break;
-    case ChartEngine.BoundaryRegion:
-      result = buildBoundaryRegionChart(
+    case ChartType.Adaptive:
+      result = buildAdaptiveChartKind(
         registration,
         options.chartSource,
         options.resultsByInput,
         context,
       );
       break;
-    case ChartEngine.ParametricLine:
-      result = buildParametricLineChart(
+    case ChartType.HeatLoss:
+    case ChartType.Set:
+      result = buildParametricChart(
         registration,
         options.chartSource,
         options.resultsByInput,
         context,
       );
       break;
-    case ChartEngine.TimeSeriesLine:
-      result = buildTimeSeriesLineChart(
+    case ChartType.BodyTemperature:
+    case ChartType.WaterLoss:
+      result = buildBodyTemperatureChart(
         registration,
         options.chartSource,
         options.resultsByInput,

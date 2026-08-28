@@ -4,6 +4,7 @@ import { InputControlId } from "./catalog/inputControls";
 import { InputId } from "./catalog/inputSlots";
 import { PhysicalQuantityId } from "./catalog/quantities";
 import { createAnalysisState } from "./state/analysis/createAnalysisState.svelte";
+import { chartFigure } from "./testSupport/modelChartTestHelpers";
 
 async function waitForIdle(
   toolState: ReturnType<typeof createAnalysisState>,
@@ -24,14 +25,14 @@ describe("chart memo debug", () => {
     toolState.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(toolState);
 
-    const chart1 = toolState.selectors.getCurrentChartResult();
+    const chart1 = chartFigure(toolState.selectors.getCurrentChartResult());
     const marker1 = chart1?.traces?.find((trace) => trace.name === "Input 1");
 
     toolState.actions.updateInput(InputId.Input1, InputControlId.Temperature, "32");
     await new Promise((resolve) => setTimeout(resolve, 250));
     await waitForIdle(toolState);
 
-    const chart2 = toolState.selectors.getCurrentChartResult();
+    const chart2 = chartFigure(toolState.selectors.getCurrentChartResult());
     const marker2 = chart2?.traces?.find((trace) => trace.name === "Input 1");
     const temperature = toolState.state.quantitiesByInput[InputId.Input1][
       PhysicalQuantityId.DryBulbTemperature

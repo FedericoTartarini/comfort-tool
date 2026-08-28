@@ -1,4 +1,5 @@
-import type { PlotlyChartSpec } from "./plotlyTypes";
+import type { ChartPayload } from "../charts/types";
+import { assembleChart, prepareFigure } from "../charts";
 import {
   PublicationColumn,
   publicationChartThemeFor,
@@ -6,10 +7,6 @@ import {
   type PublicationChartTheme,
   type PublicationColumn as PublicationColumnType,
 } from "./chartTheme";
-import {
-  toPlotlyFigure,
-  type PlotlyFigure,
-} from "./plotlyFigure";
 
 export type ChartExportFormat = "png" | "svg";
 
@@ -57,19 +54,19 @@ export interface PlotlyToImageOptions {
 export interface PlotlyToImageApi {
   toImage: (
     figure: {
-      data: PlotlyFigure["data"];
-      layout: PlotlyFigure["layout"];
-      config: PlotlyFigure["config"];
+      data: unknown[];
+      layout: Record<string, unknown>;
+      config: Record<string, unknown>;
     },
     options: PlotlyToImageOptions,
   ) => Promise<string>;
 }
 
 export function chartExportFilename(
-  chart: PlotlyChartSpec,
+  payload: ChartPayload,
   column: PublicationColumnType = PublicationColumn.Single,
 ): string {
-  const titleText = chart.layout.title.trim() || "cbe-thermal-comfort-chart";
+  const titleText = payload.input.title?.trim() || "cbe-thermal-comfort-chart";
   const slug =
     titleText
       .toLowerCase()
@@ -93,9 +90,9 @@ export function publicationToImageOptions(
 function assertDedicatedFigure(
   figure: object,
 ): asserts figure is {
-  data: PlotlyFigure["data"];
-  layout: PlotlyFigure["layout"];
-  config: PlotlyFigure["config"];
+  data: unknown[];
+  layout: Record<string, unknown>;
+  config: Record<string, unknown>;
 } {
   if (typeof HTMLElement !== "undefined" && figure instanceof HTMLElement) {
     throw new Error("Publication export must not capture the on-screen plot.");
@@ -118,16 +115,21 @@ function triggerBrowserDownload(url: string, filename: string): void {
  */
 export async function downloadPublicationChart(
   plotly: PlotlyToImageApi,
-  chart: PlotlyChartSpec,
+  payload: ChartPayload,
   format: ChartExportFormat,
   column: PublicationColumnType = PublicationColumn.Single,
 ): Promise<void> {
   const theme = publicationChartThemeFor(column);
-  const figure = toPlotlyFigure(chart, { theme });
+  const assembled = assembleChart(payload);
+  const figure = prepareFigure(assembled, theme);
   const dedicatedFigure = {
     data: figure.data,
     layout: figure.layout,
-    config: figure.config,
+    config: {
+      responsive: false,
+      displaylogo: false,
+      displayModeBar: false,
+    },
   };
   assertDedicatedFigure(dedicatedFigure);
 
@@ -135,5 +137,5 @@ export async function downloadPublicationChart(
     dedicatedFigure,
     publicationToImageOptions(format, theme),
   );
-  triggerBrowserDownload(url, `${chartExportFilename(chart, column)}.${format}`);
+  triggerBrowserDownload(url, `${chartExportFilename(payload, column)}.${format}`);
 }

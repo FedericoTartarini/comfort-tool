@@ -1,5 +1,5 @@
-import type { PlotlyChartSpec } from "../../../plotlyTypes";
-import { ChartEngine } from "../../../../catalog/chartEngines";
+import type { ChartPayload } from "../../../../charts/types";
+import { ChartType } from "../../../../catalog/chartTypes";
 import type { UnitSystem as UnitSystemType } from "../../../../catalog/units";
 import type { SimulationChartDeclaration } from "../simulationCharts";
 
@@ -8,13 +8,14 @@ export function resolveSimulationChartBuild(
   result: unknown,
   draft: unknown,
   unitSystem: UnitSystemType,
-): PlotlyChartSpec {
-  switch (chart.engine) {
-    case ChartEngine.TimeSeriesLine:
+): ChartPayload {
+  switch (chart.type) {
+    case ChartType.BodyTemperature:
+    case ChartType.WaterLoss:
       return chart.spec.build(result, draft, unitSystem);
     default: {
-      const exhaustive: never = chart.engine;
-      throw new Error(`Unsupported simulation chart engine: ${exhaustive}`);
+      const exhaustive: never = chart.type;
+      throw new Error(`Unsupported simulation chart type: ${exhaustive}`);
     }
   }
 }

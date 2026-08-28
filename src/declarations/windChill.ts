@@ -8,7 +8,7 @@ import {
   ModelOutputKey,
   type ModelOutput,
 } from "../catalog/modelCapabilities";
-import { ChartEngine } from "../catalog/chartEngines";
+import { ChartType } from "../catalog/chartTypes";
 import { TableType } from "../catalog/tableTypes";
 import { WorkspaceId } from "../catalog/workspaces";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../catalog/quantities";
@@ -156,8 +156,7 @@ export const windChillModelConfig = defineModel<
   charts: [
     {
       id: DYNAMIC_CHART_ID,
-      engine: ChartEngine.DynamicField,
-      name: "Dynamic",
+      type: ChartType.Dynamic,
       emptyMessage: "No dynamic chart yet.",
       capabilities: {
         allowsAxisSelection: true,
@@ -165,7 +164,6 @@ export const windChillModelConfig = defineModel<
         allowsOutputSelection: true,
         allowsBandEditing: true,
         allowsBaselineSelection: true,
-        showsZoneToggle: false,
         showsLegend: true,
         showsExport: true,
       },

@@ -10,7 +10,6 @@ import { InputId } from "../catalog/inputSlots";
 
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../catalog/modelCapabilities";
-import { ChartEngine } from "../catalog/chartEngines";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
@@ -75,12 +74,6 @@ describe("humidex service", () => {
       },
     } satisfies ChartBuildContext;
 
-    const fixedChart = buildChartPlotly(humidexModelConfig,
-      "humidex-ranges",
-      chartSource,
-      resultsByInput,
-      fixedContext,
-    );
     const dynamicChart = buildChartPlotly(humidexModelConfig,
       "humidex-dynamic-field",
       chartSource,
@@ -88,14 +81,12 @@ describe("humidex service", () => {
       fixedContext,
     );
 
-    expect(fixedChart?.traces[0].type).toBe("contour");
-    expect(fixedChart?.traces[0].z).toHaveLength(100);
-    expect(fixedChart?.traces[0].z?.[0]).toHaveLength(100);
-    expect(fixedChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
-    expect(fixedChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces[0].type).toBe("contour");
     expect(dynamicChart?.traces[0].z).toHaveLength(100);
-    expect(dynamicChart?.traces[0].z?.flat().every(Number.isFinite)).toBe(true);
+    expect(dynamicChart?.traces[0].z?.[0]).toHaveLength(100);
+    expect(dynamicChart?.traces[0].z?.flat().every((value) => (
+      value === null || Number.isFinite(value)
+    ))).toBe(true);
     expect(dynamicChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
@@ -118,7 +109,7 @@ describe("humidex service", () => {
       },
     ];
     const chart = buildChartPlotly(humidexModelConfig,
-      "humidex-ranges",
+      "humidex-dynamic-field",
       { inputs: { [InputId.Input1]: request } },
       {
         [InputId.Input1]: result,
@@ -144,20 +135,19 @@ describe("humidex service", () => {
 
     expect(fillTrace?.colorscale?.map(([, color]) => color))
       .toEqual(expect.arrayContaining(["#123456", "#abcdef"]));
-    expect(inputTrace?.hovertemplate).toContain("Boundary and above");
-    expect(String(chart?.layout.xaxis.title)).toContain("Relative humidity");
-    expect(String(chart?.layout.yaxis.title)).toContain("Air temperature");
+    expect(inputTrace?.hoverinfo).toBe("skip");
+    expect(String(chart?.layout.xaxis.title)).toContain("Air temperature");
+    expect(String(chart?.layout.yaxis.title)).toContain("Relative humidity");
   });
 
-  it("declares fixed-axis and dynamic field charts from defineModel", () => {
+  it("declares a single Dynamic chart from defineModel", () => {
     expect(humidexModelConfig.id).toBe(ModelId.Humidex);
-    expect(humidexModelConfig.chartInstances.defaultInstanceId).toBe("humidex-ranges");
-    expect(humidexModelConfig.chartInstances.entries.map(({ instanceId, engine }) => ({
+    expect(humidexModelConfig.chartInstances.defaultInstanceId).toBe("humidex-dynamic-field");
+    expect(humidexModelConfig.chartInstances.entries.map(({ instanceId, type }) => ({
       instanceId,
-      engine,
+      type,
     }))).toEqual([
-      { instanceId: "humidex-ranges", engine: ChartEngine.DynamicField },
-      { instanceId: "humidex-dynamic-field", engine: ChartEngine.DynamicField },
+      { instanceId: "humidex-dynamic-field", type: "dynamic" },
     ]);
   });
 

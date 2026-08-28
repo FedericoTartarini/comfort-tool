@@ -30,7 +30,7 @@ import { getModelSimulationOutput } from "../../state/analysis/modelConfigs";
 import { resolveSimulationChartBuild } from "../../engines/comfort/charts/kinds/simulation";
 import { phsTimeSeriesModelDefinition } from "./timeSeries";
 import { downsamplePhsHistorySamples } from "./timeSeriesCharts";
-import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
+import { buildChartPlotly, chartFigure } from "../../testSupport/modelChartTestHelpers";
 import { ModelOutputKey } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 function segment(
@@ -266,26 +266,26 @@ describe("PHS ISO 7933:2023", () => {
       person: { ...defaultPhsPersonSettings },
     };
     const result = calculatePhsTimeSeries(draft.segments, draft.person);
-    const temperature = resolveSimulationChartBuild(
+    const temperature = chartFigure(resolveSimulationChartBuild(
       getModelSimulationOutput(ModelId.Phs2023)!.charts[0],
       result,
       draft,
       UnitSystem.SI,
-    );
-    const waterLoss = resolveSimulationChartBuild(
+    ));
+    const waterLoss = chartFigure(resolveSimulationChartBuild(
       getModelSimulationOutput(ModelId.Phs2023)!.charts[1],
       result,
       draft,
       UnitSystem.SI,
-    );
+    ));
 
-    expect(temperature.traces.map(({ name }) => name)).toEqual([
+    expect(temperature?.traces.map(({ name }) => name)).toEqual([
       "Rectal temperature",
       "Core temperature",
       "Maximum rectal temperature",
     ]);
-    expect(temperature.traces[1].visible).toBe("legendonly");
-    expect(waterLoss.traces[1].name).toBe("5% body-mass limit");
+    expect(temperature?.traces[1].visible).toBe("legendonly");
+    expect(waterLoss?.traces[1].name).toBe("5% body-mass limit");
   });
 
   it("draws matching phase boundaries on both Time-series charts", () => {
@@ -297,16 +297,16 @@ describe("PHS ISO 7933:2023", () => {
     draft.segments[0].durationMinutes = 5;
     draft.person.drinkingAllowed = false;
     const charts = getModelSimulationOutput(ModelId.Phs2023)!.charts.map((chart) => (
-      resolveSimulationChartBuild(chart, result, draft, UnitSystem.SI)
+      chartFigure(resolveSimulationChartBuild(chart, result, draft, UnitSystem.SI))
     ));
 
     for (const chart of charts) {
-      const boundaries = chart.traces.find(
+      const boundaries = chart?.traces.find(
         ({ name }) => name === "Segment boundaries",
       );
       expect(boundaries?.x).toEqual([0.5, 0.5, Number.NaN]);
     }
-    expect(charts[1].traces[1].name).toBe("5% body-mass limit");
+    expect(charts[1]?.traces[1].name).toBe("5% body-mass limit");
   });
 
   it("reports asynchronous progress and honors cancellation", async () => {

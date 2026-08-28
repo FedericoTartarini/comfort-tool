@@ -253,5 +253,6 @@ export function buildTooltipGridTrace({
     contours,
     showscale: false,
     hovertemplate,
+    isHoverLayer: true,
   });
 }

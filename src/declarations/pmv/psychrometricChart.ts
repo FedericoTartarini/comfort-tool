@@ -1,9 +1,20 @@
-import { psy_ta_rh } from "jsthermalcomfort";
-import type {
-  PlotHoverRow,
-  PlotTrace,
-} from "../../engines/plotlyTypes";
+import type { PlotTrace } from "../../engines/plotlyTypes";
 import { PhysicalQuantityId, getQuantityDisplayMeta } from "../../catalog/quantities";
+import { UnitSystem } from "../../catalog/units";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import { ModelOutputKey, type NumericBand } from "../../catalog/modelCapabilities";
+import {
+  buildRelativeHumidityCurvePoints,
+  humidityRatioSi,
+  sampleRelativeHumidityValues,
+} from "../../charts/psychrometric/humidity";
+import {
+  buildComfortZoneOutline,
+  buildPsychrometricBandFills,
+  sampleIsolines,
+  type FieldEvaluate,
+  type IsolinePoint,
+} from "../../charts/psychrometric/isolines";
 import {
   buildComfortPolygonTrace,
   buildFilledPolygonTrace,
@@ -11,156 +22,108 @@ import {
 } from "../../engines/comfort/charts/plotlyBuilders";
 import type {
   ChartAxisScale,
-  GridEvaluationResult,
 } from "../../engines/comfort/charts/types";
 import { getBaselineInputEntry, roundValue } from "../../engines/comfort/helpers";
 import {
   PMV_PSYCHROMETRIC_VIEW,
+  evaluatePsychrometricPmv,
+  pmvNeutralZone,
+  ppdThresholdToAbsPmv,
+  psychrometricPmvRequest,
   tryEvaluatePmvForChart,
-  type ComfortPoint,
   type PmvChartEvaluation,
-  type PmvChartSource,
   type PmvRequest,
 } from "./calculation";
 import type { PmvStandardAdapter } from "./shared";
 import {
   CONTOUR_GRID_RESOLUTION,
-  axisHoverSpec,
-  buildPmvHoverTemplate,
-  createPmvOutputPresentation,
-  getPmvOutputValue,
   type PmvChartViewDescriptorFactory,
   type PmvFieldChartConfig,
   type PmvInputOverlayBuilder,
 } from "./chartShared";
-import { buildClosedBoundaryPolygon } from "../../engines/comfort/charts/boundaryRegionEngine";
 import { calculateRelativeHumidityFromHumidityRatio } from "../../engines/comfort/derivations";
 
 const CHART_COLOR_RH_LINE = "#94a3b8";
 const PSYCHROMETRIC_PLOT_BACKGROUND = "#f8fafc";
 const SUPERSATURATED_MASK_TRACE_NAME = "Supersaturated region mask";
-
-interface PsychrometricCurvePoint {
-  temperatureSi: number;
-  humidityRatioSi: number;
-}
+const COMFORT_ISOLINE_TARGETS = [pmvNeutralZone.min, pmvNeutralZone.max];
 
 interface DisplayedPsychrometricCurve {
   relativeHumidity: number;
-  points: PsychrometricCurvePoint[];
   x: number[];
   y: number[];
 }
 
-function smoothComfortZoneXValues(xValues: number[]): number[] {
-  if (xValues.length < 3) return xValues;
-  return xValues.map((value, index) =>
-    index === 0 || index === xValues.length - 1
-      ? value
-      : Math.round(
-          ((xValues[index - 1] + (value * 2) + xValues[index + 1]) / 4)
-            * 1000,
-        ) / 1000);
+function uniqueSorted(values: readonly number[]): number[] {
+  return [...new Set(values.filter(Number.isFinite))].sort((left, right) => left - right);
 }
 
-function buildComfortZonePolygon(
-  coolEdge: ComfortPoint[],
-  warmEdge: ComfortPoint[],
-  getX: (point: ComfortPoint) => number,
-  getY: (point: ComfortPoint) => number,
-): { polygonX: number[]; polygonY: number[] } {
-  return buildClosedBoundaryPolygon({
-    lowerX: smoothComfortZoneXValues(coolEdge.map(getX)),
-    lowerY: coolEdge.map(getY),
-    upperX: smoothComfortZoneXValues(warmEdge.map(getX)),
-    upperY: warmEdge.map(getY),
-  });
+function evaluatePmvField(
+  adapter: PmvStandardAdapter,
+  payload: PmvRequest,
+  tdb: number,
+  rh: number,
+  trEqualsTdb: boolean,
+): number | null {
+  return evaluatePsychrometricPmv(adapter, payload, tdb, rh, trEqualsTdb);
 }
+
+function pmvIsolineTargetsForBands(
+  bands: readonly NumericBand[],
+  zOutput: ModelOutputKey,
+): number[] {
+  const edges = uniqueSorted(bands.flatMap((band) => [band.min, band.max]));
+  if (zOutput === ModelOutputKey.Ppd) {
+    return uniqueSorted(edges.flatMap((ppd) => {
+      const absPmv = ppdThresholdToAbsPmv(ppd);
+      if (!Number.isFinite(absPmv) || absPmv === 0) return [];
+      return [-absPmv, absPmv];
+    }));
+  }
+  return edges;
+}
+
+function isolineTargetsIncludingComfort(
+  bands: readonly NumericBand[],
+  zOutput: ModelOutputKey,
+): number[] {
+  return uniqueSorted([
+    ...pmvIsolineTargetsForBands(bands, zOutput),
+    pmvNeutralZone.min,
+    pmvNeutralZone.max,
+  ]);
+}
+
+function samplePmvIsolines(
+  adapter: PmvStandardAdapter,
+  payload: PmvRequest,
+  targets: readonly number[],
+  rhValues: readonly number[],
+  trEqualsTdb: boolean,
+): Map<number, IsolinePoint[]> {
+  return sampleIsolines(
+    (tdb, rh) => evaluatePmvField(adapter, payload, tdb, rh, trEqualsTdb),
+    targets,
+    rhValues,
+    PMV_PSYCHROMETRIC_VIEW.tdbRangeSi,
+  );
+}
+
 function evaluatePsychrometricPoint(
   adapter: PmvStandardAdapter,
   baseline: PmvRequest,
   tdb: number,
   humidityRatio: number,
+  trEqualsTdb: boolean,
 ): PmvChartEvaluation | null {
   const unboundedRh = calculateRelativeHumidityFromHumidityRatio(tdb, humidityRatio);
   if (unboundedRh > 100) return null;
 
   const rh = Math.max(0, unboundedRh);
-  return tryEvaluatePmvForChart(adapter, { ...baseline, tdb, rh });
-}
-
-function buildPsychrometricTemperatures(): number[] {
-  return Array.from(
-    { length: PMV_PSYCHROMETRIC_VIEW.tdbPoints },
-    (_, index) => PMV_PSYCHROMETRIC_VIEW.tdbRangeSi.min
-      + (
-        (PMV_PSYCHROMETRIC_VIEW.tdbRangeSi.max - PMV_PSYCHROMETRIC_VIEW.tdbRangeSi.min)
-        * index
-      ) / (PMV_PSYCHROMETRIC_VIEW.tdbPoints - 1),
+  return tryEvaluatePmvForChart(
+    adapter,
+    psychrometricPmvRequest(baseline, tdb, rh, trEqualsTdb),
   );
-}
-
-function interpolateCurvePointAtHumidityRatio(
-  lower: PsychrometricCurvePoint,
-  upper: PsychrometricCurvePoint,
-  targetHumidityRatioSi: number,
-): PsychrometricCurvePoint {
-  const humidityRatioSpan = upper.humidityRatioSi - lower.humidityRatioSi;
-  const fraction = humidityRatioSpan === 0
-    ? 0
-    : (targetHumidityRatioSi - lower.humidityRatioSi) / humidityRatioSpan;
-  return {
-    temperatureSi: lower.temperatureSi
-      + (upper.temperatureSi - lower.temperatureSi) * fraction,
-    humidityRatioSi: targetHumidityRatioSi,
-  };
-}
-
-function appendDistinctCurvePoint(
-  points: PsychrometricCurvePoint[],
-  point: PsychrometricCurvePoint,
-): void {
-  const previous = points[points.length - 1];
-  if (
-    previous
-    && Math.abs(previous.temperatureSi - point.temperatureSi) < 1e-9
-    && Math.abs(previous.humidityRatioSi - point.humidityRatioSi) < 1e-12
-  ) {
-    return;
-  }
-  points.push(point);
-}
-
-function buildRelativeHumidityCurvePoints(
-  relativeHumidity: number,
-): PsychrometricCurvePoint[] {
-  const rawPoints = buildPsychrometricTemperatures().map((temperatureSi) => ({
-    temperatureSi,
-    humidityRatioSi: psy_ta_rh(temperatureSi, relativeHumidity).hr,
-  }));
-  const { min, max } = PMV_PSYCHROMETRIC_VIEW.humidityRatioRangeSi;
-  const clippedPoints: PsychrometricCurvePoint[] = [];
-
-  rawPoints.forEach((point, index) => {
-    const previous = rawPoints[index - 1];
-    if (previous && previous.humidityRatioSi < min && point.humidityRatioSi >= min) {
-      appendDistinctCurvePoint(
-        clippedPoints,
-        interpolateCurvePointAtHumidityRatio(previous, point, min),
-      );
-    }
-    if (point.humidityRatioSi >= min && point.humidityRatioSi <= max) {
-      appendDistinctCurvePoint(clippedPoints, point);
-    }
-    if (previous && previous.humidityRatioSi <= max && point.humidityRatioSi > max) {
-      appendDistinctCurvePoint(
-        clippedPoints,
-        interpolateCurvePointAtHumidityRatio(previous, point, max),
-      );
-    }
-  });
-
-  return clippedPoints;
 }
 
 function buildDisplayedRelativeHumidityCurve(
@@ -168,15 +131,17 @@ function buildDisplayedRelativeHumidityCurve(
   temperatureAxis: ChartAxisScale,
   humidityRatioAxis: ChartAxisScale,
 ): DisplayedPsychrometricCurve {
-  const points = buildRelativeHumidityCurvePoints(relativeHumidity);
+  const points = buildRelativeHumidityCurvePoints(
+    relativeHumidity,
+    PMV_PSYCHROMETRIC_VIEW,
+  );
   return {
     relativeHumidity,
-    points,
     x: points.map(({ temperatureSi }) => (
       roundValue(temperatureAxis.toDisplay(temperatureSi))
     )),
-    y: points.map(({ humidityRatioSi }) => (
-      roundValue(humidityRatioAxis.toDisplay(humidityRatioSi))
+    y: points.map(({ humidityRatioSi: humidityRatio }) => (
+      roundValue(humidityRatioAxis.toDisplay(humidityRatio))
     )),
   };
 }
@@ -209,53 +174,45 @@ function buildSupersaturatedRegionMask(
 }
 
 function buildRelativeHumidityCurveTrace(
-  adapter: PmvStandardAdapter,
-  baseline: PmvRequest,
-  config: PmvFieldChartConfig,
   curve: DisplayedPsychrometricCurve,
-  temperatureAxis: ChartAxisScale,
-  humidityRatioAxis: ChartAxisScale,
 ): PlotTrace {
-  const presentation = createPmvOutputPresentation(config);
-  const hoverMetadata: PlotHoverRow[] = [];
-  const text: string[] = [];
-
-  curve.points.forEach(({ temperatureSi }) => {
-    const evaluation = tryEvaluatePmvForChart(adapter, {
-      ...baseline,
-      tdb: temperatureSi,
-      rh: curve.relativeHumidity,
-    });
-    hoverMetadata.push(presentation.getHoverMetadata(evaluation));
-    text.push(
-      evaluation ? presentation.getClassification(evaluation) : "Unclassified",
-    );
-  });
-
   return buildLineTrace({
     name: `RH ${curve.relativeHumidity}%`,
     x: curve.x,
     y: curve.y,
     color: CHART_COLOR_RH_LINE,
-    hovertemplate: buildPmvHoverTemplate({
-      inputLabel: null,
-      xAxis: axisHoverSpec(temperatureAxis, 1),
-      yAxis: axisHoverSpec(humidityRatioAxis),
-      classification: { label: presentation.classificationLabel, value: "%{text}" },
-      pmv: presentation.pmvHoverToken,
-      ppd: presentation.ppdHoverToken,
-    }),
-    text,
-    hoverMetadata,
+    hoverinfo: "skip",
+    hovertemplate: "",
   });
 }
 
+function buildBandFillTraces(
+  polygons: ReturnType<typeof buildPsychrometricBandFills>,
+  opacity: number,
+): PlotTrace[] {
+  return polygons.map((polygon) => buildFilledPolygonTrace({
+    name: polygon.name,
+    x: polygon.x,
+    y: polygon.y,
+    fillcolor: polygon.color,
+    lineColor: polygon.color,
+    lineWidth: 1.5,
+    opacity,
+    hoverinfo: "skip",
+    hovertemplate: "",
+    isBackgroundZone: true,
+  }));
+}
+
 function buildPsychrometricOverlays(
-  adapter: PmvStandardAdapter,
-  baseline: PmvRequest,
   config: PmvFieldChartConfig,
+  outputLabel: string,
+  isolines: Map<number, IsolinePoint[]>,
+  evaluate: FieldEvaluate,
+  rhValues: readonly number[],
   temperatureAxis: ChartAxisScale,
   humidityRatioAxis: ChartAxisScale,
+  opacity: number,
 ): PlotTrace[] {
   const curves = PMV_PSYCHROMETRIC_VIEW.rhCurves.map((relativeHumidity) => (
     buildDisplayedRelativeHumidityCurve(
@@ -274,79 +231,69 @@ function buildPsychrometricOverlays(
         humidityRatioAxis,
       )
     : null;
+  const bandFills = buildBandFillTraces(
+    buildPsychrometricBandFills({
+      bands: config.bands,
+      isolines,
+      outputLabel,
+      xScale: temperatureAxis,
+      yScale: humidityRatioAxis,
+      extents: PMV_PSYCHROMETRIC_VIEW,
+      layout: config.zOutput === ModelOutputKey.Ppd ? "radial" : "monotonic",
+      evaluate,
+      rhValues,
+      absFromThreshold: config.zOutput === ModelOutputKey.Ppd
+        ? ppdThresholdToAbsPmv
+        : undefined,
+    }),
+    opacity,
+  );
   return [
     ...(mask ? [mask] : []),
+    ...bandFills,
     ...curves
       .filter(({ x }) => x.length > 0)
-      .map((curve) => buildRelativeHumidityCurveTrace(
-        adapter,
-        baseline,
-        config,
-        curve,
-        temperatureAxis,
-        humidityRatioAxis,
-      )),
+      .map((curve) => buildRelativeHumidityCurveTrace(curve)),
   ];
 }
 
-function projectPsychrometricFillGrid(
-  adapter: PmvStandardAdapter,
-  baseline: PmvRequest,
-  config: PmvFieldChartConfig,
-  grid: GridEvaluationResult,
-): GridEvaluationResult {
-  const saturationHumidityRatioByX = grid.xValuesSi.map((temperatureSi) => (
-    psy_ta_rh(temperatureSi, 100).hr
-  ));
-  const saturationOutputByX = grid.xValuesSi.map((temperatureSi) => {
-    const evaluation = tryEvaluatePmvForChart(adapter, {
-      ...baseline,
-      tdb: temperatureSi,
-      rh: 100,
-    });
-    return evaluation ? getPmvOutputValue(config.zOutput, evaluation) : NaN;
-  });
-
-  return {
-    ...grid,
-    zValues: grid.zValues.map((row, yIndex) => row.map((value, xIndex) => {
-      if (
-        Number.isFinite(value)
-        || grid.yValuesSi[yIndex] <= saturationHumidityRatioByX[xIndex]
-      ) {
-        return value;
-      }
-      return saturationOutputByX[xIndex];
-    })),
-  };
-}
 function createPsychrometricComfortZoneOverlayBuilder(
-  source: PmvChartSource,
+  adapter: PmvStandardAdapter,
+  baselineInputId: InputIdType,
+  baselineIsolines: Map<number, IsolinePoint[]>,
   xAxis: ChartAxisScale,
   yAxis: ChartAxisScale,
+  trEqualsTdb: boolean,
 ): PmvInputOverlayBuilder {
-  return ({ inputId }) => {
-    const comfortZone = source.comfortZonesByInput[inputId];
-    if (!comfortZone) {
-      throw new Error(`Missing PMV comfort zone for ${inputId}.`);
-    }
-    const { polygonX, polygonY } = buildComfortZonePolygon(
-      comfortZone.coolEdge,
-      comfortZone.warmEdge,
-      (point) => roundValue(xAxis.toDisplay(point.tdb)),
-      (point) => roundValue(yAxis.toDisplay(psy_ta_rh(point.tdb, point.rh).hr)),
+  const rhValues = sampleRelativeHumidityValues(PMV_PSYCHROMETRIC_VIEW.tdbPoints);
+  return ({ inputId, payload }) => {
+    const isolines = inputId === baselineInputId
+      ? baselineIsolines
+      : samplePmvIsolines(
+          adapter,
+          payload,
+          COMFORT_ISOLINE_TARGETS,
+          rhValues,
+          trEqualsTdb,
+        );
+    const outline = buildComfortZoneOutline(
+      isolines,
+      pmvNeutralZone.min,
+      pmvNeutralZone.max,
+      xAxis,
+      yAxis,
+      PMV_PSYCHROMETRIC_VIEW,
     );
-    return polygonX.length === 0
-      ? []
-      : [buildComfortPolygonTrace({
-          inputId,
-          nameSuffix: "comfort zone",
-          polygonX,
-          polygonY,
-          hovertemplate: "",
-          hoverinfo: "skip",
-          isBackgroundZone: true,
-        })];
+    if (!outline) return [];
+    return [buildComfortPolygonTrace({
+      inputId,
+      nameSuffix: "comfort zone",
+      polygonX: outline.x,
+      polygonY: outline.y,
+      hovertemplate: "",
+      hoverinfo: "skip",
+      isBackgroundZone: true,
+    })];
   };
 }
 
@@ -363,11 +310,24 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
     PhysicalQuantityId.HumidityRatio,
     unitSystem,
   );
+  const trEqualsTdb = source.psychrometricTrEqualsTdb;
   const config: PmvFieldChartConfig = {
     ...context.fieldChartConfig,
-    xField: PhysicalQuantityId.DryBulbTemperature,
+    xField: trEqualsTdb
+      ? PhysicalQuantityId.OperativeTemperature
+      : PhysicalQuantityId.DryBulbTemperature,
     yField: PhysicalQuantityId.HumidityRatio,
   };
+  const output = declaration.exploreOutputs.find(({ key }) => key === config.zOutput);
+  const outputLabel = output?.label ?? "PMV";
+  const rhValues = sampleRelativeHumidityValues(PMV_PSYCHROMETRIC_VIEW.tdbPoints);
+  const baselineIsolines = samplePmvIsolines(
+    adapter,
+    baseline.payload,
+    isolineTargetsIncludingComfort(config.bands, config.zOutput),
+    rhValues,
+    trEqualsTdb,
+  );
 
   return {
     config,
@@ -376,6 +336,8 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
       field: config.xField,
       rangeSi: PMV_PSYCHROMETRIC_VIEW.tdbRangeSi,
       points: CONTOUR_GRID_RESOLUTION,
+      // CBE d3 default ticks on 10–36°C are ~2°C (IP ~5°F).
+      dtick: unitSystem === UnitSystem.IP ? 5 : 2,
     },
     yAxis: {
       field: config.yField,
@@ -385,17 +347,13 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
     coordinateDecimals: humidityRatioMeta.decimals,
     opacity: 0.8,
     plotBgColor: PSYCHROMETRIC_PLOT_BACKGROUND,
+    omitBandFillTraces: true,
     evaluatePoint: (tdb, humidityRatio) => evaluatePsychrometricPoint(
       adapter,
       baseline.payload,
       tdb,
       humidityRatio,
-    ),
-    projectFillGrid: (grid) => projectPsychrometricFillGrid(
-      adapter,
-      baseline.payload,
-      config,
-      grid,
+      trEqualsTdb,
     ),
     getInputXSi: (payload) => payload.tdb,
     getInputYSi: (payload) => {
@@ -404,17 +362,33 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
       if (typeof humidityRatio === "number" && Number.isFinite(humidityRatio)) {
         return humidityRatio;
       }
-      return psy_ta_rh(payload.tdb, payload.rh).hr;
+      return humidityRatioSi(payload.tdb, payload.rh);
     },
     chartOverlays: ({ xAxis, yAxis }) => buildPsychrometricOverlays(
-      adapter,
-      baseline.payload,
       config,
+      outputLabel,
+      baselineIsolines,
+      (tdb, rh) => evaluatePmvField(
+        adapter,
+        baseline.payload,
+        tdb,
+        rh,
+        trEqualsTdb,
+      ),
+      rhValues,
       xAxis,
       yAxis,
+      0.8,
     ),
     getInputOverlayBuilder: (xAxis, yAxis) => (
-      createPsychrometricComfortZoneOverlayBuilder(source, xAxis, yAxis)
+      createPsychrometricComfortZoneOverlayBuilder(
+        adapter,
+        context.baselineInputId,
+        baselineIsolines,
+        xAxis,
+        yAxis,
+        trEqualsTdb,
+      )
     ),
     margin: { l: 56, r: 24, t: 48, b: 80 },
   };

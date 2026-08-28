@@ -3,6 +3,7 @@ import { expect } from "vitest";
 import {
   type ModelId as ModelIdType,
 } from "../catalog/modelIds";
+import { chartPoints } from "../charts";
 import { inputDisplayMetaById } from "../catalog/inputSlotPresentation";
 import { InputId, inputOrder } from "../catalog/inputSlots";
 import {
@@ -138,12 +139,10 @@ function assertChartMarkers(
   if (chart == null) {
     failSilently(modelId, `chart ${instanceId} returned no figure.`);
   }
+  const names = new Set(chartPoints(chart).map((point) => point.name));
   for (const inputId of visibleInputIds) {
     const label = inputDisplayMetaById[inputId as InputId].label;
-    const marker = chart.traces.find(
-      (trace) => trace.name === label && trace.mode === "markers",
-    );
-    if (!marker) {
+    if (!names.has(label)) {
       failSilently(
         modelId,
         `chart ${instanceId} is missing a Compare marker for ${label}.`,

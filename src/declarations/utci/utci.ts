@@ -10,7 +10,7 @@ import {
 } from "../../catalog/inputModes";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelCalculationContext } from "../../catalog/modelCalculation";
-import { ChartEngine } from "../../catalog/chartEngines";
+import { ChartType } from "../../catalog/chartTypes";
 import { WorkspaceId } from "../../catalog/workspaces";
 import { TableType, type TableRowSpec } from "../../catalog/tableTypes";
 import {
@@ -93,8 +93,7 @@ const utciCharts: ChartDeclarationInput<
 >[] = [
   {
     id: "utci-stress-band",
-    engine: ChartEngine.BandScalar,
-    name: "UTCI",
+    type: ChartType.Utci,
     emptyMessage: "No psychrometric chart yet.",
     capabilities: {
       allowsAxisSelection: false,
@@ -102,7 +101,6 @@ const utciCharts: ChartDeclarationInput<
       allowsOutputSelection: false,
       allowsBandEditing: false,
       allowsBaselineSelection: true,
-      showsZoneToggle: false,
       showsLegend: true,
       showsExport: true,
     },
@@ -110,8 +108,7 @@ const utciCharts: ChartDeclarationInput<
   },
   {
     id: "utci-dynamic-field",
-    engine: ChartEngine.DynamicField,
-    name: "Dynamic",
+    type: ChartType.Dynamic,
     emptyMessage: "No dynamic chart yet.",
     capabilities: {
       allowsAxisSelection: true,
@@ -119,7 +116,6 @@ const utciCharts: ChartDeclarationInput<
       allowsOutputSelection: true,
       allowsBandEditing: true,
       allowsBaselineSelection: true,
-      showsZoneToggle: false,
       showsLegend: true,
       showsExport: true,
     },

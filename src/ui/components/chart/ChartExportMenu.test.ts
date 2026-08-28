@@ -14,7 +14,6 @@ const currentChart: ChartInstancePanelView = {
   emptyMessage: "No chart yet.",
   allowsAxisSelection: true,
   locksYAxis: false,
-  showsZoneToggle: false,
   showsLegend: true,
   usesBaselineInput: true,
 };

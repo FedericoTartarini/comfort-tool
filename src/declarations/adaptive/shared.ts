@@ -34,7 +34,7 @@ import {
   ComfortModelBuilder,
   type ChartDeclarationInput,
 } from "../../state/analysis/modelConfigs/builder";
-import { ChartEngine } from "../../catalog/chartEngines";
+import { ChartType } from "../../catalog/chartTypes";
 import {
   buildAdaptiveResultRows,
   calculateAdaptiveModel,
@@ -188,8 +188,7 @@ export function createAdaptiveModelConfig(
     ModelChartSource<AdaptiveRequest>
   > = {
     id: declaration.boundaryChartId,
-    engine: ChartEngine.BoundaryRegion,
-    name: "Adaptive",
+    type: ChartType.Adaptive,
     emptyMessage: "No adaptive chart yet.",
     capabilities: {
       allowsAxisSelection: true,
@@ -197,7 +196,6 @@ export function createAdaptiveModelConfig(
       allowsOutputSelection: false,
       allowsBandEditing: false,
       allowsBaselineSelection: true,
-      showsZoneToggle: false,
       showsLegend: true,
       showsExport: true,
     },

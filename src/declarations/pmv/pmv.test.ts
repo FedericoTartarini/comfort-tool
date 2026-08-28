@@ -17,7 +17,7 @@ import {
   findNumericBandIndexForValue,
   ModelOutputKey,
 } from "../../catalog/modelCapabilities";
-import { ChartEngine } from "../../catalog/chartEngines";
+import { ChartType } from "../../catalog/chartTypes";
 import { FieldChartProfileKind } from "../../catalog/output/fieldChartProfile";
 import { UnitSystem } from "../../catalog/units";
 import { createModelCalculationContext } from "../../catalog/modelCalculation";
@@ -48,7 +48,9 @@ import { createDynamicViewDescriptor } from "./dynamicChart";
 import {
   calculatePmvModel,
   derivePmvAnalysisOutputs,
+  invertPpdToAbsPmv,
   pmvNeutralZone,
+  ppdThresholdToAbsPmv,
   type PmvChartSource,
   type PmvRequest,
   type PmvResponse,
@@ -297,7 +299,9 @@ describe("PMV standard declarations", () => {
       "comfortZonesByInput",
       "derivedSlotsByInput",
       "inputs",
+      "psychrometricTrEqualsTdb",
     ]);
+    expect(ashrae.chartSource.psychrometricTrEqualsTdb).toBe(false);
     expect(ashraeRequest).not.toHaveProperty("units");
     expect(ashraeRequest).not.toHaveProperty("standard");
     expect(ashrae.chartSource).not.toHaveProperty("modelId");
@@ -395,30 +399,25 @@ describe("PMV standard declarations", () => {
     ({ config, declaration }) => {
       expect(config.chartInstances.defaultInstanceId)
         .toBe(declaration.psychrometricChartId);
-      expect(config.chartInstances.entries.map(({ instanceId, engine, name }) => ({
+      expect(config.chartInstances.entries.map(({ instanceId, type }) => ({
         instanceId,
-        engine,
-        name,
+        type,
       }))).toEqual([
         {
           instanceId: declaration.psychrometricChartId,
-          engine: ChartEngine.Custom,
-          name: "Psychrometric",
+          type: ChartType.Psychrometric,
         },
         {
           instanceId: declaration.dynamicChartId,
-          engine: ChartEngine.DynamicField,
-          name: "Dynamic",
+          type: ChartType.Dynamic,
         },
         {
           instanceId: declaration.heatLossChartId,
-          engine: ChartEngine.ParametricLine,
-          name: "Heat Loss",
+          type: ChartType.HeatLoss,
         },
         {
           instanceId: declaration.setChartId,
-          engine: ChartEngine.ParametricLine,
-          name: "SET",
+          type: ChartType.Set,
         },
       ]);
     },
@@ -477,6 +476,11 @@ describe("PMV roots and compliance", () => {
 
     expect(() => calculateRegisteredModel(adapter, createAnalysisState()))
       .toThrow(/PMV.*non-finite/i);
+  });
+
+  it("inverts PPD 10% to Neutral |PMV| and snaps the default threshold", () => {
+    expect(invertPpdToAbsPmv(10)).toBeCloseTo(0.5, 1);
+    expect(ppdThresholdToAbsPmv(10)).toBe(pmvNeutralZone.max);
   });
 
   it.each(standardCases)(
@@ -561,6 +565,7 @@ describe("PMV roots and compliance", () => {
             },
           },
           comfortZonesByInput: {},
+          psychrometricTrEqualsTdb: false,
         },
         emptyPmvResults(),
         {
@@ -637,6 +642,40 @@ describe("PMV roots and compliance", () => {
     expect(zone.coolEdge.every(({ tdb }) => tdb >= 10 && tdb <= 40)).toBe(true);
     expect(warning).not.toHaveBeenCalled();
     warning.mockRestore();
+  });
+
+  it("evaluates Operative comfort-zone roots with tr equal to tdb", () => {
+    const toolState = createAnalysisState();
+    toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae] = {
+      ...toolState.state.ui.modelOptionsByModel[ModelId.PmvAshrae],
+      [OptionKey.TemperatureMode]: TemperatureMode.Operative,
+    };
+    setPmvInputs(toolState, {
+      [PhysicalQuantityId.DryBulbTemperature]: 25,
+      [PhysicalQuantityId.MeanRadiantTemperature]: 25,
+    });
+    const { chartSource } = calculateRegisteredModel(pmvAshraeAdapter, toolState);
+    const request = chartSource.inputs[InputId.Input1];
+    const zone = chartSource.comfortZonesByInput[InputId.Input1];
+    const warmPoint = zone?.warmEdge.find(({ rh }) => rh === 50);
+    if (!request || !warmPoint) throw new Error("Missing Operative warm-edge root.");
+
+    const psychtop = pmvAshraeAdapter.calculate({
+      ...request,
+      tdb: warmPoint.tdb,
+      tr: warmPoint.tdb,
+      rh: warmPoint.rh,
+    });
+    const fixedTr = pmvAshraeAdapter.calculate({
+      ...request,
+      tdb: warmPoint.tdb,
+      rh: warmPoint.rh,
+    });
+
+    expect(chartSource.psychrometricTrEqualsTdb).toBe(true);
+    expect(Math.abs(psychtop.pmv - 0.5)).toBeLessThanOrEqual(5e-4);
+    expect(Math.abs(warmPoint.tdb - request.tr)).toBeGreaterThan(0.05);
+    expect(Math.abs(fixedTr.pmv - 0.5)).toBeGreaterThan(5e-4);
   });
 
   it("stores derived psychrometric slots on chartSource", () => {

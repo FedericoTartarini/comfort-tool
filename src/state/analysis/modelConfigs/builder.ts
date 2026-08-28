@@ -46,20 +46,20 @@ import {
   type QuantityExtension,
 } from "../../../catalog/quantities";
 import {
-  ChartEngine,
-  isChartEngine,
-  isModelChartEngine,
-  modelAllowsCustomCharts,
+  ChartType,
+  isChartType,
+  isModelChartType,
+  modelAllowsPsychrometricCharts,
   resolveChartCapabilities,
-} from "../../../catalog/chartEngines";
-import type { ChartInstanceDeclaration } from "../../../catalog/chartEngines";
+  type ChartInstanceDeclaration,
+} from "../../../catalog/chartTypes";
 import {
   TableType,
   type ModelTables,
 } from "../../../catalog/tableTypes";
 import { resolveChartBuildResult } from "../../../engines/comfort/charts/kinds/index";
 import {
-  modelChartSpecMatchesEngine,
+  modelChartSpecMatchesType,
   specHasPlotlyBuild,
   type ChartEngineRegistration,
   type ModelChartDeclaration,
@@ -118,27 +118,31 @@ export function createEmptyResults<T>(): Record<InputIdType, T | null> {
   );
 }
 
-function toRegisteredChartEngineSpec<ResultType, ChartSourceType>(
+function toRegisteredChartBindSpec<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
 ): RegisteredChartEngineSpec<ResultType, ChartSourceType> {
-  if (!isChartEngine(entry.engine)) {
+  if (!isChartType(entry.type)) {
     throw new Error(
-      `Unknown chart engine "${String(entry.engine)}". ChartEngine is a closed set.`,
+      `Unknown chart type "${String(entry.type)}". ChartType is a closed set.`,
     );
   }
-  switch (entry.engine) {
-    case ChartEngine.DynamicField:
-      return { engine: ChartEngine.DynamicField, spec: entry.spec };
-    case ChartEngine.BoundaryRegion:
-      return { engine: ChartEngine.BoundaryRegion, spec: entry.spec };
-    case ChartEngine.ParametricLine:
-      return { engine: ChartEngine.ParametricLine, spec: entry.spec };
-    case ChartEngine.BandScalar:
-      return { engine: ChartEngine.BandScalar, spec: entry.spec };
-    case ChartEngine.TimeSeriesLine:
-      return { engine: ChartEngine.TimeSeriesLine, spec: entry.spec };
-    case ChartEngine.Custom:
-      return { engine: ChartEngine.Custom, spec: entry.spec };
+  switch (entry.type) {
+    case ChartType.Dynamic:
+      return { type: ChartType.Dynamic, spec: entry.spec };
+    case ChartType.Adaptive:
+      return { type: ChartType.Adaptive, spec: entry.spec };
+    case ChartType.HeatLoss:
+      return { type: ChartType.HeatLoss, spec: entry.spec };
+    case ChartType.Set:
+      return { type: ChartType.Set, spec: entry.spec };
+    case ChartType.Utci:
+      return { type: ChartType.Utci, spec: entry.spec };
+    case ChartType.BodyTemperature:
+      return { type: ChartType.BodyTemperature, spec: entry.spec };
+    case ChartType.WaterLoss:
+      return { type: ChartType.WaterLoss, spec: entry.spec };
+    case ChartType.Psychrometric:
+      return { type: ChartType.Psychrometric, spec: entry.spec };
   }
 }
 
@@ -147,7 +151,7 @@ function createChartEngineRegistration<ResultType, ChartSourceType>(
 ): ChartEngineRegistration<ResultType, ChartSourceType> {
   return {
     instanceId: entry.id,
-    name: entry.name,
+    type: entry.type,
     emptyMessage: entry.emptyMessage,
     ...(entry.note ? { note: entry.note } : {}),
     ...(entry.supportedExploreOutputs
@@ -156,7 +160,7 @@ function createChartEngineRegistration<ResultType, ChartSourceType>(
     ...(entry.defaultExploreOutput
       ? { defaultExploreOutput: entry.defaultExploreOutput }
       : {}),
-    registration: toRegisteredChartEngineSpec(entry),
+    registration: toRegisteredChartBindSpec(entry),
   };
 }
 
@@ -165,18 +169,22 @@ function createChartInstanceDeclaration<ResultType, ChartSourceType>(
 ): ChartInstanceDeclaration {
   return {
     instanceId: entry.id,
-    engine: entry.engine,
-    name: entry.name,
+    type: entry.type,
     emptyMessage: entry.emptyMessage,
     ...(entry.note ? { note: entry.note } : {}),
-    ...(entry.type?.trim() ? { type: entry.type.trim() } : {}),
     ...(entry.capabilities
       ? {
           capabilities: resolveChartCapabilities(
-            entry.engine,
+            entry.type,
             entry.capabilities,
           ),
         }
+      : {}),
+    ...(entry.supportedExploreOutputs
+      ? { supportedExploreOutputs: [...entry.supportedExploreOutputs] }
+      : {}),
+    ...(entry.defaultExploreOutput
+      ? { defaultExploreOutput: entry.defaultExploreOutput }
       : {}),
   };
 }
@@ -285,9 +293,12 @@ export class ComfortModelBuilder<
 
   setSimulation(simulation: SimulationOutputDeclaration): this {
     for (const chart of simulation.charts) {
-      if (chart.engine !== ChartEngine.TimeSeriesLine) {
+      if (
+        chart.type !== ChartType.BodyTemperature
+        && chart.type !== ChartType.WaterLoss
+      ) {
         throw new Error(
-          `Simulation chart ${chart.id} must use ChartEngine.TimeSeriesLine.`,
+          `Simulation chart ${chart.id} must use ChartType.BodyTemperature or ChartType.WaterLoss.`,
         );
       }
     }
@@ -376,27 +387,20 @@ export class ComfortModelBuilder<
     entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
   ): void {
     if (
-      entry.engine === ChartEngine.Custom
-      && !modelAllowsCustomCharts(this.id)
+      entry.type === ChartType.Psychrometric
+      && !modelAllowsPsychrometricCharts(this.id)
     ) {
       throw new Error(
-        `Custom chart "${entry.id}" is not allowed. Custom is frontend-only for PMV psychrometric geometry.`,
-      );
-    }
-    const chartType = entry.type?.trim();
-    if (entry.type !== undefined && chartType === "") {
-      throw new Error(
-        `Chart "${entry.id}" has an empty type. Named chart types must be non-empty.`,
+        `Psychrometric chart "${entry.id}" is not allowed. Psychrometric is frontend-only for PMV geometry.`,
       );
     }
     if (
-      chartType
-      && this.registeredCharts.some(
-        ({ declaration }) => declaration.type === chartType,
+      this.registeredCharts.some(
+        ({ declaration }) => declaration.type === entry.type,
       )
     ) {
       throw new Error(
-        `Comfort model declarations cannot contain duplicate chart types (${chartType}).`,
+        `Comfort model declarations cannot contain duplicate chart types (${entry.type}).`,
       );
     }
     if (
@@ -493,7 +497,7 @@ export class ComfortModelBuilder<
 
     const registeredFields = this.registeredCharts.flatMap(
       ({ registration }) => {
-        if (registration.registration.engine !== ChartEngine.DynamicField) {
+        if (registration.registration.type !== ChartType.Dynamic) {
           return [];
         }
         return registration.registration.spec.axisFields;
@@ -725,12 +729,12 @@ export class ComfortModelBuilder<
     }
 
     for (const chart of chartInstances.entries) {
-      if (!chart.name.trim() || !chart.emptyMessage.trim()) {
-        throw new Error("Chart definitions require a name and empty message.");
+      if (!chart.emptyMessage.trim()) {
+        throw new Error("Chart definitions require an empty message.");
       }
 
       const capabilities =
-        chart.capabilities ?? resolveChartCapabilities(chart.engine);
+        chart.capabilities ?? resolveChartCapabilities(chart.type);
       if (capabilities.locksYAxis && !capabilities.allowsAxisSelection) {
         throw new Error("A locked Y axis requires an axis-selectable chart.");
       }
@@ -905,7 +909,7 @@ export class ComfortModelBuilder<
         );
         const showsLegend = chartEntry
           ? resolveChartCapabilities(
-              chartEntry.declaration.engine,
+              chartEntry.declaration.type,
               chartEntry.declaration.capabilities,
             ).showsLegend
           : false;
@@ -950,8 +954,8 @@ export class ComfortModelBuilder<
 
 /**
  * Complete model declaration assembled into a runtime model definition.
- * Charts are a data-only discriminated union over existing engines
- * (`ModelChartDeclaration`). Custom and Plotly `build` are forbidden.
+ * Charts are a data-only discriminated union over ChartType
+ * (`ModelChartDeclaration`). defineModel may only declare Dynamic.
  */
 export interface ModelDeclaration<
   ResultType,
@@ -992,9 +996,9 @@ function assertModelChartDeclarations<TResult>(
   charts: readonly ModelChartDeclaration<TResult>[],
 ): void {
   for (const chart of charts) {
-    if (!isModelChartEngine(chart.engine)) {
+    if (!isModelChartType(chart.type)) {
       throw new Error(
-        `defineModel chart "${chart.id}" uses engine "${String(chart.engine)}". defineModel cannot add ChartEngine members or declare Custom.`,
+        `defineModel chart "${chart.id}" uses type "${String(chart.type)}". defineModel can only declare Dynamic.`,
       );
     }
     if (specHasPlotlyBuild(chart.spec)) {
@@ -1002,9 +1006,9 @@ function assertModelChartDeclarations<TResult>(
         `defineModel chart "${chart.id}" must be data-only. defineModel cannot provide a Plotly build.`,
       );
     }
-    if (!modelChartSpecMatchesEngine(chart)) {
+    if (!modelChartSpecMatchesType(chart)) {
       throw new Error(
-        `defineModel chart "${chart.id}" spec does not match engine "${chart.engine}". Extended types cannot escape the ChartEngine spec union.`,
+        `defineModel chart "${chart.id}" spec does not match type "${chart.type}".`,
       );
     }
   }

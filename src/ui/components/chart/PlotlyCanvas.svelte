@@ -4,24 +4,26 @@
   import { onMount, tick } from "svelte";
 
   import {
+    assembleChart,
+    destroy,
+    loadPlotly,
+    prepareFigure,
+    type PlotlyModule,
+  } from "../../../charts";
+  import type { ChartPayload } from "../../../charts/types";
+  import {
     downloadPublicationChart,
     type ChartExportFormat,
     type PublicationExportHandler,
   } from "../../../engines/plotlyExport";
-  import {
-    toPlotlyFigure,
-    type PlotlyFigure,
-  } from "../../../engines/plotlyFigure";
-  import type { PlotlyChartSpec } from "../../../engines/plotlyTypes";
   import type { PublicationColumn } from "../../../engines/chartTheme";
 
   interface Props {
-    chartResult: PlotlyChartSpec | null;
+    chartResult: ChartPayload | null;
     isLoading: boolean;
     emptyMessage: string;
     heightClass?: string;
     showPlotTitle?: boolean;
-    showZones?: boolean;
     onRegisterExport?:
       | ((handler: PublicationExportHandler) => void)
       | undefined;
@@ -33,35 +35,8 @@
     emptyMessage,
     heightClass = "h-[420px]",
     showPlotTitle = false,
-    showZones = true,
     onRegisterExport = undefined,
   }: Props = $props();
-
-  interface PlotlyModule {
-    react: (
-      root: HTMLDivElement,
-      data: PlotlyFigure["data"],
-      layout: PlotlyFigure["layout"],
-      config: PlotlyFigure["config"],
-    ) => Promise<void>;
-    purge: (root: HTMLDivElement) => void;
-    toImage: (
-      figure: {
-        data: PlotlyFigure["data"];
-        layout: PlotlyFigure["layout"];
-        config: PlotlyFigure["config"];
-      },
-      options: {
-        format: ChartExportFormat;
-        width: number;
-        height: number;
-        scale: number;
-      },
-    ) => Promise<string>;
-    Plots?: {
-      resize: (root: HTMLDivElement) => Promise<void> | void;
-    };
-  }
 
   let chartElement = $state<HTMLDivElement | null>(null);
   let plotlyModule = $state<PlotlyModule | null>(null);
@@ -70,30 +45,10 @@
   let hasRenderedChart = $state(false);
   let chartError = $state("");
   let chartHeightStyle = $derived(
-    chartResult?.layout?.height && chartResult.layout.height > 0
-      ? `height: ${chartResult.layout.height}px;`
+    chartResult?.input.height && chartResult.input.height > 0
+      ? `height: ${chartResult.input.height}px;`
       : undefined,
   );
-
-  async function loadPlotly(): Promise<PlotlyModule> {
-    if (plotlyModule) {
-      return plotlyModule;
-    }
-    const importedModule = await import("plotly.js-dist-min");
-    const moduleCandidate: unknown = importedModule.default ?? importedModule;
-    plotlyModule = moduleCandidate as PlotlyModule;
-    return plotlyModule;
-  }
-
-  function chartWithVisibleZones(
-    chart: PlotlyChartSpec,
-  ): PlotlyChartSpec {
-    if (showZones) return chart;
-    return {
-      ...chart,
-      traces: chart.traces.filter((trace) => !trace.isBackgroundZone),
-    };
-  }
 
   async function exportChart(
     format: ChartExportFormat,
@@ -104,7 +59,7 @@
       const plotly = await loadPlotly();
       await downloadPublicationChart(
         plotly,
-        chartWithVisibleZones(chartResult),
+        chartResult,
         format,
         column,
       );
@@ -114,29 +69,30 @@
     }
   }
 
-  function backgroundSignature(traces: Array<{ type: string }>): string {
-    return (
-      traces
-        .filter((t) => t.type !== "scatter")
-        .map((t) => t.type)
-        .join(",")
-    );
+  function backgroundSignature(payload: ChartPayload): string {
+    const input = payload.input;
+    const fillCount = "fills" in input && input.fills ? input.fills.length : 0;
+    const seriesCount = "series" in input && input.series ? input.series.length : 0;
+    const curveCount = "curves" in input && input.curves ? input.curves.length : 0;
+    const regionCount = "regions" in input && input.regions ? input.regions.length : 0;
+    return `${payload.type}:${fillCount}:${seriesCount}:${curveCount}:${regionCount}`;
   }
 
   function classifyUpdate(
-    prev: { layout: { title: string }; traces: Array<{ type: string }> },
-    next: { layout: { title: string }; traces: Array<{ type: string }> },
+    prev: ChartPayload,
+    next: ChartPayload,
   ): "dot" | "background" | "full" {
-    if (prev.layout.title !== next.layout.title) return "full";
-    if (backgroundSignature(prev.traces) !== backgroundSignature(next.traces))
-      return "background";
+    if (prev.input.title !== next.input.title) return "full";
+    if (prev.type !== next.type) return "full";
+    if (backgroundSignature(prev) !== backgroundSignature(next)) return "background";
     return "dot";
   }
 
-  // WAAPI avoids Plotly transition flicker while retaining its final layout.
   async function animateDots(
-    plotly: NonNullable<typeof plotlyModule>,
-    figure: PlotlyFigure,
+    plotly: PlotlyModule,
+    data: unknown[],
+    layout: Record<string, unknown>,
+    config: Record<string, unknown>,
     durationMs: number,
   ): Promise<void> {
     if (!chartElement) return;
@@ -145,7 +101,7 @@
       chartElement.querySelectorAll<SVGPathElement>(".scatterlayer path.point"),
     ).map((el) => el.getBoundingClientRect());
 
-    await plotly.react(chartElement, figure.data, figure.layout, figure.config);
+    await plotly.react(chartElement, data, layout, config);
 
     if (firstRects.length === 0) return;
 
@@ -162,7 +118,6 @@
 
       if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) return;
 
-      // CSS translate composes with Plotly's transform-based marker positioning.
       el.animate([{ translate: `${dx}px ${dy}px` }, { translate: "0px 0px" }], {
         duration: durationMs,
         easing: "ease-in-out",
@@ -171,7 +126,7 @@
     });
   }
 
-  let prevChartResult: typeof chartResult | null = null;
+  let prevChartResult: ChartPayload | null = null;
 
   async function resizeRenderedChart() {
     if (!chartElement || !plotlyModule?.Plots || !hasRenderedChart) return;
@@ -186,7 +141,7 @@
     }
   }
 
-  async function renderChart() {
+  async function drawChart() {
     if (!chartResult) {
       hasRenderedChart = false;
       chartError = "";
@@ -198,32 +153,36 @@
 
     try {
       const plotly = await loadPlotly();
-      const chartPayload = chartWithVisibleZones(chartResult);
-      const figure = toPlotlyFigure(chartPayload, { showPlotTitle });
+      plotlyModule = plotly;
+      const assembled = assembleChart(chartResult);
+      const figure = prepareFigure(assembled);
+      const layout = showPlotTitle
+        ? figure.layout
+        : { ...figure.layout, title: undefined };
+      const config = {
+        responsive: true,
+        displaylogo: false,
+        displayModeBar: "hover" as const,
+      };
 
       if (hasRenderedChart && prevChartResult) {
         const updateType = classifyUpdate(prevChartResult, chartResult);
 
-        if (updateType === "dot") {
-          await animateDots(plotly, figure, 400);
-          prevChartResult = chartResult;
-          return;
-        }
-
-        if (updateType === "background") {
-          await animateDots(plotly, figure, 500);
+        if (updateType === "dot" || updateType === "background") {
+          await animateDots(
+            plotly,
+            figure.data,
+            layout,
+            config,
+            updateType === "dot" ? 400 : 500,
+          );
           prevChartResult = chartResult;
           return;
         }
       }
 
       chartError = "";
-      await plotly.react(
-        chartElement,
-        figure.data,
-        figure.layout,
-        figure.config,
-      );
+      await plotly.react(chartElement, figure.data, layout, config);
       hasRenderedChart = true;
       await resizeRenderedChart();
       prevChartResult = chartResult;
@@ -241,20 +200,19 @@
       });
       resizeObserver.observe(chartElement);
     }
-    void renderChart();
+    void drawChart();
     if (onRegisterExport) onRegisterExport(exportChart);
     return () => {
       resizeObserver?.disconnect();
       resizeObserver = null;
-      if (chartElement && plotlyModule) plotlyModule.purge(chartElement);
+      if (chartElement) void destroy(chartElement);
     };
   });
 
   $effect(() => {
     chartResult;
-    showZones;
     if (onRegisterExport) onRegisterExport(exportChart);
-    void renderChart();
+    void drawChart();
   });
 </script>
 

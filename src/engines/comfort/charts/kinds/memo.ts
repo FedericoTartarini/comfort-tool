@@ -15,6 +15,8 @@ export interface ChartBuildMemoKey {
   readonly chartSourceVersion: number;
   readonly profileKind: FieldChartProfile["kind"];
   readonly modelInputsHash: string;
+  /** Distinguishes chart-source flags that change figure geometry (e.g. psychtop). */
+  readonly sourceHash?: string;
 }
 
 export function hashModelInputs(
@@ -27,6 +29,13 @@ export function hashModelInputs(
 }
 
 const memoStore = new Map<string, ChartBuildResult>();
+
+export function hashChartSourceMemo(chartSource: unknown): string {
+  if (!chartSource || typeof chartSource !== "object") return "";
+  return (chartSource as { psychrometricTrEqualsTdb?: unknown }).psychrometricTrEqualsTdb === true
+    ? "psychtop"
+    : "";
+}
 
 export function hashBands(bands: readonly { min: number; max: number; label: string }[]): string {
   return bands.map((band) => `${band.min}:${band.max}:${band.label}`).join("|");
@@ -45,6 +54,7 @@ export function buildChartMemoKey(parts: ChartBuildMemoKey): string {
     parts.chartSourceVersion,
     parts.profileKind,
     parts.modelInputsHash,
+    parts.sourceHash ?? "",
   ].join("::");
 }
 
