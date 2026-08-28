@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function openModifierDialog(page: Page, visibleInputs: 1 | 3) {
-  await page.goto("/ASHRAE-55/");
+  await page.goto("/standard/ashrae-55/");
   if (visibleInputs === 3) {
     await page.getByRole("checkbox", { name: "Enable input comparison" })
       .setChecked(true, { force: true });

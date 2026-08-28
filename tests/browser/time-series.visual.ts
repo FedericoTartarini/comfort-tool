@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("calculates the PHS reference sequence automatically and preserves stale results", async ({ page }) => {
   await page.goto("/Time-Series/");
+  await expect(page).toHaveURL(/\/time-series\/phs-2023\/$/);
 
   await expect(page.getByRole("heading", { name: "Time-series" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Select time-series model" }))
@@ -48,6 +49,7 @@ test("calculates the PHS reference sequence automatically and preserves stale re
 
 test("supports uncapped ordered phases and draws synchronized boundaries", async ({ page }) => {
   await page.goto("/Time-Series/");
+  await expect(page).toHaveURL(/\/time-series\/phs-2023\/$/);
   await expect(page.getByTestId("time-series-status")).toHaveText("Ready");
   await page.getByText("Advanced person settings", { exact: true }).click();
   await expect(page.getByLabel("Body weight (kg)")).toBeVisible();

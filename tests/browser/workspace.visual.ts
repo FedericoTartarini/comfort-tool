@@ -49,20 +49,20 @@ async function expectDesktopChartHeaderRows(page: Page) {
 test.describe("workspace routing", () => {
   test("redirects and canonicalizes public URLs without losing query or hash", async ({ page }) => {
     await page.goto("/?source=test#inputs-panel");
-    await expect(page).toHaveURL(/\/ASHRAE-55\/\?source=test#inputs-panel$/);
+    await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/\?source=test#inputs-panel$/);
     await expect(page.getByRole("button", { name: "Select chart type and export" }))
       .toContainText("Psychrometric");
 
-    await page.goto("/ISO-7730?source=test#inputs-panel");
-    await expect(page).toHaveURL(/\/ISO-7730\/\?source=test#inputs-panel$/);
+    await page.goto("/STANDARD/ISO-7730?source=test#inputs-panel");
+    await expect(page).toHaveURL(/\/standard\/iso-7730\/pmv-iso\/\?source=test#inputs-panel$/);
   });
 
   test("uses fixed-first chart defaults on fresh calculation routes", async ({ page }) => {
     for (const [path, chartName] of [
-      ["/ASHRAE-55/", "Psychrometric"],
-      ["/ISO-7730/", "Psychrometric"],
-      ["/EN-16798-1/", "Adaptive"],
-      ["/ISO-7933/", "Body Temperature"],
+      ["/Standard/ASHRAE-55/", "Psychrometric"],
+      ["/Standard/ISO-7730/", "Psychrometric"],
+      ["/Standard/EN-16798-1/", "Adaptive"],
+      ["/Standard/ISO-7933/", "Body Temperature"],
       ["/Explore/", "Psychrometric"],
     ] as const) {
       await page.goto(path);
@@ -72,23 +72,23 @@ test.describe("workspace routing", () => {
   });
 
   test("coordinates workspace through browser history", async ({ page }) => {
-    await page.goto("/ASHRAE-55/");
+    await page.goto("/standard/ashrae-55/");
     await page.getByRole("link", { name: "Explore", exact: true }).click();
-    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Explore",
       { exact: true },
     )).toBeVisible();
 
     await page.goBack();
-    await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
+    await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
     )).toBeVisible();
 
     await page.goForward();
-    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Explore",
       { exact: true },
@@ -96,12 +96,13 @@ test.describe("workspace routing", () => {
   });
 
   test("keeps Compliance status and chart tools above a full-width caption", async ({ page }) => {
-    await page.goto("/ASHRAE-55/");
+    await page.goto("/standard/ashrae-55/");
     await expect(page.getByLabel("Your input: Compliant")).toBeVisible();
     await expectDesktopChartHeaderRows(page);
 
     const modelSelect = await chooseModel(page, "Adaptive (ASHRAE-55)");
     await expect(modelSelect).toHaveValue("Adaptive (ASHRAE-55)");
+    await expect(page).toHaveURL(/\/standard\/ashrae-55\/adaptive-ashrae\/$/);
     await expect(page.getByLabel("Your input: Compliant")).toBeVisible();
     await expectDesktopChartHeaderRows(page);
 
@@ -116,7 +117,7 @@ test.describe("workspace routing", () => {
   });
 
   test("derives exact model choices and forces the workspace route", async ({ page }) => {
-    await page.goto("/ASHRAE-55/");
+    await page.goto("/standard/ashrae-55/");
     const activeStandardLink = page.getByRole("link", { name: "ASHRAE 55", exact: true });
     await expect(activeStandardLink).toHaveAttribute("aria-current", "page");
     const standardToggle = page.getByRole("button", { name: "Standard", exact: true });
@@ -140,21 +141,21 @@ test.describe("workspace routing", () => {
     )).toBeVisible();
     await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
 
-    await page.goto("/ISO-7730/");
+    await page.goto("/standard/iso-7730/");
     await expectSingleModelSelector(page, "PMV (ISO 7730 Category B)");
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
     )).toBeVisible();
 
-    await page.goto("/EN-16798-1/");
+    await page.goto("/standard/en-16798-1/");
     await expectSingleModelSelector(page, "Adaptive (EN 16798-1)");
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
     )).toBeVisible();
 
-    await page.goto("/ISO-7933/");
+    await page.goto("/standard/iso-7933/");
     await expectSingleModelSelector(page, "PHS (ISO 7933:2023)");
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
@@ -210,17 +211,18 @@ test.describe("workspace routing", () => {
     await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
     await expect(windChillSelect).toHaveValue("Wind Chill");
+    await expect(page).toHaveURL(/\/explore\/wind-chill\/$/);
     await expect(chartTrigger).toContainText("Dynamic");
   });
 
   test("keeps dashboard state through leaf workspaces and hides unsupported export", async ({ page }) => {
-    await page.goto("/ASHRAE-55/?state=stale");
+    await page.goto("/standard/ashrae-55/?state=stale");
     const temperature = page.getByLabel("Input 1 Air temperature", { exact: true });
     await temperature.fill("24");
     await temperature.press("Enter");
 
     await page.getByRole("link", { name: "Explore", exact: true }).click();
-    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
     await expect(temperature).toHaveValue("24.0");
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Explore",
@@ -228,15 +230,18 @@ test.describe("workspace routing", () => {
     )).toBeVisible();
 
     await page.getByRole("link", { name: "Time-series", exact: true }).click();
-    await expect(page).toHaveURL(/\/Time-Series\/$/);
+    await expect(page).toHaveURL(/\/time-series\/phs-2023\/$/);
     await expect(page.getByRole("heading", { name: "Time-series" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Export Link" })).toBeHidden();
     await expect(page.getByRole("combobox", { name: "Select comfort model" })).toBeHidden();
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
-    await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
+    await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
     await expect(page.getByLabel("Input 1 Air temperature", { exact: true }))
       .toHaveValue("24.0");
+
+    await page.goto("/standard/ashrae-55/utci/");
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
 
     await page.goto("/does-not-exist/");
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
@@ -246,12 +251,12 @@ test.describe("workspace routing", () => {
 
   test("uses a mobile Drawer and closes it after navigation", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/ASHRAE-55/");
+    await page.goto("/standard/ashrae-55/");
     await page.getByRole("button", { name: "Open workspace navigation" }).click();
     const drawer = page.locator("#workspace-navigation-drawer");
     await expect(drawer).toBeVisible();
     await drawer.getByRole("link", { name: "Explore", exact: true }).click();
-    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
     await expect(drawer).toBeHidden();
 
     const summaryBox = await page.getByTestId("chart-profile-summary").boundingBox();
@@ -276,22 +281,46 @@ test.describe("workspace routing", () => {
     await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
     await expect(modelSelect).toHaveValue("Wind Chill");
+    await expect(page).toHaveURL(/\/explore\/wind-chill\/$/);
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
-    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(page).toHaveURL(/\/explore\/wind-chill\/$/);
     await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "No, stay here" }).click();
-    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(page).toHaveURL(/\/explore\/wind-chill\/$/);
     await expect(modelSelect).toHaveValue("Wind Chill");
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
     await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
-    await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
+    await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
     await expect(page.getByRole("combobox", { name: "Select comfort model" }))
       .toHaveValue("PMV (ASHRAE-55)");
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
     )).toBeVisible();
+  });
+
+  test("collapses the desktop workspace navigation to a left rail", async ({ page }) => {
+    await page.goto("/standard/ashrae-55/");
+    const rail = page.getByTestId("workspace-navigation-rail");
+    await expect(rail.getByRole("link", { name: "Explore", exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Collapse workspace navigation" }).click();
+    await expect.poll(() => rail.evaluate((element) => element.getBoundingClientRect().width))
+      .toBeLessThan(80);
+    await expect(rail.getByRole("link", { name: "Explore", exact: true })).toBeVisible();
+    await expect(rail.getByRole("link", { name: "Time-series", exact: true })).toBeVisible();
+    await expect(rail.getByRole("link", { name: "Standard", exact: true })).toBeVisible();
+
+    await rail.getByRole("link", { name: "Explore", exact: true }).click();
+    await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
+
+    await rail.getByRole("link", { name: "Standard", exact: true }).click();
+    await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
+
+    await page.getByRole("button", { name: "Expand workspace navigation" }).click();
+    await expect(rail.getByRole("link", { name: "Explore", exact: true })).toBeVisible();
+    await expect(rail.getByRole("button", { name: "Standard", exact: true })).toBeVisible();
   });
 });

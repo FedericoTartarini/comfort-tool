@@ -60,13 +60,13 @@ and ISO each register Heat Loss and SET chart instances.
 A declaration must not do any of the following. They are frontend catalog
 work, not “add a model” work:
 
-| Stop                                  | Why                                                                                                                                  |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| New ChartType (`ChartType` member) | Closed product set in `src/catalog/chartTypes.ts`. Do not add a ChartType from a declaration. |
-| New `primaryInputOrder` key           | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`).                    |
-| New modifier                          | Global catalogue, execution order, and share schema.                                                                                 |
-| New Time-series controller            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                  |
-| New SI unit dimension (`SiUnit`)      | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/engines/units/`; declarations only select known units. |
+| Stop                               | Why                                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| New ChartType (`ChartType` member) | Closed product set in `src/catalog/chartTypes.ts`. Do not add a ChartType from a declaration.                                              |
+| New `primaryInputOrder` key        | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`).                         |
+| New modifier                       | Global catalogue, execution order, and share schema.                                                                                       |
+| New Time-series controller         | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                        |
+| New SI unit dimension (`SiUnit`)   | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/engines/units/`; declarations only select known units. |
 
 Also forbidden in a declaration:
 
@@ -114,6 +114,10 @@ src/
     workspace/       route / model / mode coordination
   testSupport/       Compare helper; golden inputs/control counts from the registry
 ```
+
+Canonical Standard URLs are `/standard/{standard}/{model}/` (for example
+`/standard/ashrae-55/pmv-ashrae/`). Explore is `/explore/{model}/`. Time-series is
+`/time-series/{model}/`.
 
 Import lanes: `ui/views` → `ui/components`, `state`; `ui/components` → `state`,
 `catalog`, lightweight `engines`; `state` → `catalog`, `engines` (the

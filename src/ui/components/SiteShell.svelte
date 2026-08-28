@@ -3,7 +3,11 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { Button, Drawer } from "flowbite-svelte";
-  import { CloseOutline } from "flowbite-svelte-icons";
+  import {
+    CloseOutline,
+    IndentOutline,
+    OutdentOutline,
+  } from "flowbite-svelte-icons";
 
   import SiteFooter from "./SiteFooter.svelte";
   import SiteHeader from "./SiteHeader.svelte";
@@ -38,6 +42,19 @@
   }: Props = $props();
 
   let navigationDrawerHidden = $state(true);
+  let navigationCollapsed = $state(false);
+
+  const collapseButtonLabel = $derived(
+    navigationCollapsed
+      ? "Expand workspace navigation"
+      : "Collapse workspace navigation",
+  );
+  const railInnerClass = $derived(
+    navigationCollapsed ? "sticky top-0 px-2 py-4" : "sticky top-0 p-4",
+  );
+  const collapseRowClass = $derived(
+    navigationCollapsed ? "mb-2 flex justify-center" : "mb-2 flex justify-end",
+  );
 </script>
 
 <div class="flex min-h-screen flex-col bg-stone-950">
@@ -51,13 +68,38 @@
   />
 
   <div class="flex flex-1 bg-stone-50">
-    <div class="hidden w-60 shrink-0 border-r border-stone-200 bg-white lg:block">
-      <div class="sticky top-0 p-4">
+    <div
+      id="workspace-navigation"
+      data-testid="workspace-navigation-rail"
+      class="workspace-nav-rail relative z-20 hidden border-r border-stone-200 bg-white lg:block"
+      class:is-collapsed={navigationCollapsed}
+    >
+      <div class={railInnerClass}>
+        <div class={collapseRowClass}>
+          <Button
+            color="light"
+            size="xs"
+            class="p-2.5"
+            aria-label={collapseButtonLabel}
+            aria-expanded={!navigationCollapsed}
+            aria-controls="workspace-navigation"
+            onclick={() => {
+              navigationCollapsed = !navigationCollapsed;
+            }}
+          >
+            {#if navigationCollapsed}
+              <IndentOutline class="h-5 w-5" />
+            {:else}
+              <OutdentOutline class="h-5 w-5" />
+            {/if}
+          </Button>
+        </div>
         <WorkspaceSidebar
           {activePath}
           {standardItems}
           {exploreItem}
           {timeSeriesItem}
+          collapsed={navigationCollapsed}
         />
       </div>
     </div>
@@ -101,3 +143,15 @@
 
   <SiteFooter />
 </div>
+
+<style>
+  .workspace-nav-rail {
+    width: 15rem;
+    flex: 0 0 15rem;
+  }
+
+  .workspace-nav-rail.is-collapsed {
+    width: 4rem;
+    flex: 0 0 4rem;
+  }
+</style>

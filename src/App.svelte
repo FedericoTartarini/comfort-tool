@@ -25,7 +25,7 @@
   const timeSeriesState = createTimeSeriesState();
   const navigation = createWorkspaceNavigation(toolState, {
     navigate: navigateToUrl,
-  });
+  }, timeSeriesState);
   provideWorkspaceContext({ toolState, navigation, timeSeriesState });
 
   if (typeof window !== "undefined") {

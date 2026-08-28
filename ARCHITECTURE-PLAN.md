@@ -107,11 +107,11 @@ Rules:
 
 One chart catalog with three layers. Only one engine set exists.
 
-| Layer               | Who writes it     | What it is                                                                         |
-| ------------------- | ----------------- | ----------------------------------------------------------------------------------- |
-| Engine              | Frontend, closed  | How geometry is built (`DynamicField`, `BoundaryRegion`, …)                        |
-| Authoring chart     | File A (`charts`) | `{ id, type?, engine, spec }` — data spec for that engine, never a Plotly builder  |
-| Runtime projections | Builder-derived   | Chart instance presentation (no spec) + chart engine registration (engine + spec)  |
+| Layer               | Who writes it     | What it is                                                                        |
+| ------------------- | ----------------- | --------------------------------------------------------------------------------- |
+| Engine              | Frontend, closed  | How geometry is built (`DynamicField`, `BoundaryRegion`, …)                       |
+| Authoring chart     | File A (`charts`) | `{ id, type?, engine, spec }` — data spec for that engine, never a Plotly builder |
+| Runtime projections | Builder-derived   | Chart instance presentation (no spec) + chart engine registration (engine + spec) |
 
 The authoring entry is the single source. The builder derives both runtime
 projections from it; presentation instances do not carry engine spec, and
@@ -273,11 +273,11 @@ behind a runtime flag.
     → `state/timeSeries/` (pure declaration contracts stay)
   - `output/chartBuildResult.ts` and `output/simulationCharts.ts` (they
     carry `ChartPayload`) → `engines/`
-  `catalog/` must not import from `declarations/`, `engines/`, `state/`, or
-  `ui/`; an ESLint restriction covers this lane.
-  (The `tableLayouts.ts` → `tableTypes.ts` import detour through
-  `state/comfortTool/types` was removed in 3n; `tableTypes.ts` imports
-  `ResultCellViewModel` from `output/resultSections`.)
+    `catalog/` must not import from `declarations/`, `engines/`, `state/`, or
+    `ui/`; an ESLint restriction covers this lane.
+    (The `tableLayouts.ts` → `tableTypes.ts` import detour through
+    `state/comfortTool/types` was removed in 3n; `tableTypes.ts` imports
+    `ResultCellViewModel` from `output/resultSections`.)
 - `charts/` owns native Plotly recipes **and** reusable ChartType geometry
   (Psychrometric humidity/isolines today). `assemble.ts` only stacks traces.
   `src/charts/draw.ts` owns the clone boundary and theme application.
@@ -350,40 +350,44 @@ behind a runtime flag.
 - Wire values moved to kebab-case (`"PMV_ASHRAE"` → `"pmv-ashrae"`). That
   changed share-codec output and golden snapshots, so it landed as its own
   reviewed step with intentional snapshot regeneration — never mixed into a
-  symbol-rename diff. Route paths (`/ASHRAE-55/`) are route definitions, not
-  model wire ids, and are unaffected.
+  symbol-rename diff. Workspace path segments are `WorkspaceId` values
+  (`standard`, `explore`, `time-series`). Standard calculation routes are
+  `/standard/{standard}/{model}/` (`/standard/ashrae-55/pmv-ashrae/`).
+  Explore is `/explore/{model}/`. Time-series is `/time-series/{model}/`.
+  Mixed-case and workspace-only aliases replace-redirect to that lowercase
+  canonical path.
 - 3n migrated in small verified rounds, not a one-shot script: symbol renames
   first (compiler-guided), file renames second, folder moves last. Each round
   updated `eslint.config.js` path globs and the docs sentences it invalidated.
   Detailed sequencing:
   [docs/refactor-plan-3n.md](docs/refactor-plan-3n.md).
 
-| Today                                                     | Target                                                | Status    |
-| --------------------------------------------------------- | ----------------------------------------------------- | --------- |
-| `ComfortModel` / `PMV_ASHRAE`                             | `ModelId.PmvAshrae`, wire `"pmv-ashrae"`              | done (3n) |
-| `ChartKind` + `ChartInstanceId` tree                      | `ChartType` (closed) + declaration `charts[].id`      | done (3n; id tree deleted in 0c; ChartEngine removed) |
-| `TableLayout.CompareMatrix`                               | `TableType.Analysis`                                  | done (0t) |
-| `TableLayout.MetricSummary`                               | `TableType.TimeSeries`                                | done (0t) |
-| `WorkspaceCapability` clone                               | `WorkspaceId[]` on the declaration                    | done (3n) |
-| `createComfortToolState`                                  | `createAnalysisState`                                 | done (3n) |
-| `setOutputCharts` / `setOutputTable` / `setSimulation`    | `charts` + `tables` + optional PHS `simulation`       | done (0t/0a/3n) |
-| Authoring `outputCharts` / entry `instanceId` / `defaultChartInstanceId` | `charts` / entry `id` / `defaultChartId` (authoring only) | done (3n) |
-| Builder `setOutputCharts()`                               | `setCharts()` (maps `id` → runtime `instanceId`)      | done (3n) |
-| Runtime `outputCharts: ModelChartInstances` / `chartKindRegistrations` | `chartInstances` + bind registrations; entries keep `instanceId` | done (3n) |
-| `selectedChartInstanceId` (state + share wire key)        | **Keep** — no rename, no wire change                  | decided   |
-| `PlotlyChartResponseDto`                                  | `ChartPayload` + native Plotly in `src/charts/`       | done |
-| `*Dto` on app types                                       | Drop the suffix. Library boundary may keep `tdb`/`rh` | done (3n) |
-| `src/models/comfortDtos.ts` Plotly bags                   | Drop `*Dto`; Plotly-shaped types move beside the Plotly adapter (§5.2, §10) | done (3n) |
-| `src/comfortModels/presets/`                              | **Delete**                                            | done (0p) |
-| `src/models/output/chartInstances.ts` id tree             | **Delete**; derive from declarations                  | done (0c) |
-| `state/timeSeries/modelConfigs.ts` as a second model list | Same PHS declaration; controller stays separate       | done (0t) |
-| `src/models/` (whole layer)                               | `src/catalog/`                                        | done (3n) |
-| `src/comfortModels/`                                      | `src/declarations/`                                   | done (3n) |
-| `src/services/` (whole layer)                             | `src/engines/`                                        | done (3n) |
-| `src/components/` + `src/routes/` + `src/views/`          | `src/ui/`                                             | done (3n) |
-| `services/comfort/charts/chartEngine.ts`                  | `fieldChartEngine.ts` (frees the `ChartEngine` name)  | done (3n) |
-| Chart declaration `kind:` / `engine:` discriminant        | `type: ChartType`                                     | done |
-| `PhysicalQuantityId`                                      | **Keep** — no rename                                  | decided   |
+| Today                                                                    | Target                                                                      | Status                                                |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `ComfortModel` / `PMV_ASHRAE`                                            | `ModelId.PmvAshrae`, wire `"pmv-ashrae"`                                    | done (3n)                                             |
+| `ChartKind` + `ChartInstanceId` tree                                     | `ChartType` (closed) + declaration `charts[].id`                            | done (3n; id tree deleted in 0c; ChartEngine removed) |
+| `TableLayout.CompareMatrix`                                              | `TableType.Analysis`                                                        | done (0t)                                             |
+| `TableLayout.MetricSummary`                                              | `TableType.TimeSeries`                                                      | done (0t)                                             |
+| `WorkspaceCapability` clone                                              | `WorkspaceId[]` on the declaration                                          | done (3n)                                             |
+| `createComfortToolState`                                                 | `createAnalysisState`                                                       | done (3n)                                             |
+| `setOutputCharts` / `setOutputTable` / `setSimulation`                   | `charts` + `tables` + optional PHS `simulation`                             | done (0t/0a/3n)                                       |
+| Authoring `outputCharts` / entry `instanceId` / `defaultChartInstanceId` | `charts` / entry `id` / `defaultChartId` (authoring only)                   | done (3n)                                             |
+| Builder `setOutputCharts()`                                              | `setCharts()` (maps `id` → runtime `instanceId`)                            | done (3n)                                             |
+| Runtime `outputCharts: ModelChartInstances` / `chartKindRegistrations`   | `chartInstances` + bind registrations; entries keep `instanceId`            | done (3n)                                             |
+| `selectedChartInstanceId` (state + share wire key)                       | **Keep** — no rename, no wire change                                        | decided                                               |
+| `PlotlyChartResponseDto`                                                 | `ChartPayload` + native Plotly in `src/charts/`                             | done                                                  |
+| `*Dto` on app types                                                      | Drop the suffix. Library boundary may keep `tdb`/`rh`                       | done (3n)                                             |
+| `src/models/comfortDtos.ts` Plotly bags                                  | Drop `*Dto`; Plotly-shaped types move beside the Plotly adapter (§5.2, §10) | done (3n)                                             |
+| `src/comfortModels/presets/`                                             | **Delete**                                                                  | done (0p)                                             |
+| `src/models/output/chartInstances.ts` id tree                            | **Delete**; derive from declarations                                        | done (0c)                                             |
+| `state/timeSeries/modelConfigs.ts` as a second model list                | Same PHS declaration; controller stays separate                             | done (0t)                                             |
+| `src/models/` (whole layer)                                              | `src/catalog/`                                                              | done (3n)                                             |
+| `src/comfortModels/`                                                     | `src/declarations/`                                                         | done (3n)                                             |
+| `src/services/` (whole layer)                                            | `src/engines/`                                                              | done (3n)                                             |
+| `src/components/` + `src/routes/` + `src/views/`                         | `src/ui/`                                                                   | done (3n)                                             |
+| `services/comfort/charts/chartEngine.ts`                                 | `fieldChartEngine.ts` (frees the `ChartEngine` name)                        | done (3n)                                             |
+| Chart declaration `kind:` / `engine:` discriminant                       | `type: ChartType`                                                           | done                                                  |
+| `PhysicalQuantityId`                                                     | **Keep** — no rename                                                        | decided                                               |
 
 Components, charts, and controllers still must not branch on model id.
 
@@ -428,16 +432,16 @@ application, zone palette remapping, and the clone boundary. Hover uses
 Plotly `customdata`. There is one renderer and no product requirement to
 swap it.
 
-| ChartType          | Recipe                                                          |
-| ------------------ | --------------------------------------------------------------- |
-| Dynamic            | contour + markers                                               |
-| Psychrometric      | optional grid + mask + curves + zone polygons + markers (PMV). Isoline geometry is in `src/charts/psychrometric/`; assemble only stacks traces. |
-| Heat Loss          | multi scatter lines, single y-axis                              |
-| SET                | multi scatter lines, y-axis + yaxis2                            |
-| Adaptive           | region polygons + markers                                       |
-| UTCI               | 1-D filled bands along x + markers                              |
-| Body Temperature   | time-series lines + limits + vertical boundaries                |
-| Water Loss         | time-series lines + limits + vertical boundaries                |
+| ChartType        | Recipe                                                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dynamic          | contour + markers                                                                                                                               |
+| Psychrometric    | optional grid + mask + curves + zone polygons + markers (PMV). Isoline geometry is in `src/charts/psychrometric/`; assemble only stacks traces. |
+| Heat Loss        | multi scatter lines, single y-axis                                                                                                              |
+| SET              | multi scatter lines, y-axis + yaxis2                                                                                                            |
+| Adaptive         | region polygons + markers                                                                                                                       |
+| UTCI             | 1-D filled bands along x + markers                                                                                                              |
+| Body Temperature | time-series lines + limits + vertical boundaries                                                                                                |
+| Water Loss       | time-series lines + limits + vertical boundaries                                                                                                |
 
 NaN-to-gap belongs on `z` (or equivalent), not a full-document JSON clone.
 Clone only what Plotly mutates.
@@ -466,15 +470,15 @@ are allowed.
 
 ### Phase 0 — Registries and authoring
 
-| ID  | Work                    | Done when                                                                                                                                                                                       |
-| --- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0c  | One chart catalog       | `ChartInstanceId` tree deleted. Instance ids derived from declarations. Heat Index / Humidex maps are `Dynamic`. Uniqueness tests pass.                                                        |
-| 0q  | Quantity contributions  | System seed vs `quantities.extend`. PHS weight/height move to the PHS declaration. Assemble tests prove one catalog.                                                                            |
-| 0t  | `tables` API            | `TableType.Analysis` / `TimeSeries`. Every Analysis model has `tables.analysis`. PHS declares TimeSeries table.                                                                                 |
-| 0p  | Delete preset authoring | Preset factories gone. Heat Index, Humidex, Wind Chill are full `defineModel` declarations. Shared grid helpers remain.                                                                         |
-| 0b  | Sparse share            | Missing known keys seed. Unknown keys rejected. Test a snapshot that omits a registered model.                                                                                                  |
+| ID  | Work                    | Done when                                                                                                                                                                                          |
+| --- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0c  | One chart catalog       | `ChartInstanceId` tree deleted. Instance ids derived from declarations. Heat Index / Humidex maps are `Dynamic`. Uniqueness tests pass.                                                            |
+| 0q  | Quantity contributions  | System seed vs `quantities.extend`. PHS weight/height move to the PHS declaration. Assemble tests prove one catalog.                                                                               |
+| 0t  | `tables` API            | `TableType.Analysis` / `TimeSeries`. Every Analysis model has `tables.analysis`. PHS declares TimeSeries table.                                                                                    |
+| 0p  | Delete preset authoring | Preset factories gone. Heat Index, Humidex, Wind Chill are full `defineModel` declarations. Shared grid helpers remain.                                                                            |
+| 0b  | Sparse share            | Missing known keys seed. Unknown keys rejected. Test a snapshot that omits a registered model.                                                                                                     |
 | 0d  | One authoring doc       | `docs/adding-a-model.md`: copy `heatIndex.ts`, add `ModelId`, register once. Hard stops: new ChartType, new primary, new modifier, new TS controller. Replace the two current adding-a-model docs. |
-| 0e  | Compare helper          | `assertCompareContract`: 1/2/3 inputs, table columns filled, chart markers, baseline change does not invalidate a ready cache.                                                                  |
+| 0e  | Compare helper          | `assertCompareContract`: 1/2/3 inputs, table columns filled, chart markers, baseline change does not invalidate a ready cache.                                                                     |
 
 ### Phase 0′ — Chart data (may overlap Phase 0)
 
@@ -513,12 +517,12 @@ Local discomfort is not a Phase 1 table type.
 
 ### Phase 3 — Polish (does not block index models)
 
-| ID  | Work                                                                  |
-| --- | --------------------------------------------------------------------- |
-| 3a  | Optional `validate:model` on assembled catalogs                       |
-| 3b  | Golden inputs / control counts derived from the registry where honest |
-| 3c  | Input-panel view models (same projection style as chart controls)     |
-| 3d  | All quantity conversion through the assembled catalog (depends on 0q) |
+| ID  | Work                                                                                                                                               |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3a  | Optional `validate:model` on assembled catalogs                                                                                                    |
+| 3b  | Golden inputs / control counts derived from the registry where honest                                                                              |
+| 3c  | Input-panel view models (same projection style as chart controls)                                                                                  |
+| 3d  | All quantity conversion through the assembled catalog (depends on 0q)                                                                              |
 | 3n  | Finish tree/name migration in §4 if anything still uses old paths. Execution plan: [docs/refactor-plan-3n.md](docs/refactor-plan-3n.md). **Done.** |
 
 ### Phase 4 — CBE tools (features, not model architecture)
@@ -541,13 +545,13 @@ Phase 3–4
     → remaining polish, tooling, CBE accessories
 ```
 
-| Action                                                                     | Earliest                |
-| -------------------------------------------------------------------------- | ----------------------- |
-| Heat Index–class model (built-in quantities, existing engines)             | After Phase 0 and 0′    |
-| Model with `quantities.extend` or a chart semantic tag (`type?`) on an existing engine | After Phase 0 and 0′ |
-| PHS-family TimeSeries table                                                | Already PHS; keep gated |
-| New ChartType, new primary, new modifier, new TS controller                | Frontend first          |
-| Globe / local discomfort / CSV                                             | Phase 4                 |
+| Action                                                                                 | Earliest                |
+| -------------------------------------------------------------------------------------- | ----------------------- |
+| Heat Index–class model (built-in quantities, existing engines)                         | After Phase 0 and 0′    |
+| Model with `quantities.extend` or a chart semantic tag (`type?`) on an existing engine | After Phase 0 and 0′    |
+| PHS-family TimeSeries table                                                            | Already PHS; keep gated |
+| New ChartType, new primary, new modifier, new TS controller                            | Frontend first          |
+| Globe / local discomfort / CSV                                                         | Phase 4                 |
 
 ## 9. Out of scope
 
@@ -563,31 +567,31 @@ Phase 3–4
 
 ## 10. Module map (current → target)
 
-| Current                                         | Phase  | Change                                                              |
-| ----------------------------------------------- | ------ | ------------------------------------------------------------------- |
-| `src/comfortModels/presets/`                    | done (0p) | Delete as authoring API                                          |
-| `src/models/output/chartInstances.ts`           | done (0c) | Delete id tree; derive from declarations                         |
-| `src/models/physicalQuantities.ts`              | done (0q, 3n) | System seed only; model quantities move to declarations      |
-| `src/models/output/tableLayouts.ts`             | done (0t, 3n) | Become `TableType.Analysis` / `TimeSeries`                   |
-| `src/models/output/workspaceCapabilities.ts`    | done (3n) | Fold into `WorkspaceId`                                          |
-| `src/state/comfortTool/`                        | done (3n) | `src/state/analysis/`                                            |
-| `src/state/comfortTool/shareState.ts`           | done (0b) | Sparse codec                                                     |
-| `src/state/comfortTool/modelConfigs/builder.ts` | done (0p, 0a) | `defineModel` + discriminated chart spec                     |
-| `src/state/timeSeries/modelConfigs.ts`          | done (0t) | Stop being a second product registry; read PHS declaration       |
-| `docs/adding-a-model.md`                        | done (0d) | Single authoring guide (replaced the two prior adding-a-model docs) |
-| `src/services/comfort/charts/kinds/`            | done (0f, 1a) | Slim geometry; implement ParametricLine                      |
-| `src/services/plotlyFigure.ts`                  | done (0g) | Clone boundary now `src/charts/draw.ts`                          |
-| `src/comfortModels/utci/`                       | done (0f) | Drop 450² Dynamic grid                                           |
-| `src/components/chart/PlotlyCanvas.svelte`      | 0h, 2a | Export from a dedicated figure (0h done; 2a extra widths)           |
-| `src/models/` (whole layer)                     | done (3n) | `src/catalog/`; four seed files lift to the catalog root         |
-| `src/comfortModels/`                            | done (3n) | `src/declarations/`                                              |
-| `src/services/` (whole layer)                   | done (3n) | `src/engines/` (theme, native Plotly, export included)           |
-| `src/components/`, `src/routes/`, `src/views/`  | done (3n) | `src/ui/` subfolders                                             |
-| `src/models/comfortDtos.ts`                     | done (3n) | Drop `*Dto`; native Plotly recipes live in `src/charts/` |
-| `src/services/comfort/charts/chartEngine.ts`    | done (3n) | `fieldChartEngine.ts` (frees the `ChartEngine` name)             |
-| `src/models/output/chartBuildResult.ts`, `simulationCharts.ts` | done (3n) | Move to engines side (they carry `ChartPayload`)        |
-| `src/models/timeSeries.ts`                      | done (3n) | View-model builders and Plotly-typed view models → `state/timeSeries/` |
-| `src/models/siteShellConfig.ts`                 | done (3n) | Move to `ui/` (site content, not domain metadata)                |
+| Current                                                        | Phase         | Change                                                                 |
+| -------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------- |
+| `src/comfortModels/presets/`                                   | done (0p)     | Delete as authoring API                                                |
+| `src/models/output/chartInstances.ts`                          | done (0c)     | Delete id tree; derive from declarations                               |
+| `src/models/physicalQuantities.ts`                             | done (0q, 3n) | System seed only; model quantities move to declarations                |
+| `src/models/output/tableLayouts.ts`                            | done (0t, 3n) | Become `TableType.Analysis` / `TimeSeries`                             |
+| `src/models/output/workspaceCapabilities.ts`                   | done (3n)     | Fold into `WorkspaceId`                                                |
+| `src/state/comfortTool/`                                       | done (3n)     | `src/state/analysis/`                                                  |
+| `src/state/comfortTool/shareState.ts`                          | done (0b)     | Sparse codec                                                           |
+| `src/state/comfortTool/modelConfigs/builder.ts`                | done (0p, 0a) | `defineModel` + discriminated chart spec                               |
+| `src/state/timeSeries/modelConfigs.ts`                         | done (0t)     | Stop being a second product registry; read PHS declaration             |
+| `docs/adding-a-model.md`                                       | done (0d)     | Single authoring guide (replaced the two prior adding-a-model docs)    |
+| `src/services/comfort/charts/kinds/`                           | done (0f, 1a) | Slim geometry; implement ParametricLine                                |
+| `src/services/plotlyFigure.ts`                                 | done (0g)     | Clone boundary now `src/charts/draw.ts`                                |
+| `src/comfortModels/utci/`                                      | done (0f)     | Drop 450² Dynamic grid                                                 |
+| `src/components/chart/PlotlyCanvas.svelte`                     | 0h, 2a        | Export from a dedicated figure (0h done; 2a extra widths)              |
+| `src/models/` (whole layer)                                    | done (3n)     | `src/catalog/`; four seed files lift to the catalog root               |
+| `src/comfortModels/`                                           | done (3n)     | `src/declarations/`                                                    |
+| `src/services/` (whole layer)                                  | done (3n)     | `src/engines/` (theme, native Plotly, export included)                 |
+| `src/components/`, `src/routes/`, `src/views/`                 | done (3n)     | `src/ui/` subfolders                                                   |
+| `src/models/comfortDtos.ts`                                    | done (3n)     | Drop `*Dto`; native Plotly recipes live in `src/charts/`               |
+| `src/services/comfort/charts/chartEngine.ts`                   | done (3n)     | `fieldChartEngine.ts` (frees the `ChartEngine` name)                   |
+| `src/models/output/chartBuildResult.ts`, `simulationCharts.ts` | done (3n)     | Move to engines side (they carry `ChartPayload`)                       |
+| `src/models/timeSeries.ts`                                     | done (3n)     | View-model builders and Plotly-typed view models → `state/timeSeries/` |
+| `src/models/siteShellConfig.ts`                                | done (3n)     | Move to `ui/` (site content, not domain metadata)                      |
 
 **Do not casually rewrite:** Compare UI layout, calculation scheduling vs
 presentation rebuild, Time-series controller lifetime. Control widgets stay
@@ -595,17 +599,17 @@ generic; their unit conversion must start reading the quantity catalog (0q/3d).
 
 ## 11. Success criteria
 
-| Lens         | Criterion                                                                                            |
-| ------------ | ---------------------------------------------------------------------------------------------------- |
-| Declaration  | File A selects built-ins and can contribute extended quantities, chart semantic tags (`type?`), and table forms. |
+| Lens         | Criterion                                                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Declaration  | File A selects built-ins and can contribute extended quantities, chart semantic tags (`type?`), and table forms.                               |
 | Registries   | One quantity catalog, one chart catalog (closed ChartTypes + declaration chart entries), one table-type catalog. Assemble fails on collisions. |
-| Authoring    | Copy `heatIndex.ts`; add `ModelId`; register once. No preset factory. Compare helper green.          |
-| Compare      | Every Analysis model runs the helper; three inputs do not fail silently.                             |
-| CBE Analysis | PMV: psychrometric + heat-loss + SET curves + SET/CE rows. Adaptive boundary remains.                |
-| Interaction  | Dynamic 2-D path does not stringify a 450² figure.                                                   |
-| Publication  | Width and DPI chosen; Compare’s three points stay distinct; export is not a DOM screenshot.          |
-| UI           | No model names in `src/ui`. No `spec: unknown` on the ChartType path.                    |
-| Share        | Adding a model does not require every URL to include that model key.                                 |
+| Authoring    | Copy `heatIndex.ts`; add `ModelId`; register once. No preset factory. Compare helper green.                                                    |
+| Compare      | Every Analysis model runs the helper; three inputs do not fail silently.                                                                       |
+| CBE Analysis | PMV: psychrometric + heat-loss + SET curves + SET/CE rows. Adaptive boundary remains.                                                          |
+| Interaction  | Dynamic 2-D path does not stringify a 450² figure.                                                                                             |
+| Publication  | Width and DPI chosen; Compare’s three points stay distinct; export is not a DOM screenshot.                                                    |
+| UI           | No model names in `src/ui`. No `spec: unknown` on the ChartType path.                                                                          |
+| Share        | Adding a model does not require every URL to include that model key.                                                                           |
 
 ## 12. Summary
 

@@ -303,8 +303,8 @@ async function openTargetPmvChart(
     workspace === "explore"
       ? "/Explore/"
       : model === "iso"
-        ? "/ISO-7730/"
-        : "/ASHRAE-55/";
+        ? "/standard/iso-7730/"
+        : "/standard/ashrae-55/";
   await page.goto(pathname);
   await selectModel(page, model);
 
@@ -472,7 +472,7 @@ test.describe("PMV visual regression", () => {
     await expect(panel).toHaveScreenshot("pmv-ashrae-compliance-panel.png");
 
     await page.getByRole("link", { name: "Explore", exact: true }).click();
-    await expect(page).toHaveURL(/\/Explore\/$/);
+    await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
     await expect(panel.getByText("Explore", { exact: true })).toBeVisible();
     await expect(
       panel.getByText(
@@ -536,7 +536,7 @@ test.describe("PMV visual regression", () => {
     );
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
-    await expect(page).toHaveURL(/\/ASHRAE-55\/$/);
+    await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
     await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Select chart output" }),

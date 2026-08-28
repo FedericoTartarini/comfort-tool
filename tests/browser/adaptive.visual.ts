@@ -80,7 +80,7 @@ async function openAdaptiveChart(
     useIpUnits = false,
   } = options;
 
-  await page.goto(model === "en" ? "/EN-16798-1/" : "/ASHRAE-55/");
+  await page.goto(model === "en" ? "/standard/en-16798-1/" : "/standard/ashrae-55/");
   await selectModel(page, model);
   await page.getByRole("checkbox", { name: "Enable input comparison" }).setChecked(false);
   const unitToggle = page.getByRole("checkbox", { name: "Use IP units" });

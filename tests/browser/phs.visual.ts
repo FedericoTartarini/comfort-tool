@@ -29,7 +29,7 @@ async function traceNames(plot: Locator) {
 }
 
 test("PHS Standard defaults to locked exposure history and retains Dynamic", async ({ page }) => {
-  await page.goto("/ISO-7933/");
+  await page.goto("/standard/iso-7933/");
   const plot = page.getByTestId("comfort-chart-plot");
   const chartTrigger = page.getByRole("button", {
     name: "Select chart type and export",

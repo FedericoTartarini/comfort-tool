@@ -50,6 +50,8 @@ src/
   testSupport/             Compare helper; golden inputs/control counts from the registry
 ```
 
+Canonical Standard URLs are `/standard/{standard}/{model}/` (for example `/standard/ashrae-55/pmv-ashrae/`). Explore is `/explore/{model}/`. Time-series is `/time-series/{model}/`. Mixed-case and workspace-only aliases replace-redirect to that path.
+
 Key entrypoints:
 
 ```text
@@ -290,7 +292,7 @@ A change in this frontend is done when:
 
 ## Output Registry
 
-Workspace membership is `WorkspaceId` in `src/catalog/workspaces.ts` (Standard, Explore, Time-series). Closed chart types live in `src/catalog/chartTypes.ts` (`ChartType`, dropdown labels, capability defaults). Table types live in `src/catalog/tableTypes.ts` (`TableType.Analysis` / `TimeSeries`). Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`. Native Plotly recipes live in `src/charts/`. Chart ids are derived from `charts` on each model declaration. ASHRAE and ISO PMV register Heat Loss and SET instances. Field-chart profile metadata lives under `src/catalog/output/`:
+Workspace membership is `WorkspaceId` in `src/catalog/workspaces.ts` (Standard, Explore, Time-series). Canonical app URLs are lowercase kebab-case. Standard calculation routes are `/standard/{standard}/{model}/` (for example `/standard/ashrae-55/pmv-ashrae/`). Explore is `/explore/{model}/`. Time-series is `/time-series/{model}/`. Mixed-case and workspace-only aliases replace-redirect to that path. Closed chart types live in `src/catalog/chartTypes.ts` (`ChartType`, dropdown labels, capability defaults). Table types live in `src/catalog/tableTypes.ts` (`TableType.Analysis` / `TimeSeries`). Every Analysis model declares `tables.analysis`. PHS also declares `tables.timeSeries`. Native Plotly recipes live in `src/charts/`. Chart ids are derived from `charts` on each model declaration. ASHRAE and ISO PMV register Heat Loss and SET instances. Field-chart profile metadata lives under `src/catalog/output/`:
 
 - `fieldChartProfile.ts` — shared Compliance/Explore field-chart profile inputs
 

@@ -63,6 +63,8 @@ src/
   App.svelte        root component
 ```
 
+Canonical Standard URLs are `/standard/{standard}/{model}/` (for example `/standard/ashrae-55/pmv-ashrae/`). Explore is `/explore/{model}/`. Time-series is `/time-series/{model}/`. Mixed-case and workspace-only aliases replace-redirect to that path.
+
 ## Architecture Rules
 
 **Import direction** — keep cross-layer imports constrained to these lanes:

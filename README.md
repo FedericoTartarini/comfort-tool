@@ -12,9 +12,11 @@ The app is organized into three workspaces, each with its own route and controll
 
 | Workspace       | Route                                                     | Purpose                                                                                         |
 | --------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Standard**    | `/ASHRAE-55/`, `/ISO-7730/`, `/EN-16798-1/`, `/ISO-7933/` | Compliance-oriented field charts with fixed bands, captions, and pass/fail feedback             |
-| **Explore**     | `/Explore/`                                               | Interactive field charts with selectable axes, editable bands, and multiple outputs per model   |
-| **Time-series** | `/Time-Series/`                                           | Segment-based exposure simulation (currently PHS) with rectal-temperature and water-loss charts |
+| **Standard**    | `/standard/{standard}/{model}/`                           | Compliance-oriented field charts with fixed bands, captions, and pass/fail feedback             |
+| **Explore**     | `/explore/{model}/`                                       | Interactive field charts with selectable axes, editable bands, and multiple outputs per model   |
+| **Time-series** | `/time-series/{model}/`                                   | Segment-based exposure simulation (currently PHS) with rectal-temperature and water-loss charts |
+
+`{standard}` is a `StandardId` (`ashrae-55`, `iso-7730`, `en-16798-1`, `iso-7933`); `{model}` is a `ModelId`.
 
 Across Analysis workspaces:
 

@@ -1,12 +1,17 @@
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
+import { WorkspaceId } from "../../catalog/workspaces";
 import {
+  buildCalculationPath,
+  buildCanonicalPathname,
   getAllowedModels,
-  getAppRouteByPath,
   isCalculationRoute,
+  parseAppLocation,
   type AppRouteDefinition,
 } from "./routeDefinitions";
 import { readShareStateFromUrl } from "../analysis/shareState";
 import type { AnalysisController } from "../analysis/types";
+import type { TimeSeriesController } from "../timeSeries/types";
+import type { TimeSeriesModelId } from "../timeSeries/modelConfigs";
 
 export interface WorkspaceNavigationTarget {
   readonly url: URL;
@@ -25,6 +30,7 @@ interface PendingWorkspaceTransition {
 export interface WorkspaceNavigationCoordinator {
   prepareUrl: (url: URL, options?: { validateRanges?: boolean }) => boolean;
   afterNavigation: (url: URL) => void;
+  getCanonicalPathname: (url: URL) => string | undefined;
   selectModel: (
     definition: AppRouteDefinition,
     modelId: ModelIdType,
@@ -33,17 +39,45 @@ export interface WorkspaceNavigationCoordinator {
   cancelPendingTransition: () => void;
 }
 
+const SHARE_STATE_QUERY_PARAM = "state";
+
 function navigationKey(url: URL): string {
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function urlForModelPath(pathname: string): URL {
+  const href = typeof window !== "undefined" ? window.location.href : "http://localhost/";
+  const url = new URL(href);
+  url.pathname = pathname;
+  url.searchParams.delete(SHARE_STATE_QUERY_PARAM);
+  return url;
 }
 
 export function createWorkspaceNavigation(
   toolState: AnalysisController,
   port: WorkspaceNavigationPort,
+  timeSeries?: TimeSeriesController,
 ): WorkspaceNavigationCoordinator {
   let pendingTransition: PendingWorkspaceTransition | null = null;
   let lastAppliedShareKey: string | null = null;
   let forceCalculationKey: string | null = null;
+
+  function applyTimeSeriesRoute(definition: AppRouteDefinition, url: URL): boolean {
+    if (!timeSeries || !definition.defaultModelId) {
+      return true;
+    }
+
+    const allowedModels = getAllowedModels(definition);
+    const pathModelId = parseAppLocation(url.pathname)?.modelId;
+    const selectedModel = timeSeries.state.selectedModel;
+    const targetModel = pathModelId && allowedModels.includes(pathModelId)
+      ? pathModelId
+      : allowedModels.includes(selectedModel)
+        ? selectedModel
+        : definition.defaultModelId;
+    timeSeries.actions.selectModel(targetModel as TimeSeriesModelId);
+    return true;
+  }
 
   function reconcileCalculationRoute(
     definition: AppRouteDefinition,
@@ -55,7 +89,9 @@ export function createWorkspaceNavigation(
     }
 
     const shareSnapshot = readShareStateFromUrl(url);
-    const shareKey = url.searchParams.has("state") ? navigationKey(url) : null;
+    const shareKey = url.searchParams.has(SHARE_STATE_QUERY_PARAM)
+      ? navigationKey(url)
+      : null;
     const shouldApplySnapshot = Boolean(
       shareSnapshot && shareKey && shareKey !== lastAppliedShareKey,
     );
@@ -69,10 +105,13 @@ export function createWorkspaceNavigation(
     }
 
     const allowedModels = getAllowedModels(definition);
+    const pathModelId = parseAppLocation(url.pathname)?.modelId;
     const selectedModel = toolState.state.ui.selectedModel;
-    const targetModel = allowedModels.includes(selectedModel)
-      ? selectedModel
-      : definition.defaultModelId;
+    const targetModel = pathModelId && allowedModels.includes(pathModelId)
+      ? pathModelId
+      : allowedModels.includes(selectedModel)
+        ? selectedModel
+        : definition.defaultModelId;
 
     toolState.actions.setSelectedModel(targetModel, {
       validateRanges: !shouldApplySnapshot && options?.validateRanges !== false,
@@ -97,17 +136,21 @@ export function createWorkspaceNavigation(
       return false;
     }
 
-    const definition = getAppRouteByPath(url.pathname);
-    if (!definition) {
+    const parsed = parseAppLocation(url.pathname);
+    if (!parsed) {
       lastAppliedShareKey = null;
       return true;
     }
 
-    return reconcileCalculationRoute(definition, url, options);
+    if (parsed.definition.workspace === WorkspaceId.TimeSeries) {
+      return applyTimeSeriesRoute(parsed.definition, url);
+    }
+
+    return reconcileCalculationRoute(parsed.definition, url, options);
   }
 
   function afterNavigation(url: URL) {
-    const definition = getAppRouteByPath(url.pathname);
+    const definition = parseAppLocation(url.pathname)?.definition;
     if (!isCalculationRoute(definition)) {
       return;
     }
@@ -120,11 +163,22 @@ export function createWorkspaceNavigation(
     toolState.actions.scheduleCalculation({ immediate: true, force });
   }
 
+  function getCanonicalPathname(url: URL): string | undefined {
+    const parsed = parseAppLocation(url.pathname);
+    const selectedModel = parsed?.definition.workspace === WorkspaceId.TimeSeries
+      ? timeSeries?.state.selectedModel ?? parsed.definition.defaultModelId
+      : toolState.state.ui.selectedModel;
+    if (!selectedModel) {
+      return undefined;
+    }
+    return buildCanonicalPathname(url.pathname, selectedModel);
+  }
+
   function selectModel(
     definition: AppRouteDefinition,
     modelId: ModelIdType,
   ) {
-    if (!isCalculationRoute(definition)) {
+    if (!definition.defaultModelId) {
       return;
     }
 
@@ -133,18 +187,12 @@ export function createWorkspaceNavigation(
       return;
     }
 
-    toolState.actions.setSelectedModel(modelId, { schedule: false });
-    if (toolState.selectors.getPendingModelSwitch()) {
-      pendingTransition = {
-        definition,
-        navigationTarget: null,
-      };
+    const url = urlForModelPath(buildCalculationPath(definition, modelId));
+    if (!prepareUrl(url)) {
       return;
     }
 
-    pendingTransition = null;
-    toolState.actions.setActiveWorkspace(definition.workspace);
-    toolState.actions.scheduleCalculation({ immediate: true });
+    port.navigate({ url, replace: false });
   }
 
   function confirmPendingTransition() {
@@ -176,6 +224,7 @@ export function createWorkspaceNavigation(
   return {
     prepareUrl,
     afterNavigation,
+    getCanonicalPathname,
     selectModel,
     confirmPendingTransition,
     cancelPendingTransition,

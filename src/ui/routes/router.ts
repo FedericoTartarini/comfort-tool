@@ -13,8 +13,9 @@ import NotFoundRoute from "./NotFoundRoute.svelte";
 import RootRedirectPage from "../views/RootRedirectPage.svelte";
 import TimeSeriesPage from "../views/TimeSeriesPage.svelte";
 import {
+  buildCanonicalPathname,
   defaultAppRoute,
-  getAppRouteByPath,
+  parseAppLocation,
 } from "../../state/workspace/routeDefinitions";
 import type {
   WorkspaceNavigationCoordinator,
@@ -23,12 +24,9 @@ import type {
 
 type DeclaredRouterPath =
   | "/"
-  | "/ASHRAE-55"
-  | "/ISO-7730"
-  | "/EN-16798-1"
-  | "/ISO-7933"
-  | "/Explore"
-  | "/Time-Series";
+  | "/standard"
+  | "/explore"
+  | "/time-series";
 
 class WorkspaceRouteBlocked extends Error {}
 
@@ -40,6 +38,25 @@ function urlFromHookContext(context: HooksContext): URL {
   const origin = typeof window === "undefined" ? "http://localhost" : window.location.origin;
   const search = serializeSearch(context.search) ?? "";
   return new URL(`${context.pathname}${search}${context.hash ?? ""}`, origin);
+}
+
+function withTrailingSlash(pathname: string): string {
+  if (pathname === "/") {
+    return pathname;
+  }
+  return pathname.endsWith("/") ? pathname : `${pathname}/`;
+}
+
+function shouldReplaceCanonical(canonicalPathname: string): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  const current = parseAppLocation(window.location.pathname);
+  const next = parseAppLocation(canonicalPathname);
+  if (!current || !next) {
+    return true;
+  }
+  return current.definition.id === next.definition.id;
 }
 
 function navigateWithCanonicalUrl(
@@ -61,31 +78,42 @@ function navigateWithCanonicalUrl(
 
 const routes = {
   "/": RootRedirectPage,
-  "/ASHRAE-55": ComfortWorkspaceRoute,
-  "/ISO-7730": ComfortWorkspaceRoute,
-  "/EN-16798-1": ComfortWorkspaceRoute,
-  "/ISO-7933": ComfortWorkspaceRoute,
-  "/Explore": ComfortWorkspaceRoute,
-  "/Time-Series": TimeSeriesPage,
+  "/standard": ComfortWorkspaceRoute,
+  "/standard/:standard": ComfortWorkspaceRoute,
+  "/standard/:standard/:model": ComfortWorkspaceRoute,
+  "/explore": ComfortWorkspaceRoute,
+  "/explore/:model": ComfortWorkspaceRoute,
+  "/time-series": TimeSeriesPage,
+  "/time-series/:model": TimeSeriesPage,
   "*path": NotFoundRoute,
   hooks: {
     beforeLoad(context: HooksContext) {
+      const targetUrl = urlFromHookContext(context);
       if (context.pathname === "/") {
-        const targetUrl = urlFromHookContext(context);
         targetUrl.pathname = defaultAppRoute.path;
         throw navigateWithCanonicalUrl({ url: targetUrl, replace: true });
       }
 
-      const definition = getAppRouteByPath(context.pathname);
-      if (definition && context.pathname !== definition.path) {
-        const targetUrl = urlFromHookContext(context);
-        targetUrl.pathname = definition.path;
-        throw navigateWithCanonicalUrl({ url: targetUrl, replace: true });
-      }
-
-      const targetUrl = urlFromHookContext(context);
       if (workspaceNavigation && !workspaceNavigation.prepareUrl(targetUrl)) {
         throw new WorkspaceRouteBlocked();
+      }
+
+      const parsed = parseAppLocation(targetUrl.pathname);
+      const canonical = workspaceNavigation
+        ? workspaceNavigation.getCanonicalPathname(targetUrl)
+        : parsed
+          ? buildCanonicalPathname(
+            targetUrl.pathname,
+            parsed.modelId ?? parsed.definition.defaultModelId ?? defaultAppRoute.defaultModelId,
+          )
+          : undefined;
+
+      if (canonical && withTrailingSlash(targetUrl.pathname) !== canonical) {
+        targetUrl.pathname = canonical;
+        throw navigateWithCanonicalUrl({
+          url: targetUrl,
+          replace: shouldReplaceCanonical(canonical),
+        });
       }
     },
     afterLoad(context: HooksContext) {

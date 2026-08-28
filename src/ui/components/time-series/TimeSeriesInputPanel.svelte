@@ -11,9 +11,10 @@
 
   interface Props {
     controller: TimeSeriesController;
+    onSelectModel?: (modelId: TimeSeriesModelId) => void;
   }
 
-  let { controller }: Props = $props();
+  let { controller, onSelectModel }: Props = $props();
 
   const modelItems = $derived(controller.selectors.getModelOptions());
   const currentModel = $derived(controller.selectors.getCurrentModel());
@@ -56,9 +57,10 @@
         size="sm"
         class="mt-1.5"
         aria-label="Select time-series model"
-        onchange={(event) => controller.actions.selectModel(
-          event.currentTarget.value as TimeSeriesModelId,
-        )}
+        onchange={(event) => {
+          const modelId = event.currentTarget.value as TimeSeriesModelId;
+          (onSelectModel ?? controller.actions.selectModel)(modelId);
+        }}
       />
     </div>
     <fieldset>
