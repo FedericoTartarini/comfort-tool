@@ -34,6 +34,7 @@ export function buildChartResponse({
       ...(layout.xAxis.showTickLabels !== undefined
         ? { showticklabels: layout.xAxis.showTickLabels }
         : {}),
+      ...(layout.xAxis.showTickLabels === false ? { ticks: "" } : {}),
       ...(layout.xAxis.dtick !== undefined ? { dtick: layout.xAxis.dtick } : {}),
     },
     yaxis: {
@@ -51,6 +52,7 @@ export function buildChartResponse({
       ...(layout.yAxis.showTickLabels !== undefined
         ? { showticklabels: layout.yAxis.showTickLabels }
         : {}),
+      ...(layout.yAxis.showTickLabels === false ? { ticks: "" } : {}),
       ...(layout.yAxis.dtick !== undefined ? { dtick: layout.yAxis.dtick } : {}),
     },
     ...(layout.legend !== undefined ? { legend: layout.legend } : {}),

@@ -56,9 +56,6 @@ describe("draw with Plotly.react", () => {
     const payload = buildAdaptiveEnPayload();
     const assembled = assembleChart(payload);
     const contour = assembled.data.find((trace) => trace.type === "contour");
-    if (!contour) {
-      throw new Error("Expected Adaptive EN tooltip contour");
-    }
 
     root = document.createElement("div");
     root.style.width = "800px";
@@ -74,9 +71,8 @@ describe("draw with Plotly.react", () => {
     expect(gd.data?.some((trace) => (
       trace.name === "Category III" && (trace.x?.length ?? 0) > 1
     ))).toBe(true);
-    expect(gd.data?.some((trace) => (
-      trace.name === "Tooltip Layer" && Array.isArray(trace.z)
-    ))).toBe(true);
-    expect((contour.z as number[][])?.[0]?.[0]).toBe(1);
+    expect(gd.data?.some((trace) => trace.name === "Input 1")).toBe(true);
+    expect(contour).toBeUndefined();
+    expect(gd.data?.some((trace) => trace.name === "Tooltip Layer")).toBe(false);
   });
 });

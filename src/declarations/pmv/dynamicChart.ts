@@ -11,10 +11,9 @@ import {
 } from "./calculation";
 import type { PmvModelDeclaration } from "./shared";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
-import {
-  CONTOUR_GRID_RESOLUTION,
-  type PmvChartViewDescriptorFactory,
-} from "./chartShared";
+import { type PmvChartViewDescriptorFactory } from "./chartShared";
+
+const EMPTY_AXIS_POINTS = 2;
 
 export const createDynamicViewDescriptor: PmvChartViewDescriptorFactory = (
   declaration: PmvModelDeclaration,
@@ -29,6 +28,8 @@ export const createDynamicViewDescriptor: PmvChartViewDescriptorFactory = (
   const baselineResult = resultsByInput[context.baselineInputId];
   const baselineXSi = axisAdapter.getAxisValue(baseline.payload, config.xField);
   const baselineYSi = axisAdapter.getAxisValue(baseline.payload, config.yField);
+  const clipAirSpeedWithoutOccupantControl =
+    baseline.payload.occupantHasAirSpeedControl === false;
 
   return {
     config,
@@ -36,14 +37,15 @@ export const createDynamicViewDescriptor: PmvChartViewDescriptorFactory = (
     xAxis: {
       field: config.xField,
       rangeSi: axisAdapter.getAxisRange(config.xField),
-      points: CONTOUR_GRID_RESOLUTION,
+      points: EMPTY_AXIS_POINTS,
     },
     yAxis: {
       field: config.yField,
       rangeSi: axisAdapter.getAxisRange(config.yField),
-      points: CONTOUR_GRID_RESOLUTION,
+      points: EMPTY_AXIS_POINTS,
     },
     coordinateDecimals: 2,
+    clipAirSpeedWithoutOccupantControl,
     evaluatePoint: (xSi, ySi) => {
       if (
         baselineResult
@@ -56,7 +58,10 @@ export const createDynamicViewDescriptor: PmvChartViewDescriptorFactory = (
           zone: getPmvZoneMeta(baselineResult.pmv),
         };
       }
-      const request = { ...baseline.payload };
+      const request = {
+        ...baseline.payload,
+        occupantHasAirSpeedControl: true,
+      };
       const hasValidCoordinates = applyDynamicAxisCoordinates(
         request,
         { field: config.xField, valueSi: xSi },

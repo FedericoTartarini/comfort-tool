@@ -36,11 +36,12 @@ import {
 } from "./calculation";
 import type { PmvStandardAdapter } from "./shared";
 import {
-  CONTOUR_GRID_RESOLUTION,
   type PmvChartViewDescriptorFactory,
   type PmvFieldChartConfig,
   type PmvInputOverlayBuilder,
 } from "./chartShared";
+
+const EMPTY_AXIS_POINTS = 2;
 import { calculateRelativeHumidityFromHumidityRatio } from "../../engines/comfort/derivations";
 
 const CHART_COLOR_RH_LINE = "#94a3b8";
@@ -335,19 +336,18 @@ export const createPsychrometricViewDescriptor: PmvChartViewDescriptorFactory = 
     xAxis: {
       field: config.xField,
       rangeSi: PMV_PSYCHROMETRIC_VIEW.tdbRangeSi,
-      points: CONTOUR_GRID_RESOLUTION,
+      points: EMPTY_AXIS_POINTS,
       // CBE d3 default ticks on 10–36°C are ~2°C (IP ~5°F).
       dtick: unitSystem === UnitSystem.IP ? 5 : 2,
     },
     yAxis: {
       field: config.yField,
       rangeSi: PMV_PSYCHROMETRIC_VIEW.humidityRatioRangeSi,
-      points: CONTOUR_GRID_RESOLUTION,
+      points: EMPTY_AXIS_POINTS,
     },
     coordinateDecimals: humidityRatioMeta.decimals,
     opacity: 0.8,
     plotBgColor: PSYCHROMETRIC_PLOT_BACKGROUND,
-    omitBandFillTraces: true,
     evaluatePoint: (tdb, humidityRatio) => evaluatePsychrometricPoint(
       adapter,
       baseline.payload,

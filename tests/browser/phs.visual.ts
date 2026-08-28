@@ -52,8 +52,8 @@ test("PHS Standard defaults to locked exposure history and retains Dynamic", asy
   await expect(page.getByRole("button", { name: "Select chart X axis" }))
     .toBeVisible();
   await expect.poll(() => plot.evaluate((element) => (
-    (element as HTMLElement & { data?: Array<{ type?: string }> }).data
-      ?.some(({ type }) => type === "contour") ?? false
+    (element as HTMLElement & { data?: Array<{ fill?: string }> }).data
+      ?.some(({ fill }) => fill === "toself") ?? false
   ))).toBe(true);
   await expect(page.getByTestId("comfort-chart-visual"))
     .toHaveScreenshot("phs-dynamic-compliance-si.png");

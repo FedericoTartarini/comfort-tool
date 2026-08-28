@@ -313,7 +313,7 @@ describe("adaptive standard mechanics", () => {
 });
 
 describe("single Adaptive Compliance chart", () => {
-  it("keeps polygons geometric and evaluates hover points only on the tooltip grid", () => {
+  it("keeps polygons geometric and puts hover on Compare markers", () => {
     const evaluateApplicability = vi.fn(
       adaptiveAshraeDeclaration.evaluateApplicability,
     );
@@ -329,18 +329,15 @@ describe("single Adaptive Compliance chart", () => {
       createContext(declaration),
     );
     const regions = getRegionTraces(chart);
-    const tooltip = chart.traces.find(({ name }) => name === "Tooltip Layer");
-    const tooltipPointCount = tooltip?.z?.reduce(
-      (count, row) => count + row.length,
-      0,
-    ) ?? 0;
+    const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
     expect(regions.length).toBeGreaterThan(0);
     expect(regions.every(({ hoverinfo }) => hoverinfo === "skip")).toBe(true);
     expect(regions.every(({ hoverMetadata }) => hoverMetadata === undefined)).toBe(true);
-    expect(tooltipPointCount).toBeGreaterThan(0);
-    expect(tooltip?.hoverMetadata).toBeDefined();
-    expect(evaluateApplicability).toHaveBeenCalledTimes(tooltipPointCount);
+    expect(chart.traces.find(({ name }) => name === "Tooltip Layer")).toBeUndefined();
+    expect(inputTrace?.hoverinfo).toBe("all");
+    expect(inputTrace?.hovertemplate).toContain("Input 1");
+    expect(evaluateApplicability).not.toHaveBeenCalled();
   });
 
   it("builds deterministic ASHRAE regions on the default SI axes", () => {
@@ -479,7 +476,7 @@ describe("single Adaptive Compliance chart", () => {
     });
   });
 
-  it("orders regions, shared tooltip, and every comparison marker", () => {
+  it("orders regions and every comparison marker", () => {
     const input1 = { ...baselineRequest, v: 0.1 };
     const input2 = { ...baselineRequest, tdb: 26, tr: 26, v: 1.2 };
     const requests = {
@@ -511,7 +508,6 @@ describe("single Adaptive Compliance chart", () => {
 
     expect(input2Baseline.traces.map(({ name }) => name)).toEqual([
       ...expectedRegionNames,
-      "Tooltip Layer",
       "Input 1",
       "Input 2",
     ]);
@@ -525,12 +521,11 @@ describe("single Adaptive Compliance chart", () => {
       input2Baseline.traces.map(({ name }) => name),
     );
     const transposedInput1 = transposed.traces.find(({ name }) => name === "Input 1");
-    const transposedTooltip = transposed.traces.find(({ name }) => name === "Tooltip Layer");
     const input1Result = calculateAdaptive(adaptiveAshraeDeclaration, input1);
     expect(transposedInput1?.x[0]).toBeCloseTo(input1Result.operativeTemperature, 8);
     expect(transposedInput1?.y[0]).toBeCloseTo(input1.trm, 8);
-    expect(transposedTooltip?.hovertemplate).toContain("Operative temperature: %{x");
-    expect(transposedTooltip?.hovertemplate).toContain(
+    expect(transposedInput1?.hovertemplate).toContain("Operative temperature: %{x");
+    expect(transposedInput1?.hovertemplate).toContain(
       "Prevailing mean outdoor temperature: %{y",
     );
   });
@@ -550,7 +545,6 @@ describe("single Adaptive Compliance chart", () => {
       "transposed",
     );
     const input = chart.traces.find(({ name }) => name === "Input 1");
-    const tooltip = chart.traces.find(({ name }) => name === "Tooltip Layer");
     const firstRegion = getRegionTraces(chart)[0];
     const metadata = input?.hoverMetadata as unknown[];
     const level90 = getLevel(result, "acceptability-90");
@@ -579,8 +573,8 @@ describe("single Adaptive Compliance chart", () => {
       level90.lower!,
       UnitSystem.IP,
     ), 1), 8);
-    expect(tooltip?.hovertemplate).toContain("°F");
-    expect(tooltip?.hovertemplate).not.toContain("°C");
+    expect(input?.hovertemplate).toContain("°F");
+    expect(input?.hovertemplate).not.toContain("°C");
     const transposedInput = transposed.traces.find(({ name }) => name === "Input 1");
     const transposedRegion = getRegionTraces(transposed)[0];
     expect(transposed.layout.xaxis.title).toBe("Operative temperature (°F)");

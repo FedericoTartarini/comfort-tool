@@ -74,8 +74,9 @@
     const fillCount = "fills" in input && input.fills ? input.fills.length : 0;
     const seriesCount = "series" in input && input.series ? input.series.length : 0;
     const curveCount = "curves" in input && input.curves ? input.curves.length : 0;
+    const zoneCount = "zones" in input && input.zones ? input.zones.length : 0;
     const regionCount = "regions" in input && input.regions ? input.regions.length : 0;
-    return `${payload.type}:${fillCount}:${seriesCount}:${curveCount}:${regionCount}`;
+    return `${payload.type}:${fillCount}:${seriesCount}:${curveCount}:${regionCount}:${zoneCount}`;
   }
 
   function classifyUpdate(
@@ -156,6 +157,7 @@
       plotlyModule = plotly;
       const assembled = assembleChart(chartResult);
       const figure = prepareFigure(assembled);
+      const data = figure.data;
       const layout = showPlotTitle
         ? figure.layout
         : { ...figure.layout, title: undefined };
@@ -171,7 +173,7 @@
         if (updateType === "dot" || updateType === "background") {
           await animateDots(
             plotly,
-            figure.data,
+            data,
             layout,
             config,
             updateType === "dot" ? 400 : 500,
@@ -182,7 +184,7 @@
       }
 
       chartError = "";
-      await plotly.react(chartElement, figure.data, layout, config);
+      await plotly.react(chartElement, data, layout, config);
       hasRenderedChart = true;
       await resizeRenderedChart();
       prevChartResult = chartResult;
@@ -200,7 +202,6 @@
       });
       resizeObserver.observe(chartElement);
     }
-    void drawChart();
     if (onRegisterExport) onRegisterExport(exportChart);
     return () => {
       resizeObserver?.disconnect();
@@ -211,7 +212,6 @@
 
   $effect(() => {
     chartResult;
-    if (onRegisterExport) onRegisterExport(exportChart);
     void drawChart();
   });
 </script>

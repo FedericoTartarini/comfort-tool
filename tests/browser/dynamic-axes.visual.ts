@@ -37,10 +37,10 @@ async function expectChartAxes(
   });
   await expect.poll(() => plot.evaluate((element) => {
     const traces = (element as HTMLElement & {
-      data?: Array<{ type?: string; z?: number[][] }>;
+      data?: Array<{ fill?: string; x?: number[] }>;
     }).data ?? [];
     return traces.some((trace) => (
-      trace.type === "contour" && trace.z?.some((row) => row.some(Number.isFinite))
+      trace.fill === "toself" && (trace.x?.length ?? 0) > 4
     ));
   })).toBe(true);
 }

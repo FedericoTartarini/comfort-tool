@@ -41,7 +41,7 @@ export function buildInputScatterTrace({
   markerSize = 12,
   color,
   hoverMetadata,
-  hoverinfo = "skip",
+  hoverinfo = "all",
 }: InputScatterTraceOptions): PlotScatterMarkerTrace {
   const inputStyle = inputChartStyleById[inputId];
   const inputLabel = inputDisplayMetaById[inputId].label;

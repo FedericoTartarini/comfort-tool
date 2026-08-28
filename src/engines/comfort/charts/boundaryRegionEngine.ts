@@ -1,8 +1,4 @@
 import type {
-  PlotColorScale,
-  PlotContourTrace,
-  PlotContours,
-  PlotHoverRow,
   PlotScatterLineTrace,
   PlotTrace,
 } from "../../plotlyTypes";
@@ -12,10 +8,7 @@ import {
   type BandInputsSi,
 } from "../../../catalog/modelCapabilities";
 import { buildFilledPolygonTrace } from "./plotlyBuilders";
-import { buildGridContourTrace, evaluateGrid } from "./gridEngine";
 import type { ChartAxisScale } from "./types";
-
-type BoundaryHoverRow = PlotHoverRow;
 
 interface BoundaryPolygonTraceContext {
   polygonX: number[];
@@ -44,16 +37,6 @@ interface FilledBoundaryRegionTraceOptions {
   lineColor: string;
   opacity?: number;
   isBackgroundZone?: boolean;
-}
-
-interface TooltipGridTraceOptions {
-  name?: string;
-  xAxis: ChartAxisScale;
-  yAxis: ChartAxisScale;
-  hovertemplate: string;
-  getHoverMetadata: (xSi: number, ySi: number, xIndex: number, yIndex: number) => BoundaryHoverRow;
-  colorscale?: PlotColorScale;
-  contours?: PlotContours;
 }
 
 interface ClosedBoundaryPolygonOptions {
@@ -225,34 +208,5 @@ export function buildFilledBoundaryRegionTrace({
     lineWidth: 0.8,
     opacity,
     isBackgroundZone,
-  });
-}
-
-export function buildTooltipGridTrace({
-  name = "Tooltip Layer",
-  xAxis,
-  yAxis,
-  hovertemplate,
-  getHoverMetadata,
-  colorscale = [[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
-  contours = { coloring: "none", showlines: false },
-}: TooltipGridTraceOptions): PlotContourTrace {
-  const grid = evaluateGrid({
-    xAxis,
-    yAxis,
-    evaluatePoint: (xSi, ySi, xIndex, yIndex) => ({
-      z: 1,
-      hoverMetadata: getHoverMetadata(xSi, ySi, xIndex, yIndex),
-    }),
-  });
-
-  return buildGridContourTrace({
-    name,
-    grid,
-    colorscale,
-    contours,
-    showscale: false,
-    hovertemplate,
-    isHoverLayer: true,
   });
 }

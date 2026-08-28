@@ -1,28 +1,30 @@
 import {
+  alignIsolinesBySweep,
+  clampToScale,
+  closePolyline,
+  ROOT_TEMPERATURE_WIDTH,
+  sampleIsoline as sampleCartesianIsoline,
+  sampleIsolines as sampleCartesianIsolines,
+  solveIndependentForTarget,
+  type AxisRangeSi,
+  type BandFillPolygon,
+  type DisplayPolyline,
+  type DisplayScale,
+  type IsolineBandLayout,
+  type IsolineEvaluate,
+  type IsolineSample,
+} from "../isolines";
+import {
   humidityRatioSi,
   sliceRelativeHumidityCurve,
-  type AxisRangeSi,
   type PsychrometricExtents,
 } from "./humidity";
+
+export type { AxisRangeSi, BandFillPolygon, DisplayPolyline, DisplayScale, IsolineBandLayout };
 
 export interface IsolinePoint {
   tdb: number;
   rh: number;
-}
-
-export interface DisplayPolyline {
-  x: number[];
-  y: number[];
-}
-
-export interface BandFillPolygon extends DisplayPolyline {
-  name: string;
-  color: string;
-}
-
-export interface DisplayScale {
-  rangeSi: AxisRangeSi;
-  toDisplay: (valueSi: number) => number;
 }
 
 export interface PsychrometricBand {
@@ -34,33 +36,12 @@ export interface PsychrometricBand {
 
 export type FieldEvaluate = (tdb: number, rh: number) => number | null;
 
-export type IsolineBandLayout = "monotonic" | "radial";
-
-const ROOT_SCAN_POINTS = 101;
-const ROOT_MAX_BISECTION_EVALUATIONS = 40;
-const ROOT_TEMPERATURE_WIDTH = 0.001;
-
-function roundDisplay(value: number): number {
-  return Number(value.toFixed(3));
+function toIsolinePoint(sample: IsolineSample): IsolinePoint {
+  return { tdb: sample.independent, rh: sample.sweep };
 }
 
-function clampToScale(value: number, scale: DisplayScale): number {
-  const displayedMin = scale.toDisplay(scale.rangeSi.min);
-  const displayedMax = scale.toDisplay(scale.rangeSi.max);
-  const low = Math.min(displayedMin, displayedMax);
-  const high = Math.max(displayedMin, displayedMax);
-  return roundDisplay(Math.min(high, Math.max(low, value)));
-}
-
-function interpolateRoot(
-  low: number,
-  lowDelta: number,
-  high: number,
-  highDelta: number,
-): number {
-  if (lowDelta === highDelta) return (low + high) / 2;
-  const fraction = lowDelta / (lowDelta - highDelta);
-  return low + (high - low) * fraction;
+function toIsolineSample(point: IsolinePoint): IsolineSample {
+  return { independent: point.tdb, sweep: point.rh };
 }
 
 export function solveTemperatureForTarget(
@@ -69,65 +50,13 @@ export function solveTemperatureForTarget(
   rh: number,
   tdbRangeSi: AxisRangeSi,
 ): number | null {
-  const deltaAt = (temperature: number): number | null => {
-    const value = evaluate(temperature, rh);
-    if (value === null || !Number.isFinite(value)) return null;
-    return value - target;
-  };
-
-  let previousTemperature: number | null = null;
-  let previousDelta: number | null = null;
-  let low: number | null = null;
-  let high: number | null = null;
-  let lowDelta = 0;
-  let highDelta = 0;
-
-  for (let index = 0; index < ROOT_SCAN_POINTS; index += 1) {
-    const temperature = tdbRangeSi.min
-      + ((tdbRangeSi.max - tdbRangeSi.min) * index) / (ROOT_SCAN_POINTS - 1);
-    const delta = deltaAt(temperature);
-    if (delta === null) {
-      previousTemperature = null;
-      previousDelta = null;
-      continue;
-    }
-    if (
-      previousTemperature !== null
-      && previousDelta !== null
-      && previousDelta * delta <= 0
-    ) {
-      low = previousTemperature;
-      high = temperature;
-      lowDelta = previousDelta;
-      highDelta = delta;
-      break;
-    }
-    previousTemperature = temperature;
-    previousDelta = delta;
-  }
-
-  if (low === null || high === null) return null;
-
-  let lowBound = low;
-  let highBound = high;
-  let lowBoundDelta = lowDelta;
-  let highBoundDelta = highDelta;
-
-  for (let index = 0; index < ROOT_MAX_BISECTION_EVALUATIONS; index += 1) {
-    if (highBound - lowBound <= ROOT_TEMPERATURE_WIDTH) break;
-    const midpoint = (lowBound + highBound) / 2;
-    const midpointDelta = deltaAt(midpoint);
-    if (midpointDelta === null) break;
-    if (lowBoundDelta * midpointDelta <= 0) {
-      highBound = midpoint;
-      highBoundDelta = midpointDelta;
-    } else {
-      lowBound = midpoint;
-      lowBoundDelta = midpointDelta;
-    }
-  }
-
-  return interpolateRoot(lowBound, lowBoundDelta, highBound, highBoundDelta);
+  return solveIndependentForTarget(
+    evaluate as IsolineEvaluate,
+    target,
+    rh,
+    tdbRangeSi,
+    ROOT_TEMPERATURE_WIDTH,
+  );
 }
 
 export function sampleIsoline(
@@ -136,19 +65,13 @@ export function sampleIsoline(
   rhValues: readonly number[],
   tdbRangeSi: AxisRangeSi,
 ): IsolinePoint[] {
-  const points: IsolinePoint[] = [];
-  for (const relativeHumidity of rhValues) {
-    const temperature = solveTemperatureForTarget(
-      evaluate,
-      target,
-      relativeHumidity,
-      tdbRangeSi,
-    );
-    if (temperature !== null) {
-      points.push({ tdb: temperature, rh: relativeHumidity });
-    }
-  }
-  return points;
+  return sampleCartesianIsoline(
+    evaluate as IsolineEvaluate,
+    target,
+    rhValues,
+    tdbRangeSi,
+    ROOT_TEMPERATURE_WIDTH,
+  ).map(toIsolinePoint);
 }
 
 export function sampleIsolines(
@@ -157,10 +80,18 @@ export function sampleIsolines(
   rhValues: readonly number[],
   tdbRangeSi: AxisRangeSi,
 ): Map<number, IsolinePoint[]> {
-  return new Map(targets.map((target) => [
-    target,
-    sampleIsoline(evaluate, target, rhValues, tdbRangeSi),
-  ]));
+  return new Map(
+    [...sampleCartesianIsolines(
+      evaluate as IsolineEvaluate,
+      targets,
+      rhValues,
+      tdbRangeSi,
+      ROOT_TEMPERATURE_WIDTH,
+    ).entries()].map(([target, samples]) => [
+      target,
+      samples.map(toIsolinePoint),
+    ]),
+  );
 }
 
 function displayFromPoint(
@@ -185,28 +116,21 @@ function polylineFromPoints(
   };
 }
 
-export function closePolyline({ x, y }: DisplayPolyline): DisplayPolyline {
-  if (x.length === 0) return { x, y };
-  const last = x.length - 1;
-  if (x[0] === x[last] && y[0] === y[last]) return { x, y };
-  return { x: [...x, x[0]], y: [...y, y[0]] };
-}
+export { closePolyline };
 
 function alignIsolinesByRh(
   left: IsolinePoint[],
   right: IsolinePoint[],
 ): { left: IsolinePoint[]; right: IsolinePoint[] } {
-  const rightByRh = new Map(right.map((point) => [point.rh, point]));
-  const alignedLeft: IsolinePoint[] = [];
-  const alignedRight: IsolinePoint[] = [];
-  left.forEach((point) => {
-    const match = rightByRh.get(point.rh);
-    if (!match) return;
-    if (match.tdb - point.tdb <= ROOT_TEMPERATURE_WIDTH) return;
-    alignedLeft.push(point);
-    alignedRight.push(match);
-  });
-  return { left: alignedLeft, right: alignedRight };
+  const aligned = alignIsolinesBySweep(
+    left.map(toIsolineSample),
+    right.map(toIsolineSample),
+    ROOT_TEMPERATURE_WIDTH,
+  );
+  return {
+    left: aligned.left.map(toIsolinePoint),
+    right: aligned.right.map(toIsolinePoint),
+  };
 }
 
 function finiteFieldValue(value: number | null): number | null {

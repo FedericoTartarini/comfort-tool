@@ -7,6 +7,7 @@ export type Axis = {
   showgrid?: boolean;
   zeroline?: boolean;
   showticklabels?: boolean;
+  ticks?: "";
   dtick?: number;
   side?: "left" | "right";
   overlaying?: "y";
@@ -123,7 +124,8 @@ export type PsychrometricInput = Frame & {
 };
 
 export type DynamicInput = Frame & {
-  fills: Grid[];
+  fills?: Grid[];
+  zones?: Polygon[];
   points: Point[];
 };
 

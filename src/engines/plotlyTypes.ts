@@ -160,6 +160,7 @@ export interface PlotAxis {
   showgrid?: boolean;
   zeroline?: boolean;
   showticklabels?: boolean;
+  ticks?: "";
   dtick?: number;
   side?: "left" | "right";
   overlaying?: "y";

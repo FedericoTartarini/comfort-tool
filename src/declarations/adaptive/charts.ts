@@ -3,14 +3,12 @@ import type { ModelChartSource } from "../../catalog/chartSource";
 import type {
   PlotHoverRow,
   PlotlyChartSpec,
-  PlotTrace,
 } from "../../engines/plotlyTypes";
 import { ComplianceStatus } from "../../catalog/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { Band, ChartBuildContext } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
-import { buildTooltipGridTrace } from "../../engines/comfort/charts/boundaryRegionEngine";
 import {
   buildFieldChart,
   createBoundaryRegionStrategy,
@@ -32,7 +30,6 @@ import type {
 
 const FIXED_OPERATIVE_RANGE_SI = { min: 10, max: 40 };
 const BOUNDARY_POINTS = 240;
-const TOOLTIP_GRID_POINTS = 40;
 const CHART_COLORS = {
   line: "#334155",
 } as const;
@@ -158,56 +155,6 @@ function createAdaptiveInputGroup(
   };
 }
 
-function evaluateAdaptiveChartPoint(
-  declaration: AdaptiveModelDeclaration,
-  baseline: AdaptiveRequest,
-  boundaryAxis: "x" | "y",
-  xSi: number,
-  ySi: number,
-): AdaptiveResponse | null {
-  const outdoorTemperatureSi = boundaryAxis === "x" ? xSi : ySi;
-  const operativeTemperatureSi = boundaryAxis === "x" ? ySi : xSi;
-  const result = calculateAdaptive(declaration, {
-    ...baseline,
-    tdb: operativeTemperatureSi,
-    tr: operativeTemperatureSi,
-    trm: outdoorTemperatureSi,
-  });
-  return result.isApplicable ? result : null;
-}
-
-function buildAdaptiveTooltipTrace(
-  declaration: AdaptiveModelDeclaration,
-  baseline: AdaptiveRequest,
-  unitSystem: UnitSystemType,
-  xAxis: ChartAxisScale,
-  yAxis: ChartAxisScale,
-  boundaryAxis: "x" | "y",
-): PlotTrace {
-  return buildTooltipGridTrace({
-    xAxis: { ...xAxis, points: TOOLTIP_GRID_POINTS },
-    yAxis: { ...yAxis, points: TOOLTIP_GRID_POINTS },
-    hovertemplate: buildAdaptiveHoverTemplate(
-      declaration,
-      unitSystem,
-      xAxis,
-      yAxis,
-    ),
-    getHoverMetadata: (xSi, ySi) => {
-      const result = evaluateAdaptiveChartPoint(
-        declaration,
-        baseline,
-        boundaryAxis,
-        xSi,
-        ySi,
-      );
-      return result
-        ? getAdaptiveHoverMetadata(declaration, result, unitSystem)
-        : [NaN];
-    },
-  });
-}
-
 export function buildAdaptiveChart(
   declaration: AdaptiveModelDeclaration,
   source: ModelChartSource<AdaptiveRequest>,
@@ -259,14 +206,6 @@ export function buildAdaptiveChart(
         declaration.outdoorTemperatureRangeSi,
       ),
     }),
-    chartOverlays: ({ xAxis, yAxis }) => [buildAdaptiveTooltipTrace(
-      declaration,
-      baseline.payload,
-      unitSystem,
-      xAxis,
-      yAxis,
-      boundaryAxis,
-    )],
     inputGroups: ({ xAxis, yAxis }) => [createAdaptiveInputGroup(
       declaration,
       source,

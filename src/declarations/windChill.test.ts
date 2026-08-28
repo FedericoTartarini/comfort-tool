@@ -7,12 +7,11 @@ import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
 import {
   convertFieldValueFromSi,
-  convertModelOutputFromSi,
 } from "../engines/units";
 import { PhysicalQuantityId } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
-import { ModelOutputKey, type ChartBuildContext } from "../catalog/modelCapabilities";
+import { type ChartBuildContext } from "../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../catalog/output/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
@@ -86,35 +85,18 @@ describe("windChill service", () => {
         context,
       );
 
-      const contourTrace = dynamicChart?.traces.find(({ name }) => (
-        name === "Wind Chill Index bands hover"
+      const fillTraces = dynamicChart?.traces.filter(({ name, fill }) => (
+        typeof name === "string" && name.startsWith("Wind Chill Index bands:") && fill === "toself"
       ));
-      const inputTrace = dynamicChart?.traces.find((trace) => trace.type === "scatter");
-      const gridHoverMetadata = contourTrace?.customdata as unknown[][][] | undefined;
-      const firstGridResult = calculateWindChill({
-        tdb: -45,
-        v: 1,
-      });
+      const inputTrace = dynamicChart?.traces.find(({ name }) => name === "Input 1");
+      const hover = inputTrace?.hovertemplate;
 
-      expect(contourTrace?.z).toHaveLength(100);
-      expect(contourTrace?.z?.[0]).toHaveLength(100);
-      expect(contourTrace?.hoverongaps).toBe(false);
-      expect(contourTrace?.hovertemplate).toContain("Frostbite Risk");
-      expect(contourTrace?.hovertemplate).toContain("Wind Chill Index");
-      expect(contourTrace?.hovertemplate).toContain("Wind Chill Temperature");
-      expect(gridHoverMetadata?.[0]?.[0]).toEqual([
-        convertModelOutputFromSi(
-          ModelOutputKey.WindChill,
-          firstGridResult.wci,
-          unitSystem,
-        ),
-        convertFieldValueFromSi(
-          PhysicalQuantityId.DryBulbTemperature,
-          firstGridResult.wciTemp,
-          unitSystem,
-        ),
-      ]);
-      expect(inputTrace?.hoverinfo).toBe("skip");
+      expect(fillTraces?.length).toBeGreaterThan(0);
+      expect(dynamicChart?.traces.find(({ type }) => type === "contour")).toBeUndefined();
+      expect(hover).toContain("Frostbite Risk");
+      expect(hover).toContain("Wind Chill Index");
+      expect(hover).toContain("Wind Chill Temperature");
+      expect(inputTrace?.hoverinfo).toBe("all");
     },
   );
 

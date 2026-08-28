@@ -44,7 +44,7 @@ describe("chart input points", () => {
       name: "Input 1",
       x: [25],
       y: [50],
-      hoverinfo: "skip",
+      hoverinfo: "all",
     }));
     expect(traces.markers[0].hovertemplate).toContain("Neutral");
   });
@@ -60,7 +60,7 @@ describe("chart input points", () => {
       { name: "Input 3", x: [3], y: [4] },
     ]);
     expect(traces.every(({ mode }) => mode === "markers")).toBe(true);
-    expect(traces.every(({ hoverinfo }) => hoverinfo === "skip")).toBe(true);
+    expect(traces.every(({ hoverinfo }) => hoverinfo === "all")).toBe(true);
   });
 
   it("requires the baseline selected by the chart build context", () => {

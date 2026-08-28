@@ -183,17 +183,11 @@ describe("shared chart engine", () => {
     expect(xValuesSeen).toEqual([0, 10, 20, 30]);
     expect(chart.traces[0].z).toEqual([[0, NaN, 1, NaN]]);
     expect(chart.traces[0].hoverinfo).toBe("skip");
-    const tooltip = chart.traces.find(
-      ({ name }) => name === "Heat Index bands hover",
-    );
-    expect(tooltip?.z).toEqual([[32, 50, 68, NaN]]);
-    expect(tooltip?.text).toEqual([["Low", "Unclassified", "High", ""]]);
-    expect(tooltip?.hoverMetadata).toBeUndefined();
-    expect(tooltip?.hovertemplate).toContain("%{z:");
-    expect(tooltip?.hoverongaps).toBe(false);
+    expect(chart.traces.find(({ name }) => name === "Heat Index bands hover"))
+      .toBeUndefined();
   });
 
-  it("projects band fills without removing gaps from the hover grid", () => {
+  it("projects band fills without filling evaluated gaps", () => {
     const bands = [{ min: 0, max: 1, label: "Target", color: "#00ff00" }];
     let evaluatedGridGap = false;
     const chart = buildFieldChart({
@@ -240,63 +234,11 @@ describe("shared chart engine", () => {
       ({ contours }) =>
         contours?.type === "constraint" && contours.operation !== "=",
     );
-    const tooltip = chart.traces.find(
-      ({ name }) => name === "Heat Index bands hover",
-    );
 
     expect(evaluatedGridGap).toBe(true);
     expect(fill?.z).toEqual([[0.5, 0.5]]);
-    expect(tooltip?.z).toEqual([[0.5, NaN]]);
-    expect(tooltip?.hoverMetadata).toBeUndefined();
-  });
-
-  it("preserves custom hover metadata in a banded grid", () => {
-    const bands = [
-      { min: -Infinity, max: Infinity, label: "All", color: "#ffffff" },
-    ];
-    const chart = buildFieldChart({
-      unitSystem: UnitSystem.IP,
-      xAxis: {
-        field: PhysicalQuantityId.DryBulbTemperature,
-        rangeSi: { min: 10, max: 10 },
-        points: 1,
-      },
-      yAxis: {
-        field: PhysicalQuantityId.RelativeHumidity,
-        rangeSi: { min: 50, max: 50 },
-        points: 1,
-      },
-      strategy: createBandedGridStrategy({
-        config: {
-          xField: PhysicalQuantityId.DryBulbTemperature,
-          yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: ModelOutputKey.HeatIndex,
-          bands,
-        },
-        output: {
-          key: ModelOutputKey.HeatIndex,
-          label: "Heat Index",
-          defaultBands: bands,
-        },
-        hoverTemplate: "Custom: %{customdata[1]:.1f}<extra></extra>",
-        evaluateOutput: () => ({
-          valueSi: 10,
-          additionalHoverMetadata: [123.4],
-        }),
-      }),
-      layout,
-      source: CalculationSource.FrontendGenerated,
-    });
-
-    const tooltip = chart.traces.find(
-      ({ name }) => name === "Heat Index bands hover",
-    );
-    expect((tooltip?.hoverMetadata as unknown[][][])[0][0]).toEqual([
-      50, 123.4,
-    ]);
-    expect(tooltip?.hovertemplate).toBe(
-      "Custom: %{customdata[1]:.1f}<extra></extra>",
-    );
+    expect(chart.traces.find(({ name }) => name === "Heat Index bands hover"))
+      .toBeUndefined();
   });
 
   it("renders continuous constraints from one SI evaluation grid", () => {
@@ -347,15 +289,11 @@ describe("shared chart engine", () => {
           trace.contours.operation !== "=",
       ),
     ).toHaveLength(2);
-    const tooltips = chart.traces.filter(
-      (trace) => trace.type === "contour" && trace.name.endsWith(" hover"),
-    );
-    expect(tooltips).toHaveLength(1);
-    expect(tooltips[0].z).toEqual([
-      [0, 1],
-      [1, 2],
-    ]);
-    expect(tooltips[0].hoverongaps).toBe(false);
+    expect(
+      chart.traces.filter(
+        (trace) => trace.type === "contour" && trace.name.endsWith(" hover"),
+      ),
+    ).toHaveLength(0);
   });
 
   it("builds boundary traces from render context before chart and input overlays", () => {

@@ -19,7 +19,7 @@ import {
 } from "../engines/chartTheme";
 import type { PlotlyChartSpec } from "../engines/plotlyTypes";
 import { assembleChart } from "./index";
-import { prepareFigure } from "./draw";
+import { loadPlotly, prepareFigure } from "./draw";
 import type { ChartPayload } from "./types";
 
 function blendHexForTest(foreground: string, background: string, opacity: number): string {
@@ -59,6 +59,14 @@ function contourPayload(z: (number | null)[][]): ChartPayload {
 }
 
 describe("prepareFigure", () => {
+  it("exposes restyle and Fx on the loaded Plotly module", async () => {
+    const plotly = await loadPlotly();
+    expect(typeof plotly.react).toBe("function");
+    expect(typeof plotly.restyle).toBe("function");
+    expect(typeof plotly.Fx?.hover).toBe("function");
+    expect(typeof plotly.Fx?.loneHover).toBe("function");
+  });
+
   it("turns non-finite grid z cells into Plotly gaps on a cloned grid", () => {
     const finiteRow = [1, 2];
     const gapRow = [3, Number.NaN, Number.POSITIVE_INFINITY];
@@ -155,6 +163,53 @@ describe("prepareFigure", () => {
     expect(figure.layout.width).toBeUndefined();
     expect(figure.layout.autosize).toBeUndefined();
     expect(figure.layout.font).toBeUndefined();
+  });
+
+  it("applies axis lines and outside ticks through Plotly layout.template", () => {
+    const assembled = assembleChart(contourPayload([[1]]));
+    const screen = prepareFigure(assembled, screenChartTheme);
+    const publication = prepareFigure(assembled, publicationChartTheme);
+    for (const figure of [screen, publication]) {
+      const template = figure.layout.template as {
+        layout: { xaxis: Record<string, unknown>; yaxis: Record<string, unknown> };
+      };
+      for (const axisKey of ["xaxis", "yaxis"] as const) {
+        const axis = template.layout[axisKey];
+        expect(axis.showline).toBe(true);
+        expect(axis.linecolor).toBe("#111827");
+        expect(axis.linewidth).toBe(1);
+        expect(axis.ticks).toBe("outside");
+        expect(axis.ticklen).toBe(4);
+        expect(axis.tickwidth).toBe(1);
+        expect(axis.tickcolor).toBe("#111827");
+      }
+      expect(figure.layout.xaxis).not.toHaveProperty("showline");
+      expect(figure.layout.yaxis).not.toHaveProperty("showline");
+    }
+  });
+
+  it("keeps dummy axes without tick marks while the template still draws lines", () => {
+    const payload: ChartPayload = {
+      type: ChartType.Set,
+      input: {
+        title: "SET",
+        xAxis: { title: "Air temperature", range: [10, 40] },
+        yAxis: { title: "", range: [0, 1], showticklabels: false },
+        yAxis2: { title: "SET", range: [20, 30] },
+        series: [{ name: "SET", x: [10, 40], y: [22, 28], color: "#111111" }],
+      },
+    };
+    const figure = prepareFigure(assembleChart(payload));
+    const yAxis = figure.layout.yaxis as Record<string, unknown>;
+    const yAxis2 = figure.layout.yaxis2 as Record<string, unknown>;
+    expect(yAxis.showticklabels).toBe(false);
+    expect(yAxis.ticks).toBe("");
+    expect(yAxis2.ticks).toBeUndefined();
+    const template = figure.layout.template as {
+      layout: { yaxis: Record<string, unknown> };
+    };
+    expect(template.layout.yaxis.showline).toBe(true);
+    expect(template.layout.yaxis.ticks).toBe("outside");
   });
 
   it("builds a separate publication figure with mm/pt/dpi sizing", () => {
@@ -275,8 +330,12 @@ describe("prepareFigure", () => {
     if (payload.type !== ChartType.Dynamic) {
       throw new Error("expected Dynamic payload");
     }
-    payload.input.fills[0] = {
-      ...payload.input.fills[0],
+    const fills = payload.input.fills;
+    if (!fills?.[0]) {
+      throw new Error("expected a Dynamic fill");
+    }
+    fills[0] = {
+      ...fills[0],
       line: { width: 1, color: "#333333" },
     };
     const figure = prepareFigure(assembleChart(payload));

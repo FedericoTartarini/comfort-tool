@@ -35,20 +35,34 @@ export type PlotlyModule = {
   Plots?: {
     resize: (root: HTMLElement) => Promise<void> | void;
   };
+  restyle?: (
+    root: HTMLElement,
+    update: Record<string, unknown>,
+    traces?: number | number[],
+  ) => Promise<void> | void;
+  Fx?: {
+    hover: (root: HTMLElement, hoverData: unknown, axes?: string) => void;
+    unhover: (root: HTMLElement) => void;
+    loneHover?: (item: unknown, options?: unknown) => void;
+    loneUnhover?: (root: HTMLElement) => void;
+  };
 };
 
 let plotlyModule: PlotlyModule | null = null;
 
 export async function loadPlotly(): Promise<PlotlyModule> {
   if (plotlyModule) return plotlyModule;
-  const imported = await import("plotly.js-dist-min");
-  plotlyModule = (imported.default ?? imported) as PlotlyModule;
+  const imported = (await import("plotly.js-dist-min")) as PlotlyModule & {
+    default?: PlotlyModule;
+  };
+  const plotly = imported.default ?? imported;
+  if (!plotly.Fx && imported.Fx) plotly.Fx = imported.Fx;
+  if (!plotly.restyle && imported.restyle) plotly.restyle = imported.restyle;
+  plotlyModule = plotly;
   return plotlyModule;
 }
 
-function withNullGaps(
-  z: unknown,
-): unknown {
+function withNullGaps(z: unknown): unknown {
   if (!Array.isArray(z)) return z;
   if (z.length > 0 && Array.isArray(z[0])) {
     return (z as unknown[][]).map((row) =>
@@ -77,9 +91,8 @@ function blendHexOnto(
   const fg = parseHexRgb(foreground);
   const bg = parseHexRgb(background);
   if (!fg || !bg) return null;
-  const mix = (channel: number, bgChannel: number) => (
-    Math.round(channel * opacity + bgChannel * (1 - opacity))
-  );
+  const mix = (channel: number, bgChannel: number) =>
+    Math.round(channel * opacity + bgChannel * (1 - opacity));
   const toHex = (channel: number) => channel.toString(16).padStart(2, "0");
   return `#${toHex(mix(fg[0], bg[0]))}${toHex(mix(fg[1], bg[1]))}${toHex(mix(fg[2], bg[2]))}`;
 }
@@ -95,9 +108,10 @@ function bakeOpaquePolygonFill(
   const fill = blendHexOnto(trace.fillcolor, plotBg, opacity);
   if (fill === null) return;
   trace.fillcolor = fill;
-  const line = trace.line && typeof trace.line === "object"
-    ? { ...(trace.line as object) } as Record<string, unknown>
-    : {};
+  const line =
+    trace.line && typeof trace.line === "object"
+      ? ({ ...(trace.line as object) } as Record<string, unknown>)
+      : {};
   if (typeof line.color === "string") {
     line.color = blendHexOnto(line.color, plotBg, opacity) ?? line.color;
   } else {
@@ -146,6 +160,26 @@ function cloneTrace(
   return cloned;
 }
 
+const AXIS_LINE_COLOR = "#111827";
+
+const AXIS_CHROME = {
+  showline: true,
+  linecolor: AXIS_LINE_COLOR,
+  linewidth: 1,
+  ticks: "outside",
+  ticklen: 4,
+  tickwidth: 1,
+  tickcolor: AXIS_LINE_COLOR,
+} as const;
+
+/** Plotly layout.template: axis lines and tick marks only (not simple_white). */
+const AXIS_CHROME_TEMPLATE = {
+  layout: {
+    xaxis: AXIS_CHROME,
+    yaxis: AXIS_CHROME,
+  },
+};
+
 function applyPublicationLayout(
   layout: Record<string, unknown>,
   theme: PublicationChartTheme,
@@ -183,12 +217,14 @@ export function prepareFigure(
   assembled: AssembleResult,
   theme: ChartTheme = screenChartTheme,
 ): AssembleResult {
-  const plotBg = typeof assembled.layout.plot_bgcolor === "string"
-    ? assembled.layout.plot_bgcolor
-    : "#ffffff";
+  const plotBg =
+    typeof assembled.layout.plot_bgcolor === "string"
+      ? assembled.layout.plot_bgcolor
+      : "#ffffff";
   const data = assembled.data.map((trace) => cloneTrace(trace, theme, plotBg));
   const layout: Record<string, unknown> = {
     ...assembled.layout,
+    template: AXIS_CHROME_TEMPLATE,
     margin: assembled.layout.margin
       ? { ...(assembled.layout.margin as object) }
       : assembled.layout.margin,

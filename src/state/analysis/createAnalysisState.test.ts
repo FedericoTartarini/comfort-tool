@@ -899,10 +899,10 @@ describe("createAnalysisState", () => {
       expect(complianceLegendAfterStandard).toEqual(toLegendBands(complianceBands));
     }
     expect(toolState.selectors.getCurrentChartLegendTitle()).toBe("PMV Zones");
-    expect(currentChart(toolState)?.traces)
-      .toEqual(expect.arrayContaining([
-        expect.objectContaining({ name: "PMV bands hover" }),
-      ]));
+    expect(currentChart(toolState)?.traces.some(({ fill }) => fill === "toself"))
+      .toBe(true);
+    expect(currentChart(toolState)?.traces.find(({ name }) => name === "PMV bands hover"))
+      .toBeUndefined();
     expect(toolState.selectors.getChartControlsViewModel().explore).toBeNull();
 
     toolState.actions.setActiveWorkspace(WorkspaceId.Explore);
@@ -1279,7 +1279,7 @@ describe("createAnalysisState", () => {
 
     expect(toolState.state.ui.calculationCacheByModel[ModelId.WindChill].status)
       .toBe("ready");
-    expect(currentChart(toolState)?.traces[0].type).toBe("contour");
+    expect(currentChart(toolState)?.traces[0].type).toBe("scatter");
   });
 
   it("restores each model's own dynamic axes when switching models", async () => {

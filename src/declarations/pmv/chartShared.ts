@@ -16,20 +16,20 @@ import {
 } from "../../catalog/modelCapabilities";
 import {
   buildFieldChart,
-  createBandedGridStrategy,
-  GridBandRenderStrategy,
+  createEmptyFieldStrategy,
   type FieldChartAxisSpec,
   type FieldChartInputGroup,
   type FieldChartRenderContext,
 } from "../../engines/comfort/charts/fieldChartEngine";
 import { buildHoverTemplate } from "../../engines/comfort/charts/plotlyBuilders";
+import { buildIsolineBandOverlayTraces } from "../../engines/comfort/charts/isolineBandOverlays";
 import type {
   ChartAxisScale,
-  GridEvaluationResult,
 } from "../../engines/comfort/charts/types";
 import { roundValue } from "../../engines/comfort/helpers";
 import {
   getPmvZoneMeta,
+  ppdThresholdToAbsPmv,
   tryEvaluatePmvForChart,
   type ComfortZoneRequest,
   type PmvChartEvaluation,
@@ -37,8 +37,6 @@ import {
   type PmvResponse,
 } from "./calculation";
 import type { PmvModelDeclaration, PmvStandardAdapter } from "./shared";
-
-export const CONTOUR_GRID_RESOLUTION = 100;
 
 export type PmvFieldChartConfig = FieldChartConfig<NumericBand>;
 
@@ -205,10 +203,6 @@ export interface PmvFieldChartDescriptor {
   opacity?: number;
   plotBgColor?: string;
   evaluatePoint: (xSi: number, ySi: number) => PmvChartEvaluation | null;
-  projectFillGrid?: (
-    grid: GridEvaluationResult,
-    context: FieldChartRenderContext,
-  ) => GridEvaluationResult;
   getInputXSi: (payload: ComfortZoneRequest) => number;
   getInputYSi: (payload: ComfortZoneRequest) => number;
   chartOverlays?: (context: FieldChartRenderContext) => PlotTrace[];
@@ -216,7 +210,7 @@ export interface PmvFieldChartDescriptor {
     xAxis: ChartAxisScale,
     yAxis: ChartAxisScale,
   ) => PmvInputOverlayBuilder;
-  omitBandFillTraces?: boolean;
+  clipAirSpeedWithoutOccupantControl?: boolean;
   margin: PlotMargin;
 }
 
@@ -236,43 +230,36 @@ export function buildPmvFieldChart(
     );
   }
   const presentation = createPmvOutputPresentation(config);
+  const layout = config.zOutput === ModelOutputKey.Ppd ? "radial" as const : "monotonic";
+  const absFromThreshold = config.zOutput === ModelOutputKey.Ppd
+    ? ppdThresholdToAbsPmv
+    : undefined;
 
   return buildFieldChart({
     unitSystem: context.unitSystem,
     xAxis: descriptor.xAxis,
     yAxis: descriptor.yAxis,
-    strategy: createBandedGridStrategy({
-      config,
-      output,
-      renderStrategy: GridBandRenderStrategy.ConstraintContours,
-      bandLabel: presentation.classificationLabel,
-      hoverTemplate: ({ xAxis, yAxis }) => buildPmvHoverTemplate({
-        inputLabel: null,
-        xAxis: axisHoverSpec(xAxis),
-        yAxis: axisHoverSpec(yAxis),
-        classification: {
-          label: presentation.classificationLabel,
-          value: "%{text}",
-        },
-        pmv: presentation.pmvHoverToken,
-        ppd: presentation.ppdHoverToken,
-      }),
-      opacity: descriptor.opacity,
-      projectFillGrid: descriptor.projectFillGrid,
-      omitBandFillTraces: descriptor.omitBandFillTraces,
-      evaluateOutput: (xSi, ySi) => {
-        const evaluation = descriptor.evaluatePoint(xSi, ySi);
-        return evaluation
-          ? {
-              valueSi: getPmvOutputValue(config.zOutput, evaluation),
-              additionalHoverMetadata: [
-                presentation.getAdditionalHoverMetadata(evaluation),
-              ],
-            }
-          : null;
-      },
-    }),
-    chartOverlays: descriptor.chartOverlays,
+    strategy: createEmptyFieldStrategy(),
+    chartOverlays: (renderContext) => (
+      descriptor.chartOverlays?.(renderContext)
+        ?? buildIsolineBandOverlayTraces({
+          bands: config.bands,
+          outputLabel: output.label,
+          evaluateField: (xSi, ySi) => {
+            const evaluation = descriptor.evaluatePoint(xSi, ySi);
+            return evaluation ? evaluation.pmv : null;
+          },
+          xAxis: renderContext.xAxis,
+          yAxis: renderContext.yAxis,
+          xField: config.xField,
+          yField: config.yField,
+          layout,
+          absFromThreshold,
+          opacity: descriptor.opacity,
+          clipAirSpeedWithoutOccupantControl:
+            descriptor.clipAirSpeedWithoutOccupantControl === true,
+        })
+    ),
     inputGroups: ({ xAxis, yAxis }) => [createPmvInputGroup({
       adapter,
       inputsMap: source.inputs,

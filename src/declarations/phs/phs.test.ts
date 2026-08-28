@@ -224,9 +224,9 @@ describe("PHS ISO 7933:2023", () => {
       "Input 1",
     ]);
     expect(exposureChart?.traces[1].visible).toBe("legendonly");
-    expect(fieldChart?.traces[0].type).toBe("contour");
-    expect(fieldChart?.traces[0].z).toHaveLength(31);
-    expect(fieldChart?.traces[0].z?.[0]).toHaveLength(31);
+    expect(fieldChart?.traces[0].type).toBe("scatter");
+    expect(fieldChart?.traces[0].fill).toBe("toself");
+    expect(fieldChart?.traces.some((trace) => trace.type === "contour")).toBe(false);
   });
 
   it("uses an edited Explore rectal-temperature threshold on exposure history", () => {

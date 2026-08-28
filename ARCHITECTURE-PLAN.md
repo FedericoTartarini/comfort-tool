@@ -122,9 +122,10 @@ one structure.
 labels are `chartTypeLabel[type]`. One model registers each ChartType at most
 once. `src/charts/` owns ChartType figure geometry and Plotly assemble.
 Assemble takes generic arrays and must not import models or quantities.
-Reusable geometry (Psychrometric humidity curves, CBE isoline polygons) lives
-beside assemble in a ChartType folder, takes `evaluate` / humidity-ratio
-callbacks, and must not import `ModelId` or `PhysicalQuantityId`. Declarations
+Reusable geometry (Psychrometric humidity curves, CBE isoline polygons,
+shared Cartesian `sampleIsoline`) lives beside assemble in a ChartType folder
+or `src/charts/isolines.ts`, takes `evaluate` / humidity-ratio callbacks, and
+must not import `ModelId` or `PhysicalQuantityId`. Declarations
 wire those callbacks and band thresholds; they do not solve isoline roots.
 PMV Psychrometric: TemperatureMode Air keeps `tr` from input; Operative uses
 `tr=tdb` per sample and labels x Operative temperature. Isoline T roots stay
@@ -415,7 +416,7 @@ calculate() once
   Chart geometry in src/charts/ (or a remaining field-chart bind)
     declarations pass evaluate / bands / arrays
     polygons / polylines / ≤3 Compare markers
-    interaction: coarse 2-D grid (cap ~100²) or evaluate-on-hover
+    interaction: isoline polygons + Plotly hover on markers/lines
         ↓
   compact ChartPayload (generic arrays + axis titles)
         ↓
@@ -428,14 +429,14 @@ The interchange object is a **generic ChartPayload**. Plotly assemble in
 strings. Geometry helpers in the same ChartType folder may take numeric
 callbacks (`evaluate(T, RH)`, humidity ratio) but still must not mention
 models, quantities, or unit conversion. `src/charts/draw.ts` owns theme
-application, zone palette remapping, and the clone boundary. Hover uses
-Plotly `customdata`. There is one renderer and no product requirement to
+application, zone palette remapping, axis `layout.template`, and the clone boundary. Hover uses
+Plotly `hovertemplate` on markers and data lines. There is one renderer and no product requirement to
 swap it.
 
 | ChartType        | Recipe                                                                                                                                          |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dynamic          | contour + markers                                                                                                                               |
-| Psychrometric    | optional grid + mask + curves + zone polygons + markers (PMV). Isoline geometry is in `src/charts/psychrometric/`; assemble only stacks traces. |
+| Dynamic          | isoline polygons + markers. Shared `sampleIsoline` in `src/charts/isolines.ts`; Cartesian linear caps. Hover is Plotly closest on markers. |
+| Psychrometric    | mask + RH curves + zone polygons + markers (PMV). Isoline geometry is in `src/charts/psychrometric/` (RH-curve caps); assemble only stacks traces. Hover is Plotly closest on markers. |
 | Heat Loss        | multi scatter lines, single y-axis                                                                                                              |
 | SET              | multi scatter lines, y-axis + yaxis2                                                                                                            |
 | Adaptive         | region polygons + markers                                                                                                                       |
@@ -484,7 +485,7 @@ are allowed.
 
 | ID  | Work              | Done when                                                                                                                                                                                      |
 | --- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0f  | Grid cap          | Dynamic 2-D interactive resolution ≤ ~100² (including UTCI Dynamic). Hover does not attach huge per-cell `customdata`.                                                                         |
+| 0f  | Grid cap          | Dynamic 2-D fills are isoline polygons (no 100² fill/hover grid). Hover is Plotly closest on markers and data lines. UTCI 1-D may keep high sampling. |
 | 0g  | Clone boundary    | Plotly adapter does not stringify a 20k–200k-cell figure. NaN→gap is local to grid values.                                                                                                     |
 | 0h  | Publication shell | One theme module for screen and export. Export builds a **separate** figure; PNG ~300 DPI equivalent; SVG of the same geometry; no mode bar.                                                   |
 | 0a  | Engine/spec union | `defineModel` charts use a discriminated spec. UTCI inline `spec.build` types move into UTCI chart modules. ParametricLine is typed **and implemented**, or the kind is omitted until Phase 1. |

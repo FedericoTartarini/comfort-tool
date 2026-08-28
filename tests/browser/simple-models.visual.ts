@@ -28,6 +28,28 @@ async function expectSingleOutputExploreControls(page: Page) {
   await expect(page.getByRole("button", { name: "Edit chart thresholds" })).toBeVisible();
 }
 
+async function expectRenderedIsolineFills(plot: Locator) {
+  await expect(plot).toHaveClass(/js-plotly-plot/);
+  await expect.poll(() => plot.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const traces = (element as HTMLElement & {
+      data?: Array<{ type?: string; fill?: string }>;
+    }).data ?? [];
+    const fill = traces.find((trace) => trace.fill === "toself");
+
+    return {
+      hasFill: fill !== undefined,
+      height: Math.round(bounds.height),
+      width: Math.round(bounds.width),
+    };
+  })).toEqual({
+    hasFill: true,
+    height: 480,
+    width: expect.any(Number),
+  });
+  await expect.poll(() => plot.locator(".scatterlayer path").count()).toBeGreaterThan(0);
+}
+
 async function expectRenderedContour(plot: Locator) {
   await expect(plot).toHaveClass(/js-plotly-plot/);
   await expect.poll(() => plot.evaluate((element) => {
@@ -71,7 +93,7 @@ for (const modelLabel of ["Heat Index", "Humidex"]) {
     )).toBeVisible();
     await expectAxisControls(page, true);
     await expectSingleOutputExploreControls(page);
-    await expectRenderedContour(plot);
+    await expectRenderedIsolineFills(plot);
   });
 }
 
@@ -116,5 +138,5 @@ test("Wind Chill completes the boundary-confirmed model switch", async ({ page }
     .toContainText("Dynamic");
   await expectAxisControls(page, true);
   await expectSingleOutputExploreControls(page);
-  await expectRenderedContour(page.getByTestId("comfort-chart-plot"));
+  await expectRenderedIsolineFills(page.getByTestId("comfort-chart-plot"));
 });

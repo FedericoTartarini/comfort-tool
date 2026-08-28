@@ -81,12 +81,9 @@ describe("humidex service", () => {
       fixedContext,
     );
 
-    expect(dynamicChart?.traces[0].type).toBe("contour");
-    expect(dynamicChart?.traces[0].z).toHaveLength(100);
-    expect(dynamicChart?.traces[0].z?.[0]).toHaveLength(100);
-    expect(dynamicChart?.traces[0].z?.flat().every((value) => (
-      value === null || Number.isFinite(value)
-    ))).toBe(true);
+    expect(dynamicChart?.traces[0].type).toBe("scatter");
+    expect(dynamicChart?.traces[0].fill).toBe("toself");
+    expect(dynamicChart?.traces.some((trace) => trace.type === "contour")).toBe(false);
     expect(dynamicChart?.layout.height).toBe(480);
     expect(dynamicChart?.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
@@ -128,14 +125,14 @@ describe("humidex service", () => {
         },
       },
     );
-    const fillTrace = chart?.traces.find(
-      ({ name }) => name === "Humidex bands",
+    const fillTraces = chart?.traces.filter(
+      ({ name, fill }) => typeof name === "string" && name.startsWith("Humidex bands:") && fill === "toself",
     );
     const inputTrace = chart?.traces.find(({ name }) => name === "Input 1");
 
-    expect(fillTrace?.colorscale?.map(([, color]) => color))
+    expect(fillTraces?.map(({ fillcolor }) => fillcolor))
       .toEqual(expect.arrayContaining(["#123456", "#abcdef"]));
-    expect(inputTrace?.hoverinfo).toBe("skip");
+    expect(inputTrace?.hoverinfo).toBe("all");
     expect(String(chart?.layout.xaxis.title)).toContain("Air temperature");
     expect(String(chart?.layout.yaxis.title)).toContain("Relative humidity");
   });

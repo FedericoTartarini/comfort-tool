@@ -25,17 +25,18 @@ import {
 } from "../../units";
 import {
   buildFieldChart,
-  createBandedGridStrategy,
-  type BandedGridOutputEvaluation,
+  createEmptyFieldStrategy,
   type FieldChartInputGroup,
   type FieldChartLayoutSpec,
 } from "./fieldChartEngine";
+import { buildIsolineBandOverlayTraces } from "./isolineBandOverlays";
 import { getBaselineInputEntry } from "../helpers";
 import {
   CHART_COORDINATE_TOLERANCE,
-  resolveInteractiveDynamicGridPoints,
   type ChartRange,
 } from "./types";
+
+const EMPTY_AXIS_POINTS = 2;
 
 export interface GridModelDynamicHoverExtension<TResult> {
   getTemplateSuffix: (unitSystem: UnitSystemType) => string;
@@ -144,7 +145,6 @@ function buildGridModelView<TPayload extends object, TResult>(
   const outputMeta = getModelOutputDisplayMeta(output.key, unitSystem);
   const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
   const bandLabel = spec.bandLabel ?? "Band";
-  const gridPoints = resolveInteractiveDynamicGridPoints(spec.gridPoints);
   const chartAxisAdapter = spec.chartAxisAdapter ?? spec.requestAdapter;
   const baselineXSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.xField);
   const baselineYSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.yField);
@@ -157,74 +157,61 @@ function buildGridModelView<TPayload extends object, TResult>(
   const isPlottable = (result: TResult | null | undefined) => (
     spec.isPlottable ? spec.isPlottable(result) : getResultValue(result) !== undefined
   );
+  const applyCoordinates = (payload: TPayload, xSi: number, ySi: number) => (
+    spec.applyChartCoordinates
+      ? spec.applyChartCoordinates(
+          payload,
+          view.config.xField,
+          xSi,
+          view.config.yField,
+          ySi,
+        )
+      : (() => {
+          spec.requestAdapter.setAxisValue(payload, view.config.xField, xSi);
+          spec.requestAdapter.setAxisValue(payload, view.config.yField, ySi);
+          return true;
+        })()
+  );
+  const evaluateField = (xSi: number, ySi: number): number | null => {
+    if (
+      Math.abs(xSi - baselineXSi) < CHART_COORDINATE_TOLERANCE
+      && Math.abs(ySi - baselineYSi) < CHART_COORDINATE_TOLERANCE
+    ) {
+      const cachedValue = getResultValue(resultsByInput[context.baselineInputId]);
+      if (cachedValue !== undefined) return cachedValue;
+    }
+    const pointPayload = { ...baselinePayload };
+    if (!applyCoordinates(pointPayload, xSi, ySi)) return null;
+    if (spec.tryEvaluatePayload) {
+      const directValue = spec.tryEvaluatePayload(pointPayload);
+      return directValue == null || !Number.isFinite(directValue) ? null : directValue;
+    }
+    const result = spec.evaluate(pointPayload);
+    const valueSi = spec.getOutputValue(result, view.config.zOutput);
+    return valueSi == null || !Number.isFinite(valueSi) ? null : valueSi;
+  };
   return buildFieldChart({
     unitSystem,
     xAxis: {
       field: view.config.xField,
       rangeSi: view.xRangeSi,
-      points: gridPoints,
+      points: EMPTY_AXIS_POINTS,
     },
     yAxis: {
       field: view.config.yField,
       rangeSi: view.yRangeSi,
-      points: gridPoints,
+      points: EMPTY_AXIS_POINTS,
     },
-    strategy: createBandedGridStrategy({
-      config: view.config,
-      output,
-      bandLabel,
-      hoverTemplateSuffix: view.hoverTemplateSuffix,
-      evaluateOutput: (xSi, ySi, zOutput, _xIndex, _yIndex, renderContext) => {
-        if (
-          Math.abs(xSi - baselineXSi) < CHART_COORDINATE_TOLERANCE
-          && Math.abs(ySi - baselineYSi) < CHART_COORDINATE_TOLERANCE
-        ) {
-          const cachedResult = resultsByInput[context.baselineInputId];
-          const cachedValue = getResultValue(cachedResult);
-          if (cachedValue !== undefined) {
-            const additionalHoverMetadata = spec.dynamicHoverExtension
-              ?.getMetadata(cachedResult, renderContext.unitSystem);
-            return additionalHoverMetadata
-              ? { valueSi: cachedValue, additionalHoverMetadata } satisfies BandedGridOutputEvaluation
-              : cachedValue;
-          }
-        }
-        const pointPayload = { ...baselinePayload };
-        const coordinatesValid = spec.applyChartCoordinates
-          ? spec.applyChartCoordinates(
-              pointPayload,
-              view.config.xField,
-              xSi,
-              view.config.yField,
-              ySi,
-            )
-          : (() => {
-              spec.requestAdapter.setAxisValue(pointPayload, view.config.xField, xSi);
-              spec.requestAdapter.setAxisValue(pointPayload, view.config.yField, ySi);
-              return true;
-            })();
-        if (!coordinatesValid) {
-          return null;
-        }
-        if (spec.tryEvaluatePayload) {
-          const directValue = spec.tryEvaluatePayload(pointPayload);
-          if (directValue == null || !Number.isFinite(directValue)) {
-            return null;
-          }
-          return directValue;
-        }
-        const result = spec.evaluate(pointPayload);
-        const valueSi = spec.getOutputValue(result, zOutput);
-        if (valueSi == null || !Number.isFinite(valueSi)) {
-          return null;
-        }
-        const additionalHoverMetadata = spec.dynamicHoverExtension
-          ?.getMetadata(result, renderContext.unitSystem);
-
-        return additionalHoverMetadata
-          ? { valueSi, additionalHoverMetadata } satisfies BandedGridOutputEvaluation
-          : valueSi;
-      },
+    strategy: createEmptyFieldStrategy(),
+    chartOverlays: ({ xAxis, yAxis }) => buildIsolineBandOverlayTraces({
+      bands: view.config.bands,
+      outputLabel: output.label,
+      evaluateField,
+      xAxis,
+      yAxis,
+      xField: view.config.xField,
+      yField: view.config.yField,
+      layout: "monotonic",
     }),
     inputGroups: ({ xAxis, yAxis }) => [{
       inputsMap,

@@ -6,7 +6,6 @@ import {
   ZonePaletteKind,
   ZoneToken,
 } from "../../src/catalog/zoneTokens";
-
 const TARGET_INPUTS = {
   "Air temperature": "26",
   "Radiant temperature": "25",
@@ -26,24 +25,14 @@ const PMV_COLORS = [
   ZoneToken.Hot,
 ].map((token) => resolveZoneAppearance(token).fill);
 
-const PMV_FILL_CONSTRAINTS = [
-  { operation: ">=", value: -2.5 },
-  { operation: "][", value: [-2.5, -1.5] },
-  { operation: "][", value: [-1.5, -0.5] },
-  { operation: "][", value: [-0.5, 0.5] },
-  { operation: "][", value: [0.5, 1.5] },
-  { operation: "][", value: [1.5, 2.5] },
-  { operation: "<", value: 2.5 },
-] as const;
-
 const COMPLIANCE_COLORS = [
   resolveZoneAppearance(ZoneToken.FailFill).fill,
   resolveZoneAppearance(ZoneToken.Acceptable).fill,
   resolveZoneAppearance(ZoneToken.FailFill).fill,
 ];
 
-const PSYCHROMETRIC_PLOT_BACKGROUND = "#f8fafc";
-const PSYCHROMETRIC_BAND_OPACITY = 0.8;
+const PLOT_BACKGROUND = "#f8fafc";
+const BAND_OPACITY = 0.8;
 
 function blendHexOntoPlot(foreground: string, background: string, opacity: number): string {
   const channel = (hex: string, shift: number) => (
@@ -56,8 +45,16 @@ function blendHexOntoPlot(foreground: string, background: string, opacity: numbe
   }${toHex(mix(channel(foreground, 0), channel(background, 0)))}`;
 }
 
+const PMV_FILLCOLORS = PMV_COLORS.map((fill) => (
+  blendHexOntoPlot(fill, PLOT_BACKGROUND, BAND_OPACITY)
+));
+
+const COMPLIANCE_FILLCOLORS = COMPLIANCE_COLORS.map((fill) => (
+  blendHexOntoPlot(fill, PLOT_BACKGROUND, BAND_OPACITY)
+));
+
 const PSYCHROMETRIC_COMPLIANCE_FILLCOLORS = COMPLIANCE_COLORS.map((fill) => (
-  blendHexOntoPlot(fill, PSYCHROMETRIC_PLOT_BACKGROUND, PSYCHROMETRIC_BAND_OPACITY)
+  blendHexOntoPlot(fill, PLOT_BACKGROUND, BAND_OPACITY)
 ));
 
 function hexToCssRgb(hex: string): string {
@@ -68,15 +65,14 @@ function hexToCssRgb(hex: string): string {
 
 function publicationFillCss(token: ZoneToken): string {
   return hexToCssRgb(
-    resolveZoneAppearance(token, ZonePaletteKind.Publication).fill,
+    blendHexOntoPlot(
+      resolveZoneAppearance(token, ZonePaletteKind.Publication).fill,
+      PLOT_BACKGROUND,
+      BAND_OPACITY,
+    ),
   );
 }
 
-const COMPLIANCE_FILL_CONSTRAINTS = [
-  { operation: ">=", value: -0.5 },
-  { operation: "][", value: [-0.5, 0.5] },
-  { operation: "<", value: 0.5 },
-] as const;
 
 const MODEL_LABELS = {
   ashrae: "PMV (ASHRAE-55)",
@@ -133,19 +129,23 @@ async function setTargetInputs(page: Page) {
   }
 }
 
-async function waitForTrace(plot: Locator, traceName: string) {
+async function waitForBandFills(plot: Locator, namePrefix: string) {
   await expect(plot).toHaveClass(/js-plotly-plot/);
   await expect
     .poll(() =>
-      plot.evaluate((element, expectedName) => {
+      plot.evaluate((element, prefix) => {
         const traces =
           (
             element as HTMLElement & {
-              data?: Array<{ name?: string }>;
+              data?: Array<{ name?: string; fill?: string }>;
             }
           ).data ?? [];
-        return traces.some(({ name }) => name === expectedName);
-      }, traceName),
+        return traces.some(({ name, fill }) => (
+          fill === "toself"
+          && typeof name === "string"
+          && name.startsWith(prefix)
+        ));
+      }, namePrefix),
     )
     .toBe(true);
 }
@@ -214,82 +214,6 @@ async function hoverPlotCoordinate(
   );
 }
 
-async function findGridXForOutput(
-  plot: Locator,
-  outputValue: number,
-  yValue: number,
-): Promise<number> {
-  return plot.evaluate(
-    (element, target) => {
-      const traces =
-        (
-          element as HTMLElement & {
-            data?: Array<{
-              contours?: { operation?: string; type?: string };
-              x?: number[];
-              y?: number[];
-              z?: number[][];
-            }>;
-          }
-        ).data ?? [];
-      const trace = traces.find(
-        ({ contours, z }) =>
-          contours?.type === "constraint" && contours.operation !== "=" && z,
-      );
-      if (!trace?.x || !trace.y || !trace.z) {
-        throw new Error("Constraint grid is not ready");
-      }
-
-      const upperYIndex = trace.y.findIndex((value) => value >= target.yValue);
-      const lowerYIndex = Math.max(0, upperYIndex - 1);
-      if (upperYIndex < 0) {
-        throw new Error(
-          `Y value ${target.yValue} is outside the constraint grid`,
-        );
-      }
-      const ySpan = trace.y[upperYIndex] - trace.y[lowerYIndex];
-      const yFraction =
-        ySpan === 0 ? 0 : (target.yValue - trace.y[lowerYIndex]) / ySpan;
-      const outputAtY = trace.x.map(
-        (_, xIndex) =>
-          trace.z![lowerYIndex][xIndex] +
-          (trace.z![upperYIndex][xIndex] - trace.z![lowerYIndex][xIndex]) *
-            yFraction,
-      );
-
-      for (
-        let upperXIndex = 1;
-        upperXIndex < outputAtY.length;
-        upperXIndex += 1
-      ) {
-        const lowerValue = outputAtY[upperXIndex - 1];
-        const upperValue = outputAtY[upperXIndex];
-        if (
-          Number.isFinite(lowerValue) &&
-          Number.isFinite(upperValue) &&
-          (lowerValue - target.outputValue) *
-            (upperValue - target.outputValue) <=
-            0
-        ) {
-          const fraction =
-            upperValue === lowerValue
-              ? 0
-              : (target.outputValue - lowerValue) / (upperValue - lowerValue);
-          return (
-            trace.x[upperXIndex - 1] +
-            (trace.x[upperXIndex] - trace.x[upperXIndex - 1]) * fraction
-          );
-        }
-      }
-
-      throw new Error(
-        `Output ${target.outputValue} is outside the constraint grid`,
-      );
-    },
-    { outputValue, yValue },
-  );
-}
-
 async function openTargetPmvChart(
   page: Page,
   {
@@ -341,7 +265,7 @@ async function openTargetPmvChart(
   }
 
   const plot = page.getByTestId("comfort-chart-plot");
-  await waitForTrace(plot, `${display} bands hover`);
+  await waitForBandFills(plot, `${display} bands:`);
   await waitForXAxisTitle(plot, useIpUnits ? "°F" : "°C");
 
   return {
@@ -357,60 +281,30 @@ async function expectTargetResults(page: Page) {
   await expect(page.getByTitle("94.3%")).toBeVisible();
 }
 
-async function readConstraintFills(plot: Locator) {
-  return plot.evaluate((element) => {
+async function readBandFillcolors(plot: Locator, prefix: string): Promise<string[]> {
+  return plot.evaluate((element, namePrefix) => {
     const traces =
       (
         element as HTMLElement & {
-          data?: Array<{
-            contours?: {
-              coloring?: string;
-              operation?: string;
-              type?: string;
-              value?: number | number[];
-            };
-            fillcolor?: string;
-          }>;
+          data?: Array<{ name?: string; fill?: string; fillcolor?: string }>;
         }
       ).data ?? [];
     return traces
-      .filter(
-        ({ contours }) =>
-          contours?.type === "constraint" && contours.operation !== "=",
-      )
-      .map(({ contours, fillcolor }) => ({
-        coloring: contours?.coloring,
-        fillcolor,
-        operation: contours?.operation,
-        value: contours?.value,
-      }));
-  });
+      .filter(({ name, fill }) => (
+        fill === "toself"
+        && typeof name === "string"
+        && name.startsWith(namePrefix)
+      ))
+      .map(({ fillcolor }) => fillcolor ?? "");
+  }, prefix);
 }
 
-async function expectPmvConstraintFills(plot: Locator) {
-  await expect
-    .poll(() => readConstraintFills(plot))
-    .toEqual(
-      PMV_COLORS.map((fillcolor, index) => ({
-        ...PMV_FILL_CONSTRAINTS[index],
-        coloring: "none",
-        fillcolor,
-      })),
-    );
-  await expect(plot.locator(".contourbg path")).toHaveCount(0);
+async function expectPmvBandFills(plot: Locator) {
+  await expect.poll(() => readBandFillcolors(plot, "PMV bands:")).toEqual(PMV_FILLCOLORS);
 }
 
-async function expectComplianceConstraintFills(plot: Locator) {
-  await expect
-    .poll(() => readConstraintFills(plot))
-    .toEqual(
-      COMPLIANCE_COLORS.map((fillcolor, index) => ({
-        ...COMPLIANCE_FILL_CONSTRAINTS[index],
-        coloring: "none",
-        fillcolor,
-      })),
-    );
-  await expect(plot.locator(".contourbg path")).toHaveCount(0);
+async function expectComplianceBandFills(plot: Locator) {
+  await expect.poll(() => readBandFillcolors(plot, "PMV bands:")).toEqual(COMPLIANCE_FILLCOLORS);
 }
 
 async function readPsychrometricBandFillcolors(plot: Locator): Promise<string[]> {
@@ -467,7 +361,7 @@ test.describe("PMV visual regression", () => {
     await expect(
       page.getByRole("button", { name: "Edit chart thresholds" }),
     ).toBeHidden();
-    await expectComplianceConstraintFills(plot);
+    await expectComplianceBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(panel).toHaveScreenshot("pmv-ashrae-compliance-panel.png");
 
@@ -487,7 +381,7 @@ test.describe("PMV visual regression", () => {
     await expect(
       page.getByRole("button", { name: "Edit chart thresholds" }),
     ).toBeVisible();
-    await expectPmvConstraintFills(plot);
+    await expectPmvBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(panel).toHaveScreenshot("pmv-ashrae-explore-panel.png");
   });
@@ -528,7 +422,7 @@ test.describe("PMV visual regression", () => {
     await expect(
       page.getByRole("button", { name: "Edit chart thresholds" }),
     ).toBeVisible();
-    await waitForTrace(plot, "PPD (%) bands hover");
+    await waitForBandFills(plot, "PPD (%) bands:");
     await waitForXAxisDtick(plot, 2);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot(
@@ -544,7 +438,7 @@ test.describe("PMV visual regression", () => {
     await expect(
       page.getByRole("button", { name: "Edit chart thresholds" }),
     ).toBeHidden();
-    await waitForTrace(plot, "PMV bands hover");
+    await waitForBandFills(plot, "PMV bands:");
     await expectPsychrometricComplianceBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot(
@@ -557,14 +451,14 @@ test.describe("PMV visual regression", () => {
       page.getByLabel("Input 1 Operative temperature", { exact: true }),
     ).toBeVisible();
     await waitForXAxisTitle(plot, "Operative temperature");
-    await waitForTrace(plot, "PMV bands hover");
+    await waitForBandFills(plot, "PMV bands:");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot(
       "pmv-ashrae-psychrometric-operative-si.png",
     );
   });
 
-  test("ASHRAE psychrometric hover covers the plot, not only RH curves", async ({
+  test("ASHRAE psychrometric hover is native on the Compare marker", async ({
     page,
   }) => {
     const { plot } = await openTargetPmvChart(page, { workspace: "standard" });
@@ -576,37 +470,62 @@ test.describe("PMV visual regression", () => {
       .getByRole("button", { name: "Psychrometric", exact: true })
       .click();
     await expect(chartTrigger).toContainText("Psychrometric");
-    await waitForTrace(plot, "PMV bands hover");
+    await page.keyboard.press("Escape");
+    await waitForBandFills(plot, "PMV bands:");
     await waitForXAxisDtick(plot, 2);
 
     const hoverLayer = plot.locator(".hoverlayer");
-    // 22 °C / 7.5 g/kg sits between the 40% and 50% RH curves.
-    await hoverPlotCoordinate(page, plot, 22, 7.5);
-    await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
-    await expect(hoverLayer).toContainText(/Humidity ratio: \d+\.\d g\/kg/);
-    await expect(hoverLayer).toContainText(/Zone:/);
-    await expect(hoverLayer).toContainText(/PMV:/);
-    await expect(hoverLayer).toContainText(/PPD:/);
-
     const inputPoint = plot.locator(".scatterlayer path.point");
     await expect(inputPoint).toHaveCount(1);
     const inputPointBox = await inputPoint.boundingBox();
     expect(inputPointBox).not.toBeNull();
     await page.mouse.move(
-      inputPointBox!.x + inputPointBox!.width / 2 + 16,
+      inputPointBox!.x + inputPointBox!.width / 2,
       inputPointBox!.y + inputPointBox!.height / 2,
     );
-    await expect(hoverLayer).toContainText(/Humidity ratio:/);
+    await expect(hoverLayer).toContainText("Input 1");
+    await expect(hoverLayer).toContainText(/Humidity ratio: \d+\.\d g\/kg/);
+    await expect(hoverLayer).toContainText(/Zone:/);
+    await expect(hoverLayer).toContainText(/PMV:/);
+    await expect(hoverLayer).toContainText(/PPD:/);
+
+    // 22 °C / 7.5 g/kg sits between the 40% and 50% RH curves.
+    await hoverPlotCoordinate(page, plot, 22, 7.5);
     await expect(hoverLayer).not.toContainText("Input 1");
+    await expect(hoverLayer).not.toContainText(/Humidity ratio:/);
   });
 
   test("ASHRAE PMV in SI", async ({ page }) => {
     const { plot, visual } = await openTargetPmvChart(page);
 
     await expectTargetResults(page);
-    await expectPmvConstraintFills(plot);
+    await expectPmvBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-si.png");
+  });
+
+  test("ASHRAE To×vr without local control clips elevated air speed", async ({
+    page,
+  }) => {
+    const { plot, visual } = await openTargetPmvChart(page);
+    await page.locator("#advanced-input-airSpeed").click();
+    await page.getByRole("button", { name: /No local control/ }).click();
+    await selectDropdownOption(page, "Select chart X axis", "Operative temperature");
+    await selectDropdownOption(page, "Select chart Y axis", "Air speed");
+    await waitForBandFills(plot, "PMV bands:");
+    await page.mouse.move(0, 0);
+    await expect(visual).toHaveScreenshot("pmv-ashrae-veltop-no-control-si.png");
+  });
+
+  test("ASHRAE To×vr with local control keeps the unclipped envelope", async ({
+    page,
+  }) => {
+    const { plot, visual } = await openTargetPmvChart(page);
+    await selectDropdownOption(page, "Select chart X axis", "Operative temperature");
+    await selectDropdownOption(page, "Select chart Y axis", "Air speed");
+    await waitForBandFills(plot, "PMV bands:");
+    await page.mouse.move(0, 0);
+    await expect(visual).toHaveScreenshot("pmv-ashrae-veltop-local-control-si.png");
   });
 
   test("ASHRAE PMV input hover in SI", async ({ page }) => {
@@ -621,20 +540,17 @@ test.describe("PMV visual regression", () => {
       inputPointBox!.y + inputPointBox!.height / 2,
     );
     const hoverLayer = plot.locator(".hoverlayer");
+    await expect(hoverLayer).toContainText("Input 1");
     await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
     await expect(hoverLayer).toContainText(/Relative humidity: \d+(\.\d+)? %/);
     await expect(hoverLayer).toContainText("Zone: Neutral");
     await expect(hoverLayer).toContainText(/PMV: -0\.\d{2}/);
     await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
-    await expect(hoverLayer).not.toContainText("Input 1");
     await expect(visual).toHaveScreenshot("pmv-ashrae-si-hover.png");
 
     await hoverPlotCoordinate(page, plot, 28, 50);
-    await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
-    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
-    await expect(hoverLayer).toContainText("Zone: Neutral");
-    await expect(hoverLayer).toContainText(/PMV: 0\.\d{2}/);
-    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
+    await expect(hoverLayer).not.toContainText("Input 1");
+    await expect(hoverLayer).not.toContainText(/Air temperature:/);
   });
 
   test("ASHRAE PPD in SI", async ({ page }) => {
@@ -642,18 +558,7 @@ test.describe("PMV visual regression", () => {
       display: "PPD (%)",
     });
 
-    const constraintValues = await plot.evaluate((element) => {
-      const traces =
-        (
-          element as HTMLElement & {
-            data?: Array<{ contours?: { operation?: string; value?: number } }>;
-          }
-        ).data ?? [];
-      return traces
-        .filter(({ contours }) => contours?.operation === "=")
-        .map(({ contours }) => contours?.value);
-    });
-    expect(constraintValues).toEqual([10]);
+    await waitForBandFills(plot, "PPD (%) bands:");
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("ppd-ashrae-si.png");
   });
@@ -661,7 +566,7 @@ test.describe("PMV visual regression", () => {
   test("ISO PMV in SI", async ({ page }) => {
     const { plot, visual } = await openTargetPmvChart(page, { model: "iso" });
 
-    await expectPmvConstraintFills(plot);
+    await expectPmvBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-iso-si.png");
   });
@@ -671,7 +576,7 @@ test.describe("PMV visual regression", () => {
       useIpUnits: true,
     });
 
-    await expectPmvConstraintFills(plot);
+    await expectPmvBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-ip.png");
   });
@@ -686,41 +591,7 @@ test.describe("PMV visual regression", () => {
     await secondLowerBound.fill("-2.25");
     await page.getByRole("button", { name: "Apply", exact: true }).click();
 
-    await expect
-      .poll(() =>
-        plot.evaluate((element) => {
-          const traces =
-            (
-              element as HTMLElement & {
-                data?: Array<{
-                  contours?: { operation?: string; value?: number };
-                }>;
-              }
-            ).data ?? [];
-          return traces.some(
-            ({ contours }) =>
-              contours?.operation === "=" && contours.value === -2.25,
-          );
-        }),
-      )
-      .toBe(true);
-
-    const hoverLayer = plot.locator(".hoverlayer");
-    const gapX = await findGridXForOutput(plot, -2.375, 50);
-    await hoverPlotCoordinate(page, plot, gapX, 50);
-    await expect(hoverLayer).toContainText(/Air temperature: -?\d+\.\d °C/);
-    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
-    await expect(hoverLayer).toContainText("Zone: Unclassified");
-    await expect(hoverLayer).toContainText(/PMV: -2\.\d{2}/);
-    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
-
-    const adjacentBandX = await findGridXForOutput(plot, -2.1, 50);
-    await hoverPlotCoordinate(page, plot, adjacentBandX, 50);
-    await expect(hoverLayer).toContainText(/Air temperature: -?\d+\.\d °C/);
-    await expect(hoverLayer).toContainText(/Relative humidity: \d+ %/);
-    await expect(hoverLayer).toContainText("Zone: Cool");
-    await expect(hoverLayer).toContainText(/PMV: -2\.\d{2}/);
-    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
+    await waitForBandFills(plot, "PMV bands:");
 
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-si-gap.png");

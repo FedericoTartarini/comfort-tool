@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import type { GridEvaluationResult } from "./types";
 import {
-  buildBandTooltipTrace,
   buildCategoricalBandTraces,
   buildConstraintBandTraces,
   buildZoneColorscale,
@@ -80,30 +79,6 @@ describe("zone grid", () => {
     expect(boundaryTraces.every((trace) => trace.line?.color === "#333333")).toBe(true);
     expect(boundaryTraces.every((trace) => trace.contours?.smoothing === 1)).toBe(true);
     expect(traces.every((trace) => trace.type === "contour")).toBe(true);
-  });
-
-  it("builds one transparent raw-grid tooltip with unclassified gaps", () => {
-    const grid = createGrid([[0, 5, 10]]);
-    grid.textValues = [["Low", "Unclassified", "High"]];
-    const trace = buildBandTooltipTrace({
-      name: "Output bands hover",
-      grid,
-      hovertemplate: "Band: %{text}; value: %{customdata[0]}",
-    });
-
-    expect(trace).toEqual(expect.objectContaining({
-      type: "contour",
-      name: "Output bands hover",
-      z: grid.zValues,
-      text: grid.textValues,
-      hoverMetadata: grid.hoverMetadata,
-      hoverongaps: false,
-      isHoverLayer: true,
-    }));
-    expect(trace.colorscale).toEqual([
-      [0, "rgba(0, 0, 0, 0)"],
-      [1, "rgba(0, 0, 0, 0)"],
-    ]);
   });
 
   it("covers one fully unbounded band with a finite constraint", () => {

@@ -31,6 +31,8 @@ export function axisTrace(axis: Axis): Record<string, unknown> {
     ...(axis.showticklabels !== undefined
       ? { showticklabels: axis.showticklabels }
       : {}),
+    ...(axis.ticks !== undefined ? { ticks: axis.ticks } : {}),
+    ...(axis.showticklabels === false ? { ticks: "" } : {}),
     ...(axis.dtick !== undefined
       ? {
           tickmode: "linear",
@@ -48,6 +50,7 @@ export function frameLayout(frame: Frame): Record<string, unknown> {
     paper_bgcolor: frame.paperBgColor ?? "#ffffff",
     plot_bgcolor: frame.plotBgColor ?? "#f8fafc",
     showlegend: frame.showlegend ?? false,
+    hovermode: "closest",
     margin: frame.margin ?? { l: 56, r: 24, t: 48, b: 80 },
     xaxis: axisTrace(frame.xAxis),
     yaxis: axisTrace(frame.yAxis),

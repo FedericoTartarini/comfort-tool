@@ -89,9 +89,6 @@ describe("UTCI Explore chart", () => {
       },
     );
     const fillTrace = chart.traces.find(({ name }) => name === "UTCI bands");
-    const hoverTrace = chart.traces.find(
-      ({ name }) => name === "UTCI bands hover",
-    );
     const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
     const gapIndex = fillTrace?.x.findIndex((value) => (
       value > result.utci + 1 && value < result.utci + 2
@@ -100,13 +97,12 @@ describe("UTCI Explore chart", () => {
     expect(gapIndex).toBeGreaterThanOrEqual(0);
     expect(fillTrace?.z).toHaveLength(50);
     expect(fillTrace?.z?.[0]).toHaveLength(450);
-    expect(hoverTrace?.hoverMetadata).toBeUndefined();
     expect(fillTrace?.z?.every((row) => Number.isNaN(row[gapIndex]))).toBe(true);
-    expect(hoverTrace?.text?.every((row) => row[gapIndex] === "Unclassified"))
-      .toBe(true);
+    expect(chart.traces.find(({ name }) => name === "UTCI bands hover"))
+      .toBeUndefined();
     expect(fillTrace?.colorscale?.map(([, color]) => color))
       .toEqual(expect.arrayContaining(["#123456", "#abcdef", "#fedcba"]));
-    expect(inputTrace?.hoverinfo).toBe("skip");
+    expect(inputTrace?.hoverinfo).toBe("all");
     expect(chart.annotations.map(({ text }) => text))
       .toEqual(expect.arrayContaining(["Below marker", "Marker band", "Above gap"]));
   });
@@ -131,13 +127,12 @@ describe("UTCI Explore chart", () => {
       },
     )!;
 
-    const tooltipTrace = chart.traces.find(({ name }) => name === "UTCI bands hover");
-    expect(tooltipTrace?.type).toBe("contour");
-    expect(tooltipTrace?.z).toHaveLength(100);
-    expect(tooltipTrace?.z?.[0]).toHaveLength(100);
-    expect(tooltipTrace?.customdata).toBeUndefined();
-    expect(tooltipTrace?.hovertemplate).toContain("UTCI");
-    expect(tooltipTrace?.hoverongaps).toBe(false);
+    const fillTraces = chart.traces.filter(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("UTCI bands:") && fill === "toself"
+    ));
+    expect(fillTraces.length).toBeGreaterThan(0);
+    expect(chart.traces.find(({ type }) => type === "contour")).toBeUndefined();
+    expect(chart.traces.find(({ name }) => name === "Input 1")?.hovertemplate).toContain("UTCI");
     expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
     expect(chart.traces.some((trace) => trace.type === "scatter")).toBe(true);
   });
@@ -163,10 +158,11 @@ describe("UTCI Explore chart", () => {
       context,
     )!;
 
-    const contour = chart.traces.find((trace) => trace.type === "contour");
+    const fillTraces = chart.traces.filter(({ name, fill }) => (
+      fill === "toself" && typeof name === "string" && name.includes("bands:")
+    ));
     expect(chart.layout.title).toContain("Dynamic Chart");
-    expect(contour).toBeDefined();
-    expect(contour?.z?.flat().some(Number.isFinite)).toBe(true);
+    expect(fillTraces.length).toBeGreaterThan(0);
   });
 
   it("pins required Analysis controls independently of inputFields", () => {

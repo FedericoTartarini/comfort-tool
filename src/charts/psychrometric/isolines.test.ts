@@ -66,7 +66,7 @@ describe("psychrometric isolines", () => {
     expect(polygon.y[0]).toBe(polygon.y[polygon.y.length - 1]);
     expect(polygon.x.length).toBeGreaterThan(cool.length + warm.length);
     topCap.forEach((point) => {
-      expect(polygon.x).toContain(Number(point.temperatureSi.toFixed(3)));
+      expect(polygon.x.some((x) => Math.abs(x - point.temperatureSi) < 1e-12)).toBe(true);
     });
   });
 
@@ -106,9 +106,8 @@ describe("psychrometric isolines", () => {
       y: outline.y,
     }));
     coolEdge.forEach((point) => {
-      const x = Number(point.tdb.toFixed(3));
-      expect(slightlyCool.x).toContain(x);
-      expect(neutral.x).toContain(x);
+      expect(slightlyCool.x.some((x) => Math.abs(x - point.tdb) < 1e-12)).toBe(true);
+      expect(neutral.x.some((x) => Math.abs(x - point.tdb) < 1e-12)).toBe(true);
     });
   });
 

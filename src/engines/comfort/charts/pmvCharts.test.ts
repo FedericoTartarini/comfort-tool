@@ -38,8 +38,10 @@ import {
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { createAnalysisState } from "../../../state/analysis/createAnalysisState.svelte";
 import { convertFieldValueFromSi } from "../../units";
+import { maxRelativeAirSpeedWithoutOccupantControl } from "./ashraeAirSpeedLimits";
 import { buildChartPlotly, type ChartFigure } from "../../../testSupport/modelChartTestHelpers";
 import { assembleChart } from "../../../charts";
+import { createDynamicViewDescriptor } from "../../../declarations/pmv/dynamicChart";
 const input: ComfortZoneRequest = {
   tdb: 25,
   tr: 25,
@@ -177,6 +179,25 @@ function requireTrace(
   return trace;
 }
 
+function bandFillTraces(chart: ChartFigure, prefix: string) {
+  return chart.traces.filter(({ name, fill }) => (
+    typeof name === "string" && name.startsWith(prefix) && fill === "toself"
+  ));
+}
+
+function expectInputMarkerHover(
+  chart: ChartFigure,
+  rows: readonly string[],
+  inputName = "Input 1",
+): void {
+  const inputTrace = requireTrace(chart, inputName);
+  expect(inputTrace.hoverinfo).toBe("all");
+  expect(inputTrace.hovertemplate).toBeDefined();
+  for (const row of rows) {
+    expect(inputTrace.hovertemplate).toContain(row);
+  }
+}
+
 function expectSaturationMaskToMatchCurve(chart: ChartFigure): void {
   const mask = requireTrace(chart, "Supersaturated region mask");
   const saturationCurve = requireTrace(chart, "RH 100%");
@@ -220,19 +241,16 @@ describe("PMV charts", () => {
     const fillTraces = chart.traces.filter(({ contours }) => (
       contours?.type === "constraint" && contours.operation !== "="
     ));
-    const bandFills = chart.traces.filter(({ name, fill }) => (
-      typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
-    ));
-    const tooltipTrace = chart.traces.find(({ name }) => name === "PMV bands hover");
+    const bandFills = bandFillTraces(chart, "PMV bands:");
 
     expect(fillTraces).toHaveLength(0);
     expect(bandFills).toHaveLength(pmvZonesList.length);
-    expect(tooltipTrace?.type).toBe("contour");
-    expect(tooltipTrace?.z).toHaveLength(100);
-    expect(tooltipTrace?.z?.[0]).toHaveLength(100);
-    expect(tooltipTrace?.hovertemplate).toContain("Zone: %{text}");
-    expect(tooltipTrace?.hovertemplate).toContain("PMV: %{customdata[0]:.2f}");
-    expect(tooltipTrace?.hovertemplate).toContain("PPD: %{customdata[1]:.1f}%");
+    expect(chart.traces.find(({ name }) => name === "PMV bands hover")).toBeUndefined();
+    expectInputMarkerHover(chart, [
+      "Zone:",
+      "PMV:",
+      "PPD:",
+    ]);
     expect(chart.traces.filter(({ name }) => name?.startsWith("RH "))).toHaveLength(10);
     expectSaturationMaskToMatchCurve(chart);
     expect(chart.traces.some(({ name }) => name === "Input 1 comfort zone")).toBe(true);
@@ -243,7 +261,7 @@ describe("PMV charts", () => {
     expect(neutralFill?.x).toEqual(comfortOutline?.x);
     expect(neutralFill?.y).toEqual(comfortOutline?.y);
     expect(chart.traces.some(({ name }) => name === "Input 1")).toBe(true);
-    expect(chart.traces.find(({ name }) => name === "Input 1")?.hoverinfo).toBe("skip");
+    expect(chart.traces.find(({ name }) => name === "Input 1")?.hoverinfo).toBe("all");
     expect(String(chart.layout.title)).toContain("ASHRAE");
     expect(chart.layout.xaxis.dtick).toBe(2);
     const assembled = assembleChart(chart.payload);
@@ -262,11 +280,8 @@ describe("PMV charts", () => {
     expect(assembledNames.indexOf("Input 1 comfort zone")).toBeGreaterThan(
       assembledNames.indexOf("RH 100%"),
     );
-    expect(assembledNames.indexOf("PMV bands hover")).toBeGreaterThan(
-      assembledNames.indexOf("Input 1 comfort zone"),
-    );
     expect(assembledNames.indexOf("Input 1")).toBeGreaterThan(
-      assembledNames.indexOf("PMV bands hover"),
+      assembledNames.indexOf("Input 1 comfort zone"),
     );
     expect(
       assembled.data
@@ -383,9 +398,6 @@ describe("PMV charts", () => {
     if (!compliance || !ppd) {
       throw new Error("Expected both PMV psychrometric chart modes.");
     }
-    const ppdHover = ppd.traces.find(
-      ({ name }) => name === "PPD (%) bands hover",
-    );
     const ppdInput = ppd.traces.find(({ name }) => name === "Input 1");
     const rhCurve = ppd.traces.find(({ name }) => name === "RH 50%");
 
@@ -420,10 +432,13 @@ describe("PMV charts", () => {
     expect(ppdBandFills.map(({ fillcolor }) => fillcolor)).toEqual(
       expect.arrayContaining(["#123456", "#abcdef"]),
     );
-    expect(ppdHover?.hovertemplate).toContain("Band: %{text}");
-    expect(ppdHover?.hovertemplate).toContain("PPD: %{customdata[0]:.1f}%");
-    expect(ppdHover?.hovertemplate).toContain("PMV: %{customdata[1]:.2f}");
-    expect(ppdInput?.hoverinfo).toBe("skip");
+    expect(ppd.traces.find(({ name }) => name === "PPD (%) bands hover")).toBeUndefined();
+    expectInputMarkerHover(ppd, [
+      "Band:",
+      "PPD:",
+      "PMV:",
+    ]);
+    expect(ppdInput?.hoverinfo).toBe("all");
     expect(rhCurve?.hoverinfo).toBe("skip");
     expect(String(ppd.layout.title)).toContain("PPD (%)");
   });
@@ -446,8 +461,6 @@ describe("PMV charts", () => {
       UnitSystem.SI,
       createSource(pmvAshraeDeclaration),
     );
-    const tooltipTrace = requireTrace(chart, "PMV bands hover");
-    const tooltipValues = tooltipTrace.z?.flat() ?? [];
     const maskIndex = chart.traces.findIndex(({ name }) => (
       name === "Supersaturated region mask"
     ));
@@ -461,12 +474,10 @@ describe("PMV charts", () => {
     ));
 
     expectSaturationMaskToMatchCurve(chart);
-    expect(tooltipValues.some((value) => value === null)).toBe(true);
     expect(bandFillIndex).toBeGreaterThan(maskIndex);
     expect(rhCurveIndex).toBeGreaterThan(bandFillIndex);
     expect(comfortZoneIndex).toBeGreaterThan(rhCurveIndex);
-    expect(chart.traces.indexOf(tooltipTrace)).toBeGreaterThan(comfortZoneIndex);
-    expect(inputIndex).toBeGreaterThan(chart.traces.indexOf(tooltipTrace));
+    expect(inputIndex).toBeGreaterThan(comfortZoneIndex);
     expect(maximumRh).toBeLessThanOrEqual(100);
   });
 
@@ -588,22 +599,19 @@ describe("PMV charts", () => {
         PhysicalQuantityId.RelativeHumidity,
         outputKey,
       );
-      const fillTraces = chart.traces.filter(({ contours }) => (
-        contours?.type === "constraint" && contours.operation !== "="
-      ));
+      const fillTraces = bandFillTraces(chart, `${outputKey === ModelOutputKey.Pmv ? "PMV" : "PPD (%)"} bands:`);
       const tooltipTraces = chart.traces.filter(({ name }) => name?.endsWith(" hover"));
       const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
       expect(fillTraces.length).toBeGreaterThan(0);
       expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
-      expect(tooltipTraces).toHaveLength(1);
-      expect(tooltipTraces[0].hoverongaps).toBe(false);
-      expect(tooltipTraces[0].hovertemplate).toContain(
+      expect(tooltipTraces).toHaveLength(0);
+      expectInputMarkerHover(chart, [
         outputKey === ModelOutputKey.Pmv ? "Zone:" : "Band:",
-      );
-      expect(tooltipTraces[0].hovertemplate).toContain("PMV:");
-      expect(tooltipTraces[0].hovertemplate).toContain("PPD:");
-      expect(inputTrace?.hoverinfo).toBe("skip");
+        "PMV:",
+        "PPD:",
+      ]);
+      expect(inputTrace?.hoverinfo).toBe("all");
     },
   );
 
@@ -617,13 +625,11 @@ describe("PMV charts", () => {
       input,
       FieldChartProfileKind.Compliance,
     );
-    const fillTraces = chart.traces.filter(({ contours }) => (
-      contours?.type === "constraint" && contours.operation !== "="
-    ));
+    const fillTraces = bandFillTraces(chart, "PMV bands:");
 
     expect(fillTraces.length).toBeGreaterThan(0);
     expect(chart.traces.find(({ name }) => name === "Input 1")?.hoverinfo)
-      .toBe("skip");
+      .toBe("all");
   });
 
   it("keeps fixed and Explore classification consistent for the input point", () => {
@@ -641,11 +647,9 @@ describe("PMV charts", () => {
     const fixedInput = fixed.traces.find(({ name }) => name === "Input 1");
     const exploreInput = explore.traces.find(({ name }) => name === "Input 1");
 
-    expect(fixedInput?.hoverinfo).toBe("skip");
-    expect(exploreInput?.hoverinfo).toBe("skip");
-    expect(
-      explore.traces.find(({ name }) => name === "PMV bands hover")?.text?.flat(),
-    ).toEqual(expect.arrayContaining([expectedZone]));
+    expect(fixedInput?.hoverinfo).toBe("all");
+    expect(exploreInput?.hoverinfo).toBe("all");
+    expectInputMarkerHover(explore, [expectedZone]);
   });
 
   it.each([
@@ -658,11 +662,9 @@ describe("PMV charts", () => {
     yField,
   ) => {
     const chart = buildDynamic(pmvAshraeDeclaration, xField, yField);
-    const constraint = chart.traces.find(({ contours }) => (
-      contours?.type === "constraint" && contours.operation !== "="
-    ));
+    const fillTraces = bandFillTraces(chart, "PMV bands:");
 
-    expect(constraint?.z?.flat().some(Number.isFinite)).toBe(true);
+    expect(fillTraces.some((trace) => (trace.x?.length ?? 0) > 4)).toBe(true);
   });
 
   it("uses each standard's operative temperature and clothing range", () => {
@@ -703,48 +705,32 @@ describe("PMV charts", () => {
   });
 
   it.each([pmvAshraeDeclaration, pmvIsoDeclaration])(
-    "keeps RH 50% constraint crossings close to the continuous root for $label",
+    "keeps RH 50% isoline vertices close to the continuous root for $label",
     (declaration) => {
       const chart = buildDynamic(
         declaration,
         PhysicalQuantityId.DryBulbTemperature,
         PhysicalQuantityId.RelativeHumidity,
       );
-      const lowerBoundary = chart.traces.find(({ contours }) => (
-        contours?.operation === "=" && contours.value === -0.5
+      const coolFill = bandFillTraces(chart, "PMV bands:").find(({ name }) => (
+        name?.includes("Slightly Cool") || name?.includes("Neutral")
       ));
-      if (!lowerBoundary?.z || !lowerBoundary.y || !lowerBoundary.x) {
-        throw new Error("Missing PMV boundary.");
-      }
-      const yValues = lowerBoundary.y;
-      const rowIndex = yValues.reduce((bestIndex, value, index) => (
-        Math.abs(value - 50) < Math.abs(yValues[bestIndex] - 50) ? index : bestIndex
-      ), 0);
-      const row = lowerBoundary.z[rowIndex];
-      const crossingIndex = row.findIndex((value, index) => {
-        const previous = row[index - 1];
-        return (
-          index > 0
-          && value !== null
-          && previous !== null
-          && Number.isFinite(value)
-          && Number.isFinite(previous)
-          && (previous + 0.5) * (value + 0.5) <= 0
-        );
-      });
-      const xValues = lowerBoundary.x;
-      expect(crossingIndex).toBeGreaterThan(0);
+      const xs = coolFill?.x ?? [];
+      const ys = coolFill?.y ?? [];
+      const nearRh50 = xs
+        .map((tdb, index) => ({ tdb, rh: ys[index] }))
+        .filter(({ rh }) => Math.abs(rh - 50) < 2);
+      expect(nearRh50.length).toBeGreaterThan(0);
       const closestDelta = Math.min(
-        ...[xValues[crossingIndex - 1], xValues[crossingIndex]].map((tdb) => (
+        ...nearRh50.map(({ tdb }) => (
           Math.abs(declaration.adapter.calculate({ ...input, tdb }).pmv + 0.5)
         )),
       );
-
-      expect(closestDelta).toBeLessThan(0.1);
+      expect(closestDelta).toBeLessThan(0.15);
     },
   );
 
-  it("keeps PMV grid hover complete in IP display", () => {
+  it("keeps PMV cursor hover complete in IP display", () => {
     const chart = buildDynamic(
       pmvAshraeDeclaration,
       PhysicalQuantityId.DryBulbTemperature,
@@ -752,20 +738,76 @@ describe("PMV charts", () => {
       ModelOutputKey.Pmv,
       UnitSystem.IP,
     );
-    const tooltipTrace = chart.traces.find(({ name }) => name === "PMV bands hover");
     const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
-    expect(tooltipTrace?.type).toBe("contour");
-    expect(tooltipTrace?.hoverongaps).toBe(false);
-    expect(tooltipTrace?.hovertemplate).toContain("Air temperature");
-    expect(tooltipTrace?.hovertemplate).toContain("Relative humidity");
-    expect(tooltipTrace?.hovertemplate).toContain("Zone:");
-    expect(tooltipTrace?.hovertemplate).toContain("PMV:");
-    expect(tooltipTrace?.hovertemplate).toContain("PPD:");
+    expect(chart.traces.find(({ name }) => name === "PMV bands hover")).toBeUndefined();
+    expectInputMarkerHover(chart, [
+      "Air temperature",
+      "Relative humidity",
+      "Zone:",
+      "PMV:",
+      "PPD:",
+    ]);
     expect(chart.traces.every((trace) => !("hoveron" in trace))).toBe(true);
     expect(inputTrace?.x?.[0]).toBeCloseTo(
       convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, input.tdb, UnitSystem.IP),
       6,
     );
+  });
+
+  it("clips ASHRAE To×vr without occupant control", () => {
+    const clipped = buildDynamic(
+      pmvAshraeDeclaration,
+      PhysicalQuantityId.OperativeTemperature,
+      PhysicalQuantityId.RelativeAirSpeed,
+      ModelOutputKey.Pmv,
+      UnitSystem.SI,
+      { ...input, occupantHasAirSpeedControl: false },
+    );
+    const clippedNeutral = bandFillTraces(clipped, "PMV bands:").find(({ name }) => (
+      name?.includes("Neutral")
+    ));
+    expect(clippedNeutral?.y?.length).toBeGreaterThan(4);
+    clippedNeutral?.x?.forEach((to, index) => {
+      expect(clippedNeutral.y?.[index]).toBeLessThanOrEqual(
+        maxRelativeAirSpeedWithoutOccupantControl(to) + 1e-6,
+      );
+    });
+  });
+
+  it("leaves ASHRAE To×vr unclipped when occupants have local control", () => {
+    const { source, result } = calculateModel(
+      pmvAshraeDeclaration,
+      { ...input, occupantHasAirSpeedControl: true },
+    );
+    expect(source.inputs[InputId.Input1]?.occupantHasAirSpeedControl).toBe(true);
+    expect(createDynamicViewDescriptor(
+      pmvAshraeDeclaration,
+      source,
+      createResults(result),
+      createContext(
+        pmvAshraeDeclaration,
+        PhysicalQuantityId.OperativeTemperature,
+        PhysicalQuantityId.RelativeAirSpeed,
+        ModelOutputKey.Pmv,
+      ),
+    ).clipAirSpeedWithoutOccupantControl).toBe(false);
+  });
+
+  it("clips ISO To×vr because occupant air-speed control is never available", () => {
+    const chart = buildDynamic(
+      pmvIsoDeclaration,
+      PhysicalQuantityId.OperativeTemperature,
+      PhysicalQuantityId.RelativeAirSpeed,
+    );
+    const neutral = bandFillTraces(chart, "PMV bands:").find(({ name }) => (
+      name?.includes("Neutral")
+    ));
+    expect(neutral?.y?.length).toBeGreaterThan(4);
+    neutral?.x?.forEach((to, index) => {
+      expect(neutral.y?.[index]).toBeLessThanOrEqual(
+        maxRelativeAirSpeedWithoutOccupantControl(to) + 1e-6,
+      );
+    });
   });
 });

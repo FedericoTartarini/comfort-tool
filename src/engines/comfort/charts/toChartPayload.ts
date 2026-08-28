@@ -34,6 +34,7 @@ function toAxis(axis: PlotAxis): Axis {
     ...(axis.showticklabels !== undefined
       ? { showticklabels: axis.showticklabels }
       : {}),
+    ...(axis.ticks !== undefined ? { ticks: axis.ticks } : {}),
     ...(axis.dtick !== undefined ? { dtick: axis.dtick } : {}),
     ...(axis.side ? { side: axis.side } : {}),
     ...(axis.overlaying ? { overlaying: axis.overlaying } : {}),
@@ -232,7 +233,12 @@ export function chartPayloadFromSpec(
       return { type, input };
     }
     case ChartType.Dynamic: {
-      const input: DynamicInput = { ...frame, fills, points };
+      const input: DynamicInput = {
+        ...frame,
+        ...(fills.length > 0 ? { fills } : {}),
+        ...(polygons.length > 0 ? { zones: polygons } : {}),
+        points,
+      };
       return { type, input };
     }
     case ChartType.HeatLoss: {

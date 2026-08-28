@@ -193,43 +193,6 @@ export function buildCategoricalBandTraces({
   ));
 }
 
-interface BandTooltipTraceOptions {
-  name: string;
-  grid: GridEvaluationResult;
-  hovertemplate: string;
-  includeHoverMetadata?: boolean;
-}
-
-const TRANSPARENT_COLORSCALE: PlotColorScale = [
-  [0, "rgba(0, 0, 0, 0)"],
-  [1, "rgba(0, 0, 0, 0)"],
-];
-
-export function buildBandTooltipTrace({
-  name,
-  grid,
-  hovertemplate,
-  includeHoverMetadata = true,
-}: BandTooltipTraceOptions): PlotTrace {
-  return buildGridContourTrace({
-    name,
-    grid,
-    colorscale: TRANSPARENT_COLORSCALE,
-    contours: {
-      type: "levels",
-      coloring: "heatmap",
-      showlines: false,
-    },
-    hovertemplate,
-    hoverOnGaps: false,
-    showscale: false,
-    line: { width: 0 },
-    isBackgroundZone: true,
-    isHoverLayer: true,
-    includeHoverMetadata,
-  });
-}
-
 interface ConstraintBandTracesOptions {
   name: string;
   bands: readonly NumericBand[];

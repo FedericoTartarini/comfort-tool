@@ -267,12 +267,10 @@ describe("comfort services", () => {
     );
 
     expect(psychrometricChart.traces.length).toBeGreaterThan(1);
-    const hoverTrace = psychrometricChart.traces.find(
-      ({ name }) => name === "PMV bands hover",
-    );
-    expect(hoverTrace?.name).toContain("PMV");
-    expect(hoverTrace?.z).toHaveLength(100);
-    expect(hoverTrace?.z?.[0]).toHaveLength(100);
+    expect(psychrometricChart.traces.find(({ name }) => name === "PMV bands hover"))
+      .toBeUndefined();
+    expect(psychrometricChart.traces.find(({ name }) => name === "Input 1")?.hovertemplate)
+      .toContain("PMV:");
     expect(psychrometricChart.traces.filter((trace) => typeof trace.name === "string" && trace.name.startsWith("RH "))).toHaveLength(10);
     expect(
       psychrometricChart.payload.type === "psychrometric"
@@ -289,12 +287,10 @@ describe("comfort services", () => {
     expect(psychrometricChart.traces.filter(({ name, fill }) => (
       typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
     )).length).toBeGreaterThan(0);
-    expect(psychrometricChart.traces.find(({ name }) => name === "PMV bands hover"))
-      .toBeDefined();
     expect(psychrometricChart.traces.find(({ name }) => name === "Input 1"))
       .toBeDefined();
     expect(utciChart.traces.find(({ name }) => name === "UTCI bands hover"))
-      .toBeDefined();
+      .toBeUndefined();
     expect(utciChart.traces.find(({ name }) => name === "Input 1"))
       .toBeDefined();
     expect(utciChart.annotations.length).toBeGreaterThan(0);
@@ -331,18 +327,17 @@ describe("comfort services", () => {
     expect(annotationCoordinates.every(Number.isFinite)).toBe(true);
   });
 
-  it("keeps PMV psychrometric supersaturated grid cells empty", () => {
+  it("does not evaluate a psychrometric hover grid above saturation", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
       "pmv-ashrae-psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
 
-    const hoverTrace = psychrometricChart.traces.find(
-      ({ name }) => name === "PMV bands hover",
-    );
-    expect(hoverTrace?.z?.[49]?.[0]).toBeNull();
-    expect(hoverTrace?.text?.[49]?.[0]).toBe("");
+    expect(psychrometricChart.traces.find(({ name }) => name === "PMV bands hover"))
+      .toBeUndefined();
+    expect(psychrometricChart.traces.find(({ name }) => name === "Input 1")?.hoverinfo)
+      .toBe("all");
   });
 
   it("builds PMV dynamic chart with selected axes and input point", () => {
@@ -356,20 +351,20 @@ describe("comfort services", () => {
       createChartContext(UnitSystem.SI, fieldChartConfig),
     );
     const inputTrace = dynamicChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
-    const rawGridTrace = dynamicChart.traces.find((trace) => (
-      trace.contours?.type === "constraint" && trace.contours.operation !== "="
+    const bandFills = dynamicChart.traces.filter(({ name, fill }) => (
+      typeof name === "string" && name.startsWith("PMV bands:") && fill === "toself"
     ));
 
-    expect(rawGridTrace?.z).toHaveLength(100);
-    expect(rawGridTrace?.z?.[0]).toHaveLength(100);
+    expect(bandFills.length).toBeGreaterThan(0);
+    expect(dynamicChart.traces.find(({ type }) => type === "contour")).toBeUndefined();
     expect(String(dynamicChart.layout.xaxis.title)).toContain("Air temperature");
     expect(String(dynamicChart.layout.yaxis.title)).toContain("Relative humidity");
     expect(inputTrace?.x).toEqual([26]);
     expect(inputTrace?.y).toEqual([50]);
-    expect(inputTrace?.hoverinfo).toBe("skip");
+    expect(inputTrace?.hoverinfo).toBe("all");
   });
 
-  it("uses the selected baseline input for PMV dynamic contour evaluation", () => {
+  it("uses the selected baseline input for PMV dynamic isoline evaluation", () => {
     const alternatePayload = {
       ...comfortZonePayload,
       met: 2.0,
@@ -394,14 +389,16 @@ describe("comfort services", () => {
       chartInputs,
       createChartContext(UnitSystem.SI, fieldChartConfig, InputId.Input2),
     );
-    const input1GridTrace = input1BaselineChart.traces.find((trace) => (
-      trace.contours?.type === "constraint" && trace.contours.operation !== "="
+    const input1Fill = input1BaselineChart.traces.find(({ name, fill }) => (
+      typeof name === "string" && name.includes("Neutral") && fill === "toself"
     ));
-    const input2GridTrace = input2BaselineChart.traces.find((trace) => (
-      trace.contours?.type === "constraint" && trace.contours.operation !== "="
+    const input2Fill = input2BaselineChart.traces.find(({ name, fill }) => (
+      typeof name === "string" && name.includes("Neutral") && fill === "toself"
     ));
 
-    expect(input1GridTrace?.z?.[25]?.[25]).not.toBe(input2GridTrace?.z?.[25]?.[25]);
+    expect(input1Fill?.x).toBeDefined();
+    expect(input2Fill?.x).toBeDefined();
+    expect(input1Fill?.x).not.toEqual(input2Fill?.x);
     expect(input2BaselineChart.traces.filter((trace) => trace.mode === "markers"))
       .toHaveLength(2);
   });
@@ -428,13 +425,12 @@ describe("comfort services", () => {
 
     expect(String(psychrometricChart.layout.xaxis.title)).toContain("°F");
     expect(String(psychrometricChart.layout.yaxis.title)).toContain("gr/lb");
-    expect(psychrometricChart.traces.find(({ name }) => (
-      name === "PMV bands hover"
-    ))?.hovertemplate).toContain("°F");
+    expect(psychrometricChart.traces.find(({ name }) => name === "Input 1")?.hovertemplate)
+      .toContain("°F");
     expect(String(utciChart.layout.xaxis.title)).toContain("°F");
     const utciInputTrace = utciChart.traces.find((trace) => trace.type === "scatter" && trace.name === "Input 1");
     expect(utciInputTrace).toBeDefined();
-    expect(utciInputTrace?.hoverinfo).toBe("skip");
+    expect(utciInputTrace?.hoverinfo).toBe("all");
   });
 
   it("closes the comfort-zone overlay along RH caps", () => {

@@ -27,7 +27,7 @@ export function buildTimeSeriesLineTrace(
     visible: options.visible,
     lineWidth: options.width ?? 2,
     dash: options.dash,
-    hoverinfo: options.hoverInfo,
+    hoverinfo: options.hoverInfo ?? "all",
     hovertemplate: options.hoverInfo === "skip"
       ? undefined
       : `%{customdata[0]}<br>Time: %{x:.2f} h<br>${options.name}: %{y:.2f} ${options.unit}<extra></extra>`,

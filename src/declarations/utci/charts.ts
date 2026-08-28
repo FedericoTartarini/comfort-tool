@@ -145,8 +145,6 @@ export function buildUtciStressChart(
     strategy: createBandedGridStrategy({
       config: fixedConfig,
       output: utciOutput,
-      bandLabel: "Stress Category",
-      hoverTemplate: `UTCI: %{x:.1f} ${temperatureUnits}<br><b>Stress Category: %{text}</b><extra></extra>`,
       opacity: 0.75,
       evaluateOutput: (utciValueSi) => utciValueSi,
     }),

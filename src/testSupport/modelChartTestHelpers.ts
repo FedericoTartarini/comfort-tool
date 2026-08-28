@@ -31,13 +31,13 @@ export function chartContextToProfile(
   };
 }
 
-export function buildChartPayload<TResult>(
+export function buildChartResult<TResult>(
   config: RuntimeComfortModelDefinition,
   instanceId: string,
   chartSource: unknown,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-): ChartPayload | null {
+) {
   return config.buildChart(
     instanceId,
     chartSource,
@@ -49,6 +49,22 @@ export function buildChartPayload<TResult>(
       chartSourceVersion: 1,
       modelInputs: context.modelInputs ?? {},
     },
+  );
+}
+
+export function buildChartPayload<TResult>(
+  config: RuntimeComfortModelDefinition,
+  instanceId: string,
+  chartSource: unknown,
+  resultsByInput: Record<InputIdType, TResult | null>,
+  context: ChartBuildContext,
+): ChartPayload | null {
+  return buildChartResult(
+    config,
+    instanceId,
+    chartSource,
+    resultsByInput,
+    context,
   ).payload;
 }
 
@@ -153,13 +169,12 @@ export function buildChartPlotly<TResult>(
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ) {
-  return chartFigure(
-    buildChartPayload(
-      config,
-      instanceId,
-      chartSource,
-      resultsByInput,
-      context,
-    ),
+  const result = buildChartResult(
+    config,
+    instanceId,
+    chartSource,
+    resultsByInput,
+    context,
   );
+  return chartFigure(result.payload);
 }

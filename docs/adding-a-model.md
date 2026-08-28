@@ -181,17 +181,18 @@ labels are `chartTypeLabel[type]` (Heat Loss, Body Temperature, SET).
 ChartType at most once. Heat Index / Humidex use a single Dynamic instance.
 Psychrometric is frontend-only for PMV ASHRAE/ISO. Do not solve PMV isoline
 roots in a declaration; pass `evaluate(T, RH)` and band thresholds to
-`src/charts/psychrometric/` helpers. TemperatureMode Air keeps `tr` from
+`src/charts/psychrometric/` helpers. 2-D Dynamic charts share
+`src/charts/isolines.ts` (Cartesian linear caps). Hover is Plotly closest on Compare markers and data lines.
+TemperatureMode Air keeps `tr` from
 input on that field; Operative uses `tr=tdb` per sample and labels x
 Operative temperature. Heat-loss vs temperature
 and SET series builders live beside the PMV family; ASHRAE and ISO
-declarations each register those ChartTypes. Interactive Dynamic 2-D grids
-are capped near 100² (`INTERACTIVE_DYNAMIC_GRID_POINTS`); do not pass 300
-or 450. UTCI 1-D sampling may stay high (for example 450 x-points). Hover
-overlays use display `z` for the primary output and must not attach a
-per-cell `customdata` matrix unless extra hover fields exist. `src/charts/draw.ts`
+declarations each register those ChartTypes. Do not pass 300
+or 450 as a 2-D Dynamic fill grid. UTCI 1-D sampling may stay high (for example 450 x-points). Hover
+overlays must not attach a
+per-cell `customdata` matrix. `src/charts/draw.ts`
 clones Plotly-owned `x`/`y`/`z`/`text` arrays and nested records Plotly
-mutates, and converts non-finite grid `z` cells to `null` gaps. Do not
+mutates, applies axis lines/ticks via `layout.template`, and converts non-finite grid `z` cells to `null` gaps. Do not
 `JSON.parse(JSON.stringify(figure))` a dense field. Screen and publication
 figures share `src/engines/chartTheme.ts`. Export builds a separate
 publication figure (PNG ~300 DPI equivalent, SVG of the same geometry, no
@@ -298,7 +299,7 @@ editable working bands. Band membership is array-ordered and half-open:
 
 Psychrometric is frontend-only on PMV ASHRAE/ISO via `ComfortModelBuilder`.
 Do not compute isoline roots in the declaration; wire evaluate and bands
-to `src/charts/psychrometric/`. PMV also registers Heat Loss and SET ChartTypes on those same declarations.
+to `src/charts/psychrometric/` or `src/charts/isolines.ts`. PMV also registers Heat Loss and SET ChartTypes on those same declarations.
 UTCI chart binds live in `src/declarations/utci/charts.ts`. PHS chart binds
 live in `src/declarations/phs/charts.ts`. PHS Analysis exposure history is
 Body Temperature.
