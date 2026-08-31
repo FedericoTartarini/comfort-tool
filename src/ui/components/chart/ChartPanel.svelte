@@ -5,6 +5,7 @@
   import ChartProfileBadge from "./ChartProfileBadge.svelte";
   import ChartLegend from "./ChartLegend.svelte";
   import type { ChartPayload } from "../../../charts/types";
+  import type { ChartHoverProbe } from "../../../engines/comfort/charts/chartBuildResult";
   import type { ChartInstancePanelView } from "../../../state/pointSession/chartInstancePresentation";
   import type { ChartControlsViewModel } from "../../../state/pointSession/types";
   import type { PublicationExportHandler } from "../../../charts/plotlyExport";
@@ -19,6 +20,7 @@
     chartControls: ChartControlsViewModel;
     legendZones: ReadonlyArray<{ label: string; color: string }> | null;
     legendTitle: string;
+    hoverProbe?: ChartHoverProbe;
   }
 
   let {
@@ -31,6 +33,7 @@
     chartControls,
     legendZones,
     legendTitle,
+    hoverProbe,
   }: Props = $props();
 
   let exportChart: PublicationExportHandler | undefined = $state(undefined);
@@ -92,6 +95,7 @@
       emptyMessage={chartInstance.emptyMessage}
       heightClass={heightClass}
       testId="comfort-chart-visual"
+      hoverProbe={hoverProbe}
       onRegisterExport={(handler) => (exportChart = handler)}
     />
 

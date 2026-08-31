@@ -171,7 +171,7 @@ export interface BandedGridStrategyOptions {
   ) => GridEvaluationResult;
 }
 
-function createAxis(
+export function createFieldChartAxis(
   spec: FieldChartAxisSpec,
   unitSystem: UnitSystemType,
 ): ChartAxisScale {
@@ -259,8 +259,8 @@ export function buildFieldChart<TPayload = unknown, TResult = unknown>({
   annotations = [],
 }: FieldChartOptions<TPayload, TResult>): PlotlyChartSpec {
   const context: FieldChartRenderContext = {
-    xAxis: createAxis(xAxisSpec, unitSystem),
-    yAxis: createAxis(yAxisSpec, unitSystem),
+    xAxis: createFieldChartAxis(xAxisSpec, unitSystem),
+    yAxis: createFieldChartAxis(yAxisSpec, unitSystem),
     unitSystem,
   };
   const groups = inputGroups?.(context) ?? [];

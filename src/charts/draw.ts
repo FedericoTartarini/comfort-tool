@@ -40,6 +40,11 @@ export type PlotlyModule = {
     update: Record<string, unknown>,
     traces?: number | number[],
   ) => Promise<void> | void;
+  addTraces?: (
+    root: HTMLElement,
+    traces: unknown | unknown[],
+    newIndices?: number | number[],
+  ) => Promise<void> | void;
   Fx?: {
     hover: (root: HTMLElement, hoverData: unknown, axes?: string) => void;
     unhover: (root: HTMLElement) => void;
@@ -58,6 +63,7 @@ export async function loadPlotly(): Promise<PlotlyModule> {
   const plotly = imported.default ?? imported;
   if (!plotly.Fx && imported.Fx) plotly.Fx = imported.Fx;
   if (!plotly.restyle && imported.restyle) plotly.restyle = imported.restyle;
+  if (!plotly.addTraces && imported.addTraces) plotly.addTraces = imported.addTraces;
   plotlyModule = plotly;
   return plotlyModule;
 }
@@ -173,11 +179,16 @@ const AXIS_CHROME = {
   tickformat: ".2~f",
 } as const;
 
-/** Plotly layout.template: axis lines and tick marks only (not simple_white). */
+/** Plotly layout.template: axis lines, ticks, and a shared hover label (not simple_white). */
 const AXIS_CHROME_TEMPLATE = {
   layout: {
     xaxis: AXIS_CHROME,
     yaxis: AXIS_CHROME,
+    hoverlabel: {
+      bgcolor: "#ffffff",
+      bordercolor: AXIS_LINE_COLOR,
+      font: { color: AXIS_LINE_COLOR },
+    },
   },
 };
 

@@ -73,7 +73,7 @@ Canonical Standard URLs are `/standard/{standard}/{model}/` (for example `/stand
 
 **Canonical state is always SI.** User input converts to SI on entry; calculations run in SI; display converts from SI via `src/engines/units/`.
 
-**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/declarations/**`. Reusable ChartType geometry belongs in `src/charts/`. Remaining shared comfort helpers live in `src/engines/comfort/**`. Shared Cartesian isoline root-finding lives in `src/charts/isolines.ts`. Psychrometric isoline geometry lives in `src/charts/psychrometric/`. Declarations wire `evaluate` and bands; they do not solve isoline roots. State and components must not contain raw formula implementations.
+**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/declarations/**`. Reusable ChartType geometry belongs in `src/charts/`. Remaining shared comfort helpers live in `src/engines/comfort/**`. Shared Cartesian isoline root-finding lives in `src/charts/isolines.ts`. Psychrometric isoline geometry lives in `src/charts/psychrometric/`. Declarations wire `evaluate` and bands; they do not solve isoline roots. 2-D field hover uses a Plotly probe on `ChartBuildResult.hoverProbe` (not `ChartPayload`); the probe follows the pointer and does not snap to Compare markers. State and components must not contain raw formula implementations.
 
 **`jsthermalcomfort` imports** stay in `src/declarations/**`, remaining `src/engines/comfort/**`, and `src/charts/psychrometric/humidity.ts` (humidity ratio only).
 

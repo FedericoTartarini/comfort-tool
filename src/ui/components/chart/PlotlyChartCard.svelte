@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ChartPayload } from "../../../charts/types";
   import type { PublicationExportHandler } from "../../../charts/plotlyExport";
+  import type { ChartHoverProbe } from "../../../engines/comfort/charts/chartBuildResult";
   import PlotlyCanvas from "./PlotlyCanvas.svelte";
 
   interface Props {
@@ -11,6 +12,7 @@
     emptyMessage?: string;
     heightClass?: string;
     testId?: string;
+    hoverProbe?: ChartHoverProbe;
     onRegisterExport?: (handler: PublicationExportHandler | undefined) => void;
   }
 
@@ -22,6 +24,7 @@
     emptyMessage = "No chart yet.",
     heightClass = "h-[480px] xl:h-[480px]",
     testId,
+    hoverProbe,
     onRegisterExport,
   }: Props = $props();
 </script>
@@ -47,6 +50,7 @@
         {isLoading}
         emptyMessage={emptyMessage}
         {heightClass}
+        {hoverProbe}
         onRegisterExport={onRegisterExport}
       />
     </div>

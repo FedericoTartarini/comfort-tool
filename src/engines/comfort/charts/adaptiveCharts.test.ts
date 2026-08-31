@@ -91,7 +91,7 @@ function buildChart(
     { inputs: requests } as ModelChartSource<AdaptiveRequest>,
     resultsByInput,
     createContext(declaration, unitSystem, baselineInputId, direction),
-  );
+  ).spec;
 }
 
 function getLevel(
@@ -327,7 +327,7 @@ describe("single Adaptive Compliance chart", () => {
       { inputs: { [InputId.Input1]: baselineRequest } },
       { [InputId.Input1]: result },
       createContext(declaration),
-    );
+    ).spec;
     const regions = getRegionTraces(chart);
     const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
 
@@ -338,6 +338,27 @@ describe("single Adaptive Compliance chart", () => {
     expect(inputTrace?.hoverinfo).toBe("all");
     expect(inputTrace?.hovertemplate).toContain("Input 1");
     expect(evaluateApplicability).not.toHaveBeenCalled();
+  });
+
+  it("probes Adaptive band interiors without a tooltip grid", () => {
+    const result = calculateAdaptive(adaptiveAshraeDeclaration, baselineRequest);
+    const built = buildAdaptiveChart(
+      adaptiveAshraeDeclaration,
+      { inputs: { [InputId.Input1]: baselineRequest } },
+      { [InputId.Input1]: result },
+      createContext(adaptiveAshraeDeclaration),
+    );
+    expect(built.spec.traces.find(({ name }) => name === "Tooltip Layer")).toBeUndefined();
+    const hit = built.hoverProbe?.probeDisplay(20.16, 24);
+    expect(hit).toBeDefined();
+    expect(hit?.hovertemplate).not.toContain("Input 1");
+    expect(hit?.hovertemplate).toContain("Prevailing mean outdoor temperature");
+    expect(hit?.hovertemplate).toContain("Operative temperature");
+    expect(hit?.hovertemplate).toMatch(/90% Acceptability:/);
+    expect(Array.isArray(hit?.customdata)).toBe(true);
+    const customdata = hit?.customdata as unknown[];
+    expect(customdata.length).toBeGreaterThan(2);
+    expect(customdata.slice(1).some((value) => typeof value === "number" && Number.isFinite(value))).toBe(true);
   });
 
   it("builds deterministic ASHRAE regions on the default SI axes", () => {

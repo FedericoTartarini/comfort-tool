@@ -1,6 +1,10 @@
 import type { ModelChartSource } from "../../../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
-import type { ChartBuildResult } from "../chartBuildResult";
+import type {
+  ChartBuildResult,
+  ChartHoverProbe,
+  ChartPlotlyBuild,
+} from "../chartBuildResult";
 import { ChartType } from "../../../../catalog/chartTypes";
 import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 import {
@@ -30,10 +34,17 @@ function emptyResult(emptyMessage: string): ChartBuildResult {
   };
 }
 
+function isChartPlotlyBuild(
+  value: PlotlyChartSpec | ChartPlotlyBuild,
+): value is ChartPlotlyBuild {
+  return "spec" in value;
+}
+
 function wrapPlotlyResult(
   type: ChartType,
   plotly: PlotlyChartSpec | null,
   emptyMessage: string,
+  hoverProbe?: ChartHoverProbe,
 ): ChartBuildResult {
   if (!plotly) return emptyResult(emptyMessage);
   return {
@@ -41,7 +52,20 @@ function wrapPlotlyResult(
     legend: null,
     readiness: "ready",
     emptyMessage,
+    ...(hoverProbe ? { hoverProbe } : {}),
   };
+}
+
+function wrapBuiltChart(
+  type: ChartType,
+  built: PlotlyChartSpec | ChartPlotlyBuild | null,
+  emptyMessage: string,
+): ChartBuildResult {
+  if (!built) return emptyResult(emptyMessage);
+  if (isChartPlotlyBuild(built)) {
+    return wrapPlotlyResult(type, built.spec, emptyMessage, built.hoverProbe);
+  }
+  return wrapPlotlyResult(type, built, emptyMessage);
 }
 
 export function buildDynamicFieldChart<TResult, ChartSourceType>(
@@ -59,7 +83,7 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
 
   const { spec } = registration.registration;
   if (!isDynamicFieldGridSpec<TResult>(spec)) {
-    return wrapPlotlyResult(
+    return wrapBuiltChart(
       ChartType.Dynamic,
       spec.build(chartSource, resultsByInput, context),
       registration.emptyMessage,
@@ -88,7 +112,7 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
     } as GridModelChartSpec<object, TResult>,
   );
 
-  return wrapPlotlyResult(ChartType.Dynamic, plotly, registration.emptyMessage);
+  return wrapBuiltChart(ChartType.Dynamic, plotly, registration.emptyMessage);
 }
 
 export function buildPsychrometricChart<TResult, ChartSourceType>(
@@ -100,7 +124,7 @@ export function buildPsychrometricChart<TResult, ChartSourceType>(
   if (registration.registration.type !== ChartType.Psychrometric) {
     throw new Error(`Chart ${registration.instanceId} is not a psychrometric chart.`);
   }
-  return wrapPlotlyResult(
+  return wrapBuiltChart(
     ChartType.Psychrometric,
     registration.registration.spec.build(chartSource, resultsByInput, context),
     registration.emptyMessage,
@@ -119,7 +143,7 @@ export function buildUtciChart<TResult, ChartSourceType>(
   const { spec } = registration.registration;
   if ("build" in spec) {
     if (!chartSource) return emptyResult(registration.emptyMessage);
-    return wrapPlotlyResult(
+    return wrapBuiltChart(
       ChartType.Utci,
       spec.build(chartSource, resultsByInput, context),
       registration.emptyMessage,
@@ -143,7 +167,7 @@ export function buildAdaptiveChartKind<TResult, ChartSourceType>(
   }
   const { spec } = registration.registration;
   if ("build" in spec) {
-    return wrapPlotlyResult(
+    return wrapBuiltChart(
       ChartType.Adaptive,
       spec.build(chartSource, resultsByInput, context),
       registration.emptyMessage,
@@ -168,7 +192,7 @@ export function buildBodyTemperatureChart<TResult, ChartSourceType>(
   }
   const { spec } = registration.registration;
   if ("build" in spec) {
-    return wrapPlotlyResult(
+    return wrapBuiltChart(
       type,
       spec.build(chartSource, resultsByInput, context),
       registration.emptyMessage,

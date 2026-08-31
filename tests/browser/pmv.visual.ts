@@ -458,7 +458,7 @@ test.describe("PMV visual regression", () => {
     );
   });
 
-  test("ASHRAE psychrometric hover is native on the Compare marker", async ({
+  test("ASHRAE psychrometric hover follows the pointer", async ({
     page,
   }) => {
     const { plot } = await openTargetPmvChart(page, { surface: "standard" });
@@ -483,7 +483,7 @@ test.describe("PMV visual regression", () => {
       inputPointBox!.x + inputPointBox!.width / 2,
       inputPointBox!.y + inputPointBox!.height / 2,
     );
-    await expect(hoverLayer).toContainText("Input 1");
+    await expect(hoverLayer).not.toContainText("Input 1");
     await expect(hoverLayer).toContainText(/Humidity ratio: \d+\.\d g\/kg/);
     await expect(hoverLayer).toContainText(/Zone:/);
     await expect(hoverLayer).toContainText(/PMV:/);
@@ -492,7 +492,11 @@ test.describe("PMV visual regression", () => {
     // 22 °C / 7.5 g/kg sits between the 40% and 50% RH curves.
     await hoverPlotCoordinate(page, plot, 22, 7.5);
     await expect(hoverLayer).not.toContainText("Input 1");
-    await expect(hoverLayer).not.toContainText(/Humidity ratio:/);
+    await expect(hoverLayer).toContainText(/Air temperature:/);
+    await expect(hoverLayer).toContainText(/Humidity ratio:/);
+    await expect(hoverLayer).toContainText(/Zone:/);
+    await expect(hoverLayer).toContainText(/PMV:/);
+    await expect(hoverLayer).toContainText(/PPD:/);
   });
 
   test("ASHRAE PMV in SI", async ({ page }) => {
@@ -540,8 +544,8 @@ test.describe("PMV visual regression", () => {
       inputPointBox!.y + inputPointBox!.height / 2,
     );
     const hoverLayer = plot.locator(".hoverlayer");
-    await expect(hoverLayer).toContainText("Input 1");
-    await expect(hoverLayer).toContainText(/Air temperature: \d+\.\d °C/);
+    await expect(hoverLayer).not.toContainText("Input 1");
+    await expect(hoverLayer).toContainText(/Air temperature: \d+(\.\d+)? °C/);
     await expect(hoverLayer).toContainText(/Relative humidity: \d+(\.\d+)? %/);
     await expect(hoverLayer).toContainText("Zone: Neutral");
     await expect(hoverLayer).toContainText(/PMV: -0\.\d{2}/);
@@ -550,7 +554,11 @@ test.describe("PMV visual regression", () => {
 
     await hoverPlotCoordinate(page, plot, 28, 50);
     await expect(hoverLayer).not.toContainText("Input 1");
-    await expect(hoverLayer).not.toContainText(/Air temperature:/);
+    await expect(hoverLayer).toContainText(/Air temperature:/);
+    await expect(hoverLayer).toContainText(/Relative humidity:/);
+    await expect(hoverLayer).toContainText(/Zone:/);
+    await expect(hoverLayer).toContainText(/PMV:/);
+    await expect(hoverLayer).toContainText(/PPD:/);
   });
 
   test("ASHRAE PPD in SI", async ({ page }) => {

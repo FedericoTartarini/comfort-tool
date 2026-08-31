@@ -4,14 +4,18 @@ import type { CompareInputMap } from "../../catalog/chartSource";
 import type {
   PlotHoverRow,
   PlotMargin,
-  PlotlyChartSpec,
   PlotTrace,
 } from "../../engines/plotlyTypes";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import { findNumericBandIndexForValue, type ChartBuildContext, type FieldChartConfig, type NumericBand } from "../../catalog/modelCapabilities";
+import type {
+  ChartPlotlyBuild,
+} from "../../engines/comfort/charts/chartBuildResult";
+import { createDisplayHoverProbe } from "../../engines/comfort/charts/hoverProbe";
 import {
   buildFieldChart,
   createEmptyFieldStrategy,
+  createFieldChartAxis,
   type FieldChartAxisSpec,
   type FieldChartInputGroup,
   type FieldChartRenderContext,
@@ -220,7 +224,7 @@ export function buildPmvFieldChart(
   resultsByInput: Partial<Record<InputIdType, PmvResponse | null>>,
   context: ChartBuildContext<NumericBand>,
   descriptor: PmvFieldChartDescriptor,
-): PlotlyChartSpec {
+): ChartPlotlyBuild {
   const { adapter } = declaration;
   const { config } = descriptor;
   const output = declaration.exploreOutputs.find(({ key }) => key === config.zOutput);
@@ -234,8 +238,10 @@ export function buildPmvFieldChart(
   const absFromThreshold = config.zOutput === PhysicalQuantityId.Ppd
     ? ppdThresholdToAbsPmv
     : undefined;
+  const xAxis = createFieldChartAxis(descriptor.xAxis, context.unitSystem);
+  const yAxis = createFieldChartAxis(descriptor.yAxis, context.unitSystem);
 
-  return buildFieldChart({
+  const spec = buildFieldChart({
     unitSystem: context.unitSystem,
     xAxis: descriptor.xAxis,
     yAxis: descriptor.yAxis,
@@ -281,6 +287,27 @@ export function buildPmvFieldChart(
     },
     source: CalculationSource.FrontendGenerated,
   });
+
+  return {
+    spec,
+    hoverProbe: createDisplayHoverProbe(xAxis, yAxis, (xSi, ySi) => {
+      const evaluation = descriptor.evaluatePoint(xSi, ySi);
+      if (!evaluation) return null;
+      return {
+        hovertemplate: buildPmvHoverTemplate({
+          inputLabel: null,
+          xAxis: axisHoverSpec(xAxis),
+          yAxis: axisHoverSpec(yAxis),
+          classification: {
+            label: presentation.classificationLabel,
+            value: presentation.getClassification(evaluation),
+          },
+          pmv: formatDisplayValue(evaluation.pmv),
+          ppd: `${formatDisplayValue(evaluation.ppd)}%`,
+        }),
+      };
+    }),
+  };
 }
 
 export type PmvChartViewDescriptorFactory = (

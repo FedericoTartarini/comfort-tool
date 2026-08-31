@@ -176,6 +176,7 @@ PMV ASHRAE/ISO. Keep the eight ChartType product names. Do not solve PMV
 isoline roots in a declaration; pass `evaluate(T, RH)` and band thresholds to
 `src/charts/psychrometric/` helpers. 2-D Dynamic charts share
 `src/charts/isolines.ts` (Cartesian linear caps). Hover is Plotly closest on Compare markers and data lines.
+2-D field drop-point hover is a Plotly probe on `ChartBuildResult.hoverProbe`, not `ChartPayload`; the probe follows the pointer and does not snap to Compare markers. Publication export omits the probe. Do not add a 100² hover grid or fill `hoveron: "fills"`.
 TemperatureMode Air keeps `tr` from
 input on that field; Operative uses `tr=tdb` per sample and labels x
 Operative temperature. Heat-loss vs temperature

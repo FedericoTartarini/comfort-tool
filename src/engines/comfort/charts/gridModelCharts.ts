@@ -10,7 +10,6 @@ import type {
 } from "../../../catalog/chartSource";
 import type {
   PlotHoverValue,
-  PlotlyChartSpec,
 } from "../../plotlyTypes";
 import type { InputId as InputIdType } from "../../../catalog/inputSlots";
 import { ChartBuildContext, ModelOutput, NumericBand, NumericFieldChartConfig, findNumericBandIndexForValue } from "../../../catalog/modelCapabilities";
@@ -21,9 +20,13 @@ import {
   getQuantityDisplayMeta,
   plotlyHoverNumber,
 } from "../../units";
+import type { ChartPlotlyBuild } from "./chartBuildResult";
+import { createDisplayHoverProbe } from "./hoverProbe";
+import { buildHoverTemplate } from "./plotlyBuilders";
 import {
   buildFieldChart,
   createEmptyFieldStrategy,
+  createFieldChartAxis,
   type FieldChartInputGroup,
   type FieldChartLayoutSpec,
 } from "./fieldChartEngine";
@@ -127,6 +130,27 @@ function resolveGridOutput(
   return spec.output;
 }
 
+function buildGridPointHoverTemplate(options: {
+  inputLabel: string | null;
+  xAxisLabel: string;
+  xAxisUnits: string;
+  yAxisLabel: string;
+  yAxisUnits: string;
+  bandLabel: string;
+  selectedBandLabel: string;
+  outputLabel: string;
+  outputUnits: string;
+  hoverTemplateSuffix: string;
+}): string {
+  return buildHoverTemplate([
+    options.inputLabel,
+    `${options.xAxisLabel}: ${plotlyHoverNumber("x")} ${options.xAxisUnits}`,
+    `${options.yAxisLabel}: ${plotlyHoverNumber("y")} ${options.yAxisUnits}`,
+    `<b>${options.bandLabel}: ${options.selectedBandLabel}</b>`,
+    `${options.outputLabel}: ${plotlyHoverNumber("customdata[0]")}${options.outputUnits}${options.hoverTemplateSuffix}`,
+  ]);
+}
+
 function buildGridModelView<TPayload extends object, TResult>(
   inputsMap: CompareInputMap<TPayload>,
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
@@ -134,7 +158,7 @@ function buildGridModelView<TPayload extends object, TResult>(
   context: ChartBuildContext<NumericBand>,
   spec: GridModelChartSpec<TPayload, TResult>,
   view: GridModelView,
-): PlotlyChartSpec {
+): ChartPlotlyBuild {
   const { unitSystem } = context;
   const output = resolveGridOutput(
     spec as GridModelChartSpec<object, unknown>,
@@ -146,6 +170,18 @@ function buildGridModelView<TPayload extends object, TResult>(
   const chartAxisAdapter = spec.chartAxisAdapter ?? spec.requestAdapter;
   const baselineXSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.xField);
   const baselineYSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.yField);
+  const xAxisSpec = {
+    field: view.config.xField,
+    rangeSi: view.xRangeSi,
+    points: EMPTY_AXIS_POINTS,
+  };
+  const yAxisSpec = {
+    field: view.config.yField,
+    rangeSi: view.yRangeSi,
+    points: EMPTY_AXIS_POINTS,
+  };
+  const probeXAxis = createFieldChartAxis(xAxisSpec, unitSystem);
+  const probeYAxis = createFieldChartAxis(yAxisSpec, unitSystem);
   const getResultValue = (result: TResult | null | undefined) => {
     if (result == null) return undefined;
     const valueSi = spec.getOutputValue(result, view.config.zOutput);
@@ -188,18 +224,26 @@ function buildGridModelView<TPayload extends object, TResult>(
     const valueSi = spec.getOutputValue(result, view.config.zOutput);
     return valueSi == null || !Number.isFinite(valueSi) ? null : valueSi;
   };
-  return buildFieldChart({
+  const evaluateResult = (xSi: number, ySi: number): TResult | null => {
+    if (
+      Math.abs(xSi - baselineXSi) < CHART_COORDINATE_TOLERANCE
+      && Math.abs(ySi - baselineYSi) < CHART_COORDINATE_TOLERANCE
+    ) {
+      const cached = resultsByInput[context.baselineInputId];
+      if (cached != null) return cached;
+    }
+    const pointPayload = { ...baselinePayload };
+    if (!applyCoordinates(pointPayload, xSi, ySi)) return null;
+    try {
+      return spec.evaluate(pointPayload);
+    } catch {
+      return null;
+    }
+  };
+  const specChart = buildFieldChart({
     unitSystem,
-    xAxis: {
-      field: view.config.xField,
-      rangeSi: view.xRangeSi,
-      points: EMPTY_AXIS_POINTS,
-    },
-    yAxis: {
-      field: view.config.yField,
-      rangeSi: view.yRangeSi,
-      points: EMPTY_AXIS_POINTS,
-    },
+    xAxis: xAxisSpec,
+    yAxis: yAxisSpec,
     strategy: createEmptyFieldStrategy(),
     chartOverlays: ({ xAxis, yAxis }) => buildIsolineBandOverlayTraces({
       bands: view.config.bands,
@@ -218,7 +262,10 @@ function buildGridModelView<TPayload extends object, TResult>(
       getYSi: (payload) => chartAxisAdapter.getAxisValue(payload, view.config.yField),
       getHovertemplate: ({ inputLabel, result }) => {
         if (!isPlottable(result) && spec.outsideApplicabilityMessage) {
-          return `${inputLabel}<br><b>${spec.outsideApplicabilityMessage}</b><extra></extra>`;
+          return buildHoverTemplate([
+            inputLabel,
+            `<b>${spec.outsideApplicabilityMessage}</b>`,
+          ]);
         }
         const valueSi = getResultValue(result);
         const selectedBandIndex = valueSi === undefined
@@ -228,7 +275,18 @@ function buildGridModelView<TPayload extends object, TResult>(
           ? "Unclassified"
           : view.config.bands[selectedBandIndex].label;
 
-        return `${inputLabel}<br>${xAxis.label}: ${plotlyHoverNumber("x")} ${xAxis.units}<br>${yAxis.label}: ${plotlyHoverNumber("y")} ${yAxis.units}<br><b>${bandLabel}: ${selectedBandLabel}</b><br>${output.label}: ${plotlyHoverNumber("customdata[0]")}${outputUnits}${view.hoverTemplateSuffix}<extra></extra>`;
+        return buildGridPointHoverTemplate({
+          inputLabel,
+          xAxisLabel: xAxis.label,
+          xAxisUnits: xAxis.units,
+          yAxisLabel: yAxis.label,
+          yAxisUnits: yAxis.units,
+          bandLabel,
+          selectedBandLabel,
+          outputLabel: output.label,
+          outputUnits,
+          hoverTemplateSuffix: view.hoverTemplateSuffix,
+        });
       },
       hoverMetadata: ({ result }) => {
         const valueSi = getResultValue(result);
@@ -249,6 +307,74 @@ function buildGridModelView<TPayload extends object, TResult>(
     },
     source: CalculationSource.JsThermalComfort,
   });
+
+  return {
+    spec: specChart,
+    hoverProbe: createDisplayHoverProbe(probeXAxis, probeYAxis, (xSi, ySi) => {
+      const result = evaluateResult(xSi, ySi);
+      if (!isPlottable(result) && spec.outsideApplicabilityMessage) {
+        return {
+          hovertemplate: buildHoverTemplate([
+            `<b>${spec.outsideApplicabilityMessage}</b>`,
+          ]),
+        };
+      }
+      if (result == null && spec.tryEvaluatePayload) {
+        const valueSi = evaluateField(xSi, ySi);
+        if (valueSi == null) return null;
+        const selectedBandIndex = findNumericBandIndexForValue(view.config.bands, valueSi);
+        const selectedBandLabel = selectedBandIndex === undefined
+          ? "Unclassified"
+          : view.config.bands[selectedBandIndex].label;
+        return {
+          hovertemplate: buildGridPointHoverTemplate({
+            inputLabel: null,
+            xAxisLabel: probeXAxis.label,
+            xAxisUnits: probeXAxis.units,
+            yAxisLabel: probeYAxis.label,
+            yAxisUnits: probeYAxis.units,
+            bandLabel,
+            selectedBandLabel,
+            outputLabel: output.label,
+            outputUnits,
+            hoverTemplateSuffix: view.hoverTemplateSuffix,
+          }),
+          customdata: [
+            convertQuantityFromSi(output.key, valueSi, unitSystem),
+          ],
+        };
+      }
+      if (result == null) return null;
+      const valueSi = getResultValue(result);
+      if (valueSi === undefined && !spec.outsideApplicabilityMessage) return null;
+      const selectedBandIndex = valueSi === undefined
+        ? undefined
+        : findNumericBandIndexForValue(view.config.bands, valueSi);
+      const selectedBandLabel = selectedBandIndex === undefined
+        ? "Unclassified"
+        : view.config.bands[selectedBandIndex].label;
+      return {
+        hovertemplate: buildGridPointHoverTemplate({
+          inputLabel: null,
+          xAxisLabel: probeXAxis.label,
+          xAxisUnits: probeXAxis.units,
+          yAxisLabel: probeYAxis.label,
+          yAxisUnits: probeYAxis.units,
+          bandLabel,
+          selectedBandLabel,
+          outputLabel: output.label,
+          outputUnits,
+          hoverTemplateSuffix: view.hoverTemplateSuffix,
+        }),
+        customdata: [
+          valueSi === undefined
+            ? ""
+            : convertQuantityFromSi(output.key, valueSi, unitSystem),
+          ...(spec.dynamicHoverExtension?.getMetadata(result, unitSystem) ?? []),
+        ],
+      };
+    }),
+  };
 }
 
 export function buildGridModelChart<TPayload extends object, TResult>(
@@ -257,7 +383,7 @@ export function buildGridModelChart<TPayload extends object, TResult>(
   resultsByInput: Partial<Record<InputIdType, TResult | null>>,
   context: ChartBuildContext<NumericBand>,
   spec: GridModelChartSpec<TPayload, TResult>,
-): PlotlyChartSpec | null {
+): ChartPlotlyBuild | null {
   if (!chartSource) {
     return null;
   }

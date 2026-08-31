@@ -17,6 +17,14 @@
     type PublicationExportHandler,
   } from "../../../charts/plotlyExport";
   import type { PublicationColumn } from "../../../charts/chartTheme";
+  import type { ChartHoverProbe } from "../../../engines/comfort/charts/chartBuildResult";
+  import {
+    createFieldHoverProbeTrace,
+    findProbeTraceIndex,
+    nativeHoverSkipTraceIndices,
+    plotDisplayCoordinates,
+    type PlotlyGraphDiv,
+  } from "./plotlyFieldHover";
 
   interface Props {
     chartResult: ChartPayload | null;
@@ -24,6 +32,7 @@
     emptyMessage: string;
     heightClass?: string;
     showPlotTitle?: boolean;
+    hoverProbe?: ChartHoverProbe;
     onRegisterExport?:
       | ((handler: PublicationExportHandler) => void)
       | undefined;
@@ -35,6 +44,7 @@
     emptyMessage,
     heightClass = "h-[420px]",
     showPlotTitle = false,
+    hoverProbe = undefined,
     onRegisterExport = undefined,
   }: Props = $props();
 
@@ -49,6 +59,11 @@
       ? `height: ${chartResult.input.height}px;`
       : undefined,
   );
+
+  let activeHoverProbe: ChartHoverProbe | undefined;
+  let hoverGeneration = 0;
+  let pointerRaf = 0;
+  let pendingPointer: PointerEvent | null = null;
 
   async function exportChart(
     format: ChartExportFormat,
@@ -142,7 +157,112 @@
     }
   }
 
+  async function attachHoverProbeTrace(
+    plotly: PlotlyModule,
+    gd: PlotlyGraphDiv,
+  ) {
+    if (findProbeTraceIndex(gd) < 0) {
+      if (plotly.addTraces) {
+        await plotly.addTraces(gd, createFieldHoverProbeTrace());
+      } else {
+        const currentData = gd.data ?? [];
+        await plotly.react(
+          gd,
+          [...currentData, createFieldHoverProbeTrace()],
+          (gd as HTMLElement & { layout?: Record<string, unknown> }).layout ?? {},
+          { responsive: true, displaylogo: false, displayModeBar: "hover" },
+        );
+      }
+    }
+    const skipIndices = nativeHoverSkipTraceIndices(gd);
+    if (skipIndices.length > 0 && plotly.restyle) {
+      // Field hover follows the pointer; do not let Compare markers steal closest hover.
+      await plotly.restyle(gd, { hoverinfo: "skip" }, skipIndices);
+    }
+  }
+
+  async function hideProbe(
+    plotly: PlotlyModule,
+    gd: PlotlyGraphDiv,
+    probeIndex: number,
+  ) {
+    if (!plotly.restyle) return;
+    await plotly.restyle(gd, { x: [[null]], y: [[null]] }, [probeIndex]);
+  }
+
+  async function driveHoverProbe(event: PointerEvent) {
+    const gd = chartElement as PlotlyGraphDiv | null;
+    const plotly = plotlyModule;
+    const probe = activeHoverProbe;
+    if (!gd || !plotly?.restyle || !plotly.Fx || !probe) return;
+
+    const coords = plotDisplayCoordinates(gd, event.clientX, event.clientY);
+    let probeIndex = findProbeTraceIndex(gd);
+    if (probeIndex < 0) {
+      await attachHoverProbeTrace(plotly, gd);
+      probeIndex = findProbeTraceIndex(gd);
+    }
+    if (probeIndex < 0) return;
+
+    const generation = (hoverGeneration += 1);
+
+    if (!coords) {
+      await hideProbe(plotly, gd, probeIndex);
+      if (generation !== hoverGeneration) return;
+      plotly.Fx.unhover(gd);
+      return;
+    }
+
+    const hit = probe.probeDisplay(coords.xDisplay, coords.yDisplay);
+    if (!hit) {
+      await hideProbe(plotly, gd, probeIndex);
+      if (generation !== hoverGeneration) return;
+      plotly.Fx.unhover(gd);
+      return;
+    }
+
+    await plotly.restyle(
+      gd,
+      {
+        x: [[coords.xDisplay]],
+        y: [[coords.yDisplay]],
+        hovertemplate: hit.hovertemplate,
+        customdata: [hit.customdata === undefined ? [] : hit.customdata],
+      },
+      [probeIndex],
+    );
+    if (generation !== hoverGeneration) return;
+    plotly.Fx.hover(gd, [{ curveNumber: probeIndex, pointNumber: 0 }]);
+  }
+
+  function onPointerMove(event: PointerEvent) {
+    if (!activeHoverProbe) return;
+    pendingPointer = event;
+    if (pointerRaf !== 0) return;
+    pointerRaf = requestAnimationFrame(() => {
+      pointerRaf = 0;
+      const latest = pendingPointer;
+      pendingPointer = null;
+      if (latest) void driveHoverProbe(latest);
+    });
+  }
+
+  function onPointerLeave() {
+    pendingPointer = null;
+    if (pointerRaf !== 0) {
+      cancelAnimationFrame(pointerRaf);
+      pointerRaf = 0;
+    }
+    const gd = chartElement as PlotlyGraphDiv | null;
+    const plotly = plotlyModule;
+    if (!gd || !plotly?.Fx) return;
+    const probeIndex = findProbeTraceIndex(gd);
+    if (probeIndex >= 0) void hideProbe(plotly, gd, probeIndex);
+    plotly.Fx.unhover(gd);
+  }
+
   async function drawChart() {
+    activeHoverProbe = hoverProbe;
     if (!chartResult) {
       hasRenderedChart = false;
       chartError = "";
@@ -178,6 +298,9 @@
             config,
             updateType === "dot" ? 400 : 500,
           );
+          if (hoverProbe) {
+            await attachHoverProbeTrace(plotly, chartElement as PlotlyGraphDiv);
+          }
           prevChartResult = chartResult;
           return;
         }
@@ -185,6 +308,9 @@
 
       chartError = "";
       await plotly.react(chartElement, data, layout, config);
+      if (hoverProbe) {
+        await attachHoverProbeTrace(plotly, chartElement as PlotlyGraphDiv);
+      }
       hasRenderedChart = true;
       await resizeRenderedChart();
       prevChartResult = chartResult;
@@ -202,8 +328,13 @@
       });
       resizeObserver.observe(chartElement);
     }
+    chartElement?.addEventListener("pointermove", onPointerMove);
+    chartElement?.addEventListener("pointerleave", onPointerLeave);
     if (onRegisterExport) onRegisterExport(exportChart);
     return () => {
+      chartElement?.removeEventListener("pointermove", onPointerMove);
+      chartElement?.removeEventListener("pointerleave", onPointerLeave);
+      if (pointerRaf !== 0) cancelAnimationFrame(pointerRaf);
       resizeObserver?.disconnect();
       resizeObserver = null;
       if (chartElement) void destroy(chartElement);
@@ -212,6 +343,7 @@
 
   $effect(() => {
     chartResult;
+    hoverProbe;
     void drawChart();
   });
 </script>

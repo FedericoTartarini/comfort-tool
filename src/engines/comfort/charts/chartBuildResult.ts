@@ -1,4 +1,5 @@
 import type { ChartPayload } from "../../../charts/types";
+import type { PlotlyChartSpec } from "../../plotlyTypes";
 
 export const ChartLegendKind = {
   Bands: "bands",
@@ -22,9 +23,24 @@ export interface ChartLegendViewModel {
 
 export type ChartOutputReadiness = "empty" | "stale" | "ready";
 
+export interface ChartHoverProbeHit {
+  readonly hovertemplate: string;
+  readonly customdata?: unknown;
+}
+
+export interface ChartHoverProbe {
+  probeDisplay(xDisplay: number, yDisplay: number): ChartHoverProbeHit | null;
+}
+
+export interface ChartPlotlyBuild {
+  readonly spec: PlotlyChartSpec;
+  readonly hoverProbe?: ChartHoverProbe;
+}
+
 export interface ChartBuildResult {
   readonly payload: ChartPayload | null;
   readonly legend: ChartLegendViewModel | null;
   readonly readiness: ChartOutputReadiness;
   readonly emptyMessage: string;
+  readonly hoverProbe?: ChartHoverProbe;
 }

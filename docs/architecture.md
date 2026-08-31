@@ -151,7 +151,10 @@ figure (explicit mm/pt/dpi); it does not capture the on-screen plot.
 `src/charts/isolines.ts`. Psychrometric humidity curves and isoline geometry
 live in `src/charts/psychrometric/`. Declarations wire `evaluate` and band
 thresholds; they do not solve isoline roots. Hover is Plotly closest on
-Compare markers and data lines.
+Compare markers and data lines. 2-D field charts add one Plotly probe
+scatter from `ChartBuildResult.hoverProbe` (not `ChartPayload`); the probe
+follows the pointer and does not snap to Compare markers. Publication
+export omits the probe. Do not add a 100² hover grid.
 
 New reusable ChartType geometry goes under `src/charts/`, not
 `src/engines/comfort/charts/`.

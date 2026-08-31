@@ -1,4 +1,5 @@
 import type { PlotlyChartSpec } from "../../../plotlyTypes";
+import type { ChartPlotlyBuild } from "../chartBuildResult";
 import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 import type {
   ChartBuildContext,
@@ -42,7 +43,7 @@ type FrontendChartBuild<TResult, ChartSourceType> = (
   chartSource: ChartSourceType | null,
   resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-) => PlotlyChartSpec | null;
+) => PlotlyChartSpec | ChartPlotlyBuild | null;
 
 /**
  * Frontend-internal DynamicField geometry. Not part of the model-declaration

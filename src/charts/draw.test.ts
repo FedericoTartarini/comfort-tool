@@ -171,7 +171,11 @@ describe("prepareFigure", () => {
     const publication = prepareFigure(assembled, publicationChartTheme);
     for (const figure of [screen, publication]) {
       const template = figure.layout.template as {
-        layout: { xaxis: Record<string, unknown>; yaxis: Record<string, unknown> };
+        layout: {
+          xaxis: Record<string, unknown>;
+          yaxis: Record<string, unknown>;
+          hoverlabel: Record<string, unknown>;
+        };
       };
       for (const axisKey of ["xaxis", "yaxis"] as const) {
         const axis = template.layout[axisKey];
@@ -185,6 +189,11 @@ describe("prepareFigure", () => {
       }
       expect(figure.layout.xaxis).not.toHaveProperty("showline");
       expect(figure.layout.yaxis).not.toHaveProperty("showline");
+      expect(template.layout.hoverlabel).toEqual({
+        bgcolor: "#ffffff",
+        bordercolor: "#111827",
+        font: { color: "#111827" },
+      });
     }
   });
 

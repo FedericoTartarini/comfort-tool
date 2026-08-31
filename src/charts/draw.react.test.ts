@@ -30,7 +30,7 @@ function buildAdaptiveEnPayload() {
       baselineInputId: InputId.Input1,
       fieldChartConfig: { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.PrevailingMeanOutdoorTemperature, yField: PhysicalQuantityId.OperativeTemperature, zOutput: adaptiveEnDeclaration.complianceProfile.output, bands: adaptiveEnDeclaration.complianceProfile.bands },
     },
-  );
+  ).spec;
   return chartPayloadFromSpec(ChartType.Adaptive, spec);
 }
 

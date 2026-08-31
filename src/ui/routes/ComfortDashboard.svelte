@@ -55,6 +55,7 @@
 
         <ChartPanel
           chartResult={chartBuild.payload}
+          hoverProbe={chartBuild.hoverProbe}
           {isLoading}
           {chartInstance}
           {chartInstances}

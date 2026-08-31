@@ -2,16 +2,18 @@ import { CalculationSource } from "../../catalog/calculationMetadata";
 import type { ModelChartSource } from "../../catalog/chartSource";
 import type {
   PlotHoverRow,
-  PlotlyChartSpec,
 } from "../../engines/plotlyTypes";
 import { ComplianceStatus } from "../../catalog/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { Band, ChartBuildContext } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
+import type { ChartPlotlyBuild } from "../../engines/comfort/charts/chartBuildResult";
+import { createDisplayHoverProbe } from "../../engines/comfort/charts/hoverProbe";
 import {
   buildFieldChart,
   createBoundaryRegionStrategy,
+  createFieldChartAxis,
   type FieldChartInputGroup,
 } from "../../engines/comfort/charts/fieldChartEngine";
 import type { ChartAxisScale } from "../../engines/comfort/charts/types";
@@ -160,7 +162,7 @@ export function buildAdaptiveChart(
   source: ModelChartSource<AdaptiveRequest>,
   resultsByInput: Partial<Record<InputIdType, AdaptiveResponse | null>>,
   context: ChartBuildContext<Band>,
-): PlotlyChartSpec {
+): ChartPlotlyBuild {
   const config = context.fieldChartConfig;
   const baseline = getBaselineInputEntry(source.inputs, context.baselineInputId);
   const { unitSystem } = context;
@@ -173,11 +175,15 @@ export function buildAdaptiveChart(
   const operativeAxisSpec = { field: PhysicalQuantityId.OperativeTemperature, rangeSi: FIXED_OPERATIVE_RANGE_SI, points: 2, units: (activeUnitSystem: UnitSystemType) =>
       getQuantityPresentationMeta(
         PhysicalQuantityId.DryBulbTemperature, activeUnitSystem, ).displayUnits };
+  const xAxisSpec = boundaryAxis === "x" ? outdoorAxisSpec : operativeAxisSpec;
+  const yAxisSpec = boundaryAxis === "x" ? operativeAxisSpec : outdoorAxisSpec;
+  const xAxis = createFieldChartAxis(xAxisSpec, unitSystem);
+  const yAxis = createFieldChartAxis(yAxisSpec, unitSystem);
 
-  return buildFieldChart({
+  const spec = buildFieldChart({
     unitSystem,
-    xAxis: boundaryAxis === "x" ? outdoorAxisSpec : operativeAxisSpec,
-    yAxis: boundaryAxis === "x" ? operativeAxisSpec : outdoorAxisSpec,
+    xAxis: xAxisSpec,
+    yAxis: yAxisSpec,
     strategy: createBoundaryRegionStrategy({
       bands: config.bands,
       bandInputsSi: {
@@ -207,4 +213,27 @@ export function buildAdaptiveChart(
     },
     source: CalculationSource.FrontendGenerated,
   });
+
+  return {
+    spec,
+    hoverProbe: createDisplayHoverProbe(xAxis, yAxis, (xSi, ySi) => {
+      const trm = boundaryAxis === "x" ? xSi : ySi;
+      const operative = boundaryAxis === "x" ? ySi : xSi;
+      const result = calculateAdaptive(declaration, {
+        ...baseline.payload,
+        trm,
+        tdb: operative,
+        tr: operative,
+      });
+      return {
+        hovertemplate: buildAdaptiveHoverTemplate(
+          declaration,
+          unitSystem,
+          xAxis,
+          yAxis,
+        ),
+        customdata: getAdaptiveHoverMetadata(declaration, result, unitSystem),
+      };
+    }),
+  };
 }
