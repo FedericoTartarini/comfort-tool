@@ -1,21 +1,21 @@
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type ChartAxisQuantityId } from "../../../catalog/quantities";
-import type { FieldRequestAdapter } from "../requestMapping";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../../catalog/quantities";
+import type { LibraryQuantityMapping } from "../requestMapping";
 import { CHART_COORDINATE_TOLERANCE, type ChartRange } from "./types";
 
 export interface DynamicAxisCoordinate {
-  readonly field: ChartAxisQuantityId;
+  readonly field: PhysicalQuantityId;
   readonly valueSi: number;
 }
 
 export interface DynamicAxisPayloadAdapter<TPayload> {
   setAxisValue: (
     payload: TPayload,
-    field: ChartAxisQuantityId,
+    field: PhysicalQuantityId,
     valueSi: number,
   ) => void;
   getAxisValue: (
     payload: TPayload,
-    field: ChartAxisQuantityId,
+    field: PhysicalQuantityId,
   ) => number;
   getOperativeTemperature: (payload: TPayload) => number;
   getTemperatureComponentRange: (
@@ -29,16 +29,16 @@ type TemperatureComponentField =
 
 export interface RequestAxisAdapter<TPayload>
   extends DynamicAxisPayloadAdapter<TPayload> {
-  getAxisRange: (field: ChartAxisQuantityId) => ChartRange;
+  getAxisRange: (field: PhysicalQuantityId) => ChartRange;
 }
 
 interface RequestAxisAdapterOptions<TPayload extends object> {
-  fieldAdapter: Pick<
-    FieldRequestAdapter<TPayload>,
+  quantityMapping: Pick<
+    LibraryQuantityMapping<TPayload>,
     "getAxisValue" | "setAxisValue"
   >;
-  aliases?: Partial<Record<ChartAxisQuantityId, ChartAxisQuantityId>>;
-  axisRanges?: Partial<Record<ChartAxisQuantityId, ChartRange>>;
+  aliases?: Partial<Record<PhysicalQuantityId, PhysicalQuantityId>>;
+  axisRanges?: Partial<Record<PhysicalQuantityId, ChartRange>>;
   temperatureComponentRanges?: Partial<Record<TemperatureComponentField, ChartRange>>;
   operativeTemperature: {
     get: (payload: TPayload) => number;
@@ -52,14 +52,14 @@ interface RequestAxisAdapterOptions<TPayload extends object> {
  * constraint to a canonical request mapping.
  */
 export function createRequestAxisAdapter<TPayload extends object>({
-  fieldAdapter,
+  quantityMapping,
   aliases = {},
   axisRanges = {},
   temperatureComponentRanges = {},
   operativeTemperature,
 }: RequestAxisAdapterOptions<TPayload>): RequestAxisAdapter<TPayload> {
-  const resolveField = (field: ChartAxisQuantityId) => aliases[field] ?? field;
-  const getAxisRange = (field: ChartAxisQuantityId): ChartRange => {
+  const resolveField = (field: PhysicalQuantityId) => aliases[field] ?? field;
+  const getAxisRange = (field: PhysicalQuantityId): ChartRange => {
     if (field === PhysicalQuantityId.OperativeTemperature) {
       return operativeTemperature.range;
     }
@@ -75,13 +75,13 @@ export function createRequestAxisAdapter<TPayload extends object>({
   return {
     getAxisValue: (payload, field) => field === PhysicalQuantityId.OperativeTemperature
       ? operativeTemperature.get(payload)
-      : fieldAdapter.getAxisValue(payload, resolveField(field)),
+      : quantityMapping.getAxisValue(payload, resolveField(field)),
     setAxisValue: (payload, field, valueSi) => {
       if (field === PhysicalQuantityId.OperativeTemperature) {
         operativeTemperature.set(payload, valueSi);
         return;
       }
-      fieldAdapter.setAxisValue(payload, resolveField(field), valueSi);
+      quantityMapping.setAxisValue(payload, resolveField(field), valueSi);
     },
     getOperativeTemperature: operativeTemperature.get,
     getTemperatureComponentRange: (field) => (
@@ -92,7 +92,7 @@ export function createRequestAxisAdapter<TPayload extends object>({
 }
 
 function isTemperatureComponent(
-  field: ChartAxisQuantityId,
+  field: PhysicalQuantityId,
 ): field is TemperatureComponentField { return field === PhysicalQuantityId.DryBulbTemperature ||
     field === PhysicalQuantityId.MeanRadiantTemperature; }
 

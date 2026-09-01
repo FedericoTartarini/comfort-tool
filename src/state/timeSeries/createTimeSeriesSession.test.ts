@@ -10,6 +10,7 @@ import {
 } from "../../catalog/phs";
 import { UnitSystem } from "../../catalog/units";
 import { chartFigure } from "../../testSupport/modelChartTestHelpers";
+import { phsTimeSeriesModelDefinition } from "../../declarations/phs/timeSeries";
 import { createTimeSeriesSession } from "./createTimeSeriesSession.svelte";
 import { timeSeriesModelOrder } from "./modelConfigs";
 
@@ -45,7 +46,7 @@ describe("createTimeSeriesSession", () => {
     expect(Object.keys(session.output.resultByModel)).toEqual(timeSeriesModelOrder);
     expect(Object.keys(session.output.statusByModel)).toEqual(timeSeriesModelOrder);
     expect(session.inputPanel.modelItems).toEqual([{
-      name: "Predicted Heat Strain (PHS)",
+      name: phsTimeSeriesModelDefinition.label,
       value: ModelId.Phs2023,
     }]);
     expect(draft.segments).toEqual([

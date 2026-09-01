@@ -91,7 +91,7 @@ describe("shareState strict v1 codec", () => {
       session,
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       0.6,
     );
     seedModifierEnabled(session, InputId.Input1, ModifierId.MeasuredAirSpeed, true);
@@ -99,7 +99,7 @@ describe("shareState strict v1 codec", () => {
       session,
       InputId.Input2,
       ModifierId.MorningClothingEstimate,
-      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      PhysicalQuantityId.MorningOutdoorTemperature,
       10,
     );
     seedModifierEnabled(session, InputId.Input2, ModifierId.DynamicClothing, true);
@@ -107,42 +107,42 @@ describe("shareState strict v1 codec", () => {
       session,
       InputId.Input3,
       ModifierId.SolarGain,
-      PhysicalQuantityId.ModifierSolarAltitude,
+      PhysicalQuantityId.SolarAltitude,
       45,
     );
     seedModifierInput(
       session,
       InputId.Input3,
       ModifierId.SolarGain,
-      PhysicalQuantityId.ModifierSolarHorizontalAngle,
+      PhysicalQuantityId.SolarHorizontalAngle,
       90,
     );
     seedModifierInput(
       session,
       InputId.Input3,
       ModifierId.SolarGain,
-      PhysicalQuantityId.ModifierDirectSolarRadiation,
+      PhysicalQuantityId.DirectSolarRadiation,
       800,
     );
     seedModifierInput(
       session,
       InputId.Input3,
       ModifierId.SolarGain,
-      PhysicalQuantityId.ModifierSolarTransmittance,
+      PhysicalQuantityId.SolarTransmittance,
       0.5,
     );
     seedModifierInput(
       session,
       InputId.Input3,
       ModifierId.SolarGain,
-      PhysicalQuantityId.ModifierSkyVaultViewFraction,
+      PhysicalQuantityId.SkyVaultViewFraction,
       0.5,
     );
     seedModifierInput(
       session,
       InputId.Input3,
       ModifierId.SolarGain,
-      PhysicalQuantityId.ModifierBodyExposureFraction,
+      PhysicalQuantityId.BodyExposureFraction,
       0.5,
     );
     seedModifierEnabled(session, InputId.Input3, ModifierId.SolarGain, true);
@@ -173,15 +173,15 @@ describe("shareState strict v1 codec", () => {
     ).toBe(true);
     expect(
       snapshot.auxiliaryQuantitiesByInput[InputId.Input2],
-    ).not.toHaveProperty(PhysicalQuantityId.ModifierMeasuredAirSpeed);
+    ).not.toHaveProperty(PhysicalQuantityId.MeasuredAirSpeed);
     expect(
       snapshot.auxiliaryQuantitiesByInput[InputId.Input2][
-        PhysicalQuantityId.ModifierMorningOutdoorTemperature
+        PhysicalQuantityId.MorningOutdoorTemperature
       ],
     ).toBe(10);
     expect(
       snapshot.auxiliaryQuantitiesByInput[InputId.Input2],
-    ).not.toHaveProperty(PhysicalQuantityId.ModifierSolarAltitude);
+    ).not.toHaveProperty(PhysicalQuantityId.SolarAltitude);
     expect(restored).toEqual(snapshot);
   });
 
@@ -228,7 +228,7 @@ describe("shareState strict v1 codec", () => {
   it("round-trips all per-model field settings and explicit Infinity edges", () => {
     const session = createPointSession();
     seedSelectedModel(session, ModelId.PmvIso);
-    session.actions.setSelectedChartInstance("pmv-iso-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.toggleUnitSystem();
     session.actions.setModelOption(
       OptionKey.TemperatureMode,
@@ -242,17 +242,17 @@ describe("shareState strict v1 codec", () => {
     );
 
     seedSelectedModel(session, ModelId.PmvAshrae);
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
     session.actions.setDynamicYAxis(PhysicalQuantityId.RelativeHumidity);
     session.actions.setChartBaselineInputId(InputId.Input3);
     session.actions.setActiveSurface(SurfaceId.Explore);
-    session.actions.setExploreOutput(PhysicalQuantityId.Ppd);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     session.actions.setExploreBands([
       { min: -Infinity, max: 12, label: "Preferred", color: "#0f0" },
       { min: 12, max: Infinity, label: "Other", color: "#f00" },
     ]);
-    session.actions.setSelectedChartInstance("pmv-ashrae-psychrometric");
+    session.actions.setSelectedChartInstance("psychrometric");
 
     seedSelectedModel(session, ModelId.PmvIso);
     session.actions.setDynamicXAxis(PhysicalQuantityId.OperativeTemperature);
@@ -266,13 +266,13 @@ describe("shareState strict v1 codec", () => {
     expect(snapshot).not.toHaveProperty("dynamicXAxis");
     expect(snapshot).not.toHaveProperty("dynamicYAxis");
     expect(
-      snapshot.models[ModelId.PmvAshrae].selectedChartInstanceId,
-    ).toBe("pmv-ashrae-psychrometric");
+      snapshot.models[ModelId.PmvAshrae].selectedChartType,
+    ).toBe("psychrometric");
     expect(
-      restored?.models[ModelId.PmvAshrae].selectedChartInstanceId,
-    ).toBe("pmv-ashrae-psychrometric");
-    expect(restored?.models[ModelId.PmvIso].selectedChartInstanceId).toBe(
-      "pmv-iso-dynamic-field",
+      restored?.models[ModelId.PmvAshrae].selectedChartType,
+    ).toBe("psychrometric");
+    expect(restored?.models[ModelId.PmvIso].selectedChartType).toBe(
+      "dynamic",
     );
     expect(snapshot.models[ModelId.PmvIso].options).not.toHaveProperty(
       OptionKey.AirSpeedControlMode,
@@ -282,7 +282,7 @@ describe("shareState strict v1 codec", () => {
         xAxis: PhysicalQuantityId.MeanRadiantTemperature,
         yAxis: PhysicalQuantityId.RelativeHumidity,
         baselineInputId: InputId.Input3,
-        exploreOutput: PhysicalQuantityId.Ppd,
+        exploreOutput: PhysicalQuantityId.PredictedPercentageOfDissatisfied,
       }),
     );
     expect(snapshot.models[ModelId.PmvIso].outputSettings).toEqual(
@@ -306,8 +306,8 @@ describe("shareState strict v1 codec", () => {
     const session = createPointSession();
     seedSelectedModel(session, ModelId.Phs2023);
     session.actions.setActiveSurface(SurfaceId.Explore);
-    session.actions.setSelectedChartInstance("phs-dynamic-field");
-    session.actions.setExploreOutput(PhysicalQuantityId.PhsWaterLoss);
+    session.actions.setSelectedChartInstance("dynamic");
+    session.actions.setExploreOutput(PhysicalQuantityId.SweatLoss);
 
     const dynamicSnapshot = createShareStateSnapshot(session);
     expect(dynamicSnapshot.version).toBe(1);
@@ -315,37 +315,37 @@ describe("shareState strict v1 codec", () => {
       dynamicSnapshot,
     );
     expect(
-      dynamicSnapshot.models[ModelId.Phs2023].selectedChartInstanceId,
-    ).toBe("phs-dynamic-field");
+      dynamicSnapshot.models[ModelId.Phs2023].selectedChartType,
+    ).toBe("dynamic");
 
-    session.actions.setSelectedChartInstance("phs-exposure-history");
+    session.actions.setSelectedChartInstance("body-temperature");
     const historySnapshot = createShareStateSnapshot(session);
     expect(
-      historySnapshot.models[ModelId.Phs2023].selectedChartInstanceId,
-    ).toBe("phs-exposure-history");
+      historySnapshot.models[ModelId.Phs2023].selectedChartType,
+    ).toBe("body-temperature");
     expect(
       historySnapshot.models[ModelId.Phs2023].outputSettings.exploreOutput,
-    ).toBe(PhysicalQuantityId.PhsRectalTemperature);
+    ).toBe(PhysicalQuantityId.RectalTemperature);
     expect(deserializeShareState(serializeShareState(historySnapshot))).toEqual(
       historySnapshot,
     );
 
     const incompatible = structuredClone(historySnapshot);
     incompatible.models[ModelId.Phs2023].outputSettings.exploreOutput =
-      PhysicalQuantityId.PhsWaterLoss;
+      PhysicalQuantityId.SweatLoss;
     expect(parseShareStateSnapshot(incompatible)).toBeNull();
   });
 
   it("round-trips built-in and edited UTF-8 labels through the codec and URL", () => {
     const session = createPointSession();
     session.actions.setActiveSurface(SurfaceId.Explore);
-    session.actions.setExploreOutput(PhysicalQuantityId.Ppd);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
 
     const builtInSnapshot = createShareStateSnapshot(session);
     const builtInBands =
       builtInSnapshot.models[ModelId.PmvAshrae].outputSettings
         .exploreBands;
-    expect(builtInBands?.[1].label).toContain("≥");
+    expect(builtInBands?.[1].label).toBe(">= 10");
     expect(deserializeShareState(serializeShareState(builtInSnapshot))).toEqual(
       builtInSnapshot,
     );
@@ -390,7 +390,7 @@ describe("shareState strict v1 codec", () => {
 
     expect(snapshot.models[ModelId.AdaptiveAshrae]).toEqual(
       expect.objectContaining({
-        selectedChartInstanceId: "adaptive-ashrae-boundary",
+        selectedChartType: "adaptive",
         outputSettings: expect.objectContaining({
           xAxis: PhysicalQuantityId.OperativeTemperature,
           yAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
@@ -401,7 +401,7 @@ describe("shareState strict v1 codec", () => {
     );
     expect(snapshot.models[ModelId.AdaptiveEn]).toEqual(
       expect.objectContaining({
-        selectedChartInstanceId: "adaptive-en-boundary",
+        selectedChartType: "adaptive",
         outputSettings: expect.objectContaining({
           xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
           yAxis: PhysicalQuantityId.OperativeTemperature,
@@ -644,7 +644,7 @@ describe("shareState strict v1 codec", () => {
 
     const outOfRange = structuredClone(current);
     outOfRange.auxiliaryQuantitiesByInput[InputId.Input1][
-      PhysicalQuantityId.ModifierSolarAltitude
+      PhysicalQuantityId.SolarAltitude
     ] = 91;
 
     const unknownModifier = structuredClone(current);
@@ -677,7 +677,7 @@ describe("shareState strict v1 codec", () => {
 
     const nonFinite = structuredClone(current);
     nonFinite.auxiliaryQuantitiesByInput[InputId.Input1][
-      PhysicalQuantityId.ModifierMeasuredAirSpeed
+      PhysicalQuantityId.MeasuredAirSpeed
     ] = Infinity;
 
     expect(parseShareStateSnapshot(incomplete)).toBeNull();
@@ -720,7 +720,7 @@ describe("shareState strict v1 codec", () => {
       parseShareStateSnapshot(
         withOutputSettings(current, ModelId.PmvAshrae, {
           explore: {
-            zOutput: PhysicalQuantityId.Utci,
+            zOutput: PhysicalQuantityId.UniversalThermalClimateIndex,
             bands:
               current.models[ModelId.PmvAshrae].outputSettings
                 .exploreBands,
@@ -732,7 +732,7 @@ describe("shareState strict v1 codec", () => {
       parseShareStateSnapshot(
         withOutputSettings(current, ModelId.PmvAshrae, {
           explore: {
-            zOutput: PhysicalQuantityId.Pmv,
+            zOutput: PhysicalQuantityId.PredictedMeanVote,
             bands: [
               { min: 0, max: 2, label: "One", color: "#000" },
               { min: 1, max: 3, label: "Two", color: "#fff" },
@@ -765,7 +765,7 @@ describe("shareState strict v1 codec", () => {
         [ModelId.PmvAshrae]: {
           options: current.models[ModelId.PmvAshrae].options,
           outputSettings: current.models[ModelId.PmvAshrae].outputSettings,
-          selectedChart: "pmv-ashrae-dynamic-field",
+          selectedChart: "dynamic",
         },
       },
     };
@@ -817,7 +817,7 @@ describe("shareState strict v1 codec", () => {
         ...current.models,
         [ModelId.PmvIso]: {
           ...current.models[ModelId.PmvIso],
-          selectedChartInstanceId: "utci-dynamic-field",
+          selectedChartType: "invented",
         },
       },
     };
@@ -858,7 +858,7 @@ describe("shareState strict v1 codec", () => {
       defaultSnapshot,
     );
 
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     expect(
       session.actions.updateModelQuantity(
         ModelId.Phs2023,
@@ -908,7 +908,7 @@ describe("shareState strict v1 codec", () => {
       original,
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       0.6,
     );
     seedModifierEnabled(original, InputId.Input1, ModifierId.MeasuredAirSpeed, true);

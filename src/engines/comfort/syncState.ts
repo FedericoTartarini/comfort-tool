@@ -1,11 +1,14 @@
-import { PhysicalQuantityId, type AuxiliaryInputState, type DerivedSlotQuantityState, type PrimaryInputState } from "../../catalog/quantities";
+import { PhysicalQuantityId, type AuxiliaryInputState, type PrimaryInputState } from "../../catalog/quantities";
+import {
+  derivePsychrometricSlots,
+  type DerivedSlotQuantityState,
+} from "./derivations/psychrometrics";
 import { InputId, type InputId as InputIdType } from "../../catalog/inputSlots";
 import {
   TemperatureMode,
   type TemperatureMode as TemperatureModeType,
 } from "../../catalog/inputModes";
 import { t_o } from "jsthermalcomfort";
-import { derivePsychrometricSlots } from "./derivations/psychrometrics";
 import {
   QuantitiesByInputState,
   syncDerivedQuantitiesIntoAuxiliary,
@@ -72,9 +75,9 @@ export function readDerivedFromAuxiliary(
   primary: PrimaryInputState,
 ): DerivedSlotQuantityState {
   const derived = derivePsychrometricSlots(primary);
-  return { [PhysicalQuantityId.DewPoint]: auxiliary[PhysicalQuantityId.DewPoint]
-      ?? derived[PhysicalQuantityId.DewPoint], [PhysicalQuantityId.HumidityRatio]: auxiliary[PhysicalQuantityId.HumidityRatio]
-      ?? derived[PhysicalQuantityId.HumidityRatio], [PhysicalQuantityId.WetBulb]: auxiliary[PhysicalQuantityId.WetBulb]
-      ?? derived[PhysicalQuantityId.WetBulb], [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
+  return { [PhysicalQuantityId.DewPointTemperature]: auxiliary[PhysicalQuantityId.DewPointTemperature]
+      ?? derived[PhysicalQuantityId.DewPointTemperature], [PhysicalQuantityId.HumidityRatio]: auxiliary[PhysicalQuantityId.HumidityRatio]
+      ?? derived[PhysicalQuantityId.HumidityRatio], [PhysicalQuantityId.WetBulbTemperature]: auxiliary[PhysicalQuantityId.WetBulbTemperature]
+      ?? derived[PhysicalQuantityId.WetBulbTemperature], [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
       ?? derived[PhysicalQuantityId.VaporPressure] };
 }

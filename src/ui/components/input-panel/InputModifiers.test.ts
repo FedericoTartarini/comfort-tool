@@ -68,7 +68,7 @@ describe("InputModifiers", () => {
       .toBe(false);
 
     expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-      [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBeUndefined();
+      [PhysicalQuantityId.MeasuredAirSpeed]).toBeUndefined();
     expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(false);
     expect(screen.getByRole("dialog").textContent).toContain("Effective air speed:");
@@ -78,7 +78,7 @@ describe("InputModifiers", () => {
 
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-      [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
+      [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.6);
     expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(true);
     expect(session.input.activeModifiersByInput[InputId.Input1]
@@ -117,7 +117,7 @@ describe("InputModifiers", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-      [PhysicalQuantityId.ModifierMorningOutdoorTemperature]).toBeUndefined();
+      [PhysicalQuantityId.MorningOutdoorTemperature]).toBeUndefined();
     expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MorningClothingEstimate]).toBe(false);
 

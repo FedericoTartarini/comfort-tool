@@ -11,12 +11,12 @@ import ChartControls from "./ChartControls.svelte";
 
 const outputs = [
   {
-    key: PhysicalQuantityId.Pmv,
+    key: PhysicalQuantityId.PredictedMeanVote,
     label: "PMV",
     defaultBands: [{ min: -Infinity, max: Infinity, label: "All", color: "#fff" }],
   },
   {
-    key: PhysicalQuantityId.Ppd,
+    key: PhysicalQuantityId.PredictedPercentageOfDissatisfied,
     label: "PPD (%)",
     defaultBands: [{ min: -Infinity, max: Infinity, label: "All", color: "#fff" }],
   },
@@ -42,7 +42,7 @@ describe("ChartControls Explore composition", () => {
           y: { selectedField: PhysicalQuantityId.RelativeHumidity, options: [PhysicalQuantityId.RelativeHumidity], locked: false, onSelect: vi.fn() },
         },
         explore: {
-          profile: { kind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands: outputs[0].defaultBands },
+          profile: { kind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PredictedMeanVote, bands: outputs[0].defaultBands },
           outputs,
           defaultBands: outputs[0].defaultBands,
           unitSystem: UnitSystem.SI,
@@ -65,7 +65,7 @@ describe("ChartControls Explore composition", () => {
     expect(onSelectOutput).not.toHaveBeenCalled();
 
     await user.click(screen.getByText("PPD (%)"));
-    expect(onSelectOutput).toHaveBeenCalledWith(PhysicalQuantityId.Ppd);
+    expect(onSelectOutput).toHaveBeenCalledWith(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
   });
 
   it("hides Output but keeps thresholds for single-output Explore models", () => {

@@ -1,11 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+const phsLabel = "Predicted Heat Strain (PHS) Index";
+
 async function selectPHS(page: Page) {
   const modelSelect = page.getByRole("combobox", { name: "Select comfort model" });
   await modelSelect.click();
   await modelSelect.fill("PHS");
-  await page.getByRole("button", { name: "PHS (ISO 7933:2023)", exact: false }).click();
-  await expect(modelSelect).toHaveValue("PHS (ISO 7933:2023)");
+  await page.getByRole("button", { name: phsLabel, exact: false }).click();
+  await expect(modelSelect).toHaveValue(phsLabel);
 }
 
 async function selectChart(page: Page, chartLabel: string) {

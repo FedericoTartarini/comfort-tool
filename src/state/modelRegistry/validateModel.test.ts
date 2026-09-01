@@ -24,20 +24,19 @@ const resultsTable = {
 function createCatalogSlice(
   overrides: Partial<CatalogModelSlice> & Pick<CatalogModelSlice, "id">,
 ): CatalogModelSlice {
-  const instanceId = `${overrides.id}-audit-chart`;
   return {
     extraQuantities: [],
     chartInstances: {
       entries: [
         {
-          instanceId,
+          instanceId: ChartType.Dynamic,
           type: ChartType.Dynamic,
         },
       ],
     },
     chartEngineRegistrations: [
       {
-        instanceId,
+        instanceId: ChartType.Dynamic,
         registration: { type: ChartType.Dynamic },
       },
     ],
@@ -58,20 +57,19 @@ describe("assembleCatalogs", () => {
     }
   });
 
-  it("fails assemble on duplicate chart instance ids", () => {
-    const sharedInstanceId = "audit-shared-instance";
+  it("allows the same ChartType on different models", () => {
     expect(() =>
       assembleCatalogs([
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
             entries: [
-              { instanceId: sharedInstanceId, type: ChartType.Dynamic },
+              { instanceId: ChartType.Dynamic, type: ChartType.Dynamic },
             ],
           },
           chartEngineRegistrations: [
             {
-              instanceId: sharedInstanceId,
+              instanceId: ChartType.Dynamic,
               registration: { type: ChartType.Dynamic },
             },
           ],
@@ -80,45 +78,18 @@ describe("assembleCatalogs", () => {
           id: ModelId.Humidex,
           chartInstances: {
             entries: [
-              { instanceId: sharedInstanceId, type: ChartType.Dynamic },
+              { instanceId: ChartType.Dynamic, type: ChartType.Dynamic },
             ],
           },
           chartEngineRegistrations: [
             {
-              instanceId: sharedInstanceId,
+              instanceId: ChartType.Dynamic,
               registration: { type: ChartType.Dynamic },
             },
           ],
         }),
       ]),
-    ).toThrow(
-      /Chart instance ID "audit-shared-instance" is declared by both heat-index and humidex/,
-    );
-
-    expect(() =>
-      validateModel(
-        createCatalogSlice({
-          id: ModelId.HeatIndex,
-          chartInstances: {
-            entries: [
-              {
-                instanceId: "pmv-ashrae-psychrometric",
-                type: ChartType.Dynamic,
-              },
-            ],
-          },
-          chartEngineRegistrations: [
-            {
-              instanceId: "pmv-ashrae-psychrometric",
-              registration: { type: ChartType.Dynamic },
-            },
-          ],
-        }),
-        assembledCatalogs,
-      ),
-    ).toThrow(
-      /Chart instance ID "pmv-ashrae-psychrometric" is declared by both pmv-ashrae and heat-index/,
-    );
+    ).not.toThrow();
   });
 
   it("fails validateModel on duplicate ChartType on one model", () => {
@@ -128,8 +99,8 @@ describe("assembleCatalogs", () => {
           id: ModelId.HeatIndex,
           chartInstances: {
             entries: [
-              { instanceId: "heat-audit-a", type: ChartType.Dynamic },
-              { instanceId: "heat-audit-b", type: ChartType.Dynamic },
+              { instanceId: ChartType.Dynamic, type: ChartType.Dynamic },
+              { instanceId: ChartType.Dynamic, type: ChartType.Dynamic },
             ],
           },
         }),
@@ -167,7 +138,7 @@ describe("assembleCatalogs", () => {
         }),
         assembledCatalogs,
       ),
-    ).toThrow(/is not an Extra catalog quantity/);
+    ).toThrow(/cannot be declared as extra/);
 
     expect(() =>
       validateModel(
@@ -189,7 +160,7 @@ describe("assembleCatalogs", () => {
         createCatalogSlice({
           id: ModelId.HeatIndex,
           chartInstances: {
-            entries: [{ instanceId: "invented", type: ChartType.Dynamic }],
+            entries: [{ instanceId: ChartType.Dynamic, type: ChartType.Dynamic }],
           },
           chartEngineRegistrations: [
             {

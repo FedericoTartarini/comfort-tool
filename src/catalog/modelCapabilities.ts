@@ -1,6 +1,5 @@
 import type { InputId as InputIdType } from "./inputSlots";
 import {
-  type ChartAxisQuantityId,
   type PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "./quantities";
@@ -13,7 +12,7 @@ import {
   type ZoneToken,
 } from "./zoneTokens";
 
-export type BandInputsSi = Readonly<Partial<Record<ChartAxisQuantityId, number>>>;
+export type BandInputsSi = Readonly<Partial<Record<PhysicalQuantityId, number>>>;
 
 /**
  * A numeric edge is already in canonical SI. A functional edge receives its
@@ -34,6 +33,23 @@ export interface Band {
 export interface NumericBand extends Band {
   readonly min: number;
   readonly max: number;
+  /**
+   * Endpoint membership. Defaults are half-open `[min, max)`.
+   * Right-closed JS bins use `(min, max]`; open intervals use `(min, max)`.
+   */
+  readonly minInclusive?: boolean;
+  readonly maxInclusive?: boolean;
+}
+
+export function numericBandContains(
+  band: NumericBand,
+  valueSi: number,
+): boolean {
+  const minInclusive = band.minInclusive ?? true;
+  const maxInclusive = band.maxInclusive ?? false;
+  const aboveMin = minInclusive ? valueSi >= band.min : valueSi > band.min;
+  const belowMax = maxInclusive ? valueSi <= band.max : valueSi < band.max;
+  return aboveMin && belowMax;
 }
 
 export interface ModelOutput {
@@ -57,8 +73,8 @@ export interface ComplianceSpec<TBand extends Band = Band, TResult = unknown> {
 }
 
 interface FieldChartConfigBase {
-  readonly xField: ChartAxisQuantityId;
-  readonly yField: ChartAxisQuantityId;
+  readonly xField: PhysicalQuantityId;
+  readonly yField: PhysicalQuantityId;
   readonly zOutput: PhysicalQuantityId;
 }
 
@@ -117,7 +133,7 @@ export function findNumericBandIndexForValue(
     return undefined;
   }
 
-  const index = bands.findIndex((band) => valueSi >= band.min && valueSi < band.max);
+  const index = bands.findIndex((band) => numericBandContains(band, valueSi));
   return index === -1 ? undefined : index;
 }
 

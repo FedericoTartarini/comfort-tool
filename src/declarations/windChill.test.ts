@@ -2,6 +2,7 @@
  * Unit tests for the standalone Wind Chill calculation service.
  */
 import { describe, expect, it } from "vitest";
+import { wc } from "jsthermalcomfort";
 import { PhysicalQuantityId } from "../catalog/quantities";
 import { calculateWindChill, windChillModelConfig } from "./windChill";
 import { ModelId } from "../catalog/modelIds";
@@ -28,9 +29,8 @@ describe("windChill service", () => {
       v: 10,
     });
 
-    expect(result.wci).toBeGreaterThan(1400); // 30 mins to frostbite or worse
-    expect(result.wciTemp).toBeLessThan(-20);
-    expect(result.wciZone).not.toBe("Safe");
+    expect(result.wci).toBeGreaterThan(1400);
+    expect(result.wct).toBeLessThan(-20);
   });
 
   it("calculates Wind Chill correctly in IP format mappings", () => {
@@ -40,18 +40,18 @@ describe("windChill service", () => {
       v: 3.048,    // SI representation of 10 ft/s
     });
 
-    const wciTempF = convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, result.wciTemp, UnitSystem.IP);
-    expect(wciTempF).toBeLessThan(5);
-    expect(result.wciZone).toBe("Safe");
+    const wctF = convertFieldValueFromSi(PhysicalQuantityId.WindChillTemperature, result.wct, UnitSystem.IP);
+    expect(wctF).toBeLessThan(5);
   });
 
-  it("reverts Wind Chill Temp to Air Temp in mild conditions above 10°C", () => {
+  it("calculates Wind Chill Temperature for inputs outside the historical applicability range", () => {
     const result = calculateWindChill({
       tdb: 12,
       v: 5,
     });
 
-    expect(result.wciTemp).toBe(12);
+    expect(Number.isFinite(result.wct)).toBe(true);
+    expect(result.wct).not.toBe(12);
   });
 
   it.each([UnitSystem.SI, UnitSystem.IP])(
@@ -69,7 +69,7 @@ describe("windChill service", () => {
       } satisfies ChartBuildContext;
 
       const dynamicChart = buildChartPlotly(windChillModelConfig,
-        "wind-chill-dynamic-field",
+        "dynamic",
         chartSource,
         {
           [InputId.Input1]: result,
@@ -80,16 +80,16 @@ describe("windChill service", () => {
       );
 
       const fillTraces = dynamicChart?.traces.filter(({ name, fill }) => (
-        typeof name === "string" && name.startsWith("Wind Chill Index bands:") && fill === "toself"
+        typeof name === "string" && name.startsWith(`${wc.label} bands:`) && fill === "toself"
       ));
       const inputTrace = dynamicChart?.traces.find(({ name }) => name === "Input 1");
       const hover = inputTrace?.hovertemplate;
 
-      expect(fillTraces?.length).toBeGreaterThan(0);
+      expect(fillTraces?.length).toBe(0);
       expect(dynamicChart?.traces.find(({ type }) => type === "contour")).toBeUndefined();
-      expect(hover).toContain("Frostbite Risk");
-      expect(hover).toContain("Wind Chill Index");
-      expect(hover).toContain("Wind Chill Temperature");
+      expect(hover).toContain(wc.label);
+      expect(hover).toContain("wct");
+      expect(hover).not.toContain("Frostbite");
       expect(inputTrace?.hoverinfo).toBe("all");
     },
   );
@@ -97,11 +97,11 @@ describe("windChill service", () => {
   it("declares a dynamic-only Explore model with air-temperature and wind axes", () => {
     expect(windChillModelConfig.id).toBe(ModelId.WindChill);
     expect(windChillModelConfig.chartInstances.defaultInstanceId).toBe(
-      "wind-chill-dynamic-field",
+      "dynamic",
     );
     expect(windChillModelConfig.chartInstances.entries).toHaveLength(1);
     expect(windChillModelConfig.chartInstances.entries[0]?.instanceId).toBe(
-      "wind-chill-dynamic-field",
+      "dynamic",
     );
     expect(windChillModelConfig.dynamicAxisFields).toEqual([
       PhysicalQuantityId.DryBulbTemperature,

@@ -29,7 +29,7 @@ describe("ChartBandEditor", () => {
     const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
-      outputKey: PhysicalQuantityId.Utci,
+      outputKey: PhysicalQuantityId.UniversalThermalClimateIndex,
       bands,
       defaultBands: bands,
       unitSystem: UnitSystem.IP,
@@ -69,9 +69,9 @@ describe("ChartBandEditor", () => {
   });
 
   it.each([
-    [PhysicalQuantityId.Utci, 12.3456, 9.8765],
+    [PhysicalQuantityId.UniversalThermalClimateIndex, 12.3456, 9.8765],
     [PhysicalQuantityId.HeatIndex, 26.1234, 41.2345],
-    [PhysicalQuantityId.WindChill, 1600, 1400],
+    [PhysicalQuantityId.WindChillIndex, 1600, 1400],
     [PhysicalQuantityId.OperativeTemperature, 23.4567, 18.7654],
   ] as const)(
     "preserves exact %s SI edges for unchanged and reset IP drafts",
@@ -119,7 +119,7 @@ describe("ChartBandEditor", () => {
 
     render(ChartBandEditor, {
       idPrefix: "test-unsorted",
-      outputKey: PhysicalQuantityId.Utci,
+      outputKey: PhysicalQuantityId.UniversalThermalClimateIndex,
       bands: unsortedBands,
       defaultBands: unsortedBands,
       unitSystem: UnitSystem.IP,
@@ -141,7 +141,7 @@ describe("ChartBandEditor", () => {
     const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
-      outputKey: PhysicalQuantityId.Pmv,
+      outputKey: PhysicalQuantityId.PredictedMeanVote,
       bands,
       defaultBands: bands,
       unitSystem: UnitSystem.SI,
@@ -181,7 +181,7 @@ describe("ChartBandEditor", () => {
     const onApply = vi.fn((_nextBands: readonly NumericBand[]) => true);
     render(ChartBandEditor, {
       idPrefix: "test",
-      outputKey: PhysicalQuantityId.Pmv,
+      outputKey: PhysicalQuantityId.PredictedMeanVote,
       bands,
       defaultBands: bands,
       unitSystem: UnitSystem.SI,

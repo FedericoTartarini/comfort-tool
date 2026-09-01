@@ -47,13 +47,14 @@ describe("chart type spec union", () => {
     expectTypeOf<DynamicWithUtciSpec>().not.toMatchTypeOf<FrontendChartDeclaration>();
   });
 
-  it("keeps Psychrometric Plotly builders on the ChartType spec union", () => {
+  it("keeps Psychrometric data-only on the ChartType spec union", () => {
     type PsychrometricChart = Extract<
       FrontendChartDeclaration,
       { type: typeof ChartType.Psychrometric }
     >;
     type BindKind = RegisteredChartBindSpec<unknown, unknown>["type"];
-    expectTypeOf<PsychrometricChart["spec"]>().toHaveProperty("build");
+    expectTypeOf<PsychrometricChart["spec"]>().toHaveProperty("evaluate");
+    expectTypeOf<PsychrometricChart["spec"]>().not.toHaveProperty("build");
     expectTypeOf<PsychrometricChart["spec"]>().not.toHaveProperty("resolveGridSpec");
     expectTypeOf<BindKind>().toEqualTypeOf<ChartType>();
   });

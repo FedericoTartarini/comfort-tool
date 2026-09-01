@@ -15,7 +15,7 @@
     isLoading: boolean;
     chartInstance: ChartInstancePanelView;
     chartInstances: readonly ChartInstancePanelView[];
-    selectedChartInstanceId: string;
+    selectedChartType: string;
     onSelectChartInstance: (instanceId: string) => void;
     chartControls: ChartControlsViewModel;
     legendZones: ReadonlyArray<{ label: string; color: string }> | null;
@@ -28,7 +28,7 @@
     isLoading,
     chartInstance,
     chartInstances,
-    selectedChartInstanceId,
+    selectedChartType,
     onSelectChartInstance,
     chartControls,
     legendZones,
@@ -46,7 +46,7 @@
       chartControls.explore !== null,
   );
   const controlsIdPrefix = $derived(
-    `${chartPanelIdPrefix}-${selectedChartInstanceId}`,
+    `${chartPanelIdPrefix}-${selectedChartType}`,
   );
 </script>
 
@@ -80,7 +80,7 @@
         <ChartExportMenu
           {chartInstances}
           currentChart={chartInstance}
-          selectedChartInstanceId={selectedChartInstanceId}
+          selectedChartType={selectedChartType}
           onSelectChartInstance={onSelectChartInstance}
           onExport={(format, column) => exportChart?.(format, column)}
         />

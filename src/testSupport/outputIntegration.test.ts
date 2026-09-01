@@ -149,7 +149,7 @@ describe("output integration", () => {
     const editedProfile = {
       ...baseProfile,
       bands: editedBands as readonly NumericBand[],
-      zOutput: PhysicalQuantityId.Pmv,
+      zOutput: PhysicalQuantityId.PredictedMeanVote,
     };
     const second = config.buildChart(
       config.chartInstances.defaultInstanceId,

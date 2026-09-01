@@ -79,12 +79,12 @@ function toLegendBands(
 }
 
 const solarModifierFixture = [
-  [PhysicalQuantityId.ModifierSolarAltitude, "45"],
-  [PhysicalQuantityId.ModifierSolarHorizontalAngle, "90"],
-  [PhysicalQuantityId.ModifierDirectSolarRadiation, "800"],
-  [PhysicalQuantityId.ModifierSolarTransmittance, "0.5"],
-  [PhysicalQuantityId.ModifierSkyVaultViewFraction, "0.5"],
-  [PhysicalQuantityId.ModifierBodyExposureFraction, "0.5"],
+  [PhysicalQuantityId.SolarAltitude, "45"],
+  [PhysicalQuantityId.SolarHorizontalAngle, "90"],
+  [PhysicalQuantityId.DirectSolarRadiation, "800"],
+  [PhysicalQuantityId.SolarTransmittance, "0.5"],
+  [PhysicalQuantityId.SkyVaultViewFraction, "0.5"],
+  [PhysicalQuantityId.BodyExposureFraction, "0.5"],
 ] as const;
 
 function populateSolarModifier(
@@ -109,15 +109,15 @@ describe("createPointSession", () => {
 
     expect(session.setting.selectedModel).toBe(ModelId.PmvAshrae);
     expect(session.setting.selectedChartInstanceByModel).toEqual({
-      [ModelId.PmvAshrae]: "pmv-ashrae-psychrometric",
-      [ModelId.PmvIso]: "pmv-iso-psychrometric",
-      [ModelId.Utci]: "utci-stress-band",
-      [ModelId.AdaptiveAshrae]: "adaptive-ashrae-boundary",
-      [ModelId.AdaptiveEn]: "adaptive-en-boundary",
-      [ModelId.HeatIndex]: "heat-index-dynamic-field",
-      [ModelId.Humidex]: "humidex-dynamic-field",
-      [ModelId.WindChill]: "wind-chill-dynamic-field",
-      [ModelId.Phs2023]: "phs-exposure-history",
+      [ModelId.PmvAshrae]: "psychrometric",
+      [ModelId.PmvIso]: "psychrometric",
+      [ModelId.Utci]: "utci",
+      [ModelId.AdaptiveAshrae]: "adaptive",
+      [ModelId.AdaptiveEn]: "adaptive",
+      [ModelId.HeatIndex]: "dynamic",
+      [ModelId.Humidex]: "dynamic",
+      [ModelId.WindChill]: "dynamic",
+      [ModelId.Phs2023]: "body-temperature",
     });
     expect(session.setting.modelOptionsByModel[ModelId.PmvAshrae])
       .not.toBe(session.setting.modelOptionsByModel[ModelId.PmvIso]);
@@ -127,7 +127,7 @@ describe("createPointSession", () => {
       .toBe(SurfaceId.Standard);
     expect(session.setting.activeSurface)
       .toBe(SurfaceId.Standard);
-    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.Pmv);
+    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.PredictedMeanVote);
     expect(getOutputSettings(session).exploreBands)
       .not.toBe(pmvAshraeModelConfig.exploreOutputs[0].defaultBands);
     expect(getOutputSettings(session, ModelId.PmvAshrae).exploreBands)
@@ -147,13 +147,13 @@ describe("createPointSession", () => {
     expect(session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       "0.6",
     )).toBe(true);
     expect(session.actions.updateModifierInput(
       InputId.Input2,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       "0.8",
     )).toBe(true);
     expect(session.actions.setModifierEnabled(
@@ -194,7 +194,7 @@ describe("createPointSession", () => {
     expect(session.effectiveQuantities()[InputId.Input2]
       [PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(0.83, 6);
     expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-      [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
+      [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.6);
 
     expect(session.actions.setModifierEnabled(
       InputId.Input1,
@@ -213,7 +213,7 @@ describe("createPointSession", () => {
       const session = createPointSession();
       session.actions.setCompareEnabled(true);
       session.input.auxiliaryQuantitiesByInput[InputId.Input3]
-        [PhysicalQuantityId.ModifierMeasuredAirSpeed] = 0.9;
+        [PhysicalQuantityId.MeasuredAirSpeed] = 0.9;
       session.input.activeModifiersByInput[InputId.Input3]
         [ModifierId.MeasuredAirSpeed] = true;
       seedPrimaryQuantity(
@@ -244,9 +244,9 @@ describe("createPointSession", () => {
       if (!measuredInput1 || !morningInput2 || !dynamicInput2) {
         throw new Error("Expected complete visible modifier draft entries.");
       }
-      measuredInput1.inputs[PhysicalQuantityId.ModifierMeasuredAirSpeed] = 0.6;
+      measuredInput1.inputs[PhysicalQuantityId.MeasuredAirSpeed] = 0.6;
       measuredInput1.enabled = true;
-      morningInput2.inputs[PhysicalQuantityId.ModifierMorningOutdoorTemperature] = 10;
+      morningInput2.inputs[PhysicalQuantityId.MorningOutdoorTemperature] = 10;
       morningInput2.enabled = true;
       dynamicInput2.enabled = true;
 
@@ -254,7 +254,7 @@ describe("createPointSession", () => {
       expect(projectedControls.find(({ id }) => id === ModifierId.MeasuredAirSpeed)
         ?.activeByInput[InputId.Input1]).toBe(true);
       expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-        [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBeUndefined();
+        [PhysicalQuantityId.MeasuredAirSpeed]).toBeUndefined();
       expect(session.input.activeModifiersByInput[InputId.Input2]
         [ModifierId.DynamicClothing]).toBe(false);
 
@@ -268,7 +268,7 @@ describe("createPointSession", () => {
       expect(session.effectiveQuantities()[InputId.Input2]
         [PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.485, 3);
       expect(session.input.auxiliaryQuantitiesByInput[InputId.Input3]
-        [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.9);
+        [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.9);
       expect(session.input.activeModifiersByInput[InputId.Input3]
         [ModifierId.MeasuredAirSpeed]).toBe(true);
 
@@ -286,7 +286,7 @@ describe("createPointSession", () => {
       modifierId === ModifierId.MeasuredAirSpeed
     ));
     if (!measured) throw new Error("Expected a measured-air-speed draft entry.");
-    measured.inputs[PhysicalQuantityId.ModifierMeasuredAirSpeed] = 0.6;
+    measured.inputs[PhysicalQuantityId.MeasuredAirSpeed] = 0.6;
     measured.enabled = true;
 
     const incompleteDraft = draft.slice(0, -1);
@@ -326,13 +326,13 @@ describe("createPointSession", () => {
         modifierId === ModifierId.MeasuredAirSpeed
       ));
       if (!measured) throw new Error("Expected a measured-air-speed draft entry.");
-      measured.inputs[PhysicalQuantityId.ModifierMeasuredAirSpeed] = 0.6;
+      measured.inputs[PhysicalQuantityId.MeasuredAirSpeed] = 0.6;
 
       expect(session.actions.applyInputModifierDraft(draft)).toBe(true);
       await Promise.resolve();
 
       expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-        [PhysicalQuantityId.ModifierMeasuredAirSpeed]).toBe(0.6);
+        [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.6);
       expect(session.input.activeModifiersByInput[InputId.Input1]
         [ModifierId.MeasuredAirSpeed]).toBe(false);
       expect(session.calculationCacheByModel[ModelId.PmvAshrae])
@@ -361,7 +361,7 @@ describe("createPointSession", () => {
     session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MorningClothingEstimate,
-      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      PhysicalQuantityId.MorningOutdoorTemperature,
       "10",
     );
 
@@ -466,16 +466,16 @@ describe("createPointSession", () => {
     expect(session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.SolarGain,
-      PhysicalQuantityId.ModifierSolarTransmittance,
+      PhysicalQuantityId.SolarTransmittance,
       "",
     )).toBe(true);
 
     expect(session.input.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain])
       .toBe(false);
     expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-      [PhysicalQuantityId.ModifierSolarTransmittance]).toBeUndefined();
+      [PhysicalQuantityId.SolarTransmittance]).toBeUndefined();
     expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
-      [PhysicalQuantityId.ModifierDirectSolarRadiation]).toBe(800);
+      [PhysicalQuantityId.DirectSolarRadiation]).toBe(800);
     expect(session.effectiveQuantities()[InputId.Input1]
       [PhysicalQuantityId.MeanRadiantTemperature]).toBe(baseRadiantTemperature);
 
@@ -487,13 +487,13 @@ describe("createPointSession", () => {
     session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       "0.6",
     );
     session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MorningClothingEstimate,
-      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      PhysicalQuantityId.MorningOutdoorTemperature,
       "10",
     );
     populateSolarModifier(session, InputId.Input1);
@@ -530,7 +530,7 @@ describe("createPointSession", () => {
     expect(measured?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("1.97");
     expect(clothing?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("50");
     expect(solar?.extraInputs.find(({ key }) => (
-      key === PhysicalQuantityId.ModifierDirectSolarRadiation
+      key === PhysicalQuantityId.DirectSolarRadiation
     ))?.displayValuesByInput[InputId.Input1]).toBe("253.6");
 
     session.actions.toggleUnitSystem();
@@ -606,24 +606,24 @@ describe("createPointSession", () => {
     session.actions.setActiveSurface(SurfaceId.Explore);
 
     expect(session.chartInstanceId)
-      .toBe("phs-exposure-history");
+      .toBe("body-temperature");
     expect(getOutputSettings(session).exploreOutput)
-      .toBe(PhysicalQuantityId.PhsRectalTemperature);
+      .toBe(PhysicalQuantityId.RectalTemperature);
     expect(session.chartControls.explore?.outputs.map(
       ({ key }) => key,
-    )).toEqual([PhysicalQuantityId.PhsRectalTemperature]);
+    )).toEqual([PhysicalQuantityId.RectalTemperature]);
 
-    session.actions.setSelectedChartInstance("phs-dynamic-field");
-    session.actions.setExploreOutput(PhysicalQuantityId.PhsWaterLoss);
+    session.actions.setSelectedChartInstance("dynamic");
+    session.actions.setExploreOutput(PhysicalQuantityId.SweatLoss);
     expect(getOutputSettings(session).exploreOutput)
-      .toBe(PhysicalQuantityId.PhsWaterLoss);
+      .toBe(PhysicalQuantityId.SweatLoss);
 
-    session.actions.setSelectedChartInstance("phs-exposure-history");
+    session.actions.setSelectedChartInstance("body-temperature");
     expect(getOutputSettings(session).exploreOutput)
-      .toBe(PhysicalQuantityId.PhsRectalTemperature);
-    session.actions.setExploreOutput(PhysicalQuantityId.PhsWaterLoss);
+      .toBe(PhysicalQuantityId.RectalTemperature);
+    session.actions.setExploreOutput(PhysicalQuantityId.SweatLoss);
     expect(getOutputSettings(session).exploreOutput)
-      .toBe(PhysicalQuantityId.PhsRectalTemperature);
+      .toBe(PhysicalQuantityId.RectalTemperature);
   });
 
   it("recalculates PHS when a model quantity changes without affecting other models", async () => {
@@ -682,19 +682,19 @@ describe("createPointSession", () => {
     expect(getProfileBadgeControl(session).profileKind).toBe(FieldChartProfileKind.Compliance);
     expect(getOutputSettings(session).xAxis).toBe(PhysicalQuantityId.DryBulbTemperature);
     session.actions.setActiveSurface(SurfaceId.Explore);
-    session.actions.setExploreOutput(PhysicalQuantityId.Ppd);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
 
     seedSelectedModel(session, ModelId.PmvAshrae);
     expect(getProfileBadgeControl(session).profileKind).toBe(FieldChartProfileKind.Explore);
     expect(getOutputSettings(session).xAxis).toBe(PhysicalQuantityId.MeanRadiantTemperature);
-    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.Pmv);
+    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.PredictedMeanVote);
   });
 
   it("falls back to Input 1 without erasing a temporarily hidden baseline", async () => {
     const session = createPointSession();
     session.actions.setCompareEnabled(true);
     await waitForIdle(session);
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setChartBaselineInputId(InputId.Input2);
 
     expect(session.chartControls.baseline?.selectedInputId)
@@ -716,7 +716,7 @@ describe("createPointSession", () => {
     const session = createPointSession();
     session.actions.setCompareEnabled(true);
     await waitForIdle(session);
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setChartBaselineInputId(InputId.Input2);
 
     const compliance = getProfileBadgeControl(session);
@@ -741,7 +741,7 @@ describe("createPointSession", () => {
 
     expect(getProfileBadgeControl(session).profileKind).toBe(FieldChartProfileKind.Compliance);
 
-    session.actions.setSelectedChartInstance("pmv-ashrae-psychrometric");
+    session.actions.setSelectedChartInstance("psychrometric");
     const fixed = session.chartControls;
     expect(fixed.profileBadge?.profileKind).toBe(FieldChartProfileKind.Compliance);
     expect(fixed.baseline?.selectedInputId).toBe(InputId.Input1);
@@ -753,7 +753,7 @@ describe("createPointSession", () => {
     expect(fixedExplore.profileBadge?.caption).toContain("fixed axes");
     expect(fixedExplore.explore?.profile.kind).toBe(FieldChartProfileKind.Explore);
 
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     expect(getProfileBadgeControl(session).profileKind).toBe(FieldChartProfileKind.Explore);
     expect(session.chartControls.axes).not.toBeUndefined();
 
@@ -761,8 +761,8 @@ describe("createPointSession", () => {
     syncWorkspaceToModel(session, ModelId.AdaptiveAshrae);
     const adaptive = getProfileBadgeControl(session);
     expect(adaptive.profileKind).toBe(FieldChartProfileKind.Compliance);
-    expect(adaptive.caption).toContain("ASHRAE 55 80% and 90%");
-    session.actions.setSelectedChartInstance("adaptive-ashrae-boundary");
+    expect(adaptive.caption).toContain("80: t_cmf");
+    session.actions.setSelectedChartInstance("adaptive");
     const adaptiveControls = session.chartControls;
     expect(adaptiveControls.profileBadge?.profileKind).toBe(FieldChartProfileKind.Compliance);
     expect(adaptiveControls.baseline?.selectedInputId).toBe(InputId.Input1);
@@ -781,12 +781,12 @@ describe("createPointSession", () => {
     const utci = getProfileBadgeControl(session);
     expect(utci.profileKind).toBe(FieldChartProfileKind.Explore);
     expect(utci.caption).toContain("Showing UTCI");
-    session.actions.setSelectedChartInstance("utci-stress-band");
+    session.actions.setSelectedChartInstance("utci");
     const utciFixed = session.chartControls;
     expect(utciFixed.profileBadge?.profileKind).toBe(FieldChartProfileKind.Explore);
     expect(utciFixed.baseline?.selectedInputId).toBe(InputId.Input1);
     expect(utciFixed.axes).toBeNull();
-    expect(utciFixed.explore?.profile.zOutput).toBe(PhysicalQuantityId.Utci);
+    expect(utciFixed.explore?.profile.zOutput).toBe(PhysicalQuantityId.UniversalThermalClimateIndex);
   });
 
   it("rebuilds chart presentation without invalidating or replacing ready calculations", async () => {
@@ -808,10 +808,10 @@ describe("createPointSession", () => {
       expect(session.output.isLoading).toBe(false);
     };
 
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     assertCalculationIdentity();
     expect(currentChart(session)?.layout.title)
-      .toContain("Dynamic Chart");
+      .toContain("Dynamic");
 
     const complianceBands = pmvAshraeModelConfig.complianceProfile?.bands;
     const complianceChart = currentChart(session);
@@ -826,8 +826,8 @@ describe("createPointSession", () => {
     session.actions.setActiveSurface(SurfaceId.Explore);
     assertCalculationIdentity();
 
-    const exploreChart = currentChart(session);
-    expect(exploreChart?.traces).not.toEqual(complianceChart?.traces);
+    expect(getProfileBadgeControl(session).profileKind)
+      .toBe(FieldChartProfileKind.Explore);
     expect(session.chartLegendZones)
       .toEqual(toLegendBands(getOutputSettings(session).exploreBands ?? undefined));
 
@@ -836,9 +836,9 @@ describe("createPointSession", () => {
     ).toEqual(expect.objectContaining({
       xField: PhysicalQuantityId.DryBulbTemperature,
       yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: PhysicalQuantityId.Pmv,
+      zOutput: PhysicalQuantityId.PredictedMeanVote,
     }));
-    expect(session.chartLegendTitle).toBe("PMV Zones");
+    expect(session.chartLegendTitle).toBe("PMV acceptability");
 
     session.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
     assertCalculationIdentity();
@@ -847,15 +847,16 @@ describe("createPointSession", () => {
     session.actions.setChartBaselineInputId(InputId.Input2);
     assertCalculationIdentity();
 
-    session.actions.setExploreOutput(PhysicalQuantityId.Ppd);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     assertCalculationIdentity();
-    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.Ppd);
+    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     expect(session.chartLegendTitle).toBe("PPD Bands");
+    expect(currentChart(session)?.traces).not.toEqual(complianceChart?.traces);
 
     const ppdBands = getOutputSettings(session).exploreBands?.map((band) => ({ ...band })) ?? [];
-    session.actions.setExploreOutput(PhysicalQuantityId.Utci);
+    session.actions.setExploreOutput(PhysicalQuantityId.UniversalThermalClimateIndex);
     assertCalculationIdentity();
-    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.Ppd);
+    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
 
     expect(session.actions.setExploreBands([
       { min: 0, max: 20, label: "One", color: "#000" },
@@ -879,7 +880,7 @@ describe("createPointSession", () => {
     if (complianceLegendAfterStandard) {
       expect(complianceLegendAfterStandard).toEqual(toLegendBands(complianceBands));
     }
-    expect(session.chartLegendTitle).toBe("PMV Zones");
+    expect(session.chartLegendTitle).toBe("PMV acceptability");
     expect(currentChart(session)?.traces.some(({ fill }) => fill === "toself"))
       .toBe(true);
     expect(currentChart(session)?.traces.find(({ name }) => name === "PMV bands hover"))
@@ -895,13 +896,24 @@ describe("createPointSession", () => {
       .toEqual(["Low", "High"]);
 
     const editedBands = getOutputSettings(session).exploreBands;
-    session.actions.setExploreOutput(PhysicalQuantityId.Ppd);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     expect(getOutputSettings(session).exploreBands).toBe(editedBands);
 
     session.actions.toggleUnitSystem();
     assertCalculationIdentity();
     expect(getOutputSettings(session).exploreBands![1].min).toBe(10);
     expect(currentChart(session)).not.toBeUndefined();
+  });
+
+  it("can read Adaptive chartBuild before the first calculation finishes", () => {
+    const session = createPointSession();
+    session.actions.setSelectedModel(ModelId.AdaptiveAshrae, {
+      validateRanges: false,
+      schedule: false,
+    });
+    expect(session.setting.selectedModel).toBe(ModelId.AdaptiveAshrae);
+    expect(() => session.chartBuild).not.toThrow();
+    expect(session.chartBuild.readiness).toBe("empty");
   });
 
   it("rebuilds Adaptive regions from the selected cached comparison baseline", async () => {
@@ -921,7 +933,7 @@ describe("createPointSession", () => {
     const chartSource = cache.chartSource;
     const resultsByInput = cache.resultsByInput;
     const getTooWarmBoundary = () => currentChart(session)?.traces
-      .find(({ name, fill }) => name === "Too Warm" && fill === "toself")?.y;
+      .find(({ name, fill }) => name === "too-warm" && fill === "toself")?.y;
     const input1Boundary = getTooWarmBoundary();
 
     session.actions.setChartBaselineInputId(InputId.Input2);
@@ -971,14 +983,14 @@ describe("createPointSession", () => {
     session.actions.setCompareEnabled(true);
     await waitForIdle(session);
     session.actions.setActiveSurface(SurfaceId.Explore);
-    session.actions.setExploreOutput(PhysicalQuantityId.Ppd);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     session.actions.setExploreBands([
       { min: -Infinity, max: 15, label: "Preferred", color: "#0f0" },
       { min: 15, max: Infinity, label: "Other", color: "#f00" },
     ]);
 
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
-    session.actions.setSelectedChartInstance("pmv-ashrae-psychrometric");
+    session.actions.setSelectedChartInstance("dynamic");
+    session.actions.setSelectedChartInstance("psychrometric");
     session.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
     session.actions.setChartBaselineInputId(InputId.Input2);
     expect(getOutputSettings(session).exploreBands![0].label).toBe("Preferred");
@@ -986,7 +998,7 @@ describe("createPointSession", () => {
       .toBe(FieldChartProfileKind.Explore);
     expect(session.chartControls.explore?.profile)
       .toEqual(expect.objectContaining({
-        zOutput: PhysicalQuantityId.Ppd,
+        zOutput: PhysicalQuantityId.PredictedPercentageOfDissatisfied,
         bands: expect.arrayContaining([
           expect.objectContaining({ label: "Preferred" }),
         ]),
@@ -996,7 +1008,7 @@ describe("createPointSession", () => {
     syncWorkspaceToModel(session, ModelId.Utci);
     await waitForIdle(session);
     expect(getProfileBadgeControl(session).profileKind).toBe(FieldChartProfileKind.Explore);
-    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.Utci);
+    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.UniversalThermalClimateIndex);
 
     session.actions.setSelectedModel(ModelId.AdaptiveAshrae);
     syncWorkspaceToModel(session, ModelId.AdaptiveAshrae);
@@ -1012,49 +1024,49 @@ describe("createPointSession", () => {
       baselineInputId: InputId.Input2,
     }));
     expect(session.setting.activeSurface).toBe(SurfaceId.Explore);
-    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.Ppd);
+    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     expect(getOutputSettings(session).exploreBands![0].label).toBe("Preferred");
     expect(session.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
-      .toBe("pmv-ashrae-psychrometric");
+      .toBe("psychrometric");
 
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     expect(getProfileBadgeControl(session).profileKind).toBe(FieldChartProfileKind.Explore);
     expect(session.chartControls.axes?.x.selectedField)
       .toBe(PhysicalQuantityId.MeanRadiantTemperature);
     expect(session.chartControls.baseline?.selectedInputId)
       .toBe(InputId.Input2);
     expect(session.chartControls.explore?.profile.zOutput)
-      .toBe(PhysicalQuantityId.Ppd);
+      .toBe(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     expect(session.chartControls.explore?.profile.bands[0].label)
       .toBe("Preferred");
   });
 
   it("round-trips field-chart settings in the strict v1 share snapshot", async () => {
     const session = createPointSession();
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setActiveSurface(SurfaceId.Explore);
-    session.actions.setExploreOutput(PhysicalQuantityId.Ppd);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     session.actions.setExploreBands([
       { min: -Infinity, max: 20, label: "Edited", color: "#0f0" },
       { min: 20, max: Infinity, label: "Other", color: "#f00" },
     ]);
     session.actions.setChartBaselineInputId(InputId.Input2);
     const snapshot = session.actions.exportShareSnapshot();
-    session.actions.setExploreOutput(PhysicalQuantityId.Pmv);
+    session.actions.setExploreOutput(PhysicalQuantityId.PredictedMeanVote);
     session.actions.applyShareSnapshot(snapshot);
     await waitForIdle(session);
 
     expect(snapshot.version).toBe(1);
-    expect(snapshot.models[ModelId.PmvAshrae].selectedChartInstanceId)
-      .toBe("pmv-ashrae-dynamic-field");
+    expect(snapshot.models[ModelId.PmvAshrae].selectedChartType)
+      .toBe("dynamic");
     expect(session.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
-      .toBe("pmv-ashrae-dynamic-field");
+      .toBe("dynamic");
     expect(snapshot.models[ModelId.PmvAshrae].outputSettings)
       .toEqual(expect.objectContaining({
         baselineInputId: InputId.Input2,
-        exploreOutput: PhysicalQuantityId.Ppd,
+        exploreOutput: PhysicalQuantityId.PredictedPercentageOfDissatisfied,
       }));
-    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.Ppd);
+    expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     expect(getOutputSettings(session).exploreBands![0].label).toBe("Edited");
   });
 
@@ -1066,7 +1078,7 @@ describe("createPointSession", () => {
     const controls = session.chartControls;
 
     expect(session.chartInstances).toEqual([
-      expect.objectContaining({ instanceId: "adaptive-ashrae-boundary", type: "adaptive" }),
+      expect.objectContaining({ instanceId: "adaptive", type: "adaptive" }),
     ]);
     expect(settings).toEqual(expect.objectContaining({
       xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
@@ -1132,7 +1144,7 @@ describe("createPointSession", () => {
     const session = createPointSession();
     seedSelectedModel(session, ModelId.Utci);
     syncWorkspaceToModel(session, ModelId.Utci);
-    session.actions.setSelectedChartInstance("utci-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setDynamicXAxis(PhysicalQuantityId.WindSpeed);
     session.actions.setDynamicYAxis(PhysicalQuantityId.OperativeTemperature);
     const settings = getOutputSettings(session);
@@ -1168,8 +1180,8 @@ describe("createPointSession", () => {
       seedSelectedModel(session, modelId);
       session.actions.setSelectedChartInstance(
         modelId === ModelId.PmvIso
-          ? "pmv-iso-dynamic-field"
-          : "pmv-ashrae-dynamic-field",
+          ? "dynamic"
+          : "dynamic",
       );
       session.actions.setDynamicXAxis(PhysicalQuantityId.RelativeAirSpeed);
       session.actions.setDynamicYAxis(PhysicalQuantityId.OperativeTemperature);
@@ -1274,7 +1286,7 @@ describe("createPointSession", () => {
 
   it("restores each model's own dynamic axes when switching models", async () => {
     const session = createPointSession();
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
     session.actions.setDynamicYAxis(PhysicalQuantityId.RelativeHumidity);
 
@@ -1445,7 +1457,7 @@ describe("createPointSession", () => {
     expect(session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       "0.6",
     )).toBe(true);
     expect(session.calculationCacheByModel[ModelId.PmvAshrae].status)
@@ -1478,7 +1490,7 @@ describe("createPointSession", () => {
     expect(session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       "0.7",
     )).toBe(true);
     expect(session.calculationCacheByModel[ModelId.PmvAshrae].status)
@@ -1501,13 +1513,13 @@ describe("createPointSession", () => {
     session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       "0.6",
     );
     session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MorningClothingEstimate,
-      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      PhysicalQuantityId.MorningOutdoorTemperature,
       "10",
     );
     populateSolarModifier(session, InputId.Input1);
@@ -1556,7 +1568,7 @@ describe("createPointSession", () => {
     expect(session.chartControls.profileBadge.feedback?.passes)
       .toBe(result.isCompliant);
 
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
     const marker = currentChart(session)?.traces.find((trace) => (
       trace.name === "Input 1" && trace.mode === "markers"
@@ -1569,7 +1581,7 @@ describe("createPointSession", () => {
     session.actions.updateModifierInput(
       InputId.Input1,
       ModifierId.MeasuredAirSpeed,
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       "0.6",
     );
     session.actions.setModifierEnabled(
@@ -1697,7 +1709,7 @@ describe("createPointSession", () => {
 
   it("rebuilds chart markers after input changes instead of reusing memoized chart builds", async () => {
     const session = createPointSession();
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setDynamicXAxis(PhysicalQuantityId.DryBulbTemperature);
     session.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(session);

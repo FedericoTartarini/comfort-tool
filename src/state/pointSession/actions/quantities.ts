@@ -18,12 +18,8 @@ import {
   isInputModifierDraftValid,
   parseModifierInputTransition,
 } from "../modifierState";
-import {
-  QuantityState,
-  getPhysicalQuantityMeta,
-  resolveQuantityState,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
-} from "../../../catalog/quantities";
+import { getPhysicalQuantityMeta, isPrimaryQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
+import { isAllowedExtraQuantityId, isSlotQuantityId } from "../../../engines/comfort/quantityStateRouting";
 import type { PointActions, InputModifierDraftEntry } from "../sessionTypes";
 import type { PointActionContext } from "./context";
 
@@ -50,15 +46,14 @@ export function createQuantityActions({
       return false;
     }
 
-    const storage = resolveQuantityState(quantityId);
-    if (storage === QuantityState.Primary) {
+    if (isPrimaryQuantityId(quantityId)) {
       applyPrimaryPatch(session.input.quantitiesByInput, inputId, { [quantityId]: valueSi });
       syncDerivedStateForInput(
         inputId,
         session.input.quantitiesByInput,
         session.input.auxiliaryQuantitiesByInput,
       );
-    } else if (storage === QuantityState.Slot) {
+    } else if (isSlotQuantityId(quantityId)) {
       setSlotQuantity(session.input.auxiliaryQuantitiesByInput[inputId], quantityId, valueSi);
     } else {
       return false;
@@ -76,7 +71,7 @@ export function createQuantityActions({
   ): boolean {
     const meta = getPhysicalQuantityMeta(quantityId);
     if (
-      resolveQuantityState(quantityId) !== QuantityState.Extra
+      !isAllowedExtraQuantityId(quantityId)
       || !getComfortModelConfig(modelId).extraQuantities.some((id) => id === quantityId)
       || !Number.isFinite(valueSi)
       || valueSi < meta.minSi

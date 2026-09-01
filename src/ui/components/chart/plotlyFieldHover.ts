@@ -31,6 +31,25 @@ export function createFieldHoverProbeTrace(): Record<string, unknown> {
   };
 }
 
+/**
+ * Plotly.restyle unwraps one array per selected trace. `x`/`y` therefore use
+ * `[[value]]` so the trace keeps a one-point array. Per-point `customdata` is
+ * a row (`[v0, v1, …]`), so it needs the same extra wrap: `[[row]]`.
+ */
+export function probeRestyleAttributes(
+  xDisplay: number,
+  yDisplay: number,
+  hit: { hovertemplate: string; customdata?: unknown },
+): Record<string, unknown> {
+  const row = hit.customdata === undefined ? [] : hit.customdata;
+  return {
+    x: [[xDisplay]],
+    y: [[yDisplay]],
+    hovertemplate: hit.hovertemplate,
+    customdata: [[row]],
+  };
+}
+
 export function findProbeTraceIndex(gd: PlotlyGraphDiv): number {
   return gd.data?.findIndex((trace) => trace.meta === FIELD_HOVER_PROBE_META) ?? -1;
 }

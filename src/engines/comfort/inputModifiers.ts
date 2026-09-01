@@ -21,18 +21,18 @@ const SOLAR_FLOOR_REFLECTANCE = 0.6;
 
 export const measuredAirSpeedModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MeasuredAirSpeed],
-  extraInputs: [PhysicalQuantityId.ModifierMeasuredAirSpeed],
+  extraInputs: [PhysicalQuantityId.MeasuredAirSpeed],
   affectedFields: [PhysicalQuantityId.RelativeAirSpeed],
   apply: (inputs, extraInputs) => ({ [PhysicalQuantityId.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
-      extraInputs[PhysicalQuantityId.ModifierMeasuredAirSpeed], inputs[PhysicalQuantityId.MetabolicRate], ) }),
+      extraInputs[PhysicalQuantityId.MeasuredAirSpeed], inputs[PhysicalQuantityId.MetabolicRate], ) }),
 });
 
 export const morningClothingEstimateModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MorningClothingEstimate],
-  extraInputs: [PhysicalQuantityId.ModifierMorningOutdoorTemperature],
+  extraInputs: [PhysicalQuantityId.MorningOutdoorTemperature],
   affectedFields: [PhysicalQuantityId.ClothingInsulation],
   apply: (_inputs, extraInputs) => ({ [PhysicalQuantityId.ClothingInsulation]: predictClothingInsulation(
-      extraInputs[PhysicalQuantityId.ModifierMorningOutdoorTemperature], ) }),
+      extraInputs[PhysicalQuantityId.MorningOutdoorTemperature], ) }),
 });
 
 export function createDynamicClothingModifier(
@@ -50,22 +50,22 @@ export function createDynamicClothingModifier(
 export const solarGainModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.SolarGain],
   extraInputs: [
-    PhysicalQuantityId.ModifierSolarAltitude,
-    PhysicalQuantityId.ModifierSolarHorizontalAngle,
-    PhysicalQuantityId.ModifierDirectSolarRadiation,
-    PhysicalQuantityId.ModifierSolarTransmittance,
-    PhysicalQuantityId.ModifierSkyVaultViewFraction,
-    PhysicalQuantityId.ModifierBodyExposureFraction,
+    PhysicalQuantityId.SolarAltitude,
+    PhysicalQuantityId.SolarHorizontalAngle,
+    PhysicalQuantityId.DirectSolarRadiation,
+    PhysicalQuantityId.SolarTransmittance,
+    PhysicalQuantityId.SkyVaultViewFraction,
+    PhysicalQuantityId.BodyExposureFraction,
   ],
   affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
   apply: (inputs, extraInputs) => {
     const { delta_mrt: deltaMrt } = solar_gain(
-      extraInputs[PhysicalQuantityId.ModifierSolarAltitude],
-      extraInputs[PhysicalQuantityId.ModifierSolarHorizontalAngle],
-      extraInputs[PhysicalQuantityId.ModifierDirectSolarRadiation],
-      extraInputs[PhysicalQuantityId.ModifierSolarTransmittance],
-      extraInputs[PhysicalQuantityId.ModifierSkyVaultViewFraction],
-      extraInputs[PhysicalQuantityId.ModifierBodyExposureFraction],
+      extraInputs[PhysicalQuantityId.SolarAltitude],
+      extraInputs[PhysicalQuantityId.SolarHorizontalAngle],
+      extraInputs[PhysicalQuantityId.DirectSolarRadiation],
+      extraInputs[PhysicalQuantityId.SolarTransmittance],
+      extraInputs[PhysicalQuantityId.SkyVaultViewFraction],
+      extraInputs[PhysicalQuantityId.BodyExposureFraction],
       SOLAR_SHORT_WAVE_ABSORPTIVITY,
       SOLAR_POSTURE,
       SOLAR_FLOOR_REFLECTANCE,

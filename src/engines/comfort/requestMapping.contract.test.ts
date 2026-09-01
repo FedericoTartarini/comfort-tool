@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { adaptiveRequestAdapter } from "../../declarations/adaptive/calculation";
-import { heatIndexRequestAdapter } from "../../declarations/heatIndex";
-import { humidexRequestAdapter } from "../../declarations/humidex";
-import { phsRequestAdapter } from "../../declarations/phs/phs";
-import { pmvRequestAdapter } from "../../declarations/pmv/calculation";
-import { utciRequestAdapter } from "../../declarations/utci/calculation";
-import { windChillRequestAdapter } from "../../declarations/windChill";
-import { type FieldRequestAdapter } from "./requestMapping";
-import { PhysicalQuantityId, chartAxisQuantityIds, primaryInputOrder, type PrimaryQuantityId } from "../../catalog/quantities";
+import { adaptiveQuantityMapping } from "../../declarations/adaptive/calculation";
+import { heatIndexQuantityMapping } from "../../declarations/heatIndex";
+import { humidexQuantityMapping } from "../../declarations/humidex";
+import { phsQuantityMapping } from "../../declarations/phs/phs";
+import { pmvQuantityMapping } from "../../declarations/pmv/calculation";
+import { utciQuantityMapping } from "../../declarations/utci/utci";
+import { windChillQuantityMapping } from "../../declarations/windChill";
+import { type LibraryQuantityMapping } from "./requestMapping";
+import { PhysicalQuantityId, primaryInputOrder, type PrimaryQuantityId } from "../../catalog/quantities";
 import { InputId, inputDefaultsById } from "../../catalog/inputSlots";
 import {
   createModelCalculationContext,
@@ -34,52 +34,82 @@ function createContractContext(
   });
 }
 
-function testRequestAdapterContract<TRequest extends object>(
+function mappedFields<TRequest extends object>(
+  mapping: LibraryQuantityMapping<TRequest>,
+  request: TRequest,
+): PhysicalQuantityId[] {
+  return Object.values(PhysicalQuantityId).filter((field) => {
+    try {
+      mapping.getAxisValue(request, field);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function testQuantityMappingContract<TRequest extends object>(
   modelId: string,
-  adapter: FieldRequestAdapter<TRequest>,
+  mapping: LibraryQuantityMapping<TRequest>,
 ): void {
-  describe(`${modelId} request adapter`, () => {
-    it("maps every numeric DTO field to finite SI values", () => {
-      const context = createContractContext({ [PhysicalQuantityId.DryBulbTemperature]: 24, [PhysicalQuantityId.MeanRadiantTemperature]: 23, [PhysicalQuantityId.RelativeAirSpeed]: 0.15, [PhysicalQuantityId.WindSpeed]: 1.2, [PhysicalQuantityId.RelativeHumidity]: 55, [PhysicalQuantityId.MetabolicRate]: 1.3, [PhysicalQuantityId.ClothingInsulation]: 0.6, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 18 });
-      const request = adapter.mapRequest(context, InputId.Input1);
+  describe(`${modelId} library quantity mapping`, () => {
+    it("maps library request fields to finite SI values", () => {
+      const context = createContractContext({
+        [PhysicalQuantityId.DryBulbTemperature]: 24,
+        [PhysicalQuantityId.MeanRadiantTemperature]: 23,
+        [PhysicalQuantityId.RelativeAirSpeed]: 0.15,
+        [PhysicalQuantityId.WindSpeed]: 1.2,
+        [PhysicalQuantityId.RelativeHumidity]: 55,
+        [PhysicalQuantityId.MetabolicRate]: 1.3,
+        [PhysicalQuantityId.ClothingInsulation]: 0.6,
+        [PhysicalQuantityId.ExternalWork]: 0,
+        [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 18,
+      });
+      const request = mapping.mapRequest(context, InputId.Input1);
 
       for (const value of Object.values(request)) {
         expect(typeof value).toBe("number");
         expect(Number.isFinite(value)).toBe(true);
       }
 
-      for (const field of chartAxisQuantityIds) {
-        try {
-          adapter.getAxisValue(request, field);
-        } catch {
-          // Fields not on this DTO are intentionally unsupported.
-        }
+      for (const field of mappedFields(mapping, request)) {
+        expect(Number.isFinite(mapping.getAxisValue(request, field))).toBe(true);
       }
     });
 
     it("reads canonical SI from effectiveQuantitiesByInput", () => {
-      const context = createContractContext({ [PhysicalQuantityId.DryBulbTemperature]: 27.5, [PhysicalQuantityId.RelativeHumidity]: 42, [PhysicalQuantityId.WindSpeed]: 2.5, [PhysicalQuantityId.RelativeAirSpeed]: 0.2, [PhysicalQuantityId.MeanRadiantTemperature]: 26, [PhysicalQuantityId.MetabolicRate]: 1.1, [PhysicalQuantityId.ClothingInsulation]: 0.55, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 19 });
-      const request = adapter.mapRequest(context, InputId.Input1);
+      const context = createContractContext({
+        [PhysicalQuantityId.DryBulbTemperature]: 27.5,
+        [PhysicalQuantityId.RelativeHumidity]: 42,
+        [PhysicalQuantityId.WindSpeed]: 2.5,
+        [PhysicalQuantityId.RelativeAirSpeed]: 0.2,
+        [PhysicalQuantityId.MeanRadiantTemperature]: 26,
+        [PhysicalQuantityId.MetabolicRate]: 1.1,
+        [PhysicalQuantityId.ClothingInsulation]: 0.55,
+        [PhysicalQuantityId.ExternalWork]: 0,
+        [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 19,
+      });
+      const request = mapping.mapRequest(context, InputId.Input1);
       const input = context.effectiveQuantitiesByInput[InputId.Input1];
 
       for (const quantityId of primaryInputOrder) {
         try {
-          const axisValue = adapter.getAxisValue(request, quantityId);
+          const axisValue = mapping.getAxisValue(request, quantityId);
           expect(axisValue).toBe(input[quantityId]);
         } catch {
-          // Adapter may not expose every primary quantity.
+          // Mapping may not expose every primary quantity.
         }
       }
     });
   });
 }
 
-describe("request mapping contract", () => {
-  testRequestAdapterContract("PMV", pmvRequestAdapter);
-  testRequestAdapterContract("UTCI", utciRequestAdapter);
-  testRequestAdapterContract("ADAPTIVE", adaptiveRequestAdapter);
-  testRequestAdapterContract("PHS", phsRequestAdapter);
-  testRequestAdapterContract("HEAT_INDEX", heatIndexRequestAdapter);
-  testRequestAdapterContract("HUMIDEX", humidexRequestAdapter);
-  testRequestAdapterContract("WIND_CHILL", windChillRequestAdapter);
+describe("library quantity mapping contract", () => {
+  testQuantityMappingContract("PMV", pmvQuantityMapping);
+  testQuantityMappingContract("UTCI", utciQuantityMapping);
+  testQuantityMappingContract("ADAPTIVE", adaptiveQuantityMapping);
+  testQuantityMappingContract("PHS", phsQuantityMapping);
+  testQuantityMappingContract("HEAT_INDEX", heatIndexQuantityMapping);
+  testQuantityMappingContract("HUMIDEX", humidexQuantityMapping);
+  testQuantityMappingContract("WIND_CHILL", windChillQuantityMapping);
 });

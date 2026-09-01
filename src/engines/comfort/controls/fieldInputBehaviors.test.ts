@@ -25,24 +25,27 @@ describe("fieldInputBehaviors", () => {
       .setStandardIds([])
       .setSurfaceCapabilities([SurfaceId.Explore])
       .setExploreOutputs([{
-        key: PhysicalQuantityId.Pmv,
+        key: PhysicalQuantityId.PredictedMeanVote,
         label: "PMV",
         defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
       }])
       .setModifiers([])
       .setCharts([{
-        id: "test-dynamic-field",
         type: ChartType.Dynamic,
         emptyMessage: "Empty",
         spec: {
           title: "Test",
+          axes: {
+            x: PhysicalQuantityId.DryBulbTemperature,
+            y: PhysicalQuantityId.RelativeHumidity,
+          },
           axisFields: [
             PhysicalQuantityId.DryBulbTemperature,
             PhysicalQuantityId.RelativeHumidity,
           ],
           resolveGridSpec: () => ({
             output: {
-              key: PhysicalQuantityId.Pmv,
+              key: PhysicalQuantityId.PredictedMeanVote,
               label: "PMV",
               defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
             },

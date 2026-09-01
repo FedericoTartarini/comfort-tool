@@ -1,10 +1,10 @@
+import { phs } from "jsthermalcomfort";
 import type {
   PlotlyChartSpec,
   PlotScatterLineTrace,
 } from "../../engines/plotlyTypes";
 import { PhysicalQuantityId } from "../../catalog/quantities";
 import {
-  PHS_RECTAL_TEMPERATURE_LIMIT_C,
   type PhsHistorySample,
   type PhsSimulationResult,
   type PhsTimeSeriesDraft,
@@ -317,7 +317,7 @@ export function buildPhsTemperatureTimeSeriesChart(
   const presentation = getSegmentPresentation(result, draft);
   return buildPhsTemperatureHistoryChart(result, unitSystem, {
     title: "PHS temperature over time",
-    thresholdC: PHS_RECTAL_TEMPERATURE_LIMIT_C,
+    thresholdC: phs.RECTAL_TEMPERATURE_LIMIT,
     thresholdLabel: "Maximum rectal temperature",
     ...presentation,
   });
@@ -333,7 +333,7 @@ export function buildPhsWaterLossTimeSeriesChart(
     draft,
   );
   const samples = downsamplePhsHistorySamples(requireHistory(result), {
-    temperatureThresholdsC: [PHS_RECTAL_TEMPERATURE_LIMIT_C],
+    temperatureThresholdsC: [phs.RECTAL_TEMPERATURE_LIMIT],
     waterLossThresholdsG: [result.waterLossLimitG],
   });
   const x = samples.map(({ hours }) => hours);
@@ -341,10 +341,10 @@ export function buildPhsWaterLossTimeSeriesChart(
     segmentNamesById[segmentId] ?? segmentName
   ));
   const waterLoss = samples.map(({ sweatLossG }) => (
-    convertQuantityFromSi(PhysicalQuantityId.PhsWaterLoss, sweatLossG, unitSystem)
+    convertQuantityFromSi(PhysicalQuantityId.SweatLoss, sweatLossG, unitSystem)
   ));
   const limit = convertQuantityFromSi(
-    PhysicalQuantityId.PhsWaterLoss,
+    PhysicalQuantityId.SweatLoss,
     result.waterLossLimitG,
     unitSystem,
   );

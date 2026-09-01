@@ -15,8 +15,9 @@ import {
   buildGridModelChart,
   type GridModelChartSpec,
 } from "../gridModelCharts";
-import type { ChartEngineRegistration } from "./types";
-import { isDynamicFieldGridSpec } from "./types";
+import type { ChartEngineRegistration, BoundaryRegionDataSpec } from "./types";
+import { isDynamicFieldGridSpec, isPsychrometricDataSpec } from "./types";
+import { buildPsychrometricModelChart } from "../psychrometricModelChart";
 import {
   buildModelBandScalarChart,
   buildModelBoundaryRegionChart,
@@ -83,14 +84,18 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
 
   const { spec } = registration.registration;
   if (!isDynamicFieldGridSpec<TResult>(spec)) {
-    return wrapBuiltChart(
-      ChartType.Dynamic,
-      spec.build(chartSource, resultsByInput, context),
-      registration.emptyMessage,
+    throw new Error(
+      `Dynamic chart ${registration.instanceId} is missing a grid spec.`,
     );
   }
 
-  const gridSpec = spec.resolveGridSpec(context);
+  const gridSpec = spec.resolveGridSpec?.(context);
+  if (!gridSpec) {
+    throw new Error(
+      `Dynamic chart ${registration.instanceId} is missing a grid spec.`,
+    );
+  }
+  const title = spec.title ?? "Dynamic";
   const plotly = buildGridModelChart(
     registration.instanceId,
     chartSource as unknown as ModelChartSource<object>,
@@ -99,12 +104,12 @@ export function buildDynamicFieldChart<TResult, ChartSourceType>(
     {
       ...gridSpec,
       instanceId: registration.instanceId,
-      dynamicTitle: spec.title,
+      dynamicTitle: title,
       ...(spec.lockedAxes
         ? {
             fixedView: {
               instanceId: registration.instanceId,
-              title: spec.title,
+              title,
               ...spec.lockedAxes,
             },
           }
@@ -124,9 +129,16 @@ export function buildPsychrometricChart<TResult, ChartSourceType>(
   if (registration.registration.type !== ChartType.Psychrometric) {
     throw new Error(`Chart ${registration.instanceId} is not a psychrometric chart.`);
   }
+  if (!chartSource) return emptyResult(registration.emptyMessage);
+  const { spec } = registration.registration;
+  if (!isPsychrometricDataSpec(spec)) {
+    throw new Error(
+      `Psychrometric chart ${registration.instanceId} is missing a data spec.`,
+    );
+  }
   return wrapBuiltChart(
     ChartType.Psychrometric,
-    registration.registration.spec.build(chartSource, resultsByInput, context),
+    buildPsychrometricModelChart(spec, chartSource, resultsByInput, context),
     registration.emptyMessage,
   );
 }
@@ -141,13 +153,8 @@ export function buildUtciChart<TResult, ChartSourceType>(
     throw new Error(`Chart ${registration.instanceId} is not a UTCI chart.`);
   }
   const { spec } = registration.registration;
-  if ("build" in spec) {
-    if (!chartSource) return emptyResult(registration.emptyMessage);
-    return wrapBuiltChart(
-      ChartType.Utci,
-      spec.build(chartSource, resultsByInput, context),
-      registration.emptyMessage,
-    );
+  if (!("getOutputValue" in spec)) {
+    throw new Error(`UTCI chart ${registration.instanceId} is missing a data spec.`);
   }
   return wrapPlotlyResult(
     ChartType.Utci,
@@ -165,17 +172,19 @@ export function buildAdaptiveChartKind<TResult, ChartSourceType>(
   if (registration.registration.type !== ChartType.Adaptive) {
     throw new Error(`Chart ${registration.instanceId} is not an adaptive chart.`);
   }
+  if (!chartSource) return emptyResult(registration.emptyMessage);
   const { spec } = registration.registration;
-  if ("build" in spec) {
-    return wrapBuiltChart(
-      ChartType.Adaptive,
-      spec.build(chartSource, resultsByInput, context),
-      registration.emptyMessage,
-    );
+  if (!("evaluate" in spec) || !("axisFields" in spec)) {
+    throw new Error(`Adaptive chart ${registration.instanceId} is missing a data spec.`);
   }
-  return wrapPlotlyResult(
+  return wrapBuiltChart(
     ChartType.Adaptive,
-    buildModelBoundaryRegionChart(spec, context),
+    buildModelBoundaryRegionChart(
+      spec as BoundaryRegionDataSpec<TResult, object>,
+      chartSource,
+      resultsByInput,
+      context,
+    ),
     registration.emptyMessage,
   );
 }

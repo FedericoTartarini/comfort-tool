@@ -29,7 +29,7 @@ import type {
 } from "../../engines/comfort/controls/types";
 import type { InputFieldSpec } from "../../engines/comfort/controls/fieldInputBehaviors";
 import type { ModelOptionsState, ResultSectionViewModel } from "../pointSession/types";
-import { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
+import { type PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
 
 export type ModelCalculationOutputs<ResultType, ChartSourceType> = {
   resultsByInput: Record<InputIdType, ResultType | null>;
@@ -42,8 +42,8 @@ export type ModelOptionChangeHandler = (
 ) => BehaviorPatch | null;
 
 export interface DynamicAxisDefaults {
-  readonly xAxis: ChartAxisQuantityId;
-  readonly yAxis: ChartAxisQuantityId;
+  readonly xAxis: PhysicalQuantityId;
+  readonly yAxis: PhysicalQuantityId;
 }
 
 export interface ChartBuildRequestContext {
@@ -106,7 +106,7 @@ export interface ComfortModelDefinition<
     profile: FieldChartProfile<ComplianceBand>,
     context: ChartBuildRequestContext,
   ) => ChartBuildResult;
-  dynamicAxisFields: readonly ChartAxisQuantityId[];
+  dynamicAxisFields: readonly PhysicalQuantityId[];
   defaultDynamicAxes: DynamicAxisDefaults;
   simulation?: SimulationOutputDeclaration;
 }

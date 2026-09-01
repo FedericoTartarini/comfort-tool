@@ -5,7 +5,7 @@
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type {
-  ChartAxisQuantityId,
+  PhysicalQuantityId,
   PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../catalog/quantities";
 import type { InputControlViewModel } from "../../catalog/inputControls";
@@ -39,10 +39,10 @@ export interface BaselineControl {
 }
 
 export interface AxisControl {
-  selectedField: ChartAxisQuantityId;
-  options: ChartAxisQuantityId[];
+  selectedField: PhysicalQuantityId;
+  options: PhysicalQuantityId[];
   locked: boolean;
-  onSelect: (fieldKey: ChartAxisQuantityId) => void;
+  onSelect: (fieldKey: PhysicalQuantityId) => void;
 }
 
 export interface ExploreControls {
@@ -75,7 +75,7 @@ export interface ModifierFieldControlViewModel {
 }
 
 export interface ModifierAffectedFieldViewModel {
-  key: ChartAxisQuantityId;
+  key: PhysicalQuantityId;
   label: string;
   displayUnits: string;
   displayValuesByInput: Partial<Record<InputIdType, string>>;

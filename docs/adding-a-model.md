@@ -49,11 +49,12 @@ Then, only if the model actually needs them:
   or catalog `defaultSi`, and do not add a per-model golden-input switch.
 
 PMV and Adaptive stay family modules (one declaration per standard, shared
-calculation/chart core). They may still assemble with `ComfortModelBuilder`
-internally. ASHRAE and ISO (and ASHRAE/EN Adaptive) stay separate registered
-models. PMV Analysis tables include SET, cooling effect, relative
+calculation/zones/series `_core`). They may still assemble with
+`ComfortModelBuilder` internally. ASHRAE and ISO (and ASHRAE/EN Adaptive)
+stay separate registered models. Copy Heat Index, not the PMV folder.
+PMV Analysis tables include SET, cooling effect, relative
 air speed, and dynamic clothing; Explore still colours PMV and PPD. ASHRAE
-and ISO each register Heat Loss and SET chart instances.
+and ISO each register Heat Loss and SET charts.
 
 ## Hard stops (frontend first)
 
@@ -78,7 +79,8 @@ Also forbidden in a declaration:
 - UI, route, or session `if (model === …)` branches
 - writing modifier output back onto base `quantitiesByInput`
 
-Chart instance ids are derived from declaration `charts[].id`.
+Chart instance ids equal the ChartType. Session and share select
+`selectedChartType`. Do not write chart `id` / `instanceId` in `defineModel`.
 
 Globe temperature, local discomfort, and CBE-style CSV exceedance are tools
 or a separate product surface, not new `ModelId` entries.
@@ -88,8 +90,9 @@ or a separate product surface, not new `ModelId` entries.
 ```text
 src/
   App.svelte
-  declarations/     one declaration entry per registered model; family
-                     folders for PMV, Adaptive, UTCI, PHS
+  declarations/     Heat Index–class: one file, three zones. Family folders
+                     for PMV, Adaptive, PHS (Worker/Time-series). UTCI is
+                     `utci/utci.ts`.
   ui/
     components/      rendering and interaction; no model-id branches;
                      site shell branding/links (`siteShellConfig.ts`)
@@ -145,13 +148,27 @@ they do not own, extend, or invent them. Extra ids that are not Extra,
 unknown ChartTypes, or a Time-series table without Time-series capability
 fail `defineModel` / `assembleCatalogs`. There is no `validate.model` hook
 and no TableType catalog. Copy `heatIndex.ts`, add a `ModelId` member, and
-register once.
+register once. `defineModel({ library })` reads string `label` /
+`description` from the JS function (`@docname` / leading JSDoc). If JS
+already classifies the result (`result.discomfort`, `result.stress_category`,
+ASHRAE `compliance`/`tsv`, ISO `tsv`, Adaptive `offsets`), use that export
+and recover Explore band edges from `mapping.bins` / `compliance.bounds` —
+do not paste thresholds. When JS has no human label (Adaptive `offsets.id`,
+Wind Chill `wct`), use that id / field name; do not invent classifier copy.
+Do not
+invent classifiers that Python lacks (Wind Chill frostbite, ISO Category B
+three-band, PPD, PHS `mapping()`). PPD 10% is an Explore chart preset.
+EN Adaptive outdoor 10–30 °C is a chart axis, not
+`adaptive_en.t_running_mean_limits`.
 
 **Quantities.** `src/catalog/quantities.ts` is the closed catalog for inputs
-and outputs. `primaryInputOrder` is the exact persisted primary-key set.
-Occupancy is derived from lists, not stamped on catalog rows. Humidity ratio
-is one id (`hr`). BodyWeight and Height are Extra catalog ids
-(`bodyWeight`, `height`). A declaration may select Extra ids:
+and outputs. TypeScript keys are PascalCase physical names; wire strings
+match jsthermalcomfort parameter or result fields (`tdb`, `hi`, `weight`).
+`primaryInputOrder` is the exact persisted primary-key set. Catalog rows
+are not classified by occupancy. Humidity quantities may set
+`category: Humidity`; `humidityQuantityIds()` is that set minus `rh`.
+Body weight and height are model-selected extras
+(`weight`, `height`). A declaration may select extras:
 
 ```ts
 extraQuantities: [PhysicalQuantityId.BodyWeight, PhysicalQuantityId.Height],
@@ -159,12 +176,12 @@ extraQuantities: [PhysicalQuantityId.BodyWeight, PhysicalQuantityId.Height],
 
 PHS does this via `phsPersonQuantityIds`. Extra values serialize only under
 sparse `modelInputsByModel`. They must not enter `primaryInputOrder`. Do not
-add PHS weight/height to the Analysis input panel. Surface an Extra id on a
+add PHS weight/height to the Analysis input panel. Surface an extra id on a
 panel only with `{ kind: "quantity", … }` listed in `extraQuantities`.
-All quantity conversion reads catalog SI units (`display.units.SI`) and must
+All quantity conversion reads catalog SI units (`units.SI`) and must
 not branch on PHS or quantity-id lists.
-`display.units.SI` is canonical storage (`kg`, `m`, `kg/kg`, `Pa`, …);
-display labels such as g/kg live in `display.displayUnits`.
+`units.SI` is canonical storage (`kg`, `m`, `kg/kg`, `Pa`, …);
+display labels such as g/kg live on `siUnitLabel` / `ipUnitLabel`.
 
 **Charts.** Closed ChartTypes live in `src/catalog/chartTypes.ts`. Dropdown
 labels are `chartTypeLabel[type]` (Heat Loss, Body Temperature, SET).
@@ -217,48 +234,50 @@ Numeric-band models omit the third argument; Adaptive passes `Band`.
 
 Visible product decisions:
 
-- `id`, `label`, `description`
+- `id`, `library` (string `label` / `description` on the JS function)
 - `standardIds` — `[]` when the model is not a Standard model
 - `surfaceCapabilities`, `exploreOutputs`
 - `complianceProfile` when Standard-capable (fixed output, non-empty bands,
   `caption`, `legendTitle`, feedback callback)
-- `inputFields`, complete `defaultOptions`, exact `parseOptions`
-  (`parseEmptyOptions` when there are no options)
+- `inputFields` as quantities plus optional `minValue`/`maxValue`/`widget`
+  (`InputWidget`); default widgets live in `defaultFieldWidgetByQuantity`
 - `modifiers` in global order, or `[]`
 - request mapping + `calculate`
-- declaration-local `ThermalZone` values that select a `ZoneToken`; derive
-  bands with `bandsFromThermalZones` or `numericBandFromToken`. Colours come
-  from `src/catalog/zoneTokens.ts` (screen / publication / colour-blind).
-  Each boundary appears once as zone `min` / `max`. Do not put hex in the
+- token map (JS category string → `ZoneToken`); thresholds from
+  `bandsFromJsBins` / `bandsFromJsBounds`. Colours come from
+  `src/catalog/zoneTokens.ts`. Do not copy numeric edges or hex in the
   declaration.
-- `charts` with declaration-owned `id`s and
-  `defaultChartId` (dedicated/fixed chart first; Dynamic only when
-  there is no other chart)
-- `tables: { results, timeSeries? }`
-- `dynamicAxisFields` and `defaultDynamicAxes` when the model has a Dynamic
-  chart
+- `charts` as `type` + data spec only (no `id`, `instanceId`, `title`,
+  `emptyMessage`, or `spec.build`). Default chart is `charts[0].type`.
+- `tables: { results, timeSeries? }` (`tables.results` may be omitted when
+  each `exploreOutputs` entry is one column; Wind Chill / PMV still declare
+  extra rows)
+- Dynamic axes come from the first Dynamic spec `axes` / `axisFields`
 
 Zones generate bands; they are not stored on the runtime definition.
 
 ### Inputs, requests, and calculation
 
 Map catalog fields to the library payload with
-`createFieldRequestAdapter()` in `src/engines/comfort/requestMapping.ts`.
-jsthermalcomfort short names (`tdb`, `rh`, `vr`, …) belong only at that
-boundary. Copying Heat Index may copy its request type (`HeatIndexRequest`);
+`defineLibraryQuantityMapping()` in `src/engines/comfort/requestMapping.ts`.
+The table is direction-agnostic: left is the jsthermalcomfort field name,
+right is `PhysicalQuantityId`. Include 1:1 result fields in the same table
+and use `toLibrary` / `fromLibrary` as needed. Copying Heat Index may copy
+its request type (`HeatIndexInputs`);
 do not add a `Dto` suffix on application request or chart-source types.
 Generic chart figure inputs live in `src/charts/types.ts`.
 
 ```ts
-const fieldAdapter = createFieldRequestAdapter<ExampleRequest>({
+const exampleQuantityMapping = defineLibraryQuantityMapping<ExampleRequest>({
   tdb: PhysicalQuantityId.DryBulbTemperature,
   rh: PhysicalQuantityId.RelativeHumidity,
+  hi: PhysicalQuantityId.HeatIndex,
 });
 ```
 
-Use `calculatePerInput` with `fieldAdapter.mapRequest` for `calculate`.
+Use `calculatePerInput` with `exampleQuantityMapping.mapRequest` for `calculate`.
 Compose `createRequestAxisAdapter()` only for chart-only aliases or explicit
-operative-temperature get/set/range. Coupled Air/Radiant/Operative solving
+operative-temperature get/set/range (`quantityMapping:` option). Coupled Air/Radiant/Operative solving
 stays in the shared dynamic-axis solver.
 
 `calculate` receives `ModelCalculationContext` with
@@ -266,11 +285,13 @@ stays in the shared dynamic-axis solver.
 `auxiliaryQuantitiesByInput`, sparse `modelInputs`, and the active model’s
 validated `options`. It must not read raw `quantitiesByInput`.
 
-`inputFields` kinds are resolved in
-`src/engines/comfort/controls/fieldInputBehaviors.ts`: `numeric`,
-`operativeTemperature` / `radiantTemperature`, `occupantAirSpeed` /
-`outdoorWindSpeed`, `simpleHumidity` / `advancedHumidity`, `preset`,
-`quantity`. The Analysis input panel reads those controls through
+`inputFields` list a quantity or `{ quantity, minValue?, maxValue?, widget? }`.
+Default widgets are `defaultFieldWidgetByQuantity` in
+`src/catalog/inputWidgets.ts`. `resolveInputField()` still produces today's
+`InputControlDefinition`; authors do not write `kind: "numeric"` strings.
+PMV overrides Operative / AdvancedHumidity with `InputWidget`. Extra catalog
+ids stay on `extraQuantities` (not Primary `kind: "quantity"`). The Analysis
+input panel reads those controls through
 `getInputPanelViewModel`; do not add conversion or model branches in
 `src/ui/components/input-panel/`. Control widgets stay generic; unit conversion
 reads the closed quantity catalog (`convertQuantityFromSi`). Option changes go only through
@@ -288,13 +309,15 @@ schedule calculation.
 
 Standard workspace reads output, bands, caption, legend, and feedback from
 `complianceProfile`. Explore uses the selected `exploreOutputs` entry and
-editable working bands. Band membership is array-ordered and half-open:
-`min <= value < max`.
+editable working bands. Band membership follows each `NumericBand`'s
+`minInclusive` / `maxInclusive` (JS digitize closedness). Defaults remain
+half-open `[min, max)` when those flags are omitted.
 
-Psychrometric is frontend-only on PMV ASHRAE/ISO via `ComfortModelBuilder`.
-Do not compute isoline roots in the declaration; wire evaluate and bands
-to `src/charts/psychrometric/` or `src/charts/isolines.ts`. PMV also registers Heat Loss and SET ChartTypes on those same declarations.
-UTCI chart binds live in `src/declarations/utci/charts.ts`. PHS chart binds
+Psychrometric is frontend-only on PMV ASHRAE/ISO via `PsychrometricDataSpec`
+(`evaluate`, bands, isoline targets). Do not compute isoline roots in the
+declaration. PMV Dynamic uses the same `DynamicFieldGridSpec` engine as Heat
+Index. Heat Loss and SET keep `getGeometry` data callbacks. UTCI stress uses
+`BandScalarDataSpec`; Adaptive uses `BoundaryRegionDataSpec`. PHS chart binds
 live in `src/declarations/phs/charts.ts`. PHS Analysis exposure history is
 Body Temperature.
 

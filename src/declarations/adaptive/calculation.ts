@@ -1,4 +1,3 @@
-import { t_o } from "jsthermalcomfort";
 import { CalculationSource } from "../../catalog/calculationMetadata";
 import { ComplianceStatus } from "../../catalog/modelIds";
 import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
@@ -16,7 +15,7 @@ import {
   type ComplianceFeedback,
 } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
-import { calculatePerInput, createFieldRequestAdapter } from "../../engines/comfort/requestMapping";
+import { calculatePerInput, defineLibraryQuantityMapping } from "../../engines/comfort/requestMapping";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../engines/units";
 import {
   hasExactKeys,
@@ -27,37 +26,47 @@ import type {
   AdaptiveBoundaryDefinition,
   AdaptiveLevelDefinition,
   AdaptiveLevelResult,
+  AdaptiveOffsetSpec,
+  AdaptiveLibraryLevelBounds,
   AdaptiveModelDeclaration,
   AdaptiveRequest,
   AdaptiveResponse,
 } from "./shared";
 
-export function getCe(airSpeed: number, unadjustedUpperBoundary: number): number {
-  if (airSpeed < 0.6 || unadjustedUpperBoundary < 25) return 0;
-  if (airSpeed < 0.9) return 1.2;
-  if (airSpeed < 1.2) return 1.8;
-  return 2.2;
+export function libraryLevelsFromAdaptiveResult(
+  result: object,
+  levels: readonly AdaptiveLevelDefinition[],
+): AdaptiveLibraryLevelBounds[] {
+  const record = result as Record<string, unknown>;
+  return levels.map((level) => {
+    const lower = record[`tmp_cmf_${level.id}_low`];
+    const upper = record[`tmp_cmf_${level.id}_up`];
+    const accepted = record[`acceptability_${level.id}`];
+    if (
+      typeof lower !== "number"
+      || typeof upper !== "number"
+      || typeof accepted !== "boolean"
+    ) {
+      throw new Error(`Missing adaptive library bounds for ${level.id}`);
+    }
+    return {
+      id: level.id,
+      lower,
+      upper,
+      accepted,
+    };
+  });
 }
 
-function getBaseComfortTemperature(
-  declaration: AdaptiveBoundaryDefinition,
-  outdoorTemperature: number,
-): number {
-  return declaration.coefficients.slope * outdoorTemperature
-    + declaration.coefficients.intercept;
-}
-
-function getLevelBoundaries(
-  declaration: AdaptiveBoundaryDefinition,
-  level: AdaptiveLevelDefinition,
-  outdoorTemperature: number,
-  airSpeed: number,
-): { lower: number; upper: number } {
-  const tCmf = getBaseComfortTemperature(declaration, outdoorTemperature);
-  const unadjustedUpper = tCmf + level.warmOffset;
+function getAdaptiveIndoorTemperatures(inputsSi: BandInputsSi): {
+  tdb: number;
+  tr: number;
+} {
+  const tdb = inputsSi[PhysicalQuantityId.DryBulbTemperature];
+  const tr = inputsSi[PhysicalQuantityId.MeanRadiantTemperature];
   return {
-    lower: tCmf + level.coolOffset,
-    upper: unadjustedUpper + getCe(airSpeed, unadjustedUpper),
+    tdb: typeof tdb === "number" && Number.isFinite(tdb) ? tdb : 25,
+    tr: typeof tr === "number" && Number.isFinite(tr) ? tr : 25,
   };
 }
 
@@ -65,12 +74,20 @@ function getAdaptiveTemperatureBoundaries(
   declaration: AdaptiveBoundaryDefinition,
   outdoorTemperature: number,
   airSpeed: number,
+  indoor: { tdb: number; tr: number },
 ): number[] {
-  const boundaries = declaration.levels.map((level) =>
-    getLevelBoundaries(declaration, level, outdoorTemperature, airSpeed));
+  const library = declaration.evaluateLibrary(
+    {
+      tdb: indoor.tdb,
+      tr: indoor.tr,
+      t_running_mean: outdoorTemperature,
+      v: airSpeed,
+    },
+    { limitInputs: false },
+  );
   return [
-    ...boundaries.map(({ lower }) => lower).sort((left, right) => left - right),
-    ...boundaries.map(({ upper }) => upper).sort((left, right) => left - right),
+    ...library.levels.map(({ lower }) => lower).sort((left, right) => left - right),
+    ...library.levels.map(({ upper }) => upper).sort((left, right) => left - right),
   ];
 }
 
@@ -78,19 +95,18 @@ export function calculateAdaptive(
   declaration: AdaptiveModelDeclaration,
   payload: AdaptiveRequest,
 ): AdaptiveResponse {
-  const operativeTemperature = t_o(
-    payload.tdb,
-    payload.tr,
-    payload.v,
-    declaration.operativeTemperatureStandard,
-  );
-  const applicabilityResult = declaration.evaluateApplicability(payload);
-  const isApplicable = Number.isFinite(applicabilityResult);
-  const tCmf = isApplicable
-    ? getBaseComfortTemperature(declaration, payload.trm)
-    : NaN;
+  const library = declaration.evaluateLibrary(payload, { limitInputs: true });
+  const isApplicable = Number.isFinite(library.tCmf);
   const levels = declaration.levels.map((level): AdaptiveLevelResult => {
-    if (!isApplicable) {
+    const bounds = library.levels.find(({ id }) => id === level.id);
+    if (!bounds) {
+      throw new Error(`Missing adaptive library bounds for ${level.id}`);
+    }
+    if (
+      !isApplicable
+      || !Number.isFinite(bounds.lower)
+      || !Number.isFinite(bounds.upper)
+    ) {
       return {
         id: level.id,
         label: level.label,
@@ -100,30 +116,23 @@ export function calculateAdaptive(
         upper: null,
       };
     }
-    const { lower, upper } = getLevelBoundaries(
-      declaration,
-      level,
-      payload.trm,
-      payload.v,
-    );
-    const accepted = operativeTemperature >= lower && operativeTemperature < upper;
     return {
       id: level.id,
       label: level.label,
-      accepted,
-      status: accepted
+      accepted: bounds.accepted,
+      status: bounds.accepted
         ? level.label
-        : operativeTemperature < lower
+        : library.operativeTemperature < bounds.lower
           ? declaration.bandSequence[0].label
           : declaration.bandSequence[declaration.bandSequence.length - 1]?.label ?? null,
-      lower,
-      upper,
+      lower: bounds.lower,
+      upper: bounds.upper,
     };
   });
 
   return {
-    tCmf,
-    operativeTemperature,
+    tCmf: library.tCmf,
+    operativeTemperature: library.operativeTemperature,
     levels,
     isApplicable,
     standard: declaration.resultStandard,
@@ -163,16 +172,20 @@ function formatAdaptiveOffset(offset: number): string {
 }
 
 export function createAdaptiveComplianceCaption(
-  shadingDescription: string,
   declaration: AdaptiveBoundaryDefinition,
   complianceLevelId: string,
 ): string {
-  const level = declaration.levels.find(({ id }) => id === complianceLevelId);
-  if (!level) {
-    throw new Error(`Missing adaptive compliance level: ${complianceLevelId}`);
+  const offset = declaration.offsets.find(({ id }) => id === complianceLevelId);
+  if (!offset) {
+    throw new Error(`Missing adaptive library offset for ${complianceLevelId}`);
   }
-  const rangeLabel = level.label.replace(/ Acceptability$/, "");
-  return `${shadingDescription}; compliance is the ${rangeLabel} range from t_cmf ${formatAdaptiveOffset(level.coolOffset)}°C to t_cmf ${formatAdaptiveOffset(level.warmOffset)}°C, including the applicable upper-limit cooling adjustment.`;
+  return `${complianceLevelId}: t_cmf ${formatAdaptiveOffset(offset.lower)}°C to t_cmf ${formatAdaptiveOffset(offset.upper)}°C`;
+}
+
+export function levelsFromAdaptiveOffsets(
+  offsets: readonly AdaptiveOffsetSpec[],
+): readonly AdaptiveLevelDefinition[] {
+  return offsets.map(({ id }) => ({ id, label: id }));
 }
 
 export function parseAdaptiveOptions(value: unknown): AdaptiveModelOptions | null {
@@ -189,13 +202,18 @@ export function parseAdaptiveOptions(value: unknown): AdaptiveModelOptions | nul
   return { [OptionKey.TemperatureMode]: temperatureMode };
 }
 
-export const adaptiveRequestAdapter = createFieldRequestAdapter<AdaptiveRequest>({ tdb: PhysicalQuantityId.DryBulbTemperature, tr: PhysicalQuantityId.MeanRadiantTemperature, trm: PhysicalQuantityId.PrevailingMeanOutdoorTemperature, v: PhysicalQuantityId.RelativeAirSpeed });
+export const adaptiveQuantityMapping = defineLibraryQuantityMapping<AdaptiveRequest>({
+  tdb: PhysicalQuantityId.DryBulbTemperature,
+  tr: PhysicalQuantityId.MeanRadiantTemperature,
+  t_running_mean: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+  v: PhysicalQuantityId.RelativeAirSpeed,
+});
 
 export function toAdaptiveRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
 ): AdaptiveRequest {
-  const request = adaptiveRequestAdapter.mapRequest(context, inputId);
+  const request = adaptiveQuantityMapping.mapRequest(context, inputId);
   if (context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
     request.tr = request.tdb;
   }
@@ -221,6 +239,7 @@ export function createAdaptiveComplianceBands(
         declaration,
         outdoorTemperatureSi,
         getRelativeAirSpeed(inputsSi),
+        getAdaptiveIndoorTemperatures(inputsSi),
       )[boundaryIndex]
     ),
   );

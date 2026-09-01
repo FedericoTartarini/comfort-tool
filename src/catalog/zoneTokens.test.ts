@@ -4,9 +4,11 @@ import { adaptiveAshraeZonesList } from "../declarations/adaptive/ashrae";
 import { adaptiveEnZonesList } from "../declarations/adaptive/en";
 import { heatIndexZonesList } from "../declarations/heatIndex";
 import { humidexZonesList } from "../declarations/humidex";
-import { pmvZonesList } from "../declarations/pmv/calculation";
-import { utciZonesList } from "../declarations/utci/calculation";
-import { windChillZonesList } from "../declarations/windChill";
+import {
+  ashraeComplianceZonesList,
+  isoTsvZonesList,
+} from "../declarations/pmv/zones";
+import { utciZonesList } from "../declarations/utci/utci";
 import {
   remapZoneFill,
   resolveZoneAppearance,
@@ -84,13 +86,13 @@ describe("zone tokens", () => {
 
   it("lets registered models select tokens instead of hex", () => {
     const zones = [
-      ...pmvZonesList,
+      ...ashraeComplianceZonesList,
+      ...isoTsvZonesList,
       ...utciZonesList,
       ...adaptiveAshraeZonesList,
       ...adaptiveEnZonesList,
       ...heatIndexZonesList,
       ...humidexZonesList,
-      ...windChillZonesList,
     ];
 
     expect(zones.length).toBeGreaterThan(0);

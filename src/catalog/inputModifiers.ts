@@ -68,13 +68,13 @@ export const inputModifierCatalogue: Record<ModifierId, InputModifierCatalogueEn
     id: ModifierId.MeasuredAirSpeed,
     label: "Measured air speed",
     description: "Derive relative air speed from measured air speed and activity.",
-    extraInputs: [PhysicalQuantityId.ModifierMeasuredAirSpeed],
+    extraInputs: [PhysicalQuantityId.MeasuredAirSpeed],
   },
   [ModifierId.MorningClothingEstimate]: {
     id: ModifierId.MorningClothingEstimate,
     label: "Morning clothing estimate",
     description: "Estimate clothing insulation from outdoor temperature at 6 a.m.",
-    extraInputs: [PhysicalQuantityId.ModifierMorningOutdoorTemperature],
+    extraInputs: [PhysicalQuantityId.MorningOutdoorTemperature],
   },
   [ModifierId.DynamicClothing]: {
     id: ModifierId.DynamicClothing,
@@ -83,5 +83,8 @@ export const inputModifierCatalogue: Record<ModifierId, InputModifierCatalogueEn
     extraInputs: [],
   },
   [ModifierId.SolarGain]: { id: ModifierId.SolarGain, label: "Solar gain on occupant", description: "Increase effective mean radiant temperature for direct solar exposure.", extraInputs: [
-      PhysicalQuantityId.ModifierSolarAltitude, PhysicalQuantityId.ModifierSolarHorizontalAngle, PhysicalQuantityId.ModifierDirectSolarRadiation, PhysicalQuantityId.ModifierSolarTransmittance, PhysicalQuantityId.ModifierSkyVaultViewFraction, PhysicalQuantityId.ModifierBodyExposureFraction, ] },
+      PhysicalQuantityId.SolarAltitude, PhysicalQuantityId.SolarHorizontalAngle, PhysicalQuantityId.DirectSolarRadiation, PhysicalQuantityId.SolarTransmittance, PhysicalQuantityId.SkyVaultViewFraction, PhysicalQuantityId.BodyExposureFraction, ] },
 };
+
+export const modifierQuantityIds: readonly PhysicalQuantityIdType[] =
+  modifierOrder.flatMap((id) => [...inputModifierCatalogue[id].extraInputs]);

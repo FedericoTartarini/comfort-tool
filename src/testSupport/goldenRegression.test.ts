@@ -11,7 +11,7 @@ import type { PhsResponse } from "../catalog/phs";
 import { calculateHeatIndex } from "../declarations/heatIndex";
 import { calculateHumidex } from "../declarations/humidex";
 import { calculateWindChill } from "../declarations/windChill";
-import { calculateUtci } from "../declarations/utci/calculation";
+import { calculateUtci } from "../declarations/utci/utci";
 import { evaluatePmvCondition } from "../declarations/pmv/calculation";
 import { pmvAshraeAdapter } from "../declarations/pmv/ashrae";
 import { calculatePhs } from "../declarations/phs/calculation";
@@ -65,18 +65,18 @@ describe("golden regression — direct calculation snapshots", () => {
   it("Humidex baseline", () => {
     const result = calculateHumidex({ tdb: 30, rh: 70 });
     expect(result.humidex).toBeCloseTo(40.9, 1);
-    expect(result.humidexDiscomfort).toBe("Intense");
+    expect(result.humidexDiscomfort).toBe("Intense discomfort; avoid exertion");
   });
 
   it("Heat Index baseline", () => {
     const result = calculateHeatIndex({ tdb: 32, rh: 60 });
     expect(result.hi).toBeCloseTo(37.1, 1);
-    expect(result.category).toBe("Extreme Caution");
+    expect(result.category).toBe("extreme caution");
   });
 
   it("Wind Chill baseline", () => {
     const result = calculateWindChill({ tdb: -10, v: 5 });
-    expect(result.wciTemp).toBeCloseTo(-17.4, 1);
+    expect(result.wct).toBeCloseTo(-17.4, 1);
   });
 
   it("UTCI baseline", () => {
@@ -111,18 +111,18 @@ describe("golden regression — calculate via model config", () => {
   it("Humidex matches golden baseline via model config", () => {
     const result = calculatePrimaryResult<HumidexResponse>(ModelId.Humidex, { [PhysicalQuantityId.DryBulbTemperature]: 30, [PhysicalQuantityId.RelativeHumidity]: 70 });
     expect(result.humidex).toBeCloseTo(40.9, 1);
-    expect(result.humidexDiscomfort).toBe("Intense");
+    expect(result.humidexDiscomfort).toBe("Intense discomfort; avoid exertion");
   });
 
   it("Heat Index matches golden baseline via model config", () => {
     const result = calculatePrimaryResult<HeatIndexResponse>(ModelId.HeatIndex, { [PhysicalQuantityId.DryBulbTemperature]: 32, [PhysicalQuantityId.RelativeHumidity]: 60 });
     expect(result.hi).toBeCloseTo(37.1, 1);
-    expect(result.category).toBe("Extreme Caution");
+    expect(result.category).toBe("extreme caution");
   });
 
   it("Wind Chill matches golden baseline via model config", () => {
     const result = calculatePrimaryResult<WindChillResponse>(ModelId.WindChill, { [PhysicalQuantityId.DryBulbTemperature]: -10, [PhysicalQuantityId.WindSpeed]: 5 });
-    expect(result.wciTemp).toBeCloseTo(-17.4, 1);
+    expect(result.wct).toBeCloseTo(-17.4, 1);
   });
 
   it("UTCI matches golden baseline via model config", () => {

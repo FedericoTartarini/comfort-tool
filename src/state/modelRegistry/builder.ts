@@ -18,7 +18,11 @@ import {
 } from "../../catalog/inputModifiers";
 import type { InputControlDefinition } from "../../engines/comfort/controls/types";
 import {
+  declaredSiRangeForInputField,
+  primaryQuantityIdsForInputField,
+  resolveAuthoringInputField,
   resolveInputField,
+  type AuthoringInputField,
   type InputFieldSpec,
 } from "../../engines/comfort/controls/fieldInputBehaviors";
 import {
@@ -30,6 +34,7 @@ import {
 } from "../../catalog/surfaces";
 import {
   type Band,
+  type ChartBuildContext,
   type ComplianceSpec,
   type ModelOutput,
   type NumericBand,
@@ -39,13 +44,15 @@ import {
   validateNumericBands,
 } from "../../engines/comfort/charts/bands";
 import {
-  isExtraQuantityId,
+  PhysicalQuantityId,
+  getPhysicalQuantityMeta,
   isPhysicalQuantityId,
-  type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../catalog/quantities";
+import { isAllowedExtraQuantityId } from "../../engines/comfort/quantityStateRouting";
 import {
   ChartType,
+  chartTypeLabel,
   isChartType,
   resolveChartCapabilities,
   type ChartInstanceDeclaration,
@@ -56,15 +63,28 @@ import {
 } from "../../catalog/tableTypes";
 import { resolveChartBuildResult } from "../../engines/comfort/charts/kinds/index";
 import {
+  dynamicAxisPool,
+  isBandScalarDataSpec,
+  isBoundaryRegionDataSpec,
+  isDynamicFieldGridSpec,
+  isParametricLineDataSpec,
+  isPsychrometricDataSpec,
   modelChartSpecMatchesType,
   type ChartEngineRegistration,
+  type DynamicFieldGridSpec,
   type FrontendChartDeclaration,
   type RegisteredChartEngineSpec,
 } from "../../engines/comfort/charts/kinds/types";
 import { compileModelTables } from "../../engines/comfort/output/compileTableRows";
 import { buildCompareMatrixTable } from "../../engines/comfort/output/tableResolver";
+import type { ChartRange } from "../../engines/comfort/charts/types";
 
 export type { FrontendChartDeclaration };
+
+export type JsModelLibrary = {
+  readonly label: string;
+  readonly description: string;
+};
 
 export type ResultRowDefinition<T> = {
   title: string;
@@ -127,13 +147,34 @@ function toRegisteredChartBindSpec<ResultType, ChartSourceType>(
   >;
 }
 
+function derivedChartTitle(
+  entry: { type: ChartType; titlePrefix?: string | null },
+  modelLabel: string,
+): string {
+  const typeLabel = chartTypeLabel[entry.type];
+  if (entry.titlePrefix === null) {
+    return typeLabel;
+  }
+  const prefix = entry.titlePrefix ?? modelLabel;
+  return `${prefix} ${typeLabel}`.trim();
+}
+
+function derivedEmptyMessage(entry: {
+  type: ChartType;
+  emptyMessage?: string;
+}): string {
+  return entry.emptyMessage ?? `No ${chartTypeLabel[entry.type]} chart yet.`;
+}
+
 function createChartEngineRegistration<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
+  instanceId: string,
+  emptyMessage: string,
 ): ChartEngineRegistration<ResultType, ChartSourceType> {
   return {
-    instanceId: entry.id,
+    instanceId,
     type: entry.type,
-    emptyMessage: entry.emptyMessage,
+    emptyMessage,
     ...(entry.note ? { note: entry.note } : {}),
     ...(entry.supportedExploreOutputs
       ? { supportedExploreOutputs: [...entry.supportedExploreOutputs] }
@@ -147,11 +188,13 @@ function createChartEngineRegistration<ResultType, ChartSourceType>(
 
 function createChartInstanceDeclaration<ResultType, ChartSourceType>(
   entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
+  instanceId: string,
+  emptyMessage: string,
 ): ChartInstanceDeclaration {
   return {
-    instanceId: entry.id,
+    instanceId,
     type: entry.type,
-    emptyMessage: entry.emptyMessage,
+    emptyMessage,
     ...(entry.note ? { note: entry.note } : {}),
     ...(entry.capabilities
       ? {
@@ -227,12 +270,18 @@ export class ComfortModelBuilder<
 
   private simulationOutput?: SimulationOutputDeclaration;
 
-  private dynamicAxisFields?: readonly ChartAxisQuantityId[];
+  private dynamicAxisFields?: readonly PhysicalQuantityId[];
 
   private defaultDynamicAxes?: DynamicAxisDefaults;
 
   constructor(id: ModelIdType) {
     this.id = id;
+  }
+
+  setLibrary(library: JsModelLibrary): this {
+    this.label = library.label;
+    this.description = library.description;
+    return this;
   }
 
   setLabel(label: string): this {
@@ -294,7 +343,6 @@ export class ComfortModelBuilder<
 
   setCharts(
     entries: readonly FrontendChartDeclaration<ResultType, ChartSourceType>[],
-    options?: { defaultChartId?: string },
   ): this {
     if (entries.length === 0) {
       throw new Error(
@@ -302,8 +350,7 @@ export class ComfortModelBuilder<
       );
     }
 
-    const defaultChartId = options?.defaultChartId ?? entries[0]!.id;
-    this.defaultChartId = defaultChartId;
+    this.defaultChartId = entries[0]!.type;
 
     for (const entry of entries) {
       this.registerChart(entry);
@@ -312,8 +359,9 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setInputFields(specs: readonly InputFieldSpec[]): this {
-    for (const spec of specs) {
+  setInputFields(fields: readonly AuthoringInputField[]): this {
+    for (const field of fields) {
+      const spec = resolveAuthoringInputField(field);
       this.inputFieldSpecs.push(spec);
       this.controls.push(resolveInputField(spec));
     }
@@ -354,7 +402,7 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setDynamicAxisFields(fields: readonly ChartAxisQuantityId[]): this {
+  setDynamicAxisFields(fields: readonly PhysicalQuantityId[]): this {
     this.dynamicAxisFields = fields;
     return this;
   }
@@ -374,7 +422,7 @@ export class ComfortModelBuilder<
     }
     if (!modelChartSpecMatchesType(entry)) {
       throw new Error(
-        `Chart "${entry.id}" spec does not match type "${entry.type}".`,
+        `Chart "${entry.type}" spec does not match type "${entry.type}".`,
       );
     }
     if (
@@ -386,25 +434,146 @@ export class ComfortModelBuilder<
         `Comfort model declarations cannot contain duplicate chart types (${entry.type}).`,
       );
     }
-    if (
-      this.registeredCharts.some(
-        ({ registration }) => registration.instanceId === entry.id,
-      )
-    ) {
-      throw new Error(
-        `Comfort model declarations cannot contain duplicate chart instance IDs (${entry.id}).`,
-      );
-    }
 
+    const instanceId = entry.type;
+    const emptyMessage = derivedEmptyMessage(entry);
+    const finalized = this.finalizeChartEntry(entry, emptyMessage);
     this.registeredCharts.push({
-      declaration: createChartInstanceDeclaration(entry),
+      declaration: createChartInstanceDeclaration(
+        finalized as FrontendChartDeclaration,
+        instanceId,
+        emptyMessage,
+      ),
       registration: createChartEngineRegistration<ResultType, ChartSourceType>(
-        entry,
+        finalized,
+        instanceId,
+        emptyMessage,
       ),
     });
 
     if (!this.defaultChartId) {
-      this.defaultChartId = entry.id;
+      this.defaultChartId = instanceId;
+    }
+  }
+
+  private finalizeChartEntry(
+    entry: FrontendChartDeclaration<ResultType, ChartSourceType>,
+    emptyMessage: string,
+  ): FrontendChartDeclaration<ResultType, ChartSourceType> {
+    const modelLabel = this.label ?? "";
+    const title = derivedChartTitle(entry, modelLabel);
+    if (entry.type === ChartType.Dynamic && isDynamicFieldGridSpec(entry.spec)) {
+      const spec = entry.spec;
+      const axes = spec.axes ?? {
+        x: (spec.axisFields ?? [])[0]!,
+        y: (spec.axisFields ?? [])[1]!,
+      };
+      return {
+        ...entry,
+        emptyMessage,
+        spec: {
+          ...spec,
+          title: spec.title ?? title,
+          axes,
+          axisFields: dynamicAxisPool({ ...spec, axes }),
+        },
+      } as FrontendChartDeclaration<ResultType, ChartSourceType>;
+    }
+    if (
+      isPsychrometricDataSpec(entry.spec)
+      || isBandScalarDataSpec(entry.spec)
+      || isBoundaryRegionDataSpec(entry.spec)
+      || isParametricLineDataSpec(entry.spec)
+    ) {
+      return {
+        ...entry,
+        emptyMessage,
+        spec: {
+          ...entry.spec,
+          title: entry.spec.title ?? title,
+        },
+      } as FrontendChartDeclaration<ResultType, ChartSourceType>;
+    }
+    return { ...entry, emptyMessage };
+  }
+
+  private axisRangesFromInputFields(): Partial<
+    Record<PhysicalQuantityId, ChartRange>
+  > {
+    const ranges: Partial<Record<PhysicalQuantityId, ChartRange>> = {};
+    for (const spec of this.inputFieldSpecs) {
+      for (const quantityId of primaryQuantityIdsForInputField(spec)) {
+        const { minSi, maxSi } = declaredSiRangeForInputField(spec, quantityId);
+        const meta = getPhysicalQuantityMeta(quantityId);
+        if (minSi !== meta.minSi || maxSi !== meta.maxSi) {
+          ranges[quantityId] = { min: minSi, max: maxSi };
+        }
+      }
+    }
+    return ranges;
+  }
+
+  private injectDynamicGridResolvers(): void {
+    const exploreOutputs = this.exploreOutputs ?? [];
+    const axisRanges = this.axisRangesFromInputFields();
+    for (const chart of this.registeredCharts) {
+      if (chart.registration.registration.type !== ChartType.Dynamic) {
+        continue;
+      }
+      const spec = chart.registration.registration.spec;
+      if (!isDynamicFieldGridSpec(spec) || spec.resolveGridSpec) {
+        continue;
+      }
+      const authoring: DynamicFieldGridSpec<ResultType> = spec;
+      Object.assign(spec, {
+        resolveGridSpec: (context: ChartBuildContext) => ({
+        output: exploreOutputs[0]!,
+        exploreOutputs,
+        axisRanges: { ...axisRanges, ...authoring.axisRanges },
+        requestAdapter: authoring.requestAdapter!,
+        evaluate: authoring.evaluate!,
+        getOutputValue: authoring.getOutputValue!,
+        ...(authoring.tryEvaluatePayload
+          ? { tryEvaluatePayload: authoring.tryEvaluatePayload }
+          : {}),
+        ...(authoring.chartAxisAdapter
+          ? { chartAxisAdapter: authoring.chartAxisAdapter }
+          : {}),
+        ...(authoring.applyChartCoordinates
+          ? { applyChartCoordinates: authoring.applyChartCoordinates }
+          : {}),
+        ...(authoring.dynamicHoverExtension
+          ? { dynamicHoverExtension: authoring.dynamicHoverExtension }
+          : {}),
+        ...(authoring.gridPoints !== undefined
+          ? { gridPoints: authoring.gridPoints }
+          : {}),
+        ...(authoring.dynamicViewLayout
+          ? { dynamicViewLayout: authoring.dynamicViewLayout }
+          : {}),
+        ...(authoring.getIsolineValue
+          ? { getIsolineValue: authoring.getIsolineValue }
+          : {}),
+        ...(authoring.isolineLayout
+          ? { isolineLayout: authoring.isolineLayout }
+          : context.fieldChartConfig.zOutput === PhysicalQuantityId.PredictedPercentageOfDissatisfied
+            ? { isolineLayout: "radial" as const }
+            : {}),
+        ...(authoring.absFromThreshold
+          ? { absFromThreshold: authoring.absFromThreshold }
+          : {}),
+        ...(authoring.clipAirSpeedWithoutOccupantControl !== undefined
+          ? {
+              clipAirSpeedWithoutOccupantControl:
+                authoring.clipAirSpeedWithoutOccupantControl,
+            }
+          : {}),
+        bandLabel: authoring.bandLabel
+          ?? (context.fieldChartConfig.zOutput === PhysicalQuantityId.PredictedMeanVote
+            ? "Zone"
+            : "Band"),
+      }),
+      });
     }
   }
 
@@ -413,9 +582,9 @@ export class ComfortModelBuilder<
     const extras: PhysicalQuantityIdType[] = [];
 
     for (const quantityId of this.extraQuantities) {
-      if (!isPhysicalQuantityId(quantityId) || !isExtraQuantityId(quantityId)) {
+      if (!isPhysicalQuantityId(quantityId) || !isAllowedExtraQuantityId(quantityId)) {
         throw new Error(
-          `Unknown extra quantity "${String(quantityId)}". Extra quantities must be catalog Extra ids.`,
+          `Unknown extra quantity "${String(quantityId)}". Extra quantities must be catalog ids that are not primary, humidity, or modifier slots.`,
         );
       }
       if (seenIds.has(quantityId)) {
@@ -436,9 +605,9 @@ export class ComfortModelBuilder<
     const selectedIds = new Set(extras);
     for (const spec of this.inputFieldSpecs) {
       if (spec.kind !== "quantity") continue;
-      if (!isPhysicalQuantityId(spec.quantityId) || !isExtraQuantityId(spec.quantityId)) {
+      if (!isPhysicalQuantityId(spec.quantityId) || !isAllowedExtraQuantityId(spec.quantityId)) {
         throw new Error(
-          `quantity field ${spec.quantityId} must reference a catalog Extra quantity.`,
+          `quantity field ${spec.quantityId} must reference a non-primary catalog quantity.`,
         );
       }
       if (!selectedIds.has(spec.quantityId)) {
@@ -449,7 +618,7 @@ export class ComfortModelBuilder<
     }
   }
 
-  private mergeDynamicAxisFields(): readonly ChartAxisQuantityId[] {
+  private mergeDynamicAxisFields(): readonly PhysicalQuantityId[] {
     const explicitFields = this.dynamicAxisFields ?? [];
     if (new Set(explicitFields).size !== explicitFields.length) {
       throw new Error("Dynamic axis fields cannot contain duplicates.");
@@ -457,14 +626,60 @@ export class ComfortModelBuilder<
 
     const registeredFields = this.registeredCharts.flatMap(
       ({ registration }) => {
-        if (registration.registration.type !== ChartType.Dynamic) {
+        const bind = registration.registration;
+        if (bind.type === ChartType.Dynamic) {
+          if (isDynamicFieldGridSpec(bind.spec)) {
+            return [...dynamicAxisPool(bind.spec)];
+          }
+          if (
+            "axisFields" in bind.spec &&
+            Array.isArray(bind.spec.axisFields)
+          ) {
+            return [...bind.spec.axisFields];
+          }
           return [];
         }
-        return registration.registration.spec.axisFields;
+        if (
+          bind.type === ChartType.Adaptive &&
+          "axisFields" in bind.spec &&
+          Array.isArray(bind.spec.axisFields)
+        ) {
+          return [...bind.spec.axisFields];
+        }
+        return [];
       },
     );
 
     return [...new Set([...explicitFields, ...registeredFields])];
+  }
+
+  private deriveDefaultDynamicAxes(
+    fields: readonly PhysicalQuantityId[],
+  ): DynamicAxisDefaults | undefined {
+    if (this.defaultDynamicAxes) {
+      return this.defaultDynamicAxes;
+    }
+    for (const { registration } of this.registeredCharts) {
+      const bind = registration.registration;
+      if (bind.type === ChartType.Dynamic && isDynamicFieldGridSpec(bind.spec)) {
+        return { xAxis: bind.spec.axes.x, yAxis: bind.spec.axes.y };
+      }
+      if (
+        bind.type === ChartType.Adaptive &&
+        "axisFields" in bind.spec &&
+        Array.isArray(bind.spec.axisFields) &&
+        bind.spec.axisFields.length >= 2
+      ) {
+        return {
+          xAxis: bind.spec.axisFields[0]!,
+          yAxis: bind.spec.axisFields[1]!,
+        };
+      }
+    }
+    if (fields.length >= 2) {
+      return { xAxis: fields[0]!, yAxis: fields[1]! };
+    }
+    return undefined;
   }
 
   private resolveChartInstances(): ComfortModelDefinition<
@@ -619,10 +834,9 @@ export class ComfortModelBuilder<
       );
     }
 
-    const tables = this.tables;
-    if (!tables) {
-      throw new Error("Comfort model declarations must set tables.");
-    }
+    const tables = this.tables ?? compileModelTables({
+      results: exploreOutputs.map((output) => output.key),
+    });
 
     if (tables.results.length === 0) {
       throw new Error("tables.results requires at least one row.");
@@ -734,13 +948,11 @@ export class ComfortModelBuilder<
     }
 
     if (this.defaultOptions === undefined) {
-      throw new Error(
-        "Comfort model declarations must explicitly set default options.",
-      );
+      this.defaultOptions = {};
     }
 
     if (!this.parseOptions) {
-      throw new Error("Comfort model declarations must set an option parser.");
+      this.parseOptions = parseEmptyOptions;
     }
 
     const defaultOptions = this.parseOptions(this.defaultOptions);
@@ -754,8 +966,9 @@ export class ComfortModelBuilder<
       throw new Error("Comfort model declarations must set a calculator.");
     }
 
+    this.injectDynamicGridResolvers();
     const dynamicAxisFields = this.mergeDynamicAxisFields();
-    const defaultDynamicAxes = this.defaultDynamicAxes;
+    const defaultDynamicAxes = this.deriveDefaultDynamicAxes(dynamicAxisFields);
     if (dynamicAxisFields.length < 2 || !defaultDynamicAxes) {
       throw new Error(
         "Comfort model declarations require dynamic axis fields and explicit default dynamic axes.",
@@ -907,31 +1120,29 @@ export interface ModelDeclaration<
   ComplianceBand extends Band = NumericBand,
 > {
   readonly id: ModelIdType;
-  readonly label: string;
-  readonly description: string;
+  readonly library: JsModelLibrary;
   readonly standardIds: readonly StandardIdType[];
   readonly surfaceCapabilities: readonly SurfaceIdType[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
   readonly complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
-  readonly inputFields: readonly InputFieldSpec[];
+  readonly inputFields: readonly AuthoringInputField[];
   readonly extraQuantities?: readonly PhysicalQuantityIdType[];
   readonly optionHandlersByKey?: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   >;
   readonly charts: readonly FrontendChartDeclaration<ResultType, ChartSourceType>[];
-  readonly defaultChartId?: string;
-  readonly tables: ModelTablesAuthoring<ResultType>;
+  readonly tables?: ModelTablesAuthoring<ResultType>;
   readonly calculate: ComfortModelDefinition<
     ResultType,
     ChartSourceType,
     ComplianceBand
   >["calculate"];
   readonly simulation?: SimulationOutputDeclaration;
-  readonly dynamicAxisFields?: readonly ChartAxisQuantityId[];
-  readonly defaultDynamicAxes: DynamicAxisDefaults;
-  readonly defaultOptions: Partial<Record<OptionKeyType, string>>;
-  readonly parseOptions: (value: unknown) => ModelOptionsState | null;
+  readonly dynamicAxisFields?: readonly PhysicalQuantityId[];
+  readonly defaultDynamicAxes?: DynamicAxisDefaults;
+  readonly defaultOptions?: Partial<Record<OptionKeyType, string>>;
+  readonly parseOptions?: (value: unknown) => ModelOptionsState | null;
 }
 
 function assertChartDeclarations<TResult, ChartSourceType>(
@@ -945,7 +1156,7 @@ function assertChartDeclarations<TResult, ChartSourceType>(
     }
     if (!modelChartSpecMatchesType(chart)) {
       throw new Error(
-        `defineModel chart "${chart.id}" spec does not match type "${chart.type}".`,
+        `defineModel chart "${chart.type}" spec does not match type "${chart.type}".`,
       );
     }
   }
@@ -968,22 +1179,18 @@ export function defineModel<
   >(declaration.id);
 
   builder
-    .setLabel(declaration.label)
-    .setDescription(declaration.description)
+    .setLibrary(declaration.library)
     .setStandardIds(declaration.standardIds)
     .setSurfaceCapabilities(declaration.surfaceCapabilities)
     .setExploreOutputs(declaration.exploreOutputs)
     .setModifiers(declaration.modifiers)
-    .setCharts(declaration.charts, {
-      defaultChartId: declaration.defaultChartId,
-    })
+    .setCharts(declaration.charts)
     .setInputFields(declaration.inputFields)
-    .setTables(declaration.tables)
-    .setCalculator(declaration.calculate)
-    .setDefaultDynamicAxes(declaration.defaultDynamicAxes)
-    .setDefaultOptions(declaration.defaultOptions)
-    .setOptionParser(declaration.parseOptions);
+    .setCalculator(declaration.calculate);
 
+  if (declaration.tables) {
+    builder.setTables(declaration.tables);
+  }
   if (declaration.complianceProfile) {
     builder.setComplianceProfile(declaration.complianceProfile);
   }
@@ -1005,6 +1212,15 @@ export function defineModel<
   }
   if (declaration.dynamicAxisFields) {
     builder.setDynamicAxisFields(declaration.dynamicAxisFields);
+  }
+  if (declaration.defaultDynamicAxes) {
+    builder.setDefaultDynamicAxes(declaration.defaultDynamicAxes);
+  }
+  if (declaration.defaultOptions) {
+    builder.setDefaultOptions(declaration.defaultOptions);
+  }
+  if (declaration.parseOptions) {
+    builder.setOptionParser(declaration.parseOptions);
   }
 
   return builder.build();

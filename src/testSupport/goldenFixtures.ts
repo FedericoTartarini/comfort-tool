@@ -19,7 +19,7 @@ import {
   createAuxiliaryQuantitiesByInput,
 } from "../engines/comfort/quantityStateRouting";
 import type { PmvRequest } from "../declarations/pmv/calculation";
-import type { UtciRequest } from "../declarations/utci/calculation";
+import type { UtciRequest } from "../declarations/utci/utci";
 import {
   declaredSiRangeForInputField,
   inputFieldControlId,

@@ -1,4 +1,4 @@
-import type { ChartAxisQuantityId, PhysicalQuantityId } from "./quantities";
+import type { PhysicalQuantityId } from "./quantities";
 import type { Band, NumericBand } from "./modelCapabilities";
 
 export const FieldChartProfileKind = {
@@ -11,8 +11,8 @@ export type FieldChartProfileKind =
 
 interface FieldChartProfileBase {
   readonly kind: FieldChartProfileKind;
-  readonly xField: ChartAxisQuantityId;
-  readonly yField: ChartAxisQuantityId;
+  readonly xField: PhysicalQuantityId;
+  readonly yField: PhysicalQuantityId;
   readonly zOutput: PhysicalQuantityId;
 }
 

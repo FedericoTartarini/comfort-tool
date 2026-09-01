@@ -29,19 +29,19 @@ describe("chart build memo", () => {
   it("hashes model inputs in stable key order", () => {
     expect(hashModelInputs({
       height: 1.8,
-      bodyWeight: 80,
-    })).toBe("bodyWeight:80|height:1.8");
+      weight: 80,
+    })).toBe("height:1.8|weight:80");
     expect(hashModelInputs({})).toBe("");
   });
 
   it("uses distinct memo keys for different model inputs", () => {
     const shared = {
       modelId: "phs-2023",
-      instanceId: "phs-dynamic-field",
+      instanceId: "dynamic",
       unitSystem: UnitSystem.SI,
       xAxis: "tdb",
       yAxis: "rh",
-      zOutput: "phsLimitingExposureTime",
+      zOutput: "limiting_exposure_time",
       bandsHash: hashBands([{ min: 0, max: 480, label: "Band" }]),
       baselineInputId: InputId.Input1,
       chartSourceVersion: 1,
@@ -53,7 +53,7 @@ describe("chart build memo", () => {
     });
     const editedKey = buildChartMemoKey({
       ...shared,
-      modelInputsHash: hashModelInputs({ bodyWeight: 90 }),
+      modelInputsHash: hashModelInputs({ weight: 90 }),
     });
     expect(defaultKey).not.toBe(editedKey);
   });

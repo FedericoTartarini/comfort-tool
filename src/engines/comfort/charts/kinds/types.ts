@@ -1,7 +1,8 @@
-import type { PlotlyChartSpec } from "../../../plotlyTypes";
+import type { PlotHoverRow, PlotlyChartSpec } from "../../../plotlyTypes";
 import type { ChartPlotlyBuild } from "../chartBuildResult";
 import type { InputId as InputIdType } from "../../../../catalog/inputSlots";
 import type {
+  BandInputsSi,
   ChartBuildContext,
   ModelOutput,
 } from "../../../../catalog/modelCapabilities";
@@ -9,13 +10,17 @@ import {
   ChartType,
   type ChartInstanceCapabilities,
 } from "../../../../catalog/chartTypes";
-import type { ChartAxisQuantityId } from "../../../../catalog/quantities";
+import type { PhysicalQuantityId } from "../../../../catalog/quantities";
 import type { GridModelChartSpec } from "../gridModelCharts";
-import type { ChartRange } from "../types";
+import type { ChartAxisScale, ChartRange } from "../types";
+import type { IsolineBandLayout } from "../../../../charts/isolines";
+import type { LibraryQuantityMapping } from "../../requestMapping";
+import type { FieldChartLayoutSpec } from "../fieldChartEngine";
+import type { UnitSystem as UnitSystemType } from "../../../../catalog/units";
 
 export interface DynamicFieldLockedAxes {
-  readonly xField: ChartAxisQuantityId;
-  readonly yField: ChartAxisQuantityId;
+  readonly xField: PhysicalQuantityId;
+  readonly yField: PhysicalQuantityId;
   readonly xRangeSi: ChartRange;
   readonly yRangeSi: ChartRange;
 }
@@ -31,12 +36,52 @@ export type DynamicFieldResolvedGridSpec<TResult> = Omit<
 
 /** Data-only DynamicField spec. Geometry stays in the DynamicField engine. */
 export interface DynamicFieldGridSpec<TResult> {
-  readonly title: string;
-  readonly axisFields: readonly ChartAxisQuantityId[];
+  readonly axes: {
+    readonly x: PhysicalQuantityId;
+    readonly y: PhysicalQuantityId;
+  };
+  readonly title?: string;
+  readonly axisFields?: readonly PhysicalQuantityId[];
   readonly lockedAxes?: DynamicFieldLockedAxes;
-  readonly resolveGridSpec: (
+  readonly resolveGridSpec?: (
     context: ChartBuildContext,
   ) => DynamicFieldResolvedGridSpec<TResult>;
+  readonly evaluate?: (payload: never) => TResult;
+  readonly getOutputValue?: (
+    result: TResult,
+    outputKey?: ModelOutput["key"],
+  ) => number | null | undefined;
+  readonly requestAdapter?: Pick<
+    LibraryQuantityMapping<never>,
+    "getAxisValue" | "setAxisValue"
+  >;
+  readonly tryEvaluatePayload?: (payload: never) => number | null | undefined;
+  readonly chartAxisAdapter?: Pick<
+    LibraryQuantityMapping<never>,
+    "getAxisValue" | "setAxisValue"
+  >;
+  readonly applyChartCoordinates?: GridModelChartSpec<
+    never,
+    TResult
+  >["applyChartCoordinates"];
+  readonly dynamicHoverExtension?: GridModelChartSpec<
+    never,
+    TResult
+  >["dynamicHoverExtension"];
+  readonly gridPoints?: number;
+  readonly dynamicViewLayout?: Partial<FieldChartLayoutSpec>;
+  readonly isolineLayout?: IsolineBandLayout;
+  readonly absFromThreshold?: (threshold: number) => number;
+  readonly getIsolineValue?: (result: TResult) => number | null;
+  readonly clipAirSpeedWithoutOccupantControl?: boolean | ((payload: never) => boolean);
+  readonly axisRanges?: Partial<Record<PhysicalQuantityId, ChartRange>>;
+  readonly bandLabel?: string;
+}
+
+export function dynamicAxisPool(
+  spec: Pick<DynamicFieldGridSpec<unknown>, "axes" | "axisFields">,
+): readonly PhysicalQuantityId[] {
+  return spec.axisFields ?? [spec.axes.x, spec.axes.y];
 }
 
 type FrontendChartBuild<TResult, ChartSourceType> = (
@@ -45,26 +90,16 @@ type FrontendChartBuild<TResult, ChartSourceType> = (
   context: ChartBuildContext,
 ) => PlotlyChartSpec | ChartPlotlyBuild | null;
 
-/**
- * Frontend-internal DynamicField geometry. Not part of the model-declaration
- * chart union. Used for PMV Dynamic, which is a field chart but not the shared
- * grid engine.
- */
-export interface DynamicFieldGeometrySpec<TResult, ChartSourceType> {
-  readonly title: string;
-  readonly axisFields: readonly ChartAxisQuantityId[];
-  readonly lockedAxes?: DynamicFieldLockedAxes;
-  readonly build: FrontendChartBuild<TResult, ChartSourceType>;
-}
-
 export type DynamicFieldChartEngineSpec<TResult, ChartSourceType = unknown> =
-  | DynamicFieldGridSpec<TResult>
-  | DynamicFieldGeometrySpec<TResult, ChartSourceType>;
+  DynamicFieldGridSpec<TResult>;
 
 export function isDynamicFieldGridSpec<TResult = never>(
   spec: object,
 ): spec is DynamicFieldGridSpec<TResult> {
-  return "resolveGridSpec" in spec && !specHasPlotlyBuild(spec);
+  return (
+    ("resolveGridSpec" in spec || ("evaluate" in spec && "axes" in spec)) &&
+    !specHasPlotlyBuild(spec)
+  );
 }
 
 export function specHasPlotlyBuild(spec: object): boolean {
@@ -73,23 +108,27 @@ export function specHasPlotlyBuild(spec: object): boolean {
 
 /** Data-only BandScalar spec. Geometry stays in the BandScalar engine. */
 export interface BandScalarDataSpec<TResult> {
-  readonly title: string;
+  readonly title?: string;
   readonly getOutputValue: (result: TResult) => number;
-}
-
-export interface BandScalarGeometrySpec<TResult, ChartSourceType> {
-  readonly build: FrontendChartBuild<TResult, ChartSourceType>;
+  readonly xRangeSi?: ChartRange;
+  readonly xPoints?: number;
+  readonly yPoints?: number;
+  readonly xLabel?: string;
+  readonly margin?: { l: number; r: number; t: number; b: number };
+  readonly legendTextByLabel?: Readonly<Record<string, string>>;
+  readonly hoverCategoryTitle?: string;
 }
 
 export type BandScalarChartEngineSpec<TResult, ChartSourceType = unknown> =
-  | BandScalarDataSpec<TResult>
-  | BandScalarGeometrySpec<TResult, ChartSourceType>;
+  BandScalarDataSpec<TResult>;
 
 export function isBandScalarDataSpec<TResult>(
   spec: object,
 ): spec is BandScalarDataSpec<TResult> {
   return (
     "getOutputValue" in spec &&
+    !("axes" in spec) &&
+    !("resolveGridSpec" in spec) &&
     !("getSeries" in spec) &&
     !("getGeometry" in spec) &&
     !specHasPlotlyBuild(spec)
@@ -97,25 +136,41 @@ export function isBandScalarDataSpec<TResult>(
 }
 
 /** Data-only BoundaryRegion spec. Geometry stays in the BoundaryRegion engine. */
-export interface BoundaryRegionDataSpec {
-  readonly title: string;
-  readonly axisFields: readonly ChartAxisQuantityId[];
-}
-
-export interface BoundaryRegionGeometrySpec<TResult, ChartSourceType> {
-  readonly build: FrontendChartBuild<TResult, ChartSourceType>;
+export interface BoundaryRegionDataSpec<TResult = unknown, TPayload = unknown> {
+  readonly title?: string;
+  readonly axisFields: readonly PhysicalQuantityId[];
+  readonly outdoorRangeSi: ChartRange;
+  readonly outdoorLabel: string;
+  readonly operativeRangeSi?: ChartRange;
+  readonly boundaryPoints?: number;
+  readonly evaluate: (payload: TPayload) => TResult;
+  readonly requestFromPoint: (
+    baseline: TPayload,
+    outdoorSi: number,
+    operativeSi: number,
+  ) => TPayload;
+  readonly getBandInputsSi?: (payload: TPayload) => BandInputsSi;
+  readonly getHoverMetadata: (
+    result: TResult,
+    unitSystem: UnitSystemType,
+  ) => PlotHoverRow;
+  readonly buildHoverTemplate: (
+    unitSystem: UnitSystemType,
+    xAxis: ChartAxisScale,
+    yAxis: ChartAxisScale,
+    inputLabel?: string | null,
+  ) => string;
 }
 
 export type BoundaryRegionChartEngineSpec<TResult, ChartSourceType = unknown> =
-  | BoundaryRegionDataSpec
-  | BoundaryRegionGeometrySpec<TResult, ChartSourceType>;
+  BoundaryRegionDataSpec<TResult>;
 
 export function isBoundaryRegionDataSpec(
   spec: object,
 ): spec is BoundaryRegionDataSpec {
   if (
     !("axisFields" in spec) ||
-    !("title" in spec) ||
+    !("evaluate" in spec) ||
     "resolveGridSpec" in spec ||
     specHasPlotlyBuild(spec)
   ) {
@@ -123,6 +178,32 @@ export function isBoundaryRegionDataSpec(
   }
   const { axisFields } = spec as BoundaryRegionDataSpec;
   return Array.isArray(axisFields) && axisFields.length >= 2;
+}
+
+/** Data-only Psychrometric spec. Geometry stays in src/charts/psychrometric/. */
+export interface PsychrometricHoverSample {
+  readonly pmv: number;
+  readonly ppd: number;
+}
+
+export interface PsychrometricDataSpec {
+  readonly title?: string;
+  readonly evaluate: (
+    payload: never,
+    tdb: number,
+    rh: number,
+  ) => number | null;
+  readonly evaluateHover?: (
+    payload: never,
+    tdb: number,
+    rh: number,
+  ) => PsychrometricHoverSample | null;
+  readonly trEqualsTdb: (
+    chartSource: unknown,
+    context: ChartBuildContext,
+  ) => boolean;
+  readonly comfortIsolineTargets?: readonly number[];
+  readonly ppdThresholdToAbsPmv?: (ppd: number) => number;
 }
 
 /** Data-only TimeSeriesLine spec. Geometry stays in the TimeSeriesLine engine. */
@@ -199,8 +280,8 @@ export interface ParametricLineGeometry {
 
 /** Data-only ParametricLine spec. Geometry stays in the ParametricLine engine. */
 export interface ParametricLineDataSpec<TResult> {
-  readonly title: string;
-  readonly xField: ChartAxisQuantityId;
+  readonly title?: string;
+  readonly xField: PhysicalQuantityId;
   readonly yLabel: string;
   readonly y2Label?: string;
   readonly getGeometry: (
@@ -216,8 +297,14 @@ export function isParametricLineDataSpec<TResult>(
   return "getGeometry" in spec && !specHasPlotlyBuild(spec);
 }
 
-export interface CustomChartEngineSpec<TResult, ChartSourceType> {
-  readonly build: FrontendChartBuild<TResult, ChartSourceType>;
+export function isPsychrometricDataSpec(
+  spec: object,
+): spec is PsychrometricDataSpec {
+  return (
+    "evaluate" in spec &&
+    "trEqualsTdb" in spec &&
+    !specHasPlotlyBuild(spec)
+  );
 }
 
 /**
@@ -254,12 +341,12 @@ export type RegisteredChartBindSpec<TResult, ChartSourceType> =
     }
   | {
       type: typeof ChartType.Psychrometric;
-      spec: CustomChartEngineSpec<TResult, ChartSourceType>;
+      spec: PsychrometricDataSpec;
     };
 
 interface ChartCommonFields {
-  readonly id: string;
-  readonly emptyMessage: string;
+  readonly emptyMessage?: string;
+  readonly titlePrefix?: string | null;
   readonly note?: string;
   readonly capabilities?: Partial<ChartInstanceCapabilities>;
   readonly supportedExploreOutputs?: readonly ModelOutput["key"][];
@@ -291,11 +378,11 @@ export function modelChartSpecMatchesType(chart: {
 }): boolean {
   switch (chart.type) {
     case ChartType.Dynamic:
-      return isDynamicFieldGridSpec(chart.spec) || specHasPlotlyBuild(chart.spec);
+      return isDynamicFieldGridSpec(chart.spec);
     case ChartType.Utci:
-      return isBandScalarDataSpec(chart.spec) || specHasPlotlyBuild(chart.spec);
+      return isBandScalarDataSpec(chart.spec);
     case ChartType.Adaptive:
-      return isBoundaryRegionDataSpec(chart.spec) || specHasPlotlyBuild(chart.spec);
+      return isBoundaryRegionDataSpec(chart.spec);
     case ChartType.HeatLoss:
     case ChartType.Set:
       return isParametricLineDataSpec(chart.spec);
@@ -303,6 +390,6 @@ export function modelChartSpecMatchesType(chart: {
     case ChartType.WaterLoss:
       return isTimeSeriesLineDataSpec(chart.spec) || specHasPlotlyBuild(chart.spec);
     case ChartType.Psychrometric:
-      return specHasPlotlyBuild(chart.spec);
+      return isPsychrometricDataSpec(chart.spec);
   }
 }

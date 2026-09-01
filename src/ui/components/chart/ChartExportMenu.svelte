@@ -10,7 +10,7 @@
   interface Props {
     chartInstances: readonly ChartInstancePanelView[];
     currentChart: ChartInstancePanelView;
-    selectedChartInstanceId: string;
+    selectedChartType: string;
     onSelectChartInstance: (instanceId: string) => void;
     onExport: PublicationExportHandler;
   }
@@ -18,7 +18,7 @@
   let {
     chartInstances,
     currentChart,
-    selectedChartInstanceId,
+    selectedChartType,
     onSelectChartInstance,
     onExport,
   }: Props = $props();
@@ -44,7 +44,7 @@
       onclick={() => onSelectChartInstance(option.instanceId)}
       class="text-left"
     >
-      <span class={selectedChartInstanceId === option.instanceId ? "font-bold text-teal-700" : "text-stone-700"}>
+      <span class={selectedChartType === option.instanceId ? "font-bold text-teal-700" : "text-stone-700"}>
         {option.name}
       </span>
     </DropdownItem>

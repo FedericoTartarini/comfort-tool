@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PhysicalQuantityId } from "../catalog/quantities";
 
 import { calculateAdaptive } from "../declarations/adaptive/calculation";
-import { buildAdaptiveChart } from "../declarations/adaptive/charts";
+import { createAdaptiveBoundaryRegionSpec } from "../declarations/adaptive/shared";
 import { adaptiveEnDeclaration } from "../declarations/adaptive/en";
 import type { AdaptiveRequest } from "../declarations/adaptive/shared";
 import { ChartType } from "../catalog/chartTypes";
@@ -11,20 +11,21 @@ import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { UnitSystem } from "../catalog/units";
 import { assembleChart, draw, destroy, loadPlotly } from "./index";
 import { chartPayloadFromSpec } from "../engines/comfort/charts/toChartPayload";
+import { buildModelBoundaryRegionChart } from "../engines/comfort/charts/kinds/modelDataCharts";
 
 const baselineRequest: AdaptiveRequest = {
   tdb: 24,
   tr: 24,
-  trm: 20.16,
+  t_running_mean: 20.16,
   v: 0.1,
 };
 
 function buildAdaptiveEnPayload() {
   const result = calculateAdaptive(adaptiveEnDeclaration, baselineRequest);
-  const spec = buildAdaptiveChart(
-    adaptiveEnDeclaration,
+  const spec = buildModelBoundaryRegionChart(
+    createAdaptiveBoundaryRegionSpec(adaptiveEnDeclaration),
     { inputs: { [InputId.Input1]: baselineRequest } },
-    { [InputId.Input1]: result },
+    { [InputId.Input1]: result, [InputId.Input2]: null, [InputId.Input3]: null },
     {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
@@ -63,7 +64,7 @@ describe("draw with Plotly.react", () => {
       data?: Array<{ name?: string; x?: unknown[]; z?: unknown }>;
     };
     expect(gd.data?.some((trace) => (
-      trace.name === "Category III" && (trace.x?.length ?? 0) > 1
+      trace.name === "cat_iii" && (trace.x?.length ?? 0) > 1
     ))).toBe(true);
     expect(gd.data?.some((trace) => trace.name === "Input 1")).toBe(true);
     expect(contour).toBeUndefined();

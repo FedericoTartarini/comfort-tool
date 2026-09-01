@@ -11,7 +11,7 @@ import {
 } from "../../../state/pointSession/fieldChartState";
 import { createGoldenCalculationContext } from "../../../testSupport/goldenFixtures";
 import { clearChartMemo } from "./kinds/memo";
-import { pmvAshraeDeclaration } from "../../../declarations/pmv/ashrae";
+import { ChartType } from "../../../catalog/chartTypes";
 
 function buildModelChart(modelId: ModelId, instanceId: string, surface: SurfaceId) {
   const config = getComfortModelConfig(modelId);
@@ -41,7 +41,7 @@ describe("field hover probe", () => {
   it("formats PMV psychrometric hits without Compare input labels", () => {
     const build = buildModelChart(
       ModelId.PmvAshrae,
-      pmvAshraeDeclaration.psychrometricChartId,
+      ChartType.Psychrometric,
       SurfaceId.Standard,
     );
     expect(build.readiness).toBe("ready");
@@ -58,7 +58,7 @@ describe("field hover probe", () => {
   it("returns null for supersaturated psychrometric coordinates", () => {
     const build = buildModelChart(
       ModelId.PmvAshrae,
-      pmvAshraeDeclaration.psychrometricChartId,
+      ChartType.Psychrometric,
       SurfaceId.Standard,
     );
     expect(build.hoverProbe?.probeDisplay(10, 20)).toBeNull();
@@ -67,7 +67,7 @@ describe("field hover probe", () => {
   it("formats PMV dynamic hits without Compare input labels", () => {
     const build = buildModelChart(
       ModelId.PmvAshrae,
-      pmvAshraeDeclaration.dynamicChartId,
+      ChartType.Dynamic,
       SurfaceId.Standard,
     );
     expect(build.readiness).toBe("ready");
@@ -79,6 +79,11 @@ describe("field hover probe", () => {
     expect(hit?.hovertemplate).toContain("PMV:");
     expect(hit?.hovertemplate).toContain("PPD:");
     expect(hit?.hovertemplate).not.toContain("Input 1");
+    expect(hit?.customdata).toEqual([
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number),
+    ]);
   });
 
   it("formats Heat Index dynamic hits from the shared grid probe", () => {
@@ -99,13 +104,13 @@ describe("field hover probe", () => {
   });
 
   it("does not attach a probe to UTCI 1-D stress or Heat Loss charts", () => {
-    const utci = buildModelChart(ModelId.Utci, "utci-stress-band", SurfaceId.Explore);
+    const utci = buildModelChart(ModelId.Utci, "utci", SurfaceId.Explore);
     expect(utci.readiness).toBe("ready");
     expect(utci.hoverProbe).toBeUndefined();
 
     const heatLoss = buildModelChart(
       ModelId.PmvAshrae,
-      pmvAshraeDeclaration.heatLossChartId,
+      ChartType.HeatLoss,
       SurfaceId.Standard,
     );
     expect(heatLoss.readiness).toBe("ready");

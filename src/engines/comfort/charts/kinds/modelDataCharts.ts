@@ -6,34 +6,48 @@ import {
   type InputId as InputIdType,
 } from "../../../../catalog/inputSlots";
 import {
+  findNumericBandIndexForValue,
   type Band,
   type ChartBuildContext,
   type ModelOutput,
   type NumericBand,
 } from "../../../../catalog/modelCapabilities";
-import { getPhysicalQuantityMeta } from "../../../../catalog/quantities";
-import { getCompareInputs } from "../../helpers";
+import {
+  PhysicalQuantityId,
+  getPhysicalQuantityMeta,
+  getQuantityPresentationMeta,
+} from "../../../../catalog/quantities";
+import { getBaselineInputEntry, getCompareInputs } from "../../helpers";
 import { buildCompareInputMarkerTraces } from "../inputPoints";
+import type { ChartPlotlyBuild } from "../chartBuildResult";
+import { createDisplayHoverProbe } from "../hoverProbe";
+import { buildTextAnnotation } from "../plotlyBuilders";
 import {
   buildFieldChart,
   createBandedGridStrategy,
   createBoundaryRegionStrategy,
+  createEmptyFieldStrategy,
+  createFieldChartAxis,
 } from "../fieldChartEngine";
 import {
   buildTimeSeriesLineTrace,
   paddedSeriesRange,
 } from "../timeSeriesLineChart";
 import type { ChartRange } from "../types";
+import { convertQuantityFromSi } from "../../../units";
 import type {
   BandScalarDataSpec,
   BoundaryRegionDataSpec,
   TimeSeriesLineDataSpec,
 } from "./types";
 
-const BAND_SCALAR_Y_POINTS = 8;
-const BAND_SCALAR_X_POINTS = 64;
-const BOUNDARY_POINTS = 32;
+const BAND_SCALAR_Y_POINTS = 50;
+const BAND_SCALAR_X_POINTS = 450;
+const BAND_SCALAR_MARKER_Y = [0.78, 0.5, 0.22];
+const ZONE_ANNOTATION_Y = { even: 0.05, odd: 0.16 };
+const BOUNDARY_POINTS = 240;
 const BOUNDARY_LINE = "#334155";
+const DEFAULT_OPERATIVE_RANGE = { min: 10, max: 40 };
 
 function asChartSource(
   chartSource: unknown,
@@ -77,10 +91,12 @@ function finiteRange(
 function outputFromContext(
   context: ChartBuildContext,
   bands: readonly NumericBand[],
+  label?: string,
 ): ModelOutput {
   return {
     key: context.fieldChartConfig.zOutput,
-    label: context.fieldChartConfig.zOutput,
+    label: label
+      ?? getPhysicalQuantityMeta(context.fieldChartConfig.zOutput).label,
     defaultBands: bands,
   };
 }
@@ -95,28 +111,49 @@ export function buildModelBandScalarChart<TResult>(
   const values = Object.values(resultsByInput).flatMap((result) =>
     result == null ? [] : [spec.getOutputValue(result)],
   );
-  const xRangeSi = finiteRange(bands, values);
-  const output = outputFromContext(context, bands);
+  const xRangeSi = spec.xRangeSi ?? finiteRange(bands, values);
+  const output = outputFromContext(context, bands, spec.xLabel);
   const source = asChartSource(chartSource);
+  const inputs = source ? getCompareInputs(source.inputs) : [];
+  const markerY = inputs.length > 1 ? BAND_SCALAR_MARKER_Y : [0.5];
   const yByInput = new Map(
-    (source ? getCompareInputs(source.inputs) : []).map(
-      ({ inputId }, index) => [inputId, [0.78, 0.5, 0.22][index] ?? 0.5],
-    ),
+    inputs.map(({ inputId }, index) => [inputId, markerY[index] ?? 0.5]),
   );
+  const temperatureUnits = getQuantityPresentationMeta(
+    PhysicalQuantityId.DryBulbTemperature,
+    context.unitSystem,
+  ).displayUnits;
+  const categoryTitle = spec.hoverCategoryTitle ?? "Category";
+  const annotations = bands.flatMap((band, index) => {
+    const min = Math.max(band.min, xRangeSi.min);
+    const max = Math.min(band.max, xRangeSi.max);
+    if (min >= max) return [];
+    const text = spec.legendTextByLabel?.[band.label] ?? band.label;
+    return [buildTextAnnotation({
+      x: convertQuantityFromSi(
+        context.fieldChartConfig.xField,
+        (min + max) / 2,
+        context.unitSystem,
+      ),
+      y: index % 2 === 0 ? ZONE_ANNOTATION_Y.even : ZONE_ANNOTATION_Y.odd,
+      text,
+    })];
+  });
 
   return buildFieldChart({
     unitSystem: context.unitSystem,
     xAxis: {
       field: context.fieldChartConfig.xField,
       rangeSi: xRangeSi,
-      points: BAND_SCALAR_X_POINTS,
+      points: spec.xPoints ?? BAND_SCALAR_X_POINTS,
+      label: spec.xLabel,
       showGrid: false,
       zeroLine: false,
     },
     yAxis: {
       field: context.fieldChartConfig.yField,
       rangeSi: { min: 0, max: 1 },
-      points: BAND_SCALAR_Y_POINTS,
+      points: spec.yPoints ?? BAND_SCALAR_Y_POINTS,
       label: "",
       units: "",
       toDisplay: (value) => value,
@@ -131,6 +168,7 @@ export function buildModelBandScalarChart<TResult>(
         bands,
       },
       output,
+      opacity: 0.75,
       evaluateOutput: (xSi) => xSi,
     }),
     inputGroups: source
@@ -145,54 +183,148 @@ export function buildModelBandScalarChart<TResult>(
             getYSi: (_payload, inputId) => yByInput.get(inputId) ?? 0.5,
             getHovertemplate: ({ inputLabel, inputId }) => {
               const result = resultsByInput[inputId];
-              const value =
-                result == null ? "—" : String(spec.getOutputValue(result));
-              return `${inputLabel}<br>${output.label}: ${value}<extra></extra>`;
+              if (result == null) {
+                return `${inputLabel}<extra></extra>`;
+              }
+              const valueSi = spec.getOutputValue(result);
+              const bandIndex = findNumericBandIndexForValue(bands, valueSi);
+              const bandLabel = bandIndex === undefined
+                ? "Unclassified"
+                : bands[bandIndex]!.label;
+              return `${inputLabel}<br>${output.label}: %{x:.1f} ${temperatureUnits}<br><b>${categoryTitle}: ${bandLabel}</b><extra></extra>`;
             },
+            markerSize: 14,
           },
         ]
       : undefined,
+    annotations,
     layout: {
-      title: spec.title,
-      margin: { l: 56, r: 24, t: 48, b: 64 },
+      title: spec.title ?? "",
+      margin: spec.margin ?? { l: 56, r: 24, t: 48, b: 80 },
       legend: { orientation: "h", x: 0, y: 1.08 },
     },
     source: CalculationSource.FrontendGenerated,
   });
 }
 
-export function buildModelBoundaryRegionChart(
-  spec: BoundaryRegionDataSpec,
+export function buildModelBoundaryRegionChart<TResult, TPayload extends object>(
+  spec: BoundaryRegionDataSpec<TResult, TPayload>,
+  chartSource: unknown,
+  resultsByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
-): PlotlyChartSpec {
-  const [xField, yField] = spec.axisFields;
-  const xMeta = getPhysicalQuantityMeta(xField);
-  const yMeta = getPhysicalQuantityMeta(yField);
+): ChartPlotlyBuild {
+  const source = asChartSource(chartSource) as ModelChartSource<TPayload> | null;
+  const outdoorField = spec.axisFields.find(
+    (field) => field === PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+  ) ?? spec.axisFields[0]!;
+  const operativeField = spec.axisFields.find(
+    (field) => field === PhysicalQuantityId.OperativeTemperature,
+  ) ?? spec.axisFields[1]!;
+  const boundaryAxis = context.fieldChartConfig.xField === outdoorField
+    ? "x"
+    : "y";
+  const outdoorAxisSpec = {
+    field: outdoorField,
+    rangeSi: spec.outdoorRangeSi,
+    points: spec.boundaryPoints ?? BOUNDARY_POINTS,
+    label: spec.outdoorLabel,
+    units: (unitSystem: typeof context.unitSystem) =>
+      getQuantityPresentationMeta(PhysicalQuantityId.DryBulbTemperature, unitSystem)
+        .displayUnits,
+  };
+  const operativeAxisSpec = {
+    field: operativeField,
+    rangeSi: spec.operativeRangeSi ?? DEFAULT_OPERATIVE_RANGE,
+    points: 2,
+    units: (unitSystem: typeof context.unitSystem) =>
+      getQuantityPresentationMeta(PhysicalQuantityId.DryBulbTemperature, unitSystem)
+        .displayUnits,
+  };
+  const xAxisSpec = boundaryAxis === "x" ? outdoorAxisSpec : operativeAxisSpec;
+  const yAxisSpec = boundaryAxis === "x" ? operativeAxisSpec : outdoorAxisSpec;
+  const xAxis = createFieldChartAxis(xAxisSpec, context.unitSystem);
+  const yAxis = createFieldChartAxis(yAxisSpec, context.unitSystem);
+  const baseline = source
+    ? getBaselineInputEntry(source.inputs, context.baselineInputId)
+    : null;
+  const bandInputsSi = baseline && spec.getBandInputsSi
+    ? spec.getBandInputsSi(baseline.payload)
+    : spec.getBandInputsSi
+      ? null
+      : (context.modelInputs ?? {});
 
-  return buildFieldChart({
+  const plotly = buildFieldChart({
     unitSystem: context.unitSystem,
-    xAxis: {
-      field: xField,
-      rangeSi: { min: xMeta.minSi, max: xMeta.maxSi },
-      points: BOUNDARY_POINTS,
-    },
-    yAxis: {
-      field: yField,
-      rangeSi: { min: yMeta.minSi, max: yMeta.maxSi },
-      points: BOUNDARY_POINTS,
-    },
-    strategy: createBoundaryRegionStrategy({
-      bands: context.fieldChartConfig.bands,
-      bandInputsSi: context.modelInputs ?? {},
-      style: { lineColor: BOUNDARY_LINE },
-      boundaryAxis: "y",
-    }),
+    xAxis: xAxisSpec,
+    yAxis: yAxisSpec,
+    strategy: bandInputsSi
+      ? createBoundaryRegionStrategy({
+          bands: context.fieldChartConfig.bands,
+          bandInputsSi,
+          style: { lineColor: BOUNDARY_LINE },
+          boundaryAxis,
+        })
+      : createEmptyFieldStrategy(),
+    inputGroups: source
+      ? () => [
+          {
+            inputsMap: source.inputs,
+            resultsByInput,
+            getXSi: (payload, inputId) => {
+              const result = resultsByInput[inputId] ?? spec.evaluate(payload);
+              return boundaryAxis === "x"
+                ? (payload as { t_running_mean?: number }).t_running_mean ?? Number.NaN
+                : (result as { operativeTemperature?: number }).operativeTemperature
+                  ?? Number.NaN;
+            },
+            getYSi: (payload, inputId) => {
+              const result = resultsByInput[inputId] ?? spec.evaluate(payload);
+              return boundaryAxis === "x"
+                ? (result as { operativeTemperature?: number }).operativeTemperature
+                  ?? Number.NaN
+                : (payload as { t_running_mean?: number }).t_running_mean ?? Number.NaN;
+            },
+            getHovertemplate: ({ inputLabel }) => spec.buildHoverTemplate(
+              context.unitSystem,
+              xAxis,
+              yAxis,
+              inputLabel,
+            ),
+            hoverMetadata: ({ payload, inputId }) => {
+              const result = resultsByInput[inputId] ?? spec.evaluate(payload);
+              return spec.getHoverMetadata(result, context.unitSystem);
+            },
+          },
+        ]
+      : undefined,
     layout: {
-      title: spec.title,
-      margin: { l: 60, r: 24, t: 48, b: 64 },
+      title: spec.title ?? "",
+      margin: { l: 56, r: 24, t: 48, b: 80 },
+      legend: { orientation: "h", x: 0, y: 1.1 },
     },
     source: CalculationSource.FrontendGenerated,
   });
+
+  return {
+    spec: plotly,
+    hoverProbe: baseline
+      ? createDisplayHoverProbe(xAxis, yAxis, (xSi, ySi) => {
+          const outdoorSi = boundaryAxis === "x" ? xSi : ySi;
+          const operativeSi = boundaryAxis === "x" ? ySi : xSi;
+          const result = spec.evaluate(
+            spec.requestFromPoint(baseline.payload, outdoorSi, operativeSi),
+          );
+          return {
+            hovertemplate: spec.buildHoverTemplate(
+              context.unitSystem,
+              xAxis,
+              yAxis,
+            ),
+            customdata: spec.getHoverMetadata(result, context.unitSystem),
+          };
+        })
+      : undefined,
+  };
 }
 
 export function buildModelTimeSeriesLineChart<TResult>(
@@ -236,7 +368,7 @@ export function buildModelTimeSeriesLineChart<TResult>(
       ...buildCompareInputMarkerTraces(comparePointsByInput),
     ],
     layout: {
-      title: spec.title,
+      title: spec.title ?? "",
       paper_bgcolor: "#ffffff",
       plot_bgcolor: "#f8fafc",
       showlegend: true,

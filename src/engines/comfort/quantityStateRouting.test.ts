@@ -29,18 +29,18 @@ describe("quantityStateRouting", () => {
     const auxiliaryQuantitiesByInput = createAuxiliaryQuantitiesByInput();
     setSlotQuantity(
       auxiliaryQuantitiesByInput[InputId.Input1],
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
       0.6,
     );
     expect(getSlotQuantity(
       auxiliaryQuantitiesByInput[InputId.Input1],
-      PhysicalQuantityId.ModifierMeasuredAirSpeed,
+      PhysicalQuantityId.MeasuredAirSpeed,
     )).toBe(0.6);
     expect(collectModifierInputsForModifier(
       auxiliaryQuantitiesByInput[InputId.Input1],
       ModifierId.MeasuredAirSpeed,
     )).toEqual({
-      [PhysicalQuantityId.ModifierMeasuredAirSpeed]: 0.6,
+      [PhysicalQuantityId.MeasuredAirSpeed]: 0.6,
     });
   });
 
@@ -52,7 +52,7 @@ describe("quantityStateRouting", () => {
       auxiliaryQuantitiesByInput,
       derivePsychrometricSlots,
     );
-    expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.DewPoint])
+    expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.DewPointTemperature])
       .toBeTypeOf("number");
   });
 
@@ -62,8 +62,8 @@ describe("quantityStateRouting", () => {
     const derived = derivePsychrometricSlots(quantitiesByInput[InputId.Input1]);
     expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.HumidityRatio])
       .toBeCloseTo(derived[PhysicalQuantityId.HumidityRatio], 4);
-    expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.DewPoint])
-      .toBeCloseTo(derived[PhysicalQuantityId.DewPoint], 4); });
+    expect(auxiliaryQuantitiesByInput[InputId.Input1][PhysicalQuantityId.DewPointTemperature])
+      .toBeCloseTo(derived[PhysicalQuantityId.DewPointTemperature], 4); });
 
   it("seeds extra quantity defaults from catalog ids", () => { const modelInputs = createDefaultExtraInputs([
       PhysicalQuantityId.BodyWeight, PhysicalQuantityId.Height, ]);

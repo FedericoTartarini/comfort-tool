@@ -1,5 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+const utciLabel = "Universal Thermal Climate Index (UTCI)";
+const windChillLabel = "Wind chill index";
+
 async function selectModel(page: Page, modelLabel: string) {
   const modelSelect = page.getByRole("combobox", { name: "Select comfort model" });
   await modelSelect.click();
@@ -48,6 +51,25 @@ async function expectRenderedIsolineFills(plot: Locator) {
     width: expect.any(Number),
   });
   await expect.poll(() => plot.locator(".scatterlayer path").count()).toBeGreaterThan(0);
+}
+
+async function expectRenderedPlotWithoutBandFills(plot: Locator) {
+  await expect(plot).toHaveClass(/js-plotly-plot/);
+  await expect.poll(() => plot.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const traces = (element as HTMLElement & {
+      data?: Array<{ type?: string; fill?: string }>;
+    }).data ?? [];
+    return {
+      hasFill: traces.some((trace) => trace.fill === "toself"),
+      height: Math.round(bounds.height),
+      width: Math.round(bounds.width),
+    };
+  })).toEqual({
+    hasFill: false,
+    height: 480,
+    width: expect.any(Number),
+  });
 }
 
 async function expectRenderedContour(plot: Locator) {
@@ -101,8 +123,8 @@ test("UTCI fixed stress chart keeps Explore thresholds while locking axes", asyn
   page,
 }) => {
   await page.goto("/Explore/");
-  const modelSelect = await selectModel(page, "UTCI");
-  await expect(modelSelect).toHaveValue("UTCI");
+  const modelSelect = await selectModel(page, utciLabel);
+  await expect(modelSelect).toHaveValue(utciLabel);
 
   await expect(page.getByRole("button", { name: "Select chart type and export" }))
     .toContainText("UTCI");
@@ -121,14 +143,14 @@ test("UTCI fixed stress chart keeps Explore thresholds while locking axes", asyn
 
 test("Wind Chill completes the boundary-confirmed model switch", async ({ page }) => {
   await page.goto("/Explore/");
-  const modelSelect = await selectModel(page, "Wind Chill");
+  const modelSelect = await selectModel(page, windChillLabel);
 
   await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
 
-  await expect(modelSelect).toHaveValue("Wind Chill");
+  await expect(modelSelect).toHaveValue(windChillLabel);
   await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeHidden();
-  await expect(page.getByLabel("Input 1 Air temperature", { exact: true })).toHaveValue("0.0");
+  await expect(page.getByLabel("Input 1 Air temperature", { exact: true })).toHaveValue("0");
   await expect(page.getByTestId("comfort-chart-panel").getByText(
     "Explore",
     { exact: true },
@@ -138,5 +160,6 @@ test("Wind Chill completes the boundary-confirmed model switch", async ({ page }
     .toContainText("Dynamic");
   await expectAxisControls(page, true);
   await expectSingleOutputExploreControls(page);
-  await expectRenderedIsolineFills(page.getByTestId("comfort-chart-plot"));
+  await expectRenderedPlotWithoutBandFills(page.getByTestId("comfort-chart-plot"));
+  await expect(page.getByTestId("comfort-chart-visual")).not.toContainText(/Frostbite/i);
 });

@@ -4,10 +4,8 @@ import { PhysicalQuantityId } from "../../catalog/quantities";
 
 import { InputId } from "../../catalog/inputSlots";
 import { UnitSystem } from "../../catalog/units";
-import {
-  buildUtciStressChart,
-} from "./charts";
 import { type ChartBuildContext } from "../../catalog/modelCapabilities";
+import { ChartType } from "../../catalog/chartTypes";
 import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 import { buildChartPlotly } from "../../testSupport/modelChartTestHelpers";
 import {
@@ -20,15 +18,15 @@ import { requiredControlIdsByModel } from "../../testSupport/requiredModelContro
 
 describe("UTCI stress zones", () => {
   it.each([
-    [-40, "Very Strong Cold Stress"],
-    [-27, "Strong Cold Stress"],
-    [-13, "Moderate Cold Stress"],
-    [0, "Slight Cold Stress"],
-    [9, "No Thermal Stress"],
-    [26, "Moderate Heat Stress"],
-    [32, "Strong Heat Stress"],
-    [38, "Very Strong Heat Stress"],
-    [46, "Extreme Heat Stress"],
+    [-40, "extreme cold stress"],
+    [-27, "very strong cold stress"],
+    [-13, "strong cold stress"],
+    [0, "moderate cold stress"],
+    [9, "slight cold stress"],
+    [26, "no thermal stress"],
+    [32, "moderate heat stress"],
+    [38, "strong heat stress"],
+    [46, "very strong heat stress"],
   ] as const)("assigns the exact %s °C boundary to %s", (value, expectedLabel) => {
     expect(getUtciZoneMeta(value).label).toBe(expectedLabel);
   });
@@ -73,25 +71,30 @@ describe("UTCI Explore chart", () => {
         color: "#fedcba",
       },
     ];
-    const chart = buildUtciStressChart(
+    const chart = buildChartPlotly(
+      utciModelConfig,
+      ChartType.Utci,
       { inputs: { [InputId.Input1]: request } },
       { [InputId.Input1]: result, [InputId.Input2]: null, [InputId.Input3]: null },
       {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Utci, bands },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.UniversalThermalClimateIndex, bands },
       },
-    );
+    )!;
     const fillTrace = chart.traces.find(({ name }) => name === "UTCI bands");
     const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
-    const gapIndex = fillTrace?.x.findIndex((value) => (
+    const gapIndex = fillTrace?.x?.findIndex((value) => (
       value > result.utci + 1 && value < result.utci + 2
     )) ?? -1;
 
     expect(gapIndex).toBeGreaterThanOrEqual(0);
     expect(fillTrace?.z).toHaveLength(50);
     expect(fillTrace?.z?.[0]).toHaveLength(450);
-    expect(fillTrace?.z?.every((row) => Number.isNaN(row[gapIndex]))).toBe(true);
+    expect(fillTrace?.z?.every((row) => {
+      const cell = row[gapIndex];
+      return cell == null || Number.isNaN(cell);
+    })).toBe(true);
     expect(chart.traces.find(({ name }) => name === "UTCI bands hover"))
       .toBeUndefined();
     expect(fillTrace?.colorscale?.map(([, color]) => color))
@@ -105,13 +108,13 @@ describe("UTCI Explore chart", () => {
     const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
     const result = calculateUtci(request);
     const chart = buildChartPlotly(utciModelConfig,
-      "utci-dynamic-field",
+      "dynamic",
       { inputs: { [InputId.Input1]: request } },
       { [InputId.Input1]: result, [InputId.Input2]: null, [InputId.Input3]: null },
       {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Utci, bands: utciModelConfig.exploreOutputs[0].defaultBands },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.UniversalThermalClimateIndex, bands: utciModelConfig.exploreOutputs[0].defaultBands },
       },
     )!;
 
@@ -131,10 +134,10 @@ describe("UTCI Explore chart", () => {
     const context = {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
-      fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.OperativeTemperature, zOutput: PhysicalQuantityId.Utci, bands: utciModelConfig.exploreOutputs[0].defaultBands },
+      fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.OperativeTemperature, zOutput: PhysicalQuantityId.UniversalThermalClimateIndex, bands: utciModelConfig.exploreOutputs[0].defaultBands },
     } satisfies ChartBuildContext;
     const chart = buildChartPlotly(utciModelConfig,
-      "utci-dynamic-field",
+      "dynamic",
       { inputs: { [InputId.Input1]: request } },
       { [InputId.Input1]: result, [InputId.Input2]: null, [InputId.Input3]: null },
       context,
@@ -143,7 +146,7 @@ describe("UTCI Explore chart", () => {
     const fillTraces = chart.traces.filter(({ name, fill }) => (
       fill === "toself" && typeof name === "string" && name.includes("bands:")
     ));
-    expect(chart.layout.title).toContain("Dynamic Chart");
+    expect(chart.layout.title).toContain("Dynamic");
     expect(fillTraces.length).toBeGreaterThan(0);
   });
 

@@ -9,7 +9,7 @@ import { phsReferenceEnvironment } from "../../catalog/phs";
 import {
   phsExploreOutputs,
   phsModelConfig,
-  phsRequestAdapter,
+  phsQuantityMapping,
 } from "./phs";
 import { createPhsDynamicGridSpec } from "./charts";
 import { getPhsWaterLossLimitG, personFromModelInputs } from "./calculation";
@@ -22,7 +22,7 @@ function createComplianceContext(
     unitSystem: UnitSystem.SI,
     baselineInputId: InputId.Input1,
     modelInputs,
-    fieldChartConfig: { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PhsLimitingExposureTime, bands: phsModelConfig.complianceProfile!.bands as readonly NumericBand[] },
+    fieldChartConfig: { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.LimitingExposureTime, bands: phsModelConfig.complianceProfile!.bands as readonly NumericBand[] },
   };
 }
 
@@ -30,12 +30,12 @@ describe("createPhsDynamicGridSpec", () => {
   it("evaluates grid cells with person settings from chart modelInputs", () => {
     const defaultSpec = createPhsDynamicGridSpec(
       phsExploreOutputs,
-      phsRequestAdapter,
+      phsQuantityMapping,
       createComplianceContext(),
     );
     const heavySpec = createPhsDynamicGridSpec(
       phsExploreOutputs,
-      phsRequestAdapter,
+      phsQuantityMapping,
       createComplianceContext({
         [PhysicalQuantityId.BodyWeight]: 120,
       }),

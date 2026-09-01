@@ -14,7 +14,7 @@ const restrictedWireStringSelectors = [
   "met",
   "clo",
   "wme",
-  "trm",
+  "t_running_mean",
 ].map((value) => ({
   selector: `Literal[value='${value}']`,
   message: `Use PhysicalQuantityId instead of the wire string "${value}".`,

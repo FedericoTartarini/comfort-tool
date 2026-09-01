@@ -8,11 +8,11 @@ import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type { ChartBuildResult } from "../../engines/comfort/charts/chartBuildResult";
 import type {
   PrimaryInputState,
-  DerivedSlotQuantityState,
-  ChartAxisQuantityId,
+  PhysicalQuantityId,
   AuxiliaryInputState,
   PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../catalog/quantities";
+import type { DerivedSlotQuantityState } from "../../engines/comfort/derivations/psychrometrics";
 import type { InputControlKey as InputControlKeyType } from "../../catalog/inputControls";
 import type { ModelOptionsRecord, OptionKey as OptionKeyType } from "../../catalog/inputModes";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
@@ -85,8 +85,8 @@ export type PendingModelSwitch = {
 
 /** Per-model output presentation state; numeric band edges remain canonical SI. */
 export interface ModelOutputSettings {
-  xAxis: ChartAxisQuantityId;
-  yAxis: ChartAxisQuantityId;
+  xAxis: PhysicalQuantityId;
+  yAxis: PhysicalQuantityId;
   baselineInputId: InputIdType;
   exploreOutput: PhysicalQuantityIdType | null;
   exploreBands: NumericBand[] | null;
@@ -140,8 +140,8 @@ export type PointActions = {
   toggleUnitSystem: () => void;
   setActiveSurface: (workspace: SurfaceIdType) => void;
   setAllowedModelIds: (modelIds: readonly ModelIdType[]) => void;
-  setDynamicXAxis: (fieldKey: ChartAxisQuantityId) => void;
-  setDynamicYAxis: (fieldKey: ChartAxisQuantityId) => void;
+  setDynamicXAxis: (fieldKey: PhysicalQuantityId) => void;
+  setDynamicYAxis: (fieldKey: PhysicalQuantityId) => void;
   setExploreOutput: (outputKey: PhysicalQuantityIdType) => void;
   setExploreBands: (bands: readonly NumericBand[]) => boolean;
   setChartBaselineInputId: (inputId: InputIdType) => void;

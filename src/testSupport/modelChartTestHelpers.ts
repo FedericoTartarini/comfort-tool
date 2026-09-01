@@ -112,6 +112,7 @@ export type ChartFigure = {
     };
     annotations: Array<{ x: number; y: number; text: string }>;
   };
+  annotations: Array<{ x: number; y: number; text: string }>;
   payload: ChartPayload;
 };
 
@@ -158,6 +159,11 @@ export function chartFigure(
         text: annotation.text,
       })),
     },
+    annotations: (payload.input.annotations ?? []).map((annotation) => ({
+      x: annotation.x,
+      y: annotation.y,
+      text: annotation.text,
+    })),
     payload,
   };
 }

@@ -1,5 +1,5 @@
 import type { CalculationSource } from "../../../catalog/calculationMetadata";
-import { type ChartAxisQuantityId } from "../../../catalog/quantities";
+import { type PhysicalQuantityId } from "../../../catalog/quantities";
 import type {
   PlotAnnotation,
   PlotHoverCell,
@@ -31,7 +31,7 @@ export function resolveInteractiveDynamicGridPoints(
 }
 
 export interface ChartAxisScale {
-  field: ChartAxisQuantityId;
+  field: PhysicalQuantityId;
   label: string;
   units: string;
   rangeSi: ChartRange;

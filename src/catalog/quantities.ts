@@ -1,24 +1,16 @@
-import { SiUnit, type UnitSystem as UnitSystemType } from "./units";
+import {
+  IpUnit,
+  SiUnit,
+  unitLabel,
+  type UnitSystem as UnitSystemType,
+} from "./units";
 
-/** Matches ModifierId wire values; kept here to avoid circular imports with inputModifiers. */
-export const ModifierQuantityOwner = {
-  MeasuredAirSpeed: "measuredAirSpeed",
-  MorningClothingEstimate: "morningClothingEstimate",
-  DynamicClothing: "dynamicClothing",
-  SolarGain: "solarGain",
+export const QuantityCategory = {
+  Humidity: "humidity",
 } as const;
 
-export type ModifierQuantityOwner =
-  (typeof ModifierQuantityOwner)[keyof typeof ModifierQuantityOwner];
-
-/** Occupancy for write routing. Derived from lists, not stamped on catalog rows. */
-export const QuantityState = {
-  Primary: "primary",
-  Slot: "slot",
-  Extra: "extra",
-} as const;
-
-export type QuantityState = (typeof QuantityState)[keyof typeof QuantityState];
+export type QuantityCategory =
+  (typeof QuantityCategory)[keyof typeof QuantityCategory];
 
 export const PhysicalQuantityId = {
   DryBulbTemperature: "tdb",
@@ -30,32 +22,33 @@ export const PhysicalQuantityId = {
   MetabolicRate: "met",
   ClothingInsulation: "clo",
   ExternalWork: "wme",
-  PrevailingMeanOutdoorTemperature: "trm",
-  OperativeTemperature: "to",
-  DewPoint: "humidity.dewPoint",
-  WetBulb: "humidity.wetBulb",
-  VaporPressure: "humidity.vaporPressure",
-  ModifierMeasuredAirSpeed: "modifier.measuredAirSpeed",
-  ModifierMorningOutdoorTemperature: "modifier.morningOutdoorTemperature",
-  ModifierSolarAltitude: "modifier.solarAltitude",
-  ModifierSolarHorizontalAngle: "modifier.solarHorizontalAngle",
-  ModifierDirectSolarRadiation: "modifier.directSolarRadiation",
-  ModifierSolarTransmittance: "modifier.solarTransmittance",
-  ModifierSkyVaultViewFraction: "modifier.skyVaultViewFraction",
-  ModifierBodyExposureFraction: "modifier.bodyExposureFraction",
-  BodyWeight: "bodyWeight",
+  PrevailingMeanOutdoorTemperature: "t_running_mean",
+  OperativeTemperature: "t_o",
+  DewPointTemperature: "t_dp",
+  WetBulbTemperature: "t_wb",
+  VaporPressure: "p_vap",
+  MeasuredAirSpeed: "v_measured",
+  MorningOutdoorTemperature: "tout",
+  SolarAltitude: "sol_altitude",
+  SolarHorizontalAngle: "sharp",
+  DirectSolarRadiation: "sol_radiation_dir",
+  SolarTransmittance: "sol_transmittance",
+  SkyVaultViewFraction: "f_svv",
+  BodyExposureFraction: "f_bes",
+  BodyWeight: "weight",
   Height: "height",
-  Pmv: "pmv",
-  Ppd: "ppd",
-  Set: "set",
-  CoolingEffect: "coolingEffect",
-  HeatIndex: "heatIndex",
+  PredictedMeanVote: "pmv",
+  PredictedPercentageOfDissatisfied: "ppd",
+  StandardEffectiveTemperature: "set",
+  CoolingEffect: "ce",
+  HeatIndex: "hi",
   Humidex: "humidex",
-  WindChill: "windChill",
-  Utci: "utci",
-  PhsLimitingExposureTime: "phsLimitingExposureTime",
-  PhsRectalTemperature: "phsRectalTemperature",
-  PhsWaterLoss: "phsWaterLoss",
+  WindChillIndex: "wci",
+  WindChillTemperature: "wct",
+  UniversalThermalClimateIndex: "utci",
+  LimitingExposureTime: "limiting_exposure_time",
+  RectalTemperature: "t_re",
+  SweatLoss: "sweat_loss_g",
 } as const;
 
 export type PhysicalQuantityId =
@@ -76,376 +69,381 @@ export const primaryInputOrder = [
 export type PrimaryQuantityId = (typeof primaryInputOrder)[number];
 export type PrimaryInputState = Record<PrimaryQuantityId, number>;
 
-export const extraQuantityIds = [
-  PhysicalQuantityId.BodyWeight,
-  PhysicalQuantityId.Height,
-] as const;
-
-export type ExtraQuantityId = (typeof extraQuantityIds)[number];
-
-export interface QuantityDisplayMeta {
-  units: { SI: SiUnit; IP: string };
-  displayUnits: { SI: string; IP: string };
-  step: number;
-}
-
-export interface PhysicalQuantityMeta { id: PhysicalQuantityId;
+export interface PhysicalQuantityMeta {
+  id: PhysicalQuantityId;
   label: string;
-  display: QuantityDisplayMeta;
+  units: { SI: SiUnit; IP: IpUnit };
   defaultSi: number;
   minSi: number;
   maxSi: number;
-  derivedFrom?: readonly PhysicalQuantityId[];
-  modifierId?: ModifierQuantityOwner; }
+  step: number;
+  category?: QuantityCategory;
+}
 
-const temperatureDisplay: QuantityDisplayMeta = {
-  units: { SI: SiUnit.DegreeCelsius, IP: "degF" },
-  displayUnits: { SI: "°C", IP: "°F" },
-  step: 0.5,
-};
+const temperatureUnits = {
+  SI: SiUnit.DegreeCelsius,
+  IP: IpUnit.DegreeFahrenheit,
+} as const;
 
-const speedDisplay: QuantityDisplayMeta = {
-  units: { SI: SiUnit.MeterPerSecond, IP: "ft/s" },
-  displayUnits: { SI: "m/s", IP: "ft/s" },
-  step: 0.01,
-};
+const speedUnits = {
+  SI: SiUnit.MeterPerSecond,
+  IP: IpUnit.FootPerSecond,
+} as const;
 
-const windSpeedDisplay: QuantityDisplayMeta = {
-  units: { SI: SiUnit.MeterPerSecond, IP: "ft/s" },
-  displayUnits: { SI: "m/s", IP: "ft/s" },
-  step: 0.1,
-};
+const dimensionlessUnits = {
+  SI: SiUnit.Dimensionless,
+  IP: IpUnit.Dimensionless,
+} as const;
 
-const humidityRatioDisplay: QuantityDisplayMeta = {
-  units: { SI: SiUnit.KilogramPerKilogram, IP: "gr/lb" },
-  displayUnits: { SI: "g/kg", IP: "gr/lb" },
-  step: 0.1,
-};
+const percentUnits = {
+  SI: SiUnit.Percent,
+  IP: IpUnit.Percent,
+} as const;
 
-const vaporPressureDisplay: QuantityDisplayMeta = {
-  units: { SI: SiUnit.Pascal, IP: "inHg" },
-  displayUnits: { SI: "kPa", IP: "inHg" },
-  step: 0.01,
-};
+const metUnits = {
+  SI: SiUnit.Met,
+  IP: IpUnit.Met,
+} as const;
 
-const dimensionlessDisplay: QuantityDisplayMeta = {
-  units: { SI: SiUnit.Dimensionless, IP: "1" },
-  displayUnits: { SI: "", IP: "" },
-  step: 0.05,
-};
+const degreeUnits = {
+  SI: SiUnit.Degree,
+  IP: IpUnit.Degree,
+} as const;
+
+const heatFluxUnits = {
+  SI: SiUnit.WattPerSquareMeter,
+  IP: IpUnit.BtuPerHourSquareFoot,
+} as const;
 
 export const physicalQuantityMetaById: Record<PhysicalQuantityId, PhysicalQuantityMeta> = {
   [PhysicalQuantityId.DryBulbTemperature]: {
     id: PhysicalQuantityId.DryBulbTemperature,
     label: "Air temperature",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 25,
     minSi: 10,
     maxSi: 40,
+    step: 0.5,
   },
   [PhysicalQuantityId.MeanRadiantTemperature]: {
     id: PhysicalQuantityId.MeanRadiantTemperature,
     label: "Radiant temperature",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 25,
     minSi: 10,
     maxSi: 40,
+    step: 0.5,
   },
   [PhysicalQuantityId.RelativeAirSpeed]: {
     id: PhysicalQuantityId.RelativeAirSpeed,
     label: "Air speed",
-    display: speedDisplay,
+    units: speedUnits,
     defaultSi: 0.1,
     minSi: 0,
     maxSi: 2,
+    step: 0.01,
   },
   [PhysicalQuantityId.WindSpeed]: {
     id: PhysicalQuantityId.WindSpeed,
     label: "Wind speed",
-    display: windSpeedDisplay,
+    units: speedUnits,
     defaultSi: 1,
     minSi: 0,
     maxSi: 17,
+    step: 0.1,
   },
   [PhysicalQuantityId.RelativeHumidity]: {
     id: PhysicalQuantityId.RelativeHumidity,
     label: "Relative humidity",
-    display: {
-      units: { SI: SiUnit.Percent, IP: "%" },
-      displayUnits: { SI: "%", IP: "%" },
-      step: 1,
-    },
+    units: percentUnits,
     defaultSi: 50,
     minSi: 0,
     maxSi: 100,
+    step: 1,
+    category: QuantityCategory.Humidity,
   },
-  [PhysicalQuantityId.HumidityRatio]: { id: PhysicalQuantityId.HumidityRatio, label: "Humidity ratio", display: humidityRatioDisplay, defaultSi: 0.009, minSi: 0, maxSi: 0.025, derivedFrom: [
-      PhysicalQuantityId.RelativeHumidity, PhysicalQuantityId.DryBulbTemperature, ] },
+  [PhysicalQuantityId.HumidityRatio]: {
+    id: PhysicalQuantityId.HumidityRatio,
+    label: "Humidity ratio",
+    units: { SI: SiUnit.KilogramPerKilogram, IP: IpUnit.GrainPerPound },
+    defaultSi: 0.009,
+    minSi: 0,
+    maxSi: 0.025,
+    step: 0.1,
+    category: QuantityCategory.Humidity,
+  },
   [PhysicalQuantityId.MetabolicRate]: {
     id: PhysicalQuantityId.MetabolicRate,
     label: "Metabolic rate",
-    display: {
-      units: { SI: SiUnit.Met, IP: "met" },
-      displayUnits: { SI: "met", IP: "met" },
-      step: 0.1,
-    },
+    units: metUnits,
     defaultSi: 1.2,
     minSi: 1,
     maxSi: 4,
+    step: 0.1,
   },
   [PhysicalQuantityId.ClothingInsulation]: {
     id: PhysicalQuantityId.ClothingInsulation,
     label: "Clothing insulation",
-    display: {
-      units: { SI: SiUnit.Clo, IP: "clo" },
-      displayUnits: { SI: "clo", IP: "clo" },
-      step: 0.1,
-    },
+    units: { SI: SiUnit.Clo, IP: IpUnit.Clo },
     defaultSi: 0.5,
     minSi: 0,
     maxSi: 1.5,
+    step: 0.1,
   },
   [PhysicalQuantityId.ExternalWork]: {
     id: PhysicalQuantityId.ExternalWork,
     label: "External work",
-    display: {
-      units: { SI: SiUnit.Met, IP: "met" },
-      displayUnits: { SI: "met", IP: "met" },
-      step: 0.1,
-    },
+    units: metUnits,
     defaultSi: 0,
     minSi: 0,
     maxSi: 2,
+    step: 0.1,
   },
   [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: {
     id: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
     label: "Mean outdoor temperature",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 20,
     minSi: 10,
     maxSi: 33.5,
+    step: 0.5,
   },
   [PhysicalQuantityId.OperativeTemperature]: {
     id: PhysicalQuantityId.OperativeTemperature,
     label: "Operative temperature",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 25,
     minSi: 10,
     maxSi: 40,
+    step: 0.5,
   },
-  [PhysicalQuantityId.DewPoint]: { id: PhysicalQuantityId.DewPoint, label: "Dew point temperature", display: temperatureDisplay, defaultSi: 15, minSi: -50, maxSi: 50, derivedFrom: [
-      PhysicalQuantityId.RelativeHumidity, PhysicalQuantityId.DryBulbTemperature, ] },
-  [PhysicalQuantityId.WetBulb]: { id: PhysicalQuantityId.WetBulb, label: "Wet bulb temperature", display: temperatureDisplay, defaultSi: 18, minSi: -50, maxSi: 50, derivedFrom: [
-      PhysicalQuantityId.RelativeHumidity, PhysicalQuantityId.DryBulbTemperature, ] },
-  [PhysicalQuantityId.VaporPressure]: { id: PhysicalQuantityId.VaporPressure, label: "Vapor pressure", display: vaporPressureDisplay, defaultSi: 1500, minSi: 0, maxSi: 10000, derivedFrom: [
-      PhysicalQuantityId.RelativeHumidity, PhysicalQuantityId.DryBulbTemperature, ] },
-  [PhysicalQuantityId.ModifierMeasuredAirSpeed]: {
-    id: PhysicalQuantityId.ModifierMeasuredAirSpeed,
+  [PhysicalQuantityId.DewPointTemperature]: {
+    id: PhysicalQuantityId.DewPointTemperature,
+    label: "Dew point temperature",
+    units: temperatureUnits,
+    defaultSi: 15,
+    minSi: -50,
+    maxSi: 50,
+    step: 0.5,
+    category: QuantityCategory.Humidity,
+  },
+  [PhysicalQuantityId.WetBulbTemperature]: {
+    id: PhysicalQuantityId.WetBulbTemperature,
+    label: "Wet bulb temperature",
+    units: temperatureUnits,
+    defaultSi: 18,
+    minSi: -50,
+    maxSi: 50,
+    step: 0.5,
+    category: QuantityCategory.Humidity,
+  },
+  [PhysicalQuantityId.VaporPressure]: {
+    id: PhysicalQuantityId.VaporPressure,
+    label: "Vapor pressure",
+    units: { SI: SiUnit.Pascal, IP: IpUnit.InchOfMercury },
+    defaultSi: 1500,
+    minSi: 0,
+    maxSi: 10000,
+    step: 0.01,
+    category: QuantityCategory.Humidity,
+  },
+  [PhysicalQuantityId.MeasuredAirSpeed]: {
+    id: PhysicalQuantityId.MeasuredAirSpeed,
     label: "Measured air speed",
-    display: speedDisplay,
+    units: speedUnits,
     defaultSi: 0.1,
     minSi: 0,
     maxSi: 2,
-    modifierId: ModifierQuantityOwner.MeasuredAirSpeed,
+    step: 0.01,
   },
-  [PhysicalQuantityId.ModifierMorningOutdoorTemperature]: {
-    id: PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+  [PhysicalQuantityId.MorningOutdoorTemperature]: {
+    id: PhysicalQuantityId.MorningOutdoorTemperature,
     label: "Outdoor air temperature at 6 a.m.",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 20,
     minSi: -50,
     maxSi: 50,
-    modifierId: ModifierQuantityOwner.MorningClothingEstimate,
+    step: 0.5,
   },
-  [PhysicalQuantityId.ModifierSolarAltitude]: {
-    id: PhysicalQuantityId.ModifierSolarAltitude,
+  [PhysicalQuantityId.SolarAltitude]: {
+    id: PhysicalQuantityId.SolarAltitude,
     label: "Solar altitude",
-    display: { units: { SI: SiUnit.Degree, IP: "deg" }, displayUnits: { SI: "°", IP: "°" }, step: 1 },
+    units: degreeUnits,
     defaultSi: 45,
     minSi: 0,
     maxSi: 90,
-    modifierId: ModifierQuantityOwner.SolarGain,
+    step: 1,
   },
-  [PhysicalQuantityId.ModifierSolarHorizontalAngle]: {
-    id: PhysicalQuantityId.ModifierSolarHorizontalAngle,
+  [PhysicalQuantityId.SolarHorizontalAngle]: {
+    id: PhysicalQuantityId.SolarHorizontalAngle,
     label: "Solar horizontal angle (SHARP)",
-    display: { units: { SI: SiUnit.Degree, IP: "deg" }, displayUnits: { SI: "°", IP: "°" }, step: 1 },
+    units: degreeUnits,
     defaultSi: 0,
     minSi: 0,
     maxSi: 180,
-    modifierId: ModifierQuantityOwner.SolarGain,
+    step: 1,
   },
-  [PhysicalQuantityId.ModifierDirectSolarRadiation]: {
-    id: PhysicalQuantityId.ModifierDirectSolarRadiation,
+  [PhysicalQuantityId.DirectSolarRadiation]: {
+    id: PhysicalQuantityId.DirectSolarRadiation,
     label: "Direct-beam solar radiation",
-    display: {
-      units: { SI: SiUnit.WattPerSquareMeter, IP: "Btu/(h·ft2)" },
-      displayUnits: { SI: "W/m²", IP: "Btu/(h·ft²)" },
-      step: 10,
-    },
+    units: heatFluxUnits,
     defaultSi: 500,
     minSi: 200,
     maxSi: 1000,
-    modifierId: ModifierQuantityOwner.SolarGain,
+    step: 10,
   },
-  [PhysicalQuantityId.ModifierSolarTransmittance]: {
-    id: PhysicalQuantityId.ModifierSolarTransmittance,
+  [PhysicalQuantityId.SolarTransmittance]: {
+    id: PhysicalQuantityId.SolarTransmittance,
     label: "Total solar transmittance",
-    display: dimensionlessDisplay,
+    units: dimensionlessUnits,
     defaultSi: 0.5,
     minSi: 0,
     maxSi: 1,
-    modifierId: ModifierQuantityOwner.SolarGain,
+    step: 0.05,
   },
-  [PhysicalQuantityId.ModifierSkyVaultViewFraction]: {
-    id: PhysicalQuantityId.ModifierSkyVaultViewFraction,
+  [PhysicalQuantityId.SkyVaultViewFraction]: {
+    id: PhysicalQuantityId.SkyVaultViewFraction,
     label: "Sky-vault view fraction",
-    display: dimensionlessDisplay,
+    units: dimensionlessUnits,
     defaultSi: 0.5,
     minSi: 0,
     maxSi: 1,
-    modifierId: ModifierQuantityOwner.SolarGain,
+    step: 0.05,
   },
-  [PhysicalQuantityId.ModifierBodyExposureFraction]: {
-    id: PhysicalQuantityId.ModifierBodyExposureFraction,
+  [PhysicalQuantityId.BodyExposureFraction]: {
+    id: PhysicalQuantityId.BodyExposureFraction,
     label: "Body surface exposed to sun",
-    display: dimensionlessDisplay,
+    units: dimensionlessUnits,
     defaultSi: 0.25,
     minSi: 0,
     maxSi: 1,
-    modifierId: ModifierQuantityOwner.SolarGain,
+    step: 0.05,
   },
   [PhysicalQuantityId.BodyWeight]: {
     id: PhysicalQuantityId.BodyWeight,
     label: "Body weight",
-    display: {
-      units: { SI: SiUnit.Kilogram, IP: "lb" },
-      displayUnits: { SI: "kg", IP: "lb" },
-      step: 1,
-    },
+    units: { SI: SiUnit.Kilogram, IP: IpUnit.Pound },
     defaultSi: 75,
     minSi: 30,
     maxSi: 200,
+    step: 1,
   },
   [PhysicalQuantityId.Height]: {
     id: PhysicalQuantityId.Height,
     label: "Body height",
-    display: {
-      units: { SI: SiUnit.Meter, IP: "ft" },
-      displayUnits: { SI: "m", IP: "ft" },
-      step: 0.01,
-    },
+    units: { SI: SiUnit.Meter, IP: IpUnit.Foot },
     defaultSi: 1.8,
     minSi: 1.2,
     maxSi: 2.2,
+    step: 0.01,
   },
-  [PhysicalQuantityId.Pmv]: {
-    id: PhysicalQuantityId.Pmv,
+  [PhysicalQuantityId.PredictedMeanVote]: {
+    id: PhysicalQuantityId.PredictedMeanVote,
     label: "PMV",
-    display: { units: { SI: SiUnit.Dimensionless, IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 0.1 },
+    units: dimensionlessUnits,
     defaultSi: 0,
     minSi: -3,
     maxSi: 3,
+    step: 0.1,
   },
-  [PhysicalQuantityId.Ppd]: {
-    id: PhysicalQuantityId.Ppd,
+  [PhysicalQuantityId.PredictedPercentageOfDissatisfied]: {
+    id: PhysicalQuantityId.PredictedPercentageOfDissatisfied,
     label: "PPD",
-    display: {
-      units: { SI: SiUnit.Percent, IP: "%" },
-      displayUnits: { SI: "%", IP: "%" },
-      step: 1,
-    },
+    units: percentUnits,
     defaultSi: 10,
     minSi: 0,
     maxSi: 100,
+    step: 1,
   },
-  [PhysicalQuantityId.Set]: {
-    id: PhysicalQuantityId.Set,
+  [PhysicalQuantityId.StandardEffectiveTemperature]: {
+    id: PhysicalQuantityId.StandardEffectiveTemperature,
     label: "SET",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 25,
     minSi: 10,
     maxSi: 40,
+    step: 0.5,
   },
   [PhysicalQuantityId.CoolingEffect]: {
     id: PhysicalQuantityId.CoolingEffect,
     label: "Cooling effect",
-    display: {
-      units: { SI: SiUnit.KelvinDelta, IP: "deltaF" },
-      displayUnits: { SI: "°C", IP: "°F" },
-      step: 0.1,
-    },
+    units: { SI: SiUnit.KelvinDelta, IP: IpUnit.DeltaFahrenheit },
     defaultSi: 0,
     minSi: 0,
     maxSi: 20,
+    step: 0.1,
   },
   [PhysicalQuantityId.HeatIndex]: {
     id: PhysicalQuantityId.HeatIndex,
     label: "Heat index",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 25,
     minSi: -40,
     maxSi: 120,
+    step: 0.5,
   },
   [PhysicalQuantityId.Humidex]: {
     id: PhysicalQuantityId.Humidex,
     label: "Humidex",
-    display: { units: { SI: SiUnit.Dimensionless, IP: "1" }, displayUnits: { SI: "", IP: "" }, step: 1 },
+    units: dimensionlessUnits,
     defaultSi: 25,
     minSi: -50,
     maxSi: 80,
+    step: 1,
   },
-  [PhysicalQuantityId.WindChill]: {
-    id: PhysicalQuantityId.WindChill,
+  [PhysicalQuantityId.WindChillIndex]: {
+    id: PhysicalQuantityId.WindChillIndex,
     label: "Wind chill",
-    display: {
-      units: { SI: SiUnit.WattPerSquareMeter, IP: "Btu/(h·ft2)" },
-      displayUnits: { SI: "W/m²", IP: "BTU/(h·ft²)" },
-      step: 10,
-    },
+    units: heatFluxUnits,
     defaultSi: 0,
     minSi: -2000,
     maxSi: 2000,
+    step: 10,
   },
-  [PhysicalQuantityId.Utci]: {
-    id: PhysicalQuantityId.Utci,
+  [PhysicalQuantityId.WindChillTemperature]: {
+    id: PhysicalQuantityId.WindChillTemperature,
+    label: "Wind chill temperature",
+    units: temperatureUnits,
+    defaultSi: 0,
+    minSi: -50,
+    maxSi: 10,
+    step: 0.5,
+  },
+  [PhysicalQuantityId.UniversalThermalClimateIndex]: {
+    id: PhysicalQuantityId.UniversalThermalClimateIndex,
     label: "UTCI",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 20,
     minSi: -50,
     maxSi: 50,
+    step: 0.5,
   },
-  [PhysicalQuantityId.PhsLimitingExposureTime]: {
-    id: PhysicalQuantityId.PhsLimitingExposureTime,
+  [PhysicalQuantityId.LimitingExposureTime]: {
+    id: PhysicalQuantityId.LimitingExposureTime,
     label: "Limiting exposure time",
-    display: {
-      units: { SI: SiUnit.Minute, IP: "min" },
-      displayUnits: { SI: "h", IP: "h" },
-      step: 0.25,
-    },
+    units: { SI: SiUnit.Minute, IP: IpUnit.Hour },
     defaultSi: 480,
     minSi: 0,
     maxSi: 480,
+    step: 0.25,
   },
-  [PhysicalQuantityId.PhsRectalTemperature]: {
-    id: PhysicalQuantityId.PhsRectalTemperature,
+  [PhysicalQuantityId.RectalTemperature]: {
+    id: PhysicalQuantityId.RectalTemperature,
     label: "Rectal temperature",
-    display: temperatureDisplay,
+    units: temperatureUnits,
     defaultSi: 37,
     minSi: 36,
     maxSi: 42,
+    step: 0.5,
   },
-  [PhysicalQuantityId.PhsWaterLoss]: {
-    id: PhysicalQuantityId.PhsWaterLoss,
+  [PhysicalQuantityId.SweatLoss]: {
+    id: PhysicalQuantityId.SweatLoss,
     label: "Water loss",
-    display: {
-      units: { SI: SiUnit.Gram, IP: "lb" },
-      displayUnits: { SI: "kg", IP: "lb" },
-      step: 0.1,
-    },
+    units: { SI: SiUnit.Gram, IP: IpUnit.Pound },
     defaultSi: 0,
     minSi: 0,
     maxSi: 10,
+    step: 0.1,
   },
 };
 
@@ -453,8 +451,8 @@ export function isPhysicalQuantityId(value: string): value is PhysicalQuantityId
   return Object.prototype.hasOwnProperty.call(physicalQuantityMetaById, value);
 }
 
-export function isExtraQuantityId(value: string): value is ExtraQuantityId {
-  return extraQuantityIds.some((id) => id === value);
+export function isPrimaryQuantityId(value: string): value is PrimaryQuantityId {
+  return primaryInputOrder.some((quantityId) => quantityId === value);
 }
 
 export function getPhysicalQuantityMeta(id: PhysicalQuantityId): PhysicalQuantityMeta {
@@ -465,66 +463,25 @@ export function getPhysicalQuantityMeta(id: PhysicalQuantityId): PhysicalQuantit
   return meta;
 }
 
-export const derivedSlotQuantityIds = [
-  PhysicalQuantityId.DewPoint,
+export function humidityQuantityIds(): readonly PhysicalQuantityId[] {
+  return Object.values(physicalQuantityMetaById)
+    .filter((meta) => (
+      meta.category === QuantityCategory.Humidity
+      && meta.id !== PhysicalQuantityId.RelativeHumidity
+    ))
+    .map((meta) => meta.id);
+}
+
+export const derivedHumidityQuantityIds = [
+  PhysicalQuantityId.DewPointTemperature,
   PhysicalQuantityId.HumidityRatio,
-  PhysicalQuantityId.WetBulb,
+  PhysicalQuantityId.WetBulbTemperature,
   PhysicalQuantityId.VaporPressure,
 ] as const;
 
-export type DerivedSlotQuantityId = (typeof derivedSlotQuantityIds)[number];
-export type DerivedSlotQuantityState = Record<DerivedSlotQuantityId, number>;
-
-export const derivedQuantityIds = derivedSlotQuantityIds;
+export type DerivedHumidityQuantityId = (typeof derivedHumidityQuantityIds)[number];
 
 export type AuxiliaryInputState = Partial<Record<PhysicalQuantityId, number>>;
-
-export const chartAxisQuantityIds = [
-  PhysicalQuantityId.DryBulbTemperature,
-  PhysicalQuantityId.MeanRadiantTemperature,
-  PhysicalQuantityId.RelativeAirSpeed,
-  PhysicalQuantityId.WindSpeed,
-  PhysicalQuantityId.RelativeHumidity,
-  PhysicalQuantityId.HumidityRatio,
-  PhysicalQuantityId.MetabolicRate,
-  PhysicalQuantityId.ClothingInsulation,
-  PhysicalQuantityId.ExternalWork,
-  PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
-  PhysicalQuantityId.OperativeTemperature,
-] as const;
-
-export type ChartAxisQuantityId = (typeof chartAxisQuantityIds)[number];
-
-export const slotQuantityIdsForModifier = (
-  modifierId: ModifierQuantityOwner,
-): PhysicalQuantityId[] =>
-  Object.values(physicalQuantityMetaById)
-    .filter((meta) => meta.modifierId === modifierId)
-    .map((meta) => meta.id);
-
-export function slotQuantityIds(): readonly PhysicalQuantityId[] {
-  return [
-    ...derivedQuantityIds,
-    ...Object.values(physicalQuantityMetaById)
-      .filter((meta) => meta.modifierId !== undefined)
-      .map((meta) => meta.id),
-  ];
-}
-
-export function resolveQuantityState(
-  id: PhysicalQuantityId,
-): QuantityState | undefined {
-  if (primaryInputOrder.some((quantityId) => quantityId === id)) {
-    return QuantityState.Primary;
-  }
-  if (extraQuantityIds.some((quantityId) => quantityId === id)) {
-    return QuantityState.Extra;
-  }
-  if (slotQuantityIds().includes(id)) {
-    return QuantityState.Slot;
-  }
-  return undefined;
-}
 
 export function createDefaultPrimaryInputState(): PrimaryInputState {
   return primaryInputOrder.reduce((accumulator, id) => {
@@ -537,10 +494,10 @@ export function getQuantityDisplayMeta(
   id: PhysicalQuantityId,
   unitSystem: UnitSystemType,
 ): { displayUnits: string; step: number } {
-  const { display } = getPhysicalQuantityMeta(id);
+  const meta = getPhysicalQuantityMeta(id);
   return {
-    displayUnits: display.displayUnits[unitSystem],
-    step: display.step,
+    displayUnits: unitLabel(meta.units, unitSystem),
+    step: meta.step,
   };
 }
 

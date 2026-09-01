@@ -73,17 +73,17 @@ describe("units helpers", () => {
   });
 
   it("converts dew point and solar radiation from catalog SI units, not quantity-id lists", () => {
-    expect(convertQuantityFromSi(PhysicalQuantityId.DewPoint, 0, UnitSystem.IP)).toBe(32);
-    expect(convertQuantityToSi(PhysicalQuantityId.DewPoint, 32, UnitSystem.IP)).toBeCloseTo(0, 10);
+    expect(convertQuantityFromSi(PhysicalQuantityId.DewPointTemperature, 0, UnitSystem.IP)).toBe(32);
+    expect(convertQuantityToSi(PhysicalQuantityId.DewPointTemperature, 32, UnitSystem.IP)).toBeCloseTo(0, 10);
 
     const displayRadiation = convertQuantityFromSi(
-      PhysicalQuantityId.ModifierDirectSolarRadiation,
+      PhysicalQuantityId.DirectSolarRadiation,
       1000,
       UnitSystem.IP,
     );
     expect(displayRadiation).toBeCloseTo(316.9983306281505, 8);
     expect(convertQuantityToSi(
-      PhysicalQuantityId.ModifierDirectSolarRadiation,
+      PhysicalQuantityId.DirectSolarRadiation,
       displayRadiation,
       UnitSystem.IP,
     )).toBeCloseTo(1000, 8);
@@ -144,11 +144,11 @@ describe("units helpers", () => {
     expect(convertFieldValueFromSi(PhysicalQuantityId.DryBulbTemperature, valueSi, UnitSystem.IP))
       .toBe(convertQuantityFromSi(PhysicalQuantityId.DryBulbTemperature, valueSi, UnitSystem.IP));
     expect(convertModifierFieldValueFromSi(
-      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      PhysicalQuantityId.MorningOutdoorTemperature,
       valueSi,
       UnitSystem.IP,
     )).toBe(convertQuantityFromSi(
-      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      PhysicalQuantityId.MorningOutdoorTemperature,
       valueSi,
       UnitSystem.IP,
     ));
@@ -198,23 +198,23 @@ describe("units helpers", () => {
 
   it("converts PHS exposure time from minutes to hours and water loss from grams", () => {
     expect(convertQuantityFromSi(
-      PhysicalQuantityId.PhsLimitingExposureTime,
+      PhysicalQuantityId.LimitingExposureTime,
       480,
       UnitSystem.SI,
     )).toBe(8);
     expect(convertQuantityToSi(
-      PhysicalQuantityId.PhsLimitingExposureTime,
+      PhysicalQuantityId.LimitingExposureTime,
       8,
       UnitSystem.SI,
     )).toBe(480);
 
     expect(convertQuantityFromSi(
-      PhysicalQuantityId.PhsWaterLoss,
+      PhysicalQuantityId.SweatLoss,
       2500,
       UnitSystem.SI,
     )).toBeCloseTo(2.5, 10);
     expect(convertQuantityFromSi(
-      PhysicalQuantityId.PhsWaterLoss,
+      PhysicalQuantityId.SweatLoss,
       2500,
       UnitSystem.IP,
     )).toBeCloseTo(convertMassFromSi(2500), 8);
@@ -222,7 +222,7 @@ describe("units helpers", () => {
 
   it("does not round conversion results", () => {
     const displayRadiation = convertQuantityFromSi(
-      PhysicalQuantityId.ModifierDirectSolarRadiation,
+      PhysicalQuantityId.DirectSolarRadiation,
       1000,
       UnitSystem.IP,
     );

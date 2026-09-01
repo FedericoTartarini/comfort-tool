@@ -1,5 +1,7 @@
 import type { ModelChartSource } from "../../catalog/chartSource";
-import type { ChartAxisQuantityId, PrimaryQuantityId } from "../../catalog/quantities";
+import {
+  type PhysicalQuantityId,
+} from "../../catalog/quantities";
 import {
   InputId,
   type InputId as InputIdType,
@@ -11,59 +13,92 @@ export type CalculationRequestMapper<TRequest> = (
   inputId: InputIdType,
 ) => TRequest;
 
-type NumericRequestFieldMap<TRequest extends object> = {
-  [TRequestProperty in keyof TRequest as TRequest[TRequestProperty] extends number
-    ? TRequestProperty
-    : never]: PrimaryQuantityId;
-};
-
-export interface FieldRequestAdapter<TRequest extends object> {
+export interface LibraryQuantityMapping<TRequest extends object> {
   readonly mapRequest: CalculationRequestMapper<TRequest>;
-  readonly getAxisValue: (request: TRequest, field: ChartAxisQuantityId) => number;
+  readonly toLibrary: (
+    siByQuantity: Partial<Record<PhysicalQuantityId, number>>,
+  ) => Record<string, number>;
+  readonly fromLibrary: (
+    jsObject: object,
+  ) => Partial<Record<PhysicalQuantityId, number>>;
+  readonly getAxisValue: (request: TRequest, field: PhysicalQuantityId) => number;
   readonly setAxisValue: (
     request: TRequest,
-    field: ChartAxisQuantityId,
+    field: PhysicalQuantityId,
     valueSi: number,
   ) => void;
 }
 
-/** Creates calculation and chart-axis adapters from one canonical field mapping. */
-export function createFieldRequestAdapter<TRequest extends object>(
-  fieldByRequestProperty: NumericRequestFieldMap<TRequest>,
-): FieldRequestAdapter<TRequest> {
-  const entries = Object.entries(fieldByRequestProperty) as Array<
-    [keyof TRequest & string, PrimaryQuantityId]
+/**
+ * Per-model table of jsthermalcomfort field names ↔ catalog quantities.
+ * Direction is supplied by the call (`toLibrary` / `fromLibrary` / axis get-set).
+ */
+export function defineLibraryQuantityMapping<TRequest extends object>(
+  fieldByLibraryName: Record<string, PhysicalQuantityId>,
+): LibraryQuantityMapping<TRequest> {
+  const entries = Object.entries(fieldByLibraryName) as Array<
+    [string, PhysicalQuantityId]
   >;
 
-  function getRequestProperty(field: ChartAxisQuantityId): keyof TRequest & string {
-    const entry = entries.find(([, mappedField]) => mappedField === field);
+  function libraryNameForQuantity(field: PhysicalQuantityId): string {
+    const entry = entries.find(([, quantityId]) => quantityId === field);
     if (!entry) {
       throw new Error(`Unsupported request field: ${field}`);
     }
     return entry[0];
   }
 
-  const mapRequest: CalculationRequestMapper<TRequest> = (context, inputId) => {
-    const input = context.effectiveQuantitiesByInput[inputId];
-    return Object.fromEntries(
-      entries.map(([requestProperty, fieldKey]) => [
-        requestProperty,
-        input[fieldKey],
-      ]),
-    ) as TRequest;
-  };
+  function toLibrary(
+    siByQuantity: Partial<Record<PhysicalQuantityId, number>>,
+  ): Record<string, number> {
+    const request: Record<string, number> = {};
+    for (const [libraryName, quantityId] of entries) {
+      const value = siByQuantity[quantityId];
+      if (typeof value === "number") {
+        request[libraryName] = value;
+      }
+    }
+    return request;
+  }
+
+  function fromLibrary(
+    jsObject: object,
+  ): Partial<Record<PhysicalQuantityId, number>> {
+    const record = jsObject as Record<string, unknown>;
+    const values: Partial<Record<PhysicalQuantityId, number>> = {};
+    for (const [libraryName, quantityId] of entries) {
+      const value = record[libraryName];
+      if (typeof value === "number") {
+        values[quantityId] = value;
+      }
+    }
+    return values;
+  }
+
+  const mapRequest: CalculationRequestMapper<TRequest> = (context, inputId) => (
+    toLibrary({
+      ...context.effectiveQuantitiesByInput[inputId],
+      ...context.modelInputs,
+    }) as TRequest
+  );
 
   return {
     mapRequest,
+    toLibrary,
+    fromLibrary,
     getAxisValue: (request, field) => {
-      const value = Reflect.get(request, getRequestProperty(field));
+      const value = Reflect.get(request, libraryNameForQuantity(field));
       if (typeof value !== "number") {
         throw new Error(`Mapped request field ${field} is not numeric.`);
       }
       return value;
     },
     setAxisValue: (request, field, valueSi) => {
-      Reflect.set(request, getRequestProperty(field), valueSi);
+      const libraryName = libraryNameForQuantity(field);
+      if (!Object.prototype.hasOwnProperty.call(request, libraryName)) {
+        throw new Error(`Mapped request field ${field} is not on this object.`);
+      }
+      Reflect.set(request, libraryName, valueSi);
     },
   };
 }

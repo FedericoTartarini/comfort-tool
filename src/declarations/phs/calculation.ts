@@ -1,9 +1,9 @@
-import { phs, p_sat } from "jsthermalcomfort";
+import { body_surface_area, phs, p_sat } from "jsthermalcomfort";
 
 import { CalculationSource } from "../../catalog/calculationMetadata";
 import { getPhysicalQuantityMeta, PhysicalQuantityId } from "../../catalog/quantities";
+import { UnitSystem, unitLabel } from "../../catalog/units";
 import {
-  PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PHS_STANDARD_VERSION,
   PhsLimitingCriterion,
   defaultPhsSimulationFlags,
@@ -60,14 +60,22 @@ export class PhsSimulationCancelledError extends Error {
 function getPhsWaterLossLimitPercent(
   person: PhsPersonSettingsSi,
 ): 3 | 5 {
-  return person.drinkingAllowed ? 5 : 3;
+  const fraction = person.drinkingAllowed
+    ? phs.WATER_LOSS_FRACTION_DRINK
+    : phs.WATER_LOSS_FRACTION_NO_DRINK;
+  const percent = fraction * 100;
+  if (percent !== 3 && percent !== 5) {
+    throw new Error(`Unsupported PHS water-loss fraction: ${fraction}`);
+  }
+  return percent;
 }
 
-function bodySurfaceAreaM2(person: PhsPersonSettingsSi): number { const weightKg = person[PhysicalQuantityId.BodyWeight];
-  const heightM = person[PhysicalQuantityId.Height];
-  return 0.202
-    * Math.pow(weightKg, 0.425)
-    * Math.pow(heightM, 0.725); }
+function bodySurfaceAreaM2(person: PhsPersonSettingsSi): number {
+  return body_surface_area(
+    person[PhysicalQuantityId.BodyWeight],
+    person[PhysicalQuantityId.Height],
+  );
+}
 
 export function getPhsWaterLossLimitG(person: PhsPersonSettingsSi): number {
   return (getPhsWaterLossLimitPercent(person) / 100)
@@ -237,12 +245,12 @@ export function validatePhsTimeSeries(
   const height = person[PhysicalQuantityId.Height];
   if (!Number.isFinite(weight) || weight < weightMeta.minSi || weight > weightMeta.maxSi) {
     issues.push(
-      `${weightMeta.label} must be between ${weightMeta.minSi} and ${weightMeta.maxSi} ${weightMeta.display.units.SI}.`,
+      `${weightMeta.label} must be between ${weightMeta.minSi} and ${weightMeta.maxSi} ${unitLabel(weightMeta.units, UnitSystem.SI)}.`,
     );
   }
   if (!Number.isFinite(height) || height < heightMeta.minSi || height > heightMeta.maxSi) {
     issues.push(
-      `${heightMeta.label} must be between ${heightMeta.minSi} and ${heightMeta.maxSi} ${heightMeta.display.units.SI}.`,
+      `${heightMeta.label} must be between ${heightMeta.minSi} and ${heightMeta.maxSi} ${unitLabel(heightMeta.units, UnitSystem.SI)}.`,
     );
   }
   issues.push(...validateSegments(segments, person));
@@ -351,7 +359,7 @@ export function simulatePhs(
 
     if (
       firstRectalLimitMinute === null
-      && result.t_re >= PHS_RECTAL_TEMPERATURE_LIMIT_C
+      && result.t_re >= phs.RECTAL_TEMPERATURE_LIMIT
     ) {
       firstRectalLimitMinute = segmentStartMinute + result.d_lim_t_re;
     }

@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, getQuantityDisplayMeta, getQuantityPresentationMeta, type DerivedSlotQuantityId, type DerivedSlotQuantityState, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../../catalog/quantities";
+import { PhysicalQuantityId, getQuantityDisplayMeta, getQuantityPresentationMeta, type DerivedHumidityQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType, type PrimaryInputState } from "../../../catalog/quantities";
 import type { InputControlId as InputControlIdType } from "../../../catalog/inputControls";
 import {
   HumidityInputMode,
@@ -18,6 +18,7 @@ import {
   deriveRelativeHumidityFromHumidityRatio,
   deriveRelativeHumidityFromVaporPressure,
   deriveRelativeHumidityFromWetBulb,
+  type DerivedSlotQuantityState,
 } from "../derivations";
 import { UnitSystem } from "../../../catalog/units";
 import type {
@@ -37,7 +38,7 @@ import {
 interface HumidityModeDefinition {
   label: string;
   quantityId: PhysicalQuantityIdType;
-  derivedKey: DerivedSlotQuantityId | null;
+  derivedKey: DerivedHumidityQuantityId | null;
   getPresentation: (
     context: ControlBehaviorContext,
     label: string,
@@ -80,10 +81,10 @@ const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinit
   },
   [HumidityInputMode.HumidityRatio]: { label: "Humidity ratio", quantityId: PhysicalQuantityId.HumidityRatio, derivedKey: PhysicalQuantityId.HumidityRatio, getPresentation: (context, label) => catalogPresentation(
       context, PhysicalQuantityId.HumidityRatio, label, ), toRelativeHumidity: deriveRelativeHumidityFromHumidityRatio },
-  [HumidityInputMode.DewPoint]: { label: "Dew point", quantityId: PhysicalQuantityId.DewPoint, derivedKey: PhysicalQuantityId.DewPoint, getPresentation: (context, label) => catalogPresentation(
-      context, PhysicalQuantityId.DewPoint, label, ), toRelativeHumidity: deriveRelativeHumidityFromDewPoint },
-  [HumidityInputMode.WetBulb]: { label: "Wet-bulb temperature", quantityId: PhysicalQuantityId.WetBulb, derivedKey: PhysicalQuantityId.WetBulb, getPresentation: (context, label) => catalogPresentation(
-      context, PhysicalQuantityId.WetBulb, label, ), toRelativeHumidity: deriveRelativeHumidityFromWetBulb },
+  [HumidityInputMode.DewPoint]: { label: "Dew point", quantityId: PhysicalQuantityId.DewPointTemperature, derivedKey: PhysicalQuantityId.DewPointTemperature, getPresentation: (context, label) => catalogPresentation(
+      context, PhysicalQuantityId.DewPointTemperature, label, ), toRelativeHumidity: deriveRelativeHumidityFromDewPoint },
+  [HumidityInputMode.WetBulb]: { label: "Wet-bulb temperature", quantityId: PhysicalQuantityId.WetBulbTemperature, derivedKey: PhysicalQuantityId.WetBulbTemperature, getPresentation: (context, label) => catalogPresentation(
+      context, PhysicalQuantityId.WetBulbTemperature, label, ), toRelativeHumidity: deriveRelativeHumidityFromWetBulb },
   [HumidityInputMode.VaporPressure]: { label: "Vapor pressure", quantityId: PhysicalQuantityId.VaporPressure, derivedKey: PhysicalQuantityId.VaporPressure, getPresentation: (context, label) => catalogPresentation(
       context, PhysicalQuantityId.VaporPressure, label, ), toRelativeHumidity: deriveRelativeHumidityFromVaporPressure },
 };

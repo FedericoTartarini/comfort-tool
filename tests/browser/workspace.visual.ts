@@ -1,5 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const pmvAshraeLabel = "PMV/PPD (ASHRAE 55)";
+const pmvIsoLabel = "PMV/PPD (ISO 7730)";
+const adaptiveAshraeLabel = "Adaptive ASHRAE";
+const adaptiveEnLabel = "Adaptive EN";
+const utciLabel = "Universal Thermal Climate Index (UTCI)";
+const heatIndexLabel = "Heat Index";
+const humidexLabel = "Humidex";
+const windChillLabel = "Wind chill index";
+const phsLabel = "Predicted Heat Strain (PHS) Index";
+
+function modelOptionButton(page: Page, modelLabel: string) {
+  const escaped = modelLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return page.getByRole("button", { name: new RegExp(`^${escaped}(?:\\s|$)`) });
+}
+
 async function openModelOptions(page: Page) {
   const modelSelect = page.getByRole("combobox", { name: "Select comfort model" });
   await modelSelect.click();
@@ -9,7 +24,7 @@ async function openModelOptions(page: Page) {
 async function chooseModel(page: Page, modelLabel: string) {
   const modelSelect = await openModelOptions(page);
   await modelSelect.fill(modelLabel);
-  await page.getByRole("button", { name: modelLabel, exact: false }).click();
+  await modelOptionButton(page, modelLabel).click();
   return modelSelect;
 }
 
@@ -19,7 +34,7 @@ async function expectSingleModelSelector(page: Page, modelLabel: string) {
   await modelSelect.click();
   const listbox = page.getByRole("listbox");
   await expect(listbox.getByRole("button")).toHaveCount(1);
-  const option = listbox.getByRole("button", { name: modelLabel, exact: false });
+  const option = modelOptionButton(page, modelLabel);
   await expect(option).toBeEnabled();
   await option.click();
   await expect(modelSelect).toHaveValue(modelLabel);
@@ -100,8 +115,8 @@ test.describe("workspace routing", () => {
     await expect(page.getByLabel("Your input: Compliant")).toBeVisible();
     await expectDesktopChartHeaderRows(page);
 
-    const modelSelect = await chooseModel(page, "Adaptive (ASHRAE-55)");
-    await expect(modelSelect).toHaveValue("Adaptive (ASHRAE-55)");
+    const modelSelect = await chooseModel(page, adaptiveAshraeLabel);
+    await expect(modelSelect).toHaveValue(adaptiveAshraeLabel);
     await expect(page).toHaveURL(/\/standard\/ashrae-55\/adaptive-ashrae\/$/);
     await expect(page.getByLabel("Your input: Compliant")).toBeVisible();
     await expectDesktopChartHeaderRows(page);
@@ -127,14 +142,11 @@ test.describe("workspace routing", () => {
     await expect(activeStandardLink).toBeVisible();
 
     const ashraeSelect = await openModelOptions(page);
-    await expect(page.getByRole("button", { name: "PMV (ASHRAE-55)", exact: false }))
-      .toBeVisible();
-    await expect(page.getByRole("button", { name: "Adaptive (ASHRAE-55)", exact: false }))
-      .toBeVisible();
-    await expect(page.getByRole("button", { name: "PMV (ISO 7730 Category B)", exact: false }))
-      .toBeHidden();
+    await expect(modelOptionButton(page, pmvAshraeLabel)).toBeVisible();
+    await expect(modelOptionButton(page, adaptiveAshraeLabel)).toBeVisible();
+    await expect(modelOptionButton(page, pmvIsoLabel)).toBeHidden();
     await page.keyboard.press("Escape");
-    await expect(ashraeSelect).toHaveValue("PMV (ASHRAE-55)");
+    await expect(ashraeSelect).toHaveValue(pmvAshraeLabel);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
@@ -142,21 +154,21 @@ test.describe("workspace routing", () => {
     await expect(page.getByRole("group", { name: "Chart mode" })).toBeHidden();
 
     await page.goto("/standard/iso-7730/");
-    await expectSingleModelSelector(page, "PMV (ISO 7730 Category B)");
+    await expectSingleModelSelector(page, pmvIsoLabel);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
     )).toBeVisible();
 
     await page.goto("/standard/en-16798-1/");
-    await expectSingleModelSelector(page, "Adaptive (EN 16798-1)");
+    await expectSingleModelSelector(page, adaptiveEnLabel);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
     )).toBeVisible();
 
     await page.goto("/standard/iso-7933/");
-    await expectSingleModelSelector(page, "PHS (ISO 7933:2023)");
+    await expectSingleModelSelector(page, phsLabel);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },
@@ -165,21 +177,18 @@ test.describe("workspace routing", () => {
     await page.goto("/Explore/");
     await openModelOptions(page);
     for (const modelLabel of [
-      "PMV (ASHRAE-55)",
-      "PMV (ISO 7730 Category B)",
-      "UTCI",
-      "Heat Index",
-      "Humidex",
-      "Wind Chill",
-      "PHS (ISO 7933:2023)",
+      pmvAshraeLabel,
+      pmvIsoLabel,
+      utciLabel,
+      heatIndexLabel,
+      humidexLabel,
+      windChillLabel,
+      phsLabel,
     ]) {
-      await expect(page.getByRole("button", { name: modelLabel, exact: false }))
-        .toBeVisible();
+      await expect(modelOptionButton(page, modelLabel)).toBeVisible();
     }
-    await expect(page.getByRole("button", { name: "Adaptive (ASHRAE-55)", exact: false }))
-      .toBeHidden();
-    await expect(page.getByRole("button", { name: "Adaptive (EN 16798-1)", exact: false }))
-      .toBeHidden();
+    await expect(modelOptionButton(page, adaptiveAshraeLabel)).toBeHidden();
+    await expect(modelOptionButton(page, adaptiveEnLabel)).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Explore",
@@ -197,20 +206,20 @@ test.describe("workspace routing", () => {
     await expect(chartTrigger).toContainText("Psychrometric");
 
     for (const [modelLabel, chartName] of [
-      ["PMV (ISO 7730 Category B)", "Psychrometric"],
-      ["UTCI", "UTCI"],
-      ["Heat Index", "Dynamic"],
-      ["Humidex", "Dynamic"],
+      [pmvIsoLabel, "Psychrometric"],
+      [utciLabel, "UTCI"],
+      [heatIndexLabel, "Dynamic"],
+      [humidexLabel, "Dynamic"],
     ] as const) {
       const modelSelect = await chooseModel(page, modelLabel);
       await expect(modelSelect).toHaveValue(modelLabel);
       await expect(chartTrigger).toContainText(chartName);
     }
 
-    const windChillSelect = await chooseModel(page, "Wind Chill");
+    const windChillSelect = await chooseModel(page, windChillLabel);
     await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
-    await expect(windChillSelect).toHaveValue("Wind Chill");
+    await expect(windChillSelect).toHaveValue(windChillLabel);
     await expect(page).toHaveURL(/\/explore\/wind-chill\/$/);
     await expect(chartTrigger).toContainText("Dynamic");
   });
@@ -223,7 +232,7 @@ test.describe("workspace routing", () => {
 
     await page.getByRole("link", { name: "Explore", exact: true }).click();
     await expect(page).toHaveURL(/\/explore\/pmv-ashrae\/$/);
-    await expect(temperature).toHaveValue("24.0");
+    await expect(temperature).toHaveValue("24");
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Explore",
       { exact: true },
@@ -238,7 +247,7 @@ test.describe("workspace routing", () => {
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
     await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
     await expect(page.getByLabel("Input 1 Air temperature", { exact: true }))
-      .toHaveValue("24.0");
+      .toHaveValue("24");
 
     await page.goto("/standard/ashrae-55/utci/");
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
@@ -276,11 +285,11 @@ test.describe("workspace routing", () => {
   test("holds a guarded route change until warning confirmation", async ({ page }) => {
     await page.goto("/Explore/");
     const modelSelect = await openModelOptions(page);
-    await modelSelect.fill("Wind Chill");
-    await page.getByRole("button", { name: "Wind Chill", exact: false }).click();
+    await modelSelect.fill(windChillLabel);
+    await page.getByRole("button", { name: windChillLabel, exact: false }).click();
     await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
-    await expect(modelSelect).toHaveValue("Wind Chill");
+    await expect(modelSelect).toHaveValue(windChillLabel);
     await expect(page).toHaveURL(/\/explore\/wind-chill\/$/);
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
@@ -288,13 +297,13 @@ test.describe("workspace routing", () => {
     await expect(page.getByText("Boundary Range Warning", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "No, stay here" }).click();
     await expect(page).toHaveURL(/\/explore\/wind-chill\/$/);
-    await expect(modelSelect).toHaveValue("Wind Chill");
+    await expect(modelSelect).toHaveValue(windChillLabel);
 
     await page.getByRole("link", { name: "ASHRAE 55", exact: true }).click();
     await page.getByRole("button", { name: "Yes, switch and adjust" }).click();
     await expect(page).toHaveURL(/\/standard\/ashrae-55\/pmv-ashrae\/$/);
     await expect(page.getByRole("combobox", { name: "Select comfort model" }))
-      .toHaveValue("PMV (ASHRAE-55)");
+      .toHaveValue(pmvAshraeLabel);
     await expect(page.getByTestId("comfort-chart-panel").getByText(
       "Compliance",
       { exact: true },

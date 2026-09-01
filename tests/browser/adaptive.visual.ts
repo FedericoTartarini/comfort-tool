@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const ADAPTIVE_MODEL_LABELS = {
-  ashrae: "Adaptive (ASHRAE-55)",
-  en: "Adaptive (EN 16798-1)",
+  ashrae: "Adaptive ASHRAE",
+  en: "Adaptive EN",
 } as const;
 
 async function selectModel(
@@ -92,8 +92,8 @@ async function openAdaptiveChart(
   await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
   await expect(panel.getByText(
     model === "ashrae"
-      ? "Green shading shows the ASHRAE 55 80% and 90% acceptability regions; compliance is the 80% range from t_cmf − 3.5°C to t_cmf + 3.5°C, including the applicable upper-limit cooling adjustment."
-      : "Shading shows EN 16798-1 Categories I–III; compliance is the Category III range from t_cmf − 5°C to t_cmf + 4°C, including the applicable upper-limit cooling adjustment.",
+      ? "80: t_cmf − 3.5°C to t_cmf + 3.5°C"
+      : "cat_iii: t_cmf − 5°C to t_cmf + 4°C",
     { exact: true },
   )).toBeVisible();
   await expect(panel.getByLabel("Your input: Compliant")).toBeVisible();
@@ -107,8 +107,8 @@ async function openAdaptiveChart(
 
   const plot = page.getByTestId("comfort-chart-plot");
   const traceName = model === "ashrae"
-    ? "80% Acceptability"
-    : "Category III";
+    ? "80"
+    : "cat_iii";
   await waitForAdaptiveTrace(plot, traceName);
   await expectAxisUnits(plot, useIpUnits ? "°F" : "°C");
 
@@ -123,8 +123,8 @@ test.describe("Adaptive visual regression", () => {
   test("ASHRAE boundary chart in SI", async ({ page }) => {
     const { panel, visual } = await openAdaptiveChart(page);
     await expect(panel).toContainText("Adaptive Zones");
-    await expect(panel.getByText("80% Acceptability", { exact: true })).toHaveCount(1);
-    await expect(panel.getByText("90% Acceptability", { exact: true })).toHaveCount(1);
+    await expect(panel.getByText("80", { exact: true })).toHaveCount(1);
+    await expect(panel.getByText("90", { exact: true })).toHaveCount(1);
     await page.mouse.move(0, 0);
     await expect(panel.getByTestId("chart-header"))
       .toHaveScreenshot("adaptive-ashrae-compliance-header.png");

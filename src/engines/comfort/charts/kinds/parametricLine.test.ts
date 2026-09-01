@@ -19,7 +19,7 @@ function createContext(
       profileKind: FieldChartProfileKind.Explore,
       xField: PhysicalQuantityId.DryBulbTemperature,
       yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: PhysicalQuantityId.Pmv,
+      zOutput: PhysicalQuantityId.PredictedMeanVote,
       bands: [{ min: 0, max: 1, label: "All", color: "#ffffff" }],
     },
   };

@@ -1,6 +1,6 @@
 import { inputOrder, type InputId as InputIdType } from "../../../catalog/inputSlots";
 import { type NumericBand } from "../../../catalog/modelCapabilities";
-import type { ChartAxisQuantityId, PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
+import type { PhysicalQuantityId, PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
 import type { RuntimeComfortModelDefinition } from "../../modelRegistry/definition";
 import {
   normalizeDynamicAxisPair,
@@ -67,7 +67,7 @@ export function createChartActions({
     }
   }
 
-  function setDynamicXAxis(fieldKey: ChartAxisQuantityId) {
+  function setDynamicXAxis(fieldKey: PhysicalQuantityId) {
     const pair = resolveDynamicAxisSelection(
       internals.getActiveModelConfig(),
       internals.getCurrentDynamicAxisPair(),
@@ -83,7 +83,7 @@ export function createChartActions({
     settings.yAxis = pair.yAxis;
   }
 
-  function setDynamicYAxis(fieldKey: ChartAxisQuantityId) {
+  function setDynamicYAxis(fieldKey: PhysicalQuantityId) {
     const pair = resolveDynamicAxisSelection(
       internals.getActiveModelConfig(),
       internals.getCurrentDynamicAxisPair(),

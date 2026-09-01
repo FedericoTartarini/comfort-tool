@@ -1,7 +1,7 @@
 import { CalculationSource } from "../../../catalog/calculationMetadata";
 import {
   getPhysicalQuantityMeta,
-  type ChartAxisQuantityId,
+  type PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../../catalog/quantities";
 import type {
@@ -14,7 +14,7 @@ import type {
 import type { InputId as InputIdType } from "../../../catalog/inputSlots";
 import { ChartBuildContext, ModelOutput, NumericBand, NumericFieldChartConfig, findNumericBandIndexForValue } from "../../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
-import type { FieldRequestAdapter } from "../requestMapping";
+import type { LibraryQuantityMapping } from "../requestMapping";
 import {
   convertQuantityFromSi,
   getQuantityDisplayMeta,
@@ -36,11 +36,15 @@ import {
   CHART_COORDINATE_TOLERANCE,
   type ChartRange,
 } from "./types";
+import type { IsolineBandLayout } from "../../../charts/isolines";
 
 const EMPTY_AXIS_POINTS = 2;
 
 export interface GridModelDynamicHoverExtension<TResult> {
-  getTemplateSuffix: (unitSystem: UnitSystemType) => string;
+  getTemplateSuffix: (
+    unitSystem: UnitSystemType,
+    zOutput?: ModelOutput["key"],
+  ) => string;
   getMetadata: (
     result: TResult | null | undefined,
     unitSystem: UnitSystemType,
@@ -50,8 +54,8 @@ export interface GridModelDynamicHoverExtension<TResult> {
 export interface GridModelFixedViewSpec {
   instanceId: string;
   title: string;
-  xField: ChartAxisQuantityId;
-  yField: ChartAxisQuantityId;
+  xField: PhysicalQuantityId;
+  yField: PhysicalQuantityId;
   xRangeSi: ChartRange;
   yRangeSi: ChartRange;
 }
@@ -64,26 +68,26 @@ export interface GridModelChartSpec<TPayload extends object, TResult> {
   exploreOutputs?: readonly ModelOutput[];
   bandLabel?: string;
   dynamicHoverExtension?: GridModelDynamicHoverExtension<TResult>;
-  axisRanges?: Partial<Record<ChartAxisQuantityId, ChartRange>>;
+  axisRanges?: Partial<Record<PhysicalQuantityId, ChartRange>>;
   /** Samples per axis. Interactive Dynamic 2-D is capped at INTERACTIVE_DYNAMIC_GRID_POINTS. */
   gridPoints?: number;
   isPlottable?: (result: TResult | null | undefined) => boolean;
   outsideApplicabilityMessage?: string;
   requestAdapter: Pick<
-    FieldRequestAdapter<TPayload>,
+    LibraryQuantityMapping<TPayload>,
     "getAxisValue" | "setAxisValue"
   >;
   /** Uses operative-temperature or alias-aware axis adapters when chart axes differ from request fields. */
   chartAxisAdapter?: Pick<
-    FieldRequestAdapter<TPayload>,
+    LibraryQuantityMapping<TPayload>,
     "getAxisValue" | "setAxisValue"
   >;
   /** When false, the grid cell is empty. Defaults to setting both axis values on the payload. */
   applyChartCoordinates?: (
     payload: TPayload,
-    xField: ChartAxisQuantityId,
+    xField: PhysicalQuantityId,
     xSi: number,
-    yField: ChartAxisQuantityId,
+    yField: PhysicalQuantityId,
     ySi: number,
   ) => boolean;
   evaluate: (payload: TPayload) => TResult;
@@ -93,6 +97,10 @@ export interface GridModelChartSpec<TPayload extends object, TResult> {
     result: TResult,
     outputKey: PhysicalQuantityIdType,
   ) => number | null | undefined;
+  getIsolineValue?: (result: TResult) => number | null;
+  isolineLayout?: IsolineBandLayout;
+  absFromThreshold?: (threshold: number) => number;
+  clipAirSpeedWithoutOccupantControl?: boolean | ((payload: TPayload) => boolean);
   fixedView?: GridModelFixedViewSpec;
   dynamicViewLayout?: Partial<FieldChartLayoutSpec>;
 }
@@ -107,8 +115,8 @@ interface GridModelView {
 }
 
 function getAxisRange(
-  field: ChartAxisQuantityId,
-  ranges?: Partial<Record<ChartAxisQuantityId, ChartRange>>,
+  field: PhysicalQuantityId,
+  ranges?: Partial<Record<PhysicalQuantityId, ChartRange>>,
 ): ChartRange {
   return ranges?.[field] ?? {
     min: getPhysicalQuantityMeta(field).minSi,
@@ -240,6 +248,16 @@ function buildGridModelView<TPayload extends object, TResult>(
       return null;
     }
   };
+  const evaluateIsolineField = (xSi: number, ySi: number): number | null => {
+    if (!spec.getIsolineValue) return evaluateField(xSi, ySi);
+    const result = evaluateResult(xSi, ySi);
+    if (result == null) return null;
+    const valueSi = spec.getIsolineValue(result);
+    return valueSi == null || !Number.isFinite(valueSi) ? null : valueSi;
+  };
+  const clipAirSpeed = typeof spec.clipAirSpeedWithoutOccupantControl === "function"
+    ? spec.clipAirSpeedWithoutOccupantControl(baselinePayload)
+    : spec.clipAirSpeedWithoutOccupantControl === true;
   const specChart = buildFieldChart({
     unitSystem,
     xAxis: xAxisSpec,
@@ -248,12 +266,14 @@ function buildGridModelView<TPayload extends object, TResult>(
     chartOverlays: ({ xAxis, yAxis }) => buildIsolineBandOverlayTraces({
       bands: view.config.bands,
       outputLabel: output.label,
-      evaluateField,
+      evaluateField: evaluateIsolineField,
       xAxis,
       yAxis,
       xField: view.config.xField,
       yField: view.config.yField,
-      layout: "monotonic",
+      layout: spec.isolineLayout ?? "monotonic",
+      absFromThreshold: spec.absFromThreshold,
+      clipAirSpeedWithoutOccupantControl: clipAirSpeed,
     }),
     inputGroups: ({ xAxis, yAxis }) => [{
       inputsMap,
@@ -412,7 +432,10 @@ export function buildGridModelChart<TPayload extends object, TResult>(
         xRangeSi: spec.fixedView.xRangeSi,
         yRangeSi: spec.fixedView.yRangeSi,
         hoverTemplateSuffix:
-          spec.dynamicHoverExtension?.getTemplateSuffix(context.unitSystem) ?? "",
+          spec.dynamicHoverExtension?.getTemplateSuffix(
+            context.unitSystem,
+            config.zOutput,
+          ) ?? "",
       },
     );
   }
@@ -434,7 +457,10 @@ export function buildGridModelChart<TPayload extends object, TResult>(
         xRangeSi: getAxisRange(config.xField, spec.axisRanges),
         yRangeSi: getAxisRange(config.yField, spec.axisRanges),
         hoverTemplateSuffix:
-          spec.dynamicHoverExtension?.getTemplateSuffix(context.unitSystem) ?? "",
+          spec.dynamicHoverExtension?.getTemplateSuffix(
+            context.unitSystem,
+            config.zOutput,
+          ) ?? "",
         layout: spec.dynamicViewLayout,
       },
     );

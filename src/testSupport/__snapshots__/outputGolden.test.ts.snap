@@ -4,16 +4,16 @@ exports[`output golden — table snapshots > adaptive-ashrae produces stable tab
 {
   "charts": [
     {
-      "instanceId": "adaptive-ashrae-boundary",
-      "layoutTitle": "Adaptive (ASHRAE-55) Comfort Chart",
+      "instanceId": "adaptive",
+      "layoutTitle": "Adaptive ASHRAE Adaptive",
       "profileKind": "compliance",
       "traceCount": 6,
       "traceNames": [
-        "Too Cool",
-        "80% Acceptability",
-        "90% Acceptability",
-        "80% Acceptability",
-        "Too Warm",
+        "too-cool",
+        "80",
+        "90",
+        "80",
+        "too-warm",
         "Input 1",
       ],
       "xAxisTitle": "Prevailing mean outdoor temperature (°C)",
@@ -37,20 +37,20 @@ exports[`output golden — table snapshots > adaptive-ashrae produces stable tab
           {
             "color": "#047857",
             "subtext": "20.5 ~ 27.5 °C",
-            "text": "80% Acceptability",
+            "text": "80",
           },
         ],
-        "title": "80% Acceptability",
+        "title": "80",
       },
       {
         "cells": [
           {
             "color": "#047857",
             "subtext": "21.5 ~ 26.5 °C",
-            "text": "90% Acceptability",
+            "text": "90",
           },
         ],
-        "title": "90% Acceptability",
+        "title": "90",
       },
     ],
   },
@@ -61,18 +61,18 @@ exports[`output golden — table snapshots > adaptive-en produces stable table o
 {
   "charts": [
     {
-      "instanceId": "adaptive-en-boundary",
-      "layoutTitle": "Adaptive (EN 16798-1) Comfort Chart",
+      "instanceId": "adaptive",
+      "layoutTitle": "Adaptive EN Adaptive",
       "profileKind": "compliance",
       "traceCount": 8,
       "traceNames": [
-        "Too Cool",
-        "Category III",
-        "Category II",
-        "Category I",
-        "Category II",
-        "Category III",
-        "Too Warm",
+        "too-cool",
+        "cat_iii",
+        "cat_ii",
+        "cat_i",
+        "cat_ii",
+        "cat_iii",
+        "too-warm",
         "Input 1",
       ],
       "xAxisTitle": "Running mean outdoor temperature (°C)",
@@ -96,30 +96,30 @@ exports[`output golden — table snapshots > adaptive-en produces stable table o
           {
             "color": "#047857",
             "subtext": "22.4 ~ 27.4 °C",
-            "text": "Category I",
+            "text": "cat_i",
           },
         ],
-        "title": "Category I",
+        "title": "cat_i",
       },
       {
         "cells": [
           {
             "color": "#047857",
             "subtext": "21.4 ~ 28.4 °C",
-            "text": "Category II",
+            "text": "cat_ii",
           },
         ],
-        "title": "Category II",
+        "title": "cat_ii",
       },
       {
         "cells": [
           {
             "color": "#047857",
             "subtext": "20.4 ~ 29.4 °C",
-            "text": "Category III",
+            "text": "cat_iii",
           },
         ],
-        "title": "Category III",
+        "title": "cat_iii",
       },
     ],
   },
@@ -130,16 +130,16 @@ exports[`output golden — table snapshots > heat-index produces stable table ou
 {
   "charts": [
     {
-      "instanceId": "heat-index-dynamic-field",
-      "layoutTitle": "Heat Index Dynamic Chart — Heat Index",
+      "instanceId": "dynamic",
+      "layoutTitle": "Heat Index Dynamic — Heat Index",
       "profileKind": "explore",
       "traceCount": 6,
       "traceNames": [
-        "Heat Index bands: Safe",
-        "Heat Index bands: Caution",
-        "Heat Index bands: Extreme Caution",
-        "Heat Index bands: Danger",
-        "Heat Index bands: Extreme Danger",
+        "Heat Index bands: no risk",
+        "Heat Index bands: caution",
+        "Heat Index bands: extreme caution",
+        "Heat Index bands: danger",
+        "Heat Index bands: extreme danger",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
@@ -153,8 +153,8 @@ exports[`output golden — table snapshots > heat-index produces stable table ou
         "cells": [
           {
             "color": "#475569",
-            "subtext": "Safe",
-            "text": "26 °C",
+            "subtext": "no risk",
+            "text": "26.6 °C",
           },
         ],
         "title": "Heat Index",
@@ -168,17 +168,17 @@ exports[`output golden — table snapshots > humidex produces stable table outpu
 {
   "charts": [
     {
-      "instanceId": "humidex-dynamic-field",
-      "layoutTitle": "Humidex Dynamic Chart — Humidex",
+      "instanceId": "dynamic",
+      "layoutTitle": "Humidex Dynamic — Humidex",
       "profileKind": "explore",
       "traceCount": 7,
       "traceNames": [
-        "Humidex bands: Little/None",
-        "Humidex bands: Noticeable",
-        "Humidex bands: Evident",
-        "Humidex bands: Intense",
-        "Humidex bands: Dangerous",
-        "Humidex bands: Stroke Probable",
+        "Humidex bands: Little or no discomfort",
+        "Humidex bands: Noticeable discomfort",
+        "Humidex bands: Evident discomfort",
+        "Humidex bands: Intense discomfort; avoid exertion",
+        "Humidex bands: Dangerous discomfort",
+        "Humidex bands: Heat stroke probable",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
@@ -192,7 +192,7 @@ exports[`output golden — table snapshots > humidex produces stable table outpu
         "cells": [
           {
             "color": "#475569",
-            "subtext": "Little/None",
+            "subtext": "Little or no discomfort",
             "text": "29.8",
           },
         ],
@@ -207,7 +207,7 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
 {
   "charts": [
     {
-      "instanceId": "phs-exposure-history",
+      "instanceId": "body-temperature",
       "layoutTitle": "PHS exposure history",
       "profileKind": "compliance",
       "traceCount": 4,
@@ -221,7 +221,7 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
       "yAxisTitle": "Temperature (°C)",
     },
     {
-      "instanceId": "phs-exposure-history",
+      "instanceId": "body-temperature",
       "layoutTitle": "PHS exposure history",
       "profileKind": "explore",
       "traceCount": 4,
@@ -235,26 +235,26 @@ exports[`output golden — table snapshots > phs-2023 produces stable table outp
       "yAxisTitle": "Temperature (°C)",
     },
     {
-      "instanceId": "phs-dynamic-field",
-      "layoutTitle": "PHS Dynamic Chart — Limiting exposure time",
+      "instanceId": "dynamic",
+      "layoutTitle": "Predicted Heat Strain (PHS) Index Dynamic — Limiting exposure time",
       "profileKind": "compliance",
       "traceCount": 3,
       "traceNames": [
-        "Limiting exposure time bands: Limit reached before 8 h",
-        "Limiting exposure time bands: No limit reached before 8 h",
+        "Limiting exposure time bands: < 480",
+        "Limiting exposure time bands: >= 480",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
       "yAxisTitle": "Relative humidity (%)",
     },
     {
-      "instanceId": "phs-dynamic-field",
-      "layoutTitle": "PHS Dynamic Chart — Rectal temperature after 8 h",
+      "instanceId": "dynamic",
+      "layoutTitle": "Predicted Heat Strain (PHS) Index Dynamic — Rectal temperature after 8 h",
       "profileKind": "explore",
       "traceCount": 3,
       "traceNames": [
-        "Rectal temperature after 8 h bands: Below 38 °C",
-        "Rectal temperature after 8 h bands: At or above 38 °C",
+        "Rectal temperature after 8 h bands: < 38",
+        "Rectal temperature after 8 h bands: >= 38",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
@@ -319,15 +319,15 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
 {
   "charts": [
     {
-      "instanceId": "pmv-ashrae-psychrometric",
-      "layoutTitle": "PMV (ASHRAE-55) Psychrometric Chart — PMV",
+      "instanceId": "psychrometric",
+      "layoutTitle": "PMV/PPD (ASHRAE 55) Psychrometric — PMV",
       "profileKind": "compliance",
       "traceCount": 16,
       "traceNames": [
         "Supersaturated region mask",
-        "PMV bands: Outside acceptable PMV range",
-        "PMV bands: Acceptable PMV range",
-        "PMV bands: Outside acceptable PMV range (warm)",
+        "PMV bands: fail-fill",
+        "PMV bands: acceptable",
+        "PMV bands: fail-fill (warm)",
         "RH 10%",
         "RH 20%",
         "RH 30%",
@@ -345,19 +345,15 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       "yAxisTitle": "Humidity ratio (g/kg)",
     },
     {
-      "instanceId": "pmv-ashrae-psychrometric",
-      "layoutTitle": "PMV (ASHRAE-55) Psychrometric Chart — PMV",
+      "instanceId": "psychrometric",
+      "layoutTitle": "PMV/PPD (ASHRAE 55) Psychrometric — PMV",
       "profileKind": "explore",
-      "traceCount": 20,
+      "traceCount": 16,
       "traceNames": [
         "Supersaturated region mask",
-        "PMV bands: Cold",
-        "PMV bands: Cool",
-        "PMV bands: Slightly Cool",
-        "PMV bands: Neutral",
-        "PMV bands: Slightly Warm",
-        "PMV bands: Warm",
-        "PMV bands: Hot",
+        "PMV bands: fail-fill",
+        "PMV bands: acceptable",
+        "PMV bands: fail-fill (warm)",
         "RH 10%",
         "RH 20%",
         "RH 30%",
@@ -375,39 +371,35 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       "yAxisTitle": "Humidity ratio (g/kg)",
     },
     {
-      "instanceId": "pmv-ashrae-dynamic-field",
-      "layoutTitle": "PMV (ASHRAE-55) Dynamic Chart — PMV",
+      "instanceId": "dynamic",
+      "layoutTitle": "PMV/PPD (ASHRAE 55) Dynamic — PMV",
       "profileKind": "compliance",
       "traceCount": 4,
       "traceNames": [
-        "PMV bands: Outside acceptable PMV range",
-        "PMV bands: Acceptable PMV range",
-        "PMV bands: Outside acceptable PMV range (warm)",
+        "PMV bands: fail-fill",
+        "PMV bands: acceptable",
+        "PMV bands: fail-fill (warm)",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
       "yAxisTitle": "Relative humidity (%)",
     },
     {
-      "instanceId": "pmv-ashrae-dynamic-field",
-      "layoutTitle": "PMV (ASHRAE-55) Dynamic Chart — PMV",
+      "instanceId": "dynamic",
+      "layoutTitle": "PMV/PPD (ASHRAE 55) Dynamic — PMV",
       "profileKind": "explore",
-      "traceCount": 8,
+      "traceCount": 4,
       "traceNames": [
-        "PMV bands: Cold",
-        "PMV bands: Cool",
-        "PMV bands: Slightly Cool",
-        "PMV bands: Neutral",
-        "PMV bands: Slightly Warm",
-        "PMV bands: Warm",
-        "PMV bands: Hot",
+        "PMV bands: fail-fill",
+        "PMV bands: acceptable",
+        "PMV bands: fail-fill (warm)",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
       "yAxisTitle": "Relative humidity (%)",
     },
     {
-      "instanceId": "pmv-ashrae-heat-loss",
+      "instanceId": "heat-loss",
       "layoutTitle": "Heat Loss Components",
       "profileKind": "compliance",
       "traceCount": 11,
@@ -428,7 +420,7 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       "yAxisTitle": "Heat Loss (W/m²)",
     },
     {
-      "instanceId": "pmv-ashrae-heat-loss",
+      "instanceId": "heat-loss",
       "layoutTitle": "Heat Loss Components",
       "profileKind": "explore",
       "traceCount": 11,
@@ -449,7 +441,7 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       "yAxisTitle": "Heat Loss (W/m²)",
     },
     {
-      "instanceId": "pmv-ashrae-set",
+      "instanceId": "set",
       "layoutTitle": "SET outputs",
       "profileKind": "compliance",
       "traceCount": 12,
@@ -471,7 +463,7 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       "yAxisTitle": "Temperature (°C)",
     },
     {
-      "instanceId": "pmv-ashrae-set",
+      "instanceId": "set",
       "layoutTitle": "SET outputs",
       "profileKind": "explore",
       "traceCount": 12,
@@ -579,15 +571,19 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
 {
   "charts": [
     {
-      "instanceId": "pmv-iso-psychrometric",
-      "layoutTitle": "PMV (ISO 7730 Category B) Psychrometric Chart — PMV",
+      "instanceId": "psychrometric",
+      "layoutTitle": "PMV/PPD (ISO 7730) Psychrometric — PMV",
       "profileKind": "compliance",
-      "traceCount": 16,
+      "traceCount": 20,
       "traceNames": [
         "Supersaturated region mask",
-        "PMV bands: Outside acceptable PMV range",
-        "PMV bands: Acceptable PMV range",
-        "PMV bands: Outside acceptable PMV range (warm)",
+        "PMV bands: Cold",
+        "PMV bands: Cool",
+        "PMV bands: Slightly Cool",
+        "PMV bands: Neutral",
+        "PMV bands: Slightly Warm",
+        "PMV bands: Warm",
+        "PMV bands: Hot",
         "RH 10%",
         "RH 20%",
         "RH 30%",
@@ -605,8 +601,8 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       "yAxisTitle": "Humidity ratio (g/kg)",
     },
     {
-      "instanceId": "pmv-iso-psychrometric",
-      "layoutTitle": "PMV (ISO 7730 Category B) Psychrometric Chart — PMV",
+      "instanceId": "psychrometric",
+      "layoutTitle": "PMV/PPD (ISO 7730) Psychrometric — PMV",
       "profileKind": "explore",
       "traceCount": 20,
       "traceNames": [
@@ -635,22 +631,26 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       "yAxisTitle": "Humidity ratio (g/kg)",
     },
     {
-      "instanceId": "pmv-iso-dynamic-field",
-      "layoutTitle": "PMV (ISO 7730 Category B) Dynamic Chart — PMV",
+      "instanceId": "dynamic",
+      "layoutTitle": "PMV/PPD (ISO 7730) Dynamic — PMV",
       "profileKind": "compliance",
-      "traceCount": 4,
+      "traceCount": 8,
       "traceNames": [
-        "PMV bands: Outside acceptable PMV range",
-        "PMV bands: Acceptable PMV range",
-        "PMV bands: Outside acceptable PMV range (warm)",
+        "PMV bands: Cold",
+        "PMV bands: Cool",
+        "PMV bands: Slightly Cool",
+        "PMV bands: Neutral",
+        "PMV bands: Slightly Warm",
+        "PMV bands: Warm",
+        "PMV bands: Hot",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
       "yAxisTitle": "Relative humidity (%)",
     },
     {
-      "instanceId": "pmv-iso-dynamic-field",
-      "layoutTitle": "PMV (ISO 7730 Category B) Dynamic Chart — PMV",
+      "instanceId": "dynamic",
+      "layoutTitle": "PMV/PPD (ISO 7730) Dynamic — PMV",
       "profileKind": "explore",
       "traceCount": 8,
       "traceNames": [
@@ -667,7 +667,7 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       "yAxisTitle": "Relative humidity (%)",
     },
     {
-      "instanceId": "pmv-iso-heat-loss",
+      "instanceId": "heat-loss",
       "layoutTitle": "Heat Loss Components",
       "profileKind": "compliance",
       "traceCount": 11,
@@ -688,7 +688,7 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       "yAxisTitle": "Heat Loss (W/m²)",
     },
     {
-      "instanceId": "pmv-iso-heat-loss",
+      "instanceId": "heat-loss",
       "layoutTitle": "Heat Loss Components",
       "profileKind": "explore",
       "traceCount": 11,
@@ -709,7 +709,7 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       "yAxisTitle": "Heat Loss (W/m²)",
     },
     {
-      "instanceId": "pmv-iso-set",
+      "instanceId": "set",
       "layoutTitle": "SET outputs",
       "profileKind": "compliance",
       "traceCount": 12,
@@ -731,7 +731,7 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       "yAxisTitle": "Temperature (°C)",
     },
     {
-      "instanceId": "pmv-iso-set",
+      "instanceId": "set",
       "layoutTitle": "SET outputs",
       "profileKind": "explore",
       "traceCount": 12,
@@ -839,8 +839,8 @@ exports[`output golden — table snapshots > utci produces stable table output 1
 {
   "charts": [
     {
-      "instanceId": "utci-stress-band",
-      "layoutTitle": "UTCI stress category",
+      "instanceId": "utci",
+      "layoutTitle": "UTCI",
       "profileKind": "explore",
       "traceCount": 3,
       "traceNames": [
@@ -852,16 +852,21 @@ exports[`output golden — table snapshots > utci produces stable table output 1
       "yAxisTitle": "",
     },
     {
-      "instanceId": "utci-dynamic-field",
-      "layoutTitle": "UTCI Dynamic Chart — UTCI",
+      "instanceId": "dynamic",
+      "layoutTitle": "Universal Thermal Climate Index (UTCI) Dynamic — UTCI",
       "profileKind": "explore",
-      "traceCount": 6,
+      "traceCount": 11,
       "traceNames": [
-        "UTCI bands: No Thermal Stress",
-        "UTCI bands: Moderate Heat Stress",
-        "UTCI bands: Strong Heat Stress",
-        "UTCI bands: Very Strong Heat Stress",
-        "UTCI bands: Extreme Heat Stress",
+        "UTCI bands: extreme cold stress",
+        "UTCI bands: very strong cold stress",
+        "UTCI bands: strong cold stress",
+        "UTCI bands: moderate cold stress",
+        "UTCI bands: slight cold stress",
+        "UTCI bands: no thermal stress",
+        "UTCI bands: moderate heat stress",
+        "UTCI bands: strong heat stress",
+        "UTCI bands: very strong heat stress",
+        "UTCI bands: extreme heat stress",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
@@ -883,7 +888,7 @@ exports[`output golden — table snapshots > utci produces stable table output 1
         "cells": [
           {
             "color": "#059669",
-            "text": "No Thermal Stress",
+            "text": "no thermal stress",
           },
         ],
         "title": "Stress Category",
@@ -897,15 +902,11 @@ exports[`output golden — table snapshots > wind-chill produces stable table ou
 {
   "charts": [
     {
-      "instanceId": "wind-chill-dynamic-field",
-      "layoutTitle": "Wind Chill Dynamic Chart — Wind Chill Index",
+      "instanceId": "dynamic",
+      "layoutTitle": "Wind chill index Dynamic — Wind chill index",
       "profileKind": "explore",
-      "traceCount": 5,
+      "traceCount": 1,
       "traceNames": [
-        "Wind Chill Index bands: Safe",
-        "Wind Chill Index bands: 30 mins to frostbite",
-        "Wind Chill Index bands: 10 mins to frostbite",
-        "Wind Chill Index bands: 2 mins to frostbite",
         "Input 1",
       ],
       "xAxisTitle": "Air temperature (°C)",
@@ -918,21 +919,18 @@ exports[`output golden — table snapshots > wind-chill produces stable table ou
       {
         "cells": [
           {
-            "color": "#0369a1",
-            "subtext": "Safe",
             "text": "972.7 W/m²",
           },
         ],
-        "title": "Wind Chill Index",
+        "title": "Wind chill index",
       },
       {
         "cells": [
           {
-            "color": "#0369a1",
-            "text": "-10 °C",
+            "text": "-11.9 °C",
           },
         ],
-        "title": "Wind Chill Temperature",
+        "title": "wct",
       },
     ],
   },

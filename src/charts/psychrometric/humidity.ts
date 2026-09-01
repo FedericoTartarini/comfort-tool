@@ -11,6 +11,17 @@ export interface PsychrometricExtents {
   humidityRatioRangeSi: AxisRangeSi;
 }
 
+export interface PsychrometricViewExtents extends PsychrometricExtents {
+  rhCurves: readonly number[];
+}
+
+export const DEFAULT_PSYCHROMETRIC_VIEW: PsychrometricViewExtents = {
+  tdbRangeSi: { min: 10, max: 40 },
+  tdbPoints: 121,
+  humidityRatioRangeSi: { min: 0, max: 0.03 },
+  rhCurves: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+};
+
 export interface PsychrometricCurvePoint {
   temperatureSi: number;
   humidityRatioSi: number;

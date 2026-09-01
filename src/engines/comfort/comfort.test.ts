@@ -7,25 +7,21 @@ import {
   HumidityInputMode,
   OptionKey,
 } from "../../catalog/inputModes";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../catalog/quantities";
-import { UnitSystem } from "../../catalog/units";
+import { PhysicalQuantityId } from "../../catalog/quantities";
+import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import { type ChartBuildContext, type ExploreFieldChartConfig, type NumericBand } from "../../catalog/modelCapabilities";
+import { ChartType } from "../../catalog/chartTypes";
 import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 
 import {
-  pmvExploreOutputs,
-} from "../../declarations/pmv/shared";
+  pmvAshraeAdapter,
+  pmvAshraeDeclaration,
+  pmvAshraeModelConfig,
+} from "../../declarations/pmv/ashrae";
 import {
   calculatePmvModel,
   type PmvChartSource,
 } from "../../declarations/pmv/calculation";
-import {
-  pmvAshraeAdapter,
-  pmvAshraeModelConfig,
-} from "../../declarations/pmv/ashrae";
-import {
-  buildUtciStressChart,
-} from "../../declarations/utci/charts";
 import {
   calculateUtci,
   utciModelConfig,
@@ -110,12 +106,29 @@ function buildRegisteredPmvChart(
   return { calculation, chart };
 }
 
+function buildRegisteredUtciChart(unitSystem: UnitSystemType = UnitSystem.SI) {
+  const utciResult = calculateUtci(utciPayload);
+  const chart = buildChartPlotly(
+    utciModelConfig,
+    ChartType.Utci,
+    { inputs: { [InputId.Input1]: utciPayload } },
+    {
+      [InputId.Input1]: utciResult,
+      [InputId.Input2]: null,
+      [InputId.Input3]: null,
+    },
+    createChartContext(unitSystem, createUtciExploreConfig()),
+  );
+  if (!chart) throw new Error("Expected a UTCI chart.");
+  return chart;
+}
+
 function createPmvExploreConfig(
-  xField: ChartAxisQuantityId,
-  yField: ChartAxisQuantityId,
-  zOutput = PhysicalQuantityId.Pmv,
+  xField: PhysicalQuantityId,
+  yField: PhysicalQuantityId,
+  zOutput = PhysicalQuantityId.PredictedMeanVote,
 ): ExploreFieldChartConfig {
-  const output = pmvExploreOutputs.find(({ key }) => key === zOutput)!;
+  const output = pmvAshraeDeclaration.exploreOutputs.find(({ key }) => key === zOutput)!;
   return {
     profileKind: FieldChartProfileKind.Explore,
     xField,
@@ -235,23 +248,12 @@ describe("comfort services", () => {
 
   it("builds PMV and UTCI charts from typed requests", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      "pmv-ashrae-psychrometric",
+      "psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
 
-    const utciResult = calculateUtci(utciPayload);
-    const utciChart = buildUtciStressChart(
-      {
-        inputs: {
-          [InputId.Input1]: utciPayload,
-        },
-      },
-      {
-        [InputId.Input1]: utciResult,
-      },
-      createChartContext(UnitSystem.SI, createUtciExploreConfig()),
-    );
+    const utciChart = buildRegisteredUtciChart();
 
     expect(psychrometricChart.traces.length).toBeGreaterThan(1);
     expect(psychrometricChart.traces.find(({ name }) => name === "PMV bands hover"))
@@ -287,18 +289,7 @@ describe("comfort services", () => {
     { unitSystem: UnitSystem.SI, expectedRange: [-50, 55] },
     { unitSystem: UnitSystem.IP, expectedRange: [-58, 131] },
   ])("keeps the UTCI stress chart finite in $unitSystem units", ({ unitSystem, expectedRange }) => {
-    const utciResult = calculateUtci(utciPayload);
-    const chart = buildUtciStressChart(
-      {
-        inputs: {
-          [InputId.Input1]: utciPayload,
-        },
-      },
-      {
-        [InputId.Input1]: utciResult,
-      },
-      createChartContext(unitSystem, createUtciExploreConfig()),
-    );
+    const chart = buildRegisteredUtciChart(unitSystem);
     const range = chart.layout.xaxis.range as number[];
     const bandCoordinates = chart.traces
       .slice(0, 2)
@@ -316,7 +307,7 @@ describe("comfort services", () => {
 
   it("does not evaluate a psychrometric hover grid above saturation", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      "pmv-ashrae-psychrometric",
+      "psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
@@ -333,7 +324,7 @@ describe("comfort services", () => {
       PhysicalQuantityId.RelativeHumidity,
     );
     const { chart: dynamicChart } = buildRegisteredPmvChart(
-      "pmv-ashrae-dynamic-field",
+      "dynamic",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(UnitSystem.SI, fieldChartConfig),
     );
@@ -367,20 +358,20 @@ describe("comfort services", () => {
     );
 
     const { chart: input1BaselineChart } = buildRegisteredPmvChart(
-      "pmv-ashrae-dynamic-field",
+      "dynamic",
       chartInputs,
       createChartContext(UnitSystem.SI, fieldChartConfig, InputId.Input1),
     );
     const { chart: input2BaselineChart } = buildRegisteredPmvChart(
-      "pmv-ashrae-dynamic-field",
+      "dynamic",
       chartInputs,
       createChartContext(UnitSystem.SI, fieldChartConfig, InputId.Input2),
     );
     const input1Fill = input1BaselineChart.traces.find(({ name, fill }) => (
-      typeof name === "string" && name.includes("Neutral") && fill === "toself"
+      typeof name === "string" && name.includes("acceptable") && fill === "toself"
     ));
     const input2Fill = input2BaselineChart.traces.find(({ name, fill }) => (
-      typeof name === "string" && name.includes("Neutral") && fill === "toself"
+      typeof name === "string" && name.includes("acceptable") && fill === "toself"
     ));
 
     expect(input1Fill?.x).toBeDefined();
@@ -392,23 +383,12 @@ describe("comfort services", () => {
 
   it("rebuilds chart labels and hover text for IP units", () => {
     const { chart: psychrometricChart } = buildRegisteredPmvChart(
-      "pmv-ashrae-psychrometric",
+      "psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(UnitSystem.IP),
     );
 
-    const utciResult = calculateUtci(utciPayload);
-    const utciChart = buildUtciStressChart(
-      {
-        inputs: {
-          [InputId.Input1]: utciPayload,
-        },
-      },
-      {
-        [InputId.Input1]: utciResult,
-      },
-      createChartContext(UnitSystem.IP, createUtciExploreConfig()),
-    );
+    const utciChart = buildRegisteredUtciChart(UnitSystem.IP);
 
     expect(String(psychrometricChart.layout.xaxis.title)).toContain("°F");
     expect(String(psychrometricChart.layout.yaxis.title)).toContain("gr/lb");
@@ -422,7 +402,7 @@ describe("comfort services", () => {
 
   it("closes the comfort-zone overlay along RH caps", () => {
     const { calculation, chart: psychrometricChart } = buildRegisteredPmvChart(
-      "pmv-ashrae-psychrometric",
+      "psychrometric",
       { [InputId.Input1]: comfortZonePayload },
       createChartContext(),
     );
@@ -469,7 +449,7 @@ describe("comfort services", () => {
       derivePsychrometricSlots(inputState),
       HumidityInputMode.DewPoint,
       {
-        [PhysicalQuantityId.DewPoint]: 12,
+        [PhysicalQuantityId.DewPointTemperature]: 12,
       },
     );
 

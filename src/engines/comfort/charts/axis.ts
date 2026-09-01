@@ -1,10 +1,10 @@
-import { getPhysicalQuantityMeta, getQuantityPresentationMeta, type ChartAxisQuantityId } from "../../../catalog/quantities";
+import { getPhysicalQuantityMeta, getQuantityPresentationMeta, type PhysicalQuantityId } from "../../../catalog/quantities";
 import { type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import { convertQuantityFromSi, convertQuantityToSi } from "../../units";
 import type { ChartAxisScale, ChartAxisValues, ChartRange } from "./types";
 
 interface CreateFieldAxisScaleOptions {
-  field: ChartAxisQuantityId;
+  field: PhysicalQuantityId;
   unitSystem: UnitSystemType;
   rangeSi?: ChartRange;
   points: number;

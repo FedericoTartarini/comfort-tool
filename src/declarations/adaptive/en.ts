@@ -1,4 +1,4 @@
-import { adaptive_en } from "jsthermalcomfort";
+import { adaptive_en, t_o } from "jsthermalcomfort";
 import { PhysicalQuantityId } from "../../catalog/quantities";
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
@@ -10,21 +10,52 @@ import { StandardId, SurfaceId } from "../../catalog/surfaces";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
+  type AdaptiveLibraryResult,
   type AdaptiveModelDeclaration,
+  type AdaptiveRequest,
 } from "./shared";
 import {
   createAdaptiveComplianceBands,
   createAdaptiveComplianceCaption,
   createAdaptiveComplianceFeedbackGetter,
+  levelsFromAdaptiveOffsets,
+  libraryLevelsFromAdaptiveResult,
 } from "./calculation";
 
 export const adaptiveEnZonesList = [
-  new ThermalZone({ label: "Too Cool", token: ZoneToken.TooCool }),
-  new ThermalZone({ label: "Category III", token: ZoneToken.WideAcceptable }),
-  new ThermalZone({ label: "Category II", token: ZoneToken.Acceptable }),
-  new ThermalZone({ label: "Category I", token: ZoneToken.Preferred }),
-  new ThermalZone({ label: "Too Warm", token: ZoneToken.TooWarm }),
+  new ThermalZone({ label: ZoneToken.TooCool, token: ZoneToken.TooCool }),
+  new ThermalZone({ label: "cat_iii", token: ZoneToken.WideAcceptable }),
+  new ThermalZone({ label: "cat_ii", token: ZoneToken.Acceptable }),
+  new ThermalZone({ label: "cat_i", token: ZoneToken.Preferred }),
+  new ThermalZone({ label: ZoneToken.TooWarm, token: ZoneToken.TooWarm }),
 ];
+
+const adaptiveEnLevels = levelsFromAdaptiveOffsets(adaptive_en.offsets);
+
+function evaluateAdaptiveEnLibrary(
+  request: AdaptiveRequest,
+  options: { limitInputs: boolean },
+): AdaptiveLibraryResult {
+  const result = adaptive_en(
+    request.tdb,
+    request.tr,
+    request.t_running_mean,
+    request.v,
+    UnitSystem.SI,
+    options.limitInputs,
+    false,
+  );
+  return {
+    tCmf: result.tmp_cmf,
+    operativeTemperature: t_o(
+      request.tdb,
+      request.tr,
+      request.v,
+      JsThermalComfortStandard.ISO,
+    ),
+    levels: libraryLevelsFromAdaptiveResult(result, adaptiveEnLevels),
+  };
+}
 
 const adaptiveEnBoundaryDefinition: AdaptiveBoundaryDefinition = {
   bandSequence: [
@@ -36,57 +67,37 @@ const adaptiveEnBoundaryDefinition: AdaptiveBoundaryDefinition = {
     adaptiveEnZonesList[1],
     adaptiveEnZonesList[4],
   ],
-  levels: [
-    {
-      id: "category-i",
-      label: adaptiveEnZonesList[3].label,
-      coolOffset: -3,
-      warmOffset: 2,
-    },
-    {
-      id: "category-ii",
-      label: adaptiveEnZonesList[2].label,
-      coolOffset: -4,
-      warmOffset: 3,
-    },
-    {
-      id: "category-iii",
-      label: adaptiveEnZonesList[1].label,
-      coolOffset: -5,
-      warmOffset: 4,
-    },
-  ],
-  coefficients: { slope: 0.33, intercept: 18.8 },
+  levels: adaptiveEnLevels,
+  offsets: adaptive_en.offsets,
+  evaluateLibrary: evaluateAdaptiveEnLibrary,
 };
 
-const getAdaptiveEnFeedback = createAdaptiveComplianceFeedbackGetter("category-iii");
+const getAdaptiveEnFeedback = createAdaptiveComplianceFeedbackGetter("cat_iii");
 
 export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   ...adaptiveEnBoundaryDefinition,
+  library: adaptive_en,
   modelId: ModelId.AdaptiveEn,
-  label: "Adaptive (EN 16798-1)",
-  description:
-    "EN 16798-1 Adaptive thermal comfort model for naturally ventilated buildings.",
   standardIds: [StandardId.En16798],
   resultStandard: ComfortStandard.En16798Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ISO,
   surfaceCapabilities: [SurfaceId.Standard],
   exploreOutputs: [],
   modifiers: [],
-  boundaryChartId: "adaptive-en-boundary",
   complianceProfile: {
     output: PhysicalQuantityId.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),
     legendTitle: "Adaptive Zones",
     caption: createAdaptiveComplianceCaption(
-      "Shading shows EN 16798-1 Categories I–III",
       adaptiveEnBoundaryDefinition,
-      "category-iii",
+      "cat_iii",
     ),
     getFeedback: getAdaptiveEnFeedback,
   },
-  hoverLevelIds: ["category-i", "category-ii", "category-iii"],
-  complianceLevelId: "category-iii",
+  hoverLevelIds: adaptiveEnLevels.map(({ id }) => id),
+  complianceLevelId: "cat_iii",
+  // Chart x-axis. EN 16798 / library JSDoc use 10–30 °C; do not copy
+  // adaptive_en.t_running_mean_limits (currently 33.5, same as ASHRAE).
   outdoorTemperatureRangeSi: { min: 10, max: 30 },
   outdoorTemperatureLabel: "Running mean outdoor temperature",
   airSpeedPresetKey: InputPresetKey.AdaptiveEnAirSpeed,
@@ -102,15 +113,6 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
     compliant: adaptiveEnZonesList[2].textColor,
     nonCompliant: adaptiveEnZonesList[4].textColor,
   },
-  evaluateApplicability: (request) => adaptive_en(
-    request.tdb,
-    request.tr,
-    request.trm,
-    request.v,
-    UnitSystem.SI,
-    true,
-    false,
-  ).tmp_cmf,
 };
 
 export const adaptiveEnModelConfig = createAdaptiveModelConfig(

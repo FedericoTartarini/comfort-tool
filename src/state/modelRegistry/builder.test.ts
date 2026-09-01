@@ -22,20 +22,21 @@ const bands: readonly NumericBand[] = [
 ];
 
 const pmvOutput: ModelOutput = {
-  key: PhysicalQuantityId.Pmv,
+  key: PhysicalQuantityId.PredictedMeanVote,
   label: "PMV",
   defaultBands: bands,
 };
 
-function createModelDynamicFieldChart(
-  id = "test-dynamic-field",
-): FrontendChartDeclaration {
+function createModelDynamicFieldChart(): FrontendChartDeclaration {
   return {
-    id,
     type: ChartType.Dynamic,
     emptyMessage: "No test chart yet.",
     spec: {
       title: "Test",
+      axes: {
+        x: PhysicalQuantityId.DryBulbTemperature,
+        y: PhysicalQuantityId.RelativeHumidity,
+      },
       axisFields: [
         PhysicalQuantityId.DryBulbTemperature,
         PhysicalQuantityId.RelativeHumidity,
@@ -54,11 +55,8 @@ function createModelDynamicFieldChart(
   };
 }
 
-function createModelUtciChart(
-  id = "test-utci",
-): FrontendChartDeclaration {
+function createModelUtciChart(): FrontendChartDeclaration {
   return {
-    id,
     type: ChartType.Utci,
     emptyMessage: "No stress chart yet.",
     capabilities: {
@@ -77,11 +75,8 @@ function createModelUtciChart(
   };
 }
 
-function createModelBodyTemperatureChart(
-  id = "test-body-temperature",
-): FrontendChartDeclaration {
+function createModelBodyTemperatureChart(): FrontendChartDeclaration {
   return {
-    id,
     type: ChartType.BodyTemperature,
     emptyMessage: "No history chart yet.",
     capabilities: {
@@ -104,23 +99,28 @@ function createModelBodyTemperatureChart(
   };
 }
 
-function createModelAdaptiveChart(
-  id = "test-adaptive",
-): FrontendChartDeclaration {
+function createModelAdaptiveChart(): FrontendChartDeclaration {
   return {
-    id,
     type: ChartType.Adaptive,
     emptyMessage: "No boundary chart yet.",
-    spec: { title: "Boundary", axisFields: [
-        PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.PrevailingMeanOutdoorTemperature, ] },
+    spec: {
+      title: "Boundary",
+      axisFields: [
+        PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+        PhysicalQuantityId.OperativeTemperature,
+      ],
+      outdoorRangeSi: { min: 10, max: 33.5 },
+      outdoorLabel: "Outdoor",
+      evaluate: () => ({}),
+      requestFromPoint: (baseline) => baseline,
+      getHoverMetadata: () => [],
+      buildHoverTemplate: () => "",
+    },
   };
 }
 
-function createModelHeatLossChart(
-  id = "test-heat-loss",
-): FrontendChartDeclaration {
+function createModelHeatLossChart(): FrontendChartDeclaration {
   return {
-    id,
     type: ChartType.HeatLoss,
     emptyMessage: "No parametric chart yet.",
     spec: {
@@ -168,7 +168,7 @@ const modelChartBuildProfile = {
   kind: FieldChartProfileKind.Explore,
   xField: PhysicalQuantityId.DryBulbTemperature,
   yField: PhysicalQuantityId.RelativeHumidity,
-  zOutput: PhysicalQuantityId.Pmv,
+  zOutput: PhysicalQuantityId.PredictedMeanVote,
   bands: [
     { min: 10, max: 20, label: "Low", color: "#eeeeee" },
     { min: 20, max: 40, label: "High", color: "#cccccc" },
@@ -185,10 +185,12 @@ const testTableRows = [
 
 function createPmvPsychrometricChart(): FrontendChartDeclaration {
   return {
-    id: "test-pmv-custom",
     type: ChartType.Psychrometric,
     emptyMessage: "No psychrometric chart yet.",
-    spec: { build: () => null },
+    spec: {
+      evaluate: () => null,
+      trEqualsTdb: () => false,
+    },
   };
 }
 
@@ -224,7 +226,7 @@ describe("ComfortModelBuilder capabilities", () => {
   it("builds a complete minimal validated configuration snapshot", () => {
     const definition = createExploreBuilder().build();
     expect(definition.chartInstances.defaultInstanceId).toBe(
-      "test-dynamic-field",
+      ChartType.Dynamic,
     );
     expect(definition.buildChart).toBeTypeOf("function");
     expect(definition.chartInstances.entries[0]).not.toHaveProperty("spec");
@@ -273,7 +275,7 @@ describe("ComfortModelBuilder capabilities", () => {
     expect(() =>
       createExploreBuilder()
         .setComplianceProfile({
-          output: PhysicalQuantityId.Pmv,
+          output: PhysicalQuantityId.PredictedMeanVote,
           bands,
           legendTitle: "Bands",
           caption: "Caption",
@@ -327,7 +329,7 @@ describe("ComfortModelBuilder capabilities", () => {
       createExploreBuilder()
         .setExtraQuantities([PhysicalQuantityId.DryBulbTemperature])
         .build(),
-    ).toThrow(/catalog Extra/);
+    ).toThrow(/not primary, humidity, or modifier slots/);
   });
 
   it("exposes a quantity input field for a selected Extra catalog id", () => {
@@ -355,7 +357,7 @@ describe("ComfortModelBuilder capabilities", () => {
         ])
         .build(),
     ).toThrow(
-      /quantity field bodyWeight must be listed in extraQuantities/,
+      /quantity field weight must be listed in extraQuantities/,
     );
   });
 });
@@ -363,8 +365,10 @@ describe("ComfortModelBuilder capabilities", () => {
 describe("defineModel", () => {
   const defineModelBase = {
     id: ModelId.PmvAshrae,
-    label: "Test model",
-    description: "Test model description.",
+    library: {
+      label: "Test model",
+      description: "Test model description.",
+    },
     standardIds: [] as const,
     surfaceCapabilities: [SurfaceId.Explore],
     exploreOutputs: [pmvOutput],
@@ -395,7 +399,7 @@ describe("defineModel", () => {
     expect(definition.id).toBe(ModelId.PmvAshrae);
     expect(definition.inputFields).toEqual([]);
     expect(definition.chartInstances.defaultInstanceId).toBe(
-      "test-dynamic-field",
+      ChartType.Dynamic,
     );
     expect(definition.buildChart).toBeTypeOf("function");
     expect(definition.buildTable).toBeTypeOf("function");
@@ -442,8 +446,8 @@ describe("defineModel", () => {
       defineModel({
         ...defineModelBase,
         charts: [
-          createModelDynamicFieldChart("type-a"),
-          createModelDynamicFieldChart("type-b"),
+          createModelDynamicFieldChart(),
+          createModelDynamicFieldChart(),
         ],
       }),
     ).toThrow(/duplicate chart types/);
@@ -465,7 +469,6 @@ describe("defineModel", () => {
         ...defineModelBase,
         charts: [
           {
-            id: "mixed",
             type: ChartType.Utci,
             emptyMessage: "No chart.",
             spec: createModelDynamicFieldChart().spec,
@@ -475,19 +478,18 @@ describe("defineModel", () => {
     ).toThrow(/spec does not match type/);
   });
 
-  it("accepts defineModel Dynamic charts whose spec is a Plotly geometry spec", () => {
-    const definition = defineModel({
-      ...defineModelBase,
-      charts: [
-        {
-          ...createModelDynamicFieldChart(),
-          spec: { title: "Test", axisFields: [
-              PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.RelativeHumidity, ], build: () => null },
-        } as unknown as FrontendChartDeclaration,
-      ],
-    });
-    expect(definition.chartEngineRegistrations[0]?.registration.type).toBe(
-      ChartType.Dynamic,
-    );
+  it("rejects defineModel Dynamic charts that still carry a Plotly build()", () => {
+    expect(() =>
+      defineModel({
+        ...defineModelBase,
+        charts: [
+          {
+            ...createModelDynamicFieldChart(),
+            spec: { title: "Test", axisFields: [
+                PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.RelativeHumidity, ], build: () => null },
+          } as unknown as FrontendChartDeclaration,
+        ],
+      }),
+    ).toThrow(/spec does not match type/);
   });
 });

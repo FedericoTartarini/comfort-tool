@@ -23,9 +23,9 @@ describe("psychrometric derivations", () => {
     const psychrometric = psy_ta_rh(25, 50);
     const derived = derivePsychrometricSlots({ ...primary, [PhysicalQuantityId.MeanRadiantTemperature]: 24, [PhysicalQuantityId.RelativeAirSpeed]: 0.1, [PhysicalQuantityId.WindSpeed]: 1, [PhysicalQuantityId.MetabolicRate]: 1, [PhysicalQuantityId.ClothingInsulation]: 0.5, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20 });
 
-    expect(derived[PhysicalQuantityId.DewPoint]).toBeCloseTo(psychrometric.t_dp, 4);
+    expect(derived[PhysicalQuantityId.DewPointTemperature]).toBeCloseTo(psychrometric.t_dp, 4);
     expect(derived[PhysicalQuantityId.HumidityRatio]).toBeCloseTo(psychrometric.hr, 6);
-    expect(derived[PhysicalQuantityId.WetBulb]).toBeCloseTo(psychrometric.t_wb, 4);
+    expect(derived[PhysicalQuantityId.WetBulbTemperature]).toBeCloseTo(psychrometric.t_wb, 4);
     expect(derived[PhysicalQuantityId.VaporPressure]).toBeCloseTo(psychrometric.p_vap, 2);
   });
 

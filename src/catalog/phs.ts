@@ -3,7 +3,6 @@ import { PhysicalQuantityId } from "./quantities";
 
 export const PHS_STANDARD_VERSION = "7933-2023";
 export const PHS_COMPLIANCE_HORIZON_MINUTES = 480;
-export const PHS_RECTAL_TEMPERATURE_LIMIT_C = 38;
 
 export const PhsPosture = {
   Sitting: "sitting",

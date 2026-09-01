@@ -1,5 +1,5 @@
 import { InputControlId } from "../../../catalog/inputControls";
-import { TemperatureMode, type ModelOptionsRecord } from "../../../catalog/inputModes";
+import { TemperatureMode, OptionKey, type ModelOptionsRecord } from "../../../catalog/inputModes";
 import {
   convertQuantityFromSi,
   convertQuantityToSi,
@@ -15,22 +15,27 @@ import {
 } from "./numericControl";
 import {
   getInputPresetOptions,
-  type InputPresetKey,
+  InputPresetKey,
 } from "./inputControlPresets";
 import {
   createOperativeTemperatureControlBehavior,
-  requireTemperatureMode,
 } from "./temperatureControl";
 import type { BehaviorPatch, InputControlBehavior, InputControlDefinition } from "./types";
 import {
   PhysicalQuantityId,
   getPhysicalQuantityMeta,
   getQuantityDisplayMeta,
-  type DerivedSlotQuantityState,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
   type PrimaryQuantityId,
 } from "../../../catalog/quantities";
+import type { DerivedSlotQuantityState } from "../derivations/psychrometrics";
+import { isExtraQuantityId } from "../quantityStateRouting";
+import {
+  InputWidget,
+  defaultControlIdByQuantity,
+  defaultFieldWidgetByQuantity,
+} from "../../../catalog/inputWidgets";
 type PostTemperatureSynchronizer = (
   inputState: PrimaryInputState,
   derivedState: DerivedSlotQuantityState,
@@ -111,6 +116,148 @@ export type InputFieldSpec =
   | OutdoorWindSpeedInputFieldSpec
   | PresetInputFieldSpec
   | ExtraQuantityInputFieldSpec;
+
+/** Model-file authoring: a quantity id, or quantity plus overrides. */
+export type AuthoringFieldOverride = {
+  quantity: PhysicalQuantityIdType;
+  widget?: InputWidget;
+  controlId?: (typeof InputControlId)[keyof typeof InputControlId];
+  minValue?: number;
+  maxValue?: number;
+  step?: number;
+  label?: string;
+  hideWhen?: "operative" | "air";
+  supportsOccupantAirSpeedControl?: boolean;
+  presetKey?: InputPresetKey;
+  presetDecimals?: number;
+  showClothingBuilder?: boolean;
+  applyInput?: NumericControlBehaviorConfig["applyInput"];
+  postSynchronize?: PostTemperatureSynchronizer;
+};
+
+export type AuthoringInputField =
+  | PrimaryQuantityId
+  | PhysicalQuantityIdType
+  | AuthoringFieldOverride
+  | InputFieldSpec;
+
+function isResolvedInputFieldSpec(
+  field: AuthoringInputField,
+): field is InputFieldSpec {
+  return typeof field === "object" && "kind" in field;
+}
+
+function defaultPresetKeyForQuantity(quantity: PrimaryQuantityId): InputPresetKey {
+  if (quantity === PhysicalQuantityId.MetabolicRate) {
+    return InputPresetKey.MetabolicRate;
+  }
+  if (quantity === PhysicalQuantityId.ClothingInsulation) {
+    return InputPresetKey.ClothingInsulation;
+  }
+  throw new Error(`Quantity ${quantity} has no default preset widget.`);
+}
+
+function specFromQuantity(
+  quantity: PhysicalQuantityIdType,
+  override: Omit<AuthoringFieldOverride, "quantity">,
+): InputFieldSpec {
+  if (isExtraQuantityId(quantity)) {
+    return {
+      kind: "quantity",
+      quantityId: quantity,
+      minValue: override.minValue,
+      maxValue: override.maxValue,
+      label: override.label,
+    };
+  }
+
+  if (!(quantity in defaultFieldWidgetByQuantity)) {
+    throw new Error(`Quantity ${quantity} has no default input widget.`);
+  }
+  const primaryQuantity = quantity as PrimaryQuantityId;
+  const widget = override.widget ?? defaultFieldWidgetByQuantity[primaryQuantity];
+  const controlId =
+    override.controlId ?? defaultControlIdByQuantity[primaryQuantity];
+  const meta = getPhysicalQuantityMeta(primaryQuantity);
+
+  switch (widget) {
+    case InputWidget.Numeric:
+      if (controlId === undefined) {
+        throw new Error(`Quantity ${quantity} has no default control id.`);
+      }
+      return {
+        kind: "numeric",
+        controlId,
+        fieldKey: primaryQuantity,
+        minValue: override.minValue,
+        maxValue: override.maxValue,
+        label: override.label,
+      };
+    case InputWidget.OperativeTemperature:
+      return {
+        kind: "operativeTemperature",
+        minValue: override.minValue,
+        maxValue: override.maxValue,
+        postSynchronize: override.postSynchronize,
+      };
+    case InputWidget.RadiantTemperature:
+      return {
+        kind: "radiantTemperature",
+        minValue: override.minValue,
+        maxValue: override.maxValue,
+        hideWhen: override.hideWhen ?? "operative",
+        label: override.label,
+      };
+    case InputWidget.SimpleHumidity:
+      return { kind: "simpleHumidity" };
+    case InputWidget.AdvancedHumidity:
+      return { kind: "advancedHumidity" };
+    case InputWidget.OccupantAirSpeed:
+      return {
+        kind: "occupantAirSpeed",
+        supportsOccupantAirSpeedControl: override.supportsOccupantAirSpeedControl,
+      };
+    case InputWidget.OutdoorWindSpeed:
+      return {
+        kind: "outdoorWindSpeed",
+        minValue: override.minValue ?? meta.minSi,
+        maxValue: override.maxValue ?? meta.maxSi,
+        step: override.step,
+      };
+    case InputWidget.Preset:
+      if (controlId === undefined) {
+        throw new Error(`Quantity ${quantity} has no default control id.`);
+      }
+      return {
+        kind: "preset",
+        presetKey: override.presetKey ?? defaultPresetKeyForQuantity(primaryQuantity),
+        controlId,
+        fieldKey: primaryQuantity,
+        presetDecimals: override.presetDecimals,
+        showClothingBuilder: override.showClothingBuilder,
+        maxValue: override.maxValue,
+        label: override.label,
+        applyInput: override.applyInput,
+      };
+    default: {
+      const unknownWidget: never = widget;
+      throw new Error(`Unknown input widget: ${String(unknownWidget)}`);
+    }
+  }
+}
+
+export function resolveAuthoringInputField(
+  field: AuthoringInputField,
+): InputFieldSpec {
+  if (typeof field === "string") {
+    return specFromQuantity(field, {});
+  }
+  if (isResolvedInputFieldSpec(field)) {
+    return field;
+  }
+  const { quantity, ...override } = field;
+  return specFromQuantity(quantity, override);
+}
 
 export type InputFieldControlId = InputControlDefinition["id"];
 
@@ -310,7 +457,13 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
           minValue: spec.minValue,
           maxValue: spec.maxValue,
           hidden: (context) => {
-            const mode = requireTemperatureMode(context.options);
+            const mode = context.options[OptionKey.TemperatureMode];
+            if (
+              mode !== TemperatureMode.Air
+              && mode !== TemperatureMode.Operative
+            ) {
+              return false;
+            }
             return spec.hideWhen === "operative"
               ? mode === TemperatureMode.Operative
               : mode !== TemperatureMode.Air;

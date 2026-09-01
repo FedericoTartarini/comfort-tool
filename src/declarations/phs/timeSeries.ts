@@ -1,5 +1,6 @@
+import { phs } from "jsthermalcomfort";
 import { ModelId } from "../../catalog/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta, type ChartAxisQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta } from "../../catalog/quantities";
 import {
   PhsPosture,
   PhsSegmentPreset,
@@ -41,7 +42,7 @@ const PhsTimeSeriesControlId = {
   DrinkingAllowed: "phs-drinking-allowed",
 } as const;
 
-const segmentPropertyByField = { [PhysicalQuantityId.DryBulbTemperature]: "tdb", [PhysicalQuantityId.MeanRadiantTemperature]: "tr", [PhysicalQuantityId.WindSpeed]: "v", [PhysicalQuantityId.RelativeHumidity]: "rh", [PhysicalQuantityId.MetabolicRate]: "met", [PhysicalQuantityId.ClothingInsulation]: "clo" } as const satisfies Partial<Record<ChartAxisQuantityId, keyof PhsTimeSeriesSegment>>;
+const segmentPropertyByField = { [PhysicalQuantityId.DryBulbTemperature]: "tdb", [PhysicalQuantityId.MeanRadiantTemperature]: "tr", [PhysicalQuantityId.WindSpeed]: "v", [PhysicalQuantityId.RelativeHumidity]: "rh", [PhysicalQuantityId.MetabolicRate]: "met", [PhysicalQuantityId.ClothingInsulation]: "clo" } as const satisfies Partial<Record<PhysicalQuantityId, keyof PhsTimeSeriesSegment>>;
 
 type PhsSegmentField = keyof typeof segmentPropertyByField;
 
@@ -366,7 +367,7 @@ export const phsTimeSeriesModelDefinition: TimeSeriesModelDefinition<
   PhsSimulationResult
 > = {
   id: ModelId.Phs2023,
-  label: "Predicted Heat Strain (PHS)",
+  label: phs.label,
   description:
     "Build an ordered work sequence and calculate ISO 7933:2023 minute by minute.",
   standardLabel: "ISO 7933:2023",

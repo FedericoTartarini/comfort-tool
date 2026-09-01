@@ -27,7 +27,7 @@ describe("ChartExportMenu", () => {
     render(ChartExportMenu, {
       chartInstances: [currentChart],
       currentChart,
-      selectedChartInstanceId: currentChart.instanceId,
+      selectedChartType: currentChart.instanceId,
       onSelectChartInstance: vi.fn(),
       onExport,
     });
@@ -53,7 +53,7 @@ describe("ChartExportMenu", () => {
     render(ChartExportMenu, {
       chartInstances: [currentChart],
       currentChart,
-      selectedChartInstanceId: currentChart.instanceId,
+      selectedChartType: currentChart.instanceId,
       onSelectChartInstance: vi.fn(),
       onExport,
     });

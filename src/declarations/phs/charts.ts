@@ -1,5 +1,6 @@
+import { phs } from "jsthermalcomfort";
 import type { TimeSeriesLineChartEngineSpec } from "../../engines/comfort/charts/kinds/types";
-import { PhysicalQuantityId, type ChartAxisQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
+import { PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
 import type { ModelChartSource } from "../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
 import {
@@ -9,10 +10,9 @@ import {
 import { type ChartBuildContext, type ModelOutput, type NumericBand, resolveChartModelInputs } from "../../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 
-import type { FieldRequestAdapter } from "../../engines/comfort/requestMapping";
+import type { LibraryQuantityMapping } from "../../engines/comfort/requestMapping";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
-  PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PhsLimitingCriterion,
   type PhsEnvironmentSi,
   type PhsResponse,
@@ -30,18 +30,13 @@ import {
 
 const PHS_GRID_POINTS = 31;
 
-export const PHS_AXIS_RANGES: Record<ChartAxisQuantityId, ChartRange> = {
+export const PHS_AXIS_RANGES: Partial<Record<PhysicalQuantityId, ChartRange>> = {
   [PhysicalQuantityId.DryBulbTemperature]: { min: 15, max: 50 },
   [PhysicalQuantityId.MeanRadiantTemperature]: { min: 0, max: 60 },
-  [PhysicalQuantityId.RelativeAirSpeed]: { min: 0, max: 2 },
   [PhysicalQuantityId.WindSpeed]: { min: 0, max: 3 },
   [PhysicalQuantityId.RelativeHumidity]: { min: 0, max: 100 },
-  [PhysicalQuantityId.HumidityRatio]: { min: 0, max: 0.025 },
   [PhysicalQuantityId.MetabolicRate]: { min: 0.9, max: 3.9 },
   [PhysicalQuantityId.ClothingInsulation]: { min: 0.1, max: 1 },
-  [PhysicalQuantityId.ExternalWork]: { min: 0, max: 0 },
-  [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: { min: 10, max: 33.5 },
-  [PhysicalQuantityId.OperativeTemperature]: { min: 10, max: 40 },
 };
 
 export function getPhsOutputValue(
@@ -49,11 +44,11 @@ export function getPhsOutputValue(
   outputKey: PhysicalQuantityIdType,
 ): number {
   switch (outputKey) {
-    case PhysicalQuantityId.PhsLimitingExposureTime:
+    case PhysicalQuantityId.LimitingExposureTime:
       return result.limitingExposureTimeMinutes;
-    case PhysicalQuantityId.PhsRectalTemperature:
+    case PhysicalQuantityId.RectalTemperature:
       return result.tRe;
-    case PhysicalQuantityId.PhsWaterLoss:
+    case PhysicalQuantityId.SweatLoss:
       return result.sweatLossG;
     default:
       throw new Error(`Unsupported PHS output: ${outputKey}`);
@@ -63,7 +58,7 @@ export function getPhsOutputValue(
 export function createPhsDynamicGridSpec(
   outputs: readonly ModelOutput[],
   requestAdapter: Pick<
-    FieldRequestAdapter<PhsEnvironmentSi>,
+    LibraryQuantityMapping<PhsEnvironmentSi>,
     "getAxisValue" | "setAxisValue"
   >,
   context: ChartBuildContext<NumericBand>,
@@ -108,9 +103,9 @@ export function buildPhsExposureHistoryChartResult(
 
   const thresholdC =
     context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
-      ? PHS_RECTAL_TEMPERATURE_LIMIT_C
+      ? phs.RECTAL_TEMPERATURE_LIMIT
       : (context.fieldChartConfig.bands.find(({ max }) => Number.isFinite(max))
-          ?.max ?? PHS_RECTAL_TEMPERATURE_LIMIT_C);
+          ?.max ?? phs.RECTAL_TEMPERATURE_LIMIT);
   const markerMinute =
     context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
       ? baselineResult.limitingMinute

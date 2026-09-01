@@ -2,6 +2,7 @@
  * Unit tests for the Heat Index calculation service.
  */
 import { describe, expect, it } from "vitest";
+import { heat_index } from "jsthermalcomfort";
 import { PhysicalQuantityId } from "../catalog/quantities";
 import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
 import { ModelId } from "../catalog/modelIds";
@@ -35,14 +36,15 @@ describe("heatIndex service", () => {
     });
 
     expect(result.hi).toBeGreaterThan(45);
-    expect(result.category).toBe("Danger");
+    expect(result.category).toBe("danger");
   });
 
-  it("uses air temperature below the Heat Index applicability threshold", () => {
+  it("evaluates Heat Index below the Rothfusz applicability threshold", () => {
     const result = calculateHeatIndex({ tdb: 25, rh: 50 });
 
-    expect(result.hi).toBe(25);
-    expect(result.category).toBe("Safe");
+    expect(result.hi).toBeGreaterThan(20);
+    expect(result.hi).toBeLessThan(27);
+    expect(result.category).toBe("no risk");
   });
 
   it("converts the SI Heat Index result for IP display", () => {
@@ -59,7 +61,14 @@ describe("heatIndex service", () => {
     );
     expect(hiF).toBeGreaterThan(115);
     expect(hiF).toBeLessThan(125);
-    expect(result.category).toBe("Danger");
+    expect(result.category).toBe("danger");
+  });
+
+  it("maps Python right-closed Heat Index thresholds", () => {
+    expect(heat_index.mapping(27)).toBe("no risk");
+    expect(heat_index.mapping(32)).toBe("caution");
+    expect(heat_index.mapping(41)).toBe("extreme caution");
+    expect(heat_index.mapping(54)).toBe("danger");
   });
 
   it("identifies Extreme Danger threshold accurately", () => {
@@ -69,7 +78,7 @@ describe("heatIndex service", () => {
       rh: 75,
     });
 
-    expect(result.category).toBe("Extreme Danger");
+    expect(result.category).toBe("extreme danger");
   });
 
   it("builds static and dynamic chart results through the typed grid strategy", () => {
@@ -90,7 +99,7 @@ describe("heatIndex service", () => {
     } satisfies ChartBuildContext;
 
     const dynamicChart = buildChartPlotly(heatIndexModelConfig,
-      "heat-index-dynamic-field",
+      "dynamic",
       chartSource,
       resultsByInput,
       fixedContext,
@@ -111,7 +120,7 @@ describe("heatIndex service", () => {
     const result = calculateHeatIndex(request);
 
     const chart = buildChartPlotly(heatIndexModelConfig,
-      "heat-index-dynamic-field",
+      "dynamic",
       {
         inputs: { [InputId.Input1]: request },
       },
@@ -149,7 +158,7 @@ describe("heatIndex service", () => {
       },
     ];
     const chart = buildChartPlotly(heatIndexModelConfig,
-      "heat-index-dynamic-field",
+      "dynamic",
       { inputs: { [InputId.Input1]: request } },
       {
         [InputId.Input1]: result,
@@ -176,12 +185,12 @@ describe("heatIndex service", () => {
 
   it("declares a single Dynamic chart from defineModel", () => {
     expect(heatIndexModelConfig.id).toBe(ModelId.HeatIndex);
-    expect(heatIndexModelConfig.chartInstances.defaultInstanceId).toBe("heat-index-dynamic-field");
+    expect(heatIndexModelConfig.chartInstances.defaultInstanceId).toBe("dynamic");
     expect(heatIndexModelConfig.chartInstances.entries.map(({ instanceId, type }) => ({
       instanceId,
       type,
     }))).toEqual([
-      { instanceId: "heat-index-dynamic-field", type: "dynamic" },
+      { instanceId: "dynamic", type: "dynamic" },
     ]);
   });
 

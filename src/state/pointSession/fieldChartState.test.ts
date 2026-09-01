@@ -16,7 +16,7 @@ describe("field chart state helpers", () => {
   it("seeds Explore output settings for Explore-capable models and omits them otherwise", () => {
     expect(seedModelOutputSettings(adaptiveAshraeModelConfig).exploreOutput).toBeNull();
     expect(seedModelOutputSettings(utciModelConfig).exploreOutput)
-      .toBe(PhysicalQuantityId.Utci);
+      .toBe(PhysicalQuantityId.UniversalThermalClimateIndex);
   });
 
   it("seeds independent Explore bands and reseeds defaults when output changes", () => {
@@ -29,14 +29,14 @@ describe("field chart state helpers", () => {
     const ppd = selectExploreOutput(
       pmvAshraeModelConfig,
       settings,
-      PhysicalQuantityId.Ppd,
+      PhysicalQuantityId.PredictedPercentageOfDissatisfied,
     );
-    expect(ppd?.exploreOutput).toBe(PhysicalQuantityId.Ppd);
+    expect(ppd?.exploreOutput).toBe(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     expect(ppd?.exploreBands).toEqual(pmvAshraeModelConfig.exploreOutputs[1].defaultBands);
     expect(selectExploreOutput(
       pmvAshraeModelConfig,
       settings,
-      PhysicalQuantityId.Utci,
+      PhysicalQuantityId.UniversalThermalClimateIndex,
     )).toBeNull();
   });
 
@@ -89,7 +89,7 @@ describe("field chart state helpers", () => {
 
     expect(() => buildFieldChartProfile(pmvAshraeModelConfig, {
       ...complianceSettings,
-      exploreOutput: PhysicalQuantityId.Utci,
+      exploreOutput: PhysicalQuantityId.UniversalThermalClimateIndex,
       exploreBands: [],
     }, SurfaceId.Explore)).toThrow(/missing its Explore output settings/i);
   });

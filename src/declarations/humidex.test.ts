@@ -9,7 +9,7 @@ import { UnitSystem } from "../catalog/units";
 import { InputId } from "../catalog/inputSlots";
 
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
-import { type ChartBuildContext } from "../catalog/modelCapabilities";
+import { type ChartBuildContext, findNumericBandIndexForValue } from "../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
 
@@ -28,7 +28,7 @@ describe("humidex service", () => {
 
     expect(result.humidex).toBeGreaterThan(40);
     expect(result.humidex).toBeLessThan(43);
-    expect(result.humidexDiscomfort).toBe("Intense");
+    expect(result.humidexDiscomfort).toBe("Intense discomfort; avoid exertion");
   });
 
   it("identifies extreme stroke probable conditions", () => {
@@ -39,7 +39,7 @@ describe("humidex service", () => {
     });
 
     expect(result.humidex).toBeGreaterThanOrEqual(54);
-    expect(result.humidexDiscomfort).toBe("Stroke Probable");
+    expect(result.humidexDiscomfort).toBe("Heat stroke probable");
   });
 
   it("returns mild/none discomfort in low temperatures", () => {
@@ -48,7 +48,14 @@ describe("humidex service", () => {
       rh: 30,
     });
 
-    expect(result.humidexDiscomfort).toBe("Little/None");
+    expect(result.humidexDiscomfort).toBe("Little or no discomfort");
+  });
+
+  it("assigns humidex 30 to the library's first discomfort category", () => {
+    const bands = humidexModelConfig.exploreOutputs[0].defaultBands;
+
+    expect(bands[0].label).toBe("Little or no discomfort");
+    expect(findNumericBandIndexForValue(bands, 30)).toBe(0);
   });
 
   it("builds static and dynamic chart results through the typed grid strategy", () => {
@@ -69,7 +76,7 @@ describe("humidex service", () => {
     } satisfies ChartBuildContext;
 
     const dynamicChart = buildChartPlotly(humidexModelConfig,
-      "humidex-dynamic-field",
+      "dynamic",
       chartSource,
       resultsByInput,
       fixedContext,
@@ -100,7 +107,7 @@ describe("humidex service", () => {
       },
     ];
     const chart = buildChartPlotly(humidexModelConfig,
-      "humidex-dynamic-field",
+      "dynamic",
       { inputs: { [InputId.Input1]: request } },
       {
         [InputId.Input1]: result,
@@ -127,12 +134,12 @@ describe("humidex service", () => {
 
   it("declares a single Dynamic chart from defineModel", () => {
     expect(humidexModelConfig.id).toBe(ModelId.Humidex);
-    expect(humidexModelConfig.chartInstances.defaultInstanceId).toBe("humidex-dynamic-field");
+    expect(humidexModelConfig.chartInstances.defaultInstanceId).toBe("dynamic");
     expect(humidexModelConfig.chartInstances.entries.map(({ instanceId, type }) => ({
       instanceId,
       type,
     }))).toEqual([
-      { instanceId: "humidex-dynamic-field", type: "dynamic" },
+      { instanceId: "dynamic", type: "dynamic" },
     ]);
   });
 

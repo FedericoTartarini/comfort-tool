@@ -59,7 +59,7 @@
           {isLoading}
           {chartInstance}
           {chartInstances}
-          selectedChartInstanceId={pointSession.chartInstanceId}
+          selectedChartType={pointSession.chartInstanceId}
           onSelectChartInstance={pointSession.actions.setSelectedChartInstance}
           chartControls={pointSession.chartControls}
           legendZones={pointSession.chartLegendZones}

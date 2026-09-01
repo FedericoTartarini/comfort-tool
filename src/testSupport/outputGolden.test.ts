@@ -28,7 +28,7 @@ describe("output golden — chart snapshots", () => {
         expect(chart.traceCount).toBeGreaterThan(0);
         expect(chart.layoutTitle.length).toBeGreaterThan(0);
         expect(chart.xAxisTitle.length).toBeGreaterThan(0);
-        if (chart.instanceId !== "utci-stress-band") {
+        if (chart.instanceId !== "utci") {
           expect(chart.yAxisTitle.length).toBeGreaterThan(0);
         }
       });

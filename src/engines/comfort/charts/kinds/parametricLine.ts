@@ -298,7 +298,7 @@ export function renderParametricLineGeometry(
       ...buildCompareInputMarkerTraces(comparePointsByInput),
     ],
     layout: {
-      title: spec.title,
+      title: spec.title ?? "",
       paper_bgcolor: "#ffffff",
       plot_bgcolor: "#f8fafc",
       showlegend: true,

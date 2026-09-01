@@ -241,9 +241,9 @@ describe("shared chart engine", () => {
         points: 2,
       },
       strategy: createBandedGridStrategy({
-        config: { xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands },
+        config: { xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PredictedMeanVote, bands },
         output: {
-          key: PhysicalQuantityId.Pmv,
+          key: PhysicalQuantityId.PredictedMeanVote,
           label: "PMV",
           defaultBands: bands,
         },

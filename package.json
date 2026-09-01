@@ -42,7 +42,7 @@
     "flowbite": "^4.0.2",
     "flowbite-svelte": "^0.48.6",
     "flowbite-svelte-icons": "^3.1.0",
-    "jsthermalcomfort": "^1.4.0",
+    "jsthermalcomfort": "file:../../forked repo/jsthermalcomfort",
     "plotly.js-dist-min": "^3.7.0",
     "sv-router": "^0.18.0"
   }

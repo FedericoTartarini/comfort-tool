@@ -23,6 +23,7 @@
     findProbeTraceIndex,
     nativeHoverSkipTraceIndices,
     plotDisplayCoordinates,
+    probeRestyleAttributes,
     type PlotlyGraphDiv,
   } from "./plotlyFieldHover";
 
@@ -223,12 +224,7 @@
 
     await plotly.restyle(
       gd,
-      {
-        x: [[coords.xDisplay]],
-        y: [[coords.yDisplay]],
-        hovertemplate: hit.hovertemplate,
-        customdata: [hit.customdata === undefined ? [] : hit.customdata],
-      },
+      probeRestyleAttributes(coords.xDisplay, coords.yDisplay, hit),
       [probeIndex],
     );
     if (generation !== hoverGeneration) return;

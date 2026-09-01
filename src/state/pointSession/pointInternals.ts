@@ -5,7 +5,7 @@ import {
 } from "../../catalog/inputSlots";
 import type { ChartInstanceDeclaration } from "../../catalog/chartTypes";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
-import { primaryInputOrder, type ChartAxisQuantityId } from "../../catalog/quantities";
+import { primaryInputOrder, type PhysicalQuantityId } from "../../catalog/quantities";
 import {
   type ModifierId as ModifierIdType,
 } from "../../catalog/inputModifiers";
@@ -57,7 +57,7 @@ export interface PointInternals {
   getCurrentOutputSettings: () => PointSessionBuckets["setting"]["outputSettingsByModel"][ModelIdType];
   getEffectiveChartBaselineInputId: () => InputIdType;
   applyBehaviorPatch: (modelId: ModelIdType, patch: BehaviorPatch) => void;
-  getCurrentDynamicAxisPair: () => { xAxis: ChartAxisQuantityId; yAxis: ChartAxisQuantityId };
+  getCurrentDynamicAxisPair: () => { xAxis: PhysicalQuantityId; yAxis: PhysicalQuantityId };
   getPendingModelSwitch: () => PendingModelSwitch | null;
   getCurrentFieldChartProfile: () => FieldChartProfile;
 }

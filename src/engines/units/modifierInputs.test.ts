@@ -10,9 +10,9 @@ import {
 
 describe("modifier input units", () => {
   it.each([
-    [PhysicalQuantityId.ModifierMorningOutdoorTemperature, 20],
-    [PhysicalQuantityId.ModifierMeasuredAirSpeed, 1],
-    [PhysicalQuantityId.ModifierDirectSolarRadiation, 800],
+    [PhysicalQuantityId.MorningOutdoorTemperature, 20],
+    [PhysicalQuantityId.MeasuredAirSpeed, 1],
+    [PhysicalQuantityId.DirectSolarRadiation, 800],
   ] as const)("round-trips %s between SI and IP", (field, valueSi) => {
     const displayValue = convertModifierFieldValueFromSi(field, valueSi, UnitSystem.IP);
     expect(convertModifierFieldValueToSi(field, displayValue, UnitSystem.IP))
@@ -20,11 +20,11 @@ describe("modifier input units", () => {
   });
 
   it.each([
-    PhysicalQuantityId.ModifierSolarAltitude,
-    PhysicalQuantityId.ModifierSolarHorizontalAngle,
-    PhysicalQuantityId.ModifierSolarTransmittance,
-    PhysicalQuantityId.ModifierSkyVaultViewFraction,
-    PhysicalQuantityId.ModifierBodyExposureFraction,
+    PhysicalQuantityId.SolarAltitude,
+    PhysicalQuantityId.SolarHorizontalAngle,
+    PhysicalQuantityId.SolarTransmittance,
+    PhysicalQuantityId.SkyVaultViewFraction,
+    PhysicalQuantityId.BodyExposureFraction,
   ])("keeps unit-invariant fields unchanged for %s", (field) => {
     expect(convertModifierFieldValueFromSi(field, 0.5, UnitSystem.IP)).toBe(0.5);
     expect(convertModifierFieldValueToSi(field, 0.5, UnitSystem.IP)).toBe(0.5);
@@ -32,11 +32,11 @@ describe("modifier input units", () => {
 
   it("converts display ranges and units centrally", () => {
     const temperatureMeta = getModifierFieldDisplayMeta(
-      PhysicalQuantityId.ModifierMorningOutdoorTemperature,
+      PhysicalQuantityId.MorningOutdoorTemperature,
       UnitSystem.IP,
     );
     const radiationMeta = getModifierFieldDisplayMeta(
-      PhysicalQuantityId.ModifierDirectSolarRadiation,
+      PhysicalQuantityId.DirectSolarRadiation,
       UnitSystem.IP,
     );
 

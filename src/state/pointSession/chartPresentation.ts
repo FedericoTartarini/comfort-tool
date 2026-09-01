@@ -1,4 +1,4 @@
-import { type ChartAxisQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
+import { type PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
 import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
 import { InputId, type InputId as InputIdType } from "../../catalog/inputSlots";
 import { type NumericBand } from "../../catalog/modelCapabilities";
@@ -72,8 +72,8 @@ function getExploreDefaultBands(
 
 interface ChartPresentationCallbacks {
   onSelectBaseline: (inputId: InputIdType) => void;
-  onSelectXAxis: (field: ChartAxisQuantityId) => void;
-  onSelectYAxis: (field: ChartAxisQuantityId) => void;
+  onSelectXAxis: (field: PhysicalQuantityId) => void;
+  onSelectYAxis: (field: PhysicalQuantityId) => void;
   onSelectOutput: (outputKey: PhysicalQuantityIdType) => void;
   onApplyBands: (bands: readonly NumericBand[]) => boolean;
 }

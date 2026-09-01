@@ -1,4 +1,5 @@
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type DerivedSlotQuantityState, type PrimaryInputState } from "../../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type PrimaryInputState } from "../../../catalog/quantities";
+import type { DerivedSlotQuantityState } from "../derivations/psychrometrics";
 import type { InputControlId as InputControlIdType } from "../../../catalog/inputControls";
 import {
   OptionKey,

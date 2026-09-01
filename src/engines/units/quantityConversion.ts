@@ -124,7 +124,7 @@ export function convertQuantityFromSi(
   unitSystem: UnitSystemType,
 ): number {
   return convertCanonicalSiUnitFromSi(
-    getPhysicalQuantityMeta(quantityId).display.units.SI,
+    getPhysicalQuantityMeta(quantityId).units.SI,
     valueSi,
     unitSystem,
   );
@@ -136,7 +136,7 @@ export function convertQuantityToSi(
   unitSystem: UnitSystemType,
 ): number {
   return convertCanonicalSiUnitToSi(
-    getPhysicalQuantityMeta(quantityId).display.units.SI,
+    getPhysicalQuantityMeta(quantityId).units.SI,
     value,
     unitSystem,
   );

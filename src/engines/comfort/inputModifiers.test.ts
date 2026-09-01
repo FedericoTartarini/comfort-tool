@@ -27,7 +27,7 @@ describe("input modifiers", () => {
     type MeasuredPatch = ReturnType<typeof measuredAirSpeedModifier.apply>;
 
     expectTypeOf<MeasuredExtraInputs>().toEqualTypeOf<Readonly<{
-      [PhysicalQuantityId.ModifierMeasuredAirSpeed]: number;
+      [PhysicalQuantityId.MeasuredAirSpeed]: number;
     }>>();
     expectTypeOf<MeasuredPatch>().toEqualTypeOf<Partial<Pick<
       PrimaryInputState,
@@ -48,7 +48,7 @@ describe("input modifiers", () => {
       },
       {
         [ModifierId.MeasuredAirSpeed]: {
-          [PhysicalQuantityId.ModifierMeasuredAirSpeed]: 0.6,
+          [PhysicalQuantityId.MeasuredAirSpeed]: 0.6,
         },
         [ModifierId.MorningClothingEstimate]: {},
         [ModifierId.DynamicClothing]: {},
@@ -63,7 +63,7 @@ describe("input modifiers", () => {
   it("applies the morning clothing estimate in canonical SI", () => {
     const effectiveInputs = morningClothingEstimateModifier.apply(
       createBaseInputs(),
-      { [PhysicalQuantityId.ModifierMorningOutdoorTemperature]: 10 },
+      { [PhysicalQuantityId.MorningOutdoorTemperature]: 10 },
     );
 
     expect(effectiveInputs[PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.59, 2);
@@ -73,7 +73,7 @@ describe("input modifiers", () => {
     const baseInputs = createBaseInputs();
     const effectiveInputs = solarGainModifier.apply(
       baseInputs,
-      { [PhysicalQuantityId.ModifierSolarAltitude]: 45, [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90, [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800, [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5, [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5, [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5 },
+      { [PhysicalQuantityId.SolarAltitude]: 45, [PhysicalQuantityId.SolarHorizontalAngle]: 90, [PhysicalQuantityId.DirectSolarRadiation]: 800, [PhysicalQuantityId.SolarTransmittance]: 0.5, [PhysicalQuantityId.SkyVaultViewFraction]: 0.5, [PhysicalQuantityId.BodyExposureFraction]: 0.5 },
     );
 
     expect(effectiveInputs[PhysicalQuantityId.MeanRadiantTemperature]).toBeCloseTo(40.1, 6);
@@ -85,9 +85,9 @@ describe("input modifiers", () => {
 
   it("requires every declared input before activation", () => {
     expect(isModifierConfigurationComplete(solarGainModifier, {
-      [PhysicalQuantityId.ModifierSolarAltitude]: 45,
+      [PhysicalQuantityId.SolarAltitude]: 45,
     })).toBe(false);
-    expect(isModifierConfigurationComplete(solarGainModifier, { [PhysicalQuantityId.ModifierSolarAltitude]: 45, [PhysicalQuantityId.ModifierSolarHorizontalAngle]: 90, [PhysicalQuantityId.ModifierDirectSolarRadiation]: 800, [PhysicalQuantityId.ModifierSolarTransmittance]: 0.5, [PhysicalQuantityId.ModifierSkyVaultViewFraction]: 0.5, [PhysicalQuantityId.ModifierBodyExposureFraction]: 0.5 })).toBe(true);
+    expect(isModifierConfigurationComplete(solarGainModifier, { [PhysicalQuantityId.SolarAltitude]: 45, [PhysicalQuantityId.SolarHorizontalAngle]: 90, [PhysicalQuantityId.DirectSolarRadiation]: 800, [PhysicalQuantityId.SolarTransmittance]: 0.5, [PhysicalQuantityId.SkyVaultViewFraction]: 0.5, [PhysicalQuantityId.BodyExposureFraction]: 0.5 })).toBe(true);
   });
 
   it("composes modifier patches in declaration order", () => {
@@ -163,7 +163,7 @@ describe("input modifiers", () => {
       },
       {
         [ModifierId.MorningClothingEstimate]: {
-          [PhysicalQuantityId.ModifierMorningOutdoorTemperature]: 10,
+          [PhysicalQuantityId.MorningOutdoorTemperature]: 10,
         },
         [ModifierId.DynamicClothing]: {},
       },

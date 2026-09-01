@@ -1,10 +1,10 @@
 /**
- * ISO 7730 Category B PMV/PPD declaration and standard-specific calculation strategy.
+ * ISO 7730 PMV/PPD declaration and standard-specific calculation strategy.
  */
 import { PhysicalQuantityId } from "../../catalog/quantities";
 import {
   check_standard_compliance,
-  pmv_ppd,
+  pmv_ppd_iso,
   t_o,
 } from "jsthermalcomfort";
 
@@ -20,17 +20,21 @@ import {
   solarGainModifier,
 } from "../../engines/comfort/inputModifiers";
 import {
-  createPmvComplianceBands,
-  createPmvComplianceCaption,
+  ISO_TSV_CAPTION,
+  createPmvExploreOutputs,
   createPmvModelConfig,
   parsePmvIsoOptions,
-  pmvExploreOutputs,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./shared";
 import { getPmvComplianceFeedback } from "./calculation";
-
-const isoComplianceBands = createPmvComplianceBands();
+import {
+  classifyIsoTsv,
+  isoComfortIsolineTargets,
+  isoTsvBands,
+  isoTsvZonesList,
+  isIsoNeutralPmv,
+} from "./zones";
 
 export const pmvIsoAdapter: PmvStandardAdapter = {
   modelId: ModelId.PmvIso,
@@ -39,7 +43,7 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
   // ISO 7730 applicability includes the upper boundary of 2 clo.
   clothingInsulationMaxSi: 2,
   supportsOccupantAirSpeedControl: false,
-  calculate: (request) => pmv_ppd(
+  calculate: (request) => pmv_ppd_iso(
     request.tdb,
     request.tr,
     request.vr,
@@ -47,7 +51,6 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
     request.met,
     request.clo,
     request.wme,
-    JsThermalComfortStandard.ISO,
     {
       units: UnitSystem.SI,
       limit_inputs: false,
@@ -69,30 +72,29 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
     request.vr,
     JsThermalComfortStandard.ISO,
   ),
+  classifyTsv: classifyIsoTsv,
+  isAcceptablePmv: isIsoNeutralPmv,
+  comfortIsolineTargets: isoComfortIsolineTargets,
+  tsvZones: isoTsvZonesList,
 };
 
 export const pmvIsoDeclaration: PmvModelDeclaration = {
-  label: "PMV (ISO 7730 Category B)",
-  description: "ISO 7730 Category B PMV/PPD with comfort zone overlays.",
+  library: pmv_ppd_iso,
   adapter: pmvIsoAdapter,
   standardIds: [StandardId.Iso7730],
   surfaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
-  exploreOutputs: pmvExploreOutputs,
+  exploreOutputs: createPmvExploreOutputs(isoTsvBands, "Thermal sensation"),
   modifiers: [
     measuredAirSpeedModifier,
     morningClothingEstimateModifier,
     createDynamicClothingModifier(JsThermalComfortStandard.ISO),
     solarGainModifier,
   ],
-  psychrometricChartId: "pmv-iso-psychrometric",
-  dynamicChartId: "pmv-iso-dynamic-field",
-  heatLossChartId: "pmv-iso-heat-loss",
-  setChartId: "pmv-iso-set",
   complianceProfile: {
-    output: PhysicalQuantityId.Pmv,
-    bands: isoComplianceBands,
-    legendTitle: "PMV Zones",
-    caption: createPmvComplianceCaption("ISO 7730 Category B", isoComplianceBands),
+    output: PhysicalQuantityId.PredictedMeanVote,
+    bands: isoTsvBands,
+    legendTitle: "Thermal sensation",
+    caption: ISO_TSV_CAPTION,
     getFeedback: getPmvComplianceFeedback,
   },
   defaultOptions: defaultPmvIsoOptions,

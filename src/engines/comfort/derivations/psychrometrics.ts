@@ -1,9 +1,11 @@
 import { psy_ta_rh, p_sat } from "jsthermalcomfort";
 import {
   PhysicalQuantityId,
-  type DerivedSlotQuantityState,
+  type DerivedHumidityQuantityId,
   type PrimaryInputState,
 } from "../../../catalog/quantities";
+
+export type DerivedSlotQuantityState = Record<DerivedHumidityQuantityId, number>;
 
 const STANDARD_ATMOSPHERIC_PRESSURE_PA = 101325;
 const WATER_VAPOR_MOLECULAR_WEIGHT_RATIO = 0.62198;
@@ -15,7 +17,7 @@ export function derivePsychrometricSlots(inputState: PrimaryInputState): Derived
     inputState[PhysicalQuantityId.RelativeHumidity],
   );
 
-  return { [PhysicalQuantityId.DewPoint]: psychrometricState.t_dp, [PhysicalQuantityId.HumidityRatio]: psychrometricState.hr, [PhysicalQuantityId.WetBulb]: psychrometricState.t_wb, [PhysicalQuantityId.VaporPressure]: psychrometricState.p_vap };
+  return { [PhysicalQuantityId.DewPointTemperature]: psychrometricState.t_dp, [PhysicalQuantityId.HumidityRatio]: psychrometricState.hr, [PhysicalQuantityId.WetBulbTemperature]: psychrometricState.t_wb, [PhysicalQuantityId.VaporPressure]: psychrometricState.p_vap };
 }
 
 /**

@@ -1,6 +1,12 @@
 /** Parse/validate share snapshots: infinity sentinels, sparse default omit, serialize/deserialize. */
 import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
-import { PhysicalQuantityId } from "../../../catalog/quantities";
+import {
+  PhysicalQuantityId,
+  isPhysicalQuantityId,
+  primaryInputOrder,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+  type PrimaryInputState,
+} from "../../../catalog/quantities";
 import type { OptionKey as OptionKeyType } from "../../../catalog/inputModes";
 import {
   inputModifierCatalogue,
@@ -26,13 +32,6 @@ import {
 import { isDynamicAxisPairValid } from "../dynamicAxes";
 import { comfortModelOrder, getComfortModelConfig } from "../../modelRegistry";
 import { collectModifierInputsForModifier } from "../../../engines/comfort/quantityStateRouting";
-import {
-  isPhysicalQuantityId,
-  primaryInputOrder,
-  type ChartAxisQuantityId,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
-  type PrimaryInputState,
-} from "../../../catalog/quantities";
 import type { ActiveModifiersByInputState } from "../sessionTypes";
 import {
   createDefaultModelSnapshot,
@@ -285,13 +284,21 @@ function parseNumericBands(value: unknown): NumericBand[] | null {
     return null;
   }
 
+  const allowedKeys = new Set([
+    "min",
+    "max",
+    "label",
+    "color",
+    "minInclusive",
+    "maxInclusive",
+  ]);
   const bands: NumericBand[] = [];
   for (const candidate of value) {
     if (
-      !isRecord(candidate) ||
-      !hasExactKeys(candidate, ["min", "max", "label", "color"]) ||
-      typeof candidate.label !== "string" ||
-      typeof candidate.color !== "string"
+      !isRecord(candidate)
+      || !Object.keys(candidate).every((key) => allowedKeys.has(key))
+      || typeof candidate.label !== "string"
+      || typeof candidate.color !== "string"
     ) {
       return null;
     }
@@ -300,7 +307,24 @@ function parseNumericBands(value: unknown): NumericBand[] | null {
     if (min === null || max === null) {
       return null;
     }
-    bands.push({ min, max, label: candidate.label, color: candidate.color });
+    if (
+      ("minInclusive" in candidate && typeof candidate.minInclusive !== "boolean")
+      || ("maxInclusive" in candidate && typeof candidate.maxInclusive !== "boolean")
+    ) {
+      return null;
+    }
+    bands.push({
+      min,
+      max,
+      label: candidate.label,
+      color: candidate.color,
+      ...(typeof candidate.minInclusive === "boolean"
+        ? { minInclusive: candidate.minInclusive }
+        : {}),
+      ...(typeof candidate.maxInclusive === "boolean"
+        ? { maxInclusive: candidate.maxInclusive }
+        : {}),
+    });
   }
 
   return validateNumericBands(bands).valid ? bands : null;
@@ -327,8 +351,8 @@ function parseOutputSettings(
   }
 
   const config = getComfortModelConfig(modelId);
-  const xAxis = value.xAxis as ChartAxisQuantityId;
-  const yAxis = value.yAxis as ChartAxisQuantityId;
+  const xAxis = value.xAxis as PhysicalQuantityId;
+  const yAxis = value.yAxis as PhysicalQuantityId;
   if (!isDynamicAxisPairValid(config, { xAxis, yAxis })) {
     return null;
   }
@@ -368,18 +392,18 @@ function parseModelSnapshot(
   if (
     !isRecord(value) ||
     !hasExactKeys(value, [
-      "selectedChartInstanceId",
+      "selectedChartType",
       "options",
       "outputSettings",
     ]) ||
-    typeof value.selectedChartInstanceId !== "string"
+    typeof value.selectedChartType !== "string"
   ) {
     return null;
   }
 
   const config = getComfortModelConfig(modelId);
   const chartInstance = config.chartInstances.entries.find(
-    ({ instanceId }) => instanceId === value.selectedChartInstanceId,
+    ({ instanceId }) => instanceId === value.selectedChartType,
   );
   if (!chartInstance) {
     return null;
@@ -403,7 +427,7 @@ function parseModelSnapshot(
     }
   }
   return {
-    selectedChartInstanceId: value.selectedChartInstanceId,
+    selectedChartType: value.selectedChartType,
     options,
     outputSettings,
   };
@@ -466,7 +490,9 @@ function exploreBandsEqual(
         band.min === other.min &&
         band.max === other.max &&
         band.label === other.label &&
-        band.color === other.color
+        band.color === other.color &&
+        (band.minInclusive ?? true) === (other.minInclusive ?? true) &&
+        (band.maxInclusive ?? false) === (other.maxInclusive ?? false)
       );
     })
   );
@@ -477,7 +503,7 @@ function modelSnapshotsEqual(
   right: ShareModelSnapshot,
 ): boolean {
   return (
-    left.selectedChartInstanceId === right.selectedChartInstanceId &&
+    left.selectedChartType === right.selectedChartType &&
     optionRecordsEqual(left.options, right.options) &&
     left.outputSettings.xAxis === right.outputSettings.xAxis &&
     left.outputSettings.yAxis === right.outputSettings.yAxis &&

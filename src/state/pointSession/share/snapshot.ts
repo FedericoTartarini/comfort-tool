@@ -2,16 +2,15 @@
 import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
 import {
   PhysicalQuantityId,
-  physicalQuantityMetaById,
   primaryInputOrder,
   type AuxiliaryInputState,
-  type ChartAxisQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PrimaryInputState,
 } from "../../../catalog/quantities";
 import type { OptionKey as OptionKeyType } from "../../../catalog/inputModes";
 import {
   modifierOrder,
+  modifierQuantityIds,
   type ModifierId as ModifierIdType,
 } from "../../../catalog/inputModifiers";
 import {
@@ -44,9 +43,7 @@ export type ShareModelInputsByModelState = Record<
   Partial<Record<PhysicalQuantityIdType, number>>
 >;
 
-export const modifierQuantityIds = Object.values(physicalQuantityMetaById)
-  .filter((meta) => meta.modifierId !== undefined)
-  .map((meta) => meta.id);
+export { modifierQuantityIds };
 
 export function extraQuantityIdsForModel(
   modelId: ModelIdType,
@@ -55,8 +52,8 @@ export function extraQuantityIdsForModel(
 }
 
 export interface ShareModelOutputSettings {
-  xAxis: ChartAxisQuantityId;
-  yAxis: ChartAxisQuantityId;
+  xAxis: PhysicalQuantityId;
+  yAxis: PhysicalQuantityId;
   baselineInputId: InputIdType;
   exploreOutput: PhysicalQuantityId | null;
   exploreBands: NumericBand[] | null;
@@ -68,7 +65,7 @@ export interface ShareStateSnapshot {
   models: Record<
     ModelIdType,
     {
-      selectedChartInstanceId: string;
+      selectedChartType: string;
       options: Partial<Record<OptionKeyType, string>>;
       outputSettings: ShareModelOutputSettings;
     }
@@ -104,7 +101,7 @@ export function createDefaultModelSnapshot(
 ): ShareModelSnapshot {
   const config = getComfortModelConfig(modelId);
   return {
-    selectedChartInstanceId: config.chartInstances.defaultInstanceId,
+    selectedChartType: config.chartInstances.defaultInstanceId,
     options: { ...config.defaultOptions },
     outputSettings: cloneOutputSettings(seedModelOutputSettings(config)),
   };
@@ -151,7 +148,7 @@ export function createShareStateSnapshot(
     models: comfortModelOrder.reduce(
       (accumulator, modelId) => {
         accumulator[modelId] = {
-          selectedChartInstanceId:
+          selectedChartType:
             session.setting.selectedChartInstanceByModel[modelId],
           options: { ...session.setting.modelOptionsByModel[modelId] },
           outputSettings: cloneOutputSettings(
@@ -207,7 +204,7 @@ export function applyShareSnapshotToState(
     const modelSnapshot =
       snapshot.models[modelId] ?? createDefaultModelSnapshot(modelId);
     session.setting.selectedChartInstanceByModel[modelId] =
-      modelSnapshot.selectedChartInstanceId;
+      modelSnapshot.selectedChartType;
     session.setting.modelOptionsByModel[modelId] = { ...modelSnapshot.options };
     session.setting.outputSettingsByModel[modelId] = cloneOutputSettings(
       modelSnapshot.outputSettings,

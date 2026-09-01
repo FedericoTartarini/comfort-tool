@@ -22,7 +22,7 @@ function createContext(): ChartBuildContext {
       profileKind: FieldChartProfileKind.Explore,
       xField: PhysicalQuantityId.DryBulbTemperature,
       yField: PhysicalQuantityId.RelativeHumidity,
-      zOutput: PhysicalQuantityId.Pmv,
+      zOutput: PhysicalQuantityId.PredictedMeanVote,
       bands: [{ min: -0.5, max: 0.5, label: "Neutral", color: "#f2f2f2" }],
     },
   };

@@ -10,7 +10,7 @@ import { createAuxiliaryQuantitiesByInput } from "../../engines/comfort/quantity
 import {
   calculatePerInput,
   calculatePerInputWithExtensions,
-  createFieldRequestAdapter,
+  defineLibraryQuantityMapping,
 } from "./requestMapping";
 
 interface DemoRequest {
@@ -51,22 +51,25 @@ function createContext(): ModelCalculationContext {
 }
 
 describe("request mapping", () => {
-  const adapter = createFieldRequestAdapter<DemoRequest>({ temperature: PhysicalQuantityId.DryBulbTemperature, humidity: PhysicalQuantityId.RelativeHumidity });
+  const mapping = defineLibraryQuantityMapping<DemoRequest>({
+    temperature: PhysicalQuantityId.DryBulbTemperature,
+    humidity: PhysicalQuantityId.RelativeHumidity,
+  });
 
   it("maps explicitly selected canonical-SI fields", () => {
-    const request = adapter.mapRequest(createContext(), InputId.Input1);
+    const request = mapping.mapRequest(createContext(), InputId.Input1);
 
     expect(request).toEqual({ temperature: 21.5, humidity: 45 });
-    expectTypeOf(adapter.mapRequest).returns.toEqualTypeOf<DemoRequest>();
+    expectTypeOf(mapping.mapRequest).returns.toEqualTypeOf<DemoRequest>();
   });
 
   it("uses the same declaration for bidirectional chart-axis mapping", () => {
     const request = { temperature: 21.5, humidity: 45 };
 
-    expect(adapter.getAxisValue(request, PhysicalQuantityId.RelativeHumidity)).toBe(45);
-    adapter.setAxisValue(request, PhysicalQuantityId.DryBulbTemperature, 27);
+    expect(mapping.getAxisValue(request, PhysicalQuantityId.RelativeHumidity)).toBe(45);
+    mapping.setAxisValue(request, PhysicalQuantityId.DryBulbTemperature, 27);
     expect(request).toEqual({ temperature: 27, humidity: 45 });
-    expect(() => adapter.getAxisValue(request, PhysicalQuantityId.WindSpeed))
+    expect(() => mapping.getAxisValue(request, PhysicalQuantityId.WindSpeed))
       .toThrow(/unsupported request field/i);
   });
 
@@ -79,7 +82,7 @@ describe("request mapping", () => {
     const calculated = calculatePerInput({
       context: createContext(),
       visibleInputIds: [InputId.Input1, InputId.Input3],
-      mapRequest: adapter.mapRequest,
+      mapRequest: mapping.mapRequest,
       calculate: (request) => ({
         index: request.temperature + request.humidity,
       }),
@@ -102,7 +105,7 @@ describe("request mapping", () => {
     const calculated = calculatePerInputWithExtensions({
       context: createContext(),
       visibleInputIds: [InputId.Input1, InputId.Input3],
-      mapRequest: adapter.mapRequest,
+      mapRequest: mapping.mapRequest,
       mapChartRequest: (request) => ({
         ...request,
         humidityPoints: 10,
@@ -132,14 +135,26 @@ describe("request mapping", () => {
     });
   });
 
-  it("makes incomplete DTO mappings a type error", () => {
-    // @ts-expect-error DemoRequest also requires humidity.
-    const incompleteMapper = createFieldRequestAdapter<DemoRequest>({
+  it("copies SI in either direction and omits unmapped bag keys from requests", () => {
+    const mapping = defineLibraryQuantityMapping<DemoRequest>({
       temperature: PhysicalQuantityId.DryBulbTemperature,
+      humidity: PhysicalQuantityId.RelativeHumidity,
+      hi: PhysicalQuantityId.HeatIndex,
     });
-    const mapperWithExtraProperty = createFieldRequestAdapter<DemoRequest>({ temperature: PhysicalQuantityId.DryBulbTemperature, humidity: PhysicalQuantityId.RelativeHumidity, // @ts-expect-error DTO mappings cannot add undeclared request properties.
-      wind: PhysicalQuantityId.WindSpeed });
-    void incompleteMapper;
-    void mapperWithExtraProperty;
+    expect(mapping.toLibrary({
+      [PhysicalQuantityId.DryBulbTemperature]: 21.5,
+      [PhysicalQuantityId.RelativeHumidity]: 45,
+      [PhysicalQuantityId.HeatIndex]: 32,
+    })).toEqual({ temperature: 21.5, humidity: 45, hi: 32 });
+    expect(mapping.fromLibrary({ temperature: 21.5, humidity: 45, hi: 32 })).toEqual({
+      [PhysicalQuantityId.DryBulbTemperature]: 21.5,
+      [PhysicalQuantityId.RelativeHumidity]: 45,
+      [PhysicalQuantityId.HeatIndex]: 32,
+    });
+
+    const request = mapping.mapRequest(createContext(), InputId.Input1);
+    expect(request).toEqual({ temperature: 21.5, humidity: 45 });
+    expect(() => mapping.setAxisValue(request, PhysicalQuantityId.HeatIndex, 30))
+      .toThrow(/not on this object/i);
   });
 });

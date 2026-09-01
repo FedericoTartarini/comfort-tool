@@ -20,17 +20,21 @@ import {
   solarGainModifier,
 } from "../../engines/comfort/inputModifiers";
 import {
-  createPmvComplianceBands,
-  createPmvComplianceCaption,
+  createAshraePmvComplianceCaption,
+  createPmvExploreOutputs,
   createPmvModelConfig,
   parsePmvAshraeOptions,
-  pmvExploreOutputs,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./shared";
 import { getPmvComplianceFeedback } from "./calculation";
-
-const ashraeComplianceBands = createPmvComplianceBands();
+import {
+  ashraeComfortIsolineTargets,
+  ashraeComplianceBands,
+  ashraeTsvZonesList,
+  classifyAshraeTsv,
+  isAshraeAcceptablePmv,
+} from "./zones";
 
 export const pmvAshraeAdapter: PmvStandardAdapter = {
   modelId: ModelId.PmvAshrae,
@@ -69,30 +73,32 @@ export const pmvAshraeAdapter: PmvStandardAdapter = {
     request.vr,
     JsThermalComfortStandard.ASHRAE,
   ),
+  classifyTsv: classifyAshraeTsv,
+  isAcceptablePmv: isAshraeAcceptablePmv,
+  comfortIsolineTargets: ashraeComfortIsolineTargets,
+  tsvZones: ashraeTsvZonesList,
 };
 
 export const pmvAshraeDeclaration: PmvModelDeclaration = {
-  label: "PMV (ASHRAE-55)",
-  description: "ASHRAE 55 PMV/PPD with comfort zone overlays.",
+  library: pmv_ppd_ashrae,
   adapter: pmvAshraeAdapter,
   standardIds: [StandardId.Ashrae55],
   surfaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
-  exploreOutputs: pmvExploreOutputs,
+  exploreOutputs: createPmvExploreOutputs(
+    ashraeComplianceBands,
+    "PMV acceptability",
+  ),
   modifiers: [
     measuredAirSpeedModifier,
     morningClothingEstimateModifier,
     createDynamicClothingModifier(JsThermalComfortStandard.ASHRAE),
     solarGainModifier,
   ],
-  psychrometricChartId: "pmv-ashrae-psychrometric",
-  dynamicChartId: "pmv-ashrae-dynamic-field",
-  heatLossChartId: "pmv-ashrae-heat-loss",
-  setChartId: "pmv-ashrae-set",
   complianceProfile: {
-    output: PhysicalQuantityId.Pmv,
+    output: PhysicalQuantityId.PredictedMeanVote,
     bands: ashraeComplianceBands,
-    legendTitle: "PMV Zones",
-    caption: createPmvComplianceCaption("ASHRAE 55", ashraeComplianceBands),
+    legendTitle: "PMV acceptability",
+    caption: createAshraePmvComplianceCaption(ashraeComfortIsolineTargets),
     getFeedback: getPmvComplianceFeedback,
   },
   defaultOptions: defaultPmvAshraeOptions,

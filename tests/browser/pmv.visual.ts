@@ -6,6 +6,7 @@ import {
   ZonePaletteKind,
   ZoneToken,
 } from "../../src/catalog/zoneTokens";
+
 const TARGET_INPUTS = {
   "Air temperature": "26",
   "Radiant temperature": "25",
@@ -45,13 +46,11 @@ function blendHexOntoPlot(foreground: string, background: string, opacity: numbe
   }${toHex(mix(channel(foreground, 0), channel(background, 0)))}`;
 }
 
-const PMV_FILLCOLORS = PMV_COLORS.map((fill) => (
-  blendHexOntoPlot(fill, PLOT_BACKGROUND, BAND_OPACITY)
-));
-
-const COMPLIANCE_FILLCOLORS = COMPLIANCE_COLORS.map((fill) => (
-  blendHexOntoPlot(fill, PLOT_BACKGROUND, BAND_OPACITY)
-));
+// Dynamic charts use a transparent Plotly plot_bg, so bakeOpaquePolygonFill
+// cannot blend fills. Screen traces keep the ZoneToken hex; publication export
+// still bakes against a solid background.
+const PMV_FILLCOLORS = PMV_COLORS;
+const COMPLIANCE_FILLCOLORS = COMPLIANCE_COLORS;
 
 const PSYCHROMETRIC_COMPLIANCE_FILLCOLORS = COMPLIANCE_COLORS.map((fill) => (
   blendHexOntoPlot(fill, PLOT_BACKGROUND, BAND_OPACITY)
@@ -65,18 +64,14 @@ function hexToCssRgb(hex: string): string {
 
 function publicationFillCss(token: ZoneToken): string {
   return hexToCssRgb(
-    blendHexOntoPlot(
-      resolveZoneAppearance(token, ZonePaletteKind.Publication).fill,
-      PLOT_BACKGROUND,
-      BAND_OPACITY,
-    ),
+    resolveZoneAppearance(token, ZonePaletteKind.Publication).fill,
   );
 }
 
 
 const MODEL_LABELS = {
-  ashrae: "PMV (ASHRAE-55)",
-  iso: "PMV (ISO 7730 Category B)",
+  ashrae: "PMV/PPD (ASHRAE 55)",
+  iso: "PMV/PPD (ISO 7730)",
 } as const;
 
 type PmvModel = keyof typeof MODEL_LABELS;
@@ -343,7 +338,7 @@ test.describe("PMV visual regression", () => {
     await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
     await expect(
       panel.getByText(
-        "Green shading = ASHRAE 55 compliant PMV (−0.5 ≤ PMV < +0.5); red = outside the limit.",
+        "Green shading = ASHRAE 55 compliant PMV (−0.5 < PMV < +0.5); red = outside the limit.",
         { exact: true },
       ),
     ).toBeVisible();
@@ -381,7 +376,7 @@ test.describe("PMV visual regression", () => {
     await expect(
       page.getByRole("button", { name: "Edit chart thresholds" }),
     ).toBeVisible();
-    await expectPmvBandFills(plot);
+    await expectComplianceBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(panel).toHaveScreenshot("pmv-ashrae-explore-panel.png");
   });
@@ -484,7 +479,7 @@ test.describe("PMV visual regression", () => {
       inputPointBox!.y + inputPointBox!.height / 2,
     );
     await expect(hoverLayer).not.toContainText("Input 1");
-    await expect(hoverLayer).toContainText(/Humidity ratio: \d+\.\d g\/kg/);
+    await expect(hoverLayer).toContainText(/Humidity ratio: \d+(\.\d+)? g\/kg/);
     await expect(hoverLayer).toContainText(/Zone:/);
     await expect(hoverLayer).toContainText(/PMV:/);
     await expect(hoverLayer).toContainText(/PPD:/);
@@ -503,7 +498,7 @@ test.describe("PMV visual regression", () => {
     const { plot, visual } = await openTargetPmvChart(page);
 
     await expectTargetResults(page);
-    await expectPmvBandFills(plot);
+    await expectComplianceBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-si.png");
   });
@@ -547,9 +542,9 @@ test.describe("PMV visual regression", () => {
     await expect(hoverLayer).not.toContainText("Input 1");
     await expect(hoverLayer).toContainText(/Air temperature: \d+(\.\d+)? °C/);
     await expect(hoverLayer).toContainText(/Relative humidity: \d+(\.\d+)? %/);
-    await expect(hoverLayer).toContainText("Zone: Neutral");
-    await expect(hoverLayer).toContainText(/PMV: -0\.\d{2}/);
-    await expect(hoverLayer).toContainText(/PPD: \d+\.\d%/);
+    await expect(hoverLayer).toContainText("Zone: acceptable");
+    await expect(hoverLayer).toContainText(/PMV: -0\.\d+/);
+    await expect(hoverLayer).toContainText(/PPD: \d+(\.\d+)?%/);
     await expect(visual).toHaveScreenshot("pmv-ashrae-si-hover.png");
 
     await hoverPlotCoordinate(page, plot, 28, 50);
@@ -584,7 +579,7 @@ test.describe("PMV visual regression", () => {
       useIpUnits: true,
     });
 
-    await expectPmvBandFills(plot);
+    await expectComplianceBandFills(plot);
     await page.mouse.move(0, 0);
     await expect(visual).toHaveScreenshot("pmv-ashrae-ip.png");
   });
@@ -619,7 +614,7 @@ test.describe("PMV visual regression", () => {
     const pngDownload = await pngDownloadPromise;
     const pngPath = await pngDownload.path();
     expect(pngDownload.suggestedFilename()).toBe(
-      "pmv-ashrae-55-dynamic-chart-pmv-single.png",
+      "pmv-ppd-ashrae-55-dynamic-pmv-single.png",
     );
     expect(pngPath).not.toBeNull();
     const pngBytes = await readFile(pngPath!);
@@ -639,13 +634,13 @@ test.describe("PMV visual regression", () => {
     const svgDownload = await svgDownloadPromise;
     const svgPath = await svgDownload.path();
     expect(svgDownload.suggestedFilename()).toBe(
-      "pmv-ashrae-55-dynamic-chart-pmv-double.svg",
+      "pmv-ppd-ashrae-55-dynamic-pmv-double.svg",
     );
     expect(svgPath).not.toBeNull();
     const svgText = await readFile(svgPath!, "utf8");
     expect((await stat(svgPath!)).size).toBeGreaterThan(1_000);
     expect(svgText).toContain("<svg");
-    expect(svgText).toContain(`fill: ${publicationFillCss(ZoneToken.Cold)}`);
-    expect(svgText).toContain(`fill: ${publicationFillCss(ZoneToken.Hot)}`);
+    expect(svgText).toContain(`fill: ${publicationFillCss(ZoneToken.Acceptable)}`);
+    expect(svgText).toContain(`fill: ${publicationFillCss(ZoneToken.FailFill)}`);
   });
 });

@@ -1,7 +1,9 @@
+import { phs } from "jsthermalcomfort";
 import type { ModelChartSource } from "../../catalog/chartSource";
 import { PhysicalQuantityId } from "../../catalog/quantities";
 import { ModelId } from "../../catalog/modelIds";
 import { InputControlId } from "../../catalog/inputControls";
+import { InputWidget } from "../../catalog/inputWidgets";
 import { bandsFromThermalZones, type ChartBuildContext, type ModelOutput, type NumericBand } from "../../catalog/modelCapabilities";
 import { ThermalZone } from "../../catalog/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
@@ -10,7 +12,6 @@ import { ChartType } from "../../catalog/chartTypes";
 import type { TableRowAuthoring, TableRowSpec } from "../../catalog/tableTypes";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
-  PHS_RECTAL_TEMPERATURE_LIMIT_C,
   PhsLimitingCriterion,
   defaultPhsPersonSettings,
   phsPersonQuantityIds,
@@ -21,7 +22,7 @@ import {
 } from "../../catalog/phs";
 import {
   calculatePerInput,
-  createFieldRequestAdapter,
+  defineLibraryQuantityMapping,
 } from "../../engines/comfort/requestMapping";
 import {
   convertQuantityFromSi,
@@ -70,7 +71,7 @@ function phsLimitingCriterionLabel(result: PhsSimulationResult): string {
 function buildPhsSimulationTableRows(): TableRowAuthoring<PhsSimulationResult>[] {
   return [
     {
-      quantity: PhysicalQuantityId.PhsRectalTemperature,
+      quantity: PhysicalQuantityId.RectalTemperature,
       id: "phs-peak-rectal-temperature",
       label: "Peak rectal temperature",
       group: "Rectal temperature",
@@ -83,7 +84,7 @@ function buildPhsSimulationTableRows(): TableRowAuthoring<PhsSimulationResult>[]
       format: (result) => ({ text: formatPhsMinute(result.firstRectalLimitMinute) }),
     },
     {
-      quantity: PhysicalQuantityId.PhsWaterLoss,
+      quantity: PhysicalQuantityId.SweatLoss,
       id: "phs-final-water-loss",
       label: "Final water loss",
       group: "Water loss",
@@ -108,45 +109,43 @@ function buildPhsSimulationTableRows(): TableRowAuthoring<PhsSimulationResult>[]
   ];
 }
 
-const MODEL_LABEL = "PHS (ISO 7933:2023)";
-const MODEL_DESCRIPTION =
-  "Predicts heat strain, internal temperature, sweat loss, and allowable exposure time for hot environments.";
 const REFERENCE_WATER_LOSS_LIMIT_G = getPhsWaterLossLimitG(defaultPhsPersonSettings);
 
 const limitingExposureZones = [
   new ThermalZone({
-    label: "Limit reached before 8 h",
+    label: `< ${PHS_COMPLIANCE_HORIZON_MINUTES}`,
     max: PHS_COMPLIANCE_HORIZON_MINUTES,
     token: ZoneToken.FailFill,
   }),
   new ThermalZone({
-    label: "No limit reached before 8 h",
+    label: `>= ${PHS_COMPLIANCE_HORIZON_MINUTES}`,
     min: PHS_COMPLIANCE_HORIZON_MINUTES,
     token: ZoneToken.PassFill,
   }),
 ];
 
+/** Explore chart presets. Not a library classifier; Standard uses `d_lim_*` vs 8 h. */
 const rectalTemperatureZones = [
   new ThermalZone({
-    label: "Below 38 °C",
-    max: PHS_RECTAL_TEMPERATURE_LIMIT_C,
+    label: `< ${phs.RECTAL_TEMPERATURE_LIMIT}`,
+    max: phs.RECTAL_TEMPERATURE_LIMIT,
     token: ZoneToken.PassFill,
   }),
   new ThermalZone({
-    label: "At or above 38 °C",
-    min: PHS_RECTAL_TEMPERATURE_LIMIT_C,
+    label: `>= ${phs.RECTAL_TEMPERATURE_LIMIT}`,
+    min: phs.RECTAL_TEMPERATURE_LIMIT,
     token: ZoneToken.FailFill,
   }),
 ];
 
 const waterLossZones = [
   new ThermalZone({
-    label: "Below 5% body mass",
+    label: `< ${phs.WATER_LOSS_FRACTION_DRINK}`,
     max: REFERENCE_WATER_LOSS_LIMIT_G,
     token: ZoneToken.PassFill,
   }),
   new ThermalZone({
-    label: "At or above 5% body mass",
+    label: `>= ${phs.WATER_LOSS_FRACTION_DRINK}`,
     min: REFERENCE_WATER_LOSS_LIMIT_G,
     token: ZoneToken.FailFill,
   }),
@@ -154,26 +153,35 @@ const waterLossZones = [
 
 export const phsExploreOutputs: readonly ModelOutput[] = [
   {
-    key: PhysicalQuantityId.PhsLimitingExposureTime,
+    key: PhysicalQuantityId.LimitingExposureTime,
     label: "Limiting exposure time",
     legendTitle: "8-hour exposure assessment",
     defaultBands: bandsFromThermalZones(limitingExposureZones),
   },
   {
-    key: PhysicalQuantityId.PhsRectalTemperature,
+    key: PhysicalQuantityId.RectalTemperature,
     label: "Rectal temperature after 8 h",
     legendTitle: "Rectal temperature",
     defaultBands: bandsFromThermalZones(rectalTemperatureZones),
   },
   {
-    key: PhysicalQuantityId.PhsWaterLoss,
+    key: PhysicalQuantityId.SweatLoss,
     label: "Predicted water loss after 8 h",
     legendTitle: "Predicted water loss",
     defaultBands: bandsFromThermalZones(waterLossZones),
   },
 ];
 
-export const phsRequestAdapter = createFieldRequestAdapter<PhsEnvironmentSi>({ tdb: PhysicalQuantityId.DryBulbTemperature, tr: PhysicalQuantityId.MeanRadiantTemperature, v: PhysicalQuantityId.WindSpeed, rh: PhysicalQuantityId.RelativeHumidity, met: PhysicalQuantityId.MetabolicRate, clo: PhysicalQuantityId.ClothingInsulation });
+export const phsQuantityMapping = defineLibraryQuantityMapping<PhsEnvironmentSi>({
+  tdb: PhysicalQuantityId.DryBulbTemperature,
+  tr: PhysicalQuantityId.MeanRadiantTemperature,
+  v: PhysicalQuantityId.WindSpeed,
+  rh: PhysicalQuantityId.RelativeHumidity,
+  met: PhysicalQuantityId.MetabolicRate,
+  clo: PhysicalQuantityId.ClothingInsulation,
+  t_re: PhysicalQuantityId.RectalTemperature,
+  sweat_loss_g: PhysicalQuantityId.SweatLoss,
+});
 
 function formatHours(minutes: number): string {
   return `${formatDisplayValue(minutes / 60)} h`;
@@ -199,11 +207,11 @@ function invalidCell(result: PhsResponse) {
 
 function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<PhsResponse>[] {
   const temperatureMeta = getQuantityDisplayMeta(
-    PhysicalQuantityId.PhsRectalTemperature,
+    PhysicalQuantityId.RectalTemperature,
     unitSystem,
   );
   const waterLossMeta = getQuantityDisplayMeta(
-    PhysicalQuantityId.PhsWaterLoss,
+    PhysicalQuantityId.SweatLoss,
     unitSystem,
   );
   return [
@@ -237,7 +245,7 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
       formatter: (result) => {
         if (!result.valid) return invalidCell(result);
         const displayValue = convertQuantityFromSi(
-          PhysicalQuantityId.PhsRectalTemperature,
+          PhysicalQuantityId.RectalTemperature,
           result.tRe,
           unitSystem,
         );
@@ -252,7 +260,7 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
       formatter: (result) => {
         if (!result.valid) return invalidCell(result);
         const displayValue = convertQuantityFromSi(
-          PhysicalQuantityId.PhsWaterLoss,
+          PhysicalQuantityId.SweatLoss,
           result.sweatLossG,
           unitSystem,
         );
@@ -282,8 +290,7 @@ const builder = new ComfortModelBuilder<
 >(ModelId.Phs2023);
 
 builder
-  .setLabel(MODEL_LABEL)
-  .setDescription(MODEL_DESCRIPTION)
+  .setLibrary(phs)
   .setStandardIds([StandardId.Iso7933])
   .setSurfaceCapabilities([
     SurfaceId.Standard,
@@ -292,7 +299,7 @@ builder
   ])
   .setExploreOutputs(phsExploreOutputs)
   .setComplianceProfile({
-    output: PhysicalQuantityId.PhsLimitingExposureTime,
+    output: PhysicalQuantityId.LimitingExposureTime,
     bands: bandsFromThermalZones(limitingExposureZones),
     legendTitle: "8-hour exposure assessment",
     caption:
@@ -317,72 +324,74 @@ builder
   .setModifiers([])
   .setCharts([
     {
-      id: "phs-exposure-history",
       type: ChartType.BodyTemperature,
-      emptyMessage: "No PHS exposure history yet.",
-      supportedExploreOutputs: [PhysicalQuantityId.PhsRectalTemperature],
-      defaultExploreOutput: PhysicalQuantityId.PhsRectalTemperature,
+      supportedExploreOutputs: [PhysicalQuantityId.RectalTemperature],
+      defaultExploreOutput: PhysicalQuantityId.RectalTemperature,
       spec: phsExposureHistoryChartSpec,
     },
     {
-      id: "phs-dynamic-field",
       type: ChartType.Dynamic,
-      emptyMessage: "No PHS field chart yet.",
       supportedExploreOutputs: phsExploreOutputs.map(({ key }) => key),
-      defaultExploreOutput: PhysicalQuantityId.PhsLimitingExposureTime,
-      spec: { title: "PHS Dynamic Chart", axisFields: [
-          PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.MeanRadiantTemperature, PhysicalQuantityId.WindSpeed, PhysicalQuantityId.RelativeHumidity, PhysicalQuantityId.MetabolicRate, PhysicalQuantityId.ClothingInsulation, ], resolveGridSpec: (context) => createPhsDynamicGridSpec(
-          phsExploreOutputs, phsRequestAdapter, context as ChartBuildContext<NumericBand>, ) },
+      defaultExploreOutput: PhysicalQuantityId.LimitingExposureTime,
+      spec: {
+        axes: {
+          x: PhysicalQuantityId.DryBulbTemperature,
+          y: PhysicalQuantityId.RelativeHumidity,
+        },
+        axisFields: [
+          PhysicalQuantityId.DryBulbTemperature,
+          PhysicalQuantityId.MeanRadiantTemperature,
+          PhysicalQuantityId.WindSpeed,
+          PhysicalQuantityId.RelativeHumidity,
+          PhysicalQuantityId.MetabolicRate,
+          PhysicalQuantityId.ClothingInsulation,
+        ],
+        resolveGridSpec: (context) => createPhsDynamicGridSpec(
+          phsExploreOutputs,
+          phsQuantityMapping,
+          context as ChartBuildContext<NumericBand>,
+        ),
+      },
     },
   ] satisfies FrontendChartDeclaration<
     PhsResponse,
     ModelChartSource<PhsEnvironmentSi>
-  >[], {
-    defaultChartId: "phs-exposure-history",
-  });
+  >[]);
 
 builder.setExtraQuantities(phsPersonQuantityIds);
 builder.setInputFields([
   {
-    kind: "numeric",
-    controlId: InputControlId.Temperature,
-    fieldKey: PhysicalQuantityId.DryBulbTemperature,
+    quantity: PhysicalQuantityId.DryBulbTemperature,
     minValue: 15,
     maxValue: 50,
   },
   {
-    kind: "numeric",
-    controlId: InputControlId.RadiantTemperature,
-    fieldKey: PhysicalQuantityId.MeanRadiantTemperature,
+    quantity: PhysicalQuantityId.MeanRadiantTemperature,
     minValue: 0,
     maxValue: 60,
   },
   {
-    kind: "numeric",
+    quantity: PhysicalQuantityId.WindSpeed,
+    widget: InputWidget.Numeric,
     controlId: InputControlId.AirSpeed,
-    fieldKey: PhysicalQuantityId.WindSpeed,
     minValue: 0,
     maxValue: 3,
     label: "Air speed",
   },
   {
-    kind: "numeric",
-    controlId: InputControlId.Humidity,
-    fieldKey: PhysicalQuantityId.RelativeHumidity,
+    quantity: PhysicalQuantityId.RelativeHumidity,
     minValue: 0,
     maxValue: 100,
   },
   {
-    kind: "numeric",
-    controlId: InputControlId.MetabolicRate,
-    fieldKey: PhysicalQuantityId.MetabolicRate,
+    quantity: PhysicalQuantityId.MetabolicRate,
+    widget: InputWidget.Numeric,
     minValue: 0.9,
     maxValue: 3.9,
   },
   {
-    kind: "numeric",
-    controlId: InputControlId.ClothingInsulation,
-    fieldKey: PhysicalQuantityId.ClothingInsulation,
+    quantity: PhysicalQuantityId.ClothingInsulation,
+    widget: InputWidget.Numeric,
     minValue: 0.1,
     maxValue: 1,
   },
@@ -392,7 +401,7 @@ builder.setCalculator((context, visibleInputIds) =>
   calculatePerInput({
     context,
     visibleInputIds,
-    mapRequest: phsRequestAdapter.mapRequest,
+    mapRequest: phsQuantityMapping.mapRequest,
     calculate: (request) => simulatePhs({
       segments: [{
         id: "analysis-exposure",

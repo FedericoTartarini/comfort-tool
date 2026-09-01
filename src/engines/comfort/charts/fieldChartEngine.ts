@@ -1,5 +1,5 @@
 import type { CalculationSource } from "../../../catalog/calculationMetadata";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../catalog/quantities";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 import type {
   PlotAnnotation,
   PlotLegend,
@@ -39,7 +39,7 @@ const DEFAULT_GRID_COLOR = "#e2e8f0";
 const DEFAULT_CHART_HEIGHT = 480;
 
 export interface FieldChartAxisSpec {
-  field: ChartAxisQuantityId;
+  field: PhysicalQuantityId;
   rangeSi?: ChartRange;
   points: number;
   label?: string;

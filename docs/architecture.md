@@ -37,8 +37,9 @@ src/
                    fieldChartProfile.ts, resultSections.ts at catalog root)
   charts/          ChartType figure geometry, assemble, draw/clone, chartTheme,
                    plotlyExport; isolines.ts; psychrometric/
-  declarations/    one entry per model, plus family folders (pmv/, adaptive/,
-                   phs/, utci/)
+  declarations/    one entry per model (Heat Index–class: one file, three
+                   zones). Family folders: pmv/, adaptive/, phs/. UTCI is
+                   `utci/utci.ts`. PHS Worker/Time-series stay separate.
   engines/
     comfort/       leftover shared comfort helpers, adapters, modifiers,
                    field-chart bind, ChartBuildResult
@@ -87,22 +88,47 @@ Quantities and ChartTypes are closed frontend catalogs. Models select ids;
 they do not own, extend, or invent them. There is no table-type catalog.
 
 - Quantities: `src/catalog/quantities.ts` for inputs and outputs.
-  `primaryInputOrder` is the persisted primary-key set. Extra ids
-  (`extraQuantities`, including PHS body weight and height) live in sparse
-  `modelInputsByModel` and stay out of primary records.
+  TypeScript keys are PascalCase physical names; wire strings match
+  jsthermalcomfort fields. `primaryInputOrder` is the persisted primary-key
+  set. Extra ids (`extraQuantities`, including PHS weight and height) live
+  in sparse `modelInputsByModel` and stay out of primary records. Display
+  labels live on `siUnitLabel` / `ipUnitLabel`. Humidity quantities may
+  set `category: Humidity`; `humidityQuantityIds()` is that set minus
+  `rh`. Map JS names with `defineLibraryQuantityMapping`.
 - ChartTypes: `src/catalog/chartTypes.ts`. Eight product names. One model
   registers each ChartType at most once. Dropdown labels are
-  `chartTypeLabel[type]`. Chart ids live on each declaration’s `charts`
-  entries; the builder maps them to runtime `instanceId`.
+  `chartTypeLabel[type]`. Selection key is `ChartType` (`selectedChartType`);
+  `instanceId` equals the ChartType. Declarations do not write chart ids.
 - Tables: slots `results` (every point-session model) and optional
   `timeSeries` (PHS). Time-series surface membership is that slot.
 - Zones: models select a `ZoneToken`; screen, publication, and colour-blind
   hex live in `src/catalog/zoneTokens.ts`.
+- Model labels/descriptions: `defineModel({ library })` reads string
+  `library.label` / `library.description` (JS `@docname` / leading
+  JSDoc). Catalog does not import `jsthermalcomfort`.
+  Science categories come from pythermalcomfort via JS bins: Humidex
+  `mapping` + bins, UTCI `mapping.bins`, Heat Index `mapping.bins`, ASHRAE
+  `compliance.bounds`, `tsv.bins`, and `COMPLIANCE_LIMIT`, ISO `tsv.bins`,
+  Adaptive `offsets` and result `tmp_cmf_*` / `acceptability_*` fields.
+  Comfort Tool maps those library label strings (or, when JS has no
+  label, library ids / result field names such as `cat_i` / `wct`) to
+  `ZoneToken` colours. It does not invent classifier copy. Interval
+  membership follows the library digitize closedness (`minInclusive` /
+  `maxInclusive` on `NumericBand`), not a local scan. Explore defaults copy
+  Standard. PPD 10% is an editable Explore chart preset, not a library
+  classifier. Wind Chill has no Python category, so it has no default
+  frostbite bands; WCT is the library result with no local applicability
+  gate. EN Adaptive outdoor chart 10–30 °C is an axis, not
+  `adaptive_en.t_running_mean_limits`. PHS Standard uses library `d_lim_*`
+  vs the 8 h horizon
+  and `phs.RECTAL_TEMPERATURE_LIMIT` / water-loss fractions; Explore t_re /
+  water-loss fills are product presets.
 
 `defineModel` is the public authoring API. Family modules (PMV, Adaptive)
-may assemble with `ComfortModelBuilder` internally. Duplicate Extra ids,
-unknown ChartTypes, duplicate ChartType on one model, or a Time-series table
-without Time-series capability fail `defineModel` / `assembleCatalogs`.
+may assemble with `ComfortModelBuilder` internally. Duplicate extra ids,
+extras that are primary, humidity, or modifier slots, unknown ChartTypes,
+duplicate ChartType on one model, or a Time-series table without Time-series
+capability fail `defineModel` / `assembleCatalogs`.
 
 ## Point session
 
@@ -112,7 +138,7 @@ sibling calculation cache:
 | Bucket | Holds |
 | ------ | ----- |
 | input | `quantitiesByInput`, auxiliary slots, `modelInputsByModel`, modifiers |
-| setting | model, chart instance, options, Compare, unit system, Surface, allowed models, axes / baseline / Explore bands |
+| setting | model, `selectedChartType`, options, Compare, unit system, Surface, allowed models, axes / baseline / Explore bands |
 | output | loading / error |
 
 Calculation cache belongs to the output bucket but is stored as `$state.raw`
@@ -179,7 +205,15 @@ address bar is not a live store. Changing model strips `?state=`.
 ## Authoring constraints
 
 A Heat Index–class model is a `defineModel` declaration, one `ModelId`
-member, and one registry line. Copy `heatIndex.ts`.
+member, and one registry line. Copy `heatIndex.ts`. The authoring unit is
+one file with identity/inputs, calculation, and chart **parameters** (`type`
++ data spec). Do not write `spec.build`, Plotly, chart ids, or
+`instanceId`. Selection key is `ChartType` (`selectedChartType`).
+`library.label` / `library.description` fill metadata. `inputFields`
+list quantities (optional `minValue`/`maxValue`/`widget`); default widgets
+come from `defaultFieldWidgetByQuantity`. Classifier edges come from JS
+`mapping.bins` / `compliance.bounds` via `bandsFromJsBins` /
+`bandsFromJsBounds`, plus a token map — do not scan.
 
 These are frontend catalog work, not declaration-only work:
 
@@ -193,5 +227,6 @@ Declarations do not import Plotly. UI, share, Compare, and the point session
 do not branch on the new model id.
 
 PMV ASHRAE and PMV ISO stay separate registered models. Adaptive ASHRAE and
-EN stay separate. Family modules share calculation/chart wiring; they do not
-merge standards behind a runtime toggle.
+EN stay separate. Family modules may keep calculation/zones/series `_core`
+files; they do not own Plotly `build()`. PHS Worker and Time-series stay
+out of the point-session declaration. Do not merge standards behind a runtime toggle.

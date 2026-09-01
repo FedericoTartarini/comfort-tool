@@ -11,11 +11,10 @@ import {
 import {
   isPhysicalQuantityId,
   physicalQuantityMetaById,
-  resolveQuantityState,
-  QuantityState,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type PhysicalQuantityMeta,
 } from "../../catalog/quantities";
+import { isAllowedExtraQuantityId } from "../../engines/comfort/quantityStateRouting";
 
 /**
  * Model slice that assembled catalogs can check. This is not a second
@@ -51,23 +50,15 @@ function indexChartOwners(models: readonly CatalogModelSlice[]): {
   const chartInstanceOwners = new Map<string, ModelIdType>();
 
   for (const model of models) {
-    const instanceIds = model.chartInstances.entries.map(
-      ({ instanceId }) => instanceId,
-    );
-    if (instanceIds.length === 0) {
-      throw new Error(`${model.id} must declare at least one chart instance.`);
+    const types = model.chartInstances.entries.map(({ type }) => type);
+    if (types.length === 0) {
+      throw new Error(`${model.id} must declare at least one chart.`);
     }
-    if (new Set(instanceIds).size !== instanceIds.length) {
-      throw new Error(`${model.id} declares duplicate chart instance IDs.`);
+    if (new Set(types).size !== types.length) {
+      throw new Error(`${model.id} declares duplicate chart types.`);
     }
-    for (const instanceId of instanceIds) {
-      const owner = chartInstanceOwners.get(instanceId);
-      if (owner !== undefined) {
-        throw new Error(
-          `Chart instance ID "${instanceId}" is declared by both ${owner} and ${model.id}.`,
-        );
-      }
-      chartInstanceOwners.set(instanceId, model.id);
+    for (const type of types) {
+      chartInstanceOwners.set(`${model.id}:${type}`, model.id);
     }
   }
 
@@ -87,12 +78,12 @@ export function validateModel(
   for (const quantityId of model.extraQuantities) {
     if (!isPhysicalQuantityId(quantityId) || catalogs.quantities[quantityId] === undefined) {
       throw new Error(
-        `Unknown extra quantity "${String(quantityId)}" on ${model.id}. Extra quantities must be catalog Extra ids.`,
+        `Unknown extra quantity "${String(quantityId)}" on ${model.id}. Extra quantities must be catalog ids that are not primary, humidity, or modifier slots.`,
       );
     }
-    if (resolveQuantityState(quantityId) !== QuantityState.Extra) {
+    if (!isAllowedExtraQuantityId(quantityId)) {
       throw new Error(
-        `Quantity "${quantityId}" on ${model.id} is not an Extra catalog quantity.`,
+        `Quantity "${quantityId}" on ${model.id} cannot be declared as extra.`,
       );
     }
     if (seenExtraIds.has(quantityId)) {
@@ -110,13 +101,14 @@ export function validateModel(
       );
     }
     if (seenInstanceIds.has(entry.instanceId)) {
-      throw new Error(`${model.id} declares duplicate chart instance IDs.`);
+      throw new Error(
+        `Comfort model declarations cannot contain duplicate chart types (${entry.type}).`,
+      );
     }
     seenInstanceIds.add(entry.instanceId);
-    const instanceOwner = catalogs.chartInstanceOwners.get(entry.instanceId);
-    if (instanceOwner !== undefined && instanceOwner !== model.id) {
+    if (entry.instanceId !== entry.type) {
       throw new Error(
-        `Chart instance ID "${entry.instanceId}" is declared by both ${instanceOwner} and ${model.id}.`,
+        `${model.id} chart instance must be the ChartType ("${entry.type}").`,
       );
     }
     if (seenTypes.has(entry.type)) {

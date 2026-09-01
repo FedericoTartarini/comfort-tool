@@ -35,7 +35,7 @@ export { getQuantityDisplayMeta } from "../../catalog/quantities";
 /**
  * Centralized unit conversion helpers.
  * Canonical shared state stays in SI; these helpers map values to and from the active UI unit system.
- * Quantity conversion reads `display.units.SI` from the closed quantity catalog.
+ * Quantity conversion reads `units.SI` from the closed quantity catalog.
  * Rounding happens only at the display boundary (`formatDisplayValue` / `roundToDisplay`).
  */
 export type DisplayQuantityMeta = {

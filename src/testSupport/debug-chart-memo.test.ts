@@ -20,7 +20,7 @@ async function waitForIdle(
 describe("chart memo debug", () => {
   it("chart marker moves after input change", async () => {
     const session = createPointSession();
-    session.actions.setSelectedChartInstance("pmv-ashrae-dynamic-field");
+    session.actions.setSelectedChartInstance("dynamic");
     session.actions.setDynamicXAxis(PhysicalQuantityId.DryBulbTemperature);
     session.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(session);

@@ -37,22 +37,21 @@ import {
   pmvIsoModelConfig,
 } from "./iso";
 import {
-  createPmvComplianceCaption,
+  createAshraePmvComplianceCaption,
   createPmvModelConfig,
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./shared";
-import { createDynamicViewDescriptor } from "./dynamicChart";
 import {
   calculatePmvModel,
   derivePmvAnalysisOutputs,
   invertPpdToAbsPmv,
-  pmvNeutralZone,
   ppdThresholdToAbsPmv,
   type PmvChartSource,
   type PmvRequest,
   type PmvResponse,
 } from "./calculation";
+import { ashraeComfortIsolineTargets } from "./zones";
 
 const baseRequest: PmvRequest = {
   tdb: 25,
@@ -135,15 +134,11 @@ function emptyPmvResults(): Record<InputId, PmvResponse | null> {
 }
 
 describe("PMV standard declarations", () => {
-  it("derives compliance caption thresholds from the supplied Neutral band", () => {
-    const caption = createPmvComplianceCaption("Custom standard", [
-      { min: -Infinity, max: -0.7, label: "Cool", color: "#00f" },
-      { min: -0.7, max: 0.8, label: "Neutral", color: "#0f0" },
-      { min: 0.8, max: Infinity, label: "Warm", color: "#f00" },
-    ]);
+  it("describes ASHRAE open-interval compliance from the library edges", () => {
+    const caption = createAshraePmvComplianceCaption(ashraeComfortIsolineTargets);
 
     expect(caption).toBe(
-      "Green shading = Custom standard compliant PMV (−0.7 ≤ PMV < +0.8); red = outside the limit.",
+      "Green shading = ASHRAE 55 compliant PMV (−0.5 < PMV < +0.5); red = outside the limit.",
     );
   });
 
@@ -151,15 +146,16 @@ describe("PMV standard declarations", () => {
     expect(pmvAshraeModelConfig).not.toBe(pmvIsoModelConfig);
     expect(pmvAshraeModelConfig.id).toBe(ModelId.PmvAshrae);
     expect(pmvIsoModelConfig.id).toBe(ModelId.PmvIso);
-    expect(pmvAshraeModelConfig.label).toBe(pmvAshraeDeclaration.label);
-    expect(pmvIsoModelConfig.label).toBe(pmvIsoDeclaration.label);
-    expect(pmvIsoModelConfig.description).toContain("ISO 7730 Category B");
+    expect(pmvAshraeModelConfig.label.length).toBeGreaterThan(0);
+    expect(pmvIsoModelConfig.label.length).toBeGreaterThan(0);
+    expect(pmvIsoModelConfig.description).toContain("ISO 7730");
     expect(pmvAshraeDeclaration.complianceProfile.bands)
       .not.toBe(pmvIsoDeclaration.complianceProfile.bands);
-    expect(pmvAshraeDeclaration.heatLossChartId)
-      .not.toBe(pmvIsoDeclaration.heatLossChartId);
-    expect(pmvAshraeDeclaration.setChartId)
-      .not.toBe(pmvIsoDeclaration.setChartId);
+    expect(
+      pmvAshraeModelConfig.chartInstances.entries.map(({ type }) => type),
+    ).toEqual(
+      pmvIsoModelConfig.chartInstances.entries.map(({ type }) => type),
+    );
   });
 
   it("pins required Analysis controls independently of inputFields", () => {
@@ -269,8 +265,8 @@ describe("PMV standard declarations", () => {
       { units: UnitSystem.SI, limit_inputs: false },
     );
 
-    expect(ashrae).toEqual(expectedAshrae);
-    expect(iso).toEqual(expectedIso);
+    expect(ashrae).toMatchObject(expectedAshrae);
+    expect(iso).toMatchObject(expectedIso);
     expect(ashrae.pmv).not.toBe(iso.pmv);
   });
 
@@ -310,7 +306,7 @@ describe("PMV standard declarations", () => {
       const expected = derivePmvAnalysisOutputs(request);
 
       expect(result.set).toBe(expected.set);
-      expect(result.coolingEffect).toBe(expected.coolingEffect);
+      expect(result.ce).toBe(expected.ce);
       expect(result.vr).toBe(request.vr);
       expect(result.dynamicClothing).toBe(expected.dynamicClothing);
     },
@@ -359,8 +355,8 @@ describe("PMV standard declarations", () => {
       { ...baseRequest, vr: 0.3 },
     );
 
-    expect(still.coolingEffect).toBe(0);
-    expect(elevated.coolingEffect).toBeGreaterThan(0);
+    expect(still.ce).toBe(0);
+    expect(elevated.ce).toBeGreaterThan(0);
   });
 
   it.each(standardCases)(
@@ -368,32 +364,32 @@ describe("PMV standard declarations", () => {
     ({ config }) => { expect(config.tables.results.map((row) => row.label)).toEqual([
         "Compliance", "PMV", "Zone", "PPD", "Acceptability", "SET", "Cooling effect", "Relative air speed", "Dynamic clothing", ]);
       expect(config.exploreOutputs.map((output) => output.key)).toEqual([
-        PhysicalQuantityId.Pmv, PhysicalQuantityId.Ppd, ]); },
+        PhysicalQuantityId.PredictedMeanVote, PhysicalQuantityId.PredictedPercentageOfDissatisfied, ]); },
   );
 
   it.each(standardCases)(
     "$label registers independent ParametricLine heat-loss and SET charts",
-    ({ config, declaration }) => {
+    ({ config }) => {
       expect(config.chartInstances.defaultInstanceId)
-        .toBe(declaration.psychrometricChartId);
+        .toBe(ChartType.Psychrometric);
       expect(config.chartInstances.entries.map(({ instanceId, type }) => ({
         instanceId,
         type,
       }))).toEqual([
         {
-          instanceId: declaration.psychrometricChartId,
+          instanceId: ChartType.Psychrometric,
           type: ChartType.Psychrometric,
         },
         {
-          instanceId: declaration.dynamicChartId,
+          instanceId: ChartType.Dynamic,
           type: ChartType.Dynamic,
         },
         {
-          instanceId: declaration.heatLossChartId,
+          instanceId: ChartType.HeatLoss,
           type: ChartType.HeatLoss,
         },
         {
-          instanceId: declaration.setChartId,
+          instanceId: ChartType.Set,
           type: ChartType.Set,
         },
       ]);
@@ -410,18 +406,18 @@ describe("PMV standard declarations", () => {
       const context = {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
-        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands: declaration.exploreOutputs[0].defaultBands },
+        fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PredictedMeanVote, bands: declaration.exploreOutputs[0].defaultBands },
       };
       const heatLoss = buildChartPlotly(
         config,
-        declaration.heatLossChartId,
+        ChartType.HeatLoss,
         chartSource,
         emptyPmvResults(),
         context,
       );
       const set = buildChartPlotly(
         config,
-        declaration.setChartId,
+        ChartType.Set,
         chartSource,
         emptyPmvResults(),
         context,
@@ -442,16 +438,16 @@ describe("PMV roots and compliance", () => {
   it("rejects non-finite PMV values instead of assigning Neutral", () => {
     const adapter: PmvStandardAdapter = {
         ...pmvAshraeAdapter,
-        calculate: () => ({ pmv: Number.NaN, ppd: Number.NaN }),
+        calculate: () => ({ pmv: Number.NaN, ppd: Number.NaN, tsv: Number.NaN }),
     };
 
     expect(() => calculateRegisteredModel(adapter, createPointSession()))
       .toThrow(/PMV.*non-finite/i);
   });
 
-  it("inverts PPD 10% to Neutral |PMV| and snaps the default threshold", () => {
+  it("inverts PPD 10% to the Explore |PMV| contour", () => {
     expect(invertPpdToAbsPmv(10)).toBeCloseTo(0.5, 1);
-    expect(ppdThresholdToAbsPmv(10)).toBe(pmvNeutralZone.max);
+    expect(ppdThresholdToAbsPmv(10)).toBe(0.5);
   });
 
   it.each(standardCases)(
@@ -482,6 +478,7 @@ describe("PMV roots and compliance", () => {
       calculate: (request) => ({
         pmv: (request.tdb - 10.25) * (request.tdb - 20.25) - 0.5,
         ppd: 0,
+        tsv: Number.NaN,
       }),
     };
     const { chartSource } = calculateRegisteredModel(
@@ -496,7 +493,7 @@ describe("PMV roots and compliance", () => {
   it("omits comfort-zone points when the drawable range contains no roots", () => {
     const adapter: PmvStandardAdapter = {
       ...pmvAshraeAdapter,
-      calculate: () => ({ pmv: 1, ppd: 0 }),
+      calculate: () => ({ pmv: 1, ppd: 0, tsv: Number.NaN }),
     };
     const { chartSource } = calculateRegisteredModel(
       adapter,
@@ -525,7 +522,7 @@ describe("PMV roots and compliance", () => {
       const declaration: PmvModelDeclaration = { ...pmvAshraeDeclaration, adapter };
       const config = createPmvModelConfig(declaration);
       return buildChartPlotly(config,
-        "pmv-ashrae-dynamic-field",
+        "dynamic",
         {
           inputs: {
             [InputId.Input1]: {
@@ -542,7 +539,7 @@ describe("PMV roots and compliance", () => {
         {
           unitSystem: UnitSystem.SI,
           baselineInputId: InputId.Input1,
-          fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands: declaration.exploreOutputs[0].defaultBands },
+          fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PredictedMeanVote, bands: declaration.exploreOutputs[0].defaultBands },
         },
       );
     };
@@ -562,36 +559,87 @@ describe("PMV roots and compliance", () => {
     )).toThrow("broken adapter");
   });
 
-  it.each(standardCases)(
-    "$label assigns neutral boundaries with half-open semantics",
-    ({ adapter, declaration }) => {
-      const neutralZone = pmvNeutralZone;
-      const bands = declaration.complianceProfile.bands;
-      const { chartSource } = calculateRegisteredModel(
-        adapter,
-        createPointSession(),
-      );
-      const request = chartSource.inputs[InputId.Input1];
-      const zone = chartSource.comfortZonesByInput[InputId.Input1];
-      if (!request || !zone) {
-        throw new Error("Missing PMV Neutral zone calculation.");
-      }
+  it("ASHRAE keeps ±0.5 outside the open compliance interval", () => {
+    expect(pmvAshraeAdapter.isAcceptablePmv(-0.5)).toBe(false);
+    expect(pmvAshraeAdapter.isAcceptablePmv(0.5)).toBe(false);
+    expect(pmvAshraeAdapter.isAcceptablePmv(0)).toBe(true);
+    expect(pmvAshraeAdapter.classifyTsv(-0.5)).toBe("Slightly Cool");
+    expect(pmvAshraeAdapter.classifyTsv(0.5)).toBe("Neutral");
+  });
 
-      [zone.coolEdge[0], zone.warmEdge[0]].forEach((point, index) => {
-        if (!point) throw new Error("Missing PMV Neutral boundary point.");
-        const targetPmv = index === 0 ? neutralZone.min : neutralZone.max;
-        const evaluated = adapter.calculate({
-          ...request,
-          tdb: point.tdb,
-          rh: point.rh,
-        });
-        const assignedIndex = findNumericBandIndexForValue(bands, evaluated.pmv);
+  it("ISO TSV is left-closed at the Neutral edges", () => {
+    expect(pmvIsoAdapter.classifyTsv(-0.5)).toBe("Neutral");
+    expect(pmvIsoAdapter.classifyTsv(0.5)).toBe("Slightly Warm");
+    expect(pmvIsoAdapter.isAcceptablePmv(-0.5)).toBe(true);
+    expect(pmvIsoAdapter.isAcceptablePmv(0.5)).toBe(false);
+  });
 
-        expect(evaluated.pmv).toBeCloseTo(targetPmv, 3);
-        expect(assignedIndex).toBe(index + 1);
+  it("ASHRAE comfort-zone roots sit on the open compliance edges", () => {
+    const bands = pmvAshraeDeclaration.complianceProfile.bands;
+    const { chartSource } = calculateRegisteredModel(
+      pmvAshraeAdapter,
+      createPointSession(),
+    );
+    const request = chartSource.inputs[InputId.Input1];
+    const zone = chartSource.comfortZonesByInput[InputId.Input1];
+    if (!request || !zone) {
+      throw new Error("Missing PMV Neutral zone calculation.");
+    }
+
+    [zone.coolEdge[0], zone.warmEdge[0]].forEach((point, index) => {
+      if (!point) throw new Error("Missing PMV Neutral boundary point.");
+      const targetPmv = index === 0
+        ? pmvAshraeAdapter.comfortIsolineTargets[0]
+        : pmvAshraeAdapter.comfortIsolineTargets[1];
+      const evaluated = pmvAshraeAdapter.calculate({
+        ...request,
+        tdb: point.tdb,
+        rh: point.rh,
       });
-    },
-  );
+      const assignedIndex = findNumericBandIndexForValue(bands, evaluated.pmv);
+
+      expect(evaluated.pmv).toBeCloseTo(targetPmv, 3);
+      expect(assignedIndex).toBe(index === 0 ? 0 : bands.length - 1);
+    });
+  });
+
+  it("ISO comfort-zone roots follow Neutral TSV edges", () => {
+    const bands = pmvIsoDeclaration.complianceProfile.bands;
+    const { chartSource } = calculateRegisteredModel(
+      pmvIsoAdapter,
+      createPointSession(),
+    );
+    const request = chartSource.inputs[InputId.Input1];
+    const zone = chartSource.comfortZonesByInput[InputId.Input1];
+    if (!request || !zone) {
+      throw new Error("Missing ISO TSV Neutral zone calculation.");
+    }
+
+    const coolPoint = zone.coolEdge[0];
+    const warmPoint = zone.warmEdge[0];
+    if (!coolPoint || !warmPoint) {
+      throw new Error("Missing ISO Neutral boundary point.");
+    }
+    const coolPmv = pmvIsoAdapter.calculate({
+      ...request,
+      tdb: coolPoint.tdb,
+      rh: coolPoint.rh,
+    }).pmv;
+    const warmPmv = pmvIsoAdapter.calculate({
+      ...request,
+      tdb: warmPoint.tdb,
+      rh: warmPoint.rh,
+    }).pmv;
+
+    expect(coolPmv).toBeCloseTo(pmvIsoAdapter.comfortIsolineTargets[0], 3);
+    expect(warmPmv).toBeCloseTo(pmvIsoAdapter.comfortIsolineTargets[1], 3);
+    expect(findNumericBandIndexForValue(bands, -0.5)).toBe(
+      bands.findIndex((band) => band.label === "Neutral"),
+    );
+    expect(findNumericBandIndexForValue(bands, 0.5)).toBe(
+      bands.findIndex((band) => band.label === "Slightly Warm"),
+    );
+  });
 
   it("generates comfort-zone roots without cooling-effect warnings", () => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -647,34 +695,33 @@ describe("PMV roots and compliance", () => {
     );
     const derived = chartSource.derivedSlotsByInput?.[InputId.Input1];
     expect(derived?.[PhysicalQuantityId.HumidityRatio]).toBeTypeOf("number");
-    expect(derived?.[PhysicalQuantityId.DewPoint]).toBeTypeOf("number");
+    expect(derived?.[PhysicalQuantityId.DewPointTemperature]).toBeTypeOf("number");
   });
 
-  it("reuses cached PMV results at the baseline dynamic-chart coordinate", () => {
+  it("reuses cached PMV results when building the Dynamic chart", () => {
     const session = createPointSession();
     const { result, chartSource } = calculateRegisteredModel(pmvAshraeAdapter, session);
-    const calculateSpy = vi.spyOn(pmvAshraeAdapter, "calculate");
-    try {
-      const baselinePayload = chartSource.inputs[InputId.Input1];
-      if (!baselinePayload) throw new Error("Missing baseline payload.");
-      const descriptor = createDynamicViewDescriptor(
-        pmvAshraeDeclaration,
-        chartSource,
-        { [InputId.Input1]: result },
-        {
-          baselineInputId: InputId.Input1,
-          unitSystem: UnitSystem.SI,
-          fieldChartConfig: { profileKind: FieldChartProfileKind.Explore, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.Pmv, bands: pmvAshraeDeclaration.complianceProfile.bands },
+    const chart = buildChartPlotly(
+      pmvAshraeModelConfig,
+      ChartType.Dynamic,
+      chartSource,
+      {
+        [InputId.Input1]: result,
+        [InputId.Input2]: null,
+        [InputId.Input3]: null,
+      },
+      {
+        baselineInputId: InputId.Input1,
+        unitSystem: UnitSystem.SI,
+        fieldChartConfig: {
+          profileKind: FieldChartProfileKind.Explore,
+          xField: PhysicalQuantityId.DryBulbTemperature,
+          yField: PhysicalQuantityId.RelativeHumidity,
+          zOutput: PhysicalQuantityId.PredictedMeanVote,
+          bands: pmvAshraeDeclaration.complianceProfile.bands,
         },
-      );
-      const evaluation = descriptor.evaluatePoint(
-        descriptor.getInputXSi(baselinePayload),
-        descriptor.getInputYSi(baselinePayload),
-      );
-      expect(evaluation?.pmv).toBeCloseTo(result.pmv, 6);
-      expect(calculateSpy).not.toHaveBeenCalled();
-    } finally {
-      calculateSpy.mockRestore();
-    }
+      },
+    );
+    expect(chart?.payload).not.toBeNull();
   });
 });

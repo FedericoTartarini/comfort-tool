@@ -1,12 +1,12 @@
-import { type ChartAxisQuantityId } from "../../catalog/quantities";
+import { type PhysicalQuantityId } from "../../catalog/quantities";
 interface DynamicAxisConfiguration {
-  dynamicAxisFields: ReadonlyArray<ChartAxisQuantityId>;
+  dynamicAxisFields: ReadonlyArray<PhysicalQuantityId>;
   defaultDynamicAxes: DynamicAxisPair;
 }
 
 export interface DynamicAxisPair {
-  xAxis: ChartAxisQuantityId;
-  yAxis: ChartAxisQuantityId;
+  xAxis: PhysicalQuantityId;
+  yAxis: PhysicalQuantityId;
 }
 
 export type DynamicAxisDimension = "x" | "y";
@@ -35,7 +35,7 @@ export function resolveDynamicAxisSelection(
   config: DynamicAxisConfiguration,
   pair: DynamicAxisPair,
   dimension: DynamicAxisDimension,
-  nextField: ChartAxisQuantityId,
+  nextField: PhysicalQuantityId,
 ): DynamicAxisPair | null {
   if (!config.dynamicAxisFields.includes(nextField)) {
     return null;
@@ -56,7 +56,7 @@ export function getDynamicAxisOptions(
   config: DynamicAxisConfiguration,
   pair: DynamicAxisPair,
   dimension: DynamicAxisDimension,
-): ChartAxisQuantityId[] {
+): PhysicalQuantityId[] {
   return config.dynamicAxisFields.filter((field) => (
     resolveDynamicAxisSelection(config, pair, dimension, field) !== null
   ));

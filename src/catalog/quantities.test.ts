@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { SiUnit } from "./units";
+import { IpUnit, SiUnit } from "./units";
 import {
   PhysicalQuantityId,
-  QuantityState,
-  derivedQuantityIds,
-  extraQuantityIds,
+  QuantityCategory,
+  derivedHumidityQuantityIds,
+  humidityQuantityIds,
   physicalQuantityMetaById,
   primaryInputOrder,
-  resolveQuantityState,
 } from "./quantities";
 
 describe("quantities metadata", () => {
@@ -18,55 +17,60 @@ describe("quantities metadata", () => {
     }
   });
 
-  it("keeps primary order aligned with occupancy lists", () => {
-    expect(primaryInputOrder.every((id) => (
-      resolveQuantityState(id) === QuantityState.Primary
-    ))).toBe(true);
+  it("keeps humidity quantities tagged and derived ids off the primary record", () => {
+    const taggedHumidityIds = Object.values(physicalQuantityMetaById)
+      .filter((meta) => meta.category === QuantityCategory.Humidity)
+      .map((meta) => meta.id);
+    expect(taggedHumidityIds).toEqual([
+      PhysicalQuantityId.RelativeHumidity,
+      PhysicalQuantityId.HumidityRatio,
+      PhysicalQuantityId.DewPointTemperature,
+      PhysicalQuantityId.WetBulbTemperature,
+      PhysicalQuantityId.VaporPressure,
+    ]);
+    expect(new Set(humidityQuantityIds())).toEqual(
+      new Set(taggedHumidityIds.filter((id) => id !== PhysicalQuantityId.RelativeHumidity)),
+    );
+    expect(new Set(derivedHumidityQuantityIds)).toEqual(new Set(humidityQuantityIds()));
+    expect(humidityQuantityIds()).not.toContain(PhysicalQuantityId.RelativeHumidity);
+    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.HumidityRatio);
   });
 
-  it("marks derived slot quantities with derivedFrom sources", () => {
-    for (const id of derivedQuantityIds) {
-      const meta = physicalQuantityMetaById[id];
-      expect(resolveQuantityState(id)).toBe(QuantityState.Slot);
-      expect(meta.derivedFrom?.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("defines body weight and height as Extra catalog quantities outside primary order", () => {
-    expect(resolveQuantityState(PhysicalQuantityId.BodyWeight)).toBe(QuantityState.Extra);
-    expect(resolveQuantityState(PhysicalQuantityId.Height)).toBe(QuantityState.Extra);
+  it("keeps body weight and height outside the persisted primary key set", () => {
     expect(primaryInputOrder).not.toContain(PhysicalQuantityId.BodyWeight);
     expect(primaryInputOrder).not.toContain(PhysicalQuantityId.Height);
-    expect([...extraQuantityIds]).toEqual([
-      PhysicalQuantityId.BodyWeight,
-      PhysicalQuantityId.Height,
-    ]);
   });
 
   it("stores humidity ratio as kg/kg and vapor pressure as Pa", () => {
-    expect(physicalQuantityMetaById[PhysicalQuantityId.HumidityRatio].display.units.SI)
+    expect(physicalQuantityMetaById[PhysicalQuantityId.HumidityRatio].units.SI)
       .toBe(SiUnit.KilogramPerKilogram);
     expect(physicalQuantityMetaById[PhysicalQuantityId.HumidityRatio].defaultSi).toBe(0.009);
-    expect(physicalQuantityMetaById[PhysicalQuantityId.VaporPressure].display.units.SI)
+    expect(physicalQuantityMetaById[PhysicalQuantityId.VaporPressure].units.SI)
       .toBe(SiUnit.Pascal);
     expect(physicalQuantityMetaById[PhysicalQuantityId.VaporPressure].defaultSi).toBe(1500);
   });
 
-  it("uses a known SiUnit for every catalog quantity", () => {
+  it("uses known SI and IP units for every catalog quantity", () => {
     const knownSiUnits = new Set(Object.values(SiUnit));
+    const knownIpUnits = new Set(Object.values(IpUnit));
     for (const meta of Object.values(physicalQuantityMetaById)) {
-      expect(knownSiUnits.has(meta.display.units.SI)).toBe(true);
+      expect(knownSiUnits.has(meta.units.SI)).toBe(true);
+      expect(knownIpUnits.has(meta.units.IP)).toBe(true);
     }
   });
 
-  it("includes result quantities in the closed catalog", () => {
-    expect(physicalQuantityMetaById[PhysicalQuantityId.Pmv].id).toBe(PhysicalQuantityId.Pmv);
-    expect(physicalQuantityMetaById[PhysicalQuantityId.HeatIndex].display.units.SI)
+  it("includes result quantities in the closed catalog with JS-aligned wires", () => {
+    expect(PhysicalQuantityId.PredictedMeanVote).toBe("pmv");
+    expect(PhysicalQuantityId.HeatIndex).toBe("hi");
+    expect(PhysicalQuantityId.CoolingEffect).toBe("ce");
+    expect(PhysicalQuantityId.LimitingExposureTime).toBe("limiting_exposure_time");
+    expect(physicalQuantityMetaById[PhysicalQuantityId.HeatIndex].units.SI)
       .toBe(SiUnit.DegreeCelsius);
-    expect(physicalQuantityMetaById[PhysicalQuantityId.CoolingEffect].display.units.SI)
+    expect(physicalQuantityMetaById[PhysicalQuantityId.CoolingEffect].units.SI)
       .toBe(SiUnit.KelvinDelta);
-    expect(physicalQuantityMetaById[PhysicalQuantityId.PhsLimitingExposureTime].display.units.SI)
+    expect(physicalQuantityMetaById[PhysicalQuantityId.LimitingExposureTime].units.SI)
       .toBe(SiUnit.Minute);
-    expect(resolveQuantityState(PhysicalQuantityId.Pmv)).toBeUndefined();
+    expect(physicalQuantityMetaById[PhysicalQuantityId.LimitingExposureTime].units.IP)
+      .toBe(IpUnit.Hour);
   });
 });

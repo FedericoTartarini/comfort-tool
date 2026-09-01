@@ -184,16 +184,16 @@ describe("PHS ISO 7933:2023", () => {
     const complianceContext = {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
-      fieldChartConfig: { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.PhsLimitingExposureTime, bands: phsModelConfig.complianceProfile!.bands },
+      fieldChartConfig: { profileKind: FieldChartProfileKind.Compliance, xField: PhysicalQuantityId.DryBulbTemperature, yField: PhysicalQuantityId.RelativeHumidity, zOutput: PhysicalQuantityId.LimitingExposureTime, bands: phsModelConfig.complianceProfile!.bands },
     } as const;
     const exposureChart = buildChartPlotly(phsModelConfig,
-      "phs-exposure-history",
+      "body-temperature",
       chartSource,
       resultsByInput,
       complianceContext,
     );
     const fieldChart = buildChartPlotly(phsModelConfig,
-      "phs-dynamic-field",
+      "dynamic",
       chartSource,
       resultsByInput,
       complianceContext,
@@ -203,10 +203,10 @@ describe("PHS ISO 7933:2023", () => {
     expect(phsModelConfig.controls.map(({ id }) => id)).toEqual([
       ...requiredControlIdsByModel[ModelId.Phs2023],
     ]);
-    expect(phsModelConfig.chartInstances.defaultInstanceId).toBe("phs-exposure-history");
+    expect(phsModelConfig.chartInstances.defaultInstanceId).toBe("body-temperature");
     expect(phsModelConfig.chartInstances.entries.map(({ instanceId }) => instanceId)).toEqual([
-      "phs-exposure-history",
-      "phs-dynamic-field",
+      "body-temperature",
+      "dynamic",
     ]);
     expect(exposureChart?.traces.map(({ name }) => name)).toEqual([
       "Rectal temperature",
@@ -224,7 +224,7 @@ describe("PHS ISO 7933:2023", () => {
   it("uses an edited Explore rectal-temperature threshold on exposure history", () => {
     const result = analysisResult();
     const chart = buildChartPlotly(phsModelConfig,
-      "phs-exposure-history",
+      "body-temperature",
       { inputs: { [InputId.Input1]: phsReferenceEnvironment } },
       {
         [InputId.Input1]: result,
@@ -238,7 +238,7 @@ describe("PHS ISO 7933:2023", () => {
           profileKind: FieldChartProfileKind.Explore,
           xField: PhysicalQuantityId.DryBulbTemperature,
           yField: PhysicalQuantityId.RelativeHumidity,
-          zOutput: PhysicalQuantityId.PhsRectalTemperature,
+          zOutput: PhysicalQuantityId.RectalTemperature,
           bands: [
             { min: -Infinity, max: 37.5, label: "Below", color: "#bbf7d0" },
             { min: 37.5, max: Infinity, label: "Above", color: "#fecaca" },

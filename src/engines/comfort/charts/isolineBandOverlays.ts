@@ -5,26 +5,26 @@ import {
   type IsolineBandLayout,
   type IsolineEvaluate,
 } from "../../../charts/isolines";
-import { PhysicalQuantityId, type ChartAxisQuantityId } from "../../../catalog/quantities";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 import type { NumericBand } from "../../../catalog/modelCapabilities";
 import type { PlotTrace } from "../../plotlyTypes";
 import { buildFilledPolygonTrace } from "./plotlyBuilders";
 import { clipRelativeAirSpeedWithoutOccupantControl } from "./ashraeAirSpeedLimits";
 import type { ChartAxisScale } from "./types";
 
-const ROOT_TEMPERATURE_FIELDS = new Set<ChartAxisQuantityId>([
+const ROOT_TEMPERATURE_FIELDS = new Set<PhysicalQuantityId>([
   PhysicalQuantityId.DryBulbTemperature,
   PhysicalQuantityId.OperativeTemperature,
 ]);
 
-const AIR_SPEED_FIELDS = new Set<ChartAxisQuantityId>([
+const AIR_SPEED_FIELDS = new Set<PhysicalQuantityId>([
   PhysicalQuantityId.RelativeAirSpeed,
   PhysicalQuantityId.WindSpeed,
 ]);
 
 export function resolveIsolineIndependentAxis(
-  xField: ChartAxisQuantityId,
-  yField: ChartAxisQuantityId,
+  xField: PhysicalQuantityId,
+  yField: PhysicalQuantityId,
 ): "x" | "y" {
   const xTemperature = ROOT_TEMPERATURE_FIELDS.has(xField);
   const yTemperature = ROOT_TEMPERATURE_FIELDS.has(yField);
@@ -36,8 +36,8 @@ export function resolveIsolineIndependentAxis(
 }
 
 export function isOperativeAirSpeedPair(
-  xField: ChartAxisQuantityId,
-  yField: ChartAxisQuantityId,
+  xField: PhysicalQuantityId,
+  yField: PhysicalQuantityId,
 ): boolean {
   const fields = new Set([xField, yField]);
   return fields.has(PhysicalQuantityId.OperativeTemperature)
@@ -114,8 +114,8 @@ export function buildIsolineBandOverlayTraces({
   evaluateField: (xSi: number, ySi: number) => number | null;
   xAxis: ChartAxisScale;
   yAxis: ChartAxisScale;
-  xField: ChartAxisQuantityId;
-  yField: ChartAxisQuantityId;
+  xField: PhysicalQuantityId;
+  yField: PhysicalQuantityId;
   layout: IsolineBandLayout;
   absFromThreshold?: (threshold: number) => number;
   opacity?: number;

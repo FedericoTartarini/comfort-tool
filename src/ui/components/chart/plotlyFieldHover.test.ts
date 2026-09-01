@@ -4,6 +4,7 @@ import {
   findProbeTraceIndex,
   nativeHoverSkipTraceIndices,
   plotDisplayCoordinates,
+  probeRestyleAttributes,
   type PlotlyGraphDiv,
 } from "./plotlyFieldHover";
 
@@ -60,5 +61,17 @@ describe("plotlyFieldHover", () => {
 
     expect(findProbeTraceIndex(gd)).toBe(0);
     expect(nativeHoverSkipTraceIndices(gd)).toEqual([1]);
+  });
+
+  it("wraps probe customdata as a per-point row for Plotly.restyle", () => {
+    expect(probeRestyleAttributes(22, 50, {
+      hovertemplate: "PMV: %{customdata[0]:.2~f}<extra></extra>",
+      customdata: [-0.19, -0.19, 5.7],
+    })).toEqual({
+      x: [[22]],
+      y: [[50]],
+      hovertemplate: "PMV: %{customdata[0]:.2~f}<extra></extra>",
+      customdata: [[[-0.19, -0.19, 5.7]]],
+    });
   });
 });

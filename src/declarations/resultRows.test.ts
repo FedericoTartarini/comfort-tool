@@ -1,3 +1,4 @@
+import { wc } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../catalog/calculationMetadata";
@@ -16,7 +17,8 @@ import {
 } from "./adaptive/en";
 import type { AdaptiveResponse } from "./adaptive/shared";
 import { pmvAshraeModelConfig } from "./pmv/ashrae";
-import { pmvZonesList, type PmvResponse } from "./pmv/calculation";
+import { type PmvResponse } from "./pmv/calculation";
+import { ashraeTsvZonesList } from "./pmv/zones";
 import { phsModelConfig } from "./phs/phs";
 import { simulatePhs, calculatePhs } from "./phs/calculation";
 import {
@@ -29,7 +31,7 @@ import { windChillModelConfig, calculateWindChill } from "./windChill";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
-const pmvNeutralZone = pmvZonesList.find(
+const pmvNeutralZone = ashraeTsvZonesList.find(
   ({ label }) => label === "Neutral",
 );
 if (!pmvNeutralZone) throw new Error("Missing registered PMV Neutral zone.");
@@ -57,9 +59,10 @@ function getInputCell(
 const pmvResult: PmvResponse = {
   pmv: 0.24,
   ppd: 5.25,
+  tsv: "Neutral",
   vr: 0.6,
   set: 24.3,
-  coolingEffect: 1.64,
+  ce: 1.64,
   dynamicClothing: 0.5,
   isCompliant: true,
   standard: ComfortStandard.Ashrae55PmvPpd,
@@ -71,7 +74,7 @@ const ashraeResult: AdaptiveResponse = {
   operativeTemperature: 28,
   levels: [
     {
-      id: "acceptability-80",
+      id: "80",
       label: adaptiveAshraeZonesList[1].label,
       accepted: true,
       status: adaptiveAshraeZonesList[1].label,
@@ -79,7 +82,7 @@ const ashraeResult: AdaptiveResponse = {
       upper: 28.5,
     },
     {
-      id: "acceptability-90",
+      id: "90",
       label: adaptiveAshraeZonesList[2].label,
       accepted: false,
       status: adaptiveAshraeZonesList[3].label,
@@ -97,7 +100,7 @@ const enResult: AdaptiveResponse = {
   operativeTemperature: 28,
   levels: [
     {
-      id: "category-i",
+      id: "cat_i",
       label: adaptiveEnZonesList[3].label,
       accepted: false,
       status: adaptiveEnZonesList[4].label,
@@ -105,7 +108,7 @@ const enResult: AdaptiveResponse = {
       upper: 27,
     },
     {
-      id: "category-ii",
+      id: "cat_ii",
       label: adaptiveEnZonesList[2].label,
       accepted: false,
       status: adaptiveEnZonesList[4].label,
@@ -113,7 +116,7 @@ const enResult: AdaptiveResponse = {
       upper: 28,
     },
     {
-      id: "category-iii",
+      id: "cat_iii",
       label: adaptiveEnZonesList[1].label,
       accepted: true,
       status: adaptiveEnZonesList[1].label,
@@ -252,7 +255,7 @@ describe("comfort model result rows", () => {
     const sectionsWithMissingStatus = adaptiveAshraeModelConfig.buildTable(
       createResultRecord(replaceAdaptiveLevel(
         ashraeResult,
-        "acceptability-90",
+        "90",
         { status: null },
       )),
       visibleInputIds,
@@ -269,7 +272,7 @@ describe("comfort model result rows", () => {
       createResultRecord({
         ...replaceAdaptiveLevel(
           ashraeResult,
-          "acceptability-90",
+          "90",
           { status: adaptiveAshraeZonesList[0].label },
         ),
         operativeTemperature: 20,
@@ -295,7 +298,7 @@ describe("comfort model result rows", () => {
       label: "noncompliant",
       result: replaceAdaptiveLevel(
         ashraeResult,
-        "acceptability-80",
+        "80",
         { accepted: false },
       ),
       expectedText: ComplianceStatus.NonCompliant,
@@ -322,7 +325,7 @@ describe("comfort model result rows", () => {
     const sections = adaptiveAshraeModelConfig.buildTable(
       createResultRecord(replaceAdaptiveLevel(
         { ...ashraeResult, operativeTemperature: -5 },
-        "acceptability-90",
+        "90",
         {
           status: adaptiveAshraeZonesList[0].label,
           lower: null,
@@ -386,7 +389,7 @@ describe("comfort model result rows", () => {
     ]);
     expect(getInputCell(sections, "UTCI")?.text).toBe("24.6 °C");
     expect(getInputCell(sections, "Stress Category")).toEqual({
-      text: "No Thermal Stress",
+      text: "no thermal stress",
       color: "#059669",
     });
   });
@@ -439,10 +442,10 @@ describe("comfort model result rows", () => {
     );
 
     expect(sections.map((section) => section.title)).toEqual([
-      "Wind Chill Index",
-      "Wind Chill Temperature",
+      wc.label,
+      "wct",
     ]);
-    expect(getInputCell(sections, "Wind Chill Index")?.subtext).toBe(result.wciZone);
-    expect(getInputCell(sections, "Wind Chill Temperature")?.text).toContain("°C");
+    expect(getInputCell(sections, wc.label)?.subtext).toBeUndefined();
+    expect(getInputCell(sections, "wct")?.text).toContain("°C");
   });
 });
