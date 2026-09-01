@@ -175,7 +175,7 @@ describe("fieldInputBehaviors", () => {
     expect(radiant?.behavior.buildViewModel(context).hidden).toBe(false);
   });
 
-  it("registers dry-bulb temperature with optional limits", () => {
+  it("registers dry-bulb temperature with declared SI limits", () => {
     const control = resolveInputField({
       kind: "numeric",
       controlId: InputControlId.Temperature,
@@ -192,7 +192,7 @@ describe("fieldInputBehaviors", () => {
     }).minValue).toBe(10);
   });
 
-  it("converts extra catalog quantities from catalog SI units without model id branches", () => {
+  it("converts catalog quantities from catalog SI units without model id branches", () => {
     const control = resolveInputField({
       kind: "quantity",
       quantityId: PhysicalQuantityId.BodyWeight,
@@ -272,7 +272,7 @@ describe("fieldInputBehaviors", () => {
     })).toBe(PhysicalQuantityId.BodyWeight);
   });
 
-  it("constructs a quantity control from catalog Extra ids", () => {
+  it("constructs a quantity control from a catalog id plus SI range", () => {
     expect(() => resolveInputField({
       kind: "quantity",
       quantityId: PhysicalQuantityId.BodyWeight,

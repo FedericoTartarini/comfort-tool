@@ -2,6 +2,8 @@ import { psy_ta_rh, p_sat } from "jsthermalcomfort";
 import {
   PhysicalQuantityId,
   type DerivedHumidityQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+  type QuantityRangeSi,
   type QuantityState,
 } from "../../../catalog/quantities";
 
@@ -111,4 +113,51 @@ export function deriveRelativeHumidityFromWetBulb(dryBulbTemperature: number, we
   }
 
   return (low + high) / 2;
+}
+
+const WET_BULB_RH_FLOOR = 0.01;
+
+/**
+ * Display min/max for a humidity widget: the model RH `inputFields` range
+ * mapped through psychrometrics at the current dry-bulb temperature.
+ * Canonical state stays `tdb` + `rh`. Do not use this for the psychrometric
+ * chart viewport.
+ */
+export function displayRangeForHumidityQuantity(
+  tdbSi: number,
+  rhRangeSi: QuantityRangeSi,
+  quantityId: PhysicalQuantityIdType,
+): QuantityRangeSi {
+  if (quantityId === PhysicalQuantityId.RelativeHumidity) {
+    return rhRangeSi;
+  }
+
+  const usesRhFloor =
+    rhRangeSi.min === 0
+    && (
+      quantityId === PhysicalQuantityId.DewPointTemperature
+      || quantityId === PhysicalQuantityId.WetBulbTemperature
+    );
+  const rhMin = usesRhFloor ? WET_BULB_RH_FLOOR : rhRangeSi.min;
+  const low = psy_ta_rh(tdbSi, rhMin);
+  const high = psy_ta_rh(tdbSi, rhRangeSi.max);
+
+  switch (quantityId) {
+    case PhysicalQuantityId.HumidityRatio:
+      return { min: low.hr, max: high.hr };
+    case PhysicalQuantityId.VaporPressure:
+      return { min: low.p_vap, max: high.p_vap };
+    case PhysicalQuantityId.DewPointTemperature:
+      return {
+        min: low.t_dp,
+        max: Math.min(high.t_dp, tdbSi),
+      };
+    case PhysicalQuantityId.WetBulbTemperature:
+      return {
+        min: low.t_wb,
+        max: Math.min(high.t_wb, tdbSi),
+      };
+    default:
+      throw new Error(`Not a humidity quantity: ${quantityId}`);
+  }
 }

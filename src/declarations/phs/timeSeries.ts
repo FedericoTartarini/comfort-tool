@@ -29,6 +29,7 @@ import {
   simulatePhs,
   validatePhsTimeSeries,
 } from "./calculation";
+import { phsEnvironmentRangeSi } from "./environmentRanges";
 
 const PhsTimeSeriesControlId = {
   DryBulbTemperature: "phs-dry-bulb-temperature",
@@ -199,43 +200,43 @@ const segmentControls = [
     id: PhsTimeSeriesControlId.DryBulbTemperature,
     field: PhysicalQuantityId.DryBulbTemperature,
     label: "Air temperature",
-    min: 15,
-    max: 50,
+    min: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].min,
+    max: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].max,
   }),
   createSegmentControl({
     id: PhsTimeSeriesControlId.MeanRadiantTemperature,
     field: PhysicalQuantityId.MeanRadiantTemperature,
     label: "Radiant temperature",
-    min: 0,
-    max: 60,
+    min: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].min,
+    max: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].max,
   }),
   createSegmentControl({
     id: PhsTimeSeriesControlId.AirSpeed,
     field: PhysicalQuantityId.WindSpeed,
     label: "Air speed",
-    min: 0,
-    max: 3,
+    min: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].min,
+    max: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].max,
   }),
   createSegmentControl({
     id: PhsTimeSeriesControlId.RelativeHumidity,
     field: PhysicalQuantityId.RelativeHumidity,
     label: "Relative humidity",
-    min: 0,
-    max: 100,
+    min: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].min,
+    max: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].max,
   }),
   createSegmentControl({
     id: PhsTimeSeriesControlId.MetabolicRate,
     field: PhysicalQuantityId.MetabolicRate,
     label: "Metabolic rate",
-    min: 0.9,
-    max: 3.9,
+    min: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].min,
+    max: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].max,
   }),
   createSegmentControl({
     id: PhsTimeSeriesControlId.ClothingInsulation,
     field: PhysicalQuantityId.ClothingInsulation,
     label: "Clothing insulation",
-    min: 0.1,
-    max: 1,
+    min: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].min,
+    max: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].max,
   }),
 ] as const;
 

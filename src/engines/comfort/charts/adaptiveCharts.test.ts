@@ -14,6 +14,7 @@ import {
 import {
   calculateAdaptive,
   createAdaptiveComplianceCaption,
+  levelsFromAdaptiveOffsets,
 } from "../../../declarations/adaptive/calculation";
 import { buildModelBoundaryRegionChart } from "./kinds/modelDataCharts";
 import {
@@ -183,8 +184,13 @@ describe("adaptive standard mechanics", () => {
     );
 
     expect(caption).toBe(
-      "80: t_cmf − 3.5°C to t_cmf + 3.5°C",
+      "80% occupants: t_cmf − 3.5°C to t_cmf + 3.5°C",
     );
+  });
+
+  it("throws when an Adaptive offset id has no display label", () => {
+    expect(() => levelsFromAdaptiveOffsets([{ id: "unknown", lower: 0, upper: 1 }]))
+      .toThrow(/Missing adaptive display label/);
   });
 
   it("keeps the ASHRAE and EN equations and offsets", () => {
@@ -353,7 +359,7 @@ describe("single Adaptive Compliance chart", () => {
     expect(hit?.hovertemplate).not.toContain("Input 1");
     expect(hit?.hovertemplate).toContain("Prevailing mean outdoor temperature");
     expect(hit?.hovertemplate).toContain("Operative temperature");
-    expect(hit?.hovertemplate).toMatch(/90:/);
+    expect(hit?.hovertemplate).toMatch(/90% occupants:/);
     expect(Array.isArray(hit?.customdata)).toBe(true);
     const customdata = hit?.customdata as unknown[];
     expect(customdata.length).toBeGreaterThan(2);
@@ -365,9 +371,9 @@ describe("single Adaptive Compliance chart", () => {
 
     expect(summarizeRegions(chart)).toEqual([
       { name: "too-cool", color: "#3b82f6", points: 480, xRange: [10, 33.5], yRange: [10, 24.685] },
-      { name: "80", color: "#86efac", points: 480, xRange: [10, 33.5], yRange: [17.4, 25.685] },
-      { name: "90", color: "#22c55e", points: 480, xRange: [10, 33.5], yRange: [18.4, 30.685] },
-      { name: "80", color: "#86efac", points: 480, xRange: [10, 33.5], yRange: [23.4, 31.685] },
+      { name: "80% occupants", color: "#86efac", points: 480, xRange: [10, 33.5], yRange: [17.4, 25.685] },
+      { name: "90% occupants", color: "#22c55e", points: 480, xRange: [10, 33.5], yRange: [18.4, 30.685] },
+      { name: "80% occupants", color: "#86efac", points: 480, xRange: [10, 33.5], yRange: [23.4, 31.685] },
       { name: "too-warm", color: "#ef4444", points: 480, xRange: [10, 33.5], yRange: [24.4, 40] },
     ]);
     expect(chart.layout.xaxis).toEqual(expect.objectContaining({
@@ -414,11 +420,11 @@ describe("single Adaptive Compliance chart", () => {
 
     expect(summarizeRegions(chart)).toEqual([
       { name: "too-cool", color: "#3b82f6", points: 480, xRange: [10, 30], yRange: [10, 23.7] },
-      { name: "cat_iii", color: "#fde047", points: 480, xRange: [10, 30], yRange: [17.1, 24.7] },
-      { name: "cat_ii", color: "#86efac", points: 480, xRange: [10, 30], yRange: [18.1, 25.7] },
-      { name: "cat_i", color: "#22c55e", points: 480, xRange: [10, 30], yRange: [19.1, 30.7] },
-      { name: "cat_ii", color: "#86efac", points: 480, xRange: [10, 30], yRange: [24.1, 31.7] },
-      { name: "cat_iii", color: "#fde047", points: 480, xRange: [10, 30], yRange: [25.1, 32.7] },
+      { name: "Category III", color: "#fde047", points: 480, xRange: [10, 30], yRange: [17.1, 24.7] },
+      { name: "Category II", color: "#86efac", points: 480, xRange: [10, 30], yRange: [18.1, 25.7] },
+      { name: "Category I", color: "#22c55e", points: 480, xRange: [10, 30], yRange: [19.1, 30.7] },
+      { name: "Category II", color: "#86efac", points: 480, xRange: [10, 30], yRange: [24.1, 31.7] },
+      { name: "Category III", color: "#fde047", points: 480, xRange: [10, 30], yRange: [25.1, 32.7] },
       { name: "too-warm", color: "#ef4444", points: 480, xRange: [10, 30], yRange: [26.1, 40] },
     ]);
     expect(chart.layout.xaxis).toEqual(expect.objectContaining({
@@ -429,8 +435,8 @@ describe("single Adaptive Compliance chart", () => {
   });
 
   it.each([
-    [adaptiveAshraeDeclaration, "80", "80"],
-    [adaptiveEnDeclaration, "cat_i", "cat_i"],
+    [adaptiveAshraeDeclaration, "80", "80% occupants"],
+    [adaptiveEnDeclaration, "cat_i", "Category I"],
   ] as const)("keeps $label polygon edges aligned with calculator results", (
     declaration,
     levelId,

@@ -54,7 +54,7 @@ function analysisResult() {
 }
 
 describe("PHS ISO 7933:2023", () => {
-  it("builds person settings from model inputs with catalog defaults", () => {
+  it("builds person settings from model inputs with PHS person defaults", () => {
     expect(personFromModelInputs({})).toEqual(defaultPhsPersonSettings);
     expect(personFromModelInputs({
       [PhysicalQuantityId.BodyWeight]: 80,

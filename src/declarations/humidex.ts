@@ -5,6 +5,7 @@ import type { ModelChartSource } from "../catalog/chartSource";
 import { ModelId } from "../catalog/modelIds";
 import {
   bandsFromJsBins,
+  displayClassifierLabel,
   requireMappedCategory,
   thermalZonesFromBands,
 } from "../catalog/classifierBins";
@@ -128,7 +129,7 @@ export const humidexModelConfig = defineModel<
         value: (result) => humidexQuantityMapping.fromLibrary(result)[
           PhysicalQuantityId.Humidex
         ]!,
-        subtext: (result) => result.humidexDiscomfort,
+        subtext: (result) => displayClassifierLabel(result.humidexDiscomfort),
         color: (result) => resolveZoneAppearance(
           humidexTokenForDiscomfort(result.humidexDiscomfort),
         ).text,

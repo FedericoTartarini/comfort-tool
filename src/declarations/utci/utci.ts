@@ -4,7 +4,7 @@ import type { ModelChartSource } from "../../catalog/chartSource";
 import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
 import { InputWidget } from "../../catalog/inputWidgets";
 import { JsThermalComfortStandard, ModelId } from "../../catalog/modelIds";
-import { bandsFromJsBins, requireMappedCategory, thermalZonesFromBands } from "../../catalog/classifierBins";
+import { bandsFromJsBins, displayClassifierLabel, requireMappedCategory, thermalZonesFromBands } from "../../catalog/classifierBins";
 import { type ModelOutput } from "../../catalog/modelCapabilities";
 import { type ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
@@ -71,7 +71,10 @@ const UTCI_ZONE_UI: Readonly<Record<string, { legendText: string; token: ZoneTok
 };
 
 export const UTCI_LEGEND_TEXT: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(UTCI_ZONE_UI).map(([label, ui]) => [label, ui.legendText]),
+  Object.entries(UTCI_ZONE_UI).map(([label, ui]) => [
+    displayClassifierLabel(label),
+    ui.legendText,
+  ]),
 );
 
 const UTCI_ZONE_TOKENS: Readonly<Record<string, ZoneToken>> = Object.fromEntries(
@@ -221,7 +224,7 @@ export function buildUtciResultRows(
       title: "Stress Category",
       formatter: (result) => {
         const zone = getUtciZoneMeta(result.utci);
-        return { text: result.stressCategory, color: zone.textColor };
+        return { text: displayClassifierLabel(result.stressCategory), color: zone.textColor };
       },
     },
   ];
@@ -270,7 +273,7 @@ function buildUtciTableRows(): TableRowAuthoring<UtciResponse>[] {
       label: "Stress Category",
       format: (result) => {
         const zone = getUtciZoneMeta(result.utci);
-        return { text: result.stressCategory, color: zone.textColor };
+        return { text: displayClassifierLabel(result.stressCategory), color: zone.textColor };
       },
     },
   ];

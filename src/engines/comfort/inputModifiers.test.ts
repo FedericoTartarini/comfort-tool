@@ -21,12 +21,12 @@ function createBaseInputs(): QuantityState {
 
 describe("input modifiers", () => {
   it("preserves each declaration's exact input and affected-field types", () => {
-    type MeasuredExtraInputs = Parameters<
+    type MeasuredModifierInputs = Parameters<
       typeof measuredAirSpeedModifier.apply
     >[1];
     type MeasuredPatch = ReturnType<typeof measuredAirSpeedModifier.apply>;
 
-    expectTypeOf<MeasuredExtraInputs>().toEqualTypeOf<Readonly<{
+    expectTypeOf<MeasuredModifierInputs>().toEqualTypeOf<Readonly<{
       [PhysicalQuantityId.MeasuredAirSpeed]: number;
     }>>();
     expectTypeOf<MeasuredPatch>().toEqualTypeOf<Partial<Pick<
@@ -95,7 +95,8 @@ describe("input modifiers", () => {
       id: ModifierId.MeasuredAirSpeed,
       label: "Add two",
       description: "",
-      extraInputs: [],
+      modifierInputs: [],
+      modifierInputRangeSi: {},
       affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
       apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: (inputs[PhysicalQuantityId.MeanRadiantTemperature] ?? 0) + 2 }),
     });
@@ -103,7 +104,8 @@ describe("input modifiers", () => {
       id: ModifierId.SolarGain,
       label: "Triple",
       description: "",
-      extraInputs: [],
+      modifierInputs: [],
+      modifierInputRangeSi: {},
       affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
       apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: (inputs[PhysicalQuantityId.MeanRadiantTemperature] ?? 0) * 3 }),
     });
@@ -177,7 +179,8 @@ describe("input modifiers", () => {
       id: ModifierId.DynamicClothing,
       label: "Invalid",
       description: "Returns an invalid value.",
-      extraInputs: [],
+      modifierInputs: [],
+      modifierInputRangeSi: {},
       affectedFields: [PhysicalQuantityId.ClothingInsulation],
       apply: () => ({ [PhysicalQuantityId.ClothingInsulation]: Infinity }),
     });
@@ -188,5 +191,19 @@ describe("input modifiers", () => {
       { [ModifierId.DynamicClothing]: true },
       { [ModifierId.DynamicClothing]: {} },
     )).toThrow(/invalid input patch/i);
+  });
+
+  it("requires an SI range for every modifier input", () => {
+    expect(() => defineInputModifier({
+      id: ModifierId.MeasuredAirSpeed,
+      label: "Missing range",
+      description: "",
+      modifierInputs: [PhysicalQuantityId.MeasuredAirSpeed],
+      modifierInputRangeSi: {} as {
+        [PhysicalQuantityId.MeasuredAirSpeed]: { min: number; max: number };
+      },
+      affectedFields: [PhysicalQuantityId.RelativeAirSpeed],
+      apply: () => ({}),
+    })).toThrow(/missing SI range/i);
   });
 });

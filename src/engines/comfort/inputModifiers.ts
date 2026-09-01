@@ -5,7 +5,7 @@ import {
   ModifierId,
   defineInputModifier,
   inputModifierCatalogue,
-  modifierExtraInputRangeSi,
+  rangeSiForModifierInput,
   type InputModifier,
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
@@ -21,18 +21,16 @@ const SOLAR_FLOOR_REFLECTANCE = 0.6;
 
 export const measuredAirSpeedModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MeasuredAirSpeed],
-  extraInputs: [PhysicalQuantityId.MeasuredAirSpeed],
   affectedFields: [PhysicalQuantityId.RelativeAirSpeed],
-  apply: (inputs, extraInputs) => ({ [PhysicalQuantityId.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
-      extraInputs[PhysicalQuantityId.MeasuredAirSpeed], inputs[PhysicalQuantityId.MetabolicRate]!, ) }),
+  apply: (baseInputs, modifierInputs) => ({ [PhysicalQuantityId.RelativeAirSpeed]: deriveRelativeAirSpeedFromMeasured(
+      modifierInputs[PhysicalQuantityId.MeasuredAirSpeed], baseInputs[PhysicalQuantityId.MetabolicRate]!, ) }),
 });
 
 export const morningClothingEstimateModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.MorningClothingEstimate],
-  extraInputs: [PhysicalQuantityId.MorningOutdoorTemperature],
   affectedFields: [PhysicalQuantityId.ClothingInsulation],
-  apply: (_inputs, extraInputs) => ({ [PhysicalQuantityId.ClothingInsulation]: predictClothingInsulation(
-      extraInputs[PhysicalQuantityId.MorningOutdoorTemperature], ) }),
+  apply: (_baseInputs, modifierInputs) => ({ [PhysicalQuantityId.ClothingInsulation]: predictClothingInsulation(
+      modifierInputs[PhysicalQuantityId.MorningOutdoorTemperature], ) }),
 });
 
 export function createDynamicClothingModifier(
@@ -40,37 +38,28 @@ export function createDynamicClothingModifier(
 ) {
   return defineInputModifier({
     ...inputModifierCatalogue[ModifierId.DynamicClothing],
-    extraInputs: [],
     affectedFields: [PhysicalQuantityId.ClothingInsulation],
-    apply: (inputs) => ({ [PhysicalQuantityId.ClothingInsulation]: clo_dynamic(
-        inputs[PhysicalQuantityId.ClothingInsulation]!, inputs[PhysicalQuantityId.MetabolicRate]!, standard, ) }),
+    apply: (baseInputs) => ({ [PhysicalQuantityId.ClothingInsulation]: clo_dynamic(
+        baseInputs[PhysicalQuantityId.ClothingInsulation]!, baseInputs[PhysicalQuantityId.MetabolicRate]!, standard, ) }),
   });
 }
 
 export const solarGainModifier = defineInputModifier({
   ...inputModifierCatalogue[ModifierId.SolarGain],
-  extraInputs: [
-    PhysicalQuantityId.SolarAltitude,
-    PhysicalQuantityId.SolarHorizontalAngle,
-    PhysicalQuantityId.DirectSolarRadiation,
-    PhysicalQuantityId.SolarTransmittance,
-    PhysicalQuantityId.SkyVaultViewFraction,
-    PhysicalQuantityId.BodyExposureFraction,
-  ],
   affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
-  apply: (inputs, extraInputs) => {
+  apply: (baseInputs, modifierInputs) => {
     const { delta_mrt: deltaMrt } = solar_gain(
-      extraInputs[PhysicalQuantityId.SolarAltitude],
-      extraInputs[PhysicalQuantityId.SolarHorizontalAngle],
-      extraInputs[PhysicalQuantityId.DirectSolarRadiation],
-      extraInputs[PhysicalQuantityId.SolarTransmittance],
-      extraInputs[PhysicalQuantityId.SkyVaultViewFraction],
-      extraInputs[PhysicalQuantityId.BodyExposureFraction],
+      modifierInputs[PhysicalQuantityId.SolarAltitude],
+      modifierInputs[PhysicalQuantityId.SolarHorizontalAngle],
+      modifierInputs[PhysicalQuantityId.DirectSolarRadiation],
+      modifierInputs[PhysicalQuantityId.SolarTransmittance],
+      modifierInputs[PhysicalQuantityId.SkyVaultViewFraction],
+      modifierInputs[PhysicalQuantityId.BodyExposureFraction],
       SOLAR_SHORT_WAVE_ABSORPTIVITY,
       SOLAR_POSTURE,
       SOLAR_FLOOR_REFLECTANCE,
     );
-    return { [PhysicalQuantityId.MeanRadiantTemperature]: (inputs[PhysicalQuantityId.MeanRadiantTemperature] ?? 0) + deltaMrt };
+    return { [PhysicalQuantityId.MeanRadiantTemperature]: (baseInputs[PhysicalQuantityId.MeanRadiantTemperature] ?? 0) + deltaMrt };
   },
 });
 
@@ -79,16 +68,16 @@ export function isModifierFieldValueValid(
   value: unknown,
 ): value is number {
   if (typeof value !== "number" || !Number.isFinite(value)) return false;
-  const range = modifierExtraInputRangeSi[key];
+  const range = rangeSiForModifierInput(key);
   return range !== undefined && isValueInQuantityRange(value, range);
 }
 
 export function getCompleteModifierInputs(
-  modifier: Pick<InputModifier, "extraInputs">,
+  modifier: Pick<InputModifier, "modifierInputs">,
   values: Readonly<ModifierInputValues>,
 ): Record<PhysicalQuantityIdType, number> | null {
   const completeValues: Partial<Record<PhysicalQuantityIdType, number>> = {};
-  for (const key of modifier.extraInputs) {
+  for (const key of modifier.modifierInputs) {
     const value = values[key];
     if (!isModifierFieldValueValid(key, value)) return null;
     completeValues[key] = value;
@@ -97,7 +86,7 @@ export function getCompleteModifierInputs(
 }
 
 export function isModifierConfigurationComplete(
-  modifier: Pick<InputModifier, "extraInputs">,
+  modifier: Pick<InputModifier, "modifierInputs">,
   values: Readonly<ModifierInputValues>,
 ): boolean {
   return getCompleteModifierInputs(modifier, values) !== null;

@@ -18,7 +18,6 @@ import {
   type PhsResponse,
 } from "../../catalog/phs";
 import type { GridModelChartSpec } from "../../engines/comfort/charts/gridModelCharts";
-import type { ChartRange } from "../../engines/comfort/charts/types";
 import { buildCompareInputMarkerTraces } from "../../engines/comfort/charts/inputPoints";
 import { convertTemperatureFromSi } from "../../engines/units/temperature";
 import { UnitSystem } from "../../catalog/units";
@@ -29,15 +28,6 @@ import {
 } from "./timeSeriesCharts";
 
 const PHS_GRID_POINTS = 31;
-
-export const PHS_AXIS_RANGES: Partial<Record<PhysicalQuantityId, ChartRange>> = {
-  [PhysicalQuantityId.DryBulbTemperature]: { min: 15, max: 50 },
-  [PhysicalQuantityId.MeanRadiantTemperature]: { min: 0, max: 60 },
-  [PhysicalQuantityId.WindSpeed]: { min: 0, max: 3 },
-  [PhysicalQuantityId.RelativeHumidity]: { min: 0, max: 100 },
-  [PhysicalQuantityId.MetabolicRate]: { min: 0.9, max: 3.9 },
-  [PhysicalQuantityId.ClothingInsulation]: { min: 0.1, max: 1 },
-};
 
 export function getPhsOutputValue(
   result: PhsResponse,
@@ -75,7 +65,6 @@ export function createPhsDynamicGridSpec(
     output: fallbackOutput,
     exploreOutputs: outputs,
     gridPoints: PHS_GRID_POINTS,
-    axisRanges: PHS_AXIS_RANGES,
     bandLabel:
       context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
         ? "8-hour assessment"

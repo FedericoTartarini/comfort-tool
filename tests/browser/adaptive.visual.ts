@@ -92,13 +92,13 @@ async function openAdaptiveChart(
   await expect(panel.getByText("Compliance", { exact: true })).toBeVisible();
   await expect(panel.getByText(
     model === "ashrae"
-      ? "80: t_cmf − 3.5°C to t_cmf + 3.5°C"
-      : "cat_iii: t_cmf − 5°C to t_cmf + 4°C",
+      ? "80% occupants: t_cmf − 3.5°C to t_cmf + 3.5°C"
+      : "Category III: t_cmf − 5°C to t_cmf + 4°C",
     { exact: true },
   )).toBeVisible();
   await expect(panel.getByLabel("Your input: Compliant")).toBeVisible();
   await expect(page.getByRole("button", { name: "Select chart X axis" }))
-    .toContainText("Mean outdoor temperature");
+    .toContainText("outdoor temperature");
   await expect(page.getByRole("button", { name: "Select chart Y axis" }))
     .toContainText("Operative temperature");
   await expect(page.getByRole("button", { name: "Select chart output" }))
@@ -107,8 +107,8 @@ async function openAdaptiveChart(
 
   const plot = page.getByTestId("comfort-chart-plot");
   const traceName = model === "ashrae"
-    ? "80"
-    : "cat_iii";
+    ? "80% occupants"
+    : "Category III";
   await waitForAdaptiveTrace(plot, traceName);
   await expectAxisUnits(plot, useIpUnits ? "°F" : "°C");
 
@@ -123,8 +123,8 @@ test.describe("Adaptive visual regression", () => {
   test("ASHRAE boundary chart in SI", async ({ page }) => {
     const { panel, visual } = await openAdaptiveChart(page);
     await expect(panel).toContainText("Adaptive Zones");
-    await expect(panel.getByText("80", { exact: true })).toHaveCount(1);
-    await expect(panel.getByText("90", { exact: true })).toHaveCount(1);
+    await expect(panel.getByText("80% occupants", { exact: true })).toHaveCount(1);
+    await expect(panel.getByText("90% occupants", { exact: true })).toHaveCount(1);
     await page.mouse.move(0, 0);
     await expect(panel.getByTestId("chart-header"))
       .toHaveScreenshot("adaptive-ashrae-compliance-header.png");
@@ -148,7 +148,7 @@ test.describe("Adaptive visual regression", () => {
     const xTrigger = page.getByRole("button", { name: "Select chart X axis" });
     await xTrigger.click();
     await expect(page.getByRole("button", {
-      name: "Mean outdoor temperature",
+      name: "Prevailing mean outdoor temperature",
       exact: true,
     })).toBeVisible();
     await page.getByRole("button", {
@@ -163,7 +163,7 @@ test.describe("Adaptive visual regression", () => {
 
     await expect(xTrigger).toContainText("Operative temperature");
     await expect(page.getByRole("button", { name: "Select chart Y axis" }))
-      .toContainText("Mean outdoor temperature");
+      .toContainText("Prevailing mean outdoor temperature");
     await expectAxisTitles(
       plot,
       "Operative temperature",

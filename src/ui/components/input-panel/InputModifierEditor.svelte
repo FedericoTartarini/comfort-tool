@@ -146,9 +146,9 @@
             {/each}
           </div>
 
-          {#if modifier.extraInputs.length > 0}
+          {#if modifier.modifierInputs.length > 0}
             <div class="mt-4 grid gap-3">
-              {#each modifier.extraInputs as field}
+              {#each modifier.modifierInputs as field}
                 <div>
                   <Label class="text-xs font-medium text-stone-700">
                     {field.label}{field.displayUnits ? ` (${field.displayUnits})` : ""}

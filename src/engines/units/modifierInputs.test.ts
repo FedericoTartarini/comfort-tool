@@ -45,4 +45,20 @@ describe("modifier input units", () => {
     expect(radiationMeta.minValue).toBeCloseTo(63.3997, 3);
     expect(radiationMeta.maxValue).toBeCloseTo(316.9983, 3);
   });
+
+  it("reads SI ranges from the modifier catalogue", () => {
+    const measured = getModifierFieldDisplayMeta(
+      PhysicalQuantityId.MeasuredAirSpeed,
+      UnitSystem.SI,
+    );
+    const altitude = getModifierFieldDisplayMeta(
+      PhysicalQuantityId.SolarAltitude,
+      UnitSystem.SI,
+    );
+
+    expect(measured.minValue).toBe(0);
+    expect(measured.maxValue).toBe(2);
+    expect(altitude.minValue).toBe(0);
+    expect(altitude.maxValue).toBe(90);
+  });
 });

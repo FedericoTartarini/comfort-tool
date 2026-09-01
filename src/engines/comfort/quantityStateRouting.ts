@@ -116,7 +116,7 @@ export function collectModifierInputsForModifier(
   quantities: QuantityState,
   modifierId: ModifierIdType,
 ): ModifierInputValues {
-  return inputModifierCatalogue[modifierId].extraInputs.reduce((values, quantityId) => {
+  return inputModifierCatalogue[modifierId].modifierInputs.reduce((values, quantityId) => {
     const value = quantities[quantityId];
     if (value !== undefined) {
       values[quantityId] = value;

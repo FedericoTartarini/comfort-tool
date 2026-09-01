@@ -18,15 +18,16 @@ import {
   createAdaptiveComplianceBands,
   createAdaptiveComplianceCaption,
   createAdaptiveComplianceFeedbackGetter,
+  adaptiveLevelDisplayLabel,
   levelsFromAdaptiveOffsets,
   libraryLevelsFromAdaptiveResult,
 } from "./calculation";
 
 export const adaptiveEnZonesList = [
   new ThermalZone({ label: ZoneToken.TooCool, token: ZoneToken.TooCool }),
-  new ThermalZone({ label: "cat_iii", token: ZoneToken.WideAcceptable }),
-  new ThermalZone({ label: "cat_ii", token: ZoneToken.Acceptable }),
-  new ThermalZone({ label: "cat_i", token: ZoneToken.Preferred }),
+  new ThermalZone({ label: adaptiveLevelDisplayLabel("cat_iii"), token: ZoneToken.WideAcceptable }),
+  new ThermalZone({ label: adaptiveLevelDisplayLabel("cat_ii"), token: ZoneToken.Acceptable }),
+  new ThermalZone({ label: adaptiveLevelDisplayLabel("cat_i"), token: ZoneToken.Preferred }),
   new ThermalZone({ label: ZoneToken.TooWarm, token: ZoneToken.TooWarm }),
 ];
 

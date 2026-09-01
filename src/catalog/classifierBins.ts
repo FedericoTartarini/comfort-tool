@@ -29,6 +29,33 @@ export function requireMappedCategory(
   return category;
 }
 
+/**
+ * Title-case all-lowercase library classifier labels for display.
+ * Mixed-case strings (PMV TSV, Humidex) stay unchanged.
+ */
+export function displayClassifierLabel(libraryLabel: string): string {
+  if (libraryLabel.length === 0 || libraryLabel !== libraryLabel.toLowerCase()) {
+    return libraryLabel;
+  }
+  return libraryLabel.replace(/\b[a-z]/g, (character) => character.toUpperCase());
+}
+
+function libraryLabelForDisplay(
+  displayLabel: string,
+  tokensByLabel: Readonly<Record<string, ZoneToken>>,
+): string {
+  if (tokensByLabel[displayLabel] !== undefined) {
+    return displayLabel;
+  }
+  const match = Object.keys(tokensByLabel).find(
+    (libraryLabel) => displayClassifierLabel(libraryLabel) === displayLabel,
+  );
+  if (match === undefined) {
+    throw new Error(`No ZoneToken for classifier label "${displayLabel}".`);
+  }
+  return match;
+}
+
 function tokenForLabel(
   label: string,
   tokensByLabel: Readonly<Record<string, ZoneToken>>,
@@ -59,13 +86,13 @@ export function bandsFromJsBins(
     );
   }
 
-  return labels.map((label, index) => {
+  return labels.map((libraryLabel, index) => {
     const min = index === 0 ? Number.NEGATIVE_INFINITY : edges[index - 1]!;
     const max = index < edges.length ? edges[index]! : Number.POSITIVE_INFINITY;
-    return numericBandFromToken(tokenForLabel(label, tokensByLabel), {
+    return numericBandFromToken(tokenForLabel(libraryLabel, tokensByLabel), {
       min,
       max,
-      label,
+      label: displayClassifierLabel(libraryLabel),
       minInclusive: !right,
       maxInclusive: right,
     });
@@ -78,12 +105,13 @@ export function thermalZonesFromBands(
   extrasByLabel?: Readonly<Record<string, { legendText?: string; category?: string }>>,
 ): ThermalZone[] {
   return bands.map((band) => {
-    const extras = extrasByLabel?.[band.label];
+    const libraryLabel = libraryLabelForDisplay(band.label, tokensByLabel);
+    const extras = extrasByLabel?.[libraryLabel];
     return new ThermalZone({
       label: band.label,
       min: Number.isFinite(band.min) ? band.min : undefined,
       max: Number.isFinite(band.max) ? band.max : undefined,
-      token: tokenForLabel(band.label, tokensByLabel),
+      token: tokenForLabel(libraryLabel, tokensByLabel),
       legendText: extras?.legendText,
       category: extras?.category,
     });

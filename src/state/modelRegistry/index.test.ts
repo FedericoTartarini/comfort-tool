@@ -476,11 +476,11 @@ describe("comfort model capability registry", () => {
     });
 
     expect(bands[0].min).toBe(-Infinity);
-    expect(bands[0].label).toBe("extreme cold stress");
+    expect(bands[0].label).toBe("Extreme Cold Stress");
     const lastBand = bands[bands.length - 1];
     // JS digitize last edge is 1000 °C (not unbounded).
     expect(lastBand.max).toBe(1000);
-    expect(lastBand.label).toBe("extreme heat stress");
+    expect(lastBand.label).toBe("Extreme Heat Stress");
     expect(coldResult.utci).toBeLessThan(-50);
     expect(coldResult.stressCategory).toBe("extreme cold stress");
     expect(findNumericBandIndexForValue(bands, coldResult.utci)).toBe(0);
@@ -491,10 +491,10 @@ describe("comfort model capability registry", () => {
     );
     expect(findNumericBandIndexForValue(bands, -40)).toBe(0);
     expect(findNumericBandIndexForValue(bands, 26)).toBe(
-      bands.findIndex((band) => band.label === "no thermal stress"),
+      bands.findIndex((band) => band.label === "No Thermal Stress"),
     );
     expect(findNumericBandIndexForValue(bands, 46)).toBe(
-      bands.findIndex((band) => band.label === "very strong heat stress"),
+      bands.findIndex((band) => band.label === "Very Strong Heat Stress"),
     );
   });
 

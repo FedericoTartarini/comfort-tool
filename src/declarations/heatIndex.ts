@@ -5,6 +5,7 @@ import type { ModelChartSource } from "../catalog/chartSource";
 import { ModelId } from "../catalog/modelIds";
 import {
   bandsFromJsBins,
+  displayClassifierLabel,
   requireMappedCategory,
   thermalZonesFromBands,
 } from "../catalog/classifierBins";
@@ -133,7 +134,7 @@ export const heatIndexModelConfig = defineModel<
         value: (result) => heatIndexQuantityMapping.fromLibrary(result)[
           PhysicalQuantityId.HeatIndex
         ]!,
-        subtext: (result) => result.category,
+        subtext: (result) => displayClassifierLabel(result.category),
         color: (result) => resolveZoneAppearance(
           heatIndexTokenForCategory(result.category),
         ).text,

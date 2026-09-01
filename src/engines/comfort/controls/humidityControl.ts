@@ -6,7 +6,7 @@ import {
   type HumidityInputMode as HumidityInputModeType,
   type ModelOptionsRecord,
 } from "../../../catalog/inputModes";
-import { inputOrder } from "../../../catalog/inputSlots";
+import { InputId, inputOrder } from "../../../catalog/inputSlots";
 import { humidityMenuItems } from "../../../catalog/controlMenuMeta";
 import { getDerivedFromQuantities } from "../quantityStateRouting";
 import {
@@ -18,6 +18,7 @@ import {
   deriveRelativeHumidityFromHumidityRatio,
   deriveRelativeHumidityFromVaporPressure,
   deriveRelativeHumidityFromWetBulb,
+  displayRangeForHumidityQuantity,
   type DerivedSlotQuantityState,
 } from "../derivations";
 import type {
@@ -31,17 +32,12 @@ import {
   createControlBehavior,
   requireOptionValue,
   type OptionChangeHandler,
-  type PresentationMeta,
 } from "./numericControl";
 
 interface HumidityModeDefinition {
   label: string;
   quantityId: PhysicalQuantityIdType;
   derivedKey: DerivedHumidityQuantityId | null;
-  getPresentation: (
-    context: ControlBehaviorContext,
-    label: string,
-  ) => PresentationMeta;
   toRelativeHumidity: (
     dryBulbTemperatureSi: number,
     valueSi: number,
@@ -52,52 +48,50 @@ const relativeHumidityLabel = getPhysicalQuantityMeta(
   PhysicalQuantityId.RelativeHumidity,
 ).label;
 
-export const derivedHumidityRangeSi: Record<DerivedHumidityQuantityId, QuantityRangeSi> = {
-  [PhysicalQuantityId.DewPointTemperature]: { min: -50, max: 50 },
-  [PhysicalQuantityId.HumidityRatio]: { min: 0, max: 0.025 },
-  [PhysicalQuantityId.WetBulbTemperature]: { min: -50, max: 50 },
-  [PhysicalQuantityId.VaporPressure]: { min: 0, max: 10000 },
-};
-
-function catalogPresentation(
-  context: ControlBehaviorContext,
-  quantityId: DerivedHumidityQuantityId,
-  label: string,
-): PresentationMeta {
-  return {
-    ...buildDefaultPresentation(context, quantityId, {
-      minValue: derivedHumidityRangeSi[quantityId].min,
-      maxValue: derivedHumidityRangeSi[quantityId].max,
-    }),
-    label,
-  };
-}
-
 const humidityModeDefinitions: Record<HumidityInputModeType, HumidityModeDefinition> = {
   [HumidityInputMode.RelativeHumidity]: {
     label: relativeHumidityLabel,
     quantityId: PhysicalQuantityId.RelativeHumidity,
     derivedKey: null,
-    getPresentation: (context, label) => ({
-      ...buildDefaultPresentation(context, PhysicalQuantityId.RelativeHumidity, {
-        minValue: 0,
-        maxValue: 100,
-      }),
-      label,
-    }),
     toRelativeHumidity: (_temperature, valueSi) => valueSi,
   },
-  [HumidityInputMode.HumidityRatio]: { label: "Humidity ratio", quantityId: PhysicalQuantityId.HumidityRatio, derivedKey: PhysicalQuantityId.HumidityRatio, getPresentation: (context, label) => catalogPresentation(
-      context, PhysicalQuantityId.HumidityRatio, label, ), toRelativeHumidity: deriveRelativeHumidityFromHumidityRatio },
-  [HumidityInputMode.DewPoint]: { label: "Dew point", quantityId: PhysicalQuantityId.DewPointTemperature, derivedKey: PhysicalQuantityId.DewPointTemperature, getPresentation: (context, label) => catalogPresentation(
-      context, PhysicalQuantityId.DewPointTemperature, label, ), toRelativeHumidity: deriveRelativeHumidityFromDewPoint },
-  [HumidityInputMode.WetBulb]: { label: "Wet-bulb temperature", quantityId: PhysicalQuantityId.WetBulbTemperature, derivedKey: PhysicalQuantityId.WetBulbTemperature, getPresentation: (context, label) => catalogPresentation(
-      context, PhysicalQuantityId.WetBulbTemperature, label, ), toRelativeHumidity: deriveRelativeHumidityFromWetBulb },
-  [HumidityInputMode.VaporPressure]: { label: "Vapor pressure", quantityId: PhysicalQuantityId.VaporPressure, derivedKey: PhysicalQuantityId.VaporPressure, getPresentation: (context, label) => catalogPresentation(
-      context, PhysicalQuantityId.VaporPressure, label, ), toRelativeHumidity: deriveRelativeHumidityFromVaporPressure },
+  [HumidityInputMode.HumidityRatio]: {
+    label: "Humidity ratio",
+    quantityId: PhysicalQuantityId.HumidityRatio,
+    derivedKey: PhysicalQuantityId.HumidityRatio,
+    toRelativeHumidity: deriveRelativeHumidityFromHumidityRatio,
+  },
+  [HumidityInputMode.DewPoint]: {
+    label: "Dew point",
+    quantityId: PhysicalQuantityId.DewPointTemperature,
+    derivedKey: PhysicalQuantityId.DewPointTemperature,
+    toRelativeHumidity: deriveRelativeHumidityFromDewPoint,
+  },
+  [HumidityInputMode.WetBulb]: {
+    label: "Wet-bulb temperature",
+    quantityId: PhysicalQuantityId.WetBulbTemperature,
+    derivedKey: PhysicalQuantityId.WetBulbTemperature,
+    toRelativeHumidity: deriveRelativeHumidityFromWetBulb,
+  },
+  [HumidityInputMode.VaporPressure]: {
+    label: "Vapor pressure",
+    quantityId: PhysicalQuantityId.VaporPressure,
+    derivedKey: PhysicalQuantityId.VaporPressure,
+    toRelativeHumidity: deriveRelativeHumidityFromVaporPressure,
+  },
 };
 
 const humidityModeValues = Object.values(HumidityInputMode);
+
+function clampToQuantityRange(value: number, range: QuantityRangeSi): number {
+  return Math.min(range.max, Math.max(range.min, value));
+}
+
+function currentDryBulbSi(context: ControlBehaviorContext): number {
+  const inputId = context.visibleInputIds[0] ?? InputId.Input1;
+  return context.quantitiesByInput[inputId]?.[PhysicalQuantityId.DryBulbTemperature]
+    ?? 0;
+}
 
 export function requireHumidityInputMode(
   options: ModelOptionsRecord,
@@ -154,18 +148,21 @@ export function createHumidityControlBehavior(
     minValue: rangeSi.min,
     maxValue: rangeSi.max,
     getPresentation: (context) => {
-      const mode = requireHumidityInputMode(context.options);
-      const definition = humidityModeDefinitions[mode];
-      if (mode === HumidityInputMode.RelativeHumidity) {
-        return {
-          ...buildDefaultPresentation(context, PhysicalQuantityId.RelativeHumidity, {
-            minValue: rangeSi.min,
-            maxValue: rangeSi.max,
-          }),
-          label: definition.label,
-        };
-      }
-      return definition.getPresentation(context, definition.label);
+      const definition = humidityModeDefinitions[
+        requireHumidityInputMode(context.options)
+      ];
+      const mappedRange = displayRangeForHumidityQuantity(
+        currentDryBulbSi(context),
+        rangeSi,
+        definition.quantityId,
+      );
+      return {
+        ...buildDefaultPresentation(context, definition.quantityId, {
+          minValue: mappedRange.min,
+          maxValue: mappedRange.max,
+        }),
+        label: definition.label,
+      };
     },
     getMenu: (context) => buildAdvancedOptionMenu("Humidity input", [
       buildAdvancedOptionSection(
@@ -209,14 +206,19 @@ export function createHumidityControlBehavior(
       } else {
         derivedOverrides[definition.derivedKey] = nextValueSi;
       }
+      const nextQuantities = synchronizeHumidityInputState(
+        nextInputState,
+        getDerivedFromQuantities(context.quantitiesByInput[inputId]),
+        mode,
+        derivedOverrides,
+      );
+      nextQuantities[PhysicalQuantityId.RelativeHumidity] = clampToQuantityRange(
+        nextQuantities[PhysicalQuantityId.RelativeHumidity] ?? 0,
+        rangeSi,
+      );
       return {
         quantitiesPatch: {
-          [inputId]: synchronizeHumidityInputState(
-            nextInputState,
-            getDerivedFromQuantities(context.quantitiesByInput[inputId]),
-            mode,
-            derivedOverrides,
-          ),
+          [inputId]: nextQuantities,
         },
       };
     },

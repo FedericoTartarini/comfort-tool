@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { displayClassifierLabel } from "../../catalog/classifierBins";
 import { PhysicalQuantityId } from "../../catalog/quantities";
-
 
 import { InputId } from "../../catalog/inputSlots";
 import { UnitSystem } from "../../catalog/units";
@@ -27,8 +27,10 @@ describe("UTCI stress zones", () => {
     [32, "moderate heat stress"],
     [38, "strong heat stress"],
     [46, "very strong heat stress"],
-  ] as const)("assigns the exact %s °C boundary to %s", (value, expectedLabel) => {
-    expect(getUtciZoneMeta(value).label).toBe(expectedLabel);
+  ] as const)("assigns the exact %s °C boundary to %s", (value, expectedCategory) => {
+    const zone = getUtciZoneMeta(value);
+    expect(zone.category).toBe(expectedCategory);
+    expect(zone.label).toBe(displayClassifierLabel(expectedCategory));
   });
 
   it("derives the reported category from the calculated UTCI value", () => {

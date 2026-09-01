@@ -9,6 +9,7 @@ import { type ModelOutput, type NumericBand } from "../../catalog/modelCapabilit
 import { InputId } from "../../catalog/inputSlots";
 import { UnitSystem } from "../../catalog/units";
 import { ParametricYUnit } from "../../engines/comfort/charts/kinds/types";
+import { measuredAirSpeedModifier } from "../../engines/comfort/inputModifiers";
 import {
   ComfortModelBuilder,
   createEmptyResults,
@@ -345,6 +346,32 @@ describe("ComfortModelBuilder capabilities", () => {
     ).toThrow(
       /cannot be a derived humidity slot/,
     );
+  });
+
+  it("rejects a modifier input quantity field", () => {
+    expect(() =>
+      createExploreBuilder()
+        .setInputFields([
+          {
+            kind: "quantity",
+            quantityId: PhysicalQuantityId.MeasuredAirSpeed,
+            minValue: 0,
+            maxValue: 2,
+          },
+        ])
+        .build(),
+    ).toThrow(/cannot occupy a modifier input/);
+  });
+
+  it("rejects a modifier missing SI range for its inputs", () => {
+    expect(() =>
+      createExploreBuilder()
+        .setModifiers([{
+          ...measuredAirSpeedModifier,
+          modifierInputRangeSi: {} as typeof measuredAirSpeedModifier.modifierInputRangeSi,
+        }])
+        .build(),
+    ).toThrow(/missing SI range/);
   });
 });
 

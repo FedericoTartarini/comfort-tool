@@ -94,9 +94,13 @@ they do not own, extend, or invent them. There is no table-type catalog.
   `ipUnitForSi` / `unitLabel`. Session state is one sparse `QuantityState`
   bag per Compare slot. Derived humidity (`derivedHumidityQuantityIds`)
   may live in memory and is omitted from share. PHS weight/height use the
-  same bag and stay off Analysis `inputFields`. Ranges live on model
-  `inputFields` (required min/max) and chart `rangeSi`. Display labels
-  live on `siUnitLabel` / `ipUnitLabel`. Map JS names with
+  same bag and stay off Analysis `inputFields`. The quantity catalog has
+  no min/max. Analysis clamp lives on model `inputFields`. Modifier input
+  ranges live on the modifier schema (`modifierInputs` /
+  `modifierInputRangeSi`). Derived-humidity widget min/max map the model
+  RH range at current `tdb`. Dynamic charts inherit `inputFields` then
+  accept `spec.axisRanges` only for axes input cannot cover. Display
+  labels live on `siUnitLabel` / `ipUnitLabel`. Map JS names with
   `defineLibraryQuantityMapping`.
 - ChartTypes: `src/catalog/chartTypes.ts`. Eight product names. One model
   registers each ChartType at most once. Dropdown labels are
@@ -108,14 +112,17 @@ they do not own, extend, or invent them. There is no table-type catalog.
   hex live in `src/catalog/zoneTokens.ts`.
 - Model labels/descriptions: `defineModel({ library })` reads string
   `library.label` / `library.description` (JS `@docname` / leading
-  JSDoc). Catalog does not import `jsthermalcomfort`.
+  JSDoc first sentence). Catalog does not import `jsthermalcomfort`.
   Science categories come from pythermalcomfort via JS bins: Humidex
   `mapping` + bins, UTCI `mapping.bins`, Heat Index `mapping.bins`, ASHRAE
   `compliance.bounds`, `tsv.bins`, and `COMPLIANCE_LIMIT`, ISO `tsv.bins`,
   Adaptive `offsets` and result `tmp_cmf_*` / `acceptability_*` fields.
-  Comfort Tool maps those library label strings (or, when JS has no
-  label, library ids / result field names such as `cat_i` / `wct`) to
-  `ZoneToken` colours. It does not invent classifier copy. Interval
+  Comfort Tool maps those library label strings to `ZoneToken` colours.
+  All-lowercase classifier labels are title-cased for display
+  (`displayClassifierLabel`); calculation identity stays the JS/Python
+  string. Adaptive `offsets.id` stays the result-field stem; display
+  labels are generated in the Adaptive declaration layer. Wind Chill
+  `wct` uses the library field name. Interval
   membership follows the library digitize closedness (`minInclusive` /
   `maxInclusive` on `NumericBand`), not a local scan. Explore defaults copy
   Standard. PPD 10% is an editable Explore chart preset, not a library
@@ -129,10 +136,40 @@ they do not own, extend, or invent them. There is no table-type catalog.
 
 `defineModel` is the public authoring API. Family modules (PMV, Adaptive)
 may assemble with `ComfortModelBuilder` internally. Derived-humidity or
-modifier-extra `kind: "quantity"` fields, unknown ChartTypes,
+modifier-input `kind: "quantity"` fields, unknown ChartTypes,
 duplicate ChartType on one model, or a Time-series table without Time-series
 capability fail `defineModel` / `assembleCatalogs`. Every input field must
 declare SI min/max.
+
+## Range ownership
+
+Input clamp, chart viewport, and applicability/compliance stay distinct.
+The quantity catalog has no min/max.
+
+- **Analysis inputs** — SI `minValue`/`maxValue` only on model
+  `inputFields` (family constants in `shared.ts` / `calculation.ts` are
+  fine).
+- **Modifier inputs** — catalog ids on `modifierInputs`; SI ranges on the
+  modifier schema as `modifierInputRangeSi`. Models enable modifiers; they
+  do not re-author those ranges on `inputFields`.
+- **Derived humidity** — canonical SI and share remain `tdb` + `rh`.
+  Widget min/max map the model RH `inputFields` range through
+  psychrometrics at current `tdb` (`displayRangeForHumidityQuantity`).
+  Sticky policy: `tdb` edits keep `rh`. Do not drive the psychrometric
+  chart `humidityRatioRangeSi` from this mapping.
+- **Dynamic charts** — inherit `inputFields`; `spec.axisRanges` /
+  `outdoorRangeSi` / `xRangeSi` only for axes input cannot cover (`t_o`,
+  Adaptive outdoor, UTCI 1-D output). Missing axis throws.
+- **Psychrometric ChartType viewport** — `DEFAULT_PSYCHROMETRIC_VIEW` in
+  `src/charts/psychrometric/humidity.ts`: `tdb` 10–40 °C, `hr` 0–0.03
+  kg/kg. CBE `psychchart.js` uses 10–36 °C and 0–30 g/kg. The figure is
+  ChartType-owned and is not the Analysis spinner.
+- **Outputs** — no input-style range. Classifier bands stay JS bins →
+  `ThermalZone`. An output used as a chart axis is a viewport on the chart
+  spec.
+- **PHS** — Explore/Standard is a normal point-session model. One
+  `phsEnvironmentRangeSi` feeds `inputFields` and Time-series segment
+  controls. Weight/height stay `phsPersonRangeSi` off Analysis.
 
 ## Point session
 
@@ -214,10 +251,12 @@ member, and one registry line. Copy `heatIndex.ts`. The authoring unit is
 one file with identity/inputs, calculation, and chart **parameters** (`type`
 + data spec). Do not write `spec.build`, Plotly, chart ids, or
 `instanceId`. Selection key is `ChartType` (`selectedChartType`).
-`library.label` / `library.description` fill metadata. `inputFields`
+`library.label` / `library.description` fill metadata from `@docname`
+and the leading JSDoc first sentence. `inputFields`
 list quantities with required SI `minValue`/`maxValue` (optional `widget`);
-default widgets come from `defaultFieldWidgetByQuantity`. Chart axes must
-declare `rangeSi`. Classifier edges come from JS
+default widgets come from `defaultFieldWidgetByQuantity`. Dynamic charts
+inherit those ranges; chart-only axes declare `rangeSi` on the spec.
+Classifier edges come from JS
 `mapping.bins` / `compliance.bounds` via `bandsFromJsBins` /
 `bandsFromJsBounds`, plus a token map — do not scan.
 

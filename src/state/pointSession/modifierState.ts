@@ -123,13 +123,13 @@ export function isInputModifierDraftValid(
 
     const inputKeys = Object.keys(entry.inputs) as PhysicalQuantityIdType[];
     if (
-      !inputKeys.every((key) => modifier.extraInputs.includes(key))
+      !inputKeys.every((key) => modifier.modifierInputs.includes(key))
       || inputKeys.some((key) => entry.inputs[key] === undefined)
     ) {
       return false;
     }
 
-    for (const quantityId of modifier.extraInputs) {
+    for (const quantityId of modifier.modifierInputs) {
       const value = entry.inputs[quantityId];
       if (value !== undefined && !isModifierFieldValueValid(quantityId, value)) {
         return false;
@@ -158,7 +158,7 @@ export function mergeInputModifierDraft(
   for (const entry of draft) {
     merged.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
     const modifier = inputModifierCatalogue[entry.modifierId];
-    for (const quantityId of modifier.extraInputs) {
+    for (const quantityId of modifier.modifierInputs) {
       setQuantity(
         merged.quantitiesByInput[entry.inputId],
         quantityId,
@@ -307,7 +307,7 @@ export function buildInputModifierControls({
         );
         return values;
       }, {} as InputModifierControlViewModel["completeByInput"]),
-      extraInputs: modifier.extraInputs.map((quantityId) => {
+      modifierInputs: modifier.modifierInputs.map((quantityId) => {
         const displayMeta = getModifierFieldDisplayMeta(quantityId, unitSystem);
         return {
           key: quantityId,
@@ -351,13 +351,13 @@ export interface ModifierInputTransition {
 }
 
 export function parseModifierInputTransition(
-  modifier: Pick<InputModifier, "extraInputs">,
+  modifier: Pick<InputModifier, "modifierInputs">,
   quantityId: PhysicalQuantityIdType,
   rawValue: string,
   unitSystem: UnitSystemType,
   wasActive: boolean,
 ): ModifierInputTransition {
-  if (!modifier.extraInputs.includes(quantityId)) {
+  if (!modifier.modifierInputs.includes(quantityId)) {
     return { accepted: false, disableModifier: false };
   }
   if (rawValue.trim() === "") {
@@ -375,7 +375,7 @@ export function parseModifierInputTransition(
 }
 
 export function canEnableModifier(
-  modifier: Pick<InputModifier, "extraInputs" | "id">,
+  modifier: Pick<InputModifier, "modifierInputs" | "id">,
   quantities: QuantitiesByInputState[InputIdType],
 ): boolean {
   return isModifierConfigurationComplete(

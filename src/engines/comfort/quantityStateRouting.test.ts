@@ -27,7 +27,7 @@ describe("quantityStateRouting", () => {
     )).toBe(27);
   });
 
-  it("stores modifier extras in the same quantity bag", () => {
+  it("stores modifier inputs in the same quantity bag", () => {
     const quantitiesByInput = createQuantitiesByInput();
     setQuantity(
       quantitiesByInput[InputId.Input1],

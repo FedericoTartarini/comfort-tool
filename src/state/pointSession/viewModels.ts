@@ -87,7 +87,7 @@ export interface InputModifierControlViewModel {
   description: string;
   activeByInput: Partial<Record<InputIdType, boolean>>;
   completeByInput: Partial<Record<InputIdType, boolean>>;
-  extraInputs: ModifierFieldControlViewModel[];
+  modifierInputs: ModifierFieldControlViewModel[];
   affectedFields: ModifierAffectedFieldViewModel[];
 }
 

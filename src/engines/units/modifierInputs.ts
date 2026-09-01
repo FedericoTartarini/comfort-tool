@@ -2,7 +2,7 @@ import {
   getPhysicalQuantityMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../catalog/quantities";
-import { modifierExtraInputRangeSi } from "../../catalog/inputModifiers";
+import { rangeSiForModifierInput } from "../../catalog/inputModifiers";
 import { unitLabel, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import { convertQuantityFromSi, convertQuantityToSi } from "./quantityConversion";
 
@@ -35,7 +35,7 @@ export function getModifierFieldDisplayMeta(
   unitSystem: UnitSystemType,
 ): ModifierFieldDisplayMeta {
   const meta = getPhysicalQuantityMeta(key);
-  const range = modifierExtraInputRangeSi[key];
+  const range = rangeSiForModifierInput(key);
   return {
     label: meta.label,
     displayUnits: unitLabel(meta.siUnit, unitSystem),

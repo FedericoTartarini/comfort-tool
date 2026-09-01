@@ -513,7 +513,20 @@ export class ComfortModelBuilder<
         continue;
       }
       const spec = chart.registration.registration.spec;
-      if (!isDynamicFieldGridSpec(spec) || spec.resolveGridSpec) {
+      if (!isDynamicFieldGridSpec(spec)) {
+        continue;
+      }
+      if (spec.resolveGridSpec) {
+        const authoringResolve = spec.resolveGridSpec;
+        Object.assign(spec, {
+          resolveGridSpec: (context: ChartBuildContext) => {
+            const resolved = authoringResolve(context);
+            return {
+              ...resolved,
+              axisRanges: { ...axisRanges, ...resolved.axisRanges },
+            };
+          },
+        });
         continue;
       }
       const authoring: DynamicFieldGridSpec<ResultType> = spec;
@@ -570,8 +583,8 @@ export class ComfortModelBuilder<
   }
 
   private assertQuantityFields(): void {
-    const modifierExtraIds = new Set(
-      modifierOrder.flatMap((id) => [...inputModifierCatalogue[id].extraInputs]),
+    const modifierInputIds = new Set<PhysicalQuantityId>(
+      modifierOrder.flatMap((id) => [...inputModifierCatalogue[id].modifierInputs]),
     );
     for (const spec of this.inputFieldSpecs) {
       if (spec.kind !== "quantity") continue;
@@ -585,9 +598,9 @@ export class ComfortModelBuilder<
           `quantity field ${spec.quantityId} cannot be a derived humidity slot.`,
         );
       }
-      if (modifierExtraIds.has(spec.quantityId)) {
+      if (modifierInputIds.has(spec.quantityId)) {
         throw new Error(
-          `quantity field ${spec.quantityId} cannot occupy a modifier extra input.`,
+          `quantity field ${spec.quantityId} cannot occupy a modifier input.`,
         );
       }
     }
@@ -736,6 +749,21 @@ export class ComfortModelBuilder<
       throw new Error(
         "Comfort model declarations must follow the global modifier order.",
       );
+    }
+    for (const modifier of modifiers) {
+      for (const quantityId of modifier.modifierInputs) {
+        const range = modifier.modifierInputRangeSi[quantityId];
+        if (
+          range === undefined
+          || !Number.isFinite(range.min)
+          || !Number.isFinite(range.max)
+          || range.min > range.max
+        ) {
+          throw new Error(
+            `Modifier ${modifier.id} is missing SI range for ${quantityId}.`,
+          );
+        }
+      }
     }
 
     const supportsStandard = supportsStandardSurface(surfaceCapabilities);

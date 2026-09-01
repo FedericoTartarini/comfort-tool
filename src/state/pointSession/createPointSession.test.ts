@@ -527,9 +527,9 @@ describe("createPointSession", () => {
     const measured = controls.find(({ id }) => id === ModifierId.MeasuredAirSpeed);
     const clothing = controls.find(({ id }) => id === ModifierId.MorningClothingEstimate);
     const solar = controls.find(({ id }) => id === ModifierId.SolarGain);
-    expect(measured?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("1.97");
-    expect(clothing?.extraInputs[0].displayValuesByInput[InputId.Input1]).toBe("50");
-    expect(solar?.extraInputs.find(({ key }) => (
+    expect(measured?.modifierInputs[0].displayValuesByInput[InputId.Input1]).toBe("1.97");
+    expect(clothing?.modifierInputs[0].displayValuesByInput[InputId.Input1]).toBe("50");
+    expect(solar?.modifierInputs.find(({ key }) => (
       key === PhysicalQuantityId.DirectSolarRadiation
     ))?.displayValuesByInput[InputId.Input1]).toBe("253.6");
 
@@ -761,7 +761,7 @@ describe("createPointSession", () => {
     syncWorkspaceToModel(session, ModelId.AdaptiveAshrae);
     const adaptive = getProfileBadgeControl(session);
     expect(adaptive.profileKind).toBe(FieldChartProfileKind.Compliance);
-    expect(adaptive.caption).toContain("80: t_cmf");
+    expect(adaptive.caption).toContain("80% occupants: t_cmf");
     session.actions.setSelectedChartInstance("adaptive");
     const adaptiveControls = session.chartControls;
     expect(adaptiveControls.profileBadge?.profileKind).toBe(FieldChartProfileKind.Compliance);

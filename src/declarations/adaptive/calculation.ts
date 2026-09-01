@@ -180,13 +180,29 @@ export function createAdaptiveComplianceCaption(
   if (!offset) {
     throw new Error(`Missing adaptive library offset for ${complianceLevelId}`);
   }
-  return `${complianceLevelId}: t_cmf ${formatAdaptiveOffset(offset.lower)}°C to t_cmf ${formatAdaptiveOffset(offset.upper)}°C`;
+  return `${adaptiveLevelDisplayLabel(complianceLevelId)}: t_cmf ${formatAdaptiveOffset(offset.lower)}°C to t_cmf ${formatAdaptiveOffset(offset.upper)}°C`;
+}
+
+const ADAPTIVE_LEVEL_DISPLAY_LABELS: Readonly<Record<string, string>> = {
+  "80": "80% occupants",
+  "90": "90% occupants",
+  cat_i: "Category I",
+  cat_ii: "Category II",
+  cat_iii: "Category III",
+};
+
+export function adaptiveLevelDisplayLabel(id: string): string {
+  const label = ADAPTIVE_LEVEL_DISPLAY_LABELS[id];
+  if (label === undefined) {
+    throw new Error(`Missing adaptive display label for offset id "${id}".`);
+  }
+  return label;
 }
 
 export function levelsFromAdaptiveOffsets(
   offsets: readonly AdaptiveOffsetSpec[],
 ): readonly AdaptiveLevelDefinition[] {
-  return offsets.map(({ id }) => ({ id, label: id }));
+  return offsets.map(({ id }) => ({ id, label: adaptiveLevelDisplayLabel(id) }));
 }
 
 export function parseAdaptiveOptions(value: unknown): AdaptiveModelOptions | null {

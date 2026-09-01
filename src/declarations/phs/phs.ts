@@ -23,6 +23,7 @@ import {
   calculatePerInput,
   defineLibraryQuantityMapping,
 } from "../../engines/comfort/requestMapping";
+import { chartPayloadFromSpec } from "../../engines/comfort/charts/toChartPayload";
 import {
   convertQuantityFromSi,
   formatDisplayValue,
@@ -43,7 +44,7 @@ import {
   createPhsDynamicGridSpec,
   phsExposureHistoryChartSpec,
 } from "./charts";
-import { chartPayloadFromSpec } from "../../engines/comfort/charts/toChartPayload";
+import { phsEnvironmentRangeSi } from "./environmentRanges";
 import {
   buildPhsTemperatureTimeSeriesChart,
   buildPhsWaterLossTimeSeriesChart,
@@ -355,38 +356,38 @@ builder
 builder.setInputFields([
   {
     quantity: PhysicalQuantityId.DryBulbTemperature,
-    minValue: 15,
-    maxValue: 50,
+    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].min,
+    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].max,
   },
   {
     quantity: PhysicalQuantityId.MeanRadiantTemperature,
-    minValue: 0,
-    maxValue: 60,
+    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].min,
+    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].max,
   },
   {
     quantity: PhysicalQuantityId.WindSpeed,
     widget: InputWidget.Numeric,
     controlId: InputControlId.AirSpeed,
-    minValue: 0,
-    maxValue: 3,
+    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].min,
+    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].max,
     label: "Air speed",
   },
   {
     quantity: PhysicalQuantityId.RelativeHumidity,
-    minValue: 0,
-    maxValue: 100,
+    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].min,
+    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].max,
   },
   {
     quantity: PhysicalQuantityId.MetabolicRate,
     widget: InputWidget.Numeric,
-    minValue: 0.9,
-    maxValue: 3.9,
+    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].min,
+    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].max,
   },
   {
     quantity: PhysicalQuantityId.ClothingInsulation,
     widget: InputWidget.Numeric,
-    minValue: 0.1,
-    maxValue: 1,
+    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].min,
+    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].max,
   },
 ]);
 

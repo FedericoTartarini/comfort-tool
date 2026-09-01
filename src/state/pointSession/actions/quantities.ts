@@ -1,13 +1,12 @@
 import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
 import type { InputControlKey as InputControlKeyType } from "../../../catalog/inputControls";
 import {
-  modifierExtraInputRangeSi,
+  rangeSiForModifierInput,
   type ModifierId as ModifierIdType,
 } from "../../../catalog/inputModifiers";
 import { inputOrder, type InputId as InputIdType } from "../../../catalog/inputSlots";
 import { phsPersonQuantityIds, phsPersonRangeSi } from "../../../catalog/phs";
 import {
-  isDerivedHumidityQuantityId,
   isValueInQuantityRange,
   type PhysicalQuantityId as PhysicalQuantityIdType,
   type QuantityRangeSi,
@@ -22,7 +21,6 @@ import {
   declaredSiRangeForInputField,
   primaryQuantityIdsForInputField,
 } from "../../../engines/comfort/controls/fieldInputBehaviors";
-import { derivedHumidityRangeSi } from "../../../engines/comfort/controls/humidityControl";
 import { getComfortModelConfig } from "../../modelRegistry";
 import {
   canEnableModifier,
@@ -47,11 +45,9 @@ function writeRangeForQuantity(
   if (phsPersonQuantityIds.includes(quantityId as typeof phsPersonQuantityIds[number])) {
     return phsPersonRangeSi[quantityId as typeof phsPersonQuantityIds[number]];
   }
-  if (Object.prototype.hasOwnProperty.call(modifierExtraInputRangeSi, quantityId)) {
-    return modifierExtraInputRangeSi[quantityId as keyof typeof modifierExtraInputRangeSi];
-  }
-  if (isDerivedHumidityQuantityId(quantityId)) {
-    return derivedHumidityRangeSi[quantityId];
+  const modifierInputRange = rangeSiForModifierInput(quantityId);
+  if (modifierInputRange) {
+    return modifierInputRange;
   }
   return undefined;
 }
@@ -233,7 +229,7 @@ export function createQuantityActions({
         session.input.quantitiesByInput[entry.inputId],
         entry.modifierId,
       );
-      const inputsChanged = modifier.extraInputs.some((quantityId) => (
+      const inputsChanged = modifier.modifierInputs.some((quantityId) => (
         currentInputs[quantityId] !== entry.inputs[quantityId]
       ));
       if (wasEnabled !== entry.enabled || (inputsChanged && (wasEnabled || entry.enabled))) {
@@ -244,7 +240,7 @@ export function createQuantityActions({
     for (const entry of draft) {
       session.input.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
       for (const quantityId of config.modifiers
-        .find(({ id }) => id === entry.modifierId)?.extraInputs ?? []) {
+        .find(({ id }) => id === entry.modifierId)?.modifierInputs ?? []) {
         setQuantity(
           session.input.quantitiesByInput[entry.inputId],
           quantityId,

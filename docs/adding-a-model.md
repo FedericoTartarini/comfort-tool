@@ -143,18 +143,22 @@ are `$derived` projections, not a second store. Share is JSON → Base64URL →
 ## Catalogs the declaration may select
 
 Quantities and ChartTypes are closed frontend catalogs. Models select ids;
-they do not own, extend, or invent them. Derived-humidity or modifier-extra
+they do not own, extend, or invent them. Derived-humidity or modifier-input
 `kind: "quantity"` fields, unknown ChartTypes, or a Time-series table without
 Time-series capability fail `defineModel` / `assembleCatalogs`. There is no
 `validate.model` hook and no TableType catalog. Copy `heatIndex.ts`, add a
 `ModelId` member, and
 register once. `defineModel({ library })` reads string `label` /
-`description` from the JS function (`@docname` / leading JSDoc). If JS
+`description` from the JS function (`@docname` / leading JSDoc first
+sentence). If JS
 already classifies the result (`result.discomfort`, `result.stress_category`,
 ASHRAE `compliance`/`tsv`, ISO `tsv`, Adaptive `offsets`), use that export
 and recover Explore band edges from `mapping.bins` / `compliance.bounds` —
-do not paste thresholds. When JS has no human label (Adaptive `offsets.id`,
-Wind Chill `wct`), use that id / field name; do not invent classifier copy.
+do not paste thresholds. Classifier **words** stay JS/Python; Comfort Tool
+may title-case all-lowercase labels for display (`displayClassifierLabel`).
+Adaptive `offsets.id` stays the result-field stem; generate display labels
+in the Adaptive declaration layer. When JS has no human label (Wind Chill
+`wct`), use that field name; do not invent classifier copy.
 Do not
 invent classifiers that Python lacks (Wind Chill frostbite, ISO Category B
 three-band, PPD, PHS `mapping()`). PPD 10% is an Explore chart preset.
@@ -167,10 +171,13 @@ match jsthermalcomfort parameter or result fields (`tdb`, `hi`, `weight`).
 Catalog rows hold `label`, `siUnit`, optional `step`, and optional
 `category: Humidity`. Session/share use a sparse `QuantityState` bag.
 `derivedHumidityQuantityIds` (`t_dp`, `hr`, `t_wb`, `p_vap`) are not
-independent share truth. Body weight and height are catalog ids in the same
+independent share truth. Widget min/max map the model RH `inputFields`
+range at current `tdb`. Body weight and height are catalog ids in the same
 bag; PHS keeps them off Analysis `inputFields`. Do not add PHS
 weight/height to the Analysis input panel. Surface a catalog id on a panel
 only with `{ quantity, minValue, maxValue }` (or an explicit widget).
+The catalog has no min/max. Modifier inputs use `modifierInputs` /
+`modifierInputRangeSi` on the modifier schema, not `inputFields`.
 All quantity conversion reads catalog `siUnit` and must
 not branch on PHS or quantity-id lists.
 `siUnit` is canonical storage (`kg`, `m`, `kg/kg`, `Pa`, …);
@@ -185,7 +192,11 @@ a single Dynamic instance. Psychrometric is a ChartType currently used by
 PMV ASHRAE/ISO. Keep the eight ChartType product names. Do not solve PMV
 isoline roots in a declaration; pass `evaluate(T, RH)` and band thresholds to
 `src/charts/psychrometric/` helpers. 2-D Dynamic charts share
-`src/charts/isolines.ts` (Cartesian linear caps). Hover is Plotly closest on Compare markers and data lines.
+`src/charts/isolines.ts` (Cartesian linear caps). Dynamic charts inherit
+`inputFields` ranges; `spec.axisRanges` is only for axes input cannot
+cover. The Psychrometric ChartType viewport is
+`DEFAULT_PSYCHROMETRIC_VIEW` (`tdb` 10–40 °C, `hr` 0–0.03 kg/kg), not the
+Analysis spinner; CBE `psychchart.js` uses 10–36 °C and 0–30 g/kg. Hover is Plotly closest on Compare markers and data lines.
 2-D field drop-point hover is a Plotly probe on `ChartBuildResult.hoverProbe`, not `ChartPayload`; the probe follows the pointer and does not snap to Compare markers. Publication export omits the probe. Do not add a 100² hover grid or fill `hoveron: "fills"`.
 TemperatureMode Air keeps `tr` from
 input on that field; Operative uses `tr=tdb` per sample and labels x
@@ -232,8 +243,9 @@ Visible product decisions:
 - `surfaceCapabilities`, `exploreOutputs`
 - `complianceProfile` when Standard-capable (fixed output, non-empty bands,
   `caption`, `legendTitle`, feedback callback)
-- `inputFields` as quantities plus optional `minValue`/`maxValue`/`widget`
-  (`InputWidget`); default widgets live in `defaultFieldWidgetByQuantity`
+- `inputFields` as `{ quantity, minValue, maxValue, widget? }`
+  (`InputWidget`); a naked quantity id is not enough. Default widgets live
+  in `defaultFieldWidgetByQuantity`
 - `modifiers` in global order, or `[]`
 - request mapping + `calculate`
 - token map (JS category string → `ZoneToken`); thresholds from
@@ -282,7 +294,9 @@ Default widgets are `defaultFieldWidgetByQuantity` in
 `src/catalog/inputWidgets.ts`. `resolveInputField()` still produces today's
 `InputControlDefinition`; authors do not write `kind: "numeric"` strings.
 PMV overrides Operative / AdvancedHumidity with `InputWidget`. PHS
-weight/height stay off Analysis `inputFields`. The Analysis
+environment ranges live once in `phsEnvironmentRangeSi` and feed both
+`inputFields` and Time-series segment controls. PHS weight/height stay
+off Analysis `inputFields`. The Analysis
 input panel reads those controls through
 `getInputPanelViewModel`; do not add conversion or model branches in
 `src/ui/components/input-panel/`. Control widgets stay generic; unit conversion
@@ -316,8 +330,8 @@ Body Temperature.
 ### Modifiers
 
 `modifiers` receive executable `InputModifier` declarations, not ids. The
-global catalogue in `src/catalog/inputModifiers.ts` holds only UI/share ids
-and extra-input schema. Order is fixed:
+global catalogue in `src/catalog/inputModifiers.ts` holds UI/share ids,
+`modifierInputs`, and `modifierInputRangeSi`. Order is fixed:
 
 ```text
 Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain

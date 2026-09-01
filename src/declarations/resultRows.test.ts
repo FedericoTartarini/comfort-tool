@@ -389,7 +389,7 @@ describe("comfort model result rows", () => {
     ]);
     expect(getInputCell(sections, "UTCI")?.text).toBe("24.6 °C");
     expect(getInputCell(sections, "Stress Category")).toEqual({
-      text: "no thermal stress",
+      text: "No Thermal Stress",
       color: "#059669",
     });
   });

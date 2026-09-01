@@ -18,14 +18,15 @@ import {
   createAdaptiveComplianceBands,
   createAdaptiveComplianceCaption,
   createAdaptiveComplianceFeedbackGetter,
+  adaptiveLevelDisplayLabel,
   levelsFromAdaptiveOffsets,
   libraryLevelsFromAdaptiveResult,
 } from "./calculation";
 
 export const adaptiveAshraeZonesList = [
   new ThermalZone({ label: ZoneToken.TooCool, token: ZoneToken.TooCool }),
-  new ThermalZone({ label: "80", token: ZoneToken.Acceptable }),
-  new ThermalZone({ label: "90", token: ZoneToken.Preferred }),
+  new ThermalZone({ label: adaptiveLevelDisplayLabel("80"), token: ZoneToken.Acceptable }),
+  new ThermalZone({ label: adaptiveLevelDisplayLabel("90"), token: ZoneToken.Preferred }),
   new ThermalZone({ label: ZoneToken.TooWarm, token: ZoneToken.TooWarm }),
 ];
 

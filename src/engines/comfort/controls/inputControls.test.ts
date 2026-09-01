@@ -9,6 +9,7 @@ import {
   TemperatureMode,
 } from "../../../catalog/inputModes";
 import { InputId } from "../../../catalog/inputSlots";
+import { UnitSystem } from "../../../catalog/units";
 import { createPointSession } from "../../../state/pointSession/createPointSession.svelte";
 import { seedSelectedModel, seedPrimaryQuantity } from "../../../testSupport/seedPointSession";
 import {
@@ -17,6 +18,9 @@ import {
   deriveRelativeHumidityFromVaporPressure,
   deriveRelativeHumidityFromWetBulb,
 } from "../derivations";
+import { createHumidityControlBehavior } from "./humidityControl";
+import { createQuantitiesByInputState } from "../quantityStateRouting";
+import { createControlBehaviorContext } from "./types";
 
 function getControl(
   session: ReturnType<typeof createPointSession>,
@@ -152,6 +156,65 @@ describe("input control ownership", () => {
     expect(getControl(session, InputControlId.Humidity)).toEqual(
       expect.objectContaining({ label, displayUnits }),
     );
+  });
+
+  it("maps humidity-ratio widget limits from the model RH range at current tdb", () => {
+    const session = createPointSession();
+    seedPrimaryQuantity(
+      session,
+      InputId.Input1,
+      PhysicalQuantityId.DryBulbTemperature,
+      25,
+    );
+    session.actions.setModelOption(
+      OptionKey.HumidityInputMode,
+      HumidityInputMode.HumidityRatio,
+    );
+    const maxAt25 = getControl(session, InputControlId.Humidity).maxValue;
+    seedPrimaryQuantity(
+      session,
+      InputId.Input1,
+      PhysicalQuantityId.DryBulbTemperature,
+      35,
+    );
+    const maxAt35 = getControl(session, InputControlId.Humidity).maxValue;
+
+    expect(maxAt25).toBeDefined();
+    expect(maxAt35).toBeDefined();
+    expect(maxAt35 as number).toBeGreaterThan(maxAt25 as number);
+  });
+
+  it("clamps inverted RH to the model humidity range", () => {
+    const quantitiesByInput = createQuantitiesByInputState(() => ({
+      [PhysicalQuantityId.DryBulbTemperature]: 25,
+      [PhysicalQuantityId.RelativeHumidity]: 50,
+    }));
+    const behavior = createHumidityControlBehavior(InputControlId.Humidity, {
+      min: 20,
+      max: 80,
+    });
+    const dewPointContext = createControlBehaviorContext({
+      quantitiesByInput,
+      options: { [OptionKey.HumidityInputMode]: HumidityInputMode.DewPoint },
+      unitSystem: UnitSystem.SI,
+      visibleInputIds: [InputId.Input1],
+    });
+    const humidityRatioContext = createControlBehaviorContext({
+      quantitiesByInput,
+      options: { [OptionKey.HumidityInputMode]: HumidityInputMode.HumidityRatio },
+      unitSystem: UnitSystem.SI,
+      visibleInputIds: [InputId.Input1],
+    });
+
+    const lowPatch = behavior.applyInput?.(dewPointContext, InputId.Input1, "-40");
+    const highPatch = behavior.applyInput?.(humidityRatioContext, InputId.Input1, "40");
+
+    expect(lowPatch?.quantitiesPatch?.[InputId.Input1]?.[
+      PhysicalQuantityId.RelativeHumidity
+    ]).toBe(20);
+    expect(highPatch?.quantitiesPatch?.[InputId.Input1]?.[
+      PhysicalQuantityId.RelativeHumidity
+    ]).toBe(80);
   });
 
   it.each([

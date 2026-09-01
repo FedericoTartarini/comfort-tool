@@ -62,9 +62,9 @@ function indexChartOwners(models: readonly CatalogModelSlice[]): {
 }
 
 /**
- * Checks one model against assembled catalogs. Unknown extra
- * quantity ids, unknown chart types, and a Time-series table without
- * Time-series capability fail.
+ * Checks one model against assembled catalogs. Unknown chart types,
+ * duplicate ChartType, and a Time-series table without Time-series
+ * capability fail.
  */
 export function validateModel(
   model: CatalogModelSlice,

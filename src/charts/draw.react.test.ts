@@ -64,7 +64,7 @@ describe("draw with Plotly.react", () => {
       data?: Array<{ name?: string; x?: unknown[]; z?: unknown }>;
     };
     expect(gd.data?.some((trace) => (
-      trace.name === "cat_iii" && (trace.x?.length ?? 0) > 1
+      trace.name === "Category III" && (trace.x?.length ?? 0) > 1
     ))).toBe(true);
     expect(gd.data?.some((trace) => trace.name === "Input 1")).toBe(true);
     expect(contour).toBeUndefined();
