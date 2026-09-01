@@ -1,6 +1,7 @@
 import { CalculationSource } from "../../catalog/calculationMetadata";
 import { ComplianceStatus } from "../../catalog/modelIds";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
+import { unitLabel } from "../../catalog/units";
 import {
   OptionKey,
   TemperatureMode,
@@ -258,10 +259,10 @@ export function buildAdaptiveResultRows(
   declaration: AdaptiveModelDeclaration,
   unitSystem: UnitSystemType,
 ): ResultRowDefinition<AdaptiveResponse>[] {
-  const temperatureUnits = getQuantityPresentationMeta(
-    PhysicalQuantityId.DryBulbTemperature,
+  const temperatureUnits = unitLabel(
+    getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
     unitSystem,
-  ).displayUnits;
+  );
   return [
     {
       title: "Compliance",

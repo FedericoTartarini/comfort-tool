@@ -7,10 +7,9 @@ import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type { ChartBuildResult } from "../../engines/comfort/charts/chartBuildResult";
 import type {
-  PrimaryInputState,
   PhysicalQuantityId,
-  AuxiliaryInputState,
   PhysicalQuantityId as PhysicalQuantityIdType,
+  QuantityState,
 } from "../../catalog/quantities";
 import type { DerivedSlotQuantityState } from "../../engines/comfort/derivations/psychrometrics";
 import type { InputControlKey as InputControlKeyType } from "../../catalog/inputControls";
@@ -24,11 +23,7 @@ import type { NumericBand } from "../../catalog/modelCapabilities";
 import type { ChartInstanceDeclaration } from "../../catalog/chartTypes";
 import type { SurfaceId as SurfaceIdType } from "../../catalog/surfaces";
 import type { ShareStateSnapshot } from "./share/snapshot";
-import type {
-  AuxiliaryQuantitiesByInputState,
-  ModelInputsByModelState,
-  QuantitiesByInputState,
-} from "../../engines/comfort/quantityStateRouting";
+import type { QuantitiesByInputState } from "../../engines/comfort/quantityStateRouting";
 import type {
   ChartControlsViewModel,
   InputModifierControlViewModel,
@@ -37,7 +32,7 @@ import type {
 import type { ResultSectionViewModel } from "../../catalog/resultSections";
 import type { InputControlViewModel } from "../../catalog/inputControls";
 
-export type InputState = PrimaryInputState;
+export type InputState = QuantityState;
 export type ActiveModifiersByInputState = Record<
   InputIdType,
   Record<ModifierIdType, boolean>
@@ -96,22 +91,23 @@ export type OutputSettingsByModelState = Record<ModelIdType, ModelOutputSettings
 
 export type PointInputState = {
   quantitiesByInput: QuantitiesByInputState;
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
-  modelInputsByModel: ModelInputsByModelState;
-  activeModifiersByInput: ActiveModifiersByInputState;
-};
-
-export type PointSettingState = {
-  selectedModel: ModelIdType;
-  selectedChartInstanceByModel: SelectedChartInstanceByModelState;
   modelOptionsByModel: ModelOptionsByModelState;
+  activeModifiersByInput: ActiveModifiersByInputState;
   compareEnabled: boolean;
   compareInputIds: InputIdType[];
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
+};
+
+export type PointChartState = {
+  selectedChartInstanceByModel: SelectedChartInstanceByModelState;
+  outputSettingsByModel: OutputSettingsByModelState;
+};
+
+export type PointSettingState = {
+  selectedModel: ModelIdType;
   activeSurface: SurfaceIdType;
   allowedModelIds: readonly ModelIdType[];
-  outputSettingsByModel: OutputSettingsByModelState;
   pendingModelSwitch: PendingModelSwitch | null;
 };
 
@@ -122,6 +118,7 @@ export type PointOutputState = {
 
 export type PointSessionBuckets = {
   input: PointInputState;
+  chart: PointChartState;
   setting: PointSettingState;
   output: PointOutputState;
   calculationCacheByModel: ModelCalculationCacheByModelState;
@@ -206,10 +203,7 @@ export type PointSession = PointSessionBuckets & {
 };
 
 export type {
-  AuxiliaryInputState,
-  AuxiliaryQuantitiesByInputState,
-  PrimaryInputState,
   DerivedSlotQuantityState,
-  ModelInputsByModelState,
   QuantitiesByInputState,
+  QuantityState,
 };

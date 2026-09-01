@@ -21,18 +21,18 @@ export function createCompareActions({
   | "setAllowedModelIds"
 > {
   function setCompareEnabled(enabled: boolean) {
-    session.setting.compareEnabled = enabled;
+    session.input.compareEnabled = enabled;
 
     if (enabled) {
-      session.setting.compareInputIds = normalizeCompareInputIds(session.setting.compareInputIds);
-      if (session.setting.compareInputIds.length < 2) {
-        session.setting.compareInputIds = createDefaultCompareInputIds();
+      session.input.compareInputIds = normalizeCompareInputIds(session.input.compareInputIds);
+      if (session.input.compareInputIds.length < 2) {
+        session.input.compareInputIds = createDefaultCompareInputIds();
       }
-      if (!session.setting.compareInputIds.includes(session.setting.activeInputId)) {
-        session.setting.activeInputId = session.setting.compareInputIds[0] ?? InputId.Input1;
+      if (!session.input.compareInputIds.includes(session.input.activeInputId)) {
+        session.input.activeInputId = session.input.compareInputIds[0] ?? InputId.Input1;
       }
     } else {
-      session.setting.activeInputId = InputId.Input1;
+      session.input.activeInputId = InputId.Input1;
     }
 
     internals.invalidateAllModels();
@@ -40,21 +40,21 @@ export function createCompareActions({
   }
 
   function setActiveInputId(nextInputId: InputIdType) {
-    session.setting.activeInputId = nextInputId;
+    session.input.activeInputId = nextInputId;
   }
 
   function toggleCompareInputVisibility(inputId: InputIdType) {
-    if (!session.setting.compareEnabled || inputId === InputId.Input1) {
+    if (!session.input.compareEnabled || inputId === InputId.Input1) {
       return;
     }
 
-    if (session.setting.compareInputIds.includes(inputId)) {
-      session.setting.compareInputIds = session.setting.compareInputIds.filter((visibleInputId) => visibleInputId !== inputId);
-      if (session.setting.activeInputId === inputId) {
-        session.setting.activeInputId = session.setting.compareInputIds[0] ?? InputId.Input1;
+    if (session.input.compareInputIds.includes(inputId)) {
+      session.input.compareInputIds = session.input.compareInputIds.filter((visibleInputId) => visibleInputId !== inputId);
+      if (session.input.activeInputId === inputId) {
+        session.input.activeInputId = session.input.compareInputIds[0] ?? InputId.Input1;
       }
     } else {
-      session.setting.compareInputIds = normalizeCompareInputIds([...session.setting.compareInputIds, inputId]);
+      session.input.compareInputIds = normalizeCompareInputIds([...session.input.compareInputIds, inputId]);
     }
 
     internals.invalidateAllModels();
@@ -62,7 +62,7 @@ export function createCompareActions({
   }
 
   function toggleUnitSystem() {
-    session.setting.unitSystem = session.setting.unitSystem === UnitSystem.SI ? UnitSystem.IP : UnitSystem.SI;
+    session.input.unitSystem = session.input.unitSystem === UnitSystem.SI ? UnitSystem.IP : UnitSystem.SI;
   }
 
   function setActiveSurface(workspace: SurfaceIdType) {

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { Button, Input, Label, Modal } from "flowbite-svelte";
-  import { PhysicalQuantityId } from "../../../catalog/quantities";
+  import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../../catalog/quantities";
   import { PlusOutline, TrashBinOutline } from "flowbite-svelte-icons";
   import type { NumericBand } from "../../../catalog/modelCapabilities";
-  import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
+  import { unitLabel, type UnitSystem as UnitSystemType } from "../../../catalog/units";
   import {
     normalizeNumericBands,
     validateNumericBands,
@@ -12,7 +12,6 @@
     convertQuantityFromSi,
     convertQuantityToSi,
     formatDisplayValue,
-    getQuantityDisplayMeta,
     roundToDisplay,
   } from "../../../engines/units";
 
@@ -49,8 +48,9 @@
   let drafts = $state<BandDraft[]>([]);
   let listErrors = $state<string[]>([]);
 
-  const outputMeta = $derived(getQuantityDisplayMeta(outputKey, unitSystem));
-  const unitSuffix = $derived(outputMeta.displayUnits ? ` (${outputMeta.displayUnits})` : "");
+  const outputMeta = $derived(getPhysicalQuantityMeta(outputKey));
+  const displayUnits = $derived(unitLabel(outputMeta.siUnit, unitSystem));
+  const unitSuffix = $derived(displayUnits ? ` (${displayUnits})` : "");
   const draftBands = $derived(drafts.map(draftToBand));
   const draftValidation = $derived(validateNumericBands(
     draftBands,

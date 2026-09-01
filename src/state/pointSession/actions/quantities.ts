@@ -1,27 +1,60 @@
 import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
 import type { InputControlKey as InputControlKeyType } from "../../../catalog/inputControls";
 import {
+  modifierExtraInputRangeSi,
   type ModifierId as ModifierIdType,
 } from "../../../catalog/inputModifiers";
-import { type InputId as InputIdType } from "../../../catalog/inputSlots";
-import { syncDerivedStateForInput } from "../../../engines/comfort/syncState";
-import { getComfortModelConfig } from "../../modelRegistry";
+import { inputOrder, type InputId as InputIdType } from "../../../catalog/inputSlots";
+import { phsPersonQuantityIds, phsPersonRangeSi } from "../../../catalog/phs";
 import {
-  applyPrimaryPatch,
+  isDerivedHumidityQuantityId,
+  isValueInQuantityRange,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+  type QuantityRangeSi,
+} from "../../../catalog/quantities";
+import { syncDerivedStateForInput } from "../../../engines/comfort/syncState";
+import {
   collectModifierInputsForModifier,
-  setModelQuantity,
-  setSlotQuantity,
+  isWritableQuantityId,
+  setQuantity,
 } from "../../../engines/comfort/quantityStateRouting";
+import {
+  declaredSiRangeForInputField,
+  primaryQuantityIdsForInputField,
+} from "../../../engines/comfort/controls/fieldInputBehaviors";
+import { derivedHumidityRangeSi } from "../../../engines/comfort/controls/humidityControl";
+import { getComfortModelConfig } from "../../modelRegistry";
 import {
   canEnableModifier,
   findModelModifier,
   isInputModifierDraftValid,
   parseModifierInputTransition,
 } from "../modifierState";
-import { getPhysicalQuantityMeta, isPrimaryQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
-import { isAllowedExtraQuantityId, isSlotQuantityId } from "../../../engines/comfort/quantityStateRouting";
 import type { PointActions, InputModifierDraftEntry } from "../sessionTypes";
 import type { PointActionContext } from "./context";
+
+function writeRangeForQuantity(
+  modelId: ModelIdType,
+  quantityId: PhysicalQuantityIdType,
+): QuantityRangeSi | undefined {
+  const model = getComfortModelConfig(modelId);
+  for (const spec of model.inputFields) {
+    if (primaryQuantityIdsForInputField(spec).includes(quantityId)) {
+      const { minSi, maxSi } = declaredSiRangeForInputField(spec, quantityId);
+      return { min: minSi, max: maxSi };
+    }
+  }
+  if (phsPersonQuantityIds.includes(quantityId as typeof phsPersonQuantityIds[number])) {
+    return phsPersonRangeSi[quantityId as typeof phsPersonQuantityIds[number]];
+  }
+  if (Object.prototype.hasOwnProperty.call(modifierExtraInputRangeSi, quantityId)) {
+    return modifierExtraInputRangeSi[quantityId as keyof typeof modifierExtraInputRangeSi];
+  }
+  if (isDerivedHumidityQuantityId(quantityId)) {
+    return derivedHumidityRangeSi[quantityId];
+  }
+  return undefined;
+}
 
 export function createQuantityActions({
   session,
@@ -36,55 +69,54 @@ export function createQuantityActions({
   | "setModifierEnabled"
   | "applyInputModifierDraft"
 > {
+  function writeQuantity(
+    inputId: InputIdType,
+    quantityId: PhysicalQuantityIdType,
+    valueSi: number,
+  ): boolean {
+    const range = writeRangeForQuantity(session.setting.selectedModel, quantityId);
+    if (
+      !isWritableQuantityId(quantityId)
+      || range === undefined
+      || !isValueInQuantityRange(valueSi, range)
+    ) {
+      return false;
+    }
+
+    setQuantity(session.input.quantitiesByInput[inputId], quantityId, valueSi);
+    syncDerivedStateForInput(inputId, session.input.quantitiesByInput);
+    return true;
+  }
+
   function updateBuiltinQuantity(
     inputId: InputIdType,
     quantityId: PhysicalQuantityIdType,
     valueSi: number,
   ): boolean {
-    const meta = getPhysicalQuantityMeta(quantityId);
-    if (!Number.isFinite(valueSi) || valueSi < meta.minSi || valueSi > meta.maxSi) {
+    if (!writeQuantity(inputId, quantityId, valueSi)) {
       return false;
     }
-
-    if (isPrimaryQuantityId(quantityId)) {
-      applyPrimaryPatch(session.input.quantitiesByInput, inputId, { [quantityId]: valueSi });
-      syncDerivedStateForInput(
-        inputId,
-        session.input.quantitiesByInput,
-        session.input.auxiliaryQuantitiesByInput,
-      );
-    } else if (isSlotQuantityId(quantityId)) {
-      setSlotQuantity(session.input.auxiliaryQuantitiesByInput[inputId], quantityId, valueSi);
-    } else {
-      return false;
-    }
-
     internals.invalidateAllModels();
     scheduleCalculation();
     return true;
   }
 
   function updateModelQuantity(
-    modelId: ModelIdType,
+    _modelId: ModelIdType,
     quantityId: PhysicalQuantityIdType,
     valueSi: number,
   ): boolean {
-    const meta = getPhysicalQuantityMeta(quantityId);
-    if (
-      !isAllowedExtraQuantityId(quantityId)
-      || !getComfortModelConfig(modelId).extraQuantities.some((id) => id === quantityId)
-      || !Number.isFinite(valueSi)
-      || valueSi < meta.minSi
-      || valueSi > meta.maxSi
-    ) {
+    let wrote = false;
+    for (const inputId of inputOrder) {
+      if (writeQuantity(inputId, quantityId, valueSi)) {
+        wrote = true;
+      }
+    }
+    if (!wrote) {
       return false;
     }
-
-    setModelQuantity(session.input.modelInputsByModel[modelId], quantityId, valueSi);
-    if (session.setting.selectedModel === modelId) {
-      internals.invalidateAllModels();
-      scheduleCalculation();
-    }
+    internals.invalidateAllModels();
+    scheduleCalculation();
     return true;
   }
 
@@ -137,18 +169,18 @@ export function createQuantityActions({
     const modifier = findModelModifier(internals.getActiveModelConfig(), modifierId);
     if (!modifier) return false;
 
-    const auxiliary = session.input.auxiliaryQuantitiesByInput[inputId];
+    const quantities = session.input.quantitiesByInput[inputId];
     const wasActive = session.input.activeModifiersByInput[inputId][modifierId];
     const transition = parseModifierInputTransition(
       modifier,
       quantityId,
       rawValue,
-      session.setting.unitSystem,
+      session.input.unitSystem,
       wasActive,
     );
     if (!transition.accepted) return false;
 
-    setSlotQuantity(auxiliary, quantityId, transition.valueSi);
+    setQuantity(quantities, quantityId, transition.valueSi);
     if (transition.disableModifier) {
       session.input.activeModifiersByInput[inputId][modifierId] = false;
       refreshAfterModifierChange(modifierId, { immediate: true });
@@ -171,7 +203,7 @@ export function createQuantityActions({
       enabled
       && !canEnableModifier(
         modifier,
-        session.input.auxiliaryQuantitiesByInput[inputId],
+        session.input.quantitiesByInput[inputId],
       )
     ) {
       return false;
@@ -198,7 +230,7 @@ export function createQuantityActions({
 
       const wasEnabled = session.input.activeModifiersByInput[entry.inputId][entry.modifierId];
       const currentInputs = collectModifierInputsForModifier(
-        session.input.auxiliaryQuantitiesByInput[entry.inputId],
+        session.input.quantitiesByInput[entry.inputId],
         entry.modifierId,
       );
       const inputsChanged = modifier.extraInputs.some((quantityId) => (
@@ -213,8 +245,8 @@ export function createQuantityActions({
       session.input.activeModifiersByInput[entry.inputId][entry.modifierId] = entry.enabled;
       for (const quantityId of config.modifiers
         .find(({ id }) => id === entry.modifierId)?.extraInputs ?? []) {
-        setSlotQuantity(
-          session.input.auxiliaryQuantitiesByInput[entry.inputId],
+        setQuantity(
+          session.input.quantitiesByInput[entry.inputId],
           quantityId,
           entry.inputs[quantityId],
         );

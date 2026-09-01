@@ -2,7 +2,7 @@ import { psy_ta_rh, p_sat } from "jsthermalcomfort";
 import {
   PhysicalQuantityId,
   type DerivedHumidityQuantityId,
-  type PrimaryInputState,
+  type QuantityState,
 } from "../../../catalog/quantities";
 
 export type DerivedSlotQuantityState = Record<DerivedHumidityQuantityId, number>;
@@ -11,11 +11,13 @@ const STANDARD_ATMOSPHERIC_PRESSURE_PA = 101325;
 const WATER_VAPOR_MOLECULAR_WEIGHT_RATIO = 0.62198;
 
 /** Forward psychrometric slot derivation from primary dry-bulb temperature and RH. */
-export function derivePsychrometricSlots(inputState: PrimaryInputState): DerivedSlotQuantityState {
-  const psychrometricState = psy_ta_rh(
-    inputState[PhysicalQuantityId.DryBulbTemperature],
-    inputState[PhysicalQuantityId.RelativeHumidity],
-  );
+export function derivePsychrometricSlots(inputState: QuantityState): DerivedSlotQuantityState {
+  const dryBulb = inputState[PhysicalQuantityId.DryBulbTemperature];
+  const relativeHumidity = inputState[PhysicalQuantityId.RelativeHumidity];
+  if (dryBulb === undefined || relativeHumidity === undefined) {
+    throw new Error("Psychrometric derivation requires dry-bulb temperature and relative humidity.");
+  }
+  const psychrometricState = psy_ta_rh(dryBulb, relativeHumidity);
 
   return { [PhysicalQuantityId.DewPointTemperature]: psychrometricState.t_dp, [PhysicalQuantityId.HumidityRatio]: psychrometricState.hr, [PhysicalQuantityId.WetBulbTemperature]: psychrometricState.t_wb, [PhysicalQuantityId.VaporPressure]: psychrometricState.p_vap };
 }

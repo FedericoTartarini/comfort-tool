@@ -61,7 +61,7 @@ function getOutputSettings(
   session: ReturnType<typeof createPointSession>,
   modelId = session.setting.selectedModel,
 ) {
-  return session.setting.outputSettingsByModel[modelId];
+  return session.chart.outputSettingsByModel[modelId];
 }
 
 function getProfileBadgeControl(session: ReturnType<typeof createPointSession>) {
@@ -108,7 +108,7 @@ describe("createPointSession", () => {
     const session = createPointSession();
 
     expect(session.setting.selectedModel).toBe(ModelId.PmvAshrae);
-    expect(session.setting.selectedChartInstanceByModel).toEqual({
+    expect(session.chart.selectedChartInstanceByModel).toEqual({
       [ModelId.PmvAshrae]: "psychrometric",
       [ModelId.PmvIso]: "psychrometric",
       [ModelId.Utci]: "utci",
@@ -119,8 +119,8 @@ describe("createPointSession", () => {
       [ModelId.WindChill]: "dynamic",
       [ModelId.Phs2023]: "body-temperature",
     });
-    expect(session.setting.modelOptionsByModel[ModelId.PmvAshrae])
-      .not.toBe(session.setting.modelOptionsByModel[ModelId.PmvIso]);
+    expect(session.input.modelOptionsByModel[ModelId.PmvAshrae])
+      .not.toBe(session.input.modelOptionsByModel[ModelId.PmvIso]);
     expect(session.calculationCacheByModel[ModelId.PmvAshrae])
       .not.toBe(session.calculationCacheByModel[ModelId.PmvIso]);
     expect(session.setting.activeSurface)
@@ -193,7 +193,7 @@ describe("createPointSession", () => {
       [PhysicalQuantityId.RelativeAirSpeed]).toBe(0.3);
     expect(session.effectiveQuantities()[InputId.Input2]
       [PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(0.83, 6);
-    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.6);
 
     expect(session.actions.setModifierEnabled(
@@ -212,7 +212,7 @@ describe("createPointSession", () => {
     try {
       const session = createPointSession();
       session.actions.setCompareEnabled(true);
-      session.input.auxiliaryQuantitiesByInput[InputId.Input3]
+      session.input.quantitiesByInput[InputId.Input3]
         [PhysicalQuantityId.MeasuredAirSpeed] = 0.9;
       session.input.activeModifiersByInput[InputId.Input3]
         [ModifierId.MeasuredAirSpeed] = true;
@@ -253,7 +253,7 @@ describe("createPointSession", () => {
       const projectedControls = session.inputModifierControls(draft);
       expect(projectedControls.find(({ id }) => id === ModifierId.MeasuredAirSpeed)
         ?.activeByInput[InputId.Input1]).toBe(true);
-      expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+      expect(session.input.quantitiesByInput[InputId.Input1]
         [PhysicalQuantityId.MeasuredAirSpeed]).toBeUndefined();
       expect(session.input.activeModifiersByInput[InputId.Input2]
         [ModifierId.DynamicClothing]).toBe(false);
@@ -267,7 +267,7 @@ describe("createPointSession", () => {
         [PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(0.6, 6);
       expect(session.effectiveQuantities()[InputId.Input2]
         [PhysicalQuantityId.ClothingInsulation]).toBeCloseTo(0.485, 3);
-      expect(session.input.auxiliaryQuantitiesByInput[InputId.Input3]
+      expect(session.input.quantitiesByInput[InputId.Input3]
         [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.9);
       expect(session.input.activeModifiersByInput[InputId.Input3]
         [ModifierId.MeasuredAirSpeed]).toBe(true);
@@ -292,12 +292,12 @@ describe("createPointSession", () => {
     const incompleteDraft = draft.slice(0, -1);
     const stateBeforeApply = JSON.stringify({
       active: session.input.activeModifiersByInput,
-      inputs: session.input.auxiliaryQuantitiesByInput,
+      inputs: session.input.quantitiesByInput,
     });
     expect(session.actions.applyInputModifierDraft(incompleteDraft)).toBe(false);
     expect(JSON.stringify({
       active: session.input.activeModifiersByInput,
-      inputs: session.input.auxiliaryQuantitiesByInput,
+      inputs: session.input.quantitiesByInput,
     })).toBe(stateBeforeApply);
 
     const enabledIncompleteDraft = session.inputModifierDraft;
@@ -309,7 +309,7 @@ describe("createPointSession", () => {
     expect(session.actions.applyInputModifierDraft(enabledIncompleteDraft)).toBe(false);
     expect(JSON.stringify({
       active: session.input.activeModifiersByInput,
-      inputs: session.input.auxiliaryQuantitiesByInput,
+      inputs: session.input.quantitiesByInput,
     })).toBe(stateBeforeApply);
   });
 
@@ -331,7 +331,7 @@ describe("createPointSession", () => {
       expect(session.actions.applyInputModifierDraft(draft)).toBe(true);
       await Promise.resolve();
 
-      expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+      expect(session.input.quantitiesByInput[InputId.Input1]
         [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.6);
       expect(session.input.activeModifiersByInput[InputId.Input1]
         [ModifierId.MeasuredAirSpeed]).toBe(false);
@@ -461,7 +461,7 @@ describe("createPointSession", () => {
       true,
     )).toBe(true);
     expect(session.effectiveQuantities()[InputId.Input1]
-      [PhysicalQuantityId.MeanRadiantTemperature]).toBeCloseTo(baseRadiantTemperature + 15.1, 6);
+      [PhysicalQuantityId.MeanRadiantTemperature]).toBeCloseTo((baseRadiantTemperature ?? NaN) + 15.1, 6);
 
     expect(session.actions.updateModifierInput(
       InputId.Input1,
@@ -472,9 +472,9 @@ describe("createPointSession", () => {
 
     expect(session.input.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain])
       .toBe(false);
-    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.SolarTransmittance]).toBeUndefined();
-    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.DirectSolarRadiation]).toBe(800);
     expect(session.effectiveQuantities()[InputId.Input1]
       [PhysicalQuantityId.MeanRadiantTemperature]).toBe(baseRadiantTemperature);
@@ -514,13 +514,13 @@ describe("createPointSession", () => {
     );
     await waitForIdle(session);
 
-    const storedSi = JSON.stringify(session.input.auxiliaryQuantitiesByInput);
+    const storedSi = JSON.stringify(session.input.quantitiesByInput);
     const effectiveSi = session.effectiveQuantities();
 
     session.actions.toggleUnitSystem();
 
-    expect(session.setting.unitSystem).toBe(UnitSystem.IP);
-    expect(JSON.stringify(session.input.auxiliaryQuantitiesByInput)).toBe(storedSi);
+    expect(session.input.unitSystem).toBe(UnitSystem.IP);
+    expect(JSON.stringify(session.input.quantitiesByInput)).toBe(storedSi);
     expect(session.effectiveQuantities()).toEqual(effectiveSi);
 
     const controls = session.inputModifierControls();
@@ -534,7 +534,7 @@ describe("createPointSession", () => {
     ))?.displayValuesByInput[InputId.Input1]).toBe("253.6");
 
     session.actions.toggleUnitSystem();
-    expect(JSON.stringify(session.input.auxiliaryQuantitiesByInput)).toBe(storedSi);
+    expect(JSON.stringify(session.input.quantitiesByInput)).toBe(storedSi);
     expect(session.effectiveQuantities()).toEqual(effectiveSi);
   });
 
@@ -657,7 +657,7 @@ describe("createPointSession", () => {
       .resultsByInput[InputId.Input1] as PhsResponse | null)?.waterLossLimitG;
     expect(phsAfter).toBeDefined();
     expect(phsAfter).not.toBe(phsBefore);
-    expect(session.input.modelInputsByModel[ModelId.Phs2023]
+    expect(session.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.BodyWeight]).toBe(90);
 
     session.actions.setSelectedModel(ModelId.Humidex);
@@ -670,11 +670,11 @@ describe("createPointSession", () => {
 
   it("keeps ASHRAE and ISO mode settings independent from chart selection", () => {
     const session = createPointSession();
-    const ashraeChart = session.setting.selectedChartInstanceByModel[ModelId.PmvAshrae];
+    const ashraeChart = session.chart.selectedChartInstanceByModel[ModelId.PmvAshrae];
 
     session.actions.setActiveSurface(SurfaceId.Explore);
     session.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
-    expect(session.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
+    expect(session.chart.selectedChartInstanceByModel[ModelId.PmvAshrae])
       .toBe(ashraeChart);
 
     seedSelectedModel(session, ModelId.PmvIso);
@@ -1026,7 +1026,7 @@ describe("createPointSession", () => {
     expect(session.setting.activeSurface).toBe(SurfaceId.Explore);
     expect(getOutputSettings(session).exploreOutput).toBe(PhysicalQuantityId.PredictedPercentageOfDissatisfied);
     expect(getOutputSettings(session).exploreBands![0].label).toBe("Preferred");
-    expect(session.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
+    expect(session.chart.selectedChartInstanceByModel[ModelId.PmvAshrae])
       .toBe("psychrometric");
 
     session.actions.setSelectedChartInstance("dynamic");
@@ -1059,7 +1059,7 @@ describe("createPointSession", () => {
     expect(snapshot.version).toBe(1);
     expect(snapshot.models[ModelId.PmvAshrae].selectedChartType)
       .toBe("dynamic");
-    expect(session.setting.selectedChartInstanceByModel[ModelId.PmvAshrae])
+    expect(session.chart.selectedChartInstanceByModel[ModelId.PmvAshrae])
       .toBe("dynamic");
     expect(snapshot.models[ModelId.PmvAshrae].outputSettings)
       .toEqual(expect.objectContaining({
@@ -1203,7 +1203,7 @@ describe("createPointSession", () => {
     const session = createPointSession();
     seedSelectedModel(session, ModelId.PmvIso);
     const initialOptions = {
-      ...session.setting.modelOptionsByModel[ModelId.PmvIso],
+      ...session.input.modelOptionsByModel[ModelId.PmvIso],
     };
 
     expect(initialOptions).not.toHaveProperty(OptionKey.AirSpeedControlMode);
@@ -1213,7 +1213,7 @@ describe("createPointSession", () => {
       AirSpeedControlMode.NoLocalControl,
     );
 
-    expect(session.setting.modelOptionsByModel[ModelId.PmvIso])
+    expect(session.input.modelOptionsByModel[ModelId.PmvIso])
       .toEqual(initialOptions);
     expect(session.output.isLoading).toBe(false);
   });
@@ -1305,7 +1305,7 @@ describe("createPointSession", () => {
 
   it("rejects invalid selected-model options at the calculation boundary", async () => {
     const session = createPointSession();
-    delete session.setting.modelOptionsByModel[ModelId.PmvAshrae][
+    delete session.input.modelOptionsByModel[ModelId.PmvAshrae][
       OptionKey.HumidityInputMode
     ];
 
@@ -1410,9 +1410,9 @@ describe("createPointSession", () => {
 
     expect(currentIsoChartSource).not.toBe(previousIsoChartSource);
     expect(currentIsoChartSource.inputs[InputId.Input1]?.tdb)
-      .toBeCloseTo(currentInput[PhysicalQuantityId.DryBulbTemperature], 6);
+      .toBeCloseTo(currentInput[PhysicalQuantityId.DryBulbTemperature] ?? NaN, 6);
     expect(currentIsoChartSource.inputs[InputId.Input1]?.tr)
-      .toBeCloseTo(currentInput[PhysicalQuantityId.MeanRadiantTemperature], 6);
+      .toBeCloseTo(currentInput[PhysicalQuantityId.MeanRadiantTemperature] ?? NaN, 6);
   });
 
   it("stales only the active model cache for a pure option patch", async () => {
@@ -1619,7 +1619,7 @@ describe("createPointSession", () => {
 
     const previousUtciChartSource = session.calculationCacheByModel[ModelId.Utci].chartSource;
 
-    session.actions.updateInput(session.setting.activeInputId, InputControlId.Temperature, "27");
+    session.actions.updateInput(session.input.activeInputId, InputControlId.Temperature, "27");
 
     expect(session.calculationCacheByModel[ModelId.PmvAshrae].status).toBe("stale");
     expect(session.calculationCacheByModel[ModelId.Utci].status).toBe("stale");
@@ -1661,7 +1661,7 @@ describe("createPointSession", () => {
     expect(ipResultText).toContain("°F");
     expect(siChartTitle).toContain("°C");
     expect(ipChartTitle).toContain("°F");
-    expect(session.setting.unitSystem).toBe(UnitSystem.IP);
+    expect(session.input.unitSystem).toBe(UnitSystem.IP);
   });
 
   it("skips recalculation when scheduleCalculation is called on a ready cache without force", async () => {

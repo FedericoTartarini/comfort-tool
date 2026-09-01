@@ -6,7 +6,7 @@ import {
 } from "../../catalog/modelIds";
 import {
   PhysicalQuantityId,
-  primaryInputOrder,
+  derivedHumidityQuantityIds,
 } from "../../catalog/quantities";
 import { InputControlId } from "../../catalog/inputControls";
 import {
@@ -150,9 +150,6 @@ describe("shareState strict v1 codec", () => {
     const snapshot = createShareStateSnapshot(session);
     const restored = deserializeShareState(serializeShareState(snapshot));
 
-    expect(Object.keys(snapshot.quantitiesByInput[InputId.Input1])).toEqual(
-      primaryInputOrder,
-    );
     expect(
       Object.keys(snapshot.activeModifiersByInput[InputId.Input1]),
     ).toEqual(modifierOrder);
@@ -172,20 +169,30 @@ describe("shareState strict v1 codec", () => {
       ],
     ).toBe(true);
     expect(
-      snapshot.auxiliaryQuantitiesByInput[InputId.Input2],
+      snapshot.quantitiesByInput[InputId.Input1][
+        PhysicalQuantityId.MeasuredAirSpeed
+      ],
+    ).toBe(0.6);
+    expect(
+      snapshot.quantitiesByInput[InputId.Input2],
     ).not.toHaveProperty(PhysicalQuantityId.MeasuredAirSpeed);
     expect(
-      snapshot.auxiliaryQuantitiesByInput[InputId.Input2][
+      snapshot.quantitiesByInput[InputId.Input2][
         PhysicalQuantityId.MorningOutdoorTemperature
       ],
     ).toBe(10);
     expect(
-      snapshot.auxiliaryQuantitiesByInput[InputId.Input2],
+      snapshot.quantitiesByInput[InputId.Input2],
     ).not.toHaveProperty(PhysicalQuantityId.SolarAltitude);
+    for (const humidityId of derivedHumidityQuantityIds) {
+      expect(snapshot.quantitiesByInput[InputId.Input1]).not.toHaveProperty(
+        humidityId,
+      );
+    }
     expect(restored).toEqual(snapshot);
   });
 
-  it("round-trips a changed PHS quantity only under modelInputsByModel", () => {
+  it("round-trips a changed PHS quantity in quantitiesByInput", () => {
     const session = createPointSession();
     expect(
       session.actions.updateModelQuantity(
@@ -197,31 +204,24 @@ describe("shareState strict v1 codec", () => {
 
     const snapshot = createShareStateSnapshot(session);
 
-    expect(snapshot.modelInputsByModel[ModelId.Phs2023]).toEqual({
-      [PhysicalQuantityId.BodyWeight]: 90,
-    });
     expect(
-      snapshot.modelInputsByModel[ModelId.Phs2023],
+      snapshot.quantitiesByInput[InputId.Input1][PhysicalQuantityId.BodyWeight],
+    ).toBe(90);
+    expect(
+      snapshot.quantitiesByInput[InputId.Input1],
     ).not.toHaveProperty(PhysicalQuantityId.Height);
-    expect(snapshot.modelInputsByModel[ModelId.PmvAshrae]).toEqual({});
     expect(
-      decodeShareWire(serializeShareState(snapshot)).modelInputsByModel,
-    ).toEqual({
-      [ModelId.Phs2023]: { [PhysicalQuantityId.BodyWeight]: 90 },
-    });
-    expect(Object.keys(snapshot.quantitiesByInput[InputId.Input1])).toEqual([
-      ...primaryInputOrder,
-    ]);
-    expect(snapshot.quantitiesByInput[InputId.Input1]).not.toHaveProperty(
-      PhysicalQuantityId.BodyWeight,
-    );
+      (decodeShareWire(serializeShareState(snapshot)).quantitiesByInput as {
+        [InputId.Input1]: Record<string, number>;
+      })[InputId.Input1][PhysicalQuantityId.BodyWeight],
+    ).toBe(90);
 
     const restored = deserializeShareState(serializeShareState(snapshot));
-    expect(restored?.modelInputsByModel[ModelId.Phs2023]).toEqual({
-      [PhysicalQuantityId.BodyWeight]: 90,
-    });
+    expect(
+      restored?.quantitiesByInput[InputId.Input1][PhysicalQuantityId.BodyWeight],
+    ).toBe(90);
     expect(restored?.quantitiesByInput[InputId.Input1]).not.toHaveProperty(
-      PhysicalQuantityId.BodyWeight,
+      PhysicalQuantityId.Height,
     );
   });
 
@@ -448,14 +448,14 @@ describe("shareState strict v1 codec", () => {
 
     expect(createShareStateSnapshot(restored)).toEqual(snapshot);
     expect(
-      restored.setting.outputSettingsByModel[ModelId.PmvIso]
+      restored.chart.outputSettingsByModel[ModelId.PmvIso]
         .baselineInputId,
     ).toBe(InputId.Input3);
-    expect(restored.setting.compareInputIds).toEqual([
+    expect(restored.input.compareInputIds).toEqual([
       InputId.Input1,
       InputId.Input3,
     ]);
-    expect(restored.setting.activeInputId).toBe(InputId.Input3);
+    expect(restored.input.activeInputId).toBe(InputId.Input3);
   });
 
   it.each(Object.values(ModelId))(
@@ -622,8 +622,6 @@ describe("shareState strict v1 codec", () => {
 
     const oldShape = { ...current } as Record<string, unknown>;
     delete oldShape.activeModifiersByInput;
-    delete oldShape.auxiliaryQuantitiesByInput;
-    delete oldShape.modelInputsByModel;
     expect(parseShareStateSnapshot(oldShape)).toBeNull();
 
     expect(
@@ -642,10 +640,10 @@ describe("shareState strict v1 codec", () => {
     incomplete.activeModifiersByInput[InputId.Input1][ModifierId.SolarGain] =
       true;
 
-    const outOfRange = structuredClone(current);
-    outOfRange.auxiliaryQuantitiesByInput[InputId.Input1][
-      PhysicalQuantityId.SolarAltitude
-    ] = 91;
+    const derivedHumidity = structuredClone(current);
+    derivedHumidity.quantitiesByInput[InputId.Input1][
+      PhysicalQuantityId.DewPointTemperature
+    ] = 10;
 
     const unknownModifier = structuredClone(current);
     Object.assign(unknownModifier.activeModifiersByInput[InputId.Input1], {
@@ -653,7 +651,7 @@ describe("shareState strict v1 codec", () => {
     });
 
     const unknownField = structuredClone(current);
-    Object.assign(unknownField.auxiliaryQuantitiesByInput[InputId.Input1], {
+    Object.assign(unknownField.quantitiesByInput[InputId.Input1], {
       unknownField: 1,
     });
 
@@ -663,30 +661,23 @@ describe("shareState strict v1 codec", () => {
       ModifierId.DynamicClothing,
     );
 
-    const missingAuxiliaryInput = structuredClone(current);
+    const missingQuantitiesInput = structuredClone(current);
     Reflect.deleteProperty(
-      missingAuxiliaryInput.auxiliaryQuantitiesByInput,
+      missingQuantitiesInput.quantitiesByInput,
       InputId.Input1,
     );
 
-    const unknownModelInput = structuredClone(current);
-    Object.assign(
-      unknownModelInput.modelInputsByModel[ModelId.PmvAshrae],
-      { [PhysicalQuantityId.BodyWeight]: 80 },
-    );
-
     const nonFinite = structuredClone(current);
-    nonFinite.auxiliaryQuantitiesByInput[InputId.Input1][
+    nonFinite.quantitiesByInput[InputId.Input1][
       PhysicalQuantityId.MeasuredAirSpeed
     ] = Infinity;
 
     expect(parseShareStateSnapshot(incomplete)).toBeNull();
-    expect(parseShareStateSnapshot(outOfRange)).toBeNull();
+    expect(parseShareStateSnapshot(derivedHumidity)).toBeNull();
     expect(parseShareStateSnapshot(unknownModifier)).toBeNull();
     expect(parseShareStateSnapshot(unknownField)).toBeNull();
     expect(parseShareStateSnapshot(missingDynamicActiveKey)).toBeNull();
-    expect(parseShareStateSnapshot(missingAuxiliaryInput)).toBeNull();
-    expect(parseShareStateSnapshot(unknownModelInput)).toBeNull();
+    expect(parseShareStateSnapshot(missingQuantitiesInput)).toBeNull();
     expect(parseShareStateSnapshot(nonFinite)).toBeNull();
   });
 
@@ -805,11 +796,6 @@ describe("shareState strict v1 codec", () => {
     Reflect.deleteProperty(missingIso.models, ModelId.PmvIso);
 
     const emptyModels = { ...current, models: {} };
-    const missingPhsInputs = structuredClone(current);
-    Reflect.deleteProperty(
-      missingPhsInputs.modelInputsByModel,
-      ModelId.Phs2023,
-    );
 
     const invalidIsoChart = {
       ...current,
@@ -828,20 +814,11 @@ describe("shareState strict v1 codec", () => {
         UNKNOWN_MODEL: current.models[ModelId.Utci],
       },
     };
-    const unknownModelInputs = {
-      ...current,
-      modelInputsByModel: {
-        ...current.modelInputsByModel,
-        UNKNOWN_MODEL: {},
-      },
-    };
 
     expect(parseShareStateSnapshot(missingIso)).toEqual(current);
     expect(parseShareStateSnapshot(emptyModels)).toEqual(current);
-    expect(parseShareStateSnapshot(missingPhsInputs)).toEqual(current);
     expect(parseShareStateSnapshot(invalidIsoChart)).toBeNull();
     expect(parseShareStateSnapshot(unknownModel)).toBeNull();
-    expect(parseShareStateSnapshot(unknownModelInputs)).toBeNull();
     expect(
       parseShareStateSnapshot({ ...current, selectedModel: "PMV" }),
     ).toBeNull();
@@ -853,7 +830,14 @@ describe("shareState strict v1 codec", () => {
     const defaultWire = decodeShareWire(serializeShareState(defaultSnapshot));
 
     expect(defaultWire.models).toEqual({});
-    expect(defaultWire.modelInputsByModel).toEqual({});
+    expect(defaultWire).not.toHaveProperty("modelInputsByModel");
+    expect(defaultWire).not.toHaveProperty("auxiliaryQuantitiesByInput");
+    expect(defaultWire).not.toHaveProperty("selectedModel");
+    expect(
+      (defaultWire.quantitiesByInput as Record<string, Record<string, number>>)[
+        InputId.Input1
+      ],
+    ).not.toHaveProperty(PhysicalQuantityId.BodyWeight);
     expect(deserializeShareState(serializeShareState(defaultSnapshot))).toEqual(
       defaultSnapshot,
     );
@@ -874,9 +858,12 @@ describe("shareState strict v1 codec", () => {
       ModelId.PmvAshrae,
     ]);
     expect(changedWire.models).not.toHaveProperty(ModelId.PmvIso);
-    expect(changedWire.modelInputsByModel).toEqual({
-      [ModelId.Phs2023]: { [PhysicalQuantityId.BodyWeight]: 90 },
-    });
+    expect(
+      (changedWire.quantitiesByInput as Record<string, Record<string, number>>)[
+        InputId.Input1
+      ][PhysicalQuantityId.BodyWeight],
+    ).toBe(90);
+    expect(changedWire).not.toHaveProperty("modelInputsByModel");
     expect(deserializeShareState(serializeShareState(changedSnapshot))).toEqual(
       changedSnapshot,
     );
@@ -889,7 +876,7 @@ describe("shareState strict v1 codec", () => {
       HumidityInputMode.DewPoint,
     );
     original.actions.updateInput(
-      original.setting.activeInputId,
+      original.input.activeInputId,
       InputControlId.Humidity,
       "10",
     );
@@ -923,6 +910,7 @@ describe("shareState strict v1 codec", () => {
       throw new Error("Expected a valid modifier snapshot.");
     applyShareSnapshotToState(restored, restoredSnapshot);
 
+    seedSelectedModel(restored, ModelId.Utci);
     expect(restored.inputModifierControls()).toEqual([]);
     expect(
       restored.effectiveQuantities(ModelId.Utci)[
@@ -947,15 +935,12 @@ describe("shareState strict v1 codec", () => {
     const snapshot = createShareStateSnapshot(
       session,
     ) as unknown as Record<string, unknown>;
-    const { quantitiesByInput, auxiliaryQuantitiesByInput, ...rest } = snapshot;
+    const { quantitiesByInput, ...rest } = snapshot;
 
     expect(
       parseShareStateSnapshot({
         ...rest,
         inputsByInput: quantitiesByInput,
-        auxiliaryQuantitiesByInput,
-        modelInputsByModel: snapshot.modelInputsByModel,
-        activeModifiersByInput: snapshot.activeModifiersByInput,
       }),
     ).toBeNull();
 
@@ -970,6 +955,20 @@ describe("shareState strict v1 codec", () => {
       parseShareStateSnapshot({
         ...snapshot,
         derivedByInput: {},
+      }),
+    ).toBeNull();
+
+    expect(
+      parseShareStateSnapshot({
+        ...snapshot,
+        auxiliaryQuantitiesByInput: {},
+      }),
+    ).toBeNull();
+
+    expect(
+      parseShareStateSnapshot({
+        ...snapshot,
+        modelInputsByModel: {},
       }),
     ).toBeNull();
   });

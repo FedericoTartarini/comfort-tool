@@ -23,8 +23,6 @@ import {
 import { defaultPhsPersonSettings } from "../../catalog/phs";
 import {
   PhysicalQuantityId,
-  getPhysicalQuantityMeta,
-  primaryInputOrder,
 } from "../../catalog/quantities";
 import { ModifierId } from "../../catalog/inputModifiers";
 import {
@@ -48,7 +46,6 @@ import {
   getModelsForSurface,
   getModelsForStandard,
 } from ".";
-import { isAllowedExtraQuantityId } from "../../engines/comfort/quantityStateRouting";
 
 function createInputsSi(relativeAirSpeed: number): BandInputsSi {
   return { [PhysicalQuantityId.RelativeAirSpeed]: relativeAirSpeed };
@@ -645,30 +642,16 @@ describe("comfort model capability registry", () => {
     });
   });
 
-  it("keeps body weight and height as Extra catalog quantities that only PHS selects", () => {
-    const weight = getPhysicalQuantityMeta(PhysicalQuantityId.BodyWeight);
-    const height = getPhysicalQuantityMeta(PhysicalQuantityId.Height);
-
-    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.BodyWeight);
-    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.Height);
-    expect(weight).toMatchObject({
-      id: PhysicalQuantityId.BodyWeight,
-      defaultSi: defaultPhsPersonSettings[PhysicalQuantityId.BodyWeight],
-    });
-    expect(height).toMatchObject({
-      id: PhysicalQuantityId.Height,
-      defaultSi: defaultPhsPersonSettings[PhysicalQuantityId.Height],
-    });
-    expect(isAllowedExtraQuantityId(PhysicalQuantityId.BodyWeight)).toBe(true);
-    expect(isAllowedExtraQuantityId(PhysicalQuantityId.Height)).toBe(true);
-    expect(getComfortModelConfig(ModelId.Phs2023).extraQuantities).toEqual([
-      PhysicalQuantityId.BodyWeight,
-      PhysicalQuantityId.Height,
-    ]);
+  it("keeps PHS body weight and height off the Analysis input panel", () => {
+    expect(defaultPhsPersonSettings[PhysicalQuantityId.BodyWeight]).toBe(75);
+    expect(defaultPhsPersonSettings[PhysicalQuantityId.Height]).toBe(1.8);
 
     for (const modelId of comfortModelOrder) {
-      if (modelId === ModelId.Phs2023) continue;
-      expect(getComfortModelConfig(modelId).extraQuantities).toEqual([]);
+      const declaredIds = getComfortModelConfig(modelId).inputFields.flatMap((field) =>
+        field.kind === "quantity" ? [field.quantityId] : [],
+      );
+      expect(declaredIds).not.toContain(PhysicalQuantityId.BodyWeight);
+      expect(declaredIds).not.toContain(PhysicalQuantityId.Height);
     }
   });
 });

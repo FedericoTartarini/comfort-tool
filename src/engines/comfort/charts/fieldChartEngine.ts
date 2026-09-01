@@ -40,7 +40,7 @@ const DEFAULT_CHART_HEIGHT = 480;
 
 export interface FieldChartAxisSpec {
   field: PhysicalQuantityId;
-  rangeSi?: ChartRange;
+  rangeSi: ChartRange;
   points: number;
   label?: string;
   units?: string | ((unitSystem: UnitSystemType) => string);

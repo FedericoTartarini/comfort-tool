@@ -6,18 +6,14 @@ import {
 import {
   PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-  type PrimaryInputState,
-  type PrimaryQuantityId,
+  type QuantityState,
 } from "../catalog/quantities";
 import { InputId } from "../catalog/inputSlots";
+import { defaultPhsPersonSettings } from "../catalog/phs";
 import { comfortModelConfigs } from "../state/modelRegistry";
 import {
   createQuantitiesByInput,
-  createDefaultModelInputsForModel,
 } from "../state/pointSession/initialPointSessionState";
-import {
-  createAuxiliaryQuantitiesByInput,
-} from "../engines/comfort/quantityStateRouting";
 import type { PmvRequest } from "../declarations/pmv/calculation";
 import type { UtciRequest } from "../declarations/utci/utci";
 import {
@@ -27,10 +23,10 @@ import {
 } from "../engines/comfort/controls/fieldInputBehaviors";
 
 /**
- * Independent SI primary goldens used across regression tests.
- * Do not replace these with catalog `defaultSi` — that would hide a default bug.
+ * Independent SI Compare goldens used across regression tests.
+ * Do not replace these with Compare-slot seeds from `inputDefaultsById`.
  */
-export const standardPrimaryFixture = {
+export const standardPrimaryFixture: QuantityState = {
   [PhysicalQuantityId.DryBulbTemperature]: 26,
   [PhysicalQuantityId.MeanRadiantTemperature]: 25,
   [PhysicalQuantityId.RelativeAirSpeed]: 0.1,
@@ -40,15 +36,14 @@ export const standardPrimaryFixture = {
   [PhysicalQuantityId.ClothingInsulation]: 0.5,
   [PhysicalQuantityId.ExternalWork]: 0,
   [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20,
-} satisfies PrimaryInputState;
+};
 
 /**
  * Explicit SI values only when `standardPrimaryFixture` is outside a model's
- * declared control range. Do not invent these from min/max or catalog
- * `defaultSi`.
+ * declared control range. Do not invent these from min/max.
  */
 export const explicitGoldenPrimaryOverrides: Partial<
-  Record<ModelIdType, Partial<PrimaryInputState>>
+  Record<ModelIdType, QuantityState>
 > = {
   [ModelId.WindChill]: {
     [PhysicalQuantityId.DryBulbTemperature]: -10,
@@ -56,7 +51,7 @@ export const explicitGoldenPrimaryOverrides: Partial<
 };
 
 /** Known-value PHS snapshot inputs. Not Compare goldens. */
-export const phsBaselineInputOverrides: Partial<PrimaryInputState> = {
+export const phsBaselineInputOverrides: QuantityState = {
   [PhysicalQuantityId.DryBulbTemperature]: 35,
   [PhysicalQuantityId.MeanRadiantTemperature]: 35,
   [PhysicalQuantityId.WindSpeed]: 0.1,
@@ -66,7 +61,7 @@ export const phsBaselineInputOverrides: Partial<PrimaryInputState> = {
 };
 
 /** Known-value PHS reference person. Not Compare goldens. */
-export const phsBaselineModelInputs: Partial<Record<PhysicalQuantityIdType, number>> = {
+export const phsBaselineModelInputs: QuantityState = {
   [PhysicalQuantityId.BodyWeight]: 75,
   [PhysicalQuantityId.Height]: 1.8,
 };
@@ -80,9 +75,9 @@ function isValueInDeclaredRange(
 
 export function declaredPrimaryQuantityIdsForModel(
   modelId: ModelIdType,
-): PrimaryQuantityId[] {
-  const seen = new Set<PrimaryQuantityId>();
-  const quantityIds: PrimaryQuantityId[] = [];
+): PhysicalQuantityIdType[] {
+  const seen = new Set<PhysicalQuantityIdType>();
+  const quantityIds: PhysicalQuantityIdType[] = [];
   for (const spec of comfortModelConfigs[modelId].inputFields) {
     for (const quantityId of primaryQuantityIdsForInputField(spec)) {
       if (seen.has(quantityId)) continue;
@@ -101,30 +96,30 @@ export function declaredControlIdsForModel(
 
 function declaredRangeForModelPrimary(
   modelId: ModelIdType,
-  quantityId: PrimaryQuantityId,
+  quantityId: PhysicalQuantityIdType,
 ): { minSi: number; maxSi: number } {
   for (const spec of comfortModelConfigs[modelId].inputFields) {
     if (primaryQuantityIdsForInputField(spec).includes(quantityId)) {
       return declaredSiRangeForInputField(spec, quantityId);
     }
   }
-  throw new Error(`${modelId} does not declare primary ${quantityId}.`);
+  throw new Error(`${modelId} does not declare ${quantityId}.`);
 }
 
 /**
- * Registry-derived golden primary overrides: declared input fields, filled from
+ * Registry-derived golden input overrides: declared input fields, filled from
  * `standardPrimaryFixture` when that value is inside the declared range.
  */
 export function getGoldenInputOverrides(
   modelId: ModelIdType,
-): Partial<PrimaryInputState> {
-  const overrides: Partial<PrimaryInputState> = {};
+): QuantityState {
+  const overrides: QuantityState = {};
   const explicit = explicitGoldenPrimaryOverrides[modelId] ?? {};
 
   for (const quantityId of declaredPrimaryQuantityIdsForModel(modelId)) {
     const fixtureValue = standardPrimaryFixture[quantityId];
     const range = declaredRangeForModelPrimary(modelId, quantityId);
-    if (isValueInDeclaredRange(fixtureValue, range)) {
+    if (fixtureValue !== undefined && isValueInDeclaredRange(fixtureValue, range)) {
       overrides[quantityId] = fixtureValue;
       continue;
     }
@@ -132,7 +127,7 @@ export function getGoldenInputOverrides(
     const explicitValue = explicit[quantityId];
     if (explicitValue === undefined) {
       throw new Error(
-        `Missing explicit golden SI for ${modelId} ${quantityId}: standard fixture ${fixtureValue} is outside declared range [${range.minSi}, ${range.maxSi}]. Do not invent a value from min/max or catalog defaultSi.`,
+        `Missing explicit golden SI for ${modelId} ${quantityId}: standard fixture ${fixtureValue} is outside declared range [${range.minSi}, ${range.maxSi}]. Do not invent a value from min/max.`,
       );
     }
     if (!isValueInDeclaredRange(explicitValue, range)) {
@@ -146,16 +141,24 @@ export function getGoldenInputOverrides(
   return overrides;
 }
 
-/** Registry-derived model-scoped SI (catalog defaults for that model's extend list). */
+/** PHS person SI used by known-value snapshots. Other models have none. */
 export function getGoldenModelInputOverrides(
   modelId: ModelIdType,
-): Partial<Record<PhysicalQuantityIdType, number>> {
-  return createDefaultModelInputsForModel(modelId);
+): QuantityState {
+  if (modelId !== ModelId.Phs2023) {
+    return {};
+  }
+  return {
+    [PhysicalQuantityId.BodyWeight]:
+      defaultPhsPersonSettings[PhysicalQuantityId.BodyWeight],
+    [PhysicalQuantityId.Height]:
+      defaultPhsPersonSettings[PhysicalQuantityId.Height],
+  };
 }
 
 function mergePrimaryFixture(
-  overrides: Partial<PrimaryInputState> = {},
-): PrimaryInputState {
+  overrides: QuantityState = {},
+): QuantityState {
   return {
     ...standardPrimaryFixture,
     ...overrides,
@@ -163,46 +166,48 @@ function mergePrimaryFixture(
 }
 
 export function pickUtciRequest(
-  overrides: Partial<PrimaryInputState> = {},
+  overrides: QuantityState = {},
 ): UtciRequest {
   const base = mergePrimaryFixture(overrides);
   return {
-    tdb: base[PhysicalQuantityId.DryBulbTemperature],
-    tr: base[PhysicalQuantityId.MeanRadiantTemperature],
-    v: base[PhysicalQuantityId.WindSpeed],
-    rh: base[PhysicalQuantityId.RelativeHumidity],
+    tdb: base[PhysicalQuantityId.DryBulbTemperature]!,
+    tr: base[PhysicalQuantityId.MeanRadiantTemperature]!,
+    v: base[PhysicalQuantityId.WindSpeed]!,
+    rh: base[PhysicalQuantityId.RelativeHumidity]!,
   };
 }
 
 export function pickPmvRequest(
-  overrides: Partial<PrimaryInputState> = {},
+  overrides: QuantityState = {},
   options: Pick<PmvRequest, "occupantHasAirSpeedControl"> = {
     occupantHasAirSpeedControl: true,
   },
 ): PmvRequest {
   const base = mergePrimaryFixture(overrides);
   return {
-    tdb: base[PhysicalQuantityId.DryBulbTemperature],
-    tr: base[PhysicalQuantityId.MeanRadiantTemperature],
-    vr: base[PhysicalQuantityId.RelativeAirSpeed],
-    rh: base[PhysicalQuantityId.RelativeHumidity],
-    met: base[PhysicalQuantityId.MetabolicRate],
-    clo: base[PhysicalQuantityId.ClothingInsulation],
-    wme: base[PhysicalQuantityId.ExternalWork],
+    tdb: base[PhysicalQuantityId.DryBulbTemperature]!,
+    tr: base[PhysicalQuantityId.MeanRadiantTemperature]!,
+    vr: base[PhysicalQuantityId.RelativeAirSpeed]!,
+    rh: base[PhysicalQuantityId.RelativeHumidity]!,
+    met: base[PhysicalQuantityId.MetabolicRate]!,
+    clo: base[PhysicalQuantityId.ClothingInsulation]!,
+    wme: base[PhysicalQuantityId.ExternalWork]!,
     ...options,
   };
 }
 
 export function createGoldenCalculationContext(
   modelId: ModelIdType,
-  inputOverrides: Partial<PrimaryInputState> = {},
-  modelInputOverrides: Partial<Record<PhysicalQuantityIdType, number>> = {},
+  inputOverrides: QuantityState = {},
+  modelInputOverrides: QuantityState = {},
 ): ModelCalculationContext {
   const config = comfortModelConfigs[modelId];
   const quantitiesByInput = createQuantitiesByInput();
   quantitiesByInput[InputId.Input1] = {
     ...quantitiesByInput[InputId.Input1],
+    ...getGoldenModelInputOverrides(modelId),
     ...inputOverrides,
+    ...modelInputOverrides,
   };
   const options = config.parseOptions(config.defaultOptions);
   if (!options) {
@@ -211,11 +216,6 @@ export function createGoldenCalculationContext(
 
   return createModelCalculationContext({
     effectiveQuantitiesByInput: quantitiesByInput,
-    auxiliaryQuantitiesByInput: createAuxiliaryQuantitiesByInput(),
-    modelInputs: {
-      ...createDefaultModelInputsForModel(modelId),
-      ...modelInputOverrides,
-    },
     options,
   });
 }

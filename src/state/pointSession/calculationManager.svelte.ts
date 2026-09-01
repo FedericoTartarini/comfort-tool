@@ -47,7 +47,7 @@ export function createCalculationManager(
     try {
       const modelConfig = getComfortModelConfig(selectedModel);
       const options = modelConfig.parseOptions(
-        session.setting.modelOptionsByModel[selectedModel],
+        session.input.modelOptionsByModel[selectedModel],
       );
       if (!options) {
         throw new Error(
@@ -57,8 +57,6 @@ export function createCalculationManager(
       const effectiveInputs = getEffectiveQuantitiesByInput(selectedModel);
       const calculationContext: ModelCalculationContext = {
         effectiveQuantitiesByInput: effectiveInputs,
-        auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
-        modelInputs: session.input.modelInputsByModel[selectedModel],
         options,
       };
       const calculationOutputs = modelConfig.calculate(calculationContext, visibleInputIds);

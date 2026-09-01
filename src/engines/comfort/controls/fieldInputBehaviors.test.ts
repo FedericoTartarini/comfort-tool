@@ -85,7 +85,7 @@ describe("fieldInputBehaviors", () => {
         minValue: 20,
         maxValue: 50,
       },
-      { kind: "simpleHumidity" },
+      { kind: "simpleHumidity", minValue: 0, maxValue: 100 },
     ]);
     const config = builder.build();
 
@@ -140,23 +140,19 @@ describe("fieldInputBehaviors", () => {
         kind: "numeric",
         controlId: InputControlId.WindSpeed,
         fieldKey: PhysicalQuantityId.WindSpeed,
+        minValue: 0,
+        maxValue: 17,
       },
-      { kind: "simpleHumidity" },
+      { kind: "simpleHumidity", minValue: 0, maxValue: 100 },
     ]);
     const config = builder.build();
     const radiant = config.controls.find(({ id }) => id === InputControlId.RadiantTemperature);
-    const context = {
+    const context: ControlBehaviorContext = {
       quantitiesByInput: inputDefaultsById,
-      auxiliaryQuantitiesByInput: {
-        input1: {},
-        input2: {},
-        input3: {},
-      },
-      modelInputs: {},
       options: { [OptionKey.TemperatureMode]: TemperatureMode.Operative },
       unitSystem: UnitSystem.SI,
       visibleInputIds: [InputId.Input1],
-    } as ControlBehaviorContext;
+    };
 
     expect(radiant?.behavior.buildViewModel(context).hidden).toBe(true);
   });
@@ -164,23 +160,17 @@ describe("fieldInputBehaviors", () => {
   it("shows radiant temperature in air mode for operative temperature controls", () => {
     const builder = createBuilder();
     builder.setInputFields([
-      { kind: "operativeTemperature" },
-      { kind: "radiantTemperature", hideWhen: "operative" },
+      { kind: "operativeTemperature", minValue: 10, maxValue: 40 },
+      { kind: "radiantTemperature", hideWhen: "operative", minValue: 10, maxValue: 40 },
     ]);
     const config = builder.build();
     const radiant = config.controls.find(({ id }) => id === InputControlId.RadiantTemperature);
-    const context = {
+    const context: ControlBehaviorContext = {
       quantitiesByInput: inputDefaultsById,
-      auxiliaryQuantitiesByInput: {
-        input1: {},
-        input2: {},
-        input3: {},
-      },
-      modelInputs: {},
       options: { [OptionKey.TemperatureMode]: TemperatureMode.Air },
       unitSystem: UnitSystem.SI,
       visibleInputIds: [InputId.Input1],
-    } as ControlBehaviorContext;
+    };
 
     expect(radiant?.behavior.buildViewModel(context).hidden).toBe(false);
   });
@@ -196,35 +186,31 @@ describe("fieldInputBehaviors", () => {
 
     expect(control.behavior.buildViewModel({
       quantitiesByInput: inputDefaultsById,
-      auxiliaryQuantitiesByInput: {
-        input1: {},
-        input2: {},
-        input3: {},
-      },
-      modelInputs: {},
       options: {},
       unitSystem: UnitSystem.SI,
       visibleInputIds: [InputId.Input1],
-    } as ControlBehaviorContext).minValue).toBe(10);
+    }).minValue).toBe(10);
   });
 
   it("converts extra catalog quantities from catalog SI units without model id branches", () => {
     const control = resolveInputField({
       kind: "quantity",
       quantityId: PhysicalQuantityId.BodyWeight,
+      minValue: 30,
+      maxValue: 200,
     });
-    const context = {
-      quantitiesByInput: inputDefaultsById,
-      auxiliaryQuantitiesByInput: {
-        input1: {},
-        input2: {},
-        input3: {},
+    const context: ControlBehaviorContext = {
+      quantitiesByInput: {
+        ...inputDefaultsById,
+        [InputId.Input1]: {
+          ...inputDefaultsById[InputId.Input1],
+          [PhysicalQuantityId.BodyWeight]: 75,
+        },
       },
-      modelInputs: { [PhysicalQuantityId.BodyWeight]: 75 },
       options: {},
       unitSystem: UnitSystem.IP,
       visibleInputIds: [InputId.Input1],
-    } as ControlBehaviorContext;
+    };
 
     const viewModel = control.behavior.buildViewModel(context);
     expect(viewModel.label).toBe("Body weight");
@@ -242,17 +228,17 @@ describe("fieldInputBehaviors", () => {
       String(viewModel.numericValuesByInput[InputId.Input1]),
     );
     expect(
-      patch?.modelInputsPatch?.[PhysicalQuantityId.BodyWeight] ?? 75,
+      patch?.quantitiesPatch?.[InputId.Input1]?.[PhysicalQuantityId.BodyWeight] ?? 75,
     ).toBeCloseTo(75, 8);
   });
 
   it("maps each input field kind to its control id, primary quantities, and SI range", () => {
-    expect(inputFieldControlId({ kind: "simpleHumidity" })).toBe(InputControlId.Humidity);
-    expect(primaryQuantityIdsForInputField({ kind: "simpleHumidity" })).toEqual([
+    expect(inputFieldControlId({ kind: "simpleHumidity", minValue: 0, maxValue: 100 })).toBe(InputControlId.Humidity);
+    expect(primaryQuantityIdsForInputField({ kind: "simpleHumidity", minValue: 0, maxValue: 100 })).toEqual([
       PhysicalQuantityId.RelativeHumidity,
     ]);
     expect(declaredSiRangeForInputField(
-      { kind: "simpleHumidity" },
+      { kind: "simpleHumidity", minValue: 0, maxValue: 100 },
       PhysicalQuantityId.RelativeHumidity,
     )).toEqual({ minSi: 0, maxSi: 100 });
 
@@ -275,10 +261,14 @@ describe("fieldInputBehaviors", () => {
     expect(primaryQuantityIdsForInputField({
       kind: "quantity",
       quantityId: PhysicalQuantityId.BodyWeight,
-    })).toEqual([]);
+      minValue: 30,
+      maxValue: 200,
+    })).toEqual([PhysicalQuantityId.BodyWeight]);
     expect(inputFieldControlId({
       kind: "quantity",
       quantityId: PhysicalQuantityId.BodyWeight,
+      minValue: 30,
+      maxValue: 200,
     })).toBe(PhysicalQuantityId.BodyWeight);
   });
 
@@ -286,6 +276,8 @@ describe("fieldInputBehaviors", () => {
     expect(() => resolveInputField({
       kind: "quantity",
       quantityId: PhysicalQuantityId.BodyWeight,
+      minValue: 30,
+      maxValue: 200,
     })).not.toThrow();
   });
 });

@@ -9,7 +9,6 @@ import { InputId, inputOrder } from "../catalog/inputSlots";
 import {
   PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-  type PrimaryInputState,
 } from "../catalog/quantities";
 import { supportsStandardSurface, SurfaceId } from "../catalog/surfaces";
 import { syncDerivedStateForInput } from "../engines/comfort/syncState";
@@ -55,7 +54,7 @@ async function configureVisibleInputs(
   } else {
     session.actions.setCompareEnabled(true);
     await waitForIdle(session);
-    const input3Visible = session.setting.compareInputIds.includes(
+    const input3Visible = session.input.compareInputIds.includes(
       InputId.Input3,
     );
     if (count === 2 && input3Visible) {
@@ -82,12 +81,11 @@ function applyGoldenInputs(
         quantityId === PhysicalQuantityId.DryBulbTemperature
           ? value + SLOT_DRY_BULB_OFFSETS_C[index]
           : value;
-      quantities[quantityId as keyof PrimaryInputState] = applied;
+      quantities[quantityId as PhysicalQuantityIdType] = applied;
     }
     syncDerivedStateForInput(
       inputId,
       session.input.quantitiesByInput,
-      session.input.auxiliaryQuantitiesByInput,
     );
   });
   for (const [quantityId, value] of Object.entries(getGoldenModelInputOverrides(modelId))) {

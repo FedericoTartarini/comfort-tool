@@ -1,4 +1,5 @@
-import { PhysicalQuantityId, PrimaryQuantityId, getQuantityPresentationMeta, type QuantityPresentationMeta } from "../../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../../catalog/quantities";
+import { unitLabel } from "../../../catalog/units";
 import type {
   AdvancedOptionMenu,
   AdvancedOptionSection,
@@ -31,7 +32,11 @@ import {
   createSingleInputPatch,
 } from "./types";
 
-export type { QuantityPresentationMeta };
+export interface CatalogFieldPresentation {
+  label: string;
+  displayUnits: string;
+  step: number;
+}
 
 export interface PresentationMeta {
   label: string;
@@ -44,10 +49,10 @@ export interface PresentationMeta {
 
 export interface NumericControlBehaviorConfig {
   controlId: InputControlIdType;
-  fieldKey: PrimaryQuantityId;
+  fieldKey: PhysicalQuantityId;
   getPresentation?: (
     context: ControlBehaviorContext,
-    meta: QuantityPresentationMeta,
+    meta: CatalogFieldPresentation,
   ) => PresentationMeta;
   hidden?: (context: ControlBehaviorContext) => boolean;
   disabled?: (context: ControlBehaviorContext) => boolean;
@@ -90,7 +95,7 @@ export function requireOptionValue<Value extends string>(
 }
 
 function buildRangeText(
-  fieldKey: PrimaryQuantityId,
+  fieldKey: PhysicalQuantityId,
   minValue: number,
   maxValue: number,
   context: ControlBehaviorContext,
@@ -106,24 +111,22 @@ function buildRangeText(
 
 export function buildDefaultPresentation(
   context: ControlBehaviorContext,
-  quantityId: PrimaryQuantityId,
-  overrides?: { minValue?: number; maxValue?: number },
+  quantityId: PhysicalQuantityId,
+  rangeSi: { minValue: number; maxValue: number },
 ): PresentationMeta {
-  const meta = getQuantityPresentationMeta(quantityId, context.unitSystem);
-  const minValue = overrides?.minValue ?? meta.minSi;
-  const maxValue = overrides?.maxValue ?? meta.maxSi;
+  const meta = getPhysicalQuantityMeta(quantityId);
   return {
     label: meta.label,
-    displayUnits: meta.displayUnits,
+    displayUnits: unitLabel(meta.siUnit, context.unitSystem),
     step: meta.step,
     rangeText: buildRangeText(
       quantityId,
-      minValue,
-      maxValue,
+      rangeSi.minValue,
+      rangeSi.maxValue,
       context,
     ),
-    minValue: convertQuantityFromSi(quantityId, minValue, context.unitSystem),
-    maxValue: convertQuantityFromSi(quantityId, maxValue, context.unitSystem),
+    minValue: convertQuantityFromSi(quantityId, rangeSi.minValue, context.unitSystem),
+    maxValue: convertQuantityFromSi(quantityId, rangeSi.maxValue, context.unitSystem),
   };
 }
 
@@ -162,16 +165,23 @@ export function createControlBehavior(
     config.getDisplayValue?.(context, inputId)
     ?? convertQuantityFromSi(
       config.fieldKey,
-      context.quantitiesByInput[inputId][config.fieldKey],
+      context.quantitiesByInput[inputId][config.fieldKey] ?? 0,
       context.unitSystem,
     )
   );
   return {
     buildViewModel: (context): InputControlViewModel => {
-      const presentationMeta = getQuantityPresentationMeta(
-        config.fieldKey,
-        context.unitSystem,
-      );
+      const catalog = getPhysicalQuantityMeta(config.fieldKey);
+      const presentationMeta: CatalogFieldPresentation = {
+        label: catalog.label,
+        displayUnits: unitLabel(catalog.siUnit, context.unitSystem),
+        step: catalog.step,
+      };
+      if (config.minValue === undefined || config.maxValue === undefined) {
+        throw new Error(
+          `Numeric control ${config.controlId} must declare SI minValue and maxValue.`,
+        );
+      }
       const presentation = config.getPresentation?.(context, presentationMeta)
         ?? buildDefaultPresentation(context, config.fieldKey, {
           minValue: config.minValue,
@@ -225,14 +235,23 @@ const airSpeedControlModeValues = Object.values(AirSpeedControlMode);
 
 export function createAirSpeedControlBehavior(
   controlId: InputControlIdType,
-  options: { supportsOccupantAirSpeedControl?: boolean } = {},
+  options: {
+    supportsOccupantAirSpeedControl?: boolean;
+    minValue: number;
+    maxValue: number;
+  },
 ): InputControlBehavior {
   const supportsOccupantAirSpeedControl = options.supportsOccupantAirSpeedControl ?? true;
   return createControlBehavior({
     controlId,
     fieldKey: PhysicalQuantityId.RelativeAirSpeed,
+    minValue: options.minValue,
+    maxValue: options.maxValue,
     getPresentation: (context, meta) => ({
-      ...buildDefaultPresentation(context, PhysicalQuantityId.RelativeAirSpeed),
+      ...buildDefaultPresentation(context, PhysicalQuantityId.RelativeAirSpeed, {
+        minValue: options.minValue,
+        maxValue: options.maxValue,
+      }),
       label: "Relative air speed",
       displayUnits: meta.displayUnits,
     }),

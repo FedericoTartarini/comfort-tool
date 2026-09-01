@@ -3,7 +3,7 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
 
-// Must match primaryInputOrder values in src/catalog/quantities.ts
+// Must match PhysicalQuantityId values in src/catalog/quantities.ts
 // Guarded by src/catalog/catalogWireIds.test.ts
 const restrictedWireStringSelectors = [
   "tdb",
@@ -11,10 +11,37 @@ const restrictedWireStringSelectors = [
   "vr",
   "v",
   "rh",
+  "hr",
   "met",
   "clo",
   "wme",
   "t_running_mean",
+  "t_o",
+  "t_dp",
+  "t_wb",
+  "p_vap",
+  "v_measured",
+  "tout",
+  "sol_altitude",
+  "sharp",
+  "sol_radiation_dir",
+  "sol_transmittance",
+  "f_svv",
+  "f_bes",
+  "weight",
+  "height",
+  "pmv",
+  "ppd",
+  "set",
+  "ce",
+  "hi",
+  "humidex",
+  "wci",
+  "wct",
+  "utci",
+  "limiting_exposure_time",
+  "t_re",
+  "sweat_loss_g",
 ].map((value) => ({
   selector: `Literal[value='${value}']`,
   message: `Use PhysicalQuantityId instead of the wire string "${value}".`,

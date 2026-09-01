@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ModelId } from "../catalog/modelIds";
 import {
   PhysicalQuantityId,
-  getPhysicalQuantityMeta,
-  type PrimaryQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../catalog/quantities";
 import { comfortModelConfigs, comfortModelOrder } from "../state/modelRegistry";
 import {
@@ -26,7 +25,7 @@ import {
 
 function rangeForDeclaredPrimary(
   modelId: (typeof comfortModelOrder)[number],
-  quantityId: PrimaryQuantityId,
+  quantityId: PhysicalQuantityIdType,
 ) {
   for (const spec of comfortModelConfigs[modelId].inputFields) {
     if (primaryQuantityIdsForInputField(spec).includes(quantityId)) {
@@ -60,10 +59,6 @@ describe("golden fixtures — registry derivation", () => {
       for (const quantityId of requiredPrimaryQuantitiesByModel[modelId]) {
         const value = overrides[quantityId];
         expect(value).toEqual(expect.any(Number));
-        const catalogDefault = getPhysicalQuantityMeta(quantityId).defaultSi;
-        if (value !== standardPrimaryFixture[quantityId]) {
-          expect(value).not.toBe(catalogDefault);
-        }
       }
     }
   });
@@ -73,16 +68,16 @@ describe("golden fixtures — registry derivation", () => {
       const explicit = explicitGoldenPrimaryOverrides[modelId] ?? {};
       const declared = new Set(declaredPrimaryQuantityIdsForModel(modelId));
 
-      for (const quantityId of Object.keys(explicit) as PrimaryQuantityId[]) {
+      for (const quantityId of Object.keys(explicit) as PhysicalQuantityIdType[]) {
         expect(declared.has(quantityId)).toBe(true);
         const range = rangeForDeclaredPrimary(modelId, quantityId);
-        expect(isInRange(standardPrimaryFixture[quantityId], range)).toBe(false);
+        expect(isInRange(standardPrimaryFixture[quantityId] ?? NaN, range)).toBe(false);
         expect(isInRange(explicit[quantityId] as number, range)).toBe(true);
       }
 
       for (const quantityId of declared) {
         const range = rangeForDeclaredPrimary(modelId, quantityId);
-        if (!isInRange(standardPrimaryFixture[quantityId], range)) {
+        if (!isInRange(standardPrimaryFixture[quantityId] ?? NaN, range)) {
           expect(explicit[quantityId]).toEqual(expect.any(Number));
         } else {
           expect(explicit[quantityId]).toBeUndefined();

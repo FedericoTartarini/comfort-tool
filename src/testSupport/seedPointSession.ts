@@ -46,7 +46,7 @@ export function seedModifierInput(
   quantityId: PhysicalQuantityIdType,
   valueSi: number,
 ): void {
-  const display = convertQuantityFromSi(quantityId, valueSi, session.setting.unitSystem);
+  const display = convertQuantityFromSi(quantityId, valueSi, session.input.unitSystem);
   const accepted = session.actions.updateModifierInput(
     inputId,
     modifierId,
@@ -81,7 +81,7 @@ export function seedCompareVisibleInputs(
   session.actions.setCompareEnabled(true);
   const wanted = new Set(inputIds);
   for (const inputId of [InputId.Input2, InputId.Input3]) {
-    const visible = session.setting.compareInputIds.includes(inputId);
+    const visible = session.input.compareInputIds.includes(inputId);
     if (visible !== wanted.has(inputId)) {
       session.actions.toggleCompareInputVisibility(inputId);
     }

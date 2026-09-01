@@ -1,8 +1,8 @@
 import {
   PhysicalQuantityId,
-  type PrimaryInputState,
-  type PrimaryQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
+  type QuantityRangeSi,
+  type QuantityState,
 } from "./quantities";
 
 export const ModifierId = {
@@ -30,12 +30,12 @@ export type ModifierInputValueMap<
 };
 
 export type ModifierInputPatch<
-  AffectedFields extends readonly PrimaryQuantityId[],
-> = Partial<Pick<PrimaryInputState, AffectedFields[number]>>;
+  AffectedFields extends readonly PhysicalQuantityIdType[],
+> = Partial<Pick<QuantityState, AffectedFields[number]>>;
 
 export interface InputModifier<
   ExtraInputs extends readonly PhysicalQuantityIdType[] = readonly PhysicalQuantityIdType[],
-  AffectedFields extends readonly PrimaryQuantityId[] = readonly PrimaryQuantityId[],
+  AffectedFields extends readonly PhysicalQuantityIdType[] = readonly PhysicalQuantityIdType[],
 > {
   id: ModifierId;
   label: string;
@@ -43,14 +43,14 @@ export interface InputModifier<
   extraInputs: ExtraInputs;
   affectedFields: AffectedFields;
   apply: (
-    inputs: Readonly<PrimaryInputState>,
+    inputs: Readonly<QuantityState>,
     extraInputs: Readonly<ModifierInputValueMap<ExtraInputs>>,
   ) => ModifierInputPatch<AffectedFields>;
 }
 
 export function defineInputModifier<
   const ExtraInputs extends readonly PhysicalQuantityIdType[],
-  const AffectedFields extends readonly PrimaryQuantityId[],
+  const AffectedFields extends readonly PhysicalQuantityIdType[],
 >(
   definition: InputModifier<ExtraInputs, AffectedFields>,
 ): InputModifier<ExtraInputs, AffectedFields> {
@@ -88,3 +88,16 @@ export const inputModifierCatalogue: Record<ModifierId, InputModifierCatalogueEn
 
 export const modifierQuantityIds: readonly PhysicalQuantityIdType[] =
   modifierOrder.flatMap((id) => [...inputModifierCatalogue[id].extraInputs]);
+
+export const modifierExtraInputRangeSi: Partial<
+  Record<PhysicalQuantityIdType, QuantityRangeSi>
+> = {
+  [PhysicalQuantityId.MeasuredAirSpeed]: { min: 0, max: 2 },
+  [PhysicalQuantityId.MorningOutdoorTemperature]: { min: -50, max: 50 },
+  [PhysicalQuantityId.SolarAltitude]: { min: 0, max: 90 },
+  [PhysicalQuantityId.SolarHorizontalAngle]: { min: 0, max: 180 },
+  [PhysicalQuantityId.DirectSolarRadiation]: { min: 200, max: 1000 },
+  [PhysicalQuantityId.SolarTransmittance]: { min: 0, max: 1 },
+  [PhysicalQuantityId.SkyVaultViewFraction]: { min: 0, max: 1 },
+  [PhysicalQuantityId.BodyExposureFraction]: { min: 0, max: 1 },
+};

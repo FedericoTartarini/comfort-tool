@@ -104,7 +104,11 @@ export const heatIndexModelConfig = defineModel<
       minValue: TDB_LIMITS.min,
       maxValue: TDB_LIMITS.max,
     },
-    PhysicalQuantityId.RelativeHumidity,
+    {
+      quantity: PhysicalQuantityId.RelativeHumidity,
+      minValue: 0,
+      maxValue: 100,
+    },
   ],
   charts: [{
     type: ChartType.Dynamic,

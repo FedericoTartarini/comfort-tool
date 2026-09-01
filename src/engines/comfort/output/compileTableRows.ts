@@ -11,11 +11,10 @@ import type {
   TableRowAuthoring,
   TableRowSpec,
 } from "../../../catalog/tableTypes";
-import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
+import { unitLabel, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import {
   convertQuantityFromSi,
   formatDisplayValue,
-  getQuantityDisplayMeta,
 } from "../../units";
 
 function isCustomTableRow<TResult>(
@@ -55,7 +54,8 @@ export function formatQuantityTableText(
   unitSystem: UnitSystemType,
 ): string {
   const display = convertQuantityFromSi(quantityId, valueSi, unitSystem);
-  const units = getQuantityDisplayMeta(quantityId, unitSystem).displayUnits;
+  const meta = getPhysicalQuantityMeta(quantityId);
+  const units = unitLabel(meta.siUnit, unitSystem);
   const formatted = formatDisplayValue(display);
   if (!units) {
     return formatted;

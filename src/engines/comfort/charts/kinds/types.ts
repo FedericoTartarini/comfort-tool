@@ -141,7 +141,7 @@ export interface BoundaryRegionDataSpec<TResult = unknown, TPayload = unknown> {
   readonly axisFields: readonly PhysicalQuantityId[];
   readonly outdoorRangeSi: ChartRange;
   readonly outdoorLabel: string;
-  readonly operativeRangeSi?: ChartRange;
+  readonly operativeRangeSi: ChartRange;
   readonly boundaryPoints?: number;
   readonly evaluate: (payload: TPayload) => TResult;
   readonly requestFromPoint: (

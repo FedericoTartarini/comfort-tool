@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../catalog/calculationMetadata";
 import { ComplianceStatus } from "../catalog/modelIds";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantities";
 import { InputId, type InputId as InputIdType } from "../catalog/inputSlots";
-import { UnitSystem } from "../catalog/units";
+import { UnitSystem, unitLabel } from "../catalog/units";
 import type { ResultCellViewModel, ResultSectionViewModel } from "../state/pointSession/types";
 import {
   adaptiveAshraeModelConfig,
@@ -222,10 +222,10 @@ describe("comfort model result rows", () => {
   });
 
   it("builds Adaptive ASHRAE rows with compliance, band formatting, and N/A state", () => {
-    const temperatureUnits = getQuantityPresentationMeta(
-      PhysicalQuantityId.DryBulbTemperature,
+    const temperatureUnits = unitLabel(
+      getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
       UnitSystem.SI,
-    ).displayUnits;
+    );
     const sections = adaptiveAshraeModelConfig.buildTable(
       createResultRecord(ashraeResult),
       visibleInputIds,
@@ -342,10 +342,10 @@ describe("comfort model result rows", () => {
   });
 
   it("builds Adaptive EN rows with accepted and non-accepted category colors", () => {
-    const temperatureUnits = getQuantityPresentationMeta(
-      PhysicalQuantityId.DryBulbTemperature,
+    const temperatureUnits = unitLabel(
+      getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
       UnitSystem.SI,
-    ).displayUnits;
+    );
     const sections = adaptiveEnModelConfig.buildTable(
       createResultRecord(enResult),
       visibleInputIds,

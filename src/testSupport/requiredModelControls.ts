@@ -2,7 +2,7 @@ import { ModelId, type ModelId as ModelIdType } from "../catalog/modelIds";
 import { InputControlId, type InputControlId as InputControlIdType } from "../catalog/inputControls";
 import {
   PhysicalQuantityId,
-  type PrimaryQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../catalog/quantities";
 
 const pmvRequiredControlIds = [
@@ -107,4 +107,4 @@ export const requiredPrimaryQuantitiesByModel = {
     PhysicalQuantityId.MetabolicRate,
     PhysicalQuantityId.ClothingInsulation,
   ],
-} as const satisfies Record<ModelIdType, readonly PrimaryQuantityId[]>;
+} as const satisfies Record<ModelIdType, readonly PhysicalQuantityIdType[]>;

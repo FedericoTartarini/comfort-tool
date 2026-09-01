@@ -9,12 +9,9 @@ import {
   type SurfaceId,
 } from "../../catalog/surfaces";
 import {
-  isPhysicalQuantityId,
   physicalQuantityMetaById,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
   type PhysicalQuantityMeta,
 } from "../../catalog/quantities";
-import { isAllowedExtraQuantityId } from "../../engines/comfort/quantityStateRouting";
 
 /**
  * Model slice that assembled catalogs can check. This is not a second
@@ -23,7 +20,6 @@ import { isAllowedExtraQuantityId } from "../../engines/comfort/quantityStateRou
  */
 export interface CatalogModelSlice {
   readonly id: ModelIdType;
-  readonly extraQuantities: readonly PhysicalQuantityIdType[];
   readonly chartInstances: {
     readonly entries: readonly {
       readonly instanceId: string;
@@ -74,24 +70,6 @@ export function validateModel(
   model: CatalogModelSlice,
   catalogs: AssembledCatalogs,
 ): void {
-  const seenExtraIds = new Set<string>();
-  for (const quantityId of model.extraQuantities) {
-    if (!isPhysicalQuantityId(quantityId) || catalogs.quantities[quantityId] === undefined) {
-      throw new Error(
-        `Unknown extra quantity "${String(quantityId)}" on ${model.id}. Extra quantities must be catalog ids that are not primary, humidity, or modifier slots.`,
-      );
-    }
-    if (!isAllowedExtraQuantityId(quantityId)) {
-      throw new Error(
-        `Quantity "${quantityId}" on ${model.id} cannot be declared as extra.`,
-      );
-    }
-    if (seenExtraIds.has(quantityId)) {
-      throw new Error(`${model.id} declares duplicate extra quantity "${quantityId}".`);
-    }
-    seenExtraIds.add(quantityId);
-  }
-
   const seenInstanceIds = new Set<string>();
   const seenTypes = new Set<string>();
   for (const entry of model.chartInstances.entries) {

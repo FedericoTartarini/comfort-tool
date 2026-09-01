@@ -38,15 +38,14 @@ shared comfort/units live at `src/engines/`.
 
 Then, only if the model actually needs them:
 
-- extraQuantities to select Extra catalog ids (not a new primary; BodyWeight/Height already live in `quantities.ts`)
 - focused tests beside the declaration. Pin required Analysis control IDs
   there against the independently authored lists in
   `src/testSupport/requiredModelControls.ts` — do not derive the expected
   side from `inputFields`. Compare golden **values** are derived from the
   registry (`inputFields` + `standardPrimaryFixture`); add an explicit SI
   override in `src/testSupport/goldenFixtures.ts` only if the fixture is
-  outside the new model's declared range. Do not invent values from min/max
-  or catalog `defaultSi`, and do not add a per-model golden-input switch.
+  outside the new model's declared range. Do not invent values from min/max,
+  and do not add a per-model golden-input switch.
 
 PMV and Adaptive stay family modules (one declaration per standard, shared
 calculation/zones/series `_core`). They may still assemble with
@@ -64,7 +63,7 @@ work, not “add a model” work:
 | Stop                               | Why                                                                                                                                        |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | New ChartType (`ChartType` member) | Closed product set in `src/catalog/chartTypes.ts`. Do not add a ChartType from a declaration.                                              |
-| New `primaryInputOrder` key        | Shared persisted primaries. Also requires ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`).                         |
+| New `PhysicalQuantityId`           | Closed catalog plus ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`). Add `SiUnit` + `ipUnitForSi` only if the quantity needs a new dimension. |
 | New modifier                       | Global catalogue, execution order, and share schema.                                                                                       |
 | New Time-series session            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                        |
 | New SI unit dimension (`SiUnit`)   | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/engines/units/`; declarations only select known units. |
@@ -72,7 +71,7 @@ work, not “add a model” work:
 Also forbidden in a declaration:
 
 - Plotly imports inside a Heat Index–class `defineModel` file (keep a data spec; Plotly assemble stays in `src/charts/`)
-- a second ChartType, primary, or modifier catalog
+- a second ChartType, quantity catalog, or modifier catalog
 - a `jsthermalcomfort` import outside `src/declarations/**`,
   `src/engines/comfort/**`, or `src/charts/psychrometric/humidity.ts`
   (humidity ratio only)
@@ -111,7 +110,7 @@ src/
     units/           SI ↔ display conversion
   state/
     modelRegistry/   defineModel, ComfortModelBuilder, registered configs
-    pointSession/    Standard+Explore session: three buckets, actions,
+    pointSession/    Standard+Explore session: input/chart/setting/output buckets, actions,
                      $derived view-models, share snapshot/codec/url
     timeSeries/      Time-series session (PHS); editor/chart view models
     app/             route identity, navigation, AppContext
@@ -139,15 +138,16 @@ Canonical state is SI. Calculations run in SI. Display converts through
 routes share point-session SI input, per-model chart memory, and calculation
 caches. Time-series does not read or schedule the point session. View-models
 are `$derived` projections, not a second store. Share is JSON → Base64URL →
-`?state=` of input + setting only.
+`?state=` of input + chart only.
 
 ## Catalogs the declaration may select
 
 Quantities and ChartTypes are closed frontend catalogs. Models select ids;
-they do not own, extend, or invent them. Extra ids that are not Extra,
-unknown ChartTypes, or a Time-series table without Time-series capability
-fail `defineModel` / `assembleCatalogs`. There is no `validate.model` hook
-and no TableType catalog. Copy `heatIndex.ts`, add a `ModelId` member, and
+they do not own, extend, or invent them. Derived-humidity or modifier-extra
+`kind: "quantity"` fields, unknown ChartTypes, or a Time-series table without
+Time-series capability fail `defineModel` / `assembleCatalogs`. There is no
+`validate.model` hook and no TableType catalog. Copy `heatIndex.ts`, add a
+`ModelId` member, and
 register once. `defineModel({ library })` reads string `label` /
 `description` from the JS function (`@docname` / leading JSDoc). If JS
 already classifies the result (`result.discomfort`, `result.stress_category`,
@@ -164,23 +164,16 @@ EN Adaptive outdoor 10–30 °C is a chart axis, not
 **Quantities.** `src/catalog/quantities.ts` is the closed catalog for inputs
 and outputs. TypeScript keys are PascalCase physical names; wire strings
 match jsthermalcomfort parameter or result fields (`tdb`, `hi`, `weight`).
-`primaryInputOrder` is the exact persisted primary-key set. Catalog rows
-are not classified by occupancy. Humidity quantities may set
-`category: Humidity`; `humidityQuantityIds()` is that set minus `rh`.
-Body weight and height are model-selected extras
-(`weight`, `height`). A declaration may select extras:
-
-```ts
-extraQuantities: [PhysicalQuantityId.BodyWeight, PhysicalQuantityId.Height],
-```
-
-PHS does this via `phsPersonQuantityIds`. Extra values serialize only under
-sparse `modelInputsByModel`. They must not enter `primaryInputOrder`. Do not
-add PHS weight/height to the Analysis input panel. Surface an extra id on a
-panel only with `{ kind: "quantity", … }` listed in `extraQuantities`.
-All quantity conversion reads catalog SI units (`units.SI`) and must
+Catalog rows hold `label`, `siUnit`, optional `step`, and optional
+`category: Humidity`. Session/share use a sparse `QuantityState` bag.
+`derivedHumidityQuantityIds` (`t_dp`, `hr`, `t_wb`, `p_vap`) are not
+independent share truth. Body weight and height are catalog ids in the same
+bag; PHS keeps them off Analysis `inputFields`. Do not add PHS
+weight/height to the Analysis input panel. Surface a catalog id on a panel
+only with `{ quantity, minValue, maxValue }` (or an explicit widget).
+All quantity conversion reads catalog `siUnit` and must
 not branch on PHS or quantity-id lists.
-`units.SI` is canonical storage (`kg`, `m`, `kg/kg`, `Pa`, …);
+`siUnit` is canonical storage (`kg`, `m`, `kg/kg`, `Pa`, …);
 display labels such as g/kg live on `siUnitLabel` / `ipUnitLabel`.
 
 **Charts.** Closed ChartTypes live in `src/catalog/chartTypes.ts`. Dropdown
@@ -281,16 +274,15 @@ operative-temperature get/set/range (`quantityMapping:` option). Coupled Air/Rad
 stays in the shared dynamic-axis solver.
 
 `calculate` receives `ModelCalculationContext` with
-`effectiveQuantitiesByInput` (modifier-adjusted primary SI), sparse
-`auxiliaryQuantitiesByInput`, sparse `modelInputs`, and the active model’s
+`effectiveQuantitiesByInput` (modifier-adjusted SI) and the active model’s
 validated `options`. It must not read raw `quantitiesByInput`.
 
-`inputFields` list a quantity or `{ quantity, minValue?, maxValue?, widget? }`.
+`inputFields` list `{ quantity, minValue, maxValue, widget? }`.
 Default widgets are `defaultFieldWidgetByQuantity` in
 `src/catalog/inputWidgets.ts`. `resolveInputField()` still produces today's
 `InputControlDefinition`; authors do not write `kind: "numeric"` strings.
-PMV overrides Operative / AdvancedHumidity with `InputWidget`. Extra catalog
-ids stay on `extraQuantities` (not Primary `kind: "quantity"`). The Analysis
+PMV overrides Operative / AdvancedHumidity with `InputWidget`. PHS
+weight/height stay off Analysis `inputFields`. The Analysis
 input panel reads those controls through
 `getInputPanelViewModel`; do not add conversion or model branches in
 `src/ui/components/input-panel/`. Control widgets stay generic; unit conversion
@@ -336,12 +328,12 @@ that declaration’s standard. Models with none set `modifiers: []`.
 
 ### Share
 
-Strict `version: 1`. Serialize `quantitiesByInput`, sparse
-`auxiliaryQuantitiesByInput`, sparse `modelInputsByModel`, sparse `models`
-(omit default slices), and `activeModifiersByInput`. Missing known model
+Strict `version: 1`. Serialize sparse `quantitiesByInput` (reject derived
+humidity keys), sparse `models` (omit default slices), and
+`activeModifiersByInput`. Missing known model
 keys seed defaults; unknown keys are rejected. Adding a model must not
 require existing URLs to list that model. The codec accepts only that
-version-1 field set.
+version-1 field set. Path identity is not in the query.
 
 ## Compare
 
@@ -352,7 +344,7 @@ ready cache. Three inputs must not fail silently. Compare golden values come
 from the registered `inputFields` and `standardPrimaryFixture` in
 `src/testSupport/goldenFixtures.ts`. If the fixture is outside the new
 model's declared range, add an explicit quantity override there — do not
-invent one from min/max or catalog `defaultSi`, and do not add a model
+invent one from min/max, and do not add a model
 switch. Pin known calculation values in the model's tests. Focused model
 tests must also pin required control IDs against
 `src/testSupport/requiredModelControls.ts` so dropping a required field

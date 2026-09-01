@@ -1,8 +1,8 @@
 import {
   PhysicalQuantityId,
-  getQuantityDisplayMeta,
+  getPhysicalQuantityMeta,
 } from "../../catalog/quantities";
-import { type UnitSystem as UnitSystemType } from "../../catalog/units";
+import { unitLabel, type UnitSystem as UnitSystemType } from "../../catalog/units";
 export * from "./modifierInputs";
 export {
   convertTemperatureDeltaFromSi,
@@ -30,12 +30,10 @@ export {
   convertQuantityFromSi as convertFieldValueFromSi,
   convertQuantityToSi as convertFieldValueToSi,
 } from "./quantityConversion";
-export { getQuantityDisplayMeta } from "../../catalog/quantities";
-
 /**
  * Centralized unit conversion helpers.
  * Canonical shared state stays in SI; these helpers map values to and from the active UI unit system.
- * Quantity conversion reads `units.SI` from the closed quantity catalog.
+ * Quantity conversion reads `siUnit` from the closed quantity catalog.
  * Rounding happens only at the display boundary (`formatDisplayValue` / `roundToDisplay`).
  */
 export type DisplayQuantityMeta = {
@@ -59,11 +57,19 @@ export function convertMetersPerSecondToKilometersPerHour(value: number): number
 }
 
 export function getHumidityRatioDisplayMeta(unitSystem: UnitSystemType): DisplayQuantityMeta {
-  return getQuantityDisplayMeta(PhysicalQuantityId.HumidityRatio, unitSystem);
+  const meta = getPhysicalQuantityMeta(PhysicalQuantityId.HumidityRatio);
+  return {
+    displayUnits: unitLabel(meta.siUnit, unitSystem),
+    step: meta.step,
+  };
 }
 
 export function getVaporPressureDisplayMeta(unitSystem: UnitSystemType): DisplayQuantityMeta {
-  return getQuantityDisplayMeta(PhysicalQuantityId.VaporPressure, unitSystem);
+  const meta = getPhysicalQuantityMeta(PhysicalQuantityId.VaporPressure);
+  return {
+    displayUnits: unitLabel(meta.siUnit, unitSystem),
+    step: meta.step,
+  };
 }
 
 export function roundToDisplay(value: number): number {

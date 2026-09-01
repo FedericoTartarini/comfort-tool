@@ -76,7 +76,7 @@ function calculatePmvModelForTest(
     inputState[PhysicalQuantityId.MetabolicRate] = request.met;
     inputState[PhysicalQuantityId.ClothingInsulation] = request.clo;
     inputState[PhysicalQuantityId.ExternalWork] = request.wme; }
-  session.setting.modelOptionsByModel[pmvAshraeModelConfig.id] = {
+  session.input.modelOptionsByModel[pmvAshraeModelConfig.id] = {
     ...pmvAshraeModelConfig.defaultOptions,
     [OptionKey.AirSpeedControlMode]: occupantHasAirSpeedControl
       ? AirSpeedControlMode.WithLocalControl
@@ -84,9 +84,7 @@ function calculatePmvModelForTest(
   };
   return calculatePmvModel(createModelCalculationContext({
     effectiveQuantitiesByInput: session.input.quantitiesByInput,
-    auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
-    modelInputs: session.input.modelInputsByModel[pmvAshraeModelConfig.id],
-    options: session.setting.modelOptionsByModel[pmvAshraeModelConfig.id],
+    options: session.input.modelOptionsByModel[pmvAshraeModelConfig.id],
   }), visibleInputIds, pmvAshraeAdapter);
 }
 

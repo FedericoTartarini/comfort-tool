@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, type AuxiliaryInputState, type PrimaryInputState } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import {
   derivePsychrometricSlots,
   type DerivedSlotQuantityState,
@@ -11,9 +11,8 @@ import {
 import { t_o } from "jsthermalcomfort";
 import {
   QuantitiesByInputState,
-  syncDerivedQuantitiesIntoAuxiliary,
   syncAllDerivedQuantities,
-  type AuxiliaryQuantitiesByInputState,
+  syncDerivedQuantities,
 } from "./quantityStateRouting";
 
 export { derivePsychrometricSlots } from "./derivations/psychrometrics";
@@ -28,56 +27,60 @@ export function deriveInputsDerivedState(
   };
 }
 
-export function syncDerivedStateIntoAuxiliary(
+export function syncDerivedState(
   quantitiesByInput: QuantitiesByInputState,
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
 ): void {
-  syncAllDerivedQuantities(
-    quantitiesByInput,
-    auxiliaryQuantitiesByInput,
-    derivePsychrometricSlots,
-  );
+  syncAllDerivedQuantities(quantitiesByInput, derivePsychrometricSlots);
 }
 
 export function syncDerivedStateForInput(
   inputId: InputIdType,
   quantitiesByInput: QuantitiesByInputState,
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
 ): void {
-  syncDerivedQuantitiesIntoAuxiliary(
+  syncDerivedQuantities(
     quantitiesByInput[inputId],
-    auxiliaryQuantitiesByInput[inputId],
     derivePsychrometricSlots(quantitiesByInput[inputId]),
   );
 }
 
 export function synchronizeTemperatureMode(
-  inputState: PrimaryInputState,
+  inputState: QuantityState,
   temperatureMode: TemperatureModeType,
-): { inputState: PrimaryInputState } {
+): { inputState: QuantityState } {
   if (temperatureMode === TemperatureMode.Air) {
     return { inputState: { ...inputState } };
   }
 
-  const operativeTemperature = t_o(
-    inputState[PhysicalQuantityId.DryBulbTemperature],
-    inputState[PhysicalQuantityId.MeanRadiantTemperature],
-    inputState[PhysicalQuantityId.RelativeAirSpeed],
-  );
+  const dryBulb = inputState[PhysicalQuantityId.DryBulbTemperature];
+  const radiant = inputState[PhysicalQuantityId.MeanRadiantTemperature];
+  const airSpeed = inputState[PhysicalQuantityId.RelativeAirSpeed];
+  if (dryBulb === undefined || radiant === undefined || airSpeed === undefined) {
+    return { inputState: { ...inputState } };
+  }
+
+  const operativeTemperature = t_o(dryBulb, radiant, airSpeed);
 
   return {
-    inputState: { ...inputState, [PhysicalQuantityId.DryBulbTemperature]: operativeTemperature, [PhysicalQuantityId.MeanRadiantTemperature]: operativeTemperature },
+    inputState: {
+      ...inputState,
+      [PhysicalQuantityId.DryBulbTemperature]: operativeTemperature,
+      [PhysicalQuantityId.MeanRadiantTemperature]: operativeTemperature,
+    },
   };
 }
 
-export function readDerivedFromAuxiliary(
-  auxiliary: AuxiliaryInputState,
-  primary: PrimaryInputState,
+export function readDerivedQuantities(
+  quantities: QuantityState,
 ): DerivedSlotQuantityState {
-  const derived = derivePsychrometricSlots(primary);
-  return { [PhysicalQuantityId.DewPointTemperature]: auxiliary[PhysicalQuantityId.DewPointTemperature]
-      ?? derived[PhysicalQuantityId.DewPointTemperature], [PhysicalQuantityId.HumidityRatio]: auxiliary[PhysicalQuantityId.HumidityRatio]
-      ?? derived[PhysicalQuantityId.HumidityRatio], [PhysicalQuantityId.WetBulbTemperature]: auxiliary[PhysicalQuantityId.WetBulbTemperature]
-      ?? derived[PhysicalQuantityId.WetBulbTemperature], [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
-      ?? derived[PhysicalQuantityId.VaporPressure] };
+  const derived = derivePsychrometricSlots(quantities);
+  return {
+    [PhysicalQuantityId.DewPointTemperature]: quantities[PhysicalQuantityId.DewPointTemperature]
+      ?? derived[PhysicalQuantityId.DewPointTemperature],
+    [PhysicalQuantityId.HumidityRatio]: quantities[PhysicalQuantityId.HumidityRatio]
+      ?? derived[PhysicalQuantityId.HumidityRatio],
+    [PhysicalQuantityId.WetBulbTemperature]: quantities[PhysicalQuantityId.WetBulbTemperature]
+      ?? derived[PhysicalQuantityId.WetBulbTemperature],
+    [PhysicalQuantityId.VaporPressure]: quantities[PhysicalQuantityId.VaporPressure]
+      ?? derived[PhysicalQuantityId.VaporPressure],
+  };
 }

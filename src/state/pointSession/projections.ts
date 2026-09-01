@@ -27,10 +27,10 @@ export function buildChartBuildResult(
     cache.resultsByInput,
     internals.getCurrentFieldChartProfile(),
     {
-      unitSystem: session.setting.unitSystem,
+      unitSystem: session.input.unitSystem,
       baselineInputId: internals.getEffectiveChartBaselineInputId(),
       chartSourceVersion,
-      modelInputs: session.input.modelInputsByModel[session.setting.selectedModel],
+      modelInputs: session.input.quantitiesByInput[internals.getEffectiveChartBaselineInputId()],
     },
   );
 }
@@ -47,8 +47,8 @@ export function buildChartControlsProjection(
     chartInstance: internals.getCurrentChartInstance(),
     cache: internals.getCurrentModelCache(),
     visibleInputIds: internals.getVisibleInputIds(),
-    compareEnabled: session.setting.compareEnabled,
-    unitSystem: session.setting.unitSystem,
+    compareEnabled: session.input.compareEnabled,
+    unitSystem: session.input.unitSystem,
     callbacks,
   });
 }
@@ -63,9 +63,9 @@ export function buildInputPanelProjection(
   const config = internals.getActiveModelConfig();
   return buildInputPanelViewModel({
     selectedModel: session.setting.selectedModel,
-    compareEnabled: session.setting.compareEnabled,
-    unitSystem: session.setting.unitSystem,
-    activeInputId: session.setting.activeInputId,
+    compareEnabled: session.input.compareEnabled,
+    unitSystem: session.input.unitSystem,
+    activeInputId: session.input.activeInputId,
     visibleInputIds: internals.getVisibleInputIds(),
     allowedModelIds,
     config,
@@ -88,7 +88,7 @@ export function buildResultSectionsProjection(
   return internals.getActiveModelConfig().buildTable(
     cache.resultsByInput,
     internals.getVisibleInputIds(),
-    session.setting.unitSystem,
+    session.input.unitSystem,
   );
 }
 

@@ -1,7 +1,7 @@
 import { InputControlId } from "./inputControls";
 import {
   PhysicalQuantityId,
-  type PrimaryQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "./quantities";
 
 /** Catalog widget kinds. Model files select a quantity and optionally override. */
@@ -18,7 +18,7 @@ export const InputWidget = {
 
 export type InputWidget = (typeof InputWidget)[keyof typeof InputWidget];
 
-export const defaultFieldWidgetByQuantity: Record<PrimaryQuantityId, InputWidget> = {
+export const defaultFieldWidgetByQuantity: Partial<Record<PhysicalQuantityIdType, InputWidget>> = {
   [PhysicalQuantityId.DryBulbTemperature]: InputWidget.Numeric,
   [PhysicalQuantityId.MeanRadiantTemperature]: InputWidget.RadiantTemperature,
   [PhysicalQuantityId.RelativeAirSpeed]: InputWidget.OccupantAirSpeed,
@@ -31,7 +31,7 @@ export const defaultFieldWidgetByQuantity: Record<PrimaryQuantityId, InputWidget
 };
 
 export const defaultControlIdByQuantity: Partial<
-  Record<PrimaryQuantityId, (typeof InputControlId)[keyof typeof InputControlId]>
+  Record<PhysicalQuantityIdType, (typeof InputControlId)[keyof typeof InputControlId]>
 > = {
   [PhysicalQuantityId.DryBulbTemperature]: InputControlId.Temperature,
   [PhysicalQuantityId.MeanRadiantTemperature]: InputControlId.RadiantTemperature,

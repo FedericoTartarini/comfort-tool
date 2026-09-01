@@ -2,10 +2,9 @@
 import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
 import {
   PhysicalQuantityId,
+  isDerivedHumidityQuantityId,
   isPhysicalQuantityId,
-  primaryInputOrder,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
-  type PrimaryInputState,
+  type QuantityState,
 } from "../../../catalog/quantities";
 import type { OptionKey as OptionKeyType } from "../../../catalog/inputModes";
 import {
@@ -27,7 +26,6 @@ import { validateNumericBands } from "../../../engines/comfort/charts/bands";
 import { isFiniteNumber } from "../../../engines/comfort/helpers";
 import {
   isModifierConfigurationComplete,
-  isModifierFieldValueValid,
 } from "../../../engines/comfort/inputModifiers";
 import { isDynamicAxisPairValid } from "../dynamicAxes";
 import { comfortModelOrder, getComfortModelConfig } from "../../modelRegistry";
@@ -35,13 +33,9 @@ import { collectModifierInputsForModifier } from "../../../engines/comfort/quant
 import type { ActiveModifiersByInputState } from "../sessionTypes";
 import {
   createDefaultModelSnapshot,
-  extraQuantityIdsForModel,
-  modifierQuantityIds,
-  type ShareModelInputsByModelState,
   type ShareModelOutputSettings,
   type ShareModelSnapshot,
   type ShareStateSnapshot,
-  type ShareAuxiliaryQuantitiesByInputState,
 } from "./snapshot";
 
 export const SHARE_STATE_VERSION = 1;
@@ -51,9 +45,6 @@ const NEGATIVE_INFINITY_WIRE = "__comfort_tool_negative_infinity__";
 const comfortModelValues = new Set<ModelIdType>(comfortModelOrder);
 const inputIdValues = new Set<InputIdType>(Object.values(InputId));
 const unitSystemValues = new Set<UnitSystemType>(Object.values(UnitSystem));
-const modifierQuantityIdSet = new Set<PhysicalQuantityIdType>(
-  modifierQuantityIds,
-);
 
 function hasExactKeys(
   value: Record<string, unknown>,
@@ -71,12 +62,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isPrimaryInputState(value: unknown): value is PrimaryInputState {
-  return (
-    isRecord(value) &&
-    hasExactKeys(value, primaryInputOrder) &&
-    primaryInputOrder.every((quantityId) => isFiniteNumber(value[quantityId]))
-  );
+function isQuantityState(value: unknown): value is QuantityState {
+  if (!isRecord(value)) {
+    return false;
+  }
+  for (const [rawKey, fieldValue] of Object.entries(value)) {
+    if (
+      !isPhysicalQuantityId(rawKey)
+      || isDerivedHumidityQuantityId(rawKey)
+      || !isFiniteNumber(fieldValue)
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function isCanonicalCompareInputIds(value: unknown): value is InputIdType[] {
@@ -121,68 +120,27 @@ function decodeBase64Url(value: string): string {
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
-function parseSparseModifierQuantities(
-  value: unknown,
-): Partial<Record<PhysicalQuantityIdType, number>> | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const parsed: Partial<Record<PhysicalQuantityIdType, number>> = {};
-  for (const [rawKey, fieldValue] of Object.entries(value)) {
-    if (!isPhysicalQuantityId(rawKey) || !modifierQuantityIdSet.has(rawKey)) {
-      return null;
-    }
-    if (!isModifierFieldValueValid(rawKey, fieldValue)) {
-      return null;
-    }
-    parsed[rawKey] = fieldValue;
-  }
-  return parsed;
-}
-
 function parseQuantitiesByInput(
   value: unknown,
+  activeModifiersByInput: ActiveModifiersByInputState,
 ): ShareStateSnapshot["quantitiesByInput"] | null {
   if (!isRecord(value) || !hasExactKeys(value, inputOrder)) {
     return null;
   }
 
-  const input1 = value[InputId.Input1];
-  const input2 = value[InputId.Input2];
-  const input3 = value[InputId.Input3];
-  if (
-    !isPrimaryInputState(input1) ||
-    !isPrimaryInputState(input2) ||
-    !isPrimaryInputState(input3)
-  ) {
-    return null;
-  }
-
-  return {
-    [InputId.Input1]: input1,
-    [InputId.Input2]: input2,
-    [InputId.Input3]: input3,
-  };
-}
-
-function parseAuxiliaryQuantitiesByInput(
-  value: unknown,
-  activeModifiersByInput: ActiveModifiersByInputState,
-): ShareAuxiliaryQuantitiesByInputState | null {
-  if (!isRecord(value) || !hasExactKeys(value, inputOrder)) return null;
-  const parsed = {} as ShareAuxiliaryQuantitiesByInputState;
-
+  const parsed = {} as ShareStateSnapshot["quantitiesByInput"];
   for (const inputId of inputOrder) {
-    const auxiliary = parseSparseModifierQuantities(value[inputId]);
-    if (!auxiliary) return null;
-    parsed[inputId] = auxiliary;
+    const quantities = value[inputId];
+    if (!isQuantityState(quantities)) {
+      return null;
+    }
+    parsed[inputId] = { ...quantities };
 
     for (const modifierId of modifierOrder) {
       if (!activeModifiersByInput[inputId][modifierId]) continue;
       const definition = inputModifierCatalogue[modifierId];
       const modifierInputs = collectModifierInputsForModifier(
-        auxiliary,
+        parsed[inputId],
         modifierId,
       );
       if (!isModifierConfigurationComplete(definition, modifierInputs)) {
@@ -196,56 +154,6 @@ function parseAuxiliaryQuantitiesByInput(
 
 function isRegisteredModelId(value: string): value is ModelIdType {
   return comfortModelValues.has(value as ModelIdType);
-}
-
-function parseModelInputsForModel(
-  modelId: ModelIdType,
-  value: unknown,
-): Partial<Record<PhysicalQuantityIdType, number>> | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const allowedQuantityIds = new Set(extraQuantityIdsForModel(modelId));
-  const parsedInputs: Partial<Record<PhysicalQuantityIdType, number>> = {};
-  for (const [rawKey, fieldValue] of Object.entries(value)) {
-    if (!isPhysicalQuantityId(rawKey) || !allowedQuantityIds.has(rawKey)) {
-      return null;
-    }
-    if (!isModifierFieldValueValid(rawKey, fieldValue)) {
-      return null;
-    }
-    parsedInputs[rawKey] = fieldValue;
-  }
-  return parsedInputs;
-}
-
-function parseModelInputsByModel(
-  value: unknown,
-): ShareModelInputsByModelState | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const parsed = {} as ShareModelInputsByModelState;
-  for (const [rawKey, modelInputs] of Object.entries(value)) {
-    if (!isRegisteredModelId(rawKey)) {
-      return null;
-    }
-    const parsedInputs = parseModelInputsForModel(rawKey, modelInputs);
-    if (!parsedInputs) {
-      return null;
-    }
-    parsed[rawKey] = parsedInputs;
-  }
-
-  for (const modelId of comfortModelOrder) {
-    if (!(modelId in parsed)) {
-      parsed[modelId] = {};
-    }
-  }
-
-  return parsed;
 }
 
 function parseActiveModifiersByInput(
@@ -528,18 +436,9 @@ function toSparseShareWire(snapshot: ShareStateSnapshot): ShareStateSnapshot {
     }
   }
 
-  const modelInputsByModel = {} as ShareModelInputsByModelState;
-  for (const modelId of comfortModelOrder) {
-    const modelInputs = snapshot.modelInputsByModel[modelId];
-    if (Object.keys(modelInputs).length > 0) {
-      modelInputsByModel[modelId] = modelInputs;
-    }
-  }
-
   return {
     ...snapshot,
     models,
-    modelInputsByModel,
   };
 }
 
@@ -562,19 +461,15 @@ export function parseShareStateSnapshot(
     !isRecord(value) ||
     !hasExactKeys(value, [
       "version",
-      "selectedModel",
       "models",
       "compareEnabled",
       "compareInputIds",
       "activeInputId",
       "unitSystem",
       "quantitiesByInput",
-      "auxiliaryQuantitiesByInput",
-      "modelInputsByModel",
       "activeModifiersByInput",
     ]) ||
     value.version !== SHARE_STATE_VERSION ||
-    !comfortModelValues.has(value.selectedModel as ModelIdType) ||
     typeof value.compareEnabled !== "boolean" ||
     !isCanonicalCompareInputIds(value.compareInputIds) ||
     !inputIdValues.has(value.activeInputId as InputIdType) ||
@@ -592,38 +487,28 @@ export function parseShareStateSnapshot(
   }
 
   const models = parseModelSnapshots(value.models);
-  const quantitiesByInput = parseQuantitiesByInput(value.quantitiesByInput);
   const activeModifiersByInput = parseActiveModifiersByInput(
     value.activeModifiersByInput,
   );
-  const auxiliaryQuantitiesByInput = activeModifiersByInput
-    ? parseAuxiliaryQuantitiesByInput(
-        value.auxiliaryQuantitiesByInput,
-        activeModifiersByInput,
-      )
+  const quantitiesByInput = activeModifiersByInput
+    ? parseQuantitiesByInput(value.quantitiesByInput, activeModifiersByInput)
     : null;
-  const modelInputsByModel = parseModelInputsByModel(value.modelInputsByModel);
   if (
     !models ||
     !quantitiesByInput ||
-    !activeModifiersByInput ||
-    !auxiliaryQuantitiesByInput ||
-    !modelInputsByModel
+    !activeModifiersByInput
   ) {
     return null;
   }
 
   return {
     version: SHARE_STATE_VERSION,
-    selectedModel: value.selectedModel as ModelIdType,
     models,
     compareEnabled: value.compareEnabled,
     compareInputIds: [...value.compareInputIds],
     activeInputId,
     unitSystem: value.unitSystem as UnitSystemType,
     quantitiesByInput,
-    auxiliaryQuantitiesByInput,
-    modelInputsByModel,
     activeModifiersByInput,
   };
 }

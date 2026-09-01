@@ -12,10 +12,6 @@ import type {
 } from "./definition";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import type { OptionKey as OptionKeyType } from "../../catalog/inputModes";
-import {
-  modifierOrder,
-  type InputModifier,
-} from "../../catalog/inputModifiers";
 import type { InputControlDefinition } from "../../engines/comfort/controls/types";
 import {
   declaredSiRangeForInputField,
@@ -45,11 +41,14 @@ import {
 } from "../../engines/comfort/charts/bands";
 import {
   PhysicalQuantityId,
-  getPhysicalQuantityMeta,
+  isDerivedHumidityQuantityId,
   isPhysicalQuantityId,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../catalog/quantities";
-import { isAllowedExtraQuantityId } from "../../engines/comfort/quantityStateRouting";
+import {
+  inputModifierCatalogue,
+  modifierOrder,
+  type InputModifier,
+} from "../../catalog/inputModifiers";
 import {
   ChartType,
   chartTypeLabel,
@@ -238,8 +237,6 @@ export class ComfortModelBuilder<
 
   private readonly inputFieldSpecs: InputFieldSpec[] = [];
 
-  private extraQuantities: PhysicalQuantityIdType[] = [];
-
   private readonly optionHandlersByKey: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   > = {};
@@ -362,14 +359,12 @@ export class ComfortModelBuilder<
   setInputFields(fields: readonly AuthoringInputField[]): this {
     for (const field of fields) {
       const spec = resolveAuthoringInputField(field);
+      for (const quantityId of primaryQuantityIdsForInputField(spec)) {
+        declaredSiRangeForInputField(spec, quantityId);
+      }
       this.inputFieldSpecs.push(spec);
       this.controls.push(resolveInputField(spec));
     }
-    return this;
-  }
-
-  setExtraQuantities(ids: readonly PhysicalQuantityIdType[]): this {
-    this.extraQuantities = [...ids];
     return this;
   }
 
@@ -504,10 +499,7 @@ export class ComfortModelBuilder<
     for (const spec of this.inputFieldSpecs) {
       for (const quantityId of primaryQuantityIdsForInputField(spec)) {
         const { minSi, maxSi } = declaredSiRangeForInputField(spec, quantityId);
-        const meta = getPhysicalQuantityMeta(quantityId);
-        if (minSi !== meta.minSi || maxSi !== meta.maxSi) {
-          ranges[quantityId] = { min: minSi, max: maxSi };
-        }
+        ranges[quantityId] = { min: minSi, max: maxSi };
       }
     }
     return ranges;
@@ -577,42 +569,25 @@ export class ComfortModelBuilder<
     }
   }
 
-  private validateExtraQuantities(): readonly PhysicalQuantityIdType[] {
-    const seenIds = new Set<string>();
-    const extras: PhysicalQuantityIdType[] = [];
-
-    for (const quantityId of this.extraQuantities) {
-      if (!isPhysicalQuantityId(quantityId) || !isAllowedExtraQuantityId(quantityId)) {
-        throw new Error(
-          `Unknown extra quantity "${String(quantityId)}". Extra quantities must be catalog ids that are not primary, humidity, or modifier slots.`,
-        );
-      }
-      if (seenIds.has(quantityId)) {
-        throw new Error(
-          `Comfort model declarations cannot contain duplicate extra quantities (${quantityId}).`,
-        );
-      }
-      seenIds.add(quantityId);
-      extras.push(quantityId);
-    }
-
-    return extras;
-  }
-
-  private assertQuantityFields(
-    extras: readonly PhysicalQuantityIdType[],
-  ): void {
-    const selectedIds = new Set(extras);
+  private assertQuantityFields(): void {
+    const modifierExtraIds = new Set(
+      modifierOrder.flatMap((id) => [...inputModifierCatalogue[id].extraInputs]),
+    );
     for (const spec of this.inputFieldSpecs) {
       if (spec.kind !== "quantity") continue;
-      if (!isPhysicalQuantityId(spec.quantityId) || !isAllowedExtraQuantityId(spec.quantityId)) {
+      if (!isPhysicalQuantityId(spec.quantityId)) {
         throw new Error(
-          `quantity field ${spec.quantityId} must reference a non-primary catalog quantity.`,
+          `quantity field ${String(spec.quantityId)} must reference a catalog quantity.`,
         );
       }
-      if (!selectedIds.has(spec.quantityId)) {
+      if (isDerivedHumidityQuantityId(spec.quantityId)) {
         throw new Error(
-          `quantity field ${spec.quantityId} must be listed in extraQuantities.`,
+          `quantity field ${spec.quantityId} cannot be a derived humidity slot.`,
+        );
+      }
+      if (modifierExtraIds.has(spec.quantityId)) {
+        throw new Error(
+          `quantity field ${spec.quantityId} cannot occupy a modifier extra input.`,
         );
       }
     }
@@ -987,8 +962,7 @@ export class ComfortModelBuilder<
       throw new Error("Default dynamic axes must be supported and distinct.");
     }
 
-    const extraQuantities = this.validateExtraQuantities();
-    this.assertQuantityFields(extraQuantities);
+    this.assertQuantityFields();
 
     const complianceProfile = this.complianceProfile;
     const calculate = this.calculate;
@@ -1021,7 +995,6 @@ export class ComfortModelBuilder<
         : {}),
       controls: [...this.controls],
       inputFields: [...this.inputFieldSpecs],
-      extraQuantities: [...extraQuantities],
       optionHandlersByKey: { ...this.optionHandlersByKey },
       tables: {
         results: [...tables.results],
@@ -1127,7 +1100,6 @@ export interface ModelDeclaration<
   readonly modifiers: readonly InputModifier[];
   readonly complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
   readonly inputFields: readonly AuthoringInputField[];
-  readonly extraQuantities?: readonly PhysicalQuantityIdType[];
   readonly optionHandlersByKey?: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   >;
@@ -1193,9 +1165,6 @@ export function defineModel<
   }
   if (declaration.complianceProfile) {
     builder.setComplianceProfile(declaration.complianceProfile);
-  }
-  if (declaration.extraQuantities) {
-    builder.setExtraQuantities(declaration.extraQuantities);
   }
   if (declaration.optionHandlersByKey) {
     for (const optionKey of Object.keys(

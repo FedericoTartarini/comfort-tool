@@ -71,7 +71,7 @@ function calculateModel(
   stateInput[PhysicalQuantityId.MetabolicRate] = request.met;
   stateInput[PhysicalQuantityId.ClothingInsulation] = request.clo;
   stateInput[PhysicalQuantityId.ExternalWork] = request.wme;
-  session.setting.modelOptionsByModel[config.id] = {
+  session.input.modelOptionsByModel[config.id] = {
     ...config.defaultOptions,
     [OptionKey.TemperatureMode]: temperatureMode,
     ...(declaration.adapter.supportsOccupantAirSpeedControl
@@ -84,9 +84,7 @@ function calculateModel(
   };
   const calculation = calculatePmvModel(createModelCalculationContext({
     effectiveQuantitiesByInput: session.input.quantitiesByInput,
-    auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
-    modelInputs: session.input.modelInputsByModel[declaration.adapter.modelId],
-    options: session.setting.modelOptionsByModel[declaration.adapter.modelId],
+    options: session.input.modelOptionsByModel[declaration.adapter.modelId],
   }), [InputId.Input1], declaration.adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");

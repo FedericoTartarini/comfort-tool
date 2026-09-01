@@ -11,7 +11,6 @@ import type {
 import { ComplianceStatus } from "../../catalog/modelIds";
 import {
   PhysicalQuantityId,
-  getPhysicalQuantityMeta,
 } from "../../catalog/quantities";
 import type { DerivedSlotQuantityState } from "../../engines/comfort/derivations/psychrometrics";
 import { AirSpeedControlMode, OptionKey, TemperatureMode } from "../../catalog/inputModes";
@@ -23,7 +22,7 @@ import { ThermalZone } from "../../catalog/thermalZone";
 import { UnitSystem } from "../../catalog/units";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
 import { createRequestAxisAdapter } from "../../engines/comfort/charts/dynamicAxisPayload";
-import { getDerivedFromAuxiliary } from "../../engines/comfort/quantityStateRouting";
+import { getDerivedFromQuantities } from "../../engines/comfort/quantityStateRouting";
 import {
   defineLibraryQuantityMapping,
   calculatePerInputWithExtensions,
@@ -294,14 +293,25 @@ export const pmvQuantityMapping = defineLibraryQuantityMapping<PmvRequest>({
   ce: PhysicalQuantityId.CoolingEffect,
 });
 
+export const pmvIndoorTemperatureRangeSi = { min: 10, max: 40 };
+export const pmvAirSpeedRangeSi = { min: 0, max: 2 };
+export const pmvRelativeHumidityRangeSi = { min: 0, max: 100 };
+export const pmvMetabolicRateRangeSi = { min: 1, max: 4 };
+export const pmvClothingInsulationMinSi = 0;
+
 export function createPmvRequestAxisAdapter(adapter: PmvStandardAdapter) {
   return createRequestAxisAdapter({
     quantityMapping: pmvQuantityMapping,
     aliases: { [PhysicalQuantityId.WindSpeed]: PhysicalQuantityId.RelativeAirSpeed },
     axisRanges: {
+      [PhysicalQuantityId.DryBulbTemperature]: pmvIndoorTemperatureRangeSi,
+      [PhysicalQuantityId.MeanRadiantTemperature]: pmvIndoorTemperatureRangeSi,
+      [PhysicalQuantityId.RelativeAirSpeed]: pmvAirSpeedRangeSi,
+      [PhysicalQuantityId.WindSpeed]: pmvAirSpeedRangeSi,
+      [PhysicalQuantityId.RelativeHumidity]: pmvRelativeHumidityRangeSi,
+      [PhysicalQuantityId.MetabolicRate]: pmvMetabolicRateRangeSi,
       [PhysicalQuantityId.ClothingInsulation]: {
-        min: getPhysicalQuantityMeta(PhysicalQuantityId.ClothingInsulation)
-          .minSi,
+        min: pmvClothingInsulationMinSi,
         max: adapter.clothingInsulationMaxSi,
       },
     },
@@ -311,9 +321,7 @@ export function createPmvRequestAxisAdapter(adapter: PmvStandardAdapter) {
         request.tdb = valueSi;
         request.tr = valueSi;
       },
-      range: { min: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature)
-          .minSi, max: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature)
-          .maxSi },
+      range: pmvIndoorTemperatureRangeSi,
     },
   });
 }
@@ -489,8 +497,8 @@ export function calculatePmvModel(
       if (!chartSource.derivedSlotsByInput) {
         chartSource.derivedSlotsByInput = {};
       }
-      chartSource.derivedSlotsByInput[inputId] = getDerivedFromAuxiliary(
-        context.auxiliaryQuantitiesByInput[inputId],
+      chartSource.derivedSlotsByInput[inputId] = getDerivedFromQuantities(
+        context.effectiveQuantitiesByInput[inputId],
       );
     },
   });

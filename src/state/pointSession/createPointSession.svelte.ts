@@ -1,6 +1,7 @@
-import { syncDerivedStateIntoAuxiliary } from "../../engines/comfort/syncState";
+import { syncDerivedState } from "../../engines/comfort/syncState";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
 import {
+  createPointChartState,
   createPointInputState,
   createPointOutputState,
   createPointSettingState,
@@ -31,12 +32,13 @@ import type { ChartControlsViewModel, InputPanelViewModel } from "./viewModels";
 /**
  * Point session for Standard and Explore. Time-series stays a separate session.
  *
- * Three buckets: `input`, `setting`, `output`. Calculation cache belongs to the
- * output bucket but is stored as `$state.raw` so Plotly-sized objects are not
- * deeply proxied. View-model fields are `$derived` projections, not a second store.
+ * Buckets: `input`, `chart`, identity `setting`, `output`. Calculation cache
+ * belongs to the output bucket but is stored as `$state.raw` so Plotly-sized
+ * objects are not deeply proxied. View-model fields are `$derived` projections.
  */
 export class PointSession implements PointSessionContract {
   input = $state(createPointInputState());
+  chart = $state(createPointChartState());
   setting = $state(createPointSettingState());
   output = $state(createPointOutputState());
   calculationCacheByModel = $state.raw(createCalculationCacheByModel());
@@ -47,14 +49,14 @@ export class PointSession implements PointSessionContract {
 
   #readProjectionSources() {
     const selectedModel = this.setting.selectedModel;
-    const settings = this.setting.outputSettingsByModel[selectedModel];
+    const settings = this.chart.outputSettingsByModel[selectedModel];
     return {
       selectedModel,
-      instanceId: this.setting.selectedChartInstanceByModel[selectedModel],
+      instanceId: this.chart.selectedChartInstanceByModel[selectedModel],
       activeSurface: this.setting.activeSurface,
-      unitSystem: this.setting.unitSystem,
-      compareEnabled: this.setting.compareEnabled,
-      compareInputIds: this.setting.compareInputIds,
+      unitSystem: this.input.unitSystem,
+      compareEnabled: this.input.compareEnabled,
+      compareInputIds: this.input.compareInputIds,
       xAxis: settings.xAxis,
       yAxis: settings.yAxis,
       baselineInputId: settings.baselineInputId,
@@ -131,10 +133,7 @@ export class PointSession implements PointSessionContract {
   });
 
   constructor() {
-    syncDerivedStateIntoAuxiliary(
-      this.input.quantitiesByInput,
-      this.input.auxiliaryQuantitiesByInput,
-    );
+    syncDerivedState(this.input.quantitiesByInput);
 
     this.#internals = createPointInternals(this);
     const { scheduleCalculation: scheduleCalculationInternal } =

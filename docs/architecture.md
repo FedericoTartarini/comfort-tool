@@ -46,7 +46,7 @@ src/
     units/         SI ↔ display conversion
   state/
     modelRegistry/ defineModel, ComfortModelBuilder, registered configs
-    pointSession/  Standard+Explore: three buckets, actions, $derived
+    pointSession/  Standard+Explore: input/chart/setting/output buckets, actions, $derived
                    view-models, share snapshot/codec/url
     timeSeries/    Time-series session (PHS)
     app/           route identity, navigation, AppContext
@@ -89,12 +89,15 @@ they do not own, extend, or invent them. There is no table-type catalog.
 
 - Quantities: `src/catalog/quantities.ts` for inputs and outputs.
   TypeScript keys are PascalCase physical names; wire strings match
-  jsthermalcomfort fields. `primaryInputOrder` is the persisted primary-key
-  set. Extra ids (`extraQuantities`, including PHS weight and height) live
-  in sparse `modelInputsByModel` and stay out of primary records. Display
-  labels live on `siUnitLabel` / `ipUnitLabel`. Humidity quantities may
-  set `category: Humidity`; `humidityQuantityIds()` is that set minus
-  `rh`. Map JS names with `defineLibraryQuantityMapping`.
+  jsthermalcomfort fields. Catalog rows hold `label`, `siUnit`, optional
+  `step`, and optional `category: Humidity`. SI/IP pairing is
+  `ipUnitForSi` / `unitLabel`. Session state is one sparse `QuantityState`
+  bag per Compare slot. Derived humidity (`derivedHumidityQuantityIds`)
+  may live in memory and is omitted from share. PHS weight/height use the
+  same bag and stay off Analysis `inputFields`. Ranges live on model
+  `inputFields` (required min/max) and chart `rangeSi`. Display labels
+  live on `siUnitLabel` / `ipUnitLabel`. Map JS names with
+  `defineLibraryQuantityMapping`.
 - ChartTypes: `src/catalog/chartTypes.ts`. Eight product names. One model
   registers each ChartType at most once. Dropdown labels are
   `chartTypeLabel[type]`. Selection key is `ChartType` (`selectedChartType`);
@@ -125,20 +128,22 @@ they do not own, extend, or invent them. There is no table-type catalog.
   water-loss fills are product presets.
 
 `defineModel` is the public authoring API. Family modules (PMV, Adaptive)
-may assemble with `ComfortModelBuilder` internally. Duplicate extra ids,
-extras that are primary, humidity, or modifier slots, unknown ChartTypes,
+may assemble with `ComfortModelBuilder` internally. Derived-humidity or
+modifier-extra `kind: "quantity"` fields, unknown ChartTypes,
 duplicate ChartType on one model, or a Time-series table without Time-series
-capability fail `defineModel` / `assembleCatalogs`.
+capability fail `defineModel` / `assembleCatalogs`. Every input field must
+declare SI min/max.
 
 ## Point session
 
-Svelte 5 class in `createPointSession.svelte.ts`. Three buckets plus a
+Svelte 5 class in `createPointSession.svelte.ts`. Four buckets plus a
 sibling calculation cache:
 
 | Bucket | Holds |
 | ------ | ----- |
-| input | `quantitiesByInput`, auxiliary slots, `modelInputsByModel`, modifiers |
-| setting | model, `selectedChartType`, options, Compare, unit system, Surface, allowed models, axes / baseline / Explore bands |
+| input | sparse `quantitiesByInput`, options, modifiers, Compare, unit system |
+| chart | per-model ChartType, axes, baseline, Explore bands |
+| setting | selected model, active surface, allowed models, pending model switch |
 | output | loading / error |
 
 Calculation cache belongs to the output bucket but is stored as `$state.raw`
@@ -188,14 +193,14 @@ New reusable ChartType geometry goes under `src/charts/`, not
 ## Share
 
 UTF-8 JSON → Base64URL → `?state=`. Pathname is identity (surface + standard
-+ model). The query encodes **input + setting only** (`ShareStateSnapshot`
-version 1). `output`, `activeSurface`, `allowedModelIds`,
-`pendingModelSwitch`, and Time-series are not in the URL.
++ model). The query encodes **input + chart only** (`ShareStateSnapshot`
+version 1). `output`, `selectedModel`, `activeSurface`, `allowedModelIds`,
+`pendingModelSwitch`, derived humidity keys, and Time-series are not in the URL.
 
-- Serialize sparsely: omit default model slices; omit unset model inputs.
+- Serialize sparsely: omit default model slices; omit unset quantity keys.
 - Parse: missing known model → seed defaults; unknown key → reject.
-- Extra quantities serialize only under that model’s sparse
-  `modelInputsByModel`.
+- `quantitiesByInput` is a sparse map of known `PhysicalQuantityId` values;
+  derived humidity keys are rejected and re-derived from `tdb`+`rh`.
 - Adding a model does not require every existing URL to list that model.
 - Wire model ids are kebab-case (`"pmv-ashrae"`).
 
@@ -210,18 +215,18 @@ one file with identity/inputs, calculation, and chart **parameters** (`type`
 + data spec). Do not write `spec.build`, Plotly, chart ids, or
 `instanceId`. Selection key is `ChartType` (`selectedChartType`).
 `library.label` / `library.description` fill metadata. `inputFields`
-list quantities (optional `minValue`/`maxValue`/`widget`); default widgets
-come from `defaultFieldWidgetByQuantity`. Classifier edges come from JS
+list quantities with required SI `minValue`/`maxValue` (optional `widget`);
+default widgets come from `defaultFieldWidgetByQuantity`. Chart axes must
+declare `rangeSi`. Classifier edges come from JS
 `mapping.bins` / `compliance.bounds` via `bandsFromJsBins` /
 `bandsFromJsBounds`, plus a token map — do not scan.
 
 These are frontend catalog work, not declaration-only work:
 
 - new ChartType
-- new `primaryInputOrder` key
+- new `PhysicalQuantityId` (and `SiUnit` if a new dimension)
 - new modifier
 - new Time-series session
-- new SI unit dimension
 
 Declarations do not import Plotly. UI, share, Compare, and the point session
 do not branch on the new model id.

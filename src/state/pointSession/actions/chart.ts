@@ -51,7 +51,7 @@ export function createChartActions({
       return;
     }
 
-    session.setting.selectedChartInstanceByModel[session.setting.selectedModel] = instanceId;
+    session.chart.selectedChartInstanceByModel[session.setting.selectedModel] = instanceId;
 
     const registration = findChartEngineRegistration(
       config.chartEngineRegistrations,

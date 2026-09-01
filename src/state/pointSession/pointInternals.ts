@@ -5,7 +5,7 @@ import {
 } from "../../catalog/inputSlots";
 import type { ChartInstanceDeclaration } from "../../catalog/chartTypes";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
-import { primaryInputOrder, type PhysicalQuantityId } from "../../catalog/quantities";
+import { type PhysicalQuantityId } from "../../catalog/quantities";
 import {
   type ModifierId as ModifierIdType,
 } from "../../catalog/inputModifiers";
@@ -16,6 +16,7 @@ import {
   type ControlBehaviorContext,
 } from "../../engines/comfort/controls/types";
 import { syncDerivedStateForInput } from "../../engines/comfort/syncState";
+import { applyQuantityPatch } from "../../engines/comfort/quantityStateRouting";
 import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig } from "../modelRegistry";
 import type { RuntimeComfortModelDefinition } from "../modelRegistry/definition";
 import { buildFieldChartProfile } from "./fieldChartState";
@@ -54,7 +55,7 @@ export interface PointInternals {
   getCurrentSelectedChartInstanceId: () => string;
   getCurrentChartInstance: () => ChartInstanceDeclaration;
   getCurrentModelCache: () => ModelCalculationCacheByModelState[ModelIdType];
-  getCurrentOutputSettings: () => PointSessionBuckets["setting"]["outputSettingsByModel"][ModelIdType];
+  getCurrentOutputSettings: () => PointSessionBuckets["chart"]["outputSettingsByModel"][ModelIdType];
   getEffectiveChartBaselineInputId: () => InputIdType;
   applyBehaviorPatch: (modelId: ModelIdType, patch: BehaviorPatch) => void;
   getCurrentDynamicAxisPair: () => { xAxis: PhysicalQuantityId; yAxis: PhysicalQuantityId };
@@ -107,25 +108,23 @@ export function createPointInternals(
   }
 
   function getVisibleInputIds(): InputIdType[] {
-    if (!session.setting.compareEnabled) {
+    if (!session.input.compareEnabled) {
       return [InputId.Input1];
     }
 
-    return normalizeCompareInputIds(session.setting.compareInputIds);
+    return normalizeCompareInputIds(session.input.compareInputIds);
   }
 
   function getModelContext(modelId: ModelIdType): ControlBehaviorContext {
     const modelConfig = getComfortModelConfig(modelId);
-    const options = modelConfig.parseOptions(session.setting.modelOptionsByModel[modelId]);
+    const options = modelConfig.parseOptions(session.input.modelOptionsByModel[modelId]);
     if (!options) {
       throw new Error(`Invariant violation: invalid options state for ${modelId}.`);
     }
     return createControlBehaviorContext({
       quantitiesByInput: session.input.quantitiesByInput,
-      auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
-      modelInputs: session.input.modelInputsByModel[modelId],
       options,
-      unitSystem: session.setting.unitSystem,
+      unitSystem: session.input.unitSystem,
       visibleInputIds: getVisibleInputIds(),
     });
   }
@@ -140,7 +139,6 @@ export function createPointInternals(
     return deriveEffectiveInputsByInput(
       session.input.quantitiesByInput,
       session.input.activeModifiersByInput,
-      session.input.auxiliaryQuantitiesByInput,
       getComfortModelConfig(modelId).modifiers,
     );
   }
@@ -149,7 +147,7 @@ export function createPointInternals(
     return createInputModifierDraft(
       getActiveModelConfig(),
       session.input.activeModifiersByInput,
-      session.input.auxiliaryQuantitiesByInput,
+      session.input.quantitiesByInput,
       getVisibleInputIds(),
     );
   }
@@ -161,15 +159,14 @@ export function createPointInternals(
       config: getActiveModelConfig(),
       quantitiesByInput: session.input.quantitiesByInput,
       activeModifiersByInput: session.input.activeModifiersByInput,
-      auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
       visibleInputIds: getVisibleInputIds(),
-      unitSystem: session.setting.unitSystem,
+      unitSystem: session.input.unitSystem,
       draft,
     });
   }
 
   function getCurrentSelectedChartInstanceId() {
-    return session.setting.selectedChartInstanceByModel[session.setting.selectedModel];
+    return session.chart.selectedChartInstanceByModel[session.setting.selectedModel];
   }
 
   function getCurrentChartInstance(): ChartInstanceDeclaration {
@@ -190,13 +187,13 @@ export function createPointInternals(
   }
 
   function getCurrentOutputSettings() {
-    return session.setting.outputSettingsByModel[session.setting.selectedModel];
+    return session.chart.outputSettingsByModel[session.setting.selectedModel];
   }
 
   function getEffectiveChartBaselineInputId(): InputIdType {
     return resolveChartBaselineInputId(
       getCurrentOutputSettings(),
-      session.setting.compareEnabled,
+      session.input.compareEnabled,
       getVisibleInputIds(),
     );
   }
@@ -204,13 +201,13 @@ export function createPointInternals(
   function applyBehaviorPatch(modelId: ModelIdType, patch: BehaviorPatch) {
     if (patch.optionsPatch) {
       const options = getComfortModelConfig(modelId).parseOptions({
-        ...session.setting.modelOptionsByModel[modelId],
+        ...session.input.modelOptionsByModel[modelId],
         ...patch.optionsPatch,
       });
       if (!options) {
         throw new Error(`Invariant violation: invalid options patch for ${modelId}.`);
       }
-      session.setting.modelOptionsByModel[modelId] = options;
+      session.input.modelOptionsByModel[modelId] = options;
     }
 
     if (patch.quantitiesPatch) {
@@ -219,27 +216,8 @@ export function createPointInternals(
         if (!inputPatch) {
           continue;
         }
-
-        for (const fieldKey of primaryInputOrder) {
-          const value = inputPatch[fieldKey];
-          if (value !== undefined) {
-            session.input.quantitiesByInput[inputId][fieldKey] = value;
-          }
-        }
-        syncDerivedStateForInput(
-          inputId,
-          session.input.quantitiesByInput,
-          session.input.auxiliaryQuantitiesByInput,
-        );
-      }
-    }
-
-    if (patch.modelInputsPatch) {
-      const modelInputs = session.input.modelInputsByModel[modelId];
-      for (const [quantityId, value] of Object.entries(patch.modelInputsPatch)) {
-        if (value !== undefined) {
-          modelInputs[quantityId as keyof typeof modelInputs] = value;
-        }
+        applyQuantityPatch(session.input.quantitiesByInput[inputId], inputPatch);
+        syncDerivedStateForInput(inputId, session.input.quantitiesByInput);
       }
     }
   }
@@ -263,7 +241,6 @@ export function createPointInternals(
       session.setting.activeSurface,
     );
   }
-
 
   return {
     invalidateModel,

@@ -34,7 +34,7 @@ describe("chart legend attachment", () => {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
         chartSourceVersion: 1,
-        modelInputs: context.modelInputs,
+        modelInputs: context.effectiveQuantitiesByInput[InputId.Input1],
       },
     );
 

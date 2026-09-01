@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
-import { PhysicalQuantityId, type PrimaryInputState } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import { InputControlId } from "../../catalog/inputControls";
 import {
   AirSpeedControlMode,
@@ -81,7 +81,7 @@ const standardCases = [
 
 function setPmvInputs(
   session: ReturnType<typeof createPointSession>,
-  values: Partial<PrimaryInputState>,
+  values: QuantityState,
 ): void {
   Object.assign(session.input.quantitiesByInput[InputId.Input1], values);
 }
@@ -93,9 +93,7 @@ function calculateRegisteredModel(
 ): { result: PmvResponse; chartSource: PmvChartSource } {
   const calculation = calculatePmvModel(createModelCalculationContext({
     effectiveQuantitiesByInput,
-    auxiliaryQuantitiesByInput: session.input.auxiliaryQuantitiesByInput,
-    modelInputs: session.input.modelInputsByModel[adapter.modelId],
-    options: session.setting.modelOptionsByModel[adapter.modelId],
+    options: session.input.modelOptionsByModel[adapter.modelId],
   }), [InputId.Input1], adapter);
   const result = calculation.resultsByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
@@ -121,7 +119,7 @@ function calculateWithDynamicClothingModifier(
   });
   return {
     result,
-    effectiveClo: effective[PhysicalQuantityId.ClothingInsulation],
+    effectiveClo: effective[PhysicalQuantityId.ClothingInsulation] ?? NaN,
   };
 }
 
@@ -551,9 +549,7 @@ describe("PMV roots and compliance", () => {
     }).calculate(
       createModelCalculationContext({
         effectiveQuantitiesByInput: createPointSession().input.quantitiesByInput,
-        auxiliaryQuantitiesByInput: createPointSession().input.auxiliaryQuantitiesByInput,
-        modelInputs: {},
-        options: createPointSession().setting.modelOptionsByModel[ModelId.PmvAshrae],
+        options: createPointSession().input.modelOptionsByModel[ModelId.PmvAshrae],
       }),
       [InputId.Input1],
     )).toThrow("broken adapter");
@@ -659,8 +655,8 @@ describe("PMV roots and compliance", () => {
 
   it("evaluates Operative comfort-zone roots with tr equal to tdb", () => {
     const session = createPointSession();
-    session.setting.modelOptionsByModel[ModelId.PmvAshrae] = {
-      ...session.setting.modelOptionsByModel[ModelId.PmvAshrae],
+    session.input.modelOptionsByModel[ModelId.PmvAshrae] = {
+      ...session.input.modelOptionsByModel[ModelId.PmvAshrae],
       [OptionKey.TemperatureMode]: TemperatureMode.Operative,
     };
     setPmvInputs(session, { [PhysicalQuantityId.DryBulbTemperature]: 25, [PhysicalQuantityId.MeanRadiantTemperature]: 25 });

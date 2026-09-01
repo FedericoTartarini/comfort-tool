@@ -67,7 +67,7 @@ describe("InputModifiers", () => {
     expect(dynamicClothingToggle.closest("label")?.classList.contains("grayscale"))
       .toBe(false);
 
-    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.MeasuredAirSpeed]).toBeUndefined();
     expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(false);
@@ -77,7 +77,7 @@ describe("InputModifiers", () => {
     await tick();
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.MeasuredAirSpeed]).toBe(0.6);
     expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MeasuredAirSpeed]).toBe(true);
@@ -116,7 +116,7 @@ describe("InputModifiers", () => {
       [ModifierId.MorningClothingEstimate]).toBe(false);
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(session.input.auxiliaryQuantitiesByInput[InputId.Input1]
+    expect(session.input.quantitiesByInput[InputId.Input1]
       [PhysicalQuantityId.MorningOutdoorTemperature]).toBeUndefined();
     expect(session.input.activeModifiersByInput[InputId.Input1]
       [ModifierId.MorningClothingEstimate]).toBe(false);

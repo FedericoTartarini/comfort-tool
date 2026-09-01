@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../../catalog/quantities";
+import { PhysicalQuantityId } from "../../../catalog/quantities";
 import type { LibraryQuantityMapping } from "../requestMapping";
 import { CHART_COORDINATE_TOLERANCE, type ChartRange } from "./types";
 
@@ -64,12 +64,11 @@ export function createRequestAxisAdapter<TPayload extends object>({
       return operativeTemperature.range;
     }
     const resolvedField = resolveField(field);
-    return axisRanges[field]
-      ?? axisRanges[resolvedField]
-      ?? {
-        min: getPhysicalQuantityMeta(resolvedField).minSi,
-        max: getPhysicalQuantityMeta(resolvedField).maxSi,
-      };
+    const range = axisRanges[field] ?? axisRanges[resolvedField];
+    if (!range) {
+      throw new Error(`Missing SI range for dynamic axis ${field}.`);
+    }
+    return range;
   };
 
   return {

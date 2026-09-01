@@ -128,6 +128,11 @@ export const defaultPhsSimulationFlags = {
 
 export const defaultPhsPersonSettings: PhsPersonSettingsSi = { [PhysicalQuantityId.BodyWeight]: 75, [PhysicalQuantityId.Height]: 1.8, ...defaultPhsSimulationFlags };
 
+export const phsPersonRangeSi: Record<PhsPersonQuantityId, { min: number; max: number }> = {
+  [PhysicalQuantityId.BodyWeight]: { min: 30, max: 200 },
+  [PhysicalQuantityId.Height]: { min: 1.2, max: 2.2 },
+};
+
 export const phsReferenceEnvironment: PhsEnvironmentSi = {
   tdb: 35,
   tr: 35,

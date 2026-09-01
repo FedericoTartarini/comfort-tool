@@ -51,7 +51,7 @@ src/
     units/          SI <-> IP conversion helpers
   state/
     modelRegistry/  defineModel, ComfortModelBuilder, registered runtime configs
-    pointSession/   Standard+Explore session: three buckets, actions, $derived
+    pointSession/   Standard+Explore session: input/chart/setting/output buckets, actions, $derived
                     view-models, share snapshot/codec/url
     timeSeries/     Time-series session (PHS); editor/chart view models
     app/            route identity, navigation, AppContext
@@ -77,23 +77,24 @@ Canonical Standard URLs are `/standard/{standard}/{model}/` (for example `/stand
 
 **`jsthermalcomfort` imports** stay in `src/declarations/**`, remaining `src/engines/comfort/**`, and `src/charts/psychrometric/humidity.ts` (humidity ratio only). Model labels/descriptions come from string `library.label` / `library.description`. Call JS classifiers and bins (`humidex.mapping`, UTCI `mapping`, Heat Index `mapping`, ASHRAE `tsv`/`compliance`/`COMPLIANCE_LIMIT`, ISO `tsv`, adaptive `offsets` / `t_running_mean_limits`, `get_ce`) instead of copying or scanning them. Comfort Tool maps library labels (or library ids / result field names when JS has no label) to `ZoneToken`; it does not invent classifier copy. PPD 10% and PHS Explore t_re/water-loss fills are product chart presets. Wind Chill has no library classifier, so it has no default frostbite bands; WCT is the library result with no local applicability gate. EN Adaptive outdoor chart 10–30 °C is an axis, not `adaptive_en.t_running_mean_limits`. PHS rectal and water-loss fractions come from `phs.*`.
 
-**Unit conversion** belongs in `src/engines/units/`. Quantity conversion reads `units.SI` from the closed quantity catalog. Display labels live on the SI/IP unit tables. Canonical state remains SI.
+**Unit conversion** belongs in `src/engines/units/`. Quantity conversion reads `siUnit` from the closed quantity catalog. Display labels live on the SI/IP unit tables. Canonical state remains SI.
 
 ## State Shape
 
-The session is `PointSession` (`createPointSession` in `createPointSession.svelte.ts`). State is three buckets on the class (`session.input` / `session.setting` / `session.output`). Writes go through `session.actions.*`. View-models (`inputPanel`, `chartBuild`, `chartControls`, …) are `$derived` projections, not a second store.
+The session is `PointSession` (`createPointSession` in `createPointSession.svelte.ts`). State is four buckets on the class (`session.input` / `session.chart` / `session.setting` / `session.output`). Writes go through `session.actions.*`. View-models (`inputPanel`, `chartBuild`, `chartControls`, …) are `$derived` projections, not a second store.
 
-- `input` — `quantitiesByInput`, `auxiliaryQuantitiesByInput`, `modelInputsByModel`, `activeModifiersByInput`
-- `setting` — selected model, `selectedChartType`, options, Compare, unit system, active surface, allowed models, axes/baseline/Explore bands
+- `input` — sparse `quantitiesByInput` (`QuantityState` per Compare slot), options, modifiers, Compare, unit system
+- `chart` — per-model ChartType, axes, baseline, Explore bands
+- `setting` — path identity: selected model, active surface, allowed models, pending model switch
 - `output` — `{ isLoading, errorMessage }`; calculation cache belongs to this bucket but is stored as `calculationCacheByModel = $state.raw(...)` so Plotly-sized objects are not deeply proxied
 
-Share is UTF-8 JSON → Base64URL → `?state=` of **input + setting only**. Pathname is identity (surface + standard + model). Time-series is a separate session with the same three bucket names. The model registry is not session state.
+Share is UTF-8 JSON → Base64URL → `?state=` of **input + chart only** (sparse quantities minus derived humidity). Pathname is identity (surface + standard + model). Time-series is a separate session. The model registry is not session state.
 
 ## Model Configuration
 
 Model declarations live in `src/declarations/`. `defineModel` is the assembly function; it uses `ComfortModelBuilder` internally. Copy `heatIndex.ts` for a new model (one file, three zones). Family modules (PMV, Adaptive) may still assemble with `ComfortModelBuilder`. PHS Worker/Time-series stay separate.
 
-Use constants from `src/catalog/` for `ModelId`, `PhysicalQuantityId`, `ChartType`, `SurfaceId`, and `ZoneToken`. Charts are `type` + data spec; session/share select `selectedChartType`. `library.label` / `library.description` fill metadata. Input widgets come from `defaultFieldWidgetByQuantity`. Classifier edges come from JS `bins`. Catalog TypeScript keys are PascalCase physical names; wire strings match jsthermalcomfort fields. Map those with `defineLibraryQuantityMapping`.
+Use constants from `src/catalog/` for `ModelId`, `PhysicalQuantityId`, `ChartType`, `SurfaceId`, and `ZoneToken`. Charts are `type` + data spec; session/share select `selectedChartType`. `library.label` / `library.description` fill metadata. Input widgets come from `defaultFieldWidgetByQuantity`. Every `inputFields` entry must declare SI min/max. Classifier edges come from JS `bins`. Catalog TypeScript keys are PascalCase physical names; wire strings match jsthermalcomfort fields. Map those with `defineLibraryQuantityMapping`.
 
 ## UI Conventions
 

@@ -1,4 +1,4 @@
-import type { PrimaryInputState, PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
+import type { PhysicalQuantityId as PhysicalQuantityIdType, QuantityState } from "../../../catalog/quantities";
 import type {
   InputControlViewModel,
   InputControlId as InputControlIdType,
@@ -7,21 +7,16 @@ import type { ModelOptionsRecord } from "../../../catalog/inputModes";
 import type { InputId as InputIdType } from "../../../catalog/inputSlots";
 import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
 import {
-  AuxiliaryQuantitiesByInputState,
   QuantitiesByInputState,
 } from "../quantityStateRouting";
 
 export type BehaviorPatch = {
-  /** Canonical-SI primary quantity changes keyed by input slot. */
-  quantitiesPatch?: Partial<Record<InputIdType, Partial<PrimaryInputState>>>;
+  quantitiesPatch?: Partial<Record<InputIdType, QuantityState>>;
   optionsPatch?: ModelOptionsRecord;
-  modelInputsPatch?: Partial<Record<PhysicalQuantityIdType, number>>;
 };
 
 export type ControlBehaviorContext = {
   quantitiesByInput: QuantitiesByInputState;
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
-  modelInputs: Partial<Record<PhysicalQuantityIdType, number>>;
   options: ModelOptionsRecord;
   unitSystem: UnitSystemType;
   visibleInputIds: InputIdType[];
@@ -29,16 +24,12 @@ export type ControlBehaviorContext = {
 
 export function createControlBehaviorContext(options: {
   quantitiesByInput: QuantitiesByInputState;
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState;
-  modelInputs: Partial<Record<PhysicalQuantityIdType, number>>;
   options: ModelOptionsRecord;
   unitSystem: UnitSystemType;
   visibleInputIds: InputIdType[];
 }): ControlBehaviorContext {
   return {
     quantitiesByInput: options.quantitiesByInput,
-    auxiliaryQuantitiesByInput: options.auxiliaryQuantitiesByInput,
-    modelInputs: options.modelInputs,
     options: options.options,
     unitSystem: options.unitSystem,
     visibleInputIds: options.visibleInputIds,
@@ -60,7 +51,7 @@ export type InputControlDefinition = {
 
 export function createSingleInputPatch(
   inputId: InputIdType,
-  inputState: Partial<PrimaryInputState>,
+  inputState: QuantityState,
 ): BehaviorPatch {
   return {
     quantitiesPatch: {

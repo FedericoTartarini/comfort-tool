@@ -1,3 +1,11 @@
+import { InputId, inputOrder, type InputId as InputIdType } from "../../catalog/inputSlots";
+import {
+  PhysicalQuantityId,
+  isDerivedHumidityQuantityId,
+  isPhysicalQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+  type QuantityState,
+} from "../../catalog/quantities";
 import {
   inputModifierCatalogue,
   modifierOrder,
@@ -5,140 +13,111 @@ import {
   type ModifierId as ModifierIdType,
   type ModifierInputValues,
 } from "../../catalog/inputModifiers";
-import { InputId, inputOrder, type InputId as InputIdType } from "../../catalog/inputSlots";
-import {
-  PhysicalQuantityId,
-  derivedHumidityQuantityIds,
-  isPhysicalQuantityId,
-  isPrimaryQuantityId,
-  physicalQuantityMetaById,
-  primaryInputOrder,
-  type AuxiliaryInputState,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
-  type PrimaryInputState,
-  type PrimaryQuantityId,
-} from "../../catalog/quantities";
-import { type ModelId as ModelIdType } from "../../catalog/modelIds";
 import type { DerivedSlotQuantityState } from "./derivations/psychrometrics";
 
-export type QuantitiesByInputState = Record<InputIdType, PrimaryInputState>;
-export type AuxiliaryQuantitiesByInputState = Record<InputIdType, AuxiliaryInputState>;
-export type ModelInputsByModelState = Record<
-  ModelIdType,
-  Partial<Record<PhysicalQuantityIdType, number>>
->;
+export type QuantitiesByInputState = Record<InputIdType, QuantityState>;
 
-export function createEmptyAuxiliaryInputState(): AuxiliaryInputState {
+export function createEmptyQuantityState(): QuantityState {
   return {};
 }
 
-export function createAuxiliaryQuantitiesByInput(): AuxiliaryQuantitiesByInputState {
+export function createQuantitiesByInputState(
+  createSlot: () => QuantityState,
+): QuantitiesByInputState {
   return inputOrder.reduce((byInput, inputId) => {
-    byInput[inputId] = createEmptyAuxiliaryInputState();
+    byInput[inputId] = createSlot();
     return byInput;
-  }, {} as AuxiliaryQuantitiesByInputState);
+  }, {} as QuantitiesByInputState);
 }
 
-export function getPrimaryQuantity(
-  primary: PrimaryInputState,
-  quantityId: PrimaryQuantityId,
+export function getQuantity(
+  quantities: QuantityState,
+  quantityId: PhysicalQuantityIdType,
+): number | undefined {
+  return quantities[quantityId];
+}
+
+export function setQuantity(
+  quantities: QuantityState,
+  quantityId: PhysicalQuantityIdType,
+  value: number | undefined,
+): void {
+  if (value === undefined) {
+    delete quantities[quantityId];
+    return;
+  }
+  quantities[quantityId] = value;
+}
+
+export function applyQuantityPatch(
+  quantities: QuantityState,
+  patch: QuantityState,
+): void {
+  for (const [rawId, value] of Object.entries(patch)) {
+    if (!isPhysicalQuantityId(rawId) || value === undefined) continue;
+    quantities[rawId] = value;
+  }
+}
+
+export function requireQuantity(
+  quantities: QuantityState,
+  quantityId: PhysicalQuantityIdType,
 ): number {
-  return primary[quantityId];
-}
-
-export function setPrimaryQuantity(
-  primary: PrimaryInputState,
-  quantityId: PrimaryQuantityId,
-  value: number,
-): void {
-  primary[quantityId] = value;
-}
-
-export function getSlotQuantity(
-  auxiliary: AuxiliaryInputState,
-  quantityId: PhysicalQuantityIdType,
-): number | undefined {
-  return auxiliary[quantityId];
-}
-
-export function setSlotQuantity(
-  auxiliary: AuxiliaryInputState,
-  quantityId: PhysicalQuantityIdType,
-  value: number | undefined,
-): void {
-  if (value === undefined) {
-    delete auxiliary[quantityId];
-    return;
+  const value = quantities[quantityId];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`Missing quantity ${quantityId}.`);
   }
-  auxiliary[quantityId] = value;
+  return value;
 }
 
-export function getModelQuantity(
-  modelInputs: Partial<Record<PhysicalQuantityIdType, number>>,
-  quantityId: PhysicalQuantityIdType,
-): number | undefined {
-  return modelInputs[quantityId];
-}
-
-export function setModelQuantity(
-  modelInputs: Partial<Record<PhysicalQuantityIdType, number>>,
-  quantityId: PhysicalQuantityIdType,
-  value: number | undefined,
-): void {
-  if (value === undefined) {
-    delete modelInputs[quantityId];
-    return;
-  }
-  modelInputs[quantityId] = value;
-}
-
-export function getDerivedFromAuxiliary(auxiliary: AuxiliaryInputState): DerivedSlotQuantityState {
-  return { [PhysicalQuantityId.DewPointTemperature]: auxiliary[PhysicalQuantityId.DewPointTemperature]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.DewPointTemperature].defaultSi, [PhysicalQuantityId.HumidityRatio]: auxiliary[PhysicalQuantityId.HumidityRatio]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.HumidityRatio].defaultSi, [PhysicalQuantityId.WetBulbTemperature]: auxiliary[PhysicalQuantityId.WetBulbTemperature]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.WetBulbTemperature].defaultSi, [PhysicalQuantityId.VaporPressure]: auxiliary[PhysicalQuantityId.VaporPressure]
-      ?? physicalQuantityMetaById[PhysicalQuantityId.VaporPressure].defaultSi };
-}
-
-export function getDerivedByInputFromAuxiliary(
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
-): Record<InputIdType, DerivedSlotQuantityState> {
+export function getDerivedFromQuantities(quantities: QuantityState): DerivedSlotQuantityState {
   return {
-    [InputId.Input1]: getDerivedFromAuxiliary(auxiliaryQuantitiesByInput[InputId.Input1]),
-    [InputId.Input2]: getDerivedFromAuxiliary(auxiliaryQuantitiesByInput[InputId.Input2]),
-    [InputId.Input3]: getDerivedFromAuxiliary(auxiliaryQuantitiesByInput[InputId.Input3]),
+    [PhysicalQuantityId.DewPointTemperature]: quantities[PhysicalQuantityId.DewPointTemperature]
+      ?? 0,
+    [PhysicalQuantityId.HumidityRatio]: quantities[PhysicalQuantityId.HumidityRatio]
+      ?? 0,
+    [PhysicalQuantityId.WetBulbTemperature]: quantities[PhysicalQuantityId.WetBulbTemperature]
+      ?? 0,
+    [PhysicalQuantityId.VaporPressure]: quantities[PhysicalQuantityId.VaporPressure]
+      ?? 0,
   };
 }
 
-export function syncDerivedQuantitiesIntoAuxiliary(
-  primary: PrimaryInputState,
-  auxiliary: AuxiliaryInputState,
+export function getDerivedByInput(
+  quantitiesByInput: QuantitiesByInputState,
+): Record<InputIdType, DerivedSlotQuantityState> {
+  return {
+    [InputId.Input1]: getDerivedFromQuantities(quantitiesByInput[InputId.Input1]),
+    [InputId.Input2]: getDerivedFromQuantities(quantitiesByInput[InputId.Input2]),
+    [InputId.Input3]: getDerivedFromQuantities(quantitiesByInput[InputId.Input3]),
+  };
+}
+
+export function syncDerivedQuantities(
+  quantities: QuantityState,
   derived: DerivedSlotQuantityState,
-): void { auxiliary[PhysicalQuantityId.DewPointTemperature] = derived[PhysicalQuantityId.DewPointTemperature];
-  auxiliary[PhysicalQuantityId.HumidityRatio] = derived[PhysicalQuantityId.HumidityRatio];
-  auxiliary[PhysicalQuantityId.WetBulbTemperature] = derived[PhysicalQuantityId.WetBulbTemperature];
-  auxiliary[PhysicalQuantityId.VaporPressure] = derived[PhysicalQuantityId.VaporPressure]; }
+): void {
+  quantities[PhysicalQuantityId.DewPointTemperature] = derived[PhysicalQuantityId.DewPointTemperature];
+  quantities[PhysicalQuantityId.HumidityRatio] = derived[PhysicalQuantityId.HumidityRatio];
+  quantities[PhysicalQuantityId.WetBulbTemperature] = derived[PhysicalQuantityId.WetBulbTemperature];
+  quantities[PhysicalQuantityId.VaporPressure] = derived[PhysicalQuantityId.VaporPressure];
+}
 
 export function syncAllDerivedQuantities(
   quantitiesByInput: QuantitiesByInputState,
-  auxiliaryQuantitiesByInput: AuxiliaryQuantitiesByInputState,
-  deriveForPrimary: (primary: PrimaryInputState) => DerivedSlotQuantityState,
+  deriveForQuantities: (quantities: QuantityState) => DerivedSlotQuantityState,
 ): void {
   for (const inputId of inputOrder) {
-    syncDerivedQuantitiesIntoAuxiliary(
-      quantitiesByInput[inputId],
-      auxiliaryQuantitiesByInput[inputId],
-      deriveForPrimary(quantitiesByInput[inputId]),
-    );
+    syncDerivedQuantities(quantitiesByInput[inputId], deriveForQuantities(quantitiesByInput[inputId]));
   }
 }
 
 export function collectModifierInputsForModifier(
-  auxiliary: AuxiliaryInputState,
+  quantities: QuantityState,
   modifierId: ModifierIdType,
 ): ModifierInputValues {
   return inputModifierCatalogue[modifierId].extraInputs.reduce((values, quantityId) => {
-    const value = auxiliary[quantityId];
+    const value = quantities[quantityId];
     if (value !== undefined) {
       values[quantityId] = value;
     }
@@ -147,51 +126,37 @@ export function collectModifierInputsForModifier(
 }
 
 export function collectModifierInputsByModifier(
-  auxiliary: AuxiliaryInputState,
+  quantities: QuantityState,
 ): Partial<Record<ModifierIdType, ModifierInputValues>> {
   return modifierOrder.reduce((byModifier, modifierId) => {
-    byModifier[modifierId] = collectModifierInputsForModifier(auxiliary, modifierId);
+    byModifier[modifierId] = collectModifierInputsForModifier(quantities, modifierId);
     return byModifier;
   }, {} as Partial<Record<ModifierIdType, ModifierInputValues>>);
 }
 
-export function applyPrimaryPatch(
+export function applyQuantityPatchByInput(
   quantitiesByInput: QuantitiesByInputState,
   inputId: InputIdType,
-  patch: Partial<PrimaryInputState>,
+  patch: QuantityState,
 ): void {
-  for (const quantityId of primaryInputOrder) {
-    const value = patch[quantityId];
-    if (value !== undefined) {
-      quantitiesByInput[inputId][quantityId] = value;
+  applyQuantityPatch(quantitiesByInput[inputId], patch);
+}
+
+export function omitDerivedHumidity(quantities: QuantityState): QuantityState {
+  const wire: QuantityState = {};
+  for (const [rawId, value] of Object.entries(quantities)) {
+    if (!isPhysicalQuantityId(rawId) || isDerivedHumidityQuantityId(rawId) || value === undefined) {
+      continue;
     }
+    wire[rawId] = value;
   }
+  return wire;
 }
 
-export { isPrimaryQuantityId };
-
-export function isSlotQuantityId(value: string): value is PhysicalQuantityIdType {
-  return isPhysicalQuantityId(value)
-    && (
-      derivedHumidityQuantityIds.some((id) => id === value)
-      || modifierQuantityIds.some((id) => id === value)
-    );
+export function isModifierQuantityId(value: string): value is PhysicalQuantityIdType {
+  return modifierQuantityIds.some((id) => id === value);
 }
 
-export function isAllowedExtraQuantityId(
-  value: string,
-): value is PhysicalQuantityIdType {
-  if (!isPhysicalQuantityId(value) || isPrimaryQuantityId(value)) {
-    return false;
-  }
-  return !derivedHumidityQuantityIds.some((id) => id === value)
-    && !modifierQuantityIds.some((id) => id === value);
-}
-
-export function isExtraQuantityId(value: string): value is PhysicalQuantityIdType {
-  return isAllowedExtraQuantityId(value);
-}
-
-export function slotQuantityIds(): readonly PhysicalQuantityIdType[] {
-  return [...derivedHumidityQuantityIds, ...modifierQuantityIds];
+export function isWritableQuantityId(value: string): value is PhysicalQuantityIdType {
+  return isPhysicalQuantityId(value) && !isDerivedHumidityQuantityId(value);
 }

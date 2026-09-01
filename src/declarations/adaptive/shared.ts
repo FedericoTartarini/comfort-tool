@@ -8,7 +8,7 @@ import {
   ComplianceStatus,
   type JsThermalComfortStandard,
 } from "../../catalog/modelIds";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
 import { InputWidget } from "../../catalog/inputWidgets";
 import type { InputPresetKey as InputPresetKeyType } from "../../engines/comfort/controls/inputControlPresets";
 import {
@@ -42,7 +42,7 @@ import type { BoundaryRegionDataSpec } from "../../engines/comfort/charts/kinds/
 import { convertFieldValueFromSi, plotlyHoverNumber } from "../../engines/units";
 import { roundValue } from "../../engines/comfort/helpers";
 import type { PlotHoverRow } from "../../engines/plotlyTypes";
-import type { UnitSystem as UnitSystemType } from "../../catalog/units";
+import { unitLabel, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   buildAdaptiveResultRows,
   calculateAdaptive,
@@ -184,8 +184,10 @@ function buildAdaptiveHoverTemplate(
   yAxis: ChartAxisScale,
   inputLabel: string | null = null,
 ): string {
-  const boundaryUnits =
-    getQuantityPresentationMeta(PhysicalQuantityId.DryBulbTemperature, unitSystem).displayUnits;
+  const boundaryUnits = unitLabel(
+    getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
+    unitSystem,
+  );
   const rows = declaration.hoverLevelIds.map((levelId, index) => {
     const level = declaration.levels.find(({ id }) => id === levelId);
     if (!level) throw new Error(`Unknown Adaptive hover level: ${levelId}`);
@@ -200,6 +202,11 @@ function buildAdaptiveHoverTemplate(
   ]);
 }
 
+export const adaptiveIndoorTemperatureRangeSi = { min: 10, max: 40 };
+export const adaptivePrevailingMeanRangeSi = { min: 10, max: 33.5 };
+export const adaptiveAirSpeedRangeSi = { min: 0, max: 2 };
+export const adaptiveOperativeRangeSi = { min: 10, max: 40 };
+
 export function createAdaptiveBoundaryRegionSpec(
   declaration: AdaptiveModelDeclaration,
 ): BoundaryRegionDataSpec<AdaptiveResponse, AdaptiveRequest> {
@@ -210,7 +217,7 @@ export function createAdaptiveBoundaryRegionSpec(
     ],
     outdoorRangeSi: declaration.outdoorTemperatureRangeSi,
     outdoorLabel: declaration.outdoorTemperatureLabel,
-    operativeRangeSi: { min: 10, max: 40 },
+    operativeRangeSi: adaptiveOperativeRangeSi,
     boundaryPoints: 240,
     evaluate: (payload) => calculateAdaptive(declaration, payload),
     requestFromPoint: (baseline, outdoorSi, operativeSi) => ({
@@ -260,22 +267,30 @@ export function createAdaptiveModelConfig(
       {
         quantity: PhysicalQuantityId.DryBulbTemperature,
         widget: InputWidget.OperativeTemperature,
+        minValue: adaptiveIndoorTemperatureRangeSi.min,
+        maxValue: adaptiveIndoorTemperatureRangeSi.max,
       },
       {
         quantity: PhysicalQuantityId.MeanRadiantTemperature,
         widget: InputWidget.RadiantTemperature,
         hideWhen: "air",
         label: "Mean radiant temperature",
+        minValue: adaptiveIndoorTemperatureRangeSi.min,
+        maxValue: adaptiveIndoorTemperatureRangeSi.max,
       },
       {
         quantity: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
         label: declaration.outdoorTemperatureLabel,
+        minValue: adaptivePrevailingMeanRangeSi.min,
+        maxValue: adaptivePrevailingMeanRangeSi.max,
       },
       {
         quantity: PhysicalQuantityId.RelativeAirSpeed,
         widget: InputWidget.Preset,
         presetKey: declaration.airSpeedPresetKey,
         label: "Air speed",
+        minValue: adaptiveAirSpeedRangeSi.min,
+        maxValue: adaptiveAirSpeedRangeSi.max,
       },
     ])
     .addOptionHandler(

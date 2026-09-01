@@ -1,9 +1,9 @@
 import {
   getPhysicalQuantityMeta,
-  getQuantityDisplayMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../../catalog/quantities";
-import { type UnitSystem as UnitSystemType } from "../../catalog/units";
+import { modifierExtraInputRangeSi } from "../../catalog/inputModifiers";
+import { unitLabel, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import { convertQuantityFromSi, convertQuantityToSi } from "./quantityConversion";
 
 export interface ModifierFieldDisplayMeta {
@@ -35,12 +35,16 @@ export function getModifierFieldDisplayMeta(
   unitSystem: UnitSystemType,
 ): ModifierFieldDisplayMeta {
   const meta = getPhysicalQuantityMeta(key);
-  const display = getQuantityDisplayMeta(key, unitSystem);
+  const range = modifierExtraInputRangeSi[key];
   return {
     label: meta.label,
-    displayUnits: display.displayUnits,
-    step: display.step,
-    minValue: convertModifierFieldValueFromSi(key, meta.minSi, unitSystem),
-    maxValue: convertModifierFieldValueFromSi(key, meta.maxSi, unitSystem),
+    displayUnits: unitLabel(meta.siUnit, unitSystem),
+    step: meta.step,
+    minValue: range
+      ? convertModifierFieldValueFromSi(key, range.min, unitSystem)
+      : undefined,
+    maxValue: range
+      ? convertModifierFieldValueFromSi(key, range.max, unitSystem)
+      : undefined,
   };
 }

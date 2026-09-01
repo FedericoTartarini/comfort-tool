@@ -80,7 +80,6 @@ export interface ComfortModelDefinition<
   complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
   controls: readonly InputControlDefinition[];
   inputFields: readonly InputFieldSpec[];
-  extraQuantities: readonly PhysicalQuantityIdType[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   tables: ModelTables<ResultType>;
   chartInstances: ModelChartInstances;

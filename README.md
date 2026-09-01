@@ -24,7 +24,7 @@ Across Standard and Explore:
 - Up to three input slots with optional **compare mode**
 - **SI / IP** unit switching with canonical SI state
 - **Input modifiers** (Measured Air Speed, Morning Clothing Estimate, Dynamic Clothing, Solar Gain) where declared by the model
-- **URL share snapshots** (strict version-1 JSON → Base64URL → `?state=`; input + setting only) for Standard and Explore routes
+- **URL share snapshots** (strict version-1 JSON → Base64URL → `?state=`; input + chart only) for Standard and Explore routes
 - Result tables, psychrometric and dynamic charts, and chart export
 
 ## Supported models
@@ -102,7 +102,7 @@ src/
     units/         SI <-> display conversion
   state/
     modelRegistry/ defineModel, ComfortModelBuilder, registered runtime configs
-    pointSession/  PointSession: three buckets, actions, $derived view-models,
+    pointSession/  PointSession: input/chart/setting/output buckets, actions, $derived view-models,
                    share snapshot/codec/url (JSON + Base64URL + ?state=)
     timeSeries/    independent Time-series session (PHS)
     app/           route identity, navigation, AppContext
@@ -118,7 +118,7 @@ src/
 - `src/declarations/` owns model identity, inputs, strict options, declaration-local zones, calculations, result rows, charts, capabilities, and executable modifier declarations. Shared PMV and Adaptive assembly is separated from their calculation and chart modules.
 - `src/engines/comfort/` owns reusable comfort, psychrometric, control, modifier, canonical request/axis-adapter, and chart-engine behavior.
 - `src/engines/units/` is the only unit-conversion family. Shared inputs, modifier values, and editable chart bands remain canonical SI.
-- `src/state/pointSession/` owns the Standard+Explore session: three SI buckets, `actions` writes, `$derived` view-model projections, and strict version-1 share snapshots.
+- `src/state/pointSession/` owns the Standard+Explore session: input/chart/setting/output buckets, `actions` writes, `$derived` view-model projections, and strict version-1 share snapshots.
 - `src/state/timeSeries/` owns an independent keyed scenario state and simulation lifecycle for the Time-series surface.
 - `src/state/app/` coordinates pathname identity, optional `?state=` hydrate, and model-switch intercept without treating the address bar as a live store.
 - `src/state/modelRegistry/` registers built runtime definitions; it is not session state.
@@ -127,7 +127,7 @@ src/
 Important invariants:
 
 - Each registered model has one focused declaration entry. Stable IDs, explicit registry entries, shared metadata, and tests remain separate concerns.
-- `primaryInputOrder` in `src/catalog/quantities.ts` is the exact persisted primary-key set (`PrimaryQuantityId` / `PrimaryInputState`). TypeScript quantity keys are PascalCase physical names; wire strings match jsthermalcomfort fields. Derived, chart-only, and model-scoped extras use `PhysicalQuantityId` but never enter primary records.
+- Each Compare slot stores one sparse `QuantityState` (`PhysicalQuantityId` → SI). TypeScript quantity keys are PascalCase physical names; wire strings match jsthermalcomfort fields. Share serializes that bag minus derived humidity (`t_dp`, `hr`, `t_wb`, `p_vap`). Ranges live on model `inputFields` and chart `rangeSi`, not the catalog.
 - Model options are complete and exact. Parsers reject missing, extra, or illegal values; internal invalid state throws.
 - Each model declares charts via `defineModel` `charts` with ids that live only on the declaration. Family modules may still use `ComfortModelBuilder.setCharts()` internally. The registry derives those ids; there is no parallel `ChartInstanceId` tree.
 - Compliance and Explore use the same field-chart engine. Presentation-only changes never stale calculation caches.

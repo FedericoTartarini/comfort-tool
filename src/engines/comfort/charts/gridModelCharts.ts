@@ -13,11 +13,10 @@ import type {
 } from "../../plotlyTypes";
 import type { InputId as InputIdType } from "../../../catalog/inputSlots";
 import { ChartBuildContext, ModelOutput, NumericBand, NumericFieldChartConfig, findNumericBandIndexForValue } from "../../../catalog/modelCapabilities";
-import type { UnitSystem as UnitSystemType } from "../../../catalog/units";
+import { unitLabel, type UnitSystem as UnitSystemType } from "../../../catalog/units";
 import type { LibraryQuantityMapping } from "../requestMapping";
 import {
   convertQuantityFromSi,
-  getQuantityDisplayMeta,
   plotlyHoverNumber,
 } from "../../units";
 import type { ChartPlotlyBuild } from "./chartBuildResult";
@@ -118,10 +117,11 @@ function getAxisRange(
   field: PhysicalQuantityId,
   ranges?: Partial<Record<PhysicalQuantityId, ChartRange>>,
 ): ChartRange {
-  return ranges?.[field] ?? {
-    min: getPhysicalQuantityMeta(field).minSi,
-    max: getPhysicalQuantityMeta(field).maxSi,
-  };
+  const range = ranges?.[field];
+  if (!range) {
+    throw new Error(`Missing SI range for chart axis ${field}.`);
+  }
+  return range;
 }
 
 function resolveGridOutput(
@@ -172,8 +172,9 @@ function buildGridModelView<TPayload extends object, TResult>(
     spec as GridModelChartSpec<object, unknown>,
     view.config.zOutput,
   );
-  const outputMeta = getQuantityDisplayMeta(output.key, unitSystem);
-  const outputUnits = outputMeta.displayUnits ? ` ${outputMeta.displayUnits}` : "";
+  const outputMeta = getPhysicalQuantityMeta(output.key);
+  const displayUnits = unitLabel(outputMeta.siUnit, unitSystem);
+  const outputUnits = displayUnits ? ` ${displayUnits}` : "";
   const bandLabel = spec.bandLabel ?? "Band";
   const chartAxisAdapter = spec.chartAxisAdapter ?? spec.requestAdapter;
   const baselineXSi = chartAxisAdapter.getAxisValue(baselinePayload, view.config.xField);

@@ -15,8 +15,8 @@ import {
 import {
   PhysicalQuantityId,
   getPhysicalQuantityMeta,
-  getQuantityPresentationMeta,
 } from "../../../../catalog/quantities";
+import { unitLabel } from "../../../../catalog/units";
 import { getBaselineInputEntry, getCompareInputs } from "../../helpers";
 import { buildCompareInputMarkerTraces } from "../inputPoints";
 import type { ChartPlotlyBuild } from "../chartBuildResult";
@@ -47,7 +47,6 @@ const BAND_SCALAR_MARKER_Y = [0.78, 0.5, 0.22];
 const ZONE_ANNOTATION_Y = { even: 0.05, odd: 0.16 };
 const BOUNDARY_POINTS = 240;
 const BOUNDARY_LINE = "#334155";
-const DEFAULT_OPERATIVE_RANGE = { min: 10, max: 40 };
 
 function asChartSource(
   chartSource: unknown,
@@ -119,10 +118,10 @@ export function buildModelBandScalarChart<TResult>(
   const yByInput = new Map(
     inputs.map(({ inputId }, index) => [inputId, markerY[index] ?? 0.5]),
   );
-  const temperatureUnits = getQuantityPresentationMeta(
-    PhysicalQuantityId.DryBulbTemperature,
+  const temperatureUnits = unitLabel(
+    getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
     context.unitSystem,
-  ).displayUnits;
+  );
   const categoryTitle = spec.hoverCategoryTitle ?? "Category";
   const annotations = bands.flatMap((band, index) => {
     const min = Math.max(band.min, xRangeSi.min);
@@ -229,16 +228,20 @@ export function buildModelBoundaryRegionChart<TResult, TPayload extends object>(
     points: spec.boundaryPoints ?? BOUNDARY_POINTS,
     label: spec.outdoorLabel,
     units: (unitSystem: typeof context.unitSystem) =>
-      getQuantityPresentationMeta(PhysicalQuantityId.DryBulbTemperature, unitSystem)
-        .displayUnits,
+      unitLabel(
+        getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
+        unitSystem,
+      ),
   };
   const operativeAxisSpec = {
     field: operativeField,
-    rangeSi: spec.operativeRangeSi ?? DEFAULT_OPERATIVE_RANGE,
+    rangeSi: spec.operativeRangeSi,
     points: 2,
     units: (unitSystem: typeof context.unitSystem) =>
-      getQuantityPresentationMeta(PhysicalQuantityId.DryBulbTemperature, unitSystem)
-        .displayUnits,
+      unitLabel(
+        getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
+        unitSystem,
+      ),
   };
   const xAxisSpec = boundaryAxis === "x" ? outdoorAxisSpec : operativeAxisSpec;
   const yAxisSpec = boundaryAxis === "x" ? operativeAxisSpec : outdoorAxisSpec;

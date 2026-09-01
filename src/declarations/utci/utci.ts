@@ -35,8 +35,8 @@ import {
 import {
   convertQuantityFromSi,
   formatDisplayValue,
-  getQuantityDisplayMeta,
 } from "../../engines/units";
+import { unitLabel } from "../../catalog/units";
 import {
   ComfortModelBuilder,
   hasExactKeys,
@@ -53,6 +53,9 @@ export const UTCI_CHART_RANGE_SI = { min: -50, max: 55 } as const;
 
 export const UTCI_TDB_LIMITS = { min: UTCI_CHART_RANGE_SI.min, max: 50 };
 export const UTCI_TR_LIMITS = { min: -80, max: 120 };
+export const UTCI_WIND_LIMITS = { min: 0, max: 17 };
+export const UTCI_RH_LIMITS = { min: 0, max: 100 };
+export const UTCI_OPERATIVE_LIMITS = { min: 10, max: 40 };
 
 const UTCI_ZONE_UI: Readonly<Record<string, { legendText: string; token: ZoneToken }>> = {
   "extreme cold stress": { legendText: "Ext.<br>cold", token: ZoneToken.ExtremeCold },
@@ -172,6 +175,13 @@ export const utciQuantityMapping = defineLibraryQuantityMapping<UtciRequest>({
 export const utciAxisAdapter = createRequestAxisAdapter({
   quantityMapping: utciQuantityMapping,
   aliases: { [PhysicalQuantityId.RelativeAirSpeed]: PhysicalQuantityId.WindSpeed },
+  axisRanges: {
+    [PhysicalQuantityId.DryBulbTemperature]: UTCI_TDB_LIMITS,
+    [PhysicalQuantityId.MeanRadiantTemperature]: UTCI_TR_LIMITS,
+    [PhysicalQuantityId.WindSpeed]: UTCI_WIND_LIMITS,
+    [PhysicalQuantityId.RelativeHumidity]: UTCI_RH_LIMITS,
+    [PhysicalQuantityId.RelativeAirSpeed]: UTCI_WIND_LIMITS,
+  },
   temperatureComponentRanges: {
     [PhysicalQuantityId.DryBulbTemperature]: UTCI_TDB_LIMITS,
     [PhysicalQuantityId.MeanRadiantTemperature]: UTCI_TR_LIMITS,
@@ -187,24 +197,22 @@ export const utciAxisAdapter = createRequestAxisAdapter({
       request.tdb = valueSi;
       request.tr = valueSi;
     },
-    range: {
-      min: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature).minSi,
-      max: getPhysicalQuantityMeta(PhysicalQuantityId.OperativeTemperature).maxSi,
-    },
+    range: UTCI_OPERATIVE_LIMITS,
   },
 });
 
 export function buildUtciResultRows(
   unitSystem: UnitSystemType,
 ): ResultRowDefinition<UtciResponse>[] {
-  const outputMeta = getQuantityDisplayMeta(PhysicalQuantityId.UniversalThermalClimateIndex, unitSystem);
+  const outputMeta = getPhysicalQuantityMeta(PhysicalQuantityId.UniversalThermalClimateIndex);
+  const outputUnits = unitLabel(outputMeta.siUnit, unitSystem);
   return [
     {
       title: UTCI_OUTPUT_LABEL,
       formatter: (result) => {
         const value = convertQuantityFromSi(PhysicalQuantityId.UniversalThermalClimateIndex, result.utci, unitSystem);
         return {
-          text: `${formatDisplayValue(value)} ${outputMeta.displayUnits}`,
+          text: `${formatDisplayValue(value)} ${outputUnits}`,
           color: "",
         };
       },
@@ -318,6 +326,9 @@ builder
           )
         ),
         gridPoints: INTERACTIVE_DYNAMIC_GRID_POINTS,
+        axisRanges: {
+          [PhysicalQuantityId.OperativeTemperature]: UTCI_OPERATIVE_LIMITS,
+        },
         dynamicViewLayout: {
           margin: { l: 64, r: 24, t: 48, b: 64 },
           showGrid: false,
@@ -343,8 +354,14 @@ builder.setInputFields([
   {
     quantity: PhysicalQuantityId.WindSpeed,
     widget: InputWidget.Numeric,
+    minValue: UTCI_WIND_LIMITS.min,
+    maxValue: UTCI_WIND_LIMITS.max,
   },
-  PhysicalQuantityId.RelativeHumidity,
+  {
+    quantity: PhysicalQuantityId.RelativeHumidity,
+    minValue: UTCI_RH_LIMITS.min,
+    maxValue: UTCI_RH_LIMITS.max,
+  },
 ]);
 
 builder.addOptionHandler(

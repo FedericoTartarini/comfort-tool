@@ -1,6 +1,6 @@
 import { phs } from "jsthermalcomfort";
 import type { ModelChartSource } from "../../catalog/chartSource";
-import { PhysicalQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
 import { ModelId } from "../../catalog/modelIds";
 import { InputControlId } from "../../catalog/inputControls";
 import { InputWidget } from "../../catalog/inputWidgets";
@@ -14,7 +14,6 @@ import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PhsLimitingCriterion,
   defaultPhsPersonSettings,
-  phsPersonQuantityIds,
   type PhsEnvironmentSi,
   type PhsResponse,
   type PhsSimulationResult,
@@ -27,9 +26,8 @@ import {
 import {
   convertQuantityFromSi,
   formatDisplayValue,
-  getQuantityDisplayMeta,
 } from "../../engines/units";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
+import { unitLabel, UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
   ComfortModelBuilder,
   parseEmptyOptions,
@@ -206,14 +204,10 @@ function invalidCell(result: PhsResponse) {
 }
 
 function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<PhsResponse>[] {
-  const temperatureMeta = getQuantityDisplayMeta(
-    PhysicalQuantityId.RectalTemperature,
-    unitSystem,
-  );
-  const waterLossMeta = getQuantityDisplayMeta(
-    PhysicalQuantityId.SweatLoss,
-    unitSystem,
-  );
+  const temperatureMeta = getPhysicalQuantityMeta(PhysicalQuantityId.RectalTemperature);
+  const waterLossMeta = getPhysicalQuantityMeta(PhysicalQuantityId.SweatLoss);
+  const temperatureUnits = unitLabel(temperatureMeta.siUnit, unitSystem);
+  const waterLossUnits = unitLabel(waterLossMeta.siUnit, unitSystem);
   return [
     {
       title: "Rectal-temperature exposure limit",
@@ -250,7 +244,7 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
           unitSystem,
         );
         return {
-          text: `${formatDisplayValue(displayValue)} ${temperatureMeta.displayUnits}`,
+          text: `${formatDisplayValue(displayValue)} ${temperatureUnits}`,
         };
       },
     },
@@ -265,7 +259,7 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
           unitSystem,
         );
         return {
-          text: `${formatDisplayValue(displayValue)} ${waterLossMeta.displayUnits}`,
+          text: `${formatDisplayValue(displayValue)} ${waterLossUnits}`,
         };
       },
     },
@@ -358,7 +352,6 @@ builder
     ModelChartSource<PhsEnvironmentSi>
   >[]);
 
-builder.setExtraQuantities(phsPersonQuantityIds);
 builder.setInputFields([
   {
     quantity: PhysicalQuantityId.DryBulbTemperature,
@@ -402,14 +395,14 @@ builder.setCalculator((context, visibleInputIds) =>
     context,
     visibleInputIds,
     mapRequest: phsQuantityMapping.mapRequest,
-    calculate: (request) => simulatePhs({
+    calculate: (request, inputId) => simulatePhs({
       segments: [{
         id: "analysis-exposure",
         name: "Eight-hour assessment",
         durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
         ...request,
       }],
-      person: personFromModelInputs(context.modelInputs),
+      person: personFromModelInputs(context.effectiveQuantitiesByInput[inputId]),
       recordHistory: true,
     }),
   }));

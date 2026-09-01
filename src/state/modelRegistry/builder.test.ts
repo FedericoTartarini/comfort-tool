@@ -50,6 +50,10 @@ function createModelDynamicFieldChart(): FrontendChartDeclaration {
         },
         evaluate: () => ({}),
         getOutputValue: () => 0,
+        axisRanges: {
+          [PhysicalQuantityId.DryBulbTemperature]: { min: 10, max: 40 },
+          [PhysicalQuantityId.RelativeHumidity]: { min: 0, max: 100 },
+        },
       }),
     },
   };
@@ -111,6 +115,7 @@ function createModelAdaptiveChart(): FrontendChartDeclaration {
       ],
       outdoorRangeSi: { min: 10, max: 33.5 },
       outdoorLabel: "Outdoor",
+      operativeRangeSi: { min: 10, max: 40 },
       evaluate: () => ({}),
       requestFromPoint: (baseline) => baseline,
       getHoverMetadata: () => [],
@@ -315,49 +320,30 @@ describe("ComfortModelBuilder capabilities", () => {
     ).toThrow(/Time-series workspace capability requires tables\.timeSeries/i);
   });
 
-  it("defaults extraQuantities to an empty list", () => {
-    expect(createExploreBuilder().build().extraQuantities).toEqual([]);
-  });
-
-  it("accepts Extra catalog quantities selected by the model", () => { expect(
-      createExploreBuilder()
-        .setExtraQuantities([PhysicalQuantityId.BodyWeight])
-        .build().extraQuantities, ).toEqual([PhysicalQuantityId.BodyWeight]); });
-
-  it("rejects extra quantities that are not Extra catalog ids", () => {
-    expect(() =>
-      createExploreBuilder()
-        .setExtraQuantities([PhysicalQuantityId.DryBulbTemperature])
-        .build(),
-    ).toThrow(/not primary, humidity, or modifier slots/);
-  });
-
-  it("exposes a quantity input field for a selected Extra catalog id", () => {
+  it("exposes a quantity input field for a catalog id without a default widget", () => {
     const definition = createExploreBuilder()
-      .setExtraQuantities([PhysicalQuantityId.BodyWeight])
       .setInputFields([
-        { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight },
+        { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight, minValue: 30, maxValue: 200 },
       ])
       .build();
 
-    expect(definition.extraQuantities).toEqual([PhysicalQuantityId.BodyWeight]);
     expect(definition.inputFields).toEqual([
-      { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight },
+      { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight, minValue: 30, maxValue: 200 },
     ]);
     expect(definition.controls.map(({ id }) => id)).toEqual([
       PhysicalQuantityId.BodyWeight,
     ]);
   });
 
-  it("rejects a quantity field that is not listed in extraQuantities", () => {
+  it("rejects a derived humidity quantity field", () => {
     expect(() =>
       createExploreBuilder()
         .setInputFields([
-          { kind: "quantity", quantityId: PhysicalQuantityId.BodyWeight },
+          { kind: "quantity", quantityId: PhysicalQuantityId.HumidityRatio, minValue: 0, maxValue: 0.025 },
         ])
         .build(),
     ).toThrow(
-      /quantity field weight must be listed in extraQuantities/,
+      /cannot be a derived humidity slot/,
     );
   });
 });

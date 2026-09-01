@@ -78,7 +78,6 @@ export function defineLibraryQuantityMapping<TRequest extends object>(
   const mapRequest: CalculationRequestMapper<TRequest> = (context, inputId) => (
     toLibrary({
       ...context.effectiveQuantitiesByInput[inputId],
-      ...context.modelInputs,
     }) as TRequest
   );
 
@@ -107,7 +106,7 @@ interface CalculatePerInputOptions<TRequest, TResult> {
   context: ModelCalculationContext;
   visibleInputIds: readonly InputIdType[];
   mapRequest: CalculationRequestMapper<TRequest>;
-  calculate: (request: TRequest) => TResult;
+  calculate: (request: TRequest, inputId: InputIdType) => TResult;
 }
 
 export function calculatePerInput<TRequest, TResult>({
@@ -128,7 +127,7 @@ export function calculatePerInput<TRequest, TResult>({
 
   for (const inputId of visibleInputIds) {
     const request = mapRequest(context, inputId);
-    resultsByInput[inputId] = calculate(request);
+    resultsByInput[inputId] = calculate(request, inputId);
     inputs[inputId] = request;
   }
 

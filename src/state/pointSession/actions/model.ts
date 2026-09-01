@@ -38,7 +38,7 @@ export function createModelActions({
 
     const nextModelConfig = getComfortModelConfig(nextModel);
     const nextModelOptions = nextModelConfig.parseOptions(
-      session.setting.modelOptionsByModel[nextModel],
+      session.input.modelOptionsByModel[nextModel],
     );
     if (!nextModelOptions) {
       throw new Error(`Invariant violation: invalid options state for ${nextModel}.`);

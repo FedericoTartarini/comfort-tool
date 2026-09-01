@@ -6,7 +6,8 @@ import { InputWidget } from "../catalog/inputWidgets";
 import { numericBandFromToken, type ModelOutput } from "../catalog/modelCapabilities";
 import { ChartType } from "../catalog/chartTypes";
 import { SurfaceId } from "../catalog/surfaces";
-import { PhysicalQuantityId, getQuantityPresentationMeta } from "../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantities";
+import { unitLabel } from "../catalog/units";
 import { ZoneToken } from "../catalog/zoneTokens";
 import {
   calculatePerInput,
@@ -111,10 +112,10 @@ export const windChillModelConfig = defineModel<
       requestAdapter: windChillQuantityMapping,
       dynamicHoverExtension: {
         getTemplateSuffix: (unitSystem) => {
-          const units = getQuantityPresentationMeta(
-            PhysicalQuantityId.WindChillTemperature,
+          const units = unitLabel(
+            getPhysicalQuantityMeta(PhysicalQuantityId.WindChillTemperature).siUnit,
             unitSystem,
-          ).displayUnits;
+          );
           return `<br>${WIND_CHILL_TEMPERATURE_LABEL}: %{customdata[1]:.1f} ${units}`;
         },
         getMetadata: (result, unitSystem) => [

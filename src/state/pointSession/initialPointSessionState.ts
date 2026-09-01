@@ -6,18 +6,17 @@ import {
 import { SurfaceId } from "../../catalog/surfaces";
 import { ModelId } from "../../catalog/modelIds";
 import { UnitSystem } from "../../catalog/units";
-import { createDefaultExtraInputs, createDefaultPrimaryInputState } from "../../catalog/quantities";
-import { comfortModelConfigs, comfortModelOrder, getComfortModelConfig } from "../modelRegistry";
+import { comfortModelConfigs, comfortModelOrder } from "../modelRegistry";
 import {
   seedModelOutputSettings,
 } from "./fieldChartState";
 import { createActiveModifiersByInput } from "./modifierState";
 import {
-  createAuxiliaryQuantitiesByInput,
-  type ModelInputsByModelState,
   type QuantitiesByInputState,
 } from "../../engines/comfort/quantityStateRouting";
+import { syncDerivedState } from "../../engines/comfort/syncState";
 import type {
+  PointChartState,
   PointInputState,
   PointOutputState,
   PointSettingState,
@@ -31,33 +30,19 @@ import type {
 
 export function createInputState(inputId: InputIdType): InputState {
   return {
-    ...createDefaultPrimaryInputState(),
     ...inputDefaultsById[inputId],
   };
 }
 
 export function createQuantitiesByInput(): QuantitiesByInputState {
-  return {
+  const quantitiesByInput = {
     [InputId.Input1]: createInputState(InputId.Input1),
     [InputId.Input2]: createInputState(InputId.Input2),
     [InputId.Input3]: createInputState(InputId.Input3),
   };
+  syncDerivedState(quantitiesByInput);
+  return quantitiesByInput;
 }
-
-export function createDefaultModelInputsForModel(
-  modelId: (typeof comfortModelOrder)[number],
-) {
-  return createDefaultExtraInputs(getComfortModelConfig(modelId).extraQuantities);
-}
-
-export function createModelInputsByModel(): ModelInputsByModelState {
-  return comfortModelOrder.reduce((accumulator, modelId) => {
-    accumulator[modelId] = createDefaultModelInputsForModel(modelId);
-    return accumulator;
-  }, {} as ModelInputsByModelState);
-}
-
-export { createAuxiliaryQuantitiesByInput };
 
 export function createDefaultCompareInputIds(): InputIdType[] {
   return [InputId.Input1, InputId.Input2];
@@ -117,24 +102,27 @@ export const defaultActiveSurface = SurfaceId.Standard;
 export function createPointInputState(): PointInputState {
   return {
     quantitiesByInput: createQuantitiesByInput(),
-    auxiliaryQuantitiesByInput: createAuxiliaryQuantitiesByInput(),
-    modelInputsByModel: createModelInputsByModel(),
+    modelOptionsByModel: createModelOptionsByModel(),
     activeModifiersByInput: createActiveModifiersByInput(),
+    compareEnabled: false,
+    compareInputIds: createDefaultCompareInputIds(),
+    activeInputId: InputId.Input1,
+    unitSystem: UnitSystem.SI,
+  };
+}
+
+export function createPointChartState(): PointChartState {
+  return {
+    selectedChartInstanceByModel: createSelectedChartInstanceByModel(),
+    outputSettingsByModel: createOutputSettingsByModel(),
   };
 }
 
 export function createPointSettingState(): PointSettingState {
   return {
     selectedModel: ModelId.PmvAshrae,
-    selectedChartInstanceByModel: createSelectedChartInstanceByModel(),
-    modelOptionsByModel: createModelOptionsByModel(),
-    compareEnabled: false,
-    compareInputIds: createDefaultCompareInputIds(),
-    activeInputId: InputId.Input1,
-    unitSystem: UnitSystem.SI,
     activeSurface: defaultActiveSurface,
     allowedModelIds: [],
-    outputSettingsByModel: createOutputSettingsByModel(),
     pendingModelSwitch: null,
   };
 }

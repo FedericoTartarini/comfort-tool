@@ -34,7 +34,7 @@ import {
   createTemperatureModeOptionHandler,
 } from "../../engines/comfort/controls/temperatureControl";
 import { createSingleInputPatch } from "../../engines/comfort/controls/types";
-import { getDerivedFromAuxiliary } from "../../engines/comfort/quantityStateRouting";
+import { getDerivedFromQuantities } from "../../engines/comfort/quantityStateRouting";
 import {
   ComfortModelBuilder,
   hasExactKeys,
@@ -54,7 +54,12 @@ import {
   evaluatePmvCondition,
   evaluatePsychrometricPmv,
   ppdThresholdToAbsPmv,
+  pmvAirSpeedRangeSi,
+  pmvClothingInsulationMinSi,
+  pmvIndoorTemperatureRangeSi,
+  pmvMetabolicRateRangeSi,
   pmvQuantityMapping,
+  pmvRelativeHumidityRangeSi,
   tryEvaluatePmvForChart,
   type PmvChartSource,
   type PmvRequest,
@@ -293,6 +298,9 @@ export function createPmvCharts(
         clipAirSpeedWithoutOccupantControl: (payload) => (
           (payload as PmvRequest).occupantHasAirSpeedControl === false
         ),
+        axisRanges: {
+          [PhysicalQuantityId.OperativeTemperature]: pmvIndoorTemperatureRangeSi,
+        },
         dynamicHoverExtension: {
           getTemplateSuffix: (_unitSystem, zOutput) => (
             zOutput === PhysicalQuantityId.PredictedPercentageOfDissatisfied
@@ -345,26 +353,36 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
       {
         quantity: PhysicalQuantityId.DryBulbTemperature,
         widget: InputWidget.OperativeTemperature,
+        minValue: pmvIndoorTemperatureRangeSi.min,
+        maxValue: pmvIndoorTemperatureRangeSi.max,
         postSynchronize: synchronizeSelectedHumidityMode,
       },
       {
         quantity: PhysicalQuantityId.MeanRadiantTemperature,
         widget: InputWidget.RadiantTemperature,
         hideWhen: "operative",
+        minValue: pmvIndoorTemperatureRangeSi.min,
+        maxValue: pmvIndoorTemperatureRangeSi.max,
       },
       {
         quantity: PhysicalQuantityId.RelativeAirSpeed,
         widget: InputWidget.OccupantAirSpeed,
         supportsOccupantAirSpeedControl: adapter.supportsOccupantAirSpeedControl,
+        minValue: pmvAirSpeedRangeSi.min,
+        maxValue: pmvAirSpeedRangeSi.max,
       },
       {
         quantity: PhysicalQuantityId.RelativeHumidity,
         widget: InputWidget.AdvancedHumidity,
+        minValue: pmvRelativeHumidityRangeSi.min,
+        maxValue: pmvRelativeHumidityRangeSi.max,
       },
       {
         quantity: PhysicalQuantityId.MetabolicRate,
         widget: InputWidget.Preset,
         presetKey: InputPresetKey.MetabolicRate,
+        minValue: pmvMetabolicRateRangeSi.min,
+        maxValue: pmvMetabolicRateRangeSi.max,
         applyInput: (context, inputId, nextValue) => {
           if (nextValue === null) return null;
           const nextInputState = {
@@ -373,7 +391,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
           };
           const synchronized = synchronizeSelectedHumidityMode(
             nextInputState,
-            getDerivedFromAuxiliary(context.auxiliaryQuantitiesByInput[inputId]),
+            getDerivedFromQuantities(context.quantitiesByInput[inputId]),
             context.options,
           );
           return createSingleInputPatch(inputId, synchronized);
@@ -385,6 +403,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
         presetKey: InputPresetKey.ClothingInsulation,
         presetDecimals: 2,
         showClothingBuilder: true,
+        minValue: pmvClothingInsulationMinSi,
         maxValue: adapter.clothingInsulationMaxSi,
       },
     ])

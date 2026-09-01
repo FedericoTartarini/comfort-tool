@@ -122,7 +122,7 @@ export function buildModelOutputGoldenSnapshot(
           unitSystem: UnitSystem.SI,
           baselineInputId: InputId.Input1,
           chartSourceVersion: 1,
-          modelInputs: context.modelInputs,
+          modelInputs: context.effectiveQuantitiesByInput[InputId.Input1],
         },
       );
       const snapshot = serializeChart(buildResult.payload, chartInstance.instanceId, mode);

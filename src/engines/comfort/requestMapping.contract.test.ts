@@ -8,16 +8,15 @@ import { pmvQuantityMapping } from "../../declarations/pmv/calculation";
 import { utciQuantityMapping } from "../../declarations/utci/utci";
 import { windChillQuantityMapping } from "../../declarations/windChill";
 import { type LibraryQuantityMapping } from "./requestMapping";
-import { PhysicalQuantityId, primaryInputOrder, type PrimaryQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import { InputId, inputDefaultsById } from "../../catalog/inputSlots";
 import {
   createModelCalculationContext,
   type ModelCalculationContext,
 } from "../../catalog/modelCalculation";
-import { createAuxiliaryQuantitiesByInput } from "./quantityStateRouting";
 
 function createContractContext(
-  overrides: Partial<Record<PrimaryQuantityId, number>> = {},
+  overrides: QuantityState = {},
 ): ModelCalculationContext {
   return createModelCalculationContext({
     effectiveQuantitiesByInput: {
@@ -28,8 +27,6 @@ function createContractContext(
       [InputId.Input2]: inputDefaultsById[InputId.Input2],
       [InputId.Input3]: inputDefaultsById[InputId.Input3],
     },
-    auxiliaryQuantitiesByInput: createAuxiliaryQuantitiesByInput(),
-    modelInputs: {},
     options: {},
   });
 }
@@ -92,12 +89,12 @@ function testQuantityMappingContract<TRequest extends object>(
       const request = mapping.mapRequest(context, InputId.Input1);
       const input = context.effectiveQuantitiesByInput[InputId.Input1];
 
-      for (const quantityId of primaryInputOrder) {
+      for (const quantityId of Object.keys(input) as PhysicalQuantityId[]) {
         try {
           const axisValue = mapping.getAxisValue(request, quantityId);
           expect(axisValue).toBe(input[quantityId]);
         } catch {
-          // Mapping may not expose every primary quantity.
+          // Mapping may not expose every quantity in the bag.
         }
       }
     });

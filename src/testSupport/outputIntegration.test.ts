@@ -76,7 +76,7 @@ describe("output integration", () => {
             unitSystem: UnitSystem.SI,
             baselineInputId: InputId.Input1,
             chartSourceVersion: 1,
-            modelInputs: context.modelInputs,
+            modelInputs: context.effectiveQuantitiesByInput[InputId.Input1],
           },
         );
         expect(buildResult.readiness).toBe("ready");
@@ -103,7 +103,7 @@ describe("output integration", () => {
             unitSystem: UnitSystem.SI,
             baselineInputId: InputId.Input1,
             chartSourceVersion: 1,
-            modelInputs: context.modelInputs,
+            modelInputs: context.effectiveQuantitiesByInput[InputId.Input1],
           },
         );
         expect(buildResult.readiness).toBe("ready");
@@ -139,7 +139,7 @@ describe("output integration", () => {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
         chartSourceVersion: 1,
-        modelInputs: context.modelInputs,
+        modelInputs: context.effectiveQuantitiesByInput[InputId.Input1],
       },
     );
 
@@ -160,7 +160,7 @@ describe("output integration", () => {
         unitSystem: UnitSystem.SI,
         baselineInputId: InputId.Input1,
         chartSourceVersion: 1,
-        modelInputs: context.modelInputs,
+        modelInputs: context.effectiveQuantitiesByInput[InputId.Input1],
       },
     );
 

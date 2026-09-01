@@ -24,58 +24,62 @@ import type { BehaviorPatch, InputControlBehavior, InputControlDefinition } from
 import {
   PhysicalQuantityId,
   getPhysicalQuantityMeta,
-  getQuantityDisplayMeta,
   type PhysicalQuantityId as PhysicalQuantityIdType,
-  type PrimaryInputState,
-  type PrimaryQuantityId,
+  type QuantityState,
 } from "../../../catalog/quantities";
+import { unitLabel } from "../../../catalog/units";
 import type { DerivedSlotQuantityState } from "../derivations/psychrometrics";
-import { isExtraQuantityId } from "../quantityStateRouting";
 import {
   InputWidget,
   defaultControlIdByQuantity,
   defaultFieldWidgetByQuantity,
 } from "../../../catalog/inputWidgets";
 type PostTemperatureSynchronizer = (
-  inputState: PrimaryInputState,
+  inputState: QuantityState,
   derivedState: DerivedSlotQuantityState,
   options: ModelOptionsRecord,
-) => PrimaryInputState;
+) => QuantityState;
 
 export type NumericInputFieldSpec = {
   kind: "numeric";
   controlId: (typeof InputControlId)[keyof typeof InputControlId];
-  fieldKey: PrimaryQuantityId;
-  minValue?: number;
-  maxValue?: number;
+  fieldKey: PhysicalQuantityIdType;
+  minValue: number;
+  maxValue: number;
   label?: string;
 };
 
 export type OperativeTemperatureInputFieldSpec = {
   kind: "operativeTemperature";
-  minValue?: number;
-  maxValue?: number;
+  minValue: number;
+  maxValue: number;
   postSynchronize?: PostTemperatureSynchronizer;
 };
 
 export type RadiantTemperatureInputFieldSpec = {
   kind: "radiantTemperature";
-  minValue?: number;
-  maxValue?: number;
+  minValue: number;
+  maxValue: number;
   hideWhen: "operative" | "air";
   label?: string;
 };
 
 export type SimpleHumidityInputFieldSpec = {
   kind: "simpleHumidity";
+  minValue: number;
+  maxValue: number;
 };
 
 export type AdvancedHumidityInputFieldSpec = {
   kind: "advancedHumidity";
+  minValue: number;
+  maxValue: number;
 };
 
 export type OccupantAirSpeedInputFieldSpec = {
   kind: "occupantAirSpeed";
+  minValue: number;
+  maxValue: number;
   supportsOccupantAirSpeedControl?: boolean;
 };
 
@@ -90,10 +94,11 @@ export type PresetInputFieldSpec = {
   kind: "preset";
   presetKey: InputPresetKey;
   controlId: (typeof InputControlId)[keyof typeof InputControlId];
-  fieldKey: PrimaryQuantityId;
+  fieldKey: PhysicalQuantityIdType;
+  minValue: number;
+  maxValue: number;
   presetDecimals?: number;
   showClothingBuilder?: boolean;
-  maxValue?: number;
   label?: string;
   applyInput?: NumericControlBehaviorConfig["applyInput"];
 };
@@ -101,8 +106,8 @@ export type PresetInputFieldSpec = {
 export type ExtraQuantityInputFieldSpec = {
   kind: "quantity";
   quantityId: PhysicalQuantityIdType;
-  minValue?: number;
-  maxValue?: number;
+  minValue: number;
+  maxValue: number;
   label?: string;
 };
 
@@ -122,8 +127,8 @@ export type AuthoringFieldOverride = {
   quantity: PhysicalQuantityIdType;
   widget?: InputWidget;
   controlId?: (typeof InputControlId)[keyof typeof InputControlId];
-  minValue?: number;
-  maxValue?: number;
+  minValue: number;
+  maxValue: number;
   step?: number;
   label?: string;
   hideWhen?: "operative" | "air";
@@ -136,7 +141,6 @@ export type AuthoringFieldOverride = {
 };
 
 export type AuthoringInputField =
-  | PrimaryQuantityId
   | PhysicalQuantityIdType
   | AuthoringFieldOverride
   | InputFieldSpec;
@@ -147,7 +151,7 @@ function isResolvedInputFieldSpec(
   return typeof field === "object" && "kind" in field;
 }
 
-function defaultPresetKeyForQuantity(quantity: PrimaryQuantityId): InputPresetKey {
+function defaultPresetKeyForQuantity(quantity: PhysicalQuantityIdType): InputPresetKey {
   if (quantity === PhysicalQuantityId.MetabolicRate) {
     return InputPresetKey.MetabolicRate;
   }
@@ -157,28 +161,35 @@ function defaultPresetKeyForQuantity(quantity: PrimaryQuantityId): InputPresetKe
   throw new Error(`Quantity ${quantity} has no default preset widget.`);
 }
 
+function requireAuthoringRange(
+  quantity: PhysicalQuantityIdType,
+  override: Omit<AuthoringFieldOverride, "quantity">,
+): { minValue: number; maxValue: number } {
+  if (override.minValue === undefined || override.maxValue === undefined) {
+    throw new Error(
+      `Input field ${quantity} must declare SI minValue and maxValue.`,
+    );
+  }
+  return { minValue: override.minValue, maxValue: override.maxValue };
+}
+
 function specFromQuantity(
   quantity: PhysicalQuantityIdType,
   override: Omit<AuthoringFieldOverride, "quantity">,
 ): InputFieldSpec {
-  if (isExtraQuantityId(quantity)) {
+  const range = requireAuthoringRange(quantity, override);
+  const widget = override.widget ?? defaultFieldWidgetByQuantity[quantity];
+  if (widget === undefined) {
     return {
       kind: "quantity",
       quantityId: quantity,
-      minValue: override.minValue,
-      maxValue: override.maxValue,
+      minValue: range.minValue,
+      maxValue: range.maxValue,
       label: override.label,
     };
   }
-
-  if (!(quantity in defaultFieldWidgetByQuantity)) {
-    throw new Error(`Quantity ${quantity} has no default input widget.`);
-  }
-  const primaryQuantity = quantity as PrimaryQuantityId;
-  const widget = override.widget ?? defaultFieldWidgetByQuantity[primaryQuantity];
   const controlId =
-    override.controlId ?? defaultControlIdByQuantity[primaryQuantity];
-  const meta = getPhysicalQuantityMeta(primaryQuantity);
+    override.controlId ?? defaultControlIdByQuantity[quantity];
 
   switch (widget) {
     case InputWidget.Numeric:
@@ -188,40 +199,50 @@ function specFromQuantity(
       return {
         kind: "numeric",
         controlId,
-        fieldKey: primaryQuantity,
-        minValue: override.minValue,
-        maxValue: override.maxValue,
+        fieldKey: quantity,
+        minValue: range.minValue,
+        maxValue: range.maxValue,
         label: override.label,
       };
     case InputWidget.OperativeTemperature:
       return {
         kind: "operativeTemperature",
-        minValue: override.minValue,
-        maxValue: override.maxValue,
+        minValue: range.minValue,
+        maxValue: range.maxValue,
         postSynchronize: override.postSynchronize,
       };
     case InputWidget.RadiantTemperature:
       return {
         kind: "radiantTemperature",
-        minValue: override.minValue,
-        maxValue: override.maxValue,
+        minValue: range.minValue,
+        maxValue: range.maxValue,
         hideWhen: override.hideWhen ?? "operative",
         label: override.label,
       };
     case InputWidget.SimpleHumidity:
-      return { kind: "simpleHumidity" };
+      return {
+        kind: "simpleHumidity",
+        minValue: range.minValue,
+        maxValue: range.maxValue,
+      };
     case InputWidget.AdvancedHumidity:
-      return { kind: "advancedHumidity" };
+      return {
+        kind: "advancedHumidity",
+        minValue: range.minValue,
+        maxValue: range.maxValue,
+      };
     case InputWidget.OccupantAirSpeed:
       return {
         kind: "occupantAirSpeed",
+        minValue: range.minValue,
+        maxValue: range.maxValue,
         supportsOccupantAirSpeedControl: override.supportsOccupantAirSpeedControl,
       };
     case InputWidget.OutdoorWindSpeed:
       return {
         kind: "outdoorWindSpeed",
-        minValue: override.minValue ?? meta.minSi,
-        maxValue: override.maxValue ?? meta.maxSi,
+        minValue: range.minValue,
+        maxValue: range.maxValue,
         step: override.step,
       };
     case InputWidget.Preset:
@@ -230,12 +251,13 @@ function specFromQuantity(
       }
       return {
         kind: "preset",
-        presetKey: override.presetKey ?? defaultPresetKeyForQuantity(primaryQuantity),
+        presetKey: override.presetKey ?? defaultPresetKeyForQuantity(quantity),
         controlId,
-        fieldKey: primaryQuantity,
+        fieldKey: quantity,
+        minValue: range.minValue,
+        maxValue: range.maxValue,
         presetDecimals: override.presetDecimals,
         showClothingBuilder: override.showClothingBuilder,
-        maxValue: override.maxValue,
         label: override.label,
         applyInput: override.applyInput,
       };
@@ -250,7 +272,9 @@ export function resolveAuthoringInputField(
   field: AuthoringInputField,
 ): InputFieldSpec {
   if (typeof field === "string") {
-    return specFromQuantity(field, {});
+    throw new Error(
+      `Input field ${field} must declare SI minValue and maxValue.`,
+    );
   }
   if (isResolvedInputFieldSpec(field)) {
     return field;
@@ -288,7 +312,7 @@ export function inputFieldControlId(spec: InputFieldSpec): InputFieldControlId {
 
 export function primaryQuantityIdsForInputField(
   spec: InputFieldSpec,
-): readonly PrimaryQuantityId[] {
+): readonly PhysicalQuantityIdType[] {
   switch (spec.kind) {
     case "numeric":
     case "preset":
@@ -305,7 +329,7 @@ export function primaryQuantityIdsForInputField(
     case "outdoorWindSpeed":
       return [PhysicalQuantityId.WindSpeed];
     case "quantity":
-      return [];
+      return [spec.quantityId];
     default: {
       const unknownSpec: never = spec;
       throw new Error(`Unknown input field spec: ${unknownSpec}`);
@@ -315,19 +339,14 @@ export function primaryQuantityIdsForInputField(
 
 export function declaredSiRangeForInputField(
   spec: InputFieldSpec,
-  quantityId: PrimaryQuantityId,
+  quantityId: PhysicalQuantityIdType,
 ): { minSi: number; maxSi: number } {
   if (!primaryQuantityIdsForInputField(spec).includes(quantityId)) {
     throw new Error(
       `Quantity ${quantityId} is not declared by input field kind "${spec.kind}".`,
     );
   }
-  const meta = getPhysicalQuantityMeta(quantityId);
-  const minSi =
-    "minValue" in spec && spec.minValue !== undefined ? spec.minValue : meta.minSi;
-  const maxSi =
-    "maxValue" in spec && spec.maxValue !== undefined ? spec.maxValue : meta.maxSi;
-  return { minSi, maxSi };
+  return { minSi: spec.minValue, maxSi: spec.maxValue };
 }
 
 function createExtraQuantityControlBehavior(
@@ -337,8 +356,8 @@ function createExtraQuantityControlBehavior(
     const meta = getPhysicalQuantityMeta(spec.quantityId);
     return {
       meta,
-      minValue: spec.minValue ?? meta.minSi,
-      maxValue: spec.maxValue ?? meta.maxSi,
+      minValue: spec.minValue,
+      maxValue: spec.maxValue,
       label: spec.label ?? meta.label,
     };
   };
@@ -346,13 +365,8 @@ function createExtraQuantityControlBehavior(
   return {
     buildViewModel: (context) => {
       const { meta, minValue, maxValue, label } = resolveMeta();
-      const display = getQuantityDisplayMeta(spec.quantityId, context.unitSystem);
-      const valueSi = context.modelInputs[spec.quantityId] ?? meta.defaultSi;
-      const displayValue = convertQuantityFromSi(
-        spec.quantityId,
-        valueSi,
-        context.unitSystem,
-      );
+      const displayUnits = unitLabel(meta.siUnit, context.unitSystem);
+      const step = meta.step;
       const minDisplay = convertQuantityFromSi(
         spec.quantityId,
         minValue,
@@ -367,21 +381,28 @@ function createExtraQuantityControlBehavior(
       const numericValuesByInput: Record<string, number> = {};
       const displayValuesByInput: Record<string, string> = {};
       for (const inputId of context.visibleInputIds) {
-        numericValuesByInput[inputId] = displayValue;
-        displayValuesByInput[inputId] = formatDisplayValue(displayValue);
+        const slotValueSi = context.quantitiesByInput[inputId][spec.quantityId]
+          ?? spec.minValue;
+        const slotDisplay = convertQuantityFromSi(
+          spec.quantityId,
+          slotValueSi,
+          context.unitSystem,
+        );
+        numericValuesByInput[inputId] = slotDisplay;
+        displayValuesByInput[inputId] = formatDisplayValue(slotDisplay);
       }
 
       return {
         id: spec.quantityId,
         label,
-        displayUnits: display.displayUnits,
+        displayUnits,
         rangeText,
         minValue: minDisplay,
         maxValue: maxDisplay,
         hidden: false,
         disabled: false,
         editorKind: "number",
-        step: display.step,
+        step,
         menu: null,
         presetOptions: [],
         presetDecimals: 2,
@@ -390,12 +411,12 @@ function createExtraQuantityControlBehavior(
         numericValuesByInput,
       };
     },
-    applyInput: (context, _inputId, rawValue) => {
+    applyInput: (context, inputId, rawValue) => {
       if (!rawValue.trim()) return null;
       const parsedValue = Number(rawValue);
       if (!Number.isFinite(parsedValue)) return null;
-      const currentSi = context.modelInputs[spec.quantityId]
-        ?? getPhysicalQuantityMeta(spec.quantityId).defaultSi;
+      const currentSi = context.quantitiesByInput[inputId][spec.quantityId]
+        ?? spec.minValue;
       const currentDisplay = formatDisplayValue(
         convertQuantityFromSi(spec.quantityId, currentSi, context.unitSystem),
       );
@@ -409,8 +430,11 @@ function createExtraQuantityControlBehavior(
       );
       if (!Number.isFinite(nextValue)) return null;
       return {
-        modelInputsPatch: {
-          [spec.quantityId]: nextValue,
+        quantitiesPatch: {
+          [inputId]: {
+            ...context.quantitiesByInput[inputId],
+            [spec.quantityId]: nextValue,
+          },
         },
       } satisfies BehaviorPatch;
     },
@@ -487,18 +511,25 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
         behavior: createControlBehavior({
           controlId: InputControlId.Humidity,
           fieldKey: PhysicalQuantityId.RelativeHumidity,
+          minValue: spec.minValue,
+          maxValue: spec.maxValue,
         }),
       };
     case "advancedHumidity":
       return {
         id: inputFieldControlId(spec),
-        behavior: createHumidityControlBehavior(InputControlId.Humidity),
+        behavior: createHumidityControlBehavior(InputControlId.Humidity, {
+          min: spec.minValue,
+          max: spec.maxValue,
+        }),
       };
     case "occupantAirSpeed":
       return {
         id: inputFieldControlId(spec),
         behavior: createAirSpeedControlBehavior(InputControlId.AirSpeed, {
           supportsOccupantAirSpeedControl: spec.supportsOccupantAirSpeedControl,
+          minValue: spec.minValue,
+          maxValue: spec.maxValue,
         }),
       };
     case "outdoorWindSpeed":
@@ -528,12 +559,14 @@ export function resolveInputField(spec: InputFieldSpec): InputControlDefinition 
           presetOptions: getInputPresetOptions(spec.presetKey),
           presetDecimals: spec.presetDecimals,
           showClothingBuilder: spec.showClothingBuilder,
+          minValue: spec.minValue,
           maxValue: spec.maxValue,
           applyInput: spec.applyInput,
           ...(spec.label
             ? {
                 getPresentation: (context, meta) => ({
                   ...buildDefaultPresentation(context, spec.fieldKey, {
+                    minValue: spec.minValue,
                     maxValue: spec.maxValue,
                   }),
                   label: spec.label!,

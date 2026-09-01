@@ -1,11 +1,8 @@
-/** Session ↔ share DTO. Snapshot encodes input+setting only. */
+/** Session ↔ share DTO. Snapshot encodes input + chart only. */
 import type { ModelId as ModelIdType } from "../../../catalog/modelIds";
 import {
-  PhysicalQuantityId,
-  primaryInputOrder,
-  type AuxiliaryInputState,
-  type PhysicalQuantityId as PhysicalQuantityIdType,
-  type PrimaryInputState,
+  type PhysicalQuantityId,
+  type QuantityState,
 } from "../../../catalog/quantities";
 import type { OptionKey as OptionKeyType } from "../../../catalog/inputModes";
 import {
@@ -20,36 +17,18 @@ import {
 } from "../../../catalog/inputSlots";
 import { type NumericBand } from "../../../catalog/modelCapabilities";
 import { type UnitSystem as UnitSystemType } from "../../../catalog/units";
-import { syncDerivedStateIntoAuxiliary } from "../../../engines/comfort/syncState";
+import { syncDerivedState } from "../../../engines/comfort/syncState";
+import { omitDerivedHumidity } from "../../../engines/comfort/quantityStateRouting";
 import { seedModelOutputSettings } from "../fieldChartState";
 import { comfortModelOrder, getComfortModelConfig } from "../../modelRegistry";
-import {
-  setModelQuantity,
-  setSlotQuantity,
-} from "../../../engines/comfort/quantityStateRouting";
-import { createDefaultModelInputsForModel } from "../initialPointSessionState";
+import { createInputState } from "../initialPointSessionState";
 import type {
   ActiveModifiersByInputState,
   PointSessionBuckets,
   ModelOutputSettings,
 } from "../sessionTypes";
 
-export type ShareAuxiliaryQuantitiesByInputState = Record<
-  InputIdType,
-  Partial<Record<PhysicalQuantityIdType, number>>
->;
-export type ShareModelInputsByModelState = Record<
-  ModelIdType,
-  Partial<Record<PhysicalQuantityIdType, number>>
->;
-
 export { modifierQuantityIds };
-
-export function extraQuantityIdsForModel(
-  modelId: ModelIdType,
-): PhysicalQuantityIdType[] {
-  return [...getComfortModelConfig(modelId).extraQuantities];
-}
 
 export interface ShareModelOutputSettings {
   xAxis: PhysicalQuantityId;
@@ -61,7 +40,6 @@ export interface ShareModelOutputSettings {
 
 export interface ShareStateSnapshot {
   version: 1;
-  selectedModel: ModelIdType;
   models: Record<
     ModelIdType,
     {
@@ -74,9 +52,7 @@ export interface ShareStateSnapshot {
   compareInputIds: InputIdType[];
   activeInputId: InputIdType;
   unitSystem: UnitSystemType;
-  quantitiesByInput: Record<InputIdType, PrimaryInputState>;
-  auxiliaryQuantitiesByInput: ShareAuxiliaryQuantitiesByInputState;
-  modelInputsByModel: ShareModelInputsByModelState;
+  quantitiesByInput: Record<InputIdType, QuantityState>;
   activeModifiersByInput: ActiveModifiersByInputState;
 }
 
@@ -107,80 +83,34 @@ export function createDefaultModelSnapshot(
   };
 }
 
-function serializeAuxiliaryForWire(
-  auxiliary: AuxiliaryInputState,
-): Partial<Record<PhysicalQuantityIdType, number>> {
-  return modifierQuantityIds.reduce(
-    (wire, quantityId) => {
-      const value = auxiliary[quantityId];
-      if (value !== undefined) {
-        wire[quantityId] = value;
-      }
-      return wire;
-    },
-    {} as Partial<Record<PhysicalQuantityIdType, number>>,
-  );
-}
-
-function serializeModelInputsForWire(
-  modelId: ModelIdType,
-  modelInputs: Partial<Record<PhysicalQuantityIdType, number>>,
-): Partial<Record<PhysicalQuantityIdType, number>> {
-  const defaults = createDefaultModelInputsForModel(modelId);
-  return extraQuantityIdsForModel(modelId).reduce(
-    (wire, quantityId) => {
-      const value = modelInputs[quantityId];
-      if (value !== undefined && value !== defaults[quantityId]) {
-        wire[quantityId] = value;
-      }
-      return wire;
-    },
-    {} as Partial<Record<PhysicalQuantityIdType, number>>,
-  );
-}
-
 export function createShareStateSnapshot(
-  session: Pick<PointSessionBuckets, "input" | "setting">,
+  session: Pick<PointSessionBuckets, "input" | "chart">,
 ): ShareStateSnapshot {
   return {
     version: 1,
-    selectedModel: session.setting.selectedModel,
     models: comfortModelOrder.reduce(
       (accumulator, modelId) => {
         accumulator[modelId] = {
           selectedChartType:
-            session.setting.selectedChartInstanceByModel[modelId],
-          options: { ...session.setting.modelOptionsByModel[modelId] },
+            session.chart.selectedChartInstanceByModel[modelId],
+          options: { ...session.input.modelOptionsByModel[modelId] },
           outputSettings: cloneOutputSettings(
-            session.setting.outputSettingsByModel[modelId],
+            session.chart.outputSettingsByModel[modelId],
           ),
         };
         return accumulator;
       },
       {} as ShareStateSnapshot["models"],
     ),
-    compareEnabled: session.setting.compareEnabled,
-    compareInputIds: [...session.setting.compareInputIds],
-    activeInputId: session.setting.activeInputId,
-    unitSystem: session.setting.unitSystem,
+    compareEnabled: session.input.compareEnabled,
+    compareInputIds: [...session.input.compareInputIds],
+    activeInputId: session.input.activeInputId,
+    unitSystem: session.input.unitSystem,
     quantitiesByInput: {
-      [InputId.Input1]: { ...session.input.quantitiesByInput[InputId.Input1] },
-      [InputId.Input2]: { ...session.input.quantitiesByInput[InputId.Input2] },
-      [InputId.Input3]: { ...session.input.quantitiesByInput[InputId.Input3] },
+      [InputId.Input1]: omitDerivedHumidity(session.input.quantitiesByInput[InputId.Input1]),
+      [InputId.Input2]: omitDerivedHumidity(session.input.quantitiesByInput[InputId.Input2]),
+      [InputId.Input3]: omitDerivedHumidity(session.input.quantitiesByInput[InputId.Input3]),
     },
-    auxiliaryQuantitiesByInput: inputOrder.reduce((byInput, inputId) => {
-      byInput[inputId] = serializeAuxiliaryForWire(
-        session.input.auxiliaryQuantitiesByInput[inputId],
-      );
-      return byInput;
-    }, {} as ShareAuxiliaryQuantitiesByInputState),
-    modelInputsByModel: comfortModelOrder.reduce((byModel, modelId) => {
-      byModel[modelId] = serializeModelInputsForWire(
-        modelId,
-        session.input.modelInputsByModel[modelId],
-      );
-      return byModel;
-    }, {} as ShareModelInputsByModelState),
     activeModifiersByInput: inputOrder.reduce((byInput, inputId) => {
       byInput[inputId] = modifierOrder.reduce(
         (byModifier, modifierId) => {
@@ -196,64 +126,33 @@ export function createShareStateSnapshot(
 }
 
 export function applyShareSnapshotToState(
-  session: Pick<PointSessionBuckets, "input" | "setting">,
+  session: Pick<PointSessionBuckets, "input" | "chart">,
   snapshot: ShareStateSnapshot,
 ) {
-  session.setting.selectedModel = snapshot.selectedModel;
   for (const modelId of comfortModelOrder) {
     const modelSnapshot =
       snapshot.models[modelId] ?? createDefaultModelSnapshot(modelId);
-    session.setting.selectedChartInstanceByModel[modelId] =
+    session.chart.selectedChartInstanceByModel[modelId] =
       modelSnapshot.selectedChartType;
-    session.setting.modelOptionsByModel[modelId] = { ...modelSnapshot.options };
-    session.setting.outputSettingsByModel[modelId] = cloneOutputSettings(
+    session.input.modelOptionsByModel[modelId] = { ...modelSnapshot.options };
+    session.chart.outputSettingsByModel[modelId] = cloneOutputSettings(
       modelSnapshot.outputSettings,
     );
-    session.input.modelInputsByModel[modelId] = {
-      ...createDefaultModelInputsForModel(modelId),
-    };
-    const sharedModelInputs = snapshot.modelInputsByModel[modelId] ?? {};
-    for (const [quantityId, value] of Object.entries(sharedModelInputs)) {
-      setModelQuantity(
-        session.input.modelInputsByModel[modelId],
-        quantityId as PhysicalQuantityIdType,
-        value,
-      );
-    }
   }
-  session.setting.compareEnabled = snapshot.compareEnabled;
-  session.setting.compareInputIds = [...snapshot.compareInputIds];
-  session.setting.activeInputId = snapshot.activeInputId;
-  session.setting.unitSystem = snapshot.unitSystem;
+  session.input.compareEnabled = snapshot.compareEnabled;
+  session.input.compareInputIds = [...snapshot.compareInputIds];
+  session.input.activeInputId = snapshot.activeInputId;
+  session.input.unitSystem = snapshot.unitSystem;
 
   for (const inputId of inputOrder) {
-    for (const quantityId of primaryInputOrder) {
-      session.input.quantitiesByInput[inputId][quantityId] =
-        snapshot.quantitiesByInput[inputId][quantityId];
-    }
-    for (const quantityId of modifierQuantityIds) {
-      setSlotQuantity(
-        session.input.auxiliaryQuantitiesByInput[inputId],
-        quantityId,
-        undefined,
-      );
-    }
-    for (const [quantityId, value] of Object.entries(
-      snapshot.auxiliaryQuantitiesByInput[inputId],
-    )) {
-      setSlotQuantity(
-        session.input.auxiliaryQuantitiesByInput[inputId],
-        quantityId as PhysicalQuantityIdType,
-        value,
-      );
-    }
+    session.input.quantitiesByInput[inputId] = {
+      ...createInputState(inputId),
+      ...snapshot.quantitiesByInput[inputId],
+    };
     for (const modifierId of modifierOrder) {
       session.input.activeModifiersByInput[inputId][modifierId] =
         snapshot.activeModifiersByInput[inputId][modifierId];
     }
   }
-  syncDerivedStateIntoAuxiliary(
-    session.input.quantitiesByInput,
-    session.input.auxiliaryQuantitiesByInput,
-  );
+  syncDerivedState(session.input.quantitiesByInput);
 }

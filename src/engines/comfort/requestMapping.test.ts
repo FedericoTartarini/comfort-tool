@@ -1,12 +1,11 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { PhysicalQuantityId, primaryInputOrder, type PrimaryInputState } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import { InputId, inputDefaultsById } from "../../catalog/inputSlots";
 import {
   ModelCalculationContext,
   createModelCalculationContext,
 } from "../../catalog/modelCalculation";
-import { createAuxiliaryQuantitiesByInput } from "../../engines/comfort/quantityStateRouting";
 import {
   calculatePerInput,
   calculatePerInputWithExtensions,
@@ -28,8 +27,8 @@ interface DemoChartSource {
 }
 
 function createInputState(
-  values: Partial<PrimaryInputState>,
-): PrimaryInputState {
+  values: QuantityState,
+): QuantityState {
   return {
     ...inputDefaultsById[InputId.Input1],
     ...values,
@@ -44,8 +43,6 @@ function createContext(): ModelCalculationContext {
   };
   return createModelCalculationContext({
     effectiveQuantitiesByInput: quantitiesByInput,
-    auxiliaryQuantitiesByInput: createAuxiliaryQuantitiesByInput(),
-    modelInputs: {},
     options: {},
   });
 }
@@ -72,11 +69,6 @@ describe("request mapping", () => {
     expect(() => mapping.getAxisValue(request, PhysicalQuantityId.WindSpeed))
       .toThrow(/unsupported request field/i);
   });
-
-  it("declares exactly the persisted canonical input keys", () => { expect(primaryInputOrder).toEqual([
-      PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.MeanRadiantTemperature, PhysicalQuantityId.RelativeAirSpeed, PhysicalQuantityId.WindSpeed, PhysicalQuantityId.RelativeHumidity, PhysicalQuantityId.MetabolicRate, PhysicalQuantityId.ClothingInsulation, PhysicalQuantityId.ExternalWork, PhysicalQuantityId.PrevailingMeanOutdoorTemperature, ]);
-    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.HumidityRatio);
-    expect(primaryInputOrder).not.toContain(PhysicalQuantityId.OperativeTemperature); });
 
   it("calculates visible inputs and initializes every result slot", () => {
     const calculated = calculatePerInput({

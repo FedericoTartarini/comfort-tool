@@ -49,6 +49,24 @@ export const IpUnit = {
 
 export type IpUnit = (typeof IpUnit)[keyof typeof IpUnit];
 
+export const ipUnitForSi: Record<SiUnit, IpUnit> = {
+  [SiUnit.DegreeCelsius]: IpUnit.DegreeFahrenheit,
+  [SiUnit.MeterPerSecond]: IpUnit.FootPerSecond,
+  [SiUnit.Percent]: IpUnit.Percent,
+  [SiUnit.KilogramPerKilogram]: IpUnit.GrainPerPound,
+  [SiUnit.Met]: IpUnit.Met,
+  [SiUnit.Clo]: IpUnit.Clo,
+  [SiUnit.Pascal]: IpUnit.InchOfMercury,
+  [SiUnit.Degree]: IpUnit.Degree,
+  [SiUnit.WattPerSquareMeter]: IpUnit.BtuPerHourSquareFoot,
+  [SiUnit.Dimensionless]: IpUnit.Dimensionless,
+  [SiUnit.Kilogram]: IpUnit.Pound,
+  [SiUnit.Gram]: IpUnit.Pound,
+  [SiUnit.Meter]: IpUnit.Foot,
+  [SiUnit.Minute]: IpUnit.Hour,
+  [SiUnit.KelvinDelta]: IpUnit.DeltaFahrenheit,
+};
+
 export const siUnitLabel: Record<SiUnit, string> = {
   [SiUnit.DegreeCelsius]: "°C",
   [SiUnit.MeterPerSecond]: "m/s",
@@ -92,11 +110,8 @@ export function isIpUnit(value: string): value is IpUnit {
   return (Object.values(IpUnit) as string[]).includes(value);
 }
 
-export function unitLabel(
-  units: { SI: SiUnit; IP: IpUnit },
-  unitSystem: UnitSystem,
-): string {
+export function unitLabel(siUnit: SiUnit, unitSystem: UnitSystem): string {
   return unitSystem === UnitSystem.SI
-    ? siUnitLabel[units.SI]
-    : ipUnitLabel[units.IP];
+    ? siUnitLabel[siUnit]
+    : ipUnitLabel[ipUnitForSi[siUnit]];
 }

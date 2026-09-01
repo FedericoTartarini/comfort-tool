@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { PhysicalQuantityId } from "../../catalog/quantities";
 
 import { ModelId } from "../../catalog/modelIds";
 import { ChartType } from "../../catalog/chartTypes";
@@ -25,7 +24,6 @@ function createCatalogSlice(
   overrides: Partial<CatalogModelSlice> & Pick<CatalogModelSlice, "id">,
 ): CatalogModelSlice {
   return {
-    extraQuantities: [],
     chartInstances: {
       entries: [
         {
@@ -127,31 +125,6 @@ describe("assembleCatalogs", () => {
         assembledCatalogs,
       ),
     ).toThrow(/Unknown chart type "invented-type"/);
-  });
-
-  it("fails validateModel on extra quantities that are not Extra catalog ids", () => {
-    expect(() =>
-      validateModel(
-        createCatalogSlice({
-          id: ModelId.HeatIndex,
-          extraQuantities: [PhysicalQuantityId.DryBulbTemperature],
-        }),
-        assembledCatalogs,
-      ),
-    ).toThrow(/cannot be declared as extra/);
-
-    expect(() =>
-      validateModel(
-        createCatalogSlice({
-          id: ModelId.HeatIndex,
-          extraQuantities: [
-            PhysicalQuantityId.BodyWeight,
-            PhysicalQuantityId.BodyWeight,
-          ],
-        }),
-        assembledCatalogs,
-      ),
-    ).toThrow(/duplicate extra quantity/);
   });
 
   it("fails validateModel on unknown chart types in registrations", () => {

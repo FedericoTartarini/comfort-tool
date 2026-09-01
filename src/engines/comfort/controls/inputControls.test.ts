@@ -162,18 +162,21 @@ describe("input control ownership", () => {
     const session = createPointSession();
     seedSelectedModel(session, modelId);
     const input = session.input.quantitiesByInput[InputId.Input1];
-    seedPrimaryQuantity(
-      session,
-      InputId.Input1,
-      PhysicalQuantityId.RelativeHumidity,
-      63,
-    );
+    if (modelId === ModelId.Utci) {
+      seedPrimaryQuantity(
+        session,
+        InputId.Input1,
+        PhysicalQuantityId.RelativeHumidity,
+        63,
+      );
+    }
+    const humidity = input[PhysicalQuantityId.RelativeHumidity];
 
     session.actions.setModelOption(
       OptionKey.TemperatureMode,
       TemperatureMode.Operative,
     );
-    expect(input[PhysicalQuantityId.RelativeHumidity]).toBe(63);
+    expect(input[PhysicalQuantityId.RelativeHumidity]).toBe(humidity);
   });
 
   it("throws for illegal or incomplete internal options instead of repairing them", () => {
@@ -183,14 +186,14 @@ describe("input control ownership", () => {
       "invalid-mode",
     )).toThrow(/invalid option/i);
 
-    delete session.setting.modelOptionsByModel[ModelId.PmvAshrae][
+    delete session.input.modelOptionsByModel[ModelId.PmvAshrae][
       OptionKey.HumidityInputMode
     ];
     expect(() => session.inputControls)
       .toThrow(/invalid options state/i);
 
     const switchingSession = createPointSession();
-    switchingSession.setting.modelOptionsByModel[ModelId.WindChill][
+    switchingSession.input.modelOptionsByModel[ModelId.WindChill][
       OptionKey.TemperatureMode
     ] = TemperatureMode.Air;
     expect(() => switchingSession.actions.setSelectedModel(ModelId.WindChill))

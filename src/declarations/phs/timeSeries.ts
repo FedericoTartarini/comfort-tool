@@ -1,10 +1,12 @@
 import { phs } from "jsthermalcomfort";
 import { ModelId } from "../../catalog/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta, getQuantityDisplayMeta } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
+import { unitLabel } from "../../catalog/units";
 import {
   PhsPosture,
   PhsSegmentPreset,
   defaultPhsPersonSettings,
+  phsPersonRangeSi,
   phsReferenceEnvironment,
   type PhsPersonQuantityId,
   type PhsPersonSettingsSi,
@@ -147,8 +149,8 @@ function createSegmentControl(options: {
       Reflect.set(segment, property, valueSi);
       return true;
     },
-    getDisplayUnits: (unitSystem) => getQuantityDisplayMeta(field, unitSystem).displayUnits,
-    getStep: (unitSystem) => getQuantityDisplayMeta(field, unitSystem).step,
+    getDisplayUnits: (unitSystem) => unitLabel(getPhysicalQuantityMeta(field).siUnit, unitSystem),
+    getStep: (_unitSystem) => getPhysicalQuantityMeta(field).step,
     getMin: (unitSystem) => convertQuantityFromSi(field, options.min, unitSystem),
     getMax: (unitSystem) => convertQuantityFromSi(field, options.max, unitSystem),
   };
@@ -177,10 +179,18 @@ function createPersonQuantityControl(options: {
       draft.person[quantityId] = valueSi;
       return true;
     },
-    getDisplayUnits: (unitSystem) => getQuantityDisplayMeta(quantityId, unitSystem).displayUnits,
-    getStep: (unitSystem) => getQuantityDisplayMeta(quantityId, unitSystem).step,
-    getMin: (unitSystem) => convertQuantityFromSi(quantityId, meta().minSi, unitSystem),
-    getMax: (unitSystem) => convertQuantityFromSi(quantityId, meta().maxSi, unitSystem),
+    getDisplayUnits: (unitSystem) => unitLabel(meta().siUnit, unitSystem),
+    getStep: (_unitSystem) => meta().step,
+    getMin: (unitSystem) => convertQuantityFromSi(
+      quantityId,
+      phsPersonRangeSi[quantityId].min,
+      unitSystem,
+    ),
+    getMax: (unitSystem) => convertQuantityFromSi(
+      quantityId,
+      phsPersonRangeSi[quantityId].max,
+      unitSystem,
+    ),
   };
 }
 

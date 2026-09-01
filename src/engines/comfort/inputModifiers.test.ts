@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { PhysicalQuantityId, type PrimaryInputState } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import { JsThermalComfortStandard } from "../../catalog/modelIds";
 import {
   ModifierId,
@@ -15,7 +15,7 @@ import {
   solarGainModifier,
 } from "./inputModifiers";
 
-function createBaseInputs(): PrimaryInputState {
+function createBaseInputs(): QuantityState {
   return { [PhysicalQuantityId.DryBulbTemperature]: 25, [PhysicalQuantityId.MeanRadiantTemperature]: 25, [PhysicalQuantityId.RelativeAirSpeed]: 0.1, [PhysicalQuantityId.WindSpeed]: 1, [PhysicalQuantityId.RelativeHumidity]: 50, [PhysicalQuantityId.MetabolicRate]: 1.8, [PhysicalQuantityId.ClothingInsulation]: 0.5, [PhysicalQuantityId.ExternalWork]: 0, [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: 20 };
 }
 
@@ -30,7 +30,7 @@ describe("input modifiers", () => {
       [PhysicalQuantityId.MeasuredAirSpeed]: number;
     }>>();
     expectTypeOf<MeasuredPatch>().toEqualTypeOf<Partial<Pick<
-      PrimaryInputState,
+      QuantityState,
       typeof PhysicalQuantityId.RelativeAirSpeed
     >>>();
   });
@@ -78,8 +78,8 @@ describe("input modifiers", () => {
 
     expect(effectiveInputs[PhysicalQuantityId.MeanRadiantTemperature]).toBeCloseTo(40.1, 6);
     expect(
-      effectiveInputs[PhysicalQuantityId.MeanRadiantTemperature]!
-      - baseInputs[PhysicalQuantityId.MeanRadiantTemperature],
+      (effectiveInputs[PhysicalQuantityId.MeanRadiantTemperature] ?? NaN)
+      - (baseInputs[PhysicalQuantityId.MeanRadiantTemperature] ?? NaN),
     ).toBeCloseTo(15.1, 6);
   });
 
@@ -97,7 +97,7 @@ describe("input modifiers", () => {
       description: "",
       extraInputs: [],
       affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
-      apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] + 2 }),
+      apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: (inputs[PhysicalQuantityId.MeanRadiantTemperature] ?? 0) + 2 }),
     });
     const triple = defineInputModifier({
       id: ModifierId.SolarGain,
@@ -105,7 +105,7 @@ describe("input modifiers", () => {
       description: "",
       extraInputs: [],
       affectedFields: [PhysicalQuantityId.MeanRadiantTemperature],
-      apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: inputs[PhysicalQuantityId.MeanRadiantTemperature] * 3 }),
+      apply: (inputs) => ({ [PhysicalQuantityId.MeanRadiantTemperature]: (inputs[PhysicalQuantityId.MeanRadiantTemperature] ?? 0) * 3 }),
     });
     const active = {
       [ModifierId.MeasuredAirSpeed]: true,

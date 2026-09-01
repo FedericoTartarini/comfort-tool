@@ -28,7 +28,7 @@ function buildModelChart(modelId: ModelId, instanceId: string, surface: SurfaceI
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,
       chartSourceVersion: 1,
-      modelInputs: context.modelInputs,
+      modelInputs: context.effectiveQuantitiesByInput[InputId.Input1],
     },
   );
 }

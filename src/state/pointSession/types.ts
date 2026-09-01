@@ -1,9 +1,5 @@
 export type {
-  AuxiliaryInputState,
-  AuxiliaryQuantitiesByInputState,
-  PrimaryInputState,
   DerivedSlotQuantityState,
-  ModelInputsByModelState,
   QuantitiesByInputState,
   InputState,
   ActiveModifiersByInputState,
@@ -19,6 +15,7 @@ export type {
   ModelOutputSettings,
   OutputSettingsByModelState,
   PointInputState,
+  PointChartState,
   PointSettingState,
   PointOutputState,
   PointSessionBuckets,

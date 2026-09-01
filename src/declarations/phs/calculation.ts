@@ -1,12 +1,14 @@
 import { body_surface_area, phs, p_sat } from "jsthermalcomfort";
 
 import { CalculationSource } from "../../catalog/calculationMetadata";
-import { getPhysicalQuantityMeta, PhysicalQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
 import { UnitSystem, unitLabel } from "../../catalog/units";
 import {
   PHS_STANDARD_VERSION,
   PhsLimitingCriterion,
+  defaultPhsPersonSettings,
   defaultPhsSimulationFlags,
+  phsPersonRangeSi,
   type PhsEnvironmentSi,
   type PhsHistorySample,
   type PhsPersonSettingsSi,
@@ -86,12 +88,15 @@ export function getPhsWaterLossLimitG(person: PhsPersonSettingsSi): number {
 export function personFromModelInputs(
   modelInputs: Readonly<Partial<Record<PhysicalQuantityId, number>>>,
 ): PhsPersonSettingsSi {
-  const weightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.BodyWeight);
-  const heightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.Height);
-
-  return { [PhysicalQuantityId.BodyWeight]:
-      modelInputs[PhysicalQuantityId.BodyWeight] ?? weightMeta.defaultSi, [PhysicalQuantityId.Height]:
-      modelInputs[PhysicalQuantityId.Height] ?? heightMeta.defaultSi, ...defaultPhsSimulationFlags };
+  return {
+    [PhysicalQuantityId.BodyWeight]:
+      modelInputs[PhysicalQuantityId.BodyWeight]
+        ?? defaultPhsPersonSettings[PhysicalQuantityId.BodyWeight],
+    [PhysicalQuantityId.Height]:
+      modelInputs[PhysicalQuantityId.Height]
+        ?? defaultPhsPersonSettings[PhysicalQuantityId.Height],
+    ...defaultPhsSimulationFlags,
+  };
 }
 
 export function getPhsVaporPressureKpa(environment: PhsEnvironmentSi): number {
@@ -241,16 +246,18 @@ export function validatePhsTimeSeries(
   const issues: string[] = [];
   const weightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.BodyWeight);
   const heightMeta = getPhysicalQuantityMeta(PhysicalQuantityId.Height);
+  const weightRange = phsPersonRangeSi[PhysicalQuantityId.BodyWeight];
+  const heightRange = phsPersonRangeSi[PhysicalQuantityId.Height];
   const weight = person[PhysicalQuantityId.BodyWeight];
   const height = person[PhysicalQuantityId.Height];
-  if (!Number.isFinite(weight) || weight < weightMeta.minSi || weight > weightMeta.maxSi) {
+  if (!Number.isFinite(weight) || weight < weightRange.min || weight > weightRange.max) {
     issues.push(
-      `${weightMeta.label} must be between ${weightMeta.minSi} and ${weightMeta.maxSi} ${unitLabel(weightMeta.units, UnitSystem.SI)}.`,
+      `${weightMeta.label} must be between ${weightRange.min} and ${weightRange.max} ${unitLabel(weightMeta.siUnit, UnitSystem.SI)}.`,
     );
   }
-  if (!Number.isFinite(height) || height < heightMeta.minSi || height > heightMeta.maxSi) {
+  if (!Number.isFinite(height) || height < heightRange.min || height > heightRange.max) {
     issues.push(
-      `${heightMeta.label} must be between ${heightMeta.minSi} and ${heightMeta.maxSi} ${unitLabel(heightMeta.units, UnitSystem.SI)}.`,
+      `${heightMeta.label} must be between ${heightRange.min} and ${heightRange.max} ${unitLabel(heightMeta.siUnit, UnitSystem.SI)}.`,
     );
   }
   issues.push(...validateSegments(segments, person));

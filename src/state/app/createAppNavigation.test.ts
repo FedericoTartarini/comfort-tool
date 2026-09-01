@@ -148,7 +148,7 @@ describe("workspace navigation coordination", () => {
       validateRanges: false,
       schedule: false,
     });
-    const ashraeSettings = source.setting.outputSettingsByModel[ModelId.PmvAshrae];
+    const ashraeSettings = source.chart.outputSettingsByModel[ModelId.PmvAshrae];
     ashraeSettings.exploreBands = ashraeSettings.exploreBands?.map((band, index) => (
       index === 0 ? { ...band, max: -3.25 } : { ...band }
     )) ?? null;
@@ -164,7 +164,7 @@ describe("workspace navigation coordination", () => {
 
     expect(target.setting.selectedModel).toBe(ModelId.PmvAshrae);
     expect(target.setting.activeSurface).toBe(SurfaceId.Standard);
-    expect(target.setting.outputSettingsByModel[ModelId.PmvAshrae].exploreBands?.[0].max)
+    expect(target.chart.outputSettingsByModel[ModelId.PmvAshrae].exploreBands?.[0].max)
       .toBe(-3.25);
     expect(target.actions.exportShareSnapshot().version).toBe(1);
 
@@ -180,7 +180,7 @@ describe("workspace navigation coordination", () => {
       .toBe(snapshot.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature]);
   });
 
-  it("lets a path model slug win over a share snapshot selectedModel", () => {
+  it("lets a path model slug set selectedModel independently of the share snapshot", () => {
     const source = createPointSession();
     source.actions.setSelectedModel(ModelId.Utci, {
       validateRanges: false,
@@ -220,7 +220,7 @@ describe("workspace navigation coordination", () => {
 
     expect(session.input.quantitiesByInput[InputId.Input1][PhysicalQuantityId.DryBulbTemperature])
       .toBe(21.5);
-    expect(session.setting.outputSettingsByModel[ModelId.PmvAshrae].xAxis)
+    expect(session.chart.outputSettingsByModel[ModelId.PmvAshrae].xAxis)
       .toBe(PhysicalQuantityId.MeanRadiantTemperature);
     expect(session.calculationCacheByModel[ModelId.PmvAshrae])
       .toBe(cacheBefore);

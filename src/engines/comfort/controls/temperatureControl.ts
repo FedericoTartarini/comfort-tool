@@ -1,4 +1,4 @@
-import { PhysicalQuantityId, getPhysicalQuantityMeta, type PrimaryInputState } from "../../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type QuantityState } from "../../../catalog/quantities";
 import type { DerivedSlotQuantityState } from "../derivations/psychrometrics";
 import type { InputControlId as InputControlIdType } from "../../../catalog/inputControls";
 import {
@@ -10,7 +10,7 @@ import {
 import { inputOrder, type InputId as InputIdType } from "../../../catalog/inputSlots";
 import { temperatureMenuItems } from "../../../catalog/controlMenuMeta";
 import { synchronizeTemperatureMode } from "../syncState";
-import { getDerivedFromAuxiliary } from "../quantityStateRouting";
+import { getDerivedFromQuantities } from "../quantityStateRouting";
 import type {
   BehaviorPatch,
   ControlBehaviorContext,
@@ -38,34 +38,34 @@ export function requireTemperatureMode(
 }
 
 type PostTemperatureSynchronizer = (
-  inputState: PrimaryInputState,
+  inputState: QuantityState,
   derivedState: DerivedSlotQuantityState,
   options: ModelOptionsRecord,
-) => PrimaryInputState;
+) => QuantityState;
 
 interface OperativeTemperatureControlOptions {
-  minValue?: number;
-  maxValue?: number;
+  minValue: number;
+  maxValue: number;
   postSynchronize?: PostTemperatureSynchronizer;
 }
 
 function applyPostSynchronization(
-  inputState: PrimaryInputState,
+  inputState: QuantityState,
   context: ControlBehaviorContext,
   inputId: InputIdType,
   options: ModelOptionsRecord,
   synchronizer?: PostTemperatureSynchronizer,
-): PrimaryInputState {
+): QuantityState {
   return synchronizer?.(
     inputState,
-    getDerivedFromAuxiliary(context.auxiliaryQuantitiesByInput[inputId]),
+    getDerivedFromQuantities(context.quantitiesByInput[inputId]),
     options,
   ) ?? inputState;
 }
 
 export function createOperativeTemperatureControlBehavior(
   controlId: InputControlIdType,
-  options: OperativeTemperatureControlOptions = {},
+  options: OperativeTemperatureControlOptions,
 ): InputControlBehavior {
   const temperatureMeta = getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature);
   return createControlBehavior({
@@ -74,7 +74,10 @@ export function createOperativeTemperatureControlBehavior(
     minValue: options.minValue,
     maxValue: options.maxValue,
     getPresentation: (context) => ({
-      ...buildDefaultPresentation(context, PhysicalQuantityId.DryBulbTemperature, options),
+      ...buildDefaultPresentation(context, PhysicalQuantityId.DryBulbTemperature, {
+        minValue: options.minValue,
+        maxValue: options.maxValue,
+      }),
       label: requireTemperatureMode(context.options) === TemperatureMode.Operative
         ? "Operative temperature"
         : temperatureMeta.label,
@@ -89,7 +92,7 @@ export function createOperativeTemperatureControlBehavior(
     ]),
     applyInput: (context, inputId, nextValueSi) => {
       const mode = requireTemperatureMode(context.options);
-      const nextInputState: PrimaryInputState = {
+      const nextInputState: QuantityState = {
         ...context.quantitiesByInput[inputId],
         [PhysicalQuantityId.DryBulbTemperature]: nextValueSi,
         ...(mode === TemperatureMode.Operative

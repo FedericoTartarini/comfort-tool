@@ -182,6 +182,24 @@ function collectDisplayValues(
   return { x, y };
 }
 
+function geometryXRangeSi(geometry: ParametricLineGeometry): { min: number; max: number } {
+  const xs: number[] = [];
+  for (const polyline of geometry.polylines) {
+    for (const point of finitePoints(polyline)) {
+      xs.push(point.x);
+    }
+  }
+  for (const point of Object.values(geometry.comparePoints ?? {})) {
+    if (point && Number.isFinite(point.x)) {
+      xs.push(point.x);
+    }
+  }
+  if (xs.length === 0) {
+    return { min: 0, max: 1 };
+  }
+  return { min: Math.min(...xs), max: Math.max(...xs) };
+}
+
 function toPlotAxis(
   title: string,
   values: readonly number[],
@@ -218,6 +236,7 @@ export function renderParametricLineGeometry(
   const xAxis = createFieldAxisScale({
     field: spec.xField,
     unitSystem: context.unitSystem,
+    rangeSi: geometryXRangeSi(geometry),
     points: 2,
   });
   const convertX = (valueSi: number) =>

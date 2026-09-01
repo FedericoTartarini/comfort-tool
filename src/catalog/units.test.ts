@@ -4,6 +4,7 @@ import {
   IpUnit,
   SiUnit,
   UnitSystem,
+  ipUnitForSi,
   ipUnitLabel,
   siUnitLabel,
   unitLabel,
@@ -20,14 +21,20 @@ describe("unit catalogs", () => {
     }
   });
 
-  it("pairs each quantity SI unit with a typed IP unit and matching labels", () => {
+  it("pairs each SI unit with a typed IP unit", () => {
+    for (const unit of Object.values(SiUnit)) {
+      expect(Object.values(IpUnit)).toContain(ipUnitForSi[unit]);
+    }
+  });
+
+  it("pairs each quantity SI unit with matching labels", () => {
     const knownSiUnits = new Set(Object.values(SiUnit));
-    const knownIpUnits = new Set(Object.values(IpUnit));
     for (const meta of Object.values(physicalQuantityMetaById)) {
-      expect(knownSiUnits.has(meta.units.SI)).toBe(true);
-      expect(knownIpUnits.has(meta.units.IP)).toBe(true);
-      expect(unitLabel(meta.units, UnitSystem.SI)).toBe(siUnitLabel[meta.units.SI]);
-      expect(unitLabel(meta.units, UnitSystem.IP)).toBe(ipUnitLabel[meta.units.IP]);
+      expect(knownSiUnits.has(meta.siUnit)).toBe(true);
+      expect(unitLabel(meta.siUnit, UnitSystem.SI)).toBe(siUnitLabel[meta.siUnit]);
+      expect(unitLabel(meta.siUnit, UnitSystem.IP)).toBe(
+        ipUnitLabel[ipUnitForSi[meta.siUnit]],
+      );
     }
   });
 });
