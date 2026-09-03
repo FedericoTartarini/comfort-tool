@@ -5,6 +5,7 @@ import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
 import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { SurfaceId } from "../catalog/surfaces";
+import { extrasByInputFromChartSource } from "../catalog/chartSource";
 import {
   modelSupportsExplore,
   modelSupportsStandard,
@@ -97,9 +98,11 @@ export function buildModelOutputGoldenSnapshot(
     getGoldenInputOverrides(modelId),
     getGoldenModelInputOverrides(modelId),
   );
-  const { resultsByInput, chartSource } = config.calculate(context, visibleInputIds);
+  const { valuesByInput, chartSource } = config.calculate(context, visibleInputIds);
   const table = serializeTable(
-    config.buildTable(resultsByInput, visibleInputIds, UnitSystem.SI),
+    config.buildTable(valuesByInput, visibleInputIds, UnitSystem.SI, {
+      extrasByInput: extrasByInputFromChartSource(chartSource),
+    }),
   );
 
   const charts: ChartGoldenSnapshot[] = [];
@@ -116,7 +119,7 @@ export function buildModelOutputGoldenSnapshot(
       const buildResult = config.buildChart(
         chartInstance.instanceId,
         chartSource,
-        resultsByInput,
+        valuesByInput,
         profile,
         {
           unitSystem: UnitSystem.SI,

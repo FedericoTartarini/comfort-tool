@@ -3,11 +3,13 @@ import {
   getPhysicalQuantityMeta,
   isPhysicalQuantityId,
   type PhysicalQuantityId,
+  type QuantityState,
 } from "../../../catalog/quantities";
 import type {
   ModelTables,
   ModelTablesAuthoring,
   QuantityTableRowAuthoring,
+  TableCellContext,
   TableRowAuthoring,
   TableRowSpec,
 } from "../../../catalog/tableTypes";
@@ -17,31 +19,36 @@ import {
   formatDisplayValue,
 } from "../../units";
 
-function isCustomTableRow<TResult>(
-  row: Exclude<TableRowAuthoring<TResult>, PhysicalQuantityId>,
-): row is TableRowSpec<TResult> {
+/**
+ * Compare rows read QuantityState. PHS is the exception: custom `format`
+ * may also read `context.extras` (valid/issues/samples/dLim*) from
+ * chartSource.extrasByInput. Thin models must not copy that pattern.
+ */
+
+function isCustomTableRow(
+  row: Exclude<TableRowAuthoring, PhysicalQuantityId>,
+): row is TableRowSpec {
   return "format" in row && typeof row.format === "function";
 }
 
-function isQuantityTableRow<TResult>(
-  row: Exclude<TableRowAuthoring<TResult>, PhysicalQuantityId>,
-): row is QuantityTableRowAuthoring<TResult> {
+function isQuantityTableRow(
+  row: Exclude<TableRowAuthoring, PhysicalQuantityId>,
+): row is QuantityTableRowAuthoring {
   return "quantity" in row;
 }
 
-function readQuantitySi<TResult>(
-  result: TResult,
+function readQuantitySi(
+  result: QuantityState,
   quantity: PhysicalQuantityId,
-  value?: (result: TResult) => number,
+  value?: (result: QuantityState, context?: TableCellContext) => number,
+  context?: TableCellContext,
 ): number {
   if (value) {
-    return value(result);
+    return value(result, context);
   }
-  if (result !== null && typeof result === "object" && quantity in result) {
-    const raw = (result as Record<string, unknown>)[quantity];
-    if (typeof raw === "number") {
-      return raw;
-    }
+  const raw = result[quantity];
+  if (typeof raw === "number") {
+    return raw;
   }
   throw new Error(
     `Result has no SI value for "${quantity}". Pass value: (result) => ...`,
@@ -66,9 +73,9 @@ export function formatQuantityTableText(
   return `${formatted} ${units}`;
 }
 
-function compileQuantityRow<TResult>(
-  row: QuantityTableRowAuthoring<TResult>,
-): TableRowSpec<TResult> {
+function compileQuantityRow(
+  row: QuantityTableRowAuthoring,
+): TableRowSpec {
   if (!isPhysicalQuantityId(row.quantity)) {
     throw new Error(`Unknown quantity id "${String(row.quantity)}" in table row.`);
   }
@@ -77,19 +84,19 @@ function compileQuantityRow<TResult>(
     id: row.id ?? row.quantity,
     label: row.label ?? meta.label,
     ...(row.group ? { group: row.group } : {}),
-    format: (result, unitSystem) => {
+    format: (result, unitSystem, context) => {
       const cell: ResultCellViewModel = {
         text: formatQuantityTableText(
           row.quantity,
-          readQuantitySi(result, row.quantity, row.value),
+          readQuantitySi(result, row.quantity, row.value, context),
           unitSystem,
         ),
       };
-      const subtext = row.subtext?.(result);
+      const subtext = row.subtext?.(result, context);
       if (subtext !== undefined && subtext !== "") {
         cell.subtext = subtext;
       }
-      const color = row.color?.(result);
+      const color = row.color?.(result, context);
       if (color !== undefined && color !== "") {
         cell.color = color;
       }
@@ -98,9 +105,9 @@ function compileQuantityRow<TResult>(
   };
 }
 
-export function compileTableRow<TResult>(
-  row: TableRowAuthoring<TResult>,
-): TableRowSpec<TResult> {
+export function compileTableRow(
+  row: TableRowAuthoring,
+): TableRowSpec {
   if (typeof row === "string") {
     if (!isPhysicalQuantityId(row)) {
       throw new Error(`Unknown quantity id "${row}" in table row.`);
@@ -118,9 +125,9 @@ export function compileTableRow<TResult>(
   );
 }
 
-export function compileModelTables<TResult>(
-  tables: ModelTablesAuthoring<TResult>,
-): ModelTables<TResult> {
+export function compileModelTables(
+  tables: ModelTablesAuthoring,
+): ModelTables {
   return {
     results: tables.results.map(compileTableRow),
   };

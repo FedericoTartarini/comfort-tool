@@ -76,7 +76,6 @@ describe("fieldInputBehaviors", () => {
           label: "PMV",
           defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
         }],
-        invoke: () => ({}),
         defaultOptions: {},
         parseOptions: parseEmptyOptions,
       },

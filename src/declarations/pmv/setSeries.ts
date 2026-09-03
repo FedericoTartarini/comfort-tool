@@ -1,5 +1,5 @@
 import { two_nodes } from "jsthermalcomfort";
-import { PhysicalQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 
 import type { ChartBuildContext } from "../../catalog/modelCapabilities";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
@@ -9,7 +9,7 @@ import {
   type ParametricLineGeometry,
   type ParametricPolyline,
 } from "../../engines/comfort/charts/kinds/types";
-import type { PmvRequest, PmvResponse } from "./calculation";
+import type { PmvRequest } from "./calculation";
 import {
   readPmvRequestFromChartSource,
   readPmvRequestsByInput,
@@ -272,7 +272,7 @@ export function buildPmvSetGeometry(
   return { polylines, comparePoints };
 }
 
-export function createPmvSetParametricSpec(): ParametricLineDataSpec<PmvResponse> {
+export function createPmvSetParametricSpec(): ParametricLineDataSpec<QuantityState> {
   return {
     title: "SET outputs",
     xField: PhysicalQuantityId.DryBulbTemperature,

@@ -6,6 +6,7 @@ import {
   FieldChartProfileKind,
   type FieldChartProfile,
 } from "../catalog/fieldChartProfile";
+import type { QuantityState } from "../catalog/quantities";
 import type { RuntimeComfortModelDefinition } from "../state/modelRegistry/definition";
 
 export function chartContextToProfile(
@@ -31,11 +32,11 @@ export function chartContextToProfile(
   };
 }
 
-export function buildChartResult<TResult>(
+export function buildChartResult(
   config: RuntimeComfortModelDefinition,
   instanceId: string,
   chartSource: unknown,
-  resultsByInput: Record<InputIdType, TResult | null>,
+  resultsByInput: Record<InputIdType, QuantityState | null>,
   context: ChartBuildContext,
 ) {
   return config.buildChart(
@@ -52,11 +53,11 @@ export function buildChartResult<TResult>(
   );
 }
 
-export function buildChartPayload<TResult>(
+export function buildChartPayload(
   config: RuntimeComfortModelDefinition,
   instanceId: string,
   chartSource: unknown,
-  resultsByInput: Record<InputIdType, TResult | null>,
+  resultsByInput: Record<InputIdType, QuantityState | null>,
   context: ChartBuildContext,
 ): ChartPayload | null {
   return buildChartResult(
@@ -168,11 +169,11 @@ export function chartFigure(
   };
 }
 
-export function buildChartPlotly<TResult>(
+export function buildChartPlotly(
   config: RuntimeComfortModelDefinition,
   instanceId: string,
   chartSource: unknown,
-  resultsByInput: Record<InputIdType, TResult | null>,
+  resultsByInput: Record<InputIdType, QuantityState | null>,
   context: ChartBuildContext,
 ) {
   const result = buildChartResult(

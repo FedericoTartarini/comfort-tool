@@ -150,16 +150,16 @@ describe("assembleCatalogs", () => {
   it("fails assemble when a Time-series table is declared on Compare tables", () => {
     const slice = createCatalogSlice({
       id: ModelId.HeatIndex,
-      tables: {
-        results: resultsTable.results,
-        timeSeries: [
-          {
-            id: "summary-row",
-            label: "Summary row",
-            format: () => ({ text: "value" }),
-          },
-        ],
-      },
+        tables: {
+          results: resultsTable.results,
+          timeSeries: [
+            {
+              id: "summary-row",
+              label: "Summary row",
+              format: () => ({ text: "value" }),
+            },
+          ],
+        } as CatalogModelSlice["tables"],
     });
 
     expect(() => validateModel(slice, assembledCatalogs)).toThrow(

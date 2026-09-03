@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { PhysicalQuantityId } from "../catalog/quantities";
 
-import { calculateAdaptive } from "../declarations/adaptive/calculation";
+import {
+  adaptiveValuesFromResponse,
+  calculateAdaptive,
+} from "../declarations/adaptive/calculation";
 import { createAdaptiveBoundaryRegionSpec } from "../declarations/adaptive/shared";
 import { adaptiveEnDeclaration } from "../declarations/adaptive/en";
 import type { AdaptiveRequest } from "../declarations/adaptive/shared";
@@ -25,7 +28,7 @@ function buildAdaptiveEnPayload() {
   const spec = buildModelBoundaryRegionChart(
     createAdaptiveBoundaryRegionSpec(adaptiveEnDeclaration),
     { inputs: { [InputId.Input1]: baselineRequest } },
-    { [InputId.Input1]: result, [InputId.Input2]: null, [InputId.Input3]: null },
+    { [InputId.Input1]: adaptiveValuesFromResponse(result), [InputId.Input2]: null, [InputId.Input3]: null },
     {
       unitSystem: UnitSystem.SI,
       baselineInputId: InputId.Input1,

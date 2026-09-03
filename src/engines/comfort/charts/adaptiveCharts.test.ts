@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { get_ce } from "jsthermalcomfort/lib/esm/models/adaptive_en.js";
-import { PhysicalQuantityId } from "../../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../../catalog/quantities";
 
 import {
   adaptiveAshraeDeclaration,
@@ -12,6 +12,7 @@ import {
   adaptiveEnModelConfig,
 } from "../../../declarations/adaptive/en";
 import {
+  adaptiveValuesFromResponse,
   calculateAdaptive,
   createAdaptiveComplianceCaption,
   levelsFromAdaptiveOffsets,
@@ -82,10 +83,12 @@ function buildChartBuild(
   baselineInputId: InputIdType = InputId.Input1,
   direction: "default" | "transposed" = "default",
 ) {
-  const resultsByInput = createEmptyResults<AdaptiveResponse>();
+  const resultsByInput = createEmptyResults<QuantityState>();
   Object.entries(requests).forEach(([inputId, request]) => {
     if (request) {
-      resultsByInput[inputId as InputIdType] = calculateAdaptive(declaration, request);
+      resultsByInput[inputId as InputIdType] = adaptiveValuesFromResponse(
+        calculateAdaptive(declaration, request),
+      );
     }
   });
 
@@ -333,7 +336,7 @@ describe("single Adaptive Compliance chart", () => {
     expect(() => buildModelBoundaryRegionChart(
       createAdaptiveBoundaryRegionSpec(adaptiveAshraeDeclaration),
       null,
-      createEmptyResults<AdaptiveResponse>(),
+      createEmptyResults<QuantityState>(),
       createContext(adaptiveAshraeDeclaration),
     )).not.toThrow();
   });

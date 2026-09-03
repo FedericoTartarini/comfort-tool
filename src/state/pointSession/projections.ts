@@ -11,6 +11,7 @@ import {
 import type { PointSessionBuckets } from "./sessionTypes";
 import type { ChartControlsViewModel, InputPanelViewModel } from "./viewModels";
 import type { ChartControlCallbacks } from "./chartControlCallbacks";
+import { extrasByInputFromChartSource } from "../../catalog/chartSource";
 
 export type { ChartControlCallbacks } from "./chartControlCallbacks";
 
@@ -24,7 +25,7 @@ export function buildChartBuildResult(
   return config.buildChart(
     internals.getCurrentSelectedChartInstanceId(),
     cache.chartSource,
-    cache.resultsByInput,
+    cache.valuesByInput,
     internals.getCurrentFieldChartProfile(),
     {
       unitSystem: session.input.unitSystem,
@@ -86,9 +87,13 @@ export function buildResultSectionsProjection(
   }
 
   return internals.getActiveModelConfig().buildTable(
-    cache.resultsByInput,
+    cache.valuesByInput,
     internals.getVisibleInputIds(),
     session.input.unitSystem,
+    {
+      quantitiesByInput: session.input.quantitiesByInput,
+      extrasByInput: extrasByInputFromChartSource(cache.chartSource),
+    },
   );
 }
 

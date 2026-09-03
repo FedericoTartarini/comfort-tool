@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PhysicalQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 
 import { ModelId } from "../../catalog/modelIds";
 import { ChartType } from "../../catalog/chartTypes";
@@ -233,10 +233,12 @@ function defineExploreModel(
     charts: options.charts ?? [chart],
     features: {
       exploreOutputs: [pmvOutput],
-      invoke: () => ({}),
       defaultOptions: {},
       parseOptions: parseEmptyOptions,
       ...options.features,
+    },
+    pipeline: {
+      invoke: () => ({}),
     },
     dynamicAxisFields: [
       PhysicalQuantityId.DryBulbTemperature,
@@ -446,9 +448,11 @@ describe("defineModel", () => {
     },
     features: {
       exploreOutputs: [pmvOutput],
-      invoke: () => ({}),
       defaultOptions: {},
       parseOptions: parseEmptyOptions,
+    },
+    pipeline: {
+      invoke: () => ({}),
     },
     dynamicAxisFields: [
       PhysicalQuantityId.DryBulbTemperature,
@@ -487,9 +491,9 @@ describe("defineModel", () => {
       ...defineModelBase,
       charts: [createModelDynamicFieldChart()],
     });
-    const resultsByInput = {
-      ...createEmptyResults<unknown>(),
-      [InputId.Input1]: { value: 1 },
+    const valuesByInput = {
+      ...createEmptyResults<QuantityState>(),
+      [InputId.Input1]: { [PhysicalQuantityId.PredictedMeanVote]: 1 },
     };
     const chartSource = { inputs: { [InputId.Input1]: {} } };
 
@@ -497,7 +501,7 @@ describe("defineModel", () => {
       const result = definition.buildChart(
         instanceId,
         chartSource,
-        resultsByInput,
+        valuesByInput,
         modelChartBuildProfile,
         {
           unitSystem: UnitSystem.SI,

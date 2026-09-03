@@ -15,6 +15,7 @@ import {
 import {
   PhysicalQuantityId,
   getPhysicalQuantityMeta,
+  type QuantityState,
 } from "../../../../catalog/quantities";
 import { unitLabel } from "../../../../catalog/units";
 import { getBaselineInputEntry, getCompareInputs } from "../../helpers";
@@ -274,16 +275,16 @@ export function buildModelBoundaryRegionChart<TResult, TPayload extends object>(
             inputsMap: source.inputs,
             resultsByInput,
             getXSi: (payload, inputId) => {
-              const result = resultsByInput[inputId] ?? spec.evaluate(payload);
+              const result = (resultsByInput[inputId] ?? spec.evaluate(payload)) as QuantityState | null;
               return boundaryAxis === "x"
                 ? (payload as { t_running_mean?: number }).t_running_mean ?? Number.NaN
-                : (result as { operativeTemperature?: number }).operativeTemperature
+                : result?.[PhysicalQuantityId.OperativeTemperature]
                   ?? Number.NaN;
             },
             getYSi: (payload, inputId) => {
-              const result = resultsByInput[inputId] ?? spec.evaluate(payload);
+              const result = (resultsByInput[inputId] ?? spec.evaluate(payload)) as QuantityState | null;
               return boundaryAxis === "x"
-                ? (result as { operativeTemperature?: number }).operativeTemperature
+                ? result?.[PhysicalQuantityId.OperativeTemperature]
                   ?? Number.NaN
                 : (payload as { t_running_mean?: number }).t_running_mean ?? Number.NaN;
             },
@@ -295,7 +296,7 @@ export function buildModelBoundaryRegionChart<TResult, TPayload extends object>(
             ),
             hoverMetadata: ({ payload, inputId }) => {
               const result = resultsByInput[inputId] ?? spec.evaluate(payload);
-              return spec.getHoverMetadata(result, context.unitSystem);
+              return spec.getHoverMetadata(result, context.unitSystem, payload);
             },
           },
         ]
@@ -314,16 +315,23 @@ export function buildModelBoundaryRegionChart<TResult, TPayload extends object>(
       ? createDisplayHoverProbe(xAxis, yAxis, (xSi, ySi) => {
           const outdoorSi = boundaryAxis === "x" ? xSi : ySi;
           const operativeSi = boundaryAxis === "x" ? ySi : xSi;
-          const result = spec.evaluate(
-            spec.requestFromPoint(baseline.payload, outdoorSi, operativeSi),
+          const payload = spec.requestFromPoint(
+            baseline.payload,
+            outdoorSi,
+            operativeSi,
           );
+          const result = spec.evaluate(payload);
           return {
             hovertemplate: spec.buildHoverTemplate(
               context.unitSystem,
               xAxis,
               yAxis,
             ),
-            customdata: spec.getHoverMetadata(result, context.unitSystem),
+            customdata: spec.getHoverMetadata(
+              result,
+              context.unitSystem,
+              payload,
+            ),
           };
         })
       : undefined,

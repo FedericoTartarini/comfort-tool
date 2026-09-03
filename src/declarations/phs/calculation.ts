@@ -1,7 +1,7 @@
 import { body_surface_area, phs, p_sat } from "jsthermalcomfort";
 
 import { CalculationSource } from "../../catalog/calculationMetadata";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type QuantityState } from "../../catalog/quantities";
 import { UnitSystem, unitLabel } from "../../catalog/units";
 import {
   PHS_STANDARD_VERSION,
@@ -443,6 +443,17 @@ export function simulatePhs(
     limitingExposureTimeMinutes: limitingMinute ?? elapsedMinutes,
     ...(samples ? { samples } : {}),
     source: CalculationSource.JsThermalComfort,
+  };
+}
+
+export function phsValuesFromSimulation(sim: PhsSimulationResult): QuantityState {
+  if (!sim.valid) {
+    return {};
+  }
+  return {
+    [PhysicalQuantityId.RectalTemperature]: sim.tRe,
+    [PhysicalQuantityId.SweatLoss]: sim.sweatLossG,
+    [PhysicalQuantityId.LimitingExposureTime]: sim.limitingExposureTimeMinutes,
   };
 }
 

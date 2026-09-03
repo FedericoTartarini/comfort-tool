@@ -198,7 +198,7 @@ export async function assertCompareContract(
       );
     }
     for (const inputId of visibleInputIds) {
-      if (cache.resultsByInput[inputId] == null) {
+      if (cache.valuesByInput[inputId] == null) {
         failSilently(
           modelId,
           `visible input ${inputId} produced no result with ${count} inputs.`,

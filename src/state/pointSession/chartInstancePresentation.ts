@@ -37,9 +37,9 @@ export function toChartInstancePanelView(
   };
 }
 
-export function findChartEngineRegistration(
-  registrations: readonly ChartEngineRegistration<unknown, unknown>[],
+export function findChartEngineRegistration<TResult = unknown, TSource = unknown>(
+  registrations: readonly ChartEngineRegistration<TResult, TSource>[],
   instanceId: string,
-): ChartEngineRegistration<unknown, unknown> | undefined {
+): ChartEngineRegistration<TResult, TSource> | undefined {
   return registrations.find((registration) => registration.instanceId === instanceId);
 }

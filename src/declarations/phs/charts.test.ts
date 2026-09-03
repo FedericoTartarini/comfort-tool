@@ -43,11 +43,15 @@ describe("createPhsDynamicGridSpec", () => {
 
     const defaultResult = defaultSpec.evaluate(phsReferenceEnvironment);
     const heavyResult = heavySpec.evaluate(phsReferenceEnvironment);
+    const defaultLimitG = getPhsWaterLossLimitG(personFromModelInputs({}));
+    const heavyLimitG = getPhsWaterLossLimitG(personFromModelInputs({
+      [PhysicalQuantityId.BodyWeight]: 120,
+    }));
 
-    expect(defaultResult.valid).toBe(true);
-    expect(heavyResult.valid).toBe(true);
-    expect(heavyResult.waterLossLimitG).toBeGreaterThan(defaultResult.waterLossLimitG);
-    expect(heavyResult.waterLossLimitG).toBe(
+    expect(defaultResult[PhysicalQuantityId.LimitingExposureTime]).toBeTypeOf("number");
+    expect(heavyResult[PhysicalQuantityId.LimitingExposureTime]).toBeTypeOf("number");
+    expect(heavyLimitG).toBeGreaterThan(defaultLimitG);
+    expect(heavyLimitG).toBe(
       getPhsWaterLossLimitG(personFromModelInputs({
         [PhysicalQuantityId.BodyWeight]: 120,
       })),

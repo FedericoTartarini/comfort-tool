@@ -1,6 +1,5 @@
 import { t_o, utci } from "jsthermalcomfort";
-import { CalculationSource } from "../../catalog/calculationMetadata";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type QuantityState } from "../../catalog/quantities";
 import { InputWidget } from "../../catalog/inputWidgets";
 import { JsThermalComfortStandard, ModelId } from "../../catalog/modelIds";
 import { bandsFromJsBins, displayClassifierLabel, intervalFromBins, requireMappedCategory, thermalZonesFromBands } from "../../catalog/classifierBins";
@@ -16,8 +15,7 @@ import {
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 import { ChartType } from "../../catalog/chartTypes";
-import type { TableRowAuthoring } from "../../catalog/tableTypes";
-import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
+import { LIBRARY_INVOKE_DEFAULTS } from "../../engines/comfort/libraryInvoke";
 import {
   createTemperatureModeOptionHandler,
 } from "../../engines/comfort/controls/temperatureControl";
@@ -30,17 +28,11 @@ import {
   defineLibraryQuantityMapping,
 } from "../../engines/comfort/requestMapping";
 import {
-  convertQuantityFromSi,
-  formatDisplayValue,
-} from "../../engines/units";
-import { unitLabel } from "../../catalog/units";
-import {
   defineModel,
   hasExactKeys,
   inputQuantity,
   isRecord,
   resultQuantity,
-  type ResultRowDefinition,
 } from "../../state/modelRegistry/builder";
 
 // --- Calculation ---
@@ -109,12 +101,6 @@ export interface UtciRequest {
   rh: number;
 }
 
-export interface UtciResponse {
-  utci: number;
-  stressCategory: string;
-  source: CalculationSource;
-}
-
 export function getUtciZoneMeta(value: number): ThermalZone {
   if (!Number.isFinite(value)) {
     throw new Error(`${UTCI_OUTPUT_LABEL} produced a non-finite thermal-zone value: ${value}.`);
@@ -127,28 +113,24 @@ export function getUtciZoneMeta(value: number): ThermalZone {
   return zone;
 }
 
-export function calculateUtci(payload: UtciRequest): UtciResponse {
+export function calculateUtci(
+  payload: UtciRequest,
+  limitInputs = true,
+): QuantityState {
   const result = utci(
     payload.tdb,
     payload.tr,
     payload.v,
     payload.rh,
-    UnitSystem.SI,
-    true,
-    false,
+    LIBRARY_INVOKE_DEFAULTS.units,
+    limitInputs,
+    LIBRARY_INVOKE_DEFAULTS.round,
   );
   if (!Number.isFinite(result.utci)) {
     throw new Error(`${UTCI_OUTPUT_LABEL} produced a non-finite value: ${result.utci}.`);
   }
-  const category = requireMappedCategory(
-    result.stress_category ?? Number.NaN,
-    "UTCI",
-  );
-
   return {
-    utci: result.utci,
-    stressCategory: category,
-    source: CalculationSource.JsThermalComfort,
+    [PhysicalQuantityId.UniversalThermalClimateIndex]: result.utci,
   };
 }
 
@@ -159,9 +141,9 @@ export function tryEvaluateUtciForChart(payload: UtciRequest): number | null {
     payload.tr,
     payload.v,
     payload.rh,
-    UnitSystem.SI,
+    LIBRARY_INVOKE_DEFAULTS.units,
     false,
-    false,
+    LIBRARY_INVOKE_DEFAULTS.round,
   );
   return Number.isFinite(result.utci) ? result.utci : null;
 }
@@ -203,32 +185,6 @@ export const utciAxisAdapter = createRequestAxisAdapter({
   },
 });
 
-export function buildUtciResultRows(
-  unitSystem: UnitSystemType,
-): ResultRowDefinition<UtciResponse>[] {
-  const outputMeta = getPhysicalQuantityMeta(PhysicalQuantityId.UniversalThermalClimateIndex);
-  const outputUnits = unitLabel(outputMeta.siUnit, unitSystem);
-  return [
-    {
-      title: UTCI_OUTPUT_LABEL,
-      formatter: (result) => {
-        const value = convertQuantityFromSi(PhysicalQuantityId.UniversalThermalClimateIndex, result.utci, unitSystem);
-        return {
-          text: `${formatDisplayValue(value)} ${outputUnits}`,
-          color: "",
-        };
-      },
-    },
-    {
-      title: "Stress Category",
-      formatter: (result) => {
-        const zone = getUtciZoneMeta(result.utci);
-        return { text: displayClassifierLabel(result.stressCategory), color: zone.textColor };
-      },
-    },
-  ];
-}
-
 // --- Identity and inputs ---
 
 const UTCI_DYNAMIC_AXIS_FIELDS = [
@@ -250,6 +206,22 @@ function parseUtciOptions(value: unknown): UtciModelOptions | null {
   return null;
 }
 
+function toRequestFromSi(
+  si: QuantityState,
+  context: ModelCalculationContext,
+): UtciRequest {
+  const tdb = si[PhysicalQuantityId.DryBulbTemperature]!;
+  const tr = context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative
+    ? tdb
+    : si[PhysicalQuantityId.MeanRadiantTemperature]!;
+  return {
+    tdb,
+    tr,
+    v: si[PhysicalQuantityId.WindSpeed]!,
+    rh: si[PhysicalQuantityId.RelativeHumidity]!,
+  };
+}
+
 function toRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
@@ -259,23 +231,6 @@ function toRequest(
     request.tr = request.tdb;
   }
   return request;
-}
-
-function buildUtciTableRows(): TableRowAuthoring<UtciResponse>[] {
-  return [
-    {
-      quantity: PhysicalQuantityId.UniversalThermalClimateIndex,
-      label: UTCI_MODEL_LABEL,
-    },
-    {
-      id: "stress-category",
-      label: "Stress Category",
-      format: (result) => {
-        const zone = getUtciZoneMeta(result.utci);
-        return { text: displayClassifierLabel(result.stressCategory), color: zone.textColor };
-      },
-    },
-  ];
 }
 
 export const utciModelConfig = defineModel(utci, {
@@ -319,14 +274,19 @@ export const utciModelConfig = defineModel(utci, {
     ],
   },
   tables: {
-    results: buildUtciTableRows(),
+    results: [
+      {
+        quantity: PhysicalQuantityId.UniversalThermalClimateIndex,
+        label: UTCI_MODEL_LABEL,
+      },
+    ],
   },
   charts: [
     {
       type: ChartType.Utci,
       titlePrefix: null,
       spec: {
-        getOutputValue: (result) => utciQuantityMapping.fromLibrary(result)[
+        getOutputValue: (result) => result[
           PhysicalQuantityId.UniversalThermalClimateIndex
         ]!,
         xRangeSi: { min: UTCI_CHART_RANGE_SI.min, max: UTCI_CHART_RANGE_SI.max },
@@ -344,9 +304,9 @@ export const utciModelConfig = defineModel(utci, {
           y: PhysicalQuantityId.RelativeHumidity,
         },
         axisFields: [...UTCI_DYNAMIC_AXIS_FIELDS],
-        evaluate: calculateUtci,
+        evaluate: (payload) => calculateUtci(payload as UtciRequest, false),
         tryEvaluatePayload: tryEvaluateUtciForChart,
-        getOutputValue: (result) => utciQuantityMapping.fromLibrary(result)[
+        getOutputValue: (result) => result[
           PhysicalQuantityId.UniversalThermalClimateIndex
         ]!,
         requestAdapter: utciAxisAdapter,
@@ -380,9 +340,11 @@ export const utciModelConfig = defineModel(utci, {
       },
     ],
     exploreOutputs: [utciOutput],
-    invoke: (_si, context, inputId) => calculateUtci(toRequest(context, inputId)),
-    mapChartInput: (_si, context, inputId) => toRequest(context, inputId),
     defaultOptions: { ...defaultUtciOptions },
     parseOptions: parseUtciOptions,
+  },
+  pipeline: {
+    invoke: (si, context) => calculateUtci(toRequestFromSi(si, context), true),
+    mapChartInput: (_si, context, inputId) => toRequest(context, inputId),
   },
 });

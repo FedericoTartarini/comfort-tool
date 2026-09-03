@@ -1,14 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { PhysicalQuantityId, type QuantityState } from "../catalog/quantities";
 
-import type { AdaptiveResponse } from "../declarations/adaptive/shared";
-import type { UtciResponse } from "../declarations/utci/utci";
-import type { PmvResponse } from "../declarations/pmv/calculation";
-import type { PhsResponse } from "../catalog/phs";
 import { humidexModelConfig } from "../declarations/humidex";
 import { heatIndexModelConfig } from "../declarations/heatIndex";
 import { windChillModelConfig } from "../declarations/windChill";
-import { calculateUtci } from "../declarations/utci/utci";
+import { calculateUtci, getUtciZoneMeta } from "../declarations/utci/utci";
 import { evaluatePmvCondition } from "../declarations/pmv/calculation";
 import { pmvAshraeAdapter } from "../declarations/pmv/ashrae";
 import { calculatePhs } from "../declarations/phs/calculation";
@@ -25,6 +21,7 @@ import {
   pickPmvRequest,
   pickUtciRequest,
 } from "./goldenFixtures";
+import { extrasByInputFromChartSource } from "../catalog/chartSource";
 import { requiredControlIdsByModel } from "./requiredModelControls";
 
 function calculatePrimaryResult<T>(
@@ -37,15 +34,32 @@ function calculatePrimaryResult<T>(
     inputOverrides,
     modelInputOverrides,
   );
-  const { resultsByInput } = comfortModelConfigs[modelId].calculate(
+  const { valuesByInput } = comfortModelConfigs[modelId].calculate(
     context,
     [InputId.Input1],
   );
-  const result = resultsByInput[InputId.Input1];
+  const result = valuesByInput[InputId.Input1];
   if (!result) {
     throw new Error(`Expected ${modelId} to return a primary result.`);
   }
   return result as T;
+}
+
+function calculatePrimaryExtras(
+  modelId: ModelId,
+  inputOverrides: Parameters<typeof createGoldenCalculationContext>[1] = {},
+  modelInputOverrides: Parameters<typeof createGoldenCalculationContext>[2] = {},
+): unknown {
+  const context = createGoldenCalculationContext(
+    modelId,
+    inputOverrides,
+    modelInputOverrides,
+  );
+  const { chartSource } = comfortModelConfigs[modelId].calculate(
+    context,
+    [InputId.Input1],
+  );
+  return extrasByInputFromChartSource(chartSource)?.[InputId.Input1];
 }
 
 describe("golden regression — control counts", () => {
@@ -66,7 +80,7 @@ describe("golden regression — direct calculation snapshots", () => {
         [PhysicalQuantityId.RelativeHumidity]: 70,
       }),
       [InputId.Input1],
-    ).resultsByInput[InputId.Input1] as QuantityState;
+    ).valuesByInput[InputId.Input1] as QuantityState;
     expect(result.humidex).toBeCloseTo(40.9, 1);
   });
 
@@ -77,7 +91,7 @@ describe("golden regression — direct calculation snapshots", () => {
         [PhysicalQuantityId.RelativeHumidity]: 60,
       }),
       [InputId.Input1],
-    ).resultsByInput[InputId.Input1] as QuantityState;
+    ).valuesByInput[InputId.Input1] as QuantityState;
     expect(result.hi).toBeCloseTo(37.1, 1);
   });
 
@@ -88,14 +102,14 @@ describe("golden regression — direct calculation snapshots", () => {
         [PhysicalQuantityId.WindSpeed]: 5,
       }),
       [InputId.Input1],
-    ).resultsByInput[InputId.Input1] as QuantityState;
+    ).valuesByInput[InputId.Input1] as QuantityState;
     expect(result.wct).toBeCloseTo(-17.4, 1);
   });
 
   it("UTCI baseline", () => {
     const result = calculateUtci(pickUtciRequest());
     expect(result.utci).toBeCloseTo(25.5, 1);
-    expect(result.stressCategory).toBe("no thermal stress");
+    expect(getUtciZoneMeta(result.utci!).category).toBe("no thermal stress");
   });
 
   it("PMV ASHRAE baseline", () => {
@@ -137,16 +151,16 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("UTCI matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<UtciResponse>(
+    const result = calculatePrimaryResult<QuantityState>(
       ModelId.Utci,
       getGoldenInputOverrides(ModelId.Utci),
     );
     expect(result.utci).toBeCloseTo(25.5, 1);
-    expect(result.stressCategory).toBe("no thermal stress");
+    expect(getUtciZoneMeta(result.utci!).category).toBe("no thermal stress");
   });
 
   it("PMV ASHRAE matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<PmvResponse>(
+    const result = calculatePrimaryResult<QuantityState>(
       ModelId.PmvAshrae,
       getGoldenInputOverrides(ModelId.PmvAshrae),
     );
@@ -155,7 +169,7 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("PMV ISO matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<PmvResponse>(
+    const result = calculatePrimaryResult<QuantityState>(
       ModelId.PmvIso,
       getGoldenInputOverrides(ModelId.PmvIso),
     );
@@ -164,33 +178,33 @@ describe("golden regression — calculate via model config", () => {
   });
 
   it("Adaptive ASHRAE calculates from standard fixture inputs", () => {
-    const result = calculatePrimaryResult<AdaptiveResponse>(
+    const extras = calculatePrimaryExtras(
       ModelId.AdaptiveAshrae,
       getGoldenInputOverrides(ModelId.AdaptiveAshrae),
-    );
-    expect(result.tCmf).toBeCloseTo(24, 1);
-    expect(result.isApplicable).toBe(true);
-    expect(result.levels.length).toBeGreaterThan(0);
+    ) as { tCmf: number; isApplicable: boolean; levels: unknown[] };
+    expect(extras.tCmf).toBeCloseTo(24, 1);
+    expect(extras.isApplicable).toBe(true);
+    expect(extras.levels.length).toBeGreaterThan(0);
   });
 
   it("Adaptive EN calculates from standard fixture inputs", () => {
-    const result = calculatePrimaryResult<AdaptiveResponse>(
+    const extras = calculatePrimaryExtras(
       ModelId.AdaptiveEn,
       getGoldenInputOverrides(ModelId.AdaptiveEn),
-    );
-    expect(result.tCmf).toBeCloseTo(25.4, 1);
-    expect(result.isApplicable).toBe(true);
-    expect(result.levels.length).toBeGreaterThan(0);
+    ) as { tCmf: number; isApplicable: boolean; levels: unknown[] };
+    expect(extras.tCmf).toBeCloseTo(25.4, 1);
+    expect(extras.isApplicable).toBe(true);
+    expect(extras.levels.length).toBeGreaterThan(0);
   });
 
   it("PHS uses model inputs for person settings via model config", () => {
-    const result = calculatePrimaryResult<PhsResponse>(
+    const extras = calculatePrimaryExtras(
       ModelId.Phs2023,
       phsBaselineInputOverrides,
       phsBaselineModelInputs,
-    );
-    expect(result.valid).toBe(true);
-    expect(result.dLimTreMinutes).toBeCloseTo(54, 0);
+    ) as { valid: boolean; dLimTreMinutes: number };
+    expect(extras.valid).toBe(true);
+    expect(extras.dLimTreMinutes).toBeCloseTo(54, 0);
   });
 });
 

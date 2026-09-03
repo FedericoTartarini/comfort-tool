@@ -51,17 +51,17 @@ export type SelectedChartInstanceByModelState = Record<ModelIdType, string>;
 
 export type CalculationCacheStatus = "empty" | "stale" | "ready";
 
-export type ModelCalculationCache<ResultType, ChartSourceType> = {
+export type ModelCalculationCache<ChartSourceType = unknown> = {
   status: CalculationCacheStatus;
   buildGeneration: number;
   lastVisibleInputIds: InputIdType[];
-  resultsByInput: Record<InputIdType, ResultType | null>;
+  valuesByInput: Record<InputIdType, QuantityState | null>;
   chartSource: ChartSourceType | null;
 };
 
 export type ModelCalculationCacheByModelState = Record<
   ModelIdType,
-  ModelCalculationCache<unknown, unknown>
+  ModelCalculationCache
 >;
 export interface ModelSwitchViolation {
   inputId: InputIdType;

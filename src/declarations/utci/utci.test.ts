@@ -41,7 +41,7 @@ describe("UTCI stress zones", () => {
       rh: 50,
     });
 
-    expect(result.stressCategory).toBe(getUtciZoneMeta(result.utci).category);
+    expect(getUtciZoneMeta(result.utci!).category).toBe("no thermal stress");
   });
 
   it("rejects non-finite values instead of assigning no thermal stress", () => {
@@ -53,21 +53,25 @@ describe("UTCI Explore chart", () => {
   it("applies edited bands and preserves gaps in the fixed stress strip", () => {
     const request = { tdb: 25, tr: 25, v: 1, rh: 50 };
     const result = calculateUtci(request);
+    const utciValue = result.utci;
+    if (typeof utciValue !== "number") {
+      throw new Error("Expected a UTCI value.");
+    }
     const bands = [
       {
         min: -Infinity,
-        max: result.utci,
+        max: utciValue,
         label: "Below marker",
         color: "#123456",
       },
       {
-        min: result.utci,
-        max: result.utci + 1,
+        min: utciValue,
+        max: utciValue + 1,
         label: "Marker band",
         color: "#abcdef",
       },
       {
-        min: result.utci + 2,
+        min: utciValue + 2,
         max: Infinity,
         label: "Above gap",
         color: "#fedcba",
@@ -87,7 +91,7 @@ describe("UTCI Explore chart", () => {
     const fillTrace = chart.traces.find(({ name }) => name === "UTCI bands");
     const inputTrace = chart.traces.find(({ name }) => name === "Input 1");
     const gapIndex = fillTrace?.x?.findIndex((value) => (
-      value > result.utci + 1 && value < result.utci + 2
+      value > utciValue + 1 && value < utciValue + 2
     )) ?? -1;
 
     expect(gapIndex).toBeGreaterThanOrEqual(0);

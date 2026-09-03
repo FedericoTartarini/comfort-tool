@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { comfortModelConfigs, comfortModelOrder } from "../state/modelRegistry";
 import { modelSupportsExplore, modelSupportsStandard } from "../state/modelRegistry/definition";
 import { InputId } from "../catalog/inputSlots";
+import { extrasByInputFromChartSource } from "../catalog/chartSource";
 import { UnitSystem } from "../catalog/units";
 import {
   createGoldenCalculationContext,
@@ -31,11 +32,12 @@ describe("output registry coverage", () => {
         getGoldenInputOverrides(modelId),
         getGoldenModelInputOverrides(modelId),
       );
-      const { resultsByInput } = config.calculate(context, [InputId.Input1]);
+      const { valuesByInput, chartSource } = config.calculate(context, [InputId.Input1]);
       const sections = config.buildTable(
-        resultsByInput,
+        valuesByInput,
         [InputId.Input1],
         UnitSystem.SI,
+        { extrasByInput: extrasByInputFromChartSource(chartSource) },
       );
       expect(sections.length).toBeGreaterThan(0);
       expect(sections[0]?.valuesByInput[InputId.Input1]?.text.length).toBeGreaterThan(0);

@@ -890,15 +890,6 @@ exports[`output golden — table snapshots > utci produces stable table output 1
         ],
         "title": "UTCI",
       },
-      {
-        "cells": [
-          {
-            "color": "#059669",
-            "text": "No Thermal Stress",
-          },
-        ],
-        "title": "Stress Category",
-      },
     ],
   },
 }

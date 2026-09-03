@@ -15,7 +15,7 @@ describe("chart type spec union", () => {
   });
 
   it("lets defineModel select any closed ChartType", () => {
-    type AuthoringChart = ModelAuthoring<unknown, unknown>["charts"][number];
+    type AuthoringChart = ModelAuthoring["charts"][number];
     type DeclaredKind = AuthoringChart["type"];
     type DeclaredPsychrometric = Extract<
       AuthoringChart,

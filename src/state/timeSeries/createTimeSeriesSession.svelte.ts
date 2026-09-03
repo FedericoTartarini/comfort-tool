@@ -8,6 +8,7 @@ import { buildMetricSummaryTable } from "../../engines/comfort/output/tableResol
 import { resolveSimulationChartBuild } from "../../engines/comfort/charts/kinds/simulation";
 import { getComfortModelConfig, getModelSimulationOutput } from "../modelRegistry";
 import { UnitSystem } from "../../catalog/units";
+import type { QuantityState } from "../../catalog/quantities";
 import {
   getTimeSeriesModelConfig,
   timeSeriesModelOrder,
@@ -153,7 +154,7 @@ function getSummary(
   }
   return buildMetricSummaryTable(
     table,
-    result,
+    result as unknown as QuantityState,
     setting.unitSystem,
   ).items;
 }

@@ -1,5 +1,5 @@
 import type { ChartEngineRegistration } from "../../engines/comfort/charts/kinds/types";
-import { PhysicalQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import { InputId } from "../../catalog/inputSlots";
 import { type Band, type ModelOutput, type NumericBand } from "../../catalog/modelCapabilities";
 import {
@@ -31,7 +31,7 @@ export function getDeclaredExploreOutput(
 
 export function getChartExploreOutputs(
   config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
-  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<QuantityState, unknown>,
 ): readonly ModelOutput[] {
   const supported = chartRegistration?.supportedExploreOutputs;
   return supported
@@ -41,7 +41,7 @@ export function getChartExploreOutputs(
 
 function getDefaultExploreOutput(
   config: Pick<RuntimeComfortModelDefinition, "exploreOutputs">,
-  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<QuantityState, unknown>,
 ): ModelOutput | undefined {
   const outputKey = chartRegistration?.defaultExploreOutput;
   return outputKey
@@ -52,7 +52,7 @@ function getDefaultExploreOutput(
 export function normalizeExploreStateForChart(
   config: RuntimeComfortModelDefinition,
   settings: ModelOutputSettings,
-  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<QuantityState, unknown>,
 ): ModelOutputSettings {
   if (!modelSupportsExplore(config)) {
     return { ...settings, exploreOutput: null, exploreBands: null };
@@ -78,7 +78,7 @@ export function normalizeExploreStateForChart(
 
 export function seedExploreOutputSettings(
   config: RuntimeComfortModelDefinition,
-  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<QuantityState, unknown>,
 ): Pick<ModelOutputSettings, "exploreOutput" | "exploreBands"> {
   if (!modelSupportsExplore(config)) {
     return { exploreOutput: null, exploreBands: null };
@@ -112,7 +112,7 @@ export function selectExploreOutput(
   config: RuntimeComfortModelDefinition,
   settings: ModelOutputSettings,
   outputKey: PhysicalQuantityId,
-  chartRegistration?: ChartEngineRegistration<unknown, unknown>,
+  chartRegistration?: ChartEngineRegistration<QuantityState, unknown>,
 ): ModelOutputSettings | null {
   const output = getDeclaredExploreOutput(config, outputKey);
   if (

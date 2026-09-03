@@ -104,7 +104,8 @@ export function validateModel(
     }
   }
 
-  if (model.tables.timeSeries) {
+  const tables = model.tables as ModelTables & { timeSeries?: unknown };
+  if (tables.timeSeries !== undefined) {
     throw new Error("tables.timeSeries is not a Compare table; declare features.timeSeries.");
   }
 

@@ -19,10 +19,9 @@ import {
   calculatePmvModel,
   type ComfortZoneRequest,
   type PmvChartSource,
-  type PmvResponse,
 } from "../../../declarations/pmv/calculation";
 import { createModelCalculationContext } from "../../../catalog/modelCalculation";
-import { PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../../catalog/quantities";
+import { PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType, type QuantityState } from "../../../catalog/quantities";
 import {
   AirSpeedControlMode,
   OptionKey,
@@ -58,7 +57,7 @@ function calculateModel(
   temperatureMode: typeof TemperatureMode[keyof typeof TemperatureMode] = TemperatureMode.Air,
 ): {
   config: ReturnType<typeof createPmvModelConfig>;
-  result: PmvResponse;
+  result: QuantityState;
   source: PmvChartSource;
 } {
   const config = createPmvModelConfig(declaration);
@@ -86,7 +85,7 @@ function calculateModel(
     effectiveQuantitiesByInput: session.input.quantitiesByInput,
     options: session.input.modelOptionsByModel[declaration.adapter.modelId],
   }), [InputId.Input1], declaration.adapter);
-  const result = calculation.resultsByInput[InputId.Input1];
+  const result = calculation.valuesByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
   return { config, result, source: calculation.chartSource };
 }
@@ -99,8 +98,8 @@ function createSource(
 }
 
 function createResults(
-  result: PmvResponse,
-): Record<InputId, PmvResponse | null> {
+  result: QuantityState,
+): Record<InputId, QuantityState | null> {
   return {
     [InputId.Input1]: result,
     [InputId.Input2]: null,
@@ -360,15 +359,19 @@ describe("PMV charts", () => {
       PhysicalQuantityId.RelativeHumidity,
       PhysicalQuantityId.PredictedPercentageOfDissatisfied,
     );
+    const ppdValue = result.ppd;
+    if (typeof ppdValue !== "number") {
+      throw new Error("Expected a PPD value.");
+    }
     const editedBands = [
       {
         min: -Infinity,
-        max: result.ppd,
+        max: ppdValue,
         label: "Lower PPD",
         color: "#123456",
       },
       {
-        min: result.ppd,
+        min: ppdValue,
         max: Infinity,
         label: "Boundary PPD",
         color: "#abcdef",
@@ -628,8 +631,12 @@ describe("PMV charts", () => {
 
   it("keeps fixed and Explore classification consistent for the input point", () => {
     const { result } = calculateModel(pmvAshraeDeclaration);
+    const pmv = result.pmv;
+    if (typeof pmv !== "number") {
+      throw new Error("Expected a PMV value.");
+    }
     const expectedZone = pmvAshraeDeclaration.exploreOutputs[0].defaultBands.find(
-      ({ min, max }) => result.pmv >= min && result.pmv < max,
+      ({ min, max }) => pmv >= min && pmv < max,
     )?.label;
     if (!expectedZone) throw new Error("Expected a declared PMV zone.");
     const fixed = buildPsychrometric(pmvAshraeDeclaration);

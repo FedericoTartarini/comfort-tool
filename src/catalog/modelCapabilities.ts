@@ -2,6 +2,7 @@ import type { InputId as InputIdType } from "./inputSlots";
 import {
   type PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
+  type QuantityState,
 } from "./quantities";
 import { FieldChartProfileKind } from "./fieldChartProfile";
 import type { ThermalZone } from "./thermalZone";
@@ -64,12 +65,20 @@ export interface ComplianceFeedback {
   readonly passes: boolean;
 }
 
-export interface ComplianceSpec<TBand extends Band = Band, TResult = unknown> {
+export interface ComplianceFeedbackContext {
+  readonly input?: QuantityState;
+  readonly extras?: unknown;
+}
+
+export interface ComplianceSpec<TBand extends Band = Band> {
   readonly output: PhysicalQuantityId;
   readonly bands: readonly TBand[];
   readonly legendTitle: string;
   readonly caption: string;
-  readonly getFeedback: (result: TResult) => ComplianceFeedback;
+  readonly getFeedback: (
+    result: QuantityState | null,
+    context?: ComplianceFeedbackContext,
+  ) => ComplianceFeedback;
 }
 
 interface FieldChartConfigBase {

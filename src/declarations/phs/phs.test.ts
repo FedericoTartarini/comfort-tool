@@ -19,6 +19,7 @@ import {
   calculatePhsTimeSeries,
   getPhsWaterLossLimitG,
   personFromModelInputs,
+  phsValuesFromSimulation,
   simulatePhs,
   validatePhsEnvironment,
   validatePhsTimeSeries,
@@ -174,12 +175,13 @@ describe("PHS ISO 7933:2023", () => {
   it("declares exposure history first and retains the 31 by 31 field chart", () => {
     const result = analysisResult();
     const resultsByInput = {
-      [InputId.Input1]: result,
+      [InputId.Input1]: phsValuesFromSimulation(result),
       [InputId.Input2]: null,
       [InputId.Input3]: null,
     };
     const chartSource = {
       inputs: { [InputId.Input1]: phsReferenceEnvironment },
+      extrasByInput: { [InputId.Input1]: result },
     };
     const complianceContext = {
       unitSystem: UnitSystem.SI,
@@ -225,9 +227,12 @@ describe("PHS ISO 7933:2023", () => {
     const result = analysisResult();
     const chart = buildChartPlotly(phsModelConfig,
       "body-temperature",
-      { inputs: { [InputId.Input1]: phsReferenceEnvironment } },
       {
-        [InputId.Input1]: result,
+        inputs: { [InputId.Input1]: phsReferenceEnvironment },
+        extrasByInput: { [InputId.Input1]: result },
+      },
+      {
+        [InputId.Input1]: phsValuesFromSimulation(result),
         [InputId.Input2]: null,
         [InputId.Input3]: null,
       },

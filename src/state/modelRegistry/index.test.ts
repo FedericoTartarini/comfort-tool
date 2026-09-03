@@ -14,7 +14,7 @@ import {
   ashraeComplianceZonesList,
   isoTsvZonesList,
 } from "../../declarations/pmv/zones";
-import { calculateUtci, utciZonesList } from "../../declarations/utci/utci";
+import { calculateUtci, getUtciZoneMeta, utciZonesList } from "../../declarations/utci/utci";
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import {
   ModelId,
@@ -493,11 +493,11 @@ describe("comfort model capability registry", () => {
     expect(lastBand.max).toBe(1000);
     expect(lastBand.label).toBe("Extreme Heat Stress");
     expect(coldResult.utci).toBeLessThan(-50);
-    expect(coldResult.stressCategory).toBe("extreme cold stress");
-    expect(findNumericBandIndexForValue(bands, coldResult.utci)).toBe(0);
+    expect(getUtciZoneMeta(coldResult.utci!).category).toBe("extreme cold stress");
+    expect(findNumericBandIndexForValue(bands, coldResult.utci!)).toBe(0);
     expect(hotResult.utci).toBeGreaterThan(55);
-    expect(hotResult.stressCategory).toBe("extreme heat stress");
-    expect(findNumericBandIndexForValue(bands, hotResult.utci)).toBe(
+    expect(getUtciZoneMeta(hotResult.utci!).category).toBe("extreme heat stress");
+    expect(findNumericBandIndexForValue(bands, hotResult.utci!)).toBe(
       bands.length - 1,
     );
     expect(findNumericBandIndexForValue(bands, -40)).toBe(0);

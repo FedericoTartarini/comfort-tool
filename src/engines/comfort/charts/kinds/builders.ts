@@ -180,7 +180,7 @@ export function buildAdaptiveChartKind<TResult, ChartSourceType>(
   return wrapBuiltChart(
     ChartType.Adaptive,
     buildModelBoundaryRegionChart(
-      spec as BoundaryRegionDataSpec<TResult, object>,
+      spec as unknown as BoundaryRegionDataSpec<TResult, object>,
       chartSource,
       resultsByInput,
       context,

@@ -1,5 +1,6 @@
 import { phs } from "jsthermalcomfort";
 import type { TimeSeriesLineChartEngineSpec } from "../../engines/comfort/charts/kinds/types";
+import type { QuantityState } from "../../catalog/quantities";
 import { PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
 import type { ModelChartSource } from "../../catalog/chartSource";
 import type { PlotlyChartSpec } from "../../engines/plotlyTypes";
@@ -15,13 +16,13 @@ import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PhsLimitingCriterion,
   type PhsEnvironmentSi,
-  type PhsResponse,
+  type PhsSimulationResult,
 } from "../../catalog/phs";
 import type { GridModelChartSpec } from "../../engines/comfort/charts/gridModelCharts";
 import { buildCompareInputMarkerTraces } from "../../engines/comfort/charts/inputPoints";
 import { convertTemperatureFromSi } from "../../engines/units/temperature";
 import { UnitSystem } from "../../catalog/units";
-import { calculatePhs, personFromModelInputs } from "./calculation";
+import { calculatePhs, personFromModelInputs, phsValuesFromSimulation } from "./calculation";
 import {
   buildPhsTemperatureHistoryChart,
   findFirstRectalThresholdCrossingMinute,
@@ -30,19 +31,11 @@ import {
 const PHS_GRID_POINTS = 31;
 
 export function getPhsOutputValue(
-  result: PhsResponse,
+  result: QuantityState,
   outputKey: PhysicalQuantityIdType,
-): number {
-  switch (outputKey) {
-    case PhysicalQuantityId.LimitingExposureTime:
-      return result.limitingExposureTimeMinutes;
-    case PhysicalQuantityId.RectalTemperature:
-      return result.tRe;
-    case PhysicalQuantityId.SweatLoss:
-      return result.sweatLossG;
-    default:
-      throw new Error(`Unsupported PHS output: ${outputKey}`);
-  }
+): number | null {
+  const value = result[outputKey];
+  return typeof value === "number" ? value : null;
 }
 
 export function createPhsDynamicGridSpec(
@@ -53,7 +46,7 @@ export function createPhsDynamicGridSpec(
   >,
   context: ChartBuildContext<NumericBand>,
 ): Omit<
-  GridModelChartSpec<PhsEnvironmentSi, PhsResponse>,
+  GridModelChartSpec<PhsEnvironmentSi, QuantityState>,
   "instanceId" | "dynamicTitle"
 > {
   const fallbackOutput = outputs[0];
@@ -69,25 +62,34 @@ export function createPhsDynamicGridSpec(
       context.fieldChartConfig.profileKind === FieldChartProfileKind.Compliance
         ? "8-hour assessment"
         : "Band",
-    isPlottable: (result) => result?.valid ?? false,
+    isPlottable: (result) => (
+      typeof result?.[PhysicalQuantityId.LimitingExposureTime] === "number"
+    ),
     outsideApplicabilityMessage: "Outside ISO 7933:2023 applicability",
     requestAdapter,
-    evaluate: (payload) =>
+    evaluate: (payload) => phsValuesFromSimulation(
       calculatePhs({
         ...payload,
         durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
         person: personFromModelInputs(resolveChartModelInputs(context)),
       }),
-    getOutputValue: (result, outputKey) =>
-      result.valid ? getPhsOutputValue(result, outputKey) : null,
+    ),
+    getOutputValue: (result, outputKey) => (
+      getPhsOutputValue(result, outputKey ?? fallbackOutput.key)
+    ),
   };
 }
 
+export interface PhsChartSource extends ModelChartSource<PhsEnvironmentSi> {
+  extrasByInput: Partial<Record<InputIdType, PhsSimulationResult | null>>;
+}
+
 export function buildPhsExposureHistoryChartResult(
-  resultsByInput: Partial<Record<InputIdType, PhsResponse | null>>,
+  chartSource: PhsChartSource | null,
   context: ChartBuildContext<NumericBand>,
 ): PlotlyChartSpec | null {
-  const baselineResult = resultsByInput[context.baselineInputId];
+  const extrasByInput = chartSource?.extrasByInput ?? {};
+  const baselineResult = extrasByInput[context.baselineInputId];
   if (!baselineResult?.valid || !baselineResult.samples) return null;
 
   const thresholdC =
@@ -128,7 +130,7 @@ export function buildPhsExposureHistoryChartResult(
     Record<InputIdType, { x: number; y: number }>
   > = {};
   for (const inputId of inputOrder) {
-    const result = resultsByInput[inputId];
+    const result = extrasByInput[inputId];
     const samples = result?.samples;
     const sample = samples?.[samples.length - 1];
     if (
@@ -157,12 +159,12 @@ export function buildPhsExposureHistoryChartResult(
 }
 
 export const phsExposureHistoryChartSpec: TimeSeriesLineChartEngineSpec<
-  PhsResponse,
-  ModelChartSource<PhsEnvironmentSi>
+  QuantityState,
+  PhsChartSource
 > = {
-  build: (_chartSource, resultsByInput, context) =>
+  build: (chartSource, _valuesByInput, context) =>
     buildPhsExposureHistoryChartResult(
-      resultsByInput,
+      chartSource as PhsChartSource | null,
       context as ChartBuildContext<NumericBand>,
     ),
 };

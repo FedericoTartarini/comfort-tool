@@ -1,7 +1,11 @@
-import { type PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
+import { extrasByInputFromChartSource } from "../../catalog/chartSource";
 import { inputDisplayMetaById } from "../../catalog/inputSlotPresentation";
 import { InputId, type InputId as InputIdType } from "../../catalog/inputSlots";
 import { type NumericBand } from "../../catalog/modelCapabilities";
+import {
+  type PhysicalQuantityId,
+  type PhysicalQuantityId as PhysicalQuantityIdType,
+} from "../../catalog/quantities";
 import {
   FieldChartProfileKind,
 } from "../../catalog/fieldChartProfile";
@@ -80,7 +84,7 @@ interface BuildChartControlsOptions {
   settings: ModelOutputSettings;
   workspace: SurfaceIdType;
   chartInstance: ChartInstanceDeclaration;
-  cache: ModelCalculationCache<unknown, unknown>;
+  cache: ModelCalculationCache;
   visibleInputIds: InputIdType[];
   compareEnabled: boolean;
   unitSystem: UnitSystemType;
@@ -129,11 +133,12 @@ export function buildChartControlsViewModel({
       ? `Showing ${selectedOutput!.label} over the selected axes with editable thresholds.`
       : `Showing ${selectedOutput!.label} on this chart's fixed axes with editable thresholds.`;
   const baselineResult = cache.status === "ready"
-    ? cache.resultsByInput[baselineInputId]
+    ? cache.valuesByInput[baselineInputId]
     : null;
+  const extras = extrasByInputFromChartSource(cache.chartSource)?.[baselineInputId];
   const feedback = complianceProfile && baselineResult !== null
     ? {
-        ...complianceProfile.getFeedback(baselineResult),
+        ...complianceProfile.getFeedback(baselineResult, { extras }),
         ...(compareEnabled
           ? { inputLabel: inputDisplayMetaById[baselineInputId].label }
           : {}),

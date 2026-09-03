@@ -70,7 +70,7 @@ export function createCalculationManager(
           status: "ready",
           buildGeneration,
           lastVisibleInputIds: [...visibleInputIds],
-          resultsByInput: calculationOutputs.resultsByInput,
+          valuesByInput: calculationOutputs.valuesByInput,
           chartSource: calculationOutputs.chartSource,
         },
       };

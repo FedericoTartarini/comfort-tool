@@ -35,7 +35,7 @@ import {
 } from "./syncState";
 import { synchronizeHumidityInputState } from "./controls/humidityControl";
 import { clothingGarmentOptions, clothingTypicalEnsembles, metabolicActivityOptions } from "./referenceValues";
-import { CalculationSource, ComfortStandard } from "../../catalog/calculationMetadata";
+import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { predictClothingInsulation as predictClothingInsulationFromService } from "./clothingTools";
 import { createModelCalculationContext } from "../../catalog/modelCalculation";
 import { createPointSession } from "../../state/pointSession/createPointSession.svelte";
@@ -97,7 +97,7 @@ function buildRegisteredPmvChart(
   const chart = buildChartPlotly(pmvAshraeModelConfig,
     instanceId,
     calculation.chartSource,
-    calculation.resultsByInput,
+    calculation.valuesByInput,
     context,
   );
   if (!chart) throw new Error(`Expected registered PMV chart ${instanceId}.`);
@@ -229,15 +229,15 @@ describe("comfort services", () => {
           rhPoints: 31,
         },
       }, false);
-      const constrainedResult = calculation.resultsByInput[InputId.Input1];
+      const constrainedResult = calculation.valuesByInput[InputId.Input1];
       const constrainedComfortZone = calculation.chartSource
         .comfortZonesByInput[InputId.Input1];
 
       expect(constrainedComplianceWarnings).not.toEqual([]);
       expect(constrainedResult?.pmv).toBeCloseTo(constrainedPmv.pmv, 6);
-      expect(constrainedResult?.isCompliant).toBe(false);
-      expect(constrainedResult?.standard).toBe(ComfortStandard.Ashrae55PmvPpd);
-      expect(constrainedResult?.source).toBe(CalculationSource.JsThermalComfort);
+      expect(Math.abs(constrainedResult?.pmv ?? Number.NaN))
+        .toBeGreaterThan(pmv_ppd_ashrae.COMPLIANCE_LIMIT);
+      expect(pmvAshraeAdapter.resultStandard).toBe(ComfortStandard.Ashrae55PmvPpd);
       expect(constrainedComfortZone?.coolEdge.length).toBeGreaterThan(0);
     } finally {
       warnSpy.mockRestore();

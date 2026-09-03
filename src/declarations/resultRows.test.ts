@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import { CalculationSource, ComfortStandard } from "../catalog/calculationMetadata";
 import { ComplianceStatus } from "../catalog/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type QuantityState } from "../catalog/quantities";
 import { InputId, type InputId as InputIdType } from "../catalog/inputSlots";
 import { UnitSystem, unitLabel } from "../catalog/units";
 import type { ResultCellViewModel, ResultSectionViewModel } from "../state/pointSession/types";
+import type { TableBuildContext } from "../catalog/tableTypes";
 import {
   adaptiveAshraeModelConfig,
   adaptiveAshraeZonesList,
@@ -16,11 +17,11 @@ import {
   adaptiveEnZonesList,
 } from "./adaptive/en";
 import type { AdaptiveResponse } from "./adaptive/shared";
+import { adaptiveValuesFromResponse } from "./adaptive/calculation";
 import { pmvAshraeModelConfig } from "./pmv/ashrae";
-import { type PmvResponse } from "./pmv/calculation";
 import { ashraeTsvZonesList } from "./pmv/zones";
 import { phsModelConfig } from "./phs/phs";
-import { simulatePhs, calculatePhs } from "./phs/calculation";
+import { phsValuesFromSimulation, simulatePhs, calculatePhs } from "./phs/calculation";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   phsReferenceEnvironment,
@@ -40,6 +41,35 @@ const pmvNeutralZone = ashraeTsvZonesList.find(
   ({ label }) => label === "Neutral",
 );
 if (!pmvNeutralZone) throw new Error("Missing registered PMV Neutral zone.");
+
+function extrasFor(
+  result: unknown,
+  overrides: Partial<Record<InputIdType, unknown>> = {},
+): TableBuildContext {
+  return {
+    extrasByInput: {
+      [InputId.Input1]: result,
+      ...overrides,
+    },
+  };
+}
+
+function adaptiveTableValues(result: AdaptiveResponse): QuantityState {
+  return adaptiveValuesFromResponse(result);
+}
+
+function buildAdaptiveTable(
+  config: typeof adaptiveAshraeModelConfig,
+  result: AdaptiveResponse,
+  unitSystem: UnitSystem = UnitSystem.SI,
+) {
+  return config.buildTable(
+    createResultRecord(adaptiveTableValues(result)),
+    visibleInputIds,
+    unitSystem,
+    extrasFor(result),
+  );
+}
 
 function createResultRecord<T>(
   result: T,
@@ -61,17 +91,13 @@ function getInputCell(
   return sections.find((section) => section.title === title)?.valuesByInput[inputId];
 }
 
-const pmvResult: PmvResponse = {
-  pmv: 0.24,
-  ppd: 5.25,
-  tsv: "Neutral",
-  vr: 0.6,
-  set: 24.3,
-  ce: 1.64,
-  dynamicClothing: 0.5,
-  isCompliant: true,
-  standard: ComfortStandard.Ashrae55PmvPpd,
-  source: CalculationSource.JsThermalComfort,
+const pmvResult: QuantityState = {
+  [PhysicalQuantityId.PredictedMeanVote]: 0.24,
+  [PhysicalQuantityId.PredictedPercentageOfDissatisfied]: 5.25,
+  [PhysicalQuantityId.RelativeAirSpeed]: 0.6,
+  [PhysicalQuantityId.StandardEffectiveTemperature]: 24.3,
+  [PhysicalQuantityId.CoolingEffect]: 1.64,
+  [PhysicalQuantityId.ClothingInsulation]: 0.5,
 };
 
 const ashraeResult: AdaptiveResponse = {
@@ -197,11 +223,10 @@ describe("comfort model result rows", () => {
   });
 
   it("maps multiple PMV inputs while preserving null and noncompliant cells", () => {
-    const nonCompliantResult: PmvResponse = {
+    const nonCompliantResult: QuantityState = {
       ...pmvResult,
-      pmv: -1.2,
-      ppd: 35,
-      isCompliant: false,
+      [PhysicalQuantityId.PredictedMeanVote]: -1.2,
+      [PhysicalQuantityId.PredictedPercentageOfDissatisfied]: 35,
     };
     const sections = pmvAshraeModelConfig.buildTable(
       createResultRecord(pmvResult, {
@@ -231,11 +256,7 @@ describe("comfort model result rows", () => {
       getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
       UnitSystem.SI,
     );
-    const sections = adaptiveAshraeModelConfig.buildTable(
-      createResultRecord(ashraeResult),
-      visibleInputIds,
-      UnitSystem.SI,
-    );
+    const sections = buildAdaptiveTable(adaptiveAshraeModelConfig, ashraeResult);
 
     expect(sections.map((section) => section.title)).toEqual([
       "Compliance",
@@ -257,14 +278,13 @@ describe("comfort model result rows", () => {
       color: adaptiveAshraeZonesList[3].textColor,
     });
 
-    const sectionsWithMissingStatus = adaptiveAshraeModelConfig.buildTable(
-      createResultRecord(replaceAdaptiveLevel(
+    const sectionsWithMissingStatus = buildAdaptiveTable(
+      adaptiveAshraeModelConfig,
+      replaceAdaptiveLevel(
         ashraeResult,
         "90",
         { status: null },
-      )),
-      visibleInputIds,
-      UnitSystem.SI,
+      ),
     );
     expect(getInputCell(sectionsWithMissingStatus, adaptiveAshraeZonesList[2].label)).toEqual({
       text: "N/A",
@@ -273,16 +293,16 @@ describe("comfort model result rows", () => {
   });
 
   it("converts Adaptive ASHRAE boundary subtext to IP and colors a cool result", () => {
-    const sections = adaptiveAshraeModelConfig.buildTable(
-      createResultRecord({
+    const sections = buildAdaptiveTable(
+      adaptiveAshraeModelConfig,
+      {
         ...replaceAdaptiveLevel(
           ashraeResult,
           "90",
           { status: adaptiveAshraeZonesList[0].label },
         ),
         operativeTemperature: 20,
-      }),
-      visibleInputIds,
+      },
       UnitSystem.IP,
     );
 
@@ -314,11 +334,7 @@ describe("comfort model result rows", () => {
       expectedText: ComplianceStatus.OutOfRange,
     },
   ])("formats Adaptive ASHRAE $label compliance", ({ result, expectedText }) => {
-    const sections = adaptiveAshraeModelConfig.buildTable(
-      createResultRecord(result),
-      visibleInputIds,
-      UnitSystem.SI,
-    );
+    const sections = buildAdaptiveTable(adaptiveAshraeModelConfig, result);
 
     expect(getInputCell(sections, "Compliance")).toEqual({
       text: expectedText,
@@ -327,17 +343,16 @@ describe("comfort model result rows", () => {
   });
 
   it("renders N/A without a misleading color when boundary data is missing", () => {
-    const sections = adaptiveAshraeModelConfig.buildTable(
-      createResultRecord(replaceAdaptiveLevel(
+    const sections = buildAdaptiveTable(
+      adaptiveAshraeModelConfig,
+      replaceAdaptiveLevel(
         { ...ashraeResult, operativeTemperature: -5 },
         "90",
         {
           status: adaptiveAshraeZonesList[0].label,
           lower: null,
         },
-      )),
-      visibleInputIds,
-      UnitSystem.SI,
+      ),
     );
 
     expect(getInputCell(sections, adaptiveAshraeZonesList[2].label)).toEqual({
@@ -351,11 +366,7 @@ describe("comfort model result rows", () => {
       getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
       UnitSystem.SI,
     );
-    const sections = adaptiveEnModelConfig.buildTable(
-      createResultRecord(enResult),
-      visibleInputIds,
-      UnitSystem.SI,
-    );
+    const sections = buildAdaptiveTable(adaptiveEnModelConfig, enResult);
 
     expect(sections.map((section) => section.title)).toEqual([
       "Compliance",
@@ -390,13 +401,10 @@ describe("comfort model result rows", () => {
 
     expect(sections.map((section) => section.title)).toEqual([
       "UTCI",
-      "Stress Category",
     ]);
     expect(getInputCell(sections, "UTCI")?.text).toBe("24.6 °C");
-    expect(getInputCell(sections, "Stress Category")).toEqual({
-      text: "No Thermal Stress",
-      color: "#059669",
-    });
+    expect(getInputCell(sections, "UTCI")?.subtext).toBe("No Thermal Stress");
+    expect(getInputCell(sections, "UTCI")?.color).toBe("#059669");
   });
 
   it("builds PHS grouped rows for valid and invalid results", () => {
@@ -417,9 +425,13 @@ describe("comfort model result rows", () => {
       durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
     });
     const sections = phsModelConfig.buildTable(
-      createResultRecord(validResult, { [InputId.Input2]: invalidResult }),
+      createResultRecord(
+        phsValuesFromSimulation(validResult),
+        { [InputId.Input2]: phsValuesFromSimulation(invalidResult) },
+      ),
       [InputId.Input1, InputId.Input2],
       UnitSystem.SI,
+      extrasFor(validResult, { [InputId.Input2]: invalidResult }),
     );
 
     expect(sections.map((section) => section.title)).toEqual([

@@ -256,7 +256,7 @@ Do not write `calculate`, JS kwargs (`units` / `round` / `limit_inputs`),
 or `surfaceCapabilities`. Invoke injects `{ units: "SI", round: false,
 limit_inputs: false }` when the function accepts them. A second JS function
 (WCT) belongs on `resultQuantity(..., { from })`. Family models that cannot
-use positional invoke set `features.invoke` (and `mapChartInput` /
+use positional invoke set `pipeline.invoke` (and `mapChartInput` /
 `buildChartSource` when the chart payload is not the SI bag).
 
 Visible product decisions:
@@ -269,7 +269,9 @@ Visible product decisions:
 - `inputs` as JS parameter name + catalog id + SI min/max (`widget?`)
 - `response.values` and optional `response.intervals`
 - `features.modifiers` in global order, omitted when none apply
-- token rows on the interval helper; do not copy numeric edges or hex
+- token rows on the interval helper; do not copy numeric edges or hex.
+  `tokens[i].label === bins.labels[i]` is a runtime assert
+  (`assertBinsTokenRows`), not a compile-time exhaustiveness check.
 - `charts` as `type` + data spec only (no `id`, `instanceId`, `title`,
   `emptyMessage`, or `spec.build`). Default chart is `charts[0].type`.
 - `tables: { results }` (`results` may be omitted when each value is one
@@ -289,10 +291,15 @@ field evaluate uses the same invoke unless the spec overrides it.
 Family modules (PMV, Adaptive, UTCI, PHS) still use
 `defineLibraryQuantityMapping()` beside the declaration when the library
 call is not positional kwargs. Include 1:1 result fields in that table.
-They set `features.invoke` per visible Compare slot. Chart source defaults
+They set `pipeline.invoke` per visible Compare slot. Chart source defaults
 to the catalog SI bag; `mapChartInput` stores the mapped request, and
-`buildChartSource` is for extra per-input maps (PMV psychrometric).
-Aggregates and classifiers stay outside the map. Do not add a `Dto`
+`buildChartSource` is for extra per-input maps (PMV psychrometric zones,
+PHS `samples` / `valid` / `dLim*` extras). Compare tables read
+`QuantityState`. PHS is the exception: custom `format` may also read
+`context.extras` from `chartSource.extrasByInput`. Thin models must not
+copy that pattern. Token rows vs JS `bins.labels` are asserted at runtime
+(`assertBinsTokenRows`); do not expect compile-time exhaustion of library
+bin types. Aggregates and classifiers stay outside the map. Do not add a `Dto`
 suffix on application request or chart-source types. Generic chart figure
 inputs live in `src/charts/types.ts`.
 
@@ -346,10 +353,13 @@ Compose `createRequestAxisAdapter()` only for chart-only aliases or explicit
 operative-temperature get/set/range (`quantityMapping:` option). Coupled Air/Radiant/Operative solving
 stays in the shared dynamic-axis solver.
 
-`calculate` on the runtime definition receives `ModelCalculationContext` with
+`calculate` on the runtime definition is always `calculateFromLibrary`
+(not an author function). It receives `ModelCalculationContext` with
 `effectiveQuantitiesByInput` (modifier-adjusted SI) and the active model’s
 validated `options`. It must not read raw `quantitiesByInput`. Authors do
-not write that function on thin models.
+not write that function. The bound `calculate` writes per-model cache
+`valuesByInput: QuantityState` plus `chartSource`. Do not put those scalars
+on `session.output`.
 
 `inputs` compile to runtime `inputFields`. Default widgets are
 `defaultFieldWidgetByQuantity` in `src/catalog/inputWidgets.ts`.

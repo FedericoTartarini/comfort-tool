@@ -22,13 +22,13 @@ describe("chart legend attachment", () => {
       getGoldenInputOverrides(ModelId.PmvAshrae),
       {},
     );
-    const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);
+    const { valuesByInput, chartSource } = config.calculate(context, [InputId.Input1]);
     const settings = seedModelOutputSettings(config);
     const profile = buildFieldChartProfile(config, settings, SurfaceId.Standard);
     const buildResult = config.buildChart(
       config.chartInstances.defaultInstanceId,
       chartSource,
-      resultsByInput,
+      valuesByInput,
       profile,
       {
         unitSystem: UnitSystem.SI,

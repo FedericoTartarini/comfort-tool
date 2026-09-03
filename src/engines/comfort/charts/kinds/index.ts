@@ -39,7 +39,7 @@ export interface ResolveChartBuildOptions<TResult, ChartSourceType> {
   >[];
   readonly instanceId: string;
   readonly chartSource: ChartSourceType | null;
-  readonly resultsByInput: Record<InputIdType, TResult | null>;
+  readonly valuesByInput: Record<InputIdType, TResult | null>;
   readonly profile: FieldChartProfile;
   readonly unitSystem: UnitSystemType;
   readonly baselineInputId: InputIdType;
@@ -49,7 +49,7 @@ export interface ResolveChartBuildOptions<TResult, ChartSourceType> {
   >;
   readonly useMemo?: boolean;
   readonly showsLegend: boolean;
-  readonly complianceProfile?: ComplianceSpec<Band, unknown>;
+  readonly complianceProfile?: ComplianceSpec<Band>;
   readonly exploreOutputs: readonly ModelOutput[];
 }
 
@@ -158,7 +158,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
       result = buildDynamicFieldChart(
         registration,
         options.chartSource,
-        options.resultsByInput,
+        options.valuesByInput,
         context,
       );
       break;
@@ -166,7 +166,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
       result = buildPsychrometricChart(
         registration,
         options.chartSource,
-        options.resultsByInput,
+        options.valuesByInput,
         context,
       );
       break;
@@ -174,7 +174,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
       result = buildUtciChart(
         registration,
         options.chartSource,
-        options.resultsByInput,
+        options.valuesByInput,
         context,
       );
       break;
@@ -182,7 +182,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
       result = buildAdaptiveChartKind(
         registration,
         options.chartSource,
-        options.resultsByInput,
+        options.valuesByInput,
         context,
       );
       break;
@@ -191,7 +191,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
       result = buildParametricChart(
         registration,
         options.chartSource,
-        options.resultsByInput,
+        options.valuesByInput,
         context,
       );
       break;
@@ -200,7 +200,7 @@ export function resolveChartBuildResult<TResult, ChartSourceType>(
       result = buildBodyTemperatureChart(
         registration,
         options.chartSource,
-        options.resultsByInput,
+        options.valuesByInput,
         context,
       );
       break;

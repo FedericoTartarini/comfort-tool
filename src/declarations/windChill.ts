@@ -2,7 +2,10 @@ import { wc, wind_chill_temperature } from "jsthermalcomfort";
 import { ModelId } from "../catalog/modelIds";
 import { InputWidget } from "../catalog/inputWidgets";
 import { ChartType } from "../catalog/chartTypes";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantities";
+import {
+  PhysicalQuantityId,
+  getPhysicalQuantityMeta,
+} from "../catalog/quantities";
 import { unitLabel } from "../catalog/units";
 import {
   convertFieldValueFromSi,
@@ -37,13 +40,14 @@ export const windChillModelConfig = defineModel(wc, {
     values: [
       resultQuantity("wci", PhysicalQuantityId.WindChillIndex),
       resultQuantity("wct", PhysicalQuantityId.WindChillTemperature, {
-        from: (si, _primary) => wind_chill_temperature(
-          si[PhysicalQuantityId.DryBulbTemperature]!,
-          convertMetersPerSecondToKilometersPerHour(
-            si[PhysicalQuantityId.WindSpeed]!,
-          ),
-          false,
-        ).wct,
+        from: (si, _primary) =>
+          wind_chill_temperature(
+            si[PhysicalQuantityId.DryBulbTemperature]!,
+            convertMetersPerSecondToKilometersPerHour(
+              si[PhysicalQuantityId.WindSpeed]!,
+            ),
+            false,
+          ).wct,
       }),
     ],
   },
@@ -55,32 +59,37 @@ export const windChillModelConfig = defineModel(wc, {
     ],
   },
 
-  charts: [{
-    type: ChartType.Dynamic,
-    capabilities: { locksYAxis: true },
-    spec: {
-      axes: {
-        x: PhysicalQuantityId.DryBulbTemperature,
-        y: PhysicalQuantityId.WindSpeed,
-      },
-      dynamicHoverExtension: {
-        getTemplateSuffix: (unitSystem) => {
-          const units = unitLabel(
-            getPhysicalQuantityMeta(PhysicalQuantityId.WindChillTemperature).siUnit,
-            unitSystem,
-          );
-          return `<br>wct: %{customdata[1]:.1f} ${units}`;
+  charts: [
+    {
+      type: ChartType.Dynamic,
+      capabilities: { locksYAxis: true },
+      spec: {
+        axes: {
+          x: PhysicalQuantityId.DryBulbTemperature,
+          y: PhysicalQuantityId.WindSpeed,
         },
-        getMetadata: (result, unitSystem) => [
-          result == null
-            ? ""
-            : convertFieldValueFromSi(
-                PhysicalQuantityId.WindChillTemperature,
-                (result as QuantityState)[PhysicalQuantityId.WindChillTemperature]!,
-                unitSystem,
-              ),
-        ],
+        dynamicHoverExtension: {
+          getTemplateSuffix: (unitSystem) => {
+            const units = unitLabel(
+              getPhysicalQuantityMeta(PhysicalQuantityId.WindChillTemperature)
+                .siUnit,
+              unitSystem,
+            );
+            return `<br>wct: %{customdata[1]:.1f} ${units}`;
+          },
+          getMetadata: (result, unitSystem) => [
+            result == null
+              ? ""
+              : convertFieldValueFromSi(
+                  PhysicalQuantityId.WindChillTemperature,
+                  (result as QuantityState)[
+                    PhysicalQuantityId.WindChillTemperature
+                  ]!,
+                  unitSystem,
+                ),
+          ],
+        },
       },
     },
-  }],
+  ],
 });

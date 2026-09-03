@@ -137,10 +137,16 @@ they do not own, extend, or invent them. There is no table-type catalog.
   water-loss fills are product presets.
 
 `defineModel(library, authoring)` is the public authoring API (`assembleModel`
-is an alias). Authors do not use a fluent builder. Thin models run
-`invokeMappedLibrary` per Compare slot; families set `features.invoke`
-(and `mapChartInput` / `buildChartSource` when the chart payload is not
-the SI bag). Page membership is `standardIds`, `exploreMode`, and
+is an alias). Authors do not use a fluent builder. Assembly is a sequential
+pure function: validate six sections, compile inputs/tables/charts/Features,
+inject Dynamic evaluate from the same invoke path, return
+`RuntimeComfortModelDefinition`. Result scalars are always `QuantityState`;
+the only remaining generic is chart source (PMV comfort-zone geometry, PHS
+extras). Thin models run `invokeMappedLibrary` per Compare slot; families set
+`pipeline.invoke` (and `mapChartInput` / `buildChartSource` when the chart
+payload is not the SI bag). Features only enable writing related state
+(modifiers, options, Time-series). Token rows vs JS bins are asserted at
+runtime. Page membership is `standardIds`, `exploreMode`, and
 `features.timeSeries` — not `surfaceCapabilities`. Derived-humidity or
 modifier-input `kind: "quantity"` fields, unknown ChartTypes,
 duplicate ChartType on one model, or `tables.timeSeries` fail
@@ -176,6 +182,10 @@ The quantity catalog has no min/max.
 - **PHS** — Explore/Standard is a normal point-session model. One
   `phsEnvironmentRangeSi` feeds `inputFields` and Time-series segment
   controls. Weight/height stay `phsPersonRangeSi` off Analysis.
+  Point-session `QuantityState` holds `t_re` / `sweat_loss_g` /
+  `limiting_exposure_time`. `samples`, `valid`/`issues`, and `dLim*` stay
+  on `chartSource.extrasByInput`. The Time-series Worker still uses
+  `PhsSimulationResult`.
 
 ## Point session
 
@@ -190,7 +200,10 @@ sibling calculation cache:
 | output | loading / error |
 
 Calculation cache belongs to the output bucket but is stored as `$state.raw`
-on the class so Plotly-sized objects are not deeply proxied. Writes go
+on the class so Plotly-sized objects are not deeply proxied. Each model
+cache holds `valuesByInput` (`QuantityState` per Compare slot) and
+`chartSource` (geometry / PHS extras only). Share does not serialize
+output. Writes go
 through `session.actions.*`. Pages consume `$derived` projections
 (`inputPanel`, `chartBuild`, `chartControls`, `resultSections`, `isLoading`,
 …) and do not read SI buckets.
@@ -206,7 +219,7 @@ output changes rebuild from a ready cache.
 
 ```text
 calculate() once
-  → resultsByInput (scalars) + small chartSource
+  → valuesByInput (QuantityState) + small chartSource
         ↓
   Chart geometry in src/charts/ (or a remaining field-chart bind)
     declarations pass evaluate / bands / arrays

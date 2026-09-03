@@ -91,7 +91,10 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
     bands: isoTsvBands,
     legendTitle: "Thermal sensation",
     caption: ISO_TSV_CAPTION,
-    getFeedback: getPmvComplianceFeedback,
+    getFeedback: (result) => getPmvComplianceFeedback(
+      result,
+      isIsoNeutralPmv,
+    ),
   },
   defaultOptions: defaultPmvIsoOptions,
   parseOptions: parsePmvIsoOptions,

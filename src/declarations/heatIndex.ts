@@ -15,6 +15,7 @@ import {
   quantityRow,
   resultQuantity,
 } from "../state/modelRegistry/builder";
+import { StandardId } from "../catalog/surfaces";
 
 const heatIndexTokenRows = [
   { label: "no risk", token: ZoneToken.Safe },
@@ -29,10 +30,9 @@ export const heatIndexZonesList = thermalZonesFromBands(
   tokenMapFromRows(heatIndexTokenRows),
 );
 
-
 export const heatIndexModelConfig = defineModel(heat_index, {
   id: ModelId.HeatIndex,
-  standardIds: [],
+  standardIds: [StandardId.Iso7730],
   exploreMode: true,
 
   inputs: [
@@ -47,9 +47,7 @@ export const heatIndexModelConfig = defineModel(heat_index, {
   ],
 
   response: {
-    values: [
-      resultQuantity("hi", PhysicalQuantityId.HeatIndex),
-    ],
+    values: [resultQuantity("hi", PhysicalQuantityId.HeatIndex)],
     intervals: [
       intervalFromBins(
         PhysicalQuantityId.HeatIndex,
@@ -60,19 +58,19 @@ export const heatIndexModelConfig = defineModel(heat_index, {
   },
 
   tables: {
-    results: [
-      quantityRow(PhysicalQuantityId.HeatIndex),
-    ],
+    results: [quantityRow(PhysicalQuantityId.HeatIndex)],
   },
 
-  charts: [{
-    type: ChartType.Dynamic,
-    capabilities: { allowsOutputSelection: false },
-    spec: {
-      axes: {
-        x: PhysicalQuantityId.DryBulbTemperature,
-        y: PhysicalQuantityId.RelativeHumidity,
+  charts: [
+    {
+      type: ChartType.Dynamic,
+      capabilities: { allowsOutputSelection: false },
+      spec: {
+        axes: {
+          x: PhysicalQuantityId.DryBulbTemperature,
+          y: PhysicalQuantityId.RelativeHumidity,
+        },
       },
     },
-  }],
+  ],
 });

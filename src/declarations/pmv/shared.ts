@@ -52,7 +52,7 @@ import type { LibraryInterval } from "../../catalog/classifierBins";
 import {
   buildPmvResultRows,
   buildPmvChartSource,
-  evaluatePmvSlot,
+  evaluatePmvFromSi,
   createPmvRequestAxisAdapter,
   evaluatePmvCondition,
   evaluatePsychrometricPmv,
@@ -61,12 +61,10 @@ import {
   pmvClothingInsulationMinSi,
   pmvIndoorTemperatureRangeSi,
   pmvMetabolicRateRangeSi,
-  pmvQuantityMapping,
   pmvRelativeHumidityRangeSi,
   tryEvaluatePmvForChart,
   type PmvChartSource,
   type PmvRequest,
-  type PmvResponse,
 } from "./calculation";
 import { createPmvHeatLossParametricSpec } from "./heatLossSeries";
 import { createPmvSetParametricSpec } from "./setSeries";
@@ -111,7 +109,7 @@ export interface PmvModelDeclaration {
   readonly intervals: readonly LibraryInterval[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
-  readonly complianceProfile: ComplianceSpec<NumericBand, PmvResponse>;
+  readonly complianceProfile: ComplianceSpec<NumericBand>;
   readonly defaultOptions: PmvAshraeModelOptions | PmvIsoModelOptions;
   readonly parseOptions: (value: unknown) => ModelOptionsRecord | null;
 }
@@ -224,7 +222,7 @@ export const ISO_TSV_CAPTION =
 
 export function createPmvCharts(
   declaration: PmvModelDeclaration,
-): readonly FrontendChartDeclaration<PmvResponse, PmvChartSource>[] {
+): readonly FrontendChartDeclaration<PmvChartSource>[] {
   const { adapter } = declaration;
   const axisAdapter = createPmvRequestAxisAdapter(adapter);
   return [
@@ -275,13 +273,13 @@ export function createPmvCharts(
         evaluate: (payload) => {
           const evaluation = evaluatePmvCondition(adapter, payload as PmvRequest);
           return {
-            pmv: evaluation.pmv,
-            ppd: evaluation.ppd,
-          } as PmvResponse;
+            [PhysicalQuantityId.PredictedMeanVote]: evaluation.pmv,
+            [PhysicalQuantityId.PredictedPercentageOfDissatisfied]: evaluation.ppd,
+          };
         },
         getOutputValue: (result, outputKey) => {
           const quantity = outputKey ?? PhysicalQuantityId.PredictedMeanVote;
-          const value = pmvQuantityMapping.fromLibrary(result)[quantity];
+          const value = result[quantity];
           if (typeof value !== "number") {
             throw new Error(`Unsupported PMV output: ${quantity}`);
           }
@@ -297,7 +295,9 @@ export function createPmvCharts(
             axisAdapter,
           )
         ),
-        getIsolineValue: (result) => result.pmv,
+        getIsolineValue: (result) => (
+          result[PhysicalQuantityId.PredictedMeanVote] ?? null
+        ),
         absFromThreshold: ppdThresholdToAbsPmv,
         clipAirSpeedWithoutOccupantControl: (payload) => (
           (payload as PmvRequest).occupantHasAirSpeedControl === false
@@ -313,7 +313,10 @@ export function createPmvCharts(
           ),
           getMetadata: (result) => (
             result
-              ? [result.pmv, result.ppd]
+              ? [
+                  result[PhysicalQuantityId.PredictedMeanVote] ?? Number.NaN,
+                  result[PhysicalQuantityId.PredictedPercentageOfDissatisfied] ?? Number.NaN,
+                ]
               : [Number.NaN, Number.NaN]
           ),
         },
@@ -416,7 +419,7 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
       intervals: declaration.intervals,
     },
     tables: {
-      results: buildPmvResultRows(),
+      results: buildPmvResultRows(adapter),
     },
     charts: createPmvCharts(declaration),
     features: {
@@ -424,11 +427,13 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
       optionHandlers,
       complianceProfile: declaration.complianceProfile,
       exploreOutputs: declaration.exploreOutputs,
-      invoke: (_si, context, inputId) => evaluatePmvSlot(adapter, context, inputId),
-      buildChartSource: (context, visibleInputIds) =>
-        buildPmvChartSource(adapter, context, visibleInputIds),
       defaultOptions: declaration.defaultOptions,
       parseOptions: declaration.parseOptions,
+    },
+    pipeline: {
+      invoke: (si, context) => evaluatePmvFromSi(adapter, si, context),
+      buildChartSource: (context, visibleInputIds) =>
+        buildPmvChartSource(adapter, context, visibleInputIds),
     },
   });
 }

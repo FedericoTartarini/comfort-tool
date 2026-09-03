@@ -1,6 +1,10 @@
 import { CalculationSource } from "../../catalog/calculationMetadata";
 import { ComplianceStatus } from "../../catalog/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
+import {
+  PhysicalQuantityId,
+  getPhysicalQuantityMeta,
+  type QuantityState,
+} from "../../catalog/quantities";
 import { unitLabel } from "../../catalog/units";
 import {
   OptionKey,
@@ -16,6 +20,7 @@ import {
   type ComplianceFeedback,
 } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
+import { LIBRARY_INVOKE_DEFAULTS } from "../../engines/comfort/libraryInvoke";
 import { defineLibraryQuantityMapping } from "../../engines/comfort/requestMapping";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../engines/units";
 import {
@@ -33,6 +38,30 @@ import type {
   AdaptiveRequest,
   AdaptiveResponse,
 } from "./shared";
+
+export function invokeAdaptiveLibrary(
+  library: (
+    tdb: number,
+    tr: number,
+    tRunningMean: number,
+    v: number,
+    units: string,
+    limitInputs: boolean,
+    round: boolean,
+  ) => object,
+  request: AdaptiveRequest,
+  limitInputs: boolean,
+): Record<string, unknown> {
+  return library(
+    request.tdb,
+    request.tr,
+    request.t_running_mean,
+    request.v,
+    LIBRARY_INVOKE_DEFAULTS.units,
+    limitInputs,
+    LIBRARY_INVOKE_DEFAULTS.round,
+  ) as Record<string, unknown>;
+}
 
 export function libraryLevelsFromAdaptiveResult(
   result: object,
@@ -141,6 +170,17 @@ export function calculateAdaptive(
   };
 }
 
+export function adaptiveValuesFromResponse(
+  response: AdaptiveResponse,
+): QuantityState {
+  if (!response.isApplicable) {
+    return {};
+  }
+  return {
+    [PhysicalQuantityId.OperativeTemperature]: response.operativeTemperature,
+  };
+}
+
 export function getLevelResult(
   result: AdaptiveResponse,
   levelId: string,
@@ -150,14 +190,25 @@ export function getLevelResult(
   return level;
 }
 
+export function adaptiveExtrasFromContext(
+  context?: { extras?: unknown },
+): AdaptiveResponse | null {
+  const extras = context?.extras;
+  if (!extras || typeof extras !== "object") {
+    return null;
+  }
+  return extras as AdaptiveResponse;
+}
+
 export function createAdaptiveComplianceFeedbackGetter(
   complianceLevelId: string,
-): (result: AdaptiveResponse) => ComplianceFeedback {
-  return (result) => {
-    if (!result.isApplicable) {
+): (result: QuantityState | null, context?: { extras?: unknown }) => ComplianceFeedback {
+  return (_result, context) => {
+    const extras = adaptiveExtrasFromContext(context);
+    if (!extras || !extras.isApplicable) {
       return { text: ComplianceStatus.OutOfRange, passes: false };
     }
-    const passes = getLevelResult(result, complianceLevelId).accepted;
+    const passes = getLevelResult(extras, complianceLevelId).accepted;
     return {
       text: passes ? ComplianceStatus.Compliant : ComplianceStatus.NonCompliant,
       passes,
@@ -226,15 +277,30 @@ export const adaptiveQuantityMapping = defineLibraryQuantityMapping<AdaptiveRequ
   v: PhysicalQuantityId.RelativeAirSpeed,
 });
 
+export function toAdaptiveRequestFromSi(
+  si: QuantityState,
+  context: ModelCalculationContext,
+): AdaptiveRequest {
+  const tdb = si[PhysicalQuantityId.DryBulbTemperature]!;
+  const tr = context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative
+    ? tdb
+    : si[PhysicalQuantityId.MeanRadiantTemperature]!;
+  return {
+    tdb,
+    tr,
+    t_running_mean: si[PhysicalQuantityId.PrevailingMeanOutdoorTemperature]!,
+    v: si[PhysicalQuantityId.RelativeAirSpeed]!,
+  };
+}
+
 export function toAdaptiveRequest(
   context: ModelCalculationContext,
   inputId: InputIdType,
 ): AdaptiveRequest {
-  const request = adaptiveQuantityMapping.mapRequest(context, inputId);
-  if (context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative) {
-    request.tr = request.tdb;
-  }
-  return request;
+  return toAdaptiveRequestFromSi(
+    context.effectiveQuantitiesByInput[inputId],
+    context,
+  );
 }
 
 export function createAdaptiveComplianceBands(
@@ -274,7 +340,7 @@ export function createAdaptiveComplianceBands(
 export function buildAdaptiveResultRows(
   declaration: AdaptiveModelDeclaration,
   unitSystem: UnitSystemType,
-): ResultRowDefinition<AdaptiveResponse>[] {
+): ResultRowDefinition<QuantityState>[] {
   const temperatureUnits = unitLabel(
     getPhysicalQuantityMeta(PhysicalQuantityId.DryBulbTemperature).siUnit,
     unitSystem,
@@ -282,8 +348,11 @@ export function buildAdaptiveResultRows(
   return [
     {
       title: "Compliance",
-      formatter: (result) => {
-        const feedback = declaration.complianceProfile.getFeedback(result);
+      formatter: (result, _unitSystem, context) => {
+        const extras = adaptiveExtrasFromContext(context);
+        const feedback = declaration.complianceProfile.getFeedback(result, {
+          extras: extras ?? undefined,
+        });
         return {
           text: feedback.text,
           color: feedback.passes
@@ -292,10 +361,14 @@ export function buildAdaptiveResultRows(
         };
       },
     },
-    ...declaration.levels.map((definition): ResultRowDefinition<AdaptiveResponse> => ({
+    ...declaration.levels.map((definition): ResultRowDefinition<QuantityState> => ({
       title: definition.label,
-      formatter: (result) => {
-        const level = getLevelResult(result, definition.id);
+      formatter: (_result, _unitSystem, context) => {
+        const extras = adaptiveExtrasFromContext(context);
+        if (!extras) {
+          return { text: "N/A", color: declaration.colorByStatus["N/A"] ?? "" };
+        }
+        const level = getLevelResult(extras, definition.id);
         if (level.status === null || level.lower === null || level.upper === null) {
           return { text: "N/A", color: declaration.colorByStatus["N/A"] ?? "" };
         }

@@ -5,7 +5,6 @@ import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
 import { InputPresetKey } from "../../engines/comfort/controls/inputControlPresets";
 import { ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
-import { UnitSystem } from "../../catalog/units";
 import { StandardId } from "../../catalog/surfaces";
 import { intervalFromOffsets } from "../../catalog/classifierBins";
 import {
@@ -20,6 +19,7 @@ import {
   createAdaptiveComplianceCaption,
   createAdaptiveComplianceFeedbackGetter,
   adaptiveLevelDisplayLabel,
+  invokeAdaptiveLibrary,
   levelsFromAdaptiveOffsets,
   libraryLevelsFromAdaptiveResult,
 } from "./calculation";
@@ -38,17 +38,17 @@ function evaluateAdaptiveEnLibrary(
   request: AdaptiveRequest,
   options: { limitInputs: boolean },
 ): AdaptiveLibraryResult {
-  const result = adaptive_en(
-    request.tdb,
-    request.tr,
-    request.t_running_mean,
-    request.v,
-    UnitSystem.SI,
+  const result = invokeAdaptiveLibrary(
+    adaptive_en,
+    request,
     options.limitInputs,
-    false,
   );
+  const tmpCmf = result.tmp_cmf;
+  if (typeof tmpCmf !== "number") {
+    throw new Error("adaptive_en did not return tmp_cmf.");
+  }
   return {
-    tCmf: result.tmp_cmf,
+    tCmf: tmpCmf,
     operativeTemperature: t_o(
       request.tdb,
       request.tr,

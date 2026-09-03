@@ -56,7 +56,7 @@ describe("output integration", () => {
     for (const modelId of comfortModelOrder) {
       const config = getComfortModelConfig(modelId);
       const context = createGoldenCalculationContext(modelId, {}, {});
-      const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);
+      const { valuesByInput, chartSource } = config.calculate(context, [InputId.Input1]);
       const settings = seedModelOutputSettings(config);
 
       if (modelSupportsStandard(config)) {
@@ -67,7 +67,7 @@ describe("output integration", () => {
         const buildResult = config.buildChart(
           config.chartInstances.defaultInstanceId,
           chartSource,
-          resultsByInput,
+          valuesByInput,
           profile,
           {
             unitSystem: UnitSystem.SI,
@@ -94,7 +94,7 @@ describe("output integration", () => {
         const buildResult = config.buildChart(
           config.chartInstances.defaultInstanceId,
           chartSource,
-          resultsByInput,
+          valuesByInput,
           profile,
           {
             unitSystem: UnitSystem.SI,
@@ -122,7 +122,7 @@ describe("output integration", () => {
       getGoldenInputOverrides(ModelId.PmvAshrae),
       {},
     );
-    const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);
+    const { valuesByInput, chartSource } = config.calculate(context, [InputId.Input1]);
     expect(calculateSpy).toHaveBeenCalledTimes(1);
 
     const settings = seedModelOutputSettings(config);
@@ -130,7 +130,7 @@ describe("output integration", () => {
     const first = config.buildChart(
       config.chartInstances.defaultInstanceId,
       chartSource,
-      resultsByInput,
+      valuesByInput,
       baseProfile,
       {
         unitSystem: UnitSystem.SI,
@@ -151,7 +151,7 @@ describe("output integration", () => {
     const second = config.buildChart(
       config.chartInstances.defaultInstanceId,
       chartSource,
-      resultsByInput,
+      valuesByInput,
       editedProfile,
       {
         unitSystem: UnitSystem.SI,

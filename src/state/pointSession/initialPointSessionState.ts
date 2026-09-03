@@ -78,21 +78,20 @@ function createEmptyInputResultRecord<T>(): Record<InputIdType, T | null> {
 }
 
 export function createEmptyCalculationCache<
-  ResultType,
-  ChartSourceType,
->(): ModelCalculationCache<ResultType, ChartSourceType> {
+  ChartSourceType = unknown,
+>(): ModelCalculationCache<ChartSourceType> {
   return {
     status: "empty",
     buildGeneration: 0,
     lastVisibleInputIds: [InputId.Input1],
-    resultsByInput: createEmptyInputResultRecord(),
+    valuesByInput: createEmptyInputResultRecord(),
     chartSource: null,
   };
 }
 
 export function createCalculationCacheByModel(): ModelCalculationCacheByModelState {
   return comfortModelOrder.reduce((accumulator, modelId) => {
-    accumulator[modelId] = createEmptyCalculationCache<unknown, unknown>();
+    accumulator[modelId] = createEmptyCalculationCache();
     return accumulator;
   }, {} as ModelCalculationCacheByModelState);
 }

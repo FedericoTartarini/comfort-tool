@@ -1,7 +1,7 @@
 import { pmv_ppd, pmv_ppd_ashrae } from "jsthermalcomfort";
 import { describe, expect, it, vi } from "vitest";
 
-import { CalculationSource, ComfortStandard } from "../../catalog/calculationMetadata";
+import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
 import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import { InputControlId } from "../../catalog/inputControls";
@@ -49,7 +49,6 @@ import {
   ppdThresholdToAbsPmv,
   type PmvChartSource,
   type PmvRequest,
-  type PmvResponse,
 } from "./calculation";
 import { ashraeComfortIsolineTargets } from "./zones";
 
@@ -90,12 +89,12 @@ function calculateRegisteredModel(
   adapter: PmvStandardAdapter,
   session: ReturnType<typeof createPointSession>,
   effectiveQuantitiesByInput = session.input.quantitiesByInput,
-): { result: PmvResponse; chartSource: PmvChartSource } {
+): { result: QuantityState; chartSource: PmvChartSource } {
   const calculation = calculatePmvModel(createModelCalculationContext({
     effectiveQuantitiesByInput,
     options: session.input.modelOptionsByModel[adapter.modelId],
   }), [InputId.Input1], adapter);
-  const result = calculation.resultsByInput[InputId.Input1];
+  const result = calculation.valuesByInput[InputId.Input1];
   if (!result) throw new Error("Expected a PMV result for Input 1.");
   return { result, chartSource: calculation.chartSource };
 }
@@ -104,7 +103,7 @@ function calculateWithDynamicClothingModifier(
   adapter: PmvStandardAdapter,
   clothingSi: number,
   metSi: number,
-): { result: PmvResponse; effectiveClo: number } {
+): { result: QuantityState; effectiveClo: number } {
   const session = createPointSession();
   const base = { ...session.input.quantitiesByInput[InputId.Input1], [PhysicalQuantityId.ClothingInsulation]: clothingSi, [PhysicalQuantityId.MetabolicRate]: metSi };
   const effective = applyInputModifierChain(
@@ -123,7 +122,7 @@ function calculateWithDynamicClothingModifier(
   };
 }
 
-function emptyPmvResults(): Record<InputId, PmvResponse | null> {
+function emptyPmvResults(): Record<InputId, QuantityState | null> {
   return {
     [InputId.Input1]: null,
     [InputId.Input2]: null,
@@ -275,10 +274,8 @@ describe("PMV standard declarations", () => {
     const iso = calculateRegisteredModel(pmvIsoAdapter, session);
     const ashraeRequest = ashrae.chartSource.inputs[InputId.Input1];
 
-    expect(ashrae.result.standard).toBe(ComfortStandard.Ashrae55PmvPpd);
-    expect(iso.result.standard).toBe(ComfortStandard.Iso7730PmvPpd);
-    expect(ashrae.result.source).toBe(CalculationSource.JsThermalComfort);
-    expect(iso.result.source).toBe(CalculationSource.JsThermalComfort);
+    expect(pmvAshraeAdapter.resultStandard).toBe(ComfortStandard.Ashrae55PmvPpd);
+    expect(pmvIsoAdapter.resultStandard).toBe(ComfortStandard.Iso7730PmvPpd);
     expect(Object.keys(ashrae.chartSource).sort()).toEqual([
       "comfortZonesByInput",
       "derivedSlotsByInput",
@@ -306,7 +303,7 @@ describe("PMV standard declarations", () => {
       expect(result.set).toBe(expected.set);
       expect(result.ce).toBe(expected.ce);
       expect(result.vr).toBe(request.vr);
-      expect(result.dynamicClothing).toBe(expected.dynamicClothing);
+      expect(result.clo).toBe(expected.dynamicClothing);
     },
   );
 
@@ -316,8 +313,8 @@ describe("PMV standard declarations", () => {
 
     expect(ashrae.effectiveClo).toBe(1);
     expect(iso.effectiveClo).toBeCloseTo(0.964, 3);
-    expect(ashrae.result.dynamicClothing).toBe(ashrae.effectiveClo);
-    expect(iso.result.dynamicClothing).toBe(iso.effectiveClo);
+    expect(ashrae.result.clo).toBe(ashrae.effectiveClo);
+    expect(iso.result.clo).toBe(iso.effectiveClo);
   });
 
   it.each(standardCases)(
@@ -341,8 +338,8 @@ describe("PMV standard declarations", () => {
         ?.valuesByInput[InputId.Input1];
 
       expect(effectiveClo).toBeCloseTo(0.822, 3);
-      expect(result.dynamicClothing).toBe(effectiveClo);
-      expect(result.dynamicClothing).not.toBeCloseTo(0.676, 3);
+      expect(result.clo).toBe(effectiveClo);
+      expect(result.clo).not.toBeCloseTo(0.676, 3);
       expect(cell?.text).toBe("0.82 clo");
     },
   );

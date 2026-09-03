@@ -96,11 +96,11 @@ export function invokeMappedLibrary(
   return mapped;
 }
 
-export type LibraryInvokeFn<TResult = QuantityState> = (
+/** Family call adapter: SI bag in, catalog numbers out. Options come from context. */
+export type LibraryInvokeFn = (
   si: QuantityState,
   context: ModelCalculationContext,
-  inputId: InputIdType,
-) => TResult;
+) => QuantityState;
 
 export type ChartInputMapper<TChartInput = unknown> = (
   si: QuantityState,
@@ -108,23 +108,21 @@ export type ChartInputMapper<TChartInput = unknown> = (
   inputId: InputIdType,
 ) => TChartInput;
 
-export type ChartSourceBuilder<TResult, TChart> = (
+export type ChartSourceBuilder<TChart> = (
   context: ModelCalculationContext,
   visibleInputIds: readonly InputIdType[],
-  resultsByInput: Record<InputIdType, TResult | null>,
+  valuesByInput: Record<InputIdType, QuantityState | null>,
 ) => TChart;
 
 export interface CalculateFromLibraryOptions<
-  TResult = QuantityState,
   TChart = ModelChartSource<QuantityState>,
 > {
-  readonly invoke?: LibraryInvokeFn<TResult>;
+  readonly invoke?: LibraryInvokeFn;
   readonly mapChartInput?: ChartInputMapper<unknown>;
-  readonly buildChartSource?: ChartSourceBuilder<TResult, TChart>;
+  readonly buildChartSource?: ChartSourceBuilder<TChart>;
 }
 
 export function calculateFromLibrary<
-  TResult = QuantityState,
   TChart = ModelChartSource<QuantityState>,
 >(
   fn: JsModelFn,
@@ -132,12 +130,12 @@ export function calculateFromLibrary<
   values: readonly QuantityResultBind[],
   context: ModelCalculationContext,
   visibleInputIds: readonly InputIdType[],
-  options: CalculateFromLibraryOptions<TResult, TChart> = {},
+  options: CalculateFromLibraryOptions<TChart> = {},
 ): {
-  resultsByInput: Record<InputIdType, TResult | null>;
+  valuesByInput: Record<InputIdType, QuantityState | null>;
   chartSource: TChart;
 } {
-  const resultsByInput: Record<InputIdType, TResult | null> = {
+  const valuesByInput: Record<InputIdType, QuantityState | null> = {
     [InputId.Input1]: null,
     [InputId.Input2]: null,
     [InputId.Input3]: null,
@@ -147,9 +145,9 @@ export function calculateFromLibrary<
   for (const inputId of visibleInputIds) {
     const si = { ...context.effectiveQuantitiesByInput[inputId] };
     const result = options.invoke
-      ? options.invoke(si, context, inputId)
-      : invokeMappedLibrary(fn, inputs, values, si) as TResult;
-    resultsByInput[inputId] = result;
+      ? options.invoke(si, context)
+      : invokeMappedLibrary(fn, inputs, values, si);
+    valuesByInput[inputId] = result;
     chartInputs[inputId] = options.mapChartInput
       ? options.mapChartInput(si, context, inputId)
       : si;
@@ -157,17 +155,17 @@ export function calculateFromLibrary<
 
   if (options.buildChartSource) {
     return {
-      resultsByInput,
+      valuesByInput,
       chartSource: options.buildChartSource(
         context,
         visibleInputIds,
-        resultsByInput,
+        valuesByInput,
       ),
     };
   }
 
   return {
-    resultsByInput,
+    valuesByInput,
     chartSource: { inputs: chartInputs } as TChart,
   };
 }

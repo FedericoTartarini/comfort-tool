@@ -1,6 +1,6 @@
 import { phs } from "jsthermalcomfort";
 import type { ModelChartSource } from "../../catalog/chartSource";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
+import { PhysicalQuantityId, getPhysicalQuantityMeta, type QuantityState } from "../../catalog/quantities";
 import { ModelId } from "../../catalog/modelIds";
 import { InputControlId } from "../../catalog/inputControls";
 import { InputWidget } from "../../catalog/inputWidgets";
@@ -9,7 +9,7 @@ import { ThermalZone } from "../../catalog/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
 import { StandardId } from "../../catalog/surfaces";
 import { ChartType } from "../../catalog/chartTypes";
-import type { TableRowAuthoring, TableRowSpec } from "../../catalog/tableTypes";
+import type { TableCellContext, TableRowAuthoring, TableRowSpec } from "../../catalog/tableTypes";
 import {
   PHS_COMPLIANCE_HORIZON_MINUTES,
   PhsLimitingCriterion,
@@ -39,6 +39,7 @@ import {
 import {
   getPhsWaterLossLimitG,
   personFromModelInputs,
+  phsValuesFromSimulation,
   simulatePhs,
 } from "./calculation";
 import {
@@ -68,43 +69,54 @@ function phsLimitingCriterionLabel(result: PhsSimulationResult): string {
     : "Water loss";
 }
 
-function buildPhsSimulationTableRows(): TableRowAuthoring<PhsSimulationResult>[] {
+function buildPhsSimulationTableRows(): TableRowAuthoring[] {
   return [
     {
       quantity: PhysicalQuantityId.RectalTemperature,
       id: "phs-peak-rectal-temperature",
       label: "Peak rectal temperature",
       group: "Rectal temperature",
-      value: (result) => result.peakRectalTemperatureC,
+      value: (result) => (result as unknown as PhsSimulationResult).peakRectalTemperatureC,
     },
     {
       id: "phs-first-rectal-limit",
       label: "First 38 °C exceedance",
       group: "Rectal temperature",
-      format: (result) => ({ text: formatPhsMinute(result.firstRectalLimitMinute) }),
+      format: (result) => ({
+        text: formatPhsMinute(
+          (result as unknown as PhsSimulationResult).firstRectalLimitMinute,
+        ),
+      }),
     },
     {
       quantity: PhysicalQuantityId.SweatLoss,
       id: "phs-final-water-loss",
       label: "Final water loss",
       group: "Water loss",
-      value: (result) => result.sweatLossG,
+      value: (result) => (result as unknown as PhsSimulationResult).sweatLossG,
     },
     {
       id: "phs-first-water-loss-limit",
       label: "Water-loss limit",
       group: "Water loss",
-      format: (result) => ({ text: formatPhsMinute(result.firstWaterLossLimitMinute) }),
+      format: (result) => ({
+        text: formatPhsMinute(
+          (result as unknown as PhsSimulationResult).firstWaterLossLimitMinute,
+        ),
+      }),
     },
     {
       id: "phs-limiting-criterion",
       label: "Limiting criterion",
-      format: (result) => ({
-        text: phsLimitingCriterionLabel(result),
-        ...(result.limitingMinute !== null
-          ? { subtext: formatPhsMinute(result.limitingMinute) }
-          : {}),
-      }),
+      format: (result) => {
+        const sim = result as unknown as PhsSimulationResult;
+        return {
+          text: phsLimitingCriterionLabel(sim),
+          ...(sim.limitingMinute !== null
+            ? { subtext: formatPhsMinute(sim.limitingMinute) }
+            : {}),
+        };
+      },
     },
   ];
 }
@@ -187,6 +199,34 @@ function formatHours(minutes: number): string {
   return `${formatDisplayValue(minutes / 60)} h`;
 }
 
+function phsExtras(context?: TableCellContext): PhsResponse | null {
+  const extras = context?.extras;
+  if (!extras || typeof extras !== "object") {
+    return null;
+  }
+  return extras as PhsResponse;
+}
+
+function simulatePhsPoint(
+  si: QuantityState,
+): PhsSimulationResult {
+  return simulatePhs({
+    segments: [{
+      id: "analysis-exposure",
+      name: "Eight-hour assessment",
+      durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
+      tdb: si[PhysicalQuantityId.DryBulbTemperature]!,
+      tr: si[PhysicalQuantityId.MeanRadiantTemperature]!,
+      v: si[PhysicalQuantityId.WindSpeed]!,
+      rh: si[PhysicalQuantityId.RelativeHumidity]!,
+      met: si[PhysicalQuantityId.MetabolicRate]!,
+      clo: si[PhysicalQuantityId.ClothingInsulation]!,
+    }],
+    person: personFromModelInputs(si),
+    recordHistory: true,
+  });
+}
+
 function criterionLabel(result: PhsResponse): string {
   if (result.limitingCriterion === PhsLimitingCriterion.RectalTemperature) {
     return "Rectal-temperature limit";
@@ -205,7 +245,7 @@ function invalidCell(result: PhsResponse) {
   };
 }
 
-function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<PhsResponse>[] {
+function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<QuantityState>[] {
   const temperatureMeta = getPhysicalQuantityMeta(PhysicalQuantityId.RectalTemperature);
   const waterLossMeta = getPhysicalQuantityMeta(PhysicalQuantityId.SweatLoss);
   const temperatureUnits = unitLabel(temperatureMeta.siUnit, unitSystem);
@@ -214,35 +254,51 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
     {
       title: "Rectal-temperature exposure limit",
       group: "Maximum allowable exposure time",
-      formatter: (result) => result.valid
-        ? { text: formatHours(result.dLimTreMinutes) }
-        : invalidCell(result),
+      formatter: (_result, _unitSystem, context) => {
+        const extras = phsExtras(context);
+        if (!extras) return { text: "—" };
+        return extras.valid
+          ? { text: formatHours(extras.dLimTreMinutes) }
+          : invalidCell(extras);
+      },
     },
     {
       title: "Water-loss exposure limit",
       group: "Maximum allowable exposure time",
-      formatter: (result) => result.valid
-        ? { text: formatHours(result.dLimWaterLossMinutes) }
-        : invalidCell(result),
+      formatter: (_result, _unitSystem, context) => {
+        const extras = phsExtras(context);
+        if (!extras) return { text: "—" };
+        return extras.valid
+          ? { text: formatHours(extras.dLimWaterLossMinutes) }
+          : invalidCell(extras);
+      },
     },
     {
       title: "Earliest limiting criterion",
       group: "Maximum allowable exposure time",
-      formatter: (result) => result.valid
-        ? {
-            text: formatHours(result.limitingExposureTimeMinutes),
-            subtext: criterionLabel(result),
-          }
-        : invalidCell(result),
+      formatter: (result, _unitSystem, context) => {
+        const extras = phsExtras(context);
+        if (!extras) return { text: "—" };
+        if (!extras.valid) return invalidCell(extras);
+        const minutes = result[PhysicalQuantityId.LimitingExposureTime]
+          ?? extras.limitingExposureTimeMinutes;
+        return {
+          text: formatHours(minutes),
+          subtext: criterionLabel(extras),
+        };
+      },
     },
     {
       title: "Rectal temperature after 8 h",
       group: "End-of-exposure state",
-      formatter: (result) => {
-        if (!result.valid) return invalidCell(result);
+      formatter: (result, _unitSystem, context) => {
+        const extras = phsExtras(context);
+        if (!extras) return { text: "—" };
+        if (!extras.valid) return invalidCell(extras);
+        const tRe = result[PhysicalQuantityId.RectalTemperature] ?? extras.tRe;
         const displayValue = convertQuantityFromSi(
           PhysicalQuantityId.RectalTemperature,
-          result.tRe,
+          tRe,
           unitSystem,
         );
         return {
@@ -253,11 +309,14 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
     {
       title: "Predicted water loss after 8 h",
       group: "End-of-exposure state",
-      formatter: (result) => {
-        if (!result.valid) return invalidCell(result);
+      formatter: (result, _unitSystem, context) => {
+        const extras = phsExtras(context);
+        if (!extras) return { text: "—" };
+        if (!extras.valid) return invalidCell(extras);
+        const sweatLossG = result[PhysicalQuantityId.SweatLoss] ?? extras.sweatLossG;
         const displayValue = convertQuantityFromSi(
           PhysicalQuantityId.SweatLoss,
-          result.sweatLossG,
+          sweatLossG,
           unitSystem,
         );
         return {
@@ -268,14 +327,14 @@ function buildPhsResultRows(unitSystem: UnitSystemType): ResultRowDefinition<Phs
   ];
 }
 
-function buildPhsTableRows(): TableRowSpec<PhsResponse>[] {
+function buildPhsTableRows(): TableRowSpec[] {
   return buildPhsResultRows(UnitSystem.SI).map((row) => ({
     id: row.title.toLowerCase().replace(/\s+/g, "-"),
     label: row.title,
     ...(row.group ? { group: row.group } : {}),
-    format: (result, unitSystem) => {
+    format: (result, unitSystem, context) => {
       const match = buildPhsResultRows(unitSystem).find(({ title }) => title === row.title);
-      return match!.formatter(result);
+      return match!.formatter(result, unitSystem, context);
     },
   }));
 }
@@ -319,6 +378,7 @@ export const phsModelConfig = defineModel(phs, {
     values: [
       resultQuantity("t_re", PhysicalQuantityId.RectalTemperature),
       resultQuantity("sweat_loss_g", PhysicalQuantityId.SweatLoss),
+      resultQuantity("limiting_exposure_time", PhysicalQuantityId.LimitingExposureTime),
     ],
   },
   tables: {
@@ -356,8 +416,9 @@ export const phsModelConfig = defineModel(phs, {
       },
     },
   ] satisfies FrontendChartDeclaration<
-    PhsResponse,
-    ModelChartSource<PhsEnvironmentSi>
+    ModelChartSource<PhsEnvironmentSi> & {
+      extrasByInput: Partial<Record<string, PhsSimulationResult>>;
+    }
   >[],
   features: {
     exploreOutputs: phsExploreOutputs,
@@ -367,35 +428,25 @@ export const phsModelConfig = defineModel(phs, {
       legendTitle: "8-hour exposure assessment",
       caption:
         "ISO 7933:2023 thresholds are locked. A point passes when neither the 38 °C rectal-temperature limit nor the water-loss limit is reached before 8 hours.",
-      getFeedback: (result) => {
-        if (!result.valid) {
+      getFeedback: (result, context) => {
+        const extras = phsExtras(context);
+        if (!extras?.valid) {
           return {
-            text: "Outside ISO 7933:2023 applicability.",
+            text: extras?.issues[0] ?? "Outside ISO 7933:2023 applicability.",
             passes: false,
           };
         }
-        const passes = result.limitingExposureTimeMinutes
-          >= PHS_COMPLIANCE_HORIZON_MINUTES;
+        const minutes = result?.[PhysicalQuantityId.LimitingExposureTime]
+          ?? extras.limitingExposureTimeMinutes;
+        const passes = minutes >= PHS_COMPLIANCE_HORIZON_MINUTES;
         return {
           text: passes
             ? "No exposure limit is reached before 8 hours."
-            : `${criterionLabel(result)} is reached after ${formatHours(result.limitingExposureTimeMinutes)}.`,
+            : `${criterionLabel(extras)} is reached after ${formatHours(minutes)}.`,
           passes,
         };
       },
     },
-    invoke: (_si, context, inputId) => simulatePhs({
-      segments: [{
-        id: "analysis-exposure",
-        name: "Eight-hour assessment",
-        durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
-        ...phsQuantityMapping.mapRequest(context, inputId),
-      }],
-      person: personFromModelInputs(context.effectiveQuantitiesByInput[inputId]),
-      recordHistory: true,
-    }),
-    mapChartInput: (_si, context, inputId) =>
-      phsQuantityMapping.mapRequest(context, inputId),
     timeSeries: {
       rows: buildPhsSimulationTableRows(),
       simulation: {
@@ -449,6 +500,21 @@ export const phsModelConfig = defineModel(phs, {
     },
     defaultOptions: {},
     parseOptions: parseEmptyOptions,
+  },
+  pipeline: {
+    invoke: (si) => phsValuesFromSimulation(simulatePhsPoint(si)),
+    mapChartInput: (_si, context, inputId) =>
+      phsQuantityMapping.mapRequest(context, inputId),
+    buildChartSource: (context, visibleInputIds) => {
+      const extrasByInput: Partial<Record<string, PhsSimulationResult>> = {};
+      const inputs: ModelChartSource<PhsEnvironmentSi>["inputs"] = {};
+      for (const inputId of visibleInputIds) {
+        const si = context.effectiveQuantitiesByInput[inputId];
+        extrasByInput[inputId] = simulatePhsPoint(si);
+        inputs[inputId] = phsQuantityMapping.mapRequest(context, inputId);
+      }
+      return { inputs, extrasByInput };
+    },
   },
   dynamicAxisFields: [
     PhysicalQuantityId.DryBulbTemperature,

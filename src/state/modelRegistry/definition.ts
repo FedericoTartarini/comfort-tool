@@ -11,7 +11,7 @@ import type {
 } from "../../catalog/modelCapabilities";
 import type { ModelChartInstances } from "../../catalog/chartTypes";
 import type { FieldChartProfile } from "../../catalog/fieldChartProfile";
-import type { ModelTables, TableRowSpec } from "../../catalog/tableTypes";
+import type { ModelTables, TableBuildContext, TableRowSpec } from "../../catalog/tableTypes";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import type {
   StandardId as StandardIdType,
@@ -28,10 +28,10 @@ import type {
 } from "../../engines/comfort/controls/types";
 import type { InputFieldSpec } from "../../engines/comfort/controls/fieldInputBehaviors";
 import type { ModelOptionsState, ResultSectionViewModel } from "../pointSession/types";
-import { type PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType } from "../../catalog/quantities";
+import { type PhysicalQuantityId, type PhysicalQuantityId as PhysicalQuantityIdType, type QuantityState } from "../../catalog/quantities";
 
-export type ModelCalculationOutputs<ResultType, ChartSourceType> = {
-  resultsByInput: Record<InputIdType, ResultType | null>;
+export type ModelCalculationOutputs<ChartSourceType = unknown> = {
+  valuesByInput: Record<InputIdType, QuantityState | null>;
   chartSource: ChartSourceType;
 };
 
@@ -60,18 +60,16 @@ export type {
 } from "../../engines/comfort/charts/simulationCharts";
 
 export interface RuntimeTimeSeriesFeature {
-  readonly rows: readonly TableRowSpec<unknown>[];
+  readonly rows: readonly TableRowSpec[];
   readonly simulation: SimulationOutputDeclaration;
 }
 
 /**
- * Strongly typed declaration used while assembling one model. Assembly
- * erases ResultType and ChartSourceType exactly once when producing the runtime
- * definition consumed by the controller.
+ * Runtime model used by the session. Result scalars are always QuantityState;
+ * ChartSourceType is the only remaining generic (PMV geometry, PHS extras).
  */
 export interface ComfortModelDefinition<
-  ResultType,
-  ChartSourceType,
+  ChartSourceType = unknown,
   ComplianceBand extends Band = NumericBand,
 > {
   id: ModelIdType;
@@ -81,15 +79,15 @@ export interface ComfortModelDefinition<
   standardIds: readonly StandardIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
-  complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
+  complianceProfile?: ComplianceSpec<ComplianceBand>;
   controls: readonly InputControlDefinition[];
   inputFields: readonly InputFieldSpec[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
-  tables: ModelTables<ResultType>;
+  tables: ModelTables;
   timeSeries?: RuntimeTimeSeriesFeature;
   chartInstances: ModelChartInstances;
   chartEngineRegistrations: readonly ChartEngineRegistration<
-    ResultType,
+    QuantityState,
     ChartSourceType
   >[];
   defaultOptions: Partial<Record<OptionKeyType, string>>;
@@ -97,16 +95,17 @@ export interface ComfortModelDefinition<
   calculate: (
     context: ModelCalculationContext,
     visibleInputIds: InputIdType[],
-  ) => ModelCalculationOutputs<ResultType, ChartSourceType>;
+  ) => ModelCalculationOutputs<ChartSourceType>;
   buildTable: (
-    resultsByInput: Record<InputIdType, ResultType | null>,
+    valuesByInput: Record<InputIdType, QuantityState | null>,
     visibleInputIds: InputIdType[],
     unitSystem: UnitSystemType,
+    tableContext?: TableBuildContext,
   ) => ResultSectionViewModel[];
   buildChart: (
     instanceId: string,
     chartSource: ChartSourceType | null,
-    resultsByInput: Record<InputIdType, ResultType | null>,
+    valuesByInput: Record<InputIdType, QuantityState | null>,
     profile: FieldChartProfile<ComplianceBand>,
     context: ChartBuildRequestContext,
   ) => ChartBuildResult;
@@ -116,11 +115,7 @@ export interface ComfortModelDefinition<
 }
 
 /** Non-generic controller boundary shared by every registered model. */
-export type RuntimeComfortModelDefinition = ComfortModelDefinition<
-  unknown,
-  unknown,
-  Band
->;
+export type RuntimeComfortModelDefinition = ComfortModelDefinition<unknown, Band>;
 
 export function modelSupportsStandard(
   config: Pick<RuntimeComfortModelDefinition, "standardIds">,

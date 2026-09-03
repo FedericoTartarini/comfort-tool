@@ -35,7 +35,7 @@ describe("assertCompareContract", () => {
       InputId.Input1, InputId.Input2, InputId.Input3, ]);
     expect(
       session.calculationCacheByModel[ModelId.PmvAshrae]
-        .resultsByInput[InputId.Input3], ).not.toBeNull();
+        .valuesByInput[InputId.Input3], ).not.toBeNull();
     expect(
       session.input.quantitiesByInput[InputId.Input3][
         PhysicalQuantityId.DryBulbTemperature

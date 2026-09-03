@@ -101,7 +101,10 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
     bands: ashraeComplianceBands,
     legendTitle: "PMV acceptability",
     caption: createAshraePmvComplianceCaption(ashraeComfortIsolineTargets),
-    getFeedback: getPmvComplianceFeedback,
+    getFeedback: (result) => getPmvComplianceFeedback(
+      result,
+      isAshraeAcceptablePmv,
+    ),
   },
   defaultOptions: defaultPmvAshraeOptions,
   parseOptions: parsePmvAshraeOptions,

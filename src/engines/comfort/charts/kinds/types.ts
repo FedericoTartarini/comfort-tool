@@ -10,7 +10,7 @@ import {
   ChartType,
   type ChartInstanceCapabilities,
 } from "../../../../catalog/chartTypes";
-import type { PhysicalQuantityId } from "../../../../catalog/quantities";
+import type { PhysicalQuantityId, QuantityState } from "../../../../catalog/quantities";
 import type { GridModelChartSpec } from "../gridModelCharts";
 import type { ChartAxisScale, ChartRange } from "../types";
 import type { IsolineBandLayout } from "../../../../charts/isolines";
@@ -86,7 +86,7 @@ export function dynamicAxisPool(
 
 type FrontendChartBuild<TResult, ChartSourceType> = (
   chartSource: ChartSourceType | null,
-  resultsByInput: Record<InputIdType, TResult | null>,
+  valuesByInput: Record<InputIdType, TResult | null>,
   context: ChartBuildContext,
 ) => PlotlyChartSpec | ChartPlotlyBuild | null;
 
@@ -150,6 +150,7 @@ export interface BoundaryRegionDataSpec<TResult = unknown, TPayload = unknown> {
   readonly getHoverMetadata: (
     result: TResult,
     unitSystem: UnitSystemType,
+    payload?: TPayload,
   ) => PlotHoverRow;
   readonly buildHoverTemplate: (
     unitSystem: UnitSystemType,
@@ -160,7 +161,7 @@ export interface BoundaryRegionDataSpec<TResult = unknown, TPayload = unknown> {
 }
 
 export type BoundaryRegionChartEngineSpec<TResult, ChartSourceType = unknown> =
-  BoundaryRegionDataSpec<TResult>;
+  BoundaryRegionDataSpec<TResult, never>;
 
 export function isBoundaryRegionDataSpec(
   spec: object,
@@ -283,7 +284,7 @@ export interface ParametricLineDataSpec<TResult> {
   readonly y2Label?: string;
   readonly getGeometry: (
     chartSource: unknown,
-    resultsByInput: Record<InputIdType, TResult | null>,
+    valuesByInput: Record<InputIdType, TResult | null>,
     context: ChartBuildContext,
   ) => ParametricLineGeometry | null;
 }
@@ -350,11 +351,10 @@ interface ChartCommonFields {
   readonly defaultExploreOutput?: ModelOutput["key"];
 }
 
-/** Family / defineModel chart entry. */
+/** Family / defineModel chart entry. Result scalars are QuantityState. */
 export type FrontendChartDeclaration<
-  TResult = unknown,
   ChartSourceType = unknown,
-> = ChartCommonFields & RegisteredChartBindSpec<TResult, ChartSourceType>;
+> = ChartCommonFields & RegisteredChartBindSpec<QuantityState, ChartSourceType>;
 
 export interface ChartEngineRegistration<TResult, ChartSourceType> {
   readonly instanceId: string;

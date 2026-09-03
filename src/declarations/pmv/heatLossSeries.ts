@@ -1,4 +1,4 @@
-import { PhysicalQuantityId } from "../../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import type { ChartBuildContext } from "../../catalog/modelCapabilities";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import {
@@ -7,7 +7,7 @@ import {
   type ParametricLineGeometry,
   type ParametricPolyline,
 } from "../../engines/comfort/charts/kinds/types";
-import type { PmvRequest, PmvResponse } from "./calculation";
+import type { PmvRequest } from "./calculation";
 import {
   readPmvRequestFromChartSource,
   readPmvRequestsByInput,
@@ -243,7 +243,7 @@ export function buildPmvHeatLossGeometry(
   return { polylines, comparePoints };
 }
 
-export function createPmvHeatLossParametricSpec(): ParametricLineDataSpec<PmvResponse> {
+export function createPmvHeatLossParametricSpec(): ParametricLineDataSpec<QuantityState> {
   return {
     title: "Heat Loss Components",
     xField: PhysicalQuantityId.DryBulbTemperature,

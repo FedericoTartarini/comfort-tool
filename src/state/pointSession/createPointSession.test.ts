@@ -8,8 +8,10 @@ import {
   TemperatureMode,
 } from "../../catalog/inputModes";
 import { InputId } from "../../catalog/inputSlots";
-import { UnitSystem } from "../../catalog/units";
 import { SurfaceId } from "../../catalog/surfaces";
+import { UnitSystem } from "../../catalog/units";
+import { extrasByInputFromChartSource } from "../../catalog/chartSource";
+import type { PhsSimulationResult } from "../../catalog/phs";
 import { modelSupportsStandard } from "../modelRegistry/definition";
 import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 import { resolveChartInstanceCapabilities } from "./chartInstancePresentation";
@@ -19,9 +21,7 @@ import {
   pmvAshraeAdapter,
   pmvAshraeModelConfig,
 } from "../../declarations/pmv/ashrae";
-import type { PmvChartSource, PmvResponse } from "../../declarations/pmv/calculation";
-import type { UtciResponse } from "../../declarations/utci/utci";
-import { type PhsResponse } from "../../catalog/phs";
+import type { PmvChartSource } from "../../declarations/pmv/calculation";
 import { createPointSession } from "./createPointSession.svelte";
 import { comfortModelConfigs, comfortModelOrder } from "../modelRegistry";
 import { PhysicalQuantityId } from "../../catalog/quantities";
@@ -633,15 +633,16 @@ describe("createPointSession", () => {
     session.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(session);
     const humidexBefore = session.calculationCacheByModel[ModelId.Humidex]
-      .resultsByInput[InputId.Input1];
+      .valuesByInput[InputId.Input1];
 
     session.actions.setSelectedModel(ModelId.Phs2023);
     session.actions.setActiveSurface(SurfaceId.Standard);
     session.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(session);
 
-    const phsBefore = (session.calculationCacheByModel[ModelId.Phs2023]
-      .resultsByInput[InputId.Input1] as PhsResponse | null)?.waterLossLimitG;
+    const phsBefore = (extrasByInputFromChartSource(
+      session.calculationCacheByModel[ModelId.Phs2023].chartSource,
+    )?.[InputId.Input1] as PhsSimulationResult | undefined)?.waterLossLimitG;
 
     expect(
       session.actions.updateModelQuantity(
@@ -653,8 +654,9 @@ describe("createPointSession", () => {
     session.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(session);
 
-    const phsAfter = (session.calculationCacheByModel[ModelId.Phs2023]
-      .resultsByInput[InputId.Input1] as PhsResponse | null)?.waterLossLimitG;
+    const phsAfter = (extrasByInputFromChartSource(
+      session.calculationCacheByModel[ModelId.Phs2023].chartSource,
+    )?.[InputId.Input1] as PhsSimulationResult | undefined)?.waterLossLimitG;
     expect(phsAfter).toBeDefined();
     expect(phsAfter).not.toBe(phsBefore);
     expect(session.input.quantitiesByInput[InputId.Input1]
@@ -665,7 +667,7 @@ describe("createPointSession", () => {
     session.actions.scheduleCalculation({ immediate: true, force: true });
     await waitForIdle(session);
     expect(session.calculationCacheByModel[ModelId.Humidex]
-      .resultsByInput[InputId.Input1]).toEqual(humidexBefore);
+      .valuesByInput[InputId.Input1]).toEqual(humidexBefore);
   });
 
   it("keeps ASHRAE and ISO mode settings independent from chart selection", () => {
@@ -796,15 +798,15 @@ describe("createPointSession", () => {
 
     const cache = session.calculationCacheByModel[ModelId.PmvAshrae];
     const chartSource = cache.chartSource;
-    const resultsByInput = cache.resultsByInput;
-    const input1Result = cache.resultsByInput[InputId.Input1];
+    const resultsByInput = cache.valuesByInput;
+    const input1Result = cache.valuesByInput[InputId.Input1];
     const assertCalculationIdentity = () => {
       const current = session.calculationCacheByModel[ModelId.PmvAshrae];
       expect(current).toBe(cache);
       expect(current.status).toBe("ready");
       expect(current.chartSource).toBe(chartSource);
-      expect(current.resultsByInput).toBe(resultsByInput);
-      expect(current.resultsByInput[InputId.Input1]).toBe(input1Result);
+      expect(current.valuesByInput).toBe(resultsByInput);
+      expect(current.valuesByInput[InputId.Input1]).toBe(input1Result);
       expect(session.output.isLoading).toBe(false);
     };
 
@@ -931,7 +933,7 @@ describe("createPointSession", () => {
 
     const cache = session.calculationCacheByModel[ModelId.AdaptiveAshrae];
     const chartSource = cache.chartSource;
-    const resultsByInput = cache.resultsByInput;
+    const resultsByInput = cache.valuesByInput;
     const getTooWarmBoundary = () => currentChart(session)?.traces
       .find(({ name, fill }) => name === "too-warm" && fill === "toself")?.y;
     const input1Boundary = getTooWarmBoundary();
@@ -942,7 +944,7 @@ describe("createPointSession", () => {
       .toBe(cache);
     expect(cache.status).toBe("ready");
     expect(cache.chartSource).toBe(chartSource);
-    expect(cache.resultsByInput).toBe(resultsByInput);
+    expect(cache.valuesByInput).toBe(resultsByInput);
     expect(session.output.isLoading).toBe(false);
     const input2Boundary = getTooWarmBoundary();
     expect(input2Boundary).not.toEqual(input1Boundary);
@@ -963,7 +965,7 @@ describe("createPointSession", () => {
     expect(session.calculationCacheByModel[ModelId.AdaptiveAshrae])
       .toBe(cache);
     expect(cache.chartSource).toBe(chartSource);
-    expect(cache.resultsByInput).toBe(resultsByInput);
+    expect(cache.valuesByInput).toBe(resultsByInput);
     expect(session.output.isLoading).toBe(false);
     expect(currentChart(session)?.layout.xaxis.title)
       .toContain("Operative temperature");
@@ -972,7 +974,7 @@ describe("createPointSession", () => {
     expect(session.calculationCacheByModel[ModelId.AdaptiveAshrae])
       .toBe(cache);
     expect(cache.chartSource).toBe(chartSource);
-    expect(cache.resultsByInput).toBe(resultsByInput);
+    expect(cache.valuesByInput).toBe(resultsByInput);
     expect(session.output.isLoading).toBe(false);
     expect(currentChart(session)?.layout.xaxis.title)
       .toContain("°F");
@@ -1545,7 +1547,7 @@ describe("createPointSession", () => {
     const cache = session.calculationCacheByModel[ModelId.PmvAshrae];
     const chartSource = cache.chartSource as PmvChartSource;
     const request = chartSource.inputs[InputId.Input1];
-    const result = cache.resultsByInput[InputId.Input1] as PmvResponse;
+    const result = cache.valuesByInput[InputId.Input1];
 
     expect(baseInputs[PhysicalQuantityId.DryBulbTemperature]).toBe(24);
     expect(baseInputs[PhysicalQuantityId.MeanRadiantTemperature]).toBe(24);
@@ -1557,16 +1559,17 @@ describe("createPointSession", () => {
       vr: effectiveInputs[PhysicalQuantityId.RelativeAirSpeed],
       clo: effectiveInputs[PhysicalQuantityId.ClothingInsulation],
     }));
-    expect(result.vr).toBeCloseTo(request!.vr, 8);
+    expect(result?.[PhysicalQuantityId.RelativeAirSpeed]).toBeCloseTo(request!.vr, 8);
 
     const expectedPmv = pmvAshraeAdapter.calculate(request!);
-    expect(result.pmv).toBeCloseTo(expectedPmv.pmv, 8);
-    expect(result.ppd).toBeCloseTo(expectedPmv.ppd, 8);
+    expect(result?.[PhysicalQuantityId.PredictedMeanVote]).toBeCloseTo(expectedPmv.pmv, 8);
+    expect(result?.[PhysicalQuantityId.PredictedPercentageOfDissatisfied]).toBeCloseTo(expectedPmv.ppd, 8);
     expect(session.resultSections
       .find(({ title }) => title === "PMV")?.valuesByInput[InputId.Input1]?.text)
-      .toBe(formatDisplayValue(result.pmv));
+      .toBe(formatDisplayValue(result?.[PhysicalQuantityId.PredictedMeanVote] ?? Number.NaN));
     expect(session.chartControls.profileBadge.feedback?.passes)
-      .toBe(result.isCompliant);
+      .toBe(Boolean(result && result[PhysicalQuantityId.PredictedMeanVote] !== undefined
+        && Math.abs(result[PhysicalQuantityId.PredictedMeanVote]!) <= 0.5));
 
     session.actions.setSelectedChartInstance("dynamic");
     session.actions.setDynamicXAxis(PhysicalQuantityId.MeanRadiantTemperature);
@@ -1641,7 +1644,7 @@ describe("createPointSession", () => {
 
     const rawUtci = (
       session.calculationCacheByModel[ModelId.Utci]
-        .resultsByInput.input1 as UtciResponse | null
+        .valuesByInput.input1
     )?.utci;
     const chartSource = session.calculationCacheByModel[ModelId.Utci].chartSource;
     const siResultText = session.resultSections[0].valuesByInput.input1?.text;
@@ -1654,7 +1657,7 @@ describe("createPointSession", () => {
 
     expect(rawUtci).toBe((
       session.calculationCacheByModel[ModelId.Utci]
-        .resultsByInput.input1 as UtciResponse | null
+        .valuesByInput.input1
     )?.utci);
     expect(chartSource).toBe(session.calculationCacheByModel[ModelId.Utci].chartSource);
     expect(siResultText).toContain("°C");

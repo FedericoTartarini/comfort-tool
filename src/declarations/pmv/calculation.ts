@@ -2,7 +2,6 @@ import { cooling_effect, pmv_ppd_ashrae, pmv_ppd_iso, set_tmp } from "jsthermalc
 import { sampleIsoline } from "../../charts/psychrometric/isolines";
 import {
   CalculationSource,
-  type ComfortStandard,
 } from "../../catalog/calculationMetadata";
 import type {
   CompareInputMap,
@@ -11,6 +10,7 @@ import type {
 import { ComplianceStatus } from "../../catalog/modelIds";
 import {
   PhysicalQuantityId,
+  type QuantityState,
 } from "../../catalog/quantities";
 import type { DerivedSlotQuantityState } from "../../engines/comfort/derivations/psychrometrics";
 import { AirSpeedControlMode, OptionKey, TemperatureMode } from "../../catalog/inputModes";
@@ -68,19 +68,6 @@ export interface ComfortZoneRequest extends PmvRequest {
 export interface ComfortZoneResponse {
   coolEdge: ComfortPoint[];
   warmEdge: ComfortPoint[];
-  source: CalculationSource;
-}
-
-export interface PmvResponse {
-  pmv: number;
-  ppd: number;
-  tsv: string;
-  vr: number;
-  set: number;
-  ce: number;
-  dynamicClothing: number;
-  isCompliant: boolean;
-  standard: ComfortStandard;
   source: CalculationSource;
 }
 
@@ -379,19 +366,50 @@ export function evaluatePmvSlot(
   adapter: PmvStandardAdapter,
   context: ModelCalculationContext,
   inputId: InputIdType,
-): PmvResponse {
-  const request = toPmvRequest(context, inputId, adapter);
+): QuantityState {
+  return evaluatePmvFromSi(
+    adapter,
+    context.effectiveQuantitiesByInput[inputId],
+    context,
+  );
+}
+
+export function evaluatePmvFromSi(
+  adapter: PmvStandardAdapter,
+  si: QuantityState,
+  context: ModelCalculationContext,
+): QuantityState {
+  const request = toPmvRequestFromSi(adapter, si, context);
   const result = evaluatePmvCondition(adapter, request);
-  const complianceWarnings = adapter.checkApplicability(request);
+  const derived = derivePmvAnalysisOutputs(request);
   return {
-    pmv: result.pmv,
-    ppd: result.ppd,
-    tsv: result.tsv ?? "Unclassified",
-    ...derivePmvAnalysisOutputs(request),
-    isCompliant:
-      complianceWarnings.length === 0 && result.acceptable,
-    standard: adapter.resultStandard,
-    source: CalculationSource.JsThermalComfort,
+    [PhysicalQuantityId.PredictedMeanVote]: result.pmv,
+    [PhysicalQuantityId.PredictedPercentageOfDissatisfied]: result.ppd,
+    [PhysicalQuantityId.StandardEffectiveTemperature]: derived.set,
+    [PhysicalQuantityId.CoolingEffect]: derived.ce,
+    [PhysicalQuantityId.RelativeAirSpeed]: derived.vr,
+    [PhysicalQuantityId.ClothingInsulation]: derived.dynamicClothing,
+  };
+}
+
+export function toPmvRequestFromSi(
+  adapter: PmvStandardAdapter,
+  si: QuantityState,
+  context: ModelCalculationContext,
+): PmvRequest {
+  const requestFields = pmvQuantityMapping.toLibrary(si);
+  return {
+    tdb: requestFields.tdb!,
+    tr: requestFields.tr!,
+    vr: requestFields.vr!,
+    rh: requestFields.rh!,
+    met: requestFields.met!,
+    clo: requestFields.clo!,
+    wme: requestFields.wme ?? 0,
+    occupantHasAirSpeedControl:
+      adapter.supportsOccupantAirSpeedControl &&
+      context.options[OptionKey.AirSpeedControlMode] ===
+        AirSpeedControlMode.WithLocalControl,
   };
 }
 
@@ -437,13 +455,22 @@ export function buildPmvChartSource(
 }
 
 export function getPmvComplianceFeedback(
-  result: PmvResponse,
+  result: QuantityState | null,
+  isAcceptable: (pmv: number) => boolean,
 ): ComplianceFeedback {
+  const pmv = result?.[PhysicalQuantityId.PredictedMeanVote];
+  if (typeof pmv !== "number") {
+    return {
+      text: ComplianceStatus.OutOfRange,
+      passes: false,
+    };
+  }
+  const passes = isAcceptable(pmv);
   return {
-    text: result.isCompliant
+    text: passes
       ? ComplianceStatus.Compliant
       : ComplianceStatus.OutOfRange,
-    passes: result.isCompliant,
+    passes,
   };
 }
 
@@ -454,13 +481,15 @@ function requireFiniteOutput(value: number, label: string): number {
   return value;
 }
 
-export function buildPmvResultRows(): TableRowAuthoring<PmvResponse>[] {
+export function buildPmvResultRows(
+  adapter: PmvStandardAdapter,
+): TableRowAuthoring[] {
   return [
     {
       id: "compliance",
       label: "Compliance",
       format: (result) => {
-        const feedback = getPmvComplianceFeedback(result);
+        const feedback = getPmvComplianceFeedback(result, adapter.isAcceptablePmv);
         return {
           text: feedback.text,
           color: feedback.passes
@@ -473,18 +502,31 @@ export function buildPmvResultRows(): TableRowAuthoring<PmvResponse>[] {
     {
       id: "zone",
       label: "Zone",
-      format: (result) => ({
-        text: result.tsv,
-        color: pmvTsvAppearance(result.tsv).text,
-      }),
+      format: (result) => {
+        const pmv = result[PhysicalQuantityId.PredictedMeanVote];
+        if (typeof pmv !== "number") {
+          return { text: "Unclassified" };
+        }
+        const tsv = adapter.classifyTsv(pmv);
+        return {
+          text: tsv,
+          color: pmvTsvAppearance(tsv).text,
+        };
+      },
     },
     PhysicalQuantityId.PredictedPercentageOfDissatisfied,
     {
       id: "acceptability",
       label: "Acceptability",
-      format: (result) => ({
-        text: `${formatDisplayValue(100 - result.ppd)}%`,
-      }),
+      format: (result) => {
+        const ppd = result[PhysicalQuantityId.PredictedPercentageOfDissatisfied];
+        if (typeof ppd !== "number") {
+          return { text: "" };
+        }
+        return {
+          text: `${formatDisplayValue(100 - ppd)}%`,
+        };
+      },
     },
     PhysicalQuantityId.StandardEffectiveTemperature,
     PhysicalQuantityId.CoolingEffect,
@@ -492,20 +534,28 @@ export function buildPmvResultRows(): TableRowAuthoring<PmvResponse>[] {
       quantity: PhysicalQuantityId.RelativeAirSpeed,
       id: "relative-air-speed",
       label: "Relative air speed",
-      value: (result) => result.vr,
     },
     {
       quantity: PhysicalQuantityId.ClothingInsulation,
       id: "dynamic-clothing",
       label: "Dynamic clothing",
-      value: (result) => result.dynamicClothing,
+      value: (result, context) => (
+        context?.input?.[PhysicalQuantityId.ClothingInsulation]
+        ?? result[PhysicalQuantityId.ClothingInsulation]
+        ?? Number.NaN
+      ),
     },
   ];
 }
 
 export function derivePmvAnalysisOutputs(
   request: PmvRequest,
-): Pick<PmvResponse, "set" | "ce" | "vr" | "dynamicClothing"> {
+): {
+  set: number;
+  ce: number;
+  vr: number;
+  dynamicClothing: number;
+} {
   const set = requireFiniteOutput(
     set_tmp(
       request.tdb,
@@ -551,16 +601,16 @@ export function calculatePmvModel(
   visibleInputIds: InputIdType[],
   adapter: PmvStandardAdapter,
 ) {
-  const resultsByInput: Record<InputIdType, PmvResponse | null> = {
+  const valuesByInput: Record<InputIdType, QuantityState | null> = {
     [InputId.Input1]: null,
     [InputId.Input2]: null,
     [InputId.Input3]: null,
   };
   for (const inputId of visibleInputIds) {
-    resultsByInput[inputId] = evaluatePmvSlot(adapter, context, inputId);
+    valuesByInput[inputId] = evaluatePmvSlot(adapter, context, inputId);
   }
   return {
-    resultsByInput,
+    valuesByInput,
     chartSource: buildPmvChartSource(adapter, context, visibleInputIds),
   };
 }

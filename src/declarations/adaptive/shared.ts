@@ -7,7 +7,13 @@ import {
   ComplianceStatus,
   type JsThermalComfortStandard,
 } from "../../catalog/modelIds";
-import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
+import type { ModelChartSource } from "../../catalog/chartSource";
+import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import {
+  PhysicalQuantityId,
+  getPhysicalQuantityMeta,
+  type QuantityState,
+} from "../../catalog/quantities";
 import { InputWidget } from "../../catalog/inputWidgets";
 import type { InputPresetKey as InputPresetKeyType } from "../../engines/comfort/controls/inputControlPresets";
 import {
@@ -39,7 +45,10 @@ import {
 import { ChartType } from "../../catalog/chartTypes";
 import { buildHoverTemplate } from "../../engines/comfort/charts/plotlyBuilders";
 import type { ChartAxisScale } from "../../engines/comfort/charts/types";
-import type { BoundaryRegionDataSpec } from "../../engines/comfort/charts/kinds/types";
+import type {
+  BoundaryRegionChartEngineSpec,
+  BoundaryRegionDataSpec,
+} from "../../engines/comfort/charts/kinds/types";
 import { convertFieldValueFromSi, plotlyHoverNumber } from "../../engines/units";
 import { roundValue } from "../../engines/comfort/helpers";
 import type { PlotHoverRow } from "../../engines/plotlyTypes";
@@ -47,9 +56,11 @@ import { unitLabel, type UnitSystem as UnitSystemType } from "../../catalog/unit
 import {
   buildAdaptiveResultRows,
   calculateAdaptive,
+  adaptiveValuesFromResponse,
   getLevelResult,
   parseAdaptiveOptions,
   toAdaptiveRequest,
+  toAdaptiveRequestFromSi,
 } from "./calculation";
 
 export interface AdaptiveRequest {
@@ -119,7 +130,7 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   intervals: readonly LibraryInterval[];
   exploreOutputs: readonly ModelOutput[];
   modifiers?: readonly InputModifier[];
-  complianceProfile: ComplianceSpec<Band, AdaptiveResponse>;
+  complianceProfile: ComplianceSpec<Band>;
   resultStandard: ComfortStandard;
   operativeTemperatureStandard: JsThermalComfortStandard;
   hoverLevelIds: readonly string[];
@@ -131,9 +142,13 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   complianceColors: { compliant: string; nonCompliant: string };
 }
 
+export interface AdaptiveChartSource extends ModelChartSource<AdaptiveRequest> {
+  extrasByInput: Partial<Record<InputIdType, AdaptiveResponse | null>>;
+}
+
 function buildAdaptiveTableRows(
   declaration: AdaptiveModelDeclaration,
-): TableRowSpec<AdaptiveResponse>[] {
+): TableRowSpec[] {
   const rowMeta = [
     { id: "compliance", label: "Compliance" },
     ...declaration.levels.map((level) => ({ id: level.id, label: level.label })),
@@ -141,8 +156,12 @@ function buildAdaptiveTableRows(
   return rowMeta.map((meta, index) => ({
     id: meta.id,
     label: meta.label,
-    format: (result, unitSystem) => (
-      buildAdaptiveResultRows(declaration, unitSystem)[index].formatter(result)
+    format: (result, unitSystem, context) => (
+      buildAdaptiveResultRows(declaration, unitSystem)[index].formatter(
+        result,
+        unitSystem,
+        context,
+      )
     ),
   }));
 }
@@ -211,8 +230,8 @@ export const adaptiveOperativeRangeSi = { min: 10, max: 40 };
 
 export function createAdaptiveBoundaryRegionSpec(
   declaration: AdaptiveModelDeclaration,
-): BoundaryRegionDataSpec<AdaptiveResponse, AdaptiveRequest> {
-  return {
+): BoundaryRegionChartEngineSpec<QuantityState> {
+  const spec: BoundaryRegionDataSpec<QuantityState, AdaptiveRequest> = {
     axisFields: [
       PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
       PhysicalQuantityId.OperativeTemperature,
@@ -221,7 +240,9 @@ export function createAdaptiveBoundaryRegionSpec(
     outdoorLabel: declaration.outdoorTemperatureLabel,
     operativeRangeSi: adaptiveOperativeRangeSi,
     boundaryPoints: 240,
-    evaluate: (payload) => calculateAdaptive(declaration, payload),
+    evaluate: (payload) => adaptiveValuesFromResponse(
+      calculateAdaptive(declaration, payload),
+    ),
     requestFromPoint: (baseline, outdoorSi, operativeSi) => ({
       ...baseline,
       t_running_mean: outdoorSi,
@@ -234,8 +255,12 @@ export function createAdaptiveBoundaryRegionSpec(
       [PhysicalQuantityId.MeanRadiantTemperature]: payload.tr,
       [PhysicalQuantityId.PrevailingMeanOutdoorTemperature]: payload.t_running_mean,
     }),
-    getHoverMetadata: (result, unitSystem) => (
-      getAdaptiveHoverMetadata(declaration, result, unitSystem)
+    getHoverMetadata: (_result, unitSystem, payload) => (
+      getAdaptiveHoverMetadata(
+        declaration,
+        calculateAdaptive(declaration, payload as AdaptiveRequest),
+        unitSystem,
+      )
     ),
     buildHoverTemplate: (unitSystem, xAxis, yAxis, inputLabel) => (
       buildAdaptiveHoverTemplate(
@@ -247,6 +272,7 @@ export function createAdaptiveBoundaryRegionSpec(
       )
     ),
   };
+  return spec as unknown as BoundaryRegionChartEngineSpec<QuantityState>;
 }
 
 export function createAdaptiveModelConfig(
@@ -284,7 +310,7 @@ export function createAdaptiveModelConfig(
     ],
     response: {
       values: [
-        resultQuantity("tmp_cmf", PhysicalQuantityId.OperativeTemperature),
+        resultQuantity("t_o", PhysicalQuantityId.OperativeTemperature),
       ],
       intervals: declaration.intervals,
     },
@@ -294,9 +320,7 @@ export function createAdaptiveModelConfig(
     charts: [
       {
         type: ChartType.Adaptive,
-        spec: createAdaptiveBoundaryRegionSpec(declaration) as BoundaryRegionDataSpec<
-          AdaptiveResponse
-        >,
+        spec: createAdaptiveBoundaryRegionSpec(declaration),
       },
     ],
     features: {
@@ -309,14 +333,27 @@ export function createAdaptiveModelConfig(
       ],
       complianceProfile: declaration.complianceProfile,
       exploreOutputs: declaration.exploreOutputs,
-      invoke: (_si, context, inputId) =>
-        calculateAdaptive(declaration, toAdaptiveRequest(context, inputId)),
-      mapChartInput: (_si, context, inputId) => toAdaptiveRequest(context, inputId),
       defaultOptions: {
         ...defaultAdaptiveOptions,
         [OptionKey.TemperatureMode]: TemperatureMode.Operative,
       },
       parseOptions: parseAdaptiveOptions,
+    },
+    pipeline: {
+      invoke: (si, context) => adaptiveValuesFromResponse(
+        calculateAdaptive(declaration, toAdaptiveRequestFromSi(si, context)),
+      ),
+      mapChartInput: (_si, context, inputId) => toAdaptiveRequest(context, inputId),
+      buildChartSource: (context, visibleInputIds): AdaptiveChartSource => {
+        const extrasByInput: AdaptiveChartSource["extrasByInput"] = {};
+        const inputs: AdaptiveChartSource["inputs"] = {};
+        for (const inputId of visibleInputIds) {
+          const request = toAdaptiveRequest(context, inputId);
+          inputs[inputId] = request;
+          extrasByInput[inputId] = calculateAdaptive(declaration, request);
+        }
+        return { inputs, extrasByInput };
+      },
     },
     dynamicAxisFields: [
       PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
