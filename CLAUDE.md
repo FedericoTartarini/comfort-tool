@@ -55,6 +55,7 @@ src/
     libraryInputs.ts      toLibraryInputs(slot, model, environment): Map -> library init, v -> vr, t_o -> tdb = tr
     numberFormat.ts       the only number formatter
     units.ts              display units: symbol, step, SI <-> IP conversion (the one formula exception)
+    bandPalette.ts        the one band palette: colour by position in a library IntervalScale
     shareLink.ts          encode / decode — the only place wire strings appear
     charts/               chartSpec.ts psychrometricChart.ts dynamicChart.ts
   models/         one declaration file per model + index.ts (the registry);
@@ -124,6 +125,10 @@ Test: "would pythermalcomfort ship it?" (ADR §3).
 - **Runes only.** No `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`.
   Cross-component shared state is a class with `$state` fields; `$effect` is
   for external synchronisation only.
+- **Identity survives state.** Objects compared by identity (models, quantities,
+  closed-set members, `Measure`s) are held in `$state.raw`, never a deep `$state`
+  proxy, and are replaced rather than mutated. A proxy breaks `===` against the
+  library's objects (`session.unitSystem === unitSystem.si` silently false).
 - **Erasable syntax only.** No `enum`, no `namespace`, no constructor parameter
   properties (`erasableSyntaxOnly` is on). Closed sets are `as const` objects of
   plain data objects with a derived union type, the same shape as the library's

@@ -7,3 +7,6 @@
 /.idea/
 .cursor/
 /local-docs/
+
+# Playwright MCP session output
+.playwright-mcp/

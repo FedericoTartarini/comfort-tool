@@ -4,7 +4,7 @@
 - Scope: v1 (target 2026-10-01), and long-term maintenance thereafter
 - Supersedes: the prototype repository `main repo/comfort-tool` (Svelte 5, about 49k lines). The prototype is unmaintainable because of excessive layering; **no code is reused, only verified behaviour is borrowed**.
 - Companion: the `typescript` branch of the `jsthermalcomfort` fork (the calculation library; TypeScript, its build output consumed through a symlink, developed in parallel with this project). Section 4 also gives the library's public interface contract.
-- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6).
+- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6). Revision 2026-09-04 (Phase 2): the Compliance column colours a `category` by band position from the app's one palette (§4.3); PMV applies `v_relative` (§4.5); objects compared by identity live in `$state.raw` (§6).
 
 ---
 
@@ -206,7 +206,7 @@ Rules: every model has the Explore capability by default; the Standard capabilit
 Result table (`table`):
 
 - There is only one table style (the prototype's design): uppercase small-font header; horizontal scroll when there are many columns; with Compare on, one row per slot, and Baseline decides which row the difference highlighting is relative to.
-- The columns are fixed in three sections: **Input** (slot name, coloured with the slot colour, always the first column) → **Compliance** (appears only when the model's `Measure` carries `category` or `intervals`; shows the label the value falls into, coloured as pass / fail) → **the library outputs listed in the model file's `table`**, in declaration order, values formatted per §4.6 and following the unit system.
+- The columns are fixed in three sections: **Input** (slot name, coloured with the slot colour, always the first column) → **Compliance** (appears only when the model's `Measure` carries `category` or `intervals`; shows the label the value falls into: a `category` is drawn with a swatch coloured by its **position** in the model's scale, from the app's one band palette `core/bandPalette.ts`; an `intervals` entry is coloured pass / fail by `satisfied`) → **the library outputs listed in the model file's `table`**, in declaration order, values formatted per §4.6 and following the unit system.
 - `table` is required; outputs not listed are not shown and are not offered in Explore's output selection.
 
 ### 4.4 Chart types (closed set, v1)
@@ -251,7 +251,7 @@ class Outputs { perSlot: readonly (ModelResult | null)[]; grid: GridResult | nul
 Rules:
 
 - **The quantity the user entered is the truth.** Humidity is stored as the original value in `humidity`; `rh` is derived by the pure function `toLibraryInputs(slot, model, environment)` from the current `tdb` and atmospheric pressure before sending to the Worker (changing `tdb` keeps the dew point and changes RH, consistent with the old tool); when switching representation, the current value is converted into the new representation. Under `temperatureMode.operative` the slot stores `t_o`, and `toLibraryInputs` expands it to `tdb = tr = t_o`; on a mode switch the value is converted: separate → operative uses the library's `psychrometrics.t_o(tdb, tr, v)`, operative → separate sets `tdb = tr = t_o`.
-- `toLibraryInputs` also handles `v → vr`: the PMV panel shows `v`, the library needs `vr`. Whether `v_relative(v, met)` is applied is model behaviour, specified by the declaration file and determined by checking against the old tool.
+- `toLibraryInputs` also handles `v → vr`: the PMV panel shows `v`, the library needs `vr`. Whether `v_relative(v, met)` is applied is model behaviour, specified by the declaration file (`relativeAirSpeed`). Decided 2026-09-03: PMV declares `relativeAirSpeed: true`, matching the deployed CBE tool; the `refactor-draft` prototype passed the entered value through unchanged, so when comparing against it enter `v_relative(v, met)` there.
 - Outputs are derived entirely from Inputs + Chart, observed and written by `state/compute.svelte.ts`; transient UI state does not enter the Session.
 - Switching models: parameters for the same quantity are kept; parameters outside the new model's hard range open a dialog (title "Boundary Range Warning", a table Input / Current / Allowed range, buttons "Yes, switch and adjust" / "No, stay here"); no dialog when nothing is out of range; all three slots are handled the same way.
 - Explore thresholds: an ordered list of `Band`s, lower bound inclusive, upper bound exclusive, gaps uncoloured; the editor has Add band / Reset / delete; saved per (model, output) and included in the link; colours are assigned by the app from a fixed palette by interval position, and are editable.
@@ -312,6 +312,7 @@ src/
     libraryInputs.ts      toLibraryInputs(slot, model, environment): entry groups → library inputs (Map → init, v → vr, t_o → tdb = tr)
     numberFormat.ts       two decimals, trailing zeros stripped
     units.ts              display units: symbol, step, SI↔IP conversion (§3 exception)
+    bandPalette.ts        the one band palette: colour by position in a library IntervalScale
     shareLink.ts          encode / decode (migrate arrives with v2)
     charts/   chartSpec.ts (includes LegendEntry)  psychrometricChart.ts (calls charts.psychrometricZone)  dynamicChart.ts (100×100 grid)
   models/               one declaration file per model + index.ts; the only directory on the main thread that may reference library model functions
@@ -334,7 +335,7 @@ index.html              embedded ES5 feature check + read-only summary page
 - **Naming**: components `PascalCase.svelte`; modules `camelCase.ts`; functions start with a verb; consistent vocabulary `dynamic chart`, `chart type`, `model`, `session`, `slot`, `workspace`; `engine / manager / helper / utils` are forbidden as file names; quantity keys use the library's naming verbatim, no other abbreviations. **The display name of a quantity always comes from `Quantity.label`**; the app never writes one. The old tool's "Air temperature" is the wrong term and is not carried over; the correct one is the library's "Dry-bulb air temperature", and changing the spelling means changing the library in one place only.
 - **Types first**: closed sets are `as const` object collections; quantities, models and standards are all imported from the library and referenced with dot access; types are derived from data (`as const`, `satisfies`); no magic strings and no loose dictionaries; renaming something changes one place only.
 - **Granularity**: one concept per file, 100–400 lines is normal; plain functions + data objects over class hierarchies; no abstractions reserved for "maybe later"; do not split logic into a large number of tiny methods.
-- **Svelte guardrails**: runes only; ESLint forbids `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`; third-party library integration uses `{@attach}`; cross-component shared state is a class with `$state` fields; `$effect` is for external synchronisation only.
+- **Svelte guardrails**: runes only; ESLint forbids `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`; third-party library integration uses `{@attach}`; cross-component shared state is a class with `$state` fields; `$effect` is for external synchronisation only; objects compared by identity (models, quantities, closed-set members, `Measure`s) are held in `$state.raw` and replaced rather than mutated — a deep `$state` proxy breaks `===` against the library's objects.
 - **TypeScript guardrails**: `strict`, `erasableSyntaxOnly`, `verbatimModuleSyntax`; no `enum`, `namespace`, or constructor parameter properties.
 - **AI workflow**: enable the Svelte MCP in every session; generated `.svelte` files must pass `svelte-autofixer`; PRs must pass typecheck + lint + build.
 

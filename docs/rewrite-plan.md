@@ -282,7 +282,7 @@ different design, using the same model, would also need with exactly the same va
 
 Build in order:
 
-1. `src/core/` closed sets (ADR §4.2): `workspace.ts`, `chartType.ts`, `unitSystem.ts`,
+1. `src/core/` closed sets (ADR §4.2): `workspace.ts`, `chartType.ts` (both deferred to their first consumer, Phase 5 / Phase 3), `unitSystem.ts`,
    `entryModes.ts`. All are `as const` object collections + derived union types + plain `xxxFromId()` functions,
    written the same way as the library's `quantities`, with no classes. `temperatureMode` in `entryModes.ts` carries two
    Quantity fields, `panel` and `axis` (separate → `tdb`/`tr` and `tdb`, operative → `t_o` and `t_o`).
@@ -297,8 +297,8 @@ Build in order:
    `table` (required), `charts`, `timeSeries`. The Standard capability is determined by whether `model.standard` exists.
 4. `src/models/pmvIso.ts` (the shape from ADR §4.3) + `src/models/index.ts` (one registry line).
 5. `src/core/numberFormat.ts`: at most two decimals, trailing zeros stripped (`26.0→26`, `78.80→78.8`). The only one in the whole project.
-6. `src/core/libraryInputs.ts`: `toLibraryInputs(slot, model, environment)` — converts the representations
-   (5 kinds of humidity, operative mode) into the SI inputs the library wants, `Map<Quantity, number>` → library init
+6. `src/core/libraryInputs.ts`: `toLibraryInputs(slot, model)` — converts the representations
+   (Phase 2: relative humidity only — the other four need library-side inverses, see Phase 2b; operative mode) into the SI inputs the library wants, `Map<Quantity, number>` → library init
    (`Object.fromEntries` by `Quantity.key`, the only place in the app apart from shareLink that reads key),
    plus `v → vr` (whether to apply `v_relative`, checked against the old tool) and, under operative, expanding `t_o` into `tdb = tr = t_o`.
    Pure function; write the tests first.
@@ -315,6 +315,53 @@ Build in order:
 - Out of the hard range (`model.limits`): outlined in red, not calculated, last valid value kept
 - Nothing in `core/` `import`s any `svelte` / `state` / `ui` (blocked by the lint rule)
 - `numberFormat`, `units`, `toLibraryInputs` have unit tests
+
+### Executed 2026-09-04 ✅
+
+All done criteria met (`npm test` 21 tests, `check` / `lint` / `build` clean; verified in the browser against `io.pmvPpdIso` called directly). Decisions and findings made while executing:
+
+| Item | Decision / finding |
+|---|---|
+| v → vr | **`v_relative(v, met)` is applied** (`relativeAirSpeed: true` in `models/pmvIso.ts`), matching the deployed CBE tool. `comfort-tool-old` passed the entered value straight through; enter `v_relative(v, met)` there when comparing numbers |
+| Humidity | **RH only.** The library has no inverse conversions and no `hr` / `t_dp` / `t_wb` / `p_vap` quantities; `core/entryModes.ts` declares `humidityMode.rh` alone, `libraryInputs.ts` sets `rh` directly. The other four arrive with Phase 2b below |
+| Compliance colour | `category` is drawn as a swatch coloured by **band position** from `core/bandPalette.ts` (the seven CBE fills `#0571b0 #4c78a8 #92c5de #f2f2f2 #f4a582 #e15759 #cc79a7`); `intervals` colour pass / fail. No label-string comparison anywhere |
+| `limit_inputs` | Called with `false`: the app gates entered values against `model.limits` (red outline, no recompute, last valid result kept); the library then always returns numbers, as the deployed tool does |
+| Range check | On the **entered** quantity only (`outOfRangeInputs`): `v` against its own row, not the derived `vr`; an operative `t_o` entry against the intersection of the `tdb` and `tr` rows |
+| `$state.raw` | Identity-compared objects (model, unit system, entry modes, measures) must be `$state.raw`; a deep `$state` proxy made `session.unitSystem === unitSystem.si` false and the table show `—`. Now in ADR §6 / CLAUDE.md |
+| Lint | `symbol:` properties are exempt from the wire-string rule (`met` / `clo` are unit symbols as well as keys); probe verified |
+| Deferred | `workspace.ts`, `chartType.ts`, `xxxFromId()` wait for their first consumer (Phase 3 / Phase 5 shareLink); `environment` parameter of `toLibraryInputs` arrives with the humidity-ratio conversion |
+| Library issue | `quantities.p_atm.siUnit` is `"kPa"` but `psy_ta_rh` and `psychrometricZone.p_atm` take Pa — resolve in the library before Phase 5 "Set pressure" (folded into Phase 2b) |
+| Open | `rh` has no applicability row, so 0..100 is not enforced. Decide with Phase 2b whether a physical range belongs on `Quantity` or in `core/units.ts` by kind |
+
+---
+
+## Phase 2b · Library: humidity representations (fork repository)
+
+**Goal**: the four remaining humidity representations, so `humidityMode` can grow to five and `toLibraryInputs` can convert them without the app writing a formula or a root finder (ADR §3).
+**Prerequisites**: none on the app side; run in a separate chat with cwd set to the fork. Afterwards `npm run build` in the fork, then in the app: add the four modes to `core/entryModes.ts`, the four conversions to `core/libraryInputs.ts`, a mode selector row to `ui/inputs/InputPanel.svelte`, and the `pressure` / `humidityRatio` display units in `core/units.ts` (the `satisfies Record<QuantityKind, …>` will demand them).
+
+````text
+Repository: /Users/yehuihuang/SoftwareProjects/USYD/forked repo/jsthermalcomfort, branch typescript (HEAD 1f4df79)
+Reference: comfort-tool/docs/adr-0001-architecture.md §3 / §4.1
+
+Test as always: "would pythermalcomfort ship it?" Inverse psychrometric conversions are general-purpose; UI copy, steps and defaults are not.
+
+1. Add four quantities to src/io/quantity.ts:
+   hr    kind "humidityRatio" (new QuantityKind member), label "Humidity ratio", siUnit "kg/kg", ipUnit "kg/kg"
+   t_dp  kind "temperature", label "Dew-point temperature", °C / °F
+   t_wb  kind "temperature", label "Wet-bulb temperature", °C / °F
+   p_vap kind "pressure", label "Water vapour partial pressure" — unit must match what the functions return/accept (see 3)
+2. Add to src/psychrometrics/ (each a pure function, SI only, no rounding beyond what p_sat already does):
+   rh_from_humidity_ratio(hr, tdb, p_atm)   inverse of psy_ta_rh().hr  (p_vap = hr·p_atm / (0.62198 + hr); rh = 100·p_vap / p_sat(tdb))
+   rh_from_dew_point(t_dp, tdb)             rh = 100·p_sat(t_dp) / p_sat(tdb); t_dp ≥ tdb → 100
+   rh_from_wet_bulb(t_wb, tdb, p_atm)       numeric inverse of psy_ta_rh().t_wb using the existing bisect in src/charts/root_finding.ts (move it to a shared internal module if importing across layers is awkward)
+   rh_from_vapour_pressure(p_vap, tdb)      rh = 100·p_vap / p_sat(tdb)
+   Clamp to [0, 100]. Export from src/psychrometrics/index.ts (named + default object).
+3. Resolve the pressure unit inconsistency: quantities.p_atm.siUnit is "kPa" but psy_ta_rh and PsychrometricZoneOptions.p_atm take Pa. Pick one (recommend siUnit "Pa" so quantity and function agree) and apply it to p_vap too.
+4. Tests (tests/psychrometrics.test.ts): for a grid of (tdb, rh, p_atm) round-trip every inverse through psy_ta_rh to within the precision p_sat's 1-dp rounding allows; document that bound.
+5. Do not add: steps, defaults, labels for UI modes, anything keyed by string.
+Done: npm run typecheck / lint / test / build pass; tests/baseline.test.ts unchanged.
+````
 
 ---
 
@@ -341,7 +388,7 @@ Build in order:
    colours uniformly hex + `rgba()` (culori no longer accepts fractional `rgb()`); do not install `@types/plotly.js`.
 
 **Done criteria**
-- The PMV psychrometric chart's comfort-zone vertices differ from the old tool (`../comfort-tool-old/`) by ≤ 0.01 °C under the same inputs
+- The PMV psychrometric chart's comfort-zone vertices differ from the old tool (`../comfort-tool-old/`) by ≤ 0.01 °C under the same inputs (the app applies `v_relative(v, met)`; enter that `vr` in the old tool first)
 - Any chart has exactly one legend, below the chart; Plotly's built-in legend never appears
 - Zoom/pan work; when the grid calculation takes > 300 ms, show "computing" and keep the old chart
 

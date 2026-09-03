@@ -52,9 +52,11 @@ const legacySvelteSyntax = [
 // ADR §4.0: wire strings live in the library and in shareLink. Everywhere else
 // holds object references, so renaming a quantity is one edit. The key list is
 // read from the library so adding a quantity there never touches this file.
+// A unit symbol can spell the same as a key (`met`, `clo`); `symbol:` properties
+// in core/units.ts are display text, not identifiers, so they are exempt.
 const wireStringSyntax = [
   {
-    selector: `Literal[value=/^(${Object.keys(io.quantities).join("|")})$/]`,
+    selector: `Literal[value=/^(${Object.keys(io.quantities).join("|")})$/]:not(Property[key.name='symbol'] > Literal)`,
     message:
       "Reference the Quantity object from jsthermalcomfort, not its wire string. Wire strings belong in core/shareLink.ts.",
   },
