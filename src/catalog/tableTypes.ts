@@ -32,7 +32,6 @@ export type TableRowAuthoring<TResult> =
 
 export interface ModelTablesAuthoring<TResult = unknown> {
   readonly results: readonly TableRowAuthoring<TResult>[];
-  readonly timeSeries?: readonly TableRowAuthoring<TResult>[];
 }
 
 export interface ModelTables<TResult = unknown> {

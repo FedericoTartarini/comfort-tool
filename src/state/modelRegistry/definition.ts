@@ -11,11 +11,10 @@ import type {
 } from "../../catalog/modelCapabilities";
 import type { ModelChartInstances } from "../../catalog/chartTypes";
 import type { FieldChartProfile } from "../../catalog/fieldChartProfile";
-import type { ModelTables } from "../../catalog/tableTypes";
+import type { ModelTables, TableRowSpec } from "../../catalog/tableTypes";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import type {
   StandardId as StandardIdType,
-  SurfaceId,
 } from "../../catalog/surfaces";
 import type { ChartBuildResult } from "../../engines/comfort/charts/chartBuildResult";
 import type {
@@ -60,8 +59,13 @@ export type {
   SimulationTimeSeriesLineChartSpec,
 } from "../../engines/comfort/charts/simulationCharts";
 
+export interface RuntimeTimeSeriesFeature {
+  readonly rows: readonly TableRowSpec<unknown>[];
+  readonly simulation: SimulationOutputDeclaration;
+}
+
 /**
- * Strongly typed declaration used while assembling one model. The builder
+ * Strongly typed declaration used while assembling one model. Assembly
  * erases ResultType and ChartSourceType exactly once when producing the runtime
  * definition consumed by the controller.
  */
@@ -73,7 +77,7 @@ export interface ComfortModelDefinition<
   id: ModelIdType;
   label: string;
   description: string;
-  surfaceCapabilities: readonly SurfaceId[];
+  exploreMode: boolean;
   standardIds: readonly StandardIdType[];
   exploreOutputs: readonly ModelOutput[];
   modifiers: readonly InputModifier[];
@@ -82,6 +86,7 @@ export interface ComfortModelDefinition<
   inputFields: readonly InputFieldSpec[];
   optionHandlersByKey: Partial<Record<OptionKeyType, ModelOptionChangeHandler>>;
   tables: ModelTables<ResultType>;
+  timeSeries?: RuntimeTimeSeriesFeature;
   chartInstances: ModelChartInstances;
   chartEngineRegistrations: readonly ChartEngineRegistration<
     ResultType,
@@ -116,3 +121,21 @@ export type RuntimeComfortModelDefinition = ComfortModelDefinition<
   unknown,
   Band
 >;
+
+export function modelSupportsStandard(
+  config: Pick<RuntimeComfortModelDefinition, "standardIds">,
+): boolean {
+  return config.standardIds.length > 0;
+}
+
+export function modelSupportsExplore(
+  config: Pick<RuntimeComfortModelDefinition, "exploreMode">,
+): boolean {
+  return config.exploreMode;
+}
+
+export function modelSupportsTimeSeries(
+  config: Pick<RuntimeComfortModelDefinition, "timeSeries">,
+): boolean {
+  return config.timeSeries !== undefined;
+}

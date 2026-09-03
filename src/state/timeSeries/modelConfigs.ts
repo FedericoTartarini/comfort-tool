@@ -11,21 +11,21 @@ const timeSeriesSimulators = {
 } as const;
 
 const declaredTimeSeriesModelIds = comfortModelOrder.filter(
-  (modelId) => comfortModelConfigs[modelId].tables.timeSeries !== undefined,
+  (modelId) => comfortModelConfigs[modelId].timeSeries !== undefined,
 );
 
 for (const modelId of declaredTimeSeriesModelIds) {
   if (!(modelId in timeSeriesSimulators)) {
     throw new Error(
-      `Model ${modelId} declares tables.timeSeries but has no Time-series simulator. Declaring the table does not create a simulator.`,
+      `Model ${modelId} declares features.timeSeries but has no Time-series simulator. Declaring Time-series does not create a simulator.`,
     );
   }
 }
 
 for (const modelId of Object.keys(timeSeriesSimulators) as Array<keyof typeof timeSeriesSimulators>) {
-  if (comfortModelConfigs[modelId].tables.timeSeries === undefined) {
+  if (comfortModelConfigs[modelId].timeSeries === undefined) {
     throw new Error(
-      `Time-series simulator for ${modelId} requires tables.timeSeries on the model declaration.`,
+      `Time-series simulator for ${modelId} requires features.timeSeries on the model declaration.`,
     );
   }
 }
@@ -50,13 +50,13 @@ export function getTimeSeriesModelConfig(
   modelId: TimeSeriesModelId,
 ): RuntimeTimeSeriesModelDefinition {
   const declaration = comfortModelConfigs[modelId as ModelIdType];
-  if (declaration.tables.timeSeries === undefined) {
-    throw new Error(`${modelId} is not a Time-series model (missing tables.timeSeries).`);
+  if (declaration.timeSeries === undefined) {
+    throw new Error(`${modelId} is not a Time-series model (missing features.timeSeries).`);
   }
   const simulator = timeSeriesSimulators[modelId];
   if (!simulator) {
     throw new Error(
-      `Declaring tables.timeSeries does not create a simulator for ${modelId}.`,
+      `Declaring features.timeSeries does not create a simulator for ${modelId}.`,
     );
   }
   return simulator as unknown as RuntimeTimeSeriesModelDefinition;

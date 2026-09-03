@@ -27,7 +27,12 @@ import {
   defaultPhsPersonSettings,
 } from "../catalog/phs";
 import { utciModelConfig, calculateUtci } from "./utci/utci";
-import { windChillModelConfig, calculateWindChill } from "./windChill";
+import { windChillModelConfig } from "./windChill";
+import { invokeMappedLibrary } from "../engines/comfort/libraryInvoke";
+import { inputQuantity, resultQuantity } from "../state/modelRegistry/builder";
+import { InputWidget } from "../catalog/inputWidgets";
+import { convertMetersPerSecondToKilometersPerHour } from "../engines/units";
+import { wind_chill_temperature } from "jsthermalcomfort";
 
 const visibleInputIds = [InputId.Input1];
 const allVisibleInputIds = [InputId.Input1, InputId.Input2, InputId.Input3];
@@ -434,7 +439,33 @@ describe("comfort model result rows", () => {
   });
 
   it("builds Wind Chill rows with index and temperature cells", () => {
-    const result = calculateWindChill({ tdb: -10, v: 5 });
+    const result = invokeMappedLibrary(
+      wc,
+      [
+        inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+          minValue: -45,
+          maxValue: 0,
+        }),
+        inputQuantity("v", PhysicalQuantityId.WindSpeed, {
+          widget: InputWidget.OutdoorWindSpeed,
+          minValue: 1,
+          maxValue: 20,
+        }),
+      ],
+      [
+        resultQuantity("wci", PhysicalQuantityId.WindChillIndex),
+        resultQuantity("wct", PhysicalQuantityId.WindChillTemperature, {
+          from: (si) => wind_chill_temperature(
+            si[PhysicalQuantityId.DryBulbTemperature]!,
+            convertMetersPerSecondToKilometersPerHour(
+              si[PhysicalQuantityId.WindSpeed]!,
+            ),
+            false,
+          ).wct,
+        }),
+      ],
+      { tdb: -10, v: 5 },
+    );
     const sections = windChillModelConfig.buildTable(
       createResultRecord(result),
       visibleInputIds,
@@ -442,10 +473,20 @@ describe("comfort model result rows", () => {
     );
 
     expect(sections.map((section) => section.title)).toEqual([
-      wc.label,
-      "wct",
+      getPhysicalQuantityMeta(PhysicalQuantityId.WindChillIndex).label,
+      getPhysicalQuantityMeta(PhysicalQuantityId.WindChillTemperature).label,
     ]);
-    expect(getInputCell(sections, wc.label)?.subtext).toBeUndefined();
-    expect(getInputCell(sections, "wct")?.text).toContain("°C");
+    expect(
+      getInputCell(
+        sections,
+        getPhysicalQuantityMeta(PhysicalQuantityId.WindChillIndex).label,
+      )?.subtext,
+    ).toBeUndefined();
+    expect(
+      getInputCell(
+        sections,
+        getPhysicalQuantityMeta(PhysicalQuantityId.WindChillTemperature).label,
+      )?.text,
+    ).toContain("°C");
   });
 });

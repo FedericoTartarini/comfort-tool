@@ -8,11 +8,11 @@ import {
 } from "./modelConfigs";
 
 describe("Time-series model registry", () => {
-  it("derives enabled models from PHS tables.timeSeries rather than a second product list", () => {
+  it("derives enabled models from PHS features.timeSeries rather than a second product list", () => {
     expect(timeSeriesModelOrder).toEqual([ModelId.Phs2023]);
     const phs = getComfortModelConfig(ModelId.Phs2023);
-    expect(phs.tables.timeSeries).toBeDefined();
-    expect(phs.tables.timeSeries?.length).toBeGreaterThan(0);
+    expect(phs.timeSeries).toBeDefined();
+    expect(phs.timeSeries?.rows.length).toBeGreaterThan(0);
     expect(getTimeSeriesModelConfig(ModelId.Phs2023).id).toBe(ModelId.Phs2023);
   });
 });

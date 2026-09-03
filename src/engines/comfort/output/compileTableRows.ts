@@ -123,8 +123,5 @@ export function compileModelTables<TResult>(
 ): ModelTables<TResult> {
   return {
     results: tables.results.map(compileTableRow),
-    ...(tables.timeSeries
-      ? { timeSeries: tables.timeSeries.map(compileTableRow) }
-      : {}),
   };
 }

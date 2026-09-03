@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 
 import { ChartType, type ChartInstanceDeclaration } from "../../../../catalog/chartTypes";
-import type { ModelDeclaration } from "../../../../state/modelRegistry/builder";
+import type { ModelAuthoring } from "../../../../state/modelRegistry/builder";
 import type {
   DynamicFieldGridSpec,
   FrontendChartDeclaration,
@@ -15,7 +15,7 @@ describe("chart type spec union", () => {
   });
 
   it("lets defineModel select any closed ChartType", () => {
-    type AuthoringChart = ModelDeclaration<unknown, unknown>["charts"][number];
+    type AuthoringChart = ModelAuthoring<unknown, unknown>["charts"][number];
     type DeclaredKind = AuthoringChart["type"];
     type DeclaredPsychrometric = Extract<
       AuthoringChart,

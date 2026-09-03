@@ -7,12 +7,11 @@ import {
   buildCanonicalPathname,
   getAllowedModels,
   getAppRouteByPath,
-  isCalculationRoute,
   isMalformedAppPath,
   parseAppLocation,
   type AppRouteDefinition,
 } from "./routeDefinitions";
-import { getComfortModelConfig } from "../modelRegistry";
+import { getComfortModelConfig, modelSupportsExplore, modelSupportsStandard } from "../modelRegistry";
 
 describe("workspace route definitions", () => {
   it("declares /standard/{standard}/ roots from StandardId and resolves mixed-case aliases", () => {
@@ -74,21 +73,19 @@ describe("workspace route definitions", () => {
         continue;
       }
 
-      if (!isCalculationRoute(definition)) {
-        throw new Error(`Expected a calculation route for ${definition.path}.`);
-      }
-
       const allowedModels = getAllowedModels(definition);
+      expect(definition.defaultModelId).toBeDefined();
       expect(allowedModels).toContain(definition.defaultModelId);
-      const routeWorkspace = definition.surface as typeof SurfaceId.Standard | typeof SurfaceId.Explore;
-      const expectedCapability = routeWorkspace === SurfaceId.Explore
-        ? SurfaceId.Explore
-        : SurfaceId.Standard;
-      expect(getComfortModelConfig(definition.defaultModelId).surfaceCapabilities)
-        .toContain(expectedCapability);
+      if (definition.surface === SurfaceId.Explore) {
+        expect(modelSupportsExplore(getComfortModelConfig(definition.defaultModelId))).toBe(true);
+        for (const modelId of allowedModels) {
+          expect(modelSupportsExplore(getComfortModelConfig(modelId))).toBe(true);
+        }
+        continue;
+      }
+      expect(modelSupportsStandard(getComfortModelConfig(definition.defaultModelId))).toBe(true);
       for (const modelId of allowedModels) {
-        expect(getComfortModelConfig(modelId).surfaceCapabilities)
-          .toContain(expectedCapability);
+        expect(modelSupportsStandard(getComfortModelConfig(modelId))).toBe(true);
       }
     }
   });

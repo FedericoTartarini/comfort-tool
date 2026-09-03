@@ -1,4 +1,5 @@
 import { pmv_ppd_ashrae, pmv_ppd_iso } from "jsthermalcomfort";
+import type { ClassifierTokenRow } from "../../catalog/classifierBins";
 import {
   bandsFromJsBins,
   bandsFromJsBounds,
@@ -8,15 +9,19 @@ import {
 import { bandsFromThermalZones } from "../../catalog/modelCapabilities";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
 
-const PMV_TSV_TOKENS: Readonly<Record<string, ZoneToken>> = {
-  Cold: ZoneToken.Cold,
-  Cool: ZoneToken.Cool,
-  "Slightly Cool": ZoneToken.SlightlyCool,
-  Neutral: ZoneToken.Neutral,
-  "Slightly Warm": ZoneToken.SlightlyWarm,
-  Warm: ZoneToken.Warm,
-  Hot: ZoneToken.Hot,
-};
+export const PMV_TSV_TOKEN_ROWS: readonly ClassifierTokenRow[] = [
+  { label: "Cold", token: ZoneToken.Cold },
+  { label: "Cool", token: ZoneToken.Cool },
+  { label: "Slightly Cool", token: ZoneToken.SlightlyCool },
+  { label: "Neutral", token: ZoneToken.Neutral },
+  { label: "Slightly Warm", token: ZoneToken.SlightlyWarm },
+  { label: "Warm", token: ZoneToken.Warm },
+  { label: "Hot", token: ZoneToken.Hot },
+];
+
+const PMV_TSV_TOKENS: Readonly<Record<string, ZoneToken>> = Object.fromEntries(
+  PMV_TSV_TOKEN_ROWS.map((row) => [row.label, row.token]),
+);
 
 const ASHRAE_COMPLIANCE_TOKENS: Readonly<Record<string, ZoneToken>> = {
   [ZoneToken.Acceptable]: ZoneToken.Acceptable,

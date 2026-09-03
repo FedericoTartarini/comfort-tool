@@ -10,7 +10,8 @@ import {
   PhysicalQuantityId,
   type PhysicalQuantityId as PhysicalQuantityIdType,
 } from "../catalog/quantities";
-import { supportsStandardSurface, SurfaceId } from "../catalog/surfaces";
+import { SurfaceId } from "../catalog/surfaces";
+import { modelSupportsStandard } from "../state/modelRegistry/definition";
 import { syncDerivedStateForInput } from "../engines/comfort/syncState";
 import { createPointSession } from "../state/pointSession/createPointSession.svelte";
 import { comfortModelConfigs } from "../state/modelRegistry";
@@ -161,7 +162,7 @@ export async function assertCompareContract(
 ): Promise<void> {
   const config = comfortModelConfigs[modelId];
   session.actions.setActiveSurface(
-    supportsStandardSurface(config.surfaceCapabilities)
+    modelSupportsStandard(config)
       ? SurfaceId.Standard
       : SurfaceId.Explore,
   );

@@ -101,7 +101,7 @@ src/
     comfort/       shared comfort helpers, adapters, modifiers, and chart binds
     units/         SI <-> display conversion
   state/
-    modelRegistry/ defineModel, ComfortModelBuilder, registered runtime configs
+    modelRegistry/ defineModel, registered runtime configs
     pointSession/  PointSession: input/chart/setting/output buckets, actions, $derived view-models,
                    share snapshot/codec/url (JSON + Base64URL + ?state=)
     timeSeries/    independent Time-series session (PHS)
@@ -129,7 +129,7 @@ Important invariants:
 - Each registered model has one focused declaration entry. Stable IDs, explicit registry entries, shared metadata, and tests remain separate concerns.
 - Each Compare slot stores one sparse `QuantityState` (`PhysicalQuantityId` → SI). TypeScript quantity keys are PascalCase physical names; wire strings match jsthermalcomfort fields. Share serializes that bag minus derived humidity (`t_dp`, `hr`, `t_wb`, `p_vap`). Ranges live on model `inputFields` and chart `rangeSi`, not the catalog.
 - Model options are complete and exact. Parsers reject missing, extra, or illegal values; internal invalid state throws.
-- Each model declares charts via `defineModel` `charts` with ids that live only on the declaration. Family modules may still use `ComfortModelBuilder.setCharts()` internally. The registry derives those ids; there is no parallel `ChartInstanceId` tree.
+- Each model declares charts via `defineModel` `charts` with ids that live only on the declaration. The registry derives those ids; there is no parallel `ChartInstanceId` tree.
 - Compliance and Explore use the same field-chart engine. Presentation-only changes never stale calculation caches.
 - Base inputs (`quantitiesByInput`) and modifier configuration are stored separately; effective SI inputs are derived through Measured Air Speed, Morning Clothing Estimate, Dynamic Clothing, and Solar Gain in that fixed order when declared by the model, then exposed as `effectiveQuantitiesByInput` in `ModelCalculationContext`.
 - `defineLibraryQuantityMapping()` is the per-model JS-name ↔ catalog-quantity table. `createRequestAxisAdapter()` extends that map with field aliases and explicit operative-temperature behavior instead of duplicating chart-axis switches.

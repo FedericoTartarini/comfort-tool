@@ -1,102 +1,60 @@
 import { wc, wind_chill_temperature } from "jsthermalcomfort";
-import { CalculationSource } from "../catalog/calculationMetadata";
-import type { ModelChartSource } from "../catalog/chartSource";
 import { ModelId } from "../catalog/modelIds";
 import { InputWidget } from "../catalog/inputWidgets";
-import { numericBandFromToken, type ModelOutput } from "../catalog/modelCapabilities";
 import { ChartType } from "../catalog/chartTypes";
-import { SurfaceId } from "../catalog/surfaces";
 import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../catalog/quantities";
 import { unitLabel } from "../catalog/units";
-import { ZoneToken } from "../catalog/zoneTokens";
-import {
-  calculatePerInput,
-  defineLibraryQuantityMapping,
-} from "../engines/comfort/requestMapping";
 import {
   convertFieldValueFromSi,
   convertMetersPerSecondToKilometersPerHour,
 } from "../engines/units";
-import { defineModel } from "../state/modelRegistry/builder";
+import {
+  defineModel,
+  inputQuantity,
+  quantityRow,
+  resultQuantity,
+} from "../state/modelRegistry/builder";
+import type { QuantityState } from "../catalog/quantities";
 
-const WIND_CHILL_INDEX_LABEL = wc.label;
-const WIND_CHILL_TEMPERATURE_LABEL = "wct";
-const TDB_LIMITS = { min: -45, max: 0 };
-const WIND_LIMITS = { min: 1, max: 20 };
-
-/** Python/JS expose only WCI/WCT values. One unbounded band, no frostbite classifier. */
-const windChillDefaultBands = [
-  numericBandFromToken(ZoneToken.Neutral, {
-    min: -Infinity,
-    max: Infinity,
-    label: WIND_CHILL_INDEX_LABEL,
-  }),
-];
-
-export interface WindChillInputs {
-  tdb: number;
-  v: number;
-}
-
-export interface WindChillResponse {
-  wci: number;
-  wct: number;
-  source: CalculationSource;
-}
-
-export const windChillQuantityMapping = defineLibraryQuantityMapping<WindChillInputs>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  v: PhysicalQuantityId.WindSpeed,
-  wci: PhysicalQuantityId.WindChillIndex,
-  wct: PhysicalQuantityId.WindChillTemperature,
-});
-
-const windChillOutput: ModelOutput = {
-  key: PhysicalQuantityId.WindChillIndex,
-  label: WIND_CHILL_INDEX_LABEL,
-  defaultBands: windChillDefaultBands,
-};
-
-export function calculateWindChill(payload: WindChillInputs): WindChillResponse {
-  const wci = wc(payload.tdb, payload.v).wci;
-  if (!Number.isFinite(wci)) {
-    throw new Error(`Wind Chill produced a non-finite value: ${wci}.`);
-  }
-  const wct = wind_chill_temperature(
-    payload.tdb,
-    convertMetersPerSecondToKilometersPerHour(payload.v),
-  ).wct;
-
-  return {
-    wci,
-    wct,
-    source: CalculationSource.JsThermalComfort,
-  };
-}
-
-export const windChillModelConfig = defineModel<
-  WindChillResponse,
-  ModelChartSource<WindChillInputs>
->({
+export const windChillModelConfig = defineModel(wc, {
   id: ModelId.WindChill,
-  library: wc,
   standardIds: [],
-  surfaceCapabilities: [SurfaceId.Explore],
-  exploreOutputs: [windChillOutput],
-  modifiers: [],
-  inputFields: [
-    {
-      quantity: PhysicalQuantityId.DryBulbTemperature,
-      minValue: TDB_LIMITS.min,
-      maxValue: TDB_LIMITS.max,
-    },
-    {
-      quantity: PhysicalQuantityId.WindSpeed,
+  exploreMode: true,
+
+  inputs: [
+    inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+      minValue: -45,
+      maxValue: 0,
+    }),
+    inputQuantity("v", PhysicalQuantityId.WindSpeed, {
       widget: InputWidget.OutdoorWindSpeed,
-      minValue: WIND_LIMITS.min,
-      maxValue: WIND_LIMITS.max,
-    },
+      minValue: 1,
+      maxValue: 20,
+    }),
   ],
+
+  response: {
+    values: [
+      resultQuantity("wci", PhysicalQuantityId.WindChillIndex),
+      resultQuantity("wct", PhysicalQuantityId.WindChillTemperature, {
+        from: (si, _primary) => wind_chill_temperature(
+          si[PhysicalQuantityId.DryBulbTemperature]!,
+          convertMetersPerSecondToKilometersPerHour(
+            si[PhysicalQuantityId.WindSpeed]!,
+          ),
+          false,
+        ).wct,
+      }),
+    ],
+  },
+
+  tables: {
+    results: [
+      quantityRow(PhysicalQuantityId.WindChillIndex),
+      quantityRow(PhysicalQuantityId.WindChillTemperature),
+    ],
+  },
+
   charts: [{
     type: ChartType.Dynamic,
     capabilities: { locksYAxis: true },
@@ -105,58 +63,24 @@ export const windChillModelConfig = defineModel<
         x: PhysicalQuantityId.DryBulbTemperature,
         y: PhysicalQuantityId.WindSpeed,
       },
-      evaluate: calculateWindChill,
-      getOutputValue: (result) => windChillQuantityMapping.fromLibrary(result)[
-        PhysicalQuantityId.WindChillIndex
-      ]!,
-      requestAdapter: windChillQuantityMapping,
       dynamicHoverExtension: {
         getTemplateSuffix: (unitSystem) => {
           const units = unitLabel(
             getPhysicalQuantityMeta(PhysicalQuantityId.WindChillTemperature).siUnit,
             unitSystem,
           );
-          return `<br>${WIND_CHILL_TEMPERATURE_LABEL}: %{customdata[1]:.1f} ${units}`;
+          return `<br>wct: %{customdata[1]:.1f} ${units}`;
         },
         getMetadata: (result, unitSystem) => [
           result == null
             ? ""
             : convertFieldValueFromSi(
                 PhysicalQuantityId.WindChillTemperature,
-                windChillQuantityMapping.fromLibrary(result)[
-                  PhysicalQuantityId.WindChillTemperature
-                ]!,
+                (result as QuantityState)[PhysicalQuantityId.WindChillTemperature]!,
                 unitSystem,
               ),
         ],
       },
     },
   }],
-  tables: {
-    results: [
-      {
-        quantity: PhysicalQuantityId.WindChillIndex,
-        id: "wind-chill-index",
-        label: WIND_CHILL_INDEX_LABEL,
-        value: (result) => windChillQuantityMapping.fromLibrary(result)[
-          PhysicalQuantityId.WindChillIndex
-        ]!,
-      },
-      {
-        quantity: PhysicalQuantityId.WindChillTemperature,
-        id: "wind-chill-temperature",
-        label: WIND_CHILL_TEMPERATURE_LABEL,
-        value: (result) => windChillQuantityMapping.fromLibrary(result)[
-          PhysicalQuantityId.WindChillTemperature
-        ]!,
-      },
-    ],
-  },
-  calculate: (context, visibleInputIds) =>
-    calculatePerInput({
-      context,
-      visibleInputIds,
-      mapRequest: windChillQuantityMapping.mapRequest,
-      calculate: calculateWindChill,
-    }),
 });

@@ -6,7 +6,8 @@ import { InputPresetKey } from "../../engines/comfort/controls/inputControlPrese
 import { ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import { UnitSystem } from "../../catalog/units";
-import { StandardId, SurfaceId } from "../../catalog/surfaces";
+import { StandardId } from "../../catalog/surfaces";
+import { intervalFromOffsets } from "../../catalog/classifierBins";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -82,9 +83,19 @@ export const adaptiveEnDeclaration: AdaptiveModelDeclaration = {
   standardIds: [StandardId.En16798],
   resultStandard: ComfortStandard.En16798Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ISO,
-  surfaceCapabilities: [SurfaceId.Standard],
+  exploreMode: false,
+  intervals: [
+    intervalFromOffsets(
+      PhysicalQuantityId.OperativeTemperature,
+      adaptive_en.offsets,
+      [
+        { id: "cat_i", token: ZoneToken.Preferred },
+        { id: "cat_ii", token: ZoneToken.Acceptable },
+        { id: "cat_iii", token: ZoneToken.WideAcceptable },
+      ],
+    ),
+  ],
   exploreOutputs: [],
-  modifiers: [],
   complianceProfile: {
     output: PhysicalQuantityId.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveEnBoundaryDefinition),

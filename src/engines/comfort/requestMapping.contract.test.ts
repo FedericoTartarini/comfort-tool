@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { adaptiveQuantityMapping } from "../../declarations/adaptive/calculation";
-import { heatIndexQuantityMapping } from "../../declarations/heatIndex";
-import { humidexQuantityMapping } from "../../declarations/humidex";
 import { phsQuantityMapping } from "../../declarations/phs/phs";
 import { pmvQuantityMapping } from "../../declarations/pmv/calculation";
 import { utciQuantityMapping } from "../../declarations/utci/utci";
-import { windChillQuantityMapping } from "../../declarations/windChill";
-import { type LibraryQuantityMapping } from "./requestMapping";
+import { defineLibraryQuantityMapping, type LibraryQuantityMapping } from "./requestMapping";
 import { PhysicalQuantityId, type QuantityState } from "../../catalog/quantities";
 import { InputId, inputDefaultsById } from "../../catalog/inputSlots";
 import {
@@ -106,7 +103,29 @@ describe("library quantity mapping contract", () => {
   testQuantityMappingContract("UTCI", utciQuantityMapping);
   testQuantityMappingContract("ADAPTIVE", adaptiveQuantityMapping);
   testQuantityMappingContract("PHS", phsQuantityMapping);
-  testQuantityMappingContract("HEAT_INDEX", heatIndexQuantityMapping);
-  testQuantityMappingContract("HUMIDEX", humidexQuantityMapping);
-  testQuantityMappingContract("WIND_CHILL", windChillQuantityMapping);
+  testQuantityMappingContract(
+    "HEAT_INDEX",
+    defineLibraryQuantityMapping<QuantityState>({
+      tdb: PhysicalQuantityId.DryBulbTemperature,
+      rh: PhysicalQuantityId.RelativeHumidity,
+      hi: PhysicalQuantityId.HeatIndex,
+    }),
+  );
+  testQuantityMappingContract(
+    "HUMIDEX",
+    defineLibraryQuantityMapping<QuantityState>({
+      tdb: PhysicalQuantityId.DryBulbTemperature,
+      rh: PhysicalQuantityId.RelativeHumidity,
+      humidex: PhysicalQuantityId.Humidex,
+    }),
+  );
+  testQuantityMappingContract(
+    "WIND_CHILL",
+    defineLibraryQuantityMapping<QuantityState>({
+      tdb: PhysicalQuantityId.DryBulbTemperature,
+      v: PhysicalQuantityId.WindSpeed,
+      wci: PhysicalQuantityId.WindChillIndex,
+      wct: PhysicalQuantityId.WindChillTemperature,
+    }),
+  );
 });

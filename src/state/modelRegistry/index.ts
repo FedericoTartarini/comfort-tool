@@ -6,6 +6,10 @@ import type {
   RuntimeComfortModelDefinition,
   SimulationOutputDeclaration,
 } from "./definition";
+import {
+  modelSupportsExplore,
+  modelSupportsTimeSeries,
+} from "./definition";
 import { pmvAshraeModelConfig } from "../../declarations/pmv/ashrae";
 import { pmvIsoModelConfig } from "../../declarations/pmv/iso";
 import { utciModelConfig } from "../../declarations/utci/utci";
@@ -22,10 +26,17 @@ import {
 } from "../../catalog/surfaces";
 import {
   assembleCatalogs,
+} from "./validateModel";
+export {
+  assembleCatalogs,
   validateModel,
 } from "./validateModel";
-export { assembleCatalogs, validateModel };
 export type { AssembledCatalogs, CatalogModelSlice } from "./validateModel";
+export {
+  modelSupportsExplore,
+  modelSupportsStandard,
+  modelSupportsTimeSeries,
+} from "./definition";
 
 export const comfortModelConfigs: Record<
   ModelIdType,
@@ -86,11 +97,11 @@ export function getModelsForSurface(
     const config = comfortModelConfigs[modelId];
     switch (surfaceId) {
       case SurfaceId.Standard:
-        return config.surfaceCapabilities.includes(SurfaceId.Standard);
+        return config.standardIds.length > 0;
       case SurfaceId.Explore:
-        return config.surfaceCapabilities.includes(SurfaceId.Explore);
+        return modelSupportsExplore(config);
       case SurfaceId.TimeSeries:
-        return config.tables.timeSeries !== undefined;
+        return modelSupportsTimeSeries(config);
       default: {
         const exhaustive: never = surfaceId;
         throw new Error(`Unsupported surface: ${exhaustive}`);

@@ -9,7 +9,8 @@ import {
 } from "../../catalog/inputModes";
 import { InputId } from "../../catalog/inputSlots";
 import { UnitSystem } from "../../catalog/units";
-import { SurfaceId, supportsStandardSurface } from "../../catalog/surfaces";
+import { SurfaceId } from "../../catalog/surfaces";
+import { modelSupportsStandard } from "../modelRegistry/definition";
 import { FieldChartProfileKind } from "../../catalog/fieldChartProfile";
 import { resolveChartInstanceCapabilities } from "./chartInstancePresentation";
 import { ModifierId } from "../../catalog/inputModifiers";
@@ -36,9 +37,8 @@ function syncWorkspaceToModel(
   session: ReturnType<typeof createPointSession>,
   modelId: ModelId,
 ) {
-  const capabilities = comfortModelConfigs[modelId].surfaceCapabilities;
   session.actions.setActiveSurface(
-    supportsStandardSurface(capabilities)
+    modelSupportsStandard(comfortModelConfigs[modelId])
       ? SurfaceId.Standard
       : SurfaceId.Explore,
   );
@@ -579,7 +579,7 @@ describe("createPointSession", () => {
         session.actions.setActiveSurface(
           registration?.supportedExploreOutputs?.length
             ? SurfaceId.Explore
-            : supportsStandardSurface(modelConfig.surfaceCapabilities)
+            : modelSupportsStandard(modelConfig)
               ? SurfaceId.Standard
               : SurfaceId.Explore,
         );

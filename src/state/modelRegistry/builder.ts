@@ -8,6 +8,7 @@ import type {
   DynamicAxisDefaults,
   ModelOptionChangeHandler,
   RuntimeComfortModelDefinition,
+  RuntimeTimeSeriesFeature,
   SimulationOutputDeclaration,
 } from "./definition";
 import type { ModelId as ModelIdType } from "../../catalog/modelIds";
@@ -22,13 +23,10 @@ import {
   type InputFieldSpec,
 } from "../../engines/comfort/controls/fieldInputBehaviors";
 import {
-  supportsExploreSurface,
-  supportsStandardSurface,
-  supportsTimeSeriesSurface,
   type StandardId as StandardIdType,
-  type SurfaceId as SurfaceIdType,
 } from "../../catalog/surfaces";
 import {
+  numericBandFromToken,
   type Band,
   type ChartBuildContext,
   type ComplianceSpec,
@@ -41,8 +39,10 @@ import {
 } from "../../engines/comfort/charts/bands";
 import {
   PhysicalQuantityId,
+  getPhysicalQuantityMeta,
   isDerivedHumidityQuantityId,
   isPhysicalQuantityId,
+  type QuantityState,
 } from "../../catalog/quantities";
 import {
   inputModifierCatalogue,
@@ -59,6 +59,8 @@ import {
 import {
   type ModelTables,
   type ModelTablesAuthoring,
+  type TableRowAuthoring,
+  type TableRowSpec,
 } from "../../catalog/tableTypes";
 import { resolveChartBuildResult } from "../../engines/comfort/charts/kinds/index";
 import {
@@ -74,11 +76,45 @@ import {
   type FrontendChartDeclaration,
   type RegisteredChartEngineSpec,
 } from "../../engines/comfort/charts/kinds/types";
-import { compileModelTables } from "../../engines/comfort/output/compileTableRows";
+import {
+  calculateFromLibrary,
+  invokeMappedLibrary,
+  quantityStateAxisAdapter,
+  type ChartInputMapper,
+  type ChartSourceBuilder,
+  type JsModelFn,
+  type LibraryInvokeFn,
+} from "../../engines/comfort/libraryInvoke";
 import { buildCompareMatrixTable } from "../../engines/comfort/output/tableResolver";
 import type { ChartRange } from "../../engines/comfort/charts/types";
+import {
+  displayClassifierLabel,
+  numericBandsFromInterval,
+  tokenRowForValue,
+  type LibraryInterval,
+} from "../../catalog/classifierBins";
+import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
+import {
+  toAuthoringInputField,
+  type QuantityInputBind,
+  type QuantityResultBind,
+} from "../../engines/comfort/libraryBinds";
+import { compileModelTables, compileTableRow } from "../../engines/comfort/output/compileTableRows";
+
+export {
+  inputQuantity,
+  quantityRow,
+  resultQuantity,
+} from "../../engines/comfort/libraryBinds";
+export {
+  intervalFromBands,
+  intervalFromBins,
+  intervalFromBounds,
+  intervalFromOffsets,
+} from "../../catalog/classifierBins";
 
 export type { FrontendChartDeclaration };
+export type { ModelAuthoring as ModelDeclaration };
 
 export type JsModelLibrary = {
   readonly label: string;
@@ -212,7 +248,8 @@ function createChartInstanceDeclaration<ResultType, ChartSourceType>(
   };
 }
 
-export class ComfortModelBuilder<
+/** Internal assembly draft. Authors use `defineModel`, not this class. */
+class ComfortModelAssembler<
   ResultType,
   ChartSourceType,
   ComplianceBand extends Band = NumericBand,
@@ -223,7 +260,7 @@ export class ComfortModelBuilder<
 
   private description?: string;
 
-  private surfaceCapabilities?: readonly SurfaceIdType[];
+  private exploreMode?: boolean;
 
   private standardIds?: readonly StandardIdType[];
 
@@ -267,6 +304,8 @@ export class ComfortModelBuilder<
 
   private simulationOutput?: SimulationOutputDeclaration;
 
+  private timeSeriesRows?: readonly TableRowSpec<ResultType>[];
+
   private dynamicAxisFields?: readonly PhysicalQuantityId[];
 
   private defaultDynamicAxes?: DynamicAxisDefaults;
@@ -291,10 +330,8 @@ export class ComfortModelBuilder<
     return this;
   }
 
-  setSurfaceCapabilities(
-    capabilities: readonly SurfaceIdType[],
-  ): this {
-    this.surfaceCapabilities = capabilities;
+  setExploreMode(exploreMode: boolean): this {
+    this.exploreMode = exploreMode;
     return this;
   }
 
@@ -330,6 +367,17 @@ export class ComfortModelBuilder<
       }
     }
     this.simulationOutput = simulation;
+    return this;
+  }
+
+  setTimeSeries(feature: {
+    readonly rows?: readonly TableRowAuthoring<ResultType>[];
+    readonly simulation: SimulationOutputDeclaration;
+  }): this {
+    this.setSimulation(feature.simulation);
+    if (feature.rows) {
+      this.timeSeriesRows = feature.rows.map(compileTableRow);
+    }
     return this;
   }
 
@@ -697,18 +745,12 @@ export class ComfortModelBuilder<
   }
 
   build(): RuntimeComfortModelDefinition {
-    const surfaceCapabilities = this.surfaceCapabilities;
-    if (!surfaceCapabilities || surfaceCapabilities.length === 0) {
+    if (this.exploreMode === undefined) {
       throw new Error(
-        "Comfort model declarations require at least one workspace capability.",
+        "Comfort model declarations must explicitly set exploreMode.",
       );
     }
-
-    if (new Set(surfaceCapabilities).size !== surfaceCapabilities.length) {
-      throw new Error(
-        "Comfort model declarations cannot contain duplicate workspace capabilities.",
-      );
-    }
+    const exploreMode = this.exploreMode;
 
     const exploreOutputs = this.exploreOutputs;
     if (!exploreOutputs) {
@@ -766,12 +808,6 @@ export class ComfortModelBuilder<
       }
     }
 
-    const supportsStandard = supportsStandardSurface(surfaceCapabilities);
-    const supportsExplore = supportsExploreSurface(surfaceCapabilities);
-    const supportsTimeSeries = supportsTimeSeriesSurface(
-      surfaceCapabilities,
-    );
-
     const standardIds = this.standardIds;
     if (!standardIds) {
       throw new Error(
@@ -783,16 +819,9 @@ export class ComfortModelBuilder<
         "Comfort model declarations cannot contain duplicate standard IDs.",
       );
     }
-    if (supportsStandard && standardIds.length === 0) {
-      throw new Error(
-        "Standard workspace models must declare at least one standard ID.",
-      );
-    }
-    if (!supportsStandard && standardIds.length > 0) {
-      throw new Error(
-        "Models without Standard workspace capability cannot declare a standard ID.",
-      );
-    }
+
+    const supportsStandard = standardIds.length > 0;
+    const supportsExplore = exploreMode;
 
     if (supportsExplore && exploreOutputs.length === 0) {
       throw new Error(
@@ -845,35 +874,30 @@ export class ComfortModelBuilder<
       throw new Error("tables.results requires at least one row.");
     }
 
-    if (tables.timeSeries) {
+    const supportsTimeSeries = this.simulationOutput !== undefined;
+    if (this.timeSeriesRows) {
       if (!supportsTimeSeries) {
         throw new Error(
-          "tables.timeSeries is allowed only with Time-series workspace capability.",
+          "tables.timeSeries is not a Compare table; declare features.timeSeries.",
         );
       }
-      if (tables.timeSeries.length === 0) {
-        throw new Error("tables.timeSeries requires at least one row.");
+      if (this.timeSeriesRows.length === 0) {
+        throw new Error("features.timeSeries requires at least one row.");
       }
     } else if (supportsTimeSeries) {
       throw new Error(
-        "Time-series workspace capability requires tables.timeSeries.",
-      );
-    }
-
-    if (supportsTimeSeries && !this.simulationOutput) {
-      throw new Error(
-        "Time-series workspace capability requires simulation charts.",
-      );
-    }
-
-    if (this.simulationOutput && !supportsTimeSeries) {
-      throw new Error(
-        "Simulation charts require Time-series workspace capability.",
+        "features.timeSeries requires rows and simulation charts.",
       );
     }
 
     if (this.simulationOutput && this.simulationOutput.charts.length === 0) {
       throw new Error("Simulation output requires at least one chart.");
+    }
+
+    if (!supportsStandard && !supportsExplore && !supportsTimeSeries) {
+      throw new Error(
+        "Comfort model declarations require Standard, Explore, or Time-series membership.",
+      );
     }
 
     const chartInstances = this.resolveChartInstances();
@@ -999,12 +1023,23 @@ export class ComfortModelBuilder<
     );
     const registeredChartsForBuild = this.registeredCharts;
     const builtModelId = this.id;
+    const timeSeriesFeature: RuntimeTimeSeriesFeature | undefined =
+      supportsTimeSeries && this.simulationOutput && this.timeSeriesRows
+        ? {
+            rows: [...this.timeSeriesRows] as RuntimeTimeSeriesFeature["rows"],
+            simulation: {
+              charts: this.simulationOutput.charts.map((chart) => ({
+                ...chart,
+              })),
+            },
+          }
+        : undefined;
 
     return {
       id: this.id,
       label: this.label,
       description: this.description,
-      surfaceCapabilities: [...surfaceCapabilities],
+      exploreMode,
       standardIds: [...standardIds],
       exploreOutputs: exploreOutputs.map((output) => ({
         ...output,
@@ -1026,11 +1061,6 @@ export class ComfortModelBuilder<
       optionHandlersByKey: { ...this.optionHandlersByKey },
       tables: {
         results: [...tables.results],
-        ...(tables.timeSeries
-          ? {
-              timeSeries: [...tables.timeSeries],
-            }
-          : {}),
       } as ModelTables,
       chartInstances: {
         defaultInstanceId: chartInstances.defaultInstanceId,
@@ -1098,6 +1128,7 @@ export class ComfortModelBuilder<
       },
       dynamicAxisFields: [...dynamicAxisFields],
       defaultDynamicAxes: { ...defaultDynamicAxes },
+      ...(timeSeriesFeature ? { timeSeries: timeSeriesFeature } : {}),
       ...(this.simulationOutput
         ? {
             simulation: {
@@ -1112,37 +1143,191 @@ export class ComfortModelBuilder<
 }
 
 /**
- * Complete model declaration assembled into a runtime model definition.
- * Charts are a discriminated union over ChartType (`FrontendChartDeclaration`).
+ * Six-section model authoring. `defineModel(library, authoring)` is the public API.
  */
-export interface ModelDeclaration<
-  ResultType,
-  ChartSourceType,
+export interface ModelFeatures<
+  ResultType = QuantityState,
+  ChartSourceType = unknown,
   ComplianceBand extends Band = NumericBand,
 > {
-  readonly id: ModelIdType;
-  readonly library: JsModelLibrary;
-  readonly standardIds: readonly StandardIdType[];
-  readonly surfaceCapabilities: readonly SurfaceIdType[];
-  readonly exploreOutputs: readonly ModelOutput[];
-  readonly modifiers: readonly InputModifier[];
-  readonly complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
-  readonly inputFields: readonly AuthoringInputField[];
+  readonly modifiers?: readonly InputModifier[];
+  readonly optionHandlers?: readonly {
+    readonly key: OptionKeyType;
+    readonly handler: ModelOptionChangeHandler;
+  }[];
   readonly optionHandlersByKey?: Partial<
     Record<OptionKeyType, ModelOptionChangeHandler>
   >;
+  readonly complianceProfile?: ComplianceSpec<ComplianceBand, ResultType>;
+  readonly timeSeries?: {
+    readonly rows: readonly TableRowAuthoring<ResultType>[];
+    readonly simulation: SimulationOutputDeclaration;
+  };
+  readonly invoke?: LibraryInvokeFn<ResultType>;
+  readonly mapChartInput?: ChartInputMapper<unknown>;
+  readonly buildChartSource?: ChartSourceBuilder<ResultType, ChartSourceType>;
+  readonly parseOptions?: (value: unknown) => ModelOptionsState | null;
+  readonly defaultOptions?: Partial<Record<OptionKeyType, string>>;
+  readonly exploreOutputs?: readonly ModelOutput[];
+}
+
+export interface ModelAuthoring<
+  ResultType = QuantityState,
+  ChartSourceType = unknown,
+  ComplianceBand extends Band = NumericBand,
+> {
+  readonly id: ModelIdType;
+  readonly standardIds: readonly StandardIdType[];
+  readonly exploreMode: boolean;
+  readonly inputs: readonly QuantityInputBind[];
+  readonly response: {
+    readonly values: readonly QuantityResultBind[];
+    readonly intervals?: readonly LibraryInterval[];
+  };
+  readonly tables?: {
+    readonly results?: readonly TableRowAuthoring<ResultType>[];
+  };
   readonly charts: readonly FrontendChartDeclaration<ResultType, ChartSourceType>[];
-  readonly tables?: ModelTablesAuthoring<ResultType>;
-  readonly calculate: ComfortModelDefinition<
-    ResultType,
-    ChartSourceType,
-    ComplianceBand
-  >["calculate"];
-  readonly simulation?: SimulationOutputDeclaration;
+  readonly features?: ModelFeatures<ResultType, ChartSourceType, ComplianceBand>;
   readonly dynamicAxisFields?: readonly PhysicalQuantityId[];
   readonly defaultDynamicAxes?: DynamicAxisDefaults;
-  readonly defaultOptions?: Partial<Record<OptionKeyType, string>>;
-  readonly parseOptions?: (value: unknown) => ModelOptionsState | null;
+}
+
+function unboundedExploreBands(label: string): NumericBand[] {
+  return [
+    numericBandFromToken(ZoneToken.Neutral, {
+      min: Number.NEGATIVE_INFINITY,
+      max: Number.POSITIVE_INFINITY,
+      label,
+    }),
+  ];
+}
+
+function deriveExploreOutputs(
+  library: JsModelFn,
+  authoring: ModelAuthoring<unknown, unknown, Band>,
+): ModelOutput[] {
+  if (authoring.features?.exploreOutputs) {
+    return [...authoring.features.exploreOutputs];
+  }
+  if (!authoring.exploreMode) {
+    return [];
+  }
+  const intervals = authoring.response.intervals ?? [];
+  const valued = authoring.response.values.filter((row) =>
+    intervals.some((interval) => interval.quantity === row.quantity),
+  );
+  const rows = valued.length > 0 ? valued : authoring.response.values.slice(0, 1);
+  return rows.map((row) => {
+    const interval = intervals.find((item) => item.quantity === row.quantity);
+    const label = library.label || getPhysicalQuantityMeta(row.quantity).label;
+    return {
+      key: row.quantity,
+      label,
+      defaultBands: interval
+        ? numericBandsFromInterval(interval)
+        : unboundedExploreBands(label),
+    };
+  });
+}
+
+function decorateResultRows<TResult>(
+  rows: readonly TableRowAuthoring<TResult>[],
+  intervals: readonly LibraryInterval[],
+): TableRowAuthoring<TResult>[] {
+  return rows.map((row) => {
+    const quantity = typeof row === "string"
+      ? row
+      : "quantity" in row
+        ? row.quantity
+        : undefined;
+    if (!quantity) {
+      return row;
+    }
+    const interval = intervals.find((item) => item.quantity === quantity);
+    if (!interval) {
+      return row;
+    }
+    const authored = typeof row === "string" ? { quantity } : row;
+    if ("format" in authored) {
+      return row;
+    }
+    return {
+      ...authored,
+      subtext: authored.subtext ?? ((result) => {
+        const value = (result as QuantityState)[quantity];
+        if (typeof value !== "number") {
+          return undefined;
+        }
+        const tokenRow = tokenRowForValue(interval, value);
+        if (!tokenRow) {
+          const bands = numericBandsFromInterval(interval);
+          return bands.find((band) =>
+            value >= band.min && value <= band.max,
+          )?.label;
+        }
+        return displayClassifierLabel(tokenRow.label);
+      }),
+      color: authored.color ?? ((result) => {
+        const value = (result as QuantityState)[quantity];
+        if (typeof value !== "number") {
+          return undefined;
+        }
+        const tokenRow = tokenRowForValue(interval, value);
+        return tokenRow
+          ? resolveZoneAppearance(tokenRow.token).text
+          : undefined;
+      }),
+    };
+  });
+}
+
+function withDefaultDynamicEvaluate<TResult, ChartSourceType>(
+  library: JsModelFn,
+  authoring: ModelAuthoring<TResult, ChartSourceType, Band>,
+  charts: readonly FrontendChartDeclaration<TResult, ChartSourceType>[],
+): FrontendChartDeclaration<TResult, ChartSourceType>[] {
+  return charts.map((chart) => {
+    if (chart.type !== ChartType.Dynamic) {
+      return chart;
+    }
+    if (!("axes" in chart.spec)) {
+      return chart;
+    }
+    const spec = chart.spec as DynamicFieldGridSpec<TResult>;
+    if (spec.resolveGridSpec || spec.evaluate) {
+      return chart;
+    }
+    const firstOutput = authoring.response.values[0]?.quantity;
+    return {
+      ...chart,
+      spec: {
+        ...spec,
+        evaluate: ((payload: QuantityState) => {
+          if (authoring.features?.invoke) {
+            throw new Error(
+              `${library.label} Dynamic evaluate requires a grid spec when using a custom invoke.`,
+            );
+          }
+          return invokeMappedLibrary(
+            library,
+            authoring.inputs,
+            authoring.response.values,
+            payload,
+          );
+        }) as unknown as DynamicFieldGridSpec<TResult>["evaluate"],
+        getOutputValue: ((result: QuantityState, outputKey?: PhysicalQuantityId) => {
+          const key = outputKey ?? firstOutput;
+          if (!key) {
+            return null;
+          }
+          const value = result[key];
+          return typeof value === "number" ? value : null;
+        }) as unknown as DynamicFieldGridSpec<TResult>["getOutputValue"],
+        requestAdapter: quantityStateAxisAdapter,
+      },
+    };
+  });
 }
 
 function assertChartDeclarations<TResult, ChartSourceType>(
@@ -1162,63 +1347,124 @@ function assertChartDeclarations<TResult, ChartSourceType>(
   }
 }
 
-/** Sole assembly function for a complete model declaration. */
+/** Sole assembly function: library once, then six-section authoring. */
 export function defineModel<
-  ResultType,
-  ChartSourceType,
+  ResultType = QuantityState,
+  ChartSourceType = unknown,
   ComplianceBand extends Band = NumericBand,
 >(
-  declaration: ModelDeclaration<ResultType, ChartSourceType, ComplianceBand>,
+  library: JsModelFn,
+  authoring: ModelAuthoring<ResultType, ChartSourceType, ComplianceBand>,
 ): RuntimeComfortModelDefinition {
-  assertChartDeclarations(declaration.charts);
+  assertChartDeclarations(authoring.charts);
 
-  const builder = new ComfortModelBuilder<
+  const exploreOutputs = deriveExploreOutputs(
+    library,
+    authoring as ModelAuthoring<unknown, unknown, Band>,
+  );
+  const charts = withDefaultDynamicEvaluate(
+    library,
+    authoring as ModelAuthoring<ResultType, ChartSourceType, Band>,
+    authoring.charts,
+  );
+  const intervals = authoring.response.intervals ?? [];
+  const resultRows = authoring.tables?.results
+    ?? authoring.response.values.map((row) => row.quantity);
+  if (
+    authoring.tables
+    && "timeSeries" in authoring.tables
+    && (authoring.tables as { timeSeries?: unknown }).timeSeries !== undefined
+  ) {
+    throw new Error(
+      "tables.timeSeries is not a Compare table; declare features.timeSeries.",
+    );
+  }
+  const tables: ModelTablesAuthoring<ResultType> = {
+    results: decorateResultRows(resultRows, intervals),
+  };
+
+  const builder = new ComfortModelAssembler<
     ResultType,
     ChartSourceType,
     ComplianceBand
-  >(declaration.id);
+  >(authoring.id);
 
   builder
-    .setLibrary(declaration.library)
-    .setStandardIds(declaration.standardIds)
-    .setSurfaceCapabilities(declaration.surfaceCapabilities)
-    .setExploreOutputs(declaration.exploreOutputs)
-    .setModifiers(declaration.modifiers)
-    .setCharts(declaration.charts)
-    .setInputFields(declaration.inputFields)
-    .setCalculator(declaration.calculate);
+    .setLibrary(library)
+    .setStandardIds(authoring.standardIds)
+    .setExploreMode(authoring.exploreMode)
+    .setExploreOutputs(exploreOutputs)
+    .setModifiers(authoring.features?.modifiers ?? [])
+    .setCharts(charts)
+    .setInputFields(authoring.inputs.map(toAuthoringInputField))
+    .setTables(tables)
+    .setCalculator((context, visibleInputIds) =>
+      calculateFromLibrary(
+        library,
+        authoring.inputs,
+        authoring.response.values,
+        context,
+        visibleInputIds,
+        {
+          ...(authoring.features?.invoke
+            ? { invoke: authoring.features.invoke }
+            : {}),
+          ...(authoring.features?.mapChartInput
+            ? { mapChartInput: authoring.features.mapChartInput }
+            : {}),
+          ...(authoring.features?.buildChartSource
+            ? { buildChartSource: authoring.features.buildChartSource }
+            : {}),
+        },
+      ) as ReturnType<
+        ComfortModelDefinition<ResultType, ChartSourceType, ComplianceBand>["calculate"]
+      >,
+    );
 
-  if (declaration.tables) {
-    builder.setTables(declaration.tables);
+  if (authoring.features?.complianceProfile) {
+    builder.setComplianceProfile(authoring.features.complianceProfile);
   }
-  if (declaration.complianceProfile) {
-    builder.setComplianceProfile(declaration.complianceProfile);
+  if (authoring.features?.optionHandlers) {
+    for (const { key, handler } of authoring.features.optionHandlers) {
+      builder.addOptionHandler(key, handler);
+    }
   }
-  if (declaration.optionHandlersByKey) {
+  if (authoring.features?.optionHandlersByKey) {
     for (const optionKey of Object.keys(
-      declaration.optionHandlersByKey,
+      authoring.features.optionHandlersByKey,
     ) as OptionKeyType[]) {
-      const handler = declaration.optionHandlersByKey[optionKey];
+      const handler = authoring.features.optionHandlersByKey[optionKey];
       if (handler) {
         builder.addOptionHandler(optionKey, handler);
       }
     }
   }
-  if (declaration.simulation) {
-    builder.setSimulation(declaration.simulation);
+  if (authoring.features?.timeSeries) {
+    builder.setTimeSeries(authoring.features.timeSeries);
   }
-  if (declaration.dynamicAxisFields) {
-    builder.setDynamicAxisFields(declaration.dynamicAxisFields);
+  if (authoring.dynamicAxisFields) {
+    builder.setDynamicAxisFields(authoring.dynamicAxisFields);
   }
-  if (declaration.defaultDynamicAxes) {
-    builder.setDefaultDynamicAxes(declaration.defaultDynamicAxes);
+  if (authoring.defaultDynamicAxes) {
+    builder.setDefaultDynamicAxes(authoring.defaultDynamicAxes);
   }
-  if (declaration.defaultOptions) {
-    builder.setDefaultOptions(declaration.defaultOptions);
+  if (authoring.features?.defaultOptions) {
+    builder.setDefaultOptions(authoring.features.defaultOptions);
   }
-  if (declaration.parseOptions) {
-    builder.setOptionParser(declaration.parseOptions);
+  if (authoring.features?.parseOptions) {
+    builder.setOptionParser(authoring.features.parseOptions);
   }
 
   return builder.build();
+}
+
+export function assembleModel<
+  ResultType = QuantityState,
+  ChartSourceType = unknown,
+  ComplianceBand extends Band = NumericBand,
+>(
+  library: JsModelFn,
+  authoring: ModelAuthoring<ResultType, ChartSourceType, ComplianceBand>,
+): RuntimeComfortModelDefinition {
+  return defineModel(library, authoring);
 }

@@ -7,11 +7,6 @@ import {
   isChartType,
   resolveChartCapabilities,
 } from "./chartTypes";
-import {
-  SurfaceId,
-  supportsExploreSurface,
-  supportsStandardSurface,
-} from "./surfaces";
 import { FieldChartProfileKind } from "./fieldChartProfile";
 
 describe("output catalog", () => {
@@ -32,15 +27,6 @@ describe("output catalog", () => {
     });
     expect(capabilities.locksYAxis).toBe(true);
     expect(capabilities.allowsAxisSelection).toBe(true);
-  });
-
-  it("workspace capability helpers match workspace ids", () => {
-    const capabilities = [
-      SurfaceId.Standard,
-      SurfaceId.Explore,
-    ] as const;
-    expect(supportsStandardSurface(capabilities)).toBe(true);
-    expect(supportsExploreSurface(capabilities)).toBe(true);
   });
 
   it("exports field-chart profile kinds", () => {

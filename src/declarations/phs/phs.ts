@@ -7,7 +7,7 @@ import { InputWidget } from "../../catalog/inputWidgets";
 import { bandsFromThermalZones, type ChartBuildContext, type ModelOutput, type NumericBand } from "../../catalog/modelCapabilities";
 import { ThermalZone } from "../../catalog/thermalZone";
 import { resolveZoneAppearance, ZoneToken } from "../../catalog/zoneTokens";
-import { StandardId, SurfaceId } from "../../catalog/surfaces";
+import { StandardId } from "../../catalog/surfaces";
 import { ChartType } from "../../catalog/chartTypes";
 import type { TableRowAuthoring, TableRowSpec } from "../../catalog/tableTypes";
 import {
@@ -20,7 +20,6 @@ import {
   type PhsTimeSeriesDraft,
 } from "../../catalog/phs";
 import {
-  calculatePerInput,
   defineLibraryQuantityMapping,
 } from "../../engines/comfort/requestMapping";
 import { chartPayloadFromSpec } from "../../engines/comfort/charts/toChartPayload";
@@ -30,8 +29,10 @@ import {
 } from "../../engines/units";
 import { unitLabel, UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
-  ComfortModelBuilder,
+  defineModel,
+  inputQuantity,
   parseEmptyOptions,
+  resultQuantity,
   type FrontendChartDeclaration,
   type ResultRowDefinition,
 } from "../../state/modelRegistry/builder";
@@ -279,45 +280,51 @@ function buildPhsTableRows(): TableRowSpec<PhsResponse>[] {
   }));
 }
 
-const builder = new ComfortModelBuilder<
-  PhsResponse,
-  ModelChartSource<PhsEnvironmentSi>
->(ModelId.Phs2023);
-
-builder
-  .setLibrary(phs)
-  .setStandardIds([StandardId.Iso7933])
-  .setSurfaceCapabilities([
-    SurfaceId.Standard,
-    SurfaceId.Explore,
-    SurfaceId.TimeSeries,
-  ])
-  .setExploreOutputs(phsExploreOutputs)
-  .setComplianceProfile({
-    output: PhysicalQuantityId.LimitingExposureTime,
-    bands: bandsFromThermalZones(limitingExposureZones),
-    legendTitle: "8-hour exposure assessment",
-    caption:
-      "ISO 7933:2023 thresholds are locked. A point passes when neither the 38 °C rectal-temperature limit nor the water-loss limit is reached before 8 hours.",
-    getFeedback: (result) => {
-      if (!result.valid) {
-        return {
-          text: "Outside ISO 7933:2023 applicability.",
-          passes: false,
-        };
-      }
-      const passes = result.limitingExposureTimeMinutes
-        >= PHS_COMPLIANCE_HORIZON_MINUTES;
-      return {
-        text: passes
-          ? "No exposure limit is reached before 8 hours."
-          : `${criterionLabel(result)} is reached after ${formatHours(result.limitingExposureTimeMinutes)}.`,
-        passes,
-      };
-    },
-  })
-  .setModifiers([])
-  .setCharts([
+export const phsModelConfig = defineModel(phs, {
+  id: ModelId.Phs2023,
+  standardIds: [StandardId.Iso7933],
+  exploreMode: true,
+  inputs: [
+    inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+      minValue: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].min,
+      maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].max,
+    }),
+    inputQuantity("tr", PhysicalQuantityId.MeanRadiantTemperature, {
+      minValue: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].min,
+      maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].max,
+    }),
+    inputQuantity("v", PhysicalQuantityId.WindSpeed, {
+      widget: InputWidget.Numeric,
+      controlId: InputControlId.AirSpeed,
+      minValue: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].min,
+      maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].max,
+      label: "Air speed",
+    }),
+    inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
+      minValue: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].min,
+      maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].max,
+    }),
+    inputQuantity("met", PhysicalQuantityId.MetabolicRate, {
+      widget: InputWidget.Numeric,
+      minValue: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].min,
+      maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].max,
+    }),
+    inputQuantity("clo", PhysicalQuantityId.ClothingInsulation, {
+      widget: InputWidget.Numeric,
+      minValue: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].min,
+      maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].max,
+    }),
+  ],
+  response: {
+    values: [
+      resultQuantity("t_re", PhysicalQuantityId.RectalTemperature),
+      resultQuantity("sweat_loss_g", PhysicalQuantityId.SweatLoss),
+    ],
+  },
+  tables: {
+    results: buildPhsTableRows(),
+  },
+  charts: [
     {
       type: ChartType.BodyTemperature,
       supportedExploreOutputs: [PhysicalQuantityId.RectalTemperature],
@@ -351,126 +358,108 @@ builder
   ] satisfies FrontendChartDeclaration<
     PhsResponse,
     ModelChartSource<PhsEnvironmentSi>
-  >[]);
-
-builder.setInputFields([
-  {
-    quantity: PhysicalQuantityId.DryBulbTemperature,
-    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].min,
-    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.DryBulbTemperature].max,
-  },
-  {
-    quantity: PhysicalQuantityId.MeanRadiantTemperature,
-    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].min,
-    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.MeanRadiantTemperature].max,
-  },
-  {
-    quantity: PhysicalQuantityId.WindSpeed,
-    widget: InputWidget.Numeric,
-    controlId: InputControlId.AirSpeed,
-    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].min,
-    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.WindSpeed].max,
-    label: "Air speed",
-  },
-  {
-    quantity: PhysicalQuantityId.RelativeHumidity,
-    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].min,
-    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.RelativeHumidity].max,
-  },
-  {
-    quantity: PhysicalQuantityId.MetabolicRate,
-    widget: InputWidget.Numeric,
-    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].min,
-    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.MetabolicRate].max,
-  },
-  {
-    quantity: PhysicalQuantityId.ClothingInsulation,
-    widget: InputWidget.Numeric,
-    minValue: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].min,
-    maxValue: phsEnvironmentRangeSi[PhysicalQuantityId.ClothingInsulation].max,
-  },
-]);
-
-builder.setCalculator((context, visibleInputIds) =>
-  calculatePerInput({
-    context,
-    visibleInputIds,
-    mapRequest: phsQuantityMapping.mapRequest,
-    calculate: (request, inputId) => simulatePhs({
+  >[],
+  features: {
+    exploreOutputs: phsExploreOutputs,
+    complianceProfile: {
+      output: PhysicalQuantityId.LimitingExposureTime,
+      bands: bandsFromThermalZones(limitingExposureZones),
+      legendTitle: "8-hour exposure assessment",
+      caption:
+        "ISO 7933:2023 thresholds are locked. A point passes when neither the 38 °C rectal-temperature limit nor the water-loss limit is reached before 8 hours.",
+      getFeedback: (result) => {
+        if (!result.valid) {
+          return {
+            text: "Outside ISO 7933:2023 applicability.",
+            passes: false,
+          };
+        }
+        const passes = result.limitingExposureTimeMinutes
+          >= PHS_COMPLIANCE_HORIZON_MINUTES;
+        return {
+          text: passes
+            ? "No exposure limit is reached before 8 hours."
+            : `${criterionLabel(result)} is reached after ${formatHours(result.limitingExposureTimeMinutes)}.`,
+          passes,
+        };
+      },
+    },
+    invoke: (_si, context, inputId) => simulatePhs({
       segments: [{
         id: "analysis-exposure",
         name: "Eight-hour assessment",
         durationMinutes: PHS_COMPLIANCE_HORIZON_MINUTES,
-        ...request,
+        ...phsQuantityMapping.mapRequest(context, inputId),
       }],
       person: personFromModelInputs(context.effectiveQuantitiesByInput[inputId]),
       recordHistory: true,
     }),
-  }));
-
-builder.setTables({
-  results: buildPhsTableRows(),
-  timeSeries: buildPhsSimulationTableRows(),
-});
-
-builder.setDynamicAxisFields([
-  PhysicalQuantityId.DryBulbTemperature,
-  PhysicalQuantityId.MeanRadiantTemperature,
-  PhysicalQuantityId.WindSpeed,
-  PhysicalQuantityId.RelativeHumidity,
-  PhysicalQuantityId.MetabolicRate,
-  PhysicalQuantityId.ClothingInsulation,
-]);
-builder.setDefaultDynamicAxes({ xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity });
-builder.setSimulation({
-  charts: [
-    {
-      id: "phs-temperature-history",
-      type: ChartType.BodyTemperature,
-      title: "Body temperature",
-      description:
-        "Rectal temperature, optional core temperature, the 38 °C limit, and phase boundaries.",
-      emptyMessage: "The temperature history will appear after calculation.",
-      heightClass: "h-[390px]",
-      testId: "phs-temperature-chart",
-      spec: {
-        build: (result, draft, unitSystem) => (
-          chartPayloadFromSpec(
-            ChartType.BodyTemperature,
-            buildPhsTemperatureTimeSeriesChart(
-              result as PhsSimulationResult,
-              draft as PhsTimeSeriesDraft,
-              unitSystem,
-            ),
-          )
-        ),
+    mapChartInput: (_si, context, inputId) =>
+      phsQuantityMapping.mapRequest(context, inputId),
+    timeSeries: {
+      rows: buildPhsSimulationTableRows(),
+      simulation: {
+        charts: [
+          {
+            id: "phs-temperature-history",
+            type: ChartType.BodyTemperature,
+            title: "Body temperature",
+            description:
+              "Rectal temperature, optional core temperature, the 38 °C limit, and phase boundaries.",
+            emptyMessage: "The temperature history will appear after calculation.",
+            heightClass: "h-[390px]",
+            testId: "phs-temperature-chart",
+            spec: {
+              build: (result, draft, unitSystem) => (
+                chartPayloadFromSpec(
+                  ChartType.BodyTemperature,
+                  buildPhsTemperatureTimeSeriesChart(
+                    result as PhsSimulationResult,
+                    draft as PhsTimeSeriesDraft,
+                    unitSystem,
+                  ),
+                )
+              ),
+            },
+          },
+          {
+            id: "phs-water-loss-history",
+            type: ChartType.WaterLoss,
+            title: "Predicted water loss",
+            description:
+              "Cumulative water loss against the applicable 5% or 3% body-mass limit.",
+            emptyMessage: "The water-loss history will appear after calculation.",
+            heightClass: "h-[360px]",
+            testId: "phs-water-loss-chart",
+            spec: {
+              build: (result, draft, unitSystem) => (
+                chartPayloadFromSpec(
+                  ChartType.WaterLoss,
+                  buildPhsWaterLossTimeSeriesChart(
+                    result as PhsSimulationResult,
+                    draft as PhsTimeSeriesDraft,
+                    unitSystem,
+                  ),
+                )
+              ),
+            },
+          },
+        ],
       },
     },
-    {
-      id: "phs-water-loss-history",
-      type: ChartType.WaterLoss,
-      title: "Predicted water loss",
-      description:
-        "Cumulative water loss against the applicable 5% or 3% body-mass limit.",
-      emptyMessage: "The water-loss history will appear after calculation.",
-      heightClass: "h-[360px]",
-      testId: "phs-water-loss-chart",
-      spec: {
-        build: (result, draft, unitSystem) => (
-          chartPayloadFromSpec(
-            ChartType.WaterLoss,
-            buildPhsWaterLossTimeSeriesChart(
-              result as PhsSimulationResult,
-              draft as PhsTimeSeriesDraft,
-              unitSystem,
-            ),
-          )
-        ),
-      },
-    },
+    defaultOptions: {},
+    parseOptions: parseEmptyOptions,
+  },
+  dynamicAxisFields: [
+    PhysicalQuantityId.DryBulbTemperature,
+    PhysicalQuantityId.MeanRadiantTemperature,
+    PhysicalQuantityId.WindSpeed,
+    PhysicalQuantityId.RelativeHumidity,
+    PhysicalQuantityId.MetabolicRate,
+    PhysicalQuantityId.ClothingInsulation,
   ],
+  defaultDynamicAxes: {
+    xAxis: PhysicalQuantityId.DryBulbTemperature,
+    yAxis: PhysicalQuantityId.RelativeHumidity,
+  },
 });
-builder.setDefaultOptions({});
-builder.setOptionParser(parseEmptyOptions);
-
-export const phsModelConfig = builder.build();

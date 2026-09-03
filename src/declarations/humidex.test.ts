@@ -2,8 +2,11 @@
  * Unit tests for the Humidex comfort model calculation service.
  */
 import { describe, expect, it } from "vitest";
-import { PhysicalQuantityId } from "../catalog/quantities";
-import { calculateHumidex, humidexModelConfig } from "./humidex";
+import { humidex } from "jsthermalcomfort";
+import { PhysicalQuantityId, type QuantityState } from "../catalog/quantities";
+import { humidexModelConfig } from "./humidex";
+import { invokeMappedLibrary } from "../engines/comfort/libraryInvoke";
+import { inputQuantity, resultQuantity } from "../state/modelRegistry/builder";
 import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
 import { InputId } from "../catalog/inputSlots";
@@ -12,6 +15,24 @@ import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext, findNumericBandIndexForValue } from "../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
+
+function calculateHumidex(request: QuantityState) {
+  return invokeMappedLibrary(
+    humidex,
+    [
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+        minValue: 20,
+        maxValue: 50,
+      }),
+      inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
+        minValue: 0,
+        maxValue: 100,
+      }),
+    ],
+    [resultQuantity("humidex", PhysicalQuantityId.Humidex)],
+    request,
+  );
+}
 
 describe("humidex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -28,7 +49,7 @@ describe("humidex service", () => {
 
     expect(result.humidex).toBeGreaterThan(40);
     expect(result.humidex).toBeLessThan(43);
-    expect(result.humidexDiscomfort).toBe("Intense discomfort; avoid exertion");
+    expect(humidex.mapping(result.humidex!)).toBe("Intense discomfort; avoid exertion");
   });
 
   it("identifies extreme stroke probable conditions", () => {
@@ -39,7 +60,7 @@ describe("humidex service", () => {
     });
 
     expect(result.humidex).toBeGreaterThanOrEqual(54);
-    expect(result.humidexDiscomfort).toBe("Heat stroke probable");
+    expect(humidex.mapping(result.humidex!)).toBe("Heat stroke probable");
   });
 
   it("returns mild/none discomfort in low temperatures", () => {
@@ -48,7 +69,7 @@ describe("humidex service", () => {
       rh: 30,
     });
 
-    expect(result.humidexDiscomfort).toBe("Little or no discomfort");
+    expect(humidex.mapping(result.humidex!)).toBe("Little or no discomfort");
   });
 
   it("assigns humidex 30 to the library's first discomfort category", () => {
@@ -92,16 +113,17 @@ describe("humidex service", () => {
   it("applies edited Explore bands to fixed-view fills and input hover", () => {
     const request = { tdb: 30, rh: 70 };
     const result = calculateHumidex(request);
+    const hi = result.humidex!;
     const bands = [
       {
-        min: -Infinity,
-        max: result.humidex,
+        min: Number.NEGATIVE_INFINITY,
+        max: hi,
         label: "Lower",
         color: "#123456",
       },
       {
-        min: result.humidex,
-        max: Infinity,
+        min: hi,
+        max: Number.POSITIVE_INFINITY,
         label: "Boundary and above",
         color: "#abcdef",
       },

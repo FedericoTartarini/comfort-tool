@@ -11,8 +11,8 @@ import {
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
 import { defaultPmvIsoOptions } from "../../catalog/inputModes";
-import { UnitSystem } from "../../catalog/units";
-import { StandardId, SurfaceId } from "../../catalog/surfaces";
+import { StandardId } from "../../catalog/surfaces";
+import { intervalFromBins } from "../../catalog/classifierBins";
 import {
   createDynamicClothingModifier,
   measuredAirSpeedModifier,
@@ -27,13 +27,14 @@ import {
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./shared";
-import { getPmvComplianceFeedback } from "./calculation";
+import { getPmvComplianceFeedback, invokePmvIsoLibrary } from "./calculation";
 import {
   classifyIsoTsv,
   isoComfortIsolineTargets,
   isoTsvBands,
   isoTsvZonesList,
   isIsoNeutralPmv,
+  PMV_TSV_TOKEN_ROWS,
 } from "./zones";
 
 export const pmvIsoAdapter: PmvStandardAdapter = {
@@ -43,19 +44,7 @@ export const pmvIsoAdapter: PmvStandardAdapter = {
   // ISO 7730 applicability includes the upper boundary of 2 clo.
   clothingInsulationMaxSi: 2,
   supportsOccupantAirSpeedControl: false,
-  calculate: (request) => pmv_ppd_iso(
-    request.tdb,
-    request.tr,
-    request.vr,
-    request.rh,
-    request.met,
-    request.clo,
-    request.wme,
-    {
-      units: UnitSystem.SI,
-      limit_inputs: false,
-    },
-  ),
+  calculate: invokePmvIsoLibrary,
   checkApplicability: (request) => check_standard_compliance(
     JsThermalComfortStandard.ISO,
     {
@@ -82,7 +71,14 @@ export const pmvIsoDeclaration: PmvModelDeclaration = {
   library: pmv_ppd_iso,
   adapter: pmvIsoAdapter,
   standardIds: [StandardId.Iso7730],
-  surfaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
+  exploreMode: true,
+  intervals: [
+    intervalFromBins(
+      PhysicalQuantityId.PredictedMeanVote,
+      pmv_ppd_iso.tsv.bins,
+      PMV_TSV_TOKEN_ROWS,
+    ),
+  ],
   exploreOutputs: createPmvExploreOutputs(isoTsvBands, "Thermal sensation"),
   modifiers: [
     measuredAirSpeedModifier,

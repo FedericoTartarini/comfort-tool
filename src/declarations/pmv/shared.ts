@@ -17,7 +17,6 @@ import {
 import type { InputModifier } from "../../catalog/inputModifiers";
 import type {
   StandardId as StandardIdType,
-  SurfaceId as SurfaceIdType,
 } from "../../catalog/surfaces";
 import { numericBandFromToken, type ComplianceSpec, type ModelOutput, type NumericBand } from "../../catalog/modelCapabilities";
 import {
@@ -36,9 +35,11 @@ import {
 import { createSingleInputPatch } from "../../engines/comfort/controls/types";
 import { getDerivedFromQuantities } from "../../engines/comfort/quantityStateRouting";
 import {
-  ComfortModelBuilder,
+  defineModel,
   hasExactKeys,
+  inputQuantity,
   isRecord,
+  resultQuantity,
   type FrontendChartDeclaration,
   type JsModelLibrary,
 } from "../../state/modelRegistry/builder";
@@ -47,9 +48,11 @@ import { ZoneToken } from "../../catalog/zoneTokens";
 import type { ThermalZone } from "../../catalog/thermalZone";
 import { applyDynamicAxisCoordinates } from "../../engines/comfort/charts/dynamicAxisPayload";
 import { plotlyHoverNumber } from "../../engines/units";
+import type { LibraryInterval } from "../../catalog/classifierBins";
 import {
   buildPmvResultRows,
-  calculatePmvModel,
+  buildPmvChartSource,
+  evaluatePmvSlot,
   createPmvRequestAxisAdapter,
   evaluatePmvCondition,
   evaluatePsychrometricPmv,
@@ -104,7 +107,8 @@ export interface PmvModelDeclaration {
   readonly library: JsModelLibrary;
   readonly adapter: PmvStandardAdapter;
   readonly standardIds: readonly StandardIdType[];
-  readonly surfaceCapabilities: readonly SurfaceIdType[];
+  readonly exploreMode: boolean;
+  readonly intervals: readonly LibraryInterval[];
   readonly exploreOutputs: readonly ModelOutput[];
   readonly modifiers: readonly InputModifier[];
   readonly complianceProfile: ComplianceSpec<NumericBand, PmvResponse>;
@@ -331,54 +335,49 @@ export function createPmvCharts(
 
 export function createPmvModelConfig(declaration: PmvModelDeclaration) {
   const { adapter } = declaration;
-  const builder = new ComfortModelBuilder<
-    PmvResponse,
-    PmvChartSource,
-    NumericBand
-  >(
-    adapter.modelId,
-  );
   const temperatureModeOptionHandler = createTemperatureModeOptionHandler({
     postSynchronize: synchronizeSelectedHumidityMode,
   });
+  const optionHandlers = [
+    { key: OptionKey.TemperatureMode, handler: temperatureModeOptionHandler },
+    { key: OptionKey.HumidityInputMode, handler: humidityModeOptionHandler },
+    ...(adapter.supportsOccupantAirSpeedControl
+      ? [{
+          key: OptionKey.AirSpeedControlMode,
+          handler: createAirSpeedOptionHandler(),
+        }]
+      : []),
+  ];
 
-  builder
-    .setLibrary(declaration.library)
-    .setStandardIds(declaration.standardIds)
-    .setSurfaceCapabilities([...declaration.surfaceCapabilities])
-    .setExploreOutputs(declaration.exploreOutputs)
-    .setModifiers(declaration.modifiers)
-    .setComplianceProfile(declaration.complianceProfile)
-    .setInputFields([
-      {
-        quantity: PhysicalQuantityId.DryBulbTemperature,
+  return defineModel(declaration.library as Parameters<typeof defineModel>[0], {
+    id: adapter.modelId,
+    standardIds: declaration.standardIds,
+    exploreMode: declaration.exploreMode,
+    inputs: [
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
         widget: InputWidget.OperativeTemperature,
         minValue: pmvIndoorTemperatureRangeSi.min,
         maxValue: pmvIndoorTemperatureRangeSi.max,
         postSynchronize: synchronizeSelectedHumidityMode,
-      },
-      {
-        quantity: PhysicalQuantityId.MeanRadiantTemperature,
+      }),
+      inputQuantity("tr", PhysicalQuantityId.MeanRadiantTemperature, {
         widget: InputWidget.RadiantTemperature,
         hideWhen: "operative",
         minValue: pmvIndoorTemperatureRangeSi.min,
         maxValue: pmvIndoorTemperatureRangeSi.max,
-      },
-      {
-        quantity: PhysicalQuantityId.RelativeAirSpeed,
+      }),
+      inputQuantity("vr", PhysicalQuantityId.RelativeAirSpeed, {
         widget: InputWidget.OccupantAirSpeed,
         supportsOccupantAirSpeedControl: adapter.supportsOccupantAirSpeedControl,
         minValue: pmvAirSpeedRangeSi.min,
         maxValue: pmvAirSpeedRangeSi.max,
-      },
-      {
-        quantity: PhysicalQuantityId.RelativeHumidity,
+      }),
+      inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
         widget: InputWidget.AdvancedHumidity,
         minValue: pmvRelativeHumidityRangeSi.min,
         maxValue: pmvRelativeHumidityRangeSi.max,
-      },
-      {
-        quantity: PhysicalQuantityId.MetabolicRate,
+      }),
+      inputQuantity("met", PhysicalQuantityId.MetabolicRate, {
         widget: InputWidget.Preset,
         presetKey: InputPresetKey.MetabolicRate,
         minValue: pmvMetabolicRateRangeSi.min,
@@ -396,35 +395,40 @@ export function createPmvModelConfig(declaration: PmvModelDeclaration) {
           );
           return createSingleInputPatch(inputId, synchronized);
         },
-      },
-      {
-        quantity: PhysicalQuantityId.ClothingInsulation,
+      }),
+      inputQuantity("clo", PhysicalQuantityId.ClothingInsulation, {
         widget: InputWidget.Preset,
         presetKey: InputPresetKey.ClothingInsulation,
         presetDecimals: 2,
         showClothingBuilder: true,
         minValue: pmvClothingInsulationMinSi,
         maxValue: adapter.clothingInsulationMaxSi,
-      },
-    ])
-    .addOptionHandler(OptionKey.TemperatureMode, temperatureModeOptionHandler)
-    .addOptionHandler(OptionKey.HumidityInputMode, humidityModeOptionHandler)
-    .setDefaultOptions({ ...declaration.defaultOptions })
-    .setOptionParser(declaration.parseOptions)
-    .setCalculator((context, visibleInputIds) => (
-      calculatePmvModel(context, visibleInputIds, adapter)
-    ))
-    .setTables({
+      }),
+    ],
+    response: {
+      values: [
+        resultQuantity("pmv", PhysicalQuantityId.PredictedMeanVote),
+        resultQuantity("ppd", PhysicalQuantityId.PredictedPercentageOfDissatisfied),
+        resultQuantity("set", PhysicalQuantityId.StandardEffectiveTemperature),
+        resultQuantity("ce", PhysicalQuantityId.CoolingEffect),
+        resultQuantity("vr", PhysicalQuantityId.RelativeAirSpeed),
+      ],
+      intervals: declaration.intervals,
+    },
+    tables: {
       results: buildPmvResultRows(),
-    })
-    .setCharts(createPmvCharts(declaration));
-
-  if (adapter.supportsOccupantAirSpeedControl) {
-    builder.addOptionHandler(
-      OptionKey.AirSpeedControlMode,
-      createAirSpeedOptionHandler(),
-    );
-  }
-
-  return builder.build();
+    },
+    charts: createPmvCharts(declaration),
+    features: {
+      modifiers: declaration.modifiers,
+      optionHandlers,
+      complianceProfile: declaration.complianceProfile,
+      exploreOutputs: declaration.exploreOutputs,
+      invoke: (_si, context, inputId) => evaluatePmvSlot(adapter, context, inputId),
+      buildChartSource: (context, visibleInputIds) =>
+        buildPmvChartSource(adapter, context, visibleInputIds),
+      defaultOptions: declaration.defaultOptions,
+      parseOptions: declaration.parseOptions,
+    },
+  });
 }

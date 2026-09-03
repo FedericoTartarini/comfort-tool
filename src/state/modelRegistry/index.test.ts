@@ -35,7 +35,6 @@ import type { ThermalZone } from "../../catalog/thermalZone";
 import {
   StandardId,
   SurfaceId,
-  supportsStandardSurface,
 } from "../../catalog/surfaces";
 import { ChartType, resolveChartCapabilities } from "../../catalog/chartTypes";
 import {
@@ -45,6 +44,8 @@ import {
   getDeclaredChartInstanceIds,
   getModelsForSurface,
   getModelsForStandard,
+  modelSupportsStandard,
+  modelSupportsTimeSeries,
 } from ".";
 
 function createInputsSi(relativeAirSpeed: number): BandInputsSi {
@@ -307,46 +308,57 @@ describe("comfort model capability registry", () => {
 
   it("declares the exact mode, output, and compliance matrix", () => {
     const expected = {
-      [ModelId.PmvAshrae]: { capabilities: [
-          SurfaceId.Standard, SurfaceId.Explore, ], outputs: [PhysicalQuantityId.PredictedMeanVote, PhysicalQuantityId.PredictedPercentageOfDissatisfied], complianceOutput: PhysicalQuantityId.PredictedMeanVote },
-      [ModelId.PmvIso]: { capabilities: [
-          SurfaceId.Standard, SurfaceId.Explore, ], outputs: [PhysicalQuantityId.PredictedMeanVote, PhysicalQuantityId.PredictedPercentageOfDissatisfied], complianceOutput: PhysicalQuantityId.PredictedMeanVote },
+      [ModelId.PmvAshrae]: {
+        exploreMode: true,
+        timeSeries: false,
+        outputs: [PhysicalQuantityId.PredictedMeanVote, PhysicalQuantityId.PredictedPercentageOfDissatisfied],
+        complianceOutput: PhysicalQuantityId.PredictedMeanVote,
+      },
+      [ModelId.PmvIso]: {
+        exploreMode: true,
+        timeSeries: false,
+        outputs: [PhysicalQuantityId.PredictedMeanVote, PhysicalQuantityId.PredictedPercentageOfDissatisfied],
+        complianceOutput: PhysicalQuantityId.PredictedMeanVote,
+      },
       [ModelId.Utci]: {
-        capabilities: [SurfaceId.Explore],
+        exploreMode: true,
+        timeSeries: false,
         outputs: [PhysicalQuantityId.UniversalThermalClimateIndex],
         complianceOutput: undefined,
       },
       [ModelId.AdaptiveAshrae]: {
-        capabilities: [SurfaceId.Standard],
+        exploreMode: false,
+        timeSeries: false,
         outputs: [],
         complianceOutput: PhysicalQuantityId.OperativeTemperature,
       },
       [ModelId.AdaptiveEn]: {
-        capabilities: [SurfaceId.Standard],
+        exploreMode: false,
+        timeSeries: false,
         outputs: [],
         complianceOutput: PhysicalQuantityId.OperativeTemperature,
       },
       [ModelId.HeatIndex]: {
-        capabilities: [SurfaceId.Explore],
+        exploreMode: true,
+        timeSeries: false,
         outputs: [PhysicalQuantityId.HeatIndex],
         complianceOutput: undefined,
       },
       [ModelId.Humidex]: {
-        capabilities: [SurfaceId.Explore],
+        exploreMode: true,
+        timeSeries: false,
         outputs: [PhysicalQuantityId.Humidex],
         complianceOutput: undefined,
       },
       [ModelId.WindChill]: {
-        capabilities: [SurfaceId.Explore],
+        exploreMode: true,
+        timeSeries: false,
         outputs: [PhysicalQuantityId.WindChillIndex],
         complianceOutput: undefined,
       },
       [ModelId.Phs2023]: {
-        capabilities: [
-          SurfaceId.Standard,
-          SurfaceId.Explore,
-          SurfaceId.TimeSeries,
-        ],
+        exploreMode: true,
+        timeSeries: true,
         outputs: [
           PhysicalQuantityId.LimitingExposureTime,
           PhysicalQuantityId.RectalTemperature,
@@ -358,9 +370,8 @@ describe("comfort model capability registry", () => {
 
     comfortModelOrder.forEach((modelId) => {
       const config = getComfortModelConfig(modelId);
-      expect(config.surfaceCapabilities).toEqual(
-        expected[modelId].capabilities,
-      );
+      expect(config.exploreMode).toBe(expected[modelId].exploreMode);
+      expect(modelSupportsTimeSeries(config)).toBe(expected[modelId].timeSeries);
       expect(config.exploreOutputs.map((output) => output.key)).toEqual(
         expected[modelId].outputs,
       );
@@ -402,7 +413,7 @@ describe("comfort model capability registry", () => {
       const config = getComfortModelConfig(modelId);
       expect(new Set(config.standardIds).size).toBe(config.standardIds.length);
       expect(config.standardIds.length > 0).toBe(
-        supportsStandardSurface(config.surfaceCapabilities),
+        modelSupportsStandard(config),
       );
     }
   });
@@ -412,9 +423,9 @@ describe("comfort model capability registry", () => {
       const { tables } = getComfortModelConfig(modelId);
       expect(tables.results.length).toBeGreaterThan(0);
       if (modelId === ModelId.Phs2023) {
-        expect(tables.timeSeries?.length).toBeGreaterThan(0);
+        expect(getComfortModelConfig(modelId).timeSeries?.rows.length).toBeGreaterThan(0);
       } else {
-        expect(tables.timeSeries).toBeUndefined();
+        expect(getComfortModelConfig(modelId).timeSeries).toBeUndefined();
       }
     });
   });
@@ -560,12 +571,8 @@ describe("comfort model capability registry", () => {
     const ashraeBands = adaptiveAshraeDeclaration.complianceProfile.bands;
     const enBands = adaptiveEnDeclaration.complianceProfile.bands;
 
-    expect(adaptiveAshraeDeclaration.surfaceCapabilities).toEqual([
-      SurfaceId.Standard,
-    ]);
-    expect(adaptiveEnDeclaration.surfaceCapabilities).toEqual([
-      SurfaceId.Standard,
-    ]);
+    expect(adaptiveAshraeDeclaration.exploreMode).toBe(false);
+    expect(adaptiveEnDeclaration.exploreMode).toBe(false);
     expect(adaptiveAshraeDeclaration.exploreOutputs).toEqual([]);
     expect(adaptiveEnDeclaration.exploreOutputs).toEqual([]);
     expect(adaptiveAshraeDeclaration.complianceProfile.output).toBe(

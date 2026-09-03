@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { ModelId } from "../../catalog/modelIds";
 import { ChartType } from "../../catalog/chartTypes";
-import { SurfaceId } from "../../catalog/surfaces";
 import { assembledCatalogs, comfortModelOrder, getComfortModelConfig } from ".";
 import {
   assembleCatalogs,
@@ -39,7 +38,8 @@ function createCatalogSlice(
       },
     ],
     tables: resultsTable,
-    surfaceCapabilities: [SurfaceId.Explore],
+    exploreMode: true,
+    standardIds: [],
     ...overrides,
   };
 }
@@ -147,10 +147,9 @@ describe("assembleCatalogs", () => {
     ).toThrow(/Unknown chart type "invented-type"/);
   });
 
-  it("fails assemble when a Time-series table lacks Time-series capability", () => {
+  it("fails assemble when a Time-series table is declared on Compare tables", () => {
     const slice = createCatalogSlice({
       id: ModelId.HeatIndex,
-      surfaceCapabilities: [SurfaceId.Explore],
       tables: {
         results: resultsTable.results,
         timeSeries: [
@@ -164,10 +163,10 @@ describe("assembleCatalogs", () => {
     });
 
     expect(() => validateModel(slice, assembledCatalogs)).toThrow(
-      /tables\.timeSeries is allowed only with Time-series workspace capability/,
+      /tables\.timeSeries is not a Compare table; declare features\.timeSeries/,
     );
     expect(() => assembleCatalogs([slice])).toThrow(
-      /tables\.timeSeries is allowed only with Time-series workspace capability/,
+      /tables\.timeSeries is not a Compare table; declare features\.timeSeries/,
     );
   });
 });

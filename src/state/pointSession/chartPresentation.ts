@@ -5,11 +5,7 @@ import { type NumericBand } from "../../catalog/modelCapabilities";
 import {
   FieldChartProfileKind,
 } from "../../catalog/fieldChartProfile";
-import {
-  SurfaceId,
-  supportsExploreSurface,
-  type SurfaceId as SurfaceIdType,
-} from "../../catalog/surfaces";
+import { SurfaceId, type SurfaceId as SurfaceIdType } from "../../catalog/surfaces";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
 import { getDynamicAxisOptions } from "./dynamicAxes";
 import {
@@ -22,6 +18,7 @@ import {
   resolveChartInstanceCapabilities,
 } from "./chartInstancePresentation";
 import type { RuntimeComfortModelDefinition } from "../modelRegistry/definition";
+import { modelSupportsExplore } from "../modelRegistry/definition";
 import type {
   ChartControlsViewModel,
   ModelCalculationCache,
@@ -47,7 +44,7 @@ function getExploreOutputs(
     config.chartEngineRegistrations,
     chartInstance.instanceId,
   );
-  return supportsExploreSurface(config.surfaceCapabilities)
+  return modelSupportsExplore(config)
     ? getChartExploreOutputs(config, registration)
     : [];
 }

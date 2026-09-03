@@ -45,7 +45,7 @@ src/
                    field-chart bind, ChartBuildResult
     units/         SI ↔ display conversion
   state/
-    modelRegistry/ defineModel, ComfortModelBuilder, registered configs
+    modelRegistry/ defineModel(library, authoring), registered configs
     pointSession/  Standard+Explore: input/chart/setting/output buckets, actions, $derived
                    view-models, share snapshot/codec/url
     timeSeries/    Time-series session (PHS)
@@ -100,23 +100,25 @@ they do not own, extend, or invent them. There is no table-type catalog.
   `modifierInputRangeSi`). Derived-humidity widget min/max map the model
   RH range at current `tdb`. Dynamic charts inherit `inputFields` then
   accept `spec.axisRanges` only for axes input cannot cover. Display
-  labels live on `siUnitLabel` / `ipUnitLabel`. Map JS names with
-  `defineLibraryQuantityMapping`.
+  labels live on `siUnitLabel` / `ipUnitLabel`.   Map JS names with `inputs` + `response.values` (thin models) or
+  `defineLibraryQuantityMapping` (family modules).
 - ChartTypes: `src/catalog/chartTypes.ts`. Eight product names. One model
   registers each ChartType at most once. Dropdown labels are
   `chartTypeLabel[type]`. Selection key is `ChartType` (`selectedChartType`);
   `instanceId` equals the ChartType. Declarations do not write chart ids.
-- Tables: slots `results` (every point-session model) and optional
-  `timeSeries` (PHS). Time-series surface membership is that slot.
+- Tables: Compare slot `results` only. Time-series rows and simulation
+  live on `features.timeSeries`. Time-series surface membership is that
+  object (`config.timeSeries`).
 - Zones: models select a `ZoneToken`; screen, publication, and colour-blind
   hex live in `src/catalog/zoneTokens.ts`.
-- Model labels/descriptions: `defineModel({ library })` reads string
+- Model labels/descriptions: `defineModel(library, authoring)` reads string
   `library.label` / `library.description` (JS `@docname` / leading
   JSDoc first sentence). Catalog does not import `jsthermalcomfort`.
-  Science categories come from pythermalcomfort via JS bins: Humidex
-  `mapping` + bins, UTCI `mapping.bins`, Heat Index `mapping.bins`, ASHRAE
-  `compliance.bounds`, `tsv.bins`, and `COMPLIANCE_LIMIT`, ISO `tsv.bins`,
-  Adaptive `offsets` and result `tmp_cmf_*` / `acceptability_*` fields.
+  Science categories come from pythermalcomfort via JS bins passed
+  explicitly to interval helpers: Humidex `mapping.bins`, UTCI
+  `mapping.bins`, Heat Index `mapping.bins`, ASHRAE `compliance.bounds`
+  and `tsv.bins`, ISO `tsv.bins`, Adaptive `offsets`. Do not guess
+  `kind: "mapping"` on the first argument.
   Comfort Tool maps those library label strings to `ZoneToken` colours.
   All-lowercase classifier labels are title-cased for display
   (`displayClassifierLabel`); calculation identity stays the JS/Python
@@ -134,11 +136,15 @@ they do not own, extend, or invent them. There is no table-type catalog.
   and `phs.RECTAL_TEMPERATURE_LIMIT` / water-loss fractions; Explore t_re /
   water-loss fills are product presets.
 
-`defineModel` is the public authoring API. Family modules (PMV, Adaptive)
-may assemble with `ComfortModelBuilder` internally. Derived-humidity or
+`defineModel(library, authoring)` is the public authoring API (`assembleModel`
+is an alias). Authors do not use a fluent builder. Thin models run
+`invokeMappedLibrary` per Compare slot; families set `features.invoke`
+(and `mapChartInput` / `buildChartSource` when the chart payload is not
+the SI bag). Page membership is `standardIds`, `exploreMode`, and
+`features.timeSeries` — not `surfaceCapabilities`. Derived-humidity or
 modifier-input `kind: "quantity"` fields, unknown ChartTypes,
-duplicate ChartType on one model, or a Time-series table without Time-series
-capability fail `defineModel` / `assembleCatalogs`. Every input field must
+duplicate ChartType on one model, or `tables.timeSeries` fail
+`defineModel` / `assembleCatalogs`. Every input field must
 declare SI min/max.
 
 ## Range ownership
@@ -246,19 +252,19 @@ address bar is not a live store. Changing model strips `?state=`.
 
 ## Authoring constraints
 
-A Heat Index–class model is a `defineModel` declaration, one `ModelId`
+A Heat Index–class model is `defineModel(library, authoring)`, one `ModelId`
 member, and one registry line. Copy `heatIndex.ts`. The authoring unit is
-one file with identity/inputs, calculation, and chart **parameters** (`type`
-+ data spec). Do not write `spec.build`, Plotly, chart ids, or
-`instanceId`. Selection key is `ChartType` (`selectedChartType`).
-`library.label` / `library.description` fill metadata from `@docname`
-and the leading JSDoc first sentence. `inputFields`
-list quantities with required SI `minValue`/`maxValue` (optional `widget`);
-default widgets come from `defaultFieldWidgetByQuantity`. Dynamic charts
-inherit those ranges; chart-only axes declare `rangeSi` on the spec.
-Classifier edges come from JS
-`mapping.bins` / `compliance.bounds` via `bandsFromJsBins` /
-`bandsFromJsBounds`, plus a token map — do not scan.
+six sections: Attributes, Inputs, Response, Tables (`results` only),
+Charts, and optional Features. Do not write `calculate`, `spec.build`,
+Plotly, chart ids, `instanceId`, or `surfaceCapabilities`. Selection key is
+`ChartType` (`selectedChartType`). `library.label` / `library.description`
+fill metadata from `@docname` and the leading JSDoc first sentence.
+`inputs` list JS names with required SI `minValue`/`maxValue` (optional
+`widget`); default widgets come from `defaultFieldWidgetByQuantity`.
+Dynamic charts inherit those ranges; chart-only axes declare `rangeSi`
+on the spec. Classifier edges come from JS statics passed to
+`intervalFromBins` / `intervalFromBounds` / `intervalFromOffsets` plus a
+token map — do not scan or copy numeric edges.
 
 These are frontend catalog work, not declaration-only work:
 

@@ -6,31 +6,6 @@ export const SurfaceId = {
 
 export type SurfaceId = (typeof SurfaceId)[keyof typeof SurfaceId];
 
-export function supportsSurface(
-  capabilities: readonly SurfaceId[],
-  surface: SurfaceId,
-): boolean {
-  return capabilities.includes(surface);
-}
-
-export function supportsStandardSurface(
-  capabilities: readonly SurfaceId[],
-): boolean {
-  return supportsSurface(capabilities, SurfaceId.Standard);
-}
-
-export function supportsExploreSurface(
-  capabilities: readonly SurfaceId[],
-): boolean {
-  return supportsSurface(capabilities, SurfaceId.Explore);
-}
-
-export function supportsTimeSeriesSurface(
-  capabilities: readonly SurfaceId[],
-): boolean {
-  return supportsSurface(capabilities, SurfaceId.TimeSeries);
-}
-
 export const StandardId = {
   Ashrae55: "ashrae-55",
   Iso7730: "iso-7730",

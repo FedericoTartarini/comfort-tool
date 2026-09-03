@@ -154,10 +154,10 @@ exports[`output golden — table snapshots > heat-index produces stable table ou
           {
             "color": "#475569",
             "subtext": "No Risk",
-            "text": "26.6 °C",
+            "text": "26.56 °C",
           },
         ],
-        "title": "Heat Index",
+        "title": "Heat index",
       },
     ],
   },
@@ -193,7 +193,7 @@ exports[`output golden — table snapshots > humidex produces stable table outpu
           {
             "color": "#475569",
             "subtext": "Little or no discomfort",
-            "text": "29.8",
+            "text": "29.76",
           },
         ],
         "title": "Humidex",
@@ -500,6 +500,8 @@ exports[`output golden — table snapshots > pmv-ashrae produces stable table ou
       {
         "cells": [
           {
+            "color": "#475569",
+            "subtext": "Neutral",
             "text": "0.24",
           },
         ],
@@ -768,6 +770,8 @@ exports[`output golden — table snapshots > pmv-iso produces stable table outpu
       {
         "cells": [
           {
+            "color": "#475569",
+            "subtext": "Neutral",
             "text": "0.24",
           },
         ],
@@ -879,6 +883,8 @@ exports[`output golden — table snapshots > utci produces stable table output 1
       {
         "cells": [
           {
+            "color": "#059669",
+            "subtext": "No Thermal Stress",
             "text": "25.5 °C",
           },
         ],
@@ -919,18 +925,18 @@ exports[`output golden — table snapshots > wind-chill produces stable table ou
       {
         "cells": [
           {
-            "text": "972.7 W/m²",
+            "text": "972.68 W/m²",
           },
         ],
-        "title": "Wind chill index",
+        "title": "Wind chill",
       },
       {
         "cells": [
           {
-            "text": "-11.9 °C",
+            "text": "-11.92 °C",
           },
         ],
-        "title": "wct",
+        "title": "Wind chill temperature",
       },
     ],
   },

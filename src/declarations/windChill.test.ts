@@ -2,19 +2,53 @@
  * Unit tests for the standalone Wind Chill calculation service.
  */
 import { describe, expect, it } from "vitest";
-import { wc } from "jsthermalcomfort";
-import { PhysicalQuantityId } from "../catalog/quantities";
-import { calculateWindChill, windChillModelConfig } from "./windChill";
+import { wc, wind_chill_temperature } from "jsthermalcomfort";
+import { PhysicalQuantityId, type QuantityState } from "../catalog/quantities";
+import { windChillModelConfig } from "./windChill";
+import { invokeMappedLibrary } from "../engines/comfort/libraryInvoke";
+import { inputQuantity, resultQuantity } from "../state/modelRegistry/builder";
 import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
 import {
   convertFieldValueFromSi,
+  convertMetersPerSecondToKilometersPerHour,
 } from "../engines/units";
 import { InputId } from "../catalog/inputSlots";
 import { buildChartPlotly } from "../testSupport/modelChartTestHelpers";
 import { type ChartBuildContext } from "../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
 import { requiredControlIdsByModel } from "../testSupport/requiredModelControls";
+import { InputWidget } from "../catalog/inputWidgets";
+
+function calculateWindChill(request: QuantityState) {
+  return invokeMappedLibrary(
+    wc,
+    [
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+        minValue: -45,
+        maxValue: 0,
+      }),
+      inputQuantity("v", PhysicalQuantityId.WindSpeed, {
+        widget: InputWidget.OutdoorWindSpeed,
+        minValue: 1,
+        maxValue: 20,
+      }),
+    ],
+    [
+      resultQuantity("wci", PhysicalQuantityId.WindChillIndex),
+      resultQuantity("wct", PhysicalQuantityId.WindChillTemperature, {
+        from: (si) => wind_chill_temperature(
+          si[PhysicalQuantityId.DryBulbTemperature]!,
+          convertMetersPerSecondToKilometersPerHour(
+            si[PhysicalQuantityId.WindSpeed]!,
+          ),
+          false,
+        ).wct,
+      }),
+    ],
+    request,
+  );
+}
 
 describe("windChill service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
@@ -40,7 +74,7 @@ describe("windChill service", () => {
       v: 3.048,    // SI representation of 10 ft/s
     });
 
-    const wctF = convertFieldValueFromSi(PhysicalQuantityId.WindChillTemperature, result.wct, UnitSystem.IP);
+    const wctF = convertFieldValueFromSi(PhysicalQuantityId.WindChillTemperature, result.wct!, UnitSystem.IP);
     expect(wctF).toBeLessThan(5);
   });
 

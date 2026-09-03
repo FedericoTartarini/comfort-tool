@@ -8,29 +8,48 @@ import {
   InputId,
 } from "../../../catalog/inputSlots";
 import { UnitSystem } from "../../../catalog/units";
-import { SurfaceId } from "../../../catalog/surfaces";
 import { ModelId } from "../../../catalog/modelIds";
 import { ChartType } from "../../../catalog/chartTypes";
-import { ComfortModelBuilder, parseEmptyOptions } from "../../../state/modelRegistry/builder";
+import { InputWidget } from "../../../catalog/inputWidgets";
+import {
+  defineModel,
+  inputQuantity,
+  parseEmptyOptions,
+  resultQuantity,
+} from "../../../state/modelRegistry/builder";
 import "../../../state/modelRegistry";
 import { convertMassFromSi } from "../../units/physicalQuantities";
 import { resolveInputField, declaredSiRangeForInputField, inputFieldControlId, primaryQuantityIdsForInputField } from "./fieldInputBehaviors";
 import type { ControlBehaviorContext } from "./types";
 
 describe("fieldInputBehaviors", () => {
-  function createBuilder() {
-    return new ComfortModelBuilder<unknown, unknown>(ModelId.PmvAshrae)
-      .setLabel("Test")
-      .setDescription("Test model")
-      .setStandardIds([])
-      .setSurfaceCapabilities([SurfaceId.Explore])
-      .setExploreOutputs([{
-        key: PhysicalQuantityId.PredictedMeanVote,
-        label: "PMV",
-        defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
-      }])
-      .setModifiers([])
-      .setCharts([{
+  function testLibrary() {
+    return {};
+  }
+  testLibrary.label = "Test";
+  testLibrary.description = "Test model";
+
+  function defineTestModel(
+    inputs: Parameters<typeof defineModel>[1]["inputs"],
+  ) {
+    return defineModel(testLibrary, {
+      id: ModelId.PmvAshrae,
+      standardIds: [],
+      exploreMode: true,
+      inputs,
+      response: {
+        values: [
+          resultQuantity("pmv", PhysicalQuantityId.PredictedMeanVote),
+        ],
+      },
+      tables: {
+        results: [{
+          id: "row",
+          label: "Row",
+          format: () => ({ text: "x" }),
+        }],
+      },
+      charts: [{
         type: ChartType.Dynamic,
         emptyMessage: "Empty",
         spec: {
@@ -43,51 +62,38 @@ describe("fieldInputBehaviors", () => {
             PhysicalQuantityId.DryBulbTemperature,
             PhysicalQuantityId.RelativeHumidity,
           ],
-          resolveGridSpec: () => ({
-            output: {
-              key: PhysicalQuantityId.PredictedMeanVote,
-              label: "PMV",
-              defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
-            },
-            requestAdapter: {
-              getAxisValue: () => 0,
-              setAxisValue: () => undefined,
-            },
-            evaluate: () => null,
-            getOutputValue: () => 0,
-          }),
+          evaluate: () => ({}),
+          getOutputValue: () => 0,
+          requestAdapter: {
+            getAxisValue: () => 0,
+            setAxisValue: () => undefined,
+          },
         },
-      }])
-      .setTables({
-        results: [{
-          id: "row",
-          label: "Row",
-          format: () => ({ text: "x" }),
+      }],
+      features: {
+        exploreOutputs: [{
+          key: PhysicalQuantityId.PredictedMeanVote,
+          label: "PMV",
+          defaultBands: [{ min: -1, max: 1, label: "Neutral", color: "#fff" }],
         }],
-      })
-      .setCalculator(() => ({
-        resultsByInput: { input1: null, input2: null, input3: null },
-        chartSource: null,
-      }))
-      .setDynamicAxisFields([PhysicalQuantityId.DryBulbTemperature, PhysicalQuantityId.RelativeHumidity])
-      .setDefaultDynamicAxes({ xAxis: PhysicalQuantityId.DryBulbTemperature, yAxis: PhysicalQuantityId.RelativeHumidity })
-      .setDefaultOptions({})
-      .setOptionParser(parseEmptyOptions);
+        invoke: () => ({}),
+        defaultOptions: {},
+        parseOptions: parseEmptyOptions,
+      },
+    });
   }
 
   it("registers psychrometric index controls", () => {
-    const builder = createBuilder();
-    builder.setInputFields([
-      {
-        kind: "numeric",
-        controlId: InputControlId.Temperature,
-        fieldKey: PhysicalQuantityId.DryBulbTemperature,
+    const config = defineTestModel([
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
         minValue: 20,
         maxValue: 50,
-      },
-      { kind: "simpleHumidity", minValue: 0, maxValue: 100 },
+      }),
+      inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
+        minValue: 0,
+        maxValue: 100,
+      }),
     ]);
-    const config = builder.build();
 
     expect(config.controls.map(({ id }) => id)).toEqual([
       InputControlId.Temperature,
@@ -99,22 +105,16 @@ describe("fieldInputBehaviors", () => {
   });
 
   it("registers outdoor wind index controls", () => {
-    const builder = createBuilder();
-    builder.setInputFields([
-      {
-        kind: "numeric",
-        controlId: InputControlId.Temperature,
-        fieldKey: PhysicalQuantityId.DryBulbTemperature,
+    const config = defineTestModel([
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
         minValue: -45,
         maxValue: 0,
-      },
-      {
-        kind: "outdoorWindSpeed",
+      }),
+      inputQuantity("v", PhysicalQuantityId.WindSpeed, {
         minValue: 1,
         maxValue: 20,
-      },
+      }),
     ]);
-    const config = builder.build();
 
     expect(config.controls.map(({ id }) => id)).toEqual([
       InputControlId.Temperature,
@@ -123,29 +123,27 @@ describe("fieldInputBehaviors", () => {
   });
 
   it("hides radiant temperature in operative mode for UTCI controls", () => {
-    const builder = createBuilder();
-    builder.setInputFields([
-      {
-        kind: "operativeTemperature",
+    const config = defineTestModel([
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+        widget: InputWidget.OperativeTemperature,
         minValue: -30,
         maxValue: 50,
-      },
-      {
-        kind: "radiantTemperature",
-        minValue: -30,
-        maxValue: 50,
+      }),
+      inputQuantity("tr", PhysicalQuantityId.MeanRadiantTemperature, {
         hideWhen: "operative",
-      },
-      {
-        kind: "numeric",
-        controlId: InputControlId.WindSpeed,
-        fieldKey: PhysicalQuantityId.WindSpeed,
+        minValue: -30,
+        maxValue: 50,
+      }),
+      inputQuantity("v", PhysicalQuantityId.WindSpeed, {
+        widget: InputWidget.Numeric,
         minValue: 0,
         maxValue: 17,
-      },
-      { kind: "simpleHumidity", minValue: 0, maxValue: 100 },
+      }),
+      inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
+        minValue: 0,
+        maxValue: 100,
+      }),
     ]);
-    const config = builder.build();
     const radiant = config.controls.find(({ id }) => id === InputControlId.RadiantTemperature);
     const context: ControlBehaviorContext = {
       quantitiesByInput: inputDefaultsById,
@@ -158,12 +156,18 @@ describe("fieldInputBehaviors", () => {
   });
 
   it("shows radiant temperature in air mode for operative temperature controls", () => {
-    const builder = createBuilder();
-    builder.setInputFields([
-      { kind: "operativeTemperature", minValue: 10, maxValue: 40 },
-      { kind: "radiantTemperature", hideWhen: "operative", minValue: 10, maxValue: 40 },
+    const config = defineTestModel([
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+        widget: InputWidget.OperativeTemperature,
+        minValue: 10,
+        maxValue: 40,
+      }),
+      inputQuantity("tr", PhysicalQuantityId.MeanRadiantTemperature, {
+        hideWhen: "operative",
+        minValue: 10,
+        maxValue: 40,
+      }),
     ]);
-    const config = builder.build();
     const radiant = config.controls.find(({ id }) => id === InputControlId.RadiantTemperature);
     const context: ControlBehaviorContext = {
       quantitiesByInput: inputDefaultsById,

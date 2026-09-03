@@ -2,7 +2,6 @@ import type {
   CalculationSource,
   ComfortStandard,
 } from "../../catalog/calculationMetadata";
-import type { ModelChartSource } from "../../catalog/chartSource";
 import {
   ModelId,
   ComplianceStatus,
@@ -25,14 +24,16 @@ import {
 import type { ThermalZone } from "../../catalog/thermalZone";
 import type {
   StandardId as StandardIdType,
-  SurfaceId as SurfaceIdType,
 } from "../../catalog/surfaces";
+import type { LibraryInterval } from "../../catalog/classifierBins";
 import type { TableRowSpec } from "../../catalog/tableTypes";
 import {
   createTemperatureModeOptionHandler,
 } from "../../engines/comfort/controls/temperatureControl";
 import {
-  ComfortModelBuilder,
+  defineModel,
+  inputQuantity,
+  resultQuantity,
   type JsModelLibrary,
 } from "../../state/modelRegistry/builder";
 import { ChartType } from "../../catalog/chartTypes";
@@ -46,9 +47,9 @@ import { unitLabel, type UnitSystem as UnitSystemType } from "../../catalog/unit
 import {
   buildAdaptiveResultRows,
   calculateAdaptive,
-  calculateAdaptiveModel,
   getLevelResult,
   parseAdaptiveOptions,
+  toAdaptiveRequest,
 } from "./calculation";
 
 export interface AdaptiveRequest {
@@ -114,9 +115,10 @@ export interface AdaptiveModelDeclaration extends AdaptiveBoundaryDefinition {
   modelId: typeof ModelId.AdaptiveAshrae | typeof ModelId.AdaptiveEn;
   library: JsModelLibrary;
   standardIds: readonly StandardIdType[];
-  surfaceCapabilities: readonly SurfaceIdType[];
+  exploreMode: boolean;
+  intervals: readonly LibraryInterval[];
   exploreOutputs: readonly ModelOutput[];
-  modifiers: readonly InputModifier[];
+  modifiers?: readonly InputModifier[];
   complianceProfile: ComplianceSpec<Band, AdaptiveResponse>;
   resultStandard: ComfortStandard;
   operativeTemperatureStandard: JsThermalComfortStandard;
@@ -250,72 +252,79 @@ export function createAdaptiveBoundaryRegionSpec(
 export function createAdaptiveModelConfig(
   declaration: AdaptiveModelDeclaration,
 ) {
-  const builder = new ComfortModelBuilder<
-    AdaptiveResponse,
-    ModelChartSource<AdaptiveRequest>,
-    Band
-  >(declaration.modelId);
-
-  builder
-    .setLibrary(declaration.library)
-    .setStandardIds(declaration.standardIds)
-    .setSurfaceCapabilities([...declaration.surfaceCapabilities])
-    .setExploreOutputs(declaration.exploreOutputs)
-    .setModifiers(declaration.modifiers)
-    .setComplianceProfile(declaration.complianceProfile)
-    .setInputFields([
-      {
-        quantity: PhysicalQuantityId.DryBulbTemperature,
+  return defineModel(declaration.library as Parameters<typeof defineModel>[0], {
+    id: declaration.modelId,
+    standardIds: declaration.standardIds,
+    exploreMode: declaration.exploreMode,
+    inputs: [
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
         widget: InputWidget.OperativeTemperature,
         minValue: adaptiveIndoorTemperatureRangeSi.min,
         maxValue: adaptiveIndoorTemperatureRangeSi.max,
-      },
-      {
-        quantity: PhysicalQuantityId.MeanRadiantTemperature,
+      }),
+      inputQuantity("tr", PhysicalQuantityId.MeanRadiantTemperature, {
         widget: InputWidget.RadiantTemperature,
         hideWhen: "air",
         label: "Mean radiant temperature",
         minValue: adaptiveIndoorTemperatureRangeSi.min,
         maxValue: adaptiveIndoorTemperatureRangeSi.max,
-      },
-      {
-        quantity: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+      }),
+      inputQuantity("t_running_mean", PhysicalQuantityId.PrevailingMeanOutdoorTemperature, {
         label: declaration.outdoorTemperatureLabel,
         minValue: adaptivePrevailingMeanRangeSi.min,
         maxValue: adaptivePrevailingMeanRangeSi.max,
-      },
-      {
-        quantity: PhysicalQuantityId.RelativeAirSpeed,
+      }),
+      inputQuantity("v", PhysicalQuantityId.RelativeAirSpeed, {
         widget: InputWidget.Preset,
         presetKey: declaration.airSpeedPresetKey,
         label: "Air speed",
         minValue: adaptiveAirSpeedRangeSi.min,
         maxValue: adaptiveAirSpeedRangeSi.max,
-      },
-    ])
-    .addOptionHandler(
-      OptionKey.TemperatureMode,
-      createTemperatureModeOptionHandler(),
-    )
-    .setDefaultOptions({
-      ...defaultAdaptiveOptions,
-      [OptionKey.TemperatureMode]: TemperatureMode.Operative,
-    })
-    .setOptionParser(parseAdaptiveOptions)
-    .setCalculator((context, visibleInputIds) => (
-      calculateAdaptiveModel(context, visibleInputIds, declaration)
-    ))
-    .setTables({
+      }),
+    ],
+    response: {
+      values: [
+        resultQuantity("tmp_cmf", PhysicalQuantityId.OperativeTemperature),
+      ],
+      intervals: declaration.intervals,
+    },
+    tables: {
       results: buildAdaptiveTableRows(declaration),
-    })
-    .setCharts([
+    },
+    charts: [
       {
         type: ChartType.Adaptive,
         spec: createAdaptiveBoundaryRegionSpec(declaration) as BoundaryRegionDataSpec<
           AdaptiveResponse
         >,
       },
-    ]);
-
-  return builder.build();
+    ],
+    features: {
+      ...(declaration.modifiers ? { modifiers: declaration.modifiers } : {}),
+      optionHandlers: [
+        {
+          key: OptionKey.TemperatureMode,
+          handler: createTemperatureModeOptionHandler(),
+        },
+      ],
+      complianceProfile: declaration.complianceProfile,
+      exploreOutputs: declaration.exploreOutputs,
+      invoke: (_si, context, inputId) =>
+        calculateAdaptive(declaration, toAdaptiveRequest(context, inputId)),
+      mapChartInput: (_si, context, inputId) => toAdaptiveRequest(context, inputId),
+      defaultOptions: {
+        ...defaultAdaptiveOptions,
+        [OptionKey.TemperatureMode]: TemperatureMode.Operative,
+      },
+      parseOptions: parseAdaptiveOptions,
+    },
+    dynamicAxisFields: [
+      PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+      PhysicalQuantityId.OperativeTemperature,
+    ],
+    defaultDynamicAxes: {
+      xAxis: PhysicalQuantityId.PrevailingMeanOutdoorTemperature,
+      yAxis: PhysicalQuantityId.OperativeTemperature,
+    },
+  });
 }

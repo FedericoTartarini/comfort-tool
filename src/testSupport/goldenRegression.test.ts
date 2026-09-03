@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { PhysicalQuantityId } from "../catalog/quantities";
+import { PhysicalQuantityId, type QuantityState } from "../catalog/quantities";
 
 import type { AdaptiveResponse } from "../declarations/adaptive/shared";
-import type { HumidexResponse } from "../declarations/humidex";
-import type { HeatIndexResponse } from "../declarations/heatIndex";
-import type { WindChillResponse } from "../declarations/windChill";
 import type { UtciResponse } from "../declarations/utci/utci";
 import type { PmvResponse } from "../declarations/pmv/calculation";
 import type { PhsResponse } from "../catalog/phs";
-import { calculateHeatIndex } from "../declarations/heatIndex";
-import { calculateHumidex } from "../declarations/humidex";
-import { calculateWindChill } from "../declarations/windChill";
+import { humidexModelConfig } from "../declarations/humidex";
+import { heatIndexModelConfig } from "../declarations/heatIndex";
+import { windChillModelConfig } from "../declarations/windChill";
 import { calculateUtci } from "../declarations/utci/utci";
 import { evaluatePmvCondition } from "../declarations/pmv/calculation";
 import { pmvAshraeAdapter } from "../declarations/pmv/ashrae";
@@ -63,19 +60,35 @@ describe("golden regression — control counts", () => {
 
 describe("golden regression — direct calculation snapshots", () => {
   it("Humidex baseline", () => {
-    const result = calculateHumidex({ tdb: 30, rh: 70 });
+    const result = humidexModelConfig.calculate(
+      createGoldenCalculationContext(ModelId.Humidex, {
+        [PhysicalQuantityId.DryBulbTemperature]: 30,
+        [PhysicalQuantityId.RelativeHumidity]: 70,
+      }),
+      [InputId.Input1],
+    ).resultsByInput[InputId.Input1] as QuantityState;
     expect(result.humidex).toBeCloseTo(40.9, 1);
-    expect(result.humidexDiscomfort).toBe("Intense discomfort; avoid exertion");
   });
 
   it("Heat Index baseline", () => {
-    const result = calculateHeatIndex({ tdb: 32, rh: 60 });
+    const result = heatIndexModelConfig.calculate(
+      createGoldenCalculationContext(ModelId.HeatIndex, {
+        [PhysicalQuantityId.DryBulbTemperature]: 32,
+        [PhysicalQuantityId.RelativeHumidity]: 60,
+      }),
+      [InputId.Input1],
+    ).resultsByInput[InputId.Input1] as QuantityState;
     expect(result.hi).toBeCloseTo(37.1, 1);
-    expect(result.category).toBe("extreme caution");
   });
 
   it("Wind Chill baseline", () => {
-    const result = calculateWindChill({ tdb: -10, v: 5 });
+    const result = windChillModelConfig.calculate(
+      createGoldenCalculationContext(ModelId.WindChill, {
+        [PhysicalQuantityId.DryBulbTemperature]: -10,
+        [PhysicalQuantityId.WindSpeed]: 5,
+      }),
+      [InputId.Input1],
+    ).resultsByInput[InputId.Input1] as QuantityState;
     expect(result.wct).toBeCloseTo(-17.4, 1);
   });
 
@@ -109,19 +122,17 @@ describe("golden regression — direct calculation snapshots", () => {
 
 describe("golden regression — calculate via model config", () => {
   it("Humidex matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HumidexResponse>(ModelId.Humidex, { [PhysicalQuantityId.DryBulbTemperature]: 30, [PhysicalQuantityId.RelativeHumidity]: 70 });
+    const result = calculatePrimaryResult<QuantityState>(ModelId.Humidex, { [PhysicalQuantityId.DryBulbTemperature]: 30, [PhysicalQuantityId.RelativeHumidity]: 70 });
     expect(result.humidex).toBeCloseTo(40.9, 1);
-    expect(result.humidexDiscomfort).toBe("Intense discomfort; avoid exertion");
   });
 
   it("Heat Index matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<HeatIndexResponse>(ModelId.HeatIndex, { [PhysicalQuantityId.DryBulbTemperature]: 32, [PhysicalQuantityId.RelativeHumidity]: 60 });
+    const result = calculatePrimaryResult<QuantityState>(ModelId.HeatIndex, { [PhysicalQuantityId.DryBulbTemperature]: 32, [PhysicalQuantityId.RelativeHumidity]: 60 });
     expect(result.hi).toBeCloseTo(37.1, 1);
-    expect(result.category).toBe("extreme caution");
   });
 
   it("Wind Chill matches golden baseline via model config", () => {
-    const result = calculatePrimaryResult<WindChillResponse>(ModelId.WindChill, { [PhysicalQuantityId.DryBulbTemperature]: -10, [PhysicalQuantityId.WindSpeed]: 5 });
+    const result = calculatePrimaryResult<QuantityState>(ModelId.WindChill, { [PhysicalQuantityId.DryBulbTemperature]: -10, [PhysicalQuantityId.WindSpeed]: 5 });
     expect(result.wct).toBeCloseTo(-17.4, 1);
   });
 

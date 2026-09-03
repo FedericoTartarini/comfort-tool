@@ -5,11 +5,8 @@ import { ModelId } from "../catalog/modelIds";
 import { InputId } from "../catalog/inputSlots";
 import { type NumericBand } from "../catalog/modelCapabilities";
 import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
-import {
-  SurfaceId,
-  supportsExploreSurface,
-  supportsStandardSurface,
-} from "../catalog/surfaces";
+import { SurfaceId } from "../catalog/surfaces";
+import { modelSupportsExplore, modelSupportsStandard } from "../state/modelRegistry/definition";
 import { UnitSystem } from "../catalog/units";
 import {
   buildFieldChartProfile,
@@ -62,7 +59,7 @@ describe("output integration", () => {
       const { resultsByInput, chartSource } = config.calculate(context, [InputId.Input1]);
       const settings = seedModelOutputSettings(config);
 
-      if (supportsStandardSurface(config.surfaceCapabilities)) {
+      if (modelSupportsStandard(config)) {
         const chartInstance = config.chartInstances.entries.find(
           ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;
@@ -89,7 +86,7 @@ describe("output integration", () => {
         expect(profile.kind).toBe(FieldChartProfileKind.Compliance);
       }
 
-      if (supportsExploreSurface(config.surfaceCapabilities)) {
+      if (modelSupportsExplore(config)) {
         const chartInstance = config.chartInstances.entries.find(
           ({ instanceId }) => instanceId === config.chartInstances.defaultInstanceId,
         )!;

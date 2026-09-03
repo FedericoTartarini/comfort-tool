@@ -8,8 +8,6 @@ import {
 } from "../../catalog/fieldChartProfile";
 import {
   SurfaceId,
-  supportsExploreSurface,
-  supportsStandardSurface,
   type SurfaceId as SurfaceIdType,
 } from "../../catalog/surfaces";
 import {
@@ -18,6 +16,10 @@ import {
   validateNumericBands,
 } from "../../engines/comfort/charts/bands";
 import type { RuntimeComfortModelDefinition } from "../modelRegistry/definition";
+import {
+  modelSupportsExplore,
+  modelSupportsStandard,
+} from "../modelRegistry/definition";
 import type { ModelOutputSettings } from "./types";
 
 export function getDeclaredExploreOutput(
@@ -52,7 +54,7 @@ export function normalizeExploreStateForChart(
   settings: ModelOutputSettings,
   chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): ModelOutputSettings {
-  if (!supportsExploreSurface(config.surfaceCapabilities)) {
+  if (!modelSupportsExplore(config)) {
     return { ...settings, exploreOutput: null, exploreBands: null };
   }
 
@@ -78,7 +80,7 @@ export function seedExploreOutputSettings(
   config: RuntimeComfortModelDefinition,
   chartRegistration?: ChartEngineRegistration<unknown, unknown>,
 ): Pick<ModelOutputSettings, "exploreOutput" | "exploreBands"> {
-  if (!supportsExploreSurface(config.surfaceCapabilities)) {
+  if (!modelSupportsExplore(config)) {
     return { exploreOutput: null, exploreBands: null };
   }
 
@@ -115,7 +117,7 @@ export function selectExploreOutput(
   const output = getDeclaredExploreOutput(config, outputKey);
   if (
     !output
-    || !supportsExploreSurface(config.surfaceCapabilities)
+    || !modelSupportsExplore(config)
     || !getChartExploreOutputs(config, chartRegistration).some(({ key }) => key === outputKey)
   ) {
     return null;
@@ -156,7 +158,7 @@ export function buildFieldChartProfile<TComplianceBand extends Band>(
   workspace: SurfaceIdType,
 ): FieldChartProfile<TComplianceBand> {
   if (workspace === SurfaceId.Standard || workspace === SurfaceId.Explore) {
-    if (workspace === SurfaceId.Standard && supportsStandardSurface(config.surfaceCapabilities)) {
+    if (workspace === SurfaceId.Standard && modelSupportsStandard(config)) {
       const profile = config.complianceProfile;
       if (!profile) {
         throw new Error(
@@ -172,7 +174,7 @@ export function buildFieldChartProfile<TComplianceBand extends Band>(
       };
     }
 
-    if (workspace === SurfaceId.Explore && supportsExploreSurface(config.surfaceCapabilities)) {
+    if (workspace === SurfaceId.Explore && modelSupportsExplore(config)) {
       if (
         !settings.exploreOutput
         || !settings.exploreBands

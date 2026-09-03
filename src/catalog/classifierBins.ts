@@ -1,9 +1,14 @@
-import {
-  numericBandFromToken,
-  type NumericBand,
-} from "./modelCapabilities";
+import { numericBandContains, numericBandFromToken, type NumericBand } from "./modelCapabilities";
+import type { PhysicalQuantityId } from "./quantities";
 import { ThermalZone } from "./thermalZone";
 import type { ZoneToken } from "./zoneTokens";
+
+/** One library classifier label mapped to a product colour token. */
+export interface ClassifierTokenRow {
+  readonly label: string;
+  readonly token: ZoneToken;
+  readonly legendText?: string;
+}
 
 /** Digitize-style bins exported by jsthermalcomfort classifiers. */
 export interface ClassifierBins {
@@ -72,9 +77,38 @@ function tokenForLabel(
  * Membership matches `mapping()`: right-closed uses `(min, max]`,
  * left-closed uses `[min, max)`.
  */
+export function tokenMapFromRows(
+  tokens: readonly ClassifierTokenRow[],
+): Readonly<Record<string, ZoneToken>> {
+  return Object.fromEntries(tokens.map((row) => [row.label, row.token]));
+}
+
+function assertBinsTokenRows(
+  bins: ClassifierBins,
+  tokens: readonly ClassifierTokenRow[],
+): void {
+  if (tokens.length !== bins.labels.length) {
+    throw new Error(
+      `Classifier tokens length (${tokens.length}) must equal bins.labels length (${bins.labels.length}).`,
+    );
+  }
+  for (const [index, row] of tokens.entries()) {
+    if (row.label !== bins.labels[index]) {
+      throw new Error(
+        `Classifier token label "${row.label}" does not match bins.labels[${index}] "${bins.labels[index]}".`,
+      );
+    }
+  }
+}
+
+/**
+ * Colour JS digitize bins as Explore/Compliance `NumericBand`s.
+ * Membership matches `mapping()`: right-closed uses `(min, max]`,
+ * left-closed uses `[min, max)`.
+ */
 export function bandsFromJsBins(
   bins: ClassifierBins,
-  tokensByLabel: Readonly<Record<string, ZoneToken>>,
+  tokens: readonly ClassifierTokenRow[] | Readonly<Record<string, ZoneToken>>,
 ): NumericBand[] {
   const { edges, labels, right } = bins;
   if (
@@ -84,6 +118,15 @@ export function bandsFromJsBins(
     throw new Error(
       "Classifier bins must have labels.length equal to edges.length or edges.length + 1.",
     );
+  }
+
+  let tokensByLabel: Readonly<Record<string, ZoneToken>>;
+  if (Array.isArray(tokens)) {
+    const rows = tokens as readonly ClassifierTokenRow[];
+    assertBinsTokenRows(bins, rows);
+    tokensByLabel = tokenMapFromRows(rows);
+  } else {
+    tokensByLabel = tokens as Readonly<Record<string, ZoneToken>>;
   }
 
   return labels.map((libraryLabel, index) => {
@@ -97,6 +140,137 @@ export function bandsFromJsBins(
       maxInclusive: right,
     });
   });
+}
+
+export interface BinsInterval {
+  readonly quantity: PhysicalQuantityId;
+  readonly bins: ClassifierBins;
+  readonly tokens: readonly ClassifierTokenRow[];
+}
+
+export interface BoundsInterval {
+  readonly quantity: PhysicalQuantityId;
+  readonly bounds: ClassifierBounds;
+  readonly inside: ClassifierTokenRow;
+  readonly outside: ClassifierTokenRow;
+}
+
+export interface OffsetTokenRow {
+  readonly id: string;
+  readonly token: ZoneToken;
+}
+
+export interface AdaptiveOffset {
+  readonly id: string;
+  readonly lower: number;
+  readonly upper: number;
+}
+
+export interface OffsetsInterval {
+  readonly quantity: PhysicalQuantityId;
+  readonly offsets: readonly AdaptiveOffset[];
+  readonly tokens: readonly OffsetTokenRow[];
+}
+
+export interface BandsInterval {
+  readonly quantity: PhysicalQuantityId;
+  readonly bands: readonly NumericBand[];
+}
+
+export type LibraryInterval =
+  | BinsInterval
+  | BoundsInterval
+  | OffsetsInterval
+  | BandsInterval;
+
+export function intervalFromBins(
+  quantity: PhysicalQuantityId,
+  bins: ClassifierBins,
+  tokens: readonly ClassifierTokenRow[],
+): BinsInterval {
+  assertBinsTokenRows(bins, tokens);
+  return { quantity, bins, tokens };
+}
+
+export function intervalFromBounds(
+  quantity: PhysicalQuantityId,
+  bounds: ClassifierBounds,
+  inside: ClassifierTokenRow,
+  outside: ClassifierTokenRow,
+): BoundsInterval {
+  return { quantity, bounds, inside, outside };
+}
+
+export function intervalFromOffsets(
+  quantity: PhysicalQuantityId,
+  offsets: readonly AdaptiveOffset[],
+  tokens: readonly OffsetTokenRow[],
+): OffsetsInterval {
+  if (tokens.length !== offsets.length) {
+    throw new Error(
+      `Offset tokens length (${tokens.length}) must equal offsets length (${offsets.length}).`,
+    );
+  }
+  for (const [index, row] of tokens.entries()) {
+    if (row.id !== offsets[index]?.id) {
+      throw new Error(
+        `Offset token id "${row.id}" does not match offsets[${index}].id "${offsets[index]?.id}".`,
+      );
+    }
+  }
+  return { quantity, offsets, tokens };
+}
+
+export function intervalFromBands(
+  quantity: PhysicalQuantityId,
+  bands: readonly NumericBand[],
+): BandsInterval {
+  return { quantity, bands };
+}
+
+export function numericBandsFromInterval(interval: LibraryInterval): NumericBand[] {
+  if ("bins" in interval) {
+    return bandsFromJsBins(interval.bins, interval.tokens);
+  }
+  if ("bounds" in interval) {
+    return bandsFromJsBounds(
+      interval.bounds,
+      interval.inside,
+      interval.outside,
+    );
+  }
+  if ("offsets" in interval) {
+    return interval.offsets.map((offset, index) =>
+      numericBandFromToken(interval.tokens[index]!.token, {
+        min: offset.lower,
+        max: offset.upper,
+        label: interval.tokens[index]!.id,
+      }),
+    );
+  }
+  return [...interval.bands];
+}
+
+export function tokenRowForValue(
+  interval: LibraryInterval,
+  valueSi: number,
+): ClassifierTokenRow | undefined {
+  const bands = numericBandsFromInterval(interval);
+  const index = bands.findIndex((band) => numericBandContains(band, valueSi));
+  if (index < 0) {
+    return undefined;
+  }
+  if ("bins" in interval) {
+    return interval.tokens[index];
+  }
+  if ("inside" in interval) {
+    const band = bands[index]!;
+    if (band.label === interval.inside.label) {
+      return interval.inside;
+    }
+    return interval.outside;
+  }
+  return undefined;
 }
 
 export function thermalZonesFromBands(

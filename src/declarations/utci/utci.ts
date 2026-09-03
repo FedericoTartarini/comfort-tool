@@ -1,10 +1,9 @@
 import { t_o, utci } from "jsthermalcomfort";
 import { CalculationSource } from "../../catalog/calculationMetadata";
-import type { ModelChartSource } from "../../catalog/chartSource";
 import { PhysicalQuantityId, getPhysicalQuantityMeta } from "../../catalog/quantities";
 import { InputWidget } from "../../catalog/inputWidgets";
 import { JsThermalComfortStandard, ModelId } from "../../catalog/modelIds";
-import { bandsFromJsBins, displayClassifierLabel, requireMappedCategory, thermalZonesFromBands } from "../../catalog/classifierBins";
+import { bandsFromJsBins, displayClassifierLabel, intervalFromBins, requireMappedCategory, thermalZonesFromBands } from "../../catalog/classifierBins";
 import { type ModelOutput } from "../../catalog/modelCapabilities";
 import { type ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
@@ -17,7 +16,6 @@ import {
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
 import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 import { ChartType } from "../../catalog/chartTypes";
-import { SurfaceId } from "../../catalog/surfaces";
 import type { TableRowAuthoring } from "../../catalog/tableTypes";
 import { UnitSystem, type UnitSystem as UnitSystemType } from "../../catalog/units";
 import {
@@ -29,7 +27,6 @@ import {
 } from "../../engines/comfort/charts/dynamicAxisPayload";
 import { INTERACTIVE_DYNAMIC_GRID_POINTS } from "../../engines/comfort/charts/types";
 import {
-  calculatePerInput,
   defineLibraryQuantityMapping,
 } from "../../engines/comfort/requestMapping";
 import {
@@ -38,9 +35,11 @@ import {
 } from "../../engines/units";
 import { unitLabel } from "../../catalog/units";
 import {
-  ComfortModelBuilder,
+  defineModel,
   hasExactKeys,
+  inputQuantity,
   isRecord,
+  resultQuantity,
   type ResultRowDefinition,
 } from "../../state/modelRegistry/builder";
 
@@ -279,18 +278,50 @@ function buildUtciTableRows(): TableRowAuthoring<UtciResponse>[] {
   ];
 }
 
-const builder = new ComfortModelBuilder<
-  UtciResponse,
-  ModelChartSource<UtciRequest>
->(ModelId.Utci);
-
-builder
-  .setLibrary(utci)
-  .setStandardIds([])
-  .setSurfaceCapabilities([SurfaceId.Explore])
-  .setExploreOutputs([utciOutput])
-  .setModifiers([])
-  .setCharts([
+export const utciModelConfig = defineModel(utci, {
+  id: ModelId.Utci,
+  standardIds: [],
+  exploreMode: true,
+  inputs: [
+    inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+      widget: InputWidget.OperativeTemperature,
+      minValue: UTCI_TDB_LIMITS.min,
+      maxValue: UTCI_TDB_LIMITS.max,
+    }),
+    inputQuantity("tr", PhysicalQuantityId.MeanRadiantTemperature, {
+      minValue: UTCI_TR_LIMITS.min,
+      maxValue: UTCI_TR_LIMITS.max,
+    }),
+    inputQuantity("v", PhysicalQuantityId.WindSpeed, {
+      widget: InputWidget.Numeric,
+      minValue: UTCI_WIND_LIMITS.min,
+      maxValue: UTCI_WIND_LIMITS.max,
+    }),
+    inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
+      minValue: UTCI_RH_LIMITS.min,
+      maxValue: UTCI_RH_LIMITS.max,
+    }),
+  ],
+  response: {
+    values: [
+      resultQuantity("utci", PhysicalQuantityId.UniversalThermalClimateIndex),
+    ],
+    intervals: [
+      intervalFromBins(
+        PhysicalQuantityId.UniversalThermalClimateIndex,
+        utci.mapping.bins,
+        Object.entries(UTCI_ZONE_UI).map(([label, ui]) => ({
+          label,
+          token: ui.token,
+          legendText: ui.legendText,
+        })),
+      ),
+    ],
+  },
+  tables: {
+    results: buildUtciTableRows(),
+  },
+  charts: [
     {
       type: ChartType.Utci,
       titlePrefix: null,
@@ -340,51 +371,18 @@ builder
         },
       },
     },
-  ]);
-
-builder.setInputFields([
-  {
-    quantity: PhysicalQuantityId.DryBulbTemperature,
-    widget: InputWidget.OperativeTemperature,
-    minValue: UTCI_TDB_LIMITS.min,
-    maxValue: UTCI_TDB_LIMITS.max,
+  ],
+  features: {
+    optionHandlers: [
+      {
+        key: OptionKey.TemperatureMode,
+        handler: createTemperatureModeOptionHandler(),
+      },
+    ],
+    exploreOutputs: [utciOutput],
+    invoke: (_si, context, inputId) => calculateUtci(toRequest(context, inputId)),
+    mapChartInput: (_si, context, inputId) => toRequest(context, inputId),
+    defaultOptions: { ...defaultUtciOptions },
+    parseOptions: parseUtciOptions,
   },
-  {
-    quantity: PhysicalQuantityId.MeanRadiantTemperature,
-    minValue: UTCI_TR_LIMITS.min,
-    maxValue: UTCI_TR_LIMITS.max,
-  },
-  {
-    quantity: PhysicalQuantityId.WindSpeed,
-    widget: InputWidget.Numeric,
-    minValue: UTCI_WIND_LIMITS.min,
-    maxValue: UTCI_WIND_LIMITS.max,
-  },
-  {
-    quantity: PhysicalQuantityId.RelativeHumidity,
-    minValue: UTCI_RH_LIMITS.min,
-    maxValue: UTCI_RH_LIMITS.max,
-  },
-]);
-
-builder.addOptionHandler(
-  OptionKey.TemperatureMode,
-  createTemperatureModeOptionHandler(),
-);
-
-builder.setDefaultOptions({ ...defaultUtciOptions });
-builder.setOptionParser(parseUtciOptions);
-
-builder.setCalculator((context, visibleInputIds) =>
-  calculatePerInput({
-    context,
-    visibleInputIds,
-    mapRequest: toRequest,
-    calculate: calculateUtci,
-  }));
-
-builder.setTables({
-  results: buildUtciTableRows(),
 });
-
-export const utciModelConfig = builder.build();

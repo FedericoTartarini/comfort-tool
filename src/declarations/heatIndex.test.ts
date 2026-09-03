@@ -3,8 +3,10 @@
  */
 import { describe, expect, it } from "vitest";
 import { heat_index } from "jsthermalcomfort";
-import { PhysicalQuantityId } from "../catalog/quantities";
-import { calculateHeatIndex, heatIndexModelConfig } from "./heatIndex";
+import { PhysicalQuantityId, type QuantityState } from "../catalog/quantities";
+import { heatIndexModelConfig } from "./heatIndex";
+import { invokeMappedLibrary } from "../engines/comfort/libraryInvoke";
+import { inputQuantity, resultQuantity } from "../state/modelRegistry/builder";
 import { ModelId } from "../catalog/modelIds";
 import { UnitSystem } from "../catalog/units";
 import { convertQuantityFromSi } from "../engines/units";
@@ -22,6 +24,24 @@ import {
   primaryQuantityIdsForInputField,
 } from "../engines/comfort/controls/fieldInputBehaviors";
 
+function calculateHeatIndex(request: QuantityState) {
+  return invokeMappedLibrary(
+    heat_index,
+    [
+      inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+        minValue: 20,
+        maxValue: 50,
+      }),
+      inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
+        minValue: 0,
+        maxValue: 100,
+      }),
+    ],
+    [resultQuantity("hi", PhysicalQuantityId.HeatIndex)],
+    request,
+  );
+}
+
 describe("heatIndex service", () => {
   it("rejects a non-finite result instead of assigning the first zone", () => {
     expect(() => calculateHeatIndex({ tdb: Number.MAX_VALUE, rh: 50 }))
@@ -36,7 +56,7 @@ describe("heatIndex service", () => {
     });
 
     expect(result.hi).toBeGreaterThan(45);
-    expect(result.category).toBe("danger");
+    expect(heat_index.mapping(result.hi!)).toBe("danger");
   });
 
   it("evaluates Heat Index below the Rothfusz applicability threshold", () => {
@@ -44,7 +64,7 @@ describe("heatIndex service", () => {
 
     expect(result.hi).toBeGreaterThan(20);
     expect(result.hi).toBeLessThan(27);
-    expect(result.category).toBe("no risk");
+    expect(heat_index.mapping(result.hi!)).toBe("no risk");
   });
 
   it("converts the SI Heat Index result for IP display", () => {
@@ -56,12 +76,12 @@ describe("heatIndex service", () => {
 
     const hiF = convertQuantityFromSi(
       PhysicalQuantityId.HeatIndex,
-      result.hi,
+      result.hi!,
       UnitSystem.IP,
     );
     expect(hiF).toBeGreaterThan(115);
     expect(hiF).toBeLessThan(125);
-    expect(result.category).toBe("danger");
+    expect(heat_index.mapping(result.hi!)).toBe("danger");
   });
 
   it("maps Python right-closed Heat Index thresholds", () => {
@@ -78,7 +98,7 @@ describe("heatIndex service", () => {
       rh: 75,
     });
 
-    expect(result.category).toBe("extreme danger");
+    expect(heat_index.mapping(result.hi!)).toBe("extreme danger");
   });
 
   it("builds static and dynamic chart results through the typed grid strategy", () => {
@@ -146,12 +166,12 @@ describe("heatIndex service", () => {
     const bands = [
       {
         min: -Infinity,
-        max: result.hi,
+        max: result.hi!,
         label: "Below target",
         color: "#123456",
       },
       {
-        min: result.hi,
+        min: result.hi!,
         max: Infinity,
         label: "At or above target",
         color: "#abcdef",

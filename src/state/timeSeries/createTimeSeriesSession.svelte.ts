@@ -147,9 +147,9 @@ function getSummary(
   const modelId = setting.selectedModel;
   const result = output.resultByModel[modelId];
   if (result === null) return [];
-  const table = getComfortModelConfig(modelId).tables.timeSeries;
+  const table = getComfortModelConfig(modelId).timeSeries?.rows;
   if (!table) {
-    throw new Error(`Time-series model ${modelId} is missing tables.timeSeries.`);
+    throw new Error(`Time-series model ${modelId} is missing features.timeSeries.`);
   }
   return buildMetricSummaryTable(
     table,

@@ -1,4 +1,4 @@
-import { cooling_effect, pmv_ppd_ashrae, set_tmp } from "jsthermalcomfort";
+import { cooling_effect, pmv_ppd_ashrae, pmv_ppd_iso, set_tmp } from "jsthermalcomfort";
 import { sampleIsoline } from "../../charts/psychrometric/isolines";
 import {
   CalculationSource,
@@ -15,6 +15,7 @@ import {
 import type { DerivedSlotQuantityState } from "../../engines/comfort/derivations/psychrometrics";
 import { AirSpeedControlMode, OptionKey, TemperatureMode } from "../../catalog/inputModes";
 import type { InputId as InputIdType } from "../../catalog/inputSlots";
+import { InputId } from "../../catalog/inputSlots";
 import type { ModelCalculationContext } from "../../catalog/modelCalculation";
 import type { ComplianceFeedback } from "../../catalog/modelCapabilities";
 import type { TableRowAuthoring } from "../../catalog/tableTypes";
@@ -25,8 +26,8 @@ import { createRequestAxisAdapter } from "../../engines/comfort/charts/dynamicAx
 import { getDerivedFromQuantities } from "../../engines/comfort/quantityStateRouting";
 import {
   defineLibraryQuantityMapping,
-  calculatePerInputWithExtensions,
 } from "../../engines/comfort/requestMapping";
+import { LIBRARY_INVOKE_DEFAULTS } from "../../engines/comfort/libraryInvoke";
 import { formatDisplayValue } from "../../engines/units";
 import type { PmvStandardAdapter } from "./shared";
 import { pmvTsvAppearance } from "./zones";
@@ -341,6 +342,100 @@ export function toPmvRequest(
   };
 }
 
+export function invokePmvAshraeLibrary(request: PmvRequest) {
+  return pmv_ppd_ashrae(
+    request.tdb,
+    request.tr,
+    request.vr,
+    request.rh,
+    request.met,
+    request.clo,
+    request.wme,
+    {
+      units: LIBRARY_INVOKE_DEFAULTS.units,
+      limit_inputs: LIBRARY_INVOKE_DEFAULTS.limit_inputs,
+      airspeed_control: request.occupantHasAirSpeedControl,
+    },
+  );
+}
+
+export function invokePmvIsoLibrary(request: PmvRequest) {
+  return pmv_ppd_iso(
+    request.tdb,
+    request.tr,
+    request.vr,
+    request.rh,
+    request.met,
+    request.clo,
+    request.wme,
+    {
+      units: LIBRARY_INVOKE_DEFAULTS.units,
+      limit_inputs: LIBRARY_INVOKE_DEFAULTS.limit_inputs,
+    },
+  );
+}
+
+export function evaluatePmvSlot(
+  adapter: PmvStandardAdapter,
+  context: ModelCalculationContext,
+  inputId: InputIdType,
+): PmvResponse {
+  const request = toPmvRequest(context, inputId, adapter);
+  const result = evaluatePmvCondition(adapter, request);
+  const complianceWarnings = adapter.checkApplicability(request);
+  return {
+    pmv: result.pmv,
+    ppd: result.ppd,
+    tsv: result.tsv ?? "Unclassified",
+    ...derivePmvAnalysisOutputs(request),
+    isCompliant:
+      complianceWarnings.length === 0 && result.acceptable,
+    standard: adapter.resultStandard,
+    source: CalculationSource.JsThermalComfort,
+  };
+}
+
+export function toPmvChartRequest(request: PmvRequest): ComfortZoneRequest {
+  return {
+    ...request,
+    rhMin: 0,
+    rhMax: 100,
+    rhPoints: 31,
+  };
+}
+
+export function buildPmvChartSource(
+  adapter: PmvStandardAdapter,
+  context: ModelCalculationContext,
+  visibleInputIds: readonly InputIdType[],
+): PmvChartSource {
+  const chartSource: PmvChartSource = {
+    inputs: {},
+    comfortZonesByInput: {},
+    derivedSlotsByInput: {},
+    psychrometricTrEqualsTdb:
+      context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative,
+  };
+  for (const inputId of visibleInputIds) {
+    const chartRequest = toPmvChartRequest(
+      toPmvRequest(context, inputId, adapter),
+    );
+    chartSource.inputs[inputId] = chartRequest;
+    chartSource.comfortZonesByInput[inputId] = calculateComfortZone(
+      adapter,
+      chartRequest,
+      chartSource.psychrometricTrEqualsTdb,
+    );
+    chartSource.derivedSlotsByInput = {
+      ...chartSource.derivedSlotsByInput,
+      [inputId]: getDerivedFromQuantities(
+        context.effectiveQuantitiesByInput[inputId],
+      ),
+    };
+  }
+  return chartSource;
+}
+
 export function getPmvComplianceFeedback(
   result: PmvResponse,
 ): ComplianceFeedback {
@@ -456,50 +551,16 @@ export function calculatePmvModel(
   visibleInputIds: InputIdType[],
   adapter: PmvStandardAdapter,
 ) {
-  return calculatePerInputWithExtensions({
-    context,
-    visibleInputIds,
-    mapRequest: (calculationContext, inputId) =>
-      toPmvRequest(calculationContext, inputId, adapter),
-    mapChartRequest: (request) => ({
-      ...request,
-      rhMin: 0,
-      rhMax: 100,
-      rhPoints: 31,
-    }),
-    calculate: (request) => {
-      const result = evaluatePmvCondition(adapter, request);
-      const complianceWarnings = adapter.checkApplicability(request);
-      return {
-        pmv: result.pmv,
-        ppd: result.ppd,
-        tsv: result.tsv ?? "Unclassified",
-        ...derivePmvAnalysisOutputs(request),
-        isCompliant:
-          complianceWarnings.length === 0 && result.acceptable,
-        standard: adapter.resultStandard,
-        source: CalculationSource.JsThermalComfort,
-      };
-    },
-    createChartSource: (): PmvChartSource => ({
-      inputs: {},
-      comfortZonesByInput: {},
-      derivedSlotsByInput: {},
-      psychrometricTrEqualsTdb:
-        context.options[OptionKey.TemperatureMode] === TemperatureMode.Operative,
-    }),
-    afterCalculate: ({ inputId, chartRequest, chartSource }) => {
-      chartSource.comfortZonesByInput[inputId] = calculateComfortZone(
-        adapter,
-        chartRequest,
-        chartSource.psychrometricTrEqualsTdb,
-      );
-      if (!chartSource.derivedSlotsByInput) {
-        chartSource.derivedSlotsByInput = {};
-      }
-      chartSource.derivedSlotsByInput[inputId] = getDerivedFromQuantities(
-        context.effectiveQuantitiesByInput[inputId],
-      );
-    },
-  });
+  const resultsByInput: Record<InputIdType, PmvResponse | null> = {
+    [InputId.Input1]: null,
+    [InputId.Input2]: null,
+    [InputId.Input3]: null,
+  };
+  for (const inputId of visibleInputIds) {
+    resultsByInput[inputId] = evaluatePmvSlot(adapter, context, inputId);
+  }
+  return {
+    resultsByInput,
+    chartSource: buildPmvChartSource(adapter, context, visibleInputIds),
+  };
 }

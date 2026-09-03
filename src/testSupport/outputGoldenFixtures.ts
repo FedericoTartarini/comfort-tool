@@ -4,11 +4,11 @@ import { assembleChart } from "../charts";
 import { InputId } from "../catalog/inputSlots";
 import { UnitSystem } from "../catalog/units";
 import { FieldChartProfileKind } from "../catalog/fieldChartProfile";
+import { SurfaceId } from "../catalog/surfaces";
 import {
-  SurfaceId,
-  supportsExploreSurface,
-  supportsStandardSurface,
-} from "../catalog/surfaces";
+  modelSupportsExplore,
+  modelSupportsStandard,
+} from "../state/modelRegistry/definition";
 import {
   buildFieldChartProfile,
   seedModelOutputSettings,
@@ -105,8 +105,8 @@ export function buildModelOutputGoldenSnapshot(
   const charts: ChartGoldenSnapshot[] = [];
   const baseSettings = seedModelOutputSettings(config);
   const workspaces = [
-  supportsStandardSurface(config.surfaceCapabilities) ? SurfaceId.Standard : null,
-  supportsExploreSurface(config.surfaceCapabilities) ? SurfaceId.Explore : null,
+    modelSupportsStandard(config) ? SurfaceId.Standard : null,
+    modelSupportsExplore(config) ? SurfaceId.Explore : null,
   ].filter((workspace) => workspace !== null);
 
   for (const chartInstance of config.chartInstances.entries) {

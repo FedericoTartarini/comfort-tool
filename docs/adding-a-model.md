@@ -25,8 +25,11 @@ shared comfort/units live at `src/engines/`.
 ## Recipe
 
 1. **Copy** `src/declarations/heatIndex.ts` to a new file under
-   `src/declarations/`. Keep a complete `defineModel` object: `inputFields`,
-   zones, `calculate`, `tables.results`, and `charts`. For air
+   `src/declarations/`. Keep a complete `defineModel(library, authoring)`
+   object with the six sections: Attributes (`id`, `standardIds`,
+   `exploreMode`), Inputs, Response (`values` + optional `intervals`),
+   Tables (`results` only), Charts, and optional Features. Do not write
+   `calculate`, `surfaceCapabilities`, or `tables.timeSeries`. For air
    temperature plus wind, copy `windChill.ts` instead. Humidex is the other
    tdb+rh sibling.
 2. **Add the model id** to `ModelId` in `src/catalog/modelIds.ts`.
@@ -48,8 +51,8 @@ Then, only if the model actually needs them:
   and do not add a per-model golden-input switch.
 
 PMV and Adaptive stay family modules (one declaration per standard, shared
-calculation/zones/series `_core`). They may still assemble with
-`ComfortModelBuilder` internally. ASHRAE and ISO (and ASHRAE/EN Adaptive)
+calculation/zones/series `_core`). They still call `defineModel(library,
+authoring)` from the family helper. ASHRAE and ISO (and ASHRAE/EN Adaptive)
 stay separate registered models. Copy Heat Index, not the PMV folder.
 PMV Analysis tables include SET, cooling effect, relative
 air speed, and dynamic clothing; Explore still colours PMV and PPD. ASHRAE
@@ -65,7 +68,7 @@ work, not “add a model” work:
 | New ChartType (`ChartType` member) | Closed product set in `src/catalog/chartTypes.ts`. Do not add a ChartType from a declaration.                                              |
 | New `PhysicalQuantityId`           | Closed catalog plus ESLint restricted-wire alignment (`src/catalog/catalogWireIds.test.ts`). Add `SiUnit` + `ipUnitForSi` only if the quantity needs a new dimension. |
 | New modifier                       | Global catalogue, execution order, and share schema.                                                                                       |
-| New Time-series session            | Time-series is PHS only. Declaring `tables.timeSeries` does not create a simulator.                                                        |
+| New Time-series session            | Time-series is PHS only. Declaring `features.timeSeries` does not create a simulator.                                                       |
 | New SI unit dimension (`SiUnit`)   | Conversion keys live in the frontend catalog. Add `SiUnit` plus a converter in `src/engines/units/`; declarations only select known units. |
 
 Also forbidden in a declaration:
@@ -109,7 +112,7 @@ src/
                      ChartBuildResult and simulation chart declarations
     units/           SI ↔ display conversion
   state/
-    modelRegistry/   defineModel, ComfortModelBuilder, registered configs
+    modelRegistry/   defineModel(library, authoring), registered configs
     pointSession/    Standard+Explore session: input/chart/setting/output buckets, actions,
                      $derived view-models, share snapshot/codec/url
     timeSeries/      Time-series session (PHS); editor/chart view models
@@ -144,21 +147,20 @@ are `$derived` projections, not a second store. Share is JSON → Base64URL →
 
 Quantities and ChartTypes are closed frontend catalogs. Models select ids;
 they do not own, extend, or invent them. Derived-humidity or modifier-input
-`kind: "quantity"` fields, unknown ChartTypes, or a Time-series table without
-Time-series capability fail `defineModel` / `assembleCatalogs`. There is no
-`validate.model` hook and no TableType catalog. Copy `heatIndex.ts`, add a
-`ModelId` member, and
-register once. `defineModel({ library })` reads string `label` /
+`kind: "quantity"` fields, unknown ChartTypes, or `tables.timeSeries` fail
+`defineModel` / `assembleCatalogs`. There is no `validate.model` hook and no
+TableType catalog. Copy `heatIndex.ts`, add a `ModelId` member, and
+register once. `defineModel(library, authoring)` reads string `label` /
 `description` from the JS function (`@docname` / leading JSDoc first
-sentence). If JS
-already classifies the result (`result.discomfort`, `result.stress_category`,
-ASHRAE `compliance`/`tsv`, ISO `tsv`, Adaptive `offsets`), use that export
-and recover Explore band edges from `mapping.bins` / `compliance.bounds` —
-do not paste thresholds. Classifier **words** stay JS/Python; Comfort Tool
-may title-case all-lowercase labels for display (`displayClassifierLabel`).
-Adaptive `offsets.id` stays the result-field stem; generate display labels
-in the Adaptive declaration layer. When JS has no human label (Wind Chill
-`wct`), use that field name; do not invent classifier copy.
+sentence). Pass classifier statics explicitly:
+`intervalFromBins(quantity, heat_index.mapping.bins, tokens)`,
+`intervalFromBounds(...)`, or `intervalFromOffsets(...)`. Do not paste
+thresholds and do not guess `kind: "mapping"` on the first argument.
+Classifier **words** stay JS/Python; Comfort Tool may title-case
+all-lowercase labels for display (`displayClassifierLabel`). Adaptive
+`offsets.id` stays the result-field stem; generate display labels in the
+Adaptive declaration layer. When JS has no human label (Wind Chill `wct`),
+use that field name; do not invent classifier copy.
 Do not
 invent classifiers that Python lacks (Wind Chill frostbite, ISO Category B
 three-band, PPD, PHS `mapping()`). PPD 10% is an Explore chart preset.
@@ -217,85 +219,144 @@ legends stay readable at both widths. Models select `ZoneToken` values;
 screen, publication, and colour-blind fills live in
 `src/catalog/zoneTokens.ts` and remap at draw/export.
 
-**Tables.** `tables.results` is a non-empty row array required for every
-point-session model. Rows may be a quantity id, `{ quantity }`, or a custom
-`{ id, label, format }`. `tables.timeSeries` is the same row semantics in a
-Time-series slot; surface membership is that slot (`getModelsForSurface`).
-Declaring that table does not create a simulator. PHS Time-series line
-charts are declared on `simulation.charts`. PMV ASHRAE and ISO tables
-include SET, cooling effect, relative air speed, and dynamic clothing as
-Compare-matrix rows. Do not add SET as an `exploreOutputs` key unless
-Explore must colour SET. Do not add a TableType catalog. ASHRAE and ISO
-already register Heat Loss and SET chart instances; copy that pattern
-rather than merging standards behind a runtime flag.
+**Tables.** `tables.results` is a Compare-only row array. Rows may be a
+quantity id, `{ quantity }`, or a custom `{ id, label, format }`. Do not
+put Time-series columns or membership on `tables`. PHS Time-series rows
+and `simulation.charts` live on `features.timeSeries`; surface membership is
+that object (`getModelsForSurface(TimeSeries)` / `config.timeSeries`).
+Declaring `features.timeSeries` does not create a simulator. PMV ASHRAE
+and ISO tables include SET, cooling effect, relative air speed, and
+dynamic clothing as Compare-matrix rows. Do not add SET as an
+`exploreOutputs` key unless Explore must colour SET. Do not add a TableType
+catalog. ASHRAE and ISO already register Heat Loss and SET chart instances;
+copy that pattern rather than merging standards behind a runtime flag.
 
 ## What the declaration must show
 
-Use `defineModel<Result, ChartSource, ComplianceBand = NumericBand>({ … })`.
-Numeric-band models omit the third argument; Adaptive passes `Band`.
-`defineModel` erases those generics once into
+Use `defineModel(library, authoring)`. `library` is the JS function (call
+site, `label`, `description`). `authoring` is six sections. `assembleModel`
+is an alias of `defineModel`. Assembly erases generics once into
 `RuntimeComfortModelDefinition`.
+
+0. **Attributes** — `id`; required `standardIds` (`[]` = no Standard);
+   required `exploreMode: true | false`. At least one page must be true
+   (non-empty `standardIds`, `exploreMode`, or `features.timeSeries`).
+1. **Inputs** — `inputQuantity(jsName, catalogId, { minValue, maxValue })`.
+2. **Response** — `values` map return fields (`resultQuantity("hi", …)`).
+   `intervals` pass the function’s static bins/bounds/offsets plus token
+   rows. Classifiers do not enter `QuantityState`.
+3. **Tables** — Compare only (`tables.results`). No `timeSeries` key.
+4. **Charts** — point-session ChartType, axes, range. Dynamic `evaluate`
+   defaults to the same invoke pipeline.
+5. **Features** — optional. Modifiers, option handlers, Standard
+   `complianceProfile`, and the whole Time-series object
+   (`{ rows, simulation }`). Omit empty `modifiers: []`.
+
+Do not write `calculate`, JS kwargs (`units` / `round` / `limit_inputs`),
+or `surfaceCapabilities`. Invoke injects `{ units: "SI", round: false,
+limit_inputs: false }` when the function accepts them. A second JS function
+(WCT) belongs on `resultQuantity(..., { from })`. Family models that cannot
+use positional invoke set `features.invoke` (and `mapChartInput` /
+`buildChartSource` when the chart payload is not the SI bag).
 
 Visible product decisions:
 
-- `id`, `library` (string `label` / `description` on the JS function)
+- `id`, first-arg `library` (string `label` / `description` on the JS function)
 - `standardIds` — `[]` when the model is not a Standard model
-- `surfaceCapabilities`, `exploreOutputs`
-- `complianceProfile` when Standard-capable (fixed output, non-empty bands,
-  `caption`, `legendTitle`, feedback callback)
-- `inputFields` as `{ quantity, minValue, maxValue, widget? }`
-  (`InputWidget`); a naked quantity id is not enough. Default widgets live
-  in `defaultFieldWidgetByQuantity`
-- `modifiers` in global order, or `[]`
-- request mapping + `calculate`
-- token map (JS category string → `ZoneToken`); thresholds from
-  `bandsFromJsBins` / `bandsFromJsBounds`. Colours come from
-  `src/catalog/zoneTokens.ts`. Do not copy numeric edges or hex in the
-  declaration.
+- `exploreMode`
+- `features.complianceProfile` when `standardIds` is non-empty (fixed output,
+  non-empty bands, `caption`, `legendTitle`, feedback callback)
+- `inputs` as JS parameter name + catalog id + SI min/max (`widget?`)
+- `response.values` and optional `response.intervals`
+- `features.modifiers` in global order, omitted when none apply
+- token rows on the interval helper; do not copy numeric edges or hex
 - `charts` as `type` + data spec only (no `id`, `instanceId`, `title`,
   `emptyMessage`, or `spec.build`). Default chart is `charts[0].type`.
-- `tables: { results, timeSeries? }` (`tables.results` may be omitted when
-  each `exploreOutputs` entry is one column; Wind Chill / PMV still declare
-  extra rows)
+- `tables: { results }` (`results` may be omitted when each value is one
+  Compare column)
 - Dynamic axes come from the first Dynamic spec `axes` / `axisFields`
 
 Zones generate bands; they are not stored on the runtime definition.
 
 ### Inputs, requests, and calculation
 
-Map catalog fields to the library payload with
-`defineLibraryQuantityMapping()` in `src/engines/comfort/requestMapping.ts`.
-The table is direction-agnostic: left is the jsthermalcomfort field name,
-right is `PhysicalQuantityId`. Include 1:1 result fields in the same table
-and use `toLibrary` / `fromLibrary` as needed. Copying Heat Index may copy
-its request type (`HeatIndexInputs`);
-do not add a `Dto` suffix on application request or chart-source types.
-Generic chart figure inputs live in `src/charts/types.ts`.
+Thin models do not export a mapping table or `calculate`. `defineModel`
+builds `toLibrary` / `fromLibrary` from `inputs` + `response.values` and
+runs `invokeMappedLibrary` per visible Compare slot. Chart source is the
+catalog SI bag (`quantitiesByInput`). Results are `QuantityState`. Dynamic
+field evaluate uses the same invoke unless the spec overrides it.
+
+Family modules (PMV, Adaptive, UTCI, PHS) still use
+`defineLibraryQuantityMapping()` beside the declaration when the library
+call is not positional kwargs. Include 1:1 result fields in that table.
+They set `features.invoke` per visible Compare slot. Chart source defaults
+to the catalog SI bag; `mapChartInput` stores the mapped request, and
+`buildChartSource` is for extra per-input maps (PMV psychrometric).
+Aggregates and classifiers stay outside the map. Do not add a `Dto`
+suffix on application request or chart-source types. Generic chart figure
+inputs live in `src/charts/types.ts`.
 
 ```ts
-const exampleQuantityMapping = defineLibraryQuantityMapping<ExampleRequest>({
-  tdb: PhysicalQuantityId.DryBulbTemperature,
-  rh: PhysicalQuantityId.RelativeHumidity,
-  hi: PhysicalQuantityId.HeatIndex,
+export const heatIndexModelConfig = defineModel(heat_index, {
+  id: ModelId.HeatIndex,
+  standardIds: [],
+  exploreMode: true,
+  inputs: [
+    inputQuantity("tdb", PhysicalQuantityId.DryBulbTemperature, {
+      minValue: 20,
+      maxValue: 50,
+    }),
+    inputQuantity("rh", PhysicalQuantityId.RelativeHumidity, {
+      minValue: 0,
+      maxValue: 100,
+    }),
+  ],
+  response: {
+    values: [resultQuantity("hi", PhysicalQuantityId.HeatIndex)],
+    intervals: [
+      intervalFromBins(
+        PhysicalQuantityId.HeatIndex,
+        heat_index.mapping.bins,
+        [
+          { label: "no risk", token: ZoneToken.Safe },
+          { label: "caution", token: ZoneToken.Caution },
+          { label: "extreme caution", token: ZoneToken.StrongCaution },
+          { label: "danger", token: ZoneToken.Danger },
+          { label: "extreme danger", token: ZoneToken.ExtremeDanger },
+        ],
+      ),
+    ],
+  },
+  tables: {
+    results: [quantityRow(PhysicalQuantityId.HeatIndex)],
+  },
+  charts: [{
+    type: ChartType.Dynamic,
+    spec: {
+      axes: {
+        x: PhysicalQuantityId.DryBulbTemperature,
+        y: PhysicalQuantityId.RelativeHumidity,
+      },
+    },
+  }],
 });
 ```
 
-Use `calculatePerInput` with `exampleQuantityMapping.mapRequest` for `calculate`.
 Compose `createRequestAxisAdapter()` only for chart-only aliases or explicit
 operative-temperature get/set/range (`quantityMapping:` option). Coupled Air/Radiant/Operative solving
 stays in the shared dynamic-axis solver.
 
-`calculate` receives `ModelCalculationContext` with
+`calculate` on the runtime definition receives `ModelCalculationContext` with
 `effectiveQuantitiesByInput` (modifier-adjusted SI) and the active model’s
-validated `options`. It must not read raw `quantitiesByInput`.
+validated `options`. It must not read raw `quantitiesByInput`. Authors do
+not write that function on thin models.
 
-`inputFields` list `{ quantity, minValue, maxValue, widget? }`.
-Default widgets are `defaultFieldWidgetByQuantity` in
-`src/catalog/inputWidgets.ts`. `resolveInputField()` still produces today's
-`InputControlDefinition`; authors do not write `kind: "numeric"` strings.
+`inputs` compile to runtime `inputFields`. Default widgets are
+`defaultFieldWidgetByQuantity` in `src/catalog/inputWidgets.ts`.
+`resolveInputField()` still produces today's `InputControlDefinition`.
 PMV overrides Operative / AdvancedHumidity with `InputWidget`. PHS
 environment ranges live once in `phsEnvironmentRangeSi` and feed both
-`inputFields` and Time-series segment controls. PHS weight/height stay
+Analysis inputs and Time-series segment controls. PHS weight/height stay
 off Analysis `inputFields`. The Analysis
 input panel reads those controls through
 `getInputPanelViewModel`; do not add conversion or model branches in
@@ -329,16 +390,16 @@ Body Temperature.
 
 ### Modifiers
 
-`modifiers` receive executable `InputModifier` declarations, not ids. The
-global catalogue in `src/catalog/inputModifiers.ts` holds UI/share ids,
-`modifierInputs`, and `modifierInputRangeSi`. Order is fixed:
+`features.modifiers` receive executable `InputModifier` declarations, not
+ids. The global catalogue in `src/catalog/inputModifiers.ts` holds UI/share
+ids, `modifierInputs`, and `modifierInputRangeSi`. Order is fixed:
 
 ```text
 Measured Air Speed → Morning Clothing Estimate → Dynamic Clothing → Solar Gain
 ```
 
 Dynamic Clothing is declared only by PMV ASHRAE and PMV ISO, each bound to
-that declaration’s standard. Models with none set `modifiers: []`.
+that declaration’s standard. Models with none omit `features.modifiers`.
 
 ### Share
 

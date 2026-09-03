@@ -96,10 +96,7 @@ export type DynamicFieldChartEngineSpec<TResult, ChartSourceType = unknown> =
 export function isDynamicFieldGridSpec<TResult = never>(
   spec: object,
 ): spec is DynamicFieldGridSpec<TResult> {
-  return (
-    ("resolveGridSpec" in spec || ("evaluate" in spec && "axes" in spec)) &&
-    !specHasPlotlyBuild(spec)
-  );
+  return "axes" in spec && !specHasPlotlyBuild(spec);
 }
 
 export function specHasPlotlyBuild(spec: object): boolean {
@@ -353,7 +350,7 @@ interface ChartCommonFields {
   readonly defaultExploreOutput?: ModelOutput["key"];
 }
 
-/** Family / ComfortModelBuilder / defineModel chart entry. */
+/** Family / defineModel chart entry. */
 export type FrontendChartDeclaration<
   TResult = unknown,
   ChartSourceType = unknown,

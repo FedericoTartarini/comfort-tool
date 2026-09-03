@@ -11,8 +11,9 @@ import {
 import { ComfortStandard } from "../../catalog/calculationMetadata";
 import { ModelId, JsThermalComfortStandard } from "../../catalog/modelIds";
 import { defaultPmvAshraeOptions } from "../../catalog/inputModes";
-import { UnitSystem } from "../../catalog/units";
-import { StandardId, SurfaceId } from "../../catalog/surfaces";
+import { StandardId } from "../../catalog/surfaces";
+import { ZoneToken } from "../../catalog/zoneTokens";
+import { intervalFromBins, intervalFromBounds } from "../../catalog/classifierBins";
 import {
   createDynamicClothingModifier,
   measuredAirSpeedModifier,
@@ -27,13 +28,14 @@ import {
   type PmvModelDeclaration,
   type PmvStandardAdapter,
 } from "./shared";
-import { getPmvComplianceFeedback } from "./calculation";
+import { getPmvComplianceFeedback, invokePmvAshraeLibrary } from "./calculation";
 import {
   ashraeComfortIsolineTargets,
   ashraeComplianceBands,
   ashraeTsvZonesList,
   classifyAshraeTsv,
   isAshraeAcceptablePmv,
+  PMV_TSV_TOKEN_ROWS,
 } from "./zones";
 
 export const pmvAshraeAdapter: PmvStandardAdapter = {
@@ -42,20 +44,7 @@ export const pmvAshraeAdapter: PmvStandardAdapter = {
   clothingStandard: JsThermalComfortStandard.ASHRAE,
   clothingInsulationMaxSi: 1.5,
   supportsOccupantAirSpeedControl: true,
-  calculate: (request) => pmv_ppd_ashrae(
-    request.tdb,
-    request.tr,
-    request.vr,
-    request.rh,
-    request.met,
-    request.clo,
-    request.wme,
-    {
-      units: UnitSystem.SI,
-      limit_inputs: false,
-      airspeed_control: request.occupantHasAirSpeedControl,
-    },
-  ),
+  calculate: invokePmvAshraeLibrary,
   checkApplicability: (request) => check_standard_compliance(
     JsThermalComfortStandard.ASHRAE,
     {
@@ -83,7 +72,20 @@ export const pmvAshraeDeclaration: PmvModelDeclaration = {
   library: pmv_ppd_ashrae,
   adapter: pmvAshraeAdapter,
   standardIds: [StandardId.Ashrae55],
-  surfaceCapabilities: [SurfaceId.Standard, SurfaceId.Explore],
+  exploreMode: true,
+  intervals: [
+    intervalFromBins(
+      PhysicalQuantityId.PredictedMeanVote,
+      pmv_ppd_ashrae.tsv.bins,
+      PMV_TSV_TOKEN_ROWS,
+    ),
+    intervalFromBounds(
+      PhysicalQuantityId.PredictedMeanVote,
+      pmv_ppd_ashrae.compliance.bounds,
+      { label: ZoneToken.Acceptable, token: ZoneToken.Acceptable },
+      { label: ZoneToken.FailFill, token: ZoneToken.FailFill },
+    ),
+  ],
   exploreOutputs: createPmvExploreOutputs(
     ashraeComplianceBands,
     "PMV acceptability",

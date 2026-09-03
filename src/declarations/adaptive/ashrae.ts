@@ -6,7 +6,8 @@ import { InputPresetKey } from "../../engines/comfort/controls/inputControlPrese
 import { ThermalZone } from "../../catalog/thermalZone";
 import { ZoneToken } from "../../catalog/zoneTokens";
 import { UnitSystem } from "../../catalog/units";
-import { StandardId, SurfaceId } from "../../catalog/surfaces";
+import { StandardId } from "../../catalog/surfaces";
+import { intervalFromOffsets } from "../../catalog/classifierBins";
 import {
   createAdaptiveModelConfig,
   type AdaptiveBoundaryDefinition,
@@ -79,9 +80,18 @@ export const adaptiveAshraeDeclaration: AdaptiveModelDeclaration = {
   standardIds: [StandardId.Ashrae55],
   resultStandard: ComfortStandard.Ashrae55Adaptive,
   operativeTemperatureStandard: JsThermalComfortStandard.ASHRAE,
-  surfaceCapabilities: [SurfaceId.Standard],
+  exploreMode: false,
+  intervals: [
+    intervalFromOffsets(
+      PhysicalQuantityId.OperativeTemperature,
+      adaptive_ashrae.offsets,
+      [
+        { id: "80", token: ZoneToken.Acceptable },
+        { id: "90", token: ZoneToken.Preferred },
+      ],
+    ),
+  ],
   exploreOutputs: [],
-  modifiers: [],
   complianceProfile: {
     output: PhysicalQuantityId.OperativeTemperature,
     bands: createAdaptiveComplianceBands(adaptiveAshraeBoundaryDefinition),

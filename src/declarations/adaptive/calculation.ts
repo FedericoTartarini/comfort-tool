@@ -16,7 +16,7 @@ import {
   type ComplianceFeedback,
 } from "../../catalog/modelCapabilities";
 import type { UnitSystem as UnitSystemType } from "../../catalog/units";
-import { calculatePerInput, defineLibraryQuantityMapping } from "../../engines/comfort/requestMapping";
+import { defineLibraryQuantityMapping } from "../../engines/comfort/requestMapping";
 import { convertFieldValueFromSi, formatDisplayValue } from "../../engines/units";
 import {
   hasExactKeys,
@@ -317,18 +317,4 @@ export function buildAdaptiveResultRows(
       },
     })),
   ];
-}
-
-
-export function calculateAdaptiveModel(
-  context: ModelCalculationContext,
-  visibleInputIds: InputIdType[],
-  declaration: AdaptiveModelDeclaration,
-) {
-  return calculatePerInput({
-    context,
-    visibleInputIds,
-    mapRequest: toAdaptiveRequest,
-    calculate: (request) => calculateAdaptive(declaration, request),
-  });
 }

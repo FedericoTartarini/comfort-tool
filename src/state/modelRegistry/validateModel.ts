@@ -5,10 +5,6 @@ import {
 } from "../../catalog/chartTypes";
 import type { ModelTables } from "../../catalog/tableTypes";
 import {
-  supportsTimeSeriesSurface,
-  type SurfaceId,
-} from "../../catalog/surfaces";
-import {
   physicalQuantityMetaById,
   type PhysicalQuantityMeta,
 } from "../../catalog/quantities";
@@ -31,7 +27,9 @@ export interface CatalogModelSlice {
     readonly registration: { readonly type: string };
   }[];
   readonly tables: ModelTables;
-  readonly surfaceCapabilities: readonly SurfaceId[];
+  readonly exploreMode: boolean;
+  readonly standardIds: readonly string[];
+  readonly timeSeries?: { readonly rows: readonly unknown[] };
 }
 
 export interface AssembledCatalogs {
@@ -106,20 +104,15 @@ export function validateModel(
     }
   }
 
-  if (
-    model.tables.timeSeries &&
-    !supportsTimeSeriesSurface(model.surfaceCapabilities)
-  ) {
-    throw new Error(
-      "tables.timeSeries is allowed only with Time-series workspace capability.",
-    );
+  if (model.tables.timeSeries) {
+    throw new Error("tables.timeSeries is not a Compare table; declare features.timeSeries.");
   }
 
   if (model.tables.results.length === 0) {
     throw new Error("tables.results requires at least one row.");
   }
-  if (model.tables.timeSeries && model.tables.timeSeries.length === 0) {
-    throw new Error("tables.timeSeries requires at least one row.");
+  if (model.timeSeries && model.timeSeries.rows.length === 0) {
+    throw new Error("features.timeSeries requires at least one row.");
   }
 }
 
