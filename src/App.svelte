@@ -5,5 +5,5 @@
 -->
 <main>
   <h1>CBE Thermal Comfort Tool</h1>
-  <p>Rewrite in progress — see REWRITE-PLAN.md.</p>
+  <p>Rewrite in progress — see docs/rewrite-plan.md.</p>
 </main>
