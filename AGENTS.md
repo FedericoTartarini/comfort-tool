@@ -16,7 +16,7 @@ answer "what did the old tool do here", never to copy code from.
 | Document | Contents |
 | --- | --- |
 | [docs/adr-0001-architecture.md](docs/adr-0001-architecture.md) | The architecture decision record. Authoritative; wins on any conflict. |
-| [REWRITE-PLAN.md](REWRITE-PLAN.md) | Phased plan. Each phase is meant to be one working session. |
+| [docs/rewrite-plan.md](docs/rewrite-plan.md) | Phased plan. Each phase is meant to be one working session. |
 | [CLAUDE.md](CLAUDE.md) | Working summary: layout, import direction, conventions. |
 
 Read the ADR before making structural changes. When a change moves layer
@@ -32,8 +32,12 @@ boundaries, state flow, model registration, or chart ownership, update
   past one — either the import is wrong or the rule is, and both need a decision.
 - The library (`jsthermalcomfort`, symlinked to `../../forked repo/jsthermalcomfort`
   on branch `typescript`) owns every formula, threshold and comfort-zone
-  geometry. The app never implements one. The app consumes the fork's **build
-  output**, so a library change requires `npm run build` inside the fork first.
+  geometry. The app never implements one, with one written exception: unit
+  conversion for display (°C↔°F, m/s↔fpm) lives in `src/core/units.ts`. The
+  library is a general-purpose package; nothing that exists only for this tool
+  (input steps, defaults, option copy, route path segments) goes into it. The
+  app consumes the fork's **build output**, so a library change requires
+  `npm run build` inside the fork first.
 - Canonical stored state is SI. The library is called with `units: "SI"` only.
 - Do not add a dependency for something a few lines of the standard library or
   an already-installed package can do.

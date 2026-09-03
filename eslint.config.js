@@ -2,23 +2,26 @@ import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
+import { io } from "jsthermalcomfort";
 
 // Flat config REPLACES a same-named rule when a later block matches the same
 // file — it does not merge. `no-restricted-imports` and `no-restricted-syntax`
 // are therefore composed from these fragments, and every block that narrows one
 // of them has to repeat the fragments it still wants.
 
-// ADR §4.7: model functions run in the worker. The io/reference/charts/
-// psychrometrics subpaths are declarative metadata and geometry, cheap enough
-// for the main thread — hence a subpath split rather than a blanket ban.
+// ADR §3 / §4.7: model functions are called in the worker and referenced only
+// by the model declarations (which bind `run` and read label/limits off them).
+// The io subpath stays importable everywhere because `io.quantities` is the
+// one definition of every physical quantity; that its model wrappers are only
+// *called* in the worker is a convention lint cannot check.
 const libraryModelImports = {
   paths: [
     {
       name: "jsthermalcomfort",
       message:
-        "Model functions belong in src/workers/. Import jsthermalcomfort/io, /psychrometrics, /reference or /charts for metadata and geometry.",
+        "Library model functions are referenced only in src/models/ and called only in src/workers/. Import jsthermalcomfort/io, /psychrometrics, /reference or /charts elsewhere.",
     },
-    { name: "jsthermalcomfort/models", message: "Model functions belong in src/workers/." },
+    { name: "jsthermalcomfort/models", message: "Library model functions belong in src/models/ or src/workers/." },
   ],
 };
 
@@ -47,11 +50,11 @@ const legacySvelteSyntax = [
 ];
 
 // ADR §4.0: wire strings live in the library and in shareLink. Everywhere else
-// holds object references, so renaming a quantity is one edit.
+// holds object references, so renaming a quantity is one edit. The key list is
+// read from the library so adding a quantity there never touches this file.
 const wireStringSyntax = [
   {
-    selector:
-      "Literal[value=/^(tdb|tr|vr|v|rh|hr|met|clo|wme|t_running_mean|pmv|ppd|set|tmp_cmf)$/]",
+    selector: `Literal[value=/^(${Object.keys(io.quantities).join("|")})$/]`,
     message:
       "Reference the Quantity object from jsthermalcomfort, not its wire string. Wire strings belong in core/shareLink.ts.",
   },
@@ -141,8 +144,9 @@ export default [
     },
   },
   {
-    // The worker is the one place library model functions may be imported.
-    files: ["src/workers/**/*.ts"],
+    // Model declarations bind `run: io.<model>` and read label/limits off the
+    // library model function; the worker is the one place that calls them.
+    files: ["src/models/**/*.ts", "src/workers/**/*.ts"],
     rules: {
       "no-restricted-imports": "off",
     },

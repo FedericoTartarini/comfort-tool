@@ -22,7 +22,8 @@ Tailwind 4 / Vitest 4 / sv-router 0.18，且 `jsthermalcomfort` 已用 `file:` �
 | 起点 | 同仓库新分支 + `git rm -r src tests docs`，保留构建配置与品牌资源 |
 | v1 模型范围 | ADR §7：PMV (ISO 7730) + Adaptive (ASHRAE 55)，UTCI 作架构验收 |
 | 库分支 | fork 的 `typescript`（`for-new-CBE` 和 `Feature/export-model-metadata` 都是 TS 重写之前从 `main` 拉的，已废弃） |
-| 输入范围/默认值/枚举 | 按 ADR §4.1.5 加进库。库侧工作用下方独立 prompt 另开对话做 |
+| 库 / 应用边界（2026-09-03） | 判据"pythermalcomfort 会不会带"（ADR §3）。适用范围 → 库 `reference/`；步长、单位换算、默认值、选项文案、路由路径段、`ModelDefinition` → 应用。库侧工作用下方独立 prompt 另开对话做 |
+| 第二轮（2026-09-03） | 限值在库里做 source 不做 mirror；所属标准进库 `reference.standards` + `model.standard`，应用只加路径段；封闭集合改 `as const` 对象集合，不用枚举类；operative 模式用 `t_o` 量 + `psychrometricZone.trFollowsDb`；物理量名字只来自 `Quantity.label` |
 | 湿空气图几何 | `correctKnownDefects: false` — 复现 CBE 旧工具已发布的图 |
 
 ### 库现状盘点（`typescript` @ d57c456，已逐个验证运行时导出）
@@ -31,9 +32,9 @@ Tailwind 4 / Vitest 4 / sv-router 0.18，且 `jsthermalcomfort` 已用 `file:` �
 
 | ADR 条款 | 库里的实现 |
 |---|---|
-| §4.1.4 ModelResult | `io.pmvPpdIso/pmvPpdAshrae/adaptiveAshrae/adaptiveEn` → `.toMeasures()` → `Measure{quantity,value,unit,category,intervals}` |
-| §4.1.3 Band | `reference.{isoThermalSensation, ashraeThermalSensation, adaptiveAshraeOffsets, adaptiveEnOffsets, enCategoryPmvLimits}`，`IntervalScale.classify/labelFor` |
-| §4.1.1 Quantity（部分） | `io.quantities` — 12 个量，带 `key/kind/label/siUnit/ipUnit`（**只有单位符号字符串，没有换算函数**） |
+| §4.1.3 Measure | `io.pmvPpdIso/pmvPpdAshrae/adaptiveAshrae/adaptiveEn` → `.toMeasures()` → `Measure{quantity,value,unit,category,intervals}` |
+| §4.1.2 分级尺度 | `reference.{isoThermalSensation, ashraeThermalSensation, adaptiveAshraeOffsets, adaptiveEnOffsets, enCategoryPmvLimits}`，`IntervalScale.classify/labelFor` |
+| §4.1.1 Quantity | `io.quantities` — 12 个量，带 `key/kind/label/siUnit/ipUnit`。单位只是符号字符串，这就够了：换算归应用 |
 | **§4.7 边界求根 + §5 `core/compute/zoneBoundary.ts`** | **`charts.psychrometricZone`（CBE 原版移植，`rhStep`/`saturationStep`/`epsilon`/`correctKnownDefects` 可配）+ `bisect`/`secant`** |
 | §4.4 Adaptive 实渲染 | `charts.adaptiveAshraeZone` / `adaptiveEnZone` |
 | 模型元数据（部分） | `pmv_ppd_iso.{label,description,tsv}`、`pmv_ppd_ashrae.{label,description,tsv,compliance,COMPLIANCE_LIMIT}`、`adaptive_*.{label,description,offsets}` |
@@ -41,19 +42,27 @@ Tailwind 4 / Vitest 4 / sv-router 0.18，且 `jsthermalcomfort` 已用 `file:` �
 
 > **`core/compute/zoneBoundary.ts`（ADR §5）不要写**，库已经有了，`rhStep: 5` 传参即可。
 
-**缺口（→ 全部在下方库 prompt 里）：**
-输入 min/max/默认值（`ValidationRule` 声明了 `min?/max?` 但全库无一 schema 设过，
-8 个 schema 全模块私有）；`ModelDefinition` / `models` 注册表 / `standards` 字段 /
-inputs 与 outputs 清单；标量 `toSi/fromSi`（只有按 key 名分派的 `units_converter`，
-且 `t_running_mean` 不匹配、未知 key 静默不换算、`from_units:"IP"` 意为 IP→SI）；
-枚举选项的运行时值（全是 `export type`，包括被误放进 `export type {}` 块的 `Standard` 常量）。
+**缺口（→ 下方库 prompt）：**
+适用范围只硬编码在 compliance 函数里，还嵌在 warning 文案里，没有数据导出（`utilities.ts`
+第 275 行附近的注释已承诺 `reference/limits.ts` 记录 ISO met 下限的差异，但那个文件目前只有
+EN 类别限值）；模型不声明所属标准，标准只在 `label` 字符串里，`pmv_ppd` 的 `standard`
+参数是计算变体选择器，`utilities.Standard` 是 compliance 分派键，都不是归属；
+`quantities` 缺 `t_o`（operative temperature，operative 模式的输入量与图轴）与 `p_atm`
+（Phase 5 气压）；`psychrometricZone` 只接受固定 `tr`，表达不了 operative 模式的 `tr = db`
+（旧原型 `declarations/pmv/calculation.ts:77` 的 `psychrometricTrEqualsTdb`）；
+`Standard` 常量被放进 `export type {}` 块、`valid_range` 没进 barrel。
 
-### 两处 ADR 需要修正
+原以为的其他缺口（`Unit/toSi/fromSi/step`、`ModelDefinition` 注册表、`OptionSpec`、
+`defaultValue`、`inputs/outputs` 清单、offsets 加 `id`）经 2026-09-03 边界复审全部归应用
+或不需要，见 ADR §3 / §4.1.5。决定性证据：库的 IP 风速单位是 fps，CBE 工具显示 fpm，
+显示单位本来就不是库的事。
 
-1. **`epsilon` 不是温度容差。** ADR §1/§2 写"温度容差 0.001 °C"；`comfort_zone.ts` 明确
-   注释这是 **PMV 残差**，CBE 原版 `"ta precision"` 注释是错的。§7 验收 #3 要重新表述。
-2. **§3 与 §4.6 冲突**：§3 说单位换算归库，§4.6 说"库永远以 SI 调用，不走 IP 路径"。
-   按 §4.6 执行——**应用只用 SI 调库**，`Unit.toSi/fromSi` 仅用于显示层。
+### 两处 ADR 修正（已改入 ADR）
+
+1. **`epsilon` 不是温度容差。** `comfort_zone.ts` 明确注释这是 **PMV 残差**，CBE 原版
+   `"ta precision"` 注释是错的。ADR §1 / §2 / §4.7 已改。
+2. **§3 与 §4.6 冲突**已解：单位换算归应用 `core/units.ts`，是 ADR §3 明写的例外；
+   应用只用 SI 调库。
 
 ---
 
@@ -120,8 +129,10 @@ npx shadcn-svelte@latest init     # → components.json / src/lib/utils.ts / src
 | 探针 | 结果 |
 |---|---|
 | `src/core/*.ts` import `svelte` | ✅ 报错 |
-| `src/core/*.ts` 出现字面量 `"tdb"` | ✅ 报错 |
-| `src/models/*.ts` import `jsthermalcomfort/models` | ✅ 报错 |
+| `src/core/*.ts` 出现字面量 `"tdb"` / `"t_running_mean"` | ✅ 报错（key 列表从 `io.quantities` 读，库加量不用改 lint） |
+| `src/models/*.ts` import `jsthermalcomfort/models` | ✅ 不报错（2026-09-03 起允许：声明文件绑 `run`、读元数据） |
+| `src/state/*.ts` import `jsthermalcomfort/models` | ✅ 报错 |
+| `src/core/*.ts` import `jsthermalcomfort/io` | ✅ 不报错（`io.quantities` 随处可用） |
 | `src/ui/charts/*.svelte` import 模型 | ✅ 报错 |
 | `src/ui/outputs/*.svelte` 用 `class="p-4 flex"` | ✅ 报错 |
 | `src/ui/layout/*.svelte` 用 `class="flex gap-2"` | ✅ 不报错（允许） |
@@ -141,11 +152,15 @@ npx shadcn-svelte@latest init     # → components.json / src/lib/utils.ts / src
 
 ---
 
-## Phase 1 · 库合约（在 fork 仓库做，与应用解耦）
+## Phase 1 · 库侧缺口（在 fork 仓库做，与应用解耦）
 
-**目标**：库导出 ADR §4.1 的完整声明式合约，只覆盖 `pmv_ppd_iso` 和 `adaptive_ashrae`。
+**目标**：补应用依赖的四样缺口：适用范围数据（source，不是 mirror）、所属标准、
+两个缺的物理量、`psychrometricZone` 的 operative 模式。只覆盖 `pmv_ppd_iso` 和 `adaptive_ashrae`。
+**边界**：ADR §3 判据。库只加"另一个工具也需要一模一样的值"的东西；步长、默认值、
+选项文案、路由路径段、`ModelDefinition` 都不进库。
 **在哪做**：`/Users/yehuihuang/SoftwareProjects/USYD/forked repo/jsthermalcomfort`，
-从 `typescript` 开 `feat/model-definition`。
+从 `typescript` 开 `feat/applicability-limits`。工作树上有 87 个文件的 staged 改动
+（删 docs 主题等），先提交或 stash 再开分支。
 **注意**：应用消费的是构建产物 `lib/esm/`，不是 `src/`——库每改一次都要在 fork 里
 `npm run build`，应用才看得到。
 
@@ -153,12 +168,12 @@ npx shadcn-svelte@latest init     # → components.json / src/lib/utils.ts / src
 
 ````text
 仓库：/Users/yehuihuang/SoftwareProjects/USYD/forked repo/jsthermalcomfort
-分支：从 typescript (HEAD d57c456) 开 feat/model-definition
-参考：/Users/yehuihuang/SoftwareProjects/USYD/main repo/comfort-tool/docs/adr-0001-architecture.md 第 4.1 节
+分支：从 typescript (HEAD d57c456) 开 feat/applicability-limits
+参考：/Users/yehuihuang/SoftwareProjects/USYD/main repo/comfort-tool/docs/adr-0001-architecture.md 第 3 节与 4.1 节
 
-背景：这个库要给一个正在重写的 Svelte 前端（CBE Thermal Comfort Tool）当唯一计算源。
-前端的铁律是"新增一个模型 = 一个声明文件 + 一行注册"，所以模型的全部可声明信息必须
-从库里读出来，前端不硬编码任何数字、标签或范围。现在缺的就是这一层。
+背景：这个库是 pythermalcomfort 的 TypeScript 移植，是通用库；正在重写的 CBE Thermal
+Comfort Tool 只是它的一个消费者。判据：只加"另一个设计完全不同的工具用同一个模型也
+需要一模一样的值"的东西。UI 步长、默认值、选项文案、导航分组、注册表都不进库。
 
 【已有，不要重复造】
 - src/io/quantity.ts        quantities（12 个量，key/kind/label/siUnit/ipUnit）、unitFor
@@ -174,80 +189,88 @@ npx shadcn-svelte@latest init     # → components.json / src/lib/utils.ts / src
                             pmv_ppd_ashrae.{label,description,tsv,compliance,COMPLIANCE_LIMIT}、
                             adaptive_{ashrae,en}.{label,description,offsets}
 
-【要新增：ADR §4.1 合约，新建 src/io/model.ts，并从 src/io/index.ts 与 src/index.ts 导出】
+【要做的五件事】
 
-1. Unit —— readonly symbol: string; readonly step: number;
-   toSi(v: number): number; fromSi(v: number): number;
-   导出 unit 常量集：celsius / fahrenheit / kelvin / fahrenheitDelta /
-   metersPerSecond / feetPerMinute / percent / met / clo / none。
-   step 是输入框增量：°C 0.1、°F 0.1、m/s 0.05、fpm 10、% 1、met 0.1、clo 0.1。
-   注意 temperature 有偏移、temperatureDelta 无偏移，两者必须分开。
-   不要复用 units_converter：它按 key 名分派、未知 key 静默不换算、
-   t_running_mean 不匹配任何分支、且 from_units:"IP" 的含义是 IP→SI。
+1. 适用范围导出成数据，并让它成为唯一来源。放 src/reference/limits.ts
+   （现在只有 enCategoryPmvLimits）。
+   - 形状：readonly { quantity: Quantity; min: number; max: number }[]，
+     quantity 引用 src/io/quantity.ts 的对象。按 Quantity 对象键控，不按字符串。
+   - 三张表：
+     iso7730PmvLimits        tdb 10..30、tr 10..40、v 与 vr 0..1、met 0..4、clo 0..2
+     ashrae55PmvLimits       tdb 与 tr 10..40、v 与 vr 0..2、met 1..4、clo 0..1.5
+     ashrae55AdaptiveLimits  tdb 与 tr、v 同 ASHRAE，t_running_mean 10..33.5
+     数字来源：src/utilities/utilities.ts 的 _iso_compliance / _ashrae_compliance，
+     src/models/adaptive_ashrae.ts 第 200 行。不要凭记忆写，逐条对照代码。
+   - Source, not mirror：改 _iso_compliance / _ashrae_compliance 和 adaptive_ashrae 第 200 行，
+     让它们从表里读 min/max，warning 文案也从表里模板化。数值结果不变。
+     先看 tests/baseline.test.ts 与 tests/utilities/ 有没有逐字钉 warning 文案；有就让模板
+     逐字复现（现有文案用 "ºC" 这个字符、"10.0 and 33.5" 这种写法，都要保住）。
+     这与 offsets.ts 的 "Mirror, not source" 不同：offsets 涉及模型内核里的 t_cmf ± 3.5，
+     这次不动；限值只在检查函数里，可以做成 source。
+   - ISO met 下限：代码是 0，文档是 0.8，baseline 钉住 0。表里写 0，注释记录 0.8。
+     utilities.ts 第 275 行附近的注释已经承诺 limits.ts 记录这个差异，这次兑现。
+   - tests/reference.test.ts 加断言：对每张表的每一行，取 min - 0.01 和 max + 0.01 喂
+     check_standard_compliance 必须产生 warning，取 min 和 max 本身必须不产生。
+   - 挂到模型函数上：pmv_ppd_iso.limits、pmv_ppd_ashrae.limits、adaptive_ashrae.limits，
+     与 .label / .tsv 同一个模式；三张表也从 src/reference/index.ts 导出。
+   - 循环依赖：models 已经 import reference（bands / offsets），io/classes_return 又
+     import models，utilities 被 models import。limits.ts 只能 import "../io/quantity.js"
+     这个叶子模块，不能 import "../io/index.js"；utilities.ts import limits.ts 前先确认
+     io/quantity.ts 对 utilities 只有 type import（现在是），否则会成环。
 
-2. QuantityKind —— readonly siUnit: Unit; readonly ipUnit: Unit;
-   导出 kind 常量集，至少覆盖：temperature / temperatureDelta / airSpeed /
-   relativeHumidity / metabolicRate / clothingInsulation / index / percentage。
-   现有 src/io/quantity.ts 的 QuantityKind 是字符串联合、Quantity 带的是单位符号
-   字符串。请让新的 Quantity.kind 指向这个对象，并保留 siUnit/ipUnit 字符串字段
-   不动（README 和现有测试依赖它们），不要做破坏性改名。
+2. 所属标准导出成数据。新建 src/reference/standards.ts：
+   - export interface StandardRef { readonly id: string; readonly name: string }
+   - export const standards = {
+       iso7730:  { id: "iso7730",  name: "ISO 7730" },
+       ashrae55: { id: "ashrae55", name: "ASHRAE 55" },
+       en16798:  { id: "en16798",  name: "EN 16798-1" },
+     } as const satisfies Record<string, StandardRef>
+   - 挂到模型函数上：pmv_ppd_iso.standard = standards.iso7730、
+     pmv_ppd_ashrae.standard = standards.ashrae55、adaptive_ashrae.standard = standards.ashrae55、
+     adaptive_en.standard = standards.en16798。set_tmp / two_nodes / cooling_effect / pmv_ppd 不挂。
+   - 名字不要叫 Standard：src/utilities/utilities.ts 第 74 行已有一个 Standard，那是
+     check_standard_compliance 的分派键（含 FAN_HEATWAVES、ANKLE_DRAFT），语义不同，不合并。
+   - 从 src/reference/index.ts 导出 standards 与 StandardRef。
 
-3. InputSpec  { quantity: Quantity; min: number; max: number; defaultValue: number }
-   OptionValue { id: string; label: string }
-   OptionSpec  { id: string; label: string; values: readonly OptionValue[]; defaultValue: OptionValue }
-   Band        { label: string; min: number; max: number }   // ±Infinity 表无界
-   OutputSpec  { quantity: Quantity; bands: readonly Band[] }
-   Standard    { id: string; name: string }，带 static readonly ashrae55 / iso7730 /
-               en16798 / iso7933。
-   注意：src/utilities/utilities.ts:74 已有一个运行时 Standard 常量，但
-   src/utilities/index.ts:19 把它放进了 export type {} 块，所以只有类型逃出去了。
-   顺手修掉这个导出 bug，并让新的 Standard 与它的 id 对齐（check_standard_compliance 吃它）。
+3. 补两个物理量到 src/io/quantity.ts 的 quantities：
+   - t_o：operative temperature，kind "temperature"，键名对齐 psychrometrics 的 t_o，
+     label "Operative temperature"，单位同 tdb。
+   - p_atm：atmospheric pressure，新 kind "pressure"（QuantityKind 联合类型加一个成员），
+     label "Atmospheric pressure"，siUnit "kPa"；ipUnit 对齐 units_converter 现有的
+     pressure 分支约定，没有就与 SI 相同。
+   README 里 quantities 的计数如果写死了，一并更新。
 
-4. ModelDefinition
-   { id, name, description, standards: readonly Standard[],
-     inputs: readonly InputSpec[], options: readonly OptionSpec[],
-     outputs: readonly OutputSpec[], complianceOutput?: OutputSpec,
-     evaluate(values: ReadonlyMap<Quantity, number>, options: OptionValues): ModelResult }
-   ModelResult { values: ReadonlyMap<Quantity, number>; warnings: readonly string[] }
-   evaluate 内部就是包一层现成的 io.pmvPpdIso / io.adaptiveAshrae，永远以 SI 调用
-   （units: "SI"），warnings 来自现有的 warning 通道。
-   导出注册表：export const models = { pmvIso, adaptiveAshrae } as const;
+4. psychrometricZone 加 operative 模式。src/charts/comfort_zone.ts 的
+   PsychrometricZoneOptions 加 readonly trFollowsDb?: boolean（默认 false）。
+   为 true 时求解函数里调 pmv_ppd(db, db, vr, rh, met, clo, wme, standard, ...)，
+   即 tr 沿 x 轴跟随 db；此时 options.tr 被忽略，文档写明。
+   这是 CBE 工具 psychtop 图的几何，旧原型
+   /Users/yehuihuang/SoftwareProjects/USYD/main repo/comfort-tool-old/src/declarations/pmv/calculation.ts
+   第 77 行的 psychrometricTrEqualsTdb 就是这个开关。
+   tests/charts.test.ts 加：trFollowsDb: true 时，多边形上每个已求解顶点用
+   pmv_ppd(db, db, ...) 复算，|pmv| 与 pmvLimit 之差在 epsilon 量级内。
 
-5. 只做 pmv_ppd_iso 和 adaptive_ashrae 两个模型。其余六个先不管。
-
-【范围数字的来源】
-- 适用性限值现在硬编码在 src/utilities/utilities.ts 的私有分支函数里：
-  ISO 约 140-212 / 269-296 行（tdb 10..30、tr 10..40、v/vr 0..1、met 0..4、clo 0..2），
-  ASHRAE 约 140-212 行（tdb/tr 10..40、v/vr 0..2、met 1..4、clo 0..1.5）。
-  把这些提成可导出的数据，InputSpec.min/max 从它们来，不要再抄一遍数字。
-- adaptive 的 running-mean 限值 10.0..33.5 现在是 src/io/classes_return.ts:378 的
-  裸字面量。导出成 adaptive_ashrae.t_running_mean_limits = { min: 10, max: 33.5 }
-  （旧的 Feature/export-model-metadata 分支就是这么做的，TS 重写时丢了）。
-- defaultValue 库里没有先例，用 CBE 旧工具的默认值：
-  tdb 25、tr 25、v 0.1、rh 50、met 1.1、clo 0.5、t_running_mean 20。
-
-【顺手修的两个小缺口】
-- adaptiveAshraeOffsets / adaptiveEnOffsets 现在只有 label（"80%"、"Category I"），
-  旧分支还带 id（"80"、"cat_i"）与结果字段名 tmp_cmf_80_low 对齐。把 id 加回来，
-  否则消费方只能对 "80%" 做字符串处理。
-- src/utilities/index.ts 补齐 valid_range 的值导出（现在只在模块里导出，barrel 没有）。
+5. 两处 housekeeping：
+   - src/utilities/index.ts 把 Standard 从 export type {} 块挪到值导出
+     （utilities.ts 第 74 行是运行时常量，现在只有类型逃出去了）。
+   - src/utilities/index.ts 补 valid_range 的值导出（模块里导出了，barrel 没有）。
 
 【不要做】
-- InputCalculator、sequentialSimulation、evaluateMany、QuantityValues 包装类——
-  这两个模型一个都用不上，等 solar gain / PHS 落地再加。evaluate 直接收
-  ReadonlyMap<Quantity, number>，消费方本来就用 SvelteMap 存。
+- Unit / step / toSi / fromSi、QuantityKind 对象化、InputSpec / OptionSpec / Band /
+  OutputSpec、路由路径段、ModelDefinition / models 注册表 / evaluate(Map)、
+  defaultValue、offsets 加 id。这些经 2026-09-03 边界复审全部归应用（ADR §3 / §4.1.5）。
 - 不要改任何模型函数的签名或返回值。tests/baseline.test.ts 逐字节钉住了它们。
-- 不要用 enum / namespace / 构造函数参数属性（ADR §4.0 第 3 条）。
-  封闭集合用"带 static readonly 实例的普通类"。
+- 不要用 enum / namespace / 构造函数参数属性。
 
 【完成判据】
 - npm run typecheck / lint / test 全过，tests/baseline.test.ts 零改动通过
 - npm run build 成功
-- 写一个 tests/model_definition.test.ts：遍历 models，断言每个模型的
-  inputs 都有有限的 min/max/defaultValue、outputs 非空、standards 非空，
-  且 evaluate 的结果与直接调用 io.pmvPpdIso 的数值逐位相同
-- 一个 20 行脚本能做到：import { models } → 读 inputs 的 min/max/defaultValue →
-  evaluate → 拿到 ModelResult → 调 charts.psychrometricZone，全程不需要前端存在
+- tests/reference.test.ts 的边界探针断言通过；tests/charts.test.ts 的 trFollowsDb 断言通过；
+  每个挂了 standard 的模型，其 standard 与 reference.standards 的成员是同一对象
+- 一个 15 行 node 脚本能做到：import { pmv_ppd_iso, io, charts } →
+  读 pmv_ppd_iso.standard.name → 从 pmv_ppd_iso.limits 取 tdb 的范围 →
+  io.pmvPpdIso({...}).toMeasures() → charts.psychrometricZone({ trFollowsDb: true, ... })，
+  全程不需要前端存在
 ````
 
 ---
@@ -259,25 +282,39 @@ npx shadcn-svelte@latest init     # → components.json / src/lib/utils.ts / src
 
 按顺序建：
 
-1. `src/core/` 枚举类（ADR §4.2）：`workspace.ts`、`chartType.ts`、`unitSystem.ts`、
-   `entryModes.ts`。全部是"带 `static readonly` 实例的普通类" + `fromId()`。
-2. `src/core/modelDeclaration.ts`：`defineModel` + `RegisteredModel`。
-3. `src/models/pmvIso.ts`（ADR §4.3 的形状）+ `src/models/index.ts`（一行注册）。
-4. `src/core/numberFormat.ts`：最多两位小数、去尾零（`26.0→26`、`78.80→78.8`）。全项目唯一。
-5. `src/core/libraryInputs.ts`：`toLibraryInputs(slot, model, environment)`——把表示制
-   （5 种湿度、operative 模式）折算成库要的 SI 输入。纯函数，先写测试。
-6. `src/state/session.svelte.ts`：ADR §4.5 的 `Session` / `InputSlot`（先只用 slot 0）。
-7. `src/ui/inputs/` 输入面板 + `src/ui/outputs/ResultTable.svelte`（ADR §4.3 的三段：
-   Input / Compliance / 模型 `table` 列出的输出）。
-8. `src/routes/navigation.ts`（sv-router 唯一使用处）+ `/standard/ashrae-55/pmv-iso/`。
-9. SI/IP 切换：存储永远 SI，只有显示文本换算，步长来自当前显示单位的 `Unit.step`。
+1. `src/core/` 封闭集合（ADR §4.2）：`workspace.ts`、`chartType.ts`、`unitSystem.ts`、
+   `entryModes.ts`。全部是 `as const` 对象集合 + 派生联合类型 + `xxxFromId()` 普通函数，
+   和库的 `quantities` 同一写法，不用类。`entryModes.ts` 的 `temperatureMode` 带 `panel`
+   和 `axis` 两个 Quantity 字段（separate → `tdb`/`tr` 与 `tdb`，operative → `t_o` 与 `t_o`）。
+   `standard.ts`：以 `reference.standards` 对象为键的路径段表 + `pathSegmentFor` / `standardFromPath`。
+2. `src/core/units.ts`：`DisplayUnit { symbol, step, toSi, fromSi }` +
+   `displayUnitFor(quantity, unitSystem)`，按 `Quantity.kind` 查表：temperature °C 0.1 / °F 0.1，
+   airSpeed m/s 0.05 / fpm 10，percentage % 1，metabolicRate met 0.1，clothingInsulation clo 0.1，
+   thermalSensation 无单位 0.1，pressure kPa 0.1 / inHg 0.01。换算公式写在这里（ADR §3 例外），
+   `satisfies Record<QuantityKind, …>` 保证库加 kind 时这里编译报错。先写测试：°C↔°F、m/s↔fpm 往返。
+3. `src/core/modelDeclaration.ts`：`defineModel` + `RegisteredModel`。字段：`run`（库 io 包装）、
+   `model`（库模型函数，读 label / description / standard / tsv / limits）、`inputs`（顺序 + 默认值）、
+   `table`（必填）、`charts`、`timeSeries`。Standard 能力由 `model.standard` 是否存在决定。
+4. `src/models/pmvIso.ts`（ADR §4.3 的形状）+ `src/models/index.ts`（一行注册）。
+5. `src/core/numberFormat.ts`：最多两位小数、去尾零（`26.0→26`、`78.80→78.8`）。全项目唯一。
+6. `src/core/libraryInputs.ts`：`toLibraryInputs(slot, model, environment)`——把表示制
+   （5 种湿度、operative 模式）折算成库要的 SI 输入，`Map<Quantity, number>` → 库 init
+   （`Object.fromEntries` 按 `Quantity.key`，应用里除 shareLink 外唯一读 key 的地方），
+   以及 `v → vr`（是否套 `v_relative` 对照旧工具）、operative 下 `t_o` 展开为 `tdb = tr = t_o`。
+   纯函数，先写测试。
+7. `src/state/session.svelte.ts`：ADR §4.5 的 `Session` / `InputSlot`（先只用 slot 0）。
+8. `src/ui/inputs/` 输入面板 + `src/ui/outputs/ResultTable.svelte`（ADR §4.3 的三段：
+   Input / Compliance / 模型 `table` 列出的输出）。面板按 `temperatureMode.panel` 显示温度行，
+   标签一律 `Quantity.label`，不写 "Air temperature" 一类文案。
+9. `src/routes/navigation.ts`（sv-router 唯一使用处）+ `/standard/iso-7730/pmv-iso/`。
+10. SI/IP 切换：存储永远 SI，只有显示文本换算，步长来自当前显示单位的 `DisplayUnit.step`。
 
 **完成判据**
 - 改一个输入立刻出数，无计算按钮
 - SI → IP → SI 往返后存储值不变，显示不超两位小数、无尾零
-- 超出硬范围描红、不计算、保留上一个有效值
+- 超出硬范围（`model.limits`）描红、不计算、保留上一个有效值
 - `core/` 里没有 `import` 任何 `svelte` / `state` / `ui`（lint 规则拦住）
-- `numberFormat` 和 `toLibraryInputs` 有单测
+- `numberFormat`、`units`、`toLibraryInputs` 有单测
 
 ---
 
@@ -293,7 +330,8 @@ npx shadcn-svelte@latest init     # → components.json / src/lib/utils.ts / src
    Plotly 自带图例关掉（`layout.showlegend = false`）。导出图片时用同一份 `legend` 数据
    生成 Plotly 横向底部图例，保证屏幕与导出一致。
 4. `src/core/charts/psychrometricChart.ts`：调 `charts.psychrometricZone`，
-   `rhStep: 5`、`correctKnownDefects: false`（已拍板：复现旧图）。
+   `rhStep: 5`、`correctKnownDefects: false`（已拍板：复现旧图）。x 轴量取
+   `temperatureMode.axis`，轴标签 `Quantity.label`；operative 模式传 `trFollowsDb: true`。
    **不要自己写求根**。
 5. `src/core/charts/dynamicChart.ts`：x/y 可选物理量，100×100 网格。
 6. `src/workers/compute.worker.ts` + Comlink，主线程按 stamp 丢弃过期结果。
@@ -312,11 +350,11 @@ npx shadcn-svelte@latest init     # → components.json / src/lib/utils.ts / src
 ## Phase 4 · 第二个模型 ← 架构验收，不过就不往下走
 
 **目标**：加 Adaptive (ASHRAE 55)。
-**前置**：Phase 3。库侧需要 `models.adaptiveAshrae`（Phase 1 已含）。
+**前置**：Phase 3。库侧需要 `adaptive_ashrae.limits` / `.standard` 与 `io.quantities.t_o`（Phase 1 已含）。
 
 只允许动两个文件：新建 `src/models/adaptiveAshrae.ts`，在 `src/models/index.ts` 加一行。
-Adaptive 用 `ChartType.dynamic` 实渲染，锁定轴
-`runningMeanOutdoorTemperature × operativeTemperature`，输出是可接受等级区间
+Adaptive 用 `chartType.dynamic` 实渲染，锁定轴
+`t_running_mean × t_o`（轴标签来自 `Quantity.label`），输出是可接受等级区间
 （`charts.adaptiveAshraeZone`）。
 
 **完成判据（这是全计划最硬的一条）**
@@ -339,7 +377,7 @@ Adaptive 用 `ChartType.dynamic` 实渲染，锁定轴
    Add band / Reset / 删除，按（模型，输出）保存并进链接；颜色由应用按区间位置
    从固定色板分配、可编辑。**没有 "show zones" 开关**——合规区与带总是绘制。
 4. `src/core/shareLink.ts`：`?share=v1.<Base64URL(JSON)>`，schema 见 ADR §4.8。
-   **全项目只有这个文件读写字符串 id**（`Quantity.key`、各枚举类的 `.id` / `fromId()`）。
+   **全项目只有这个文件读写字符串 id**（`Quantity.key`、各封闭集合的 `.id` / `xxxFromId()`）。
    解析失败退默认并提示，不白屏。
    跳过：`migrate()`（v1 没有可迁移的来源，等 v2 再写）、`v1z.` deflate + `fflate`
    （跟 Time-series 一起，见下）。
@@ -357,11 +395,11 @@ Adaptive 用 `ChartType.dynamic` 实渲染，锁定轴
 **前置**：Phase 5。
 
 1. 库侧：把 `utci` 从 `main` 分支的 JS 移植进 `typescript` 的 TS
-   （多项式，无状态，是 8 个已移植模型之外最便宜的一个），补上 `ModelDefinition`。
+   （多项式，无状态，是 8 个已移植模型之外最便宜的一个），补 `io.utci`、挂上
+   `label` / `description` / `limits` / 分级尺度，缺的 quantity 加进 `quantities`。
 2. 应用侧：**只加 `src/models/utci.ts` + 一行注册**，其他文件零改动，且只出现在
-   Explore 导航（`standards` 为空）。
-3. 跑完 ADR §7 的八条验收（第 3 条按上面的修正表述：比对顶点几何，
-   不是"温度容差 0.001 °C"）。
+   Explore 导航（库里不挂 `standard`）。`table` 必填，UTCI 也声明。
+3. 跑完 ADR §7 的九条验收（第 3 条比对顶点几何）。
 4. gtag 一行，路由变化时手动发 `page_view`，`page_location` 去掉查询串
    （不把分享载荷发给 Google）。
 5. 合并回 `main`，删 `git worktree`。
@@ -381,21 +419,27 @@ Adaptive 用 `ChartType.dynamic` 实渲染，锁定轴
   和 `src/ui/layout/`（`Stack`/`Grid`/`Inline`，gap 走 props）；其他目录出现即报错
 
 **唯一入口**
-- 库的**模型函数**只在 `src/workers/compute.worker.ts` 里 import；
-  库的**湿空气函数与物理量定义**允许主线程 import
+- 库的**模型函数**（`jsthermalcomfort` 根、`/models`）只在 `src/models/`（绑定 `run`、
+  读元数据）和 `src/workers/`（实际调用）里 import，lint 拦；`io` / `psychrometrics` /
+  `reference` / `charts` 随处可 import（`io.quantities` 是物理量唯一定义）；
+  `io` 的模型包装只在 worker 里**调用**，靠约定不靠 lint
 - 字符串 id 只出现在两处：库内部的 `Quantity.key`，和 `src/core/shareLink.ts`
-- 单位换算只在 `src/core/units.ts`（消费库的 `Unit.toSi/fromSi`）；存储永远 SI
+  （`core/libraryInputs.ts` 用 `Quantity.key` 拼库的 init 对象，是库边界，不算第三处）
+- 单位换算只在 `src/core/units.ts`，公式写在应用里（ADR §3 例外）；存储永远 SI
 - 数值格式化只在 `src/core/numberFormat.ts`
 
 **语法**
 - 只用 runes；ESLint 禁 `export let` / `$:` / `on:` / `<slot>` / `<svelte:component>`
 - 禁 `enum` / `namespace` / 构造函数参数属性（`erasableSyntaxOnly`）
-- 封闭集合用带 `static readonly` 实例的普通类，行为做成方法而不是到处 `switch`
+- 封闭集合用 `as const` 对象集合 + 派生联合类型，行为做成普通函数，不到处 `switch`，不用枚举类
+- 物理量名字只来自 `Quantity.label`，应用里不出现 "Air temperature" 一类写死的名字
 - 生成的 `.svelte` 过一遍 `svelte-autofixer`（Svelte MCP 已装）
 
 **别写的东西**（库已有或用不上）
 `core/compute/zoneBoundary.ts`、任何自己实现的求根、任何抄下来的分级阈值数字、
-`InputCalculator`、`sequentialSimulation`、`evaluateMany`、`migrate()`、`fflate`。
+`InputCalculator`、`sequentialSimulation`、`evaluateMany`、`migrate()`、`fflate`；
+库侧的 `Unit` / `InputSpec` / `OptionSpec` / `ModelDefinition` / `models` 注册表（归应用）；
+应用侧的枚举类、应用侧的 `standards` 声明（归库 `model.standard`）。
 
 ## 验证
 

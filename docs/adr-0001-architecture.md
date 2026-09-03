@@ -3,7 +3,8 @@
 - 状态：已达成共识（2026-09-03）
 - 适用范围：v1（目标 2026-10-01），以及其后的长期维护
 - 取代：原型仓库 `main repo/comfort-tool`（Svelte 5，约 49k 行）。原型因分层过多不可维护，**不复用代码，只借鉴已验证的行为**。
-- 配套：计算库 `@cbe/thermalcomfort`（TypeScript，独立仓库 + npm，与本项目并行开发）。第 4 节同时给出库的公开接口契约。
+- 配套：计算库 `jsthermalcomfort` fork 的 `typescript` 分支（TypeScript，软链消费其构建产物，与本项目并行开发）。第 4 节同时给出库的公开接口契约。
+- 修订 2026-09-03：按 §3 的判据收缩库 / 应用边界（§3、§4.1、§4.3、§5）；`epsilon` 改为 PMV 残差（§1、§2、§4.7）。第二轮：限值在库里做 source 不做 mirror、所属标准进库（§4.1.2）、封闭集合改为 `as const` 对象集合（§4.0、§4.2）、operative 模式用 `t_o` 量与 `psychrometricZone.trFollowsDb`（§4.1.4、§4.4、§4.5）、物理量名字只来自 `Quantity.label`（§6）。
 
 ---
 
@@ -15,9 +16,9 @@
 | 工作方式 | AI 大量写代码，人只做架构与审查 |
 | 时间 | 2026-10-01 前交付 v1；v1 功能全集，分阶段实现，不按周排计划 |
 | 后端 | 无。纯静态 SPA，先部署 Netlify |
-| 计算库 | 新建 TypeScript 库，从 `pythermalcomfort` 移植，先做 1–2 个模型；库只含 comfort 模型及其全部属性；SI 单位；**不做适配器**，前端直接按第 4 节接口开发 |
+| 计算库 | fork `jsthermalcomfort` 的 `typescript` 分支，从 `pythermalcomfort` 移植；库只含模型及其**通用**属性（名称、简介、分级尺度、适用范围），不含任何仅为本工具存在的字段；应用只以 SI 调库；**不做适配器**，前端直接按第 4 节接口开发 |
 | 交互 | 改一个输入图立刻跟着变；Standard / Explore 无计算按钮；Time-series 有 |
-| 参考精度 | 旧工具舒适区为边界求根：RH 每 10% 一条线、温度容差 0.001 °C（`static/js/psychchart.js`） |
+| 参考精度 | 旧工具舒适区为边界求根：RH 每 10% 一条线、PMV 残差 0.001（`static/js/psychchart.js` 注释写作 "ta precision"，实为 PMV 残差） |
 | 浏览器 | 现代浏览器完整体验；**很老的浏览器也要能打开链接并看到预填的输入** |
 | 视觉 | 允许重新设计；保留三栏信息架构（左导航 / 中输入 / 右结果 + 图）；v1 无暗色 |
 | 测试 | v1 前只对纯函数写单测；UI / e2e / 视觉测试 v1 后 |
@@ -37,7 +38,7 @@
 | 状态 | `.svelte.ts` 中的 runes class，**不引状态库**；地址栏只反映路径，分享载荷仅在 Export Link 时生成 | 简单可读；原型做法 | 地址栏实时同步 |
 | 图表 | **plotly.js 4.0**（`plotly.js-cartesian-dist-min`，按需动态 import；原生 TS 类型）；自写 `PlotlyChart.svelte` 用 `{@attach}`；图表组件只接收"图表规格"，不知道模型 | 放大缩小等交互；4.0 原生导出类型 | 3.x；`svelte-plotly.js`（无 Svelte 5 版本） |
 | 计算 | 单个 Web Worker + **Comlink**；主线程按序号丢弃过期结果；库的模型函数只在 Worker 内调用 | 可读性优先 | 手写 postMessage 协议；Worker 池 |
-| 精度 | Standard 合规区：**边界求根**（RH 每 5%、温度容差 0.001 °C、割线法退二分法、饱和线每 0.5 °C）；Explore 场图：**100×100 网格**，所有模型统一 | 与旧工具同源且更细；PHS 约 2.4 s 时保留旧图 | 全部网格；自适应细化 |
+| 精度 | Standard 合规区：**边界求根**（RH 每 5%、PMV 残差 0.001、割线法退二分法、饱和线每 0.5 °C）；Explore 场图：**100×100 网格**，所有模型统一 | 与旧工具同源且更细；PHS 约 2.4 s 时保留旧图 | 全部网格；自适应细化 |
 | 表单 | 不引表单库、不引 Zod；`bind:value` + 库给的范围校验 | 库已提供硬范围 | — |
 | 校验 | 超出硬范围：标红、不计算、保留上一个有效值 | 库只提供这一套范围 | 两级范围 |
 | 链接 | **`?share=v1.<Base64URL(JSON)>`**；Time-series 为 `?share=v1z.<Base64URL(deflate)>`（`fflate`）；版本前缀 + `migrate()`；解析失败回退默认并提示 | 不压缩使 ES5 摘要页可解 | `?s=`（缩写违反命名规则）；`#share=`；兼容旧 Berkeley 链接（不需要） |
@@ -57,17 +58,25 @@
 
 ## 3. 系统边界：库 vs 应用
 
-| 归库（`@cbe/thermalcomfort`） | 归应用 |
+**判据（2026-09-03 共识）：pythermalcomfort 会不会带这个东西。** `jsthermalcomfort` 是它的移植，受众是研究者和任意工具。凡是"另一个设计完全不同的工具用同一个模型也需要一模一样的值"，归库；凡是换一个工具就可能不同的，归应用。
+
+| 归库（`jsthermalcomfort`，fork `typescript` 分支） | 归应用 |
 |---|---|
-| 物理量类型系统：单位、SI↔IP 换算、物理量定义（key、种类、标签、描述） | 显示格式化（两位小数、去尾零）、输入顺序、表示组（湿度 / 温度）的状态与切换 |
-| 所有模型及其全部属性：名称、简介、所属标准、输入（物理量、硬范围、默认值）、枚举选项、输出（物理量、默认区间） | 图表数学：区域边界求根、网格扫描、所有可视化几何与规格 |
-| 统一的输出格式（第 4.1.4 节）；合规判定 = 应用对输出区间的解析 | 切模型规则、分享链接、Explore 阈值编辑、单位切换、UI |
-| 输入计算器（服装组合、动态预测服装、太阳得热、球温…）及其对模型的适用性 | Time-series 行编辑器与会话 |
-| 批量求值；有状态模型的顺序模拟 | — |
-| 湿空气函数（露点 / 湿球 / 含湿量 / 水蒸气压 ↔ RH、操作温度） | — |
+| 物理量定义 `io.quantities`：key、kind、label、SI/IP 单位**符号** | 显示单位与 SI↔IP 换算（°C↔°F、m/s↔fpm）、输入步长、显示格式化（两位小数、去尾零） |
+| 模型函数与 `io` 包装；挂在模型函数上的名称、简介、**所属标准**（`model.standard`）、分级尺度（`tsv`、`offsets`）、**适用范围**（标准规定的 min/max，`reference/` 数据，唯一来源） | 输入顺序、默认值、选项及其文案、结果表列（`table`）、表示组（湿度 / 温度）的状态与切换 |
+| 统一输出 `Measure { quantity, value, unit, category, intervals }`（§4.1.3） | 合规判定 = 对 `Measure.category` / `intervals` 的解析；Explore 的可编辑 Band |
+| 舒适区几何：`charts.psychrometricZone`（边界求根，含 operative 模式的 `trFollowsDb`）、`charts.adaptiveAshraeZone` | 网格扫描、`ChartSpec`、图例、颜色、视口裁剪、所有 Plotly 规格 |
+| 输入计算器的算式（`clo_dynamic`、`v_relative`、`running_mean_outdoor_temperature`、太阳得热、球温…） | 哪个模型提供哪个计算器按钮（声明文件） |
+| 湿空气函数（露点 / 湿球 / 含湿量 / 水蒸气压 ↔ RH、操作温度） | 标准的路径段（`core/standard.ts`，以库的 `reference.standards` 对象为键）、切模型规则、分享链接、单位切换、UI |
+| 有状态模型的顺序模拟（PHS，v1 后） | Time-series 行编辑器与会话 |
 | 超范围返回结果 + warnings，不抛异常；无 DOM / `node-fetch` 依赖，可在 Worker 运行 | — |
 
-约定：库的**模型函数**只在 Worker 内 import；库的**湿空气函数与物理量定义**允许主线程 import。
+两条明写的例外：
+
+- **单位换算写在应用里。** "应用永不实现公式"针对的是舒适度公式与阈值；°C↔°F 一类的显示换算是表现层问题，而且应用的 IP 显示单位（fpm）与库的 IP 调用单位（fps）本来就不同。应用只以 SI 调库，库的 `ipUnit` 字符串和 `units_converter` 是它自己的调用约定，应用不读。
+- **库不带任何"仅为本工具存在"的字段。** 没有 `step`、`defaultValue`、`OptionSpec`、路由路径段、`ModelDefinition` 注册表。这些都是应用声明文件或 `core/` 的内容（§4.2 / §4.3）。
+
+约定：库的**模型函数**（`jsthermalcomfort` 根、`jsthermalcomfort/models`）只在 `src/models/`（绑定 `run`、读元数据）与 `src/workers/`（实际调用）里 import，lint 拦。`io` / `psychrometrics` / `reference` / `charts` 子路径随处可 import，因为 `io.quantities` 是物理量的唯一定义；`io` 的模型包装只在 worker 里**调用**，这一条靠约定不靠 lint。
 
 ---
 
@@ -75,191 +84,137 @@
 
 ### 4.0 三条贯穿全项目的规则
 
-1. **一处定义，处处引用。** 物理量、模型、工作区、图表类型、单位制等都是对象；代码中用点引用（`quantity.dryBulbTemperature`、`Workspace.explore`），不用字符串键，不用 `Record<string, …>` 字典。
-2. **字符串只出现在两个边界。** 库内部的 `Quantity.key`（如 `"tdb"`）和分享链接的序列化。前者只被库和 `shareLink.ts` 读取；后者集中在 `shareLink.ts`。
-3. **可擦除语法。** 不用 `enum`、`namespace`、构造函数参数属性；封闭集合用"带 `static readonly` 实例的普通类"（枚举类），行为写成方法而不是到处 `switch`。
+1. **一处定义，处处引用。** 物理量、模型、工作区、图表类型、单位制等都是对象；代码中用点引用（`io.quantities.tdb`、`workspace.explore`），不用字符串键，不用 `Record<string, …>` 字典。`Quantity.kind` 是库导出的字符串联合类型，应用把它当作带类型的判别值（`core/units.ts` 按 kind 查显示单位表，`satisfies Record<QuantityKind, …>` 保证穷尽），不算字符串键。
+2. **字符串只出现在两个边界。** 库内部的 `Quantity.key`（如 `"tdb"`）和分享链接的序列化。前者只被库、`core/libraryInputs.ts`（用 `Quantity.key` 拼库的 init 对象，是库边界）和 `shareLink.ts` 读取；后者集中在 `shareLink.ts`。
+3. **可擦除语法。** 不用 `enum`、`namespace`、构造函数参数属性。封闭集合用 `as const` 的普通对象集合加从中派生的联合类型，和库的 `quantities` 同一种写法；行为写成普通函数，不用类层级，也不到处 `switch`。
 
 ### 4.1 库的公开接口（契约）
 
-#### 4.1.1 单位、物理量种类、物理量
+库已有四层：`models` / `reference` / `io` / `charts`。下面只列应用依赖的部分。**Phase 1 补四样：适用范围数据（source，不是 mirror）、所属标准、两个缺的物理量、`psychrometricZone` 的 `trFollowsDb`。** 其余都已存在。
+
+#### 4.1.1 物理量（`jsthermalcomfort/io`，已存在）
 
 ```ts
-export class Unit {
-  readonly symbol: string;
-  readonly step: number;                 // 该单位下输入框的增减步长（°C 0.1、°F 0.1、m/s 0.05、fpm 10…）
-  toSi(value: number): number;
-  fromSi(value: number): number;
-}
-export const unit = {
-  celsius: Unit, fahrenheit: Unit, kelvin: Unit, fahrenheitDelta: Unit,
-  metersPerSecond: Unit, feetPerMinute: Unit,
-  percent: Unit, gramPerKilogram: Unit, grainPerPound: Unit,
-  kilopascal: Unit, inchOfMercury: Unit,
-  met: Unit, clo: Unit, minute: Unit, none: Unit,
-} as const;
-
-export class QuantityKind {              // 单位与换算只在这里定义一次
-  readonly siUnit: Unit;
-  readonly ipUnit: Unit;
-}
-export const kind = {
-  temperature:        QuantityKind,      // celsius ↔ fahrenheit（有偏移）
-  temperatureDelta:   QuantityKind,      // kelvin ↔ fahrenheitDelta（无偏移，必须与 temperature 分开）
-  airSpeed:           QuantityKind,
-  relativeHumidity:   QuantityKind,
-  humidityRatio:      QuantityKind,
-  pressure:           QuantityKind,
-  metabolicRate:      QuantityKind,
-  clothingInsulation: QuantityKind,
-  index:              QuantityKind,      // pmv、tsv 等无量纲指数
-  percentage:         QuantityKind,      // ppd
-  duration:           QuantityKind,
-} as const;
-
-export class Quantity {                  // 角色无关：输入与输出共用
-  readonly key: string;                  // "tdb"——库内部与序列化用，应用代码不直接写
-  readonly kind: QuantityKind;
-  readonly label: string;                // 短显示名："Air temperature"
-  readonly description: string;          // 长说明
-}
-export const quantity = {
-  dryBulbTemperature:            Quantity,   // tdb
-  meanRadiantTemperature:        Quantity,   // tr
-  operativeTemperature:          Quantity,   // top
-  airSpeed:                      Quantity,   // v
-  relativeAirSpeed:              Quantity,   // vr
-  relativeHumidity:              Quantity,   // rh
-  metabolicRate:                 Quantity,   // met
-  clothingInsulation:            Quantity,   // clo
-  runningMeanOutdoorTemperature: Quantity,   // t_running_mean
-  atmosphericPressure:           Quantity,   // p_atm
-  pmv: Quantity, ppd: Quantity, thermalSensation: Quantity,
-  standardEffectiveTemperature:  Quantity,   // set
-  comfortTemperature:            Quantity,   // tmp_cmf
-  // 每加一个模型，缺什么量就在这里加一行；输入和输出都从这里引用
-} as const;
+export type QuantityKind = "temperature" | "airSpeed" | "percentage" | "metabolicRate"
+                         | "clothingInsulation" | "thermalSensation" | "pressure";   // pressure 为 p_atm 新增
+export interface Quantity { readonly key: string; readonly kind: QuantityKind; readonly label: string;
+                            readonly siUnit: string; readonly ipUnit: string; }        // 单位只是符号字符串
+export const quantities = { tdb, tr, v, vr, rh, met, clo, wme, t_running_mean, pmv, ppd, tmp_cmf,
+                            /* Phase 1 补 */ t_o, p_atm } as const;
 ```
 
-应用**不重复声明物理量**，直接 `import { quantity, kind, unit } from '@cbe/thermalcomfort'`。
+应用**不重复声明物理量**，`import { io } from 'jsthermalcomfort'` 后点引用 `io.quantities.tdb`。`siUnit` / `ipUnit` 是库自己的调用约定，应用只读 `label` 与 `kind`，显示单位在 `core/units.ts` 按 kind 查。每加一个模型，缺什么量就在库里加一行。
 
-#### 4.1.2 值容器
+#### 4.1.2 参考数据（`jsthermalcomfort/reference`）
+
+- 分级尺度，已存在：`isoThermalSensation` / `ashraeThermalSensation`（`IntervalScale`，`classify()` / `labelFor()`）、`adaptiveAshraeOffsets` / `adaptiveEnOffsets`、`enCategoryPmvLimits`。
+- **适用范围，Phase 1 新增**：每个标准一张表，按 `Quantity` 对象键控，`readonly { quantity, min, max }[]`。**表是唯一来源**：compliance 函数从表里读 min/max，warning 文案从表里模板化，不再各存一份。挂到模型函数上：`pmv_ppd_iso.limits`、`adaptive_ashrae.limits`（含 `t_running_mean` 10..33.5），与 `label` / `tsv` 同一个模式。
+- **所属标准，Phase 1 新增**：`reference.standards = { iso7730, ashrae55, en16798 }`，每个是 `{ id, name }` 普通对象；`pmv_ppd_iso.standard = standards.iso7730`。没有 `standard` 的模型（UTCI）只出现在 Explore。库里已有的 `utilities.Standard` 是 compliance 分派键（含 `FAN_HEATWAVES`、`ANKLE_DRAFT`），不是这个，名字要分开。
+
+#### 4.1.3 统一输入输出（`jsthermalcomfort/io`，已存在）
 
 ```ts
-export class QuantityValues {            // 以 Quantity 对象为键，没有字符串
-  get(q: Quantity): number | undefined;
-  set(q: Quantity, value: number): this;
-  has(q: Quantity): boolean;
-  entries(): Iterable<readonly [Quantity, number]>;
-}
+io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI" })   // → PmvPpdIsoOutputs
+  .toMeasures()   // Measure[]：{ quantity, value, unit, category?, intervals }
+  .warnings       // readonly string[]
 ```
 
-#### 4.1.3 输入、选项、输出规格
+- 输入对象的字段名就是 `Quantity.key`，所以 `Map<Quantity, number>` → init 是一行 `Object.fromEntries`，在应用的 `core/libraryInputs.ts` 里做。
+- 分类结果不是独立输出：`Measure.category` 是该值落入的尺度标签（PMV 的 tsv），`Measure.intervals` 是评估出的舒适区间及是否满足（Adaptive 的 80% / 90%）。**合规判定 = 应用对这两个字段的解析**，结果表 Compliance 列直接显示它们。
+- 模型函数上挂着 `label` / `description` / `standard` / `tsv` 或 `offsets` / `limits`，声明文件从这里读，不写文案、不抄数字。
 
-```ts
-export class InputSpec  { readonly quantity: Quantity; readonly min: number; readonly max: number; readonly defaultValue: number; }
-export class OptionValue { readonly id: string; readonly label: string; }                 // 例：AirSpeedControl.withLocalControl
-export class OptionSpec<T extends OptionValue> { readonly id: string; readonly label: string; readonly values: readonly T[]; readonly defaultValue: T; }
-export class Band       { readonly label: string; readonly min: number; readonly max: number; }   // ±Infinity 表示无界；下含上不含
-export class OutputSpec { readonly quantity: Quantity; readonly bands: readonly Band[]; }         // bands 即 Explore 默认区间与合规解析依据
-```
+#### 4.1.4 图表几何（`jsthermalcomfort/charts`，已存在）
 
-#### 4.1.4 统一输出格式与合规
+`psychrometricZone({ tr, vr, met, clo, pmvLimit, rhStep, saturationStep, epsilon, correctKnownDefects, trFollowsDb })` 返回 `polygon` 顶点；`adaptiveAshraeZone()` 返回各等级的上下边界。全部 SI、不裁剪、不着色。`epsilon` 是 PMV 残差，不是温度容差。`trFollowsDb`（Phase 1 新增）让求解时 `tr = db` 沿 x 轴跟随，这是 operative 模式湿空气图的几何，旧工具的 psychtop 图就是这样算的；不加它，operative 模式的合规区是错的。
 
-- 每个模型的 `evaluate()` 返回 `ModelResult { values: QuantityValues; warnings: readonly Warning[] }`。
-- 所有输出都是数值物理量。分类结果（如 Adaptive 的可接受等级、ISO 7730 的 A/B/C 类）编码为**整数值输出 + 带标签的 `bands`**。
-- **合规判定不是独立对象**，而是应用对输出的解析：结果表的 Compliance / Zone 列 = 该输出落入的 `Band.label`。模型定义用 `complianceOutput` 指出由哪个输出承担合规列。
+#### 4.1.5 库里没有、也不该有的东西
 
-#### 4.1.5 模型、输入计算器、标准
+`Unit` / `step` / `toSi` / `fromSi`、`defaultValue`、`OptionSpec` / `OptionValue`、标准的路由路径段、`InputSpec` / `OutputSpec` / `Band`、`ModelDefinition` 与 `models` 注册表、`QuantityValues`、`InputCalculator` 的适用性、`evaluateMany`。它们要么是表现层决策（§4.2 / §4.3），要么是库已有类型的重复。
 
-```ts
-export class Standard { readonly id: string; readonly name: string; static readonly ashrae55: Standard; static readonly iso7730: Standard; static readonly en16798: Standard; static readonly iso7933: Standard; }
+旧工具输入面板那组按钮的归属：`Create custom ensemble / Dynamic predictive clothing / Solar gain / Globe temp / Set pressure` → 应用侧输入计算器，算式调库；`Relative air speed / Local control` → 声明文件里的选项；`Local discomfort`（踝部吹风、垂直温差）只产生输出、不改输入 → 作为普通小模型进入库，在 Explore 中可用；`Reset / Save / Reload / Share / SI-IP / Documentation` → 应用动作。输入计算器语义为**一次性 Apply**：用户填计算器自己的小输入，点 Apply，结果写入目标输入；计算器不进会话状态、不进分享链接。
 
-export class InputCalculator {           // 额外的计算功能：自带小输入，算出一个值，写入某个输入量
-  readonly id: string;
-  readonly title: string;                // "Dynamic predictive clothing"、"Solar gain on occupants"、"Globe temperature"、"Clothing ensemble"
-  readonly writes: Quantity;             // 例：quantity.clothingInsulation
-  readonly inputs: readonly InputSpec[];
-  compute(values: QuantityValues): number;
-}
+### 4.2 应用侧封闭集合
 
-export class ModelDefinition {
-  readonly id: string;
-  readonly name: string;
-  readonly description: string;
-  readonly standards: readonly Standard[];
-  readonly inputs: readonly InputSpec[];
-  readonly options: readonly OptionSpec<OptionValue>[];    // 有无局部控制、姿势、是否适应、是否计入活动产生的风速…
-  readonly outputs: readonly OutputSpec[];
-  readonly complianceOutput?: OutputSpec;
-  readonly inputCalculators: readonly InputCalculator[];   // 适用性由物理决定，归库
-  readonly sequentialSimulation?: SequentialSimulation;   // 有状态模型（PHS）的顺序模拟；无则逐行独立
-  evaluate(values: QuantityValues, options: OptionValues): ModelResult;
-  evaluateMany(values: readonly QuantityValues[], options: OptionValues): readonly ModelResult[];
-}
-export const models = { pmvIso: ModelDefinition, adaptiveAshrae: ModelDefinition, utci: ModelDefinition, ankleDraft: ModelDefinition, /* … */ } as const;
-export const psychrometrics = { /* 以 Quantity 为参数的换算函数 */ };
-```
-
-说明：
-
-- 旧工具输入面板那组按钮的归属：`Create custom ensemble / Dynamic predictive clothing / Solar gain / Globe temp / Set pressure` → 输入计算器；`Relative air speed / Local control` → 模型选项；`Local discomfort`（踝部吹风、垂直温差）只产生输出、不改输入 → 作为普通小模型进入库，在 Explore 中可用；`Reset / Save / Reload / Share / SI-IP / Documentation` → 应用动作。
-- 输入计算器语义为**一次性 Apply**：用户填计算器自己的小输入，点 Apply，结果写入目标输入；计算器不进会话状态、不进分享链接（链接只带结果值）。需要重算时再点一次。
-
-### 4.2 应用侧枚举类
+与库的 `quantities` 同一种写法：`as const` 对象集合 + 派生联合类型 + 普通函数。不用类。
 
 ```ts
 // src/core/workspace.ts
-export class Workspace {
-  readonly id: string; readonly pathSegment: string; readonly title: string;
-  static readonly standard   = new Workspace('standard',    'standard',    'Standard');
-  static readonly explore    = new Workspace('explore',     'explore',     'Explore');
-  static readonly timeSeries = new Workspace('time-series', 'time-series', 'Time-series');
-  static readonly all = [Workspace.standard, Workspace.explore, Workspace.timeSeries] as const;
-  isAvailableFor(model: RegisteredModel): boolean {
-    if (this === Workspace.explore) return true;                       // 所有模型都有 Explore（至少 dynamic chart）
-    if (this === Workspace.standard) return model.definition.standards.length > 0;
-    return model.timeSeries;
-  }
-  static fromId(id: string): Workspace | undefined;                    // 仅 shareLink / navigation 使用
+export interface Workspace { readonly id: string; readonly pathSegment: string; readonly title: string; }
+export const workspace = {
+  standard:   { id: 'standard',    pathSegment: 'standard',    title: 'Standard' },
+  explore:    { id: 'explore',     pathSegment: 'explore',     title: 'Explore' },
+  timeSeries: { id: 'time-series', pathSegment: 'time-series', title: 'Time-series' },
+} as const satisfies Record<string, Workspace>;
+export function isWorkspaceAvailable(target: Workspace, model: RegisteredModel): boolean {
+  if (target === workspace.explore) return true;                            // 所有模型都有 Explore（至少 dynamic chart）
+  if (target === workspace.standard) return model.model.standard !== undefined;   // 库的 model.standard
+  return model.timeSeries;
 }
-// 同一写法：ChartType.psychrometric / .dynamic；HumidityMode.rh / .humidityRatio / .dewPoint / .wetBulb / .vaporPressure；
-//          TemperatureMode.separate / .operative；UnitSystem.si / .ip；EntryGroup.humidity / .temperature
+export function workspaceFromId(id: string): Workspace | undefined;        // 仅 shareLink / navigation 使用
+// 同一写法：chartType.psychrometric / .dynamic；humidityMode.rh / .humidityRatio / .dewPoint / .wetBulb / .vaporPressure；
+//          unitSystem.si / .ip；entryGroup.humidity / .temperature
+
+// src/core/entryModes.ts — 温度表示决定面板显示哪些量、哪个量是温度轴；标签一律来自 Quantity.label
+const q = io.quantities;
+export const temperatureMode = {
+  separate:  { id: 'separate',  panel: [q.tdb, q.tr], axis: q.tdb },
+  operative: { id: 'operative', panel: [q.t_o],       axis: q.t_o },
+} as const;
+
+// src/core/standard.ts — 只加应用特有的路径段；标准本身是库的 reference.standards 对象
+export const standardPath = [
+  { standard: reference.standards.ashrae55, pathSegment: 'ashrae-55' },
+  { standard: reference.standards.iso7730,  pathSegment: 'iso-7730' },
+  { standard: reference.standards.en16798,  pathSegment: 'en-16798' },
+] as const;
+export function pathSegmentFor(standard: StandardRef): string;
+export function standardFromPath(segment: string): StandardRef | undefined;
+
+// src/core/units.ts — 显示单位。换算公式写在这里（§3 例外）；按 Quantity.kind 查表，satisfies Record<QuantityKind, …> 保证穷尽
+export interface DisplayUnit { readonly symbol: string; readonly step: number; toSi(v: number): number; fromSi(v: number): number; }
+export function displayUnitFor(quantity: Quantity, unitSystem: UnitSystem): DisplayUnit;
+// temperature → °C 0.1 / °F 0.1；airSpeed → m/s 0.05 / fpm 10；percentage → % 1；metabolicRate → met 0.1；
+// clothingInsulation → clo 0.1；thermalSensation → 无单位 0.1；pressure → kPa 0.1 / inHg 0.01
 ```
 
 ### 4.3 模型声明（应用侧，一个对象字面量，一个文件）
 
 ```ts
 // src/models/pmvIso.ts
+import { io, pmv_ppd_iso } from 'jsthermalcomfort';   // 声明文件可以引用库模型：绑定 run、读元数据。调用只在 worker
+const q = io.quantities;
 export const pmvIso = defineModel({
-  definition: models.pmvIso,                                   // 名称、简介、输入范围、默认区间、选项、计算器全部来自库
-  inputOrder: [quantity.dryBulbTemperature, quantity.meanRadiantTemperature, quantity.airSpeed,
-               quantity.relativeHumidity, quantity.metabolicRate, quantity.clothingInsulation],
+  run: io.pmvPpdIso,                                   // 库的 io 包装，worker 调它
+  model: pmv_ppd_iso,                                  // label / description / standard / tsv / limits 从这里读
+  inputs: [                                            // 顺序 + 默认值（CBE 旧工具的起始值），一张表
+    [q.tdb, 25], [q.tr, 25], [q.v, 0.1], [q.rh, 50], [q.met, 1.1], [q.clo, 0.5],
+  ],
   entryGroups: [EntryGroup.humidity, EntryGroup.temperature],
   charts: [
-    DynamicChart.withDefaultAxes(quantity.dryBulbTemperature, quantity.airSpeed),   // 每个模型必有
-    PsychrometricChart.withZone(quantity.pmv),
+    DynamicChart.withDefaultAxes(q.tdb, q.v),          // 每个模型必有
+    PsychrometricChart.withZone(q.pmv),
   ],
-  table: [quantity.pmv, quantity.ppd, quantity.thermalSensation, quantity.standardEffectiveTemperature],  // 结果表显示哪些库输出、按什么顺序
+  table: [q.pmv, q.ppd],                               // 必填：结果表列，也是 Explore 可选输出
   timeSeries: true,
 });
 // src/models/index.ts
 export const registeredModels = [pmvIso, adaptiveAshrae, utci] as const;   // 注册只此一行
 ```
 
-规则：所有模型默认拥有 Explore 能力；Standard 能力由 `definition.standards` 非空决定；Time-series 能力由 `timeSeries` 决定。**新增轻模型 = 升库版本 + 一个声明文件 + 一行注册，其他零改动。**
+规则：所有模型默认拥有 Explore 能力；Standard 能力由库的 `model.standard` 是否存在决定，应用不再声明；Time-series 能力由 `timeSeries` 决定。**新增模型 = 库补齐该模型的 quantities / limits / standard + 一个声明文件 + 一行注册，其他零改动。** 选项（如 `airspeed_control`）在需要时加进声明文件，v1 的两个模型没有选项。面板标签、表头、轴标签一律来自 `Quantity.label`，声明文件里没有任何物理量名字。
 
 结果表（`table`）：
 
 - 只有一种表样式（原型的设计）：表头大写小号字；列多时横向滚动；Compare 开启时每个槽位一行，Baseline 决定差值高亮相对于哪一行。
-- 列的构成固定为三段：**Input**（槽位名，按槽位颜色着色，总是第一列）→ **Compliance**（仅当模型有 `complianceOutput` 时出现，显示其 `Band.label`，着色为通过 / 不通过）→ **模型文件 `table` 列出的库输出**，按声明顺序，数值按 §4.6 格式化并跟随单位制。
-- 未声明 `table` 时默认列出库输出顺序的全部输出。
+- 列的构成固定为三段：**Input**（槽位名，按槽位颜色着色，总是第一列）→ **Compliance**（仅当模型的 `Measure` 带 `category` 或 `intervals` 时出现，显示落入的标签，着色为通过 / 不通过）→ **模型文件 `table` 列出的库输出**，按声明顺序，数值按 §4.6 格式化并跟随单位制。
+- `table` 必填；未列出的输出不显示，也不进 Explore 的输出选择。
 
 ### 4.4 图表类型（封闭集合，v1）
 
 | 类型 | 定义 |
 |---|---|
-| `ChartType.psychrometric` | x = 干球温度或操作温度，y = 含湿量；RH 等值线；合规区多边形（边界求根）；三个槽位标记点 |
-| `ChartType.dynamic` | x / y 可选物理量；分带等值面（100×100 网格）；标记点；**每个模型默认获得**。Adaptive 用它渲染：锁定轴 `runningMeanOutdoorTemperature × operativeTemperature`，输出为可接受等级的区间 |
+| `chartType.psychrometric` | x = `temperatureMode.axis`（separate 下 `tdb`，operative 下 `t_o`），轴标签来自 `Quantity.label`；y = 含湿量；RH 等值线；合规区多边形（`psychrometricZone`，operative 下 `trFollowsDb: true`）；三个槽位标记点 |
+| `chartType.dynamic` | x / y 可选物理量（operative 下提供 `t_o`，不提供 `tdb` / `tr`）；分带等值面（100×100 网格）；标记点；**每个模型默认获得**。Adaptive 用它渲染：锁定轴 `t_running_mean × t_o`，输出为可接受等级的区间 |
 
 参数曲线图（SET 输出、热损失）、时序折线图在需要时先加入图表库再被模型引用。`PlotlyChart.svelte` 只接收 `ChartSpec`（traces / layout / shapes 的受限子集），不 import 任何模型。
 
@@ -273,7 +228,7 @@ export const registeredModels = [pmvIso, adaptiveAshrae, utci] as const;   // �
 
 ```ts
 class Session {                                        // Standard + Explore 共用；Time-series 另有独立会话
-  workspace: Workspace; standard?: Standard; model: RegisteredModel;
+  workspace: Workspace; standard?: StandardRef; model: RegisteredModel;   // StandardRef 是库的 reference.standards 成员
   unitSystem: UnitSystem;                              // 仅显示层
   compare: { enabled: boolean; activeSlot: Slot; baselineSlot: Slot };
   slots: readonly [InputSlot, InputSlot, InputSlot];
@@ -281,21 +236,22 @@ class Session {                                        // Standard + Explore 共
   environment: { atmosphericPressure: number };        // "Set pressure"；影响湿度换算
 }
 class InputSlot {
-  values: SvelteMap<Quantity, number>;                 // 规范 SI；跨模型超集包（切回时自动恢复）；不含 rh
+  values: SvelteMap<Quantity, number>;                 // 规范 SI；跨模型超集包（切回时自动恢复）；不含 rh；operative 下存 t_o，separate 下存 tdb / tr
   humidity: { mode: HumidityMode; value: number };     // 用户输入的量是真值
   temperature: { mode: TemperatureMode };
-  options: SvelteMap<OptionSpec<OptionValue>, OptionValue>;
+  options: SvelteMap<OptionSpec, OptionValue>;         // OptionSpec 是应用类型，由声明文件给出；v1 两个模型没有选项
 }
 class ChartState {
   type: ChartType; axes: { x: Quantity; y: Quantity }; output: Quantity;
-  bandsByOutput: Map<Quantity, Band[]>;                // Explore 阈值；默认取库的 OutputSpec.bands
+  bandsByOutput: Map<Quantity, Band[]>;                // Explore 阈值；默认由库的 IntervalScale（如 pmv 的 tsv）派生，无尺度的输出由声明文件给默认 Band
 }                                                      // 无 "show zones" 开关：合规区与分带总是绘制
 class Outputs { perSlot: readonly (ModelResult | null)[]; grid: GridResult | null; stamp: number; }   // 派生，永不持久化
 ```
 
 规则：
 
-- **用户输入的量是真值。** 湿度以 `humidity` 存原值，`rh` 由纯函数 `toLibraryInputs(slot, model, environment)` 在送 Worker 前用当前 `tdb` 与气压派生（改 `tdb` 时露点不变、RH 变，与旧工具一致）；切换表示时把当前值换算到新表示。`TemperatureMode.operative` 下 `tdb = tr = 输入值`。
+- **用户输入的量是真值。** 湿度以 `humidity` 存原值，`rh` 由纯函数 `toLibraryInputs(slot, model, environment)` 在送 Worker 前用当前 `tdb` 与气压派生（改 `tdb` 时露点不变、RH 变，与旧工具一致）；切换表示时把当前值换算到新表示。`temperatureMode.operative` 下槽位存的是 `t_o`，`toLibraryInputs` 展开成 `tdb = tr = t_o`；切模式时换算：separate → operative 用库的 `psychrometrics.t_o(tdb, tr, v)`，operative → separate 令 `tdb = tr = t_o`。
+- `toLibraryInputs` 还负责 `v → vr`：PMV 面板显示的是 `v`，库要 `vr`。是否套 `v_relative(v, met)` 是模型行为，由声明文件指定，对照旧工具确定。
 - Outputs 完全由 Inputs + Chart 派生，由 `state/compute.svelte.ts` 监听并写入；瞬态 UI 状态不进 Session。
 - 切模型：同物理量参数保留；超出新模型硬范围的参数弹窗（标题 "Boundary Range Warning"，表格 Input / Current / Allowed range，按钮 "Yes, switch and adjust" / "No, stay here"）；无越界不弹窗；三个槽位同样处理。
 - Explore 阈值：有序 `Band` 列表，下含上不含，缺口不着色；编辑器含 Add band / Reset / 删除；按（模型，输出）保存并进链接；颜色由应用按区间位置从固定色板分配，可编辑。
@@ -303,16 +259,17 @@ class Outputs { perSlot: readonly (ModelResult | null)[]; grid: GridResult | nul
 ### 4.6 单位与数值显示
 
 - **存储永远是 SI**，库永远以 SI 调用（即使库支持 IP 也不走那条路，保证单一路径）。
-- 切换到 IP：输入框显示 `kind.ipUnit.fromSi(si)`；用户在 IP 下编辑：解析 → `toSi` → 存储。存储值保留全精度，只有显示文本被格式化；因此 SI ↔ IP 来回切换不会漂移。
+- 切换到 IP：输入框显示 `displayUnitFor(quantity, unitSystem.ip).fromSi(si)`；用户在 IP 下编辑：解析 → `toSi` → 存储。存储值保留全精度，只有显示文本被格式化；因此 SI ↔ IP 来回切换不会漂移。
 - 范围、默认值、图表轴标签同样在显示边界换算。
-- 步长取自**当前显示单位**的 `Unit.step`。
+- 步长取自**当前显示单位**的 `DisplayUnit.step`。
+- 换算公式写在 `core/units.ts`，是 §3 明写的例外；库的 `units_converter` 不用。
 - 全项目一个格式化函数：最多两位小数、去掉末尾零（`26.0 → 26`，`0.51 → 0.51`，`78.80 → 78.8`）。
 
 ### 4.7 计算流水线
 
-`Session 变化 → toLibraryInputs → compute.worker（Comlink）→ evaluate / solveZoneBoundary / evaluateGrid → Outputs（带 stamp，过期丢弃）→ ChartSpec → PlotlyChart`
+`Session 变化 → toLibraryInputs → compute.worker（Comlink）→ model.run / charts.psychrometricZone / 网格扫描 → Outputs（带 stamp，过期丢弃）→ ChartSpec → PlotlyChart`
 
-- 区域边界：RH 每 5% 一条线（21 条）、温度容差 0.001 °C、割线法失败退二分法、饱和线每 0.5 °C。
+- 区域边界：RH 每 5% 一条线（21 条）、PMV 残差 `epsilon` 0.001、割线法失败退二分法、饱和线每 0.5 °C。
 - 网格：100×100；缓存 key = 模型 + 输出 + 非轴参数（拖动轴参数不重算）；计算期间保留旧图，>300 ms 显示"计算中"。
 - 库基准（原型 fork，V8）：PMV 静风 1.7 µs/次；PMV 含冷却效应 43 µs；UTCI 0.5 µs；PHS(480 min) 244 µs → 100×100 分别约 20 ms / 0.43 s / 5 ms / 2.4 s。
 
@@ -334,7 +291,7 @@ class Outputs { perSlot: readonly (ModelResult | null)[]; grid: GridResult | nul
              "bands": [ { "label": "Cold", "min": null, "max": -2.5, "color": "#1f5fa8" } ] } }
 ```
 
-- 只带当前模型的图表设置与当前模型声明的物理量；所有 id 来自各类的 `.id` / `Quantity.key`，解码经各类 `fromId()`；这是应用里唯一把对象转成字符串又转回来的文件。
+- 只带当前模型的图表设置与当前模型声明的物理量；所有 id 来自各集合对象的 `.id` / `Quantity.key`，解码经各集合的 `xxxFromId()` 函数；这是应用里唯一把对象转成字符串又转回来的文件。
 - Time-series 路由使用 `?share=v1z.<Base64URL(deflate(JSON))>` 并含 `rows`；ES5 摘要页只解 `v1.`，对 `v1z.` 显示"时序数据省略"。
 - 解析失败回退默认并提示，不白屏；schema 变更时写 `migrate(v_old → v_new)`。
 
@@ -349,14 +306,15 @@ class Outputs { perSlot: readonly (ModelResult | null)[]; grid: GridResult | nul
 ```
 src/
   core/                 纯 TS；ESLint 禁止 import svelte / state / ui
-    workspace.ts  chartType.ts  unitSystem.ts  entryModes.ts      枚举类
+    workspace.ts  chartType.ts  unitSystem.ts  entryModes.ts   封闭集合（as const 对象 + 普通函数）
+    standard.ts           库 reference.standards 对象 → 路径段
     modelDeclaration.ts   defineModel + RegisteredModel
-    libraryInputs.ts      toLibraryInputs(slot, model, environment)：表示组 → 库输入
-    numberFormat.ts       两位小数、去尾零；SI/IP 显示换算
-    shareLink.ts          encode / decode / migrate
-    compute/  zoneBoundary.ts  grid.ts                            接收 evaluate 回调的纯算法
-    charts/   chartSpec.ts（含 LegendEntry）  psychrometricChart.ts  dynamicChart.ts
-  models/               每模型一个声明文件 + index.ts
+    libraryInputs.ts      toLibraryInputs(slot, model, environment)：表示组 → 库输入（Map → init，v → vr，t_o → tdb = tr）
+    numberFormat.ts       两位小数、去尾零
+    units.ts              显示单位：符号、步长、SI↔IP 换算（§3 例外）
+    shareLink.ts          encode / decode（migrate 等 v2）
+    charts/   chartSpec.ts（含 LegendEntry）  psychrometricChart.ts（调 charts.psychrometricZone）  dynamicChart.ts（100×100 网格）
+  models/               每模型一个声明文件 + index.ts；主线程里唯一可引用库模型函数的目录
   state/                session.svelte.ts  compute.svelte.ts  timeSeriesSession.svelte.ts
   workers/              compute.worker.ts（唯一调用库模型函数的地方）
   ui/
@@ -373,8 +331,8 @@ index.html              内嵌 ES5 特征检测 + 只读摘要页
 
 ## 6. 编码规范
 
-- **命名**：组件 `PascalCase.svelte`；模块 `camelCase.ts`；函数动词开头；统一用词 `dynamic chart`、`chart type`、`model`、`session`、`slot`、`workspace`；禁止 `engine / manager / helper / utils` 作文件名；物理量 key 逐字用库命名，其余不用缩写。
-- **类型优先**：封闭集合用枚举类；物理量、模型、标准全部从库 import 并点引用；类型从数据派生（`as const`、`satisfies`）；不用魔法字符串与松散字典；改一个名字只改一处。
+- **命名**：组件 `PascalCase.svelte`；模块 `camelCase.ts`；函数动词开头；统一用词 `dynamic chart`、`chart type`、`model`、`session`、`slot`、`workspace`；禁止 `engine / manager / helper / utils` 作文件名；物理量 key 逐字用库命名，其余不用缩写。**物理量的显示名字永远来自 `Quantity.label`**，应用不写；旧工具的 "Air temperature" 是错误术语，不沿用，正确的是库里的 "Dry-bulb air temperature"，要改拼写只改库一处。
+- **类型优先**：封闭集合用 `as const` 对象集合；物理量、模型、标准全部从库 import 并点引用；类型从数据派生（`as const`、`satisfies`）；不用魔法字符串与松散字典；改一个名字只改一处。
 - **粒度**：一个概念一个文件，100–400 行为常态；普通函数 + 数据对象优先于类层级；不为"以后可能"预留抽象；不把逻辑拆成大量微小方法。
 - **Svelte 护栏**：只用 runes；ESLint 禁用 `export let`、`$:`、`on:`、`<slot>`、`<svelte:component>`；第三方库对接用 `{@attach}`；跨组件共享状态用带 `$state` 字段的 class；`$effect` 只做外部同步。
 - **TypeScript 护栏**：`strict`、`erasableSyntaxOnly`、`verbatimModuleSyntax`；不用 `enum`、`namespace`、构造函数参数属性。
@@ -388,13 +346,13 @@ index.html              内嵌 ES5 特征检测 + 只读摘要页
 
 验收：
 
-1. 以 **UTCI** 作第三个模型接入：只新增一个声明文件 + 一行注册，其他文件零改动，且只出现在 Explore 导航。
+1. 以 **UTCI** 作第三个模型接入：只新增一个声明文件 + 一行注册，其他文件零改动，且只出现在 Explore 导航（库里不挂 `standard`）。
 2. 任一状态 Export Link → 新标签打开 → 状态完全一致（三槽位、单位、图表类型、阈值、气压）。
 3. PMV 湿空气图合规区顶点与旧工具同输入下的顶点差 ≤ 0.01 °C。
 4. 切换到范围不兼容的模型时弹窗内容与设计稿一致；无越界不弹窗。
 5. 在禁用 `Proxy` 的环境下打开分享链接，摘要页列出全部输入值。
 6. SI → IP → SI 来回切换后存储值不变；所有数值显示不超过两位小数且无末尾零。
-7. 结果表列完全由模型声明的 `table` 决定（UTCI 不声明时走默认列）；任一图表只有图下方一个图例，Plotly 内置图例不出现。
+7. 结果表列完全由模型声明的 `table` 决定（`table` 必填，UTCI 也声明）；任一图表只有图下方一个图例，Plotly 内置图例不出现。
 8. lint 通过：无工具类越界、无 legacy 语法、`core/` 无越界 import、无 `enum`。
 9. 单测覆盖：`shareLink` 编解码与迁移、`toLibraryInputs`（5 种湿度表示、operative 模式）、`numberFormat` 与单位换算、切模型继承与夹紧规则。
 

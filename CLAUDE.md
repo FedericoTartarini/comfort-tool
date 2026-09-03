@@ -9,7 +9,7 @@ Guidance for Claude Code when working in this repository.
 > do not copy code from it**.
 >
 > - Architecture decision record: [docs/adr-0001-architecture.md](docs/adr-0001-architecture.md)
-> - Phased rewrite plan: [REWRITE-PLAN.md](REWRITE-PLAN.md)
+> - Phased rewrite plan: [docs/rewrite-plan.md](docs/rewrite-plan.md)
 >
 > Read both before making structural changes. This file is the summary; the ADR wins on conflicts.
 
@@ -49,16 +49,18 @@ instead of working around it.
 ```
 src/
   core/           plain TypeScript, runnable under node — no svelte, no state, no ui
-    workspace.ts chartType.ts unitSystem.ts entryModes.ts    enum classes
+    workspace.ts chartType.ts unitSystem.ts entryModes.ts    closed sets: as const objects + plain functions
+    standard.ts           library reference.standards object -> route path segment
     modelDeclaration.ts   defineModel + RegisteredModel
-    libraryInputs.ts      toLibraryInputs(slot, model, environment)
+    libraryInputs.ts      toLibraryInputs(slot, model, environment): Map -> library init, v -> vr, t_o -> tdb = tr
     numberFormat.ts       the only number formatter
-    units.ts              the only SI <-> display conversion
+    units.ts              display units: symbol, step, SI <-> IP conversion (the one formula exception)
     shareLink.ts          encode / decode — the only place wire strings appear
     charts/               chartSpec.ts psychrometricChart.ts dynamicChart.ts
-  models/         one declaration file per model + index.ts (the registry)
+  models/         one declaration file per model + index.ts (the registry);
+                  the only main-thread code that may import library model functions
   state/          session.svelte.ts  compute.svelte.ts
-  workers/        compute.worker.ts — the only importer of library model functions
+  workers/        compute.worker.ts — the only place library model functions are called
   routes/         page composition; navigation.ts is the only sv-router usage
   ui/
     primitives/   shadcn-svelte generated — do not hand-edit
@@ -78,28 +80,44 @@ src/
 
 - `core/` must not import `svelte`, `state/`, `ui/` or `routes/`
 - `ui/charts/` must not import models, state, or `jsthermalcomfort` — it consumes a `ChartSpec`
-- library **model functions** (`jsthermalcomfort`, `jsthermalcomfort/models`) are
-  importable only from `src/workers/`; `io`, `psychrometrics`, `reference` and
-  `charts` subpaths are fine on the main thread
+- library **model functions** (`jsthermalcomfort` root, `jsthermalcomfort/models`)
+  are importable only from `src/models/` (to bind `run` and read metadata) and
+  `src/workers/` (the only caller); `io`, `psychrometrics`, `reference` and
+  `charts` subpaths are fine anywhere because `io.quantities` is the one
+  quantity definition. The `io` model wrappers are *called* only in the worker;
+  lint cannot check that, so it is a convention
 - Tailwind utility classes are allowed only in `ui/primitives/` and `ui/layout/`
 
 **Canonical state is always SI.** The library is always called with
 `units: "SI"`, even though it supports IP — one path only. Conversion happens
 at the display boundary in `core/units.ts`; the stored value keeps full
-precision, only the rendered text is formatted.
+precision, only the rendered text is formatted. The app's IP display units
+(fpm for air speed) differ from the library's IP calling units (fps), so the
+library's `ipUnit` strings and `units_converter` are never read.
 
 **No duplicated definitions.** Quantities, models, standards, units, workspaces
 and chart types are objects referenced by identity
-(`quantity.dryBulbTemperature`, `Workspace.explore`), never string keys and
+(`io.quantities.tdb`, `workspace.explore`), never string keys and
 never `Record<string, …>` dictionaries. Wire strings appear in exactly two
-places: inside the library, and in `core/shareLink.ts`.
+places: inside the library, and in `core/shareLink.ts`. `Quantity.kind` is a
+library string union used as a typed discriminant (`core/units.ts` looks up
+display units by kind with an exhaustive `satisfies Record<QuantityKind, …>`).
 
 **Calculation ownership.** All thermal-comfort maths, applicability limits,
 classification bands and comfort-zone geometry come from `jsthermalcomfort`.
 The app never implements a formula, never transcribes a threshold number, and
 never writes its own root finder — `charts.psychrometricZone` and
 `charts.adaptiveAshraeZone` already do that, faithfully ported from the
-deployed CBE tool.
+deployed CBE tool. The one exception is unit conversion for display
+(°C↔°F, m/s↔fpm), which is a presentation concern and lives in `core/units.ts`.
+
+**Library boundary.** The library carries only what any consumer would need:
+model functions, labels, standard membership (`model.standard`), scales,
+applicability limits (single source, read by the compliance checks), chart
+geometry including the operative-mode `trFollowsDb` option. UI defaults,
+input steps, option copy, route path segments and the result-table column
+list belong to the model declaration file or `core/`, never to the library.
+Test: "would pythermalcomfort ship it?" (ADR §3).
 
 ## Coding conventions
 
@@ -107,12 +125,20 @@ deployed CBE tool.
   Cross-component shared state is a class with `$state` fields; `$effect` is
   for external synchronisation only.
 - **Erasable syntax only.** No `enum`, no `namespace`, no constructor parameter
-  properties (`erasableSyntaxOnly` is on). Closed sets are ordinary classes with
-  `static readonly` instances and a `fromId()`; put behaviour on methods rather
-  than switching on the value in a dozen places.
+  properties (`erasableSyntaxOnly` is on). Closed sets are `as const` objects of
+  plain data objects with a derived union type, the same shape as the library's
+  `io.quantities` (`workspace.explore`, `temperatureMode.operative`). Behaviour
+  is a plain function (`isWorkspaceAvailable(workspace, model)`), never a class
+  hierarchy; id lookups are a `xxxFromId()` function used only by shareLink and
+  navigation. State containers (`Session`, `InputSlot`) stay runes classes.
 - **Naming.** Components `PascalCase.svelte`, modules `camelCase.ts`, functions
   start with a verb. Never `engine` / `manager` / `helper` / `utils` as a
-  filename. No abbreviations except library quantity keys.
+  filename. No abbreviations except library quantity keys. Quantity display
+  names always come from `Quantity.label`; the app never writes one. The old
+  tool's "Air temperature" was wrong and is not carried over; the library says
+  "Dry-bulb air temperature". `temperatureMode` decides which quantity is shown
+  and which is the temperature axis (`tdb` or `t_o`), so axis labels switch
+  with it for free.
 - **Granularity.** One concept per file, 100–400 lines is normal. Plain functions
   over class hierarchies. Do not abstract for a second caller that does not exist.
 - Declare component props as a named `interface Props` above the `$props()`
@@ -130,5 +156,5 @@ the currently displayed unit, not the SI one.
 
 A change is complete when `npm test`, `npm run check`, `npm run lint` and
 `npm run build` all pass; SI remains the canonical stored state; library model
-functions stay behind the worker; conversion stays in `core/units.ts`; and the
-layout above still matches the live tree.
+functions are called only in the worker; conversion stays in `core/units.ts`;
+and the layout above still matches the live tree.

@@ -17,7 +17,7 @@ no backend runtime is required.
 > only declares and renders models.
 >
 > - [Architecture decision record](docs/adr-0001-architecture.md)
-> - [Phased rewrite plan](REWRITE-PLAN.md)
+> - [Phased rewrite plan](docs/rewrite-plan.md)
 >
 > The previous implementation is preserved on the `refactor-draft` branch.
 
