@@ -2,107 +2,133 @@
 
 Guidance for Claude Code when working in this repository.
 
+> **This branch (`rewrite/v1`) is a rewrite in progress.** The previous
+> application was deleted; `src/` is being rebuilt from scratch against a new
+> architecture. The old code is checked out read-only at `../comfort-tool-old/`
+> (a `git worktree` on `refactor-draft`) and is a **behaviour reference only —
+> do not copy code from it**.
+>
+> - Architecture decision record: [docs/adr-0001-architecture.md](docs/adr-0001-architecture.md)
+> - Phased rewrite plan: [REWRITE-PLAN.md](REWRITE-PLAN.md)
+>
+> Read both before making structural changes. This file is the summary; the ADR wins on conflicts.
+
 ## Commands
 
 ```bash
-npm run dev         # Start the application dev server
-npm test            # Run Vitest tests
-npm run check       # Run Svelte and TypeScript checks
-npm run lint        # Run ESLint
-npm run build       # Build the application
-npm run test:visual # Run Playwright visual tests
-npm run preview     # Preview the application build
+npm run dev         # Vite dev server
+npm test            # Vitest
+npm run check       # svelte-check + TypeScript
+npm run lint        # ESLint (architecture boundaries are enforced here)
+npm run build       # Production build
 ```
 
-To run a single test file:
-
-```bash
-npx vitest run src/engines/comfort/comfort.test.ts
-```
+Single test file: `npx vitest run src/core/numberFormat.test.ts`
 
 ## Stack
 
-Svelte 5 (runes), TypeScript, Vite 5, Tailwind CSS + Flowbite Svelte, Plotly.js, `jsthermalcomfort` (thermal comfort engine), Vitest.
+Svelte 5 (runes only), TypeScript 6, Vite 8, Tailwind 4 + shadcn-svelte,
+sv-router 0.18, Plotly.js 4 (`plotly.js-cartesian-dist-min`), Comlink,
+Vitest. Frontend-only, static SPA, no backend.
 
-Frontend-only — no backend in this repo.
+`jsthermalcomfort` is symlinked to a local fork
+(`../../forked repo/jsthermalcomfort`, branch `typescript`). The app consumes
+its **build output** (`lib/esm/`), so a library change needs `npm run build`
+**in the fork** before this app sees it.
 
-## Architecture
+## The one rule
 
-See [docs/architecture.md](docs/architecture.md) for product surfaces, sessions, catalogs, import lanes, charts, and share. Execution rules are in [AGENTS.md](AGENTS.md). Authoring a model is [docs/adding-a-model.md](docs/adding-a-model.md).
+**Adding a model = one declaration file + one registry line. Zero other files change.**
 
-## Source Layout
+Everything below exists to make that true. If a change would make adding the
+next model touch a third file, the change is wrong — fix the architecture
+instead of working around it.
+
+## Source layout
 
 ```
 src/
-  App.svelte        root component
-  declarations/    Heat Index–class one file; family folders pmv/, adaptive/, phs/; UTCI is utci/utci.ts
+  core/           plain TypeScript, runnable under node — no svelte, no state, no ui
+    workspace.ts chartType.ts unitSystem.ts entryModes.ts    enum classes
+    modelDeclaration.ts   defineModel + RegisteredModel
+    libraryInputs.ts      toLibraryInputs(slot, model, environment)
+    numberFormat.ts       the only number formatter
+    units.ts              the only SI <-> display conversion
+    shareLink.ts          encode / decode — the only place wire strings appear
+    charts/               chartSpec.ts psychrometricChart.ts dynamicChart.ts
+  models/         one declaration file per model + index.ts (the registry)
+  state/          session.svelte.ts  compute.svelte.ts
+  workers/        compute.worker.ts — the only importer of library model functions
+  routes/         page composition; navigation.ts is the only sv-router usage
   ui/
-    components/     rendering and interaction (input-panel/, chart/, shared UI);
-                    site shell branding/links (`siteShellConfig.ts`)
-    routes/         client router and page composition (ComfortDashboard, TimeSeriesPage)
-    utils/          UI actions (`clickOutside`)
-  catalog/          closed domain constants (quantities, zone tokens, model IDs, units);
-                    fieldChartProfile.ts and resultSections.ts at catalog root
-  charts/           ChartType figure functions, draw/clone/export (native Plotly);
-                    chartTheme.ts, plotlyExport.ts;
-                    isolines.ts; psychrometric/ (assemble only stacks traces)
-  engines/
-    comfort/        leftover shared comfort helpers, adapters, chart binds, modifiers
-    units/          SI <-> IP conversion helpers
-  state/
-    modelRegistry/  defineModel(library, authoring), registered runtime configs
-    pointSession/   Standard+Explore session: input/chart/setting/output buckets, actions, $derived
-                    view-models, share snapshot/codec/url
-    timeSeries/     Time-series session (PHS); editor/chart view models
-    app/            route identity, navigation, AppContext
-  testSupport/      Compare helper; golden inputs/control counts from the registry
+    primitives/   shadcn-svelte generated — do not hand-edit
+    layout/       Stack / Grid / Inline (gap via props)
+    inputs/ outputs/ charts/ dialogs/   business components, no Tailwind utilities
+  text/           UI copy dictionary (English only for v1)
+  app.css         Tailwind @theme tokens
 ```
 
-Canonical Standard URLs are `/standard/{standard}/{model}/` (for example `/standard/ashrae-55/pmv-ashrae/`). Explore is `/explore/{model}/`. Time-series is `/time-series/{model}/`. Mixed-case and surface-only aliases replace-redirect to that path.
+`$lib` is aliased to `src/`. shadcn-svelte writes into `src/ui/primitives/`
+(configured in `components.json`); its `cn()` helper lives at
+`src/ui/primitives/cn.ts`.
 
-## Architecture Rules
+## Architecture rules
 
-**Import direction**
+**Import direction** (enforced by `eslint.config.js`)
 
-- `ui/routes` → `ui/components`, `state`
-- `ui/components` → `state`, `catalog`, lightweight `engines`
-- `state` → `catalog`, `engines`; `state/modelRegistry` imports registered configs from `declarations`
-- `declarations` → `catalog`, `engines`, builder helpers from `state/modelRegistry`, and `charts/<ChartType>` geometry helpers (not Plotly assemble)
-- `engines` → `catalog`
-- `charts` geometry helpers must not import models, quantities, or declarations
+- `core/` must not import `svelte`, `state/`, `ui/` or `routes/`
+- `ui/charts/` must not import models, state, or `jsthermalcomfort` — it consumes a `ChartSpec`
+- library **model functions** (`jsthermalcomfort`, `jsthermalcomfort/models`) are
+  importable only from `src/workers/`; `io`, `psychrometrics`, `reference` and
+  `charts` subpaths are fine on the main thread
+- Tailwind utility classes are allowed only in `ui/primitives/` and `ui/layout/`
 
-**Canonical state is always SI.** User input converts to SI on entry; calculations run in SI; display converts from SI via `src/engines/units/`.
+**Canonical state is always SI.** The library is always called with
+`units: "SI"`, even though it supports IP — one path only. Conversion happens
+at the display boundary in `core/units.ts`; the stored value keeps full
+precision, only the rendered text is formatted.
 
-**Calculation ownership:** Model-specific thermal-comfort logic belongs in `src/declarations/**`. Reusable ChartType geometry belongs in `src/charts/`. Remaining shared comfort helpers live in `src/engines/comfort/**`. Shared Cartesian isoline root-finding lives in `src/charts/isolines.ts`. Psychrometric isoline geometry lives in `src/charts/psychrometric/`. Declarations wire `evaluate` and bands; they do not solve isoline roots. 2-D field hover uses a Plotly probe on `ChartBuildResult.hoverProbe` (not `ChartPayload`); the probe follows the pointer and does not snap to Compare markers. State and components must not contain raw formula implementations.
+**No duplicated definitions.** Quantities, models, standards, units, workspaces
+and chart types are objects referenced by identity
+(`quantity.dryBulbTemperature`, `Workspace.explore`), never string keys and
+never `Record<string, …>` dictionaries. Wire strings appear in exactly two
+places: inside the library, and in `core/shareLink.ts`.
 
-**`jsthermalcomfort` imports** stay in `src/declarations/**`, remaining `src/engines/comfort/**`, and `src/charts/psychrometric/humidity.ts` (humidity ratio only). Model labels/descriptions come from string `library.label` / `library.description` (JS `@docname` / leading JSDoc first sentence). Call JS classifiers and bins (`humidex.mapping`, UTCI `mapping`, Heat Index `mapping`, ASHRAE `tsv`/`compliance`/`COMPLIANCE_LIMIT`, ISO `tsv`, adaptive `offsets` / `t_running_mean_limits`, `get_ce`) instead of copying or scanning them. Pass those statics to interval helpers; do not guess `kind: "mapping"` on the first argument. Comfort Tool maps library labels to `ZoneToken`. All-lowercase classifier labels are title-cased for display; calculation identity stays the JS/Python string. Adaptive display labels are generated from `offsets.id` in the Adaptive declaration layer. PPD 10% and PHS Explore t_re/water-loss fills are product chart presets. Wind Chill has no library classifier, so it has no default frostbite bands; WCT is the library result with no local applicability gate. EN Adaptive outdoor chart 10–30 °C is an axis, not `adaptive_en.t_running_mean_limits`. PHS rectal and water-loss fractions come from `phs.*`.
+**Calculation ownership.** All thermal-comfort maths, applicability limits,
+classification bands and comfort-zone geometry come from `jsthermalcomfort`.
+The app never implements a formula, never transcribes a threshold number, and
+never writes its own root finder — `charts.psychrometricZone` and
+`charts.adaptiveAshraeZone` already do that, faithfully ported from the
+deployed CBE tool.
 
-**Unit conversion** belongs in `src/engines/units/`. Quantity conversion reads `siUnit` from the closed quantity catalog. Display labels live on the SI/IP unit tables. Canonical state remains SI.
+## Coding conventions
 
-## State Shape
+- **Runes only.** No `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`.
+  Cross-component shared state is a class with `$state` fields; `$effect` is
+  for external synchronisation only.
+- **Erasable syntax only.** No `enum`, no `namespace`, no constructor parameter
+  properties (`erasableSyntaxOnly` is on). Closed sets are ordinary classes with
+  `static readonly` instances and a `fromId()`; put behaviour on methods rather
+  than switching on the value in a dozen places.
+- **Naming.** Components `PascalCase.svelte`, modules `camelCase.ts`, functions
+  start with a verb. Never `engine` / `manager` / `helper` / `utils` as a
+  filename. No abbreviations except library quantity keys.
+- **Granularity.** One concept per file, 100–400 lines is normal. Plain functions
+  over class hierarchies. Do not abstract for a second caller that does not exist.
+- Declare component props as a named `interface Props` above the `$props()`
+  destructuring. Complex `{#if}` conditions go in a `$derived`.
+- Use shadcn-svelte primitives first; Tailwind for layout inside `ui/layout/`.
+- Run generated `.svelte` through `svelte-autofixer` (Svelte MCP is configured).
 
-The session is `PointSession` (`createPointSession` in `createPointSession.svelte.ts`). State is four buckets on the class (`session.input` / `session.chart` / `session.setting` / `session.output`). Writes go through `session.actions.*`. View-models (`inputPanel`, `chartBuild`, `chartControls`, …) are `$derived` projections, not a second store.
+## Number display
 
-- `input` — sparse `quantitiesByInput` (`QuantityState` per Compare slot), options, modifiers, Compare, unit system
-- `chart` — per-model ChartType, axes, baseline, Explore bands
-- `setting` — path identity: selected model, active surface, allowed models, pending model switch
-- `output` — `{ isLoading, errorMessage }`; calculation cache belongs to this bucket but is stored as `calculationCacheByModel = $state.raw(...)` so Plotly-sized objects are not deeply proxied
+One formatter, `core/numberFormat.ts`: at most two decimals, trailing zeros
+stripped (`26.0 → 26`, `0.51 → 0.51`, `78.80 → 78.8`). Input step comes from
+the currently displayed unit, not the SI one.
 
-Share is UTF-8 JSON → Base64URL → `?state=` of **input + chart only** (sparse quantities minus derived humidity). Pathname is identity (surface + standard + model). Time-series is a separate session. The model registry is not session state.
+## Done criteria
 
-## Model Configuration
-
-Model declarations live in `src/declarations/`. `defineModel(library, authoring)` is the assembly function (`assembleModel` is an alias). Copy `heatIndex.ts` for a new model (six sections, no `calculate`). Family modules (PMV, Adaptive) still call `defineModel` from the family helper with `pipeline.invoke` when the library is not positional + kwargs. PHS Worker/Time-series stay separate; Time-series membership is `features.timeSeries`. Runtime cache scalars are `valuesByInput: QuantityState`; there is no per-model Result generic.
-
-Use constants from `src/catalog/` for `ModelId`, `PhysicalQuantityId`, `ChartType`, `SurfaceId`, and `ZoneToken`. Charts are `type` + data spec; session/share select `selectedChartType`. `library.label` / `library.description` fill metadata. Input widgets come from `defaultFieldWidgetByQuantity`. Every `inputs` entry must declare SI min/max. The quantity catalog has no ranges. Modifier input ranges live on `modifierInputRangeSi`. Derived-humidity widget min/max map the model RH range at current `tdb`. Dynamic charts inherit Analysis input ranges; chart-only axes declare `rangeSi` / `axisRanges` on the spec. The Psychrometric ChartType viewport is `DEFAULT_PSYCHROMETRIC_VIEW` (`tdb` 10–40 °C, `hr` 0–0.03 kg/kg); CBE `psychchart.js` uses 10–36 °C and 0–30 g/kg. Classifier edges come from JS statics passed to interval helpers. Catalog TypeScript keys are PascalCase physical names; wire strings match jsthermalcomfort fields. Thin models map those with `inputs` + `response.values`; family modules may still use `defineLibraryQuantityMapping`. Page membership is `standardIds`, `exploreMode`, and `features.timeSeries`.
-
-## UI Conventions
-
-- Use Flowbite Svelte components first; Tailwind utilities for layout/spacing/styling.
-- Analysis input-panel components consume `InputPanelViewModel` the same way chart controls consume `ChartControlsViewModel`.
-- Declare component props using a named `interface Props` above `$props()` destructuring.
-- Complex `{#if}` conditions belong in a `$derived` variable.
-
-## Done Criteria
-
-A change is complete when `npm test`, `npm run check`, `npm run lint`, and `npm run build` pass; SI remains canonical shared state; `jsthermalcomfort` stays behind the allowed import lanes; conversion stays in `src/engines/units/`; and `docs/architecture.md` still matches the live tree.
+A change is complete when `npm test`, `npm run check`, `npm run lint` and
+`npm run build` all pass; SI remains the canonical stored state; library model
+functions stay behind the worker; conversion stays in `core/units.ts`; and the
+layout above still matches the live tree.

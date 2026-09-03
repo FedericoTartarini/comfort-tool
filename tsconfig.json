@@ -8,7 +8,13 @@
     "strict": true,
     "noUnusedLocals": true,
     "skipLibCheck": true,
-    "types": ["vite/client", "vitest/globals", "node"]
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client", "vitest/globals", "node"],
+    "paths": {
+      "$lib": ["./src"],
+      "$lib/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.svelte", "src/**/*.js"]
 }

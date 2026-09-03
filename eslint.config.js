@@ -3,76 +3,88 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
 
-// Must match PhysicalQuantityId values in src/catalog/quantities.ts
-// Guarded by src/catalog/catalogWireIds.test.ts
-const restrictedWireStringSelectors = [
-  "tdb",
-  "tr",
-  "vr",
-  "v",
-  "rh",
-  "hr",
-  "met",
-  "clo",
-  "wme",
-  "t_running_mean",
-  "t_o",
-  "t_dp",
-  "t_wb",
-  "p_vap",
-  "v_measured",
-  "tout",
-  "sol_altitude",
-  "sharp",
-  "sol_radiation_dir",
-  "sol_transmittance",
-  "f_svv",
-  "f_bes",
-  "weight",
-  "height",
-  "pmv",
-  "ppd",
-  "set",
-  "ce",
-  "hi",
-  "humidex",
-  "wci",
-  "wct",
-  "utci",
-  "limiting_exposure_time",
-  "t_re",
-  "sweat_loss_g",
-].map((value) => ({
-  selector: `Literal[value='${value}']`,
-  message: `Use PhysicalQuantityId instead of the wire string "${value}".`,
-}));
+// Flat config REPLACES a same-named rule when a later block matches the same
+// file — it does not merge. `no-restricted-imports` and `no-restricted-syntax`
+// are therefore composed from these fragments, and every block that narrows one
+// of them has to repeat the fragments it still wants.
+
+// ADR §4.7: model functions run in the worker. The io/reference/charts/
+// psychrometrics subpaths are declarative metadata and geometry, cheap enough
+// for the main thread — hence a subpath split rather than a blanket ban.
+const libraryModelImports = {
+  paths: [
+    {
+      name: "jsthermalcomfort",
+      message:
+        "Model functions belong in src/workers/. Import jsthermalcomfort/io, /psychrometrics, /reference or /charts for metadata and geometry.",
+    },
+    { name: "jsthermalcomfort/models", message: "Model functions belong in src/workers/." },
+  ],
+};
+
+// ADR §5: core/ is plain TypeScript, runnable under node, so the pure logic
+// (units, share codec, chart geometry) is testable without a DOM or a session.
+const coreBoundary = {
+  group: ["svelte", "svelte/*", "**/state/**", "**/ui/**", "**/routes/**"],
+  message: "core/ is plain TypeScript: no svelte, state, ui or routes.",
+};
+
+// ADR §4.4: the moment the chart component knows what a model is, every new
+// model starts needing an edit here.
+const chartBoundary = {
+  group: ["**/models/**", "**/state/**", "jsthermalcomfort", "jsthermalcomfort/**"],
+  message: "Chart components consume a ChartSpec and nothing else.",
+};
+
+// ADR §6: Svelte 4 syntax an LLM reaches for by habit. The autofixer catches
+// most of it; this makes the rest a build failure rather than a review comment.
+const legacySvelteSyntax = [
+  { selector: "SvelteElement[name.name='slot']", message: "Use {@render children()}, not <slot>." },
+  {
+    selector: "SvelteElement[name.name='svelte:component']",
+    message: "Svelte 5 renders components dynamically without <svelte:component>.",
+  },
+];
+
+// ADR §4.0: wire strings live in the library and in shareLink. Everywhere else
+// holds object references, so renaming a quantity is one edit.
+const wireStringSyntax = [
+  {
+    selector:
+      "Literal[value=/^(tdb|tr|vr|v|rh|hr|met|clo|wme|t_running_mean|pmv|ppd|set|tmp_cmf)$/]",
+    message:
+      "Reference the Quantity object from jsthermalcomfort, not its wire string. Wire strings belong in core/shareLink.ts.",
+  },
+];
+
+// ADR §2: utility classes stay in the generated primitives and the layout
+// wrappers; business components take spacing from layout props.
+const tailwindSyntax = [
+  {
+    selector:
+      "SvelteAttribute[key.name='class'] SvelteLiteral[value=/(^|\\s)-?(p|m|w|h|gap|flex|grid|space|text|bg|border|rounded|shadow|items|justify)[xytrbl]?-/]",
+    message:
+      "Tailwind utilities belong in ui/primitives/ or ui/layout/. Compose with Stack/Grid/Inline instead.",
+  },
+];
 
 export default [
   {
-    ignores: [
-      "dist/**",
-      "node_modules/**",
-      "coverage/**",
-      "playwright-report/**",
-      "test-results/**",
-    ],
+    ignores: ["dist/**", "node_modules/**", "coverage/**", "playwright-report/**", "test-results/**"],
   },
   {
     ...js.configs.recommended,
     files: ["src/**/*.js"],
   },
+
+  // ---- baseline -----------------------------------------------------------
   {
     files: ["src/**/*.ts"],
     languageOptions: {
       parser: tsParser,
-      parserOptions: {
-        ecmaVersion: "latest",
-        sourceType: "module",
-      },
+      parserOptions: { ecmaVersion: "latest", sourceType: "module" },
     },
-    plugins: {
-      "@typescript-eslint": tsPlugin,
-    },
+    plugins: { "@typescript-eslint": tsPlugin },
     rules: {
       ...tsPlugin.configs["flat/recommended"][2].rules,
       "no-undef": "off",
@@ -80,6 +92,8 @@ export default [
       "no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": "off",
+      "no-restricted-imports": ["error", libraryModelImports],
+      "no-restricted-syntax": ["error", ...wireStringSyntax],
     },
   },
   ...svelte.configs["flat/recommended"].map((config) => ({
@@ -88,245 +102,63 @@ export default [
   })),
   {
     files: ["src/**/*.svelte"],
-    plugins: {
-      "@typescript-eslint": tsPlugin,
-    },
-    languageOptions: {
-      parserOptions: {
-        parser: tsParser,
-      },
-    },
-    rules: {
-      "@typescript-eslint/no-explicit-any": "error",
-    },
-  },
-  {
-    files: [
-      "src/App.svelte",
-      "src/ui/components/**/*.{ts,svelte}",
-      "src/ui/routes/**/*.{ts,svelte}",
-    ],
+    plugins: { "@typescript-eslint": tsPlugin },
+    languageOptions: { parserOptions: { parser: tsParser } },
     rules: {
       "no-undef": "off",
       "no-redeclare": "off",
       "no-unused-vars": "off",
-      "svelte/prefer-svelte-reactivity": "off",
-      "svelte/require-each-key": "off",
-    },
-  },
-  {
-    files: ["src/**/*.{js,ts,svelte}"],
-    ignores: [
-      "src/declarations/**",
-      "src/engines/comfort/**",
-      "src/charts/psychrometric/humidity.ts",
-    ],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [{
-            group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-            message: "jsthermalcomfort belongs in declarations, engines/comfort, or charts/psychrometric/humidity.ts.",
-          }],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/ui/routes/**/*.{ts,svelte}"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["**/catalog/**", "**/engines/**", "**/declarations/**"],
-              message: "Views may compose components and state, but may not own domain or engine logic.",
-            },
-            {
-              group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/ui/components/**/*.{ts,svelte}"],
-    ignores: ["src/ui/components/**/*.test.ts"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["**/routes/**", "**/declarations/**"],
-              message: "Components may not depend on routes or model implementations.",
-            },
-            {
-              group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/engines/**/*.{ts,svelte}"],
-    ignores: ["src/engines/**/*.test.ts", "src/engines/comfort/**"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: [
-                "**/state/**",
-                "**/components/**",
-                "**/routes/**",
-                "**/declarations/**",
-              ],
-              message: "Engines may depend on catalog and other engines, not higher application layers.",
-            },
-            {
-              group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in engines/comfort or declarations.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/engines/comfort/**/*.{ts,svelte}"],
-    ignores: ["src/engines/comfort/**/*.test.ts"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [{
-            group: [
-              "**/state/**",
-              "**/components/**",
-              "**/routes/**",
-              "**/declarations/**",
-            ],
-            message: "Engines may depend on catalog and other engines, not higher application layers.",
-          }],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/declarations/**/*.ts"],
-    ignores: ["src/declarations/**/*.test.ts"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["**/components/**", "**/routes/**"],
-              message: "Comfort models may not depend on presentation layers.",
-            },
-            {
-              regex: "^(?:\\.\\./)+state/(?!modelRegistry(?:/|$))",
-              message: "Comfort models may only use builder helpers from state/modelRegistry.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/catalog/**/*.ts"],
-    ignores: ["**/*.test.ts"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: [
-                "**/declarations/**",
-                "**/engines/**",
-                "**/state/**",
-                "**/ui/**",
-              ],
-              message: "catalog/ must not import from declarations/, engines/, state/, or ui/.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/state/modelRegistry/index.ts"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["**/components/**", "**/routes/**"],
-              message: "State may not depend on presentation layers.",
-            },
-            {
-              group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/state/**/*.{ts,svelte}"],
-    ignores: [
-      "src/state/**/*.test.ts",
-      "src/state/modelRegistry/index.ts",
-      "src/state/timeSeries/modelConfigs.ts",
-    ],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["**/components/**", "**/routes/**"],
-              message: "State may not depend on presentation layers.",
-            },
-            {
-              group: ["**/declarations/**"],
-              message: "Only the model registry may import comfort-model implementations.",
-            },
-            {
-              group: ["jsthermalcomfort", "jsthermalcomfort/**"],
-              message: "jsthermalcomfort belongs in declarations or engines/comfort.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: [
-      "src/state/**/*.{ts,svelte}",
-      "src/ui/components/**/*.{ts,svelte}",
-      "src/ui/routes/**/*.{ts,svelte}",
-    ],
-    ignores: [
-      "**/*.test.ts",
-      "src/catalog/quantities.ts",
-    ],
-    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "no-restricted-imports": ["error", libraryModelImports],
       "no-restricted-syntax": [
         "error",
-        ...restrictedWireStringSelectors,
+        ...legacySvelteSyntax,
+        ...wireStringSyntax,
+        ...tailwindSyntax,
       ],
+    },
+  },
+
+  // ---- narrowed layers ----------------------------------------------------
+  {
+    files: ["src/core/**/*.ts"],
+    ignores: ["src/core/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { ...libraryModelImports, patterns: [coreBoundary] }],
+    },
+  },
+  {
+    files: ["src/ui/charts/**/*.{ts,svelte}"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [chartBoundary] }],
+    },
+  },
+  {
+    // Generated primitives and the layout wrappers are where Tailwind lives.
+    files: ["src/ui/primitives/**/*.svelte", "src/ui/layout/**/*.svelte"],
+    rules: {
+      "no-restricted-syntax": ["error", ...legacySvelteSyntax, ...wireStringSyntax],
+    },
+  },
+  {
+    // The worker is the one place library model functions may be imported.
+    files: ["src/workers/**/*.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
+    // The share codec is the one place wire strings may be written.
+    files: ["src/core/shareLink.ts"],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
+  {
+    files: ["src/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+      "no-restricted-syntax": "off",
     },
   },
 ];

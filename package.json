@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "vite",
@@ -12,13 +12,15 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint src",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "test:visual:headed": "playwright test --headed"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@lucide/svelte": "^1.40.0",
     "@playwright/test": "^1.62.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -27,23 +29,26 @@
     "@types/node": "^26.2.0",
     "@typescript-eslint/eslint-plugin": "^8.67.0",
     "@typescript-eslint/parser": "^8.67.0",
+    "clsx": "^2.1.1",
     "eslint": "^10.8.1",
     "eslint-plugin-svelte": "^3.23.0",
     "jsdom": "^30.0.0",
     "postcss": "^8.5.6",
+    "shadcn-svelte": "^1.6.0",
     "svelte": "^5.56.9",
     "svelte-check": "^4.7.6",
+    "tailwind-merge": "^3.6.0",
+    "tailwind-variants": "^3.3.1",
     "tailwindcss": "^4.3.3",
+    "tw-animate-css": "^1.4.0",
     "typescript": "^6.0.3",
     "vite": "^8.2.0",
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "flowbite": "^4.0.2",
-    "flowbite-svelte": "^0.48.6",
-    "flowbite-svelte-icons": "^3.1.0",
+    "comlink": "^4.4.2",
     "jsthermalcomfort": "file:../../forked repo/jsthermalcomfort",
-    "plotly.js-dist-min": "^3.7.0",
+    "plotly.js-cartesian-dist-min": "^4.0.0",
     "sv-router": "^0.18.0"
   }
 }
