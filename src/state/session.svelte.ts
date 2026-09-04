@@ -1,8 +1,9 @@
 import { quantities, type Quantity } from "jsthermalcomfort/io";
 import { t_o } from "jsthermalcomfort/psychrometrics";
 import { SvelteMap } from "svelte/reactivity";
+import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 const q = quantities;
@@ -70,15 +71,66 @@ export class InputSlot {
   }
 }
 
-/** Shared by Standard and Explore (ADR §4.5). Compare and chart state arrive in Phase 3 / 5. */
+/**
+ * Which chart is on screen and how it is set up (ADR §4.5). The defaults come
+ * from the model's declaration; Explore's editable bands arrive in Phase 5.
+ */
+export class ChartState {
+  // Chart types and quantities are compared by identity, so `$state.raw`.
+  type: ChartType;
+  axes: { readonly x: Quantity; readonly y: Quantity };
+
+  constructor(model: RegisteredModel) {
+    const dynamic = dynamicChartOf(model);
+    if (!dynamic) {
+      throw new Error(`${model.model.label} declares no dynamic chart; ADR §4.4 gives every model one`);
+    }
+    this.type = $state.raw(model.charts[0].type);
+    this.axes = $state.raw(dynamic.axes);
+  }
+
+  setType(type: ChartType): void {
+    this.type = type;
+  }
+
+  setAxes(axes: Partial<{ readonly x: Quantity; readonly y: Quantity }>): void {
+    this.axes = { ...this.axes, ...axes };
+  }
+}
+
+/** Shared by Standard and Explore (ADR §4.5). Compare arrives in Phase 5. */
 export class Session {
-  // Both hold objects compared by identity elsewhere, so `$state.raw`.
+  // All three hold objects compared by identity elsewhere, so `$state.raw`.
   model: RegisteredModel;
   unitSystem = $state.raw<UnitSystem>(unitSystem.si);
+  /** The chart settings of the current model. */
+  chart: ChartState;
   readonly slots: readonly [InputSlot, InputSlot, InputSlot];
+  // Each model remembers its own chart settings. A plain Map: only `chart` is
+  // read reactively, and lazily filling a reactive map during a derivation
+  // would be a write inside a read.
+  readonly #chartByModel = new Map<RegisteredModel, ChartState>();
 
   constructor(model: RegisteredModel) {
     this.model = $state.raw(model);
+    this.chart = $state.raw(this.#chartFor(model));
     this.slots = [new InputSlot(model), new InputSlot(model), new InputSlot(model)];
+  }
+
+  setModel(model: RegisteredModel): void {
+    if (model === this.model) {
+      return;
+    }
+    this.model = model;
+    this.chart = this.#chartFor(model);
+  }
+
+  #chartFor(model: RegisteredModel): ChartState {
+    let state = this.#chartByModel.get(model);
+    if (!state) {
+      state = new ChartState(model);
+      this.#chartByModel.set(model, state);
+    }
+    return state;
   }
 }

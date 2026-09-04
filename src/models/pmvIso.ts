@@ -1,4 +1,5 @@
 import { io, pmv_ppd_iso } from "jsthermalcomfort";
+import { chartType } from "$lib/core/chartType";
 import { defineModel } from "$lib/core/modelDeclaration";
 
 const q = io.quantities;
@@ -17,4 +18,10 @@ export const pmvIso = defineModel({
   ],
   relativeAirSpeed: true,
   table: [q.pmv, q.ppd],
+  charts: [
+    // ISO 7730 is Fanger unmodified; the elevated-air-speed cooling effect is
+    // the ASHRAE variant's.
+    { type: chartType.psychrometric, pmvVariant: "ISO" },
+    { type: chartType.dynamic, axes: { x: q.tdb, y: q.v }, output: q.pmv },
+  ],
 });

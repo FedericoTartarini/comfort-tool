@@ -4,6 +4,9 @@
   import { Outputs, observeSession } from "$lib/state/compute.svelte";
   import { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
+  import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
+  import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
+  import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
@@ -20,7 +23,7 @@
   $effect(() => {
     const model = modelFromRoute();
     if (model) {
-      session.model = model;
+      session.setModel(model);
     } else {
       navigateTo(defaultModel());
     }
@@ -82,13 +85,24 @@
       </section>
 
       <section>
-        <ResultTable
-          model={session.model}
-          measures={outputs.perSlot[0]}
-          unitSystem={session.unitSystem}
-          slotName={copy.slotName(0)}
-          outOfRange={outputs.outOfRange.length > 0}
-        />
+        <Stack gap="4">
+          <ResultTable
+            model={session.model}
+            measures={outputs.perSlot[0]}
+            unitSystem={session.unitSystem}
+            slotName={copy.slotName(0)}
+            outOfRange={outputs.outOfRange.length > 0}
+          />
+
+          <ChartControls model={session.model} inputSlot={session.slots[0]} chart={session.chart} />
+
+          {#if outputs.chart}
+            <Stack gap="2">
+              <PlotlyChart spec={outputs.chart} />
+              <ChartLegend entries={outputs.chart.legend} />
+            </Stack>
+          {/if}
+        </Stack>
       </section>
     </Grid>
   </Stack>

@@ -31,3 +31,21 @@ export function colorForBand(scale: IntervalScale, value: number): string | unde
   const index = scale.intervals.indexOf(band);
   return sensationPalette[index % sensationPalette.length];
 }
+
+/** Fill for the band at `index` of a scale, wrapping when a scale is longer than the palette. */
+export function bandFill(index: number): string {
+  return sensationPalette[index % sensationPalette.length];
+}
+
+/**
+ * Chart ink (Phase 3). Not thresholds — the compliance zone's outline and fill
+ * are the palette's cool tones, the isolines and markers are neutral chrome.
+ */
+export const chartInk = {
+  zoneLine: "#4c78a8",
+  zoneFill: "rgba(146, 197, 222, 0.4)",
+  isoline: "#cbd5e1",
+  saturationLine: "#94a3b8",
+  marker: "#111827",
+  markerEdge: "#ffffff",
+} as const;

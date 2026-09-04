@@ -14,4 +14,8 @@ export const copy = {
   outOfRange: "Out of range — not calculated. Showing the last valid result.",
   notAvailable: "—",
   slotName: (index: number): string => `Input ${index + 1}`,
+  chart: "Chart",
+  xAxis: "X axis",
+  yAxis: "Y axis",
+  comfortZone: (pmvLimit: number): string => `Comfort zone (|PMV| ≤ ${pmvLimit})`,
 } as const;

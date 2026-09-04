@@ -3,7 +3,15 @@ import { io, v_relative } from "jsthermalcomfort";
 import type { Quantity } from "jsthermalcomfort/io";
 import { pmvIso } from "$lib/models/pmvIso";
 import { humidityMode, temperatureMode } from "./entryModes";
-import { enteredRange, outOfRangeInputs, toLibraryInputs, type SlotInputs } from "./libraryInputs";
+import {
+  enteredQuantities,
+  enteredRange,
+  enteredValue,
+  outOfRangeInputs,
+  toLibraryInputs,
+  withEnteredValues,
+  type SlotInputs,
+} from "./libraryInputs";
 import { defineModel } from "./modelDeclaration";
 
 const q = io.quantities;
@@ -94,5 +102,38 @@ describe("outOfRangeInputs", () => {
 
   it("has no range for a quantity the standard does not limit", () => {
     expect(enteredRange(pmvIso, q.rh, temperatureMode.separate)).toBeUndefined();
+  });
+});
+
+describe("entered values", () => {
+  it("reads the humidity entry from where the slot keeps it", () => {
+    expect(enteredValue(separateSlot(), q.rh)).toBe(50);
+    expect(enteredValue(separateSlot({ tdb: 27 }), q.tdb)).toBe(27);
+    expect(enteredValue(separateSlot(), q.vr)).toBeUndefined();
+  });
+
+  it("lists the panel rows of the current temperature mode", () => {
+    expect(enteredQuantities(pmvIso, temperatureMode.separate)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
+    expect(enteredQuantities(pmvIso, temperatureMode.operative)).toEqual([q.t_o, q.v, q.rh, q.met, q.clo]);
+  });
+
+  it("re-derives everything downstream of a swept value", () => {
+    const swept = withEnteredValues(separateSlot(), new Map([[q.v, 0.6]]));
+    expect(toLibraryInputs(swept, pmvIso).vr).toBe(v_relative(0.6, 1.1));
+    expect(separateSlot().values.get(q.v)).toBe(0.1);
+  });
+
+  it("sweeps the humidity entry as well, without touching the original", () => {
+    const slot = separateSlot();
+    const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
+    expect(toLibraryInputs(swept, pmvIso).rh).toBe(80);
+    expect(slot.humidity.value).toBe(50);
+  });
+
+  it("expands a swept operative temperature to both temperatures", () => {
+    const swept = withEnteredValues(operativeSlot(24), new Map([[q.t_o, 28]]));
+    const init = toLibraryInputs(swept, pmvIso);
+    expect(init.tdb).toBe(28);
+    expect(init.tr).toBe(28);
   });
 });

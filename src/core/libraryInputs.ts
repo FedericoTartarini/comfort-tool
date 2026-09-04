@@ -20,7 +20,7 @@ export interface Range {
 
 const q = quantities;
 
-function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Quantity): number {
+export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Quantity): number {
   const value = values.get(quantity);
   if (value === undefined) {
     throw new Error(`Slot has no value for ${quantity.label}`);
@@ -106,4 +106,46 @@ export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quan
       return range !== undefined && (value < range.min || value > range.max);
     })
     .map(([quantity]) => quantity);
+}
+
+/**
+ * The quantities the user actually types, in panel order: the model's inputs
+ * with its temperature rows replaced by the current mode's. The input panel
+ * lays these out and the dynamic chart offers them as axes.
+ */
+export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
+  const separate: readonly Quantity[] = temperatureMode.separate.panel;
+  const rows: Quantity[] = [];
+  for (const [quantity] of model.inputs) {
+    if (!separate.includes(quantity)) {
+      rows.push(quantity);
+    } else if (quantity === separate[0]) {
+      rows.push(...mode.panel);
+    }
+  }
+  return rows;
+}
+
+/** What the user entered for `quantity`, humidity included. */
+export function enteredValue(slot: SlotInputs, quantity: Quantity): number | undefined {
+  return quantity === slot.humidity.mode.quantity ? slot.humidity.value : slot.values.get(quantity);
+}
+
+/**
+ * The same slot with some entered values replaced — how the dynamic chart
+ * sweeps its axes. Replacing before resolution keeps the derivations honest:
+ * an overridden `v` is still turned into `vr`, an overridden `t_o` still
+ * expands to `tdb = tr`.
+ */
+export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quantity, number>): SlotInputs {
+  const values = new Map(slot.values);
+  let humidity = slot.humidity;
+  for (const [quantity, value] of overrides) {
+    if (quantity === humidity.mode.quantity) {
+      humidity = { mode: humidity.mode, value };
+    } else {
+      values.set(quantity, value);
+    }
+  }
+  return { values, humidity, temperature: slot.temperature };
 }

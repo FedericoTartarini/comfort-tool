@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Quantity } from "jsthermalcomfort/io";
   import { temperatureMode } from "$lib/core/entryModes";
-  import { enteredRange } from "$lib/core/libraryInputs";
+  import { enteredQuantities, enteredRange, enteredValue } from "$lib/core/libraryInputs";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { InputSlot } from "$lib/state/session.svelte";
@@ -20,26 +20,10 @@
 
   let { model, inputSlot, unitSystem, outOfRange }: Props = $props();
 
-  const temperatures: readonly Quantity[] = temperatureMode.separate.panel;
-
-  /** The model's inputs, with its temperature rows replaced by the current mode's panel quantities. */
-  const rows = $derived.by(() => {
-    const result: Quantity[] = [];
-    for (const [quantity] of model.inputs) {
-      if (!temperatures.includes(quantity)) {
-        result.push(quantity);
-      } else if (quantity === temperatures[0]) {
-        result.push(...inputSlot.temperature.mode.panel);
-      }
-    }
-    return result;
-  });
+  const rows = $derived(enteredQuantities(model, inputSlot.temperature.mode));
 
   function valueOf(quantity: Quantity): number {
-    if (quantity === inputSlot.humidity.mode.quantity) {
-      return inputSlot.humidity.value;
-    }
-    return inputSlot.values.get(quantity) ?? Number.NaN;
+    return enteredValue(inputSlot, quantity) ?? Number.NaN;
   }
 
   function commit(quantity: Quantity, si: number) {

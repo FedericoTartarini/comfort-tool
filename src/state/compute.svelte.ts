@@ -1,6 +1,12 @@
 import type { Measure, Quantity } from "jsthermalcomfort/io";
 import { untrack } from "svelte";
+import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
+import { dynamicSpec } from "$lib/core/charts/dynamicChart";
+import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
+import { chartType } from "$lib/core/chartType";
 import { outOfRangeInputs, toLibraryInputs } from "$lib/core/libraryInputs";
+import { dynamicChartOf, psychrometricChartOf } from "$lib/core/modelDeclaration";
+import { copy } from "$lib/text/copy";
 import type { Session } from "./session.svelte";
 
 /** Derived from the session, never persisted (ADR §4.5). */
@@ -11,15 +17,22 @@ export class Outputs {
   perSlot = $state.raw<readonly (readonly Measure[] | null)[]>([null, null, null]);
   /** Entered quantities currently outside the model's applicability limits. */
   outOfRange = $state.raw<readonly Quantity[]>([]);
+  /** Last valid chart, likewise kept while an input is out of range. */
+  chart = $state.raw<ChartSpec | null>(null);
 }
 
 /**
  * Observe the session and write `outputs`. Call once during component init.
  *
- * Phase 2 runs the model synchronously on the main thread. Phase 3 replaces the
- * body with the Comlink worker call and a stamp that discards stale results
- * (ADR §4.7; rewrite plan, Phase 3 step 6). The shape stays: this effect is
- * the one place that turns inputs into outputs.
+ * Everything still runs synchronously on the main thread. The rewrite plan asks
+ * for that to be measured before a Worker is wired up, and it was: the 100×100
+ * grid of `pmv_ppd_iso` takes about 20 ms and one comfort zone about 2 ms, both
+ * far under the 300 ms the plan sets as the threshold. ADR §4.7's figures say
+ * the models that do stall — ASHRAE PMV's cooling effect, PHS — arrive after
+ * v1.
+ *
+ * ponytail: synchronous compute, no stale-result stamp. Move the body behind
+ * `workers/compute.worker.ts` and Comlink the moment a model measurably stalls.
  */
 export function observeSession(session: Session, outputs: Outputs): void {
   $effect(() => {
@@ -33,5 +46,25 @@ export function observeSession(session: Session, outputs: Outputs): void {
     const measures = model.run(toLibraryInputs(slot, model)).toMeasures();
     // Untracked: reading perSlot here would make the write below re-run the effect.
     outputs.perSlot = untrack(() => outputs.perSlot).map((kept, index) => (index === 0 ? measures : kept));
+    outputs.chart = chartSpecOf(session);
   });
+}
+
+/** The spec for the chart the session currently shows, or `null` when it declares none. */
+function chartSpecOf(session: Session): ChartSpec | null {
+  const model = session.model;
+  const request: ChartRequest = {
+    model,
+    slot: session.slots[0],
+    slotLabel: copy.slotName(0),
+    unitSystem: session.unitSystem,
+  };
+  if (session.chart.type === chartType.psychrometric) {
+    const declaration = psychrometricChartOf(model);
+    if (declaration) {
+      return psychrometricSpec(request, declaration);
+    }
+  }
+  const dynamic = dynamicChartOf(model);
+  return dynamic ? dynamicSpec(request, dynamic, session.chart.axes) : null;
 }
