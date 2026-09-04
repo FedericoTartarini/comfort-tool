@@ -17,6 +17,7 @@ answer "what did the old tool do here", never to copy code from.
 | --- | --- |
 | [docs/adr-0001-architecture.md](docs/adr-0001-architecture.md) | The architecture decision record. Authoritative; wins on any conflict. |
 | [docs/rewrite-plan.md](docs/rewrite-plan.md) | Phased plan. Each phase is meant to be one working session. |
+| [docs/code-quality-checklist.md](docs/code-quality-checklist.md) | What the machine checks, what a human reads for, and when each pass runs. |
 | [CLAUDE.md](CLAUDE.md) | Working summary: layout, import direction, conventions. |
 
 Read the ADR before making structural changes. When a change moves layer

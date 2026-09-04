@@ -33,7 +33,17 @@ export class Outputs {
  *
  * ponytail: synchronous compute, no stale-result stamp. Move the body behind
  * `workers/compute.worker.ts` and Comlink the moment a model measurably stalls.
+ *
+ * KNOWN DEBT, scheduled for Phase 3.7. This assigns to state inside an
+ * `$effect` and reaches for `untrack` to break the loop that creates — the
+ * pattern Svelte's Best practices names ("avoid updating state inside
+ * effects") and ADR §6 forbids. It is not a substitution away from being
+ * `$derived`: keeping the last valid result across an out-of-range input is
+ * genuinely stateful, and Phase 3.7 makes the whole path async for the Worker
+ * anyway. The rules below stay on so the debt cannot spread; this one site is
+ * exempted until that redesign.
  */
+/* eslint-disable no-restricted-syntax -- see KNOWN DEBT above; redesigned with the Worker in Phase 3.7 */
 export function observeSession(session: Session, outputs: Outputs): void {
   $effect(() => {
     const model = session.model;
@@ -49,6 +59,7 @@ export function observeSession(session: Session, outputs: Outputs): void {
     outputs.chart = chartSpecOf(session);
   });
 }
+/* eslint-enable no-restricted-syntax */
 
 /** The spec for the chart the session currently shows, or `null` when it declares none. */
 function chartSpecOf(session: Session): ChartSpec | null {

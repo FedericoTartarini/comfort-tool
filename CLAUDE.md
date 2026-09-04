@@ -10,6 +10,12 @@ Guidance for Claude Code when working in this repository.
 >
 > - Architecture decision record: [docs/adr-0001-architecture.md](docs/adr-0001-architecture.md)
 > - Phased rewrite plan: [docs/rewrite-plan.md](docs/rewrite-plan.md)
+> - Code quality checklist: [docs/code-quality-checklist.md](docs/code-quality-checklist.md)
+>
+> Current position: Phase 3 done. **Phases 3.5 – 3.7 freeze the contracts before
+> the Phase 4 acceptance** — every known change to `RegisteredModel`,
+> `ChartDeclaration` or `ChartSpec` lands there, so that "adding a model touches
+> two files" means something when it is tested.
 >
 > Read both before making structural changes. This file is the summary; the ADR wins on conflicts.
 
@@ -123,8 +129,13 @@ Test: "would pythermalcomfort ship it?" (ADR §3).
 ## Coding conventions
 
 - **Runes only.** No `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`.
-  Cross-component shared state is a class with `$state` fields; `$effect` is
-  for external synchronisation only.
+  Cross-component shared state is a class with `$state` fields; **`$effect` is
+  for external synchronisation only and never assigns to state** — anything
+  computed from state is `$derived`, per Svelte's own
+  [Best practices](https://svelte.dev/docs/svelte/best-practices). `untrack` is
+  banned: reaching for it means an effect is fighting a loop it created. Lint
+  enforces both, and `state/compute.svelte.ts` carries the one recorded
+  exemption until Phase 3.7 redesigns it.
 - **Identity survives state.** Objects compared by identity (models, quantities,
   closed-set members, `Measure`s) are held in `$state.raw`, never a deep `$state`
   proxy, and are replaced rather than mutated. A proxy breaks `===` against the
@@ -137,7 +148,10 @@ Test: "would pythermalcomfort ship it?" (ADR §3).
   hierarchy; id lookups are a `xxxFromId()` function used only by shareLink and
   navigation. State containers (`Session`, `InputSlot`) stay runes classes.
 - **Naming.** Components `PascalCase.svelte`, modules `camelCase.ts`, functions
-  start with a verb. Never `engine` / `manager` / `helper` / `utils` as a
+  start with a verb. Module constants split two ways: a scalar literal is
+  `CONSTANT_CASE` (`GRID`, `ZONE_RH_STEP`), a closed-set table or palette is
+  `camelCase` (`chartType`, `sensationPalette`) so it reads like the library's
+  `io.quantities`. Lint enforces the first half. Never `engine` / `manager` / `helper` / `utils` as a
   filename. No abbreviations except library quantity keys. Quantity display
   names always come from `Quantity.label`; the app never writes one. The old
   tool's "Air temperature" was wrong and is not carried over; the library says
@@ -160,6 +174,8 @@ the currently displayed unit, not the SI one.
 ## Done criteria
 
 A change is complete when `npm test`, `npm run check`, `npm run lint` and
-`npm run build` all pass; SI remains the canonical stored state; library model
+`npm run build` all pass; the human half of
+[docs/code-quality-checklist.md](docs/code-quality-checklist.md) has been read
+against the diff; SI remains the canonical stored state; library model
 functions are called only in the worker; conversion stays in `core/units.ts`;
 and the layout above still matches the live tree.

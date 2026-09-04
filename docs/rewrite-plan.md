@@ -25,6 +25,8 @@ What is unmaintainable is `src/`, not `package.json`.
 | Library / app boundary (2026-09-03) | The test: "would pythermalcomfort ship it?" (ADR §3). Applicability limits → library `reference/`; steps, unit conversion, default values, option copy, route path segments, `ModelDefinition` → app. Library-side work is done in a separate chat using the standalone prompt below |
 | Second round (2026-09-03) | Limits are done as source in the library, not mirror; standard membership goes into the library as `reference.standards` + `model.standard`, the app only adds path segments; closed sets become `as const` object collections, not enum classes; operative mode uses the `t_o` quantity + `psychrometricZone.trFollowsDb`; quantity names come only from `Quantity.label` |
 | Psychrometric chart geometry | `correctKnownDefects: false` — reproduce the chart already published by the old CBE tool |
+| Scope review (2026-09-04, after Phase 3) | PMV (ASHRAE 55) joins v1 — it is the deployed tool's main screen and was missing from every list by oversight; input calculators become Phase 5b, narrowed to custom ensemble + dynamic predictive clothing + solar gain; the ES5 summary page is downgraded to a static notice; the site shell joins Phase 6; `suppressWarnings` goes into the library; chart axis ranges and the dynamic zone source move into the model declaration; field charts never snap on hover; local discomfort is deferred with its direction recorded (standalone models under the ASHRAE tab, not the legacy button panel) |
+| Code quality (2026-09-04) | Two audit passes against `docs/code-quality-checklist.md` — full before the Phase 4 acceptance, narrow after it. Anything mechanically checkable becomes a lint rule with a probe. *Clean Code* / *Clean Architecture* are not acceptance criteria; the verified sources are Svelte Best practices, the TypeScript handbook's Do's and Don'ts, the Google TypeScript Style Guide, and DRY as Hunt & Thomas state it |
 
 ### Library inventory (`typescript` @ d57c456, runtime exports verified one by one)
 
@@ -340,6 +342,10 @@ All done criteria met (`npm test` 21 tests, `check` / `lint` / `build` clean; ve
 **Goal**: the four remaining humidity representations, so `humidityMode` can grow to five and `toLibraryInputs` can convert them without the app writing a formula or a root finder (ADR §3).
 **Prerequisites**: none on the app side; run in a separate chat with cwd set to the fork. Afterwards `npm run build` in the fork, then in the app: add the four modes to `core/entryModes.ts`, the four conversions to `core/libraryInputs.ts`, a mode selector row to `ui/inputs/InputPanel.svelte`, and the `pressure` / `humidityRatio` display units in `core/units.ts` (the `satisfies Record<QuantityKind, …>` will demand them).
 
+> **Library side done** (fork `43d7e92`). **App side outstanding**: Phase 3 added only the `humidityRatio` display unit,
+> because without it `core/units.ts` no longer compiled — the `satisfies Record<QuantityKind, …>` did exactly its job. The
+> other three items move to **Phase 3.6**.
+
 ````text
 Repository: /Users/yehuihuang/SoftwareProjects/USYD/forked repo/jsthermalcomfort, branch typescript (HEAD 1f4df79)
 Reference: comfort-tool/docs/adr-0001-architecture.md §3 / §4.1
@@ -392,6 +398,81 @@ Done: npm run typecheck / lint / test / build pass; tests/baseline.test.ts uncha
 - Any chart has exactly one legend, below the chart; Plotly's built-in legend never appears
 - Zoom/pan work; when the grid calculation takes > 300 ms, show "computing" and keep the old chart
 
+### Executed 2026-09-04 ✅
+
+Both charts render; `npm test` 43 tests, `check` / `lint` / `build` clean. Decisions and findings:
+
+| Item | Decision / finding |
+|---|---|
+| Worker | **Skipped, as this phase's own step 6 instructs.** Measured: zone 1.7 ms, 100×100 ISO grid 21 ms, and 26–31 ms end to end in the browser from an input change to the redraw. Far under the 300 ms threshold, so the "computing" indicator never fires either. Both are reinstated in Phase 3.7 — see the ASHRAE measurement there |
+| Vertex accuracy | Verified against an **independent bisection oracle written in the test**, not against the running old tool: every one of the 21 cool-edge vertices is within 0.01 °C, separate and operative alike. Running `comfort-tool-old` side by side is still outstanding and moves to Phase 3.5 |
+| Oracle rounding | The first oracle used `io.pmvPpdIso`'s default `round_output: true` and reported 0.030 °C. A rounded PMV is a staircase of 0.01 steps ≈ a 0.03 °C plateau, so any point in it looks like a root. The library's solver calls with `round_output: false`; the oracle now does too. The result table shows the rounded PMV, the zone is solved unrounded — as the deployed tool does |
+| Operative mode bug | A remembered `tdb` axis survived the switch to operative entry, where the slot only holds `t_o`: the axis select went blank and the whole field collapsed to one band. Fixed with `underTemperatureMode(quantity, mode)` in `core/entryModes.ts`, plus a regression test |
+| Viewport | `layout.uirevision` keyed on axis titles and ranges: an input change redraws inside the zoom the user set, a unit or axis change resets it |
+| Image export | Plotly's `toImage` button removed — its PNG would come out without the legend, which lives below the chart. Proper export is Phase 5 |
+| Rendering | Shipped as a `heatmap`. **Wrong** — ADR §4.4 says contour, and it is why the bands look stepped. Corrected in Phase 3.5 |
+| Axis ranges | Taken from `model.limits`, which clipped the ISO chart to 10–30 °C and left `rh` unable to carry an axis. **Wrong** — corrected in Phase 3.5 |
+
+---
+
+## Phases 3.5 – 3.7 · Contract freeze before the Phase 4 acceptance
+
+Inserted 2026-09-04 after the post-Phase-3 scope review. The reasoning is one sentence: **Phase 4's acceptance asserts
+that adding a model touches two files, which only means something once the contracts have stopped moving.** Every known
+change to the shape of `RegisteredModel`, `ChartDeclaration` or `ChartSpec` therefore lands here, before the acceptance —
+and after it, none should be needed. The three phases are split by the files they touch, so they barely overlap.
+
+### Phase 3.5 · Chart contract and rendering
+
+Everything in `core/charts/` and `ui/charts/`.
+
+1. Axis ranges move into the model declaration, defaulting to the ranges the deployed tool draws; `model.limits` goes back
+   to validating input only (ADR §4.4). The psychrometric viewport becomes 10–40 °C at 121 samples, matching
+   `comfort-tool-old`'s `charts/psychrometric/humidity.ts:18`.
+2. A `zones` source on the dynamic declaration, so a model can supply exact polygons. **This is the one field added before
+   its consumer exists** — Phase 4's Adaptive is that consumer, and adding it here is what keeps Phase 4 at two files.
+3. `ChartSpec` gains a per-trace hover mode and `annotations`; hover stops snapping (ADR §4.4), and the RH isolines get
+   their 10 %–100 % labels back.
+4. `heatmap` → `contour`.
+5. Both axis selects offer every entered quantity and exclude the one the other holds.
+6. Then run the deferred behaviour comparison: `cd ../comfort-tool-old && npm i && npm run dev`, and compare the result
+   table, the zone vertices and an SI/IP round trip item by item. This is the moment for it — the geometry has just settled.
+
+### Phase 3.6 · Input contract and panel
+
+Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclaration.ts`, `ui/inputs/`.
+
+1. `entryGroups` as a closed set plus `RegisteredModel.entryGroups`. Today `libraryInputs.ts` injects `rh` unconditionally,
+   which would hand Adaptive — whose inputs are `tdb / tr / t_running_mean / v` — a quantity it does not take.
+2. The four remaining humidity entry modes, finishing Phase 2b's app side.
+3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. The consumer is Phase 3.7's ASHRAE PMV.
+4. `presets` on the declaration + a free-entry input that also offers a searchable preset list, fed by the library's
+   `met_typical_tasks` and `clo_individual_garments`.
+5. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing
+   `navigateTo(model)` with the left navigation, which stays.
+
+### Phase 3.7 · PMV (ASHRAE 55) + the Worker
+
+1. `src/models/pmvAshrae.ts` + one registry line — **the first architecture acceptance**, and the thing that proves the
+   `options` contract carries a real model.
+2. The Worker becomes mandatory here. Measured 2026-09-04, 100×100 grid: ISO 21 ms, **ASHRAE 340 ms** — the cooling effect
+   costs 16× per point. So this phase delivers ADR §4.7 in full: `workers/compute.worker.ts`, Comlink, the stale-result
+   stamp, and the "computing" indicator past 300 ms.
+3. `state/compute.svelte.ts` is rewritten in the same pass. It currently assigns to state inside an `$effect` and reaches
+   for `untrack` to break the loop it thereby creates — the exact pattern Svelte's Best practices names ("avoid updating
+   state inside effects"), and a violation of the ADR's own §6. Going async is the natural moment to fix it. Keeping the
+   last valid result across an out-of-range input is genuinely stateful, so this is a redesign, not a substitution.
+4. Library side, in the fork: `suppressWarnings` on `BaseInputsInit`. One ASHRAE grid scan logs 300 "Assuming cooling
+   effect = 0" lines; `charts.psychrometricZone` already silences its own trace and any field-drawing consumer needs the
+   same (ADR §3).
+
+### Done criteria for 3.5 – 3.7
+
+- The four scripts pass after each phase.
+- After 3.7, a full pass over [code-quality-checklist.md](code-quality-checklist.md) — the last point at which a contract
+  may still change shape.
+- `RegisteredModel`, `ChartDeclaration` and `ChartSpec` are not expected to change again until Phase 5.
+
 ---
 
 ## Phase 4 · Second model ← architecture acceptance, do not proceed if it fails
@@ -404,9 +485,16 @@ Adaptive renders for real with `chartType.dynamic`, with the axes locked to
 `t_running_mean × t_o` (axis labels from `Quantity.label`), and the output is the acceptability-class bands
 (`charts.adaptiveAshraeZone`).
 
+**Prerequisites**: Phases 3.5 – 3.7. The `zones` source exists by then, so Adaptive's exact
+`charts.adaptiveAshraeZone` polygons need no new plumbing, and `entryGroups` keeps `rh` out of its inputs.
+
 **Done criteria (the hardest one in the whole plan)**
 `git diff --stat` shows only `src/models/adaptiveAshrae.ts` and `src/models/index.ts`.
 **The moment a third file is touched, stop and fix the architecture** — fixing it in week four is an order of magnitude cheaper than in week ten.
+
+Then a narrow pass over [code-quality-checklist.md](code-quality-checklist.md) covering **only those two files**: names,
+declaration shape, no new mirrored value. Nothing in `core/` changes at this point — needing to change it means the
+acceptance did not really pass.
 
 ---
 
@@ -428,11 +516,34 @@ Adaptive renders for real with `chartType.dynamic`, with the axes locked to
    On a parse failure, fall back to defaults and notify; no blank screen.
    Skipped: `migrate()` (v1 has no source to migrate from; write it in v2) and `v1z.` deflate + `fflate`
    (together with Time-series, see below).
-5. Export Link + image export: editable title + input summary + tool name/version/date footer, PNG + SVG.
+5. Export Link + image export: editable title + input summary + tool name/version/date footer, PNG + SVG. The same
+   `ChartSpec.legend` generates Plotly's horizontal bottom legend in the export layout, so screen and file agree — the
+   modebar's own PNG button was removed in Phase 3 precisely because it could not do this.
+6. `RegisteredModel.timeSeries` lands with `workspace.ts`, which is its first consumer.
+7. The `Proxy`-less fallback is a static notice in `index.html` naming the required browser versions (ADR §2 / §7.5,
+   decided 2026-09-04). No second ES5 code path, no share decoding.
 
 **Done criteria**
 - From any state, Export Link → open in a new tab → the state is identical (three slots, units, chart type, thresholds, numbers)
 - Opening a share link in an environment with `Proxy` disabled does not crash
+
+---
+
+## Phase 5b · Input calculators
+
+**Goal**: the calculator buttons of the old tool's input panel, with the semantics ADR §4.1.5 already fixed — a one-shot
+Apply that writes into a target input, never entering the session or the share link.
+**Prerequisites**: Phase 5 (they write into slots, and Compare decides which slot).
+
+Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly out:
+
+1. **Custom clothing ensemble** — build a garment list from the library's `clo_individual_garments`, Apply writes `clo`.
+2. **Dynamic predictive clothing** — `clo_dynamic`, Apply writes `clo`.
+3. **Solar gain on occupants** — confirm first whether the fork already ports it; if not, that is a library task, since
+   the formula is general (ADR §3).
+
+The declaration field that says which model offers which calculator is added here, not earlier: Phase 4's acceptance is
+already past, and an optional field with no consumer would be exactly the speculative abstraction the ADR forbids.
 
 ---
 
@@ -449,9 +560,11 @@ Adaptive renders for real with `chartType.dynamic`, with the axes locked to
 3. Run all nine ADR §7 acceptance items (item 3 compares vertex geometry).
 4. One line of gtag; send `page_view` manually on route change, with the query string stripped from `page_location`
    (do not send the share payload to Google).
-5. Merge back into `main`, remove the `git worktree`.
+5. Site shell, minimum set (ADR §4.1.5's "app actions", assigned here on 2026-09-04): header (title, unit switch,
+   Documentation link), footer (version, date, licence), and Reset. `Save` / `Reload` are not built — Export Link covers them.
+6. Merge back into `main`, remove the `git worktree`.
 
-**After v1**: the remaining 5 models (heat_index / humidex / wind_chill / PHS / adaptive_en,
+**After v1**: local discomfort (ankle draft, vertical air temperature difference) as standalone models under the ASHRAE tab; the remaining 5 models (heat_index / humidex / wind_chill / PHS / adaptive_en,
 each = library port + one declaration file + one registry line) → Time-series + PHS + `v1z.` compression
 → ES5 summary page (depends on the share schema being frozen, hence last) → UI/e2e/visual tests.
 

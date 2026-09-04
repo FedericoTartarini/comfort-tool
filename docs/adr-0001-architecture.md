@@ -4,7 +4,7 @@
 - Scope: v1 (target 2026-10-01), and long-term maintenance thereafter
 - Supersedes: the prototype repository `main repo/comfort-tool` (Svelte 5, about 49k lines). The prototype is unmaintainable because of excessive layering; **no code is reused, only verified behaviour is borrowed**.
 - Companion: the `typescript` branch of the `jsthermalcomfort` fork (the calculation library; TypeScript, its build output consumed through a symlink, developed in parallel with this project). Section 4 also gives the library's public interface contract.
-- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6). Revision 2026-09-04 (Phase 2): the Compliance column colours a `category` by band position from the app's one palette (§4.3); PMV applies `v_relative` (§4.5); objects compared by identity live in `$state.raw` (§6).
+- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6). Revision 2026-09-04 (Phase 2): the Compliance column colours a `category` by band position from the app's one palette (§4.3); PMV applies `v_relative` (§4.5); objects compared by identity live in `$state.raw` (§6). Revision 2026-09-04 (post-Phase 3 scope review): PMV (ASHRAE 55) enters the v1 scope, so v1 models do have options (§4.3, §7); chart axis ranges and the dynamic chart's zone source move into the model declaration (§4.4); hover never snaps on a field chart (§4.4); the ES5 summary page is downgraded to a static notice (§2, §7); the library gains `suppressWarnings` for grid scans (§3); constant naming and the `$effect` prohibition are spelled out (§6); a code-quality audit joins the acceptance criteria (§7).
 
 ---
 
@@ -36,13 +36,13 @@
 | Routing | **sv-router 0.18**, all usage wrapped in `routes/navigation.ts` | Typed routes, maintained, already used by the prototype; the 0.x risk is isolated to one place | Hand-written; `@keenmate/svelte-spa-router` |
 | UI | **shadcn-svelte + Bits UI + Tailwind 4**; utility classes are allowed **only** in `ui/primitives/` (CLI-generated, never hand-edited) and `ui/layout/` (`Stack / Grid / Inline`, gap becomes props); a utility class in any other directory is a lint error | Ready-made controls + consistent spacing (Mantine feel), the most stable AI output, and the code belongs to the project | Carbon Components Svelte (IBM visuals, 0.x); Bits UI + hand-written CSS |
 | State | Runes classes in `.svelte.ts`, **no state library**; the address bar reflects only the path, the share payload is generated only on Export Link | Simple and readable; the prototype's approach | Live address-bar sync |
-| Charts | **plotly.js 4.0** (`plotly.js-cartesian-dist-min`, dynamically imported on demand; native TS types); our own `PlotlyChart.svelte` using `{@attach}`; chart components receive only a "chart spec" and know nothing about models | Zoom and similar interactions; 4.0 exports types natively | 3.x; `svelte-plotly.js` (no Svelte 5 version) |
+| Charts | **plotly.js 4.0** (`plotly.js-cartesian-dist-min`, dynamically imported on demand; native TS types); our own `PlotlyChart.svelte` using `{@attach}`; chart components receive only a "chart spec" and know nothing about models; a banded field is a `contour` trace, never a `heatmap` — a heatmap draws the grid as discrete cells and the band edges come out stepped | Zoom and similar interactions; 4.0 exports types natively | 3.x; `svelte-plotly.js` (no Svelte 5 version) |
 | Computation | A single Web Worker + **Comlink**; the main thread discards stale results by sequence number; library model functions are called only inside the Worker | Readability first | Hand-written postMessage protocol; Worker pool |
 | Precision | Standard compliance zone: **boundary root-finding** (RH every 5%, PMV residual 0.001, secant method falling back to bisection, saturation line every 0.5 °C); Explore field chart: **100×100 grid**, the same for all models | Same origin as the old tool and finer; keep the old chart while PHS takes about 2.4 s | Grid everywhere; adaptive refinement |
 | Forms | No form library, no Zod; `bind:value` + the range validation the library provides | The library already provides hard ranges | — |
 | Validation | Outside the hard range: mark red, do not compute, keep the previous valid value | The library provides only this one set of ranges | Two-level ranges |
 | Links | **`?share=v1.<Base64URL(JSON)>`**; Time-series is `?share=v1z.<Base64URL(deflate)>` (`fflate`); version prefix + `migrate()`; on parse failure fall back to defaults and notify | Not compressing keeps it decodable by the ES5 summary page | `?s=` (abbreviation violates the naming rules); `#share=`; compatibility with old Berkeley links (not needed) |
-| Browsers | Full app floor Chrome 87 / Firefox 83 / Safari 14 (Svelte 5's hard floor); `index.html` embeds an ES5 feature check, older browsers render a **read-only summary page**; Tailwind 4's floor is 2023, 2020–2023 browsers are "usable but imperfectly styled" | Satisfies "very old browsers can open and see prefilled inputs" | Tailwind 3.4; polyfill plugin |
+| Browsers | Full app floor Chrome 87 / Firefox 83 / Safari 14 (Svelte 5's hard floor); `index.html` embeds an ES5 feature check, and a browser without `Proxy` gets a **static notice naming the required versions** — decided 2026-09-04, downgraded from a share-decoding summary page, which would need a second ES5 code path pinned to a share schema that only freezes at the end of Phase 5; Tailwind 4's floor is 2023, 2020–2023 browsers are "usable but imperfectly styled" | Satisfies "very old browsers can open and see prefilled inputs" | Tailwind 3.4; polyfill plugin |
 | Analytics | One line of gtag; send `page_view` manually on path change; `page_location` strips the query string | Do not send the share payload to Google | Consent banner |
 | Engineering | pnpm, TS `strict` + `erasableSyntaxOnly` + `verbatimModuleSyntax`, ESLint flat + Prettier, Node 24, GitHub Actions (typecheck + lint + build), Netlify PR previews, UI copy centralised in one dictionary module (English only in v1) | — | TypeScript `enum` (non-erasable syntax) |
 
@@ -70,6 +70,7 @@
 | Psychrometric functions (dew point / wet bulb / humidity ratio / vapour pressure ↔ RH, operative temperature) | Path segments for standards (`core/standard.ts`, keyed by the library's `reference.standards` objects), model-switching rules, share links, unit switching, UI |
 | Sequential simulation of stateful models (PHS, after v1) | Time-series row editor and session |
 | Out-of-range inputs return results + warnings instead of throwing; no DOM / `node-fetch` dependency, runs in a Worker | — |
+| `suppressWarnings` on the `io` inputs (2026-09-04): a parameter sweep calls a model tens of thousands of times and `cooling_effect` logs a line every time it cannot solve — 300 lines per 100×100 ASHRAE grid. `charts.psychrometricZone` already silences its own trace; any tool drawing a field needs the same, so the switch belongs to the library | — |
 
 Two explicitly stated exceptions:
 
@@ -201,7 +202,7 @@ export const pmvIso = defineModel({
 export const registeredModels = [pmvIso, adaptiveAshrae, utci] as const;   // registration is this one line only
 ```
 
-Rules: every model has the Explore capability by default; the Standard capability is decided by whether the library's `model.standard` exists, and the app no longer declares it; the Time-series capability is decided by `timeSeries`. **Adding a model = the library fills in that model's quantities / limits / standard + one declaration file + one registry line, zero other files change.** Options (such as `airspeed_control`) are added to the declaration file when needed; the two v1 models have no options. Panel labels, table headers and axis labels always come from `Quantity.label`; the declaration file contains no quantity names at all.
+Rules: every model has the Explore capability by default; the Standard capability is decided by whether the library's `model.standard` exists, and the app no longer declares it; the Time-series capability is decided by `timeSeries`. **Adding a model = the library fills in that model's quantities / limits / standard + one declaration file + one registry line, zero other files change.** Options (such as `airspeed_control`) are declared in the model file. PMV (ASHRAE 55) has one, so `RegisteredModel.options` and `InputSlot.options` are part of v1 (decided 2026-09-04); PMV (ISO 7730) has none — the library's `PmvPpdIsoKwargs` omits `airspeed_control`, because ISO 7730 has no such switch. `presets` is likewise a declaration field: it points a quantity at a library preset table (`met_typical_tasks`, `clo_individual_garments`) so the input offers a searchable list beside free entry. Panel labels, table headers and axis labels always come from `Quantity.label`; the declaration file contains no quantity names at all.
 
 Result table (`table`):
 
@@ -214,9 +215,27 @@ Result table (`table`):
 | Type | Definition |
 |---|---|
 | `chartType.psychrometric` | x = `temperatureMode.axis` (`tdb` under separate, `t_o` under operative), axis label from `Quantity.label`; y = humidity ratio; RH isolines; compliance-zone polygon (`psychrometricZone`, with `trFollowsDb: true` under operative); marker points for the three slots |
-| `chartType.dynamic` | x / y are selectable quantities (under operative, `t_o` is offered and `tdb` / `tr` are not); banded contour surface (100×100 grid); marker points; **every model gets it by default**. Adaptive renders with it: locked axes `t_running_mean × t_o`, output is the interval of the acceptability level |
+| `chartType.dynamic` | x / y are selectable quantities (under operative, `t_o` is offered and `tdb` / `tr` are not); banded contour surface (100×100 grid); optional zone polygons from a declared `zones` source; marker points; **every model gets it by default**. Adaptive renders with it: locked axes `t_running_mean × t_o`, and its bands are the **exact polygons** of `charts.adaptiveAshraeZone`, not the grid classification (decided 2026-09-04) |
 
-Parametric curve charts (SET outputs, heat loss) and time-series line charts are added to the chart library first and then referenced by models, when needed. `PlotlyChart.svelte` receives only a `ChartSpec` (a restricted subset of traces / layout / shapes) and imports no model.
+Parametric curve charts (SET outputs, heat loss) and time-series line charts are added to the chart library first and then referenced by models, when needed. `PlotlyChart.svelte` receives only a `ChartSpec` (a restricted subset of traces / layout / annotations) and imports no model.
+
+Axis rules (2026-09-04):
+
+- **Axis ranges are declared, not derived from the applicability limits.** Each chart in the model file carries its axes'
+  ranges, defaulting to the ranges the deployed CBE tool draws (psychrometric x 10–40 °C at 121 samples, humidity ratio
+  0–0.03; PMV field axes tdb 10–40, v 0–2, rh 0–100, met 1–4). `model.limits` goes back to doing one job: validating what
+  the user typed. The two were conflated in Phase 3, which clipped the ISO chart to the 10–30 °C applicability range and
+  left `rh` — which no standard limits — unable to carry an axis at all.
+- The dynamic chart offers **every entered quantity** on both axes, and each axis excludes the quantity the other one holds:
+  `x === y` is not a chart.
+
+Hover rules (2026-09-04):
+
+- **A field chart never snaps.** Hover reports whatever is under the cursor — the axis values, the output there, the band
+  it falls in — via a transparent probe layer covering the plot area. Curves that are not the subject of the reading, the
+  psychrometric chart's RH isolines included, do not capture the pointer, and neither do the slot markers.
+- Snapping is reserved for the line charts added later, where the drawn point *is* the datum.
+
 
 Legend rules:
 
@@ -332,18 +351,47 @@ index.html              embedded ES5 feature check + read-only summary page
 
 ## 6. Coding conventions
 
-- **Naming**: components `PascalCase.svelte`; modules `camelCase.ts`; functions start with a verb; consistent vocabulary `dynamic chart`, `chart type`, `model`, `session`, `slot`, `workspace`; `engine / manager / helper / utils` are forbidden as file names; quantity keys use the library's naming verbatim, no other abbreviations. **The display name of a quantity always comes from `Quantity.label`**; the app never writes one. The old tool's "Air temperature" is the wrong term and is not carried over; the correct one is the library's "Dry-bulb air temperature", and changing the spelling means changing the library in one place only.
+- **Naming**: components `PascalCase.svelte`; modules `camelCase.ts`; functions start with a verb;
+  **module constants follow two rules** (2026-09-04): a scalar literal is `CONSTANT_CASE` (`GRID`, `ZONE_RH_STEP`,
+  `METRES_PER_FOOT`), a closed-set table or palette is `camelCase` (`chartType`, `temperatureMode`,
+  `sensationPalette`) — the second deliberately matches the library's own `io.quantities` so app and library
+  collections read alike. Names must be clear to a new reader and are not abbreviated by deleting letters,
+  per the Google TypeScript Style Guide; consistent vocabulary `dynamic chart`, `chart type`, `model`, `session`, `slot`, `workspace`; `engine / manager / helper / utils` are forbidden as file names; quantity keys use the library's naming verbatim, no other abbreviations. **The display name of a quantity always comes from `Quantity.label`**; the app never writes one. The old tool's "Air temperature" is the wrong term and is not carried over; the correct one is the library's "Dry-bulb air temperature", and changing the spelling means changing the library in one place only.
 - **Types first**: closed sets are `as const` object collections; quantities, models and standards are all imported from the library and referenced with dot access; types are derived from data (`as const`, `satisfies`); no magic strings and no loose dictionaries; renaming something changes one place only.
 - **Granularity**: one concept per file, 100–400 lines is normal; plain functions + data objects over class hierarchies; no abstractions reserved for "maybe later"; do not split logic into a large number of tiny methods.
-- **Svelte guardrails**: runes only; ESLint forbids `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`; third-party library integration uses `{@attach}`; cross-component shared state is a class with `$state` fields; `$effect` is for external synchronisation only; objects compared by identity (models, quantities, closed-set members, `Measure`s) are held in `$state.raw` and replaced rather than mutated — a deep `$state` proxy breaks `===` against the library's objects.
+- **Svelte guardrails**: runes only; ESLint forbids `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`; third-party library integration uses `{@attach}`; cross-component shared state is a class with `$state` fields; **`$effect` is for external synchronisation only, and never assigns to state** — Svelte's own
+  [Best practices](https://svelte.dev/docs/svelte/best-practices) says "to compute something from state, use `$derived`
+  rather than `$effect`" and "avoid updating state inside effects". A reach for `untrack` is the symptom of having
+  broken this rule, not a fix for it; lint enforces both. Objects compared by identity (models, quantities,
+  closed-set members, `Measure`s) are held in `$state.raw` and replaced rather than mutated — a deep `$state` proxy
+  breaks `===` against the library's objects.
 - **TypeScript guardrails**: `strict`, `erasableSyntaxOnly`, `verbatimModuleSyntax`; no `enum`, `namespace`, or constructor parameter properties.
 - **AI workflow**: enable the Svelte MCP in every session; generated `.svelte` files must pass `svelte-autofixer`; PRs must pass typecheck + lint + build.
+- **Where these conventions come from** (verified 2026-09-04): [Svelte Best practices](https://svelte.dev/docs/svelte/best-practices),
+  [TypeScript Do's and Don'ts](https://www.typescriptlang.org/docs/handbook/declaration-files/do-s-and-don-ts.html),
+  [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html), and DRY as Hunt & Thomas define it —
+  "every piece of knowledge must have a single, unambiguous, authoritative representation within a system", which §4.0 turns
+  into a lint rule. *Clean Code* and *Clean Architecture* are deliberately **not** acceptance criteria: parts of both are
+  actively disputed, and their layering argument is already discharged by §5's import direction, which lint enforces.
+  The running checklist lives in [docs/code-quality-checklist.md](code-quality-checklist.md).
 
 ---
 
 ## 7. Phase-one scope and acceptance criteria
 
-Scope: the two models **PMV (ISO 7730)** and **Adaptive (ASHRAE 55)**; Standard + Explore; Compare with three slots; SI/IP; model-switch dialog; Explore threshold editor; Export Link; simple export (editable title + input summary + tool name/version/date footer, PNG + SVG).
+Scope: the three models **PMV (ISO 7730)**, **PMV (ASHRAE 55)** and **Adaptive (ASHRAE 55)**; Standard + Explore;
+Compare with three slots; SI/IP; five humidity entry modes; model-switch dialog; Explore threshold editor; input
+calculators (custom clothing ensemble, dynamic predictive clothing, solar gain); Export Link; simple export (editable
+title + input summary + tool name/version/date footer, PNG + SVG).
+
+PMV (ASHRAE 55) was added on 2026-09-04: it is the deployed CBE tool's main screen, the library already ships it complete
+(`compliance`, `COMPLIANCE_LIMIT`, `limits`, `standard`), and neither the ADR nor the plan had a place for it — an omission,
+not a decision. It also brings `airspeed_control`, which is why v1 has options at all (§4.3), and its cooling effect makes
+a 100×100 grid cost about 340 ms against ISO's 21 ms (measured 2026-09-04), which is what finally requires the Worker of §4.7.
+
+Deferred with the direction recorded, not the phase: **local discomfort** (ankle draft, vertical air temperature
+difference) enters as standalone models in the model selector under the ASHRAE tab, beside PMV and Adaptive, rather than as
+the legacy tool's panel of buttons attached to PMV.
 
 Acceptance:
 
@@ -351,11 +399,16 @@ Acceptance:
 2. Export Link from any state → open in a new tab → the state is fully identical (three slots, units, chart type, thresholds, atmospheric pressure).
 3. The vertices of the PMV psychrometric-chart compliance zone differ from the old tool's vertices for the same inputs by ≤ 0.01 °C.
 4. Switching to a model with incompatible ranges shows a dialog whose content matches the design mock-up; no dialog when nothing is out of range.
-5. Opening a share link in an environment with `Proxy` disabled, the summary page lists all input values.
+5. Opening a share link in an environment with `Proxy` disabled shows a static notice naming the required browser versions — never a blank page. (Downgraded 2026-09-04 from "the summary page lists all input values"; see §2.)
 6. After switching SI → IP → SI, the stored values are unchanged; every displayed number has at most two decimals and no trailing zeros.
 7. The result table columns are determined entirely by the model's declared `table` (`table` is required, and UTCI declares it too); any chart has exactly one legend, below the chart, and Plotly's built-in legend never appears.
 8. Lint passes: no utility classes out of bounds, no legacy syntax, no out-of-bounds imports in `core/`, no `enum`.
 9. Unit test coverage: `shareLink` encode/decode and migration, `toLibraryInputs` (5 humidity representations, operative mode), `numberFormat` and unit conversion, model-switch inheritance and clamping rules.
+10. **Code quality** (added 2026-09-04). Two passes over [docs/code-quality-checklist.md](code-quality-checklist.md): a full
+    one once the contracts are frozen and before the Phase 4 acceptance, and a narrow one over the two new files after it.
+    The split is the point — the first pass is the last moment a contract can change freely, the second must not change one
+    at all. Anything mechanically checkable is a lint rule rather than a checklist line, and every new rule ships with a
+    probe proving it actually errors.
 
 ---
 

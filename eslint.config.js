@@ -62,6 +62,41 @@ const wireStringSyntax = [
   },
 ];
 
+// ADR §6: Svelte's own Best practices — "to compute something from state, use
+// `$derived` rather than `$effect`" and "avoid updating state inside effects".
+// A reach for `untrack` is the symptom of having broken that rule, not a fix,
+// so it is banned outright and needs an explicit disable with a reason.
+const untrackSyntax = [
+  {
+    selector: "CallExpression[callee.name='untrack']",
+    message:
+      "untrack means an $effect is fighting a loop it created. Compute with $derived instead (ADR §6). Disable with a reason only for genuine external synchronisation.",
+  },
+];
+
+// Narrower than it looks: in state/ an $effect exists to synchronise something
+// outside Svelte, and there is nothing outside Svelte in that directory. In ui/
+// the same assignment is often legitimate (writing to a DOM node), so the rule
+// is not applied there.
+const effectPuritySyntax = [
+  {
+    selector: "CallExpression[callee.name='$effect'] AssignmentExpression",
+    message:
+      "An $effect in state/ must not assign. Derived values belong in $derived (ADR §6, Svelte Best practices).",
+  },
+];
+
+// ADR §6: a scalar module constant is CONSTANT_CASE; a closed-set table or
+// palette stays camelCase to read like the library's own `io.quantities`. Only
+// the first half is mechanical, so only the first half is a rule.
+const constantCaseSyntax = [
+  {
+    selector:
+      "Program > VariableDeclaration[kind='const'] > VariableDeclarator[init.type='Literal'][id.name!=/^[A-Z][A-Z0-9_]*$/]",
+    message: "A module-level scalar constant is CONSTANT_CASE (ADR §6).",
+  },
+];
+
 // ADR §2: utility classes stay in the generated primitives and the layout
 // wrappers; business components take spacing from layout props.
 const tailwindSyntax = [
@@ -98,7 +133,7 @@ export default [
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": "off",
       "no-restricted-imports": ["error", libraryModelImports],
-      "no-restricted-syntax": ["error", ...wireStringSyntax],
+      "no-restricted-syntax": ["error", ...wireStringSyntax, ...untrackSyntax, ...constantCaseSyntax],
     },
   },
   ...svelte.configs["flat/recommended"].map((config) => ({
@@ -120,6 +155,7 @@ export default [
         ...legacySvelteSyntax,
         ...wireStringSyntax,
         ...tailwindSyntax,
+        ...untrackSyntax,
       ],
     },
   },
@@ -143,6 +179,21 @@ export default [
     files: ["src/ui/primitives/**/*.svelte", "src/ui/layout/**/*.svelte"],
     rules: {
       "no-restricted-syntax": ["error", ...legacySvelteSyntax, ...wireStringSyntax],
+    },
+  },
+  {
+    // state/ holds the runes classes. Nothing there synchronises an external
+    // system, so an assignment inside an $effect is always the reactivity
+    // anti-pattern rather than a legitimate side effect.
+    files: ["src/state/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...wireStringSyntax,
+        ...untrackSyntax,
+        ...constantCaseSyntax,
+        ...effectPuritySyntax,
+      ],
     },
   },
   {
