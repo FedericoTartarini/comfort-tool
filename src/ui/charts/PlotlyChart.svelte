@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { PlotlyConfig, PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
-  import type { BandTrace, ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+  import type { PlotlyAnnotation, PlotlyConfig, PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
+  import type { Annotation, BandTrace, ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 
   interface Props {
     spec: ChartSpec;
@@ -88,7 +88,11 @@
       fill: trace.fill ? "toself" : "none",
       fillcolor: trace.fill,
       name: trace.label ?? "",
-      hoverinfo: trace.label ? "name" : "skip",
+      text: trace.label ?? "",
+      // A filled band answers anywhere inside itself rather than at its
+      // vertices, which is what "the field never snaps" means for a polygon.
+      hoveron: "fills",
+      hoverinfo: trace.hover === "off" ? "skip" : "text",
       showlegend: false,
     };
   }
@@ -101,14 +105,18 @@
       y: [trace.y],
       marker: { color: trace.color, size: 11, line: { color: "#ffffff", width: 2 } },
       name: trace.label,
-      hovertemplate: `${trace.label}: %{x}, %{y}<extra></extra>`,
+      // ADR §4.4: the slot markers do not capture the pointer either.
+      hoverinfo: trace.hover === "off" ? "skip" : "text",
+      text: trace.label,
       showlegend: false,
     };
   }
 
   function bandData(trace: BandTrace): PlotlyData {
     return {
-      type: "heatmap",
+      // ADR §4.4 calls for a contour: a heatmap paints one rectangle per grid
+      // cell, so every band edge came out as a 100-step staircase.
+      type: "contour",
       x: trace.x,
       y: trace.y,
       z: trace.z,
@@ -121,10 +129,26 @@
       ]),
       zmin: -0.5,
       zmax: trace.bands.length - 0.5,
-      zsmooth: false,
+      autocontour: false,
+      contours: { start: -0.5, end: trace.bands.length - 0.5, size: 1, coloring: "fill", showlines: false },
+      line: { width: 0 },
+      connectgaps: false,
       showscale: false,
-      hovertemplate: "%{text}<extra></extra>",
+      hoverinfo: trace.hover === "off" ? "skip" : "text",
+      hovertemplate: "%{x}, %{y}<br>%{text}<extra></extra>",
       showlegend: false,
+    };
+  }
+
+  function annotation(entry: Annotation): PlotlyAnnotation {
+    return {
+      x: entry.x,
+      y: entry.y,
+      text: entry.text,
+      showarrow: false,
+      xanchor: "right",
+      yanchor: "top",
+      font: { size: 10, color: "#64748b" },
     };
   }
 
@@ -147,6 +171,7 @@
       // ADR §4.4: the chart's one legend is rendered below it by ChartLegend.
       showlegend: false,
       hovermode: "closest",
+      annotations: source.annotations.map(annotation),
       plot_bgcolor: "#ffffff",
       paper_bgcolor: "rgba(0, 0, 0, 0)",
       xaxis: axis(source.layout.x),

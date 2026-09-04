@@ -3,14 +3,19 @@ import { bandFill, chartInk } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
 import {
   enteredQuantities,
-  enteredRange,
   enteredValue,
+  resolveQuantities,
   toLibraryInputs,
   withEnteredValues,
-  type Range,
   type SlotInputs,
 } from "$lib/core/libraryInputs";
-import type { DynamicDeclaration, RegisteredModel } from "$lib/core/modelDeclaration";
+import {
+  axisRangeFor,
+  requireAxisRange,
+  type DynamicDeclaration,
+  type Range,
+  type RegisteredModel,
+} from "$lib/core/modelDeclaration";
 import { displayUnitFor } from "$lib/core/units";
 import { axisTitle, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
 
@@ -31,6 +36,9 @@ interface BandFill {
  * acceptability `intervals` where a model has them (the narrowest satisfied one
  * wins), otherwise the `category` position in the model's classification
  * scale. No threshold is written here.
+ *
+ * A model that declares `zones` skips the scan altogether and draws the exact
+ * polygons the library traces for it (ADR §4.4).
  */
 export function dynamicSpec(
   request: ChartRequest,
@@ -39,38 +47,55 @@ export function dynamicSpec(
 ): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;
   const mode = slot.temperature.mode;
-  // A remembered temperature axis follows the entry mode, so switching to
-  // operative entry sweeps `t_o` rather than a `tdb` the slot no longer holds.
-  const x = underTemperatureMode(axes.x, mode);
-  const y = underTemperatureMode(axes.y, mode);
-  const xRange = axisRange(model, x, mode);
-  const yRange = axisRange(model, y, mode);
+  const { x, y } = resolvedAxes(model, axes, mode);
+  const xRange = requireAxisRange(model, x);
+  const yRange = requireAxisRange(model, y);
   const xUnit = displayUnitFor(x, unitSystem);
   const yUnit = displayUnitFor(y, unitSystem);
 
-  const xValues = samples(xRange);
-  const yValues = samples(yRange);
-  const bands = bandsOf(model, measureOf(model, slot, chart.output));
-  const z = yValues.map((yValue) =>
-    xValues.map((xValue) => {
-      const swept = withEnteredValues(slot, new Map([
-        [x, xValue],
-        [y, yValue],
-      ]));
-      return bandIndexOf(model, measureOf(model, swept, chart.output), bands.length);
-    }),
-  );
+  const traces: Trace[] = [];
+  const legend: LegendEntry[] = [];
 
-  const traces: Trace[] = [
-    {
+  const polygons = chart.zones?.({ values: resolveQuantities(slot, model), xRange });
+  if (polygons) {
+    for (const [index, polygon] of polygons.entries()) {
+      const color = bandFill(index);
+      traces.push({
+        kind: "path",
+        x: polygon.x.map((value) => xUnit.fromSi(value)),
+        y: polygon.y.map((value) => yUnit.fromSi(value)),
+        color,
+        width: 1,
+        fill: color,
+        // The filled area is the reading: the pointer reports the band it is
+        // over, wherever it is over it.
+        hover: "field",
+        label: polygon.label,
+      });
+      legend.push({ label: polygon.label, swatch: "fill", color });
+    }
+  } else {
+    const xValues = samples(xRange);
+    const yValues = samples(yRange);
+    const bands = bandsOf(model, measureOf(model, slot, chart.output));
+    traces.push({
       kind: "bands",
+      hover: "field",
       x: xValues.map((value) => xUnit.fromSi(value)),
       y: yValues.map((value) => yUnit.fromSi(value)),
-      z,
+      z: yValues.map((yValue) =>
+        xValues.map((xValue) => {
+          const swept = withEnteredValues(slot, new Map([
+            [x, xValue],
+            [y, yValue],
+          ]));
+          return bandIndexOf(model, measureOf(model, swept, chart.output), bands.length);
+        }),
+      ),
       bands,
-    },
-  ];
-  const legend: LegendEntry[] = bands.map((band) => ({ label: band.label, swatch: "fill", color: band.color }));
+    });
+    legend.push(...bands.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
+  }
 
   const markerX = enteredValue(slot, x);
   const markerY = enteredValue(slot, y);
@@ -80,6 +105,7 @@ export function dynamicSpec(
       x: xUnit.fromSi(markerX),
       y: yUnit.fromSi(markerY),
       color: chartInk.marker,
+      hover: "off",
       label: slotLabel,
     });
     legend.push({ label: slotLabel, swatch: "marker", color: chartInk.marker });
@@ -92,24 +118,37 @@ export function dynamicSpec(
       y: { title: axisTitle(y, yUnit.symbol), range: [yUnit.fromSi(yRange.min), yUnit.fromSi(yRange.max)] },
     },
     legend,
+    annotations: [],
   };
 }
 
 /**
- * The quantities that can carry an axis: what the user enters, minus anything
- * the model declares no applicability range for — the range is what the scan
- * sweeps between.
+ * The axes actually drawn. A remembered axis follows the entry mode, so
+ * switching to operative entry sweeps `t_o` rather than a `tdb` the slot no
+ * longer holds — and because that maps both `tdb` and `tr` onto `t_o`, a chart
+ * of one against the other would collapse onto a single quantity. x === y is
+ * not a chart (ADR §4.4), so the y axis moves to the next quantity that can
+ * carry one.
  */
-export function dynamicAxisQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
-  return enteredQuantities(model, mode).filter((quantity) => enteredRange(model, quantity, mode) !== undefined);
+export function resolvedAxes(
+  model: RegisteredModel,
+  axes: { readonly x: Quantity; readonly y: Quantity },
+  mode: TemperatureMode,
+): { readonly x: Quantity; readonly y: Quantity } {
+  const x = underTemperatureMode(axes.x, mode);
+  const y = underTemperatureMode(axes.y, mode);
+  if (y !== x) {
+    return { x, y };
+  }
+  return { x, y: dynamicAxisQuantities(model, mode).find((quantity) => quantity !== x) ?? y };
 }
 
-function axisRange(model: RegisteredModel, quantity: Quantity, mode: TemperatureMode): Range {
-  const range = enteredRange(model, quantity, mode);
-  if (!range) {
-    throw new Error(`${model.model.label} declares no range for ${quantity.label}, so it cannot carry an axis`);
-  }
-  return range;
+/**
+ * The quantities that can carry an axis: what the user enters, minus anything
+ * the model declares no range for — the range is what the scan sweeps between.
+ */
+export function dynamicAxisQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
+  return enteredQuantities(model, mode).filter((quantity) => axisRangeFor(model, quantity) !== undefined);
 }
 
 function samples(range: Range): readonly number[] {

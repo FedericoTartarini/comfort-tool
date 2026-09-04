@@ -1,7 +1,7 @@
 import { quantities, type Quantity } from "jsthermalcomfort/io";
 import { v_relative } from "jsthermalcomfort/utilities";
 import { temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
-import { limitFor, type LibraryInit, type RegisteredModel } from "./modelDeclaration";
+import { limitFor, type LibraryInit, type Range, type RegisteredModel } from "./modelDeclaration";
 
 /**
  * The slice of an input slot this module reads. A plain interface, so core/
@@ -11,11 +11,6 @@ export interface SlotInputs {
   readonly values: ReadonlyMap<Quantity, number>;
   readonly humidity: { readonly mode: HumidityMode; readonly value: number };
   readonly temperature: { readonly mode: TemperatureMode };
-}
-
-export interface Range {
-  readonly min: number;
-  readonly max: number;
 }
 
 const q = quantities;

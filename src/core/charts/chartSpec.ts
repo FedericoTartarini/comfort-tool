@@ -9,6 +9,15 @@ import type { UnitSystem } from "$lib/core/unitSystem";
  * the chart component converts nothing and imports no model.
  */
 
+/**
+ * What the pointer reads on a trace (ADR §4.4). `"off"` is chrome — the
+ * relative-humidity isolines, the zone outline, the slot markers — which never
+ * capture the pointer; `"field"` reports whatever is under the cursor without
+ * snapping to a drawn datum. Snapping is reserved for the line charts added
+ * later, where the drawn point *is* the reading.
+ */
+export type HoverMode = "off" | "field";
+
 /** How a legend entry is drawn. */
 export type Swatch = "fill" | "line" | "marker";
 
@@ -34,7 +43,8 @@ export interface PathTrace {
   readonly color: string;
   readonly width: number;
   readonly fill?: string;
-  /** Hover text; the trace is unhoverable without one. */
+  readonly hover: HoverMode;
+  /** Legend and hover text. */
   readonly label?: string;
 }
 
@@ -44,6 +54,7 @@ export interface PointTrace {
   readonly x: number;
   readonly y: number;
   readonly color: string;
+  readonly hover: HoverMode;
   readonly label: string;
 }
 
@@ -53,6 +64,7 @@ export interface PointTrace {
  */
 export interface BandTrace {
   readonly kind: "bands";
+  readonly hover: HoverMode;
   readonly x: readonly number[];
   readonly y: readonly number[];
   readonly z: readonly (readonly (number | null)[])[];
@@ -62,11 +74,19 @@ export interface BandTrace {
 /** Drawn in order, so the first trace is at the bottom. */
 export type Trace = PathTrace | PointTrace | BandTrace;
 
+/** Text placed at a point of the plot — the isoline labels, and nothing else so far. */
+export interface Annotation {
+  readonly x: number;
+  readonly y: number;
+  readonly text: string;
+}
+
 export interface ChartSpec {
   readonly traces: readonly Trace[];
   readonly layout: { readonly x: AxisSpec; readonly y: AxisSpec };
   /** The chart's one legend (ADR §4.4). Plotly's own is switched off. */
   readonly legend: readonly LegendEntry[];
+  readonly annotations: readonly Annotation[];
 }
 
 /** What both spec builders need. The selected axes are the dynamic chart's alone. */

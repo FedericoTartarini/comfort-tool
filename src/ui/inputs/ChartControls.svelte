@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { dynamicAxisQuantities } from "$lib/core/charts/dynamicChart";
+  import { dynamicAxisQuantities, resolvedAxes } from "$lib/core/charts/dynamicChart";
   import { chartType } from "$lib/core/chartType";
-  import { underTemperatureMode } from "$lib/core/entryModes";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import type { ChartState, InputSlot } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -24,10 +23,11 @@
   const showAxes = $derived(chart.type === chartType.dynamic);
   // The chart remembers the axis the user picked; the entry mode decides which
   // temperature quantity that actually is right now.
-  const selected = $derived({
-    x: underTemperatureMode(chart.axes.x, inputSlot.temperature.mode),
-    y: underTemperatureMode(chart.axes.y, inputSlot.temperature.mode),
-  });
+  const selected = $derived(resolvedAxes(model, chart.axes, inputSlot.temperature.mode));
+  // ADR §4.4: each axis excludes the quantity the other one holds — x === y is
+  // not a chart.
+  const xChoices = $derived(axisChoices.filter((quantity) => quantity !== selected.y));
+  const yChoices = $derived(axisChoices.filter((quantity) => quantity !== selected.x));
 </script>
 
 <Inline gap="4" align="baseline">
@@ -49,10 +49,10 @@
       <Label for="{id}-x">{copy.xAxis}</Label>
       <select
         id="{id}-x"
-        value={String(axisChoices.indexOf(selected.x))}
-        onchange={(event) => chart.setAxes({ x: axisChoices[Number(event.currentTarget.value)] })}
+        value={String(xChoices.indexOf(selected.x))}
+        onchange={(event) => chart.setAxes({ x: xChoices[Number(event.currentTarget.value)] })}
       >
-        {#each axisChoices as quantity, index (quantity)}
+        {#each xChoices as quantity, index (quantity)}
           <option value={String(index)}>{quantity.label}</option>
         {/each}
       </select>
@@ -60,10 +60,10 @@
       <Label for="{id}-y">{copy.yAxis}</Label>
       <select
         id="{id}-y"
-        value={String(axisChoices.indexOf(selected.y))}
-        onchange={(event) => chart.setAxes({ y: axisChoices[Number(event.currentTarget.value)] })}
+        value={String(yChoices.indexOf(selected.y))}
+        onchange={(event) => chart.setAxes({ y: yChoices[Number(event.currentTarget.value)] })}
       >
-        {#each axisChoices as quantity, index (quantity)}
+        {#each yChoices as quantity, index (quantity)}
           <option value={String(index)}>{quantity.label}</option>
         {/each}
       </select>

@@ -30,6 +30,39 @@ export interface LibraryInit {
   readonly [quantityKey: string]: number | string | boolean;
 }
 
+/** A closed interval, in SI. */
+export interface Range {
+  readonly min: number;
+  readonly max: number;
+}
+
+/**
+ * How far one quantity is drawn wherever it carries an axis, in SI:
+ * `[quantity, min, max]`, the same tuple shape as `inputs`.
+ *
+ * A viewport, not a threshold. ADR §4.4: axis ranges are declared, never
+ * derived from `model.limits` — the limits validate what the user typed, and
+ * conflating the two clipped the ISO chart to 10–30 °C and left `rh`, which no
+ * standard limits, unable to carry an axis at all.
+ */
+export type AxisRange = readonly [Quantity, number, number];
+
+/**
+ * Exact band geometry a model supplies instead of the scanned grid, in SI.
+ * `x` and `y` run along the dynamic chart's own axes and close the polygon.
+ */
+export interface ZonePolygon {
+  readonly label: string;
+  readonly x: readonly number[];
+  readonly y: readonly number[];
+}
+
+/** What a `zones` source is given: the slot's resolved SI inputs and the x extent being drawn. */
+export interface ZoneRequest {
+  readonly values: ReadonlyMap<Quantity, number>;
+  readonly xRange: Range;
+}
+
 /**
  * A chart a model offers (ADR §4.4). A discriminated union rather than one wide
  * object: the psychrometric chart's axes are fixed by the temperature entry
@@ -48,10 +81,17 @@ export type ChartDeclaration =
     }
   | {
       readonly type: typeof chartType.dynamic;
-      /** Starting axes; the user may pick any entered quantity that has a range. */
+      /** Starting axes; the user may pick any entered quantity that has a declared range. */
       readonly axes: { readonly x: Quantity; readonly y: Quantity };
       /** The output whose bands colour the surface. */
       readonly output: Quantity;
+      /**
+       * Exact band polygons, for a model whose geometry the library already
+       * traces — Adaptive's `charts.adaptiveAshraeZone`. When present the grid
+       * scan is not run at all, because the polygons are the answer rather than
+       * an approximation of it (ADR §4.4).
+       */
+      readonly zones?: (request: ZoneRequest) => readonly ZonePolygon[];
     };
 
 /** The psychrometric member of {@link ChartDeclaration}. */
@@ -69,6 +109,13 @@ export interface RegisteredModel {
   readonly inputs: readonly (readonly [Quantity, number])[];
   /** `true`: the library takes `vr`, derived as `v_relative(v, met)` from the entered `v`. */
   readonly relativeAirSpeed: boolean;
+  /**
+   * How far each quantity is drawn. One table per model rather than one per
+   * chart: the deployed tool draws its psychrometric x axis and its field
+   * charts' temperature axis over the same 10–40 °C, and nothing in v1 wants
+   * two extents for one quantity.
+   */
+  readonly axisRanges: readonly AxisRange[];
   /** Result table columns, in order. Required (ADR §4.3). */
   readonly table: readonly Quantity[];
   /** Charts, in offering order; the first is the default. Every model has at least one. */
@@ -86,6 +133,21 @@ export function psychrometricChartOf(model: RegisteredModel): PsychrometricDecla
 
 export function dynamicChartOf(model: RegisteredModel): DynamicDeclaration | undefined {
   return model.charts.find((chart): chart is DynamicDeclaration => chart.type === chartType.dynamic);
+}
+
+/** The declared extent of `quantity`, or `undefined` when it may not carry an axis. */
+export function axisRangeFor(model: RegisteredModel, quantity: Quantity): Range | undefined {
+  const declared = model.axisRanges.find(([entry]) => entry === quantity);
+  return declared ? { min: declared[1], max: declared[2] } : undefined;
+}
+
+/** The same, for an axis the chart is already drawing: a missing range is a declaration bug. */
+export function requireAxisRange(model: RegisteredModel, quantity: Quantity): Range {
+  const range = axisRangeFor(model, quantity);
+  if (!range) {
+    throw new Error(`${model.model.label} declares no axis range for ${quantity.label}, so it cannot carry an axis`);
+  }
+  return range;
 }
 
 export function defineModel<Init extends object>(

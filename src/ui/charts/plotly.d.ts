@@ -9,6 +9,7 @@ declare module "plotly.js-cartesian-dist-min" {
   export type PlotlyData = Record<string, unknown>;
   export type PlotlyLayout = Record<string, unknown>;
   export type PlotlyConfig = Record<string, unknown>;
+  export type PlotlyAnnotation = Record<string, unknown>;
 
   interface PlotlyModule {
     newPlot(

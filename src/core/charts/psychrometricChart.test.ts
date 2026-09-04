@@ -111,11 +111,37 @@ describe("psychrometricSpec", () => {
   it("converts the axes to the displayed unit", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate, unitSystem.ip), declaration);
     expect(spec.layout.x.title).toContain("°F");
-    // The viewport is 10–36 °C.
+    // The declared viewport is 10–40 °C, as the deployed tool draws it.
     expect(spec.layout.x.range[0]).toBeCloseTo(50, 10);
-    expect(spec.layout.x.range[1]).toBeCloseTo(96.8, 10);
+    expect(spec.layout.x.range[1]).toBeCloseTo(104, 10);
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBeCloseTo(78.8, 10);
+  });
+
+  it("labels every relative-humidity isoline where it leaves the viewport", () => {
+    const spec = psychrometricSpec(request(temperatureMode.separate), declaration);
+    expect(spec.annotations.map((entry) => entry.text)).toEqual([
+      "10%",
+      "20%",
+      "30%",
+      "40%",
+      "50%",
+      "60%",
+      "70%",
+      "80%",
+      "90%",
+      "100%",
+    ]);
+    for (const entry of spec.annotations) {
+      expect(entry.x).toBeGreaterThanOrEqual(10);
+      expect(entry.x).toBeLessThanOrEqual(40);
+      expect(entry.y).toBeLessThanOrEqual(0.03);
+    }
+  });
+
+  it("leaves the pointer alone: nothing on this chart captures hover", () => {
+    const spec = psychrometricSpec(request(temperatureMode.separate), declaration);
+    expect(spec.traces.every((trace) => trace.hover === "off")).toBe(true);
   });
 
   it("offers one legend covering humidity, the zone and the slot", () => {

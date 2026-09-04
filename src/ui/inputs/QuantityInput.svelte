@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Quantity } from "jsthermalcomfort/io";
-  import type { Range } from "$lib/core/libraryInputs";
+  import type { Range } from "$lib/core/modelDeclaration";
   import { formatNumber } from "$lib/core/numberFormat";
   import { displayUnitFor } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";

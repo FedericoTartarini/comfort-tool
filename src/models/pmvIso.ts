@@ -17,6 +17,19 @@ export const pmvIso = defineModel({
     [q.clo, 0.5],
   ],
   relativeAirSpeed: true,
+  // The extents the deployed CBE tool draws, not ISO 7730's applicability
+  // limits (ADR §4.4) — the charts show what the field looks like around the
+  // standard, and `limits` says which of it the user may enter.
+  axisRanges: [
+    [q.tdb, 10, 40],
+    [q.tr, 10, 40],
+    [q.t_o, 10, 40],
+    [q.hr, 0, 0.03],
+    [q.v, 0, 2],
+    [q.rh, 0, 100],
+    [q.met, 1, 4],
+    [q.clo, 0, 2],
+  ],
   table: [q.pmv, q.ppd],
   charts: [
     // ISO 7730 is Fanger unmodified; the elevated-air-speed cooling effect is
