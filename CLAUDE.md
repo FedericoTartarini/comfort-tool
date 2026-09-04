@@ -12,7 +12,9 @@ Guidance for Claude Code when working in this repository.
 > - Phased rewrite plan: [docs/rewrite-plan.md](docs/rewrite-plan.md)
 > - Code quality checklist: [docs/code-quality-checklist.md](docs/code-quality-checklist.md)
 >
-> Current position: Phase 3 done. **Phases 3.5 – 3.7 freeze the contracts before
+> Current position: Phase 3.5 done, plus an unplanned round that brought the
+> library into line with the current pythermalcomfort (rewrite plan, "Library
+> alignment"). Next is Phase 3.6. **Phases 3.5 – 3.7 freeze the contracts before
 > the Phase 4 acceptance** — every known change to `RegisteredModel`,
 > `ChartDeclaration` or `ChartSpec` lands there, so that "adding a model touches
 > two files" means something when it is tested.
@@ -58,7 +60,7 @@ src/
     workspace.ts chartType.ts unitSystem.ts entryModes.ts    closed sets: as const objects + plain functions
     standard.ts           library reference.standards object -> route path segment
     modelDeclaration.ts   defineModel + RegisteredModel
-    libraryInputs.ts      toLibraryInputs(slot, model, environment): Map -> library init, v -> vr, t_o -> tdb = tr
+    libraryInputs.ts      toLibraryInputs(slot, model, environment): Map -> library init, v -> vr, operative_tmp -> tdb = tr
     numberFormat.ts       the only number formatter
     units.ts              display units: symbol, step, SI <-> IP conversion (the one formula exception)
     bandPalette.ts        the one band palette: colour by position in a library IntervalScale
@@ -126,6 +128,14 @@ input steps, option copy, route path segments and the result-table column
 list belong to the model declaration file or `core/`, never to the library.
 Test: "would pythermalcomfort ship it?" (ADR §3).
 
+**The library follows pythermalcomfort.** The fork adopts upstream's logic *and*
+its naming by default; deviate only where TypeScript requires it, and write the
+reason at the site (kwargs objects, no `_` prefixes, `edition` rather than
+upstream's `model`). Never keep jsthermalcomfort 1.4.0's vocabulary out of
+inertia — it tracks an older upstream, which is how `clo_dynamic(…, "ISO")` came
+to compute neither standard's equation. A change here needs `npm run build` in
+the fork and then this app's four scripts, in the same pass.
+
 ## Coding conventions
 
 - **Runes only.** No `export let`, `$:`, `on:`, `<slot>`, `<svelte:component>`.
@@ -156,7 +166,7 @@ Test: "would pythermalcomfort ship it?" (ADR §3).
   names always come from `Quantity.label`; the app never writes one. The old
   tool's "Air temperature" was wrong and is not carried over; the library says
   "Dry-bulb air temperature". `temperatureMode` decides which quantity is shown
-  and which is the temperature axis (`tdb` or `t_o`), so axis labels switch
+  and which is the temperature axis (`tdb` or `operative_tmp`), so axis labels switch
   with it for free.
 - **Granularity.** One concept per file, 100–400 lines is normal. Plain functions
   over class hierarchies. Do not abstract for a second caller that does not exist.

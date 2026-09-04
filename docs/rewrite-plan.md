@@ -41,7 +41,7 @@ What is unmaintainable is `src/`, not `package.json`.
 | **§4.7 boundary root-finding + §5 `core/compute/zoneBoundary.ts`** | **`charts.psychrometricZone` (ported from the CBE original, `rhStep`/`saturationStep`/`epsilon`/`correctKnownDefects` configurable) + `bisect`/`secant`** |
 | §4.4 Adaptive real rendering | `charts.adaptiveAshraeZone` / `adaptiveEnZone` |
 | Model metadata (partial) | `pmv_ppd_iso.{label,description,tsv}`, `pmv_ppd_ashrae.{label,description,tsv,compliance,COMPLIANCE_LIMIT}`, `adaptive_*.{label,description,offsets}` |
-| Raw material for input calculators | `clo_dynamic`, `v_relative`, `running_mean_outdoor_temperature`, `met_typical_tasks`, `clo_individual_garments` |
+| Raw material for input calculators | `clo_dynamic_ashrae` / `clo_dynamic_iso`, `v_relative`, `running_mean_outdoor_temperature`, `met_typical_tasks`, `clo_individual_garments` |
 
 > **Do not write `core/compute/zoneBoundary.ts` (ADR §5)** — the library already has it; just pass `rhStep: 5`.
 
@@ -459,6 +459,67 @@ Everything in `core/charts/` and `ui/charts/`.
 6. Then run the deferred behaviour comparison: `cd ../comfort-tool-old && npm i && npm run dev`, and compare the result
    table, the zone vertices and an SI/IP round trip item by item. This is the moment for it — the geometry has just settled.
 
+### Executed 2026-09-05 ✅
+
+All six steps landed; `npm test` 49 tests, `check` / `lint` / `build` clean. Decisions and findings:
+
+| Item | Decision / finding |
+|---|---|
+| Axis ranges | Moved to the model declaration, then **moved again to model level**: `RegisteredModel.axisRanges` is one `[quantity, min, max]` table both charts read. Per-chart ranges were implemented first, exactly as ADR §4.4 specified, and produced `10, 40` four times in one file for a flexibility nothing in v1 or in the deployed tool uses — `comfort-tool-old` feeds one `pmvIndoorTemperatureRangeSi` constant to the psychrometric chart, the field chart and the operative axis alike. Model level also makes the psychrometric x range follow the entry mode for free. ADR §4.4 was corrected to match |
+| Viewport | 10–40 °C at 121 isoline samples, humidity ratio 0–0.03, matching `comfort-tool-old`'s `charts/psychrometric/humidity.ts:18`. `model.limits` no longer touches any chart |
+| `zones` | `(request: ZoneRequest) => ZonePolygon[]` on the dynamic declaration, handed the slot's resolved SI values and the drawn x extent so Phase 4's Adaptive can call `charts.adaptiveAshraeZone({ v, trmRange })` without new plumbing. The one field added before its consumer exists; a synthetic declaration in `dynamicChart.test.ts` stands in for that consumer until Phase 4 |
+| Hover | Per-trace `hover: "off" \| "field"` on `ChartSpec`. Chrome — isolines, zone outline, slot markers — stops capturing the pointer; the contour answers per cell and a zone polygon answers anywhere inside its fill (`hoveron: "fills"`). **The transparent probe layer ADR §4.4 asks for is deferred to Phase 5**, so the psychrometric chart currently has no cursor readout at all. Decided rather than drifted: the deployed tool's readout box is a Phase 5c interface concern |
+| Annotations | `ChartSpec.annotations`; the RH isolines are labelled 10 %–100 % where each curve leaves the top of the viewport. The `%` comes from the display unit, not from a literal |
+| `heatmap` → `contour` | Done, with `contours: { start: -0.5, end: n - 0.5, size: 1 }` so band index *k* owns its own step |
+| Axis selects | Both offer every entered quantity (`rh` included, which the limits-derived version could not) and each excludes the quantity the other holds. A second collision path was found and fixed: the entry mode maps both `tdb` and `tr` onto `operative_tmp`, so a `tdb × tr` chart collapsed onto one quantity. `resolvedAxes()` is now the single place both the chart and the select resolve axes through |
+| Step 6, the deferred comparison | **`comfort-tool-old` cannot run.** It resolves `jsthermalcomfort` through the same symlink as this app, and the fork's `typescript` branch no longer exports what it imports (`clo_tout`); the published 1.4.0 does not have what it needs either (`pmv_ppd_iso.tsv.bins`). Running it would mean rebuilding the fork on an older branch, which breaks this app. Compared against **the deployed tool's own `comfort-models.js`** instead — the draft was only ever its replica — with these results |
+| Result table parity | `comf.pmvEN` vs `io.pmvPpdIso` over eight input sets including the app's defaults: worst \|Δpmv\| **2.6e-14**, worst \|Δppd\| **8.1e-13** |
+| Zone parity | Every one of the 42 cool/warm-edge vertices, fed back through the deployed tool's own PMV: worst \|PMV − target\| **4.6e-4**, against the library's 1e-3 solver residual |
+| SI/IP round trip | `units.test.ts` plus a browser pass: 25 °C → 77 °F, 0.1 m/s → 19.69 fpm, viewport 50–104 °F, ISO input range 50–86 °F |
+
+---
+
+## Library alignment with pythermalcomfort · 2026-09-05
+
+Unplanned, inserted between 3.5 and 3.6. It began as one question about a single field and ended as the first full audit
+of the fork against upstream.
+
+**How it started.** Phase 3.5's psychrometric declaration carried `pmvVariant: "ISO"`, the string
+`charts.psychrometricZone` needs to pick a PMV formulation. The question "why does the app have to say that, when
+`pmv_ppd_iso` already hard-codes it?" traced back to upstream commit `61de959`, which **deleted** the combined
+`pmv_ppd(…, standard)` and replaced the switch with two functions. The fork had followed that in its `io` layer and not
+in `models/` or `charts/`, so `pmvVariant` was a legacy switch surfacing two layers up. The string
+`standard: "ISO" | "ASHRAE"` turned out to be the probe: everywhere it survived, the same migration was unfinished.
+
+**What the audit covered.** The fork's whole public surface — 8 models, 12 psychrometrics, 13 utilities, plus
+`reference` / `io` / `charts` — compared against upstream on equations, parameters, applicability and naming. Confirmed
+identical and not touched: `adaptive_ashrae` and `adaptive_en` (slopes, offsets, cooling effect, acceptability),
+`cooling_effect` (brent 0–40, still-air 0.1), the three `airspeed_control` conditions, `v_relative`, `f_svv`,
+`body_surface_area`, `running_mean_outdoor_temperature`, `units_converter`, and every psychrometric equation.
+
+**What was wrong (fork commit `3292f0b`).**
+
+| Finding | Fix |
+|---|---|
+| `clo_dynamic(clo, met, "ISO")` applied the ASHRAE formula with the threshold moved to met > 1. Upstream's `clo_dynamic_iso` is the ISO 9920:2007 Annex C correction and takes `v` and `i_a` — a different equation, not a different threshold | Split into `clo_dynamic_ashrae` / `clo_dynamic_iso` |
+| ISO `met` lower limit was `0`; jsthermalcomfort 1.4.0 checked `value < 0` while printing "between 0.8 and 4.0", so it never fired | `0.8`, as upstream. The app's input panel now shows the real range |
+| ISO applicability also bounds the **derived** `p_vap ≤ 2700 Pa` and the **output** `pmv ∈ [−2, 2]`. The library enforced both internally but `.limits` — the table every consumer reads — did not carry them | Both are rows now, and `io.quantities` gained `p_vap`. **The app still ignores them**: `outOfRangeInputs` only walks entered quantities. Carried into Phase 3.6 below |
+| `ashraeThermalSensation` was right-closed while ISO's was left-closed, so the two standards would label PMV = −0.5 differently. Upstream publishes no ASHRAE sensation scale at all | Left-closed, with the reasoning recorded in the library |
+| `pmv_ppd` still publicly exported; `psychrometricZone` still took a `standard` string defaulting to `"ASHRAE"` | `pmv_ppd` is internal; the zone takes the model function, required, no default. `pmvVariant` disappeared from the app |
+| No edition concept. Upstream's `pmv_ppd_iso` defaults to **7730-2025** and also accepts 7730-2005 | Added as `edition` — not upstream's `model`, which already means something else here. Verified: upstream runs both editions through the same kernel, so no number moves |
+| `two_nodes`, and the psychrometric function names, were 1.4.0's vocabulary tracking an older upstream | Renamed to `two_nodes_gagge`, `operative_tmp`, `mean_radiant_tmp`, `wet_bulb_tmp`, `dew_point_tmp`, `enthalpy_air`, `hr_to_rh`, occurrence by occurrence, and followed through this app |
+| Only 2 of the shared `validation-data-comfort-models` fixtures were subscribed, for 8 shipped models; `set_tmp` and `two_nodes` had no upstream conformance check at all | Six fixtures now, `VALIDATION_DATA_REF` pinned to `v1.0.0`. 192 model tests pass |
+| `set_tmp` carried a `units` parameter upstream had removed; `two_nodes` computed a percent-satisfied value it never returned; `psy_ta_rh`'s doc example showed a negative humidity ratio and a negative enthalpy | All three corrected |
+
+**The rule this produced**, now ADR §3: the fork follows upstream's logic *and* naming by default, and deviates only
+where TypeScript requires it, with the reason at the site. Kept deliberately: the kwargs object (TS has no keyword
+arguments), `reference/` as public data, the `io` layer, `charts/`, and `psychrometrics/` as its own module.
+
+Fork: 633 tests. App: 49 tests, `check` / `lint` / `build` clean, and the working brief is kept at the fork's
+`ALIGNMENT-BRIEF.md`.
+
+---
+
 ### Phase 3.6 · Input contract and panel
 
 Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclaration.ts`, `ui/inputs/`.
@@ -466,12 +527,23 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 1. `entryGroups` as a closed set plus `RegisteredModel.entryGroups`. Today `libraryInputs.ts` injects `rh` unconditionally,
    which would hand Adaptive — whose inputs are `tdb / tr / t_running_mean / v` — a quantity it does not take.
 2. The four remaining humidity entry modes, finishing Phase 2b's app side.
-3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. The consumer is Phase 3.7's ASHRAE PMV.
-4. `presets` on the declaration + a free-entry input that also offers a searchable preset list, fed by the library's
+3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. Two consumers now, which is what makes
+   the contract worth having: Phase 3.7's ASHRAE `airspeed_control`, and the ISO **edition** the library gained on
+   2026-09-05 (`"7730-2005"` / `"7730-2025"`, published as data so the option's choices are read, never written). The app
+   currently takes the library's default silently — decide there whether the result table names the edition, since
+   `model.label` does not.
+4. **The three kinds of applicability** (handed over by the library alignment). `pmv_ppd_iso.limits` now carries rows for
+   the derived `p_vap ≤ 2700 Pa` and the output `pmv ∈ [−2, 2]` beside the entered quantities, and `outOfRangeInputs`
+   walks entered quantities only, so both are silently ignored — the same hole the library just closed. They cannot
+   simply join the existing gate either: its semantics are "input out of range → do not calculate, keep the last valid
+   result", which is wrong for an output bound. A PMV of 2.4 must be *shown*, flagged as outside ISO 7730's
+   applicability. So: entered → correctable, blocks calculation; derived → reported against the inputs that produced it;
+   output → shown with a caveat. This is the Compliance column's business as much as the input panel's.
+5. `presets` on the declaration + a free-entry input that also offers a searchable preset list, fed by the library's
    `met_typical_tasks` and `clo_individual_garments`.
-5. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing
+6. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing
    `navigateTo(model)` with the left navigation, which stays.
-6. **Visual groundwork — not the design itself.** `app.css` gains the project's own tokens (a type scale, a spacing
+7. **Visual groundwork — not the design itself.** `app.css` gains the project's own tokens (a type scale, a spacing
    scale, a brand colour) instead of the shadcn neutral base it ships with today, and the primitives the app actually
    needs are generated: `select` (which replaces the native one Phase 3 hand-rolled in `ChartControls.svelte`), `card`,
    `separator`. Layout structure is deliberately untouched. Doing this here is what stops every later phase from
@@ -488,7 +560,8 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    for `untrack` to break the loop it thereby creates — the exact pattern Svelte's Best practices names ("avoid updating
    state inside effects"), and a violation of the ADR's own §6. Going async is the natural moment to fix it. Keeping the
    last valid result across an out-of-range input is genuinely stateful, so this is a redesign, not a substitution.
-4. Library side, in the fork: `suppressWarnings` on `BaseInputsInit`. One ASHRAE grid scan logs 300 "Assuming cooling
+4. Library side, in the fork: `suppressWarnings` on `BaseInputsInit`. **Still outstanding** — the 2026-09-05 alignment
+   round did not cover it; `charts.psychrometricZone` has `suppressModelWarnings`, the `io` inputs do not. One ASHRAE grid scan logs 300 "Assuming cooling
    effect = 0" lines; `charts.psychrometricZone` already silences its own trace and any field-drawing consumer needs the
    same (ADR §3).
 
@@ -504,11 +577,11 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 ## Phase 4 · Second model ← architecture acceptance, do not proceed if it fails
 
 **Goal**: add Adaptive (ASHRAE 55).
-**Prerequisites**: Phase 3. On the library side this needs `adaptive_ashrae.limits` / `.standard` and `io.quantities.t_o` (already included in Phase 1).
+**Prerequisites**: Phase 3. On the library side this needs `adaptive_ashrae.limits` / `.standard` and `io.quantities.operative_tmp` (added in Phase 1 as `t_o`, renamed 2026-09-05).
 
 Only two files may be touched: create `src/models/adaptiveAshrae.ts`, and add one line to `src/models/index.ts`.
 Adaptive renders for real with `chartType.dynamic`, with the axes locked to
-`t_running_mean × t_o` (axis labels from `Quantity.label`), and the output is the acceptability-class bands
+`t_running_mean × operative_tmp` (axis labels from `Quantity.label`), and the output is the acceptability-class bands
 (`charts.adaptiveAshraeZone`).
 
 **Prerequisites**: Phases 3.5 – 3.7. The `zones` source exists by then, so Adaptive's exact
@@ -564,7 +637,7 @@ Apply that writes into a target input, never entering the session or the share l
 Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly out:
 
 1. **Custom clothing ensemble** — build a garment list from the library's `clo_individual_garments`, Apply writes `clo`.
-2. **Dynamic predictive clothing** — `clo_dynamic`, Apply writes `clo`.
+2. **Dynamic predictive clothing** — `clo_dynamic_ashrae` / `clo_dynamic_iso` (split 2026-09-05; the ISO one also takes `v` and `i_a`), Apply writes `clo`.
 3. **Solar gain on occupants** — confirm first whether the fork already ports it; if not, that is a library task, since
    the formula is general (ADR §3).
 

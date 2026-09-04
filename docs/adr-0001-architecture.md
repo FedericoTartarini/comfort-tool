@@ -4,7 +4,7 @@
 - Scope: v1 (target 2026-10-01), and long-term maintenance thereafter
 - Supersedes: the prototype repository `main repo/comfort-tool` (Svelte 5, about 49k lines). The prototype is unmaintainable because of excessive layering; **no code is reused, only verified behaviour is borrowed**.
 - Companion: the `typescript` branch of the `jsthermalcomfort` fork (the calculation library; TypeScript, its build output consumed through a symlink, developed in parallel with this project). Section 4 also gives the library's public interface contract.
-- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6). Revision 2026-09-04 (Phase 2): the Compliance column colours a `category` by band position from the app's one palette (§4.3); PMV applies `v_relative` (§4.5); objects compared by identity live in `$state.raw` (§6). Revision 2026-09-04 (post-Phase 3 scope review): PMV (ASHRAE 55) enters the v1 scope, so v1 models do have options (§4.3, §7); chart axis ranges and the dynamic chart's zone source move into the model declaration (§4.4); hover never snaps on a field chart (§4.4); the ES5 summary page is downgraded to a static notice (§2, §7); the library gains `suppressWarnings` for grid scans (§3); constant naming and the `$effect` prohibition are spelled out (§6); a code-quality audit joins the acceptance criteria (§7); visual design gets a phase of its own rather than being assumed (§1, §7).
+- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6). Revision 2026-09-04 (Phase 2): the Compliance column colours a `category` by band position from the app's one palette (§4.3); PMV applies `v_relative` (§4.5); objects compared by identity live in `$state.raw` (§6). Revision 2026-09-04 (post-Phase 3 scope review): PMV (ASHRAE 55) enters the v1 scope, so v1 models do have options (§4.3, §7); chart axis ranges and the dynamic chart's zone source move into the model declaration (§4.4); hover never snaps on a field chart (§4.4); the ES5 summary page is downgraded to a static notice (§2, §7); the library gains `suppressWarnings` for grid scans (§3); constant naming and the `$effect` prohibition are spelled out (§6); a code-quality audit joins the acceptance criteria (§7); visual design gets a phase of its own rather than being assumed (§1, §7). Revision 2026-09-05 (Phase 3.5 + library alignment): the fork tracks upstream's naming as well as its logic, and quantity keys follow it (§3, §4.1.1); a limit row may name a derived quantity or an output (§4.1.2); `psychrometricZone` takes the model function instead of a `standard` string (§4.1.4); `axisRanges` is one table per model rather than one per chart (§4.3, §4.4); each trace carries a `hover` mode, the surface is a contour, and the probe layer is deferred to Phase 5 (§4.4).
 
 ---
 
@@ -66,11 +66,20 @@
 | Model functions and `io` wrappers; the name, description, **standard membership** (`model.standard`), classification scale (`tsv`, `offsets`) and **applicability limits** (min/max prescribed by the standard, `reference/` data, the single source) attached to the model function | Input order, default values, options and their copy, result table columns (`table`), the state and switching of entry groups (humidity / temperature) |
 | Unified output `Measure { quantity, value, unit, category, intervals }` (§4.1.3) | Compliance decision = interpretation of `Measure.category` / `intervals`; Explore's editable Bands |
 | Comfort-zone geometry: `charts.psychrometricZone` (boundary root-finding, including `trFollowsDb` for operative mode), `charts.adaptiveAshraeZone` | Grid scan, `ChartSpec`, legend, colours, viewport clipping, all Plotly specs |
-| The formulas behind input calculators (`clo_dynamic`, `v_relative`, `running_mean_outdoor_temperature`, solar gain, globe temperature…) | Which model offers which calculator button (declaration file) |
+| The formulas behind input calculators (`clo_dynamic_ashrae` / `clo_dynamic_iso`, `v_relative`, `running_mean_outdoor_temperature`, solar gain, globe temperature…) | Which model offers which calculator button (declaration file) |
 | Psychrometric functions (dew point / wet bulb / humidity ratio / vapour pressure ↔ RH, operative temperature) | Path segments for standards (`core/standard.ts`, keyed by the library's `reference.standards` objects), model-switching rules, share links, unit switching, UI |
 | Sequential simulation of stateful models (PHS, after v1) | Time-series row editor and session |
 | Out-of-range inputs return results + warnings instead of throwing; no DOM / `node-fetch` dependency, runs in a Worker | — |
 | `suppressWarnings` on the `io` inputs (2026-09-04): a parameter sweep calls a model tens of thousands of times and `cooling_effect` logs a line every time it cannot solve — 300 lines per 100×100 ASHRAE grid. `charts.psychrometricZone` already silences its own trace; any tool drawing a field needs the same, so the switch belongs to the library | — |
+
+**And the library follows pythermalcomfort** (2026-09-05). The test above decides *what* the library carries; this decides
+what it looks like once it is there. The fork adopts upstream's logic **and** its naming by default, and deviates only
+where TypeScript requires it, with the reason written at the site — a kwargs object where upstream has keyword
+arguments, no export where upstream uses a `_` prefix, `edition` where upstream's `model` parameter would collide with
+this project's meaning of "model". Where the fork is genuinely ahead — `reference/` as public data, the `io` layer,
+`charts/` — it stays ahead, and says so. What it may not do is keep jsthermalcomfort 1.4.0's vocabulary out of inertia:
+that vocabulary tracks an *older* upstream, and letting it drift is how `clo_dynamic(…, "ISO")` came to compute neither
+standard's equation. The first full audit against upstream ran on 2026-09-05 (rewrite plan, "Library alignment").
 
 Two explicitly stated exceptions:
 
@@ -96,20 +105,28 @@ The library already has four layers: `models` / `reference` / `io` / `charts`. O
 #### 4.1.1 Quantities (`jsthermalcomfort/io`, existing)
 
 ```ts
-export type QuantityKind = "temperature" | "airSpeed" | "percentage" | "metabolicRate"
-                         | "clothingInsulation" | "thermalSensation" | "pressure";   // pressure is new, for p_atm
+export type QuantityKind = "temperature" | "airSpeed" | "percentage" | "humidityRatio" | "metabolicRate"
+                         | "clothingInsulation" | "thermalSensation" | "pressure";
 export interface Quantity { readonly key: string; readonly kind: QuantityKind; readonly label: string;
                             readonly siUnit: string; readonly ipUnit: string; }        // units are just symbol strings
-export const quantities = { tdb, tr, v, vr, rh, met, clo, wme, t_running_mean, pmv, ppd, tmp_cmf,
-                            /* added in Phase 1 */ t_o, p_atm } as const;
+export const quantities = { tdb, tr, operative_tmp, v, vr, rh, hr, dew_point_tmp, wet_bulb_tmp,
+                            p_vap, p_atm, met, clo, wme, t_running_mean, pmv, ppd, tmp_cmf } as const;
 ```
 
 The app **does not redeclare quantities**; after `import { io } from 'jsthermalcomfort'` it references `io.quantities.tdb` with dot access. `siUnit` / `ipUnit` are the library's own calling convention; the app reads only `label` and `kind`, and display units are looked up by kind in `core/units.ts`. Whenever a model is added, any missing quantity is one added line in the library.
+
+**Key names follow pythermalcomfort** (§3): `operative_tmp`, `dew_point_tmp` and `wet_bulb_tmp` are upstream's spellings,
+not the abbreviations jsthermalcomfort 1.4.0 inherited from an older upstream. The app never writes a key anyway — it
+holds the `Quantity` object — so a rename upstream costs the app only the import sites that name the quantity.
 
 #### 4.1.2 Reference data (`jsthermalcomfort/reference`)
 
 - Classification scales, existing: `isoThermalSensation` / `ashraeThermalSensation` (`IntervalScale`, `classify()` / `labelFor()`), `adaptiveAshraeOffsets` / `adaptiveEnOffsets`, `enCategoryPmvLimits`.
 - **Applicability limits, new in Phase 1**: one table per standard, keyed by `Quantity` objects, `readonly { quantity, min, max }[]`. **The table is the single source**: compliance functions read min/max from the table, and warning copy is templated from the table, with no separate copies. Attached to the model function: `pmv_ppd_iso.limits`, `adaptive_ashrae.limits` (including `t_running_mean` 10..33.5), the same pattern as `label` / `tsv`.
+- **A limit row may name a quantity the user never types** (2026-09-05). ISO 7730's applicability includes the derived
+  vapour pressure `p_vap ≤ 2700 Pa` and the **output** bound `pmv ∈ [−2, 2]`; both are rows in `pmv_ppd_iso.limits`
+  alongside the entered ones. A consumer therefore cannot assume "one row = one input field", and the three kinds want
+  different treatment on screen — an entered value can be corrected, a derived or output bound can only be reported.
 - **Standard membership, new in Phase 1**: `reference.standards = { iso7730, ashrae55, en16798 }`, each a plain `{ id, name }` object; `pmv_ppd_iso.standard = standards.iso7730`. Models without a `standard` (UTCI) appear only in Explore. The existing `utilities.Standard` in the library is the compliance dispatch key (including `FAN_HEATWAVES`, `ANKLE_DRAFT`), which is not this; the names must stay distinct.
 
 #### 4.1.3 Unified inputs and outputs (`jsthermalcomfort/io`, existing)
@@ -126,7 +143,8 @@ io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI" })   // → PmvPpdIsoOutpu
 
 #### 4.1.4 Chart geometry (`jsthermalcomfort/charts`, existing)
 
-`psychrometricZone({ tr, vr, met, clo, pmvLimit, rhStep, saturationStep, epsilon, correctKnownDefects, trFollowsDb })` returns the `polygon` vertices; `adaptiveAshraeZone()` returns the upper and lower boundaries for each acceptability level. All SI, unclipped, uncoloured. `epsilon` is the PMV residual, not a temperature tolerance. `trFollowsDb` (new in Phase 1) makes `tr = db` follow along the x axis while solving; this is the geometry of the operative-mode psychrometric chart, and it is exactly how the old tool's psychtop chart was computed. Without it, the compliance zone in operative mode is wrong.
+`psychrometricZone({ model, tr, vr, met, clo, pmvLimit, rhStep, saturationStep, epsilon, correctKnownDefects, trFollowsDb })` returns the `polygon` vertices;
+`model` is the PMV model function itself (`pmv_ppd_iso` / `pmv_ppd_ashrae`), required and with no default: a model function already carries the formulation it applies, so the zone's geometry cannot disagree with the model whose comfort region it claims to draw. It replaces the `standard: 'ISO' | 'ASHRAE'` string that defaulted to `'ASHRAE'` (2026-09-05). `adaptiveAshraeZone()` returns the upper and lower boundaries for each acceptability level. All SI, unclipped, uncoloured. `epsilon` is the PMV residual, not a temperature tolerance. `trFollowsDb` (new in Phase 1) makes `tr = db` follow along the x axis while solving; this is the geometry of the operative-mode psychrometric chart, and it is exactly how the old tool's psychtop chart was computed. Without it, the compliance zone in operative mode is wrong.
 
 #### 4.1.5 Things the library does not have and should not have
 
@@ -159,7 +177,7 @@ export function workspaceFromId(id: string): Workspace | undefined;        // us
 const q = io.quantities;
 export const temperatureMode = {
   separate:  { id: 'separate',  panel: [q.tdb, q.tr], axis: q.tdb },
-  operative: { id: 'operative', panel: [q.t_o],       axis: q.t_o },
+  operative: { id: 'operative', panel: [q.operative_tmp], axis: q.operative_tmp },
 } as const;
 
 // src/core/standard.ts — adds only the app-specific path segment; the standard itself is the library's reference.standards object
@@ -191,9 +209,13 @@ export const pmvIso = defineModel({
     [q.tdb, 25], [q.tr, 25], [q.v, 0.1], [q.rh, 50], [q.met, 1.1], [q.clo, 0.5],
   ],
   entryGroups: [EntryGroup.humidity, EntryGroup.temperature],
+  axisRanges: [                                        // how far each quantity is drawn, SI; a viewport, never a limit
+    [q.tdb, 10, 40], [q.tr, 10, 40], [q.operative_tmp, 10, 40], [q.hr, 0, 0.03],
+    [q.v, 0, 2], [q.rh, 0, 100], [q.met, 1, 4], [q.clo, 0, 2],
+  ],
   charts: [
-    DynamicChart.withDefaultAxes(q.tdb, q.v),          // every model has this
-    PsychrometricChart.withZone(q.pmv),
+    { type: chartType.psychrometric, pmvModel: pmv_ppd_iso },        // the same function `run` calls
+    { type: chartType.dynamic, axes: { x: q.tdb, y: q.v }, output: q.pmv },   // every model has this
   ],
   table: [q.pmv, q.ppd],                               // required: result table columns, also the selectable outputs in Explore
   timeSeries: true,
@@ -214,27 +236,40 @@ Result table (`table`):
 
 | Type | Definition |
 |---|---|
-| `chartType.psychrometric` | x = `temperatureMode.axis` (`tdb` under separate, `t_o` under operative), axis label from `Quantity.label`; y = humidity ratio; RH isolines; compliance-zone polygon (`psychrometricZone`, with `trFollowsDb: true` under operative); marker points for the three slots |
-| `chartType.dynamic` | x / y are selectable quantities (under operative, `t_o` is offered and `tdb` / `tr` are not); banded contour surface (100×100 grid); optional zone polygons from a declared `zones` source; marker points; **every model gets it by default**. Adaptive renders with it: locked axes `t_running_mean × t_o`, and its bands are the **exact polygons** of `charts.adaptiveAshraeZone`, not the grid classification (decided 2026-09-04) |
+| `chartType.psychrometric` | x = `temperatureMode.axis` (`tdb` under separate, `operative_tmp` under operative), axis label from `Quantity.label`; y = humidity ratio; RH isolines; compliance-zone polygon (`psychrometricZone`, with `trFollowsDb: true` under operative); marker points for the three slots |
+| `chartType.dynamic` | x / y are selectable quantities (under operative, `operative_tmp` is offered and `tdb` / `tr` are not); banded contour surface (100×100 grid); optional zone polygons from a declared `zones` source; marker points; **every model gets it by default**. Adaptive renders with it: locked axes `t_running_mean × operative_tmp`, and its bands are the **exact polygons** of `charts.adaptiveAshraeZone`, not the grid classification (decided 2026-09-04) |
 
 Parametric curve charts (SET outputs, heat loss) and time-series line charts are added to the chart library first and then referenced by models, when needed. `PlotlyChart.svelte` receives only a `ChartSpec` (a restricted subset of traces / layout / annotations) and imports no model.
 
 Axis rules (2026-09-04):
 
-- **Axis ranges are declared, not derived from the applicability limits.** Each chart in the model file carries its axes'
-  ranges, defaulting to the ranges the deployed CBE tool draws (psychrometric x 10–40 °C at 121 samples, humidity ratio
-  0–0.03; PMV field axes tdb 10–40, v 0–2, rh 0–100, met 1–4). `model.limits` goes back to doing one job: validating what
-  the user typed. The two were conflated in Phase 3, which clipped the ISO chart to the 10–30 °C applicability range and
-  left `rh` — which no standard limits — unable to carry an axis at all.
+- **Axis ranges are declared, not derived from the applicability limits.** `model.limits` goes back to doing one job:
+  validating what the user typed. The two were conflated in Phase 3, which clipped the ISO chart to the 10–30 °C
+  applicability range and left `rh` — which no standard limits — unable to carry an axis at all.
+- **One `axisRanges` table per model, not per chart** (revised 2026-09-05). `RegisteredModel.axisRanges` is a list of
+  `[quantity, min, max]` in SI, and both chart types read it through `axisRangeFor(model, quantity)`; the defaults are
+  the extents the deployed CBE tool draws (temperatures 10–40 °C, humidity ratio 0–0.03, v 0–2, rh 0–100, met 1–4,
+  clo 0–2), and the psychrometric chart samples its isolines at 121 points across the temperature range. Per-chart
+  ranges were tried first, as this section originally specified, and bought nothing: the deployed tool feeds one
+  constant to every chart it draws, so the only thing the extra level produced was `10, 40` written four times in one
+  declaration. Model level also makes the psychrometric x range follow the temperature entry mode for free, since it is
+  the range of whichever quantity the mode puts on the axis. Should two charts of one model ever need different extents,
+  an optional per-chart override is a purely additive change.
 - The dynamic chart offers **every entered quantity** on both axes, and each axis excludes the quantity the other one holds:
   `x === y` is not a chart.
 
 Hover rules (2026-09-04):
 
 - **A field chart never snaps.** Hover reports whatever is under the cursor — the axis values, the output there, the band
-  it falls in — via a transparent probe layer covering the plot area. Curves that are not the subject of the reading, the
-  psychrometric chart's RH isolines included, do not capture the pointer, and neither do the slot markers.
+  it falls in. Curves that are not the subject of the reading, the psychrometric chart's RH isolines included, do not
+  capture the pointer, and neither do the slot markers.
 - Snapping is reserved for the line charts added later, where the drawn point *is* the datum.
+- Each trace carries its own `hover` mode in the `ChartSpec`: `"off"` for chrome, `"field"` for the surface or filled
+  band that *is* the reading. The banded surface is a **contour**, so it answers per grid cell without snapping, and a
+  zone polygon answers anywhere inside its fill.
+- **The transparent probe layer is deferred to Phase 5** (2026-09-05). Phase 3.5 delivered "nothing snaps"; the
+  psychrometric chart consequently has no cursor readout at all until the layer exists, which is acceptable because the
+  deployed tool's t/rh/hr readout box is itself a Phase 5c interface concern.
 
 
 Legend rules:
@@ -255,7 +290,7 @@ class Session {                                        // shared by Standard + E
   environment: { atmosphericPressure: number };        // "Set pressure"; affects humidity conversion
 }
 class InputSlot {
-  values: SvelteMap<Quantity, number>;                 // canonical SI; cross-model superset bag (restored automatically on switching back); excludes rh; stores t_o under operative, tdb / tr under separate
+  values: SvelteMap<Quantity, number>;                 // canonical SI; cross-model superset bag (restored automatically on switching back); excludes rh; stores operative_tmp under operative, tdb / tr under separate
   humidity: { mode: HumidityMode; value: number };     // the quantity the user entered is the truth
   temperature: { mode: TemperatureMode };
   options: SvelteMap<OptionSpec, OptionValue>;         // OptionSpec is an app type, supplied by the declaration file; the two v1 models have no options
@@ -269,7 +304,7 @@ class Outputs { perSlot: readonly (ModelResult | null)[]; grid: GridResult | nul
 
 Rules:
 
-- **The quantity the user entered is the truth.** Humidity is stored as the original value in `humidity`; `rh` is derived by the pure function `toLibraryInputs(slot, model, environment)` from the current `tdb` and atmospheric pressure before sending to the Worker (changing `tdb` keeps the dew point and changes RH, consistent with the old tool); when switching representation, the current value is converted into the new representation. Under `temperatureMode.operative` the slot stores `t_o`, and `toLibraryInputs` expands it to `tdb = tr = t_o`; on a mode switch the value is converted: separate → operative uses the library's `psychrometrics.t_o(tdb, tr, v)`, operative → separate sets `tdb = tr = t_o`.
+- **The quantity the user entered is the truth.** Humidity is stored as the original value in `humidity`; `rh` is derived by the pure function `toLibraryInputs(slot, model, environment)` from the current `tdb` and atmospheric pressure before sending to the Worker (changing `tdb` keeps the dew point and changes RH, consistent with the old tool); when switching representation, the current value is converted into the new representation. Under `temperatureMode.operative` the slot stores `operative_tmp`, and `toLibraryInputs` expands it to `tdb = tr = operative_tmp`; on a mode switch the value is converted: separate → operative uses the library's `psychrometrics.operative_tmp(tdb, tr, v)`, operative → separate sets `tdb = tr = operative_tmp`.
 - `toLibraryInputs` also handles `v → vr`: the PMV panel shows `v`, the library needs `vr`. Whether `v_relative(v, met)` is applied is model behaviour, specified by the declaration file (`relativeAirSpeed`). Decided 2026-09-03: PMV declares `relativeAirSpeed: true`, matching the deployed CBE tool; the `refactor-draft` prototype passed the entered value through unchanged, so when comparing against it enter `v_relative(v, met)` there.
 - Outputs are derived entirely from Inputs + Chart, observed and written by `state/compute.svelte.ts`; transient UI state does not enter the Session.
 - Switching models: parameters for the same quantity are kept; parameters outside the new model's hard range open a dialog (title "Boundary Range Warning", a table Input / Current / Allowed range, buttons "Yes, switch and adjust" / "No, stay here"); no dialog when nothing is out of range; all three slots are handled the same way.
@@ -328,7 +363,7 @@ src/
     workspace.ts  chartType.ts  unitSystem.ts  entryModes.ts   closed sets (as const objects + plain functions)
     standard.ts           library reference.standards object → path segment
     modelDeclaration.ts   defineModel + RegisteredModel
-    libraryInputs.ts      toLibraryInputs(slot, model, environment): entry groups → library inputs (Map → init, v → vr, t_o → tdb = tr)
+    libraryInputs.ts      toLibraryInputs(slot, model, environment): entry groups → library inputs (Map → init, v → vr, operative_tmp → tdb = tr)
     numberFormat.ts       two decimals, trailing zeros stripped
     units.ts              display units: symbol, step, SI↔IP conversion (§3 exception)
     bandPalette.ts        the one band palette: colour by position in a library IntervalScale
