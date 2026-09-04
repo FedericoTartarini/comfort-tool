@@ -26,6 +26,7 @@ What is unmaintainable is `src/`, not `package.json`.
 | Second round (2026-09-03) | Limits are done as source in the library, not mirror; standard membership goes into the library as `reference.standards` + `model.standard`, the app only adds path segments; closed sets become `as const` object collections, not enum classes; operative mode uses the `t_o` quantity + `psychrometricZone.trFollowsDb`; quantity names come only from `Quantity.label` |
 | Psychrometric chart geometry | `correctKnownDefects: false` — reproduce the chart already published by the old CBE tool |
 | Scope review (2026-09-04, after Phase 3) | PMV (ASHRAE 55) joins v1 — it is the deployed tool's main screen and was missing from every list by oversight; input calculators become Phase 5b, narrowed to custom ensemble + dynamic predictive clothing + solar gain; the ES5 summary page is downgraded to a static notice; the site shell joins Phase 6; `suppressWarnings` goes into the library; chart axis ranges and the dynamic zone source move into the model declaration; field charts never snap on hover; local discomfort is deferred with its direction recorded (standalone models under the ASHRAE tab, not the legacy button panel) |
+| Visual design (2026-09-04) | It had no phase at all, and ADR §7.4 referred to a design mock-up no phase produced. Split in two: token and primitive groundwork in Phase 3.6, the design itself in a new Phase 5c after Compare / Explore settle the layout. The site shell moves from Phase 6 into 5c. Deferring is safe because ADR §2's utility-class ban keeps appearance out of business components |
 | Code quality (2026-09-04) | Two audit passes against `docs/code-quality-checklist.md` — full before the Phase 4 acceptance, narrow after it. Anything mechanically checkable becomes a lint rule with a probe. *Clean Code* / *Clean Architecture* are not acceptance criteria; the verified sources are Svelte Best practices, the TypeScript handbook's Do's and Don'ts, the Google TypeScript Style Guide, and DRY as Hunt & Thomas state it |
 
 ### Library inventory (`typescript` @ d57c456, runtime exports verified one by one)
@@ -72,6 +73,26 @@ while the CBE tool displays fpm — display units were never the library's busin
 
 Each Phase is designed to be executed in **its own new Claude chat**. When opening a new chat, start with:
 "Read `docs/adr-0001-architecture.md` and `CLAUDE.md`, then execute Phase N".
+
+**Model and effort.** Set once with `/model` at the start of each chat; do not change it mid-Phase
+(switching models invalidates the prompt cache).
+
+| Phase | Model | Effort |
+|---|---|---|
+| 0, 1, 4, 6 — execute a written checklist | Opus 5 | `high` |
+| 2, 3, 5 — write new code | Opus 5 | `xhigh` |
+| Plan mode, Phase 2 and Phase 5 only | Opus 5 | `max` |
+| Read-only investigation subagents | Opus 5 | `low` |
+
+Only Phases 2 and 5 repay plan mode — 2 because its ten steps are coupled and a wrong
+`defineModel` field invalidates the Phase 4 acceptance, 5 because its five sub-features need an
+order and a moment to freeze the share schema. Phase 4 must be executed directly: planning it
+invites discovering "a third file also needs to change" and quietly changing it, which is exactly
+what the acceptance exists to catch.
+
+Escalate to Fable 5.1 (2x the token price) only if the Phase 4 acceptance fails. Reasoning backwards
+from a third touched file to the wrong field in `defineModel` is the one piece of work in this plan
+with no checklist to follow; everything else is execution precision, which Opus 5 at `xhigh` covers.
 
 > **The most important step in Phase 0 is rewriting `CLAUDE.md` and `AGENTS.md`.**
 > Right now they describe the old architecture item by item (`src/declarations/**`, `PointSession`,
@@ -450,6 +471,11 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    `met_typical_tasks` and `clo_individual_garments`.
 5. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing
    `navigateTo(model)` with the left navigation, which stays.
+6. **Visual groundwork — not the design itself.** `app.css` gains the project's own tokens (a type scale, a spacing
+   scale, a brand colour) instead of the shadcn neutral base it ships with today, and the primitives the app actually
+   needs are generated: `select` (which replaces the native one Phase 3 hand-rolled in `ChartControls.svelte`), `card`,
+   `separator`. Layout structure is deliberately untouched. Doing this here is what stops every later phase from
+   improvising its own CSS: Phase 3 already had to, twice.
 
 ### Phase 3.7 · PMV (ASHRAE 55) + the Worker
 
@@ -547,6 +573,32 @@ already past, and an optional field with no consumer would be exactly the specul
 
 ---
 
+## Phase 5c · The interface, designed
+
+**Goal**: stop looking like a wireframe. Everything before this phase was correctness; this one is the product.
+**Prerequisites**: Phase 5. That is the point — Compare's three slots, the Explore workspace and the threshold editor
+all change the layout, so a design drawn before them would be redrawn after them.
+
+1. The three columns as designed rather than as stacked: real proportions, real density, a considered
+   information hierarchy. The architecture is fixed (ADR §1), the execution is not.
+2. Header and footer — title, unit switch, Documentation link, version / date / licence, Reset. **Moved here from
+   Phase 6** on 2026-09-04: they are design work, not wrap-up chores.
+3. One palette across UI and charts. `core/bandPalette.ts`'s `chartInk` is currently hand-picked hex against the CBE
+   fills; it becomes part of the design system rather than a chart-local constant.
+4. Responsive behaviour, and the result table's horizontal overflow — legible since Phase 2, never designed.
+5. The model-switch dialog mock-up ADR §7.4 refers to. It is produced here; until then that criterion is judged on
+   content, not appearance.
+
+**Why not earlier**: the lint rule that bans Tailwind utilities outside `ui/primitives/` and `ui/layout/` (ADR §2) is
+what makes deferring safe. Visual change reaches the app through tokens, primitives and the three layout components —
+business components never encode appearance, so redesigning them is not a rewrite of them.
+
+**Done criteria**
+- No hand-written CSS left in business components that a token or a primitive should be carrying.
+- The four scripts still pass, and no business component's logic changed to accommodate the design.
+
+---
+
 ## Phase 6 · UTCI acceptance + v1 wrap-up
 
 **Goal**: ADR §7 acceptance #1, then close out.
@@ -560,9 +612,11 @@ already past, and an optional field with no consumer would be exactly the specul
 3. Run all nine ADR §7 acceptance items (item 3 compares vertex geometry).
 4. One line of gtag; send `page_view` manually on route change, with the query string stripped from `page_location`
    (do not send the share payload to Google).
-5. Site shell, minimum set (ADR §4.1.5's "app actions", assigned here on 2026-09-04): header (title, unit switch,
-   Documentation link), footer (version, date, licence), and Reset. `Save` / `Reload` are not built — Export Link covers them.
-6. Merge back into `main`, remove the `git worktree`.
+5. Merge back into `main`, remove the `git worktree`.
+
+The site shell (header, footer, Reset) was briefly assigned here on 2026-09-04 and moved to Phase 5c the same day:
+it is design work, and doing it apart from the design would mean doing it twice. `Save` / `Reload` are not built at
+all — Export Link covers them.
 
 **After v1**: local discomfort (ankle draft, vertical air temperature difference) as standalone models under the ASHRAE tab; the remaining 5 models (heat_index / humidex / wind_chill / PHS / adaptive_en,
 each = library port + one declaration file + one registry line) → Time-series + PHS + `v1z.` compression

@@ -4,7 +4,7 @@
 - Scope: v1 (target 2026-10-01), and long-term maintenance thereafter
 - Supersedes: the prototype repository `main repo/comfort-tool` (Svelte 5, about 49k lines). The prototype is unmaintainable because of excessive layering; **no code is reused, only verified behaviour is borrowed**.
 - Companion: the `typescript` branch of the `jsthermalcomfort` fork (the calculation library; TypeScript, its build output consumed through a symlink, developed in parallel with this project). Section 4 also gives the library's public interface contract.
-- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6). Revision 2026-09-04 (Phase 2): the Compliance column colours a `category` by band position from the app's one palette (§4.3); PMV applies `v_relative` (§4.5); objects compared by identity live in `$state.raw` (§6). Revision 2026-09-04 (post-Phase 3 scope review): PMV (ASHRAE 55) enters the v1 scope, so v1 models do have options (§4.3, §7); chart axis ranges and the dynamic chart's zone source move into the model declaration (§4.4); hover never snaps on a field chart (§4.4); the ES5 summary page is downgraded to a static notice (§2, §7); the library gains `suppressWarnings` for grid scans (§3); constant naming and the `$effect` prohibition are spelled out (§6); a code-quality audit joins the acceptance criteria (§7).
+- Revision 2026-09-03: narrowed the library / app boundary per the test in §3 (§3, §4.1, §4.3, §5); `epsilon` changed to PMV residual (§1, §2, §4.7). Second round: limits are a source in the library, not a mirror; standard membership moves into the library (§4.1.2); closed sets become `as const` object collections (§4.0, §4.2); operative mode uses the `t_o` quantity and `psychrometricZone.trFollowsDb` (§4.1.4, §4.4, §4.5); quantity names come only from `Quantity.label` (§6). Revision 2026-09-04 (Phase 2): the Compliance column colours a `category` by band position from the app's one palette (§4.3); PMV applies `v_relative` (§4.5); objects compared by identity live in `$state.raw` (§6). Revision 2026-09-04 (post-Phase 3 scope review): PMV (ASHRAE 55) enters the v1 scope, so v1 models do have options (§4.3, §7); chart axis ranges and the dynamic chart's zone source move into the model declaration (§4.4); hover never snaps on a field chart (§4.4); the ES5 summary page is downgraded to a static notice (§2, §7); the library gains `suppressWarnings` for grid scans (§3); constant naming and the `$effect` prohibition are spelled out (§6); a code-quality audit joins the acceptance criteria (§7); visual design gets a phase of its own rather than being assumed (§1, §7).
 
 ---
 
@@ -20,7 +20,7 @@
 | Interaction | Change one input and the chart follows immediately; Standard / Explore have no calculate button; Time-series does |
 | Reference precision | The old tool's comfort zone is boundary root-finding: one line per 10% RH, PMV residual 0.001 (the comment in `static/js/psychchart.js` says "ta precision", but it is actually a PMV residual) |
 | Browsers | Full experience in modern browsers; **very old browsers must still be able to open a link and see the prefilled inputs** |
-| Visuals | Redesign is allowed; keep the three-column information architecture (left navigation / centre inputs / right results + chart); no dark mode in v1 |
+| Visuals | Redesign is allowed; keep the three-column information architecture (left navigation / centre inputs / right results + chart); no dark mode in v1. **Visual design is its own phase** (added 2026-09-04): the token and primitive groundwork lands in Phase 3.6, the design itself in Phase 5c — after Compare, Explore and the threshold editor have settled the layout, and before the v1 wrap-up. Designing earlier would be designing a layout that Phase 5 then replaces |
 | Testing | Before v1, unit tests for pure functions only; UI / e2e / visual tests after v1 |
 | Analytics | One-line Google Analytics script, recorded by path |
 | Open source | Public, MIT, PRs accepted |
@@ -382,7 +382,8 @@ index.html              embedded ES5 feature check + read-only summary page
 Scope: the three models **PMV (ISO 7730)**, **PMV (ASHRAE 55)** and **Adaptive (ASHRAE 55)**; Standard + Explore;
 Compare with three slots; SI/IP; five humidity entry modes; model-switch dialog; Explore threshold editor; input
 calculators (custom clothing ensemble, dynamic predictive clothing, solar gain); Export Link; simple export (editable
-title + input summary + tool name/version/date footer, PNG + SVG).
+title + input summary + tool name/version/date footer, PNG + SVG); and a designed interface — header, footer, the three
+columns as drawn rather than as stacked, and one palette shared by the UI and the charts.
 
 PMV (ASHRAE 55) was added on 2026-09-04: it is the deployed CBE tool's main screen, the library already ships it complete
 (`compliance`, `COMPLIANCE_LIMIT`, `limits`, `standard`), and neither the ADR nor the plan had a place for it — an omission,
@@ -398,7 +399,7 @@ Acceptance:
 1. Add **UTCI** as the third model: only one new declaration file + one registry line, zero changes to other files, and it appears only in the Explore navigation (no `standard` attached in the library).
 2. Export Link from any state → open in a new tab → the state is fully identical (three slots, units, chart type, thresholds, atmospheric pressure).
 3. The vertices of the PMV psychrometric-chart compliance zone differ from the old tool's vertices for the same inputs by ≤ 0.01 °C.
-4. Switching to a model with incompatible ranges shows a dialog whose content matches the design mock-up; no dialog when nothing is out of range.
+4. Switching to a model with incompatible ranges shows a dialog carrying the fields §4.5 specifies — title "Boundary Range Warning", a table of Input / Current / Allowed range, and the two buttons; no dialog when nothing is out of range. (Reworded 2026-09-04: this used to say "matches the design mock-up", referring to a mock-up no phase ever produced. The mock-up is now a Phase 5c deliverable, and this criterion names the content instead, so it can be judged before the design exists.)
 5. Opening a share link in an environment with `Proxy` disabled shows a static notice naming the required browser versions — never a blank page. (Downgraded 2026-09-04 from "the summary page lists all input values"; see §2.)
 6. After switching SI → IP → SI, the stored values are unchanged; every displayed number has at most two decimals and no trailing zeros.
 7. The result table columns are determined entirely by the model's declared `table` (`table` is required, and UTCI declares it too); any chart has exactly one legend, below the chart, and Plotly's built-in legend never appears.
