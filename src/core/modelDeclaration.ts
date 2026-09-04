@@ -72,12 +72,17 @@ export type ChartDeclaration =
   | {
       readonly type: typeof chartType.psychrometric;
       /**
-       * Which PMV variant the comfort zone is solved with — the library's
-       * calculation-variant selector, not standard membership. `"ISO"` is
-       * Fanger unmodified, `"ASHRAE"` adds the elevated-air-speed cooling
-       * effect.
+       * The PMV model the comfort zone is solved with — the library function
+       * itself, not a string naming a variant.
+       *
+       * This was `pmvVariant: "ISO" | "ASHRAE"`, a workaround for
+       * `psychrometricZone` taking a `standard` string that defaulted to
+       * `"ASHRAE"`: a model could be declared with a variant its own function
+       * contradicts, and omitting the field drew ASHRAE geometry under an ISO
+       * model. The library now takes the model function, which already carries
+       * the standard it applies, so the two cannot disagree.
        */
-      readonly pmvVariant: PsychrometricZoneOptions["standard"];
+      readonly pmvModel: PsychrometricZoneOptions["model"];
     }
   | {
       readonly type: typeof chartType.dynamic;

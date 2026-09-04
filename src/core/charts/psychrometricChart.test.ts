@@ -31,7 +31,7 @@ function slot(mode: typeof temperatureMode.separate | typeof temperatureMode.ope
     [q.clo, clo],
   ]);
   if (mode === temperatureMode.operative) {
-    values.set(q.t_o, 25);
+    values.set(q.operative_tmp, 25);
   } else {
     values.set(q.tdb, 26);
     values.set(q.tr, 24);
@@ -98,7 +98,7 @@ describe("psychrometricSpec", () => {
 
   it("labels the x axis with the entry mode's temperature quantity", () => {
     expect(psychrometricSpec(request(temperatureMode.separate), declaration).layout.x.title).toContain(q.tdb.label);
-    expect(psychrometricSpec(request(temperatureMode.operative), declaration).layout.x.title).toContain(q.t_o.label);
+    expect(psychrometricSpec(request(temperatureMode.operative), declaration).layout.x.title).toContain(q.operative_tmp.label);
   });
 
   it("marks the slot's own psychrometric state", () => {

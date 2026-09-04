@@ -23,7 +23,7 @@ export const pmvIso = defineModel({
   axisRanges: [
     [q.tdb, 10, 40],
     [q.tr, 10, 40],
-    [q.t_o, 10, 40],
+    [q.operative_tmp, 10, 40],
     [q.hr, 0, 0.03],
     [q.v, 0, 2],
     [q.rh, 0, 100],
@@ -32,9 +32,10 @@ export const pmvIso = defineModel({
   ],
   table: [q.pmv, q.ppd],
   charts: [
-    // ISO 7730 is Fanger unmodified; the elevated-air-speed cooling effect is
-    // the ASHRAE variant's.
-    { type: chartType.psychrometric, pmvVariant: "ISO" },
+    // The same function this model runs, so the zone is Fanger unmodified for
+    // the same reason the results are — the elevated-air-speed cooling effect
+    // belongs to `pmv_ppd_ashrae`.
+    { type: chartType.psychrometric, pmvModel: pmv_ppd_iso },
     { type: chartType.dynamic, axes: { x: q.tdb, y: q.v }, output: q.pmv },
   ],
 });

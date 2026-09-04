@@ -34,7 +34,7 @@ function separateSlot(overrides: Partial<Record<"tdb" | "tr" | "v" | "met" | "cl
 function operativeSlot(operative: number): SlotInputs {
   return {
     values: new Map<Quantity, number>([
-      [q.t_o, operative],
+      [q.operative_tmp, operative],
       [q.v, 0.1],
       [q.met, 1.1],
       [q.clo, 0.5],
@@ -70,7 +70,7 @@ describe("toLibraryInputs", () => {
     const init = toLibraryInputs(operativeSlot(24), pmvIso);
     expect(init.tdb).toBe(24);
     expect(init.tr).toBe(24);
-    expect(init).not.toHaveProperty("t_o");
+    expect(init).not.toHaveProperty("operative_tmp");
   });
 
   it("feeds the declared model a finite result end to end", () => {
@@ -93,10 +93,10 @@ describe("outOfRangeInputs", () => {
   });
 
   it("checks an operative entry against every temperature it replaces", () => {
-    const range = enteredRange(pmvIso, q.t_o, temperatureMode.operative);
+    const range = enteredRange(pmvIso, q.operative_tmp, temperatureMode.operative);
     const tdbLimit = pmvIso.model.limits?.find((limit) => limit.quantity === q.tdb);
     expect(range?.max).toBe(tdbLimit?.max);
-    expect(outOfRangeInputs(operativeSlot((range?.max ?? 0) + 1), pmvIso)).toEqual([q.t_o]);
+    expect(outOfRangeInputs(operativeSlot((range?.max ?? 0) + 1), pmvIso)).toEqual([q.operative_tmp]);
     expect(outOfRangeInputs(operativeSlot(range?.max ?? 0), pmvIso)).toEqual([]);
   });
 
@@ -114,7 +114,7 @@ describe("entered values", () => {
 
   it("lists the panel rows of the current temperature mode", () => {
     expect(enteredQuantities(pmvIso, temperatureMode.separate)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
-    expect(enteredQuantities(pmvIso, temperatureMode.operative)).toEqual([q.t_o, q.v, q.rh, q.met, q.clo]);
+    expect(enteredQuantities(pmvIso, temperatureMode.operative)).toEqual([q.operative_tmp, q.v, q.rh, q.met, q.clo]);
   });
 
   it("re-derives everything downstream of a swept value", () => {
@@ -131,7 +131,7 @@ describe("entered values", () => {
   });
 
   it("expands a swept operative temperature to both temperatures", () => {
-    const swept = withEnteredValues(operativeSlot(24), new Map([[q.t_o, 28]]));
+    const swept = withEnteredValues(operativeSlot(24), new Map([[q.operative_tmp, 28]]));
     const init = toLibraryInputs(swept, pmvIso);
     expect(init.tdb).toBe(28);
     expect(init.tr).toBe(28);

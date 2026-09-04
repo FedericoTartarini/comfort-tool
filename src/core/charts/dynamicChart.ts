@@ -124,8 +124,9 @@ export function dynamicSpec(
 
 /**
  * The axes actually drawn. A remembered axis follows the entry mode, so
- * switching to operative entry sweeps `t_o` rather than a `tdb` the slot no
- * longer holds — and because that maps both `tdb` and `tr` onto `t_o`, a chart
+ * switching to operative entry sweeps `operative_tmp` rather than a `tdb` the
+ * slot no longer holds — and because that maps both `tdb` and `tr` onto
+ * `operative_tmp`, a chart
  * of one against the other would collapse onto a single quantity. x === y is
  * not a chart (ADR §4.4), so the y axis moves to the next quantity that can
  * carry one.

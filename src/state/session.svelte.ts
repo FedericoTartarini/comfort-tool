@@ -1,5 +1,5 @@
 import { quantities, type Quantity } from "jsthermalcomfort/io";
-import { t_o } from "jsthermalcomfort/psychrometrics";
+import { operative_tmp } from "jsthermalcomfort/psychrometrics";
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
@@ -11,8 +11,8 @@ const q = quantities;
 /**
  * One set of inputs (ADR §4.5). Canonical SI; the quantity the user entered is
  * the truth. `values` is the cross-model superset bag: it excludes `rh`
- * (held in `humidity`), stores `t_o` under operative mode and `tdb` / `tr`
- * under separate mode.
+ * (held in `humidity`), stores `operative_tmp` under operative mode and
+ * `tdb` / `tr` under separate mode.
  */
 export class InputSlot {
   readonly values = new SvelteMap<Quantity, number>();
@@ -41,23 +41,24 @@ export class InputSlot {
 
   /**
    * Convert the stored temperatures into the new representation. Separate →
-   * operative uses the library's `t_o(tdb, tr, v)`; operative → separate sets
-   * `tdb = tr = t_o`. Lossy and one-way, as in the old tool.
+   * operative uses the library's `operative_tmp(tdb, tr, v)`; operative →
+   * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, as in the old
+   * tool.
    */
   setTemperatureMode(mode: TemperatureMode): void {
     if (mode === this.temperature.mode) {
       return;
     }
     if (mode === temperatureMode.operative) {
-      const operative = t_o(this.require(q.tdb), this.require(q.tr), this.require(q.v));
-      this.values.set(q.t_o, operative);
+      const operative = operative_tmp(this.require(q.tdb), this.require(q.tr), this.require(q.v));
+      this.values.set(q.operative_tmp, operative);
       this.values.delete(q.tdb);
       this.values.delete(q.tr);
     } else {
-      const operative = this.require(q.t_o);
+      const operative = this.require(q.operative_tmp);
       this.values.set(q.tdb, operative);
       this.values.set(q.tr, operative);
-      this.values.delete(q.t_o);
+      this.values.delete(q.operative_tmp);
     }
     this.temperature = { mode };
   }

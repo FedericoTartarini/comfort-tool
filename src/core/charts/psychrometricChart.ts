@@ -34,7 +34,7 @@ const ZONE_RH_STEP = 5;
  * traced by `charts.psychrometricZone`, and the slot's current state.
  *
  * The x axis quantity is the temperature entry mode's (`tdb` when the two
- * temperatures are entered separately, `t_o` under operative entry), and
+ * temperatures are entered separately, `operative_tmp` under operative entry), and
  * operative entry solves the zone with `trFollowsDb`, which is the geometry
  * the CBE tool's psychtop chart draws. No root finder is written here — the
  * library owns that (ADR §4.1.4). The drawn extent is the model's declared
@@ -58,7 +58,7 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
     vr: requireValue(resolved, model.relativeAirSpeed ? q.vr : q.v),
     met: requireValue(resolved, q.met),
     clo: requireValue(resolved, q.clo),
-    standard: chart.pmvVariant,
+    model: chart.pmvModel,
     rhStep: ZONE_RH_STEP,
     // Decided in the rewrite plan: reproduce the chart the CBE tool publishes.
     correctKnownDefects: false,

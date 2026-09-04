@@ -25,17 +25,17 @@ export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Qu
 
 /**
  * Entry-group representations → the SI quantities the library model takes
- * (ADR §4.5): operative temperature expands to `tdb = tr = t_o`, the humidity
- * entry becomes `rh`, and `v` becomes `vr` when the model asks for it.
+ * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
+ * humidity entry becomes `rh`, and `v` becomes `vr` when the model asks for it.
  */
 export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map<Quantity, number> {
   const resolved = new Map(slot.values);
 
   if (slot.temperature.mode === temperatureMode.operative) {
-    const operative = requireValue(resolved, q.t_o);
+    const operative = requireValue(resolved, q.operative_tmp);
     resolved.set(q.tdb, operative);
     resolved.set(q.tr, operative);
-    resolved.delete(q.t_o);
+    resolved.delete(q.operative_tmp);
   }
 
   // Relative humidity is the only humidity mode until the library ships the
@@ -129,8 +129,8 @@ export function enteredValue(slot: SlotInputs, quantity: Quantity): number | und
 /**
  * The same slot with some entered values replaced — how the dynamic chart
  * sweeps its axes. Replacing before resolution keeps the derivations honest:
- * an overridden `v` is still turned into `vr`, an overridden `t_o` still
- * expands to `tdb = tr`.
+ * an overridden `v` is still turned into `vr`, an overridden `operative_tmp`
+ * still expands to `tdb = tr`.
  */
 export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quantity, number>): SlotInputs {
   const values = new Map(slot.values);

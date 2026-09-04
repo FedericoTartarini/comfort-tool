@@ -15,16 +15,16 @@ export interface TemperatureMode {
 
 export const temperatureMode = {
   separate: { id: "separate", panel: [quantities.tdb, quantities.tr], axis: quantities.tdb },
-  operative: { id: "operative", panel: [quantities.t_o], axis: quantities.t_o },
+  operative: { id: "operative", panel: [quantities.operative_tmp], axis: quantities.operative_tmp },
 } as const satisfies Record<string, TemperatureMode>;
 
 /**
  * The quantity that stands in for `quantity` under `mode`.
  *
  * Temperatures are named per mode, so anything remembered across a mode switch
- * has to be re-pointed: a remembered `tdb` or `tr` becomes `t_o` under
- * operative entry, and `t_o` becomes `tdb` again under separate entry. Every
- * other quantity is returned untouched.
+ * has to be re-pointed: a remembered `tdb` or `tr` becomes `operative_tmp`
+ * under operative entry, and `operative_tmp` becomes `tdb` again under
+ * separate entry. Every other quantity is returned untouched.
  */
 export function underTemperatureMode(quantity: Quantity, mode: TemperatureMode): Quantity {
   if (mode.panel.includes(quantity)) {

@@ -135,7 +135,7 @@ describe("dynamicAxisQuantities", () => {
 
   it("follows the temperature entry mode", () => {
     const operative = dynamicAxisQuantities(pmvIso, temperatureMode.operative);
-    expect(operative).toContain(q.t_o);
+    expect(operative).toContain(q.operative_tmp);
     expect(operative).not.toContain(q.tdb);
   });
 });
@@ -144,7 +144,7 @@ describe("axes across a temperature entry mode switch", () => {
   it("sweeps the operative temperature when a remembered tdb axis no longer exists", () => {
     const operativeSlot: SlotInputs = {
       values: new Map<Quantity, number>([
-        [q.t_o, 26],
+        [q.operative_tmp, 26],
         [q.v, 0.1],
         [q.met, 1.1],
         [q.clo, 0.5],
@@ -154,7 +154,7 @@ describe("axes across a temperature entry mode switch", () => {
     };
     // declaration.axes.x is tdb, which the slot no longer holds.
     const spec = dynamicSpec({ ...request, slot: operativeSlot }, declaration, declaration.axes);
-    expect(spec.layout.x.title).toContain(q.t_o.label);
+    expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     // The whole field would carry one band if the sweep were being discarded.
     const surface = bands(spec);
     expect(new Set(surface.z.flat()).size).toBeGreaterThan(1);
@@ -162,12 +162,12 @@ describe("axes across a temperature entry mode switch", () => {
     expect(marker?.x).toBe(26);
   });
 
-  it("moves the second axis off the first when the mode maps both onto t_o", () => {
+  it("moves the second axis off the first when the mode maps both onto operative_tmp", () => {
     // tdb × tr is a chart under separate entry; under operative entry both
-    // become t_o, and a quantity against itself is not a chart.
+    // become operative_tmp, and a quantity against itself is not a chart.
     const axes = resolvedAxes(pmvIso, { x: q.tdb, y: q.tr }, temperatureMode.operative);
-    expect(axes.x).toBe(q.t_o);
-    expect(axes.y).not.toBe(q.t_o);
+    expect(axes.x).toBe(q.operative_tmp);
+    expect(axes.y).not.toBe(q.operative_tmp);
     expect(dynamicAxisQuantities(pmvIso, temperatureMode.operative)).toContain(axes.y);
   });
 
