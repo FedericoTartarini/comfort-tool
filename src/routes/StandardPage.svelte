@@ -80,6 +80,7 @@
             inputSlot={session.slots[0]}
             unitSystem={session.unitSystem}
             outOfRange={outputs.outOfRange}
+            violations={outputs.violations}
           />
         </Stack>
       </section>
@@ -92,6 +93,7 @@
             unitSystem={session.unitSystem}
             slotName={copy.slotName(0)}
             outOfRange={outputs.outOfRange.length > 0}
+            violations={outputs.violations}
           />
 
           <ChartControls model={session.model} inputSlot={session.slots[0]} chart={session.chart} />

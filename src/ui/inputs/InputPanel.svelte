@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Quantity } from "jsthermalcomfort/io";
+  import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
   import { temperatureMode } from "$lib/core/entryModes";
   import { enteredQuantities, enteredRange, enteredValue } from "$lib/core/libraryInputs";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -16,11 +17,17 @@
     inputSlot: InputSlot;
     unitSystem: UnitSystem;
     outOfRange: readonly Quantity[];
+    violations: readonly ApplicabilityLimit[];
   }
 
-  let { model, inputSlot, unitSystem, outOfRange }: Props = $props();
+  let { model, inputSlot, unitSystem, outOfRange, violations }: Props = $props();
 
   const rows = $derived(enteredQuantities(model, inputSlot.temperature.mode));
+
+  // Everything but the result's own bound. Entered values are gated before the call, so an `input` row
+  // here comes from a value the panel did not show the library: the relative air speed vr = v + 0.3(met − 1),
+  // which the kernel range-checks against the `v` row — so the sentence is the one the entered speed would give.
+  const hints = $derived(violations.filter((limit) => limit.role !== "output"));
 
   function valueOf(quantity: Quantity): number {
     return enteredValue(inputSlot, quantity) ?? Number.NaN;
@@ -60,4 +67,20 @@
       oncommit={(si) => commit(quantity, si)}
     />
   {/each}
+
+  {#if hints.length > 0}
+    <Stack gap="1">
+      <span class="hint">{copy.applicabilityHint}</span>
+      {#each hints as limit (limit)}
+        <span class="hint">{limit.warning}</span>
+      {/each}
+    </Stack>
+  {/if}
 </Stack>
+
+<style>
+  .hint {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+</style>

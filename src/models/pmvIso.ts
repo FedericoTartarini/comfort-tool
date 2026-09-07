@@ -1,11 +1,17 @@
 import { io, pmv_ppd_iso } from "jsthermalcomfort";
+import type { PmvPpdIsoEdition } from "jsthermalcomfort";
+import type { PmvPpdIsoInit } from "jsthermalcomfort/io";
 import { chartType } from "$lib/core/chartType";
 import { defineModel } from "$lib/core/modelDeclaration";
 
 const q = io.quantities;
 
+// 7730-2005, not the library's 2025 default: rewrite plan, Phase 3.6 item 3.
+const ISO_EDITION: PmvPpdIsoEdition = "7730-2005";
+
 export const pmvIso = defineModel({
-  run: io.pmvPpdIso,
+  run: (init: PmvPpdIsoInit) => io.pmvPpdIso({ ...init, edition: ISO_EDITION }),
+  edition: ISO_EDITION,
   model: pmv_ppd_iso,
   pathSegment: "pmv-iso",
   inputs: [

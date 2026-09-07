@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Measure, Quantity } from "jsthermalcomfort/io";
+  import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
   import { colorForBand, intervalColor } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { formatNumber } from "$lib/core/numberFormat";
@@ -15,17 +16,21 @@
     unitSystem: UnitSystem;
     slotName: string;
     outOfRange: boolean;
+    violations: readonly ApplicabilityLimit[];
   }
 
-  let { model, measures, unitSystem, slotName, outOfRange }: Props = $props();
+  let { model, measures, unitSystem, slotName, outOfRange, violations }: Props = $props();
 
   // ADR §4.3: the Compliance column appears only when the model's measures
   // carry a category or intervals. Colour by band position (bandPalette) for
   // a category, by satisfaction for an interval.
+  // An output-role violation also opens the column: a PMV of 2.4 is shown, with
+  // the row it broke as its caveat.
   const classified = $derived(
     (measures ?? []).filter((measure) => measure.category !== undefined || measure.intervals.length > 0),
   );
-  const hasCompliance = $derived(classified.length > 0);
+  const caveats = $derived(violations.filter((limit) => limit.role === "output"));
+  const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
 
   function cellText(quantity: Quantity): string {
     const measure = measures?.find((entry) => entry.quantity === quantity);
@@ -76,6 +81,9 @@
                 </span>
               {/each}
             {/each}
+            {#each caveats as limit (limit)}
+              <span class="band caveat">{limit.warning}</span>
+            {/each}
           </Table.Cell>
         {/if}
         {#each model.table as quantity (quantity)}
@@ -83,8 +91,11 @@
         {/each}
       </Table.Row>
     </Table.Body>
-    {#if outOfRange}
-      <Table.Caption>{copy.outOfRange}</Table.Caption>
+    {#if outOfRange || model.edition}
+      <Table.Caption>
+        {#if outOfRange}<span>{copy.outOfRange}</span>{/if}
+        {#if model.edition}<span class="edition">{copy.edition(model.edition)}</span>{/if}
+      </Table.Caption>
     {/if}
   </Table.Root>
 </div>
@@ -111,5 +122,15 @@
     height: 0.75em;
     border: 1px solid var(--border);
     border-radius: 50%;
+  }
+
+  .caveat {
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    white-space: normal;
+  }
+
+  .edition:not(:first-child) {
+    margin-left: 0.75em;
   }
 </style>

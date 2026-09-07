@@ -108,6 +108,13 @@ export interface RegisteredModel {
   /** The library's io wrapper. Called only by state/compute (Phase 3: only in the worker). */
   readonly run: (init: LibraryInit) => Outcome;
   readonly model: LibraryModel;
+  /**
+   * The edition of the standard `run` pins, named beside the results. Absent
+   * when the library offers none. The declaration passes the same constant to
+   * `run`, so the label and the call cannot disagree (rewrite plan, Phase 3.6
+   * item 3: pinned, never offered as an option while editions share a kernel).
+   */
+  readonly edition?: string;
   /** Route segment, e.g. `"pmv-iso"`. App-owned. */
   readonly pathSegment: string;
   /** Panel order and SI default values. */

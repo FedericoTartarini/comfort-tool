@@ -1,4 +1,5 @@
 import type { Measure, Quantity } from "jsthermalcomfort/io";
+import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
 import { untrack } from "svelte";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicSpec } from "$lib/core/charts/dynamicChart";
@@ -17,6 +18,11 @@ export class Outputs {
   perSlot = $state.raw<readonly (readonly Measure[] | null)[]>([null, null, null]);
   /** Entered quantities currently outside the model's applicability limits. */
   outOfRange = $state.raw<readonly Quantity[]>([]);
+  /**
+   * Applicability rows slot 0's last run broke (`Outcome.violations`), kept with
+   * the result they describe: not touched while the gate blocks a run.
+   */
+  violations = $state.raw<readonly ApplicabilityLimit[]>([]);
   /** Last valid chart, likewise kept while an input is out of range. */
   chart = $state.raw<ChartSpec | null>(null);
 }
@@ -53,7 +59,9 @@ export function observeSession(session: Session, outputs: Outputs): void {
     if (outOfRange.length > 0) {
       return;
     }
-    const measures = model.run(toLibraryInputs(slot, model)).toMeasures();
+    const outcome = model.run(toLibraryInputs(slot, model));
+    const measures = outcome.toMeasures();
+    outputs.violations = outcome.violations;
     // Untracked: reading perSlot here would make the write below re-run the effect.
     outputs.perSlot = untrack(() => outputs.perSlot).map((kept, index) => (index === 0 ? measures : kept));
     outputs.chart = chartSpecOf(session);

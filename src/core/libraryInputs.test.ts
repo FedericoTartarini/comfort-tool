@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { io, v_relative } from "jsthermalcomfort";
-import type { Quantity } from "jsthermalcomfort/io";
+import type { PmvPpdIsoOutputs, Quantity } from "jsthermalcomfort/io";
 import { pmvIso } from "$lib/models/pmvIso";
 import { humidityMode, temperatureMode } from "./entryModes";
 import {
@@ -103,6 +103,13 @@ describe("outOfRangeInputs", () => {
   it("has no range for a quantity the standard does not limit", () => {
     expect(enteredRange(pmvIso, q.rh, temperatureMode.separate)).toBeUndefined();
   });
+
+  it("does not gate a value only a derived row bounds", () => {
+    // tdb at the ISO bound, rh 95: no entered value breaks a row; the derived vapour pressure does (Task 5 pins that).
+    const slot = separateSlot({ tdb: 30, tr: 30 });
+    const humid: SlotInputs = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
+    expect(outOfRangeInputs(humid, pmvIso)).toEqual([]);
+  });
 });
 
 describe("entered values", () => {
@@ -135,5 +142,13 @@ describe("entered values", () => {
     const init = toLibraryInputs(swept, pmvIso);
     expect(init.tdb).toBe(28);
     expect(init.tr).toBe(28);
+  });
+});
+
+describe("edition", () => {
+  it("pins ISO 7730:2005 and the library echoes it", () => {
+    expect(pmvIso.edition).toBe("7730-2005");
+    const outcome = pmvIso.run(toLibraryInputs(separateSlot(), pmvIso)) as PmvPpdIsoOutputs;
+    expect(outcome.edition).toBe(pmvIso.edition);
   });
 });

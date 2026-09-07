@@ -541,6 +541,10 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    numbers actually follow; when the library one day implements a real 2025 difference, the app switches by an
    explicit diff instead of drifting under an unchanged label. Library side (L2): `PmvPpdInit` accepts `edition` and
    `PmvPpdIsoOutputs` echoes it, so a result can say which edition it was computed under.
+   **Landed 2026-09-07 (fork uncommitted, app uncommitted): the edition half** — the fork's `PmvPpdIsoInit.edition` /
+   `PmvPpdIsoOutputs.edition`, with `PMV_PPD_ISO_DEFAULT_EDITION` (`@internal`) and `assert_pmv_ppd_iso_edition`;
+   the app's `RegisteredModel.edition`, `src/models/pmvIso.ts` pinning `"7730-2005"` in `run`, and the result table's
+   edition caption. `OptionSpec` itself is still open.
 4. **The three kinds of applicability** (handed over by the library alignment). `pmv_ppd_iso.limits` now carries rows for
    the derived `p_vap ≤ 2700 Pa` and the output `pmv ∈ [−2, 2]` beside the entered quantities, and `outOfRangeInputs`
    walks entered quantities only, so both are silently ignored — the same hole the library just closed. They cannot
@@ -561,6 +565,14 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    different equation from the one the check uses); `limit_inputs: true` plus string `warnings` (NaN as a sentinel,
    strings matched back to rows); leaving both rows unread until after the Phase 4 acceptance, which is meant to test
    a frozen `Outcome`.
+   **Landed 2026-09-07 (fork uncommitted, app uncommitted):** the fork's `range_violations` (the `@internal` primitive
+   `_range_warnings` now maps over), the kernel evaluating the ISO derived and output rows on every call with
+   `limit_inputs` still gating only the NaN-ing, `Outcome.violations` on all four `io` outcomes, and
+   `en16798AdaptiveLimits` published as `adaptive_en.limits` with `ComplianceKwargs.t_running_mean` to range-check it;
+   the app's `Outputs.violations`, the input panel's hint line and the result table's caveat — both filtering by
+   `role` inline, which also retired the `ponytail:` note in `libraryInputs.ts`. `standard_violations` was cut on
+   2026-09-07 (a second dispatcher with one caller; the kernel now picks the table in one line), and so was
+   `core/applicability.ts`: two one-line `.filter()` calls do not earn a module.
 5. `presets` on the declaration + a free-entry input that also offers a searchable preset list, fed by the library's
    `met_typical_tasks` and `clo_individual_garments`.
 6. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing

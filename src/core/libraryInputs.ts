@@ -58,9 +58,13 @@ export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Libra
   const byKey = Object.fromEntries(
     [...resolveQuantities(slot, model)].map(([quantity, value]) => [quantity.key, value]),
   );
-  // `limit_inputs: false`: the app gates inputs against `model.limits` before
-  // calling, and the library then always returns numbers rather than NaN —
-  // the behaviour of the deployed CBE tool.
+  // `limit_inputs: false`: the app gates entered values against `model.limits`
+  // before calling, and the library then always returns numbers rather than
+  // NaN — the behaviour of the deployed CBE tool. The rows a run still breaks
+  // (derived, output, or the `v` row when `vr = v + 0.3(met − 1)` breaks it
+  // while the entered `v` does not) come back on
+  // `Outcome.violations` and are reported, not gated (the input panel and the
+  // result table filter them by `role`).
   return { ...byKey, units: "SI", limit_inputs: false };
 }
 
@@ -93,8 +97,8 @@ export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quan
     ...slot.values,
     [slot.humidity.mode.quantity, slot.humidity.value],
   ];
-  // ponytail: vr = v + 0.3(met − 1) can exceed the vr limit while v is within
-  // its own; the library computes anyway, as the deployed tool does.
+  // `vr = v + 0.3(met − 1)` can break the air-speed row while `v` is within it; the kernel checks vr
+  // against the `v` row, so that comes back on `Outcome.violations` and is reported beside the inputs.
   return entered
     .filter(([quantity, value]) => {
       const range = enteredRange(model, quantity, slot.temperature.mode);

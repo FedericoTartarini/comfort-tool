@@ -12,6 +12,8 @@ export const copy = {
   inputColumn: "Input",
   complianceColumn: "Compliance",
   outOfRange: "Out of range — not calculated. Showing the last valid result.",
+  applicabilityHint: "Outside the standard's applicability:",
+  edition: (edition: string): string => `Edition ${edition}`,
   notAvailable: "—",
   slotName: (index: number): string => `Input ${index + 1}`,
   chart: "Chart",
