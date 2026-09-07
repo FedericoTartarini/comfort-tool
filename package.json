@@ -12,6 +12,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint src",
     "preview": "vite preview",
+    "postinstall": "git submodule update --init --recursive && npm ci --prefix vendor/jsthermalcomfort && npm run build --prefix vendor/jsthermalcomfort",
     "test": "vitest run",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
@@ -42,7 +43,7 @@
     "flowbite": "^4.0.2",
     "flowbite-svelte": "^0.48.6",
     "flowbite-svelte-icons": "^3.1.0",
-    "jsthermalcomfort": "file:../../forked repo/jsthermalcomfort",
+    "jsthermalcomfort": "file:vendor/jsthermalcomfort",
     "plotly.js-dist-min": "^3.7.0",
     "sv-router": "^0.18.0"
   }

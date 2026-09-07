@@ -15,7 +15,6 @@ import {
   quantityRow,
   resultQuantity,
 } from "../state/modelRegistry/builder";
-import { StandardId } from "../catalog/surfaces";
 
 const heatIndexTokenRows = [
   { label: "no risk", token: ZoneToken.Safe },
@@ -32,7 +31,7 @@ export const heatIndexZonesList = thermalZonesFromBands(
 
 export const heatIndexModelConfig = defineModel(heat_index, {
   id: ModelId.HeatIndex,
-  standardIds: [StandardId.Iso7730],
+  standardIds: [],
   exploreMode: true,
 
   inputs: [

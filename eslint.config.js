@@ -52,6 +52,7 @@ export default [
     ignores: [
       "dist/**",
       "node_modules/**",
+      "vendor/**",
       "coverage/**",
       "playwright-report/**",
       "test-results/**",

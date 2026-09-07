@@ -45,12 +45,50 @@ Across Standard and Explore:
 
 - **Node.js** ≥ 22 (`engines` in `package.json`)
 - **npm** (ships with Node)
+- **git** — the thermal-comfort engine is a git submodule (see below)
 
 ## Development
 
+The calculation engine is a fork of [`jsthermalcomfort`](https://github.com/yehui-h/jsthermalcomfort) (branch `Feature/export-model-metadata`) vendored as a git submodule at `vendor/jsthermalcomfort`. `package.json` links to it with `file:vendor/jsthermalcomfort`, and `postinstall` initialises the submodule, installs its dev dependencies, and compiles `lib/esm`. There is nothing to install by hand.
+
 ```bash
+git clone --recurse-submodules <repo-url>
+cd comfort-tool
 npm install
 npm run dev
+```
+
+If you cloned without `--recurse-submodules`, `npm install` initialises the submodule for you.
+
+### Working on the engine
+
+Edit the fork in place under `vendor/jsthermalcomfort`, then rebuild it so the app picks up the change:
+
+```bash
+npm run build --prefix vendor/jsthermalcomfort
+```
+
+The fork has its own Jest test suite, kept out of the root `npm test` by the `vendor/**` exclusion in `vite.config.js`:
+
+```bash
+npm test --prefix vendor/jsthermalcomfort
+```
+
+Commit engine changes inside the submodule and push them to the fork first; then commit the updated submodule pointer in this repository:
+
+```bash
+cd vendor/jsthermalcomfort
+git add -A && git commit -m "..." && git push origin Feature/export-model-metadata
+cd ../..
+git add vendor/jsthermalcomfort
+git commit -m "chore: bump jsthermalcomfort submodule"
+```
+
+To pull the newest fork commit that someone else pushed:
+
+```bash
+git submodule update --remote vendor/jsthermalcomfort
+npm run build --prefix vendor/jsthermalcomfort
 ```
 
 Preview a production build locally:
@@ -111,6 +149,8 @@ src/
     routes/        client router and page composition
     utils/         UI actions (`clickOutside`)
   testSupport/     Compare helper; golden inputs/control counts from the registry
+vendor/
+  jsthermalcomfort/  git submodule: forked calculation engine (built to lib/esm by postinstall)
 ```
 
 ## Architecture

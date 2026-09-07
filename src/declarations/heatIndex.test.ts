@@ -214,6 +214,12 @@ describe("heatIndex service", () => {
     ]);
   });
 
+  it("registers as an Explore-only model with no Standard membership", () => {
+    expect(heatIndexModelConfig.standardIds).toEqual([]);
+    expect(heatIndexModelConfig.exploreMode).toBe(true);
+    expect(heatIndexModelConfig.complianceProfile).toBeUndefined();
+  });
+
   it("pins required Analysis controls independently of inputFields", () => {
     expect(heatIndexModelConfig.controls.map(({ id }) => id)).toEqual([
       ...requiredControlIdsByModel[ModelId.HeatIndex],

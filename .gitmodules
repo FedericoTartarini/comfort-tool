@@ -1,0 +1,4 @@
+[submodule "vendor/jsthermalcomfort"]
+	path = vendor/jsthermalcomfort
+	url = https://github.com/yehui-h/jsthermalcomfort.git
+	branch = Feature/export-model-metadata
