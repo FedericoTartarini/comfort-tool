@@ -14,8 +14,10 @@ Guidance for Claude Code when working in this repository.
 >
 > Current position: Phase 3.5 done, plus an unplanned round that brought the
 > library into line with the current pythermalcomfort (rewrite plan, "Library
-> alignment"). Next is Phase 3.6. **Phases 3.5 – 3.7 freeze the contracts before
-> the Phase 4 acceptance** — every known change to `RegisteredModel`,
+> alignment"). Phase 3.6 is underway; its two open decisions were taken on
+> 2026-09-07 and are recorded in the rewrite plan, items 3 and 4. **Phases
+> 3.5 – 3.7 freeze the contracts before the Phase 4 acceptance** — every known
+> change to `RegisteredModel`,
 > `ChartDeclaration` or `ChartSpec` lands there, so that "adding a model touches
 > two files" means something when it is tested.
 >

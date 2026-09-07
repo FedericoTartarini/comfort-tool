@@ -518,6 +518,10 @@ arguments), `reference/` as public data, the `io` layer, `charts/`, and `psychro
 Fork: 633 tests. App: 49 tests, `check` / `lint` / `build` clean, and the working brief is kept at the fork's
 `ALIGNMENT-BRIEF.md`.
 
+Since then (2026-09-06) the fork folded its pending breaking cleanups into the unreleased major (`46e8a0c`: ESM only;
+`io` outcomes expose the raw values as `readonly result`). The app's one affected site, the `pmvAt()` oracle in
+`psychrometricChart.test.ts`, followed.
+
 ---
 
 ### Phase 3.6 · Input contract and panel
@@ -527,11 +531,16 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 1. `entryGroups` as a closed set plus `RegisteredModel.entryGroups`. Today `libraryInputs.ts` injects `rh` unconditionally,
    which would hand Adaptive — whose inputs are `tdb / tr / t_running_mean / v` — a quantity it does not take.
 2. The four remaining humidity entry modes, finishing Phase 2b's app side.
-3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. Two consumers now, which is what makes
-   the contract worth having: Phase 3.7's ASHRAE `airspeed_control`, and the ISO **edition** the library gained on
-   2026-09-05 (`"7730-2005"` / `"7730-2025"`, published as data so the option's choices are read, never written). The app
-   currently takes the library's default silently — decide there whether the result table names the edition, since
-   `model.label` does not.
+3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. **Decided 2026-09-07: toggle only in
+   v1.** The one consumer is Phase 3.7's ASHRAE `airspeed_control`; a `choice` kind waits for a second. The ISO
+   **edition** the library gained on 2026-09-05 (`"7730-2005"` / `"7730-2025"`) is *not* an option: both editions run
+   the same kernel over the same limits, so a selector would offer two names for one number. Instead
+   `src/models/pmvIso.ts` pins `edition: "7730-2005"` in `run`, and the result table names it. 2005 rather than
+   upstream's 2025 default because the kernel keeps the pre-2025 `t_cla` initial guess for parity with the deployed CBE
+   tool (upstream's 2025 Annex D form moves PMV by up to 5.1e-3; `pmv_ppd.ts` says why), so 2005 is the edition the
+   numbers actually follow; when the library one day implements a real 2025 difference, the app switches by an
+   explicit diff instead of drifting under an unchanged label. Library side (L2): `PmvPpdInit` accepts `edition` and
+   `PmvPpdIsoOutputs` echoes it, so a result can say which edition it was computed under.
 4. **The three kinds of applicability** (handed over by the library alignment). `pmv_ppd_iso.limits` now carries rows for
    the derived `p_vap ≤ 2700 Pa` and the output `pmv ∈ [−2, 2]` beside the entered quantities, and `outOfRangeInputs`
    walks entered quantities only, so both are silently ignored — the same hole the library just closed. They cannot
@@ -539,6 +548,19 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    result", which is wrong for an output bound. A PMV of 2.4 must be *shown*, flagged as outside ISO 7730's
    applicability. So: entered → correctable, blocks calculation; derived → reported against the inputs that produced it;
    output → shown with a caveat. This is the Compliance column's business as much as the input panel's.
+   **Decided 2026-09-07: the library reports, the app only displays.** Library side (L1): `Outcome.violations:
+   readonly ApplicabilityLimit[]` — every limit row the call broke, computed whatever `limit_inputs` says, input rows
+   first and the ISO-only derived / output rows last (the order `tests/baseline.test.ts` already pins); `warnings`
+   stays, as `violations.map((v) => v.warning)`, so no string moves; NaN-ing remains gated by `limit_inputs`; the
+   public `pmv_ppd_iso` keeps returning `{ pmv, ppd }` as upstream's does, and the field lives on the fork's own `io`
+   layer. App side: `outOfRangeInputs` keeps gating entered values *before* the call; after it, `violations` is split
+   by `role` — `derived`, and an `input` row for a quantity the user did not enter (`v` in range while
+   `vr = v + 0.3(met − 1)` is not), → one hint line under the input panel, `limit.warning` verbatim, which also retires
+   the `ponytail:` note in `libraryInputs.ts`; `output` → the result is shown as it is and the Compliance column carries
+   the caveat. Rejected: the app computing `rh × 10 × antoine(tdb)` itself (ADR §3, and `psy_ta_rh().p_vap` is a
+   different equation from the one the check uses); `limit_inputs: true` plus string `warnings` (NaN as a sentinel,
+   strings matched back to rows); leaving both rows unread until after the Phase 4 acceptance, which is meant to test
+   a frozen `Outcome`.
 5. `presets` on the declaration + a free-entry input that also offers a searchable preset list, fed by the library's
    `met_typical_tasks` and `clo_individual_garments`.
 6. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing

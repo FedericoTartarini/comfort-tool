@@ -71,6 +71,7 @@
 | Sequential simulation of stateful models (PHS, after v1) | Time-series row editor and session |
 | Out-of-range inputs return results + warnings instead of throwing; no DOM / `node-fetch` dependency, runs in a Worker | — |
 | `suppressWarnings` on the `io` inputs (2026-09-04): a parameter sweep calls a model tens of thousands of times and `cooling_effect` logs a line every time it cannot solve — 300 lines per 100×100 ASHRAE grid. `charts.psychrometricZone` already silences its own trace; any tool drawing a field needs the same, so the switch belongs to the library | — |
+| `Outcome.violations` (2026-09-07): the applicability rows a call broke, as the `ApplicabilityLimit` objects themselves, computed whatever `limit_inputs` says — any consumer that renders applicability needs the row and its `role`, not a sentence | What each `role` does on screen: an entered value blocks the call and turns red, a derived or output bound is reported beside the result |
 
 **And the library follows pythermalcomfort** (2026-09-05). The test above decides *what* the library carries; this decides
 what it looks like once it is there. The fork adopts upstream's logic **and** its naming by default, and deviates only
@@ -127,19 +128,25 @@ holds the `Quantity` object — so a rename upstream costs the app only the impo
   vapour pressure `p_vap ≤ 2700 Pa` and the **output** bound `pmv ∈ [−2, 2]`; both are rows in `pmv_ppd_iso.limits`
   alongside the entered ones. A consumer therefore cannot assume "one row = one input field", and the three kinds want
   different treatment on screen — an entered value can be corrected, a derived or output bound can only be reported.
+  Resolved 2026-09-07: the library evaluates all three and hands the failed rows back on `Outcome.violations`
+  (§4.1.3); the app dispatches on `role` and never evaluates a row itself.
 - **Standard membership, new in Phase 1**: `reference.standards = { iso7730, ashrae55, en16798 }`, each a plain `{ id, name }` object; `pmv_ppd_iso.standard = standards.iso7730`. Models without a `standard` (UTCI) appear only in Explore. The existing `utilities.Standard` in the library is the compliance dispatch key (including `FAN_HEATWAVES`, `ANKLE_DRAFT`), which is not this; the names must stay distinct.
 
 #### 4.1.3 Unified inputs and outputs (`jsthermalcomfort/io`, existing)
 
 ```ts
-io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI" })   // → PmvPpdIsoOutputs
+io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI", edition: "7730-2005" })   // → PmvPpdIsoOutputs
   .toMeasures()   // Measure[]: { quantity, value, unit, category?, intervals }
-  .warnings       // readonly string[]
+  .violations     // readonly ApplicabilityLimit[] — the limit rows this call broke, whatever `limit_inputs` says
+  .warnings       // readonly string[] — violations.map((v) => v.warning)
+  .edition        // "7730-2005"
 ```
 
 - The field names of the input object are exactly `Quantity.key`, so `Map<Quantity, number>` → init is a one-line `Object.fromEntries`, done in the app's `core/libraryInputs.ts`.
 - Classification is not a separate output: `Measure.category` is the scale label the value falls into (PMV's tsv), and `Measure.intervals` are the evaluated comfort intervals and whether each is satisfied (Adaptive's 80% / 90%). **Compliance decision = the app's interpretation of these two fields**; the Compliance column of the result table displays them directly.
 - The model function carries `label` / `description` / `standard` / `tsv` or `offsets` / `limits`; declaration files read from here and never write copy or transcribe numbers.
+- **`violations` (2026-09-07).** A consumer that displays applicability needs to know *which* row failed and its `role`, and a string cannot say. So the `io` outcomes carry the rows themselves, computed regardless of `limit_inputs` (which keeps gating only whether the result is NaN'd), input rows first and the ISO-only derived / output rows last. `warnings` is derived from it and keeps its byte-pinned strings. Upstream has no such field — it has no `io` layer either — so this is one of the places the fork is ahead (§3); the public model functions still return what upstream's do.
+- **`edition` (2026-09-07).** Accepted on the init and echoed on the outcome, so a result can name the edition it was computed under. The app pins `"7730-2005"` (rewrite plan, Phase 3.6 item 3) and never offers it as a choice while the two editions share a kernel.
 
 #### 4.1.4 Chart geometry (`jsthermalcomfort/charts`, existing)
 
