@@ -76,7 +76,7 @@ function pmvAt(db: number, rh: number, tr: number): number {
     units: "SI",
     limit_inputs: false,
     round_output: false,
-  }).pmv;
+  }).result.pmv;
 }
 
 describe("psychrometricSpec", () => {
