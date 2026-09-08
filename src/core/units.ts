@@ -29,7 +29,8 @@ function sameInBothSystems(unit: Pick<DisplayUnit, "symbol" | "step">): UnitPair
 
 const METRES_PER_FOOT = 0.3048;
 const SECONDS_PER_MINUTE = 60;
-const KILOPASCALS_PER_INCH_OF_MERCURY = 3.386389;
+const PASCALS_PER_INCH_OF_MERCURY = 3386.389;
+const PASCALS_PER_KILOPASCAL = 1000;
 
 // `satisfies Record<QuantityKind, …>`: when the library adds a kind, this
 // table fails to compile until the app decides how to display it.
@@ -60,13 +61,20 @@ const displayUnits = {
   metabolicRate: sameInBothSystems({ symbol: "met", step: 0.1 }),
   clothingInsulation: sameInBothSystems({ symbol: "clo", step: 0.1 }),
   thermalSensation: sameInBothSystems({ symbol: "", step: 0.1 }),
+  // The library's pressures (`p_vap`, `p_atm`) are in pascals; kPa is the
+  // display unit, as in the deployed tool.
   pressure: {
-    si: { symbol: "kPa", step: 0.1, toSi: identity, fromSi: identity },
+    si: {
+      symbol: "kPa",
+      step: 0.1,
+      toSi: (kilopascals) => kilopascals * PASCALS_PER_KILOPASCAL,
+      fromSi: (pascals) => pascals / PASCALS_PER_KILOPASCAL,
+    },
     ip: {
       symbol: "inHg",
       step: 0.01,
-      toSi: (inchesOfMercury) => inchesOfMercury * KILOPASCALS_PER_INCH_OF_MERCURY,
-      fromSi: (kilopascals) => kilopascals / KILOPASCALS_PER_INCH_OF_MERCURY,
+      toSi: (inchesOfMercury) => inchesOfMercury * PASCALS_PER_INCH_OF_MERCURY,
+      fromSi: (pascals) => pascals / PASCALS_PER_INCH_OF_MERCURY,
     },
   },
 } satisfies Record<QuantityKind, UnitPair>;

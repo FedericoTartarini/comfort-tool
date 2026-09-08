@@ -20,9 +20,14 @@ describe("displayUnitFor", () => {
     expect(feetPerMinute.toSi(196.850394)).toBeCloseTo(1, 6);
   });
 
-  it("converts pressure between kPa and inHg", () => {
+  it("converts pressure from the library's pascals to kPa and inHg", () => {
+    const kilopascals = displayUnitFor(quantities.p_vap, unitSystem.si);
+    expect(kilopascals.symbol).toBe("kPa");
+    expect(kilopascals.fromSi(2700)).toBe(2.7);
+    expect(kilopascals.toSi(2.7)).toBeCloseTo(2700, 9);
     const inchesOfMercury = displayUnitFor(quantities.p_atm, unitSystem.ip);
-    expect(inchesOfMercury.fromSi(101.325)).toBeCloseTo(29.92, 2);
+    expect(inchesOfMercury.fromSi(101325)).toBeCloseTo(29.92, 2);
+    expect(inchesOfMercury.toSi(29.92)).toBeCloseTo(101325, -1);
   });
 
   it("is the identity in SI and for quantities that do not convert", () => {

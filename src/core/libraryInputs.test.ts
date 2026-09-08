@@ -80,6 +80,25 @@ describe("toLibraryInputs", () => {
     expect(Number.isFinite(pmv?.value)).toBe(true);
     expect(pmv?.category).toBeDefined();
   });
+
+  it("sends no rh to a model whose inputs do not name it", () => {
+    const withoutHumidity = defineModel({
+      ...pmvIso,
+      inputs: pmvIso.inputs.filter(([quantity]) => quantity !== q.rh),
+    });
+    expect(toLibraryInputs(separateSlot(), withoutHumidity)).not.toHaveProperty("rh");
+  });
+
+  it("does not expand an operative entry for a model without separate temperatures", () => {
+    const withoutTemperatures = defineModel({
+      ...pmvIso,
+      inputs: pmvIso.inputs.filter(([quantity]) => quantity !== q.tdb && quantity !== q.tr),
+    });
+    const init = toLibraryInputs(operativeSlot(24), withoutTemperatures);
+    expect(init).not.toHaveProperty("tdb");
+    expect(init).not.toHaveProperty("tr");
+    expect(init.operative_tmp).toBe(24);
+  });
 });
 
 describe("outOfRangeInputs", () => {
@@ -135,6 +154,28 @@ describe("entered values", () => {
     const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
     expect(toLibraryInputs(swept, pmvIso).rh).toBe(80);
     expect(slot.humidity.value).toBe(50);
+  });
+
+  it("derives rh from a dew-point entry at the slot's dry-bulb temperature", () => {
+    const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(50, 25);
+    const slot: SlotInputs = { ...separateSlot(), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
+    expect(toLibraryInputs(slot, pmvIso).rh).toBeCloseTo(50, 0);
+    expect(enteredValue(slot, q.dew_point_tmp)).toBe(dewPoint);
+    expect(enteredValue(slot, q.rh)).toBeCloseTo(50, 0);
+  });
+
+  it("derives rh from the operative temperature under operative entry", () => {
+    const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(50, 24);
+    const slot: SlotInputs = { ...operativeSlot(24), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
+    expect(toLibraryInputs(slot, pmvIso).rh).toBeCloseTo(50, 0);
+  });
+
+  it("sweeps rh as rh whatever the entry mode", () => {
+    const slot: SlotInputs = { ...separateSlot(), humidity: { mode: humidityMode.dewPoint, value: 10 } };
+    const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
+    expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
+    expect(toLibraryInputs(swept, pmvIso).rh).toBe(70);
+    expect(slot.humidity.mode).toBe(humidityMode.dewPoint);
   });
 
   it("expands a swept operative temperature to both temperatures", () => {

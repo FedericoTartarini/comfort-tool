@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Quantity } from "jsthermalcomfort/io";
   import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
-  import { temperatureMode } from "$lib/core/entryModes";
+  import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
   import { enteredQuantities, enteredRange, enteredValue } from "$lib/core/libraryInputs";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { InputSlot } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -22,7 +22,14 @@
 
   let { model, inputSlot, unitSystem, outOfRange, violations }: Props = $props();
 
-  const rows = $derived(enteredQuantities(model, inputSlot.temperature.mode));
+  // The panel shows the entered representation in the rh row's place; the chart keeps rh.
+  const rows = $derived(
+    enteredQuantities(model, inputSlot.temperature.mode).map((quantity) =>
+      quantity === humidityMode.rh.quantity ? inputSlot.humidity.mode.quantity : quantity,
+    ),
+  );
+  const showTemperatureRow = $derived(hasTemperatureGroup(model));
+  const showHumidityRow = $derived(hasHumidityGroup(model));
 
   // Everything but the result's own bound. Entered values are gated before the call, so an `input` row
   // here comes from a value the panel did not show the library: the relative air speed vr = v + 0.3(met − 1),
@@ -44,18 +51,35 @@
   function variantFor(mode: typeof temperatureMode.separate | typeof temperatureMode.operative) {
     return inputSlot.temperature.mode === mode ? "default" : "outline";
   }
+
+  function humidityVariantFor(mode: HumidityMode) {
+    return inputSlot.humidity.mode === mode ? "default" : "outline";
+  }
 </script>
 
 <Stack gap="4">
-  <Inline gap="2" align="center">
-    <span>{copy.temperatureInput}</span>
-    <Button size="sm" variant={variantFor(temperatureMode.separate)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.separate)}>
-      {copy.separateTemperatures}
-    </Button>
-    <Button size="sm" variant={variantFor(temperatureMode.operative)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.operative)}>
-      {copy.operativeTemperature}
-    </Button>
-  </Inline>
+  {#if showTemperatureRow}
+    <Inline gap="2" align="center">
+      <span>{copy.temperatureInput}</span>
+      <Button size="sm" variant={variantFor(temperatureMode.separate)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.separate)}>
+        {copy.separateTemperatures}
+      </Button>
+      <Button size="sm" variant={variantFor(temperatureMode.operative)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.operative)}>
+        {copy.operativeTemperature}
+      </Button>
+    </Inline>
+  {/if}
+
+  {#if showHumidityRow}
+    <Inline gap="2" align="center">
+      <span>{copy.humidityInput}</span>
+      {#each Object.values(humidityMode) as mode (mode)}
+        <Button size="sm" variant={humidityVariantFor(mode)} onclick={() => inputSlot.setHumidityMode(mode)}>
+          {mode.quantity.label}
+        </Button>
+      {/each}
+    </Inline>
+  {/if}
 
   {#each rows as quantity (quantity)}
     <QuantityInput

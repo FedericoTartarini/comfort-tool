@@ -1,5 +1,5 @@
 import type { PsychrometricZoneOptions } from "jsthermalcomfort/charts";
-import type { Outcome, Quantity } from "jsthermalcomfort/io";
+import { quantities, type Outcome, type Quantity } from "jsthermalcomfort/io";
 import type { ApplicabilityLimit, IntervalScale, StandardRef } from "jsthermalcomfort/reference";
 import { chartType } from "./chartType";
 
@@ -174,4 +174,18 @@ export function defineModel<Init extends object>(
 
 export function limitFor(model: RegisteredModel, quantity: Quantity): ApplicabilityLimit | undefined {
   return model.model.limits?.find((limit) => limit.quantity === quantity);
+}
+
+/**
+ * Entry groups are read from `inputs`, not declared (ADR §4.2, 2026-09-08):
+ * a model has the humidity group when it takes `rh`, and the temperature
+ * group when it takes both `tdb` and `tr`.
+ */
+export function hasHumidityGroup(model: RegisteredModel): boolean {
+  return model.inputs.some(([quantity]) => quantity === quantities.rh);
+}
+
+export function hasTemperatureGroup(model: RegisteredModel): boolean {
+  const entered = model.inputs.map(([quantity]) => quantity);
+  return entered.includes(quantities.tdb) && entered.includes(quantities.tr);
 }

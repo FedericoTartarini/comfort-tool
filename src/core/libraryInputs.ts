@@ -1,7 +1,14 @@
 import { quantities, type Quantity } from "jsthermalcomfort/io";
 import { v_relative } from "jsthermalcomfort/utilities";
-import { temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
-import { limitFor, type LibraryInit, type Range, type RegisteredModel } from "./modelDeclaration";
+import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
+import {
+  hasHumidityGroup,
+  hasTemperatureGroup,
+  limitFor,
+  type LibraryInit,
+  type Range,
+  type RegisteredModel,
+} from "./modelDeclaration";
 
 /**
  * The slice of an input slot this module reads. A plain interface, so core/
@@ -24,6 +31,16 @@ export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Qu
 }
 
 /**
+ * The slot's humidity as the library's `rh`, converted from whatever the user
+ * entered at the slot's dry-bulb temperature (the operative temperature under
+ * operative entry, ADR §4.5). The one place the mode's conversion is invoked.
+ */
+export function relativeHumidityOf(slot: SlotInputs): number {
+  const tdb = slot.values.get(q.tdb) ?? requireValue(slot.values, q.operative_tmp);
+  return slot.humidity.mode.toRelativeHumidity(slot.humidity.value, tdb);
+}
+
+/**
  * Entry-group representations → the SI quantities the library model takes
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
  * humidity entry becomes `rh`, and `v` becomes `vr` when the model asks for it.
@@ -31,16 +48,16 @@ export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Qu
 export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map<Quantity, number> {
   const resolved = new Map(slot.values);
 
-  if (slot.temperature.mode === temperatureMode.operative) {
+  if (hasTemperatureGroup(model) && slot.temperature.mode === temperatureMode.operative) {
     const operative = requireValue(resolved, q.operative_tmp);
     resolved.set(q.tdb, operative);
     resolved.set(q.tr, operative);
     resolved.delete(q.operative_tmp);
   }
 
-  // Relative humidity is the only humidity mode until the library ships the
-  // inverse conversions (rewrite plan, Phase 2b); the other modes convert here.
-  resolved.set(q.rh, slot.humidity.value);
+  if (hasHumidityGroup(model)) {
+    resolved.set(q.rh, relativeHumidityOf(slot));
+  }
 
   if (model.relativeAirSpeed) {
     resolved.set(q.vr, v_relative(requireValue(resolved, q.v), requireValue(resolved, q.met)));
@@ -125,9 +142,19 @@ export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode)
   return rows;
 }
 
-/** What the user entered for `quantity`, humidity included. */
+/**
+ * What the user entered for `quantity`, humidity included. `rh` is answered
+ * in every mode — the dynamic chart sweeps and marks the library's `rh`, not
+ * the entered representation.
+ */
 export function enteredValue(slot: SlotInputs, quantity: Quantity): number | undefined {
-  return quantity === slot.humidity.mode.quantity ? slot.humidity.value : slot.values.get(quantity);
+  if (quantity === slot.humidity.mode.quantity) {
+    return slot.humidity.value;
+  }
+  if (quantity === q.rh) {
+    return relativeHumidityOf(slot);
+  }
+  return slot.values.get(quantity);
 }
 
 /**
@@ -142,6 +169,9 @@ export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quant
   for (const [quantity, value] of overrides) {
     if (quantity === humidity.mode.quantity) {
       humidity = { mode: humidity.mode, value };
+    } else if (quantity === q.rh) {
+      // An rh sweep overrides the humidity entry outright: the chart's axis is the library's rh.
+      humidity = { mode: humidityMode.rh, value };
     } else {
       values.set(quantity, value);
     }

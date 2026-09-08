@@ -9,6 +9,7 @@ export const copy = {
   temperatureInput: "Temperature input",
   separateTemperatures: "Separate",
   operativeTemperature: "Operative",
+  humidityInput: "Humidity input",
   inputColumn: "Input",
   complianceColumn: "Compliance",
   outOfRange: "Out of range — not calculated. Showing the last valid result.",

@@ -40,6 +40,19 @@ export class InputSlot {
   }
 
   /**
+   * Re-express the stored humidity in the new representation at the current
+   * dry-bulb temperature. Lossy and one-way, like the temperature switch.
+   */
+  setHumidityMode(mode: HumidityMode): void {
+    if (mode === this.humidity.mode) {
+      return;
+    }
+    const tdb = this.values.get(q.tdb) ?? this.require(q.operative_tmp);
+    const rh = this.humidity.mode.toRelativeHumidity(this.humidity.value, tdb);
+    this.humidity = { mode, value: mode.fromRelativeHumidity(rh, tdb) };
+  }
+
+  /**
    * Convert the stored temperatures into the new representation. Separate →
    * operative uses the library's `operative_tmp(tdb, tr, v)`; operative →
    * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, as in the old
