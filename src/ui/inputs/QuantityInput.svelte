@@ -69,7 +69,7 @@
 
 <style>
   .range {
-    font-size: 0.75rem;
+    font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }
 </style>

@@ -589,6 +589,12 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    needs are generated: `select` (which replaces the native one Phase 3 hand-rolled in `ChartControls.svelte`), `card`,
    `separator`. Layout structure is deliberately untouched. Doing this here is what stops every later phase from
    improvising its own CSS: Phase 3 already had to, twice.
+   **Landed 2026-09-08, narrower than written.** Tailwind 4 already ships a type scale and a spacing scale, so the
+   app declares neither: `app.css` gains only what it lacked — `--brand`, a placeholder that `--primary` follows until
+   Phase 5c picks the colour, and `--font-size-caption`, which the four business components that had each written
+   `0.75rem` by hand now reference — and loses the `.dark` block and the `--sidebar-*` / `--chart-*` variables no v1
+   code reads. Only `select` was generated (the CLI pulled `separator` in as its dependency); `card` waits for its
+   first consumer, because wrapping the columns in one is a design decision and this item is not the design.
 
 ### Phase 3.7 · PMV (ASHRAE 55) + the Worker
 

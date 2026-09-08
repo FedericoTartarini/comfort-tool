@@ -7,6 +7,7 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import { Label } from "$lib/ui/primitives/label";
+  import * as Select from "$lib/ui/primitives/select";
 
   interface Props {
     model: RegisteredModel;
@@ -47,38 +48,32 @@
   {#if showAxes}
     <Inline gap="2" align="center">
       <Label for="{id}-x">{copy.xAxis}</Label>
-      <select
-        id="{id}-x"
+      <Select.Root
+        type="single"
         value={String(xChoices.indexOf(selected.x))}
-        onchange={(event) => chart.setAxes({ x: xChoices[Number(event.currentTarget.value)] })}
+        onValueChange={(value) => chart.setAxes({ x: xChoices[Number(value)] })}
       >
-        {#each xChoices as quantity, index (quantity)}
-          <option value={String(index)}>{quantity.label}</option>
-        {/each}
-      </select>
+        <Select.Trigger id="{id}-x">{selected.x.label}</Select.Trigger>
+        <Select.Content>
+          {#each xChoices as quantity, index (quantity)}
+            <Select.Item value={String(index)} label={quantity.label} />
+          {/each}
+        </Select.Content>
+      </Select.Root>
 
       <Label for="{id}-y">{copy.yAxis}</Label>
-      <select
-        id="{id}-y"
+      <Select.Root
+        type="single"
         value={String(yChoices.indexOf(selected.y))}
-        onchange={(event) => chart.setAxes({ y: yChoices[Number(event.currentTarget.value)] })}
+        onValueChange={(value) => chart.setAxes({ y: yChoices[Number(value)] })}
       >
-        {#each yChoices as quantity, index (quantity)}
-          <option value={String(index)}>{quantity.label}</option>
-        {/each}
-      </select>
+        <Select.Trigger id="{id}-y">{selected.y.label}</Select.Trigger>
+        <Select.Content>
+          {#each yChoices as quantity, index (quantity)}
+            <Select.Item value={String(index)} label={quantity.label} />
+          {/each}
+        </Select.Content>
+      </Select.Root>
     </Inline>
   {/if}
 </Inline>
-
-<style>
-  select {
-    height: 2rem;
-    padding: 0 0.5rem;
-    font-size: 0.875rem;
-    color: var(--foreground);
-    background-color: var(--background);
-    border: 1px solid var(--input);
-    border-radius: var(--radius);
-  }
-</style>
