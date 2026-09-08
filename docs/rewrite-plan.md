@@ -528,9 +528,16 @@ Since then (2026-09-06) the fork folded its pending breaking cleanups into the u
 
 Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclaration.ts`, `ui/inputs/`.
 
-1. `entryGroups` as a closed set plus `RegisteredModel.entryGroups`. Today `libraryInputs.ts` injects `rh` unconditionally,
+1. Entry groups. Today `libraryInputs.ts` injects `rh` unconditionally,
    which would hand Adaptive — whose inputs are `tdb / tr / t_running_mean / v` — a quantity it does not take.
-2. The four remaining humidity entry modes, finishing Phase 2b's app side.
+   **Decided 2026-09-08: no `entryGroups` field.** A model has the humidity group when its `inputs` name `q.rh`
+   and the temperature group when they name `q.tdb` and `q.tr`; `InputSlot`'s constructor already reads the first,
+   and every v1 model (PMV, Adaptive, UTCI) is covered. `RegisteredModel` does not change.
+2. The four remaining humidity entry modes, finishing Phase 2b's app side. Decided 2026-09-08 with it: `p_atm` is
+   omitted (library default 101325 Pa) until the "Set pressure" calculator brings `environment`; the SI pressure
+   display unit becomes kPa via `/1000`, because the library's `p_vap` / `p_atm` are in Pa while `core/units.ts`
+   had been treating its kPa symbol as identity — harmless while nothing displayed a pressure.
+   Design: `docs/superpowers/specs/2026-09-08-humidity-entry-modes-design.md`.
 3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. **Decided 2026-09-07: toggle only in
    v1.** The one consumer is Phase 3.7's ASHRAE `airspeed_control`; a `choice` kind waits for a second. The ISO
    **edition** the library gained on 2026-09-05 (`"7730-2005"` / `"7730-2025"`) is *not* an option: both editions run
@@ -619,7 +626,7 @@ Adaptive renders for real with `chartType.dynamic`, with the axes locked to
 (`charts.adaptiveAshraeZone`).
 
 **Prerequisites**: Phases 3.5 – 3.7. The `zones` source exists by then, so Adaptive's exact
-`charts.adaptiveAshraeZone` polygons need no new plumbing, and `entryGroups` keeps `rh` out of its inputs.
+`charts.adaptiveAshraeZone` polygons need no new plumbing, and `hasHumidityGroup` (read from `inputs`) keeps `rh` out of its inputs.
 
 **Done criteria (the hardest one in the whole plan)**
 `git diff --stat` shows only `src/models/adaptiveAshrae.ts` and `src/models/index.ts`.

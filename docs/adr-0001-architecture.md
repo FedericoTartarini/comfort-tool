@@ -145,7 +145,7 @@ io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI", edition: "7730-2005" })  
 - The field names of the input object are exactly `Quantity.key`, so `Map<Quantity, number>` → init is a one-line `Object.fromEntries`, done in the app's `core/libraryInputs.ts`.
 - Classification is not a separate output: `Measure.category` is the scale label the value falls into (PMV's tsv), and `Measure.intervals` are the evaluated comfort intervals and whether each is satisfied (Adaptive's 80% / 90%). **Compliance decision = the app's interpretation of these two fields**; the Compliance column of the result table displays them directly.
 - The model function carries `label` / `description` / `standard` / `tsv` or `offsets` / `limits`; declaration files read from here and never write copy or transcribe numbers.
-- **`violations` (2026-09-07).** A consumer that displays applicability needs to know *which* row failed and its `role`, and a string cannot say. So the `io` outcomes carry the rows themselves, computed regardless of `limit_inputs` (which keeps gating only whether the result is NaN'd), input rows first and the ISO-only derived / output rows last. `warnings` is derived from it and keeps its byte-pinned strings (plus the one ASHRAE cross-field air-speed rule, which has no row). Upstream has no such field — it has no `io` layer either — so this is one of the places the fork is ahead (§3); the public model functions still return what upstream's do.
+- **`violations` (2026-09-07).** A consumer that displays applicability needs to know *which* row failed and its `role`, and a string cannot say. So the `io` outcomes carry the rows themselves, computed regardless of `limit_inputs` (which keeps gating only whether the result is NaN'd), input rows first and the ISO-only derived / output rows last. `warnings` is derived from it and keeps its byte-pinned strings (plus the one ASHRAE cross-field air-speed rule, which has no row). Upstream has no such field — it has no `io` layer either — so this is one of the places the fork is ahead (§3); the public model functions still return what upstream's do. **Decided 2026-09-08**: the app renders `violations` only, so that row-less ASHRAE sentence is not shown; its one real consumer is Phase 3.7's ASHRAE model with `airspeed_control`, and how to render it is decided there, with the model on screen, rather than blind.
 - **`edition` (2026-09-07).** Accepted on the init and echoed on the outcome, so a result can name the edition it was computed under. The app pins `"7730-2005"` (rewrite plan, Phase 3.6 item 3) and never offers it as a choice while the two editions share a kernel.
 
 #### 4.1.4 Chart geometry (`jsthermalcomfort/charts`, existing)
@@ -178,7 +178,8 @@ export function isWorkspaceAvailable(target: Workspace, model: RegisteredModel):
 }
 export function workspaceFromId(id: string): Workspace | undefined;        // used only by shareLink / navigation
 // Same style: chartType.psychrometric / .dynamic; humidityMode.rh / .humidityRatio / .dewPoint / .wetBulb / .vaporPressure;
-//          unitSystem.si / .ip; entryGroup.humidity / .temperature
+//          unitSystem.si / .ip. There is no entryGroup set (2026-09-08): whether a model has a humidity or a
+//          temperature entry group is read from its `inputs` — `q.rh` present, `q.tdb` and `q.tr` present
 
 // src/core/entryModes.ts — the temperature representation decides which quantities the panel shows and which one is the temperature axis; labels always come from Quantity.label
 const q = io.quantities;
@@ -215,7 +216,7 @@ export const pmvIso = defineModel({
   inputs: [                                            // order + default values (the starting values of the old CBE tool), one table
     [q.tdb, 25], [q.tr, 25], [q.v, 0.1], [q.rh, 50], [q.met, 1.1], [q.clo, 0.5],
   ],
-  entryGroups: [EntryGroup.humidity, EntryGroup.temperature],
+  // no entryGroups field: `q.rh` above gives the humidity group, `q.tdb` + `q.tr` the temperature group (2026-09-08)
   axisRanges: [                                        // how far each quantity is drawn, SI; a viewport, never a limit
     [q.tdb, 10, 40], [q.tr, 10, 40], [q.operative_tmp, 10, 40], [q.hr, 0, 0.03],
     [q.v, 0, 2], [q.rh, 0, 100], [q.met, 1, 4], [q.clo, 0, 2],
@@ -405,8 +406,9 @@ index.html              embedded ES5 feature check + read-only summary page
   [Best practices](https://svelte.dev/docs/svelte/best-practices) says "to compute something from state, use `$derived`
   rather than `$effect`" and "avoid updating state inside effects". A reach for `untrack` is the symptom of having
   broken this rule, not a fix for it; lint enforces both. Objects compared by identity (models, quantities,
-  closed-set members, `Measure`s) are held in `$state.raw` and replaced rather than mutated — a deep `$state` proxy
-  breaks `===` against the library's objects.
+  closed-set members, `Measure`s, `ApplicabilityLimit`s) are held in `$state.raw` and replaced rather than mutated — a deep `$state` proxy
+  breaks `===` against the library's objects. `ApplicabilityLimit` identity holds on the main thread only (2026-09-08):
+  the Phase 3.7 worker boundary must re-hydrate the rows or dispatch on `role`, because a structured clone is a new object.
 - **TypeScript guardrails**: `strict`, `erasableSyntaxOnly`, `verbatimModuleSyntax`; no `enum`, `namespace`, or constructor parameter properties.
 - **AI workflow**: enable the Svelte MCP in every session; generated `.svelte` files must pass `svelte-autofixer`; PRs must pass typecheck + lint + build.
 - **Where these conventions come from** (verified 2026-09-04): [Svelte Best practices](https://svelte.dev/docs/svelte/best-practices),
