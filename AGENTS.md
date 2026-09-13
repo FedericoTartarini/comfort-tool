@@ -1,59 +1,24 @@
-# Repository Guidelines
+# comfort-tool
 
-## Scope
+Frontend-only Svelte 5 SPA for thermal-comfort calculation, a rewrite of the CBE tool. Branch `rewrite/v1` is the rewrite in progress; `../comfort-tool-old/` (worktree on `refactor-draft`) is a behaviour reference only, do not copy code from it.
 
-Static Svelte 5 SPA at the repository root. Product code lives in `src/`. No
-backend, no server assumptions. Never commit generated artifacts (`dist/`,
-`node_modules/`, coverage, caches, Playwright output).
+- Decisions: [docs/adr-0001-architecture.md](docs/adr-0001-architecture.md) wins on conflicts. Plan and current position: [docs/rewrite-plan.md](docs/rewrite-plan.md). Review checklist: [docs/code-quality-checklist.md](docs/code-quality-checklist.md).
+- `jsthermalcomfort` is symlinked to `../../forked repo/jsthermalcomfort` (branch `typescript`). The app consumes its build output `lib/esm/`, so a library change needs `npm run build` in the fork before this app sees it.
+- Single test file: `npx vitest run <file>`. `npm run check` is svelte-check + tsc. `npm run lint` enforces the architecture boundaries; never add an `eslint-disable` to get past a boundary rule, either the import is wrong or the rule is.
+- The one rule: adding a model = one declaration file + one registry line, zero other files change. If a change would make the next model touch a third file, fix the architecture instead of working around it.
+- Do not add a dependency for what a few lines of the standard library or an installed package can do.
+- Done when `npm test`, `npm run check`, `npm run lint` and `npm run build` pass and the human half of the code-quality checklist has been read against the diff. Conventional Commits.
 
-**This branch (`rewrite/v1`) is a rewrite in progress.** The previous
-application was deleted and `src/` is being rebuilt. The old tree is checked
-out read-only at `../comfort-tool-old/` as a behaviour reference — read it to
-answer "what did the old tool do here", never to copy code from.
+## Agent skills
 
-## Where the rules live
+### Issue tracker
 
-| Document | Contents |
-| --- | --- |
-| [docs/adr-0001-architecture.md](docs/adr-0001-architecture.md) | The architecture decision record. Authoritative; wins on any conflict. |
-| [docs/rewrite-plan.md](docs/rewrite-plan.md) | Phased plan. Each phase is meant to be one working session. |
-| [docs/code-quality-checklist.md](docs/code-quality-checklist.md) | What the machine checks, what a human reads for, and when each pass runs. |
-| [CLAUDE.md](CLAUDE.md) | Working summary: layout, import direction, conventions. |
+GitHub Issues on `FedericoTartarini/comfort-tool`, via `gh`. See `docs/agents/issue-tracker.md`.
 
-Read the ADR before making structural changes. When a change moves layer
-boundaries, state flow, model registration, or chart ownership, update
-`CLAUDE.md` in the same commit.
+### Triage labels
 
-## Execution rules
+Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
-- **Adding a model = one declaration file + one registry line.** If a model
-  needs a third file, stop and fix the architecture.
-- Architecture boundaries are enforced in `eslint.config.js`, not by review.
-  A boundary violation is a lint failure. Do not add an `eslint-disable` to get
-  past one — either the import is wrong or the rule is, and both need a decision.
-- The library (`jsthermalcomfort`, symlinked to `../../forked repo/jsthermalcomfort`
-  on branch `typescript`) owns every formula, threshold and comfort-zone
-  geometry. The app never implements one, with one written exception: unit
-  conversion for display (°C↔°F, m/s↔fpm) lives in `src/core/units.ts`. The
-  library is a general-purpose package; nothing that exists only for this tool
-  (input steps, defaults, option copy, route path segments) goes into it. The
-  app consumes the fork's **build output**, so a library change requires
-  `npm run build` inside the fork first.
-- Canonical stored state is SI. The library is called with `units: "SI"` only.
-- Do not add a dependency for something a few lines of the standard library or
-  an already-installed package can do.
+### Domain docs
 
-## Validation
-
-```bash
-npm test && npm run check && npm run lint && npm run build
-```
-
-All four must pass before a change is done. Behaviour differences against the
-old tool are checked by running `../comfort-tool-old/` side by side, not by
-trusting a screenshot.
-
-## Commits
-
-Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
-Do not run git write commands unless explicitly asked in that message.
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
