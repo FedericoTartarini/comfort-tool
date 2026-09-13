@@ -8,6 +8,8 @@ and `state/modelRegistry/builder.ts` alone is 1274 lines). ADR-0001 reached cons
 borrow only verified behaviour**, rewrite against the new architecture, targeting delivery of v1 on 2026-10-01.
 
 Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` branch); the app is left with only "declare models + render",
+> **2026-09-13**: the fork is abandoned. The library is the main repository's `ModelInfo` interface, per [ADR-0002](adr/0002-library-interface-model-info.md); everything below that names `io` / `reference` / `charts` or the fork is pre-meeting history.
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -28,8 +30,11 @@ What is unmaintainable is `src/`, not `package.json`.
 | Scope review (2026-09-04, after Phase 3) | PMV (ASHRAE 55) joins v1 — it is the deployed tool's main screen and was missing from every list by oversight; input calculators become Phase 5b, narrowed to custom ensemble + dynamic predictive clothing + solar gain; the ES5 summary page is downgraded to a static notice; the site shell joins Phase 6; `suppressWarnings` goes into the library; chart axis ranges and the dynamic zone source move into the model declaration; field charts never snap on hover; local discomfort is deferred with its direction recorded (standalone models under the ASHRAE tab, not the legacy button panel) |
 | Visual design (2026-09-04) | It had no phase at all, and ADR §7.4 referred to a design mock-up no phase produced. Split in two: token and primitive groundwork in Phase 3.6, the design itself in a new Phase 5c after Compare / Explore settle the layout. The site shell moves from Phase 6 into 5c. Deferring is safe because ADR §2's utility-class ban keeps appearance out of business components |
 | Code quality (2026-09-04) | Two audit passes against `docs/code-quality-checklist.md` — full before the Phase 4 acceptance, narrow after it. Anything mechanically checkable becomes a lint rule with a probe. *Clean Code* / *Clean Architecture* are not acceptance criteria; the verified sources are Svelte Best practices, the TypeScript handbook's Do's and Don'ts, the Google TypeScript Style Guide, and DRY as Hunt & Thomas state it |
+| **Library interface (2026-09-13, with the lead)** | The app consumes the main repository's `ModelInfo` / `_INFO` / `ClassifierBins` / `Standard` from the package root; the fork is abandoned. Quantities become an app table keyed by `_INFO` keys; applicability is evaluated in the app until #199; axis ranges are declared, else applicability, else error; comfort-zone geometry moves into `core/compute/`; the four humidity inverses go upstream first; thin wrappers go; v1 = models with an `_INFO`, second-model acceptance on `heat_index_rothfusz`. All fourteen decisions in [ADR-0002](adr/0002-library-interface-model-info.md) |
 
 ### Library inventory (`typescript` @ d57c456, runtime exports verified one by one)
+
+> **Obsolete since 2026-09-13** (ADR-0002): this inventory describes the fork. Kept as history.
 
 **Already there, directly usable:**
 
@@ -176,6 +181,8 @@ come from `Stack` / `Grid` / `Inline` once Phase 2's `ui/layout/` lands.
 ---
 
 ## Phase 1 · Library-side gaps (done in the fork repository, decoupled from the app)
+
+> **Done in the fork, superseded by ADR-0002** (2026-09-13). The fork is abandoned; what the app still needs from this phase is re-homed by ADR-0002 decisions 2, 6, 9. History only.
 
 **Goal**: fill the four gaps the app depends on: applicability-limit data (source, not mirror), standard membership,
 the two missing quantities, and `psychrometricZone`'s operative mode. Only covers `pmv_ppd_iso` and `adaptive_ashrae`.
@@ -359,6 +366,8 @@ All done criteria met (`npm test` 21 tests, `check` / `lint` / `build` clean; ve
 ---
 
 ## Phase 2b · Library: humidity representations (fork repository)
+
+> **Done in the fork, superseded by ADR-0002** (2026-09-13). The four inverse functions are re-submitted as a PR to the main repository (ADR-0002 decision 10) and are the prerequisite for the switch. History only.
 
 **Goal**: the four remaining humidity representations, so `humidityMode` can grow to five and `toLibraryInputs` can convert them without the app writing a formula or a root finder (ADR §3).
 **Prerequisites**: none on the app side; run in a separate chat with cwd set to the fork. Afterwards `npm run build` in the fork, then in the app: add the four modes to `core/entryModes.ts`, the four conversions to `core/libraryInputs.ts`, a mode selector row to `ui/inputs/InputPanel.svelte`, and the `pressure` / `humidityRatio` display units in `core/units.ts` (the `satisfies Record<QuantityKind, …>` will demand them).
@@ -598,6 +607,8 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 
 ### Phase 3.7 · PMV (ASHRAE 55) + the Worker
 
+> **Blocked since 2026-09-13**: the main repository has no `PMV_PPD_ASHRAE_INFO` yet (ADR-0002 decision 13). This phase moves behind the ADR-0002 migration and Phase 4 as **Phase 4b**; the Worker and the `compute.svelte.ts` rewrite (items 2–3) still belong to it.
+
 1. `src/models/pmvAshrae.ts` + one registry line — **the first architecture acceptance**, and the thing that proves the
    `options` contract carries a real model.
 2. The Worker becomes mandatory here. Measured 2026-09-04, 100×100 grid: ISO 21 ms, **ASHRAE 340 ms** — the cooling effect
@@ -623,24 +634,36 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 
 ## Phase 4 · Second model ← architecture acceptance, do not proceed if it fails
 
-**Goal**: add Adaptive (ASHRAE 55).
-**Prerequisites**: Phase 3. On the library side this needs `adaptive_ashrae.limits` / `.standard` and `io.quantities.operative_tmp` (added in Phase 1 as `t_o`, renamed 2026-09-05).
+**Goal**: add **Heat Index (Rothfusz)** — `heat_index_rothfusz` with `HEAT_INDEX_ROTHFUSZ_INFO`, the one other model whose `_INFO` the main repository ships today (rewritten 2026-09-13, ADR-0002 decision 13; it was Adaptive (ASHRAE 55), which now waits for its `_INFO` in Phase 4b).
+**Prerequisites**: the ADR-0002 migration (the app on the main repository's interface, `npm test` / `check` / `lint` / `build` green), and the remaining Phase 3.6 items.
 
-Only two files may be touched: create `src/models/adaptiveAshrae.ts`, and add one line to `src/models/index.ts`.
-Adaptive renders for real with `chartType.dynamic`, with the axes locked to
-`t_running_mean × operative_tmp` (axis labels from `Quantity.label`), and the output is the acceptability-class bands
-(`charts.adaptiveAshraeZone`).
+Why this model is a fair test: two inputs (`tdb`, `rh`) so it has the humidity group without the temperature group; an output with a
+`classifier` (`stress_category`, `HEAT_INDEX_STRESS_CATEGORY_BINS`) so the compliance column and the band palette run on bins; no
+standard, so it appears only in Explore; a `min`-only applicability on both inputs, so the axis-range fallback (declared, else
+applicability, else error) is exercised — both quantities must be declared. The dynamic chart is its only chart.
 
-**Prerequisites**: Phases 3.5 – 3.7. The `zones` source exists by then, so Adaptive's exact
-`charts.adaptiveAshraeZone` polygons need no new plumbing, and `hasHumidityGroup` (read from `inputs`) keeps `rh` out of its inputs.
+Only two files may be touched: create `src/models/heatIndex.ts`, and add one line to `src/models/index.ts`.
 
 **Done criteria (the hardest one in the whole plan)**
-`git diff --stat` shows only `src/models/adaptiveAshrae.ts` and `src/models/index.ts`.
+`git diff --stat` shows only `src/models/heatIndex.ts` and `src/models/index.ts`.
 **The moment a third file is touched, stop and fix the architecture** — fixing it in week four is an order of magnitude cheaper than in week ten.
 
 Then a narrow pass over [code-quality-checklist.md](code-quality-checklist.md) covering **only those two files**: names,
 declaration shape, no new mirrored value. Nothing in `core/` changes at this point — needing to change it means the
 acceptance did not really pass.
+
+---
+
+## Phase 4b · PMV (ASHRAE 55) and Adaptive (ASHRAE 55) — when their `_INFO` lands upstream
+
+**Prerequisites**: `PMV_PPD_ASHRAE_INFO` (with the compliance interval) and `ADAPTIVE_ASHRAE_INFO` (with the `offsets` field of #184 §6)
+in the main repository. #203 item 3 schedules all-model metadata after #182; the app does not push on that (ADR-0002 decision 13).
+
+1. PMV (ASHRAE 55): the former Phase 3.7 in full — `src/models/pmvAshrae.ts` + one registry line, `options` (`airspeed_control`),
+   the Worker, the `compute.svelte.ts` rewrite, and the row-less ASHRAE cross-field air-speed rule decided with the model on screen.
+2. Adaptive (ASHRAE 55): `src/models/adaptiveAshrae.ts` + one registry line; locked axes `t_running_mean × operative_tmp`, exact
+   band polygons from the app's `core/compute/` adaptive bands (ADR-0002 decision 9), `hasHumidityGroup` false because `rh` is not
+   among its inputs. Same two-file rule as Phase 4.
 
 ---
 
@@ -752,13 +775,13 @@ each = library port + one declaration file + one registry line) → Time-series 
 - Tailwind utility classes are **allowed only** in `src/ui/primitives/` (generated by the shadcn CLI, not edited)
   and `src/ui/layout/` (`Stack`/`Grid`/`Inline`, gap via props); their appearance in any other directory is an error
 
-**Single entry points**
-- The library's **model functions** (`jsthermalcomfort` root, `/models`) are imported only in `src/models/` (binding `run`,
-  reading metadata) and `src/workers/` (the actual call), enforced by lint; `io` / `psychrometrics` /
-  `reference` / `charts` can be imported anywhere (`io.quantities` is the single definition of quantities);
-  the `io` model wrappers are **called** only in the worker, by convention rather than lint
-- String ids appear in only two places: `Quantity.key` inside the library, and `src/core/shareLink.ts`
-  (`core/libraryInputs.ts` uses `Quantity.key` to assemble the library's init object; that is the library boundary and does not count as a third place)
+**Single entry points** (rewritten 2026-09-13, ADR-0002 decisions 2, 3, 12)
+- Everything comes from the `jsthermalcomfort` package root; there are no subpaths. The library's **model functions** are
+  imported only in `src/models/` (the declaration's positional `run`) and `src/workers/` (the actual call), enforced by
+  `no-restricted-imports` `importNames`; `_INFO`, `Standard`, `classifyFromBins` and the psychrometrics can be imported anywhere
+- `src/core/quantities.ts` is the single definition of quantities (`{ key, kind, label }`); `key` is the `_INFO` key
+- String ids appear in only two places: `Quantity.key` at the library boundary (`core/libraryInputs.ts` assembling `run`'s
+  `Record<key, number>`, `core/applicability.ts` indexing `_INFO`, `core/standard.ts` reading `Standard`'s keys), and `src/core/shareLink.ts`
 - Unit conversion only in `src/core/units.ts`, with the formulas written in the app (the ADR §3 exception); the canonical stored state is always SI
 - Number formatting only in `src/core/numberFormat.ts`
 
@@ -769,11 +792,13 @@ each = library port + one declaration file + one registry line) → Time-series 
 - Quantity names come only from `Quantity.label`; hard-coded names such as "Air temperature" do not appear in the app
 - Run generated `.svelte` files through `svelte-autofixer` (the Svelte MCP is installed)
 
-**Things not to write** (the library already has them, or they are not needed)
-`core/compute/zoneBoundary.ts`, any self-implemented root finder, any transcribed classification threshold numbers,
-`InputCalculator`, `sequentialSimulation`, `evaluateMany`, `migrate()`, `fflate`;
-on the library side, `Unit` / `InputSpec` / `OptionSpec` / `ModelDefinition` / the `models` registry (they belong to the app);
-on the app side, enum classes and app-side `standards` declarations (they belong to the library's `model.standard`).
+**Things not to write** (rewritten 2026-09-13, ADR-0002)
+Any transcribed applicability or classification number (they are read from `_INFO`), a root finder or zone solver written
+from scratch (`core/compute/` is **ported from the fork**, tests included), a `Measure` / `Outcome` / `io` layer over the
+model's own result object, a hand-written name or route segment per standard (generated from `Standard`'s key), `defineModel`,
+`InputCalculator`, `sequentialSimulation`, `evaluateMany`, `migrate()`, `fflate`; on the library side, `Unit` / `InputSpec` /
+`OptionSpec` / `ModelDefinition` / the `models` registry / a quantities table with labels (they belong to the app); on the app
+side, enum classes.
 
 ## Verification
 

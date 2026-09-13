@@ -1,6 +1,6 @@
 # ADR-0001 · CBE Thermal Comfort Tool rewrite: stack and architecture baseline
 
-- Status: consensus reached (2026-09-03)
+- Status: consensus reached (2026-09-03); **superseded in part by [ADR-0002](0002-library-interface-model-info.md) (2026-09-13)** — the marked sections below describe the pre-meeting fork contract and are kept as the baseline, not edited
 - Scope: v1 (target 2026-10-01), and long-term maintenance thereafter
 - Supersedes: the prototype repository `main repo/comfort-tool` (Svelte 5, about 49k lines). The prototype is unmaintainable because of excessive layering; **no code is reused, only verified behaviour is borrowed**.
 - Companion: the `typescript` branch of the `jsthermalcomfort` fork (the calculation library; TypeScript, its build output consumed through a symlink, developed in parallel with this project). Section 4 also gives the library's public interface contract.
@@ -58,6 +58,9 @@
 
 ## 3. System boundary: library vs app
 
+> **Superseded in part by [ADR-0002](0002-library-interface-model-info.md)** (2026-09-13): the library column below describes the fork. Quantities are now an app table, the `io` / `reference` / `charts` layers are gone, comfort-zone geometry lives in the app, and the library ships `ModelInfo` — see ADR-0002 Context and decisions 1, 2, 9, 10.
+
+
 **The test (consensus 2026-09-03): would pythermalcomfort ship it?** `jsthermalcomfort` is its port, and its audience is researchers and arbitrary tools. Anything where "another tool with a completely different design would need exactly the same value for the same model" belongs to the library; anything that might differ from one tool to the next belongs to the app.
 
 | Library (`jsthermalcomfort`, fork `typescript` branch) | App |
@@ -95,11 +98,17 @@ Convention: the library's **model functions** (the `jsthermalcomfort` root, `jst
 
 ### 4.0 Three rules that run through the whole project
 
+> **Rule 1 amended by [ADR-0002](0002-library-interface-model-info.md) decision 2**: quantities are defined in the app's `core/quantities.ts`, keyed by the library's `ModelInfo` keys; dot access and `===` are unchanged.
+
+
 1. **One definition, referenced everywhere.** Quantities, models, workspaces, chart types, unit systems and so on are objects; code references them with dot access (`io.quantities.tdb`, `workspace.explore`), not string keys and not `Record<string, …>` dictionaries. `Quantity.kind` is a string union type exported by the library; the app treats it as a typed discriminant (`core/units.ts` looks up the display-unit table by kind, and `satisfies Record<QuantityKind, …>` guarantees exhaustiveness), which does not count as a string key.
 2. **Strings appear only at two boundaries.** The library-internal `Quantity.key` (such as `"tdb"`) and share-link serialisation. The former is read only by the library, by `core/libraryInputs.ts` (which assembles the library's init object from `Quantity.key`, and is the library boundary) and by `shareLink.ts`; the latter is confined to `shareLink.ts`.
 3. **Erasable syntax.** No `enum`, `namespace`, or constructor parameter properties. Closed sets are plain `as const` object collections plus a union type derived from them, the same style as the library's `quantities`; behaviour is written as plain functions, with no class hierarchies and no `switch` scattered everywhere.
 
 ### 4.1 The library's public interface (contract)
+
+> **Superseded in full by [ADR-0002](0002-library-interface-model-info.md)** (2026-09-13). The contract is now the main repository's `ModelInfo` / `_INFO` / `ClassifierBins` / `Standard`, imported from the package root. Kept as the record of the fork contract.
+
 
 The library already has four layers: `models` / `reference` / `io` / `charts`. Only the parts the app depends on are listed below. **Phase 1 adds four things: applicability-limit data (source, not mirror), standard membership, the two missing quantities, and `trFollowsDb` on `psychrometricZone`.** Everything else already exists.
 
@@ -206,6 +215,9 @@ export function displayUnitFor(quantity: Quantity, unitSystem: UnitSystem): Disp
 
 ### 4.3 Model declaration (app side, one object literal, one file)
 
+> **Shape superseded by [ADR-0002](0002-library-interface-model-info.md) decisions 3 and 6**: `info` replaces `model`, `standard` replaces `edition`, `run` is the positional call, `inputs` / `axisRanges` are named-field object arrays, `defineModel` is gone. The rules paragraph and the result-table rules still apply.
+
+
 ```ts
 // src/models/pmvIso.ts
 import { io, pmv_ppd_iso } from 'jsthermalcomfort';   // a declaration file may reference library models: to bind run and read metadata. Calls happen only in the worker
@@ -241,6 +253,9 @@ Result table (`table`):
 - `table` is required; outputs not listed are not shown and are not offered in Explore's output selection.
 
 ### 4.4 Chart types (closed set, v1)
+
+> **Axis rules superseded by [ADR-0002](0002-library-interface-model-info.md) decision 5** (declared, else applicability, else error); the zone geometry it calls is in the app per decision 9. Hover and legend rules unchanged.
+
 
 | Type | Definition |
 |---|---|
@@ -365,6 +380,9 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 
 ## 5. Directory layout and boundaries
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 6, 9, 11, 12**: `core/quantities.ts` and `core/applicability.ts` are added, `core/compute/` returns for the zone geometry, `standard.ts` generates name and segment from the `Standard` key, `modelDeclaration.ts` has no `defineModel`, and the model-function lint boundary is by `importNames`.
+
+
 ```
 src/
   core/                 plain TS; ESLint forbids importing svelte / state / ui
@@ -394,6 +412,9 @@ index.html              embedded ES5 feature check + read-only summary page
 
 ## 6. Coding conventions
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 2 and 6**: quantities come from the app's table, standards from the library's `Standard`; "imported from the library" below reads accordingly. `Quantity.label` remains the only source of a quantity's name.
+
+
 - **Naming**: components `PascalCase.svelte`; modules `camelCase.ts`; functions start with a verb;
   **module constants follow two rules** (2026-09-04): a scalar literal is `CONSTANT_CASE` (`GRID`, `ZONE_RH_STEP`,
   `METRES_PER_FOOT`), a closed-set table or palette is `camelCase` (`chartType`, `temperatureMode`,
@@ -417,11 +438,14 @@ index.html              embedded ES5 feature check + read-only summary page
   "every piece of knowledge must have a single, unambiguous, authoritative representation within a system", which §4.0 turns
   into a lint rule. *Clean Code* and *Clean Architecture* are deliberately **not** acceptance criteria: parts of both are
   actively disputed, and their layering argument is already discharged by §5's import direction, which lint enforces.
-  The running checklist lives in [docs/code-quality-checklist.md](code-quality-checklist.md).
+  The running checklist lives in [docs/code-quality-checklist.md](../code-quality-checklist.md).
 
 ---
 
 ## 7. Phase-one scope and acceptance criteria
+
+> **Scope and acceptance criterion 1 superseded by [ADR-0002](0002-library-interface-model-info.md) decision 13**: v1 is the models whose `_INFO` the main repository ships; the second-model acceptance runs on `heat_index_rothfusz`, and PMV (ASHRAE 55) / Adaptive wait for their `_INFO` as Phase 4b.
+
 
 Scope: the three models **PMV (ISO 7730)**, **PMV (ASHRAE 55)** and **Adaptive (ASHRAE 55)**; Standard + Explore;
 Compare with three slots; SI/IP; five humidity entry modes; model-switch dialog; Explore threshold editor; input
@@ -449,7 +473,7 @@ Acceptance:
 7. The result table columns are determined entirely by the model's declared `table` (`table` is required, and UTCI declares it too); any chart has exactly one legend, below the chart, and Plotly's built-in legend never appears.
 8. Lint passes: no utility classes out of bounds, no legacy syntax, no out-of-bounds imports in `core/`, no `enum`.
 9. Unit test coverage: `shareLink` encode/decode and migration, `toLibraryInputs` (5 humidity representations, operative mode), `numberFormat` and unit conversion, model-switch inheritance and clamping rules.
-10. **Code quality** (added 2026-09-04). Two passes over [docs/code-quality-checklist.md](code-quality-checklist.md): a full
+10. **Code quality** (added 2026-09-04). Two passes over [docs/code-quality-checklist.md](../code-quality-checklist.md): a full
     one once the contracts are frozen and before the Phase 4 acceptance, and a narrow one over the two new files after it.
     The split is the point — the first pass is the last moment a contract can change freely, the second must not change one
     at all. Anything mechanically checkable is a lint rule rather than a checklist line, and every new rule ships with a
@@ -458,6 +482,9 @@ Acceptance:
 ---
 
 ## 8. Known risks and mitigations
+
+> **Interface-drift row amended by [ADR-0002](0002-library-interface-model-info.md) decision 14**: the interface is `@internal Experimental`; the app links a local checkout, then pins `jsthermalcomfort@next`, and confines every `_INFO` read to three modules.
+
 
 | Risk | Mitigation |
 |---|---|

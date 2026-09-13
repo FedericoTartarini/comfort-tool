@@ -1,6 +1,6 @@
 # Code quality checklist
 
-Companion to [adr-0001-architecture.md](adr-0001-architecture.md) §6 and acceptance criterion §7.10.
+Companion to [adr/0001-architecture.md](adr/0001-architecture.md) §6 and acceptance criterion §7.10.
 Agreed 2026-09-04.
 
 ## When it runs
