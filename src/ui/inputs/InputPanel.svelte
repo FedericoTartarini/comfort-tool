@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { Quantity } from "jsthermalcomfort/io";
   import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
   import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
   import { enteredQuantities, enteredRange, enteredValue } from "$lib/core/libraryInputs";
   import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { Quantity } from "$lib/core/quantities";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { InputSlot } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";

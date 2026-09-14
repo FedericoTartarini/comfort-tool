@@ -1,4 +1,4 @@
-import type { Quantity, QuantityKind } from "jsthermalcomfort/io";
+import type { Quantity, QuantityKind } from "./quantities";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
 /**
@@ -61,8 +61,10 @@ const displayUnits = {
   metabolicRate: sameInBothSystems({ symbol: "met", step: 0.1 }),
   clothingInsulation: sameInBothSystems({ symbol: "clo", step: 0.1 }),
   thermalSensation: sameInBothSystems({ symbol: "", step: 0.1 }),
-  // The library's pressures (`p_vap`, `p_atm`) are in pascals; kPa is the
-  // display unit, as in the deployed tool.
+  // A classified output (`tsv`, `stress_category`): no unit, no meaningful
+  // step — it is never an editable input.
+  category: sameInBothSystems({ symbol: "", step: 0 }),
+  // `pa` is in pascals; kPa is the display unit, as in the deployed tool.
   pressure: {
     si: {
       symbol: "kPa",

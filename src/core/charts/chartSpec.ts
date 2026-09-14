@@ -1,6 +1,6 @@
-import type { Quantity } from "jsthermalcomfort/io";
 import type { SlotInputs } from "$lib/core/libraryInputs";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { Quantity } from "$lib/core/quantities";
 import type { UnitSystem } from "$lib/core/unitSystem";
 
 /**

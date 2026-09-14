@@ -1,9 +1,9 @@
-import { quantities, type Quantity } from "jsthermalcomfort/io";
 import { operative_tmp } from "jsthermalcomfort/psychrometrics";
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 const q = quantities;

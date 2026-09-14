@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quantities } from "jsthermalcomfort/io";
+import { quantities } from "./quantities";
 import { displayUnitFor } from "./units";
 import { unitSystem } from "./unitSystem";
 
@@ -21,11 +21,11 @@ describe("displayUnitFor", () => {
   });
 
   it("converts pressure from the library's pascals to kPa and inHg", () => {
-    const kilopascals = displayUnitFor(quantities.p_vap, unitSystem.si);
+    const kilopascals = displayUnitFor(quantities.pa, unitSystem.si);
     expect(kilopascals.symbol).toBe("kPa");
     expect(kilopascals.fromSi(2700)).toBe(2.7);
     expect(kilopascals.toSi(2.7)).toBeCloseTo(2700, 9);
-    const inchesOfMercury = displayUnitFor(quantities.p_atm, unitSystem.ip);
+    const inchesOfMercury = displayUnitFor(quantities.pa, unitSystem.ip);
     expect(inchesOfMercury.fromSi(101325)).toBeCloseTo(29.92, 2);
     expect(inchesOfMercury.toSi(29.92)).toBeCloseTo(101325, -1);
   });

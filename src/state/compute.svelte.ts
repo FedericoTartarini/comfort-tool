@@ -1,4 +1,4 @@
-import type { Measure, Quantity } from "jsthermalcomfort/io";
+import type { Measure } from "jsthermalcomfort/io";
 import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
 import { untrack } from "svelte";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
@@ -7,6 +7,7 @@ import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
 import { outOfRangeInputs, toLibraryInputs } from "$lib/core/libraryInputs";
 import { dynamicChartOf, psychrometricChartOf } from "$lib/core/modelDeclaration";
+import type { Quantity } from "$lib/core/quantities";
 import { copy } from "$lib/text/copy";
 import type { Session } from "./session.svelte";
 

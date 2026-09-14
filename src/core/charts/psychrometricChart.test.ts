@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { io, v_relative } from "jsthermalcomfort";
-import type { Quantity } from "jsthermalcomfort/io";
 import { psy_ta_rh } from "jsthermalcomfort/psychrometrics";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { SlotInputs } from "$lib/core/libraryInputs";
 import { psychrometricChartOf } from "$lib/core/modelDeclaration";
+import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvIso } from "$lib/models/pmvIso";
 import type { ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { psychrometricSpec } from "./psychrometricChart";
 
-const q = io.quantities;
+const q = quantities;
 const ZONE_RH_STEP = 5;
 /** The library solves the edges to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
 const PMV_DIGITS = 2;

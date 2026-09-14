@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { Quantity } from "jsthermalcomfort/io";
   import type { Range } from "$lib/core/modelDeclaration";
   import { formatNumber } from "$lib/core/numberFormat";
+  import type { Quantity } from "$lib/core/quantities";
   import { displayUnitFor } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import Inline from "$lib/ui/layout/Inline.svelte";

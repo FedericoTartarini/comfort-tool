@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
-import { io } from "jsthermalcomfort";
+import { quantities } from "./src/core/quantities.ts";
 
 // Flat config REPLACES a same-named rule when a later block matches the same
 // file — it does not merge. `no-restricted-imports` and `no-restricted-syntax`
@@ -11,9 +11,9 @@ import { io } from "jsthermalcomfort";
 
 // ADR §3 / §4.7: model functions are called in the worker and referenced only
 // by the model declarations (which bind `run` and read label/limits off them).
-// The io subpath stays importable everywhere because `io.quantities` is the
-// one definition of every physical quantity; that its model wrappers are only
-// *called* in the worker is a convention lint cannot check.
+// The io subpath stays importable everywhere for its other shapes (`Outcome`,
+// `Measure`); that its model wrappers are only *called* in the worker is a
+// convention lint cannot check.
 const libraryModelImports = {
   paths: [
     {
@@ -49,16 +49,18 @@ const legacySvelteSyntax = [
   },
 ];
 
-// ADR §4.0: wire strings live in the library and in shareLink. Everywhere else
-// holds object references, so renaming a quantity is one edit. The key list is
-// read from the library so adding a quantity there never touches this file.
-// A unit symbol can spell the same as a key (`met`, `clo`); `symbol:` properties
-// in core/units.ts are display text, not identifiers, so they are exempt.
+// ADR §4.0 / ADR-0002 decision 2: wire strings live in core/quantities.ts and
+// in shareLink. Everywhere else holds object references, so renaming a
+// quantity is one edit. The key list is read from the table so adding a row
+// there never touches this file. A unit symbol can spell the same as a key
+// (`met`, `clo`); `symbol:` properties in core/units.ts are display text, not
+// identifiers, so they are exempt. core/quantities.ts itself, the one place
+// the wire string is legitimately written down, gets a file-scoped exemption
+// below rather than widening this selector app-wide.
 const wireStringSyntax = [
   {
-    selector: `Literal[value=/^(${Object.keys(io.quantities).join("|")})$/]:not(Property[key.name='symbol'] > Literal)`,
-    message:
-      "Reference the Quantity object from jsthermalcomfort, not its wire string. Wire strings belong in core/shareLink.ts.",
+    selector: `Literal[value=/^(${Object.keys(quantities).join("|")})$/]:not(Property[key.name='symbol'] > Literal)`,
+    message: "Reference the Quantity object from core/quantities.ts, not its wire string. Wire strings belong in core/shareLink.ts.",
   },
 ];
 
@@ -205,8 +207,9 @@ export default [
     },
   },
   {
-    // The share codec is the one place wire strings may be written.
-    files: ["src/core/shareLink.ts"],
+    // The share codec and the quantities table are the two places wire
+    // strings may be written (ADR §4.0, ADR-0002 decision 2).
+    files: ["src/core/shareLink.ts", "src/core/quantities.ts"],
     rules: {
       "no-restricted-syntax": "off",
     },

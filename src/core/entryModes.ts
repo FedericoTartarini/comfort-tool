@@ -1,4 +1,3 @@
-import { quantities, type Quantity } from "jsthermalcomfort/io";
 import {
   hr_to_rh,
   psy_ta_rh,
@@ -6,6 +5,7 @@ import {
   rh_from_vapour_pressure,
   rh_from_wet_bulb,
 } from "jsthermalcomfort/psychrometrics";
+import { quantities, type Quantity } from "./quantities";
 
 /**
  * How the user enters temperature. The mode decides which quantities the
@@ -90,7 +90,7 @@ export const humidityMode = {
   },
   vapourPressure: {
     id: "vapour-pressure",
-    quantity: quantities.p_vap,
+    quantity: quantities.pa,
     toRelativeHumidity: (vapourPressure, tdb) => rh_from_vapour_pressure(vapourPressure, tdb),
     fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).p_vap,
   },

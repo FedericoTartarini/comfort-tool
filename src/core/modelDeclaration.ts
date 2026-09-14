@@ -1,7 +1,8 @@
 import type { PsychrometricZoneOptions } from "jsthermalcomfort/charts";
-import { quantities, type Outcome, type Quantity } from "jsthermalcomfort/io";
+import type { Outcome } from "jsthermalcomfort/io";
 import type { ApplicabilityLimit, IntervalScale, StandardRef } from "jsthermalcomfort/reference";
 import { chartType } from "./chartType";
+import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
  * The metadata a library model function carries (`pmv_ppd_iso.label`,
@@ -173,7 +174,9 @@ export function defineModel<Init extends object>(
 }
 
 export function limitFor(model: RegisteredModel, quantity: Quantity): ApplicabilityLimit | undefined {
-  return model.model.limits?.find((limit) => limit.quantity === quantity);
+  // `limit.quantity` is the library's own Quantity object; `quantityFor`
+  // reconciles it with this table's row before comparing (ADR-0002 decision 2).
+  return model.model.limits?.find((limit) => quantityFor(limit.quantity.key) === quantity);
 }
 
 /**

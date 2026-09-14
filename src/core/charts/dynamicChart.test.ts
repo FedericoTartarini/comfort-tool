@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { io } from "jsthermalcomfort";
-import type { Quantity } from "jsthermalcomfort/io";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { enteredQuantities, requireValue, type SlotInputs } from "$lib/core/libraryInputs";
 import { dynamicChartOf, type DynamicDeclaration } from "$lib/core/modelDeclaration";
+import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvIso } from "$lib/models/pmvIso";
 import type { BandTrace, ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 
-const q = io.quantities;
+const q = quantities;
 const GRID = 100;
 
 const declaration = dynamicChartOf(pmvIso);

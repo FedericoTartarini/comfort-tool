@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { quantities } from "jsthermalcomfort/io";
 import { humidityMode } from "./entryModes";
+import { quantities } from "./quantities";
 
 describe("humidityMode", () => {
   it("names the library quantity each mode enters", () => {
@@ -8,7 +8,7 @@ describe("humidityMode", () => {
     expect(humidityMode.humidityRatio.quantity).toBe(quantities.hr);
     expect(humidityMode.dewPoint.quantity).toBe(quantities.dew_point_tmp);
     expect(humidityMode.wetBulb.quantity).toBe(quantities.wet_bulb_tmp);
-    expect(humidityMode.vapourPressure.quantity).toBe(quantities.p_vap);
+    expect(humidityMode.vapourPressure.quantity).toBe(quantities.pa);
   });
 
   it("is the identity in rh mode", () => {

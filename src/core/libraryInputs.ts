@@ -1,4 +1,3 @@
-import { quantities, type Quantity } from "jsthermalcomfort/io";
 import { v_relative } from "jsthermalcomfort/utilities";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import {
@@ -9,6 +8,7 @@ import {
   type Range,
   type RegisteredModel,
 } from "./modelDeclaration";
+import { quantities, type Quantity } from "./quantities";
 
 /**
  * The slice of an input slot this module reads. A plain interface, so core/

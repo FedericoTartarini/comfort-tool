@@ -1,9 +1,10 @@
 <script lang="ts">
-  import type { Measure, Quantity } from "jsthermalcomfort/io";
+  import type { Measure } from "jsthermalcomfort/io";
   import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
   import { colorForBand, intervalColor } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { formatNumber } from "$lib/core/numberFormat";
+  import { quantityFor, type Quantity } from "$lib/core/quantities";
   import { displayUnitFor } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
@@ -33,7 +34,9 @@
   const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
 
   function cellText(quantity: Quantity): string {
-    const measure = measures?.find((entry) => entry.quantity === quantity);
+    // `entry.quantity` is the library's own object; `quantityFor` reconciles
+    // it with this table's row before comparing.
+    const measure = measures?.find((entry) => quantityFor(entry.quantity.key) === quantity);
     if (!measure || !Number.isFinite(measure.value)) {
       return copy.notAvailable;
     }

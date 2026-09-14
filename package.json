@@ -50,6 +50,7 @@
   "dependencies": {
     "comlink": "^4.4.2",
     "jsthermalcomfort": "file:../../forked repo/jsthermalcomfort",
+    "jsthermalcomfort-main": "file:../jsthermalcomfort",
     "plotly.js-cartesian-dist-min": "^4.0.0",
     "sv-router": "^0.18.0"
   }

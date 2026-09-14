@@ -1,4 +1,4 @@
-import type { Measure, Quantity } from "jsthermalcomfort/io";
+import type { Measure } from "jsthermalcomfort/io";
 import { bandFill, chartInk } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
 import {
@@ -16,6 +16,7 @@ import {
   type Range,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
+import { quantityFor, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { axisTitle, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
 
@@ -158,7 +159,12 @@ function samples(range: Range): readonly number[] {
 }
 
 function measureOf(model: RegisteredModel, slot: SlotInputs, output: Quantity): Measure | undefined {
-  return model.run(toLibraryInputs(slot, model)).toMeasures().find((measure) => measure.quantity === output);
+  // `measure.quantity` is the library's own Quantity object; `quantityFor`
+  // reconciles it with this table's row before comparing (ADR-0002 decision 2).
+  return model
+    .run(toLibraryInputs(slot, model))
+    .toMeasures()
+    .find((measure) => quantityFor(measure.quantity.key) === output);
 }
 
 function bandsOf(model: RegisteredModel, reference: Measure | undefined): readonly BandFill[] {

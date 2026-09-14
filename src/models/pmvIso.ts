@@ -3,8 +3,9 @@ import type { PmvPpdIsoEdition } from "jsthermalcomfort";
 import type { PmvPpdIsoInit } from "jsthermalcomfort/io";
 import { chartType } from "$lib/core/chartType";
 import { defineModel } from "$lib/core/modelDeclaration";
+import { quantities } from "$lib/core/quantities";
 
-const q = io.quantities;
+const q = quantities;
 
 // 7730-2005, not the library's 2025 default: rewrite plan, Phase 3.6 item 3.
 const ISO_EDITION: PmvPpdIsoEdition = "7730-2005";

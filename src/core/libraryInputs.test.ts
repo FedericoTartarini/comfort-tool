@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { io, v_relative } from "jsthermalcomfort";
-import type { PmvPpdIsoOutputs, Quantity } from "jsthermalcomfort/io";
+import { v_relative } from "jsthermalcomfort";
+import type { PmvPpdIsoOutputs } from "jsthermalcomfort/io";
 import { pmvIso } from "$lib/models/pmvIso";
 import { humidityMode, temperatureMode } from "./entryModes";
 import {
@@ -13,8 +13,9 @@ import {
   type SlotInputs,
 } from "./libraryInputs";
 import { defineModel } from "./modelDeclaration";
+import { quantities, quantityFor, type Quantity } from "./quantities";
 
-const q = io.quantities;
+const q = quantities;
 
 function separateSlot(overrides: Partial<Record<"tdb" | "tr" | "v" | "met" | "clo", number>> = {}): SlotInputs {
   const values = { tdb: 25, tr: 25, v: 0.1, met: 1.1, clo: 0.5, ...overrides };
@@ -75,7 +76,7 @@ describe("toLibraryInputs", () => {
 
   it("feeds the declared model a finite result end to end", () => {
     const measures = pmvIso.run(toLibraryInputs(separateSlot(), pmvIso)).toMeasures();
-    const pmv = measures.find((measure) => measure.quantity === q.pmv);
+    const pmv = measures.find((measure) => quantityFor(measure.quantity.key) === q.pmv);
     expect(pmv).toBeDefined();
     expect(Number.isFinite(pmv?.value)).toBe(true);
     expect(pmv?.category).toBeDefined();
@@ -113,7 +114,7 @@ describe("outOfRangeInputs", () => {
 
   it("checks an operative entry against every temperature it replaces", () => {
     const range = enteredRange(pmvIso, q.operative_tmp, temperatureMode.operative);
-    const tdbLimit = pmvIso.model.limits?.find((limit) => limit.quantity === q.tdb);
+    const tdbLimit = pmvIso.model.limits?.find((limit) => quantityFor(limit.quantity.key) === q.tdb);
     expect(range?.max).toBe(tdbLimit?.max);
     expect(outOfRangeInputs(operativeSlot((range?.max ?? 0) + 1), pmvIso)).toEqual([q.operative_tmp]);
     expect(outOfRangeInputs(operativeSlot(range?.max ?? 0), pmvIso)).toEqual([]);
