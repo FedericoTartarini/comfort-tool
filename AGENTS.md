@@ -13,7 +13,7 @@ Frontend-only Svelte 5 SPA for thermal-comfort calculation, a rewrite of the CBE
 
 ### Issue tracker
 
-GitHub Issues on `FedericoTartarini/comfort-tool`, via `gh`. See `docs/agents/issue-tracker.md`.
+Local markdown under `.scratch/<feature>/` (never GitHub Issues or PRs). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
