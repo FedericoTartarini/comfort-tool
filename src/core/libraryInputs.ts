@@ -1,13 +1,6 @@
 import { v_relative } from "jsthermalcomfort/utilities";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
-import {
-  hasHumidityGroup,
-  hasTemperatureGroup,
-  limitFor,
-  type LibraryInit,
-  type Range,
-  type RegisteredModel,
-} from "./modelDeclaration";
+import { hasHumidityGroup, hasTemperatureGroup, type LibraryInit, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -31,13 +24,20 @@ export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Qu
 }
 
 /**
+ * The slot's dry-bulb temperature: the entered `tdb`, or the operative entry
+ * standing in for it under operative mode.
+ */
+export function resolvedTdb(slot: SlotInputs): number {
+  return slot.values.get(q.tdb) ?? requireValue(slot.values, q.operative_tmp);
+}
+
+/**
  * The slot's humidity as the library's `rh`, converted from whatever the user
  * entered at the slot's dry-bulb temperature (the operative temperature under
  * operative entry, ADR §4.5). The one place the mode's conversion is invoked.
  */
 export function relativeHumidityOf(slot: SlotInputs): number {
-  const tdb = slot.values.get(q.tdb) ?? requireValue(slot.values, q.operative_tmp);
-  return slot.humidity.mode.toRelativeHumidity(slot.humidity.value, tdb);
+  return slot.humidity.mode.toRelativeHumidity(slot.humidity.value, resolvedTdb(slot));
 }
 
 /**
@@ -75,53 +75,13 @@ export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Libra
   const byKey = Object.fromEntries(
     [...resolveQuantities(slot, model)].map(([quantity, value]) => [quantity.key, value]),
   );
-  // `limit_inputs: false`: the app gates entered values against `model.limits`
-  // before calling, and the library then always returns numbers rather than
-  // NaN — the behaviour of the deployed CBE tool. The rows a run still breaks
-  // (derived, output, or the `v` row when `vr = v + 0.3(met − 1)` breaks it
-  // while the entered `v` does not) come back on
-  // `Outcome.violations` and are reported, not gated (the input panel and the
-  // result table filter them by `role`).
+  // `limit_inputs: false`: `core/applicability.ts` gates entered values against
+  // `_INFO` before calling, and the library then always returns numbers rather
+  // than NaN — the behaviour of the deployed CBE tool. The rows a run still
+  // breaks (derived, output, or the `v` row when `vr = v + 0.3(met − 1)` breaks
+  // it while the entered `v` does not) are reported, not gated, by
+  // `applicability.derivedViolations` and `applicability.outputViolations`.
   return { ...byKey, units: "SI", limit_inputs: false };
-}
-
-/**
- * The range an entered quantity must satisfy. An operative-temperature entry
- * is written to every quantity it replaces, so it must satisfy all of their
- * limits at once.
- */
-export function enteredRange(model: RegisteredModel, quantity: Quantity, mode: TemperatureMode): Range | undefined {
-  const constrained =
-    mode !== temperatureMode.separate && mode.panel.includes(quantity)
-      ? temperatureMode.separate.panel
-      : [quantity];
-  const limits = constrained.map((entry) => limitFor(model, entry)).filter((limit) => limit !== undefined);
-  if (limits.length === 0) {
-    return undefined;
-  }
-  return {
-    min: Math.max(...limits.map((limit) => limit.min)),
-    max: Math.min(...limits.map((limit) => limit.max)),
-  };
-}
-
-/**
- * Entered quantities outside the model's applicability limits. Checks what the
- * user typed, not the derived `vr`.
- */
-export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quantity[] {
-  const entered: (readonly [Quantity, number])[] = [
-    ...slot.values,
-    [slot.humidity.mode.quantity, slot.humidity.value],
-  ];
-  // `vr = v + 0.3(met − 1)` can break the air-speed row while `v` is within it; the kernel checks vr
-  // against the `v` row, so that comes back on `Outcome.violations` and is reported beside the inputs.
-  return entered
-    .filter(([quantity, value]) => {
-      const range = enteredRange(model, quantity, slot.temperature.mode);
-      return range !== undefined && (value < range.min || value > range.max);
-    })
-    .map(([quantity]) => quantity);
 }
 
 /**

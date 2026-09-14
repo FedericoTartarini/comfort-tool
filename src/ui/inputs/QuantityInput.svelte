@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Range } from "$lib/core/modelDeclaration";
+  import { formatBound, type Bound } from "$lib/core/applicability";
   import { formatNumber } from "$lib/core/numberFormat";
   import type { Quantity } from "$lib/core/quantities";
   import { displayUnitFor } from "$lib/core/units";
@@ -14,21 +14,19 @@
     /** Canonical SI value. */
     value: number;
     unitSystem: UnitSystem;
-    /** Allowed range in SI; shown converted, and the box turns red outside it. */
-    range?: Range;
+    /** Allowed bound in SI; shown converted, and the box turns red outside it. A `Bound` may be min-only or max-only. */
+    bound?: Bound;
     outOfRange?: boolean;
     oncommit: (si: number) => void;
   }
 
-  let { quantity, value, unitSystem, range, outOfRange = false, oncommit }: Props = $props();
+  let { quantity, value, unitSystem, bound, outOfRange = false, oncommit }: Props = $props();
 
   const id = $props.id();
   const unit = $derived(displayUnitFor(quantity, unitSystem));
   const text = $derived(formatNumber(unit.fromSi(value)));
   const labelText = $derived(unit.symbol ? `${quantity.label} (${unit.symbol})` : quantity.label);
-  const rangeText = $derived(
-    range ? `${formatNumber(unit.fromSi(range.min))} – ${formatNumber(unit.fromSi(range.max))}` : "",
-  );
+  const rangeText = $derived(bound ? formatBound(bound, unit) : "");
 
   // Commit only when the parsed value differs from what is stored. While the
   // user types "25." the parse is still 25, nothing is committed, and the

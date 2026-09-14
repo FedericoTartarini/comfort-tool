@@ -57,11 +57,11 @@ export const quantities = {
 const byKey: Readonly<Record<string, Quantity>> = quantities;
 
 /**
- * The table's row for a key returned by the library — a `Measure` or an
- * `ApplicabilityLimit` still carries the library's own Quantity object, not
- * this table's, so a caller reconciling the two looks it up by key here and
- * goes back to comparing by identity. `undefined` for a key the table has no
- * row for.
+ * The table's row for a key returned by the library — a `Measure` still
+ * carries the library's own Quantity object, and a model's `_INFO` keys its
+ * rows by plain string, so a caller reconciling either with this table looks
+ * it up by key here and goes back to comparing by identity. `undefined` for a
+ * key the table has no row for.
  */
 export function quantityFor(key: string): Quantity | undefined {
   return byKey[key];

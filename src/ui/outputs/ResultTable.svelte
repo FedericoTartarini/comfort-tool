@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Measure } from "jsthermalcomfort/io";
-  import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
+  import { warningFor, type ViolationRow } from "$lib/core/applicability";
   import { colorForBand, intervalColor } from "$lib/core/bandPalette";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { formatNumber } from "$lib/core/numberFormat";
@@ -17,7 +17,7 @@
     unitSystem: UnitSystem;
     slotName: string;
     outOfRange: boolean;
-    violations: readonly ApplicabilityLimit[];
+    violations: readonly ViolationRow[];
   }
 
   let { model, measures, unitSystem, slotName, outOfRange, violations }: Props = $props();
@@ -30,7 +30,7 @@
   const classified = $derived(
     (measures ?? []).filter((measure) => measure.category !== undefined || measure.intervals.length > 0),
   );
-  const caveats = $derived(violations.filter((limit) => limit.role === "output"));
+  const caveats = $derived(violations.filter((violation) => violation.role === "output"));
   const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
 
   function cellText(quantity: Quantity): string {
@@ -84,8 +84,8 @@
                 </span>
               {/each}
             {/each}
-            {#each caveats as limit (limit)}
-              <span class="band caveat">{limit.warning}</span>
+            {#each caveats as violation (violation)}
+              <span class="band caveat">{warningFor(violation, unitSystem)}</span>
             {/each}
           </Table.Cell>
         {/if}

@@ -3,15 +3,7 @@ import { v_relative } from "jsthermalcomfort";
 import type { PmvPpdIsoOutputs } from "jsthermalcomfort/io";
 import { pmvIso } from "$lib/models/pmvIso";
 import { humidityMode, temperatureMode } from "./entryModes";
-import {
-  enteredQuantities,
-  enteredRange,
-  enteredValue,
-  outOfRangeInputs,
-  toLibraryInputs,
-  withEnteredValues,
-  type SlotInputs,
-} from "./libraryInputs";
+import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
 import { defineModel } from "./modelDeclaration";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 
@@ -99,36 +91,6 @@ describe("toLibraryInputs", () => {
     expect(init).not.toHaveProperty("tdb");
     expect(init).not.toHaveProperty("tr");
     expect(init.operative_tmp).toBe(24);
-  });
-});
-
-describe("outOfRangeInputs", () => {
-  it("is empty when every entered value is within the model's limits", () => {
-    expect(outOfRangeInputs(separateSlot(), pmvIso)).toEqual([]);
-  });
-
-  it("names the entered quantity that breaks a limit", () => {
-    expect(outOfRangeInputs(separateSlot({ tdb: 9 }), pmvIso)).toEqual([q.tdb]);
-    expect(outOfRangeInputs(separateSlot({ clo: 2.5 }), pmvIso)).toEqual([q.clo]);
-  });
-
-  it("checks an operative entry against every temperature it replaces", () => {
-    const range = enteredRange(pmvIso, q.operative_tmp, temperatureMode.operative);
-    const tdbLimit = pmvIso.model.limits?.find((limit) => quantityFor(limit.quantity.key) === q.tdb);
-    expect(range?.max).toBe(tdbLimit?.max);
-    expect(outOfRangeInputs(operativeSlot((range?.max ?? 0) + 1), pmvIso)).toEqual([q.operative_tmp]);
-    expect(outOfRangeInputs(operativeSlot(range?.max ?? 0), pmvIso)).toEqual([]);
-  });
-
-  it("has no range for a quantity the standard does not limit", () => {
-    expect(enteredRange(pmvIso, q.rh, temperatureMode.separate)).toBeUndefined();
-  });
-
-  it("does not gate a value only a derived row bounds", () => {
-    // tdb at the ISO bound, rh 95: no entered value breaks a row; the derived vapour pressure does (Task 5 pins that).
-    const slot = separateSlot({ tdb: 30, tr: 30 });
-    const humid: SlotInputs = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
-    expect(outOfRangeInputs(humid, pmvIso)).toEqual([]);
   });
 });
 

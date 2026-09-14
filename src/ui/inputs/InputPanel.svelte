@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
+  import { enteredBound, warningFor, type ViolationRow } from "$lib/core/applicability";
   import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
-  import { enteredQuantities, enteredRange, enteredValue } from "$lib/core/libraryInputs";
+  import { enteredQuantities, enteredValue } from "$lib/core/libraryInputs";
   import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
   import type { Quantity } from "$lib/core/quantities";
   import type { UnitSystem } from "$lib/core/unitSystem";
@@ -17,7 +17,7 @@
     inputSlot: InputSlot;
     unitSystem: UnitSystem;
     outOfRange: readonly Quantity[];
-    violations: readonly ApplicabilityLimit[];
+    violations: readonly ViolationRow[];
   }
 
   let { model, inputSlot, unitSystem, outOfRange, violations }: Props = $props();
@@ -32,9 +32,9 @@
   const showHumidityRow = $derived(hasHumidityGroup(model));
 
   // Everything but the result's own bound. Entered values are gated before the call, so an `input` row
-  // here comes from a value the panel did not show the library: the relative air speed vr = v + 0.3(met − 1),
-  // which the kernel range-checks against the `v` row — so the sentence is the one the entered speed would give.
-  const hints = $derived(violations.filter((limit) => limit.role !== "output"));
+  // here comes from a value the panel did not show as an input: the relative air speed vr = v + 0.3(met − 1),
+  // which the standard bounds instead of `v` — so the sentence is the one the entered speed would give.
+  const hints = $derived(violations.filter((violation) => violation.role !== "output"));
 
   function valueOf(quantity: Quantity): number {
     return enteredValue(inputSlot, quantity) ?? Number.NaN;
@@ -86,7 +86,7 @@
       {quantity}
       value={valueOf(quantity)}
       {unitSystem}
-      range={enteredRange(model, quantity, inputSlot.temperature.mode)}
+      bound={enteredBound(model, quantity, inputSlot.temperature.mode)}
       outOfRange={outOfRange.includes(quantity)}
       oncommit={(si) => commit(quantity, si)}
     />
@@ -95,8 +95,8 @@
   {#if hints.length > 0}
     <Stack gap="1">
       <span class="hint">{copy.applicabilityHint}</span>
-      {#each hints as limit (limit)}
-        <span class="hint">{limit.warning}</span>
+      {#each hints as violation (violation)}
+        <span class="hint">{warningFor(violation, unitSystem)}</span>
       {/each}
     </Stack>
   {/if}

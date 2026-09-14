@@ -1,11 +1,11 @@
 import type { Measure } from "jsthermalcomfort/io";
-import type { ApplicabilityLimit } from "jsthermalcomfort/reference";
 import { untrack } from "svelte";
+import { derivedViolations, outOfRangeInputs, outputViolations, type ViolationRow } from "$lib/core/applicability";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicSpec } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
-import { outOfRangeInputs, toLibraryInputs } from "$lib/core/libraryInputs";
+import { toLibraryInputs } from "$lib/core/libraryInputs";
 import { dynamicChartOf, psychrometricChartOf } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import { copy } from "$lib/text/copy";
@@ -20,10 +20,10 @@ export class Outputs {
   /** Entered quantities currently outside the model's applicability limits. */
   outOfRange = $state.raw<readonly Quantity[]>([]);
   /**
-   * Applicability rows slot 0's last run broke (`Outcome.violations`), kept with
-   * the result they describe: not touched while the gate blocks a run.
+   * Applicability rows slot 0's last run broke (`core/applicability.ts`), kept
+   * with the result they describe: not touched while the gate blocks a run.
    */
-  violations = $state.raw<readonly ApplicabilityLimit[]>([]);
+  violations = $state.raw<readonly ViolationRow[]>([]);
   /** Last valid chart, likewise kept while an input is out of range. */
   chart = $state.raw<ChartSpec | null>(null);
 }
@@ -62,7 +62,7 @@ export function observeSession(session: Session, outputs: Outputs): void {
     }
     const outcome = model.run(toLibraryInputs(slot, model));
     const measures = outcome.toMeasures();
-    outputs.violations = outcome.violations;
+    outputs.violations = [...derivedViolations(slot, model), ...outputViolations(model, outcome)];
     // Untracked: reading perSlot here would make the write below re-run the effect.
     outputs.perSlot = untrack(() => outputs.perSlot).map((kept, index) => (index === 0 ? measures : kept));
     outputs.chart = chartSpecOf(session);

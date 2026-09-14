@@ -1,6 +1,6 @@
 import { io, pmv_ppd_iso } from "jsthermalcomfort";
 import type { PmvPpdIsoEdition } from "jsthermalcomfort";
-import { Standard, pmv_ppd_iso as pmvPpdIsoMain } from "jsthermalcomfort-main";
+import { PMV_PPD_ISO_INFO, Standard, pmv_ppd_iso as pmvPpdIsoMain } from "jsthermalcomfort-main";
 import type { PmvPpdIsoInit } from "jsthermalcomfort/io";
 import { chartType } from "$lib/core/chartType";
 import { defineModel } from "$lib/core/modelDeclaration";
@@ -27,6 +27,7 @@ export const pmvIso = defineModel({
   run: (init: PmvPpdIsoInit) => io.pmvPpdIso({ ...init, edition: ISO_EDITION }),
   edition: ISO_EDITION,
   model: pmv_ppd_iso,
+  info: PMV_PPD_ISO_INFO,
   pathSegment: "pmv-iso",
   inputs: [
     [q.tdb, 25],
@@ -38,8 +39,8 @@ export const pmvIso = defineModel({
   ],
   relativeAirSpeed: true,
   // The extents the deployed CBE tool draws, not ISO 7730's applicability
-  // limits (ADR §4.4) — the charts show what the field looks like around the
-  // standard, and `limits` says which of it the user may enter.
+  // bounds (ADR §4.4) — the charts show what the field looks like around the
+  // standard, and `info`'s applicability says which of it the user may enter.
   axisRanges: [
     [q.tdb, 10, 40],
     [q.tr, 10, 40],

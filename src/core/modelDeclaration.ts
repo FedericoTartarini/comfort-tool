@@ -1,13 +1,14 @@
 import type { Outcome } from "jsthermalcomfort/io";
-import type { ApplicabilityLimit, IntervalScale, StandardRef } from "jsthermalcomfort/reference";
+import type { IntervalScale, StandardRef } from "jsthermalcomfort/reference";
+import type { ModelInfo } from "jsthermalcomfort-main";
 import { chartType } from "./chartType";
 import type { PsychrometricZoneOptions } from "./compute/psychrometricZone";
-import { quantities, quantityFor, type Quantity } from "./quantities";
+import { quantities, type Quantity } from "./quantities";
 
 /**
  * The metadata a library model function carries (`pmv_ppd_iso.label`,
- * `.standard`, `.limits`, …). Structural, so the model function itself
- * satisfies it; the declaration file reads from here and never writes copy or
+ * `.standard`, `.tsv`, …). Structural, so the model function itself satisfies
+ * it; the declaration file reads from here and never writes copy or
  * transcribes numbers (ADR §4.1.3).
  */
 export interface LibraryModel {
@@ -17,8 +18,6 @@ export interface LibraryModel {
   readonly standard?: StandardRef;
   /** Classification scale of the primary output, when the model has one. */
   readonly tsv?: IntervalScale;
-  /** Applicability limits, the single source for range checks. */
-  readonly limits?: readonly ApplicabilityLimit[];
 }
 
 /**
@@ -42,9 +41,9 @@ export interface Range {
  * `[quantity, min, max]`, the same tuple shape as `inputs`.
  *
  * A viewport, not a threshold. ADR §4.4: axis ranges are declared, never
- * derived from `model.limits` — the limits validate what the user typed, and
- * conflating the two clipped the ISO chart to 10–30 °C and left `rh`, which no
- * standard limits, unable to carry an axis at all.
+ * derived from the model's applicability bounds — those validate what the
+ * user typed, and conflating the two clipped the ISO chart to 10–30 °C and
+ * left `rh`, which no standard bounds, unable to carry an axis at all.
  */
 export type AxisRange = readonly [Quantity, number, number];
 
@@ -113,6 +112,12 @@ export interface RegisteredModel {
   readonly run: (init: LibraryInit) => Outcome;
   readonly model: LibraryModel;
   /**
+   * The library's own `_INFO` object: labels, applicability bounds and
+   * classifiers. `core/applicability.ts` owns every read of it (ADR-0002
+   * decision 4); C4 promotes this to the declaration's only metadata field.
+   */
+  readonly info: ModelInfo;
+  /**
    * The edition of the standard `run` pins, named beside the results. Absent
    * when the library offers none. The declaration passes the same constant to
    * `run`, so the label and the call cannot disagree (rewrite plan, Phase 3.6
@@ -174,12 +179,6 @@ export function defineModel<Init extends object>(
   // cannot check that across the Map → init conversion, so this is the one
   // cast of its kind in the app; libraryInputs.test.ts exercises it.
   return { ...declaration, run: declaration.run as unknown as RegisteredModel["run"] };
-}
-
-export function limitFor(model: RegisteredModel, quantity: Quantity): ApplicabilityLimit | undefined {
-  // `limit.quantity` is the library's own Quantity object; `quantityFor`
-  // reconciles it with this table's row before comparing (ADR-0002 decision 2).
-  return model.model.limits?.find((limit) => quantityFor(limit.quantity.key) === quantity);
 }
 
 /**
