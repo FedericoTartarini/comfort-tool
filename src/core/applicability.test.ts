@@ -11,7 +11,6 @@ import {
 import { bisect } from "./compute/rootFinding";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { toLibraryInputs, type SlotInputs } from "./libraryInputs";
-import { defineModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
@@ -66,10 +65,10 @@ describe("enteredBound / outOfRangeInputs", () => {
   });
 
   it("handles a min-only bound without a max (e.g. Heat Index's tdb)", () => {
-    const minOnly = defineModel({
+    const minOnly = {
       ...pmvIso,
       info: { ...pmvIso.info, inputs: { ...pmvIso.info.inputs, tdb: { unit: "°C", applicability: { min: 15 } } } },
-    });
+    };
     expect(enteredBound(minOnly, q.tdb, temperatureMode.separate)).toEqual({ min: 15 });
     expect(outOfRangeInputs(separateSlot({ tdb: 10 }), minOnly)).toEqual([q.tdb]);
     expect(outOfRangeInputs(separateSlot({ tdb: 1000 }), minOnly)).toEqual([]);

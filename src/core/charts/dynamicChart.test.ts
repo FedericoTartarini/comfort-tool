@@ -51,10 +51,10 @@ describe("dynamicSpec", () => {
     expect([surface.y[0], surface.y[GRID - 1]]).toEqual([0, 2]);
   });
 
-  it("bands by position in the model's own classification scale", () => {
+  it("bands by position in the model's own classifier", () => {
     const surface = bands(dynamicSpec(request, declaration, declaration.axes));
-    const scale = pmvIso.model.tsv;
-    expect(surface.bands.map((band) => band.label)).toEqual(scale?.intervals.map((interval) => interval.label));
+    const classifier = pmvIso.info.outputs.tsv?.classifier;
+    expect(surface.bands.map((band) => band.label)).toEqual(classifier?.labels);
     // Cold and still at the bottom left, warm and still at the bottom right.
     const coldest = surface.z[0][0];
     const warmest = surface.z[0][GRID - 1];

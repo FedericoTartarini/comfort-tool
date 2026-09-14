@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { v_relative } from "jsthermalcomfort";
-import type { PmvPpdIsoOutputs } from "jsthermalcomfort/io";
+import { Standard } from "jsthermalcomfort-main";
 import { pmvIso } from "$lib/models/pmvIso";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
-import { defineModel } from "./modelDeclaration";
-import { quantities, quantityFor, type Quantity } from "./quantities";
+import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
 
@@ -40,9 +39,7 @@ function operativeSlot(operative: number): SlotInputs {
 describe("toLibraryInputs", () => {
   it("produces exactly the keys the PMV wrapper takes, in SI", () => {
     const init = toLibraryInputs(separateSlot(), pmvIso);
-    expect(Object.keys(init).sort()).toEqual(["clo", "limit_inputs", "met", "rh", "tdb", "tr", "units", "vr"]);
-    expect(init.units).toBe("SI");
-    expect(init.limit_inputs).toBe(false);
+    expect(Object.keys(init).sort()).toEqual(["clo", "met", "rh", "tdb", "tr", "vr"]);
     expect(init.rh).toBe(50);
   });
 
@@ -53,7 +50,7 @@ describe("toLibraryInputs", () => {
   });
 
   it("passes v through untouched when the model does not", () => {
-    const withoutRelative = defineModel({ ...pmvIso, relativeAirSpeed: false });
+    const withoutRelative = { ...pmvIso, relativeAirSpeed: false };
     const init = toLibraryInputs(separateSlot(), withoutRelative);
     expect(init.v).toBe(0.1);
     expect(init).not.toHaveProperty("vr");
@@ -67,26 +64,21 @@ describe("toLibraryInputs", () => {
   });
 
   it("feeds the declared model a finite result end to end", () => {
-    const measures = pmvIso.run(toLibraryInputs(separateSlot(), pmvIso)).toMeasures();
-    const pmv = measures.find((measure) => quantityFor(measure.quantity.key) === q.pmv);
-    expect(pmv).toBeDefined();
-    expect(Number.isFinite(pmv?.value)).toBe(true);
-    expect(pmv?.category).toBeDefined();
+    const result = pmvIso.run(toLibraryInputs(separateSlot(), pmvIso));
+    expect(Number.isFinite(result.pmv)).toBe(true);
+    expect(result.tsv).toBeDefined();
   });
 
   it("sends no rh to a model whose inputs do not name it", () => {
-    const withoutHumidity = defineModel({
-      ...pmvIso,
-      inputs: pmvIso.inputs.filter(([quantity]) => quantity !== q.rh),
-    });
+    const withoutHumidity = { ...pmvIso, inputs: pmvIso.inputs.filter((entry) => entry.quantity !== q.rh) };
     expect(toLibraryInputs(separateSlot(), withoutHumidity)).not.toHaveProperty("rh");
   });
 
   it("does not expand an operative entry for a model without separate temperatures", () => {
-    const withoutTemperatures = defineModel({
+    const withoutTemperatures = {
       ...pmvIso,
-      inputs: pmvIso.inputs.filter(([quantity]) => quantity !== q.tdb && quantity !== q.tr),
-    });
+      inputs: pmvIso.inputs.filter((entry) => entry.quantity !== q.tdb && entry.quantity !== q.tr),
+    };
     const init = toLibraryInputs(operativeSlot(24), withoutTemperatures);
     expect(init).not.toHaveProperty("tdb");
     expect(init).not.toHaveProperty("tr");
@@ -149,10 +141,8 @@ describe("entered values", () => {
   });
 });
 
-describe("edition", () => {
-  it("pins ISO 7730:2005 and the library echoes it", () => {
-    expect(pmvIso.edition).toBe("7730-2005");
-    const outcome = pmvIso.run(toLibraryInputs(separateSlot(), pmvIso)) as PmvPpdIsoOutputs;
-    expect(outcome.edition).toBe(pmvIso.edition);
+describe("standard", () => {
+  it("pins ISO 7730:2005", () => {
+    expect(pmvIso.standard).toBe(Standard.iso_7730_2005);
   });
 });

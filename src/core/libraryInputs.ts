@@ -1,6 +1,6 @@
 import { v_relative } from "jsthermalcomfort/utilities";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
-import { hasHumidityGroup, hasTemperatureGroup, type LibraryInit, type RegisteredModel } from "./modelDeclaration";
+import { hasHumidityGroup, hasTemperatureGroup, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -68,20 +68,26 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
 }
 
 /**
- * The init object of the library's io wrapper. Besides shareLink, this is the
- * only place in the app that reads `Quantity.key` (ADR §4.0).
+ * The keyed record `run` takes: SI values keyed by `Quantity.key`. Besides
+ * shareLink, this is the only place in the app that reads `Quantity.key` in
+ * this direction (ADR §4.0). The declaration's own `run` hardcodes
+ * `limit_inputs: false` — `core/applicability.ts` gates entered values
+ * against `_INFO` before calling, and the library then always returns numbers
+ * rather than NaN, the behaviour of the deployed CBE tool. The rows a run
+ * still breaks (derived, output, or the `v` row when `vr = v + 0.3(met − 1)`
+ * breaks it while the entered `v` does not) are reported, not gated, by
+ * `applicability.derivedViolations` and `applicability.outputViolations`.
  */
-export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): LibraryInit {
-  const byKey = Object.fromEntries(
-    [...resolveQuantities(slot, model)].map(([quantity, value]) => [quantity.key, value]),
-  );
-  // `limit_inputs: false`: `core/applicability.ts` gates entered values against
-  // `_INFO` before calling, and the library then always returns numbers rather
-  // than NaN — the behaviour of the deployed CBE tool. The rows a run still
-  // breaks (derived, output, or the `v` row when `vr = v + 0.3(met − 1)` breaks
-  // it while the entered `v` does not) are reported, not gated, by
-  // `applicability.derivedViolations` and `applicability.outputViolations`.
-  return { ...byKey, units: "SI", limit_inputs: false };
+export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Record<string, number> {
+  return Object.fromEntries([...resolveQuantities(slot, model)].map(([quantity, value]) => [quantity.key, value]));
+}
+
+/**
+ * The mirror read: a quantity's value off the model's own result object, by
+ * key. `undefined` for a key the result does not carry.
+ */
+export function resultValue(result: ModelResult, quantity: Quantity): number | string | undefined {
+  return result[quantity.key];
 }
 
 /**
@@ -92,7 +98,7 @@ export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Libra
 export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
   const separate: readonly Quantity[] = temperatureMode.separate.panel;
   const rows: Quantity[] = [];
-  for (const [quantity] of model.inputs) {
+  for (const { quantity } of model.inputs) {
     if (!separate.includes(quantity)) {
       rows.push(quantity);
     } else if (quantity === separate[0]) {

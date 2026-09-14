@@ -26,7 +26,7 @@ export class InputSlot {
   temperature = $state.raw<{ readonly mode: TemperatureMode }>({ mode: temperatureMode.separate });
 
   constructor(model: RegisteredModel) {
-    for (const [quantity, value] of model.inputs) {
+    for (const { quantity, value } of model.inputs) {
       if (quantity === this.humidity.mode.quantity) {
         this.setHumidityValue(value);
       } else {
@@ -97,7 +97,7 @@ export class ChartState {
   constructor(model: RegisteredModel) {
     const dynamic = dynamicChartOf(model);
     if (!dynamic) {
-      throw new Error(`${model.model.label} declares no dynamic chart; ADR §4.4 gives every model one`);
+      throw new Error(`${model.info.label} declares no dynamic chart; ADR §4.4 gives every model one`);
     }
     this.type = $state.raw(model.charts[0].type);
     this.axes = $state.raw(dynamic.axes);

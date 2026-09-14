@@ -1,10 +1,11 @@
 <script lang="ts">
-  import type { Measure } from "jsthermalcomfort/io";
   import { warningFor, type ViolationRow } from "$lib/core/applicability";
-  import { colorForBand, intervalColor } from "$lib/core/bandPalette";
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import { colorForBand } from "$lib/core/bandPalette";
+  import { resultValue } from "$lib/core/libraryInputs";
+  import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
   import { formatNumber } from "$lib/core/numberFormat";
   import { quantityFor, type Quantity } from "$lib/core/quantities";
+  import { standards } from "$lib/core/standard";
   import { displayUnitFor } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
@@ -12,41 +13,55 @@
 
   interface Props {
     model: RegisteredModel;
-    /** The slot's last valid measures; `null` before the first result. */
-    measures: readonly Measure[] | null;
+    /** The slot's last valid result; `null` before the first run. */
+    result: ModelResult | null;
     unitSystem: UnitSystem;
     slotName: string;
     outOfRange: boolean;
     violations: readonly ViolationRow[];
   }
 
-  let { model, measures, unitSystem, slotName, outOfRange, violations }: Props = $props();
+  let { model, result, unitSystem, slotName, outOfRange, violations }: Props = $props();
 
-  // ADR §4.3: the Compliance column appears only when the model's measures
-  // carry a category or intervals. Colour by band position (bandPalette) for
-  // a category, by satisfaction for an interval.
+  interface ClassifiedOutput {
+    readonly quantity: Quantity;
+    readonly category: string | number;
+    readonly color: string | undefined;
+  }
+
+  // ADR §4.3: the Compliance column appears only when the model has a
+  // classified output or a broken output row. Colour a category by its
+  // position in the output's own classifier (ADR-0002 decision 8).
   // An output-role violation also opens the column: a PMV of 2.4 is shown, with
   // the row it broke as its caveat.
-  const classified = $derived(
-    (measures ?? []).filter((measure) => measure.category !== undefined || measure.intervals.length > 0),
+  const classified = $derived<readonly ClassifiedOutput[]>(
+    result
+      ? Object.entries(model.info.outputs).flatMap(([key, variable]) => {
+          const classifier = variable.classifier;
+          const quantity = classifier ? quantityFor(key) : undefined;
+          if (!classifier || !quantity) {
+            return [];
+          }
+          const category = resultValue(result, quantity);
+          if (category === undefined) {
+            return [];
+          }
+          return [{ quantity, category, color: colorForBand(classifier, category) }];
+        })
+      : [],
   );
   const caveats = $derived(violations.filter((violation) => violation.role === "output"));
   const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
+  const standardEntry = $derived(model.standard ? standards.find((entry) => entry.id === model.standard) : undefined);
 
   function cellText(quantity: Quantity): string {
-    // `entry.quantity` is the library's own object; `quantityFor` reconciles
-    // it with this table's row before comparing.
-    const measure = measures?.find((entry) => quantityFor(entry.quantity.key) === quantity);
-    if (!measure || !Number.isFinite(measure.value)) {
+    const value = result ? resultValue(result, quantity) : undefined;
+    if (typeof value !== "number" || !Number.isFinite(value)) {
       return copy.notAvailable;
     }
     const unit = displayUnitFor(quantity, unitSystem);
-    const text = formatNumber(unit.fromSi(measure.value));
+    const text = formatNumber(unit.fromSi(value));
     return unit.symbol ? `${text} ${unit.symbol}` : text;
-  }
-
-  function bandColor(measure: Measure): string | undefined {
-    return model.model.tsv ? colorForBand(model.model.tsv, measure.value) : undefined;
   }
 </script>
 
@@ -68,21 +83,11 @@
         <Table.Cell>{slotName}</Table.Cell>
         {#if hasCompliance}
           <Table.Cell>
-            {#each classified as measure (measure.quantity)}
-              {#if measure.category !== undefined}
-                <span class="band">
-                  <span class="swatch" style:background-color={bandColor(measure)}></span>
-                  {measure.category}
-                </span>
-              {/if}
-              {#each measure.intervals as interval (interval.label)}
-                <span
-                  class="band"
-                  style:color={interval.satisfied ? intervalColor.satisfied : intervalColor.unsatisfied}
-                >
-                  {interval.label}
-                </span>
-              {/each}
+            {#each classified as entry (entry.quantity)}
+              <span class="band">
+                <span class="swatch" style:background-color={entry.color}></span>
+                {entry.category}
+              </span>
             {/each}
             {#each caveats as violation (violation)}
               <span class="band caveat">{warningFor(violation, unitSystem)}</span>
@@ -94,10 +99,12 @@
         {/each}
       </Table.Row>
     </Table.Body>
-    {#if outOfRange || model.edition}
+    {#if outOfRange || standardEntry}
       <Table.Caption>
         {#if outOfRange}<span>{copy.outOfRange}</span>{/if}
-        {#if model.edition}<span class="edition">{copy.edition(model.edition)}</span>{/if}
+        {#if standardEntry}
+          <span class="edition">{copy.standardCaption(standardEntry.displayName, standardEntry.year)}</span>
+        {/if}
       </Table.Caption>
     {/if}
   </Table.Root>

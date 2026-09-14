@@ -1,34 +1,15 @@
-import type { Outcome } from "jsthermalcomfort/io";
-import type { IntervalScale, StandardRef } from "jsthermalcomfort/reference";
-import type { ModelInfo } from "jsthermalcomfort-main";
+import type { ModelInfo, Standard } from "jsthermalcomfort-main";
 import { chartType } from "./chartType";
 import type { PsychrometricZoneOptions } from "./compute/psychrometricZone";
 import { quantities, type Quantity } from "./quantities";
 
 /**
- * The metadata a library model function carries (`pmv_ppd_iso.label`,
- * `.standard`, `.tsv`, …). Structural, so the model function itself satisfies
- * it; the declaration file reads from here and never writes copy or
- * transcribes numbers (ADR §4.1.3).
+ * The model's own result object, keyed by the same strings as its `_INFO`:
+ * a number for a physical output, or the category label (or NaN) a classified
+ * output returns. `run` returns this directly (ADR-0002 decision 3) — the app
+ * reads it by key rather than transcribing a shape of its own.
  */
-export interface LibraryModel {
-  readonly label: string;
-  readonly description: string;
-  /** Membership in a standard; absent for Explore-only models such as UTCI. */
-  readonly standard?: StandardRef;
-  /** Classification scale of the primary output, when the model has one. */
-  readonly tsv?: IntervalScale;
-}
-
-/**
- * What `toLibraryInputs` produces and `run` consumes: SI values keyed by
- * `Quantity.key`, plus the two call options the app always sets.
- */
-export interface LibraryInit {
-  readonly units: "SI";
-  readonly limit_inputs: boolean;
-  readonly [quantityKey: string]: number | string | boolean;
-}
+export type ModelResult = Readonly<Record<string, number | string>>;
 
 /** A closed interval, in SI. */
 export interface Range {
@@ -37,15 +18,18 @@ export interface Range {
 }
 
 /**
- * How far one quantity is drawn wherever it carries an axis, in SI:
- * `[quantity, min, max]`, the same tuple shape as `inputs`.
+ * How far one quantity is drawn wherever it carries an axis, in SI.
  *
  * A viewport, not a threshold. ADR §4.4: axis ranges are declared, never
  * derived from the model's applicability bounds — those validate what the
  * user typed, and conflating the two clipped the ISO chart to 10–30 °C and
  * left `rh`, which no standard bounds, unable to carry an axis at all.
  */
-export type AxisRange = readonly [Quantity, number, number];
+export interface AxisRange {
+  readonly quantity: Quantity;
+  readonly min: number;
+  readonly max: number;
+}
 
 /**
  * Exact band geometry a model supplies instead of the scanned grid, in SI.
@@ -74,16 +58,9 @@ export type ChartDeclaration =
       /**
        * The PMV closure the comfort zone is solved with: `(tdb, tr, vr, rh,
        * met, clo) => pmv`, unrounded and ungated. The declaration writes this
-       * beside `run`, binding the same edition constant, so the zone and the
-       * results can never disagree about which standard produced them
+       * beside `run`, binding the same standard constant, so the zone and the
+       * results can never disagree about which edition produced them
        * (ADR-0002 decision 9).
-       *
-       * This was `pmvVariant: "ISO" | "ASHRAE"`, then the library model
-       * function taken directly — a workaround for `psychrometricZone` taking
-       * a `standard` string that defaulted to `"ASHRAE"`. The main
-       * repository's ISO wrapper takes the edition as its eighth positional
-       * argument and kwargs as its ninth, so a raw function reference no
-       * longer fits one signature; a closure does.
        */
       readonly pmvModel: PsychrometricZoneOptions["model"];
     }
@@ -91,7 +68,11 @@ export type ChartDeclaration =
       readonly type: typeof chartType.dynamic;
       /** Starting axes; the user may pick any entered quantity that has a declared range. */
       readonly axes: { readonly x: Quantity; readonly y: Quantity };
-      /** The output whose bands colour the surface. */
+      /**
+       * The classified output whose category colours the surface — `info.outputs[output.key]`
+       * must carry a `classifier` (ADR-0002 decisions 6, 8). The band list is that
+       * classifier's `labels`, in order; the app never re-classifies the value itself.
+       */
       readonly output: Quantity;
       /**
        * Exact band polygons, for a model whose geometry the library already
@@ -108,26 +89,31 @@ export type PsychrometricDeclaration = Extract<ChartDeclaration, { type: typeof 
 export type DynamicDeclaration = Extract<ChartDeclaration, { type: typeof chartType.dynamic }>;
 
 export interface RegisteredModel {
-  /** The library's io wrapper. Called only by state/compute (Phase 3: only in the worker). */
-  readonly run: (init: LibraryInit) => Outcome;
-  readonly model: LibraryModel;
   /**
-   * The library's own `_INFO` object: labels, applicability bounds and
-   * classifiers. `core/applicability.ts` owns every read of it (ADR-0002
-   * decision 4); C4 promotes this to the declaration's only metadata field.
+   * The library's own `_INFO` object: label, description, inputs, outputs,
+   * derived quantities, applicability bounds and classifiers.
+   * `core/applicability.ts` owns every read of the applicability bounds
+   * (ADR-0002 decision 4).
    */
   readonly info: ModelInfo;
   /**
-   * The edition of the standard `run` pins, named beside the results. Absent
-   * when the library offers none. The declaration passes the same constant to
-   * `run`, so the label and the call cannot disagree (rewrite plan, Phase 3.6
-   * item 3: pinned, never offered as an option while editions share a kernel).
+   * The standard `run` pins, named beside the results. Absent for an
+   * Explore-only model such as Heat Index. The declaration passes the same
+   * constant to `run`, so the label and the call cannot disagree (rewrite
+   * plan, Phase 3.6 item 3: pinned, never offered as an option while editions
+   * share a kernel).
    */
-  readonly edition?: string;
+  readonly standard?: Standard;
+  /**
+   * The library's model function, bound positionally by the declaration. Takes
+   * SI values keyed by `Quantity.key` and returns the model's own result
+   * object. Called only by state/compute (Phase 3: only in the worker).
+   */
+  readonly run: (init: Record<string, number>) => ModelResult;
   /** Route segment, e.g. `"pmv-iso"`. App-owned. */
   readonly pathSegment: string;
   /** Panel order and SI default values. */
-  readonly inputs: readonly (readonly [Quantity, number])[];
+  readonly inputs: readonly { readonly quantity: Quantity; readonly value: number }[];
   /** `true`: the library takes `vr`, derived as `v_relative(v, met)` from the entered `v`. */
   readonly relativeAirSpeed: boolean;
   /**
@@ -156,29 +142,30 @@ export function dynamicChartOf(model: RegisteredModel): DynamicDeclaration | und
   return model.charts.find((chart): chart is DynamicDeclaration => chart.type === chartType.dynamic);
 }
 
-/** The declared extent of `quantity`, or `undefined` when it may not carry an axis. */
+/**
+ * The declared extent of `quantity`, else `info.inputs`' own applicability
+ * bound when it has both a `min` and a `max`, else `undefined` when `quantity`
+ * may not carry an axis at all (ADR-0002 decision 7).
+ */
 export function axisRangeFor(model: RegisteredModel, quantity: Quantity): Range | undefined {
-  const declared = model.axisRanges.find(([entry]) => entry === quantity);
-  return declared ? { min: declared[1], max: declared[2] } : undefined;
+  const declared = model.axisRanges.find((range) => range.quantity === quantity);
+  if (declared) {
+    return { min: declared.min, max: declared.max };
+  }
+  const bound = model.info.inputs[quantity.key]?.applicability;
+  if (bound?.min !== undefined && bound.max !== undefined) {
+    return { min: bound.min, max: bound.max };
+  }
+  return undefined;
 }
 
 /** The same, for an axis the chart is already drawing: a missing range is a declaration bug. */
 export function requireAxisRange(model: RegisteredModel, quantity: Quantity): Range {
   const range = axisRangeFor(model, quantity);
   if (!range) {
-    throw new Error(`${model.model.label} declares no axis range for ${quantity.label}, so it cannot carry an axis`);
+    throw new Error(`${model.info.label} declares no axis range for ${quantity.label}, so it cannot carry an axis`);
   }
   return range;
-}
-
-export function defineModel<Init extends object>(
-  declaration: Omit<RegisteredModel, "run"> & { readonly run: (init: Init) => Outcome },
-): RegisteredModel {
-  // The declaration promises that `inputs`, after the entry-group derivations
-  // in core/libraryInputs.ts, cover every key `run` requires. TypeScript
-  // cannot check that across the Map → init conversion, so this is the one
-  // cast of its kind in the app; libraryInputs.test.ts exercises it.
-  return { ...declaration, run: declaration.run as unknown as RegisteredModel["run"] };
 }
 
 /**
@@ -187,10 +174,10 @@ export function defineModel<Init extends object>(
  * group when it takes both `tdb` and `tr`.
  */
 export function hasHumidityGroup(model: RegisteredModel): boolean {
-  return model.inputs.some(([quantity]) => quantity === quantities.rh);
+  return model.inputs.some((entry) => entry.quantity === quantities.rh);
 }
 
 export function hasTemperatureGroup(model: RegisteredModel): boolean {
-  const entered = model.inputs.map(([quantity]) => quantity);
+  const entered = model.inputs.map((entry) => entry.quantity);
   return entered.includes(quantities.tdb) && entered.includes(quantities.tr);
 }

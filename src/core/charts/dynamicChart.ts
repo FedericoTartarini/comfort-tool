@@ -1,10 +1,11 @@
-import type { Measure } from "jsthermalcomfort/io";
+import type { ClassifierBins } from "jsthermalcomfort-main";
 import { bandFill, chartInk } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
 import {
   enteredQuantities,
   enteredValue,
   resolveQuantities,
+  resultValue,
   toLibraryInputs,
   withEnteredValues,
   type SlotInputs,
@@ -16,7 +17,7 @@ import {
   type Range,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
-import { quantityFor, type Quantity } from "$lib/core/quantities";
+import type { Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { axisTitle, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
 
@@ -33,10 +34,10 @@ interface BandFill {
  * two entered quantities, coloured by the band each point falls into, with the
  * slot's own state marked.
  *
- * Banding reads whatever the library put on the output `Measure`: nested
- * acceptability `intervals` where a model has them (the narrowest satisfied one
- * wins), otherwise the `category` position in the model's classification
- * scale. No threshold is written here.
+ * Banding reads the category the model itself returned for `chart.output` —
+ * a classified output, `info.outputs[key].classifier` — and colours it by its
+ * position in that classifier's `labels`. No threshold is written or
+ * re-classified here (ADR-0002 decision 8).
  *
  * A model that declares `zones` skips the scan altogether and draws the exact
  * polygons the library traces for it (ADR §4.4).
@@ -78,7 +79,8 @@ export function dynamicSpec(
   } else {
     const xValues = samples(xRange);
     const yValues = samples(yRange);
-    const bands = bandsOf(model, measureOf(model, slot, chart.output));
+    const classifier = classifierFor(model, chart.output);
+    const bands = bandsOf(classifier);
     traces.push({
       kind: "bands",
       hover: "field",
@@ -90,7 +92,7 @@ export function dynamicSpec(
             [x, xValue],
             [y, yValue],
           ]));
-          return bandIndexOf(model, measureOf(model, swept, chart.output), bands.length);
+          return bandIndexOf(classifier, categoryOf(model, swept, chart.output));
         }),
       ),
       bands,
@@ -158,44 +160,26 @@ function samples(range: Range): readonly number[] {
   return Array.from({ length: GRID }, (_, index) => range.min + index * step);
 }
 
-function measureOf(model: RegisteredModel, slot: SlotInputs, output: Quantity): Measure | undefined {
-  // `measure.quantity` is the library's own Quantity object; `quantityFor`
-  // reconciles it with this table's row before comparing (ADR-0002 decision 2).
-  return model
-    .run(toLibraryInputs(slot, model))
-    .toMeasures()
-    .find((measure) => quantityFor(measure.quantity.key) === output);
+/** `chart.output`'s classifier — required, since a dynamic chart's output is always a classified one. */
+function classifierFor(model: RegisteredModel, output: Quantity): ClassifierBins {
+  const classifier = model.info.outputs[output.key]?.classifier;
+  if (!classifier) {
+    throw new Error(`${model.info.label} declares ${output.label} as a dynamic chart output, but it has no classifier`);
+  }
+  return classifier;
 }
 
-function bandsOf(model: RegisteredModel, reference: Measure | undefined): readonly BandFill[] {
-  if (reference && reference.intervals.length > 0) {
-    return reference.intervals.map((interval, index) => ({ label: interval.label, color: bandFill(index) }));
-  }
-  const scale = model.model.tsv;
-  if (!scale) {
-    return [];
-  }
-  return scale.intervals.map((interval, index) => ({ label: interval.label, color: bandFill(index) }));
+/** The category `output` takes for `slot`, read off a fresh run's result object. */
+function categoryOf(model: RegisteredModel, slot: SlotInputs, output: Quantity): string | number {
+  const result = model.run(toLibraryInputs(slot, model));
+  return resultValue(result, output) ?? Number.NaN;
 }
 
-function bandIndexOf(model: RegisteredModel, measure: Measure | undefined, bandCount: number): number | null {
-  if (!measure || bandCount === 0) {
-    return null;
-  }
-  if (measure.intervals.length > 0) {
-    // Acceptability intervals nest, widest first, so the last satisfied one is
-    // the strictest the point meets.
-    for (let index = measure.intervals.length - 1; index >= 0; index -= 1) {
-      if (measure.intervals[index].satisfied) {
-        return index;
-      }
-    }
-    return null;
-  }
-  const scale = model.model.tsv;
-  const band = scale?.classify(measure.value);
-  if (!scale || !band) {
-    return null;
-  }
-  return scale.intervals.indexOf(band);
+function bandsOf(classifier: ClassifierBins): readonly BandFill[] {
+  return classifier.labels.map((label, index) => ({ label, color: bandFill(index) }));
+}
+
+function bandIndexOf(classifier: ClassifierBins, category: string | number): number | null {
+  const index = classifier.labels.indexOf(category as string);
+  return index === -1 ? null : index;
 }

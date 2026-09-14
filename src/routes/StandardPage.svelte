@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { standardPath } from "$lib/core/standard";
+  import { standards } from "$lib/core/standard";
   import { unitSystem } from "$lib/core/unitSystem";
   import { Outputs, observeSession } from "$lib/state/compute.svelte";
   import { Session } from "$lib/state/session.svelte";
@@ -30,10 +30,10 @@
   });
 
   const navigation = $derived(
-    standardPath
-      .map((row) => ({
-        standard: row.standard,
-        models: standardModels().filter((model) => model.model.standard === row.standard),
+    standards
+      .map((entry) => ({
+        standard: entry,
+        models: standardModels().filter((model) => model.standard === entry.id),
       }))
       .filter((group) => group.models.length > 0),
   );
@@ -61,11 +61,11 @@
     <Grid columns="12rem minmax(0, 24rem) minmax(0, 1fr)" gap="6">
       <nav>
         <Stack gap="2">
-          {#each navigation as group (group.standard)}
-            <strong>{group.standard.name}</strong>
+          {#each navigation as group (group.standard.id)}
+            <strong>{group.standard.displayName}</strong>
             {#each group.models as model (model)}
               <a href={pathTo(model)} aria-current={session.model === model ? "page" : undefined}>
-                {model.model.label}
+                {model.info.label}
               </a>
             {/each}
           {/each}
@@ -89,7 +89,7 @@
         <Stack gap="4">
           <ResultTable
             model={session.model}
-            measures={outputs.perSlot[0]}
+            result={outputs.perSlot[0]}
             unitSystem={session.unitSystem}
             slotName={copy.slotName(0)}
             outOfRange={outputs.outOfRange.length > 0}

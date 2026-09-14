@@ -1,4 +1,3 @@
-import type { Measure } from "jsthermalcomfort/io";
 import { untrack } from "svelte";
 import { derivedViolations, outOfRangeInputs, outputViolations, type ViolationRow } from "$lib/core/applicability";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
@@ -6,17 +5,17 @@ import { dynamicSpec } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
 import { toLibraryInputs } from "$lib/core/libraryInputs";
-import { dynamicChartOf, psychrometricChartOf } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, psychrometricChartOf, type ModelResult } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import { copy } from "$lib/text/copy";
 import type { Session } from "./session.svelte";
 
 /** Derived from the session, never persisted (ADR §4.5). */
 export class Outputs {
-  // `$state.raw`: measures and quantities are compared by identity with the
-  // library's objects, which a deep proxy would break. Replaced, never mutated.
-  /** Last valid measures per slot. Kept as they are while an input is out of range. */
-  perSlot = $state.raw<readonly (readonly Measure[] | null)[]>([null, null, null]);
+  // `$state.raw`: quantities are compared by identity with the library's
+  // objects, which a deep proxy would break. Replaced, never mutated.
+  /** Last valid result per slot. Kept as it is while an input is out of range. */
+  perSlot = $state.raw<readonly (ModelResult | null)[]>([null, null, null]);
   /** Entered quantities currently outside the model's applicability limits. */
   outOfRange = $state.raw<readonly Quantity[]>([]);
   /**
@@ -60,11 +59,10 @@ export function observeSession(session: Session, outputs: Outputs): void {
     if (outOfRange.length > 0) {
       return;
     }
-    const outcome = model.run(toLibraryInputs(slot, model));
-    const measures = outcome.toMeasures();
-    outputs.violations = [...derivedViolations(slot, model), ...outputViolations(model, outcome)];
+    const result = model.run(toLibraryInputs(slot, model));
+    outputs.violations = [...derivedViolations(slot, model), ...outputViolations(model, result)];
     // Untracked: reading perSlot here would make the write below re-run the effect.
-    outputs.perSlot = untrack(() => outputs.perSlot).map((kept, index) => (index === 0 ? measures : kept));
+    outputs.perSlot = untrack(() => outputs.perSlot).map((kept, index) => (index === 0 ? result : kept));
     outputs.chart = chartSpecOf(session);
   });
 }

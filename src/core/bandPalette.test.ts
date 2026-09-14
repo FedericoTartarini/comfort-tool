@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { isoThermalSensation } from "jsthermalcomfort/reference";
+import { PMV_PPD_ISO_INFO } from "jsthermalcomfort-main";
 import { colorForBand, sensationPalette } from "./bandPalette";
 
+const tsvClassifier = PMV_PPD_ISO_INFO.outputs.tsv?.classifier;
+if (!tsvClassifier) {
+  throw new Error("PMV_PPD_ISO_INFO no longer classifies tsv");
+}
+
 describe("colorForBand", () => {
-  it("colours by band position in the scale", () => {
-    expect(colorForBand(isoThermalSensation, 0)).toBe(sensationPalette[3]);
-    expect(colorForBand(isoThermalSensation, -3)).toBe(sensationPalette[0]);
-    expect(colorForBand(isoThermalSensation, 2.7)).toBe(sensationPalette[6]);
+  it("colours by the category's position in the classifier's labels", () => {
+    expect(colorForBand(tsvClassifier, "Cold")).toBe(sensationPalette[0]);
+    expect(colorForBand(tsvClassifier, "Neutral")).toBe(sensationPalette[3]);
+    expect(colorForBand(tsvClassifier, "Hot")).toBe(sensationPalette[6]);
   });
 
-  it("returns nothing when the scale does not classify the value", () => {
-    expect(colorForBand(isoThermalSensation, Number.NaN)).toBeUndefined();
-    expect(colorForBand(isoThermalSensation, 50)).toBeUndefined();
+  it("returns nothing for a category the classifier does not name", () => {
+    expect(colorForBand(tsvClassifier, Number.NaN)).toBeUndefined();
+    expect(colorForBand(tsvClassifier, "Freezing")).toBeUndefined();
   });
 });

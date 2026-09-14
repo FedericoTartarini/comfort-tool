@@ -14,11 +14,10 @@
  */
 import { p_sat } from "jsthermalcomfort-main";
 import type { Bound, VariableInfo } from "jsthermalcomfort-main";
-import type { Outcome } from "jsthermalcomfort/io";
 import { v_relative } from "jsthermalcomfort/utilities";
 import { temperatureMode, type TemperatureMode } from "./entryModes";
 import { relativeHumidityOf, requireValue, resolvedTdb, type SlotInputs } from "./libraryInputs";
-import type { RegisteredModel } from "./modelDeclaration";
+import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 import type { DisplayUnit } from "./units";
@@ -140,14 +139,10 @@ export function derivedViolations(slot: SlotInputs, model: RegisteredModel): Vio
 }
 
 /**
- * The output rows a completed run breaks, read off `outcome.result` by key.
- *
- * C3 still calls the fork's `run`, so this reads the fork's `Outcome.result`;
- * ticket 05 moves the read to the model's own result object once `run`
- * returns it directly.
+ * The output rows a completed run breaks, read off the model's own result
+ * object by key (ADR-0002 decision 3).
  */
-export function outputViolations(model: RegisteredModel, outcome: Outcome): ViolationRow[] {
-  const result = outcome.result as Readonly<Record<string, number>>;
+export function outputViolations(model: RegisteredModel, result: ModelResult): ViolationRow[] {
   const rows: ViolationRow[] = [];
   for (const [key, variable] of Object.entries(model.info.outputs)) {
     if (!variable.applicability) {
@@ -155,7 +150,7 @@ export function outputViolations(model: RegisteredModel, outcome: Outcome): Viol
     }
     const quantity = quantityFor(key);
     const value = quantity ? result[key] : undefined;
-    if (quantity && value !== undefined && breaksBound(variable.applicability, value)) {
+    if (quantity && typeof value === "number" && breaksBound(variable.applicability, value)) {
       rows.push({ quantity, role: "output", value, bound: variable.applicability });
     }
   }

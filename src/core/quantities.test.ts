@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import * as mainRepo from "jsthermalcomfort-main";
-import { HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ISO_INFO } from "jsthermalcomfort-main";
+import { HEAT_INDEX_ROTHFUSZ_INFO } from "jsthermalcomfort-main";
 import type { ModelInfo } from "jsthermalcomfort-main";
+import { registeredModels } from "$lib/models";
 import { quantities } from "./quantities";
 
 /**
@@ -18,12 +19,11 @@ function variableKeys(info: ModelInfo): string[] {
 const tableKeys = Object.keys(quantities);
 
 describe("quantities table drift", () => {
-  // Ticket 05 gives every registered model an `info` field the registry can be
-  // walked for; until then this direction reads the one `_INFO` beside the
-  // declaration directly (PMV_PPD_ISO_INFO is the only registered model so far).
   it("direction 1: has a row for every input, output and derived key a registered model's info names", () => {
-    for (const key of variableKeys(PMV_PPD_ISO_INFO)) {
-      expect(tableKeys).toContain(key);
+    for (const model of registeredModels) {
+      for (const key of variableKeys(model.info)) {
+        expect(tableKeys).toContain(key);
+      }
     }
   });
 

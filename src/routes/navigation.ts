@@ -21,7 +21,7 @@ export { Router } from "sv-router";
 
 /** Models that belong to a standard, in registry order. */
 export function standardModels(): RegisteredModel[] {
-  return registeredModels.filter((model) => model.model.standard !== undefined);
+  return registeredModels.filter((model) => model.standard !== undefined);
 }
 
 export function defaultModel(): RegisteredModel {
@@ -33,9 +33,9 @@ export function defaultModel(): RegisteredModel {
 }
 
 function routeParams(model: RegisteredModel): { standard: string; model: string } {
-  const standard = model.model.standard;
+  const standard = model.standard;
   if (!standard) {
-    throw new Error(`${model.model.label} has no standard and no Standard page`);
+    throw new Error(`${model.info.label} has no standard and no Standard page`);
   }
   return { standard: pathSegmentFor(standard), model: model.pathSegment };
 }
@@ -52,7 +52,5 @@ export function navigateTo(model: RegisteredModel): void {
 export function modelFromRoute(): RegisteredModel | undefined {
   const params: Partial<Record<"standard" | "model", string>> = route.params;
   const standard = standardFromPath(params.standard ?? "");
-  return standardModels().find(
-    (model) => model.model.standard === standard && model.pathSegment === params.model,
-  );
+  return standardModels().find((model) => model.standard === standard && model.pathSegment === params.model);
 }

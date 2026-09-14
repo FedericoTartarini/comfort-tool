@@ -1,10 +1,11 @@
-import type { IntervalScale } from "jsthermalcomfort/reference";
+import type { ClassifierBins } from "jsthermalcomfort-main";
 
 /**
- * The one band palette of the app. Colours are assigned by position in a
- * library scale, never by label text, so the library owns the bands and the
- * app owns only the paint. The result table, the chart zones and legends
- * (Phase 3) and Explore's default bands (Phase 5) all read from here.
+ * The one band palette of the app. Colours are assigned by position in the
+ * library's own classifier bins, never by label text, so the library owns the
+ * bands and the app owns only the paint. The result table, the chart zones
+ * and legends (Phase 3) and Explore's default bands (Phase 5) all read from
+ * here.
  *
  * Seven entries match the seven-point thermal sensation scale; the fills are
  * the ones the CBE tool has published for Cold … Hot.
@@ -19,17 +20,15 @@ export const sensationPalette = [
   "#cc79a7",
 ] as const;
 
-/** Colours for a `Measure.intervals` entry, by whether the conditions satisfied it. */
-export const intervalColor = { satisfied: "#047857", unsatisfied: "#dc2626" } as const;
-
-/** Fill for the band `value` falls into; `undefined` when the scale does not classify it (NaN included). */
-export function colorForBand(scale: IntervalScale, value: number): string | undefined {
-  const band = scale.classify(value);
-  if (!band) {
-    return undefined;
-  }
-  const index = scale.intervals.indexOf(band);
-  return sensationPalette[index % sensationPalette.length];
+/**
+ * Fill for `category`'s position in `bins.labels`; `undefined` when it is not
+ * one of them (NaN included — the model's own way of saying "not classified").
+ * The app never calls `classifyFromBins` here: the value is already the
+ * category the model returned, not a number to re-classify.
+ */
+export function colorForBand(bins: ClassifierBins, category: string | number): string | undefined {
+  const index = bins.labels.indexOf(category as string);
+  return index === -1 ? undefined : bandFill(index);
 }
 
 /** Fill for the band at `index` of a scale, wrapping when a scale is longer than the palette. */
