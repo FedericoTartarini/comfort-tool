@@ -14,15 +14,7 @@
     "types": ["vite/client", "vitest/globals", "node"],
     "paths": {
       "$lib": ["./src"],
-      "$lib/*": ["./src/*"],
-      // The fork and the main repository both ship package.json with
-      // name "jsthermalcomfort" and version "1.4.0"; resolved through npm's
-      // package machinery, TypeScript's package-identity cache conflates the
-      // two and silently reuses whichever ".d.ts" it parsed first for both
-      // (github.com/microsoft/TypeScript's package-id dedup, not a bundler-
-      // specific issue). A direct path mapping bypasses that lookup. Removed
-      // with the alias itself (C5).
-      "jsthermalcomfort-main": ["../jsthermalcomfort/lib/esm/types/index.d.ts"]
+      "$lib/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.svelte", "src/**/*.js"]

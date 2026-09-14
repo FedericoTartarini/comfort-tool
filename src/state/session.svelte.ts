@@ -1,4 +1,4 @@
-import { operative_tmp } from "jsthermalcomfort/psychrometrics";
+import { t_o } from "jsthermalcomfort";
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
@@ -54,7 +54,7 @@ export class InputSlot {
 
   /**
    * Convert the stored temperatures into the new representation. Separate →
-   * operative uses the library's `operative_tmp(tdb, tr, v)`; operative →
+   * operative uses the library's `t_o(tdb, tr, v)`; operative →
    * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, as in the old
    * tool.
    */
@@ -63,7 +63,7 @@ export class InputSlot {
       return;
     }
     if (mode === temperatureMode.operative) {
-      const operative = operative_tmp(this.require(q.tdb), this.require(q.tr), this.require(q.v));
+      const operative = t_o(this.require(q.tdb), this.require(q.tr), this.require(q.v));
       this.values.set(q.operative_tmp, operative);
       this.values.delete(q.tdb);
       this.values.delete(q.tr);

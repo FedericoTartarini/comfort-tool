@@ -1,4 +1,4 @@
-import { psy_ta_rh } from "jsthermalcomfort/psychrometrics";
+import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { NO_ROOT_FOUND, psychrometricZone, type PsychrometricPoint } from "$lib/core/compute/psychrometricZone";
 import { temperatureMode } from "$lib/core/entryModes";

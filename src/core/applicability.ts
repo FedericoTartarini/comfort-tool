@@ -12,9 +12,8 @@
  * templated here from the quantity's label, the bound and the display unit —
  * the fork's `limit.warning` strings are not carried.
  */
-import { p_sat } from "jsthermalcomfort-main";
-import type { Bound, VariableInfo } from "jsthermalcomfort-main";
-import { v_relative } from "jsthermalcomfort/utilities";
+import { p_sat, v_relative } from "jsthermalcomfort";
+import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { temperatureMode, type TemperatureMode } from "./entryModes";
 import { relativeHumidityOf, requireValue, resolvedTdb, type SlotInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";

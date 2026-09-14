@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { io, v_relative } from "jsthermalcomfort";
-import { psy_ta_rh } from "jsthermalcomfort/psychrometrics";
+import { pmv_ppd_iso, psy_ta_rh, Standard, v_relative } from "jsthermalcomfort";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { SlotInputs } from "$lib/core/libraryInputs";
 import { psychrometricChartOf } from "$lib/core/modelDeclaration";
@@ -66,17 +65,11 @@ function pmvAt(db: number, rh: number, tr: number): number {
   // `round_output: false`, as the library's solver calls it: the rounded PMV is
   // a staircase of 0.01 steps, which is a plateau about 0.03 °C wide and would
   // put a root anywhere inside it.
-  return io.pmvPpdIso({
-    tdb: db,
-    tr,
-    vr: v_relative(v, met),
-    rh,
-    met,
-    clo,
+  return pmv_ppd_iso(db, tr, v_relative(v, met), rh, met, clo, 0, Standard.iso_7730_2005, {
     units: "SI",
     limit_inputs: false,
     round_output: false,
-  }).result.pmv;
+  }).pmv;
 }
 
 describe("psychrometricSpec", () => {

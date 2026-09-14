@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Standard, pmv_ppd_ashrae, pmv_ppd_iso } from "jsthermalcomfort-main";
+import { Standard, pmv_ppd_ashrae, pmv_ppd_iso } from "jsthermalcomfort";
 import online from "./chart-online.json" with { type: "json" };
 import { NO_ROOT_FOUND, psychrometricZone, type PsychrometricZoneOptions } from "./psychrometricZone";
 import { bisect, secant } from "./rootFinding";

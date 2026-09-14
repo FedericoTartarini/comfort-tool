@@ -1,4 +1,4 @@
-import { v_relative } from "jsthermalcomfort/utilities";
+import { v_relative } from "jsthermalcomfort";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { hasHumidityGroup, hasTemperatureGroup, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";

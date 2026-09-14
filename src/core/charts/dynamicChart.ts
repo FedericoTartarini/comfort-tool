@@ -1,4 +1,4 @@
-import type { ClassifierBins } from "jsthermalcomfort-main";
+import type { ClassifierBins } from "jsthermalcomfort";
 import { bandFill, chartInk } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
 import {

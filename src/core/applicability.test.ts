@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pmv_ppd_iso, Standard } from "jsthermalcomfort-main";
+import { pmv_ppd_iso, Standard } from "jsthermalcomfort";
 import { pmvIso } from "$lib/models/pmvIso";
 import {
   derivedViolations,

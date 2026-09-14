@@ -1,4 +1,4 @@
-import { Standard } from "jsthermalcomfort-main";
+import { Standard } from "jsthermalcomfort";
 
 /**
  * Display name, edition year and route segment for a library `Standard`,

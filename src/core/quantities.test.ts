@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import * as mainRepo from "jsthermalcomfort-main";
-import { HEAT_INDEX_ROTHFUSZ_INFO } from "jsthermalcomfort-main";
-import type { ModelInfo } from "jsthermalcomfort-main";
+import * as jsthermalcomfort from "jsthermalcomfort";
+import { HEAT_INDEX_ROTHFUSZ_INFO } from "jsthermalcomfort";
+import type { ModelInfo } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { quantities } from "./quantities";
 
@@ -28,7 +28,7 @@ describe("quantities table drift", () => {
   });
 
   it("direction 2: every table key names a package `_INFO` variable or an app entry mode/derivation", () => {
-    const infoExports = Object.entries(mainRepo).filter(([name]) => name.endsWith("_INFO"));
+    const infoExports = Object.entries(jsthermalcomfort).filter(([name]) => name.endsWith("_INFO"));
     const infoNamedKeys = new Set(infoExports.flatMap(([, info]) => variableKeys(info as ModelInfo)));
     for (const key of tableKeys) {
       expect(infoNamedKeys.has(key) || appOwnedQuantities.has(key)).toBe(true);

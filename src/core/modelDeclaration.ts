@@ -1,4 +1,4 @@
-import type { ModelInfo, Standard } from "jsthermalcomfort-main";
+import type { ModelInfo, Standard } from "jsthermalcomfort";
 import { chartType } from "./chartType";
 import type { PsychrometricZoneOptions } from "./compute/psychrometricZone";
 import { quantities, type Quantity } from "./quantities";

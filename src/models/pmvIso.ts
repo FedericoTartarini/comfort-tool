@@ -1,4 +1,4 @@
-import { pmv_ppd_iso, PMV_PPD_ISO_INFO, Standard } from "jsthermalcomfort-main";
+import { pmv_ppd_iso, PMV_PPD_ISO_INFO, Standard } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";

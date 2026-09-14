@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import svelte from "eslint-plugin-svelte";
+import jsthermalcomfort from "jsthermalcomfort";
 import { quantities } from "./src/core/quantities.ts";
 
 // Flat config REPLACES a same-named rule when a later block matches the same
@@ -9,19 +10,23 @@ import { quantities } from "./src/core/quantities.ts";
 // are therefore composed from these fragments, and every block that narrows one
 // of them has to repeat the fragments it still wants.
 
-// ADR §3 / §4.7: model functions are called in the worker and referenced only
-// by the model declarations (which bind `run` and read label/limits off them).
-// The io subpath stays importable everywhere for its other shapes (`Outcome`,
-// `Measure`); that its model wrappers are only *called* in the worker is a
-// convention lint cannot check.
+// ADR-0002 decision 12: root-only imports make a subpath rule meaningless, so
+// the boundary is the model-function names themselves, read off the package's
+// `models` namespace. `Standard`, `classifyFromBins` and the psychrometrics
+// stay importable everywhere; only the model functions are confined to
+// src/models/ (which binds `run` and reads label/limits off them) and
+// src/workers/ (the only caller). A new upstream model needs no lint edit.
+const libraryModelFunctionNames = Object.entries(jsthermalcomfort.models)
+  .filter(([name, value]) => typeof value === "function" && name !== "classifyFromBins")
+  .map(([name]) => name);
+
 const libraryModelImports = {
   paths: [
     {
       name: "jsthermalcomfort",
-      message:
-        "Library model functions are referenced only in src/models/ and called only in src/workers/. Import jsthermalcomfort/io, /psychrometrics, /reference or /charts elsewhere.",
+      importNames: libraryModelFunctionNames,
+      message: "Library model functions are referenced only in src/models/ and called only in src/workers/.",
     },
-    { name: "jsthermalcomfort/models", message: "Library model functions belong in src/models/ or src/workers/." },
   ],
 };
 
@@ -35,7 +40,7 @@ const coreBoundary = {
 // ADR §4.4: the moment the chart component knows what a model is, every new
 // model starts needing an edit here.
 const chartBoundary = {
-  group: ["**/models/**", "**/state/**", "jsthermalcomfort", "jsthermalcomfort/**"],
+  group: ["**/models/**", "**/state/**", "jsthermalcomfort"],
   message: "Chart components consume a ChartSpec and nothing else.",
 };
 

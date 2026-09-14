@@ -1,4 +1,4 @@
-import type { ClassifierBins } from "jsthermalcomfort-main";
+import type { ClassifierBins } from "jsthermalcomfort";
 
 /**
  * The one band palette of the app. Colours are assigned by position in the

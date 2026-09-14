@@ -1,8 +1,8 @@
 /**
  * Every physical quantity the app shows, in one table (ADR-0002 decision 2).
  *
- * The fork's `jsthermalcomfort/io` quantities went with the fork; the main
- * repository publishes no such table, so the app owns this one. `key` is a
+ * The fork's `io.quantities` table went with the fork; the main repository
+ * publishes no such table, so the app owns this one. `key` is a
  * registered model's `ModelInfo` key — the one place a quantity's wire string
  * legitimately appears outside `core/shareLink.ts` — and every other module
  * holds the row itself, compared by identity, never the key.

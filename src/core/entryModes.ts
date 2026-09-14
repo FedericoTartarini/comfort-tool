@@ -4,7 +4,7 @@ import {
   rh_from_dew_point,
   rh_from_vapour_pressure,
   rh_from_wet_bulb,
-} from "jsthermalcomfort/psychrometrics";
+} from "jsthermalcomfort";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -80,13 +80,13 @@ export const humidityMode = {
     id: "dew-point",
     quantity: quantities.dew_point_tmp,
     toRelativeHumidity: (dewPoint, tdb) => rh_from_dew_point(dewPoint, tdb),
-    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).dew_point_tmp,
+    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).t_dp,
   },
   wetBulb: {
     id: "wet-bulb",
     quantity: quantities.wet_bulb_tmp,
     toRelativeHumidity: (wetBulb, tdb) => rh_from_wet_bulb(wetBulb, tdb),
-    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).wet_bulb_tmp,
+    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).t_wb,
   },
   vapourPressure: {
     id: "vapour-pressure",

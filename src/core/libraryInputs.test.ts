@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { v_relative } from "jsthermalcomfort";
-import { Standard } from "jsthermalcomfort-main";
+import { Standard } from "jsthermalcomfort";
 import { pmvIso } from "$lib/models/pmvIso";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";

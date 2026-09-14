@@ -1,4 +1,4 @@
-import { psy_ta_rh } from "jsthermalcomfort-main";
+import { psy_ta_rh } from "jsthermalcomfort";
 import { NO_ROOT_FOUND, bisect, secant } from "./rootFinding";
 
 export { NO_ROOT_FOUND };

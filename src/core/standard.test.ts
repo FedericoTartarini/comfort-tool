@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Standard } from "jsthermalcomfort-main";
+import { Standard } from "jsthermalcomfort";
 import { pathSegmentFor, standardFromPath, standards } from "./standard";
 
 describe("standards", () => {

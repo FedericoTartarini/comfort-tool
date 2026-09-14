@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PMV_PPD_ISO_INFO } from "jsthermalcomfort-main";
+import { PMV_PPD_ISO_INFO } from "jsthermalcomfort";
 import { colorForBand, sensationPalette } from "./bandPalette";
 
 const tsvClassifier = PMV_PPD_ISO_INFO.outputs.tsv?.classifier;
