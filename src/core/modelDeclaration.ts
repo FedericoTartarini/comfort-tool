@@ -1,7 +1,7 @@
-import type { PsychrometricZoneOptions } from "jsthermalcomfort/charts";
 import type { Outcome } from "jsthermalcomfort/io";
 import type { ApplicabilityLimit, IntervalScale, StandardRef } from "jsthermalcomfort/reference";
 import { chartType } from "./chartType";
+import type { PsychrometricZoneOptions } from "./compute/psychrometricZone";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
@@ -73,15 +73,18 @@ export type ChartDeclaration =
   | {
       readonly type: typeof chartType.psychrometric;
       /**
-       * The PMV model the comfort zone is solved with — the library function
-       * itself, not a string naming a variant.
+       * The PMV closure the comfort zone is solved with: `(tdb, tr, vr, rh,
+       * met, clo) => pmv`, unrounded and ungated. The declaration writes this
+       * beside `run`, binding the same edition constant, so the zone and the
+       * results can never disagree about which standard produced them
+       * (ADR-0002 decision 9).
        *
-       * This was `pmvVariant: "ISO" | "ASHRAE"`, a workaround for
-       * `psychrometricZone` taking a `standard` string that defaulted to
-       * `"ASHRAE"`: a model could be declared with a variant its own function
-       * contradicts, and omitting the field drew ASHRAE geometry under an ISO
-       * model. The library now takes the model function, which already carries
-       * the standard it applies, so the two cannot disagree.
+       * This was `pmvVariant: "ISO" | "ASHRAE"`, then the library model
+       * function taken directly — a workaround for `psychrometricZone` taking
+       * a `standard` string that defaulted to `"ASHRAE"`. The main
+       * repository's ISO wrapper takes the edition as its eighth positional
+       * argument and kwargs as its ninth, so a raw function reference no
+       * longer fits one signature; a closure does.
        */
       readonly pmvModel: PsychrometricZoneOptions["model"];
     }

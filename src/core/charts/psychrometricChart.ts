@@ -1,6 +1,6 @@
-import { NO_ROOT_FOUND, psychrometricZone, type PsychrometricPoint } from "jsthermalcomfort/charts";
 import { psy_ta_rh } from "jsthermalcomfort/psychrometrics";
 import { chartInk } from "$lib/core/bandPalette";
+import { NO_ROOT_FOUND, psychrometricZone, type PsychrometricPoint } from "$lib/core/compute/psychrometricZone";
 import { temperatureMode } from "$lib/core/entryModes";
 import { requireValue, resolveQuantities } from "$lib/core/libraryInputs";
 import { requireAxisRange, type PsychrometricDeclaration, type Range } from "$lib/core/modelDeclaration";
