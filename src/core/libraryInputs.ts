@@ -84,10 +84,11 @@ export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Recor
 
 /**
  * The mirror read: a quantity's value off the model's own result object, by
- * key. `undefined` for a key the result does not carry.
+ * key. `undefined` for a key the result does not carry. The one cast onto
+ * `ModelResult`'s deliberately unindexed `object` (`core/modelDeclaration.ts`).
  */
 export function resultValue(result: ModelResult, quantity: Quantity): number | string | undefined {
-  return result[quantity.key];
+  return (result as Record<string, number | string>)[quantity.key];
 }
 
 /**

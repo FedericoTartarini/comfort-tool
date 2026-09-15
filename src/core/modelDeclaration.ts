@@ -8,8 +8,14 @@ import { quantities, type Quantity } from "./quantities";
  * a number for a physical output, or the category label (or NaN) a classified
  * output returns. `run` returns this directly (ADR-0002 decision 3) — the app
  * reads it by key rather than transcribing a shape of its own.
+ *
+ * Deliberately widened to `object` rather than an indexed `Record`: a library
+ * result declared as a plain `interface` (`HeatIndexResult`) carries no index
+ * signature and TypeScript never infers one for it, so a `Record` type here
+ * would reject every such model at its declaration. `libraryInputs.resultValue`
+ * is the one place that indexes into it.
  */
-export type ModelResult = Readonly<Record<string, number | string>>;
+export type ModelResult = object;
 
 /** A closed interval, in SI. */
 export interface Range {

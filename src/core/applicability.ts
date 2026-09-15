@@ -15,7 +15,7 @@
 import { p_sat, v_relative } from "jsthermalcomfort";
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { temperatureMode, type TemperatureMode } from "./entryModes";
-import { relativeHumidityOf, requireValue, resolvedTdb, type SlotInputs } from "./libraryInputs";
+import { relativeHumidityOf, requireValue, resolvedTdb, resultValue, type SlotInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { quantities, quantityFor, type Quantity } from "./quantities";
@@ -148,7 +148,7 @@ export function outputViolations(model: RegisteredModel, result: ModelResult): V
       continue;
     }
     const quantity = quantityFor(key);
-    const value = quantity ? result[key] : undefined;
+    const value = quantity ? resultValue(result, quantity) : undefined;
     if (quantity && typeof value === "number" && breaksBound(variable.applicability, value)) {
       rows.push({ quantity, role: "output", value, bound: variable.applicability });
     }
