@@ -36,6 +36,10 @@ _Avoid_: definition, config, registration (that is the one line in the registry)
 A set of quantities the user may enter in more than one representation: temperature (separate or operative) and humidity (five representations). Derived from the declaration's inputs, not declared.
 _Avoid_: input mode, representation group
 
+**Preset**:
+A named reference value the library publishes for a quantity (a typical task for metabolic rate, a typical ensemble for clothing), offered beside free entry. Choosing one enters its number; the number is the truth and nothing remembers the preset.
+_Avoid_: default, option, template
+
 **Slot**:
 One set of entered inputs. Compare holds three.
 _Avoid_: scenario, case, column

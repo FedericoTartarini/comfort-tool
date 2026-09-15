@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -132,6 +132,17 @@ commits `bf95aac` … `9c6df55`) that go beyond the fourteen above. The fourteen
     the table cannot run different kernels.
 19. **A `category` kind** in `core/quantities.ts` for classified outputs (`tsv`, `stress_category`): no
     unit symbol, no step. `pmv` keeps `thermalSensation`.
+
+Taken after the migration, while closing Phase 3.6 (spec `.scratch/presets-and-model-select/spec.md`):
+
+20. **Presets hang off the Quantity, not the declaration.** ADR-0001 §4.3 made `presets` a declaration field; that
+    clause falls with the rest of §4.3. `core/presets.ts` binds `met` to `met_typical_tasks` and `clo` to the library's
+    typical ensembles once, and `presetsFor(quantity)` answers for every model, because no model wants a different list
+    and a declaration field would be copied verbatim into every PMV declaration. The module reads the tables' keys as the
+    list's labels — a §4.0 rule 2 boundary read, like `core/standard.ts` reading `Object.keys(Standard)` — and transcribes
+    no label and no number: keys that are not human-readable, and a table published only as a function, are fixed
+    upstream. A preset is never state: the slot holds the number a preset commits, and nothing remembers which preset it
+    came from. `clo_individual_garments` is not a preset table; it is the Phase 5b custom-ensemble calculator's data.
 
 ## Consequences
 

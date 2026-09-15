@@ -10,7 +10,7 @@ borrow only verified behaviour**, rewrite against the new architecture, targetin
 Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` branch); the app is left with only "declare models + render",
 > **2026-09-13**: the fork is abandoned. The library is the main repository's `ModelInfo` interface, per [ADR-0002](adr/0002-library-interface-model-info.md); everything below that names `io` / `reference` / `charts` or the fork is pre-meeting history.
 
-> **2026-09-15 — position**: the ADR-0002 migration has landed on `rewrite/v1-main-repo` as five commits (`bf95aac` C1 quantities, `221889f` C2 zone geometry, `175f330` C3 applicability, `5373f92` C4 declaration / standards / results, `9c6df55` C5 cutover and lint); the four scripts are green. Acceptance (ticket 06 in `.scratch/adr-0002-migration/issues/`): no subpath import remains; the Phase 3.5 result-table parity re-run against the deployed tool's `comf.pmvEN` is bit-identical at the kernel; the 42 zone vertices match. The Heat Index two-file dry run passed every layer below the type boundary and failed `check` at it — that gap is now a Phase 4 prerequisite. Phase 3.6 items 3, 5 and 6 are still open; ADR-0002 carries amendments 15–19 from the migration spec. The `ModelResult` / registry-type gap closed 2026-09-15 as `c5f8ba6`; Phase 4 now waits only on Phase 3.6 items 3, 5 and 6.
+> **2026-09-15 — position**: the ADR-0002 migration has landed on `rewrite/v1-main-repo` as five commits (`bf95aac` C1 quantities, `221889f` C2 zone geometry, `175f330` C3 applicability, `5373f92` C4 declaration / standards / results, `9c6df55` C5 cutover and lint); the four scripts are green. Acceptance (ticket 06 in `.scratch/adr-0002-migration/issues/`): no subpath import remains; the Phase 3.5 result-table parity re-run against the deployed tool's `comf.pmvEN` is bit-identical at the kernel; the 42 zone vertices match. The Heat Index two-file dry run passed every layer below the type boundary and failed `check` at it — that gap is now a Phase 4 prerequisite. Phase 3.6 items 3, 5 and 6 are still open; ADR-0002 carries amendments 15–19 from the migration spec. The `ModelResult` / registry-type gap closed 2026-09-15 as `c5f8ba6`. Phase 3.6 items 3, 5 and 6 were decided the same day: item 3 moves to Phase 4b with its first consumer; items 5 and 6 are specified in `.scratch/presets-and-model-select/` and are Phase 4's last prerequisite.
 
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
@@ -563,6 +563,12 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    `PmvPpdIsoOutputs.edition`, with `PMV_PPD_ISO_DEFAULT_EDITION` (`@internal`) and `assert_pmv_ppd_iso_edition`;
    the app's `RegisteredModel.edition`, `src/models/pmvIso.ts` pinning `"7730-2005"` in `run`, and the result table's
    edition caption. `OptionSpec` itself is still open.
+   **2026-09-15: moved to Phase 4b.** The edition half now lives in ADR-0002's shape: `RegisteredModel.edition` went with
+   C4, the declaration's `standard: Standard.iso_7730_2005` is the pin, and `core/standard.ts` generates the year the result
+   table captions. `OptionSpec` / `RegisteredModel.options` / `InputSlot.options` wait for their first consumer,
+   `airspeed_control`, which is Phase 4b item 1; building the field before it would contradict the rule this plan applies
+   everywhere else (a field waits for its first consumer). Toggle-only stands and is re-checked with the model on screen.
+   This item is no longer a Phase 4 prerequisite.
 4. **The three kinds of applicability** (handed over by the library alignment). `pmv_ppd_iso.limits` now carries rows for
    the derived `p_vap ≤ 2700 Pa` and the output `pmv ∈ [−2, 2]` beside the entered quantities, and `outOfRangeInputs`
    walks entered quantities only, so both are silently ignored — the same hole the library just closed. They cannot
@@ -591,10 +597,36 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    `role` inline, which also retired the `ponytail:` note in `libraryInputs.ts`. `standard_violations` was cut on
    2026-09-07 (a second dispatcher with one caller; the kernel now picks the table in one line), and so was
    `core/applicability.ts`: two one-line `.filter()` calls do not earn a module.
-5. `presets` on the declaration + a free-entry input that also offers a searchable preset list, fed by the library's
-   `met_typical_tasks` and `clo_individual_garments`.
+5. A free-entry input that also offers a searchable preset list, fed by the library's `met_typical_tasks` and, for `clo`,
+   its typical ensembles.
+   **Decided 2026-09-15** (spec `.scratch/presets-and-model-select/spec.md`; ADR-0002 decision 20):
+   - *Data.* `met` offers the 31 typical tasks; `clo` offers the 9 ASHRAE typical ensembles — the deployed tool's two lists.
+     `clo_individual_garments` is not a preset list: it is the data of the Phase 5b custom-ensemble calculator, and this item
+     as first written named the wrong table.
+   - *Home.* Presets hang off the Quantity, not the declaration. No model wants a different `met` list, so `core/presets.ts`
+     binds `met` and `clo` to their library tables once and `presetsFor(quantity)` answers for every model; a declaration
+     field (ADR-0001 §4.3's `presets`) would be copied verbatim into every PMV declaration. The binding reads the tables'
+     keys, a §4.0 rule 2 boundary read like `core/standard.ts` reading `Object.keys(Standard)`.
+   - *Control.* A searchable list composed from shadcn-generated primitives (`command`, `popover`; bits-ui is already installed),
+     not a native `<datalist>`, which is unreliable on `type="number"`. The box always holds the number, converted with the unit system; a preset whose value
+     matches is named beside it. Selecting a preset commits its number through the existing `oncommit(si)`. A preset is
+     never state: the slot, the session and the share link know only the number.
+   - *Labels.* The list shows the library's keys. Today those are identifiers (`Seated_Cquiet`, `Walking_2mph_3_2kmh`)
+     where pythermalcomfort's are human strings ("Seated, quiet"), and `clo_typical_ensembles` is a `switch` function whose
+     `.d.ts` omits the 0.57 ensemble. Both are fixed upstream, in the checkout the app links to: `met_typical_tasks` keys
+     aligned with pythermalcomfort and typed; the ensembles exported as a table. The app transcribes no label and no number.
+     pythermalcomfort keys all three tables with human strings and publishes the ensembles as a dict (verified 2026-09-15),
+     so this is parity, not a design question; the rename is breaking for JS consumers and the PR says so. If rejected at
+     review, the fallback is an upstream labelled export, not an app-side table; if that stalls too, this item moves behind
+     Phase 4, which enters no `met` or `clo` and does not depend on it.
 6. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing
    `navigateTo(model)` with the left navigation, which stays.
+   **Decided 2026-09-15** (same spec). It lives in `StandardPage`, above `InputPanel`, which stays a slot editor with no
+   knowledge of routes; `routes/navigation.ts` gains `modelsOf(standard)`, the one derivation the left navigation and the
+   dropdown share; the generated `select` primitive is reused. Shown even when the list has one entry — ISO 7730 has one
+   model for all of v1 — so the layout does not jump when Phase 4b puts two under ASHRAE 55. Acceptance: a unit test that
+   `modelsOf` keeps a model with no `standard` out (Heat Index's shape), plus a browser pass. Heat Index is on no page in
+   Phase 4 — it has no standard and Explore is Phase 5 — so the Phase 4 acceptance stays the four scripts and `git diff --stat`.
 7. **Visual groundwork — not the design itself.** `app.css` gains the project's own tokens (a type scale, a spacing
    scale, a brand colour) instead of the shadcn neutral base it ships with today, and the primitives the app actually
    needs are generated: `select` (which replaces the native one Phase 3 hand-rolled in `ChartControls.svelte`), `card`,
@@ -640,7 +672,7 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 **Prerequisites**:
 1. The ADR-0002 migration — **done 2026-09-15** (`9c6df55`; the app is on the main repository's interface, the four scripts green).
 2. **The `ModelResult` contract — done 2026-09-15 (`c5f8ba6`).** The 2026-09-15 dry run (ticket 06) registered Heat Index with the straight declaration and one registry line: `test`, `lint` and `build` passed, `check` failed with three errors. `core/modelDeclaration.ts` types `run`'s return as `ModelResult = Readonly<Record<string, number | string>>`, and the library's `HeatIndexResult` is an `interface` with no index signature, so it is not assignable; `PmvPpdIso` only passes because it is a JSDoc typedef alias, which gets the implicit index signature. Separately, `src/models/index.ts` is an `as const` tuple, so `routes/navigation.ts`'s `standardModels()` reads `model.standard` off the element union and errors on a member without `standard`; the registry must be typed `readonly RegisteredModel[]`. Both are `core/` and registry changes and are made as their own commit *before* Phase 4, so the acceptance diff stays at two files. Spreading the result object in the declaration (`({ ...heat_index_rothfusz(...) })`) made all four scripts pass with two files touched — which proves every layer below the type boundary takes a second model unchanged — but it is a workaround and is rejected. Fixed by widening `ModelResult` to `object` with the single string-keyed read in `libraryInputs.resultValue`, and typing the registry `readonly RegisteredModel[]`; the dry run re-run touched only the two files.
-3. The remaining Phase 3.6 items (3, 5, 6).
+3. Phase 3.6 items 5 and 6 (item 3 moved to Phase 4b on 2026-09-15). Decided 2026-09-15; spec and tickets in `.scratch/presets-and-model-select/`.
 
 Why this model is a fair test: two inputs (`tdb`, `rh`) so it has the humidity group without the temperature group; an output with a
 `classifier` (`stress_category`, `HEAT_INDEX_STRESS_CATEGORY_BINS`) so the compliance column and the band palette run on bins; no
