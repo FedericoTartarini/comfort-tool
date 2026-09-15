@@ -3,6 +3,8 @@ import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { pathSegmentFor, standardFromPath } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
 
+export { modelsOf } from "./modelsOf";
+
 /**
  * The only place sv-router is used (ADR §2). Pages import `route`, `pathTo`
  * and `navigateTo` from here and never the router itself.
@@ -32,12 +34,17 @@ export function defaultModel(): RegisteredModel {
   return model;
 }
 
-function routeParams(model: RegisteredModel): { standard: string; model: string } {
+/** `model.standard`, or throws when the model has none (an Explore-only model has no Standard page). */
+export function requireStandard(model: RegisteredModel): NonNullable<RegisteredModel["standard"]> {
   const standard = model.standard;
   if (!standard) {
     throw new Error(`${model.info.label} has no standard and no Standard page`);
   }
-  return { standard: pathSegmentFor(standard), model: model.pathSegment };
+  return standard;
+}
+
+function routeParams(model: RegisteredModel): { standard: string; model: string } {
+  return { standard: pathSegmentFor(requireStandard(model)), model: model.pathSegment };
 }
 
 export function pathTo(model: RegisteredModel): string {

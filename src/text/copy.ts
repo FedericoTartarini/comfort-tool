@@ -5,6 +5,7 @@
 export const copy = {
   appTitle: "CBE Thermal Comfort Tool",
   inputs: "Inputs",
+  model: "Model",
   units: "Units",
   temperatureInput: "Temperature input",
   separateTemperatures: "Separate",

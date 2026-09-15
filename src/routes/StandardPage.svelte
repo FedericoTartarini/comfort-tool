@@ -13,8 +13,11 @@
   import Stack from "$lib/ui/layout/Stack.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Button } from "$lib/ui/primitives/button";
-  import { defaultModel, modelFromRoute, navigateTo, pathTo, standardModels } from "./navigation";
+  import { Label } from "$lib/ui/primitives/label";
+  import * as Select from "$lib/ui/primitives/select";
+  import { defaultModel, modelFromRoute, modelsOf, navigateTo, pathTo, requireStandard } from "./navigation";
 
+  const id = $props.id();
   const session = new Session(modelFromRoute() ?? defaultModel());
   const outputs = new Outputs();
   observeSession(session, outputs);
@@ -31,12 +34,11 @@
 
   const navigation = $derived(
     standards
-      .map((entry) => ({
-        standard: entry,
-        models: standardModels().filter((model) => model.standard === entry.id),
-      }))
+      .map((entry) => ({ standard: entry, models: modelsOf(entry.id) }))
       .filter((group) => group.models.length > 0),
   );
+
+  const modelChoices = $derived(modelsOf(requireStandard(session.model)));
 
   function unitVariant(system: typeof unitSystem.si | typeof unitSystem.ip) {
     return session.unitSystem === system ? "default" : "outline";
@@ -75,6 +77,21 @@
       <section>
         <Stack gap="4">
           <h2>{copy.inputs}</h2>
+          <Inline gap="2" align="center">
+            <Label for="{id}-model">{copy.model}</Label>
+            <Select.Root
+              type="single"
+              value={String(modelChoices.indexOf(session.model))}
+              onValueChange={(value) => navigateTo(modelChoices[Number(value)])}
+            >
+              <Select.Trigger id="{id}-model">{session.model.info.label}</Select.Trigger>
+              <Select.Content>
+                {#each modelChoices as model, index (model)}
+                  <Select.Item value={String(index)} label={model.info.label} />
+                {/each}
+              </Select.Content>
+            </Select.Root>
+          </Inline>
           <InputPanel
             model={session.model}
             inputSlot={session.slots[0]}
