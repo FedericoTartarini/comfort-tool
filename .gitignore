@@ -10,3 +10,8 @@
 
 # Playwright MCP session output
 .playwright-mcp/
+
+# Agent-local config and scratch tickets (never committed)
+.claude/
+docs/agents/
+.scratch/
