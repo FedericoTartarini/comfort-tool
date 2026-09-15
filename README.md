@@ -45,8 +45,9 @@ file plus one registry line once its model is ported to the library.
 - **Node.js** ≥ 24 (`engines` in `package.json`, `.nvmrc`)
 - **npm** (ships with Node)
 
-`jsthermalcomfort` is currently a `file:` link to a local fork. The app consumes
-the fork's build output, so run `npm run build` inside the fork after changing it.
+`jsthermalcomfort` resolves to `../jsthermalcomfort`, a local checkout of the main
+repository (on the branch carrying the humidity-inverses PR until it merges). The app
+consumes its build output `lib/esm/`, so run `npm run build` there after changing it.
 
 ## Development
 

@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -76,11 +76,14 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    entry; an output whose `VariableInfo` carries a `classifier` reports its category in that result
    field (`tsv` for PMV). There is no `Measure` / `Outcome` layer.
 9. **Comfort-zone geometry moves into the app** (`core/compute/`), ported from the fork as pure
-   functions: `psychrometricZone` with `trFollowsDb`, the adaptive bands, and the bisect / secant root
-   finders, together with their existing oracle tests. It is chart *algorithm*, not a chart; it may be
-   extracted upstream when a second consumer appears. ADR-0001 §5's `core/compute/zoneBoundary.ts`
-   returns; the rewrite plan's "do not write your own root finder" becomes "port the fork's, do not
-   rewrite it".
+   functions: `psychrometricZone` with `trFollowsDb` and the bisect / secant root finders, together
+   with their existing oracle tests. It is chart *algorithm*, not a chart; it may be extracted
+   upstream when a second consumer appears. ADR-0001 §5's `core/compute/zoneBoundary.ts` returns; the
+   rewrite plan's "do not write your own root finder" becomes "port the fork's, do not rewrite it".
+   **Revised 2026-09-15:** the adaptive bands are *not* ported with the migration. Porting them now
+   would transcribe the fork's offset labels and its 25 °C cooling-effect threshold into the app, and
+   nothing in v1 consumes them. They arrive in Phase 4b with `ADAPTIVE_ASHRAE_INFO`, reading labels
+   and offsets from it, and the fork's adaptive `describe` blocks are ported with them.
 10. **Fork features that are numbers go upstream first.** The four humidity inverse functions
     (`hr_to_rh`, `rh_from_dew_point`, `rh_from_wet_bulb`, `rh_from_vapour_pressure`; fork 43d7e92) are
     a PR to the main repository and a prerequisite for the switch. Not migrated, because nothing reads
@@ -108,6 +111,28 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
     pinned once the lead publishes it. The `.d.ts` bugs of #196 only surface against an installed
     package, so the published form is the final one.
 
+## Amendments (2026-09-15)
+
+Decisions taken while writing and executing the migration spec (`.scratch/adr-0002-migration/spec.md`,
+commits `bf95aac` … `9c6df55`) that go beyond the fourteen above. The fourteen are left as written.
+
+15. **Drift test, direction 2, checks every exported `_INFO`.** Decision 2's "every registered model's
+    `_INFO`" is widened: every table key must appear in some `_INFO` the package root exports, registered
+    or not. So the `hi` and `stress_category` rows pre-exist their model and Phase 4 stays a two-file change.
+16. **The vapour-pressure entry quantity is keyed `pa`**, the ISO derived key, and is one quantity. The
+    entered vapour pressure is `rh / 100 × p_sat(tdb)` by construction (`rh_from_vapour_pressure` is its
+    inverse) and decision 4 defines the derived `pa` with the same formula. The fork's `p_vap` key is gone.
+17. **The dynamic chart's `output` names the classified output** (`tsv` for PMV, `stress_category` for
+    Heat Index). Its band list is `classifier.labels` in order; each grid cell's band is
+    `labels.indexOf(result[output])`, `null` when NaN. The grid does not call `classifyFromBins`: the kernel
+    already classified the unrounded value, and re-classifying a rounded output would disagree at the
+    edges. `classifyFromBins` is for a number the model did not classify (Explore thresholds).
+18. **The zone solver's model argument is a PMV closure** `(tdb, tr, vr, rh, met, clo) => number`,
+    written in the declaration file beside `run` and binding the same standard constant, so the zone and
+    the table cannot run different kernels.
+19. **A `category` kind** in `core/quantities.ts` for classified outputs (`tsv`, `stress_category`): no
+    unit symbol, no step. `pmv` keeps `thermalSensation`.
+
 ## Consequences
 
 - ADR-0001 §4.1.2's "the app never evaluates a row" is reversed until #199 lands.
@@ -119,3 +144,6 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
   on an upstream `PMV_PPD_ASHRAE_INFO`; Phase 4's model changes (decision 13).
 - The `ClassifierBins.right: boolean` shape contradicts #186's own "`closed: left | right`, never
   `right: boolean`"; the app consumes what ships and does not raise it (lead's call, 2026-09-13).
+- The fork's "writes nothing to the console" test was dropped with the migration: the main repository's
+  `cooling_effect` still logs, and v1 calls no ASHRAE model. `suppressWarnings` is raised in the main
+  repository, not the fork, before the Phase 4b grid scan (rewrite plan, Phase 4b).

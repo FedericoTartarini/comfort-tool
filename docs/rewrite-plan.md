@@ -10,11 +10,13 @@ borrow only verified behaviour**, rewrite against the new architecture, targetin
 Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` branch); the app is left with only "declare models + render",
 > **2026-09-13**: the fork is abandoned. The library is the main repository's `ModelInfo` interface, per [ADR-0002](adr/0002-library-interface-model-info.md); everything below that names `io` / `reference` / `charts` or the fork is pre-meeting history.
 
+> **2026-09-15 — position**: the ADR-0002 migration has landed on `rewrite/v1-main-repo` as five commits (`bf95aac` C1 quantities, `221889f` C2 zone geometry, `175f330` C3 applicability, `5373f92` C4 declaration / standards / results, `9c6df55` C5 cutover and lint); the four scripts are green. Acceptance (ticket 06 in `.scratch/adr-0002-migration/issues/`): no subpath import remains; the Phase 3.5 result-table parity re-run against the deployed tool's `comf.pmvEN` is bit-identical at the kernel; the 42 zone vertices match. The Heat Index two-file dry run passed every layer below the type boundary and failed `check` at it — that gap is now a Phase 4 prerequisite. Phase 3.6 items 3, 5 and 6 are still open; ADR-0002 carries amendments 15–19 from the migration spec.
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
-Tailwind 4 / Vitest 4 / sv-router 0.18 the ADR asks for, and `jsthermalcomfort` is already symlinked to the fork via `file:`
-(`node_modules/jsthermalcomfort` → `../../forked repo/jsthermalcomfort`).
+Tailwind 4 / Vitest 4 / sv-router 0.18 the ADR asks for, and `jsthermalcomfort` is `file:../jsthermalcomfort`, the main
+repository, whose `lib/esm/` build output the app consumes (a library change needs `npm run build` there first).
 What is unmaintainable is `src/`, not `package.json`.
 
 ### Decided
@@ -618,7 +620,7 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    for `untrack` to break the loop it thereby creates — the exact pattern Svelte's Best practices names ("avoid updating
    state inside effects"), and a violation of the ADR's own §6. Going async is the natural moment to fix it. Keeping the
    last valid result across an out-of-range input is genuinely stateful, so this is a redesign, not a substitution.
-4. Library side, in the fork: `suppressWarnings` on `BaseInputsInit`. **Still outstanding** — the 2026-09-05 alignment
+4. Library side, upstream in the main repository (the fork is gone): `suppressWarnings` on `BaseInputsInit`. **Still outstanding** — the 2026-09-05 alignment
    round did not cover it; `charts.psychrometricZone` has `suppressModelWarnings`, the `io` inputs do not. One ASHRAE grid scan logs 300 "Assuming cooling
    effect = 0" lines; `charts.psychrometricZone` already silences its own trace and any field-drawing consumer needs the
    same (ADR §3).
@@ -635,7 +637,10 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 ## Phase 4 · Second model ← architecture acceptance, do not proceed if it fails
 
 **Goal**: add **Heat Index (Rothfusz)** — `heat_index_rothfusz` with `HEAT_INDEX_ROTHFUSZ_INFO`, the one other model whose `_INFO` the main repository ships today (rewritten 2026-09-13, ADR-0002 decision 13; it was Adaptive (ASHRAE 55), which now waits for its `_INFO` in Phase 4b).
-**Prerequisites**: the ADR-0002 migration (the app on the main repository's interface, `npm test` / `check` / `lint` / `build` green), and the remaining Phase 3.6 items.
+**Prerequisites**:
+1. The ADR-0002 migration — **done 2026-09-15** (`9c6df55`; the app is on the main repository's interface, the four scripts green).
+2. **The `ModelResult` contract, fixed before this phase starts.** The 2026-09-15 dry run (ticket 06) registered Heat Index with the straight declaration and one registry line: `test`, `lint` and `build` passed, `check` failed with three errors. `core/modelDeclaration.ts` types `run`'s return as `ModelResult = Readonly<Record<string, number | string>>`, and the library's `HeatIndexResult` is an `interface` with no index signature, so it is not assignable; `PmvPpdIso` only passes because it is a JSDoc typedef alias, which gets the implicit index signature. Separately, `src/models/index.ts` is an `as const` tuple, so `routes/navigation.ts`'s `standardModels()` reads `model.standard` off the element union and errors on a member without `standard`; the registry must be typed `readonly RegisteredModel[]`. Both are `core/` and registry changes and are made as their own commit *before* Phase 4, so the acceptance diff stays at two files. Spreading the result object in the declaration (`({ ...heat_index_rothfusz(...) })`) made all four scripts pass with two files touched — which proves every layer below the type boundary takes a second model unchanged — but it is a workaround and is rejected.
+3. The remaining Phase 3.6 items (3, 5, 6).
 
 Why this model is a fair test: two inputs (`tdb`, `rh`) so it has the humidity group without the temperature group; an output with a
 `classifier` (`stress_category`, `HEAT_INDEX_STRESS_CATEGORY_BINS`) so the compliance column and the band palette run on bins; no
@@ -661,9 +666,15 @@ in the main repository. #203 item 3 schedules all-model metadata after #182; the
 
 1. PMV (ASHRAE 55): the former Phase 3.7 in full — `src/models/pmvAshrae.ts` + one registry line, `options` (`airspeed_control`),
    the Worker, the `compute.svelte.ts` rewrite, and the row-less ASHRAE cross-field air-speed rule decided with the model on screen.
+   **Console logging (recorded 2026-09-15):** the migration dropped the fork's "writes nothing to the console" test, because the
+   main repository's `cooling_effect` still logs "Assuming cooling effect = 0" per point and v1 calls no ASHRAE model. So
+   `suppressWarnings` (Phase 3.7 item 4) must land upstream before the ASHRAE grid scan, and the silence test returns with it.
 2. Adaptive (ASHRAE 55): `src/models/adaptiveAshrae.ts` + one registry line; locked axes `t_running_mean × operative_tmp`, exact
-   band polygons from the app's `core/compute/` adaptive bands (ADR-0002 decision 9), `hasHumidityGroup` false because `rh` is not
-   among its inputs. Same two-file rule as Phase 4.
+   band polygons from the app's `core/compute/` adaptive bands, `hasHumidityGroup` false because `rh` is not
+   among its inputs. Same two-file rule as Phase 4. **The adaptive bands are ported here, not earlier** (ADR-0002 decision 9 as
+   revised 2026-09-15): the migration ported only `psychrometricZone` and the root finders; the band geometry and the fork's
+   adaptive `describe` blocks come with this model, reading labels and offsets from `ADAPTIVE_ASHRAE_INFO` rather than
+   transcribing the fork's.
 
 ---
 
