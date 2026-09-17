@@ -160,10 +160,11 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     `tdb = tr = operative_tmp` is an entry convention, not an equation, and stays in `core/libraryInputs.ts`; the humidity
     modes are pairs of library calls.
 22. **Library changes the app needs are made upstream first, on the integration branch.** Decision 14's branch name is
-    corrected: the app links `local/comfort-tool-integration` in `../jsthermalcomfort`, a local branch stacked on PR #205's
-    tip (`1b04b51`) that carries every unmerged change the app consumes. On 2026-09-17: the four humidity inverses
-    (`dcca8b9`, branch pushed, PR still to open), the `pmv_ppd_iso` JSDoc fix (`ea4a6f5`, branch pushed, PR still to open),
-    the keyed preset tables (`c57af71`, local only, PR still to open), and decision 23. Each such change is consumed from
+    corrected: the app links `local/comfort-tool-integration` in `../jsthermalcomfort`, a local branch stacked on the tip
+    of `feat/v2-typescript-setup` that carries every unmerged change the app consumes. On 2026-09-17: the four humidity
+    inverses (`dcca8b9`, merged as PR #207 the same day), the `pmv_ppd_iso` JSDoc fix (`ea4a6f5`, merged as PR #208 the
+    same day, so the base is now `8f3a0d8`), the keyed preset tables (`1daa7d9`, local only, PR still to open),
+    decision 23 and decision 25. Each such change is consumed from
     the rebuilt `lib/esm`, opened as a PR by hand and never by an agent, and its ticket states the fallback if the lead
     declines, so a refusal is a planned move rather than a surprise. Decision 14's `jsthermalcomfort@next` pin applies once
     the lead publishes.
