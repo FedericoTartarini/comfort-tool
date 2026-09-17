@@ -55,3 +55,7 @@ _Avoid_: compliance zone, comfort region, polygon (that is its rendering)
 **Band**:
 One labelled interval of a classifier's scale (for example "Slightly Cool"), coloured by its position in the scale.
 _Avoid_: category (the library's word for the label a value falls in), class, level
+
+**Temporary library**:
+A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. The zone solver lives there.
+_Avoid_: stand-in, shim, polyfill, helper

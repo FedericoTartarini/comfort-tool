@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -144,9 +144,67 @@ Taken after the migration, while closing Phase 3.6 (spec `.scratch/presets-and-m
     upstream. A preset is never state: the slot holds the number a preset commits, and nothing remembers which preset it
     came from. `clo_individual_garments` is not a preset table; it is the Phase 5b custom-ensemble calculator's data.
 
+Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary/spec.md`), which sorted every export of
+`src/core` and `src/models`:
+
+21. **The boundary test, restated as four rules applied in order.** (A) What pythermalcomfort has, jsthermalcomfort
+    must have: parity is the lead's roadmap (#203); the app records the gap in `.scratch/library-boundary/spec.md` and
+    opens a ticket or PR only when a phase consumes an item, which is then ported upstream first on the integration branch
+    and consumed from there, never copied into the app under any name. (B) What jsthermalcomfort has, the app imports.
+    (C) A standalone calculation neither has — a pure function from SI numbers to SI numbers or geometry, reading no
+    label, display unit, colour, route, slot or `Quantity` — is the app's *temporary library* (decision 24). (D)
+    Everything that reads those is app code. Under these rules everything in `src/core` and `src/models` is app code
+    except what decisions 22–24 name. Decision 9's "may be extracted upstream when a second consumer appears" is replaced
+    by decision 24. ADR-0001 §3 exception 1 (unit conversion in the app) stands: all state is SI, only the UI converts,
+    and `units_converter` produces fps and atm where the tool shows fpm, kPa and inHg. The operative split
+    `tdb = tr = operative_tmp` is an entry convention, not an equation, and stays in `core/libraryInputs.ts`; the humidity
+    modes are pairs of library calls.
+22. **Library changes the app needs are made upstream first, on the integration branch.** Decision 14's branch name is
+    corrected: the app links `local/comfort-tool-integration` in `../jsthermalcomfort`, a local branch stacked on PR #205's
+    tip (`1b04b51`) that carries every unmerged change the app consumes. On 2026-09-17: the four humidity inverses
+    (`dcca8b9`, branch pushed, PR still to open), the `pmv_ppd_iso` JSDoc fix (`ea4a6f5`, branch pushed, PR still to open),
+    the keyed preset tables (`c57af71`, local only, PR still to open), and decision 23. Each such change is consumed from
+    the rebuilt `lib/esm`, opened as a PR by hand and never by an agent, and its ticket states the fallback if the lead
+    declines, so a refusal is a planned move rather than a surprise. Decision 14's `jsthermalcomfort@next` pin applies once
+    the lead publishes.
+23. **Applicability warnings come from the result** (#199 option (a), the lead's own first choice). `pmv_ppd` gains an
+    additive `warnings` field, `{ key, role: "input" | "derived" | "output", value, bound }[]`, built from the checks the
+    kernel already runs and from the model's `_INFO`: empty when nothing broke, filled whether or not `limit_inputs` is on
+    (with `limit_inputs: true` the numbers still become NaN; the rows say why). The `pa` row carries the kernel's own value,
+    which ends the disagreement between the kernel's Fanger exponential and `psy_ta_rh`'s `p_sat` that decision 4's test
+    tolerated within 0.1 % RH. Decision 4 then shrinks to what the screen owns: the bound shown beside an input (`tdb ∩ tr`
+    under operative entry), the row colouring, and the sentence. `vapourPressure`, `boundFor`, `breaksBound`,
+    `derivedViolations` and `outputViolations` leave `core/applicability.ts` when the field lands on the integration
+    branch. Fallback if the lead declines: the walk returns to `core/applicability.ts` as app code and this decision
+    records his reason.
+24. **Temporary library.** `src/temporary-library/` holds rule-C members until jsthermalcomfort ships them. Written to
+    the library's conventions — snake_case names, positional SI arguments plus a kwargs object, JSDoc on the function,
+    tests in the library's shape — so that a move upstream is a file cut, and lint-restricted to importing
+    `jsthermalcomfort` alone, nothing from `src/`. First members: the psychrometric zone solver, the two CBE root finders
+    it needs, the oracle fixture `chart-online.json`, and their tests. The root finders move with the zone because the
+    chart is meant to reproduce the deployed tool vertex for vertex, defects included (`correctKnownDefects` stays
+    opt-in); exporting the library's internal `brent` is not asked. A member may stay for good if the lead keeps the
+    library at pythermalcomfort parity: the seam is the point, not the move.
+25. **`_INFO` carries its standards** (upstream, `.scratch/library-boundary/issues/06`). `ModelInfo` gains
+    `standards: readonly Standard[]`: every edition the function accepts, the function's default first; the ASHRAE
+    functions get a one-element list. A standard is a property a model declares and several models may share, defined
+    once as `Standard` and referenced from `_INFO`; the constant keeps its name (pythermalcomfort's `Models` enum has the
+    same keys and values; its `iso_9920_2007`, missing here, is a gap-record entry). The declaration keeps
+    `standard: Standard.<id>` as its edition pick, and once the field lands a test asserts the pick is in
+    `info.standards`. Decision 6's "ModelInfo has no membership field" holds until then.
+26. **Reference tables carry pythermalcomfort's names** (ticket 03 amended): `met_typical_tasks`,
+    `clo_typical_ensembles`, `clo_individual_garments`, all table objects; the `clo_typical_ensembles` lookup function and
+    the `clo_typical_ensembles_table` name go. `core/presets.ts` imports those names and stays app code, since
+    pythermalcomfort has no preset concept. Fallback if the lead declines: the app keeps importing
+    `clo_typical_ensembles_table`.
+
 ## Consequences
 
-- ADR-0001 §4.1.2's "the app never evaluates a row" is reversed until #199 lands.
+- ADR-0001 §4.1.2's "the app never evaluates a row" is reversed until decision 23's `warnings` field lands on the
+  integration branch (`.scratch/library-boundary/issues/04` and `05`).
+- `src/temporary-library/` is a third lint boundary beside `core/` and `ui/charts/` (decision 24, ticket 07);
+  `.claude/rules/architecture.md` is rewritten to the four rules. ADR-0001 §4.1.4's "never writes its own root finder"
+  now reads: never outside the temporary library.
 - The ASHRAE cross-field air-speed rule has no `_INFO` row; it is decided in Phase 4b with the model
   on screen, as before.
 - The experimental shape can move. Every read of `_INFO` goes through `core/quantities.ts`,
