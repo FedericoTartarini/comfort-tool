@@ -552,7 +552,7 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    omitted (library default 101325 Pa) until the "Set pressure" calculator brings `environment`; the SI pressure
    display unit becomes kPa via `/1000`, because the library's `p_vap` / `p_atm` are in Pa while `core/units.ts`
    had been treating its kPa symbol as identity — harmless while nothing displayed a pressure.
-   Design: `docs/superpowers/specs/2026-09-08-humidity-entry-modes-design.md`.
+   Design: `docs/specs/2026-09-08-humidity-entry-modes-design.md`.
 3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. **Decided 2026-09-07: toggle only in
    v1.** The one consumer is Phase 3.7's ASHRAE `airspeed_control`; a `choice` kind waits for a second. The ISO
    **edition** the library gained on 2026-09-05 (`"7730-2005"` / `"7730-2025"`) is *not* an option: both editions run

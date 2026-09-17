@@ -1,6 +1,6 @@
 # Entry groups and the four humidity entry modes
 
-Phase 3.6 items 1 and 2 of [docs/rewrite-plan.md](../../rewrite-plan.md). Decisions 1–6 taken 2026-09-08 and
+Phase 3.6 items 1 and 2 of [docs/rewrite-plan.md](../rewrite-plan.md). Decisions 1–6 taken 2026-09-08 and
 recorded in the ADR and the plan; this document is the design that follows from them.
 
 ## Goal
