@@ -12,6 +12,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-15 — position**: the ADR-0002 migration has landed on `rewrite/v1-main-repo` as five commits (`bf95aac` C1 quantities, `221889f` C2 zone geometry, `175f330` C3 applicability, `5373f92` C4 declaration / standards / results, `9c6df55` C5 cutover and lint); the four scripts are green. Acceptance (ticket 06 in `.scratch/adr-0002-migration/issues/`): no subpath import remains; the Phase 3.5 result-table parity re-run against the deployed tool's `comf.pmvEN` is bit-identical at the kernel; the 42 zone vertices match. The Heat Index two-file dry run passed every layer below the type boundary and failed `check` at it — that gap is now a Phase 4 prerequisite. Phase 3.6 items 3, 5 and 6 are still open; ADR-0002 carries amendments 15–19 from the migration spec. The `ModelResult` / registry-type gap closed 2026-09-15 as `c5f8ba6`. Phase 3.6 items 3, 5 and 6 were decided the same day: item 3 moves to Phase 4b with its first consumer; items 5 and 6 are specified in `.scratch/presets-and-model-select/` and are Phase 4's last prerequisite.
 
+> **2026-09-17 — position**: Phase 3.6 items 5 and 6 have landed (`1f0fa93` core presets, `984b30b` preset input, `77dbc07` model select). The Heat Index two-file dry run was re-run against the result: `test`, `check`, `lint` and `build` all green, `git diff --stat` at exactly `src/models/heatIndex.ts` and `src/models/index.ts`. Phase 4 prerequisite 3 is done; Phase 4 waits on nothing.
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -619,6 +621,7 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
      so this is parity, not a design question; the rename is breaking for JS consumers and the PR says so. If rejected at
      review, the fallback is an upstream labelled export, not an app-side table; if that stalls too, this item moves behind
      Phase 4, which enters no `met` or `clo` and does not depend on it.
+   **Landed 2026-09-17 (`1f0fa93` core presets, `984b30b` preset input).**
 6. A model dropdown at the top of the input panel, listing only the models of the standard the page is on, sharing
    `navigateTo(model)` with the left navigation, which stays.
    **Decided 2026-09-15** (same spec). It lives in `StandardPage`, above `InputPanel`, which stays a slot editor with no
@@ -627,6 +630,7 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    model for all of v1 — so the layout does not jump when Phase 4b puts two under ASHRAE 55. Acceptance: a unit test that
    `modelsOf` keeps a model with no `standard` out (Heat Index's shape), plus a browser pass. Heat Index is on no page in
    Phase 4 — it has no standard and Explore is Phase 5 — so the Phase 4 acceptance stays the four scripts and `git diff --stat`.
+   **Landed 2026-09-16 (`77dbc07`).**
 7. **Visual groundwork — not the design itself.** `app.css` gains the project's own tokens (a type scale, a spacing
    scale, a brand colour) instead of the shadcn neutral base it ships with today, and the primitives the app actually
    needs are generated: `select` (which replaces the native one Phase 3 hand-rolled in `ChartControls.svelte`), `card`,
@@ -672,7 +676,7 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 **Prerequisites**:
 1. The ADR-0002 migration — **done 2026-09-15** (`9c6df55`; the app is on the main repository's interface, the four scripts green).
 2. **The `ModelResult` contract — done 2026-09-15 (`c5f8ba6`).** The 2026-09-15 dry run (ticket 06) registered Heat Index with the straight declaration and one registry line: `test`, `lint` and `build` passed, `check` failed with three errors. `core/modelDeclaration.ts` types `run`'s return as `ModelResult = Readonly<Record<string, number | string>>`, and the library's `HeatIndexResult` is an `interface` with no index signature, so it is not assignable; `PmvPpdIso` only passes because it is a JSDoc typedef alias, which gets the implicit index signature. Separately, `src/models/index.ts` is an `as const` tuple, so `routes/navigation.ts`'s `standardModels()` reads `model.standard` off the element union and errors on a member without `standard`; the registry must be typed `readonly RegisteredModel[]`. Both are `core/` and registry changes and are made as their own commit *before* Phase 4, so the acceptance diff stays at two files. Spreading the result object in the declaration (`({ ...heat_index_rothfusz(...) })`) made all four scripts pass with two files touched — which proves every layer below the type boundary takes a second model unchanged — but it is a workaround and is rejected. Fixed by widening `ModelResult` to `object` with the single string-keyed read in `libraryInputs.resultValue`, and typing the registry `readonly RegisteredModel[]`; the dry run re-run touched only the two files.
-3. Phase 3.6 items 5 and 6 (item 3 moved to Phase 4b on 2026-09-15). Decided 2026-09-15; spec and tickets in `.scratch/presets-and-model-select/`.
+3. **Phase 3.6 items 5 and 6 — done 2026-09-17.** Decided 2026-09-15, spec and tickets in `.scratch/presets-and-model-select/` (item 3 moved to Phase 4b the same day); items 5 and 6 landed as `1f0fa93`, `984b30b` and `77dbc07`. The Heat Index two-file dry run was re-run against the result: all four scripts green, `git diff --stat` at exactly two files.
 
 Why this model is a fair test: two inputs (`tdb`, `rh`) so it has the humidity group without the temperature group; an output with a
 `classifier` (`stress_category`, `HEAT_INDEX_STRESS_CATEGORY_BINS`) so the compliance column and the band palette run on bins; no
