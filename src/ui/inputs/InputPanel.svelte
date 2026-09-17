@@ -3,6 +3,7 @@
   import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
   import { enteredQuantities, enteredValue } from "$lib/core/libraryInputs";
   import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
+  import { presetsFor } from "$lib/core/presets";
   import type { Quantity } from "$lib/core/quantities";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { InputSlot } from "$lib/state/session.svelte";
@@ -10,6 +11,7 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
+  import PresetInput from "./PresetInput.svelte";
   import QuantityInput from "./QuantityInput.svelte";
 
   interface Props {
@@ -82,14 +84,19 @@
   {/if}
 
   {#each rows as quantity (quantity)}
-    <QuantityInput
-      {quantity}
-      value={valueOf(quantity)}
-      {unitSystem}
-      bound={enteredBound(model, quantity, inputSlot.temperature.mode)}
-      outOfRange={outOfRange.includes(quantity)}
-      oncommit={(si) => commit(quantity, si)}
-    />
+    {@const rowProps = {
+      quantity,
+      value: valueOf(quantity),
+      unitSystem,
+      bound: enteredBound(model, quantity, inputSlot.temperature.mode),
+      outOfRange: outOfRange.includes(quantity),
+      oncommit: (si: number) => commit(quantity, si),
+    }}
+    {#if presetsFor(quantity)}
+      <PresetInput {...rowProps} />
+    {:else}
+      <QuantityInput {...rowProps} />
+    {/if}
   {/each}
 
   {#if hints.length > 0}
