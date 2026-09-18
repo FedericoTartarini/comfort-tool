@@ -707,7 +707,11 @@ acceptance did not really pass.
 in the main repository. #203 item 3 schedules all-model metadata after #182; the app does not push on that (ADR-0002 decision 13).
 
 1. PMV (ASHRAE 55): the former Phase 3.7 in full — `src/models/pmvAshrae.ts` + one registry line, `options` (`airspeed_control`),
-   the Worker, the `compute.svelte.ts` rewrite, and the row-less ASHRAE cross-field air-speed rule decided with the model on screen.
+   the Worker, the `compute.svelte.ts` rewrite, and the ASHRAE cross-field air-speed rule's display. The rule arrives as `vr`
+   rows on the result's `warnings` (ADR-0002 decision 23), up to three besides the 0–2 m/s one, all shown on the entered `v`;
+   rows sharing a quantity read as one sentence over their `intersect`ed bound, a change in `core/applicability.ts` or
+   `InputPanel.svelte`. The rule itself follows the library, not the deployed CBE (entered `v`, at `(tdb + tr) / 2`, against
+   one limit clamped to 0.2–0.8 m/s); the difference is recorded, not ported.
    **Console logging (recorded 2026-09-15):** the migration dropped the fork's "writes nothing to the console" test, because the
    main repository's `cooling_effect` still logs "Assuming cooling effect = 0" per point and v1 calls no ASHRAE model. So
    `suppressWarnings` (Phase 3.7 item 4) must land upstream before the ASHRAE grid scan, and the silence test returns with it.

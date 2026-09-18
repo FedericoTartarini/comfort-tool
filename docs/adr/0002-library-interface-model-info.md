@@ -197,6 +197,9 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     stays the one deviation from Python, which warns only with `limit_inputs` on; the app needs it because it always
     passes `false`. The `limit_inputs` gate reads the rows, so a NaN and its explanation cannot disagree, and
     `check_standard_compliance` is unchanged. Ticket 05 is unblocked.
+    **Revised 2026-09-19 (ticket 05, `faac928`):** `vapourPressure`, `derivedViolations` and `outputViolations` are
+    gone. `boundFor` and `breaksBound` stay: the pre-call gate decision 4 keeps (`enteredBound`, `outOfRangeInputs`)
+    checks entered values against `info.inputs` with them. No row of a completed run is evaluated in the app.
 24. **Temporary library.** `src/temporary-library/` holds rule-C members until jsthermalcomfort ships them. Written to
     the library's conventions — snake_case names, positional SI arguments plus a kwargs object, JSDoc on the function,
     tests in the library's shape — so that a move upstream is a file cut, and lint-restricted to importing
@@ -227,8 +230,11 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
 - `src/temporary-library/` is a third lint boundary beside `core/` and `ui/charts/` (decision 24, ticket 07);
   `.claude/rules/architecture.md` is rewritten to the four rules. ADR-0001 §4.1.4's "never writes its own root finder"
   now reads: never outside the temporary library.
-- The ASHRAE cross-field air-speed rule has no `_INFO` row; it is decided in Phase 4b with the model
-  on screen, as before.
+- The ASHRAE cross-field air-speed rule arrives as `warnings` rows (decision 23): on `vr`, `max` only, the
+  operative-temperature bound built per call. It differs from the deployed CBE, which tests the entered `v` against one
+  limit clamped to 0.2–0.8 m/s at `(tdb + tr) / 2`; the app follows the library, pythermalcomfort's rule, and the
+  difference is recorded rather than ported. Phase 4b decides only the display: rows sharing a quantity read as one
+  sentence over their intersected bound.
 - The experimental shape can move. Every read of `_INFO` goes through `core/quantities.ts`,
   `core/applicability.ts` and the declaration files, so a shape change is confined to those.
 - Phases 1 and 2b of the rewrite plan were done in the fork and are superseded; Phase 3.7 is blocked
