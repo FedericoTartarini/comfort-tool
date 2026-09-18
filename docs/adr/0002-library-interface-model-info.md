@@ -86,7 +86,7 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    and offsets from it, and the fork's adaptive `describe` blocks are ported with them.
    **Superseded by decision 24 (2026-09-18):** the zone solver, the root finders and the oracle live in
    `src/temporary-library/`, and `core/compute/` is deleted. The solver is `pmv_psychrometric_zone`, and
-   the closure it takes is a `PmvFunction`, carried by the declaration's `pmvFunction` field.
+   the closure it takes is a `PmvFunction`, built from `run` (decision 18 as revised 2026-09-18).
 10. **Fork features that are numbers go upstream first.** The four humidity inverse functions
     (`hr_to_rh`, `rh_from_dew_point`, `rh_from_wet_bulb`, `rh_from_vapour_pressure`; fork 43d7e92) are
     a PR to the main repository and a prerequisite for the switch. Not migrated, because nothing reads
@@ -133,6 +133,11 @@ commits `bf95aac` … `9c6df55`) that go beyond the fourteen above. The fourteen
 18. **The zone solver's model argument is a PMV closure** `(tdb, tr, vr, rh, met, clo) => number`,
     written in the declaration file beside `run` and binding the same standard constant, so the zone and
     the table cannot run different kernels.
+    **Revised 2026-09-18:** the declaration no longer writes it. `run` returns unrounded output
+    (`round_output: false`; `formatNumber` rounds for display, so PPD shows two decimals), and the
+    psychrometric chart builds the closure from `run` at the slot's resolved inputs, reading `pmv` off the
+    result. The zone and the table now make the same call by construction, and a model declaring the chart
+    must output `pmv`.
 19. **A `category` kind** in `core/quantities.ts` for classified outputs (`tsv`, `stress_category`): no
     unit symbol, no step. `pmv` keeps `thermalSensation`.
 

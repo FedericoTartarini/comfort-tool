@@ -68,9 +68,8 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
 }
 
 /**
- * The keyed record `run` takes: SI values keyed by `Quantity.key`. Besides
- * shareLink, this is the only place in the app that reads `Quantity.key` in
- * this direction (ADR §4.0). The declaration's own `run` hardcodes
+ * The keyed record `run` takes, for `slot`: its resolved quantities, keyed by
+ * {@link keyedInputs}. The declaration's own `run` hardcodes
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers
  * rather than NaN, the behaviour of the deployed CBE tool. The rows a run
@@ -79,7 +78,16 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
  * `applicability.derivedViolations` and `applicability.outputViolations`.
  */
 export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Record<string, number> {
-  return Object.fromEntries([...resolveQuantities(slot, model)].map(([quantity, value]) => [quantity.key, value]));
+  return keyedInputs(resolveQuantities(slot, model));
+}
+
+/**
+ * SI values keyed by `Quantity.key`, the shape `run` takes. Besides shareLink,
+ * this is the only place in the app that reads `Quantity.key` in this
+ * direction (ADR §4.0).
+ */
+export function keyedInputs(values: ReadonlyMap<Quantity, number>): Record<string, number> {
+  return Object.fromEntries([...values].map(([quantity, value]) => [quantity.key, value]));
 }
 
 /**

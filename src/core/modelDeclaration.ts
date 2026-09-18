@@ -1,5 +1,4 @@
 import type { ModelInfo, Standard } from "jsthermalcomfort";
-import type { PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { chartType } from "./chartType";
 import { quantities, type Quantity } from "./quantities";
 
@@ -60,15 +59,11 @@ export interface ZoneRequest {
  */
 export type ChartDeclaration =
   | {
-      readonly type: typeof chartType.psychrometric;
       /**
-       * The PMV closure the comfort zone is solved with: `(tdb, tr, vr, rh,
-       * met, clo) => pmv`, unrounded and ungated. The declaration writes this
-       * beside `run`, binding the same standard constant, so the zone and the
-       * results can never disagree about which edition produced them
-       * (ADR-0002 decision 9).
+       * The comfort zone is solved on `run`'s own `pmv`, so the model's result
+       * must carry one, unrounded (ADR-0002 decision 9, revised 2026-09-18).
        */
-      readonly pmvFunction: PmvFunction;
+      readonly type: typeof chartType.psychrometric;
     }
   | {
       readonly type: typeof chartType.dynamic;

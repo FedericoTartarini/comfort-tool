@@ -1,10 +1,15 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
-import { NO_ROOT_FOUND, pmv_psychrometric_zone, type PsychrometricPoint } from "$lib/temporary-library/pmv_psychrometric_zone";
+import {
+  NO_ROOT_FOUND,
+  pmv_psychrometric_zone,
+  type PmvFunction,
+  type PsychrometricPoint,
+} from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
-import { requireValue, resolveQuantities } from "$lib/core/libraryInputs";
-import { requireAxisRange, type PsychrometricDeclaration, type Range } from "$lib/core/modelDeclaration";
-import { quantities } from "$lib/core/quantities";
+import { keyedInputs, requireValue, resolveQuantities, resultValue } from "$lib/core/libraryInputs";
+import { requireAxisRange, type Range, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { quantities, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import {
@@ -41,7 +46,7 @@ const ZONE_RH_STEP = 5;
  * axis range for whichever temperature the mode puts on x, never its
  * applicability limits (ADR §4.4).
  */
-export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDeclaration): ChartSpec {
+export function psychrometricSpec(request: ChartRequest): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;
   const operative = slot.temperature.mode === temperatureMode.operative;
   const axisQuantity = slot.temperature.mode.axis;
@@ -52,12 +57,13 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
   const hrRange = requireAxisRange(model, q.hr);
 
   const resolved = resolveQuantities(slot, model);
+  const airSpeed = model.relativeAirSpeed ? q.vr : q.v;
   const zone = pmv_psychrometric_zone(
     requireValue(resolved, q.tr),
-    requireValue(resolved, model.relativeAirSpeed ? q.vr : q.v),
+    requireValue(resolved, airSpeed),
     requireValue(resolved, q.met),
     requireValue(resolved, q.clo),
-    chart.pmvFunction,
+    pmvOfRun(model, resolved, airSpeed),
     {
       tr_follows_db: operative,
       rh_step: ZONE_RH_STEP,
@@ -145,6 +151,31 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
 }
 
 /** `ISOLINE_SAMPLES` temperatures across the drawn range, in SI. */
+/**
+ * The zone's PMV function: the model's own `run` at the slot's resolved
+ * inputs, with the six the solver varies replaced. The zone therefore solves
+ * exactly the equation the results table shows, edition, `wme` and options
+ * included, and no declaration has to restate it. `run` returns unrounded
+ * output for this reason: a PMV rounded to 0.01 is a staircase the solver
+ * cannot root-find.
+ */
+function pmvOfRun(model: RegisteredModel, resolved: ReadonlyMap<Quantity, number>, airSpeed: Quantity): PmvFunction {
+  if (!model.info.outputs[q.pmv.key]) {
+    throw new Error(`${model.info.label} declares a psychrometric chart, but its result carries no ${q.pmv.label}`);
+  }
+  return (tdb, tr, vr, rh, met, clo) => {
+    const inputs = new Map(resolved)
+      .set(q.tdb, tdb)
+      .set(q.tr, tr)
+      .set(airSpeed, vr)
+      .set(q.rh, rh)
+      .set(q.met, met)
+      .set(q.clo, clo);
+    const pmv = resultValue(model.run(keyedInputs(inputs)), q.pmv);
+    return typeof pmv === "number" ? pmv : Number.NaN;
+  };
+}
+
 function samples(range: Range): readonly number[] {
   const step = (range.max - range.min) / (ISOLINE_SAMPLES - 1);
   return Array.from({ length: ISOLINE_SAMPLES }, (_, index) => range.min + index * step);

@@ -6,8 +6,6 @@ import { quantities } from "$lib/core/quantities";
 const q = quantities;
 
 // 7730-2005, not the library's 2025 default: rewrite plan, Phase 3.6 item 3.
-// One constant for both calls below (ADR-0002 decision 9): `run` and the
-// comfort-zone closure can never name two editions.
 const ISO_EDITION = Standard.iso_7730_2005;
 
 export const pmvIso = {
@@ -17,6 +15,8 @@ export const pmvIso = {
     pmv_ppd_iso(init.tdb, init.tr, init.vr, init.rh, init.met, init.clo, init.wme ?? 0, ISO_EDITION, {
       units: "SI",
       limit_inputs: false,
+      // The psychrometric zone is root-found on this `pmv`; the display rounds.
+      round_output: false,
     }),
   pathSegment: "pmv-iso",
   inputs: [
@@ -43,16 +43,9 @@ export const pmvIso = {
   ],
   table: [q.pmv, q.ppd],
   charts: [
-    {
-      type: chartType.psychrometric,
-      // Fanger unmodified at this model's own edition, the same equation `run`
-      // calls — the elevated-air-speed cooling effect belongs to
-      // `pmv_ppd_ashrae`. Unrounded and ungated, because the zone is a root of
-      // the raw PMV. `wme` is fixed at the library default; nothing in v1
-      // enters external work.
-      pmvFunction: (tdb, tr, vr, rh, met, clo) =>
-        pmv_ppd_iso(tdb, tr, vr, rh, met, clo, 0, ISO_EDITION, { limit_inputs: false, round_output: false }).pmv,
-    },
+    // The zone is solved on `run` itself: Fanger unmodified at this edition.
+    // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
+    { type: chartType.psychrometric },
     { type: chartType.dynamic, axes: { x: q.tdb, y: q.v }, output: q.tsv },
   ],
 } satisfies RegisteredModel;

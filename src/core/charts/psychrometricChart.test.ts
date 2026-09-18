@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pmv_ppd_iso, psy_ta_rh, Standard, v_relative } from "jsthermalcomfort";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { SlotInputs } from "$lib/core/libraryInputs";
-import { psychrometricChartOf } from "$lib/core/modelDeclaration";
+import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvIso } from "$lib/models/pmvIso";
@@ -13,11 +13,6 @@ const q = quantities;
 const ZONE_RH_STEP = 5;
 /** The library solves the edges to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
 const PMV_DIGITS = 2;
-
-const declaration = psychrometricChartOf(pmvIso);
-if (!declaration) {
-  throw new Error("pmvIso no longer declares a psychrometric chart");
-}
 
 const met = 1.1;
 const clo = 0.5;
@@ -74,7 +69,7 @@ function pmvAt(db: number, rh: number, tr: number): number {
 
 describe("psychrometricSpec", () => {
   it("solves the cool edge at PMV = -0.5 for the slot's own inputs", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.separate), declaration));
+    const path = zonePath(psychrometricSpec(request(temperatureMode.separate)));
     for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
       const rh = index * ZONE_RH_STEP;
       expect(pmvAt(path.x[index], rh, 24)).toBeCloseTo(-0.5, PMV_DIGITS);
@@ -82,7 +77,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("solves with tr following the dry-bulb temperature under operative entry", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.operative), declaration));
+    const path = zonePath(psychrometricSpec(request(temperatureMode.operative)));
     for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
       const db = path.x[index];
       expect(pmvAt(db, index * ZONE_RH_STEP, db)).toBeCloseTo(-0.5, PMV_DIGITS);
@@ -90,19 +85,19 @@ describe("psychrometricSpec", () => {
   });
 
   it("labels the x axis with the entry mode's temperature quantity", () => {
-    expect(psychrometricSpec(request(temperatureMode.separate), declaration).layout.x.title).toContain(q.tdb.label);
-    expect(psychrometricSpec(request(temperatureMode.operative), declaration).layout.x.title).toContain(q.operative_tmp.label);
+    expect(psychrometricSpec(request(temperatureMode.separate)).layout.x.title).toContain(q.tdb.label);
+    expect(psychrometricSpec(request(temperatureMode.operative)).layout.x.title).toContain(q.operative_tmp.label);
   });
 
   it("marks the slot's own psychrometric state", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate), declaration);
+    const spec = psychrometricSpec(request(temperatureMode.separate));
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBe(26);
     expect(marker?.y).toBeCloseTo(psy_ta_rh(26, 50).hr, 12);
   });
 
   it("converts the axes to the displayed unit", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate, unitSystem.ip), declaration);
+    const spec = psychrometricSpec(request(temperatureMode.separate, unitSystem.ip));
     expect(spec.layout.x.title).toContain("°F");
     // The declared viewport is 10–40 °C, as the deployed tool draws it.
     expect(spec.layout.x.range[0]).toBeCloseTo(50, 10);
@@ -112,7 +107,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("labels every relative-humidity isoline where it leaves the viewport", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate), declaration);
+    const spec = psychrometricSpec(request(temperatureMode.separate));
     expect(spec.annotations.map((entry) => entry.text)).toEqual([
       "10%",
       "20%",
@@ -133,12 +128,20 @@ describe("psychrometricSpec", () => {
   });
 
   it("leaves the pointer alone: nothing on this chart captures hover", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate), declaration);
+    const spec = psychrometricSpec(request(temperatureMode.separate));
     expect(spec.traces.every((trace) => trace.hover === "off")).toBe(true);
   });
 
+  it("refuses a model whose result carries no PMV", () => {
+    // The zone is traced on `run`'s own PMV, so a model without one cannot
+    // declare this chart.
+    const outputs = Object.fromEntries(Object.entries(pmvIso.info.outputs).filter(([key]) => key !== q.pmv.key));
+    const withoutPmv: RegisteredModel = { ...pmvIso, info: { ...pmvIso.info, outputs } };
+    expect(() => psychrometricSpec({ ...request(temperatureMode.separate), model: withoutPmv })).toThrow(q.pmv.label);
+  });
+
   it("offers one legend covering humidity, the zone and the slot", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate), declaration);
+    const spec = psychrometricSpec(request(temperatureMode.separate));
     expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "marker"]);
     expect(spec.legend[0].label).toBe(q.rh.label);
   });
@@ -169,7 +172,7 @@ function bisectPmv(target: number, rh: number, tr: number | "followsDb"): number
 
 describe("comfort-zone vertices", () => {
   it("sit within 0.01 °C of an independently bisected root", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.separate), declaration));
+    const path = zonePath(psychrometricSpec(request(temperatureMode.separate)));
     for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
       const rh = index * ZONE_RH_STEP;
       expect(Math.abs(path.x[index] - bisectPmv(-0.5, rh, 24))).toBeLessThanOrEqual(0.01);
@@ -177,7 +180,7 @@ describe("comfort-zone vertices", () => {
   });
 
   it("does so under operative entry too", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.operative), declaration));
+    const path = zonePath(psychrometricSpec(request(temperatureMode.operative)));
     for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
       const rh = index * ZONE_RH_STEP;
       expect(Math.abs(path.x[index] - bisectPmv(-0.5, rh, "followsDb"))).toBeLessThanOrEqual(0.01);

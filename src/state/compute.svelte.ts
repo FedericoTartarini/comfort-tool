@@ -78,9 +78,8 @@ function chartSpecOf(session: Session): ChartSpec | null {
     unitSystem: session.unitSystem,
   };
   if (session.chart.type === chartType.psychrometric) {
-    const declaration = psychrometricChartOf(model);
-    if (declaration) {
-      return psychrometricSpec(request, declaration);
+    if (psychrometricChartOf(model)) {
+      return psychrometricSpec(request);
     }
   }
   const dynamic = dynamicChartOf(model);
