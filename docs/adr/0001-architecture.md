@@ -380,7 +380,7 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 
 ## 5. Directory layout and boundaries
 
-> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 6, 9, 11, 12**: `core/quantities.ts` and `core/applicability.ts` are added, `core/compute/` returns for the zone geometry, `standard.ts` generates name and segment from the `Standard` key, `modelDeclaration.ts` has no `defineModel`, and the model-function lint boundary is by `importNames`.
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 6, 9, 11, 12**: `core/quantities.ts` and `core/applicability.ts` are added, `core/compute/` returns for the zone geometry (superseded by ADR-0002 decision 24: it is `src/temporary-library/`), `standard.ts` generates name and segment from the `Standard` key, `modelDeclaration.ts` has no `defineModel`, and the model-function lint boundary is by `importNames`.
 
 
 ```

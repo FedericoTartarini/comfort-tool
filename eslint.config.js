@@ -37,6 +37,14 @@ const coreBoundary = {
   message: "core/ is plain TypeScript: no svelte, state, ui or routes.",
 };
 
+// ADR-0002 decision 24: the temporary library is written so that moving it
+// upstream is a file cut, so it may import jsthermalcomfort and its own files
+// and nothing else from src/. core/ importing it is fine; the reverse is not.
+const temporaryLibraryBoundary = {
+  group: ["$lib", "$lib/**", "..", "../**"],
+  message: "src/temporary-library/ imports jsthermalcomfort and its own files only (ADR-0002 decision 24).",
+};
+
 // ADR §4.4: the moment the chart component knows what a model is, every new
 // model starts needing an edit here.
 const chartBoundary = {
@@ -224,6 +232,22 @@ export default [
     rules: {
       "no-restricted-imports": "off",
       "no-restricted-syntax": "off",
+    },
+  },
+  {
+    // After the test block on purpose: the fence holds for the directory's
+    // tests too, since they move upstream with it. Only the tests may name a
+    // library model function, to build the PMV closure the zone takes.
+    files: ["src/temporary-library/**/*.ts"],
+    ignores: ["src/temporary-library/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { ...libraryModelImports, patterns: [temporaryLibraryBoundary] }],
+    },
+  },
+  {
+    files: ["src/temporary-library/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [temporaryLibraryBoundary] }],
     },
   },
 ];

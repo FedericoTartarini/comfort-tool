@@ -1,6 +1,6 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
-import { NO_ROOT_FOUND, psychrometricZone, type PsychrometricPoint } from "$lib/core/compute/psychrometricZone";
+import { NO_ROOT_FOUND, psychrometric_zone, type PsychrometricPoint } from "$lib/temporary-library/psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
 import { requireValue, resolveQuantities } from "$lib/core/libraryInputs";
 import { requireAxisRange, type PsychrometricDeclaration, type Range } from "$lib/core/modelDeclaration";
@@ -31,13 +31,13 @@ const ZONE_RH_STEP = 5;
 
 /**
  * The psychrometric chart: relative-humidity isolines, the compliance zone
- * traced by `charts.psychrometricZone`, and the slot's current state.
+ * traced by `psychrometric_zone`, and the slot's current state.
  *
  * The x axis quantity is the temperature entry mode's (`tdb` when the two
  * temperatures are entered separately, `operative_tmp` under operative entry), and
- * operative entry solves the zone with `trFollowsDb`, which is the geometry
+ * operative entry solves the zone with `tr_follows_db`, which is the geometry
  * the CBE tool's psychtop chart draws. No root finder is written here — the
- * library owns that (ADR §4.1.4). The drawn extent is the model's declared
+ * temporary library owns that (ADR-0002 decision 24). The drawn extent is the model's declared
  * axis range for whichever temperature the mode puts on x, never its
  * applicability limits (ADR §4.4).
  */
@@ -52,17 +52,19 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
   const hrRange = requireAxisRange(model, q.hr);
 
   const resolved = resolveQuantities(slot, model);
-  const zone = psychrometricZone({
-    tr: requireValue(resolved, q.tr),
-    trFollowsDb: operative,
-    vr: requireValue(resolved, model.relativeAirSpeed ? q.vr : q.v),
-    met: requireValue(resolved, q.met),
-    clo: requireValue(resolved, q.clo),
-    model: chart.pmvModel,
-    rhStep: ZONE_RH_STEP,
-    // Decided in the rewrite plan: reproduce the chart the CBE tool publishes.
-    correctKnownDefects: false,
-  });
+  const zone = psychrometric_zone(
+    requireValue(resolved, q.tr),
+    requireValue(resolved, model.relativeAirSpeed ? q.vr : q.v),
+    requireValue(resolved, q.met),
+    requireValue(resolved, q.clo),
+    chart.pmvModel,
+    {
+      tr_follows_db: operative,
+      rh_step: ZONE_RH_STEP,
+      // Decided in the rewrite plan: reproduce the chart the CBE tool publishes.
+      correct_known_defects: false,
+    },
+  );
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];

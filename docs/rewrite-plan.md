@@ -36,7 +36,7 @@ What is unmaintainable is `src/`, not `package.json`.
 | Scope review (2026-09-04, after Phase 3) | PMV (ASHRAE 55) joins v1 — it is the deployed tool's main screen and was missing from every list by oversight; input calculators become Phase 5b, narrowed to custom ensemble + dynamic predictive clothing + solar gain; the ES5 summary page is downgraded to a static notice; the site shell joins Phase 6; `suppressWarnings` goes into the library; chart axis ranges and the dynamic zone source move into the model declaration; field charts never snap on hover; local discomfort is deferred with its direction recorded (standalone models under the ASHRAE tab, not the legacy button panel) |
 | Visual design (2026-09-04) | It had no phase at all, and ADR §7.4 referred to a design mock-up no phase produced. Split in two: token and primitive groundwork in Phase 3.6, the design itself in a new Phase 5c after Compare / Explore settle the layout. The site shell moves from Phase 6 into 5c. Deferring is safe because ADR §2's utility-class ban keeps appearance out of business components |
 | Code quality (2026-09-04) | Two audit passes against `docs/code-quality-checklist.md` — full before the Phase 4 acceptance, narrow after it. Anything mechanically checkable becomes a lint rule with a probe. *Clean Code* / *Clean Architecture* are not acceptance criteria; the verified sources are Svelte Best practices, the TypeScript handbook's Do's and Don'ts, the Google TypeScript Style Guide, and DRY as Hunt & Thomas state it |
-| **Library interface (2026-09-13, with the lead)** | The app consumes the main repository's `ModelInfo` / `_INFO` / `ClassifierBins` / `Standard` from the package root; the fork is abandoned. Quantities become an app table keyed by `_INFO` keys; applicability is evaluated in the app until #199; axis ranges are declared, else applicability, else error; comfort-zone geometry moves into `core/compute/`; the four humidity inverses go upstream first; thin wrappers go; v1 = models with an `_INFO`, second-model acceptance on `heat_index_rothfusz`. All fourteen decisions in [ADR-0002](adr/0002-library-interface-model-info.md) |
+| **Library interface (2026-09-13, with the lead)** | The app consumes the main repository's `ModelInfo` / `_INFO` / `ClassifierBins` / `Standard` from the package root; the fork is abandoned. Quantities become an app table keyed by `_INFO` keys; applicability is evaluated in the app until #199; axis ranges are declared, else applicability, else error; comfort-zone geometry moves into the app (since decision 24, `src/temporary-library/`); the four humidity inverses go upstream first; thin wrappers go; v1 = models with an `_INFO`, second-model acceptance on `heat_index_rothfusz`. All fourteen decisions in [ADR-0002](adr/0002-library-interface-model-info.md) |
 
 ### Library inventory (`typescript` @ d57c456, runtime exports verified one by one)
 
@@ -49,12 +49,12 @@ What is unmaintainable is `src/`, not `package.json`.
 | §4.1.3 Measure | `io.pmvPpdIso/pmvPpdAshrae/adaptiveAshrae/adaptiveEn` → `.toMeasures()` → `Measure{quantity,value,unit,category,intervals}` |
 | §4.1.2 Classification scale | `reference.{isoThermalSensation, ashraeThermalSensation, adaptiveAshraeOffsets, adaptiveEnOffsets, enCategoryPmvLimits}`, `IntervalScale.classify/labelFor` |
 | §4.1.1 Quantity | `io.quantities` — 12 quantities, with `key/kind/label/siUnit/ipUnit`. Units are just symbol strings, and that is enough: conversion belongs to the app |
-| **§4.7 boundary root-finding + §5 `core/compute/zoneBoundary.ts`** | **`charts.psychrometricZone` (ported from the CBE original, `rhStep`/`saturationStep`/`epsilon`/`correctKnownDefects` configurable) + `bisect`/`secant`** |
+| **§4.7 boundary root-finding + §5 `zoneBoundary.ts`** | **`charts.psychrometricZone` (ported from the CBE original, `rhStep`/`saturationStep`/`epsilon`/`correctKnownDefects` configurable) + `bisect`/`secant`** |
 | §4.4 Adaptive real rendering | `charts.adaptiveAshraeZone` / `adaptiveEnZone` |
 | Model metadata (partial) | `pmv_ppd_iso.{label,description,tsv}`, `pmv_ppd_ashrae.{label,description,tsv,compliance,COMPLIANCE_LIMIT}`, `adaptive_*.{label,description,offsets}` |
 | Raw material for input calculators | `clo_dynamic_ashrae` / `clo_dynamic_iso`, `v_relative`, `running_mean_outdoor_temperature`, `met_typical_tasks`, `clo_individual_garments` |
 
-> **Do not write `core/compute/zoneBoundary.ts` (ADR §5)** — the library already has it; just pass `rhStep: 5`.
+> **Do not write `zoneBoundary.ts` (ADR §5)** — the library already has it; just pass `rhStep: 5`.
 
 **Gaps (→ library prompt below):**
 Applicability limits are only hard-coded inside the compliance functions, and also embedded in the warning copy, with no data export
@@ -708,7 +708,7 @@ in the main repository. #203 item 3 schedules all-model metadata after #182; the
    main repository's `cooling_effect` still logs "Assuming cooling effect = 0" per point and v1 calls no ASHRAE model. So
    `suppressWarnings` (Phase 3.7 item 4) must land upstream before the ASHRAE grid scan, and the silence test returns with it.
 2. Adaptive (ASHRAE 55): `src/models/adaptiveAshrae.ts` + one registry line; locked axes `t_running_mean × operative_tmp`, exact
-   band polygons from the app's `core/compute/` adaptive bands, `hasHumidityGroup` false because `rh` is not
+   band polygons from the adaptive bands in `src/temporary-library/`, `hasHumidityGroup` false because `rh` is not
    among its inputs. Same two-file rule as Phase 4. **The adaptive bands are ported here, not earlier** (ADR-0002 decision 9 as
    revised 2026-09-15): the migration ported only `psychrometricZone` and the root finders; the band geometry and the fork's
    adaptive `describe` blocks come with this model, reading labels and offsets from `ADAPTIVE_ASHRAE_INFO` rather than
@@ -843,7 +843,7 @@ each = library port + one declaration file + one registry line) → Time-series 
 
 **Things not to write** (rewritten 2026-09-13, ADR-0002)
 Any transcribed applicability or classification number (they are read from `_INFO`), a root finder or zone solver written
-from scratch (`core/compute/` is **ported from the fork**, tests included), a `Measure` / `Outcome` / `io` layer over the
+from scratch (`src/temporary-library/` is **ported from the fork**, tests included), a `Measure` / `Outcome` / `io` layer over the
 model's own result object, a hand-written name or route segment per standard (generated from `Standard`'s key), `defineModel`,
 `InputCalculator`, `sequentialSimulation`, `evaluateMany`, `migrate()`, `fflate`; on the library side, `Unit` / `InputSpec` /
 `OptionSpec` / `ModelDefinition` / the `models` registry / a quantities table with labels (they belong to the app); on the app

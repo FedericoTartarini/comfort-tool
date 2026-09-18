@@ -1,7 +1,25 @@
 import { psy_ta_rh } from "jsthermalcomfort";
-import { NO_ROOT_FOUND, bisect, secant } from "./rootFinding";
+import { NO_ROOT_FOUND, bisect, secant } from "./root_finding";
 
 export { NO_ROOT_FOUND };
+
+/**
+ * The PMV closure a zone is traced with: `(tdb, tr, vr, rh, met, clo) => pmv`,
+ * unrounded and ungated.
+ *
+ * A closure rather than a library model function because the ISO wrapper takes
+ * the edition as its eighth positional argument and kwargs as its ninth, so a
+ * raw function reference does not fit one signature (ADR-0002 decision 9).
+ * The caller writes it beside its call to the model, binding the same edition,
+ * so the zone and the results can never disagree about which standard produced
+ * them. External work is not an argument: a caller that wants non-zero `wme`
+ * bakes it into the closure, the same way it bakes in the edition.
+ *
+ * The zone is a root of the raw PMV, and a rounded or NaN-clamped model cannot
+ * be root-found, so the closure must pass `limit_inputs: false` and
+ * `round_output: false` to whatever it calls.
+ */
+export type PmvModel = (tdb: number, tr: number, vr: number, rh: number, met: number, clo: number) => number;
 
 /** A point on a psychrometric chart, in SI units. */
 export interface PsychrometricPoint {
@@ -31,13 +49,13 @@ export interface PsychrometricZone {
   /** The |PMV| the edges were solved at. */
   readonly pmvLimit: number;
   /** The PMV closure the edges were solved with, echoed back. */
-  readonly model: PsychrometricZoneOptions["model"];
-  /** The `PMV = -pmvLimit` edge, in ascending relative humidity. */
+  readonly model: PmvModel;
+  /** The `PMV = -pmv_limit` edge, in ascending relative humidity. */
   readonly coolEdge: readonly PsychrometricPoint[];
   /** The saturation line between the two edges, in ascending temperature. */
   readonly saturationEdge: readonly PsychrometricPoint[];
   /**
-   * The `PMV = +pmvLimit` edge, also in ascending relative humidity — so that
+   * The `PMV = +pmv_limit` edge, also in ascending relative humidity — so that
    * two zones solved at different limits can be compared row by row, and so
    * adjacent bands share vertices along the same isopleth.
    */
@@ -55,66 +73,14 @@ export interface PsychrometricZone {
   readonly unsolved: readonly UnsolvedRow[];
 }
 
-/** Arguments to {@link psychrometricZone}. */
-export interface PsychrometricZoneOptions {
-  /** Mean radiant temperature, [°C]. Ignored when {@link PsychrometricZoneOptions.trFollowsDb} is `true`. */
-  readonly tr: number;
-  /**
-   * Solve with `tr` equal to the dry-bulb temperature at every point, so the
-   * x axis is operative temperature rather than air temperature. Default
-   * `false`.
-   *
-   * This is the geometry of the CBE Thermal Comfort Tool's operative-temperature
-   * psychrometric chart. `tr` is not read at all in this mode.
-   */
-  readonly trFollowsDb?: boolean;
-  /**
-   * Relative air speed, [m/s] — `v_relative` already applied, as everywhere
-   * else in the app. The CBE tool applies it inside its PMV wrapper instead,
-   * so a caller reproducing its chart must apply it first.
-   */
-  readonly vr: number;
-  /** Metabolic rate, [met]. */
-  readonly met: number;
-  /** Dynamic clothing insulation, [clo] — `clo_dynamic_ashrae` / `clo_dynamic_iso` already applied. */
-  readonly clo: number;
-  /**
-   * External work, [met]. Default `0`.
-   *
-   * Not forwarded to {@link PsychrometricZoneOptions.model}: the model
-   * argument used to be the library's own PMV function, which took `wme` as a
-   * positional argument; ADR-0002 decision 9 narrowed it to a six-argument
-   * closure `(tdb, tr, vr, rh, met, clo) => pmv` so that a model whose wrapper
-   * takes the edition and kwargs positionally still fits one signature. A
-   * declaration that wants non-zero external work bakes it into the closure
-   * itself, the same way it bakes in the edition. Kept here, at its old
-   * default, for parity with the fork's option shape.
-   */
-  readonly wme?: number;
+/** Keyword arguments to {@link psychrometric_zone}. */
+export interface PsychrometricZoneKwargs {
   /** The |PMV| to trace. Default `0.5`. */
-  readonly pmvLimit?: number;
-  /**
-   * The PMV closure to trace the zone with: `(tdb, tr, vr, rh, met, clo) =>
-   * pmv`, unrounded and ungated. A model declaration writes this beside its
-   * `run`, binding the same edition (or `Standard`) constant, so the zone and
-   * the results can never disagree about which standard produced them.
-   *
-   * This was the library model function itself, taken directly — a workaround
-   * for `psychrometricZone` taking a `standard` string that defaulted to
-   * `"ASHRAE"`. The main repository's ISO wrapper takes the edition as its
-   * eighth positional argument and kwargs as its ninth, so a raw function
-   * reference no longer fits one signature; a closure does.
-   *
-   * The zone controls `limit_inputs: false` and `round_output: false`
-   * internally — the boundary is a root of the raw PMV, and a rounded or
-   * NaN-clamped model cannot be root-found — so the closure itself must pass
-   * those through to whatever it calls.
-   */
-  readonly model: (tdb: number, tr: number, vr: number, rh: number, met: number, clo: number) => number;
+  readonly pmv_limit?: number;
   /** Relative humidity step between rows, [%]. Default `10`. */
-  readonly rhStep?: number;
+  readonly rh_step?: number;
   /** Temperature step along the saturation line, [°C]. Default `0.5`. */
-  readonly saturationStep?: number;
+  readonly saturation_step?: number;
   /**
    * The residual the root finder accepts. Default `0.001`.
    *
@@ -125,6 +91,15 @@ export interface PsychrometricZoneOptions {
   /** Atmospheric pressure, [Pa]. Default `101325`. */
   readonly p_atm?: number;
   /**
+   * Solve with `tr` equal to the dry-bulb temperature at every point, so the
+   * x axis is operative temperature rather than air temperature. Default
+   * `false`.
+   *
+   * This is the geometry of the CBE Thermal Comfort Tool's operative-temperature
+   * psychrometric chart. `tr` is not read at all in this mode.
+   */
+  readonly tr_follows_db?: boolean;
+  /**
    * Repair the two defects this algorithm inherits from the deployed CBE tool.
    * Default `false`, so that the output reproduces the published chart.
    *
@@ -132,20 +107,20 @@ export interface PsychrometricZoneOptions {
    *    even though the bracket is `[-50, 50]`, so roots below 0 °C cannot be
    *    reached.
    * 2. The saturation line runs between the roots of `PMV = ±0.5`, hard-coded,
-   *    instead of `PMV = ±pmvLimit`. Every EN category therefore gets the same
+   *    instead of `PMV = ±pmv_limit`. Every EN category therefore gets the same
    *    top segment as the ±0.5 zone.
    *
    * Turning this on gives the geometry the algorithm was evidently meant to
    * produce; leave it off to match what the website draws.
    */
-  readonly correctKnownDefects?: boolean;
+  readonly correct_known_defects?: boolean;
 }
 
 /**
  * Traces a PMV comfort zone across a psychrometric chart.
  *
  * The zone is not something a model returns: for each relative humidity, the
- * dry-bulb temperature at which PMV reaches ±`pmvLimit` has to be solved for.
+ * dry-bulb temperature at which PMV reaches ±`pmv_limit` has to be solved for.
  * Ported verbatim in behaviour from the fork's `charts/comfort_zone.ts`, which
  * is itself a port of `findComfortBoundary` in `static/js/psychchart.js` of
  * the CBE Thermal Comfort Tool — secant method with a bisection fallback,
@@ -153,22 +128,47 @@ export interface PsychrometricZoneOptions {
  *
  * Output is SI and ungarnished: no unit conversion, no clipping to a viewport,
  * no styling. Those are the caller's business.
+ *
+ * @public
+ *
+ * @param tr - mean radiant temperature, [°C]. Ignored when `tr_follows_db` is `true`
+ * @param vr - relative air speed, [m/s], `v_relative` already applied. The CBE
+ *   tool applies it inside its PMV wrapper instead, so a caller reproducing its
+ *   chart must apply it first
+ * @param met - metabolic rate, [met]
+ * @param clo - dynamic clothing insulation, [clo], `clo_dynamic_ashrae` /
+ *   `clo_dynamic_iso` already applied
+ * @param model - the PMV closure to trace the zone with, see {@link PmvModel}
+ * @param kwargs - see {@link PsychrometricZoneKwargs}
+ * @returns the two edges, the saturation line, the closed polygon and the rows
+ *   that could not be solved, see {@link PsychrometricZone}
+ *
+ * @example
+ * const iso = (tdb, tr, vr, rh, met, clo) =>
+ *   pmv_ppd_iso(tdb, tr, vr, rh, met, clo, 0, Standard.iso_7730_2005, {
+ *     limit_inputs: false,
+ *     round_output: false,
+ *   }).pmv;
+ * const zone = psychrometric_zone(25, 0.13, 1.1, 0.5, iso, { rh_step: 5 });
+ * zone.polygon; // [{ db, hr, rh }, ...]
  */
-export function psychrometricZone(options: PsychrometricZoneOptions): PsychrometricZone {
+export function psychrometric_zone(
+  tr: number,
+  vr: number,
+  met: number,
+  clo: number,
+  model: PmvModel,
+  kwargs: PsychrometricZoneKwargs = {},
+): PsychrometricZone {
   const {
-    tr,
-    vr,
-    met,
-    clo,
-    pmvLimit = 0.5,
-    model,
-    rhStep = 10,
-    saturationStep = 0.5,
+    pmv_limit = 0.5,
+    rh_step = 10,
+    saturation_step = 0.5,
     epsilon = 0.001,
     p_atm = 101325,
-    correctKnownDefects = false,
-    trFollowsDb = false,
-  } = options;
+    tr_follows_db = false,
+    correct_known_defects = false,
+  } = kwargs;
 
   const unsolved: UnsolvedRow[] = [];
 
@@ -185,10 +185,10 @@ export function psychrometricZone(options: PsychrometricZoneOptions): Psychromet
       // validates its arguments would throw on such an input rather than
       // report it as an unsolved row, so this is checked before the call.
       if (!Number.isFinite(db)) return NaN;
-      return model(db, trFollowsDb ? db : tr, vr, rh, met, clo) - target;
+      return model(db, tr_follows_db ? db : tr, vr, rh, met, clo) - target;
     };
     let db = secant(-50, 50, fn, epsilon, {
-      clampCandidates: !correctKnownDefects,
+      clamp_candidates: !correct_known_defects,
     });
     if (Number.isNaN(db)) db = bisect(-50, 50, fn, epsilon, 0);
     if (Number.isNaN(db) || db === NO_ROOT_FOUND) {
@@ -199,25 +199,25 @@ export function psychrometricZone(options: PsychrometricZoneOptions): Psychromet
 
   const coolEdge: PsychrometricPoint[] = [];
   const warmEdge: PsychrometricPoint[] = [];
-  for (let rh = 0; rh <= 100; rh += rhStep) {
-    coolEdge.push(solve(rh, -pmvLimit));
+  for (let rh = 0; rh <= 100; rh += rh_step) {
+    coolEdge.push(solve(rh, -pmv_limit));
   }
-  for (let rh = 0; rh <= 100; rh += rhStep) {
-    warmEdge.push(solve(rh, pmvLimit));
+  for (let rh = 0; rh <= 100; rh += rh_step) {
+    warmEdge.push(solve(rh, pmv_limit));
   }
 
   // Defect 2: the deployed tool solves the ends of the saturation line at
-  // ±0.5 whatever pmvLimit is.
-  const saturationLimit = correctKnownDefects ? pmvLimit : 0.5;
+  // ±0.5 whatever pmv_limit is.
+  const saturationLimit = correct_known_defects ? pmv_limit : 0.5;
   const tMin = solve(100, -saturationLimit).db;
   const tMax = solve(100, saturationLimit).db;
   const saturationEdge: PsychrometricPoint[] = [];
-  for (let t = tMin; t <= tMax; t += saturationStep) {
+  for (let t = tMin; t <= tMax; t += saturation_step) {
     saturationEdge.push(point(t, 100));
   }
 
   return {
-    pmvLimit,
+    pmvLimit: pmv_limit,
     model,
     coolEdge,
     saturationEdge,

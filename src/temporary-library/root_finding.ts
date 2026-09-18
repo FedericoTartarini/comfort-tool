@@ -6,7 +6,7 @@
  * `utilities/root_finding.ts` (rewrite plan: "port the fork's, do not rewrite
  * it").
  *
- * They are ported rather than replaced so that {@link psychrometricZone} can
+ * They are ported rather than replaced so that `psychrometric_zone` can
  * reproduce the published chart exactly. Both are kept faithful to the
  * original, including the parts that are wrong (see {@link secant}); the
  * corrections are opt-in.
@@ -25,6 +25,19 @@ export const NO_ROOT_FOUND = -999;
  * Verbatim in behaviour from `util.bisect`, including the three `fn` calls per
  * iteration (`a` and `b` are re-evaluated every time) and the
  * {@link NO_ROOT_FOUND} sentinel.
+ *
+ * @public
+ *
+ * @param a - lower end of the bracket
+ * @param b - upper end of the bracket
+ * @param fn - the function whose crossing of `target` is sought
+ * @param epsilon - half the bracket width at which the search stops, in the units of `x`
+ * @param target - the value of `fn` to solve for
+ * @returns the midpoint of the final bracket, {@link NO_ROOT_FOUND} when a
+ *   bracket holds no sign change, or NaN when it starts narrower than `2 * epsilon`
+ *
+ * @example
+ * bisect(0, 10, (x) => x * x, 1e-6, 4); // ≈ 2
  */
 export function bisect(a: number, b: number, fn: (x: number) => number, epsilon: number, target: number): number {
   // Undefined in the original when the bracket starts narrower than 2*epsilon;
@@ -42,8 +55,8 @@ export function bisect(a: number, b: number, fn: (x: number) => number, epsilon:
   return midpoint;
 }
 
-/** Options for {@link secant}. */
-export interface SecantOptions {
+/** Keyword arguments to {@link secant}. */
+export interface SecantKwargs {
   /**
    * Clamp each candidate to `[0, 100]`, as `util.secant` does.
    *
@@ -55,9 +68,9 @@ export interface SecantOptions {
    *
    * Default `true`.
    */
-  readonly clampCandidates?: boolean;
+  readonly clamp_candidates?: boolean;
   /** Iteration cap. Default `100`, the upstream value. */
-  readonly maxIterations?: number;
+  readonly max_iterations?: number;
 }
 
 /**
@@ -66,28 +79,37 @@ export interface SecantOptions {
  * Ported from `util.secant`, which is root-finding only — there is no `target`
  * parameter, callers subtract it inside `fn`.
  *
- * Returns the root, or NaN when the slope vanishes or the iteration cap is hit.
+ * @public
+ *
+ * @param a - first starting point
+ * @param b - second starting point
+ * @param fn - the function whose root is sought
+ * @param epsilon - the residual `|fn(x)|` accepted as a root
+ * @param kwargs - `clamp_candidates` (default `true`), `max_iterations` (default `100`)
+ * @returns the root, or NaN when the slope vanishes or the iteration cap is hit
+ *
+ * @example
+ * secant(-50, 50, (x) => x + 20, 0.001, { clamp_candidates: false }); // ≈ -20
  */
 export function secant(
   a: number,
   b: number,
   fn: (x: number) => number,
   epsilon: number,
-  options: SecantOptions = {},
+  kwargs: SecantKwargs = {},
 ): number {
-  const clampCandidates = options.clampCandidates ?? true;
-  const maxIterations = options.maxIterations ?? 100;
+  const { clamp_candidates = true, max_iterations = 100 } = kwargs;
 
   let f1 = fn(a);
   if (Math.abs(f1) <= epsilon) return a;
   let f2 = fn(b);
   if (Math.abs(f2) <= epsilon) return b;
 
-  for (let i = 0; i < maxIterations; i += 1) {
+  for (let i = 0; i < max_iterations; i += 1) {
     const slope = (f2 - f1) / (b - a);
     if (slope === 0) return NaN; // Prevent division by zero
     let c = b - f2 / slope;
-    if (clampCandidates) {
+    if (clamp_candidates) {
       if (c < 0) c = 0;
       if (c > 100) c = 100;
     }

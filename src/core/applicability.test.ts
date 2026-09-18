@@ -8,7 +8,7 @@ import {
   outputViolations,
   vapourPressure,
 } from "./applicability";
-import { bisect } from "./compute/rootFinding";
+import { bisect } from "$lib/temporary-library/root_finding";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { toLibraryInputs, type SlotInputs } from "./libraryInputs";
 import { quantities, type Quantity } from "./quantities";
