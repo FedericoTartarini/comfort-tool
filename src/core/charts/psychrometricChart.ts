@@ -150,7 +150,6 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
   };
 }
 
-/** `ISOLINE_SAMPLES` temperatures across the drawn range, in SI. */
 /**
  * The zone's PMV function: the model's own `run` at the slot's resolved
  * inputs, with the six the solver varies replaced. The zone therefore solves
@@ -176,6 +175,7 @@ function pmvOfRun(model: RegisteredModel, resolved: ReadonlyMap<Quantity, number
   };
 }
 
+/** `ISOLINE_SAMPLES` temperatures across the drawn range, in SI. */
 function samples(range: Range): readonly number[] {
   const step = (range.max - range.min) / (ISOLINE_SAMPLES - 1);
   return Array.from({ length: ISOLINE_SAMPLES }, (_, index) => range.min + index * step);

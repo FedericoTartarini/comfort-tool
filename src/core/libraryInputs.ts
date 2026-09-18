@@ -68,8 +68,8 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
 }
 
 /**
- * The keyed record `run` takes, for `slot`: its resolved quantities, keyed by
- * {@link keyedInputs}. The declaration's own `run` hardcodes
+ * The keyed record `run` takes, for `slot`: its resolved quantities, passed
+ * through {@link keyedInputs}. The declaration's own `run` hardcodes
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers
  * rather than NaN, the behaviour of the deployed CBE tool. The rows a run

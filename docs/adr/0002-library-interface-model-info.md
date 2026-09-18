@@ -137,7 +137,8 @@ commits `bf95aac` … `9c6df55`) that go beyond the fourteen above. The fourteen
     (`round_output: false`; `formatNumber` rounds for display, so PPD shows two decimals), and the
     psychrometric chart builds the closure from `run` at the slot's resolved inputs, reading `pmv` off the
     result. The zone and the table now make the same call by construction, and a model declaring the chart
-    must output `pmv`.
+    must output `pmv`. `applicability.outputViolations` now also tests the unrounded `pmv` against its
+    bound, which is the value the kernel's own `pmv` range check tests.
 19. **A `category` kind** in `core/quantities.ts` for classified outputs (`tsv`, `stress_category`): no
     unit symbol, no step. `pmv` keeps `thermalSensation`.
 
