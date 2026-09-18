@@ -1,4 +1,4 @@
-import { clo_typical_ensembles_table, met_typical_tasks } from "jsthermalcomfort";
+import { clo_typical_ensembles, met_typical_tasks } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { matchingPreset, presetsFor } from "./presets";
 import { quantities } from "./quantities";
@@ -13,7 +13,7 @@ describe("presetsFor", () => {
 
   it("returns clo's presets with the library's own labels, values and order", () => {
     const presets = presetsFor(quantities.clo);
-    const expected = Object.entries(clo_typical_ensembles_table);
+    const expected = Object.entries(clo_typical_ensembles);
     expect(presets).toHaveLength(expected.length);
     expect(presets?.map((preset) => [preset.label, preset.value])).toEqual(expected);
   });

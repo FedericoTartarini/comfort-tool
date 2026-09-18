@@ -1,4 +1,4 @@
-import { clo_typical_ensembles_table, met_typical_tasks } from "jsthermalcomfort";
+import { clo_typical_ensembles, met_typical_tasks } from "jsthermalcomfort";
 import { formatNumber } from "./numberFormat";
 import { quantities, type Quantity } from "./quantities";
 
@@ -18,7 +18,7 @@ function presetsFromTable(table: Readonly<Record<string, number>>): readonly Pre
 
 const presetsByQuantity = new Map<Quantity, readonly Preset[]>([
   [quantities.met, presetsFromTable(met_typical_tasks)],
-  [quantities.clo, presetsFromTable(clo_typical_ensembles_table)],
+  [quantities.clo, presetsFromTable(clo_typical_ensembles)],
 ]);
 
 /** The presets for a quantity, in the library's order, or `undefined` if it has none. */
