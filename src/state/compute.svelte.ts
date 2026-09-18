@@ -1,5 +1,5 @@
 import { untrack } from "svelte";
-import { derivedViolations, outOfRangeInputs, outputViolations, type ViolationRow } from "$lib/core/applicability";
+import { outOfRangeInputs, violationRows, type ViolationRow } from "$lib/core/applicability";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicSpec } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
@@ -60,7 +60,7 @@ export function observeSession(session: Session, outputs: Outputs): void {
       return;
     }
     const result = model.run(toLibraryInputs(slot, model));
-    outputs.violations = [...derivedViolations(slot, model), ...outputViolations(model, result)];
+    outputs.violations = violationRows(model, result);
     // Untracked: reading perSlot here would make the write below re-run the effect.
     outputs.perSlot = untrack(() => outputs.perSlot).map((kept, index) => (index === 0 ? result : kept));
     outputs.chart = chartSpecOf(session);

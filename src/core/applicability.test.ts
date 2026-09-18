@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { pmv_ppd_iso, Standard } from "jsthermalcomfort";
 import { pmvIso } from "$lib/models/pmvIso";
-import {
-  derivedViolations,
-  enteredBound,
-  outOfRangeInputs,
-  outputViolations,
-  vapourPressure,
-} from "./applicability";
-import { bisect } from "$lib/temporary-library/root_finding";
+import { enteredBound, outOfRangeInputs, violationRows } from "./applicability";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { toLibraryInputs, type SlotInputs } from "./libraryInputs";
 import { quantities, type Quantity } from "./quantities";
@@ -82,82 +74,52 @@ describe("enteredBound / outOfRangeInputs", () => {
   });
 });
 
-describe("derivedViolations", () => {
-  it("is empty for a slot within every derived and vr bound", () => {
-    expect(derivedViolations(separateSlot(), pmvIso)).toEqual([]);
+describe("violationRows", () => {
+  function rowsFor(slot: SlotInputs) {
+    return violationRows(pmvIso, pmvIso.run(toLibraryInputs(slot, pmvIso)));
+  }
+
+  it("is empty at the model's defaults", () => {
+    expect(rowsFor(separateSlot())).toEqual([]);
   });
 
-  it("reports the derived vapour pressure on the pa row", () => {
+  it("maps the kernel's derived vapour-pressure row to pa", () => {
     const slot = separateSlot({ tdb: 30, tr: 30 });
     const humid: SlotInputs = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
-    const violation = derivedViolations(humid, pmvIso).find((row) => row.quantity === q.pa);
-    expect(violation).toBeDefined();
+    const violation = rowsFor(humid).find((row) => row.quantity === q.pa);
     expect(violation?.role).toBe("derived");
-    expect(violation?.value).toBe(vapourPressure(30, 95));
     expect(violation?.bound).toEqual(pmvIso.info.derived?.pa?.applicability);
+    expect(violation?.value).toBeGreaterThan(violation!.bound.max!);
   });
 
-  it("reports a relative air speed that breaks the vr bound on the v row, without gating it", () => {
+  it("maps a bounded output the run breaks to its quantity", () => {
+    const violation = rowsFor(separateSlot({ tdb: 5, tr: 5, clo: 0.1 })).find((row) => row.quantity === q.pmv);
+    expect(violation?.role).toBe("output");
+    expect(Math.abs(violation!.value)).toBeGreaterThan(pmvIso.info.outputs.pmv!.applicability!.max!);
+  });
+
+  it("reports a relative air speed that breaks the vr bound on the entered v row, without gating it", () => {
     const slot = separateSlot({ v: 1.5 });
-    const violation = derivedViolations(slot, pmvIso).find((row) => row.quantity === q.v);
-    expect(violation).toBeDefined();
+    const violation = rowsFor(slot).find((row) => row.quantity === q.v);
     expect(violation?.role).toBe("input");
     expect(violation?.bound).toEqual(pmvIso.info.inputs.vr?.applicability);
+    expect(rowsFor(slot).some((row) => row.quantity === q.vr)).toBe(false);
     expect(outOfRangeInputs(slot, pmvIso)).toEqual([]);
   });
-});
 
-describe("outputViolations", () => {
-  it("is empty when the model's outputs are within bounds", () => {
-    const outcome = pmvIso.run(toLibraryInputs(separateSlot(), pmvIso));
-    expect(outputViolations(pmvIso, outcome)).toEqual([]);
-  });
-
-  it("reports a bounded output that a run breaks", () => {
-    const slot = separateSlot({ tdb: 5, tr: 5, v: 0.1, clo: 0.1 });
-    const outcome = pmvIso.run(toLibraryInputs(slot, pmvIso));
-    const violation = outputViolations(pmvIso, outcome).find((row) => row.quantity === q.pmv);
-    const pmvBound = pmvIso.info.outputs.pmv?.applicability;
-    expect(violation).toBeDefined();
-    expect(violation?.role).toBe("output");
-    expect(pmvBound?.max).toBeDefined();
-    expect(Math.abs(violation!.value)).toBeGreaterThan(pmvBound!.max!);
-  });
-});
-
-describe("the 2700 Pa vapour-pressure bound", () => {
-  // ADR-0002 decision 4's revert path: the app's own `pa = rh / 100 × p_sat(tdb)`
-  // must cross the ISO 7730 bound at the same relative humidity the kernel
-  // itself flips to NaN at, within 0.1 % RH — otherwise the derived row cannot
-  // be trusted and decision 4 reverts to waiting for #199.
-  const paBound = pmvIso.info.derived?.pa?.applicability;
-  if (!paBound?.max) {
-    throw new Error("ISO 7730 no longer bounds the derived vapour pressure — decision 4 needs revisiting");
-  }
-  const paMax = paBound.max;
-
-  // "Mid-range" here means a clo/met/vr combination (tr tracking tdb) chosen
-  // so PMV itself stays within ±2 across the whole 0–100 % RH sweep at all
-  // three temperatures: the arithmetic midpoint of met's own bound alone
-  // runs to 4 (vigorous exercise), which pushes PMV past ±2 before pa reaches
-  // 2700 Pa and makes the kernel's first NaN a PMV-bound flip, not a
-  // vapour-pressure one — the wrong crossing for this test to pin.
-  const vrMid = 0.15;
-  const metMid = 1.4;
-  const cloMid = 0.3;
-
-  // Below roughly 22.3 °C, `p_sat(tdb)` itself is under 2700 Pa, so pa cannot
-  // reach the bound at any humidity: 20 °C exercises that no-crossing case,
-  // where both sides must agree there is none, rather than a numeric one.
-  it.each([20, 25, 30])("agrees with the kernel's NaN flip within 0.1 RH at tdb=%d°C", (tdb) => {
-    const appRh = bisect(0, 100, (rh) => vapourPressure(tdb, rh), 1e-6, paMax);
-    const kernelFlipsToNaN = (rh: number): number => {
-      const { pmv } = pmv_ppd_iso(tdb, tdb, vrMid, rh, metMid, cloMid, 0, Standard.iso_7730_2005, {
-        limit_inputs: true,
-      });
-      return Number.isNaN(pmv) ? 1 : 0;
+  it("keeps every row of a repeated key and drops a key the quantity table lacks", () => {
+    const bound = { max: 0.8 };
+    const result = {
+      warnings: [
+        { key: "vr", role: "input", value: 1, bound: { min: 0, max: 2 } },
+        { key: "vr", role: "input", value: 1, bound },
+        { key: "not_a_quantity", role: "input", value: 1, bound },
+      ],
     };
-    const kernelRh = bisect(0, 100, kernelFlipsToNaN, 1e-6, 0.5);
-    expect(Math.abs(appRh - kernelRh)).toBeLessThan(0.1);
+    expect(violationRows(pmvIso, result).map((row) => row.bound)).toEqual([{ min: 0, max: 2 }, bound]);
+  });
+
+  it("is empty for a result that carries no warnings", () => {
+    expect(violationRows(pmvIso, { pmv: 0 })).toEqual([]);
   });
 });

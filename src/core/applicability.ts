@@ -1,21 +1,18 @@
 /**
- * What is inside and outside a standard's applicability, read from the
- * library's `_INFO` alone (ADR-0002 decision 4). Owns every read of
- * `applicability` off a model's `info.inputs`, `info.derived` and
- * `info.outputs`: the bound an entered quantity must satisfy (the pre-call
- * gate, and the range shown beside the input), and the rows a completed run
- * still breaks (the derived vapour pressure, the relative air speed derived
- * from `v`, and a bounded output).
+ * What is inside and outside a standard's applicability. Owns every read of
+ * `applicability` off a model's `info.inputs`: the bound an entered quantity
+ * must satisfy (the pre-call gate, and the range shown beside the input).
+ * The rows a completed run still breaks are the library's, read off the
+ * result's `warnings` (ADR-0002 decision 23) and mapped to quantities here.
  *
  * `limitFor` and the fork's `ApplicabilityLimit` are gone with it: a
  * violation is `{ quantity, role, value, bound }`, and the warning sentence is
  * templated here from the quantity's label, the bound and the display unit —
  * the fork's `limit.warning` strings are not carried.
  */
-import { p_sat, v_relative } from "jsthermalcomfort";
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { temperatureMode, type TemperatureMode } from "./entryModes";
-import { relativeHumidityOf, requireValue, resolvedTdb, resultValue, type SlotInputs } from "./libraryInputs";
+import { resultWarnings, type SlotInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { formatNumber } from "./numberFormat";
 import { quantities, quantityFor, type Quantity } from "./quantities";
@@ -77,7 +74,7 @@ function intersect(bounds: readonly Bound[]): Bound | undefined {
  * current temperature mode. An operative entry stands in for both
  * temperature rows and must satisfy both at once. Entered `v` has no bound of
  * its own — the standard bounds the relative air speed it derives, `vr`,
- * which {@link derivedViolations} checks and reports on the `v` row.
+ * which the library checks and {@link violationRows} reports on the `v` row.
  */
 export function enteredBound(model: RegisteredModel, quantity: Quantity, mode: TemperatureMode): Bound | undefined {
   const constrained =
@@ -103,55 +100,22 @@ export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quan
     .map(([quantity]) => quantity);
 }
 
-/** The water vapour partial pressure ISO 7730 derives from `tdb` and `rh`, in SI. */
-export function vapourPressure(tdb: number, rh: number): number {
-  return (rh / 100) * p_sat(tdb);
-}
-
 /**
- * The rows a run breaks that the pre-call gate cannot see: the derived
- * vapour pressure, and the relative air speed `v` derives when the model
- * takes `vr`. Reported whether or not the run has happened yet — both are
- * functions of the entered slot alone.
+ * The rows a completed run broke, as the library reports them on the result's
+ * `warnings` (ADR-0002 decision 23) — the app does not evaluate a row. Each
+ * row's key is reconciled to a quantity through `quantityFor`; a key the table
+ * lacks is dropped. A key can repeat (one quantity breaking several limits),
+ * so every row is kept. When the model takes `vr`, its row is reported on the
+ * entered `v`, the quantity the user typed.
  */
-export function derivedViolations(slot: SlotInputs, model: RegisteredModel): ViolationRow[] {
+export function violationRows(model: RegisteredModel, result: ModelResult): ViolationRow[] {
   const rows: ViolationRow[] = [];
-
-  const paBound = boundFor(model.info.derived, q.pa);
-  if (paBound) {
-    const pa = vapourPressure(resolvedTdb(slot), relativeHumidityOf(slot));
-    if (breaksBound(paBound, pa)) {
-      rows.push({ quantity: q.pa, role: "derived", value: pa, bound: paBound });
-    }
-  }
-
-  const v = slot.values.get(q.v);
-  const vrBound = boundFor(model.info.inputs, q.vr);
-  if (model.relativeAirSpeed && v !== undefined && vrBound) {
-    const vr = v_relative(v, requireValue(slot.values, q.met));
-    if (breaksBound(vrBound, vr)) {
-      rows.push({ quantity: q.v, role: "input", value: vr, bound: vrBound });
-    }
-  }
-
-  return rows;
-}
-
-/**
- * The output rows a completed run breaks, read off the model's own result
- * object by key (ADR-0002 decision 3).
- */
-export function outputViolations(model: RegisteredModel, result: ModelResult): ViolationRow[] {
-  const rows: ViolationRow[] = [];
-  for (const [key, variable] of Object.entries(model.info.outputs)) {
-    if (!variable.applicability) {
+  for (const { key, role, value, bound } of resultWarnings(result)) {
+    const quantity = quantityFor(key);
+    if (!quantity) {
       continue;
     }
-    const quantity = quantityFor(key);
-    const value = quantity ? resultValue(result, quantity) : undefined;
-    if (quantity && typeof value === "number" && breaksBound(variable.applicability, value)) {
-      rows.push({ quantity, role: "output", value, bound: variable.applicability });
-    }
+    rows.push({ quantity: model.relativeAirSpeed && quantity === q.vr ? q.v : quantity, role, value, bound });
   }
   return rows;
 }

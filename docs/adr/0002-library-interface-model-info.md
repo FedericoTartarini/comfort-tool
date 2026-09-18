@@ -221,8 +221,9 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
 
 ## Consequences
 
-- ADR-0001 §4.1.2's "the app never evaluates a row" is reversed until decision 23's `warnings` field lands on the
-  integration branch (`.scratch/library-boundary/issues/04` and `05`).
+- ADR-0001 §4.1.2's "the app never evaluates a row" holds again: a run's broken rows are the result's `warnings`
+  (decision 23), which `core/applicability.ts` maps to quantities without checking a bound. What the app still checks is
+  the entered value before the call, the pre-call gate decision 4 keeps.
 - `src/temporary-library/` is a third lint boundary beside `core/` and `ui/charts/` (decision 24, ticket 07);
   `.claude/rules/architecture.md` is rewritten to the four rules. ADR-0001 §4.1.4's "never writes its own root finder"
   now reads: never outside the temporary library.

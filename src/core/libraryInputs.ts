@@ -1,4 +1,5 @@
 import { v_relative } from "jsthermalcomfort";
+import type { ApplicabilityWarning } from "jsthermalcomfort";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { hasHumidityGroup, hasTemperatureGroup, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
@@ -74,8 +75,8 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
  * against `_INFO` before calling, and the library then always returns numbers
  * rather than NaN, the behaviour of the deployed CBE tool. The rows a run
  * still breaks (derived, output, or the `v` row when `vr = v + 0.3(met − 1)`
- * breaks it while the entered `v` does not) are reported, not gated, by
- * `applicability.derivedViolations` and `applicability.outputViolations`.
+ * breaks it while the entered `v` does not) come back on the result's
+ * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
 export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Record<string, number> {
   return keyedInputs(resolveQuantities(slot, model));
@@ -92,11 +93,20 @@ export function keyedInputs(values: ReadonlyMap<Quantity, number>): Record<strin
 
 /**
  * The mirror read: a quantity's value off the model's own result object, by
- * key. `undefined` for a key the result does not carry. The one cast onto
- * `ModelResult`'s deliberately unindexed `object` (`core/modelDeclaration.ts`).
+ * key. `undefined` for a key the result does not carry. One of the two casts
+ * onto `ModelResult`'s deliberately unindexed `object`
+ * (`core/modelDeclaration.ts`); {@link resultWarnings} is the other.
  */
 export function resultValue(result: ModelResult, quantity: Quantity): number | string | undefined {
   return (result as Record<string, number | string>)[quantity.key];
+}
+
+/**
+ * The applicability rows the library says the call broke, off the result's
+ * `warnings` (ADR-0002 decision 23). Empty for a result that carries none.
+ */
+export function resultWarnings(result: ModelResult): readonly ApplicabilityWarning[] {
+  return (result as { warnings?: readonly ApplicabilityWarning[] }).warnings ?? [];
 }
 
 /**
