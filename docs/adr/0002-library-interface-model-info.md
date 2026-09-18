@@ -84,6 +84,9 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    would transcribe the fork's offset labels and its 25 °C cooling-effect threshold into the app, and
    nothing in v1 consumes them. They arrive in Phase 4b with `ADAPTIVE_ASHRAE_INFO`, reading labels
    and offsets from it, and the fork's adaptive `describe` blocks are ported with them.
+   **Superseded by decision 24 (2026-09-18):** the zone solver, the root finders and the oracle live in
+   `src/temporary-library/`, and `core/compute/` is deleted. The solver is `pmv_psychrometric_zone`, and
+   the closure it takes is a `PmvFunction`, carried by the declaration's `pmvFunction` field.
 10. **Fork features that are numbers go upstream first.** The four humidity inverse functions
     (`hr_to_rh`, `rh_from_dew_point`, `rh_from_wet_bulb`, `rh_from_vapour_pressure`; fork 43d7e92) are
     a PR to the main repository and a prerequisite for the switch. Not migrated, because nothing reads

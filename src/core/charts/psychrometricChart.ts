@@ -1,6 +1,6 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
-import { NO_ROOT_FOUND, psychrometric_zone, type PsychrometricPoint } from "$lib/temporary-library/psychrometric_zone";
+import { NO_ROOT_FOUND, pmv_psychrometric_zone, type PsychrometricPoint } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
 import { requireValue, resolveQuantities } from "$lib/core/libraryInputs";
 import { requireAxisRange, type PsychrometricDeclaration, type Range } from "$lib/core/modelDeclaration";
@@ -31,7 +31,7 @@ const ZONE_RH_STEP = 5;
 
 /**
  * The psychrometric chart: relative-humidity isolines, the compliance zone
- * traced by `psychrometric_zone`, and the slot's current state.
+ * traced by `pmv_psychrometric_zone`, and the slot's current state.
  *
  * The x axis quantity is the temperature entry mode's (`tdb` when the two
  * temperatures are entered separately, `operative_tmp` under operative entry), and
@@ -52,12 +52,12 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
   const hrRange = requireAxisRange(model, q.hr);
 
   const resolved = resolveQuantities(slot, model);
-  const zone = psychrometric_zone(
+  const zone = pmv_psychrometric_zone(
     requireValue(resolved, q.tr),
     requireValue(resolved, model.relativeAirSpeed ? q.vr : q.v),
     requireValue(resolved, q.met),
     requireValue(resolved, q.clo),
-    chart.pmvModel,
+    chart.pmvFunction,
     {
       tr_follows_db: operative,
       rh_step: ZONE_RH_STEP,

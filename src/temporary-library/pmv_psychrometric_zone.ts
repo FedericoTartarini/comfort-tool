@@ -19,7 +19,7 @@ export { NO_ROOT_FOUND };
  * be root-found, so the closure must pass `limit_inputs: false` and
  * `round_output: false` to whatever it calls.
  */
-export type PmvModel = (tdb: number, tr: number, vr: number, rh: number, met: number, clo: number) => number;
+export type PmvFunction = (tdb: number, tr: number, vr: number, rh: number, met: number, clo: number) => number;
 
 /** A point on a psychrometric chart, in SI units. */
 export interface PsychrometricPoint {
@@ -45,11 +45,11 @@ export interface UnsolvedRow {
 }
 
 /** A comfort zone traced on a psychrometric chart. */
-export interface PsychrometricZone {
+export interface PmvPsychrometricZone {
   /** The |PMV| the edges were solved at. */
   readonly pmvLimit: number;
-  /** The PMV closure the edges were solved with, echoed back. */
-  readonly model: PmvModel;
+  /** The PMV function the edges were solved with, echoed back. */
+  readonly pmvFunction: PmvFunction;
   /** The `PMV = -pmv_limit` edge, in ascending relative humidity. */
   readonly coolEdge: readonly PsychrometricPoint[];
   /** The saturation line between the two edges, in ascending temperature. */
@@ -73,8 +73,8 @@ export interface PsychrometricZone {
   readonly unsolved: readonly UnsolvedRow[];
 }
 
-/** Keyword arguments to {@link psychrometric_zone}. */
-export interface PsychrometricZoneKwargs {
+/** Keyword arguments to {@link pmv_psychrometric_zone}. */
+export interface PmvPsychrometricZoneKwargs {
   /** The |PMV| to trace. Default `0.5`. */
   readonly pmv_limit?: number;
   /** Relative humidity step between rows, [%]. Default `10`. */
@@ -138,10 +138,10 @@ export interface PsychrometricZoneKwargs {
  * @param met - metabolic rate, [met]
  * @param clo - dynamic clothing insulation, [clo], `clo_dynamic_ashrae` /
  *   `clo_dynamic_iso` already applied
- * @param model - the PMV closure to trace the zone with, see {@link PmvModel}
- * @param kwargs - see {@link PsychrometricZoneKwargs}
+ * @param pmv_function - the PMV closure to trace the zone with, see {@link PmvFunction}
+ * @param kwargs - see {@link PmvPsychrometricZoneKwargs}
  * @returns the two edges, the saturation line, the closed polygon and the rows
- *   that could not be solved, see {@link PsychrometricZone}
+ *   that could not be solved, see {@link PmvPsychrometricZone}
  *
  * @example
  * const iso = (tdb, tr, vr, rh, met, clo) =>
@@ -149,17 +149,17 @@ export interface PsychrometricZoneKwargs {
  *     limit_inputs: false,
  *     round_output: false,
  *   }).pmv;
- * const zone = psychrometric_zone(25, 0.13, 1.1, 0.5, iso, { rh_step: 5 });
+ * const zone = pmv_psychrometric_zone(25, 0.13, 1.1, 0.5, iso, { rh_step: 5 });
  * zone.polygon; // [{ db, hr, rh }, ...]
  */
-export function psychrometric_zone(
+export function pmv_psychrometric_zone(
   tr: number,
   vr: number,
   met: number,
   clo: number,
-  model: PmvModel,
-  kwargs: PsychrometricZoneKwargs = {},
-): PsychrometricZone {
+  pmv_function: PmvFunction,
+  kwargs: PmvPsychrometricZoneKwargs = {},
+): PmvPsychrometricZone {
   const {
     pmv_limit = 0.5,
     rh_step = 10,
@@ -185,7 +185,7 @@ export function psychrometric_zone(
       // validates its arguments would throw on such an input rather than
       // report it as an unsolved row, so this is checked before the call.
       if (!Number.isFinite(db)) return NaN;
-      return model(db, tr_follows_db ? db : tr, vr, rh, met, clo) - target;
+      return pmv_function(db, tr_follows_db ? db : tr, vr, rh, met, clo) - target;
     };
     let db = secant(-50, 50, fn, epsilon, {
       clamp_candidates: !correct_known_defects,
@@ -218,7 +218,7 @@ export function psychrometric_zone(
 
   return {
     pmvLimit: pmv_limit,
-    model,
+    pmvFunction: pmv_function,
     coolEdge,
     saturationEdge,
     warmEdge,

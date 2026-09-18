@@ -6,7 +6,7 @@
  * `utilities/root_finding.ts` (rewrite plan: "port the fork's, do not rewrite
  * it").
  *
- * They are ported rather than replaced so that `psychrometric_zone` can
+ * They are ported rather than replaced so that `pmv_psychrometric_zone` can
  * reproduce the published chart exactly. Both are kept faithful to the
  * original, including the parts that are wrong (see {@link secant}); the
  * corrections are opt-in.

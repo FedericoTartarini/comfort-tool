@@ -1,5 +1,5 @@
 import type { ModelInfo, Standard } from "jsthermalcomfort";
-import type { PmvModel } from "$lib/temporary-library/psychrometric_zone";
+import type { PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { chartType } from "./chartType";
 import { quantities, type Quantity } from "./quantities";
 
@@ -68,7 +68,7 @@ export type ChartDeclaration =
        * results can never disagree about which edition produced them
        * (ADR-0002 decision 9).
        */
-      readonly pmvModel: PmvModel;
+      readonly pmvFunction: PmvFunction;
     }
   | {
       readonly type: typeof chartType.dynamic;
