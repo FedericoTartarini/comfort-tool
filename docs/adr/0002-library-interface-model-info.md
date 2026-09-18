@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -177,6 +177,10 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     now `bd39652`). Each such change is consumed from the rebuilt `lib/esm`, opened as a PR by hand and never by an agent, and its ticket states the fallback if the lead
     declines, so a refusal is a planned move rather than a surprise. Decision 14's `jsthermalcomfort@next` pin applies once
     the lead publishes.
+    **Revised 2026-09-19:** `local/comfort-tool-integration` is retired. Library changes the app needs, decision 23's
+    and every later one, are committed directly to `feat/v2-typescript-setup`, which `../jsthermalcomfort` has checked
+    out and the user pushes; no PR is opened for them, so the per-ticket fallback no longer applies. The app links that
+    checkout as before, from its rebuilt `lib/esm`.
 23. **Applicability warnings come from the result** (#199 option (a), the lead's own first choice). `pmv_ppd` gains an
     additive `warnings` field, `{ key, role: "input" | "derived" | "output", value, bound }[]`, built from the checks the
     kernel already runs and from the model's `_INFO`: empty when nothing broke, filled whether or not `limit_inputs` is on
@@ -187,6 +191,12 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     `derivedViolations` and `outputViolations` leave `core/applicability.ts` when the field lands on the integration
     branch. Fallback if the lead declines: the walk returns to `core/applicability.ts` as app code and this decision
     records his reason.
+    **Revised 2026-09-19:** landed as `e31a562` on `feat/v2-typescript-setup` (decision 22 as revised), so the fallback
+    is moot. The rows' checks and bounds match pythermalcomfort 4.6.0, including ASHRAE 55's airspeed rules when the
+    occupant cannot control the airspeed (so `vr` can have more than one row). Filling them whatever `limit_inputs` is
+    stays the one deviation from Python, which warns only with `limit_inputs` on; the app needs it because it always
+    passes `false`. The `limit_inputs` gate reads the rows, so a NaN and its explanation cannot disagree, and
+    `check_standard_compliance` is unchanged. Ticket 05 is unblocked.
 24. **Temporary library.** `src/temporary-library/` holds rule-C members until jsthermalcomfort ships them. Written to
     the library's conventions — snake_case names, positional SI arguments plus a kwargs object, JSDoc on the function,
     tests in the library's shape — so that a move upstream is a file cut, and lint-restricted to importing
