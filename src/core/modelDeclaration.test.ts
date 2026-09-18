@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { registeredModels } from "$lib/models";
 import { pmvIso } from "$lib/models/pmvIso";
 import { axisRangeFor, requireAxisRange } from "./modelDeclaration";
 import { quantities } from "./quantities";
 
 const q = quantities;
+
+describe("standard", () => {
+  it("is one of the editions the model's library function accepts, for every registered model", () => {
+    for (const model of registeredModels) {
+      if (model.standard === undefined) continue;
+      expect(model.info.standards, model.info.label).toContain(model.standard);
+    }
+  });
+});
 
 describe("axisRangeFor", () => {
   it("returns the declared range when the model has one", () => {
