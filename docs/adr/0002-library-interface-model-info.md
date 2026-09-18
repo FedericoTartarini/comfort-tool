@@ -173,8 +173,8 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     of `feat/v2-typescript-setup` that carries every unmerged change the app consumes. On 2026-09-17: the four humidity
     inverses (`dcca8b9`, merged as PR #207 the same day), the `pmv_ppd_iso` JSDoc fix (`ea4a6f5`, merged as PR #208 the
     same day), the keyed preset tables under pythermalcomfort's three names (`1daa7d9` + `0c1ba4d`, squash-merged as
-    PR #210 on 2026-09-18, so the base is now `17895ee`), decision 23 and decision 25. Each such change is consumed from
-    the rebuilt `lib/esm`, opened as a PR by hand and never by an agent, and its ticket states the fallback if the lead
+    PR #210 on 2026-09-18), decision 23, and decision 25 (`ece6dec`, merged as PR #211 on 2026-09-19, so the base is
+    now `bd39652`). Each such change is consumed from the rebuilt `lib/esm`, opened as a PR by hand and never by an agent, and its ticket states the fallback if the lead
     declines, so a refusal is a planned move rather than a surprise. Decision 14's `jsthermalcomfort@next` pin applies once
     the lead publishes.
 23. **Applicability warnings come from the result** (#199 option (a), the lead's own first choice). `pmv_ppd` gains an
@@ -200,8 +200,9 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     functions get a one-element list. A standard is a property a model declares and several models may share, defined
     once as `Standard` and referenced from `_INFO`; the constant keeps its name (pythermalcomfort's `Models` enum has the
     same keys and values; its `iso_9920_2007`, missing here, is a gap-record entry). The declaration keeps
-    `standard: Standard.<id>` as its edition pick, and once the field lands a test asserts the pick is in
-    `info.standards`. Decision 6's "ModelInfo has no membership field" holds until then.
+    `standard: Standard.<id>` as its edition pick, and `core/modelDeclaration.test.ts` asserts the pick is in
+    `info.standards`. The field landed as PR #211 on 2026-09-19, so decision 6's "ModelInfo has no membership field" no
+    longer holds.
 26. **Reference tables carry pythermalcomfort's names** (ticket 03 amended): `met_typical_tasks`,
     `clo_typical_ensembles`, `clo_individual_garments`, all table objects; the `clo_typical_ensembles` lookup function and
     the `clo_typical_ensembles_table` name go. `core/presets.ts` imports those names and stays app code, since
