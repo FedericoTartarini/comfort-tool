@@ -124,7 +124,7 @@ export interface RegisteredModel {
   /**
    * The library's model function, bound positionally by the declaration. Takes
    * SI values keyed by `Quantity.key` and returns the model's own result
-   * object. Called only by state/compute (Phase 3: only in the worker).
+   * object. Called by `state/compute` and by the chart spec builders.
    */
   readonly run: (init: Record<string, number>) => ModelResult;
   /**

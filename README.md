@@ -67,7 +67,6 @@ npm test && npm run check && npm run lint && npm run build
 - **Svelte 5** (runes) + **TypeScript 6** + **Vite 8**
 - **Tailwind CSS 4** + **shadcn-svelte** for UI
 - **Plotly.js 4** (cartesian bundle) for charts
-- **Comlink** for the calculation worker
 - **`jsthermalcomfort`** for all thermal-comfort calculations
 - **`sv-router`** for client-side routing
 - **Vitest** for unit tests

@@ -14,8 +14,8 @@ import { quantities } from "./src/core/quantities.ts";
 // the boundary is the model-function names themselves, read off the package's
 // `models` namespace. `Standard`, `classifyFromBins` and the psychrometrics
 // stay importable everywhere; only the model functions are confined to
-// src/models/ (which binds `run` and reads label/limits off them) and
-// src/workers/ (the only caller). A new upstream model needs no lint edit.
+// src/models/, which binds `run` and reads label/limits off them. A new
+// upstream model needs no lint edit.
 const libraryModelFunctionNames = Object.entries(jsthermalcomfort.models)
   .filter(([name, value]) => typeof value === "function" && name !== "classifyFromBins")
   .map(([name]) => name);
@@ -25,7 +25,7 @@ const libraryModelImports = {
     {
       name: "jsthermalcomfort",
       importNames: libraryModelFunctionNames,
-      message: "Library model functions are referenced only in src/models/ and called only in src/workers/.",
+      message: "Library model functions are referenced only in src/models/.",
     },
   ],
 };
@@ -213,8 +213,9 @@ export default [
   },
   {
     // Model declarations bind `run: io.<model>` and read label/limits off the
-    // library model function; the worker is the one place that calls them.
-    files: ["src/models/**/*.ts", "src/workers/**/*.ts"],
+    // library model function. Compute is synchronous and calls `run` through
+    // the declaration, so no other directory names one (ADR-0002 decision 29).
+    files: ["src/models/**/*.ts"],
     rules: {
       "no-restricted-imports": "off",
     },

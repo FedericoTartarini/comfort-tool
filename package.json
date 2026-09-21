@@ -48,7 +48,6 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "comlink": "^4.4.2",
     "jsthermalcomfort": "file:../jsthermalcomfort",
     "plotly.js-cartesian-dist-min": "4.0.0",
     "sv-router": "^0.18.0"
