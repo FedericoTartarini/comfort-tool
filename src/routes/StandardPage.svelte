@@ -1,7 +1,7 @@
 <script lang="ts">
   import { standards } from "$lib/core/standard";
   import { unitSystem } from "$lib/core/unitSystem";
-  import { Outputs, observeSession } from "$lib/state/compute.svelte";
+  import { Outputs } from "$lib/state/compute.svelte";
   import { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
@@ -19,8 +19,7 @@
 
   const id = $props.id();
   const session = new Session(modelFromRoute() ?? defaultModel());
-  const outputs = new Outputs();
-  observeSession(session, outputs);
+  const outputs = new Outputs(session);
 
   // The URL names the model; an unknown URL falls back to the default.
   $effect(() => {
