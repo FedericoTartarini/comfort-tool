@@ -5,15 +5,15 @@ import { enteredQuantities, requireValue, type SlotInputs } from "$lib/core/libr
 import { dynamicChartOf, type DynamicDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
-import { pmvIso } from "$lib/models/pmvIso";
+import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { BandTrace, ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 
 const q = quantities;
 
-const declaration = dynamicChartOf(pmvIso);
+const declaration = dynamicChartOf(pmvPpdIso);
 if (!declaration) {
-  throw new Error("pmvIso no longer declares a dynamic chart");
+  throw new Error("pmvPpdIso no longer declares a dynamic chart");
 }
 
 const slot: SlotInputs = {
@@ -28,7 +28,7 @@ const slot: SlotInputs = {
   temperature: { mode: temperatureMode.separate },
 };
 
-const request: ChartRequest = { model: pmvIso, slot, slotLabel: "Input 1", unitSystem: unitSystem.si };
+const request: ChartRequest = { model: pmvPpdIso, slot, slotLabel: "Input 1", unitSystem: unitSystem.si };
 
 /** `at(-1)`, which this project's ES2020 target does not have. */
 function last<T>(row: readonly T[]): T {
@@ -150,7 +150,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
 
   /** The surface of a model whose output is `value` at every point of the field. */
   function flat(value: number, chart: DynamicDeclaration = unevenChart): BandTrace {
-    const model = { ...pmvIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
+    const model = { ...pmvPpdIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
     return bands(dynamicSpec({ ...request, model }, chart, chart.axes));
   }
 
@@ -193,7 +193,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     // They are never shown, only compared with each other, so nothing converts
     // them — the one exception to the chart spec's display-unit rule.
     const celsius: DynamicDeclaration = { ...unevenChart, output: q.operative_tmp };
-    const model = { ...pmvIso, run: () => ({ operative_tmp: 30 }) } satisfies RegisteredModel;
+    const model = { ...pmvPpdIso, run: () => ({ operative_tmp: 30 }) } satisfies RegisteredModel;
     const surface = bands(dynamicSpec({ ...request, model, unitSystem: unitSystem.ip }, celsius, celsius.axes));
     // 30 °C reads as 86 °F on an axis; here it stays 30.
     expect(surface.z[0][0]).toBe(30);
@@ -255,15 +255,15 @@ describe("a declared zones source", () => {
 
 describe("dynamicAxisQuantities", () => {
   it("offers every entered quantity the chart declares a range for", () => {
-    const separate = dynamicAxisQuantities(pmvIso, temperatureMode.separate);
+    const separate = dynamicAxisQuantities(pmvPpdIso, temperatureMode.separate);
     // Every entered quantity, humidity included: no standard limits `rh`, and
     // an axis range is a viewport rather than an applicability limit.
-    expect(separate).toEqual(enteredQuantities(pmvIso, temperatureMode.separate));
+    expect(separate).toEqual(enteredQuantities(pmvPpdIso, temperatureMode.separate));
     expect(separate).toContain(q.rh);
   });
 
   it("follows the temperature entry mode", () => {
-    const operative = dynamicAxisQuantities(pmvIso, temperatureMode.operative);
+    const operative = dynamicAxisQuantities(pmvPpdIso, temperatureMode.operative);
     expect(operative).toContain(q.operative_tmp);
     expect(operative).not.toContain(q.tdb);
   });
@@ -294,13 +294,13 @@ describe("axes across a temperature entry mode switch", () => {
   it("moves the second axis off the first when the mode maps both onto operative_tmp", () => {
     // tdb × tr is a chart under separate entry; under operative entry both
     // become operative_tmp, and a quantity against itself is not a chart.
-    const axes = resolvedAxes(pmvIso, { x: q.tdb, y: q.tr }, temperatureMode.operative);
+    const axes = resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.tr }, temperatureMode.operative);
     expect(axes.x).toBe(q.operative_tmp);
     expect(axes.y).not.toBe(q.operative_tmp);
-    expect(dynamicAxisQuantities(pmvIso, temperatureMode.operative)).toContain(axes.y);
+    expect(dynamicAxisQuantities(pmvPpdIso, temperatureMode.operative)).toContain(axes.y);
   });
 
   it("leaves axes that do not collide alone", () => {
-    expect(resolvedAxes(pmvIso, { x: q.tdb, y: q.v }, temperatureMode.separate)).toEqual({ x: q.tdb, y: q.v });
+    expect(resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.v }, temperatureMode.separate)).toEqual({ x: q.tdb, y: q.v });
   });
 });

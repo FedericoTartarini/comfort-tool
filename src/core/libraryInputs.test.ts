@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { v_relative } from "jsthermalcomfort";
 import { Standard } from "jsthermalcomfort";
-import { pmvIso } from "$lib/models/pmvIso";
+import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
 import { quantities, type Quantity } from "./quantities";
@@ -38,46 +38,46 @@ function operativeSlot(operative: number): SlotInputs {
 
 describe("toLibraryInputs", () => {
   it("produces exactly the keys the PMV wrapper takes, in SI", () => {
-    const init = toLibraryInputs(separateSlot(), pmvIso);
+    const init = toLibraryInputs(separateSlot(), pmvPpdIso);
     expect(Object.keys(init).sort()).toEqual(["clo", "met", "rh", "tdb", "tr", "vr"]);
     expect(init.rh).toBe(50);
   });
 
   it("derives vr with the library's v_relative when the model asks for it", () => {
-    const init = toLibraryInputs(separateSlot({ v: 0.1, met: 1.1 }), pmvIso);
+    const init = toLibraryInputs(separateSlot({ v: 0.1, met: 1.1 }), pmvPpdIso);
     expect(init.vr).toBe(v_relative(0.1, 1.1));
     expect(init.vr).toBeGreaterThan(0.1);
   });
 
   it("passes v through untouched when the model does not", () => {
-    const withoutRelative = { ...pmvIso, relativeAirSpeed: false };
+    const withoutRelative = { ...pmvPpdIso, relativeAirSpeed: false };
     const init = toLibraryInputs(separateSlot(), withoutRelative);
     expect(init.v).toBe(0.1);
     expect(init).not.toHaveProperty("vr");
   });
 
   it("expands operative temperature to tdb = tr", () => {
-    const init = toLibraryInputs(operativeSlot(24), pmvIso);
+    const init = toLibraryInputs(operativeSlot(24), pmvPpdIso);
     expect(init.tdb).toBe(24);
     expect(init.tr).toBe(24);
     expect(init).not.toHaveProperty("operative_tmp");
   });
 
   it("feeds the declared model a finite result end to end", () => {
-    const result = pmvIso.run(toLibraryInputs(separateSlot(), pmvIso));
+    const result = pmvPpdIso.run(toLibraryInputs(separateSlot(), pmvPpdIso));
     expect(Number.isFinite(result.pmv)).toBe(true);
     expect(result.tsv).toBeDefined();
   });
 
   it("sends no rh to a model whose inputs do not name it", () => {
-    const withoutHumidity = { ...pmvIso, inputs: pmvIso.inputs.filter((entry) => entry.quantity !== q.rh) };
+    const withoutHumidity = { ...pmvPpdIso, inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.rh) };
     expect(toLibraryInputs(separateSlot(), withoutHumidity)).not.toHaveProperty("rh");
   });
 
   it("does not expand an operative entry for a model without separate temperatures", () => {
     const withoutTemperatures = {
-      ...pmvIso,
-      inputs: pmvIso.inputs.filter((entry) => entry.quantity !== q.tdb && entry.quantity !== q.tr),
+      ...pmvPpdIso,
+      inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tdb && entry.quantity !== q.tr),
     };
     const init = toLibraryInputs(operativeSlot(24), withoutTemperatures);
     expect(init).not.toHaveProperty("tdb");
@@ -94,27 +94,27 @@ describe("entered values", () => {
   });
 
   it("lists the panel rows of the current temperature mode", () => {
-    expect(enteredQuantities(pmvIso, temperatureMode.separate)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
-    expect(enteredQuantities(pmvIso, temperatureMode.operative)).toEqual([q.operative_tmp, q.v, q.rh, q.met, q.clo]);
+    expect(enteredQuantities(pmvPpdIso, temperatureMode.separate)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
+    expect(enteredQuantities(pmvPpdIso, temperatureMode.operative)).toEqual([q.operative_tmp, q.v, q.rh, q.met, q.clo]);
   });
 
   it("re-derives everything downstream of a swept value", () => {
     const swept = withEnteredValues(separateSlot(), new Map([[q.v, 0.6]]));
-    expect(toLibraryInputs(swept, pmvIso).vr).toBe(v_relative(0.6, 1.1));
+    expect(toLibraryInputs(swept, pmvPpdIso).vr).toBe(v_relative(0.6, 1.1));
     expect(separateSlot().values.get(q.v)).toBe(0.1);
   });
 
   it("sweeps the humidity entry as well, without touching the original", () => {
     const slot = separateSlot();
     const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
-    expect(toLibraryInputs(swept, pmvIso).rh).toBe(80);
+    expect(toLibraryInputs(swept, pmvPpdIso).rh).toBe(80);
     expect(slot.humidity.value).toBe(50);
   });
 
   it("derives rh from a dew-point entry at the slot's dry-bulb temperature", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(50, 25);
     const slot: SlotInputs = { ...separateSlot(), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
-    expect(toLibraryInputs(slot, pmvIso).rh).toBeCloseTo(50, 0);
+    expect(toLibraryInputs(slot, pmvPpdIso).rh).toBeCloseTo(50, 0);
     expect(enteredValue(slot, q.dew_point_tmp)).toBe(dewPoint);
     expect(enteredValue(slot, q.rh)).toBeCloseTo(50, 0);
   });
@@ -122,20 +122,20 @@ describe("entered values", () => {
   it("derives rh from the operative temperature under operative entry", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(50, 24);
     const slot: SlotInputs = { ...operativeSlot(24), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
-    expect(toLibraryInputs(slot, pmvIso).rh).toBeCloseTo(50, 0);
+    expect(toLibraryInputs(slot, pmvPpdIso).rh).toBeCloseTo(50, 0);
   });
 
   it("sweeps rh as rh whatever the entry mode", () => {
     const slot: SlotInputs = { ...separateSlot(), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
     expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
-    expect(toLibraryInputs(swept, pmvIso).rh).toBe(70);
+    expect(toLibraryInputs(swept, pmvPpdIso).rh).toBe(70);
     expect(slot.humidity.mode).toBe(humidityMode.dewPoint);
   });
 
   it("expands a swept operative temperature to both temperatures", () => {
     const swept = withEnteredValues(operativeSlot(24), new Map([[q.operative_tmp, 28]]));
-    const init = toLibraryInputs(swept, pmvIso);
+    const init = toLibraryInputs(swept, pmvPpdIso);
     expect(init.tdb).toBe(28);
     expect(init.tr).toBe(28);
   });
@@ -143,6 +143,6 @@ describe("entered values", () => {
 
 describe("standard", () => {
   it("pins ISO 7730:2005", () => {
-    expect(pmvIso.standard).toBe(Standard.iso_7730_2005);
+    expect(pmvPpdIso.standard).toBe(Standard.iso_7730_2005);
   });
 });

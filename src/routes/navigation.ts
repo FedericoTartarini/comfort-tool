@@ -2,7 +2,7 @@ import { createRouter, type Routes } from "sv-router";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { pathSegmentFor, standardFromPath } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
-import { modelBySegment, modelsOf } from "./modelsOf";
+import { modelBySegment, modelsOf, toRouteSegment } from "./modelsOf";
 
 export { modelsOf };
 
@@ -45,7 +45,7 @@ export function requireStandard(model: RegisteredModel): NonNullable<RegisteredM
 }
 
 function routeParams(model: RegisteredModel): { standard: string; model: string } {
-  return { standard: pathSegmentFor(requireStandard(model)), model: model.pathSegment };
+  return { standard: pathSegmentFor(requireStandard(model)), model: toRouteSegment(model.name) };
 }
 
 export function pathTo(model: RegisteredModel): string {

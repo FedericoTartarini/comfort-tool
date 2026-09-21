@@ -8,7 +8,7 @@ const q = quantities;
 // 7730-2005, not the library's 2025 default: rewrite plan, Phase 3.6 item 3.
 const ISO_EDITION = Standard.iso_7730_2005;
 
-export const pmvIso = {
+export const pmvPpdIso = {
   info: PMV_PPD_ISO_INFO,
   standard: ISO_EDITION,
   run: (init: Record<string, number>) =>
@@ -18,7 +18,7 @@ export const pmvIso = {
       // The psychrometric zone is root-found on this `pmv`; the display rounds.
       round_output: false,
     }),
-  pathSegment: "pmv-iso",
+  name: "pmv_ppd_iso",
   inputs: [
     { quantity: q.tdb, value: 25 },
     { quantity: q.tr, value: 25 },

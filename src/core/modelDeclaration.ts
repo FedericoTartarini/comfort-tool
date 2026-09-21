@@ -127,8 +127,15 @@ export interface RegisteredModel {
    * object. Called only by state/compute (Phase 3: only in the worker).
    */
   readonly run: (init: Record<string, number>) => ModelResult;
-  /** Route segment, e.g. `"pmv-iso"`. App-owned. */
-  readonly pathSegment: string;
+  /**
+   * The library's function name for this model, as the library spells it
+   * (`"pmv_ppd_iso"`). The model's one name (ADR-0002 decision 30): the share
+   * link will carry it as written, the route spells it with hyphens, and the
+   * declaration's own file and constant spell it in camelCase. Proved against
+   * the package's exports by a registry-wide test, so a typo or an upstream
+   * rename fails a test rather than drifting.
+   */
+  readonly name: string;
   /** Panel order and SI default values. */
   readonly inputs: readonly { readonly quantity: Quantity; readonly value: number }[];
   /** `true`: the library takes `vr`, derived as `v_relative(v, met)` from the entered `v`. */

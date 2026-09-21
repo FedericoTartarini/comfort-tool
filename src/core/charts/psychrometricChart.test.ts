@@ -5,7 +5,7 @@ import type { SlotInputs } from "$lib/core/libraryInputs";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
-import { pmvIso } from "$lib/models/pmvIso";
+import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -37,7 +37,7 @@ function request(
   mode: typeof temperatureMode.separate | typeof temperatureMode.operative,
   system: UnitSystem = unitSystem.si,
 ): ChartRequest {
-  return { model: pmvIso, slot: slot(mode), slotLabel: "Input 1", unitSystem: system };
+  return { model: pmvPpdIso, slot: slot(mode), slotLabel: "Input 1", unitSystem: system };
 }
 
 /** The zone outline: the one filled path in the spec. */
@@ -135,8 +135,8 @@ describe("psychrometricSpec", () => {
   it("refuses a model whose result carries no PMV", () => {
     // The zone is traced on `run`'s own PMV, so a model without one cannot
     // declare this chart.
-    const outputs = Object.fromEntries(Object.entries(pmvIso.info.outputs).filter(([key]) => key !== q.pmv.key));
-    const withoutPmv: RegisteredModel = { ...pmvIso, info: { ...pmvIso.info, outputs } };
+    const outputs = Object.fromEntries(Object.entries(pmvPpdIso.info.outputs).filter(([key]) => key !== q.pmv.key));
+    const withoutPmv: RegisteredModel = { ...pmvPpdIso, info: { ...pmvPpdIso.info, outputs } };
     expect(() => psychrometricSpec({ ...request(temperatureMode.separate), model: withoutPmv })).toThrow(q.pmv.label);
   });
 
