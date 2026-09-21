@@ -178,46 +178,60 @@ function bandsOf(bins: ClassifierBins): readonly BandFill[] {
 }
 
 /**
- * `value` on the band-position scale `BandTrace` defines: Edge *i* maps to the
- * integer *i*, values between two Edges interpolate linearly between their
- * integers, a value below the first Edge extrapolates along the first interval
- * and so stays under 0 until it reaches the scale's floor, and `null` is
+ * `value` on the band-position scale `BandTrace` defines: the Edge between two
+ * bands maps to its own integer, values between two such Edges interpolate
+ * linearly between their integers, and the two open ends of the scale — below
+ * the first band's Edge and above the last one's — extrapolate through the
+ * interval beside them and hold at the scale's floor and top. `null` is
  * "no band".
  *
  * Why a remap at all: a contour draws levels at one fixed spacing, and a
  * classifier's Edges need not be evenly spaced — Heat Index's are not. Putting
- * every Edge on its own integer turns "the value crosses Edge *i*" into "the
- * surface crosses level *i*", so one evenly spaced set of levels draws them
- * all, and the crossing is placed by interpolation between grid lines instead
- * of being rounded to the nearest cell (ADR-0002 decision 27).
+ * every drawn Edge on its own integer turns "the value crosses Edge *i*" into
+ * "the surface crosses level *i*", so one evenly spaced set of levels draws
+ * them all, and the crossing is placed by interpolation between grid lines
+ * instead of being rounded to the nearest cell (ADR-0002 decision 27).
+ *
+ * Why the last Edge is not one of the knots: it is a cutoff rather than a
+ * boundary between two bands (ADR-0002 decision 31 — past it the kernel
+ * returns no category), and knotting it would stretch the top interval to 7.5
+ * on ISO and 946 on Heat Index. A slope that changes that much across the very
+ * level being drawn pulls the contour towards the grid line over most of a
+ * cell, which is the stepped boundary this whole change exists to remove; it
+ * was visible on Warm | Hot while its five neighbours were smooth. The top
+ * band therefore scales like the interval below it, as the first band already
+ * scales like the interval above it, and both ends clamp. Nothing is lost
+ * inside them: a band is one flat colour.
  */
 function bandPosition(value: number, bins: ClassifierBins): number | null {
   // Whether there is a band here at all is the library's answer rather than a
   // rule restated here: `classifyFromBins` returns no label for `NaN` and for
   // a value past the last Edge, under whichever inclusivity the classifier
-  // declares. Locating the interval below is a different question — the map is
-  // continuous at every Edge, so which side of one a value is read on cannot
+  // declares. Locating the segment below is a different question — the map is
+  // continuous at every knot, so which side of one a value is read on cannot
   // change its position.
   if (typeof classifyFromBins(value, bins) !== "string") {
     return null;
   }
-  const { edges } = bins;
-  const above = edges.findIndex((edge) => value < edge);
-  if (above === -1) {
-    // Only reachable on a right-inclusive classifier, for a value sitting
-    // exactly on the last Edge: the top band's own ceiling.
-    return edges.length - 1;
+  const { edges, labels } = bins;
+  // Knots are `edges[0] … edges[lastKnot]`, each at its own index.
+  const lastKnot = edges.length - 2;
+  if (lastKnot < 0) {
+    // A one-Edge classifier has a single band and no boundary to draw.
+    return BAND_SCALE_FLOOR;
   }
-  // The interval `value` is read in, `edges[interval - 1]` to `edges[interval]`.
-  // Below the first Edge there is no such interval, so the first is
-  // extrapolated through instead — which also leaves that Edge kink-free,
-  // since both of its sides then scale alike.
-  const interval = Math.max(above, 1);
-  const bottom = edges[interval - 1];
-  // A one-Edge classifier has no interval at all; any width puts a value under
-  // its single Edge below 0, which is where the first band is.
-  const span = edges.length > 1 ? edges[interval] - bottom : 1;
-  return Math.max(BAND_SCALE_FLOOR, interval - 1 + (value - bottom) / span);
+  const above = edges.findIndex((edge) => value < edge);
+  const knot = Math.min(above === -1 ? lastKnot : Math.max(above - 1, 0), lastKnot);
+  // The segment above `knot`, except at the top knot, which extrapolates
+  // through the segment below it instead.
+  const span = knot < lastKnot ? edges[knot + 1] - edges[knot] : widthBelowTopKnot(edges, lastKnot);
+  const position = knot + (value - edges[knot]) / span;
+  return Math.min(labels.length - 1, Math.max(BAND_SCALE_FLOOR, position));
+}
+
+/** The interval the top band borrows its scale from; its own when there is only one. */
+function widthBelowTopKnot(edges: readonly number[], lastKnot: number): number {
+  return lastKnot > 0 ? edges[lastKnot] - edges[lastKnot - 1] : edges[1] - edges[0];
 }
 
 /** The band the library itself puts `value` in, so the inclusivity is its own. */

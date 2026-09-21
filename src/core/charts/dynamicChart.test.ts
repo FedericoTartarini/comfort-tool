@@ -165,7 +165,16 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     // both half a band: contours one step apart draw both boundaries.
     expect(positionAt(5)).toBeCloseTo(0.5, 12);
     expect(positionAt(25)).toBeCloseTo(1.5, 12);
-    expect(positionAt(70)).toBeCloseTo(2.5, 12);
+  });
+
+  it("scales the top band by the interval below it, not by the cutoff above it", () => {
+    // The last Edge is where the classifier stops answering, not a boundary
+    // between two bands. Knotting it would stretch the top band over 40..100
+    // and bend the 40 Edge, which is a drawn one; borrowing the 30-wide
+    // interval below leaves that Edge straight and holds the rest at the top.
+    expect(positionAt(55)).toBeCloseTo(2.5, 12);
+    expect(positionAt(70)).toBe(3);
+    expect(positionAt(99)).toBe(3);
   });
 
   it("puts a value below the first Edge in the first band, and holds it there", () => {

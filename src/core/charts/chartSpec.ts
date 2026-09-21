@@ -62,9 +62,10 @@ export interface PointTrace {
  * The bottom of the band-position scale, and so the bottom of the first band,
  * which is open below in every library classifier. A value far under the first
  * Edge is held here rather than running off the scale the colours are mapped
- * over. Flattening that region moves no boundary: everything within a band's
- * width of the first Edge is still placed by interpolation, and the whole
- * region below is one colour either way.
+ * over; the top of the scale, `bands.length - 1`, holds the last band the same
+ * way. Flattening those two regions moves no boundary: everything within a
+ * band's width of a drawn Edge is still placed by interpolation, and a band is
+ * one flat colour throughout.
  */
 export const BAND_SCALE_FLOOR = -1;
 
