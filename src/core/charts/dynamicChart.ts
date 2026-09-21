@@ -19,27 +19,23 @@ import {
 } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
-import { axisTitle, BAND_SCALE_FLOOR, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
+import { axisTitle, type BandFill, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
 
 /** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
 const GRID = 51;
-
-interface BandFill {
-  readonly label: string;
-  readonly color: string;
-}
 
 /**
  * The dynamic chart: the declared numeric output scanned over a `GRID × GRID`
  * field of two entered quantities, banded by the declared classifier, with the
  * slot's own state marked.
  *
- * Each cell keeps the model's own number for `chart.output`; the surface is
- * handed on in band-position space so that the contour falls where the value
- * crosses an Edge rather than half a cell away (ADR-0002 decision 27). The
- * bands and their order are `chart.bands`' own, the colours are the app's one
- * palette by position, and the hover readout is the library's
- * `classifyFromBins` — no Edge and no inclusivity rule is written here.
+ * Each cell keeps the model's own number for `chart.output`, and each band
+ * carries the interval of that number it fills, so the drawn boundary falls
+ * where the value crosses an Edge rather than half a cell away (ADR-0002
+ * decision 27). The bands, their order and their Edges are `chart.bands`' own,
+ * the colours are the app's one palette by position, and the hover readout is
+ * the library's `classifyFromBins` — no Edge and no inclusivity rule is
+ * written here.
  *
  * A model that declares `zones` skips the scan altogether and draws the exact
  * polygons the library traces for it (ADR §4.4).
@@ -100,7 +96,7 @@ export function dynamicSpec(
       hover: "field",
       x: xValues.map((value) => xUnit.fromSi(value)),
       y: yValues.map((value) => yUnit.fromSi(value)),
-      z: scanned.map((row) => row.map((value) => bandPosition(value, bins))),
+      z: scanned.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))),
       hoverText: scanned.map((row) => row.map((value) => bandLabel(value, bins))),
       bands: bandFills,
     });
@@ -173,65 +169,20 @@ function outputValue(model: RegisteredModel, slot: SlotInputs, output: Quantity)
   return typeof value === "number" ? value : Number.NaN;
 }
 
-function bandsOf(bins: ClassifierBins): readonly BandFill[] {
-  return bins.labels.map((label, index) => ({ label, color: bandFill(index) }));
-}
-
 /**
- * `value` on the band-position scale `BandTrace` defines: the Edge between two
- * bands maps to its own integer, values between two such Edges interpolate
- * linearly between their integers, and the two open ends of the scale — below
- * the first band's Edge and above the last one's — extrapolate through the
- * interval beside them and hold at the scale's floor and top. `null` is
- * "no band".
- *
- * Why a remap at all: a contour draws levels at one fixed spacing, and a
- * classifier's Edges need not be evenly spaced — Heat Index's are not. Putting
- * every drawn Edge on its own integer turns "the value crosses Edge *i*" into
- * "the surface crosses level *i*", so one evenly spaced set of levels draws
- * them all, and the crossing is placed by interpolation between grid lines
- * instead of being rounded to the nearest cell (ADR-0002 decision 27).
- *
- * Why the last Edge is not one of the knots: it is a cutoff rather than a
- * boundary between two bands (ADR-0002 decision 31 — past it the kernel
- * returns no category), and knotting it would stretch the top interval to 7.5
- * on ISO and 946 on Heat Index. A slope that changes that much across the very
- * level being drawn pulls the contour towards the grid line over most of a
- * cell, which is the stepped boundary this whole change exists to remove; it
- * was visible on Warm | Hot while its five neighbours were smooth. The top
- * band therefore scales like the interval below it, as the first band already
- * scales like the interval above it, and both ends clamp. Nothing is lost
- * inside them: a band is one flat colour.
+ * The bands the chart fills, in the classifier's own order: one per label,
+ * painted by position, over the interval of the scanned number between its own
+ * Edge and the one below. The first band is open below, as every library
+ * classifier is; the last Edge is where the classifier stops answering, and it
+ * bounds the last band's fill.
  */
-function bandPosition(value: number, bins: ClassifierBins): number | null {
-  // Whether there is a band here at all is the library's answer rather than a
-  // rule restated here: `classifyFromBins` returns no label for `NaN` and for
-  // a value past the last Edge, under whichever inclusivity the classifier
-  // declares. Locating the segment below is a different question — the map is
-  // continuous at every knot, so which side of one a value is read on cannot
-  // change its position.
-  if (typeof classifyFromBins(value, bins) !== "string") {
-    return null;
-  }
-  const { edges, labels } = bins;
-  // Knots are `edges[0] … edges[lastKnot]`, each at its own index.
-  const lastKnot = edges.length - 2;
-  if (lastKnot < 0) {
-    // A one-Edge classifier has a single band and no boundary to draw.
-    return BAND_SCALE_FLOOR;
-  }
-  const above = edges.findIndex((edge) => value < edge);
-  const knot = Math.min(above === -1 ? lastKnot : Math.max(above - 1, 0), lastKnot);
-  // The segment above `knot`, except at the top knot, which extrapolates
-  // through the segment below it instead.
-  const span = knot < lastKnot ? edges[knot + 1] - edges[knot] : widthBelowTopKnot(edges, lastKnot);
-  const position = knot + (value - edges[knot]) / span;
-  return Math.min(labels.length - 1, Math.max(BAND_SCALE_FLOOR, position));
-}
-
-/** The interval the top band borrows its scale from; its own when there is only one. */
-function widthBelowTopKnot(edges: readonly number[], lastKnot: number): number {
-  return lastKnot > 0 ? edges[lastKnot] - edges[lastKnot - 1] : edges[1] - edges[0];
+function bandsOf(bins: ClassifierBins): readonly BandFill[] {
+  return bins.labels.map((label, index) => ({
+    label,
+    color: bandFill(index),
+    upper: bins.edges[index],
+    lower: index === 0 ? undefined : bins.edges[index - 1],
+  }));
 }
 
 /** The band the library itself puts `value` in, so the inclusivity is its own. */

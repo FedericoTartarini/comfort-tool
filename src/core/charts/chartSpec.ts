@@ -7,6 +7,11 @@ import type { UnitSystem } from "$lib/core/unitSystem";
  * The restricted chart description `ui/charts/` consumes (ADR §4.4). Every
  * number is already in display units and every colour is already resolved, so
  * the chart component converts nothing and imports no model.
+ *
+ * The one exception is {@link BandTrace}'s surface and the Edges beside it,
+ * which stay in the scanned output's own SI unit: they are never displayed,
+ * only compared with each other, so converting them would change nothing but
+ * the arithmetic.
  */
 
 /**
@@ -59,25 +64,30 @@ export interface PointTrace {
 }
 
 /**
- * The bottom of the band-position scale, and so the bottom of the first band,
- * which is open below in every library classifier. A value far under the first
- * Edge is held here rather than running off the scale the colours are mapped
- * over; the top of the scale, `bands.length - 1`, holds the last band the same
- * way. Flattening those two regions moves no boundary: everything within a
- * band's width of a drawn Edge is still placed by interpolation, and a band is
- * one flat colour throughout.
+ * One band of a {@link BandTrace}: the paint, and the interval of the surface
+ * it covers. `upper` is the band's own Edge; `lower` is the Edge below it,
+ * absent on the first band, which is open below in every library classifier.
+ * Both are in the surface's unit (see the note at the top of this file).
  */
-export const BAND_SCALE_FLOOR = -1;
+export interface BandFill {
+  readonly label: string;
+  readonly color: string;
+  readonly upper: number;
+  readonly lower?: number;
+}
 
 /**
- * A banded surface, in band-position space: `z[yIndex][xIndex]` is a position
- * on the band scale rather than an index into `bands`, so the Edge between
- * band *i* and band *i + 1* sits at the integer *i* and band *k* fills the
- * interval from *k − 1* to *k*. The scale therefore runs from
- * {@link BAND_SCALE_FLOOR} to `bands.length - 1`. Evenly spaced contour levels
- * draw unevenly spaced Edges, and a boundary falls where the model's value
- * really crosses one instead of at the nearest grid line. `null` is "no band"
- * — the model classified nothing there.
+ * A scalar field cut into bands: `z[yIndex][xIndex]` is the model's own number
+ * at that cell, and each entry of `bands` says which interval of it that band
+ * fills. Handing the number over rather than a band index is what lets a
+ * boundary fall where the value really crosses its Edge instead of at the
+ * nearest grid line, however unevenly the Edges are spaced (ADR-0002 decision
+ * 27).
+ *
+ * `null` is "the model gave no number here" and stays unpainted. A number past
+ * the last band's `upper` is kept and simply falls outside every band's
+ * interval, so that last Edge is drawn by interpolation like any other
+ * boundary.
  *
  * `hoverText[yIndex][xIndex]` is the band name the pointer reads at that cell,
  * empty where there is no band. It is carried rather than derived from `z`:
@@ -91,7 +101,7 @@ export interface BandTrace {
   readonly y: readonly number[];
   readonly z: readonly (readonly (number | null)[])[];
   readonly hoverText: readonly (readonly string[])[];
-  readonly bands: readonly { readonly label: string; readonly color: string }[];
+  readonly bands: readonly BandFill[];
 }
 
 /** Drawn in order, so the first trace is at the bottom. */

@@ -6,7 +6,7 @@ import { dynamicChartOf, type DynamicDeclaration, type RegisteredModel } from "$
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvIso } from "$lib/models/pmvIso";
-import { BAND_SCALE_FLOOR, type BandTrace, type ChartRequest, type PathTrace, type PointTrace } from "./chartSpec";
+import type { BandTrace, ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 
 const q = quantities;
@@ -75,20 +75,25 @@ describe("dynamicSpec", () => {
     expect(coldest).toBeLessThan(Number(warmest));
   });
 
-  it("keeps every cell on the band-position scale the colours are mapped over", () => {
+  it("gives every band the interval of the number it fills, the first open below", () => {
     const surface = bands(dynamicSpec(request, declaration, declaration.axes));
-    // The whole surface has to stay inside the scale or the chart paints off
-    // the end of its own colours.
-    for (const row of surface.z) {
-      for (const position of row) {
-        if (position === null) continue;
-        expect(position).toBeGreaterThanOrEqual(BAND_SCALE_FLOOR);
-        expect(position).toBeLessThanOrEqual(surface.bands.length - 1);
+    const { edges } = declaration.bands;
+    expect(surface.bands.map((band) => [band.lower, band.upper])).toEqual(
+      edges.map((edge, index) => [index === 0 ? undefined : edges[index - 1], edge]),
+    );
+  });
+
+  it("carries the model's own number in every cell, which is what the hover label bins", () => {
+    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
+    for (const [row, values] of surface.z.entries()) {
+      for (const [column, value] of values.entries()) {
+        const category = value === null ? "" : classifyFromBins(value, declaration.bands);
+        expect(surface.hoverText[row][column]).toBe(typeof category === "string" ? category : "");
       }
     }
-    // Cold and fast-moving air is several bands below the first Edge, so this
-    // chart really does reach the floor rather than passing the check vacuously.
-    expect(last(surface.z)[0]).toBe(BAND_SCALE_FLOOR);
+    // A number rather than a band index: cold and fast-moving air sits well
+    // below the first Edge, which no index ever does.
+    expect(Number(last(surface.z)[0])).toBeLessThan(declaration.bands.edges[0]);
   });
 
   it("names every cell with a band of the declared classifier, or with nothing", () => {
@@ -132,10 +137,9 @@ describe("dynamicSpec", () => {
 
 describe("a classifier whose Edges are unevenly spaced", () => {
   // Heat Index's Edges are 27, 32, 39, 51, 1000; Phase 4 registers it. Until
-  // then this fixture is what proves an evenly spaced set of contour levels
-  // still draws unevenly spaced Edges, and it pins the remap at values a real
-  // model reaches only by accident: exactly on an Edge, past the last one, and
-  // no number at all.
+  // then this fixture is what proves the Edges reach the chart unevenly spaced
+  // and untouched, and it pins the surface at values a real model reaches only
+  // by accident: exactly on an Edge, past the last one, and no number at all.
   const uneven: ClassifierBins = {
     edges: [0, 10, 40, 100],
     labels: ["Low", "Mild", "High", "Extreme"],
@@ -150,46 +154,50 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     return bands(dynamicSpec({ ...request, model }, chart, chart.axes));
   }
 
-  function positionAt(value: number): number | null {
+  function numberAt(value: number): number | null {
     return flat(value).z[0][0];
   }
 
-  it("puts a value sitting on an Edge at that Edge's own integer", () => {
-    expect(positionAt(0)).toBe(0);
-    expect(positionAt(10)).toBe(1);
-    expect(positionAt(40)).toBe(2);
+  it("carries the intervals through unevenly spaced and untouched", () => {
+    expect(flat(5).bands.map((band) => [band.lower, band.upper])).toEqual([
+      [undefined, 0],
+      [0, 10],
+      [10, 40],
+      [40, 100],
+    ]);
   });
 
-  it("interpolates between two Edges however wide the interval is", () => {
-    // Halfway across a 10-wide interval and halfway across a 30-wide one are
-    // both half a band: contours one step apart draw both boundaries.
-    expect(positionAt(5)).toBeCloseTo(0.5, 12);
-    expect(positionAt(25)).toBeCloseTo(1.5, 12);
+  it("hands the model's own number on, wherever it falls among the Edges", () => {
+    expect(numberAt(-500)).toBe(-500);
+    expect(numberAt(0)).toBe(0);
+    expect(numberAt(5)).toBe(5);
+    expect(numberAt(25)).toBe(25);
+    expect(numberAt(99)).toBe(99);
   });
 
-  it("scales the top band by the interval below it, not by the cutoff above it", () => {
-    // The last Edge is where the classifier stops answering, not a boundary
-    // between two bands. Knotting it would stretch the top band over 40..100
-    // and bend the 40 Edge, which is a drawn one; borrowing the 30-wide
-    // interval below leaves that Edge straight and holds the rest at the top.
-    expect(positionAt(55)).toBeCloseTo(2.5, 12);
-    expect(positionAt(70)).toBe(3);
-    expect(positionAt(99)).toBe(3);
+  it("keeps the number past the last Edge, where the fill ends and no band is named", () => {
+    // The last Edge bounds the paint, not the surface: a kept number lets the
+    // boundary there be interpolated like every other one, and the pointer
+    // still reads no band anywhere beyond it.
+    expect(numberAt(100)).toBe(100);
+    expect(flat(100).hoverText[0][0]).toBe("");
+    expect(numberAt(250)).toBe(250);
+    expect(flat(250).hoverText[0][0]).toBe("");
   });
 
-  it("puts a value below the first Edge in the first band, and holds it there", () => {
-    // The first band is drawn from the scale's floor up to 0, so "below the
-    // first Edge" means inside that interval and not merely under 0.
-    const position = positionAt(-5);
-    expect(position).toBeGreaterThanOrEqual(BAND_SCALE_FLOOR);
-    expect(position).toBeLessThan(0);
-    expect(positionAt(-500)).toBe(BAND_SCALE_FLOOR);
+  it("empties only the cell where the model gives no number", () => {
+    expect(numberAt(Number.NaN)).toBeNull();
   });
 
-  it("leaves no band past the last Edge, nor where the model gives no number", () => {
-    expect(positionAt(100)).toBeNull();
-    expect(positionAt(250)).toBeNull();
-    expect(positionAt(Number.NaN)).toBeNull();
+  it("leaves the surface and the Edges in the output's own unit when the axes are displayed in IP", () => {
+    // They are never shown, only compared with each other, so nothing converts
+    // them — the one exception to the chart spec's display-unit rule.
+    const celsius: DynamicDeclaration = { ...unevenChart, output: q.operative_tmp };
+    const model = { ...pmvIso, run: () => ({ operative_tmp: 30 }) } satisfies RegisteredModel;
+    const surface = bands(dynamicSpec({ ...request, model, unitSystem: unitSystem.ip }, celsius, celsius.axes));
+    // 30 °C reads as 86 °F on an axis; here it stays 30.
+    expect(surface.z[0][0]).toBe(30);
+    expect(surface.bands.map((band) => band.upper)).toEqual([...uneven.edges]);
   });
 
   it("reads the hover label off the library's classify-from-bins", () => {
@@ -206,12 +214,12 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     expect(flat(10).hoverText[0][0]).toBe("High");
     const rightInclusive: DynamicDeclaration = { ...unevenChart, bands: { ...uneven, right: true } };
     expect(flat(10, rightInclusive).hoverText[0][0]).toBe("Mild");
-    // The last Edge is the one place inclusivity decides whether there is a
-    // band at all, so it is the one place the surface can disagree with the
-    // label. Left-inclusive closes the scale at 100, right-inclusive keeps it.
-    expect(positionAt(100)).toBeNull();
-    expect(flat(100, rightInclusive).z[0][0]).not.toBeNull();
+    // The hover label is the only place inclusivity still shows: the surface
+    // keeps the number on either convention, and the last Edge bounds the fill
+    // whichever side of it the classifier's last band claims.
     expect(flat(100, rightInclusive).hoverText[0][0]).toBe("Extreme");
+    expect(numberAt(100)).toBe(100);
+    expect(flat(100, rightInclusive).z[0][0]).toBe(100);
   });
 });
 

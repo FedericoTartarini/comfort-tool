@@ -1,12 +1,12 @@
 <script lang="ts">
   import type { PlotlyAnnotation, PlotlyConfig, PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
-  import {
-    BAND_SCALE_FLOOR,
-    type Annotation,
-    type BandTrace,
-    type ChartSpec,
-    type PathTrace,
-    type PointTrace,
+  import type {
+    Annotation,
+    BandFill,
+    BandTrace,
+    ChartSpec,
+    PathTrace,
+    PointTrace,
   } from "$lib/core/charts/chartSpec";
 
   interface Props {
@@ -73,12 +73,12 @@
   };
 
   function toData(source: ChartSpec): PlotlyData[] {
-    return source.traces.map((trace) => {
+    return source.traces.flatMap((trace) => {
       switch (trace.kind) {
         case "path":
-          return pathData(trace);
+          return [pathData(trace)];
         case "point":
-          return pointData(trace);
+          return [pointData(trace)];
         case "bands":
           return bandData(trace);
       }
@@ -119,35 +119,60 @@
     };
   }
 
-  function bandData(trace: BandTrace): PlotlyData {
-    // The extent of the band-position scale `BandTrace` defines, which is what
-    // puts the contour levels on the integers. The spec holds every position
-    // inside it, so no cell falls off the colourscale.
-    const scaleMin = BAND_SCALE_FLOOR;
-    const scaleMax = trace.bands.length - 1;
-    return {
-      // ADR §4.4 calls for a contour: a heatmap paints one rectangle per grid
-      // cell, so every band edge came out as a 100-step staircase.
+  /**
+   * One trace per band, each filling that band's own interval of the surface.
+   * ADR §4.4 calls for a contour rather than a heatmap, which paints one
+   * rectangle per grid cell and made every boundary a staircase; and one
+   * contour draws levels at a single fixed spacing, while a classifier's Edges
+   * need not be evenly spaced, so each band brings its own.
+   *
+   * Every band fills up to the *last* band's upper Edge and they are drawn in
+   * band order, so each boundary is one fill's edge laid over the next fill's
+   * interior. Two fills meeting edge to edge can show a seam; a fill over an
+   * interior cannot.
+   *
+   * Measured on plotly.js 4.0.0, not read off its documentation: a constraint
+   * paints the side that *fails* the operation. So `"]["` paints inside the
+   * interval and `">"` paints below the value. Nothing in the test suite
+   * renders a chart, which is why the package is pinned to exactly that
+   * version — an upgrade has to re-measure this before it ships.
+   */
+  function bandData(trace: BandTrace): PlotlyData[] {
+    const lastEdge = trace.bands[trace.bands.length - 1].upper;
+    return trace.bands.map((band, index) => ({
       type: "contour",
       x: trace.x,
       y: trace.y,
       z: trace.z,
-      text: trace.hoverText,
-      // One flat step per band, laid over that scale.
-      colorscale: trace.bands.flatMap((band, index) => [
-        [index / trace.bands.length, band.color],
-        [(index + 1) / trace.bands.length, band.color],
-      ]),
-      zmin: scaleMin,
-      zmax: scaleMax,
-      autocontour: false,
-      contours: { start: scaleMin, end: scaleMax, size: 1, coloring: "fill", showlines: false },
+      contours: { ...constrainFill(band, lastEdge), showlines: false },
+      fillcolor: band.color,
       line: { width: 0 },
       connectgaps: false,
       showscale: false,
+      // One label for the pointer, from the band whose fill reaches furthest:
+      // a contour answers off the surface, so the first trace reads for the
+      // whole field, past the last Edge and inside a hole included.
+      ...(index === 0 ? carryHover(trace) : { hoverinfo: "skip" }),
+      showlegend: false,
+    }));
+  }
+
+  /** To the band's own interval, or to everything below the last Edge for the band that is open below. */
+  function constrainFill(band: BandFill, lastEdge: number) {
+    return band.lower === undefined
+      ? { type: "constraint", operation: ">", value: lastEdge }
+      : { type: "constraint", operation: "][", value: [band.lower, lastEdge] };
+  }
+
+  function carryHover(trace: BandTrace) {
+    return {
+      text: trace.hoverText,
       hoverinfo: trace.hover === "off" ? "skip" : "text",
       hovertemplate: "%{x}, %{y}<br>%{text}<extra></extra>",
-      showlegend: false,
+      // Plotly tints a hover label with the trace's own colour where it has
+      // one, which a filled band does; the chart reads one grey label in every
+      // band, as it did when the surface was a single trace.
+      hoverlabel: { bgcolor: "#444444" },
     };
   }
 
