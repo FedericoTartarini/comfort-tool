@@ -20,6 +20,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-19 — position**: ticket 04 has landed: the `warnings` field is `e31a562` on `feat/v2-typescript-setup` (#199 option (a); checks and bounds match pythermalcomfort 4.6.0, including ASHRAE 55's airspeed rules without airspeed control; filled whatever `limit_inputs` is, which the app needs since it always passes `false`). `local/comfort-tool-integration` is retired (ADR-0002 d.22 revised): from now on every library change the app needs is committed directly to `feat/v2-typescript-setup`, which `../jsthermalcomfort` has checked out, and no PR is opened for it. The 2026-09-17 entry's "upstream PRs, opened by hand" no longer applies. Ticket 05 has landed (`faac928`, docs `01eb8d3`): `core/applicability.ts` maps the result's `warnings` and evaluates no row itself; the pre-call gate is unchanged. The library-boundary tickets are all closed, and Phase 4 still waits on nothing.
 
+> **2026-09-21 — position**: a grilling session on the Worker boundary and on what the threshold editor bins ended somewhere else (ADR-0002 decisions 27–31; spec and tickets in `.scratch/numeric-scan-and-model-name/`). The dynamic chart scans the **number** (`output: q.pmv`) and the declaration pairs it with its classifier by dot access (`bands: PMV_PPD_ISO_INFO.outputs.tsv.classifier`); `GRID` drops from 100 to **51**, measured: a grid of band indices puts every boundary half a cell off, a grid of numbers puts it within a pixel at a quarter of the calls. At 51×51 the ASHRAE scan is 88 ms, so **v1 has no Worker**: Comlink, the stamp and the "computing" indicator go, and `compute.svelte.ts` is redesigned as synchronous derivation. A model is named by the library's function name (`name: "pmv_ppd_iso"` replaces `pathSegment`; route segment `pmv-ppd-iso`, file `pmvPpdIso.ts`). Standard will draw the comfort zone only and Explore the editable bands, a Band list being the library's `ClassifierBins` plus colours; that split lands with Explore in Phase 5. **Phase 4 now has a fourth prerequisite**, because the first three items change the declaration's shape.
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -41,6 +43,7 @@ What is unmaintainable is `src/`, not `package.json`.
 | Visual design (2026-09-04) | It had no phase at all, and ADR §7.4 referred to a design mock-up no phase produced. Split in two: token and primitive groundwork in Phase 3.6, the design itself in a new Phase 5c after Compare / Explore settle the layout. The site shell moves from Phase 6 into 5c. Deferring is safe because ADR §2's utility-class ban keeps appearance out of business components |
 | Code quality (2026-09-04) | Two audit passes against `docs/code-quality-checklist.md` — full before the Phase 4 acceptance, narrow after it. Anything mechanically checkable becomes a lint rule with a probe. *Clean Code* / *Clean Architecture* are not acceptance criteria; the verified sources are Svelte Best practices, the TypeScript handbook's Do's and Don'ts, the Google TypeScript Style Guide, and DRY as Hunt & Thomas state it |
 | **Library interface (2026-09-13, with the lead)** | The app consumes the main repository's `ModelInfo` / `_INFO` / `ClassifierBins` / `Standard` from the package root; the fork is abandoned. Quantities become an app table keyed by `_INFO` keys; applicability is evaluated in the app until #199; axis ranges are declared, else applicability, else error; comfort-zone geometry moves into the app (since decision 24, `src/temporary-library/`); the four humidity inverses go upstream first; thin wrappers go; v1 = models with an `_INFO`, second-model acceptance on `heat_index_rothfusz`. All fourteen decisions in [ADR-0002](adr/0002-library-interface-model-info.md) |
+| Dynamic chart, Worker, model name (2026-09-21) | The dynamic chart scans the numeric output on a 51×51 grid and the declaration pairs it with its classifier (`output` + `bands`); no Worker in v1; a model is named by the library's function name; a Band list is `ClassifierBins` plus colours, Standard draws the comfort zone and Explore the bands. ADR-0002 decisions 27–31 |
 
 ### Library inventory (`typescript` @ d57c456, runtime exports verified one by one)
 
@@ -652,6 +655,8 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 ### Phase 3.7 · PMV (ASHRAE 55) + the Worker
 
 > **Blocked since 2026-09-13**: the main repository has no `PMV_PPD_ASHRAE_INFO` yet (ADR-0002 decision 13). This phase moves behind the ADR-0002 migration and Phase 4 as **Phase 4b**; the Worker and the `compute.svelte.ts` rewrite (items 2–3) still belong to it.
+>
+> **2026-09-21**: item 2 is withdrawn and item 3 moves forward (ADR-0002 decision 29). At `GRID = 51` the ASHRAE scan below is 88 ms, so v1 has no Worker, Comlink, stamp or "computing" indicator. The `compute.svelte.ts` redesign is no longer tied to going async: it is Phase 4 prerequisite 4, as synchronous derivation.
 
 1. `src/models/pmvAshrae.ts` + one registry line — **the first architecture acceptance**, and the thing that proves the
    `options` contract carries a real model.
@@ -683,16 +688,17 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
 1. The ADR-0002 migration — **done 2026-09-15** (`9c6df55`; the app is on the main repository's interface, the four scripts green).
 2. **The `ModelResult` contract — done 2026-09-15 (`c5f8ba6`).** The 2026-09-15 dry run (ticket 06) registered Heat Index with the straight declaration and one registry line: `test`, `lint` and `build` passed, `check` failed with three errors. `core/modelDeclaration.ts` types `run`'s return as `ModelResult = Readonly<Record<string, number | string>>`, and the library's `HeatIndexResult` is an `interface` with no index signature, so it is not assignable; `PmvPpdIso` only passes because it is a JSDoc typedef alias, which gets the implicit index signature. Separately, `src/models/index.ts` is an `as const` tuple, so `routes/navigation.ts`'s `standardModels()` reads `model.standard` off the element union and errors on a member without `standard`; the registry must be typed `readonly RegisteredModel[]`. Both are `core/` and registry changes and are made as their own commit *before* Phase 4, so the acceptance diff stays at two files. Spreading the result object in the declaration (`({ ...heat_index_rothfusz(...) })`) made all four scripts pass with two files touched — which proves every layer below the type boundary takes a second model unchanged — but it is a workaround and is rejected. Fixed by widening `ModelResult` to `object` with the single string-keyed read in `libraryInputs.resultValue`, and typing the registry `readonly RegisteredModel[]`; the dry run re-run touched only the two files.
 3. **Phase 3.6 items 5 and 6 — done 2026-09-17.** Decided 2026-09-15, spec and tickets in `.scratch/presets-and-model-select/` (item 3 moved to Phase 4b the same day); items 5 and 6 landed as `1f0fa93`, `984b30b` and `77dbc07`. The Heat Index two-file dry run was re-run against the result: all four scripts green, `git diff --stat` at exactly two files.
+4. **The numeric scan and the model name — added 2026-09-21** (ADR-0002 decisions 27–30; spec and tickets in `.scratch/numeric-scan-and-model-name/`). Both change the declaration's shape, which is cheapest while there is one model file: (01) the dynamic chart's `output` names the number and `bands` its classifier, the grid keeps the number, and a drift test pins `classifyFromBins(result[output], bands)` to the kernel's category; (02) `GRID = 51`; (03) `name: "pmv_ppd_iso"` replaces `pathSegment`, the route segment is generated from it, `pmvIso` becomes `pmvPpdIso`, and tests prove the name against the package's exports and its uniqueness; (04) `state/compute.svelte.ts` is redesigned as synchronous derivation and the unused `comlink` dependency goes. The page looks as it does today, with smoother band edges. The Heat Index dry run is re-run afterwards with the new shape.
 
 Why this model is a fair test: two inputs (`tdb`, `rh`) so it has the humidity group without the temperature group; an output with a
 `classifier` (`stress_category`, `HEAT_INDEX_STRESS_CATEGORY_BINS`) so the compliance column and the band palette run on bins; no
 standard, so it appears only in Explore; a `min`-only applicability on both inputs, so the axis-range fallback (declared, else
 applicability, else error) is exercised — both quantities must be declared. The dynamic chart is its only chart.
 
-Only two files may be touched: create `src/models/heatIndex.ts`, and add one line to `src/models/index.ts`.
+Only two files may be touched: create `src/models/heatIndexRothfusz.ts` (named after the library's `heat_index_rothfusz`, ADR-0002 decision 30; `heatIndex.ts` in the dry runs above), and add one line to `src/models/index.ts`.
 
 **Done criteria (the hardest one in the whole plan)**
-`git diff --stat` shows only `src/models/heatIndex.ts` and `src/models/index.ts`.
+`git diff --stat` shows only `src/models/heatIndexRothfusz.ts` and `src/models/index.ts`.
 **The moment a third file is touched, stop and fix the architecture** — fixing it in week four is an order of magnitude cheaper than in week ten.
 
 Then a narrow pass over [code-quality-checklist.md](code-quality-checklist.md) covering **only those two files**: names,
@@ -706,8 +712,10 @@ acceptance did not really pass.
 **Prerequisites**: `PMV_PPD_ASHRAE_INFO` (with the compliance interval) and `ADAPTIVE_ASHRAE_INFO` (with the `offsets` field of #184 §6)
 in the main repository. #203 item 3 schedules all-model metadata after #182; the app does not push on that (ADR-0002 decision 13).
 
-1. PMV (ASHRAE 55): the former Phase 3.7 in full — `src/models/pmvAshrae.ts` + one registry line, `options` (`airspeed_control`),
-   the Worker, the `compute.svelte.ts` rewrite, and the ASHRAE cross-field air-speed rule's display. The rule arrives as `vr`
+1. PMV (ASHRAE 55): the former Phase 3.7 — `src/models/pmvPpdAshrae.ts` + one registry line, `options` (`airspeed_control`),
+   and the ASHRAE cross-field air-speed rule's display. **Not the Worker, and not the `compute.svelte.ts` rewrite**
+   (2026-09-21, ADR-0002 decision 29): the first is withdrawn, the second is Phase 4 prerequisite 4. What this model adds
+   instead is a measurement: its 51×51 scan is timed in the browser, and decision 29 is reopened only past 300 ms. The rule arrives as `vr`
    rows on the result's `warnings` (ADR-0002 decision 23), up to three besides the 0–2 m/s one, all shown on the entered `v`;
    rows sharing a quantity read as one sentence over their `intersect`ed bound, a change in `core/applicability.ts` or
    `InputPanel.svelte`. The rule itself follows the library, not the deployed CBE (entered `v`, at `(tdb + tr) / 2`, against
@@ -734,9 +742,15 @@ in the main repository. #203 item 3 schedules all-model metadata after #182; the
 2. Cross-model switch dialog (ADR §4.5): parameters for the same quantity are kept, and the
    "Boundary Range Warning" only pops up when a value exceeds the new model's hard range (table Input / Current / Allowed range,
    buttons "Yes, switch and adjust" / "No, stay here"); no out-of-range, no dialog.
-3. Explore threshold editor: an ordered `Band` list, lower bound inclusive and upper exclusive, gaps uncoloured,
-   Add band / Reset / delete, saved per (model, output) and included in the link; colours are assigned by the app
-   from a fixed palette by band position, and are editable. **There is no "show zones" toggle** — the compliance zone and the bands are always drawn.
+3. Explore threshold editor (rewritten 2026-09-21, ADR-0002 decision 31): a Band list is the library's `ClassifierBins`
+   plus a colour per band — contiguous edges, the classifier's own `right` inclusivity, the library's edges kept exactly.
+   The editor moves, adds and removes Edges (removing one merges two bands; a band with no colour leaves a range
+   uncoloured), Reset returns to the classifier, and the list is saved per (model, chart) and included in the link;
+   colours are assigned from the fixed palette by band position, and are editable. Edited bands colour the chart and
+   the hover readout only; the result table always shows the kernel's category.
+   **The Standard / Explore split lands here**: Explore draws the bands, and Standard's dynamic chart switches to the
+   comfort zone only, filled as the psychrometric chart fills it and blank outside, reading the one comfort-limit
+   constant exported from `src/temporary-library/` beside the zone solver. **There is no "show zones" toggle.**
 4. `src/core/shareLink.ts`: `?share=v1.<Base64URL(JSON)>`, schema in ADR §4.8.
    **This is the only file in the whole project that reads and writes string ids** (`Quantity.key`, each closed set's `.id` / `xxxFromId()`).
    On a parse failure, fall back to defaults and notify; no blank screen.

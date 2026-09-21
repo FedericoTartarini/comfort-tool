@@ -37,8 +37,8 @@
 | UI | **shadcn-svelte + Bits UI + Tailwind 4**; utility classes are allowed **only** in `ui/primitives/` (CLI-generated, never hand-edited) and `ui/layout/` (`Stack / Grid / Inline`, gap becomes props); a utility class in any other directory is a lint error | Ready-made controls + consistent spacing (Mantine feel), the most stable AI output, and the code belongs to the project | Carbon Components Svelte (IBM visuals, 0.x); Bits UI + hand-written CSS |
 | State | Runes classes in `.svelte.ts`, **no state library**; the address bar reflects only the path, the share payload is generated only on Export Link | Simple and readable; the prototype's approach | Live address-bar sync |
 | Charts | **plotly.js 4.0** (`plotly.js-cartesian-dist-min`, dynamically imported on demand; native TS types); our own `PlotlyChart.svelte` using `{@attach}`; chart components receive only a "chart spec" and know nothing about models; a banded field is a `contour` trace, never a `heatmap` — a heatmap draws the grid as discrete cells and the band edges come out stepped | Zoom and similar interactions; 4.0 exports types natively | 3.x; `svelte-plotly.js` (no Svelte 5 version) |
-| Computation | A single Web Worker + **Comlink**; the main thread discards stale results by sequence number; library model functions are called only inside the Worker | Readability first | Hand-written postMessage protocol; Worker pool |
-| Precision | Standard compliance zone: **boundary root-finding** (RH every 5%, PMV residual 0.001, secant method falling back to bisection, saturation line every 0.5 °C); Explore field chart: **100×100 grid**, the same for all models | Same origin as the old tool and finer; keep the old chart while PHS takes about 2.4 s | Grid everywhere; adaptive refinement |
+| Computation | A single Web Worker + **Comlink**; the main thread discards stale results by sequence number; library model functions are called only inside the Worker. **Superseded 2026-09-21 by [ADR-0002](0002-library-interface-model-info.md) decision 29: no Worker in v1, compute is synchronous** | Readability first | Hand-written postMessage protocol; Worker pool |
+| Precision | Standard compliance zone: **boundary root-finding** (RH every 5%, PMV residual 0.001, secant method falling back to bisection, saturation line every 0.5 °C); Explore field chart: **100×100 grid**, the same for all models. **Amended 2026-09-21 by ADR-0002 decisions 27 and 28: a 51×51 grid of the numeric output, contoured at the band edges** | Same origin as the old tool and finer; keep the old chart while PHS takes about 2.4 s | Grid everywhere; adaptive refinement |
 | Forms | No form library, no Zod; `bind:value` + the range validation the library provides | The library already provides hard ranges | — |
 | Validation | Outside the hard range: mark red, do not compute, keep the previous valid value | The library provides only this one set of ranges | Two-level ranges |
 | Links | **`?share=v1.<Base64URL(JSON)>`**; Time-series is `?share=v1z.<Base64URL(deflate)>` (`fflate`); version prefix + `migrate()`; on parse failure fall back to defaults and notify | Not compressing keeps it decodable by the ES5 summary page | `?s=` (abbreviation violates the naming rules); `#share=`; compatibility with old Berkeley links (not needed) |
@@ -255,6 +255,8 @@ Result table (`table`):
 ### 4.4 Chart types (closed set, v1)
 
 > **Axis rules superseded by [ADR-0002](0002-library-interface-model-info.md) decision 5** (declared, else applicability, else error); the zone geometry it calls is in the app per decision 9. Hover and legend rules unchanged.
+>
+> **The dynamic chart's surface is amended by ADR-0002 decisions 27, 28 and 31** (2026-09-21): a 51×51 grid of the numeric output; Standard draws the comfort zone, Explore the bands.
 
 
 | Type | Definition |
@@ -303,6 +305,8 @@ Legend rules:
 
 ### 4.5 Session state
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 29 and 31** (2026-09-21): `ChartState.output` and `bandsByOutput` go (one `output` per dynamic chart, bands saved per model and chart); the "Explore thresholds" rule below is replaced (a Band list is the library's `ClassifierBins` plus colours: contiguous edges, the classifier's own inclusivity, no gaps); `Outputs` carries no `stamp`, and `toLibraryInputs` feeds a synchronous call, not a Worker.
+
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
   workspace: Workspace; standard?: StandardRef; model: RegisteredModel;   // StandardRef is a member of the library's reference.standards
@@ -344,6 +348,8 @@ Rules:
 
 ### 4.7 Computation pipeline
 
+> **Superseded in part by [ADR-0002](0002-library-interface-model-info.md) decisions 28 and 29** (2026-09-21): no Worker, no Comlink, no stamp and no "computing" indicator in v1; the pipeline below runs synchronously, and the grid is 51×51. The zone-boundary parameters and the 300 ms line (now the condition for reopening decision 29) stand.
+
 `Session change → toLibraryInputs → compute.worker (Comlink) → model.run / charts.psychrometricZone / grid scan → Outputs (with stamp, stale ones discarded) → ChartSpec → PlotlyChart`
 
 - Zone boundary: one line per 5% RH (21 lines), PMV residual `epsilon` 0.001, secant method falling back to bisection on failure, saturation line every 0.5 °C.
@@ -351,6 +357,8 @@ Rules:
 - Library benchmarks (prototype fork, V8): PMV in still air 1.7 µs per call; PMV with cooling effect 43 µs; UTCI 0.5 µs; PHS (480 min) 244 µs → 100×100 about 20 ms / 0.43 s / 5 ms / 2.4 s respectively.
 
 ### 4.8 Share link schema v1
+
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 30 and 31** (2026-09-21): `"model"` is the model name, the library's function name, as the example already shows; `chart.output` goes; `chart.bands` is edges + labels + colours, not `{ min, max }` intervals. The example is left as written; `core/shareLink.ts` fixes the final schema in Phase 5.
 
 `?share=v1.<Base64URL(JSON)>`
 
@@ -430,6 +438,7 @@ index.html              embedded ES5 feature check + read-only summary page
   closed-set members, `Measure`s, `ApplicabilityLimit`s) are held in `$state.raw` and replaced rather than mutated — a deep `$state` proxy
   breaks `===` against the library's objects. `ApplicabilityLimit` identity holds on the main thread only (2026-09-08):
   the Phase 3.7 worker boundary must re-hydrate the rows or dispatch on `role`, because a structured clone is a new object.
+  (Moot since 2026-09-21: v1 has no worker boundary, ADR-0002 decision 29.)
 - **TypeScript guardrails**: `strict`, `erasableSyntaxOnly`, `verbatimModuleSyntax`; no `enum`, `namespace`, or constructor parameter properties.
 - **AI workflow**: enable the Svelte MCP in every session; generated `.svelte` files must pass `svelte-autofixer`; PRs must pass typecheck + lint + build.
 - **Where these conventions come from** (verified 2026-09-04): [Svelte Best practices](https://svelte.dev/docs/svelte/best-practices),

@@ -51,6 +51,7 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    it takes `Record<key, number>` (assembled by `core/libraryInputs.ts` from the resolved `Map`) and
    returns the model's own result object. `defineModel` and the `LibraryModel` interface are gone.
    Adding a model = the library's `_INFO` + one declaration file + one registry line.
+   **Revised 2026-09-21:** `pathSegment` is replaced by `name`, the library's function name (decision 30).
 4. **Applicability is evaluated in the app.** `core/applicability.ts` reads `info.inputs` /
    `derived` / `outputs`: entered rows against their bound, `pa` computed as `rh / 100 × p_sat(tdb)`,
    `pmv` from the result. The entered `v` is gated through the derived `vr` and reported on the `v`
@@ -72,6 +73,8 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    (Phase 3.6 item 3) still holds.
 7. **Classification** uses `ClassifierBins` + `classifyFromBins`; `core/bandPalette.ts` indexes
    `labels`; Explore thresholds default from `edges`.
+   **Revised 2026-09-21:** an Explore Band list is the `ClassifierBins` itself plus colours, a copy rather than a
+   conversion (decision 31).
 8. **Results** are the model's own return object; the table reads `result[key]` for each `table`
    entry; an output whose `VariableInfo` carries a `classifier` reports its category in that result
    field (`tsv` for PMV). There is no `Measure` / `Outcome` layer.
@@ -130,6 +133,8 @@ commits `bf95aac` … `9c6df55`) that go beyond the fourteen above. The fourteen
     `labels.indexOf(result[output])`, `null` when NaN. The grid does not call `classifyFromBins`: the kernel
     already classified the unrounded value, and re-classifying a rounded output would disagree at the
     edges. `classifyFromBins` is for a number the model did not classify (Explore thresholds).
+    **Revised 2026-09-21:** `output` names the numeric output and `bands` its classifier; the grid keeps the number
+    (decision 27). The rounding this guarded against ended with decision 18's revision.
 18. **The zone solver's model argument is a PMV closure** `(tdb, tr, vr, rh, met, clo) => number`,
     written in the declaration file beside `run` and binding the same standard constant, so the zone and
     the table cannot run different kernels.
@@ -221,6 +226,89 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     the `clo_typical_ensembles_table` name go. `core/presets.ts` imports those names and stays app code, since
     pythermalcomfort has no preset concept. Fallback if the lead declines: the app keeps importing
     `clo_typical_ensembles_table`.
+
+Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how a model is named (spec and tickets in
+`.scratch/numeric-scan-and-model-name/`, the two measurement scripts kept beside them):
+
+27. **The dynamic chart scans the number; the declaration pairs it with its classifier.** Revises decision 17. `output`
+    names the numeric output (`pmv`, `hi`), and a new `bands` field holds the `ClassifierBins` that cut it, referenced by
+    dot access from the model's `_INFO` (`PMV_PPD_ISO_INFO.outputs.tsv.classifier`). It is an object reference: nothing in
+    `_INFO` says which quantity a classifier cuts, and no key string pairs the two. Each grid cell keeps
+    `result[output]`, and the surface is contoured at the edges. Decision 17's reason, that re-classifying a rounded
+    output would disagree with the kernel at the edges, ended on 2026-09-18 when `run` became unrounded (decision 18 as
+    revised): both kernels call `classifyFromBins` on the unrounded SI value, and the app imports the same function and
+    the same bins. A drift test pins it for every registered model: `classifyFromBins(result[output], bands)` equals the
+    result's own category, the classified output being the `info.outputs` entry whose `classifier === bands`, over a
+    sample that includes the edges. Why the number: a band index carries no sub-cell information, so the drawn boundary
+    sat half a cell from the true crossing whatever the grid (0.5 % of the axis at 100×100, 2.5 px on a 500 px plot),
+    while interpolating the number places it within a pixel on a coarser grid (decision 28); and Explore's editable
+    bands re-bin stored numbers instead of re-running the model. The result table is unchanged: it shows the kernel's
+    own category (decision 8).
+28. **`GRID = 51`.** Amends ADR-0001 §2 "Precision" (100×100). 51 points are 50 intervals, so the SI steps are round
+    (0.6 °C, 0.06 met, 2 % rh). One count for every axis rather than a step per quantity: the accuracy that matters is
+    on screen and a count gives every axis the same, the cost per chart is fixed (2,601 calls), and no per-quantity
+    number has to be maintained. Measured 2026-09-21 on eight charts (ISO and ASHRAE PMV, Heat Index; five axis pairs):
+    the error of the drawn boundary between grid lines against a bisected reference, in pixels of a 500 px plot, worst
+    chart per row, with the ASHRAE `tdb × v` scan time on the development machine.
+
+    | `GRID` | cell | p95 error | max error | ASHRAE scan |
+    |---|---|---|---|---|
+    | 21 | 25 px | 3.98 px | 15.6 px | 15 ms |
+    | 31 | 16.7 px | 1.49 px | 16.7 px | 32 ms |
+    | 41 | 12.5 px | 1.31 px | 9.8 px | 57 ms |
+    | **51** | **10 px** | **0.74 px** | 8.6 px | **88 ms** |
+    | 61 | 8.3 px | 0.65 px | 9.1 px | 129 ms |
+    | 81 | 6.3 px | 0.60 px | 5.6 px | 224 ms |
+    | 101 | 5 px | 0.54 px | 4.2 px | 349 ms |
+
+    51 is the smallest grid whose worst chart is sub-pixel at p95. Past it the error floors near 0.5 px, because the
+    ASHRAE surface jumps where the cooling effect switches on and no grid locates a jump better than one cell, while the
+    cost grows with the square. The max column is pessimistic: it is measured along an axis, so a boundary running
+    nearly parallel to that axis turns a small perpendicular error into a large one. A machine three times slower still
+    runs 51 inside ADR-0001 §4.7's 300 ms line; 61 would not.
+29. **No Worker in v1.** Supersedes ADR-0001 §2 "Computation" and §4.7's Worker, Comlink, stale-result stamp and
+    "computing" indicator, and makes moot §6's note that the worker boundary must re-hydrate applicability rows. The
+    Worker existed for one measurement, ASHRAE PMV at 340 ms per 100×100 scan; at decision 28's grid that scan is 88 ms.
+    Staying synchronous also means no structured-clone boundary has to be designed for `ChartRequest`: the model's
+    functions, its `Map<Quantity, number>`, `humidityMode`'s conversions and every identity comparison stay as they are.
+    `state/compute.svelte.ts` is still redesigned, since its `$effect` assigns state and reaches for `untrack`, but as
+    synchronous derivation; the unused `comlink` dependency is removed. Decision 12's lint boundary stands as written:
+    model functions are importable only from `src/models/`. Reopened when a v1 model's 51×51 scan exceeds 300 ms; the
+    choice then is between an abortable row-sliced scan on the main thread, which needs no clone boundary, and a Worker,
+    and it is measured before it is made.
+30. **Model name.** Revises decision 3: the declaration's `pathSegment` is replaced by `name`, the library's function
+    name for the model (`"pmv_ppd_iso"`), written once. Everything the app calls a model follows it, in three mechanical
+    forms: the share link carries the exact name, like a quantity key; the route segment is its kebab-case
+    (`pmv-ppd-iso`), generated as a standard's segment is (decision 6); the declaration's file and constant are its
+    camelCase (`pmvPpdIso.ts`), by convention. A test proves the name against the package's exports by identity,
+    `lib[name]` is a function and `lib[NAME + "_INFO"] === model.info`, and another that names are unique across the
+    registry, which routing alone only needed within a standard. Rejected: looking the name up at runtime among the
+    package's exports, as `core/standard.ts` does inside `Standard`, because that needs a namespace import and the 93 KB
+    bundle is tree-shaken (tests are not bundled, so the drift test may); and an `id` the app invents. `ModelInfo`
+    carrying its own name is recorded as an upstream gap, and the field is deleted when it does. `pmvIso` is renamed
+    `pmvPpdIso`, and Phase 4's file is `heatIndexRothfusz.ts`.
+31. **A Band list is the library's `ClassifierBins` plus colours, and the workspace decides the colouring.** Revises
+    decision 7 and ADR-0001 §4.5's Explore-thresholds rule. The list keeps the library's shape, contiguous `edges`,
+    `labels`, and the `right` flag of the classifier it started from, and adds a colour per band, so the default is a
+    copy of `bands` rather than a conversion and `classifyFromBins` answers the hover readout on an edited list
+    unchanged. The editor moves, adds and removes Edges; removing one merges two bands; a range is left uncoloured by a
+    band with no colour; an overlap cannot be expressed. The library's edges are kept exactly, the final one included
+    (`10`, `1000`: past it the kernel returns NaN, and an open top would colour a point the kernel's own category calls
+    NaN); the first band is open below, as it is in the library. The app has no inclusivity rule of its own: ADR-0001's
+    "lower inclusive, upper exclusive" contradicted the `right: true` of Heat Index and ASHRAE PMV. Edited bands colour
+    the chart and nothing else; the result table always shows the kernel's category. **Standard draws the comfort zone
+    only**, filled as the psychrometric chart fills it and blank outside; **Explore draws the bands**, defaulting to the
+    classifier's, which Reset returns to. The comfort limit (|PMV| ≤ 0.5) is not thermal sensation: it coincides with the
+    "Neutral" band for ASHRAE 55 and ISO 7730 category B, does not for EN 16798 categories I and III (0.2, 0.7), and is
+    never found by matching a label. No `_INFO` publishes it (the deployed CBE tool writes `0.5` at a dozen call sites;
+    `PMV_PPD_ASHRAE_INFO` is planned to carry the compliance interval), so under rule C it is one exported constant in
+    `src/temporary-library/` beside the zone solver, read by the solver's default and, from Phase 5, by the Standard
+    dynamic chart, and deleted when an `_INFO` carries the interval. One `output` per dynamic chart and no output
+    selector: PPD is a function of |PMV|, so its contours are the same lines without the sign, and a second surface is a
+    second `charts` entry. ADR-0001's `ChartState.output`, `bandsByOutput` and the share link's `"output"` go; bands are
+    saved per (model, chart). Sequencing: what fixes the declaration's shape (decisions 27, 28, 30) lands before Phase 4,
+    and the Standard page keeps drawing the classifier's bands until Explore exists in Phase 5, when the bands move there
+    and Standard switches to the comfort zone, so no rendering code is ever without a caller.
 
 ## Consequences
 

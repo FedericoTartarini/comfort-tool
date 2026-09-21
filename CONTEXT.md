@@ -12,6 +12,10 @@ _Avoid_: variable, field, parameter
 The library's string name for a quantity (`tdb`, `vr`). Appears only where the app talks to the library or to a share link.
 _Avoid_: id, wire string (in prose)
 
+**Model name**:
+The library's function name for a model (`pmv_ppd_iso`). Everything the app calls that model follows it: the share link carries it as written, the route carries it in kebab-case, the declaration's file and constant in camelCase.
+_Avoid_: id, slug, path segment
+
 **Model info**:
 The library's published metadata for one model (`<MODEL>_INFO`): label, description, and per-quantity unit, applicability and classifier.
 _Avoid_: schema, metadata object, model docs
@@ -49,12 +53,16 @@ The state shared by the Standard and Explore workspaces: model, unit system, slo
 _Avoid_: store, app state
 
 **Comfort zone**:
-The region of a chart where the model's primary output is within its comfort limit, traced by the app's zone solver from the model function.
-_Avoid_: compliance zone, comfort region, polygon (that is its rendering)
+The region of a chart where the model's primary output is within its comfort limit: what a standard accepts, a yes or no. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.
+_Avoid_: compliance zone, comfort region, neutral band, polygon (that is its rendering)
 
 **Band**:
-One labelled interval of a classifier's scale (for example "Slightly Cool"), coloured by its position in the scale.
-_Avoid_: category (the library's word for the label a value falls in), class, level
+One labelled, coloured interval of an output's scale (for example "Slightly Cool"). The bands start as the library classifier's; in Explore the user may edit them.
+_Avoid_: category (the library's word for the label a value falls in), class, level, threshold (except the "threshold editor", the feature's name on screen)
+
+**Edge**:
+The boundary between two bands, the library's word. Bands are contiguous, so editing bands is moving, adding or removing edges.
+_Avoid_: threshold, limit, cut-off
 
 **Temporary library**:
 A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. The zone solver lives there.
