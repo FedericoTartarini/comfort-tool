@@ -1,4 +1,4 @@
-import type { ModelInfo, Standard } from "jsthermalcomfort";
+import type { ClassifierBins, ModelInfo, Standard } from "jsthermalcomfort";
 import { chartType } from "./chartType";
 import { quantities, type Quantity } from "./quantities";
 
@@ -70,11 +70,27 @@ export type ChartDeclaration =
       /** Starting axes; the user may pick any entered quantity that has a declared range. */
       readonly axes: { readonly x: Quantity; readonly y: Quantity };
       /**
-       * The classified output whose category colours the surface — `info.outputs[output.key]`
-       * must carry a `classifier` (ADR-0002 decisions 6, 8). The band list is that
-       * classifier's `labels`, in order; the app never re-classifies the value itself.
+       * The numeric output the chart scans. Each grid cell keeps this number,
+       * and the surface is contoured at {@link bands}' Edges (ADR-0002
+       * decision 27), so a boundary lands where the value really crosses one.
+       * A classified output would be the wrong handle: a category per cell
+       * says nothing about where inside the cell the crossing is.
        */
       readonly output: Quantity;
+      /**
+       * The library classifier that cuts {@link output}, as a reference to the
+       * library's own object. Nothing in `_INFO` says which quantity a
+       * classifier cuts and no key string pairs the two, so the pairing is the
+       * object identity itself (ADR-0002 decision 27).
+       *
+       * Written as `<MODEL>_INFO.outputs.<key>.classifier` where that types as
+       * defined, else as the library's exported bins constant — the same
+       * object either way, and never a cast or a `!`. The band list is its
+       * `labels` in order, and the library's own `classifyFromBins` against it
+       * answers the hover readout, so the app holds no Edge, no label and no
+       * inclusivity rule of its own.
+       */
+      readonly bands: ClassifierBins;
       /**
        * Exact band polygons, for a model whose geometry the library already
        * traces — Adaptive's `charts.adaptiveAshraeZone`. When present the grid

@@ -59,8 +59,29 @@ export interface PointTrace {
 }
 
 /**
- * A banded surface. `z[yIndex][xIndex]` is an index into `bands`, or `null`
- * where the model classified nothing.
+ * The bottom of the band-position scale, and so the bottom of the first band,
+ * which is open below in every library classifier. A value far under the first
+ * Edge is held here rather than running off the scale the colours are mapped
+ * over. Flattening that region moves no boundary: everything within a band's
+ * width of the first Edge is still placed by interpolation, and the whole
+ * region below is one colour either way.
+ */
+export const BAND_SCALE_FLOOR = -1;
+
+/**
+ * A banded surface, in band-position space: `z[yIndex][xIndex]` is a position
+ * on the band scale rather than an index into `bands`, so the Edge between
+ * band *i* and band *i + 1* sits at the integer *i* and band *k* fills the
+ * interval from *k − 1* to *k*. The scale therefore runs from
+ * {@link BAND_SCALE_FLOOR} to `bands.length - 1`. Evenly spaced contour levels
+ * draw unevenly spaced Edges, and a boundary falls where the model's value
+ * really crosses one instead of at the nearest grid line. `null` is "no band"
+ * — the model classified nothing there.
+ *
+ * `hoverText[yIndex][xIndex]` is the band name the pointer reads at that cell,
+ * empty where there is no band. It is carried rather than derived from `z`:
+ * which side of an Edge a value falls on is the library's rule, per
+ * classifier, and it is applied in the spec builder.
  */
 export interface BandTrace {
   readonly kind: "bands";
@@ -68,6 +89,7 @@ export interface BandTrace {
   readonly x: readonly number[];
   readonly y: readonly number[];
   readonly z: readonly (readonly (number | null)[])[];
+  readonly hoverText: readonly (readonly string[])[];
   readonly bands: readonly { readonly label: string; readonly color: string }[];
 }
 

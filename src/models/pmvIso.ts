@@ -1,4 +1,4 @@
-import { pmv_ppd_iso, PMV_PPD_ISO_INFO, Standard } from "jsthermalcomfort";
+import { pmv_ppd_iso, PMV_PPD_ISO_INFO, PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
@@ -46,6 +46,15 @@ export const pmvIso = {
     // The zone is solved on `run` itself: Fanger unmodified at this edition.
     // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
     { type: chartType.psychrometric },
-    { type: chartType.dynamic, axes: { x: q.tdb, y: q.v }, output: q.tsv },
+    // The scanned number is `pmv`, cut by the same thermal-sensation bins the
+    // kernel classifies `tsv` with. `PMV_PPD_ISO_INFO.outputs.tsv.classifier`
+    // is the same object but types as possibly undefined, and a declaration
+    // carries no cast (ADR-0002 decision 27).
+    {
+      type: chartType.dynamic,
+      axes: { x: q.tdb, y: q.v },
+      output: q.pmv,
+      bands: PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
+    },
   ],
 } satisfies RegisteredModel;

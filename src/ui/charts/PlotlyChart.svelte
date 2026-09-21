@@ -1,6 +1,13 @@
 <script lang="ts">
   import type { PlotlyAnnotation, PlotlyConfig, PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
-  import type { Annotation, BandTrace, ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+  import {
+    BAND_SCALE_FLOOR,
+    type Annotation,
+    type BandTrace,
+    type ChartSpec,
+    type PathTrace,
+    type PointTrace,
+  } from "$lib/core/charts/chartSpec";
 
   interface Props {
     spec: ChartSpec;
@@ -113,6 +120,11 @@
   }
 
   function bandData(trace: BandTrace): PlotlyData {
+    // The extent of the band-position scale `BandTrace` defines, which is what
+    // puts the contour levels on the integers. The spec holds every position
+    // inside it, so no cell falls off the colourscale.
+    const scaleMin = BAND_SCALE_FLOOR;
+    const scaleMax = trace.bands.length - 1;
     return {
       // ADR §4.4 calls for a contour: a heatmap paints one rectangle per grid
       // cell, so every band edge came out as a 100-step staircase.
@@ -120,17 +132,16 @@
       x: trace.x,
       y: trace.y,
       z: trace.z,
-      text: trace.z.map((row) => row.map((band) => (band === null ? "" : trace.bands[band].label))),
-      // One flat step per band. zmin/zmax straddle the indices by half a band
-      // so index k lands in the middle of its own step.
+      text: trace.hoverText,
+      // One flat step per band, laid over that scale.
       colorscale: trace.bands.flatMap((band, index) => [
         [index / trace.bands.length, band.color],
         [(index + 1) / trace.bands.length, band.color],
       ]),
-      zmin: -0.5,
-      zmax: trace.bands.length - 0.5,
+      zmin: scaleMin,
+      zmax: scaleMax,
       autocontour: false,
-      contours: { start: -0.5, end: trace.bands.length - 0.5, size: 1, coloring: "fill", showlines: false },
+      contours: { start: scaleMin, end: scaleMax, size: 1, coloring: "fill", showlines: false },
       line: { width: 0 },
       connectgaps: false,
       showscale: false,
