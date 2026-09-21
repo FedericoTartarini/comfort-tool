@@ -21,8 +21,8 @@ import type { Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { axisTitle, BAND_SCALE_FLOOR, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
 
-/** Grid resolution, the same for every model (ADR §2 "Precision"). */
-const GRID = 100;
+/** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
+const GRID = 51;
 
 interface BandFill {
   readonly label: string;
