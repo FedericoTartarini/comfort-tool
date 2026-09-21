@@ -2,8 +2,9 @@ import { createRouter, type Routes } from "sv-router";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { pathSegmentFor, standardFromPath } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
+import { modelBySegment, modelsOf } from "./modelsOf";
 
-export { modelsOf } from "./modelsOf";
+export { modelsOf };
 
 /**
  * The only place sv-router is used (ADR §2). Pages import `route`, `pathTo`
@@ -58,6 +59,5 @@ export function navigateTo(model: RegisteredModel): void {
 /** The model the current URL names, or `undefined` when it names none. */
 export function modelFromRoute(): RegisteredModel | undefined {
   const params: Partial<Record<"standard" | "model", string>> = route.params;
-  const standard = standardFromPath(params.standard ?? "");
-  return standardModels().find((model) => model.standard === standard && model.pathSegment === params.model);
+  return modelBySegment(standardFromPath(params.standard ?? ""), params.model);
 }

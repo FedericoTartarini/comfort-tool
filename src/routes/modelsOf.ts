@@ -13,3 +13,19 @@ export function modelsOf(
 ): RegisteredModel[] {
   return models.filter((model) => model.standard === standard);
 }
+
+/**
+ * The model of `standard` whose route segment is `segment`, or `undefined`
+ * when the URL names none. A standard-less model has no Standard page and so
+ * is never found, not even by a URL whose standard segment parses to nothing.
+ */
+export function modelBySegment(
+  standard: Standard | undefined,
+  segment: string | undefined,
+  models: readonly RegisteredModel[] = registeredModels,
+): RegisteredModel | undefined {
+  if (standard === undefined) {
+    return undefined;
+  }
+  return modelsOf(standard, models).find((model) => model.pathSegment === segment);
+}
