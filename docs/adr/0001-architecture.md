@@ -306,6 +306,8 @@ Legend rules:
 ### 4.5 Session state
 
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 29 and 31** (2026-09-21): `ChartState.output` and `bandsByOutput` go (one `output` per dynamic chart, bands saved per model and chart); the "Explore thresholds" rule below is replaced (a Band list is the library's `ClassifierBins` plus colours: contiguous edges, the classifier's own inclusivity, no gaps); `Outputs` carries no `stamp`, and `toLibraryInputs` feeds a synchronous call, not a Worker.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 32–34** (2026-09-22): "hard range" in the "Switching models" rule below is the model's Applicability as the pre-call gate reads it, and the switch is rehearsed on a copy of the slot (convert entry mode, seed missing quantities from the new model's defaults, then ask the gate), so "No, stay here" leaves the slot untouched; a model reached by URL gets no dialog; slot 0 only until Compare (decision 32). While an entry is out of range the gate keeps the last valid inputs of the current model and derives everything else, so unit system, chart type and axes still take effect and a model change drops what was kept (decision 33). `toLibraryInputs` no longer builds a keyed record: `run` reads values by `Quantity` (decision 34).
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session

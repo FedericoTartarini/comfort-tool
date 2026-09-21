@@ -21,7 +21,7 @@ The library's published metadata for one model (`<MODEL>_INFO`): label, descript
 _Avoid_: schema, metadata object, model docs
 
 **Applicability**:
-The range over which a model's answer holds, published by the library. A gate, not a clamp: outside it the answer is reported as unsupported, the value is never adjusted.
+The range over which a model's answer holds, published by the library. A gate, not a clamp: outside it the answer is reported as unsupported, and the app never adjusts a value on its own. The one adjustment is the user's: switching to a model whose applicability an entered value breaks asks first, and moves the value to the nearest bound only on a yes.
 _Avoid_: limit, range check, validation, clamp
 
 **Axis range**:

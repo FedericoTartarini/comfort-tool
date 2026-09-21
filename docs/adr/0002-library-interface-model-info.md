@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -52,6 +52,8 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    returns the model's own result object. `defineModel` and the `LibraryModel` interface are gone.
    Adding a model = the library's `_INFO` + one declaration file + one registry line.
    **Revised 2026-09-21:** `pathSegment` is replaced by `name`, the library's function name (decision 30).
+   **Revised 2026-09-22:** `run` no longer takes `Record<key, number>`. It stays the positional call written in
+   the declaration file, and reads its values by `Quantity` (decision 34).
 4. **Applicability is evaluated in the app.** `core/applicability.ts` reads `info.inputs` /
    `derived` / `outputs`: entered rows against their bound, `pa` computed as `rh / 100 × p_sat(tdb)`,
    `pmv` from the result. The entered `v` is gated through the derived `vr` and reported on the `v`
@@ -255,6 +257,8 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     (`PMV_THERMAL_SENSATION_VOTE_BINS_ISO`, `HEAT_INDEX_STRESS_CATEGORY_BINS`) — the same object either way, and
     never a cast or a `!`; the pairing is the object identity, which is what the drift test reads, so which spelling
     reaches it does not matter.
+    **Revised 2026-09-22 (decision 35).** The drift test proves the bands are the kernel's. It does not detect a
+    `run` that rounds, which this decision leaned on it for; that is pinned by a test of its own.
 28. **`GRID = 51`.** Amends ADR-0001 §2 "Precision" (100×100). 51 points are 50 intervals, so the SI steps are round
     (0.6 °C, 0.06 met, 2 % rh). One count for every axis rather than a step per quantity: the accuracy that matters is
     on screen and a count gives every axis the same, the cost per chart is fixed (2,601 calls), and no per-quantity
@@ -320,6 +324,78 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     saved per (model, chart). Sequencing: what fixes the declaration's shape (decisions 27, 28, 30) lands before Phase 4,
     and the Standard page keeps drawing the classifier's bands until Explore exists in Phase 5, when the bands move there
     and Standard switches to the comfort zone, so no rendering code is ever without a caller.
+
+Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan close-out left behind (08–11 in
+`.scratch/numeric-scan-and-model-name/issues/`), which widened to switching models and to the shape of `run`:
+
+32. **Switching models asks before it adjusts.** Revises ADR-0001 §4.5's "Switching models" rule. The dialog stays as
+    specified there (title "Boundary Range Warning", a table Input / Current / Allowed range, "Yes, switch and
+    adjust" / "No, stay here"); this settles what it left open. Its "hard range" is the model's Applicability as the
+    pre-call gate reads it, so the rows are exactly `outOfRangeInputs(slot, newModel)` and "Allowed range" is
+    `enteredBound`: the intersection of the `tdb` and `tr` bounds under operative entry, one-sided where the bound
+    is. One definition of out of range, the gate's. A quantity the gate does not bound (the entered `v` of a model
+    that takes `vr`, a humidity entered as anything but `rh`) is not listed and surfaces after the switch as a
+    violation row. The switch is rehearsed on a copy of the slot, in this order: convert the slot to separate entry
+    when the new model has no temperature entry group (`tdb = tr = operative_tmp`, lossy and one-way like
+    `setTemperatureMode`); seed every quantity the new model takes and the bag lacks from the new model's declared
+    defaults, keeping what is there (§4.5's "superset bag" made explicit: today `setModel` touches no slot, and
+    Adaptive's `t_running_mean` would throw); then ask the gate. Nothing out of range: the copy lands and the app
+    navigates, with no dialog. "Yes": the same, with each listed value moved to its nearest bound. "No": the slot is
+    untouched, entry mode included, and there is no navigation to undo, because the check runs in the model select's
+    handler, before it. This is the one place the app adjusts a value, and only on the user's yes; Applicability
+    stays a gate (CONTEXT.md, revised the same day). A model reached by URL (typed, the back button, a share link)
+    has no "here" to stay at, so it gets the conversion and the seeding but no dialog and no adjustment: it loads,
+    the gate flags the entries, and the result is empty (decision 33). Slot 0 only until Compare exists; the
+    rehearsal is a function of one slot, which Compare calls for all three as §4.5 says, so this is staging and not
+    a deviation. The temperature entry group stays derived from `inputs` (2026-09-08): a declared flag was
+    considered and dropped, because the case for it, UTCI, is offered operative entry by the old tool as well.
+    Sequencing: the dialog moves from Phase 5 item 2 to a prerequisite of Phase 4b, where two models first share the
+    Standard page and a switch that breaks a bound becomes an everyday event. Its look is still Phase 5c's.
+33. **The gate freezes the result, not the screen.** Amends ADR-0001 §4.5's "Outputs are derived entirely from
+    Inputs + Chart" and the compute contract decision 29 left unchanged. While an entered value is outside
+    Applicability the last valid result stays on screen, as before. What is kept is the last valid *inputs* of the
+    current model, a snapshot of slot 0, and nothing else: the result, its violation rows and the chart are derived
+    from that snapshot and the session's current unit system and chart settings. So a unit switch, a chart-type
+    switch and an axis change all take effect while the gate is closed, and the numbers do not move. Before, the
+    blocked pass returned before it read any of the three, which left °C axes under an IP panel and chart tabs that
+    did nothing. The marker is drawn at the snapshot, the state the kept numbers describe; the out-of-range entry is
+    shown by its own input. The snapshot belongs to the model that produced it: a model change drops it, so one
+    model's numbers never appear under another's name, and a model reached with an entry out of range shows an empty
+    result until it has a valid run of its own. Reachable from Phase 4b, since Phase 4's Heat Index has no standard
+    and so no route. No `$effect` and no `untrack`: the snapshot is the derivation's own last value, as the kept
+    outputs are today.
+34. **`run` stays a function and reads its values by `Quantity`.** Revises decision 3. `run` is
+    `(values) => result`, where `values(...quantities)` returns one number per `Quantity` asked for, as a tuple of
+    the same length, spread at the head of the library's positional call:
+    `pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ISO_EDITION, { … })`. The keyed
+    `Record<string, number>` and `core/libraryInputs.ts`'s `keyedInputs` go: `init.tdb` was a wire string as a
+    property name in every declaration, and nothing checked its spelling. Three requirements decided the shape. A
+    model whose call is shaped differently changes no other file. The compiler and the editor see the library's
+    signature: arity, argument types, the spelling of a kwarg (checked: one quantity short, or a misspelt kwarg,
+    fails to compile). And the library's coming TypeScript port improves the declarations with no change here. Only
+    a direct call meets all three. Rejected: the call as data, either `libraryCall(fn, [...])` typed by `Parameters`
+    or `libraryCall(fn, { tdb: q.tdb, … })` with its names proven by a test, because core would interpret it, a new
+    kind of argument (Phase 4b's option value inside kwargs) would change core, and the object form loses
+    per-argument types; typed destructuring, `({ tdb, tr, … }) => fn(tdb, tr, …)`, the most readable and the best
+    end state, because nothing automatic checks positions today; and deriving the call from `_INFO.inputs`, whose key
+    order is not the call order (`PMV_PPD_ISO_INFO` lists `met, clo, rh`; the function takes `rh, met, clo`).
+    Position is proven by a registry-wide test: the keys of the quantities `values` was asked for equal the leading
+    parameter names of the library function, read off its source in the unminified `lib/esm`. Tests only: a
+    production build renames them, which is also why `fn.name` cannot replace `name` (decision 30). The spread goes
+    first by convention, which the test cannot see. The rounding switch is written by the declaration's author in
+    the call, under whatever name the function gives it (`round_output` in kwargs, `round` in options, a positional
+    boolean); decision 35 checks the outcome. Upstream gap: an object parameter,
+    `pmv_ppd_iso({ tdb, tr, … }, options)`, the faithful translation of pythermalcomfort's keyword call, recorded for
+    the TypeScript port. When it lands a declaration writes `tdb: …` by hand, the names become the compiler's to
+    check, and the position test is deleted.
+35. **An unrounded `run` is pinned by its own test.** Amends decision 27, which retired decision 17's rounding rule
+    on the strength of the drift test. Measured in ticket 06: with Heat Index at the library's default rounding the
+    whole suite stays green, because the probes bisect on whatever `run` returns and land on the rounding step, where
+    both sides agree. The drift test still proves the bands are the kernel's, and its comment is corrected to claim
+    only that. That `run` returns the unrounded number (decision 18 as revised) is asserted directly, for every
+    registered model, by a test that samples the chart's axis and fails when no output carries more decimals than a
+    rounded one would; proven red with a fixture whose `run` rounds. It will fail the day `utci` is registered:
+    `utci` rounds to one decimal with no switch. That is recorded as an upstream gap, to close before Phase 6.
 
 ## Consequences
 
