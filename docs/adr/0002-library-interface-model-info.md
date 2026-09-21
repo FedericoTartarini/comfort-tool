@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -244,6 +244,17 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     while interpolating the number places it within a pixel on a coarser grid (decision 28); and Explore's editable
     bands re-bin stored numbers instead of re-running the model. The result table is unchanged: it shows the kernel's
     own category (decision 8).
+    **Revised 2026-09-22 (ticket 07, `042c0f7`).** "The surface is contoured at the edges" is implemented as **one
+    constraint contour per Band, drawn on the model's number itself**. A single Plotly contour trace draws levels at
+    one fixed spacing, and a classifier's Edges need not be evenly spaced (Heat Index's are 27, 32, 41, 54, 1000), so
+    each Band names its own interval instead: its upper Edge, and its lower Edge except for the first, which is open
+    below. Ticket 03's interim remap onto a band-position scale is gone, and with it its closing note that the remap's
+    top knot was missing from this decision — there is no remap left to describe. Second: `bands` is written as
+    `<MODEL>_INFO.outputs.<key>.classifier` only where that types as defined. `VariableInfo.classifier` is optional,
+    so both declarations written so far name the library's exported bins constant instead
+    (`PMV_THERMAL_SENSATION_VOTE_BINS_ISO`, `HEAT_INDEX_STRESS_CATEGORY_BINS`) — the same object either way, and
+    never a cast or a `!`; the pairing is the object identity, which is what the drift test reads, so which spelling
+    reaches it does not matter.
 28. **`GRID = 51`.** Amends ADR-0001 §2 "Precision" (100×100). 51 points are 50 intervals, so the SI steps are round
     (0.6 °C, 0.06 met, 2 % rh). One count for every axis rather than a step per quantity: the accuracy that matters is
     on screen and a count gives every axis the same, the cost per chart is fixed (2,601 calls), and no per-quantity
