@@ -152,3 +152,73 @@ describe("Session.setModel", () => {
     expect(session.slots[1].values.has(q.wme)).toBe(false);
   });
 });
+
+/**
+ * What requesting a model does (ADR-0002 decision 32, "The session owns the
+ * question"). A request is the act the app's own controls perform; the address
+ * sets. No question is asked yet, so here a request always lands, and what is
+ * asserted is that it lands whole: the model and a slot it can run on at once.
+ */
+describe("Session.requestModel", () => {
+  it("lands the model and the rehearsed slot together", () => {
+    const session = new Session(pmvPpdIso);
+    session.slots[0].values.set(q.tdb, 22);
+
+    session.requestModel(takesExternalWork);
+
+    expect(session.model).toBe(takesExternalWork);
+    expect(session.slots[0].values.get(q.wme)).toBe(0.4);
+    expect(session.slots[0].values.get(q.tdb)).toBe(22);
+  });
+
+  it("converts the entry mode the model asks for", () => {
+    const session = new Session(pmvPpdIso);
+    session.slots[0].setTemperatureMode(temperatureMode.operative);
+    const operative = session.slots[0].values.get(q.operative_tmp);
+
+    session.requestModel(withoutTemperatureGroup);
+
+    expect(session.slots[0].temperature.mode).toBe(temperatureMode.separate);
+    expect(session.slots[0].values.get(q.tdb)).toBe(operative);
+    expect(session.slots[0].values.get(q.tr)).toBe(operative);
+  });
+
+  /**
+   * The landing is atomic, asserted as the spec words it: what the outputs
+   * hold belongs to the model they name. Only the requested model returns
+   * `wme`, and only the rehearsed slot has one to return — so the previous
+   * model never ran on the next one's slot, and the next model never ran on a
+   * slot that was not ready for it.
+   */
+  it("holds a result the model it names could have produced", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    expect(resultValueOf(outputs.perSlot[0], q.wme)).toBeUndefined();
+
+    session.requestModel(takesExternalWork);
+
+    expect(resultValueOf(outputs.perSlot[0], q.wme)).toBe(0.4);
+    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
+  });
+
+  it("does nothing when the model is already the current one", () => {
+    const session = new Session(pmvPpdIso);
+    const before = shapeOf(session.slots[0]);
+    const chart = session.chart;
+
+    session.requestModel(pmvPpdIso);
+
+    expect(session.model).toBe(pmvPpdIso);
+    expect(session.chart).toBe(chart);
+    expect(shapeOf(session.slots[0])).toEqual(before);
+  });
+
+  it("changes the first slot only", () => {
+    const session = new Session(pmvPpdIso);
+    const others = session.slots.slice(1).map(shapeOf);
+
+    session.requestModel(takesExternalWork);
+
+    expect(session.slots.slice(1).map(shapeOf)).toEqual(others);
+  });
+});

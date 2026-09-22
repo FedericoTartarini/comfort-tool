@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { standards } from "$lib/core/standard";
   import { unitSystem } from "$lib/core/unitSystem";
   import { Outputs } from "$lib/state/compute.svelte";
@@ -21,7 +22,10 @@
   const session = new Session(modelFromRoute() ?? defaultModel());
   const outputs = new Outputs(session);
 
-  // The URL names the model; an unknown URL falls back to the default.
+  // The URL names the model; an unknown URL falls back to the default. This is
+  // the address's path — a typed URL, the back button, a share link — and it
+  // never asks. After an in-app switch it finds the model already current and
+  // does nothing.
   $effect(() => {
     const model = modelFromRoute();
     if (model) {
@@ -30,6 +34,19 @@
       navigateTo(defaultModel());
     }
   });
+
+  /**
+   * Switching from inside the app: the session is asked first and the address
+   * is told after, which is the order ADR-0002 decision 32 needs. Navigating
+   * first would make the address the thing that switches the model, leaving no
+   * moment at which the session could ask about the switch. No effect follows
+   * the session with the address, because the one control that switches can
+   * say both things itself.
+   */
+  function switchModel(model: RegisteredModel) {
+    session.requestModel(model);
+    navigateTo(model);
+  }
 
   const navigation = $derived(
     standards
@@ -81,7 +98,7 @@
             <Select.Root
               type="single"
               value={String(modelChoices.indexOf(session.model))}
-              onValueChange={(value) => navigateTo(modelChoices[Number(value)])}
+              onValueChange={(value) => switchModel(modelChoices[Number(value)])}
             >
               <Select.Trigger id="{id}-model">{session.model.info.label}</Select.Trigger>
               <Select.Content>

@@ -142,6 +142,18 @@ export class Session {
     this.chart = this.#chartFor(model);
   }
 
+  /**
+   * The app's own way of switching: the person asked for `model` from a page
+   * they are already on, so the session may have a question about it
+   * (ADR-0002 decision 32). Requesting is therefore a different act from
+   * setting, even while the two do the same thing — the question, and the
+   * pending switch that holds it, arrive with the dialog. Until then every
+   * request lands, by the one path a model ever lands on.
+   */
+  requestModel(model: RegisteredModel): void {
+    this.setModel(model);
+  }
+
   #chartFor(model: RegisteredModel): ChartState {
     let state = this.#chartByModel.get(model);
     if (!state) {
