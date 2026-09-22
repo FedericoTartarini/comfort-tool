@@ -71,6 +71,23 @@ describe("resolveQuantities", () => {
     expect(resolved.has(q.operative_tmp)).toBe(false);
   });
 
+  // ADR §7.10 item 9 asks for all five representations. The block asserted two
+  // until 2026-09-22, when ticket 12 rewrote it onto the resolved map.
+  //
+  // One decimal, not more: the library's `psy_ta_rh` returns `t_dp` and `t_wb`
+  // rounded to 0.1 °C, so entering the dew point it reports and converting back
+  // lands 0.055 %rh away (wet bulb 0.012; the other three round-trip exactly).
+  // The tolerance is that rounding, measured, not slack for the inverses.
+  it("derives rh from every humidity representation, at the slot's dry-bulb temperature", () => {
+    for (const mode of Object.values(humidityMode)) {
+      const slot: SlotInputs = { ...separateSlot(), humidity: { mode, value: mode.fromRelativeHumidity(50, 25) } };
+      const resolved = resolveQuantities(slot, pmvPpdIso);
+      expect(resolved.get(q.rh), mode.id).toBeCloseTo(50, 0);
+      // Only the library's own rh reaches the call; the entered representation does not.
+      expect(resolved.has(mode.quantity), mode.id).toBe(mode.quantity === q.rh);
+    }
+  });
+
   it("resolves no rh for a model whose inputs do not name it", () => {
     const withoutHumidity = { ...pmvPpdIso, inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.rh) };
     expect(resolveQuantities(separateSlot(), withoutHumidity).has(q.rh)).toBe(false);
