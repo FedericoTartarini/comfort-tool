@@ -16,7 +16,11 @@ export const copy = {
   presetEmpty: "No matches.",
   inputColumn: "Input",
   complianceColumn: "Compliance",
-  outOfRange: "Out of range — not calculated. Showing the last valid result.",
+  // Two captions for one state (ADR-0002 decision 33): the gate keeps the last
+  // valid inputs of the *current* model, so a model reached with an entry out of
+  // range has nothing to show. The caller picks by whether it holds a result.
+  outOfRangeKeptResult: "Out of range — not calculated. Showing the last valid result.",
+  outOfRangeEmptyResult: "Out of range — not calculated. This model has no earlier result to show.",
   applicabilityHint: "Outside the standard's applicability:",
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column
   // headings: "Input" heads quantity names here and slot names in the result

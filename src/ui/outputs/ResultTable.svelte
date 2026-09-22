@@ -101,7 +101,7 @@
     </Table.Body>
     {#if outOfRange || standardEntry}
       <Table.Caption>
-        {#if outOfRange}<span>{copy.outOfRange}</span>{/if}
+        {#if outOfRange}<span>{result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult}</span>{/if}
         {#if standardEntry}
           <span class="edition">{copy.standardCaption(standardEntry.displayName, standardEntry.year)}</span>
         {/if}
