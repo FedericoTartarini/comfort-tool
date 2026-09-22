@@ -155,8 +155,13 @@ export interface RegisteredModel {
    *
    * The order of the quantities is proved against the library function's own
    * parameter names by a registry-wide test, which is the only thing standing
-   * between a declaration and two numbers in each other's place. Returns the
-   * model's own result object; called by `state/compute` and by the chart spec
+   * between a declaration and two numbers in each other's place.
+   *
+   * The contract: the model's own result object, carrying the model's numbers
+   * unrounded (ADR-0002 decision 18), with the library function's own rounding
+   * switch written off in the call under whatever name that function gives it.
+   * A registry-wide test samples the dynamic chart's output and fails when the
+   * switch was left on. Called by `state/compute` and by the chart spec
    * builders.
    */
   readonly run: (values: ValuesReader) => ModelResult;
