@@ -17,7 +17,16 @@
   import { Button } from "$lib/ui/primitives/button";
   import { Label } from "$lib/ui/primitives/label";
   import * as Select from "$lib/ui/primitives/select";
-  import { defaultModel, modelFromRoute, modelsOf, navigateTo, pathTo, requireStandard } from "./navigation";
+  import {
+    defaultModel,
+    interceptLinkClick,
+    modelFromRoute,
+    modelsOf,
+    navigateTo,
+    pathTo,
+    redirectTo,
+    requireStandard,
+  } from "./navigation";
 
   const id = $props.id();
   const session = new Session(modelFromRoute() ?? defaultModel());
@@ -32,7 +41,7 @@
     if (model) {
       session.setModel(model);
     } else {
-      navigateTo(defaultModel());
+      redirectTo(defaultModel());
     }
   });
 
@@ -99,7 +108,22 @@
           {#each navigation as group (group.standard.id)}
             <strong>{group.standard.displayName}</strong>
             {#each group.models as model (model)}
-              <a href={pathTo(model)} aria-current={session.model === model ? "page" : undefined}>
+              <!--
+                A link that keeps its address, so a new tab and a copied
+                address still work, and that asks the session first when it is
+                the page the click belongs to. A click the navigation module
+                declines to hand over is the browser's, and arrives as an
+                address.
+              -->
+              <a
+                href={pathTo(model)}
+                aria-current={session.model === model ? "page" : undefined}
+                onclick={(event) => {
+                  if (interceptLinkClick(event)) {
+                    switchModel(model);
+                  }
+                }}
+              >
                 {model.info.label}
               </a>
             {/each}
