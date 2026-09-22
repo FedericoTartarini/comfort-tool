@@ -24,12 +24,16 @@ export type { Bound };
 
 const q = quantities;
 
-/** One applicability row a value broke, and where it appeared in the model's evaluation. */
-export interface ViolationRow {
+/** One entered value the pre-call gate stops, with the bound it was tested against. */
+export interface OutOfRangeRow {
   readonly quantity: Quantity;
-  readonly role: "input" | "derived" | "output";
   readonly value: number;
   readonly bound: Bound;
+}
+
+/** One applicability row a value broke, and where it appeared in the model's evaluation. */
+export interface ViolationRow extends OutOfRangeRow {
+  readonly role: "input" | "derived" | "output";
 }
 
 /** `info`'s row for `quantity`, reconciled by key through `quantityFor` (ADR-0002 decision 2). */
@@ -45,10 +49,7 @@ function boundFor(table: Readonly<Record<string, VariableInfo>> | undefined, qua
   return undefined;
 }
 
-function breaksBound(bound: Bound | undefined, value: number): boolean {
-  if (!bound) {
-    return false;
-  }
+function breaksBound(bound: Bound, value: number): boolean {
   return (bound.min !== undefined && value < bound.min) || (bound.max !== undefined && value > bound.max);
 }
 
@@ -87,17 +88,35 @@ export function enteredBound(model: RegisteredModel, quantity: Quantity, mode: T
 }
 
 /**
- * Entered quantities outside the model's applicability bounds — the pre-call
- * gate. Checks what the user typed, not a derived value.
+ * Entered values outside the model's applicability bounds — the pre-call gate,
+ * with the bound each value was tested against. Checks what the user typed,
+ * not a derived value, and says nothing about a quantity the model does not
+ * bound (the entered `v` of a model that takes `vr`, a humidity entered as
+ * anything but `rh`): the library reports those after the call, through
+ * {@link violationRows}.
+ *
+ * The one definition of out of range in the app (ADR-0002 decision 32). The
+ * input panel's red boxes and the model-switch dialog's rows are both this
+ * list, so the two can never disagree about a value.
  */
-export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quantity[] {
+export function outOfRangeRows(slot: SlotInputs, model: RegisteredModel): OutOfRangeRow[] {
   const entered: (readonly [Quantity, number])[] = [
     ...slot.values,
     [slot.humidity.mode.quantity, slot.humidity.value],
   ];
-  return entered
-    .filter(([quantity, value]) => breaksBound(enteredBound(model, quantity, slot.temperature.mode), value))
-    .map(([quantity]) => quantity);
+  const rows: OutOfRangeRow[] = [];
+  for (const [quantity, value] of entered) {
+    const bound = enteredBound(model, quantity, slot.temperature.mode);
+    if (bound && breaksBound(bound, value)) {
+      rows.push({ quantity, value, bound });
+    }
+  }
+  return rows;
+}
+
+/** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
+export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quantity[] {
+  return outOfRangeRows(slot, model).map((row) => row.quantity);
 }
 
 /**

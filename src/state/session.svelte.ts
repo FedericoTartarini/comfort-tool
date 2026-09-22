@@ -3,7 +3,7 @@ import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/libraryInputs";
 import { dynamicChartOf, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { rehearseSwitch } from "$lib/core/modelSwitch";
+import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
@@ -108,6 +108,16 @@ export class ChartState {
   }
 }
 
+/**
+ * A switch the person asked for that the session has a question about: the
+ * model they asked for, the slot the switch rehearsed, and the entered values
+ * the new model does not accept (ADR-0002 decision 32). Nothing has changed
+ * while one of these is held — it is the question, not a half-done switch.
+ */
+export interface PendingSwitch extends RehearsedSwitch {
+  readonly model: RegisteredModel;
+}
+
 /** Shared by Standard and Explore (ADR §4.5). Compare arrives in Phase 5. */
 export class Session {
   // All three hold objects compared by identity elsewhere, so `$state.raw`.
@@ -115,6 +125,8 @@ export class Session {
   unitSystem = $state.raw<UnitSystem>(unitSystem.si);
   /** The chart settings of the current model. */
   chart: ChartState;
+  /** The switch waiting on an answer, or `null`. Held whole, so `$state.raw`. */
+  pendingSwitch = $state.raw<PendingSwitch | null>(null);
   readonly slots: readonly [InputSlot, InputSlot, InputSlot];
   // Each model remembers its own chart settings. A plain Map: only `chart` is
   // read reactively, and lazily filling a reactive map during a derivation
@@ -137,21 +149,58 @@ export class Session {
     if (model === this.model) {
       return;
     }
-    this.slots[0].replaceInputs(rehearseSwitch(this.slots[0], model));
-    this.model = model;
-    this.chart = this.#chartFor(model);
+    this.#land(model, rehearseSwitch(this.slots[0], model).inputs);
   }
 
   /**
    * The app's own way of switching: the person asked for `model` from a page
    * they are already on, so the session may have a question about it
    * (ADR-0002 decision 32). Requesting is therefore a different act from
-   * setting, even while the two do the same thing — the question, and the
-   * pending switch that holds it, arrive with the dialog. Until then every
-   * request lands, by the one path a model ever lands on.
+   * setting — with every entered value acceptable to `model` the switch simply
+   * lands, and otherwise nothing changes and the question is held until
+   * {@link acceptSwitch} or {@link declineSwitch} answers it.
    */
   requestModel(model: RegisteredModel): void {
-    this.setModel(model);
+    // Every request supersedes the last one, so no question outlives the act
+    // that asked it — asking for the model already current answers the
+    // previous question with a "No" rather than leaving it standing.
+    this.pendingSwitch = null;
+    if (model === this.model) {
+      return;
+    }
+    const rehearsed = rehearseSwitch(this.slots[0], model);
+    if (rehearsed.outOfRangeRows.length === 0) {
+      this.#land(model, rehearsed.inputs);
+      return;
+    }
+    this.pendingSwitch = { model, ...rehearsed };
+  }
+
+  /** "Yes, switch and adjust": the listed values move to their nearest bound and land with the model. */
+  acceptSwitch(): void {
+    const pending = this.pendingSwitch;
+    if (!pending) {
+      return;
+    }
+    this.#land(pending.model, adjustToBounds(pending.inputs, pending.outOfRangeRows));
+  }
+
+  /** "No, stay here", and every other way of closing the dialog: the question goes and nothing else moves. */
+  declineSwitch(): void {
+    this.pendingSwitch = null;
+  }
+
+  /**
+   * The model and the slot it runs on, in one step, so the outputs derivation
+   * never sees the two disagree. Any landing answers whatever was pending: a
+   * question rehearsed against a slot that has since moved is stale, and an
+   * unanswered question is a "No".
+   */
+  #land(model: RegisteredModel, inputs: SlotInputs): void {
+    this.slots[0].replaceInputs(inputs);
+    this.model = model;
+    this.chart = this.#chartFor(model);
+    this.pendingSwitch = null;
   }
 
   #chartFor(model: RegisteredModel): ChartState {

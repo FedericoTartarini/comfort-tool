@@ -9,6 +9,7 @@
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
+  import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
@@ -40,12 +41,28 @@
    * is told after, which is the order ADR-0002 decision 32 needs. Navigating
    * first would make the address the thing that switches the model, leaving no
    * moment at which the session could ask about the switch. No effect follows
-   * the session with the address, because the one control that switches can
-   * say both things itself.
+   * the session with the address, because the handlers that switch can say
+   * both things themselves.
    */
   function switchModel(model: RegisteredModel) {
     session.requestModel(model);
-    navigateTo(model);
+    navigateToSessionModel();
+  }
+
+  function acceptSwitch() {
+    session.acceptSwitch();
+    navigateToSessionModel();
+  }
+
+  /**
+   * The address follows the session, never the other way round. A request the
+   * session held a question about changed no model, so there is nothing to
+   * tell the address until the question has been answered with a yes.
+   */
+  function navigateToSessionModel() {
+    if (session.model !== modelFromRoute()) {
+      navigateTo(session.model);
+    }
   }
 
   const navigation = $derived(
@@ -95,10 +112,20 @@
           <h2>{copy.inputs}</h2>
           <Inline gap="2" align="center">
             <Label for="{id}-model">{copy.model}</Label>
+            <!--
+              A function binding, not a value plus a change handler: the
+              session, not the select, decides which model is current, and a
+              switch the person declines has to leave the select where it was.
+              With a one-way `value` the select would keep the model it had
+              offered, disagree with the page behind the dialog, and refuse to
+              offer that model a second time.
+            -->
             <Select.Root
               type="single"
-              value={String(modelChoices.indexOf(session.model))}
-              onValueChange={(value) => switchModel(modelChoices[Number(value)])}
+              bind:value={
+                () => String(modelChoices.indexOf(session.model)),
+                (value) => switchModel(modelChoices[Number(value)])
+              }
             >
               <Select.Trigger id="{id}-model">{session.model.info.label}</Select.Trigger>
               <Select.Content>
@@ -114,6 +141,12 @@
             unitSystem={session.unitSystem}
             outOfRange={outputs.outOfRange}
             violations={outputs.violations}
+          />
+          <ModelSwitchDialog
+            pending={session.pendingSwitch}
+            unitSystem={session.unitSystem}
+            onaccept={acceptSwitch}
+            ondecline={() => session.declineSwitch()}
           />
         </Stack>
       </section>

@@ -5,21 +5,57 @@
  * would hold, and mutates nothing. The session lands the answer; Compare will
  * ask it once per slot.
  *
- * The two steps are ordered, and the order is the point — converting the entry
- * mode changes which quantities the slot holds, so seeding has to see the
- * converted slot and not the original one. The third step of decision 32,
- * asking the pre-call gate what the rehearsed slot breaks, belongs to the
- * dialog and is not here yet.
+ * The three steps are ordered, and the order is the point — converting the
+ * entry mode changes which quantities the slot holds, so seeding has to see
+ * the converted slot and not the original one, and the gate has to see what
+ * seeding left. The gate is asked, never second-guessed: the rows are
+ * `core/applicability.ts`'s and the app has no other notion of out of range.
  */
+import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
 import { temperatureMode, underTemperatureMode } from "./entryModes";
 import { enteredValue, withEnteredValues, withTemperatureMode, type SlotInputs } from "./libraryInputs";
 import { hasTemperatureGroup, type RegisteredModel } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
 
-/** What `slot` would hold under `model`: converted, then seeded. */
-export function rehearseSwitch(slot: SlotInputs, model: RegisteredModel): SlotInputs {
+/** What a switch would do to one slot: the slot it would leave, and what the new model would not accept. */
+export interface RehearsedSwitch {
+  /** What `slot` would hold: converted, then seeded. Nothing entered is adjusted here. */
+  readonly inputs: SlotInputs;
+  /** The entered values the new model's Applicability rules out, as the pre-call gate reports them. */
+  readonly outOfRangeRows: readonly OutOfRangeRow[];
+}
+
+/** What `slot` would hold under `model`, and what `model` would not accept of it. */
+export function rehearseSwitch(slot: SlotInputs, model: RegisteredModel): RehearsedSwitch {
   const converted = convertEntryMode(slot, model);
-  return seedDeclaredDefaults(converted, model);
+  const inputs = seedDeclaredDefaults(converted, model);
+  return { inputs, outOfRangeRows: outOfRangeRows(inputs, model) };
+}
+
+/**
+ * `inputs` with each listed value moved to the end of its bound it is beyond,
+ * and no further; a bound with one end moves a value only towards that end.
+ *
+ * The only place the app adjusts a value the person entered, and it is reached
+ * only by their yes (ADR-0002 decision 32). Everywhere else Applicability is a
+ * gate: a value outside it stays as typed and the result is withheld.
+ */
+export function adjustToBounds(inputs: SlotInputs, rows: readonly OutOfRangeRow[]): SlotInputs {
+  const adjusted = new Map<Quantity, number>();
+  for (const { quantity, value, bound } of rows) {
+    adjusted.set(quantity, nearestEnd(value, bound));
+  }
+  return withEnteredValues(inputs, adjusted);
+}
+
+function nearestEnd(value: number, bound: Bound): number {
+  if (bound.min !== undefined && value < bound.min) {
+    return bound.min;
+  }
+  if (bound.max !== undefined && value > bound.max) {
+    return bound.max;
+  }
+  return value;
 }
 
 /**
