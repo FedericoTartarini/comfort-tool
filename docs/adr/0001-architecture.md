@@ -99,6 +99,8 @@ Convention: the library's **model functions** (the `jsthermalcomfort` root, `jst
 ### 4.0 Three rules that run through the whole project
 
 > **Rule 1 amended by [ADR-0002](0002-library-interface-model-info.md) decision 2**: quantities are defined in the app's `core/quantities.ts`, keyed by the library's `ModelInfo` keys; dot access and `===` are unchanged.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 34** (2026-09-22): rule 2 names `core/libraryInputs.ts` as a reader of `Quantity.key` because it assembled the library's keyed init object; it no longer builds one — a declaration's `run` reads values by `Quantity` and calls the model function positionally, so no quantity key is written on the way in, and §4.1.3's one-line `Object.fromEntries` bullet goes with the init object. The key survives in the app only on the way out, reading a value off the result (`resultValue`), and in `shareLink.ts`; the two boundaries themselves are unchanged.
 
 
 1. **One definition, referenced everywhere.** Quantities, models, workspaces, chart types, unit systems and so on are objects; code references them with dot access (`io.quantities.tdb`, `workspace.explore`), not string keys and not `Record<string, …>` dictionaries. `Quantity.kind` is a string union type exported by the library; the app treats it as a typed discriminant (`core/units.ts` looks up the display-unit table by kind, and `satisfies Record<QuantityKind, …>` guarantees exhaustiveness), which does not count as a string key.
