@@ -7,7 +7,7 @@ import {
   type PsychrometricPoint,
 } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
-import { keyedInputs, requireValue, resolveQuantities, resultValue } from "$lib/core/libraryInputs";
+import { requireValue, resolveQuantities, resultValue, valuesReader } from "$lib/core/libraryInputs";
 import { requireAxisRange, type Range, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
@@ -170,7 +170,7 @@ function pmvOfRun(model: RegisteredModel, resolved: ReadonlyMap<Quantity, number
       .set(q.rh, rh)
       .set(q.met, met)
       .set(q.clo, clo);
-    const pmv = resultValue(model.run(keyedInputs(inputs)), q.pmv);
+    const pmv = resultValue(model.run(valuesReader(inputs)), q.pmv);
     return typeof pmv === "number" ? pmv : Number.NaN;
   };
 }

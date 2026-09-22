@@ -3,7 +3,15 @@ import { v_relative } from "jsthermalcomfort";
 import { Standard } from "jsthermalcomfort";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { humidityMode, temperatureMode } from "./entryModes";
-import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
+import {
+  enteredQuantities,
+  enteredValue,
+  resolveQuantities,
+  toLibraryInputs,
+  valuesReader,
+  withEnteredValues,
+  type SlotInputs,
+} from "./libraryInputs";
 import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
@@ -36,42 +44,36 @@ function operativeSlot(operative: number): SlotInputs {
   };
 }
 
-describe("toLibraryInputs", () => {
-  it("produces exactly the keys the PMV wrapper takes, in SI", () => {
-    const init = toLibraryInputs(separateSlot(), pmvPpdIso);
-    expect(Object.keys(init).sort()).toEqual(["clo", "met", "rh", "tdb", "tr", "vr"]);
-    expect(init.rh).toBe(50);
+describe("resolveQuantities", () => {
+  it("resolves exactly the quantities the PMV wrapper takes, in SI", () => {
+    const resolved = resolveQuantities(separateSlot(), pmvPpdIso);
+    expect(new Set(resolved.keys())).toEqual(new Set([q.tdb, q.tr, q.vr, q.rh, q.met, q.clo]));
+    expect(resolved.get(q.rh)).toBe(50);
   });
 
   it("derives vr with the library's v_relative when the model asks for it", () => {
-    const init = toLibraryInputs(separateSlot({ v: 0.1, met: 1.1 }), pmvPpdIso);
-    expect(init.vr).toBe(v_relative(0.1, 1.1));
-    expect(init.vr).toBeGreaterThan(0.1);
+    const resolved = resolveQuantities(separateSlot({ v: 0.1, met: 1.1 }), pmvPpdIso);
+    expect(resolved.get(q.vr)).toBe(v_relative(0.1, 1.1));
+    expect(resolved.get(q.vr)).toBeGreaterThan(0.1);
   });
 
   it("passes v through untouched when the model does not", () => {
     const withoutRelative = { ...pmvPpdIso, relativeAirSpeed: false };
-    const init = toLibraryInputs(separateSlot(), withoutRelative);
-    expect(init.v).toBe(0.1);
-    expect(init).not.toHaveProperty("vr");
+    const resolved = resolveQuantities(separateSlot(), withoutRelative);
+    expect(resolved.get(q.v)).toBe(0.1);
+    expect(resolved.has(q.vr)).toBe(false);
   });
 
   it("expands operative temperature to tdb = tr", () => {
-    const init = toLibraryInputs(operativeSlot(24), pmvPpdIso);
-    expect(init.tdb).toBe(24);
-    expect(init.tr).toBe(24);
-    expect(init).not.toHaveProperty("operative_tmp");
+    const resolved = resolveQuantities(operativeSlot(24), pmvPpdIso);
+    expect(resolved.get(q.tdb)).toBe(24);
+    expect(resolved.get(q.tr)).toBe(24);
+    expect(resolved.has(q.operative_tmp)).toBe(false);
   });
 
-  it("feeds the declared model a finite result end to end", () => {
-    const result = pmvPpdIso.run(toLibraryInputs(separateSlot(), pmvPpdIso));
-    expect(Number.isFinite(result.pmv)).toBe(true);
-    expect(result.tsv).toBeDefined();
-  });
-
-  it("sends no rh to a model whose inputs do not name it", () => {
+  it("resolves no rh for a model whose inputs do not name it", () => {
     const withoutHumidity = { ...pmvPpdIso, inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.rh) };
-    expect(toLibraryInputs(separateSlot(), withoutHumidity)).not.toHaveProperty("rh");
+    expect(resolveQuantities(separateSlot(), withoutHumidity).has(q.rh)).toBe(false);
   });
 
   it("does not expand an operative entry for a model without separate temperatures", () => {
@@ -79,10 +81,33 @@ describe("toLibraryInputs", () => {
       ...pmvPpdIso,
       inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tdb && entry.quantity !== q.tr),
     };
-    const init = toLibraryInputs(operativeSlot(24), withoutTemperatures);
-    expect(init).not.toHaveProperty("tdb");
-    expect(init).not.toHaveProperty("tr");
-    expect(init.operative_tmp).toBe(24);
+    const resolved = resolveQuantities(operativeSlot(24), withoutTemperatures);
+    expect(resolved.has(q.tdb)).toBe(false);
+    expect(resolved.has(q.tr)).toBe(false);
+    expect(resolved.get(q.operative_tmp)).toBe(24);
+  });
+});
+
+describe("toLibraryInputs", () => {
+  it("feeds the declared model a finite result end to end", () => {
+    const result = pmvPpdIso.run(toLibraryInputs(separateSlot(), pmvPpdIso));
+    expect(Number.isFinite(result.pmv)).toBe(true);
+    expect(result.tsv).toBeDefined();
+  });
+});
+
+describe("valuesReader", () => {
+  it("answers one number per quantity, in the order asked", () => {
+    const values = new Map<Quantity, number>([
+      [q.tdb, 25],
+      [q.rh, 50],
+    ]);
+    expect(valuesReader(values)(q.rh, q.tdb, q.rh)).toEqual([50, 25, 50]);
+  });
+
+  it("throws naming the quantity the map does not carry, rather than answering undefined", () => {
+    const reader = valuesReader(resolveQuantities(separateSlot(), pmvPpdIso));
+    expect(() => reader(q.wme)).toThrow(`Slot has no value for ${q.wme.label}`);
   });
 });
 
@@ -100,21 +125,21 @@ describe("entered values", () => {
 
   it("re-derives everything downstream of a swept value", () => {
     const swept = withEnteredValues(separateSlot(), new Map([[q.v, 0.6]]));
-    expect(toLibraryInputs(swept, pmvPpdIso).vr).toBe(v_relative(0.6, 1.1));
+    expect(resolveQuantities(swept, pmvPpdIso).get(q.vr)).toBe(v_relative(0.6, 1.1));
     expect(separateSlot().values.get(q.v)).toBe(0.1);
   });
 
   it("sweeps the humidity entry as well, without touching the original", () => {
     const slot = separateSlot();
     const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
-    expect(toLibraryInputs(swept, pmvPpdIso).rh).toBe(80);
+    expect(resolveQuantities(swept, pmvPpdIso).get(q.rh)).toBe(80);
     expect(slot.humidity.value).toBe(50);
   });
 
   it("derives rh from a dew-point entry at the slot's dry-bulb temperature", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(50, 25);
     const slot: SlotInputs = { ...separateSlot(), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
-    expect(toLibraryInputs(slot, pmvPpdIso).rh).toBeCloseTo(50, 0);
+    expect(resolveQuantities(slot, pmvPpdIso).get(q.rh)).toBeCloseTo(50, 0);
     expect(enteredValue(slot, q.dew_point_tmp)).toBe(dewPoint);
     expect(enteredValue(slot, q.rh)).toBeCloseTo(50, 0);
   });
@@ -122,22 +147,22 @@ describe("entered values", () => {
   it("derives rh from the operative temperature under operative entry", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(50, 24);
     const slot: SlotInputs = { ...operativeSlot(24), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
-    expect(toLibraryInputs(slot, pmvPpdIso).rh).toBeCloseTo(50, 0);
+    expect(resolveQuantities(slot, pmvPpdIso).get(q.rh)).toBeCloseTo(50, 0);
   });
 
   it("sweeps rh as rh whatever the entry mode", () => {
     const slot: SlotInputs = { ...separateSlot(), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
     expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
-    expect(toLibraryInputs(swept, pmvPpdIso).rh).toBe(70);
+    expect(resolveQuantities(swept, pmvPpdIso).get(q.rh)).toBe(70);
     expect(slot.humidity.mode).toBe(humidityMode.dewPoint);
   });
 
   it("expands a swept operative temperature to both temperatures", () => {
     const swept = withEnteredValues(operativeSlot(24), new Map([[q.operative_tmp, 28]]));
-    const init = toLibraryInputs(swept, pmvPpdIso);
-    expect(init.tdb).toBe(28);
-    expect(init.tr).toBe(28);
+    const resolved = resolveQuantities(swept, pmvPpdIso);
+    expect(resolved.get(q.tdb)).toBe(28);
+    expect(resolved.get(q.tr)).toBe(28);
   });
 });
 

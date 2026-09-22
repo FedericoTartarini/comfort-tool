@@ -11,8 +11,10 @@ const ISO_EDITION = Standard.iso_7730_2005;
 export const pmvPpdIso = {
   info: PMV_PPD_ISO_INFO,
   standard: ISO_EDITION,
-  run: (init: Record<string, number>) =>
-    pmv_ppd_iso(init.tdb, init.tr, init.vr, init.rh, init.met, init.clo, init.wme ?? 0, ISO_EDITION, {
+  // `wme` is a literal 0: external work is not an input of the app, and the
+  // library's own default is the same zero.
+  run: (values) =>
+    pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ISO_EDITION, {
       units: "SI",
       limit_inputs: false,
       // The psychrometric zone is root-found on this `pmv`; the display rounds.

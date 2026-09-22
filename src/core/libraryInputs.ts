@@ -1,7 +1,14 @@
 import { v_relative } from "jsthermalcomfort";
 import type { ApplicabilityWarning } from "jsthermalcomfort";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
-import { hasHumidityGroup, hasTemperatureGroup, type ModelResult, type RegisteredModel } from "./modelDeclaration";
+import {
+  hasHumidityGroup,
+  hasTemperatureGroup,
+  type ModelResult,
+  type RegisteredModel,
+  type ValuesOf,
+  type ValuesReader,
+} from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -69,8 +76,8 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
 }
 
 /**
- * The keyed record `run` takes, for `slot`: its resolved quantities, passed
- * through {@link keyedInputs}. The declaration's own `run` hardcodes
+ * The reader `run` takes for `slot`: its resolved quantities, wrapped by
+ * {@link valuesReader}. The declaration's own `run` hardcodes
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers
  * rather than NaN, the behaviour of the deployed CBE tool. The rows a run
@@ -78,17 +85,23 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
  * breaks it while the entered `v` does not) come back on the result's
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
-export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Record<string, number> {
-  return keyedInputs(resolveQuantities(slot, model));
+export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): ValuesReader {
+  return valuesReader(resolveQuantities(slot, model));
 }
 
 /**
- * SI values keyed by `Quantity.key`, the shape `run` takes. Besides shareLink,
- * this is the only place in the app that reads `Quantity.key` in this
- * direction (ADR §4.0).
+ * `values` as the reader a declaration's `run` asks: one number per
+ * `Quantity`, in the order asked, and a throw naming the quantity the map
+ * does not carry (ADR-0002 decision 34). Never a silent `undefined` — a
+ * missing input that reaches the library unnoticed is the failure this shape
+ * exists to rule out.
  */
-export function keyedInputs(values: ReadonlyMap<Quantity, number>): Record<string, number> {
-  return Object.fromEntries([...values].map(([quantity, value]) => [quantity.key, value]));
+export function valuesReader(values: ReadonlyMap<Quantity, number>): ValuesReader {
+  // `map` can only produce an array, so the tuple the caller's arity was
+  // checked against is restored by hand — sound because `map` keeps the
+  // length it was given, one number per quantity asked for.
+  return <const T extends readonly Quantity[]>(...quantities: T) =>
+    quantities.map((quantity) => requireValue(values, quantity)) as ValuesOf<T>;
 }
 
 /**

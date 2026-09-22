@@ -16,6 +16,21 @@ import { quantities, type Quantity } from "./quantities";
  */
 export type ModelResult = object;
 
+/**
+ * One number per Quantity in `T`, as a tuple of the same length. Named because
+ * a reader's implementation has to restore the tuple `map` flattens, and the
+ * promise it restores should be spelled once.
+ */
+export type ValuesOf<T extends readonly Quantity[]> = { [K in keyof T]: number };
+
+/**
+ * How a declaration reads its slot's values: one number per `Quantity` asked
+ * for, so the library call it feeds type-checks whole against the library's
+ * own signature (ADR-0002 decision 34). The tuple is the point — a `number[]`
+ * would spread into any arity and the compiler would stop counting.
+ */
+export type ValuesReader = <const T extends readonly Quantity[]>(...quantities: T) => ValuesOf<T>;
+
 /** A closed interval, in SI. */
 export interface Range {
   readonly min: number;
@@ -122,11 +137,29 @@ export interface RegisteredModel {
    */
   readonly standard?: Standard;
   /**
-   * The library's model function, bound positionally by the declaration. Takes
-   * SI values keyed by `Quantity.key` and returns the model's own result
-   * object. Called by `state/compute` and by the chart spec builders.
+   * The library's model function, called positionally by the declaration
+   * itself (ADR-0002 decision 34):
+   *
+   * ```ts
+   * run: (values) => pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ISO_EDITION, { … })
+   * ```
+   *
+   * Two conventions the compiler cannot enforce. The spread goes **first**:
+   * most misplacements fail to compile because the tail's types differ, but
+   * not all of them — `pmv_ppd_iso(0, ...values(…))` type-checks, `wme` being
+   * a number too — and the position test cannot see where the spread sits.
+   * And the rounding switch is written **here**, turned off, under whatever
+   * name the function gives it — `round_output` in kwargs, `round` in options,
+   * a positional boolean (ADR-0002 decision 35; the declaration says why at
+   * the call).
+   *
+   * The order of the quantities is proved against the library function's own
+   * parameter names by a registry-wide test, which is the only thing standing
+   * between a declaration and two numbers in each other's place. Returns the
+   * model's own result object; called by `state/compute` and by the chart spec
+   * builders.
    */
-  readonly run: (init: Record<string, number>) => ModelResult;
+  readonly run: (values: ValuesReader) => ModelResult;
   /**
    * The library's function name for this model, as the library spells it
    * (`"pmv_ppd_iso"`). The model's one name (ADR-0002 decision 30): the share
