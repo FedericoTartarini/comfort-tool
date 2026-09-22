@@ -1,12 +1,11 @@
-import { t_o } from "jsthermalcomfort";
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
+import { resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/libraryInputs";
 import { dynamicChartOf, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { quantities, type Quantity } from "$lib/core/quantities";
+import { rehearseSwitch } from "$lib/core/modelSwitch";
+import type { Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
-
-const q = quantities;
 
 /**
  * One set of inputs (ADR §4.5). Canonical SI; the quantity the user entered is
@@ -47,41 +46,38 @@ export class InputSlot {
     if (mode === this.humidity.mode) {
       return;
     }
-    const tdb = this.values.get(q.tdb) ?? this.require(q.operative_tmp);
+    const tdb = resolvedTdb(this);
     const rh = this.humidity.mode.toRelativeHumidity(this.humidity.value, tdb);
     this.humidity = { mode, value: mode.fromRelativeHumidity(rh, tdb) };
   }
 
   /**
-   * Convert the stored temperatures into the new representation. Separate →
-   * operative uses the library's `t_o(tdb, tr, v)`; operative →
-   * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, as in the old
-   * tool.
+   * Convert the stored temperatures into the new representation, by the rule
+   * `core/libraryInputs.ts` states: lossy and one-way, as in the old tool.
    */
   setTemperatureMode(mode: TemperatureMode): void {
-    if (mode === this.temperature.mode) {
-      return;
-    }
-    if (mode === temperatureMode.operative) {
-      const operative = t_o(this.require(q.tdb), this.require(q.tr), this.require(q.v));
-      this.values.set(q.operative_tmp, operative);
-      this.values.delete(q.tdb);
-      this.values.delete(q.tr);
-    } else {
-      const operative = this.require(q.operative_tmp);
-      this.values.set(q.tdb, operative);
-      this.values.set(q.tr, operative);
-      this.values.delete(q.operative_tmp);
-    }
-    this.temperature = { mode };
+    this.replaceInputs(withTemperatureMode(this, mode));
   }
 
-  private require(quantity: Quantity): number {
-    const value = this.values.get(quantity);
-    if (value === undefined) {
-      throw new Error(`Slot has no value for ${quantity.label}`);
+  /**
+   * Hold what `inputs` holds: quantities it does not carry are dropped, the
+   * rest are set, and the humidity and temperature entries are replaced. The
+   * `values` map is mutated rather than swapped, because the input panel and
+   * the derivations hold it and its reactivity is its own. `inputs` may be
+   * this slot itself, when the core function it came from found nothing to
+   * change; both loops then do nothing.
+   */
+  replaceInputs(inputs: SlotInputs): void {
+    for (const quantity of [...this.values.keys()]) {
+      if (!inputs.values.has(quantity)) {
+        this.values.delete(quantity);
+      }
     }
-    return value;
+    for (const [quantity, value] of inputs.values) {
+      this.values.set(quantity, value);
+    }
+    this.humidity = inputs.humidity;
+    this.temperature = inputs.temperature;
   }
 }
 
@@ -131,10 +127,17 @@ export class Session {
     this.slots = [new InputSlot(model), new InputSlot(model), new InputSlot(model)];
   }
 
+  /**
+   * The address's path — a typed URL, the back button, a share link — which
+   * has no previous page to stay on and so never asks and never adjusts a
+   * value (ADR-0002 decision 32). The rehearsed slot and the model land in one
+   * step, so no derivation sees the two disagree.
+   */
   setModel(model: RegisteredModel): void {
     if (model === this.model) {
       return;
     }
+    this.slots[0].replaceInputs(rehearseSwitch(this.slots[0], model));
     this.model = model;
     this.chart = this.#chartFor(model);
   }

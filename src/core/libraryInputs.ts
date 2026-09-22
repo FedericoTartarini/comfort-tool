@@ -1,4 +1,4 @@
-import { v_relative } from "jsthermalcomfort";
+import { t_o, v_relative } from "jsthermalcomfort";
 import type { ApplicabilityWarning } from "jsthermalcomfort";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import {
@@ -175,4 +175,35 @@ export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quant
     }
   }
   return { values, humidity, temperature: slot.temperature };
+}
+
+/**
+ * The same slot with its temperatures re-expressed under `mode`. Separate →
+ * operative is the library's `t_o(tdb, tr, v)`; operative → separate sets
+ * `tdb = tr = operative_tmp`. Lossy and one-way, as in the old tool, and the
+ * one removal the bag ever suffers: the two representations never coexist.
+ *
+ * The one statement of the conversion a slot undergoes: the entry-mode buttons
+ * apply it through the slot they own, and `core/modelSwitch.ts` applies it for
+ * a model that has no temperature entry group. {@link resolveQuantities}'s
+ * expansion is a different act — it stands the operative entry in for the two
+ * temperatures of one library call and changes no entry mode.
+ */
+export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode): SlotInputs {
+  if (mode === slot.temperature.mode) {
+    return slot;
+  }
+  const values = new Map(slot.values);
+  if (mode === temperatureMode.operative) {
+    const operative = t_o(requireValue(values, q.tdb), requireValue(values, q.tr), requireValue(values, q.v));
+    values.set(q.operative_tmp, operative);
+    values.delete(q.tdb);
+    values.delete(q.tr);
+  } else {
+    const operative = requireValue(values, q.operative_tmp);
+    values.set(q.tdb, operative);
+    values.set(q.tr, operative);
+    values.delete(q.operative_tmp);
+  }
+  return { values, humidity: slot.humidity, temperature: { mode } };
 }
