@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -351,6 +351,42 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     considered and dropped, because the case for it, UTCI, is offered operative entry by the old tool as well.
     Sequencing: the dialog moves from Phase 5 item 2 to a prerequisite of Phase 4b, where two models first share the
     Standard page and a switch that breaks a bound becomes an everyday event. Its look is still Phase 5c's.
+
+    **Revised 2026-09-22 (the feature as built, `.scratch/model-switch/`: 01 `9c67d63`, 02 `0a35e39`, 03 `6e6c36d`,
+    04 `2ffddfe`).** Four points this decision did not cover or worded too narrowly.
+
+    **Every in-app way of switching asks, not only the select.** "The check runs in the model select's handler" was
+    written when the select was the only control that switched models; the Standard page also has a model link per
+    model in its navigation column, and an un-intercepted link would have treated a person who should have been
+    asked as if they had arrived from outside. A link stays a link — it keeps its `href`, so a new tab, a copied
+    address and assistive technology are untouched — and an ordinary click on it requests the model exactly as the
+    select does. A click the browser will act on itself (a modifier key, the middle button, the context menu's "open
+    in new tab") is left alone and arrives as an **address arrival**, which by this decision never asks and never
+    adjusts: there is no previous page to stay on. So the rule is "every in-app switch asks, every address arrival
+    does not", and which control was used does not enter into it.
+
+    **Every in-app switch leaves a history entry.** Following from the above, since both ways of switching now go
+    through the same request: `routes/navigation.ts` splits its one navigator in two, `navigateTo` pushing and
+    `redirectTo` replacing, with `redirectTo` used only by the unknown-address fallback — an address that named no
+    model is not somewhere back should return to. Back therefore returns to the previous model however the person
+    switched, and the dialog's "Yes" needs no memory of which control asked.
+
+    **Where the rehearsal landed, and the one definition of out of range.** `core/modelSwitch.ts` — a new file in
+    `core/` that ADR-0001 §5's tree does not list, recorded here as decision 6 recorded `core/applicability.ts` —
+    holds `rehearseSwitch(slot, model)` and `adjustToBounds(inputs, rows)`, the only place in the app that moves a
+    value the person entered. The gate reports rows rather than quantities: `outOfRangeRows(slot, model)` returns
+    `{ quantity, value, bound }` and `outOfRangeInputs` is a map over it, so the input panel's red boxes and the
+    dialog's table are one list read two ways and cannot disagree. The conversion rule moved out of
+    `InputSlot.setTemperatureMode` into `core/libraryInputs.ts`'s `withTemperatureMode`, because `core/` may not
+    import `state/` (§5) and both paths must apply one statement of it. The session holds the question as
+    `pendingSwitch` and answers it with `acceptSwitch` / `declineSwitch`; a private landing puts the model and the
+    slot down together and clears whatever was pending, so no question outlives the act that asked it.
+
+    **The dialog is at `src/ui/inputs/`, not `ui/dialogs/`.** ADR-0001 §5's tree reserves `ui/dialogs/`, and this is
+    the app's first dialog. It is placed with the inputs because that is what it is about and where it renders — it
+    reads the pending switch's rows and the current unit system and belongs to the input column's exchange, not to
+    the page. `ui/dialogs/` stays reserved for a dialog that is not part of a panel. Decided 2026-09-22 with the
+    project lead rather than resolved by moving the file.
 33. **The gate freezes the result, not the screen.** Amends ADR-0001 §4.5's "Outputs are derived entirely from
     Inputs + Chart" and the compute contract decision 29 left unchanged. While an entered value is outside
     Applicability the last valid result stays on screen, as before. What is kept is the last valid *inputs* of the
