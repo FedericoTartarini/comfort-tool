@@ -1,0 +1,86 @@
+# Runs the rewrite plan's "Verification" suite (docs/rewrite-plan.md) on every
+# push and pull request, so a broken check is visible on GitHub instead of only
+# on the machine that made the change.
+name: CI
+
+on:
+  push:
+    branches: [rewrite/v1]
+  pull_request:
+    branches: [rewrite/v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The app resolves `jsthermalcomfort` to ../jsthermalcomfort and consumes its
+  # built lib/esm output (AGENTS.md). Keep this ref on the library branch
+  # rewrite/v1 currently needs; the plan's 2026-09-19 note puts library changes
+  # on feat/v2-typescript-setup. Change it here, in one place.
+  LIBRARY_REPOSITORY: FedericoTartarini/jsthermalcomfort
+  LIBRARY_REF: feat/v2-typescript-setup
+
+jobs:
+  verify:
+    name: test · check · lint · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the app
+        uses: actions/checkout@v4
+        with:
+          path: comfort-tool
+
+      - name: Check out the library as a sibling folder
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.LIBRARY_REPOSITORY }}
+          ref: ${{ env.LIBRARY_REF }}
+          path: jsthermalcomfort
+
+      - name: Set up Node from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: comfort-tool/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            comfort-tool/package-lock.json
+            jsthermalcomfort/package-lock.json
+
+      - name: Build the library (the app consumes lib/esm/)
+        working-directory: jsthermalcomfort
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install app dependencies
+        working-directory: comfort-tool
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: comfort-tool
+        run: npm test
+
+      - name: Type check (npm run check)
+        # Run even if an earlier check failed, so every result is reported in one run.
+        if: ${{ !cancelled() }}
+        working-directory: comfort-tool
+        run: npm run check
+
+      - name: Lint (architecture boundaries)
+        # Run even if an earlier check failed, so every result is reported in one run.
+        if: ${{ !cancelled() }}
+        working-directory: comfort-tool
+        run: npm run lint
+
+      - name: Production build
+        # Run even if an earlier check failed, so every result is reported in one run.
+        if: ${{ !cancelled() }}
+        working-directory: comfort-tool
+        run: npm run build
