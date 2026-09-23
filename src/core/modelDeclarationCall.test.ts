@@ -1,21 +1,47 @@
 /**
  * How every registered declaration's `run` calls its library function, in the
- * way the compiler cannot see: positionally, so the order it asks for values
- * in has to be that function's own parameter order (ADR-0002 decision 34).
- * Split out of `modelDeclarationRun.test.ts` when that file passed ADR §6's
+ * two ways the compiler cannot see: positionally, so the order it asks for
+ * values in has to be that function's own parameter order (ADR-0002 decision
+ * 34); and with each option under the kwarg its `key` names, since the key and
+ * the kwarg are spelled separately in the declaration (decision 36). Split out of `modelDeclarationRun.test.ts` when that file passed ADR §6's
  * line band; what `run` returns stays there.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as library from "jsthermalcomfort";
 import { adaptive_ashrae, heat_index_rothfusz, pmv_ppd, pmv_ppd_iso, Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { defaultSlot } from "./declarationTestSlots";
-import { optionsReader, resolveQuantities, valuesReader } from "./libraryInputs";
+import { optionsReader, resolveQuantities, toLibraryInputs, valuesReader } from "./libraryInputs";
 import type { OptionSpec, OptionsReader, RegisteredModel, ValuesReader } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
+
+/** The arguments of the last call of each library function, by export name. */
+const lastCalls = vi.hoisted(() => new Map<string, readonly unknown[]>());
+
+// Every function the package exports, wrapped to record its arguments and
+// otherwise unchanged: same result, and the library's own source from
+// `toString`, which the parameter-name reader below depends on. A declaration
+// imports its function from the package, so its `run` calls the wrapper.
+vi.mock("jsthermalcomfort", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return Object.fromEntries(
+    Object.entries(actual).map(([name, value]) => {
+      if (typeof value !== "function") {
+        return [name, value];
+      }
+      const original = value as (...args: unknown[]) => unknown;
+      const recording = (...args: unknown[]) => {
+        lastCalls.set(name, args);
+        return original(...args);
+      };
+      recording.toString = () => Function.prototype.toString.call(original);
+      return [name, recording];
+    }),
+  );
+});
 
 /** The package's exports, by name: a namespace import only a test may make, for the reason `modelDeclaration.test.ts` gives. */
 const libraryExports: Record<string, unknown> = library;
@@ -186,3 +212,66 @@ export function readerTypeProof(values: ValuesReader, options: OptionsReader): v
   // @ts-expect-error the reader itself, not its answer: the kwarg takes the boolean `options(…)` returns
   pmv_ppd(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ashrae, { airspeed_control: options });
 }
+
+/**
+ * Where `option` reaches the library call: the kwargs whose value differs
+ * between a run with the option on and one with it off, everything else at the
+ * model's defaults. A positional argument that differs is named by its index.
+ */
+function kwargsFedBy(model: RegisteredModel, option: OptionSpec): string[] {
+  const slot = defaultSlot(model);
+  const argumentsWith = (value: boolean): readonly unknown[] => {
+    lastCalls.delete(model.name);
+    model.run(toLibraryInputs(slot, model), optionsReader(new Map(slot.options).set(option, value)));
+    const args = lastCalls.get(model.name);
+    if (!args) {
+      throw new Error(`${model.name}'s run did not call the library function it is named after`);
+    }
+    return args;
+  };
+  const on = argumentsWith(true);
+  const off = argumentsWith(false);
+  const fed: string[] = [];
+  for (const [index, argument] of on.entries()) {
+    const other = off[index];
+    if (isKwargs(argument) && isKwargs(other)) {
+      fed.push(...Object.keys({ ...argument, ...other }).filter((key) => argument[key] !== other[key]));
+    } else if (argument !== other) {
+      fed.push(`argument ${index}`);
+    }
+  }
+  return fed;
+}
+
+function isKwargs(argument: unknown): argument is Readonly<Record<string, unknown>> {
+  return typeof argument === "object" && argument !== null;
+}
+
+describe("an option's key", () => {
+  it("is the kwarg its run feeds the option to, for every registered model", () => {
+    for (const model of registeredModels) {
+      for (const option of model.options) {
+        expect(kwargsFedBy(model, option), `${model.name} ${option.key}`).toEqual([option.key]);
+      }
+    }
+  });
+
+  it("is found where the run puts it", () => {
+    expect(kwargsFedBy(readsAnOption, airSpeedControl)).toEqual(["airspeed_control"]);
+  });
+
+  it("catches a key spelled differently from the kwarg, which is all the compiler cannot see", () => {
+    const misspelt: OptionSpec = { ...airSpeedControl, key: "airspeed_contol" };
+    const declared = {
+      ...readsAnOption,
+      options: [misspelt],
+      run: (values: ValuesReader, options: OptionsReader) => readsAnOption.run(values, () => options(misspelt)),
+    } satisfies RegisteredModel;
+    expect(kwargsFedBy(declared, misspelt)).not.toEqual([misspelt.key]);
+  });
+
+  it("catches an option the run never reads", () => {
+    const unread = { ...pmvPpdIso, name: "pmv_ppd_iso", options: [airSpeedControl] } satisfies RegisteredModel;
+    expect(kwargsFedBy(unread, airSpeedControl)).toEqual([]);
+  });
+});

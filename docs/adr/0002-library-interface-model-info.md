@@ -444,7 +444,9 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     compiler checks the kwarg where the library types it: `pmv_ppd`'s `Pmv_ppdKwargs` types `airspeed_control` as a
     boolean, pinned by a `@ts-expect-error` in the run tests. Checked 2026-09-23: `pmv_ppd_ashrae`'s published
     declaration types its positional parameters `any` and its kwargs `{}`, so that check does not yet hold for the
-    function PMV (ASHRAE 55) will call. Booleans only: a kind field waits for a second kind of option. Across a
+    function PMV (ASHRAE 55) will call. The option's `key` and the kwarg it feeds are spelled separately, so a
+    registry-wide test runs each option on and off with the library's functions wrapped to record their arguments,
+    and fails unless the one kwarg that changed is the option's `key`. Booleans only: a kind field waits for a second kind of option. Across a
     switch the map is a superset bag like `values`: the rehearsal seeds every option the new model declares and the
     map lacks at its default, keeps everything else and removes nothing. An option has no range, so the gate never
     reads one and the switch dialog never lists one. On screen, one checkbox per declared option under the quantity
