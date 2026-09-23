@@ -446,7 +446,9 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     declaration types its positional parameters `any` and its kwargs `{}`, so that check does not yet hold for the
     function PMV (ASHRAE 55) will call. The option's `key` and the kwarg it feeds are spelled separately, so a
     registry-wide test runs each option on and off with the library's functions wrapped to record their arguments,
-    and fails unless the one kwarg that changed is the option's `key`. Booleans only: a kind field waits for a second kind of option. Across a
+    and fails unless the one kwarg that changed is the option's `key`. The `key` is therefore a boundary string of
+    ADR-0001 §4.0 rule 2's kind, the library's name for the switch and the share link's, written in the declaration
+    beside the option rather than in a table; nothing in the app looks an option up by it. Booleans only: a kind field waits for a second kind of option. Across a
     switch the map is a superset bag like `values`: the rehearsal seeds every option the new model declares and the
     map lacks at its default, keeps everything else and removes nothing. An option has no range, so the gate never
     reads one and the switch dialog never lists one. On screen, one checkbox per declared option under the quantity
