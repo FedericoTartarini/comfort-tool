@@ -19,6 +19,7 @@ function separateSlot(overrides: Partial<Record<"tdb" | "tr" | "v" | "met" | "cl
     ]),
     humidity: { mode: humidityMode.rh, value: 50 },
     temperature: { mode: temperatureMode.separate },
+    options: new Map(),
   };
 }
 
@@ -32,6 +33,7 @@ function operativeSlot(operative: number): SlotInputs {
     ]),
     humidity: { mode: humidityMode.rh, value: 50 },
     temperature: { mode: temperatureMode.operative },
+    options: new Map(),
   };
 }
 

@@ -26,6 +26,7 @@ const slot: SlotInputs = {
   ]),
   humidity: { mode: humidityMode.rh, value: 50 },
   temperature: { mode: temperatureMode.separate },
+  options: new Map(),
 };
 
 const request: ChartRequest = { model: pmvPpdIso, slot, slotLabel: "Input 1", unitSystem: unitSystem.si };
@@ -280,6 +281,7 @@ describe("axes across a temperature entry mode switch", () => {
       ]),
       humidity: { mode: humidityMode.rh, value: 50 },
       temperature: { mode: temperatureMode.operative },
+      options: new Map(),
     };
     // declaration.axes.x is tdb, which the slot no longer holds.
     const spec = dynamicSpec({ ...request, slot: operativeSlot }, declaration, declaration.axes);

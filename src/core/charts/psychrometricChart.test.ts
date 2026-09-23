@@ -30,7 +30,7 @@ function slot(mode: typeof temperatureMode.separate | typeof temperatureMode.ope
     values.set(q.tdb, 26);
     values.set(q.tr, 24);
   }
-  return { values, humidity: { mode: humidityMode.rh, value: 50 }, temperature: { mode } };
+  return { values, humidity: { mode: humidityMode.rh, value: 50 }, temperature: { mode }, options: new Map() };
 }
 
 function request(

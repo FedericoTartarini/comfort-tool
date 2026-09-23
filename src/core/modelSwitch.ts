@@ -80,6 +80,10 @@ function convertEntryMode(slot: SlotInputs, model: RegisteredModel): SlotInputs 
  * representation at all times — and the defaults are applied through
  * `withEnteredValues`, which puts humidity where the slot keeps it, so no
  * default can land among the values `rh` is excluded from (ADR §4.5).
+ *
+ * Options are seeded the same way: an option the new model declares and the
+ * slot has no value for starts at its default, and every other is kept
+ * (ADR-0002 decision 36). The gate never sees them — an option has no range.
  */
 function seedDeclaredDefaults(slot: SlotInputs, model: RegisteredModel): SlotInputs {
   const defaults = new Map<Quantity, number>();
@@ -91,7 +95,13 @@ function seedDeclaredDefaults(slot: SlotInputs, model: RegisteredModel): SlotInp
       defaults.set(held, value);
     }
   }
+  const options = new Map(slot.options);
+  for (const option of model.options) {
+    if (!options.has(option)) {
+      options.set(option, option.default);
+    }
+  }
   // Always a copy, empty defaults included: what comes back is the plain shape
   // decision 32 rehearses on, never the caller's own slot under another name.
-  return withEnteredValues(slot, defaults);
+  return { ...withEnteredValues(slot, defaults), options };
 }

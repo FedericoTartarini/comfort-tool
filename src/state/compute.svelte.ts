@@ -3,7 +3,7 @@ import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicSpec } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
-import { toLibraryInputs, type SlotInputs } from "$lib/core/libraryInputs";
+import { optionsReader, toLibraryInputs, type SlotInputs } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   psychrometricChartOf,
@@ -93,7 +93,11 @@ export class Outputs {
     const last = this.#lastValid;
     // Slots 1 and 2 are Compare's (Phase 5); nothing runs them yet, and
     // nothing keeps a result for them across a model change either.
-    return [last ? last.model.run(toLibraryInputs(last.inputs, last.model)) : null, null, null];
+    return [
+      last ? last.model.run(toLibraryInputs(last.inputs, last.model), optionsReader(last.inputs.options)) : null,
+      null,
+      null,
+    ];
   });
 
   readonly #violations = $derived.by((): readonly ViolationRow[] => {
@@ -139,13 +143,18 @@ export class Outputs {
 }
 
 /**
- * `slot`'s entered values, detached from the slot: a plain `Map`, so what is
- * remembered stops moving when the slot does, and reading it later subscribes
- * to nothing. The two entry-mode objects are replaced rather than mutated
+ * `slot`'s entered values and options, detached from the slot: plain `Map`s,
+ * so what is remembered stops moving when the slot does, and reading it later
+ * subscribes to nothing. The two entry-mode objects are replaced rather than mutated
  * (`state/session.svelte.ts`), so they are kept by reference.
  */
 function detach(slot: SlotInputs): SlotInputs {
-  return { values: new Map(slot.values), humidity: slot.humidity, temperature: slot.temperature };
+  return {
+    values: new Map(slot.values),
+    humidity: slot.humidity,
+    temperature: slot.temperature,
+    options: new Map(slot.options),
+  };
 }
 
 /**

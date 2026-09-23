@@ -18,8 +18,9 @@
  * `sessionModelSwitch.svelte.test.ts`'s; here every request lands.
  */
 import { describe, expect, it } from "vitest";
+import { pmv_ppd, Standard } from "jsthermalcomfort";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
@@ -50,6 +51,33 @@ const withoutTemperatureGroup = {
   ...pmvPpdIso,
   name: "fixture_without_mean_radiant",
   inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tr),
+} satisfies RegisteredModel;
+
+const airSpeedControl: OptionSpec = {
+  key: "airspeed_control",
+  label: "Occupants control the air speed",
+  default: false,
+};
+
+/**
+ * A model with an option, read through `run`'s second reader into a kwargs
+ * object the compiler checks: `pmv_ppd` under ASHRAE 55 types
+ * `airspeed_control` as a boolean. With the option off, an air speed above
+ * what the standard allows the room comes back as a broken row on the result,
+ * which is how a test sees the option reach the call.
+ */
+const takesAnOption = {
+  ...pmvPpdIso,
+  name: "fixture_airspeed_control",
+  standard: Standard.ashrae_55_2023,
+  options: [airSpeedControl],
+  run: (values, options) =>
+    pmv_ppd(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, Standard.ashrae_55_2023, {
+      units: "SI",
+      limit_inputs: false,
+      round_output: false,
+      airspeed_control: options(airSpeedControl),
+    }),
 } satisfies RegisteredModel;
 
 describe("Session.setModel", () => {
@@ -213,5 +241,62 @@ describe("Session.requestModel", () => {
     session.requestModel(takesExternalWork);
 
     expect(session.slots.slice(1).map(shapeOf)).toEqual(others);
+  });
+});
+
+/**
+ * What a slot does with a model's options (ADR-0002 decision 36). They are a
+ * superset bag like the values: a switch seeds what the new model declares
+ * and the slot lacks, and removes nothing. An option has no range, so no
+ * switch ever asks about one.
+ */
+describe("options", () => {
+  it("start at their defaults in a slot built for the model", () => {
+    const session = new Session(takesAnOption);
+
+    expect(session.slots[0].options.get(airSpeedControl)).toBe(airSpeedControl.default);
+  });
+
+  it("are set on the slot like a value, and the outputs follow", () => {
+    const session = new Session(takesAnOption);
+    const outputs = new Outputs(session);
+    // 0.8 m/s at 25 °C is past what ASHRAE 55 allows occupants without control.
+    session.slots[0].values.set(q.v, 0.8);
+    expect(outputs.violations.map((violation) => violation.quantity)).toContain(q.v);
+
+    session.slots[0].options.set(airSpeedControl, true);
+
+    expect(outputs.violations).toEqual([]);
+  });
+
+  it("seed an option the slot lacks at its default on a switch", () => {
+    const session = new Session(pmvPpdIso);
+    expect(session.slots[0].options.size).toBe(0);
+
+    session.setModel(takesAnOption);
+
+    expect(session.slots[0].options.get(airSpeedControl)).toBe(airSpeedControl.default);
+  });
+
+  it("are kept across a switch away and back, as they were left", () => {
+    const session = new Session(takesAnOption);
+    session.slots[0].options.set(airSpeedControl, true);
+
+    session.setModel(pmvPpdIso);
+    expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
+    session.setModel(takesAnOption);
+
+    expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
+  });
+
+  it("are never asked about: a request that changes only an option lands", () => {
+    const session = new Session(pmvPpdIso);
+    session.slots[0].options.set(airSpeedControl, true);
+
+    session.requestModel(takesAnOption);
+
+    expect(session.pendingSwitch).toBeNull();
+    expect(session.model).toBe(takesAnOption);
+    expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
   });
 });

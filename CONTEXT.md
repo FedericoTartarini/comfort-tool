@@ -44,6 +44,10 @@ _Avoid_: input mode, representation group
 A named reference value the library publishes for a quantity (a typical task for metabolic rate, a typical ensemble for clothing), offered beside free entry. Choosing one enters its number; the number is the truth and nothing remembers the preset.
 _Avoid_: default, option, template
 
+**Option**:
+A switch a model takes beside its quantities, carrying no unit and never on a chart. Declared by the model, entered in the slot.
+_Avoid_: setting, flag, parameter
+
 **Slot**:
 One set of entered inputs. Compare holds three.
 _Avoid_: scenario, case, column

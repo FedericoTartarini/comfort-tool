@@ -5,6 +5,8 @@ import {
   hasHumidityGroup,
   hasTemperatureGroup,
   type ModelResult,
+  type OptionSpec,
+  type OptionsReader,
   type RegisteredModel,
   type ValuesOf,
   type ValuesReader,
@@ -19,6 +21,8 @@ export interface SlotInputs {
   readonly values: ReadonlyMap<Quantity, number>;
   readonly humidity: { readonly mode: HumidityMode; readonly value: number };
   readonly temperature: { readonly mode: TemperatureMode };
+  /** Every option any model put here, by identity: a superset bag like `values` (ADR-0002 decision 36). */
+  readonly options: ReadonlyMap<OptionSpec, boolean>;
 }
 
 const q = quantities;
@@ -105,6 +109,21 @@ export function valuesReader(values: ReadonlyMap<Quantity, number>): ValuesReade
 }
 
 /**
+ * `options` as the reader a declaration's `run` asks: the boolean the slot
+ * holds for the option, and a throw naming an option the map does not carry,
+ * for the reason {@link valuesReader} gives (ADR-0002 decision 36).
+ */
+export function optionsReader(options: ReadonlyMap<OptionSpec, boolean>): OptionsReader {
+  return (option) => {
+    const value = options.get(option);
+    if (value === undefined) {
+      throw new Error(`Slot has no value for ${option.label}`);
+    }
+    return value;
+  };
+}
+
+/**
  * The mirror read: a quantity's value off the model's own result object, by
  * key. `undefined` for a key the result does not carry. One of the two casts
  * onto `ModelResult`'s deliberately unindexed `object`
@@ -174,7 +193,7 @@ export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quant
       values.set(quantity, value);
     }
   }
-  return { values, humidity, temperature: slot.temperature };
+  return { values, humidity, temperature: slot.temperature, options: slot.options };
 }
 
 /**
@@ -205,5 +224,5 @@ export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode): Sl
     values.set(q.tr, operative);
     values.delete(q.operative_tmp);
   }
-  return { values, humidity: slot.humidity, temperature: { mode } };
+  return { values, humidity: slot.humidity, temperature: { mode }, options: slot.options };
 }

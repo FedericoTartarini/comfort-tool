@@ -11,12 +11,29 @@
  */
 import { describe, expect, it } from "vitest";
 import * as library from "jsthermalcomfort";
-import { adaptive_ashrae, classifyFromBins, heat_index_rothfusz, pmv_ppd_iso, type ClassifierBins } from "jsthermalcomfort";
+import { adaptive_ashrae, classifyFromBins, heat_index_rothfusz, pmv_ppd, pmv_ppd_iso, Standard, type ClassifierBins } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { humidityMode, temperatureMode } from "./entryModes";
-import { resolveQuantities, resultValue, toLibraryInputs, valuesReader, withEnteredValues, type SlotInputs } from "./libraryInputs";
-import { dynamicChartOf, requireAxisRange, type DynamicDeclaration, type Range, type RegisteredModel, type ValuesReader } from "./modelDeclaration";
+import {
+  optionsReader,
+  resolveQuantities,
+  resultValue,
+  toLibraryInputs,
+  valuesReader,
+  withEnteredValues,
+  type SlotInputs,
+} from "./libraryInputs";
+import {
+  dynamicChartOf,
+  requireAxisRange,
+  type DynamicDeclaration,
+  type OptionSpec,
+  type OptionsReader,
+  type Range,
+  type RegisteredModel,
+  type ValuesReader,
+} from "./modelDeclaration";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 
 const q = quantities;
@@ -24,7 +41,7 @@ const q = quantities;
 /** The package's exports, by name: a namespace import only a test may make, for the reason `modelDeclaration.test.ts` gives. */
 const libraryExports: Record<string, unknown> = library;
 
-/** A slot holding the model's own declared defaults, in the default entry modes. */
+/** A slot holding the model's own declared defaults, options included, in the default entry modes. */
 function defaultSlot(model: RegisteredModel): SlotInputs {
   const values = new Map<Quantity, number>();
   let humidity = { mode: humidityMode.rh, value: 0 };
@@ -35,8 +52,34 @@ function defaultSlot(model: RegisteredModel): SlotInputs {
       values.set(quantity, value);
     }
   }
-  return { values, humidity, temperature: { mode: temperatureMode.separate } };
+  const options = new Map(model.options.map((option) => [option, option.default]));
+  return { values, humidity, temperature: { mode: temperatureMode.separate }, options };
 }
+
+const airSpeedControl: OptionSpec = {
+  key: "airspeed_control",
+  label: "Occupants control the air speed",
+  default: false,
+};
+
+/**
+ * A model that reads an option through `run`'s second reader, as PMV
+ * (ASHRAE 55) will. Named after the function it calls, so the position test
+ * can read that function's parameters.
+ */
+const readsAnOption = {
+  ...pmvPpdIso,
+  name: "pmv_ppd",
+  standard: Standard.ashrae_55_2023,
+  options: [airSpeedControl],
+  run: (values, options) =>
+    pmv_ppd(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, Standard.ashrae_55_2023, {
+      units: "SI",
+      limit_inputs: false,
+      round_output: false,
+      airspeed_control: options(airSpeedControl),
+    }),
+} satisfies RegisteredModel;
 
 /** A library model function, as the namespace import above hands one over. */
 type LibraryFunction = (...args: never[]) => unknown;
@@ -93,14 +136,15 @@ function parameterNames(fn: LibraryFunction): string[] {
  * reject.
  */
 function askedQuantities(model: RegisteredModel): readonly Quantity[] {
-  const read = valuesReader(resolveQuantities(defaultSlot(model), model));
+  const slot = defaultSlot(model);
+  const read = valuesReader(resolveQuantities(slot, model));
   const asked: Quantity[] = [];
   // Only the recording is this test's; the values come back through the very
   // reader the app builds, so the positions being proved are the real ones.
   model.run((...quantities) => {
     asked.push(...quantities);
     return read(...quantities);
-  });
+  }, optionsReader(slot.options));
   return asked;
 }
 
@@ -150,6 +194,12 @@ describe("run's positional call", () => {
     const { asked, parameters } = askedAgainstParameters(swapped);
     expect(asked).not.toEqual(parameters);
   });
+
+  it("reads the quantities off `values` alone for a model that also reads an option", () => {
+    const { asked, parameters } = askedAgainstParameters(readsAnOption);
+    expect(asked).toEqual(["tdb", "tr", "vr", "rh", "met", "clo"]);
+    expect(asked).toEqual(parameters);
+  });
 });
 
 /**
@@ -160,13 +210,17 @@ describe("run's positional call", () => {
  * pins it against the real one. Exported only because `noUnusedLocals` would
  * otherwise flag it.
  */
-export function readerTypeProof(values: ValuesReader): void {
+export function readerTypeProof(values: ValuesReader, options: OptionsReader): void {
   const kwargs = { units: "SI", limit_inputs: false, round_output: false } as const;
   pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, pmvPpdIso.standard, kwargs);
   // @ts-expect-error one quantity too few: the `0` meant for `wme` fills `clo`, and the tail no longer fits
   pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met), 0, pmvPpdIso.standard, kwargs);
   // @ts-expect-error a misspelt kwarg: the library spells it `units`, not `unit`
   pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, pmvPpdIso.standard, { unit: "SI" });
+  const ashrae = Standard.ashrae_55_2023;
+  pmv_ppd(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ashrae, { airspeed_control: options(airSpeedControl) });
+  // @ts-expect-error the reader itself, not its answer: the kwarg takes the boolean `options(…)` returns
+  pmv_ppd(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ashrae, { airspeed_control: options });
 }
 /**
  * The classified output the declared bands cut, found by object identity:
@@ -196,7 +250,10 @@ function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
     defaults,
     range: requireAxisRange(model, axis),
     at,
-    outputAt: (position: number) => Number(resultValue(model.run(toLibraryInputs(at(position), model)), chart.output)),
+    outputAt: (position: number) => {
+      const slot = at(position);
+      return Number(resultValue(model.run(toLibraryInputs(slot, model), optionsReader(slot.options)), chart.output));
+    },
   };
 }
 
@@ -259,7 +316,7 @@ describe("the dynamic chart's declared bands", () => {
       // A model whose Edges the axis cannot reach would pass vacuously.
       expect(probes.length, model.info.label).toBeGreaterThan(1);
       for (const slot of probes) {
-        const result = model.run(toLibraryInputs(slot, model));
+        const result = model.run(toLibraryInputs(slot, model), optionsReader(slot.options));
         const value = resultValue(result, chart.output);
         expect(typeof value, `${model.info.label} ${chart.output.label}`).toBe("number");
         expect(classifyFromBins(Number(value), chart.bands), `${model.info.label} at ${chart.output.label} ${String(value)}`).toBe(

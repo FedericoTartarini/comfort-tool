@@ -7,8 +7,8 @@ import {
   type PsychrometricPoint,
 } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
-import { requireValue, resolveQuantities, resultValue, valuesReader } from "$lib/core/libraryInputs";
-import { requireAxisRange, type Range, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { optionsReader, requireValue, resolveQuantities, resultValue, valuesReader } from "$lib/core/libraryInputs";
+import { requireAxisRange, type OptionsReader, type Range, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
@@ -63,7 +63,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
     requireValue(resolved, airSpeed),
     requireValue(resolved, q.met),
     requireValue(resolved, q.clo),
-    pmvOfRun(model, resolved, airSpeed),
+    pmvOfRun(model, resolved, optionsReader(slot.options), airSpeed),
     {
       tr_follows_db: operative,
       rh_step: ZONE_RH_STEP,
@@ -158,7 +158,12 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
  * output for this reason: a PMV rounded to 0.01 is a staircase the solver
  * cannot root-find.
  */
-function pmvOfRun(model: RegisteredModel, resolved: ReadonlyMap<Quantity, number>, airSpeed: Quantity): PmvFunction {
+function pmvOfRun(
+  model: RegisteredModel,
+  resolved: ReadonlyMap<Quantity, number>,
+  options: OptionsReader,
+  airSpeed: Quantity,
+): PmvFunction {
   if (!model.info.outputs[q.pmv.key]) {
     throw new Error(`${model.info.label} declares a psychrometric chart, but its result carries no ${q.pmv.label}`);
   }
@@ -170,7 +175,7 @@ function pmvOfRun(model: RegisteredModel, resolved: ReadonlyMap<Quantity, number
       .set(q.rh, rh)
       .set(q.met, met)
       .set(q.clo, clo);
-    const pmv = resultValue(model.run(valuesReader(inputs)), q.pmv);
+    const pmv = resultValue(model.run(valuesReader(inputs), options), q.pmv);
     return typeof pmv === "number" ? pmv : Number.NaN;
   };
 }

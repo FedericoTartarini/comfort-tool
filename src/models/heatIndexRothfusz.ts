@@ -24,6 +24,7 @@ export const heatIndexRothfusz = {
     { quantity: q.tdb, value: 30 },
     { quantity: q.rh, value: 50 },
   ],
+  options: [],
   relativeAirSpeed: false,
   // Both quantities declared, because the applicability fallback can answer for
   // neither: `rh` has no bound at all and `tdb`'s is `min`-only (ADR §4.4).

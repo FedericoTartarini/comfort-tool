@@ -6,12 +6,14 @@ import { humidityMode, temperatureMode } from "./entryModes";
 import {
   enteredQuantities,
   enteredValue,
+  optionsReader,
   resolveQuantities,
   toLibraryInputs,
   valuesReader,
   withEnteredValues,
   type SlotInputs,
 } from "./libraryInputs";
+import type { OptionSpec } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
@@ -28,6 +30,7 @@ function separateSlot(overrides: Partial<Record<"tdb" | "tr" | "v" | "met" | "cl
     ]),
     humidity: { mode: humidityMode.rh, value: 50 },
     temperature: { mode: temperatureMode.separate },
+    options: new Map(),
   };
 }
 
@@ -41,6 +44,7 @@ function operativeSlot(operative: number): SlotInputs {
     ]),
     humidity: { mode: humidityMode.rh, value: 50 },
     temperature: { mode: temperatureMode.operative },
+    options: new Map(),
   };
 }
 
@@ -125,6 +129,18 @@ describe("valuesReader", () => {
   it("throws naming the quantity the map does not carry, rather than answering undefined", () => {
     const reader = valuesReader(resolveQuantities(separateSlot(), pmvPpdIso));
     expect(() => reader(q.wme)).toThrow(`Slot has no value for ${q.wme.label}`);
+  });
+});
+
+describe("optionsReader", () => {
+  const control: OptionSpec = { key: "airspeed_control", label: "Occupants control the air speed", default: false };
+
+  it("answers what the map holds for the option, not its default", () => {
+    expect(optionsReader(new Map([[control, true]]))(control)).toBe(true);
+  });
+
+  it("throws naming the option the map does not carry, rather than answering undefined", () => {
+    expect(() => optionsReader(new Map())(control)).toThrow(`Slot has no value for ${control.label}`);
   });
 });
 

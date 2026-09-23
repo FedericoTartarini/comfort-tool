@@ -31,6 +31,26 @@ export type ValuesOf<T extends readonly Quantity[]> = { [K in keyof T]: number }
  */
 export type ValuesReader = <const T extends readonly Quantity[]>(...quantities: T) => ValuesOf<T>;
 
+/**
+ * A switch a model takes beside its quantities (`airspeed_control`): no unit,
+ * no range, never on an axis. Declared in the model's own file and referred to
+ * by identity, as a `Quantity` is (ADR-0002 decision 36). `key` is what the
+ * share link will carry, `label` what the panel shows, `default` what a slot
+ * starts from. A boolean only; a kind field waits for a second kind of option.
+ */
+export interface OptionSpec {
+  readonly key: string;
+  readonly label: string;
+  readonly default: boolean;
+}
+
+/**
+ * How a declaration reads its slot's options: the boolean for the option
+ * asked, so it lands in the library's kwargs where the compiler checks it
+ * (ADR-0002 decision 36).
+ */
+export type OptionsReader = (option: OptionSpec) => boolean;
+
 /** A closed interval, in SI. */
 export interface Range {
   readonly min: number;
@@ -144,6 +164,10 @@ export interface RegisteredModel {
    * run: (values) => pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ISO_EDITION, { … })
    * ```
    *
+   * A model with {@link options} reads them through the second reader, into
+   * the kwargs: `{ airspeed_control: options(airSpeedControl), … }`. A model
+   * without leaves it unnamed (ADR-0002 decision 36).
+   *
    * Two conventions the compiler cannot enforce. The spread goes **first**:
    * most misplacements fail to compile because the tail's types differ, but
    * not all of them — `pmv_ppd_iso(0, ...values(…))` type-checks, `wme` being
@@ -164,7 +188,7 @@ export interface RegisteredModel {
    * switch was left on. Called by `state/compute` and by the chart spec
    * builders.
    */
-  readonly run: (values: ValuesReader) => ModelResult;
+  readonly run: (values: ValuesReader, options: OptionsReader) => ModelResult;
   /**
    * The library's function name for this model, as the library spells it
    * (`"pmv_ppd_iso"`). The model's one name (ADR-0002 decision 30): the share
@@ -176,6 +200,12 @@ export interface RegisteredModel {
   readonly name: string;
   /** Panel order and SI default values. */
   readonly inputs: readonly { readonly quantity: Quantity; readonly value: number }[];
+  /**
+   * The model's options, in panel order; empty for a model with none. Every
+   * one is shown as a checkbox under the quantity rows, and a slot holds its
+   * value beside the quantities' (ADR-0002 decision 36).
+   */
+  readonly options: readonly OptionSpec[];
   /** `true`: the library takes `vr`, derived as `v_relative(v, met)` from the entered `v`. */
   readonly relativeAirSpeed: boolean;
   /**

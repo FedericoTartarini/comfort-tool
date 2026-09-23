@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -424,6 +424,7 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     `pmv_ppd_iso({ tdb, tr, … }, options)`, the faithful translation of pythermalcomfort's keyword call, recorded for
     the TypeScript port. When it lands a declaration writes `tdb: …` by hand, the names become the compiler's to
     check, and the position test is deleted.
+    **Revised 2026-09-23:** `run` takes a second reader, for the model's options (decision 36).
 35. **An unrounded `run` is pinned by its own test.** Amends decision 27, which retired decision 17's rounding rule
     on the strength of the drift test. Measured in ticket 06: with Heat Index at the library's default rounding the
     whole suite stays green, because the probes bisect on whatever `run` returns and land on the rounding step, where
@@ -432,6 +433,27 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     registered model, by a test that samples the chart's axis and fails when no output carries more decimals than a
     rounded one would; proven red with a fixture whose `run` rounds. It will fail the day `utci` is registered:
     `utci` rounds to one decimal with no switch. That is recorded as an upstream gap, to close before Phase 6.
+36. **A model's options are declared objects, and `run` reads them through a second reader.** Revises decision 34
+    and ADR-0001 §4.3's options sentence and §4.5's `InputSlot.options`. An option is `{ key, label, default }`
+    (`OptionSpec`), declared in the model's own declaration file and referred to by identity, as a `Quantity` is:
+    `key` is what the share link will carry, `label` what the panel shows, `default` what a slot starts from.
+    `RegisteredModel.options` lists them, empty for a model with none, and every declaration says so. The slot holds
+    `options: Map<OptionSpec, boolean>` beside `values`. `run` is `(values, options) => result`, where
+    `options(spec)` answers the boolean the slot holds and throws for one it does not, as `values` does, so the
+    declaration writes it into the library's own kwargs: `{ airspeed_control: options(airSpeedControl), … }`. The
+    compiler checks the kwarg where the library types it: `pmv_ppd`'s `Pmv_ppdKwargs` types `airspeed_control` as a
+    boolean, pinned by a `@ts-expect-error` in the run tests. Checked 2026-09-23: `pmv_ppd_ashrae`'s published
+    declaration types its positional parameters `any` and its kwargs `{}`, so that check does not yet hold for the
+    function PMV (ASHRAE 55) will call. Booleans only: a kind field waits for a second kind of option. Across a
+    switch the map is a superset bag like `values`: the rehearsal seeds every option the new model declares and the
+    map lacks at its default, keeps everything else and removes nothing. An option has no range, so the gate never
+    reads one and the switch dialog never lists one. On screen, one checkbox per declared option under the quantity
+    rows, labelled from `label`, always shown and always live, since whether it applies at the entered values is
+    the library's to say. Rejected: a string-keyed record, `Record<string, OptionValue>`, as the old draft had it,
+    because the key would be a string the declaration, the panel and `run` each spell, with nothing checking they
+    agree, where an object is spelt once and passed around; and an option as a new `Quantity` kind, because
+    everything that reads a `Quantity` (the axis picker, the gate, the dialog's rows, the display-unit table, the
+    quantity table's drift test against `_INFO`) would have to learn to skip it, and it is not in any `_INFO`.
 
 ## Consequences
 
