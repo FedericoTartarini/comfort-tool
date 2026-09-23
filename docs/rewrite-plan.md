@@ -753,10 +753,37 @@ switching asks, the navigation links included); the gate as `6ad4caa`. This phas
 
 ---
 
+## Between Phase 4b and Phase 5 · Review the whole codebase and its architecture (added 2026-09-22)
+
+**Why here and not on a calendar.** After Phase 4b three differently shaped declarations exist for the first time — ISO with no
+options, ASHRAE with `options`, Adaptive with locked axes — so the shape of `RegisteredModel` can be judged on three points
+instead of two. Compare then multiplies the slot state by three, after which `Session` and `InputSlot` are as good as
+frozen. And it is the last time `git diff main...HEAD` equals the whole rewrite: once `rewrite/v1` merges, a change-based
+review can no longer cover everything. **Not before Phase 4b's own close-out ticket has read the human half of the
+checklist against the phase's diff**; that ticket's structure findings are this review's input. Nothing here runs mid-phase.
+
+Four sessions, in this order, `/clear` between each:
+
+1. **Code — `/code-review main`.** The spec is ADR-0001 + ADR-0002 + this plan; the standards are `docs/code-quality-checklist.md`
+   + AGENTS.md. This is the first time the checklist is read across features rather than per feature diff, which is where
+   duplicated definitions, two names for one thing, and a rule kept in one feature and not another show up. Findings go to
+   `.scratch/review-after-4b/issues/`, one verifiable change per ticket, `/implement` each. A docs-versus-code disagreement is
+   not fixed in code: it becomes an ADR-0002 decision plus an ADR-0001 marker, as the model-switch close-out did.
+2. **Architecture — `/improve-codebase-architecture`**, only after item 1's tickets are done, so that smells are not reported
+   as structure. Scope given up front: the three declarations, `RegisteredModel`, Compare about to triple the slots. Pick
+   zero to two; more than two means a rule was worked around during 4b, which is a 4b question, not a refactor. Each pick is
+   an idea that enters the main flow at `/grill-with-docs`.
+3. **Vocabulary — `/domain-modeling` on `CONTEXT.md`, optional.** 4b brings `airspeed_control`, `t_running_mean`, the 80 % / 90 %
+   acceptability limits, and a second model called PMV with different bands; the question is whether any term is now doing
+   two jobs. Item 2's grilling usually pulls this in on its own; run it alone only for a term already felt to be fuzzy.
+4. **Compare's `/grill-with-docs`** takes items 1–3's output as known input.
+
+---
+
 ## Phase 5 · Compare / Explore / share and export
 
 **Goal**: close out the ADR §7 first-stage feature set.
-**Prerequisites**: Phase 4 passed.
+**Prerequisites**: Phase 4 passed, and the review between Phase 4b and Phase 5 above done.
 
 1. Compare with three slots + baseline: `ResultTable` has one row per slot, and the baseline determines what the difference highlighting is relative to;
    slot colours run through the input panel, the table and the marker points on the chart.
