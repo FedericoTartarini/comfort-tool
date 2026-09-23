@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Changelog &middot; CBE Thermal Comfort Tool</title><style>
+:root{--bg:#fff;--fg:#1c1917;--muted:#6b6663;--line:#e7e5e4;--accent:#0f766e;--soft:#f7f6f5;--code:#f4f4f5}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{display:flex;min-height:100vh;max-width:1400px;margin:0 auto}
+aside{width:290px;flex:0 0 290px;border-right:1px solid var(--line);padding:22px 18px 60px;background:var(--soft);position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .brand{font-weight:700;font-size:15px;line-height:1.3;display:block;color:var(--fg);margin-bottom:4px}
+aside .brandsub{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+aside h4{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:20px 0 7px}
+aside ul{list-style:none;margin:0;padding:0}
+aside li{margin:1px 0}
+aside a{display:block;padding:5px 9px;border-radius:6px;color:#44403c;font-size:13.5px}
+aside a:hover{background:#ececea;text-decoration:none}
+aside a.on{background:#0f766e;color:#fff;font-weight:600}
+aside a.todo{color:#a8a29e}
+aside a.todo:after{content:"draft";float:right;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#c4c0bd;padding-top:2px}
+main{flex:1;min-width:0;padding:40px 52px 100px;max-width:900px}
+.crumb{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+h1{font-size:31px;line-height:1.2;margin:0 0 12px;letter-spacing:-.02em}
+h2{font-size:20px;margin:38px 0 10px;padding-top:6px;letter-spacing:-.01em}
+h3{font-size:15.5px;margin:24px 0 6px}
+.lede{font-size:17px;color:#44403c;margin:0 0 8px}
+p{margin:12px 0}
+code{background:var(--code);padding:1.5px 5px;border-radius:4px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;font-size:12.5px;letter-spacing:.02em}
+ul.body,ol.body{padding-left:22px}
+ul.body li,ol.body li{margin:6px 0}
+.note{border-left:3px solid var(--accent);background:#f0fdfa;padding:11px 15px;margin:18px 0;border-radius:0 6px 6px 0;font-size:14px}
+.warn{border-left:3px solid #d97706;background:#fffbeb;padding:11px 15px;margin:18px 0;border-radius:0 6px 6px 0;font-size:14px}
+figure.shot{margin:22px 0;border:2px dashed #d6d3d1;border-radius:8px;background:repeating-linear-gradient(45deg,#fafaf9,#fafaf9 10px,#f5f5f4 10px,#f5f5f4 20px);padding:30px 20px;text-align:center}
+figure.shot .tag{display:inline-block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#78716c;border:1px solid #d6d3d1;background:#fff;border-radius:99px;padding:3px 10px;margin-bottom:9px}
+figure.shot .want{font-weight:600;font-size:14.5px;color:#44403c}
+figure.shot figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
+.pill{display:inline-block;font-size:11px;border:1px solid var(--line);background:var(--soft);border-radius:99px;padding:2px 9px;margin-right:5px;color:#57534e}
+footer.pf{margin-top:60px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+@media (max-width:860px){.wrap{display:block}aside{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}main{padding:26px 20px 70px}}
+
+figure.screenshot{margin:22px 0;text-align:center}
+figure.screenshot img{display:block;max-width:100%;height:auto;margin:0 auto;border:1px solid #e7e5e4;border-radius:8px}
+figure.screenshot figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
+</style></head><body>
+<div class="wrap">
+<aside>
+<a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+<div class="brandsub">Documentation</div>
+<ul>
+<li><a class="" href="../index.html">Home</a></li>
+</ul>
+<h4>Getting started</h4>
+<ul>
+<li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
+<li><a class="" href="../getting-started/units.html">Units (SI / IP)</a></li>
+<li><a class="" href="../getting-started/compare-mode.html">Compare mode</a></li>
+<li><a class="" href="../getting-started/charts.html">Charts and chart controls</a></li>
+<li><a class="" href="../getting-started/sharing.html">Sharing a calculation</a></li>
+</ul>
+<h4>Workspaces</h4>
+<ul>
+<li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
+<li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
+<li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
+<li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
+<li><a class="" href="../workspaces/explore.html">Explore</a></li>
+<li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+</ul>
+<h4>Models</h4>
+<ul>
+<li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+<li><a class="" href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+<li><a class="" href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+<li><a class="" href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+<li><a class="" href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
+<li><a class="" href="../models/utci.html">UTCI</a></li>
+<li><a class="" href="../models/heat-index.html">Heat Index</a></li>
+<li><a class="" href="../models/humidex.html">Humidex</a></li>
+<li><a class="" href="../models/wind-chill.html">Wind Chill</a></li>
+</ul>
+<h4>Features</h4>
+<ul>
+<li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+</ul>
+<h4>API documentation</h4>
+<ul>
+<li><a class="" href="../api/index.html">API Reference</a></li>
+</ul>
+<h4>Reference</h4>
+<ul>
+<li><a class="" href="../reference/references.html">References and citations</a></li>
+<li><a class="" href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
+</ul>
+<h4>Site pages</h4>
+<ul>
+<li><a class="" href="../sitepages/help.html">Help</a></li>
+<li><a class="" href="../sitepages/contributing.html">Contributing</a></li>
+<li><a class="on" href="../sitepages/changelog.html">Changelog</a></li>
+</ul>
+</aside>
+<main>
+<div class="crumb">Site pages</div>
+
+<h1>Changelog</h1>
+
+<p class="lede">What changed, and what it means for a calculation you ran before.</p>
+
+<div class="warn"><strong>Maintainers:</strong> dated release entries have not been added to this page yet. The section below records the change from the previous tool, which is what users will notice first; per-release entries should be appended above it as releases are published. Until then this page deliberately claims no version numbers or dates rather than inventing them.</div>
+
+<h2>This version, compared with the previous tool</h2>
+
+<p>This is a rebuild rather than an update. If you are returning from the earlier tool, these are the differences that change an answer or move a control.</p>
+
+<h3>Changes that can alter a result</h3>
+
+<table>
+<tr><th>Change</th><th>What to do about it</th></tr>
+
+<tr>
+<td><strong>PMV is now two separate models.</strong> ASHRAE 55 and ISO 7730 are distinct, with different calculations, different input limits and their own workspaces. They are not interchangeable.</td>
+<td>Check which one an old result used before comparing. See <a href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a> for how they differ.</td>
+</tr>
+
+<tr>
+<td><strong>Dynamic clothing is no longer automatic.</strong> The previous tool applied the movement correction in the background. It is now an <a href="../features/input-modifiers.html">input modifier</a> you switch on.</td>
+<td>Enable it to reproduce an older result that relied on it.</td>
+</tr>
+
+<tr>
+<td><strong>Solar gain is now a modifier, not a separate feature.</strong> It applies to the two PMV models and adds to mean radiant temperature as before.</td>
+<td>Nothing, beyond knowing where it moved to.</td>
+</tr>
+</table>
+
+<h3>New in this version</h3>
+
+<ul class="body">
+<li><strong><a href="../workspaces/time-series.html">Time-series</a></strong>  heat-strain exposure built from a sequence of segments, simulated off the main thread. Currently PHS only.</li>
+<li><strong><a href="../workspaces/explore.html">Explore</a></strong>  any model, selectable chart axes, multiple outputs and editable comfort bands. Band edits are presentational and do not change the calculation.</li>
+<li><strong>An <a href="../workspaces/iso-7730.html">ISO 7730</a> workspace</strong>, with its own PMV variant.</li>
+<li><strong><a href="../workspaces/iso-7933.html">ISO 7933:2023</a> as a first-class workspace.</strong> PHS was previously a side feature.</li>
+<li><strong>Four outdoor and weather indices</strong>  <a href="../models/utci.html">UTCI</a>, <a href="../models/heat-index.html">Heat Index</a>, <a href="../models/humidex.html">Humidex</a> and <a href="../models/wind-chill.html">Wind Chill</a>  available in Explore.</li>
+<li><strong>Five humidity input modes</strong> and an air / operative temperature mode, on every workspace.</li>
+<li><strong>Compare mode</strong> with up to three input sets, per-input visibility and a chart baseline picker.</li>
+<li><strong>Chart export</strong> to PNG and SVG, per-chart axis selection and a zone toggle.</li>
+<li><strong><a href="../getting-started/sharing.html">Share links</a></strong> that encode the whole calculation in the URL, with nothing uploaded.</li>
+</ul>
+
+<h3>Interface</h3>
+
+<ul class="body">
+<li>The three-panel single-page layout is gone. The tool is now six workspaces reached from a sidebar, with readable URLs that can address an exact model.</li>
+<li>Charts are declared per model, generally one or two each, rather than a fixed set of five shared across the tool.</li>
+<li><strong>Share is the only header action.</strong> The previous tool's Reset, Save and Reload buttons are not present in this build.</li>
+</ul>
+
+<h3>Not present in this version</h3>
+
+<div class="note">These appeared in the previous tool and are not in this build. Whether any will return has not been decided, so they are recorded here rather than quietly dropped.</div>
+
+<table>
+<tr><th>Feature</th><th>Nearest equivalent now</th></tr>
+<tr><td>File upload</td><td>None. Inputs are entered by hand.</td></tr>
+<tr><td>Fans during heatwaves</td><td>None. The air-speed control option on <a href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a> is a different thing  it applies the standard's air-speed limits, it does not model a fan during a heat event.</td></tr>
+<tr><td>Globe temperature calculator</td><td>None. Enter mean radiant temperature directly.</td></tr>
+<tr><td>Set pressure</td><td>None.</td></tr>
+<tr><td>Local thermal discomfort</td><td>None.</td></tr>
+<tr><td>Sharing on Time-series</td><td>Not offered by design  a link cannot represent a multi-segment scenario. Export the charts instead.</td></tr>
+</table>
+
+<h2>Documentation changes</h2>
+
+<p>The documentation was rewritten alongside the tool. Pages from the old space that moved now redirect:</p>
+
+<table>
+<tr><th>Old page</th><th>Now</th></tr>
+<tr><td><code>documentation/compare</code></td><td><a href="../getting-started/compare-mode.html">Compare mode</a></td></tr>
+<tr><td><code>documentation/ranges</code></td><td><a href="../workspaces/explore.html">Explore</a>, whose band editor is the nearest live equivalent</td></tr>
+<tr><td><code>documentation/solar-gain</code></td><td><a href="../features/input-modifiers.html">Input modifiers</a></td></tr>
+<tr><td><code>documentation/pmv</code></td><td><a href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a>, which links across to the ISO variant</td></tr>
+<tr><td><code>documentation/phs</code></td><td><a href="../workspaces/iso-7933.html">ISO 7933:2023</a></td></tr>
+<tr><td><code>documentation/en</code></td><td><a href="../workspaces/en-16798-1.html">EN 16798-1</a></td></tr>
+<tr><td><code>documentation/ashrae55-references</code></td><td><a href="../reference/references.html">References and citations</a>, now covering nine models</td></tr>
+</table>
+
+<p>Old URLs appear in published papers and teaching material, so they redirect to the closest live page rather than returning a not-found.</p>
+
+</main></div></body></html>

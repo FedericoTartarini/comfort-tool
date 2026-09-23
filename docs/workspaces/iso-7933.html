@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ISO 7933:2023 &middot; CBE Thermal Comfort Tool</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #1c1917;
+      --muted: #6b6663;
+      --line: #e7e5e4;
+      --accent: #0f766e;
+      --soft: #f7f6f5;
+      --code: #f4f4f5
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg)
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none
+    }
+
+    a:hover {
+      text-decoration: underline
+    }
+
+    .wrap {
+      display: flex;
+      min-height: 100vh;
+      max-width: 1400px;
+      margin: 0 auto
+    }
+
+    aside {
+      width: 290px;
+      flex: 0 0 290px;
+      border-right: 1px solid var(--line);
+      padding: 22px 18px 60px;
+      background: var(--soft);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto
+    }
+
+    aside .brand {
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.3;
+      display: block;
+      color: var(--fg);
+      margin-bottom: 4px
+    }
+
+    aside .brandsub {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px
+    }
+
+    aside h4 {
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 20px 0 7px
+    }
+
+    aside ul {
+      list-style: none;
+      margin: 0;
+      padding: 0
+    }
+
+    aside li {
+      margin: 1px 0
+    }
+
+    aside a {
+      display: block;
+      padding: 5px 9px;
+      border-radius: 6px;
+      color: #44403c;
+      font-size: 13.5px
+    }
+
+    aside a:hover {
+      background: #ececea;
+      text-decoration: none
+    }
+
+    aside a.on {
+      background: #0f766e;
+      color: #fff;
+      font-weight: 600
+    }
+
+    aside a.todo {
+      color: #a8a29e
+    }
+
+    aside a.todo:after {
+      content: "draft";
+      float: right;
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #c4c0bd;
+      padding-top: 2px
+    }
+
+    main {
+      flex: 1;
+      min-width: 0;
+      padding: 40px 52px 100px;
+      max-width: 900px
+    }
+
+    .crumb {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 10px
+    }
+
+    h1 {
+      font-size: 31px;
+      line-height: 1.2;
+      margin: 0 0 12px;
+      letter-spacing: -.02em
+    }
+
+    h2 {
+      font-size: 20px;
+      margin: 38px 0 10px;
+      padding-top: 6px;
+      letter-spacing: -.01em
+    }
+
+    h3 {
+      font-size: 15.5px;
+      margin: 24px 0 6px
+    }
+
+    .lede {
+      font-size: 17px;
+      color: #44403c;
+      margin: 0 0 8px
+    }
+
+    p {
+      margin: 12px 0
+    }
+
+    code {
+      background: var(--code);
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      font-size: 14px;
+      display: block;
+      overflow-x: auto
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 11px;
+      text-align: left;
+      vertical-align: top
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 600;
+      font-size: 12.5px;
+      letter-spacing: .02em
+    }
+
+    ul.body,
+    ol.body {
+      padding-left: 22px
+    }
+
+    ul.body li,
+    ol.body li {
+      margin: 6px 0
+    }
+
+    .note {
+      border-left: 3px solid var(--accent);
+      background: #f0fdfa;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    .warn {
+      border-left: 3px solid #d97706;
+      background: #fffbeb;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    figure.shot {
+      margin: 22px 0;
+      border: 2px dashed #d6d3d1;
+      border-radius: 8px;
+      background: repeating-linear-gradient(45deg, #fafaf9, #fafaf9 10px, #f5f5f4 10px, #f5f5f4 20px);
+      padding: 30px 20px;
+      text-align: center
+    }
+
+    figure.shot .tag {
+      display: inline-block;
+      font-size: 10.5px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #78716c;
+      border: 1px solid #d6d3d1;
+      background: #fff;
+      border-radius: 99px;
+      padding: 3px 10px;
+      margin-bottom: 9px
+    }
+
+    figure.shot .want {
+      font-weight: 600;
+      font-size: 14.5px;
+      color: #44403c
+    }
+
+    figure.shot figcaption {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 6px
+    }
+
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 99px;
+      padding: 2px 9px;
+      margin-right: 5px;
+      color: #57534e
+    }
+
+    footer.pf {
+      margin-top: 60px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    @media (max-width:860px) {
+      .wrap {
+        display: block
+      }
+
+      aside {
+        width: auto;
+        height: auto;
+        position: static;
+        border-right: 0;
+        border-bottom: 1px solid var(--line)
+      }
+
+      main {
+        padding: 26px 20px 70px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <aside>
+      <a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+      <div class="brandsub">Documentation</div>
+      <ul>
+        <li><a class="" href="../index.html">Home</a></li>
+      </ul>
+      <h4>Getting started</h4>
+      <ul>
+        <li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
+        <li><a href="../getting-started/units.html">Units (SI / IP)</a></li>
+        <li><a href="../getting-started/compare-mode.html">Compare mode</a></li>
+        <li><a href="../getting-started/charts.html">Charts and chart controls</a></li>
+        <li><a href="../getting-started/sharing.html">Sharing a calculation</a></li>
+      </ul>
+      <h4>Workspaces</h4>
+      <ul>
+        <li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
+        <li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
+        <li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
+        <li><a class="on" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
+        <li><a class="" href="../workspaces/explore.html">Explore</a></li>
+        <li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+      </ul>
+      <h4>Models</h4>
+      <ul>
+        <li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+        <li><a href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+        <li><a href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+        <li><a href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+        <li><a href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
+        <li><a href="../models/utci.html">UTCI</a></li>
+        <li><a href="../models/heat-index.html">Heat Index</a></li>
+        <li><a href="../models/humidex.html">Humidex</a></li>
+        <li><a href="../models/wind-chill.html">Wind Chill</a></li>
+      </ul>
+      <h4>Features</h4>
+      <ul>
+        <li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+      </ul>
+      <h4>API documentation</h4>
+      <ul>
+        <li><a href="../api/index.html">API Reference</a></li>
+      </ul>
+      <h4>Reference</h4>
+      <ul>
+        <li><a href="../reference/references.html">References and citations</a></li>
+        <li><a href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
+      </ul>
+      <h4>Site pages</h4>
+      <ul>
+        <li><a href="../sitepages/help.html">Help</a></li>
+        <li><a href="../sitepages/contributing.html">Contributing</a></li>
+        <li><a href="../sitepages/changelog.html">Changelog</a></li>
+      </ul>
+    </aside>
+    <main>
+      <div class="crumb">Workspaces</div>
+
+      <h1>ISO 7933:2023 Predicted Heat Strain</h1>
+      <p><span class="pill">/standard/iso-7933/</span><span class="pill">1 model</span><span class="pill">Sharing
+          enabled</span></p>
+
+      <h2>Overview</h2>
+      <p>ISO 7933 provides a methodology for calculating the sweat rate and the core temperature the human body develops
+        in response to hot working conditions. The two goals of the analysis are:</p>
+      <ul class="body">
+        <li>assessment of the risk of thermal stress to the worker;</li>
+        <li>determination of the maximum permitted exposure times.</li>
+      </ul>
+      <p>This is not a comfort assessment. A comfort model reports how warm people feel; Predicted Heat Strain reports
+        how long they can remain before core temperature or dehydration reaches a limit.</p>
+      <div class="note"><strong>Promoted in this version.</strong> The previous documentation treated PHS as a side
+        feature on a single page. It is now a standard route of its own, with the same standing as ASHRAE 55, ISO 7730
+        and EN 16798-1 and it is also the only model available in the Time-series workspace. The edition implemented is
+        <strong>ISO 7933:2023</strong>; the previous documentation described the 2004 edition.
+      </div>
+      <div class="note"><strong>Route.</strong> This workspace lives at <code>/standard/iso-7933/</code>, and an
+        optional model segment selects the model directly <code>/standard/iso-7933/phs-2023/</code>.</div>
+
+      <figure class="shot">
+        <img src="../images/iso-7933-workspace.png"
+          alt="ISO 7933:2023 workspace with PHS model, inputs, results and exposure history chart"
+          style="max-width:100%; height:auto; border-radius:8px;">
+        <figcaption>
+          Navigation, input panel, result table and exposure history chart in one frame.
+        </figcaption>
+      </figure>
+
+      <h2>Primary interface components</h2>
+
+      <h3>Navigation and model selection</h3>
+      <p>The workspace carries one model, <strong>PHS (ISO 7933:2023)</strong>, selected by default.</p>
+
+      <h3>Input section</h3>
+      <p>Six inputs describe the environment and the work: air temperature, mean radiant temperature, air speed,
+        relative humidity, metabolic rate and clothing insulation. The <strong>Compare</strong> and
+        <strong>Units</strong> toggles and the <strong>Share</strong> button work as on the other workspaces.
+      </p>
+      <p>The simulation also uses body weight and height. The tool supplies standard default values for these, so an
+        ordinary assessment does not require them.</p>
+
+      <h3>Results display</h3>
+      <p>The tool reports the maximum allowable exposure time, together with the values that determine it:</p>
+      <table>
+        <tr>
+          <th>Output</th>
+          <th>Meaning</th>
+        </tr>
+        <tr>
+          <td>Limiting exposure time</td>
+          <td>How long a worker can remain in these conditions before a limit is reached.</td>
+        </tr>
+        <tr>
+          <td>Rectal temperature</td>
+          <td>Predicted core temperature at the end of the assessed exposure.</td>
+        </tr>
+        <tr>
+          <td>Predicted water loss</td>
+          <td>Cumulative sweat loss over the exposure, in grams.</td>
+        </tr>
+        <tr>
+          <td>Limiting criterion</td>
+          <td>Which of the two limits core temperature or water loss was reached first.</td>
+        </tr>
+      </table>
+      <div class="note">The limiting criterion decides the remedy. If core temperature is limiting, the answer is
+        shorter exposures, cooling, or reduced workload. If water loss is limiting, the answer is drinking water.</div>
+
+      <h3>Visualization charts</h3>
+      <table>
+        <tr>
+          <th>Chart</th>
+          <th>Shows</th>
+        </tr>
+        <tr>
+          <td>Body temperature</td>
+          <td>Predicted core temperature over the exposure, against its limit.</td>
+        </tr>
+        <tr>
+          <td>Dynamic</td>
+          <td>A banded field over two quantities you choose, coloured by the selected output.</td>
+        </tr>
+      </table>
+      <p>The chart menu also carries the export options. In the Time-series workspace a water-loss chart is added, since
+        cumulative loss over a built scenario is the second thing a heat-strain assessment turns on.</p>
+
+      <h2>Assessment method</h2>
+      <p>The model simulates the body's heat balance minute by minute over the exposure and watches two limits: a core
+        temperature of 38&nbsp;&deg;C, and a water loss expressed as a fraction of body mass. Whichever is reached first
+        ends the permitted exposure, and the tool names it.</p>
+      <p>The water-loss limit depends on whether workers can drink during the exposure free access to water permits a
+        larger loss than none and a result states which assumption it used.</p>
+      <p>On this workspace the assessment is made over a standard eight-hour working exposure. A limiting exposure time
+        of eight hours or more means a full shift can be worked in these conditions; anything less is the safe duration.
+      </p>
+
+      <h2>Model applicability limits</h2>
+      <p>The model is validated for working conditions, not for cold rooms or heavy protective ensembles, and the ranges
+        are correspondingly narrow. A value outside them is marked and not calculated.</p>
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Accepted range</th>
+        </tr>
+        <tr>
+          <td>Air temperature</td>
+          <td>15 to 50&nbsp;&deg;C</td>
+        </tr>
+        <tr>
+          <td>Mean radiant temperature</td>
+          <td>0 to 60&nbsp;&deg;C</td>
+        </tr>
+        <tr>
+          <td>Air speed</td>
+          <td>0 to 3&nbsp;m/s</td>
+        </tr>
+        <tr>
+          <td>Relative humidity</td>
+          <td>0 to 100&nbsp;%</td>
+        </tr>
+        <tr>
+          <td>Metabolic rate</td>
+          <td>0.9 to 3.9&nbsp;met</td>
+        </tr>
+        <tr>
+          <td>Clothing insulation</td>
+          <td>0.1 to 1&nbsp;clo</td>
+        </tr>
+      </table>
+      <div class="warn">These are the limits this build enforces, and the metabolic range in particular differs from the
+        one given in the previous documentation. Where the two disagree, the ranges above are what the tool actually
+        applies.</div>
+
+      <h2>Additional capabilities</h2>
+
+      <p><strong>Time-series.</strong> PHS is the only model that supports the <a
+          href="time-series.html">Time-series</a> workspace, where a shift is described as a sequence of segments and
+        simulated straight through. Use it when the exposure is not constant a rest break, a change of task, a hotter
+        afternoon.</p>
+
+      <p><strong>Explore.</strong> In <a href="explore.html">Explore</a>, PHS can colour a field by any of three
+        outputs: limiting exposure time, rectal temperature after eight hours, or predicted water loss after eight
+        hours. The quickest way to see what a change in air speed buys across a range of temperatures.</p>
+
+      <p><strong>Compare.</strong> Up to three sets of inputs at once, for comparing two work rates or two clothing
+        ensembles side by side.</p>
+
+      <p><strong>Unit selection.</strong> SI and Inch-Pound, held internally in SI.</p>
+
+      <p><strong>Sharing.</strong> The link button encodes the current inputs and chart selection. Note that sharing is
+        not available in Time-series, where a link cannot represent a multi-segment scenario.</p>
+
+      <h2>References</h2>
+      <ul class="body">
+        <li>[1] ISO 7933:2023, <em>Ergonomics of the thermal environment Analytical determination and interpretation of
+            heat stress using calculation of the predicted heat strain</em>.</li>
+        <li>[2] Malchaire, J. et al. (2001). Development and validation of the predicted heat strain model.</li>
+      </ul>
+
+    </main>
+  </div>
+</body>
+
+</html>

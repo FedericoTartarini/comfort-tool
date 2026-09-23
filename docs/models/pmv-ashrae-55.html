@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>PMV (ASHRAE 55) &middot; CBE Thermal Comfort Tool</title>
+    <style>
+        :root {
+            --bg: #fff;
+            --fg: #1c1917;
+            --muted: #6b6663;
+            --line: #e7e5e4;
+            --accent: #0f766e;
+            --soft: #f7f6f5;
+            --code: #f4f4f5
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--fg);
+            background: var(--bg)
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none
+        }
+
+        a:hover {
+            text-decoration: underline
+        }
+
+        .wrap {
+            display: flex;
+            min-height: 100vh;
+            max-width: 1400px;
+            margin: 0 auto
+        }
+
+        aside {
+            width: 290px;
+            flex: 0 0 290px;
+            border-right: 1px solid var(--line);
+            padding: 22px 18px 60px;
+            background: var(--soft);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto
+        }
+
+        aside .brand {
+            font-weight: 700;
+            font-size: 15px;
+            line-height: 1.3;
+            display: block;
+            color: var(--fg);
+            margin-bottom: 4px
+        }
+
+        aside .brandsub {
+            font-size: 11px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 20px
+        }
+
+        aside h4 {
+            font-size: 11px;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin: 20px 0 7px
+        }
+
+        aside ul {
+            list-style: none;
+            margin: 0;
+            padding: 0
+        }
+
+        aside li {
+            margin: 1px 0
+        }
+
+        aside a {
+            display: block;
+            padding: 5px 9px;
+            border-radius: 6px;
+            color: #44403c;
+            font-size: 13.5px
+        }
+
+        aside a:hover {
+            background: #ececea;
+            text-decoration: none
+        }
+
+        aside a.on {
+            background: #0f766e;
+            color: #fff;
+            font-weight: 600
+        }
+
+        aside a.todo {
+            color: #a8a29e
+        }
+
+        aside a.todo:after {
+            content: "draft";
+            float: right;
+            font-size: 10px;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: #c4c0bd;
+            padding-top: 2px
+        }
+
+        main {
+            flex: 1;
+            min-width: 0;
+            padding: 40px 52px 100px;
+            max-width: 900px
+        }
+
+        .crumb {
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            margin-bottom: 10px
+        }
+
+        h1 {
+            font-size: 31px;
+            line-height: 1.2;
+            margin: 0 0 12px;
+            letter-spacing: -.02em
+        }
+
+        h2 {
+            font-size: 20px;
+            margin: 38px 0 10px;
+            padding-top: 6px;
+            letter-spacing: -.01em
+        }
+
+        h3 {
+            font-size: 15.5px;
+            margin: 24px 0 6px
+        }
+
+        .lede {
+            font-size: 17px;
+            color: #44403c;
+            margin: 0 0 8px
+        }
+
+        p {
+            margin: 12px 0
+        }
+
+        code {
+            background: var(--code);
+            padding: 1.5px 5px;
+            border-radius: 4px;
+            font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            font-size: 14px;
+            display: block;
+            overflow-x: auto
+        }
+
+        th,
+        td {
+            border: 1px solid var(--line);
+            padding: 8px 11px;
+            text-align: left;
+            vertical-align: top
+        }
+
+        th {
+            background: var(--soft);
+            font-weight: 600;
+            font-size: 12.5px;
+            letter-spacing: .02em
+        }
+
+        ul.body,
+        ol.body {
+            padding-left: 22px
+        }
+
+        ul.body li,
+        ol.body li {
+            margin: 6px 0
+        }
+
+        .note {
+            border-left: 3px solid var(--accent);
+            background: #f0fdfa;
+            padding: 11px 15px;
+            margin: 18px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 14px
+        }
+
+        .warn {
+            border-left: 3px solid #d97706;
+            background: #fffbeb;
+            padding: 11px 15px;
+            margin: 18px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 14px
+        }
+
+        figure.shot {
+            margin: 22px 0;
+            border: 2px dashed #d6d3d1;
+            border-radius: 8px;
+            background: repeating-linear-gradient(45deg, #fafaf9, #fafaf9 10px, #f5f5f4 10px, #f5f5f4 20px);
+            padding: 30px 20px;
+            text-align: center
+        }
+
+        figure.shot .tag {
+            display: inline-block;
+            font-size: 10.5px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: #78716c;
+            border: 1px solid #d6d3d1;
+            background: #fff;
+            border-radius: 99px;
+            padding: 3px 10px;
+            margin-bottom: 9px
+        }
+
+        figure.shot .want {
+            font-weight: 600;
+            font-size: 14.5px;
+            color: #44403c
+        }
+
+        figure.shot figcaption {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin-top: 6px
+        }
+
+        .pill {
+            display: inline-block;
+            font-size: 11px;
+            border: 1px solid var(--line);
+            background: var(--soft);
+            border-radius: 99px;
+            padding: 2px 9px;
+            margin-right: 5px;
+            color: #57534e
+        }
+
+        footer.pf {
+            margin-top: 60px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+            font-size: 12.5px;
+            color: var(--muted)
+        }
+
+        @media (max-width:860px) {
+            .wrap {
+                display: block
+            }
+
+            aside {
+                width: auto;
+                height: auto;
+                position: static;
+                border-right: 0;
+                border-bottom: 1px solid var(--line)
+            }
+
+            main {
+                padding: 26px 20px 70px
+            }
+        }
+
+        figure.screenshot {
+            margin: 22px 0;
+            text-align: center
+        }
+
+        figure.screenshot img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+            border: 1px solid #e7e5e4;
+            border-radius: 8px
+        }
+
+        figure.screenshot figcaption {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin-top: 8px
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <aside>
+            <a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+            <div class="brandsub">Documentation</div>
+            <ul>
+                <li><a class="" href="../index.html">Home</a></li>
+            </ul>
+            <h4>Getting started</h4>
+            <ul>
+                <li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
+                <li><a class="" href="../getting-started/units.html">Units (SI / IP)</a></li>
+                <li><a class="" href="../getting-started/compare-mode.html">Compare mode</a></li>
+                <li><a class="" href="../getting-started/charts.html">Charts and chart controls</a></li>
+                <li><a class="" href="../getting-started/sharing.html">Sharing a calculation</a></li>
+            </ul>
+            <h4>Workspaces</h4>
+            <ul>
+                <li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
+                <li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
+                <li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
+                <li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
+                <li><a class="" href="../workspaces/explore.html">Explore</a></li>
+                <li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+            </ul>
+            <h4>Models</h4>
+            <ul>
+                <li><a class="on" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+                <li><a class="" href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+                <li><a class="" href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+                <li><a class="" href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+                <li><a class="" href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
+                <li><a class="" href="../models/utci.html">UTCI</a></li>
+                <li><a class="" href="../models/heat-index.html">Heat Index</a></li>
+                <li><a class="" href="../models/humidex.html">Humidex</a></li>
+                <li><a class="" href="../models/wind-chill.html">Wind Chill</a></li>
+            </ul>
+            <h4>Features</h4>
+            <ul>
+                <li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+            </ul>
+            <h4>API documentation</h4>
+            <ul>
+                <li><a href="../api/index.html">API Reference</a></li>
+            </ul>
+            <h4>Reference</h4>
+            <ul>
+                <li><a href="../reference/references.html">References and citations</a></li>
+                <li><a href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a>
+                </li>
+            </ul>
+            <h4>Site pages</h4>
+            <ul>
+                <li><a href="../sitepages/help.html">Help</a></li>
+                <li><a href="../sitepages/contributing.html">Contributing</a></li>
+                <li><a href="../sitepages/changelog.html">Changelog</a></li>
+            </ul>
+        </aside>
+        <main>
+            <div class="crumb">Models</div>
+
+            <h1>PMV / PPD (ASHRAE 55)</h1>
+            <p><span class="pill">pmv-ashrae</span><span class="pill">ASHRAE 55 workspace</span><span
+                    class="pill">Explore</span><span class="pill">Default model</span></p>
+            <p>The Predicted Mean Vote is Fanger's heat-balance model. It predicts the average thermal sensation a large
+                group of people would report in a given environment, on a seven-point scale from &minus;3 (cold) to +3
+                (hot), and the Predicted Percentage Dissatisfied follows from it. This page describes the model as
+                evaluated under ANSI/ASHRAE Standard 55.</p>
+            <p>Six primary factors affect thermal comfort. Four describe the environment air temperature, mean radiant
+                temperature, air speed and humidity and two describe the person: metabolic rate and clothing insulation.
+            </p>
+            <p>PMV uses all six.</p>
+
+            <h2>Environmental factors</h2>
+
+            <h3>Dry-bulb air temperature</h3>
+            <p>The temperature of the air around the occupant, measured with a shielded sensor so that radiation does
+                not bias the reading. It is the input most people reach for first, and the quantity the psychrometric
+                chart puts on its horizontal axis. Accepted from 10 to 40&nbsp;&deg;C.</p>
+
+            <h4>Entering operative temperature instead</h4>
+            <p>The temperature mode selector lets you supply a single operative temperature rather than air and radiant
+                temperature separately. Operative temperature combines the two, weighted by the air speed, and is
+                convenient when you have one measured value and no way to separate them. Switching the mode changes
+                which fields the input panel shows and which quantity carries the chart's temperature axis. PMV defaults
+                to separate air and radiant temperature.</p>
+
+            <h3>Mean radiant temperature</h3>
+            <p>The area-weighted average temperature of the surfaces surrounding the occupant, accepted over the same 10
+                to 40&nbsp;&deg;C range. A cold window in winter or a sunlit wall in summer moves it several degrees
+                away from the air temperature, and the body responds to that difference as strongly as it responds to
+                the air itself.</p>
+            <p>Where the occupant sits in direct sun, the solar gain input modifier calculates the increase in mean
+                radiant temperature from the sun's position and the glazing properties and adds it to the value you
+                entered.</p>
+
+            <h3>Air speed</h3>
+            <p>Air movement carries heat away from the skin, so raising the air speed makes a warm environment feel
+                cooler. The model works with the <em>relative</em> air speed the movement of air past the body, which
+                includes the air the occupant stirs up by moving. Accepted from 0 to 2&nbsp;m/s.</p>
+
+            <h4>Self-generated air speed</h4>
+            <p>If you have measured the still-air speed in the room and want the model to account for the occupant's own
+                movement, enable the measured air speed input modifier. It derives relative air speed from the measured
+                value and the metabolic rate:</p>
+            <div class="formula">v_relative = v_measured + 0.3 &times; (met &minus; 1)</div>
+
+            <h4>Occupant control of air speed</h4>
+            <p>PMV under ASHRAE 55 carries a setting no other model has: whether occupants can adjust the air speed
+                locally, with a desk fan or an operable ceiling fan. The standard permits higher air speeds where they
+                can, so the setting changes the applicability limits used to validate your input. The tool assumes local
+                control is present unless you say otherwise.</p>
+            <p>This is the only part of the current tool that corresponds to the "fans during heatwaves" material in the
+                previous documentation; there is no separate fan or heatwave feature in this build.</p>
+
+            <h3>Humidity</h3>
+            <p>Humidity limits how much the body can cool itself by evaporation. Its influence on the predicted vote is
+                modest across the ordinary indoor range and grows as conditions get warmer. Relative humidity is
+                accepted across the full 0 to 100&nbsp;% range.</p>
+            <p>The tool accepts humidity in five equivalent forms: relative humidity, humidity ratio, dew point
+                temperature, wet-bulb temperature and vapour pressure. All five describe the same state of the air you
+                enter whichever you have and the tool converts it. Relative humidity is the default.</p>
+
+            <h2>Personal factors</h2>
+
+            <h3>Metabolic rate</h3>
+            <p>The rate at which the body produces heat, in met, where 1&nbsp;met is a seated person at rest. Typing at
+                a desk is about 1.1&nbsp;met and walking slowly about 2&nbsp;met. Accepted from 1 to 4&nbsp;met. Because
+                the model is a heat balance, the metabolic rate sets how much heat must be lost for the occupant to be
+                comfortable, which makes it one of the most influential inputs.</p>
+
+            <h3>Clothing insulation</h3>
+            <p>The thermal resistance of what the occupant is wearing, in clo, where 1&nbsp;clo is roughly a business
+                suit. Under ASHRAE 55 the tool accepts up to <strong>1.5&nbsp;clo</strong>. Clothing is the most
+                effective thing an occupant can adjust: half a clo moves the comfortable temperature by several degrees,
+                which is why clothing policy is often a cheaper route to comfort than changing the setpoint.</p>
+            <p>Three tools help you arrive at a value:</p>
+            <ul class="body">
+                <li>The <strong>clothing ensemble builder</strong> assembles a garment list by body zone and totals the
+                    insulation.</li>
+                <li>The <strong>morning clothing estimate</strong> modifier predicts what occupants are likely to be
+                    wearing from the outdoor temperature at 6&nbsp;a.m.</li>
+                <li>The <strong>dynamic clothing</strong> modifier reduces the entered insulation to account for
+                    movement at the current metabolic rate. Unlike the previous version of this tool, this correction is
+                    applied only when you switch the modifier on.</li>
+            </ul>
+
+            <h2>Outputs</h2>
+            <table>
+                <tr>
+                    <th>Output</th>
+                    <th>Meaning</th>
+                </tr>
+                <tr>
+                    <td>PMV</td>
+                    <td>Predicted mean vote on the seven-point sensation scale, from &minus;3 to +3.</td>
+                </tr>
+                <tr>
+                    <td>PPD</td>
+                    <td>Predicted percentage of occupants dissatisfied with the thermal environment.</td>
+                </tr>
+                <tr>
+                    <td>Sensation category</td>
+                    <td>Cold, Cool, Slightly Cool, Neutral, Slightly Warm, Warm or Hot.</td>
+                </tr>
+                <tr>
+                    <td>Compliance verdict</td>
+                    <td>Whether the point falls inside the standard's acceptable PMV range.</td>
+                </tr>
+            </table>
+            <figure class="screenshot"><img src="../images/pmv-ashrae-55 image1.png" alt="Documentation screenshot">
+                <figcaption>PMV, PPD, the sensation category and the verdict together, at a state that passes, in SI
+                    units.</figcaption>
+            </figure>
+
+            <h2>Charts</h2>
+            <p>Four charts are available: the <strong>psychrometric</strong> chart with the comfort zone, the
+                <strong>dynamic</strong> field chart, <strong>heat loss</strong> against air temperature, and
+                <strong>SET</strong>. The comfort zone on the psychrometric chart is the region where the predicted mean
+                vote stays within the acceptable limits either side of neutral, drawn for the metabolic rate, clothing
+                and air speed you entered so it moves when you change them.
+            </p>
+            <figure class="screenshot"><img src="../images/pmv-ashrae-55 image2.png" alt="Documentation screenshot">
+                <figcaption>Comfort zone with the input point inside it, relative-humidity isolines and the legend below
+                    the chart all legible.</figcaption>
+            </figure>
+
+            <h2>Applicability</h2>
+            <p>Before returning a verdict the tool checks the inputs against the standard's applicability range, and
+                reports a point outside it as <strong>out of range</strong> rather than as a pass or a fail. Values are
+                still calculated and shown, but a standard that does not claim to cover a state cannot be used to
+                certify it.</p>
+
+            <h2>Difference from the ISO 7730 variant</h2>
+            <table>
+                <tr>
+                    <th></th>
+                    <th>PMV (ASHRAE 55)</th>
+                    <th>PMV (ISO 7730)</th>
+                </tr>
+                <tr>
+                    <td>Occupant control of air speed</td>
+                    <td>Available</td>
+                    <td>No such setting</td>
+                </tr>
+                <tr>
+                    <td>Clothing applicability</td>
+                    <td>Up to 1.5&nbsp;clo</td>
+                    <td>Up to 2&nbsp;clo</td>
+                </tr>
+                <tr>
+                    <td>Banding on its workspace</td>
+                    <td>Acceptable / not acceptable</td>
+                    <td>The seven sensation categories</td>
+                </tr>
+                <tr>
+                    <td>Operative temperature</td>
+                    <td>ASHRAE formulation</td>
+                    <td>ISO formulation</td>
+                </tr>
+            </table>
+            <p>The two are close but not interchangeable, which is why the single old <code>documentation/pmv</code>
+                page becomes two.</p>
+
+            <h2>Where to find it</h2>
+            <p>On the <a href="../workspaces/ashrae-55.html">ASHRAE 55</a> workspace, where it is the default model, and
+                in <a href="../workspaces/explore.html">Explore</a>, where the axes can be chosen and the bands edited.
+                The verdict shown on the compliance workspace is a compliance statement; the same model in Explore with
+                edited bands is not.</p>
+
+            <h2>References</h2>
+            <ul class="body">
+                <li>ANSI/ASHRAE Standard 55, <em>Thermal Environmental Conditions for Human Occupancy</em>.</li>
+                <li>Fanger, P.O. (1970). <em>Thermal Comfort: Analysis and Applications in Environmental
+                        Engineering</em>.</li>
+                <li>Calculations are performed by the <code>jsthermalcomfort</code> library, a port of
+                    <code>pythermalcomfort</code>.
+                </li>
+            </ul>
+
+        </main>
+    </div>
+</body>
+
+</html>
