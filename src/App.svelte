@@ -1,27 +1,66 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy } from "svelte";
 
-  import SiteShell from "./components/SiteShell.svelte";
-  import ComfortDashboard from "./views/ComfortDashboard.svelte";
-  import { createComfortToolState } from "./state/comfortTool/createComfortToolState.svelte";
-  import { readShareStateFromUrl } from "./state/comfortTool/shareState";
-  import ModelSwitchWarningModal from "./components/modals/ModelSwitchWarningModal.svelte";
+  import SiteShell from "./ui/components/SiteShell.svelte";
+  import { createPointSession } from "./state/pointSession/createPointSession.svelte";
+  import ModelSwitchWarningModal from "./ui/components/modals/ModelSwitchWarningModal.svelte";
+  import {
+    Router,
+    navigateToUrl,
+    registerAppNavigation,
+    route,
+  } from "./ui/routes/router";
+  import { createAppNavigation } from "./state/app/createAppNavigation";
+  import { provideAppContext } from "./state/app/context";
+  import {
+    appRouteDefinitions,
+    defaultAppRoute,
+    getAppRouteByPath,
+    standardRouteDefinitions,
+  } from "./state/app/routeDefinitions";
+  import { SurfaceId } from "./catalog/surfaces";
+  import { createTimeSeriesSession } from "./state/timeSeries/createTimeSeriesSession.svelte";
 
-  const toolState = createComfortToolState();
+  const pointSession = createPointSession();
+  const timeSeriesSession = createTimeSeriesSession();
+  const navigation = createAppNavigation(pointSession, {
+    navigate: navigateToUrl,
+  }, timeSeriesSession);
+  provideAppContext({ pointSession, navigation, timeSeriesSession });
 
-  onMount(() => {
-    const sharedSnapshot = readShareStateFromUrl(window.location.href);
-    if (sharedSnapshot) {
-      toolState.actions.applyShareSnapshot(sharedSnapshot);
-      return;
-    }
+  if (typeof window !== "undefined") {
+    navigation.prepareUrl(new URL(window.location.href), { validateRanges: false });
+  }
 
-    toolState.actions.scheduleCalculation({ immediate: true });
-  });
+  const unregisterNavigation = registerAppNavigation(navigation);
+  onDestroy(unregisterNavigation);
+  onDestroy(timeSeriesSession.actions.dispose);
+
+  const exploreRoute = appRouteDefinitions.find(
+    (definition) => definition.surface === SurfaceId.Explore,
+  )!;
+  const timeSeriesRoute = appRouteDefinitions.find(
+    (definition) => definition.surface === SurfaceId.TimeSeries,
+  )!;
+  const currentRouteDefinition = $derived(getAppRouteByPath(route.pathname));
+  const activePath = $derived(currentRouteDefinition?.path ?? "");
+  const showExportLink = $derived(currentRouteDefinition?.shareEnabled ?? false);
 </script>
 
-<SiteShell {toolState}>
-  <ComfortDashboard {toolState} />
+<SiteShell
+  {pointSession}
+  {activePath}
+  {showExportLink}
+  homePath={defaultAppRoute.path}
+  standardItems={standardRouteDefinitions}
+  exploreItem={exploreRoute}
+  timeSeriesItem={timeSeriesRoute}
+>
+  <Router />
 </SiteShell>
 
-<ModelSwitchWarningModal {toolState} />
+<ModelSwitchWarningModal
+  {pointSession}
+  onConfirm={navigation.confirmPendingTransition}
+  onCancel={navigation.cancelPendingTransition}
+/>

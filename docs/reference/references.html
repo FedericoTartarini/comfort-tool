@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>References and citations &middot; CBE Thermal Comfort Tool</title><style>
+:root{--bg:#fff;--fg:#1c1917;--muted:#6b6663;--line:#e7e5e4;--accent:#0f766e;--soft:#f7f6f5;--code:#f4f4f5}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{display:flex;min-height:100vh;max-width:1400px;margin:0 auto}
+aside{width:290px;flex:0 0 290px;border-right:1px solid var(--line);padding:22px 18px 60px;background:var(--soft);position:sticky;top:0;height:100vh;overflow-y:auto}
+aside .brand{font-weight:700;font-size:15px;line-height:1.3;display:block;color:var(--fg);margin-bottom:4px}
+aside .brandsub{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:20px}
+aside h4{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:20px 0 7px}
+aside ul{list-style:none;margin:0;padding:0}
+aside li{margin:1px 0}
+aside a{display:block;padding:5px 9px;border-radius:6px;color:#44403c;font-size:13.5px}
+aside a:hover{background:#ececea;text-decoration:none}
+aside a.on{background:#0f766e;color:#fff;font-weight:600}
+aside a.todo{color:#a8a29e}
+aside a.todo:after{content:"draft";float:right;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#c4c0bd;padding-top:2px}
+main{flex:1;min-width:0;padding:40px 52px 100px;max-width:900px}
+.crumb{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+h1{font-size:31px;line-height:1.2;margin:0 0 12px;letter-spacing:-.02em}
+h2{font-size:20px;margin:38px 0 10px;padding-top:6px;letter-spacing:-.01em}
+h3{font-size:15.5px;margin:24px 0 6px}
+.lede{font-size:17px;color:#44403c;margin:0 0 8px}
+p{margin:12px 0}
+code{background:var(--code);padding:1.5px 5px;border-radius:4px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;font-size:12.5px;letter-spacing:.02em}
+ul.body,ol.body{padding-left:22px}
+ul.body li,ol.body li{margin:6px 0}
+.note{border-left:3px solid var(--accent);background:#f0fdfa;padding:11px 15px;margin:18px 0;border-radius:0 6px 6px 0;font-size:14px}
+.warn{border-left:3px solid #d97706;background:#fffbeb;padding:11px 15px;margin:18px 0;border-radius:0 6px 6px 0;font-size:14px}
+figure.shot{margin:22px 0;border:2px dashed #d6d3d1;border-radius:8px;background:repeating-linear-gradient(45deg,#fafaf9,#fafaf9 10px,#f5f5f4 10px,#f5f5f4 20px);padding:30px 20px;text-align:center}
+figure.shot .tag{display:inline-block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#78716c;border:1px solid #d6d3d1;background:#fff;border-radius:99px;padding:3px 10px;margin-bottom:9px}
+figure.shot .want{font-weight:600;font-size:14.5px;color:#44403c}
+figure.shot figcaption{font-size:12.5px;color:var(--muted);margin-top:6px}
+.pill{display:inline-block;font-size:11px;border:1px solid var(--line);background:var(--soft);border-radius:99px;padding:2px 9px;margin-right:5px;color:#57534e}
+footer.pf{margin-top:60px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+@media (max-width:860px){.wrap{display:block}aside{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid var(--line)}main{padding:26px 20px 70px}}
+
+figure.screenshot{margin:22px 0;text-align:center}
+figure.screenshot img{display:block;max-width:100%;height:auto;margin:0 auto;border:1px solid #e7e5e4;border-radius:8px}
+figure.screenshot figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
+</style></head><body>
+<div class="wrap">
+<aside>
+<a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+<div class="brandsub">Documentation</div>
+<ul>
+<li><a class="" href="../index.html">Home</a></li>
+</ul>
+<h4>Getting started</h4>
+<ul>
+<li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
+<li><a class="" href="../getting-started/units.html">Units (SI / IP)</a></li>
+<li><a class="" href="../getting-started/compare-mode.html">Compare mode</a></li>
+<li><a class="" href="../getting-started/charts.html">Charts and chart controls</a></li>
+<li><a class="" href="../getting-started/sharing.html">Sharing a calculation</a></li>
+</ul>
+<h4>Workspaces</h4>
+<ul>
+<li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
+<li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
+<li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
+<li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
+<li><a class="" href="../workspaces/explore.html">Explore</a></li>
+<li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+</ul>
+<h4>Models</h4>
+<ul>
+<li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+<li><a class="" href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+<li><a class="" href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+<li><a class="" href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+<li><a class="" href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
+<li><a class="" href="../models/utci.html">UTCI</a></li>
+<li><a class="" href="../models/heat-index.html">Heat Index</a></li>
+<li><a class="" href="../models/humidex.html">Humidex</a></li>
+<li><a class="" href="../models/wind-chill.html">Wind Chill</a></li>
+</ul>
+<h4>Features</h4>
+<ul>
+<li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+</ul>
+<h4>API documentation</h4>
+<ul>
+<li><a class="" href="../api/index.html">API Reference</a></li>
+</ul>
+<h4>Reference</h4>
+<ul>
+<li><a class="on" href="../reference/references.html">References and citations</a></li>
+<li><a class="" href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
+</ul>
+<h4>Site pages</h4>
+<ul>
+<li><a class="" href="../sitepages/help.html">Help</a></li>
+<li><a class="" href="../sitepages/contributing.html">Contributing</a></li>
+<li><a class="" href="../sitepages/changelog.html">Changelog</a></li>
+</ul>
+</aside>
+<main>
+<div class="crumb">Reference</div>
+
+<h1>References and citations</h1>
+
+<p class="lede">Every number this tool produces comes from a published model. This page lists the source for each one, and marks the few places where a value shown in the interface has no published source behind it.</p>
+
+<p>The list replaces the earlier <code>ashrae55-references</code> page, which covered a single standard. The tool now implements nine models drawn from four standards and five independent publications, so the citations are grouped by what they support rather than by standard.</p>
+
+<h2>How to cite the tool</h2>
+
+<p>If you use the CBE Thermal Comfort Tool in published work, cite the software paper:</p>
+
+<div class="note">Tartarini, F., Schiavon, S., Cheung, T., Hoyt, T., 2020. CBE Thermal Comfort Tool: online tool for thermal comfort calculations and visualizations. <em>SoftwareX</em> 12, 100563. <a href="https://doi.org/10.1016/j.softx.2020.100563">https://doi.org/10.1016/j.softx.2020.100563</a></div>
+
+<p>Cite the tool in addition to, not instead of, the standard or publication defining the model you used. A reader needs both: the model to know what was calculated, and the tool to know what implemented it.</p>
+
+<h2>Standards</h2>
+
+<table>
+<tr><th>Ref</th><th>Standard</th><th>Used by</th></tr>
+
+<tr>
+<td>S1</td>
+<td>ANSI/ASHRAE Standard 55, <em>Thermal Environmental Conditions for Human Occupancy</em>.</td>
+<td><a href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a>, <a href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a>, and the morning clothing estimate modifier</td>
+</tr>
+
+<tr>
+<td>S2</td>
+<td>ISO 7730:2005, <em>Ergonomics of the thermal environment  Analytical determination and interpretation of thermal comfort using calculation of the PMV and PPD indices and local thermal comfort criteria</em>.</td>
+<td><a href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></td>
+</tr>
+
+<tr>
+<td>S3</td>
+<td>EN 16798-1:2019, <em>Energy performance of buildings  Ventilation for buildings  Indoor environmental input parameters for design and assessment of energy performance of buildings addressing indoor air quality, thermal environment, lighting and acoustics</em>.</td>
+<td><a href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></td>
+</tr>
+
+<tr>
+<td>S4</td>
+<td>ISO 7933:2023, <em>Ergonomics of the thermal environment  Analytical determination and interpretation of heat stress using calculation of the predicted heat strain</em>.</td>
+<td><a href="../models/phs.html">PHS</a>, on both the <a href="../workspaces/iso-7933.html">ISO 7933</a> and <a href="../workspaces/time-series.html">Time-series</a> workspaces</td>
+</tr>
+
+<tr>
+<td>S5</td>
+<td>ISO 9920:2007, <em>Ergonomics of the thermal environment  Estimation of thermal insulation and water vapour resistance of a clothing ensemble</em>.</td>
+<td>The dynamic clothing modifier</td>
+</tr>
+</table>
+
+<div class="warn">
+<strong>ISO 7730 edition.</strong> The tool implements the applicability limits of <strong>ISO 7730:2005</strong>. A later edition of the standard has since been published. The PMV equation itself is unchanged, but do not read a result from this tool as a conformity statement against an edition it does not implement. The <a href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a> page states the limits the tool actually applies.
+</div>
+
+<h2>Model publications</h2>
+
+<table>
+<tr><th>Ref</th><th>Publication</th><th>Supports</th></tr>
+
+<tr>
+<td>P1</td>
+<td>Fanger, P.O. (1970). <em>Thermal Comfort: Analysis and Applications in Environmental Engineering</em>. Danish Technical Press, Copenhagen.</td>
+<td>The original PMV/PPD derivation, common to both PMV models</td>
+</tr>
+
+<tr>
+<td>P2</td>
+<td>de Dear, R. and Brager, G.S. (1998). Developing an adaptive model of thermal comfort and preference. <em>ASHRAE Transactions</em> 104(1).</td>
+<td>The ASHRAE adaptive comfort equation</td>
+</tr>
+
+<tr>
+<td>P3</td>
+<td>Nicol, F. and Humphreys, M. (2010). Derivation of the adaptive equations for European standards. <em>Building and Environment</em> 45(1), 11&ndash;17.</td>
+<td>The EN adaptive comfort equation and its category bands</td>
+</tr>
+
+<tr>
+<td>P4</td>
+<td>Malchaire, J. et al. (2001). Development and validation of the predicted heat strain model. <em>Annals of Occupational Hygiene</em> 45(2), 123&ndash;135.</td>
+<td>PHS, the model ISO 7933 standardised</td>
+</tr>
+
+<tr>
+<td>P5</td>
+<td>Br&ouml;de, P., Fiala, D., B&#322;a&#380;ejczyk, K. et al. (2012). Deriving the operational procedure for the Universal Thermal Climate Index (UTCI). <em>International Journal of Biometeorology</em> 56, 481&ndash;494. <a href="https://doi.org/10.1007/s00484-011-0454-1">doi:10.1007/s00484-011-0454-1</a></td>
+<td><a href="../models/utci.html">UTCI</a>, including its validity envelope and stress categories</td>
+</tr>
+
+<tr>
+<td>P6</td>
+<td>Jendritzky, G., de Dear, R. and Havenith, G. (2012). UTCI  why another thermal index? <em>International Journal of Biometeorology</em> 56, 421&ndash;428.</td>
+<td>Background on what UTCI is for</td>
+</tr>
+
+<tr>
+<td>P7</td>
+<td>Rothfusz, L.P. (1990). <em>The Heat Index &ldquo;Equation&rdquo;</em>. NWS Southern Region Technical Attachment SR 90-23.</td>
+<td>The <a href="../models/heat-index.html">Heat Index</a> regression</td>
+</tr>
+
+<tr>
+<td>P8</td>
+<td>Steadman, R.G. (1979). The assessment of sultriness. <em>Journal of Applied Meteorology</em> 18(7).</td>
+<td>The data the Heat Index regression was fitted to, and therefore its outer domain</td>
+</tr>
+
+<tr>
+<td>P9</td>
+<td>Masterton, J.M. and Richardson, F.A. (1979). <em>Humidex: a method of quantifying human discomfort due to excessive heat and humidity</em>. Environment Canada, Downsview, Ontario.</td>
+<td><a href="../models/humidex.html">Humidex</a></td>
+</tr>
+
+<tr>
+<td>P10</td>
+<td>Osczevski, R. and Bluestein, M. (2005). The new wind chill equivalent temperature chart. <em>Bulletin of the American Meteorological Society</em> 86(10), 1453&ndash;1458.</td>
+<td>The modern equivalent-temperature <a href="../models/wind-chill.html">Wind Chill</a> formulation</td>
+</tr>
+
+<tr>
+<td>P11</td>
+<td>Environment Canada and the U.S. National Weather Service (2001). Joint wind chill index.</td>
+<td>The operational wind chill index in public use</td>
+</tr>
+</table>
+
+<h2>Calculation engine</h2>
+
+<p>No model is implemented twice. Every value in the tool is computed by <code>jsthermalcomfort</code>, a JavaScript port of the <code>pythermalcomfort</code> library maintained by the Center for the Built Environment. The tool vendors it as a pinned dependency, so a given release of the tool always calculates through a known version of the engine.</p>
+
+<ul class="body">
+<li><code>jsthermalcomfort</code>  <a href="https://github.com/CenterForTheBuiltEnvironment/comfort.js">github.com/CenterForTheBuiltEnvironment/comfort.js</a></li>
+<li>Per-function documentation for the engine is published with this site under <a href="../api/index.html">API Reference</a>.</li>
+</ul>
+
+<p>If a number here disagrees with one from another implementation of the same model, the engine is the place to look first. The tool selects inputs and presents results; it does not contain its own copy of the equations.</p>
+
+<h2>Values with no published source</h2>
+
+<p>Most band boundaries in the tool come from the standard or paper that defines the model, and the model page cites it. A few do not. They are listed here rather than left to look authoritative.</p>
+
+<table>
+<tr><th>Where</th><th>What is tool-specific</th><th>What this means when you report it</th></tr>
+
+<tr>
+<td><a href="../models/pmv-ashrae-55.html">PMV</a>, both variants</td>
+<td>The half-step boundaries that map a PMV value to the seven thermal-sensation labels (&minus;2.5, &minus;1.5, &minus;0.5, +0.5, +1.5, +2.5).</td>
+<td>The &plusmn;0.5 acceptability range is from the standards. The remaining midpoints are a presentation convention for labelling the scale, not a criterion to cite.</td>
+</tr>
+
+<tr>
+<td><a href="../models/humidex.html">Humidex</a></td>
+<td>The category boundaries at 35 and 54, and several of the category labels.</td>
+<td>Environment and Climate Change Canada publishes a coarser set of ranges. Report the Humidex value, not this tool's label, if the label has to be defensible.</td>
+</tr>
+
+<tr>
+<td><a href="../models/wind-chill.html">Wind Chill</a></td>
+<td>The labels &ldquo;30 minutes&rdquo;, &ldquo;10 minutes&rdquo; and &ldquo;2 minutes to frostbite&rdquo; at 1400, 1600 and 2300&nbsp;W/m&sup2;.</td>
+<td>The underlying W/m&sup2; cooling-power scale has historical support; these exposure-time labels at these boundaries could not be traced to it. Treat them as indicative.</td>
+</tr>
+
+<tr>
+<td><a href="../models/heat-index.html">Heat Index</a></td>
+<td>The Celsius category boundaries (27, 32, 39, 51&nbsp;&deg;C).</td>
+<td>These are rounded conversions of the U.S. National Weather Service categories, which are defined in Fahrenheit. Expect a degree of disagreement at a boundary.</td>
+</tr>
+</table>
+
+<div class="note">This list is deliberately visible rather than buried. A band boundary presented without a source is the kind of number that ends up quoted in a report as though a standard defined it. If you find a traceable source for any of the above, it belongs on the model page and here.</div>
+
+<h2>Where to go next</h2>
+
+<ul class="body">
+<li><a href="thermal-comfort-questions.html">Thermal comfort questions</a>  what the models mean, rather than where they come from.</li>
+<li><a href="../api/index.html">API Reference</a>  the engine functions behind each model.</li>
+</ul>
+
+</main></div></body></html>

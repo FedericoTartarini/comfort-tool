@@ -2,4 +2,7 @@
 /dist/
 /.vite/
 /coverage/
+/playwright-report/
+/test-results/
 /.idea/
+.cursor/

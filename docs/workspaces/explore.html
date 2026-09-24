@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Explore &middot; CBE Thermal Comfort Tool</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #1c1917;
+      --muted: #6b6663;
+      --line: #e7e5e4;
+      --accent: #0f766e;
+      --soft: #f7f6f5;
+      --code: #f4f4f5
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg)
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none
+    }
+
+    a:hover {
+      text-decoration: underline
+    }
+
+    .wrap {
+      display: flex;
+      min-height: 100vh;
+      max-width: 1400px;
+      margin: 0 auto
+    }
+
+    aside {
+      width: 290px;
+      flex: 0 0 290px;
+      border-right: 1px solid var(--line);
+      padding: 22px 18px 60px;
+      background: var(--soft);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto
+    }
+
+    aside .brand {
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.3;
+      display: block;
+      color: var(--fg);
+      margin-bottom: 4px
+    }
+
+    aside .brandsub {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px
+    }
+
+    aside h4 {
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 20px 0 7px
+    }
+
+    aside ul {
+      list-style: none;
+      margin: 0;
+      padding: 0
+    }
+
+    aside li {
+      margin: 1px 0
+    }
+
+    aside a {
+      display: block;
+      padding: 5px 9px;
+      border-radius: 6px;
+      color: #44403c;
+      font-size: 13.5px
+    }
+
+    aside a:hover {
+      background: #ececea;
+      text-decoration: none
+    }
+
+    aside a.on {
+      background: #0f766e;
+      color: #fff;
+      font-weight: 600
+    }
+
+    aside a.todo {
+      color: #a8a29e
+    }
+
+    aside a.todo:after {
+      content: "draft";
+      float: right;
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #c4c0bd;
+      padding-top: 2px
+    }
+
+    main {
+      flex: 1;
+      min-width: 0;
+      padding: 40px 52px 100px;
+      max-width: 900px
+    }
+
+    .crumb {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 10px
+    }
+
+    h1 {
+      font-size: 31px;
+      line-height: 1.2;
+      margin: 0 0 12px;
+      letter-spacing: -.02em
+    }
+
+    h2 {
+      font-size: 20px;
+      margin: 38px 0 10px;
+      padding-top: 6px;
+      letter-spacing: -.01em
+    }
+
+    h3 {
+      font-size: 15.5px;
+      margin: 24px 0 6px
+    }
+
+    .lede {
+      font-size: 17px;
+      color: #44403c;
+      margin: 0 0 8px
+    }
+
+    p {
+      margin: 12px 0
+    }
+
+    code {
+      background: var(--code);
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      font-size: 14px;
+      display: block;
+      overflow-x: auto
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 11px;
+      text-align: left;
+      vertical-align: top
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 600;
+      font-size: 12.5px;
+      letter-spacing: .02em
+    }
+
+    ul.body,
+    ol.body {
+      padding-left: 22px
+    }
+
+    ul.body li,
+    ol.body li {
+      margin: 6px 0
+    }
+
+    .note {
+      border-left: 3px solid var(--accent);
+      background: #f0fdfa;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    .warn {
+      border-left: 3px solid #d97706;
+      background: #fffbeb;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    figure.shot {
+      margin: 22px 0;
+      border: 2px dashed #d6d3d1;
+      border-radius: 8px;
+      background: repeating-linear-gradient(45deg, #fafaf9, #fafaf9 10px, #f5f5f4 10px, #f5f5f4 20px);
+      padding: 30px 20px;
+      text-align: center
+    }
+
+    figure.shot .tag {
+      display: inline-block;
+      font-size: 10.5px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #78716c;
+      border: 1px solid #d6d3d1;
+      background: #fff;
+      border-radius: 99px;
+      padding: 3px 10px;
+      margin-bottom: 9px
+    }
+
+    figure.shot .want {
+      font-weight: 600;
+      font-size: 14.5px;
+      color: #44403c
+    }
+
+    figure.shot figcaption {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 6px
+    }
+
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 99px;
+      padding: 2px 9px;
+      margin-right: 5px;
+      color: #57534e
+    }
+
+    footer.pf {
+      margin-top: 60px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    @media (max-width:860px) {
+      .wrap {
+        display: block
+      }
+
+      aside {
+        width: auto;
+        height: auto;
+        position: static;
+        border-right: 0;
+        border-bottom: 1px solid var(--line)
+      }
+
+      main {
+        padding: 26px 20px 70px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <aside>
+      <a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+      <div class="brandsub">Documentation</div>
+      <ul>
+        <li><a class="" href="../index.html">Home</a></li>
+      </ul>
+      <h4>Getting started</h4>
+      <ul>
+        <li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
+        <li><a href="../getting-started/units.html">Units (SI / IP)</a></li>
+        <li><a href="../getting-started/compare-mode.html">Compare mode</a></li>
+        <li><a href="../getting-started/charts.html">Charts and chart controls</a></li>
+        <li><a href="../getting-started/sharing.html">Sharing a calculation</a></li>
+      </ul>
+      <h4>Workspaces</h4>
+      <ul>
+        <li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
+        <li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
+        <li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
+        <li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
+        <li><a class="on" href="../workspaces/explore.html">Explore</a></li>
+        <li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+      </ul>
+      <h4>Models</h4>
+      <ul>
+        <li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+        <li><a href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+        <li><a href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+        <li><a href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+        <li><a href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
+        <li><a href="../models/utci.html">UTCI</a></li>
+        <li><a href="../models/heat-index.html">Heat Index</a></li>
+        <li><a href="../models/humidex.html">Humidex</a></li>
+        <li><a href="../models/wind-chill.html">Wind Chill</a></li>
+      </ul>
+      <h4>Features</h4>
+      <ul>
+        <li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+      </ul>
+      <h4>API documentation</h4>
+      <ul>
+        <li><a href="../api/index.html">API Reference</a></li>
+      </ul>
+      <h4>Reference</h4>
+      <ul>
+        <li><a href="../reference/references.html">References and citations</a></li>
+        <li><a href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
+      </ul>
+      <h4>Site pages</h4>
+      <ul>
+        <li><a href="../sitepages/help.html">Help</a></li>
+        <li><a href="../sitepages/contributing.html">Contributing</a></li>
+        <li><a href="../sitepages/changelog.html">Changelog</a></li>
+      </ul>
+    </aside>
+    <main>
+      <div class="crumb">Workspaces</div>
+
+      <h1>Explore</h1>
+      <p><span class="pill">/explore/</span><span class="pill">7 models</span><span class="pill">Sharing enabled</span>
+      </p>
+
+      <h2>Overview</h2>
+      <p>Explore is the workspace for questions the standards do not answer. It offers every model that can be drawn as
+        a field, lets you choose which quantities go on the chart axes, and lets you edit the band edges that classify
+        the result. There is no compliance verdict here, by design.</p>
+      <p>The layout is the same as a standard workspace navigation on the left, inputs beside it, results and charts to
+        the right but the chart carries additional controls that a compliance workspace does not offer.</p>
+      <div class="warn"><strong>Explore output is not a compliance check.</strong> Once an axis or a band has been
+        changed, the chart no longer represents any standard's stated criteria. For a defensible verdict, use the
+        workspace for that standard.</div>
+      <figure class="shot">
+        <img src="../images/explore-workspace.png" alt="Explore workspace with axis pickers and band editor visible"
+          style="max-width:100%; height:auto; border-radius:8px;">
+        <figcaption>
+          Axis pickers visible above the chart and the band editor open, so the two things that distinguish this
+          workspace from a compliance one are both in frame.
+        </figcaption>
+      </figure>
+
+      <h2>Primary interface components</h2>
+
+      <h3>Model selection</h3>
+      <p>Seven of the nine models are available here:</p>
+      <ul class="body">
+        <li><strong>PMV / PPD (ASHRAE 55)</strong> and <strong>PMV / PPD (ISO 7730)</strong> also available on their own
+          compliance workspaces.</li>
+        <li><strong>PHS (ISO 7933:2023)</strong> also on its compliance workspace and in Time-series.</li>
+        <li><strong>UTCI</strong>, <strong>Heat Index</strong>, <strong>Humidex</strong> and <strong>Wind Chill</strong>
+          available <em>only</em> here, because they belong to no building standard.</li>
+      </ul>
+      <p>The two Adaptive models are deliberately absent. Their band edges are functions of outdoor temperature rather
+        than fixed numbers, so an editable-band workspace would misrepresent them.</p>
+
+      <h3>Input section</h3>
+      <p>The same controls as any workspace model, compare, units, and the share button in the header followed by the
+        fields the selected model requires. The set of fields changes substantially with the model: Heat Index asks for
+        two, PHS asks for six.</p>
+      <p>Each model carries its own accepted range on every input, and those ranges are narrower here than a comfort
+        model's. A value outside the range is marked and not calculated.</p>
+
+      <h3>Results display</h3>
+      <p>The model's outputs, without a compliance statement. Where a model has a classification scale UTCI's ten stress
+        categories, Heat Index's risk levels the category is reported alongside the value.</p>
+
+      <h3>Visualization charts</h3>
+      <p>Every model in Explore has a banded field chart, and several add a chart of their own. Above the chart are
+        three controls that exist only in this workspace:</p>
+      <ul class="body">
+        <li><strong>X and Y axis pickers</strong> choose which of the model's quantities the field is drawn over. Inputs
+          not on an axis are held at their panel values, so the chart is a slice through the model at the state you have
+          set.</li>
+        <li><strong>Output selection</strong> where a model produces more than one quantity worth plotting, choose which
+          one colours the field. PHS offers three: limiting exposure time, rectal temperature, and predicted water loss.
+        </li>
+        <li><strong>Band editor</strong> edit the numeric edges of the bands, apply them to the chart, or reset to the
+          model's declared defaults.</li>
+      </ul>
+      <p>A few models lock an axis where the second quantity is intrinsic to the index Wind Chill keeps wind speed on Y.
+        The chart selector also carries the export options, as on every other workspace.</p>
+
+      <h2>Assessment methods</h2>
+
+      <h3>Editing the bands</h3>
+      <p>The band editor lists the current bands as numeric ranges with their labels and colours. Changing an edge and
+        applying it redraws the chart immediately.</p>
+      <p><strong>Editing a band does not change the calculation.</strong> The model returns the same numbers for the
+        same inputs; bands are a classification laid over the result. What changes is which region a point is reported
+        to fall in which is exactly what makes the editor useful for testing a proposed criterion, and exactly why the
+        result is not a compliance statement.</p>
+      <figure class="shot">
+        <img src="../images/explore-band-edit.png" alt="Explore workspace showing before and after a band edit"
+          style="max-width:100%; height:auto; border-radius:8px;">
+        <figcaption>
+          Same inputs, default bands in one frame and a moved band edge in the other. This is the clearest way to show
+          the point did not move, only the shading did.
+        </figcaption>
+      </figure>
+
+      <h3>The four index models</h3>
+      <p>UTCI, Heat Index, Humidex and Wind Chill are reachable only from this workspace. Each is defined over a limited
+        envelope of conditions Heat Index and Humidex over warm humid air, Wind Chill over cold windy air, UTCI over a
+        broad but still bounded outdoor range and the input fields carry those limits. A number produced outside the
+        range is not meaningful, whatever the chart draws.</p>
+
+      <h2>Additional capabilities</h2>
+
+      <p><strong>Axis selection.</strong> Any entered quantity can carry either axis, and each axis excludes the
+        quantity the other holds.</p>
+
+      <p><strong>Chart export.</strong> Any chart can be exported as an image from the chart selector menu, with the
+        same legend as the screen.</p>
+
+      <p><strong>Compare.</strong> Up to three input sets, with a picker for which set the chart is drawn around as on
+        the standard workspaces.</p>
+
+      <p><strong>Input modifiers.</strong> Available on the two PMV models only, exactly as on their compliance
+        workspaces. See <a href="../features/input-modifiers.html">Input modifiers</a>.</p>
+
+      <p><strong>Unit selection.</strong> SI and Inch-Pound, held internally in SI.</p>
+
+      <p><strong>Sharing.</strong> The link button encodes inputs and chart selection, including the axis and output
+        choices.</p>
+
+      <div class="note"><strong>Relationship to the old documentation.</strong> The band editor is the closest live
+        equivalent to the range editing described on the previous <code>documentation/ranges</code> page, and that URL
+        redirects here. The behaviour is not identical treat this page as the current description rather than the old
+        one.</div>
+
+      <h2>Where to go next</h2>
+      <ul class="body">
+        <li><a href="ashrae-55.html">ASHRAE 55</a> the same PMV models, assessed against the standard.</li>
+        <li><a href="time-series.html">Time-series</a> exposure that changes over time, rather than one steady state.
+        </li>
+      </ul>
+
+    </main>
+  </div>
+</body>
+
+</html>

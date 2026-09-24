@@ -1,8 +1,20 @@
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [tailwindcss(), svelte()],
+  resolve: {
+    conditions: ["browser"],
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    // vendor/jsthermalcomfort is a git submodule with its own Jest suite;
+    // run it with `npm test --prefix vendor/jsthermalcomfort`.
+    exclude: [...configDefaults.exclude, "vendor/**"],
+  },
   build: {
     chunkSizeWarningLimit: 5500,
     rollupOptions: {

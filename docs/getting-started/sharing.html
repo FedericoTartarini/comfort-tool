@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sharing a calculation &middot; CBE Thermal Comfort Tool</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #1c1917;
+      --muted: #6b6663;
+      --line: #e7e5e4;
+      --accent: #0f766e;
+      --soft: #f7f6f5;
+      --code: #f4f4f5
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--fg);
+      background: var(--bg)
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none
+    }
+
+    a:hover {
+      text-decoration: underline
+    }
+
+    .wrap {
+      display: flex;
+      min-height: 100vh;
+      max-width: 1400px;
+      margin: 0 auto
+    }
+
+    aside {
+      width: 290px;
+      flex: 0 0 290px;
+      border-right: 1px solid var(--line);
+      padding: 22px 18px 60px;
+      background: var(--soft);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto
+    }
+
+    aside .brand {
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.3;
+      display: block;
+      color: var(--fg);
+      margin-bottom: 4px
+    }
+
+    aside .brandsub {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px
+    }
+
+    aside h4 {
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 20px 0 7px
+    }
+
+    aside ul {
+      list-style: none;
+      margin: 0;
+      padding: 0
+    }
+
+    aside li {
+      margin: 1px 0
+    }
+
+    aside a {
+      display: block;
+      padding: 5px 9px;
+      border-radius: 6px;
+      color: #44403c;
+      font-size: 13.5px
+    }
+
+    aside a:hover {
+      background: #ececea;
+      text-decoration: none
+    }
+
+    aside a.on {
+      background: #0f766e;
+      color: #fff;
+      font-weight: 600
+    }
+
+    aside a.todo {
+      color: #a8a29e
+    }
+
+    aside a.todo:after {
+      content: "draft";
+      float: right;
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #c4c0bd;
+      padding-top: 2px
+    }
+
+    main {
+      flex: 1;
+      min-width: 0;
+      padding: 40px 52px 100px;
+      max-width: 900px
+    }
+
+    .crumb {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 10px
+    }
+
+    h1 {
+      font-size: 31px;
+      line-height: 1.2;
+      margin: 0 0 12px;
+      letter-spacing: -.02em
+    }
+
+    h2 {
+      font-size: 20px;
+      margin: 38px 0 10px;
+      padding-top: 6px;
+      letter-spacing: -.01em
+    }
+
+    h3 {
+      font-size: 15.5px;
+      margin: 24px 0 6px
+    }
+
+    .lede {
+      font-size: 17px;
+      color: #44403c;
+      margin: 0 0 8px
+    }
+
+    p {
+      margin: 12px 0
+    }
+
+    code {
+      background: var(--code);
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      font-size: 14px;
+      display: block;
+      overflow-x: auto
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 11px;
+      text-align: left;
+      vertical-align: top
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 600;
+      font-size: 12.5px;
+      letter-spacing: .02em
+    }
+
+    ul.body,
+    ol.body {
+      padding-left: 22px
+    }
+
+    ul.body li,
+    ol.body li {
+      margin: 6px 0
+    }
+
+    .note {
+      border-left: 3px solid var(--accent);
+      background: #f0fdfa;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    .warn {
+      border-left: 3px solid #d97706;
+      background: #fffbeb;
+      padding: 11px 15px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    figure.shot {
+      margin: 22px 0;
+      border: 2px dashed #d6d3d1;
+      border-radius: 8px;
+      background: repeating-linear-gradient(45deg, #fafaf9, #fafaf9 10px, #f5f5f4 10px, #f5f5f4 20px);
+      padding: 30px 20px;
+      text-align: center
+    }
+
+    figure.shot .tag {
+      display: inline-block;
+      font-size: 10.5px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #78716c;
+      border: 1px solid #d6d3d1;
+      background: #fff;
+      border-radius: 99px;
+      padding: 3px 10px;
+      margin-bottom: 9px
+    }
+
+    figure.shot .want {
+      font-weight: 600;
+      font-size: 14.5px;
+      color: #44403c
+    }
+
+    figure.shot figcaption {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 6px
+    }
+
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 99px;
+      padding: 2px 9px;
+      margin-right: 5px;
+      color: #57534e
+    }
+
+    footer.pf {
+      margin-top: 60px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    @media (max-width:860px) {
+      .wrap {
+        display: block
+      }
+
+      aside {
+        width: auto;
+        height: auto;
+        position: static;
+        border-right: 0;
+        border-bottom: 1px solid var(--line)
+      }
+
+      main {
+        padding: 26px 20px 70px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <aside>
+      <a class="brand" href="../index.html">CBE Thermal Comfort Tool</a>
+      <div class="brandsub">Documentation</div>
+      <ul>
+        <li><a class="" href="../index.html">Home</a></li>
+      </ul>
+      <h4>Getting started</h4>
+      <ul>
+        <li><a class="" href="../getting-started/main-interface.html">Main interface</a></li>
+        <li><a class="" href="../getting-started/units.html">Units (SI / IP)</a></li>
+        <li><a class="" href="../getting-started/compare-mode.html">Compare mode</a></li>
+        <li><a class="" href="../getting-started/charts.html">Charts and chart controls</a></li>
+        <li><a class="on" href="../getting-started/sharing.html">Sharing a calculation</a></li>
+      </ul>
+      <h4>Workspaces</h4>
+      <ul>
+        <li><a class="" href="../workspaces/ashrae-55.html">ASHRAE 55</a></li>
+        <li><a class="" href="../workspaces/iso-7730.html">ISO 7730</a></li>
+        <li><a class="" href="../workspaces/en-16798-1.html">EN 16798-1</a></li>
+        <li><a class="" href="../workspaces/iso-7933.html">ISO 7933:2023</a></li>
+        <li><a class="" href="../workspaces/explore.html">Explore</a></li>
+        <li><a class="" href="../workspaces/time-series.html">Time-series</a></li>
+      </ul>
+      <h4>Models</h4>
+      <ul>
+        <li><a class="" href="../models/pmv-ashrae-55.html">PMV (ASHRAE 55)</a></li>
+        <li><a href="../models/pmv-iso-7730.html">PMV (ISO 7730)</a></li>
+        <li><a href="../models/adaptive-ashrae-55.html">Adaptive (ASHRAE 55)</a></li>
+        <li><a href="../models/adaptive-en-16798-1.html">Adaptive (EN 16798-1)</a></li>
+        <li><a href="../models/phs.html">PHS (ISO 7933:2023)</a></li>
+        <li><a href="../models/utci.html">UTCI</a></li>
+        <li><a href="../models/heat-index.html">Heat Index</a></li>
+        <li><a href="../models/humidex.html">Humidex</a></li>
+        <li><a href="../models/wind-chill.html">Wind Chill</a></li>
+      </ul>
+      <h4>Features</h4>
+      <ul>
+        <li><a class="" href="../features/input-modifiers.html">Input modifiers</a></li>
+      </ul>
+      <h4>API documentation</h4>
+      <ul>
+        <li><a href="../api/index.html">API Reference</a></li>
+      </ul>
+      <h4>Reference</h4>
+      <ul>
+        <li><a href="../reference/references.html">References and citations</a></li>
+        <li><a href="../reference/thermal-comfort-questions.html">Thermal comfort questions</a></li>
+      </ul>
+      <h4>Site pages</h4>
+      <ul>
+        <li><a href="../sitepages/help.html">Help</a></li>
+        <li><a href="../sitepages/contributing.html">Contributing</a></li>
+        <li><a href="../sitepages/changelog.html">Changelog</a></li>
+      </ul>
+    </aside>
+    <main>
+      <div class="crumb">Getting started</div>
+
+      <h1>Sharing a calculation</h1>
+
+      <h2>Overview</h2>
+      <p>The <strong>Share</strong> button in the header copies a link that reproduces the calculation you are looking
+        at. Send it to a colleague, paste it into a report or a ticket, and they open the tool with your inputs already
+        filled in and your chart already selected.</p>
+      <p>Nothing is uploaded. The calculation is encoded into the link itself, so the tool needs no account, no server
+        and no stored session to reproduce it.</p>
+      <figure class="shot">
+        <img src="../images/sharing-copied.png" alt="Share button showing the copied-link confirmation"
+          style="max-width:100%; height:auto; border-radius:8px;">
+        <figcaption>
+          Share button immediately after clicking, showing that the calculation link has been copied.
+        </figcaption>
+      </figure>
+
+      <h2>How it works</h2>
+      <p>The link is the workspace URL with a <code>?state=</code> parameter appended. The parameter holds the whole
+        calculation, encoded as text. The path still identifies the workspace and model, so a share link remains
+        readable at a glance:</p>
+      <div class="formula">/standard/ashrae-55/pmv-ashrae/?state=&hellip;</div>
+      <p>Clicking the button copies the link to your clipboard and confirms it. The address bar does not change as you
+        work the link is generated when you ask for it, not maintained continuously.</p>
+
+      <h2>What the link carries</h2>
+      <table>
+        <tr>
+          <th>Carried</th>
+          <th>Detail</th>
+        </tr>
+        <tr>
+          <td>Workspace and model</td>
+          <td>From the path.</td>
+        </tr>
+        <tr>
+          <td>All input values</td>
+          <td>For every input set, not only the visible ones.</td>
+        </tr>
+        <tr>
+          <td>Compare state</td>
+          <td>Whether compare is on, which sets are visible, and which is active.</td>
+        </tr>
+        <tr>
+          <td>Unit system</td>
+          <td>SI or IP, so the recipient sees the numbers as you did.</td>
+        </tr>
+        <tr>
+          <td>Entry modes</td>
+          <td>Temperature mode, humidity input mode, air-speed control mode.</td>
+        </tr>
+        <tr>
+          <td>Input modifiers</td>
+          <td>Which are enabled, per input set, and their values.</td>
+        </tr>
+        <tr>
+          <td>Chart selection</td>
+          <td>Which chart is showing.</td>
+        </tr>
+        <tr>
+          <td>Chart settings</td>
+          <td>Axis choices, the selected output, the baseline input, and any edited bands.</td>
+        </tr>
+      </table>
+      <div class="note">Because edited bands travel with the link, an Explore chart shared after you have moved a band
+        edge arrives looking exactly as it did on your screen including the edit. Say so when you share it, or the
+        recipient may take an investigative chart for a compliance one.</div>
+
+      <h2>What the link does not carry</h2>
+      <ul class="body">
+        <li><strong>Results.</strong> Only inputs are encoded; the recipient's browser recalculates them. Two people
+          opening the same link get the same answer because the calculation is deterministic, not because the answer was
+          sent.</li>
+        <li><strong>Anything personal.</strong> No account, no identity, no history just the values you entered.</li>
+        <li><strong>A Time-series scenario.</strong> See below.</li>
+      </ul>
+
+      <h2>Sharing is not available in Time-series</h2>
+      <div class="warn">The Share button does not appear on the <a href="../workspaces/time-series.html">Time-series</a>
+        workspace. A share link encodes a single set of inputs, which cannot represent a multi-segment scenario; rather
+        than produce a link that silently drops the scenario, the workspace offers none.</div>
+      <p>To circulate a Time-series result today, export the charts from the chart menu. Recreating the scenario
+        elsewhere means re-entering the segments.</p>
+
+      <h2>If a link does not open correctly</h2>
+      <p>Links are versioned, and the tool validates every value it reads before using it. A link that has been
+        truncated in an email, or that was made by a version of the tool whose inputs have since changed, falls back to
+        the defaults rather than opening a half-restored calculation. If a shared link does not look right, ask for it
+        to be re-copied and check that it was not broken across a line.</p>
+
+      <h2>Where to go next</h2>
+      <ul class="body">
+        <li><a href="compare-mode.html">Compare mode</a> comparisons travel intact in a link.</li>
+        <li><a href="charts.html">Charts and chart controls</a> exporting an image, which is the alternative to a link.
+        </li>
+      </ul>
+
+    </main>
+  </div>
+</body>
+
+</html>
