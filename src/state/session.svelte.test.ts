@@ -18,7 +18,7 @@
  * `sessionModelSwitch.svelte.test.ts`'s; here every request lands.
  */
 import { describe, expect, it } from "vitest";
-import { pmv_ppd, Standard } from "jsthermalcomfort";
+import { pmv_ppd_ashrae, Standard } from "jsthermalcomfort";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
@@ -31,17 +31,16 @@ const q = quantities;
 
 /**
  * A model that takes a quantity the registered one does not, so a slot built
- * for that one never holds it. `run` asks for the extra input first, as a
- * declaration does, which is what makes an unseeded slot throw rather than
- * quietly run without it; the value comes back on the result so a test can
- * read what the slot supplied.
+ * for that one never holds it. `run` reads the extra input first, which is
+ * what makes an unseeded slot throw rather than quietly run without it; the
+ * value comes back on the result so a test can read what the slot supplied.
  */
 const takesExternalWork = {
   ...pmvPpdIso,
   name: "fixture_external_work",
   inputs: [...pmvPpdIso.inputs, { quantity: q.wme, value: 0.4 }],
   run: (values) => {
-    const [wme] = values(q.wme);
+    const wme = values.wme;
     return { ...pmvPpdIso.run(values), wme };
   },
 } satisfies RegisteredModel;
@@ -60,11 +59,11 @@ const airSpeedControl: OptionSpec = {
 };
 
 /**
- * A model with an option, read through `run`'s second reader into a kwargs
- * object the compiler checks: `pmv_ppd` under ASHRAE 55 types
- * `airspeed_control` as a boolean. With the option off, an air speed above
- * what the standard allows the room comes back as a broken row on the result,
- * which is how a test sees the option reach the call.
+ * A model with an option, read through `run`'s second reader into the params
+ * object the compiler checks: `pmv_ppd_ashrae` types `airspeed_control` as a
+ * boolean. With the option off, an air speed above what the standard allows
+ * the room comes back as a broken row on the result, which is how a test sees
+ * the option reach the call.
  */
 const takesAnOption = {
   ...pmvPpdIso,
@@ -72,10 +71,19 @@ const takesAnOption = {
   standard: Standard.ashrae_55_2023,
   options: [airSpeedControl],
   run: (values, options) =>
-    pmv_ppd(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, Standard.ashrae_55_2023, {
-      units: "SI",
+    pmv_ppd_ashrae({
+      tdb: values.tdb,
+      tr: values.tr,
+      vr: values.vr,
+      rh: values.rh,
+      met: values.met,
+      clo: values.clo,
+      wme: 0,
+      standard: Standard.ashrae_55_2023,
       limit_inputs: false,
       round_output: false,
+      // The cooling effect logs when it assumes 0; nothing here reads the log.
+      suppress_warnings: true,
       airspeed_control: options(airSpeedControl),
     }),
 } satisfies RegisteredModel;

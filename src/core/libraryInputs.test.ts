@@ -118,17 +118,18 @@ describe("toLibraryInputs", () => {
 });
 
 describe("valuesReader", () => {
-  it("answers one number per quantity, in the order asked", () => {
-    const values = new Map<Quantity, number>([
+  it("answers each quantity under its own key", () => {
+    const resolved = new Map<Quantity, number>([
       [q.tdb, 25],
       [q.rh, 50],
     ]);
-    expect(valuesReader(values)(q.rh, q.tdb, q.rh)).toEqual([50, 25, 50]);
+    const values = valuesReader(resolved);
+    expect([values.rh, values.tdb, values.rh]).toEqual([50, 25, 50]);
   });
 
   it("throws naming the quantity the map does not carry, rather than answering undefined", () => {
-    const reader = valuesReader(resolveQuantities(separateSlot(), pmvPpdIso));
-    expect(() => reader(q.wme)).toThrow(`Slot has no value for ${q.wme.label}`);
+    const values = valuesReader(resolveQuantities(separateSlot(), pmvPpdIso));
+    expect(() => values.wme).toThrow(`Slot has no value for ${q.wme.label}`);
   });
 });
 

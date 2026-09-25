@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -425,6 +425,18 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     the TypeScript port. When it lands a declaration writes `tdb: …` by hand, the names become the compiler's to
     check, and the position test is deleted.
     **Revised 2026-09-23:** `run` takes a second reader, for the model's options (decision 36).
+    **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 01):** the object parameter landed with the library's
+    v1 models (through `ae656a7`). `run` is `(values, options) => result`, where `values` is an object typed off the
+    quantity table, `{ readonly [K in keyof typeof quantities]: number }`, whose getters throw naming a quantity the
+    slot does not hold. The declaration writes the library's params object, each quantity by name, then the app's fixed
+    policy: `wme: 0`, `standard`, `limit_inputs: false`, `round_output: false`, and no `units` (the library's default is
+    SI, decision 1). The names are the compiler's: a misspelt key is an excess property and a forgotten quantity a
+    missing required one, each pinned by a `@ts-expect-error`. The position test and the source-parsing parameter-name
+    reader are deleted, and with them the spread-first convention and the switch written under whatever name the
+    function gives it (it is `round_output` in every declaration). What the compiler cannot see, two quantities in each
+    other's place, is caught by a registry-wide test on decision 36's recording harness: every quantity key of the
+    params object the library received carries the number the values object gave for that quantity. Proven red by
+    swapping `tdb` and `tr` in the ISO declaration, which compiles.
 35. **An unrounded `run` is pinned by its own test.** Amends decision 27, which retired decision 17's rounding rule
     on the strength of the drift test. Measured in ticket 06: with Heat Index at the library's default rounding the
     whole suite stays green, because the probes bisect on whatever `run` returns and land on the rounding step, where
@@ -458,6 +470,13 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     agree, where an object is spelt once and passed around; and an option as a new `Quantity` kind, because
     everything that reads a `Quantity` (the axis picker, the gate, the dialog's rows, the display-unit table, the
     quantity table's drift test against `_INFO`) would have to learn to skip it, and it is not in any `_INFO`.
+    **Revised 2026-09-25 (decision 34's note of the same date):** an option is written inline under its library
+    key, `airspeed_control: options(airSpeedControl)`, never through a spread: a spread into an object literal is
+    exempt from the excess-property check, so a misspelt optional key inside one compiles silently (compiler probe,
+    2026-09-25). The `@ts-expect-error` now pins `pmv_ppd_ashrae`'s `PmvPpdAshraeParams`, which types
+    `airspeed_control` as a boolean, so the 2026-09-23 note that its declaration types its kwargs `{}` is retired.
+    `pmv_ppd` is off the library's public surface; the fixtures that called it call `pmv_ppd_ashrae` with
+    `suppress_warnings: true`.
 
 ## Consequences
 

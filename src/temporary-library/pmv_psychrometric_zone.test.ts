@@ -10,24 +10,33 @@ import { bisect, secant } from "./root_finding";
 // (itself captured by the fork's `scripts/generate-chart-baseline.mjs`).
 
 /**
- * How far the boundary is allowed to sit from the deployed tool's, in °C.
+ * How far the boundary is allowed to sit from the deployed tool's, in °C: one
+ * bound for both standards, for two different reasons, neither of them the
+ * geometry.
  *
- * ISO zones land on it exactly. ASHRAE zones do not, and the reason is not the
- * geometry: the main repository's `cooling_effect` rounds to two decimals
+ * ASHRAE: the main repository's `cooling_effect` rounds to two decimals
  * (matching pythermalcomfort), the CBE tool's does not, and a ~0.002 K
  * difference in the cooling effect shifts the boundary by about a hundredth
  * of a degree.
+ *
+ * ISO: the library's PMV kernel starts its clothing-temperature iteration from
+ * ISO 7730 Annex D's initial guess, as pythermalcomfort 4.6.0 does, and the
+ * fixture was recorded from the deployed tool's kernel, which does not.
+ * Measured 2026-09-25: up to 0.007 °C at met 1.1, 0.00003 °C at met 1.4.
+ * Regenerating the fixture from the library would make this test circular,
+ * and matching the deployed kernel is ruled out by the library's ADR 0001.
  */
 const DB_TOLERANCE = {
-  ISO: 1e-9,
+  ISO: 0.02,
   ASHRAE: 0.02,
 } as const;
 
 /** `wme = 0`, `limit_inputs: false`, `round_output: false`, unrounded return — the zone's own contract. */
 const isoClosure: PmvFunction = (tdb, tr, vr, rh, met, clo) =>
-  pmv_ppd_iso(tdb, tr, vr, rh, met, clo, 0, Standard.iso_7730_2005, { limit_inputs: false, round_output: false }).pmv;
+  pmv_ppd_iso({ tdb, tr, vr, rh, met, clo, wme: 0, standard: Standard.iso_7730_2005, limit_inputs: false, round_output: false })
+    .pmv;
 const ashraeClosure: PmvFunction = (tdb, tr, vr, rh, met, clo) =>
-  pmv_ppd_ashrae(tdb, tr, vr, rh, met, clo, 0, { limit_inputs: false, round_output: false }).pmv;
+  pmv_ppd_ashrae({ tdb, tr, vr, rh, met, clo, wme: 0, limit_inputs: false, round_output: false }).pmv;
 
 /**
  * The fixture records which standard the deployed tool drew each zone under;

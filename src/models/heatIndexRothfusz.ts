@@ -10,15 +10,12 @@ export const heatIndexRothfusz = {
   // No `standard`: `HEAT_INDEX_ROTHFUSZ_INFO.standards` is empty. The Rothfusz
   // regression is not published by one, so the model has no Standard page and
   // is reached through Explore alone.
-  run: (values) =>
-    heat_index_rothfusz(...values(q.tdb, q.rh), {
-      // `round` is this function's name for the switch, and it defaults to on.
-      // Off here: `run` returns the unrounded number and the display rounds, so
-      // the scanned surface is continuous rather than quantised to 0.1 °C.
-      round: false,
-      units: "SI",
-      limit_inputs: false,
-    }),
+  // `round_output: false`: `run` returns the unrounded number and the display
+  // rounds, so the scanned surface is continuous rather than quantised to
+  // 0.1 °C. `limit_inputs: false`: the app gates entered values itself and
+  // reads the rows the run breaks off `warnings`. The function takes no
+  // `units`, and no `wme` or `standard`.
+  run: (values) => heat_index_rothfusz({ tdb: values.tdb, rh: values.rh, round_output: false, limit_inputs: false }),
   name: "heat_index_rothfusz",
   inputs: [
     { quantity: q.tdb, value: 30 },

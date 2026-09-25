@@ -21,11 +21,9 @@ import {
   type DynamicDeclaration,
   type Range,
   type RegisteredModel,
-  type ValuesReader,
+  type Values,
 } from "./modelDeclaration";
-import { quantities, quantityFor, type Quantity } from "./quantities";
-
-const q = quantities;
+import { quantityFor, type Quantity } from "./quantities";
 
 /**
  * The classified output the declared bands cut, found by object identity:
@@ -187,9 +185,16 @@ function unroundedSampleCount(model: RegisteredModel, chart: DynamicDeclaration)
 function isoRounding(round_output: boolean) {
   return {
     ...pmvPpdIso,
-    run: (values: ValuesReader) =>
-      pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, pmvPpdIso.standard, {
-        units: "SI",
+    run: (values: Values) =>
+      pmv_ppd_iso({
+        tdb: values.tdb,
+        tr: values.tr,
+        vr: values.vr,
+        rh: values.rh,
+        met: values.met,
+        clo: values.clo,
+        wme: 0,
+        standard: pmvPpdIso.standard,
         limit_inputs: false,
         round_output,
       }),

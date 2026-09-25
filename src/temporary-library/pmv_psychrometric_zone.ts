@@ -145,7 +145,10 @@ export interface PmvPsychrometricZoneKwargs {
  *
  * @example
  * const iso = (tdb, tr, vr, rh, met, clo) =>
- *   pmv_ppd_iso(tdb, tr, vr, rh, met, clo, 0, Standard.iso_7730_2005, {
+ *   pmv_ppd_iso({
+ *     tdb, tr, vr, rh, met, clo,
+ *     wme: 0,
+ *     standard: Standard.iso_7730_2005,
  *     limit_inputs: false,
  *     round_output: false,
  *   }).pmv;

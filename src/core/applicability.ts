@@ -129,7 +129,7 @@ export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quan
  */
 export function violationRows(model: RegisteredModel, result: ModelResult): ViolationRow[] {
   const rows: ViolationRow[] = [];
-  for (const { key, role, value, bound } of resultWarnings(result)) {
+  for (const { key, role, value, bound } of resultWarnings(model, result)) {
     const quantity = quantityFor(key);
     if (!quantity) {
       continue;

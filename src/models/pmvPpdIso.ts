@@ -11,13 +11,23 @@ const ISO_EDITION = Standard.iso_7730_2005;
 export const pmvPpdIso = {
   info: PMV_PPD_ISO_INFO,
   standard: ISO_EDITION,
-  // `wme` is a literal 0: external work is not an input of the app, and the
-  // library's own default is the same zero.
+  // After the quantities, the app's fixed policy: `wme: 0`, since external
+  // work is not an input of the app; `limit_inputs: false`, since the app
+  // gates entered values itself and reads the rows the run breaks off
+  // `warnings`; `round_output: false`, since the psychrometric zone is
+  // root-found on this `pmv` and the display rounds. No `units`: the
+  // library's default is SI, and so is the boundary (ADR-0002 decision 1).
   run: (values) =>
-    pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ISO_EDITION, {
-      units: "SI",
+    pmv_ppd_iso({
+      tdb: values.tdb,
+      tr: values.tr,
+      vr: values.vr,
+      rh: values.rh,
+      met: values.met,
+      clo: values.clo,
+      wme: 0,
+      standard: ISO_EDITION,
       limit_inputs: false,
-      // The psychrometric zone is root-found on this `pmv`; the display rounds.
       round_output: false,
     }),
   name: "pmv_ppd_iso",

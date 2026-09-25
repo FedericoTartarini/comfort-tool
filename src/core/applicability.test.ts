@@ -3,6 +3,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { enteredBound, outOfRangeInputs, violationRows } from "./applicability";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { toLibraryInputs, type SlotInputs } from "./libraryInputs";
+import type { RegisteredModel, Values } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
@@ -121,7 +122,15 @@ describe("violationRows", () => {
     expect(violationRows(pmvPpdIso, result).map((row) => row.bound)).toEqual([{ min: 0, max: 2 }, bound]);
   });
 
-  it("is empty for a result that carries no warnings", () => {
-    expect(violationRows(pmvPpdIso, { pmv: 0 })).toEqual([]);
+  it("throws naming the model for a result that carries no warnings, since every v1 model returns them", () => {
+    const stripped = {
+      ...pmvPpdIso,
+      run: (values: Values) => {
+        const { warnings: _, ...rest } = pmvPpdIso.run(values);
+        return rest;
+      },
+    } satisfies RegisteredModel;
+    const result = stripped.run(toLibraryInputs(separateSlot(), stripped));
+    expect(() => violationRows(stripped, result)).toThrow(`${pmvPpdIso.info.label} returned no applicability rows`);
   });
 });

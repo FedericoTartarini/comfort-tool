@@ -60,8 +60,15 @@ function pmvAt(db: number, rh: number, tr: number): number {
   // `round_output: false`, as the library's solver calls it: the rounded PMV is
   // a staircase of 0.01 steps, which is a plateau about 0.03 °C wide and would
   // put a root anywhere inside it.
-  return pmv_ppd_iso(db, tr, v_relative(v, met), rh, met, clo, 0, Standard.iso_7730_2005, {
-    units: "SI",
+  return pmv_ppd_iso({
+    tdb: db,
+    tr,
+    vr: v_relative(v, met),
+    rh,
+    met,
+    clo,
+    wme: 0,
+    standard: Standard.iso_7730_2005,
     limit_inputs: false,
     round_output: false,
   }).pmv;
