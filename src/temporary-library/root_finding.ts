@@ -1,15 +1,14 @@
 /**
  * The two root finders the CBE Thermal Comfort Tool uses to trace a comfort
- * zone, ported verbatim in behaviour from `static/js/util.js` of
+ * zone, ported in behaviour from `static/js/util.js` of
  * {@link https://github.com/CenterForTheBuiltEnvironment/comfort_tool | comfort_tool}
  * — the implementation deployed at comfort.cbe.berkeley.edu, via the fork's
  * `utilities/root_finding.ts` (rewrite plan: "port the fork's, do not rewrite
  * it").
  *
  * They are ported rather than replaced so that `pmv_psychrometric_zone` can
- * reproduce the published chart exactly. Both are kept faithful to the
- * original, including the parts that are wrong (see {@link secant}); the
- * corrections are opt-in.
+ * reproduce the published chart. Both are kept faithful to the original
+ * except the secant's clamp, see {@link secant}.
  */
 
 /**
@@ -57,18 +56,6 @@ export function bisect(a: number, b: number, fn: (x: number) => number, epsilon:
 
 /** Keyword arguments to {@link secant}. */
 export interface SecantKwargs {
-  /**
-   * Clamp each candidate to `[0, 100]`, as `util.secant` does.
-   *
-   * This is a defect, not a feature: the brackets the comfort zone passes in
-   * are `[-50, 50]`, so a root below 0 °C is unreachable — the iteration is
-   * pinned at 0 and the secant either converges to the wrong place or runs out
-   * of iterations. It is on by default because the deployed tool has it on and
-   * reproducing its chart is the point.
-   *
-   * Default `true`.
-   */
-  readonly clamp_candidates?: boolean;
   /** Iteration cap. Default `100`, the upstream value. */
   readonly max_iterations?: number;
 }
@@ -77,7 +64,10 @@ export interface SecantKwargs {
  * Secant method for `fn(x) = 0`.
  *
  * Ported from `util.secant`, which is root-finding only — there is no `target`
- * parameter, callers subtract it inside `fn`.
+ * parameter, callers subtract it inside `fn`. `util.secant` also clamps each
+ * candidate to `[0, 100]`, which strands a root below 0 °C inside the zone's
+ * `[-50, 50]` bracket; that clamp is not ported. It moved no vertex of any
+ * chart the deployed tool publishes, whose roots lie well above 0 °C.
  *
  * @public
  *
@@ -85,11 +75,11 @@ export interface SecantKwargs {
  * @param b - second starting point
  * @param fn - the function whose root is sought
  * @param epsilon - the residual `|fn(x)|` accepted as a root
- * @param kwargs - `clamp_candidates` (default `true`), `max_iterations` (default `100`)
+ * @param kwargs - `max_iterations` (default `100`)
  * @returns the root, or NaN when the slope vanishes or the iteration cap is hit
  *
  * @example
- * secant(-50, 50, (x) => x + 20, 0.001, { clamp_candidates: false }); // ≈ -20
+ * secant(-50, 50, (x) => x + 20, 0.001); // ≈ -20
  */
 export function secant(
   a: number,
@@ -98,7 +88,7 @@ export function secant(
   epsilon: number,
   kwargs: SecantKwargs = {},
 ): number {
-  const { clamp_candidates = true, max_iterations = 100 } = kwargs;
+  const { max_iterations = 100 } = kwargs;
 
   let f1 = fn(a);
   if (Math.abs(f1) <= epsilon) return a;
@@ -108,11 +98,7 @@ export function secant(
   for (let i = 0; i < max_iterations; i += 1) {
     const slope = (f2 - f1) / (b - a);
     if (slope === 0) return NaN; // Prevent division by zero
-    let c = b - f2 / slope;
-    if (clamp_candidates) {
-      if (c < 0) c = 0;
-      if (c > 100) c = 100;
-    }
+    const c = b - f2 / slope;
     const f3 = fn(c);
     if (Math.abs(f3) < epsilon) return c;
     a = b;

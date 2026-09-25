@@ -1,4 +1,4 @@
-import { psy_ta_rh } from "jsthermalcomfort";
+import { PMV_COMPLIANCE_INTERVAL_ASHRAE, psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import {
   NO_ROOT_FOUND,
@@ -58,19 +58,18 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
 
   const resolved = resolveQuantities(slot, model);
   const airSpeed = model.relativeAirSpeed ? q.vr : q.v;
-  const zone = pmv_psychrometric_zone(
-    requireValue(resolved, q.tr),
-    requireValue(resolved, airSpeed),
-    requireValue(resolved, q.met),
-    requireValue(resolved, q.clo),
-    pmvOfRun(model, resolved, optionsReader(slot.options), airSpeed),
-    {
-      tr_follows_db: operative,
-      rh_step: ZONE_RH_STEP,
-      // Decided in the rewrite plan: reproduce the chart the CBE tool publishes.
-      correct_known_defects: false,
-    },
-  );
+  const zone = pmv_psychrometric_zone({
+    tr: requireValue(resolved, q.tr),
+    vr: requireValue(resolved, airSpeed),
+    met: requireValue(resolved, q.met),
+    clo: requireValue(resolved, q.clo),
+    pmv_function: pmvOfRun(model, resolved, optionsReader(slot.options), airSpeed),
+    // ±0.5, the one zone every psychrometric chart draws today, read from the
+    // library rather than written here.
+    pmv_limit: PMV_COMPLIANCE_INTERVAL_ASHRAE.max,
+    tr_follows_db: operative,
+    rh_step: ZONE_RH_STEP,
+  });
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
