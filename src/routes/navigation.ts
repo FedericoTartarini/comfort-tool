@@ -46,7 +46,7 @@ export function requireStandard(model: RegisteredModel): NonNullable<RegisteredM
 }
 
 function routeParams(model: RegisteredModel): { standard: string; model: string } {
-  return { standard: pathSegmentFor(requireStandard(model)), model: toRouteSegment(model.name) };
+  return { standard: pathSegmentFor(requireStandard(model)), model: toRouteSegment(model.info.name) };
 }
 
 export function pathTo(model: RegisteredModel): string {

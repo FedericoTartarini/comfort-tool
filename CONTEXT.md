@@ -17,7 +17,7 @@ The library's function name for a model (`pmv_ppd_iso`). Everything the app call
 _Avoid_: id, slug, path segment
 
 **Model info**:
-The library's published metadata for one model (`<MODEL>_INFO`): label, description, and per-quantity unit, applicability and classifier.
+The library's published metadata for one model (`<MODEL>_INFO`): the model's name, label, description, and per-quantity unit, applicability and classifier.
 _Avoid_: schema, metadata object, model docs
 
 **Applicability**:

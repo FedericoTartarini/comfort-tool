@@ -37,7 +37,7 @@ const q = quantities;
  */
 const takesExternalWork = {
   ...pmvPpdIso,
-  name: "fixture_external_work",
+  info: { ...pmvPpdIso.info, name: "fixture_external_work" },
   inputs: [...pmvPpdIso.inputs, { quantity: q.wme, value: 0.4 }],
   run: (values) => {
     const wme = values.wme;
@@ -48,7 +48,7 @@ const takesExternalWork = {
 /** A model with no temperature entry group: a dry-bulb temperature and no mean radiant one. */
 const withoutTemperatureGroup = {
   ...pmvPpdIso,
-  name: "fixture_without_mean_radiant",
+  info: { ...pmvPpdIso.info, name: "fixture_without_mean_radiant" },
   inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tr),
 } satisfies RegisteredModel;
 
@@ -67,7 +67,7 @@ const airSpeedControl: OptionSpec = {
  */
 const takesAnOption = {
   ...pmvPpdIso,
-  name: "fixture_airspeed_control",
+  info: { ...pmvPpdIso.info, name: "fixture_airspeed_control" },
   standard: Standard.ashrae_55_2023,
   options: [airSpeedControl],
   run: (values, options) =>

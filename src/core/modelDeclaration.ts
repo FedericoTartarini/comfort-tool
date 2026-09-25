@@ -135,8 +135,12 @@ export type DynamicDeclaration = Extract<ChartDeclaration, { type: typeof chartT
 
 export interface RegisteredModel {
   /**
-   * The library's own `_INFO` object: label, description, inputs, outputs,
-   * derived quantities, applicability bounds and classifiers.
+   * The library's own `_INFO` object: name, label, description, inputs,
+   * outputs, derived quantities, applicability bounds and classifiers. Its
+   * `name` is the library's function name and the model's one name (ADR-0002
+   * decision 30): the share link will carry it as written, the route spells
+   * it with hyphens, and the declaration's own file and constant spell it in
+   * camelCase.
    * `core/applicability.ts` owns every read of the applicability bounds
    * (ADR-0002 decision 4).
    */
@@ -181,15 +185,6 @@ export interface RegisteredModel {
    * `state/compute` and by the chart spec builders.
    */
   readonly run: (values: Values, options: OptionsReader) => ModelResult;
-  /**
-   * The library's function name for this model, as the library spells it
-   * (`"pmv_ppd_iso"`). The model's one name (ADR-0002 decision 30): the share
-   * link will carry it as written, the route spells it with hyphens, and the
-   * declaration's own file and constant spell it in camelCase. Proved against
-   * the package's exports by a registry-wide test, so a typo or an upstream
-   * rename fails a test rather than drifting.
-   */
-  readonly name: string;
   /** Panel order and SI default values. */
   readonly inputs: readonly { readonly quantity: Quantity; readonly value: number }[];
   /**

@@ -16,7 +16,6 @@ export const heatIndexRothfusz = {
   // reads the rows the run breaks off `warnings`. The function takes no
   // `units`, and no `wme` or `standard`.
   run: (values) => heat_index_rothfusz({ tdb: values.tdb, rh: values.rh, round_output: false, limit_inputs: false }),
-  name: "heat_index_rothfusz",
   inputs: [
     { quantity: q.tdb, value: 30 },
     { quantity: q.rh, value: 50 },

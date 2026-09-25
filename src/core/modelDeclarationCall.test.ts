@@ -54,7 +54,7 @@ const airSpeedControl: OptionSpec = {
  */
 const readsAnOption = {
   ...pmvPpdIso,
-  name: "pmv_ppd_ashrae",
+  info: { ...pmvPpdIso.info, name: "pmv_ppd_ashrae" },
   standard: Standard.ashrae_55_2023,
   options: [airSpeedControl],
   run: (values, options) =>
@@ -77,11 +77,11 @@ const readsAnOption = {
 
 /** The params object of the last call `model.run` made to the library function it is named after. */
 function receivedParams(model: RegisteredModel, values: Values, options: OptionsReader): Readonly<Record<string, unknown>> {
-  lastCalls.delete(model.name);
+  lastCalls.delete(model.info.name);
   model.run(values, options);
-  const params = lastCalls.get(model.name)?.[0];
+  const params = lastCalls.get(model.info.name)?.[0];
   if (typeof params !== "object" || params === null) {
-    throw new Error(`${model.name}'s run did not call the library function it is named after with a params object`);
+    throw new Error(`${model.info.name}'s run did not call the library function it is named after with a params object`);
   }
   return params as Readonly<Record<string, unknown>>;
 }
@@ -100,7 +100,7 @@ function mispairedKeys(model: RegisteredModel): { checked: string[]; mispaired: 
   const distinct = new Map<Quantity, number>(
     [...resolveQuantities(slot, model)].map(([quantity, value], index) => [quantity, value + (index + 1) / 1000]),
   );
-  expect(new Set(distinct.values()).size, `${model.name} distinct values`).toBe(distinct.size);
+  expect(new Set(distinct.values()).size, `${model.info.name} distinct values`).toBe(distinct.size);
   const params = receivedParams(model, valuesReader(distinct), optionsReader(slot.options));
   const checked: string[] = [];
   const mispaired: string[] = [];
@@ -118,8 +118,8 @@ describe("run's params object", () => {
     for (const model of registeredModels) {
       const { checked, mispaired } = mispairedKeys(model);
       // A `run` that passed no quantity would pass vacuously.
-      expect(checked.length, model.name).toBeGreaterThan(0);
-      expect(mispaired, model.name).toEqual([]);
+      expect(checked.length, model.info.name).toBeGreaterThan(0);
+      expect(mispaired, model.info.name).toEqual([]);
     }
   });
 
@@ -183,11 +183,11 @@ export function valuesTypeProof(values: Values, options: OptionsReader): void {
 function kwargsFedBy(model: RegisteredModel, option: OptionSpec): string[] {
   const slot = defaultSlot(model);
   const argumentsWith = (value: boolean): readonly unknown[] => {
-    lastCalls.delete(model.name);
+    lastCalls.delete(model.info.name);
     model.run(toLibraryInputs(slot, model), optionsReader(new Map(slot.options).set(option, value)));
-    const args = lastCalls.get(model.name);
+    const args = lastCalls.get(model.info.name);
     if (!args) {
-      throw new Error(`${model.name}'s run did not call the library function it is named after`);
+      throw new Error(`${model.info.name}'s run did not call the library function it is named after`);
     }
     return args;
   };
@@ -213,7 +213,7 @@ describe("an option's key", () => {
   it("is the kwarg its run feeds the option to, for every registered model", () => {
     for (const model of registeredModels) {
       for (const option of model.options) {
-        expect(kwargsFedBy(model, option), `${model.name} ${option.key}`).toEqual([option.key]);
+        expect(kwargsFedBy(model, option), `${model.info.name} ${option.key}`).toEqual([option.key]);
       }
     }
   });
@@ -233,7 +233,7 @@ describe("an option's key", () => {
   });
 
   it("catches an option the run never reads", () => {
-    const unread = { ...pmvPpdIso, name: "pmv_ppd_iso", options: [airSpeedControl] } satisfies RegisteredModel;
+    const unread = { ...pmvPpdIso, options: [airSpeedControl] } satisfies RegisteredModel;
     expect(kwargsFedBy(unread, airSpeedControl)).toEqual([]);
   });
 });

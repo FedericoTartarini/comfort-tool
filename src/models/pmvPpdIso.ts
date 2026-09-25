@@ -30,7 +30,6 @@ export const pmvPpdIso = {
       limit_inputs: false,
       round_output: false,
     }),
-  name: "pmv_ppd_iso",
   inputs: [
     { quantity: q.tdb, value: 25 },
     { quantity: q.tr, value: 25 },
