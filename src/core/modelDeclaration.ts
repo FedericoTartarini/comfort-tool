@@ -81,6 +81,19 @@ export interface ZoneRequest {
 }
 
 /**
+ * One Comfort zone of a psychrometric chart: where |PMV| < `limit`, or
+ * |PMV| ≤ `limit` when `inclusive`, as the library object it was read from
+ * says (a classifier's `right`, the strict compliance interval). `label`
+ * names it in the legend. Written through `core/comfortZones`, so a
+ * declaration copies no limit.
+ */
+export interface ComfortZone {
+  readonly label: string;
+  readonly limit: number;
+  readonly inclusive: boolean;
+}
+
+/**
  * A chart a model offers (ADR §4.4). A discriminated union rather than one wide
  * object: the psychrometric chart's axes are fixed by the temperature entry
  * mode, and only the dynamic chart has a scanned output.
@@ -92,6 +105,11 @@ export type ChartDeclaration =
        * must carry one, unrounded (ADR-0002 decision 9, revised 2026-09-18).
        */
       readonly type: typeof chartType.psychrometric;
+      /**
+       * The Comfort zones the chart draws, nested, one per limit: one for a
+       * standard with one interval, one per category for a category standard.
+       */
+      readonly zones: readonly [ComfortZone, ...ComfortZone[]];
     }
   | {
       readonly type: typeof chartType.dynamic;

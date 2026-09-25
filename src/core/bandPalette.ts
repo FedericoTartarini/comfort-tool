@@ -37,12 +37,17 @@ export function bandFill(index: number): string {
 }
 
 /**
- * Chart ink (Phase 3). Not thresholds — the compliance zone's outline and fill
+ * Chart ink (Phase 3). Not thresholds — the Comfort zones' outline and fill
  * are the palette's cool tones, the isolines and markers are neutral chrome.
  */
 export const chartInk = {
   zoneLine: "#4c78a8",
-  zoneFill: "rgba(146, 197, 222, 0.4)",
+  /**
+   * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost: one
+   * hue, its opacity rising inwards to 0.4, so a lone zone keeps the fill it
+   * always had.
+   */
+  zoneFill: (level: number, levels: number): string => `rgba(146, 197, 222, ${(0.4 * (level + 1)) / levels})`,
   isoline: "#cbd5e1",
   saturationLine: "#94a3b8",
   marker: "#111827",

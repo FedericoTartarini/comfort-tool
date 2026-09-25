@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -80,6 +80,11 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
 8. **Results** are the model's own return object; the table reads `result[key]` for each `table`
    entry; an output whose `VariableInfo` carries a `classifier` reports its category in that result
    field (`tsv` for PMV). There is no `Measure` / `Outcome` layer.
+   **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 04):** the Compliance column prints each classified
+   output as its quantity's `Quantity.label` and its category, `Thermal sensation: Neutral`, `ISO 7730 category: B`,
+   each with a swatch from that output's own classifier. It rendered the category alone, so the ISO page's new
+   `category` sat unlabelled beside `tsv`. One change to the table component, for every model (Heat Index reads
+   `Heat stress category: caution`); ADR-0001 §4.3's Compliance sentence is amended with it.
 9. **Comfort-zone geometry moves into the app** (`core/compute/`), ported from the fork as pure
    functions: `psychrometricZone` with `trFollowsDb` and the bisect / secant root finders, together
    with their existing oracle tests. It is chart *algorithm*, not a chart; it may be extracted
@@ -340,6 +345,18 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     saved per (model, chart). Sequencing: what fixes the declaration's shape (decisions 27, 28, 30) lands before Phase 4,
     and the Standard page keeps drawing the classifier's bands until Explore exists in Phase 5, when the bands move there
     and Standard switches to the comfort zone, so no rendering code is ever without a caller.
+    **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 04):** the comfort limit is no longer an app
+    constant. The psychrometric declaration lists its `zones`, each `{ label, limit, inclusive }`, built by
+    `core/comfortZones` from a library object: `categoryZones(PMV_CATEGORY_BINS_ISO)` gives ISO 7730's categories A, B
+    and C, one zone per bin below the sentinel edge, and Phase 4b's ASHRAE declaration will write
+    `intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)`. The Standard page draws the declaration's zones,
+    nested, largest first, in one hue whose opacity rises inwards. A zone's inclusivity follows its source as
+    pythermalcomfort reads it: a classifier's `right`, and strict at both ends for the compliance interval, so the limit
+    above reads |PMV| < 0.5 and the deployed tool's `≤` is not ported. The "deleted when an `_INFO` carries the
+    interval" trigger is closed by the library's `PMV_COMPLIANCE_INTERVAL_ASHRAE` (`fcd877e`) and
+    `PMV_CATEGORY_BINS_ISO` (`ab8f6d5`), and the temporary library holds no limit (decision 24's note of the same
+    date). The dynamic chart is unchanged: the category bins cut |PMV|, not the signed `pmv` it scans, so they cannot
+    be its bands.
 
 Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan close-out left behind (08–11 in
 `.scratch/numeric-scan-and-model-name/issues/`), which widened to switching models and to the shape of `run`:

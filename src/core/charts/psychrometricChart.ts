@@ -1,4 +1,4 @@
-import { PMV_COMPLIANCE_INTERVAL_ASHRAE, psy_ta_rh } from "jsthermalcomfort";
+import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import {
   NO_ROOT_FOUND,
@@ -8,7 +8,13 @@ import {
 } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
 import { optionsReader, requireValue, resolveQuantities, resultValue, valuesReader } from "$lib/core/libraryInputs";
-import { requireAxisRange, type OptionsReader, type Range, type RegisteredModel } from "$lib/core/modelDeclaration";
+import {
+  psychrometricChartOf,
+  requireAxisRange,
+  type OptionsReader,
+  type Range,
+  type RegisteredModel,
+} from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
@@ -35,8 +41,13 @@ const ISOLINE_SAMPLES = 121;
 const ZONE_RH_STEP = 5;
 
 /**
- * The psychrometric chart: relative-humidity isolines, the compliance zone
- * traced by `pmv_psychrometric_zone`, and the slot's current state.
+ * The psychrometric chart: relative-humidity isolines, the declaration's
+ * Comfort zones traced by `pmv_psychrometric_zone`, and the slot's current
+ * state.
+ *
+ * The zones are drawn largest first, so each inner one sits on top, in one
+ * hue whose opacity rises inwards. Never the thermal-sensation palette: it is
+ * diverging, and nested zones are levels of one thing.
  *
  * The x axis quantity is the temperature entry mode's (`tdb` when the two
  * temperatures are entered separately, `operative_tmp` under operative entry), and
@@ -56,20 +67,24 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
   const dbRange = requireAxisRange(model, axisQuantity);
   const hrRange = requireAxisRange(model, q.hr);
 
+  const chart = psychrometricChartOf(model);
+  if (!chart) {
+    throw new Error(`${model.info.label} declares no psychrometric chart`);
+  }
+
   const resolved = resolveQuantities(slot, model);
   const airSpeed = model.relativeAirSpeed ? q.vr : q.v;
-  const zone = pmv_psychrometric_zone({
+  // Every zone is solved at the same inputs; only the limit differs.
+  const zoneInputs = {
     tr: requireValue(resolved, q.tr),
     vr: requireValue(resolved, airSpeed),
     met: requireValue(resolved, q.met),
     clo: requireValue(resolved, q.clo),
     pmv_function: pmvOfRun(model, resolved, optionsReader(slot.options), airSpeed),
-    // ±0.5, the one zone every psychrometric chart draws today, read from the
-    // library rather than written here.
-    pmv_limit: PMV_COMPLIANCE_INTERVAL_ASHRAE.max,
     tr_follows_db: operative,
     rh_step: ZONE_RH_STEP,
-  });
+  };
+  const largestFirst = [...chart.zones].sort((a, b) => b.limit - a.limit);
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
@@ -106,20 +121,26 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
   }
   legend.push({ label: q.rh.label, swatch: "line", color: chartInk.isoline });
 
-  const polygon = zone.polygon.filter(isSolved);
-  if (polygon.length > 2) {
+  largestFirst.forEach((zone, index) => {
+    const solved = pmv_psychrometric_zone({ ...zoneInputs, pmv_limit: zone.limit });
+    const polygon = solved.polygon.filter(isSolved);
+    if (polygon.length <= 2) {
+      return;
+    }
+    const label = copy.zoneLegend(zone);
+    const fill = chartInk.zoneFill(index, largestFirst.length);
     traces.push({
       kind: "path",
       x: polygon.map((point) => dbUnit.fromSi(point.db)),
       y: polygon.map((point) => hrUnit.fromSi(point.hr)),
       color: chartInk.zoneLine,
       width: 1.5,
-      fill: chartInk.zoneFill,
+      fill,
       hover: "off",
-      label: copy.comfortZone(zone.pmvLimit),
+      label,
     });
-    legend.push({ label: copy.comfortZone(zone.pmvLimit), swatch: "fill", color: chartInk.zoneFill });
-  }
+    legend.push({ label, swatch: "fill", color: fill });
+  });
 
   traces.push({
     kind: "point",

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { pmv_ppd_iso, psy_ta_rh, Standard, v_relative } from "jsthermalcomfort";
+import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, Standard, v_relative } from "jsthermalcomfort";
+import { chartType } from "$lib/core/chartType";
+import { intervalZone } from "$lib/core/comfortZones";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { SlotInputs } from "$lib/core/libraryInputs";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { psychrometricChartOf, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { pmv_psychrometric_zone } from "$lib/temporary-library/pmv_psychrometric_zone";
+import { copy } from "$lib/text/copy";
 import type { ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -40,18 +44,23 @@ function request(
   return { model: pmvPpdIso, slot: slot(mode), slotLabel: "Input 1", unitSystem: system };
 }
 
-/** The zone outline: the one filled path in the spec. */
-function zonePath(spec: { traces: readonly unknown[] }): PathTrace {
-  const path = (spec.traces as PathTrace[]).find((trace) => trace.kind === "path" && trace.fill !== undefined);
-  if (!path) {
-    throw new Error("spec has no filled zone path");
+/** The ISO declaration's zones, largest first: the order the chart draws them in. */
+function isoZonesLargestFirst() {
+  const chart = psychrometricChartOf(pmvPpdIso);
+  if (!chart) {
+    throw new Error("PMV (ISO 7730) declares no psychrometric chart");
   }
-  return path;
+  return [...chart.zones].sort((a, b) => b.limit - a.limit);
+}
+
+/** The zone outlines: the filled paths in the spec, in drawing order. */
+function zonePaths(spec: { traces: readonly unknown[] }): PathTrace[] {
+  return (spec.traces as PathTrace[]).filter((trace) => trace.kind === "path" && trace.fill !== undefined);
 }
 
 /**
- * The polygon opens with the cool edge, one vertex per `ZONE_RH_STEP` of
- * relative humidity, so vertex `i` was solved at `rh = 5i` for `PMV = -0.5`.
+ * Each polygon opens with the cool edge, one vertex per `ZONE_RH_STEP` of
+ * relative humidity, so vertex `i` was solved at `rh = 5i` for `PMV = -limit`.
  * Feeding each one back through the model is what proves the app handed the
  * library the same inputs the result table uses — `vr` derived with
  * `v_relative`, `tr` from the entry mode.
@@ -75,20 +84,60 @@ function pmvAt(db: number, rh: number, tr: number): number {
 }
 
 describe("psychrometricSpec", () => {
-  it("solves the cool edge at PMV = -0.5 for the slot's own inputs", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.separate)));
-    for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
-      const rh = index * ZONE_RH_STEP;
-      expect(pmvAt(path.x[index], rh, 24)).toBeCloseTo(-0.5, PMV_DIGITS);
-    }
+  it("draws one zone per declared limit, largest first, each with its own fill", () => {
+    const zones = isoZonesLargestFirst();
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    expect(zones).toHaveLength(3);
+    expect(paths.map((path) => path.label)).toEqual(zones.map((zone) => copy.zoneLegend(zone)));
+    expect(new Set(paths.map((path) => path.fill)).size).toBe(3);
+  });
+
+  it("solves each zone's cool edge at PMV = -limit for the slot's own inputs", () => {
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    isoZonesLargestFirst().forEach((zone, zoneIndex) => {
+      for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
+        const rh = index * ZONE_RH_STEP;
+        expect(pmvAt(paths[zoneIndex].x[index], rh, 24)).toBeCloseTo(-zone.limit, PMV_DIGITS);
+      }
+    });
+  });
+
+  it("draws each zone as the solver's own polygon at that zone's limit, top edge included", () => {
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    isoZonesLargestFirst().forEach((zone, zoneIndex) => {
+      const { polygon } = pmv_psychrometric_zone({
+        tr: 24,
+        vr: v_relative(v, met),
+        met,
+        clo,
+        pmv_function: (db, tr, _vr, rh) => pmvAt(db, rh, tr),
+        pmv_limit: zone.limit,
+        rh_step: ZONE_RH_STEP,
+      });
+      expect(paths[zoneIndex].x).toEqual(polygon.map((point) => point.db));
+      expect(paths[zoneIndex].y).toEqual(polygon.map((point) => point.hr));
+    });
   });
 
   it("solves with tr following the dry-bulb temperature under operative entry", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.operative)));
-    for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
-      const db = path.x[index];
-      expect(pmvAt(db, index * ZONE_RH_STEP, db)).toBeCloseTo(-0.5, PMV_DIGITS);
-    }
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.operative)));
+    isoZonesLargestFirst().forEach((zone, zoneIndex) => {
+      for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
+        const db = paths[zoneIndex].x[index];
+        expect(pmvAt(db, index * ZONE_RH_STEP, db)).toBeCloseTo(-zone.limit, PMV_DIGITS);
+      }
+    });
+  });
+
+  it("draws a one-zone declaration as one zone", () => {
+    const zone = intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE);
+    const oneZone: RegisteredModel = {
+      ...pmvPpdIso,
+      charts: [{ type: chartType.psychrometric, zones: [zone] }],
+    };
+    const spec = psychrometricSpec({ ...request(temperatureMode.separate), model: oneZone });
+    expect(zonePaths(spec).map((path) => path.label)).toEqual([copy.zoneLegend(zone)]);
+    expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "marker"]);
   });
 
   it("labels the x axis with the entry mode's temperature quantity", () => {
@@ -147,10 +196,13 @@ describe("psychrometricSpec", () => {
     expect(() => psychrometricSpec({ ...request(temperatureMode.separate), model: withoutPmv })).toThrow(q.pmv.label);
   });
 
-  it("offers one legend covering humidity, the zone and the slot", () => {
+  it("offers one legend covering humidity, each zone and the slot", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
-    expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "marker"]);
+    expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "fill", "fill", "marker"]);
     expect(spec.legend[0].label).toBe(q.rh.label);
+    expect(spec.legend.slice(1, 4).map((entry) => entry.label)).toEqual(
+      isoZonesLargestFirst().map((zone) => copy.zoneLegend(zone)),
+    );
   });
 });
 
@@ -178,19 +230,25 @@ function bisectPmv(target: number, rh: number, tr: number | "followsDb"): number
 }
 
 describe("comfort-zone vertices", () => {
-  it("sit within 0.01 °C of an independently bisected root", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.separate)));
-    for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
-      const rh = index * ZONE_RH_STEP;
-      expect(Math.abs(path.x[index] - bisectPmv(-0.5, rh, 24))).toBeLessThanOrEqual(0.01);
-    }
+  it("sit within 0.01 °C of an independently bisected root, for every zone", () => {
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    isoZonesLargestFirst().forEach((zone, zoneIndex) => {
+      for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
+        const rh = index * ZONE_RH_STEP;
+        expect(Math.abs(paths[zoneIndex].x[index] - bisectPmv(-zone.limit, rh, 24))).toBeLessThanOrEqual(0.01);
+      }
+    });
   });
 
   it("does so under operative entry too", () => {
-    const path = zonePath(psychrometricSpec(request(temperatureMode.operative)));
-    for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
-      const rh = index * ZONE_RH_STEP;
-      expect(Math.abs(path.x[index] - bisectPmv(-0.5, rh, "followsDb"))).toBeLessThanOrEqual(0.01);
-    }
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.operative)));
+    isoZonesLargestFirst().forEach((zone, zoneIndex) => {
+      for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
+        const rh = index * ZONE_RH_STEP;
+        expect(Math.abs(paths[zoneIndex].x[index] - bisectPmv(-zone.limit, rh, "followsDb"))).toBeLessThanOrEqual(
+          0.01,
+        );
+      }
+    });
   });
 });

@@ -258,11 +258,15 @@ Result table (`table`):
 - The columns are fixed in three sections: **Input** (slot name, coloured with the slot colour, always the first column) → **Compliance** (appears only when the model's `Measure` carries `category` or `intervals`; shows the label the value falls into: a `category` is drawn with a swatch coloured by its **position** in the model's scale, from the app's one band palette `core/bandPalette.ts`; an `intervals` entry is coloured pass / fail by `satisfied`) → **the library outputs listed in the model file's `table`**, in declaration order, values formatted per §4.6 and following the unit system.
 - `table` is required; outputs not listed are not shown and are not offered in Explore's output selection.
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 8** (2026-09-25): a Compliance entry is prefixed by its quantity's `Quantity.label`, `Thermal sensation: Neutral`, `ISO 7730 category: B`, each with its swatch, for every model; the label is never written in the table component.
+
 ### 4.4 Chart types (closed set, v1)
 
 > **Axis rules superseded by [ADR-0002](0002-library-interface-model-info.md) decision 5** (declared, else applicability, else error); the zone geometry it calls is in the app per decision 9. Hover and legend rules unchanged.
 >
 > **The dynamic chart's surface is amended by ADR-0002 decisions 27, 28 and 31** (2026-09-21): a 51×51 grid of the numeric output; Standard draws the comfort zone, Explore the bands.
+>
+> **The psychrometric chart's compliance zone is amended by [ADR-0002](0002-library-interface-model-info.md) decision 31** (2026-09-25): it draws the declaration's `zones`, nested Comfort zones largest first in one hue (categories A, B and C for ISO 7730), each at a limit read off a library object.
 
 
 | Type | Definition |
