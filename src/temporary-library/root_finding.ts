@@ -54,8 +54,8 @@ export function bisect(a: number, b: number, fn: (x: number) => number, epsilon:
   return midpoint;
 }
 
-/** Keyword arguments to {@link secant}. */
-export interface SecantKwargs {
+/** Optional parameters of {@link secant}. */
+export interface SecantParams {
   /** Iteration cap. Default `100`, the upstream value. */
   readonly max_iterations?: number;
 }
@@ -75,7 +75,7 @@ export interface SecantKwargs {
  * @param b - second starting point
  * @param fn - the function whose root is sought
  * @param epsilon - the residual `|fn(x)|` accepted as a root
- * @param kwargs - `max_iterations` (default `100`)
+ * @param params - `max_iterations` (default `100`)
  * @returns the root, or NaN when the slope vanishes or the iteration cap is hit
  *
  * @example
@@ -86,9 +86,9 @@ export function secant(
   b: number,
   fn: (x: number) => number,
   epsilon: number,
-  kwargs: SecantKwargs = {},
+  params: SecantParams = {},
 ): number {
-  const { max_iterations = 100 } = kwargs;
+  const { max_iterations = 100 } = params;
 
   let f1 = fn(a);
   if (Math.abs(f1) <= epsilon) return a;

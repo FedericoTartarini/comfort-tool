@@ -73,45 +73,18 @@ export interface PmvPsychrometricZone {
   readonly unsolved: readonly UnsolvedRow[];
 }
 
-/** Parameters of {@link pmv_psychrometric_zone}. */
+/** Parameters of {@link pmv_psychrometric_zone}, documented on the function. */
 export interface PmvPsychrometricZoneParams {
-  /** Mean radiant temperature, [°C]. Ignored when `tr_follows_db` is `true`. */
   readonly tr: number;
-  /**
-   * Relative air speed, [m/s], `v_relative` already applied. The CBE tool
-   * applies it inside its PMV wrapper instead, so a caller reproducing its
-   * chart must apply it first.
-   */
   readonly vr: number;
-  /** Metabolic rate, [met]. */
   readonly met: number;
-  /** Dynamic clothing insulation, [clo], `clo_dynamic_ashrae` / `clo_dynamic_iso` already applied. */
   readonly clo: number;
-  /** The PMV closure to trace the zone with, see {@link PmvFunction}. */
   readonly pmv_function: PmvFunction;
-  /** The |PMV| to trace. Required: the zone is the caller's, so is its limit. */
   readonly pmv_limit: number;
-  /** Relative humidity step between rows, [%]. Default `10`. */
   readonly rh_step?: number;
-  /** Temperature step along the saturation line, [°C]. Default `0.5`. */
   readonly saturation_step?: number;
-  /**
-   * The residual the root finder accepts. Default `0.001`.
-   *
-   * This is a **PMV** residual, not a temperature tolerance — the upstream
-   * comment calls it "ta precision", which it is not.
-   */
   readonly epsilon?: number;
-  /** Atmospheric pressure, [Pa]. Default `101325`. */
   readonly p_atm?: number;
-  /**
-   * Solve with `tr` equal to the dry-bulb temperature at every point, so the
-   * x axis is operative temperature rather than air temperature. Default
-   * `false`.
-   *
-   * This is the geometry of the CBE Thermal Comfort Tool's operative-temperature
-   * psychrometric chart. `tr` is not read at all in this mode.
-   */
   readonly tr_follows_db?: boolean;
 }
 
@@ -133,7 +106,23 @@ export interface PmvPsychrometricZoneParams {
  *
  * @public
  *
- * @param params - see {@link PmvPsychrometricZoneParams}
+ * @param {Object} params - the zone's parameters, snake_case as the library's models name theirs.
+ * @param {number} params.tr - Mean radiant temperature [°C]; not read when `tr_follows_db` is true
+ * @param {number} params.vr - Relative air speed [m/s], `v_relative` already applied. The CBE tool
+ *   applies it inside its PMV wrapper instead, so a caller reproducing its chart must apply it first
+ * @param {number} params.met - Metabolic rate [met]
+ * @param {number} params.clo - Dynamic clothing insulation [clo], `clo_dynamic_ashrae` /
+ *   `clo_dynamic_iso` already applied
+ * @param {PmvFunction} params.pmv_function - The PMV closure to trace the zone with, see {@link PmvFunction}
+ * @param {number} params.pmv_limit - The |PMV| to trace. Required: the zone is the caller's, so is its limit
+ * @param {number} [params.rh_step=10] - Relative humidity step between rows [%]
+ * @param {number} [params.saturation_step=0.5] - Temperature step along the saturation line [°C]
+ * @param {number} [params.epsilon=0.001] - The residual the root finder accepts. A **PMV** residual,
+ *   not a temperature tolerance: the upstream comment calls it "ta precision", which it is not
+ * @param {number} [params.p_atm=101325] - Atmospheric pressure [Pa]
+ * @param {boolean} [params.tr_follows_db=false] - Solve with `tr` equal to the dry-bulb temperature
+ *   at every point, so the x axis is operative temperature rather than air temperature: the geometry
+ *   of the CBE Thermal Comfort Tool's operative-temperature psychrometric chart
  * @returns the two edges, the saturation line, the closed polygon and the rows
  *   that could not be solved, see {@link PmvPsychrometricZone}
  *

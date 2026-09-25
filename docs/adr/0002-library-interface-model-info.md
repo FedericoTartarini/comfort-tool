@@ -216,15 +216,16 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     opt-in); exporting the library's internal `brent` is not asked. A member may stay for good if the lead keeps the
     library at pythermalcomfort parity: the seam is the point, not the move.
     **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 03):** the library's convention is now one params
-    object, and the temporary library follows it: `pmv_psychrometric_zone` takes `{ tr, vr, met, clo, pmv_function,
-    pmv_limit, … }`, with `pmv_limit` required and no default, so every caller names its zone. The PMV closure stays
-    positional (decision 18). "`correctKnownDefects` stays opt-in" is retired: the switch, its saturation-line `0.5`
-    and the secant's `[0, 100]` clamp are deleted, and the bisection fallback stays. Measured 2026-09-25 on every
-    fixture zone at its own limit: no solved edge moved and the coolest root was 11.3 °C. The fixture's ISO ±0.2 and
-    ±0.7 rows, the only ones the saturation-line defect fitted, were the deployed ASHRAE page's tracer run at EN limits,
-    not a published chart, and were removed in ticket 01. Without the clamp the secant is started from −50 and 50 °C
-    but not confined to them, so a target the kernel reaches only outside that range comes back as a root rather than
-    as an unsolved row.
+    object, and the temporary library's public solver follows it: `pmv_psychrometric_zone` takes `{ tr, vr, met, clo,
+    pmv_function, pmv_limit, … }`, with `pmv_limit` required and no default, so every caller names its zone. The PMV
+    closure stays positional (decision 18). The root finders stay positional, as the library's internal `brent` is: they
+    are the solver's helpers, not models. "`correctKnownDefects` stays opt-in" is retired: the switch, its
+    saturation-line `0.5` and the secant's `[0, 100]` clamp are deleted, and the bisection fallback stays. Measured
+    2026-09-25 on every fixture zone at its own limit: no solved edge moved and the coolest root was 11.3 °C. The
+    fixture's ISO ±0.2 and ±0.7 rows, the only ones the saturation-line defect fitted, were the deployed ASHRAE page's
+    tracer run at EN limits, not a published chart, and were removed in ticket 01. Without the clamp the secant is
+    started from −50 and 50 °C but not confined to them, so a target the kernel reaches only outside that range comes
+    back as a root rather than as an unsolved row.
 25. **`_INFO` carries its standards** (upstream, `.scratch/library-boundary/issues/06`). `ModelInfo` gains
     `standards: readonly Standard[]`: every edition the function accepts, the function's default first; the ASHRAE
     functions get a one-element list. A standard is a property a model declares and several models may share, defined
