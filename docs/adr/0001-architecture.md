@@ -163,6 +163,8 @@ io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI", edition: "7730-2005" })  
 
 #### 4.1.4 Chart geometry (`jsthermalcomfort/charts`, existing)
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 24** (2026-09-25): the solver is `pmv_psychrometric_zone` in `src/temporary-library/`, taking one params object with `pmv_limit` required; the reproduced-defect switch the signature below names is deleted, measured to change no zone a published chart draws.
+
 `psychrometricZone({ model, tr, vr, met, clo, pmvLimit, rhStep, saturationStep, epsilon, correctKnownDefects, trFollowsDb })` returns the `polygon` vertices;
 `model` is the PMV model function itself (`pmv_ppd_iso` / `pmv_ppd_ashrae`), required and with no default: a model function already carries the formulation it applies, so the zone's geometry cannot disagree with the model whose comfort region it claims to draw. It replaces the `standard: 'ISO' | 'ASHRAE'` string that defaulted to `'ASHRAE'` (2026-09-05). `adaptiveAshraeZone()` returns the upper and lower boundaries for each acceptability level. All SI, unclipped, uncoloured. `epsilon` is the PMV residual, not a temperature tolerance. `trFollowsDb` (new in Phase 1) makes `tr = db` follow along the x axis while solving; this is the geometry of the operative-mode psychrometric chart, and it is exactly how the old tool's psychtop chart was computed. Without it, the compliance zone in operative mode is wrong.
 
