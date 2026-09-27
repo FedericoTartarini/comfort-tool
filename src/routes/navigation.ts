@@ -1,6 +1,6 @@
 import { createRouter, type Routes } from "sv-router";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { pathSegmentFor, standardFromPath } from "$lib/core/standard";
+import { routeSegmentFor } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
 import { modelBySegment, modelsOf, toRouteSegment } from "./modelsOf";
 
@@ -46,7 +46,7 @@ export function requireStandard(model: RegisteredModel): NonNullable<RegisteredM
 }
 
 function routeParams(model: RegisteredModel): { standard: string; model: string } {
-  return { standard: pathSegmentFor(requireStandard(model)), model: toRouteSegment(model.info.name) };
+  return { standard: routeSegmentFor(requireStandard(model)), model: toRouteSegment(model.info.name) };
 }
 
 export function pathTo(model: RegisteredModel): string {
@@ -105,5 +105,5 @@ export function interceptLinkClick(event: MouseEvent): boolean {
 /** The model the current URL names, or `undefined` when it names none. */
 export function modelFromRoute(): RegisteredModel | undefined {
   const params: Partial<Record<"standard" | "model", string>> = route.params;
-  return modelBySegment(standardFromPath(params.standard ?? ""), params.model);
+  return modelBySegment(params.standard, params.model);
 }

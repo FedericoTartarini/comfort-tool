@@ -9,7 +9,7 @@ export interface StandardEntry {
   readonly id: Standard;
   readonly displayName: string;
   readonly year: string;
-  readonly pathSegment: string;
+  readonly routeSegment: string;
 }
 
 const STANDARD_KEY = /^([a-z]+)_(\d+)_(\d{4})$/;
@@ -20,7 +20,7 @@ function parseStandardKey(key: string): Omit<StandardEntry, "id"> {
     throw new Error(`Cannot parse standard key "${key}" as "<body>_<number>_<year>"`);
   }
   const [, body, number, year] = match;
-  return { displayName: `${body.toUpperCase()} ${number}`, year, pathSegment: `${body}-${number}` };
+  return { displayName: `${body.toUpperCase()} ${number}`, year, routeSegment: `${body}-${number}` };
 }
 
 /** Every standard the library names, in `Standard`'s own key order. */
@@ -29,14 +29,10 @@ export const standards: readonly StandardEntry[] = (Object.keys(Standard) as (ke
   return { id: Standard[key], ...parsed };
 });
 
-export function pathSegmentFor(standard: Standard): string {
+export function routeSegmentFor(standard: Standard): string {
   const row = standards.find((entry) => entry.id === standard);
   if (!row) {
     throw new Error(`No route segment declared for standard "${standard}"`);
   }
-  return row.pathSegment;
-}
-
-export function standardFromPath(segment: string): Standard | undefined {
-  return standards.find((entry) => entry.pathSegment === segment)?.id;
+  return row.routeSegment;
 }

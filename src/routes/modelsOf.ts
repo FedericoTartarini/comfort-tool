@@ -1,5 +1,6 @@
 import type { Standard } from "jsthermalcomfort";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { routeSegmentFor } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
 
 /**
@@ -26,17 +27,22 @@ export function toRouteSegment(name: string): string {
 }
 
 /**
- * The model of `standard` whose route segment is `segment`, or `undefined`
- * when the URL names none. A standard-less model has no Standard page and so
- * is never found, not even by a URL whose standard segment parses to nothing.
+ * The model whose own route segments are `standardSegment` and `modelSegment`,
+ * or `undefined` when the URL names none. Matched against each registered
+ * model's segments rather than by parsing the address into a `Standard` first:
+ * two editions of one standard share a segment (ADR-0002 decision 6), and a
+ * model pinned to either must be found by the address it produces. A
+ * standard-less model has no Standard page and so is never found.
  */
 export function modelBySegment(
-  standard: Standard | undefined,
-  segment: string | undefined,
+  standardSegment: string | undefined,
+  modelSegment: string | undefined,
   models: readonly RegisteredModel[] = registeredModels,
 ): RegisteredModel | undefined {
-  if (standard === undefined) {
-    return undefined;
-  }
-  return modelsOf(standard, models).find((model) => toRouteSegment(model.info.name) === segment);
+  return models.find(
+    (model) =>
+      model.standard !== undefined &&
+      routeSegmentFor(model.standard) === standardSegment &&
+      toRouteSegment(model.info.name) === modelSegment,
+  );
 }
