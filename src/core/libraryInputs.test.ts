@@ -16,7 +16,7 @@ import {
   withTemperatureMode,
   type SlotInputs,
 } from "./libraryInputs";
-import type { OptionSpec } from "./modelDeclaration";
+import type { OptionSpec, RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
@@ -192,6 +192,15 @@ describe("entered values", () => {
   it("lists the panel rows of the current temperature mode", () => {
     expect(enteredQuantities(pmvPpdIso, temperatureMode.separate)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
     expect(enteredQuantities(pmvPpdIso, temperatureMode.operative)).toEqual([q.operative_tmp, q.v, q.rh, q.met, q.clo]);
+  });
+
+  it("lists only the inputs of a model without the temperature entry group, in either mode", () => {
+    const model = {
+      ...pmvPpdIso,
+      inputs: pmvPpdIso.inputs.filter(({ quantity }) => quantity === q.tdb || quantity === q.rh),
+    } satisfies RegisteredModel;
+    expect(enteredQuantities(model, temperatureMode.separate)).toEqual([q.tdb, q.rh]);
+    expect(enteredQuantities(model, temperatureMode.operative)).toEqual([q.tdb, q.rh]);
   });
 
   it("re-derives everything downstream of a swept value", () => {

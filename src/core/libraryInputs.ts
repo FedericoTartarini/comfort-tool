@@ -174,9 +174,13 @@ export function resultWarnings(model: RegisteredModel, result: ModelResult): rea
 /**
  * The quantities the user actually types, in panel order: the model's inputs
  * with its temperature rows replaced by the current mode's. The input panel
- * lays these out and the dynamic chart offers them as axes.
+ * lays these out and the dynamic chart offers them as axes. A model without
+ * the temperature entry group has no rows to replace: its inputs, in any mode.
  */
 export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
+  if (!hasTemperatureGroup(model)) {
+    return model.inputs.map(({ quantity }) => quantity);
+  }
   const separate: readonly Quantity[] = temperatureMode.separate.panel;
   const rows: Quantity[] = [];
   for (const { quantity } of model.inputs) {
