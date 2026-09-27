@@ -1,11 +1,6 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
-import {
-  NO_ROOT_FOUND,
-  pmv_psychrometric_zone,
-  type PmvFunction,
-  type PsychrometricPoint,
-} from "$lib/temporary-library/pmv_psychrometric_zone";
+import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
 import { optionsReader, requireValue, resolveQuantities, resultValue, valuesReader } from "$lib/core/libraryInputs";
 import {
@@ -123,7 +118,9 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
 
   largestFirst.forEach((zone, index) => {
     const solved = pmv_psychrometric_zone({ ...zoneInputs, pmv_limit: zone.limit });
-    const polygon = solved.polygon.filter(isSolved);
+    // An unsolved point carries NaN, so dropping it leaves a shorter polygon
+    // rather than one with a spike in it.
+    const polygon = solved.polygon.filter((point) => Number.isFinite(point.tdb) && Number.isFinite(point.hr));
     if (polygon.length <= 2) {
       return;
     }
@@ -131,7 +128,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
     const fill = chartInk.zoneFill(index, largestFirst.length);
     traces.push({
       kind: "path",
-      x: polygon.map((point) => dbUnit.fromSi(point.db)),
+      x: polygon.map((point) => dbUnit.fromSi(point.tdb)),
       y: polygon.map((point) => hrUnit.fromSi(point.hr)),
       color: chartInk.zoneLine,
       width: 1.5,
@@ -204,13 +201,4 @@ function pmvOfRun(
 function samples(range: Range): readonly number[] {
   const step = (range.max - range.min) / (ISOLINE_SAMPLES - 1);
   return Array.from({ length: ISOLINE_SAMPLES }, (_, index) => range.min + index * step);
-}
-
-/**
- * Unsolved rows carry whatever the solver returned — NaN from the secant
- * method, `NO_ROOT_FOUND` from the bisection fallback. Dropping them leaves a
- * shorter polygon rather than one with a spike in it.
- */
-function isSolved(point: PsychrometricPoint): boolean {
-  return Number.isFinite(point.db) && point.db !== NO_ROOT_FOUND && Number.isFinite(point.hr);
 }

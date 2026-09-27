@@ -63,45 +63,55 @@ describe("psychrometric comfort zone", () => {
     for (const zone of online.zones) {
       const standard = zone.standard as keyof typeof DB_TOLERANCE;
       const label = `${standard} ±${zone.pmvLimit} met=${zone.met} clo=${zone.clo}`;
-      const pmvFunction = PMV_FUNCTION_FOR[standard];
       const mine = pmv_psychrometric_zone({
         tr: zone.tr,
         vr: zone.vr,
         met: zone.met,
         clo: zone.clo,
-        pmv_function: pmvFunction,
+        pmv_function: PMV_FUNCTION_FOR[standard],
         pmv_limit: zone.pmvLimit,
       });
-      expect(mine.pmvFunction, `${label} echoes the PMV function it used`).toBe(pmvFunction);
-
       expect(mine.polygon.length, `${label} vertex count`).toBe(zone.boundary.length);
       expect(mine.unsolved, `${label} unsolved rows`).toEqual([]);
       for (const [index, expected] of zone.boundary.entries()) {
         const actual = mine.polygon[index]!;
-        expect(Math.abs(actual.db - expected.db), `${label} point ${index} db`).toBeLessThan(DB_TOLERANCE[standard]);
+        expect(Math.abs(actual.tdb - expected.db), `${label} point ${index} db`).toBeLessThan(DB_TOLERANCE[standard]);
         expect(Math.abs(actual.hr - expected.hr), `${label} point ${index} hr`).toBeLessThan(HR_TOLERANCE);
       }
     }
   });
 
-  it("gives the same points as separate edges and as one polygon", () => {
-    // Adjacent bands have to share the vertices of an isopleth, which only the
-    // separated edges can express; the polygon is the drawing order.
+  it("returns the zone's sides, its polygon and its unsolved rows, and no echo of its arguments", () => {
     const zone = pmv_psychrometric_zone({ ...conditions, pmv_function: ashraeClosure, pmv_limit: 0.5 });
-    expect(zone.polygon).toEqual([...zone.coolEdge, ...zone.saturationEdge, ...[...zone.warmEdge].reverse()]);
-    expect(zone.coolEdge.map((p) => p.rh)).toEqual(zone.warmEdge.map((p) => p.rh));
-    expect(zone.coolEdge.map((p) => p.rh)).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+    expect(Object.keys(zone).sort()).toEqual([
+      "cool_boundary",
+      "polygon",
+      "saturation_line",
+      "unsolved",
+      "warm_boundary",
+    ]);
+  });
+
+  it("gives the same points as separate sides and as one polygon", () => {
+    // Adjacent bands have to share the vertices of an isopleth, which only the
+    // separated sides can express; the polygon is the drawing order.
+    const zone = pmv_psychrometric_zone({ ...conditions, pmv_function: ashraeClosure, pmv_limit: 0.5 });
+    expect(zone.polygon).toEqual([...zone.cool_boundary, ...zone.saturation_line, ...[...zone.warm_boundary].reverse()]);
+    expect(zone.cool_boundary.map((p) => p.rh)).toEqual(zone.warm_boundary.map((p) => p.rh));
+    expect(zone.cool_boundary.map((p) => p.rh)).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
   });
 
   it("reports rows it could not solve instead of clamping them", () => {
     // A PMV that never moves has no root anywhere: the secant's slope is zero
     // and the bisection finds no sign change.
     const zone = pmv_psychrometric_zone({ ...conditions, pmv_function: () => 0, pmv_limit: 1 });
-    expect(zone.unsolved.length).toBeGreaterThan(0);
-    // The value the CBE bisection returns is kept, so its chart can be
-    // reproduced; the report is what tells a caller not to trust the point.
-    expect(zone.unsolved[0]!.db).toBe(NO_ROOT_FOUND);
-    expect(zone.coolEdge[0]!.db).toBe(NO_ROOT_FOUND);
+    // The point carries NaN, so a finite check is all a caller needs to drop
+    // it; the value the CBE bisection returned is kept in the report.
+    expect(zone.cool_boundary[0]!.tdb).toBeNaN();
+    expect(zone.cool_boundary[0]!.hr).toBeNaN();
+    expect(zone.unsolved[0]).toEqual({ rh: 0, tdb: NO_ROOT_FOUND });
+    // With the 100 % row unsolved, the saturation line has no ends to run between.
+    expect(zone.saturation_line).toEqual([]);
   });
 
   it("solves against tr = db when tr_follows_db is set", () => {
@@ -110,19 +120,20 @@ describe("psychrometric comfort zone", () => {
     // passed in is deliberately far from the zone so a solve that still read
     // it could not land on the boundary.
     const epsilon = 0.001;
+    const pmv_limit = 0.5;
     const zone = pmv_psychrometric_zone({
       ...conditions,
       tr: 50,
       pmv_function: isoClosure,
-      pmv_limit: 0.5,
+      pmv_limit,
       tr_follows_db: true,
       epsilon,
     });
     expect(zone.unsolved).toEqual([]);
-    for (const edge of [zone.coolEdge, zone.warmEdge]) {
-      for (const { db, rh } of edge) {
-        const pmv = isoClosure(db, db, 0.13, rh, 1.1, 0.5);
-        expect(Math.abs(Math.abs(pmv) - zone.pmvLimit)).toBeLessThan(epsilon);
+    for (const boundary of [zone.cool_boundary, zone.warm_boundary]) {
+      for (const { tdb, rh } of boundary) {
+        const pmv = isoClosure(tdb, tdb, 0.13, rh, 1.1, 0.5);
+        expect(Math.abs(Math.abs(pmv) - pmv_limit)).toBeLessThan(epsilon);
       }
     }
   });
@@ -133,7 +144,7 @@ describe("psychrometric comfort zone", () => {
     const farTr = { ...conditions, tr: 50, pmv_function: isoClosure, pmv_limit: 0.5 };
     const following = pmv_psychrometric_zone({ ...farTr, tr_follows_db: true });
     const fixed = pmv_psychrometric_zone(farTr);
-    expect(fixed.coolEdge[0]!.db).not.toBeCloseTo(following.coolEdge[0]!.db, 3);
+    expect(fixed.cool_boundary[0]!.tdb).not.toBeCloseTo(following.cool_boundary[0]!.tdb, 3);
     // With tr already equal to the solved db there is nothing left to differ.
     const matched = pmv_psychrometric_zone({
       ...conditions,
@@ -141,31 +152,31 @@ describe("psychrometric comfort zone", () => {
       pmv_limit: 0.5,
       tr_follows_db: true,
     });
-    expect(matched.coolEdge[0]!.db).toBeCloseTo(following.coolEdge[0]!.db, 9);
+    expect(matched.cool_boundary[0]!.tdb).toBeCloseTo(following.cool_boundary[0]!.tdb, 9);
   });
 
-  it("runs the saturation line between the zone's own edges", () => {
+  it("runs the saturation line between the zone's own boundaries", () => {
     const saturation_step = 0.5;
     const narrow = pmv_psychrometric_zone({ ...conditions, pmv_function: isoClosure, pmv_limit: 0.2, saturation_step });
     const wide = pmv_psychrometric_zone({ ...conditions, pmv_function: isoClosure, pmv_limit: 0.5, saturation_step });
     for (const zone of [narrow, wide]) {
-      // Both ends are solved at 100 % like the top rows of the edges, at the
-      // zone's own limit, so the line starts on the cool edge's top vertex and
-      // stops within one step of the warm edge's.
-      const top = zone.saturationEdge[zone.saturationEdge.length - 1]!.db;
-      const warmTop = zone.warmEdge[zone.warmEdge.length - 1]!.db;
-      expect(zone.saturationEdge[0]!.db).toBe(zone.coolEdge[zone.coolEdge.length - 1]!.db);
+      // Both ends are solved at 100 % like the top rows of the boundaries, at
+      // the zone's own limit, so the line starts on the cool boundary's top
+      // vertex and stops within one step of the warm boundary's.
+      const top = zone.saturation_line[zone.saturation_line.length - 1]!.tdb;
+      const warmTop = zone.warm_boundary[zone.warm_boundary.length - 1]!.tdb;
+      expect(zone.saturation_line[0]!.tdb).toBe(zone.cool_boundary[zone.cool_boundary.length - 1]!.tdb);
       expect(top).toBeLessThanOrEqual(warmTop);
       expect(top).toBeGreaterThan(warmTop - saturation_step);
     }
-    expect(narrow.saturationEdge.length).toBeLessThan(wide.saturationEdge.length);
+    expect(narrow.saturation_line.length).toBeLessThan(wide.saturation_line.length);
   });
 });
 
 describe("root finding", () => {
   it("finds roots below 0 °C", () => {
     const zone = pmv_psychrometric_zone({ ...conditions, pmv_function: isoClosure, pmv_limit: 8 });
-    expect(zone.coolEdge[0]!.db).toBeLessThan(0);
+    expect(zone.cool_boundary[0]!.tdb).toBeLessThan(0);
     expect(zone.unsolved).toEqual([]);
   });
 

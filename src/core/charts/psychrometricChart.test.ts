@@ -8,14 +8,14 @@ import { psychrometricChartOf, type RegisteredModel } from "$lib/core/modelDecla
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { pmv_psychrometric_zone } from "$lib/temporary-library/pmv_psychrometric_zone";
+import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
 const ZONE_RH_STEP = 5;
-/** The library solves the edges to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
+/** The library solves the boundaries to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
 const PMV_DIGITS = 2;
 
 const met = 1.1;
@@ -59,7 +59,7 @@ function zonePaths(spec: { traces: readonly unknown[] }): PathTrace[] {
 }
 
 /**
- * Each polygon opens with the cool edge, one vertex per `ZONE_RH_STEP` of
+ * Each polygon opens with the cool boundary, one vertex per `ZONE_RH_STEP` of
  * relative humidity, so vertex `i` was solved at `rh = 5i` for `PMV = -limit`.
  * Feeding each one back through the model is what proves the app handed the
  * library the same inputs the result table uses — `vr` derived with
@@ -83,6 +83,22 @@ function pmvAt(db: number, rh: number, tr: number): number {
   }).pmv;
 }
 
+/**
+ * The solver's own zone at `limit` for the separate-entry slot's inputs, as the
+ * chart should hand them over: `tr` 24, `vr` derived with `v_relative`.
+ */
+function solvedZone(limit: number, pmv_function: PmvFunction) {
+  return pmv_psychrometric_zone({
+    tr: 24,
+    vr: v_relative(v, met),
+    met,
+    clo,
+    pmv_function,
+    pmv_limit: limit,
+    rh_step: ZONE_RH_STEP,
+  });
+}
+
 describe("psychrometricSpec", () => {
   it("draws one zone per declared limit, largest first, each with its own fill", () => {
     const zones = isoZonesLargestFirst();
@@ -92,7 +108,7 @@ describe("psychrometricSpec", () => {
     expect(new Set(paths.map((path) => path.fill)).size).toBe(3);
   });
 
-  it("solves each zone's cool edge at PMV = -limit for the slot's own inputs", () => {
+  it("solves each zone's cool boundary at PMV = -limit for the slot's own inputs", () => {
     const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
@@ -102,20 +118,33 @@ describe("psychrometricSpec", () => {
     });
   });
 
-  it("draws each zone as the solver's own polygon at that zone's limit, top edge included", () => {
+  it("draws each zone as the solver's own polygon at that zone's limit, saturation line included", () => {
     const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
-      const { polygon } = pmv_psychrometric_zone({
-        tr: 24,
-        vr: v_relative(v, met),
-        met,
-        clo,
-        pmv_function: (db, tr, _vr, rh) => pmvAt(db, rh, tr),
-        pmv_limit: zone.limit,
-        rh_step: ZONE_RH_STEP,
-      });
-      expect(paths[zoneIndex].x).toEqual(polygon.map((point) => point.db));
+      const { polygon } = solvedZone(zone.limit, (db, tr, _vr, rh) => pmvAt(db, rh, tr));
+      expect(paths[zoneIndex].x).toEqual(polygon.map((point) => point.tdb));
       expect(paths[zoneIndex].y).toEqual(polygon.map((point) => point.hr));
+    });
+  });
+
+  it("drops the points the solver could not solve by a finite check alone", () => {
+    // Below `FLAT_BELOW_RH` the PMV never moves, so the rows at 0 and 5 % have
+    // no root on either boundary: four unsolved points per zone.
+    const FLAT_BELOW_RH = 10;
+    const flatWhenDry: RegisteredModel = {
+      ...pmvPpdIso,
+      run: (values) => ({ ...pmvPpdIso.run(values), ...(values.rh < FLAT_BELOW_RH ? { pmv: 0 } : {}) }),
+    };
+    const paths = zonePaths(psychrometricSpec({ ...request(temperatureMode.separate), model: flatWhenDry }));
+    isoZonesLargestFirst().forEach((zone, zoneIndex) => {
+      const { polygon, unsolved } = solvedZone(zone.limit, (db, tr, _vr, rh) =>
+        rh < FLAT_BELOW_RH ? 0 : pmvAt(db, rh, tr),
+      );
+      expect(unsolved).toHaveLength(4);
+      const solved = polygon.filter((point) => Number.isFinite(point.tdb));
+      expect(solved).toHaveLength(polygon.length - 4);
+      expect(paths[zoneIndex].x).toEqual(solved.map((point) => point.tdb));
+      expect(paths[zoneIndex].y).toEqual(solved.map((point) => point.hr));
     });
   });
 

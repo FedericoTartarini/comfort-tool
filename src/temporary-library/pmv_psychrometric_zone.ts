@@ -23,8 +23,8 @@ export type PmvFunction = (tdb: number, tr: number, vr: number, rh: number, met:
 
 /** A point on a psychrometric chart, in SI units. */
 export interface PsychrometricPoint {
-  /** Dry-bulb air temperature, [°C]. */
-  readonly db: number;
+  /** Dry-bulb air temperature, [°C]. NaN where the row could not be solved. */
+  readonly tdb: number;
   /** Humidity ratio, [kg water / kg dry air]. */
   readonly hr: number;
   /** The relative humidity this point was solved at, [%]. */
@@ -35,40 +35,37 @@ export interface PsychrometricPoint {
 export interface UnsolvedRow {
   /** Relative humidity, [%]. */
   readonly rh: number;
-  /** The PMV the solver was looking for. */
-  readonly target: number;
   /**
    * What the solver returned: NaN from the secant method, or
    * {@link NO_ROOT_FOUND} from the bisection fallback.
    */
-  readonly db: number;
+  readonly tdb: number;
 }
 
 /** A comfort zone traced on a psychrometric chart. */
 export interface PmvPsychrometricZone {
-  /** The |PMV| the edges were solved at. */
-  readonly pmvLimit: number;
-  /** The PMV function the edges were solved with, echoed back. */
-  readonly pmvFunction: PmvFunction;
-  /** The `PMV = -pmv_limit` edge, in ascending relative humidity. */
-  readonly coolEdge: readonly PsychrometricPoint[];
-  /** The saturation line between the two edges, in ascending temperature. */
-  readonly saturationEdge: readonly PsychrometricPoint[];
+  /** The `PMV = -pmv_limit` boundary, in ascending relative humidity. */
+  readonly cool_boundary: readonly PsychrometricPoint[];
   /**
-   * The `PMV = +pmv_limit` edge, also in ascending relative humidity — so that
-   * two zones solved at different limits can be compared row by row, and so
-   * adjacent bands share vertices along the same isopleth.
+   * The saturation line between the two boundaries, in ascending temperature.
+   * Empty when either boundary's 100 % row is unsolved.
    */
-  readonly warmEdge: readonly PsychrometricPoint[];
+  readonly saturation_line: readonly PsychrometricPoint[];
   /**
-   * The closed polygon, in the order the CBE tool draws it: cool edge upward,
-   * along the saturation line, warm edge back down.
+   * The `PMV = +pmv_limit` boundary, also in ascending relative humidity — so
+   * that two zones solved at different limits can be compared row by row, and
+   * so adjacent bands share vertices along the same isopleth.
+   */
+  readonly warm_boundary: readonly PsychrometricPoint[];
+  /**
+   * The closed polygon, in the order the CBE tool draws it: cool boundary
+   * upward, along the saturation line, warm boundary back down.
    */
   readonly polygon: readonly PsychrometricPoint[];
   /**
    * Rows where no root was found. Reported rather than clamped or dropped: the
-   * points are still in the edges, carrying whatever the solver returned, so a
-   * caller decides what to do about them.
+   * points stay in the boundaries with a NaN temperature, and the solver's own
+   * return is kept here, so a caller decides what to do about them.
    */
   readonly unsolved: readonly UnsolvedRow[];
 }
@@ -123,8 +120,8 @@ export interface PmvPsychrometricZoneParams {
  * @param {boolean} [params.tr_follows_db=false] - Solve with `tr` equal to the dry-bulb temperature
  *   at every point, so the x axis is operative temperature rather than air temperature: the geometry
  *   of the CBE Thermal Comfort Tool's operative-temperature psychrometric chart
- * @returns the two edges, the saturation line, the closed polygon and the rows
- *   that could not be solved, see {@link PmvPsychrometricZone}
+ * @returns the two boundaries, the saturation line, the closed polygon and the
+ *   rows that could not be solved, see {@link PmvPsychrometricZone}
  *
  * @example
  * const ashrae = (tdb, tr, vr, rh, met, clo) =>
@@ -140,7 +137,7 @@ export interface PmvPsychrometricZoneParams {
  *   pmv_limit: PMV_COMPLIANCE_INTERVAL_ASHRAE.max,
  *   rh_step: 5,
  * });
- * zone.polygon; // [{ db, hr, rh }, ...]
+ * zone.polygon; // [{ tdb, hr, rh }, ...]
  */
 export function pmv_psychrometric_zone(params: PmvPsychrometricZoneParams): PmvPsychrometricZone {
   const {
@@ -159,52 +156,51 @@ export function pmv_psychrometric_zone(params: PmvPsychrometricZoneParams): PmvP
 
   const unsolved: UnsolvedRow[] = [];
 
-  const point = (db: number, rh: number): PsychrometricPoint => ({
-    db,
-    hr: psy_ta_rh(db, rh, p_atm).hr,
+  const point = (tdb: number, rh: number): PsychrometricPoint => ({
+    tdb,
+    hr: psy_ta_rh(tdb, rh, p_atm).hr,
     rh,
   });
 
   const solve = (rh: number, target: number): PsychrometricPoint => {
-    const fn = (db: number): number => {
+    const fn = (tdb: number): number => {
       // The secant method can hand back a non-finite candidate, when a slope
       // that is not quite zero overflows its step. A model that validates its
       // arguments would throw on such an input rather than report it as an
       // unsolved row, so this is checked before the call.
-      if (!Number.isFinite(db)) return NaN;
-      return pmv_function(db, tr_follows_db ? db : tr, vr, rh, met, clo) - target;
+      if (!Number.isFinite(tdb)) return NaN;
+      return pmv_function(tdb, tr_follows_db ? tdb : tr, vr, rh, met, clo) - target;
     };
-    let db = secant(-50, 50, fn, epsilon);
-    if (Number.isNaN(db)) db = bisect(-50, 50, fn, epsilon, 0);
-    if (Number.isNaN(db) || db === NO_ROOT_FOUND) {
-      unsolved.push({ rh, target, db });
+    let tdb = secant(-50, 50, fn, epsilon);
+    if (Number.isNaN(tdb)) tdb = bisect(-50, 50, fn, epsilon, 0);
+    if (Number.isNaN(tdb) || tdb === NO_ROOT_FOUND) {
+      unsolved.push({ rh, tdb });
+      return point(NaN, rh);
     }
-    return point(db, rh);
+    return point(tdb, rh);
   };
 
-  const coolEdge: PsychrometricPoint[] = [];
-  const warmEdge: PsychrometricPoint[] = [];
+  const cool_boundary: PsychrometricPoint[] = [];
+  const warm_boundary: PsychrometricPoint[] = [];
   for (let rh = 0; rh <= 100; rh += rh_step) {
-    coolEdge.push(solve(rh, -pmv_limit));
+    cool_boundary.push(solve(rh, -pmv_limit));
   }
   for (let rh = 0; rh <= 100; rh += rh_step) {
-    warmEdge.push(solve(rh, pmv_limit));
+    warm_boundary.push(solve(rh, pmv_limit));
   }
 
-  const tMin = solve(100, -pmv_limit).db;
-  const tMax = solve(100, pmv_limit).db;
-  const saturationEdge: PsychrometricPoint[] = [];
+  const tMin = solve(100, -pmv_limit).tdb;
+  const tMax = solve(100, pmv_limit).tdb;
+  const saturation_line: PsychrometricPoint[] = [];
   for (let t = tMin; t <= tMax; t += saturation_step) {
-    saturationEdge.push(point(t, 100));
+    saturation_line.push(point(t, 100));
   }
 
   return {
-    pmvLimit: pmv_limit,
-    pmvFunction: pmv_function,
-    coolEdge,
-    saturationEdge,
-    warmEdge,
-    polygon: [...coolEdge, ...saturationEdge, ...[...warmEdge].reverse()],
+    cool_boundary,
+    saturation_line,
+    warm_boundary,
+    polygon: [...cool_boundary, ...saturation_line, ...[...warm_boundary].reverse()],
     unsolved,
   };
 }

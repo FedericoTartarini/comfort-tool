@@ -24,13 +24,13 @@ export interface AdaptivePoint {
 
 /** One acceptability band of the adaptive chart. */
 export interface AdaptiveAshraeBand {
-  /** The upper edge, in ascending running mean. */
-  readonly upperEdge: readonly AdaptivePoint[];
-  /** The lower edge, in ascending running mean. */
-  readonly lowerEdge: readonly AdaptivePoint[];
+  /** The upper limit, in ascending running mean. */
+  readonly upper_limit: readonly AdaptivePoint[];
+  /** The lower limit, in ascending running mean. */
+  readonly lower_limit: readonly AdaptivePoint[];
   /**
-   * The closed polygon, in the order the CBE tool draws it: upper edge out,
-   * lower edge back, and the first vertex again.
+   * The closed polygon, in the order the CBE tool draws it: upper limit out,
+   * lower limit back, and the first vertex again.
    */
   readonly polygon: readonly AdaptivePoint[];
 }
@@ -47,7 +47,7 @@ export interface AdaptiveAshraeZoneParams {
   readonly t_running_mean_range: readonly [number, number];
 }
 
-/** Reads the limit an edge follows off a result. */
+/** Reads the limit a side of the band follows off a result. */
 type LimitOf = (limits: AdaptiveAshraeResult) => number;
 
 /**
@@ -65,10 +65,10 @@ const COOLING_EFFECT_ONSET = 25;
  * limits at one running mean, and shifts the upper ones by the cooling effect
  * of the operative temperature it is given. So the model is evaluated at chosen
  * points instead: at the ends of the running-mean interval in still air for the
- * base lines, and at the given air speed at the edge's own operative
- * temperature for the shifted upper limits. Each upper edge runs along its base
+ * base lines, and at the given air speed at the limit's own operative
+ * temperature for the shifted upper limits. Each upper limit runs along its base
  * line until that line reaches 25 °C, steps up by the cooling effect there and
- * continues shifted; the lower edges never shift. As the CBE tool draws them,
+ * continues shifted; the lower limits never shift. As the CBE tool draws them,
  * the step sits on the base line's own 25 °C crossing, found by interpolation
  * along the straight line.
  *
@@ -86,7 +86,7 @@ const COOLING_EFFECT_ONSET = 25;
  *
  * @example
  * const zone = adaptive_ashrae_zone({ v: 0.6, t_running_mean_range: [10, 33.5] });
- * zone.acceptability_80.upperEdge;
+ * zone.acceptability_80.upper_limit;
  * // [{ t_running_mean: 10, operative_tmp: 24.4 }, { t_running_mean: 11.94, operative_tmp: 25 },
  * //  { t_running_mean: 11.94, operative_tmp: 26.2 }, { t_running_mean: 33.5, operative_tmp: 32.89 }]
  */
@@ -97,7 +97,7 @@ export function adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams): Adaptive
   const start = Math.max(t_running_mean_range[0], bound?.min ?? -Infinity);
   const end = Math.min(t_running_mean_range[1], bound?.max ?? Infinity);
   if (start >= end) {
-    const nothing: AdaptiveAshraeBand = { upperEdge: [], lowerEdge: [], polygon: [] };
+    const nothing: AdaptiveAshraeBand = { upper_limit: [], lower_limit: [], polygon: [] };
     return { acceptability_80: nothing, acceptability_90: nothing };
   }
 
@@ -117,10 +117,10 @@ export function adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams): Adaptive
   const stillEnd = readLimits(end, 0, COOLING_EFFECT_ONSET);
   const point = (t_running_mean: number, operative_tmp: number): AdaptivePoint => ({ t_running_mean, operative_tmp });
 
-  const traceUpperEdge = (upperOf: LimitOf): [AdaptivePoint, ...AdaptivePoint[]] => {
+  const traceUpperLimit = (upperOf: LimitOf): [AdaptivePoint, ...AdaptivePoint[]] => {
     const upperStart = upperOf(stillStart);
     const upperEnd = upperOf(stillEnd);
-    // The limit at the entered air speed, read where the edge itself stands.
+    // The limit at the entered air speed, read where this side itself stands.
     const shiftedAt = (t_running_mean: number, base: number): number => upperOf(readLimits(t_running_mean, v, base));
     const shiftedEnd = shiftedAt(end, upperEnd);
     // Unshifted at the end means unshifted throughout: the library applies no
@@ -138,9 +138,9 @@ export function adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams): Adaptive
   };
 
   const traceBand = (upperOf: LimitOf, lowerOf: LimitOf): AdaptiveAshraeBand => {
-    const upper = traceUpperEdge(upperOf);
+    const upper = traceUpperLimit(upperOf);
     const lower = [point(start, lowerOf(stillStart)), point(end, lowerOf(stillEnd))];
-    return { upperEdge: upper, lowerEdge: lower, polygon: [...upper, ...[...lower].reverse(), upper[0]] };
+    return { upper_limit: upper, lower_limit: lower, polygon: [...upper, ...[...lower].reverse(), upper[0]] };
   };
 
   return {
