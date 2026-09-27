@@ -203,6 +203,15 @@ describe("entered values", () => {
     expect(enteredQuantities(model, temperatureMode.operative)).toEqual([q.tdb, q.rh]);
   });
 
+  it("keeps a lone mean radiant temperature, which is not the first of the separate rows", () => {
+    const model = {
+      ...pmvPpdIso,
+      inputs: pmvPpdIso.inputs.filter(({ quantity }) => quantity === q.tr || quantity === q.rh),
+    } satisfies RegisteredModel;
+    expect(enteredQuantities(model, temperatureMode.separate)).toEqual([q.tr, q.rh]);
+    expect(enteredQuantities(model, temperatureMode.operative)).toEqual([q.tr, q.rh]);
+  });
+
   it("re-derives everything downstream of a swept value", () => {
     const swept = withEnteredValues(separateSlot(), new Map([[q.v, 0.6]]));
     expect(resolveQuantities(swept, pmvPpdIso).get(q.vr)).toBe(v_relative(0.6, 1.1));
