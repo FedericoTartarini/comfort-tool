@@ -1,21 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { adaptive_ashrae } from "jsthermalcomfort";
-import { adaptive_ashrae_zone, type AdaptivePoint } from "./adaptive_ashrae_zone";
-
-// Every test calls the library's own `adaptive_ashrae` unless it installs a
-// stand-in here, to show that the geometry is read off whatever the model
-// returns rather than written down beside it.
-const model = vi.hoisted(() => ({ stub: undefined as typeof adaptive_ashrae | undefined }));
-vi.mock("jsthermalcomfort", async (importOriginal) => {
-  const library = await importOriginal<typeof import("jsthermalcomfort")>();
-  return {
-    ...library,
-    adaptive_ashrae: (params: Parameters<typeof adaptive_ashrae>[0]) => (model.stub ?? library.adaptive_ashrae)(params),
-  };
-});
-afterEach(() => {
-  model.stub = undefined;
-});
+import { _adaptive_ashrae_zone, adaptive_ashrae_zone } from "./adaptive_ashrae_zone.ts";
+import type { AdaptivePoint } from "./adaptive_ashrae_zone.ts";
 
 // The function's claim is that it draws the bands the CBE Thermal Comfort Tool
 // draws at comfort.cbe.berkeley.edu. The oracle is that tool's own vertices,
@@ -73,17 +59,29 @@ function deployedAt(vertices: readonly (readonly [number, number])[], runningMea
   throw new Error(`${runningMean} is past the deployed polyline`);
 }
 
+/**
+ * Asserts a limit's vertices. The label is part of what is compared, so a
+ * failure names the limit, and lists each vertex that is off by its index.
+ */
 function expectLimit(
   actual: readonly AdaptivePoint[],
   expected: readonly (readonly [number, number])[],
   label: string,
   runningMeanTolerance = 1e-9,
 ) {
-  expect(actual.length, `${label} vertex count`).toBe(expected.length);
-  for (const [index, [runningMean, operative]] of expected.entries()) {
-    expect(Math.abs(actual[index]!.t_running_mean - runningMean), `${label} vertex ${index} running mean`).toBeLessThan(runningMeanTolerance);
-    expect(Math.abs(actual[index]!.operative_tmp - operative), `${label} vertex ${index} operative`).toBeLessThan(TOLERANCE);
-  }
+  const off = expected.flatMap(([runningMean, operative], vertex) => {
+    const drawn = actual[vertex];
+    const on =
+      drawn !== undefined &&
+      Math.abs(drawn.t_running_mean - runningMean) < runningMeanTolerance &&
+      Math.abs(drawn.operative_tmp - operative) < TOLERANCE;
+    return on ? [] : [{ vertex, drawn, expected: [runningMean, operative] }];
+  });
+  expect({ limit: label, vertex_count: actual.length, off }).toEqual({
+    limit: label,
+    vertex_count: expected.length,
+    off: [],
+  });
 }
 
 describe("adaptive ASHRAE 55 acceptability bands", () => {
@@ -129,27 +127,28 @@ describe("adaptive ASHRAE 55 acceptability bands", () => {
     const short = adaptive_ashrae_zone({ v: 0.6, t_running_mean_range: [10, 11] });
     expectLimit(short.acceptability_80.upper_limit, [[10, 24.4], [11, 24.71]], "80 % upper short of the step");
     expectLimit(short.acceptability_90.upper_limit, [[10, 23.4], [11, 23.71]], "90 % upper short of the step");
-    // Wholly outside, nothing is drawn.
-    for (const range of [[0, 5], [35, 40]] as const) {
-      const outside = adaptive_ashrae_zone({ v: 0.6, t_running_mean_range: range });
-      for (const label of LABELS) expect(outside[label].polygon, `${label} over ${range.join("–")}`).toEqual([]);
-    }
   });
 
-  it("closes each band as one polygon, upper limit out and lower limit back", () => {
+  it.each(LABELS.flatMap((label) => [[label, 0, 5] as const, [label, 35, 40] as const]))(
+    "draws no %s band over running means %s–%s °C, wholly outside 10–33.5 °C",
+    (label, low, high) => {
+      const outside = adaptive_ashrae_zone({ v: 0.6, t_running_mean_range: [low, high] });
+      expect(outside[label].polygon).toEqual([]);
+    },
+  );
+
+  it.each(LABELS)("closes the %s band as one polygon, upper limit out and lower limit back", (label) => {
     const zone = adaptive_ashrae_zone({ v: 0.9, t_running_mean_range: [10, 33.5] });
-    for (const label of LABELS) {
-      expect(Object.keys(zone[label]).sort(), label).toEqual(["lower_limit", "polygon", "upper_limit"]);
-      const { upper_limit, lower_limit, polygon } = zone[label];
-      expect(polygon, label).toEqual([...upper_limit, ...[...lower_limit].reverse(), upper_limit[0]]);
-    }
+    expect(Object.keys(zone[label]).sort()).toEqual(["lower_limit", "polygon", "upper_limit"]);
+    const { upper_limit, lower_limit, polygon } = zone[label];
+    expect(polygon).toEqual([...upper_limit, ...[...lower_limit].reverse(), upper_limit[0]]);
   });
 
   it("draws whatever the model returns, and transcribes none of its numbers", () => {
     // Nothing like the standard: 80 % from trm to trm + 10, 90 % from trm + 1
     // to trm + 9, and 3 °C of cooling effect from 0.6 m/s whatever the
     // operative temperature. Only the onset at 25 °C is the function's own.
-    model.stub = ({ t_running_mean, v }) => {
+    const standIn: typeof adaptive_ashrae = ({ t_running_mean, v }) => {
       const coolingEffect = v >= 0.6 ? 3 : 0;
       return {
         tmp_cmf: t_running_mean + 5,
@@ -162,20 +161,19 @@ describe("adaptive ASHRAE 55 acceptability bands", () => {
         warnings: [],
       };
     };
-    const { acceptability_80, acceptability_90 } = adaptive_ashrae_zone({ v: 0.6, t_running_mean_range: [10, 33.5] });
+    const { acceptability_80, acceptability_90 } = _adaptive_ashrae_zone({ v: 0.6, t_running_mean_range: [10, 33.5] }, standIn);
     expectLimit(acceptability_80.upper_limit, [[10, 20], [15, 25], [15, 28], [33.5, 46.5]], "stubbed 80 % upper");
     expectLimit(acceptability_80.lower_limit, [[10, 10], [33.5, 33.5]], "stubbed 80 % lower");
     expectLimit(acceptability_90.upper_limit, [[10, 19], [16, 25], [16, 28], [33.5, 45.5]], "stubbed 90 % upper");
     expectLimit(acceptability_90.lower_limit, [[10, 11], [33.5, 34.5]], "stubbed 90 % lower");
   });
 
-  it("never moves a lower limit with air speed", () => {
-    const still = adaptive_ashrae_zone({ v: 0, t_running_mean_range: [10, 33.5] });
-    for (const [v] of DEPLOYED_COOLING_EFFECT) {
+  it.each(DEPLOYED_COOLING_EFFECT.flatMap(([v]) => LABELS.map((label) => [label, v] as const)))(
+    "never moves the %s lower limit with air speed, at %s m/s",
+    (label, v) => {
+      const still = adaptive_ashrae_zone({ v: 0, t_running_mean_range: [10, 33.5] });
       const moving = adaptive_ashrae_zone({ v, t_running_mean_range: [10, 33.5] });
-      for (const label of LABELS) {
-        expect(moving[label].lower_limit, `${label} lower limit at ${v} m/s`).toEqual(still[label].lower_limit);
-      }
-    }
-  });
+      expect(moving[label].lower_limit).toEqual(still[label].lower_limit);
+    },
+  );
 });

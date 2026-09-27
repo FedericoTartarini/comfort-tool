@@ -1,8 +1,6 @@
 import { psy_ta_rh } from "jsthermalcomfort";
 import { NO_ROOT_FOUND, bisect, secant } from "./root_finding";
 
-export { NO_ROOT_FOUND };
-
 /**
  * The PMV closure a zone is traced with: `(tdb, tr, vr, rh, met, clo) => pmv`,
  * unrounded and ungated.

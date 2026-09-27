@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Standard, pmv_ppd_ashrae, pmv_ppd_iso } from "jsthermalcomfort";
 import online from "./chart-online.json" with { type: "json" };
-import { NO_ROOT_FOUND, pmv_psychrometric_zone, type PmvFunction } from "./pmv_psychrometric_zone";
-import { bisect } from "./root_finding";
+import { pmv_psychrometric_zone } from "./pmv_psychrometric_zone.ts";
+import type { PmvFunction } from "./pmv_psychrometric_zone.ts";
+import { NO_ROOT_FOUND, bisect } from "./root_finding.ts";
 
 // The chart module's claim is that it reproduces the geometry the CBE Thermal
 // Comfort Tool draws at comfort.cbe.berkeley.edu. The fixture is that tool's
@@ -59,26 +60,25 @@ const HR_TOLERANCE = 1e-5;
 const conditions = { tr: 25, vr: 0.13, met: 1.1, clo: 0.5 };
 
 describe("psychrometric comfort zone", () => {
-  it("reproduces the boundary the CBE tool draws", () => {
-    for (const zone of online.zones) {
-      const standard = zone.standard as keyof typeof DB_TOLERANCE;
-      const label = `${standard} ±${zone.pmvLimit} met=${zone.met} clo=${zone.clo}`;
-      const mine = pmv_psychrometric_zone({
-        tr: zone.tr,
-        vr: zone.vr,
-        met: zone.met,
-        clo: zone.clo,
-        pmv_function: PMV_FUNCTION_FOR[standard],
-        pmv_limit: zone.pmvLimit,
-      });
-      expect(mine.polygon.length, `${label} vertex count`).toBe(zone.boundary.length);
-      expect(mine.unsolved, `${label} unsolved rows`).toEqual([]);
-      for (const [index, expected] of zone.boundary.entries()) {
-        const actual = mine.polygon[index]!;
-        expect(Math.abs(actual.tdb - expected.db), `${label} point ${index} db`).toBeLessThan(DB_TOLERANCE[standard]);
-        expect(Math.abs(actual.hr - expected.hr), `${label} point ${index} hr`).toBeLessThan(HR_TOLERANCE);
-      }
-    }
+  it.each(online.zones)("reproduces the boundary the CBE tool draws: $standard ±$pmvLimit met=$met clo=$clo", (zone) => {
+    const standard = zone.standard as keyof typeof DB_TOLERANCE;
+    const mine = pmv_psychrometric_zone({
+      tr: zone.tr,
+      vr: zone.vr,
+      met: zone.met,
+      clo: zone.clo,
+      pmv_function: PMV_FUNCTION_FOR[standard],
+      pmv_limit: zone.pmvLimit,
+    });
+    expect(mine.polygon.length).toBe(zone.boundary.length);
+    expect(mine.unsolved).toEqual([]);
+    // Each point that is off, by its index, so a failure says which.
+    const off = zone.boundary.flatMap((expected, point) => {
+      const actual = mine.polygon[point]!;
+      const on = Math.abs(actual.tdb - expected.db) < DB_TOLERANCE[standard] && Math.abs(actual.hr - expected.hr) < HR_TOLERANCE;
+      return on ? [] : [{ point, actual, expected }];
+    });
+    expect(off).toEqual([]);
   });
 
   it("returns the zone's sides, its polygon and its unsolved rows, and no echo of its arguments", () => {

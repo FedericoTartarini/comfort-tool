@@ -91,6 +91,19 @@ const COOLING_EFFECT_ONSET = 25;
  * //  { t_running_mean: 11.94, operative_tmp: 26.2 }, { t_running_mean: 33.5, operative_tmp: 32.89 }]
  */
 export function adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams): AdaptiveAshraeZone {
+  return _adaptive_ashrae_zone(params, adaptive_ashrae);
+}
+
+/**
+ * {@link adaptive_ashrae_zone}, drawn off the model it is given rather than the
+ * library's `adaptive_ashrae`, so a test can show the geometry follows
+ * whatever the model returns.
+ *
+ * @param {Object} params - the bands' parameters, as {@link adaptive_ashrae_zone} takes them
+ * @param {typeof adaptive_ashrae} model - The model to evaluate; the public function passes `adaptive_ashrae`
+ * @returns the two bands, see {@link AdaptiveAshraeZone}
+ */
+export function _adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams, model: typeof adaptive_ashrae): AdaptiveAshraeZone {
   const { v, t_running_mean_range } = params;
   // An input with no bound would clip nothing; `ADAPTIVE_ASHRAE_INFO` bounds this one.
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
@@ -104,7 +117,7 @@ export function adaptive_ashrae_zone(params: AdaptiveAshraeZoneParams): Adaptive
   // `tdb = tr` makes the operative temperature that value whatever the air
   // speed's weighting of the two.
   const readLimits = (t_running_mean: number, air_speed: number, operative_tmp: number): AdaptiveAshraeResult =>
-    adaptive_ashrae({
+    model({
       tdb: operative_tmp,
       tr: operative_tmp,
       t_running_mean,
