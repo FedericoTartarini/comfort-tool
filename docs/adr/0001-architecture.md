@@ -409,6 +409,8 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 6, 9, 11, 12**: `core/quantities.ts` and `core/applicability.ts` are added, `core/compute/` returns for the zone geometry (superseded by ADR-0002 decision 24: it is `src/temporary-library/`), `standard.ts` generates name and segment from the `Standard` key, `modelDeclaration.ts` has no `defineModel`, and the model-function lint boundary is by `importNames`.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 32** (2026-09-22): the tree gains `core/modelSwitch.ts` — `rehearseSwitch(slot, model)` and `adjustToBounds(inputs, rows)`, the only place in the app that moves a value the person entered. `ui/dialogs/` stays reserved for a dialog that is not part of a panel: the app's first dialog, `ModelSwitchDialog.svelte`, is at `ui/inputs/`, placed with what it is about and where it renders.
+>
+> **Amended 2026-09-28** (review after Phase 4b, Proposal 4; `.scratch/review-after-4b/decisions.md`, round 12): the tree gains `core/modelRun.ts` — running a model on a slot, `runOn(slot, model)`, a new function, and reading its result through the two readers that move there from `core/libraryInputs.ts`, `resultValue` and `resultWarnings`. The rest of `libraryInputs.ts` stays, `enteredQuantities` and `withTemperatureMode` included. The module is written by `.scratch/review-after-4b/issues/13`.
 
 
 ```
