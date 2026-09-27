@@ -194,22 +194,32 @@ describe("psychrometricSpec", () => {
   it("labels every relative-humidity isoline where it leaves the viewport", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
     expect(spec.annotations.map((entry) => entry.text)).toEqual([
-      "10%",
-      "20%",
-      "30%",
-      "40%",
-      "50%",
-      "60%",
-      "70%",
-      "80%",
-      "90%",
-      "100%",
+      "10 %",
+      "20 %",
+      "30 %",
+      "40 %",
+      "50 %",
+      "60 %",
+      "70 %",
+      "80 %",
+      "90 %",
+      "100 %",
     ]);
     for (const entry of spec.annotations) {
       expect(entry.x).toBeGreaterThanOrEqual(10);
       expect(entry.x).toBeLessThanOrEqual(40);
       expect(entry.y).toBeLessThanOrEqual(0.03);
     }
+  });
+
+  it("names each isoline by its relative humidity, spelled as the results table spells a percentage", () => {
+    const spec = psychrometricSpec(request(temperatureMode.separate));
+    const isolines = spec.traces.filter(
+      (trace): trace is PathTrace => trace.kind === "path" && Boolean(trace.label?.startsWith(q.rh.label)),
+    );
+    expect(isolines.map((trace) => trace.label)).toEqual(
+      [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((rh) => `${q.rh.label} ${rh} %`),
+    );
   });
 
   it("leaves the pointer alone: nothing on this chart captures hover", () => {

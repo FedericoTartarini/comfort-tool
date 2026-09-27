@@ -13,8 +13,8 @@ import {
 } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import { displayUnitFor } from "$lib/core/units";
-import { axisTitle, type BandFill, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
+import { displayUnitFor, labelWithUnit } from "$lib/core/units";
+import type { BandFill, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";
 
 /** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
 const GRID = 51;
@@ -115,8 +115,8 @@ export function dynamicSpec(
   return {
     traces,
     layout: {
-      x: { title: axisTitle(x, xUnit.symbol), range: [xUnit.fromSi(xRange.min), xUnit.fromSi(xRange.max)] },
-      y: { title: axisTitle(y, yUnit.symbol), range: [yUnit.fromSi(yRange.min), yUnit.fromSi(yRange.max)] },
+      x: { title: labelWithUnit(x, xUnit), range: [xUnit.fromSi(xRange.min), xUnit.fromSi(xRange.max)] },
+      y: { title: labelWithUnit(y, yUnit), range: [yUnit.fromSi(yRange.min), yUnit.fromSi(yRange.max)] },
     },
     legend,
     annotations: [],

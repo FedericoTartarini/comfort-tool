@@ -2,7 +2,7 @@
   import { formatBound, type Bound } from "$lib/core/applicability";
   import { formatNumber } from "$lib/core/numberFormat";
   import type { Quantity } from "$lib/core/quantities";
-  import { displayUnitFor } from "$lib/core/units";
+  import { displayUnitFor, labelWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
@@ -25,7 +25,7 @@
   const id = $props.id();
   const unit = $derived(displayUnitFor(quantity, unitSystem));
   const text = $derived(formatNumber(unit.fromSi(value)));
-  const labelText = $derived(unit.symbol ? `${quantity.label} (${unit.symbol})` : quantity.label);
+  const labelText = $derived(labelWithUnit(quantity, unit));
   const rangeText = $derived(bound ? formatBound(bound, unit) : "");
 
   // Commit only when the parsed value differs from what is stored. While the

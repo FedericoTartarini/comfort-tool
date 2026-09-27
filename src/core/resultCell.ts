@@ -3,7 +3,7 @@ import type { ModelResult } from "./modelDeclaration";
 import { resultValue } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import type { Quantity } from "./quantities";
-import { displayUnitFor } from "./units";
+import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
 /**
@@ -20,6 +20,5 @@ export function formatResultCell(result: ModelResult | null, quantity: Quantity,
     return copy.notAvailable;
   }
   const unit = displayUnitFor(quantity, system);
-  const text = formatNumber(unit.fromSi(value));
-  return unit.symbol ? `${text} ${unit.symbol}` : text;
+  return valueWithUnit(formatNumber(unit.fromSi(value)), unit);
 }

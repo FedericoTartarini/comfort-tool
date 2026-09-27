@@ -1,6 +1,5 @@
 import type { SlotInputs } from "$lib/core/libraryInputs";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import type { Quantity } from "$lib/core/quantities";
 import type { UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -129,9 +128,4 @@ export interface ChartRequest {
   /** Slot name, for the marker's hover text. */
   readonly slotLabel: string;
   readonly unitSystem: UnitSystem;
-}
-
-/** An axis title in the currently displayed unit. */
-export function axisTitle(quantity: Quantity, symbol: string): string {
-  return symbol ? `${quantity.label} (${symbol})` : quantity.label;
 }

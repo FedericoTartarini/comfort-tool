@@ -10,7 +10,7 @@
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";
   import { formatNumber } from "$lib/core/numberFormat";
-  import { displayUnitFor } from "$lib/core/units";
+  import { displayUnitFor, valueWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { PendingSwitch } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -36,10 +36,9 @@
   const rows = $derived(
     (pending?.outOfRangeRows ?? []).map((row) => {
       const unit = displayUnitFor(row.quantity, unitSystem);
-      const current = formatNumber(unit.fromSi(row.value));
       return {
         quantity: row.quantity,
-        current: unit.symbol ? `${current} ${unit.symbol}` : current,
+        current: valueWithUnit(formatNumber(unit.fromSi(row.value)), unit),
         allowed: formatBound(row.bound, unit),
       };
     }),

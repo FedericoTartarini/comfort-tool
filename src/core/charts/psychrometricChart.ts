@@ -11,17 +11,11 @@ import {
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
+import { formatNumber } from "$lib/core/numberFormat";
 import { quantities, type Quantity } from "$lib/core/quantities";
-import { displayUnitFor } from "$lib/core/units";
+import { displayUnitFor, labelWithUnit, valueWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
-import {
-  axisTitle,
-  type Annotation,
-  type ChartRequest,
-  type ChartSpec,
-  type LegendEntry,
-  type Trace,
-} from "./chartSpec";
+import type { Annotation, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";
 
 const q = quantities;
 
@@ -98,6 +92,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
       continue;
     }
     const saturation = rh === 100;
+    const rhText = valueWithUnit(formatNumber(rhUnit.fromSi(rh)), rhUnit);
     traces.push({
       kind: "path",
       x: curve.map((point) => dbUnit.fromSi(point.db)),
@@ -107,12 +102,12 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
       // Chrome: the isolines carry the humidity reading in their label, not on
       // the pointer (ADR §4.4).
       hover: "off",
-      label: `${q.rh.label} ${rh}${rhUnit.symbol}`,
+      label: `${q.rh.label} ${rhText}`,
     });
     annotations.push({
       x: dbUnit.fromSi(end.db),
       y: hrUnit.fromSi(end.hr),
-      text: `${rh}${rhUnit.symbol}`,
+      text: rhText,
     });
   }
   legend.push({ label: q.rh.label, swatch: "line", color: chartInk.isoline });
@@ -154,11 +149,11 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
     traces,
     layout: {
       x: {
-        title: axisTitle(axisQuantity, dbUnit.symbol),
+        title: labelWithUnit(axisQuantity, dbUnit),
         range: [dbUnit.fromSi(dbRange.min), dbUnit.fromSi(dbRange.max)],
       },
       y: {
-        title: axisTitle(q.hr, hrUnit.symbol),
+        title: labelWithUnit(q.hr, hrUnit),
         range: [hrUnit.fromSi(hrRange.min), hrUnit.fromSi(hrRange.max)],
         tickFormat: ".3f",
       },

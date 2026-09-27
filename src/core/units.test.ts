@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { quantities } from "./quantities";
-import { displayUnitFor } from "./units";
+import { displayUnitFor, labelWithUnit, valueWithUnit } from "./units";
 import { unitSystem } from "./unitSystem";
 
 describe("displayUnitFor", () => {
@@ -53,5 +53,26 @@ describe("displayUnitFor", () => {
     expect(displayUnitFor(quantities.v, unitSystem.si).step).toBe(0.05);
     expect(displayUnitFor(quantities.v, unitSystem.ip).step).toBe(10);
     expect(displayUnitFor(quantities.tdb, unitSystem.ip).step).toBe(0.1);
+  });
+});
+
+describe("labelWithUnit", () => {
+  it("puts the display unit in brackets after the label", () => {
+    expect(labelWithUnit(quantities.tdb, displayUnitFor(quantities.tdb, unitSystem.ip))).toBe("Dry-bulb air temperature (°F)");
+  });
+
+  it("is the bare label when the unit has no symbol", () => {
+    expect(labelWithUnit(quantities.pmv, displayUnitFor(quantities.pmv, unitSystem.si))).toBe(quantities.pmv.label);
+  });
+});
+
+describe("valueWithUnit", () => {
+  it("puts the symbol after the value, a space between them", () => {
+    expect(valueWithUnit("6.15", displayUnitFor(quantities.ppd, unitSystem.si))).toBe("6.15 %");
+    expect(valueWithUnit("≤ 0.2", displayUnitFor(quantities.v, unitSystem.si))).toBe("≤ 0.2 m/s");
+  });
+
+  it("is the bare value when the unit has no symbol", () => {
+    expect(valueWithUnit("0.5", displayUnitFor(quantities.pmv, unitSystem.si))).toBe("0.5");
   });
 });

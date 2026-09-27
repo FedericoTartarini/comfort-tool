@@ -88,3 +88,17 @@ export function displayUnitFor(quantity: Quantity, system: UnitSystem): DisplayU
   const pair: UnitPair = displayUnits[quantity.kind];
   return system === unitSystem.si ? pair.si : pair.ip;
 }
+
+/** `quantity`'s label with its display unit in brackets, or the bare label when the unit has no symbol. */
+export function labelWithUnit(quantity: Quantity, unit: DisplayUnit): string {
+  return unit.symbol ? `${quantity.label} (${unit.symbol})` : quantity.label;
+}
+
+/**
+ * `text`, already in `unit` and formatted, followed by the unit's symbol after
+ * a space, or bare when the unit has no symbol. It takes text, not a number,
+ * so a formatted bound (`≤ 0.2`) reads the same way as a single value.
+ */
+export function valueWithUnit(text: string, unit: DisplayUnit): string {
+  return unit.symbol ? `${text} ${unit.symbol}` : text;
+}
