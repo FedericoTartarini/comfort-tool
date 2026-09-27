@@ -69,5 +69,5 @@ The boundary between two bands, the library's word. Bands are contiguous, so edi
 _Avoid_: threshold, limit, cut-off
 
 **Temporary library**:
-A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. The zone solver lives there.
+A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. The zone solver and Adaptive's band geometry live there.
 _Avoid_: stand-in, shim, polyfill, helper

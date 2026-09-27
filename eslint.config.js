@@ -237,16 +237,10 @@ export default [
   },
   {
     // After the test block on purpose: the fence holds for the directory's
-    // tests too, since they move upstream with it. Only the tests may name a
-    // library model function, to build the PMV closure the zone takes.
+    // tests too, since they move upstream with it. The model-function rule
+    // does not: this is library code, and calls a model as the library's own
+    // functions do (ADR-0002 decision 24).
     files: ["src/temporary-library/**/*.ts"],
-    ignores: ["src/temporary-library/**/*.test.ts"],
-    rules: {
-      "no-restricted-imports": ["error", { ...libraryModelImports, patterns: [temporaryLibraryBoundary] }],
-    },
-  },
-  {
-    files: ["src/temporary-library/**/*.test.ts"],
     rules: {
       "no-restricted-imports": ["error", { patterns: [temporaryLibraryBoundary] }],
     },
