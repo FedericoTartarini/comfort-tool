@@ -36,7 +36,7 @@
 | Routing | **sv-router 0.18**, all usage wrapped in `routes/navigation.ts` | Typed routes, maintained, already used by the prototype; the 0.x risk is isolated to one place | Hand-written; `@keenmate/svelte-spa-router` |
 | UI | **shadcn-svelte + Bits UI + Tailwind 4**; utility classes are allowed **only** in `ui/primitives/` (CLI-generated, never hand-edited) and `ui/layout/` (`Stack / Grid / Inline`, gap becomes props); a utility class in any other directory is a lint error | Ready-made controls + consistent spacing (Mantine feel), the most stable AI output, and the code belongs to the project | Carbon Components Svelte (IBM visuals, 0.x); Bits UI + hand-written CSS |
 | State | Runes classes in `.svelte.ts`, **no state library**; the address bar reflects only the path, the share payload is generated only on Export Link | Simple and readable; the prototype's approach | Live address-bar sync |
-| Charts | **plotly.js 4.0** (`plotly.js-cartesian-dist-min`, dynamically imported on demand; native TS types); our own `PlotlyChart.svelte` using `{@attach}`; chart components receive only a "chart spec" and know nothing about models; a banded field is a `contour` trace, never a `heatmap` — a heatmap draws the grid as discrete cells and the band edges come out stepped | Zoom and similar interactions; 4.0 exports types natively | 3.x; `svelte-plotly.js` (no Svelte 5 version) |
+| Charts | **plotly.js 4.0** (`plotly.js-cartesian-dist-min`, dynamically imported on demand; native TS types); our own `PlotlyChart.svelte` using `{@attach}`; chart components receive only a "chart spec" and know nothing about models; a banded field is a `contour` trace, never a `heatmap` — a heatmap draws the grid as discrete cells and the band edges come out stepped. **Amended 2026-09-28 (review after Phase 4b, Proposal 11): the bundle ships no types, and the app carries its own declaration file; see §2.1** | Zoom and similar interactions; 4.0 exports types natively | 3.x; `svelte-plotly.js` (no Svelte 5 version) |
 | Computation | A single Web Worker + **Comlink**; the main thread discards stale results by sequence number; library model functions are called only inside the Worker. **Superseded 2026-09-21 by [ADR-0002](0002-library-interface-model-info.md) decision 29: no Worker in v1, compute is synchronous** | Readability first | Hand-written postMessage protocol; Worker pool |
 | Precision | Standard compliance zone: **boundary root-finding** (RH every 5%, PMV residual 0.001, secant method falling back to bisection, saturation line every 0.5 °C); Explore field chart: **100×100 grid**, the same for all models. **Amended 2026-09-21 by ADR-0002 decisions 27 and 28: a 51×51 grid of the numeric output, contoured at the band edges** | Same origin as the old tool and finer; keep the old chart while PHS takes about 2.4 s | Grid everywhere; adaptive refinement |
 | Forms | No form library, no Zod; `bind:value` + the range validation the library provides | The library already provides hard ranges | — |
@@ -47,6 +47,8 @@
 | Engineering | pnpm, TS `strict` + `erasableSyntaxOnly` + `verbatimModuleSyntax`, ESLint flat + Prettier, Node 24, GitHub Actions (typecheck + lint + build), Netlify PR previews, UI copy centralised in one dictionary module (English only in v1) | — | TypeScript `enum` (non-erasable syntax) |
 
 ### 2.1 plotly.js 4.0 changes to watch
+
+> **Amended 2026-09-28** (review after Phase 4b, Proposal 11; `.scratch/review-after-4b/decisions.md`, round 14): the last bullet does not hold for the bundle the app installs. `plotly.js-cartesian-dist-min@4.0.0` ships no `.d.ts` and no `types` field, so the app carries its own declaration file, `src/ui/charts/plotly.d.ts`, declaring only the surface `PlotlyChart.svelte` calls. `@types/plotly.js` stays uninstalled.
 
 - The colour library is now culori: fractional `rgb()` and `hsv()` are no longer accepted; the fourth argument of `rgb()` is now alpha. The project uses hex colours + `rgba()` throughout.
 - Chart Studio related `config` properties are removed, and the "Upload to Cloud" button is shown by default: set `config.showSendToCloud = false` and trim the modebar.
@@ -59,6 +61,8 @@
 ## 3. System boundary: library vs app
 
 > **Superseded in part by [ADR-0002](0002-library-interface-model-info.md)** (2026-09-13): the library column below describes the fork. Quantities are now an app table, the `io` / `reference` / `charts` layers are gone, comfort-zone geometry lives in the app, and the library ships `ModelInfo` — see ADR-0002 Context and decisions 1, 2, 9, 10.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 12, 24 and 29**: the convention paragraph below has no `src/workers/`; v1 has no Worker, and a model is called synchronously through its declaration's `run` (decision 29). The library's model functions are imported only in `src/models/` and in `src/temporary-library/`, which calls a model as the library's own functions do (decision 24, revised 2026-09-27). Lint draws the boundary with `importNames` on the package root, since root-only imports leave no subpath to fence, so `Standard`, `classifyFromBins` and the psychrometrics are importable anywhere but `src/ui/charts/`, whose boundary is unchanged (decision 12).
 
 
 **The test (consensus 2026-09-03): would pythermalcomfort ship it?** `jsthermalcomfort` is its port, and its audience is researchers and arbitrary tools. Anything where "another tool with a completely different design would need exactly the same value for the same model" belongs to the library; anything that might differ from one tool to the next belongs to the app.
@@ -103,6 +107,8 @@ Convention: the library's **model functions** (the `jsthermalcomfort` root, `jst
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 34** (2026-09-22): rule 2 names `core/libraryInputs.ts` as a reader of `Quantity.key` because it assembled the library's keyed init object; it no longer builds one — a declaration's `run` reads values by `Quantity` and calls the model function positionally, so no quantity key is written on the way in, and §4.1.3's one-line `Object.fromEntries` bullet goes with the init object. The key survives in the app only on the way out, reading a value off the result (`resultValue`), and in `shareLink.ts`; the two boundaries themselves are unchanged.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36** (2026-09-23): rule 2's boundary strings gain an option's `key`, written in its model's declaration: the library kwarg the option feeds, proved by a registry-wide test, and the option's name on the share link. Nothing looks an option up by it, so rule 1 is unchanged.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 3, 5 and 34** (2026-09-25 and 2026-09-26): the decision-34 marker above is retracted on two points. `run` is not a positional call: it passes the model one params object, in which the declaration writes each quantity's key by name and the compiler checks it (decision 34 as revised 2026-09-25, decision 3 as revised 2026-09-26). And the key is read on more than the way out: `axisRangeFor` falls back to `info.inputs[quantity.key].applicability` for a quantity with no declared range (decision 5). The two boundaries themselves are unchanged.
 
 
 1. **One definition, referenced everywhere.** Quantities, models, workspaces, chart types, unit systems and so on are objects; code references them with dot access (`io.quantities.tdb`, `workspace.explore`), not string keys and not `Record<string, …>` dictionaries. `Quantity.kind` is a string union type exported by the library; the app treats it as a typed discriminant (`core/units.ts` looks up the display-unit table by kind, and `satisfies Record<QuantityKind, …>` guarantees exhaustiveness), which does not count as a string key.
@@ -224,6 +230,10 @@ export function displayUnitFor(quantity: Quantity, unitSystem: UnitSystem): Disp
 > **Shape superseded by [ADR-0002](0002-library-interface-model-info.md) decisions 3 and 6**: `info` replaces `model`, `standard` replaces `edition`, `run` is the positional call, `inputs` / `axisRanges` are named-field object arrays, `defineModel` is gone. The rules paragraph and the result-table rules still apply.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36** (2026-09-23): `run` is `(values, options) => result`, reading the model's options through a second reader; an option is a declared `OptionSpec` object `{ key, label, default }`, `RegisteredModel.options` is required (empty for a model with none), and `InputSlot.options` in §4.5 holds a boolean per option, so there is no `OptionValue`.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 3 and 34** (2026-09-25 and 2026-09-26): "`run` is the positional call" in the first marker above is retracted. `run` passes the model one params object, each quantity's key written by name; see §4.0's marker for decisions 3, 5 and 34.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 20** (2026-09-15): the rules paragraph's sentence making `presets` a declaration field no longer applies. Presets hang off the `Quantity`: `core/presets.ts` binds `met` and `clo` to the library's tables once, and `presetsFor(quantity)` answers for every model, so no declaration names a preset table.
 
 
 ```ts
@@ -271,6 +281,8 @@ Result table (`table`):
 > **The psychrometric chart's compliance zone is amended by [ADR-0002](0002-library-interface-model-info.md) decision 31** (2026-09-25): it draws the declaration's `zones`, nested Comfort zones largest first in one hue (categories A, B and C for ISO 7730), each at a limit read off a library object.
 >
 > **The dynamic chart is amended by [ADR-0002](0002-library-interface-model-info.md) decision 37** (2026-09-27): it is declared in one of two shapes, scanned (`axes`, `output`, `bands`) or polygons (`axes`, `zones`), rather than as a scan with an optional `zones` source. A polygons chart's axes are locked: never offered to the picker and never mapped to the entry mode, so an operative axis marks a slot in separate entry at the plain mean of `tdb` and `tr`.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 37 as amended 2026-09-28** (Phase 4b ticket 12): "the plain mean of `tdb` and `tr`" in the marker above is retracted. Under separate entry the slot is marked at the library's operative temperature, `t_o(tdb, tr, v, model.standard)`, weighed by the model's own standard, through the same function the switch into operative entry converts with (decision 39), so the marker and the switch cannot differ.
 
 
 | Type | Definition |
@@ -324,6 +336,10 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 32–34** (2026-09-22): "hard range" in the "Switching models" rule below is the model's Applicability as the pre-call gate reads it, and the switch is rehearsed on a copy of the slot (convert entry mode, seed missing quantities from the new model's defaults, then ask the gate), so "No, stay here" leaves the slot untouched; a model reached by URL gets no dialog; slot 0 only until Compare (decision 32). While an entry is out of range the gate keeps the last valid inputs of the current model and derives everything else, so unit system, chart type and axes still take effect and a model change drops what was kept (decision 33). `toLibraryInputs` no longer builds a keyed record: `run` reads values by `Quantity` (decision 34).
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36** (2026-09-23): `InputSlot.options` below is `SvelteMap<OptionSpec, boolean>` (there is no `OptionValue`) and PMV (ASHRAE 55) is the first model to declare one; across a model switch it is a superset bag like `values`, seeded at the new model's defaults, and the dialog never lists an option.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 39** (2026-09-28): in the first rule below, separate → operative weighs by the model's own standard: `withTemperatureMode` converts with the library's `t_o(tdb, tr, v, model.standard)`, not `operative_tmp(tdb, tr, v)`, and a model that declares no standard passes none, so the library's default decides.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 6**: `Session.standard?: StandardRef` below is dropped. The session holds no standard of its own: a model's standard is its declaration's `standard`, read through `session.model`, so there is one copy.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
@@ -411,6 +427,8 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 32** (2026-09-22): the tree gains `core/modelSwitch.ts` — `rehearseSwitch(slot, model)` and `adjustToBounds(inputs, rows)`, the only place in the app that moves a value the person entered. `ui/dialogs/` stays reserved for a dialog that is not part of a panel: the app's first dialog, `ModelSwitchDialog.svelte`, is at `ui/inputs/`, placed with what it is about and where it renders.
 >
 > **Amended 2026-09-28** (review after Phase 4b, Proposal 4; `.scratch/review-after-4b/decisions.md`, round 12): the tree gains `core/modelRun.ts` — running a model on a slot, `runOn(slot, model)`, a new function, and reading its result through the two readers that move there from `core/libraryInputs.ts`, `resultValue` and `resultWarnings`. The rest of `libraryInputs.ts` stays, `enteredQuantities` and `withTemperatureMode` included. The module is written by `.scratch/review-after-4b/issues/13`.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 7, 28 and 29**: there is no `workers/` directory and no `compute.worker.ts`; v1 computes synchronously, and library model functions are imported only in `models/` and `temporary-library/` (decisions 24 and 29; see §3's marker for decisions 12, 24 and 29). `dynamicChart.ts` scans a 51×51 grid, `GRID = 51`, not 100×100 (decision 28). `bandPalette.ts` colours by position in a library `ClassifierBins`, not an `IntervalScale` (decision 7).
 
 
 ```
