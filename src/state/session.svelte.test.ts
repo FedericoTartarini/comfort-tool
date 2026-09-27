@@ -127,7 +127,7 @@ describe("Session.setModel", () => {
 
   it("converts a slot in operative entry for a model without the temperature entry group", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative);
+    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
     const operative = session.slots[0].values.get(q.operative_tmp);
     expect(operative).toBeTypeOf("number");
 
@@ -140,7 +140,7 @@ describe("Session.setModel", () => {
 
   it("leaves a slot in operative entry alone for a model that has the temperature entry group", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative);
+    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
 
     session.setModel(takesExternalWork);
 
@@ -203,7 +203,7 @@ describe("Session.requestModel", () => {
 
   it("converts the entry mode the model asks for", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative);
+    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
     const operative = session.slots[0].values.get(q.operative_tmp);
 
     session.requestModel(withoutTemperatureGroup);

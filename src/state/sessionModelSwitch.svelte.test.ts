@@ -85,7 +85,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
   it("lists the operative temperature against the range both temperatures allow at once", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative);
+    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
     const operative = session.slots[0].values.get(q.operative_tmp);
 
     // tdb is 10–20 here and tr is the registered 10–40, so the row is 10–20.
@@ -132,7 +132,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   it("leaves everything as it was on a decline", () => {
     const session = new Session(pmvPpdIso);
     session.slots[0].setHumidityMode(humidityMode.dewPoint);
-    session.slots[0].setTemperatureMode(temperatureMode.operative);
+    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
     const before = shapeOf(session.slots[0]);
 
     session.requestModel(belowTheSlot);

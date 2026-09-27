@@ -67,7 +67,7 @@ function convertEntryMode(slot: SlotInputs, model: RegisteredModel): SlotInputs 
   if (hasTemperatureGroup(model) || slot.temperature.mode !== temperatureMode.operative) {
     return slot;
   }
-  return withTemperatureMode(slot, temperatureMode.separate);
+  return withTemperatureMode(slot, temperatureMode.separate, model);
 }
 
 /**

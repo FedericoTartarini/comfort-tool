@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { t_o, v_relative } from "jsthermalcomfort";
 import { Standard } from "jsthermalcomfort";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { humidityMode, temperatureMode } from "./entryModes";
 import {
@@ -12,6 +13,7 @@ import {
   toLibraryInputs,
   valuesReader,
   withEnteredValues,
+  withTemperatureMode,
   type SlotInputs,
 } from "./libraryInputs";
 import type { OptionSpec } from "./modelDeclaration";
@@ -222,6 +224,29 @@ describe("entered values", () => {
     const resolved = resolveQuantities(swept, pmvPpdIso);
     expect(resolved.get(q.tdb)).toBe(28);
     expect(resolved.get(q.tr)).toBe(28);
+  });
+});
+
+describe("withTemperatureMode", () => {
+  // One room, 24 / 28 °C at 0.6 m/s: ASHRAE 55 weighs the air temperature by
+  // 0.7 at this speed, ISO 7726 by √(10v) (ADR-0002 decision 39).
+  const room = separateSlot({ tdb: 24, tr: 28, v: 0.6 });
+
+  it("converts separate → operative by the model's own standard", () => {
+    expect(withTemperatureMode(room, temperatureMode.operative, adaptiveAshrae).values.get(q.operative_tmp)).toBeCloseTo(25.2);
+    expect(withTemperatureMode(room, temperatureMode.operative, pmvPpdIso).values.get(q.operative_tmp)).toBeCloseTo(25.16, 2);
+  });
+
+  it("passes no standard for a model that declares none, and the library's default decides", () => {
+    const withoutStandard = { ...pmvPpdIso, standard: undefined };
+    const converted = withTemperatureMode(room, temperatureMode.operative, withoutStandard);
+    expect(converted.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6));
+  });
+
+  it("sets both temperatures to the operative entry going back", () => {
+    const converted = withTemperatureMode(operativeSlot(26), temperatureMode.separate, adaptiveAshrae);
+    expect([converted.values.get(q.tdb), converted.values.get(q.tr)]).toEqual([26, 26]);
+    expect(converted.values.has(q.operative_tmp)).toBe(false);
   });
 });
 

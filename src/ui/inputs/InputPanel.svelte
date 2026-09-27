@@ -63,10 +63,10 @@
   {#if showTemperatureRow}
     <Inline gap="2" align="center">
       <span>{copy.temperatureInput}</span>
-      <Button size="sm" variant={variantFor(temperatureMode.separate)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.separate)}>
+      <Button size="sm" variant={variantFor(temperatureMode.separate)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.separate, model)}>
         {copy.separateTemperatures}
       </Button>
-      <Button size="sm" variant={variantFor(temperatureMode.operative)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.operative)}>
+      <Button size="sm" variant={variantFor(temperatureMode.operative)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.operative, model)}>
         {copy.operativeTemperature}
       </Button>
     </Inline>

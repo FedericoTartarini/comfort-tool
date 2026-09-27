@@ -61,8 +61,9 @@ export function relativeHumidityOf(slot: SlotInputs): number {
  * which weighs the air temperature by air speed: by √(10v) under ISO 7726,
  * and under ASHRAE 55 by 0.5 below 0.2 m/s, 0.6 below 0.6 and 0.7 above. The
  * two agree only in still air under ASHRAE 55. The conversion between entry
- * modes (`withTemperatureMode`) is the library's, so a slot switched to
- * operative entry can land a little off this marker.
+ * modes (`withTemperatureMode`) is the library's `t_o` by the model's own
+ * standard (ADR-0002 decision 39), so until Phase 4b ticket 12 a slot switched
+ * to operative entry can land off this marker.
  */
 export function operativeTemperatureOf(slot: SlotInputs): number {
   if (slot.temperature.mode === temperatureMode.operative) {
@@ -229,9 +230,16 @@ export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quant
 
 /**
  * The same slot with its temperatures re-expressed under `mode`. Separate →
- * operative is the library's `t_o(tdb, tr, v)`; operative → separate sets
- * `tdb = tr = operative_tmp`. Lossy and one-way, as in the old tool, and the
- * one removal the bag ever suffers: the two representations never coexist.
+ * operative is the library's `t_o(tdb, tr, v, model.standard)`, weighed by the
+ * model's own standard as pythermalcomfort's models do, or by the library's
+ * default for a model that declares none (ADR-0002 decision 39); operative →
+ * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, and the one
+ * removal the bag ever suffers: the two representations never coexist. The
+ * deployed tool converts nothing here — its checkbox copies the air
+ * temperature into mean radiant.
+ *
+ * Not the plain mean {@link operativeTemperatureOf} marks a separate entry
+ * with, so the two can differ; that function says when.
  *
  * The one statement of the conversion a slot undergoes: the entry-mode buttons
  * apply it through the slot they own, and `core/modelSwitch.ts` applies it for
@@ -239,13 +247,16 @@ export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quant
  * expansion is a different act — it stands the operative entry in for the two
  * temperatures of one library call and changes no entry mode.
  */
-export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode): SlotInputs {
+export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode, model: RegisteredModel): SlotInputs {
   if (mode === slot.temperature.mode) {
     return slot;
   }
   const values = new Map(slot.values);
   if (mode === temperatureMode.operative) {
-    const operative = t_o(requireValue(values, q.tdb), requireValue(values, q.tr), requireValue(values, q.v));
+    // `t_o` names fewer standards than a model may pin (not ISO 7933), and
+    // throws on one it does not; the cast leaves that call to the library.
+    const standard = model.standard as Parameters<typeof t_o>[3];
+    const operative = t_o(requireValue(values, q.tdb), requireValue(values, q.tr), requireValue(values, q.v), standard);
     values.set(q.operative_tmp, operative);
     values.delete(q.tdb);
     values.delete(q.tr);

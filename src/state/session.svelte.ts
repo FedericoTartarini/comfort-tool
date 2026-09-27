@@ -58,10 +58,12 @@ export class InputSlot {
 
   /**
    * Convert the stored temperatures into the new representation, by the rule
-   * `core/libraryInputs.ts` states: lossy and one-way, as in the old tool.
+   * `core/libraryInputs.ts` states: lossy and one-way, and weighed by
+   * `model`'s standard going into operative entry. The slot does not keep its
+   * model, so the caller names it.
    */
-  setTemperatureMode(mode: TemperatureMode): void {
-    this.replaceInputs(withTemperatureMode(this, mode));
+  setTemperatureMode(mode: TemperatureMode, model: RegisteredModel): void {
+    this.replaceInputs(withTemperatureMode(this, mode, model));
   }
 
   /**
