@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import { resultValue } from "$lib/core/libraryInputs";
-import type { ModelResult, RegisteredModel, ValuesReader } from "$lib/core/modelDeclaration";
+import type { ModelResult, RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -61,7 +61,7 @@ function modelCountingRuns(): { model: RegisteredModel; runs: () => number } {
   let runs = 0;
   const model = {
     ...pmvPpdIso,
-    run: (values: ValuesReader) => {
+    run: (values: Values) => {
       runs += 1;
       return pmvPpdIso.run(values);
     },

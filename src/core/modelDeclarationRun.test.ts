@@ -1,173 +1,30 @@
 /**
- * What every registered declaration's `run` does, in the three ways the
- * compiler cannot see: it calls its library function positionally, so the order
- * it asks for values in has to be that function's own parameter order
- * (ADR-0002 decision 34); the bands it declares have to cut the scanned output
- * into the category the run itself returned (decision 27); and its numbers have
- * to come back unrounded where the dynamic chart scans them (decision 35).
+ * What every registered declaration's `run` returns, in the two ways the
+ * compiler cannot see: the bands it declares have to cut the scanned output
+ * into the category the run itself returned (ADR-0002 decision 27), and its
+ * numbers have to come back unrounded where the dynamic chart scans them
+ * (decision 35). How it calls its library function is the sibling
+ * `modelDeclarationCall.test.ts`'s.
  *
  * What a declaration says about itself — its library name, its standard, the
  * axis range a chart reads off it — is the sibling `modelDeclaration.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
-import * as library from "jsthermalcomfort";
-import { adaptive_ashrae, classifyFromBins, heat_index_rothfusz, pmv_ppd_iso, type ClassifierBins } from "jsthermalcomfort";
+import { classifyFromBins, pmv_ppd_iso, type ClassifierBins } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { humidityMode, temperatureMode } from "./entryModes";
-import { resolveQuantities, resultValue, toLibraryInputs, valuesReader, withEnteredValues, type SlotInputs } from "./libraryInputs";
-import { dynamicChartOf, requireAxisRange, type DynamicDeclaration, type Range, type RegisteredModel, type ValuesReader } from "./modelDeclaration";
-import { quantities, quantityFor, type Quantity } from "./quantities";
+import { defaultSlot } from "./declarationTestSlots";
+import { optionsReader, resultValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
+import {
+  dynamicChartOf,
+  requireAxisRange,
+  type DynamicDeclaration,
+  type Range,
+  type RegisteredModel,
+  type Values,
+} from "./modelDeclaration";
+import { quantityFor, type Quantity } from "./quantities";
 
-const q = quantities;
-
-/** The package's exports, by name: a namespace import only a test may make, for the reason `modelDeclaration.test.ts` gives. */
-const libraryExports: Record<string, unknown> = library;
-
-/** A slot holding the model's own declared defaults, in the default entry modes. */
-function defaultSlot(model: RegisteredModel): SlotInputs {
-  const values = new Map<Quantity, number>();
-  let humidity = { mode: humidityMode.rh, value: 0 };
-  for (const { quantity, value } of model.inputs) {
-    if (quantity === humidityMode.rh.quantity) {
-      humidity = { mode: humidityMode.rh, value };
-    } else {
-      values.set(quantity, value);
-    }
-  }
-  return { values, humidity, temperature: { mode: temperatureMode.separate } };
-}
-
-/** A library model function, as the namespace import above hands one over. */
-type LibraryFunction = (...args: never[]) => unknown;
-
-/**
- * A function's parameter names, in order, read off its own source. The
- * package's `lib/esm` is unminified, so these are the library's own names; a
- * production build renames them, which is why only a test may do this
- * (ADR-0002 decision 34, and the same reason `fn.name` cannot replace
- * `RegisteredModel.name`).
- *
- * The list is split at depth-0 commas, so a default value carrying commas of
- * its own stays one parameter — `heat_index_rothfusz(tdb, rh, options = {
- * round: true, units: "SI" })` is written exactly that way. Quoted text is
- * stepped over, so a bracket or comma inside a string cannot shift the depth.
- */
-function parameterNames(fn: LibraryFunction): string[] {
-  const source = fn.toString();
-  const open = source.indexOf("(");
-  const parameters: string[] = [];
-  let depth = 0;
-  let start = open + 1;
-  let quote = "";
-  for (let index = open; index < source.length; index++) {
-    const character = source[index];
-    if (quote !== "") {
-      if (character === "\\") index++;
-      else if (character === quote) quote = "";
-      continue;
-    }
-    if (character === '"' || character === "'" || character === "`") {
-      quote = character;
-    } else if ("([{".includes(character)) {
-      depth++;
-    } else if (")]}".includes(character)) {
-      depth--;
-      if (depth === 0) {
-        parameters.push(source.slice(start, index));
-        // A parameterless function leaves one empty slice behind.
-        return parameters.map((parameter) => parameter.split("=")[0].trim()).filter((name) => name !== "");
-      }
-    } else if (character === "," && depth === 1) {
-      parameters.push(source.slice(start, index));
-      start = index + 1;
-    }
-  }
-  throw new Error(`Could not find the end of the parameter list of ${source.slice(0, 40)}`);
-}
-
-/**
- * The quantities a model's `run` asks its reader for, in order. The reader
- * answers with the model's own resolved defaults, so the library call runs on
- * the numbers it runs on in the app rather than on placeholders a kernel might
- * reject.
- */
-function askedQuantities(model: RegisteredModel): readonly Quantity[] {
-  const read = valuesReader(resolveQuantities(defaultSlot(model), model));
-  const asked: Quantity[] = [];
-  // Only the recording is this test's; the values come back through the very
-  // reader the app builds, so the positions being proved are the real ones.
-  model.run((...quantities) => {
-    asked.push(...quantities);
-    return read(...quantities);
-  });
-  return asked;
-}
-
-/** The two lists the position test compares: what `run` asked for, and what the library function calls its leading parameters. */
-function askedAgainstParameters(model: RegisteredModel): { asked: string[]; parameters: string[] } {
-  const asked = askedQuantities(model).map((quantity) => quantity.key);
-  return { asked, parameters: parameterNames(libraryExports[model.name] as LibraryFunction).slice(0, asked.length) };
-}
-
-describe("the parameter-name reader", () => {
-  it("reads a plain positional list, defaults and all", () => {
-    expect(parameterNames(adaptive_ashrae)).toEqual(["tdb", "tr", "t_running_mean", "v", "units", "limit_inputs", "round_output"]);
-  });
-
-  it("keeps a default object that carries commas of its own whole", () => {
-    expect(parameterNames(heat_index_rothfusz)).toEqual(["tdb", "rh", "options"]);
-  });
-
-  it("reads the list the position test below actually rests on", () => {
-    expect(parameterNames(pmv_ppd_iso)).toEqual(["tdb", "tr", "vr", "rh", "met", "clo", "wme", "model", "kwargs"]);
-  });
-});
-
-describe("run's positional call", () => {
-  it("asks for its values in the order of the library function's own parameters, for every registered model", () => {
-    for (const model of registeredModels) {
-      const { asked, parameters } = askedAgainstParameters(model);
-      // A `run` that asked for nothing would pass vacuously.
-      expect(asked.length, model.name).toBeGreaterThan(0);
-      expect(asked, model.name).toEqual(parameters);
-    }
-  });
-
-  it("catches two quantities in each other's place, which is all the compiler cannot see", () => {
-    // Proven red 2026-09-22: swapping `q.tdb` and `q.tr` in the real
-    // declaration made the registry test above fail on `pmv_ppd_iso` and
-    // nothing else — not `npm run check`, because both parameters are numbers.
-    const swapped = {
-      ...pmvPpdIso,
-      run: (values: ValuesReader) =>
-        pmv_ppd_iso(...values(q.tr, q.tdb, q.vr, q.rh, q.met, q.clo), 0, pmvPpdIso.standard, {
-          units: "SI",
-          limit_inputs: false,
-          round_output: false,
-        }),
-    } satisfies RegisteredModel;
-    const { asked, parameters } = askedAgainstParameters(swapped);
-    expect(asked).not.toEqual(parameters);
-  });
-});
-
-/**
- * Type-level proof, compiled by `npm run check` and never called: the reader's
- * tuple return is what makes the compiler count the arguments and spell the
- * kwargs, so each `@ts-expect-error` here fails the build the day it stops
- * doing so. Checked by hand on 2026-09-22 against a declared signature; this
- * pins it against the real one. Exported only because `noUnusedLocals` would
- * otherwise flag it.
- */
-export function readerTypeProof(values: ValuesReader): void {
-  const kwargs = { units: "SI", limit_inputs: false, round_output: false } as const;
-  pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, pmvPpdIso.standard, kwargs);
-  // @ts-expect-error one quantity too few: the `0` meant for `wme` fills `clo`, and the tail no longer fits
-  pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met), 0, pmvPpdIso.standard, kwargs);
-  // @ts-expect-error a misspelt kwarg: the library spells it `units`, not `unit`
-  pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, pmvPpdIso.standard, { unit: "SI" });
-}
 /**
  * The classified output the declared bands cut, found by object identity:
  * nothing in `_INFO` names the quantity a classifier belongs to, which is why
@@ -196,7 +53,10 @@ function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
     defaults,
     range: requireAxisRange(model, axis),
     at,
-    outputAt: (position: number) => Number(resultValue(model.run(toLibraryInputs(at(position), model)), chart.output)),
+    outputAt: (position: number) => {
+      const slot = at(position);
+      return Number(resultValue(model.run(toLibraryInputs(slot, model), optionsReader(slot.options)), chart.output));
+    },
   };
 }
 
@@ -259,7 +119,7 @@ describe("the dynamic chart's declared bands", () => {
       // A model whose Edges the axis cannot reach would pass vacuously.
       expect(probes.length, model.info.label).toBeGreaterThan(1);
       for (const slot of probes) {
-        const result = model.run(toLibraryInputs(slot, model));
+        const result = model.run(toLibraryInputs(slot, model), optionsReader(slot.options));
         const value = resultValue(result, chart.output);
         expect(typeof value, `${model.info.label} ${chart.output.label}`).toBe("number");
         expect(classifyFromBins(Number(value), chart.bands), `${model.info.label} at ${chart.output.label} ${String(value)}`).toBe(
@@ -325,9 +185,16 @@ function unroundedSampleCount(model: RegisteredModel, chart: DynamicDeclaration)
 function isoRounding(round_output: boolean) {
   return {
     ...pmvPpdIso,
-    run: (values: ValuesReader) =>
-      pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, pmvPpdIso.standard, {
-        units: "SI",
+    run: (values: Values) =>
+      pmv_ppd_iso({
+        tdb: values.tdb,
+        tr: values.tr,
+        vr: values.vr,
+        rh: values.rh,
+        met: values.met,
+        clo: values.clo,
+        wme: 0,
+        standard: pmvPpdIso.standard,
         limit_inputs: false,
         round_output,
       }),

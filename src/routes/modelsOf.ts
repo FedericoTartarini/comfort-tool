@@ -17,8 +17,8 @@ export function modelsOf(
 /**
  * The route segment for a model name: the library's function name with its
  * underscores spelled as hyphens (`pmv_ppd_iso` → `pmv-ppd-iso`). The one
- * place a model's URL spelling is derived, so the name is the only thing a
- * declaration writes (ADR-0002 decision 30).
+ * place a model's URL spelling is derived, so a declaration writes no route
+ * of its own (ADR-0002 decision 30).
  */
 export function toRouteSegment(name: string): string {
   // Not `replaceAll`: tsconfig targets ES2020, which does not have it.
@@ -38,5 +38,5 @@ export function modelBySegment(
   if (standard === undefined) {
     return undefined;
   }
-  return modelsOf(standard, models).find((model) => toRouteSegment(model.name) === segment);
+  return modelsOf(standard, models).find((model) => toRouteSegment(model.info.name) === segment);
 }

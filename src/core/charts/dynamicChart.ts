@@ -4,6 +4,7 @@ import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes
 import {
   enteredQuantities,
   enteredValue,
+  optionsReader,
   resolveQuantities,
   resultValue,
   toLibraryInputs,
@@ -165,7 +166,7 @@ function samples(range: Range): readonly number[] {
 
 /** The model's own number for `output` at `slot`; `NaN` when the result carries none. */
 function outputValue(model: RegisteredModel, slot: SlotInputs, output: Quantity): number {
-  const value = resultValue(model.run(toLibraryInputs(slot, model)), output);
+  const value = resultValue(model.run(toLibraryInputs(slot, model), optionsReader(slot.options)), output);
   return typeof value === "number" ? value : Number.NaN;
 }
 

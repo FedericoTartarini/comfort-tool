@@ -2,7 +2,7 @@ import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/libraryInputs";
-import { dynamicChartOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
@@ -11,10 +11,12 @@ import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
  * One set of inputs (ADR §4.5). Canonical SI; the quantity the user entered is
  * the truth. `values` is the cross-model superset bag: it excludes `rh`
  * (held in `humidity`), stores `operative_tmp` under operative mode and
- * `tdb` / `tr` under separate mode.
+ * `tdb` / `tr` under separate mode. `options` is a superset bag in the same
+ * way, keyed by the declaration's own option objects (ADR-0002 decision 36).
  */
 export class InputSlot {
   readonly values = new SvelteMap<Quantity, number>();
+  readonly options = new SvelteMap<OptionSpec, boolean>();
   // `$state.raw`, not `$state`: a deep proxy would wrap the mode objects and
   // the Quantity they reference, and identity comparisons against
   // `humidityMode.rh` / `io.quantities.rh` would fail. Replace, don't mutate.
@@ -31,6 +33,9 @@ export class InputSlot {
       } else {
         this.values.set(quantity, value);
       }
+    }
+    for (const option of model.options) {
+      this.options.set(option, option.default);
     }
   }
 
@@ -60,24 +65,30 @@ export class InputSlot {
   }
 
   /**
-   * Hold what `inputs` holds: quantities it does not carry are dropped, the
-   * rest are set, and the humidity and temperature entries are replaced. The
-   * `values` map is mutated rather than swapped, because the input panel and
-   * the derivations hold it and its reactivity is its own. `inputs` may be
-   * this slot itself, when the core function it came from found nothing to
-   * change; both loops then do nothing.
+   * Hold what `inputs` holds: quantities and options it does not carry are
+   * dropped, the rest are set, and the humidity and temperature entries are
+   * replaced. The two maps are mutated rather than swapped, because the input
+   * panel and the derivations hold them and their reactivity is their own.
+   * `inputs` may be this slot itself, when the core function it came from
+   * found nothing to change; the loops then do nothing.
    */
   replaceInputs(inputs: SlotInputs): void {
-    for (const quantity of [...this.values.keys()]) {
-      if (!inputs.values.has(quantity)) {
-        this.values.delete(quantity);
-      }
-    }
-    for (const [quantity, value] of inputs.values) {
-      this.values.set(quantity, value);
-    }
+    replaceEntries(this.values, inputs.values);
+    replaceEntries(this.options, inputs.options);
     this.humidity = inputs.humidity;
     this.temperature = inputs.temperature;
+  }
+}
+
+/** `target` holding exactly what `source` holds, mutated in place. */
+function replaceEntries<K, V>(target: SvelteMap<K, V>, source: ReadonlyMap<K, V>): void {
+  for (const key of [...target.keys()]) {
+    if (!source.has(key)) {
+      target.delete(key);
+    }
+  }
+  for (const [key, value] of source) {
+    target.set(key, value);
   }
 }
 

@@ -17,19 +17,32 @@ import { quantities, type Quantity } from "./quantities";
 export type ModelResult = object;
 
 /**
- * One number per Quantity in `T`, as a tuple of the same length. Named because
- * a reader's implementation has to restore the tuple `map` flattens, and the
- * promise it restores should be spelled once.
+ * How a declaration reads its slot's values: one number per Quantity, under
+ * the quantity table's own key, so `values.tdb` type-checks and `values.tbd`
+ * does not (ADR-0002 decision 34). Reading a quantity the slot does not hold
+ * throws, naming it; there is no key that answers `undefined`.
  */
-export type ValuesOf<T extends readonly Quantity[]> = { [K in keyof T]: number };
+export type Values = { readonly [K in keyof typeof quantities]: number };
 
 /**
- * How a declaration reads its slot's values: one number per `Quantity` asked
- * for, so the library call it feeds type-checks whole against the library's
- * own signature (ADR-0002 decision 34). The tuple is the point — a `number[]`
- * would spread into any arity and the compiler would stop counting.
+ * A switch a model takes beside its quantities (`airspeed_control`): no unit,
+ * no range, never on an axis. Declared in the model's own file and referred to
+ * by identity, as a `Quantity` is (ADR-0002 decision 36). `key` is what the
+ * share link will carry, `label` what the panel shows, `default` what a slot
+ * starts from. A boolean only; a kind field waits for a second kind of option.
  */
-export type ValuesReader = <const T extends readonly Quantity[]>(...quantities: T) => ValuesOf<T>;
+export interface OptionSpec {
+  readonly key: string;
+  readonly label: string;
+  readonly default: boolean;
+}
+
+/**
+ * How a declaration reads its slot's options: the boolean for the option
+ * asked, so it lands in the library's params where the compiler checks it
+ * (ADR-0002 decision 36).
+ */
+export type OptionsReader = (option: OptionSpec) => boolean;
 
 /** A closed interval, in SI. */
 export interface Range {
@@ -68,6 +81,19 @@ export interface ZoneRequest {
 }
 
 /**
+ * One Comfort zone of a psychrometric chart: where |PMV| < `limit`, or
+ * |PMV| ≤ `limit` when `inclusive`, as the library object it was read from
+ * says (a classifier's `right`, the strict compliance interval). `label`
+ * names it in the legend. Written through `core/comfortZones`, so a
+ * declaration copies no limit.
+ */
+export interface ComfortZone {
+  readonly label: string;
+  readonly limit: number;
+  readonly inclusive: boolean;
+}
+
+/**
  * A chart a model offers (ADR §4.4). A discriminated union rather than one wide
  * object: the psychrometric chart's axes are fixed by the temperature entry
  * mode, and only the dynamic chart has a scanned output.
@@ -79,6 +105,11 @@ export type ChartDeclaration =
        * must carry one, unrounded (ADR-0002 decision 9, revised 2026-09-18).
        */
       readonly type: typeof chartType.psychrometric;
+      /**
+       * The Comfort zones the chart draws, nested, one per limit: one for a
+       * standard with one interval, one per category for a category standard.
+       */
+      readonly zones: readonly [ComfortZone, ...ComfortZone[]];
     }
   | {
       readonly type: typeof chartType.dynamic;
@@ -122,8 +153,12 @@ export type DynamicDeclaration = Extract<ChartDeclaration, { type: typeof chartT
 
 export interface RegisteredModel {
   /**
-   * The library's own `_INFO` object: label, description, inputs, outputs,
-   * derived quantities, applicability bounds and classifiers.
+   * The library's own `_INFO` object: name, label, description, inputs,
+   * outputs, derived quantities, applicability bounds and classifiers. Its
+   * `name` is the library's function name and the model's one name (ADR-0002
+   * decision 30): the share link will carry it as written, the route spells
+   * it with hyphens, and the declaration's own file and constant spell it in
+   * camelCase.
    * `core/applicability.ts` owns every read of the applicability bounds
    * (ADR-0002 decision 4).
    */
@@ -137,45 +172,45 @@ export interface RegisteredModel {
    */
   readonly standard?: Standard;
   /**
-   * The library's model function, called positionally by the declaration
-   * itself (ADR-0002 decision 34):
+   * The library's model function, called by the declaration itself with the
+   * library's one params object, every quantity written by name (ADR-0002
+   * decision 34):
    *
    * ```ts
-   * run: (values) => pmv_ppd_iso(...values(q.tdb, q.tr, q.vr, q.rh, q.met, q.clo), 0, ISO_EDITION, { … })
+   * run: (values) =>
+   *   pmv_ppd_iso({ tdb: values.tdb, tr: values.tr, vr: values.vr, rh: values.rh, met: values.met, clo: values.clo, … })
    * ```
    *
-   * Two conventions the compiler cannot enforce. The spread goes **first**:
-   * most misplacements fail to compile because the tail's types differ, but
-   * not all of them — `pmv_ppd_iso(0, ...values(…))` type-checks, `wme` being
-   * a number too — and the position test cannot see where the spread sits.
-   * And the rounding switch is written **here**, turned off, under whatever
-   * name the function gives it — `round_output` in kwargs, `round` in options,
-   * a positional boolean (ADR-0002 decision 35; the declaration says why at
-   * the call).
+   * The compiler checks every key against the library's params: a misspelt
+   * key is an excess property, a forgotten quantity a missing required one.
+   * What it cannot see is two quantities in each other's place
+   * (`tdb: values.tr`), and a registry-wide test checks that every quantity key
+   * the library receives carries that quantity's own number.
    *
-   * The order of the quantities is proved against the library function's own
-   * parameter names by a registry-wide test, which is the only thing standing
-   * between a declaration and two numbers in each other's place.
+   * A model with {@link options} reads them through the second reader, each
+   * written inline under its library key:
+   * `airspeed_control: options(airSpeedControl)`. Never through a spread: a
+   * spread into an object literal is exempt from the excess-property check,
+   * so a misspelt optional key inside one compiles silently (verified
+   * 2026-09-25 by a compiler probe), and the option-key test only proves the
+   * key and the property agree. A model without options leaves the reader
+   * unnamed (ADR-0002 decision 36).
    *
    * The contract: the model's own result object, carrying the model's numbers
-   * unrounded (ADR-0002 decision 18), with the library function's own rounding
-   * switch written off in the call under whatever name that function gives it.
-   * A registry-wide test samples the dynamic chart's output and fails when the
-   * switch was left on. Called by `state/compute` and by the chart spec
-   * builders.
+   * unrounded (ADR-0002 decision 18), with the library's `round_output`
+   * written off in the call (decision 35). A registry-wide test samples the
+   * dynamic chart's output and fails when it was left on. Called by
+   * `state/compute` and by the chart spec builders.
    */
-  readonly run: (values: ValuesReader) => ModelResult;
-  /**
-   * The library's function name for this model, as the library spells it
-   * (`"pmv_ppd_iso"`). The model's one name (ADR-0002 decision 30): the share
-   * link will carry it as written, the route spells it with hyphens, and the
-   * declaration's own file and constant spell it in camelCase. Proved against
-   * the package's exports by a registry-wide test, so a typo or an upstream
-   * rename fails a test rather than drifting.
-   */
-  readonly name: string;
+  readonly run: (values: Values, options: OptionsReader) => ModelResult;
   /** Panel order and SI default values. */
   readonly inputs: readonly { readonly quantity: Quantity; readonly value: number }[];
+  /**
+   * The model's options, in panel order; empty for a model with none. Every
+   * one is shown as a checkbox under the quantity rows, and a slot holds its
+   * value beside the quantities' (ADR-0002 decision 36).
+   */
+  readonly options: readonly OptionSpec[];
   /** `true`: the library takes `vr`, derived as `v_relative(v, met)` from the entered `v`. */
   readonly relativeAirSpeed: boolean;
   /**

@@ -10,7 +10,12 @@ import type { InputSlot } from "./session.svelte";
 
 /** Everything a slot holds, as plain data a comparison can be made against. */
 export function shapeOf(slot: InputSlot) {
-  return { values: new Map(slot.values), humidity: slot.humidity, temperature: slot.temperature };
+  return {
+    values: new Map(slot.values),
+    humidity: slot.humidity,
+    temperature: slot.temperature,
+    options: new Map(slot.options),
+  };
 }
 
 /** A value the result table would show, read through the app's own accessor. */

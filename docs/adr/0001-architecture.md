@@ -101,6 +101,8 @@ Convention: the library's **model functions** (the `jsthermalcomfort` root, `jst
 > **Rule 1 amended by [ADR-0002](0002-library-interface-model-info.md) decision 2**: quantities are defined in the app's `core/quantities.ts`, keyed by the library's `ModelInfo` keys; dot access and `===` are unchanged.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 34** (2026-09-22): rule 2 names `core/libraryInputs.ts` as a reader of `Quantity.key` because it assembled the library's keyed init object; it no longer builds one — a declaration's `run` reads values by `Quantity` and calls the model function positionally, so no quantity key is written on the way in, and §4.1.3's one-line `Object.fromEntries` bullet goes with the init object. The key survives in the app only on the way out, reading a value off the result (`resultValue`), and in `shareLink.ts`; the two boundaries themselves are unchanged.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36** (2026-09-23): rule 2's boundary strings gain an option's `key`, written in its model's declaration: the library kwarg the option feeds, proved by a registry-wide test, and the option's name on the share link. Nothing looks an option up by it, so rule 1 is unchanged.
 
 
 1. **One definition, referenced everywhere.** Quantities, models, workspaces, chart types, unit systems and so on are objects; code references them with dot access (`io.quantities.tdb`, `workspace.explore`), not string keys and not `Record<string, …>` dictionaries. `Quantity.kind` is a string union type exported by the library; the app treats it as a typed discriminant (`core/units.ts` looks up the display-unit table by kind, and `satisfies Record<QuantityKind, …>` guarantees exhaustiveness), which does not count as a string key.
@@ -161,6 +163,8 @@ io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI", edition: "7730-2005" })  
 
 #### 4.1.4 Chart geometry (`jsthermalcomfort/charts`, existing)
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 24** (2026-09-25): the solver is `pmv_psychrometric_zone` in `src/temporary-library/`, taking one params object with `pmv_limit` required; the reproduced-defect switch the signature below names is deleted, measured to change no zone a published chart draws.
+
 `psychrometricZone({ model, tr, vr, met, clo, pmvLimit, rhStep, saturationStep, epsilon, correctKnownDefects, trFollowsDb })` returns the `polygon` vertices;
 `model` is the PMV model function itself (`pmv_ppd_iso` / `pmv_ppd_ashrae`), required and with no default: a model function already carries the formulation it applies, so the zone's geometry cannot disagree with the model whose comfort region it claims to draw. It replaces the `standard: 'ISO' | 'ASHRAE'` string that defaulted to `'ASHRAE'` (2026-09-05). `adaptiveAshraeZone()` returns the upper and lower boundaries for each acceptability level. All SI, unclipped, uncoloured. `epsilon` is the PMV residual, not a temperature tolerance. `trFollowsDb` (new in Phase 1) makes `tr = db` follow along the x axis while solving; this is the geometry of the operative-mode psychrometric chart, and it is exactly how the old tool's psychtop chart was computed. Without it, the compliance zone in operative mode is wrong.
 
@@ -218,6 +222,8 @@ export function displayUnitFor(quantity: Quantity, unitSystem: UnitSystem): Disp
 ### 4.3 Model declaration (app side, one object literal, one file)
 
 > **Shape superseded by [ADR-0002](0002-library-interface-model-info.md) decisions 3 and 6**: `info` replaces `model`, `standard` replaces `edition`, `run` is the positional call, `inputs` / `axisRanges` are named-field object arrays, `defineModel` is gone. The rules paragraph and the result-table rules still apply.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36** (2026-09-23): `run` is `(values, options) => result`, reading the model's options through a second reader; an option is a declared `OptionSpec` object `{ key, label, default }`, `RegisteredModel.options` is required (empty for a model with none), and `InputSlot.options` in §4.5 holds a boolean per option, so there is no `OptionValue`.
 
 
 ```ts
@@ -254,11 +260,15 @@ Result table (`table`):
 - The columns are fixed in three sections: **Input** (slot name, coloured with the slot colour, always the first column) → **Compliance** (appears only when the model's `Measure` carries `category` or `intervals`; shows the label the value falls into: a `category` is drawn with a swatch coloured by its **position** in the model's scale, from the app's one band palette `core/bandPalette.ts`; an `intervals` entry is coloured pass / fail by `satisfied`) → **the library outputs listed in the model file's `table`**, in declaration order, values formatted per §4.6 and following the unit system.
 - `table` is required; outputs not listed are not shown and are not offered in Explore's output selection.
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 8** (2026-09-25): a Compliance entry is prefixed by its quantity's `Quantity.label`, `Thermal sensation: Neutral`, `ISO 7730 category: B`, each with its swatch, for every model; the label is never written in the table component.
+
 ### 4.4 Chart types (closed set, v1)
 
 > **Axis rules superseded by [ADR-0002](0002-library-interface-model-info.md) decision 5** (declared, else applicability, else error); the zone geometry it calls is in the app per decision 9. Hover and legend rules unchanged.
 >
 > **The dynamic chart's surface is amended by ADR-0002 decisions 27, 28 and 31** (2026-09-21): a 51×51 grid of the numeric output; Standard draws the comfort zone, Explore the bands.
+>
+> **The psychrometric chart's compliance zone is amended by [ADR-0002](0002-library-interface-model-info.md) decision 31** (2026-09-25): it draws the declaration's `zones`, nested Comfort zones largest first in one hue (categories A, B and C for ISO 7730), each at a limit read off a library object.
 
 
 | Type | Definition |
@@ -310,6 +320,8 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 29 and 31** (2026-09-21): `ChartState.output` and `bandsByOutput` go (one `output` per dynamic chart, bands saved per model and chart); the "Explore thresholds" rule below is replaced (a Band list is the library's `ClassifierBins` plus colours: contiguous edges, the classifier's own inclusivity, no gaps); `Outputs` carries no `stamp`, and `toLibraryInputs` feeds a synchronous call, not a Worker.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 32–34** (2026-09-22): "hard range" in the "Switching models" rule below is the model's Applicability as the pre-call gate reads it, and the switch is rehearsed on a copy of the slot (convert entry mode, seed missing quantities from the new model's defaults, then ask the gate), so "No, stay here" leaves the slot untouched; a model reached by URL gets no dialog; slot 0 only until Compare (decision 32). While an entry is out of range the gate keeps the last valid inputs of the current model and derives everything else, so unit system, chart type and axes still take effect and a model change drops what was kept (decision 33). `toLibraryInputs` no longer builds a keyed record: `run` reads values by `Quantity` (decision 34).
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 36** (2026-09-23): `InputSlot.options` below is `SvelteMap<OptionSpec, boolean>` (there is no `OptionValue`) and PMV (ASHRAE 55) is the first model to declare one; across a model switch it is a superset bag like `values`, seeded at the new model's defaults, and the dialog never lists an option.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session

@@ -39,5 +39,8 @@ export const copy = {
   chart: "Chart",
   xAxis: "X axis",
   yAxis: "Y axis",
-  comfortZone: (pmvLimit: number): string => `Comfort zone (|PMV| ≤ ${pmvLimit})`,
+  comfortZone: "Comfort zone",
+  categoryZone: (category: string): string => `Category ${category}`,
+  zoneLegend: (zone: { label: string; limit: number; inclusive: boolean }): string =>
+    `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${zone.limit})`,
 } as const;

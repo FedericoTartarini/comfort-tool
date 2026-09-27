@@ -4,7 +4,11 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { modelBySegment, modelsOf, toRouteSegment } from "./modelsOf";
 
-const fixtureWithoutStandard = { ...pmvPpdIso, standard: undefined, name: "fixture_no_standard" };
+const fixtureWithoutStandard = {
+  ...pmvPpdIso,
+  standard: undefined,
+  info: { ...pmvPpdIso.info, name: "fixture_no_standard" },
+};
 
 describe("toRouteSegment", () => {
   it("spells the library's underscores as hyphens", () => {
@@ -29,7 +33,7 @@ describe("modelsOf", () => {
 describe("modelBySegment", () => {
   it("returns the model the standard and the route segment name", () => {
     expect(
-      modelBySegment(Standard.iso_7730_2005, toRouteSegment(pmvPpdIso.name), [pmvPpdIso, fixtureWithoutStandard]),
+      modelBySegment(Standard.iso_7730_2005, toRouteSegment(pmvPpdIso.info.name), [pmvPpdIso, fixtureWithoutStandard]),
     ).toBe(pmvPpdIso);
   });
 
@@ -41,13 +45,13 @@ describe("modelBySegment", () => {
 
   it("returns nothing for a segment of another standard", () => {
     expect(
-      modelBySegment(Standard.ashrae_55_2023, toRouteSegment(pmvPpdIso.name), [pmvPpdIso, fixtureWithoutStandard]),
+      modelBySegment(Standard.ashrae_55_2023, toRouteSegment(pmvPpdIso.info.name), [pmvPpdIso, fixtureWithoutStandard]),
     ).toBeUndefined();
   });
 
   it("never returns a standard-less model, whatever the URL names", () => {
     expect(
-      modelBySegment(undefined, toRouteSegment(fixtureWithoutStandard.name), [pmvPpdIso, fixtureWithoutStandard]),
+      modelBySegment(undefined, toRouteSegment(fixtureWithoutStandard.info.name), [pmvPpdIso, fixtureWithoutStandard]),
     ).toBeUndefined();
   });
 
@@ -55,7 +59,7 @@ describe("modelBySegment", () => {
     const withStandard = registeredModels.filter((model) => model.standard !== undefined);
     expect(withStandard.length).toBeGreaterThan(0);
     for (const model of withStandard) {
-      expect(modelBySegment(model.standard, toRouteSegment(model.name))).toBe(model);
+      expect(modelBySegment(model.standard, toRouteSegment(model.info.name))).toBe(model);
     }
   });
 });

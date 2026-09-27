@@ -99,6 +99,18 @@
     {/if}
   {/each}
 
+  <!-- Always shown and always live: whether an option applies at the entered values is the library's to say. -->
+  {#each model.options as option (option)}
+    <label>
+      <input
+        type="checkbox"
+        checked={inputSlot.options.get(option)}
+        onchange={(event) => inputSlot.options.set(option, event.currentTarget.checked)}
+      />
+      {option.label}
+    </label>
+  {/each}
+
   {#if hints.length > 0}
     <Stack gap="1">
       <span class="hint">{copy.applicabilityHint}</span>

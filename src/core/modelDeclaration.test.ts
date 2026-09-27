@@ -1,11 +1,11 @@
 /**
- * What a declaration says about itself: the library function it names and the
- * standard edition it picks, checked against the package for every registered
- * model, and the axis range a chart reads off it. What its `run` does is the
+ * What a declaration says about itself: the name its model info gives it,
+ * unique across the registry; the standard edition it picks, checked against
+ * that model info for every registered model; and the axis range a chart
+ * reads off it. What its `run` does is the
  * sibling `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
-import * as library from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { axisRangeFor, requireAxisRange } from "./modelDeclaration";
@@ -13,29 +13,9 @@ import { quantities } from "./quantities";
 
 const q = quantities;
 
-/**
- * The package's exports, by name. Reading them needs a namespace import, which
- * defeats tree-shaking, so no runtime code may do this (ADR-0002 decision 30,
- * "No runtime reverse lookup") — a test is not bundled, which is why the one
- * check that a name is really the library's lives here.
- */
-const libraryExports: Record<string, unknown> = library;
-
 describe("name", () => {
-  it("is a function the package exports, for every registered model", () => {
-    for (const model of registeredModels) {
-      expect(typeof libraryExports[model.name], model.name).toBe("function");
-    }
-  });
-
-  it("names the very model info the declaration carries, for every registered model", () => {
-    for (const model of registeredModels) {
-      expect(libraryExports[`${model.name.toUpperCase()}_INFO`], model.name).toBe(model.info);
-    }
-  });
-
   it("is unique across the registry, so a share link can name a model without naming its standard", () => {
-    const names = registeredModels.map((model) => model.name);
+    const names = registeredModels.map((model) => model.info.name);
     expect(new Set(names).size, names.join(", ")).toBe(names.length);
   });
 });

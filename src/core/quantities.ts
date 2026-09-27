@@ -50,6 +50,7 @@ export const quantities = {
   pmv: { key: "pmv", kind: "thermalSensation", label: "Predicted Mean Vote" },
   ppd: { key: "ppd", kind: "percentage", label: "Predicted Percentage of Dissatisfied" },
   tsv: { key: "tsv", kind: "category", label: "Thermal sensation" },
+  category: { key: "category", kind: "category", label: "ISO 7730 category" },
   hi: { key: "hi", kind: "temperature", label: "Heat index" },
   stress_category: { key: "stress_category", kind: "category", label: "Heat stress category" },
 } as const satisfies Record<string, Quantity>;

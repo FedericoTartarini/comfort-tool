@@ -32,6 +32,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-22 — position, close of day: Phase 4b's two app-side prerequisites are done.** The model-switch feature landed on `rewrite/v1` as four commits (`.scratch/model-switch/`: 01 `9c67d63` a model set by address gets a slot it can run on, 02 `0a35e39` the select requests a model rather than navigating to it, 03 `6e6c36d` a switch that breaks Applicability asks first, 04 `2ffddfe` the navigation links ask too), and the gate's side as `6ad4caa` (decision 33; ticket 08 in `.scratch/numeric-scan-and-model-name/`). The four scripts are green, 167 tests. **ADR-0002 decision 32 is revised** with what the feature found (ticket 05): the decision's "the check runs in the model select's handler" was written before the navigation links had a handler, and the rule is really "every in-app switch asks, every address arrival does not" — a link the browser opens elsewhere, by a modifier click, the middle button or the context menu, is an address arrival. Following from that, `navigateTo` now pushes and a new `redirectTo` replaces, used only by the unknown-address fallback, so back returns to the previous model however the person switched. The rehearsal is `core/modelSwitch.ts`, a `core/` file ADR-0001 §5's tree does not list, recorded in the revision as decision 6 recorded `core/applicability.ts`; the dialog is at `ui/inputs/` rather than the reserved `ui/dialogs/`, decided with the project lead rather than resolved by moving the file. The whole exchange was walked in the running app against a temporary second registered model, since reverted — both ways of switching, yes and no, Escape and the close button, SI and IP, mouse and keyboard, a link in a new tab, a typed address, and the back button into a model an entered value breaks, which is the path that needed decision 33: it shows an **empty result**, not the previous model's numbers under the new model's name. Console clean throughout. Reported and not fixed: `src/state/session.svelte.test.ts` is 411 lines, past ADR §6's 100–400 band, and the out-of-range caption still says "Showing the last valid result" on a model that has none. **Phase 4b now waits only on `PMV_PPD_ASHRAE_INFO` and `ADAPTIVE_ASHRAE_INFO` upstream.**
 
+> **2026-09-26 — position: the app is on the library's v2 shape.** The library v2 migration pass landed on `rewrite/v1` as five commits (`.scratch/library-v2-migration/`): 01 `e47b86c` `run` calls every model with one params object, 02 `578cd54` a model's name is read from its model info, 03 `4812b99` and its follow-up `b64c21b` the zone solver takes one params object with `pmv_limit` required and the reproduced-defect switch deleted, 04 `b37eb5f` the PMV (ISO 7730) page draws categories A, B and C and prints the room's category. It consumes `jsthermalcomfort` on `feat/v2-typescript-setup` through `cee6893`, the library's v1-models parity tickets 01–12: one params object on every v1 model, `ModelInfo.name`, `warnings` rows on all five models, `PMV_COMPLIANCE_INTERVAL_ASHRAE`, `utci`'s `round_output`, and `pmv_ppd_iso`'s `category` with `PMV_CATEGORY_BINS_ISO`. Against the rebuilt package before the pass, `npm run check` reported 11 errors and 62 tests failed; after it the four scripts are green, and the test count went 179 → 176 → 174 → 172 → 180 across the four tickets, down by exactly the deleted tests and up by ticket 04's eight. ADR-0002 decisions 8, 24, 30, 31, 34, 35 and 36 carry dated revision notes; the library-boundary spec's `ModelInfo` and model-function gap tables are marked row by row, every row closed with its library commit but two: the classifier pairing stays in the app, and the psychrometric inverses still round; one library request, that `ClassifierBins` document its final edge as a sentinel, is recorded in the library's queue. **Phase 4b resumes at its ticket 03.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -48,7 +50,7 @@ What is unmaintainable is `src/`, not `package.json`.
 | Library branch | The fork's `typescript` (`for-new-CBE` and `Feature/export-model-metadata` were both branched from `main` before the TS rewrite and are abandoned) |
 | Library / app boundary (2026-09-03) | The test: "would pythermalcomfort ship it?" (ADR §3). Applicability limits → library `reference/`; steps, unit conversion, default values, option copy, route path segments, `ModelDefinition` → app. Library-side work is done in a separate chat using the standalone prompt below |
 | Second round (2026-09-03) | Limits are done as source in the library, not mirror; standard membership goes into the library as `reference.standards` + `model.standard`, the app only adds path segments; closed sets become `as const` object collections, not enum classes; operative mode uses the `t_o` quantity + `psychrometricZone.trFollowsDb`; quantity names come only from `Quantity.label` |
-| Psychrometric chart geometry | `correctKnownDefects: false` — reproduce the chart already published by the old CBE tool |
+| Psychrometric chart geometry | Reproduce the chart already published by the old CBE tool; no defect is reproduced (ADR-0002 decision 24 as revised 2026-09-25) |
 | Scope review (2026-09-04, after Phase 3) | PMV (ASHRAE 55) joins v1 — it is the deployed tool's main screen and was missing from every list by oversight; input calculators become Phase 5b, narrowed to custom ensemble + dynamic predictive clothing + solar gain; the ES5 summary page is downgraded to a static notice; the site shell joins Phase 6; `suppressWarnings` goes into the library; chart axis ranges and the dynamic zone source move into the model declaration; field charts never snap on hover; local discomfort is deferred with its direction recorded (standalone models under the ASHRAE tab, not the legacy button panel) |
 | Visual design (2026-09-04) | It had no phase at all, and ADR §7.4 referred to a design mock-up no phase produced. Split in two: token and primitive groundwork in Phase 3.6, the design itself in a new Phase 5c after Compare / Explore settle the layout. The site shell moves from Phase 6 into 5c. Deferring is safe because ADR §2's utility-class ban keeps appearance out of business components |
 | Code quality (2026-09-04) | Two audit passes against `docs/code-quality-checklist.md` — full before the Phase 4 acceptance, narrow after it. Anything mechanically checkable becomes a lint rule with a probe. *Clean Code* / *Clean Architecture* are not acceptance criteria; the verified sources are Svelte Best practices, the TypeScript handbook's Do's and Don'ts, the Google TypeScript Style Guide, and DRY as Hunt & Thomas state it |
@@ -66,7 +68,7 @@ What is unmaintainable is `src/`, not `package.json`.
 | §4.1.3 Measure | `io.pmvPpdIso/pmvPpdAshrae/adaptiveAshrae/adaptiveEn` → `.toMeasures()` → `Measure{quantity,value,unit,category,intervals}` |
 | §4.1.2 Classification scale | `reference.{isoThermalSensation, ashraeThermalSensation, adaptiveAshraeOffsets, adaptiveEnOffsets, enCategoryPmvLimits}`, `IntervalScale.classify/labelFor` |
 | §4.1.1 Quantity | `io.quantities` — 12 quantities, with `key/kind/label/siUnit/ipUnit`. Units are just symbol strings, and that is enough: conversion belongs to the app |
-| **§4.7 boundary root-finding + §5 `zoneBoundary.ts`** | **`charts.psychrometricZone` (ported from the CBE original, `rhStep`/`saturationStep`/`epsilon`/`correctKnownDefects` configurable) + `bisect`/`secant`** |
+| **§4.7 boundary root-finding + §5 `zoneBoundary.ts`** | **`charts.psychrometricZone` (ported from the CBE original, `rhStep`/`saturationStep`/`epsilon` configurable) + `bisect`/`secant`** |
 | §4.4 Adaptive real rendering | `charts.adaptiveAshraeZone` / `adaptiveEnZone` |
 | Model metadata (partial) | `pmv_ppd_iso.{label,description,tsv}`, `pmv_ppd_ashrae.{label,description,tsv,compliance,COMPLIANCE_LIMIT}`, `adaptive_*.{label,description,offsets}` |
 | Raw material for input calculators | `clo_dynamic_ashrae` / `clo_dynamic_iso`, `v_relative`, `running_mean_outdoor_temperature`, `met_typical_tasks`, `clo_individual_garments` |
@@ -436,7 +438,7 @@ Done: npm run typecheck / lint / test / build pass; tests/baseline.test.ts uncha
    Plotly's built-in legend is turned off (`layout.showlegend = false`). When exporting an image, the same `legend` data
    generates a horizontal bottom Plotly legend, so screen and export stay consistent.
 4. `src/core/charts/psychrometricChart.ts`: calls `charts.psychrometricZone` with
-   `rhStep: 5`, `correctKnownDefects: false` (Decided: reproduce the old chart). The x-axis quantity is taken from
+   `rhStep: 5` (Decided: reproduce the old chart). The x-axis quantity is taken from
    `temperatureMode.axis`, the axis label is `Quantity.label`; operative mode passes `trFollowsDb: true`.
    **Do not write your own root finder**.
 5. `src/core/charts/dynamicChart.ts`: selectable x/y quantities, 100×100 grid.
@@ -753,10 +755,37 @@ switching asks, the navigation links included); the gate as `6ad4caa`. This phas
 
 ---
 
+## Between Phase 4b and Phase 5 · Review the whole codebase and its architecture (added 2026-09-22)
+
+**Why here and not on a calendar.** After Phase 4b three differently shaped declarations exist for the first time — ISO with no
+options, ASHRAE with `options`, Adaptive with locked axes — so the shape of `RegisteredModel` can be judged on three points
+instead of two. Compare then multiplies the slot state by three, after which `Session` and `InputSlot` are as good as
+frozen. And it is the last time `git diff main...HEAD` equals the whole rewrite: once `rewrite/v1` merges, a change-based
+review can no longer cover everything. **Not before Phase 4b's own close-out ticket has read the human half of the
+checklist against the phase's diff**; that ticket's structure findings are this review's input. Nothing here runs mid-phase.
+
+Four sessions, in this order, `/clear` between each:
+
+1. **Code — `/code-review main`.** The spec is ADR-0001 + ADR-0002 + this plan; the standards are `docs/code-quality-checklist.md`
+   + AGENTS.md. This is the first time the checklist is read across features rather than per feature diff, which is where
+   duplicated definitions, two names for one thing, and a rule kept in one feature and not another show up. Findings go to
+   `.scratch/review-after-4b/issues/`, one verifiable change per ticket, `/implement` each. A docs-versus-code disagreement is
+   not fixed in code: it becomes an ADR-0002 decision plus an ADR-0001 marker, as the model-switch close-out did.
+2. **Architecture — `/improve-codebase-architecture`**, only after item 1's tickets are done, so that smells are not reported
+   as structure. Scope given up front: the three declarations, `RegisteredModel`, Compare about to triple the slots. Pick
+   zero to two; more than two means a rule was worked around during 4b, which is a 4b question, not a refactor. Each pick is
+   an idea that enters the main flow at `/grill-with-docs`.
+3. **Vocabulary — `/domain-modeling` on `CONTEXT.md`, optional.** 4b brings `airspeed_control`, `t_running_mean`, the 80 % / 90 %
+   acceptability limits, and a second model called PMV with different bands; the question is whether any term is now doing
+   two jobs. Item 2's grilling usually pulls this in on its own; run it alone only for a term already felt to be fuzzy.
+4. **Compare's `/grill-with-docs`** takes items 1–3's output as known input.
+
+---
+
 ## Phase 5 · Compare / Explore / share and export
 
 **Goal**: close out the ADR §7 first-stage feature set.
-**Prerequisites**: Phase 4 passed.
+**Prerequisites**: Phase 4 passed, and the review between Phase 4b and Phase 5 above done.
 
 1. Compare with three slots + baseline: `ResultTable` has one row per slot, and the baseline determines what the difference highlighting is relative to;
    slot colours run through the input panel, the table and the marker points on the chart.
@@ -871,11 +900,11 @@ each = library port + one declaration file + one registry line) → Time-series 
 
 **Single entry points** (rewritten 2026-09-13, ADR-0002 decisions 2, 3, 12)
 - Everything comes from the `jsthermalcomfort` package root; there are no subpaths. The library's **model functions** are
-  imported only in `src/models/` (the declaration's positional `run`) and `src/workers/` (the actual call), enforced by
+  imported only in `src/models/` (the declaration's `run`) and `src/workers/` (the actual call), enforced by
   `no-restricted-imports` `importNames`; `_INFO`, `Standard`, `classifyFromBins` and the psychrometrics can be imported anywhere
 - `src/core/quantities.ts` is the single definition of quantities (`{ key, kind, label }`); `key` is the `_INFO` key
-- String ids appear in only two places: `Quantity.key` at the library boundary (`core/libraryInputs.ts` assembling `run`'s
-  `Record<key, number>`, `core/applicability.ts` indexing `_INFO`, `core/standard.ts` reading `Standard`'s keys), and `src/core/shareLink.ts`
+- String ids appear in only two places: `Quantity.key` at the library boundary (a declaration's `run` naming each params
+  key, which the compiler checks; `core/applicability.ts` indexing `_INFO`, `core/standard.ts` reading `Standard`'s keys), and `src/core/shareLink.ts`
 - Unit conversion only in `src/core/units.ts`, with the formulas written in the app (the ADR §3 exception); the canonical stored state is always SI
 - Number formatting only in `src/core/numberFormat.ts`
 

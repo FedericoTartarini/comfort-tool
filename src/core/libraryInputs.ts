@@ -5,9 +5,10 @@ import {
   hasHumidityGroup,
   hasTemperatureGroup,
   type ModelResult,
+  type OptionSpec,
+  type OptionsReader,
   type RegisteredModel,
-  type ValuesOf,
-  type ValuesReader,
+  type Values,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
@@ -19,6 +20,8 @@ export interface SlotInputs {
   readonly values: ReadonlyMap<Quantity, number>;
   readonly humidity: { readonly mode: HumidityMode; readonly value: number };
   readonly temperature: { readonly mode: TemperatureMode };
+  /** Every option any model put here, by identity: a superset bag like `values` (ADR-0002 decision 36). */
+  readonly options: ReadonlyMap<OptionSpec, boolean>;
 }
 
 const q = quantities;
@@ -76,7 +79,7 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
 }
 
 /**
- * The reader `run` takes for `slot`: its resolved quantities, wrapped by
+ * The values `run` reads for `slot`: its resolved quantities, wrapped by
  * {@link valuesReader}. The declaration's own `run` hardcodes
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers
@@ -85,23 +88,40 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
  * breaks it while the entered `v` does not) come back on the result's
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
-export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): ValuesReader {
+export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Values {
   return valuesReader(resolveQuantities(slot, model));
 }
 
 /**
- * `values` as the reader a declaration's `run` asks: one number per
- * `Quantity`, in the order asked, and a throw naming the quantity the map
- * does not carry (ADR-0002 decision 34). Never a silent `undefined` — a
- * missing input that reaches the library unnoticed is the failure this shape
- * exists to rule out.
+ * `values` as the object a declaration's `run` reads: one getter per
+ * `Quantity`, under its key, and a throw naming the quantity the map does not
+ * carry (ADR-0002 decision 34). Never a silent `undefined` — a missing input
+ * that reaches the library unnoticed is the failure this shape exists to rule
+ * out.
  */
-export function valuesReader(values: ReadonlyMap<Quantity, number>): ValuesReader {
-  // `map` can only produce an array, so the tuple the caller's arity was
-  // checked against is restored by hand — sound because `map` keeps the
-  // length it was given, one number per quantity asked for.
-  return <const T extends readonly Quantity[]>(...quantities: T) =>
-    quantities.map((quantity) => requireValue(values, quantity)) as ValuesOf<T>;
+export function valuesReader(values: ReadonlyMap<Quantity, number>): Values {
+  const object = {};
+  for (const [key, quantity] of Object.entries(quantities)) {
+    Object.defineProperty(object, key, { enumerable: true, get: () => requireValue(values, quantity) });
+  }
+  // `defineProperty` cannot tell the compiler what it added; the loop above
+  // defines exactly the table's keys, which is what `Values` promises.
+  return object as Values;
+}
+
+/**
+ * `options` as the reader a declaration's `run` asks: the boolean the slot
+ * holds for the option, and a throw naming an option the map does not carry,
+ * for the reason {@link valuesReader} gives (ADR-0002 decision 36).
+ */
+export function optionsReader(options: ReadonlyMap<OptionSpec, boolean>): OptionsReader {
+  return (option) => {
+    const value = options.get(option);
+    if (value === undefined) {
+      throw new Error(`Slot has no value for ${option.label}`);
+    }
+    return value;
+  };
 }
 
 /**
@@ -116,10 +136,16 @@ export function resultValue(result: ModelResult, quantity: Quantity): number | s
 
 /**
  * The applicability rows the library says the call broke, off the result's
- * `warnings` (ADR-0002 decision 23). Empty for a result that carries none.
+ * `warnings` (ADR-0002 decision 23). Every v1 model returns them, so a result
+ * without them is a declaration bug, and it throws naming the model rather
+ * than reading as a run that broke nothing.
  */
-export function resultWarnings(result: ModelResult): readonly ApplicabilityWarning[] {
-  return (result as { warnings?: readonly ApplicabilityWarning[] }).warnings ?? [];
+export function resultWarnings(model: RegisteredModel, result: ModelResult): readonly ApplicabilityWarning[] {
+  const warnings = (result as { warnings?: readonly ApplicabilityWarning[] }).warnings;
+  if (!warnings) {
+    throw new Error(`${model.info.label} returned no applicability rows`);
+  }
+  return warnings;
 }
 
 /**
@@ -174,7 +200,7 @@ export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quant
       values.set(quantity, value);
     }
   }
-  return { values, humidity, temperature: slot.temperature };
+  return { values, humidity, temperature: slot.temperature, options: slot.options };
 }
 
 /**
@@ -205,5 +231,5 @@ export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode): Sl
     values.set(q.tr, operative);
     values.delete(q.operative_tmp);
   }
-  return { values, humidity: slot.humidity, temperature: { mode } };
+  return { values, humidity: slot.humidity, temperature: { mode }, options: slot.options };
 }

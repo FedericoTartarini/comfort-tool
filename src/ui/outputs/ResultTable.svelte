@@ -86,7 +86,7 @@
             {#each classified as entry (entry.quantity)}
               <span class="band">
                 <span class="swatch" style:background-color={entry.color}></span>
-                {entry.category}
+                {entry.quantity.label}: {entry.category}
               </span>
             {/each}
             {#each caveats as violation (violation)}

@@ -17,7 +17,7 @@ The library's function name for a model (`pmv_ppd_iso`). Everything the app call
 _Avoid_: id, slug, path segment
 
 **Model info**:
-The library's published metadata for one model (`<MODEL>_INFO`): label, description, and per-quantity unit, applicability and classifier.
+The library's published metadata for one model (`<MODEL>_INFO`): the model's name, label, description, and per-quantity unit, applicability and classifier.
 _Avoid_: schema, metadata object, model docs
 
 **Applicability**:
@@ -43,6 +43,10 @@ _Avoid_: input mode, representation group
 **Preset**:
 A named reference value the library publishes for a quantity (a typical task for metabolic rate, a typical ensemble for clothing), offered beside free entry. Choosing one enters its number; the number is the truth and nothing remembers the preset.
 _Avoid_: default, option, template
+
+**Option**:
+A switch a model takes beside its quantities, carrying no unit and never on a chart. Declared by the model, entered in the slot.
+_Avoid_: setting, flag, parameter
 
 **Slot**:
 One set of entered inputs. Compare holds three.

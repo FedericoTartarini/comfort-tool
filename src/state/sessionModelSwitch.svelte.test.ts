@@ -30,9 +30,9 @@ const q = quantities;
 function withBounds(bounds: Readonly<Record<string, Bound>>): RegisteredModel {
   return {
     ...pmvPpdIso,
-    name: `fixture_bounds_${Object.keys(bounds).join("_")}`,
     info: {
       ...pmvPpdIso.info,
+      name: `fixture_bounds_${Object.keys(bounds).join("_")}`,
       inputs: Object.fromEntries(
         Object.entries(pmvPpdIso.info.inputs).map(([key, variable]) => [
           key,

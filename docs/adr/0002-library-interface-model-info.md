@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C; decision 35 revised 2026-09-26 at that pass's close-out, when `utci`'s `round_output` closed its upstream gap, and decision 3 the same day to point at decisions 30 and 34's notes
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -54,6 +54,9 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    **Revised 2026-09-21:** `pathSegment` is replaced by `name`, the library's function name (decision 30).
    **Revised 2026-09-22:** `run` no longer takes `Record<key, number>`. It stays the positional call written in
    the declaration file, and reads its values by `Quantity` (decision 34).
+   **Revised 2026-09-26 (pointing at decisions 30 and 34's notes of 2026-09-25):** `run` is no longer a positional
+   call: it passes the model one params object, each key written by name (decision 34). `name` left the declaration
+   too; the model's name is read from `info.name` (decision 30).
 4. **Applicability is evaluated in the app.** `core/applicability.ts` reads `info.inputs` /
    `derived` / `outputs`: entered rows against their bound, `pa` computed as `rh / 100 × p_sat(tdb)`,
    `pmv` from the result. The entered `v` is gated through the derived `vr` and reported on the `v`
@@ -80,6 +83,11 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
 8. **Results** are the model's own return object; the table reads `result[key]` for each `table`
    entry; an output whose `VariableInfo` carries a `classifier` reports its category in that result
    field (`tsv` for PMV). There is no `Measure` / `Outcome` layer.
+   **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 04):** the Compliance column prints each classified
+   output as its quantity's `Quantity.label` and its category, `Thermal sensation: Neutral`, `ISO 7730 category: B`,
+   each with a swatch from that output's own classifier. It rendered the category alone, so the ISO page's new
+   `category` sat unlabelled beside `tsv`. One change to the table component, for every model (Heat Index reads
+   `Heat stress category: caution`); ADR-0001 §4.3's Compliance sentence is amended with it.
 9. **Comfort-zone geometry moves into the app** (`core/compute/`), ported from the fork as pure
    functions: `psychrometricZone` with `trFollowsDb` and the bisect / secant root finders, together
    with their existing oracle tests. It is chart *algorithm*, not a chart; it may be extracted
@@ -215,6 +223,17 @@ Taken 2026-09-17, in the library-boundary audit (spec `.scratch/library-boundary
     chart is meant to reproduce the deployed tool vertex for vertex, defects included (`correctKnownDefects` stays
     opt-in); exporting the library's internal `brent` is not asked. A member may stay for good if the lead keeps the
     library at pythermalcomfort parity: the seam is the point, not the move.
+    **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 03):** the library's convention is now one params
+    object, and the temporary library's public solver follows it: `pmv_psychrometric_zone` takes `{ tr, vr, met, clo,
+    pmv_function, pmv_limit, … }`, with `pmv_limit` required and no default, so every caller names its zone. The PMV
+    closure stays positional (decision 18). The root finders stay positional, as the library's internal `brent` is: they
+    are the solver's helpers, not models. "`correctKnownDefects` stays opt-in" is retired: the switch, its
+    saturation-line `0.5` and the secant's `[0, 100]` clamp are deleted, and the bisection fallback stays. Measured
+    2026-09-25 on every fixture zone at its own limit: no solved edge moved and the coolest root was 11.3 °C. The
+    fixture's ISO ±0.2 and ±0.7 rows, the only ones the saturation-line defect fitted, were the deployed ASHRAE page's
+    tracer run at EN limits, not a published chart, and were removed in ticket 01. Without the clamp the secant is
+    started from −50 and 50 °C but not confined to them, so a target the kernel reaches only outside that range comes
+    back as a root rather than as an unsolved row.
 25. **`_INFO` carries its standards** (upstream, `.scratch/library-boundary/issues/06`). `ModelInfo` gains
     `standards: readonly Standard[]`: every edition the function accepts, the function's default first; the ASHRAE
     functions get a one-element list. A standard is a property a model declares and several models may share, defined
@@ -302,6 +321,11 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     bundle is tree-shaken (tests are not bundled, so the drift test may); and an `id` the app invents. `ModelInfo`
     carrying its own name is recorded as an upstream gap, and the field is deleted when it does. `pmvIso` is renamed
     `pmvPpdIso`, and Phase 4's file is `heatIndexRothfusz.ts`.
+    **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 02):** `ModelInfo` carries the model's name (library
+    `af52abe`), so the declaration's `name` is deleted and every reader takes `model.info.name`: the route segment, the
+    lookup by segment, and the share link when it lands. The two halves of the name test that proved it against the
+    package's exports are deleted; the library's model-metadata test proves both for every model info. Uniqueness
+    across the registry stays. The rejected runtime reverse lookup is moot: nothing is looked up.
 31. **A Band list is the library's `ClassifierBins` plus colours, and the workspace decides the colouring.** Revises
     decision 7 and ADR-0001 §4.5's Explore-thresholds rule. The list keeps the library's shape, contiguous `edges`,
     `labels`, and the `right` flag of the classifier it started from, and adds a colour per band, so the default is a
@@ -324,6 +348,18 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     saved per (model, chart). Sequencing: what fixes the declaration's shape (decisions 27, 28, 30) lands before Phase 4,
     and the Standard page keeps drawing the classifier's bands until Explore exists in Phase 5, when the bands move there
     and Standard switches to the comfort zone, so no rendering code is ever without a caller.
+    **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 04):** the comfort limit is no longer an app
+    constant. The psychrometric declaration lists its `zones`, each `{ label, limit, inclusive }`, built by
+    `core/comfortZones` from a library object: `categoryZones(PMV_CATEGORY_BINS_ISO)` gives ISO 7730's categories A, B
+    and C, one zone per bin below the sentinel edge, and Phase 4b's ASHRAE declaration will write
+    `intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)`. The Standard page draws the declaration's zones,
+    nested, largest first, in one hue whose opacity rises inwards. A zone's inclusivity follows its source as
+    pythermalcomfort reads it: a classifier's `right`, and strict at both ends for the compliance interval, so the limit
+    above reads |PMV| < 0.5 and the deployed tool's `≤` is not ported. The "deleted when an `_INFO` carries the
+    interval" trigger is closed by the library's `PMV_COMPLIANCE_INTERVAL_ASHRAE` (`fcd877e`) and
+    `PMV_CATEGORY_BINS_ISO` (`ab8f6d5`), and the temporary library holds no limit (decision 24's note of the same
+    date). The dynamic chart is unchanged: the category bins cut |PMV|, not the signed `pmv` it scans, so they cannot
+    be its bands.
 
 Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan close-out left behind (08–11 in
 `.scratch/numeric-scan-and-model-name/issues/`), which widened to switching models and to the shape of `run`:
@@ -424,6 +460,19 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     `pmv_ppd_iso({ tdb, tr, … }, options)`, the faithful translation of pythermalcomfort's keyword call, recorded for
     the TypeScript port. When it lands a declaration writes `tdb: …` by hand, the names become the compiler's to
     check, and the position test is deleted.
+    **Revised 2026-09-23:** `run` takes a second reader, for the model's options (decision 36).
+    **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 01):** the object parameter landed with the library's
+    v1 models (through `ae656a7`). `run` is `(values, options) => result`, where `values` is an object typed off the
+    quantity table, `{ readonly [K in keyof typeof quantities]: number }`, whose getters throw naming a quantity the
+    slot does not hold. The declaration writes the library's params object, each quantity by name, then the app's fixed
+    policy: `wme: 0`, `standard`, `limit_inputs: false`, `round_output: false`, and no `units` (the library's default is
+    SI, decision 1). The names are the compiler's: a misspelt key is an excess property and a forgotten quantity a
+    missing required one, each pinned by a `@ts-expect-error`. The position test and the source-parsing parameter-name
+    reader are deleted, and with them the spread-first convention and the switch written under whatever name the
+    function gives it (it is `round_output` in every declaration). What the compiler cannot see, two quantities in each
+    other's place, is caught by a registry-wide test on decision 36's recording harness: every quantity key of the
+    params object the library received carries the number the values object gave for that quantity. Proven red by
+    swapping `tdb` and `tr` in the ISO declaration, which compiles.
 35. **An unrounded `run` is pinned by its own test.** Amends decision 27, which retired decision 17's rounding rule
     on the strength of the drift test. Measured in ticket 06: with Heat Index at the library's default rounding the
     whole suite stays green, because the probes bisect on whatever `run` returns and land on the rounding step, where
@@ -432,6 +481,41 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     registered model, by a test that samples the chart's axis and fails when no output carries more decimals than a
     rounded one would; proven red with a fixture whose `run` rounds. It will fail the day `utci` is registered:
     `utci` rounds to one decimal with no switch. That is recorded as an upstream gap, to close before Phase 6.
+    **Revised 2026-09-26 (`.scratch/library-v2-migration/`, ticket 05):** the upstream gap is closed: `utci` gained
+    `round_output` with the library's one params object (`41f1348`), so the day it is registered its declaration
+    writes `round_output: false` as every declaration does, and this test passes on it with no edit.
+36. **A model's options are declared objects, and `run` reads them through a second reader.** Revises decision 34
+    and ADR-0001 §4.3's options sentence and §4.5's `InputSlot.options`. An option is `{ key, label, default }`
+    (`OptionSpec`), declared in the model's own declaration file and referred to by identity, as a `Quantity` is:
+    `key` is what the share link will carry, `label` what the panel shows, `default` what a slot starts from.
+    `RegisteredModel.options` lists them, empty for a model with none, and every declaration says so. The slot holds
+    `options: Map<OptionSpec, boolean>` beside `values`. `run` is `(values, options) => result`, where
+    `options(spec)` answers the boolean the slot holds and throws for one it does not, as `values` does, so the
+    declaration writes it into the library's own kwargs: `{ airspeed_control: options(airSpeedControl), … }`. The
+    compiler checks the kwarg where the library types it: `pmv_ppd`'s `Pmv_ppdKwargs` types `airspeed_control` as a
+    boolean, pinned by a `@ts-expect-error` in the run tests. Checked 2026-09-23: `pmv_ppd_ashrae`'s published
+    declaration types its positional parameters `any` and its kwargs `{}`, so that check does not yet hold for the
+    function PMV (ASHRAE 55) will call. The option's `key` and the kwarg it feeds are spelled separately, so a
+    registry-wide test runs each option on and off with the library's functions wrapped to record their arguments,
+    and fails unless the one kwarg that changed is the option's `key`. The `key` is therefore a boundary string of
+    ADR-0001 §4.0 rule 2's kind, the library's name for the switch and the share link's, written in the declaration
+    beside the option rather than in a table; nothing in the app looks an option up by it. Booleans only: a kind field waits for a second kind of option. Across a
+    switch the map is a superset bag like `values`: the rehearsal seeds every option the new model declares and the
+    map lacks at its default, keeps everything else and removes nothing. An option has no range, so the gate never
+    reads one and the switch dialog never lists one. On screen, one checkbox per declared option under the quantity
+    rows, labelled from `label`, always shown and always live, since whether it applies at the entered values is
+    the library's to say. Rejected: a string-keyed record, `Record<string, OptionValue>`, as the old draft had it,
+    because the key would be a string the declaration, the panel and `run` each spell, with nothing checking they
+    agree, where an object is spelt once and passed around; and an option as a new `Quantity` kind, because
+    everything that reads a `Quantity` (the axis picker, the gate, the dialog's rows, the display-unit table, the
+    quantity table's drift test against `_INFO`) would have to learn to skip it, and it is not in any `_INFO`.
+    **Revised 2026-09-25 (decision 34's note of the same date):** an option is written inline under its library
+    key, `airspeed_control: options(airSpeedControl)`, never through a spread: a spread into an object literal is
+    exempt from the excess-property check, so a misspelt optional key inside one compiles silently (compiler probe,
+    2026-09-25). The `@ts-expect-error` now pins `pmv_ppd_ashrae`'s `PmvPpdAshraeParams`, which types
+    `airspeed_control` as a boolean, so the 2026-09-23 note that its declaration types its kwargs `{}` is retired.
+    `pmv_ppd` is off the library's public surface; the fixtures that called it call `pmv_ppd_ashrae` with
+    `suppress_warnings: true`.
 
 ## Consequences
 
