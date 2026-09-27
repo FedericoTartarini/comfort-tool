@@ -74,11 +74,9 @@
     }
   }
 
-  const navigation = $derived(
-    standards
-      .map((entry) => ({ standard: entry, models: modelsOf(entry.id) }))
-      .filter((group) => group.models.length > 0),
-  );
+  const standardGroups = standards
+    .map((entry) => ({ standard: entry, models: modelsOf(entry.id) }))
+    .filter((group) => group.models.length > 0);
 
   const modelChoices = $derived(modelsOf(requireStandard(session.model)));
 
@@ -105,7 +103,7 @@
     <Grid columns="12rem minmax(0, 24rem) minmax(0, 1fr)" gap="6">
       <nav>
         <Stack gap="2">
-          {#each navigation as group (group.standard.id)}
+          {#each standardGroups as group (group.standard.id)}
             <strong>{group.standard.displayName}</strong>
             {#each group.models as model (model)}
               <!--

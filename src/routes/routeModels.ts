@@ -32,7 +32,7 @@ export function defaultModel(): RegisteredModel {
 }
 
 /** `model.standard`, or throws when the model has none (an Explore-only model has no Standard page). */
-export function requireStandard(model: RegisteredModel): NonNullable<RegisteredModel["standard"]> {
+export function requireStandard(model: RegisteredModel): Standard {
   const standard = model.standard;
   if (!standard) {
     throw new Error(`${model.info.label} has no standard and no Standard page`);

@@ -7,8 +7,8 @@ export { defaultModel, modelsOf, requireStandard };
 
 /**
  * The only place sv-router is used (ADR §2). Pages import what they need from
- * here — the route, a path, a way to move the address, a way to take a click
- * on a link — and never the router itself.
+ * here — the model the route names, a path, a way to move the address, a way
+ * to take a click on a link — and never the router itself.
  */
 const STANDARD_ROUTE = "/standard/:standard/:model";
 
@@ -19,7 +19,7 @@ const routes = {
   "*": () => import("./StandardPage.svelte"),
 } as const satisfies Routes;
 
-export const { p, navigate, route } = createRouter(routes);
+const { p, navigate, route } = createRouter(routes);
 export { Router } from "sv-router";
 
 function routeParams(model: RegisteredModel): { standard: string; model: string } {
@@ -81,6 +81,6 @@ export function interceptLinkClick(event: MouseEvent): boolean {
 
 /** The model the current URL names, or `undefined` when it names none. */
 export function modelFromRoute(): RegisteredModel | undefined {
-  const params: Partial<Record<"standard" | "model", string>> = route.params;
+  const params = route.params;
   return modelBySegment(params.standard, params.model);
 }
