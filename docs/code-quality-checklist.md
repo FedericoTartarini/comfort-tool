@@ -48,7 +48,7 @@ Read the diff once against each of these. They are judgement calls; none of them
 - No abbreviation formed by deleting letters. Library quantity keys (`tdb`, `vr`) are the standing exception — they are the
   library's vocabulary, not ours. *(Google TS Style Guide: "Do not use abbreviations that are ambiguous or unfamiliar to
   readers outside your project, and do not abbreviate by deleting letters within a word.")*
-- Functions start with a verb. No `engine` / `manager` / `helper` / `utils` as a file name.
+- Functions start with a verb, or are accessors named `…For`, `…Of` or `with…` (ADR-0002 decision 41). No `engine` / `manager` / `helper` / `utils` as a file name.
 - Quantity display names come from `Quantity.label` — never written in the app.
 
 **Single source of truth**

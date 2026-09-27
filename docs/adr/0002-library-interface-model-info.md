@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C; decision 35 revised 2026-09-26 at that pass's close-out, when `utci`'s `round_output` closed its upstream gap, and decision 3 the same day to point at decisions 30 and 34's notes; decision 37 added 2026-09-27 when the dynamic chart split into a scanned and a polygons shape, amending decision 27; decision 38 added the same day when the registry-wide tests were restated for a model with no scanned output and gained the silence test, amending decision 35; decision 24 revised the same day when the temporary library drew Adaptive's bands and its fence stopped barring model functions; decision 38 noted the same day at Phase 4b's close-out (the registry it describes); decisions 1, 9 and 13 noted the same day (`ADAPTIVE_ASHRAE_INFO` shipped without `offsets`); decision 39 added 2026-09-28 when the switch into operative entry took the model's standard (Phase 4b ticket 11); decision 37 amended and decision 39 noted the same day when the operative marker took the library's `t_o` (Phase 4b ticket 12); decisions 32 and 33 amended and decision 40 added the same day from the review after Phase 4b (`.scratch/review-after-4b/decisions.md`, Proposals 1 to 3)
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C; decision 35 revised 2026-09-26 at that pass's close-out, when `utci`'s `round_output` closed its upstream gap, and decision 3 the same day to point at decisions 30 and 34's notes; decision 37 added 2026-09-27 when the dynamic chart split into a scanned and a polygons shape, amending decision 27; decision 38 added the same day when the registry-wide tests were restated for a model with no scanned output and gained the silence test, amending decision 35; decision 24 revised the same day when the temporary library drew Adaptive's bands and its fence stopped barring model functions; decision 38 noted the same day at Phase 4b's close-out (the registry it describes); decisions 1, 9 and 13 noted the same day (`ADAPTIVE_ASHRAE_INFO` shipped without `offsets`); decision 39 added 2026-09-28 when the switch into operative entry took the model's standard (Phase 4b ticket 11); decision 37 amended and decision 39 noted the same day when the operative marker took the library's `t_o` (Phase 4b ticket 12); decisions 32 and 33 amended and decision 40 added the same day from the review after Phase 4b (`.scratch/review-after-4b/decisions.md`, Proposals 1 to 3); decisions 10, 31 and 37 noted, decision 29 amended, decisions 41 and 42 added and one Consequences bullet amended and one noted the same day from the same review (Proposals 12 to 23)
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -115,6 +115,11 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
     them: `Quantity.siUnit` / `ipUnit`, `unitFor`, `quantityFor`, `Outcome.warnings` / `inputs`,
     `Measure.unit`, `model.description`, `model.editions`, `enCategoryPmvLimits`. Warning copy is
     templated in the app from the `_INFO` numbers.
+    **Noted 2026-09-28 (review after Phase 4b, Proposal 12; `S100`).** `quantityFor` is not in that list any more: the
+    app defines its own lookup from an `_INFO` key to its `Quantity`, `quantityFor(key)` in `core/quantities.ts`, added
+    with the quantities table the day after this decision (`bf95aac`). It has three readers: `core/applicability.ts`
+    twice, mapping a row's key to its quantity, and `ResultTable.svelte`, finding a classified output's quantity. The
+    rest of the list stands.
 11. **Thin-wrapper rule.** A function is deleted only when both hold: it carries no app decision
     (no rule, invariant, error or derivation), and its removal scatters no rule and no lint boundary.
     Deleted: `defineModel`, `LibraryModel`, `limitFor` (absorbed by `core/applicability.ts`).
@@ -331,6 +336,11 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     model functions are importable only from `src/models/`. Reopened when a v1 model's 51×51 scan exceeds 300 ms; the
     choice then is between an abortable row-sliced scan on the main thread, which needs no clone boundary, and a Worker,
     and it is measured before it is made.
+    **Amended 2026-09-28 (review after Phase 4b, Proposal 16; `P026`).** v1 has no grid cache either. ADR-0001 §4.7's
+    cache key, model + output + non-axis parameters so that dragging an axis parameter does not recompute, is dropped
+    with the Worker it was written beside: every valid edit is a new snapshot of the slot and a full scan, `GRID²` runs
+    whichever quantity changed, which is the scan the 300 ms line above is measured on. A cache is reopened with the
+    rest of this decision, and measured before it is made.
 30. **Model name.** Revises decision 3: the declaration's `pathSegment` is replaced by `name`, the library's function
     name for the model (`"pmv_ppd_iso"`), written once. Everything the app calls a model follows it, in three mechanical
     forms: the share link carries the exact name, like a quantity key; the route segment is its kebab-case
@@ -381,6 +391,12 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     `PMV_CATEGORY_BINS_ISO` (`ab8f6d5`), and the temporary library holds no limit (decision 24's note of the same
     date). The dynamic chart is unchanged: the category bins cut |PMV|, not the signed `pmv` it scans, so they cannot
     be its bands.
+    **Noted 2026-09-28 (review after Phase 4b, Proposal 14; `S105`).** "A second surface is a second `charts` entry"
+    holds across chart types only: v1 has one chart per chart type. Every reader finds a model's chart by its
+    `ChartType`: `dynamicChartOf` and `psychrometricChartOf` return the first entry of their type, and the chart
+    picker keys its entries by type, so a second dynamic entry is a Svelte duplicate-key error. A second surface of one
+    type is a change to those readers first. A registry-wide test is to assert one chart per chart type; it is written
+    by `.scratch/review-after-4b/issues/28`.
 
 Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan close-out left behind (08–11 in
 `.scratch/numeric-scan-and-model-name/issues/`), which widened to switching models and to the shape of `run`:
@@ -581,6 +597,11 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     (decision 39). The marker now sits off the deployed chart's whenever `tdb ≠ tr`, except under ASHRAE 55 below
     0.2 m/s and under ISO 7726 at exactly 0.1 m/s. The app follows the library; what the library has, the app does
     not write again.
+    **Noted 2026-09-28 (review after Phase 4b, Proposal 23; `S031`, `PT01`).** Decision 31's one-hue rule covers a
+    polygons chart's zones: they are Comfort zones on the Standard page, nested largest first, and are painted as the
+    psychrometric chart paints its own, in one hue whose opacity rises inwards, outlined in the same zone line. Adaptive
+    (ASHRAE 55)'s 80 % and 90 % acceptability regions are painted today in the first two hues of the thermal-sensation
+    palette, as if they were two bands; the code is `.scratch/review-after-4b/issues/29`'s.
 38. **What the table shows first is what must come back unrounded; the registry-wide tests hold for a polygons chart
     and prove silence.** Amends decision 35, and restates the two tests decision 37 left throwing on a polygons chart.
     The unrounded test samples the table's first column, which every model declares (ADR-0001 §4.3), along the
@@ -619,6 +640,22 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     of its params object. Lint is to enforce it on `src/models/`, with the registry file, `src/models/index.ts`, which
     imports every declaration by design, outside the rule. The rule is written by
     `.scratch/review-after-4b/issues/48`; until then it holds by inspection, as no declaration imports another.
+41. **A function starts with a verb, or is an accessor named `…For`, `…Of` or `with…`.** Amends ADR-0001 §6's
+    "functions start with a verb", which its own examples break (`pathSegmentFor`, `displayUnitFor`, `axisRangeFor`)
+    and which 35 of the 52 functions in `core/` outside `charts/` broke when the review counted. Taken 2026-09-28 in
+    the review after Phase 4b (Proposal 17; `S107`, `ST02`). An accessor names what it returns and what it is read
+    from: `displayUnitFor(quantity, system)` is the display unit for a quantity, `dynamicChartOf(model)` the dynamic
+    chart of a model, `withTemperatureMode(slot, mode, model)` the slot's inputs in another mode. A function that acts
+    or answers a question starts with a verb, as before (`rehearseSwitch`, `formatNumber`, `isPolygonsChart`).
+    `axisRangeFor` and `hasHumidityGroup`, which decision 11 kept, fit the rule as they are. An accessor's name must not read like the
+    language's own: the input panel's `valueOf` does, and is renamed by `.scratch/review-after-4b/issues/42`.
+42. **Copy inside a generated primitive is the one exception to the one-dictionary rule.** Amends ADR-0001 §2's "UI
+    copy centralised in one dictionary module". Taken 2026-09-28 in the review after Phase 4b (Proposal 22, `S091`).
+    The shadcn-svelte CLI writes its components' own copy into `ui/primitives/`, which is never hand-edited (ADR-0001
+    §2), so that copy stays where the CLI put it. The case today is the dialog's close button, whose screen-reader label
+    is `Close` in `dialog-content.svelte`; `ModelSwitchDialog` keeps the button, which story 12 of
+    `.scratch/model-switch/spec.md` gives its meaning, "No, stay here". Every string the app writes itself, a
+    primitive's props and children included, is still in `text/copy.ts`.
 
 ## Consequences
 
@@ -635,6 +672,14 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
   sentence over their intersected bound.
 - The experimental shape can move. Every read of `_INFO` goes through `core/quantities.ts`,
   `core/applicability.ts` and the declaration files, so a shape change is confined to those.
+  **Amended 2026-09-28 (review after Phase 4b, Proposal 15; `S097`, `P024`).** The sentence above is narrowed to reads
+  of `_INFO`'s shape: its `inputs` and `outputs` rows, their applicability bounds and their classifiers. A model info's
+  `label` and `name` are read anywhere, since decision 30 as revised has every reader take `model.info.name`. Two
+  shape reads outside the three are sanctioned: `axisRangeFor`'s fallback to an input's applicability bound in
+  `core/modelDeclaration.ts` (decision 5), and `adaptive_ashrae_zone`'s read of the running-mean bound in
+  `src/temporary-library/`, which is library code (decision 24). Two more are moved: `ResultTable.svelte` walks `info.outputs` for the
+  classified outputs, which move into core with `.scratch/review-after-4b/issues/17`, and the psychrometric chart's
+  check that the result carries `pmv` becomes a registry-wide test with `.scratch/review-after-4b/issues/28`.
 - Phases 1 and 2b of the rewrite plan were done in the fork and are superseded; Phase 3.7 is blocked
   on an upstream `PMV_PPD_ASHRAE_INFO`; Phase 4's model changes (decision 13).
 - The `ClassifierBins.right: boolean` shape contradicts #186's own "`closed: left | right`, never
@@ -642,3 +687,6 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
 - The fork's "writes nothing to the console" test was dropped with the migration: the main repository's
   `cooling_effect` still logs, and v1 calls no ASHRAE model. `suppressWarnings` is raised in the main
   repository, not the fork, before the Phase 4b grid scan (rewrite plan, Phase 4b).
+  **Noted 2026-09-28 (review after Phase 4b, Proposal 13; `S101`).** Decision 38 brought the test back:
+  `core/charts/consoleSilence.test.ts` draws every registered model's charts with `console.warn`, `console.log` and
+  `console.error` spied, and fails on any write to them. The v1 registry now holds two ASHRAE models, PMV (ASHRAE 55) and Adaptive (ASHRAE 55).

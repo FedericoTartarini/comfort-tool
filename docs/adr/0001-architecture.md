@@ -44,7 +44,7 @@
 | Links | **`?share=v1.<Base64URL(JSON)>`**; Time-series is `?share=v1z.<Base64URL(deflate)>` (`fflate`); version prefix + `migrate()`; on parse failure fall back to defaults and notify | Not compressing keeps it decodable by the ES5 summary page | `?s=` (abbreviation violates the naming rules); `#share=`; compatibility with old Berkeley links (not needed) |
 | Browsers | Full app floor Chrome 87 / Firefox 83 / Safari 14 (Svelte 5's hard floor); `index.html` embeds an ES5 feature check, and a browser without `Proxy` gets a **static notice naming the required versions** — decided 2026-09-04, downgraded from a share-decoding summary page, which would need a second ES5 code path pinned to a share schema that only freezes at the end of Phase 5; Tailwind 4's floor is 2023, 2020–2023 browsers are "usable but imperfectly styled" | Satisfies "very old browsers can open and see prefilled inputs" | Tailwind 3.4; polyfill plugin |
 | Analytics | One line of gtag; send `page_view` manually on path change; `page_location` strips the query string | Do not send the share payload to Google | Consent banner |
-| Engineering | pnpm, TS `strict` + `erasableSyntaxOnly` + `verbatimModuleSyntax`, ESLint flat + Prettier, Node 24, GitHub Actions (typecheck + lint + build), Netlify PR previews, UI copy centralised in one dictionary module (English only in v1) | — | TypeScript `enum` (non-erasable syntax) |
+| Engineering | pnpm, TS `strict` + `erasableSyntaxOnly` + `verbatimModuleSyntax`, ESLint flat + Prettier, Node 24, GitHub Actions (typecheck + lint + build), Netlify PR previews, UI copy centralised in one dictionary module (English only in v1). **Amended 2026-09-28 by [ADR-0002](0002-library-interface-model-info.md) decision 42: copy inside a generated primitive stays where the CLI wrote it, the one exception** | — | TypeScript `enum` (non-erasable syntax) |
 
 ### 2.1 plotly.js 4.0 changes to watch
 
@@ -283,6 +283,8 @@ Result table (`table`):
 > **The dynamic chart is amended by [ADR-0002](0002-library-interface-model-info.md) decision 37** (2026-09-27): it is declared in one of two shapes, scanned (`axes`, `output`, `bands`) or polygons (`axes`, `zones`), rather than as a scan with an optional `zones` source. A polygons chart's axes are locked: never offered to the picker and never mapped to the entry mode, so an operative axis marks a slot in separate entry at the plain mean of `tdb` and `tr`.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 37 as amended 2026-09-28** (Phase 4b ticket 12): "the plain mean of `tdb` and `tr`" in the marker above is retracted. Under separate entry the slot is marked at the library's operative temperature, `t_o(tdb, tr, v, model.standard)`, weighed by the model's own standard, through the same function the switch into operative entry converts with (decision 39), so the marker and the switch cannot differ.
+>
+> **Amended 2026-09-28** (review after Phase 4b, Proposal 19; `S102`): in the legend rules below, `Swatch` is a string union, `"fill" | "line" | "marker"` in `core/charts/chartSpec.ts`, not an object collection read as `Swatch.fill`. Its members double as CSS classes: `ChartLegend.svelte` writes an entry's swatch into the swatch element's `class` and styles each member by that name.
 
 
 | Type | Definition |
@@ -383,6 +385,8 @@ Rules:
 ### 4.7 Computation pipeline
 
 > **Superseded in part by [ADR-0002](0002-library-interface-model-info.md) decisions 28 and 29** (2026-09-21): no Worker, no Comlink, no stamp and no "computing" indicator in v1; the pipeline below runs synchronously, and the grid is 51×51. The zone-boundary parameters and the 300 ms line (now the condition for reopening decision 29) stand.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 29 as amended 2026-09-28** (review after Phase 4b, Proposal 16): the Grid bullet's cache key is dropped. v1 caches no grid: every valid edit rescans it, whichever quantity changed.
 
 `Session change → toLibraryInputs → compute.worker (Comlink) → model.run / charts.psychrometricZone / grid scan → Outputs (with stamp, stale ones discarded) → ChartSpec → PlotlyChart`
 
@@ -429,6 +433,10 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 > **Amended 2026-09-28** (review after Phase 4b, Proposal 4; `.scratch/review-after-4b/decisions.md`, round 12): the tree gains `core/modelRun.ts` — running a model on a slot, `runOn(slot, model)`, a new function, and reading its result through the two readers that move there from `core/libraryInputs.ts`, `resultValue` and `resultWarnings`. The rest of `libraryInputs.ts` stays, `enteredQuantities` and `withTemperatureMode` included. The module is written by `.scratch/review-after-4b/issues/13`.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 7, 28 and 29**: there is no `workers/` directory and no `compute.worker.ts`; v1 computes synchronously, and library model functions are imported only in `models/` and `temporary-library/` (decisions 24 and 29; see §3's marker for decisions 12, 24 and 29). `dynamicChart.ts` scans a 51×51 grid, `GRID = 51`, not 100×100 (decision 28). `bandPalette.ts` colours by position in a library `ClassifierBins`, not an `IntervalScale` (decision 7).
+>
+> **Amended 2026-09-28** (review after Phase 4b, Proposal 18; `ST06`, `PT05`): the tree lists concepts, not every file. Left out by rule: the entry files `main.ts` and `App.svelte`; a file shared by tests (`core/declarationTestSlots.ts`, `state/sessionTestReaders.ts`); a type declaration (`ui/charts/plotly.d.ts`, §2.1's marker); and a component in a directory the tree already describes (`routes/StandardPage.svelte`, the controls in `ui/inputs/`). The modules added since, beyond the markers above: `core/presets.ts` (ADR-0002 decision 20), `core/comfortZones.ts` (decision 31 as revised 2026-09-25), `core/resultCell.ts` (what a result-table cell shows), `routes/modelsOf.ts` (a standard's models, apart from `navigation.ts` so that it loads under vitest without the router) and `ui/layout/spacing.ts` (the next marker). Planned, and waiting for their first consumer: `core/workspace.ts` and `core/shareLink.ts` (rewrite plan, Phase 5) and `state/timeSeriesSession.svelte.ts` (Time-series, after v1); `ui/dialogs/` stays reserved (decision 32's marker above).
+>
+> **Amended 2026-09-28** (review after Phase 4b, Proposal 20; `S104`): the `app.css` line below is narrowed, as the rewrite plan's Phase 3.6 item 7 landed it. The stylesheet declares no spacing or font scale; Tailwind 4 ships both. It imports Tailwind, its animation plugin, shadcn-svelte's stylesheet and the Geist font; holds the project's tokens in `:root` (`--brand`, which `--primary` follows until Phase 5c picks the colour, `--font-size-caption`, and shadcn-svelte's colour and radius variables); and, in an `@theme inline` block, maps them to Tailwind's colour and radius tokens and sets the sans font to Geist; a `@layer base` block applies the border, background, text and font to every page. The spacing scale the layout components accept is `ui/layout/spacing.ts`'s `gapClass`, four steps of Tailwind's own, written as full class names so Tailwind can see them.
 
 
 ```
@@ -461,6 +469,8 @@ index.html              embedded ES5 feature check + read-only summary page
 ## 6. Coding conventions
 
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 2 and 6**: quantities come from the app's table, standards from the library's `Standard`; "imported from the library" below reads accordingly. `Quantity.label` remains the only source of a quantity's name.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 41** (2026-09-28; review after Phase 4b, Proposal 17): "functions start with a verb" below reads: a function starts with a verb, or is an accessor named `…For`, `…Of` or `with…`, which names what it returns and what it is read from (`displayUnitFor`, `dynamicChartOf`, `withTemperatureMode`).
 
 
 - **Naming**: components `PascalCase.svelte`; modules `camelCase.ts`; functions start with a verb;
@@ -533,6 +543,8 @@ Acceptance:
 ## 8. Known risks and mitigations
 
 > **Interface-drift row amended by [ADR-0002](0002-library-interface-model-info.md) decision 14**: the interface is `@internal Experimental`; the app links a local checkout, then pins `jsthermalcomfort@next`, and confines every `_INFO` read to three modules.
+>
+> **Amended 2026-09-28** (review after Phase 4b, Proposal 15; `S097`): "every `_INFO` read" in the marker above is every read of `_INFO`'s shape, as ADR-0002's Consequences now say; a model info's `label` and `name` are read anywhere.
 
 
 | Risk | Mitigation |
