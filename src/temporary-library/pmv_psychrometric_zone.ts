@@ -58,8 +58,9 @@ export interface PmvPsychrometricZone {
    */
   readonly warm_boundary: readonly PsychrometricPoint[];
   /**
-   * The closed polygon, in the order the CBE tool draws it: cool boundary
-   * upward, along the saturation line, warm boundary back down.
+   * The polygon, in the order the CBE tool draws it: cool boundary upward,
+   * along the saturation line, warm boundary back down. The first vertex is
+   * not repeated at the end.
    */
   readonly polygon: readonly PsychrometricPoint[];
   /**
@@ -90,13 +91,17 @@ export interface PmvPsychrometricZoneParams {
  *
  * The zone is not something a model returns: for each relative humidity, the
  * dry-bulb temperature at which PMV reaches ±`pmv_limit` has to be solved for.
- * Ported from the fork's `charts/comfort_zone.ts`, which is itself a port of
- * `findComfortBoundary` in `static/js/psychchart.js` of the CBE Thermal
- * Comfort Tool — secant method started from -50 and 50 °C, with a bisection
- * fallback bracketed on `[-50, 50]`, at a PMV residual of 0.001. The saturation
- * line ends at the zone's own limit, and the secant does not clamp its
- * candidates to `[0, 100]`, so it can return a root outside the bracket;
- * neither moves a vertex of any chart the deployed tool publishes.
+ * Ported in behaviour from `findComfortBoundary` in `static/js/psychchart.js` of
+ * {@link https://github.com/CenterForTheBuiltEnvironment/comfort_tool | comfort_tool},
+ * the CBE Thermal Comfort Tool deployed at comfort.cbe.berkeley.edu — secant
+ * method started from -50 and 50 °C, with a bisection fallback bracketed on
+ * `[-50, 50]`, at a PMV residual of 0.001. The saturation line ends at the
+ * zone's own limit, and the secant does not clamp its candidates to
+ * `[0, 100]`, so it can return a root outside the bracket; neither moves a
+ * vertex of any chart the deployed tool publishes.
+ *
+ * Leaves the app when jsthermalcomfort publishes a PMV psychrometric zone
+ * (ADR-0002 decision 24).
  *
  * Output is SI and ungarnished: no unit conversion, no clipping to a viewport,
  * no styling. Those are the caller's business.
@@ -120,7 +125,7 @@ export interface PmvPsychrometricZoneParams {
  * @param {boolean} [params.tr_follows_db=false] - Solve with `tr` equal to the dry-bulb temperature
  *   at every point, so the x axis is operative temperature rather than air temperature: the geometry
  *   of the CBE Thermal Comfort Tool's operative-temperature psychrometric chart
- * @returns the two boundaries, the saturation line, the closed polygon and the
+ * @returns the two boundaries, the saturation line, the polygon and the
  *   rows that could not be solved, see {@link PmvPsychrometricZone}
  *
  * @example

@@ -1,14 +1,15 @@
 /**
  * The two root finders the CBE Thermal Comfort Tool uses to trace a comfort
  * zone, ported in behaviour from `static/js/util.js` of
- * {@link https://github.com/CenterForTheBuiltEnvironment/comfort_tool | comfort_tool}
- * — the implementation deployed at comfort.cbe.berkeley.edu, via the fork's
- * `utilities/root_finding.ts` (rewrite plan: "port the fork's, do not rewrite
- * it").
+ * {@link https://github.com/CenterForTheBuiltEnvironment/comfort_tool | comfort_tool},
+ * the implementation deployed at comfort.cbe.berkeley.edu.
  *
  * They are ported rather than replaced so that `pmv_psychrometric_zone` can
  * reproduce the published chart. Both are kept faithful to the original
  * except the secant's clamp, see {@link secant}.
+ *
+ * Leaves the app with `pmv_psychrometric_zone`, the solver they serve
+ * (ADR-0002 decision 24).
  */
 
 /**
