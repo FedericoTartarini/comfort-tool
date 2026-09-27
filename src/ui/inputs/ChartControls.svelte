@@ -21,7 +21,9 @@
   // Options are addressed by position in this list rather than by any string
   // id: a <select> value is text, and a Quantity is compared by identity.
   const axisChoices = $derived(dynamicAxisQuantities(model, inputSlot.temperature.mode));
-  const showAxes = $derived(chart.type === chartType.dynamic);
+  // A polygons chart offers no axis to pick: its axes are locked (ADR-0002
+  // decision 37).
+  const showAxes = $derived(chart.type === chartType.dynamic && axisChoices.length > 0);
   // The chart remembers the axis the user picked; the entry mode decides which
   // temperature quantity that actually is right now.
   const selected = $derived(resolvedAxes(model, chart.axes, inputSlot.temperature.mode));

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { v_relative } from "jsthermalcomfort";
+import { t_o, v_relative } from "jsthermalcomfort";
 import { Standard } from "jsthermalcomfort";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { humidityMode, temperatureMode } from "./entryModes";
 import {
   enteredQuantities,
   enteredValue,
+  operativeTemperatureOf,
   optionsReader,
   resolveQuantities,
   toLibraryInputs,
@@ -142,6 +143,30 @@ describe("optionsReader", () => {
 
   it("throws naming the option the map does not carry, rather than answering undefined", () => {
     expect(() => optionsReader(new Map())(control)).toThrow(`Slot has no value for ${control.label}`);
+  });
+});
+
+describe("operativeTemperatureOf", () => {
+  it("is the plain mean of the dry-bulb and mean radiant temperatures under separate entry", () => {
+    expect(operativeTemperatureOf(separateSlot({ tdb: 24, tr: 30 }))).toBe(27);
+  });
+
+  it("is not the library's air-speed-weighted t_o once the air moves", () => {
+    // At 0.6 m/s the library weighs the air temperature by √(10v) under ISO
+    // and by 0.7 under ASHRAE 55; the deployed tool's reading ignores v.
+    const slot = separateSlot({ tdb: 24, tr: 30, v: 0.6 });
+    expect(operativeTemperatureOf(slot)).toBe(27);
+    expect(t_o(24, 30, 0.6)).not.toBeCloseTo(27, 1);
+    expect(t_o(24, 30, 0.6, Standard.ashrae_55_2023)).not.toBeCloseTo(27, 1);
+  });
+
+  it("is the entered operative temperature under operative entry", () => {
+    expect(operativeTemperatureOf(operativeSlot(26))).toBe(26);
+  });
+
+  it("is what the slot answers for operative_tmp in either entry mode", () => {
+    expect(enteredValue(separateSlot({ tdb: 24, tr: 30 }), q.operative_tmp)).toBe(27);
+    expect(enteredValue(operativeSlot(26), q.operative_tmp)).toBe(26);
   });
 });
 

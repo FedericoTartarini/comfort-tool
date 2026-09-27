@@ -6,9 +6,11 @@
  * sibling `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
+import { PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { axisRangeFor, requireAxisRange } from "./modelDeclaration";
+import { chartType } from "./chartType";
+import { axisRangeFor, requireAxisRange, type ChartDeclaration, type ZonePolygon } from "./modelDeclaration";
 import { quantities } from "./quantities";
 
 const q = quantities;
@@ -59,3 +61,24 @@ describe("requireAxisRange", () => {
     );
   });
 });
+
+/**
+ * Type-level proof of the dynamic chart's two shapes (ADR-0002 decision 37),
+ * compiled by `npm run check` and never called: each `@ts-expect-error` fails
+ * the build the day the compiler stops refusing that declaration. Exported
+ * only because `noUnusedLocals` would otherwise flag it.
+ */
+export function dynamicShapesTypeProof(polygons: readonly ZonePolygon[]): ChartDeclaration[] {
+  const axes = { x: q.v, y: q.operative_tmp };
+  const bands = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
+  return [
+    { type: chartType.dynamic, axes, output: q.pmv, bands },
+    { type: chartType.dynamic, axes, zones: () => polygons },
+    // @ts-expect-error a scanned chart without the bands that cut its output
+    { type: chartType.dynamic, axes, output: q.pmv },
+    // @ts-expect-error a polygons chart with an output it does not scan
+    { type: chartType.dynamic, axes, zones: () => polygons, output: q.pmv },
+    // @ts-expect-error a polygons chart with bands it does not draw
+    { type: chartType.dynamic, axes, zones: () => polygons, bands },
+  ];
+}

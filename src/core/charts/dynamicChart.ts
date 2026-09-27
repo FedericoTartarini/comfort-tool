@@ -13,6 +13,8 @@ import {
 } from "$lib/core/libraryInputs";
 import {
   axisRangeFor,
+  dynamicChartOf,
+  isPolygonsChart,
   requireAxisRange,
   type DynamicDeclaration,
   type Range,
@@ -38,8 +40,11 @@ const GRID = 51;
  * the library's `classifyFromBins` — no Edge and no inclusivity rule is
  * written here.
  *
- * A model that declares `zones` skips the scan altogether and draws the exact
- * polygons the library traces for it (ADR §4.4).
+ * A polygons chart skips the scan altogether and draws the exact polygons its
+ * `zones` source traces (ADR §4.4), on its own declared axes: they are locked,
+ * so `axes` is not read and nothing is mapped to the entry mode, and an
+ * operative axis is marked at the slot's operative temperature in either mode
+ * (ADR-0002 decision 37).
  */
 export function dynamicSpec(
   request: ChartRequest,
@@ -48,7 +53,7 @@ export function dynamicSpec(
 ): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;
   const mode = slot.temperature.mode;
-  const { x, y } = resolvedAxes(model, axes, mode);
+  const { x, y } = isPolygonsChart(chart) ? chart.axes : resolvedAxes(model, axes, mode);
   const xRange = requireAxisRange(model, x);
   const yRange = requireAxisRange(model, y);
   const xUnit = displayUnitFor(x, unitSystem);
@@ -57,8 +62,8 @@ export function dynamicSpec(
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
 
-  const polygons = chart.zones?.({ values: resolveQuantities(slot, model), xRange });
-  if (polygons) {
+  if (isPolygonsChart(chart)) {
+    const polygons = chart.zones({ values: resolveQuantities(slot, model), xRange });
     for (const [index, polygon] of polygons.entries()) {
       const color = bandFill(index);
       traces.push({
@@ -152,10 +157,15 @@ export function resolvedAxes(
 }
 
 /**
- * The quantities that can carry an axis: what the user enters, minus anything
+ * The quantities the axis picker offers: what the user enters, minus anything
  * the model declares no range for — the range is what the scan sweeps between.
+ * None for a polygons chart, whose axes are locked (ADR-0002 decision 37).
  */
 export function dynamicAxisQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
+  const chart = dynamicChartOf(model);
+  if (chart && isPolygonsChart(chart)) {
+    return [];
+  }
   return enteredQuantities(model, mode).filter((quantity) => axisRangeFor(model, quantity) !== undefined);
 }
 

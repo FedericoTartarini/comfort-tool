@@ -1,6 +1,6 @@
 # ADR-0002 · Library interface: the jsthermalcomfort main repository's `ModelInfo` replaces the fork contract
 
-- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C; decision 35 revised 2026-09-26 at that pass's close-out, when `utci`'s `round_output` closed its upstream gap, and decision 3 the same day to point at decisions 30 and 34's notes
+- Status: accepted (2026-09-13, decision taken with the project lead; details settled the same day); amended 2026-09-15 after the migration landed (decision 9 revised; decisions 15–19 recorded from the migration spec); decision 20 added 2026-09-15 while closing Phase 3.6 (presets); decisions 21–26 added 2026-09-17 from the library-boundary audit (`.scratch/library-boundary/spec.md`; 21 restated the same evening when the temporary library was decided); decisions 22 and 23 revised 2026-09-19 (integration branch retired, no PRs; what the `warnings` field shipped as); decisions 27–31 added 2026-09-21 from the grilling session on the Worker boundary and the band editor (`.scratch/numeric-scan-and-model-name/spec.md`); decision 27 revised 2026-09-22 when that spec landed (one constraint contour per Band; how `bands` is spelled); decisions 32–35 added 2026-09-22 from the grilling session on the four tickets that spec's close-out left behind (switching models, what the gate freezes, the shape of `run`, the unrounded `run`), with decisions 3 and 27 revised the same day; decision 32 revised 2026-09-22 when the model-switch feature landed (every in-app way of switching asks, not only the select; where the rehearsal lives); decision 36 added 2026-09-23 from the Phase 4b grilling (`.scratch/phase-4b/spec.md`) when the option contract landed, revising decision 34; decisions 34 and 36 revised 2026-09-25 when the app moved onto the library's params objects (`.scratch/library-v2-migration/`), and decision 30 the same day when it read the model's name from the model info, and decision 24 the same day when the zone solver took one params object, and decisions 8 and 31 the same day when the PMV (ISO 7730) page drew categories A, B and C; decision 35 revised 2026-09-26 at that pass's close-out, when `utci`'s `round_output` closed its upstream gap, and decision 3 the same day to point at decisions 30 and 34's notes; decision 37 added 2026-09-27 when the dynamic chart split into a scanned and a polygons shape, amending decision 27
 - Supersedes, in [ADR-0001](0001-architecture.md): §3 (the library column of the boundary table), §4.0 rule 1 (quantities), §4.1 in full, §4.3 (declaration shape), §4.4 (axis ranges), §5 (`core/compute` and the `standard.ts` / `modelDeclaration.ts` lines), §6 ("quantities, models and standards are all imported from the library"), §7 (v1 scope and acceptance criterion 1), §8 (the interface-drift row). ADR-0001 stays as the pre-meeting baseline; it carries "superseded by ADR-0002" markers and is not otherwise edited.
 - Chinese copy: `local-docs/adr/0002-library-interface-model-info.md` (this file is authoritative).
 
@@ -278,6 +278,8 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     reaches it does not matter.
     **Revised 2026-09-22 (decision 35).** The drift test proves the bands are the kernel's. It does not detect a
     `run` that rounds, which this decision leaned on it for; that is pinned by a test of its own.
+    **Amended 2026-09-27 (decision 37).** `output` and `bands` are the scanned chart's, one of the dynamic chart's two
+    shapes; a polygons chart declares neither.
 28. **`GRID = 51`.** Amends ADR-0001 §2 "Precision" (100×100). 51 points are 50 intervals, so the SI steps are round
     (0.6 °C, 0.06 met, 2 % rh). One count for every axis rather than a step per quantity: the accuracy that matters is
     on screen and a count gives every axis the same, the cost per chart is fixed (2,601 calls), and no per-quantity
@@ -516,6 +518,27 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     `airspeed_control` as a boolean, so the 2026-09-23 note that its declaration types its kwargs `{}` is retired.
     `pmv_ppd` is off the library's public surface; the fixtures that called it call `pmv_ppd_ashrae` with
     `suppress_warnings: true`.
+37. **The dynamic chart is declared in one of two shapes: scanned, or drawn from polygons on locked axes.** Amends
+    ADR-0001 §4.4's `chartType.dynamic` row and decision 27. The dynamic member of `ChartDeclaration` splits in two
+    under the same `chartType.dynamic`: a scanned chart declares `axes`, `output` and `bands`, as decision 27 has it; a
+    polygons chart declares `axes` and `zones` and nothing else, and `isPolygonsChart` tells the two apart. Each member
+    marks the other's fields `never`: the shared `type` discriminates nothing, and an object literal checked against a
+    union has only the keys no member knows reported as excess, so without it a polygons chart with an invented
+    `output` compiles. A `@ts-expect-error` proof in the declaration tests refuses a scanned chart without `bands` and a
+    polygons chart with an `output` or `bands`. A polygons chart locks its axes: the picker offers no quantity for it,
+    so the chart controls show none; `ChartState.setAxes` does nothing; and the spec builder draws on the declared
+    axes without mapping them to the entry mode, so an operative-temperature axis stays operative under separate
+    entry. There the slot is marked at `operativeTemperatureOf(slot)` in `core/libraryInputs.ts`, beside the
+    relative-humidity resolution: the entry itself under operative entry, else the plain mean `(tdb + tr) / 2`, and
+    `enteredValue` answers `operative_tmp` through it in every mode, as it answers `rh`. It reads a slot, so it is an
+    entry-group convention under decision 21's rule 4, like `tdb = tr = operative_tmp`, not a temporary-library
+    calculation. The mean is the deployed
+    tool's reading and not the library's `t_o`, which weighs the air temperature by air speed (√(10v) under ISO 7726;
+    0.5, 0.6 or 0.7 under ASHRAE 55, so the two agree only below 0.2 m/s); the difference is noted at the definition.
+    Against decision 27: `output` and `bands` belong to a scanned chart only, so a model whose chart is polygons no
+    longer names an output and a classifier the chart never reads. The registry-wide drift and unrounded tests read a
+    scanned chart and throw on a polygons one until they are restated for it (Phase 4b ticket 06). Rejected: keeping `zones` optional beside a scan, as Phase 3 left it, because the
+    compiler could then refuse neither a polygons chart's invented output nor a scanned chart's forgotten bands.
 
 ## Consequences
 

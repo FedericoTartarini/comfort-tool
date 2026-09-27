@@ -96,7 +96,14 @@ export interface ComfortZone {
 /**
  * A chart a model offers (ADR §4.4). A discriminated union rather than one wide
  * object: the psychrometric chart's axes are fixed by the temperature entry
- * mode, and only the dynamic chart has a scanned output.
+ * mode, and the dynamic chart comes in two shapes, scanned or drawn from
+ * declared polygons (ADR-0002 decision 37).
+ *
+ * The two dynamic shapes share their `type`, so nothing discriminates them but
+ * which fields they carry, and each marks the other's fields `never`. Without
+ * that the compiler would take a polygons chart with an invented `output`: an
+ * object literal checked against a union has only the keys no member knows
+ * reported as excess.
  */
 export type ChartDeclaration =
   | {
@@ -137,19 +144,36 @@ export type ChartDeclaration =
        * inclusivity rule of its own.
        */
       readonly bands: ClassifierBins;
+      readonly zones?: never;
+    }
+  | {
+      readonly type: typeof chartType.dynamic;
       /**
-       * Exact band polygons, for a model whose geometry the library already
-       * traces — Adaptive's `charts.adaptiveAshraeZone`. When present the grid
-       * scan is not run at all, because the polygons are the answer rather than
-       * an approximation of it (ADR §4.4).
+       * Locked: the chart is drawn on these two quantities whatever the entry
+       * mode, and the picker is not offered. An operative-temperature axis
+       * stays operative under separate entry, marked at the mean of the two
+       * entered temperatures (`libraryInputs.operativeTemperatureOf`).
        */
-      readonly zones?: (request: ZoneRequest) => readonly ZonePolygon[];
+      readonly axes: { readonly x: Quantity; readonly y: Quantity };
+      /**
+       * Exact band polygons, for a model whose geometry is traced rather than
+       * scanned — Adaptive's acceptability bands. No grid is run at all,
+       * because the polygons are the answer rather than an approximation of
+       * it (ADR §4.4), so the chart names no output and no bands.
+       */
+      readonly zones: (request: ZoneRequest) => readonly ZonePolygon[];
+      readonly output?: never;
+      readonly bands?: never;
     };
 
 /** The psychrometric member of {@link ChartDeclaration}. */
 export type PsychrometricDeclaration = Extract<ChartDeclaration, { type: typeof chartType.psychrometric }>;
-/** The dynamic member of {@link ChartDeclaration}. */
+/** Either dynamic member of {@link ChartDeclaration}. */
 export type DynamicDeclaration = Extract<ChartDeclaration, { type: typeof chartType.dynamic }>;
+/** The dynamic chart that scans a numeric output and bands it by a classifier. */
+export type ScannedDeclaration = Extract<DynamicDeclaration, { readonly bands: ClassifierBins }>;
+/** The dynamic chart drawn from declared polygons on locked axes. */
+export type PolygonsDeclaration = Exclude<DynamicDeclaration, ScannedDeclaration>;
 
 export interface RegisteredModel {
   /**
@@ -237,6 +261,11 @@ export function psychrometricChartOf(model: RegisteredModel): PsychrometricDecla
 
 export function dynamicChartOf(model: RegisteredModel): DynamicDeclaration | undefined {
   return model.charts.find((chart): chart is DynamicDeclaration => chart.type === chartType.dynamic);
+}
+
+/** A dynamic chart drawn from declared polygons, whose axes are therefore locked (ADR-0002 decision 37). */
+export function isPolygonsChart(chart: DynamicDeclaration): chart is PolygonsDeclaration {
+  return chart.zones !== undefined;
 }
 
 /**

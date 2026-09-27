@@ -52,6 +52,26 @@ export function relativeHumidityOf(slot: SlotInputs): number {
 }
 
 /**
+ * The slot's operative temperature: the entry itself under operative entry,
+ * else the plain mean of the dry-bulb and mean radiant temperatures — how a
+ * chart locked on an operative axis marks a slot in separate entry (ADR-0002
+ * decision 37).
+ *
+ * The deployed tool's reading, and deliberately not the library's `t_o`,
+ * which weighs the air temperature by air speed: by √(10v) under ISO 7726,
+ * and under ASHRAE 55 by 0.5 below 0.2 m/s, 0.6 below 0.6 and 0.7 above. The
+ * two agree only in still air under ASHRAE 55. The conversion between entry
+ * modes (`withTemperatureMode`) is the library's, so a slot switched to
+ * operative entry can land a little off this marker.
+ */
+export function operativeTemperatureOf(slot: SlotInputs): number {
+  if (slot.temperature.mode === temperatureMode.operative) {
+    return requireValue(slot.values, q.operative_tmp);
+  }
+  return (requireValue(slot.values, q.tdb) + requireValue(slot.values, q.tr)) / 2;
+}
+
+/**
  * Entry-group representations → the SI quantities the library model takes
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
  * humidity entry becomes `rh`, and `v` becomes `vr` when the model asks for it.
@@ -169,7 +189,8 @@ export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode)
 /**
  * What the user entered for `quantity`, humidity included. `rh` is answered
  * in every mode — the dynamic chart sweeps and marks the library's `rh`, not
- * the entered representation.
+ * the entered representation — and so is `operative_tmp`, which a chart with
+ * locked axes marks under separate entry too ({@link operativeTemperatureOf}).
  */
 export function enteredValue(slot: SlotInputs, quantity: Quantity): number | undefined {
   if (quantity === slot.humidity.mode.quantity) {
@@ -177,6 +198,9 @@ export function enteredValue(slot: SlotInputs, quantity: Quantity): number | und
   }
   if (quantity === q.rh) {
     return relativeHumidityOf(slot);
+  }
+  if (quantity === q.operative_tmp) {
+    return operativeTemperatureOf(slot);
   }
   return slot.values.get(quantity);
 }

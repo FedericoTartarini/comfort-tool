@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
+import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { enteredQuantities, requireValue, type SlotInputs } from "$lib/core/libraryInputs";
-import { dynamicChartOf, type DynamicDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { enteredQuantities, requireValue, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
+import {
+  dynamicChartOf,
+  isPolygonsChart,
+  type PolygonsDeclaration,
+  type RegisteredModel,
+  type ScannedDeclaration,
+} from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -12,8 +19,8 @@ import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart
 const q = quantities;
 
 const declaration = dynamicChartOf(pmvPpdIso);
-if (!declaration) {
-  throw new Error("pmvPpdIso no longer declares a dynamic chart");
+if (!declaration || isPolygonsChart(declaration)) {
+  throw new Error("pmvPpdIso no longer declares a scanned dynamic chart");
 }
 
 const slot: SlotInputs = {
@@ -30,6 +37,25 @@ const slot: SlotInputs = {
 };
 
 const request: ChartRequest = { model: pmvPpdIso, slot, slotLabel: "Input 1", unitSystem: unitSystem.si };
+
+/** The same entries under operative entry, at `operative`. */
+function operativeSlot(operative: number): SlotInputs {
+  return {
+    values: new Map<Quantity, number>([
+      [q.operative_tmp, operative],
+      [q.v, 0.1],
+      [q.met, 1.1],
+      [q.clo, 0.5],
+    ]),
+    humidity: { mode: humidityMode.rh, value: 50 },
+    temperature: { mode: temperatureMode.operative },
+    options: new Map(),
+  };
+}
+
+function markerOf(spec: { traces: readonly { kind: string }[] }): PointTrace | undefined {
+  return spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
+}
 
 /** `at(-1)`, which this project's ES2020 target does not have. */
 function last<T>(row: readonly T[]): T {
@@ -147,10 +173,10 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     right: false,
   };
 
-  const unevenChart: DynamicDeclaration = { ...declaration, bands: uneven };
+  const unevenChart: ScannedDeclaration = { ...declaration, bands: uneven };
 
   /** The surface of a model whose output is `value` at every point of the field. */
-  function flat(value: number, chart: DynamicDeclaration = unevenChart): BandTrace {
+  function flat(value: number, chart: ScannedDeclaration = unevenChart): BandTrace {
     const model = { ...pmvPpdIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
     return bands(dynamicSpec({ ...request, model }, chart, chart.axes));
   }
@@ -193,7 +219,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
   it("leaves the surface and the Edges in the output's own unit when the axes are displayed in IP", () => {
     // They are never shown, only compared with each other, so nothing converts
     // them — the one exception to the chart spec's display-unit rule.
-    const celsius: DynamicDeclaration = { ...unevenChart, output: q.operative_tmp };
+    const celsius: ScannedDeclaration = { ...unevenChart, output: q.operative_tmp };
     const model = { ...pmvPpdIso, run: () => ({ operative_tmp: 30 }) } satisfies RegisteredModel;
     const surface = bands(dynamicSpec({ ...request, model, unitSystem: unitSystem.ip }, celsius, celsius.axes));
     // 30 °C reads as 86 °F on an axis; here it stays 30.
@@ -213,7 +239,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     // The same value on the same Edge: left-inclusive opens the band above it,
     // right-inclusive closes the band below it.
     expect(flat(10).hoverText[0][0]).toBe("High");
-    const rightInclusive: DynamicDeclaration = { ...unevenChart, bands: { ...uneven, right: true } };
+    const rightInclusive: ScannedDeclaration = { ...unevenChart, bands: { ...uneven, right: true } };
     expect(flat(10, rightInclusive).hoverText[0][0]).toBe("Mild");
     // The hover label is the only place inclusivity still shows: the surface
     // keeps the number on either convention, and the last Edge bounds the fill
@@ -225,18 +251,27 @@ describe("a classifier whose Edges are unevenly spaced", () => {
 });
 
 describe("a declared zones source", () => {
-  // Phase 4's Adaptive is the real consumer; this stands in for it, and proves
-  // the source is handed the resolved SI inputs and the drawn x extent.
-  const zoned: DynamicDeclaration = {
-    ...declaration,
+  // Adaptive is the real consumer; this stands in for it on the registered
+  // model's inputs and ranges, and proves the source is handed the resolved SI
+  // inputs and the drawn x extent, and that its operative axis is locked.
+  const zoned: PolygonsDeclaration = {
+    type: chartType.dynamic,
+    axes: { x: q.operative_tmp, y: q.v },
     zones: ({ values, xRange }) => [
       {
         label: "80% acceptability",
         x: [xRange.min, xRange.max, xRange.max],
         y: [0, 0, requireValue(values, q.vr)],
       },
+      { label: "90% acceptability", x: [20, 30, 30], y: [0, 0, 1] },
     ],
   };
+
+  /** Dry-bulb and mean radiant apart, so their mean is not either one. */
+  const apart: SlotInputs = withEnteredValues(slot, new Map<Quantity, number>([
+    [q.tdb, 24],
+    [q.tr, 30],
+  ]));
 
   it("replaces the grid scan with the exact polygons", () => {
     const spec = dynamicSpec(request, zoned, zoned.axes);
@@ -248,9 +283,59 @@ describe("a declared zones source", () => {
     expect(polygon?.y[2]).toBeCloseTo(0.13, 12);
   });
 
-  it("carries the polygons into the one legend, ahead of the slot marker", () => {
+  it("carries every polygon into the one legend, ahead of the slot marker", () => {
     const spec = dynamicSpec(request, zoned, zoned.axes);
-    expect(spec.legend.map((entry) => entry.label)).toEqual(["80% acceptability", "Input 1"]);
+    expect(spec.legend.map((entry) => entry.label)).toEqual(["80% acceptability", "90% acceptability", "Input 1"]);
+  });
+
+  it("stays on its declared operative axis under separate entry, where a scanned chart would map it to tdb", () => {
+    const spec = dynamicSpec({ ...request, slot: apart }, zoned, zoned.axes);
+    expect(spec.layout.x.title).toContain(q.operative_tmp.label);
+    expect(spec.layout.x.range).toEqual([10, 40]);
+    expect(spec.layout.y.title).toContain(q.v.label);
+  });
+
+  it("stays on its declared axes under operative entry", () => {
+    const spec = dynamicSpec({ ...request, slot: operativeSlot(26) }, zoned, zoned.axes);
+    expect(spec.layout.x.title).toContain(q.operative_tmp.label);
+    expect(spec.layout.y.title).toContain(q.v.label);
+  });
+
+  it("is drawn on its declared axes whatever axes it is handed", () => {
+    const spec = dynamicSpec(request, zoned, { x: q.clo, y: q.met });
+    expect(spec.layout.x.title).toContain(q.operative_tmp.label);
+    expect(spec.layout.y.title).toContain(q.v.label);
+  });
+
+  it("marks the mean of dry-bulb and mean radiant under separate entry, and the other axis as entered", () => {
+    const marker = markerOf(dynamicSpec({ ...request, slot: apart }, zoned, zoned.axes));
+    expect(marker?.x).toBe(27);
+    expect(marker?.y).toBe(0.1);
+  });
+
+  it("marks the entered operative temperature under operative entry", () => {
+    const marker = markerOf(dynamicSpec({ ...request, slot: operativeSlot(26) }, zoned, zoned.axes));
+    expect(marker?.x).toBe(26);
+    expect(marker?.y).toBe(0.1);
+  });
+
+  it("converts the polygons and the marker to the displayed unit", () => {
+    const spec = dynamicSpec({ ...request, slot: apart, unitSystem: unitSystem.ip }, zoned, zoned.axes);
+    const polygon = spec.traces.find((trace): trace is PathTrace => trace.kind === "path");
+    expect(polygon?.x[0]).toBeCloseTo(50, 10);
+    expect(polygon?.x[1]).toBeCloseTo(104, 10);
+    // 0.13 m/s of vr is 25.6 fpm.
+    expect(polygon?.y[2]).toBeCloseTo(25.59, 2);
+    const marker = markerOf(spec);
+    expect(marker?.x).toBeCloseTo(80.6, 10);
+    expect(marker?.y).toBeCloseTo(19.69, 2);
+    expect(spec.layout.x.title).toContain("°F");
+  });
+
+  it("offers no axis to pick", () => {
+    const model = { ...pmvPpdIso, charts: [zoned] } satisfies RegisteredModel;
+    expect(dynamicAxisQuantities(model, temperatureMode.separate)).toEqual([]);
+    expect(dynamicAxisQuantities(model, temperatureMode.operative)).toEqual([]);
   });
 });
 
@@ -272,19 +357,8 @@ describe("dynamicAxisQuantities", () => {
 
 describe("axes across a temperature entry mode switch", () => {
   it("sweeps the operative temperature when a remembered tdb axis no longer exists", () => {
-    const operativeSlot: SlotInputs = {
-      values: new Map<Quantity, number>([
-        [q.operative_tmp, 26],
-        [q.v, 0.1],
-        [q.met, 1.1],
-        [q.clo, 0.5],
-      ]),
-      humidity: { mode: humidityMode.rh, value: 50 },
-      temperature: { mode: temperatureMode.operative },
-      options: new Map(),
-    };
     // declaration.axes.x is tdb, which the slot no longer holds.
-    const spec = dynamicSpec({ ...request, slot: operativeSlot }, declaration, declaration.axes);
+    const spec = dynamicSpec({ ...request, slot: operativeSlot(26) }, declaration, declaration.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     // The whole field would carry one band if the sweep were being discarded.
     const surface = bands(spec);

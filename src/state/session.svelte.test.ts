@@ -19,6 +19,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { pmv_ppd_ashrae, Standard } from "jsthermalcomfort";
+import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
@@ -306,5 +307,43 @@ describe("options", () => {
     expect(session.pendingSwitch).toBeNull();
     expect(session.model).toBe(takesAnOption);
     expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
+  });
+});
+
+/** A model whose one chart is drawn from polygons, on operative temperature against air speed. */
+const drawsPolygons = {
+  ...pmvPpdIso,
+  info: { ...pmvPpdIso.info, name: "fixture_polygons_chart" },
+  charts: [
+    {
+      type: chartType.dynamic,
+      axes: { x: q.operative_tmp, y: q.v },
+      zones: () => [{ label: "Acceptable", x: [20, 30, 30], y: [0, 0, 1] }],
+    },
+  ],
+} satisfies RegisteredModel;
+
+/**
+ * A polygons chart's axes are locked (ADR-0002 decision 37): the picker is not
+ * offered, and a request to move an axis changes nothing the chart draws.
+ */
+describe("the axes of a polygons chart", () => {
+  it("do not move when an axis is set", () => {
+    const session = new Session(drawsPolygons);
+    const outputs = new Outputs(session);
+
+    session.chart.setAxes({ x: q.clo, y: q.met });
+
+    expect(session.chart.axes).toEqual({ x: q.operative_tmp, y: q.v });
+    expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
+    expect(outputs.chart?.layout.y.title).toContain(q.v.label);
+  });
+
+  it("stay operative under separate entry", () => {
+    const session = new Session(drawsPolygons);
+    const outputs = new Outputs(session);
+
+    expect(session.slots[0].temperature.mode).toBe(temperatureMode.separate);
+    expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
   });
 });

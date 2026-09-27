@@ -2,7 +2,7 @@ import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/libraryInputs";
-import { dynamicChartOf, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, isPolygonsChart, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
@@ -100,6 +100,8 @@ export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
   type: ChartType;
   axes: { readonly x: Quantity; readonly y: Quantity };
+  /** A polygons chart's axes are its declaration's, and never move (ADR-0002 decision 37). */
+  readonly #axesLocked: boolean;
 
   constructor(model: RegisteredModel) {
     const dynamic = dynamicChartOf(model);
@@ -108,6 +110,7 @@ export class ChartState {
     }
     this.type = $state.raw(model.charts[0].type);
     this.axes = $state.raw(dynamic.axes);
+    this.#axesLocked = isPolygonsChart(dynamic);
   }
 
   setType(type: ChartType): void {
@@ -115,6 +118,9 @@ export class ChartState {
   }
 
   setAxes(axes: Partial<{ readonly x: Quantity; readonly y: Quantity }>): void {
+    if (this.#axesLocked) {
+      return;
+    }
     this.axes = { ...this.axes, ...axes };
   }
 }

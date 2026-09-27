@@ -17,10 +17,11 @@ import { defaultSlot } from "./declarationTestSlots";
 import { optionsReader, resultValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
 import {
   dynamicChartOf,
+  isPolygonsChart,
   requireAxisRange,
-  type DynamicDeclaration,
   type Range,
   type RegisteredModel,
+  type ScannedDeclaration,
   type Values,
 } from "./modelDeclaration";
 import { quantityFor, type Quantity } from "./quantities";
@@ -45,7 +46,7 @@ function classifiedOutputOf(model: RegisteredModel, bins: ClassifierBins): Quant
  * declared defaults, the extent the axis is drawn over, the slot at a position
  * along it, and the chart's scanned output there.
  */
-function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
+function alongTheXAxis(model: RegisteredModel, chart: ScannedDeclaration) {
   const defaults = defaultSlot(model);
   const axis = chart.axes.x;
   const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
@@ -96,7 +97,7 @@ function bracketAcross(outputAt: (position: number) => number, range: Range, edg
  * the whole suite stayed green. "run's numbers" below tests that property
  * directly (ADR-0002 decision 35).
  */
-function driftProbes(model: RegisteredModel, chart: DynamicDeclaration): SlotInputs[] {
+function driftProbes(model: RegisteredModel, chart: ScannedDeclaration): SlotInputs[] {
   const { defaults, range, at, outputAt } = alongTheXAxis(model, chart);
 
   const probes = [defaults];
@@ -114,6 +115,7 @@ describe("the dynamic chart's declared bands", () => {
     for (const model of registeredModels) {
       const chart = dynamicChartOf(model);
       if (!chart) continue;
+      if (isPolygonsChart(chart)) throw new Error(`${model.info.label}: this test reads a scanned chart's bands`);
       const classified = classifiedOutputOf(model, chart.bands);
       const probes = driftProbes(model, chart);
       // A model whose Edges the axis cannot reach would pass vacuously.
@@ -150,7 +152,7 @@ const SAMPLES_ALONG_THE_AXIS = 25;
  * kernel still returns a value on the grid now and then, and one such value
  * says nothing.
  */
-function unroundedSampleCount(model: RegisteredModel, chart: DynamicDeclaration): number {
+function unroundedSampleCount(model: RegisteredModel, chart: ScannedDeclaration): number {
   const { range, outputAt } = alongTheXAxis(model, chart);
   // A kernel out of its domain returns NaN, which is off no grid and on every
   // one; left to the comparison below it would read as rounding. Heat Index
@@ -206,6 +208,7 @@ describe("run's numbers", () => {
     for (const model of registeredModels) {
       const chart = dynamicChartOf(model);
       if (!chart) continue;
+      if (isPolygonsChart(chart)) throw new Error(`${model.info.label}: this test samples a scanned chart's output`);
       // The rounding switch is written by hand in each declaration's call,
       // under whatever name the library function gives it, so nothing but this
       // stops the next author from leaving it on (ADR-0002 decisions 18 and
@@ -224,7 +227,7 @@ describe("run's numbers", () => {
     // bisects on whatever `run` returns, so a rounded output can simply move
     // the bracket onto a rounding step where both ends agree.
     const chart = dynamicChartOf(pmvPpdIso);
-    if (!chart) throw new Error("PMV (ISO 7730) declares a dynamic chart");
+    if (!chart || isPolygonsChart(chart)) throw new Error("PMV (ISO 7730) declares a scanned dynamic chart");
     expect(unroundedSampleCount(isoRounding(true), chart)).toBe(0);
     expect(unroundedSampleCount(isoRounding(false), chart)).toBeGreaterThan(0);
   });
