@@ -54,6 +54,8 @@ function breaksBound(bound: Bound, value: number): boolean {
 }
 
 /** The narrowest bound that satisfies every bound in `bounds`, or `undefined` for none. */
+function intersect(bounds: readonly [Bound, ...Bound[]]): Bound;
+function intersect(bounds: readonly Bound[]): Bound | undefined;
 function intersect(bounds: readonly Bound[]): Bound | undefined {
   if (bounds.length === 0) {
     return undefined;
@@ -123,18 +125,26 @@ export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quan
  * The rows a completed run broke, as the library reports them on the result's
  * `warnings` (ADR-0002 decision 23) — the app does not evaluate a row. Each
  * row's key is reconciled to a quantity through `quantityFor`; a key the table
- * lacks is dropped. A key can repeat (one quantity breaking several limits),
- * so every row is kept. When the model takes `vr`, its row is reported on the
- * entered `v`, the quantity the user typed.
+ * lacks is dropped. When the model takes `vr`, its row is reported on the
+ * entered `v`, the quantity the user typed. A quantity can break several
+ * limits in one role (PMV (ASHRAE 55)'s fixed air-speed row plus its
+ * no-control rows): those merge into one row over the narrowest bound, so the
+ * person reads one sentence; the individual bounds are not kept.
  */
 export function violationRows(model: RegisteredModel, result: ModelResult): ViolationRow[] {
   const rows: ViolationRow[] = [];
   for (const { key, role, value, bound } of resultWarnings(model, result)) {
-    const quantity = quantityFor(key);
-    if (!quantity) {
+    const keyed = quantityFor(key);
+    if (!keyed) {
       continue;
     }
-    rows.push({ quantity: model.relativeAirSpeed && quantity === q.vr ? q.v : quantity, role, value, bound });
+    const quantity = model.relativeAirSpeed && keyed === q.vr ? q.v : keyed;
+    const index = rows.findIndex((row) => row.quantity === quantity && row.role === role);
+    if (index === -1) {
+      rows.push({ quantity, role, value, bound });
+    } else {
+      rows[index] = { ...rows[index], bound: intersect([rows[index].bound, bound]) };
+    }
   }
   return rows;
 }

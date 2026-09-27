@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { enteredBound, outOfRangeInputs, violationRows } from "./applicability";
+import { enteredBound, outOfRangeInputs, violationRows, warningFor } from "./applicability";
 import { humidityMode, temperatureMode } from "./entryModes";
 import { toLibraryInputs, type SlotInputs } from "./libraryInputs";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
+import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
@@ -110,16 +111,45 @@ describe("violationRows", () => {
     expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([]);
   });
 
-  it("keeps every row of a repeated key and drops a key the quantity table lacks", () => {
-    const bound = { max: 0.8 };
+  it("merges rows on one quantity and role into one sentence over the narrowest bound", () => {
+    // PMV (ASHRAE 55) with the air-speed control off, at an operative temperature ≤ 23 °C:
+    // the no-control rows, and above 2 m/s the fixed 0–2 m/s row too.
+    const noControl = (value: number) => [
+      { key: "vr", role: "input", value, bound: { max: 0.8 } },
+      { key: "vr", role: "input", value, bound: { max: 0.2 } },
+    ];
+    const below = violationRows(pmvPpdIso, { warnings: noControl(0.9) });
+    expect(below).toEqual([{ quantity: q.v, role: "input", value: 0.9, bound: { max: 0.2 } }]);
+    expect(below.map((row) => warningFor(row, unitSystem.si))).toEqual(["Air speed must be ≤ 0.2 m/s"]);
+    expect(below.map((row) => warningFor(row, unitSystem.ip))).toEqual(["Air speed must be ≤ 39.37 fpm"]);
+
+    const fixed = { key: "vr", role: "input", value: 2.5, bound: { min: 0, max: 2 } };
+    const above = violationRows(pmvPpdIso, { warnings: [fixed, ...noControl(2.5)] });
+    expect(above).toEqual([{ quantity: q.v, role: "input", value: 2.5, bound: { min: 0, max: 0.2 } }]);
+    expect(above.map((row) => warningFor(row, unitSystem.si))).toEqual(["Air speed must be 0 – 0.2 m/s"]);
+    expect(above.map((row) => warningFor(row, unitSystem.ip))).toEqual(["Air speed must be 0 – 39.37 fpm"]);
+  });
+
+  it("keeps rows on different quantities, or on one quantity in different roles, apart", () => {
     const result = {
       warnings: [
-        { key: "vr", role: "input", value: 1, bound: { min: 0, max: 2 } },
-        { key: "vr", role: "input", value: 1, bound },
-        { key: "not_a_quantity", role: "input", value: 1, bound },
+        { key: "vr", role: "input", value: 0.5, bound: { max: 0.2 } },
+        { key: "clo", role: "input", value: 2.5, bound: { max: 2 } },
+        { key: "pmv", role: "input", value: 3, bound: { max: 2 } },
+        { key: "pmv", role: "output", value: 3, bound: { min: -2, max: 2 } },
       ],
     };
-    expect(violationRows(pmvPpdIso, result).map((row) => row.bound)).toEqual([{ min: 0, max: 2 }, bound]);
+    expect(violationRows(pmvPpdIso, result).map(({ quantity, role }) => [quantity, role])).toEqual([
+      [q.v, "input"],
+      [q.clo, "input"],
+      [q.pmv, "input"],
+      [q.pmv, "output"],
+    ]);
+  });
+
+  it("drops a key the quantity table lacks", () => {
+    const result = { warnings: [{ key: "not_a_quantity", role: "input", value: 1, bound: { max: 0.8 } }] };
+    expect(violationRows(pmvPpdIso, result)).toEqual([]);
   });
 
   it("throws naming the model for a result that carries no warnings, since every v1 model returns them", () => {
