@@ -1,8 +1,9 @@
 /**
  * A slot the registry-wide declaration tests start from: the model's own
  * declared defaults, options included, in the default entry modes. Shared by
- * `modelDeclarationCall.test.ts` and `modelDeclarationRun.test.ts`, so both
- * run every declaration on the numbers the app would start it on.
+ * `modelDeclarationCall.test.ts`, `modelDeclarationRun.test.ts` and
+ * `charts/consoleSilence.test.ts`, so each runs every declaration on the
+ * numbers the app would start it on.
  */
 import { humidityMode, temperatureMode } from "./entryModes";
 import type { SlotInputs } from "./libraryInputs";

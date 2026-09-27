@@ -223,7 +223,7 @@ export interface RegisteredModel {
    * The contract: the model's own result object, carrying the model's numbers
    * unrounded (ADR-0002 decision 18), with the library's `round_output`
    * written off in the call (decision 35). A registry-wide test samples the
-   * dynamic chart's output and fails when it was left on. Called by
+   * table's first column and fails when it was left on (decision 38). Called by
    * `state/compute` and by the chart spec builders.
    */
   readonly run: (values: Values, options: OptionsReader) => ModelResult;

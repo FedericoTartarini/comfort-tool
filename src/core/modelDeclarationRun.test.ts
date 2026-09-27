@@ -1,9 +1,9 @@
 /**
  * What every registered declaration's `run` returns, in the two ways the
- * compiler cannot see: the bands it declares have to cut the scanned output
- * into the category the run itself returned (ADR-0002 decision 27), and its
- * numbers have to come back unrounded where the dynamic chart scans them
- * (decision 35). How it calls its library function is the sibling
+ * compiler cannot see: the bands a scanned chart declares have to cut its
+ * output into the category the run itself returned (ADR-0002 decision 27), and
+ * the number in the table's first column has to come back unrounded (decisions
+ * 35 and 38). How it calls its library function is the sibling
  * `modelDeclarationCall.test.ts`'s.
  *
  * What a declaration says about itself — its library name, its standard, the
@@ -13,18 +13,20 @@ import { describe, expect, it } from "vitest";
 import { classifyFromBins, pmv_ppd_iso, type ClassifierBins } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { chartType } from "./chartType";
 import { defaultSlot } from "./declarationTestSlots";
 import { optionsReader, resultValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
 import {
   dynamicChartOf,
   isPolygonsChart,
   requireAxisRange,
+  type DynamicDeclaration,
   type Range,
   type RegisteredModel,
   type ScannedDeclaration,
   type Values,
 } from "./modelDeclaration";
-import { quantityFor, type Quantity } from "./quantities";
+import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
  * The classified output the declared bands cut, found by object identity:
@@ -42,11 +44,21 @@ function classifiedOutputOf(model: RegisteredModel, bins: ClassifierBins): Quant
 }
 
 /**
+ * The ISO declaration with its dynamic chart drawn from polygons, as
+ * Adaptive's is: the chart names no output and no bands, so only the table
+ * says which number `run` must return unrounded.
+ */
+const isoWithPolygonsChart = {
+  ...pmvPpdIso,
+  charts: [{ type: chartType.dynamic, axes: { x: quantities.tdb, y: quantities.v }, zones: () => [] }],
+} satisfies RegisteredModel;
+
+/**
  * The chart's x axis, as both of the tests below walk it: the model's own
  * declared defaults, the extent the axis is drawn over, the slot at a position
- * along it, and the chart's scanned output there.
+ * along it, and the run's value for a quantity there.
  */
-function alongTheXAxis(model: RegisteredModel, chart: ScannedDeclaration) {
+function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
   const defaults = defaultSlot(model);
   const axis = chart.axes.x;
   const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
@@ -54,9 +66,9 @@ function alongTheXAxis(model: RegisteredModel, chart: ScannedDeclaration) {
     defaults,
     range: requireAxisRange(model, axis),
     at,
-    outputAt: (position: number) => {
+    valueAt: (position: number, quantity: Quantity) => {
       const slot = at(position);
-      return Number(resultValue(model.run(toLibraryInputs(slot, model), optionsReader(slot.options)), chart.output));
+      return resultValue(model.run(toLibraryInputs(slot, model), optionsReader(slot.options)), quantity);
     },
   };
 }
@@ -90,15 +102,10 @@ function bracketAcross(outputAt: (position: number) => number, range: Range, edg
  * the defaults when they are the wrong bins altogether, and within a hair of
  * an Edge when only one cut is misplaced, which is why the rest of the probes
  * go there.
- *
- * It does not detect a `run` that rounds. The bisection runs on whatever `run`
- * returns, so a rounded output can move the bracket onto the rounding step
- * itself, where both ends agree — measured on Heat Index in ticket 06, where
- * the whole suite stayed green. "run's numbers" below tests that property
- * directly (ADR-0002 decision 35).
  */
 function driftProbes(model: RegisteredModel, chart: ScannedDeclaration): SlotInputs[] {
-  const { defaults, range, at, outputAt } = alongTheXAxis(model, chart);
+  const { defaults, range, at, valueAt } = alongTheXAxis(model, chart);
+  const outputAt = (position: number) => Number(valueAt(position, chart.output));
 
   const probes = [defaults];
   for (const edge of chart.bands.edges) {
@@ -110,25 +117,40 @@ function driftProbes(model: RegisteredModel, chart: ScannedDeclaration): SlotInp
   return probes;
 }
 
+/** Asserts that the dynamic chart's bands cut the run's output where the run itself does, at every probe. */
+function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
+  const chart = dynamicChartOf(model);
+  // A chart drawn from polygons scans nothing, so it declares no bands to check.
+  if (!chart || isPolygonsChart(chart)) return;
+  const classified = classifiedOutputOf(model, chart.bands);
+  const probes = driftProbes(model, chart);
+  // A model whose Edges the axis cannot reach would pass vacuously.
+  expect(probes.length, model.info.label).toBeGreaterThan(1);
+  for (const slot of probes) {
+    const result = model.run(toLibraryInputs(slot, model), optionsReader(slot.options));
+    const value = resultValue(result, chart.output);
+    expect(typeof value, `${model.info.label} ${chart.output.label}`).toBe("number");
+    expect(classifyFromBins(Number(value), chart.bands), `${model.info.label} at ${chart.output.label} ${String(value)}`).toBe(
+      resultValue(result, classified),
+    );
+  }
+}
+
 describe("the dynamic chart's declared bands", () => {
   it("bin the scanned output into the category the run itself returned, for every registered model", () => {
     for (const model of registeredModels) {
-      const chart = dynamicChartOf(model);
-      if (!chart) continue;
-      if (isPolygonsChart(chart)) throw new Error(`${model.info.label}: this test reads a scanned chart's bands`);
-      const classified = classifiedOutputOf(model, chart.bands);
-      const probes = driftProbes(model, chart);
-      // A model whose Edges the axis cannot reach would pass vacuously.
-      expect(probes.length, model.info.label).toBeGreaterThan(1);
-      for (const slot of probes) {
-        const result = model.run(toLibraryInputs(slot, model), optionsReader(slot.options));
-        const value = resultValue(result, chart.output);
-        expect(typeof value, `${model.info.label} ${chart.output.label}`).toBe("number");
-        expect(classifyFromBins(Number(value), chart.bands), `${model.info.label} at ${chart.output.label} ${String(value)}`).toBe(
-          resultValue(result, classified),
-        );
-      }
+      expectBandsToBinAsRunDoes(model);
     }
+  });
+
+  it("are not looked for on a chart drawn from polygons", () => {
+    const neverRun = {
+      ...isoWithPolygonsChart,
+      run: () => {
+        throw new Error("a chart with no bands was probed");
+      },
+    } satisfies RegisteredModel;
+    expect(() => expectBandsToBinAsRunDoes(neverRun)).not.toThrow();
   });
 });
 
@@ -146,22 +168,29 @@ const ROUNDED_GRID_PER_UNIT = 100;
 const SAMPLES_ALONG_THE_AXIS = 25;
 
 /**
- * How many of the chart output's values, sampled along the chart's x axis,
- * carry more decimals than any rounding the library applies would leave. A
- * count over the whole sample rather than an assertion per value: an unrounded
- * kernel still returns a value on the grid now and then, and one such value
- * says nothing.
+ * How many of the first table column's values, sampled along the dynamic
+ * chart's x axis, carry more decimals than any rounding the library applies
+ * would leave. The first column because every model declares one, whatever
+ * its chart scans or draws, and what the table shows is what must be
+ * unrounded (ADR-0002 decision 38). A count over the whole sample rather than
+ * an assertion per value: an unrounded kernel still returns a value on the
+ * grid now and then, and one such value says nothing.
  */
-function unroundedSampleCount(model: RegisteredModel, chart: ScannedDeclaration): number {
-  const { range, outputAt } = alongTheXAxis(model, chart);
+function unroundedSampleCount(model: RegisteredModel, chart: DynamicDeclaration): number {
+  const { range, valueAt } = alongTheXAxis(model, chart);
+  const column = model.table[0];
+  if (!column) {
+    throw new Error(`${model.info.label} declares no table column`);
+  }
   // A kernel out of its domain returns NaN, which is off no grid and on every
   // one; left to the comparison below it would read as rounding. Heat Index
   // returns NaN below 27 °C unless the call turns `limit_inputs` off, so the
-  // next model would fail this test with the wrong reason printed.
+  // next model would fail this test with the wrong reason printed. A first
+  // column that is a category or a yes-or-no answer has no decimals to check.
   const finite = (position: number) => {
-    const value = outputAt(position);
-    if (!Number.isFinite(value)) {
-      throw new Error(`${model.info.label} returns ${String(value)} for ${chart.output.label} at ${chart.axes.x.label} ${position}`);
+    const value = valueAt(position, column);
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw new Error(`${model.info.label} returns ${String(value)} for ${column.label} at ${chart.axes.x.label} ${position}`);
     }
     return value;
   };
@@ -204,18 +233,17 @@ function isoRounding(round_output: boolean) {
 }
 
 describe("run's numbers", () => {
-  it("come back unrounded where the dynamic chart scans them, for every registered model", () => {
+  it("come back unrounded in the table's first column, for every registered model", () => {
     for (const model of registeredModels) {
       const chart = dynamicChartOf(model);
       if (!chart) continue;
-      if (isPolygonsChart(chart)) throw new Error(`${model.info.label}: this test samples a scanned chart's output`);
       // The rounding switch is written by hand in each declaration's call,
       // under whatever name the library function gives it, so nothing but this
       // stops the next author from leaving it on (ADR-0002 decisions 18 and
       // 35). What it costs is silent: within half a rounding step of an Edge
       // the chart's band and the table's category disagree, and the dynamic
       // chart's surface becomes a staircase.
-      expect(unroundedSampleCount(model, chart), `${model.info.label} ${chart.output.label}`).toBeGreaterThan(0);
+      expect(unroundedSampleCount(model, chart), `${model.info.label} first table column`).toBeGreaterThan(0);
     }
   });
 
@@ -227,8 +255,12 @@ describe("run's numbers", () => {
     // bisects on whatever `run` returns, so a rounded output can simply move
     // the bracket onto a rounding step where both ends agree.
     const chart = dynamicChartOf(pmvPpdIso);
-    if (!chart || isPolygonsChart(chart)) throw new Error("PMV (ISO 7730) declares a scanned dynamic chart");
+    if (!chart) throw new Error("PMV (ISO 7730) declares a dynamic chart");
     expect(unroundedSampleCount(isoRounding(true), chart)).toBe(0);
     expect(unroundedSampleCount(isoRounding(false), chart)).toBeGreaterThan(0);
+  });
+
+  it("are asserted for a model whose chart is polygons, which scans no output", () => {
+    expect(unroundedSampleCount(isoWithPolygonsChart, isoWithPolygonsChart.charts[0])).toBeGreaterThan(0);
   });
 });
