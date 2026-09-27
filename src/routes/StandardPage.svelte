@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { standards } from "$lib/core/standard";
   import { unitSystem } from "$lib/core/unitSystem";
@@ -19,12 +20,12 @@
   import * as Select from "$lib/ui/primitives/select";
   import {
     defaultModel,
+    followAddress,
     interceptLinkClick,
     modelFromRoute,
     modelsOf,
     navigateTo,
     pathTo,
-    redirectTo,
     requireStandard,
   } from "./navigation";
 
@@ -32,18 +33,10 @@
   const session = new Session(modelFromRoute() ?? defaultModel());
   const outputs = new Outputs(session);
 
-  // The URL names the model; an unknown URL falls back to the default. This is
-  // the address's path — a typed URL, the back button, a share link — and it
-  // never asks. After an in-app switch it finds the model already current and
-  // does nothing.
-  $effect(() => {
-    const model = modelFromRoute();
-    if (model) {
-      session.setModel(model);
-    } else {
-      redirectTo(defaultModel());
-    }
-  });
+  // The URL names the model: the one the page opens on, read above, and every
+  // one after it, which the navigation module hands over. This is the address's
+  // path — a typed URL, the back button, a share link — and it never asks.
+  onDestroy(followAddress((model) => session.setModel(model)));
 
   /**
    * Switching from inside the app: the session is asked first and the address

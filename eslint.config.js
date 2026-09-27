@@ -90,14 +90,17 @@ const untrackSyntax = [
 ];
 
 // Narrower than it looks: in state/ an $effect exists to synchronise something
-// outside Svelte, and there is nothing outside Svelte in that directory. In ui/
-// the same assignment is often legitimate (writing to a DOM node), so the rule
-// is not applied there.
+// outside Svelte, and there is nothing outside Svelte in that directory, nor in
+// a page, which composes state and components and talks to the router through
+// navigation.ts (ADR-0002 decision 43). In ui/ the same assignment is often
+// legitimate (writing to a DOM node), so the rule is not applied there. The
+// rule is syntactic: it sees an assignment written inside the effect, not one
+// made by a function the effect calls, which stays with review.
 const effectPuritySyntax = [
   {
     selector: "CallExpression[callee.name='$effect'] AssignmentExpression",
     message:
-      "An $effect in state/ must not assign. Derived values belong in $derived (ADR §6, Svelte Best practices).",
+      "An $effect in state/ or in a page must not assign. Derived values belong in $derived (ADR §6, Svelte Best practices).",
   },
 ];
 
@@ -207,6 +210,23 @@ export default [
         ...wireStringSyntax,
         ...untrackSyntax,
         ...constantCaseSyntax,
+        ...effectPuritySyntax,
+      ],
+    },
+  },
+  {
+    // Pages, like state/, have nothing outside Svelte to synchronise: the
+    // address reaches the session through the router's after-load hook, not
+    // an $effect (ADR-0002 decision 43). This block catches only an assignment
+    // written inside a page's effect, as effectPuritySyntax says.
+    files: ["src/routes/**/*.svelte"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...legacySvelteSyntax,
+        ...wireStringSyntax,
+        ...tailwindSyntax,
+        ...untrackSyntax,
         ...effectPuritySyntax,
       ],
     },
