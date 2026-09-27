@@ -26,7 +26,7 @@ import { Session } from "./session.svelte";
 const q = quantities;
 
 /** What the result table would show for `quantity`, read through the app's own accessor. */
-function shownValueOf(result: ModelResult | null, quantity: Quantity): number | string | undefined {
+function shownValueOf(result: ModelResult | null, quantity: Quantity): number | string | boolean | undefined {
   return result === null ? undefined : resultValue(result, quantity);
 }
 

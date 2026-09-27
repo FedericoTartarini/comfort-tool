@@ -3,10 +3,9 @@
   import { colorForBand } from "$lib/core/bandPalette";
   import { resultValue } from "$lib/core/libraryInputs";
   import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
-  import { formatNumber } from "$lib/core/numberFormat";
   import { quantityFor, type Quantity } from "$lib/core/quantities";
+  import { formatResultCell } from "$lib/core/resultCell";
   import { standards } from "$lib/core/standard";
-  import { displayUnitFor } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
   import * as Table from "$lib/ui/primitives/table";
@@ -43,7 +42,8 @@
             return [];
           }
           const category = resultValue(result, quantity);
-          if (category === undefined) {
+          // A classifier's labels are strings; a yes-or-no output has none.
+          if (category === undefined || typeof category === "boolean") {
             return [];
           }
           return [{ quantity, category, color: colorForBand(classifier, category) }];
@@ -53,16 +53,6 @@
   const caveats = $derived(violations.filter((violation) => violation.role === "output"));
   const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
   const standardEntry = $derived(model.standard ? standards.find((entry) => entry.id === model.standard) : undefined);
-
-  function cellText(quantity: Quantity): string {
-    const value = result ? resultValue(result, quantity) : undefined;
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-      return copy.notAvailable;
-    }
-    const unit = displayUnitFor(quantity, unitSystem);
-    const text = formatNumber(unit.fromSi(value));
-    return unit.symbol ? `${text} ${unit.symbol}` : text;
-  }
 </script>
 
 <div class="result-table">
@@ -95,7 +85,7 @@
           </Table.Cell>
         {/if}
         {#each model.table as quantity (quantity)}
-          <Table.Cell>{cellText(quantity)}</Table.Cell>
+          <Table.Cell>{formatResultCell(result, quantity, unitSystem)}</Table.Cell>
         {/each}
       </Table.Row>
     </Table.Body>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as jsthermalcomfort from "jsthermalcomfort";
-import { HEAT_INDEX_ROTHFUSZ_INFO } from "jsthermalcomfort";
+import { ADAPTIVE_ASHRAE_INFO, HEAT_INDEX_ROTHFUSZ_INFO, PMV_PPD_ASHRAE_INFO } from "jsthermalcomfort";
 import type { ModelInfo } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { quantities } from "./quantities";
@@ -37,5 +37,25 @@ describe("quantities table drift", () => {
 
   it("hi and stress_category, unregistered so far, are named by HEAT_INDEX_ROTHFUSZ_INFO", () => {
     expect(variableKeys(HEAT_INDEX_ROTHFUSZ_INFO)).toEqual(expect.arrayContaining(["hi", "stress_category"]));
+  });
+
+  it("Adaptive's eight keys, unregistered so far, are named by ADAPTIVE_ASHRAE_INFO", () => {
+    const adaptiveKeys = [
+      "t_running_mean",
+      "tmp_cmf",
+      "tmp_cmf_80_low",
+      "tmp_cmf_80_up",
+      "tmp_cmf_90_low",
+      "tmp_cmf_90_up",
+      "acceptability_80",
+      "acceptability_90",
+    ];
+    expect(tableKeys).toEqual(expect.arrayContaining(adaptiveKeys));
+    expect(variableKeys(ADAPTIVE_ASHRAE_INFO)).toEqual(expect.arrayContaining(adaptiveKeys));
+  });
+
+  it("compliance, unregistered so far, is named by PMV_PPD_ASHRAE_INFO", () => {
+    expect(tableKeys).toContain("compliance");
+    expect(variableKeys(PMV_PPD_ASHRAE_INFO)).toContain("compliance");
   });
 });

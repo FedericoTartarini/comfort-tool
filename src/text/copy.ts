@@ -35,6 +35,9 @@ export const copy = {
   boundaryWarningAllowedColumn: "Allowed range",
   standardCaption: (displayName: string, year: string): string => `${displayName}:${year}`,
   notAvailable: "—",
+  // A yes-or-no result cell (`acceptability_80`, `compliance`).
+  yes: "Yes",
+  no: "No",
   slotName: (index: number): string => `Input ${index + 1}`,
   chart: "Chart",
   xAxis: "X axis",

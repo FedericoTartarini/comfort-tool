@@ -150,8 +150,8 @@ export function optionsReader(options: ReadonlyMap<OptionSpec, boolean>): Option
  * onto `ModelResult`'s deliberately unindexed `object`
  * (`core/modelDeclaration.ts`); {@link resultWarnings} is the other.
  */
-export function resultValue(result: ModelResult, quantity: Quantity): number | string | undefined {
-  return (result as Record<string, number | string>)[quantity.key];
+export function resultValue(result: ModelResult, quantity: Quantity): number | string | boolean | undefined {
+  return (result as Record<string, number | string | boolean>)[quantity.key];
 }
 
 /**

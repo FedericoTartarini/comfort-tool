@@ -353,6 +353,15 @@ describe("dynamicAxisQuantities", () => {
     expect(operative).toContain(q.operative_tmp);
     expect(operative).not.toContain(q.tdb);
   });
+
+  it("never offers a yes-or-no quantity, which has no range to sweep", () => {
+    const model = {
+      ...pmvPpdIso,
+      inputs: [...pmvPpdIso.inputs, { quantity: q.compliance, value: 0 }],
+    } satisfies RegisteredModel;
+    expect(enteredQuantities(model, temperatureMode.separate)).toContain(q.compliance);
+    expect(dynamicAxisQuantities(model, temperatureMode.separate)).not.toContain(q.compliance);
+  });
 });
 
 describe("axes across a temperature entry mode switch", () => {

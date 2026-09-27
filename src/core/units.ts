@@ -64,6 +64,9 @@ const displayUnits = {
   // A classified output (`tsv`, `stress_category`): no unit, no meaningful
   // step — it is never an editable input.
   category: sameInBothSystems({ symbol: "", step: 0 }),
+  // A boolean output (`acceptability_80`, `compliance`), shown as "Yes" or
+  // "No": no unit, and like a category never an editable input.
+  yesNo: sameInBothSystems({ symbol: "", step: 0 }),
   // `pa` is in pascals; kPa is the display unit, as in the deployed tool.
   pressure: {
     si: {
