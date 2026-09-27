@@ -91,7 +91,7 @@ function seedDeclaredDefaults(slot: SlotInputs, model: RegisteredModel): SlotInp
     const held = underTemperatureMode(quantity, slot.temperature.mode);
     // Two declared temperatures stand in one operative entry, so the first of
     // them — the entry mode's own axis — is the one whose default applies.
-    if (enteredValue(slot, held) === undefined && !defaults.has(held)) {
+    if (enteredValue(slot, held, model) === undefined && !defaults.has(held)) {
       defaults.set(held, value);
     }
   }

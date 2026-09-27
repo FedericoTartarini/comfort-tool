@@ -109,8 +109,8 @@ export function dynamicSpec(
     legend.push(...bandFills.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
   }
 
-  const markerX = enteredValue(slot, x);
-  const markerY = enteredValue(slot, y);
+  const markerX = enteredValue(slot, x, model);
+  const markerY = enteredValue(slot, y, model);
   if (markerX !== undefined && markerY !== undefined) {
     traces.push({
       kind: "point",

@@ -39,7 +39,7 @@
   const hints = $derived(violations.filter((violation) => violation.role !== "output"));
 
   function valueOf(quantity: Quantity): number {
-    return enteredValue(inputSlot, quantity) ?? Number.NaN;
+    return enteredValue(inputSlot, quantity, model) ?? Number.NaN;
   }
 
   function commit(quantity: Quantity, si: number) {

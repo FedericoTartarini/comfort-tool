@@ -151,8 +151,9 @@ export type ChartDeclaration =
       /**
        * Locked: the chart is drawn on these two quantities whatever the entry
        * mode, and the picker is not offered. An operative-temperature axis
-       * stays operative under separate entry, marked at the mean of the two
-       * entered temperatures (`libraryInputs.operativeTemperatureOf`).
+       * stays operative under separate entry, marked at the library's `t_o` of
+       * the entered temperatures and air speed by the model's standard
+       * (`libraryInputs.operativeTemperatureOf`).
        */
       readonly axes: { readonly x: Quantity; readonly y: Quantity };
       /**

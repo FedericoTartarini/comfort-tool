@@ -68,10 +68,10 @@ export const adaptiveAshrae = {
   ],
   charts: [
     // Locked on running mean × operative temperature. The marker sits at the
-    // plain mean of dry-bulb and mean radiant under separate entry, where the
-    // deployed tool puts it (`libraryInputs.operativeTemperatureOf`), and not
-    // at the library's air-speed-weighted `t_o`, which the run's two answers
-    // are read at.
+    // library's air-speed-weighted `t_o` of dry-bulb and mean radiant under
+    // separate entry (`libraryInputs.operativeTemperatureOf`), where the run's
+    // two answers are read, and not at the plain mean the deployed tool puts
+    // it at.
     //
     // The bands step where the deployed tool steps them: each upper edge once
     // its own base line reaches 25 °C, whatever was entered. The run's upper

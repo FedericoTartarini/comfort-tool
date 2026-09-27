@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
+import { classifyFromBins, Standard, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { enteredQuantities, requireValue, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
@@ -267,7 +267,7 @@ describe("a declared zones source", () => {
     ],
   };
 
-  /** Dry-bulb and mean radiant apart, so their mean is not either one. */
+  /** Dry-bulb and mean radiant apart, so their operative temperature is not either one. */
   const apart: SlotInputs = withEnteredValues(slot, new Map<Quantity, number>([
     [q.tdb, 24],
     [q.tr, 30],
@@ -307,10 +307,14 @@ describe("a declared zones source", () => {
     expect(spec.layout.y.title).toContain(q.v.label);
   });
 
-  it("marks the mean of dry-bulb and mean radiant under separate entry, and the other axis as entered", () => {
-    const marker = markerOf(dynamicSpec({ ...request, slot: apart }, zoned, zoned.axes));
-    expect(marker?.x).toBe(27);
-    expect(marker?.y).toBe(0.1);
+  it("marks the library's t_o by the model's standard under separate entry, and the other axis as entered", () => {
+    // At 0.6 m/s ISO 7726 weighs the air temperature by √(10v), so the marker
+    // leaves the plain mean 27 the deployed chart puts it at.
+    const moving = withEnteredValues(apart, new Map([[q.v, 0.6]]));
+    const marker = markerOf(dynamicSpec({ ...request, slot: moving }, zoned, zoned.axes));
+    expect(marker?.x).toBe(t_o(24, 30, 0.6, Standard.iso_7730_2005));
+    expect(marker?.x).not.toBeCloseTo(27, 1);
+    expect(marker?.y).toBe(0.6);
   });
 
   it("marks the entered operative temperature under operative entry", () => {

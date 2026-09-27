@@ -21,6 +21,9 @@ import { quantities, type Quantity } from "./quantities";
 
 const q = quantities;
 
+/** A model with a temperature entry group and no standard: the library's default decides. */
+const withoutStandard = { ...pmvPpdIso, standard: undefined };
+
 function separateSlot(overrides: Partial<Record<"tdb" | "tr" | "v" | "met" | "clo", number>> = {}): SlotInputs {
   const values = { tdb: 25, tr: 25, v: 0.1, met: 1.1, clo: 0.5, ...overrides };
   return {
@@ -149,34 +152,41 @@ describe("optionsReader", () => {
 });
 
 describe("operativeTemperatureOf", () => {
-  it("is the plain mean of the dry-bulb and mean radiant temperatures under separate entry", () => {
-    expect(operativeTemperatureOf(separateSlot({ tdb: 24, tr: 30 }))).toBe(27);
+  // One room, 24 / 28 °C at 0.6 m/s: ASHRAE 55 weighs the air temperature by
+  // 0.7 at this speed, ISO 7726 by √(10v), and neither is the plain mean 26.
+  const room = separateSlot({ tdb: 24, tr: 28, v: 0.6 });
+
+  it("is the library's t_o by the model's own standard under separate entry", () => {
+    expect(operativeTemperatureOf(room, adaptiveAshrae)).toBeCloseTo(25.2);
+    expect(operativeTemperatureOf(room, pmvPpdIso)).toBeCloseTo(25.16, 2);
   });
 
-  it("is not the library's air-speed-weighted t_o once the air moves", () => {
-    // At 0.6 m/s the library weighs the air temperature by √(10v) under ISO
-    // and by 0.7 under ASHRAE 55; the deployed tool's reading ignores v.
-    const slot = separateSlot({ tdb: 24, tr: 30, v: 0.6 });
-    expect(operativeTemperatureOf(slot)).toBe(27);
-    expect(t_o(24, 30, 0.6)).not.toBeCloseTo(27, 1);
-    expect(t_o(24, 30, 0.6, Standard.ashrae_55_2023)).not.toBeCloseTo(27, 1);
+  it("passes no standard for a model that declares none, and the library's default decides", () => {
+    expect(operativeTemperatureOf(room, withoutStandard)).toBe(t_o(24, 28, 0.6));
   });
 
   it("is the entered operative temperature under operative entry", () => {
-    expect(operativeTemperatureOf(operativeSlot(26))).toBe(26);
+    expect(operativeTemperatureOf(operativeSlot(26), adaptiveAshrae)).toBe(26);
   });
 
   it("is what the slot answers for operative_tmp in either entry mode", () => {
-    expect(enteredValue(separateSlot({ tdb: 24, tr: 30 }), q.operative_tmp)).toBe(27);
-    expect(enteredValue(operativeSlot(26), q.operative_tmp)).toBe(26);
+    expect(enteredValue(room, q.operative_tmp, adaptiveAshrae)).toBe(operativeTemperatureOf(room, adaptiveAshrae));
+    expect(enteredValue(operativeSlot(26), q.operative_tmp, adaptiveAshrae)).toBe(26);
+  });
+
+  it("is where the switch into operative entry lands, so the click does not move the marker", () => {
+    for (const model of [adaptiveAshrae, pmvPpdIso, withoutStandard]) {
+      const switched = withTemperatureMode(room, temperatureMode.operative, model);
+      expect(enteredValue(switched, q.operative_tmp, model)).toBe(enteredValue(room, q.operative_tmp, model));
+    }
   });
 });
 
 describe("entered values", () => {
   it("reads the humidity entry from where the slot keeps it", () => {
-    expect(enteredValue(separateSlot(), q.rh)).toBe(50);
-    expect(enteredValue(separateSlot({ tdb: 27 }), q.tdb)).toBe(27);
-    expect(enteredValue(separateSlot(), q.vr)).toBeUndefined();
+    expect(enteredValue(separateSlot(), q.rh, pmvPpdIso)).toBe(50);
+    expect(enteredValue(separateSlot({ tdb: 27 }), q.tdb, pmvPpdIso)).toBe(27);
+    expect(enteredValue(separateSlot(), q.vr, pmvPpdIso)).toBeUndefined();
   });
 
   it("lists the panel rows of the current temperature mode", () => {
@@ -201,8 +211,8 @@ describe("entered values", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(50, 25);
     const slot: SlotInputs = { ...separateSlot(), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
     expect(resolveQuantities(slot, pmvPpdIso).get(q.rh)).toBeCloseTo(50, 0);
-    expect(enteredValue(slot, q.dew_point_tmp)).toBe(dewPoint);
-    expect(enteredValue(slot, q.rh)).toBeCloseTo(50, 0);
+    expect(enteredValue(slot, q.dew_point_tmp, pmvPpdIso)).toBe(dewPoint);
+    expect(enteredValue(slot, q.rh, pmvPpdIso)).toBeCloseTo(50, 0);
   });
 
   it("derives rh from the operative temperature under operative entry", () => {
@@ -238,7 +248,6 @@ describe("withTemperatureMode", () => {
   });
 
   it("passes no standard for a model that declares none, and the library's default decides", () => {
-    const withoutStandard = { ...pmvPpdIso, standard: undefined };
     const converted = withTemperatureMode(room, temperatureMode.operative, withoutStandard);
     expect(converted.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6));
   });
