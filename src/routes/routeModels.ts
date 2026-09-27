@@ -3,16 +3,41 @@ import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { routeSegmentFor } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
 
-/**
- * The models of `standard`, in registry order. Router-free (unlike the rest
- * of `routes/`) so it can load under vitest without `sv-router`'s
- * `createRouter`, which needs `IntersectionObserver`.
+/*
+ * Which models the routes offer and how a URL names one. Router-free (unlike
+ * `navigation.ts`) so it can load under vitest without `sv-router`'s
+ * `createRouter`, which needs `IntersectionObserver`; `navigation.ts`
+ * re-exports what pages use.
  */
+
+/** The models of `standard`, in registry order. */
 export function modelsOf(
   standard: Standard,
   models: readonly RegisteredModel[] = registeredModels,
 ): RegisteredModel[] {
   return models.filter((model) => model.standard === standard);
+}
+
+/** Models that belong to a standard, in registry order. */
+export function standardModels(): RegisteredModel[] {
+  return registeredModels.filter((model) => model.standard !== undefined);
+}
+
+export function defaultModel(): RegisteredModel {
+  const model = standardModels()[0];
+  if (!model) {
+    throw new Error("No registered model belongs to a standard");
+  }
+  return model;
+}
+
+/** `model.standard`, or throws when the model has none (an Explore-only model has no Standard page). */
+export function requireStandard(model: RegisteredModel): NonNullable<RegisteredModel["standard"]> {
+  const standard = model.standard;
+  if (!standard) {
+    throw new Error(`${model.info.label} has no standard and no Standard page`);
+  }
+  return standard;
 }
 
 /**

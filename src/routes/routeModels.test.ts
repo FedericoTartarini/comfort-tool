@@ -1,9 +1,8 @@
 import { Standard } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import { registeredModels } from "$lib/models";
 import { routeSegmentFor } from "$lib/core/standard";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { modelBySegment, modelsOf, toRouteSegment } from "./modelsOf";
+import { modelBySegment, modelsOf, requireStandard, standardModels, toRouteSegment } from "./routeModels";
 
 const fixtureWithoutStandard = {
   ...pmvPpdIso,
@@ -72,12 +71,10 @@ describe("modelBySegment", () => {
   });
 
   it("round-trips every registered model that has a standard through its own segments", () => {
-    const withStandard = registeredModels.flatMap((model) =>
-      model.standard === undefined ? [] : [{ model, standard: model.standard }],
-    );
+    const withStandard = standardModels();
     expect(withStandard.length).toBeGreaterThan(0);
-    for (const { model, standard } of withStandard) {
-      expect(modelBySegment(routeSegmentFor(standard), toRouteSegment(model.info.name))).toBe(model);
+    for (const model of withStandard) {
+      expect(modelBySegment(routeSegmentFor(requireStandard(model)), toRouteSegment(model.info.name))).toBe(model);
     }
   });
 });

@@ -1,10 +1,9 @@
 import { createRouter, type Routes } from "sv-router";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { routeSegmentFor } from "$lib/core/standard";
-import { registeredModels } from "$lib/models";
-import { modelBySegment, modelsOf, toRouteSegment } from "./modelsOf";
+import { defaultModel, modelBySegment, modelsOf, requireStandard, toRouteSegment } from "./routeModels";
 
-export { modelsOf };
+export { defaultModel, modelsOf, requireStandard };
 
 /**
  * The only place sv-router is used (ADR §2). Pages import what they need from
@@ -22,28 +21,6 @@ const routes = {
 
 export const { p, navigate, route } = createRouter(routes);
 export { Router } from "sv-router";
-
-/** Models that belong to a standard, in registry order. */
-export function standardModels(): RegisteredModel[] {
-  return registeredModels.filter((model) => model.standard !== undefined);
-}
-
-export function defaultModel(): RegisteredModel {
-  const model = standardModels()[0];
-  if (!model) {
-    throw new Error("No registered model belongs to a standard");
-  }
-  return model;
-}
-
-/** `model.standard`, or throws when the model has none (an Explore-only model has no Standard page). */
-export function requireStandard(model: RegisteredModel): NonNullable<RegisteredModel["standard"]> {
-  const standard = model.standard;
-  if (!standard) {
-    throw new Error(`${model.info.label} has no standard and no Standard page`);
-  }
-  return standard;
-}
 
 function routeParams(model: RegisteredModel): { standard: string; model: string } {
   return { standard: routeSegmentFor(requireStandard(model)), model: toRouteSegment(model.info.name) };
