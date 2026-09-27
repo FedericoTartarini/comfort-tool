@@ -47,14 +47,11 @@ export const adaptiveAshrae = {
   options: [],
   // `adaptive_ashrae` takes the entered air speed, `v`, not a relative one.
   relativeAirSpeed: false,
-  // The deployed tool's extents. The chart is locked on the operative axis, so
-  // nothing reads dry-bulb's and mean radiant's today; they carry the same
-  // extent as the ticket declares them (Phase 4b ticket 09).
+  // The deployed tool's extents, for the two axes the chart is locked on. No
+  // other quantity carries an axis, so none declares a range.
   axisRanges: [
     { quantity: q.t_running_mean, min: 10, max: 33.5 },
     { quantity: q.operative_tmp, min: 14, max: 35 },
-    { quantity: q.tdb, min: 14, max: 35 },
-    { quantity: q.tr, min: 14, max: 35 },
   ],
   // The library's outputs, in its order. The two acceptabilities are the
   // reading, as Yes or No: the compliance column appears only for a classified
