@@ -34,6 +34,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-26 — position: the app is on the library's v2 shape.** The library v2 migration pass landed on `rewrite/v1` as five commits (`.scratch/library-v2-migration/`): 01 `e47b86c` `run` calls every model with one params object, 02 `578cd54` a model's name is read from its model info, 03 `4812b99` and its follow-up `b64c21b` the zone solver takes one params object with `pmv_limit` required and the reproduced-defect switch deleted, 04 `b37eb5f` the PMV (ISO 7730) page draws categories A, B and C and prints the room's category. It consumes `jsthermalcomfort` on `feat/v2-typescript-setup` through `cee6893`, the library's v1-models parity tickets 01–12: one params object on every v1 model, `ModelInfo.name`, `warnings` rows on all five models, `PMV_COMPLIANCE_INTERVAL_ASHRAE`, `utci`'s `round_output`, and `pmv_ppd_iso`'s `category` with `PMV_CATEGORY_BINS_ISO`. Against the rebuilt package before the pass, `npm run check` reported 11 errors and 62 tests failed; after it the four scripts are green, and the test count went 179 → 176 → 174 → 172 → 180 across the four tickets, down by exactly the deleted tests and up by ticket 04's eight. ADR-0002 decisions 8, 24, 30, 31, 34, 35 and 36 carry dated revision notes; the library-boundary spec's `ModelInfo` and model-function gap tables are marked row by row, every row closed with its library commit but two: the classifier pairing stays in the app, and the psychrometric inverses still round; one library request, that `ClassifierBins` document its final edge as a sentinel, is recorded in the library's queue. **Phase 4b resumes at its ticket 03.**
 
+> **2026-09-27 — position, Phase 4b passed**: PMV (ASHRAE 55) and Adaptive (ASHRAE 55) share the Standard page with PMV (ISO 7730) (`.scratch/phase-4b/`). Upstream first, `suppress_warnings` as `76abdab` on `feat/v2-typescript-setup` (ticket 01). Then the app's prerequisites, each its own commit: the option contract `fcd4050`, with `751c6d9`, `ec62fd6` and `5444d7b` (ADR-0002 decision 36); the polygons chart on locked axes with the operative mean `b31e195` (decision 37); the registry-wide checks restated for it and the silence test `acc6946` (decision 38); rows on one input merged `2ee5278`; the quantity rows and the `yesNo` kind `00ea246`; Adaptive's band geometry in the temporary library `b97194e`. **The acceptance passed on its own terms for both models**: PMV (ASHRAE 55) `58ba1bb` and Adaptive (ASHRAE 55) `c1ef5e1` are each **two files** (`git diff --stat` at the declaration file and `src/models/index.ts`'s import and array entry, as Heat Index's was), and **the test count did not move**, 205 → 205 and 211 → 211, the six between being the geometry's own tests; the four scripts are green. `0f8032c` then dropped Adaptive's two axis ranges nothing reads, one file. **The timing**: PMV (ASHRAE 55)'s 51×51 dynamic chart, `dynamicSpec` on its declared `tdb × v` axes at its defaults, timed in the browser (Chrome 154, Vite dev server, no throttling) three times, 111, 90.3 and 90.5 ms, **median 90.5 ms**, against 11–13 ms for ISO's on the same page; decision 29 stands. The three models were walked end to end in the running app, both ways by link and, within ASHRAE 55, by the select (which lists the current standard's models only), with a switch that breaks Applicability asked and declined, a new tab, typed addresses, the back button into each model, SI and IP, mouse and keyboard, and the console clean throughout (ticket 10's comments). The Phase 4b prerequisite's wording is corrected to what shipped: neither Model info carries a compliance interval or `offsets`, and the app needs neither. ADR-0002 decision 38 gains a note that its "both models registered today" no longer describes the registry. Ticket 11, the switch into operative entry weighs by ISO on every page, is open and needs triage. **Phase 4b is closed; next is the whole-codebase review between Phase 4b and Phase 5**, whose input is ticket 10's structure findings.
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -724,8 +726,14 @@ acceptance did not really pass.
 
 ## Phase 4b · PMV (ASHRAE 55) and Adaptive (ASHRAE 55) — when their `_INFO` lands upstream
 
-**Prerequisites**: `PMV_PPD_ASHRAE_INFO` (with the compliance interval) and `ADAPTIVE_ASHRAE_INFO` (with the `offsets` field of #184 §6)
-in the main repository. #203 item 3 schedules all-model metadata after #182; the app does not push on that (ADR-0002 decision 13).
+**Passed 2026-09-27 (`58ba1bb`, `c1ef5e1`) ✅ — acceptance: two files each, test count unchanged (205, 211); PMV (ASHRAE 55)'s scan median 90.5 ms.**
+
+**Prerequisites**: `PMV_PPD_ASHRAE_INFO` and `ADAPTIVE_ASHRAE_INFO` in the main repository. **Corrected 2026-09-27**: this
+line asked for the first "with the compliance interval" and the second "with the `offsets` field of #184 §6". Both shipped
+without them, and the app needs neither: the ±0.5 comfort zone is the library's `PMV_COMPLIANCE_INTERVAL_ASHRAE`
+(library `fcd877e`), and Adaptive's bands come from the model function `adaptive_ashrae` itself, evaluated by the
+temporary library's `adaptive_ashrae_zone`. Nothing goes upstream for either.
+#203 item 3 schedules all-model metadata after #182; the app does not push on that (ADR-0002 decision 13).
 Two app-side prerequisites, added 2026-09-22, because this is the phase where two models first share the Standard page:
 **the model-switch dialog** (ADR-0002 decision 32, moved here from Phase 5 item 2; `.scratch/model-switch/`), including
 the seeding of quantities the bag lacks — Adaptive's `t_running_mean` throws without it — and **the gate keeping the last
@@ -746,12 +754,19 @@ switching asks, the navigation links included); the gate as `6ad4caa`. This phas
    **Console logging (recorded 2026-09-15):** the migration dropped the fork's "writes nothing to the console" test, because the
    main repository's `cooling_effect` still logs "Assuming cooling effect = 0" per point and v1 calls no ASHRAE model. So
    `suppressWarnings` (Phase 3.7 item 4) must land upstream before the ASHRAE grid scan, and the silence test returns with it.
+   **Done 2026-09-27 (`58ba1bb`).** As shipped: the switch is `suppress_warnings` (library `76abdab`), and the silence
+   test is registry-wide (`acc6946`); the merge is in `core/applicability.ts` alone (`2ee5278`); the scan's median is
+   90.5 ms, so decision 29 stands.
 2. Adaptive (ASHRAE 55): `src/models/adaptiveAshrae.ts` + one registry line; locked axes `t_running_mean × operative_tmp`, exact
    band polygons from the adaptive bands in `src/temporary-library/`, `hasHumidityGroup` false because `rh` is not
    among its inputs. Same two-file rule as Phase 4. **The adaptive bands are ported here, not earlier** (ADR-0002 decision 9 as
    revised 2026-09-15): the migration ported only `psychrometricZone` and the root finders; the band geometry and the fork's
    adaptive `describe` blocks come with this model, reading labels and offsets from `ADAPTIVE_ASHRAE_INFO` rather than
    transcribing the fork's.
+   **Done 2026-09-27 (`c1ef5e1`, with `0f8032c`).** As shipped: the geometry is `adaptive_ashrae_zone` (`b97194e`), which
+   calls `adaptive_ashrae` at chosen points rather than reading offsets the Model info does not carry, and is tested
+   against the deployed chart's vertices rather than the fork's `describe` blocks; the chart is a polygons chart on
+   locked axes (decision 37), and the declaration gives ranges for those two axes only.
 
 ---
 
