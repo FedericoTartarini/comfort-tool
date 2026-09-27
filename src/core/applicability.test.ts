@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { enteredBound, outOfRangeInputs, violationRows, warningFor } from "./applicability";
 import { humidityMode, temperatureMode } from "./entryModes";
-import { toLibraryInputs, type SlotInputs } from "./libraryInputs";
+import type { SlotInputs } from "./libraryInputs";
 import type { RegisteredModel, Values } from "./modelDeclaration";
+import { runOn } from "./modelRun";
 import { quantities, type Quantity } from "./quantities";
 import { unitSystem } from "./unitSystem";
 
@@ -80,7 +81,7 @@ describe("enteredBound / outOfRangeInputs", () => {
 
 describe("violationRows", () => {
   function rowsFor(slot: SlotInputs) {
-    return violationRows(pmvPpdIso, pmvPpdIso.run(toLibraryInputs(slot, pmvPpdIso)));
+    return violationRows(pmvPpdIso, runOn(slot, pmvPpdIso));
   }
 
   it("is empty at the model's defaults", () => {
@@ -160,7 +161,7 @@ describe("violationRows", () => {
         return rest;
       },
     } satisfies RegisteredModel;
-    const result = stripped.run(toLibraryInputs(separateSlot(), stripped));
+    const result = runOn(separateSlot(), stripped);
     expect(() => violationRows(stripped, result)).toThrow(`${pmvPpdIso.info.label} returned no applicability rows`);
   });
 });

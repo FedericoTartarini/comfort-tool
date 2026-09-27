@@ -1,16 +1,7 @@
 import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
 import { bandFill, chartInk } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
-import {
-  enteredQuantities,
-  enteredValue,
-  optionsReader,
-  resolveQuantities,
-  resultValue,
-  toLibraryInputs,
-  withEnteredValues,
-  type SlotInputs,
-} from "$lib/core/libraryInputs";
+import { enteredQuantities, enteredValue, resolveQuantities, withEnteredValues } from "$lib/core/libraryInputs";
 import {
   axisRangeFor,
   dynamicChartOf,
@@ -20,6 +11,7 @@ import {
   type Range,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
+import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { axisTitle, type BandFill, type ChartRequest, type ChartSpec, type LegendEntry, type Trace } from "./chartSpec";
@@ -86,16 +78,13 @@ export function dynamicSpec(
     const bins = chart.bands;
     const bandFills = bandsOf(bins);
     const scanned = yValues.map((yValue) =>
-      xValues.map((xValue) =>
-        outputValue(
-          model,
-          withEnteredValues(slot, new Map([
-            [x, xValue],
-            [y, yValue],
-          ])),
-          chart.output,
-        ),
-      ),
+      xValues.map((xValue) => {
+        const point = withEnteredValues(slot, new Map([
+          [x, xValue],
+          [y, yValue],
+        ]));
+        return resultNumber(runOn(point, model), chart.output);
+      }),
     );
     traces.push({
       kind: "bands",
@@ -172,12 +161,6 @@ export function dynamicAxisQuantities(model: RegisteredModel, mode: TemperatureM
 function samples(range: Range): readonly number[] {
   const step = (range.max - range.min) / (GRID - 1);
   return Array.from({ length: GRID }, (_, index) => range.min + index * step);
-}
-
-/** The model's own number for `output` at `slot`; `NaN` when the result carries none. */
-function outputValue(model: RegisteredModel, slot: SlotInputs, output: Quantity): number {
-  const value = resultValue(model.run(toLibraryInputs(slot, model), optionsReader(slot.options)), output);
-  return typeof value === "number" ? value : Number.NaN;
 }
 
 /**

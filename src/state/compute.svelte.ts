@@ -3,13 +3,14 @@ import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicSpec } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
-import { optionsReader, toLibraryInputs, type SlotInputs } from "$lib/core/libraryInputs";
+import type { SlotInputs } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   psychrometricChartOf,
   type ModelResult,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
+import { runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { copy } from "$lib/text/copy";
 import type { Session } from "./session.svelte";
@@ -94,7 +95,7 @@ export class Outputs {
     // Slots 1 and 2 are Compare's (Phase 5); nothing runs them yet, and
     // nothing keeps a result for them across a model change either.
     return [
-      last ? last.model.run(toLibraryInputs(last.inputs, last.model), optionsReader(last.inputs.options)) : null,
+      last ? runOn(last.inputs, last.model) : null,
       null,
       null,
     ];

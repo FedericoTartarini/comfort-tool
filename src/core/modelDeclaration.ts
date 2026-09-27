@@ -11,7 +11,7 @@ import { quantities, type Quantity } from "./quantities";
  * Deliberately widened to `object` rather than an indexed `Record`: a library
  * result declared as a plain `interface` (`HeatIndexResult`) carries no index
  * signature and TypeScript never infers one for it, so a `Record` type here
- * would reject every such model at its declaration. `libraryInputs.resultValue`
+ * would reject every such model at its declaration. `modelRun.resultValue`
  * is the one place that indexes into it.
  */
 export type ModelResult = object;

@@ -12,8 +12,9 @@
  */
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { temperatureMode, type TemperatureMode } from "./entryModes";
-import { resultWarnings, type SlotInputs } from "./libraryInputs";
+import type { SlotInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
+import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 import type { DisplayUnit } from "./units";

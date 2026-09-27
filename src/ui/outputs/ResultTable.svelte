@@ -1,8 +1,8 @@
 <script lang="ts">
   import { warningFor, type ViolationRow } from "$lib/core/applicability";
   import { colorForBand } from "$lib/core/bandPalette";
-  import { resultValue } from "$lib/core/libraryInputs";
   import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
+  import { resultValue } from "$lib/core/modelRun";
   import { quantityFor, type Quantity } from "$lib/core/quantities";
   import { formatResultCell } from "$lib/core/resultCell";
   import { standards } from "$lib/core/standard";

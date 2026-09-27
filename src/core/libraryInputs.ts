@@ -1,10 +1,8 @@
 import { t_o, v_relative } from "jsthermalcomfort";
-import type { ApplicabilityWarning } from "jsthermalcomfort";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import {
   hasHumidityGroup,
   hasTemperatureGroup,
-  type ModelResult,
   type OptionSpec,
   type OptionsReader,
   type RegisteredModel,
@@ -145,30 +143,6 @@ export function optionsReader(options: ReadonlyMap<OptionSpec, boolean>): Option
     }
     return value;
   };
-}
-
-/**
- * The mirror read: a quantity's value off the model's own result object, by
- * key. `undefined` for a key the result does not carry. One of the two casts
- * onto `ModelResult`'s deliberately unindexed `object`
- * (`core/modelDeclaration.ts`); {@link resultWarnings} is the other.
- */
-export function resultValue(result: ModelResult, quantity: Quantity): number | string | boolean | undefined {
-  return (result as Record<string, number | string | boolean>)[quantity.key];
-}
-
-/**
- * The applicability rows the library says the call broke, off the result's
- * `warnings` (ADR-0002 decision 23). Every v1 model returns them, so a result
- * without them is a declaration bug, and it throws naming the model rather
- * than reading as a run that broke nothing.
- */
-export function resultWarnings(model: RegisteredModel, result: ModelResult): readonly ApplicabilityWarning[] {
-  const warnings = (result as { warnings?: readonly ApplicabilityWarning[] }).warnings;
-  if (!warnings) {
-    throw new Error(`${model.info.label} returned no applicability rows`);
-  }
-  return warnings;
 }
 
 /**

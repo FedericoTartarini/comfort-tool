@@ -3,8 +3,8 @@
  * value the result table would show. Shared by `session.svelte.test.ts` and
  * `sessionModelSwitch.svelte.test.ts` so that both compare the same way.
  */
-import { resultValue } from "$lib/core/libraryInputs";
 import type { ModelResult } from "$lib/core/modelDeclaration";
+import { resultValue } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import type { InputSlot } from "./session.svelte";
 

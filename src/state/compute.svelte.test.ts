@@ -14,8 +14,8 @@
 import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
-import { resultValue } from "$lib/core/libraryInputs";
 import type { ModelResult, RegisteredModel, Values } from "$lib/core/modelDeclaration";
+import { resultValue } from "$lib/core/modelRun";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";

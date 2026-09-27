@@ -1,6 +1,6 @@
 import { copy } from "$lib/text/copy";
-import { resultValue } from "./libraryInputs";
 import type { ModelResult } from "./modelDeclaration";
+import { resultValue } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import type { Quantity } from "./quantities";
 import { displayUnitFor } from "./units";

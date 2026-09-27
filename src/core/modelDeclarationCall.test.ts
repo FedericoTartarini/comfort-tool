@@ -12,8 +12,9 @@ import { pmv_ppd_ashrae, pmv_ppd_iso, Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { defaultSlot } from "./declarationTestSlots";
-import { optionsReader, resolveQuantities, toLibraryInputs, valuesReader } from "./libraryInputs";
+import { optionsReader, resolveQuantities, valuesReader } from "./libraryInputs";
 import type { OptionSpec, OptionsReader, RegisteredModel, Values } from "./modelDeclaration";
+import { runOn } from "./modelRun";
 import { quantityFor, type Quantity } from "./quantities";
 
 /** The arguments of the last call of each library function, by export name. */
@@ -184,7 +185,7 @@ function kwargsFedBy(model: RegisteredModel, option: OptionSpec): string[] {
   const slot = defaultSlot(model);
   const argumentsWith = (value: boolean): readonly unknown[] => {
     lastCalls.delete(model.info.name);
-    model.run(toLibraryInputs(slot, model), optionsReader(new Map(slot.options).set(option, value)));
+    runOn({ ...slot, options: new Map(slot.options).set(option, value) }, model);
     const args = lastCalls.get(model.info.name);
     if (!args) {
       throw new Error(`${model.info.name}'s run did not call the library function it is named after`);

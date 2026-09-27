@@ -2,7 +2,7 @@ import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
-import { optionsReader, requireValue, resolveQuantities, resultValue, valuesReader } from "$lib/core/libraryInputs";
+import { optionsReader, requireValue, resolveQuantities, valuesReader } from "$lib/core/libraryInputs";
 import {
   psychrometricChartOf,
   requireAxisRange,
@@ -10,6 +10,7 @@ import {
   type Range,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
+import { resultNumber } from "$lib/core/modelRun";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
@@ -192,8 +193,7 @@ function pmvOfRun(
       .set(q.rh, rh)
       .set(q.met, met)
       .set(q.clo, clo);
-    const pmv = resultValue(model.run(valuesReader(inputs), options), q.pmv);
-    return typeof pmv === "number" ? pmv : Number.NaN;
+    return resultNumber(model.run(valuesReader(inputs), options), q.pmv);
   };
 }
 

@@ -15,7 +15,7 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
 import { defaultSlot } from "./declarationTestSlots";
-import { optionsReader, resultValue, toLibraryInputs, withEnteredValues, type SlotInputs } from "./libraryInputs";
+import { withEnteredValues, type SlotInputs } from "./libraryInputs";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -26,6 +26,7 @@ import {
   type ScannedDeclaration,
   type Values,
 } from "./modelDeclaration";
+import { resultValue, runOn } from "./modelRun";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
@@ -67,8 +68,7 @@ function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
     range: requireAxisRange(model, axis),
     at,
     valueAt: (position: number, quantity: Quantity) => {
-      const slot = at(position);
-      return resultValue(model.run(toLibraryInputs(slot, model), optionsReader(slot.options)), quantity);
+      return resultValue(runOn(at(position), model), quantity);
     },
   };
 }
@@ -127,7 +127,7 @@ function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
   // A model whose Edges the axis cannot reach would pass vacuously.
   expect(probes.length, model.info.label).toBeGreaterThan(1);
   for (const slot of probes) {
-    const result = model.run(toLibraryInputs(slot, model), optionsReader(slot.options));
+    const result = runOn(slot, model);
     const value = resultValue(result, chart.output);
     expect(typeof value, `${model.info.label} ${chart.output.label}`).toBe("number");
     expect(classifyFromBins(Number(value), chart.bands), `${model.info.label} at ${chart.output.label} ${String(value)}`).toBe(
