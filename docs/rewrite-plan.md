@@ -574,6 +574,8 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    display unit becomes kPa via `/1000`, because the library's `p_vap` / `p_atm` are in Pa while `core/units.ts`
    had been treating its kPa symbol as identity — harmless while nothing displayed a pressure.
    Design: `docs/specs/2026-09-08-humidity-entry-modes-design.md`.
+   **Decided 2026-09-28**: "Set pressure" and `environment` are Phase 4c; from then on these conversions read the
+   session's pressure instead of the library's default.
 3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. **Decided 2026-09-07: toggle only in
    v1.** The one consumer is Phase 3.7's ASHRAE `airspeed_control`; a `choice` kind waits for a second. The ISO
    **edition** the library gained on 2026-09-05 (`"7730-2005"` / `"7730-2025"`) is *not* an option: both editions run
@@ -793,14 +795,37 @@ Four sessions, in this order, `/clear` between each:
 3. **Vocabulary — `/domain-modeling` on `CONTEXT.md`, optional.** 4b brings `airspeed_control`, `t_running_mean`, the 80 % / 90 %
    acceptability limits, and a second model called PMV with different bands; the question is whether any term is now doing
    two jobs. Item 2's grilling usually pulls this in on its own; run it alone only for a term already felt to be fuzzy.
-4. **Compare's `/grill-with-docs`** takes items 1–3's output as known input.
+4. **Compare's `/grill-with-docs`** takes items 1–3's output as known input. **Not before Phase 4c is done** (added
+   2026-09-28): Compare is grilled against a `Session` that already holds `environment`.
+
+---
+
+## Phase 4c · Atmospheric pressure and `environment` (added 2026-09-28)
+
+**Goal**: "Set pressure" and `Session.environment` (ADR §4.5): the session holds one atmospheric pressure, so that
+Phase 5's share link carries it (ADR §7.2).
+**Prerequisites**: items 1–3 of the review above. It runs before that review's item 4.
+
+**Why before Phase 5.** Compare multiplies the slots by three and the share link writes `Session`'s schema, so
+`environment` has to exist before either, or both are reopened to add it. Kept in v1 on 2026-09-28 (Proposal 28 as
+revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer constrains scope.
+
+1. The feature is grilled and specced in its own `.scratch/` folder, which the user starts; this section places it, it
+   does not design it. The grilling starts from two conflicts it has to settle: ADR-0001 §4.1.5 (:181) lists "Set
+   pressure" among the input calculators that stay out of the session and the share link, against §4.5 and §7.2; and
+   §4.8's share-link example writes `p_atm` in kPa (`101.325`), where the library's `p_atm` is in Pa.
+2. The humidity entry modes' conversions (`core/entryModes.ts`) read the session's pressure where they leave `p_atm` at
+   the library's default today (Phase 3.6 item 2).
+
+**Done criteria**
+- `Session` holds one atmospheric pressure, and every humidity entry mode's conversion that takes `p_atm` reads it.
 
 ---
 
 ## Phase 5 · Compare / Explore / share and export
 
 **Goal**: close out the ADR §7 first-stage feature set.
-**Prerequisites**: Phase 4 passed, and the review between Phase 4b and Phase 5 above done.
+**Prerequisites**: Phase 4 passed, the review between Phase 4b and Phase 5 above done, and Phase 4c done.
 
 1. Compare with three slots + baseline: `ResultTable` has one row per slot, and the baseline determines what the difference highlighting is relative to;
    slot colours run through the input panel, the table and the marker points on the chart.
@@ -831,7 +856,7 @@ Four sessions, in this order, `/clear` between each:
    decided 2026-09-04). No second ES5 code path, no share decoding.
 
 **Done criteria**
-- From any state, Export Link → open in a new tab → the state is identical (three slots, units, chart type, thresholds, numbers)
+- From any state, Export Link → open in a new tab → the state is identical (three slots, units, chart type, thresholds, atmospheric pressure, numbers)
 - Opening a share link in an environment with `Proxy` disabled does not crash
 
 ---
