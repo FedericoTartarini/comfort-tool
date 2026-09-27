@@ -12,8 +12,9 @@ import { quantities } from "$lib/core/quantities";
 
 const q = quantities;
 
-// 7730-2005, not the library's 2025 default: rewrite plan, Phase 3.6 item 3.
-const ISO_EDITION = Standard.iso_7730_2005;
+// 7730-2025, the library's default: its kernel follows ISO 7730:2025 Annex D
+// (ADR-0002 decision 6).
+const ISO_EDITION = Standard.iso_7730_2025;
 
 export const pmvPpdIso = {
   info: PMV_PPD_ISO_INFO,

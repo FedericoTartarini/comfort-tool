@@ -596,6 +596,9 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    `airspeed_control`, which is Phase 4b item 1; building the field before it would contradict the rule this plan applies
    everywhere else (a field waits for its first consumer). Toggle-only stands and is re-checked with the model on screen.
    This item is no longer a Phase 4 prerequisite.
+   **Corrected 2026-09-28 (review after Phase 4b, `P023`)**: the reason for 2005 above no longer holds. The library's kernel
+   now follows ISO 7730:2025 Annex D, and the library lists 2025 first, so the declaration pins `Standard.iso_7730_2025`
+   (Proposal 27; ADR-0002 decision 6 as amended) and the result table captions 2025.
 4. **The three kinds of applicability** (handed over by the library alignment). `pmv_ppd_iso.limits` now carries rows for
    the derived `p_vap ≤ 2700 Pa` and the output `pmv ∈ [−2, 2]` beside the entered quantities, and `outOfRangeInputs`
    walks entered quantities only, so both are silently ignored — the same hole the library just closed. They cannot

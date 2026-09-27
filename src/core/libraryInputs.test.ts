@@ -278,7 +278,7 @@ describe("withTemperatureMode", () => {
 });
 
 describe("standard", () => {
-  it("pins ISO 7730:2005", () => {
-    expect(pmvPpdIso.standard).toBe(Standard.iso_7730_2005);
+  it("pins ISO 7730:2025", () => {
+    expect(pmvPpdIso.standard).toBe(Standard.iso_7730_2025);
   });
 });

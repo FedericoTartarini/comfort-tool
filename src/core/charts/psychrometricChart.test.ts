@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, Standard, v_relative } from "jsthermalcomfort";
+import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
@@ -77,7 +77,7 @@ function pmvAt(db: number, rh: number, tr: number): number {
     met,
     clo,
     wme: 0,
-    standard: Standard.iso_7730_2005,
+    standard: pmvPpdIso.standard,
     limit_inputs: false,
     round_output: false,
   }).pmv;

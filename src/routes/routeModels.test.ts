@@ -12,13 +12,13 @@ const fixtureWithoutStandard = {
 
 // The other edition of pmvPpdIso's standard: both editions share the route
 // segment `iso-7730`, because the segment carries no year (ADR-0002 decision 6).
-const fixtureIso2025 = {
+const fixtureIso2005 = {
   ...pmvPpdIso,
-  standard: Standard.iso_7730_2025,
-  info: { ...pmvPpdIso.info, name: "fixture_iso_2025" },
+  standard: Standard.iso_7730_2005,
+  info: { ...pmvPpdIso.info, name: "fixture_iso_2005" },
 };
 
-const fixtures = [pmvPpdIso, fixtureWithoutStandard, fixtureIso2025];
+const fixtures = [pmvPpdIso, fixtureWithoutStandard, fixtureIso2005];
 
 describe("toRouteSegment", () => {
   it("spells the library's underscores as hyphens", () => {
@@ -32,7 +32,7 @@ describe("toRouteSegment", () => {
 
 describe("modelsOf", () => {
   it("returns the models of the given standard, in registry order", () => {
-    expect(modelsOf(Standard.iso_7730_2005, [pmvPpdIso, fixtureWithoutStandard])).toEqual([pmvPpdIso]);
+    expect(modelsOf(Standard.iso_7730_2025, [pmvPpdIso, fixtureWithoutStandard])).toEqual([pmvPpdIso]);
   });
 
   it("returns an empty list for a standard no fixture declares", () => {
@@ -46,7 +46,7 @@ describe("modelBySegment", () => {
   });
 
   it("finds a model pinned to either edition of a standard by its own address", () => {
-    for (const model of [pmvPpdIso, fixtureIso2025]) {
+    for (const model of [pmvPpdIso, fixtureIso2005]) {
       expect(modelBySegment(routeSegmentFor(model.standard), toRouteSegment(model.info.name), fixtures)).toBe(model);
     }
   });

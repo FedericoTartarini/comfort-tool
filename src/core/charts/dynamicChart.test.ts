@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyFromBins, Standard, t_o, type ClassifierBins } from "jsthermalcomfort";
+import { classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { enteredQuantities, requireValue, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
@@ -312,7 +312,7 @@ describe("a declared zones source", () => {
     // leaves the plain mean 27 the deployed chart puts it at.
     const moving = withEnteredValues(apart, new Map([[q.v, 0.6]]));
     const marker = markerOf(dynamicSpec({ ...request, slot: moving }, zoned, zoned.axes));
-    expect(marker?.x).toBe(t_o(24, 30, 0.6, Standard.iso_7730_2005));
+    expect(marker?.x).toBe(t_o(24, 30, 0.6, pmvPpdIso.standard));
     expect(marker?.x).not.toBeCloseTo(27, 1);
     expect(marker?.y).toBe(0.6);
   });
