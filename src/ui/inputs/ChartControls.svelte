@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { ChartAxes, RegisteredModel } from "$lib/core/modelDeclaration";
+  import type { Quantity } from "$lib/core/quantities";
   import type { DrawnAxes } from "$lib/state/compute.svelte";
   import type { ChartState } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -41,35 +42,25 @@
   </Inline>
 
   {#if drawnAxes}
-    {@const selected = drawnAxes.selected}
     <Inline gap="2" align="center">
-      <Label for="{id}-x">{copy.xAxis}</Label>
-      <Select.Root
-        type="single"
-        value={String(xChoices.indexOf(selected.x))}
-        onValueChange={(value) => chart.setAxes({ x: xChoices[Number(value)] })}
-      >
-        <Select.Trigger id="{id}-x">{selected.x.label}</Select.Trigger>
-        <Select.Content>
-          {#each xChoices as quantity, index (quantity)}
-            <Select.Item value={String(index)} label={quantity.label} />
-          {/each}
-        </Select.Content>
-      </Select.Root>
-
-      <Label for="{id}-y">{copy.yAxis}</Label>
-      <Select.Root
-        type="single"
-        value={String(yChoices.indexOf(selected.y))}
-        onValueChange={(value) => chart.setAxes({ y: yChoices[Number(value)] })}
-      >
-        <Select.Trigger id="{id}-y">{selected.y.label}</Select.Trigger>
-        <Select.Content>
-          {#each yChoices as quantity, index (quantity)}
-            <Select.Item value={String(index)} label={quantity.label} />
-          {/each}
-        </Select.Content>
-      </Select.Root>
+      {@render axisPicker("x", copy.xAxis, xChoices, drawnAxes.selected.x)}
+      {@render axisPicker("y", copy.yAxis, yChoices, drawnAxes.selected.y)}
     </Inline>
   {/if}
 </Inline>
+
+{#snippet axisPicker(axis: keyof ChartAxes, label: string, choices: readonly Quantity[], selected: Quantity)}
+  <Label for="{id}-{axis}">{label}</Label>
+  <Select.Root
+    type="single"
+    value={String(choices.indexOf(selected))}
+    onValueChange={(value) => chart.setAxes({ [axis]: choices[Number(value)] })}
+  >
+    <Select.Trigger id="{id}-{axis}">{selected.label}</Select.Trigger>
+    <Select.Content>
+      {#each choices as quantity, index (quantity)}
+        <Select.Item value={String(index)} label={quantity.label} />
+      {/each}
+    </Select.Content>
+  </Select.Root>
+{/snippet}

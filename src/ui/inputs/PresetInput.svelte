@@ -1,35 +1,23 @@
 <script lang="ts">
-  import type { Bound } from "$lib/core/applicability";
   import { formatNumber } from "$lib/core/numberFormat";
-  import { matchingPreset, presetsFor, type Preset } from "$lib/core/presets";
-  import type { Quantity } from "$lib/core/quantities";
+  import { matchingPreset, type Preset } from "$lib/core/presets";
   import { displayUnitFor } from "$lib/core/units";
-  import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
   import * as Command from "$lib/ui/primitives/command";
   import * as Popover from "$lib/ui/primitives/popover";
-  import QuantityInput from "./QuantityInput.svelte";
+  import QuantityInput, { type Props as QuantityInputProps } from "./QuantityInput.svelte";
 
-  interface Props {
-    quantity: Quantity;
-    /** Canonical SI value. */
-    value: number;
-    unitSystem: UnitSystem;
-    bound?: Bound;
-    outOfRange?: boolean;
-    oncommit: (si: number) => void;
+  interface Props extends QuantityInputProps {
+    presets: readonly Preset[];
   }
 
-  let { quantity, value, unitSystem, bound, outOfRange = false, oncommit }: Props = $props();
+  let { quantity, value, unitSystem, bound, outOfRange = false, oncommit, presets }: Props = $props();
 
   let open = $state(false);
 
-  // `presetsFor` only returns undefined for a quantity InputPanel would not
-  // have routed here for; the fallback keeps the template total.
-  const presets = $derived(presetsFor(quantity) ?? []);
   const unit = $derived(displayUnitFor(quantity, unitSystem));
   const caption = $derived(matchingPreset(quantity, value)?.label);
 

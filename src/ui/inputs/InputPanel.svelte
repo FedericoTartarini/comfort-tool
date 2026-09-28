@@ -87,8 +87,9 @@
       outOfRange: outOfRange.includes(quantity),
       oncommit: (si: number) => commit(quantity, si),
     }}
-    {#if presetsFor(quantity)}
-      <PresetInput {...rowProps} />
+    {@const presets = presetsFor(quantity)}
+    {#if presets}
+      <PresetInput {...rowProps} {presets} />
     {:else}
       <QuantityInput {...rowProps} />
     {/if}
