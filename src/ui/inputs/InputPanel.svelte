@@ -35,7 +35,7 @@
 
   // Everything but the result's own bound. Entered values are gated before the call, so an `input` row
   // here comes from a value the panel did not show as an input: the relative air speed vr = v + 0.3(met − 1),
-  // which the standard bounds instead of `v` — so the sentence is the one the entered speed would give.
+  // which the standard bounds instead of `v` — so the sentence names the relative air speed, not the entered one.
   const hints = $derived(violations.filter((violation) => violation.role !== "output"));
 
   function valueOf(quantity: Quantity): number {

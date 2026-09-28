@@ -1,14 +1,22 @@
 import { describe, expect, it } from "vitest";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
+import { copy } from "$lib/text/copy";
 import { enteredBound, outOfRangeInputs, violationRows, warningFor } from "./applicability";
 import { humidityMode, temperatureMode } from "./entryModes";
 import type { SlotInputs } from "./libraryInputs";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { quantities, type Quantity } from "./quantities";
-import { unitSystem } from "./unitSystem";
+import { displayUnitFor, valueWithUnit } from "./units";
+import { unitSystem, type UnitSystem } from "./unitSystem";
 
 const q = quantities;
+
+/** The sentence for a bound on the relative air speed, built from its label and display unit. */
+function vrWarning(range: string, system: UnitSystem): string {
+  return copy.applicabilityWarning(q.vr.label, valueWithUnit(range, displayUnitFor(q.vr, system)));
+}
 
 function separateSlot(overrides: Partial<Record<"tdb" | "tr" | "v" | "met" | "clo", number>> = {}): SlotInputs {
   const values = { tdb: 25, tr: 25, v: 0.1, met: 1.1, clo: 0.5, ...overrides };
@@ -120,15 +128,28 @@ describe("violationRows", () => {
       { key: "vr", role: "input", value, bound: { max: 0.2 } },
     ];
     const below = violationRows(pmvPpdIso, { warnings: noControl(0.9) });
-    expect(below).toEqual([{ quantity: q.v, role: "input", value: 0.9, bound: { max: 0.2 } }]);
-    expect(below.map((row) => warningFor(row, unitSystem.si))).toEqual(["Air speed must be ≤ 0.2 m/s"]);
-    expect(below.map((row) => warningFor(row, unitSystem.ip))).toEqual(["Air speed must be ≤ 39.37 fpm"]);
+    expect(below).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 0.9, bound: { max: 0.2 } }]);
+    expect(below.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
+    expect(below.map((row) => warningFor(row, unitSystem.ip))).toEqual([vrWarning("≤ 39.37", unitSystem.ip)]);
 
     const fixed = { key: "vr", role: "input", value: 2.5, bound: { min: 0, max: 2 } };
     const above = violationRows(pmvPpdIso, { warnings: [fixed, ...noControl(2.5)] });
-    expect(above).toEqual([{ quantity: q.v, role: "input", value: 2.5, bound: { min: 0, max: 0.2 } }]);
-    expect(above.map((row) => warningFor(row, unitSystem.si))).toEqual(["Air speed must be 0 – 0.2 m/s"]);
-    expect(above.map((row) => warningFor(row, unitSystem.ip))).toEqual(["Air speed must be 0 – 39.37 fpm"]);
+    expect(above).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 2.5, bound: { min: 0, max: 0.2 } }]);
+    expect(above.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("0 – 0.2", unitSystem.si)]);
+    expect(above.map((row) => warningFor(row, unitSystem.ip))).toEqual([vrWarning("0 – 39.37", unitSystem.ip)]);
+  });
+
+  it("names the relative air speed in the sentence on the entered v row, the quantity its bound belongs to", () => {
+    // PMV (ASHRAE 55) with the air-speed control off: an entered 0.15 m/s at met 1.29 is a vr of 0.237,
+    // over the 0.2 m/s the standard allows at this operative temperature.
+    const slot: SlotInputs = {
+      ...separateSlot({ tdb: 22, tr: 22, v: 0.15, met: 1.29 }),
+      options: new Map([[pmvPpdAshrae.options[0], false]]),
+    };
+    const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae));
+    expect(rows.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
+    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
+    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Relative air speed must be ≤ 0.2 m/s"]);
   });
 
   it("keeps rows on different quantities, or on one quantity in different roles, apart", () => {

@@ -6,11 +6,13 @@
  * result's `warnings` (ADR-0002 decision 23) and mapped to quantities here.
  *
  * `limitFor` and the fork's `ApplicabilityLimit` are gone with it: a
- * violation is `{ quantity, role, value, bound }`, and the warning sentence is
- * templated here from the quantity's label, the bound and the display unit —
- * the fork's `limit.warning` strings are not carried.
+ * violation is `{ quantity, bounded, role, value, bound }`, and the warning
+ * sentence is assembled here from the bounded quantity's label, the bound and
+ * the display unit, in the copy dictionary's words — the fork's
+ * `limit.warning` strings are not carried.
  */
 import type { Bound, VariableInfo } from "jsthermalcomfort";
+import { copy } from "$lib/text/copy";
 import { temperatureMode, type TemperatureMode } from "./entryModes";
 import type { SlotInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
@@ -18,7 +20,7 @@ import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 import type { DisplayUnit } from "./units";
-import { displayUnitFor } from "./units";
+import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
 export type { Bound };
@@ -32,8 +34,14 @@ export interface OutOfRangeRow {
   readonly bound: Bound;
 }
 
-/** One applicability row a value broke, and where it appeared in the model's evaluation. */
+/**
+ * One applicability row a value broke, and where it appeared in the model's
+ * evaluation. `quantity` is the row it is reported on; `bounded` is the
+ * quantity the bound and value belong to, which the sentence names. The two
+ * differ only for `vr`, reported on the entered `v` (ADR-0002 decision 4).
+ */
 export interface ViolationRow extends OutOfRangeRow {
+  readonly bounded: Quantity;
   readonly role: "input" | "derived" | "output";
 }
 
@@ -127,10 +135,11 @@ export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quan
  * `warnings` (ADR-0002 decision 23) — the app does not evaluate a row. Each
  * row's key is reconciled to a quantity through `quantityFor`; a key the table
  * lacks is dropped. When the model takes `vr`, its row is reported on the
- * entered `v`, the quantity the user typed. A quantity can break several
- * limits in one role (PMV (ASHRAE 55)'s fixed air-speed row plus its
- * no-control rows): those merge into one row over the narrowest bound, so the
- * person reads one sentence; the individual bounds are not kept.
+ * entered `v`, the quantity the user typed, and stays `bounded` by `vr`. A
+ * quantity can break several limits in one role (PMV (ASHRAE 55)'s fixed
+ * air-speed row plus its no-control rows): those merge into one row over the
+ * narrowest bound, so the person reads one sentence; the individual bounds
+ * are not kept.
  */
 export function violationRows(model: RegisteredModel, result: ModelResult): ViolationRow[] {
   const rows: ViolationRow[] = [];
@@ -142,8 +151,9 @@ export function violationRows(model: RegisteredModel, result: ModelResult): Viol
     const quantity = model.relativeAirSpeed && keyed === q.vr ? q.v : keyed;
     const index = rows.findIndex((row) => row.quantity === quantity && row.role === role);
     if (index === -1) {
-      rows.push({ quantity, role, value, bound });
+      rows.push({ quantity, bounded: keyed, role, value, bound });
     } else {
+      // Keeps the first row's `bounded`: a model with `relativeAirSpeed` reports `vr` rows and no `v` rows.
       rows[index] = { ...rows[index], bound: intersect([rows[index].bound, bound]) };
     }
   }
@@ -160,9 +170,8 @@ export function formatBound(bound: Bound, unit: DisplayUnit): string {
   return min !== undefined ? `≥ ${min}` : `≤ ${max}`;
 }
 
-/** The sentence a violation row shows the user, templated from the quantity's label, bound and display unit. */
+/** The sentence a violation row shows the user, from the bounded quantity's label, the bound and its display unit. */
 export function warningFor(row: ViolationRow, unitSystem: UnitSystem): string {
-  const unit = displayUnitFor(row.quantity, unitSystem);
-  const range = formatBound(row.bound, unit);
-  return unit.symbol ? `${row.quantity.label} must be ${range} ${unit.symbol}` : `${row.quantity.label} must be ${range}`;
+  const unit = displayUnitFor(row.bounded, unitSystem);
+  return copy.applicabilityWarning(row.bounded.label, valueWithUnit(formatBound(row.bound, unit), unit));
 }
