@@ -49,7 +49,7 @@ Read the diff once against each of these. They are judgement calls; none of them
   library's vocabulary, not ours. *(Google TS Style Guide: "Do not use abbreviations that are ambiguous or unfamiliar to
   readers outside your project, and do not abbreviate by deleting letters within a word.")*
 - Functions start with a verb, or are accessors named `…For`, `…Of` or `with…` (ADR-0002 decision 41). No `engine` / `manager` / `helper` / `utils` as a file name.
-- Quantity display names come from `Quantity.label` — never written in the app.
+- Quantity display names come from `Quantity.label` — never written in the app. The one exception is the zone legend's `|PMV|` (ADR-0002 decision 44).
 
 **Single source of truth**
 

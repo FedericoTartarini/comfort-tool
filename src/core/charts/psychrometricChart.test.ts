@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
+import { defaultSlot } from "$lib/core/declarationTestSlots";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { SlotInputs } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type PsychrometricDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { copy } from "$lib/text/copy";
@@ -170,6 +172,29 @@ describe("psychrometricSpec", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate), { type: chartType.psychrometric, zones: [zone] });
     expect(zonePaths(spec).map((path) => path.label)).toEqual([copy.zoneLegend(zone)]);
     expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "marker"]);
+  });
+
+  it("names the zones drawn today by their limit, word for word", () => {
+    const zoneLabels = (model: RegisteredModel) => {
+      const chart = psychrometricChartOf(model);
+      if (!chart) {
+        throw new Error(`${model.info.name} declares no psychrometric chart`);
+      }
+      const spec = psychrometricSpec({ ...request(temperatureMode.separate), model, slot: defaultSlot(model) }, chart);
+      return zonePaths(spec).map((path) => path.label);
+    };
+    expect(zoneLabels(pmvPpdIso)).toEqual([
+      "Category C (|PMV| < 0.7)",
+      "Category B (|PMV| < 0.5)",
+      "Category A (|PMV| < 0.2)",
+    ]);
+    expect(zoneLabels(pmvPpdAshrae)).toEqual(["Comfort zone (|PMV| < 0.5)"]);
+  });
+
+  it("writes a zone's limit as every number on screen is written", () => {
+    const zone = { label: copy.comfortZone, limit: 1 / 3, inclusive: true };
+    const spec = psychrometricSpec(request(temperatureMode.separate), { type: chartType.psychrometric, zones: [zone] });
+    expect(zonePaths(spec).map((path) => path.label)).toEqual(["Comfort zone (|PMV| ≤ 0.33)"]);
   });
 
   it("labels the x axis with the entry mode's temperature quantity", () => {

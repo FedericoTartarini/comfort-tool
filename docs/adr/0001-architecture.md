@@ -475,6 +475,8 @@ index.html              embedded ES5 feature check + read-only summary page
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 2 and 6**: quantities come from the app's table, standards from the library's `Standard`; "imported from the library" below reads accordingly. `Quantity.label` remains the only source of a quantity's name.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 41** (2026-09-28; review after Phase 4b, Proposal 17): "functions start with a verb" below reads: a function starts with a verb, or is an accessor named `…For`, `…Of` or `with…`, which names what it returns and what it is read from (`displayUnitFor`, `dynamicChartOf`, `withTemperatureMode`).
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 44** (2026-09-28; review after Phase 4b, Proposal 25): "the app never writes one" below has one exception, the `|PMV|` in the psychrometric chart's zone legend, which the library publishes no symbol for.
 
 
 - **Naming**: components `PascalCase.svelte`; modules `camelCase.ts`; functions start with a verb;

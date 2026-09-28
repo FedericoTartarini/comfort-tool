@@ -1,6 +1,10 @@
+import type { ComfortZone } from "$lib/core/modelDeclaration";
+import { formatNumber } from "$lib/core/numberFormat";
+
 /**
  * UI copy, English only in v1 (ADR §2). Quantity names never appear here:
- * they come from `Quantity.label`.
+ * they come from `Quantity.label`. The one exception is `zoneLegend`'s |PMV|
+ * (ADR-0002 decision 44).
  */
 export const copy = {
   appTitle: "CBE Thermal Comfort Tool",
@@ -46,6 +50,6 @@ export const copy = {
   yAxis: "Y axis",
   comfortZone: "Comfort zone",
   categoryZone: (category: string): string => `Category ${category}`,
-  zoneLegend: (zone: { label: string; limit: number; inclusive: boolean }): string =>
-    `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${zone.limit})`,
+  zoneLegend: (zone: ComfortZone) =>
+    `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${formatNumber(zone.limit)})`,
 } as const;
