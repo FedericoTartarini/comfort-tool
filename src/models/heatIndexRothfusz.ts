@@ -28,7 +28,7 @@ export const heatIndexRothfusz = {
     { quantity: q.tdb, min: 20, max: 50 },
     { quantity: q.rh, min: 0, max: 100 },
   ],
-  table: [q.hi, q.stress_category],
+  table: [q.hi],
   charts: [
     // The scanned number is `hi`, cut by the same stress-category bins the
     // kernel classifies `stress_category` with.

@@ -1,8 +1,8 @@
 /**
  * What a declaration says about itself: the name its model info gives it,
  * unique across the registry; the standard edition it picks, checked against
- * that model info for every registered model; and the axis range a chart
- * reads off it. What its `run` does is the
+ * that model info for every registered model; the table columns it lists;
+ * and the axis range a chart reads off it. What its `run` does is the
  * sibling `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
@@ -30,6 +30,18 @@ describe("standard", () => {
     }
   });
 });
+
+describe("table", () => {
+  it("names no output its model info classifies, for every registered model", () => {
+    // A category is never shown in a cell (`formatResultCell`); the Compliance
+    // column reads it, so a table column for it would be a dash on every run.
+    for (const model of registeredModels) {
+      const classified = model.table.filter((column) => model.info.outputs[column.key]?.classifier);
+      expect(classified.map((column) => column.label), model.info.label).toEqual([]);
+    }
+  });
+});
+
 describe("axisRangeFor", () => {
   it("returns the declared range when the model has one", () => {
     expect(axisRangeFor(pmvPpdIso, q.tdb)).toEqual({ min: 10, max: 40 });
