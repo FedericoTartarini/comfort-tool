@@ -25,31 +25,31 @@ export const copy = {
   // range has nothing to show. The caller picks by whether it holds a result.
   outOfRangeKeptResult: "Out of range — not calculated. Showing the last valid result.",
   outOfRangeEmptyResult: "Out of range — not calculated. This model has no earlier result to show.",
-  applicabilityHint: "Outside the standard's applicability:",
+  applicabilityHint: "Outside the model's applicability:",
   // One broken applicability row: `range` already carries its unit.
   applicabilityWarning: (label: string, range: string) => `${label} must be ${range}`,
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column
   // headings: "Input" heads quantity names here and slot names in the result
   // table, so the two are not one string.
   boundaryWarningTitle: "Boundary Range Warning",
-  boundaryWarningIntro: (model: string): string => `${model} does not accept every value you entered.`,
+  boundaryWarningIntro: (modelLabel: string) => `${modelLabel} does not accept every value you entered.`,
   boundaryWarningQuestion: "Adjust these values to the nearest allowed value and switch?",
   boundaryWarningAccept: "Yes, switch and adjust",
   boundaryWarningDecline: "No, stay here",
   boundaryWarningInputColumn: "Input",
   boundaryWarningCurrentColumn: "Current",
   boundaryWarningAllowedColumn: "Allowed range",
-  standardCaption: (displayName: string, year: string): string => `${displayName}:${year}`,
+  standardCaption: (displayName: string, year: string) => `${displayName}:${year}`,
   notAvailable: "—",
   // A yes-or-no result cell (`acceptability_80`, `compliance`).
   yes: "Yes",
   no: "No",
-  slotName: (index: number): string => `Input ${index + 1}`,
+  slotName: (index: number) => `Input ${index + 1}`,
   chart: "Chart",
   xAxis: "X axis",
   yAxis: "Y axis",
   comfortZone: "Comfort zone",
-  categoryZone: (category: string): string => `Category ${category}`,
+  categoryZone: (category: string) => `Category ${category}`,
   zoneLegend: (zone: ComfortZone) =>
     `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${formatNumber(zone.limit)})`,
 } as const;
