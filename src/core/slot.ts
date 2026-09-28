@@ -1,7 +1,7 @@
 /**
  * What a slot holds; the functions that read what the person entered, enter
- * values, convert the temperature entry mode, seed a model's defaults and
- * build the slot a model starts on; and the get-or-throws they read through.
+ * values, convert either entry mode, seed a model's defaults and build the
+ * slot a model starts on; and the get-or-throws they read through.
  * Turning a slot into the library's params is `core/libraryInputs.ts`'s and
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
@@ -215,6 +215,21 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
     expandOperative(values);
   }
   return { values, humidity: slot.humidity, temperature: { mode }, options: slot.options };
+}
+
+/**
+ * The same slot with its humidity entry re-expressed under `mode`, at the
+ * slot's {@link resolvedTdb}: the entered dry-bulb temperature, or the
+ * operative temperature under operative entry. Lossy and one-way, like
+ * {@link withTemperatureMode}. Throws for a slot that holds no humidity:
+ * there is nothing to re-express.
+ */
+export function withHumidityMode(slot: Slot, mode: HumidityMode): Slot {
+  if (mode === slot.humidity?.mode) {
+    return slot;
+  }
+  const humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(slot), resolvedTdb(slot)) };
+  return { values: slot.values, humidity, temperature: slot.temperature, options: slot.options };
 }
 
 /**

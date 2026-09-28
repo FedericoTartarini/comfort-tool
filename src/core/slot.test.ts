@@ -16,6 +16,7 @@ import {
   relativeHumidityOf,
   startingSlot,
   withEnteredValues,
+  withHumidityMode,
   withTemperatureMode,
   type Slot,
 } from "./slot";
@@ -190,6 +191,26 @@ describe("a slot that holds no humidity", () => {
     for (const mode of Object.values(humidityMode)) {
       expect(enteredValue(holdsNone, mode.quantity, pmvPpdIso), mode.id).toBeUndefined();
     }
+  });
+
+  it("throws, naming humidity, when its humidity entry mode is changed", () => {
+    for (const mode of Object.values(humidityMode)) {
+      expect(() => withHumidityMode(holdsNone, mode), mode.id).toThrow(/humidity/);
+    }
+  });
+});
+
+describe("withHumidityMode", () => {
+  const room: Slot = { ...enteredSlotFor(pmvPpdIso, { tdb: 27 }), humidity: { mode: humidityMode.rh, value: 35 } };
+
+  it("re-expresses the entry at the slot's dry-bulb temperature, leaving the original untouched", () => {
+    const converted = withHumidityMode(room, humidityMode.dewPoint);
+    expect(converted.humidity).toEqual({ mode: humidityMode.dewPoint, value: humidityMode.dewPoint.fromRelativeHumidity(35, 27) });
+    expect(room.humidity).toEqual({ mode: humidityMode.rh, value: 35 });
+  });
+
+  it("returns the slot unchanged for the mode it is already in", () => {
+    expect(withHumidityMode(room, humidityMode.rh)).toBe(room);
   });
 });
 

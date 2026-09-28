@@ -4,7 +4,7 @@ import { temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/c
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
-import { relativeHumidityOf, requireHumidity, resolvedTdb, startingSlot, withTemperatureMode, type Slot } from "$lib/core/slot";
+import { requireHumidity, startingSlot, withHumidityMode, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -35,15 +35,12 @@ export class InputSlot {
   }
 
   /**
-   * Re-express the stored humidity in the new representation at the current
-   * dry-bulb temperature. Lossy and one-way, like the temperature switch.
-   * Throws for a slot that holds no humidity: there is nothing to re-express.
+   * Re-express the stored humidity in the new representation, by the rule
+   * `core/slot.ts` states: at the slot's dry-bulb temperature, lossy and
+   * one-way. Throws for a slot that holds no humidity.
    */
   setHumidityMode(mode: HumidityMode): void {
-    if (mode === this.humidity?.mode) {
-      return;
-    }
-    this.humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(this), resolvedTdb(this)) };
+    this.replaceWith(withHumidityMode(this, mode));
   }
 
   /**
