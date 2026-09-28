@@ -32,9 +32,6 @@ export const heatIndexRothfusz = {
   charts: [
     // The scanned number is `hi`, cut by the same stress-category bins the
     // kernel classifies `stress_category` with.
-    // `HEAT_INDEX_ROTHFUSZ_INFO.outputs.stress_category.classifier` is the same
-    // object but types as possibly undefined, and a declaration carries no cast
-    // (ADR-0002 decision 27).
     {
       type: chartType.dynamic,
       axes: { x: q.tdb, y: q.rh },

@@ -89,9 +89,6 @@ export const pmvPpdAshrae = {
     // The scanned number is `pmv`, cut by the same thermal-sensation bins the
     // kernel classifies `tsv` with: ISO's Edges, right-inclusive where ISO's
     // are not, so a PMV of exactly 0.5 is Neutral here.
-    // `PMV_PPD_ASHRAE_INFO.outputs.tsv.classifier` is the same object but
-    // types as possibly undefined, and a declaration carries no cast (ADR-0002
-    // decision 27).
     {
       type: chartType.dynamic,
       axes: { x: q.tdb, y: q.v },

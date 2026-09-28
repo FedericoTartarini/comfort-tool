@@ -71,11 +71,9 @@ export const pmvPpdIso = {
     // difference not ported.
     { type: chartType.psychrometric, zones: categoryZones(PMV_CATEGORY_BINS_ISO) },
     // The scanned number is `pmv`, cut by the same thermal-sensation bins the
-    // kernel classifies `tsv` with. `PMV_PPD_ISO_INFO.outputs.tsv.classifier`
-    // is the same object but types as possibly undefined, and a declaration
-    // carries no cast (ADR-0002 decision 27). The category bins cannot be the
-    // Bands: they cut |PMV|, not the signed `pmv` scanned here, and the drift
-    // test pairs Bands with the output they classify by identity.
+    // kernel classifies `tsv` with. The category bins cannot be the Bands:
+    // they cut |PMV|, not the signed `pmv` scanned here, and the drift test
+    // pairs Bands with the output they classify by identity.
     {
       type: chartType.dynamic,
       axes: { x: q.tdb, y: q.v },
