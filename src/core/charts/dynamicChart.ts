@@ -9,16 +9,16 @@ import {
   requireAxisRange,
   type ChartAxes,
   type DynamicDeclaration,
-  type Range,
   type RegisteredModel,
   type ZonePolygon,
 } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { formatNumber } from "$lib/core/numberFormat";
-import { displayUnitFor, labelWithUnit, valueWithUnit, type DisplayUnit } from "$lib/core/units";
+import { displayUnitFor, valueWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { BandFill, ChartRequest, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
+import { axisFor, markerFor, samples } from "./specParts";
 import { containsPoint } from "./polygon";
 
 /** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
@@ -65,8 +65,8 @@ export function dynamicSpec(
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
-  const xValues = samples(xRange);
-  const yValues = samples(yRange);
+  const xValues = samples(xRange, GRID);
+  const yValues = samples(yRange, GRID);
   const displayedAxes = { x: xValues.map((value) => xUnit.fromSi(value)), y: yValues.map((value) => yUnit.fromSi(value)) };
   /** The two lines every cell's readout opens with. */
   const axisLines = (xIndex: number, yIndex: number): HoverReadout => [
@@ -133,23 +133,14 @@ export function dynamicSpec(
   const markerX = enteredValue(slot, x, model);
   const markerY = enteredValue(slot, y, model);
   if (markerX !== undefined && markerY !== undefined) {
-    traces.push({
-      kind: "point",
-      x: xUnit.fromSi(markerX),
-      y: yUnit.fromSi(markerY),
-      color: chartInk.marker,
-      hover: "off",
-      label: slotLabel,
-    });
-    legend.push({ label: slotLabel, swatch: "marker", color: chartInk.marker });
+    const marker = markerFor(slotLabel, xUnit.fromSi(markerX), yUnit.fromSi(markerY));
+    traces.push(marker.trace);
+    legend.push(marker.legendEntry);
   }
 
   return {
     traces,
-    layout: {
-      x: { title: labelWithUnit(x, xUnit), range: [xUnit.fromSi(xRange.min), xUnit.fromSi(xRange.max)] },
-      y: { title: labelWithUnit(y, yUnit), range: [yUnit.fromSi(yRange.min), yUnit.fromSi(yRange.max)] },
-    },
+    layout: { x: axisFor(x, xUnit, xRange), y: axisFor(y, yUnit, yRange) },
     legend,
     annotations: [],
   };
@@ -188,11 +179,6 @@ export function dynamicAxisQuantities(model: RegisteredModel, mode: TemperatureM
     return [];
   }
   return enteredQuantities(model, mode).filter((quantity) => axisRangeFor(model, quantity) !== undefined);
-}
-
-function samples(range: Range): readonly number[] {
-  const step = (range.max - range.min) / (GRID - 1);
-  return Array.from({ length: GRID }, (_, index) => range.min + index * step);
 }
 
 /**

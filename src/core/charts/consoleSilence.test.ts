@@ -29,8 +29,9 @@ function consoleWritesWhileDrawing(model: RegisteredModel): string[] {
     if (dynamic) {
       dynamicSpec(request, dynamic, dynamic.axes);
     }
-    if (psychrometricChartOf(model)) {
-      psychrometricSpec(request);
+    const psychrometric = psychrometricChartOf(model);
+    if (psychrometric) {
+      psychrometricSpec(request, psychrometric);
     }
     return spies.flatMap(([method, spy]) => spy.mock.calls.map((args) => `console.${method}: ${args.map(String).join(" ")}`));
   } finally {

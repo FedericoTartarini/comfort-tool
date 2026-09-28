@@ -4,7 +4,7 @@ import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { SlotInputs } from "$lib/core/libraryInputs";
-import { psychrometricChartOf, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { psychrometricChartOf, type PsychrometricDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -44,13 +44,20 @@ function request(
   return { model: pmvPpdIso, slot: slot(mode), slotLabel: "Input 1", unitSystem: system };
 }
 
-/** The ISO declaration's zones, largest first: the order the chart draws them in. */
-function isoZonesLargestFirst() {
+/** The ISO declaration's psychrometric chart: what every spec below draws, unless a test hands it another. */
+function isoPsychrometricChart(): PsychrometricDeclaration {
   const chart = psychrometricChartOf(pmvPpdIso);
   if (!chart) {
     throw new Error("PMV (ISO 7730) declares no psychrometric chart");
   }
-  return [...chart.zones].sort((a, b) => b.limit - a.limit);
+  return chart;
+}
+
+const isoChart = isoPsychrometricChart();
+
+/** The ISO declaration's zones, largest first: the order the chart draws them in. */
+function isoZonesLargestFirst() {
+  return [...isoChart.zones].sort((a, b) => b.limit - a.limit);
 }
 
 /** The zone outlines: the filled paths in the spec, in drawing order. */
@@ -102,14 +109,14 @@ function solvedZone(limit: number, pmv_function: PmvFunction) {
 describe("psychrometricSpec", () => {
   it("draws one zone per declared limit, largest first, each with its own fill", () => {
     const zones = isoZonesLargestFirst();
-    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate), isoChart));
     expect(zones).toHaveLength(3);
     expect(paths.map((path) => path.label)).toEqual(zones.map((zone) => copy.zoneLegend(zone)));
     expect(new Set(paths.map((path) => path.fill)).size).toBe(3);
   });
 
   it("solves each zone's cool boundary at PMV = -limit for the slot's own inputs", () => {
-    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate), isoChart));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
         const rh = index * ZONE_RH_STEP;
@@ -119,7 +126,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("draws each zone as the solver's own polygon at that zone's limit, saturation line included", () => {
-    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate), isoChart));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       const { polygon } = solvedZone(zone.limit, (db, tr, _vr, rh) => pmvAt(db, rh, tr));
       expect(paths[zoneIndex].x).toEqual(polygon.map((point) => point.tdb));
@@ -135,7 +142,7 @@ describe("psychrometricSpec", () => {
       ...pmvPpdIso,
       run: (values) => ({ ...pmvPpdIso.run(values), ...(values.rh < FLAT_BELOW_RH ? { pmv: 0 } : {}) }),
     };
-    const paths = zonePaths(psychrometricSpec({ ...request(temperatureMode.separate), model: flatWhenDry }));
+    const paths = zonePaths(psychrometricSpec({ ...request(temperatureMode.separate), model: flatWhenDry }, isoChart));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       const { polygon, unsolved } = solvedZone(zone.limit, (db, tr, _vr, rh) =>
         rh < FLAT_BELOW_RH ? 0 : pmvAt(db, rh, tr),
@@ -149,7 +156,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("solves with tr following the dry-bulb temperature under operative entry", () => {
-    const paths = zonePaths(psychrometricSpec(request(temperatureMode.operative)));
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.operative), isoChart));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
         const db = paths[zoneIndex].x[index];
@@ -158,31 +165,29 @@ describe("psychrometricSpec", () => {
     });
   });
 
-  it("draws a one-zone declaration as one zone", () => {
+  it("draws the declaration it is handed, a one-zone one as one zone", () => {
     const zone = intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE);
-    const oneZone: RegisteredModel = {
-      ...pmvPpdIso,
-      charts: [{ type: chartType.psychrometric, zones: [zone] }],
-    };
-    const spec = psychrometricSpec({ ...request(temperatureMode.separate), model: oneZone });
+    const spec = psychrometricSpec(request(temperatureMode.separate), { type: chartType.psychrometric, zones: [zone] });
     expect(zonePaths(spec).map((path) => path.label)).toEqual([copy.zoneLegend(zone)]);
     expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "marker"]);
   });
 
   it("labels the x axis with the entry mode's temperature quantity", () => {
-    expect(psychrometricSpec(request(temperatureMode.separate)).layout.x.title).toContain(q.tdb.label);
-    expect(psychrometricSpec(request(temperatureMode.operative)).layout.x.title).toContain(q.operative_tmp.label);
+    expect(psychrometricSpec(request(temperatureMode.separate), isoChart).layout.x.title).toContain(q.tdb.label);
+    expect(psychrometricSpec(request(temperatureMode.operative), isoChart).layout.x.title).toContain(
+      q.operative_tmp.label,
+    );
   });
 
   it("marks the slot's own psychrometric state", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate));
+    const spec = psychrometricSpec(request(temperatureMode.separate), isoChart);
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBe(26);
     expect(marker?.y).toBeCloseTo(psy_ta_rh(26, 50).hr, 12);
   });
 
   it("converts the axes to the displayed unit", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate, unitSystem.ip));
+    const spec = psychrometricSpec(request(temperatureMode.separate, unitSystem.ip), isoChart);
     expect(spec.layout.x.title).toContain("°F");
     // The declared viewport is 10–40 °C, as the deployed tool draws it.
     expect(spec.layout.x.range[0]).toBeCloseTo(50, 10);
@@ -192,7 +197,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("labels every relative-humidity isoline where it leaves the viewport", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate));
+    const spec = psychrometricSpec(request(temperatureMode.separate), isoChart);
     expect(spec.annotations.map((entry) => entry.text)).toEqual([
       "10 %",
       "20 %",
@@ -213,7 +218,7 @@ describe("psychrometricSpec", () => {
   });
 
   it("names each isoline by its relative humidity, spelled as the results table spells a percentage", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate));
+    const spec = psychrometricSpec(request(temperatureMode.separate), isoChart);
     const isolines = spec.traces.filter(
       (trace): trace is PathTrace => trace.kind === "path" && Boolean(trace.label?.startsWith(q.rh.label)),
     );
@@ -223,12 +228,12 @@ describe("psychrometricSpec", () => {
   });
 
   it("leaves the pointer alone: nothing on this chart captures hover", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate));
+    const spec = psychrometricSpec(request(temperatureMode.separate), isoChart);
     expect(spec.traces.every((trace) => trace.hover === "off")).toBe(true);
   });
 
   it("offers one legend covering humidity, each zone and the slot", () => {
-    const spec = psychrometricSpec(request(temperatureMode.separate));
+    const spec = psychrometricSpec(request(temperatureMode.separate), isoChart);
     expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "fill", "fill", "marker"]);
     expect(spec.legend[0].label).toBe(q.rh.label);
     expect(spec.legend.slice(1, 4).map((entry) => entry.label)).toEqual(
@@ -262,7 +267,7 @@ function bisectPmv(target: number, rh: number, tr: number | "followsDb"): number
 
 describe("comfort-zone vertices", () => {
   it("sit within 0.01 °C of an independently bisected root, for every zone", () => {
-    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate)));
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.separate), isoChart));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
         const rh = index * ZONE_RH_STEP;
@@ -272,7 +277,7 @@ describe("comfort-zone vertices", () => {
   });
 
   it("does so under operative entry too", () => {
-    const paths = zonePaths(psychrometricSpec(request(temperatureMode.operative)));
+    const paths = zonePaths(psychrometricSpec(request(temperatureMode.operative), isoChart));
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
         const rh = index * ZONE_RH_STEP;

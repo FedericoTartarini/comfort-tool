@@ -8,6 +8,7 @@ import { enteredQuantities, withEnteredValues, type SlotInputs } from "$lib/core
 import {
   dynamicChartOf,
   isPolygonsChart,
+  psychrometricChartOf,
   type PolygonsDeclaration,
   type RegisteredModel,
   type ScannedDeclaration,
@@ -467,8 +468,15 @@ describe("Adaptive's acceptability zones", () => {
   // chart paints its own (ADR-0002 decision 37's note of 2026-09-28).
   const spec = dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes);
   const zones = zoneTraces(spec);
+  const psychrometric = psychrometricChartOf(pmvPpdIso);
+  if (!psychrometric) {
+    throw new Error("pmvPpdIso no longer declares a psychrometric chart");
+  }
   const psychrometricZones = zoneTraces(
-    psychrometricSpec({ model: pmvPpdIso, slot: defaultSlot(pmvPpdIso), slotLabel: "Input 1", unitSystem: unitSystem.si }),
+    psychrometricSpec(
+      { model: pmvPpdIso, slot: defaultSlot(pmvPpdIso), slotLabel: "Input 1", unitSystem: unitSystem.si },
+      psychrometric,
+    ),
   );
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {

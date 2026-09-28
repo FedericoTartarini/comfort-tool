@@ -4,18 +4,18 @@ import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library
 import { temperatureMode } from "$lib/core/entryModes";
 import { optionsReader, requireValue, resolveQuantities, valuesReader } from "$lib/core/libraryInputs";
 import {
-  psychrometricChartOf,
   requireAxisRange,
   type OptionsReader,
-  type Range,
+  type PsychrometricDeclaration,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
 import { formatNumber } from "$lib/core/numberFormat";
 import { quantities, type Quantity } from "$lib/core/quantities";
-import { displayUnitFor, labelWithUnit, valueWithUnit } from "$lib/core/units";
+import { displayUnitFor, valueWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { Annotation, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";
+import { axisFor, markerFor, samples } from "./specParts";
 
 const q = quantities;
 
@@ -47,20 +47,15 @@ const ZONE_RH_STEP = 5;
  * axis range for whichever temperature the mode puts on x, never its
  * applicability limits (ADR §4.4).
  */
-export function psychrometricSpec(request: ChartRequest): ChartSpec {
+export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDeclaration): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;
   const operative = slot.temperature.mode === temperatureMode.operative;
   const axisQuantity = slot.temperature.mode.axis;
-  const dbUnit = displayUnitFor(axisQuantity, unitSystem);
+  const xUnit = displayUnitFor(axisQuantity, unitSystem);
   const hrUnit = displayUnitFor(q.hr, unitSystem);
   const rhUnit = displayUnitFor(q.rh, unitSystem);
-  const dbRange = requireAxisRange(model, axisQuantity);
+  const xRange = requireAxisRange(model, axisQuantity);
   const hrRange = requireAxisRange(model, q.hr);
-
-  const chart = psychrometricChartOf(model);
-  if (!chart) {
-    throw new Error(`${model.info.label} declares no psychrometric chart`);
-  }
 
   const resolved = resolveQuantities(slot, model);
   const airSpeed = model.relativeAirSpeed ? q.vr : q.v;
@@ -80,7 +75,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
   const legend: LegendEntry[] = [];
   const annotations: Annotation[] = [];
 
-  const temperatures = samples(dbRange);
+  const temperatures = samples(xRange, ISOLINE_SAMPLES);
   for (let rh = ISOLINE_STEP; rh <= 100; rh += ISOLINE_STEP) {
     // Cut the curve where it leaves the top of the viewport, so the label sits
     // on the last drawn point rather than off the plot.
@@ -95,7 +90,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
     const rhText = valueWithUnit(formatNumber(rhUnit.fromSi(rh)), rhUnit);
     traces.push({
       kind: "path",
-      x: curve.map((point) => dbUnit.fromSi(point.db)),
+      x: curve.map((point) => xUnit.fromSi(point.db)),
       y: curve.map((point) => hrUnit.fromSi(point.hr)),
       color: saturation ? chartInk.saturationLine : chartInk.isoline,
       width: saturation ? 1.5 : 1,
@@ -105,7 +100,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
       label: `${q.rh.label} ${rhText}`,
     });
     annotations.push({
-      x: dbUnit.fromSi(end.db),
+      x: xUnit.fromSi(end.db),
       y: hrUnit.fromSi(end.hr),
       text: rhText,
     });
@@ -124,7 +119,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
     const fill = chartInk.zoneFill(index, largestFirst.length);
     traces.push({
       kind: "path",
-      x: polygon.map((point) => dbUnit.fromSi(point.tdb)),
+      x: polygon.map((point) => xUnit.fromSi(point.tdb)),
       y: polygon.map((point) => hrUnit.fromSi(point.hr)),
       color: chartInk.zoneLine,
       width: chartInk.zoneLineWidth,
@@ -135,28 +130,19 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
     legend.push({ label, swatch: "fill", color: fill });
   });
 
-  traces.push({
-    kind: "point",
-    x: dbUnit.fromSi(requireValue(resolved, q.tdb)),
-    y: hrUnit.fromSi(psy_ta_rh(requireValue(resolved, q.tdb), requireValue(resolved, q.rh)).hr),
-    color: chartInk.marker,
-    hover: "off",
-    label: slotLabel,
-  });
-  legend.push({ label: slotLabel, swatch: "marker", color: chartInk.marker });
+  const marker = markerFor(
+    slotLabel,
+    xUnit.fromSi(requireValue(resolved, q.tdb)),
+    hrUnit.fromSi(psy_ta_rh(requireValue(resolved, q.tdb), requireValue(resolved, q.rh)).hr),
+  );
+  traces.push(marker.trace);
+  legend.push(marker.legendEntry);
 
   return {
     traces,
     layout: {
-      x: {
-        title: labelWithUnit(axisQuantity, dbUnit),
-        range: [dbUnit.fromSi(dbRange.min), dbUnit.fromSi(dbRange.max)],
-      },
-      y: {
-        title: labelWithUnit(q.hr, hrUnit),
-        range: [hrUnit.fromSi(hrRange.min), hrUnit.fromSi(hrRange.max)],
-        tickFormat: ".3f",
-      },
+      x: axisFor(axisQuantity, xUnit, xRange),
+      y: { ...axisFor(q.hr, hrUnit, hrRange), tickFormat: ".3f" },
     },
     legend,
     annotations,
@@ -188,10 +174,4 @@ function pmvOfRun(
       .set(q.clo, clo);
     return resultNumber(model.run(valuesReader(inputs), options), q.pmv);
   };
-}
-
-/** `ISOLINE_SAMPLES` temperatures across the drawn range, in SI. */
-function samples(range: Range): readonly number[] {
-  const step = (range.max - range.min) / (ISOLINE_SAMPLES - 1);
-  return Array.from({ length: ISOLINE_SAMPLES }, (_, index) => range.min + index * step);
 }

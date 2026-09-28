@@ -173,8 +173,9 @@ function chartSpecOf(session: Session, last: LastValidInputs): ChartSpec | null 
     unitSystem: session.unitSystem,
   };
   if (session.chart.type === chartType.psychrometric) {
-    if (psychrometricChartOf(model)) {
-      return psychrometricSpec(request);
+    const psychrometric = psychrometricChartOf(model);
+    if (psychrometric) {
+      return psychrometricSpec(request, psychrometric);
     }
   }
   const dynamic = dynamicChartOf(model);
