@@ -1,12 +1,13 @@
 import { outOfRangeInputs, violationRows, type ViolationRow } from "$lib/core/applicability";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
-import { dynamicSpec } from "$lib/core/charts/dynamicChart";
+import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
 import type { SlotInputs } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   psychrometricChartOf,
+  type ChartAxes,
   type ModelResult,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
@@ -24,6 +25,16 @@ import type { Session } from "./session.svelte";
 interface LastValidInputs {
   readonly model: RegisteredModel;
   readonly inputs: SlotInputs;
+}
+
+/**
+ * What the axis picker shows: the quantities it offers and the pair it has
+ * selected, both those of the chart on screen (ADR-0002 decision 33, as
+ * amended).
+ */
+export interface DrawnAxes {
+  readonly choices: readonly Quantity[];
+  readonly selected: ChartAxes;
 }
 
 /**
@@ -112,6 +123,11 @@ export class Outputs {
     return last ? chartSpecOf(this.#session, last) : null;
   });
 
+  readonly #drawnAxes = $derived.by((): DrawnAxes | null => {
+    const last = this.#lastValid;
+    return last ? drawnAxesOf(this.#session, last) : null;
+  });
+
   constructor(session: Session) {
     this.#session = session;
   }
@@ -140,6 +156,17 @@ export class Outputs {
    */
   get chart(): ChartSpec | null {
     return this.#chart;
+  }
+
+  /**
+   * The axes {@link chart} is drawn on and the ones the picker offers beside
+   * them, resolved from the same last valid inputs, so a closed gate never
+   * leaves the picker in an entry mode the chart is not drawn in. `null` when
+   * the chart on screen has no axis to pick: none is drawn, it is not the
+   * dynamic chart, or its axes are locked.
+   */
+  get drawnAxes(): DrawnAxes | null {
+    return this.#drawnAxes;
   }
 }
 
@@ -180,4 +207,22 @@ function chartSpecOf(session: Session, last: LastValidInputs): ChartSpec | null 
   }
   const dynamic = dynamicChartOf(model);
   return dynamic ? dynamicSpec(request, dynamic, session.chart.axes) : null;
+}
+
+/**
+ * The picker's axes for the chart {@link chartSpecOf} draws of `last`'s
+ * inputs. The chart keeps the axis the user picked; the entry mode of those
+ * inputs decides which temperature quantity that is.
+ */
+function drawnAxesOf(session: Session, last: LastValidInputs): DrawnAxes | null {
+  if (session.chart.type !== chartType.dynamic) {
+    return null;
+  }
+  const mode = last.inputs.temperature.mode;
+  const choices = dynamicAxisQuantities(last.model, mode);
+  // A polygons chart offers none: its axes are locked (ADR-0002 decision 37).
+  if (choices.length === 0) {
+    return null;
+  }
+  return { choices, selected: resolvedAxes(last.model, session.chart.axes, mode) };
 }

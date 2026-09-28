@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
+import { temperatureMode } from "$lib/core/entryModes";
 import type { ModelResult, RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { resultValue } from "$lib/core/modelRun";
 import { quantities, type Quantity } from "$lib/core/quantities";
@@ -160,6 +161,65 @@ describe("Outputs", () => {
     expect(outputs.chart?.layout.y.title).not.toBe(yTitle);
     expect(outputs.chart?.layout.y.title).toContain(q.rh.label);
     expect(outputs.perSlot[0]).toBe(result);
+  });
+
+  it("offers the axes of the dynamic chart it draws, in the slot's entry mode while the gate is open", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.chart.setType(chartType.dynamic);
+
+    expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.v });
+    expect(outputs.drawnAxes?.choices).toContain(q.tdb);
+
+    session.slots[0].setTemperatureMode(temperatureMode.operative, session.model);
+
+    expect(outputs.outOfRange).toEqual([]);
+    expect(outputs.drawnAxes?.selected).toEqual({ x: q.operative_tmp, y: q.v });
+    expect(outputs.drawnAxes?.choices).toContain(q.operative_tmp);
+    expect(outputs.drawnAxes?.choices).not.toContain(q.tdb);
+    expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
+  });
+
+  it("offers the axes the chart was drawn with, not the live entry mode's, while an entry is out of range", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.chart.setType(chartType.dynamic);
+    expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
+
+    // 3 clo is past ISO 7730's 2 clo, and no temperature switch moves it.
+    session.slots[0].values.set(q.clo, 3);
+    expect(outputs.outOfRange).toEqual([q.clo]);
+    session.slots[0].setTemperatureMode(temperatureMode.operative, session.model);
+    expect(outputs.outOfRange).toEqual([q.clo]);
+
+    expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
+    expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.v });
+    expect(outputs.drawnAxes?.choices).toContain(q.tdb);
+    expect(outputs.drawnAxes?.choices).not.toContain(q.operative_tmp);
+
+    // An axis picked while the gate is closed moves the chart and the picker alike.
+    session.chart.setAxes({ y: q.rh });
+
+    expect(outputs.chart?.layout.y.title).toContain(q.rh.label);
+    expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.rh });
+  });
+
+  it("offers no axes when no dynamic chart is drawn", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.chart.setType(chartType.psychrometric);
+
+    expect(outputs.chart).not.toBeNull();
+    expect(outputs.drawnAxes).toBeNull();
+
+    session.chart.setType(chartType.dynamic);
+    expect(outputs.drawnAxes).not.toBeNull();
+    // ISO 7730's default temperature is below the Rothfusz regression's floor,
+    // so the new model has no valid run and no chart.
+    session.setModel(heatIndexRothfusz);
+
+    expect(outputs.chart).toBeNull();
+    expect(outputs.drawnAxes).toBeNull();
   });
 
   it("marks the last valid inputs, not the out-of-range entry", () => {

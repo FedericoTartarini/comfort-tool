@@ -177,7 +177,7 @@
             violations={outputs.violations}
           />
 
-          <ChartControls model={session.model} inputSlot={session.slots[0]} chart={session.chart} />
+          <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
 
           {#if outputs.chart}
             <Stack gap="2">
