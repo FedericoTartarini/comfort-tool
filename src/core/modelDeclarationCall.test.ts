@@ -7,8 +7,9 @@
  * the sibling `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it, vi } from "vitest";
-import { pmv_ppd_ashrae, pmv_ppd_iso, Standard } from "jsthermalcomfort";
+import { pmv_ppd_ashrae, pmv_ppd_iso } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { defaultSlot } from "./declarationTestSlots";
 import { optionsReader, resolveQuantities, valuesReader } from "./libraryInputs";
@@ -41,39 +42,8 @@ vi.mock("jsthermalcomfort", async (importOriginal) => {
   );
 });
 
-const airSpeedControl: OptionSpec = {
-  key: "airspeed_control",
-  label: "Occupants control the air speed",
-  default: false,
-};
-
-/**
- * A model that reads an option through `run`'s second reader, as PMV
- * (ASHRAE 55) does. Named after the function it calls, so the recording above
- * can be found under that name.
- */
-const readsAnOption = {
-  ...pmvPpdIso,
-  info: { ...pmvPpdIso.info, name: "pmv_ppd_ashrae" },
-  standard: Standard.ashrae_55_2023,
-  options: [airSpeedControl],
-  run: (values, options) =>
-    pmv_ppd_ashrae({
-      tdb: values.tdb,
-      tr: values.tr,
-      vr: values.vr,
-      rh: values.rh,
-      met: values.met,
-      clo: values.clo,
-      wme: 0,
-      standard: Standard.ashrae_55_2023,
-      limit_inputs: false,
-      round_output: false,
-      // The cooling effect logs when it assumes 0; nothing here reads the log.
-      suppress_warnings: true,
-      airspeed_control: options(airSpeedControl),
-    }),
-} satisfies RegisteredModel;
+/** The option PMV (ASHRAE 55) reads through `run`'s second reader. */
+const [airSpeedControl] = pmvPpdAshrae.options;
 
 /** The params object of the last call `model.run` made to the library function it is named after. */
 function receivedParams(model: RegisteredModel, values: Values, options: OptionsReader): Readonly<Record<string, unknown>> {
@@ -148,7 +118,7 @@ describe("run's params object", () => {
   });
 
   it("pairs every quantity for a model that also reads an option", () => {
-    expect(mispairedKeys(readsAnOption)).toEqual({ checked: ["tdb", "tr", "vr", "rh", "met", "clo"], mispaired: [] });
+    expect(mispairedKeys(pmvPpdAshrae)).toEqual({ checked: ["tdb", "tr", "vr", "rh", "met", "clo"], mispaired: [] });
   });
 });
 
@@ -218,15 +188,15 @@ describe("an option's key", () => {
   });
 
   it("is found where the run puts it", () => {
-    expect(kwargsFedBy(readsAnOption, airSpeedControl)).toEqual(["airspeed_control"]);
+    expect(kwargsFedBy(pmvPpdAshrae, airSpeedControl)).toEqual(["airspeed_control"]);
   });
 
   it("catches a key spelled differently from the kwarg, which is all the compiler cannot see", () => {
     const misspelt: OptionSpec = { ...airSpeedControl, key: "airspeed_contol" };
     const declared = {
-      ...readsAnOption,
+      ...pmvPpdAshrae,
       options: [misspelt],
-      run: (values: Values, options: OptionsReader) => readsAnOption.run(values, () => options(misspelt)),
+      run: (values: Values, options: OptionsReader) => pmvPpdAshrae.run(values, () => options(misspelt)),
     } satisfies RegisteredModel;
     expect(kwargsFedBy(declared, misspelt)).not.toEqual([misspelt.key]);
   });

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
-import { defaultSlot } from "$lib/core/declarationTestSlots";
-import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import type { SlotInputs } from "$lib/core/libraryInputs";
+import { defaultSlot, enteredSlotFor } from "$lib/core/declarationTestSlots";
+import { temperatureMode } from "$lib/core/entryModes";
+import { valuesReader, type SlotInputs } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type PsychrometricDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { quantities, type Quantity } from "$lib/core/quantities";
+import { quantities } from "$lib/core/quantities";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -23,23 +23,13 @@ const ZONE_RH_STEP = 5;
 /** The temporary library solves the boundaries to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
 const PMV_DIGITS = 2;
 
-const met = 1.1;
-const clo = 0.5;
-const v = 0.1;
+/** The ISO declaration's own met, clo and v, which every slot below keeps. */
+const { met, clo, v } = valuesReader(defaultSlot(pmvPpdIso).values);
 
 function slot(mode: typeof temperatureMode.separate | typeof temperatureMode.operative): SlotInputs {
-  const values = new Map<Quantity, number>([
-    [q.v, v],
-    [q.met, met],
-    [q.clo, clo],
-  ]);
-  if (mode === temperatureMode.operative) {
-    values.set(q.operative_tmp, 25);
-  } else {
-    values.set(q.tdb, 26);
-    values.set(q.tr, 24);
-  }
-  return { values, humidity: { mode: humidityMode.rh, value: 50 }, temperature: { mode }, options: new Map() };
+  return mode === temperatureMode.operative
+    ? enteredSlotFor(pmvPpdIso, { operative_tmp: 25 })
+    : enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 24 });
 }
 
 function request(

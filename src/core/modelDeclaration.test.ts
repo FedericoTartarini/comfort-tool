@@ -6,7 +6,7 @@
  * `run` does is the sibling `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
-import { PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
+import { PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
@@ -36,6 +36,10 @@ describe("standard", () => {
       if (model.standard === undefined) continue;
       expect(model.info.standards, model.info.label).toContain(model.standard);
     }
+  });
+
+  it("pins ISO 7730:2025 for PMV (ISO 7730)", () => {
+    expect(pmvPpdIso.standard).toBe(Standard.iso_7730_2025);
   });
 });
 
@@ -124,7 +128,12 @@ describe("charts", () => {
 
 describe("axisRangeFor", () => {
   it("returns the declared range when the model has one", () => {
-    expect(axisRangeFor(pmvPpdIso, q.tdb)).toEqual({ min: 10, max: 40 });
+    const declared = pmvPpdIso.axisRanges.find((range) => range.quantity === q.tdb);
+    if (!declared) throw new Error("PMV (ISO 7730) declares a tdb range");
+    // A declared range equal to the applicability bound could not tell the two sources apart.
+    const bound = pmvPpdIso.info.inputs.tdb?.applicability;
+    expect([declared.min, declared.max]).not.toEqual([bound?.min, bound?.max]);
+    expect(axisRangeFor(pmvPpdIso, q.tdb)).toEqual({ min: declared.min, max: declared.max });
   });
 
   it("falls back to the applicability bound when none is declared, but both a min and a max exist", () => {

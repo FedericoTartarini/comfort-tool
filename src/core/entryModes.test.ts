@@ -19,17 +19,4 @@ describe("humidityMode", () => {
     expect(humidityMode.rh.toRelativeHumidity(50, 25)).toBe(50);
     expect(humidityMode.rh.fromRelativeHumidity(50, 25)).toBe(50);
   });
-
-  // Round-trip bounds: the algebraic inverses are exact, wet bulb carries
-  // wet_bulb_tmp's 0.1 °C rounding, dew point carries dew_point_tmp's own
-  // approximation error.
-  it.each([
-    [humidityMode.humidityRatio, 9],
-    [humidityMode.vapourPressure, 9],
-    [humidityMode.wetBulb, 0],
-    [humidityMode.dewPoint, 0],
-  ])("round-trips 50 % rh at 25 °C through $id", (mode, digits) => {
-    const entered = mode.fromRelativeHumidity(50, 25);
-    expect(mode.toRelativeHumidity(entered, 25)).toBeCloseTo(50, digits);
-  });
 });

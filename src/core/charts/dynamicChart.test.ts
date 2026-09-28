@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { sensationPalette } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
-import { defaultSlot } from "$lib/core/declarationTestSlots";
-import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { enteredQuantities, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
+import { defaultSlot, enteredSlotFor } from "$lib/core/declarationTestSlots";
+import { temperatureMode } from "$lib/core/entryModes";
+import { enteredQuantities, valuesReader, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   isPolygonsChart,
   psychrometricChartOf,
+  requireAxisRange,
   type PolygonsDeclaration,
   type RegisteredModel,
   type ScannedDeclaration,
@@ -29,34 +30,17 @@ if (!declaration || isPolygonsChart(declaration)) {
   throw new Error("pmvPpdIso no longer declares a scanned dynamic chart");
 }
 
-const slot: SlotInputs = {
-  values: new Map<Quantity, number>([
-    [q.tdb, 26],
-    [q.tr, 26],
-    [q.v, 0.1],
-    [q.met, 1.1],
-    [q.clo, 0.5],
-  ]),
-  humidity: { mode: humidityMode.rh, value: 50 },
-  temperature: { mode: temperatureMode.separate },
-  options: new Map(),
-};
+const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 
 const request: ChartRequest = { model: pmvPpdIso, slot, slotLabel: "Input 1", unitSystem: unitSystem.si };
 
-/** The same entries under operative entry, at `operative`. */
-function operativeSlot(operative: number): SlotInputs {
-  return {
-    values: new Map<Quantity, number>([
-      [q.operative_tmp, operative],
-      [q.v, 0.1],
-      [q.met, 1.1],
-      [q.clo, 0.5],
-    ]),
-    humidity: { mode: humidityMode.rh, value: 50 },
-    temperature: { mode: temperatureMode.operative },
-    options: new Map(),
-  };
+/** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
+const { v } = valuesReader(defaultSlot(pmvPpdIso).values);
+
+/** The range `pmvPpdIso` declares for `quantity`, as the layout writes a range. */
+function declaredRangeOf(quantity: Quantity): [number, number] {
+  const { min, max } = requireAxisRange(pmvPpdIso, quantity);
+  return [min, max];
 }
 
 function markerOf(spec: { traces: readonly { kind: string }[] }): PointTrace | undefined {
@@ -92,10 +76,10 @@ describe("dynamicSpec", () => {
     expect(surface.z[0]).toHaveLength(grid);
     expect(surface.hoverText).toHaveLength(grid);
     expect(surface.hoverText[0]).toHaveLength(grid);
-    // The declaration draws tdb 10–40 and v 0–2, which is what the deployed
-    // tool draws — not ISO 7730's applicability limits of 10–30 and 0–1.
-    expect([surface.x[0], last(surface.x)]).toEqual([10, 40]);
-    expect([surface.y[0], last(surface.y)]).toEqual([0, 2]);
+    // The declared ranges, which are what the deployed tool draws, not
+    // ISO 7730's applicability limits.
+    expect([surface.x[0], last(surface.x)]).toEqual(declaredRangeOf(q.tdb));
+    expect([surface.y[0], last(surface.y)]).toEqual(declaredRangeOf(q.v));
   });
 
   it("lists the declared classifier's own bands, in order", () => {
@@ -148,13 +132,13 @@ describe("dynamicSpec", () => {
     const marker = markerOf(dynamicSpec(request, declaration, declaration.axes));
     expect(marker?.x).toBe(26);
     // The library is called with vr = v_relative(v, met); the axis is the entered v.
-    expect(marker?.y).toBe(0.1);
+    expect(marker?.y).toBe(v);
   });
 
   it("sweeps a swapped axis just as well", () => {
     const surface = bands(dynamicSpec(request, declaration, { x: q.clo, y: q.met }));
-    expect([surface.x[0], last(surface.x)]).toEqual([0, 2]);
-    expect([surface.y[0], last(surface.y)]).toEqual([1, 4]);
+    expect([surface.x[0], last(surface.x)]).toEqual(declaredRangeOf(q.clo));
+    expect([surface.y[0], last(surface.y)]).toEqual(declaredRangeOf(q.met));
   });
 
   it("converts both axes to the displayed unit", () => {
@@ -292,7 +276,8 @@ describe("a declared zones source", () => {
     expect(spec.traces.find((trace) => trace.kind === "bands")).toBeUndefined();
     const polygon = spec.traces.find((trace): trace is PathTrace => trace.kind === "path");
     expect(polygon?.label).toBe("80% acceptability");
-    expect(polygon?.x).toEqual([10, 40, 40]);
+    const [min, max] = declaredRangeOf(q.operative_tmp);
+    expect(polygon?.x).toEqual([min, max, max]);
     // The slot's entered v = 0.1 at met = 1.1 reaches the source as vr.
     expect(polygon?.y[2]).toBeCloseTo(0.13, 12);
   });
@@ -305,12 +290,12 @@ describe("a declared zones source", () => {
   it("stays on its declared operative axis under separate entry, where a scanned chart would map it to tdb", () => {
     const spec = dynamicSpec({ ...request, slot: apart }, zoned, zoned.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
-    expect(spec.layout.x.range).toEqual([10, 40]);
+    expect(spec.layout.x.range).toEqual(declaredRangeOf(q.operative_tmp));
     expect(spec.layout.y.title).toContain(q.v.label);
   });
 
   it("stays on its declared axes under operative entry", () => {
-    const spec = dynamicSpec({ ...request, slot: operativeSlot(26) }, zoned, zoned.axes);
+    const spec = dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, zoned, zoned.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     expect(spec.layout.y.title).toContain(q.v.label);
   });
@@ -332,9 +317,9 @@ describe("a declared zones source", () => {
   });
 
   it("marks the entered operative temperature under operative entry", () => {
-    const marker = markerOf(dynamicSpec({ ...request, slot: operativeSlot(26) }, zoned, zoned.axes));
+    const marker = markerOf(dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, zoned, zoned.axes));
     expect(marker?.x).toBe(26);
-    expect(marker?.y).toBe(0.1);
+    expect(marker?.y).toBe(v);
   });
 
   it("converts the polygons and the marker to the displayed unit", () => {
@@ -393,7 +378,7 @@ describe("dynamicAxisQuantities", () => {
 describe("axes across a temperature entry mode switch", () => {
   it("sweeps the operative temperature when a remembered tdb axis no longer exists", () => {
     // declaration.axes.x is tdb, which the slot no longer holds.
-    const spec = dynamicSpec({ ...request, slot: operativeSlot(26) }, declaration, declaration.axes);
+    const spec = dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, declaration, declaration.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     // The whole field would carry one band if the sweep were being discarded.
     const surface = bands(spec);

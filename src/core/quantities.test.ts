@@ -10,7 +10,7 @@ import { quantities } from "./quantities";
  * key — the temperature and humidity representations the app converts to the
  * library's own inputs before calling it (ADR-0002 decisions 2 and 15).
  */
-const appOwnedQuantities = new Set(["v", "operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp"]);
+const appOwnedQuantities = new Set(["operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp"]);
 
 function variableKeys(info: ModelInfo): string[] {
   return [...Object.keys(info.inputs), ...Object.keys(info.outputs), ...Object.keys(info.derived ?? {})];
@@ -33,13 +33,17 @@ describe("quantities table drift", () => {
     for (const key of tableKeys) {
       expect(infoNamedKeys.has(key) || appOwnedQuantities.has(key)).toBe(true);
     }
+    // The check above cannot fail on an exemption a model info has since named.
+    for (const key of appOwnedQuantities) {
+      expect(infoNamedKeys.has(key), key).toBe(false);
+    }
   });
 
-  it("hi and stress_category, unregistered so far, are named by HEAT_INDEX_ROTHFUSZ_INFO", () => {
+  it("hi and stress_category are named by HEAT_INDEX_ROTHFUSZ_INFO", () => {
     expect(variableKeys(HEAT_INDEX_ROTHFUSZ_INFO)).toEqual(expect.arrayContaining(["hi", "stress_category"]));
   });
 
-  it("Adaptive's eight keys, unregistered so far, are named by ADAPTIVE_ASHRAE_INFO", () => {
+  it("Adaptive's eight keys are named by ADAPTIVE_ASHRAE_INFO", () => {
     const adaptiveKeys = [
       "t_running_mean",
       "tmp_cmf",
@@ -54,7 +58,7 @@ describe("quantities table drift", () => {
     expect(variableKeys(ADAPTIVE_ASHRAE_INFO)).toEqual(expect.arrayContaining(adaptiveKeys));
   });
 
-  it("compliance, unregistered so far, is named by PMV_PPD_ASHRAE_INFO", () => {
+  it("compliance is named by PMV_PPD_ASHRAE_INFO", () => {
     expect(tableKeys).toContain("compliance");
     expect(variableKeys(PMV_PPD_ASHRAE_INFO)).toContain("compliance");
   });
