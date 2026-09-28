@@ -2,7 +2,7 @@
   import { onDestroy } from "svelte";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { standards } from "$lib/core/standard";
-  import { unitSystem } from "$lib/core/unitSystem";
+  import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
   import { Outputs } from "$lib/state/compute.svelte";
   import { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -73,7 +73,7 @@
 
   const modelChoices = $derived(modelsOf(requireStandard(session.model)));
 
-  function unitVariant(system: typeof unitSystem.si | typeof unitSystem.ip) {
+  function unitVariantFor(system: UnitSystem) {
     return session.unitSystem === system ? "default" : "outline";
   }
 </script>
@@ -84,12 +84,11 @@
       <h1>{copy.appTitle}</h1>
       <Inline gap="2" align="center">
         <span>{copy.units}</span>
-        <Button size="sm" variant={unitVariant(unitSystem.si)} onclick={() => (session.unitSystem = unitSystem.si)}>
-          {unitSystem.si.title}
-        </Button>
-        <Button size="sm" variant={unitVariant(unitSystem.ip)} onclick={() => (session.unitSystem = unitSystem.ip)}>
-          {unitSystem.ip.title}
-        </Button>
+        {#each Object.values(unitSystem) as system (system)}
+          <Button size="sm" variant={unitVariantFor(system)} onclick={() => (session.unitSystem = system)}>
+            {system.title}
+          </Button>
+        {/each}
       </Inline>
     </Inline>
 

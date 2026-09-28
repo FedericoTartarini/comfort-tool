@@ -1,6 +1,6 @@
 <script lang="ts">
   import { enteredBound, splitViolations, warningFor, type ViolationRow } from "$lib/core/applicability";
-  import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
+  import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
   import { enteredValue, panelQuantities } from "$lib/core/libraryInputs";
   import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
   import { presetsFor } from "$lib/core/presets";
@@ -37,7 +37,7 @@
   // which the standard bounds instead of `v` — so the sentence names the relative air speed, not the entered one.
   const hints = $derived(splitViolations(violations).inputs);
 
-  function valueOf(quantity: Quantity): number {
+  function shownValueFor(quantity: Quantity): number {
     return enteredValue(inputSlot, quantity, model) ?? Number.NaN;
   }
 
@@ -49,7 +49,7 @@
     }
   }
 
-  function variantFor(mode: typeof temperatureMode.separate | typeof temperatureMode.operative) {
+  function temperatureVariantFor(mode: TemperatureMode) {
     return inputSlot.temperature.mode === mode ? "default" : "outline";
   }
 
@@ -62,10 +62,10 @@
   {#if showTemperatureRow}
     <Inline gap="2" align="center">
       <span>{copy.temperatureInput}</span>
-      <Button size="sm" variant={variantFor(temperatureMode.separate)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.separate, model)}>
+      <Button size="sm" variant={temperatureVariantFor(temperatureMode.separate)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.separate, model)}>
         {copy.separateTemperatures}
       </Button>
-      <Button size="sm" variant={variantFor(temperatureMode.operative)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.operative, model)}>
+      <Button size="sm" variant={temperatureVariantFor(temperatureMode.operative)} onclick={() => inputSlot.setTemperatureMode(temperatureMode.operative, model)}>
         {copy.operativeTemperature}
       </Button>
     </Inline>
@@ -85,7 +85,7 @@
   {#each rows as quantity (quantity)}
     {@const rowProps = {
       quantity,
-      value: valueOf(quantity),
+      value: shownValueFor(quantity),
       unitSystem,
       bound: enteredBound(model, quantity, inputSlot.temperature.mode),
       outOfRange: outOfRange.includes(quantity),
