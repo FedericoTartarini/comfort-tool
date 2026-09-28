@@ -74,6 +74,17 @@ export function operativeTemperatureOf(slot: SlotInputs, model: RegisteredModel)
 }
 
 /**
+ * Writes the operative entry into `tdb` and `tr` and removes `operative_tmp`,
+ * in place. An entry convention, not an equation (ADR-0002 decision 21).
+ */
+function expandOperative(values: Map<Quantity, number>): void {
+  const operative = requireValue(values, q.operative_tmp);
+  values.set(q.tdb, operative);
+  values.set(q.tr, operative);
+  values.delete(q.operative_tmp);
+}
+
+/**
  * Entry-group representations → the SI quantities the library model takes
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
  * humidity entry becomes `rh`, and `v` becomes `vr` when the model asks for it.
@@ -82,10 +93,7 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
   const resolved = new Map(slot.values);
 
   if (hasTemperatureGroup(model) && slot.temperature.mode === temperatureMode.operative) {
-    const operative = requireValue(resolved, q.operative_tmp);
-    resolved.set(q.tdb, operative);
-    resolved.set(q.tr, operative);
-    resolved.delete(q.operative_tmp);
+    expandOperative(resolved);
   }
 
   if (hasHumidityGroup(model)) {
@@ -237,10 +245,7 @@ export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode, mod
     values.delete(q.tdb);
     values.delete(q.tr);
   } else {
-    const operative = requireValue(values, q.operative_tmp);
-    values.set(q.tdb, operative);
-    values.set(q.tr, operative);
-    values.delete(q.operative_tmp);
+    expandOperative(values);
   }
   return { values, humidity: slot.humidity, temperature: { mode }, options: slot.options };
 }
