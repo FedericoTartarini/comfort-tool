@@ -7,6 +7,7 @@ import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { SlotInputs } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type PsychrometricDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
+import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -16,6 +17,8 @@ import type { ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
+/** Humidity ratio as the SI chart draws it, in g/kg. */
+const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 const ZONE_RH_STEP = 5;
 /** The library solves the boundaries to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
 const PMV_DIGITS = 2;
@@ -132,7 +135,7 @@ describe("psychrometricSpec", () => {
     isoZonesLargestFirst().forEach((zone, zoneIndex) => {
       const { polygon } = solvedZone(zone.limit, (db, tr, _vr, rh) => pmvAt(db, rh, tr));
       expect(paths[zoneIndex].x).toEqual(polygon.map((point) => point.tdb));
-      expect(paths[zoneIndex].y).toEqual(polygon.map((point) => point.hr));
+      expect(paths[zoneIndex].y).toEqual(polygon.map((point) => hrUnit.fromSi(point.hr)));
     });
   });
 
@@ -153,7 +156,7 @@ describe("psychrometricSpec", () => {
       const solved = polygon.filter((point) => Number.isFinite(point.tdb));
       expect(solved).toHaveLength(polygon.length - 4);
       expect(paths[zoneIndex].x).toEqual(solved.map((point) => point.tdb));
-      expect(paths[zoneIndex].y).toEqual(solved.map((point) => point.hr));
+      expect(paths[zoneIndex].y).toEqual(solved.map((point) => hrUnit.fromSi(point.hr)));
     });
   });
 
@@ -208,7 +211,7 @@ describe("psychrometricSpec", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate), isoChart);
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBe(26);
-    expect(marker?.y).toBeCloseTo(psy_ta_rh(26, 50).hr, 12);
+    expect(marker?.y).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(26, 50).hr), 12);
   });
 
   it("converts the axes to the displayed unit", () => {
@@ -219,6 +222,17 @@ describe("psychrometricSpec", () => {
     expect(spec.layout.x.range[1]).toBeCloseTo(104, 10);
     const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
     expect(marker?.x).toBeCloseTo(78.8, 10);
+  });
+
+  it("draws humidity ratio per thousand, 0 to 30, with no tick format of its own", () => {
+    expect(psychrometricSpec(request(temperatureMode.separate), isoChart).layout.y).toEqual({
+      title: "Humidity ratio (g/kg)",
+      range: [0, 30],
+    });
+    expect(psychrometricSpec(request(temperatureMode.separate, unitSystem.ip), isoChart).layout.y).toEqual({
+      title: "Humidity ratio (lb/klb)",
+      range: [0, 30],
+    });
   });
 
   it("labels every relative-humidity isoline where it leaves the viewport", () => {
@@ -238,7 +252,7 @@ describe("psychrometricSpec", () => {
     for (const entry of spec.annotations) {
       expect(entry.x).toBeGreaterThanOrEqual(10);
       expect(entry.x).toBeLessThanOrEqual(40);
-      expect(entry.y).toBeLessThanOrEqual(0.03);
+      expect(entry.y).toBeLessThanOrEqual(30);
     }
   });
 

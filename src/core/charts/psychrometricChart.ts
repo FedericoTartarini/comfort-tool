@@ -142,7 +142,7 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
     traces,
     layout: {
       x: axisFor(axisQuantity, xUnit, xRange),
-      y: { ...axisFor(q.hr, hrUnit, hrRange), tickFormat: ".3f" },
+      y: axisFor(q.hr, hrUnit, hrRange),
     },
     legend,
     annotations,

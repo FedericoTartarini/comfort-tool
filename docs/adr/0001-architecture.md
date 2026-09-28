@@ -225,6 +225,8 @@ export function displayUnitFor(quantity: Quantity, unitSystem: UnitSystem): Disp
 // clothingInsulation → clo 0.1; thermalSensation → unitless 0.1; pressure → kPa 0.1 / inHg 0.01
 ```
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 45** (2026-09-28; review after Phase 4b, Proposal 24): humidity ratio, stored in kg/kg, is shown in g/kg in SI and in lb/klb in IP, the deployed tool's psychrometric chart's units; §4.2's list of display units had no row for it.
+
 ### 4.3 Model declaration (app side, one object literal, one file)
 
 > **Shape superseded by [ADR-0002](0002-library-interface-model-info.md) decisions 3 and 6**: `info` replaces `model`, `standard` replaces `edition`, `run` is the positional call, `inputs` / `axisRanges` are named-field object arrays, `defineModel` is gone. The rules paragraph and the result-table rules still apply.

@@ -31,6 +31,8 @@ const METRES_PER_FOOT = 0.3048;
 const SECONDS_PER_MINUTE = 60;
 const PASCALS_PER_INCH_OF_MERCURY = 3386.389;
 const PASCALS_PER_KILOPASCAL = 1000;
+const GRAMS_PER_KILOGRAM = 1000;
+const POUNDS_PER_KILOPOUND = 1000;
 
 // `satisfies Record<QuantityKind, …>`: when the library adds a kind, this
 // table fails to compile until the app decides how to display it.
@@ -54,10 +56,23 @@ const displayUnits = {
     },
   },
   percentage: sameInBothSystems({ symbol: "%", step: 1 }),
-  // A ratio of masses: the same number in both systems (the library spells its
-  // IP unit "kg/kg" for the same reason). Only the psychrometric chart's y axis
-  // reads it until humidity entry modes arrive.
-  humidityRatio: sameInBothSystems({ symbol: "kg/kg", step: 0.001 }),
+  // Stored as the library's kg/kg, shown per thousand, g/kg and lb/klb as the
+  // deployed tool's psychrometric chart shows it (ADR-0002 decision 45): two
+  // decimals of kg/kg read 0.01 for 30, 50 and 70 % relative humidity at 25 °C.
+  humidityRatio: {
+    si: {
+      symbol: "g/kg",
+      step: 1,
+      toSi: (gramsPerKilogram) => gramsPerKilogram / GRAMS_PER_KILOGRAM,
+      fromSi: (kilogramsPerKilogram) => kilogramsPerKilogram * GRAMS_PER_KILOGRAM,
+    },
+    ip: {
+      symbol: "lb/klb",
+      step: 1,
+      toSi: (poundsPerKilopound) => poundsPerKilopound / POUNDS_PER_KILOPOUND,
+      fromSi: (poundsPerPound) => poundsPerPound * POUNDS_PER_KILOPOUND,
+    },
+  },
   metabolicRate: sameInBothSystems({ symbol: "met", step: 0.1 }),
   clothingInsulation: sameInBothSystems({ symbol: "clo", step: 0.1 }),
   thermalSensation: sameInBothSystems({ symbol: "", step: 0.1 }),

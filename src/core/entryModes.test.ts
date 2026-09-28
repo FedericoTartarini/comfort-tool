@@ -11,6 +11,10 @@ describe("humidityMode", () => {
     expect(humidityMode.vapourPressure.quantity).toBe(quantities.pa);
   });
 
+  it("enters humidity ratio in the library's kg/kg at full precision", () => {
+    expect(humidityMode.humidityRatio.fromRelativeHumidity(50, 25)).toBeCloseTo(0.0098815475775, 13);
+  });
+
   it("is the identity in rh mode", () => {
     expect(humidityMode.rh.toRelativeHumidity(50, 25)).toBe(50);
     expect(humidityMode.rh.fromRelativeHumidity(50, 25)).toBe(50);

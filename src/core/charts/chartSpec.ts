@@ -44,8 +44,6 @@ export interface AxisSpec {
   /** Already includes the unit symbol; the name itself comes from `Quantity.label`. */
   readonly title: string;
   readonly range: readonly [number, number];
-  /** A d3 tick format, for axes the default renders unreadably (humidity ratio). */
-  readonly tickFormat?: string;
 }
 
 /** A polyline, closed and filled when `fill` is set. */

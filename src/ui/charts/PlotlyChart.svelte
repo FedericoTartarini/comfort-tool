@@ -244,7 +244,6 @@
     return {
       title: { text: axisSpec.title },
       range: [...axisSpec.range],
-      tickformat: axisSpec.tickFormat,
       zeroline: false,
       gridcolor: "#eef1f5",
       linecolor: "#cbd5e1",

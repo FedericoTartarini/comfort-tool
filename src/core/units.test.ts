@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { humidityMode } from "./entryModes";
+import { formatNumber } from "./numberFormat";
 import { quantities } from "./quantities";
 import { displayUnitFor, labelWithUnit, valueWithUnit } from "./units";
 import { unitSystem } from "./unitSystem";
@@ -30,6 +32,25 @@ describe("displayUnitFor", () => {
     expect(inchesOfMercury.toSi(29.92)).toBeCloseTo(101325, -1);
   });
 
+  it("shows humidity ratio in g/kg, so 30, 50 and 70 % relative humidity at 25 °C read apart", () => {
+    const gramsPerKilogram = displayUnitFor(quantities.hr, unitSystem.si);
+    expect(gramsPerKilogram.symbol).toBe("g/kg");
+    const shown = [30, 50, 70].map((rh) =>
+      formatNumber(gramsPerKilogram.fromSi(humidityMode.humidityRatio.fromRelativeHumidity(rh, 25))),
+    );
+    expect(shown).toEqual(["5.89", "9.88", "13.92"]);
+    expect(gramsPerKilogram.toSi(9.88)).toBeCloseTo(0.00988, 12);
+  });
+
+  it("shows humidity ratio in the deployed tool's lb/klb in IP, the same number as g/kg", () => {
+    const poundsPerKilopound = displayUnitFor(quantities.hr, unitSystem.ip);
+    expect(poundsPerKilopound.symbol).toBe("lb/klb");
+    expect(poundsPerKilopound.fromSi(0.00988)).toBeCloseTo(9.88, 12);
+    expect(poundsPerKilopound.toSi(13.92)).toBeCloseTo(0.01392, 12);
+    const stored = humidityMode.humidityRatio.fromRelativeHumidity(50, 25);
+    expect(poundsPerKilopound.toSi(poundsPerKilopound.fromSi(stored))).toBeCloseTo(stored, 15);
+  });
+
   it("is the identity in SI and for quantities that do not convert", () => {
     for (const quantity of [quantities.tdb, quantities.v, quantities.met, quantities.clo, quantities.rh]) {
       expect(displayUnitFor(quantity, unitSystem.si).fromSi(1.234)).toBe(1.234);
@@ -53,6 +74,9 @@ describe("displayUnitFor", () => {
     expect(displayUnitFor(quantities.v, unitSystem.si).step).toBe(0.05);
     expect(displayUnitFor(quantities.v, unitSystem.ip).step).toBe(10);
     expect(displayUnitFor(quantities.tdb, unitSystem.ip).step).toBe(0.1);
+    // 1 g/kg is the deployed tool's input step of 0.001 kg/kg.
+    expect(displayUnitFor(quantities.hr, unitSystem.si).step).toBe(1);
+    expect(displayUnitFor(quantities.hr, unitSystem.ip).step).toBe(1);
   });
 });
 
