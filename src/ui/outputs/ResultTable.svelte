@@ -1,10 +1,7 @@
 <script lang="ts">
   import { splitViolations, warningFor, type ViolationRow } from "$lib/core/applicability";
-  import { colorForBand } from "$lib/core/bandPalette";
   import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
-  import { resultValue } from "$lib/core/modelRun";
-  import { quantityFor, type Quantity } from "$lib/core/quantities";
-  import { formatResultCell } from "$lib/core/resultCell";
+  import { classifiedOutputs, formatResultCell } from "$lib/core/resultCell";
   import { standards } from "$lib/core/standard";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import { copy } from "$lib/text/copy";
@@ -22,34 +19,10 @@
 
   let { model, result, unitSystem, slotName, outOfRange, violations }: Props = $props();
 
-  interface ClassifiedOutput {
-    readonly quantity: Quantity;
-    readonly category: string | number;
-    readonly color: string | undefined;
-  }
-
   // ADR §4.3: the Compliance column appears only when the model has a
-  // classified output or a broken output row. Colour a category by its
-  // position in the output's own classifier (ADR-0002 decision 8).
-  // An output-role violation also opens the column: a PMV of 2.4 is shown, with
-  // the row it broke as its caveat.
-  const classified = $derived<readonly ClassifiedOutput[]>(
-    result
-      ? Object.entries(model.info.outputs).flatMap(([key, variable]) => {
-          const classifier = variable.classifier;
-          const quantity = classifier ? quantityFor(key) : undefined;
-          if (!classifier || !quantity) {
-            return [];
-          }
-          const category = resultValue(result, quantity);
-          // A classifier's labels are strings; a yes-or-no output has none.
-          if (category === undefined || typeof category === "boolean") {
-            return [];
-          }
-          return [{ quantity, category, color: colorForBand(classifier, category) }];
-        })
-      : [],
-  );
+  // classified output or a broken output row. An output-role violation also
+  // opens the column: a PMV of 2.4 is shown, with the row it broke as its caveat.
+  const classified = $derived(classifiedOutputs(model, result));
   const caveats = $derived(splitViolations(violations).outputs);
   const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
   const standardEntry = $derived(model.standard ? standards.find((entry) => entry.id === model.standard) : undefined);

@@ -1,8 +1,9 @@
 import { copy } from "$lib/text/copy";
-import type { ModelResult } from "./modelDeclaration";
+import { colorForBand } from "./bandPalette";
+import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultValue } from "./modelRun";
 import { formatNumber } from "./numberFormat";
-import type { Quantity } from "./quantities";
+import { quantityFor, type Quantity } from "./quantities";
 import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
@@ -21,4 +22,36 @@ export function formatResultCell(result: ModelResult | null, quantity: Quantity,
   }
   const unit = displayUnitFor(quantity, system);
   return valueWithUnit(formatNumber(unit.fromSi(value)), unit);
+}
+
+/** One entry of the Compliance column: a classified output's category and its band's fill. */
+export interface ClassifiedOutput {
+  readonly quantity: Quantity;
+  readonly category: string | number;
+  /** As {@link colorForBand} gives it. */
+  readonly color: string | undefined;
+}
+
+/**
+ * The outputs `model`'s info classifies, in the info's order, each with the
+ * category `result` carries and that category's colour by its position in the
+ * output's own classifier (ADR-0002 decision 8). Empty before the first run.
+ */
+export function classifiedOutputs(model: RegisteredModel, result: ModelResult | null): readonly ClassifiedOutput[] {
+  if (!result) {
+    return [];
+  }
+  return Object.entries(model.info.outputs).flatMap(([key, variable]) => {
+    const classifier = variable.classifier;
+    const quantity = classifier ? quantityFor(key) : undefined;
+    if (!classifier || !quantity) {
+      return [];
+    }
+    const category = resultValue(result, quantity);
+    // Narrows the type: a classified output carries a category, never a boolean.
+    if (category === undefined || typeof category === "boolean") {
+      return [];
+    }
+    return [{ quantity, category, color: colorForBand(classifier, category) }];
+  });
 }
