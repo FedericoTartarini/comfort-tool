@@ -139,21 +139,27 @@ export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredMo
   return slot.values.get(quantity);
 }
 
+/** Each humidity entry mode by the quantity it enters. */
+const humidityModeByQuantity = new Map<Quantity, HumidityMode>(Object.values(humidityMode).map((mode) => [mode.quantity, mode]));
+
 /**
  * The same slot with some entered values replaced — how the dynamic chart
  * sweeps its axes. Replacing before resolution keeps the derivations honest:
  * an overridden `v` is still turned into `vr`, an overridden `operative_tmp`
  * still expands to `tdb = tr`.
+ *
+ * A value whose quantity is any humidity entry mode's sets the humidity entry
+ * to that mode and value, so no humidity quantity lands among the values. An
+ * `rh` sweep is one case: it overrides the entry outright, since the chart's
+ * axis is the library's `rh`.
  */
 export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, number>): Slot {
   const values = new Map(slot.values);
   let humidity = slot.humidity;
   for (const [quantity, value] of overrides) {
-    if (quantity === humidity.mode.quantity) {
-      humidity = { mode: humidity.mode, value };
-    } else if (quantity === q.rh) {
-      // An rh sweep overrides the humidity entry outright: the chart's axis is the library's rh.
-      humidity = { mode: humidityMode.rh, value };
+    const mode = humidityModeByQuantity.get(quantity);
+    if (mode) {
+      humidity = { mode, value };
     } else {
       values.set(quantity, value);
     }

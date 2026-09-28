@@ -151,6 +151,19 @@ describe("entered values", () => {
     expect(slot.humidity.mode).toBe(humidityMode.dewPoint);
   });
 
+  for (const entered of Object.values(humidityMode)) {
+    it(`sets the humidity entry to ${entered.id} on entering its quantity, whatever mode the slot was in`, () => {
+      for (const held of Object.values(humidityMode)) {
+        const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: held, value: 1 } };
+        const written = withEnteredValues(slot, new Map([[entered.quantity, 2]]));
+        expect(written.humidity).toEqual({ mode: entered, value: 2 });
+        for (const mode of Object.values(humidityMode)) {
+          expect(written.values.has(mode.quantity)).toBe(false);
+        }
+      }
+    });
+  }
+
   it("expands a swept operative temperature to both temperatures", () => {
     const swept = withEnteredValues(enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), new Map([[q.operative_tmp, 28]]));
     const resolved = resolveQuantities(swept, pmvPpdIso);
