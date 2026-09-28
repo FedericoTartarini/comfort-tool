@@ -1,5 +1,6 @@
 import type { ClassifierBins, ModelInfo, Standard } from "jsthermalcomfort";
 import { chartType } from "./chartType";
+import { temperatureMode } from "./entryModes";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -302,7 +303,8 @@ export function requireAxisRange(model: RegisteredModel, quantity: Quantity): Ra
 /**
  * Entry groups are read from `inputs`, not declared (ADR §4.2, 2026-09-08):
  * a model has the humidity group when it takes `rh`, and the temperature
- * group when it takes both `tdb` and `tr`.
+ * group when it takes every quantity the separate entry mode shows; a model
+ * with only some of them has none.
  */
 export function hasHumidityGroup(model: RegisteredModel): boolean {
   return model.inputs.some((entry) => entry.quantity === quantities.rh);
@@ -310,5 +312,5 @@ export function hasHumidityGroup(model: RegisteredModel): boolean {
 
 export function hasTemperatureGroup(model: RegisteredModel): boolean {
   const entered = model.inputs.map((entry) => entry.quantity);
-  return entered.includes(quantities.tdb) && entered.includes(quantities.tr);
+  return temperatureMode.separate.panel.every((quantity) => entered.includes(quantity));
 }
