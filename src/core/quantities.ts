@@ -7,10 +7,15 @@
  * legitimately appears outside `core/shareLink.ts` — and every other module
  * holds the row itself, compared by identity, never the key.
  *
+ * `kindBounds`, beside the kinds, holds the range a kind is defined over,
+ * whatever the model; the pre-call gate reads it (ADR-0002 decision 46).
+ *
  * Node strips this file's types natively (`erasableSyntaxOnly`), so
  * `eslint.config.js` imports it directly to build the wire-string lint rule's
  * key list without a build step.
  */
+import type { Bound } from "jsthermalcomfort";
+
 export type QuantityKind =
   | "temperature"
   | "airSpeed"
@@ -22,6 +27,16 @@ export type QuantityKind =
   | "humidityRatio"
   | "category"
   | "yesNo";
+
+/**
+ * The range a kind's values are defined over, whatever the model: a
+ * percentage is 0 to 100. The library publishes no applicability on relative
+ * humidity, so the pre-call gate reads this bound beside the model's own row
+ * (ADR-0002 decision 46). A kind with no entry here has no bound of its own.
+ */
+export const kindBounds: Readonly<Partial<Record<QuantityKind, Bound>>> = {
+  percentage: { min: 0, max: 100 },
+};
 
 export interface Quantity {
   /** The name this quantity has in a model's `ModelInfo`, e.g. `"tdb"`. */

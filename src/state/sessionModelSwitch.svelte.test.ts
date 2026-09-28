@@ -10,6 +10,7 @@
  * registry entries: each spreads the registered declaration and overrides the
  * one thing it is about.
  */
+import { psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { outOfRangeRows, type Bound } from "$lib/core/applicability";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
@@ -50,6 +51,8 @@ const aboveTheSlot = withBounds({ tdb: { min: 28, max: 40 } });
 // clo starts at 0.5, so a minimum of 1 is the one-sided bound; met's maximum
 // is removed, so a met of 6 breaks nothing under it.
 const oneSidedBounds = withBounds({ clo: { min: 1 }, met: { min: 0.8 } });
+// The slot starts at 50 % relative humidity, which a maximum of 40 rules out.
+const drierThanTheSlot = withBounds({ rh: { max: 40 } });
 // The slot as it stands satisfies this one, so the switch has nothing to ask.
 const acceptsTheSlot = withBounds({ tdb: { min: 10, max: 40 } });
 
@@ -127,6 +130,47 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(session.slots[0].humidity.value).toBe(35);
     expect(outputs.outOfRange).toEqual([]);
     expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
+  });
+
+  it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setHumidityMode(humidityMode.humidityRatio);
+    const entered = session.slots[0].humidity.value;
+    expect(outputs.outOfRange).toEqual([]);
+
+    session.requestModel(drierThanTheSlot);
+
+    expect(session.pendingSwitch?.outOfRangeRows).toEqual([
+      { quantity: q.hr, value: entered, bound: { min: psy_ta_rh(25, 0).hr, max: psy_ta_rh(25, 40).hr } },
+    ]);
+
+    session.acceptSwitch();
+
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(25, 40).hr });
+    expect(outputs.outOfRange).toEqual([]);
+  });
+
+  it("checks the humidity entry at the temperature the switch would leave, and lists it when that rules it out", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setHumidityMode(humidityMode.humidityRatio);
+    // About 85 % at the slot's 25 °C, but above saturation at the 20 °C "Yes" moves tdb to.
+    session.slots[0].setHumidityValue(0.017);
+    expect(outputs.outOfRange).toEqual([]);
+
+    session.requestModel(belowTheSlot);
+
+    expect(session.pendingSwitch?.outOfRangeRows).toEqual([
+      { quantity: q.tdb, value: 25, bound: { min: 10, max: 20 } },
+      { quantity: q.hr, value: 0.017, bound: { min: psy_ta_rh(20, 0).hr, max: psy_ta_rh(20, 100).hr } },
+    ]);
+
+    session.acceptSwitch();
+
+    expect(session.slots[0].values.get(q.tdb)).toBe(20);
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(20, 100).hr });
+    expect(outputs.outOfRange).toEqual([]);
   });
 
   it("leaves everything as it was on a decline", () => {

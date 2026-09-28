@@ -388,7 +388,7 @@ All done criteria met (`npm test` 21 tests, `check` / `lint` / `build` clean; ve
 | Lint | `symbol:` properties are exempt from the wire-string rule (`met` / `clo` are unit symbols as well as keys); probe verified |
 | Deferred | `workspace.ts`, `chartType.ts`, `xxxFromId()` wait for their first consumer (Phase 3 / Phase 5 shareLink); `environment` parameter of `toLibraryInputs` arrives with the humidity-ratio conversion |
 | Library issue | `quantities.p_atm.siUnit` is `"kPa"` but `psy_ta_rh` and `psychrometricZone.p_atm` take Pa — resolve in the library before Phase 5 "Set pressure" (folded into Phase 2b) |
-| Open | `rh` has no applicability row, so 0..100 is not enforced. Decide with Phase 2b whether a physical range belongs on `Quantity` or in `core/units.ts` by kind |
+| Open, closed 2026-09-28 | `rh` has no applicability row, so 0..100 is not enforced. Decide with Phase 2b whether a physical range belongs on `Quantity` or in `core/units.ts` by kind. **Closed by ADR-0002 decision 46:** by kind, in `core/quantities.ts`'s `kindBounds` beside `QuantityKind`; the pre-call gate holds the humidity entry to it, converted into the entry's mode, wet bulb excepted |
 
 ---
 

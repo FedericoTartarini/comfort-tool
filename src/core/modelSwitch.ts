@@ -10,6 +10,9 @@
  * the converted slot and not the original one, and the gate has to see what
  * seeding left. The gate is asked, never second-guessed: the rows are
  * `core/applicability.ts`'s and the app has no other notion of out of range.
+ * It is asked a second time, on the slot with the other rows adjusted,
+ * because the humidity entry's bound depends on the temperature (see
+ * {@link rehearseSwitch}).
  */
 import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
 import { temperatureMode, underTemperatureMode } from "./entryModes";
@@ -21,15 +24,28 @@ import type { Quantity } from "./quantities";
 export interface RehearsedSwitch {
   /** What `slot` would hold: converted, then seeded. Nothing entered is adjusted here. */
   readonly inputs: SlotInputs;
-  /** The entered values the new model's Applicability rules out, as the pre-call gate reports them. */
+  /**
+   * The entered values the new model's Applicability rules out, as the pre-call
+   * gate reports them; the humidity entry's at the temperature a "Yes" would leave.
+   */
   readonly outOfRangeRows: readonly OutOfRangeRow[];
 }
 
-/** What `slot` would hold under `model`, and what `model` would not accept of it. */
+/**
+ * What `slot` would hold under `model`, and what `model` would not accept of
+ * it. Temperatures first: the humidity entry's bound moves with the dry-bulb
+ * temperature (ADR-0002 decision 46), so it is checked at the temperature a
+ * "Yes" would leave — the gate asked again on the slot with every other row
+ * adjusted — and listed with the bound it has there. A "Yes" then leaves
+ * nothing out of range.
+ */
 export function rehearseSwitch(slot: SlotInputs, model: RegisteredModel): RehearsedSwitch {
   const converted = convertEntryMode(slot, model);
   const inputs = seedDeclaredDefaults(converted, model);
-  return { inputs, outOfRangeRows: outOfRangeRows(inputs, model) };
+  const humidity = inputs.humidity.mode.quantity;
+  const others = outOfRangeRows(inputs, model).filter((row) => row.quantity !== humidity);
+  const humidityRow = outOfRangeRows(adjustToBounds(inputs, others), model).find((row) => row.quantity === humidity);
+  return { inputs, outOfRangeRows: humidityRow ? [...others, humidityRow] : others };
 }
 
 /**

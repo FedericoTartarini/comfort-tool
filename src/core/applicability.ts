@@ -13,12 +13,12 @@
  */
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
-import { temperatureMode, type TemperatureMode } from "./entryModes";
-import type { SlotInputs } from "./libraryInputs";
+import { humidityMode, temperatureMode } from "./entryModes";
+import { resolvedTdb, type SlotInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
-import { quantities, quantityFor, type Quantity } from "./quantities";
+import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import type { DisplayUnit } from "./units";
 import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
@@ -62,6 +62,18 @@ function breaksBound(bound: Bound, value: number): boolean {
   return (bound.min !== undefined && value < bound.min) || (bound.max !== undefined && value > bound.max);
 }
 
+/** The bound between `min` and `max`, keeping only an end that is a finite number. */
+function boundOf(min: number | undefined, max: number | undefined): Bound {
+  const result: { min?: number; max?: number } = {};
+  if (min !== undefined && Number.isFinite(min)) {
+    result.min = min;
+  }
+  if (max !== undefined && Number.isFinite(max)) {
+    result.max = max;
+  }
+  return result;
+}
+
 /** The narrowest bound that satisfies every bound in `bounds`, or `undefined` for none. */
 function intersect(bounds: readonly [Bound, ...Bound[]]): Bound;
 function intersect(bounds: readonly Bound[]): Bound | undefined;
@@ -71,40 +83,82 @@ function intersect(bounds: readonly Bound[]): Bound | undefined {
   }
   const mins = bounds.map((bound) => bound.min).filter((min): min is number => min !== undefined);
   const maxes = bounds.map((bound) => bound.max).filter((max): max is number => max !== undefined);
-  const result: { min?: number; max?: number } = {};
-  if (mins.length > 0) {
-    result.min = Math.max(...mins);
-  }
-  if (maxes.length > 0) {
-    result.max = Math.min(...maxes);
-  }
-  return result;
+  return boundOf(mins.length > 0 ? Math.max(...mins) : undefined, maxes.length > 0 ? Math.min(...maxes) : undefined);
 }
 
 /**
- * The bound an entered quantity must satisfy under `model.info`, given the
- * current temperature mode. An operative entry stands in for both
- * temperature rows and must satisfy both at once. Entered `v` has no bound of
- * its own — the standard bounds the relative air speed it derives, `vr`,
- * which the library checks and {@link violationRows} reports on the `v` row.
+ * Every bound `model` puts on `quantity`: its applicability row, and, when the
+ * model takes the quantity, the bound of the quantity's kind (ADR-0002
+ * decision 46). The two hold at once, so a caller intersects them.
  */
-export function enteredBound(model: RegisteredModel, quantity: Quantity, mode: TemperatureMode): Bound | undefined {
-  const constrained =
-    mode !== temperatureMode.separate && mode.panel.includes(quantity) ? temperatureMode.separate.panel : [quantity];
-  return intersect(
-    constrained
-      .map((entry) => boundFor(model.info.inputs, entry))
-      .filter((bound): bound is Bound => bound !== undefined),
+function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
+  const takes = model.inputs.some((entry) => entry.quantity === quantity);
+  return [boundFor(model.info.inputs, quantity), takes ? kindBounds[quantity.kind] : undefined].filter(
+    (bound): bound is Bound => bound !== undefined,
   );
 }
 
 /**
- * Entered values outside the model's applicability bounds — the pre-call gate,
- * with the bound each value was tested against. Checks what the user typed,
- * not a derived value, and says nothing about a quantity the model does not
- * bound (the entered `v` of a model that takes `vr`, a humidity entered as
- * anything but `rh`): the library reports those after the call, through
- * {@link violationRows}.
+ * The bound the slot's humidity entry must satisfy under `model`: relative
+ * humidity's — its kind's 0 to 100, narrowed by any row the model has —
+ * converted into the entry's mode by the mode's own `fromRelativeHumidity` at
+ * the slot's dry-bulb temperature (ADR-0002 decision 46). An end the mode has
+ * no finite value for (the dew point of 0 %) is dropped. The library's
+ * conversions do not rise with relative humidity everywhere — saturated air's
+ * humidity ratio turns negative from 100 °C — so where the converted ends come
+ * out inverted the entry has no bound at that temperature. `undefined` for a
+ * model without the humidity entry group.
+ */
+function humidityEntryBoundFor(model: RegisteredModel, slot: SlotInputs): Bound | undefined {
+  const { mode } = slot.humidity;
+  // `rh_from_wet_bulb` clamps to 0 – 100, so a wet-bulb entry can never
+  // resolve outside the bound; and `t_wb` at 0 % is approximate (1.9 °C at
+  // 10 °C, which reads back as 16 %), so bounding the entry would stop valid ones.
+  if (mode === humidityMode.wetBulb) {
+    return undefined;
+  }
+  const relativeHumidity = intersect(everyBoundFor(model, q.rh));
+  if (!relativeHumidity) {
+    return undefined;
+  }
+  const tdb = resolvedTdb(slot);
+  const converted = (end: number | undefined) => (end === undefined ? undefined : mode.fromRelativeHumidity(end, tdb));
+  const bound = boundOf(converted(relativeHumidity.min), converted(relativeHumidity.max));
+  if (bound.min !== undefined && bound.max !== undefined && bound.min > bound.max) {
+    return undefined;
+  }
+  return bound.min === undefined && bound.max === undefined ? undefined : bound;
+}
+
+/**
+ * The bound an entered quantity must satisfy under `model`, given the slot's
+ * entry modes. An operative entry stands in for both temperature rows and
+ * must satisfy both at once. The humidity entry is held to relative
+ * humidity's bound converted into its mode at the slot's dry-bulb
+ * temperature, so the bound moves with the temperature, except in wet-bulb
+ * entry, which is not bounded ({@link humidityEntryBoundFor}). Entered `v` has
+ * no bound of its own — the standard bounds the relative air speed it
+ * derives, `vr`, which the library checks and {@link violationRows} reports
+ * on the `v` row.
+ */
+export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: SlotInputs): Bound | undefined {
+  if (quantity === slot.humidity.mode.quantity) {
+    return humidityEntryBoundFor(model, slot);
+  }
+  const { mode } = slot.temperature;
+  const constrained =
+    mode !== temperatureMode.separate && mode.panel.includes(quantity) ? temperatureMode.separate.panel : [quantity];
+  return intersect(constrained.flatMap((entry) => everyBoundFor(model, entry)));
+}
+
+/**
+ * Entered values outside the bounds {@link enteredBound} gives — the pre-call
+ * gate, with the bound each value was tested against. Checks what the user
+ * typed, not a derived value: a humidity entry is tested in its own mode,
+ * against relative humidity's bound converted into it. It says nothing about
+ * a quantity {@link enteredBound} leaves unbounded: a wet-bulb entry, or the
+ * entered `v` of a model that takes `vr`, whose derived `vr` the library
+ * reports after the call, through {@link violationRows}.
  *
  * The one definition of out of range in the app (ADR-0002 decision 32). The
  * input panel's red boxes and the model-switch dialog's rows are both this
@@ -117,7 +171,7 @@ export function outOfRangeRows(slot: SlotInputs, model: RegisteredModel): OutOfR
   ];
   const rows: OutOfRangeRow[] = [];
   for (const [quantity, value] of entered) {
-    const bound = enteredBound(model, quantity, slot.temperature.mode);
+    const bound = enteredBound(model, quantity, slot);
     if (bound && breaksBound(bound, value)) {
       rows.push({ quantity, value, bound });
     }

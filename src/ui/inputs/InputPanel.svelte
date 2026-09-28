@@ -87,7 +87,7 @@
       quantity,
       value: shownValueFor(quantity),
       unitSystem,
-      bound: enteredBound(model, quantity, inputSlot.temperature.mode),
+      bound: enteredBound(model, quantity, inputSlot),
       outOfRange: outOfRange.includes(quantity),
       oncommit: (si: number) => commit(quantity, si),
     }}

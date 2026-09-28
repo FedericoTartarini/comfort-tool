@@ -1,9 +1,12 @@
+import { psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import { enteredBound, outOfRangeInputs, splitViolations, violationRows, warningFor } from "./applicability";
-import { humidityMode, temperatureMode } from "./entryModes";
+import { humidityMode, temperatureMode, type HumidityMode } from "./entryModes";
 import type { SlotInputs } from "./libraryInputs";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
@@ -34,6 +37,11 @@ function separateSlot(overrides: Partial<Record<"tdb" | "tr" | "v" | "met" | "cl
   };
 }
 
+/** `slot` with its humidity entered as `value` in `mode`. */
+function withHumidity(slot: SlotInputs, mode: HumidityMode, value: number): SlotInputs {
+  return { ...slot, humidity: { mode, value } };
+}
+
 function operativeSlot(operative: number): SlotInputs {
   return {
     values: new Map<Quantity, number>([
@@ -59,14 +67,15 @@ describe("enteredBound / outOfRangeInputs", () => {
   });
 
   it("checks an operative entry against every temperature it replaces", () => {
-    const bound = enteredBound(pmvPpdIso, q.operative_tmp, temperatureMode.operative);
+    const bound = enteredBound(pmvPpdIso, q.operative_tmp, operativeSlot(25));
     expect(bound?.max).toBe(pmvPpdIso.info.inputs.tdb?.applicability?.max);
     expect(outOfRangeInputs(operativeSlot((bound?.max ?? 0) + 1), pmvPpdIso)).toEqual([q.operative_tmp]);
     expect(outOfRangeInputs(operativeSlot(bound?.max ?? 0), pmvPpdIso)).toEqual([]);
   });
 
-  it("has no bound for a quantity the standard does not limit", () => {
-    expect(enteredBound(pmvPpdIso, q.rh, temperatureMode.separate)).toBeUndefined();
+  it("has no bound for an entered quantity the model does not limit", () => {
+    // The standard bounds the relative air speed vr, not the entered v.
+    expect(enteredBound(pmvPpdIso, q.v, separateSlot())).toBeUndefined();
   });
 
   it("handles a min-only bound without a max (e.g. Heat Index's tdb)", () => {
@@ -74,7 +83,7 @@ describe("enteredBound / outOfRangeInputs", () => {
       ...pmvPpdIso,
       info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, tdb: { unit: "°C", applicability: { min: 15 } } } },
     };
-    expect(enteredBound(minOnly, q.tdb, temperatureMode.separate)).toEqual({ min: 15 });
+    expect(enteredBound(minOnly, q.tdb, separateSlot())).toEqual({ min: 15 });
     expect(outOfRangeInputs(separateSlot({ tdb: 10 }), minOnly)).toEqual([q.tdb]);
     expect(outOfRangeInputs(separateSlot({ tdb: 1000 }), minOnly)).toEqual([]);
   });
@@ -84,6 +93,72 @@ describe("enteredBound / outOfRangeInputs", () => {
     const slot = separateSlot({ tdb: 30, tr: 30 });
     const humid: SlotInputs = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
     expect(outOfRangeInputs(humid, pmvPpdIso)).toEqual([]);
+  });
+});
+
+// Relative humidity is bounded 0 to 100 by its kind, not by the library (ADR-0002 decision 46).
+describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
+  it("bounds relative humidity to 0 – 100 % and gates an entry outside it", () => {
+    expect(enteredBound(pmvPpdIso, q.rh, separateSlot())).toEqual({ min: 0, max: 100 });
+    expect(outOfRangeInputs(withHumidity(separateSlot(), humidityMode.rh, 150), pmvPpdIso)).toEqual([q.rh]);
+    expect(outOfRangeInputs(withHumidity(separateSlot(), humidityMode.rh, -20), pmvPpdIso)).toEqual([q.rh]);
+    expect(outOfRangeInputs(withHumidity(separateSlot(), humidityMode.rh, 50), pmvPpdIso)).toEqual([]);
+  });
+
+  it("converts the bound into the entered humidity ratio at the slot's dry-bulb temperature", () => {
+    const slot = withHumidity(separateSlot({ tdb: 25 }), humidityMode.humidityRatio, 0.05);
+    expect(enteredBound(pmvPpdIso, q.hr, slot)).toEqual({ min: psy_ta_rh(25, 0).hr, max: psy_ta_rh(25, 100).hr });
+    // 0.05 kg/kg is about 238 % relative humidity at 25 °C.
+    expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([q.hr]);
+    expect(outOfRangeInputs(withHumidity(slot, humidityMode.humidityRatio, 0.01), pmvPpdIso)).toEqual([]);
+  });
+
+  it("gates a dew point at the air temperature, above the library's saturation dew point, and drops the end 0 % has no dew point for", () => {
+    // At 25 °C the library reads a 25 °C dew point as 100.95 %.
+    const slot = withHumidity(separateSlot({ tdb: 25 }), humidityMode.dewPoint, 25);
+    expect(enteredBound(pmvPpdIso, q.dew_point_tmp, slot)).toEqual({ max: psy_ta_rh(25, 100).t_dp });
+    expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([q.dew_point_tmp]);
+  });
+
+  it("converts the bound at the operative temperature under operative entry", () => {
+    const slot = withHumidity(operativeSlot(28), humidityMode.humidityRatio, 0.01);
+    expect(enteredBound(pmvPpdIso, q.hr, slot)).toEqual({ min: psy_ta_rh(28, 0).hr, max: psy_ta_rh(28, 100).hr });
+  });
+
+  it("drops a bound whose converted ends come out inverted", () => {
+    // From 100 °C the library's humidity ratio of saturated air is negative; Heat Index accepts that tdb.
+    expect(psy_ta_rh(100, 100).hr).toBeLessThan(psy_ta_rh(100, 0).hr);
+    const slot: SlotInputs = {
+      values: new Map<Quantity, number>([[q.tdb, 100]]),
+      humidity: { mode: humidityMode.humidityRatio, value: 0.01 },
+      temperature: { mode: temperatureMode.separate },
+      options: new Map(),
+    };
+    expect(enteredBound(heatIndexRothfusz, q.hr, slot)).toBeUndefined();
+    expect(outOfRangeInputs(slot, heatIndexRothfusz)).toEqual([]);
+  });
+
+  it("does not bound a wet-bulb entry, which the library's inverse clamps to 0 – 100 %", () => {
+    // 1.5 °C is below the library's wet bulb of 0 % at 10 °C, yet reads back inside the range.
+    expect(psy_ta_rh(10, 0).t_wb).toBeGreaterThan(1.5);
+    const slot = withHumidity(separateSlot({ tdb: 10, tr: 10 }), humidityMode.wetBulb, 1.5);
+    expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, slot)).toBeUndefined();
+    expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([]);
+  });
+
+  it("narrows the bound to a model's own relative-humidity row", () => {
+    const bounded = {
+      ...pmvPpdIso,
+      info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, rh: { unit: "%", applicability: { min: 30, max: 120 } } } },
+    };
+    expect(enteredBound(bounded, q.rh, separateSlot())).toEqual({ min: 30, max: 100 });
+    expect(outOfRangeInputs(withHumidity(separateSlot(), humidityMode.rh, 20), bounded)).toEqual([q.rh]);
+  });
+
+  it("does not bound the humidity entry of a model that takes no humidity", () => {
+    const slot = withHumidity(separateSlot(), humidityMode.rh, 150);
+    expect(enteredBound(adaptiveAshrae, q.rh, slot)).toBeUndefined();
+    expect(outOfRangeInputs(slot, adaptiveAshrae)).toEqual([]);
   });
 });
 
