@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
+import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
+import { defaultSlot } from "$lib/core/declarationTestSlots";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import { enteredQuantities, requireValue, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
 import {
@@ -12,6 +13,7 @@ import {
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { BandTrace, ChartRequest, PathTrace, PointTrace } from "./chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
@@ -391,5 +393,44 @@ describe("axes across a temperature entry mode switch", () => {
 
   it("leaves axes that do not collide alone", () => {
     expect(resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.v }, temperatureMode.separate)).toEqual({ x: q.tdb, y: q.v });
+  });
+});
+
+describe("Adaptive's running mean axis", () => {
+  const adaptiveChart = dynamicChartOf(adaptiveAshrae);
+  if (!adaptiveChart) {
+    throw new Error("adaptiveAshrae no longer declares a dynamic chart");
+  }
+  const adaptiveRequest: ChartRequest = {
+    model: adaptiveAshrae,
+    slot: defaultSlot(adaptiveAshrae),
+    slotLabel: "Input 1",
+    unitSystem: unitSystem.si,
+  };
+  const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
+
+  it("spans the library's applicability, 10 to 33.5 °C today", () => {
+    const spec = dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes);
+    expect(spec.layout.x.range).toEqual([bound?.min, bound?.max]);
+    expect(spec.layout.x.range).toEqual([10, 33.5]);
+  });
+
+  it("converts the same bound in IP", () => {
+    const spec = dynamicSpec({ ...adaptiveRequest, unitSystem: unitSystem.ip }, adaptiveChart, adaptiveChart.axes);
+    expect(spec.layout.x.range[0]).toBeCloseTo(50, 10);
+    expect(spec.layout.x.range[1]).toBeCloseTo(92.3, 10);
+  });
+
+  it("moves with the library's bound, since the declaration writes none of its own", () => {
+    const info = ADAPTIVE_ASHRAE_INFO;
+    const moved = {
+      ...adaptiveAshrae,
+      info: {
+        ...info,
+        inputs: { ...info.inputs, t_running_mean: { ...info.inputs.t_running_mean, applicability: { min: 12, max: 30 } } },
+      },
+    } satisfies RegisteredModel;
+    const spec = dynamicSpec({ ...adaptiveRequest, model: moved }, adaptiveChart, adaptiveChart.axes);
+    expect(spec.layout.x.range).toEqual([12, 30]);
   });
 });
