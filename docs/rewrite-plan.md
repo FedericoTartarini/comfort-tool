@@ -861,6 +861,10 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
 6. `RegisteredModel.timeSeries` lands with `workspace.ts`, which is its first consumer.
 7. The `Proxy`-less fallback is a static notice in `index.html` naming the required browser versions (ADR §2 / §7.5,
    decided 2026-09-04). No second ES5 code path, no share decoding.
+8. The psychrometric chart answers the pointer (added 2026-09-28) through a hover grid over its axes, as the polygons
+   chart has since `88f179d`. This is the probe layer ADR-0001 §4.4 deferred here on 2026-09-05. What the readout
+   reports is settled in this phase's grilling; the deployed tool's reports t, rh and hr. Where it sits is Phase 5c
+   item 6.
 
 **Done criteria**
 - From any state, Export Link → open in a new tab → the state is identical (three slots, units, chart type, thresholds, atmospheric pressure, numbers)
@@ -901,6 +905,8 @@ all change the layout, so a design drawn before them would be redrawn after them
 4. Responsive behaviour, and the result table's horizontal overflow — legible since Phase 2, never designed.
 5. The model-switch dialog mock-up ADR §7.4 refers to. It is produced here; until then that criterion is judged on
    content, not appearance.
+6. Where the psychrometric chart's readout sits (added 2026-09-28): on the pointer, as the dynamic chart's does, or in
+   a box, as the deployed tool's. The readout itself is Phase 5 item 8.
 
 **Why not earlier**: the lint rule that bans Tailwind utilities outside `ui/primitives/` and `ui/layout/` (ADR §2) is
 what makes deferring safe. Visual change reaches the app through tokens, primitives and the three layout components —
