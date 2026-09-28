@@ -227,14 +227,6 @@ describe("psychrometricSpec", () => {
     expect(spec.traces.every((trace) => trace.hover === "off")).toBe(true);
   });
 
-  it("refuses a model whose result carries no PMV", () => {
-    // The zone is traced on `run`'s own PMV, so a model without one cannot
-    // declare this chart.
-    const outputs = Object.fromEntries(Object.entries(pmvPpdIso.info.outputs).filter(([key]) => key !== q.pmv.key));
-    const withoutPmv: RegisteredModel = { ...pmvPpdIso, info: { ...pmvPpdIso.info, outputs } };
-    expect(() => psychrometricSpec({ ...request(temperatureMode.separate), model: withoutPmv })).toThrow(q.pmv.label);
-  });
-
   it("offers one legend covering humidity, each zone and the slot", () => {
     const spec = psychrometricSpec(request(temperatureMode.separate));
     expect(spec.legend.map((entry) => entry.swatch)).toEqual(["line", "fill", "fill", "fill", "marker"]);

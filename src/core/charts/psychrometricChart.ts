@@ -169,7 +169,8 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
  * exactly the equation the results table shows, edition, `wme` and options
  * included, and no declaration has to restate it. `run` returns unrounded
  * output for this reason: a PMV rounded to 0.01 is a staircase the solver
- * cannot root-find.
+ * cannot root-find. That a model declaring this chart carries `pmv` at all is
+ * a registry-wide test's (`core/modelDeclaration.test.ts`), not a read here.
  */
 function pmvOfRun(
   model: RegisteredModel,
@@ -177,9 +178,6 @@ function pmvOfRun(
   options: OptionsReader,
   airSpeed: Quantity,
 ): PmvFunction {
-  if (!model.info.outputs[q.pmv.key]) {
-    throw new Error(`${model.info.label} declares a psychrometric chart, but its result carries no ${q.pmv.label}`);
-  }
   return (tdb, tr, vr, rh, met, clo) => {
     const inputs = new Map(resolved)
       .set(q.tdb, tdb)

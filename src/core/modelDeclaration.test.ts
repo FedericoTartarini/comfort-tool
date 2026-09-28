@@ -2,15 +2,23 @@
  * What a declaration says about itself: the name its model info gives it,
  * unique across the registry; the standard edition it picks, checked against
  * that model info for every registered model; the table columns it lists;
- * and the axis range a chart reads off it. What its `run` does is the
- * sibling `modelDeclarationRun.test.ts`'s.
+ * the charts it offers; and the axis range a chart reads off it. What its
+ * `run` does is the sibling `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it } from "vitest";
 import { PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
-import { axisRangeFor, requireAxisRange, type ChartDeclaration, type ZonePolygon } from "./modelDeclaration";
+import {
+  axisRangeFor,
+  dynamicChartOf,
+  psychrometricChartOf,
+  requireAxisRange,
+  type ChartDeclaration,
+  type RegisteredModel,
+  type ZonePolygon,
+} from "./modelDeclaration";
 import { quantities } from "./quantities";
 
 const q = quantities;
@@ -39,6 +47,78 @@ describe("table", () => {
       const classified = model.table.filter((column) => model.info.outputs[column.key]?.classifier);
       expect(classified.map((column) => column.label), model.info.label).toEqual([]);
     }
+  });
+});
+
+/** Every model has a dynamic chart (ADR §4.4); only the chart state's throw at session start would otherwise say so. */
+function expectADynamicChart(model: RegisteredModel): void {
+  expect(dynamicChartOf(model), model.info.label).toBeDefined();
+}
+
+/**
+ * v1 has one chart per chart type (ADR-0002 decision 31's note): the chart
+ * lookups return the first entry of a type, and the chart picker keys its
+ * entries by type.
+ */
+function expectEachChartTypeOnce(model: RegisteredModel): void {
+  const types = model.charts.map((chart) => chart.type);
+  expect(new Set(types).size, model.info.label).toBe(types.length);
+}
+
+/** The psychrometric zone is traced on `run`'s own PMV, so a model without one cannot declare the chart. */
+function expectPmvUnderAPsychrometricChart(model: RegisteredModel): void {
+  if (!psychrometricChartOf(model)) return;
+  expect(model.info.outputs[q.pmv.key], model.info.label).toBeDefined();
+}
+
+describe("charts", () => {
+  it("include a dynamic chart, for every registered model", () => {
+    for (const model of registeredModels) {
+      expectADynamicChart(model);
+    }
+  });
+
+  it("name each chart type once, for every registered model", () => {
+    for (const model of registeredModels) {
+      expectEachChartTypeOnce(model);
+    }
+  });
+
+  it("include a psychrometric chart only where the model info carries PMV, for every registered model", () => {
+    for (const model of registeredModels) {
+      expectPmvUnderAPsychrometricChart(model);
+    }
+  });
+
+  it("that leave out the dynamic chart fail the check", () => {
+    const psychrometric = psychrometricChartOf(pmvPpdIso);
+    if (!psychrometric) throw new Error("PMV (ISO 7730) declares a psychrometric chart");
+    const noDynamicChart: RegisteredModel = {
+      ...pmvPpdIso,
+      info: { ...pmvPpdIso.info, label: "Fixture without a dynamic chart" },
+      charts: [psychrometric],
+    };
+    expect(() => expectADynamicChart(noDynamicChart)).toThrow(noDynamicChart.info.label);
+  });
+
+  it("that name the dynamic chart twice fail the check", () => {
+    const dynamic = dynamicChartOf(pmvPpdIso);
+    if (!dynamic) throw new Error("PMV (ISO 7730) declares a dynamic chart");
+    const twoDynamicCharts: RegisteredModel = {
+      ...pmvPpdIso,
+      info: { ...pmvPpdIso.info, label: "Fixture with two dynamic charts" },
+      charts: [...pmvPpdIso.charts, dynamic],
+    };
+    expect(() => expectEachChartTypeOnce(twoDynamicCharts)).toThrow(twoDynamicCharts.info.label);
+  });
+
+  it("that include a psychrometric chart on a model info without PMV fail the check", () => {
+    const outputs = Object.fromEntries(Object.entries(pmvPpdIso.info.outputs).filter(([key]) => key !== q.pmv.key));
+    const noPmv: RegisteredModel = {
+      ...pmvPpdIso,
+      info: { ...pmvPpdIso.info, label: "Fixture without PMV", outputs },
+    };
+    expect(() => expectPmvUnderAPsychrometricChart(noPmv)).toThrow(noPmv.info.label);
   });
 });
 
