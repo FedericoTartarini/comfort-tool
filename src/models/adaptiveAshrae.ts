@@ -7,9 +7,6 @@ import { adaptive_ashrae_zone, type AdaptiveAshraeBand } from "$lib/temporary-li
 
 const q = quantities;
 
-// The one version `adaptive_ashrae` implements.
-const ASHRAE_EDITION = Standard.ashrae_55_2023;
-
 /** One band of the temporary library's SI geometry, split onto the chart's two axes. */
 function toZonePolygon(band: AdaptiveAshraeBand, label: string): ZonePolygon {
   return {
@@ -21,7 +18,8 @@ function toZonePolygon(band: AdaptiveAshraeBand, label: string): ZonePolygon {
 
 export const adaptiveAshrae = {
   info: ADAPTIVE_ASHRAE_INFO,
-  standard: ASHRAE_EDITION,
+  // The one version `adaptive_ashrae` implements.
+  standard: Standard.ashrae_55_2023,
   // After the quantities, the app's fixed policy: `limit_inputs: false`, since
   // the app gates entered values itself and reads the rows the run breaks off
   // `warnings`; `round_output: false`, since the library rounds `tmp_cmf`

@@ -66,7 +66,7 @@
       <Table.Caption>
         {#if outOfRange}<span>{result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult}</span>{/if}
         {#if standardEntry}
-          <span class="edition">{copy.standardCaption(standardEntry.displayName, standardEntry.year)}</span>
+          <span class="standard">{copy.standardCaption(standardEntry.displayName, standardEntry.year)}</span>
         {/if}
       </Table.Caption>
     {/if}
@@ -103,7 +103,7 @@
     white-space: normal;
   }
 
-  .edition:not(:first-child) {
+  .standard:not(:first-child) {
     margin-left: 0.75em;
   }
 </style>

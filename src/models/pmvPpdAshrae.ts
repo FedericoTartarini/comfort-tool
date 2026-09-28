@@ -14,7 +14,7 @@ import { copy } from "$lib/text/copy";
 const q = quantities;
 
 // The one version `pmv_ppd_ashrae` accepts.
-const ASHRAE_EDITION = Standard.ashrae_55_2023;
+const ASHRAE_55 = Standard.ashrae_55_2023;
 
 // Off by default, the deployed CBE tool's default, where the library's own is
 // on (Phase 4b spec, PMV (ASHRAE 55)'s declaration).
@@ -34,7 +34,7 @@ const airSpeedControl: OptionSpec = {
 
 export const pmvPpdAshrae = {
   info: PMV_PPD_ASHRAE_INFO,
-  standard: ASHRAE_EDITION,
+  standard: ASHRAE_55,
   // After the quantities and the option, the app's fixed policy: `wme: 0`,
   // since external work is not an input of the app; `limit_inputs: false`,
   // since the app gates entered values itself and reads the rows the run
@@ -52,7 +52,7 @@ export const pmvPpdAshrae = {
       met: values.met,
       clo: values.clo,
       wme: 0,
-      standard: ASHRAE_EDITION,
+      standard: ASHRAE_55,
       limit_inputs: false,
       round_output: false,
       suppress_warnings: true,
