@@ -140,8 +140,9 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
     **Noted 2026-09-28 (review after Phase 4b, Proposal 12; `S100`).** `quantityFor` is not in that list any more: the
     app defines its own lookup from an `_INFO` key to its `Quantity`, `quantityFor(key)` in `core/quantities.ts`, added
     with the quantities table the day after this decision (`bf95aac`). It has three readers: `core/applicability.ts`
-    twice, mapping a row's key to its quantity, and `ResultTable.svelte`, finding a classified output's quantity. The
-    rest of the list stands.
+    twice, mapping a row's key to its quantity, and `classifiedOutputs` in `core/resultCell.ts`, finding a classified
+    output's quantity, a read that was `ResultTable.svelte`'s until `284a30e` moved it into core. The rest of the list
+    stands.
 11. **Thin-wrapper rule.** A function is deleted only when both hold: it carries no app decision
     (no rule, invariant, error or derivation), and its removal scatters no rule and no lint boundary.
     Deleted: `defineModel`, `LibraryModel`, `limitFor` (absorbed by `core/applicability.ts`).
@@ -423,8 +424,8 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     holds across chart types only: v1 has one chart per chart type. Every reader finds a model's chart by its
     `ChartType`: `dynamicChartOf` and `psychrometricChartOf` return the first entry of their type, and the chart
     picker keys its entries by type, so a second dynamic entry is a Svelte duplicate-key error. A second surface of one
-    type is a change to those readers first. A registry-wide test is to assert one chart per chart type; it is written
-    by `.scratch/review-after-4b/issues/28`.
+    type is a change to those readers first. A registry-wide test in `core/modelDeclaration.test.ts` asserts one chart
+    per chart type; it was added with `cdff7ca`.
 
 Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan close-out left behind (08–11 in
 `.scratch/numeric-scan-and-model-name/issues/`), which widened to switching models and to the shape of `run`:
@@ -521,9 +522,10 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     outputs are today.
     **Amended 2026-09-28 (review after Phase 4b, Proposal 2; `S074`).** The axis picker describes the chart on screen:
     its choices and its selection are resolved from the same snapshot the chart was drawn from, not from the live
-    slot. The picker reads the live slot's entry mode today, so with the gate closed after a switch to operative entry
-    it offers operative temperature above a chart still drawn on dry-bulb; the code is
-    `.scratch/review-after-4b/issues/36`'s. Which slot decides the axes once Compare has three is Compare's to settle.
+    slot. The picker read the live slot's entry mode, so with the gate closed after a switch to operative entry it
+    offered operative temperature above a chart still drawn on dry-bulb. Since `9ccbd63` it reads `Outputs.drawnAxes`
+    in `state/compute.svelte.ts`, resolved from the same last valid inputs as the chart. Which slot decides the axes
+    once Compare has three is Compare's to settle.
 34. **`run` stays a function and reads its values by `Quantity`.** Revises decision 3. `run` is
     `(values) => result`, where `values(...quantities)` returns one number per `Quantity` asked for, as a tuple of
     the same length, spread at the head of the library's positional call:
@@ -637,8 +639,9 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     **Noted 2026-09-28 (review after Phase 4b, Proposal 23; `S031`, `PT01`).** Decision 31's one-hue rule covers a
     polygons chart's zones: they are Comfort zones on the Standard page, nested largest first, and are painted as the
     psychrometric chart paints its own, in one hue whose opacity rises inwards, outlined in the same zone line. Adaptive
-    (ASHRAE 55)'s 80 % and 90 % acceptability regions are painted today in the first two hues of the thermal-sensation
-    palette, as if they were two bands; the code is `.scratch/review-after-4b/issues/29`'s.
+    (ASHRAE 55)'s 80 % and 90 % acceptability regions were painted in the first two hues of the thermal-sensation
+    palette, as if they were two bands. Since `930ca55` they take the one zone hue, `chartInk.zoneFill`, outlined in
+    `chartInk.zoneLine`, as the psychrometric chart's zones do (`core/charts/dynamicChart.ts`).
     **Noted 2026-09-28 (review after Phase 4b, ticket 32; `P008`).** A polygons chart answers hover through a hover grid
     its spec builder lays over the locked axes: each GRID×GRID cell reads both axis values and the innermost Comfort zone
     containing it, because Plotly's fill hover reports no pointer position; the zones' own hover is off. Hover text on
@@ -678,9 +681,9 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     own declaration file and one registry line, which an import between two declarations would break by making one
     model's file a dependency of another's. PMV (ASHRAE 55) and PMV (ISO 7730) are the case today: `pmvPpdAshrae.ts`
     writes the same inputs, table, dynamic axes and output as `pmvPpdIso.ts`, and the same six quantities at the head
-    of its params object. Lint is to enforce it on `src/models/`, with the registry file, `src/models/index.ts`, which
-    imports every declaration by design, outside the rule. The rule is written by
-    `.scratch/review-after-4b/issues/48`; until then it holds by inspection, as no declaration imports another.
+    of its params object. Lint has enforced it on `src/models/` since `f85a69a`, with the registry file,
+    `src/models/index.ts`, which imports every declaration by design, outside the rule. Before that it held by
+    inspection, as no declaration imported another.
 41. **A function starts with a verb, or is an accessor named `…For`, `…Of` or `with…`.** Amends ADR-0001 §6's
     "functions start with a verb", which its own examples break (`pathSegmentFor`, `displayUnitFor`, `axisRangeFor`)
     and which 35 of the 52 functions in `core/` outside `charts/` broke when the review counted. Taken 2026-09-28 in
@@ -689,7 +692,7 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     chart of a model, `withTemperatureMode(slot, mode, model)` the slot's inputs in another mode. A function that acts
     or answers a question starts with a verb, as before (`rehearseSwitch`, `formatNumber`, `isPolygonsChart`).
     `axisRangeFor` and `hasHumidityGroup`, which decision 11 kept, fit the rule as they are. An accessor's name must not read like the
-    language's own: the input panel's `valueOf` does, and is renamed by `.scratch/review-after-4b/issues/42`.
+    language's own: the input panel's `valueOf` did, and was renamed `shownValueFor` with `d03781e`.
 42. **Copy inside a generated primitive is the one exception to the one-dictionary rule.** Amends ADR-0001 §2's "UI
     copy centralised in one dictionary module". Taken 2026-09-28 in the review after Phase 4b (Proposal 22, `S091`).
     The shadcn-svelte CLI writes its components' own copy into `ui/primitives/`, which is never hand-edited (ADR-0001
@@ -716,11 +719,11 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     Decision 32's rule is unchanged: the session hears the address only through `setModel`, the
     address's path, which never asks, and an in-app switch still requests first and navigates after, so the hook
     finds that model already current. The effect-purity lint rule now covers pages, `src/routes/**/*.svelte`, as
-    well as `state/`; `ui/` stays outside it, since an effect there may assign what it synchronises, as
-    `PlotlyChart`'s `drawn` does. It is still syntactic: in a page it now catches an assignment written inside an
-    effect, and still not one made through a call, so the old effect would pass it. A call that assigns stays with
-    the review, under the code-quality checklist's question whether every `$effect` synchronises something
-    external.
+    well as `state/`; `ui/` stays outside it, since an effect there may write to what it synchronises, a DOM node for
+    one, and the rule's selector matches any assignment written inside an effect. The example it gave went with
+    `ac93984`. It is still syntactic: in a page it now catches an assignment written inside an effect, and still not
+    one made through a call, so the old effect would pass it. A call that assigns stays with the review, under the
+    code-quality checklist's question whether every `$effect` synchronises something external.
 44. **The zone legend's `|PMV|` is the one quantity symbol the app writes.** Amends ADR-0001 §6's "the app never
     writes one" for the zone legend alone. Taken 2026-09-28 in the review after Phase 4b (Proposal 25; `S062`,
     `P015`). A Comfort zone's legend is its label and the limit it is drawn at, "Category A (|PMV| < 0.2)". The name
@@ -795,9 +798,10 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
   `label` and `name` are read anywhere, since decision 30 as revised has every reader take `model.info.name`. Two
   shape reads outside the three are sanctioned: `axisRangeFor`'s fallback to an input's applicability bound in
   `core/modelDeclaration.ts` (decision 5), and `adaptive_ashrae_zone`'s read of the running-mean bound in
-  `src/temporary-library/`, which is library code (decision 24). Two more are moved: `ResultTable.svelte` walks `info.outputs` for the
-  classified outputs, which move into core with `.scratch/review-after-4b/issues/17`, and the psychrometric chart's
-  check that the result carries `pmv` becomes a registry-wide test with `.scratch/review-after-4b/issues/28`.
+  `src/temporary-library/`, which is library code (decision 24). A third is sanctioned in core: `classifiedOutputs` in
+  `core/resultCell.ts` walks `info.outputs` for the classified outputs, a walk that was `ResultTable.svelte`'s until
+  `284a30e` moved it into core. The psychrometric chart's check that the result carries `pmv` was a fourth read
+  outside the three, and became a registry-wide test in `core/modelDeclaration.test.ts` with `cdff7ca`.
 - Phases 1 and 2b of the rewrite plan were done in the fork and are superseded; Phase 3.7 is blocked
   on an upstream `PMV_PPD_ASHRAE_INFO`; Phase 4's model changes (decision 13).
 - The `ClassifierBins.right: boolean` shape contradicts #186's own "`closed: left | right`, never
