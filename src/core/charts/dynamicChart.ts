@@ -170,7 +170,8 @@ export function resolvedAxes(
 
 /**
  * The quantities the axis picker offers: what the user enters, minus anything
- * the model declares no range for — the range is what the scan sweeps between.
+ * with no axis range ({@link axisRangeFor}) — the range is what the scan
+ * sweeps between.
  * None for a polygons chart, whose axes are locked (ADR-0002 decision 37).
  */
 export function dynamicAxisQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {

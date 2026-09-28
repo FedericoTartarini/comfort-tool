@@ -68,7 +68,7 @@ export const pmvPpdAshrae = {
   ],
   options: [airSpeedControl],
   relativeAirSpeed: true,
-  // The same extents as PMV (ISO 7730) today; each declaration owns its own.
+  // The same ranges as PMV (ISO 7730) today; each declaration owns its own.
   axisRanges: [
     { quantity: q.tdb, min: 10, max: 40 },
     { quantity: q.tr, min: 10, max: 40 },

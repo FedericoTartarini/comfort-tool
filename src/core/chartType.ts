@@ -1,7 +1,7 @@
 /**
  * The charts a model can offer (ADR §4.4). A closed set in the same shape as
- * the library's `quantities`: `as const` objects referenced by identity, never
- * by string key.
+ * `core/quantities.ts`'s table: `as const` objects referenced by identity,
+ * never by string key.
  */
 export interface ChartType {
   readonly id: string;

@@ -20,9 +20,9 @@ describe("humidityMode", () => {
     expect(humidityMode.rh.fromRelativeHumidity(50, 25)).toBe(50);
   });
 
-  // Round-trip bounds follow the fork's tests/psychrometrics.test.ts: the
-  // algebraic inverses are exact, wet bulb carries wet_bulb_tmp's 0.1 °C
-  // rounding, dew point carries dew_point_tmp's own approximation error.
+  // Round-trip bounds: the algebraic inverses are exact, wet bulb carries
+  // wet_bulb_tmp's 0.1 °C rounding, dew point carries dew_point_tmp's own
+  // approximation error.
   it.each([
     [humidityMode.humidityRatio, 9],
     [humidityMode.vapourPressure, 9],

@@ -12,8 +12,9 @@ import { quantities, type Quantity } from "./quantities";
  * Deliberately widened to `object` rather than an indexed `Record`: a library
  * result declared as a plain `interface` (`HeatIndexResult`) carries no index
  * signature and TypeScript never infers one for it, so a `Record` type here
- * would reject every such model at its declaration. `modelRun.resultValue`
- * is the one place that indexes into it.
+ * would reject every such model at its declaration. `core/modelRun.ts` casts
+ * it in two places: `resultValue` reads it by key, `resultWarnings` reads its
+ * `warnings`.
  */
 export type ModelResult = object;
 
@@ -54,10 +55,10 @@ export interface Range {
 /**
  * How far one quantity is drawn wherever it carries an axis, in SI.
  *
- * A viewport, not a threshold. ADR §4.4: axis ranges are declared, never
- * derived from the model's applicability bounds — those validate what the
- * user typed, and conflating the two clipped the ISO chart to 10–30 °C and
- * left `rh`, which no standard bounds, unable to carry an axis at all.
+ * A viewport, not a gate: Applicability says which entered values the model
+ * answers for, an axis range how much of a quantity a chart shows. A declared
+ * range wins; {@link axisRangeFor} falls back to the applicability bound only
+ * for a quantity declared without one (ADR-0002 decision 5).
  */
 export interface AxisRange extends Range {
   readonly quantity: Quantity;
@@ -70,7 +71,7 @@ export interface ChartAxes {
 }
 
 /**
- * Exact band geometry a model supplies instead of the scanned grid, in SI.
+ * One exact Comfort zone a model supplies instead of the scanned grid, in SI.
  * `x` and `y` run along the dynamic chart's own axes and close the polygon.
  */
 export interface ZonePolygon {
@@ -79,7 +80,7 @@ export interface ZonePolygon {
   readonly y: readonly number[];
 }
 
-/** What a `zones` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x extent being drawn. */
+/** What a `zones` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x axis range being drawn. */
 export interface ZoneRequest {
   readonly values: Values;
   readonly xRange: Range;
@@ -114,7 +115,7 @@ export type ChartDeclaration =
   | {
       /**
        * The comfort zone is solved on `run`'s own `pmv`, so the model's result
-       * must carry one, unrounded (ADR-0002 decision 9, revised 2026-09-18).
+       * must carry one, unrounded (ADR-0002 decision 18, revised 2026-09-18).
        */
       readonly type: typeof chartType.psychrometric;
       /**
@@ -125,7 +126,7 @@ export type ChartDeclaration =
     }
   | {
       readonly type: typeof chartType.dynamic;
-      /** Starting axes; the user may pick any entered quantity that has a declared range. */
+      /** Starting axes; the user may pick any entered quantity that has an axis range ({@link axisRangeFor}). */
       readonly axes: ChartAxes;
       /**
        * The numeric output the chart scans. Each grid cell keeps this number,
@@ -191,8 +192,9 @@ export interface RegisteredModel {
    * decision 30): the share link will carry it as written, the route spells
    * it with hyphens, and the declaration's own file and constant spell it in
    * camelCase.
-   * `core/applicability.ts` owns every read of the applicability bounds
-   * (ADR-0002 decision 4).
+   * The pre-call gate reads its applicability bounds in
+   * `core/applicability.ts` (ADR-0002 decision 4), and {@link axisRangeFor}
+   * reads them for a quantity with no declared axis range (decision 5).
    */
   readonly info: ModelInfo;
   /**
@@ -249,7 +251,7 @@ export interface RegisteredModel {
    * How far each quantity is drawn. One table per model rather than one per
    * chart: the deployed tool draws its psychrometric x axis and its field
    * charts' temperature axis over the same 10–40 °C, and nothing in v1 wants
-   * two extents for one quantity.
+   * two ranges for one quantity.
    */
   readonly axisRanges: readonly AxisRange[];
   /** Result table columns, in order. Required (ADR §4.3). */
@@ -277,9 +279,9 @@ export function isPolygonsChart(chart: DynamicDeclaration): chart is PolygonsDec
 }
 
 /**
- * The declared extent of `quantity`, else `info.inputs`' own applicability
+ * The declared axis range of `quantity`, else `info.inputs`' own applicability
  * bound when it has both a `min` and a `max`, else `undefined` when `quantity`
- * may not carry an axis at all (ADR-0002 decision 7).
+ * may not carry an axis at all (ADR-0002 decision 5).
  */
 export function axisRangeFor(model: RegisteredModel, quantity: Quantity): Range | undefined {
   const declared = model.axisRanges.find((range) => range.quantity === quantity);

@@ -3,9 +3,8 @@
  * two ways the compiler cannot see: each quantity key of the params object has
  * to carry that quantity's own number (ADR-0002 decision 34); and each option
  * has to sit under the key its `key` names, since the key and the property are
- * spelled separately in the declaration (decision 36). Split out of
- * `modelDeclarationRun.test.ts` when that file passed ADR §6's line band; what
- * `run` returns stays there.
+ * spelled separately in the declaration (decision 36). What `run` returns is
+ * the sibling `modelDeclarationRun.test.ts`'s.
  */
 import { describe, expect, it, vi } from "vitest";
 import { pmv_ppd_ashrae, pmv_ppd_iso, Standard } from "jsthermalcomfort";
@@ -50,7 +49,7 @@ const airSpeedControl: OptionSpec = {
 
 /**
  * A model that reads an option through `run`'s second reader, as PMV
- * (ASHRAE 55) will. Named after the function it calls, so the recording above
+ * (ASHRAE 55) does. Named after the function it calls, so the recording above
  * can be found under that name.
  */
 const readsAnOption = {
@@ -125,11 +124,10 @@ describe("run's params object", () => {
   });
 
   it("catches two quantities in each other's place, which is all the compiler cannot see", () => {
-    // Proven red 2026-09-25: the same swap in the real declaration made the
-    // registry test above fail on `pmv_ppd_iso`'s `tdb` and `tr` and nothing
-    // else — not `npm run check`, because both keys are numbers. Written out
-    // rather than wrapped: spreading `values` would read every quantity, and throw
-    // on the first one the slot does not hold.
+    // The same swap in the real declaration is what the registry test above
+    // catches and `npm run check` does not, because both keys are numbers.
+    // Written out rather than wrapped: spreading `values` would read every
+    // quantity, and throw on the first one the slot does not hold.
     const swapped = {
       ...pmvPpdIso,
       run: (values: Values) =>

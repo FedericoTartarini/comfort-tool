@@ -5,7 +5,7 @@ import { unitSystem, type UnitSystem } from "./unitSystem";
  * Display units. The conversion formulas live here on purpose: this is the
  * one exception to "the app never implements a formula" (ADR §3). The library
  * is always called in SI, and its own IP units (fps) are not what the tool
- * shows (fpm), so `Quantity.ipUnit` and `units_converter` are never read.
+ * shows (fpm), so its `units_converter` is never read.
  */
 export interface DisplayUnit {
   readonly symbol: string;
@@ -34,8 +34,8 @@ const PASCALS_PER_KILOPASCAL = 1000;
 const GRAMS_PER_KILOGRAM = 1000;
 const POUNDS_PER_KILOPOUND = 1000;
 
-// `satisfies Record<QuantityKind, …>`: when the library adds a kind, this
-// table fails to compile until the app decides how to display it.
+// `satisfies Record<QuantityKind, …>`: a kind added to `QuantityKind` fails
+// to compile here until the app decides how to display it.
 const displayUnits = {
   temperature: {
     si: { symbol: "°C", step: 0.1, toSi: identity, fromSi: identity },

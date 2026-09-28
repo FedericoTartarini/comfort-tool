@@ -8,7 +8,7 @@ import { quantities } from "./quantities";
 /**
  * Quantities an entry mode or a derivation names without a matching `_INFO`
  * key — the temperature and humidity representations the app converts to the
- * library's own inputs before calling it (ADR-0002 decision 2, C1 direction 2).
+ * library's own inputs before calling it (ADR-0002 decisions 2 and 15).
  */
 const appOwnedQuantities = new Set(["v", "operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp"]);
 

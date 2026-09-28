@@ -1,18 +1,18 @@
 /**
  * Every physical quantity the app shows, in one table (ADR-0002 decision 2).
  *
- * The fork's `io.quantities` table went with the fork; the main repository
- * publishes no such table, so the app owns this one. `key` is a
- * registered model's `ModelInfo` key — the one place a quantity's wire string
- * legitimately appears outside `core/shareLink.ts` — and every other module
- * holds the row itself, compared by identity, never the key.
+ * The library publishes no such table, so the app owns this one. `key` is the
+ * library's name for the quantity, the `ModelInfo` key wherever a model info
+ * names it. Outside tests, this table is the one place a quantity's key is
+ * written as a string, besides the share link that will carry it; every other
+ * module holds the row itself, compared by identity, never the key.
  *
  * `kindBounds`, beside the kinds, holds the range a kind is defined over,
  * whatever the model; the pre-call gate reads it (ADR-0002 decision 46).
  *
  * Node strips this file's types natively (`erasableSyntaxOnly`), so
- * `eslint.config.js` imports it directly to build the wire-string lint rule's
- * key list without a build step.
+ * `eslint.config.js` imports it directly, without a build step, for the key
+ * list of the lint rule that bans a quantity's key as a string literal.
  */
 import type { Bound } from "jsthermalcomfort";
 
@@ -56,9 +56,9 @@ export const quantities = {
   hr: { key: "hr", kind: "humidityRatio", label: "Humidity ratio" },
   dew_point_tmp: { key: "dew_point_tmp", kind: "temperature", label: "Dew-point temperature" },
   wet_bulb_tmp: { key: "wet_bulb_tmp", kind: "temperature", label: "Wet-bulb temperature" },
-  // The ISO `derived` key, not the fork's `p_vap`: `rh / 100 × p_sat(tdb)` is
-  // the same quantity as the fork's water vapour partial pressure (ADR-0002
-  // decision 2), so it keeps the fork's label.
+  // ISO 7730's `derived` key, and the one vapour-pressure quantity: the
+  // entered vapour pressure is `rh / 100 × p_sat(tdb)`, the same quantity as
+  // the derived one (ADR-0002 decision 16).
   pa: { key: "pa", kind: "pressure", label: "Water vapour partial pressure" },
   met: { key: "met", kind: "metabolicRate", label: "Metabolic rate" },
   clo: { key: "clo", kind: "clothingInsulation", label: "Clothing insulation" },
@@ -83,11 +83,10 @@ export const quantities = {
 const byKey: Readonly<Record<string, Quantity>> = quantities;
 
 /**
- * The table's row for a key returned by the library — a `Measure` still
- * carries the library's own Quantity object, and a model's `_INFO` keys its
- * rows by plain string, so a caller reconciling either with this table looks
- * it up by key here and goes back to comparing by identity. `undefined` for a
- * key the table has no row for.
+ * The table's row for a key the library hands over: a model's `_INFO` keys its
+ * rows, and a result its `warnings`, by plain string, so a caller reconciling
+ * either with this table looks the key up here and goes back to comparing by
+ * identity. `undefined` for a key the table has no row for.
  */
 export function quantityFor(key: string): Quantity | undefined {
   return byKey[key];

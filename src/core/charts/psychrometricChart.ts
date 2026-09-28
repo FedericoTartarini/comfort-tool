@@ -43,9 +43,9 @@ const ZONE_RH_STEP = 5;
  * temperatures are entered separately, `operative_tmp` under operative entry), and
  * operative entry solves the zone with `tr_follows_db`, which is the geometry
  * the CBE tool's psychtop chart draws. No root finder is written here — the
- * temporary library owns that (ADR-0002 decision 24). The drawn extent is the model's declared
- * axis range for whichever temperature the mode puts on x, never its
- * applicability limits (ADR §4.4).
+ * temporary library owns that (ADR-0002 decision 24). The drawn x range is the
+ * model's axis range for whichever temperature the mode puts on x: declared,
+ * else its applicability bound (ADR-0002 decision 5).
  */
 export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDeclaration): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;

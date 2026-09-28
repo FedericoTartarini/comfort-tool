@@ -11,7 +11,7 @@ import {
 import { quantities, type Quantity } from "./quantities";
 
 /**
- * The slice of an input slot this module reads. A plain interface, so core/
+ * The slice of an input slot that core reads. A plain interface, so core/
  * never imports state/ (ADR §5).
  */
 export interface SlotInputs {

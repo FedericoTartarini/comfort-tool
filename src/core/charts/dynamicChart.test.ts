@@ -273,7 +273,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
 describe("a declared zones source", () => {
   // Adaptive is the real consumer; this stands in for it on the registered
   // model's inputs and ranges, and proves the source is handed the resolved SI
-  // inputs, read through the checked reader, and the drawn x extent, and that
+  // inputs, read through the checked reader, and the drawn x range, and that
   // its operative axis is locked.
   const zoned: PolygonsDeclaration = {
     type: chartType.dynamic,

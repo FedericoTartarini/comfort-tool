@@ -3,9 +3,9 @@ import type { ClassifierBins } from "jsthermalcomfort";
 /**
  * The one band palette of the app. Colours are assigned by position in the
  * library's own classifier bins, never by label text, so the library owns the
- * bands and the app owns only the paint. The result table, the chart zones
- * and legends (Phase 3) and Explore's default bands (Phase 5) all read from
- * here.
+ * bands and the app owns only the paint. The result table's Compliance
+ * swatches, the dynamic chart's bands and legend, and both charts' ink read
+ * from here, as Explore's default bands will.
  *
  * Seven entries match the seven-point thermal sensation scale; the fills are
  * the ones the CBE tool has published for Cold … Hot.
@@ -50,8 +50,8 @@ export function fillAtIndex(bins: ClassifierBins, index: number): string {
 }
 
 /**
- * Chart ink (Phase 3). Not thresholds — the Comfort zones' outline and fill
- * are the palette's cool tones, the isolines and markers are neutral chrome.
+ * Chart ink. Not bands — the Comfort zones' outline and fill are the
+ * palette's cool tones, the isolines and markers are neutral chrome.
  */
 export const chartInk = {
   zoneLine: "#4c78a8",

@@ -83,8 +83,7 @@ describe("resolveQuantities", () => {
     expect(resolved.has(q.operative_tmp)).toBe(false);
   });
 
-  // ADR §7.10 item 9 asks for all five representations. The block asserted two
-  // until 2026-09-22, when ticket 12 rewrote it onto the resolved map.
+  // ADR §7's acceptance item 9 asks for all five representations.
   //
   // One decimal, not more: the library's `psy_ta_rh` returns `t_dp` and `t_wb`
   // rounded to 0.1 °C, so entering the dew point it reports and converting back

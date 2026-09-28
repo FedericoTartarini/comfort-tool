@@ -1,15 +1,16 @@
 /**
- * What is inside and outside a standard's applicability. Owns every read of
- * `applicability` off a model's `info.inputs`: the bound an entered quantity
- * must satisfy (the pre-call gate, and the range shown beside the input).
- * The rows a completed run still breaks are the library's, read off the
- * result's `warnings` (ADR-0002 decision 23) and mapped to quantities here.
+ * What is inside and outside a model's applicability. Reads `applicability`
+ * off a model's `info.inputs` for the bound an entered quantity must satisfy
+ * (the pre-call gate, and the range shown beside the input; ADR-0002
+ * decision 4), intersected with its kind's bound from `kindBounds` when the
+ * model takes the quantity (decision 46); `axisRangeFor` reads the same
+ * applicability bounds only as an axis range's fallback (decision 5). The
+ * rows a completed run still breaks are the library's, read off the result's
+ * `warnings` (ADR-0002 decision 23) and mapped to quantities here.
  *
- * `limitFor` and the fork's `ApplicabilityLimit` are gone with it: a
- * violation is `{ quantity, bounded, role, value, bound }`, and the warning
+ * A violation is `{ quantity, bounded, role, value, bound }`, and its warning
  * sentence is assembled here from the bounded quantity's label, the bound and
- * the display unit, in the copy dictionary's words — the fork's
- * `limit.warning` strings are not carried.
+ * the display unit, in the copy dictionary's words.
  */
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
@@ -45,7 +46,7 @@ export interface ViolationRow extends OutOfRangeRow {
   readonly role: "input" | "derived" | "output";
 }
 
-/** `info`'s row for `quantity`, reconciled by key through `quantityFor` (ADR-0002 decision 2). */
+/** The applicability bound of `table`'s row for `quantity`, reconciled by key through `quantityFor` (ADR-0002 decision 2). */
 function boundFor(table: Readonly<Record<string, VariableInfo>> | undefined, quantity: Quantity): Bound | undefined {
   if (!table) {
     return undefined;

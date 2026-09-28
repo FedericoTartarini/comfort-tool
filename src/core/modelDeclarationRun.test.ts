@@ -56,7 +56,7 @@ const isoWithPolygonsChart = {
 
 /**
  * The chart's x axis, as both of the tests below walk it: the model's own
- * declared defaults, the extent the axis is drawn over, the slot at a position
+ * declared defaults, the range the axis is drawn over, the slot at a position
  * along it, and the run's value for a quantity there.
  */
 function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
@@ -248,12 +248,13 @@ describe("run's numbers", () => {
   });
 
   it("are asserted by a test a rounding kernel fails", () => {
-    // Proven red 2026-09-22: `round_output: true` in the real ISO declaration
-    // made the registry test above fail. The drift test happens to fail
-    // with it, because ISO's Edges sit on the 0.01 grid `round_output` rounds
-    // to; on Heat Index, measured in ticket 06, it stays green. `driftProbes`
-    // bisects on whatever `run` returns, so a rounded output can simply move
-    // the bracket onto a rounding step where both ends agree.
+    // `round_output: true` in the real ISO declaration would fail the registry
+    // test above, as `isoRounding(true)`'s zero count shows here. The drift
+    // test would fail with it too, but only because ISO's Edges sit on the
+    // 0.01 grid `round_output` rounds to; on Heat Index it stays green
+    // (ADR-0002 decision 35). `driftProbes` bisects on whatever `run` returns,
+    // so a rounded output can simply move the bracket onto a rounding step
+    // where both ends agree.
     const chart = dynamicChartOf(pmvPpdIso);
     if (!chart) throw new Error("PMV (ISO 7730) declares a dynamic chart");
     expect(unroundedSampleCount(isoRounding(true), chart)).toBe(0);

@@ -3,7 +3,7 @@ import { Standard } from "jsthermalcomfort";
 /**
  * Display name, edition year and route segment for a library `Standard`,
  * derived from its key rather than written down per standard (ADR-0002
- * decision 5): `iso_7730_2005` → "ISO 7730", "2005", `iso-7730`.
+ * decision 6): `iso_7730_2005` → "ISO 7730", "2005", `iso-7730`.
  */
 export interface StandardEntry {
   readonly id: Standard;
