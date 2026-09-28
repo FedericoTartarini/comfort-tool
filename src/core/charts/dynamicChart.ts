@@ -37,7 +37,10 @@ const GRID = 51;
  * `zones` source traces (ADR §4.4), on its own declared axes: they are locked,
  * so `axes` is not read and nothing is mapped to the entry mode, and an
  * operative axis is marked at the slot's operative temperature in either mode
- * (ADR-0002 decision 37).
+ * (ADR-0002 decision 37). The polygons are nested Comfort zones, largest
+ * first, so they are painted as the psychrometric chart paints its own: one
+ * hue whose opacity rises inwards, outlined in the zone line, never the
+ * thermal-sensation palette.
  */
 export function dynamicSpec(
   request: ChartRequest,
@@ -58,20 +61,20 @@ export function dynamicSpec(
   if (isPolygonsChart(chart)) {
     const polygons = chart.zones({ values: toLibraryInputs(slot, model), xRange });
     for (const [index, polygon] of polygons.entries()) {
-      const color = bandFill(index);
+      const fill = chartInk.zoneFill(index, polygons.length);
       traces.push({
         kind: "path",
         x: polygon.x.map((value) => xUnit.fromSi(value)),
         y: polygon.y.map((value) => yUnit.fromSi(value)),
-        color,
-        width: 1,
-        fill: color,
-        // The filled area is the reading: the pointer reports the band it is
-        // over, wherever it is over it.
+        color: chartInk.zoneLine,
+        width: chartInk.zoneLineWidth,
+        fill,
+        // The filled area is the reading: the pointer reports the Comfort zone
+        // it is over, wherever it is over it.
         hover: "field",
         label: polygon.label,
       });
-      legend.push({ label: polygon.label, swatch: "fill", color });
+      legend.push({ label: polygon.label, swatch: "fill", color: fill });
     }
   } else {
     const xValues = samples(xRange);

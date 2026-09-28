@@ -15,8 +15,9 @@ import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { BandTrace, ChartRequest, PathTrace, PointTrace } from "./chartSpec";
+import type { BandTrace, ChartRequest, ChartSpec, PathTrace, PointTrace } from "./chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
+import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
 
@@ -405,17 +406,18 @@ describe("axes across a temperature entry mode switch", () => {
   });
 });
 
+const adaptiveChart = dynamicChartOf(adaptiveAshrae);
+if (!adaptiveChart) {
+  throw new Error("adaptiveAshrae no longer declares a dynamic chart");
+}
+const adaptiveRequest: ChartRequest = {
+  model: adaptiveAshrae,
+  slot: defaultSlot(adaptiveAshrae),
+  slotLabel: "Input 1",
+  unitSystem: unitSystem.si,
+};
+
 describe("Adaptive's running mean axis", () => {
-  const adaptiveChart = dynamicChartOf(adaptiveAshrae);
-  if (!adaptiveChart) {
-    throw new Error("adaptiveAshrae no longer declares a dynamic chart");
-  }
-  const adaptiveRequest: ChartRequest = {
-    model: adaptiveAshrae,
-    slot: defaultSlot(adaptiveAshrae),
-    slotLabel: "Input 1",
-    unitSystem: unitSystem.si,
-  };
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
 
   it("spans the library's applicability, 10 to 33.5 °C today", () => {
@@ -443,3 +445,47 @@ describe("Adaptive's running mean axis", () => {
     expect(spec.layout.x.range).toEqual([12, 30]);
   });
 });
+
+describe("Adaptive's acceptability zones", () => {
+  // Nested Comfort zones on the Standard page, painted as the psychrometric
+  // chart paints its own (ADR-0002 decision 37's note of 2026-09-28).
+  const spec = dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes);
+  const zones = zoneTraces(spec);
+  const psychrometricZones = zoneTraces(
+    psychrometricSpec({ model: pmvPpdIso, slot: defaultSlot(pmvPpdIso), slotLabel: "Input 1", unitSystem: unitSystem.si }),
+  );
+
+  it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
+    expect(zones.map((zone) => zone.label)).toEqual([q.acceptability_80.label, q.acceptability_90.label]);
+    const fills = zones.map((zone) => rgbaOf(zone.fill));
+    const hue = rgbaOf(psychrometricZones[0]?.fill).rgb;
+    expect(fills.map((fill) => fill.rgb)).toEqual([hue, hue]);
+    expect(fills[0]?.alpha).toBeGreaterThan(0);
+    expect(fills[1]?.alpha).toBeGreaterThan(fills[0]?.alpha ?? Infinity);
+    // The innermost zone keeps the fill a lone zone has, on either chart.
+    expect(fills[1]?.alpha).toBeCloseTo(rgbaOf(psychrometricZones[psychrometricZones.length - 1]?.fill).alpha, 12);
+  });
+
+  it("outlines both in the psychrometric chart's zone line", () => {
+    const line = { color: psychrometricZones[0]?.color, width: psychrometricZones[0]?.width };
+    expect(zones.map((zone) => ({ color: zone.color, width: zone.width }))).toEqual([line, line]);
+  });
+
+  it("gives each a legend swatch in its own fill", () => {
+    const swatches = spec.legend.filter((entry) => zones.some((zone) => zone.label === entry.label));
+    expect(swatches).toEqual(zones.map((zone) => ({ label: zone.label, swatch: "fill", color: zone.fill })));
+  });
+});
+
+/** The filled paths: a chart's zones. */
+function zoneTraces(spec: ChartSpec): PathTrace[] {
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
+}
+
+function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
+  const match = /^rgba\((\d+, \d+, \d+), ([\d.]+)\)$/.exec(color ?? "");
+  if (!match) {
+    throw new Error(`${color} is not an rgba() fill`);
+  }
+  return { rgb: match[1], alpha: Number(match[2]) };
+}

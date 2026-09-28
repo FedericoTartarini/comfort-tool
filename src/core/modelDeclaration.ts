@@ -162,10 +162,12 @@ export type ChartDeclaration =
        */
       readonly axes: ChartAxes;
       /**
-       * Exact band polygons, for a model whose geometry is traced rather than
-       * scanned — Adaptive's acceptability bands. No grid is run at all,
-       * because the polygons are the answer rather than an approximation of
-       * it (ADR §4.4), so the chart names no output and no bands.
+       * Exact Comfort zone polygons, for a model whose geometry is traced
+       * rather than scanned — Adaptive's acceptability zones. No grid is run
+       * at all, because the polygons are the answer rather than an
+       * approximation of it (ADR §4.4), so the chart names no output and no
+       * bands. The zones are nested and returned largest first, the order the
+       * chart draws them in.
        */
       readonly zones: (request: ZoneRequest) => readonly ZonePolygon[];
       readonly output?: never;

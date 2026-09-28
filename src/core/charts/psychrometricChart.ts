@@ -127,7 +127,7 @@ export function psychrometricSpec(request: ChartRequest): ChartSpec {
       x: polygon.map((point) => dbUnit.fromSi(point.tdb)),
       y: polygon.map((point) => hrUnit.fromSi(point.hr)),
       color: chartInk.zoneLine,
-      width: 1.5,
+      width: chartInk.zoneLineWidth,
       fill,
       hover: "off",
       label,

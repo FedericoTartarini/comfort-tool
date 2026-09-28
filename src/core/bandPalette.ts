@@ -42,6 +42,7 @@ export function bandFill(index: number): string {
  */
 export const chartInk = {
   zoneLine: "#4c78a8",
+  zoneLineWidth: 1.5,
   /**
    * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost: one
    * hue, its opacity rising inwards to 0.4, so a lone zone keeps the fill it
