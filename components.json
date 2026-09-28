@@ -8,7 +8,7 @@
 		"components": "$lib/ui",
 		"utils": "$lib/ui/primitives/cn",
 		"ui": "$lib/ui/primitives",
-		"hooks": "$lib/ui/hooks",
+		"hooks": "$lib/ui/primitives/hooks",
 		"lib": "$lib"
 	},
 	"typescript": true,
