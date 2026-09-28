@@ -113,10 +113,6 @@ export class ChartState {
     this.#axesLocked = isPolygonsChart(dynamic);
   }
 
-  setType(type: ChartType): void {
-    this.type = type;
-  }
-
   setAxes(axes: Partial<ChartAxes>): void {
     if (this.#axesLocked) {
       return;

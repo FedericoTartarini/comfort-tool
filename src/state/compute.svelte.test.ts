@@ -150,7 +150,7 @@ describe("Outputs", () => {
 
     session.slots[0].values.set(q.tdb, 35);
     expect(outputs.outOfRange).toEqual([q.tdb]);
-    session.chart.setType(chartType.dynamic);
+    session.chart.type = chartType.dynamic;
 
     // The psychrometric chart draws no scanned field, the dynamic one is one.
     expect(outputs.chart?.traces.some((trace) => trace.kind === "bands")).toBe(true);
@@ -166,7 +166,7 @@ describe("Outputs", () => {
   it("offers the axes of the dynamic chart it draws, in the slot's entry mode while the gate is open", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.chart.setType(chartType.dynamic);
+    session.chart.type = chartType.dynamic;
 
     expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.v });
     expect(outputs.drawnAxes?.choices).toContain(q.tdb);
@@ -183,7 +183,7 @@ describe("Outputs", () => {
   it("offers the axes the chart was drawn with, not the live entry mode's, while an entry is out of range", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.chart.setType(chartType.dynamic);
+    session.chart.type = chartType.dynamic;
     expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
 
     // 3 clo is past ISO 7730's 2 clo, and no temperature switch moves it.
@@ -207,12 +207,12 @@ describe("Outputs", () => {
   it("offers no axes when no dynamic chart is drawn", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.chart.setType(chartType.psychrometric);
+    session.chart.type = chartType.psychrometric;
 
     expect(outputs.chart).not.toBeNull();
     expect(outputs.drawnAxes).toBeNull();
 
-    session.chart.setType(chartType.dynamic);
+    session.chart.type = chartType.dynamic;
     expect(outputs.drawnAxes).not.toBeNull();
     // ISO 7730's default temperature is below the Rothfusz regression's floor,
     // so the new model has no valid run and no chart.
@@ -239,7 +239,7 @@ describe("Outputs", () => {
     const session = new Session(model);
     // The dynamic chart, because the 51×51 scan is the expensive half of the
     // claim; the model's default chart solves a zone instead and never scans.
-    session.chart.setType(chartType.dynamic);
+    session.chart.type = chartType.dynamic;
     const outputs = new Outputs(session);
     readEverything(outputs);
     const before = runs();

@@ -34,7 +34,7 @@
       <Button
         size="sm"
         variant={chart.type === declaration.type ? "default" : "outline"}
-        onclick={() => chart.setType(declaration.type)}
+        onclick={() => (chart.type = declaration.type)}
       >
         {declaration.type.title}
       </Button>
