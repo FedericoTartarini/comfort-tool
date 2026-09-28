@@ -174,7 +174,8 @@ export class Outputs {
  * `slot`'s entered values and options, detached from the slot: plain `Map`s,
  * so what is remembered stops moving when the slot does, and reading it later
  * subscribes to nothing. The two entry-mode objects are replaced rather than mutated
- * (`state/session.svelte.ts`), so they are kept by reference.
+ * (`state/session.svelte.ts`), so they are kept by reference, and an absent
+ * humidity stays absent.
  */
 function detach(slot: Slot): Slot {
   return {

@@ -126,7 +126,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(session.slots[0].values.get(q.tdb)).toBe(28);
     expect(session.slots[0].values.get(q.tr)).toBe(25);
     expect(session.slots[0].values.get(q.v)).toBe(0.2);
-    expect(session.slots[0].humidity.value).toBe(35);
+    expect(session.slots[0].humidity?.value).toBe(35);
     expect(outputs.outOfRange).toEqual([]);
     expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
   });
@@ -135,7 +135,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.slots[0].setHumidityMode(humidityMode.humidityRatio);
-    const entered = session.slots[0].humidity.value;
+    const entered = session.slots[0].humidity?.value;
     expect(outputs.outOfRange).toEqual([]);
 
     session.requestModel(drierThanTheSlot);

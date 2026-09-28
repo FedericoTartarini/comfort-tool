@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
-import { defaultSlot, enteredSlotFor } from "$lib/core/declarationTestSlots";
+import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type PsychrometricDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
-import type { Slot } from "$lib/core/slot";
+import { startingSlot, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -25,7 +25,7 @@ const ZONE_RH_STEP = 5;
 const PMV_DIGITS = 2;
 
 /** The ISO declaration's own met, clo and v, which every slot below keeps. */
-const { met, clo, v } = valuesReader(defaultSlot(pmvPpdIso).values);
+const { met, clo, v } = valuesReader(startingSlot(pmvPpdIso).values);
 
 function slot(mode: typeof temperatureMode.separate | typeof temperatureMode.operative): Slot {
   return mode === temperatureMode.operative
@@ -174,7 +174,7 @@ describe("psychrometricSpec", () => {
       if (!chart) {
         throw new Error(`${model.info.name} declares no psychrometric chart`);
       }
-      const spec = psychrometricSpec({ ...request(temperatureMode.separate), model, slot: defaultSlot(model) }, chart);
+      const spec = psychrometricSpec({ ...request(temperatureMode.separate), model, slot: startingSlot(model) }, chart);
       return zonePaths(spec).map((path) => path.label);
     };
     expect(zoneLabels(pmvPpdIso)).toEqual([

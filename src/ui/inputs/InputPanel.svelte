@@ -42,7 +42,7 @@
   }
 
   function commit(quantity: Quantity, si: number) {
-    if (quantity === inputSlot.humidity.mode.quantity) {
+    if (quantity === inputSlot.humidity?.mode.quantity) {
       inputSlot.setHumidityValue(si);
     } else {
       inputSlot.values.set(quantity, si);
@@ -54,7 +54,7 @@
   }
 
   function humidityVariantFor(mode: HumidityMode) {
-    return inputSlot.humidity.mode === mode ? "default" : "outline";
+    return inputSlot.humidity?.mode === mode ? "default" : "outline";
   }
 </script>
 

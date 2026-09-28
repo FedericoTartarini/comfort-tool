@@ -14,7 +14,6 @@ import { classifyFromBins, pmv_ppd_iso, type ClassifierBins } from "jsthermalcom
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
-import { defaultSlot } from "./declarationTestSlots";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -27,7 +26,7 @@ import {
 } from "./modelDeclaration";
 import { resultValue, runOn } from "./modelRun";
 import { quantities, quantityFor, type Quantity } from "./quantities";
-import { withEnteredValues, type Slot } from "./slot";
+import { startingSlot, withEnteredValues, type Slot } from "./slot";
 
 /**
  * The classified output the declared bands cut, found by object identity:
@@ -60,7 +59,7 @@ const isoWithPolygonsChart = {
  * along it, and the run's value for a quantity there.
  */
 function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
-  const defaults = defaultSlot(model);
+  const defaults = startingSlot(model);
   const axis = chart.axes.x;
   const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
   return {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { sensationPalette } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
-import { defaultSlot, enteredSlotFor } from "$lib/core/declarationTestSlots";
+import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import {
@@ -15,7 +15,7 @@ import {
   type ScannedDeclaration,
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
-import { enteredQuantities, withEnteredValues, type Slot } from "$lib/core/slot";
+import { enteredQuantities, startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -36,7 +36,7 @@ const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 const request: ChartRequest = { model: pmvPpdIso, slot, slotLabel: "Input 1", unitSystem: unitSystem.si };
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
-const { v } = valuesReader(defaultSlot(pmvPpdIso).values);
+const { v } = valuesReader(startingSlot(pmvPpdIso).values);
 
 /** The range `pmvPpdIso` declares for `quantity`, as the layout writes a range. */
 function declaredRangeOf(quantity: Quantity): [number, number] {
@@ -407,7 +407,7 @@ if (!adaptiveChart) {
 }
 const adaptiveRequest: ChartRequest = {
   model: adaptiveAshrae,
-  slot: defaultSlot(adaptiveAshrae),
+  slot: startingSlot(adaptiveAshrae),
   slotLabel: "Input 1",
   unitSystem: unitSystem.si,
 };
@@ -452,7 +452,7 @@ describe("Adaptive's acceptability zones", () => {
   }
   const psychrometricZones = zoneTraces(
     psychrometricSpec(
-      { model: pmvPpdIso, slot: defaultSlot(pmvPpdIso), slotLabel: "Input 1", unitSystem: unitSystem.si },
+      { model: pmvPpdIso, slot: startingSlot(pmvPpdIso), slotLabel: "Input 1", unitSystem: unitSystem.si },
       psychrometric,
     ),
   );
@@ -493,7 +493,7 @@ function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
 }
 
 describe("the scanned chart's hover readout", () => {
-  const pmvRequest: ChartRequest = { ...request, slot: defaultSlot(pmvPpdIso) };
+  const pmvRequest: ChartRequest = { ...request, slot: startingSlot(pmvPpdIso) };
 
   // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
   // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.0618….

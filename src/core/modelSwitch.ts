@@ -42,7 +42,7 @@ export interface RehearsedSwitch {
 export function rehearseSwitch(slot: Slot, model: RegisteredModel): RehearsedSwitch {
   const converted = convertEntryMode(slot, model);
   const seeded = seedDeclaredDefaults(converted, model);
-  const humidity = seeded.humidity.mode.quantity;
+  const humidity = seeded.humidity?.mode.quantity;
   const others = outOfRangeRows(seeded, model).filter((row) => row.quantity !== humidity);
   const humidityRow = outOfRangeRows(adjustToBounds(seeded, others), model).find((row) => row.quantity === humidity);
   return { slot: seeded, outOfRangeRows: humidityRow ? [...others, humidityRow] : others };

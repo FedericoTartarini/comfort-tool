@@ -1,16 +1,17 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
-import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
+import { temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
-import { relativeHumidityOf, resolvedTdb, withTemperatureMode, type Slot } from "$lib/core/slot";
+import { relativeHumidityOf, requireHumidity, resolvedTdb, startingSlot, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
  * One set of inputs (ADR §4.5). Canonical SI; the quantity the user entered is
  * the truth. `values` is the cross-model superset bag: it excludes `rh`
- * (held in `humidity`), stores `operative_tmp` under operative mode and
+ * (held in `humidity`, absent until a declaration's default or the person
+ * writes it), stores `operative_tmp` under operative mode and
  * `tdb` / `tr` under separate mode. `options` is a superset bag in the same
  * way, keyed by the declaration's own option objects (ADR-0002 decision 36).
  */
@@ -20,35 +21,26 @@ export class InputSlot {
   // `$state.raw`, not `$state`: a deep proxy would wrap the mode objects and
   // the Quantity they reference, and identity comparisons against
   // `humidityMode.rh` / `io.quantities.rh` would fail. Replace, don't mutate.
-  humidity = $state.raw<{ readonly mode: HumidityMode; readonly value: number }>({
-    mode: humidityMode.rh,
-    value: 50,
-  });
+  humidity = $state.raw<Slot["humidity"]>(undefined);
   temperature = $state.raw<{ readonly mode: TemperatureMode }>({ mode: temperatureMode.separate });
 
+  /** The slot `model` starts on, which core builds by the seeding a switch uses. */
   constructor(model: RegisteredModel) {
-    for (const { quantity, value } of model.inputs) {
-      if (quantity === this.humidity.mode.quantity) {
-        this.setHumidityValue(value);
-      } else {
-        this.values.set(quantity, value);
-      }
-    }
-    for (const option of model.options) {
-      this.options.set(option, option.default);
-    }
+    this.replaceWith(startingSlot(model));
   }
 
+  /** Throws for a slot that holds no humidity: there is no entry mode to write the value in. */
   setHumidityValue(value: number): void {
-    this.humidity = { mode: this.humidity.mode, value };
+    this.humidity = { mode: requireHumidity(this).mode, value };
   }
 
   /**
    * Re-express the stored humidity in the new representation at the current
    * dry-bulb temperature. Lossy and one-way, like the temperature switch.
+   * Throws for a slot that holds no humidity: there is nothing to re-express.
    */
   setHumidityMode(mode: HumidityMode): void {
-    if (mode === this.humidity.mode) {
+    if (mode === this.humidity?.mode) {
       return;
     }
     this.humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(this), resolvedTdb(this)) };

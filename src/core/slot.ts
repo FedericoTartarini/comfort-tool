@@ -1,9 +1,10 @@
 /**
  * What a slot holds; the functions that read what the person entered, enter
- * values, convert the temperature entry mode and seed a model's defaults; and
- * the get-or-throw they read through. Turning a slot into the library's params
- * is `core/libraryInputs.ts`'s and adjusting it to bounds `core/modelSwitch.ts`'s;
- * both depend on this module, and this module on neither.
+ * values, convert the temperature entry mode, seed a model's defaults and
+ * build the slot a model starts on; and the get-or-throws they read through.
+ * Turning a slot into the library's params is `core/libraryInputs.ts`'s and
+ * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
+ * and this module on neither.
  */
 import { t_o } from "jsthermalcomfort";
 import { humidityMode, temperatureMode, underTemperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
@@ -16,7 +17,8 @@ import { quantities, type Quantity } from "./quantities";
  */
 export interface Slot {
   readonly values: ReadonlyMap<Quantity, number>;
-  readonly humidity: { readonly mode: HumidityMode; readonly value: number };
+  /** Absent until a declaration's default or the person writes it (ADR-0002 decision 32). */
+  readonly humidity?: { readonly mode: HumidityMode; readonly value: number };
   readonly temperature: { readonly mode: TemperatureMode };
   /** Every option any model put here, by identity: a superset bag like `values` (ADR-0002 decision 36). */
   readonly options: ReadonlyMap<OptionSpec, boolean>;
@@ -32,6 +34,14 @@ export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Qu
   return value;
 }
 
+/** The slot's humidity entry, or a throw naming it for a slot that holds none. */
+export function requireHumidity(slot: Slot): NonNullable<Slot["humidity"]> {
+  if (slot.humidity === undefined) {
+    throw new Error("Slot has no humidity entry");
+  }
+  return slot.humidity;
+}
+
 /**
  * The slot's dry-bulb temperature: the entered `tdb`, or the operative entry
  * standing in for it under operative mode.
@@ -44,10 +54,11 @@ export function resolvedTdb(slot: Slot): number {
  * The slot's humidity as the library's `rh`, converted from whatever the user
  * entered at the slot's dry-bulb temperature (the operative temperature under
  * operative entry, ADR §4.5). The one place the mode's conversion to relative
- * humidity is invoked.
+ * humidity is invoked. Throws for a slot that holds no humidity.
  */
 export function relativeHumidityOf(slot: Slot): number {
-  return slot.humidity.mode.toRelativeHumidity(slot.humidity.value, resolvedTdb(slot));
+  const { mode, value } = requireHumidity(slot);
+  return mode.toRelativeHumidity(value, resolvedTdb(slot));
 }
 
 /**
@@ -109,13 +120,13 @@ export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode)
 
 /**
  * The rows the input panel lists for `slot`: {@link enteredQuantities} under
- * the slot's temperature mode, with the slot's humidity entry in `rh`'s place.
- * Only the panel swaps humidity; the dynamic chart's axes keep the library's
- * `rh`.
+ * the slot's temperature mode, with the slot's humidity entry in `rh`'s place,
+ * or `rh` itself for a slot that holds none. Only the panel swaps humidity;
+ * the dynamic chart's axes keep the library's `rh`.
  */
 export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] {
   return enteredQuantities(model, slot.temperature.mode).map((quantity) =>
-    quantity === q.rh ? slot.humidity.mode.quantity : quantity,
+    quantity === q.rh ? (slot.humidity?.mode.quantity ?? quantity) : quantity,
   );
 }
 
@@ -124,14 +135,16 @@ export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] 
  * in every mode — the dynamic chart sweeps and marks the library's `rh`, not
  * the entered representation — and so is `operative_tmp`, which a chart with
  * locked axes marks under separate entry too, at `model`'s
- * {@link operativeTemperatureOf}.
+ * {@link operativeTemperatureOf}. A slot that holds no humidity has no entered
+ * value for any humidity quantity.
  */
 export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredModel): number | undefined {
-  if (quantity === slot.humidity.mode.quantity) {
-    return slot.humidity.value;
+  const { humidity } = slot;
+  if (quantity === humidity?.mode.quantity) {
+    return humidity.value;
   }
   if (quantity === q.rh) {
-    return relativeHumidityOf(slot);
+    return humidity === undefined ? undefined : relativeHumidityOf(slot);
   }
   if (quantity === q.operative_tmp) {
     return operativeTemperatureOf(slot, model);
@@ -141,6 +154,11 @@ export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredMo
 
 /** Each humidity entry mode by the quantity it enters. */
 const humidityModeByQuantity = new Map<Quantity, HumidityMode>(Object.values(humidityMode).map((mode) => [mode.quantity, mode]));
+
+/** Whether `quantity` is the quantity some humidity entry mode enters. */
+export function isHumidityQuantity(quantity: Quantity): boolean {
+  return humidityModeByQuantity.has(quantity);
+}
 
 /**
  * The same slot with some entered values replaced — how the dynamic chart
@@ -205,10 +223,12 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
  * model put it there. A temperature input is sought under the slot's own entry
  * mode, so an operative entry answers for the dry-bulb one it stands in for.
  *
- * A humidity input is never missing — a slot carries a humidity entry in some
- * representation at all times — and the defaults are applied through
- * `withEnteredValues`, which puts humidity where the slot keeps it, so no
- * default can land among the values `rh` is excluded from (ADR §4.5).
+ * A humidity input is missing only from a slot that holds no humidity, which
+ * then starts at the declared default: in relative-humidity entry, since a
+ * declaration declares `rh`. A held humidity answers for `rh` in whatever mode
+ * it was entered. The defaults are applied through `withEnteredValues`, which
+ * puts humidity where the slot keeps it, so no default can land among the
+ * values `rh` is excluded from (ADR §4.5).
  *
  * Options are seeded the same way: an option the new model declares and the
  * slot has no value for starts at its default, and every other is kept
@@ -233,4 +253,13 @@ export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
   // Always a copy, empty defaults included: what comes back is the plain shape
   // decision 32 rehearses on, never the caller's own slot under another name.
   return { ...withEnteredValues(slot, defaults), options };
+}
+
+/**
+ * The slot `model` starts on: the empty slot, in separate temperature entry,
+ * holding no humidity and no option, put through {@link seedDeclaredDefaults}
+ * as a switch is, so starting and switching are one rule.
+ */
+export function startingSlot(model: RegisteredModel): Slot {
+  return seedDeclaredDefaults({ values: new Map(), temperature: { mode: temperatureMode.separate }, options: new Map() }, model);
 }

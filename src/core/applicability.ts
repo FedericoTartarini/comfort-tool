@@ -14,12 +14,12 @@
  */
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
-import { humidityMode, temperatureMode } from "./entryModes";
+import { humidityMode, temperatureMode, type HumidityMode } from "./entryModes";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
-import { resolvedTdb, type Slot } from "./slot";
+import { isHumidityQuantity, resolvedTdb, type Slot } from "./slot";
 import type { DisplayUnit } from "./units";
 import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
@@ -100,7 +100,7 @@ function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
 }
 
 /**
- * The bound the slot's humidity entry must satisfy under `model`: relative
+ * The bound a humidity entry in `mode` must satisfy under `model`: relative
  * humidity's — its kind's 0 to 100, narrowed by any row the model has —
  * converted into the entry's mode by the mode's own `fromRelativeHumidity` at
  * the slot's dry-bulb temperature (ADR-0002 decision 46). An end the mode has
@@ -110,8 +110,7 @@ function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
  * out inverted the entry has no bound at that temperature. `undefined` for a
  * model without the humidity entry group.
  */
-function humidityEntryBoundFor(model: RegisteredModel, slot: Slot): Bound | undefined {
-  const { mode } = slot.humidity;
+function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot: Slot): Bound | undefined {
   // `rh_from_wet_bulb` clamps to 0 – 100, so a wet-bulb entry can never
   // resolve outside the bound; and `t_wb` at 0 % is approximate (1.9 °C at
   // 10 °C, which reads back as 16 %), so bounding the entry would stop valid ones.
@@ -137,14 +136,19 @@ function humidityEntryBoundFor(model: RegisteredModel, slot: Slot): Bound | unde
  * must satisfy both at once. The humidity entry is held to relative
  * humidity's bound converted into its mode at the slot's dry-bulb
  * temperature, so the bound moves with the temperature, except in wet-bulb
- * entry, which is not bounded ({@link humidityEntryBoundFor}). Entered `v` has
+ * entry, which is not bounded ({@link humidityEntryBoundFor}); a slot that
+ * holds no humidity has no humidity entry to bound. Entered `v` has
  * no bound of its own — the standard bounds the relative air speed it
  * derives, `vr`, which the library checks and {@link violationRows} reports
  * on the `v` row.
  */
 export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: Slot): Bound | undefined {
-  if (quantity === slot.humidity.mode.quantity) {
-    return humidityEntryBoundFor(model, slot);
+  const { humidity } = slot;
+  if (quantity === humidity?.mode.quantity) {
+    return humidityEntryBoundFor(model, humidity.mode, slot);
+  }
+  if (humidity === undefined && isHumidityQuantity(quantity)) {
+    return undefined;
   }
   const { mode } = slot.temperature;
   const constrained =
@@ -166,10 +170,10 @@ export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: S
  * list, so the two can never disagree about a value.
  */
 export function outOfRangeRows(slot: Slot, model: RegisteredModel): OutOfRangeRow[] {
-  const entered: (readonly [Quantity, number])[] = [
-    ...slot.values,
-    [slot.humidity.mode.quantity, slot.humidity.value],
-  ];
+  const entered: (readonly [Quantity, number])[] = [...slot.values];
+  if (slot.humidity) {
+    entered.push([slot.humidity.mode.quantity, slot.humidity.value]);
+  }
   const rows: OutOfRangeRow[] = [];
   for (const [quantity, value] of entered) {
     const bound = enteredBound(model, quantity, slot);

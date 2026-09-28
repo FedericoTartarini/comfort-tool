@@ -1,35 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { v_relative } from "jsthermalcomfort";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { defaultSlot, enteredSlotFor } from "./declarationTestSlots";
+import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, type HumidityMode } from "./entryModes";
 import { optionsReader, resolveQuantities, toLibraryInputs, valuesReader } from "./libraryInputs";
 import type { OptionSpec } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import type { Slot } from "./slot";
+import { relativeHumidityOf, startingSlot, type Slot } from "./slot";
 
 const q = quantities;
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
-const { tdb, v, met } = valuesReader(defaultSlot(pmvPpdIso).values);
-const rh = defaultSlot(pmvPpdIso).humidity.value;
+const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso).values);
+const rh = relativeHumidityOf(startingSlot(pmvPpdIso));
 
 describe("resolveQuantities", () => {
   it("resolves exactly the quantities the PMV wrapper takes, in SI", () => {
-    const resolved = resolveQuantities(defaultSlot(pmvPpdIso), pmvPpdIso);
+    const resolved = resolveQuantities(startingSlot(pmvPpdIso), pmvPpdIso);
     expect(new Set(resolved.keys())).toEqual(new Set([q.tdb, q.tr, q.vr, q.rh, q.met, q.clo]));
     expect(resolved.get(q.rh)).toBe(rh);
   });
 
   it("derives vr with the library's v_relative when the model asks for it", () => {
-    const resolved = resolveQuantities(defaultSlot(pmvPpdIso), pmvPpdIso);
+    const resolved = resolveQuantities(startingSlot(pmvPpdIso), pmvPpdIso);
     expect(resolved.get(q.vr)).toBe(v_relative(v, met));
     expect(resolved.get(q.vr)).toBeGreaterThan(v);
   });
 
   it("passes v through untouched when the model does not", () => {
     const withoutRelative = { ...pmvPpdIso, relativeAirSpeed: false };
-    const resolved = resolveQuantities(defaultSlot(pmvPpdIso), withoutRelative);
+    const resolved = resolveQuantities(startingSlot(pmvPpdIso), withoutRelative);
     expect(resolved.get(q.v)).toBe(v);
     expect(resolved.has(q.vr)).toBe(false);
   });
@@ -60,7 +60,7 @@ describe("resolveQuantities", () => {
     // A mode without a tolerance is a mode this test does not round-trip.
     expect(new Set(roundTripDigits.keys())).toEqual(new Set(Object.values(humidityMode)));
     for (const [mode, digits] of roundTripDigits) {
-      const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode, value: mode.fromRelativeHumidity(rh, tdb) } };
+      const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode, value: mode.fromRelativeHumidity(rh, tdb) } };
       const resolved = resolveQuantities(slot, pmvPpdIso);
       expect(resolved.get(q.rh), mode.id).toBeCloseTo(rh, digits);
       // Only the library's own rh reaches the call; the entered representation does not.
@@ -70,7 +70,7 @@ describe("resolveQuantities", () => {
 
   it("resolves no rh for a model whose inputs do not name it", () => {
     const withoutHumidity = { ...pmvPpdIso, inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.rh) };
-    expect(resolveQuantities(defaultSlot(pmvPpdIso), withoutHumidity).has(q.rh)).toBe(false);
+    expect(resolveQuantities(startingSlot(pmvPpdIso), withoutHumidity).has(q.rh)).toBe(false);
   });
 
   it("does not expand an operative entry for a model without separate temperatures", () => {
@@ -87,7 +87,7 @@ describe("resolveQuantities", () => {
 
 describe("toLibraryInputs", () => {
   it("feeds the declared model a finite result end to end", () => {
-    const result = pmvPpdIso.run(toLibraryInputs(defaultSlot(pmvPpdIso), pmvPpdIso));
+    const result = pmvPpdIso.run(toLibraryInputs(startingSlot(pmvPpdIso), pmvPpdIso));
     expect(Number.isFinite(result.pmv)).toBe(true);
     expect(result.tsv).toBeDefined();
   });
@@ -104,7 +104,7 @@ describe("valuesReader", () => {
   });
 
   it("throws naming the quantity the map does not carry, rather than answering undefined", () => {
-    const values = valuesReader(resolveQuantities(defaultSlot(pmvPpdIso), pmvPpdIso));
+    const values = valuesReader(resolveQuantities(startingSlot(pmvPpdIso), pmvPpdIso));
     expect(() => values.wme).toThrow(`Slot has no value for ${q.wme.label}`);
   });
 });

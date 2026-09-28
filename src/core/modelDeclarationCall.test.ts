@@ -11,11 +11,11 @@ import { pmv_ppd_ashrae, pmv_ppd_iso } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { defaultSlot } from "./declarationTestSlots";
 import { optionsReader, resolveQuantities, valuesReader } from "./libraryInputs";
 import type { OptionSpec, OptionsReader, RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { quantityFor, type Quantity } from "./quantities";
+import { startingSlot } from "./slot";
 
 /** The arguments of the last call of each library function, by export name. */
 const lastCalls = vi.hoisted(() => new Map<string, readonly unknown[]>());
@@ -66,7 +66,7 @@ function receivedParams(model: RegisteredModel, values: Values, options: Options
  * compare and is skipped; the rest are the ones the compiler cannot pair.
  */
 function mispairedKeys(model: RegisteredModel): { checked: string[]; mispaired: string[] } {
-  const slot = defaultSlot(model);
+  const slot = startingSlot(model);
   const distinct = new Map<Quantity, number>(
     [...resolveQuantities(slot, model)].map(([quantity, value], index) => [quantity, value + (index + 1) / 1000]),
   );
@@ -150,7 +150,7 @@ export function valuesTypeProof(values: Values, options: OptionsReader): void {
  * model's defaults. A positional argument that differs is named by its index.
  */
 function kwargsFedBy(model: RegisteredModel, option: OptionSpec): string[] {
-  const slot = defaultSlot(model);
+  const slot = startingSlot(model);
   const argumentsWith = (value: boolean): readonly unknown[] => {
     lastCalls.delete(model.info.name);
     runOn({ ...slot, options: new Map(slot.options).set(option, value) }, model);

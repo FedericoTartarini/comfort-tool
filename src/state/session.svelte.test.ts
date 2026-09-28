@@ -20,6 +20,7 @@ import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
@@ -58,6 +59,45 @@ const withoutTemperatureGroup = {
  */
 const [airSpeedControl] = pmvPpdAshrae.options;
 
+/** A model that declares a relative humidity other than the 50 every registered model declares. */
+const declaresDrierAir = {
+  ...pmvPpdIso,
+  info: { ...pmvPpdIso.info, name: "fixture_declares_drier_air" },
+  inputs: pmvPpdIso.inputs.map((entry) => (entry.quantity === q.rh ? { ...entry, value: 40 } : entry)),
+} satisfies RegisteredModel;
+
+/**
+ * A slot holds a humidity only once a declaration's default or the person
+ * wrote one (ADR-0002 decision 32): a session opened on a model without
+ * humidity holds none, and the next model's declared default is what a
+ * switch seeds, by either path.
+ */
+describe("the humidity entry", () => {
+  it("is held by no slot of a session opened on a model without the humidity entry group", () => {
+    const session = new Session(adaptiveAshrae);
+
+    expect(session.slots.map((slot) => slot.humidity)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("starts at the declared relative humidity, with temperatures in separate entry", () => {
+    const session = new Session(declaresDrierAir);
+
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.rh, value: 40 });
+    expect(session.slots[0].temperature.mode).toBe(temperatureMode.separate);
+  });
+
+  for (const act of ["setModel", "requestModel"] as const) {
+    it(`is seeded from the new model's declared default into a slot that holds none, by ${act}`, () => {
+      const session = new Session(adaptiveAshrae);
+
+      session[act](declaresDrierAir);
+
+      expect(session.model).toBe(declaresDrierAir);
+      expect(session.slots[0].humidity).toEqual({ mode: humidityMode.rh, value: 40 });
+    });
+  }
+});
+
 describe("Session.setModel", () => {
   it("seeds a quantity the slot lacks from the new model's default, and the run then completes", () => {
     const session = new Session(pmvPpdIso);
@@ -79,7 +119,7 @@ describe("Session.setModel", () => {
 
     expect(session.slots[0].values.get(q.tdb)).toBe(22);
     expect(session.slots[0].values.get(q.tr)).toBe(25);
-    expect(session.slots[0].humidity.value).toBe(35);
+    expect(session.slots[0].humidity?.value).toBe(35);
   });
 
   it("removes nothing, so setting the first model again finds its values", () => {
@@ -130,11 +170,13 @@ describe("Session.setModel", () => {
     expect(outputs.outOfRange).toEqual([q.tdb]);
   });
 
-  it("seeds no humidity default, whatever representation the slot keeps it in", () => {
+  it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
     const session = new Session(pmvPpdIso);
     session.slots[0].setHumidityMode(humidityMode.dewPoint);
     const entered = session.slots[0].humidity;
 
+    session.setModel(adaptiveAshrae);
+    expect(session.slots[0].humidity).toEqual(entered);
     session.setModel(takesExternalWork);
 
     expect(session.slots[0].humidity).toEqual(entered);
@@ -338,10 +380,10 @@ describe("InputSlot.setHumidityMode", () => {
   }
 
   /** The value `slot` holds after each change of the walk. */
-  function walkedValues(slot: InputSlot): number[] {
+  function walkedValues(slot: InputSlot): (number | undefined)[] {
     return walk.map((mode) => {
       slot.setHumidityMode(mode);
-      return slot.humidity.value;
+      return slot.humidity?.value;
     });
   }
 
@@ -351,7 +393,7 @@ describe("InputSlot.setHumidityMode", () => {
     slot.setHumidityValue(35);
 
     expect(walkedValues(slot)).toEqual(expectedWalk(35, 27));
-    expect(slot.humidity.mode).toBe(humidityMode.rh);
+    expect(slot.humidity?.mode).toBe(humidityMode.rh);
   });
 
   it("converts at the operative temperature under operative entry", () => {

@@ -3,7 +3,7 @@ import { t_o, v_relative } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { defaultSlot, enteredSlotFor } from "./declarationTestSlots";
+import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { resolveQuantities, valuesReader } from "./libraryInputs";
 import type { RegisteredModel } from "./modelDeclaration";
@@ -13,6 +13,8 @@ import {
   enteredValue,
   operativeTemperatureOf,
   panelQuantities,
+  relativeHumidityOf,
+  startingSlot,
   withEnteredValues,
   withTemperatureMode,
   type Slot,
@@ -24,8 +26,8 @@ const q = quantities;
 const withoutStandard = { ...pmvPpdIso, standard: undefined };
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
-const { tdb, v, met } = valuesReader(defaultSlot(pmvPpdIso).values);
-const rh = defaultSlot(pmvPpdIso).humidity.value;
+const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso).values);
+const rh = relativeHumidityOf(startingSlot(pmvPpdIso));
 
 describe("operativeTemperatureOf", () => {
   // One room, 24 / 28 °C at 0.6 m/s: ASHRAE 55 weighs the air temperature by
@@ -60,9 +62,9 @@ describe("operativeTemperatureOf", () => {
 
 describe("entered values", () => {
   it("reads the humidity entry from where the slot keeps it", () => {
-    expect(enteredValue(defaultSlot(pmvPpdIso), q.rh, pmvPpdIso)).toBe(rh);
+    expect(enteredValue(startingSlot(pmvPpdIso), q.rh, pmvPpdIso)).toBe(rh);
     expect(enteredValue(enteredSlotFor(pmvPpdIso, { tdb: 27 }), q.tdb, pmvPpdIso)).toBe(27);
-    expect(enteredValue(defaultSlot(pmvPpdIso), q.vr, pmvPpdIso)).toBeUndefined();
+    expect(enteredValue(startingSlot(pmvPpdIso), q.vr, pmvPpdIso)).toBeUndefined();
   });
 
   it("lists the panel rows of the current temperature mode", () => {
@@ -91,7 +93,7 @@ describe("entered values", () => {
   describe("the panel's rows", () => {
     /** A slot in `temperature` and `humidity` entry; the rows depend on nothing else. */
     function slotEnteredAs(temperature: TemperatureMode, humidity: HumidityMode): Slot {
-      return { ...defaultSlot(pmvPpdIso), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
+      return { ...startingSlot(pmvPpdIso), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
     }
 
     for (const humidity of Object.values(humidityMode)) {
@@ -117,22 +119,22 @@ describe("entered values", () => {
   });
 
   it("re-derives everything downstream of a swept value", () => {
-    const slot = defaultSlot(pmvPpdIso);
+    const slot = startingSlot(pmvPpdIso);
     const swept = withEnteredValues(slot, new Map([[q.v, 0.6]]));
     expect(resolveQuantities(swept, pmvPpdIso).get(q.vr)).toBe(v_relative(0.6, met));
     expect(slot.values.get(q.v)).toBe(v);
   });
 
   it("sweeps the humidity entry as well, without touching the original", () => {
-    const slot = defaultSlot(pmvPpdIso);
+    const slot = startingSlot(pmvPpdIso);
     const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
     expect(resolveQuantities(swept, pmvPpdIso).get(q.rh)).toBe(80);
-    expect(slot.humidity.value).toBe(rh);
+    expect(slot.humidity?.value).toBe(rh);
   });
 
   it("reads a dew-point entry as entered, and rh as derived from it at the slot's dry-bulb temperature", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, tdb);
-    const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
+    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
     expect(enteredValue(slot, q.dew_point_tmp, pmvPpdIso)).toBe(dewPoint);
     expect(enteredValue(slot, q.rh, pmvPpdIso)).toBeCloseTo(rh, 0);
   });
@@ -144,17 +146,17 @@ describe("entered values", () => {
   });
 
   it("sweeps rh as rh whatever the entry mode", () => {
-    const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
+    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
     expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
     expect(resolveQuantities(swept, pmvPpdIso).get(q.rh)).toBe(70);
-    expect(slot.humidity.mode).toBe(humidityMode.dewPoint);
+    expect(slot.humidity?.mode).toBe(humidityMode.dewPoint);
   });
 
   for (const entered of Object.values(humidityMode)) {
-    it(`sets the humidity entry to ${entered.id} on entering its quantity, whatever mode the slot was in`, () => {
-      for (const held of Object.values(humidityMode)) {
-        const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: held, value: 1 } };
+    it(`sets the humidity entry to ${entered.id} on entering its quantity, whatever mode the slot was in, or none`, () => {
+      for (const held of [undefined, ...Object.values(humidityMode)]) {
+        const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: held && { mode: held, value: 1 } };
         const written = withEnteredValues(slot, new Map([[entered.quantity, 2]]));
         expect(written.humidity).toEqual({ mode: entered, value: 2 });
         for (const mode of Object.values(humidityMode)) {
@@ -169,6 +171,25 @@ describe("entered values", () => {
     const resolved = resolveQuantities(swept, pmvPpdIso);
     expect(resolved.get(q.tdb)).toBe(28);
     expect(resolved.get(q.tr)).toBe(28);
+  });
+});
+
+/** Adaptive (ASHRAE 55) takes no humidity, so the slot it starts on holds none. */
+describe("a slot that holds no humidity", () => {
+  const holdsNone = startingSlot(adaptiveAshrae);
+
+  it("holds none from its start", () => {
+    expect(holdsNone.humidity).toBeUndefined();
+  });
+
+  it("throws, naming humidity, when its relative humidity is read", () => {
+    expect(() => relativeHumidityOf(holdsNone)).toThrow(/humidity/);
+  });
+
+  it("has no entered value for any humidity quantity", () => {
+    for (const mode of Object.values(humidityMode)) {
+      expect(enteredValue(holdsNone, mode.quantity, pmvPpdIso), mode.id).toBeUndefined();
+    }
   });
 });
 
