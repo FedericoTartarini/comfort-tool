@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { warningFor, type ViolationRow } from "$lib/core/applicability";
+  import { splitViolations, warningFor, type ViolationRow } from "$lib/core/applicability";
   import { colorForBand } from "$lib/core/bandPalette";
   import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
   import { resultValue } from "$lib/core/modelRun";
@@ -50,7 +50,7 @@
         })
       : [],
   );
-  const caveats = $derived(violations.filter((violation) => violation.role === "output"));
+  const caveats = $derived(splitViolations(violations).outputs);
   const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
   const standardEntry = $derived(model.standard ? standards.find((entry) => entry.id === model.standard) : undefined);
 </script>

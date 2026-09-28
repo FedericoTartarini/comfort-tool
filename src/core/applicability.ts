@@ -160,6 +160,30 @@ export function violationRows(model: RegisteredModel, result: ModelResult): Viol
   return rows;
 }
 
+/** A run's violation rows by the side they describe: the inputs they came from, or the outputs. */
+export interface ViolationSides {
+  readonly inputs: readonly ViolationRow[];
+  readonly outputs: readonly ViolationRow[];
+}
+
+// `satisfies Record<ViolationRow["role"], …>`: a role added to `ViolationRow`
+// fails to compile here until it is given a side. A role the library adds
+// fails first in `violationRows`, where its warning becomes a `ViolationRow`.
+const sideOfRole = {
+  input: "inputs",
+  derived: "inputs",
+  output: "outputs",
+} as const satisfies Record<ViolationRow["role"], keyof ViolationSides>;
+
+/** `rows` split by role, each row on exactly one side, the side `sideOfRole` gives its role. */
+export function splitViolations(rows: readonly ViolationRow[]): ViolationSides {
+  const sides: { inputs: ViolationRow[]; outputs: ViolationRow[] } = { inputs: [], outputs: [] };
+  for (const row of rows) {
+    sides[sideOfRole[row.role]].push(row);
+  }
+  return sides;
+}
+
 /** `bound`, converted to the display unit and formatted, without the unit symbol. */
 export function formatBound(bound: Bound, unit: DisplayUnit): string {
   const min = bound.min !== undefined ? formatNumber(unit.fromSi(bound.min)) : undefined;

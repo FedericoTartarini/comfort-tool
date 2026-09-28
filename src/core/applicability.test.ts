@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
-import { enteredBound, outOfRangeInputs, violationRows, warningFor } from "./applicability";
+import { enteredBound, outOfRangeInputs, splitViolations, violationRows, warningFor } from "./applicability";
 import { humidityMode, temperatureMode } from "./entryModes";
 import type { SlotInputs } from "./libraryInputs";
 import type { RegisteredModel, Values } from "./modelDeclaration";
@@ -184,5 +184,27 @@ describe("violationRows", () => {
     } satisfies RegisteredModel;
     const result = runOn(separateSlot(), stripped);
     expect(() => violationRows(stripped, result)).toThrow(`${pmvPpdIso.info.label} returned no applicability rows`);
+  });
+});
+
+describe("splitViolations", () => {
+  it("puts every violation row on exactly one side: input and derived rows on inputs, output rows on outputs", () => {
+    const rows = violationRows(pmvPpdIso, {
+      warnings: [
+        { key: "clo", role: "input", value: 2.5, bound: { max: 2 } },
+        { key: "pa", role: "derived", value: 3000, bound: { max: 2700 } },
+        { key: "pmv", role: "output", value: 3, bound: { min: -2, max: 2 } },
+      ],
+    });
+    const { inputs, outputs } = splitViolations(rows);
+    expect(inputs.map(({ quantity, role }) => [quantity, role])).toEqual([
+      [q.clo, "input"],
+      [q.pa, "derived"],
+    ]);
+    expect(outputs.map(({ quantity, role }) => [quantity, role])).toEqual([[q.pmv, "output"]]);
+    for (const row of rows) {
+      expect([inputs.includes(row), outputs.includes(row)].filter(Boolean)).toHaveLength(1);
+    }
+    expect(inputs.length + outputs.length).toBe(rows.length);
   });
 });

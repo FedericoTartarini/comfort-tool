@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { enteredBound, warningFor, type ViolationRow } from "$lib/core/applicability";
+  import { enteredBound, splitViolations, warningFor, type ViolationRow } from "$lib/core/applicability";
   import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
   import { enteredQuantities, enteredValue } from "$lib/core/libraryInputs";
   import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
@@ -36,7 +36,7 @@
   // Everything but the result's own bound. Entered values are gated before the call, so an `input` row
   // here comes from a value the panel did not show as an input: the relative air speed vr = v + 0.3(met − 1),
   // which the standard bounds instead of `v` — so the sentence names the relative air speed, not the entered one.
-  const hints = $derived(violations.filter((violation) => violation.role !== "output"));
+  const hints = $derived(splitViolations(violations).inputs);
 
   function valueOf(quantity: Quantity): number {
     return enteredValue(inputSlot, quantity, model) ?? Number.NaN;
