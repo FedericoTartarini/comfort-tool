@@ -7,4 +7,4 @@ if (!target) {
   throw new Error("index.html is missing #app");
 }
 
-export default mount(App, { target });
+mount(App, { target });
