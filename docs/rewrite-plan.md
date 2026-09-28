@@ -982,8 +982,12 @@ Behaviour comparison (from Phase 3 on):
 cd ../comfort-tool-old && npm i && npm run dev   # the old tool runs on another port
 ```
 
-Compare item by item under the same inputs: result-table values, psychrometric chart comfort-zone vertices (≤ 0.01 °C),
-Adaptive band boundaries, SI/IP round trip.
+Compare item by item under the same inputs: result-table values, psychrometric chart comfort-zone vertices (per model:
+≤ 0.01 °C for PMV (ISO 7730), ≤ 0.02 °C for PMV (ASHRAE 55)), Adaptive band boundaries, SI/IP round trip. The ASHRAE 55
+bound is needed against the deployed tool's published vertices (`chart-online.json`), whose cooling effect is unrounded;
+the library rounds it to two decimals, as pythermalcomfort does, and so does the old tool's vendored copy. Over the
+fixture's four ASHRAE 55 zones the worst vertex is 0.0143 °C off, and the worst is 0.0093 °C with only that rounding
+removed (measured 2026-09-28; Proposal 35, `P031`).
 
 Phase 4's architecture acceptance is judged by `git diff --stat`, and so is Phase 6's UTCI acceptance.
 If either fails, stop and fix the architecture; do not work around it.

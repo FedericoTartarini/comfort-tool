@@ -512,6 +512,8 @@ index.html              embedded ES5 feature check + read-only summary page
 ## 7. Phase-one scope and acceptance criteria
 
 > **Scope and acceptance criterion 1 superseded by [ADR-0002](0002-library-interface-model-info.md) decision 13**: v1 is the models whose `_INFO` the main repository ships; the second-model acceptance runs on `heat_index_rothfusz`, and PMV (ASHRAE 55) / Adaptive wait for their `_INFO` as Phase 4b.
+>
+> **Amended 2026-09-28** (review after Phase 4b, Proposal 35; `P031`): acceptance criterion 3's bound is per model, ≤ 0.01 °C for PMV (ISO 7730) and ≤ 0.02 °C for PMV (ASHRAE 55). The ASHRAE 55 bound is needed against the deployed tool's published vertices (`src/temporary-library/chart-online.json`), whose `cooling_effect` is unrounded; the library's rounds to two decimals, as pythermalcomfort's does, and so does the old tool's vendored copy. Measured 2026-09-28 over the fixture's four ASHRAE 55 zones: the worst vertex is 0.0143 °C off, and the worst is 0.0093 °C with only that rounding removed. The app follows the library, so the bound is widened rather than the rounding worked around.
 
 
 Scope: the three models **PMV (ISO 7730)**, **PMV (ASHRAE 55)** and **Adaptive (ASHRAE 55)**; Standard + Explore;
