@@ -411,7 +411,7 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     **Revised 2026-09-25 (`.scratch/library-v2-migration/`, ticket 04):** the comfort limit is no longer an app
     constant. The psychrometric declaration lists its `zones`, each `{ label, limit, inclusive }`, built by
     `core/comfortZones` from a library object: `categoryZones(PMV_CATEGORY_BINS_ISO)` gives ISO 7730's categories A, B
-    and C, one zone per bin below the sentinel edge, and Phase 4b's ASHRAE declaration will write
+    and C, one zone per bin below the sentinel edge, and since Phase 4b (`58ba1bb`) the ASHRAE declaration has written
     `intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE)`. The Standard page draws the declaration's zones,
     nested, largest first, in one hue whose opacity rises inwards. A zone's inclusivity follows its source as
     pythermalcomfort reads it: a classifier's `right`, and strict at both ends for the compliance interval, so the limit
