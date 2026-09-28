@@ -3,7 +3,7 @@ import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from
 import { chartType } from "$lib/core/chartType";
 import { defaultSlot } from "$lib/core/declarationTestSlots";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { enteredQuantities, requireValue, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
+import { enteredQuantities, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -255,7 +255,8 @@ describe("a classifier whose Edges are unevenly spaced", () => {
 describe("a declared zones source", () => {
   // Adaptive is the real consumer; this stands in for it on the registered
   // model's inputs and ranges, and proves the source is handed the resolved SI
-  // inputs and the drawn x extent, and that its operative axis is locked.
+  // inputs, read through the checked reader, and the drawn x extent, and that
+  // its operative axis is locked.
   const zoned: PolygonsDeclaration = {
     type: chartType.dynamic,
     axes: { x: q.operative_tmp, y: q.v },
@@ -263,7 +264,7 @@ describe("a declared zones source", () => {
       {
         label: "80% acceptability",
         x: [xRange.min, xRange.max, xRange.max],
-        y: [0, 0, requireValue(values, q.vr)],
+        y: [0, 0, values.vr],
       },
       { label: "90% acceptability", x: [20, 30, 30], y: [0, 0, 1] },
     ],
@@ -336,6 +337,14 @@ describe("a declared zones source", () => {
     expect(marker?.x).toBeCloseTo(80.6, 10);
     expect(marker?.y).toBeCloseTo(19.69, 2);
     expect(spec.layout.x.title).toContain("°F");
+  });
+
+  it("throws, naming it, when the source reads a quantity the slot does not hold", () => {
+    const readsMissing: PolygonsDeclaration = {
+      ...zoned,
+      zones: ({ values }) => [{ label: "Unreached", x: [values.t_running_mean], y: [0] }],
+    };
+    expect(() => dynamicSpec(request, readsMissing, readsMissing.axes)).toThrow(q.t_running_mean.label);
   });
 
   it("offers no axis to pick", () => {

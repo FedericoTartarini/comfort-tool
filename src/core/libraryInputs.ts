@@ -100,8 +100,9 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
 }
 
 /**
- * The values `run` reads for `slot`: its resolved quantities, wrapped by
- * {@link valuesReader}. The declaration's own `run` hardcodes
+ * The values a declaration reads for `slot`, in `run` and in a polygons
+ * chart's `zones`: its resolved quantities, wrapped by {@link valuesReader}.
+ * On the `run` side, the declaration hardcodes
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers
  * rather than NaN, the behaviour of the deployed CBE tool. The rows a run

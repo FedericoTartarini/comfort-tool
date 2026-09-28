@@ -1,7 +1,7 @@
 import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
 import { bandFill, chartInk } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
-import { enteredQuantities, enteredValue, resolveQuantities, withEnteredValues } from "$lib/core/libraryInputs";
+import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues } from "$lib/core/libraryInputs";
 import {
   axisRangeFor,
   dynamicChartOf,
@@ -55,7 +55,7 @@ export function dynamicSpec(
   const legend: LegendEntry[] = [];
 
   if (isPolygonsChart(chart)) {
-    const polygons = chart.zones({ values: resolveQuantities(slot, model), xRange });
+    const polygons = chart.zones({ values: toLibraryInputs(slot, model), xRange });
     for (const [index, polygon] of polygons.entries()) {
       const color = bandFill(index);
       traces.push({

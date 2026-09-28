@@ -74,9 +74,9 @@ export interface ZonePolygon {
   readonly y: readonly number[];
 }
 
-/** What a `zones` source is given: the slot's resolved SI inputs and the x extent being drawn. */
+/** What a `zones` source is given: the slot's resolved SI inputs, read as `run` reads them, and the x extent being drawn. */
 export interface ZoneRequest {
-  readonly values: ReadonlyMap<Quantity, number>;
+  readonly values: Values;
   readonly xRange: Range;
 }
 

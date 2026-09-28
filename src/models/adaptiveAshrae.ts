@@ -1,6 +1,5 @@
 import { adaptive_ashrae, ADAPTIVE_ASHRAE_INFO, Standard } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
-import { requireValue } from "$lib/core/libraryInputs";
 import type { RegisteredModel, ZonePolygon } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { adaptive_ashrae_zone, type AdaptiveAshraeBand } from "$lib/temporary-library/adaptive_ashrae_zone";
@@ -82,7 +81,7 @@ export const adaptiveAshrae = {
       type: chartType.dynamic,
       axes: { x: q.t_running_mean, y: q.operative_tmp },
       zones: ({ values, xRange }) => {
-        const zone = adaptive_ashrae_zone({ v: requireValue(values, q.v), t_running_mean_range: [xRange.min, xRange.max] });
+        const zone = adaptive_ashrae_zone({ v: values.v, t_running_mean_range: [xRange.min, xRange.max] });
         return [
           toZonePolygon(zone.acceptability_80, q.acceptability_80.label),
           toZonePolygon(zone.acceptability_90, q.acceptability_90.label),
