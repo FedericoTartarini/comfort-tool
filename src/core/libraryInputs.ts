@@ -158,8 +158,9 @@ export function optionsReader(options: ReadonlyMap<OptionSpec, boolean>): Option
 /**
  * The quantities the user actually types, in panel order: the model's inputs
  * with its temperature rows replaced by the current mode's. The input panel
- * lays these out and the dynamic chart offers them as axes. A model without
- * the temperature entry group has no rows to replace: its inputs, in any mode.
+ * lays these out, humidity as entered ({@link panelQuantities}), and the
+ * dynamic chart offers them as axes. A model without the temperature entry
+ * group has no rows to replace: its inputs, in any mode.
  */
 export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
   if (!hasTemperatureGroup(model)) {
@@ -175,6 +176,18 @@ export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode)
     }
   }
   return rows;
+}
+
+/**
+ * The rows the input panel lists for `slot`: {@link enteredQuantities} under
+ * the slot's temperature mode, with the slot's humidity entry in `rh`'s place.
+ * Only the panel swaps humidity; the dynamic chart's axes keep the library's
+ * `rh`.
+ */
+export function panelQuantities(model: RegisteredModel, slot: SlotInputs): Quantity[] {
+  return enteredQuantities(model, slot.temperature.mode).map((quantity) =>
+    quantity === q.rh ? slot.humidity.mode.quantity : quantity,
+  );
 }
 
 /**

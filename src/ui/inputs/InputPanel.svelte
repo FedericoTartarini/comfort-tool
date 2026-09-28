@@ -1,7 +1,7 @@
 <script lang="ts">
   import { enteredBound, splitViolations, warningFor, type ViolationRow } from "$lib/core/applicability";
   import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
-  import { enteredQuantities, enteredValue } from "$lib/core/libraryInputs";
+  import { enteredValue, panelQuantities } from "$lib/core/libraryInputs";
   import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
   import { presetsFor } from "$lib/core/presets";
   import type { Quantity } from "$lib/core/quantities";
@@ -24,12 +24,7 @@
 
   let { model, inputSlot, unitSystem, outOfRange, violations }: Props = $props();
 
-  // The panel shows the entered representation in the rh row's place; the chart keeps rh.
-  const rows = $derived(
-    enteredQuantities(model, inputSlot.temperature.mode).map((quantity) =>
-      quantity === humidityMode.rh.quantity ? inputSlot.humidity.mode.quantity : quantity,
-    ),
-  );
+  const rows = $derived(panelQuantities(model, inputSlot));
   const showTemperatureRow = $derived(hasTemperatureGroup(model));
   const showHumidityRow = $derived(hasHumidityGroup(model));
 

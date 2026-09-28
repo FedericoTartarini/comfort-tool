@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { t_o, v_relative } from "jsthermalcomfort";
 import { Standard } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { humidityMode, temperatureMode } from "./entryModes";
+import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import {
   enteredQuantities,
   enteredValue,
   operativeTemperatureOf,
   optionsReader,
+  panelQuantities,
   resolveQuantities,
   toLibraryInputs,
   valuesReader,
@@ -210,6 +212,34 @@ describe("entered values", () => {
     } satisfies RegisteredModel;
     expect(enteredQuantities(model, temperatureMode.separate)).toEqual([q.tr, q.rh]);
     expect(enteredQuantities(model, temperatureMode.operative)).toEqual([q.tr, q.rh]);
+  });
+
+  describe("the panel's rows", () => {
+    /** A slot in `temperature` and `humidity` entry; the rows depend on nothing else. */
+    function slotEnteredAs(temperature: TemperatureMode, humidity: HumidityMode): SlotInputs {
+      return { ...separateSlot(), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
+    }
+
+    for (const humidity of Object.values(humidityMode)) {
+      it(`shows the entered ${humidity.id} in rh's place, in either temperature mode`, () => {
+        const h = humidity.quantity;
+        expect(panelQuantities(pmvPpdIso, slotEnteredAs(temperatureMode.separate, humidity))).toEqual([q.tdb, q.tr, q.v, h, q.met, q.clo]);
+        expect(panelQuantities(pmvPpdIso, slotEnteredAs(temperatureMode.operative, humidity))).toEqual([q.operative_tmp, q.v, h, q.met, q.clo]);
+        expect(panelQuantities(heatIndexRothfusz, slotEnteredAs(temperatureMode.separate, humidity))).toEqual([q.tdb, h]);
+        expect(panelQuantities(heatIndexRothfusz, slotEnteredAs(temperatureMode.operative, humidity))).toEqual([q.tdb, h]);
+      });
+
+      it(`lists a model without the humidity entry group unchanged under ${humidity.id}`, () => {
+        expect(panelQuantities(adaptiveAshrae, slotEnteredAs(temperatureMode.separate, humidity))).toEqual([q.tdb, q.tr, q.t_running_mean, q.v]);
+        expect(panelQuantities(adaptiveAshrae, slotEnteredAs(temperatureMode.operative, humidity))).toEqual([q.operative_tmp, q.t_running_mean, q.v]);
+      });
+    }
+
+    it("leaves the entered quantities with rh, which the axis picker offers", () => {
+      const slot = slotEnteredAs(temperatureMode.separate, humidityMode.dewPoint);
+      expect(panelQuantities(pmvPpdIso, slot)).not.toContain(q.rh);
+      expect(enteredQuantities(pmvPpdIso, slot.temperature.mode)).toContain(q.rh);
+    });
   });
 
   it("re-derives everything downstream of a swept value", () => {
