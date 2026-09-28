@@ -99,15 +99,16 @@
     {/if}
   {/each}
 
-  <!-- Always shown and always live: whether an option applies at the entered values is the library's to say. -->
-  {#each model.options as option (option)}
+  <!-- Always shown and always live: whether an option applies at the entered values is the library's to say.
+       Addressed by position: an option's key is the library's and the share link's string, not the markup's. -->
+  {#each model.options as option, index (option)}
     <Inline gap="2" align="center">
       <Checkbox
-        id="{id}-{option.key}"
+        id="{id}-option-{index}"
         checked={inputSlot.options.get(option)}
         onCheckedChange={(checked) => inputSlot.options.set(option, checked)}
       />
-      <Label for="{id}-{option.key}">{option.label}</Label>
+      <Label for="{id}-option-{index}">{option.label}</Label>
     </Inline>
   {/each}
 
