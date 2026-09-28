@@ -13,14 +13,14 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { copy } from "$lib/text/copy";
-import type { ChartRequest, PathTrace, PointTrace } from "./chartSpec";
+import type { ChartRequest, PathTrace, PointTrace, Trace } from "./chartSpec";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
 /** Humidity ratio as the SI chart draws it, in g/kg. */
 const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 const ZONE_RH_STEP = 5;
-/** The library solves the boundaries to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
+/** The temporary library solves the boundaries to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
 const PMV_DIGITS = 2;
 
 const met = 1.1;
@@ -66,21 +66,21 @@ function isoZonesLargestFirst() {
 }
 
 /** The zone outlines: the filled paths in the spec, in drawing order. */
-function zonePaths(spec: { traces: readonly unknown[] }): PathTrace[] {
-  return (spec.traces as PathTrace[]).filter((trace) => trace.kind === "path" && trace.fill !== undefined);
+function zonePaths(spec: { traces: readonly Trace[] }): PathTrace[] {
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
 }
 
 /**
  * Each polygon opens with the cool boundary, one vertex per `ZONE_RH_STEP` of
  * relative humidity, so vertex `i` was solved at `rh = 5i` for `PMV = -limit`.
  * Feeding each one back through the model is what proves the app handed the
- * library the same inputs the result table uses — `vr` derived with
+ * temporary library the same inputs the result table uses — `vr` derived with
  * `v_relative`, `tr` from the entry mode.
  */
 function pmvAt(db: number, rh: number, tr: number): number {
-  // `round_output: false`, as the library's solver calls it: the rounded PMV is
-  // a staircase of 0.01 steps, which is a plateau about 0.03 °C wide and would
-  // put a root anywhere inside it.
+  // `round_output: false`, as the temporary library's solver calls it: the
+  // rounded PMV is a staircase of 0.01 steps, which is a plateau about 0.03 °C
+  // wide and would put a root anywhere inside it.
   return pmv_ppd_iso({
     tdb: db,
     tr,
@@ -284,10 +284,9 @@ describe("psychrometricSpec", () => {
 /**
  * An independent oracle for the done criterion "the comfort-zone vertices
  * differ by ≤ 0.01 °C". Plain bisection on temperature, written here rather
- * than taken from the library, so it agrees with the library's secant solver
- * only if both are solving the same equation with the same inputs. A root
- * found in temperature space is what the criterion is stated in; the app's
- * source never contains a root finder (ADR §4.7).
+ * than taken from the temporary library, so it agrees with that library's
+ * secant solver only if both are solving the same equation with the same
+ * inputs. A root found in temperature space is what the criterion is stated in.
  */
 function bisectPmv(target: number, rh: number, tr: number | "followsDb"): number {
   let low = 10;

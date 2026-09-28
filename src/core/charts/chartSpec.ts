@@ -55,7 +55,10 @@ export interface PathTrace {
   readonly width: number;
   readonly fill?: string;
   readonly hover: HoverMode;
-  /** Legend and hover text. */
+  /**
+   * The path's name (a zone's or an isoline's), handed to Plotly as its trace
+   * name; no path takes the pointer today, so nothing shows it.
+   */
   readonly label?: string;
 }
 
@@ -146,7 +149,7 @@ export interface ChartSpec {
 export interface ChartRequest {
   readonly model: RegisteredModel;
   readonly slot: SlotInputs;
-  /** Slot name, for the marker's hover text. */
+  /** Slot name, for the marker's legend entry. */
   readonly slotLabel: string;
   readonly unitSystem: UnitSystem;
 }

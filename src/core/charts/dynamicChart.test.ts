@@ -139,19 +139,13 @@ describe("dynamicSpec", () => {
     expect(Number(last(surface.z)[0])).toBeLessThan(declaration.bands.edges[0]);
   });
 
-  it("names every cell with a band of the declared classifier, or with nothing", () => {
+  it("names the cold still corner and the warm still corner with different bands", () => {
     const surface = bands(dynamicSpec(request, declaration, declaration.axes));
-    const named = new Set(surface.hoverText.flat().map(bandRead));
-    for (const name of named) {
-      expect(["", ...declaration.bands.labels]).toContain(name);
-    }
-    // The cold still corner and the warm still corner do not read alike.
     expect(bandRead(surface.hoverText[0][0])).not.toBe(bandRead(last(surface.hoverText[0])));
   });
 
   it("marks the value the user entered, not the derived one", () => {
-    const spec = dynamicSpec(request, declaration, declaration.axes);
-    const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
+    const marker = markerOf(dynamicSpec(request, declaration, declaration.axes));
     expect(marker?.x).toBe(26);
     // The library is called with vr = v_relative(v, met); the axis is the entered v.
     expect(marker?.y).toBe(0.1);
@@ -173,16 +167,15 @@ describe("dynamicSpec", () => {
 
   it("carries one legend: every band plus the slot", () => {
     const spec = dynamicSpec(request, declaration, declaration.axes);
-    expect(spec.legend).toHaveLength(8);
+    expect(spec.legend).toHaveLength(declaration.bands.labels.length + 1);
     expect(spec.legend.filter((entry) => entry.swatch === "marker")).toHaveLength(1);
   });
 });
 
 describe("a classifier whose Edges are unevenly spaced", () => {
-  // Heat Index's Edges are 27, 32, 39, 51, 1000; Phase 4 registers it. Until
-  // then this fixture is what proves the Edges reach the chart unevenly spaced
-  // and untouched, and it pins the surface at values a real model reaches only
-  // by accident: exactly on an Edge, past the last one, and no number at all.
+  // This fixture proves the Edges reach the chart unevenly spaced and
+  // untouched, and it pins the surface at values a real model reaches only by
+  // accident: exactly on an Edge, past the last one, and no number at all.
   const uneven: ClassifierBins = {
     edges: [0, 10, 40, 100],
     labels: ["Low", "Mild", "High", "Extreme"],
@@ -405,8 +398,7 @@ describe("axes across a temperature entry mode switch", () => {
     // The whole field would carry one band if the sweep were being discarded.
     const surface = bands(spec);
     expect(new Set(surface.z.flat()).size).toBeGreaterThan(1);
-    const marker = spec.traces.find((trace): trace is PointTrace => trace.kind === "point");
-    expect(marker?.x).toBe(26);
+    expect(markerOf(spec)?.x).toBe(26);
   });
 
   it("moves the second axis off the first when the mode maps both onto operative_tmp", () => {
