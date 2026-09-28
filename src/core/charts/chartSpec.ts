@@ -14,13 +14,22 @@ import type { UnitSystem } from "$lib/core/unitSystem";
  */
 
 /**
- * What the pointer reads on a trace (ADR §4.4). `"off"` is chrome — the
- * relative-humidity isolines, the zone outline, the slot markers — which never
- * capture the pointer; `"field"` reports whatever is under the cursor without
- * snapping to a drawn datum. Snapping is reserved for the line charts added
- * later, where the drawn point *is* the reading.
+ * What the pointer reads on a trace (ADR §4.4). `"off"` never captures the
+ * pointer: chrome — the relative-humidity isolines, the zone outlines, the
+ * slot markers — and the zones themselves, whose fills cannot say where the
+ * pointer is, so a {@link HoverGridTrace} reads for them. `"field"` reports
+ * whatever is under the cursor without snapping to a drawn datum. Snapping is
+ * reserved for the line charts added later, where the drawn point *is* the
+ * reading.
  */
 export type HoverMode = "off" | "field";
+
+/**
+ * What the pointer reads at one cell of a field, one line per entry, already
+ * formatted: each axis value as `Label: value unit`, then whatever that chart
+ * reads there. The chart component only lays the lines out.
+ */
+export type HoverReadout = readonly string[];
 
 /** How a legend entry is drawn. */
 export type Swatch = "fill" | "line" | "marker";
@@ -88,10 +97,11 @@ export interface BandFill {
  * interval, so that last Edge is drawn by interpolation like any other
  * boundary.
  *
- * `hoverText[yIndex][xIndex]` is the band name the pointer reads at that cell,
- * empty where there is no band. It is carried rather than derived from `z`:
- * which side of an Edge a value falls on is the library's rule, per
- * classifier, and it is applied in the spec builder.
+ * `hoverText[yIndex][xIndex]` is what the pointer reads at that cell: both
+ * axis values, the model's number and the band it falls in, the band left out
+ * where there is none. It is carried rather than derived from `z`: which side
+ * of an Edge a value falls on is the library's rule, per classifier, and it is
+ * applied in the spec builder.
  */
 export interface BandTrace {
   readonly kind: "bands";
@@ -99,12 +109,25 @@ export interface BandTrace {
   readonly x: readonly number[];
   readonly y: readonly number[];
   readonly z: readonly (readonly (number | null)[])[];
-  readonly hoverText: readonly (readonly string[])[];
+  readonly hoverText: readonly (readonly HoverReadout[])[];
   readonly bands: readonly BandFill[];
 }
 
+/**
+ * A field that is read but never seen: `hoverText[yIndex][xIndex]` is what
+ * the pointer reads at that cell, for a chart whose drawn shapes cannot report
+ * where the pointer is — a polygons chart's filled zones.
+ */
+export interface HoverGridTrace {
+  readonly kind: "hoverGrid";
+  readonly hover: HoverMode;
+  readonly x: readonly number[];
+  readonly y: readonly number[];
+  readonly hoverText: readonly (readonly HoverReadout[])[];
+}
+
 /** Drawn in order, so the first trace is at the bottom. */
-export type Trace = PathTrace | PointTrace | BandTrace;
+export type Trace = PathTrace | PointTrace | BandTrace | HoverGridTrace;
 
 /** Text placed at a point of the plot — the isoline labels, and nothing else so far. */
 export interface Annotation {

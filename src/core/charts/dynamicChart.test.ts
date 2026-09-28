@@ -14,9 +14,10 @@ import {
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
+import { copy } from "$lib/text/copy";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { BandTrace, ChartRequest, ChartSpec, PathTrace, PointTrace } from "./chartSpec";
+import type { BandTrace, ChartRequest, ChartSpec, HoverGridTrace, HoverReadout, PathTrace, PointTrace } from "./chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -64,6 +65,11 @@ function markerOf(spec: { traces: readonly { kind: string }[] }): PointTrace | u
 /** `at(-1)`, which this project's ES2020 target does not have. */
 function last<T>(row: readonly T[]): T {
   return row[row.length - 1];
+}
+
+/** The band a scanned cell's readout names, after its two axis lines and its output line; empty for none. */
+function bandRead(readout: HoverReadout): string {
+  return readout[3] ?? "";
 }
 
 function bands(spec: { traces: readonly { kind: string }[] }): BandTrace {
@@ -124,7 +130,7 @@ describe("dynamicSpec", () => {
     for (const [row, values] of surface.z.entries()) {
       for (const [column, value] of values.entries()) {
         const category = value === null ? "" : classifyFromBins(value, declaration.bands);
-        expect(surface.hoverText[row][column]).toBe(typeof category === "string" ? category : "");
+        expect(bandRead(surface.hoverText[row][column])).toBe(typeof category === "string" ? category : "");
       }
     }
     // A number rather than a band index: cold and fast-moving air sits well
@@ -134,12 +140,12 @@ describe("dynamicSpec", () => {
 
   it("names every cell with a band of the declared classifier, or with nothing", () => {
     const surface = bands(dynamicSpec(request, declaration, declaration.axes));
-    const named = new Set(surface.hoverText.flat());
+    const named = new Set(surface.hoverText.flat().map(bandRead));
     for (const name of named) {
       expect(["", ...declaration.bands.labels]).toContain(name);
     }
     // The cold still corner and the warm still corner do not read alike.
-    expect(surface.hoverText[0][0]).not.toBe(last(surface.hoverText[0]));
+    expect(bandRead(surface.hoverText[0][0])).not.toBe(bandRead(last(surface.hoverText[0])));
   });
 
   it("marks the value the user entered, not the derived one", () => {
@@ -216,13 +222,17 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     // boundary there be interpolated like every other one, and the pointer
     // still reads no band anywhere beyond it.
     expect(numberAt(100)).toBe(100);
-    expect(flat(100).hoverText[0][0]).toBe("");
+    expect(bandRead(flat(100).hoverText[0][0])).toBe("");
     expect(numberAt(250)).toBe(250);
-    expect(flat(250).hoverText[0][0]).toBe("");
+    expect(bandRead(flat(250).hoverText[0][0])).toBe("");
   });
 
   it("empties only the cell where the model gives no number", () => {
     expect(numberAt(Number.NaN)).toBeNull();
+  });
+
+  it("reads a dash for the output where the model gives no number, as the results table does", () => {
+    expect(flat(Number.NaN).hoverText[0][0][2]).toBe(`${q.pmv.label}: ${copy.notAvailable}`);
   });
 
   it("leaves the surface and the Edges in the output's own unit when the axes are displayed in IP", () => {
@@ -238,22 +248,22 @@ describe("a classifier whose Edges are unevenly spaced", () => {
 
   it("reads the hover label off the library's classify-from-bins", () => {
     for (const value of [-5, 0, 5, 10, 25, 40, 99]) {
-      expect(flat(value).hoverText[0][0]).toBe(classifyFromBins(value, uneven));
+      expect(bandRead(flat(value).hoverText[0][0])).toBe(classifyFromBins(value, uneven));
     }
-    expect(flat(100).hoverText[0][0]).toBe("");
-    expect(flat(Number.NaN).hoverText[0][0]).toBe("");
+    expect(bandRead(flat(100).hoverText[0][0])).toBe("");
+    expect(bandRead(flat(Number.NaN).hoverText[0][0])).toBe("");
   });
 
   it("takes the inclusivity of the classifier rather than one of its own", () => {
     // The same value on the same Edge: left-inclusive opens the band above it,
     // right-inclusive closes the band below it.
-    expect(flat(10).hoverText[0][0]).toBe("High");
+    expect(bandRead(flat(10).hoverText[0][0])).toBe("High");
     const rightInclusive: ScannedDeclaration = { ...unevenChart, bands: { ...uneven, right: true } };
-    expect(flat(10, rightInclusive).hoverText[0][0]).toBe("Mild");
+    expect(bandRead(flat(10, rightInclusive).hoverText[0][0])).toBe("Mild");
     // The hover label is the only place inclusivity still shows: the surface
     // keeps the number on either convention, and the last Edge bounds the fill
     // whichever side of it the classifier's last band claims.
-    expect(flat(100, rightInclusive).hoverText[0][0]).toBe("Extreme");
+    expect(bandRead(flat(100, rightInclusive).hoverText[0][0])).toBe("Extreme");
     expect(numberAt(100)).toBe(100);
     expect(flat(100, rightInclusive).z[0][0]).toBe(100);
   });
@@ -495,3 +505,81 @@ function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
   }
   return { rgb: match[1], alpha: Number(match[2]) };
 }
+
+describe("the scanned chart's hover readout", () => {
+  const pmvRequest: ChartRequest = { ...request, slot: defaultSlot(pmvPpdIso) };
+
+  // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
+  // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.0618….
+  it("reads both axis values, the output and the band, each number at two decimals at most", () => {
+    const surface = bands(dynamicSpec(pmvRequest, declaration, declaration.axes));
+    expect(surface.hoverText[2][26]).toEqual([
+      "Dry-bulb air temperature: 25.6 °C",
+      "Air speed: 0.08 m/s",
+      "Predicted Mean Vote: -0.06",
+      "Neutral",
+    ]);
+  });
+
+  it("reads the axis values in the displayed unit", () => {
+    const surface = bands(dynamicSpec({ ...pmvRequest, unitSystem: unitSystem.ip }, declaration, declaration.axes));
+    expect(surface.hoverText[2][26]).toEqual([
+      "Dry-bulb air temperature: 78.08 °F",
+      "Air speed: 15.75 fpm",
+      "Predicted Mean Vote: -0.06",
+      "Neutral",
+    ]);
+  });
+});
+
+describe("a polygons chart's hover grid", () => {
+  // Two nested rectangles on operative temperature × air speed, largest first.
+  const rectangles: PolygonsDeclaration = {
+    type: chartType.dynamic,
+    axes: { x: q.operative_tmp, y: q.v },
+    zones: () => [
+      { label: "Outer", x: [15, 35, 35, 15], y: [0, 0, 1, 1] },
+      { label: "Inner", x: [20, 30, 30, 20], y: [0.2, 0.2, 0.6, 0.6] },
+    ],
+  };
+
+  function hoverGrid(spec: ChartSpec): HoverGridTrace {
+    const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+    if (!trace) {
+      throw new Error("spec has no hover grid");
+    }
+    return trace;
+  }
+
+  // The field is operative temperature 10–40 °C and air speed 0–2 m/s, 51
+  // samples each: column 25 is 25 °C, column 10 is 16 °C, column 5 is 13 °C,
+  // and row 10 is 0.4 m/s.
+  it("reads both axis values and the innermost zone the cell is in", () => {
+    const grid = hoverGrid(dynamicSpec(request, rectangles, rectangles.axes));
+    expect(grid.hoverText[10][25]).toEqual(["Operative temperature: 25 °C", "Air speed: 0.4 m/s", "Inner"]);
+    expect(grid.hoverText[10][10]).toEqual(["Operative temperature: 16 °C", "Air speed: 0.4 m/s", "Outer"]);
+  });
+
+  it("reads only the axis values outside every zone", () => {
+    const grid = hoverGrid(dynamicSpec(request, rectangles, rectangles.axes));
+    expect(grid.hoverText[10][5]).toEqual(["Operative temperature: 13 °C", "Air speed: 0.4 m/s"]);
+  });
+
+  it("reads the axis values in the displayed unit, at the displayed grid", () => {
+    const grid = hoverGrid(dynamicSpec({ ...request, unitSystem: unitSystem.ip }, rectangles, rectangles.axes));
+    expect(grid.x[25]).toBeCloseTo(77, 10);
+    expect(grid.y[10]).toBeCloseTo(78.74, 2);
+    expect(grid.hoverText[10][25]).toEqual(["Operative temperature: 77 °F", "Air speed: 78.74 fpm", "Inner"]);
+  });
+
+  it("is the only trace that reads the pointer: the polygons and the marker do not", () => {
+    const spec = dynamicSpec(request, rectangles, rectangles.axes);
+    expect(spec.traces.filter((trace) => trace.hover !== "off")).toEqual([hoverGrid(spec)]);
+  });
+
+  it("names both of Adaptive's acceptability zones somewhere on the field", () => {
+    const grid = hoverGrid(dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes));
+    const named = new Set(grid.hoverText.flat().map((readout) => readout[2]));
+    expect(named).toEqual(new Set([undefined, q.acceptability_80.label, q.acceptability_90.label]));
+  });
+});

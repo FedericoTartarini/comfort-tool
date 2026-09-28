@@ -5,6 +5,8 @@
     BandFill,
     BandTrace,
     ChartSpec,
+    HoverGridTrace,
+    HoverMode,
     PathTrace,
     PointTrace,
   } from "$lib/core/charts/chartSpec";
@@ -81,6 +83,8 @@
           return [pointData(trace)];
         case "bands":
           return bandData(trace);
+        case "hoverGrid":
+          return [hoverGridData(trace)];
       }
     });
   }
@@ -96,10 +100,7 @@
       fillcolor: trace.fill,
       name: trace.label ?? "",
       text: trace.label ?? "",
-      // A filled band answers anywhere inside itself rather than at its
-      // vertices, which is what "the field never snaps" means for a polygon.
-      hoveron: "fills",
-      hoverinfo: trace.hover === "off" ? "skip" : "text",
+      hoverinfo: hoverInfo(trace.hover),
       showlegend: false,
     };
   }
@@ -113,7 +114,7 @@
       marker: { color: trace.color, size: 11, line: { color: "#ffffff", width: 2 } },
       name: trace.label,
       // ADR §4.4: the slot markers do not capture the pointer either.
-      hoverinfo: trace.hover === "off" ? "skip" : "text",
+      hoverinfo: hoverInfo(trace.hover),
       text: trace.label,
       showlegend: false,
     };
@@ -164,16 +165,41 @@
       : { type: "constraint", operation: "][", value: [band.lower, lastEdge] };
   }
 
-  function carryHover(trace: BandTrace) {
+  /**
+   * A field's hover readout, written whole by the spec builder: the component
+   * only breaks its lines, and adds no template of its own.
+   */
+  function carryHover(trace: BandTrace | HoverGridTrace) {
     return {
-      text: trace.hoverText,
-      hoverinfo: trace.hover === "off" ? "skip" : "text",
-      hovertemplate: "%{x}, %{y}<br>%{text}<extra></extra>",
+      text: trace.hoverText.map((row) => row.map((lines) => lines.join("<br>"))),
+      hoverinfo: hoverInfo(trace.hover),
       // Plotly tints a hover label with the trace's own colour where it has
       // one, which a filled band does; the chart reads one grey label in every
       // band, as it did when the surface was a single trace.
       hoverlabel: { bgcolor: "#444444" },
     };
+  }
+
+  /**
+   * Cells the pointer reads but nobody sees: a heatmap, which answers per cell
+   * as the contour does, drawn fully transparent. Its `z` only sizes the grid.
+   */
+  function hoverGridData(trace: HoverGridTrace): PlotlyData {
+    return {
+      type: "heatmap",
+      x: trace.x,
+      y: trace.y,
+      z: trace.hoverText.map((row) => row.map(() => 0)),
+      opacity: 0,
+      showscale: false,
+      ...carryHover(trace),
+      showlegend: false,
+    };
+  }
+
+  /** What Plotly reads off a trace's hover mode: its text, or nothing at all. */
+  function hoverInfo(mode: HoverMode): "skip" | "text" {
+    return mode === "off" ? "skip" : "text";
   }
 
   function annotation(entry: Annotation): PlotlyAnnotation {

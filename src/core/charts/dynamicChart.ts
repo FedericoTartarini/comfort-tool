@@ -11,11 +11,15 @@ import {
   type DynamicDeclaration,
   type Range,
   type RegisteredModel,
+  type ZonePolygon,
 } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import { displayUnitFor, labelWithUnit } from "$lib/core/units";
-import type { BandFill, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";
+import { formatNumber } from "$lib/core/numberFormat";
+import { displayUnitFor, labelWithUnit, valueWithUnit, type DisplayUnit } from "$lib/core/units";
+import { copy } from "$lib/text/copy";
+import type { BandFill, ChartRequest, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
+import { containsPoint } from "./polygon";
 
 /** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
 const GRID = 51;
@@ -29,9 +33,10 @@ const GRID = 51;
  * carries the interval of that number it fills, so the drawn boundary falls
  * where the value crosses an Edge rather than half a cell away (ADR-0002
  * decision 27). The bands, their order and their Edges are `chart.bands`' own,
- * the colours are the app's one palette by position, and the hover readout is
- * the library's `classifyFromBins` — no Edge and no inclusivity rule is
- * written here.
+ * the colours are the app's one palette by position, and the band a cell's
+ * hover readout names is the library's `classifyFromBins` — no Edge and no
+ * inclusivity rule is written here. Every cell reads both axis values, the
+ * number and that band (ADR §4.4's hover rules), formatted here.
  *
  * A polygons chart skips the scan altogether and draws the exact polygons its
  * `zones` source traces (ADR §4.4), on its own declared axes: they are locked,
@@ -40,7 +45,10 @@ const GRID = 51;
  * (ADR-0002 decision 37). The polygons are nested Comfort zones, largest
  * first, so they are painted as the psychrometric chart paints its own: one
  * hue whose opacity rises inwards, outlined in the zone line, never the
- * thermal-sensation palette.
+ * thermal-sensation palette. A filled polygon cannot report where the pointer
+ * is inside it, so the polygons read nothing and a hover grid over the same
+ * `GRID × GRID` field reads for them: both axis values, and the innermost zone
+ * the cell is in.
  */
 export function dynamicSpec(
   request: ChartRequest,
@@ -57,6 +65,14 @@ export function dynamicSpec(
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
+  const xValues = samples(xRange);
+  const yValues = samples(yRange);
+  const displayedAxes = { x: xValues.map((value) => xUnit.fromSi(value)), y: yValues.map((value) => yUnit.fromSi(value)) };
+  /** The two lines every cell's readout opens with. */
+  const axisLines = (xIndex: number, yIndex: number): HoverReadout => [
+    readoutLine(x, xUnit, xValues[xIndex]),
+    readoutLine(y, yUnit, yValues[yIndex]),
+  ];
 
   if (isPolygonsChart(chart)) {
     const polygons = chart.zones({ values: toLibraryInputs(slot, model), xRange });
@@ -69,18 +85,25 @@ export function dynamicSpec(
         color: chartInk.zoneLine,
         width: chartInk.zoneLineWidth,
         fill,
-        // The filled area is the reading: the pointer reports the Comfort zone
-        // it is over, wherever it is over it.
-        hover: "field",
+        // A filled shape cannot tell where the pointer is inside it, so the
+        // hover grid below reads for it.
+        hover: "off",
         label: polygon.label,
       });
       legend.push({ label: polygon.label, swatch: "fill", color: fill });
     }
+    traces.push({
+      kind: "hoverGrid",
+      hover: "field",
+      ...displayedAxes,
+      hoverText: yValues.map((yValue, yIndex) =>
+        xValues.map((xValue, xIndex) => [...axisLines(xIndex, yIndex), ...innermostLabels(polygons, xValue, yValue)]),
+      ),
+    });
   } else {
-    const xValues = samples(xRange);
-    const yValues = samples(yRange);
     const bins = chart.bands;
     const bandFills = bandsOf(bins);
+    const outputUnit = displayUnitFor(chart.output, unitSystem);
     const scanned = yValues.map((yValue) =>
       xValues.map((xValue) => {
         const point = withEnteredValues(slot, new Map([
@@ -93,10 +116,15 @@ export function dynamicSpec(
     traces.push({
       kind: "bands",
       hover: "field",
-      x: xValues.map((value) => xUnit.fromSi(value)),
-      y: yValues.map((value) => yUnit.fromSi(value)),
+      ...displayedAxes,
       z: scanned.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))),
-      hoverText: scanned.map((row) => row.map((value) => bandLabel(value, bins))),
+      hoverText: scanned.map((row, yIndex) =>
+        row.map((value, xIndex) => [
+          ...axisLines(xIndex, yIndex),
+          readoutLine(chart.output, outputUnit, value),
+          ...bandLabels(value, bins),
+        ]),
+      ),
       bands: bandFills,
     });
     legend.push(...bandFills.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
@@ -183,8 +211,30 @@ function bandsOf(bins: ClassifierBins): readonly BandFill[] {
   }));
 }
 
-/** The band the library itself puts `value` in, so the inclusivity is its own. */
-function bandLabel(value: number, bins: ClassifierBins): string {
+/**
+ * The band the library itself puts `value` in, so the inclusivity is its own:
+ * one label, or none past the last Edge or without a number.
+ */
+function bandLabels(value: number, bins: ClassifierBins): readonly string[] {
   const category = classifyFromBins(value, bins);
-  return typeof category === "string" ? category : "";
+  return typeof category === "string" ? [category] : [];
+}
+
+/**
+ * The label of the innermost zone containing the point: the zones are nested
+ * and listed largest first, so the last one that contains it. None outside
+ * every zone.
+ */
+function innermostLabels(zones: readonly ZonePolygon[], x: number, y: number): readonly string[] {
+  return zones.filter((zone) => containsPoint(zone, x, y)).slice(-1).map((zone) => zone.label);
+}
+
+/**
+ * One line of a hover readout, `Label: value unit`, the SI `value` shown as
+ * the results table shows it: in `unit`, formatted, and a dash where there is
+ * no number.
+ */
+function readoutLine(quantity: Quantity, unit: DisplayUnit, value: number): string {
+  const shown = Number.isFinite(value) ? valueWithUnit(formatNumber(unit.fromSi(value)), unit) : copy.notAvailable;
+  return `${quantity.label}: ${shown}`;
 }
