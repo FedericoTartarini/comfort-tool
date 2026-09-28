@@ -58,10 +58,14 @@ export interface Range {
  * user typed, and conflating the two clipped the ISO chart to 10–30 °C and
  * left `rh`, which no standard bounds, unable to carry an axis at all.
  */
-export interface AxisRange {
+export interface AxisRange extends Range {
   readonly quantity: Quantity;
-  readonly min: number;
-  readonly max: number;
+}
+
+/** The two quantities a chart is drawn on, one per axis. */
+export interface ChartAxes {
+  readonly x: Quantity;
+  readonly y: Quantity;
 }
 
 /**
@@ -121,7 +125,7 @@ export type ChartDeclaration =
   | {
       readonly type: typeof chartType.dynamic;
       /** Starting axes; the user may pick any entered quantity that has a declared range. */
-      readonly axes: { readonly x: Quantity; readonly y: Quantity };
+      readonly axes: ChartAxes;
       /**
        * The numeric output the chart scans. Each grid cell keeps this number,
        * and the surface is contoured at {@link bands}' Edges (ADR-0002
@@ -155,7 +159,7 @@ export type ChartDeclaration =
        * the entered temperatures and air speed by the model's standard
        * (`libraryInputs.operativeTemperatureOf`).
        */
-      readonly axes: { readonly x: Quantity; readonly y: Quantity };
+      readonly axes: ChartAxes;
       /**
        * Exact band polygons, for a model whose geometry is traced rather than
        * scanned — Adaptive's acceptability bands. No grid is run at all,

@@ -7,6 +7,7 @@ import {
   dynamicChartOf,
   isPolygonsChart,
   requireAxisRange,
+  type ChartAxes,
   type DynamicDeclaration,
   type Range,
   type RegisteredModel,
@@ -41,7 +42,7 @@ const GRID = 51;
 export function dynamicSpec(
   request: ChartRequest,
   chart: DynamicDeclaration,
-  axes: { readonly x: Quantity; readonly y: Quantity },
+  axes: ChartAxes,
 ): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;
   const mode = slot.temperature.mode;
@@ -134,9 +135,9 @@ export function dynamicSpec(
  */
 export function resolvedAxes(
   model: RegisteredModel,
-  axes: { readonly x: Quantity; readonly y: Quantity },
+  axes: ChartAxes,
   mode: TemperatureMode,
-): { readonly x: Quantity; readonly y: Quantity } {
+): ChartAxes {
   const x = underTemperatureMode(axes.x, mode);
   const y = underTemperatureMode(axes.y, mode);
   if (y !== x) {

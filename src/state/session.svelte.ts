@@ -2,7 +2,7 @@ import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/libraryInputs";
-import { dynamicChartOf, isPolygonsChart, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
@@ -101,7 +101,7 @@ function replaceEntries<K, V>(target: SvelteMap<K, V>, source: ReadonlyMap<K, V>
 export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
   type: ChartType;
-  axes: { readonly x: Quantity; readonly y: Quantity };
+  axes: ChartAxes;
   /** A polygons chart's axes are its declaration's, and never move (ADR-0002 decision 37). */
   readonly #axesLocked: boolean;
 
@@ -119,7 +119,7 @@ export class ChartState {
     this.type = type;
   }
 
-  setAxes(axes: Partial<{ readonly x: Quantity; readonly y: Quantity }>): void {
+  setAxes(axes: Partial<ChartAxes>): void {
     if (this.#axesLocked) {
       return;
     }
