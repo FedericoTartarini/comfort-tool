@@ -6,7 +6,7 @@ import { humidityMode, type HumidityMode } from "./entryModes";
 import { optionsReader, resolveQuantities, toLibraryInputs, valuesReader } from "./libraryInputs";
 import type { OptionSpec } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import type { SlotInputs } from "./slot";
+import type { Slot } from "./slot";
 
 const q = quantities;
 
@@ -60,7 +60,7 @@ describe("resolveQuantities", () => {
     // A mode without a tolerance is a mode this test does not round-trip.
     expect(new Set(roundTripDigits.keys())).toEqual(new Set(Object.values(humidityMode)));
     for (const [mode, digits] of roundTripDigits) {
-      const slot: SlotInputs = { ...defaultSlot(pmvPpdIso), humidity: { mode, value: mode.fromRelativeHumidity(rh, tdb) } };
+      const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode, value: mode.fromRelativeHumidity(rh, tdb) } };
       const resolved = resolveQuantities(slot, pmvPpdIso);
       expect(resolved.get(q.rh), mode.id).toBeCloseTo(rh, digits);
       // Only the library's own rh reaches the call; the entered representation does not.

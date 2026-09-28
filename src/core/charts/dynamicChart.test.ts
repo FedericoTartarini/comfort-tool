@@ -15,7 +15,7 @@ import {
   type ScannedDeclaration,
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
-import { enteredQuantities, withEnteredValues, type SlotInputs } from "$lib/core/slot";
+import { enteredQuantities, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -267,7 +267,7 @@ describe("a declared zones source", () => {
   };
 
   /** Dry-bulb and mean radiant apart, so their operative temperature is not either one. */
-  const apart: SlotInputs = withEnteredValues(slot, new Map<Quantity, number>([
+  const apart: Slot = withEnteredValues(slot, new Map<Quantity, number>([
     [q.tdb, 24],
     [q.tr, 30],
   ]));

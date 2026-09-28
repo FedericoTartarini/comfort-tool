@@ -7,9 +7,9 @@
 import { humidityMode, temperatureMode } from "./entryModes";
 import type { RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import type { SlotInputs } from "./slot";
+import type { Slot } from "./slot";
 
-export function defaultSlot(model: RegisteredModel): SlotInputs {
+export function defaultSlot(model: RegisteredModel): Slot {
   const values = new Map<Quantity, number>();
   let humidity = { mode: humidityMode.rh, value: 0 };
   for (const { quantity, value } of model.inputs) {
@@ -35,7 +35,7 @@ type HumidityKey = (typeof humidityMode)[keyof typeof humidityMode]["quantity"][
 export function enteredSlotFor(
   model: RegisteredModel,
   entered: Partial<Record<Exclude<keyof typeof quantities, HumidityKey>, number>>,
-): SlotInputs {
+): Slot {
   const slot = defaultSlot(model);
   const values = new Map(slot.values);
   const mode = entered.operative_tmp === undefined ? temperatureMode.separate : temperatureMode.operative;

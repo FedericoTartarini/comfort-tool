@@ -7,7 +7,7 @@ import { temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type PsychrometricDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
-import type { SlotInputs } from "$lib/core/slot";
+import type { Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
@@ -27,7 +27,7 @@ const PMV_DIGITS = 2;
 /** The ISO declaration's own met, clo and v, which every slot below keeps. */
 const { met, clo, v } = valuesReader(defaultSlot(pmvPpdIso).values);
 
-function slot(mode: typeof temperatureMode.separate | typeof temperatureMode.operative): SlotInputs {
+function slot(mode: typeof temperatureMode.separate | typeof temperatureMode.operative): Slot {
   return mode === temperatureMode.operative
     ? enteredSlotFor(pmvPpdIso, { operative_tmp: 25 })
     : enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 24 });

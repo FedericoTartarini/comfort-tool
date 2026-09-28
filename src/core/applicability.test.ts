@@ -11,7 +11,7 @@ import { humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { quantities } from "./quantities";
-import type { SlotInputs } from "./slot";
+import type { Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
@@ -23,7 +23,7 @@ function vrWarning(range: string, system: UnitSystem): string {
 }
 
 /** `slot` with its humidity entered as `value` in `mode`. */
-function withHumidity(slot: SlotInputs, mode: HumidityMode, value: number): SlotInputs {
+function withHumidity(slot: Slot, mode: HumidityMode, value: number): Slot {
   return { ...slot, humidity: { mode, value } };
 }
 
@@ -62,7 +62,7 @@ describe("enteredBound / outOfRangeInputs", () => {
   it("does not gate a value only a derived row bounds", () => {
     // tdb at the ISO bound, rh 95: no entered value breaks a row; the derived vapour pressure does.
     const slot = enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 30 });
-    const humid: SlotInputs = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
+    const humid: Slot = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
     expect(outOfRangeInputs(humid, pmvPpdIso)).toEqual([]);
   });
 });
@@ -129,7 +129,7 @@ describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
 });
 
 describe("violationRows", () => {
-  function rowsFor(slot: SlotInputs) {
+  function rowsFor(slot: Slot) {
     return violationRows(pmvPpdIso, runOn(slot, pmvPpdIso));
   }
 
@@ -139,7 +139,7 @@ describe("violationRows", () => {
 
   it("maps the kernel's derived vapour-pressure row to pa", () => {
     const slot = enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 30 });
-    const humid: SlotInputs = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
+    const humid: Slot = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
     const violation = rowsFor(humid).find((row) => row.quantity === q.pa);
     expect(violation?.role).toBe("derived");
     expect(violation?.bound).toEqual(pmvPpdIso.info.derived?.pa?.applicability);
@@ -183,7 +183,7 @@ describe("violationRows", () => {
   it("names the relative air speed in the sentence on the entered v row, the quantity its bound belongs to", () => {
     // PMV (ASHRAE 55) with the air-speed control off: an entered 0.15 m/s at met 1.29 is a vr of 0.237,
     // over the 0.2 m/s the standard allows at this operative temperature.
-    const slot: SlotInputs = {
+    const slot: Slot = {
       ...enteredSlotFor(pmvPpdAshrae, { tdb: 22, tr: 22, v: 0.15, met: 1.29 }),
       options: new Map([[pmvPpdAshrae.options[0], false]]),
     };

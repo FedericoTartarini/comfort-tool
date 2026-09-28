@@ -4,7 +4,7 @@ import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode 
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
-import { relativeHumidityOf, resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/slot";
+import { relativeHumidityOf, resolvedTdb, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -61,22 +61,22 @@ export class InputSlot {
    * model, so the caller names it.
    */
   setTemperatureMode(mode: TemperatureMode, model: RegisteredModel): void {
-    this.replaceInputs(withTemperatureMode(this, mode, model));
+    this.replaceWith(withTemperatureMode(this, mode, model));
   }
 
   /**
-   * Hold what `inputs` holds: quantities and options it does not carry are
+   * Hold what `slot` holds: quantities and options it does not carry are
    * dropped, the rest are set, and the humidity and temperature entries are
    * replaced. The two maps are mutated rather than swapped, because the input
    * panel and the derivations hold them and their reactivity is their own.
-   * `inputs` may be this slot itself, when the core function it came from
+   * `slot` may be this `InputSlot` itself, when the core function it came from
    * found nothing to change; the loops then do nothing.
    */
-  replaceInputs(inputs: SlotInputs): void {
-    replaceEntries(this.values, inputs.values);
-    replaceEntries(this.options, inputs.options);
-    this.humidity = inputs.humidity;
-    this.temperature = inputs.temperature;
+  replaceWith(slot: Slot): void {
+    replaceEntries(this.values, slot.values);
+    replaceEntries(this.options, slot.options);
+    this.humidity = slot.humidity;
+    this.temperature = slot.temperature;
   }
 }
 
@@ -162,7 +162,7 @@ export class Session {
     if (model === this.model) {
       return;
     }
-    this.#land(model, rehearseSwitch(this.slots[0], model).inputs);
+    this.#land(model, rehearseSwitch(this.slots[0], model).slot);
   }
 
   /**
@@ -183,7 +183,7 @@ export class Session {
     }
     const rehearsed = rehearseSwitch(this.slots[0], model);
     if (rehearsed.outOfRangeRows.length === 0) {
-      this.#land(model, rehearsed.inputs);
+      this.#land(model, rehearsed.slot);
       return;
     }
     this.pendingSwitch = { model, ...rehearsed };
@@ -195,7 +195,7 @@ export class Session {
     if (!pending) {
       return;
     }
-    this.#land(pending.model, adjustToBounds(pending.inputs, pending.outOfRangeRows));
+    this.#land(pending.model, adjustToBounds(pending.slot, pending.outOfRangeRows));
   }
 
   /** "No, stay here", and every other way of closing the dialog: the question goes and nothing else moves. */
@@ -209,8 +209,8 @@ export class Session {
    * question rehearsed against a slot that has since moved is stale, and an
    * unanswered question is a "No".
    */
-  #land(model: RegisteredModel, inputs: SlotInputs): void {
-    this.slots[0].replaceInputs(inputs);
+  #land(model: RegisteredModel, slot: Slot): void {
+    this.slots[0].replaceWith(slot);
     this.model = model;
     this.chart = this.#chartFor(model);
     this.pendingSwitch = null;

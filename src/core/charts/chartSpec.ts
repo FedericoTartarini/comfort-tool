@@ -1,5 +1,5 @@
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import type { SlotInputs } from "$lib/core/slot";
+import type { Slot } from "$lib/core/slot";
 import type { UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -148,7 +148,7 @@ export interface ChartSpec {
 /** What both spec builders need. The selected axes are the dynamic chart's alone. */
 export interface ChartRequest {
   readonly model: RegisteredModel;
-  readonly slot: SlotInputs;
+  readonly slot: Slot;
   /** Slot name, for the marker's legend entry. */
   readonly slotLabel: string;
   readonly unitSystem: UnitSystem;

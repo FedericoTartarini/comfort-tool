@@ -2,14 +2,14 @@ import type { ApplicabilityWarning } from "jsthermalcomfort";
 import { optionsReader, toLibraryInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
-import type { SlotInputs } from "./slot";
+import type { Slot } from "./slot";
 
 /**
  * `model` run on `slot`: its resolved values ({@link toLibraryInputs}) and
  * the options it holds, handed to the declaration's `run`. The one statement
  * of the call.
  */
-export function runOn(slot: SlotInputs, model: RegisteredModel): ModelResult {
+export function runOn(slot: Slot, model: RegisteredModel): ModelResult {
   return model.run(toLibraryInputs(slot, model), optionsReader(slot.options));
 }
 

@@ -12,19 +12,19 @@ import {
 } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import type { SlotInputs } from "$lib/core/slot";
+import type { Slot } from "$lib/core/slot";
 import { copy } from "$lib/text/copy";
 import type { Session } from "./session.svelte";
 
 /**
- * What a completed run leaves behind: the inputs it ran on, and the model that
- * ran them. The whole of the app's memory of a run — the result, the rows and
+ * What a completed run leaves behind: the slot it ran on, and the model that
+ * ran it. The whole of the app's memory of a run — the result, the rows and
  * the chart are derived from this and nothing is kept of them (ADR-0002
  * decision 33).
  */
-interface LastValidInputs {
+interface LastValidRun {
   readonly model: RegisteredModel;
-  readonly inputs: SlotInputs;
+  readonly slot: Slot;
 }
 
 /**
@@ -60,7 +60,7 @@ export interface DrawnAxes {
  * system and chart settings, which are how a result is shown rather than
  * inputs to it. So pressing IP, changing the chart type and changing an axis
  * all reach the screen while the gate is closed, and the numbers do not move.
- * The marker is drawn at the remembered inputs, the state the kept numbers
+ * The marker is drawn at the remembered slot, the state the kept numbers
  * describe; the out-of-range entry is already shown by its own input.
  *
  * A run is remembered for one model. A pass whose model differs from the
@@ -73,14 +73,14 @@ export interface DrawnAxes {
  * at {@link Outputs.#lastValid}: it returns the remembered object *by
  * identity*, so a `$derived` that reads it is not invalidated, and typing
  * further out-of-range values re-runs neither the model nor the 51×51 scan.
- * That is also why the remembered inputs are a detached copy — holding the
+ * That is also why the remembered slot is a detached copy — holding the
  * slot's own `SvelteMap` would make every derivation below a reader of the
  * live slot again, and the equality would stop nothing.
  */
 export class Outputs {
   readonly #session: Session;
   /** What {@link #lastValid} last returned. Written and read only there. */
-  #remembered: LastValidInputs | null = null;
+  #remembered: LastValidRun | null = null;
 
   /** Entered values the gate stops right now — the one thing that is never kept. */
   // `$derived.by` throughout, including here where an expression would read:
@@ -88,12 +88,12 @@ export class Outputs {
   // constructor assigns it, and only a closure tells it the read is deferred.
   readonly #outOfRange = $derived.by(() => outOfRangeInputs(this.#session.slots[0], this.#session.model));
 
-  readonly #lastValid = $derived.by((): LastValidInputs | null => {
+  readonly #lastValid = $derived.by((): LastValidRun | null => {
     const session = this.#session;
     const model = session.model;
     // A remembered run belongs to the model that made it, and to no other.
     const kept = this.#remembered?.model === model ? this.#remembered : null;
-    this.#remembered = this.#outOfRange.length === 0 ? { model, inputs: detach(session.slots[0]) } : kept;
+    this.#remembered = this.#outOfRange.length === 0 ? { model, slot: detach(session.slots[0]) } : kept;
     return this.#remembered;
   });
 
@@ -106,7 +106,7 @@ export class Outputs {
     // Slots 1 and 2 are Compare's (Phase 5); nothing runs them yet, and
     // nothing keeps a result for them across a model change either.
     return [
-      last ? runOn(last.inputs, last.model) : null,
+      last ? runOn(last.slot, last.model) : null,
       null,
       null,
     ];
@@ -176,7 +176,7 @@ export class Outputs {
  * subscribes to nothing. The two entry-mode objects are replaced rather than mutated
  * (`state/session.svelte.ts`), so they are kept by reference.
  */
-function detach(slot: SlotInputs): SlotInputs {
+function detach(slot: Slot): Slot {
   return {
     values: new Map(slot.values),
     humidity: slot.humidity,
@@ -186,16 +186,16 @@ function detach(slot: SlotInputs): SlotInputs {
 }
 
 /**
- * The spec for the chart the session currently shows of `last`'s inputs, or
+ * The spec for the chart the session currently shows of `last`'s slot, or
  * `null` when the model declares none. `last.model` is the session's own —
  * {@link Outputs.#lastValid} remembers no other — so the session's chart
  * settings are this model's.
  */
-function chartSpecOf(session: Session, last: LastValidInputs): ChartSpec | null {
+function chartSpecOf(session: Session, last: LastValidRun): ChartSpec | null {
   const model = last.model;
   const request: ChartRequest = {
     model,
-    slot: last.inputs,
+    slot: last.slot,
     slotLabel: copy.slotName(0),
     unitSystem: session.unitSystem,
   };
@@ -211,14 +211,14 @@ function chartSpecOf(session: Session, last: LastValidInputs): ChartSpec | null 
 
 /**
  * The picker's axes for the chart {@link chartSpecOf} draws of `last`'s
- * inputs. The chart keeps the axis the user picked; the entry mode of those
- * inputs decides which temperature quantity that is.
+ * slot. The chart keeps the axis the user picked; the entry mode of that
+ * slot decides which temperature quantity that is.
  */
-function drawnAxesOf(session: Session, last: LastValidInputs): DrawnAxes | null {
+function drawnAxesOf(session: Session, last: LastValidRun): DrawnAxes | null {
   if (session.chart.type !== chartType.dynamic) {
     return null;
   }
-  const mode = last.inputs.temperature.mode;
+  const mode = last.slot.temperature.mode;
   const choices = dynamicAxisQuantities(last.model, mode);
   // A polygons chart offers none: its axes are locked (ADR-0002 decision 37).
   if (choices.length === 0) {

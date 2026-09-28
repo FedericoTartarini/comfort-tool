@@ -27,7 +27,7 @@ import {
 } from "./modelDeclaration";
 import { resultValue, runOn } from "./modelRun";
 import { quantities, quantityFor, type Quantity } from "./quantities";
-import { withEnteredValues, type SlotInputs } from "./slot";
+import { withEnteredValues, type Slot } from "./slot";
 
 /**
  * The classified output the declared bands cut, found by object identity:
@@ -103,7 +103,7 @@ function bracketAcross(outputAt: (position: number) => number, range: Range, edg
  * an Edge when only one cut is misplaced, which is why the rest of the probes
  * go there.
  */
-function driftProbes(model: RegisteredModel, chart: ScannedDeclaration): SlotInputs[] {
+function driftProbes(model: RegisteredModel, chart: ScannedDeclaration): Slot[] {
   const { defaults, range, at, valueAt } = alongTheXAxis(model, chart);
   const outputAt = (position: number) => Number(valueAt(position, chart.output));
 

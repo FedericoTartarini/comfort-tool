@@ -18,12 +18,12 @@ import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability"
 import { temperatureMode } from "./entryModes";
 import { hasTemperatureGroup, type RegisteredModel } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
-import { seedDeclaredDefaults, withEnteredValues, withTemperatureMode, type SlotInputs } from "./slot";
+import { seedDeclaredDefaults, withEnteredValues, withTemperatureMode, type Slot } from "./slot";
 
 /** What a switch would do to one slot: the slot it would leave, and what the new model would not accept. */
 export interface RehearsedSwitch {
-  /** What `slot` would hold: converted, then seeded. Nothing entered is adjusted here. */
-  readonly inputs: SlotInputs;
+  /** What the rehearsed slot would hold: converted, then seeded. Nothing entered is adjusted here. */
+  readonly slot: Slot;
   /**
    * The entered values the new model's Applicability rules out, as the pre-call
    * gate reports them; the humidity entry's at the temperature a "Yes" would leave.
@@ -39,29 +39,29 @@ export interface RehearsedSwitch {
  * adjusted — and listed with the bound it has there. A "Yes" then leaves
  * nothing out of range.
  */
-export function rehearseSwitch(slot: SlotInputs, model: RegisteredModel): RehearsedSwitch {
+export function rehearseSwitch(slot: Slot, model: RegisteredModel): RehearsedSwitch {
   const converted = convertEntryMode(slot, model);
-  const inputs = seedDeclaredDefaults(converted, model);
-  const humidity = inputs.humidity.mode.quantity;
-  const others = outOfRangeRows(inputs, model).filter((row) => row.quantity !== humidity);
-  const humidityRow = outOfRangeRows(adjustToBounds(inputs, others), model).find((row) => row.quantity === humidity);
-  return { inputs, outOfRangeRows: humidityRow ? [...others, humidityRow] : others };
+  const seeded = seedDeclaredDefaults(converted, model);
+  const humidity = seeded.humidity.mode.quantity;
+  const others = outOfRangeRows(seeded, model).filter((row) => row.quantity !== humidity);
+  const humidityRow = outOfRangeRows(adjustToBounds(seeded, others), model).find((row) => row.quantity === humidity);
+  return { slot: seeded, outOfRangeRows: humidityRow ? [...others, humidityRow] : others };
 }
 
 /**
- * `inputs` with each listed value moved to the end of its bound it is beyond,
+ * `slot` with each listed value moved to the end of its bound it is beyond,
  * and no further; a bound with one end moves a value only towards that end.
  *
  * The only place the app adjusts a value the person entered, and it is reached
  * only by their yes (ADR-0002 decision 32). Everywhere else Applicability is a
  * gate: a value outside it stays as typed and the result is withheld.
  */
-export function adjustToBounds(inputs: SlotInputs, rows: readonly OutOfRangeRow[]): SlotInputs {
+export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
   const adjusted = new Map<Quantity, number>();
   for (const { quantity, value, bound } of rows) {
     adjusted.set(quantity, nearestEnd(value, bound));
   }
-  return withEnteredValues(inputs, adjusted);
+  return withEnteredValues(slot, adjusted);
 }
 
 function nearestEnd(value: number, bound: Bound): number {
@@ -79,7 +79,7 @@ function nearestEnd(value: number, bound: Bound): number {
  * temperature entry group, because such a model needs the dry-bulb
  * temperature the operative entry is standing in for.
  */
-function convertEntryMode(slot: SlotInputs, model: RegisteredModel): SlotInputs {
+function convertEntryMode(slot: Slot, model: RegisteredModel): Slot {
   if (hasTemperatureGroup(model) || slot.temperature.mode !== temperatureMode.operative) {
     return slot;
   }

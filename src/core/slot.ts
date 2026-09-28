@@ -14,7 +14,7 @@ import { quantities, type Quantity } from "./quantities";
  * The slice of an input slot that core reads. A plain interface, so core/
  * never imports state/ (ADR §5).
  */
-export interface SlotInputs {
+export interface Slot {
   readonly values: ReadonlyMap<Quantity, number>;
   readonly humidity: { readonly mode: HumidityMode; readonly value: number };
   readonly temperature: { readonly mode: TemperatureMode };
@@ -36,7 +36,7 @@ export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Qu
  * The slot's dry-bulb temperature: the entered `tdb`, or the operative entry
  * standing in for it under operative mode.
  */
-export function resolvedTdb(slot: SlotInputs): number {
+export function resolvedTdb(slot: Slot): number {
   return slot.values.get(q.tdb) ?? requireValue(slot.values, q.operative_tmp);
 }
 
@@ -46,7 +46,7 @@ export function resolvedTdb(slot: SlotInputs): number {
  * operative entry, ADR §4.5). The one place the mode's conversion to relative
  * humidity is invoked.
  */
-export function relativeHumidityOf(slot: SlotInputs): number {
+export function relativeHumidityOf(slot: Slot): number {
   return slot.humidity.mode.toRelativeHumidity(slot.humidity.value, resolvedTdb(slot));
 }
 
@@ -63,7 +63,7 @@ export function relativeHumidityOf(slot: SlotInputs): number {
  * `tdb ≠ tr`, except under ASHRAE 55 below 0.2 m/s and under ISO 7726 at
  * exactly 0.1 m/s, where the library's weighting is one half.
  */
-export function operativeTemperatureOf(slot: SlotInputs, model: RegisteredModel): number {
+export function operativeTemperatureOf(slot: Slot, model: RegisteredModel): number {
   if (slot.temperature.mode === temperatureMode.operative) {
     return requireValue(slot.values, q.operative_tmp);
   }
@@ -113,7 +113,7 @@ export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode)
  * Only the panel swaps humidity; the dynamic chart's axes keep the library's
  * `rh`.
  */
-export function panelQuantities(model: RegisteredModel, slot: SlotInputs): Quantity[] {
+export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] {
   return enteredQuantities(model, slot.temperature.mode).map((quantity) =>
     quantity === q.rh ? slot.humidity.mode.quantity : quantity,
   );
@@ -126,7 +126,7 @@ export function panelQuantities(model: RegisteredModel, slot: SlotInputs): Quant
  * locked axes marks under separate entry too, at `model`'s
  * {@link operativeTemperatureOf}.
  */
-export function enteredValue(slot: SlotInputs, quantity: Quantity, model: RegisteredModel): number | undefined {
+export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredModel): number | undefined {
   if (quantity === slot.humidity.mode.quantity) {
     return slot.humidity.value;
   }
@@ -145,7 +145,7 @@ export function enteredValue(slot: SlotInputs, quantity: Quantity, model: Regist
  * an overridden `v` is still turned into `vr`, an overridden `operative_tmp`
  * still expands to `tdb = tr`.
  */
-export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quantity, number>): SlotInputs {
+export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, number>): Slot {
   const values = new Map(slot.values);
   let humidity = slot.humidity;
   for (const [quantity, value] of overrides) {
@@ -178,7 +178,7 @@ export function withEnteredValues(slot: SlotInputs, overrides: ReadonlyMap<Quant
  * operative entry in for the two temperatures of one library call and changes
  * no entry mode.
  */
-export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode, model: RegisteredModel): SlotInputs {
+export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: RegisteredModel): Slot {
   if (mode === slot.temperature.mode) {
     return slot;
   }
@@ -208,7 +208,7 @@ export function withTemperatureMode(slot: SlotInputs, mode: TemperatureMode, mod
  * slot has no value for starts at its default, and every other is kept
  * (ADR-0002 decision 36). The gate never sees them — an option has no range.
  */
-export function seedDeclaredDefaults(slot: SlotInputs, model: RegisteredModel): SlotInputs {
+export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
   const defaults = new Map<Quantity, number>();
   for (const { quantity, value } of model.inputs) {
     const held = underTemperatureMode(quantity, slot.temperature.mode);

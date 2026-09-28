@@ -15,7 +15,7 @@ import {
   panelQuantities,
   withEnteredValues,
   withTemperatureMode,
-  type SlotInputs,
+  type Slot,
 } from "./slot";
 
 const q = quantities;
@@ -90,7 +90,7 @@ describe("entered values", () => {
 
   describe("the panel's rows", () => {
     /** A slot in `temperature` and `humidity` entry; the rows depend on nothing else. */
-    function slotEnteredAs(temperature: TemperatureMode, humidity: HumidityMode): SlotInputs {
+    function slotEnteredAs(temperature: TemperatureMode, humidity: HumidityMode): Slot {
       return { ...defaultSlot(pmvPpdIso), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
     }
 
@@ -132,19 +132,19 @@ describe("entered values", () => {
 
   it("reads a dew-point entry as entered, and rh as derived from it at the slot's dry-bulb temperature", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, tdb);
-    const slot: SlotInputs = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
+    const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
     expect(enteredValue(slot, q.dew_point_tmp, pmvPpdIso)).toBe(dewPoint);
     expect(enteredValue(slot, q.rh, pmvPpdIso)).toBeCloseTo(rh, 0);
   });
 
   it("derives rh from the operative temperature under operative entry", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, 24);
-    const slot: SlotInputs = { ...enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
+    const slot: Slot = { ...enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
     expect(resolveQuantities(slot, pmvPpdIso).get(q.rh)).toBeCloseTo(rh, 0);
   });
 
   it("sweeps rh as rh whatever the entry mode", () => {
-    const slot: SlotInputs = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
+    const slot: Slot = { ...defaultSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
     expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
     expect(resolveQuantities(swept, pmvPpdIso).get(q.rh)).toBe(70);

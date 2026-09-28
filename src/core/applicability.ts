@@ -19,7 +19,7 @@ import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
-import { resolvedTdb, type SlotInputs } from "./slot";
+import { resolvedTdb, type Slot } from "./slot";
 import type { DisplayUnit } from "./units";
 import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
@@ -110,7 +110,7 @@ function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
  * out inverted the entry has no bound at that temperature. `undefined` for a
  * model without the humidity entry group.
  */
-function humidityEntryBoundFor(model: RegisteredModel, slot: SlotInputs): Bound | undefined {
+function humidityEntryBoundFor(model: RegisteredModel, slot: Slot): Bound | undefined {
   const { mode } = slot.humidity;
   // `rh_from_wet_bulb` clamps to 0 – 100, so a wet-bulb entry can never
   // resolve outside the bound; and `t_wb` at 0 % is approximate (1.9 °C at
@@ -142,7 +142,7 @@ function humidityEntryBoundFor(model: RegisteredModel, slot: SlotInputs): Bound 
  * derives, `vr`, which the library checks and {@link violationRows} reports
  * on the `v` row.
  */
-export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: SlotInputs): Bound | undefined {
+export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: Slot): Bound | undefined {
   if (quantity === slot.humidity.mode.quantity) {
     return humidityEntryBoundFor(model, slot);
   }
@@ -165,7 +165,7 @@ export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: S
  * input panel's red boxes and the model-switch dialog's rows are both this
  * list, so the two can never disagree about a value.
  */
-export function outOfRangeRows(slot: SlotInputs, model: RegisteredModel): OutOfRangeRow[] {
+export function outOfRangeRows(slot: Slot, model: RegisteredModel): OutOfRangeRow[] {
   const entered: (readonly [Quantity, number])[] = [
     ...slot.values,
     [slot.humidity.mode.quantity, slot.humidity.value],
@@ -181,7 +181,7 @@ export function outOfRangeRows(slot: SlotInputs, model: RegisteredModel): OutOfR
 }
 
 /** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
-export function outOfRangeInputs(slot: SlotInputs, model: RegisteredModel): Quantity[] {
+export function outOfRangeInputs(slot: Slot, model: RegisteredModel): Quantity[] {
   return outOfRangeRows(slot, model).map((row) => row.quantity);
 }
 

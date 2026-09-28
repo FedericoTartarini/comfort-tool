@@ -9,7 +9,7 @@ import {
   type Values,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { expandOperative, relativeHumidityOf, requireValue, type SlotInputs } from "./slot";
+import { expandOperative, relativeHumidityOf, requireValue, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -18,7 +18,7 @@ const q = quantities;
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
  * humidity entry becomes `rh`, and `v` becomes `vr` when the model asks for it.
  */
-export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map<Quantity, number> {
+export function resolveQuantities(slot: Slot, model: RegisteredModel): Map<Quantity, number> {
   const resolved = new Map(slot.values);
 
   if (hasTemperatureGroup(model) && slot.temperature.mode === temperatureMode.operative) {
@@ -48,7 +48,7 @@ export function resolveQuantities(slot: SlotInputs, model: RegisteredModel): Map
  * breaks it while the entered `v` does not) come back on the result's
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
-export function toLibraryInputs(slot: SlotInputs, model: RegisteredModel): Values {
+export function toLibraryInputs(slot: Slot, model: RegisteredModel): Values {
   return valuesReader(resolveQuantities(slot, model));
 }
 
