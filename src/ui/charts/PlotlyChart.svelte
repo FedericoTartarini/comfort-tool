@@ -1,7 +1,29 @@
-<script lang="ts">
+<script module lang="ts">
   import type { PlotlyAnnotation, PlotlyConfig, PlotlyData, PlotlyLayout } from "plotly.js-cartesian-dist-min";
+
+  const plotlyConfig: PlotlyConfig = {
+    responsive: true,
+    displaylogo: false,
+    // plotly 4 shows the Chart Studio upload button by default (ADR §2.1).
+    showSendToCloud: false,
+    // `toImage` goes too: Plotly's own PNG would come out without the legend,
+    // which lives below the chart. Image export with a matching legend, a
+    // title and an input summary is Phase 5's.
+    modeBarButtonsToRemove: [
+      "toImage",
+      "select2d",
+      "lasso2d",
+      "toggleSpikelines",
+      "hoverClosestCartesian",
+      "hoverCompareCartesian",
+    ],
+  };
+</script>
+
+<script lang="ts">
   import type {
     Annotation,
+    AxisSpec,
     BandFill,
     BandTrace,
     ChartSpec,
@@ -21,7 +43,6 @@
 
   let element = $state.raw<HTMLElement | undefined>(undefined);
   let plotly = $state.raw<Plotly | undefined>(undefined);
-  let drawn = false;
 
   // The bundle is 3 MB, so it loads with the first chart rather than with the
   // app. The attachment deliberately reads no chart data: it must not tear the
@@ -34,12 +55,13 @@
     return () => {
       plotly?.purge(node);
       element = undefined;
-      drawn = false;
     };
   }
 
   // Plotly is an external system, so synchronising it is what $effect is for
-  // (ADR §6). `react` diffs against the drawn figure and keeps the viewport.
+  // (ADR §6). `react` draws the plot on a node that holds none (plotly.js
+  // 4.0.0 hands it to `newPlot`), and afterwards diffs against the drawn
+  // figure and keeps the viewport.
   $effect(() => {
     const data = toData(spec);
     const layout = toLayout(spec);
@@ -48,31 +70,8 @@
     if (!node || !api) {
       return;
     }
-    if (drawn) {
-      void api.react(node, data, layout, CONFIG);
-    } else {
-      drawn = true;
-      void api.newPlot(node, data, layout, CONFIG);
-    }
+    void api.react(node, data, layout, plotlyConfig);
   });
-
-  const CONFIG: PlotlyConfig = {
-    responsive: true,
-    displaylogo: false,
-    // plotly 4 shows the Chart Studio upload button by default (ADR §2.1).
-    showSendToCloud: false,
-    // `toImage` goes too: Plotly's own PNG would come out without the legend,
-    // which lives below the chart. Image export with a matching legend, a
-    // title and an input summary is Phase 5's.
-    modeBarButtonsToRemove: [
-      "toImage",
-      "select2d",
-      "lasso2d",
-      "toggleSpikelines",
-      "hoverClosestCartesian",
-      "hoverCompareCartesian",
-    ],
-  };
 
   function toData(source: ChartSpec): PlotlyData[] {
     return source.traces.flatMap((trace) => {
@@ -123,9 +122,9 @@
   /**
    * One trace per band, each filling that band's own interval of the surface.
    * ADR §4.4 calls for a contour rather than a heatmap, which paints one
-   * rectangle per grid cell and made every boundary a staircase; and one
-   * contour draws levels at a single fixed spacing, while a classifier's Edges
-   * need not be evenly spaced, so each band brings its own.
+   * rectangle per grid cell and so draws every boundary as a staircase; and
+   * one contour draws levels at a single fixed spacing, while a classifier's
+   * Edges need not be evenly spaced, so each band brings its own.
    *
    * Every band fills up to the *last* band's upper Edge and they are drawn in
    * band order, so each boundary is one fill's edge laid over the next fill's
@@ -175,7 +174,7 @@
       hoverinfo: hoverInfo(trace.hover),
       // Plotly tints a hover label with the trace's own colour where it has
       // one, which a filled band does; the chart reads one grey label in every
-      // band, as it did when the surface was a single trace.
+      // band.
       hoverlabel: { bgcolor: "#444444" },
     };
   }
@@ -241,7 +240,7 @@
     };
   }
 
-  function axis(axisSpec: ChartSpec["layout"]["x"]) {
+  function axis(axisSpec: AxisSpec) {
     return {
       title: { text: axisSpec.title },
       range: [...axisSpec.range],
