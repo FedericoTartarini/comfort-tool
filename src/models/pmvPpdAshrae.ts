@@ -79,7 +79,8 @@ export const pmvPpdAshrae = {
     { quantity: q.met, min: 1, max: 4 },
     { quantity: q.clo, min: 0, max: 2 },
   ],
-  table: [q.pmv, q.ppd],
+  // `compliance` reads Yes or No, as Adaptive's acceptabilities do.
+  table: [q.pmv, q.ppd, q.compliance],
   charts: [
     // The zone is solved on `run` itself, so on the cooling-effect PMV at the
     // relative air speed derived from the entered one. One zone, the interval

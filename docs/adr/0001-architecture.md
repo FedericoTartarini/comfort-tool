@@ -271,6 +271,8 @@ Result table (`table`):
 - `table` is required; outputs not listed are not shown and are not offered in Explore's output selection.
 
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 8** (2026-09-25): a Compliance entry is prefixed by its quantity's `Quantity.label`, `Thermal sensation: Neutral`, `ISO 7730 category: B`, each with its swatch, for every model; the label is never written in the table component.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 8 as noted 2026-09-28** (review after Phase 4b, Proposal 29; `P029`): the clause "an `intervals` entry is coloured pass / fail by `satisfied`" is retired. No result carries `intervals`; a yes-or-no output (Adaptive's `acceptability_80` and `acceptability_90`, PMV (ASHRAE 55)'s `compliance`) is a column of the model's `table`, headed by its `Quantity.label` and reading Yes or No, uncoloured.
 
 ### 4.4 Chart types (closed set, v1)
 

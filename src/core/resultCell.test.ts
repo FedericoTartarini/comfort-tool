@@ -13,6 +13,10 @@ import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
+const atDefaults = (model: RegisteredModel) => runOn(defaultSlot(model), model);
+const atTdb = (model: RegisteredModel, tdb: number) =>
+  runOn(withEnteredValues(defaultSlot(model), new Map([[q.tdb, tdb]])), model);
+
 describe("formatResultCell", () => {
   it("shows a boolean result as Yes or No in either unit system", () => {
     const result = { acceptability_80: true, compliance: false };
@@ -20,6 +24,12 @@ describe("formatResultCell", () => {
       expect(formatResultCell(result, q.acceptability_80, system)).toBe("Yes");
       expect(formatResultCell(result, q.compliance, system)).toBe("No");
     }
+  });
+
+  it("reads PMV (ASHRAE 55)'s compliance, a column of its table, as Yes inside the interval and No outside", () => {
+    expect(pmvPpdAshrae.table).toContain(q.compliance);
+    expect(formatResultCell(atDefaults(pmvPpdAshrae), q.compliance, unitSystem.si)).toBe("Yes");
+    expect(formatResultCell(atTdb(pmvPpdAshrae, 35), q.compliance, unitSystem.si)).toBe("No");
   });
 
   it("formats a number in the display unit", () => {
@@ -39,10 +49,6 @@ describe("formatResultCell", () => {
 });
 
 describe("classifiedOutputs", () => {
-  const atDefaults = (model: RegisteredModel) => runOn(defaultSlot(model), model);
-  const atTdb = (model: RegisteredModel, tdb: number) =>
-    runOn(withEnteredValues(defaultSlot(model), new Map([[q.tdb, tdb]])), model);
-
   it("reads each classified output's category and colours it by its place in the output's own classifier", () => {
     // Neutral is the fourth of the seven sensation labels, B the second of A, B, C, none.
     expect(classifiedOutputs(pmvPpdIso, atDefaults(pmvPpdIso))).toEqual([
