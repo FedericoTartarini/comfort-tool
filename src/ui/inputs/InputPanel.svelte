@@ -11,6 +11,8 @@
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import { Button } from "$lib/ui/primitives/button";
+  import { Checkbox } from "$lib/ui/primitives/checkbox";
+  import { Label } from "$lib/ui/primitives/label";
   import PresetInput from "./PresetInput.svelte";
   import QuantityInput from "./QuantityInput.svelte";
 
@@ -23,6 +25,8 @@
   }
 
   let { model, inputSlot, unitSystem, outOfRange, violations }: Props = $props();
+
+  const id = $props.id();
 
   const rows = $derived(panelQuantities(model, inputSlot));
   const showTemperatureRow = $derived(hasTemperatureGroup(model));
@@ -97,14 +101,14 @@
 
   <!-- Always shown and always live: whether an option applies at the entered values is the library's to say. -->
   {#each model.options as option (option)}
-    <label>
-      <input
-        type="checkbox"
+    <Inline gap="2" align="center">
+      <Checkbox
+        id="{id}-{option.key}"
         checked={inputSlot.options.get(option)}
-        onchange={(event) => inputSlot.options.set(option, event.currentTarget.checked)}
+        onCheckedChange={(checked) => inputSlot.options.set(option, checked)}
       />
-      {option.label}
-    </label>
+      <Label for="{id}-{option.key}">{option.label}</Label>
+    </Inline>
   {/each}
 
   {#if hints.length > 0}
