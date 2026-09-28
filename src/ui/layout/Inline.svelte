@@ -4,14 +4,14 @@
 
   interface Props {
     gap?: Gap;
-    align?: "center" | "baseline" | "start";
+    align?: "center" | "baseline";
     justify?: "start" | "between";
     children: Snippet;
   }
 
   let { gap = "2", align = "center", justify = "start", children }: Props = $props();
 
-  const alignClass = { center: "items-center", baseline: "items-baseline", start: "items-start" };
+  const alignClass = { center: "items-center", baseline: "items-baseline" };
   const justifyClass = { start: "justify-start", between: "justify-between" };
 </script>
 
