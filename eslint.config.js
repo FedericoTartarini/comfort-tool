@@ -45,6 +45,26 @@ const temporaryLibraryBoundary = {
   message: "src/temporary-library/ imports jsthermalcomfort and its own files only (ADR-0002 decision 24).",
 };
 
+// ADR-0002 decision 40: a model is added, changed or removed in its own
+// declaration file and one registry line, so one declaration importing
+// another would make that model's file a dependency of the other's. Two
+// declarations that share inputs copy them. A declaration may not import the
+// registry either: that makes every other declaration its dependency and
+// closes a cycle. The registry imports every declaration by design and is
+// exempt below. Patterns see the import string, not the resolved file, so any
+// path through a `models` segment is barred, and a file in a subdirectory
+// also may not climb one level with `../`, which lands back in src/models/.
+const declarationMessage =
+  "A declaration never imports another declaration, nor the registry; copy what they share (ADR-0002 decision 40).";
+const declarationBoundary = {
+  group: [".", "./", "./**", "**/models", "**/models/**"],
+  message: declarationMessage,
+};
+const declarationSubdirectoryBoundary = {
+  regex: "^\\.\\.(/([^.]|$)|$)",
+  message: declarationMessage,
+};
+
 // ADR §4.4: the moment the chart component knows what a model is, every new
 // model starts needing an edit here.
 const chartBoundary = {
@@ -235,7 +255,21 @@ export default [
     // Model declarations bind `run: io.<model>` and read label/limits off the
     // library model function. Compute is synchronous and calls `run` through
     // the declaration, so no other directory names one (ADR-0002 decision 29).
+    // The registry is the one file here that imports declarations.
     files: ["src/models/**/*.ts"],
+    ignores: ["src/models/index.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [declarationBoundary] }],
+    },
+  },
+  {
+    files: ["src/models/*/**/*.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [declarationBoundary, declarationSubdirectoryBoundary] }],
+    },
+  },
+  {
+    files: ["src/models/index.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
