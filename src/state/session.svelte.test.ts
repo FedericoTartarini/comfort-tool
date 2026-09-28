@@ -8,21 +8,19 @@
  * Nothing flushes, for the reason `compute.svelte.test.ts` gives: the outputs
  * are a derivation, so reading one after a change is what recomputes it.
  *
- * The models here are fixtures, not registry entries. Only one model is
- * registered, and Phase 4 stays a two-file change, so each fixture spreads the
- * registered declaration and overrides the one thing it is about — the prior
- * art is the standard-less fixture in the routes tests and the group-less
- * fixtures in the library-inputs tests.
+ * Each fixture here spreads PMV (ISO 7730)'s declaration and overrides the one
+ * thing it is about; the options block uses the registered PMV (ASHRAE 55)
+ * itself.
  *
  * A request the new model cannot accept every value of is the sibling
  * `sessionModelSwitch.svelte.test.ts`'s; here every request lands.
  */
 import { describe, expect, it } from "vitest";
-import { pmv_ppd_ashrae, Standard } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
-import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
+import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, type InputSlot } from "./session.svelte";
@@ -31,8 +29,8 @@ import { resultValueOf, shapeOf } from "./sessionTestReaders";
 const q = quantities;
 
 /**
- * A model that takes a quantity the registered one does not, so a slot built
- * for that one never holds it. `run` reads the extra input first, which is
+ * A model that takes a quantity PMV (ISO 7730) does not, so a slot built for
+ * that one never holds it. `run` reads the extra input first, which is
  * what makes an unseeded slot throw rather than quietly run without it; the
  * value comes back on the result so a test can read what the slot supplied.
  */
@@ -53,41 +51,12 @@ const withoutTemperatureGroup = {
   inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.tr),
 } satisfies RegisteredModel;
 
-const airSpeedControl: OptionSpec = {
-  key: "airspeed_control",
-  label: "Occupants control the air speed",
-  default: false,
-};
-
 /**
- * A model with an option, read through `run`'s second reader into the params
- * object the compiler checks: `pmv_ppd_ashrae` types `airspeed_control` as a
- * boolean. With the option off, an air speed above what the standard allows
- * the room comes back as a broken row on the result, which is how a test sees
- * the option reach the call.
+ * The option PMV (ASHRAE 55) reads through `run`'s second reader. With it off,
+ * an air speed above what the standard allows the room comes back as a broken
+ * row on the result, which is how a test sees the option reach the call.
  */
-const takesAnOption = {
-  ...pmvPpdIso,
-  info: { ...pmvPpdIso.info, name: "fixture_airspeed_control" },
-  standard: Standard.ashrae_55_2023,
-  options: [airSpeedControl],
-  run: (values, options) =>
-    pmv_ppd_ashrae({
-      tdb: values.tdb,
-      tr: values.tr,
-      vr: values.vr,
-      rh: values.rh,
-      met: values.met,
-      clo: values.clo,
-      wme: 0,
-      standard: Standard.ashrae_55_2023,
-      limit_inputs: false,
-      round_output: false,
-      // The cooling effect logs when it assumes 0; nothing here reads the log.
-      suppress_warnings: true,
-      airspeed_control: options(airSpeedControl),
-    }),
-} satisfies RegisteredModel;
+const [airSpeedControl] = pmvPpdAshrae.options;
 
 describe("Session.setModel", () => {
   it("seeds a quantity the slot lacks from the new model's default, and the run then completes", () => {
@@ -261,13 +230,13 @@ describe("Session.requestModel", () => {
  */
 describe("options", () => {
   it("start at their defaults in a slot built for the model", () => {
-    const session = new Session(takesAnOption);
+    const session = new Session(pmvPpdAshrae);
 
     expect(session.slots[0].options.get(airSpeedControl)).toBe(airSpeedControl.default);
   });
 
   it("are set on the slot like a value, and the outputs follow", () => {
-    const session = new Session(takesAnOption);
+    const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
     // 0.8 m/s at 25 °C is past what ASHRAE 55 allows occupants without control.
     session.slots[0].values.set(q.v, 0.8);
@@ -282,18 +251,18 @@ describe("options", () => {
     const session = new Session(pmvPpdIso);
     expect(session.slots[0].options.size).toBe(0);
 
-    session.setModel(takesAnOption);
+    session.setModel(pmvPpdAshrae);
 
     expect(session.slots[0].options.get(airSpeedControl)).toBe(airSpeedControl.default);
   });
 
   it("are kept across a switch away and back, as they were left", () => {
-    const session = new Session(takesAnOption);
+    const session = new Session(pmvPpdAshrae);
     session.slots[0].options.set(airSpeedControl, true);
 
     session.setModel(pmvPpdIso);
     expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
-    session.setModel(takesAnOption);
+    session.setModel(pmvPpdAshrae);
 
     expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
   });
@@ -302,10 +271,10 @@ describe("options", () => {
     const session = new Session(pmvPpdIso);
     session.slots[0].options.set(airSpeedControl, true);
 
-    session.requestModel(takesAnOption);
+    session.requestModel(pmvPpdAshrae);
 
     expect(session.pendingSwitch).toBeNull();
-    expect(session.model).toBe(takesAnOption);
+    expect(session.model).toBe(pmvPpdAshrae);
     expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
   });
 });

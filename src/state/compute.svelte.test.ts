@@ -15,21 +15,16 @@ import { describe, expect, it } from "vitest";
 import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import { temperatureMode } from "$lib/core/entryModes";
-import type { ModelResult, RegisteredModel, Values } from "$lib/core/modelDeclaration";
-import { resultValue } from "$lib/core/modelRun";
-import { quantities, type Quantity } from "$lib/core/quantities";
+import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
+import { quantities } from "$lib/core/quantities";
 import { unitSystem } from "$lib/core/unitSystem";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
+import { resultValueOf } from "./sessionTestReaders";
 
 const q = quantities;
-
-/** What the result table would show for `quantity`, read through the app's own accessor. */
-function shownValueOf(result: ModelResult | null, quantity: Quantity): number | string | boolean | undefined {
-  return result === null ? undefined : resultValue(result, quantity);
-}
 
 /** Read everything the page reads, which is what makes a derivation recompute. */
 function readEverything(outputs: Outputs): void {
@@ -75,7 +70,7 @@ describe("Outputs", () => {
     const outputs = new Outputs(new Session(pmvPpdIso));
 
     expect(outputs.outOfRange).toEqual([]);
-    expect(shownValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
+    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
   });
 
@@ -110,7 +105,7 @@ describe("Outputs", () => {
 
     expect(outputs.outOfRange).toEqual([]);
     expect(outputs.perSlot[0]).not.toBe(kept);
-    expect(shownValueOf(outputs.perSlot[0], q.pmv)).not.toBe(shownValueOf(kept, q.pmv));
+    expect(resultValueOf(outputs.perSlot[0], q.pmv)).not.toBe(resultValueOf(kept, q.pmv));
     expect(outputs.violations.map((row) => row.quantity)).toEqual([q.v]);
     expect(outputs.chart).not.toBe(keptChart);
   });
@@ -282,8 +277,8 @@ describe("Outputs", () => {
     session.slots[0].values.set(q.tdb, 30);
 
     expect(outputs.outOfRange).toEqual([]);
-    expect(shownValueOf(outputs.perSlot[0], q.hi)).toBeTypeOf("number");
-    expect(shownValueOf(outputs.perSlot[0], q.pmv)).toBeUndefined();
+    expect(resultValueOf(outputs.perSlot[0], q.hi)).toBeTypeOf("number");
+    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeUndefined();
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
   });
 });

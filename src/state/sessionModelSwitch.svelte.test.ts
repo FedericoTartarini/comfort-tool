@@ -7,8 +7,8 @@
  * The seam is that file's, and nothing flushes for the reason
  * `compute.svelte.test.ts` gives: the outputs are a derivation, so reading one
  * after a change is what recomputes it. The models here are fixtures, not
- * registry entries: each spreads the registered declaration and overrides the
- * one thing it is about.
+ * registry entries: each spreads PMV (ISO 7730)'s declaration and overrides
+ * the one thing it is about.
  */
 import { psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
@@ -78,7 +78,6 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
   it("lists exactly what the gate reports for the rehearsed slot, with the entered value and the bound", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].values.set(q.clo, 0.5);
 
     session.requestModel(belowTheSlot);
 

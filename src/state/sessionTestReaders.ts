@@ -1,7 +1,7 @@
 /**
  * How the session tests read a session's state: a slot as plain data, and a
- * value the result table would show. Shared by `session.svelte.test.ts` and
- * `sessionModelSwitch.svelte.test.ts` so that both compare the same way.
+ * value the result table would show. Shared by the state tests so that all of
+ * them compare the same way.
  */
 import type { ModelResult } from "$lib/core/modelDeclaration";
 import { resultValue } from "$lib/core/modelRun";
