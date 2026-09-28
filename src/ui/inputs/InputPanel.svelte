@@ -1,10 +1,10 @@
 <script lang="ts">
   import { enteredBound, splitViolations, warningFor, type ViolationRow } from "$lib/core/applicability";
   import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
-  import { enteredValue, panelQuantities } from "$lib/core/libraryInputs";
   import { hasHumidityGroup, hasTemperatureGroup, type RegisteredModel } from "$lib/core/modelDeclaration";
   import { presetsFor } from "$lib/core/presets";
   import type { Quantity } from "$lib/core/quantities";
+  import { enteredValue, panelQuantities } from "$lib/core/slot";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { InputSlot } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";

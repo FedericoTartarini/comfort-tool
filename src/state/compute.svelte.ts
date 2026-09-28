@@ -3,7 +3,6 @@ import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
-import type { SlotInputs } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   psychrometricChartOf,
@@ -13,6 +12,7 @@ import {
 } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
+import type { SlotInputs } from "$lib/core/slot";
 import { copy } from "$lib/text/copy";
 import type { Session } from "./session.svelte";
 

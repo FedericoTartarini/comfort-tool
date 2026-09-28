@@ -8,10 +8,10 @@ import { copy } from "$lib/text/copy";
 import { enteredBound, outOfRangeInputs, splitViolations, violationRows, warningFor } from "./applicability";
 import { defaultSlot, enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, type HumidityMode } from "./entryModes";
-import type { SlotInputs } from "./libraryInputs";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { quantities } from "./quantities";
+import type { SlotInputs } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 

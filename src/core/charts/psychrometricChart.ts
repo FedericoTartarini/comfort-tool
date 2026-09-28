@@ -2,7 +2,7 @@ import { psy_ta_rh } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { temperatureMode } from "$lib/core/entryModes";
-import { optionsReader, requireValue, resolveQuantities, valuesReader } from "$lib/core/libraryInputs";
+import { optionsReader, resolveQuantities, valuesReader } from "$lib/core/libraryInputs";
 import {
   requireAxisRange,
   type OptionsReader,
@@ -12,6 +12,7 @@ import {
 import { resultNumber } from "$lib/core/modelRun";
 import { formatNumber } from "$lib/core/numberFormat";
 import { quantities, type Quantity } from "$lib/core/quantities";
+import { requireValue } from "$lib/core/slot";
 import { displayUnitFor, valueWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { Annotation, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";

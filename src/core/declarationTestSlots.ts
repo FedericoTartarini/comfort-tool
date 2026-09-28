@@ -5,9 +5,9 @@
  * needs other numbers enters them over those defaults.
  */
 import { humidityMode, temperatureMode } from "./entryModes";
-import type { SlotInputs } from "./libraryInputs";
 import type { RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
+import type { SlotInputs } from "./slot";
 
 export function defaultSlot(model: RegisteredModel): SlotInputs {
   const values = new Map<Quantity, number>();

@@ -1,7 +1,8 @@
 import type { ApplicabilityWarning } from "jsthermalcomfort";
-import { optionsReader, toLibraryInputs, type SlotInputs } from "./libraryInputs";
+import { optionsReader, toLibraryInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
+import type { SlotInputs } from "./slot";
 
 /**
  * `model` run on `slot`: its resolved values ({@link toLibraryInputs}) and

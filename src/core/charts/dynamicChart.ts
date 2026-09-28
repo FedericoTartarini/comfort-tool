@@ -1,7 +1,7 @@
 import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
 import { chartInk, fillAtIndex } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
-import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues } from "$lib/core/libraryInputs";
+import { toLibraryInputs } from "$lib/core/libraryInputs";
 import {
   axisRangeFor,
   dynamicChartOf,
@@ -15,6 +15,7 @@ import {
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { formatNumber } from "$lib/core/numberFormat";
+import { enteredQuantities, enteredValue, withEnteredValues } from "$lib/core/slot";
 import { displayUnitFor, valueWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { BandFill, ChartRequest, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";

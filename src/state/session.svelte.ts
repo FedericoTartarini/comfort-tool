@@ -1,10 +1,10 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
-import { relativeHumidityOf, resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/libraryInputs";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
+import { relativeHumidityOf, resolvedTdb, withTemperatureMode, type SlotInputs } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -56,7 +56,7 @@ export class InputSlot {
 
   /**
    * Convert the stored temperatures into the new representation, by the rule
-   * `core/libraryInputs.ts` states: lossy and one-way, and weighed by
+   * `core/slot.ts` states: lossy and one-way, and weighed by
    * `model`'s standard going into operative entry. The slot does not keep its
    * model, so the caller names it.
    */

@@ -15,7 +15,6 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
 import { defaultSlot } from "./declarationTestSlots";
-import { withEnteredValues, type SlotInputs } from "./libraryInputs";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -28,6 +27,7 @@ import {
 } from "./modelDeclaration";
 import { resultValue, runOn } from "./modelRun";
 import { quantities, quantityFor, type Quantity } from "./quantities";
+import { withEnteredValues, type SlotInputs } from "./slot";
 
 /**
  * The classified output the declared bands cut, found by object identity:

@@ -159,7 +159,7 @@ export type ChartDeclaration =
        * mode, and the picker is not offered. An operative-temperature axis
        * stays operative under separate entry, marked at the library's `t_o` of
        * the entered temperatures and air speed by the model's standard
-       * (`libraryInputs.operativeTemperatureOf`).
+       * (`slot.operativeTemperatureOf`).
        */
       readonly axes: ChartAxes;
       /**

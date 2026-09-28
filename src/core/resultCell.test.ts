@@ -4,11 +4,11 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { sensationPalette } from "./bandPalette";
 import { defaultSlot } from "./declarationTestSlots";
-import { withEnteredValues } from "./libraryInputs";
 import type { RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { quantities } from "./quantities";
 import { classifiedOutputs, formatResultCell } from "./resultCell";
+import { withEnteredValues } from "./slot";
 import { unitSystem } from "./unitSystem";
 
 const q = quantities;

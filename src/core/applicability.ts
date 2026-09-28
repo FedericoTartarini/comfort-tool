@@ -15,11 +15,11 @@
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { humidityMode, temperatureMode } from "./entryModes";
-import { resolvedTdb, type SlotInputs } from "./libraryInputs";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
+import { resolvedTdb, type SlotInputs } from "./slot";
 import type { DisplayUnit } from "./units";
 import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";

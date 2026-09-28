@@ -45,7 +45,7 @@ export function underTemperatureMode(quantity: Quantity, mode: TemperatureMode):
 
 /**
  * How the user enters humidity. The entered quantity is the truth; `rh` is
- * derived in `core/libraryInputs.ts` (ADR §4.5). Each mode carries its own
+ * derived in `core/slot.ts` (ADR §4.5). Each mode carries its own
  * two conversions — library calls, `p_atm` left at the library's default
  * until Phase 4c's "Set pressure" brings `environment` (rewrite plan, Phase
  * 3.6 item 2) — so no caller switches on mode identity to convert. The one

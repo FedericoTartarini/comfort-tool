@@ -4,7 +4,7 @@ import { sensationPalette } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { defaultSlot, enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
-import { enteredQuantities, valuesReader, withEnteredValues, type SlotInputs } from "$lib/core/libraryInputs";
+import { valuesReader } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -15,6 +15,7 @@ import {
   type ScannedDeclaration,
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
+import { enteredQuantities, withEnteredValues, type SlotInputs } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
