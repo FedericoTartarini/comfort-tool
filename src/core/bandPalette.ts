@@ -22,18 +22,31 @@ export const sensationPalette = [
 
 /**
  * Fill for `category`'s position in `bins.labels`; `undefined` when it is not
- * one of them (NaN included — the model's own way of saying "not classified").
+ * one of them (NaN included — the model's own way of saying "not classified");
+ * throws, as {@link fillAtIndex} does, for a classifier longer than the palette.
  * The app never calls `classifyFromBins` here: the value is already the
  * category the model returned, not a number to re-classify.
  */
 export function colorForBand(bins: ClassifierBins, category: string | number): string | undefined {
   const index = bins.labels.indexOf(category as string);
-  return index === -1 ? undefined : bandFill(index);
+  return index === -1 ? undefined : fillAtIndex(bins, index);
 }
 
-/** Fill for the band at `index` of a scale, wrapping when a scale is longer than the palette. */
-export function bandFill(index: number): string {
-  return sensationPalette[index % sensationPalette.length];
+/**
+ * Fill for the band at `index` of `bins`. A classifier with more labels than
+ * the palette has colours throws, naming it by its first and last labels,
+ * rather than wrapping round and painting its last bands in the first
+ * colours. Which palette such a classifier gets is Phase 5's decision.
+ */
+export function fillAtIndex(bins: ClassifierBins, index: number): string {
+  const { labels } = bins;
+  if (labels.length > sensationPalette.length) {
+    throw new Error(
+      `The classifier "${labels[0]}" … "${labels[labels.length - 1]}" has ${labels.length} bands, ` +
+        `more than the ${sensationPalette.length} colours of the palette`,
+    );
+  }
+  return sensationPalette[index];
 }
 
 /**

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
+import { sensationPalette } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { defaultSlot } from "$lib/core/declarationTestSlots";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
@@ -93,6 +94,11 @@ describe("dynamicSpec", () => {
   it("lists the declared classifier's own bands, in order", () => {
     const surface = bands(dynamicSpec(request, declaration, declaration.axes));
     expect(surface.bands.map((band) => band.label)).toEqual([...declaration.bands.labels]);
+  });
+
+  it("paints each band by its position in the palette, Cold to Hot", () => {
+    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
+    expect(surface.bands.map((band) => band.color)).toEqual([...sensationPalette]);
   });
 
   it("puts a cold still point in a lower band than a warm one", () => {

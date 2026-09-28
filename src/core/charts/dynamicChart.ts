@@ -1,5 +1,5 @@
 import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
-import { bandFill, chartInk } from "$lib/core/bandPalette";
+import { chartInk, fillAtIndex } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
 import { enteredQuantities, enteredValue, toLibraryInputs, withEnteredValues } from "$lib/core/libraryInputs";
 import {
@@ -177,7 +177,7 @@ function samples(range: Range): readonly number[] {
 function bandsOf(bins: ClassifierBins): readonly BandFill[] {
   return bins.labels.map((label, index) => ({
     label,
-    color: bandFill(index),
+    color: fillAtIndex(bins, index),
     upper: bins.edges[index],
     lower: index === 0 ? undefined : bins.edges[index - 1],
   }));
