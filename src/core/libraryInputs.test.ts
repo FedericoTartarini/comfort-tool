@@ -64,19 +64,21 @@ describe("resolveQuantities", () => {
   // (wet bulb 0.012), while the other three round-trip exactly. The tolerance
   // is that rounding, measured, not slack for the inverses: the dew point
   // holds to the whole percent, the wet bulb to one decimal.
-  const roundTripDigits: Record<(typeof humidityMode)[keyof typeof humidityMode]["id"], number> = {
-    "relative-humidity": 9,
-    "humidity-ratio": 9,
-    "vapour-pressure": 9,
-    "wet-bulb": 1,
-    "dew-point": 0,
-  };
+  const roundTripDigits = new Map<HumidityMode, number>([
+    [humidityMode.rh, 9],
+    [humidityMode.humidityRatio, 9],
+    [humidityMode.vapourPressure, 9],
+    [humidityMode.wetBulb, 1],
+    [humidityMode.dewPoint, 0],
+  ]);
 
   it("derives rh from every humidity representation, at the slot's dry-bulb temperature", () => {
-    for (const mode of Object.values(humidityMode)) {
+    // A mode without a tolerance is a mode this test does not round-trip.
+    expect(new Set(roundTripDigits.keys())).toEqual(new Set(Object.values(humidityMode)));
+    for (const [mode, digits] of roundTripDigits) {
       const slot: SlotInputs = { ...defaultSlot(pmvPpdIso), humidity: { mode, value: mode.fromRelativeHumidity(rh, tdb) } };
       const resolved = resolveQuantities(slot, pmvPpdIso);
-      expect(resolved.get(q.rh), mode.id).toBeCloseTo(rh, roundTripDigits[mode.id]);
+      expect(resolved.get(q.rh), mode.id).toBeCloseTo(rh, digits);
       // Only the library's own rh reaches the call; the entered representation does not.
       expect(resolved.has(mode.quantity), mode.id).toBe(mode.quantity === q.rh);
     }
