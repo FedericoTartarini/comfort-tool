@@ -20,12 +20,12 @@
 import { describe, expect, it } from "vitest";
 import { pmv_ppd_ashrae, Standard } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
-import { humidityMode, temperatureMode } from "$lib/core/entryModes";
+import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
 import type { OptionSpec, RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
-import { Session } from "./session.svelte";
+import { Session, type InputSlot } from "./session.svelte";
 import { resultValueOf, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
@@ -345,5 +345,52 @@ describe("the axes of a polygons chart", () => {
 
     expect(session.slots[0].temperature.mode).toBe(temperatureMode.separate);
     expect(outputs.chart?.layout.x.title).toContain(q.operative_tmp.label);
+  });
+});
+
+/**
+ * A humidity-mode change re-expresses the entered humidity at the slot's
+ * dry-bulb temperature: the old mode's value as `rh`, then `rh` in the new
+ * mode. Walked through every mode from a humidity that is not the default, so
+ * each conversion runs on a value the one before it produced.
+ */
+describe("InputSlot.setHumidityMode", () => {
+  const walk = [...Object.values(humidityMode).filter((mode) => mode !== humidityMode.rh), humidityMode.rh];
+
+  /** The values the walk should enter, each mode's own conversions composed at `tdb`. */
+  function expectedWalk(rh: number, tdb: number): number[] {
+    let mode: HumidityMode = humidityMode.rh;
+    let value = rh;
+    return walk.map((next) => {
+      value = next.fromRelativeHumidity(mode.toRelativeHumidity(value, tdb), tdb);
+      mode = next;
+      return value;
+    });
+  }
+
+  /** The value `slot` holds after each change of the walk. */
+  function walkedValues(slot: InputSlot): number[] {
+    return walk.map((mode) => {
+      slot.setHumidityMode(mode);
+      return slot.humidity.value;
+    });
+  }
+
+  it("converts at the entered dry-bulb temperature under separate entry", () => {
+    const slot = new Session(pmvPpdIso).slots[0];
+    slot.values.set(q.tdb, 27);
+    slot.setHumidityValue(35);
+
+    expect(walkedValues(slot)).toEqual(expectedWalk(35, 27));
+    expect(slot.humidity.mode).toBe(humidityMode.rh);
+  });
+
+  it("converts at the operative temperature under operative entry", () => {
+    const slot = new Session(pmvPpdIso).slots[0];
+    slot.setTemperatureMode(temperatureMode.operative, pmvPpdIso);
+    slot.values.set(q.operative_tmp, 22);
+    slot.setHumidityValue(35);
+
+    expect(walkedValues(slot)).toEqual(expectedWalk(35, 22));
   });
 });

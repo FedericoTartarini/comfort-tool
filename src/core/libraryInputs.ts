@@ -43,7 +43,8 @@ export function resolvedTdb(slot: SlotInputs): number {
 /**
  * The slot's humidity as the library's `rh`, converted from whatever the user
  * entered at the slot's dry-bulb temperature (the operative temperature under
- * operative entry, ADR §4.5). The one place the mode's conversion is invoked.
+ * operative entry, ADR §4.5). The one place the mode's conversion to relative
+ * humidity is invoked.
  */
 export function relativeHumidityOf(slot: SlotInputs): number {
   return slot.humidity.mode.toRelativeHumidity(slot.humidity.value, resolvedTdb(slot));
