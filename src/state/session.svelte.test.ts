@@ -112,8 +112,8 @@ describe("Session.setModel", () => {
 
   it("keeps the values already in the slot, whichever model put them there", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].values.set(q.tdb, 22);
-    session.slots[0].setHumidityValue(35);
+    session.slots[0].setEntered(q.tdb, 22);
+    session.slots[0].setEntered(q.rh, 35);
 
     session.setModel(takesExternalWork);
 
@@ -124,7 +124,7 @@ describe("Session.setModel", () => {
 
   it("removes nothing, so setting the first model again finds its values", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].values.set(q.tdb, 22);
+    session.slots[0].setEntered(q.tdb, 22);
 
     session.setModel(takesExternalWork);
     session.setModel(pmvPpdIso);
@@ -162,7 +162,7 @@ describe("Session.setModel", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     // 35 °C is past ISO 7730's 30 °C, which both fixtures inherit.
-    session.slots[0].values.set(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35);
 
     session.setModel(takesExternalWork);
 
@@ -203,7 +203,7 @@ describe("Session.setModel", () => {
 describe("Session.requestModel", () => {
   it("lands the model and the rehearsed slot together", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].values.set(q.tdb, 22);
+    session.slots[0].setEntered(q.tdb, 22);
 
     session.requestModel(takesExternalWork);
 
@@ -281,10 +281,10 @@ describe("options", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
     // 0.8 m/s at 25 °C is past what ASHRAE 55 allows occupants without control.
-    session.slots[0].values.set(q.v, 0.8);
+    session.slots[0].setEntered(q.v, 0.8);
     expect(outputs.violations.map((violation) => violation.quantity)).toContain(q.v);
 
-    session.slots[0].options.set(airSpeedControl, true);
+    session.slots[0].setOption(airSpeedControl, true);
 
     expect(outputs.violations).toEqual([]);
   });
@@ -300,7 +300,7 @@ describe("options", () => {
 
   it("are kept across a switch away and back, as they were left", () => {
     const session = new Session(pmvPpdAshrae);
-    session.slots[0].options.set(airSpeedControl, true);
+    session.slots[0].setOption(airSpeedControl, true);
 
     session.setModel(pmvPpdIso);
     expect(session.slots[0].options.get(airSpeedControl)).toBe(true);
@@ -311,7 +311,7 @@ describe("options", () => {
 
   it("are never asked about: a request that changes only an option lands", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].options.set(airSpeedControl, true);
+    session.slots[0].setOption(airSpeedControl, true);
 
     session.requestModel(pmvPpdAshrae);
 
@@ -360,6 +360,39 @@ describe("the axes of a polygons chart", () => {
 });
 
 /**
+ * Every write to a slot is a core function whose answer the slot lands: a
+ * value the panel commits goes where core puts it, humidity included.
+ */
+describe("InputSlot.setEntered", () => {
+  it("enters the humidity entry's quantity as the entry, in its own mode, and the outputs follow", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setHumidityMode(humidityMode.dewPoint);
+    const before = resultValueOf(outputs.perSlot[0], q.pmv);
+
+    session.slots[0].setEntered(q.dew_point_tmp, 12);
+
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.dewPoint, value: 12 });
+    expect(session.slots[0].values.has(q.dew_point_tmp)).toBe(false);
+    expect(outputs.outOfRange).toEqual([]);
+    expect(resultValueOf(outputs.perSlot[0], q.pmv)).not.toBe(before);
+  });
+});
+
+/**
+ * Type-level proof that nothing outside the slot writes into its maps,
+ * compiled by `npm run check` and never called: each `@ts-expect-error` fails
+ * the build the day the compiler stops refusing that write. Exported only
+ * because `noUnusedLocals` would otherwise flag it.
+ */
+export function slotWritesTypeProof(slot: InputSlot): void {
+  // @ts-expect-error an entered value written past `setEntered`
+  slot.values.set(q.tdb, 22);
+  // @ts-expect-error an option written past `setOption`
+  slot.options.set(airSpeedControl, true);
+}
+
+/**
  * A humidity-mode change re-expresses the entered humidity at the slot's
  * dry-bulb temperature: the old mode's value as `rh`, then `rh` in the new
  * mode. Walked through every mode from a humidity that is not the default, so
@@ -389,8 +422,8 @@ describe("InputSlot.setHumidityMode", () => {
 
   it("converts at the entered dry-bulb temperature under separate entry", () => {
     const slot = new Session(pmvPpdIso).slots[0];
-    slot.values.set(q.tdb, 27);
-    slot.setHumidityValue(35);
+    slot.setEntered(q.tdb, 27);
+    slot.setEntered(q.rh, 35);
 
     expect(walkedValues(slot)).toEqual(expectedWalk(35, 27));
     expect(slot.humidity?.mode).toBe(humidityMode.rh);
@@ -399,8 +432,8 @@ describe("InputSlot.setHumidityMode", () => {
   it("converts at the operative temperature under operative entry", () => {
     const slot = new Session(pmvPpdIso).slots[0];
     slot.setTemperatureMode(temperatureMode.operative, pmvPpdIso);
-    slot.values.set(q.operative_tmp, 22);
-    slot.setHumidityValue(35);
+    slot.setEntered(q.operative_tmp, 22);
+    slot.setEntered(q.rh, 35);
 
     expect(walkedValues(slot)).toEqual(expectedWalk(35, 22));
   });

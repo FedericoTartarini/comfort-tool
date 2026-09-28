@@ -1,7 +1,8 @@
 /**
  * What a slot holds; the functions that read what the person entered, enter
- * values, convert either entry mode, seed a model's defaults and build the
- * slot a model starts on; and the get-or-throws they read through.
+ * values, set an option, convert either entry mode, seed a model's defaults
+ * and build the slot a model starts on; and the get-or-throws they read
+ * through.
  * Turning a slot into the library's params is `core/libraryInputs.ts`'s and
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
@@ -161,10 +162,10 @@ export function isHumidityQuantity(quantity: Quantity): boolean {
 }
 
 /**
- * The same slot with some entered values replaced — how the dynamic chart
- * sweeps its axes. Replacing before resolution keeps the derivations honest:
- * an overridden `v` is still turned into `vr`, an overridden `operative_tmp`
- * still expands to `tdb = tr`.
+ * The same slot with some entered values replaced — how the person enters a
+ * value and how the dynamic chart sweeps its axes. Replacing before
+ * resolution keeps the derivations honest: an overridden `v` is still turned
+ * into `vr`, an overridden `operative_tmp` still expands to `tdb = tr`.
  *
  * A value whose quantity is any humidity entry mode's sets the humidity entry
  * to that mode and value, so no humidity quantity lands among the values. An
@@ -183,6 +184,13 @@ export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, n
     }
   }
   return { values, humidity, temperature: slot.temperature, options: slot.options };
+}
+
+/** The same slot with `option` set to `value`: how the person ticks an option. */
+export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot {
+  const options = new Map(slot.options);
+  options.set(option, value);
+  return { values: slot.values, humidity: slot.humidity, temperature: slot.temperature, options };
 }
 
 /**

@@ -100,7 +100,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
   it("gives a one-ended row for a bound with one end, and adjusts only towards it", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].values.set(q.met, 6);
+    session.slots[0].setEntered(q.met, 6);
 
     session.requestModel(oneSidedBounds);
 
@@ -115,8 +115,8 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   it("moves each listed value to the end of its bound it was beyond, and nothing else", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].values.set(q.v, 0.2);
-    session.slots[0].setHumidityValue(35);
+    session.slots[0].setEntered(q.v, 0.2);
+    session.slots[0].setEntered(q.rh, 35);
 
     session.requestModel(aboveTheSlot);
     session.acceptSwitch();
@@ -155,7 +155,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     const outputs = new Outputs(session);
     session.slots[0].setHumidityMode(humidityMode.humidityRatio);
     // About 85 % at the slot's 25 °C, but above saturation at the 20 °C "Yes" moves tdb to.
-    session.slots[0].setHumidityValue(0.017);
+    session.slots[0].setEntered(q.hr, 0.017);
     expect(outputs.outOfRange).toEqual([]);
 
     session.requestModel(belowTheSlot);

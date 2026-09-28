@@ -4,7 +4,7 @@ import { temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/c
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import type { Quantity } from "$lib/core/quantities";
-import { requireHumidity, startingSlot, withHumidityMode, withTemperatureMode, type Slot } from "$lib/core/slot";
+import { startingSlot, withEnteredValues, withHumidityMode, withOption, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -14,24 +14,40 @@ import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
  * writes it), stores `operative_tmp` under operative mode and
  * `tdb` / `tr` under separate mode. `options` is a superset bag in the same
  * way, keyed by the declaration's own option objects (ADR-0002 decision 36).
+ *
+ * Every write is a core function from a slot to a slot, whose answer the slot
+ * lands; the two maps are read-only outside the class.
  */
-export class InputSlot {
-  readonly values = new SvelteMap<Quantity, number>();
-  readonly options = new SvelteMap<OptionSpec, boolean>();
+export class InputSlot implements Slot {
+  readonly #values = new SvelteMap<Quantity, number>();
+  readonly #options = new SvelteMap<OptionSpec, boolean>();
   // `$state.raw`, not `$state`: a deep proxy would wrap the mode objects and
   // the Quantity they reference, and identity comparisons against
   // `humidityMode.rh` / `io.quantities.rh` would fail. Replace, don't mutate.
   humidity = $state.raw<Slot["humidity"]>(undefined);
-  temperature = $state.raw<{ readonly mode: TemperatureMode }>({ mode: temperatureMode.separate });
+  temperature = $state.raw<Slot["temperature"]>({ mode: temperatureMode.separate });
 
   /** The slot `model` starts on, which core builds by the seeding a switch uses. */
   constructor(model: RegisteredModel) {
     this.replaceWith(startingSlot(model));
   }
 
-  /** Throws for a slot that holds no humidity: there is no entry mode to write the value in. */
-  setHumidityValue(value: number): void {
-    this.humidity = { mode: requireHumidity(this).mode, value };
+  get values(): ReadonlyMap<Quantity, number> {
+    return this.#values;
+  }
+
+  get options(): ReadonlyMap<OptionSpec, boolean> {
+    return this.#options;
+  }
+
+  /** Enter `value` for `quantity` where core puts it: a humidity quantity sets the humidity entry. */
+  setEntered(quantity: Quantity, value: number): void {
+    this.replaceWith(withEnteredValues(this, new Map([[quantity, value]])));
+  }
+
+  /** Tick or untick `option`, as the option's checkbox does. */
+  setOption(option: OptionSpec, value: boolean): void {
+    this.replaceWith(withOption(this, option, value));
   }
 
   /**
@@ -62,8 +78,8 @@ export class InputSlot {
    * found nothing to change; the loops then do nothing.
    */
   replaceWith(slot: Slot): void {
-    replaceEntries(this.values, slot.values);
-    replaceEntries(this.options, slot.options);
+    replaceEntries(this.#values, slot.values);
+    replaceEntries(this.#options, slot.options);
     this.humidity = slot.humidity;
     this.temperature = slot.temperature;
   }

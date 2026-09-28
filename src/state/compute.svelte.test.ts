@@ -47,8 +47,8 @@ function markerOf(chart: ChartSpec | null): PointTrace | undefined {
  */
 function sessionBreakingOneRow(): Session {
   const session = new Session(pmvPpdIso);
-  session.slots[0].values.set(q.met, 2.5);
-  session.slots[0].values.set(q.v, 0.9);
+  session.slots[0].setEntered(q.met, 2.5);
+  session.slots[0].setEntered(q.v, 0.9);
   return session;
 }
 
@@ -84,7 +84,7 @@ describe("Outputs", () => {
     expect(violations.map((row) => row.quantity)).toEqual([q.v]);
 
     // 35 °C is past ISO 7730's 30 °C, so the gate blocks the run.
-    session.slots[0].values.set(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35);
 
     expect(outputs.outOfRange).toEqual([q.tdb]);
     expect(outputs.perSlot[0]).toBe(result);
@@ -98,10 +98,10 @@ describe("Outputs", () => {
     const kept = outputs.perSlot[0];
     const keptChart = outputs.chart;
 
-    session.slots[0].values.set(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35);
     // Read while blocked, so this is the round trip and not one jump.
     expect(outputs.outOfRange).toEqual([q.tdb]);
-    session.slots[0].values.set(q.tdb, 20);
+    session.slots[0].setEntered(q.tdb, 20);
 
     expect(outputs.outOfRange).toEqual([]);
     expect(outputs.perSlot[0]).not.toBe(kept);
@@ -129,7 +129,7 @@ describe("Outputs", () => {
     const title = outputs.chart?.layout.x.title;
     const range = outputs.chart?.layout.x.range;
 
-    session.slots[0].values.set(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35);
     expect(outputs.outOfRange).toEqual([q.tdb]);
     session.unitSystem = unitSystem.ip;
 
@@ -143,7 +143,7 @@ describe("Outputs", () => {
     const outputs = new Outputs(session);
     const result = outputs.perSlot[0];
 
-    session.slots[0].values.set(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35);
     expect(outputs.outOfRange).toEqual([q.tdb]);
     session.chart.type = chartType.dynamic;
 
@@ -182,7 +182,7 @@ describe("Outputs", () => {
     expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
 
     // 3 clo is past ISO 7730's 2 clo, and no temperature switch moves it.
-    session.slots[0].values.set(q.clo, 3);
+    session.slots[0].setEntered(q.clo, 3);
     expect(outputs.outOfRange).toEqual([q.clo]);
     session.slots[0].setTemperatureMode(temperatureMode.operative, session.model);
     expect(outputs.outOfRange).toEqual([q.clo]);
@@ -222,7 +222,7 @@ describe("Outputs", () => {
     const outputs = new Outputs(session);
     const marker = markerOf(outputs.chart);
 
-    session.slots[0].values.set(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35);
 
     expect(outputs.outOfRange).toEqual([q.tdb]);
     expect(markerOf(outputs.chart)?.x).toBe(marker?.x);
@@ -242,14 +242,35 @@ describe("Outputs", () => {
     expect(outputs.chart?.traces.some((trace) => trace.kind === "bands")).toBe(true);
     expect(before).toBeGreaterThan(0);
 
-    session.slots[0].values.set(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35);
     expect(outputs.outOfRange).toEqual([q.tdb]);
     readEverything(outputs);
-    session.slots[0].values.set(q.tdb, 36);
+    session.slots[0].setEntered(q.tdb, 36);
     expect(outputs.outOfRange).toEqual([q.tdb]);
     readEverything(outputs);
 
     expect(runs()).toBe(before);
+  });
+
+  /**
+   * Entering lands a whole slot, setting keys to values they already hold;
+   * the reactive map raises nothing for those, so one value costs one pass.
+   */
+  it("runs the model and the scan once for an entered value, and not at all for a value the slot already holds", () => {
+    const { model, runs } = modelCountingRuns();
+    const session = new Session(model);
+    session.chart.type = chartType.dynamic;
+    const outputs = new Outputs(session);
+    readEverything(outputs);
+    const onePass = runs();
+
+    session.slots[0].setEntered(q.tdb, 24);
+    readEverything(outputs);
+    expect(runs()).toBe(2 * onePass);
+
+    session.slots[0].setEntered(q.tdb, 24);
+    readEverything(outputs);
+    expect(runs()).toBe(2 * onePass);
   });
 
   it("keeps nothing of the previous model when a model is set with an entry out of range", () => {
@@ -274,7 +295,7 @@ describe("Outputs", () => {
     void outputs.perSlot[0];
 
     session.setModel(heatIndexRothfusz);
-    session.slots[0].values.set(q.tdb, 30);
+    session.slots[0].setEntered(q.tdb, 30);
 
     expect(outputs.outOfRange).toEqual([]);
     expect(resultValueOf(outputs.perSlot[0], q.hi)).toBeTypeOf("number");

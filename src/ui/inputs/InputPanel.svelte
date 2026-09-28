@@ -41,14 +41,6 @@
     return enteredValue(inputSlot, quantity, model) ?? Number.NaN;
   }
 
-  function commit(quantity: Quantity, si: number) {
-    if (quantity === inputSlot.humidity?.mode.quantity) {
-      inputSlot.setHumidityValue(si);
-    } else {
-      inputSlot.values.set(quantity, si);
-    }
-  }
-
   function temperatureVariantFor(mode: TemperatureMode) {
     return inputSlot.temperature.mode === mode ? "default" : "outline";
   }
@@ -89,7 +81,7 @@
       unitSystem,
       bound: enteredBound(model, quantity, inputSlot),
       outOfRange: outOfRange.includes(quantity),
-      oncommit: (si: number) => commit(quantity, si),
+      oncommit: (si: number) => inputSlot.setEntered(quantity, si),
     }}
     {@const presets = presetsFor(quantity)}
     {#if presets}
@@ -106,7 +98,7 @@
       <Checkbox
         id="{id}-option-{index}"
         checked={inputSlot.options.get(option)}
-        onCheckedChange={(checked) => inputSlot.options.set(option, checked)}
+        onCheckedChange={(checked) => inputSlot.setOption(option, checked)}
       />
       <Label for="{id}-option-{index}">{option.label}</Label>
     </Inline>
