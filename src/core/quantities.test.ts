@@ -59,3 +59,9 @@ describe("quantities table drift", () => {
     expect(variableKeys(PMV_PPD_ASHRAE_INFO)).toContain("compliance");
   });
 });
+
+describe("quantity labels", () => {
+  it("labels stress_category 'Thermal stress category', which reads for UTCI's cold-to-heat range too", () => {
+    expect(quantities.stress_category.label).toBe("Thermal stress category");
+  });
+});

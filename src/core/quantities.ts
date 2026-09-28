@@ -53,7 +53,7 @@ export const quantities = {
   tsv: { key: "tsv", kind: "category", label: "Thermal sensation" },
   category: { key: "category", kind: "category", label: "ISO 7730 category" },
   hi: { key: "hi", kind: "temperature", label: "Heat index" },
-  stress_category: { key: "stress_category", kind: "category", label: "Heat stress category" },
+  stress_category: { key: "stress_category", kind: "category", label: "Thermal stress category" },
   t_running_mean: { key: "t_running_mean", kind: "temperature", label: "Prevailing mean outdoor temperature" },
   tmp_cmf: { key: "tmp_cmf", kind: "temperature", label: "Comfort temperature" },
   tmp_cmf_80_low: { key: "tmp_cmf_80_low", kind: "temperature", label: "80% acceptability lower limit" },
