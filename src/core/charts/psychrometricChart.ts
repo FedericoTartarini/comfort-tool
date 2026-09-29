@@ -8,10 +8,11 @@ import {
   takesRelativeAirSpeed,
   type DeclaredPsychrometricChart,
   type OptionsReader,
+  type Range,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
-import { quantities, type Quantity } from "$lib/core/quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { requireValue } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
@@ -47,6 +48,10 @@ const ZONE_RH_STEP = 5;
  * temporary library owns that (ADR-0002 decision 24). The drawn x range is the
  * model's axis range for whichever temperature the mode puts on x: declared,
  * else its applicability bound (ADR-0002 decision 5).
+ *
+ * The isolines, the zones and the marker are of the air at the request's
+ * atmospheric pressure, and the humidity-ratio axis reaches as far as
+ * {@link drawnHumidityRatioRange} says (ADR-0002 decision 49).
  */
 export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
   const { model, slot, slotLabel, unitSystem, atmosphericPressure } = request;
@@ -56,7 +61,7 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
   const hrUnit = displayUnitFor(q.hr, unitSystem);
   const rhUnit = displayUnitFor(q.rh, unitSystem);
   const xRange = requireAxisRange(model, axisQuantity);
-  const hrRange = requireAxisRange(model, q.hr);
+  const hrRange = drawnHumidityRatioRange(requireAxisRange(model, q.hr), atmosphericPressure);
 
   const resolved = resolveQuantities(slot, model, atmosphericPressure);
   const airSpeed = takesRelativeAirSpeed(model) ? q.vr : q.v;
@@ -69,6 +74,7 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
     pmv_function: pmvOfRun(model, resolved, optionsReader(slot.options), airSpeed),
     tr_follows_db: operative,
     rh_step: ZONE_RH_STEP,
+    p_atm: atmosphericPressure,
   };
   const largestFirst = [...chart.zones].sort((a, b) => b.limit - a.limit);
 
@@ -81,7 +87,7 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
     // Cut the curve where it leaves the top of the viewport, so the label sits
     // on the last drawn point rather than off the plot.
     const curve = temperatures
-      .map((db) => ({ db, hr: psy_ta_rh(db, rh).hr }))
+      .map((db) => ({ db, hr: psy_ta_rh(db, rh, atmosphericPressure).hr }))
       .filter((point) => point.hr <= hrRange.max);
     const end = curve[curve.length - 1];
     if (!end) {
@@ -130,7 +136,7 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
   const marker = markerFor(
     slotLabel,
     xUnit.fromSi(requireValue(resolved, q.tdb)),
-    hrUnit.fromSi(psy_ta_rh(requireValue(resolved, q.tdb), requireValue(resolved, q.rh)).hr),
+    hrUnit.fromSi(psy_ta_rh(requireValue(resolved, q.tdb), requireValue(resolved, q.rh), atmosphericPressure).hr),
   );
   traces.push(marker.trace);
   legend.push(marker.legendEntry);
@@ -144,6 +150,18 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
     legend,
     annotations,
   };
+}
+
+/**
+ * The humidity-ratio axis as drawn at `atmosphericPressure`. A declaration
+ * writes its range at the default pressure; the upper end is scaled by the
+ * default over the pressure, so a thinner air, which holds more water per
+ * kilogram at the same relative humidity, gets a taller axis and the
+ * declaration never mentions the pressure (ADR-0002 decision 45, as amended
+ * 2026-09-29).
+ */
+function drawnHumidityRatioRange(declared: Range, atmosphericPressure: number): Range {
+  return { ...declared, max: (declared.max * DEFAULT_ATMOSPHERIC_PRESSURE) / atmosphericPressure };
 }
 
 /**

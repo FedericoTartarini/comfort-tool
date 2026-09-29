@@ -1,10 +1,10 @@
 /**
  * The session's atmospheric pressure (ADR-0002 decision 49): one value for
  * every slot, held by the session in Pa and by no slot, which moves the result
- * only through a humidity-ratio entry. Asserted at the seam the other session
- * tests use — a session in, its state and its outputs out, with no component
- * and no router — and nothing flushes, for the reason
- * `compute.svelte.test.ts` gives.
+ * only through a humidity-ratio entry, and the psychrometric chart whatever
+ * the entry. Asserted at the seam the other session tests use — a session in,
+ * its state and its outputs out, with no component and no router — and
+ * nothing flushes, for the reason `compute.svelte.test.ts` gives.
  *
  * Expected values come from the library called with `p_atm`: a result at a
  * pressure is compared with the result of a relative-humidity entry of
@@ -12,9 +12,12 @@
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
+import type { ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { humidityMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
+import { requireAxisRange, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "$lib/core/quantities";
+import { displayUnitFor } from "$lib/core/units";
+import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
@@ -159,5 +162,132 @@ describe("a humidity entry and the session's atmospheric pressure", () => {
         bound: { min: psy_ta_rh(TDB, 0, LOWER_PRESSURE).hr, max: psy_ta_rh(TDB, 40, LOWER_PRESSURE).hr },
       },
     ]);
+  });
+});
+
+/** Humidity ratio as the SI chart draws it, in g/kg. */
+const hrUnit = displayUnitFor(q.hr, unitSystem.si);
+
+/** The chart draws one line per 5 % of relative humidity along each zone's boundaries. */
+const ZONE_RH_STEP = 5;
+
+/** The upper end of the humidity-ratio axis PMV (ISO 7730) declares, at the default pressure, [kg/kg]. */
+const DECLARED_HR_MAX = requireAxisRange(pmvPpdIso, q.hr).max;
+
+const pressureBound = kindBounds.atmosphericPressure;
+if (pressureBound?.min === undefined || pressureBound.max === undefined) {
+  throw new Error("Atmospheric pressure is no longer bounded at both ends");
+}
+/** The low end of the pressure's bound, where the humidity-ratio axis reaches furthest. */
+const LOWEST_PRESSURE = pressureBound.min;
+/** The high end of the pressure's bound, where the humidity-ratio axis ends lowest. */
+const HIGHEST_PRESSURE = pressureBound.max;
+
+/** The chart of a session on PMV (ISO 7730) at `pressure`, its slot as the model starts it. */
+function chartAt(pressure: number, system: UnitSystem = unitSystem.si): ChartSpec | null {
+  const session = new Session(pmvPpdIso);
+  session.unitSystem = system;
+  session.atmosphericPressure = pressure;
+  return new Outputs(session).chart;
+}
+
+/** Where the humidity-ratio axis should end at `pressure`, in `unit`: the declared end times the default over it. */
+function drawnHrMax(pressure: number, unit = hrUnit): number {
+  return unit.fromSi((DECLARED_HR_MAX * DEFAULT_ATMOSPHERIC_PRESSURE) / pressure);
+}
+
+/** The relative-humidity isolines of a chart, each with the relative humidity its label names. */
+function isolinesOf(chart: ChartSpec | null): { rh: number; trace: PathTrace }[] {
+  return (chart?.traces ?? [])
+    .filter((trace): trace is PathTrace => trace.kind === "path" && Boolean(trace.label?.startsWith(q.rh.label)))
+    .map((trace) => ({ rh: Number.parseFloat(trace.label?.slice(q.rh.label.length) ?? ""), trace }));
+}
+
+/** The comfort zones of a chart: its filled paths, largest first. */
+function zonesOf(chart: ChartSpec | null): PathTrace[] {
+  return (chart?.traces ?? []).filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
+}
+
+/** The slot's marker on a chart. */
+function markerOf(chart: ChartSpec | null): PointTrace | undefined {
+  return chart?.traces.find((trace): trace is PointTrace => trace.kind === "point");
+}
+
+describe("the psychrometric chart at the session's atmospheric pressure", () => {
+  it("draws each relative-humidity isoline at the library's humidity ratio at that pressure", () => {
+    const isolines = isolinesOf(chartAt(LOWER_PRESSURE));
+
+    expect(isolines.map((isoline) => isoline.rh)).toEqual([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+    for (const { rh, trace } of isolines) {
+      expect(trace.y).toEqual(trace.x.map((db) => hrUnit.fromSi(psy_ta_rh(db, rh, LOWER_PRESSURE).hr)));
+      expect(trace.y[0]).not.toBe(hrUnit.fromSi(psy_ta_rh(trace.x[0], rh).hr));
+    }
+  });
+
+  it("puts the marker at the entered humidity ratio, on the isoline of its relative humidity at that pressure", () => {
+    const { outputs } = humidityRatioSession(LOWER_PRESSURE);
+    const marker = markerOf(outputs.chart);
+
+    expect(marker?.x).toBe(TDB);
+    expect(marker?.y).toBeCloseTo(hrUnit.fromSi(HUMIDITY_RATIO), 9);
+    const rh = hr_to_rh(HUMIDITY_RATIO, TDB, LOWER_PRESSURE);
+    expect(marker?.y).toBe(hrUnit.fromSi(psy_ta_rh(TDB, rh, LOWER_PRESSURE).hr));
+  });
+
+  it("solves each comfort zone at that pressure: a vertex solved at a relative humidity lies on its isoline", () => {
+    const zones = zonesOf(chartAt(LOWER_PRESSURE));
+
+    expect(zones.length).toBeGreaterThan(0);
+    for (const zone of zones) {
+      // Each polygon opens with the cool boundary, one vertex per step of relative humidity.
+      for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
+        const rh = index * ZONE_RH_STEP;
+        expect(zone.y[index]).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(zone.x[index], rh, LOWER_PRESSURE).hr), 9);
+      }
+    }
+  });
+
+  it("ends the humidity-ratio axis at the declared upper end times the default pressure over the pressure", () => {
+    const rangeAt = (pressure: number, system?: UnitSystem) => chartAt(pressure, system)?.layout.y.range;
+
+    expect(rangeAt(LOWEST_PRESSURE)).toEqual([0, drawnHrMax(LOWEST_PRESSURE)]);
+    expect(rangeAt(LOWEST_PRESSURE)?.[1]).toBeCloseTo(101.3, 1);
+    expect(rangeAt(DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([0, 30]);
+    expect(rangeAt(HIGHEST_PRESSURE)?.[1]).toBeCloseTo(27.6, 1);
+    expect(rangeAt(LOWEST_PRESSURE, unitSystem.ip)).toEqual([
+      0,
+      drawnHrMax(LOWEST_PRESSURE, displayUnitFor(q.hr, unitSystem.ip)),
+    ]);
+  });
+
+  it("cuts each isoline where it leaves the axis as drawn, not as declared", () => {
+    const highest = (chart: ChartSpec | null) => Math.max(...isolinesOf(chart).flatMap(({ trace }) => trace.y));
+
+    const high = chartAt(HIGHEST_PRESSURE);
+    expect(highest(high)).toBeLessThanOrEqual(drawnHrMax(HIGHEST_PRESSURE));
+    const low = chartAt(LOWEST_PRESSURE);
+    expect(highest(low)).toBeGreaterThan(hrUnit.fromSi(DECLARED_HR_MAX));
+    expect(highest(low)).toBeLessThanOrEqual(drawnHrMax(LOWEST_PRESSURE));
+  });
+
+  it("keeps the default slot's marker on the chart at the lowest pressure", () => {
+    const marker = markerOf(chartAt(LOWEST_PRESSURE));
+
+    expect(marker?.y).toBe(hrUnit.fromSi(psy_ta_rh(TDB, 50, LOWEST_PRESSURE).hr));
+    expect(marker?.y).toBeGreaterThan(hrUnit.fromSi(DECLARED_HR_MAX));
+    expect(marker?.y).toBeLessThanOrEqual(drawnHrMax(LOWEST_PRESSURE));
+  });
+
+  it("draws a chart kept from the last valid run at the pressure that run remembers", () => {
+    const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
+    const kept = outputs.chart;
+    // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 closes the gate.
+    session.slots[0].setEntered(q.clo, 2.5);
+
+    session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
+
+    expect(outputs.outOfRangeQuantities).toEqual([q.clo]);
+    expect(outputs.chart).toEqual(kept);
+    expect(outputs.chart?.layout.y.range).toEqual([0, drawnHrMax(LOWER_PRESSURE)]);
   });
 });
