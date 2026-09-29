@@ -13,11 +13,11 @@
     result: ModelResult | null;
     unitSystem: UnitSystem;
     slotName: string;
-    outOfRange: boolean;
+    notCalculated: boolean;
     violations: readonly ViolationRow[];
   }
 
-  let { model, result, unitSystem, slotName, outOfRange, violations }: Props = $props();
+  let { model, result, unitSystem, slotName, notCalculated, violations }: Props = $props();
 
   // ADR §4.3: the Compliance column appears only when the model has a
   // classified output or a broken output row. An output-role violation also
@@ -62,9 +62,9 @@
         {/each}
       </Table.Row>
     </Table.Body>
-    {#if outOfRange || standardEntry}
+    {#if notCalculated || standardEntry}
       <Table.Caption>
-        {#if outOfRange}<span>{result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult}</span>{/if}
+        {#if notCalculated}<span>{result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult}</span>{/if}
         {#if standardEntry}
           <span class="standard">{copy.standardCaption(standardEntry.displayName, standardEntry.year)}</span>
         {/if}

@@ -185,7 +185,7 @@ export function outOfRangeRows(slot: Slot, model: RegisteredModel): OutOfRangeRo
 }
 
 /** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
-export function outOfRangeInputs(slot: Slot, model: RegisteredModel): Quantity[] {
+export function outOfRangeQuantities(slot: Slot, model: RegisteredModel): Quantity[] {
   return outOfRangeRows(slot, model).map((row) => row.quantity);
 }
 

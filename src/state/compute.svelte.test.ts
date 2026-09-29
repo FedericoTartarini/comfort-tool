@@ -69,7 +69,7 @@ describe("Outputs", () => {
   it("derives a result and a chart from a valid session", () => {
     const outputs = new Outputs(new Session(pmvPpdIso));
 
-    expect(outputs.outOfRange).toEqual([]);
+    expect(outputs.outOfRangeQuantities).toEqual([]);
     expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);
   });
@@ -86,7 +86,7 @@ describe("Outputs", () => {
     // 35 °C is past ISO 7730's 30 °C, so the gate blocks the run.
     session.slots[0].setEntered(q.tdb, 35);
 
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     expect(outputs.perSlot[0]).toBe(result);
     expect(outputs.violations).toBe(violations);
     expect(outputs.chart).toBe(chart);
@@ -100,10 +100,10 @@ describe("Outputs", () => {
 
     session.slots[0].setEntered(q.tdb, 35);
     // Read while blocked, so this is the round trip and not one jump.
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     session.slots[0].setEntered(q.tdb, 20);
 
-    expect(outputs.outOfRange).toEqual([]);
+    expect(outputs.outOfRangeQuantities).toEqual([]);
     expect(outputs.perSlot[0]).not.toBe(kept);
     expect(resultValueOf(outputs.perSlot[0], q.pmv)).not.toBe(resultValueOf(kept, q.pmv));
     expect(outputs.violations.map((row) => row.quantity)).toEqual([q.v]);
@@ -130,7 +130,7 @@ describe("Outputs", () => {
     const range = outputs.chart?.layout.x.range;
 
     session.slots[0].setEntered(q.tdb, 35);
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     session.unitSystem = unitSystem.ip;
 
     expect(outputs.chart?.layout.x.title).not.toBe(title);
@@ -144,7 +144,7 @@ describe("Outputs", () => {
     const result = outputs.perSlot[0];
 
     session.slots[0].setEntered(q.tdb, 35);
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     session.chart.type = chartType.dynamic;
 
     // The psychrometric chart draws no scanned field, the dynamic one is one.
@@ -168,7 +168,7 @@ describe("Outputs", () => {
 
     session.slots[0].setTemperatureMode(temperatureMode.operative, session.model);
 
-    expect(outputs.outOfRange).toEqual([]);
+    expect(outputs.outOfRangeQuantities).toEqual([]);
     expect(outputs.drawnAxes?.selected).toEqual({ x: q.operative_tmp, y: q.v });
     expect(outputs.drawnAxes?.choices).toContain(q.operative_tmp);
     expect(outputs.drawnAxes?.choices).not.toContain(q.tdb);
@@ -183,9 +183,9 @@ describe("Outputs", () => {
 
     // 3 clo is past ISO 7730's 2 clo, and no temperature switch moves it.
     session.slots[0].setEntered(q.clo, 3);
-    expect(outputs.outOfRange).toEqual([q.clo]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.clo]);
     session.slots[0].setTemperatureMode(temperatureMode.operative, session.model);
-    expect(outputs.outOfRange).toEqual([q.clo]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.clo]);
 
     expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
     expect(outputs.drawnAxes?.selected).toEqual({ x: q.tdb, y: q.v });
@@ -224,7 +224,7 @@ describe("Outputs", () => {
 
     session.slots[0].setEntered(q.tdb, 35);
 
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     expect(markerOf(outputs.chart)?.x).toBe(marker?.x);
     expect(markerOf(outputs.chart)?.x).not.toBe(35);
   });
@@ -243,10 +243,10 @@ describe("Outputs", () => {
     expect(before).toBeGreaterThan(0);
 
     session.slots[0].setEntered(q.tdb, 35);
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     readEverything(outputs);
     session.slots[0].setEntered(q.tdb, 36);
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     readEverything(outputs);
 
     expect(runs()).toBe(before);
@@ -283,7 +283,7 @@ describe("Outputs", () => {
     // 7730's own default temperature is below the Rothfusz regression's floor.
     session.setModel(heatIndexRothfusz);
 
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
     expect(outputs.perSlot).toEqual([null, null, null]);
     expect(outputs.violations).toEqual([]);
     expect(outputs.chart).toBeNull();
@@ -297,7 +297,7 @@ describe("Outputs", () => {
     session.setModel(heatIndexRothfusz);
     session.slots[0].setEntered(q.tdb, 30);
 
-    expect(outputs.outOfRange).toEqual([]);
+    expect(outputs.outOfRangeQuantities).toEqual([]);
     expect(resultValueOf(outputs.perSlot[0], q.hi)).toBeTypeOf("number");
     expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeUndefined();
     expect(outputs.chart?.traces.length).toBeGreaterThan(0);

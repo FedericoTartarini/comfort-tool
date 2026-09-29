@@ -1,4 +1,4 @@
-import { outOfRangeInputs, violationRows, type ViolationRow } from "$lib/core/applicability";
+import { outOfRangeQuantities, violationRows, type ViolationRow } from "$lib/core/applicability";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
@@ -86,14 +86,14 @@ export class Outputs {
   // `$derived.by` throughout, including here where an expression would read:
   // TypeScript sees a field initializer reaching `this.#session` before the
   // constructor assigns it, and only a closure tells it the read is deferred.
-  readonly #outOfRange = $derived.by(() => outOfRangeInputs(this.#session.slots[0], this.#session.model));
+  readonly #outOfRangeQuantities = $derived.by(() => outOfRangeQuantities(this.#session.slots[0], this.#session.model));
 
   readonly #lastValid = $derived.by((): LastValidRun | null => {
     const session = this.#session;
     const model = session.model;
     // A remembered run belongs to the model that made it, and to no other.
     const kept = this.#remembered?.model === model ? this.#remembered : null;
-    this.#remembered = this.#outOfRange.length === 0 ? { model, slot: detach(session.slots[0]) } : kept;
+    this.#remembered = this.#outOfRangeQuantities.length === 0 ? { model, slot: detach(session.slots[0]) } : kept;
     return this.#remembered;
   });
 
@@ -138,8 +138,8 @@ export class Outputs {
   }
 
   /** Entered quantities currently outside the model's applicability limits. */
-  get outOfRange(): readonly Quantity[] {
-    return this.#outOfRange;
+  get outOfRangeQuantities(): readonly Quantity[] {
+    return this.#outOfRangeQuantities;
   }
 
   /**

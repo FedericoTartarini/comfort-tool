@@ -167,7 +167,7 @@ describe("Session.setModel", () => {
     session.setModel(takesExternalWork);
 
     expect(session.slots[0].values.get(q.tdb)).toBe(35);
-    expect(outputs.outOfRange).toEqual([q.tdb]);
+    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
   });
 
   it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
@@ -389,7 +389,7 @@ describe("InputSlot.setEntered", () => {
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.dewPoint, value: 12 });
     expect(session.slots[0].values.has(q.dew_point_tmp)).toBe(false);
-    expect(outputs.outOfRange).toEqual([]);
+    expect(outputs.outOfRangeQuantities).toEqual([]);
     expect(resultValueOf(outputs.perSlot[0], q.pmv)).not.toBe(before);
   });
 });

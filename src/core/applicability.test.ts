@@ -5,7 +5,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
-import { enteredBound, outOfRangeInputs, outOfRangeRows, splitViolations, violationRows, warningFor } from "./applicability";
+import { enteredBound, outOfRangeQuantities, outOfRangeRows, splitViolations, violationRows, warningFor } from "./applicability";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
@@ -27,21 +27,21 @@ function withHumidity(slot: Slot, mode: HumidityMode, value: number): Slot {
   return { ...slot, humidity: { mode, value } };
 }
 
-describe("enteredBound / outOfRangeInputs", () => {
+describe("enteredBound / outOfRangeQuantities", () => {
   it("is empty when every entered value is within the model's bounds", () => {
-    expect(outOfRangeInputs(startingSlot(pmvPpdIso), pmvPpdIso)).toEqual([]);
+    expect(outOfRangeQuantities(startingSlot(pmvPpdIso), pmvPpdIso)).toEqual([]);
   });
 
   it("names the entered quantity that breaks a bound", () => {
-    expect(outOfRangeInputs(enteredSlotFor(pmvPpdIso, { tdb: 9 }), pmvPpdIso)).toEqual([q.tdb]);
-    expect(outOfRangeInputs(enteredSlotFor(pmvPpdIso, { clo: 2.5 }), pmvPpdIso)).toEqual([q.clo]);
+    expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { tdb: 9 }), pmvPpdIso)).toEqual([q.tdb]);
+    expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { clo: 2.5 }), pmvPpdIso)).toEqual([q.clo]);
   });
 
   it("checks an operative entry against every temperature it replaces", () => {
     const bound = enteredBound(pmvPpdIso, q.operative_tmp, enteredSlotFor(pmvPpdIso, { operative_tmp: 25 }));
     expect(bound?.max).toBe(pmvPpdIso.info.inputs.tdb?.applicability?.max);
-    expect(outOfRangeInputs(enteredSlotFor(pmvPpdIso, { operative_tmp: (bound?.max ?? 0) + 1 }), pmvPpdIso)).toEqual([q.operative_tmp]);
-    expect(outOfRangeInputs(enteredSlotFor(pmvPpdIso, { operative_tmp: bound?.max ?? 0 }), pmvPpdIso)).toEqual([]);
+    expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { operative_tmp: (bound?.max ?? 0) + 1 }), pmvPpdIso)).toEqual([q.operative_tmp]);
+    expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { operative_tmp: bound?.max ?? 0 }), pmvPpdIso)).toEqual([]);
   });
 
   it("has no bound for an entered quantity the model does not limit", () => {
@@ -55,40 +55,40 @@ describe("enteredBound / outOfRangeInputs", () => {
       info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, tdb: { unit: "°C", applicability: { min: 15 } } } },
     };
     expect(enteredBound(minOnly, q.tdb, startingSlot(pmvPpdIso))).toEqual({ min: 15 });
-    expect(outOfRangeInputs(enteredSlotFor(pmvPpdIso, { tdb: 10 }), minOnly)).toEqual([q.tdb]);
-    expect(outOfRangeInputs(enteredSlotFor(pmvPpdIso, { tdb: 1000 }), minOnly)).toEqual([]);
+    expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { tdb: 10 }), minOnly)).toEqual([q.tdb]);
+    expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { tdb: 1000 }), minOnly)).toEqual([]);
   });
 
   it("does not gate a value only a derived row bounds", () => {
     // tdb at the ISO bound, rh 95: no entered value breaks a row; the derived vapour pressure does.
     const slot = enteredSlotFor(pmvPpdIso, { tdb: 30, tr: 30 });
     const humid: Slot = { ...slot, humidity: { mode: humidityMode.rh, value: 95 } };
-    expect(outOfRangeInputs(humid, pmvPpdIso)).toEqual([]);
+    expect(outOfRangeQuantities(humid, pmvPpdIso)).toEqual([]);
   });
 });
 
 // Relative humidity is bounded 0 to 100 by its kind, not by the library (ADR-0002 decision 46).
-describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
+describe("enteredBound / outOfRangeQuantities, on the humidity entry", () => {
   it("bounds relative humidity to 0 – 100 % and gates an entry outside it", () => {
     expect(enteredBound(pmvPpdIso, q.rh, startingSlot(pmvPpdIso))).toEqual({ min: 0, max: 100 });
-    expect(outOfRangeInputs(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 150), pmvPpdIso)).toEqual([q.rh]);
-    expect(outOfRangeInputs(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, -20), pmvPpdIso)).toEqual([q.rh]);
-    expect(outOfRangeInputs(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 50), pmvPpdIso)).toEqual([]);
+    expect(outOfRangeQuantities(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 150), pmvPpdIso)).toEqual([q.rh]);
+    expect(outOfRangeQuantities(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, -20), pmvPpdIso)).toEqual([q.rh]);
+    expect(outOfRangeQuantities(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 50), pmvPpdIso)).toEqual([]);
   });
 
   it("converts the bound into the entered humidity ratio at the slot's dry-bulb temperature", () => {
     const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), humidityMode.humidityRatio, 0.05);
     expect(enteredBound(pmvPpdIso, q.hr, slot)).toEqual({ min: psy_ta_rh(25, 0).hr, max: psy_ta_rh(25, 100).hr });
     // 0.05 kg/kg is about 238 % relative humidity at 25 °C.
-    expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([q.hr]);
-    expect(outOfRangeInputs(withHumidity(slot, humidityMode.humidityRatio, 0.01), pmvPpdIso)).toEqual([]);
+    expect(outOfRangeQuantities(slot, pmvPpdIso)).toEqual([q.hr]);
+    expect(outOfRangeQuantities(withHumidity(slot, humidityMode.humidityRatio, 0.01), pmvPpdIso)).toEqual([]);
   });
 
   it("gates a dew point at the air temperature, above the library's saturation dew point, and drops the end 0 % has no dew point for", () => {
     // At 25 °C the library reads a 25 °C dew point as 100.95 %.
     const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), humidityMode.dewPoint, 25);
     expect(enteredBound(pmvPpdIso, q.dew_point_tmp, slot)).toEqual({ max: psy_ta_rh(25, 100).t_dp });
-    expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([q.dew_point_tmp]);
+    expect(outOfRangeQuantities(slot, pmvPpdIso)).toEqual([q.dew_point_tmp]);
   });
 
   it("converts the bound at the operative temperature under operative entry", () => {
@@ -101,7 +101,7 @@ describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
     expect(psy_ta_rh(100, 100).hr).toBeLessThan(psy_ta_rh(100, 0).hr);
     const slot = withHumidity(enteredSlotFor(heatIndexRothfusz, { tdb: 100 }), humidityMode.humidityRatio, 0.01);
     expect(enteredBound(heatIndexRothfusz, q.hr, slot)).toBeUndefined();
-    expect(outOfRangeInputs(slot, heatIndexRothfusz)).toEqual([]);
+    expect(outOfRangeQuantities(slot, heatIndexRothfusz)).toEqual([]);
   });
 
   it("does not bound a wet-bulb entry, which the library's inverse clamps to 0 – 100 %", () => {
@@ -109,7 +109,7 @@ describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
     expect(psy_ta_rh(10, 0).t_wb).toBeGreaterThan(1.5);
     const slot = withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 10, tr: 10 }), humidityMode.wetBulb, 1.5);
     expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, slot)).toBeUndefined();
-    expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([]);
+    expect(outOfRangeQuantities(slot, pmvPpdIso)).toEqual([]);
   });
 
   it("narrows the bound to a model's own relative-humidity row", () => {
@@ -118,7 +118,7 @@ describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
       info: { ...pmvPpdIso.info, inputs: { ...pmvPpdIso.info.inputs, rh: { unit: "%", applicability: { min: 30, max: 120 } } } },
     };
     expect(enteredBound(bounded, q.rh, startingSlot(pmvPpdIso))).toEqual({ min: 30, max: 100 });
-    expect(outOfRangeInputs(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 20), bounded)).toEqual([q.rh]);
+    expect(outOfRangeQuantities(withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 20), bounded)).toEqual([q.rh]);
   });
 
   it("neither bounds nor lists a humidity for a slot that holds none", () => {
@@ -128,14 +128,14 @@ describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
       expect(enteredBound(pmvPpdIso, mode.quantity, holdsNone), mode.id).toBeUndefined();
     }
     // The same slot holding a humidity past 100 % lists it, so the empty list is the absent entry's doing.
-    expect(outOfRangeInputs(withHumidity(holdsNone, humidityMode.rh, 150), pmvPpdIso)).toEqual([q.rh]);
+    expect(outOfRangeQuantities(withHumidity(holdsNone, humidityMode.rh, 150), pmvPpdIso)).toEqual([q.rh]);
     expect(outOfRangeRows(holdsNone, pmvPpdIso)).toEqual([]);
   });
 
   it("does not bound the humidity entry of a model that takes no humidity", () => {
     const slot = withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 150);
     expect(enteredBound(adaptiveAshrae, q.rh, slot)).toBeUndefined();
-    expect(outOfRangeInputs(slot, adaptiveAshrae)).toEqual([]);
+    expect(outOfRangeQuantities(slot, adaptiveAshrae)).toEqual([]);
   });
 });
 
@@ -169,7 +169,7 @@ describe("violationRows", () => {
     expect(violation?.role).toBe("input");
     expect(violation?.bound).toEqual(pmvPpdIso.info.inputs.vr?.applicability);
     expect(rowsFor(slot).some((row) => row.quantity === q.vr)).toBe(false);
-    expect(outOfRangeInputs(slot, pmvPpdIso)).toEqual([]);
+    expect(outOfRangeQuantities(slot, pmvPpdIso)).toEqual([]);
   });
 
   it("merges rows on one quantity and role into one sentence over the narrowest bound", () => {

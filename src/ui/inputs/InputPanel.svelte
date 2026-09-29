@@ -20,11 +20,11 @@
     model: RegisteredModel;
     inputSlot: InputSlot;
     unitSystem: UnitSystem;
-    outOfRange: readonly Quantity[];
+    outOfRangeQuantities: readonly Quantity[];
     violations: readonly ViolationRow[];
   }
 
-  let { model, inputSlot, unitSystem, outOfRange, violations }: Props = $props();
+  let { model, inputSlot, unitSystem, outOfRangeQuantities, violations }: Props = $props();
 
   const id = $props.id();
 
@@ -80,7 +80,7 @@
       value: shownValueFor(quantity),
       unitSystem,
       bound: enteredBound(model, quantity, inputSlot),
-      outOfRange: outOfRange.includes(quantity),
+      outOfRange: outOfRangeQuantities.includes(quantity),
       oncommit: (si: number) => inputSlot.setEntered(quantity, si),
     }}
     {@const presets = presetsFor(quantity)}

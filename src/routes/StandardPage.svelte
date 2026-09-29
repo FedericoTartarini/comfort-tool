@@ -153,7 +153,7 @@
             model={session.model}
             inputSlot={session.slots[0]}
             unitSystem={session.unitSystem}
-            outOfRange={outputs.outOfRange}
+            outOfRangeQuantities={outputs.outOfRangeQuantities}
             violations={outputs.violations}
           />
           <ModelSwitchDialog
@@ -172,7 +172,7 @@
             result={outputs.perSlot[0]}
             unitSystem={session.unitSystem}
             slotName={copy.slotName(0)}
-            outOfRange={outputs.outOfRange.length > 0}
+            notCalculated={outputs.outOfRangeQuantities.length > 0}
             violations={outputs.violations}
           />
 
