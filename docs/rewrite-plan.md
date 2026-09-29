@@ -40,6 +40,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-29 — position, Phase 4c done**: items 2 and 3 of the review between Phase 4b and Phase 5 are done (see that section), and Phase 4c landed on `rewrite/v1` (`.scratch/atmospheric-pressure/`). The decisions came first, as `c2bc39c` (ADR-0002 decision 49, decision 45 amended). Four tickets followed, one commit each: 01 `f34f05f` `p_atm` is a quantity with its own kind, 02 `7239c30` the session holds the pressure and a humidity ratio follows it, 03 `00a81b8` the psychrometric chart is drawn at it, 04 `39a748a` a pressure out of range stops the calculation. Ticket 05 read the documents against the code: decision 49 and ADR-0001's §4.5 marker carry dated notes for the sentences that said more than the code. The four scripts are green at 357 tests. The input was walked in the running app in SI and IP at tickets 02 and 03, with the console clean. Two things were seen and left: the gate converts a humidity-ratio bound at the session's pressure even while that pressure is out of range (ticket 04), and a pressure entered in inHg reads back in Pa at full precision after a unit switch, 109989.91 for 32.48 inHg (ticket 03). **Next: review item 4, Compare's `/grill-with-docs`.**
 
+> **2026-09-29 — position, Compare grilled**: item 4 of the review between Phase 4b and Phase 5 is done, ahead of the code (ADR-0002 decisions 50 to 53; `CONTEXT.md` gains **Compare**, and Slot, Entry mode and Session are revised). The deployed tool's Compare page was read at `e809c96` and its chart is what is ported: every compared slot draws its own comfort zones and its own marker, so **Compare has no baseline, no active slot and no difference highlighting**. Compare is a switch on the Standard page with a button per slot, three input columns of a third each, and Explore keeps drawing the bands of slot 1. An entry mode is the session's and converts every slot, which is what lets three columns share a row and leaves no slot to decide the chart's axes. Each slot has its own gate and its own last valid run; a model switch asks once, for the compared slots. The three rows `deferred.md` kept for this session are answered (`S055`, `S074`, `S036`), and so is the question Phase 4c's ticket 04 left: a bound that depends on the pressure is not taken while the pressure is out of range (decision 53). One thing is not known: three compared slots are three scans of the dynamic chart, about 270 ms for PMV (ASHRAE 55) if its measured 90.5 ms holds per slot, against decision 29's 300 ms line, so Compare's first ticket measures it. **Next: Compare's spec and tickets in `.scratch/compare/`, then Phase 5.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -825,6 +827,9 @@ Four sessions, in this order, `/clear` between each:
    2026-09-28): Compare is grilled against a `Session` that already holds `environment`.
    **Phase 4c done 2026-09-29**: the session holds `atmosphericPressure`, with no `environment` around it (ADR-0002
    decision 49).
+   **Done 2026-09-29**, ahead of the code: ADR-0002 decisions 50 to 53, and `CONTEXT.md`'s Compare. It answered the
+   three rows `deferred.md` kept for it and the question `.scratch/atmospheric-pressure/issues/04` left open. The
+   spec and the tickets go to `.scratch/compare/`.
 
 ---
 
@@ -880,13 +885,24 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
 **Goal**: close out the ADR §7 first-stage feature set.
 **Prerequisites**: Phase 4 passed, the review between Phase 4b and Phase 5 above done, and Phase 4c done.
 
-1. Compare with three slots + baseline: `ResultTable` has one row per slot, and the baseline determines what the difference highlighting is relative to;
-   slot colours run through the input panel, the table and the marker points on the chart.
+1. Compare with three slots (rewritten 2026-09-29, ADR-0002 decisions 50 to 52; it read "three slots + baseline",
+   with difference highlighting relative to the baseline): a Compare switch on the Standard page and a button per
+   slot, slot 1 always enabled; three input columns of a third each while Compare is on; `ResultTable` has one row per
+   compared slot; both charts draw every compared slot's comfort zones and marker at that slot's own values. A slot's
+   name and hue follow its position and run through the input columns, the table and the chart. No baseline, no
+   active slot, no difference highlighting. An entry mode is the session's and converts every slot. Each slot has its
+   own gate and last valid run. Explore has no Compare and draws the bands of slot 1.
+   **The first ticket measures three slots' scans of the dynamic chart** against decision 29's 300 ms line, before the
+   rest is built.
+   With it (decision 53): while the atmospheric pressure is out of range, a humidity-ratio entry has no bound.
 2. Cross-model switch dialog (ADR §4.5): parameters for the same quantity are kept, and the
    "Boundary Range Warning" only pops up when a value exceeds the new model's hard range (table Input / Current / Allowed range,
    buttons "Yes, switch and adjust" / "No, stay here"); no out-of-range, no dialog.
    **Moved 2026-09-22 to a Phase 4b prerequisite** (ADR-0002 decision 32, which also settles what "hard range" is and the
    order of the switch). What stays here is its extension to all three slots, with item 1's Compare. Its look is Phase 5c item 5.
+   **Settled 2026-09-29** (ADR-0002 decision 52): one dialog and one question. Its rows are the compared slots',
+   grouped by slot with the slot's name in a column of its own; a yes adjusts every listed value and a no leaves all
+   three slots untouched. A slot that is not compared is converted and seeded, not listed and not adjusted.
 3. Explore threshold editor (rewritten 2026-09-21, ADR-0002 decision 31): a Band list is the library's `ClassifierBins`
    plus a colour per band — contiguous edges, the classifier's own `right` inclusivity, the library's edges kept exactly.
    The editor moves, adds and removes Edges (removing one merges two bands; a band with no colour leaves a range
@@ -915,7 +931,7 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    item 6.
 
 **Done criteria**
-- From any state, Export Link → open in a new tab → the state is identical (three slots, units, chart type, thresholds, atmospheric pressure, numbers)
+- From any state, Export Link → open in a new tab → the state is identical (three slots, whether Compare is on and which slots are enabled, units, chart type, thresholds, atmospheric pressure, numbers)
 - Opening a share link in an environment with `Proxy` disabled does not crash
 
 ---
@@ -925,6 +941,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
 **Goal**: the calculator buttons of the old tool's input panel, with the semantics ADR §4.1.5 already fixed — a one-shot
 Apply that writes into a target input, never entering the session or the share link.
 **Prerequisites**: Phase 5 (they write into slots, and Compare decides which slot).
+**Noted 2026-09-29** (ADR-0002 decision 50): Compare has no active slot, so a calculator names the slot it writes
+into when it is applied.
 
 Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly out:
 
