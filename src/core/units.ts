@@ -36,6 +36,14 @@ const PASCALS_PER_KILOPASCAL = 1000;
 const GRAMS_PER_KILOGRAM = 1000;
 const POUNDS_PER_KILOPOUND = 1000;
 
+// Both pressure kinds, vapour and atmospheric, are shown in inHg in IP.
+const inchesOfMercury: DisplayUnit = {
+  symbol: "inHg",
+  step: 0.01,
+  toSi: (inches) => inches * PASCALS_PER_INCH_OF_MERCURY,
+  fromSi: (pascals) => pascals / PASCALS_PER_INCH_OF_MERCURY,
+};
+
 // `satisfies Record<QuantityKind, …>`: a kind added to `QuantityKind` fails
 // to compile here until the app decides how to display it.
 const displayUnits = {
@@ -92,12 +100,13 @@ const displayUnits = {
       toSi: (kilopascals) => kilopascals * PASCALS_PER_KILOPASCAL,
       fromSi: (pascals) => pascals / PASCALS_PER_KILOPASCAL,
     },
-    ip: {
-      symbol: "inHg",
-      step: 0.01,
-      toSi: (inchesOfMercury) => inchesOfMercury * PASCALS_PER_INCH_OF_MERCURY,
-      fromSi: (pascals) => pascals / PASCALS_PER_INCH_OF_MERCURY,
-    },
+    ip: inchesOfMercury,
+  },
+  // `p_atm` is in pascals and shown in them: in kPa the formatter's two
+  // decimals would show 101 325 Pa as 101.33 (ADR-0002 decision 49).
+  atmosphericPressure: {
+    si: { symbol: "Pa", step: 100, toSi: identity, fromSi: identity },
+    ip: inchesOfMercury,
   },
 } satisfies Record<QuantityKind, UnitPair>;
 

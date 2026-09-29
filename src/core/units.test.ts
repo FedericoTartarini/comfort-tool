@@ -33,6 +33,16 @@ describe("displayUnitFor", () => {
     expect(inchesOfMercury.toSi(29.92)).toBeCloseTo(101325, -1);
   });
 
+  it("shows atmospheric pressure in the library's pascals in SI, so 101325 reads as 101325, and in inHg in IP", () => {
+    const pascals = displayUnitFor(quantities.p_atm, unitSystem.si);
+    expect(pascals.fromSi(101325)).toBe(101325);
+    expect(pascals.toSi(101325)).toBe(101325);
+    expect(formatNumber(pascals.fromSi(101325))).toBe("101325");
+    const inchesOfMercury = displayUnitFor(quantities.p_atm, unitSystem.ip);
+    expect(inchesOfMercury.fromSi(101325)).toBeCloseTo(29.92, 2);
+    expect(inchesOfMercury.toSi(29.92)).toBeCloseTo(101325, -1);
+  });
+
   it("shows humidity ratio in g/kg, so 30, 50 and 70 % relative humidity at 25 °C read apart", () => {
     const gramsPerKilogram = displayUnitFor(quantities.hr, unitSystem.si);
     expect(gramsPerKilogram.symbol).toBe("g/kg");

@@ -9,6 +9,8 @@
  *
  * `kindBounds`, beside the kinds, holds the range a kind is defined over,
  * whatever the model; the pre-call gate reads it (ADR-0002 decision 46).
+ * `DEFAULT_ATMOSPHERIC_PRESSURE` is `p_atm`'s value until the user enters
+ * another, written once here (ADR-0002 decision 49).
  *
  * Node strips this file's types natively (`erasableSyntaxOnly`), so
  * `eslint.config.js` imports it directly, without a build step, for the key
@@ -24,6 +26,7 @@ export type QuantityKind =
   | "clothingInsulation"
   | "thermalSensation"
   | "pressure"
+  | "atmosphericPressure"
   | "humidityRatio"
   | "category"
   | "yesNo";
@@ -36,10 +39,24 @@ export type QuantityKind =
  */
 export const kindBounds: Readonly<Partial<Record<QuantityKind, Bound>>> = {
   percentage: { min: 0, max: 100 },
+  // Neither the library nor pythermalcomfort bounds `p_atm`; this is the
+  // deployed tool's range, one for every model (ADR-0002 decision 49).
+  atmosphericPressure: { min: 30000, max: 110000 },
 };
 
+/**
+ * The atmospheric pressure a session holds until the user enters another, in
+ * Pa, the value the library defaults `p_atm` to. The library exports no
+ * constant for it (ADR-0002 decision 49).
+ */
+export const DEFAULT_ATMOSPHERIC_PRESSURE = 101325;
+
 export interface Quantity {
-  /** The name this quantity has in a model's `ModelInfo`, e.g. `"tdb"`. */
+  /**
+   * The name this quantity has in a model's `ModelInfo`, e.g. `"tdb"`, or,
+   * for one no model info names, in the library's functions that take it,
+   * e.g. `"p_atm"`.
+   */
   readonly key: string;
   readonly kind: QuantityKind;
   /** Human-readable name, e.g. `"Dry-bulb air temperature"`. */
@@ -60,6 +77,9 @@ export const quantities = {
   // entered vapour pressure is `rh / 100 × p_sat(tdb)`, the same quantity as
   // the derived one (ADR-0002 decision 16).
   pa: { key: "pa", kind: "pressure", label: "Water vapour partial pressure" },
+  // The session's pressure, not a slot's: no entry mode names it, and no
+  // model info (ADR-0002 decision 49).
+  p_atm: { key: "p_atm", kind: "atmosphericPressure", label: "Atmospheric pressure" },
   met: { key: "met", kind: "metabolicRate", label: "Metabolic rate" },
   clo: { key: "clo", kind: "clothingInsulation", label: "Clothing insulation" },
   wme: { key: "wme", kind: "metabolicRate", label: "External work" },
