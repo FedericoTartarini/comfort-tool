@@ -5,7 +5,15 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
-import { enteredBound, outOfRangeQuantities, outOfRangeRows, splitViolations, violationRows, warningFor } from "./applicability";
+import {
+  enteredBound,
+  isAtmosphericPressureOutOfRange,
+  outOfRangeQuantities,
+  outOfRangeRows,
+  splitViolations,
+  violationRows,
+  warningFor,
+} from "./applicability";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
@@ -150,6 +158,17 @@ describe("enteredBound / outOfRangeQuantities, on the humidity entry", () => {
     const slot = withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 150);
     expect(enteredBound(adaptiveAshrae, q.rh, slot, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
     expect(outOfRangeQuantities(slot, adaptiveAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+  });
+});
+
+// Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49).
+describe("isAtmosphericPressureOutOfRange", () => {
+  it("answers out of range below 30 000 Pa and above 110 000 Pa, and in range at both ends", () => {
+    expect(isAtmosphericPressureOutOfRange(29999)).toBe(true);
+    expect(isAtmosphericPressureOutOfRange(30000)).toBe(false);
+    expect(isAtmosphericPressureOutOfRange(DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(false);
+    expect(isAtmosphericPressureOutOfRange(110000)).toBe(false);
+    expect(isAtmosphericPressureOutOfRange(110001)).toBe(true);
   });
 });
 

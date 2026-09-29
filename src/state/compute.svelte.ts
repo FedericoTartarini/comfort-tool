@@ -1,4 +1,9 @@
-import { outOfRangeQuantities, violationRows, type ViolationRow } from "$lib/core/applicability";
+import {
+  isAtmosphericPressureOutOfRange,
+  outOfRangeQuantities,
+  violationRows,
+  type ViolationRow,
+} from "$lib/core/applicability";
 import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
@@ -48,9 +53,10 @@ export interface DrawnAxes {
  * measured past 300 ms.
  *
  * No effect. The single stateful rule — while an entered value is outside the
- * model's applicability, the last valid result, its rows and the last chart
- * stay on screen — is served by {@link Outputs.#remembered}, a plain field
- * holding {@link Outputs.#lastValid}'s own last output. A plain field rather
+ * model's applicability, or the atmospheric pressure outside its bound, the
+ * last valid result, its rows and the last chart stay on screen — is served
+ * by {@link Outputs.#remembered}, a plain field holding
+ * {@link Outputs.#lastValid}'s own last output. A plain field rather
  * than `$state` because Svelte disallows a state write inside a derivation,
  * and it needs none: the memory is what that derivation last returned, so
  * recomputing changes nothing when the gate blocks and reproduces the same
@@ -92,15 +98,23 @@ export class Outputs {
     outOfRangeQuantities(this.#session.slots[0], this.#session.model, this.#session.atmosphericPressure),
   );
 
+  /** Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49). */
+  readonly #atmosphericPressureOutOfRange = $derived.by(() =>
+    isAtmosphericPressureOutOfRange(this.#session.atmosphericPressure),
+  );
+
+  readonly #notCalculated = $derived.by(
+    () => this.#outOfRangeQuantities.length > 0 || this.#atmosphericPressureOutOfRange,
+  );
+
   readonly #lastValid = $derived.by((): LastValidRun | null => {
     const session = this.#session;
     const model = session.model;
     // A remembered run belongs to the model that made it, and to no other.
     const kept = this.#remembered?.model === model ? this.#remembered : null;
-    this.#remembered =
-      this.#outOfRangeQuantities.length === 0
-        ? { model, slot: detach(session.slots[0]), atmosphericPressure: session.atmosphericPressure }
-        : kept;
+    this.#remembered = this.#notCalculated
+      ? kept
+      : { model, slot: detach(session.slots[0]), atmosphericPressure: session.atmosphericPressure };
     return this.#remembered;
   });
 
@@ -144,9 +158,22 @@ export class Outputs {
     return this.#perSlot;
   }
 
-  /** Entered quantities currently outside the model's applicability limits. */
+  /** Entered quantities currently outside the model's applicability limits. Never the pressure. */
   get outOfRangeQuantities(): readonly Quantity[] {
     return this.#outOfRangeQuantities;
+  }
+
+  /** Whether the session's atmospheric pressure is outside its bound. */
+  get atmosphericPressureOutOfRange(): boolean {
+    return this.#atmosphericPressureOutOfRange;
+  }
+
+  /**
+   * Whether the gate is closed: an entered value or the pressure is out of
+   * range, so nothing is calculated and the last valid result stays.
+   */
+  get notCalculated(): boolean {
+    return this.#notCalculated;
   }
 
   /**

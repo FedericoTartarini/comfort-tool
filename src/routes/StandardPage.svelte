@@ -161,6 +161,7 @@
             value={session.atmosphericPressure}
             unitSystem={session.unitSystem}
             bound={kindBounds[quantities.p_atm.kind]}
+            outOfRange={outputs.atmosphericPressureOutOfRange}
             oncommit={(si) => (session.atmosphericPressure = si)}
           />
           <InputPanel
@@ -187,7 +188,7 @@
             result={outputs.perSlot[0]}
             unitSystem={session.unitSystem}
             slotName={copy.slotName(0)}
-            notCalculated={outputs.outOfRangeQuantities.length > 0}
+            notCalculated={outputs.notCalculated}
             violations={outputs.violations}
           />
 

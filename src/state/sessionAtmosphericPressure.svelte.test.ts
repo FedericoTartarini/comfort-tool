@@ -137,6 +137,67 @@ describe("a change of atmospheric pressure", () => {
   });
 });
 
+/** A pressure below the bound's 30 000 Pa. */
+const PRESSURE_OUT_OF_RANGE = 20000;
+
+describe("an atmospheric pressure out of range", () => {
+  it("keeps the last valid result, and the outputs say the pressure is out of range", () => {
+    const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
+    const kept = resultValueOf(outputs.perSlot[0], q.pmv);
+    expect(outputs.atmosphericPressureOutOfRange).toBe(false);
+
+    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+
+    expect(outputs.atmosphericPressureOutOfRange).toBe(true);
+    // Under a humidity-ratio entry a pressure moves the result, so an unchanged one was not calculated again.
+    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(kept);
+  });
+
+  it("with every entry in range, is not calculated, and the list of entries out of range never names it", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    expect(outputs.notCalculated).toBe(false);
+
+    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+
+    expect(outputs.outOfRangeQuantities).toEqual([]);
+    expect(outputs.notCalculated).toBe(true);
+    // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 is out of range beside it.
+    session.slots[0].setEntered(q.clo, 2.5);
+    expect(outputs.outOfRangeQuantities).toEqual([q.clo]);
+  });
+
+  it("back in range, is calculated again at the new pressure", () => {
+    const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
+    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+
+    session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
+
+    expect(outputs.atmosphericPressureOutOfRange).toBe(false);
+    expect(outputs.notCalculated).toBe(false);
+    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(
+      pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB, DEFAULT_ATMOSPHERIC_PRESSURE)),
+    );
+  });
+
+  it("is not asked about by a model switch, and is kept by it", () => {
+    const session = new Session(pmvPpdIso);
+    session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
+
+    session.requestModel(adaptiveAshrae);
+    expect(session.pendingSwitch).toBeNull();
+    expect(session.model).toBe(adaptiveAshrae);
+    expect(session.atmosphericPressure).toBe(PRESSURE_OUT_OF_RANGE);
+
+    session.requestModel(pmvPpdIso);
+    // The slot's 25 °C is above this fixture's maximum, so the switch asks, about that alone.
+    session.requestModel(withBound("tdb", { min: 10, max: 20 }));
+    expect(session.pendingSwitch?.outOfRangeRows.map((row) => row.quantity)).toEqual([q.tdb]);
+    session.acceptSwitch();
+    expect(session.atmosphericPressure).toBe(PRESSURE_OUT_OF_RANGE);
+  });
+});
+
 describe("a humidity entry and the session's atmospheric pressure", () => {
   it("re-expresses the entry at the session's pressure when the entry mode changes", () => {
     const session = new Session(pmvPpdIso);

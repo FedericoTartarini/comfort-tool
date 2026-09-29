@@ -192,6 +192,19 @@ export function outOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPr
   return rows;
 }
 
+/**
+ * Whether the session's atmospheric pressure breaks its kind's bound. Judged
+ * apart from {@link outOfRangeRows}: that list is what a model switch asks
+ * about and adjusts in the slot, and the pressure is neither held in a slot
+ * nor dependent on the model (ADR-0002 decision 49). {@link enteredBound}
+ * applies a kind's bound only to a quantity the model takes, so it never
+ * reaches the pressure.
+ */
+export function isAtmosphericPressureOutOfRange(atmosphericPressure: number): boolean {
+  const bound = kindBounds[q.p_atm.kind];
+  return bound !== undefined && breaksBound(bound, atmosphericPressure);
+}
+
 /** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
 export function outOfRangeQuantities(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Quantity[] {
   return outOfRangeRows(slot, model, atmosphericPressure).map((row) => row.quantity);
