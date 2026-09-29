@@ -178,6 +178,8 @@ io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI", edition: "7730-2005" })  
 
 `Unit` / `step` / `toSi` / `fromSi`, `defaultValue`, `OptionSpec` / `OptionValue`, route path segments for standards, `InputSpec` / `OutputSpec` / `Band`, `ModelDefinition` and the `models` registry, `QuantityValues`, `InputCalculator` applicability, `evaluateMany`. They are either presentation-layer decisions (§4.2 / §4.3) or duplicates of types the library already has.
 
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): in the paragraph below, "Set pressure" is not an input calculator. Atmospheric pressure is session state and the share link carries it, as §4.5 and §7 say: no model takes it, so a calculator would have no target input to write into.
+
 Where the old tool's input-panel button group belongs: `Create custom ensemble / Dynamic predictive clothing / Solar gain / Globe temp / Set pressure` → app-side input calculators whose formulas call the library; `Relative air speed / Local control` → options in the declaration file; `Local discomfort` (ankle draft, vertical temperature difference) only produces outputs and does not change inputs → enters the library as an ordinary small model, available in Explore; `Reset / Save / Reload / Share / SI-IP / Documentation` → app actions. The semantics of an input calculator are a **one-shot Apply**: the user fills in the calculator's own small inputs, clicks Apply, and the result is written into the target input; calculators do not enter the session state or the share link.
 
 ### 4.2 App-side closed sets
@@ -352,6 +354,8 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 47** (2026-09-28): the `InputSlot` sketched below declares `implements Slot`, the shape core reads, held in `core/slot.ts` with the reads of what the person entered and the changes a person makes to a slot. Its `humidity` is optional: absent until a declaration's default or the person writes it, so a slot opened on a model without humidity holds none. `values` and `options` are read-only outside the class: every write is a core function from a slot to a slot (entering a value, setting an option, changing either entry mode), which the class lands through `replaceWith`, so the humidity entry mode converts in core as the temperature one does. A slot starts as the empty slot put through the switch's seeding (`startingSlot(model)`), not at a humidity of its own.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 48** (2026-09-28): in the second rule below, whether `v_relative(v, met)` is applied is not specified by the declaration file: `relativeAirSpeed` is gone. It is read from the model info, by `takesRelativeAirSpeed(model)` in `core/modelDeclaration.ts`, which answers whether the info's inputs name `vr`. PMV's info still names `vr`, so the rule's 2026-09-03 decision holds in effect.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): `environment: { atmosphericPressure }` below is `atmosphericPressure: number`, held by the session directly, in Pa. In the first rule, and in §5's tree, `toLibraryInputs`'s third parameter is that pressure, `p_atm`, in place of `environment`. It derives `rh` from a humidity ratio with it and hands it to no model: no registered model takes the pressure.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
@@ -407,6 +411,8 @@ Rules:
 ### 4.8 Share link schema v1
 
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 30 and 31** (2026-09-21): `"model"` is the model name, the library's function name, as the example already shows; `chart.output` goes; `chart.bands` is edges + labels + colours, not `{ min, max }` intervals. The example is left as written; `core/shareLink.ts` fixes the final schema in Phase 5.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): the example's `"environment": { "p_atm": 101.325 }` is the atmospheric pressure in Pa, `101325`, with no `environment` around it. A link that carries none means 101 325 Pa. The example is left as written.
 
 `?share=v1.<Base64URL(JSON)>`
 

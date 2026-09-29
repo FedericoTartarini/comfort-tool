@@ -69,8 +69,12 @@ One set of values to run a model on: a value per quantity, held in the entry mod
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
 
 **Session**:
-The state shared by the Standard and Explore workspaces: model, unit system, slots, chart settings.
+The state shared by the Standard and Explore workspaces: model, unit system, slots, chart settings, atmospheric pressure.
 _Avoid_: store, app state
+
+**Atmospheric pressure**:
+The pressure of the air every slot of a session describes: one value per session, entered by the user. It moves only what is converted to or from humidity ratio; no model takes it.
+_Avoid_: environment, barometric pressure, altitude, pressure (alone, which may be the vapour pressure)
 
 **Comfort zone**:
 A region of a chart inside one limit a standard draws: what it accepts, a yes or no. A standard with several limits has one zone per limit, nested. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.

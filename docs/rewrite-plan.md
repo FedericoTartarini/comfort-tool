@@ -822,7 +822,14 @@ Four sessions, in this order, `/clear` between each:
 
 ---
 
-## Phase 4c · Atmospheric pressure and `environment` (added 2026-09-28)
+## Phase 4c · Atmospheric pressure (added 2026-09-28)
+
+> **Grilled 2026-09-29** (`.scratch/atmospheric-pressure/spec.md`, ADR-0002 decision 49). The title lost "and
+> `environment`": the session holds `atmosphericPressure` directly. Both conflicts in item 1 are settled: atmospheric
+> pressure is session state and not a calculator, and it is held and shared in Pa. The three rows this phase took from
+> the review (`S018`'s temperature half, `BS04`, the gate's answer for a relative humidity that was not entered) are
+> left as they are (`.scratch/review-after-4b/decisions.md`, round 18). The text below is kept as written, except the
+> done criteria.
 
 **Goal**: "Set pressure" and `Session.environment` (ADR §4.5): the session holds one atmospheric pressure, so that
 Phase 5's share link carries it (ADR §7.2).
@@ -840,7 +847,15 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    the library's default today (Phase 3.6 item 2).
 
 **Done criteria**
-- `Session` holds one atmospheric pressure, and every humidity entry mode's conversion that takes `p_atm` reads it.
+- `Session` holds one atmospheric pressure, and every library call that takes `p_atm` reads it: the humidity-ratio
+  entry mode's two conversions, the psychrometric chart's relative-humidity curves and marker, and the zone solver.
+  (Rewritten 2026-09-29: it named the entry modes only, which would leave the marker drawn at 101 325 Pa beside a
+  humidity ratio entered at another pressure.)
+- The psychrometric chart's humidity-ratio axis follows the pressure (ADR-0002 decision 45 as amended), so the
+  marker of a slot in range is on the chart at every pressure in range.
+- The pressure is entered in the input panel, outside every slot, in Pa or inHg; outside 30 000 to 110 000 Pa it is
+  marked and nothing is calculated.
+- No model's result changes with the pressure while the humidity is entered as relative humidity.
 
 ---
 
@@ -868,6 +883,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
 4. `src/core/shareLink.ts`: `?share=v1.<Base64URL(JSON)>`, schema in ADR §4.8.
    **This is the only file in the whole project that reads and writes string ids** (`Quantity.key`, each closed set's `.id` / `xxxFromId()`).
    On a parse failure, fall back to defaults and notify; no blank screen.
+   **Added 2026-09-29** (ADR-0002 decision 49): the link carries the atmospheric pressure in Pa. A link without one
+   means 101 325 Pa; one whose pressure is out of range shows it as out of range and does not replace it.
    Skipped: `migrate()` (v1 has no source to migrate from; write it in v2) and `v1z.` deflate + `fflate`
    (together with Time-series, see below).
 5. Export Link + image export: editable title + input summary + tool name/version/date footer, PNG + SVG. The same
@@ -915,6 +932,8 @@ all change the layout, so a design drawn before them would be redrawn after them
    information hierarchy. The architecture is fixed (ADR §1), the execution is not.
 2. Header and footer — title, unit switch, Documentation link, version / date / licence, Reset. **Moved here from
    Phase 6** on 2026-09-04: they are design work, not wrap-up chores.
+   **Added 2026-09-29** (ADR-0002 decision 49): Reset returns the atmospheric pressure to 101 325 Pa, and this phase
+   gives the pressure's input, which Phase 4c puts in the input panel outside every slot, its place and look.
 3. One palette across UI and charts. `core/bandPalette.ts`'s `chartInk` is currently hand-picked hex against the CBE
    fills; it becomes part of the design system rather than a chart-local constant.
 4. Responsive behaviour, and the result table's horizontal overflow — legible since Phase 2, never designed.
