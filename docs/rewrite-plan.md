@@ -799,6 +799,14 @@ Four sessions, in this order, `/clear` between each:
    as structure. Scope given up front: the three declarations, `RegisteredModel`, Compare about to triple the slots. Pick
    zero to two; more than two means a rule was worked around during 4b, which is a 4b question, not a refactor. Each pick is
    an idea that enters the main flow at `/grill-with-docs`.
+   **Done 2026-09-29** on `review/architecture`, decided in `.scratch/review-after-4b/decisions.md` round 16: two picks. The
+   slot's shape (`.scratch/slot-shape/`, `5ddf4b3` to `12c7a1f`, ADR-0002 decision 47): the slot has its own module in
+   core, may hold no humidity, and is written only through core. Whether a model takes the relative air speed
+   (`.scratch/relative-air-speed/` 01, `4d7f74d`, decision 48): read from its model info. Three single-change tickets
+   landed beside them, `.scratch/review-after-4b/issues/` 60 to 62 (`7a05cd3` with `bb29d22`, `db01284`, `8560b49`).
+   The rest went elsewhere: entry modes carrying their own behaviour and the gate's wet-bulb check (`S018`'s temperature
+   half, `BS04`) to Phase 4c, and a required dynamic chart in the declaration's type (from `S007`) was left, with the
+   registry-wide test holding the rule.
 3. **Vocabulary — `/domain-modeling` on `CONTEXT.md`, optional.** 4b brings `airspeed_control`, `t_running_mean`, the 80 % / 90 %
    acceptability limits, and a second model called PMV with different bands; the question is whether any term is now doing
    two jobs. Item 2's grilling usually pulls this in on its own; run it alone only for a term already felt to be fuzzy.
