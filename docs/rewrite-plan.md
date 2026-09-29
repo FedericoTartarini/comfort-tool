@@ -42,6 +42,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-29 — position, Compare grilled**: item 4 of the review between Phase 4b and Phase 5 is done, ahead of the code (ADR-0002 decisions 50 to 53; `CONTEXT.md` gains **Compare**, and Slot, Entry mode and Session are revised). The deployed tool's Compare page was read at `e809c96` and its chart is what is ported: every compared slot draws its own comfort zones and its own marker, so **Compare has no baseline, no active slot and no difference highlighting**. Compare is a switch on the Standard page with a button per slot, three input columns of a third each, and Explore keeps drawing the bands of slot 1. An entry mode is the session's and converts every slot, which is what lets three columns share a row and leaves no slot to decide the chart's axes. Each slot has its own gate and its own last valid run; a model switch asks once, for the compared slots. The three rows `deferred.md` kept for this session are answered (`S055`, `S074`, `S036`), and so is the question Phase 4c's ticket 04 left: a bound that depends on the pressure is not taken while the pressure is out of range (decision 53). One thing is not known: three compared slots are three scans of the dynamic chart, about 270 ms for PMV (ASHRAE 55) if its measured 90.5 ms holds per slot, against decision 29's 300 ms line, so Compare's first ticket measures it. **Next: Compare's spec and tickets in `.scratch/compare/`, then Phase 5.**
 
+> **2026-09-30 — position, three slots' scans measured**: Compare's ticket 01 timed PMV (ASHRAE 55)'s dynamic chart for three compared slots in the browser (Chrome 154, Vite dev server, no throttling): **median 328.3 ms**, one slot 98.0 ms against Phase 4b's 90.5, PMV (ISO 7730)'s three 42.4 ms. The slots with a higher `met` and `clo` scanned slower, so the 270 ms estimate did not hold. Decision 29's 300 ms line is one scan, so it stands; decision 29 is amended to keep v1 synchronous whatever three slots cost, with no Worker, row-sliced scan or cache, since v1 puts a simpler app ahead of a faster one, and decision 50 is noted. **Next: Compare's tickets 02, 03 and 08.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -893,7 +895,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    active slot, no difference highlighting. An entry mode is the session's and converts every slot. Each slot has its
    own gate and last valid run. Explore has no Compare and draws the bands of slot 1.
    **The first ticket measures three slots' scans of the dynamic chart** against decision 29's 300 ms line, before the
-   rest is built.
+   rest is built. **Measured 2026-09-29**: 328.3 ms for PMV (ASHRAE 55)'s three, 98.0 ms for one; decision 29's line
+   is one scan, so it stands, and v1 stays synchronous whatever three slots cost (decision 29 as amended).
    With it (decision 53): while the atmospheric pressure is out of range, a humidity-ratio entry has no bound.
 2. Cross-model switch dialog (ADR §4.5): parameters for the same quantity are kept, and the
    "Boundary Range Warning" only pops up when a value exceeds the new model's hard range (table Input / Current / Allowed range,
