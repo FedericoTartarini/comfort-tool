@@ -30,7 +30,7 @@
   const unit = $derived(displayUnitFor(quantity, unitSystem));
   const text = $derived(formatNumber(unit.fromSi(value)));
   const labelText = $derived(labelWithUnit(quantity, unit));
-  const rangeText = $derived(bound ? formatBound(bound, unit) : "");
+  const boundText = $derived(bound ? formatBound(bound, unit) : "");
 
   // Commit only when the parsed value differs from what is stored. While the
   // user types "25." the parse is still 25, nothing is committed, and the
@@ -54,8 +54,8 @@
 <Stack gap="1">
   <Inline justify="between" align="baseline">
     <Label for={id}>{labelText}</Label>
-    {#if rangeText}
-      <span class="range">{rangeText}</span>
+    {#if boundText}
+      <span class="bound">{boundText}</span>
     {/if}
   </Inline>
   <Input
@@ -70,7 +70,7 @@
 </Stack>
 
 <style>
-  .range {
+  .bound {
     font-size: var(--font-size-caption);
     color: var(--muted-foreground);
   }

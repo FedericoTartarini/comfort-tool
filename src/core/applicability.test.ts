@@ -18,8 +18,8 @@ import { unitSystem, type UnitSystem } from "./unitSystem";
 const q = quantities;
 
 /** The sentence for a bound on the relative air speed, built from its label and display unit. */
-function vrWarning(range: string, system: UnitSystem): string {
-  return copy.applicabilityWarning(q.vr.label, valueWithUnit(range, displayUnitFor(q.vr, system)));
+function vrWarning(bound: string, system: UnitSystem): string {
+  return copy.applicabilityWarning(q.vr.label, valueWithUnit(bound, displayUnitFor(q.vr, system)));
 }
 
 /** `slot` with its humidity entered as `value` in `mode`. */

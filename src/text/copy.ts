@@ -26,8 +26,8 @@ export const copy = {
   outOfRangeKeptResult: "Out of range — not calculated. Showing the last valid result.",
   outOfRangeEmptyResult: "Out of range — not calculated. This model has no earlier result to show.",
   applicabilityHint: "Outside the model's applicability:",
-  // One broken applicability row: `range` already carries its unit.
-  applicabilityWarning: (label: string, range: string) => `${label} must be ${range}`,
+  // One broken applicability row: `bound` already carries its unit.
+  applicabilityWarning: (label: string, bound: string) => `${label} must be ${bound}`,
   // The model-switch dialog (ADR §4.5, ADR-0002 decision 32). Its own column
   // headings: "Input" heads quantity names here and slot names in the result
   // table, so the two are not one string.
