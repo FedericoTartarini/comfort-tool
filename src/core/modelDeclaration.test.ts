@@ -15,6 +15,7 @@ import {
   dynamicChartOf,
   psychrometricChartOf,
   requireAxisRange,
+  takesRelativeAirSpeed,
   type ChartDeclaration,
   type RegisteredModel,
   type ZonePolygon,
@@ -123,6 +124,40 @@ describe("charts", () => {
       info: { ...pmvPpdIso.info, label: "Fixture without PMV", outputs },
     };
     expect(() => expectPmvUnderAPsychrometricChart(noPmv)).toThrow(noPmv.info.label);
+  });
+});
+
+/** `vr` is derived as `v_relative(v, met)`, so a model that takes it must be entered both. */
+function expectVAndMetUnderRelativeAirSpeed(model: RegisteredModel): void {
+  if (!takesRelativeAirSpeed(model)) return;
+  const entered = model.inputs.map((entry) => entry.quantity);
+  expect(entered, model.info.label).toEqual(expect.arrayContaining([q.v, q.met]));
+}
+
+describe("takesRelativeAirSpeed", () => {
+  it("answers whether the model info's inputs name vr", () => {
+    expect(pmvPpdIso.info.inputs[q.vr.key]).toBeDefined();
+    expect(takesRelativeAirSpeed(pmvPpdIso)).toBe(true);
+
+    const inputs = Object.fromEntries(Object.entries(pmvPpdIso.info.inputs).filter(([key]) => key !== q.vr.key));
+    expect(takesRelativeAirSpeed({ ...pmvPpdIso, info: { ...pmvPpdIso.info, inputs } })).toBe(false);
+  });
+});
+
+describe("inputs", () => {
+  it("enter v and met wherever the model takes vr, for every registered model", () => {
+    for (const model of registeredModels) {
+      expectVAndMetUnderRelativeAirSpeed(model);
+    }
+  });
+
+  it("that leave out met where the model takes vr fail the check", () => {
+    const noMet: RegisteredModel = {
+      ...pmvPpdIso,
+      info: { ...pmvPpdIso.info, label: "Fixture taking vr without met" },
+      inputs: pmvPpdIso.inputs.filter((entry) => entry.quantity !== q.met),
+    };
+    expect(() => expectVAndMetUnderRelativeAirSpeed(noMet)).toThrow(noMet.info.label);
   });
 });
 

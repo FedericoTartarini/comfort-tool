@@ -15,7 +15,7 @@
 import type { Bound, VariableInfo } from "jsthermalcomfort";
 import { copy } from "$lib/text/copy";
 import { humidityMode, temperatureMode, type HumidityMode } from "./entryModes";
-import type { ModelResult, RegisteredModel } from "./modelDeclaration";
+import { takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
@@ -207,12 +207,12 @@ export function violationRows(model: RegisteredModel, result: ModelResult): Viol
     if (!keyed) {
       continue;
     }
-    const quantity = model.relativeAirSpeed && keyed === q.vr ? q.v : keyed;
+    const quantity = takesRelativeAirSpeed(model) && keyed === q.vr ? q.v : keyed;
     const index = rows.findIndex((row) => row.quantity === quantity && row.role === role);
     if (index === -1) {
       rows.push({ quantity, bounded: keyed, role, value, bound });
     } else {
-      // Keeps the first row's `bounded`: a model with `relativeAirSpeed` reports `vr` rows and no `v` rows.
+      // Keeps the first row's `bounded`: a model that takes `vr` reports `vr` rows and no `v` rows.
       rows[index] = { ...rows[index], bound: intersect([rows[index].bound, bound]) };
     }
   }

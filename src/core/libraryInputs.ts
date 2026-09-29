@@ -3,6 +3,7 @@ import { temperatureMode } from "./entryModes";
 import {
   hasHumidityGroup,
   hasTemperatureGroup,
+  takesRelativeAirSpeed,
   type OptionSpec,
   type OptionsReader,
   type RegisteredModel,
@@ -29,7 +30,7 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel): Map<Quant
     resolved.set(q.rh, relativeHumidityOf(slot));
   }
 
-  if (model.relativeAirSpeed) {
+  if (takesRelativeAirSpeed(model)) {
     resolved.set(q.vr, v_relative(requireValue(resolved, q.v), requireValue(resolved, q.met)));
     resolved.delete(q.v);
   }

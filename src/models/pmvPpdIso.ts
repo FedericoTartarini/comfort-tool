@@ -47,7 +47,6 @@ export const pmvPpdIso = {
     { quantity: q.clo, value: 0.5 },
   ],
   options: [],
-  relativeAirSpeed: true,
   // The ranges the deployed CBE tool draws, not ISO 7730's applicability
   // bounds (ADR §4.4) — the charts show what the field looks like around the
   // standard, and `info`'s applicability says which of it the user may enter.

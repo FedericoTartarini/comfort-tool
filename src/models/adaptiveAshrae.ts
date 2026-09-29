@@ -42,8 +42,6 @@ export const adaptiveAshrae = {
     { quantity: q.v, value: 0.3 },
   ],
   options: [],
-  // `adaptive_ashrae` takes the entered air speed, `v`, not a relative one.
-  relativeAirSpeed: false,
   // The deployed tool's range for the operative temperature axis. The running
   // mean's axis is its applicability, which an undeclared quantity falls back
   // to (ADR-0002 decision 5). No other quantity carries an axis.

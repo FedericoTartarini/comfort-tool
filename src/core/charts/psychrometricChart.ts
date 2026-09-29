@@ -5,6 +5,7 @@ import { temperatureMode } from "$lib/core/entryModes";
 import { optionsReader, resolveQuantities, valuesReader } from "$lib/core/libraryInputs";
 import {
   requireAxisRange,
+  takesRelativeAirSpeed,
   type OptionsReader,
   type PsychrometricDeclaration,
   type RegisteredModel,
@@ -59,7 +60,7 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
   const hrRange = requireAxisRange(model, q.hr);
 
   const resolved = resolveQuantities(slot, model);
-  const airSpeed = model.relativeAirSpeed ? q.vr : q.v;
+  const airSpeed = takesRelativeAirSpeed(model) ? q.vr : q.v;
   // Every zone is solved at the same inputs; only the limit differs.
   const zoneInputs = {
     tr: requireValue(resolved, q.tr),

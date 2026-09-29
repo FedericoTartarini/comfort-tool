@@ -1,7 +1,7 @@
 import type { ClassifierBins, ModelInfo, Standard } from "jsthermalcomfort";
 import { chartType } from "./chartType";
 import { temperatureMode } from "./entryModes";
-import { quantities, type Quantity } from "./quantities";
+import { quantities, quantityFor, type Quantity } from "./quantities";
 
 /**
  * The model's own result object, keyed by the same strings as its `_INFO`:
@@ -245,8 +245,6 @@ export interface RegisteredModel {
    * value beside the quantities' (ADR-0002 decision 36).
    */
   readonly options: readonly OptionSpec[];
-  /** `true`: the library takes `vr`, derived as `v_relative(v, met)` from the entered `v`. */
-  readonly relativeAirSpeed: boolean;
   /**
    * How far each quantity is drawn. One table per model rather than one per
    * chart: the deployed tool draws its psychrometric x axis and its field
@@ -317,4 +315,13 @@ export function hasHumidityGroup(model: RegisteredModel): boolean {
 export function hasTemperatureGroup(model: RegisteredModel): boolean {
   const entered = model.inputs.map((entry) => entry.quantity);
   return temperatureMode.separate.panel.every((quantity) => entered.includes(quantity));
+}
+
+/**
+ * Whether the model takes `vr`, which the app derives as `v_relative(v, met)`
+ * from the entered `v`: read from whether `info.inputs` names it, each key
+ * reconciled through `quantityFor` (ADR-0002 decision 48).
+ */
+export function takesRelativeAirSpeed(model: RegisteredModel): boolean {
+  return Object.keys(model.info.inputs).some((key) => quantityFor(key) === quantities.vr);
 }

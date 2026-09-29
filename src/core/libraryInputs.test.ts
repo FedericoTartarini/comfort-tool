@@ -28,7 +28,8 @@ describe("resolveQuantities", () => {
   });
 
   it("passes v through untouched when the model does not", () => {
-    const withoutRelative = { ...pmvPpdIso, relativeAirSpeed: false };
+    const inputs = Object.fromEntries(Object.entries(pmvPpdIso.info.inputs).filter(([key]) => key !== q.vr.key));
+    const withoutRelative = { ...pmvPpdIso, info: { ...pmvPpdIso.info, inputs } };
     const resolved = resolveQuantities(startingSlot(pmvPpdIso), withoutRelative);
     expect(resolved.get(q.v)).toBe(v);
     expect(resolved.has(q.vr)).toBe(false);
