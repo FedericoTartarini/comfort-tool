@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { humidityMode } from "./entryModes";
-import { quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
 
 describe("humidityMode", () => {
   it("names the library quantity each mode enters", () => {
@@ -12,11 +12,11 @@ describe("humidityMode", () => {
   });
 
   it("enters humidity ratio in the library's kg/kg at full precision", () => {
-    expect(humidityMode.humidityRatio.fromRelativeHumidity(50, 25)).toBeCloseTo(0.0098815475775, 13);
+    expect(humidityMode.humidityRatio.fromRelativeHumidity(50, 25, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeCloseTo(0.0098815475775, 13);
   });
 
   it("is the identity in rh mode", () => {
-    expect(humidityMode.rh.toRelativeHumidity(50, 25)).toBe(50);
-    expect(humidityMode.rh.fromRelativeHumidity(50, 25)).toBe(50);
+    expect(humidityMode.rh.toRelativeHumidity(50, 25, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(50);
+    expect(humidityMode.rh.fromRelativeHumidity(50, 25, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(50);
   });
 });

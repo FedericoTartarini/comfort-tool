@@ -6,7 +6,7 @@ import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type DeclaredPsychrometricChart, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { quantities } from "$lib/core/quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { startingSlot, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
@@ -37,7 +37,13 @@ function request(
   mode: typeof temperatureMode.separate | typeof temperatureMode.operative,
   system: UnitSystem = unitSystem.si,
 ): ChartRequest {
-  return { model: pmvPpdIso, slot: slot(mode), slotLabel: "Input 1", unitSystem: system };
+  return {
+    model: pmvPpdIso,
+    slot: slot(mode),
+    slotLabel: "Input 1",
+    unitSystem: system,
+    atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
+  };
 }
 
 /** The ISO declaration's psychrometric chart: what every spec below draws, unless a test hands it another. */

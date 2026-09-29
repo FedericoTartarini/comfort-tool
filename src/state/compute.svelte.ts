@@ -17,14 +17,16 @@ import { copy } from "$lib/text/copy";
 import type { Session } from "./session.svelte";
 
 /**
- * What a completed run leaves behind: the slot it ran on, and the model that
- * ran it. The whole of the app's memory of a run — the result, the rows and
- * the chart are derived from this and nothing is kept of them (ADR-0002
- * decision 33).
+ * What a completed run leaves behind: the slot it ran on, the model that ran
+ * it and the atmospheric pressure it ran at, so the result and the chart kept
+ * on screen are of one air (ADR-0002 decision 49). The whole of the app's
+ * memory of a run — the result, the rows and the chart are derived from this
+ * and nothing is kept of them (ADR-0002 decision 33).
  */
 interface LastValidRun {
   readonly model: RegisteredModel;
   readonly slot: Slot;
+  readonly atmosphericPressure: number;
 }
 
 /**
@@ -86,14 +88,19 @@ export class Outputs {
   // `$derived.by` throughout, including here where an expression would read:
   // TypeScript sees a field initializer reaching `this.#session` before the
   // constructor assigns it, and only a closure tells it the read is deferred.
-  readonly #outOfRangeQuantities = $derived.by(() => outOfRangeQuantities(this.#session.slots[0], this.#session.model));
+  readonly #outOfRangeQuantities = $derived.by(() =>
+    outOfRangeQuantities(this.#session.slots[0], this.#session.model, this.#session.atmosphericPressure),
+  );
 
   readonly #lastValid = $derived.by((): LastValidRun | null => {
     const session = this.#session;
     const model = session.model;
     // A remembered run belongs to the model that made it, and to no other.
     const kept = this.#remembered?.model === model ? this.#remembered : null;
-    this.#remembered = this.#outOfRangeQuantities.length === 0 ? { model, slot: detach(session.slots[0]) } : kept;
+    this.#remembered =
+      this.#outOfRangeQuantities.length === 0
+        ? { model, slot: detach(session.slots[0]), atmosphericPressure: session.atmosphericPressure }
+        : kept;
     return this.#remembered;
   });
 
@@ -106,7 +113,7 @@ export class Outputs {
     // Slots 1 and 2 are Compare's (Phase 5); nothing runs them yet, and
     // nothing keeps a result for them across a model change either.
     return [
-      last ? runOn(last.slot, last.model) : null,
+      last ? runOn(last.slot, last.model, last.atmosphericPressure) : null,
       null,
       null,
     ];
@@ -199,6 +206,7 @@ function chartSpecOf(session: Session, last: LastValidRun): ChartSpec | null {
     slot: last.slot,
     slotLabel: copy.slotName(0),
     unitSystem: session.unitSystem,
+    atmosphericPressure: last.atmosphericPressure,
   };
   if (session.chart.type === chartType.psychrometric) {
     const psychrometric = psychrometricChartOf(model);

@@ -152,4 +152,6 @@ export interface ChartRequest {
   /** Slot name, for the marker's legend entry. */
   readonly slotLabel: string;
   readonly unitSystem: UnitSystem;
+  /** The atmospheric pressure the slot is resolved at, in Pa (ADR-0002 decision 49). */
+  readonly atmosphericPressure: number;
 }

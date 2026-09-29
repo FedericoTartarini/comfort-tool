@@ -54,7 +54,7 @@ export function dynamicSpec(
   chart: DeclaredDynamicChart,
   axes: ChartAxes,
 ): ChartSpec {
-  const { model, slot, slotLabel, unitSystem } = request;
+  const { model, slot, slotLabel, unitSystem, atmosphericPressure } = request;
   const mode = slot.temperature.mode;
   const { x, y } = isPolygonsChart(chart) ? chart.axes : resolvedAxes(model, axes, mode);
   const xRange = requireAxisRange(model, x);
@@ -74,7 +74,7 @@ export function dynamicSpec(
   ];
 
   if (isPolygonsChart(chart)) {
-    const polygons = chart.zones({ values: toLibraryInputs(slot, model), xRange });
+    const polygons = chart.zones({ values: toLibraryInputs(slot, model, atmosphericPressure), xRange });
     for (const [index, polygon] of polygons.entries()) {
       // A zone never captures the pointer, so the hover grid below reads for it.
       const zone = zoneFor(
@@ -105,7 +105,7 @@ export function dynamicSpec(
           [x, xValue],
           [y, yValue],
         ]));
-        return resultNumber(runOn(point, model), chart.output);
+        return resultNumber(runOn(point, model, atmosphericPressure), chart.output);
       }),
     );
     traces.push({
@@ -125,8 +125,8 @@ export function dynamicSpec(
     legend.push(...bandFills.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
   }
 
-  const markerX = enteredValue(slot, x, model);
-  const markerY = enteredValue(slot, y, model);
+  const markerX = enteredValue(slot, x, model, atmosphericPressure);
+  const markerY = enteredValue(slot, y, model, atmosphericPressure);
   if (markerX !== undefined && markerY !== undefined) {
     const marker = markerFor(slotLabel, xUnit.fromSi(markerX), yUnit.fromSi(markerY));
     traces.push(marker.trace);

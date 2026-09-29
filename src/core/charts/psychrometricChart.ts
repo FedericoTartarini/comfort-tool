@@ -49,7 +49,7 @@ const ZONE_RH_STEP = 5;
  * else its applicability bound (ADR-0002 decision 5).
  */
 export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
-  const { model, slot, slotLabel, unitSystem } = request;
+  const { model, slot, slotLabel, unitSystem, atmosphericPressure } = request;
   const operative = slot.temperature.mode === temperatureMode.operative;
   const axisQuantity = slot.temperature.mode.axis;
   const xUnit = displayUnitFor(axisQuantity, unitSystem);
@@ -58,7 +58,7 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
   const xRange = requireAxisRange(model, axisQuantity);
   const hrRange = requireAxisRange(model, q.hr);
 
-  const resolved = resolveQuantities(slot, model);
+  const resolved = resolveQuantities(slot, model, atmosphericPressure);
   const airSpeed = takesRelativeAirSpeed(model) ? q.vr : q.v;
   // Every zone is solved at the same inputs; only the limit differs.
   const zoneInputs = {

@@ -54,12 +54,13 @@ export function resolvedTdb(slot: Slot): number {
 /**
  * The slot's humidity as the library's `rh`, converted from whatever the user
  * entered at the slot's dry-bulb temperature (the operative temperature under
- * operative entry, ADR §4.5). The one place the mode's conversion to relative
+ * operative entry, ADR §4.5) and the session's atmospheric pressure, in Pa
+ * (ADR-0002 decision 49). The one place the mode's conversion to relative
  * humidity is invoked. Throws for a slot that holds no humidity.
  */
-export function relativeHumidityOf(slot: Slot): number {
+export function relativeHumidityOf(slot: Slot, atmosphericPressure: number): number {
   const { mode, value } = requireHumidity(slot);
-  return mode.toRelativeHumidity(value, resolvedTdb(slot));
+  return mode.toRelativeHumidity(value, resolvedTdb(slot), atmosphericPressure);
 }
 
 /**
@@ -133,19 +134,19 @@ export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] 
 
 /**
  * What the user entered for `quantity`, humidity included. `rh` is answered
- * in every mode — the dynamic chart sweeps and marks the library's `rh`, not
- * the entered representation — and so is `operative_tmp`, which a chart with
- * locked axes marks under separate entry too, at `model`'s
- * {@link operativeTemperatureOf}. A slot that holds no humidity has no entered
- * value for any humidity quantity.
+ * in every mode, at `atmosphericPressure` — the dynamic chart sweeps and marks
+ * the library's `rh`, not the entered representation — and so is
+ * `operative_tmp`, which a chart with locked axes marks under separate entry
+ * too, at `model`'s {@link operativeTemperatureOf}. A slot that holds no
+ * humidity has no entered value for any humidity quantity.
  */
-export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredModel): number | undefined {
+export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredModel, atmosphericPressure: number): number | undefined {
   const { humidity } = slot;
   if (quantity === humidity?.mode.quantity) {
     return humidity.value;
   }
   if (quantity === q.rh) {
-    return humidity === undefined ? undefined : relativeHumidityOf(slot);
+    return humidity === undefined ? undefined : relativeHumidityOf(slot, atmosphericPressure);
   }
   if (quantity === q.operative_tmp) {
     return operativeTemperatureOf(slot, model);
@@ -244,16 +245,28 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
 /**
  * The same slot with its humidity entry re-expressed under `mode`, at the
  * slot's {@link resolvedTdb}: the entered dry-bulb temperature, or the
- * operative temperature under operative entry. Lossy and one-way, like
- * {@link withTemperatureMode}. Throws for a slot that holds no humidity:
- * there is nothing to re-express.
+ * operative temperature under operative entry, and at the session's
+ * atmospheric pressure. Lossy and one-way, like {@link withTemperatureMode}.
+ * Throws for a slot that holds no humidity: there is nothing to re-express.
  */
-export function withHumidityMode(slot: Slot, mode: HumidityMode): Slot {
+export function withHumidityMode(slot: Slot, mode: HumidityMode, atmosphericPressure: number): Slot {
   if (mode === slot.humidity?.mode) {
     return slot;
   }
-  const humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(slot), resolvedTdb(slot)) };
+  const tdb = resolvedTdb(slot);
+  const humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(slot, atmosphericPressure), tdb, atmosphericPressure) };
   return changedSlot(slot, { humidity });
+}
+
+/**
+ * Whether the slot holds an entry for `quantity`: {@link enteredValue}'s
+ * question without its conversion, so asking needs no atmospheric pressure.
+ */
+function holdsEntry(slot: Slot, quantity: Quantity): boolean {
+  if (quantity === q.rh || quantity === slot.humidity?.mode.quantity) {
+    return slot.humidity !== undefined;
+  }
+  return slot.values.has(quantity);
 }
 
 /**
@@ -279,7 +292,7 @@ export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
     const held = underTemperatureMode(quantity, slot.temperature.mode);
     // Two declared temperatures stand in one operative entry, so the first of
     // them — the entry mode's own axis — is the one whose default applies.
-    if (enteredValue(slot, held, model) === undefined && !defaults.has(held)) {
+    if (!holdsEntry(slot, held) && !defaults.has(held)) {
       defaults.set(held, value);
     }
   }

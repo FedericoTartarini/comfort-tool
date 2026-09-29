@@ -5,16 +5,16 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { sensationPalette } from "./bandPalette";
 import type { RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
-import { quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
 import { classifiedOutputs, formatResultCell } from "./resultCell";
 import { startingSlot, withEnteredValues } from "./slot";
 import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
-const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model);
+const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 const atTdb = (model: RegisteredModel, tdb: number) =>
-  runOn(withEnteredValues(startingSlot(model), new Map([[q.tdb, tdb]])), model);
+  runOn(withEnteredValues(startingSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 
 describe("formatResultCell", () => {
   it("shows a boolean result as Yes or No in either unit system", () => {

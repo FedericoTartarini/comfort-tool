@@ -25,7 +25,7 @@ import {
   type Values,
 } from "./modelDeclaration";
 import { resultValue, runOn } from "./modelRun";
-import { quantities, quantityFor, type Quantity } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
 import { startingSlot, withEnteredValues, type Slot } from "./slot";
 
 /**
@@ -67,7 +67,7 @@ function alongTheXAxis(model: RegisteredModel, chart: DeclaredDynamicChart) {
     range: requireAxisRange(model, axis),
     at,
     valueAt: (position: number, quantity: Quantity) => {
-      return resultValue(runOn(at(position), model), quantity);
+      return resultValue(runOn(at(position), model, DEFAULT_ATMOSPHERIC_PRESSURE), quantity);
     },
   };
 }
@@ -126,7 +126,7 @@ function expectBandsToBinAsRunDoes(model: RegisteredModel): void {
   // A model whose Edges the axis cannot reach would pass vacuously.
   expect(probes.length, model.info.label).toBeGreaterThan(1);
   for (const slot of probes) {
-    const result = runOn(slot, model);
+    const result = runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE);
     const value = resultValue(result, chart.output);
     expect(typeof value, `${model.info.label} ${chart.output.label}`).toBe("number");
     expect(classifyFromBins(Number(value), chart.bands), `${model.info.label} at ${chart.output.label} ${String(value)}`).toBe(

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { copy } from "$lib/text/copy";
 import { humidityMode } from "./entryModes";
 import { formatNumber } from "./numberFormat";
-import { quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
 import { displayUnitFor, labelWithUnit, numberWithUnit, valueWithUnit } from "./units";
 import { unitSystem } from "./unitSystem";
 
@@ -47,7 +47,7 @@ describe("displayUnitFor", () => {
     const gramsPerKilogram = displayUnitFor(quantities.hr, unitSystem.si);
     expect(gramsPerKilogram.symbol).toBe("g/kg");
     const shown = [30, 50, 70].map((rh) =>
-      formatNumber(gramsPerKilogram.fromSi(humidityMode.humidityRatio.fromRelativeHumidity(rh, 25))),
+      formatNumber(gramsPerKilogram.fromSi(humidityMode.humidityRatio.fromRelativeHumidity(rh, 25, DEFAULT_ATMOSPHERIC_PRESSURE))),
     );
     expect(shown).toEqual(["5.89", "9.88", "13.92"]);
     expect(gramsPerKilogram.toSi(9.88)).toBeCloseTo(0.00988, 12);
@@ -58,7 +58,7 @@ describe("displayUnitFor", () => {
     expect(poundsPerKilopound.symbol).toBe("lb/klb");
     expect(poundsPerKilopound.fromSi(0.00988)).toBeCloseTo(9.88, 12);
     expect(poundsPerKilopound.toSi(13.92)).toBeCloseTo(0.01392, 12);
-    const stored = humidityMode.humidityRatio.fromRelativeHumidity(50, 25);
+    const stored = humidityMode.humidityRatio.fromRelativeHumidity(50, 25, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(poundsPerKilopound.toSi(poundsPerKilopound.fromSi(stored))).toBeCloseTo(stored, 15);
   });
 

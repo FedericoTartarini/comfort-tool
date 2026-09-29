@@ -46,9 +46,13 @@ export function underTemperatureMode(quantity: Quantity, mode: TemperatureMode):
 /**
  * How the user enters humidity. The entered quantity is the truth; `rh` is
  * derived in `core/slot.ts` (ADR §4.5). Each mode carries its own
- * two conversions — library calls, `p_atm` left at the library's default
- * until Phase 4c's "Set pressure" brings `environment` (rewrite plan, Phase
- * 3.6 item 2) — so no caller switches on mode identity to convert. The one
+ * two conversions, library calls, so no caller switches on mode identity to
+ * convert. Both take a humidity (the entered value, or relative humidity),
+ * the dry-bulb temperature and the session's atmospheric pressure, the order
+ * of the library's conversions to relative humidity. Only humidity ratio's
+ * pass the pressure on as `p_atm`: it is the one humidity the pressure moves.
+ * `psy_ta_rh` takes a `p_atm` too, but its dew point, wet-bulb temperature and
+ * vapour pressure do not depend on it (ADR-0002 decision 49). The one
  * check for a particular mode is the gate's: `core/applicability.ts` leaves a
  * wet-bulb entry unbounded, because `rh_from_wet_bulb` clamps to 0 – 100
  * (ADR-0002 decision 46). Object order is the panel's order.
@@ -56,45 +60,46 @@ export function underTemperatureMode(quantity: Quantity, mode: TemperatureMode):
 export interface HumidityMode {
   readonly id: string;
   readonly quantity: Quantity;
-  /** The entered value as relative humidity, at this dry-bulb temperature. */
-  readonly toRelativeHumidity: (value: number, tdb: number) => number;
-  /** Relative humidity expressed in this mode, at this dry-bulb temperature. */
-  readonly fromRelativeHumidity: (rh: number, tdb: number) => number;
+  /** The entered value as relative humidity, at this dry-bulb temperature and atmospheric pressure. */
+  readonly toRelativeHumidity: (value: number, tdb: number, atmosphericPressure: number) => number;
+  /** Relative humidity expressed in this mode, at this dry-bulb temperature and atmospheric pressure. */
+  readonly fromRelativeHumidity: (rh: number, tdb: number, atmosphericPressure: number) => number;
 }
 
 export const humidityMode = {
   rh: {
     id: "relative-humidity",
     quantity: quantities.rh,
-    // A second parameter (unused) so this stays typed as the two-argument
-    // signature `satisfies` narrows to: a one-parameter arrow here would
-    // freeze to that arity and reject the two-argument calls every other
-    // caller (and mode) makes.
-    toRelativeHumidity: (rh, tdb) => rh,
-    fromRelativeHumidity: (rh, tdb) => rh,
+    // Every parameter named, the unused ones too, so this stays typed as the
+    // three-argument signature `satisfies` narrows to: a shorter arrow here
+    // would freeze to its own arity and reject the three-argument calls every
+    // other caller (and mode) makes. The same holds for the pressure the other
+    // modes below take and do not use.
+    toRelativeHumidity: (rh, tdb, atmosphericPressure) => rh,
+    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => rh,
   },
   humidityRatio: {
     id: "humidity-ratio",
     quantity: quantities.hr,
-    toRelativeHumidity: (hr, tdb) => hr_to_rh(hr, tdb),
-    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).hr,
+    toRelativeHumidity: (hr, tdb, atmosphericPressure) => hr_to_rh(hr, tdb, atmosphericPressure),
+    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh, atmosphericPressure).hr,
   },
   dewPoint: {
     id: "dew-point",
     quantity: quantities.dew_point_tmp,
-    toRelativeHumidity: (dewPoint, tdb) => rh_from_dew_point(dewPoint, tdb),
-    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).t_dp,
+    toRelativeHumidity: (dewPoint, tdb, atmosphericPressure) => rh_from_dew_point(dewPoint, tdb),
+    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_dp,
   },
   wetBulb: {
     id: "wet-bulb",
     quantity: quantities.wet_bulb_tmp,
-    toRelativeHumidity: (wetBulb, tdb) => rh_from_wet_bulb(wetBulb, tdb),
-    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).t_wb,
+    toRelativeHumidity: (wetBulb, tdb, atmosphericPressure) => rh_from_wet_bulb(wetBulb, tdb),
+    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_wb,
   },
   vapourPressure: {
     id: "vapour-pressure",
     quantity: quantities.pa,
-    toRelativeHumidity: (vapourPressure, tdb) => rh_from_vapour_pressure(vapourPressure, tdb),
-    fromRelativeHumidity: (rh, tdb) => psy_ta_rh(tdb, rh).p_vap,
+    toRelativeHumidity: (vapourPressure, tdb, atmosphericPressure) => rh_from_vapour_pressure(vapourPressure, tdb),
+    fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).p_vap,
   },
 } as const satisfies Record<string, HumidityMode>;

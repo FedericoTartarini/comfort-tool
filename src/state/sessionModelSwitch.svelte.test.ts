@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import { outOfRangeRows, type Bound } from "$lib/core/applicability";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { quantities } from "$lib/core/quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
@@ -82,7 +82,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     session.requestModel(belowTheSlot);
 
     expect(session.pendingSwitch?.outOfRangeRows).toEqual([{ quantity: q.tdb, value: 25, bound: { min: 10, max: 20 } }]);
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual(outOfRangeRows(session.slots[0], belowTheSlot));
+    expect(session.pendingSwitch?.outOfRangeRows).toEqual(outOfRangeRows(session.slots[0], belowTheSlot, DEFAULT_ATMOSPHERIC_PRESSURE));
   });
 
   it("lists the operative temperature against the range both temperatures allow at once", () => {
@@ -134,7 +134,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setHumidityMode(humidityMode.humidityRatio);
+    session.slots[0].setHumidityMode(humidityMode.humidityRatio, DEFAULT_ATMOSPHERIC_PRESSURE);
     const entered = session.slots[0].humidity?.value;
     expect(outputs.outOfRangeQuantities).toEqual([]);
 
@@ -153,7 +153,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   it("checks the humidity entry at the temperature the switch would leave, and lists it when that rules it out", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setHumidityMode(humidityMode.humidityRatio);
+    session.slots[0].setHumidityMode(humidityMode.humidityRatio, DEFAULT_ATMOSPHERIC_PRESSURE);
     // About 85 % at the slot's 25 °C, but above saturation at the 20 °C "Yes" moves tdb to.
     session.slots[0].setEntered(q.hr, 0.017);
     expect(outputs.outOfRangeQuantities).toEqual([]);
@@ -174,7 +174,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
   it("leaves everything as it was on a decline", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint);
+    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
     session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
     const before = shapeOf(session.slots[0]);
 

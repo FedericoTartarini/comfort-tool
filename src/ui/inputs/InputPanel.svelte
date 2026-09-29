@@ -20,11 +20,13 @@
     model: RegisteredModel;
     inputSlot: InputSlot;
     unitSystem: UnitSystem;
+    /** The session's, in Pa: the slot converts its humidity entry at it. */
+    atmosphericPressure: number;
     outOfRangeQuantities: readonly Quantity[];
     violations: readonly ViolationRow[];
   }
 
-  let { model, inputSlot, unitSystem, outOfRangeQuantities, violations }: Props = $props();
+  let { model, inputSlot, unitSystem, atmosphericPressure, outOfRangeQuantities, violations }: Props = $props();
 
   const id = $props.id();
 
@@ -38,7 +40,7 @@
   const hints = $derived(splitViolations(violations).inputs);
 
   function shownValueFor(quantity: Quantity): number {
-    return enteredValue(inputSlot, quantity, model) ?? Number.NaN;
+    return enteredValue(inputSlot, quantity, model, atmosphericPressure) ?? Number.NaN;
   }
 
   function temperatureVariantFor(mode: TemperatureMode) {
@@ -67,7 +69,7 @@
     <Inline gap="2" align="center">
       <span>{copy.humidityInput}</span>
       {#each Object.values(humidityMode) as mode (mode)}
-        <Button size="sm" variant={humidityVariantFor(mode)} onclick={() => inputSlot.setHumidityMode(mode)}>
+        <Button size="sm" variant={humidityVariantFor(mode)} onclick={() => inputSlot.setHumidityMode(mode, atmosphericPressure)}>
           {mode.quantity.label}
         </Button>
       {/each}
@@ -79,7 +81,7 @@
       quantity,
       value: shownValueFor(quantity),
       unitSystem,
-      bound: enteredBound(model, quantity, inputSlot),
+      bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       outOfRange: outOfRangeQuantities.includes(quantity),
       oncommit: (si: number) => inputSlot.setEntered(quantity, si),
     }}

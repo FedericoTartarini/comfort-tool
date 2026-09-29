@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { t_o, v_relative } from "jsthermalcomfort";
+import { hr_to_rh, psy_ta_rh, t_o, v_relative } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -7,7 +7,7 @@ import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { resolveQuantities, valuesReader } from "./libraryInputs";
 import type { RegisteredModel } from "./modelDeclaration";
-import { quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
 import {
   enteredQuantities,
   enteredValue,
@@ -23,12 +23,15 @@ import {
 
 const q = quantities;
 
+/** An atmospheric pressure other than the default, about 1 950 m above sea level. */
+const LOWER_PRESSURE = 80000;
+
 /** A model with a temperature entry group and no standard: the library's default decides. */
 const withoutStandard = { ...pmvPpdIso, standard: undefined };
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
 const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso).values);
-const rh = relativeHumidityOf(startingSlot(pmvPpdIso));
+const rh = relativeHumidityOf(startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE);
 
 describe("operativeTemperatureOf", () => {
   // One room, 24 / 28 °C at 0.6 m/s: ASHRAE 55 weighs the air temperature by
@@ -49,23 +52,23 @@ describe("operativeTemperatureOf", () => {
   });
 
   it("is what the slot answers for operative_tmp in either entry mode", () => {
-    expect(enteredValue(room, q.operative_tmp, adaptiveAshrae)).toBe(operativeTemperatureOf(room, adaptiveAshrae));
-    expect(enteredValue(enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }), q.operative_tmp, adaptiveAshrae)).toBe(26);
+    expect(enteredValue(room, q.operative_tmp, adaptiveAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(operativeTemperatureOf(room, adaptiveAshrae));
+    expect(enteredValue(enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }), q.operative_tmp, adaptiveAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(26);
   });
 
   it("is where the switch into operative entry lands, so the click does not move the marker", () => {
     for (const model of [adaptiveAshrae, pmvPpdIso, withoutStandard]) {
       const switched = withTemperatureMode(room, temperatureMode.operative, model);
-      expect(enteredValue(switched, q.operative_tmp, model)).toBe(enteredValue(room, q.operative_tmp, model));
+      expect(enteredValue(switched, q.operative_tmp, model, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(enteredValue(room, q.operative_tmp, model, DEFAULT_ATMOSPHERIC_PRESSURE));
     }
   });
 });
 
 describe("entered values", () => {
   it("reads the humidity entry from where the slot keeps it", () => {
-    expect(enteredValue(startingSlot(pmvPpdIso), q.rh, pmvPpdIso)).toBe(rh);
-    expect(enteredValue(enteredSlotFor(pmvPpdIso, { tdb: 27 }), q.tdb, pmvPpdIso)).toBe(27);
-    expect(enteredValue(startingSlot(pmvPpdIso), q.vr, pmvPpdIso)).toBeUndefined();
+    expect(enteredValue(startingSlot(pmvPpdIso), q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(rh);
+    expect(enteredValue(enteredSlotFor(pmvPpdIso, { tdb: 27 }), q.tdb, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(27);
+    expect(enteredValue(startingSlot(pmvPpdIso), q.vr, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
   });
 
   it("lists the panel rows of the current temperature mode", () => {
@@ -122,35 +125,35 @@ describe("entered values", () => {
   it("re-derives everything downstream of a swept value", () => {
     const slot = startingSlot(pmvPpdIso);
     const swept = withEnteredValues(slot, new Map([[q.v, 0.6]]));
-    expect(resolveQuantities(swept, pmvPpdIso).get(q.vr)).toBe(v_relative(0.6, met));
+    expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.vr)).toBe(v_relative(0.6, met));
     expect(slot.values.get(q.v)).toBe(v);
   });
 
   it("sweeps the humidity entry as well, without touching the original", () => {
     const slot = startingSlot(pmvPpdIso);
     const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
-    expect(resolveQuantities(swept, pmvPpdIso).get(q.rh)).toBe(80);
+    expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBe(80);
     expect(slot.humidity?.value).toBe(rh);
   });
 
   it("reads a dew-point entry as entered, and rh as derived from it at the slot's dry-bulb temperature", () => {
-    const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, tdb);
+    const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, tdb, DEFAULT_ATMOSPHERIC_PRESSURE);
     const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
-    expect(enteredValue(slot, q.dew_point_tmp, pmvPpdIso)).toBe(dewPoint);
-    expect(enteredValue(slot, q.rh, pmvPpdIso)).toBeCloseTo(rh, 0);
+    expect(enteredValue(slot, q.dew_point_tmp, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(dewPoint);
+    expect(enteredValue(slot, q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeCloseTo(rh, 0);
   });
 
   it("derives rh from the operative temperature under operative entry", () => {
-    const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, 24);
+    const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, 24, DEFAULT_ATMOSPHERIC_PRESSURE);
     const slot: Slot = { ...enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
-    expect(resolveQuantities(slot, pmvPpdIso).get(q.rh)).toBeCloseTo(rh, 0);
+    expect(resolveQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBeCloseTo(rh, 0);
   });
 
   it("sweeps rh as rh whatever the entry mode", () => {
     const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
     const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
     expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
-    expect(resolveQuantities(swept, pmvPpdIso).get(q.rh)).toBe(70);
+    expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBe(70);
     expect(slot.humidity?.mode).toBe(humidityMode.dewPoint);
   });
 
@@ -169,7 +172,7 @@ describe("entered values", () => {
 
   it("expands a swept operative temperature to both temperatures", () => {
     const swept = withEnteredValues(enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), new Map([[q.operative_tmp, 28]]));
-    const resolved = resolveQuantities(swept, pmvPpdIso);
+    const resolved = resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(resolved.get(q.tdb)).toBe(28);
     expect(resolved.get(q.tr)).toBe(28);
   });
@@ -184,18 +187,18 @@ describe("a slot that holds no humidity", () => {
   });
 
   it("throws, naming humidity, when its relative humidity is read", () => {
-    expect(() => relativeHumidityOf(holdsNone)).toThrow(/humidity/);
+    expect(() => relativeHumidityOf(holdsNone, DEFAULT_ATMOSPHERIC_PRESSURE)).toThrow(/humidity/);
   });
 
   it("has no entered value for any humidity quantity", () => {
     for (const mode of Object.values(humidityMode)) {
-      expect(enteredValue(holdsNone, mode.quantity, pmvPpdIso), mode.id).toBeUndefined();
+      expect(enteredValue(holdsNone, mode.quantity, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE), mode.id).toBeUndefined();
     }
   });
 
   it("throws, naming humidity, when its humidity entry mode is changed", () => {
     for (const mode of Object.values(humidityMode)) {
-      expect(() => withHumidityMode(holdsNone, mode), mode.id).toThrow(/humidity/);
+      expect(() => withHumidityMode(holdsNone, mode, DEFAULT_ATMOSPHERIC_PRESSURE), mode.id).toThrow(/humidity/);
     }
   });
 });
@@ -204,13 +207,55 @@ describe("withHumidityMode", () => {
   const room: Slot = { ...enteredSlotFor(pmvPpdIso, { tdb: 27 }), humidity: { mode: humidityMode.rh, value: 35 } };
 
   it("re-expresses the entry at the slot's dry-bulb temperature, leaving the original untouched", () => {
-    const converted = withHumidityMode(room, humidityMode.dewPoint);
-    expect(converted.humidity).toEqual({ mode: humidityMode.dewPoint, value: humidityMode.dewPoint.fromRelativeHumidity(35, 27) });
+    const converted = withHumidityMode(room, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(converted.humidity).toEqual({ mode: humidityMode.dewPoint, value: humidityMode.dewPoint.fromRelativeHumidity(35, 27, DEFAULT_ATMOSPHERIC_PRESSURE) });
     expect(room.humidity).toEqual({ mode: humidityMode.rh, value: 35 });
   });
 
   it("returns the slot unchanged for the mode it is already in", () => {
-    expect(withHumidityMode(room, humidityMode.rh)).toBe(room);
+    expect(withHumidityMode(room, humidityMode.rh, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(room);
+  });
+});
+
+/**
+ * The atmospheric pressure reaches a humidity entry only where the library's
+ * conversion takes `p_atm`: to and from humidity ratio (ADR-0002 decision 49).
+ * Expected values are the library's, called with `p_atm`.
+ */
+describe("a humidity entry at an atmospheric pressure", () => {
+  const room = enteredSlotFor(pmvPpdIso, { tdb: 27 });
+  const pressures = [DEFAULT_ATMOSPHERIC_PRESSURE, LOWER_PRESSURE];
+
+  /** `room` with its humidity entered as `value` in `mode`. */
+  function enteredAs(mode: HumidityMode, value: number): Slot {
+    return { ...room, humidity: { mode, value } };
+  }
+
+  it("gives a humidity ratio's relative humidity at that pressure", () => {
+    const slot = enteredAs(humidityMode.humidityRatio, 0.01);
+    for (const pressure of pressures) {
+      expect(relativeHumidityOf(slot, pressure), `${pressure} Pa`).toBe(hr_to_rh(0.01, 27, pressure));
+    }
+    expect(relativeHumidityOf(slot, LOWER_PRESSURE)).not.toBeCloseTo(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE), 0);
+  });
+
+  it("re-expresses a relative humidity as the humidity ratio at that pressure", () => {
+    const slot = enteredAs(humidityMode.rh, 35);
+    for (const pressure of pressures) {
+      expect(withHumidityMode(slot, humidityMode.humidityRatio, pressure).humidity?.value, `${pressure} Pa`).toBe(psy_ta_rh(27, 35, pressure).hr);
+    }
+  });
+
+  it("converts every other entry mode, both ways, the same whatever the pressure", () => {
+    const others = [humidityMode.rh, humidityMode.dewPoint, humidityMode.wetBulb, humidityMode.vapourPressure];
+    for (const mode of others) {
+      const slot = enteredAs(mode, mode.fromRelativeHumidity(35, 27, DEFAULT_ATMOSPHERIC_PRESSURE));
+      expect(relativeHumidityOf(slot, LOWER_PRESSURE), mode.id).toBe(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE));
+      const fromRelativeHumidity = enteredAs(humidityMode.humidityRatio, 0.01);
+      expect(withHumidityMode(fromRelativeHumidity, mode, LOWER_PRESSURE).humidity?.value, mode.id).toBe(
+        mode.fromRelativeHumidity(hr_to_rh(0.01, 27, LOWER_PRESSURE), 27, DEFAULT_ATMOSPHERIC_PRESSURE),
+      );
+    }
   });
 });
 

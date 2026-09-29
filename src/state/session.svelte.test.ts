@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode, type HumidityMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { quantities } from "$lib/core/quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -172,7 +172,7 @@ describe("Session.setModel", () => {
 
   it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint);
+    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
     const entered = session.slots[0].humidity;
 
     session.setModel(adaptiveAshrae);
@@ -226,7 +226,7 @@ describe("Session.requestModel", () => {
 
   it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint);
+    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
     const entered = session.slots[0].humidity;
 
     session.requestModel(adaptiveAshrae);
@@ -382,7 +382,7 @@ describe("InputSlot.setEntered", () => {
   it("enters the humidity entry's quantity as the entry, in its own mode, and the outputs follow", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint);
+    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
     const before = resultValueOf(outputs.perSlot[0], q.pmv);
 
     session.slots[0].setEntered(q.dew_point_tmp, 12);
@@ -425,7 +425,7 @@ describe("InputSlot.setHumidityMode", () => {
     let mode: HumidityMode = humidityMode.rh;
     let value = rh;
     return walk.map((next) => {
-      value = next.fromRelativeHumidity(mode.toRelativeHumidity(value, tdb), tdb);
+      value = next.fromRelativeHumidity(mode.toRelativeHumidity(value, tdb, DEFAULT_ATMOSPHERIC_PRESSURE), tdb, DEFAULT_ATMOSPHERIC_PRESSURE);
       mode = next;
       return value;
     });
@@ -434,7 +434,7 @@ describe("InputSlot.setHumidityMode", () => {
   /** The value `slot` holds after each change of the walk. */
   function walkedValues(slot: InputSlot): (number | undefined)[] {
     return walk.map((mode) => {
-      slot.setHumidityMode(mode);
+      slot.setHumidityMode(mode, DEFAULT_ATMOSPHERIC_PRESSURE);
       return slot.humidity?.value;
     });
   }

@@ -3,7 +3,7 @@ import type { ChartType } from "$lib/core/chartType";
 import { temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
-import type { Quantity } from "$lib/core/quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantities";
 import { startingSlot, withEnteredValues, withHumidityMode, withOption, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
@@ -60,11 +60,13 @@ export class InputSlot implements Slot {
 
   /**
    * Re-express the stored humidity in the new representation, by the rule
-   * `core/slot.ts` states: at the slot's dry-bulb temperature, lossy and
-   * one-way. Throws for a slot that holds no humidity.
+   * `core/slot.ts` states: at the slot's dry-bulb temperature and the
+   * session's atmospheric pressure, lossy and one-way. The slot does not hold
+   * the pressure, so the caller names it. Throws for a slot that holds no
+   * humidity.
    */
-  setHumidityMode(mode: HumidityMode): void {
-    this.replaceWith(withHumidityMode(this, mode));
+  setHumidityMode(mode: HumidityMode, atmosphericPressure: number): void {
+    this.replaceWith(withHumidityMode(this, mode, atmosphericPressure));
   }
 
   /**
@@ -155,6 +157,11 @@ export class Session {
   unitSystem = $state.raw<UnitSystem>(unitSystem.si);
   /** The chart settings of the current model. */
   chart: ChartState;
+  /**
+   * The air every slot describes, in Pa: one value for the session, held by
+   * no slot and kept by a model switch (ADR-0002 decision 49).
+   */
+  atmosphericPressure = $state(DEFAULT_ATMOSPHERIC_PRESSURE);
   /** The switch waiting on an answer, or `null`. Held whole, so `$state.raw`. */
   pendingSwitch = $state.raw<PendingSwitch | null>(null);
   readonly slots: readonly [InputSlot, InputSlot, InputSlot];
@@ -179,7 +186,7 @@ export class Session {
     if (model === this.model) {
       return;
     }
-    this.#land(model, rehearseSwitch(this.slots[0], model).slot);
+    this.#land(model, rehearseSwitch(this.slots[0], model, this.atmosphericPressure).slot);
   }
 
   /**
@@ -198,7 +205,7 @@ export class Session {
     if (model === this.model) {
       return;
     }
-    const rehearsed = rehearseSwitch(this.slots[0], model);
+    const rehearsed = rehearseSwitch(this.slots[0], model, this.atmosphericPressure);
     if (rehearsed.outOfRangeRows.length === 0) {
       this.#land(model, rehearsed.slot);
       return;

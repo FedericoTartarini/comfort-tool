@@ -33,18 +33,21 @@ export interface RehearsedSwitch {
 
 /**
  * What `slot` would hold under `model`, and what `model` would not accept of
- * it. Temperatures first: the humidity entry's bound moves with the dry-bulb
+ * it at `atmosphericPressure`, which the switch keeps (ADR-0002 decision 49).
+ * Temperatures first: the humidity entry's bound moves with the dry-bulb
  * temperature (ADR-0002 decision 46), so it is checked at the temperature a
  * "Yes" would leave — the gate asked again on the slot with every other row
  * adjusted — and listed with the bound it has there. A "Yes" then leaves
  * nothing out of range.
  */
-export function rehearseSwitch(slot: Slot, model: RegisteredModel): RehearsedSwitch {
+export function rehearseSwitch(slot: Slot, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
   const converted = convertEntryMode(slot, model);
   const seeded = seedDeclaredDefaults(converted, model);
   const humidity = seeded.humidity?.mode.quantity;
-  const others = outOfRangeRows(seeded, model).filter((row) => row.quantity !== humidity);
-  const humidityRow = outOfRangeRows(adjustToBounds(seeded, others), model).find((row) => row.quantity === humidity);
+  const others = outOfRangeRows(seeded, model, atmosphericPressure).filter((row) => row.quantity !== humidity);
+  const humidityRow = outOfRangeRows(adjustToBounds(seeded, others), model, atmosphericPressure).find(
+    (row) => row.quantity === humidity,
+  );
   return { slot: seeded, outOfRangeRows: humidityRow ? [...others, humidityRow] : others };
 }
 

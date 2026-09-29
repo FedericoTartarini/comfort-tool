@@ -103,14 +103,15 @@ function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
  * The bound a humidity entry in `mode` must satisfy under `model`: relative
  * humidity's — its kind's 0 to 100, narrowed by any row the model has —
  * converted into the entry's mode by the mode's own `fromRelativeHumidity` at
- * the slot's dry-bulb temperature (ADR-0002 decision 46). An end the mode has
- * no finite value for (the dew point of 0 %) is dropped. The library's
+ * the slot's dry-bulb temperature and the atmospheric pressure (ADR-0002
+ * decisions 46 and 49). An end the mode has no finite value for (the dew
+ * point of 0 %) is dropped. The library's
  * conversions do not rise with relative humidity everywhere — saturated air's
  * humidity ratio turns negative from 100 °C — so where the converted ends come
  * out inverted the entry has no bound at that temperature. `undefined` for a
  * model without the humidity entry group.
  */
-function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot: Slot): Bound | undefined {
+function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot: Slot, atmosphericPressure: number): Bound | undefined {
   // `rh_from_wet_bulb` clamps to 0 – 100, so a wet-bulb entry can never
   // resolve outside the bound; and `t_wb` at 0 % is approximate (1.9 °C at
   // 10 °C, which reads back as 16 %), so bounding the entry would stop valid ones.
@@ -122,7 +123,8 @@ function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot:
     return undefined;
   }
   const tdb = resolvedTdb(slot);
-  const converted = (end: number | undefined) => (end === undefined ? undefined : mode.fromRelativeHumidity(end, tdb));
+  const converted = (end: number | undefined) =>
+    end === undefined ? undefined : mode.fromRelativeHumidity(end, tdb, atmosphericPressure);
   const bound = boundOf(converted(relativeHumidity.min), converted(relativeHumidity.max));
   if (bound.min !== undefined && bound.max !== undefined && bound.min > bound.max) {
     return undefined;
@@ -135,17 +137,23 @@ function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot:
  * entry modes. An operative entry stands in for both temperature rows and
  * must satisfy both at once. The humidity entry is held to relative
  * humidity's bound converted into its mode at the slot's dry-bulb
- * temperature, so the bound moves with the temperature, except in wet-bulb
- * entry, which is not bounded ({@link humidityEntryBoundFor}); a slot that
+ * temperature and `atmosphericPressure`, so the bound moves with both,
+ * except in wet-bulb entry, which is not bounded
+ * ({@link humidityEntryBoundFor}); a slot that
  * holds no humidity has no humidity entry to bound. Entered `v` has
  * no bound of its own — the standard bounds the relative air speed it
  * derives, `vr`, which the library checks and {@link violationRows} reports
  * on the `v` row.
  */
-export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: Slot): Bound | undefined {
+export function enteredBound(
+  model: RegisteredModel,
+  quantity: Quantity,
+  slot: Slot,
+  atmosphericPressure: number,
+): Bound | undefined {
   const { humidity } = slot;
   if (quantity === humidity?.mode.quantity) {
-    return humidityEntryBoundFor(model, humidity.mode, slot);
+    return humidityEntryBoundFor(model, humidity.mode, slot, atmosphericPressure);
   }
   if (humidity === undefined && isHumidityQuantity(quantity)) {
     return undefined;
@@ -169,14 +177,14 @@ export function enteredBound(model: RegisteredModel, quantity: Quantity, slot: S
  * input panel's red boxes and the model-switch dialog's rows are both this
  * list, so the two can never disagree about a value.
  */
-export function outOfRangeRows(slot: Slot, model: RegisteredModel): OutOfRangeRow[] {
+export function outOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPressure: number): OutOfRangeRow[] {
   const entered: (readonly [Quantity, number])[] = [...slot.values];
   if (slot.humidity) {
     entered.push([slot.humidity.mode.quantity, slot.humidity.value]);
   }
   const rows: OutOfRangeRow[] = [];
   for (const [quantity, value] of entered) {
-    const bound = enteredBound(model, quantity, slot);
+    const bound = enteredBound(model, quantity, slot, atmosphericPressure);
     if (bound && breaksBound(bound, value)) {
       rows.push({ quantity, value, bound });
     }
@@ -185,8 +193,8 @@ export function outOfRangeRows(slot: Slot, model: RegisteredModel): OutOfRangeRo
 }
 
 /** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
-export function outOfRangeQuantities(slot: Slot, model: RegisteredModel): Quantity[] {
-  return outOfRangeRows(slot, model).map((row) => row.quantity);
+export function outOfRangeQuantities(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Quantity[] {
+  return outOfRangeRows(slot, model, atmosphericPressure).map((row) => row.quantity);
 }
 
 /**

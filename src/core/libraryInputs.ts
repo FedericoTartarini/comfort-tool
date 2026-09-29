@@ -17,9 +17,11 @@ const q = quantities;
 /**
  * Entry-group representations → the SI quantities the library model takes
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
- * humidity entry becomes `rh`, and `v` becomes `vr` when the model asks for it.
+ * humidity entry becomes `rh` at `atmosphericPressure`, and `v` becomes `vr`
+ * when the model asks for it. No `p_atm` is filled: no registered model takes
+ * one (ADR-0002 decision 49).
  */
-export function resolveQuantities(slot: Slot, model: RegisteredModel): Map<Quantity, number> {
+export function resolveQuantities(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Map<Quantity, number> {
   const resolved = new Map(slot.values);
 
   if (hasTemperatureGroup(model) && slot.temperature.mode === temperatureMode.operative) {
@@ -27,7 +29,7 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel): Map<Quant
   }
 
   if (hasHumidityGroup(model)) {
-    resolved.set(q.rh, relativeHumidityOf(slot));
+    resolved.set(q.rh, relativeHumidityOf(slot, atmosphericPressure));
   }
 
   if (takesRelativeAirSpeed(model)) {
@@ -49,8 +51,8 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel): Map<Quant
  * breaks it while the entered `v` does not) come back on the result's
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
-export function toLibraryInputs(slot: Slot, model: RegisteredModel): Values {
-  return valuesReader(resolveQuantities(slot, model));
+export function toLibraryInputs(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Values {
+  return valuesReader(resolveQuantities(slot, model, atmosphericPressure));
 }
 
 /**

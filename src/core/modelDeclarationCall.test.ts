@@ -14,7 +14,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { optionsReader, resolveQuantities, valuesReader } from "./libraryInputs";
 import type { OptionSpec, OptionsReader, RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
-import { quantityFor, type Quantity } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantityFor, type Quantity } from "./quantities";
 import { startingSlot } from "./slot";
 
 /** The arguments of the last call of each library function, by export name. */
@@ -68,7 +68,7 @@ function receivedParams(model: RegisteredModel, values: Values, options: Options
 function mispairedKeys(model: RegisteredModel): { checked: string[]; mispaired: string[] } {
   const slot = startingSlot(model);
   const distinct = new Map<Quantity, number>(
-    [...resolveQuantities(slot, model)].map(([quantity, value], index) => [quantity, value + (index + 1) / 1000]),
+    [...resolveQuantities(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE)].map(([quantity, value], index) => [quantity, value + (index + 1) / 1000]),
   );
   expect(new Set(distinct.values()).size, `${model.info.name} distinct values`).toBe(distinct.size);
   const params = receivedParams(model, valuesReader(distinct), optionsReader(slot.options));
@@ -153,7 +153,7 @@ function kwargsFedBy(model: RegisteredModel, option: OptionSpec): string[] {
   const slot = startingSlot(model);
   const argumentsWith = (value: boolean): readonly unknown[] => {
     lastCalls.delete(model.info.name);
-    runOn({ ...slot, options: new Map(slot.options).set(option, value) }, model);
+    runOn({ ...slot, options: new Map(slot.options).set(option, value) }, model, DEFAULT_ATMOSPHERIC_PRESSURE);
     const args = lastCalls.get(model.info.name);
     if (!args) {
       throw new Error(`${model.info.name}'s run did not call the library function it is named after`);

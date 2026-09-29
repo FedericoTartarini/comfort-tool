@@ -14,7 +14,7 @@ import {
   type DeclaredScannedChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
-import { quantities, type Quantity } from "$lib/core/quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { enteredQuantities, startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
@@ -33,7 +33,13 @@ if (!isoChart || isPolygonsChart(isoChart)) {
 
 const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 
-const request: ChartRequest = { model: pmvPpdIso, slot, slotLabel: "Input 1", unitSystem: unitSystem.si };
+const request: ChartRequest = {
+  model: pmvPpdIso,
+  slot,
+  slotLabel: "Input 1",
+  unitSystem: unitSystem.si,
+  atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
+};
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
 const { v } = valuesReader(startingSlot(pmvPpdIso).values);
@@ -410,6 +416,7 @@ const adaptiveRequest: ChartRequest = {
   slot: startingSlot(adaptiveAshrae),
   slotLabel: "Input 1",
   unitSystem: unitSystem.si,
+  atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
 };
 
 describe("Adaptive's running mean axis", () => {
@@ -450,12 +457,7 @@ describe("Adaptive's acceptability zones", () => {
   if (!psychrometric) {
     throw new Error("pmvPpdIso no longer declares a psychrometric chart");
   }
-  const psychrometricZones = zoneTraces(
-    psychrometricSpec(
-      { model: pmvPpdIso, slot: startingSlot(pmvPpdIso), slotLabel: "Input 1", unitSystem: unitSystem.si },
-      psychrometric,
-    ),
-  );
+  const psychrometricZones = zoneTraces(psychrometricSpec({ ...request, slot: startingSlot(pmvPpdIso) }, psychrometric));
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
     expect(zones.map((zone) => zone.label)).toEqual([q.acceptability_80.label, q.acceptability_90.label]);

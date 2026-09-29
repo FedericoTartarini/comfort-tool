@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
+  import { kindBounds, quantities } from "$lib/core/quantities";
   import { standards } from "$lib/core/standard";
   import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
   import { Outputs } from "$lib/state/compute.svelte";
@@ -11,6 +12,7 @@
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
+  import QuantityInput from "$lib/ui/inputs/QuantityInput.svelte";
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
@@ -149,10 +151,23 @@
               </Select.Content>
             </Select.Root>
           </Inline>
+          <!--
+            The session's pressure, not the slot's: outside the slot's rows and
+            shown on every model (ADR-0002 decision 49). Its place and look are
+            Phase 5c's.
+          -->
+          <QuantityInput
+            quantity={quantities.p_atm}
+            value={session.atmosphericPressure}
+            unitSystem={session.unitSystem}
+            bound={kindBounds[quantities.p_atm.kind]}
+            oncommit={(si) => (session.atmosphericPressure = si)}
+          />
           <InputPanel
             model={session.model}
             inputSlot={session.slots[0]}
             unitSystem={session.unitSystem}
+            atmosphericPressure={session.atmosphericPressure}
             outOfRangeQuantities={outputs.outOfRangeQuantities}
             violations={outputs.violations}
           />
