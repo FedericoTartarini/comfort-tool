@@ -18,10 +18,10 @@ import {
   dynamicChartOf,
   isPolygonsChart,
   requireAxisRange,
-  type DynamicDeclaration,
+  type DeclaredDynamicChart,
+  type DeclaredScannedChart,
   type Range,
   type RegisteredModel,
-  type ScannedDeclaration,
   type Values,
 } from "./modelDeclaration";
 import { resultValue, runOn } from "./modelRun";
@@ -58,7 +58,7 @@ const isoWithPolygonsChart = {
  * declared defaults, the range the axis is drawn over, the slot at a position
  * along it, and the run's value for a quantity there.
  */
-function alongTheXAxis(model: RegisteredModel, chart: DynamicDeclaration) {
+function alongTheXAxis(model: RegisteredModel, chart: DeclaredDynamicChart) {
   const defaults = startingSlot(model);
   const axis = chart.axes.x;
   const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
@@ -102,7 +102,7 @@ function bracketAcross(outputAt: (position: number) => number, range: Range, edg
  * an Edge when only one cut is misplaced, which is why the rest of the probes
  * go there.
  */
-function driftProbes(model: RegisteredModel, chart: ScannedDeclaration): Slot[] {
+function driftProbes(model: RegisteredModel, chart: DeclaredScannedChart): Slot[] {
   const { defaults, range, at, valueAt } = alongTheXAxis(model, chart);
   const outputAt = (position: number) => Number(valueAt(position, chart.output));
 
@@ -175,7 +175,7 @@ const SAMPLES_ALONG_THE_AXIS = 25;
  * an assertion per value: an unrounded kernel still returns a value on the
  * grid now and then, and one such value says nothing.
  */
-function unroundedSampleCount(model: RegisteredModel, chart: DynamicDeclaration): number {
+function unroundedSampleCount(model: RegisteredModel, chart: DeclaredDynamicChart): number {
   const { range, valueAt } = alongTheXAxis(model, chart);
   const column = model.table[0];
   if (!column) {

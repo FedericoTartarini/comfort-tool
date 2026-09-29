@@ -30,13 +30,13 @@
 <Inline gap="4" align="baseline">
   <Inline gap="2" align="center">
     <span>{copy.chart}</span>
-    {#each model.charts as declaration (declaration.type)}
+    {#each model.charts as declaredChart (declaredChart.type)}
       <Button
         size="sm"
-        variant={chart.type === declaration.type ? "default" : "outline"}
-        onclick={() => (chart.type = declaration.type)}
+        variant={chart.type === declaredChart.type ? "default" : "outline"}
+        onclick={() => (chart.type = declaredChart.type)}
       >
-        {declaration.type.title}
+        {declaredChart.type.title}
       </Button>
     {/each}
   </Inline>

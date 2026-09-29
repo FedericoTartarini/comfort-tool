@@ -117,7 +117,7 @@ export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
   type: ChartType;
   axes: ChartAxes;
-  /** A polygons chart's axes are its declaration's, and never move (ADR-0002 decision 37). */
+  /** A polygons chart's axes are the ones its model declares, and never move (ADR-0002 decision 37). */
   readonly #axesLocked: boolean;
 
   constructor(model: RegisteredModel) {

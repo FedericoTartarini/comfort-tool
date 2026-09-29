@@ -6,8 +6,8 @@ import { optionsReader, resolveQuantities, valuesReader } from "$lib/core/librar
 import {
   requireAxisRange,
   takesRelativeAirSpeed,
+  type DeclaredPsychrometricChart,
   type OptionsReader,
-  type PsychrometricDeclaration,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
@@ -48,7 +48,7 @@ const ZONE_RH_STEP = 5;
  * model's axis range for whichever temperature the mode puts on x: declared,
  * else its applicability bound (ADR-0002 decision 5).
  */
-export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDeclaration): ChartSpec {
+export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;
   const operative = slot.temperature.mode === temperatureMode.operative;
   const axisQuantity = slot.temperature.mode.axis;

@@ -10,9 +10,9 @@ import {
   isPolygonsChart,
   psychrometricChartOf,
   requireAxisRange,
-  type PolygonsDeclaration,
+  type DeclaredPolygonsChart,
+  type DeclaredScannedChart,
   type RegisteredModel,
-  type ScannedDeclaration,
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { enteredQuantities, startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
@@ -26,8 +26,8 @@ import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
 
-const declaration = dynamicChartOf(pmvPpdIso);
-if (!declaration || isPolygonsChart(declaration)) {
+const isoChart = dynamicChartOf(pmvPpdIso);
+if (!isoChart || isPolygonsChart(isoChart)) {
   throw new Error("pmvPpdIso no longer declares a scanned dynamic chart");
 }
 
@@ -68,7 +68,7 @@ function bands(spec: { traces: readonly { kind: string }[] }): BandTrace {
 
 describe("dynamicSpec", () => {
   it("scans a square field across the declared axis ranges", () => {
-    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
+    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
     // One grid count for both axes, whatever it is; the surface and its hover
     // text follow the axes rather than a number restated here.
     const grid = surface.x.length;
@@ -84,17 +84,17 @@ describe("dynamicSpec", () => {
   });
 
   it("lists the declared classifier's own bands, in order", () => {
-    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
-    expect(surface.bands.map((band) => band.label)).toEqual([...declaration.bands.labels]);
+    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
+    expect(surface.bands.map((band) => band.label)).toEqual([...isoChart.bands.labels]);
   });
 
   it("paints each band by its position in the palette, Cold to Hot", () => {
-    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
+    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
     expect(surface.bands.map((band) => band.color)).toEqual([...sensationPalette]);
   });
 
   it("puts a cold still point in a lower band than a warm one", () => {
-    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
+    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
     // Cold and still at the bottom left, warm and still at the bottom right.
     const coldest = surface.z[0][0];
     const warmest = last(surface.z[0]);
@@ -104,46 +104,46 @@ describe("dynamicSpec", () => {
   });
 
   it("gives every band the interval of the number it fills, the first open below", () => {
-    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
-    const { edges } = declaration.bands;
+    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
+    const { edges } = isoChart.bands;
     expect(surface.bands.map((band) => [band.lower, band.upper])).toEqual(
       edges.map((edge, index) => [index === 0 ? undefined : edges[index - 1], edge]),
     );
   });
 
   it("carries the model's own number in every cell, which is what the hover label bins", () => {
-    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
+    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
     for (const [row, values] of surface.z.entries()) {
       for (const [column, value] of values.entries()) {
-        const category = value === null ? "" : classifyFromBins(value, declaration.bands);
+        const category = value === null ? "" : classifyFromBins(value, isoChart.bands);
         expect(bandRead(surface.hoverText[row][column])).toBe(typeof category === "string" ? category : "");
       }
     }
     // A number rather than a band index: cold and fast-moving air sits well
     // below the first Edge, which no index ever does.
-    expect(Number(last(surface.z)[0])).toBeLessThan(declaration.bands.edges[0]);
+    expect(Number(last(surface.z)[0])).toBeLessThan(isoChart.bands.edges[0]);
   });
 
   it("names the cold still corner and the warm still corner with different bands", () => {
-    const surface = bands(dynamicSpec(request, declaration, declaration.axes));
+    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
     expect(bandRead(surface.hoverText[0][0])).not.toBe(bandRead(last(surface.hoverText[0])));
   });
 
   it("marks the value the user entered, not the derived one", () => {
-    const marker = markerOf(dynamicSpec(request, declaration, declaration.axes));
+    const marker = markerOf(dynamicSpec(request, isoChart, isoChart.axes));
     expect(marker?.x).toBe(26);
     // The library is called with vr = v_relative(v, met); the axis is the entered v.
     expect(marker?.y).toBe(v);
   });
 
   it("sweeps a swapped axis just as well", () => {
-    const surface = bands(dynamicSpec(request, declaration, { x: q.clo, y: q.met }));
+    const surface = bands(dynamicSpec(request, isoChart, { x: q.clo, y: q.met }));
     expect([surface.x[0], last(surface.x)]).toEqual(declaredRangeOf(q.clo));
     expect([surface.y[0], last(surface.y)]).toEqual(declaredRangeOf(q.met));
   });
 
   it("converts both axes to the displayed unit", () => {
-    const spec = dynamicSpec({ ...request, unitSystem: unitSystem.ip }, declaration, declaration.axes);
+    const spec = dynamicSpec({ ...request, unitSystem: unitSystem.ip }, isoChart, isoChart.axes);
     const surface = bands(spec);
     expect(surface.x[0]).toBeCloseTo(50, 10);
     expect(last(surface.y)).toBeCloseTo(393.7, 2);
@@ -151,8 +151,8 @@ describe("dynamicSpec", () => {
   });
 
   it("carries one legend: every band plus the slot", () => {
-    const spec = dynamicSpec(request, declaration, declaration.axes);
-    expect(spec.legend).toHaveLength(declaration.bands.labels.length + 1);
+    const spec = dynamicSpec(request, isoChart, isoChart.axes);
+    expect(spec.legend).toHaveLength(isoChart.bands.labels.length + 1);
     expect(spec.legend.filter((entry) => entry.swatch === "marker")).toHaveLength(1);
   });
 });
@@ -167,10 +167,10 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     right: false,
   };
 
-  const unevenChart: ScannedDeclaration = { ...declaration, bands: uneven };
+  const unevenChart: DeclaredScannedChart = { ...isoChart, bands: uneven };
 
   /** The surface of a model whose output is `value` at every point of the field. */
-  function flat(value: number, chart: ScannedDeclaration = unevenChart): BandTrace {
+  function flat(value: number, chart: DeclaredScannedChart = unevenChart): BandTrace {
     const model = { ...pmvPpdIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
     return bands(dynamicSpec({ ...request, model }, chart, chart.axes));
   }
@@ -217,7 +217,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
   it("leaves the surface and the Edges in the output's own unit when the axes are displayed in IP", () => {
     // They are never shown, only compared with each other, so nothing converts
     // them — the one exception to the chart spec's display-unit rule.
-    const celsius: ScannedDeclaration = { ...unevenChart, output: q.operative_tmp };
+    const celsius: DeclaredScannedChart = { ...unevenChart, output: q.operative_tmp };
     const model = { ...pmvPpdIso, run: () => ({ operative_tmp: 30 }) } satisfies RegisteredModel;
     const surface = bands(dynamicSpec({ ...request, model, unitSystem: unitSystem.ip }, celsius, celsius.axes));
     // 30 °C reads as 86 °F on an axis; here it stays 30.
@@ -237,7 +237,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
     // The same value on the same Edge: left-inclusive opens the band above it,
     // right-inclusive closes the band below it.
     expect(bandRead(flat(10).hoverText[0][0])).toBe("High");
-    const rightInclusive: ScannedDeclaration = { ...unevenChart, bands: { ...uneven, right: true } };
+    const rightInclusive: DeclaredScannedChart = { ...unevenChart, bands: { ...uneven, right: true } };
     expect(bandRead(flat(10, rightInclusive).hoverText[0][0])).toBe("Mild");
     // The hover label is the only place inclusivity still shows: the surface
     // keeps the number on either convention, and the last Edge bounds the fill
@@ -253,7 +253,7 @@ describe("a declared zones source", () => {
   // model's inputs and ranges, and proves the source is handed the resolved SI
   // inputs, read through the checked reader, and the drawn x range, and that
   // its operative axis is locked.
-  const zoned: PolygonsDeclaration = {
+  const zoned: DeclaredPolygonsChart = {
     type: chartType.dynamic,
     axes: { x: q.operative_tmp, y: q.v },
     zones: ({ values, xRange }) => [
@@ -337,7 +337,7 @@ describe("a declared zones source", () => {
   });
 
   it("throws, naming it, when the source reads a quantity the slot does not hold", () => {
-    const readsMissing: PolygonsDeclaration = {
+    const readsMissing: DeclaredPolygonsChart = {
       ...zoned,
       zones: ({ values }) => [{ label: "Unreached", x: [values.t_running_mean], y: [0] }],
     };
@@ -378,8 +378,8 @@ describe("dynamicAxisQuantities", () => {
 
 describe("axes across a temperature entry mode switch", () => {
   it("sweeps the operative temperature when a remembered tdb axis no longer exists", () => {
-    // declaration.axes.x is tdb, which the slot no longer holds.
-    const spec = dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, declaration, declaration.axes);
+    // isoChart.axes.x is tdb, which the slot no longer holds.
+    const spec = dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, isoChart, isoChart.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     // The whole field would carry one band if the sweep were being discarded.
     const surface = bands(spec);
@@ -498,7 +498,7 @@ describe("the scanned chart's hover readout", () => {
   // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
   // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.0618….
   it("reads both axis values, the output and the band, each number at two decimals at most", () => {
-    const surface = bands(dynamicSpec(pmvRequest, declaration, declaration.axes));
+    const surface = bands(dynamicSpec(pmvRequest, isoChart, isoChart.axes));
     expect(surface.hoverText[2][26]).toEqual([
       "Dry-bulb air temperature: 25.6 °C",
       "Air speed: 0.08 m/s",
@@ -508,7 +508,7 @@ describe("the scanned chart's hover readout", () => {
   });
 
   it("reads the axis values in the displayed unit", () => {
-    const surface = bands(dynamicSpec({ ...pmvRequest, unitSystem: unitSystem.ip }, declaration, declaration.axes));
+    const surface = bands(dynamicSpec({ ...pmvRequest, unitSystem: unitSystem.ip }, isoChart, isoChart.axes));
     expect(surface.hoverText[2][26]).toEqual([
       "Dry-bulb air temperature: 78.08 °F",
       "Air speed: 15.75 fpm",
@@ -520,7 +520,7 @@ describe("the scanned chart's hover readout", () => {
 
 describe("a polygons chart's hover grid", () => {
   // Two nested rectangles on operative temperature × air speed, largest first.
-  const rectangles: PolygonsDeclaration = {
+  const rectangles: DeclaredPolygonsChart = {
     type: chartType.dynamic,
     axes: { x: q.operative_tmp, y: q.v },
     zones: () => [

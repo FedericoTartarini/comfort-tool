@@ -8,7 +8,7 @@ import {
   isPolygonsChart,
   requireAxisRange,
   type ChartAxes,
-  type DynamicDeclaration,
+  type DeclaredDynamicChart,
   type RegisteredModel,
   type ZonePolygon,
 } from "$lib/core/modelDeclaration";
@@ -51,7 +51,7 @@ const GRID = 51;
  */
 export function dynamicSpec(
   request: ChartRequest,
-  chart: DynamicDeclaration,
+  chart: DeclaredDynamicChart,
   axes: ChartAxes,
 ): ChartSpec {
   const { model, slot, slotLabel, unitSystem } = request;

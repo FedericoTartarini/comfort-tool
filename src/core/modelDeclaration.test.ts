@@ -16,7 +16,7 @@ import {
   psychrometricChartOf,
   requireAxisRange,
   takesRelativeAirSpeed,
-  type ChartDeclaration,
+  type DeclaredChart,
   type RegisteredModel,
   type ZonePolygon,
 } from "./modelDeclaration";
@@ -201,10 +201,10 @@ describe("requireAxisRange", () => {
 /**
  * Type-level proof of the dynamic chart's two shapes (ADR-0002 decision 37),
  * compiled by `npm run check` and never called: each `@ts-expect-error` fails
- * the build the day the compiler stops refusing that declaration. Exported
+ * the build the day the compiler stops refusing that chart. Exported
  * only because `noUnusedLocals` would otherwise flag it.
  */
-export function dynamicShapesTypeProof(polygons: readonly ZonePolygon[]): ChartDeclaration[] {
+export function dynamicShapesTypeProof(polygons: readonly ZonePolygon[]): DeclaredChart[] {
   const axes = { x: q.v, y: q.operative_tmp };
   const bands = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
   return [

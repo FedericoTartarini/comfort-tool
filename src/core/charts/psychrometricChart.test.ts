@@ -5,7 +5,7 @@ import { intervalZone } from "$lib/core/comfortZones";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
-import { psychrometricChartOf, type PsychrometricDeclaration, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { psychrometricChartOf, type DeclaredPsychrometricChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { quantities } from "$lib/core/quantities";
 import { startingSlot, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
@@ -41,7 +41,7 @@ function request(
 }
 
 /** The ISO declaration's psychrometric chart: what every spec below draws, unless a test hands it another. */
-function isoPsychrometricChart(): PsychrometricDeclaration {
+function isoPsychrometricChart(): DeclaredPsychrometricChart {
   const chart = psychrometricChartOf(pmvPpdIso);
   if (!chart) {
     throw new Error("PMV (ISO 7730) declares no psychrometric chart");
@@ -161,7 +161,7 @@ describe("psychrometricSpec", () => {
     });
   });
 
-  it("draws the declaration it is handed, a one-zone one as one zone", () => {
+  it("draws the chart it is handed, a one-zone one as one zone", () => {
     const zone = intervalZone(copy.comfortZone, PMV_COMPLIANCE_INTERVAL_ASHRAE);
     const spec = psychrometricSpec(request(temperatureMode.separate), { type: chartType.psychrometric, zones: [zone] });
     expect(zonePaths(spec).map((path) => path.label)).toEqual([copy.zoneLegend(zone)]);

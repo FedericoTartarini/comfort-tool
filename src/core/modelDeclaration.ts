@@ -111,7 +111,7 @@ export interface ComfortZone {
  * object literal checked against a union has only the keys no member knows
  * reported as excess.
  */
-export type ChartDeclaration =
+export type DeclaredChart =
   | {
       /**
        * The comfort zone is solved on `run`'s own `pmv`, so the model's result
@@ -175,14 +175,14 @@ export type ChartDeclaration =
       readonly bands?: never;
     };
 
-/** The psychrometric member of {@link ChartDeclaration}. */
-export type PsychrometricDeclaration = Extract<ChartDeclaration, { type: typeof chartType.psychrometric }>;
-/** Either dynamic member of {@link ChartDeclaration}. */
-export type DynamicDeclaration = Extract<ChartDeclaration, { type: typeof chartType.dynamic }>;
+/** The psychrometric member of {@link DeclaredChart}. */
+export type DeclaredPsychrometricChart = Extract<DeclaredChart, { type: typeof chartType.psychrometric }>;
+/** Either dynamic member of {@link DeclaredChart}. */
+export type DeclaredDynamicChart = Extract<DeclaredChart, { type: typeof chartType.dynamic }>;
 /** The dynamic chart that scans a numeric output and bands it by a classifier. */
-export type ScannedDeclaration = Extract<DynamicDeclaration, { readonly bands: ClassifierBins }>;
+export type DeclaredScannedChart = Extract<DeclaredDynamicChart, { readonly bands: ClassifierBins }>;
 /** The dynamic chart drawn from declared polygons on locked axes. */
-export type PolygonsDeclaration = Exclude<DynamicDeclaration, ScannedDeclaration>;
+export type DeclaredPolygonsChart = Exclude<DeclaredDynamicChart, DeclaredScannedChart>;
 
 export interface RegisteredModel {
   /**
@@ -255,7 +255,7 @@ export interface RegisteredModel {
   /** Result table columns, in order. Required (ADR §4.3). */
   readonly table: readonly Quantity[];
   /** Charts, in offering order; the first is the default. Every model has at least one. */
-  readonly charts: readonly [ChartDeclaration, ...ChartDeclaration[]];
+  readonly charts: readonly [DeclaredChart, ...DeclaredChart[]];
 }
 
 // The union is discriminated by an object identity, which TypeScript does not
@@ -263,16 +263,16 @@ export interface RegisteredModel {
 // predicate. Comparing `type.id` strings instead would be the string-keyed
 // closed set ADR §4.0 rules out.
 
-export function psychrometricChartOf(model: RegisteredModel): PsychrometricDeclaration | undefined {
-  return model.charts.find((chart): chart is PsychrometricDeclaration => chart.type === chartType.psychrometric);
+export function psychrometricChartOf(model: RegisteredModel): DeclaredPsychrometricChart | undefined {
+  return model.charts.find((chart): chart is DeclaredPsychrometricChart => chart.type === chartType.psychrometric);
 }
 
-export function dynamicChartOf(model: RegisteredModel): DynamicDeclaration | undefined {
-  return model.charts.find((chart): chart is DynamicDeclaration => chart.type === chartType.dynamic);
+export function dynamicChartOf(model: RegisteredModel): DeclaredDynamicChart | undefined {
+  return model.charts.find((chart): chart is DeclaredDynamicChart => chart.type === chartType.dynamic);
 }
 
 /** A dynamic chart drawn from declared polygons, whose axes are therefore locked (ADR-0002 decision 37). */
-export function isPolygonsChart(chart: DynamicDeclaration): chart is PolygonsDeclaration {
+export function isPolygonsChart(chart: DeclaredDynamicChart): chart is DeclaredPolygonsChart {
   return chart.zones !== undefined;
 }
 
