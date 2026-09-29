@@ -1,3 +1,5 @@
+import { copy } from "$lib/text/copy";
+import { formatNumber } from "./numberFormat";
 import type { Quantity, QuantityKind } from "./quantities";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
@@ -116,4 +118,13 @@ export function labelWithUnit(quantity: Quantity, unit: DisplayUnit): string {
  */
 export function valueWithUnit(text: string, unit: DisplayUnit): string {
   return unit.symbol ? `${text} ${unit.symbol}` : text;
+}
+
+/**
+ * The SI `value` as the tool shows it: converted to `unit`, formatted, and
+ * followed by the unit's symbol as {@link valueWithUnit} writes it; the dash
+ * for anything that is not a finite number.
+ */
+export function numberWithUnit(value: number, unit: DisplayUnit): string {
+  return Number.isFinite(value) ? valueWithUnit(formatNumber(unit.fromSi(value)), unit) : copy.notAvailable;
 }

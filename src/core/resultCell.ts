@@ -2,9 +2,8 @@ import { copy } from "$lib/text/copy";
 import { colorForBand } from "./bandPalette";
 import type { ModelResult, RegisteredModel } from "./modelDeclaration";
 import { resultValue } from "./modelRun";
-import { formatNumber } from "./numberFormat";
 import { quantityFor, type Quantity } from "./quantities";
-import { displayUnitFor, valueWithUnit } from "./units";
+import { displayUnitFor, numberWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
 
 /**
@@ -17,11 +16,10 @@ export function formatResultCell(result: ModelResult | null, quantity: Quantity,
   if (typeof value === "boolean") {
     return value ? copy.yes : copy.no;
   }
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (typeof value !== "number") {
     return copy.notAvailable;
   }
-  const unit = displayUnitFor(quantity, system);
-  return valueWithUnit(formatNumber(unit.fromSi(value)), unit);
+  return numberWithUnit(value, displayUnitFor(quantity, system));
 }
 
 /** One entry of the Compliance column: a classified output's category and its band's fill. */

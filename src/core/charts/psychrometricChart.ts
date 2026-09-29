@@ -11,10 +11,9 @@ import {
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
-import { formatNumber } from "$lib/core/numberFormat";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { requireValue } from "$lib/core/slot";
-import { displayUnitFor, valueWithUnit } from "$lib/core/units";
+import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { Annotation, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";
 import { axisFor, markerFor, samples, zoneFor } from "./specParts";
@@ -89,7 +88,7 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
       continue;
     }
     const saturation = rh === 100;
-    const rhText = valueWithUnit(formatNumber(rhUnit.fromSi(rh)), rhUnit);
+    const rhText = numberWithUnit(rh, rhUnit);
     traces.push({
       kind: "path",
       x: curve.map((point) => xUnit.fromSi(point.db)),

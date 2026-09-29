@@ -14,10 +14,8 @@ import {
 } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import { formatNumber } from "$lib/core/numberFormat";
 import { enteredQuantities, enteredValue, withEnteredValues } from "$lib/core/slot";
-import { displayUnitFor, valueWithUnit, type DisplayUnit } from "$lib/core/units";
-import { copy } from "$lib/text/copy";
+import { displayUnitFor, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import type { BandFill, ChartRequest, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
 import { axisFor, markerFor, samples, zoneFor } from "./specParts";
 import { containsPoint } from "./polygon";
@@ -219,6 +217,5 @@ function innermostLabels(zones: readonly ZonePolygon[], x: number, y: number): r
  * no number.
  */
 function readoutLine(quantity: Quantity, unit: DisplayUnit, value: number): string {
-  const shown = Number.isFinite(value) ? valueWithUnit(formatNumber(unit.fromSi(value)), unit) : copy.notAvailable;
-  return `${quantity.label}: ${shown}`;
+  return `${quantity.label}: ${numberWithUnit(value, unit)}`;
 }

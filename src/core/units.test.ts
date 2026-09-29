@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { copy } from "$lib/text/copy";
 import { humidityMode } from "./entryModes";
 import { formatNumber } from "./numberFormat";
 import { quantities } from "./quantities";
-import { displayUnitFor, labelWithUnit, valueWithUnit } from "./units";
+import { displayUnitFor, labelWithUnit, numberWithUnit, valueWithUnit } from "./units";
 import { unitSystem } from "./unitSystem";
 
 describe("displayUnitFor", () => {
@@ -98,5 +99,22 @@ describe("valueWithUnit", () => {
 
   it("is the bare value when the unit has no symbol", () => {
     expect(valueWithUnit("0.5", displayUnitFor(quantities.pmv, unitSystem.si))).toBe("0.5");
+  });
+});
+
+describe("numberWithUnit", () => {
+  it("converts the SI number to the display unit, formats it and adds the symbol", () => {
+    expect(numberWithUnit(25, displayUnitFor(quantities.tdb, unitSystem.si))).toBe("25 °C");
+    expect(numberWithUnit(25, displayUnitFor(quantities.tdb, unitSystem.ip))).toBe("77 °F");
+  });
+
+  it("is the bare number when the unit has no symbol", () => {
+    expect(numberWithUnit(0.126, displayUnitFor(quantities.pmv, unitSystem.si))).toBe("0.13");
+  });
+
+  it("is the dash for a value that is not a finite number", () => {
+    const celsius = displayUnitFor(quantities.tdb, unitSystem.si);
+    expect(numberWithUnit(Number.NaN, celsius)).toBe(copy.notAvailable);
+    expect(numberWithUnit(Number.POSITIVE_INFINITY, celsius)).toBe(copy.notAvailable);
   });
 });

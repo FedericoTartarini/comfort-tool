@@ -9,8 +9,7 @@
 -->
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";
-  import { formatNumber } from "$lib/core/numberFormat";
-  import { displayUnitFor, valueWithUnit } from "$lib/core/units";
+  import { displayUnitFor, numberWithUnit } from "$lib/core/units";
   import type { UnitSystem } from "$lib/core/unitSystem";
   import type { PendingSwitch } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
@@ -38,7 +37,7 @@
       const unit = displayUnitFor(row.quantity, unitSystem);
       return {
         quantity: row.quantity,
-        current: valueWithUnit(formatNumber(unit.fromSi(row.value)), unit),
+        current: numberWithUnit(row.value, unit),
         allowed: formatBound(row.bound, unit),
       };
     }),
