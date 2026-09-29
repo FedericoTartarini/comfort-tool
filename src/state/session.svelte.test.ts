@@ -380,16 +380,20 @@ describe("InputSlot.setEntered", () => {
 });
 
 /**
- * Type-level proof that nothing outside the slot writes into its maps,
- * compiled by `npm run check` and never called: each `@ts-expect-error` fails
- * the build the day the compiler stops refusing that write. Exported only
- * because `noUnusedLocals` would otherwise flag it.
+ * Type-level proof that nothing outside the slot writes into its maps or its
+ * two entries, compiled by `npm run check` and never called: each
+ * `@ts-expect-error` fails the build the day the compiler stops refusing that
+ * write. Exported only because `noUnusedLocals` would otherwise flag it.
  */
 export function slotWritesTypeProof(slot: InputSlot): void {
   // @ts-expect-error an entered value written past `setEntered`
   slot.values.set(q.tdb, 22);
   // @ts-expect-error an option written past `setOption`
   slot.options.set(airSpeedControl, true);
+  // @ts-expect-error a humidity entry written past `setEntered` and `setHumidityMode`
+  slot.humidity = { mode: humidityMode.rh, value: 50 };
+  // @ts-expect-error a temperature entry written past `setTemperatureMode`
+  slot.temperature = { mode: temperatureMode.operative };
 }
 
 /**

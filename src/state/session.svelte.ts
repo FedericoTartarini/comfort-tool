@@ -16,7 +16,7 @@ import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
  * way, keyed by the declaration's own option objects (ADR-0002 decision 36).
  *
  * Every write is a core function from a slot to a slot, whose answer the slot
- * lands; the two maps are read-only outside the class.
+ * lands; the two maps and the two entries are read-only outside the class.
  */
 export class InputSlot implements Slot {
   readonly #values = new SvelteMap<Quantity, number>();
@@ -24,8 +24,8 @@ export class InputSlot implements Slot {
   // `$state.raw`, not `$state`: a deep proxy would wrap the mode objects and
   // the Quantity they reference, and identity comparisons against
   // `humidityMode.rh` / `io.quantities.rh` would fail. Replace, don't mutate.
-  humidity = $state.raw<Slot["humidity"]>(undefined);
-  temperature = $state.raw<Slot["temperature"]>({ mode: temperatureMode.separate });
+  #humidity = $state.raw<Slot["humidity"]>(undefined);
+  #temperature = $state.raw<Slot["temperature"]>({ mode: temperatureMode.separate });
 
   /** The slot `model` starts on, which core builds by the seeding a switch uses. */
   constructor(model: RegisteredModel) {
@@ -38,6 +38,14 @@ export class InputSlot implements Slot {
 
   get options(): ReadonlyMap<OptionSpec, boolean> {
     return this.#options;
+  }
+
+  get humidity(): Slot["humidity"] {
+    return this.#humidity;
+  }
+
+  get temperature(): Slot["temperature"] {
+    return this.#temperature;
   }
 
   /** Enter `value` for `quantity` where core puts it: a humidity quantity sets the humidity entry. */
@@ -76,12 +84,16 @@ export class InputSlot implements Slot {
    * panel and the derivations hold them and their reactivity is their own.
    * `slot` may be this `InputSlot` itself, when the core function it came from
    * found nothing to change; the loops then do nothing.
+   *
+   * Public, unlike the fields it writes: the session lands a rehearsed switch
+   * through it, and what it lands is a whole slot core returned, so it is the
+   * write path rather than a way round it.
    */
   replaceWith(slot: Slot): void {
     replaceEntries(this.#values, slot.values);
     replaceEntries(this.#options, slot.options);
-    this.humidity = slot.humidity;
-    this.temperature = slot.temperature;
+    this.#humidity = slot.humidity;
+    this.#temperature = slot.temperature;
   }
 }
 

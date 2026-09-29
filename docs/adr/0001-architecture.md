@@ -350,6 +350,8 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 6**: `Session.standard?: StandardRef` below is dropped. The session holds no standard of its own: a model's standard is its declaration's `standard`, read through `session.model`, so there is one copy.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 47** (2026-09-28): the `InputSlot` sketched below declares `implements Slot`, the shape core reads, held in `core/slot.ts` with the reads of what the person entered and the changes a person makes to a slot. Its `humidity` is optional: absent until a declaration's default or the person writes it, so a slot opened on a model without humidity holds none. `values` and `options` are read-only outside the class: every write is a core function from a slot to a slot (entering a value, setting an option, changing either entry mode), which the class lands through `replaceWith`, so the humidity entry mode converts in core as the temperature one does. A slot starts as the empty slot put through the switch's seeding (`startingSlot(model)`), not at a humidity of its own.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 48** (2026-09-28): in the second rule below, whether `v_relative(v, met)` is applied is not specified by the declaration file: `relativeAirSpeed` is gone. It is read from the model info, by `takesRelativeAirSpeed(model)` in `core/modelDeclaration.ts`, which answers whether the info's inputs name `vr`. PMV's info still names `vr`, so the rule's 2026-09-03 decision holds in effect.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
