@@ -17,7 +17,7 @@ import { requireValue } from "$lib/core/slot";
 import { displayUnitFor, valueWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { Annotation, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, markerFor, samples } from "./specParts";
+import { axisFor, markerFor, samples, zoneFor } from "./specParts";
 
 const q = quantities;
 
@@ -117,19 +117,15 @@ export function psychrometricSpec(request: ChartRequest, chart: PsychrometricDec
     if (polygon.length <= 2) {
       return;
     }
-    const label = copy.zoneLegend(zone);
-    const fill = chartInk.zoneFill(index, largestFirst.length);
-    traces.push({
-      kind: "path",
-      x: polygon.map((point) => xUnit.fromSi(point.tdb)),
-      y: polygon.map((point) => hrUnit.fromSi(point.hr)),
-      color: chartInk.zoneLine,
-      width: chartInk.zoneLineWidth,
-      fill,
-      hover: "off",
-      label,
-    });
-    legend.push({ label, swatch: "fill", color: fill });
+    const drawnZone = zoneFor(
+      copy.zoneLegend(zone),
+      polygon.map((point) => xUnit.fromSi(point.tdb)),
+      polygon.map((point) => hrUnit.fromSi(point.hr)),
+      index,
+      largestFirst.length,
+    );
+    traces.push(drawnZone.trace);
+    legend.push(drawnZone.legendEntry);
   });
 
   const marker = markerFor(

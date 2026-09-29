@@ -1,13 +1,13 @@
 /**
- * The pieces both spec builders assemble: the slot marker, an axis, and the
- * samples of a range. Each is written here once, so the psychrometric and the
- * dynamic chart draw them alike.
+ * The pieces both spec builders assemble: the slot marker, a Comfort zone, an
+ * axis, and the samples of a range. Each is written here once, so the
+ * psychrometric and the dynamic chart draw them alike.
  */
 import { chartInk } from "$lib/core/bandPalette";
 import type { Range } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import { labelWithUnit, type DisplayUnit } from "$lib/core/units";
-import type { AxisSpec, LegendEntry, PointTrace } from "./chartSpec";
+import type { AxisSpec, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
 
 /**
  * A slot's marker at (`x`, `y`), already in display units, and the legend
@@ -21,6 +21,26 @@ export function markerFor(
   return {
     trace: { kind: "point", x, y, color: chartInk.marker, hover: "off", label: slotLabel },
     legendEntry: { label: slotLabel, swatch: "marker", color: chartInk.marker },
+  };
+}
+
+/**
+ * A Comfort zone's polygon through `x` and `y`, already in display units, and
+ * the legend entry that names it. Zone `level` of `levels` nested ones, 0 the
+ * outermost, is filled by that level and outlined in the zone line. Its fill
+ * cannot say where the pointer is inside it, so it never captures the pointer.
+ */
+export function zoneFor(
+  label: string,
+  x: readonly number[],
+  y: readonly number[],
+  level: number,
+  levels: number,
+): { readonly trace: PathTrace; readonly legendEntry: LegendEntry } {
+  const fill = chartInk.zoneFill(level, levels);
+  return {
+    trace: { kind: "path", x, y, color: chartInk.zoneLine, width: chartInk.zoneLineWidth, fill, hover: "off", label },
+    legendEntry: { label, swatch: "fill", color: fill },
   };
 }
 

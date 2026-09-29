@@ -1,5 +1,5 @@
 import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
-import { chartInk, fillAtIndex } from "$lib/core/bandPalette";
+import { fillAtIndex } from "$lib/core/bandPalette";
 import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
 import { toLibraryInputs } from "$lib/core/libraryInputs";
 import {
@@ -19,7 +19,7 @@ import { enteredQuantities, enteredValue, withEnteredValues } from "$lib/core/sl
 import { displayUnitFor, valueWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { BandFill, ChartRequest, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, markerFor, samples } from "./specParts";
+import { axisFor, markerFor, samples, zoneFor } from "./specParts";
 import { containsPoint } from "./polygon";
 
 /** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
@@ -78,20 +78,16 @@ export function dynamicSpec(
   if (isPolygonsChart(chart)) {
     const polygons = chart.zones({ values: toLibraryInputs(slot, model), xRange });
     for (const [index, polygon] of polygons.entries()) {
-      const fill = chartInk.zoneFill(index, polygons.length);
-      traces.push({
-        kind: "path",
-        x: polygon.x.map((value) => xUnit.fromSi(value)),
-        y: polygon.y.map((value) => yUnit.fromSi(value)),
-        color: chartInk.zoneLine,
-        width: chartInk.zoneLineWidth,
-        fill,
-        // A filled shape cannot tell where the pointer is inside it, so the
-        // hover grid below reads for it.
-        hover: "off",
-        label: polygon.label,
-      });
-      legend.push({ label: polygon.label, swatch: "fill", color: fill });
+      // A zone never captures the pointer, so the hover grid below reads for it.
+      const zone = zoneFor(
+        polygon.label,
+        polygon.x.map((value) => xUnit.fromSi(value)),
+        polygon.y.map((value) => yUnit.fromSi(value)),
+        index,
+        polygons.length,
+      );
+      traces.push(zone.trace);
+      legend.push(zone.legendEntry);
     }
     traces.push({
       kind: "hoverGrid",
