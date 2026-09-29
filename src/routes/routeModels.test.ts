@@ -1,8 +1,7 @@
 import { Standard } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import { routeSegmentFor } from "$lib/core/standard";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { modelBySegment, modelsOf, requireStandard, standardModels, toRouteSegment } from "./routeModels";
+import { modelBySegment, modelsOf, routeSegmentsOf, standardModels, toRouteSegment } from "./routeModels";
 
 const fixtureWithoutStandard = {
   ...pmvPpdIso,
@@ -30,6 +29,16 @@ describe("toRouteSegment", () => {
   });
 });
 
+describe("routeSegmentsOf", () => {
+  it("pairs the standard's route segment with the model's own", () => {
+    expect(routeSegmentsOf(pmvPpdIso)).toEqual({ standard: "iso-7730", model: "pmv-ppd-iso" });
+  });
+
+  it("throws for a model with no standard, which has no Standard page", () => {
+    expect(() => routeSegmentsOf(fixtureWithoutStandard)).toThrow();
+  });
+});
+
 describe("modelsOf", () => {
   it("returns the models of the given standard, in registry order", () => {
     expect(modelsOf(Standard.iso_7730_2025, [pmvPpdIso, fixtureWithoutStandard])).toEqual([pmvPpdIso]);
@@ -47,7 +56,8 @@ describe("modelBySegment", () => {
 
   it("finds a model pinned to either edition of a standard by its own address", () => {
     for (const model of [pmvPpdIso, fixtureIso2005]) {
-      expect(modelBySegment(routeSegmentFor(model.standard), toRouteSegment(model.info.name), fixtures)).toBe(model);
+      const segments = routeSegmentsOf(model);
+      expect(modelBySegment(segments.standard, segments.model, fixtures)).toBe(model);
     }
   });
 
@@ -74,7 +84,8 @@ describe("modelBySegment", () => {
     const withStandard = standardModels();
     expect(withStandard.length).toBeGreaterThan(0);
     for (const model of withStandard) {
-      expect(modelBySegment(routeSegmentFor(requireStandard(model)), toRouteSegment(model.info.name))).toBe(model);
+      const segments = routeSegmentsOf(model);
+      expect(modelBySegment(segments.standard, segments.model)).toBe(model);
     }
   });
 });

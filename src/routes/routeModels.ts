@@ -52,6 +52,16 @@ export function toRouteSegment(name: string): string {
 }
 
 /**
+ * A model's address: its standard's route segment and its own, keyed as the
+ * standard route's params. The one place the two are paired, so the address a
+ * model is written to and the one it is found by cannot drift apart. Throws
+ * for a model with no standard, which has no Standard page.
+ */
+export function routeSegmentsOf(model: RegisteredModel): { standard: string; model: string } {
+  return { standard: routeSegmentFor(requireStandard(model)), model: toRouteSegment(model.info.name) };
+}
+
+/**
  * The model whose own route segments are `standardSegment` and `modelSegment`,
  * or `undefined` when the URL names none. Matched against each registered
  * model's segments rather than by parsing the address into a `Standard` first:
@@ -64,10 +74,11 @@ export function modelBySegment(
   modelSegment: string | undefined,
   models: readonly RegisteredModel[] = registeredModels,
 ): RegisteredModel | undefined {
-  return models.find(
-    (model) =>
-      model.standard !== undefined &&
-      routeSegmentFor(model.standard) === standardSegment &&
-      toRouteSegment(model.info.name) === modelSegment,
-  );
+  return models.find((model) => {
+    if (model.standard === undefined) {
+      return false;
+    }
+    const segments = routeSegmentsOf(model);
+    return segments.standard === standardSegment && segments.model === modelSegment;
+  });
 }

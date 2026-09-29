@@ -1,7 +1,6 @@
 import { createRouter, type Routes } from "sv-router";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { routeSegmentFor } from "$lib/core/standard";
-import { defaultModel, modelBySegment, modelsOf, requireStandard, toRouteSegment } from "./routeModels";
+import { defaultModel, modelBySegment, modelsOf, requireStandard, routeSegmentsOf } from "./routeModels";
 
 export { defaultModel, modelsOf, requireStandard };
 
@@ -64,12 +63,8 @@ function passAddressOn(): void {
   }
 }
 
-function routeParams(model: RegisteredModel): { standard: string; model: string } {
-  return { standard: routeSegmentFor(requireStandard(model)), model: toRouteSegment(model.info.name) };
-}
-
 export function pathTo(model: RegisteredModel): string {
-  return p(STANDARD_ROUTE, { params: routeParams(model) });
+  return p(STANDARD_ROUTE, { params: routeSegmentsOf(model) });
 }
 
 /**
@@ -79,7 +74,7 @@ export function pathTo(model: RegisteredModel): string {
  * what back does.
  */
 export function navigateTo(model: RegisteredModel): void {
-  void navigate(STANDARD_ROUTE, { params: routeParams(model) });
+  void navigate(STANDARD_ROUTE, { params: routeSegmentsOf(model) });
 }
 
 /**
@@ -88,7 +83,7 @@ export function navigateTo(model: RegisteredModel): void {
  * return to.
  */
 function redirectTo(model: RegisteredModel): void {
-  void navigate(STANDARD_ROUTE, { params: routeParams(model), replace: true });
+  void navigate(STANDARD_ROUTE, { params: routeSegmentsOf(model), replace: true });
 }
 
 /**
