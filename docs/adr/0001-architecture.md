@@ -277,6 +277,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 8** (2026-09-25): a Compliance entry is prefixed by its quantity's `Quantity.label`, `Thermal sensation: Neutral`, `ISO 7730 category: B`, each with its swatch, for every model; the label is never written in the table component.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 8 as noted 2026-09-28** (review after Phase 4b, Proposal 29; `P029`): the clause "an `intervals` entry is coloured pass / fail by `satisfied`" is retired. No result carries `intervals`; a yes-or-no output (Adaptive's `acceptability_80` and `acceptability_90`, PMV (ASHRAE 55)'s `compliance`) is a column of the model's `table`, headed by its `Quantity.label` and reading Yes or No, uncoloured.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 50** (2026-09-29): "Baseline decides which row the difference highlighting is relative to" in the first rule above is retired. Compare has no baseline and highlights no difference; the table has one row per compared slot.
 
 ### 4.4 Chart types (closed set, v1)
 
@@ -291,6 +293,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 37 as amended 2026-09-28** (Phase 4b ticket 12): "the plain mean of `tdb` and `tr`" in the marker above is retracted. Under separate entry the slot is marked at the library's operative temperature, `t_o(tdb, tr, v, model.standard)`, weighed by the model's own standard, through the same function the switch into operative entry converts with (decision 39), so the marker and the switch cannot differ.
 >
 > **Amended 2026-09-28** (review after Phase 4b, Proposal 19; `S102`): in the legend rules below, `Swatch` is a string union, `"fill" | "line" | "marker"` in `core/charts/chartSpec.ts`, not an object collection read as `Swatch.fill`. Its members double as CSS classes: `ChartLegend.svelte` writes an entry's swatch into the swatch element's `class` and styles each member by that name.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 50 and 51** (2026-09-29): "marker points for the three slots" in the table below is, on both charts, the declaration's Comfort zones and one marker for every compared slot, each solved at that slot's own values and drawn in the slot's hue. Compare is the Standard page's: Explore draws the bands of slot 1. The axes are resolved from the session's entry mode, which every slot is entered in.
 
 
 | Type | Definition |
@@ -358,6 +362,10 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): `environment: { atmosphericPressure }` below is `atmosphericPressure: number`, held by the session directly, in Pa. In the first rule, and in §5's tree, `toLibraryInputs`'s third parameter is that pressure, `p_atm`, in place of `environment`. It derives `rh` from a humidity ratio with it and hands it to no model: no registered model takes the pressure.
 >
 > **Noted 2026-09-29 ([ADR-0002](0002-library-interface-model-info.md) decision 49, as noted the same day; `.scratch/atmospheric-pressure/` ticket 05).** The third parameter is named `atmosphericPressure`, not `p_atm`: `toLibraryInputs(slot, model, atmosphericPressure)` (`core/libraryInputs.ts:54`). `p_atm` is the library's name for the value.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 50 to 52** (2026-09-29): `compare: { enabled, activeSlot, baselineSlot }` below is whether Compare is on and whether slots 2 and 3 are each enabled; there is no active slot and no baseline (decision 50). `InputSlot` keeps its `humidity` and `temperature` entries, and the session keeps the three slots in one entry mode per entry group (decision 51). `Outputs` keeps a last valid run per slot, and in the "Switching models" rule "all three slots are handled the same way" reads: one dialog lists the compared slots' rows and asks once, and a slot that is not compared is converted and seeded without being listed or adjusted (decision 52).
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 53** (2026-09-29): while the atmospheric pressure is out of range, a humidity-ratio entry has no bound, so the dialog of the "Switching models" rule neither lists it nor moves it.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
@@ -415,6 +423,8 @@ Rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 30 and 31** (2026-09-21): `"model"` is the model name, the library's function name, as the example already shows; `chart.output` goes; `chart.bands` is edges + labels + colours, not `{ min, max }` intervals. The example is left as written; `core/shareLink.ts` fixes the final schema in Phase 5.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): the example's `"environment": { "p_atm": 101.325 }` is the atmospheric pressure in Pa, `101325`, with no `environment` around it. A link that carries none means 101 325 Pa. The example is left as written.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 50** (2026-09-29): the example's `"compare": { "enabled": true, "active": 0, "baseline": 0 }` carries whether Compare is on and which slots are enabled, with no `active` and no `baseline`. A slot never enabled is `null`, as the example's second and third are. The example is left as written.
 
 `?share=v1.<Base64URL(JSON)>`
 

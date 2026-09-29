@@ -53,7 +53,7 @@ A set of quantities the user may enter in more than one entry mode: temperature 
 _Avoid_: input mode, representation group
 
 **Entry mode**:
-One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five. The entered quantity is the truth; what the model takes is derived from it.
+One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five. The entered quantity is the truth; what the model takes is derived from it. A session has one entry mode per entry group: changing it converts every slot.
 _Avoid_: input mode, representation, humidity type
 
 **Preset**:
@@ -65,11 +65,15 @@ A switch a model takes beside its quantities, carrying no unit and never on a ch
 _Avoid_: setting, flag, parameter
 
 **Slot**:
-One set of values to run a model on: a value per quantity, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. Compare holds three.
+One set of values to run a model on: a value per quantity, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three, named by position ("Input 1"); a slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds.
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
 
+**Compare**:
+Showing up to three slots side by side on the Standard page, each with its own result, its own comfort zones and its own marker. It is on or off. Slot 1 is always compared; slots 2 and 3 are each enabled by the person, and are compared while Compare is on and they are enabled. No slot is a reference for the others.
+_Avoid_: baseline, active slot, scenario
+
 **Session**:
-The state shared by the Standard and Explore workspaces: model, unit system, slots, chart settings, atmospheric pressure.
+The state shared by the Standard and Explore workspaces: model, unit system, slots, Compare, chart settings, atmospheric pressure.
 _Avoid_: store, app state
 
 **Atmospheric pressure**:
