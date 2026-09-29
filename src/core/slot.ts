@@ -153,6 +153,22 @@ export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredMo
   return slot.values.get(quantity);
 }
 
+/**
+ * `slot` with `changes` in place of its own fields: the one place this module
+ * builds a slot from another, so every change to a slot keeps what it did not
+ * change.
+ * The fields are read one by one, since the session's slot holds them behind
+ * getters a spread does not copy; no change removes a held humidity.
+ */
+function changedSlot(slot: Slot, changes: Partial<Slot>): Slot {
+  return {
+    values: changes.values ?? slot.values,
+    humidity: changes.humidity ?? slot.humidity,
+    temperature: changes.temperature ?? slot.temperature,
+    options: changes.options ?? slot.options,
+  };
+}
+
 /** Each humidity entry mode by the quantity it enters. */
 const humidityModeByQuantity = new Map<Quantity, HumidityMode>(Object.values(humidityMode).map((mode) => [mode.quantity, mode]));
 
@@ -183,14 +199,14 @@ export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, n
       values.set(quantity, value);
     }
   }
-  return { values, humidity, temperature: slot.temperature, options: slot.options };
+  return changedSlot(slot, { values, humidity });
 }
 
 /** The same slot with `option` set to `value`: how the person ticks an option. */
 export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot {
   const options = new Map(slot.options);
   options.set(option, value);
-  return { values: slot.values, humidity: slot.humidity, temperature: slot.temperature, options };
+  return changedSlot(slot, { options });
 }
 
 /**
@@ -222,7 +238,7 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
   } else {
     expandOperative(values);
   }
-  return { values, humidity: slot.humidity, temperature: { mode }, options: slot.options };
+  return changedSlot(slot, { values, temperature: { mode } });
 }
 
 /**
@@ -237,7 +253,7 @@ export function withHumidityMode(slot: Slot, mode: HumidityMode): Slot {
     return slot;
   }
   const humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(slot), resolvedTdb(slot)) };
-  return { values: slot.values, humidity, temperature: slot.temperature, options: slot.options };
+  return changedSlot(slot, { humidity });
 }
 
 /**
@@ -275,7 +291,7 @@ export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
   }
   // Always a copy, empty defaults included: what comes back is the plain shape
   // decision 32 rehearses on, never the caller's own slot under another name.
-  return { ...withEnteredValues(slot, defaults), options };
+  return changedSlot(withEnteredValues(slot, defaults), { options });
 }
 
 /**

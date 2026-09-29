@@ -224,6 +224,21 @@ describe("Session.requestModel", () => {
     expect(session.slots[0].values.get(q.tr)).toBe(operative);
   });
 
+  it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
+    const session = new Session(pmvPpdIso);
+    session.slots[0].setHumidityMode(humidityMode.dewPoint);
+    const entered = session.slots[0].humidity;
+
+    session.requestModel(adaptiveAshrae);
+    expect(session.model).toBe(adaptiveAshrae);
+    expect(session.slots[0].humidity).toEqual(entered);
+    session.requestModel(takesExternalWork);
+
+    expect(session.model).toBe(takesExternalWork);
+    expect(session.slots[0].humidity).toEqual(entered);
+    expect(session.slots[0].values.has(q.rh)).toBe(false);
+  });
+
   /**
    * The landing is atomic, asserted as the spec words it: what the outputs
    * hold belongs to the model they name. Only the requested model returns

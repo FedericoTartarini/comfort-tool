@@ -127,6 +127,8 @@ describe("enteredBound / outOfRangeInputs, on the humidity entry", () => {
     for (const mode of Object.values(humidityMode)) {
       expect(enteredBound(pmvPpdIso, mode.quantity, holdsNone), mode.id).toBeUndefined();
     }
+    // The same slot holding a humidity past 100 % lists it, so the empty list is the absent entry's doing.
+    expect(outOfRangeInputs(withHumidity(holdsNone, humidityMode.rh, 150), pmvPpdIso)).toEqual([q.rh]);
     expect(outOfRangeRows(holdsNone, pmvPpdIso)).toEqual([]);
   });
 
