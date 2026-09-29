@@ -21,8 +21,20 @@ The library's published metadata for one model (`<MODEL>_INFO`): the model's nam
 _Avoid_: schema, metadata object, model docs
 
 **Applicability**:
-The range over which a model's answer holds, published by the library. A gate, not a clamp: outside it the answer is reported as unsupported, and the app never adjusts a value on its own. The one adjustment is the user's: switching to a model whose applicability an entered value breaks asks first, and moves the value to the nearest bound only on a yes.
+The bounds within which a model's answer holds, published by the library per quantity. A gate, not a clamp: an entered value outside it is out of range and the model is not run; a value a run derives or returns outside it is a violation, shown beside the result. The app never adjusts a value on its own. The one adjustment is the user's: switching to a model whose applicability an entered value breaks asks first, and moves the value to the nearest bound only on a yes.
 _Avoid_: limit, range check, validation, clamp
+
+**Bound**:
+The minimum and maximum a value is tested against; either may be absent. The library's word.
+_Avoid_: limit, range (that is an axis range)
+
+**Out of range**:
+Said of an entered value that breaks its bound before the model is called: the model's applicability, narrowed by the bound the quantity's kind has by definition (a percentage is 0 to 100), in the entry mode the value was entered in. Never said of a result.
+_Avoid_: invalid, violation
+
+**Violation**:
+An applicability bound a completed run broke, as the library reports it with the result.
+_Avoid_: warning (that is the sentence shown), error, out of range
 
 **Axis range**:
 How far a quantity is drawn on a chart. A viewport, declared by the model file; falls back to the applicability bounds only when nothing is declared.
@@ -37,8 +49,12 @@ The one file in `src/models/` that binds a model: its info, standard, run call, 
 _Avoid_: definition, config, registration (that is the one line in the registry)
 
 **Entry group**:
-A set of quantities the user may enter in more than one representation: temperature (separate or operative) and humidity (five representations). Derived from the declaration's inputs, not declared.
+A set of quantities the user may enter in more than one entry mode: temperature and humidity. Derived from the declaration's inputs, not declared.
 _Avoid_: input mode, representation group
+
+**Entry mode**:
+One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five. The entered quantity is the truth; what the model takes is derived from it.
+_Avoid_: input mode, representation, humidity type
 
 **Preset**:
 A named reference value the library publishes for a quantity (a typical task for metabolic rate, a typical ensemble for clothing), offered beside free entry. Choosing one enters its number; the number is the truth and nothing remembers the preset.
@@ -49,15 +65,15 @@ A switch a model takes beside its quantities, carrying no unit and never on a ch
 _Avoid_: setting, flag, parameter
 
 **Slot**:
-One set of entered inputs. Compare holds three.
-_Avoid_: scenario, case, column
+One set of values to run a model on: a value per quantity, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. Compare holds three.
+_Avoid_: scenario, case, column, inputs (those are what a model takes)
 
 **Session**:
 The state shared by the Standard and Explore workspaces: model, unit system, slots, chart settings.
 _Avoid_: store, app state
 
 **Comfort zone**:
-The region of a chart where the model's primary output is within its comfort limit: what a standard accepts, a yes or no. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.
+A region of a chart inside one limit a standard draws: what it accepts, a yes or no. A standard with several limits has one zone per limit, nested. It is not thermal sensation, which describes how a value feels; the two coincide only where a standard happens to draw its limit at a band's edge.
 _Avoid_: compliance zone, comfort region, neutral band, polygon (that is its rendering)
 
 **Band**:
