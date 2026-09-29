@@ -356,6 +356,8 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 48** (2026-09-28): in the second rule below, whether `v_relative(v, met)` is applied is not specified by the declaration file: `relativeAirSpeed` is gone. It is read from the model info, by `takesRelativeAirSpeed(model)` in `core/modelDeclaration.ts`, which answers whether the info's inputs name `vr`. PMV's info still names `vr`, so the rule's 2026-09-03 decision holds in effect.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): `environment: { atmosphericPressure }` below is `atmosphericPressure: number`, held by the session directly, in Pa. In the first rule, and in §5's tree, `toLibraryInputs`'s third parameter is that pressure, `p_atm`, in place of `environment`. It derives `rh` from a humidity ratio with it and hands it to no model: no registered model takes the pressure.
+>
+> **Noted 2026-09-29 ([ADR-0002](0002-library-interface-model-info.md) decision 49, as noted the same day; `.scratch/atmospheric-pressure/` ticket 05).** The third parameter is named `atmosphericPressure`, not `p_atm`: `toLibraryInputs(slot, model, atmosphericPressure)` (`core/libraryInputs.ts:54`). `p_atm` is the library's name for the value.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session

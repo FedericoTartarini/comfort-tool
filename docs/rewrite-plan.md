@@ -38,6 +38,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-28 — position, the review's code session is closed**: item 1 of the review between Phase 4b and Phase 5 is done on `review/after-4b` (`.scratch/review-after-4b/`). The whole-codebase review read `git diff main...HEAD` and gave 156 findings, decided in 14 rounds with Proposals 1 to 35. Tickets 01 to 53 landed them, one commit each (`f7e3d86` to `da548c9`), and wrote ADR-0002 decisions 40 to 46; atmospheric pressure stays in v1 as Phase 4c. A second review then read the run's own diff against `rewrite/v1` and gave 25 findings (`branch-review.md`). Round 15 and Proposals 36 to 38 decided them, and tickets 55 to 59 landed (`876d62d` to `d493dd7`): decision 41 is widened to the names the code has, and nine sentences written ahead of their code say what landed. The four scripts are green at 302 tests. The three models were walked in the running app in SI and IP, by link, by the back and forward buttons and by typed address, with the console clean. What was left on purpose is in `deferred.md`, by destination. **Next: review item 2, the architecture session, which takes `deferred.md` as its input.**
 
+> **2026-09-29 — position, Phase 4c done**: items 2 and 3 of the review between Phase 4b and Phase 5 are done (see that section), and Phase 4c landed on `rewrite/v1` (`.scratch/atmospheric-pressure/`). The decisions came first, as `c2bc39c` (ADR-0002 decision 49, decision 45 amended). Four tickets followed, one commit each: 01 `f34f05f` `p_atm` is a quantity with its own kind, 02 `7239c30` the session holds the pressure and a humidity ratio follows it, 03 `00a81b8` the psychrometric chart is drawn at it, 04 `39a748a` a pressure out of range stops the calculation. Ticket 05 read the documents against the code: decision 49 and ADR-0001's §4.5 marker carry dated notes for the sentences that said more than the code. The four scripts are green at 357 tests. The input was walked in the running app in SI and IP at tickets 02 and 03, with the console clean. Two things were seen and left: the gate converts a humidity-ratio bound at the session's pressure even while that pressure is out of range (ticket 04), and a pressure entered in inHg reads back in Pa at full precision after a unit switch, 109989.91 for 32.48 inHg (ticket 03). **Next: review item 4, Compare's `/grill-with-docs`.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -578,6 +580,8 @@ Everything in `core/entryModes.ts`, `core/libraryInputs.ts`, `core/modelDeclarat
    Design: `docs/specs/2026-09-08-humidity-entry-modes-design.md`.
    **Decided 2026-09-28**: "Set pressure" and `environment` are Phase 4c; from then on these conversions read the
    session's pressure instead of the library's default.
+   **Done 2026-09-29** (Phase 4c, `7239c30`): all five take the session's pressure; humidity ratio's pass it on as
+   `p_atm`, and the other four do not use it.
 3. `OptionSpec` / `OptionValue`, `RegisteredModel.options`, `InputSlot.options`. **Decided 2026-09-07: toggle only in
    v1.** The one consumer is Phase 3.7's ASHRAE `airspeed_control`; a `choice` kind waits for a second. The ISO
    **edition** the library gained on 2026-09-05 (`"7730-2005"` / `"7730-2025"`) is *not* an option: both editions run
@@ -819,6 +823,8 @@ Four sessions, in this order, `/clear` between each:
    left.
 4. **Compare's `/grill-with-docs`** takes items 1–3's output as known input. **Not before Phase 4c is done** (added
    2026-09-28): Compare is grilled against a `Session` that already holds `environment`.
+   **Phase 4c done 2026-09-29**: the session holds `atmosphericPressure`, with no `environment` around it (ADR-0002
+   decision 49).
 
 ---
 
@@ -830,6 +836,16 @@ Four sessions, in this order, `/clear` between each:
 > the review (`S018`'s temperature half, `BS04`, the gate's answer for a relative humidity that was not entered) are
 > left as they are (`.scratch/review-after-4b/decisions.md`, round 18). The text below is kept as written, except the
 > done criteria.
+>
+> **Done 2026-09-29**: `f34f05f`, `7239c30`, `00a81b8` and `39a748a` (tickets 01 to 04), then ticket 05's reading of
+> the documents against the code. The done criteria below hold, with two qualifications. The first holds for every
+> library call whose answer depends on the pressure: the dew-point, wet-bulb and vapour-pressure conversions call
+> `psy_ta_rh` without it (ADR-0002 decision 49, noted 2026-09-29). The second holds for the default slot at both ends
+> of the bound, not for every slot in range: the axis is scaled, not fitted. Saturated air at 30 °C, ISO 7730's upper
+> bound, is 102.5 g/kg at 30 000 Pa against an axis of 101.3, as saturated air at 40 °C, ASHRAE 55's, is 48.9 g/kg at
+> 101 325 Pa against 30 (`psy_ta_rh(tdb, 100, p).hr`). The input sits in the input panel's column of
+> `routes/StandardPage.svelte`, above the `InputPanel` component rather than inside it: it is the session's, not the
+> slot's.
 
 **Goal**: "Set pressure" and `Session.environment` (ADR §4.5): the session holds one atmospheric pressure, so that
 Phase 5's share link carries it (ADR §7.2).
