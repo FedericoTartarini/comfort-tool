@@ -810,6 +810,12 @@ Four sessions, in this order, `/clear` between each:
 3. **Vocabulary — `/domain-modeling` on `CONTEXT.md`, optional.** 4b brings `airspeed_control`, `t_running_mean`, the 80 % / 90 %
    acceptability limits, and a second model called PMV with different bands; the question is whether any term is now doing
    two jobs. Item 2's grilling usually pulls this in on its own; run it alone only for a term already felt to be fuzzy.
+   **Decided 2026-09-29**, in `.scratch/review-after-4b/decisions.md` round 17. `CONTEXT.md` was edited in the session:
+   Entry mode, Bound, Out of range and Violation are new, and Slot, Entry group, Applicability and Comfort zone are
+   rewritten. One term was doing two jobs: Applicability stood for the bound tested before the call and for what the
+   library reports after it. Three renames in the code are tickets 01 to 03 of `.scratch/vocabulary/issues/`, not
+   landed at this date: the quantities out of range (`S083`), the bound beside an input (`S079`), and a declared chart
+   (`S079`, `S106`). `RegisteredModel` was left.
 4. **Compare's `/grill-with-docs`** takes items 1–3's output as known input. **Not before Phase 4c is done** (added
    2026-09-28): Compare is grilled against a `Session` that already holds `environment`.
 
