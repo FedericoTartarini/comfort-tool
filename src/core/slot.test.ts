@@ -425,13 +425,57 @@ describe("withClothingMode", () => {
     expect(clo_dynamic_iso_vr(1, 2, 0.7)).toBe(clo_dynamic_iso(1, 2, 0.4));
   });
 
-  // An entry convention, not an equation: ISO 7730's correction has no closed
-  // inverse, and the rule is the group's (ADR-0002 decision 54).
-  it.each([pmvPpdAshrae, pmvPpdIso])("keeps the number going back, on $info.label", (model) => {
-    const converted = withClothingMode(enteredSlotFor(model, { clo_dynamic: 0.8, met: 2 }), clothingMode.uncorrected, model);
+  // The expected clothing insulation is whatever the model's standard's rule
+  // turns back into the entry: the inverse is pinned against the library's
+  // corrections (ADR-0002 decision 54 as revised a third time).
+  it.each([
+    { model: pmvPpdAshrae, name: "ASHRAE 55 above 1.2 met", entries: { clo_dynamic: 0.8, met: 2 }, clo: 1 },
+    { model: pmvPpdAshrae, name: "ASHRAE 55 below 1.2 met, where nothing is corrected", entries: { clo_dynamic: 0.8, met: 1.1 }, clo: 0.8 },
+    { model: pmvPpdIso, name: "ISO 7730", entries: { clo_dynamic: clo_dynamic_iso(1, 2, 0.4), met: 2, v: 0.4 }, clo: 1 },
+    { model: pmvPpdIso, name: "ISO 7730 under relative air speed entry", entries: { clo_dynamic: clo_dynamic_iso_vr(1, 2, 0.7), met: 2, vr: 0.7 }, clo: 1 },
+  ])("inverts the correction going back: $name", ({ model, entries, clo }) => {
+    const kept = enteredSlotFor(model, entries);
+    const converted = withClothingMode(kept, clothingMode.uncorrected, model);
     expect(converted.clothing.mode).toBe(clothingMode.uncorrected);
-    expect(converted.values.get(q.clo)).toBe(0.8);
+    expect(converted.values.get(q.clo)).toBe(clo);
+    expect(dynamicClothingOf(converted, model)).toBe(entries.clo_dynamic);
     expect(converted.values.has(q.clo_dynamic)).toBe(false);
+  });
+
+  it("inverts a dynamic clothing insulation no entry of few decimals gives, to within the search's nine decimals", () => {
+    const kept = enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 });
+    const converted = withClothingMode(kept, clothingMode.uncorrected, pmvPpdIso);
+    expect(dynamicClothingOf(converted, pmvPpdIso)).toBeCloseTo(0.8, 8);
+    expect(converted.values.get(q.clo)).not.toBe(0.8);
+  });
+
+  /** `slot` switched into dynamic clothing entry and back. */
+  function roundTripped(slot: Slot, model: RegisteredModel): Slot {
+    return withClothingMode(withClothingMode(slot, clothingMode.corrected, model), clothingMode.uncorrected, model);
+  }
+
+  it.each([pmvPpdAshrae, pmvPpdIso])("gives the clothing insulation back after any number of round trips, on $info.label", (model) => {
+    for (const met of [1, 1.2, 2, 4]) {
+      const slot = enteredSlotFor(model, { ...active, met });
+      const once = roundTripped(slot, model);
+      expect(once.values.get(q.clo), `${met} met`).toBe(active.clo);
+      expect(dynamicClothingOf(once, model), `${met} met`).toBe(dynamicClothingOf(slot, model));
+      expect(roundTripped(roundTripped(once, model), model).values, `${met} met`).toEqual(slot.values);
+    }
+  });
+
+  it("gives 0 clo back as 0", () => {
+    for (const model of [pmvPpdAshrae, pmvPpdIso]) {
+      expect(roundTripped(enteredSlotFor(model, { clo: 0, met: 2 }), model).values.get(q.clo), model.info.label).toBe(0);
+    }
+  });
+
+  // Nothing corrects it, so nothing is inverted: the group's conversion for a
+  // model without the group, which the model switch never asks for.
+  it("keeps the number going back for a model whose standard has no correction", () => {
+    const uncorrecting = { ...pmvPpdIso, standard: undefined };
+    const converted = withClothingMode(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), clothingMode.uncorrected, uncorrecting);
+    expect(converted.values.get(q.clo)).toBe(0.8);
   });
 
   it("moves nothing at or below 1.2 met under ASHRAE 55", () => {

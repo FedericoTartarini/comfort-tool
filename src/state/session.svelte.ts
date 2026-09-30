@@ -446,7 +446,7 @@ export class Session {
       if (!held) {
         return [];
       }
-      const { slot, outOfRangeRows } = rehearseSwitch(held, model, this.atmosphericPressure);
+      const { slot, outOfRangeRows } = rehearseSwitch(held, this.model, model, this.atmosphericPressure);
       return [{ position, slot, listedRows: this.#comparedPositions.includes(position) ? outOfRangeRows : [] }];
     });
   }

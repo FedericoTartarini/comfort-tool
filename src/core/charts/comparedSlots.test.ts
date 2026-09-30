@@ -364,13 +364,12 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
     expect(zonesOf(uncorrected).map(shapeOf)).not.toEqual(zonesOf(uncorrectedNumber).map(shapeOf));
   });
 
-  // Back keeps the number (ADR-0002 decision 54), so a slot kept in dynamic
-  // clothing entry is drawn in a clothing-insulation session as the change
-  // back would leave it: its number corrected again, which is not the clothing
-  // its run was given. Decision 51's rule, the marker and the change cannot
-  // differ; not a defect.
-  it("is drawn in a clothing-insulation session as the slot the change back leaves, which its kept run was not given", () => {
-    const kept = enteredSlotFor(model, { clo_dynamic: 1, met: 2 });
+  // Back inverts the correction (ADR-0002 decision 54 as revised a third
+  // time), so a slot kept in dynamic clothing entry is drawn at the dynamic
+  // clothing insulation its run was given: marked at the clothing insulation
+  // that gives it, its zones where they were.
+  it("is drawn in a clothing-insulation session at the dynamic clothing insulation its run was given", () => {
+    const kept = withClothingMode(entered, clothingMode.corrected, model);
     const back = withClothingMode(kept, clothingMode.uncorrected, model);
     const uncorrected = entryModesWithClothing(clothingMode.uncorrected);
     const chart = dynamicOf(model);
@@ -378,11 +377,11 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
     expect(spec.layout.y.title).toContain(q.clo.label);
     expect(spec.traces).toEqual(dynamicSpec(chartRequestFor(model, back), chart, clothingAxes).traces);
     expect(markersOf(spec)[0].y).toBe(1);
-    expect(dynamicClothingOf(back, model)).not.toBe(dynamicClothingOf(kept, model));
+    expect(dynamicClothingOf(back, model)).toBe(dynamicClothingOf(kept, model));
 
     const zones = psychrometricOf(model);
     const drawn = psychrometricSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected), zones);
     expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, back), zones).traces);
-    expect(zonesOf(drawn).map(shapeOf)).not.toEqual(zonesOf(psychrometricSpec(chartRequestFor(model, kept), zones)).map(shapeOf));
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, kept), zones).traces);
   });
 });

@@ -8,6 +8,8 @@
  * and this module on neither.
  */
 import { t_o, v_relative } from "jsthermalcomfort";
+import { clo_dynamic_inverse } from "$lib/temporary-library/clo_dynamic_inverse";
+import { v_relative_inverse } from "$lib/temporary-library/v_relative_inverse";
 import {
   airSpeedMode,
   clothingMode,
@@ -99,7 +101,7 @@ export interface ValueEntryGroup {
    * to every slot at an entry-mode change (ADR-0002 decision 51), each chart
    * builder to a slot kept in another mode than the session's
    * ({@link withEntryModes}), and `core/modelSwitch.ts` to a slot bound for a
-   * model that has no such group.
+   * model that has no such group, under the model it leaves.
    */
   readonly convert: (slot: Slot, mode: ValueEntryMode, model: RegisteredModel) => Slot;
 }
@@ -216,7 +218,7 @@ export function operativeTemperatureOf(slot: Slot, model: RegisteredModel): numb
  * `core/libraryInputs.ts` resolves, and the value the switch into relative air
  * speed entry stores ({@link withAirSpeedMode}), so the person sees the number
  * the model was getting. The one place the app corrects an air speed with
- * `v_relative`; {@link airSpeedGiving} asks it what still air gives.
+ * `v_relative`.
  */
 export function relativeAirSpeedOf(slot: Slot): number {
   if (slot.airSpeed.mode === airSpeedMode.corrected) {
@@ -234,26 +236,39 @@ export function relativeAirSpeedOf(slot: Slot): number {
  * clothing insulation as entered. What `core/libraryInputs.ts` resolves, and
  * the value the switch into dynamic clothing entry stores
  * ({@link withClothingMode}), so the person sees the number the model was
- * getting. The one place the app corrects a clothing insulation.
+ * getting. The one place the app corrects a clothing insulation, by the one
+ * rule {@link withClothingMode} inverts ({@link clothingCorrectionAt}).
  */
 export function dynamicClothingOf(slot: Slot, model: RegisteredModel): number {
   if (slot.clothing.mode === clothingMode.corrected) {
     return requireValue(slot.values, q.clo_dynamic);
   }
   const clothing = requireValue(slot.values, q.clo);
+  return clothingCorrectionAt(slot, model)?.(clothing) ?? clothing;
+}
+
+/**
+ * The clothing correction of `model`'s standard at the slot's own metabolic
+ * rate and relative air speed ({@link relativeAirSpeedOf}), a function of the
+ * clothing insulation alone: what {@link dynamicClothingOf} corrects by and
+ * {@link withClothingMode} inverts. `undefined` for a model without the
+ * clothing entry group.
+ */
+function clothingCorrectionAt(slot: Slot, model: RegisteredModel): ((clo: number) => number) | undefined {
   const correct = clothingCorrectionOf(model);
   if (!correct) {
-    return clothing;
+    return undefined;
   }
   // Getters: a rule reads only what it takes, so ASHRAE 55's asks for no air speed.
-  return correct(clothing, {
+  const resolved = {
     get met() {
       return requireValue(slot.values, q.met);
     },
     get vr() {
       return relativeAirSpeedOf(slot);
     },
-  });
+  };
+  return (clo) => correct(clo, resolved);
 }
 
 /**
@@ -416,44 +431,15 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
   return changedSlot(slot, { values, temperature: { mode } });
 }
 
-/** The air speed the library's `v_relative` adds per met above 1 met, in m/s. */
-const ACTIVITY_AIR_SPEED_PER_MET = 0.3;
-
-/** Decimals kept of an inverted air speed: far finer than `v_relative`'s 0.001, far coarser than float noise. */
-const AIR_SPEED_DECIMALS = 9;
-
-/**
- * The air speed that gives `relativeAirSpeed` at `met`: the inverse of the
- * library's `v_relative`, `vr − 0.3·(met − 1)` above 1 met and `vr` itself at
- * or below it (ADR-0002 decision 54 as revised). `v_relative` of the answer is
- * `relativeAirSpeed` to the library's rounding of 0.001, which is why the
- * answer is not itself rounded to 0.001: that moves the relative air speed by
- * 0.001 a round trip where 0.3·(met − 1) falls half way between two steps.
- *
- * Still air is asked first. The library rounds the activity's share, so the
- * subtraction would give still air back up to 0.0005 either side of 0, and an
- * air speed below 0 is one the gate stops. Negative only when the relative air
- * speed is below the activity's share, which no air speed gives.
- */
-function airSpeedGiving(relativeAirSpeed: number, met: number): number {
-  if (v_relative(0, met) === relativeAirSpeed) {
-    return 0;
-  }
-  if (met <= 1) {
-    return relativeAirSpeed;
-  }
-  return Number((relativeAirSpeed - ACTIVITY_AIR_SPEED_PER_MET * (met - 1)).toFixed(AIR_SPEED_DECIMALS));
-}
-
 /**
  * The same slot with its air speed re-expressed under `mode`. Uncorrected →
  * corrected stores {@link relativeAirSpeedOf}'s answer, the relative air speed
  * the model was given at the slot's own air speed and metabolic rate;
- * corrected → uncorrected stores {@link airSpeedGiving}'s, the air speed that
- * gives that relative air speed at the slot's metabolic rate (ADR-0002
- * decision 54 as revised). Exact both ways to `v_relative`'s rounding of
- * 0.001: the model is given the same relative air speed before and after,
- * but for an entry finer than that rounding, which comes back rounded. Unlike
+ * corrected → uncorrected stores the temporary library's `v_relative_inverse`,
+ * the air speed that gives that relative air speed at the slot's metabolic
+ * rate (ADR-0002 decision 54 as revised). Exact both ways to `v_relative`'s
+ * rounding of 0.001: the model is given the same relative air speed before and
+ * after, but for an entry finer than that rounding, which comes back rounded. Unlike
  * {@link withTemperatureMode}, which is lossy; the two representations never
  * coexist.
  * The deployed tool converts nothing here: its checkbox passes the entry as
@@ -471,7 +457,7 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
     values.set(q.vr, relativeAirSpeedOf(slot));
     values.delete(q.v);
   } else {
-    values.set(q.v, airSpeedGiving(requireValue(values, q.vr), requireValue(values, q.met)));
+    values.set(q.v, v_relative_inverse({ vr: requireValue(values, q.vr), met: requireValue(values, q.met) }));
     values.delete(q.vr);
   }
   return changedSlot(slot, { values, airSpeed: { mode } });
@@ -481,11 +467,17 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
  * The same slot with its clothing re-expressed under `mode`. Uncorrected →
  * corrected stores {@link dynamicClothingOf}'s answer, the dynamic clothing
  * insulation `model` was given at the slot's own values, by its standard's
- * rule; corrected → uncorrected keeps the number, an entry convention and not
- * an equation (ADR-0002 decisions 21 and 54): ISO 7730's correction has no
- * closed inverse, and the rule is the group's, never one standard's. So the
- * way back is lossy, unlike {@link withAirSpeedMode}'s: the number kept is
- * corrected again. The two representations never coexist.
+ * rule; corrected → uncorrected stores the clothing insulation that rule
+ * corrects to the entry, by the temporary library's `clo_dynamic_inverse`,
+ * which searches the rule itself: ISO 7730's has no closed inverse, and the
+ * app writes neither standard's formula (ADR-0002 decision 54 as revised a
+ * third time). So `model` is given the same dynamic clothing insulation
+ * before and after, as {@link withAirSpeedMode} leaves the relative air
+ * speed: exactly for a clothing insulation a person entered, and within the
+ * inverse's nine decimals for a dynamic one typed in that no such entry
+ * gives. `model` is the model the slot is on: the rule inverted is the one
+ * that corrected the entry, and for a model without the group nothing did,
+ * so the number is kept. The two representations never coexist.
  * The deployed tool corrects on its ASHRAE pages and shows nothing of it; its
  * EN page takes the dynamic value and corrects nothing.
  *
@@ -501,7 +493,9 @@ export function withClothingMode(slot: Slot, mode: ClothingMode, model: Register
     values.set(q.clo_dynamic, dynamicClothingOf(slot, model));
     values.delete(q.clo);
   } else {
-    values.set(q.clo, requireValue(values, q.clo_dynamic));
+    const dynamic = requireValue(values, q.clo_dynamic);
+    const correction = clothingCorrectionAt(slot, model);
+    values.set(q.clo, correction ? clo_dynamic_inverse({ clo_dynamic: dynamic, correction }) : dynamic);
     values.delete(q.clo_dynamic);
   }
   return changedSlot(slot, { values, clothing: { mode } });

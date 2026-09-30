@@ -1,8 +1,8 @@
 /**
  * What setting a model would do to a slot, worked out without touching it
- * (ADR-0002 decision 32). A pure function of one slot and one model: it reads
- * the slot in the plain shape `core/` already reads, returns what the slot
- * would hold, and mutates nothing. The session asks it once for each slot
+ * (ADR-0002 decision 32). A pure function of one slot, the model it is on and
+ * the model asked for: it reads the slot in the plain shape `core/` already
+ * reads, returns what the slot would hold, and mutates nothing. The session asks it once for each slot
  * that holds values and lands the answers together (decision 52).
  *
  * The three steps are ordered, and the order is the point — converting the
@@ -31,8 +31,9 @@ export interface RehearsedSwitch {
 }
 
 /**
- * What `slot` would hold under `model`, and what `model` would not accept of
- * it at `atmosphericPressure`, which the switch keeps (ADR-0002 decision 49).
+ * What `slot`, held under the model `from`, would hold under `model`, and
+ * what `model` would not accept of it at `atmosphericPressure`, which the
+ * switch keeps (ADR-0002 decision 49).
  * Temperatures first: the humidity entry's bound moves with the dry-bulb
  * temperature (ADR-0002 decision 46), so it is checked at the temperature a
  * "Yes" would leave — the gate asked again on the slot with every other row
@@ -41,8 +42,8 @@ export interface RehearsedSwitch {
  * a humidity-ratio entry has no bound then and is not listed, so it may be out
  * of range once the pressure returns (ADR-0002 decision 53).
  */
-export function rehearseSwitch(slot: Slot, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
-  const converted = convertEntryModes(slot, model);
+export function rehearseSwitch(slot: Slot, from: RegisteredModel, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
+  const converted = convertEntryModes(slot, from, model);
   const seeded = seedDeclaredDefaults(converted, model);
   const humidity = seeded.humidity?.mode.quantity;
   const others = outOfRangeRows(seeded, model, atmosphericPressure).filter((row) => row.quantity !== humidity);
@@ -82,11 +83,14 @@ function nearestEnd(value: number, bound: Bound): number {
  * `slot` in the default entry mode of every entry group the new model does
  * not have: a slot in operative entry becomes separate entry for a model
  * without the temperature entry group, because such a model needs the
- * dry-bulb temperature the operative entry is standing in for.
+ * dry-bulb temperature the operative entry is standing in for. Converted as
+ * the group's control converts under `from`, the model the slot is on: the
+ * dynamic clothing insulation is inverted by that model's standard's rule,
+ * which the new model, having no clothing group, does not have.
  */
-function convertEntryModes(slot: Slot, model: RegisteredModel): Slot {
+function convertEntryModes(slot: Slot, from: RegisteredModel, model: RegisteredModel): Slot {
   return valueEntryGroups.reduce(
-    (converted, group) => (group.appliesTo(model) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), model)),
+    (converted, group) => (group.appliesTo(model) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), from)),
     slot,
   );
 }

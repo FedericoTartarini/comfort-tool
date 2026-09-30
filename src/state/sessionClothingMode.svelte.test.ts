@@ -22,7 +22,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -104,24 +104,28 @@ describe("the session's clothing entry mode", () => {
       expect(outputs.slots.map((slot) => slot.result)).toEqual(before);
     });
 
-    // An entry convention, not an equation (ADR-0002 decision 54): the number
-    // stays, and the model is then given it corrected again.
-    it("keeps the number on the switch back, which the model is then given corrected again", () => {
+    // Back inverts the standard's rule (ADR-0002 decision 54 as revised a
+    // third time): slot 1 is below ASHRAE 55's 1.2 met, slots 2 and 3 above.
+    it("gives the clothing insulation back on the switch back, the model given the same dynamic clothing insulation throughout", () => {
       const session = threeDifferentSlots(model);
       const outputs = new Outputs(session);
-      const before = outputs.slots.map((slot) => resultValueOf(slot.result, q.pmv));
-      session.setClothingMode(clothingMode.corrected);
+      const entered = slotPositions.map((position) => shapeOf(heldSlot(session, position)));
+      const before = outputs.slots.map((slot) => slot.result);
+      expect(before.every((result) => result !== null)).toBe(true);
 
-      session.setClothingMode(clothingMode.uncorrected);
+      // A third round trip as the first: the clothing does not ratchet down.
+      for (const roundTrip of [1, 2, 3]) {
+        session.setClothingMode(clothingMode.corrected);
+        slotPositions.forEach((position) => {
+          expect(heldSlot(session, position).values.get(q.clo_dynamic), `round ${roundTrip}`).toBe(dynamic(entriesOfSlot[position]));
+        });
+        expect(outputs.slots.map((slot) => slot.result), `into dynamic clothing entry, round ${roundTrip}`).toEqual(before);
 
-      expect(session.clothingMode).toBe(clothingMode.uncorrected);
-      slotPositions.forEach((position) => {
-        expect(heldSlot(session, position).values.get(q.clo)).toBe(dynamic(entriesOfSlot[position]));
-        expect(heldSlot(session, position).values.has(q.clo_dynamic)).toBe(false);
-      });
-      const after = outputs.slots.map((slot) => resultValueOf(slot.result, q.pmv));
-      expect(after[1]).not.toBe(before[1]);
-      expect(after[2]).not.toBe(before[2]);
+        session.setClothingMode(clothingMode.uncorrected);
+        expect(session.clothingMode).toBe(clothingMode.uncorrected);
+        expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(entered);
+        expect(outputs.slots.map((slot) => slot.result), `back in clothing insulation entry, round ${roundTrip}`).toEqual(before);
+      }
     });
 
     // The anchor: the same model under no standard has no clothing correction,
@@ -339,19 +343,30 @@ describe("a model switch under dynamic clothing entry", () => {
 
   // Adaptive (ASHRAE 55) takes no clothing, so it has no clothing group and
   // the slot arrives in clothing insulation entry by the conversion the
-  // control applies: the mode is lost and the number kept (ADR-0002 decision 54).
-  it("returns to clothing insulation entry through a model without the group, the number kept", () => {
-    const session = enteringDynamic(pmvPpdAshrae, { v: 0.1, met: 2 }, 0.8);
+  // control applies, under the model it leaves: the mode is lost, and the
+  // dynamic clothing insulation the PMV model takes is not (ADR-0002 decision 54).
+  it.each([
+    { model: pmvPpdAshrae, dynamic: clo_dynamic_ashrae(1, 2) },
+    { model: pmvPpdIso, dynamic: clo_dynamic_iso(1, 2, 0.1) },
+  ])(
+    "returns to clothing insulation entry through a model without the group, holding the inverted clothing, and gives $model.info.label its dynamic clothing back",
+    ({ model, dynamic }) => {
+      const session = enteringDynamic(model, { v: 0.1, met: 2 }, dynamic);
+      const outputs = new Outputs(session);
+      const before = outputs.slots[0].result;
+      expect(before).not.toBeNull();
 
-    session.setModel(adaptiveAshrae);
+      session.setModel(adaptiveAshrae);
 
-    expect(session.clothingMode).toBe(clothingMode.uncorrected);
-    expect(session.slots[0].values.get(q.clo)).toBe(0.8);
-    expect(session.slots[0].values.has(q.clo_dynamic)).toBe(false);
+      expect(session.clothingMode).toBe(clothingMode.uncorrected);
+      expect(session.slots[0].values.get(q.clo)).toBe(1);
+      expect(session.slots[0].values.has(q.clo_dynamic)).toBe(false);
 
-    session.setModel(pmvPpdAshrae);
+      session.setModel(model);
 
-    expect(session.clothingMode).toBe(clothingMode.uncorrected);
-    expect(session.slots[0].values.get(q.clo)).toBe(0.8);
-  });
+      expect(session.clothingMode).toBe(clothingMode.uncorrected);
+      expect(session.slots[0].values.get(q.clo)).toBe(1);
+      expect(outputs.slots[0].result).toEqual(before);
+    },
+  );
 });
