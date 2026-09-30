@@ -375,11 +375,11 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     with the Worker it was written beside: every valid edit is a new snapshot of the slot and a full scan, `GRID²` runs
     whichever quantity changed, which is the scan the 300 ms line above is measured on. A cache is reopened with the
     rest of this decision, and measured before it is made.
-    **Amended 2026-09-30 (Compare's ticket 01).** The 300 ms line is one scan, as written above, and it stands. Three
-    compared slots of PMV (ASHRAE 55), scanned one after another in the browser, took a median of 328.3 ms; one of
-    them alone took 98.0 ms, and PMV (ISO 7730)'s three took 42.4 ms (`.scratch/compare/issues/01`). The slots
-    with a higher `met` and `clo` scanned slower, so three scans are not three times one. v1 stays synchronous whatever
-    three slots cost: no Worker, no row-sliced scan and no cache, because v1 puts a simpler app ahead of a faster one.
+    **Amended 2026-09-30 (`.scratch/compare/` ticket 01).** The 300 ms line is one scan, as written above, and it
+    stands. Three compared slots of PMV (ASHRAE 55), scanned one after another in the browser, took a median of
+    328.3 ms; Input 1 alone took 98.0 ms, and PMV (ISO 7730)'s three took 42.4 ms. The slots with a higher `met` and
+    `clo` scanned slower, so three scans are not three times one. v1 stays synchronous whatever three slots cost: no
+    Worker, no row-sliced scan and no cache, because v1 puts a simpler app ahead of a faster one.
 30. **Model name.** Revises decision 3: the declaration's `pathSegment` is replaced by `name`, the library's function
     name for the model (`"pmv_ppd_iso"`), written once. Everything the app calls a model follows it, in three mechanical
     forms: the share link carries the exact name, like a quantity key; the route segment is its kebab-case
@@ -952,9 +952,9 @@ the local `../comfort_tool` checkout:
     zone solved at another slot's values; one input panel with an active slot, because comparing is reading across a
     row; a set of starting values per slot, because a declaration would write its defaults three times; bands of
     slot 1 in Explore with markers for the others, which is the baseline under another name.
-    **Noted 2026-09-30 (Compare's ticket 01).** "Decision 29 reopens by its own terms past 300 ms" held three scans
-    to a line decision 29 draws for one. Three were measured at 328.3 ms and one at 98.0 ms, so decision 29 did not
-    reopen, and its amendment of the same day keeps v1 synchronous whatever three slots cost.
+    **Noted 2026-09-30 (`.scratch/compare/` ticket 01).** "Decision 29 reopens by its own terms past 300 ms" held
+    three scans to a line decision 29 draws for one. Three were measured at 328.3 ms and Input 1 alone at 98.0 ms, so
+    decision 29 did not reopen, and its amendment of the same day keeps v1 synchronous whatever three slots cost.
 51. **An entry mode is the session's, and every slot is entered in it.** Amends decision 47, whose `Slot` keeps its
     shape: each slot still holds its humidity and temperature entry, and the session keeps the three in step.
     Changing an entry mode converts every slot, compared or not, each by the rule `core/slot.ts` states and at its
