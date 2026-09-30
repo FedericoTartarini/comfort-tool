@@ -1203,7 +1203,7 @@ the local `../comfort_tool` checkout:
     (checked on a grid of metabolic rates 1 to 4 and relative air speeds 0 to 2). Both inverses are the app's, in
     `src/temporary-library/` by decision 21's rule C. At 1 met in still air an entered 2 clo on PMV (ISO 7730) is
     therefore stopped (the bound is 1.934), where before the run reported it; at 2 met on PMV (ASHRAE 55) an entered
-    1.6 clo passes (the bound is 1.874, the model is given 1.28), where before the gate stopped it. PMV (ASHRAE 55)'s
+    1.6 clo passes (the bound is 1.875, the model is given 1.28), where before the gate stopped it. PMV (ASHRAE 55)'s
     three air-speed limits at the operative temperature are not in its info and stay reported after the run.
     *Both groups invert on the switch back.* The clothing group no longer keeps the number: with one inverse for any
     rule in the table, the reason the revision above gave, that the ISO correction has no closed inverse and one
