@@ -47,7 +47,7 @@ function markerOf(chart: ChartSpec | null): PointTrace | undefined {
  */
 function sessionBreakingOneRow(): Session {
   const session = new Session(pmvPpdIso);
-  session.slots[0].setEntered(q.rh, 95);
+  session.slots[0].setEntered(q.rh, 95, unitSystem.si);
   return session;
 }
 
@@ -83,7 +83,7 @@ describe("Outputs", () => {
     expect(violations.map((row) => row.quantity)).toEqual([q.pa]);
 
     // 35 °C is past ISO 7730's 30 °C, so the gate blocks the run.
-    session.slots[0].setEntered(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35, unitSystem.si);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
     expect(outputs.slots[0].result).toBe(result);
@@ -97,10 +97,10 @@ describe("Outputs", () => {
     const kept = outputs.slots[0].result;
     const keptChart = outputs.chart;
 
-    session.slots[0].setEntered(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35, unitSystem.si);
     // Read while blocked, so this is the round trip and not one jump.
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
-    session.slots[0].setEntered(q.tdb, 26);
+    session.slots[0].setEntered(q.tdb, 26, unitSystem.si);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBe(kept);
@@ -128,7 +128,7 @@ describe("Outputs", () => {
     const title = outputs.chart?.layout.x.title;
     const range = outputs.chart?.layout.x.range;
 
-    session.slots[0].setEntered(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35, unitSystem.si);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
     session.unitSystem = unitSystem.ip;
 
@@ -142,7 +142,7 @@ describe("Outputs", () => {
     const outputs = new Outputs(session);
     const result = outputs.slots[0].result;
 
-    session.slots[0].setEntered(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35, unitSystem.si);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
     session.chart.type = chartType.dynamic;
 
@@ -183,7 +183,7 @@ describe("Outputs", () => {
     expect(outputs.chart?.layout.x.title).toContain(q.tdb.label);
 
     // 3 clo is past ISO 7730's 2 clo, and no temperature switch moves it.
-    session.slots[0].setEntered(q.clo, 3);
+    session.slots[0].setEntered(q.clo, 3, unitSystem.si);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
     session.setTemperatureMode(temperatureMode.operative);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
@@ -224,7 +224,7 @@ describe("Outputs", () => {
     const outputs = new Outputs(session);
     const marker = markerOf(outputs.chart);
 
-    session.slots[0].setEntered(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35, unitSystem.si);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
     expect(markerOf(outputs.chart)?.x).toBe(marker?.x);
@@ -244,10 +244,10 @@ describe("Outputs", () => {
     expect(outputs.chart?.traces.some((trace) => trace.kind === "bands")).toBe(true);
     expect(before).toBeGreaterThan(0);
 
-    session.slots[0].setEntered(q.tdb, 35);
+    session.slots[0].setEntered(q.tdb, 35, unitSystem.si);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
     readEverything(outputs);
-    session.slots[0].setEntered(q.tdb, 36);
+    session.slots[0].setEntered(q.tdb, 36, unitSystem.si);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
     readEverything(outputs);
 
@@ -266,11 +266,11 @@ describe("Outputs", () => {
     readEverything(outputs);
     const onePass = runs();
 
-    session.slots[0].setEntered(q.tdb, 24);
+    session.slots[0].setEntered(q.tdb, 24, unitSystem.si);
     readEverything(outputs);
     expect(runs()).toBe(2 * onePass);
 
-    session.slots[0].setEntered(q.tdb, 24);
+    session.slots[0].setEntered(q.tdb, 24, unitSystem.si);
     readEverything(outputs);
     expect(runs()).toBe(2 * onePass);
   });
@@ -300,7 +300,7 @@ describe("Outputs", () => {
     void outputs.slots[0].result;
 
     session.setModel(heatIndexRothfusz);
-    session.slots[0].setEntered(q.tdb, 30);
+    session.slots[0].setEntered(q.tdb, 30, unitSystem.si);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(resultValueOf(outputs.slots[0].result, q.hi)).toBeTypeOf("number");

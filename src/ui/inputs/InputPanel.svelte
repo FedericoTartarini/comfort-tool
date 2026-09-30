@@ -48,7 +48,7 @@
       unitSystem,
       bound: enteredBound(model, quantity, inputSlot, atmosphericPressure),
       outOfRange: outOfRangeQuantities.includes(quantity),
-      oncommit: (si: number) => inputSlot.setEntered(quantity, si),
+      oncommit: (si: number) => inputSlot.setEntered(quantity, si, unitSystem),
     }}
     {@const presets = presetsFor(quantity)}
     {#if presets}

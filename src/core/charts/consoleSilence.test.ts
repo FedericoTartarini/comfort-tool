@@ -13,6 +13,7 @@ import { dynamicChartOf, psychrometricChartOf, type RegisteredModel, type Values
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
+import { unitSystem } from "$lib/core/unitSystem";
 
 const consoleMethods = ["warn", "log", "error"] as const;
 
@@ -25,7 +26,7 @@ const consoleMethods = ["warn", "log", "error"] as const;
 function consoleWritesWhileDrawing(model: RegisteredModel): string[] {
   const spies = consoleMethods.map((method) => [method, vi.spyOn(console, method).mockImplementation(() => undefined)] as const);
   try {
-    const slot = startingSlot(model);
+    const slot = startingSlot(model, unitSystem.si);
     for (const request of [chartRequestFor(model, slot), chartRequestForSlots(model, [slot, slot, slot])]) {
       const dynamic = dynamicChartOf(model);
       if (dynamic) {

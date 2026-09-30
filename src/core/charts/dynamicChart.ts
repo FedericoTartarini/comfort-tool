@@ -19,6 +19,7 @@ import { quantities, type Quantity } from "$lib/core/quantities";
 import {
   enteredQuantities,
   enteredValue,
+  notAnEntry,
   underEntryModes,
   withEnteredValues,
   withEntryModes,
@@ -73,18 +74,20 @@ export function scanFrameFor(
 /**
  * `slot` scanned in `frame`: converted into the frame's entry modes first, by
  * the entry-mode change's own conversion, so a slot entered in another mode
- * is swept on the quantities it would hold after that change.
+ * is swept on the quantities it would hold after that change. Neither the
+ * conversion nor the sweep is an entry, and each says so: a chart is drawn of
+ * a slot and writes none, so the scan reads no unit system.
  */
 export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
   const { model, chart, axes, atmosphericPressure } = frame;
-  const converted = withEntryModes(slot, frame.entryModes, model);
+  const converted = withEntryModes(slot, frame.entryModes, model, notAnEntry);
   const xValues = samples(requireAxisRange(model, axes.x), GRID);
   return samples(requireAxisRange(model, axes.y), GRID).map((yValue) =>
     xValues.map((xValue) => {
       const point = withEnteredValues(converted, new Map([
         [axes.x, xValue],
         [axes.y, yValue],
-      ]));
+      ]), notAnEntry);
       return resultNumber(runOn(point, model, atmosphericPressure), chart.output);
     }),
   );
@@ -161,7 +164,7 @@ export function dynamicSpec(
 
   if (isPolygonsChart(chart)) {
     const polygonsOfSlot = request.slots.map((charted) =>
-      chart.zones({ values: toLibraryInputs(withEntryModes(charted.slot, modes, model), model, atmosphericPressure), xRange }),
+      chart.zones({ values: toLibraryInputs(withEntryModes(charted.slot, modes, model, notAnEntry), model, atmosphericPressure), xRange }),
     );
     request.slots.forEach((charted, position) => {
       const polygons = polygonsOfSlot[position];
@@ -237,7 +240,7 @@ export function dynamicSpec(
   }
 
   request.slots.forEach((charted, position) => {
-    const slot = withEntryModes(charted.slot, modes, model);
+    const slot = withEntryModes(charted.slot, modes, model, notAnEntry);
     const markerX = enteredValue(slot, x, model, atmosphericPressure);
     const markerY = enteredValue(slot, y, model, atmosphericPressure);
     if (markerX !== undefined && markerY !== undefined) {

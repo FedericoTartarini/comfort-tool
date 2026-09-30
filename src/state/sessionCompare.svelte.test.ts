@@ -37,7 +37,7 @@ function positionsAskedAbout(outputs: Outputs): SlotPosition[] {
 function resultAlone(entries: ReadonlyMap<Quantity, number>) {
   const session = new Session(pmvPpdIso);
   for (const [quantity, value] of entries) {
-    session.slots[0].setEntered(quantity, value);
+    session.slots[0].setEntered(quantity, value, unitSystem.si);
   }
   return new Outputs(session).slots[0].result;
 }
@@ -73,7 +73,7 @@ describe("Compare in the session", () => {
     session.slots[0].setOption(option, !option.default);
     session.setTemperatureMode(temperatureMode.operative);
     session.setHumidityMode(humidityMode.dewPoint);
-    session.slots[0].setEntered(q.clo, 0.8);
+    session.slots[0].setEntered(q.clo, 0.8, unitSystem.si);
 
     session.setCompare(true);
 
@@ -89,7 +89,7 @@ describe("Compare in the session", () => {
     session.setCompare(true);
     session.setSlotEnabled(1, false);
     session.setSlotEnabled(2, true);
-    heldSlot(session, 2).setEntered(q.tdb, 22);
+    heldSlot(session, 2).setEntered(q.tdb, 22, unitSystem.si);
     const held = session.slots.map((slot) => (slot ? shapeOf(slot) : null));
 
     session.setCompare(false);
@@ -118,9 +118,9 @@ describe("Compare in the session", () => {
   it("gives a slot enabled again what it held, not a new copy of slot 1", () => {
     const session = new Session(pmvPpdIso);
     session.setCompare(true);
-    heldSlot(session, 1).setEntered(q.tdb, 22);
+    heldSlot(session, 1).setEntered(q.tdb, 22, unitSystem.si);
     session.setSlotEnabled(1, false);
-    session.slots[0].setEntered(q.tdb, 27);
+    session.slots[0].setEntered(q.tdb, 27, unitSystem.si);
 
     session.setSlotEnabled(1, true);
 
@@ -130,7 +130,7 @@ describe("Compare in the session", () => {
   it("gives slot 3, first enabled after slot 1 has changed, what slot 1 holds then", () => {
     const session = new Session(pmvPpdIso);
     session.setCompare(true);
-    session.slots[0].setEntered(q.tdb, 27);
+    session.slots[0].setEntered(q.tdb, 27, unitSystem.si);
 
     session.setSlotEnabled(2, true);
 
@@ -143,8 +143,8 @@ describe("the outputs of the compared slots", () => {
   it("give each compared slot its own result, the one a session holding that slot alone gives", () => {
     const session = sessionComparingThreeSlots(pmvPpdIso);
     const outputs = new Outputs(session);
-    heldSlot(session, 1).setEntered(q.tdb, 22);
-    heldSlot(session, 2).setEntered(q.clo, 1);
+    heldSlot(session, 1).setEntered(q.tdb, 22, unitSystem.si);
+    heldSlot(session, 2).setEntered(q.clo, 1, unitSystem.si);
 
     expect(positionsAskedAbout(outputs)).toEqual([0, 1, 2]);
     expect(outputs.slots[0].result).toEqual(resultAlone(new Map<Quantity, number>()));
@@ -162,7 +162,7 @@ describe("the outputs of the compared slots", () => {
     void outputs.slots.map((slot) => slot.result);
     const before = runs();
 
-    heldSlot(session, 1).setEntered(q.tdb, 22);
+    heldSlot(session, 1).setEntered(q.tdb, 22, unitSystem.si);
     void outputs.slots.map((slot) => slot.result);
 
     expect(positionsAskedAbout(outputs)).toEqual([0]);
@@ -176,8 +176,8 @@ describe("the outputs of the compared slots", () => {
     const kept = outputs.slots[1].result;
 
     // 35 °C is past ISO 7730's 30 °C.
-    heldSlot(session, 1).setEntered(q.tdb, 35);
-    session.slots[0].setEntered(q.tdb, 24);
+    heldSlot(session, 1).setEntered(q.tdb, 35, unitSystem.si);
+    session.slots[0].setEntered(q.tdb, 24, unitSystem.si);
 
     expect(outputs.slots[1].notCalculated).toBe(true);
     expect(outputs.slots[1].outOfRangeQuantities).toEqual([q.tdb]);
@@ -207,7 +207,7 @@ describe("the outputs of the compared slots", () => {
     const third = outputs.slots[2].result;
     const before = runs();
 
-    heldSlot(session, 1).setEntered(q.tdb, 22);
+    heldSlot(session, 1).setEntered(q.tdb, 22, unitSystem.si);
     void outputs.slots.map((slot) => slot.result);
 
     expect(runs()).toBe(before + 1);
@@ -255,7 +255,7 @@ function markerAt(chart: ChartSpec | null, position: SlotPosition) {
 function chartAlone(entries: ReadonlyMap<Quantity, number>): ChartSpec | null {
   const session = new Session(pmvPpdIso);
   for (const [quantity, value] of entries) {
-    session.slots[0].setEntered(quantity, value);
+    session.slots[0].setEntered(quantity, value, unitSystem.si);
   }
   return new Outputs(session).chart;
 }
@@ -267,7 +267,7 @@ describe("the charts of the compared slots", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setCompare(true);
-    heldSlot(session, 1).setEntered(q.clo, 1);
+    heldSlot(session, 1).setEntered(q.clo, 1, unitSystem.si);
 
     const alone = chartAlone(moreClothing);
     expect(zoneShapesOf(outputs.chart, 1)).toEqual(zoneShapesOf(alone, 0));
@@ -280,13 +280,13 @@ describe("the charts of the compared slots", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setCompare(true);
-    heldSlot(session, 1).setEntered(q.clo, 1);
+    heldSlot(session, 1).setEntered(q.clo, 1, unitSystem.si);
     const zones = zoneShapesOf(outputs.chart, 1);
     const marker = markerAt(outputs.chart, 1);
     expect(zones).not.toEqual([]);
 
     // 35 °C is past ISO 7730's 30 °C.
-    heldSlot(session, 1).setEntered(q.tdb, 35);
+    heldSlot(session, 1).setEntered(q.tdb, 35, unitSystem.si);
 
     expect(outputs.slots[1].notCalculated).toBe(true);
     expect(zoneShapesOf(outputs.chart, 1)).toEqual(zones);
@@ -311,7 +311,7 @@ describe("the charts of the compared slots", () => {
     session.setCompare(true);
     // Read, as the page reads it, so slot 2 has a run to keep.
     void outputs.chart;
-    heldSlot(session, 1).setEntered(q.tdb, 35);
+    heldSlot(session, 1).setEntered(q.tdb, 35, unitSystem.si);
 
     session.atmosphericPressure = 90_000;
 
@@ -358,7 +358,7 @@ describe("the charts of the compared slots", () => {
       const first = zoneShapesOf(outputs.chart, 0);
       const before = runs();
 
-      heldSlot(session, 1).setEntered(q.clo, 1);
+      heldSlot(session, 1).setEntered(q.clo, 1, unitSystem.si);
       readEverything();
 
       expect(runs()).toBe(before + onePass);
@@ -408,7 +408,7 @@ describe("the session's entry modes", () => {
   function convertedAlone(model: RegisteredModel, entries: ReadonlyMap<Quantity, number>, change: (session: Session) => void) {
     const session = new Session(model);
     for (const [quantity, value] of entries) {
-      session.slots[0].setEntered(quantity, value);
+      session.slots[0].setEntered(quantity, value, unitSystem.si);
     }
     change(session);
     return shapeOf(session.slots[0]);
@@ -434,7 +434,7 @@ describe("the session's entry modes", () => {
     const session = sessionComparingThreeSlots(model);
     slotPositions.forEach((position) => {
       for (const [quantity, value] of entriesOfSlot[position]) {
-        heldSlot(session, position).setEntered(quantity, value);
+        heldSlot(session, position).setEntered(quantity, value, unitSystem.si);
       }
     });
     return session;
@@ -501,20 +501,20 @@ describe("the session's entry modes", () => {
     // 25 °C breaks this bound and a request for the model asks.
     const cooler = withBounds({ tdb: { min: 10, max: 20 } });
     const steps: readonly ((changed: Session) => void)[] = [
-      (changed) => changed.slots[0].setEntered(q.tdb, 23),
+      (changed) => changed.slots[0].setEntered(q.tdb, 23, unitSystem.si),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
       (changed) => changed.setCompare(true),
-      (changed) => heldSlot(changed, 1).setEntered(q.operative_tmp, 27),
+      (changed) => heldSlot(changed, 1).setEntered(q.operative_tmp, 27, unitSystem.si),
       (changed) => changed.setAirSpeedMode(airSpeedMode.corrected),
-      (changed) => heldSlot(changed, 1).setEntered(q.vr, 0.3),
+      (changed) => heldSlot(changed, 1).setEntered(q.vr, 0.3, unitSystem.si),
       (changed) => changed.setClothingMode(clothingMode.corrected),
-      (changed) => heldSlot(changed, 1).setEntered(q.clo_dynamic, 0.9),
+      (changed) => heldSlot(changed, 1).setEntered(q.clo_dynamic, 0.9, unitSystem.si),
       (changed) => changed.setHumidityMode(humidityMode.wetBulb),
-      (changed) => heldSlot(changed, 1).setEntered(q.wet_bulb_tmp, 18),
+      (changed) => heldSlot(changed, 1).setEntered(q.wet_bulb_tmp, 18, unitSystem.si),
       (changed) => changed.setSlotEnabled(1, false),
       (changed) => changed.setTemperatureMode(temperatureMode.separate),
       (changed) => changed.setSlotEnabled(2, true),
-      (changed) => heldSlot(changed, 2).setEntered(q.tr, 29),
+      (changed) => heldSlot(changed, 2).setEntered(q.tr, 29, unitSystem.si),
       (changed) => changed.setHumidityMode(humidityMode.vapourPressure),
       (changed) => changed.setCompare(false),
       (changed) => changed.setAirSpeedMode(airSpeedMode.uncorrected),
@@ -580,7 +580,7 @@ describe("the session's entry modes", () => {
     session.setCompare(true);
     void outputs.chart;
     // 3 clo is past ASHRAE 55's 2 clo, and no entry-mode change moves it.
-    session.slots[0].setEntered(q.clo, 3);
+    session.slots[0].setEntered(q.clo, 3, unitSystem.si);
 
     session.setTemperatureMode(temperatureMode.operative);
 
@@ -603,20 +603,20 @@ describe("the session's entry modes", () => {
       [q.tr, 28],
     ]);
     for (const [quantity, value] of lastValid) {
-      heldSlot(session, 1).setEntered(quantity, value);
+      heldSlot(session, 1).setEntered(quantity, value, unitSystem.si);
     }
     void outputs.chart;
     // 3 clo is past ISO 7730's 2 clo, and no entry-mode change moves it.
     // Slot 1's gate is closed as well, so no slot's run is in the new mode.
-    heldSlot(session, 1).setEntered(q.clo, 3);
-    session.slots[0].setEntered(q.clo, 3);
+    heldSlot(session, 1).setEntered(q.clo, 3, unitSystem.si);
+    session.slots[0].setEntered(q.clo, 3, unitSystem.si);
 
     session.setTemperatureMode(temperatureMode.operative);
 
     expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([true, true]);
     const alone = new Session(pmvPpdIso);
     for (const [quantity, value] of lastValid) {
-      alone.slots[0].setEntered(quantity, value);
+      alone.slots[0].setEntered(quantity, value, unitSystem.si);
     }
     alone.setTemperatureMode(temperatureMode.operative);
     const aloneChart = new Outputs(alone).chart;

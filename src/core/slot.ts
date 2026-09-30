@@ -30,6 +30,7 @@ import {
   type RegisteredModel,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
+import type { UnitSystem } from "./unitSystem";
 
 /**
  * The slice of an input slot that core reads. A plain interface, so core/
@@ -47,6 +48,24 @@ export interface Slot {
 }
 
 const q = quantities;
+
+/**
+ * What a write's numbers are: entries, which come with the unit system the
+ * session shows them in, or not entries, which come with {@link notAnEntry}
+ * (ADR-0002 decision 55). The unit system is the session's and no slot holds
+ * it, since three compared slots can never differ in it: the session passes
+ * it to each function that writes a slot, as it passes the atmospheric
+ * pressure (decision 49).
+ */
+export type WrittenAs = UnitSystem | typeof notAnEntry;
+
+/**
+ * What a chart builder writes its numbers as: it builds the slot it draws by
+ * the functions an entry is written by, to sweep an axis
+ * ({@link withEnteredValues}) and to draw a slot kept in other entry modes
+ * ({@link withEntryModes}), and no slot the session holds comes of it.
+ */
+export const notAnEntry = { id: "notAnEntry" } as const;
 
 /**
  * The entry mode of every entry group held among the values: the slice of a
@@ -98,14 +117,15 @@ export interface ValueEntryGroup {
   /** The group's mode among `modes`. */
   readonly modeOf: (modes: ValueEntryModes) => ValueEntryMode;
   /**
-   * `slot` re-expressed under `mode`, one of the group's, for `model`: the
+   * `slot` re-expressed under `mode`, one of the group's, for `model`, its
+   * numbers written as `writtenAs` says: the
    * one statement of the conversion a slot undergoes. The session applies it
    * to every slot at an entry-mode change (ADR-0002 decision 51), each chart
    * builder to a slot kept in another mode than the session's
    * ({@link withEntryModes}), and `core/modelSwitch.ts` to a slot bound for a
    * model that has no such group, under the model it leaves.
    */
-  readonly convert: (slot: Slot, mode: ValueEntryMode, model: RegisteredModel) => Slot;
+  readonly convert: (slot: Slot, mode: ValueEntryMode, model: RegisteredModel, writtenAs: WrittenAs) => Slot;
   /** Set for an activity-adjusted group, whose model is given the entry of one mode as it is and of the other corrected. */
   readonly correction?: EntryCorrection;
 }
@@ -142,7 +162,7 @@ export const valueEntryGroups: readonly ValueEntryGroup[] = [
     modes: Object.values(airSpeedMode),
     appliesTo: takesRelativeAirSpeed,
     modeOf: (modes) => modes.airSpeed.mode,
-    convert: withAirSpeedMode,
+    convert: (slot, mode, _model, writtenAs) => withAirSpeedMode(slot, mode, writtenAs),
     correction: { taken: q.vr, corrected: airSpeedMode.corrected, entryGiving: airSpeedGiving },
   },
   {
@@ -394,11 +414,13 @@ export function enteredValue(slot: Slot, quantity: Quantity, model: RegisteredMo
 /**
  * `slot` with `changes` in place of its own fields: the one place this module
  * builds a slot from another, so every change to a slot keeps what it did not
- * change.
+ * change, and every number written into a slot passes through it.
+ * `writtenAs` says whether the numbers among `changes` are entries, and in
+ * which unit system; it is carried this far and nothing reads it.
  * The fields are read one by one, since the session's slot holds them behind
  * getters a spread does not copy; no change removes a held humidity.
  */
-function changedSlot(slot: Slot, changes: Partial<Slot>): Slot {
+function changedSlot(slot: Slot, changes: Partial<Slot>, writtenAs: WrittenAs): Slot {
   return {
     values: changes.values ?? slot.values,
     humidity: changes.humidity ?? slot.humidity,
@@ -427,8 +449,12 @@ export function isHumidityQuantity(quantity: Quantity): boolean {
  * to that mode and value, so no humidity quantity lands among the values. An
  * `rh` sweep is one case: it overrides the entry outright, since the chart's
  * axis is the library's `rh`.
+ *
+ * `writtenAs` tells the two apart: the person's entry comes with the
+ * session's unit system, the chart's sweep with {@link notAnEntry}, as every
+ * function below that converts an entry mode is told.
  */
-export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, number>): Slot {
+export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, number>, writtenAs: WrittenAs): Slot {
   const values = new Map(slot.values);
   let humidity = slot.humidity;
   for (const [quantity, value] of overrides) {
@@ -439,14 +465,15 @@ export function withEnteredValues(slot: Slot, overrides: ReadonlyMap<Quantity, n
       values.set(quantity, value);
     }
   }
-  return changedSlot(slot, { values, humidity });
+  return changedSlot(slot, { values, humidity }, writtenAs);
 }
 
 /** The same slot with `option` set to `value`: how the person ticks an option. */
 export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot {
   const options = new Map(slot.options);
   options.set(option, value);
-  return changedSlot(slot, { options });
+  // An option is no number, so nothing here is an entry.
+  return changedSlot(slot, { options }, notAnEntry);
 }
 
 /**
@@ -465,7 +492,7 @@ export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot
  * different act — it stands the operative entry in for the two temperatures of
  * one library call and changes no entry mode.
  */
-export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: RegisteredModel): Slot {
+export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: RegisteredModel, writtenAs: WrittenAs): Slot {
   if (mode === slot.temperature.mode) {
     return slot;
   }
@@ -477,7 +504,7 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
   } else {
     expandOperative(values);
   }
-  return changedSlot(slot, { values, temperature: { mode } });
+  return changedSlot(slot, { values, temperature: { mode } }, writtenAs);
 }
 
 /**
@@ -497,7 +524,7 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
  * The air-speed group's {@link ValueEntryGroup.convert}, which says who
  * applies it.
  */
-export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
+export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode, writtenAs: WrittenAs): Slot {
   if (mode === slot.airSpeed.mode) {
     return slot;
   }
@@ -509,7 +536,7 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
     values.set(q.v, v_relative_inverse({ vr: requireValue(values, q.vr), met: requireValue(values, q.met) }));
     values.delete(q.vr);
   }
-  return changedSlot(slot, { values, airSpeed: { mode } });
+  return changedSlot(slot, { values, airSpeed: { mode } }, writtenAs);
 }
 
 /**
@@ -533,7 +560,7 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
  * The clothing group's {@link ValueEntryGroup.convert}, which says who
  * applies it.
  */
-export function withClothingMode(slot: Slot, mode: ClothingMode, model: RegisteredModel): Slot {
+export function withClothingMode(slot: Slot, mode: ClothingMode, model: RegisteredModel, writtenAs: WrittenAs): Slot {
   if (mode === slot.clothing.mode) {
     return slot;
   }
@@ -547,17 +574,17 @@ export function withClothingMode(slot: Slot, mode: ClothingMode, model: Register
     values.set(q.clo, correction ? clo_dynamic_inverse({ clo_dynamic: dynamic, correction }) : dynamic);
     values.delete(q.clo_dynamic);
   }
-  return changedSlot(slot, { values, clothing: { mode } });
+  return changedSlot(slot, { values, clothing: { mode } }, writtenAs);
 }
 
 /**
  * `slot` in `modes`: converted by every entry group whose mode differs, each
  * by its own {@link ValueEntryGroup.convert}, and the slot itself when none
  * does. How a chart builder draws a slot kept in other entry modes than the
- * session's (ADR-0002 decision 51).
+ * session's (ADR-0002 decision 51), passing {@link notAnEntry}.
  */
-export function withEntryModes(slot: Slot, modes: ValueEntryModes, model: RegisteredModel): Slot {
-  return valueEntryGroups.reduce((converted, group) => group.convert(converted, group.modeOf(modes), model), slot);
+export function withEntryModes(slot: Slot, modes: ValueEntryModes, model: RegisteredModel, writtenAs: WrittenAs): Slot {
+  return valueEntryGroups.reduce((converted, group) => group.convert(converted, group.modeOf(modes), model, writtenAs), slot);
 }
 
 /**
@@ -567,13 +594,13 @@ export function withEntryModes(slot: Slot, modes: ValueEntryModes, model: Regist
  * atmospheric pressure. Lossy and one-way, like {@link withTemperatureMode}.
  * Throws for a slot that holds no humidity: there is nothing to re-express.
  */
-export function withHumidityMode(slot: Slot, mode: HumidityMode, atmosphericPressure: number): Slot {
+export function withHumidityMode(slot: Slot, mode: HumidityMode, atmosphericPressure: number, unitSystem: UnitSystem): Slot {
   if (mode === slot.humidity?.mode) {
     return slot;
   }
   const tdb = resolvedTdb(slot);
   const humidity = { mode, value: mode.fromRelativeHumidity(relativeHumidityOf(slot, atmosphericPressure), tdb, atmosphericPressure) };
-  return changedSlot(slot, { humidity });
+  return changedSlot(slot, { humidity }, unitSystem);
 }
 
 /**
@@ -605,8 +632,11 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
  * Options are seeded the same way: an option the new model declares and the
  * slot has no value for starts at its default, and every other is kept
  * (ADR-0002 decision 36). The gate never sees them — an option has no range.
+ *
+ * A default is an entry: `unitSystem`, the session's, goes with it to
+ * `withEnteredValues`.
  */
-export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
+export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel, unitSystem: UnitSystem): Slot {
   const defaults = new Map<Quantity, number>();
   for (const { quantity, value } of model.inputs) {
     const held = underEntryModes(quantity, slot);
@@ -624,7 +654,8 @@ export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
   }
   // Always a copy, empty defaults included: what comes back is the plain shape
   // decision 32 rehearses on, never the caller's own slot under another name.
-  return changedSlot(withEnteredValues(slot, defaults), { options });
+  // The options are no numbers, as in `withOption`.
+  return changedSlot(withEnteredValues(slot, defaults, unitSystem), { options }, notAnEntry);
 }
 
 /**
@@ -632,6 +663,6 @@ export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
  * holding no humidity and no option, put through {@link seedDeclaredDefaults}
  * as a switch is, so starting and switching are one rule.
  */
-export function startingSlot(model: RegisteredModel): Slot {
-  return seedDeclaredDefaults({ values: new Map(), ...defaultEntryModes, options: new Map() }, model);
+export function startingSlot(model: RegisteredModel, unitSystem: UnitSystem): Slot {
+  return seedDeclaredDefaults({ values: new Map(), ...defaultEntryModes, options: new Map() }, model, unitSystem);
 }

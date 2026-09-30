@@ -27,6 +27,7 @@ import {
 import { resultValue, runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, quantityFor, type Quantity } from "./quantities";
 import { startingSlot, withEnteredValues, type Slot } from "./slot";
+import { unitSystem } from "./unitSystem";
 
 /**
  * The classified output the declared bands cut, found by object identity:
@@ -59,9 +60,9 @@ const isoWithPolygonsChart = {
  * along it, and the run's value for a quantity there.
  */
 function alongTheXAxis(model: RegisteredModel, chart: DeclaredDynamicChart) {
-  const defaults = startingSlot(model);
+  const defaults = startingSlot(model, unitSystem.si);
   const axis = chart.axes.x;
-  const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]));
+  const at = (position: number) => withEnteredValues(defaults, new Map([[axis, position]]), unitSystem.si);
   return {
     defaults,
     range: requireAxisRange(model, axis),

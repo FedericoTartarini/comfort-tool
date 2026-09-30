@@ -13,7 +13,7 @@ import {
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
-import { requireValue, withEntryModes } from "$lib/core/slot";
+import { notAnEntry, requireValue, withEntryModes } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
@@ -108,7 +108,7 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
   // Every slot's zones below every marker, so no slot's zone covers another's marker.
   const markers: Trace[] = [];
   for (const charted of request.slots) {
-    const resolved = resolveQuantities(withEntryModes(charted.slot, request.entryModes, model), model, atmosphericPressure);
+    const resolved = resolveQuantities(withEntryModes(charted.slot, request.entryModes, model, notAnEntry), model, atmosphericPressure);
     // Every zone of a slot is solved at the same inputs; only the limit differs.
     const zoneInputs = {
       tr: requireValue(resolved, q.tr),

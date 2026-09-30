@@ -22,6 +22,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
 import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
+import { unitSystem } from "$lib/core/unitSystem";
 
 const q = quantities;
 
@@ -38,8 +39,8 @@ const entriesOfSlot = [
 function threeDifferentSlots(): Session {
   const session = sessionComparingThreeSlots(pmvPpdIso);
   slotPositions.forEach((position) => {
-    heldSlot(session, position).setEntered(q.v, entriesOfSlot[position].v);
-    heldSlot(session, position).setEntered(q.met, entriesOfSlot[position].met);
+    heldSlot(session, position).setEntered(q.v, entriesOfSlot[position].v, unitSystem.si);
+    heldSlot(session, position).setEntered(q.met, entriesOfSlot[position].met, unitSystem.si);
   });
   return session;
 }
@@ -105,8 +106,8 @@ describe("the session's air-speed entry mode", () => {
   it("gives an air speed finer than the library's 0.001 back within it, and the same from then on", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2);
-    session.slots[0].setEntered(q.v, 0.1234);
+    session.slots[0].setEntered(q.met, 2, unitSystem.si);
+    session.slots[0].setEntered(q.v, 0.1234, unitSystem.si);
     const before = outputs.slots[0].result;
 
     session.setAirSpeedMode(airSpeedMode.corrected);
@@ -126,9 +127,9 @@ describe("the session's air-speed entry mode", () => {
     /** Story 2's stationary equipment: 0.1 m/s at 2 met, which no air speed gives. */
     function switchedBack(model = pmvPpdIso): Session {
       const session = new Session(model);
-      session.slots[0].setEntered(q.met, 2);
+      session.slots[0].setEntered(q.met, 2, unitSystem.si);
       session.setAirSpeedMode(airSpeedMode.corrected);
-      session.slots[0].setEntered(q.vr, 0.1);
+      session.slots[0].setEntered(q.vr, 0.1, unitSystem.si);
       session.setAirSpeedMode(airSpeedMode.uncorrected);
       return session;
     }
@@ -164,12 +165,12 @@ describe("the session's air-speed entry mode", () => {
   it("gives the model an entered relative air speed unchanged", () => {
     const { v, met } = entriesOfSlot[1];
     const entered = new Session(pmvPpdIso);
-    entered.slots[0].setEntered(q.met, met);
+    entered.slots[0].setEntered(q.met, met, unitSystem.si);
     entered.setAirSpeedMode(airSpeedMode.corrected);
-    entered.slots[0].setEntered(q.vr, v_relative(v, met));
+    entered.slots[0].setEntered(q.vr, v_relative(v, met), unitSystem.si);
     const derived = new Session(pmvPpdIso);
-    derived.slots[0].setEntered(q.met, met);
-    derived.slots[0].setEntered(q.v, v);
+    derived.slots[0].setEntered(q.met, met, unitSystem.si);
+    derived.slots[0].setEntered(q.v, v, unitSystem.si);
 
     expect(new Outputs(entered).slots[0].result).toEqual(new Outputs(derived).slots[0].result);
   });
@@ -177,7 +178,7 @@ describe("the session's air-speed entry mode", () => {
   it("converts a slot that holds values and is not compared, and hands a slot first enabled slot 1's mode", () => {
     const session = new Session(pmvPpdIso);
     session.setCompare(true);
-    heldSlot(session, 1).setEntered(q.met, 2);
+    heldSlot(session, 1).setEntered(q.met, 2, unitSystem.si);
     session.setSlotEnabled(1, false);
 
     session.setAirSpeedMode(airSpeedMode.corrected);
@@ -209,7 +210,7 @@ describe("the session's air-speed entry mode", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
     for (const [quantity, value] of [[q.tdb, 22], [q.tr, 22], [q.v, 0.15], [q.met, 1.29]] as const) {
-      session.slots[0].setEntered(quantity, value);
+      session.slots[0].setEntered(quantity, value, unitSystem.si);
     }
     expect(outputs.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
 
@@ -223,9 +224,9 @@ describe("the session's air-speed entry mode", () => {
     const bound = pmvPpdIso.info.inputs.vr?.applicability;
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.met, 2, unitSystem.si);
     // 0.8 m/s at 2 met is a relative air speed of 1.1 m/s, past the model's 1.
-    session.slots[0].setEntered(q.v, 0.8);
+    session.slots[0].setEntered(q.v, 0.8, unitSystem.si);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.v]);
     expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 0.7 });
@@ -243,11 +244,11 @@ describe("the session's air-speed entry mode", () => {
   it("moves the air speed's bound with the metabolic rate, and opens the gate where the entry is inside it", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2);
-    session.slots[0].setEntered(q.v, 0.8);
+    session.slots[0].setEntered(q.met, 2, unitSystem.si);
+    session.slots[0].setEntered(q.v, 0.8, unitSystem.si);
     expect(outputs.slots[0].notCalculated).toBe(true);
 
-    session.slots[0].setEntered(q.met, 1);
+    session.slots[0].setEntered(q.met, 1, unitSystem.si);
 
     expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 1 });
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
@@ -280,10 +281,10 @@ describe("the dynamic chart under the session's air-speed entry mode", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.chart.type = chartType.dynamic;
-    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.met, 2, unitSystem.si);
     void outputs.chart;
     // 3 clo is past ISO 7730's 2 clo, and no entry-mode change moves it.
-    session.slots[0].setEntered(q.clo, 3);
+    session.slots[0].setEntered(q.clo, 3, unitSystem.si);
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
@@ -301,7 +302,7 @@ describe("a model switch under relative air speed entry", () => {
   function enteringRelativeAirSpeed(): Session {
     const session = new Session(pmvPpdAshrae);
     session.setAirSpeedMode(airSpeedMode.corrected);
-    session.slots[0].setEntered(q.vr, 1.5);
+    session.slots[0].setEntered(q.vr, 1.5, unitSystem.si);
     return session;
   }
 
@@ -350,9 +351,9 @@ describe("a model switch under relative air speed entry", () => {
   it("asks about an air speed the new model's converted bound stops, and moves it to the converted end on a yes", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.met, 2, unitSystem.si);
     // A relative air speed of 1.8 m/s: inside ASHRAE 55's 2, past ISO 7730's 1.
-    session.slots[0].setEntered(q.v, 1.5);
+    session.slots[0].setEntered(q.v, 1.5, unitSystem.si);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
     session.requestModel(pmvPpdIso);
@@ -376,8 +377,8 @@ describe("a model switch under relative air speed entry", () => {
     const moreActive = withBounds({ met: { min: 3, max: 4 } });
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 1);
-    session.slots[0].setEntered(q.v, 0.8);
+    session.slots[0].setEntered(q.met, 1, unitSystem.si);
+    session.slots[0].setEntered(q.v, 0.8, unitSystem.si);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
     session.requestModel(moreActive);
@@ -401,9 +402,9 @@ describe("a model switch under relative air speed entry", () => {
   it("returns to air speed entry through a model without the group, holding the inverted air speed, and gives the model its relative air speed back", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.met, 2, unitSystem.si);
     session.setAirSpeedMode(airSpeedMode.corrected);
-    session.slots[0].setEntered(q.vr, 1.9);
+    session.slots[0].setEntered(q.vr, 1.9, unitSystem.si);
     const before = outputs.slots[0].result;
     expect(before).not.toBeNull();
 

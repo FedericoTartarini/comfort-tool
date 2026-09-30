@@ -15,6 +15,7 @@ import {
 import type { RegisteredModel } from "./modelDeclaration";
 import { quantities } from "./quantities";
 import { defaultEntryModes, startingSlot, type Slot, type ValueEntryModes } from "./slot";
+import { unitSystem } from "./unitSystem";
 
 /** The entry modes of a session that changed none but temperature's, to `mode`. */
 export function entryModesWithTemperature(mode: TemperatureMode): ValueEntryModes {
@@ -46,7 +47,7 @@ export function enteredSlotFor(
   model: RegisteredModel,
   entered: Partial<Record<Exclude<keyof typeof quantities, HumidityKey>, number>>,
 ): Slot {
-  const slot = startingSlot(model);
+  const slot = startingSlot(model, unitSystem.si);
   const values = new Map(slot.values);
   const mode = entered.operative_tmp === undefined ? temperatureMode.separate : temperatureMode.operative;
   if (mode === temperatureMode.operative) {
