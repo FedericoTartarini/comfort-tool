@@ -80,7 +80,7 @@ describe("shownNumber", () => {
     expect(shownNumber(0.007886, gramsPerKilogram, { max: 0.007886 })).toBe(gramsPerKilogram.toSi(7.88));
   });
 
-  it("keeps an end that has no more than two decimals in the display unit, whatever it converts back to", () => {
+  it("keeps these ends, which have no more than two decimals in the display unit", () => {
     // 27 °C is 80.6 °F, and 80.6 °F converts back to a hair under 27 °C.
     expect(shownNumber(27, fahrenheit, { min: 27 })).toBe(fahrenheit.toSi(80.6));
     expect(shownNumber(28, fahrenheit, { max: 28 })).toBe(fahrenheit.toSi(82.4));
