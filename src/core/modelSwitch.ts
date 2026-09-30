@@ -15,7 +15,7 @@
  */
 import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
 import type { RegisteredModel } from "./modelDeclaration";
-import { shownAtLeast, shownAtMost } from "./numberFormat";
+import { shownNumber } from "./numberFormat";
 import type { Quantity } from "./quantities";
 import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, type DisplayUnit } from "./units";
@@ -94,10 +94,10 @@ export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot
 /** The end of `bound` that `value` is beyond, at the precision `unit` shows and inside the bound; `value` itself when it is beyond neither. */
 function nearestEnd(value: number, bound: Bound, unit: DisplayUnit): number {
   if (bound.min !== undefined && value < bound.min) {
-    return unit.toSi(shownAtLeast(unit.fromSi(bound.min)));
+    return shownNumber(bound.min, unit, bound);
   }
   if (bound.max !== undefined && value > bound.max) {
-    return unit.toSi(shownAtMost(unit.fromSi(bound.max)));
+    return shownNumber(bound.max, unit, bound);
   }
   return value;
 }

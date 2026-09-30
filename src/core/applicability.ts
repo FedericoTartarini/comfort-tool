@@ -17,7 +17,7 @@ import { copy } from "$lib/text/copy";
 import { humidityMode, temperatureMode, type HumidityMode } from "./entryModes";
 import { takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
-import { formatNumber } from "./numberFormat";
+import { formatNumber, shownNumber } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import { isHumidityQuantity, resolvedTdb, valueEntryGroups, type EntryCorrection, type Slot, type ValueEntryModes } from "./slot";
 import type { DisplayUnit } from "./units";
@@ -357,10 +357,15 @@ export function splitViolations(rows: readonly ViolationRow[]): ViolationSides {
   return sides;
 }
 
-/** `bound`, converted to the display unit and formatted, without the unit symbol. */
+/**
+ * `bound` in the display unit, formatted, without the unit symbol. Each end is
+ * written inside the bound at the precision a row shows (ADR-0002 decision
+ * 55): `0 – 1.87` for a maximum of 1.875, a number the gate accepts.
+ */
 export function formatBound(bound: Bound, unit: DisplayUnit): string {
-  const min = bound.min !== undefined ? formatNumber(unit.fromSi(bound.min)) : undefined;
-  const max = bound.max !== undefined ? formatNumber(unit.fromSi(bound.max)) : undefined;
+  const shownEnd = (end: number): string => formatNumber(unit.fromSi(shownNumber(end, unit, bound)));
+  const min = bound.min !== undefined ? shownEnd(bound.min) : undefined;
+  const max = bound.max !== undefined ? shownEnd(bound.max) : undefined;
   if (min !== undefined && max !== undefined) {
     return `${min} – ${max}`;
   }

@@ -7,6 +7,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
 import {
   enteredBound,
+  formatBound,
   isAtmosphericPressureOutOfRange,
   outOfRangeQuantities,
   outOfRangeRows,
@@ -19,8 +20,8 @@ import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./e
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { adjustToBounds } from "./modelSwitch";
-import { shownAtMost } from "./numberFormat";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
+import { shownNumber } from "./numberFormat";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, type Quantity } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, relativeAirSpeedOf, requireValue, startingSlot, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
@@ -157,7 +158,8 @@ describe("enteredBound / outOfRangeQuantities", () => {
           expect(outOfRangeRows(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), at).toEqual([]);
           expect(relativeAirSpeedOf(slot), at).toBeLessThanOrEqual(airSpeedMax);
           expect(dynamicClothingOf(slot, model), at).toBeLessThanOrEqual(clothingMax);
-          expect(requireValue(slot.values, q.clo), at).toBe(shownAtMost(clothingEnd));
+          const shownEnd = shownNumber(clothingEnd, displayUnitFor(q.clo, unitSystem.si), { max: clothingEnd });
+          expect(requireValue(slot.values, q.clo), at).toBe(shownEnd);
           // And no bound stops short: 0.01 clo past the end, a step ASHRAE 55's rounding cannot hide, is given as more.
           expect(dynamicClothingOf(enteredSlotFor(model, { met, v, clo: clothingEnd + 0.01 }), model), at).toBeGreaterThan(clothingMax);
           const rows = violationRows(model, runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
@@ -470,6 +472,38 @@ describe("violationRows", () => {
     } satisfies RegisteredModel;
     const result = runOn(startingSlot(pmvPpdIso), stripped, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(() => violationRows(stripped, result, defaultEntryModes)).toThrow(`${pmvPpdIso.info.label} returned no applicability rows`);
+  });
+});
+
+describe("formatBound", () => {
+  const unitOf = (quantity: Quantity, system: UnitSystem = unitSystem.si) => displayUnitFor(quantity, system);
+
+  it("writes each end inside the bound, at the precision a row shows", () => {
+    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo))).toBe("0 – 1.87");
+    expect(formatBound({ min: 0, max: 1.934059254 }, unitOf(q.clo))).toBe("0 – 1.93");
+    expect(formatBound({ min: 1.657136061, max: 2 }, unitOf(q.clo))).toBe("1.66 – 2");
+  });
+
+  it("writes a one-ended bound with its end inside", () => {
+    expect(formatBound({ min: 1.657136061 }, unitOf(q.clo))).toBe("≥ 1.66");
+    expect(formatBound({ max: 1.875 }, unitOf(q.clo))).toBe("≤ 1.87");
+  });
+
+  it("leaves an end of no more than two decimals unchanged", () => {
+    expect(formatBound({ min: 0, max: 0.7 }, unitOf(q.v))).toBe("0 – 0.7");
+    expect(formatBound({ min: 10, max: 30 }, unitOf(q.tdb))).toBe("10 – 30");
+    expect(formatBound({ max: 0.2 }, unitOf(q.vr))).toBe("≤ 0.2");
+    // Heat Index's 27 °C is 80.6 °F, which converts back to a hair under 27 °C.
+    expect(formatBound({ min: 27 }, unitOf(q.tdb, unitSystem.ip))).toBe("≥ 80.6");
+    expect(formatBound({ min: 11, max: 28 }, unitOf(q.tdb, unitSystem.ip))).toBe("51.8 – 82.4");
+  });
+
+  it("writes each end inside the bound in IP, rounded in the IP unit", () => {
+    // 0.2 m/s is 39.3700… fpm and 0.15 m/s is 29.5275… fpm; 10.03 °C is 50.054 °F.
+    expect(formatBound({ min: 0, max: 0.2 }, unitOf(q.v, unitSystem.ip))).toBe("0 – 39.37");
+    expect(formatBound({ max: 0.15 }, unitOf(q.v, unitSystem.ip))).toBe("≤ 29.52");
+    expect(formatBound({ min: 10.03, max: 30 }, unitOf(q.tdb, unitSystem.ip))).toBe("50.06 – 86");
+    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo, unitSystem.ip))).toBe("0 – 1.87");
   });
 });
 
