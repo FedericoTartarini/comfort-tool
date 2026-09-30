@@ -59,7 +59,7 @@ function humidityRatioSession(pressure: number): { session: Session; outputs: Ou
 function pmvAtRelativeHumidity(rh: number) {
   const session = new Session(pmvPpdIso);
   session.slots[0].setEntered(q.rh, rh);
-  return resultValueOf(new Outputs(session).perSlot[0], q.pmv);
+  return resultValueOf(new Outputs(session).slots[0].result, q.pmv);
 }
 
 describe("the session's atmospheric pressure", () => {
@@ -93,47 +93,47 @@ describe("the session's atmospheric pressure", () => {
 describe("a change of atmospheric pressure", () => {
   it("under a humidity-ratio entry, moves the result to the library's relative humidity at it and leaves the entry", () => {
     const { session, outputs } = humidityRatioSession(DEFAULT_ATMOSPHERIC_PRESSURE);
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB)));
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB)));
 
     session.atmosphericPressure = LOWER_PRESSURE;
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: HUMIDITY_RATIO });
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB, LOWER_PRESSURE)));
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).not.toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB)));
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB, LOWER_PRESSURE)));
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).not.toBe(pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB)));
   });
 
   it("under a relative-humidity entry, leaves the result", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    const before = resultValueOf(outputs.perSlot[0], q.pmv);
+    const before = resultValueOf(outputs.slots[0].result, q.pmv);
 
     session.atmosphericPressure = LOWER_PRESSURE;
 
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(before);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(before);
   });
 
   it("gates a humidity-ratio entry against relative humidity's bound converted at it", () => {
     // 0.022 kg/kg is above saturation at 25 °C and 101 325 Pa, and below it at 80 000 Pa.
     const { session, outputs } = humidityRatioSession(DEFAULT_ATMOSPHERIC_PRESSURE);
     session.slots[0].setEntered(q.hr, 0.022);
-    expect(outputs.outOfRangeQuantities).toEqual([q.hr]);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.hr]);
 
     session.atmosphericPressure = LOWER_PRESSURE;
 
-    expect(outputs.outOfRangeQuantities).toEqual([]);
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(0.022, TDB, LOWER_PRESSURE)));
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(pmvAtRelativeHumidity(hr_to_rh(0.022, TDB, LOWER_PRESSURE)));
   });
 
   it("does not move a last valid result kept on screen, which was run at the pressure it remembers", () => {
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
-    const kept = resultValueOf(outputs.perSlot[0], q.pmv);
+    const kept = resultValueOf(outputs.slots[0].result, q.pmv);
     // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 closes the gate.
     session.slots[0].setEntered(q.clo, 2.5);
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
-    expect(outputs.outOfRangeQuantities).toEqual([q.clo]);
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(kept);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(kept);
   });
 });
 
@@ -143,28 +143,28 @@ const PRESSURE_OUT_OF_RANGE = 20000;
 describe("an atmospheric pressure out of range", () => {
   it("keeps the last valid result, and the outputs say the pressure is out of range", () => {
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
-    const kept = resultValueOf(outputs.perSlot[0], q.pmv);
+    const kept = resultValueOf(outputs.slots[0].result, q.pmv);
     expect(outputs.atmosphericPressureOutOfRange).toBe(false);
 
     session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
 
     expect(outputs.atmosphericPressureOutOfRange).toBe(true);
     // Under a humidity-ratio entry a pressure moves the result, so an unchanged one was not calculated again.
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(kept);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(kept);
   });
 
   it("with every entry in range, is not calculated, and the list of entries out of range never names it", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    expect(outputs.notCalculated).toBe(false);
+    expect(outputs.slots[0].notCalculated).toBe(false);
 
     session.atmosphericPressure = PRESSURE_OUT_OF_RANGE;
 
-    expect(outputs.outOfRangeQuantities).toEqual([]);
-    expect(outputs.notCalculated).toBe(true);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].notCalculated).toBe(true);
     // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 is out of range beside it.
     session.slots[0].setEntered(q.clo, 2.5);
-    expect(outputs.outOfRangeQuantities).toEqual([q.clo]);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
   });
 
   it("back in range, is calculated again at the new pressure", () => {
@@ -174,8 +174,8 @@ describe("an atmospheric pressure out of range", () => {
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
     expect(outputs.atmosphericPressureOutOfRange).toBe(false);
-    expect(outputs.notCalculated).toBe(false);
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBe(
+    expect(outputs.slots[0].notCalculated).toBe(false);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBe(
       pmvAtRelativeHumidity(hr_to_rh(HUMIDITY_RATIO, TDB, DEFAULT_ATMOSPHERIC_PRESSURE)),
     );
   });
@@ -347,7 +347,7 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
-    expect(outputs.outOfRangeQuantities).toEqual([q.clo]);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
     expect(outputs.chart).toEqual(kept);
     expect(outputs.chart?.layout.y.range).toEqual([0, drawnHrMax(LOWER_PRESSURE)]);
   });

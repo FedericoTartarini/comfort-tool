@@ -106,8 +106,8 @@ describe("Session.setModel", () => {
     session.setModel(takesExternalWork);
 
     expect(session.slots[0].values.get(q.wme)).toBe(0.4);
-    expect(resultValueOf(outputs.perSlot[0], q.wme)).toBe(0.4);
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
+    expect(resultValueOf(outputs.slots[0].result, q.wme)).toBe(0.4);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
   });
 
   it("keeps the values already in the slot, whichever model put them there", () => {
@@ -167,7 +167,7 @@ describe("Session.setModel", () => {
     session.setModel(takesExternalWork);
 
     expect(session.slots[0].values.get(q.tdb)).toBe(35);
-    expect(outputs.outOfRangeQuantities).toEqual([q.tdb]);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
   });
 
   it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
@@ -249,12 +249,12 @@ describe("Session.requestModel", () => {
   it("holds a result the model it names could have produced", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    expect(resultValueOf(outputs.perSlot[0], q.wme)).toBeUndefined();
+    expect(resultValueOf(outputs.slots[0].result, q.wme)).toBeUndefined();
 
     session.requestModel(takesExternalWork);
 
-    expect(resultValueOf(outputs.perSlot[0], q.wme)).toBe(0.4);
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).toBeTypeOf("number");
+    expect(resultValueOf(outputs.slots[0].result, q.wme)).toBe(0.4);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
   });
 
   it("does nothing when the model is already the current one", () => {
@@ -297,11 +297,11 @@ describe("options", () => {
     const outputs = new Outputs(session);
     // 0.8 m/s at 25 °C is past what ASHRAE 55 allows occupants without control.
     session.slots[0].setEntered(q.v, 0.8);
-    expect(outputs.violations.map((violation) => violation.quantity)).toContain(q.v);
+    expect(outputs.slots[0].violations.map((violation) => violation.quantity)).toContain(q.v);
 
     session.slots[0].setOption(airSpeedControl, true);
 
-    expect(outputs.violations).toEqual([]);
+    expect(outputs.slots[0].violations).toEqual([]);
   });
 
   it("seed an option the slot lacks at its default on a switch", () => {
@@ -383,14 +383,14 @@ describe("InputSlot.setEntered", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
-    const before = resultValueOf(outputs.perSlot[0], q.pmv);
+    const before = resultValueOf(outputs.slots[0].result, q.pmv);
 
     session.slots[0].setEntered(q.dew_point_tmp, 12);
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.dewPoint, value: 12 });
     expect(session.slots[0].values.has(q.dew_point_tmp)).toBe(false);
-    expect(outputs.outOfRangeQuantities).toEqual([]);
-    expect(resultValueOf(outputs.perSlot[0], q.pmv)).not.toBe(before);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(resultValueOf(outputs.slots[0].result, q.pmv)).not.toBe(before);
   });
 });
 

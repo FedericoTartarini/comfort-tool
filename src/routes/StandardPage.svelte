@@ -169,8 +169,8 @@
             inputSlot={session.slots[0]}
             unitSystem={session.unitSystem}
             atmosphericPressure={session.atmosphericPressure}
-            outOfRangeQuantities={outputs.outOfRangeQuantities}
-            violations={outputs.violations}
+            outOfRangeQuantities={outputs.slots[0].outOfRangeQuantities}
+            violations={outputs.slots[0].violations}
           />
           <ModelSwitchDialog
             pending={session.pendingSwitch}
@@ -185,11 +185,11 @@
         <Stack gap="4">
           <ResultTable
             model={session.model}
-            result={outputs.perSlot[0]}
+            result={outputs.slots[0].result}
             unitSystem={session.unitSystem}
             slotName={copy.slotName(0)}
-            notCalculated={outputs.notCalculated}
-            violations={outputs.violations}
+            notCalculated={outputs.slots[0].notCalculated}
+            violations={outputs.slots[0].violations}
           />
 
           <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />

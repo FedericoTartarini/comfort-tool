@@ -28,7 +28,7 @@ import type { Session } from "./session.svelte";
  * memory of a run — the result, the rows and the chart are derived from this
  * and nothing is kept of them (ADR-0002 decision 33).
  */
-interface LastValidRun {
+export interface LastValidRun {
   readonly model: RegisteredModel;
   readonly slot: Slot;
   readonly atmosphericPressure: number;
@@ -52,15 +52,12 @@ export interface DrawnAxes {
  * stale-result stamp. The decision reopens if a v1 model's scan is ever
  * measured past 300 ms.
  *
- * No effect. The single stateful rule — while an entered value is outside the
- * model's applicability, or the atmospheric pressure outside its bound, the
- * last valid result, its rows and the last chart stay on screen — is served
- * by {@link Outputs.#remembered}, a plain field holding
- * {@link Outputs.#lastValid}'s own last output. A plain field rather
- * than `$state` because Svelte disallows a state write inside a derivation,
- * and it needs none: the memory is what that derivation last returned, so
- * recomputing changes nothing when the gate blocks and reproduces the same
- * value when it does not.
+ * The gate is asked per slot (ADR-0002 decision 52): each slot the outputs
+ * are asked about has its own {@link SlotOutputs}, with its own last valid
+ * run, so an edit to one slot runs the model and the scan for that slot
+ * alone. What every slot shares is judged here once: the atmospheric
+ * pressure, whose being out of range closes every slot's gate (ADR-0002
+ * decision 49).
  *
  * What the gate freezes is the *result*, not the screen (ADR-0002 decision
  * 33). Remembered are the last valid inputs alone; the result, the violation
@@ -70,118 +67,51 @@ export interface DrawnAxes {
  * all reach the screen while the gate is closed, and the numbers do not move.
  * The marker is drawn at the remembered slot, the state the kept numbers
  * describe; the out-of-range entry is already shown by its own input.
- *
- * A run is remembered for one model. A pass whose model differs from the
- * remembered one starts with nothing remembered, so a model reached with an
- * entry out of range — a typed URL, the back button, a share link, none of
- * which passes the switch dialog — shows an empty result rather than the
- * previous model's numbers under the new model's name.
- *
- * The derivation is split so that Svelte's own equality stops a blocked pass
- * at {@link Outputs.#lastValid}: it returns the remembered object *by
- * identity*, so a `$derived` that reads it is not invalidated, and typing
- * further out-of-range values re-runs neither the model nor the 51×51 scan.
- * That is also why the remembered slot is a detached copy — holding the
- * slot's own `SvelteMap` would make every derivation below a reader of the
- * live slot again, and the equality would stop nothing.
  */
 export class Outputs {
   readonly #session: Session;
-  /** What {@link #lastValid} last returned. Written and read only there. */
-  #remembered: LastValidRun | null = null;
+  /**
+   * The slots the outputs are asked about, in slot order: slot 1 alone until
+   * Compare asks about more (Phase 5).
+   */
+  readonly #slots: readonly SlotOutputs[];
 
-  /** Entered values the gate stops right now — the one thing that is never kept. */
+  /** Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49). */
   // `$derived.by` throughout, including here where an expression would read:
   // TypeScript sees a field initializer reaching `this.#session` before the
   // constructor assigns it, and only a closure tells it the read is deferred.
-  readonly #outOfRangeQuantities = $derived.by(() =>
-    outOfRangeQuantities(this.#session.slots[0], this.#session.model, this.#session.atmosphericPressure),
-  );
-
-  /** Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49). */
   readonly #atmosphericPressureOutOfRange = $derived.by(() =>
     isAtmosphericPressureOutOfRange(this.#session.atmosphericPressure),
   );
 
-  readonly #notCalculated = $derived.by(
-    () => this.#outOfRangeQuantities.length > 0 || this.#atmosphericPressureOutOfRange,
-  );
-
-  readonly #lastValid = $derived.by((): LastValidRun | null => {
-    const session = this.#session;
-    const model = session.model;
-    // A remembered run belongs to the model that made it, and to no other.
-    const kept = this.#remembered?.model === model ? this.#remembered : null;
-    this.#remembered = this.#notCalculated
-      ? kept
-      : { model, slot: detach(session.slots[0]), atmosphericPressure: session.atmosphericPressure };
-    return this.#remembered;
-  });
-
-  // No `$state.raw` guard is needed on what comes out: `$derived` leaves an
-  // object as it is rather than wrapping it in a deep proxy, so the results,
-  // the chart spec and the Quantity objects keep the identity the library and
-  // `core/quantities.ts` gave them.
-  readonly #perSlot = $derived.by((): readonly (ModelResult | null)[] => {
-    const last = this.#lastValid;
-    // Slots 1 and 2 are Compare's (Phase 5); nothing runs them yet, and
-    // nothing keeps a result for them across a model change either.
-    return [
-      last ? runOn(last.slot, last.model, last.atmosphericPressure) : null,
-      null,
-      null,
-    ];
-  });
-
-  readonly #violations = $derived.by((): readonly ViolationRow[] => {
-    const last = this.#lastValid;
-    const result = this.#perSlot[0];
-    return last && result ? violationRows(last.model, result) : [];
-  });
-
+  // The chart and its axes are of the first slot asked about, until the
+  // chart's request lists them all.
   readonly #chart = $derived.by((): ChartSpec | null => {
-    const last = this.#lastValid;
-    return last ? chartSpecOf(this.#session, last) : null;
+    const [first] = this.#slots;
+    const last = first.lastValid;
+    return last ? chartSpecOf(this.#session, first.position, last) : null;
   });
 
   readonly #drawnAxes = $derived.by((): DrawnAxes | null => {
-    const last = this.#lastValid;
+    const [first] = this.#slots;
+    const last = first.lastValid;
     return last ? drawnAxesOf(this.#session, last) : null;
   });
 
   constructor(session: Session) {
     this.#session = session;
+    const atmosphericPressureOutOfRange = () => this.#atmosphericPressureOutOfRange;
+    this.#slots = [new SlotOutputs(session, 0, atmosphericPressureOutOfRange)];
   }
 
-  /** Last valid result per slot. Kept as it is while an input is out of range. */
-  get perSlot(): readonly (ModelResult | null)[] {
-    return this.#perSlot;
-  }
-
-  /** Entered quantities currently outside the model's applicability limits. Never the pressure. */
-  get outOfRangeQuantities(): readonly Quantity[] {
-    return this.#outOfRangeQuantities;
+  /** What each slot the outputs are asked about shows, in slot order. */
+  get slots(): readonly SlotOutputs[] {
+    return this.#slots;
   }
 
   /** Whether the session's atmospheric pressure is outside its bound. */
   get atmosphericPressureOutOfRange(): boolean {
     return this.#atmosphericPressureOutOfRange;
-  }
-
-  /**
-   * Whether the gate is closed: an entered value or the pressure is out of
-   * range, so nothing is calculated and the last valid result stays.
-   */
-  get notCalculated(): boolean {
-    return this.#notCalculated;
-  }
-
-  /**
-   * Applicability rows slot 0's last run broke (`core/applicability.ts`), kept
-   * with the result they describe: not touched while the gate blocks a run.
-   */
-  get violations(): readonly ViolationRow[] {
-    return this.#violations;
   }
 
   /**
@@ -205,6 +135,122 @@ export class Outputs {
 }
 
 /**
+ * What one slot shows: its gate, its last valid run, and the result and the
+ * violation rows derived from that run (ADR-0002 decision 52).
+ *
+ * No effect. The single stateful rule — while an entered value is outside the
+ * model's applicability, or the atmospheric pressure outside its bound, the
+ * slot's last valid result, its rows and the last chart stay on screen — is
+ * served by {@link SlotOutputs.#remembered}, a plain field holding
+ * {@link SlotOutputs.#lastValid}'s own last output. A plain field rather
+ * than `$state` because Svelte disallows a state write inside a derivation,
+ * and it needs none: the memory is what that derivation last returned, so
+ * recomputing changes nothing when the gate blocks and reproduces the same
+ * value when it does not.
+ *
+ * A run is remembered for one model. A pass whose model differs from the
+ * remembered one starts with nothing remembered, so a model reached with an
+ * entry out of range — a typed URL, the back button, a share link, none of
+ * which passes the switch dialog — shows an empty result rather than the
+ * previous model's numbers under the new model's name.
+ *
+ * The derivation is split so that Svelte's own equality stops a blocked pass
+ * at {@link SlotOutputs.#lastValid}: it returns the remembered object *by
+ * identity*, so a `$derived` that reads it is not invalidated, and typing
+ * further out-of-range values re-runs neither the model nor the 51×51 scan.
+ * That is also why the remembered slot is a detached copy — holding the
+ * slot's own `SvelteMap` would make every derivation below a reader of the
+ * live slot again, and the equality would stop nothing.
+ */
+export class SlotOutputs {
+  /** Which of the session's slots this is, from 0: what names it (`copy.slotName`). */
+  readonly position: number;
+  readonly #session: Session;
+  readonly #slot: Slot;
+  readonly #atmosphericPressureOutOfRange: () => boolean;
+  /** What {@link #lastValid} last returned. Written and read only there. */
+  #remembered: LastValidRun | null = null;
+
+  /** Entered values the gate stops right now — the one thing that is never kept. */
+  // `$derived.by` throughout, for the reason `Outputs` gives.
+  readonly #outOfRangeQuantities = $derived.by(() =>
+    outOfRangeQuantities(this.#slot, this.#session.model, this.#session.atmosphericPressure),
+  );
+
+  readonly #notCalculated = $derived.by(
+    () => this.#outOfRangeQuantities.length > 0 || this.#atmosphericPressureOutOfRange(),
+  );
+
+  readonly #lastValid = $derived.by((): LastValidRun | null => {
+    const session = this.#session;
+    const model = session.model;
+    // A remembered run belongs to the model that made it, and to no other.
+    const kept = this.#remembered?.model === model ? this.#remembered : null;
+    this.#remembered = this.#notCalculated
+      ? kept
+      : { model, slot: detach(this.#slot), atmosphericPressure: session.atmosphericPressure };
+    return this.#remembered;
+  });
+
+  // No `$state.raw` guard is needed on what comes out: `$derived` leaves an
+  // object as it is rather than wrapping it in a deep proxy, so the results,
+  // the chart spec and the Quantity objects keep the identity the library and
+  // `core/quantities.ts` gave them.
+  readonly #result = $derived.by((): ModelResult | null => {
+    const last = this.#lastValid;
+    return last ? runOn(last.slot, last.model, last.atmosphericPressure) : null;
+  });
+
+  readonly #violations = $derived.by((): readonly ViolationRow[] => {
+    const last = this.#lastValid;
+    const result = this.#result;
+    return last && result ? violationRows(last.model, result) : [];
+  });
+
+  /**
+   * The slot at `position` in `session`, whose gate the session-wide
+   * `atmosphericPressureOutOfRange` closes as well.
+   */
+  constructor(session: Session, position: number, atmosphericPressureOutOfRange: () => boolean) {
+    this.position = position;
+    this.#session = session;
+    this.#slot = session.slots[position];
+    this.#atmosphericPressureOutOfRange = atmosphericPressureOutOfRange;
+  }
+
+  /** The last valid result. Kept as it is while an input is out of range. */
+  get result(): ModelResult | null {
+    return this.#result;
+  }
+
+  /** Entered quantities currently outside the model's applicability limits. Never the pressure. */
+  get outOfRangeQuantities(): readonly Quantity[] {
+    return this.#outOfRangeQuantities;
+  }
+
+  /**
+   * Whether the gate is closed: an entered value or the pressure is out of
+   * range, so nothing is calculated and the last valid result stays.
+   */
+  get notCalculated(): boolean {
+    return this.#notCalculated;
+  }
+
+  /**
+   * Applicability rows the slot's last run broke (`core/applicability.ts`),
+   * kept with the result they describe: not touched while the gate blocks a run.
+   */
+  get violations(): readonly ViolationRow[] {
+    return this.#violations;
+  }
+
+  /** The run the result, the rows and the chart are derived from, or `null` before one. */
+  get lastValid(): LastValidRun | null {
+    return this.#lastValid;
+  }
+}
+
+/**
  * `slot`'s entered values and options, detached from the slot: plain `Map`s,
  * so what is remembered stops moving when the slot does, and reading it later
  * subscribes to nothing. The two entry-mode objects are replaced rather than mutated
@@ -221,17 +267,17 @@ function detach(slot: Slot): Slot {
 }
 
 /**
- * The spec for the chart the session currently shows of `last`'s slot, or
- * `null` when the model declares none. `last.model` is the session's own —
- * {@link Outputs.#lastValid} remembers no other — so the session's chart
- * settings are this model's.
+ * The spec for the chart the session currently shows of `last`'s slot, the
+ * one at `position`, or `null` when the model declares none. `last.model` is
+ * the session's own — {@link SlotOutputs.lastValid} remembers no other — so
+ * the session's chart settings are this model's.
  */
-function chartSpecOf(session: Session, last: LastValidRun): ChartSpec | null {
+function chartSpecOf(session: Session, position: number, last: LastValidRun): ChartSpec | null {
   const model = last.model;
   const request: ChartRequest = {
     model,
     slot: last.slot,
-    slotLabel: copy.slotName(0),
+    slotLabel: copy.slotName(position),
     unitSystem: session.unitSystem,
     atmosphericPressure: last.atmosphericPressure,
   };
