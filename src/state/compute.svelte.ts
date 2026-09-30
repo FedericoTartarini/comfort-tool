@@ -6,13 +6,24 @@ import {
 } from "$lib/core/applicability";
 import type { ChartRequest } from "$lib/core/charts/chartRequest";
 import type { ChartSpec } from "$lib/core/charts/chartSpec";
-import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
+import {
+  dynamicAxisQuantities,
+  dynamicSpec,
+  resolvedAxes,
+  scanFrameFor,
+  scannedField,
+  type ScanFrame,
+  type ScannedField,
+} from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
+import type { TemperatureMode } from "$lib/core/entryModes";
 import {
   dynamicChartOf,
+  isPolygonsChart,
   psychrometricChartOf,
   type ChartAxes,
+  type DeclaredPsychrometricChart,
   type ModelResult,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
@@ -54,13 +65,18 @@ export interface DrawnAxes {
  * measured past 300 ms.
  *
  * The gate is asked per slot (ADR-0002 decision 52): each compared slot has
- * its own {@link SlotOutputs}, with its own last valid run, so an edit to one
- * slot runs the model and the scan for that slot alone. All three are built
- * up front and kept, so a slot disabled and enabled again finds its memory;
- * one that is not compared is not read, and a derivation not read does not
- * run. What every slot shares is judged here once: the atmospheric
- * pressure, whose being out of range closes every slot's gate (ADR-0002
- * decision 49).
+ * its own {@link SlotOutputs}, with its own last valid run and its own scan,
+ * so an edit to one slot runs the model and the scan for that slot alone. All
+ * three are built up front and kept, so a slot disabled and enabled again
+ * finds its memory; one that is not compared is not read, and a derivation
+ * not read does not run. What every slot shares is judged here once: the
+ * atmospheric pressure, whose being out of range closes every slot's gate
+ * (ADR-0002 decision 49), and the frame every slot is scanned in.
+ *
+ * The chart is of every compared slot that has a run (ADR-0002 decision 50),
+ * drawn on the axes and at the atmospheric pressure of the first: slot 1's,
+ * unless slot 1 has none. One pressure for the whole chart, so a slot kept
+ * from a run at another pressure is drawn at this one.
  *
  * What the gate freezes is the *result*, not the screen (ADR-0002 decision
  * 33). Remembered are the last valid inputs alone; the result, the violation
@@ -88,23 +104,44 @@ export class Outputs {
     this.#session.comparedPositions.map((position) => this.#everySlot[position]),
   );
 
-  // The chart and its axes are of slot 1, which is always compared, until
-  // the chart's request lists every compared slot.
+  /** The compared slots the chart is drawn of, each with its run: those that have one. */
+  readonly #charted = $derived.by((): readonly ChartedRun[] =>
+    this.#compared.flatMap((outputs) => (outputs.lastValid ? [{ outputs, last: outputs.lastValid }] : [])),
+  );
+
+  // The entry mode and the pressure the chart is drawn in, each its own
+  // derivation: an edit to the first slot recomputes both to the same value,
+  // and their equality keeps every other slot's scan from running again.
+  readonly #axisMode = $derived.by((): TemperatureMode | null => this.#charted[0]?.last.slot.temperature.mode ?? null);
+  readonly #chartPressure = $derived.by((): number | null => this.#charted[0]?.last.atmosphericPressure ?? null);
+
+  /** What every slot's scan shares, or `null` while the chart drawn is not a scanned one. */
+  readonly #scanFrame = $derived.by((): ScanFrame | null => {
+    const session = this.#session;
+    const chart = dynamicChartOf(session.model);
+    const mode = this.#axisMode;
+    const pressure = this.#chartPressure;
+    if (drawnPsychrometricOf(session) || !chart || isPolygonsChart(chart) || mode === null || pressure === null) {
+      return null;
+    }
+    return scanFrameFor(session.model, chart, session.chart.axes, mode, pressure);
+  });
+
   readonly #chart = $derived.by((): ChartSpec | null => {
-    const [first] = this.#everySlot;
-    const last = first.lastValid;
-    return last ? chartSpecOf(this.#session, first.badge, last) : null;
+    const charted = this.#charted;
+    return charted.length > 0 ? chartSpecOf(this.#session, charted, this.#scanFrame !== null) : null;
   });
 
   readonly #drawnAxes = $derived.by((): DrawnAxes | null => {
-    const last = this.#everySlot[0].lastValid;
-    return last ? drawnAxesOf(this.#session, last) : null;
+    const [first] = this.#charted;
+    return first ? drawnAxesOf(this.#session, first.last) : null;
   });
 
   constructor(session: Session) {
     this.#session = session;
     const atmosphericPressureOutOfRange = () => this.#atmosphericPressureOutOfRange;
-    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, atmosphericPressureOutOfRange);
+    const scanFrame = () => this.#scanFrame;
+    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, atmosphericPressureOutOfRange, scanFrame);
     this.#everySlot = [slotAt(0), slotAt(1), slotAt(2)];
   }
 
@@ -119,8 +156,9 @@ export class Outputs {
   }
 
   /**
-   * The chart of the last valid inputs, in the unit system and the chart
-   * settings the session holds now — both pass through a closed gate.
+   * The chart of every compared slot's last valid inputs, in the unit system
+   * and the chart settings the session holds now — both pass through a
+   * closed gate.
    */
   get chart(): ChartSpec | null {
     return this.#chart;
@@ -174,6 +212,7 @@ export class SlotOutputs {
   readonly badge: SlotBadge;
   readonly #session: Session;
   readonly #atmosphericPressureOutOfRange: () => boolean;
+  readonly #scanFrame: () => ScanFrame | null;
   /** What {@link #lastValid} last returned. Written and read only there. */
   #remembered: LastValidRun | null = null;
 
@@ -232,15 +271,33 @@ export class SlotOutputs {
     return last && result ? violationRows(last.model, result) : [];
   });
 
+  // Of the last valid run, so a closed gate stops here too; and of the shared
+  // frame, which an edit to another slot leaves as it was.
+  readonly #scan = $derived.by((): ScannedField => {
+    const frame = this.#scanFrame();
+    const last = this.#lastValid;
+    if (!frame || !last) {
+      throw new Error(`${this.badge.name} is scanned while no scanned chart is drawn of a run of it`);
+    }
+    return scannedField(frame, last.slot);
+  });
+
   /**
    * The slot at `position` in `session`, whose gate the session-wide
-   * `atmosphericPressureOutOfRange` closes as well.
+   * `atmosphericPressureOutOfRange` closes as well, scanned in the chart's
+   * shared `scanFrame`.
    */
-  constructor(session: Session, position: SlotPosition, atmosphericPressureOutOfRange: () => boolean) {
+  constructor(
+    session: Session,
+    position: SlotPosition,
+    atmosphericPressureOutOfRange: () => boolean,
+    scanFrame: () => ScanFrame | null,
+  ) {
     this.position = position;
     this.badge = slotBadges[position];
     this.#session = session;
     this.#atmosphericPressureOutOfRange = atmosphericPressureOutOfRange;
+    this.#scanFrame = scanFrame;
   }
 
   /** The last valid result. Kept as it is while an input is out of range. */
@@ -273,6 +330,20 @@ export class SlotOutputs {
   get lastValid(): LastValidRun | null {
     return this.#lastValid;
   }
+
+  /**
+   * The slot's scan of the dynamic chart on screen, of its last valid run.
+   * Read only while that chart is a scanned one and the slot has a run.
+   */
+  get scan(): ScannedField {
+    return this.#scan;
+  }
+}
+
+/** A compared slot the chart is drawn of, with the run it is drawn at. */
+interface ChartedRun {
+  readonly outputs: SlotOutputs;
+  readonly last: LastValidRun;
 }
 
 /**
@@ -292,27 +363,35 @@ function detach(slot: Slot): Slot {
 }
 
 /**
- * The spec for the chart the session currently shows of `last`'s slot, the
- * one `badge` names, or `null` when the model declares none. `last.model` is
- * the session's own — {@link SlotOutputs.lastValid} remembers no other — so
- * the session's chart settings are this model's.
+ * The psychrometric chart, while it is the one the session shows: the type
+ * set, and the model declares one. Otherwise the dynamic chart is shown.
  */
-function chartSpecOf(session: Session, badge: SlotBadge, last: LastValidRun): ChartSpec | null {
-  const model = last.model;
+function drawnPsychrometricOf(session: Session): DeclaredPsychrometricChart | undefined {
+  return session.chart.type === chartType.psychrometric ? psychrometricChartOf(session.model) : undefined;
+}
+
+/**
+ * The spec for the chart the session currently shows of the `charted` slots,
+ * at the first one's atmospheric pressure, or `null` when the model declares
+ * none. Each run's model is the session's own — {@link SlotOutputs.lastValid}
+ * remembers no other — so the session's chart settings are this model's.
+ * `scanned` says the slots keep scans of the chart drawn, which it is handed.
+ */
+function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: boolean): ChartSpec | null {
   const request: ChartRequest = {
-    model,
-    slots: [{ ...badge, slot: last.slot }],
+    model: session.model,
+    slots: charted.map(({ outputs, last }) => ({ ...outputs.badge, slot: last.slot })),
     unitSystem: session.unitSystem,
-    atmosphericPressure: last.atmosphericPressure,
+    atmosphericPressure: charted[0].last.atmosphericPressure,
   };
-  if (session.chart.type === chartType.psychrometric) {
-    const psychrometric = psychrometricChartOf(model);
-    if (psychrometric) {
-      return psychrometricSpec(request, psychrometric);
-    }
+  const psychrometric = drawnPsychrometricOf(session);
+  if (psychrometric) {
+    return psychrometricSpec(request, psychrometric);
   }
-  const dynamic = dynamicChartOf(model);
-  return dynamic ? dynamicSpec(request, dynamic, session.chart.axes) : null;
+  const dynamic = dynamicChartOf(session.model);
+  return dynamic
+    ? dynamicSpec(request, dynamic, session.chart.axes, scanned ? charted.map(({ outputs }) => outputs.scan) : undefined)
+    : null;
 }
 
 /**

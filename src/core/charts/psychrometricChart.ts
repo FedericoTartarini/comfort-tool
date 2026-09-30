@@ -13,12 +13,12 @@ import {
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
-import { requireValue } from "$lib/core/slot";
+import { requireValue, withTemperatureMode } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { Annotation, ChartSpec, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, markerFor, samples, zoneFor } from "./specParts";
+import { axisFor, axisModeOf, labelFor, markerFor, samples, zoneFor } from "./specParts";
 
 const q = quantities;
 
@@ -34,16 +34,18 @@ const ISOLINE_SAMPLES = 121;
 const ZONE_RH_STEP = 5;
 
 /**
- * The psychrometric chart: relative-humidity isolines, the declaration's
- * Comfort zones traced by `pmv_psychrometric_zone`, and the slot's current
- * state.
+ * The psychrometric chart: relative-humidity isolines, and for every slot of
+ * the request the declaration's Comfort zones traced by
+ * `pmv_psychrometric_zone` at that slot's own values and the slot's current
+ * state (ADR-0002 decision 50).
  *
- * The zones are drawn largest first, so each inner one sits on top, in one
- * hue whose opacity rises inwards. Never the thermal-sensation palette: it is
- * diverging, and nested zones are levels of one thing.
+ * A slot's zones are drawn largest first, so each inner one sits on top, in
+ * the slot's hue with the opacity rising inwards. Never the thermal-sensation
+ * palette: it is diverging, and nested zones are levels of one thing.
  *
- * The x axis quantity is the temperature entry mode's (`tdb` when the two
- * temperatures are entered separately, `operative_tmp` under operative entry), and
+ * The x axis quantity is the temperature entry mode's ({@link axisModeOf}:
+ * `tdb` when the two temperatures are entered separately, `operative_tmp`
+ * under operative entry), and
  * operative entry solves the zone with `tr_follows_db`, which is the geometry
  * the CBE tool's psychtop chart draws. No root finder is written here — the
  * temporary library owns that (ADR-0002 decision 24). The drawn x range is the
@@ -56,30 +58,15 @@ const ZONE_RH_STEP = 5;
  */
 export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
-  // The first slot alone is drawn, until Compare draws every compared one.
-  const [charted] = request.slots;
-  const { slot } = charted;
-  const operative = slot.temperature.mode === temperatureMode.operative;
-  const axisQuantity = slot.temperature.mode.axis;
+  const mode = axisModeOf(request);
+  const operative = mode === temperatureMode.operative;
+  const axisQuantity = mode.axis;
   const xUnit = displayUnitFor(axisQuantity, unitSystem);
   const hrUnit = displayUnitFor(q.hr, unitSystem);
   const rhUnit = displayUnitFor(q.rh, unitSystem);
   const xRange = requireAxisRange(model, axisQuantity);
   const hrRange = drawnHumidityRatioRange(requireAxisRange(model, q.hr), atmosphericPressure);
-
-  const resolved = resolveQuantities(slot, model, atmosphericPressure);
   const airSpeed = takesRelativeAirSpeed(model) ? q.vr : q.v;
-  // Every zone is solved at the same inputs; only the limit differs.
-  const zoneInputs = {
-    tr: requireValue(resolved, q.tr),
-    vr: requireValue(resolved, airSpeed),
-    met: requireValue(resolved, q.met),
-    clo: requireValue(resolved, q.clo),
-    pmv_function: pmvOfRun(model, resolved, optionsReader(slot.options), airSpeed),
-    tr_follows_db: operative,
-    rh_step: ZONE_RH_STEP,
-    p_atm: atmosphericPressure,
-  };
   const largestFirst = [...chart.zones].sort((a, b) => b.limit - a.limit);
 
   const traces: Trace[] = [];
@@ -118,33 +105,51 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
   }
   legend.push({ label: q.rh.label, swatch: "line", color: chartInk.isoline });
 
-  largestFirst.forEach((zone, index) => {
-    const solved = pmv_psychrometric_zone({ ...zoneInputs, pmv_limit: zone.limit });
-    // An unsolved point carries NaN, so dropping it leaves a shorter polygon
-    // rather than one with a spike in it.
-    const polygon = solved.polygon.filter((point) => Number.isFinite(point.tdb) && Number.isFinite(point.hr));
-    if (polygon.length <= 2) {
-      return;
-    }
-    const drawnZone = zoneFor(
-      copy.zoneLegend(zone),
-      polygon.map((point) => xUnit.fromSi(point.tdb)),
-      polygon.map((point) => hrUnit.fromSi(point.hr)),
-      index,
-      largestFirst.length,
-      charted.hue,
-    );
-    traces.push(drawnZone.trace);
-    legend.push(drawnZone.legendEntry);
-  });
+  // Every slot's zones below every marker, so no slot's zone covers another's marker.
+  const markers: Trace[] = [];
+  for (const charted of request.slots) {
+    const resolved = resolveQuantities(withTemperatureMode(charted.slot, mode, model), model, atmosphericPressure);
+    // Every zone of a slot is solved at the same inputs; only the limit differs.
+    const zoneInputs = {
+      tr: requireValue(resolved, q.tr),
+      vr: requireValue(resolved, airSpeed),
+      met: requireValue(resolved, q.met),
+      clo: requireValue(resolved, q.clo),
+      pmv_function: pmvOfRun(model, resolved, optionsReader(charted.slot.options), airSpeed),
+      tr_follows_db: operative,
+      rh_step: ZONE_RH_STEP,
+      p_atm: atmosphericPressure,
+    };
+    largestFirst.forEach((zone, index) => {
+      const solved = pmv_psychrometric_zone({ ...zoneInputs, pmv_limit: zone.limit });
+      // An unsolved point carries NaN, so dropping it leaves a shorter polygon
+      // rather than one with a spike in it.
+      const polygon = solved.polygon.filter((point) => Number.isFinite(point.tdb) && Number.isFinite(point.hr));
+      if (polygon.length <= 2) {
+        return;
+      }
+      const drawnZone = zoneFor(
+        labelFor(request, charted, copy.zoneLegend(zone)),
+        polygon.map((point) => xUnit.fromSi(point.tdb)),
+        polygon.map((point) => hrUnit.fromSi(point.hr)),
+        index,
+        largestFirst.length,
+        charted.hue,
+      );
+      traces.push(drawnZone.trace);
+      legend.push(drawnZone.legendEntry);
+    });
 
-  const marker = markerFor(
-    charted,
-    xUnit.fromSi(requireValue(resolved, q.tdb)),
-    hrUnit.fromSi(psy_ta_rh(requireValue(resolved, q.tdb), requireValue(resolved, q.rh), atmosphericPressure).hr),
-  );
-  traces.push(marker.trace);
-  legend.push(marker.legendEntry);
+    const tdb = requireValue(resolved, q.tdb);
+    const marker = markerFor(
+      charted,
+      xUnit.fromSi(tdb),
+      hrUnit.fromSi(psy_ta_rh(tdb, requireValue(resolved, q.rh), atmosphericPressure).hr),
+    );
+    markers.push(marker.trace);
+    legend.push(marker.legendEntry);
+  }
+  traces.push(...markers);
 
   return {
     traces,

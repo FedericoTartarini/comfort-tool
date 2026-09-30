@@ -48,6 +48,8 @@ export const copy = {
   compare: "Compare",
   // A caption line about one row of the result table, while Compare is on.
   slotNote: (slotName: string, note: string) => `${slotName}: ${note}`,
+  // A chart's legend entry or readout line of one slot, while the chart draws more than one.
+  slotEntry: (slotName: string, entry: string) => `${slotName} · ${entry}`,
   chart: "Chart",
   xAxis: "X axis",
   yAxis: "Y axis",

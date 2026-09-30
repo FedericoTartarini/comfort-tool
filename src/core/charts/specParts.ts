@@ -1,14 +1,39 @@
 /**
  * The pieces both spec builders assemble: the slot marker, a Comfort zone, an
- * axis, and the samples of a range. Each is written here once, so the
- * psychrometric and the dynamic chart draw them alike.
+ * axis, the samples of a range, and what the slots of a request share. Each is
+ * written here once, so the psychrometric and the dynamic chart draw them
+ * alike.
  */
 import { chartInk } from "$lib/core/bandPalette";
+import type { TemperatureMode } from "$lib/core/entryModes";
 import type { Range } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import type { SlotBadge, SlotHue } from "$lib/core/slotBadge";
 import { labelWithUnit, type DisplayUnit } from "$lib/core/units";
-import type { AxisSpec, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
+import { copy } from "$lib/text/copy";
+import type { ChartRequest, ChartedSlot } from "./chartRequest";
+import type { AxisSpec, ContourZoneTrace, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
+
+/**
+ * The temperature entry mode the axes are drawn in: the first slot's. Until
+ * the session's entry mode converts every slot (ADR-0002 decision 51), another
+ * slot may be in the other mode, and each builder converts it into this one
+ * by `withTemperatureMode`, the entry-mode change's own conversion.
+ */
+export function axisModeOf(request: ChartRequest): TemperatureMode {
+  return request.slots[0].slot.temperature.mode;
+}
+
+/**
+ * `label`, a legend entry's or a readout line's, as the chart names it for
+ * `charted`: prefixed with the slot's name while the request draws more than
+ * one slot, so three zones of one kind can be told apart (ADR-0002 decision
+ * 50), and as it is while it draws one, so a session whose Compare is off
+ * reads as it did.
+ */
+export function labelFor(request: ChartRequest, charted: ChartedSlot, label: string): string {
+  return request.slots.length > 1 ? copy.slotEntry(charted.name, label) : label;
+}
 
 /**
  * A slot's marker at (`x`, `y`), already in display units, in the slot's hue,
@@ -58,4 +83,24 @@ export function axisFor(quantity: Quantity, unit: DisplayUnit, range: Range): Ax
 export function samples(range: Range, count: number): readonly number[] {
   const step = (range.max - range.min) / (count - 1);
   return Array.from({ length: count }, (_, index) => range.min + index * step);
+}
+
+/**
+ * A Comfort zone cut from a scanned field `z` over `x` and `y`, already in
+ * display units: the cells between `lower` and `upper`, in `z`'s own unit.
+ * Filled and outlined as {@link zoneFor} fills and outlines a polygon, and
+ * like it, it never captures the pointer.
+ */
+export function contourZoneFor(
+  label: string,
+  field: Pick<ContourZoneTrace, "x" | "y" | "z" | "lower" | "upper">,
+  level: number,
+  levels: number,
+  hue: SlotHue,
+): { readonly trace: ContourZoneTrace; readonly legendEntry: LegendEntry } {
+  const fill = chartInk.zoneFill(hue, level, levels);
+  return {
+    trace: { kind: "contourZone", ...field, color: hue.zoneLine, width: chartInk.zoneLineWidth, fill, hover: "off", label },
+    legendEntry: { label, swatch: "fill", color: fill },
+  };
 }

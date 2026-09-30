@@ -10,7 +10,7 @@ import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { startingSlot } from "$lib/core/slot";
 import { dynamicChartOf, psychrometricChartOf, type RegisteredModel, type Values } from "$lib/core/modelDeclaration";
-import { chartRequestFor } from "./chartTestRequests";
+import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -19,19 +19,22 @@ const consoleMethods = ["warn", "log", "error"] as const;
 /**
  * Every console write made while `model`'s dynamic chart is scanned at its
  * declared axes and its psychrometric zone solved, where it declares one, all
- * at the model's own defaults. Each write reads `console.<method>: <args>`.
+ * at the model's own defaults, of one slot and of three compared ones. Each
+ * write reads `console.<method>: <args>`.
  */
 function consoleWritesWhileDrawing(model: RegisteredModel): string[] {
   const spies = consoleMethods.map((method) => [method, vi.spyOn(console, method).mockImplementation(() => undefined)] as const);
   try {
-    const request = chartRequestFor(model, startingSlot(model));
-    const dynamic = dynamicChartOf(model);
-    if (dynamic) {
-      dynamicSpec(request, dynamic, dynamic.axes);
-    }
-    const psychrometric = psychrometricChartOf(model);
-    if (psychrometric) {
-      psychrometricSpec(request, psychrometric);
+    const slot = startingSlot(model);
+    for (const request of [chartRequestFor(model, slot), chartRequestForSlots(model, [slot, slot, slot])]) {
+      const dynamic = dynamicChartOf(model);
+      if (dynamic) {
+        dynamicSpec(request, dynamic, dynamic.axes);
+      }
+      const psychrometric = psychrometricChartOf(model);
+      if (psychrometric) {
+        psychrometricSpec(request, psychrometric);
+      }
     }
     return spies.flatMap(([method, spy]) => spy.mock.calls.map((args) => `console.${method}: ${args.map(String).join(" ")}`));
   } finally {

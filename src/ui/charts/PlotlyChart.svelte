@@ -27,6 +27,7 @@
     BandFill,
     BandTrace,
     ChartSpec,
+    ContourZoneTrace,
     HoverGridTrace,
     HoverMode,
     PathTrace,
@@ -94,6 +95,8 @@
           return bandData(trace);
         case "hoverGrid":
           return [hoverGridData(trace)];
+        case "contourZone":
+          return [contourZoneData(trace)];
       }
     });
   }
@@ -172,6 +175,28 @@
     return band.lower === undefined
       ? { type: "constraint", operation: ">", value: lastEdge }
       : { type: "constraint", operation: "][", value: [band.lower, lastEdge] };
+  }
+
+  /**
+   * A Comfort zone cut from a scanned field: one contour filling the surface
+   * between the zone's two limits, `"]["` painting inside the interval as
+   * {@link bandData} measured, and outlined where the surface crosses them.
+   */
+  function contourZoneData(trace: ContourZoneTrace): PlotlyData {
+    return {
+      type: "contour",
+      x: trace.x,
+      y: trace.y,
+      z: trace.z,
+      contours: { type: "constraint", operation: "][", value: [trace.lower, trace.upper], showlines: true },
+      fillcolor: trace.fill,
+      line: { color: trace.color, width: trace.width },
+      connectgaps: false,
+      showscale: false,
+      name: trace.label,
+      hoverinfo: hoverInfo(trace.hover),
+      showlegend: false,
+    };
   }
 
   /**

@@ -123,8 +123,29 @@ export interface HoverGridTrace {
   readonly hoverText: readonly (readonly HoverReadout[])[];
 }
 
+/**
+ * A Comfort zone cut from a scanned field: the cells whose number lies between
+ * `lower` and `upper`, filled and outlined. On the dynamic chart a slot's zone
+ * is a contour of its own scan (ADR-0002 decision 50), so it is handed over as
+ * the field and the interval rather than traced as a polygon. `z` is as a
+ * {@link BandTrace}'s, and the interval is in its unit.
+ */
+export interface ContourZoneTrace {
+  readonly kind: "contourZone";
+  readonly x: readonly number[];
+  readonly y: readonly number[];
+  readonly z: readonly (readonly (number | null)[])[];
+  readonly lower: number;
+  readonly upper: number;
+  readonly color: string;
+  readonly width: number;
+  readonly fill: string;
+  readonly hover: HoverMode;
+  readonly label: string;
+}
+
 /** Drawn in order, so the first trace is at the bottom. */
-export type Trace = PathTrace | PointTrace | BandTrace | HoverGridTrace;
+export type Trace = PathTrace | PointTrace | BandTrace | HoverGridTrace | ContourZoneTrace;
 
 /** Text placed at a point of the plot — the isoline labels, and nothing else so far. */
 export interface Annotation {

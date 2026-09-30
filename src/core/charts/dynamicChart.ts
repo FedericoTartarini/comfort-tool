@@ -6,60 +6,127 @@ import {
   axisRangeFor,
   dynamicChartOf,
   isPolygonsChart,
+  psychrometricChartOf,
   requireAxisRange,
   type ChartAxes,
+  type ComfortZone,
   type DeclaredDynamicChart,
+  type DeclaredScannedChart,
   type RegisteredModel,
   type ZonePolygon,
 } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
-import type { Quantity } from "$lib/core/quantities";
-import { enteredQuantities, enteredValue, withEnteredValues } from "$lib/core/slot";
+import { quantities, type Quantity } from "$lib/core/quantities";
+import { enteredQuantities, enteredValue, withEnteredValues, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit, type DisplayUnit } from "$lib/core/units";
+import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { BandFill, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, markerFor, samples, zoneFor } from "./specParts";
+import { axisFor, axisModeOf, contourZoneFor, labelFor, markerFor, samples, zoneFor } from "./specParts";
 import { containsPoint } from "./polygon";
 
 /** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
 const GRID = 51;
 
 /**
- * The dynamic chart: the declared numeric output scanned over a `GRID × GRID`
- * field of two entered quantities, banded by the declared classifier, with the
- * slot's own state marked.
+ * What every slot's scan on one chart shares: the model and its scanned
+ * chart, the two axes swept, the temperature entry mode they are in, and the
+ * atmospheric pressure. A slot's scan is a function of this and the slot
+ * alone, so the outputs can keep one per slot and an edit to one slot scans
+ * that slot and no other (`state/compute.svelte.ts`).
+ */
+export interface ScanFrame {
+  readonly model: RegisteredModel;
+  readonly chart: DeclaredScannedChart;
+  readonly axes: ChartAxes;
+  readonly mode: TemperatureMode;
+  readonly atmosphericPressure: number;
+}
+
+/**
+ * One slot's scan: the model's own number for `chart.output` at every cell of
+ * the `GRID × GRID` field, `[yIndex][xIndex]`, in the output's SI unit.
+ */
+export type ScannedField = readonly (readonly number[])[];
+
+/**
+ * The frame `chart` is scanned in for `model`: the picked `axes` resolved
+ * under `mode` ({@link resolvedAxes}).
+ */
+export function scanFrameFor(
+  model: RegisteredModel,
+  chart: DeclaredScannedChart,
+  axes: ChartAxes,
+  mode: TemperatureMode,
+  atmosphericPressure: number,
+): ScanFrame {
+  return { model, chart, axes: resolvedAxes(model, axes, mode), mode, atmosphericPressure };
+}
+
+/**
+ * `slot` scanned in `frame`: converted into the frame's entry mode first, by
+ * the entry-mode change's own conversion, so a slot entered in the other mode
+ * is swept on the quantities it would hold after that change.
+ */
+export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
+  const { model, chart, axes, atmosphericPressure } = frame;
+  const converted = withTemperatureMode(slot, frame.mode, model);
+  const xValues = samples(requireAxisRange(model, axes.x), GRID);
+  return samples(requireAxisRange(model, axes.y), GRID).map((yValue) =>
+    xValues.map((xValue) => {
+      const point = withEnteredValues(converted, new Map([
+        [axes.x, xValue],
+        [axes.y, yValue],
+      ]));
+      return resultNumber(runOn(point, model, atmosphericPressure), chart.output);
+    }),
+  );
+}
+
+/**
+ * The dynamic chart of every slot of the request (ADR-0002 decision 50), on
+ * the axes {@link axisModeOf} puts them in.
  *
- * Each cell keeps the model's own number for `chart.output`, and each band
- * carries the interval of that number it fills, so the drawn boundary falls
- * where the value crosses an Edge rather than half a cell away (ADR-0002
- * decision 27). The bands, their order and their Edges are `chart.bands`' own,
- * the colours are the app's one palette by position, and the band a cell's
- * hover readout names is the library's `classifyFromBins` — no Edge and no
- * inclusivity rule is written here. Every cell reads both axis values, the
- * number and that band (ADR §4.4's hover rules), formatted here.
+ * A scanned chart scans the declared numeric output over a `GRID × GRID` field
+ * of two entered quantities, once per slot. One slot's field is banded by the
+ * declared classifier. Each cell keeps the model's own number for
+ * `chart.output`, and each band carries the interval of that number it fills,
+ * so the drawn boundary falls where the value crosses an Edge rather than half
+ * a cell away (ADR-0002 decision 27). The bands, their order and their Edges
+ * are `chart.bands`' own, the colours are the app's one palette by position,
+ * and the band a cell's hover readout names is the library's
+ * `classifyFromBins` — no Edge and no inclusivity rule is written here. Every
+ * cell reads both axis values, the number and that band (ADR §4.4's hover
+ * rules), formatted here.
+ *
+ * A band field is of one slot's values, so it is not drawn for more than one.
+ * Then each slot draws the declaration's Comfort zones as contours of its own
+ * field, painted as the psychrometric chart paints its own, and one hover grid
+ * reads both axis values and every slot's number. `scans`, one per slot in
+ * the request's order, are the slots' fields in the frame this chart is
+ * drawn in ({@link scanFrameFor}); a caller that keeps them hands them over,
+ * and without them every slot is scanned here.
  *
  * A polygons chart skips the scan altogether and draws the exact polygons its
- * `zones` source traces (ADR §4.4), on its own declared axes: they are locked,
- * so `axes` is not read and nothing is mapped to the entry mode, and an
- * operative axis is marked at the slot's operative temperature in either mode
- * (ADR-0002 decision 37). The polygons are nested Comfort zones, largest
- * first, so they are painted as the psychrometric chart paints its own: one
- * hue whose opacity rises inwards, outlined in the zone line, never the
- * thermal-sensation palette. A filled polygon cannot report where the pointer
- * is inside it, so the polygons read nothing and a hover grid over the same
- * `GRID × GRID` field reads for them: both axis values, and the innermost zone
- * the cell is in.
+ * `zones` source traces for each slot (ADR §4.4), on its own declared axes:
+ * they are locked, so `axes` is not read and nothing is mapped to the entry
+ * mode, and an operative axis is marked at the slot's operative temperature
+ * in either mode (ADR-0002 decision 37). The polygons are nested Comfort
+ * zones, largest first, so they are painted as the psychrometric chart paints
+ * its own: the slot's hue with the opacity rising inwards, outlined in its
+ * zone line, never the thermal-sensation palette. A filled polygon cannot
+ * report where the pointer is inside it, so the polygons read nothing and a
+ * hover grid over the same `GRID × GRID` field reads for them: both axis
+ * values, and the innermost zone of each slot the cell is in.
  */
 export function dynamicSpec(
   request: ChartRequest,
   chart: DeclaredDynamicChart,
   axes: ChartAxes,
+  scans?: readonly ScannedField[],
 ): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
-  // The first slot alone is drawn, until Compare draws every compared one.
-  const [charted] = request.slots;
-  const { slot } = charted;
-  const mode = slot.temperature.mode;
+  const mode = axisModeOf(request);
   const { x, y } = isPolygonsChart(chart) ? chart.axes : resolvedAxes(model, axes, mode);
   const xRange = requireAxisRange(model, x);
   const yRange = requireAxisRange(model, y);
@@ -76,67 +143,103 @@ export function dynamicSpec(
     readoutLine(x, xUnit, xValues[xIndex]),
     readoutLine(y, yUnit, yValues[yIndex]),
   ];
+  const hoverGrid = (readout: (xIndex: number, yIndex: number) => HoverReadout): Trace => ({
+    kind: "hoverGrid",
+    hover: "field",
+    ...displayedAxes,
+    hoverText: yValues.map((_, yIndex) => xValues.map((_, xIndex) => [...axisLines(xIndex, yIndex), ...readout(xIndex, yIndex)])),
+  });
+  /** Each slot's legend entries, zones first, so the legend reads slot by slot. */
+  const legendOfSlot = request.slots.map((): LegendEntry[] => []);
 
   if (isPolygonsChart(chart)) {
-    const polygons = chart.zones({ values: toLibraryInputs(slot, model, atmosphericPressure), xRange });
-    for (const [index, polygon] of polygons.entries()) {
-      // A zone never captures the pointer, so the hover grid below reads for it.
-      const zone = zoneFor(
-        polygon.label,
-        polygon.x.map((value) => xUnit.fromSi(value)),
-        polygon.y.map((value) => yUnit.fromSi(value)),
-        index,
-        polygons.length,
-        charted.hue,
-      );
-      traces.push(zone.trace);
-      legend.push(zone.legendEntry);
-    }
-    traces.push({
-      kind: "hoverGrid",
-      hover: "field",
-      ...displayedAxes,
-      hoverText: yValues.map((yValue, yIndex) =>
-        xValues.map((xValue, xIndex) => [...axisLines(xIndex, yIndex), ...innermostLabels(polygons, xValue, yValue)]),
-      ),
-    });
-  } else {
-    const bins = chart.bands;
-    const bandFills = bandsOf(bins);
-    const outputUnit = displayUnitFor(chart.output, unitSystem);
-    const scanned = yValues.map((yValue) =>
-      xValues.map((xValue) => {
-        const point = withEnteredValues(slot, new Map([
-          [x, xValue],
-          [y, yValue],
-        ]));
-        return resultNumber(runOn(point, model, atmosphericPressure), chart.output);
-      }),
+    const polygonsOfSlot = request.slots.map((charted) =>
+      chart.zones({ values: toLibraryInputs(withTemperatureMode(charted.slot, mode, model), model, atmosphericPressure), xRange }),
     );
-    traces.push({
-      kind: "bands",
-      hover: "field",
-      ...displayedAxes,
-      z: scanned.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))),
-      hoverText: scanned.map((row, yIndex) =>
-        row.map((value, xIndex) => [
-          ...axisLines(xIndex, yIndex),
-          readoutLine(chart.output, outputUnit, value),
-          ...bandLabels(value, bins),
-        ]),
-      ),
-      bands: bandFills,
+    request.slots.forEach((charted, position) => {
+      const polygons = polygonsOfSlot[position];
+      for (const [index, polygon] of polygons.entries()) {
+        // A zone never captures the pointer, so the hover grid below reads for it.
+        const zone = zoneFor(
+          labelFor(request, charted, polygon.label),
+          polygon.x.map((value) => xUnit.fromSi(value)),
+          polygon.y.map((value) => yUnit.fromSi(value)),
+          index,
+          polygons.length,
+          charted.hue,
+        );
+        traces.push(zone.trace);
+        legendOfSlot[position].push(zone.legendEntry);
+      }
     });
-    legend.push(...bandFills.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
+    traces.push(
+      hoverGrid((xIndex, yIndex) =>
+        request.slots.flatMap((charted, position) =>
+          innermostLabels(polygonsOfSlot[position], xValues[xIndex], yValues[yIndex]).map((label) =>
+            labelFor(request, charted, label),
+          ),
+        ),
+      ),
+    );
+  } else {
+    const frame = scanFrameFor(model, chart, axes, mode, atmosphericPressure);
+    const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
+    const outputUnit = displayUnitFor(frame.chart.output, unitSystem);
+    const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
+    if (request.slots.length === 1) {
+      const bins = frame.chart.bands;
+      const bandFills = bandsOf(bins);
+      traces.push({
+        kind: "bands",
+        hover: "field",
+        ...displayedAxes,
+        z: surfaces[0],
+        hoverText: fields[0].map((row, yIndex) =>
+          row.map((value, xIndex) => [
+            ...axisLines(xIndex, yIndex),
+            readoutLine(frame.chart.output, outputUnit, value),
+            ...bandLabels(value, bins),
+          ]),
+        ),
+        bands: bandFills,
+      });
+      legend.push(...bandFills.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
+    } else {
+      const zones = contouredZonesOf(model, frame.chart);
+      request.slots.forEach((charted, position) => {
+        zones.forEach((zone, index) => {
+          const drawn = contourZoneFor(
+            labelFor(request, charted, copy.zoneLegend(zone)),
+            { ...displayedAxes, z: surfaces[position], lower: -zone.limit, upper: zone.limit },
+            index,
+            zones.length,
+            charted.hue,
+          );
+          traces.push(drawn.trace);
+          legendOfSlot[position].push(drawn.legendEntry);
+        });
+      });
+      traces.push(
+        hoverGrid((xIndex, yIndex) =>
+          request.slots.map((charted, position) =>
+            labelFor(request, charted, readoutLine(frame.chart.output, outputUnit, fields[position][yIndex][xIndex])),
+          ),
+        ),
+      );
+    }
   }
 
-  const markerX = enteredValue(slot, x, model, atmosphericPressure);
-  const markerY = enteredValue(slot, y, model, atmosphericPressure);
-  if (markerX !== undefined && markerY !== undefined) {
-    const marker = markerFor(charted, xUnit.fromSi(markerX), yUnit.fromSi(markerY));
-    traces.push(marker.trace);
-    legend.push(marker.legendEntry);
-  }
+  request.slots.forEach((charted, position) => {
+    const slot = withTemperatureMode(charted.slot, mode, model);
+    const markerX = enteredValue(slot, x, model, atmosphericPressure);
+    const markerY = enteredValue(slot, y, model, atmosphericPressure);
+    if (markerX !== undefined && markerY !== undefined) {
+      const marker = markerFor(charted, xUnit.fromSi(markerX), yUnit.fromSi(markerY));
+      traces.push(marker.trace);
+      legendOfSlot[position].push(marker.legendEntry);
+    }
+  });
+  legend.push(...legendOfSlot.flat());
 
   return {
     traces,
@@ -144,6 +247,20 @@ export function dynamicSpec(
     legend,
     annotations: [],
   };
+}
+
+/**
+ * The Comfort zones a scanned chart cuts from each slot's field, largest
+ * first: the declaration's own, which its psychrometric chart declares
+ * (`core/comfortZones`), each where |PMV| is inside its limit. They are PMV
+ * intervals, so a chart scanning any other output has none, and neither has a
+ * model that declares no zone.
+ */
+function contouredZonesOf(model: RegisteredModel, chart: DeclaredScannedChart): readonly ComfortZone[] {
+  if (chart.output !== quantities.pmv) {
+    return [];
+  }
+  return [...(psychrometricChartOf(model)?.zones ?? [])].sort((a, b) => b.limit - a.limit);
 }
 
 /**

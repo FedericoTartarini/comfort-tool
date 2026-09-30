@@ -10,9 +10,13 @@
  * alone gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
+import type { ChartSpec, ContourZoneTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
+import { slotBadges } from "$lib/core/slotBadge";
+import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
@@ -221,5 +225,164 @@ describe("the outputs of the compared slots", () => {
     expect(outputs.slots[0].notCalculated).toBe(false);
     expect(outputs.slots[1].notCalculated).toBe(true);
     expect(outputs.slots[1].result).toBeNull();
+  });
+});
+
+/** A zone of either kind: a traced polygon, or a contour of a scanned field. */
+type ZoneTrace = PathTrace | ContourZoneTrace;
+
+/** The zones slot `position`'s hue draws on `chart`, in drawing order, as shapes a comparison can be made against. */
+function zoneShapesOf(chart: ChartSpec | null, position: SlotPosition) {
+  return (chart?.traces ?? [])
+    .filter(
+      (trace): trace is ZoneTrace =>
+        (trace.kind === "contourZone" || (trace.kind === "path" && trace.fill !== undefined)) &&
+        trace.color === slotBadges[position].hue.zoneLine,
+    )
+    .map((zone) => (zone.kind === "path" ? { x: zone.x, y: zone.y } : { z: zone.z, lower: zone.lower, upper: zone.upper }));
+}
+
+/** Where slot `position`'s marker is on `chart`, or `undefined` for none. */
+function markerAt(chart: ChartSpec | null, position: SlotPosition) {
+  const marker = chart?.traces.find(
+    (trace): trace is PointTrace => trace.kind === "point" && trace.color === slotBadges[position].hue.marker,
+  );
+  return marker && { x: marker.x, y: marker.y };
+}
+
+/** The chart a session holding only a slot entered with `entries` draws, as slot 1. */
+function chartAlone(entries: ReadonlyMap<Quantity, number>): ChartSpec | null {
+  const session = new Session(pmvPpdIso);
+  for (const [quantity, value] of entries) {
+    session.slots[0].setEntered(quantity, value);
+  }
+  return new Outputs(session).chart;
+}
+
+describe("the charts of the compared slots", () => {
+  const moreClothing = new Map<Quantity, number>([[q.clo, 1]]);
+
+  it("draw two slots that differ in clothing as two zones that differ, and two markers at their own values", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.setCompare(true);
+    heldSlot(session, 1).setEntered(q.clo, 1);
+
+    const alone = chartAlone(moreClothing);
+    expect(zoneShapesOf(outputs.chart, 1)).toEqual(zoneShapesOf(alone, 0));
+    expect(zoneShapesOf(outputs.chart, 1)).not.toEqual(zoneShapesOf(outputs.chart, 0));
+    expect(markerAt(outputs.chart, 1)).toEqual(markerAt(alone, 0));
+    expect(markerAt(outputs.chart, 0)).toEqual(markerAt(chartAlone(new Map()), 0));
+  });
+
+  it("draw a slot out of range at its last valid run", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.setCompare(true);
+    heldSlot(session, 1).setEntered(q.clo, 1);
+    const zones = zoneShapesOf(outputs.chart, 1);
+    const marker = markerAt(outputs.chart, 1);
+    expect(zones).not.toEqual([]);
+
+    // 35 °C is past ISO 7730's 30 °C.
+    heldSlot(session, 1).setEntered(q.tdb, 35);
+
+    expect(outputs.slots[1].notCalculated).toBe(true);
+    expect(zoneShapesOf(outputs.chart, 1)).toEqual(zones);
+    expect(markerAt(outputs.chart, 1)).toEqual(marker);
+  });
+
+  it("draw no zone and no marker of a slot that is disabled", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const outputs = new Outputs(session);
+    expect(markerAt(outputs.chart, 2)).toBeDefined();
+
+    session.setSlotEnabled(2, false);
+
+    expect(zoneShapesOf(outputs.chart, 2)).toEqual([]);
+    expect(markerAt(outputs.chart, 2)).toBeUndefined();
+    expect(markerAt(outputs.chart, 1)).toBeDefined();
+  });
+
+  it("draw a slot kept from a run at another pressure at the chart's one pressure, slot 1's", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.setCompare(true);
+    // Read, as the page reads it, so slot 2 has a run to keep.
+    void outputs.chart;
+    heldSlot(session, 1).setEntered(q.tdb, 35);
+
+    session.atmosphericPressure = 90_000;
+
+    expect(outputs.slots[1].notCalculated).toBe(true);
+    expect(outputs.slots[1].lastValid?.atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
+    const alone = new Session(pmvPpdIso);
+    alone.atmosphericPressure = 90_000;
+    const chartAtPressure = new Outputs(alone).chart;
+    expect(outputs.chart?.layout).toEqual(chartAtPressure?.layout);
+    // Slot 2 holds what slot 1 holds but for its kept temperature, so at one
+    // pressure its marker sits where slot 1's does.
+    expect(markerAt(outputs.chart, 1)?.y).toBe(markerAt(chartAtPressure, 0)?.y);
+  });
+
+  describe("on the dynamic chart", () => {
+    /** The model runs a session on `model` makes to show one slot, its result and its scan, from nothing. */
+    function onePassOf(model: RegisteredModel, runs: () => number): number {
+      const session = new Session(model);
+      session.chart.type = chartType.dynamic;
+      const before = runs();
+      const outputs = new Outputs(session);
+      void outputs.slots[0].result;
+      void outputs.chart;
+      return runs() - before;
+    }
+
+    function twoSlotsOnTheDynamicChart() {
+      const { model, runs } = modelCountingRuns();
+      const onePass = onePassOf(model, runs);
+      const session = new Session(model);
+      session.chart.type = chartType.dynamic;
+      session.setCompare(true);
+      const outputs = new Outputs(session);
+      const readEverything = () => {
+        void outputs.slots.map((slot) => slot.result);
+        void outputs.chart;
+      };
+      readEverything();
+      return { session, outputs, runs, onePass, readEverything };
+    }
+
+    it("scan once for an edit to one slot", () => {
+      const { session, outputs, runs, onePass, readEverything } = twoSlotsOnTheDynamicChart();
+      const first = zoneShapesOf(outputs.chart, 0);
+      const before = runs();
+
+      heldSlot(session, 1).setEntered(q.clo, 1);
+      readEverything();
+
+      expect(runs()).toBe(before + onePass);
+      expect(zoneShapesOf(outputs.chart, 0)).toEqual(first);
+      expect(zoneShapesOf(outputs.chart, 1)).not.toEqual(first);
+    });
+
+    it("scan once per compared slot for an edit to the atmospheric pressure", () => {
+      const { session, runs, onePass, readEverything } = twoSlotsOnTheDynamicChart();
+      const before = runs();
+
+      session.atmosphericPressure = 90_000;
+      readEverything();
+
+      expect(runs()).toBe(before + 2 * onePass);
+    });
+
+    it("scan nothing for a change of unit system", () => {
+      const { session, runs, readEverything } = twoSlotsOnTheDynamicChart();
+      const before = runs();
+
+      session.unitSystem = unitSystem.ip;
+      readEverything();
+
+      expect(runs()).toBe(before);
+    });
   });
 });
