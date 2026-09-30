@@ -45,6 +45,9 @@ export const copy = {
   yes: "Yes",
   no: "No",
   slotName: (index: number) => `Input ${index + 1}`,
+  compare: "Compare",
+  // A caption line about one row of the result table, while Compare is on.
+  slotNote: (slotName: string, note: string) => `${slotName}: ${note}`,
   chart: "Chart",
   xAxis: "X axis",
   yAxis: "Y axis",

@@ -18,9 +18,9 @@ import {
 } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import type { Slot } from "$lib/core/slot";
+import { holdsEveryInputOf, type Slot } from "$lib/core/slot";
 import { slotBadges, type SlotBadge } from "$lib/core/slotBadge";
-import type { Session } from "./session.svelte";
+import type { InputSlot, Session, SlotPosition } from "./session.svelte";
 
 /**
  * What a completed run leaves behind: the slot it ran on, the model that ran
@@ -53,10 +53,12 @@ export interface DrawnAxes {
  * stale-result stamp. The decision reopens if a v1 model's scan is ever
  * measured past 300 ms.
  *
- * The gate is asked per slot (ADR-0002 decision 52): each slot the outputs
- * are asked about has its own {@link SlotOutputs}, with its own last valid
- * run, so an edit to one slot runs the model and the scan for that slot
- * alone. What every slot shares is judged here once: the atmospheric
+ * The gate is asked per slot (ADR-0002 decision 52): each compared slot has
+ * its own {@link SlotOutputs}, with its own last valid run, so an edit to one
+ * slot runs the model and the scan for that slot alone. All three are built
+ * up front and kept, so a slot disabled and enabled again finds its memory;
+ * one that is not compared is not read, and a derivation not read does not
+ * run. What every slot shares is judged here once: the atmospheric
  * pressure, whose being out of range closes every slot's gate (ADR-0002
  * decision 49).
  *
@@ -71,11 +73,8 @@ export interface DrawnAxes {
  */
 export class Outputs {
   readonly #session: Session;
-  /**
-   * The slots the outputs are asked about, in slot order: slot 1 alone until
-   * Compare asks about more (Phase 5).
-   */
-  readonly #slots: readonly SlotOutputs[];
+  /** One per slot of the session, by position, whether it is compared or not. */
+  readonly #everySlot: readonly [SlotOutputs, SlotOutputs, SlotOutputs];
 
   /** Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49). */
   // `$derived.by` throughout, including here where an expression would read:
@@ -85,29 +84,33 @@ export class Outputs {
     isAtmosphericPressureOutOfRange(this.#session.atmosphericPressure),
   );
 
-  // The chart and its axes are of the first slot asked about, until the
-  // chart's request lists them all.
+  readonly #compared = $derived.by((): readonly SlotOutputs[] =>
+    this.#session.comparedPositions.map((position) => this.#everySlot[position]),
+  );
+
+  // The chart and its axes are of slot 1, which is always compared, until
+  // the chart's request lists every compared slot.
   readonly #chart = $derived.by((): ChartSpec | null => {
-    const [first] = this.#slots;
+    const [first] = this.#everySlot;
     const last = first.lastValid;
     return last ? chartSpecOf(this.#session, first.badge, last) : null;
   });
 
   readonly #drawnAxes = $derived.by((): DrawnAxes | null => {
-    const [first] = this.#slots;
-    const last = first.lastValid;
+    const last = this.#everySlot[0].lastValid;
     return last ? drawnAxesOf(this.#session, last) : null;
   });
 
   constructor(session: Session) {
     this.#session = session;
     const atmosphericPressureOutOfRange = () => this.#atmosphericPressureOutOfRange;
-    this.#slots = [new SlotOutputs(session, 0, atmosphericPressureOutOfRange)];
+    const slotAt = (position: SlotPosition) => new SlotOutputs(session, position, atmosphericPressureOutOfRange);
+    this.#everySlot = [slotAt(0), slotAt(1), slotAt(2)];
   }
 
-  /** What each slot the outputs are asked about shows, in slot order. */
+  /** What each compared slot shows, in slot order: slot 1 first, and alone while Compare is off. */
   get slots(): readonly SlotOutputs[] {
-    return this.#slots;
+    return this.#compared;
   }
 
   /** Whether the session's atmospheric pressure is outside its bound. */
@@ -137,7 +140,8 @@ export class Outputs {
 
 /**
  * What one slot shows: its gate, its last valid run, and the result and the
- * violation rows derived from that run (ADR-0002 decision 52).
+ * violation rows derived from that run (ADR-0002 decision 52). Read only
+ * while its slot is compared, and so holds values.
  *
  * No effect. The single stateful rule — while an entered value is outside the
  * model's applicability, or the atmospheric pressure outside its bound, the
@@ -165,23 +169,41 @@ export class Outputs {
  */
 export class SlotOutputs {
   /** Which of the session's slots this is, from 0. */
-  readonly position: number;
+  readonly position: SlotPosition;
   /** The name and hue {@link position} gives the slot. */
   readonly badge: SlotBadge;
   readonly #session: Session;
-  readonly #slot: Slot;
   readonly #atmosphericPressureOutOfRange: () => boolean;
   /** What {@link #lastValid} last returned. Written and read only there. */
   #remembered: LastValidRun | null = null;
 
-  /** Entered values the gate stops right now — the one thing that is never kept. */
+  /**
+   * The session's slot at {@link position}. A slot is held once it is first
+   * enabled, and the tuple the session replaces then is read here alone, so
+   * that enabling another slot, a new tuple holding this same slot, stops at
+   * this derivation's equality and runs nothing below it.
+   */
   // `$derived.by` throughout, for the reason `Outputs` gives.
+  readonly #slot = $derived.by((): InputSlot => {
+    const slot = this.#session.slots[this.position];
+    if (!slot) {
+      throw new Error(`${this.badge.name} is read before it was ever enabled, and holds nothing`);
+    }
+    return slot;
+  });
+
+  /** Entered values the gate stops right now — the one thing that is never kept. */
   readonly #outOfRangeQuantities = $derived.by(() =>
     outOfRangeQuantities(this.#slot, this.#session.model, this.#session.atmosphericPressure),
   );
 
+  // A slot lacking an input the model runs on is one no switch has seeded
+  // yet; the gate stops it rather than the model throwing.
   readonly #notCalculated = $derived.by(
-    () => this.#outOfRangeQuantities.length > 0 || this.#atmosphericPressureOutOfRange(),
+    () =>
+      this.#outOfRangeQuantities.length > 0 ||
+      this.#atmosphericPressureOutOfRange() ||
+      !holdsEveryInputOf(this.#slot, this.#session.model),
   );
 
   readonly #lastValid = $derived.by((): LastValidRun | null => {
@@ -214,11 +236,10 @@ export class SlotOutputs {
    * The slot at `position` in `session`, whose gate the session-wide
    * `atmosphericPressureOutOfRange` closes as well.
    */
-  constructor(session: Session, position: number, atmosphericPressureOutOfRange: () => boolean) {
+  constructor(session: Session, position: SlotPosition, atmosphericPressureOutOfRange: () => boolean) {
     this.position = position;
     this.badge = slotBadges[position];
     this.#session = session;
-    this.#slot = session.slots[position];
     this.#atmosphericPressureOutOfRange = atmosphericPressureOutOfRange;
   }
 

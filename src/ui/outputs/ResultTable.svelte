@@ -1,31 +1,42 @@
 <script lang="ts">
-  import { splitViolations, warningFor, type ViolationRow } from "$lib/core/applicability";
-  import type { ModelResult, RegisteredModel } from "$lib/core/modelDeclaration";
+  import { splitViolations, warningFor } from "$lib/core/applicability";
+  import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { classifiedOutputs, formatResultCell } from "$lib/core/resultCell";
   import { standards } from "$lib/core/standard";
   import type { UnitSystem } from "$lib/core/unitSystem";
+  import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { copy } from "$lib/text/copy";
   import * as Table from "$lib/ui/primitives/table";
 
   interface Props {
     model: RegisteredModel;
-    /** The slot's last valid result; `null` before the first run. */
-    result: ModelResult | null;
+    /** One row per compared slot, in slot order. */
+    rows: readonly SlotOutputs[];
     unitSystem: UnitSystem;
-    slotName: string;
-    notCalculated: boolean;
-    violations: readonly ViolationRow[];
+    /** While Compare is on, a row wears its slot's hue and a caption line names the row it is about. */
+    compare: boolean;
   }
 
-  let { model, result, unitSystem, slotName, notCalculated, violations }: Props = $props();
+  let { model, rows, unitSystem, compare }: Props = $props();
 
   // ADR §4.3: the Compliance column appears only when the model has a
   // classified output or a broken output row. An output-role violation also
   // opens the column: a PMV of 2.4 is shown, with the row it broke as its caveat.
-  const classified = $derived(classifiedOutputs(model, result));
-  const caveats = $derived(splitViolations(violations).outputs);
-  const hasCompliance = $derived(classified.length > 0 || caveats.length > 0);
+  const tableRows = $derived(
+    rows.map((row) => ({
+      row,
+      classified: classifiedOutputs(model, row.result),
+      caveats: splitViolations(row.violations).outputs,
+    })),
+  );
+  const hasCompliance = $derived(tableRows.some((entry) => entry.classified.length > 0 || entry.caveats.length > 0));
+  const uncalculatedRows = $derived(rows.filter((row) => row.notCalculated));
   const standardEntry = $derived(model.standard ? standards.find((entry) => entry.id === model.standard) : undefined);
+
+  function notCalculatedNote(row: SlotOutputs): string {
+    const note = row.result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult;
+    return compare ? copy.slotNote(row.badge.name, note) : note;
+  }
 </script>
 
 <div class="result-table">
@@ -42,29 +53,40 @@
       </Table.Row>
     </Table.Header>
     <Table.Body>
-      <Table.Row>
-        <Table.Cell>{slotName}</Table.Cell>
-        {#if hasCompliance}
+      {#each tableRows as { row, classified, caveats } (row)}
+        <Table.Row>
           <Table.Cell>
-            {#each classified as entry (entry.quantity)}
+            {#if compare}
               <span class="band">
-                <span class="swatch" style:background-color={entry.color}></span>
-                {entry.quantity.label}: {entry.category}
+                <span class="swatch" style:background-color={row.badge.hue.zoneLine}></span>
+                {row.badge.name}
               </span>
-            {/each}
-            {#each caveats as violation (violation)}
-              <span class="band caveat">{warningFor(violation, unitSystem)}</span>
-            {/each}
+            {:else}
+              {row.badge.name}
+            {/if}
           </Table.Cell>
-        {/if}
-        {#each model.table as quantity (quantity)}
-          <Table.Cell>{formatResultCell(result, quantity, unitSystem)}</Table.Cell>
-        {/each}
-      </Table.Row>
+          {#if hasCompliance}
+            <Table.Cell>
+              {#each classified as entry (entry.quantity)}
+                <span class="band">
+                  <span class="swatch" style:background-color={entry.color}></span>
+                  {entry.quantity.label}: {entry.category}
+                </span>
+              {/each}
+              {#each caveats as violation (violation)}
+                <span class="band caveat">{warningFor(violation, unitSystem)}</span>
+              {/each}
+            </Table.Cell>
+          {/if}
+          {#each model.table as quantity (quantity)}
+            <Table.Cell>{formatResultCell(row.result, quantity, unitSystem)}</Table.Cell>
+          {/each}
+        </Table.Row>
+      {/each}
     </Table.Body>
-    {#if notCalculated || standardEntry}
+    {#if uncalculatedRows.length > 0 || standardEntry}
       <Table.Caption>
-        {#if notCalculated}<span>{result ? copy.outOfRangeKeptResult : copy.outOfRangeEmptyResult}</span>{/if}
+        {#each uncalculatedRows as row (row)}<span class="note">{notCalculatedNote(row)}</span>{/each}
         {#if standardEntry}
           <span class="standard">{copy.standardCaption(standardEntry.displayName, standardEntry.year)}</span>
         {/if}
@@ -103,6 +125,7 @@
     white-space: normal;
   }
 
+  .note:not(:first-child),
   .standard:not(:first-child) {
     margin-left: 0.75em;
   }

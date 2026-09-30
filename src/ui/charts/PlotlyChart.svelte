@@ -52,7 +52,17 @@
     void import("plotly.js-cartesian-dist-min").then((module) => {
       plotly = module.default;
     });
+    // `responsive` follows the window alone, and the chart's column also
+    // narrows with the window unchanged: when Compare widens the inputs.
+    // Only a drawn plot is resized.
+    const observer = new ResizeObserver(() => {
+      if (node.classList.contains("js-plotly-plot")) {
+        void plotly?.Plots.resize(node);
+      }
+    });
+    observer.observe(node);
     return () => {
+      observer.disconnect();
       plotly?.purge(node);
       element = undefined;
     };

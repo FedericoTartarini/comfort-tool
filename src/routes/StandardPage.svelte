@@ -2,14 +2,16 @@
   import { onDestroy } from "svelte";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { kindBounds, quantities } from "$lib/core/quantities";
+  import { slotBadges } from "$lib/core/slotBadge";
   import { standards } from "$lib/core/standard";
   import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
-  import { Outputs } from "$lib/state/compute.svelte";
-  import { Session } from "$lib/state/session.svelte";
+  import { Outputs, type SlotOutputs } from "$lib/state/compute.svelte";
+  import { Session, slotPositions, type InputSlot, type SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
+  import EntryModeControls from "$lib/ui/inputs/EntryModeControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import QuantityInput from "$lib/ui/inputs/QuantityInput.svelte";
@@ -78,7 +80,35 @@
   function unitVariantFor(system: UnitSystem) {
     return session.unitSystem === system ? "default" : "outline";
   }
+
+  /** Slot 1 cannot be disabled, so its button only shows that it is enabled. */
+  function toggleSlot(position: SlotPosition) {
+    if (position !== 0) {
+      session.setSlotEnabled(position, !session.isSlotEnabled(position));
+    }
+  }
+
+  /** What the column at `position` shows below its button: `null` while the slot is not compared. */
+  function comparedAt(position: SlotPosition): { inputSlot: InputSlot; slotOutputs: SlotOutputs } | null {
+    const inputSlot = session.slots[position];
+    const slotOutputs = outputs.slots.find((slot) => slot.position === position);
+    return inputSlot && slotOutputs ? { inputSlot, slotOutputs } : null;
+  }
+
+  // While Compare is on the inputs take three columns, so their section widens.
+  const pageColumns = $derived(`12rem minmax(0, ${session.compare ? "40rem" : "24rem"}) minmax(0, 1fr)`);
 </script>
+
+{#snippet slotInputs(inputSlot: InputSlot, slotOutputs: SlotOutputs)}
+  <InputPanel
+    model={session.model}
+    {inputSlot}
+    unitSystem={session.unitSystem}
+    atmosphericPressure={session.atmosphericPressure}
+    outOfRangeQuantities={slotOutputs.outOfRangeQuantities}
+    violations={slotOutputs.violations}
+  />
+{/snippet}
 
 <main>
   <Stack gap="6">
@@ -94,7 +124,7 @@
       </Inline>
     </Inline>
 
-    <Grid columns="12rem minmax(0, 24rem) minmax(0, 1fr)" gap="6">
+    <Grid columns={pageColumns} gap="6">
       <nav>
         <Stack gap="2">
           {#each standardGroups as group (group.standard.id)}
@@ -150,6 +180,14 @@
                 {/each}
               </Select.Content>
             </Select.Root>
+            <Button
+              size="sm"
+              variant={session.compare ? "default" : "outline"}
+              aria-pressed={session.compare}
+              onclick={() => session.setCompare(!session.compare)}
+            >
+              {copy.compare}
+            </Button>
           </Inline>
           <!--
             The session's pressure, not the slot's: outside the slot's rows and
@@ -164,14 +202,41 @@
             outOfRange={outputs.atmosphericPressureOutOfRange}
             oncommit={(si) => (session.atmosphericPressure = si)}
           />
-          <InputPanel
+          <!-- The session's entry modes, shown once; they convert slot 1 alone until each converts every slot. -->
+          <EntryModeControls
             model={session.model}
             inputSlot={session.slots[0]}
-            unitSystem={session.unitSystem}
             atmosphericPressure={session.atmosphericPressure}
-            outOfRangeQuantities={outputs.slots[0].outOfRangeQuantities}
-            violations={outputs.slots[0].violations}
           />
+          <!--
+            While Compare is on, a column per slot, a third of the width whether
+            its slot is enabled or not, so enabling one moves no other; a
+            disabled column is empty below its button. How it looks is Phase 5c's.
+          -->
+          {#if session.compare}
+            <Grid columns="repeat(3, minmax(0, 1fr))" gap="4">
+              {#each slotPositions as position (position)}
+                {@const compared = comparedAt(position)}
+                <Stack gap="4">
+                  <Button
+                    size="sm"
+                    variant={session.isSlotEnabled(position) ? "default" : "outline"}
+                    aria-pressed={session.isSlotEnabled(position)}
+                    disabled={position === 0}
+                    onclick={() => toggleSlot(position)}
+                  >
+                    <span class="swatch" style:background-color={slotBadges[position].hue.zoneLine}></span>
+                    {slotBadges[position].name}
+                  </Button>
+                  {#if compared}
+                    {@render slotInputs(compared.inputSlot, compared.slotOutputs)}
+                  {/if}
+                </Stack>
+              {/each}
+            </Grid>
+          {:else}
+            {@render slotInputs(session.slots[0], outputs.slots[0])}
+          {/if}
           <ModelSwitchDialog
             pending={session.pendingSwitch}
             unitSystem={session.unitSystem}
@@ -183,14 +248,7 @@
 
       <section>
         <Stack gap="4">
-          <ResultTable
-            model={session.model}
-            result={outputs.slots[0].result}
-            unitSystem={session.unitSystem}
-            slotName={outputs.slots[0].badge.name}
-            notCalculated={outputs.slots[0].notCalculated}
-            violations={outputs.slots[0].violations}
-          />
+          <ResultTable model={session.model} rows={outputs.slots} unitSystem={session.unitSystem} compare={session.compare} />
 
           <ChartControls model={session.model} chart={session.chart} drawnAxes={outputs.drawnAxes} />
 
@@ -224,6 +282,13 @@
   nav a {
     color: var(--muted-foreground);
     text-decoration: none;
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 0.75em;
+    height: 0.75em;
+    border-radius: 50%;
   }
 
   nav a[aria-current="page"] {

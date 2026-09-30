@@ -270,6 +270,19 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
 }
 
 /**
+ * Whether `slot` holds every input and option `model` runs on: whether
+ * {@link seedDeclaredDefaults} would find nothing to add. A slot a switch
+ * rehearsed always does; one the switch passed by may not, and running the
+ * model on it would throw.
+ */
+export function holdsEveryInputOf(slot: Slot, model: RegisteredModel): boolean {
+  return (
+    model.inputs.every(({ quantity }) => holdsEntry(slot, underTemperatureMode(quantity, slot.temperature.mode))) &&
+    model.options.every((option) => slot.options.has(option))
+  );
+}
+
+/**
  * Every input the new model declares that the slot has no value for starts at
  * the declaration's own default; what the slot already holds is kept, whatever
  * model put it there. A temperature input is sought under the slot's own entry

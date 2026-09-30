@@ -25,7 +25,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, type InputSlot } from "./session.svelte";
-import { resultValueOf, shapeOf } from "./sessionTestReaders";
+import { heldSlot, otherSlotsOf, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -74,9 +74,10 @@ const declaresDrierAir = {
  */
 describe("the humidity entry", () => {
   it("is held by no slot of a session opened on a model without the humidity entry group", () => {
-    const session = new Session(adaptiveAshrae);
+    const session = sessionComparingThreeSlots(adaptiveAshrae);
 
-    expect(session.slots.map((slot) => slot.humidity)).toEqual([undefined, undefined, undefined]);
+    expect(session.slots.map((slot) => slot?.humidity)).toEqual([undefined, undefined, undefined]);
+    expect(session.slots).not.toContain(null);
   });
 
   it("starts at the declared relative humidity, with temperatures in separate entry", () => {
@@ -184,13 +185,13 @@ describe("Session.setModel", () => {
   });
 
   it("rehearses the first slot only", () => {
-    const session = new Session(pmvPpdIso);
-    const others = session.slots.slice(1).map(shapeOf);
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const others = otherSlotsOf(session);
 
     session.setModel(takesExternalWork);
 
-    expect(session.slots.slice(1).map(shapeOf)).toEqual(others);
-    expect(session.slots[1].values.has(q.wme)).toBe(false);
+    expect(otherSlotsOf(session)).toEqual(others);
+    expect(heldSlot(session, 1).values.has(q.wme)).toBe(false);
   });
 });
 
@@ -270,12 +271,12 @@ describe("Session.requestModel", () => {
   });
 
   it("changes the first slot only", () => {
-    const session = new Session(pmvPpdIso);
-    const others = session.slots.slice(1).map(shapeOf);
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const others = otherSlotsOf(session);
 
     session.requestModel(takesExternalWork);
 
-    expect(session.slots.slice(1).map(shapeOf)).toEqual(others);
+    expect(otherSlotsOf(session)).toEqual(others);
   });
 });
 

@@ -21,8 +21,8 @@ import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
-import { Session } from "./session.svelte";
-import { resultValueOf } from "./sessionTestReaders";
+import { Session, slotPositions } from "./session.svelte";
+import { heldSlot, resultValueOf, sessionComparingThreeSlots } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -64,10 +64,10 @@ function pmvAtRelativeHumidity(rh: number) {
 
 describe("the session's atmospheric pressure", () => {
   it("starts at core's default, and no slot holds a pressure", () => {
-    const session = new Session(pmvPpdIso);
+    const session = sessionComparingThreeSlots(pmvPpdIso);
     expect(session.atmosphericPressure).toBe(DEFAULT_ATMOSPHERIC_PRESSURE);
-    for (const slot of session.slots) {
-      expect(slot.values.has(q.p_atm)).toBe(false);
+    for (const position of slotPositions) {
+      expect(heldSlot(session, position).values.has(q.p_atm)).toBe(false);
     }
   });
 

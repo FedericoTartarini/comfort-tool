@@ -27,9 +27,9 @@ export class InputSlot implements Slot {
   #humidity = $state.raw<Slot["humidity"]>(undefined);
   #temperature = $state.raw<Slot["temperature"]>({ mode: temperatureMode.separate });
 
-  /** The slot `model` starts on, which core builds by the seeding a switch uses. */
-  constructor(model: RegisteredModel) {
-    this.replaceWith(startingSlot(model));
+  /** A slot holding what `slot` holds: the slot a model starts on, or a copy of another. */
+  constructor(slot: Slot) {
+    this.replaceWith(slot);
   }
 
   get values(): ReadonlyMap<Quantity, number> {
@@ -150,7 +150,19 @@ export interface PendingSwitch extends RehearsedSwitch {
   readonly model: RegisteredModel;
 }
 
-/** Shared by Standard and Explore (ADR §4.5). Compare arrives in Phase 5. */
+/** A slot's place in the session, from 0: its name and hue follow it (ADR-0002 decision 50). */
+export type SlotPosition = 0 | 1 | 2;
+
+/** Every position, in slot order. */
+export const slotPositions = [0, 1, 2] as const satisfies readonly SlotPosition[];
+
+/** A slot Compare enables and disables: every slot but slot 1, which cannot be disabled. */
+export type OptionalSlotPosition = Exclude<SlotPosition, 0>;
+
+/** What the session's three slots hold: slots 2 and 3 are `null` until first enabled. */
+type HeldSlots = readonly [InputSlot, InputSlot | null, InputSlot | null];
+
+/** Shared by Standard and Explore (ADR §4.5). */
 export class Session {
   // All three hold objects compared by identity elsewhere, so `$state.raw`.
   model: RegisteredModel;
@@ -164,7 +176,15 @@ export class Session {
   atmosphericPressure = $state(DEFAULT_ATMOSPHERIC_PRESSURE);
   /** The switch waiting on an answer, or `null`. Held whole, so `$state.raw`. */
   pendingSwitch = $state.raw<PendingSwitch | null>(null);
-  readonly slots: readonly [InputSlot, InputSlot, InputSlot];
+  // Replaced whole, never mutated, so `$state.raw` like the other identities here.
+  #slots: HeldSlots;
+  #compare = $state(false);
+  /** Slot 1's `true` is the type's as well: it cannot be disabled. */
+  #enabled = $state.raw<readonly [true, boolean, boolean]>([true, false, false]);
+  /** Slot 1 always, and slots 2 and 3 while Compare is on and they are enabled. */
+  readonly #comparedPositions = $derived.by((): readonly SlotPosition[] =>
+    slotPositions.filter((position) => position === 0 || (this.#compare && this.#enabled[position])),
+  );
   // Each model remembers its own chart settings. A plain Map: only `chart` is
   // read reactively, and lazily filling a reactive map during a derivation
   // would be a write inside a read.
@@ -173,7 +193,58 @@ export class Session {
   constructor(model: RegisteredModel) {
     this.model = $state.raw(model);
     this.chart = $state.raw(this.#chartFor(model));
-    this.slots = [new InputSlot(model), new InputSlot(model), new InputSlot(model)];
+    this.#slots = $state.raw([new InputSlot(startingSlot(model)), null, null]);
+  }
+
+  /**
+   * What each slot holds, in slot order. Slot 1 always holds a slot; slots 2
+   * and 3 hold nothing (`null`) until first enabled, and keep their own
+   * values after that, enabled or not (ADR-0002 decision 50).
+   */
+  get slots(): HeldSlots {
+    return this.#slots;
+  }
+
+  /** Whether Compare is on (ADR-0002 decision 50). */
+  get compare(): boolean {
+    return this.#compare;
+  }
+
+  /** The slots the outputs are asked about, in slot order: slot 1 always. */
+  get comparedPositions(): readonly SlotPosition[] {
+    return this.#comparedPositions;
+  }
+
+  /** Whether the slot at `position` is enabled; slot 1 always is. Compare decides whether it is compared. */
+  isSlotEnabled(position: SlotPosition): boolean {
+    return this.#enabled[position];
+  }
+
+  /**
+   * Switch Compare on or off. The first switch-on — while no slot but slot 1
+   * has ever held values — enables slot 2 as well; after that it changes none
+   * of what the person chose, and switching off changes no slot.
+   */
+  setCompare(on: boolean): void {
+    if (on && this.#slots[1] === null && this.#slots[2] === null) {
+      this.setSlotEnabled(1, true);
+    }
+    this.#compare = on;
+  }
+
+  /**
+   * Enable or disable the slot at `position`. A slot enabled for the first
+   * time takes a copy of what slot 1 holds now, entry modes and options
+   * included; a slot enabled again holds what it held.
+   */
+  setSlotEnabled(position: OptionalSlotPosition, enabled: boolean): void {
+    if (enabled && this.#slots[position] === null) {
+      const copy = new InputSlot(this.#slots[0]);
+      const [first, second, third] = this.#slots;
+      this.#slots = position === 1 ? [first, copy, third] : [first, second, copy];
+    }
+    const [first, second, third] = this.#enabled;
+    this.#enabled = position === 1 ? [first, enabled, third] : [first, second, enabled];
   }
 
   /**

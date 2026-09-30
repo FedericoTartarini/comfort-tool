@@ -19,7 +19,7 @@ import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
-import { resultValueOf, shapeOf } from "./sessionTestReaders";
+import { otherSlotsOf, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -241,12 +241,12 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   });
 
   it("changes the first slot only when the answer is yes", () => {
-    const session = new Session(pmvPpdIso);
-    const others = session.slots.slice(1).map(shapeOf);
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    const others = otherSlotsOf(session);
 
     session.requestModel(belowTheSlot);
     session.acceptSwitch();
 
-    expect(session.slots.slice(1).map(shapeOf)).toEqual(others);
+    expect(otherSlotsOf(session)).toEqual(others);
   });
 });
