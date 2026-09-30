@@ -52,10 +52,11 @@ export function underTemperatureMode(quantity: Quantity, mode: TemperatureMode):
  * of the library's conversions to relative humidity. Only humidity ratio's
  * pass the pressure on as `p_atm`: it is the one humidity the pressure moves.
  * `psy_ta_rh` takes a `p_atm` too, but its dew point, wet-bulb temperature and
- * vapour pressure do not depend on it (ADR-0002 decision 49). The one
- * check for a particular mode is the gate's: `core/applicability.ts` leaves a
+ * vapour pressure do not depend on it (ADR-0002 decision 49). The two
+ * checks for a particular mode are the gate's: `core/applicability.ts` leaves a
  * wet-bulb entry unbounded, because `rh_from_wet_bulb` clamps to 0 – 100
- * (ADR-0002 decision 46). Object order is the panel's order.
+ * (ADR-0002 decision 46), and a humidity-ratio entry unbounded while the
+ * pressure is out of range (decision 53). Object order is the panel's order.
  */
 export interface HumidityMode {
   readonly id: string;

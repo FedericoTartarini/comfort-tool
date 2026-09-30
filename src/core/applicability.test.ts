@@ -18,7 +18,7 @@ import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
 import { startingSlot, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
@@ -158,6 +158,63 @@ describe("enteredBound / outOfRangeQuantities, on the humidity entry", () => {
     const slot = withHumidity(startingSlot(pmvPpdIso), humidityMode.rh, 150);
     expect(enteredBound(adaptiveAshrae, q.rh, slot, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
     expect(outOfRangeQuantities(slot, adaptiveAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+  });
+});
+
+const pressureBound = kindBounds.atmosphericPressure;
+if (pressureBound?.min === undefined || pressureBound.max === undefined) {
+  throw new Error("Atmospheric pressure is no longer bounded at both ends");
+}
+/** The two ends of the pressure's bound, both in range. */
+const PRESSURE_ENDS = [pressureBound.min, pressureBound.max];
+/** A pressure above the bound's 110 000 Pa, where saturated air holds less water than at 101 325 Pa. */
+const PRESSURE_ABOVE_RANGE = 120000;
+/** A pressure below the bound's 30 000 Pa. */
+const PRESSURE_BELOW_RANGE = 20000;
+
+// No bound is taken at a pressure the app calls out of range (ADR-0002 decision 53).
+describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of range", () => {
+  /** A slot on PMV (ISO 7730) at 25 °C, its humidity entered as `value` in `mode`. */
+  const at25 = (mode: HumidityMode, value: number) => withHumidity(enteredSlotFor(pmvPpdIso, { tdb: 25 }), mode, value);
+
+  it("above the bound, gives a humidity-ratio entry no bound and lists no row for it, whatever its value", () => {
+    // 0.018 kg/kg is about 90 % at 101 325 Pa and 106 % at 120 000 Pa; 0.05 is beyond saturation at either.
+    for (const value of [0.018, 0.05, -0.01]) {
+      const slot = at25(humidityMode.humidityRatio, value);
+      expect(enteredBound(pmvPpdIso, q.hr, slot, PRESSURE_ABOVE_RANGE), String(value)).toBeUndefined();
+      expect(outOfRangeRows(slot, pmvPpdIso, PRESSURE_ABOVE_RANGE), String(value)).toEqual([]);
+    }
+  });
+
+  it("below the bound, gives a humidity-ratio entry no bound and lists no row for it, whatever its value", () => {
+    for (const value of [0.018, 0.5, -0.01]) {
+      const slot = at25(humidityMode.humidityRatio, value);
+      expect(enteredBound(pmvPpdIso, q.hr, slot, PRESSURE_BELOW_RANGE), String(value)).toBeUndefined();
+      expect(outOfRangeRows(slot, pmvPpdIso, PRESSURE_BELOW_RANGE), String(value)).toEqual([]);
+    }
+  });
+
+  it("at either end of the bound, converts a humidity-ratio entry's bound at that pressure", () => {
+    const slot = at25(humidityMode.humidityRatio, 0.01);
+    for (const pressure of PRESSURE_ENDS) {
+      expect(enteredBound(pmvPpdIso, q.hr, slot, pressure), String(pressure)).toEqual({
+        min: psy_ta_rh(25, 0, pressure).hr,
+        max: psy_ta_rh(25, 100, pressure).hr,
+      });
+    }
+  });
+
+  it("bounds a relative-humidity, dew-point and vapour-pressure entry as in range, and a wet-bulb entry not at all", () => {
+    for (const mode of [humidityMode.rh, humidityMode.dewPoint, humidityMode.vapourPressure]) {
+      const inRange = enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), DEFAULT_ATMOSPHERIC_PRESSURE);
+      expect(inRange, mode.id).toBeDefined();
+      for (const pressure of [PRESSURE_ABOVE_RANGE, PRESSURE_BELOW_RANGE]) {
+        expect(enteredBound(pmvPpdIso, mode.quantity, at25(mode, 0), pressure), mode.id).toEqual(inRange);
+      }
+    }
+    for (const pressure of [PRESSURE_ABOVE_RANGE, PRESSURE_BELOW_RANGE]) {
+      expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, at25(humidityMode.wetBulb, 20), pressure)).toBeUndefined();
+    }
   });
 });
 

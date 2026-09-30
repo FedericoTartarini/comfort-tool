@@ -108,14 +108,20 @@ function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
  * point of 0 %) is dropped. The library's
  * conversions do not rise with relative humidity everywhere — saturated air's
  * humidity ratio turns negative from 100 °C — so where the converted ends come
- * out inverted the entry has no bound at that temperature. `undefined` for a
- * model without the humidity entry group.
+ * out inverted the entry has no bound at that temperature. A humidity-ratio
+ * entry has none while the pressure is out of range (decision 53).
+ * `undefined` for a model without the humidity entry group.
  */
 function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot: Slot, atmosphericPressure: number): Bound | undefined {
   // `rh_from_wet_bulb` clamps to 0 – 100, so a wet-bulb entry can never
   // resolve outside the bound; and `t_wb` at 0 % is approximate (1.9 °C at
   // 10 °C, which reads back as 16 %), so bounding the entry would stop valid ones.
   if (mode === humidityMode.wetBulb) {
+    return undefined;
+  }
+  // Humidity ratio's is the one conversion that reads the pressure, and no
+  // bound is taken at a pressure the app calls out of range (ADR-0002 decision 53).
+  if (mode === humidityMode.humidityRatio && isAtmosphericPressureOutOfRange(atmosphericPressure)) {
     return undefined;
   }
   const relativeHumidity = intersect(everyBoundFor(model, q.rh));
@@ -138,8 +144,8 @@ function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot:
  * must satisfy both at once. The humidity entry is held to relative
  * humidity's bound converted into its mode at the slot's dry-bulb
  * temperature and `atmosphericPressure`, so the bound moves with both,
- * except in wet-bulb entry, which is not bounded
- * ({@link humidityEntryBoundFor}); a slot that
+ * except in wet-bulb entry, which is not bounded, and in humidity-ratio entry
+ * while the pressure is out of range ({@link humidityEntryBoundFor}); a slot that
  * holds no humidity has no humidity entry to bound. Entered `v` has
  * no bound of its own — the standard bounds the relative air speed it
  * derives, `vr`, which the library checks and {@link violationRows} reports
@@ -169,7 +175,8 @@ export function enteredBound(
  * gate, with the bound each value was tested against. Checks what the user
  * typed, not a derived value: a humidity entry is tested in its own mode,
  * against relative humidity's bound converted into it. It says nothing about
- * a quantity {@link enteredBound} leaves unbounded: a wet-bulb entry, or the
+ * a quantity {@link enteredBound} leaves unbounded: a wet-bulb entry, a
+ * humidity-ratio entry while the pressure is out of range, or the
  * entered `v` of a model that takes `vr`, whose derived `vr` the library
  * reports after the call, through {@link violationRows}.
  *

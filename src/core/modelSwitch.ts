@@ -38,7 +38,9 @@ export interface RehearsedSwitch {
  * temperature (ADR-0002 decision 46), so it is checked at the temperature a
  * "Yes" would leave — the gate asked again on the slot with every other row
  * adjusted — and listed with the bound it has there. A "Yes" then leaves
- * nothing out of range.
+ * nothing out of range, except while `atmosphericPressure` is out of range:
+ * a humidity-ratio entry has no bound then and is not listed, so it may be out
+ * of range once the pressure returns (ADR-0002 decision 53).
  */
 export function rehearseSwitch(slot: Slot, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
   const converted = convertEntryMode(slot, model);

@@ -22,7 +22,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots, withBounds } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -195,6 +195,48 @@ describe("an atmospheric pressure out of range", () => {
     expect(listedRowsOf(session)?.map((row) => row.quantity)).toEqual([q.tdb]);
     session.acceptSwitch();
     expect(session.atmosphericPressure).toBe(PRESSURE_OUT_OF_RANGE);
+  });
+});
+
+/** A pressure above the bound's 110 000 Pa, where saturated air holds less water than at 101 325 Pa. */
+const PRESSURE_ABOVE_RANGE = 120000;
+
+/**
+ * A humidity ratio at 25 °C, [kg/kg]: below saturation at 101 325 Pa
+ * (0.0201), above it at 110 000 Pa (0.0185) and 120 000 Pa (0.0169).
+ */
+const NEAR_SATURATION = 0.019;
+
+// No bound is taken at a pressure out of range (ADR-0002 decision 53).
+describe("a humidity-ratio entry while the atmospheric pressure is out of range", () => {
+  it("is not named out of range, and nothing is calculated", () => {
+    const { session, outputs } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
+    session.slots[0].setEntered(q.hr, NEAR_SATURATION);
+
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].notCalculated).toBe(true);
+  });
+
+  it("is not listed by a requested switch, and a yes leaves it as entered while it adjusts a temperature", () => {
+    const { session } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
+    session.slots[0].setEntered(q.hr, NEAR_SATURATION);
+
+    // The slot's 25 °C is above the fixture's maximum; its humidity ratio, about 95 % at 25 °C and 101 325 Pa, is above 40 %.
+    session.requestModel(withBounds({ tdb: { min: 10, max: 20 }, rh: { max: 40 } }));
+    expect(listedRowsOf(session)?.map((row) => row.quantity)).toEqual([q.tdb]);
+    session.acceptSwitch();
+
+    expect(session.slots[0].values.get(q.tdb)).toBe(20);
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: NEAR_SATURATION });
+  });
+
+  it("is judged again at the pressure once it is back in range", () => {
+    const { session, outputs } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
+    session.slots[0].setEntered(q.hr, NEAR_SATURATION);
+
+    session.atmosphericPressure = HIGHEST_PRESSURE;
+
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.hr]);
   });
 });
 
