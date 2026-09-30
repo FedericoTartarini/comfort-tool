@@ -83,13 +83,9 @@ export class InputSlot implements Slot {
     return this.#clothing;
   }
 
-  /**
-   * Enter `value` for `quantity` where core puts it: a humidity quantity sets
-   * the humidity entry. `system` is the session's unit system, which the slot
-   * does not hold (ADR-0002 decision 55).
-   */
-  setEntered(quantity: Quantity, value: number, system: UnitSystem): void {
-    this.replaceWith(withEnteredValues(this, new Map([[quantity, value]]), system));
+  /** Enter `value` for `quantity` where core puts it: a humidity quantity sets the humidity entry. */
+  setEntered(quantity: Quantity, value: number): void {
+    this.replaceWith(withEnteredValues(this, new Map([[quantity, value]])));
   }
 
   /** Tick or untick `option`, as the option's checkbox does. */
@@ -227,7 +223,7 @@ export class Session {
   constructor(model: RegisteredModel) {
     this.model = $state.raw(model);
     this.chart = $state.raw(this.#chartFor(model));
-    this.#slots = $state.raw([new InputSlot(startingSlot(model, this.unitSystem)), null, null]);
+    this.#slots = $state.raw([new InputSlot(startingSlot(model)), null, null]);
   }
 
   /**
@@ -346,7 +342,7 @@ export class Session {
    */
   setTemperatureMode(mode: TemperatureMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withTemperatureMode(slot, mode, this.model, this.unitSystem));
+      slot.replaceWith(withTemperatureMode(slot, mode, this.model));
     }
   }
 
@@ -357,7 +353,7 @@ export class Session {
    */
   setAirSpeedMode(mode: AirSpeedMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withAirSpeedMode(slot, mode, this.unitSystem));
+      slot.replaceWith(withAirSpeedMode(slot, mode));
     }
   }
 
@@ -368,7 +364,7 @@ export class Session {
    */
   setClothingMode(mode: ClothingMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withClothingMode(slot, mode, this.model, this.unitSystem));
+      slot.replaceWith(withClothingMode(slot, mode, this.model));
     }
   }
 
@@ -379,7 +375,7 @@ export class Session {
    */
   setHumidityMode(mode: HumidityMode): void {
     for (const slot of this.#heldSlots()) {
-      slot.replaceWith(withHumidityMode(slot, mode, this.atmosphericPressure, this.unitSystem));
+      slot.replaceWith(withHumidityMode(slot, mode, this.atmosphericPressure));
     }
   }
 
@@ -430,7 +426,7 @@ export class Session {
     }
     this.#land(
       pending.model,
-      pending.slots.map(({ position, slot, listedRows }) => ({ position, slot: adjustToBounds(slot, listedRows, this.unitSystem) })),
+      pending.slots.map(({ position, slot, listedRows }) => ({ position, slot: adjustToBounds(slot, listedRows) })),
     );
   }
 
@@ -450,7 +446,7 @@ export class Session {
       if (!held) {
         return [];
       }
-      const { slot, outOfRangeRows } = rehearseSwitch(held, this.model, model, this.atmosphericPressure, this.unitSystem);
+      const { slot, outOfRangeRows } = rehearseSwitch(held, this.model, model, this.atmosphericPressure);
       return [{ position, slot, listedRows: this.#comparedPositions.includes(position) ? outOfRangeRows : [] }];
     });
   }

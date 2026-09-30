@@ -12,9 +12,9 @@ import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
-const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model, unitSystem.si), model, DEFAULT_ATMOSPHERIC_PRESSURE);
+const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 const atTdb = (model: RegisteredModel, tdb: number) =>
-  runOn(withEnteredValues(startingSlot(model, unitSystem.si), new Map([[q.tdb, tdb]]), unitSystem.si), model, DEFAULT_ATMOSPHERIC_PRESSURE);
+  runOn(withEnteredValues(startingSlot(model), new Map([[q.tdb, tdb]])), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 
 describe("formatResultCell", () => {
   it("shows a boolean result as Yes or No in either unit system", () => {

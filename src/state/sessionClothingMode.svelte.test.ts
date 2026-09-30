@@ -23,7 +23,6 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
 import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
-import { unitSystem } from "$lib/core/unitSystem";
 
 const q = quantities;
 
@@ -48,9 +47,9 @@ function threeDifferentSlots(model: RegisteredModel): Session {
   const session = sessionComparingThreeSlots(model);
   slotPositions.forEach((position) => {
     const { clo, v, met } = entriesOfSlot[position];
-    heldSlot(session, position).setEntered(q.clo, clo, unitSystem.si);
-    heldSlot(session, position).setEntered(q.v, v, unitSystem.si);
-    heldSlot(session, position).setEntered(q.met, met, unitSystem.si);
+    heldSlot(session, position).setEntered(q.clo, clo);
+    heldSlot(session, position).setEntered(q.v, v);
+    heldSlot(session, position).setEntered(q.met, met);
   });
   return session;
 }
@@ -58,10 +57,10 @@ function threeDifferentSlots(model: RegisteredModel): Session {
 /** A session on `model` whose one slot enters `clo_dynamic` and what else `entries` names of a slot. */
 function enteringDynamic(model: RegisteredModel, entries: { v: number; met: number }, dynamic: number): Session {
   const session = new Session(model);
-  session.slots[0].setEntered(q.v, entries.v, unitSystem.si);
-  session.slots[0].setEntered(q.met, entries.met, unitSystem.si);
+  session.slots[0].setEntered(q.v, entries.v);
+  session.slots[0].setEntered(q.met, entries.met);
   session.setClothingMode(clothingMode.corrected);
-  session.slots[0].setEntered(q.clo_dynamic, dynamic, unitSystem.si);
+  session.slots[0].setEntered(q.clo_dynamic, dynamic);
   return session;
 }
 
@@ -137,12 +136,12 @@ describe("the session's clothing entry mode", () => {
     // so it is given the clothing insulation as entered, as before this group.
     it("gives the model an entered dynamic clothing insulation unchanged", () => {
       const passedThrough = new Session({ ...model, standard: undefined });
-      passedThrough.slots[0].setEntered(q.met, 3, unitSystem.si);
-      passedThrough.slots[0].setEntered(q.clo, 0.7, unitSystem.si);
+      passedThrough.slots[0].setEntered(q.met, 3);
+      passedThrough.slots[0].setEntered(q.clo, 0.7);
       const entered = enteringDynamic(model, { v: 0.1, met: 3 }, 0.7);
       const corrected = new Session(model);
-      corrected.slots[0].setEntered(q.met, 3, unitSystem.si);
-      corrected.slots[0].setEntered(q.clo, 0.7, unitSystem.si);
+      corrected.slots[0].setEntered(q.met, 3);
+      corrected.slots[0].setEntered(q.clo, 0.7);
 
       const given = new Outputs(entered).slots[0].result;
 
@@ -155,7 +154,7 @@ describe("the session's clothing entry mode", () => {
   it("moves no number of PMV (ASHRAE 55) at or below 1.2 met, in either mode", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 1.2, unitSystem.si);
+    session.slots[0].setEntered(q.met, 1.2);
     const before = outputs.slots[0].result;
 
     session.setClothingMode(clothingMode.corrected);
@@ -195,7 +194,7 @@ describe("the session's clothing entry mode", () => {
   it("converts a slot that holds values and is not compared, and hands a slot first enabled slot 1's mode", () => {
     const session = new Session(pmvPpdAshrae);
     session.setCompare(true);
-    heldSlot(session, 1).setEntered(q.met, 2, unitSystem.si);
+    heldSlot(session, 1).setEntered(q.met, 2);
     session.setSlotEnabled(1, false);
 
     session.setClothingMode(clothingMode.corrected);
@@ -210,7 +209,7 @@ describe("the session's clothing entry mode", () => {
     const bound = pmvPpdAshrae.info.inputs.clo?.applicability;
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.clo, (bound?.max ?? 0) + 0.1, unitSystem.si);
+    session.slots[0].setEntered(q.clo, (bound?.max ?? 0) + 0.1);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
 
     session.setClothingMode(clothingMode.corrected);
@@ -226,7 +225,7 @@ describe("the session's clothing entry mode", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     for (const [quantity, value] of [[q.v, 0], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value, unitSystem.si);
+      session.slots[0].setEntered(quantity, value);
     }
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
@@ -248,11 +247,11 @@ describe("the session's clothing entry mode", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     for (const [quantity, value] of [[q.v, 0], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value, unitSystem.si);
+      session.slots[0].setEntered(quantity, value);
     }
     expect(outputs.slots[0].notCalculated).toBe(true);
 
-    session.slots[0].setEntered(q.v, 0.5, unitSystem.si);
+    session.slots[0].setEntered(q.v, 0.5);
 
     expect(enteredBound(pmvPpdIso, q.clo, session.slots[0], session.atmosphericPressure)?.max).toBeGreaterThan(2);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
@@ -264,8 +263,8 @@ describe("the session's clothing entry mode", () => {
   it("passes a clothing insulation past the model's bound that the model is given inside it", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2, unitSystem.si);
-    session.slots[0].setEntered(q.clo, 1.6, unitSystem.si);
+    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.clo, 1.6);
 
     expect(clo_dynamic_ashrae(1.6, 2)).toBe(1.28);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
@@ -280,9 +279,9 @@ describe("a model switch under clothing insulation entry", () => {
   it("asks about a clothing insulation the new model's converted bound stops, and moves it to the converted end as the row shows it on a yes", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2, unitSystem.si);
+    session.slots[0].setEntered(q.met, 2);
     // ISO 7730's rule gives it as 1.63 clo at 2 met, inside the model's 2; ASHRAE 55's as 1.52, past its 1.5.
-    session.slots[0].setEntered(q.clo, 1.9, unitSystem.si);
+    session.slots[0].setEntered(q.clo, 1.9);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
     session.requestModel(pmvPpdAshrae);
@@ -308,7 +307,7 @@ describe("a model switch under clothing insulation entry", () => {
     const session = new Session({ ...pmvPpdIso, standard: undefined });
     const outputs = new Outputs(session);
     for (const [quantity, value] of [[q.v, 0], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value, unitSystem.si);
+      session.slots[0].setEntered(quantity, value);
     }
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
@@ -333,7 +332,7 @@ describe("a model switch under clothing insulation entry", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     for (const [quantity, value] of [[q.v, 0.5], [q.met, 1], [q.clo, 2]] as const) {
-      session.slots[0].setEntered(quantity, value, unitSystem.si);
+      session.slots[0].setEntered(quantity, value);
     }
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
@@ -362,7 +361,7 @@ describe("the dynamic chart under the session's clothing entry mode", () => {
     const session = new Session(pmvPpdAshrae);
     session.chart.type = chartType.dynamic;
     session.chart.setAxes({ y: q.clo });
-    session.slots[0].setEntered(q.met, 2, unitSystem.si);
+    session.slots[0].setEntered(q.met, 2);
     return session;
   }
 
@@ -385,7 +384,7 @@ describe("the dynamic chart under the session's clothing entry mode", () => {
     const outputs = new Outputs(session);
     void outputs.chart;
     // 50 °C is past ASHRAE 55's 40 °C, and no clothing-mode change moves it.
-    session.slots[0].setEntered(q.tdb, 50, unitSystem.si);
+    session.slots[0].setEntered(q.tdb, 50);
 
     session.setClothingMode(clothingMode.corrected);
 
@@ -449,8 +448,8 @@ describe("a model switch under dynamic clothing entry", () => {
   it("keeps a clothing insulation entry between the two PMV models, corrected by the new model's standard", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.met, 2, unitSystem.si);
-    session.slots[0].setEntered(q.clo, 1, unitSystem.si);
+    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.clo, 1);
 
     session.requestModel(pmvPpdAshrae);
 

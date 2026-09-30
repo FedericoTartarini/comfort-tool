@@ -31,7 +31,6 @@ import {
   withTemperatureMode,
   type Slot,
 } from "./slot";
-import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
@@ -42,8 +41,8 @@ const LOWER_PRESSURE = 80000;
 const withoutStandard = { ...pmvPpdIso, standard: undefined };
 
 /** PMV (ISO 7730)'s own defaults, which the slots below start from. */
-const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso, unitSystem.si).values);
-const rh = relativeHumidityOf(startingSlot(pmvPpdIso, unitSystem.si), DEFAULT_ATMOSPHERIC_PRESSURE);
+const { tdb, v, met } = valuesReader(startingSlot(pmvPpdIso).values);
+const rh = relativeHumidityOf(startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE);
 
 describe("operativeTemperatureOf", () => {
   // One room, 24 / 28 °C at 0.6 m/s: ASHRAE 55 weighs the air temperature by
@@ -62,7 +61,7 @@ describe("operativeTemperatureOf", () => {
   it("weighs by the entered relative air speed under relative air speed entry, the one air speed the slot holds", () => {
     const entered = enteredSlotFor(pmvPpdIso, { tdb: 24, tr: 28, vr: 0.6 });
     expect(operativeTemperatureOf(entered, pmvPpdIso)).toBe(operativeTemperatureOf(room, pmvPpdIso));
-    const operative = withTemperatureMode(entered, temperatureMode.operative, pmvPpdIso, unitSystem.si);
+    const operative = withTemperatureMode(entered, temperatureMode.operative, pmvPpdIso);
     expect(operative.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6, pmvPpdIso.standard));
     expect(operative.values.get(q.vr)).toBe(0.6);
   });
@@ -78,7 +77,7 @@ describe("operativeTemperatureOf", () => {
 
   it("is where the switch into operative entry lands, so the click does not move the marker", () => {
     for (const model of [adaptiveAshrae, pmvPpdIso, withoutStandard]) {
-      const switched = withTemperatureMode(room, temperatureMode.operative, model, unitSystem.si);
+      const switched = withTemperatureMode(room, temperatureMode.operative, model);
       expect(enteredValue(switched, q.operative_tmp, model, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(enteredValue(room, q.operative_tmp, model, DEFAULT_ATMOSPHERIC_PRESSURE));
     }
   });
@@ -86,9 +85,9 @@ describe("operativeTemperatureOf", () => {
 
 describe("entered values", () => {
   it("reads the humidity entry from where the slot keeps it", () => {
-    expect(enteredValue(startingSlot(pmvPpdIso, unitSystem.si), q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(rh);
+    expect(enteredValue(startingSlot(pmvPpdIso), q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(rh);
     expect(enteredValue(enteredSlotFor(pmvPpdIso, { tdb: 27 }), q.tdb, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(27);
-    expect(enteredValue(startingSlot(pmvPpdIso, unitSystem.si), q.vr, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
+    expect(enteredValue(startingSlot(pmvPpdIso), q.vr, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
   });
 
   it("lists the panel rows of the current temperature mode", () => {
@@ -141,7 +140,7 @@ describe("entered values", () => {
   describe("the panel's rows", () => {
     /** A slot in `temperature` and `humidity` entry; the rows depend on nothing else. */
     function slotEnteredAs(temperature: TemperatureMode, humidity: HumidityMode): Slot {
-      return { ...startingSlot(pmvPpdIso, unitSystem.si), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
+      return { ...startingSlot(pmvPpdIso), temperature: { mode: temperature }, humidity: { mode: humidity, value: 0 } };
     }
 
     for (const humidity of Object.values(humidityMode)) {
@@ -167,22 +166,22 @@ describe("entered values", () => {
   });
 
   it("re-derives everything downstream of a swept value", () => {
-    const slot = startingSlot(pmvPpdIso, unitSystem.si);
-    const swept = withEnteredValues(slot, new Map([[q.v, 0.6]]), unitSystem.si);
+    const slot = startingSlot(pmvPpdIso);
+    const swept = withEnteredValues(slot, new Map([[q.v, 0.6]]));
     expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.vr)).toBe(v_relative(0.6, met));
     expect(slot.values.get(q.v)).toBe(v);
   });
 
   it("sweeps the humidity entry as well, without touching the original", () => {
-    const slot = startingSlot(pmvPpdIso, unitSystem.si);
-    const swept = withEnteredValues(slot, new Map([[q.rh, 80]]), unitSystem.si);
+    const slot = startingSlot(pmvPpdIso);
+    const swept = withEnteredValues(slot, new Map([[q.rh, 80]]));
     expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBe(80);
     expect(slot.humidity?.value).toBe(rh);
   });
 
   it("reads a dew-point entry as entered, and rh as derived from it at the slot's dry-bulb temperature", () => {
     const dewPoint = humidityMode.dewPoint.fromRelativeHumidity(rh, tdb, DEFAULT_ATMOSPHERIC_PRESSURE);
-    const slot: Slot = { ...startingSlot(pmvPpdIso, unitSystem.si), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
+    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: dewPoint } };
     expect(enteredValue(slot, q.dew_point_tmp, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(dewPoint);
     expect(enteredValue(slot, q.rh, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeCloseTo(rh, 0);
   });
@@ -194,8 +193,8 @@ describe("entered values", () => {
   });
 
   it("sweeps rh as rh whatever the entry mode", () => {
-    const slot: Slot = { ...startingSlot(pmvPpdIso, unitSystem.si), humidity: { mode: humidityMode.dewPoint, value: 10 } };
-    const swept = withEnteredValues(slot, new Map([[q.rh, 70]]), unitSystem.si);
+    const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: { mode: humidityMode.dewPoint, value: 10 } };
+    const swept = withEnteredValues(slot, new Map([[q.rh, 70]]));
     expect(swept.humidity).toEqual({ mode: humidityMode.rh, value: 70 });
     expect(resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.rh)).toBe(70);
     expect(slot.humidity?.mode).toBe(humidityMode.dewPoint);
@@ -204,8 +203,8 @@ describe("entered values", () => {
   for (const entered of Object.values(humidityMode)) {
     it(`sets the humidity entry to ${entered.id} on entering its quantity, whatever mode the slot was in, or none`, () => {
       for (const held of [undefined, ...Object.values(humidityMode)]) {
-        const slot: Slot = { ...startingSlot(pmvPpdIso, unitSystem.si), humidity: held && { mode: held, value: 1 } };
-        const written = withEnteredValues(slot, new Map([[entered.quantity, 2]]), unitSystem.si);
+        const slot: Slot = { ...startingSlot(pmvPpdIso), humidity: held && { mode: held, value: 1 } };
+        const written = withEnteredValues(slot, new Map([[entered.quantity, 2]]));
         expect(written.humidity).toEqual({ mode: entered, value: 2 });
         for (const mode of Object.values(humidityMode)) {
           expect(written.values.has(mode.quantity)).toBe(false);
@@ -215,7 +214,7 @@ describe("entered values", () => {
   }
 
   it("expands a swept operative temperature to both temperatures", () => {
-    const swept = withEnteredValues(enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), new Map([[q.operative_tmp, 28]]), unitSystem.si);
+    const swept = withEnteredValues(enteredSlotFor(pmvPpdIso, { operative_tmp: 24 }), new Map([[q.operative_tmp, 28]]));
     const resolved = resolveQuantities(swept, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(resolved.get(q.tdb)).toBe(28);
     expect(resolved.get(q.tr)).toBe(28);
@@ -224,7 +223,7 @@ describe("entered values", () => {
 
 /** Adaptive (ASHRAE 55) takes no humidity, so the slot it starts on holds none. */
 describe("a slot that holds no humidity", () => {
-  const holdsNone = startingSlot(adaptiveAshrae, unitSystem.si);
+  const holdsNone = startingSlot(adaptiveAshrae);
 
   it("holds none from its start", () => {
     expect(holdsNone.humidity).toBeUndefined();
@@ -242,7 +241,7 @@ describe("a slot that holds no humidity", () => {
 
   it("throws, naming humidity, when its humidity entry mode is changed", () => {
     for (const mode of Object.values(humidityMode)) {
-      expect(() => withHumidityMode(holdsNone, mode, DEFAULT_ATMOSPHERIC_PRESSURE, unitSystem.si), mode.id).toThrow(/humidity/);
+      expect(() => withHumidityMode(holdsNone, mode, DEFAULT_ATMOSPHERIC_PRESSURE), mode.id).toThrow(/humidity/);
     }
   });
 });
@@ -251,13 +250,13 @@ describe("withHumidityMode", () => {
   const room: Slot = { ...enteredSlotFor(pmvPpdIso, { tdb: 27 }), humidity: { mode: humidityMode.rh, value: 35 } };
 
   it("re-expresses the entry at the slot's dry-bulb temperature, leaving the original untouched", () => {
-    const converted = withHumidityMode(room, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE, unitSystem.si);
+    const converted = withHumidityMode(room, humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(converted.humidity).toEqual({ mode: humidityMode.dewPoint, value: humidityMode.dewPoint.fromRelativeHumidity(35, 27, DEFAULT_ATMOSPHERIC_PRESSURE) });
     expect(room.humidity).toEqual({ mode: humidityMode.rh, value: 35 });
   });
 
   it("returns the slot unchanged for the mode it is already in", () => {
-    expect(withHumidityMode(room, humidityMode.rh, DEFAULT_ATMOSPHERIC_PRESSURE, unitSystem.si)).toBe(room);
+    expect(withHumidityMode(room, humidityMode.rh, DEFAULT_ATMOSPHERIC_PRESSURE)).toBe(room);
   });
 });
 
@@ -286,7 +285,7 @@ describe("a humidity entry at an atmospheric pressure", () => {
   it("re-expresses a relative humidity as the humidity ratio at that pressure", () => {
     const slot = enteredAs(humidityMode.rh, 35);
     for (const pressure of pressures) {
-      expect(withHumidityMode(slot, humidityMode.humidityRatio, pressure, unitSystem.si).humidity?.value, `${pressure} Pa`).toBe(psy_ta_rh(27, 35, pressure).hr);
+      expect(withHumidityMode(slot, humidityMode.humidityRatio, pressure).humidity?.value, `${pressure} Pa`).toBe(psy_ta_rh(27, 35, pressure).hr);
     }
   });
 
@@ -296,7 +295,7 @@ describe("a humidity entry at an atmospheric pressure", () => {
       const slot = enteredAs(mode, mode.fromRelativeHumidity(35, 27, DEFAULT_ATMOSPHERIC_PRESSURE));
       expect(relativeHumidityOf(slot, LOWER_PRESSURE), mode.id).toBe(relativeHumidityOf(slot, DEFAULT_ATMOSPHERIC_PRESSURE));
       const fromRelativeHumidity = enteredAs(humidityMode.humidityRatio, 0.01);
-      expect(withHumidityMode(fromRelativeHumidity, mode, LOWER_PRESSURE, unitSystem.si).humidity?.value, mode.id).toBe(
+      expect(withHumidityMode(fromRelativeHumidity, mode, LOWER_PRESSURE).humidity?.value, mode.id).toBe(
         mode.fromRelativeHumidity(hr_to_rh(0.01, 27, LOWER_PRESSURE), 27, DEFAULT_ATMOSPHERIC_PRESSURE),
       );
     }
@@ -309,17 +308,17 @@ describe("withTemperatureMode", () => {
   const room = enteredSlotFor(pmvPpdIso, { tdb: 24, tr: 28, v: 0.6 });
 
   it("converts separate → operative by the model's own standard", () => {
-    expect(withTemperatureMode(room, temperatureMode.operative, adaptiveAshrae, unitSystem.si).values.get(q.operative_tmp)).toBeCloseTo(25.2);
-    expect(withTemperatureMode(room, temperatureMode.operative, pmvPpdIso, unitSystem.si).values.get(q.operative_tmp)).toBeCloseTo(25.16, 2);
+    expect(withTemperatureMode(room, temperatureMode.operative, adaptiveAshrae).values.get(q.operative_tmp)).toBeCloseTo(25.2);
+    expect(withTemperatureMode(room, temperatureMode.operative, pmvPpdIso).values.get(q.operative_tmp)).toBeCloseTo(25.16, 2);
   });
 
   it("passes no standard for a model that declares none, and the library's default decides", () => {
-    const converted = withTemperatureMode(room, temperatureMode.operative, withoutStandard, unitSystem.si);
+    const converted = withTemperatureMode(room, temperatureMode.operative, withoutStandard);
     expect(converted.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6));
   });
 
   it("sets both temperatures to the operative entry going back", () => {
-    const converted = withTemperatureMode(enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }), temperatureMode.separate, adaptiveAshrae, unitSystem.si);
+    const converted = withTemperatureMode(enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }), temperatureMode.separate, adaptiveAshrae);
     expect([converted.values.get(q.tdb), converted.values.get(q.tr)]).toEqual([26, 26]);
     expect(converted.values.has(q.operative_tmp)).toBe(false);
   });
@@ -329,7 +328,7 @@ describe("withAirSpeedMode", () => {
   const moving = enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 });
 
   it("writes the relative air speed the model was given into the entry, at the slot's own air speed and metabolic rate", () => {
-    const converted = withAirSpeedMode(moving, airSpeedMode.corrected, unitSystem.si);
+    const converted = withAirSpeedMode(moving, airSpeedMode.corrected);
     expect(converted.airSpeed.mode).toBe(airSpeedMode.corrected);
     expect(converted.values.get(q.vr)).toBe(v_relative(0.4, 2));
     expect(converted.values.get(q.vr)).toBe(resolveQuantities(moving, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.vr));
@@ -343,7 +342,7 @@ describe("withAirSpeedMode", () => {
     { name: "at exactly 1 met keeps the number", vr: 0.7, met: 1, v: 0.7 },
     { name: "below 1 met keeps the number", vr: 0.7, met: 0.8, v: 0.7 },
   ])("inverts the correction going back: $name", ({ vr, met, v }) => {
-    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr, met }), airSpeedMode.uncorrected, unitSystem.si);
+    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr, met }), airSpeedMode.uncorrected);
     expect(converted.airSpeed.mode).toBe(airSpeedMode.uncorrected);
     expect(converted.values.get(q.v)).toBe(v);
     expect(v_relative(v, met)).toBe(vr);
@@ -352,14 +351,14 @@ describe("withAirSpeedMode", () => {
   });
 
   it("gives a negative air speed back for a relative air speed below the activity's share", () => {
-    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.1, met: 2 }), airSpeedMode.uncorrected, unitSystem.si);
+    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.1, met: 2 }), airSpeedMode.uncorrected);
     expect(converted.values.get(q.v)).toBe(-0.2);
     expect(relativeAirSpeedOf(converted)).toBe(0.1);
   });
 
   /** `slot` switched into relative air speed entry and back. */
   function roundTripped(slot: Slot): Slot {
-    return withAirSpeedMode(withAirSpeedMode(slot, airSpeedMode.corrected, unitSystem.si), airSpeedMode.uncorrected, unitSystem.si);
+    return withAirSpeedMode(withAirSpeedMode(slot, airSpeedMode.corrected), airSpeedMode.uncorrected);
   }
 
   // `v_relative` rounds the activity's share to 0.001, so taking 0.3·(met − 1)
@@ -391,7 +390,7 @@ describe("withAirSpeedMode", () => {
   });
 
   it("hands back the slot itself when it is in the mode already", () => {
-    expect(withAirSpeedMode(moving, airSpeedMode.uncorrected, unitSystem.si)).toBe(moving);
+    expect(withAirSpeedMode(moving, airSpeedMode.uncorrected)).toBe(moving);
   });
 
   it("answers the relative air speed of a slot in either mode", () => {
@@ -410,7 +409,7 @@ describe("withClothingMode", () => {
       [pmvPpdIso, clo_dynamic_iso(active.clo, active.met, active.v)],
     ] as const) {
       const slot = enteredSlotFor(model, active);
-      const converted = withClothingMode(slot, clothingMode.corrected, model, unitSystem.si);
+      const converted = withClothingMode(slot, clothingMode.corrected, model);
       expect(converted.clothing.mode, model.info.label).toBe(clothingMode.corrected);
       expect(converted.values.get(q.clo_dynamic), model.info.label).toBe(dynamic);
       expect(converted.values.get(q.clo_dynamic)).toBe(resolveQuantities(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.clo));
@@ -421,7 +420,7 @@ describe("withClothingMode", () => {
 
   it("corrects at the relative air speed the slot holds under relative air speed entry, by ISO 7730's rule", () => {
     const slot = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2, clo: 1 });
-    expect(withClothingMode(slot, clothingMode.corrected, pmvPpdIso, unitSystem.si).values.get(q.clo_dynamic)).toBe(clo_dynamic_iso_vr(1, 2, 0.7));
+    expect(withClothingMode(slot, clothingMode.corrected, pmvPpdIso).values.get(q.clo_dynamic)).toBe(clo_dynamic_iso_vr(1, 2, 0.7));
     // The same number the air speed that gives this relative air speed is corrected to.
     expect(clo_dynamic_iso_vr(1, 2, 0.7)).toBe(clo_dynamic_iso(1, 2, 0.4));
   });
@@ -436,7 +435,7 @@ describe("withClothingMode", () => {
     { model: pmvPpdIso, name: "ISO 7730 under relative air speed entry", entries: { clo_dynamic: clo_dynamic_iso_vr(1, 2, 0.7), met: 2, vr: 0.7 }, clo: 1 },
   ])("inverts the correction going back: $name", ({ model, entries, clo }) => {
     const kept = enteredSlotFor(model, entries);
-    const converted = withClothingMode(kept, clothingMode.uncorrected, model, unitSystem.si);
+    const converted = withClothingMode(kept, clothingMode.uncorrected, model);
     expect(converted.clothing.mode).toBe(clothingMode.uncorrected);
     expect(converted.values.get(q.clo)).toBe(clo);
     expect(dynamicClothingOf(converted, model)).toBe(entries.clo_dynamic);
@@ -445,14 +444,14 @@ describe("withClothingMode", () => {
 
   it("inverts a dynamic clothing insulation no entry of few decimals gives, to within the search's nine decimals", () => {
     const kept = enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 });
-    const converted = withClothingMode(kept, clothingMode.uncorrected, pmvPpdIso, unitSystem.si);
+    const converted = withClothingMode(kept, clothingMode.uncorrected, pmvPpdIso);
     expect(dynamicClothingOf(converted, pmvPpdIso)).toBeCloseTo(0.8, 8);
     expect(converted.values.get(q.clo)).not.toBe(0.8);
   });
 
   /** `slot` switched into dynamic clothing entry and back. */
   function roundTripped(slot: Slot, model: RegisteredModel): Slot {
-    return withClothingMode(withClothingMode(slot, clothingMode.corrected, model, unitSystem.si), clothingMode.uncorrected, model, unitSystem.si);
+    return withClothingMode(withClothingMode(slot, clothingMode.corrected, model), clothingMode.uncorrected, model);
   }
 
   it.each([pmvPpdAshrae, pmvPpdIso])("gives the clothing insulation back after any number of round trips, on $info.label", (model) => {
@@ -475,18 +474,18 @@ describe("withClothingMode", () => {
   // model without the group, which the model switch never asks for.
   it("keeps the number going back for a model whose standard has no correction", () => {
     const uncorrecting = { ...pmvPpdIso, standard: undefined };
-    const converted = withClothingMode(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), clothingMode.uncorrected, uncorrecting, unitSystem.si);
+    const converted = withClothingMode(enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 }), clothingMode.uncorrected, uncorrecting);
     expect(converted.values.get(q.clo)).toBe(0.8);
   });
 
   it("moves nothing at or below 1.2 met under ASHRAE 55", () => {
-    const converted = withClothingMode(enteredSlotFor(pmvPpdAshrae, { met: 1.2, clo: 1 }), clothingMode.corrected, pmvPpdAshrae, unitSystem.si);
+    const converted = withClothingMode(enteredSlotFor(pmvPpdAshrae, { met: 1.2, clo: 1 }), clothingMode.corrected, pmvPpdAshrae);
     expect(converted.values.get(q.clo_dynamic)).toBe(1);
   });
 
   it("hands back the slot itself when it is in the mode already", () => {
     const slot = enteredSlotFor(pmvPpdIso, active);
-    expect(withClothingMode(slot, clothingMode.uncorrected, pmvPpdIso, unitSystem.si)).toBe(slot);
+    expect(withClothingMode(slot, clothingMode.uncorrected, pmvPpdIso)).toBe(slot);
   });
 
   it("answers the dynamic clothing insulation of a slot in either mode", () => {
@@ -504,7 +503,7 @@ describe("the entry groups held among the values", () => {
   const operative = entryModesWithTemperature(temperatureMode.operative);
 
   it("start a slot in the modes a declaration writes its inputs in", () => {
-    expect(entryModesOf(startingSlot(pmvPpdIso, unitSystem.si))).toEqual(defaultEntryModes);
+    expect(entryModesOf(startingSlot(pmvPpdIso))).toEqual(defaultEntryModes);
     for (const group of valueEntryGroups) {
       expect(group.modes).toContain(group.modeOf(defaultEntryModes));
     }
@@ -557,12 +556,11 @@ describe("the entry groups held among the values", () => {
       airSpeed: { mode: airSpeedMode.corrected },
       clothing: { mode: clothingMode.corrected },
     };
-    expect(withEntryModes(separate, modes, pmvPpdIso, unitSystem.si)).toEqual(
+    expect(withEntryModes(separate, modes, pmvPpdIso)).toEqual(
       withClothingMode(
-        withAirSpeedMode(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso, unitSystem.si), airSpeedMode.corrected, unitSystem.si),
+        withAirSpeedMode(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso), airSpeedMode.corrected),
         clothingMode.corrected,
         pmvPpdIso,
-        unitSystem.si,
       ),
     );
   });
@@ -574,11 +572,11 @@ describe("the entry groups held among the values", () => {
   });
 
   it("convert a slot into other entry modes as the entry-mode change does", () => {
-    expect(withEntryModes(separate, operative, pmvPpdIso, unitSystem.si)).toEqual(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso, unitSystem.si));
+    expect(withEntryModes(separate, operative, pmvPpdIso)).toEqual(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso));
   });
 
   it("hand back the slot itself when it is in the entry modes already", () => {
-    expect(withEntryModes(separate, defaultEntryModes, pmvPpdIso, unitSystem.si)).toBe(separate);
+    expect(withEntryModes(separate, defaultEntryModes, pmvPpdIso)).toBe(separate);
   });
 
   it("tell the same entry modes from different ones, whatever object holds them", () => {

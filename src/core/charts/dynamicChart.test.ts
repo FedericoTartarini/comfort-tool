@@ -38,7 +38,7 @@ const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 const request = chartRequestFor(pmvPpdIso, slot);
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
-const { v } = valuesReader(startingSlot(pmvPpdIso, unitSystem.si).values);
+const { v } = valuesReader(startingSlot(pmvPpdIso).values);
 
 /** The range `pmvPpdIso` declares for `quantity`, as the layout writes a range. */
 function declaredRangeOf(quantity: Quantity): [number, number] {
@@ -272,7 +272,7 @@ describe("a declared zones source", () => {
   const apart: Slot = withEnteredValues(slot, new Map<Quantity, number>([
     [q.tdb, 24],
     [q.tr, 30],
-  ]), unitSystem.si);
+  ]));
 
   it("replaces the grid scan with the exact polygons", () => {
     const spec = dynamicSpec(request, zoned, zoned.axes);
@@ -312,7 +312,7 @@ describe("a declared zones source", () => {
   it("marks the library's t_o by the model's standard under separate entry, and the other axis as entered", () => {
     // At 0.6 m/s ISO 7726 weighs the air temperature by √(10v), so the marker
     // leaves the plain mean 27 the deployed chart puts it at.
-    const moving = withEnteredValues(apart, new Map([[q.v, 0.6]]), unitSystem.si);
+    const moving = withEnteredValues(apart, new Map([[q.v, 0.6]]));
     const marker = markerOf(dynamicSpec(chartRequestFor(pmvPpdIso, moving), zoned, zoned.axes));
     expect(marker?.x).toBe(t_o(24, 30, 0.6, pmvPpdIso.standard));
     expect(marker?.x).not.toBeCloseTo(27, 1);
@@ -476,7 +476,7 @@ const adaptiveChart = dynamicChartOf(adaptiveAshrae);
 if (!adaptiveChart) {
   throw new Error("adaptiveAshrae no longer declares a dynamic chart");
 }
-const adaptiveRequest = chartRequestFor(adaptiveAshrae, startingSlot(adaptiveAshrae, unitSystem.si));
+const adaptiveRequest = chartRequestFor(adaptiveAshrae, startingSlot(adaptiveAshrae));
 
 describe("Adaptive's running mean axis", () => {
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
@@ -516,7 +516,7 @@ describe("Adaptive's acceptability zones", () => {
   if (!psychrometric) {
     throw new Error("pmvPpdIso no longer declares a psychrometric chart");
   }
-  const psychrometricZones = zoneTraces(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso, unitSystem.si)), psychrometric));
+  const psychrometricZones = zoneTraces(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), psychrometric));
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
     expect(zones.map((zone) => zone.label)).toEqual([q.acceptability_80.label, q.acceptability_90.label]);
@@ -554,7 +554,7 @@ function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
 }
 
 describe("the scanned chart's hover readout", () => {
-  const pmvRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso, unitSystem.si));
+  const pmvRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
   // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
   // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.2209… on the

@@ -26,7 +26,6 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, type InputSlot } from "./session.svelte";
 import { resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
-import { unitSystem } from "$lib/core/unitSystem";
 
 const q = quantities;
 
@@ -114,8 +113,8 @@ describe("Session.setModel", () => {
 
   it("keeps the values already in the slot, whichever model put them there", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setEntered(q.tdb, 22, unitSystem.si);
-    session.slots[0].setEntered(q.rh, 35, unitSystem.si);
+    session.slots[0].setEntered(q.tdb, 22);
+    session.slots[0].setEntered(q.rh, 35);
 
     session.setModel(takesExternalWork);
 
@@ -126,7 +125,7 @@ describe("Session.setModel", () => {
 
   it("removes nothing, so setting the first model again finds its values", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setEntered(q.tdb, 22, unitSystem.si);
+    session.slots[0].setEntered(q.tdb, 22);
 
     session.setModel(takesExternalWork);
     session.setModel(pmvPpdIso);
@@ -164,7 +163,7 @@ describe("Session.setModel", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     // 35 °C is past ISO 7730's 30 °C, which both fixtures inherit.
-    session.slots[0].setEntered(q.tdb, 35, unitSystem.si);
+    session.slots[0].setEntered(q.tdb, 35);
 
     session.setModel(takesExternalWork);
 
@@ -195,7 +194,7 @@ describe("Session.setModel", () => {
 describe("Session.requestModel", () => {
   it("lands the model and the rehearsed slot together", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setEntered(q.tdb, 22, unitSystem.si);
+    session.slots[0].setEntered(q.tdb, 22);
 
     session.requestModel(takesExternalWork);
 
@@ -279,7 +278,7 @@ describe("options", () => {
     const session = new Session(pmvPpdAshrae);
     const outputs = new Outputs(session);
     // 0.8 m/s at 25 °C is past what ASHRAE 55 allows occupants without control.
-    session.slots[0].setEntered(q.v, 0.8, unitSystem.si);
+    session.slots[0].setEntered(q.v, 0.8);
     expect(outputs.slots[0].violations.map((violation) => violation.quantity)).toContain(q.v);
 
     session.slots[0].setOption(airSpeedControl, true);
@@ -368,7 +367,7 @@ describe("InputSlot.setEntered", () => {
     session.setHumidityMode(humidityMode.dewPoint);
     const before = resultValueOf(outputs.slots[0].result, q.pmv);
 
-    session.slots[0].setEntered(q.dew_point_tmp, 12, unitSystem.si);
+    session.slots[0].setEntered(q.dew_point_tmp, 12);
 
     expect(session.slots[0].humidity).toEqual({ mode: humidityMode.dewPoint, value: 12 });
     expect(session.slots[0].values.has(q.dew_point_tmp)).toBe(false);
@@ -424,8 +423,8 @@ describe("Session.setHumidityMode", () => {
 
   it("converts at the entered dry-bulb temperature under separate entry", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setEntered(q.tdb, 27, unitSystem.si);
-    session.slots[0].setEntered(q.rh, 35, unitSystem.si);
+    session.slots[0].setEntered(q.tdb, 27);
+    session.slots[0].setEntered(q.rh, 35);
 
     expect(walkedValues(session)).toEqual(expectedWalk(35, 27));
     expect(session.slots[0].humidity?.mode).toBe(humidityMode.rh);
@@ -434,8 +433,8 @@ describe("Session.setHumidityMode", () => {
   it("converts at the operative temperature under operative entry", () => {
     const session = new Session(pmvPpdIso);
     session.setTemperatureMode(temperatureMode.operative);
-    session.slots[0].setEntered(q.operative_tmp, 22, unitSystem.si);
-    session.slots[0].setEntered(q.rh, 35, unitSystem.si);
+    session.slots[0].setEntered(q.operative_tmp, 22);
+    session.slots[0].setEntered(q.rh, 35);
 
     expect(walkedValues(session)).toEqual(expectedWalk(35, 22));
   });

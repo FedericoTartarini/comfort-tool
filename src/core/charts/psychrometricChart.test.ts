@@ -27,7 +27,7 @@ const ZONE_RH_STEP = 5;
 const PMV_DIGITS = 2;
 
 /** The ISO declaration's own met, clothing insulation and v, which every slot below keeps. */
-const { met, clo: clothingInsulation, v } = valuesReader(startingSlot(pmvPpdIso, unitSystem.si).values);
+const { met, clo: clothingInsulation, v } = valuesReader(startingSlot(pmvPpdIso).values);
 /** The dynamic clothing insulation the model and the solver are given for it: ISO 7730's rule, by the library. */
 const clo = clo_dynamic_iso(clothingInsulation, met, v);
 
@@ -179,7 +179,7 @@ describe("psychrometricSpec", () => {
       if (!chart) {
         throw new Error(`${model.info.name} declares no psychrometric chart`);
       }
-      const spec = psychrometricSpec(chartRequestFor(model, startingSlot(model, unitSystem.si)), chart);
+      const spec = psychrometricSpec(chartRequestFor(model, startingSlot(model)), chart);
       return zonePaths(spec).map((path) => path.label);
     };
     expect(zoneLabels(pmvPpdIso)).toEqual([

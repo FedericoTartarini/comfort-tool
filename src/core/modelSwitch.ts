@@ -19,7 +19,7 @@ import { shownNumber } from "./numberFormat";
 import type { Quantity } from "./quantities";
 import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, type DisplayUnit } from "./units";
-import { unitSystem, type UnitSystem } from "./unitSystem";
+import { unitSystem } from "./unitSystem";
 
 /** What a switch would do to one slot: the slot it would leave, and what the new model would not accept. */
 export interface RehearsedSwitch {
@@ -35,8 +35,7 @@ export interface RehearsedSwitch {
 /**
  * What `slot`, held under the model `from`, would hold under `model`, and
  * what `model` would not accept of it at `atmosphericPressure`, which the
- * switch keeps (ADR-0002 decision 49). `system` is the session's unit system,
- * passed on to every write the rehearsal makes (decision 55).
+ * switch keeps (ADR-0002 decision 49).
  * A bound may be read at another entry: the humidity entry's at the dry-bulb
  * temperature (ADR-0002 decision 46), an entered air speed's at the metabolic
  * rate, an entered clothing insulation's at that and the air speed (decision
@@ -50,17 +49,11 @@ export interface RehearsedSwitch {
  * bound then and is not listed, so it may be out of range once the pressure
  * returns (ADR-0002 decision 53).
  */
-export function rehearseSwitch(
-  slot: Slot,
-  from: RegisteredModel,
-  model: RegisteredModel,
-  atmosphericPressure: number,
-  system: UnitSystem,
-): RehearsedSwitch {
-  const seeded = seedDeclaredDefaults(convertEntryModes(slot, from, model, system), model, system);
+export function rehearseSwitch(slot: Slot, from: RegisteredModel, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
+  const seeded = seedDeclaredDefaults(convertEntryModes(slot, from, model), model);
   let rows = outOfRangeRows(seeded, model, atmosphericPressure);
   for (let pass = 0; pass < seeded.values.size; pass += 1) {
-    const next = outOfRangeRows(seeded, model, atmosphericPressure, adjustToBounds(seeded, rows, system));
+    const next = outOfRangeRows(seeded, model, atmosphericPressure, adjustToBounds(seeded, rows));
     if (areSameRows(rows, next)) {
       break;
     }
@@ -85,19 +78,17 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
  * 7730's 2 clo in still air at 1 met), and the inverse that gave it is a
  * search, whose answer the model may be given a hair outside its own bound
  * for. So a yes leaves 1.93 clo, the number the range beside the row reads.
- * The row is taken as SI shows it, whatever `system`, the session's unit
- * system, is; `system` is passed on with the adjusted values, which are entries.
  *
  * The only place the app adjusts a value the person entered, and it is reached
  * only by their yes (ADR-0002 decision 32). Everywhere else Applicability is a
  * gate: a value outside it stays as typed and the result is withheld.
  */
-export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[], system: UnitSystem): Slot {
+export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
   const adjusted = new Map<Quantity, number>();
   for (const { quantity, value, bound } of rows) {
     adjusted.set(quantity, nearestEnd(value, bound, displayUnitFor(quantity, unitSystem.si)));
   }
-  return withEnteredValues(slot, adjusted, system);
+  return withEnteredValues(slot, adjusted);
 }
 
 /** The end of `bound` that `value` is beyond, at the precision `unit` shows and inside the bound; `value` itself when it is beyond neither. */
@@ -120,9 +111,9 @@ function nearestEnd(value: number, bound: Bound, unit: DisplayUnit): number {
  * dynamic clothing insulation is inverted by that model's standard's rule,
  * which the new model, having no clothing group, does not have.
  */
-function convertEntryModes(slot: Slot, from: RegisteredModel, model: RegisteredModel, system: UnitSystem): Slot {
+function convertEntryModes(slot: Slot, from: RegisteredModel, model: RegisteredModel): Slot {
   return valueEntryGroups.reduce(
-    (converted, group) => (group.appliesTo(model) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), from, system)),
+    (converted, group) => (group.appliesTo(model) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), from)),
     slot,
   );
 }

@@ -19,7 +19,6 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
 import { heldSlot, listedRowsOf, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
-import { unitSystem } from "$lib/core/unitSystem";
 
 const q = quantities;
 
@@ -56,7 +55,7 @@ function comparingSlotsEntered(entries: readonly ReadonlyMap<Quantity, number>[]
   const session = sessionComparingThreeSlots(pmvPpdIso);
   slotPositions.forEach((position) => {
     for (const [quantity, value] of entries[position]) {
-      heldSlot(session, position).setEntered(quantity, value, unitSystem.si);
+      heldSlot(session, position).setEntered(quantity, value);
     }
   });
   return session;
@@ -66,7 +65,7 @@ function comparingSlotsEntered(entries: readonly ReadonlyMap<Quantity, number>[]
 function sessionAlone(entries: ReadonlyMap<Quantity, number>): Session {
   const session = new Session(pmvPpdIso);
   for (const [quantity, value] of entries) {
-    session.slots[0].setEntered(quantity, value, unitSystem.si);
+    session.slots[0].setEntered(quantity, value);
   }
   return session;
 }

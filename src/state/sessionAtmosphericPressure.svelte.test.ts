@@ -51,14 +51,14 @@ function withBound(key: string, bound: { min?: number; max?: number }): Register
 function humidityRatioSession(pressure: number): { session: Session; outputs: Outputs } {
   const session = new Session(pmvPpdIso);
   session.atmosphericPressure = pressure;
-  session.slots[0].setEntered(q.hr, HUMIDITY_RATIO, unitSystem.si);
+  session.slots[0].setEntered(q.hr, HUMIDITY_RATIO);
   return { session, outputs: new Outputs(session) };
 }
 
 /** The PMV of a session on PMV (ISO 7730) whose relative humidity is entered as `rh`. */
 function pmvAtRelativeHumidity(rh: number) {
   const session = new Session(pmvPpdIso);
-  session.slots[0].setEntered(q.rh, rh, unitSystem.si);
+  session.slots[0].setEntered(q.rh, rh);
   return resultValueOf(new Outputs(session).slots[0].result, q.pmv);
 }
 
@@ -115,7 +115,7 @@ describe("a change of atmospheric pressure", () => {
   it("gates a humidity-ratio entry against relative humidity's bound converted at it", () => {
     // 0.022 kg/kg is above saturation at 25 °C and 101 325 Pa, and below it at 80 000 Pa.
     const { session, outputs } = humidityRatioSession(DEFAULT_ATMOSPHERIC_PRESSURE);
-    session.slots[0].setEntered(q.hr, 0.022, unitSystem.si);
+    session.slots[0].setEntered(q.hr, 0.022);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.hr]);
 
     session.atmosphericPressure = LOWER_PRESSURE;
@@ -128,7 +128,7 @@ describe("a change of atmospheric pressure", () => {
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
     const kept = resultValueOf(outputs.slots[0].result, q.pmv);
     // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 closes the gate.
-    session.slots[0].setEntered(q.clo, 2.5, unitSystem.si);
+    session.slots[0].setEntered(q.clo, 2.5);
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 
@@ -163,7 +163,7 @@ describe("an atmospheric pressure out of range", () => {
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].notCalculated).toBe(true);
     // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 is out of range beside it.
-    session.slots[0].setEntered(q.clo, 2.5, unitSystem.si);
+    session.slots[0].setEntered(q.clo, 2.5);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
   });
 
@@ -211,7 +211,7 @@ const NEAR_SATURATION = 0.019;
 describe("a humidity-ratio entry while the atmospheric pressure is out of range", () => {
   it("is not named out of range, and nothing is calculated", () => {
     const { session, outputs } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
-    session.slots[0].setEntered(q.hr, NEAR_SATURATION, unitSystem.si);
+    session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].notCalculated).toBe(true);
@@ -219,7 +219,7 @@ describe("a humidity-ratio entry while the atmospheric pressure is out of range"
 
   it("is not listed by a requested switch, and a yes leaves it as entered while it adjusts a temperature", () => {
     const { session } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
-    session.slots[0].setEntered(q.hr, NEAR_SATURATION, unitSystem.si);
+    session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 
     // The slot's 25 °C is above the fixture's maximum; its humidity ratio, about 95 % at 25 °C and 101 325 Pa, is above 40 %.
     session.requestModel(withBounds({ tdb: { min: 10, max: 20 }, rh: { max: 40 } }));
@@ -232,7 +232,7 @@ describe("a humidity-ratio entry while the atmospheric pressure is out of range"
 
   it("is judged again at the pressure once it is back in range", () => {
     const { session, outputs } = humidityRatioSession(PRESSURE_ABOVE_RANGE);
-    session.slots[0].setEntered(q.hr, NEAR_SATURATION, unitSystem.si);
+    session.slots[0].setEntered(q.hr, NEAR_SATURATION);
 
     session.atmosphericPressure = HIGHEST_PRESSURE;
 
@@ -385,7 +385,7 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
     const { session, outputs } = humidityRatioSession(LOWER_PRESSURE);
     const kept = outputs.chart;
     // PMV (ISO 7730) takes 0 to 2 clo, so 2.5 closes the gate.
-    session.slots[0].setEntered(q.clo, 2.5, unitSystem.si);
+    session.slots[0].setEntered(q.clo, 2.5);
 
     session.atmosphericPressure = DEFAULT_ATMOSPHERIC_PRESSURE;
 

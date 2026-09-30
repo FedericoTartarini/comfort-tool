@@ -27,7 +27,6 @@ import {
 } from "./modelDeclaration";
 import { quantities } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, startingSlot, valueEntryGroups } from "./slot";
-import { unitSystem } from "./unitSystem";
 
 const q = quantities;
 
@@ -184,7 +183,7 @@ function expectWhatTheClothingCorrectionTakes(model: RegisteredModel): void {
   expect(model.inputs.map((entry) => entry.quantity), model.info.label).toContain(q.met);
   let corrected: number;
   try {
-    corrected = dynamicClothingOf(startingSlot(model, unitSystem.si), model);
+    corrected = dynamicClothingOf(startingSlot(model), model);
   } catch (error) {
     throw new Error(`${model.info.label}: ${String(error)}`);
   }
