@@ -74,6 +74,7 @@ export const pmvPpdAshrae = {
     { quantity: q.operative_tmp, min: 10, max: 40 },
     { quantity: q.hr, min: 0, max: 0.03 },
     { quantity: q.v, min: 0, max: 2 },
+    { quantity: q.vr, min: 0, max: 2 },
     { quantity: q.rh, min: 0, max: 100 },
     { quantity: q.met, min: 1, max: 4 },
     { quantity: q.clo, min: 0, max: 2 },

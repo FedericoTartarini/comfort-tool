@@ -420,6 +420,12 @@ describe("axes across an air-speed entry mode switch", () => {
     expect(markerOf(spec)?.y).toBe(0.4);
   });
 
+  it("draws the relative air speed as far as the air speed, not to the standard's applicability bound", () => {
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4 })), isoChart, isoChart.axes);
+    expect(spec.layout.y.range).toEqual([0, 2]);
+    expect(spec.layout.y.range).toEqual(declaredRangeOf(q.v));
+  });
+
   it("gives the model the swept relative air speed unchanged, so the field is the one the air speed gives at the same vr", () => {
     // At met 1 the activity adds nothing, so v and vr are one number and the two fields one field.
     const still = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 1 })), isoChart, { x: q.tdb, y: q.clo });

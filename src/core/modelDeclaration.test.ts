@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { PMV_THERMAL_SENSATION_VOTE_BINS_ISO, Standard } from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { chartType } from "./chartType";
 import {
@@ -21,6 +22,7 @@ import {
   type ZonePolygon,
 } from "./modelDeclaration";
 import { quantities } from "./quantities";
+import { defaultEntryModes, valueEntryGroups } from "./slot";
 
 const q = quantities;
 
@@ -182,6 +184,54 @@ describe("axisRangeFor", () => {
   it("returns undefined when neither a declared range nor a complete applicability bound exists", () => {
     const noDeclaredRange = { ...pmvPpdIso, axisRanges: pmvPpdIso.axisRanges.filter((range) => range.quantity !== q.rh) };
     expect(axisRangeFor(noDeclaredRange, q.rh)).toBeUndefined();
+  });
+});
+
+/**
+ * A model that declares how far an entry group's default-mode axis is drawn
+ * declares it for every mode's axis of that group: an undeclared one would be
+ * drawn to the applicability bound, a chart clipped at the entry-mode switch
+ * (ADR-0002 decision 5). One direction only: a model may declare another
+ * mode's and leave the default's to the fallback, as Adaptive (ASHRAE 55) does.
+ */
+function expectEveryModeAxisRangeBesideTheDefaultModes(model: RegisteredModel): void {
+  const declared = model.axisRanges.map((range) => range.quantity);
+  for (const group of valueEntryGroups) {
+    if (!group.appliesTo(model) || !declared.includes(group.modeOf(defaultEntryModes).axis)) continue;
+    expect(declared, model.info.label).toEqual(expect.arrayContaining(group.modes.map((mode) => mode.axis)));
+  }
+}
+
+describe("axisRanges", () => {
+  it("name every mode's axis of an entry group whose default-mode axis they name, for every registered model", () => {
+    for (const model of registeredModels) {
+      expectEveryModeAxisRangeBesideTheDefaultModes(model);
+    }
+  });
+
+  it("that name the air speed and not the relative air speed fail the check", () => {
+    const noRelativeAirSpeedRange: RegisteredModel = {
+      ...pmvPpdIso,
+      info: { ...pmvPpdIso.info, label: "Fixture without a relative air speed range" },
+      axisRanges: pmvPpdIso.axisRanges.filter((range) => range.quantity !== q.vr),
+    };
+    expect(() => expectEveryModeAxisRangeBesideTheDefaultModes(noRelativeAirSpeedRange)).toThrow(noRelativeAirSpeedRange.info.label);
+  });
+
+  it("that name only another mode's axis pass the check, as Adaptive (ASHRAE 55) names the operative temperature and not the dry-bulb one", () => {
+    const declared = adaptiveAshrae.axisRanges.map((range) => range.quantity);
+    expect(declared).toContain(q.operative_tmp);
+    expect(declared).not.toContain(q.tdb);
+    expect(() => expectEveryModeAxisRangeBesideTheDefaultModes(adaptiveAshrae)).not.toThrow();
+  });
+
+  it("draw PMV (ISO 7730)'s relative air speed as far as its air speed, from the declaration and not the applicability bound", () => {
+    // A declared range equal to the applicability bound could not tell the two sources apart.
+    const bound = pmvPpdIso.info.inputs.vr?.applicability;
+    expect(bound?.min).toBeDefined();
+    expect(bound?.max).toBeDefined();
+    expect(axisRangeFor(pmvPpdIso, q.vr)).not.toEqual({ min: bound?.min, max: bound?.max });
+    expect(axisRangeFor(pmvPpdIso, q.vr)).toEqual(axisRangeFor(pmvPpdIso, q.v));
   });
 });
 
