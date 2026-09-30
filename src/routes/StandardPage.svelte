@@ -81,7 +81,7 @@
     return session.unitSystem === system ? "default" : "outline";
   }
 
-  /** Slot 1 cannot be disabled, so its button only shows that it is enabled. */
+  /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
   function toggleSlot(position: SlotPosition) {
     if (position !== 0) {
       session.setSlotEnabled(position, !session.isSlotEnabled(position));
@@ -222,7 +222,6 @@
                     size="sm"
                     variant={session.isSlotEnabled(position) ? "default" : "outline"}
                     aria-pressed={session.isSlotEnabled(position)}
-                    disabled={position === 0}
                     onclick={() => toggleSlot(position)}
                   >
                     <span class="swatch" style:background-color={slotBadges[position].hue.zoneLine}></span>
