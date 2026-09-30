@@ -22,7 +22,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, resultValueOf, sessionComparingThreeSlots } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -192,7 +192,7 @@ describe("an atmospheric pressure out of range", () => {
     session.requestModel(pmvPpdIso);
     // The slot's 25 °C is above this fixture's maximum, so the switch asks, about that alone.
     session.requestModel(withBound("tdb", { min: 10, max: 20 }));
-    expect(session.pendingSwitch?.outOfRangeRows.map((row) => row.quantity)).toEqual([q.tdb]);
+    expect(listedRowsOf(session)?.map((row) => row.quantity)).toEqual([q.tdb]);
     session.acceptSwitch();
     expect(session.atmosphericPressure).toBe(PRESSURE_OUT_OF_RANGE);
   });
@@ -216,7 +216,7 @@ describe("a humidity entry and the session's atmospheric pressure", () => {
     // The slot's 50 % is above this fixture's maximum of 40 %.
     session.requestModel(withBound("rh", { max: 40 }));
 
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual([
+    expect(listedRowsOf(session)).toEqual([
       {
         quantity: q.hr,
         value: psy_ta_rh(TDB, 50, LOWER_PRESSURE).hr,

@@ -25,7 +25,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, type InputSlot } from "./session.svelte";
-import { heldSlot, otherSlotsOf, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -183,16 +183,6 @@ describe("Session.setModel", () => {
     expect(session.slots[0].humidity).toEqual(entered);
     expect(session.slots[0].values.has(q.rh)).toBe(false);
   });
-
-  it("rehearses the first slot only", () => {
-    const session = sessionComparingThreeSlots(pmvPpdIso);
-    const others = otherSlotsOf(session);
-
-    session.setModel(takesExternalWork);
-
-    expect(otherSlotsOf(session)).toEqual(others);
-    expect(heldSlot(session, 1).values.has(q.wme)).toBe(false);
-  });
 });
 
 /**
@@ -268,15 +258,6 @@ describe("Session.requestModel", () => {
     expect(session.model).toBe(pmvPpdIso);
     expect(session.chart).toBe(chart);
     expect(shapeOf(session.slots[0])).toEqual(before);
-  });
-
-  it("changes the first slot only", () => {
-    const session = sessionComparingThreeSlots(pmvPpdIso);
-    const others = otherSlotsOf(session);
-
-    session.requestModel(takesExternalWork);
-
-    expect(otherSlotsOf(session)).toEqual(others);
   });
 });
 

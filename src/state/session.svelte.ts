@@ -2,9 +2,10 @@ import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import { temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
+import type { OutOfRangeRow } from "$lib/core/applicability";
+import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantities";
-import { holdsEveryInputOf, startingSlot, withEnteredValues, withHumidityMode, withOption, withTemperatureMode, type Slot } from "$lib/core/slot";
+import { startingSlot, withEnteredValues, withHumidityMode, withOption, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -122,18 +123,32 @@ export class ChartState {
   }
 }
 
-/**
- * A switch the person asked for that the session has a question about: the
- * model they asked for, the slot the switch rehearsed, and the entered values
- * the new model does not accept (ADR-0002 decision 32). Nothing has changed
- * while one of these is held — it is the question, not a half-done switch.
- */
-export interface PendingSwitch extends RehearsedSwitch {
-  readonly model: RegisteredModel;
-}
-
 /** A slot's place in the session, from 0: its name and hue follow it (ADR-0002 decision 50). */
 export type SlotPosition = 0 | 1 | 2;
+
+/** One slot that holds values, as a switch would leave it (ADR-0002 decision 52). */
+export interface RehearsedSlot {
+  readonly position: SlotPosition;
+  /** What the slot would hold under the new model: `rehearseSwitch`'s slot. */
+  readonly slot: Slot;
+  /**
+   * What the question lists of it: the entered values the new model does not
+   * accept, as `rehearseSwitch` reports them, for a compared slot; none for a
+   * slot not compared, which is neither listed nor adjusted.
+   */
+  readonly listedRows: readonly OutOfRangeRow[];
+}
+
+/**
+ * A switch the person asked for that the session has a question about: the
+ * model they asked for and every slot that holds values, rehearsed, in slot
+ * order (ADR-0002 decisions 32 and 52). Nothing has changed while one of
+ * these is held — it is the question, not a half-done switch.
+ */
+export interface PendingSwitch {
+  readonly model: RegisteredModel;
+  readonly slots: readonly RehearsedSlot[];
+}
 
 /** Every position, in slot order. */
 export const slotPositions = [0, 1, 2] as const satisfies readonly SlotPosition[];
@@ -231,7 +246,7 @@ export class Session {
 
   /**
    * The session's temperature entry mode (ADR-0002 decision 51): slot 1's,
-   * since an entry-mode change converts every slot the model runs on
+   * since an entry-mode change converts every slot that holds values
    * ({@link setTemperatureMode}) and slot 1 always holds values.
    */
   get temperatureMode(): TemperatureMode {
@@ -253,7 +268,7 @@ export class Session {
    * takes the mode when it copies slot 1.
    */
   setTemperatureMode(mode: TemperatureMode): void {
-    for (const slot of this.#convertibleSlots()) {
+    for (const slot of this.#heldSlots()) {
       slot.replaceWith(withTemperatureMode(slot, mode, this.model));
     }
   }
@@ -264,7 +279,7 @@ export class Session {
    * atmospheric pressure, as {@link setTemperatureMode} converts.
    */
   setHumidityMode(mode: HumidityMode): void {
-    for (const slot of this.#convertibleSlots()) {
+    for (const slot of this.#heldSlots()) {
       slot.replaceWith(withHumidityMode(slot, mode, this.atmosphericPressure));
     }
   }
@@ -272,23 +287,25 @@ export class Session {
   /**
    * The address's path — a typed URL, the back button, a share link — which
    * has no previous page to stay on and so never asks and never adjusts a
-   * value (ADR-0002 decision 32). The rehearsed slot and the model land in one
-   * step, so no derivation sees the two disagree.
+   * value (ADR-0002 decision 32). Every slot that holds values is converted
+   * and seeded, and lands with the model in one step, so no derivation sees a
+   * slot and the model disagree.
    */
   setModel(model: RegisteredModel): void {
     if (model === this.model) {
       return;
     }
-    this.#land(model, rehearseSwitch(this.slots[0], model, this.atmosphericPressure).slot);
+    this.#land(model, this.#rehearse(model));
   }
 
   /**
    * The app's own way of switching: the person asked for `model` from a page
    * they are already on, so the session may have a question about it
-   * (ADR-0002 decision 32). Requesting is therefore a different act from
-   * setting — with every entered value acceptable to `model` the switch simply
-   * lands, and otherwise nothing changes and the question is held until
-   * {@link acceptSwitch} or {@link declineSwitch} answers it.
+   * (ADR-0002 decisions 32 and 52). Requesting is therefore a different act
+   * from setting — with every value of the compared slots acceptable to
+   * `model` the switch simply lands, and otherwise nothing changes and one
+   * question about all of them is held until {@link acceptSwitch} or
+   * {@link declineSwitch} answers it.
    */
   requestModel(model: RegisteredModel): void {
     // Every request supersedes the last one, so no question outlives the act
@@ -298,21 +315,24 @@ export class Session {
     if (model === this.model) {
       return;
     }
-    const rehearsed = rehearseSwitch(this.slots[0], model, this.atmosphericPressure);
-    if (rehearsed.outOfRangeRows.length === 0) {
-      this.#land(model, rehearsed.slot);
+    const slots = this.#rehearse(model);
+    if (slots.every(({ listedRows }) => listedRows.length === 0)) {
+      this.#land(model, slots);
       return;
     }
-    this.pendingSwitch = { model, ...rehearsed };
+    this.pendingSwitch = { model, slots };
   }
 
-  /** "Yes, switch and adjust": the listed values move to their nearest bound and land with the model. */
+  /** "Yes, switch and adjust": every listed value moves to its nearest bound, and every slot lands with the model. */
   acceptSwitch(): void {
     const pending = this.pendingSwitch;
     if (!pending) {
       return;
     }
-    this.#land(pending.model, adjustToBounds(pending.slot, pending.outOfRangeRows));
+    this.#land(
+      pending.model,
+      pending.slots.map(({ position, slot, listedRows }) => ({ position, slot: adjustToBounds(slot, listedRows) })),
+    );
   }
 
   /** "No, stay here", and every other way of closing the dialog: the question goes and nothing else moves. */
@@ -321,27 +341,41 @@ export class Session {
   }
 
   /**
-   * The model and the slot it runs on, in one step, so the outputs derivation
-   * never sees the two disagree. Any landing answers whatever was pending: a
-   * question rehearsed against a slot that has since moved is stale, and an
-   * unanswered question is a "No".
+   * Every slot that holds values, as a switch to `model` would leave it, in
+   * slot order. The rehearsal is a function of one slot, asked of each; only a
+   * compared slot's rows are listed.
    */
-  #land(model: RegisteredModel, slot: Slot): void {
-    this.slots[0].replaceWith(slot);
+  #rehearse(model: RegisteredModel): RehearsedSlot[] {
+    return slotPositions.flatMap((position) => {
+      const held = this.#slots[position];
+      if (!held) {
+        return [];
+      }
+      const { slot, outOfRangeRows } = rehearseSwitch(held, model, this.atmosphericPressure);
+      return [{ position, slot, listedRows: this.#comparedPositions.includes(position) ? outOfRangeRows : [] }];
+    });
+  }
+
+  /**
+   * The model and the slots it runs on, in one step, so the outputs
+   * derivation never sees a slot and the model disagree. `slots` names every
+   * slot that holds values; no slot returns to holding nothing, so each still
+   * does. Any landing answers whatever was pending: a question rehearsed
+   * against a slot that has since moved is stale, and an unanswered question
+   * is a "No".
+   */
+  #land(model: RegisteredModel, slots: readonly Pick<RehearsedSlot, "position" | "slot">[]): void {
+    for (const { position, slot } of slots) {
+      this.#slots[position]?.replaceWith(slot);
+    }
     this.model = model;
     this.chart = this.#chartFor(model);
     this.pendingSwitch = null;
   }
 
-  /**
-   * The slots an entry-mode change converts, in slot order: every slot that
-   * holds values and every input the model runs on. A model switch reshapes
-   * slot 1 alone, so slots 2 and 3 can lack what a conversion reads, a
-   * humidity or a mean radiant temperature; such a slot is left as it is
-   * held, as the switch left it, and its gate stays closed.
-   */
-  #convertibleSlots(): InputSlot[] {
-    return this.#slots.filter((slot): slot is InputSlot => slot !== null && holdsEveryInputOf(slot, this.model));
+  /** Every slot that holds values, in slot order. */
+  #heldSlots(): InputSlot[] {
+    return this.#slots.filter((slot): slot is InputSlot => slot !== null);
   }
 
   #chartFor(model: RegisteredModel): ChartState {

@@ -28,7 +28,7 @@ import {
 } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import { holdsEveryInputOf, type Slot } from "$lib/core/slot";
+import type { Slot } from "$lib/core/slot";
 import { slotBadges, type SlotBadge } from "$lib/core/slotBadge";
 import type { InputSlot, Session, SlotPosition } from "./session.svelte";
 
@@ -236,13 +236,8 @@ export class SlotOutputs {
     outOfRangeQuantities(this.#slot, this.#session.model, this.#session.atmosphericPressure),
   );
 
-  // A slot lacking an input the model runs on is one no switch has seeded
-  // yet; the gate stops it rather than the model throwing.
   readonly #notCalculated = $derived.by(
-    () =>
-      this.#outOfRangeQuantities.length > 0 ||
-      this.#atmosphericPressureOutOfRange() ||
-      !holdsEveryInputOf(this.#slot, this.#session.model),
+    () => this.#outOfRangeQuantities.length > 0 || this.#atmosphericPressureOutOfRange(),
   );
 
   readonly #lastValid = $derived.by((): LastValidRun | null => {

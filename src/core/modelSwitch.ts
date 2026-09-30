@@ -2,8 +2,8 @@
  * What setting a model would do to a slot, worked out without touching it
  * (ADR-0002 decision 32). A pure function of one slot and one model: it reads
  * the slot in the plain shape `core/` already reads, returns what the slot
- * would hold, and mutates nothing. The session lands the answer; Compare will
- * ask it once per slot.
+ * would hold, and mutates nothing. The session asks it once for each slot
+ * that holds values and lands the answers together (decision 52).
  *
  * The three steps are ordered, and the order is the point — converting the
  * entry mode changes which quantities the slot holds, so seeding has to see

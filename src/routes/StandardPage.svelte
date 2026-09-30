@@ -234,6 +234,7 @@
           {/if}
           <ModelSwitchDialog
             pending={session.pendingSwitch}
+            namesSlots={session.comparedPositions.length > 1}
             unitSystem={session.unitSystem}
             onaccept={acceptSwitch}
             ondecline={() => session.declineSwitch()}

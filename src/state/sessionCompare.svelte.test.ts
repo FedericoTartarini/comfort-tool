@@ -214,19 +214,17 @@ describe("the outputs of the compared slots", () => {
     expect(outputs.slots[2].result).toBe(third);
   });
 
-  // While a model switch rehearses slot 1 alone, a compared slot can lack
-  // what the new model runs on; the gate stops it rather than the model
-  // throwing.
-  it("do not calculate a compared slot that lacks what the model runs on", () => {
+  // A switch seeds every slot that holds values, so a compared slot holds
+  // what the new model runs on: here PMV (ASHRAE 55)'s option.
+  it("calculate every compared slot after a switch to a model they held nothing of", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setCompare(true);
 
     session.setModel(pmvPpdAshrae);
 
-    expect(outputs.slots[0].notCalculated).toBe(false);
-    expect(outputs.slots[1].notCalculated).toBe(true);
-    expect(outputs.slots[1].result).toBeNull();
+    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([false, false]);
+    expect(outputs.slots[1].result).toEqual(outputs.slots[0].result);
   });
 });
 
@@ -483,7 +481,7 @@ describe("the session's entry modes", () => {
     expect(heldSlot(session, 2).humidity?.mode).toBe(humidityMode.humidityRatio);
   });
 
-  it("keeps every slot that holds values in one temperature and one humidity entry mode through enabling, disabling and changes", () => {
+  it("keeps every slot that holds values in one temperature and one humidity entry mode through enabling, disabling, changes and switches", () => {
     const session = new Session(pmvPpdIso);
     const steps: readonly ((changed: Session) => void)[] = [
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
@@ -497,6 +495,11 @@ describe("the session's entry modes", () => {
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
       (changed) => changed.setSlotEnabled(1, true),
       (changed) => changed.setCompare(true),
+      (changed) => changed.setModel(heatIndexRothfusz),
+      (changed) => changed.setModel(adaptiveAshrae),
+      (changed) => changed.requestModel(pmvPpdIso),
+      (changed) => changed.setHumidityMode(humidityMode.dewPoint),
+      (changed) => changed.setTemperatureMode(temperatureMode.operative),
     ];
 
     for (const step of steps) {
@@ -507,18 +510,16 @@ describe("the session's entry modes", () => {
     }
   });
 
-  // While a model switch reshapes slot 1 alone, slot 2 can lack what the
-  // model runs on, and with it what a conversion reads: Adaptive's slot has
-  // no humidity, Heat Index's no mean radiant temperature. It is left as it
-  // is held, as the switch left it.
+  // A slot started on Adaptive holds no humidity, and one started on Heat
+  // Index no mean radiant temperature, until a switch seeds every slot that
+  // holds values; the conversion then finds what it reads in slot 2 as well.
   it.each([
     { from: adaptiveAshrae, change: (changed: Session) => changed.setHumidityMode(humidityMode.dewPoint) },
     { from: heatIndexRothfusz, change: (changed: Session) => changed.setTemperatureMode(temperatureMode.operative) },
-  ])("converts slot 1 and leaves a slot the model cannot run on as held, from $from.info.label", ({ from, change }) => {
+  ])("converts slot 2 after a switch from $from.info.label, as a session holding it alone does", ({ from, change }) => {
     const session = new Session(from);
     session.setCompare(true);
     session.setModel(pmvPpdIso);
-    const held = shapeOf(heldSlot(session, 1));
     const alone = new Session(from);
     alone.setModel(pmvPpdIso);
     change(alone);
@@ -526,7 +527,7 @@ describe("the session's entry modes", () => {
     change(session);
 
     expect(shapeOf(session.slots[0])).toEqual(shapeOf(alone.slots[0]));
-    expect(shapeOf(heldSlot(session, 1))).toEqual(held);
+    expect(shapeOf(heldSlot(session, 1))).toEqual(shapeOf(alone.slots[0]));
   });
 
   it("resolves the chart's axes and the picker's choices from the session's entry mode, whichever slot's gate is closed", () => {

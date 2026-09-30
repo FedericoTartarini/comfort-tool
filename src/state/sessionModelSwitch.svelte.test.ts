@@ -12,37 +12,15 @@
  */
 import { psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import { outOfRangeRows, type Bound } from "$lib/core/applicability";
+import { outOfRangeRows } from "$lib/core/applicability";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
-import { otherSlotsOf, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { listedRowsOf, resultValueOf, shapeOf, withBounds } from "./sessionTestReaders";
 
 const q = quantities;
-
-/**
- * `pmvPpdIso` with some of its applicability bounds replaced, keyed as
- * `info.inputs` keys them. Everything else about the model is the registered
- * one's, because the bounds are the only thing these tests are about.
- */
-function withBounds(bounds: Readonly<Record<string, Bound>>): RegisteredModel {
-  return {
-    ...pmvPpdIso,
-    info: {
-      ...pmvPpdIso.info,
-      name: `fixture_bounds_${Object.keys(bounds).join("_")}`,
-      inputs: Object.fromEntries(
-        Object.entries(pmvPpdIso.info.inputs).map(([key, variable]) => [
-          key,
-          key in bounds ? { ...variable, applicability: bounds[key] } : variable,
-        ]),
-      ),
-    },
-  };
-}
 
 // The slot starts at tdb 25, which each of these puts outside the new model's
 // applicability — from above, from below, and by a bound with one end only.
@@ -81,8 +59,8 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.requestModel(belowTheSlot);
 
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual([{ quantity: q.tdb, value: 25, bound: { min: 10, max: 20 } }]);
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual(outOfRangeRows(session.slots[0], belowTheSlot, DEFAULT_ATMOSPHERIC_PRESSURE));
+    expect(listedRowsOf(session)).toEqual([{ quantity: q.tdb, value: 25, bound: { min: 10, max: 20 } }]);
+    expect(listedRowsOf(session)).toEqual(outOfRangeRows(session.slots[0], belowTheSlot, DEFAULT_ATMOSPHERIC_PRESSURE));
   });
 
   it("lists the operative temperature against the range both temperatures allow at once", () => {
@@ -93,7 +71,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     // tdb is 10–20 here and tr is the registered 10–40, so the row is 10–20.
     session.requestModel(belowTheSlot);
 
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual([
+    expect(listedRowsOf(session)).toEqual([
       { quantity: q.operative_tmp, value: operative, bound: { min: 10, max: 20 } },
     ]);
   });
@@ -104,7 +82,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.requestModel(oneSidedBounds);
 
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual([{ quantity: q.clo, value: 0.5, bound: { min: 1 } }]);
+    expect(listedRowsOf(session)).toEqual([{ quantity: q.clo, value: 0.5, bound: { min: 1 } }]);
 
     session.acceptSwitch();
 
@@ -140,7 +118,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.requestModel(drierThanTheSlot);
 
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual([
+    expect(listedRowsOf(session)).toEqual([
       { quantity: q.hr, value: entered, bound: { min: psy_ta_rh(25, 0).hr, max: psy_ta_rh(25, 40).hr } },
     ]);
 
@@ -160,7 +138,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.requestModel(belowTheSlot);
 
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual([
+    expect(listedRowsOf(session)).toEqual([
       { quantity: q.tdb, value: 25, bound: { min: 10, max: 20 } },
       { quantity: q.hr, value: 0.017, bound: { min: psy_ta_rh(20, 0).hr, max: psy_ta_rh(20, 100).hr } },
     ]);
@@ -204,7 +182,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     session.requestModel(aboveTheSlot);
 
     expect(session.pendingSwitch?.model).toBe(aboveTheSlot);
-    expect(session.pendingSwitch?.outOfRangeRows).toEqual([{ quantity: q.tdb, value: 25, bound: { min: 28, max: 40 } }]);
+    expect(listedRowsOf(session)).toEqual([{ quantity: q.tdb, value: 25, bound: { min: 28, max: 40 } }]);
   });
 
   it("drops a pending question when the model asked for is the current one", () => {
@@ -240,13 +218,4 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
   });
 
-  it("changes the first slot only when the answer is yes", () => {
-    const session = sessionComparingThreeSlots(pmvPpdIso);
-    const others = otherSlotsOf(session);
-
-    session.requestModel(belowTheSlot);
-    session.acceptSwitch();
-
-    expect(otherSlotsOf(session)).toEqual(others);
-  });
 });
