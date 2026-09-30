@@ -57,7 +57,7 @@ One way of entering an entry group: which quantity the user types. Temperature h
 _Avoid_: input mode, representation, humidity type, toggle
 
 **Activity-adjusted input**:
-A quantity a model takes corrected for the occupant's activity: the relative air speed, from the air speed and the metabolic rate, and the dynamic clothing insulation, from the clothing insulation by the model's standard's rule. Each is an entry group whose two entry modes enter the uncorrected value, with the correction derived, or the corrected value itself. Switching into the corrected mode shows the derived value; switching back keeps the number.
+A quantity a model takes corrected for the occupant's activity: the relative air speed, from the air speed and the metabolic rate, and the dynamic clothing insulation, from the clothing insulation by the model's standard's rule. Each is an entry group whose two entry modes enter the uncorrected value, with the correction derived, or the corrected value itself. Switching into the corrected mode shows the derived value; switching back inverts the air-speed correction, and keeps the clothing number, since the ISO clothing correction has no inverse.
 _Avoid_: derived input, self-generated air speed, activity-generated air speed, toggle
 
 **Preset**:

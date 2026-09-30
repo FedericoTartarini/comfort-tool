@@ -1157,6 +1157,20 @@ the local `../comfort_tool` checkout:
     presets would then be wrong above 1.2 met; inverting on the switch back where an inverse exists, because the
     ISO clothing has none and the two standards would then behave differently on one switch; output rows for the
     derived values, because a row that reads an input back is not a result.
+    **Revised 2026-09-30 (the grilling of `.scratch/activity-adjusted-inputs/` ticket 03's open points).** The switch
+    back to air speed entry inverts the correction, `v = vr − 0.3·(met − 1)` and `v = vr` at or below 1 met, the
+    exact inverse of the library's `v_relative` to its rounding of 0.001; so the model takes the same relative air
+    speed before and after a switch either way, and the chart's zones, its result and its band do not move, only the
+    axis's quantity. The clothing group keeps the number on the switch back, as above, because the ISO correction has
+    no closed inverse; the rule is per group, never per standard, so "switching back keeps the number" is the clothing
+    group's. The rejection of "inverting … where an inverse exists" stands as a rejection of an inverse for one
+    standard's clothing. An inverse may give a negative air speed, when the entered relative air speed is below the
+    activity's share; the air speed is bounded at 0 by its kind (`kindBounds`, decision 46), which the gate reads in
+    every model and a switch lists. The mode is the slot's: through a model without the group the slot returns to the
+    default mode by the same conversion, as decision 32 says for temperature; through Adaptive the relative air speed
+    the model takes comes back unchanged and only the row's label is lost. The second mode's axis quantity has a
+    declared axis range, as `operative_tmp` has, and a registry-wide test holds that a model declaring a group's
+    default axis declares every mode's; the group itself is still not declared.
 
 ## Consequences
 
