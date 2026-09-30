@@ -7,7 +7,7 @@
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
  */
-import { t_o, v_relative, type Bound } from "jsthermalcomfort";
+import { t_o, v_relative } from "jsthermalcomfort";
 import { clo_dynamic_inverse } from "$lib/temporary-library/clo_dynamic_inverse";
 import { v_relative_inverse } from "$lib/temporary-library/v_relative_inverse";
 import {
@@ -124,13 +124,11 @@ export interface EntryCorrection {
   readonly corrected: ValueEntryMode;
   /**
    * The entry of the uncorrected mode that `model` is given `taken` for at the
-   * slot's own other values, by the correction's inverse. `taken` is the value
-   * at the `end` of a bound, and where no entry is given exactly `taken` the answer is the
-   * nearest one given a value inside that end: no less than a `min`, no more
-   * than a `max`. So an entry at an end converted by this is inside the
-   * model's own bound.
+   * slot's own other values, by the correction's inverse: exactly under a
+   * correction that rounds, and to the inverse's own precision under one that
+   * does not.
    */
-  readonly entryGiving: (taken: number, slot: Slot, model: RegisteredModel, end: keyof Bound) => number;
+  readonly entryGiving: (taken: number, slot: Slot, model: RegisteredModel) => number;
 }
 
 export const valueEntryGroups: readonly ValueEntryGroup[] = [
@@ -311,30 +309,15 @@ function airSpeedGiving(vr: number, slot: Slot): number {
   return v_relative_inverse({ vr, met: requireValue(slot.values, q.met) });
 }
 
-/** The decimals `clo_dynamic_inverse` answers to at most, and one step of them, [clo]. */
-const CLOTHING_INVERSE_DECIMALS = 9;
-const CLOTHING_INVERSE_STEP = 10 ** -CLOTHING_INVERSE_DECIMALS;
-
 /**
- * The clothing insulation `model`'s rule corrects to `dynamic`, the value at
- * the `end` of a bound, at the slot's own values ({@link clothingCorrectionAt}): the clothing
- * group's {@link EntryCorrection.entryGiving}. `clo_dynamic_inverse` answers
- * to nine decimals and never with a clothing insulation corrected to less,
- * which is inside a `min`. Under ISO 7730's rule, which does not round, its
- * answer is corrected to a hair more than `dynamic` (2.0000000004 clo for the
- * model's 2), which the library, comparing strictly, would report after the
- * run: for a `max` the answer one step below is then the one. Under ASHRAE
- * 55's rule the inverse's answer is corrected to exactly `dynamic` and is
- * kept at either end: 1.875 clo for 1.5 at 2 met.
+ * The clothing insulation `model`'s rule corrects to `dynamic` at the slot's
+ * own values ({@link clothingCorrectionAt}), by the temporary library's
+ * `clo_dynamic_inverse`: the clothing group's {@link EntryCorrection.entryGiving}.
+ * The number itself for a model without a rule.
  */
-function clothingGiving(dynamic: number, slot: Slot, model: RegisteredModel, end: keyof Bound): number {
+function clothingGiving(dynamic: number, slot: Slot, model: RegisteredModel): number {
   const correction = clothingCorrectionAt(slot, model);
-  if (!correction) {
-    return dynamic;
-  }
-  const clothing = clo_dynamic_inverse({ clo_dynamic: dynamic, correction });
-  const isPastMax = end === "max" && correction(clothing) > dynamic;
-  return isPastMax ? Number((clothing - CLOTHING_INVERSE_STEP).toFixed(CLOTHING_INVERSE_DECIMALS)) : clothing;
+  return correction ? clo_dynamic_inverse({ clo_dynamic: dynamic, correction }) : dynamic;
 }
 
 /**

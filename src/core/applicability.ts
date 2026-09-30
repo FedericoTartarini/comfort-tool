@@ -101,18 +101,17 @@ function everyBoundFor(model: RegisteredModel, quantity: Quantity): Bound[] {
 }
 
 /**
- * `bound` converted into the quantity a person entered, each end by `convert`,
- * which is told the end it converts:
+ * `bound` converted into the quantity a person entered, each end by `convert`:
  * the one rule by which an entry is held to a bound on what it is turned into
  * (ADR-0002 decisions 46 and 54), the humidity entry's and an
  * activity-adjusted entry's. An end `convert` has no finite value for is
  * dropped. `undefined` where neither end is left, and where the converted
  * ends come out inverted: the entry then has no bound.
  */
-function convertedBound(bound: Bound, convert: (value: number, end: keyof Bound) => number): Bound | undefined {
+function convertedBound(bound: Bound, convert: (end: number) => number): Bound | undefined {
   const converted = boundOf(
-    bound.min === undefined ? undefined : convert(bound.min, "min"),
-    bound.max === undefined ? undefined : convert(bound.max, "max"),
+    bound.min === undefined ? undefined : convert(bound.min),
+    bound.max === undefined ? undefined : convert(bound.max),
   );
   if (isInverted(converted)) {
     return undefined;
@@ -182,7 +181,7 @@ function correctedEntryBoundFor(
     return taken;
   }
   const kind = kindBounds[quantity.kind];
-  const converted = taken && convertedBound(taken, (value, end) => correction.entryGiving(value, slot, model, end));
+  const converted = taken && convertedBound(taken, (end) => correction.entryGiving(end, slot, model));
   const both = intersect([converted, kind].filter((bound): bound is Bound => bound !== undefined));
   return both && isInverted(both) ? kind : both;
 }
@@ -242,8 +241,9 @@ function boundingQuantities(quantity: Quantity, slot: Slot): readonly Quantity[]
  * humidity-ratio entry while the pressure is out of range. An entered `v` or
  * clothing insulation is tested against the model's bound for what the model
  * is given, converted into it, so the library finds no row of the model's info
- * broken by what the gate passed; what {@link violationRows} still reports of
- * an input is a limit the info does not carry.
+ * broken by what the gate passed, to the precision a person enters; what
+ * {@link violationRows} still reports of an input is a limit the info does
+ * not carry.
  *
  * The bounds are read at `boundsAt`, the slot itself unless given: a bound may be
  * read at another entry, and `core/modelSwitch.ts` asks what the entries

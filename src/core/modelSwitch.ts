@@ -15,8 +15,11 @@
  */
 import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
 import type { RegisteredModel } from "./modelDeclaration";
+import { shownAtLeast, shownAtMost } from "./numberFormat";
 import type { Quantity } from "./quantities";
 import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
+import { displayUnitFor, type DisplayUnit } from "./units";
+import { unitSystem } from "./unitSystem";
 
 /** What a switch would do to one slot: the slot it would leave, and what the new model would not accept. */
 export interface RehearsedSwitch {
@@ -70,6 +73,11 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
 /**
  * `slot` with each listed value moved to the end of its bound it is beyond,
  * and no further; a bound with one end moves a value only towards that end.
+ * The end is taken at the precision the row shows, on the side inside the
+ * bound: a converted end has more decimals than that (1.934… clo for ISO
+ * 7730's 2 clo in still air at 1 met), and the inverse that gave it is a
+ * search, whose answer the model may be given a hair outside its own bound
+ * for. So a yes leaves 1.93 clo, the number the range beside the row reads.
  *
  * The only place the app adjusts a value the person entered, and it is reached
  * only by their yes (ADR-0002 decision 32). Everywhere else Applicability is a
@@ -78,17 +86,18 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
 export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
   const adjusted = new Map<Quantity, number>();
   for (const { quantity, value, bound } of rows) {
-    adjusted.set(quantity, nearestEnd(value, bound));
+    adjusted.set(quantity, nearestEnd(value, bound, displayUnitFor(quantity, unitSystem.si)));
   }
   return withEnteredValues(slot, adjusted);
 }
 
-function nearestEnd(value: number, bound: Bound): number {
+/** The end of `bound` that `value` is beyond, at the precision `unit` shows and inside the bound; `value` itself when it is beyond neither. */
+function nearestEnd(value: number, bound: Bound, unit: DisplayUnit): number {
   if (bound.min !== undefined && value < bound.min) {
-    return bound.min;
+    return unit.toSi(shownAtLeast(unit.fromSi(bound.min)));
   }
   if (bound.max !== undefined && value > bound.max) {
-    return bound.max;
+    return unit.toSi(shownAtMost(unit.fromSi(bound.max)));
   }
   return value;
 }

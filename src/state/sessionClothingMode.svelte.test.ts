@@ -276,7 +276,7 @@ describe("the session's clothing entry mode", () => {
 });
 
 describe("a model switch under clothing insulation entry", () => {
-  it("asks about a clothing insulation the new model's converted bound stops, and moves it to the converted end on a yes", () => {
+  it("asks about a clothing insulation the new model's converted bound stops, and moves it to the converted end as the row shows it on a yes", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.slots[0].setEntered(q.met, 2);
@@ -293,14 +293,15 @@ describe("a model switch under clothing insulation entry", () => {
 
     expect(session.model).toBe(pmvPpdAshrae);
     expect(session.clothingMode).toBe(clothingMode.uncorrected);
-    expect(session.slots[0].values.get(q.clo)).toBe(1.875);
+    // Inside the bound at the two decimals a row shows: 1.88 would be past it.
+    expect(session.slots[0].values.get(q.clo)).toBe(1.87);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].violations).toEqual([]);
   });
 
-  // ISO 7730's rule does not round, and the library compares strictly: the end
-  // a yes leaves is given to the model as no more than its 2 clo.
+  // ISO 7730's rule does not round, its converted end is a search's answer, and the library
+  // compares strictly: a yes leaves the end as the row shows it, given to the model inside its 2 clo.
   it("leaves, on a yes, a clothing insulation ISO 7730's run reports nothing of", () => {
     // The same model under no standard corrects no clothing, so 2 clo is inside its bound as entered.
     const session = new Session({ ...pmvPpdIso, standard: undefined });
@@ -318,7 +319,7 @@ describe("a model switch under clothing insulation entry", () => {
 
     session.acceptSwitch();
 
-    expect(session.slots[0].values.get(q.clo)).toBe(row.bound.max);
+    expect(session.slots[0].values.get(q.clo)).toBe(1.93);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].violations).toEqual([]);
@@ -345,7 +346,7 @@ describe("a model switch under clothing insulation entry", () => {
     session.acceptSwitch();
 
     expect(session.slots[0].values.get(q.v)).toBe(0);
-    expect(session.slots[0].values.get(q.clo)).toBe(rows[1].bound.max);
+    expect(session.slots[0].values.get(q.clo)).toBe(1.93);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
   });

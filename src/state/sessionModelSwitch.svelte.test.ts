@@ -92,7 +92,8 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.acceptSwitch();
 
-    expect(session.slots[0].values.get(q.clo)).toBe(row.bound.min);
+    // Inside the bound at the two decimals a row shows.
+    expect(session.slots[0].values.get(q.clo)).toBe(1.66);
     expect(session.slots[0].values.get(q.met)).toBe(6);
   });
 
@@ -115,7 +116,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
   });
 
-  it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end", () => {
+  it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end as the row shows it", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setHumidityMode(humidityMode.humidityRatio);
@@ -130,7 +131,10 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.acceptSwitch();
 
-    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(25, 40).hr });
+    // Inside the bound at the two decimals of g/kg a row shows: 7.88 of 7.886.
+    expect(session.slots[0].humidity?.mode).toBe(humidityMode.humidityRatio);
+    expect(session.slots[0].humidity?.value).toBe(0.00788);
+    expect(psy_ta_rh(25, 40).hr - 0.00788).toBeLessThan(0.00001);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
   });
 
@@ -152,7 +156,9 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     session.acceptSwitch();
 
     expect(session.slots[0].values.get(q.tdb)).toBe(20);
-    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(20, 100).hr });
+    expect(session.slots[0].humidity?.mode).toBe(humidityMode.humidityRatio);
+    expect(session.slots[0].humidity?.value).toBe(0.01469);
+    expect(psy_ta_rh(20, 100).hr - 0.01469).toBeLessThan(0.00001);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
   });
 

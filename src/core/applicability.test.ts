@@ -18,8 +18,10 @@ import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing } from "
 import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
+import { adjustToBounds } from "./modelSwitch";
+import { shownAtMost } from "./numberFormat";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
-import { defaultEntryModes, dynamicClothingOf, relativeAirSpeedOf, startingSlot, withEnteredValues, type Slot } from "./slot";
+import { defaultEntryModes, dynamicClothingOf, relativeAirSpeedOf, requireValue, startingSlot, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
@@ -139,9 +141,9 @@ describe("enteredBound / outOfRangeQuantities", () => {
     expect(maxAt(pmvPpdAshrae, { met: 2, v: 0.4 })).toBe(maxAt(pmvPpdAshrae, { met: 2, v: 0 }));
   });
 
-  // The library compares strictly, and ISO 7730's rule does not round: an end a hair
-  // outside the model's bound would pass the gate and be reported by the run.
-  it("gives the model no more than its bound for an entry at a converted end, so the run reports none the gate passed", () => {
+  // The library compares strictly, and ISO 7730's rule does not round: its converted end is a search's answer,
+  // given to the model a hair over its bound. A yes moves an entry to the end as the row shows it, inside the bound.
+  it("gives the model no more than its bound for an entry a yes moved to a converted end, so the run reports none", () => {
     for (const model of [pmvPpdIso, pmvPpdAshrae]) {
       const airSpeedMax = model.info.inputs.vr?.applicability?.max ?? 0;
       const clothingMax = model.info.inputs.clo?.applicability?.max ?? 0;
@@ -149,11 +151,13 @@ describe("enteredBound / outOfRangeQuantities", () => {
         const airSpeedEnd = enteredBound(model, q.v, enteredSlotFor(model, { met }), DEFAULT_ATMOSPHERIC_PRESSURE)?.max ?? Number.NaN;
         for (const v of [0, airSpeedEnd / 2, airSpeedEnd]) {
           const clothingEnd = enteredBound(model, q.clo, enteredSlotFor(model, { met, v }), DEFAULT_ATMOSPHERIC_PRESSURE)?.max ?? Number.NaN;
-          const slot = enteredSlotFor(model, { met, v, clo: clothingEnd });
+          const beyond = enteredSlotFor(model, { met, v, clo: clothingEnd + 1 });
+          const slot = adjustToBounds(beyond, outOfRangeRows(beyond, model, DEFAULT_ATMOSPHERIC_PRESSURE));
           const at = `${model.info.label}, ${met} met, ${v} m/s`;
           expect(outOfRangeRows(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), at).toEqual([]);
           expect(relativeAirSpeedOf(slot), at).toBeLessThanOrEqual(airSpeedMax);
           expect(dynamicClothingOf(slot, model), at).toBeLessThanOrEqual(clothingMax);
+          expect(requireValue(slot.values, q.clo), at).toBe(shownAtMost(clothingEnd));
           // And no bound stops short: 0.01 clo past the end, a step ASHRAE 55's rounding cannot hide, is given as more.
           expect(dynamicClothingOf(enteredSlotFor(model, { met, v, clo: clothingEnd + 0.01 }), model), at).toBeGreaterThan(clothingMax);
           const rows = violationRows(model, runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
