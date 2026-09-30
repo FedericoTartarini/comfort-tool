@@ -49,12 +49,16 @@ The one file in `src/models/` that binds a model: its info, standard, run call, 
 _Avoid_: definition, config, registration (that is the one line in the registry)
 
 **Entry group**:
-A set of quantities the user may enter in more than one entry mode: temperature and humidity. Derived from the declaration's inputs, not declared.
+A set of quantities the user may enter in more than one entry mode: temperature, humidity, air speed and clothing. Read from the declaration's inputs and, for clothing, from the model's standard; not declared.
 _Avoid_: input mode, representation group
 
 **Entry mode**:
-One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five. The entered quantity is the truth; what the model takes is derived from it. A session has one entry mode per entry group: changing it converts every slot.
-_Avoid_: input mode, representation, humidity type
+One way of entering an entry group: which quantity the user types. Temperature has two (separate, operative), humidity five, air speed two (air speed, relative air speed) and clothing two (clothing insulation, dynamic clothing insulation). The entered quantity is the truth; what the model takes is derived from it. A session has one entry mode per entry group: changing it converts every slot.
+_Avoid_: input mode, representation, humidity type, toggle
+
+**Activity-adjusted input**:
+A quantity a model takes corrected for the occupant's activity: the relative air speed, from the air speed and the metabolic rate, and the dynamic clothing insulation, from the clothing insulation by the model's standard's rule. Each is an entry group whose two entry modes enter the uncorrected value, with the correction derived, or the corrected value itself. Switching into the corrected mode shows the derived value; switching back keeps the number.
+_Avoid_: derived input, self-generated air speed, activity-generated air speed, toggle
 
 **Preset**:
 A named reference value the library publishes for a quantity (a typical task for metabolic rate, a typical ensemble for clothing), offered beside free entry. Choosing one enters its number; the number is the truth and nothing remembers the preset.
@@ -65,7 +69,7 @@ A switch a model takes beside its quantities, carrying no unit and never on a ch
 _Avoid_: setting, flag, parameter
 
 **Slot**:
-One set of values to run a model on: a value per quantity, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three, named by position ("Input 1"); a slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds.
+One set of values to run a model on: what describes one air and one occupant, a value per quantity the model names, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three, named by position ("Input 1"); a slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
 
 **Compare**:
@@ -73,7 +77,7 @@ Showing up to three slots side by side on the Standard page, each with its own r
 _Avoid_: baseline, active slot, scenario
 
 **Session**:
-The state shared by the Standard and Explore workspaces: model, unit system, slots, Compare, chart settings, atmospheric pressure.
+What makes three slots one table, shared by the Standard and Explore workspaces: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot.
 _Avoid_: store, app state
 
 **Atmospheric pressure**:

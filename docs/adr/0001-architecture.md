@@ -179,6 +179,8 @@ io.pmvPpdIso({ tdb, tr, vr, rh, met, clo, units: "SI", edition: "7730-2005" })  
 `Unit` / `step` / `toSi` / `fromSi`, `defaultValue`, `OptionSpec` / `OptionValue`, route path segments for standards, `InputSpec` / `OutputSpec` / `Band`, `ModelDefinition` and the `models` registry, `QuantityValues`, `InputCalculator` applicability, `evaluateMany`. They are either presentation-layer decisions (§4.2 / §4.3) or duplicates of types the library already has.
 
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): in the paragraph below, "Set pressure" is not an input calculator. Atmospheric pressure is session state and the share link carries it, as §4.5 and §7 say: no model takes it, so a calculator would have no target input to write into.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 54** (2026-09-30): in the paragraph below, "Relative air speed" is not an option (an option's key is a kwarg, decision 36) but the second entry mode of the air-speed entry group, and "Dynamic predictive clothing" is the `clo_tout` calculator, the clo predicted from the outdoor temperature at 6 a.m. The activity correction of clothing, `clo_dynamic_ashrae` / `clo_dynamic_iso`, is not a calculator: it is derived under the clothing entry group's first mode, as `vr` is.
 
 Where the old tool's input-panel button group belongs: `Create custom ensemble / Dynamic predictive clothing / Solar gain / Globe temp / Set pressure` → app-side input calculators whose formulas call the library; `Relative air speed / Local control` → options in the declaration file; `Local discomfort` (ankle draft, vertical temperature difference) only produces outputs and does not change inputs → enters the library as an ordinary small model, available in Explore; `Reset / Save / Reload / Share / SI-IP / Documentation` → app actions. The semantics of an input calculator are a **one-shot Apply**: the user fills in the calculator's own small inputs, clicks Apply, and the result is written into the target input; calculators do not enter the session state or the share link.
 
@@ -372,6 +374,8 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 53** (2026-09-29): while the atmospheric pressure is out of range, a humidity-ratio entry has no bound, so the dialog of the "Switching models" rule neither lists it nor moves it.
 >
 > **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 to 52, as noted the same day; `.scratch/compare/` ticket 09).** As built (`state/session.svelte.ts`, `state/compute.svelte.ts`): `Session.compare` is a boolean, with `setCompare`, `isSlotEnabled`, `setSlotEnabled` and the derived `comparedPositions` beside it. `slots` below is `[InputSlot, InputSlot | null, InputSlot | null]`, slots 2 and 3 `null` until first enabled. The session holds no entry mode of its own: `temperatureMode` and `humidityMode` read slot 1's, and `setTemperatureMode` and `setHumidityMode` convert every slot that holds values. The last valid run is kept by a `SlotOutputs`, one per slot, and `Outputs.slots` lists those of the compared slots. "All three slots" in the "Switching models" rule is every slot that holds values.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 54** (2026-09-30): the `v → vr` rule below holds under the air-speed entry group's first entry mode; under the second the person enters `vr`. Clothing is the second such group: the model's standard's rule derives the dynamic clo from the entered one under the first mode, and the second enters the dynamic clo. The share link writes the entry modes once, beside the model (decision 51 as amended the same day).
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
@@ -431,6 +435,8 @@ Rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 49** (2026-09-29): the example's `"environment": { "p_atm": 101.325 }` is the atmospheric pressure in Pa, `101325`, with no `environment` around it. A link that carries none means 101 325 Pa. The example is left as written.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 50** (2026-09-29): the example's `"compare": { "enabled": true, "active": 0, "baseline": 0 }` carries whether Compare is on and which slots are enabled, with no `active` and no `baseline`. A slot never enabled is `null`, as the example's second and third are. The example is left as written.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 51 and 54** (2026-09-30): the example's per-slot `"humidity": { "mode": … }` and `"temperature": { "mode": … }` are written once, beside `"model"`, one mode per entry group, air speed and clothing included; a slot carries its values and options alone. The example is left as written.
 
 `?share=v1.<Base64URL(JSON)>`
 

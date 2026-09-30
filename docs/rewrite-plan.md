@@ -46,6 +46,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-30 — position, Compare done**: Phase 5 items 1 and 2 landed on `rewrite/v1` (`.scratch/compare/`), a commit per ticket, two for 01 and 04: 01 `9936a0c` three slots' scans are measured (with `251da23`), 02 `bf85aec` the outputs are derived per slot, 03 `ab47b68` the chart's request lists its slots, 04 `f6b1e08` the Compare switch, the three columns and a row per compared slot (with `b33a8b2`, slot 1's button), 05 `c5578d2` both charts draw every compared slot's comfort zones and marker, 06 `4d98cc0` an entry mode converts every slot, 07 `76c92f8` a model switch asks once for every compared slot, 08 `43b9261` a humidity-ratio entry has no bound while the pressure is out of range. Ticket 09 read the documents against the code: decisions 50 to 53 and ADR-0001's §4.3, §4.4 and §4.5 markers carry dated notes. The four scripts are green at 438 tests. **Measured** (Chrome 154, Vite dev server): three slots' scans of PMV (ASHRAE 55)'s dynamic chart, median 328.3 ms, one 98.0 ms (ticket 01, no throttling); in the running app, an edit the three slots share redraws that chart in a median of 332.8 ms, an edit to one slot's clothing in 149.0 ms, and PMV (ISO 7730)'s three slots in 57.7 ms (ticket 05). The three models were walked end to end in the running app with Compare on (Chromium via Playwright, 1600×1000, Vite dev server), in SI and in IP, by mouse and by keyboard, reached by link, by the select, by typed address and by the back and forward buttons, with the console clean. Seen and left, with where each goes: the switch dialog's default width clips "Allowed range" once it has the slot column, the not-calculated note is a caption line and not text in its row, the swatch rule is written in two components' styles, slots 2 and 3's hues are placeholders, and how nine zones read on one chart is not judged (all Phase 5c); a scanned dynamic chart draws bands for one slot and comfort zones for two or more until the Standard / Explore split (Phase 5 item 3); whether a humidity entry mode says itself which bound it has (`BS04`, `.scratch/review-after-4b/deferred.md`, "Unscheduled"); what the checklist's human half found in the diff and where `CONTEXT.md` and the code's names differ (ticket 09's Comments, neither changed). **Next: the grilling of `.scratch/activity-adjusted-inputs/` 01 and 02, then Phase 5 item 3.**
 
+> **2026-09-30 — position, activity-adjusted inputs grilled**: `.scratch/activity-adjusted-inputs/` 01 and 02 are placed, ahead of the code (ADR-0002 decision 54; decision 48 revised, decision 51 amended; `CONTEXT.md`'s Slot, Session, Entry group and Entry mode revised and **Activity-adjusted input** added). The principle first: a slot holds what describes one air and one occupant, the session what makes three slots one table, and the test is whether two slots could differ on a thing with the page still one row, one chart and one table. Checked against every piece of state the code holds, only the entry modes disagreed three ways (decision 51's text, the code, ADR-0001 §4.8's example), settled as the slot keeping its entries with the session their only writer and the link writing them once. Both tickets are one concept: an input the library takes corrected for activity is an entry group with two entry modes, enter the uncorrected value or the corrected one. The deployed tool's "Include activity-generated air speed" is that second mode under the first's label (`e809c96`); its clothing correction is applied above 1.2 met where the app passes `clo` through, which pythermalcomfort's docstrings call for correcting first, and the clothing rule is the standard's, in a core table keyed by standard. The main repository lacks `clo_dynamic_ashrae` / `clo_dynamic_iso` (`cee6893`), so the library ticket comes first. Phase 5b item 2 was two formulas under one name: the deployed "Dynamic predictive clothing" button is `clo_tout`, and the item now says so. **Next: the spec and tickets in `.scratch/activity-adjusted-inputs/`, built as Phase 5 item 9 before items 3 and 4.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -83,7 +85,7 @@ What is unmaintainable is `src/`, not `package.json`.
 | **§4.7 boundary root-finding + §5 `zoneBoundary.ts`** | **`charts.psychrometricZone` (ported from the CBE original, `rhStep`/`saturationStep`/`epsilon` configurable) + `bisect`/`secant`** |
 | §4.4 Adaptive real rendering | `charts.adaptiveAshraeZone` / `adaptiveEnZone` |
 | Model metadata (partial) | `pmv_ppd_iso.{label,description,tsv}`, `pmv_ppd_ashrae.{label,description,tsv,compliance,COMPLIANCE_LIMIT}`, `adaptive_*.{label,description,offsets}` |
-| Raw material for input calculators | `clo_dynamic_ashrae` / `clo_dynamic_iso`, `v_relative`, `running_mean_outdoor_temperature`, `met_typical_tasks`, `clo_individual_garments` |
+| Raw material for input calculators | `clo_dynamic_ashrae` / `clo_dynamic_iso`, `v_relative`, `running_mean_outdoor_temperature`, `met_typical_tasks`, `clo_individual_garments`. **Noted 2026-09-30** (ADR-0002 decision 54): the first two and `v_relative` are not calculator material but activity corrections derived under an entry mode, and the main repository has neither `clo_dynamic_*` |
 
 > **Do not write `zoneBoundary.ts` (ADR §5)** — the library already has it; just pass `rhStep: 5`.
 
@@ -941,6 +943,15 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    chart has since `88f179d`. This is the probe layer ADR-0001 §4.4 deferred here on 2026-09-05. What the readout
    reports is settled in this phase's grilling; the deployed tool's reports t, rh and hr. Where it sits is Phase 5c
    item 6.
+9. Activity-adjusted inputs (added 2026-09-30, ADR-0002 decision 54; `.scratch/activity-adjusted-inputs/`). Air speed
+   and clothing are each an entry group with two entry modes: the first, the default, enters the uncorrected value
+   and the model gets the corrected one (`vr = v_relative(v, met)`; the dynamic clo by the model's standard's rule,
+   from a table in core keyed by standard); the second enters the corrected value. One control per group, the
+   session's, converting every slot; the link writes the three entry modes once (decision 51 as amended). Every
+   call takes the corrected value; switching into the corrected mode derives, switching back keeps the number; no
+   output row shows a derived value. **The library first** (decision 22): `clo_dynamic_ashrae` / `clo_dynamic_iso`
+   are ported into the main repository, which has neither. **Built before items 3 and 4**, so the link's schema is
+   written once.
 
 **Done criteria**
 - From any state, Export Link → open in a new tab → the state is identical (three slots, whether Compare is on and which slots are enabled, units, chart type, thresholds, atmospheric pressure, numbers)
@@ -959,7 +970,12 @@ into when it is applied.
 Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly out:
 
 1. **Custom clothing ensemble** — build a garment list from the library's `clo_individual_garments`, Apply writes `clo`.
-2. **Dynamic predictive clothing** — `clo_dynamic_ashrae` / `clo_dynamic_iso` (split 2026-09-05; the ISO one also takes `v` and `i_a`), Apply writes `clo`.
+2. **Predicted clothing from outdoor temperature** — `clo_tout`, the clo people wear at a given 6 a.m. outdoor
+   temperature; Apply writes `clo`. **Rewritten 2026-09-30** (ADR-0002 decision 54): it read "Dynamic predictive
+   clothing — `clo_dynamic_ashrae` / `clo_dynamic_iso` (split 2026-09-05; the ISO one also takes `v` and `i_a`),
+   Apply writes `clo`", the deployed button's name wired to the activity correction. The button is `clo_tout`
+   (`static/js/ASHRAE/ashrae.js:384-389` at `e809c96`). The activity correction is Phase 5 item 9's, not a
+   calculator: its input is its target.
 3. **Solar gain on occupants** — confirm first whether the fork already ports it; if not, that is a library task, since
    the formula is general (ADR §3).
 
