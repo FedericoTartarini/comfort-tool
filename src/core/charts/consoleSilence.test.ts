@@ -8,10 +8,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { registeredModels } from "$lib/models";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { DEFAULT_ATMOSPHERIC_PRESSURE } from "$lib/core/quantities";
 import { startingSlot } from "$lib/core/slot";
 import { dynamicChartOf, psychrometricChartOf, type RegisteredModel, type Values } from "$lib/core/modelDeclaration";
-import { unitSystem } from "$lib/core/unitSystem";
+import { chartRequestFor } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -25,13 +24,7 @@ const consoleMethods = ["warn", "log", "error"] as const;
 function consoleWritesWhileDrawing(model: RegisteredModel): string[] {
   const spies = consoleMethods.map((method) => [method, vi.spyOn(console, method).mockImplementation(() => undefined)] as const);
   try {
-    const request = {
-      model,
-      slot: startingSlot(model),
-      slotLabel: "Input 1",
-      unitSystem: unitSystem.si,
-      atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
-    };
+    const request = chartRequestFor(model, startingSlot(model));
     const dynamic = dynamicChartOf(model);
     if (dynamic) {
       dynamicSpec(request, dynamic, dynamic.axes);

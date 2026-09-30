@@ -16,7 +16,8 @@ import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/co
 import { requireValue } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
-import type { Annotation, ChartRequest, ChartSpec, LegendEntry, Trace } from "./chartSpec";
+import type { ChartRequest } from "./chartRequest";
+import type { Annotation, ChartSpec, LegendEntry, Trace } from "./chartSpec";
 import { axisFor, markerFor, samples, zoneFor } from "./specParts";
 
 const q = quantities;
@@ -54,7 +55,10 @@ const ZONE_RH_STEP = 5;
  * {@link drawnHumidityRatioRange} says (ADR-0002 decision 49).
  */
 export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
-  const { model, slot, slotLabel, unitSystem, atmosphericPressure } = request;
+  const { model, unitSystem, atmosphericPressure } = request;
+  // The first slot alone is drawn, until Compare draws every compared one.
+  const [charted] = request.slots;
+  const { slot } = charted;
   const operative = slot.temperature.mode === temperatureMode.operative;
   const axisQuantity = slot.temperature.mode.axis;
   const xUnit = displayUnitFor(axisQuantity, unitSystem);
@@ -128,13 +132,14 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
       polygon.map((point) => hrUnit.fromSi(point.hr)),
       index,
       largestFirst.length,
+      charted.hue,
     );
     traces.push(drawnZone.trace);
     legend.push(drawnZone.legendEntry);
   });
 
   const marker = markerFor(
-    slotLabel,
+    charted,
     xUnit.fromSi(requireValue(resolved, q.tdb)),
     hrUnit.fromSi(psy_ta_rh(requireValue(resolved, q.tdb), requireValue(resolved, q.rh), atmosphericPressure).hr),
   );

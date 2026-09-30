@@ -6,29 +6,33 @@
 import { chartInk } from "$lib/core/bandPalette";
 import type { Range } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
+import type { SlotBadge, SlotHue } from "$lib/core/slotBadge";
 import { labelWithUnit, type DisplayUnit } from "$lib/core/units";
 import type { AxisSpec, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
 
 /**
- * A slot's marker at (`x`, `y`), already in display units, and the legend
- * entry that names it. Chrome, so it never captures the pointer.
+ * A slot's marker at (`x`, `y`), already in display units, in the slot's hue,
+ * and the legend entry that names it by the slot. Chrome, so it never
+ * captures the pointer.
  */
 export function markerFor(
-  slotLabel: string,
+  badge: SlotBadge,
   x: number,
   y: number,
 ): { readonly trace: PointTrace; readonly legendEntry: LegendEntry } {
+  const color = badge.hue.marker;
   return {
-    trace: { kind: "point", x, y, color: chartInk.marker, hover: "off", label: slotLabel },
-    legendEntry: { label: slotLabel, swatch: "marker", color: chartInk.marker },
+    trace: { kind: "point", x, y, color, hover: "off", label: badge.name },
+    legendEntry: { label: badge.name, swatch: "marker", color },
   };
 }
 
 /**
  * A Comfort zone's polygon through `x` and `y`, already in display units, and
  * the legend entry that names it. Zone `level` of `levels` nested ones, 0 the
- * outermost, is filled by that level and outlined in the zone line. Its fill
- * cannot say where the pointer is inside it, so it never captures the pointer.
+ * outermost, is filled in `hue` by that level and outlined in the hue's zone
+ * line. Its fill cannot say where the pointer is inside it, so it never
+ * captures the pointer.
  */
 export function zoneFor(
   label: string,
@@ -36,10 +40,11 @@ export function zoneFor(
   y: readonly number[],
   level: number,
   levels: number,
+  hue: SlotHue,
 ): { readonly trace: PathTrace; readonly legendEntry: LegendEntry } {
-  const fill = chartInk.zoneFill(level, levels);
+  const fill = chartInk.zoneFill(hue, level, levels);
   return {
-    trace: { kind: "path", x, y, color: chartInk.zoneLine, width: chartInk.zoneLineWidth, fill, hover: "off", label },
+    trace: { kind: "path", x, y, color: hue.zoneLine, width: chartInk.zoneLineWidth, fill, hover: "off", label },
     legendEntry: { label, swatch: "fill", color: fill },
   };
 }

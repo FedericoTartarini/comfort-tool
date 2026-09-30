@@ -14,13 +14,14 @@ import {
   type DeclaredScannedChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
+import { quantities, type Quantity } from "$lib/core/quantities";
 import { enteredQuantities, startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { BandTrace, ChartRequest, ChartSpec, HoverGridTrace, HoverReadout, PathTrace, PointTrace } from "./chartSpec";
+import type { BandTrace, ChartSpec, HoverGridTrace, HoverReadout, PathTrace, PointTrace } from "./chartSpec";
+import { chartRequestFor } from "./chartTestRequests";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -33,13 +34,7 @@ if (!isoChart || isPolygonsChart(isoChart)) {
 
 const slot = enteredSlotFor(pmvPpdIso, { tdb: 26, tr: 26 });
 
-const request: ChartRequest = {
-  model: pmvPpdIso,
-  slot,
-  slotLabel: "Input 1",
-  unitSystem: unitSystem.si,
-  atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
-};
+const request = chartRequestFor(pmvPpdIso, slot);
 
 /** PMV (ISO 7730)'s own air speed, which every slot here keeps. */
 const { v } = valuesReader(startingSlot(pmvPpdIso).values);
@@ -295,14 +290,14 @@ describe("a declared zones source", () => {
   });
 
   it("stays on its declared operative axis under separate entry, where a scanned chart would map it to tdb", () => {
-    const spec = dynamicSpec({ ...request, slot: apart }, zoned, zoned.axes);
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, apart), zoned, zoned.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     expect(spec.layout.x.range).toEqual(declaredRangeOf(q.operative_tmp));
     expect(spec.layout.y.title).toContain(q.v.label);
   });
 
   it("stays on its declared axes under operative entry", () => {
-    const spec = dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, zoned, zoned.axes);
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 })), zoned, zoned.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     expect(spec.layout.y.title).toContain(q.v.label);
   });
@@ -317,20 +312,20 @@ describe("a declared zones source", () => {
     // At 0.6 m/s ISO 7726 weighs the air temperature by √(10v), so the marker
     // leaves the plain mean 27 the deployed chart puts it at.
     const moving = withEnteredValues(apart, new Map([[q.v, 0.6]]));
-    const marker = markerOf(dynamicSpec({ ...request, slot: moving }, zoned, zoned.axes));
+    const marker = markerOf(dynamicSpec(chartRequestFor(pmvPpdIso, moving), zoned, zoned.axes));
     expect(marker?.x).toBe(t_o(24, 30, 0.6, pmvPpdIso.standard));
     expect(marker?.x).not.toBeCloseTo(27, 1);
     expect(marker?.y).toBe(0.6);
   });
 
   it("marks the entered operative temperature under operative entry", () => {
-    const marker = markerOf(dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, zoned, zoned.axes));
+    const marker = markerOf(dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 })), zoned, zoned.axes));
     expect(marker?.x).toBe(26);
     expect(marker?.y).toBe(v);
   });
 
   it("converts the polygons and the marker to the displayed unit", () => {
-    const spec = dynamicSpec({ ...request, slot: apart, unitSystem: unitSystem.ip }, zoned, zoned.axes);
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, apart, unitSystem.ip), zoned, zoned.axes);
     const polygon = spec.traces.find((trace): trace is PathTrace => trace.kind === "path");
     expect(polygon?.x[0]).toBeCloseTo(50, 10);
     expect(polygon?.x[1]).toBeCloseTo(104, 10);
@@ -385,7 +380,7 @@ describe("dynamicAxisQuantities", () => {
 describe("axes across a temperature entry mode switch", () => {
   it("sweeps the operative temperature when a remembered tdb axis no longer exists", () => {
     // isoChart.axes.x is tdb, which the slot no longer holds.
-    const spec = dynamicSpec({ ...request, slot: enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }) }, isoChart, isoChart.axes);
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 })), isoChart, isoChart.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     // The whole field would carry one band if the sweep were being discarded.
     const surface = bands(spec);
@@ -411,13 +406,7 @@ const adaptiveChart = dynamicChartOf(adaptiveAshrae);
 if (!adaptiveChart) {
   throw new Error("adaptiveAshrae no longer declares a dynamic chart");
 }
-const adaptiveRequest: ChartRequest = {
-  model: adaptiveAshrae,
-  slot: startingSlot(adaptiveAshrae),
-  slotLabel: "Input 1",
-  unitSystem: unitSystem.si,
-  atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
-};
+const adaptiveRequest = chartRequestFor(adaptiveAshrae, startingSlot(adaptiveAshrae));
 
 describe("Adaptive's running mean axis", () => {
   const bound = ADAPTIVE_ASHRAE_INFO.inputs.t_running_mean?.applicability;
@@ -457,7 +446,7 @@ describe("Adaptive's acceptability zones", () => {
   if (!psychrometric) {
     throw new Error("pmvPpdIso no longer declares a psychrometric chart");
   }
-  const psychrometricZones = zoneTraces(psychrometricSpec({ ...request, slot: startingSlot(pmvPpdIso) }, psychrometric));
+  const psychrometricZones = zoneTraces(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)), psychrometric));
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
     expect(zones.map((zone) => zone.label)).toEqual([q.acceptability_80.label, q.acceptability_90.label]);
@@ -495,7 +484,7 @@ function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {
 }
 
 describe("the scanned chart's hover readout", () => {
-  const pmvRequest: ChartRequest = { ...request, slot: startingSlot(pmvPpdIso) };
+  const pmvRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
   // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
   // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.0618….

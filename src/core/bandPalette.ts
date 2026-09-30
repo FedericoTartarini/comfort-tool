@@ -1,11 +1,13 @@
 import type { ClassifierBins } from "jsthermalcomfort";
+import type { SlotHue } from "./slotBadge";
 
 /**
  * The one band palette of the app. Colours are assigned by position in the
  * library's own classifier bins, never by label text, so the library owns the
  * bands and the app owns only the paint. The result table's Compliance
- * swatches, the dynamic chart's bands and legend, and both charts' ink read
- * from here, as Explore's default bands will.
+ * swatches, the dynamic chart's bands and legend, and both charts' chrome ink
+ * read from here, as Explore's default bands will; a slot's own ink is its
+ * hue (`core/slotBadge.ts`).
  *
  * Seven entries match the seven-point thermal sensation scale; the fills are
  * the ones the CBE tool has published for Cold … Hot.
@@ -50,20 +52,19 @@ export function fillAtIndex(bins: ClassifierBins, index: number): string {
 }
 
 /**
- * Chart ink. Not bands — the Comfort zones' outline and fill are the
- * palette's cool tones, the isolines and markers are neutral chrome.
+ * Chart ink. Not bands — the Comfort zones and the markers are in their
+ * slot's hue (`core/slotBadge.ts`), the isolines are neutral chrome.
  */
 export const chartInk = {
-  zoneLine: "#4c78a8",
   zoneLineWidth: 1.5,
   /**
-   * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost: one
-   * hue, its opacity rising inwards to 0.4, so a lone zone keeps the fill it
-   * always had.
+   * Fill of zone `level` of `levels` nested Comfort zones, 0 the outermost:
+   * the slot's hue, its opacity rising inwards to 0.4, so a lone zone keeps
+   * the fill it always had.
    */
-  zoneFill: (level: number, levels: number): string => `rgba(146, 197, 222, ${(0.4 * (level + 1)) / levels})`,
+  zoneFill: (hue: SlotHue, level: number, levels: number): string =>
+    `rgba(${hue.zoneFillRgb}, ${(0.4 * (level + 1)) / levels})`,
   isoline: "#cbd5e1",
   saturationLine: "#94a3b8",
-  marker: "#111827",
   markerEdge: "#ffffff",
 } as const;

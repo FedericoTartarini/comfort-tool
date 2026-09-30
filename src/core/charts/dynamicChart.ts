@@ -16,7 +16,8 @@ import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import { enteredQuantities, enteredValue, withEnteredValues } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit, type DisplayUnit } from "$lib/core/units";
-import type { BandFill, ChartRequest, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
+import type { ChartRequest } from "./chartRequest";
+import type { BandFill, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
 import { axisFor, markerFor, samples, zoneFor } from "./specParts";
 import { containsPoint } from "./polygon";
 
@@ -54,7 +55,10 @@ export function dynamicSpec(
   chart: DeclaredDynamicChart,
   axes: ChartAxes,
 ): ChartSpec {
-  const { model, slot, slotLabel, unitSystem, atmosphericPressure } = request;
+  const { model, unitSystem, atmosphericPressure } = request;
+  // The first slot alone is drawn, until Compare draws every compared one.
+  const [charted] = request.slots;
+  const { slot } = charted;
   const mode = slot.temperature.mode;
   const { x, y } = isPolygonsChart(chart) ? chart.axes : resolvedAxes(model, axes, mode);
   const xRange = requireAxisRange(model, x);
@@ -83,6 +87,7 @@ export function dynamicSpec(
         polygon.y.map((value) => yUnit.fromSi(value)),
         index,
         polygons.length,
+        charted.hue,
       );
       traces.push(zone.trace);
       legend.push(zone.legendEntry);
@@ -128,7 +133,7 @@ export function dynamicSpec(
   const markerX = enteredValue(slot, x, model, atmosphericPressure);
   const markerY = enteredValue(slot, y, model, atmosphericPressure);
   if (markerX !== undefined && markerY !== undefined) {
-    const marker = markerFor(slotLabel, xUnit.fromSi(markerX), yUnit.fromSi(markerY));
+    const marker = markerFor(charted, xUnit.fromSi(markerX), yUnit.fromSi(markerY));
     traces.push(marker.trace);
     legend.push(marker.legendEntry);
   }

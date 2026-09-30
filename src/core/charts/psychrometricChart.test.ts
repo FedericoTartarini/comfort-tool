@@ -6,7 +6,7 @@ import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import { psychrometricChartOf, type DeclaredPsychrometricChart, type RegisteredModel } from "$lib/core/modelDeclaration";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
+import { quantities } from "$lib/core/quantities";
 import { startingSlot, type Slot } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
@@ -14,7 +14,9 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { pmv_psychrometric_zone, type PmvFunction } from "$lib/temporary-library/pmv_psychrometric_zone";
 import { copy } from "$lib/text/copy";
-import type { ChartRequest, PathTrace, PointTrace, Trace } from "./chartSpec";
+import type { ChartRequest } from "./chartRequest";
+import type { PathTrace, PointTrace, Trace } from "./chartSpec";
+import { chartRequestFor } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
 const q = quantities;
@@ -37,13 +39,7 @@ function request(
   mode: typeof temperatureMode.separate | typeof temperatureMode.operative,
   system: UnitSystem = unitSystem.si,
 ): ChartRequest {
-  return {
-    model: pmvPpdIso,
-    slot: slot(mode),
-    slotLabel: "Input 1",
-    unitSystem: system,
-    atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
-  };
+  return chartRequestFor(pmvPpdIso, slot(mode), system);
 }
 
 /** The ISO declaration's psychrometric chart: what every spec below draws, unless a test hands it another. */
@@ -180,7 +176,7 @@ describe("psychrometricSpec", () => {
       if (!chart) {
         throw new Error(`${model.info.name} declares no psychrometric chart`);
       }
-      const spec = psychrometricSpec({ ...request(temperatureMode.separate), model, slot: startingSlot(model) }, chart);
+      const spec = psychrometricSpec(chartRequestFor(model, startingSlot(model)), chart);
       return zonePaths(spec).map((path) => path.label);
     };
     expect(zoneLabels(pmvPpdIso)).toEqual([

@@ -1,7 +1,3 @@
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import type { Slot } from "$lib/core/slot";
-import type { UnitSystem } from "$lib/core/unitSystem";
-
 /**
  * The restricted chart description `ui/charts/` consumes (ADR §4.4). Every
  * number is already in display units and every colour is already resolved, so
@@ -143,15 +139,4 @@ export interface ChartSpec {
   /** The chart's one legend (ADR §4.4). Plotly's own is switched off. */
   readonly legend: readonly LegendEntry[];
   readonly annotations: readonly Annotation[];
-}
-
-/** What both spec builders need. The selected axes are the dynamic chart's alone. */
-export interface ChartRequest {
-  readonly model: RegisteredModel;
-  readonly slot: Slot;
-  /** Slot name, for the marker's legend entry. */
-  readonly slotLabel: string;
-  readonly unitSystem: UnitSystem;
-  /** The atmospheric pressure the slot is resolved at, in Pa (ADR-0002 decision 49). */
-  readonly atmosphericPressure: number;
 }

@@ -66,9 +66,10 @@ const declarationSubdirectoryBoundary = {
 };
 
 // ADR §4.4: the moment the chart component knows what a model is, every new
-// model starts needing an edit here.
+// model starts needing an edit here. The chart's request names a model and a
+// slot, so it is the builders' and not the component's (ADR-0002 decision 50).
 const chartBoundary = {
-  group: ["**/models/**", "**/state/**", "jsthermalcomfort"],
+  group: ["**/models/**", "**/state/**", "jsthermalcomfort", "**/charts/chartRequest"],
   message: "Chart components consume a ChartSpec and nothing else.",
 };
 

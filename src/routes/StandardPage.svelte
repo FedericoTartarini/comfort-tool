@@ -187,7 +187,7 @@
             model={session.model}
             result={outputs.slots[0].result}
             unitSystem={session.unitSystem}
-            slotName={copy.slotName(0)}
+            slotName={outputs.slots[0].badge.name}
             notCalculated={outputs.slots[0].notCalculated}
             violations={outputs.slots[0].violations}
           />

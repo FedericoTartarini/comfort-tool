@@ -4,7 +4,8 @@ import {
   violationRows,
   type ViolationRow,
 } from "$lib/core/applicability";
-import type { ChartRequest, ChartSpec } from "$lib/core/charts/chartSpec";
+import type { ChartRequest } from "$lib/core/charts/chartRequest";
+import type { ChartSpec } from "$lib/core/charts/chartSpec";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
@@ -18,7 +19,7 @@ import {
 import { runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
 import type { Slot } from "$lib/core/slot";
-import { copy } from "$lib/text/copy";
+import { slotBadges, type SlotBadge } from "$lib/core/slotBadge";
 import type { Session } from "./session.svelte";
 
 /**
@@ -89,7 +90,7 @@ export class Outputs {
   readonly #chart = $derived.by((): ChartSpec | null => {
     const [first] = this.#slots;
     const last = first.lastValid;
-    return last ? chartSpecOf(this.#session, first.position, last) : null;
+    return last ? chartSpecOf(this.#session, first.badge, last) : null;
   });
 
   readonly #drawnAxes = $derived.by((): DrawnAxes | null => {
@@ -163,8 +164,10 @@ export class Outputs {
  * live slot again, and the equality would stop nothing.
  */
 export class SlotOutputs {
-  /** Which of the session's slots this is, from 0: what names it (`copy.slotName`). */
+  /** Which of the session's slots this is, from 0. */
   readonly position: number;
+  /** The name and hue {@link position} gives the slot. */
+  readonly badge: SlotBadge;
   readonly #session: Session;
   readonly #slot: Slot;
   readonly #atmosphericPressureOutOfRange: () => boolean;
@@ -213,6 +216,7 @@ export class SlotOutputs {
    */
   constructor(session: Session, position: number, atmosphericPressureOutOfRange: () => boolean) {
     this.position = position;
+    this.badge = slotBadges[position];
     this.#session = session;
     this.#slot = session.slots[position];
     this.#atmosphericPressureOutOfRange = atmosphericPressureOutOfRange;
@@ -268,16 +272,15 @@ function detach(slot: Slot): Slot {
 
 /**
  * The spec for the chart the session currently shows of `last`'s slot, the
- * one at `position`, or `null` when the model declares none. `last.model` is
+ * one `badge` names, or `null` when the model declares none. `last.model` is
  * the session's own — {@link SlotOutputs.lastValid} remembers no other — so
  * the session's chart settings are this model's.
  */
-function chartSpecOf(session: Session, position: number, last: LastValidRun): ChartSpec | null {
+function chartSpecOf(session: Session, badge: SlotBadge, last: LastValidRun): ChartSpec | null {
   const model = last.model;
   const request: ChartRequest = {
     model,
-    slot: last.slot,
-    slotLabel: copy.slotName(position),
+    slots: [{ ...badge, slot: last.slot }],
     unitSystem: session.unitSystem,
     atmosphericPressure: last.atmosphericPressure,
   };
