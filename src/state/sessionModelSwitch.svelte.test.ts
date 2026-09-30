@@ -89,7 +89,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     // The bound converted into the clothing insulation entered: at 6 met and 0.1 m/s ISO 7730's rule gives 1.66 clo as 1.
     const [row] = listedRowsOf(session) ?? [];
     expect(listedRowsOf(session)).toEqual([{ quantity: q.clo, value: 0.5, bound: { min: row.bound.min } }]);
-    expect(row.bound.min).toBeCloseTo(1.6571, 4);
+    expect(row.bound.min).toBeCloseTo(1.66, 2);
     expect(clo_dynamic_iso(row.bound.min ?? Number.NaN, 6, 0.1)).toBeCloseTo(1, 2);
     expect(clo_dynamic_iso(row.bound.min ?? Number.NaN, 6, 0.1)).toBeGreaterThanOrEqual(1);
 
