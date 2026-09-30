@@ -6,11 +6,13 @@
  * the reason `compute.svelte.test.ts` gives.
  *
  * Every expected number is the library's own `v_relative`, or what a session
- * in the default mode gives: none is written by hand.
+ * in the default mode gives; an air speed the switch back leaves is written
+ * out, and `v_relative` of it is the relative air speed it came from.
  */
 import { v_relative } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import type { PointTrace } from "$lib/core/charts/chartSpec";
+import { enteredBound } from "$lib/core/applicability";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
 import { quantities } from "$lib/core/quantities";
@@ -71,18 +73,88 @@ describe("the session's air-speed entry mode", () => {
     expect(outputs.slots.map((slot) => resultValueOf(slot.result, q.pmv))).toEqual(before);
   });
 
-  it("keeps the number on the switch back, which the model is then given corrected again", () => {
+  /** What the model returned for each slot: equal before and after only if it was given the same values. */
+  function resultsOf(outputs: Outputs) {
+    return outputs.slots.map((slot) => slot.result);
+  }
+
+  it("gives the air speed back on the switch back, the model given the same relative air speed throughout", () => {
     const session = threeDifferentSlots();
     const outputs = new Outputs(session);
-    session.setAirSpeedMode(airSpeedMode.corrected);
-    const before = resultValueOf(outputs.slots[1].result, q.pmv);
+    const entered = slotPositions.map((position) => shapeOf(heldSlot(session, position)));
+    const before = resultsOf(outputs);
+    expect(before.every((result) => result !== null)).toBe(true);
 
+    // A third round trip as the first: the number does not ratchet up by the activity's share.
+    for (const roundTrip of [1, 2, 3]) {
+      session.setAirSpeedMode(airSpeedMode.corrected);
+      expect(resultsOf(outputs), `into relative air speed entry, round ${roundTrip}`).toEqual(before);
+
+      session.setAirSpeedMode(airSpeedMode.uncorrected);
+      expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(entered);
+      expect(resultsOf(outputs), `back in air speed entry, round ${roundTrip}`).toEqual(before);
+    }
+  });
+
+  // `v_relative` rounds to 0.001 above 1 met, so an air speed entered finer
+  // than that cannot come back finer: the inverse is exact to the library's
+  // own rounding and no further, and the model is given what it was given.
+  it("gives an air speed finer than the library's 0.001 back within it, and the same from then on", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.v, 0.1234);
+    const before = outputs.slots[0].result;
+
+    session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
 
-    const { v, met } = entriesOfSlot[1];
-    expect(heldSlot(session, 1).values.get(q.v)).toBe(v_relative(v, met));
-    expect(heldSlot(session, 1).values.has(q.vr)).toBe(false);
-    expect(resultValueOf(outputs.slots[1].result, q.pmv)).not.toBe(before);
+    expect(session.slots[0].values.get(q.v)).toBe(0.123);
+    expect(Math.abs(0.123 - 0.1234)).toBeLessThan(0.001);
+    expect(outputs.slots[0].result).toEqual(before);
+
+    session.setAirSpeedMode(airSpeedMode.corrected);
+    session.setAirSpeedMode(airSpeedMode.uncorrected);
+
+    expect(session.slots[0].values.get(q.v)).toBe(0.123);
+  });
+
+  describe("a relative air speed below the activity's share, switched back", () => {
+    /** Story 2's stationary equipment: 0.1 m/s at 2 met, which no air speed gives. */
+    function switchedBack(model = pmvPpdIso): Session {
+      const session = new Session(model);
+      session.slots[0].setEntered(q.met, 2);
+      session.setAirSpeedMode(airSpeedMode.corrected);
+      session.slots[0].setEntered(q.vr, 0.1);
+      session.setAirSpeedMode(airSpeedMode.uncorrected);
+      return session;
+    }
+
+    it("holds a negative air speed, which the gate lists on the air speed row and withholds the result for", () => {
+      const session = switchedBack();
+      const outputs = new Outputs(session);
+
+      expect(session.slots[0].values.get(q.v)).toBe(-0.2);
+      expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.v]);
+      expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
+      expect(outputs.slots[0].notCalculated).toBe(true);
+      expect(outputs.slots[0].result).toBeNull();
+    });
+
+    it("is listed by a requested switch to another model, and moved to 0 by a yes", () => {
+      const session = switchedBack();
+
+      session.requestModel(pmvPpdAshrae);
+
+      expect(session.model).toBe(pmvPpdIso);
+      expect(listedRowsOf(session)).toEqual([{ quantity: q.v, value: -0.2, bound: { min: 0 } }]);
+
+      session.acceptSwitch();
+
+      expect(session.model).toBe(pmvPpdAshrae);
+      expect(session.slots[0].values.get(q.v)).toBe(0);
+      expect(new Outputs(session).slots[0].outOfRangeQuantities).toEqual([]);
+    });
   });
 
   it("gives the model an entered relative air speed unchanged", () => {
@@ -260,15 +332,28 @@ describe("a model switch under relative air speed entry", () => {
     expect(session.airSpeedMode).toBe(airSpeedMode.uncorrected);
   });
 
-  it("returns to air speed entry, the number kept, for a model that takes the air speed itself", () => {
+  // Adaptive (ASHRAE 55) has no air-speed group, so the slot arrives in air
+  // speed entry by the conversion the control applies: the mode is lost, and
+  // the relative air speed the PMV model takes is not (ADR-0002 decision 54).
+  it("returns to air speed entry through a model without the group, holding the inverted air speed, and gives the model its relative air speed back", () => {
     const session = new Session(pmvPpdAshrae);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.met, 2);
     session.setAirSpeedMode(airSpeedMode.corrected);
-    session.slots[0].setEntered(q.vr, 0.6);
+    session.slots[0].setEntered(q.vr, 1.9);
+    const before = outputs.slots[0].result;
+    expect(before).not.toBeNull();
 
     session.setModel(adaptiveAshrae);
 
     expect(session.airSpeedMode).toBe(airSpeedMode.uncorrected);
-    expect(session.slots[0].values.get(q.v)).toBe(0.6);
+    expect(session.slots[0].values.get(q.v)).toBe(1.6);
     expect(session.slots[0].values.has(q.vr)).toBe(false);
+
+    session.setModel(pmvPpdAshrae);
+
+    expect(session.airSpeedMode).toBe(airSpeedMode.uncorrected);
+    expect(v_relative(1.6, 2)).toBe(1.9);
+    expect(outputs.slots[0].result).toEqual(before);
   });
 });

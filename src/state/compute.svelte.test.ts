@@ -41,7 +41,7 @@ function markerOf(chart: ChartSpec | null): PointTrace | undefined {
 /**
  * A session whose valid run also breaks an applicability row, so that "the
  * rows are kept too" is an assertion about something rather than about an
- * empty array. Entered `v` has no bound of its own; at `met` 2.5 the `vr` the
+ * empty array. Entered `v` has no bound but its kind's 0; at `met` 2.5 the `vr` the
  * model derives from it passes ISO 7730's limit of 1 m/s, which the library
  * reports on the result and `core/applicability.ts` maps back onto `v`.
  */

@@ -195,7 +195,8 @@ export function operativeTemperatureOf(slot: Slot, model: RegisteredModel): numb
  * `v_relative(v, met)` of the entered air speed and metabolic rate. What
  * `core/libraryInputs.ts` resolves, and the value the switch into relative air
  * speed entry stores ({@link withAirSpeedMode}), so the person sees the number
- * the model was getting. The one place the app calls `v_relative`.
+ * the model was getting. The one place the app corrects an air speed with
+ * `v_relative`; {@link airSpeedGiving} asks it what still air gives.
  */
 export function relativeAirSpeedOf(slot: Slot): number {
   if (slot.airSpeed.mode === airSpeedMode.corrected) {
@@ -363,15 +364,48 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
   return changedSlot(slot, { values, temperature: { mode } });
 }
 
+/** The air speed the library's `v_relative` adds per met above 1 met, in m/s. */
+const ACTIVITY_AIR_SPEED_PER_MET = 0.3;
+
+/** Decimals kept of an inverted air speed: far finer than `v_relative`'s 0.001, far coarser than float noise. */
+const AIR_SPEED_DECIMALS = 9;
+
+/**
+ * The air speed that gives `relativeAirSpeed` at `met`: the inverse of the
+ * library's `v_relative`, `vr − 0.3·(met − 1)` above 1 met and `vr` itself at
+ * or below it (ADR-0002 decision 54 as revised). `v_relative` of the answer is
+ * `relativeAirSpeed` to the library's rounding of 0.001, which is why the
+ * answer is not itself rounded to 0.001: that moves the relative air speed by
+ * 0.001 a round trip where 0.3·(met − 1) falls half way between two steps.
+ *
+ * Still air is asked first. The library rounds the activity's share, so the
+ * subtraction would give still air back up to 0.0005 either side of 0, and an
+ * air speed below 0 is one the gate stops. Negative only when the relative air
+ * speed is below the activity's share, which no air speed gives.
+ */
+function airSpeedGiving(relativeAirSpeed: number, met: number): number {
+  if (v_relative(0, met) === relativeAirSpeed) {
+    return 0;
+  }
+  if (met <= 1) {
+    return relativeAirSpeed;
+  }
+  return Number((relativeAirSpeed - ACTIVITY_AIR_SPEED_PER_MET * (met - 1)).toFixed(AIR_SPEED_DECIMALS));
+}
+
 /**
  * The same slot with its air speed re-expressed under `mode`. Uncorrected →
  * corrected stores {@link relativeAirSpeedOf}'s answer, the relative air speed
  * the model was given at the slot's own air speed and metabolic rate;
- * corrected → uncorrected keeps the number, an entry convention and not an
- * equation (ADR-0002 decisions 21 and 54). Lossy and one-way, like
- * {@link withTemperatureMode}, and the two representations never coexist. The
- * deployed tool converts nothing here: its checkbox passes the entry as the
- * relative air speed under the label "Air speed".
+ * corrected → uncorrected stores {@link airSpeedGiving}'s, the air speed that
+ * gives that relative air speed at the slot's metabolic rate (ADR-0002
+ * decision 54 as revised). Exact both ways to `v_relative`'s rounding of
+ * 0.001: the model is given the same relative air speed before and after,
+ * but for an entry finer than that rounding, which comes back rounded. Unlike
+ * {@link withTemperatureMode}, which is lossy; the two representations never
+ * coexist.
+ * The deployed tool converts nothing here: its checkbox passes the entry as
+ * the relative air speed under the label "Air speed".
  *
  * The air-speed group's {@link ValueEntryGroup.convert}, which says who
  * applies it.
@@ -385,7 +419,7 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
     values.set(q.vr, relativeAirSpeedOf(slot));
     values.delete(q.v);
   } else {
-    values.set(q.v, requireValue(values, q.vr));
+    values.set(q.v, airSpeedGiving(requireValue(values, q.vr), requireValue(values, q.met)));
     values.delete(q.vr);
   }
   return changedSlot(slot, { values, airSpeed: { mode } });

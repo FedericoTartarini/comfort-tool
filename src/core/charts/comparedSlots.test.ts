@@ -292,17 +292,25 @@ describe("a slot in another air-speed entry mode than the session's", () => {
     expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
   });
 
-  // Back keeps the number (ADR-0002 decision 54), so a slot kept in relative air
-  // speed entry is drawn as the entry-mode change would leave it: its number
-  // read as an air speed, and corrected again.
-  it("is drawn in an air-speed session as the slot the change back leaves", () => {
+  // Back inverts the correction (ADR-0002 decision 54 as revised), so a slot
+  // kept in relative air speed entry is drawn at the relative air speed its run
+  // was given: marked at the air speed that gives it, its zones where they were.
+  it("is drawn in an air-speed session at the relative air speed its run was given", () => {
     const chart = dynamicOf(pmvPpdIso);
     const kept = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 });
-    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, entryModesWithAirSpeed(airSpeedMode.uncorrected)), chart, chart.axes);
-    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(kept, airSpeedMode.uncorrected)), chart, chart.axes);
+    const back = withAirSpeedMode(kept, airSpeedMode.uncorrected);
+    const uncorrected = entryModesWithAirSpeed(airSpeedMode.uncorrected);
+    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected), chart, chart.axes);
+    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, back), chart, chart.axes);
     expect(spec.layout.y.title).toContain(q.v.label);
     expect(spec.traces).toEqual(alone.traces);
-    expect(markersOf(spec)[0].y).toBe(0.7);
+    expect(markersOf(spec)[0].y).toBe(0.4);
+    expect(relativeAirSpeedOf(back)).toBe(relativeAirSpeedOf(kept));
+
+    const zones = psychrometricOf(pmvPpdIso);
+    const drawn = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, uncorrected), zones);
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, back), zones).traces);
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, kept), zones).traces);
   });
 
   it("has its comfort zones solved on the relative air speed the model is given, in either mode", () => {

@@ -19,7 +19,7 @@ import { airSpeedMode, humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
-import { defaultEntryModes, startingSlot, type Slot } from "./slot";
+import { defaultEntryModes, startingSlot, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
@@ -66,9 +66,29 @@ describe("enteredBound / outOfRangeQuantities", () => {
     ]);
   });
 
-  it("has no bound for an entered quantity the model does not limit", () => {
+  it("holds an entered air speed at 0 by its kind, in a model whose standard does not limit it", () => {
     // The standard bounds the relative air speed vr, not the entered v.
-    expect(enteredBound(pmvPpdIso, q.v, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
+    expect(pmvPpdIso.info.inputs.v).toBeUndefined();
+    expect(enteredBound(pmvPpdIso, q.v, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(kindBounds.airSpeed);
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { v: 0 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { v: -0.2 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
+      { quantity: q.v, value: -0.2, bound: { min: 0 } },
+    ]);
+  });
+
+  it("narrows a model's own air-speed row by the kind's bound, and leaves a model that enters no air speed alone", () => {
+    const own = adaptiveAshrae.info.inputs.v?.applicability;
+    // ASHRAE 55's row starts at 0 already, so the two bounds together are the row.
+    expect(own?.min).toBe(0);
+    expect(enteredBound(adaptiveAshrae, q.v, startingSlot(adaptiveAshrae), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(own);
+    // Heat Index enters no air speed: one left in the bag by another model is not its to judge.
+    const held = withEnteredValues(startingSlot(heatIndexRothfusz), new Map([[q.v, -0.2]]));
+    expect(enteredBound(heatIndexRothfusz, q.v, held, DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
+    expect(outOfRangeRows(held, heatIndexRothfusz, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+  });
+
+  it("has no bound for an entered quantity neither the model nor its kind limits", () => {
+    expect(enteredBound(pmvPpdIso, q.wme, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
   });
 
   it("handles a min-only bound without a max (e.g. Heat Index's tdb)", () => {

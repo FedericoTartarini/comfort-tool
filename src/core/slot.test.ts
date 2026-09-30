@@ -327,11 +327,58 @@ describe("withAirSpeedMode", () => {
     expect(converted.values.has(q.v)).toBe(false);
   });
 
-  it("keeps the number going back", () => {
-    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 }), airSpeedMode.uncorrected);
+  // The expected air speed is whatever `v_relative` turns back into the entry:
+  // the inverse is pinned against the library's function, not against 0.3.
+  it.each([
+    { name: "above 1 met takes the activity's share off", vr: 0.7, met: 2, v: 0.4 },
+    { name: "at exactly 1 met keeps the number", vr: 0.7, met: 1, v: 0.7 },
+    { name: "below 1 met keeps the number", vr: 0.7, met: 0.8, v: 0.7 },
+  ])("inverts the correction going back: $name", ({ vr, met, v }) => {
+    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr, met }), airSpeedMode.uncorrected);
     expect(converted.airSpeed.mode).toBe(airSpeedMode.uncorrected);
-    expect(converted.values.get(q.v)).toBe(0.7);
+    expect(converted.values.get(q.v)).toBe(v);
+    expect(v_relative(v, met)).toBe(vr);
+    expect(relativeAirSpeedOf(converted)).toBe(vr);
     expect(converted.values.has(q.vr)).toBe(false);
+  });
+
+  it("gives a negative air speed back for a relative air speed below the activity's share", () => {
+    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.1, met: 2 }), airSpeedMode.uncorrected);
+    expect(converted.values.get(q.v)).toBe(-0.2);
+    expect(relativeAirSpeedOf(converted)).toBe(0.1);
+  });
+
+  /** `slot` switched into relative air speed entry and back. */
+  function roundTripped(slot: Slot): Slot {
+    return withAirSpeedMode(withAirSpeedMode(slot, airSpeedMode.corrected), airSpeedMode.uncorrected);
+  }
+
+  // `v_relative` rounds the activity's share to 0.001, so taking 0.3·(met − 1)
+  // off still air's relative air speed leaves up to 0.0005 either side of 0
+  // (-0.0002 at 1.004 met), and an air speed below 0 is one the gate stops.
+  it("gives still air back as exactly 0 at every metabolic rate", () => {
+    for (let thousandths = 800; thousandths <= 4000; thousandths += 1) {
+      const still = enteredSlotFor(pmvPpdIso, { v: 0, met: thousandths / 1000 });
+      expect(roundTripped(still).values.get(q.v), `at ${thousandths / 1000} met`).toBe(0);
+    }
+  });
+
+  // The tolerance is the library's: `v_relative` rounds to 0.001 above 1 met,
+  // so an air speed cannot come back closer than that, and it need not, since
+  // the model is given the relative air speed and that does not move. At
+  // 1.005 met the share, 0.0015, is half way between two steps of 0.001, where
+  // an inverse itself rounded to 0.001 would add 0.001 every round trip.
+  it.each([
+    { v: 0.1234, met: 2 },
+    { v: 1.199, met: 1.005 },
+    { v: 0.14, met: 1.005 },
+    { v: 0.6, met: 3.337 },
+  ])("gives $v m/s at $met met back to the library's 0.001, the relative air speed unmoved and no further round trip moving either", ({ v, met }) => {
+    const entered = enteredSlotFor(pmvPpdIso, { v, met });
+    const once = roundTripped(entered);
+    expect(Math.abs((once.values.get(q.v) ?? NaN) - v)).toBeLessThanOrEqual(0.001);
+    expect(relativeAirSpeedOf(once)).toBe(relativeAirSpeedOf(entered));
+    expect(roundTripped(roundTripped(once)).values).toEqual(once.values);
   });
 
   it("hands back the slot itself when it is in the mode already", () => {

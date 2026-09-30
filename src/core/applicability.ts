@@ -147,10 +147,11 @@ function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot:
  * temperature and `atmosphericPressure`, so the bound moves with both,
  * except in wet-bulb entry, which is not bounded, and in humidity-ratio entry
  * while the pressure is out of range ({@link humidityEntryBoundFor}); a slot that
- * holds no humidity has no humidity entry to bound. Entered `v` has
- * no bound of its own — the standard bounds the relative air speed it
- * derives, `vr`, which the library checks and {@link violationRows} reports
- * on the `v` row. An entered `vr` is held to the model's own row for it.
+ * holds no humidity has no humidity entry to bound. Entered `v` is
+ * held at 0 by its kind, and in a model that takes `vr` by nothing else — the
+ * standard bounds the relative air speed it derives, `vr`, which the library
+ * checks and {@link violationRows} reports on the `v` row. An entered `vr` is held to
+ * the model's own row for it.
  */
 export function enteredBound(
   model: RegisteredModel,
@@ -176,10 +177,10 @@ export function enteredBound(
  * gate, with the bound each value was tested against. Checks what the user
  * typed, not a derived value: a humidity entry is tested in its own mode,
  * against relative humidity's bound converted into it. It says nothing about
- * a quantity {@link enteredBound} leaves unbounded: a wet-bulb entry, a
- * humidity-ratio entry while the pressure is out of range, or the
- * entered `v` of a model that takes `vr`, whose derived `vr` the library
- * reports after the call, through {@link violationRows}.
+ * a quantity {@link enteredBound} leaves unbounded: a wet-bulb entry, or a
+ * humidity-ratio entry while the pressure is out of range. The entered `v` of
+ * a model that takes `vr` is stopped below 0 alone: its derived `vr` the
+ * library reports after the call, through {@link violationRows}.
  *
  * The one definition of out of range in the app (ADR-0002 decision 32). The
  * input panel's red boxes and the model-switch dialog's rows are both this
