@@ -12,9 +12,11 @@ import { unitSystem } from "./unitSystem";
  * temperature and humidity representations the app converts to the library's
  * own inputs before calling it (ADR-0002 decisions 2 and 15); `p_atm` is the
  * session's atmospheric pressure, named by the library's functions that take
- * it and by no model info (ADR-0002 decision 49).
+ * it and by no model info (ADR-0002 decision 49); `clo_dynamic` is the
+ * clothing insulation entered already corrected, where a model info names
+ * `clo` alone (ADR-0002 decision 54).
  */
-const appOwnedQuantities = new Set(["operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp", "p_atm"]);
+const appOwnedQuantities = new Set(["operative_tmp", "hr", "dew_point_tmp", "wet_bulb_tmp", "p_atm", "clo_dynamic"]);
 
 function variableKeys(info: ModelInfo): string[] {
   return [...Object.keys(info.inputs), ...Object.keys(info.outputs), ...Object.keys(info.derived ?? {})];
@@ -71,6 +73,18 @@ describe("quantities table drift", () => {
 describe("quantity labels", () => {
   it("labels stress_category 'Thermal stress category', which reads for UTCI's cold-to-heat range too", () => {
     expect(quantities.stress_category.label).toBe("Thermal stress category");
+  });
+});
+
+describe("dynamic clothing insulation", () => {
+  it("is clo_dynamic, of the clothing insulation's kind and units, named apart from it", () => {
+    const dynamic = quantities.clo_dynamic;
+    expect(dynamic.key).toBe("clo_dynamic");
+    expect(dynamic.kind).toBe(quantities.clo.kind);
+    expect(dynamic.label).toBe("Dynamic clothing insulation");
+    for (const system of Object.values(unitSystem)) {
+      expect(displayUnitFor(dynamic, system)).toBe(displayUnitFor(quantities.clo, system));
+    }
   });
 });
 

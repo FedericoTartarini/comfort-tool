@@ -85,6 +85,11 @@ export const quantities = {
   p_atm: { key: "p_atm", kind: "atmosphericPressure", label: "Atmospheric pressure" },
   met: { key: "met", kind: "metabolicRate", label: "Metabolic rate" },
   clo: { key: "clo", kind: "clothingInsulation", label: "Clothing insulation" },
+  // The clothing insulation corrected for the occupant's activity, which a
+  // person enters under dynamic clothing entry (ADR-0002 decision 54). The
+  // app's: a model info names `clo` alone, the key the entered clothing
+  // insulation keeps, as every declaration's inputs and the presets name it.
+  clo_dynamic: { key: "clo_dynamic", kind: "clothingInsulation", label: "Dynamic clothing insulation" },
   wme: { key: "wme", kind: "metabolicRate", label: "External work" },
   pmv: { key: "pmv", kind: "thermalSensation", label: "Predicted Mean Vote" },
   ppd: { key: "ppd", kind: "percentage", label: "Predicted Percentage of Dissatisfied" },
