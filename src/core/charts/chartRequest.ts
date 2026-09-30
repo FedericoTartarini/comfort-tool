@@ -1,6 +1,5 @@
-import type { TemperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import type { Slot } from "$lib/core/slot";
+import type { Slot, ValueEntryModes } from "$lib/core/slot";
 import type { SlotBadge } from "$lib/core/slotBadge";
 import type { UnitSystem } from "$lib/core/unitSystem";
 
@@ -23,12 +22,12 @@ export interface ChartRequest {
   readonly slots: readonly ChartedSlot[];
   readonly unitSystem: UnitSystem;
   /**
-   * The session's temperature entry mode, which the axes are resolved from
-   * (ADR-0002 decision 51). No slot decides it: a slot kept in another mode
-   * is converted into it by `withTemperatureMode`, the entry-mode change's
-   * own conversion.
+   * The session's entry modes, which the axes are resolved from (ADR-0002
+   * decision 51). No slot decides them: a slot kept in another mode is
+   * converted into them by `withEntryModes`, the entry-mode change's own
+   * conversion.
    */
-  readonly temperatureMode: TemperatureMode;
+  readonly entryModes: ValueEntryModes;
   /** The atmospheric pressure the slots are resolved at, in Pa (ADR-0002 decision 49). */
   readonly atmosphericPressure: number;
 }

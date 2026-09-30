@@ -15,6 +15,7 @@ import { chartType } from "$lib/core/chartType";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
+import { entryModesOf } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -23,7 +24,7 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
-import { heldSlot, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { heldSlot, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
 
 const q = quantities;
 
@@ -365,6 +366,16 @@ describe("the charts of the compared slots", () => {
       expect(zoneShapesOf(outputs.chart, 1)).not.toEqual(first);
     });
 
+    it("scan once for a slot first enabled, the slot enabled", () => {
+      const { session, runs, onePass, readEverything } = twoSlotsOnTheDynamicChart();
+      const before = runs();
+
+      session.setSlotEnabled(2, true);
+      readEverything();
+
+      expect(runs()).toBe(before + onePass);
+    });
+
     it("scan once per compared slot for an edit to the atmospheric pressure", () => {
       const { session, runs, onePass, readEverything } = twoSlotsOnTheDynamicChart();
       const before = runs();
@@ -481,15 +492,25 @@ describe("the session's entry modes", () => {
     expect(heldSlot(session, 2).humidity?.mode).toBe(humidityMode.humidityRatio);
   });
 
-  it("keeps every slot that holds values in one temperature and one humidity entry mode through enabling, disabling, changes and switches", () => {
+  // The invariant ADR-0002 decision 51's amendment names, which the session's
+  // readers of the entry modes rest on. A value is entered where the input
+  // panel offers it: in a row of the entry modes the slot is in.
+  it("keeps every slot that holds values in slot 1's entry modes after every operation", () => {
     const session = new Session(pmvPpdIso);
+    // Operative entry stands in for the dry-bulb temperature, so the default
+    // 25 °C breaks this bound and a request for the model asks.
+    const cooler = withBounds({ tdb: { min: 10, max: 20 } });
     const steps: readonly ((changed: Session) => void)[] = [
+      (changed) => changed.slots[0].setEntered(q.tdb, 23),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
       (changed) => changed.setCompare(true),
+      (changed) => heldSlot(changed, 1).setEntered(q.operative_tmp, 27),
       (changed) => changed.setHumidityMode(humidityMode.wetBulb),
+      (changed) => heldSlot(changed, 1).setEntered(q.wet_bulb_tmp, 18),
       (changed) => changed.setSlotEnabled(1, false),
       (changed) => changed.setTemperatureMode(temperatureMode.separate),
       (changed) => changed.setSlotEnabled(2, true),
+      (changed) => heldSlot(changed, 2).setEntered(q.tr, 29),
       (changed) => changed.setHumidityMode(humidityMode.vapourPressure),
       (changed) => changed.setCompare(false),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
@@ -500,14 +521,25 @@ describe("the session's entry modes", () => {
       (changed) => changed.requestModel(pmvPpdIso),
       (changed) => changed.setHumidityMode(humidityMode.dewPoint),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
+      (changed) => {
+        changed.requestModel(cooler);
+        expect(changed.pendingSwitch).not.toBeNull();
+      },
+      (changed) => changed.declineSwitch(),
+      (changed) => changed.requestModel(cooler),
+      (changed) => {
+        changed.acceptSwitch();
+        expect(changed.model).toBe(cooler);
+      },
     ];
 
     for (const step of steps) {
       step(session);
       const held = session.slots.filter((slot) => slot !== null);
-      expect(held.map((slot) => slot.temperature.mode)).toEqual(held.map(() => session.temperatureMode));
+      expect(held.map(entryModesOf)).toEqual(held.map(() => session.entryModes));
       expect(held.map((slot) => slot.humidity?.mode)).toEqual(held.map(() => session.humidityMode));
     }
+    expect(session.slots.every((slot) => slot !== null)).toBe(true);
   });
 
   // A slot started on Adaptive holds no humidity, and one started on Heat

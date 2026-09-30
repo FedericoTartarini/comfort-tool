@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { sensationPalette } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
-import { enteredSlotFor } from "$lib/core/declarationTestSlots";
+import { enteredSlotFor, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import {
@@ -347,22 +347,22 @@ describe("a declared zones source", () => {
 
   it("offers no axis to pick", () => {
     const model = { ...pmvPpdIso, charts: [zoned] } satisfies RegisteredModel;
-    expect(dynamicAxisQuantities(model, temperatureMode.separate)).toEqual([]);
-    expect(dynamicAxisQuantities(model, temperatureMode.operative)).toEqual([]);
+    expect(dynamicAxisQuantities(model, entryModesWithTemperature(temperatureMode.separate))).toEqual([]);
+    expect(dynamicAxisQuantities(model, entryModesWithTemperature(temperatureMode.operative))).toEqual([]);
   });
 });
 
 describe("dynamicAxisQuantities", () => {
   it("offers every entered quantity the chart declares a range for", () => {
-    const separate = dynamicAxisQuantities(pmvPpdIso, temperatureMode.separate);
+    const separate = dynamicAxisQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.separate));
     // Every entered quantity, humidity included: no standard limits `rh`, and
     // an axis range is a viewport rather than an applicability limit.
-    expect(separate).toEqual(enteredQuantities(pmvPpdIso, temperatureMode.separate));
+    expect(separate).toEqual(enteredQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.separate)));
     expect(separate).toContain(q.rh);
   });
 
   it("follows the temperature entry mode", () => {
-    const operative = dynamicAxisQuantities(pmvPpdIso, temperatureMode.operative);
+    const operative = dynamicAxisQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.operative));
     expect(operative).toContain(q.operative_tmp);
     expect(operative).not.toContain(q.tdb);
   });
@@ -372,8 +372,8 @@ describe("dynamicAxisQuantities", () => {
       ...pmvPpdIso,
       inputs: [...pmvPpdIso.inputs, { quantity: q.compliance, value: 0 }],
     } satisfies RegisteredModel;
-    expect(enteredQuantities(model, temperatureMode.separate)).toContain(q.compliance);
-    expect(dynamicAxisQuantities(model, temperatureMode.separate)).not.toContain(q.compliance);
+    expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.separate))).toContain(q.compliance);
+    expect(dynamicAxisQuantities(model, entryModesWithTemperature(temperatureMode.separate))).not.toContain(q.compliance);
   });
 });
 
@@ -391,14 +391,14 @@ describe("axes across a temperature entry mode switch", () => {
   it("moves the second axis off the first when the mode maps both onto operative_tmp", () => {
     // tdb × tr is a chart under separate entry; under operative entry both
     // become operative_tmp, and a quantity against itself is not a chart.
-    const axes = resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.tr }, temperatureMode.operative);
+    const axes = resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.tr }, entryModesWithTemperature(temperatureMode.operative));
     expect(axes.x).toBe(q.operative_tmp);
     expect(axes.y).not.toBe(q.operative_tmp);
-    expect(dynamicAxisQuantities(pmvPpdIso, temperatureMode.operative)).toContain(axes.y);
+    expect(dynamicAxisQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.operative))).toContain(axes.y);
   });
 
   it("leaves axes that do not collide alone", () => {
-    expect(resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.v }, temperatureMode.separate)).toEqual({ x: q.tdb, y: q.v });
+    expect(resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.v }, entryModesWithTemperature(temperatureMode.separate))).toEqual({ x: q.tdb, y: q.v });
   });
 });
 

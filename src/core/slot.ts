@@ -1,14 +1,14 @@
 /**
- * What a slot holds; the functions that read what the person entered, enter
- * values, set an option, convert either entry mode, seed a model's defaults
- * and build the slot a model starts on; and the get-or-throws they read
- * through.
+ * What a slot holds; the entry groups held among its values and the rules
+ * over them; the functions that read what the person entered, enter values,
+ * set an option, convert an entry mode, seed a model's defaults and build the
+ * slot a model starts on; and the get-or-throws they read through.
  * Turning a slot into the library's params is `core/libraryInputs.ts`'s and
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
  */
 import { t_o } from "jsthermalcomfort";
-import { humidityMode, temperatureMode, underTemperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
+import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode, type ValueEntryMode } from "./entryModes";
 import { hasTemperatureGroup, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
@@ -26,6 +26,85 @@ export interface Slot {
 }
 
 const q = quantities;
+
+/**
+ * The entry mode of every entry group held among the values: the slice of a
+ * slot that says how its values are entered, so a slot is one of these. The
+ * session's are slot 1's, and a chart is drawn in them (ADR-0002 decision 51).
+ * Humidity's mode is not among them: it is held with the humidity entry.
+ */
+export type ValueEntryModes = Pick<Slot, "temperature">;
+
+/** The entry modes a slot starts in, which are those a declaration writes its inputs in. */
+export const defaultEntryModes: ValueEntryModes = { temperature: { mode: temperatureMode.separate } };
+
+/** The entry modes `slot` is in, apart from the slot. */
+export function entryModesOf(slot: ValueEntryModes): ValueEntryModes {
+  return { temperature: slot.temperature };
+}
+
+/** Whether `a` and `b` are the same entry modes, group by group. */
+export function areSameEntryModes(a: ValueEntryModes, b: ValueEntryModes): boolean {
+  return valueEntryGroups.every((group) => group.modeOf(a) === group.modeOf(b));
+}
+
+/**
+ * An entry group whose modes put different quantities among a slot's values.
+ * Every rule that reads an entry mode is written once over these, so a new
+ * group is a row of {@link valueEntryGroups} and a field of the slot, which
+ * {@link ValueEntryModes}, {@link defaultEntryModes} and {@link entryModesOf}
+ * name beside the others.
+ *
+ * Humidity is an entry group and not one of these: its entry is one quantity
+ * held apart from the values (`Slot.humidity`), its modes carry their own
+ * conversions, which take the atmospheric pressure, and the dynamic chart's
+ * axis is the library's `rh` in every mode ({@link panelQuantities}).
+ */
+export interface ValueEntryGroup {
+  /** Every mode of the group, the one in {@link defaultEntryModes} among them. */
+  readonly modes: readonly ValueEntryMode[];
+  /** Whether `model` has the group: read from the model, not declared (ADR §4.2). */
+  readonly appliesTo: (model: RegisteredModel) => boolean;
+  /** The group's mode among `modes`. */
+  readonly modeOf: (modes: ValueEntryModes) => ValueEntryMode;
+  /**
+   * `slot` re-expressed under `mode`, one of the group's, for `model`: the
+   * one statement of the conversion a slot undergoes. The session applies it
+   * to every slot at an entry-mode change (ADR-0002 decision 51), each chart
+   * builder to a slot kept in another mode than the session's
+   * ({@link withEntryModes}), and `core/modelSwitch.ts` to a slot bound for a
+   * model that has no such group.
+   */
+  readonly convert: (slot: Slot, mode: ValueEntryMode, model: RegisteredModel) => Slot;
+}
+
+export const valueEntryGroups: readonly ValueEntryGroup[] = [
+  {
+    modes: Object.values(temperatureMode),
+    appliesTo: hasTemperatureGroup,
+    modeOf: (modes) => modes.temperature.mode,
+    convert: withTemperatureMode,
+  },
+];
+
+/**
+ * The quantity that stands in for `quantity` under `modes`.
+ *
+ * An entry group's quantities are named per mode, so anything remembered
+ * across a mode switch has to be re-pointed: a remembered `tdb` or `tr`
+ * becomes `operative_tmp` under operative entry, and `operative_tmp` becomes
+ * `tdb` again under separate entry. A quantity of no group, or of its group's
+ * mode in `modes`, is returned untouched.
+ */
+export function underEntryModes(quantity: Quantity, modes: ValueEntryModes): Quantity {
+  for (const group of valueEntryGroups) {
+    const mode = group.modeOf(modes);
+    if (!mode.panel.includes(quantity) && group.modes.some((other) => other.panel.includes(quantity))) {
+      return mode.axis;
+    }
+  }
+  return quantity;
+}
 
 export function requireValue(values: ReadonlyMap<Quantity, number>, quantity: Quantity): number {
   const value = values.get(quantity);
@@ -99,35 +178,38 @@ export function expandOperative(values: Map<Quantity, number>): void {
 
 /**
  * The quantities the user actually types, in panel order: the model's inputs
- * with its temperature rows replaced by the current mode's. The input panel
- * lays these out, humidity as entered ({@link panelQuantities}), and the
- * dynamic chart offers them as axes. A model without the temperature entry
- * group has no rows to replace: its inputs, in any mode.
+ * with the rows of each entry group it has replaced by those of the group's
+ * mode in `modes`, where the first of them stood. The input panel lays these
+ * out, humidity as entered ({@link panelQuantities}), and the dynamic chart
+ * offers them as axes. A model without a group has no rows of it to replace:
+ * without the temperature entry group, its inputs in either temperature mode.
  */
-export function enteredQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
-  if (!hasTemperatureGroup(model)) {
-    return model.inputs.map(({ quantity }) => quantity);
-  }
-  const separate: readonly Quantity[] = temperatureMode.separate.panel;
-  const rows: Quantity[] = [];
-  for (const { quantity } of model.inputs) {
-    if (!separate.includes(quantity)) {
-      rows.push(quantity);
-    } else if (quantity === separate[0]) {
-      rows.push(...mode.panel);
+export function enteredQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
+  let rows = model.inputs.map(({ quantity }) => quantity);
+  for (const group of valueEntryGroups) {
+    if (!group.appliesTo(model)) {
+      continue;
     }
+    const declared = group.modeOf(defaultEntryModes).panel;
+    const entered = group.modeOf(modes).panel;
+    rows = rows.flatMap((quantity) => {
+      if (!declared.includes(quantity)) {
+        return [quantity];
+      }
+      return quantity === declared[0] ? entered : [];
+    });
   }
   return rows;
 }
 
 /**
  * The rows the input panel lists for `slot`: {@link enteredQuantities} under
- * the slot's temperature mode, with the slot's humidity entry in `rh`'s place,
+ * the slot's entry modes, with the slot's humidity entry in `rh`'s place,
  * or `rh` itself for a slot that holds none. Only the panel swaps humidity;
  * the dynamic chart's axes keep the library's `rh`.
  */
 export function panelQuantities(model: RegisteredModel, slot: Slot): Quantity[] {
-  return enteredQuantities(model, slot.temperature.mode).map((quantity) =>
+  return enteredQuantities(model, slot).map((quantity) =>
     quantity === q.rh ? (slot.humidity?.mode.quantity ?? quantity) : quantity,
   );
 }
@@ -220,14 +302,10 @@ export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot
  * deployed tool converts nothing here — its checkbox copies the air
  * temperature into mean radiant.
  *
- * The one statement of the conversion a slot undergoes: the session applies it
- * to every slot at an entry-mode change (ADR-0002 decision 51), each chart
- * builder to a slot kept in the other mode than the session's, and
- * `core/modelSwitch.ts` to a slot bound for a model that has no temperature
- * entry group. `resolveQuantities`'s
- * expansion (`core/libraryInputs.ts`) is a different act — it stands the
- * operative entry in for the two temperatures of one library call and changes
- * no entry mode.
+ * The temperature group's {@link ValueEntryGroup.convert}, which says who
+ * applies it. `resolveQuantities`'s expansion (`core/libraryInputs.ts`) is a
+ * different act — it stands the operative entry in for the two temperatures of
+ * one library call and changes no entry mode.
  */
 export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: RegisteredModel): Slot {
   if (mode === slot.temperature.mode) {
@@ -242,6 +320,16 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
     expandOperative(values);
   }
   return changedSlot(slot, { values, temperature: { mode } });
+}
+
+/**
+ * `slot` in `modes`: converted by every entry group whose mode differs, each
+ * by its own {@link ValueEntryGroup.convert}, and the slot itself when none
+ * does. How a chart builder draws a slot kept in other entry modes than the
+ * session's (ADR-0002 decision 51).
+ */
+export function withEntryModes(slot: Slot, modes: ValueEntryModes, model: RegisteredModel): Slot {
+  return valueEntryGroups.reduce((converted, group) => group.convert(converted, group.modeOf(modes), model), slot);
 }
 
 /**
@@ -274,8 +362,9 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
 /**
  * Every input the new model declares that the slot has no value for starts at
  * the declaration's own default; what the slot already holds is kept, whatever
- * model put it there. A temperature input is sought under the slot's own entry
- * mode, so an operative entry answers for the dry-bulb one it stands in for.
+ * model put it there. An input of an entry group is sought under the slot's
+ * own entry mode, so an operative entry answers for the dry-bulb one it
+ * stands in for.
  *
  * A humidity input is missing only from a slot that holds no humidity, which
  * then starts at the declared default: in relative-humidity entry, since a
@@ -291,7 +380,7 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
 export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
   const defaults = new Map<Quantity, number>();
   for (const { quantity, value } of model.inputs) {
-    const held = underTemperatureMode(quantity, slot.temperature.mode);
+    const held = underEntryModes(quantity, slot);
     // Two declared temperatures stand in one operative entry, so the first of
     // them — the entry mode's own axis — is the one whose default applies.
     if (!holdsEntry(slot, held) && !defaults.has(held)) {
@@ -310,10 +399,10 @@ export function seedDeclaredDefaults(slot: Slot, model: RegisteredModel): Slot {
 }
 
 /**
- * The slot `model` starts on: the empty slot, in separate temperature entry,
+ * The slot `model` starts on: the empty slot, in {@link defaultEntryModes},
  * holding no humidity and no option, put through {@link seedDeclaredDefaults}
  * as a switch is, so starting and switching are one rule.
  */
 export function startingSlot(model: RegisteredModel): Slot {
-  return seedDeclaredDefaults({ values: new Map(), temperature: { mode: temperatureMode.separate }, options: new Map() }, model);
+  return seedDeclaredDefaults({ values: new Map(), ...defaultEntryModes, options: new Map() }, model);
 }

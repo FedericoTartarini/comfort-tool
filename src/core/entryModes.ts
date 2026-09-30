@@ -8,40 +8,33 @@ import {
 import { quantities, type Quantity } from "./quantities";
 
 /**
- * How the user enters temperature. The mode decides which quantities the
- * input panel shows and which one is the temperature axis of the
- * psychrometric chart; labels come from `Quantity.label` either way (ADR §4.2).
+ * One way of entering an entry group whose entries are held among a slot's
+ * values (`core/slot.ts`'s `valueEntryGroups`). The mode decides which
+ * quantities the input panel shows in place of the ones a declaration names,
+ * and which of them carries the group's axis; labels come from
+ * `Quantity.label` either way (ADR §4.2).
  */
-export interface TemperatureMode {
+export interface ValueEntryMode {
   readonly id: string;
-  /** Quantities shown in place of the model's temperature inputs. */
+  /** Quantities shown in place of the group's inputs as a declaration names them. */
   readonly panel: readonly Quantity[];
-  /** The temperature axis of the psychrometric chart. */
+  /**
+   * The quantity that carries the group's axis: what stands in, under this
+   * mode, for a quantity only another mode of the group enters.
+   */
   readonly axis: Quantity;
 }
+
+/**
+ * How the user enters temperature. Its `axis` is also the temperature axis of
+ * the psychrometric chart.
+ */
+export type TemperatureMode = ValueEntryMode;
 
 export const temperatureMode = {
   separate: { id: "separate", panel: [quantities.tdb, quantities.tr], axis: quantities.tdb },
   operative: { id: "operative", panel: [quantities.operative_tmp], axis: quantities.operative_tmp },
 } as const satisfies Record<string, TemperatureMode>;
-
-/**
- * The quantity that stands in for `quantity` under `mode`.
- *
- * Temperatures are named per mode, so anything remembered across a mode switch
- * has to be re-pointed: a remembered `tdb` or `tr` becomes `operative_tmp`
- * under operative entry, and `operative_tmp` becomes `tdb` again under
- * separate entry. Every other quantity is returned untouched.
- */
-export function underTemperatureMode(quantity: Quantity, mode: TemperatureMode): Quantity {
-  if (mode.panel.includes(quantity)) {
-    return quantity;
-  }
-  const belongsToAnotherMode = Object.values(temperatureMode).some((entry) =>
-    (entry.panel as readonly Quantity[]).includes(quantity),
-  );
-  return belongsToAnotherMode ? mode.axis : quantity;
-}
 
 /**
  * How the user enters humidity. The entered quantity is the truth; `rh` is

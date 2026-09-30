@@ -5,7 +5,16 @@ import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type 
 import type { OutOfRangeRow } from "$lib/core/applicability";
 import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantities";
-import { startingSlot, withEnteredValues, withHumidityMode, withOption, withTemperatureMode, type Slot } from "$lib/core/slot";
+import {
+  entryModesOf,
+  startingSlot,
+  withEnteredValues,
+  withHumidityMode,
+  withOption,
+  withTemperatureMode,
+  type Slot,
+  type ValueEntryModes,
+} from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -245,17 +254,40 @@ export class Session {
   }
 
   /**
-   * The session's temperature entry mode (ADR-0002 decision 51): slot 1's,
-   * since an entry-mode change converts every slot that holds values
-   * ({@link setTemperatureMode}) and slot 1 always holds values.
+   * The session's entry mode of every entry group held among the values
+   * (ADR-0002 decision 51): slot 1's, read apart from the slot.
+   *
+   * The session holds no entry mode of its own, so this and the two readers
+   * below rest on an invariant: after every operation of the session, every
+   * slot that holds values is in slot 1's entry modes, humidity's included.
+   * It holds because the session changes a mode in every held slot at once
+   * ({@link setTemperatureMode}, {@link setHumidityMode}); a slot first
+   * enabled copies slot 1 ({@link setSlotEnabled}); a switch puts every held
+   * slot through one rehearsal, which reads the slot's modes and the model
+   * alone ({@link #rehearse}); and the input panel enters a value only in a
+   * row of the modes the slot is in, where {@link InputSlot.setEntered} of
+   * another humidity mode's quantity would move that one slot's mode.
+   *
+   * It does not hold through a question left standing: a mode changed or a
+   * slot first enabled while {@link pendingSwitch} is held is not in what
+   * {@link acceptSwitch} lands. The dialog is modal, so no person does that.
+   */
+  get entryModes(): ValueEntryModes {
+    return entryModesOf(this.#slots[0]);
+  }
+
+  /**
+   * The session's temperature entry mode: slot 1's, which by the invariant
+   * {@link entryModes} states is that of every slot that holds values.
    */
   get temperatureMode(): TemperatureMode {
     return this.#slots[0].temperature.mode;
   }
 
   /**
-   * The session's humidity entry mode: slot 1's, for the reason
-   * {@link temperatureMode} gives, or none while slot 1 holds no humidity.
+   * The session's humidity entry mode: slot 1's, which by the invariant
+   * {@link entryModes} states is that of every slot that holds values, or
+   * none while slot 1, and so every slot, holds no humidity.
    */
   get humidityMode(): HumidityMode | undefined {
     return this.#slots[0].humidity?.mode;

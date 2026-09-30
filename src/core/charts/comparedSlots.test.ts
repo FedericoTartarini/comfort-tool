@@ -15,7 +15,7 @@ import {
   type DeclaredPsychrometricChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
-import { enteredSlotFor } from "$lib/core/declarationTestSlots";
+import { enteredSlotFor, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { operativeTemperatureOf, startingSlot, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { displayUnitFor } from "$lib/core/units";
@@ -243,7 +243,7 @@ describe("a slot in another temperature entry mode than the session's", () => {
 
   it("is drawn on the session's axes, at the temperature the entry-mode change converts it to", () => {
     const spec = psychrometricSpec(
-      chartRequestForSlots(pmvPpdIso, [operative, separate], unitSystem.si, temperatureMode.operative),
+      chartRequestForSlots(pmvPpdIso, [operative, separate], unitSystem.si, entryModesWithTemperature(temperatureMode.operative)),
       psychrometricOf(pmvPpdIso),
     );
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
@@ -253,7 +253,7 @@ describe("a slot in another temperature entry mode than the session's", () => {
   it("does not decide the axes when it is slot 1", () => {
     const chart = psychrometricOf(pmvPpdIso);
     const spec = psychrometricSpec(
-      chartRequestForSlots(pmvPpdIso, [separate, operative], unitSystem.si, temperatureMode.operative),
+      chartRequestForSlots(pmvPpdIso, [separate, operative], unitSystem.si, entryModesWithTemperature(temperatureMode.operative)),
       chart,
     );
     const alone = psychrometricSpec(chartRequestFor(pmvPpdIso, withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso)), chart);
@@ -264,7 +264,7 @@ describe("a slot in another temperature entry mode than the session's", () => {
   it("is scanned on the session's axes as the converted slot alone is", () => {
     const chart = dynamicOf(pmvPpdIso);
     const spec = dynamicSpec(
-      chartRequestForSlots(pmvPpdIso, [operative, startingSlot(pmvPpdIso)], unitSystem.si, temperatureMode.separate),
+      chartRequestForSlots(pmvPpdIso, [operative, startingSlot(pmvPpdIso)], unitSystem.si, entryModesWithTemperature(temperatureMode.separate)),
       chart,
       chart.axes,
     );

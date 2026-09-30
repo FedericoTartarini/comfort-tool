@@ -1,13 +1,12 @@
 /**
  * The chart request a test draws: one slot, badged as slot 1, at the default
- * atmospheric pressure and in its own temperature entry mode, so every builder
+ * atmospheric pressure and in its own entry modes, so every builder
  * test asks as a session whose Compare is off asks; or several, badged by
  * position, as a session comparing them asks.
  */
-import type { TemperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "$lib/core/quantities";
-import type { Slot } from "$lib/core/slot";
+import { entryModesOf, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 import type { ChartRequest } from "./chartRequest";
@@ -19,21 +18,21 @@ export function chartRequestFor(model: RegisteredModel, slot: Slot, system: Unit
 
 /**
  * `model`'s chart of `slots`, the first as slot 1 and each after it as the
- * next position, in `system`, and in the session's temperature entry mode
- * `mode`: by default the first slot's, as a session whose gates are open holds
- * every slot in it.
+ * next position, in `system`, and in the session's entry modes `modes`: by
+ * default the first slot's, as a session whose gates are open holds every
+ * slot in them.
  */
 export function chartRequestForSlots(
   model: RegisteredModel,
   slots: readonly Slot[],
   system: UnitSystem = unitSystem.si,
-  mode: TemperatureMode = slots[0].temperature.mode,
+  modes: ValueEntryModes = entryModesOf(slots[0]),
 ): ChartRequest {
   return {
     model,
     slots: slots.map((slot, position) => ({ ...slotBadges[position], slot })),
     unitSystem: system,
-    temperatureMode: mode,
+    entryModes: modes,
     atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
   };
 }

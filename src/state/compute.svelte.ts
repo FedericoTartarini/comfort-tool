@@ -28,7 +28,7 @@ import {
 } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import type { Slot } from "$lib/core/slot";
+import { areSameEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadges, type SlotBadge } from "$lib/core/slotBadge";
 import type { InputSlot, Session, SlotPosition } from "./session.svelte";
 
@@ -76,8 +76,7 @@ export interface DrawnAxes {
  * drawn at the atmospheric pressure of the first: slot 1's, unless slot 1 has
  * none. One pressure for the whole chart, so a slot kept from a run at
  * another pressure is drawn at this one. Its axes are resolved from the
- * session's temperature entry mode, which no slot decides (ADR-0002 decision
- * 51).
+ * session's entry modes, which no slot decides (ADR-0002 decision 51).
  *
  * What the gate freezes is the *result*, not the screen (ADR-0002 decision
  * 33). Remembered are the last valid inputs alone; the result, the violation
@@ -110,11 +109,20 @@ export class Outputs {
     this.#compared.flatMap((outputs) => (outputs.lastValid ? [{ outputs, last: outputs.lastValid }] : [])),
   );
 
-  // The session's temperature entry mode and the pressure the chart is drawn
-  // at, each its own derivation: enabling a slot recomputes both, and an edit
-  // to the first recomputes the pressure, each to the same value, and their
-  // equality keeps every other slot's scan from running again.
-  readonly #temperatureMode = $derived.by(() => this.#session.temperatureMode);
+  // The session's entry modes and the pressure the chart is drawn at, each
+  // its own derivation: enabling a slot recomputes both, and an edit to the
+  // first recomputes the pressure, each to the same value, and their equality
+  // keeps every other slot's scan from running again. The modes are read into
+  // a new object each time, so the derivation hands back its own last output
+  // while they are the same modes, kept in a plain field as
+  // `SlotOutputs.#remembered` is.
+  #rememberedEntryModes: ValueEntryModes | null = null;
+  readonly #entryModes = $derived.by((): ValueEntryModes => {
+    const modes = this.#session.entryModes;
+    const remembered = this.#rememberedEntryModes;
+    this.#rememberedEntryModes = remembered && areSameEntryModes(remembered, modes) ? remembered : modes;
+    return this.#rememberedEntryModes;
+  });
   readonly #chartPressure = $derived.by((): number | null => this.#charted[0]?.last.atmosphericPressure ?? null);
 
   /** What every slot's scan shares, or `null` while the chart drawn is not a scanned one. */
@@ -125,7 +133,7 @@ export class Outputs {
     if (drawnPsychrometricOf(session) || !chart || isPolygonsChart(chart) || pressure === null) {
       return null;
     }
-    return scanFrameFor(session.model, chart, session.chart.axes, this.#temperatureMode, pressure);
+    return scanFrameFor(session.model, chart, session.chart.axes, this.#entryModes, pressure);
   });
 
   readonly #chart = $derived.by((): ChartSpec | null => {
@@ -377,7 +385,7 @@ function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: 
     model: session.model,
     slots: charted.map(({ outputs, last }) => ({ ...outputs.badge, slot: last.slot })),
     unitSystem: session.unitSystem,
-    temperatureMode: session.temperatureMode,
+    entryModes: session.entryModes,
     atmosphericPressure: charted[0].last.atmosphericPressure,
   };
   const psychrometric = drawnPsychrometricOf(session);
@@ -392,18 +400,18 @@ function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: 
 
 /**
  * The picker's axes for the chart {@link chartSpecOf} draws. The chart keeps
- * the axis the user picked; the session's temperature entry mode decides
- * which temperature quantity that is.
+ * the axis the user picked; the session's entry modes decide which quantity
+ * of its entry group that is.
  */
 function drawnAxesOf(session: Session): DrawnAxes | null {
   if (session.chart.type !== chartType.dynamic) {
     return null;
   }
-  const mode = session.temperatureMode;
-  const choices = dynamicAxisQuantities(session.model, mode);
+  const modes = session.entryModes;
+  const choices = dynamicAxisQuantities(session.model, modes);
   // A polygons chart offers none: its axes are locked (ADR-0002 decision 37).
   if (choices.length === 0) {
     return null;
   }
-  return { choices, selected: resolvedAxes(session.model, session.chart.axes, mode) };
+  return { choices, selected: resolvedAxes(session.model, session.chart.axes, modes) };
 }

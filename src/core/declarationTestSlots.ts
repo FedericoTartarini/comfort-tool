@@ -1,11 +1,17 @@
 /**
  * The slot a test enters values over: a model's own starting slot, so every
- * test that shares it runs a declaration on the numbers the app starts it on.
+ * test that shares it runs a declaration on the numbers the app starts it on;
+ * and the entry modes a test asks a rule about.
  */
-import { humidityMode, temperatureMode } from "./entryModes";
+import { humidityMode, temperatureMode, type TemperatureMode } from "./entryModes";
 import type { RegisteredModel } from "./modelDeclaration";
 import { quantities } from "./quantities";
-import { startingSlot, type Slot } from "./slot";
+import { defaultEntryModes, startingSlot, type Slot, type ValueEntryModes } from "./slot";
+
+/** The entry modes of a session that changed none but temperature's, to `mode`. */
+export function entryModesWithTemperature(mode: TemperatureMode): ValueEntryModes {
+  return { ...defaultEntryModes, temperature: { mode } };
+}
 
 /** A humidity mode's quantity, which the slot holds as its humidity entry rather than among its values. */
 type HumidityKey = (typeof humidityMode)[keyof typeof humidityMode]["quantity"]["key"];

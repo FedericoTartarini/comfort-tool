@@ -15,10 +15,9 @@
  * {@link rehearseSwitch}).
  */
 import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
-import { temperatureMode } from "./entryModes";
-import { hasTemperatureGroup, type RegisteredModel } from "./modelDeclaration";
+import type { RegisteredModel } from "./modelDeclaration";
 import type { Quantity } from "./quantities";
-import { seedDeclaredDefaults, withEnteredValues, withTemperatureMode, type Slot } from "./slot";
+import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
 
 /** What a switch would do to one slot: the slot it would leave, and what the new model would not accept. */
 export interface RehearsedSwitch {
@@ -43,7 +42,7 @@ export interface RehearsedSwitch {
  * of range once the pressure returns (ADR-0002 decision 53).
  */
 export function rehearseSwitch(slot: Slot, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
-  const converted = convertEntryMode(slot, model);
+  const converted = convertEntryModes(slot, model);
   const seeded = seedDeclaredDefaults(converted, model);
   const humidity = seeded.humidity?.mode.quantity;
   const others = outOfRangeRows(seeded, model, atmosphericPressure).filter((row) => row.quantity !== humidity);
@@ -80,13 +79,14 @@ function nearestEnd(value: number, bound: Bound): number {
 }
 
 /**
- * A slot in operative entry becomes separate entry when the new model has no
- * temperature entry group, because such a model needs the dry-bulb
- * temperature the operative entry is standing in for.
+ * `slot` in the default entry mode of every entry group the new model does
+ * not have: a slot in operative entry becomes separate entry for a model
+ * without the temperature entry group, because such a model needs the
+ * dry-bulb temperature the operative entry is standing in for.
  */
-function convertEntryMode(slot: Slot, model: RegisteredModel): Slot {
-  if (hasTemperatureGroup(model) || slot.temperature.mode !== temperatureMode.operative) {
-    return slot;
-  }
-  return withTemperatureMode(slot, temperatureMode.separate, model);
+function convertEntryModes(slot: Slot, model: RegisteredModel): Slot {
+  return valueEntryGroups.reduce(
+    (converted, group) => (group.appliesTo(model) ? converted : group.convert(converted, group.modeOf(defaultEntryModes), model)),
+    slot,
+  );
 }

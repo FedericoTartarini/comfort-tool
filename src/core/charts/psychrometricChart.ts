@@ -13,7 +13,7 @@ import {
 } from "$lib/core/modelDeclaration";
 import { resultNumber } from "$lib/core/modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
-import { requireValue, withTemperatureMode } from "$lib/core/slot";
+import { requireValue, withEntryModes } from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
@@ -43,10 +43,10 @@ const ZONE_RH_STEP = 5;
  * the slot's hue with the opacity rising inwards. Never the thermal-sensation
  * palette: it is diverging, and nested zones are levels of one thing.
  *
- * The x axis quantity is {@link ChartRequest.temperatureMode}'s: `tdb` when
- * the two temperatures are entered separately, `operative_tmp` under
- * operative entry, and
- * operative entry solves the zone with `tr_follows_db`, which is the geometry
+ * The x axis quantity is that of the temperature entry mode among
+ * {@link ChartRequest.entryModes}: `tdb` when the two temperatures are entered
+ * separately, `operative_tmp` under operative entry, and operative entry
+ * solves the zone with `tr_follows_db`, which is the geometry
  * the CBE tool's psychtop chart draws. No root finder is written here — the
  * temporary library owns that (ADR-0002 decision 24). The drawn x range is the
  * model's axis range for whichever temperature the mode puts on x: declared,
@@ -58,7 +58,7 @@ const ZONE_RH_STEP = 5;
  */
 export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
-  const mode = request.temperatureMode;
+  const { mode } = request.entryModes.temperature;
   const operative = mode === temperatureMode.operative;
   const axisQuantity = mode.axis;
   const xUnit = displayUnitFor(axisQuantity, unitSystem);
@@ -108,7 +108,7 @@ export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrom
   // Every slot's zones below every marker, so no slot's zone covers another's marker.
   const markers: Trace[] = [];
   for (const charted of request.slots) {
-    const resolved = resolveQuantities(withTemperatureMode(charted.slot, mode, model), model, atmosphericPressure);
+    const resolved = resolveQuantities(withEntryModes(charted.slot, request.entryModes, model), model, atmosphericPressure);
     // Every zone of a slot is solved at the same inputs; only the limit differs.
     const zoneInputs = {
       tr: requireValue(resolved, q.tr),

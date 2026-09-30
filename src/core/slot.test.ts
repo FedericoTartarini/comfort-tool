@@ -3,19 +3,25 @@ import { hr_to_rh, psy_ta_rh, t_o, v_relative } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { enteredSlotFor } from "./declarationTestSlots";
+import { enteredSlotFor, entryModesWithTemperature } from "./declarationTestSlots";
 import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { resolveQuantities, valuesReader } from "./libraryInputs";
 import type { RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
 import {
+  areSameEntryModes,
+  defaultEntryModes,
   enteredQuantities,
   enteredValue,
+  entryModesOf,
   operativeTemperatureOf,
   panelQuantities,
   relativeHumidityOf,
   startingSlot,
+  underEntryModes,
+  valueEntryGroups,
   withEnteredValues,
+  withEntryModes,
   withHumidityMode,
   withTemperatureMode,
   type Slot,
@@ -72,8 +78,8 @@ describe("entered values", () => {
   });
 
   it("lists the panel rows of the current temperature mode", () => {
-    expect(enteredQuantities(pmvPpdIso, temperatureMode.separate)).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
-    expect(enteredQuantities(pmvPpdIso, temperatureMode.operative)).toEqual([q.operative_tmp, q.v, q.rh, q.met, q.clo]);
+    expect(enteredQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.separate))).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
+    expect(enteredQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.operative))).toEqual([q.operative_tmp, q.v, q.rh, q.met, q.clo]);
   });
 
   it("lists only the inputs of a model without the temperature entry group, in either mode", () => {
@@ -81,8 +87,8 @@ describe("entered values", () => {
       ...pmvPpdIso,
       inputs: pmvPpdIso.inputs.filter(({ quantity }) => quantity === q.tdb || quantity === q.rh),
     } satisfies RegisteredModel;
-    expect(enteredQuantities(model, temperatureMode.separate)).toEqual([q.tdb, q.rh]);
-    expect(enteredQuantities(model, temperatureMode.operative)).toEqual([q.tdb, q.rh]);
+    expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.separate))).toEqual([q.tdb, q.rh]);
+    expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.operative))).toEqual([q.tdb, q.rh]);
   });
 
   it("keeps a lone mean radiant temperature, which is not the first of the separate rows", () => {
@@ -90,8 +96,8 @@ describe("entered values", () => {
       ...pmvPpdIso,
       inputs: pmvPpdIso.inputs.filter(({ quantity }) => quantity === q.tr || quantity === q.rh),
     } satisfies RegisteredModel;
-    expect(enteredQuantities(model, temperatureMode.separate)).toEqual([q.tr, q.rh]);
-    expect(enteredQuantities(model, temperatureMode.operative)).toEqual([q.tr, q.rh]);
+    expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.separate))).toEqual([q.tr, q.rh]);
+    expect(enteredQuantities(model, entryModesWithTemperature(temperatureMode.operative))).toEqual([q.tr, q.rh]);
   });
 
   describe("the panel's rows", () => {
@@ -118,7 +124,7 @@ describe("entered values", () => {
     it("leaves the entered quantities with rh, which the axis picker offers", () => {
       const slot = slotEnteredAs(temperatureMode.separate, humidityMode.dewPoint);
       expect(panelQuantities(pmvPpdIso, slot)).not.toContain(q.rh);
-      expect(enteredQuantities(pmvPpdIso, slot.temperature.mode)).toContain(q.rh);
+      expect(enteredQuantities(pmvPpdIso, slot)).toContain(q.rh);
     });
   });
 
@@ -278,5 +284,42 @@ describe("withTemperatureMode", () => {
     const converted = withTemperatureMode(enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }), temperatureMode.separate, adaptiveAshrae);
     expect([converted.values.get(q.tdb), converted.values.get(q.tr)]).toEqual([26, 26]);
     expect(converted.values.has(q.operative_tmp)).toBe(false);
+  });
+});
+
+describe("the entry groups held among the values", () => {
+  const separate = enteredSlotFor(pmvPpdIso, { tdb: 22, tr: 28 });
+  const operative = entryModesWithTemperature(temperatureMode.operative);
+
+  it("start a slot in the modes a declaration writes its inputs in", () => {
+    expect(entryModesOf(startingSlot(pmvPpdIso))).toEqual(defaultEntryModes);
+    for (const group of valueEntryGroups) {
+      expect(group.modes).toContain(group.modeOf(defaultEntryModes));
+    }
+  });
+
+  it("stand a mode's axis in for a quantity only another mode of the group enters", () => {
+    expect(underEntryModes(q.tdb, operative)).toBe(q.operative_tmp);
+    expect(underEntryModes(q.tr, operative)).toBe(q.operative_tmp);
+    expect(underEntryModes(q.operative_tmp, defaultEntryModes)).toBe(q.tdb);
+  });
+
+  it("leave a quantity of the mode entered, and one of no group, as it is", () => {
+    expect(underEntryModes(q.tr, defaultEntryModes)).toBe(q.tr);
+    expect(underEntryModes(q.operative_tmp, operative)).toBe(q.operative_tmp);
+    expect(underEntryModes(q.met, operative)).toBe(q.met);
+  });
+
+  it("convert a slot into other entry modes as the entry-mode change does", () => {
+    expect(withEntryModes(separate, operative, pmvPpdIso)).toEqual(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso));
+  });
+
+  it("hand back the slot itself when it is in the entry modes already", () => {
+    expect(withEntryModes(separate, defaultEntryModes, pmvPpdIso)).toBe(separate);
+  });
+
+  it("tell the same entry modes from different ones, whatever object holds them", () => {
+    expect(areSameEntryModes(entryModesOf(separate), defaultEntryModes)).toBe(true);
+    expect(areSameEntryModes(entryModesOf(separate), operative)).toBe(false);
   });
 });

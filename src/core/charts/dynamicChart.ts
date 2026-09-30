@@ -1,6 +1,5 @@
 import { classifyFromBins, type ClassifierBins } from "jsthermalcomfort";
 import { fillAtIndex } from "$lib/core/bandPalette";
-import { underTemperatureMode, type TemperatureMode } from "$lib/core/entryModes";
 import { toLibraryInputs } from "$lib/core/libraryInputs";
 import {
   axisRangeFor,
@@ -17,7 +16,15 @@ import {
 } from "$lib/core/modelDeclaration";
 import { resultNumber, runOn } from "$lib/core/modelRun";
 import { quantities, type Quantity } from "$lib/core/quantities";
-import { enteredQuantities, enteredValue, withEnteredValues, withTemperatureMode, type Slot } from "$lib/core/slot";
+import {
+  enteredQuantities,
+  enteredValue,
+  underEntryModes,
+  withEnteredValues,
+  withEntryModes,
+  type Slot,
+  type ValueEntryModes,
+} from "$lib/core/slot";
 import { displayUnitFor, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
@@ -30,7 +37,7 @@ const GRID = 51;
 
 /**
  * What every slot's scan on one chart shares: the model and its scanned
- * chart, the two axes swept, the temperature entry mode they are in, and the
+ * chart, the two axes swept, the entry modes they are in, and the
  * atmospheric pressure. A slot's scan is a function of this and the slot
  * alone, so the outputs can keep one per slot and an edit to one slot scans
  * that slot and no other (`state/compute.svelte.ts`).
@@ -39,7 +46,7 @@ export interface ScanFrame {
   readonly model: RegisteredModel;
   readonly chart: DeclaredScannedChart;
   readonly axes: ChartAxes;
-  readonly mode: TemperatureMode;
+  readonly entryModes: ValueEntryModes;
   readonly atmosphericPressure: number;
 }
 
@@ -51,26 +58,26 @@ export type ScannedField = readonly (readonly number[])[];
 
 /**
  * The frame `chart` is scanned in for `model`: the picked `axes` resolved
- * under `mode` ({@link resolvedAxes}).
+ * under `modes` ({@link resolvedAxes}).
  */
 export function scanFrameFor(
   model: RegisteredModel,
   chart: DeclaredScannedChart,
   axes: ChartAxes,
-  mode: TemperatureMode,
+  modes: ValueEntryModes,
   atmosphericPressure: number,
 ): ScanFrame {
-  return { model, chart, axes: resolvedAxes(model, axes, mode), mode, atmosphericPressure };
+  return { model, chart, axes: resolvedAxes(model, axes, modes), entryModes: modes, atmosphericPressure };
 }
 
 /**
- * `slot` scanned in `frame`: converted into the frame's entry mode first, by
- * the entry-mode change's own conversion, so a slot entered in the other mode
+ * `slot` scanned in `frame`: converted into the frame's entry modes first, by
+ * the entry-mode change's own conversion, so a slot entered in another mode
  * is swept on the quantities it would hold after that change.
  */
 export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
   const { model, chart, axes, atmosphericPressure } = frame;
-  const converted = withTemperatureMode(slot, frame.mode, model);
+  const converted = withEntryModes(slot, frame.entryModes, model);
   const xValues = samples(requireAxisRange(model, axes.x), GRID);
   return samples(requireAxisRange(model, axes.y), GRID).map((yValue) =>
     xValues.map((xValue) => {
@@ -85,7 +92,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
 
 /**
  * The dynamic chart of every slot of the request (ADR-0002 decision 50), on
- * the axes {@link ChartRequest.temperatureMode} puts them in.
+ * the axes {@link ChartRequest.entryModes} puts them in.
  *
  * A scanned chart scans the declared numeric output over a `GRID × GRID` field
  * of two entered quantities, once per slot. One slot's field is banded by the
@@ -126,8 +133,8 @@ export function dynamicSpec(
   scans?: readonly ScannedField[],
 ): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
-  const mode = request.temperatureMode;
-  const { x, y } = isPolygonsChart(chart) ? chart.axes : resolvedAxes(model, axes, mode);
+  const modes = request.entryModes;
+  const { x, y } = isPolygonsChart(chart) ? chart.axes : resolvedAxes(model, axes, modes);
   const xRange = requireAxisRange(model, x);
   const yRange = requireAxisRange(model, y);
   const xUnit = displayUnitFor(x, unitSystem);
@@ -154,7 +161,7 @@ export function dynamicSpec(
 
   if (isPolygonsChart(chart)) {
     const polygonsOfSlot = request.slots.map((charted) =>
-      chart.zones({ values: toLibraryInputs(withTemperatureMode(charted.slot, mode, model), model, atmosphericPressure), xRange }),
+      chart.zones({ values: toLibraryInputs(withEntryModes(charted.slot, modes, model), model, atmosphericPressure), xRange }),
     );
     request.slots.forEach((charted, position) => {
       const polygons = polygonsOfSlot[position];
@@ -182,7 +189,7 @@ export function dynamicSpec(
       ),
     );
   } else {
-    const frame = scanFrameFor(model, chart, axes, mode, atmosphericPressure);
+    const frame = scanFrameFor(model, chart, axes, modes, atmosphericPressure);
     const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
     const outputUnit = displayUnitFor(frame.chart.output, unitSystem);
     const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
@@ -230,7 +237,7 @@ export function dynamicSpec(
   }
 
   request.slots.forEach((charted, position) => {
-    const slot = withTemperatureMode(charted.slot, mode, model);
+    const slot = withEntryModes(charted.slot, modes, model);
     const markerX = enteredValue(slot, x, model, atmosphericPressure);
     const markerY = enteredValue(slot, y, model, atmosphericPressure);
     if (markerX !== undefined && markerY !== undefined) {
@@ -264,25 +271,20 @@ function contouredZonesOf(model: RegisteredModel, chart: DeclaredScannedChart): 
 }
 
 /**
- * The axes actually drawn. A remembered axis follows the entry mode, so
- * switching to operative entry sweeps `operative_tmp` rather than a `tdb` the
- * slot no longer holds — and because that maps both `tdb` and `tr` onto
- * `operative_tmp`, a chart
- * of one against the other would collapse onto a single quantity. x === y is
- * not a chart (ADR §4.4), so the y axis moves to the next quantity that can
- * carry one.
+ * The axes actually drawn. A remembered axis follows the entry modes
+ * (`underEntryModes`), so switching to operative entry sweeps `operative_tmp`
+ * rather than a `tdb` the slot no longer holds — and because that maps both
+ * `tdb` and `tr` onto `operative_tmp`, a chart of one against the other would
+ * collapse onto a single quantity. x === y is not a chart (ADR §4.4), so the
+ * y axis moves to the next quantity that can carry one.
  */
-export function resolvedAxes(
-  model: RegisteredModel,
-  axes: ChartAxes,
-  mode: TemperatureMode,
-): ChartAxes {
-  const x = underTemperatureMode(axes.x, mode);
-  const y = underTemperatureMode(axes.y, mode);
+export function resolvedAxes(model: RegisteredModel, axes: ChartAxes, modes: ValueEntryModes): ChartAxes {
+  const x = underEntryModes(axes.x, modes);
+  const y = underEntryModes(axes.y, modes);
   if (y !== x) {
     return { x, y };
   }
-  return { x, y: dynamicAxisQuantities(model, mode).find((quantity) => quantity !== x) ?? y };
+  return { x, y: dynamicAxisQuantities(model, modes).find((quantity) => quantity !== x) ?? y };
 }
 
 /**
@@ -291,12 +293,12 @@ export function resolvedAxes(
  * sweeps between.
  * None for a polygons chart, whose axes are locked (ADR-0002 decision 37).
  */
-export function dynamicAxisQuantities(model: RegisteredModel, mode: TemperatureMode): Quantity[] {
+export function dynamicAxisQuantities(model: RegisteredModel, modes: ValueEntryModes): Quantity[] {
   const chart = dynamicChartOf(model);
   if (chart && isPolygonsChart(chart)) {
     return [];
   }
-  return enteredQuantities(model, mode).filter((quantity) => axisRangeFor(model, quantity) !== undefined);
+  return enteredQuantities(model, modes).filter((quantity) => axisRangeFor(model, quantity) !== undefined);
 }
 
 /**
