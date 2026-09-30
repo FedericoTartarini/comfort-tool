@@ -71,7 +71,7 @@ Read the diff once against each of these. They are judgement calls; none of them
 **Precision**
 
 - Does a test of a number a person can see assert at the shown precision in SI (`toBeCloseTo(x, 2)`, or `formatNumber` equality)? Only a test of the app's own arithmetic (`core/units.ts`, `src/temporary-library/`) pins tighter, because it verifies a formula, not a precision (ADR-0002 decision 56).
-- Is anything rounded on its way into a slot, or compared against a bound exactly? A slot holds full-precision SI; the gate and the range text judge and read at the formatter's constant, and nowhere else is a precision written.
+- Is anything rounded on its way into a slot, or compared against a bound exactly? A slot holds full-precision SI; the gate and the range text judge and read at the formatter's constant, through `isShownBeyond`, and nowhere else is a precision written. An exact comparison that picks a direction for a row the gate already listed, as a "Yes" picks its end, is not a verdict and stands.
 
 **Svelte**
 
