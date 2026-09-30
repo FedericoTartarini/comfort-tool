@@ -19,7 +19,7 @@ import { takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from ".
 import { resultWarnings } from "./modelRun";
 import { formatNumber } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
-import { isHumidityQuantity, resolvedTdb, type Slot } from "./slot";
+import { isHumidityQuantity, resolvedTdb, type Slot, type ValueEntryModes } from "./slot";
 import type { DisplayUnit } from "./units";
 import { displayUnitFor, valueWithUnit } from "./units";
 import type { UnitSystem } from "./unitSystem";
@@ -39,7 +39,8 @@ export interface OutOfRangeRow {
  * One applicability row a value broke, and where it appeared in the model's
  * evaluation. `quantity` is the row it is reported on; `bounded` is the
  * quantity the bound and value belong to, which the sentence names. The two
- * differ only for `vr`, reported on the entered `v` (ADR-0002 decision 4).
+ * differ only for `vr` under air speed entry, reported on the entered `v`
+ * (ADR-0002 decision 4).
  */
 export interface ViolationRow extends OutOfRangeRow {
   readonly bounded: Quantity;
@@ -149,7 +150,7 @@ function humidityEntryBoundFor(model: RegisteredModel, mode: HumidityMode, slot:
  * holds no humidity has no humidity entry to bound. Entered `v` has
  * no bound of its own — the standard bounds the relative air speed it
  * derives, `vr`, which the library checks and {@link violationRows} reports
- * on the `v` row.
+ * on the `v` row. An entered `vr` is held to the model's own row for it.
  */
 export function enteredBound(
   model: RegisteredModel,
@@ -222,20 +223,22 @@ export function outOfRangeQuantities(slot: Slot, model: RegisteredModel, atmosph
  * `warnings` (ADR-0002 decision 23) — the app does not evaluate a row. Each
  * row's key is reconciled to a quantity through `quantityFor`; a key the table
  * lacks is dropped. When the model takes `vr`, its row is reported on the
- * entered `v`, the quantity the user typed, and stays `bounded` by `vr`. A
+ * air-speed quantity entered under `modes`, the row the person sees: the
+ * entered `v`, staying `bounded` by `vr`, or the entered `vr` itself, with no
+ * mapping (ADR-0002 decision 54). A
  * quantity can break several limits in one role (PMV (ASHRAE 55)'s fixed
  * air-speed row plus its no-control rows): those merge into one row over the
  * narrowest bound, so the person reads one sentence; the individual bounds
  * are not kept.
  */
-export function violationRows(model: RegisteredModel, result: ModelResult): ViolationRow[] {
+export function violationRows(model: RegisteredModel, result: ModelResult, modes: ValueEntryModes): ViolationRow[] {
   const rows: ViolationRow[] = [];
   for (const { key, role, value, bound } of resultWarnings(model, result)) {
     const keyed = quantityFor(key);
     if (!keyed) {
       continue;
     }
-    const quantity = takesRelativeAirSpeed(model) && keyed === q.vr ? q.v : keyed;
+    const quantity = takesRelativeAirSpeed(model) && keyed === q.vr ? modes.airSpeed.mode.axis : keyed;
     const index = rows.findIndex((row) => row.quantity === quantity && row.role === role);
     if (index === -1) {
       rows.push({ quantity, bounded: keyed, role, value, bound });

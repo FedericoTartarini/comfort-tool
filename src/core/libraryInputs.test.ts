@@ -27,6 +27,12 @@ describe("resolveQuantities", () => {
     expect(resolved.get(q.vr)).toBeGreaterThan(v);
   });
 
+  it("hands over the entered vr unchanged under relative air speed entry, and derives nothing", () => {
+    const resolved = resolveQuantities(enteredSlotFor(pmvPpdIso, { vr: 0.3, met: 2 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(resolved.get(q.vr)).toBe(0.3);
+    expect(resolved.has(q.v)).toBe(false);
+  });
+
   it("passes v through untouched when the model does not", () => {
     const inputs = Object.fromEntries(Object.entries(pmvPpdIso.info.inputs).filter(([key]) => key !== q.vr.key));
     const withoutRelative = { ...pmvPpdIso, info: { ...pmvPpdIso.info, inputs } };

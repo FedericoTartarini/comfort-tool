@@ -1,4 +1,3 @@
-import { v_relative } from "jsthermalcomfort";
 import { temperatureMode } from "./entryModes";
 import {
   hasHumidityGroup,
@@ -10,7 +9,7 @@ import {
   type Values,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { expandOperative, relativeHumidityOf, requireValue, type Slot } from "./slot";
+import { expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -18,7 +17,8 @@ const q = quantities;
  * Entry-group representations → the SI quantities the library model takes
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
  * humidity entry becomes `rh` at `atmosphericPressure`, and `v` becomes `vr`
- * when the model asks for it. No `p_atm` is filled: no registered model takes
+ * when the model asks for it, where an entered `vr` is handed over as it is
+ * and nothing is derived (ADR-0002 decision 54). No `p_atm` is filled: no registered model takes
  * one (ADR-0002 decision 49).
  */
 export function resolveQuantities(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Map<Quantity, number> {
@@ -33,7 +33,7 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
   }
 
   if (takesRelativeAirSpeed(model)) {
-    resolved.set(q.vr, v_relative(requireValue(resolved, q.v), requireValue(resolved, q.met)));
+    resolved.set(q.vr, relativeAirSpeedOf(slot));
     resolved.delete(q.v);
   }
 
@@ -47,8 +47,8 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
  * `limit_inputs: false` — `core/applicability.ts` gates entered values
  * against `_INFO` before calling, and the library then always returns numbers
  * rather than NaN, the behaviour of the deployed CBE tool. The rows a run
- * still breaks (derived, output, or the `v` row when `vr = v + 0.3(met − 1)`
- * breaks it while the entered `v` does not) come back on the result's
+ * still breaks (derived, output, or the air-speed row when the relative air
+ * speed breaks a limit the gate does not hold the entry to) come back on the result's
  * `warnings` and are reported, not gated, by `applicability.violationRows`.
  */
 export function toLibraryInputs(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Values {

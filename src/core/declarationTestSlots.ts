@@ -3,7 +3,7 @@
  * test that shares it runs a declaration on the numbers the app starts it on;
  * and the entry modes a test asks a rule about.
  */
-import { humidityMode, temperatureMode, type TemperatureMode } from "./entryModes";
+import { airSpeedMode, humidityMode, temperatureMode, type AirSpeedMode, type TemperatureMode } from "./entryModes";
 import type { RegisteredModel } from "./modelDeclaration";
 import { quantities } from "./quantities";
 import { defaultEntryModes, startingSlot, type Slot, type ValueEntryModes } from "./slot";
@@ -13,14 +13,20 @@ export function entryModesWithTemperature(mode: TemperatureMode): ValueEntryMode
   return { ...defaultEntryModes, temperature: { mode } };
 }
 
+/** The entry modes of a session that changed none but air speed's, to `mode`. */
+export function entryModesWithAirSpeed(mode: AirSpeedMode): ValueEntryModes {
+  return { ...defaultEntryModes, airSpeed: { mode } };
+}
+
 /** A humidity mode's quantity, which the slot holds as its humidity entry rather than among its values. */
 type HumidityKey = (typeof humidityMode)[keyof typeof humidityMode]["quantity"]["key"];
 
 /**
  * `model`'s starting slot with `entered` over its values. Entering
  * `operative_tmp` puts the slot under operative entry, where it stands in for
- * the separate temperatures, as the input panel shows it. The humidity entry
- * is not among the values, so it cannot be entered here.
+ * the separate temperatures, as the input panel shows it, and entering `vr`
+ * under relative air speed entry, where it stands in for the air speed. The
+ * humidity entry is not among the values, so it cannot be entered here.
  */
 export function enteredSlotFor(
   model: RegisteredModel,
@@ -34,10 +40,14 @@ export function enteredSlotFor(
       values.delete(quantity);
     }
   }
+  const airSpeedEntry = entered.vr === undefined ? airSpeedMode.uncorrected : airSpeedMode.corrected;
+  if (airSpeedEntry === airSpeedMode.corrected) {
+    values.delete(quantities.v);
+  }
   for (const [key, value] of Object.entries(entered)) {
     if (value !== undefined) {
       values.set(quantities[key as keyof typeof quantities], value);
     }
   }
-  return { ...slot, values, temperature: { mode } };
+  return { ...slot, values, temperature: { mode }, airSpeed: { mode: airSpeedEntry } };
 }

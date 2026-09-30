@@ -7,9 +7,17 @@
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
  */
-import { t_o } from "jsthermalcomfort";
-import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode, type ValueEntryMode } from "./entryModes";
-import { hasTemperatureGroup, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import { t_o, v_relative } from "jsthermalcomfort";
+import {
+  airSpeedMode,
+  humidityMode,
+  temperatureMode,
+  type AirSpeedMode,
+  type HumidityMode,
+  type TemperatureMode,
+  type ValueEntryMode,
+} from "./entryModes";
+import { hasTemperatureGroup, takesRelativeAirSpeed, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -21,6 +29,7 @@ export interface Slot {
   /** Absent until a declaration's default or the person writes it (ADR-0002 decision 32). */
   readonly humidity?: { readonly mode: HumidityMode; readonly value: number };
   readonly temperature: { readonly mode: TemperatureMode };
+  readonly airSpeed: { readonly mode: AirSpeedMode };
   /** Every option any model put here, by identity: a superset bag like `values` (ADR-0002 decision 36). */
   readonly options: ReadonlyMap<OptionSpec, boolean>;
 }
@@ -33,14 +42,17 @@ const q = quantities;
  * session's are slot 1's, and a chart is drawn in them (ADR-0002 decision 51).
  * Humidity's mode is not among them: it is held with the humidity entry.
  */
-export type ValueEntryModes = Pick<Slot, "temperature">;
+export type ValueEntryModes = Pick<Slot, "temperature" | "airSpeed">;
 
 /** The entry modes a slot starts in, which are those a declaration writes its inputs in. */
-export const defaultEntryModes: ValueEntryModes = { temperature: { mode: temperatureMode.separate } };
+export const defaultEntryModes: ValueEntryModes = {
+  temperature: { mode: temperatureMode.separate },
+  airSpeed: { mode: airSpeedMode.uncorrected },
+};
 
 /** The entry modes `slot` is in, apart from the slot. */
 export function entryModesOf(slot: ValueEntryModes): ValueEntryModes {
-  return { temperature: slot.temperature };
+  return { temperature: slot.temperature, airSpeed: slot.airSpeed };
 }
 
 /** Whether `a` and `b` are the same entry modes, group by group. */
@@ -53,7 +65,8 @@ export function areSameEntryModes(a: ValueEntryModes, b: ValueEntryModes): boole
  * Every rule that reads an entry mode is written once over these, so a new
  * group is a row of {@link valueEntryGroups} and a field of the slot, which
  * {@link ValueEntryModes}, {@link defaultEntryModes} and {@link entryModesOf}
- * name beside the others.
+ * name beside the others, and which the session's slot, its setter and its
+ * control carry as the slot's shape.
  *
  * Humidity is an entry group and not one of these: its entry is one quantity
  * held apart from the values (`Slot.humidity`), its modes carry their own
@@ -85,6 +98,12 @@ export const valueEntryGroups: readonly ValueEntryGroup[] = [
     modeOf: (modes) => modes.temperature.mode,
     convert: withTemperatureMode,
   },
+  {
+    modes: Object.values(airSpeedMode),
+    appliesTo: takesRelativeAirSpeed,
+    modeOf: (modes) => modes.airSpeed.mode,
+    convert: withAirSpeedMode,
+  },
 ];
 
 /**
@@ -93,7 +112,8 @@ export const valueEntryGroups: readonly ValueEntryGroup[] = [
  * An entry group's quantities are named per mode, so anything remembered
  * across a mode switch has to be re-pointed: a remembered `tdb` or `tr`
  * becomes `operative_tmp` under operative entry, and `operative_tmp` becomes
- * `tdb` again under separate entry. A quantity of no group, or of its group's
+ * `tdb` again under separate entry; a remembered `v` becomes `vr` under
+ * relative air speed entry, and back. A quantity of no group, or of its group's
  * mode in `modes`, is returned untouched.
  */
 export function underEntryModes(quantity: Quantity, modes: ValueEntryModes): Quantity {
@@ -146,6 +166,9 @@ export function relativeHumidityOf(slot: Slot, atmosphericPressure: number): num
  * The slot's operative temperature: the entry itself under operative entry,
  * else the library's `t_o(tdb, tr, v, model.standard)`, weighed by the model's
  * own standard, or by the library's default for a model that declares none.
+ * The air speed it weighs by is the slot's air-speed entry: the relative air
+ * speed under relative air speed entry, the one air speed the slot then holds,
+ * as the library's own ASHRAE 55 check weighs by the `vr` it is given.
  * How a chart locked on an operative axis marks a slot in separate entry
  * (ADR-0002 decision 37), and the value the switch into operative entry
  * stores ({@link withTemperatureMode}, decision 39), so the click does not
@@ -162,7 +185,23 @@ export function operativeTemperatureOf(slot: Slot, model: RegisteredModel): numb
   // `t_o` names fewer standards than a model may pin (not ISO 7933), and
   // throws on one it does not; the cast leaves that call to the library.
   const standard = model.standard as Parameters<typeof t_o>[3];
-  return t_o(requireValue(slot.values, q.tdb), requireValue(slot.values, q.tr), requireValue(slot.values, q.v), standard);
+  const airSpeed = requireValue(slot.values, slot.airSpeed.mode.axis);
+  return t_o(requireValue(slot.values, q.tdb), requireValue(slot.values, q.tr), airSpeed, standard);
+}
+
+/**
+ * The slot's relative air speed, which a model that takes `vr` is given: the
+ * entry itself under relative air speed entry, else the library's
+ * `v_relative(v, met)` of the entered air speed and metabolic rate. What
+ * `core/libraryInputs.ts` resolves, and the value the switch into relative air
+ * speed entry stores ({@link withAirSpeedMode}), so the person sees the number
+ * the model was getting. The one place the app calls `v_relative`.
+ */
+export function relativeAirSpeedOf(slot: Slot): number {
+  if (slot.airSpeed.mode === airSpeedMode.corrected) {
+    return requireValue(slot.values, q.vr);
+  }
+  return v_relative(requireValue(slot.values, q.v), requireValue(slot.values, q.met));
 }
 
 /**
@@ -248,6 +287,7 @@ function changedSlot(slot: Slot, changes: Partial<Slot>): Slot {
     values: changes.values ?? slot.values,
     humidity: changes.humidity ?? slot.humidity,
     temperature: changes.temperature ?? slot.temperature,
+    airSpeed: changes.airSpeed ?? slot.airSpeed,
     options: changes.options ?? slot.options,
   };
 }
@@ -264,7 +304,7 @@ export function isHumidityQuantity(quantity: Quantity): boolean {
  * The same slot with some entered values replaced — how the person enters a
  * value and how the dynamic chart sweeps its axes. Replacing before
  * resolution keeps the derivations honest: an overridden `v` is still turned
- * into `vr`, an overridden `operative_tmp` still expands to `tdb = tr`.
+ * into `vr`, an overridden `vr` is given to the model as it is, an overridden `operative_tmp` still expands to `tdb = tr`.
  *
  * A value whose quantity is any humidity entry mode's sets the humidity entry
  * to that mode and value, so no humidity quantity lands among the values. An
@@ -297,8 +337,9 @@ export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot
  * operative stores {@link operativeTemperatureOf}'s answer, the library's `t_o`
  * by the model's own standard as pythermalcomfort's models weigh it (ADR-0002
  * decision 39), so the slot lands where the chart marked it; operative →
- * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, and the one
- * removal the bag ever suffers: the two representations never coexist. The
+ * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, and a removal
+ * from the bag, as every such conversion is: the two representations never
+ * coexist. The
  * deployed tool converts nothing here — its checkbox copies the air
  * temperature into mean radiant.
  *
@@ -320,6 +361,34 @@ export function withTemperatureMode(slot: Slot, mode: TemperatureMode, model: Re
     expandOperative(values);
   }
   return changedSlot(slot, { values, temperature: { mode } });
+}
+
+/**
+ * The same slot with its air speed re-expressed under `mode`. Uncorrected →
+ * corrected stores {@link relativeAirSpeedOf}'s answer, the relative air speed
+ * the model was given at the slot's own air speed and metabolic rate;
+ * corrected → uncorrected keeps the number, an entry convention and not an
+ * equation (ADR-0002 decisions 21 and 54). Lossy and one-way, like
+ * {@link withTemperatureMode}, and the two representations never coexist. The
+ * deployed tool converts nothing here: its checkbox passes the entry as the
+ * relative air speed under the label "Air speed".
+ *
+ * The air-speed group's {@link ValueEntryGroup.convert}, which says who
+ * applies it.
+ */
+export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
+  if (mode === slot.airSpeed.mode) {
+    return slot;
+  }
+  const values = new Map(slot.values);
+  if (mode === airSpeedMode.corrected) {
+    values.set(q.vr, relativeAirSpeedOf(slot));
+    values.delete(q.v);
+  } else {
+    values.set(q.v, requireValue(values, q.vr));
+    values.delete(q.vr);
+  }
+  return changedSlot(slot, { values, airSpeed: { mode } });
 }
 
 /**
@@ -364,7 +433,7 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
  * the declaration's own default; what the slot already holds is kept, whatever
  * model put it there. An input of an entry group is sought under the slot's
  * own entry mode, so an operative entry answers for the dry-bulb one it
- * stands in for.
+ * stands in for, and an entered relative air speed for the air speed.
  *
  * A humidity input is missing only from a slot that holds no humidity, which
  * then starts at the declared default: in relative-humidity entry, since a

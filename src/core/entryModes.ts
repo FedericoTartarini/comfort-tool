@@ -37,6 +37,19 @@ export const temperatureMode = {
 } as const satisfies Record<string, TemperatureMode>;
 
 /**
+ * How the user enters the air speed, an activity-adjusted input (ADR-0002
+ * decision 54). Uncorrected, the default, enters the air speed, and the model
+ * is given the relative air speed derived from it; corrected enters the
+ * relative air speed itself, and the model is given it unchanged.
+ */
+export type AirSpeedMode = ValueEntryMode;
+
+export const airSpeedMode = {
+  uncorrected: { id: "air-speed", panel: [quantities.v], axis: quantities.v },
+  corrected: { id: "relative-air-speed", panel: [quantities.vr], axis: quantities.vr },
+} as const satisfies Record<string, AirSpeedMode>;
+
+/**
  * How the user enters humidity. The entered quantity is the truth; `rh` is
  * derived in `core/slot.ts` (ADR §4.5). Each mode carries its own
  * two conversions, library calls, so no caller switches on mode identity to

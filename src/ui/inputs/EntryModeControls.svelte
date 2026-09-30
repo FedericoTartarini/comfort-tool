@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
-  import { hasHumidityGroup, hasTemperatureGroup } from "$lib/core/modelDeclaration";
+  import { airSpeedMode, humidityMode, temperatureMode, type AirSpeedMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
+  import { hasHumidityGroup, hasTemperatureGroup, takesRelativeAirSpeed } from "$lib/core/modelDeclaration";
   import type { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
@@ -16,6 +16,7 @@
 
   const showTemperatureRow = $derived(hasTemperatureGroup(session.model));
   const showHumidityRow = $derived(hasHumidityGroup(session.model));
+  const showAirSpeedRow = $derived(takesRelativeAirSpeed(session.model));
 
   function temperatureVariantFor(mode: TemperatureMode) {
     return session.temperatureMode === mode ? "default" : "outline";
@@ -23,6 +24,10 @@
 
   function humidityVariantFor(mode: HumidityMode) {
     return session.humidityMode === mode ? "default" : "outline";
+  }
+
+  function airSpeedVariantFor(mode: AirSpeedMode) {
+    return session.airSpeedMode === mode ? "default" : "outline";
   }
 </script>
 
@@ -45,6 +50,17 @@
       {#each Object.values(humidityMode) as mode (mode)}
         <Button size="sm" variant={humidityVariantFor(mode)} onclick={() => session.setHumidityMode(mode)}>
           {mode.quantity.label}
+        </Button>
+      {/each}
+    </Inline>
+  {/if}
+
+  {#if showAirSpeedRow}
+    <Inline gap="2" align="center">
+      <span>{copy.airSpeedInput}</span>
+      {#each Object.values(airSpeedMode) as mode (mode)}
+        <Button size="sm" variant={airSpeedVariantFor(mode)} onclick={() => session.setAirSpeedMode(mode)}>
+          {mode.axis.label}
         </Button>
       {/each}
     </Inline>

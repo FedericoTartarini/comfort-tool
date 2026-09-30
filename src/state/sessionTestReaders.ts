@@ -18,6 +18,7 @@ export function shapeOf(slot: InputSlot) {
     values: new Map(slot.values),
     humidity: slot.humidity,
     temperature: slot.temperature,
+    airSpeed: slot.airSpeed,
     options: new Map(slot.options),
   };
 }

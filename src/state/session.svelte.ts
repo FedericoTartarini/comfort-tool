@@ -1,6 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
-import { temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
+import { airSpeedMode, temperatureMode, type AirSpeedMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import type { OutOfRangeRow } from "$lib/core/applicability";
 import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
@@ -8,6 +8,7 @@ import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantitie
 import {
   entryModesOf,
   startingSlot,
+  withAirSpeedMode,
   withEnteredValues,
   withHumidityMode,
   withOption,
@@ -22,11 +23,12 @@ import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
  * the truth. `values` is the cross-model superset bag: it excludes `rh`
  * (held in `humidity`, absent until a declaration's default or the person
  * writes it), stores `operative_tmp` under operative mode and
- * `tdb` / `tr` under separate mode. `options` is a superset bag in the same
+ * `tdb` / `tr` under separate mode, and `vr` under relative air speed entry
+ * and `v` under air speed entry. `options` is a superset bag in the same
  * way, keyed by the declaration's own option objects (ADR-0002 decision 36).
  *
  * Every write is a core function from a slot to a slot, whose answer the slot
- * lands; the two maps and the two entries are read-only outside the class. An
+ * lands; the two maps and the three entries are read-only outside the class. An
  * entry mode is the session's, so the slot has no entry-mode setter: the
  * session converts every slot through {@link InputSlot.replaceWith}
  * (ADR-0002 decision 51).
@@ -39,6 +41,7 @@ export class InputSlot implements Slot {
   // `humidityMode.rh` / `io.quantities.rh` would fail. Replace, don't mutate.
   #humidity = $state.raw<Slot["humidity"]>(undefined);
   #temperature = $state.raw<Slot["temperature"]>({ mode: temperatureMode.separate });
+  #airSpeed = $state.raw<Slot["airSpeed"]>({ mode: airSpeedMode.uncorrected });
 
   /** A slot holding what `slot` holds: the slot a model starts on, or a copy of another. */
   constructor(slot: Slot) {
@@ -61,6 +64,10 @@ export class InputSlot implements Slot {
     return this.#temperature;
   }
 
+  get airSpeed(): Slot["airSpeed"] {
+    return this.#airSpeed;
+  }
+
   /** Enter `value` for `quantity` where core puts it: a humidity quantity sets the humidity entry. */
   setEntered(quantity: Quantity, value: number): void {
     this.replaceWith(withEnteredValues(this, new Map([[quantity, value]])));
@@ -73,8 +80,8 @@ export class InputSlot implements Slot {
 
   /**
    * Hold what `slot` holds: quantities and options it does not carry are
-   * dropped, the rest are set, and the humidity and temperature entries are
-   * replaced. The two maps are mutated rather than swapped, because the input
+   * dropped, the rest are set, and the humidity, temperature and air-speed
+   * entries are replaced. The two maps are mutated rather than swapped, because the input
    * panel and the derivations hold them and their reactivity is their own.
    * `slot` may be this `InputSlot` itself, when the core function it came from
    * found nothing to change; the loops then do nothing.
@@ -88,6 +95,7 @@ export class InputSlot implements Slot {
     replaceEntries(this.#options, slot.options);
     this.#humidity = slot.humidity;
     this.#temperature = slot.temperature;
+    this.#airSpeed = slot.airSpeed;
   }
 }
 
@@ -257,11 +265,12 @@ export class Session {
    * The session's entry mode of every entry group held among the values
    * (ADR-0002 decision 51): slot 1's, read apart from the slot.
    *
-   * The session holds no entry mode of its own, so this and the two readers
+   * The session holds no entry mode of its own, so this and the three readers
    * below rest on an invariant: after every operation of the session, every
    * slot that holds values is in slot 1's entry modes, humidity's included.
    * It holds because the session changes a mode in every held slot at once
-   * ({@link setTemperatureMode}, {@link setHumidityMode}); a slot first
+   * ({@link setTemperatureMode}, {@link setAirSpeedMode},
+   * {@link setHumidityMode}); a slot first
    * enabled copies slot 1 ({@link setSlotEnabled}); a switch puts every held
    * slot through one rehearsal, which reads the slot's modes and the model
    * alone ({@link #rehearse}); and the input panel enters a value only in a
@@ -285,6 +294,14 @@ export class Session {
   }
 
   /**
+   * The session's air-speed entry mode: slot 1's, which by the invariant
+   * {@link entryModes} states is that of every slot that holds values.
+   */
+  get airSpeedMode(): AirSpeedMode {
+    return this.#slots[0].airSpeed.mode;
+  }
+
+  /**
    * The session's humidity entry mode: slot 1's, which by the invariant
    * {@link entryModes} states is that of every slot that holds values, or
    * none while slot 1, and so every slot, holds no humidity.
@@ -302,6 +319,17 @@ export class Session {
   setTemperatureMode(mode: TemperatureMode): void {
     for (const slot of this.#heldSlots()) {
       slot.replaceWith(withTemperatureMode(slot, mode, this.model));
+    }
+  }
+
+  /**
+   * Change the air-speed entry mode: every slot that holds values is
+   * converted by `withAirSpeedMode` at its own air speed and metabolic rate,
+   * as {@link setTemperatureMode} converts.
+   */
+  setAirSpeedMode(mode: AirSpeedMode): void {
+    for (const slot of this.#heldSlots()) {
+      slot.replaceWith(withAirSpeedMode(slot, mode));
     }
   }
 

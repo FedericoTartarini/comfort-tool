@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { sensationPalette } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
-import { enteredSlotFor, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
-import { temperatureMode } from "$lib/core/entryModes";
+import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
+import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
@@ -399,6 +399,35 @@ describe("axes across a temperature entry mode switch", () => {
 
   it("leaves axes that do not collide alone", () => {
     expect(resolvedAxes(pmvPpdIso, { x: q.tdb, y: q.v }, entryModesWithTemperature(temperatureMode.separate))).toEqual({ x: q.tdb, y: q.v });
+  });
+});
+
+describe("axes across an air-speed entry mode switch", () => {
+  const corrected = entryModesWithAirSpeed(airSpeedMode.corrected);
+
+  it("offers the relative air speed where it offered the air speed", () => {
+    const offered = dynamicAxisQuantities(pmvPpdIso, corrected);
+    expect(offered).toContain(q.vr);
+    expect(offered).not.toContain(q.v);
+    expect(dynamicAxisQuantities(pmvPpdIso, entryModesWithAirSpeed(airSpeedMode.uncorrected))).toContain(q.v);
+  });
+
+  it("sweeps the relative air speed when a remembered air-speed axis no longer exists, and marks the entry", () => {
+    // isoChart.axes.y is v, which the slot no longer holds.
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4 })), isoChart, isoChart.axes);
+    expect(spec.layout.y.title).toContain(q.vr.label);
+    expect(new Set(bands(spec).z.flat()).size).toBeGreaterThan(1);
+    expect(markerOf(spec)?.y).toBe(0.4);
+  });
+
+  it("gives the model the swept relative air speed unchanged, so the field is the one the air speed gives at the same vr", () => {
+    // At met 1 the activity adds nothing, so v and vr are one number and the two fields one field.
+    const still = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 1 })), isoChart, { x: q.tdb, y: q.clo });
+    const entered = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 2 })), isoChart, { x: q.tdb, y: q.clo });
+    const moving = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 })), isoChart, { x: q.tdb, y: q.clo });
+    const atMetOne = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 1 })), isoChart, { x: q.tdb, y: q.clo });
+    expect(bands(atMetOne).z).toEqual(bands(still).z);
+    expect(bands(entered).z).not.toEqual(bands(moving).z);
   });
 });
 

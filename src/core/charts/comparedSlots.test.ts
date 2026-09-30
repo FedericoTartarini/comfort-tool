@@ -6,7 +6,7 @@
  * gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
-import { temperatureMode } from "$lib/core/entryModes";
+import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -15,8 +15,8 @@ import {
   type DeclaredPsychrometricChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
-import { enteredSlotFor, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
-import { operativeTemperatureOf, startingSlot, withTemperatureMode, type Slot } from "$lib/core/slot";
+import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
+import { operativeTemperatureOf, relativeAirSpeedOf, startingSlot, withAirSpeedMode, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
@@ -275,5 +275,42 @@ describe("a slot in another temperature entry mode than the session's", () => {
     );
     expect(spec.layout.x.title).toContain(q.tdb.label);
     expect(markersOf(spec)[0].x).toBe(markersOf(alone)[0].x);
+  });
+});
+
+/** The same, for the air-speed entry group: both builders convert the whole kept slot. */
+describe("a slot in another air-speed entry mode than the session's", () => {
+  const entered = enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 });
+  const corrected = entryModesWithAirSpeed(airSpeedMode.corrected);
+
+  it("is marked on the session's air-speed axis, at the value the entry-mode change converts it to", () => {
+    const chart = dynamicOf(pmvPpdIso);
+    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), entered], unitSystem.si, corrected), chart, chart.axes);
+    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)), chart, chart.axes);
+    expect(spec.layout.y.title).toContain(q.vr.label);
+    expect(markersOf(spec)[1].y).toBe(relativeAirSpeedOf(entered));
+    expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
+  });
+
+  // Back keeps the number (ADR-0002 decision 54), so a slot kept in relative air
+  // speed entry is drawn as the entry-mode change would leave it: its number
+  // read as an air speed, and corrected again.
+  it("is drawn in an air-speed session as the slot the change back leaves", () => {
+    const chart = dynamicOf(pmvPpdIso);
+    const kept = enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 });
+    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [kept], unitSystem.si, entryModesWithAirSpeed(airSpeedMode.uncorrected)), chart, chart.axes);
+    const alone = dynamicSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(kept, airSpeedMode.uncorrected)), chart, chart.axes);
+    expect(spec.layout.y.title).toContain(q.v.label);
+    expect(spec.traces).toEqual(alone.traces);
+    expect(markersOf(spec)[0].y).toBe(0.7);
+  });
+
+  it("has its comfort zones solved on the relative air speed the model is given, in either mode", () => {
+    const chart = psychrometricOf(pmvPpdIso);
+    const kept = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [entered], unitSystem.si, corrected), chart);
+    const converted = psychrometricSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)), chart);
+    const uncorrected = psychrometricSpec(chartRequestFor(pmvPpdIso, entered), chart);
+    expect(kept.traces).toEqual(converted.traces);
+    expect(converted.traces).toEqual(uncorrected.traces);
   });
 });

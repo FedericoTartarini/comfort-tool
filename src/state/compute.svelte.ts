@@ -271,7 +271,7 @@ export class SlotOutputs {
   readonly #violations = $derived.by((): readonly ViolationRow[] => {
     const last = this.#lastValid;
     const result = this.#result;
-    return last && result ? violationRows(last.model, result) : [];
+    return last && result ? violationRows(last.model, result, this.#session.entryModes) : [];
   });
 
   // Of the last valid run, so a closed gate stops here too; and of the shared
@@ -323,7 +323,9 @@ export class SlotOutputs {
 
   /**
    * Applicability rows the slot's last run broke (`core/applicability.ts`),
-   * kept with the result they describe: not touched while the gate blocks a run.
+   * kept with the result they describe: not touched while the gate blocks a
+   * run, and reported on the rows of the session's entry modes, the ones the
+   * person sees (ADR-0002 decision 54).
    */
   get violations(): readonly ViolationRow[] {
     return this.#violations;
@@ -352,7 +354,7 @@ interface ChartedRun {
 /**
  * `slot`'s entered values and options, detached from the slot: plain `Map`s,
  * so what is remembered stops moving when the slot does, and reading it later
- * subscribes to nothing. The two entry-mode objects are replaced rather than mutated
+ * subscribes to nothing. The entry-mode objects are replaced rather than mutated
  * (`state/session.svelte.ts`), so they are kept by reference, and an absent
  * humidity stays absent.
  */
@@ -361,6 +363,7 @@ function detach(slot: Slot): Slot {
     values: new Map(slot.values),
     humidity: slot.humidity,
     temperature: slot.temperature,
+    airSpeed: slot.airSpeed,
     options: new Map(slot.options),
   };
 }

@@ -3,8 +3,9 @@ import { hr_to_rh, psy_ta_rh, t_o, v_relative } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { enteredSlotFor, entryModesWithTemperature } from "./declarationTestSlots";
-import { humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
+import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithTemperature } from "./declarationTestSlots";
+import { airSpeedMode, humidityMode, temperatureMode, type HumidityMode, type TemperatureMode } from "./entryModes";
 import { resolveQuantities, valuesReader } from "./libraryInputs";
 import type { RegisteredModel } from "./modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
@@ -16,10 +17,12 @@ import {
   entryModesOf,
   operativeTemperatureOf,
   panelQuantities,
+  relativeAirSpeedOf,
   relativeHumidityOf,
   startingSlot,
   underEntryModes,
   valueEntryGroups,
+  withAirSpeedMode,
   withEnteredValues,
   withEntryModes,
   withHumidityMode,
@@ -53,6 +56,14 @@ describe("operativeTemperatureOf", () => {
     expect(operativeTemperatureOf(room, withoutStandard)).toBe(t_o(24, 28, 0.6));
   });
 
+  it("weighs by the entered relative air speed under relative air speed entry, the one air speed the slot holds", () => {
+    const entered = enteredSlotFor(pmvPpdIso, { tdb: 24, tr: 28, vr: 0.6 });
+    expect(operativeTemperatureOf(entered, pmvPpdIso)).toBe(operativeTemperatureOf(room, pmvPpdIso));
+    const operative = withTemperatureMode(entered, temperatureMode.operative, pmvPpdIso);
+    expect(operative.values.get(q.operative_tmp)).toBe(t_o(24, 28, 0.6, pmvPpdIso.standard));
+    expect(operative.values.get(q.vr)).toBe(0.6);
+  });
+
   it("is the entered operative temperature under operative entry", () => {
     expect(operativeTemperatureOf(enteredSlotFor(pmvPpdIso, { operative_tmp: 26 }), adaptiveAshrae)).toBe(26);
   });
@@ -80,6 +91,24 @@ describe("entered values", () => {
   it("lists the panel rows of the current temperature mode", () => {
     expect(enteredQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.separate))).toEqual([q.tdb, q.tr, q.v, q.rh, q.met, q.clo]);
     expect(enteredQuantities(pmvPpdIso, entryModesWithTemperature(temperatureMode.operative))).toEqual([q.operative_tmp, q.v, q.rh, q.met, q.clo]);
+  });
+
+  it("lists the relative air speed where the air speed stood, under relative air speed entry", () => {
+    const corrected = entryModesWithAirSpeed(airSpeedMode.corrected);
+    expect(enteredQuantities(pmvPpdIso, corrected)).toEqual([q.tdb, q.tr, q.vr, q.rh, q.met, q.clo]);
+    expect(enteredQuantities(pmvPpdIso, { ...corrected, temperature: { mode: temperatureMode.operative } })).toEqual([
+      q.operative_tmp,
+      q.vr,
+      q.rh,
+      q.met,
+      q.clo,
+    ]);
+  });
+
+  it("lists the air speed of a model whose info names no relative air speed, in either mode", () => {
+    const rows = enteredQuantities(adaptiveAshrae, defaultEntryModes);
+    expect(rows).toContain(q.v);
+    expect(enteredQuantities(adaptiveAshrae, entryModesWithAirSpeed(airSpeedMode.corrected))).toEqual(rows);
   });
 
   it("lists only the inputs of a model without the temperature entry group, in either mode", () => {
@@ -287,6 +316,34 @@ describe("withTemperatureMode", () => {
   });
 });
 
+describe("withAirSpeedMode", () => {
+  const moving = enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 });
+
+  it("writes the relative air speed the model was given into the entry, at the slot's own air speed and metabolic rate", () => {
+    const converted = withAirSpeedMode(moving, airSpeedMode.corrected);
+    expect(converted.airSpeed.mode).toBe(airSpeedMode.corrected);
+    expect(converted.values.get(q.vr)).toBe(v_relative(0.4, 2));
+    expect(converted.values.get(q.vr)).toBe(resolveQuantities(moving, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE).get(q.vr));
+    expect(converted.values.has(q.v)).toBe(false);
+  });
+
+  it("keeps the number going back", () => {
+    const converted = withAirSpeedMode(enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 }), airSpeedMode.uncorrected);
+    expect(converted.airSpeed.mode).toBe(airSpeedMode.uncorrected);
+    expect(converted.values.get(q.v)).toBe(0.7);
+    expect(converted.values.has(q.vr)).toBe(false);
+  });
+
+  it("hands back the slot itself when it is in the mode already", () => {
+    expect(withAirSpeedMode(moving, airSpeedMode.uncorrected)).toBe(moving);
+  });
+
+  it("answers the relative air speed of a slot in either mode", () => {
+    expect(relativeAirSpeedOf(moving)).toBe(v_relative(0.4, 2));
+    expect(relativeAirSpeedOf(enteredSlotFor(pmvPpdIso, { vr: 0.7, met: 2 }))).toBe(0.7);
+  });
+});
+
 describe("the entry groups held among the values", () => {
   const separate = enteredSlotFor(pmvPpdIso, { tdb: 22, tr: 28 });
   const operative = entryModesWithTemperature(temperatureMode.operative);
@@ -302,6 +359,29 @@ describe("the entry groups held among the values", () => {
     expect(underEntryModes(q.tdb, operative)).toBe(q.operative_tmp);
     expect(underEntryModes(q.tr, operative)).toBe(q.operative_tmp);
     expect(underEntryModes(q.operative_tmp, defaultEntryModes)).toBe(q.tdb);
+  });
+
+  it("stand the relative air speed in for the air speed under relative air speed entry, and back", () => {
+    expect(underEntryModes(q.v, entryModesWithAirSpeed(airSpeedMode.corrected))).toBe(q.vr);
+    expect(underEntryModes(q.vr, defaultEntryModes)).toBe(q.v);
+    expect(underEntryModes(q.v, defaultEntryModes)).toBe(q.v);
+  });
+
+  it("have the air-speed group on a model whose info names the relative air speed, and on no other", () => {
+    const airSpeed = valueEntryGroups.find((group) => group.modes.includes(airSpeedMode.corrected));
+    expect([pmvPpdIso, pmvPpdAshrae, adaptiveAshrae, heatIndexRothfusz].map((model) => airSpeed?.appliesTo(model))).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it("convert a slot by every group whose mode differs", () => {
+    const modes = { temperature: { mode: temperatureMode.operative }, airSpeed: { mode: airSpeedMode.corrected } };
+    expect(withEntryModes(separate, modes, pmvPpdIso)).toEqual(
+      withAirSpeedMode(withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso), airSpeedMode.corrected),
+    );
   });
 
   it("leave a quantity of the mode entered, and one of no group, as it is", () => {

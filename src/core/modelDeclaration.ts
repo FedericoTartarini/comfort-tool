@@ -318,9 +318,10 @@ export function hasTemperatureGroup(model: RegisteredModel): boolean {
 }
 
 /**
- * Whether the model takes `vr`, which the app derives as `v_relative(v, met)`
- * from the entered `v`: read from whether `info.inputs` names it, each key
- * reconciled through `quantityFor` (ADR-0002 decision 48).
+ * Whether the model takes `vr`, and so has the air-speed entry group: the app
+ * derives `vr` as `v_relative(v, met)` from the entered `v`, or is entered it
+ * (ADR-0002 decision 54). Read from whether `info.inputs` names it, each key
+ * reconciled through `quantityFor` (decision 48).
  */
 export function takesRelativeAirSpeed(model: RegisteredModel): boolean {
   return Object.keys(model.info.inputs).some((key) => quantityFor(key) === quantities.vr);

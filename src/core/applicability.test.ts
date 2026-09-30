@@ -14,12 +14,12 @@ import {
   violationRows,
   warningFor,
 } from "./applicability";
-import { enteredSlotFor } from "./declarationTestSlots";
-import { humidityMode, type HumidityMode } from "./entryModes";
+import { enteredSlotFor, entryModesWithAirSpeed } from "./declarationTestSlots";
+import { airSpeedMode, humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
-import { startingSlot, type Slot } from "./slot";
+import { defaultEntryModes, startingSlot, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
@@ -53,6 +53,17 @@ describe("enteredBound / outOfRangeQuantities", () => {
     expect(bound?.max).toBe(pmvPpdIso.info.inputs.tdb?.applicability?.max);
     expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { operative_tmp: (bound?.max ?? 0) + 1 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.operative_tmp]);
     expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { operative_tmp: bound?.max ?? 0 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+  });
+
+  it("judges an entered relative air speed against the model's bound for it directly", () => {
+    const bound = pmvPpdIso.info.inputs.vr?.applicability;
+    const within = enteredSlotFor(pmvPpdIso, { vr: bound?.max ?? 0 });
+    const beyond = enteredSlotFor(pmvPpdIso, { vr: (bound?.max ?? 0) + 0.1 });
+    expect(enteredBound(pmvPpdIso, q.vr, within, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(bound);
+    expect(outOfRangeRows(within, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(outOfRangeRows(beyond, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
+      { quantity: q.vr, value: (bound?.max ?? 0) + 0.1, bound },
+    ]);
   });
 
   it("has no bound for an entered quantity the model does not limit", () => {
@@ -231,7 +242,7 @@ describe("isAtmosphericPressureOutOfRange", () => {
 
 describe("violationRows", () => {
   function rowsFor(slot: Slot) {
-    return violationRows(pmvPpdIso, runOn(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE));
+    return violationRows(pmvPpdIso, runOn(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
   }
 
   it("is empty at the model's defaults", () => {
@@ -269,13 +280,13 @@ describe("violationRows", () => {
       { key: "vr", role: "input", value, bound: { max: 0.8 } },
       { key: "vr", role: "input", value, bound: { max: 0.2 } },
     ];
-    const below = violationRows(pmvPpdIso, { warnings: noControl(0.9) });
+    const below = violationRows(pmvPpdIso, { warnings: noControl(0.9) }, defaultEntryModes);
     expect(below).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 0.9, bound: { max: 0.2 } }]);
     expect(below.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
     expect(below.map((row) => warningFor(row, unitSystem.ip))).toEqual([vrWarning("≤ 39.37", unitSystem.ip)]);
 
     const fixed = { key: "vr", role: "input", value: 2.5, bound: { min: 0, max: 2 } };
-    const above = violationRows(pmvPpdIso, { warnings: [fixed, ...noControl(2.5)] });
+    const above = violationRows(pmvPpdIso, { warnings: [fixed, ...noControl(2.5)] }, defaultEntryModes);
     expect(above).toEqual([{ quantity: q.v, bounded: q.vr, role: "input", value: 2.5, bound: { min: 0, max: 0.2 } }]);
     expect(above.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("0 – 0.2", unitSystem.si)]);
     expect(above.map((row) => warningFor(row, unitSystem.ip))).toEqual([vrWarning("0 – 39.37", unitSystem.ip)]);
@@ -288,10 +299,30 @@ describe("violationRows", () => {
       ...enteredSlotFor(pmvPpdAshrae, { tdb: 22, tr: 22, v: 0.15, met: 1.29 }),
       options: new Map([[pmvPpdAshrae.options[0], false]]),
     };
-    const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE));
+    const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
     expect(rows.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.v, q.vr]]);
     expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
     expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Relative air speed must be ≤ 0.2 m/s"]);
+  });
+
+  it("reports a relative air speed the run breaks on its own row under relative air speed entry, with no mapping", () => {
+    // The same case entered as the relative air speed itself: 0.237 m/s is inside the model info's
+    // 0 – 2 m/s, so the gate passes it, and over the 0.2 m/s the standard allows here.
+    const slot: Slot = {
+      ...enteredSlotFor(pmvPpdAshrae, { tdb: 22, tr: 22, vr: 0.237, met: 1.29 }),
+      options: new Map([[pmvPpdAshrae.options[0], false]]),
+    };
+    expect(outOfRangeQuantities(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
+    expect(rows.map(({ quantity, bounded, value }) => [quantity, bounded, value])).toEqual([[q.vr, q.vr, 0.237]]);
+    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
+  });
+
+  it("reports the row in the entry modes it is asked in, whatever mode the run was entered in", () => {
+    const warnings = [{ key: "vr", role: "input", value: 0.9, bound: { max: 0.2 } }];
+    const rowOf = (modes: Parameters<typeof violationRows>[2]) => violationRows(pmvPpdIso, { warnings }, modes)[0].quantity;
+    expect(rowOf(defaultEntryModes)).toBe(q.v);
+    expect(rowOf(entryModesWithAirSpeed(airSpeedMode.corrected))).toBe(q.vr);
   });
 
   it("keeps rows on different quantities, or on one quantity in different roles, apart", () => {
@@ -303,7 +334,7 @@ describe("violationRows", () => {
         { key: "pmv", role: "output", value: 3, bound: { min: -2, max: 2 } },
       ],
     };
-    expect(violationRows(pmvPpdIso, result).map(({ quantity, role }) => [quantity, role])).toEqual([
+    expect(violationRows(pmvPpdIso, result, defaultEntryModes).map(({ quantity, role }) => [quantity, role])).toEqual([
       [q.v, "input"],
       [q.clo, "input"],
       [q.pmv, "input"],
@@ -313,7 +344,7 @@ describe("violationRows", () => {
 
   it("drops a key the quantity table lacks", () => {
     const result = { warnings: [{ key: "not_a_quantity", role: "input", value: 1, bound: { max: 0.8 } }] };
-    expect(violationRows(pmvPpdIso, result)).toEqual([]);
+    expect(violationRows(pmvPpdIso, result, defaultEntryModes)).toEqual([]);
   });
 
   it("throws naming the model for a result that carries no warnings, since every v1 model returns them", () => {
@@ -325,7 +356,7 @@ describe("violationRows", () => {
       },
     } satisfies RegisteredModel;
     const result = runOn(startingSlot(pmvPpdIso), stripped, DEFAULT_ATMOSPHERIC_PRESSURE);
-    expect(() => violationRows(stripped, result)).toThrow(`${pmvPpdIso.info.label} returned no applicability rows`);
+    expect(() => violationRows(stripped, result, defaultEntryModes)).toThrow(`${pmvPpdIso.info.label} returned no applicability rows`);
   });
 });
 
@@ -337,7 +368,7 @@ describe("splitViolations", () => {
         { key: "pa", role: "derived", value: 3000, bound: { max: 2700 } },
         { key: "pmv", role: "output", value: 3, bound: { min: -2, max: 2 } },
       ],
-    });
+    }, defaultEntryModes);
     const { inputs, outputs } = splitViolations(rows);
     expect(inputs.map(({ quantity, role }) => [quantity, role])).toEqual([
       [q.clo, "input"],
