@@ -17,12 +17,12 @@ import { copy } from "$lib/text/copy";
 import { humidityMode, temperatureMode, type HumidityMode } from "./entryModes";
 import { takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
-import { formatNumber, shownNumber } from "./numberFormat";
+import { formatNumber, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import { isHumidityQuantity, resolvedTdb, valueEntryGroups, type EntryCorrection, type Slot, type ValueEntryModes } from "./slot";
 import type { DisplayUnit } from "./units";
 import { displayUnitFor, valueWithUnit } from "./units";
-import type { UnitSystem } from "./unitSystem";
+import { unitSystem, type UnitSystem } from "./unitSystem";
 
 export type { Bound };
 
@@ -60,8 +60,14 @@ function boundFor(table: Readonly<Record<string, VariableInfo>> | undefined, qua
   return undefined;
 }
 
-function breaksBound(bound: Bound, value: number): boolean {
-  return (bound.min !== undefined && value < bound.min) || (bound.max !== undefined && value > bound.max);
+/**
+ * Whether `value` of `quantity` is outside `bound` as its row shows both: the
+ * number formatter's comparison, in the quantity's SI display unit (ADR-0002
+ * decision 56). A difference no row shows, 1.8751 clo under a maximum of
+ * 1.875, is not outside.
+ */
+function breaksBound(quantity: Quantity, bound: Bound, value: number): boolean {
+  return isShownBeyond(value, bound, displayUnitFor(quantity, unitSystem.si));
 }
 
 /** The bound between `min` and `max`, keeping only an end that is a finite number. */
@@ -261,7 +267,7 @@ export function outOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPr
   const rows: OutOfRangeRow[] = [];
   for (const [quantity, value] of entered) {
     const bound = enteredBound(model, quantity, boundsAt, atmosphericPressure);
-    if (bound && breaksBound(bound, value)) {
+    if (bound && breaksBound(quantity, bound, value)) {
       rows.push({ quantity, value, bound });
     }
   }
@@ -278,7 +284,7 @@ export function outOfRangeRows(slot: Slot, model: RegisteredModel, atmosphericPr
  */
 export function isAtmosphericPressureOutOfRange(atmosphericPressure: number): boolean {
   const bound = kindBounds[q.p_atm.kind];
-  return bound !== undefined && breaksBound(bound, atmosphericPressure);
+  return bound !== undefined && breaksBound(q.p_atm, bound, atmosphericPressure);
 }
 
 /** Which quantities {@link outOfRangeRows} names — what the input panel marks. */
@@ -288,7 +294,7 @@ export function outOfRangeQuantities(slot: Slot, model: RegisteredModel, atmosph
 
 /**
  * The rows a completed run broke, as the library reports them on the result's
- * `warnings` (ADR-0002 decision 23) — the app does not evaluate a row. Each
+ * `warnings` (ADR-0002 decision 23) — the app finds no row of its own. Each
  * row's key is reconciled to a quantity through `quantityFor`; a key the table
  * lacks is dropped. When the model takes `vr`, its row is reported on the
  * air-speed quantity entered under `modes`, the row the person sees: the
@@ -300,7 +306,8 @@ export function outOfRangeQuantities(slot: Slot, model: RegisteredModel, atmosph
  * quantity can break several limits in one role (PMV (ASHRAE 55)'s fixed
  * air-speed row plus its no-control rows): those merge into one row over the
  * narrowest bound, so the person reads one sentence; the individual bounds
- * are not kept.
+ * are not kept. A row is only a value shown outside its bound, as the gate
+ * judges an entry.
  */
 export function violationRows(model: RegisteredModel, result: ModelResult, modes: ValueEntryModes): ViolationRow[] {
   const rows: ViolationRow[] = [];
@@ -310,6 +317,12 @@ export function violationRows(model: RegisteredModel, result: ModelResult, modes
       continue;
     }
     const { quantity, bounded } = reportedRow(model, keyed, modes);
+    // The library judges its bounds exactly, and the app at the precision a row
+    // shows (ADR-0002 decision 56): a warning on a value a hair over its bound,
+    // which no row shows as outside, is not a row and is dropped silently.
+    if (!breaksBound(bounded, bound, value)) {
+      continue;
+    }
     const index = rows.findIndex((row) => row.quantity === quantity && row.role === role);
     if (index === -1) {
       rows.push({ quantity, bounded, role, value, bound });
@@ -359,12 +372,12 @@ export function splitViolations(rows: readonly ViolationRow[]): ViolationSides {
 
 /**
  * `bound` in the display unit, formatted, without the unit symbol. Each end is
- * written inside the bound at the precision a row shows (ADR-0002 decision
- * 55): `0 – 1.87` for a maximum of 1.875. An end, typed into its row, is a
- * number the gate accepts.
+ * written as any number is, nearest: `0 – 1.88` for a maximum of 1.875. The
+ * gate compares at this precision, so the end a person reads is accepted
+ * (ADR-0002 decision 56).
  */
 export function formatBound(bound: Bound, unit: DisplayUnit): string {
-  const shownEnd = (end: number): string => formatNumber(unit.fromSi(shownNumber(end, unit, bound)));
+  const shownEnd = (end: number): string => formatNumber(unit.fromSi(end));
   const min = bound.min !== undefined ? shownEnd(bound.min) : undefined;
   const max = bound.max !== undefined ? shownEnd(bound.max) : undefined;
   if (min !== undefined && max !== undefined) {

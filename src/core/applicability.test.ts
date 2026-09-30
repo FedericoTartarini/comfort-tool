@@ -20,7 +20,7 @@ import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./e
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { adjustToBounds } from "./modelSwitch";
-import { shownNumber } from "./numberFormat";
+import { formatNumber, isShownBeyond, shownNumber } from "./numberFormat";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, type Quantity } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, relativeAirSpeedOf, requireValue, startingSlot, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
@@ -167,6 +167,26 @@ describe("enteredBound / outOfRangeQuantities", () => {
         }
       }
     }
+  });
+
+  // The gate compares at the precision a row shows (ADR-0002 decision 56): ASHRAE 55's converted end at 2 met is 1.875 clo, which reads 1.88.
+  it("passes a value within half a shown step of its bound on either side, and stops one shown outside it", () => {
+    const rowsAt = (clo: number) => outOfRangeRows(enteredSlotFor(pmvPpdAshrae, { met: 2, clo }), pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
+    for (const clo of [1.8749, 1.875, 1.8751, 1.88, -0.004]) {
+      expect(rowsAt(clo), String(clo)).toEqual([]);
+    }
+    expect(rowsAt(1.885)).toEqual([{ quantity: q.clo, value: 1.885, bound: { min: 0, max: 1.875 } }]);
+    expect(rowsAt(-0.006)).toEqual([{ quantity: q.clo, value: -0.006, bound: { min: 0, max: 1.875 } }]);
+  });
+
+  it("judges a humidity ratio at two decimals of g/kg, not of the kg/kg it is held in", () => {
+    const at25 = (value: number) => withHumidity(startingSlot(pmvPpdIso), humidityMode.humidityRatio, value);
+    const max = enteredBound(pmvPpdIso, q.hr, at25(0), DEFAULT_ATMOSPHERIC_PRESSURE)?.max ?? Number.NaN;
+    // Saturated air at 25 °C holds about 20 g/kg. The end as the range reads it passes, and 0.01 g/kg more does not.
+    const gramsPerKilogram = displayUnitFor(q.hr, unitSystem.si);
+    const shownEnd = Number(formatNumber(gramsPerKilogram.fromSi(max)));
+    expect(outOfRangeRows(at25(gramsPerKilogram.toSi(shownEnd)), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(outOfRangeQuantities(at25(gramsPerKilogram.toSi(shownEnd + 0.01)), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.hr]);
   });
 
   it("narrows a model's own air-speed row by the kind's bound, and leaves a model that enters no air speed alone", () => {
@@ -353,6 +373,13 @@ describe("isAtmosphericPressureOutOfRange", () => {
     expect(isAtmosphericPressureOutOfRange(110000)).toBe(false);
     expect(isAtmosphericPressureOutOfRange(110001)).toBe(true);
   });
+
+  it("answers in range within half a shown step of either end, at two decimals of a pascal", () => {
+    expect(isAtmosphericPressureOutOfRange(29999.996)).toBe(false);
+    expect(isAtmosphericPressureOutOfRange(110000.004)).toBe(false);
+    expect(isAtmosphericPressureOutOfRange(29999.99)).toBe(true);
+    expect(isAtmosphericPressureOutOfRange(110000.01)).toBe(true);
+  });
 });
 
 describe("violationRows", () => {
@@ -457,6 +484,27 @@ describe("violationRows", () => {
     ]);
   });
 
+  // The library judges its bounds exactly; the app judges at the precision a row shows (ADR-0002 decision 56).
+  it("names only a value shown outside its bound, and drops a warning a hair over", () => {
+    const warningsAt = (value: number) => ({ warnings: [{ key: "clo", role: "input", value, bound: { min: 0, max: 2 } }] });
+    // ISO 7730's clothing at its converted end is given to the model as 2.0000000004 clo.
+    expect(violationRows(pmvPpdIso, warningsAt(2.0000000004), defaultEntryModes)).toEqual([]);
+    expect(violationRows(pmvPpdIso, warningsAt(2.004), defaultEntryModes)).toEqual([]);
+    expect(violationRows(pmvPpdIso, warningsAt(2.006), defaultEntryModes).map((row) => row.quantity)).toEqual([q.clo]);
+    // A derived row is judged in its SI display unit: 2700.4 Pa reads 2.7 kPa, 2706 Pa reads 2.71 kPa.
+    const derivedAt = (value: number) => ({ warnings: [{ key: "pa", role: "derived", value, bound: { max: 2700 } }] });
+    expect(violationRows(pmvPpdIso, derivedAt(2700.4), defaultEntryModes)).toEqual([]);
+    expect(violationRows(pmvPpdIso, derivedAt(2706), defaultEntryModes).map((row) => row.quantity)).toEqual([q.pa]);
+  });
+
+  it("merges only the bounds a value is shown outside of", () => {
+    const warnings = [
+      { key: "vr", role: "input", value: 0.803, bound: { min: 0, max: 0.8 } },
+      { key: "vr", role: "input", value: 0.803, bound: { max: 0.2 } },
+    ];
+    expect(violationRows(pmvPpdIso, { warnings }, defaultEntryModes).map((row) => row.bound)).toEqual([{ max: 0.2 }]);
+  });
+
   it("drops a key the quantity table lacks", () => {
     const result = { warnings: [{ key: "not_a_quantity", role: "input", value: 1, bound: { max: 0.8 } }] };
     expect(violationRows(pmvPpdIso, result, defaultEntryModes)).toEqual([]);
@@ -478,15 +526,16 @@ describe("violationRows", () => {
 describe("formatBound", () => {
   const unitOf = (quantity: Quantity, system: UnitSystem = unitSystem.si) => displayUnitFor(quantity, system);
 
-  it("writes each end inside the bound, at the precision a row shows", () => {
-    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo))).toBe("0 – 1.87");
+  // The gate compares at this precision, so the end a person reads is accepted (ADR-0002 decision 56).
+  it("writes each end as any number is written, nearest at two decimals", () => {
+    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo))).toBe("0 – 1.88");
     expect(formatBound({ min: 0, max: 1.934059254 }, unitOf(q.clo))).toBe("0 – 1.93");
-    expect(formatBound({ min: 1.657136061, max: 2 }, unitOf(q.clo))).toBe("1.66 – 2");
+    expect(formatBound({ min: 1.654, max: 2 }, unitOf(q.clo))).toBe("1.65 – 2");
   });
 
-  it("writes a one-ended bound with its end inside", () => {
-    expect(formatBound({ min: 1.657136061 }, unitOf(q.clo))).toBe("≥ 1.66");
-    expect(formatBound({ max: 1.875 }, unitOf(q.clo))).toBe("≤ 1.87");
+  it("writes a one-ended bound with its end nearest", () => {
+    expect(formatBound({ min: 1.654 }, unitOf(q.clo))).toBe("≥ 1.65");
+    expect(formatBound({ max: 1.875 }, unitOf(q.clo))).toBe("≤ 1.88");
   });
 
   it("leaves an end of no more than two decimals unchanged", () => {
@@ -495,24 +544,23 @@ describe("formatBound", () => {
     expect(formatBound({ max: 0.2 }, unitOf(q.vr))).toBe("≤ 0.2");
   });
 
-  it("writes ends that, typed into the row, the gate accepts", () => {
-    // Heat Index's 27 °C is 80.6 °F, which converts back to a hair under 27 °C and would be stopped.
-    const fahrenheit = unitOf(q.tdb, unitSystem.ip);
-    expect(formatBound({ min: 27 }, fahrenheit)).toBe("≥ 80.61");
-    for (let celsius = 0; celsius <= 50; celsius += 0.1) {
-      const bound = { min: celsius, max: celsius + 10 };
-      const [min, max] = formatBound(bound, fahrenheit).split(" – ").map((end) => fahrenheit.toSi(Number(end)));
-      expect(min, String(celsius)).toBeGreaterThanOrEqual(bound.min);
-      expect(max, String(celsius)).toBeLessThanOrEqual(bound.max);
-    }
+  it("writes each end nearest in IP, rounded in the IP unit", () => {
+    // 0.2 m/s is 39.3700… fpm and 0.15 m/s is 29.5275… fpm; 27 °C is 80.6 °F and 10.03 °C is 50.054 °F.
+    expect(formatBound({ min: 0, max: 0.2 }, unitOf(q.v, unitSystem.ip))).toBe("0 – 39.37");
+    expect(formatBound({ max: 0.15 }, unitOf(q.v, unitSystem.ip))).toBe("≤ 29.53");
+    expect(formatBound({ min: 27 }, unitOf(q.tdb, unitSystem.ip))).toBe("≥ 80.6");
+    expect(formatBound({ min: 10.03, max: 30 }, unitOf(q.tdb, unitSystem.ip))).toBe("50.05 – 86");
+    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo, unitSystem.ip))).toBe("0 – 1.88");
   });
 
-  it("writes each end inside the bound in IP, rounded in the IP unit", () => {
-    // 0.2 m/s is 39.3700… fpm and 0.15 m/s is 29.5275… fpm; 10.03 °C is 50.054 °F.
-    expect(formatBound({ min: 0, max: 0.2 }, unitOf(q.v, unitSystem.ip))).toBe("0 – 39.37");
-    expect(formatBound({ max: 0.15 }, unitOf(q.v, unitSystem.ip))).toBe("≤ 29.52");
-    expect(formatBound({ min: 10.03, max: 30 }, unitOf(q.tdb, unitSystem.ip))).toBe("50.06 – 86");
-    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo, unitSystem.ip))).toBe("0 – 1.87");
+  it("writes ends that, typed into the row, the gate accepts", () => {
+    const fahrenheit = unitOf(q.tdb, unitSystem.ip);
+    for (let celsius = 0; celsius <= 50; celsius += 0.1) {
+      const bound = { min: celsius, max: celsius + 10 };
+      for (const end of formatBound(bound, fahrenheit).split(" – ")) {
+        expect(isShownBeyond(fahrenheit.toSi(Number(end)), bound, unitOf(q.tdb)), `${celsius}: ${end}`).toBe(false);
+      }
+    }
   });
 });
 

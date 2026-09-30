@@ -19,6 +19,26 @@ export function formatNumber(value: number): string {
 }
 
 /**
+ * Whether the SI `value` lies beyond the SI `bound` as a row would show both
+ * in `unit` (ADR-0002 decision 56): each is rounded to the formatter's steps
+ * in `unit`, and the steps are compared. A difference no row shows is not
+ * beyond: under a maximum of 1.875, which reads 1.88, so do 1.8751 and 1.88.
+ * The one comparison the gate and the run's violation rows make, called with
+ * the quantity's SI display unit.
+ */
+export function isShownBeyond(value: number, bound: Bound, unit: DisplayUnit): boolean {
+  const steps = shownSteps(value, unit);
+  return (
+    (bound.min !== undefined && steps < shownSteps(bound.min, unit)) || (bound.max !== undefined && steps > shownSteps(bound.max, unit))
+  );
+}
+
+/** The SI `value` in `unit`, as the whole number of the formatter's steps a row shows. */
+function shownSteps(value: number, unit: DisplayUnit): number {
+  return Math.round(unit.fromSi(value) * STEPS_PER_UNIT);
+}
+
+/**
  * The number a row would show for the SI `value`, in `unit`, under `bound`
  * (ADR-0002 decision 55), answered in SI: the nearest number of the
  * formatter's precision in `unit`. Where `value` is inside `bound` and the

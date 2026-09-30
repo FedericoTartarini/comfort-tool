@@ -10,7 +10,7 @@
  * `clo_dynamic_iso`, or what a session entering that number gives.
  */
 import { clo_dynamic_ashrae, clo_dynamic_iso } from "jsthermalcomfort";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import type { PointTrace } from "$lib/core/charts/chartSpec";
 import { enteredBound } from "$lib/core/applicability";
 import { chartType } from "$lib/core/chartType";
@@ -257,6 +257,56 @@ describe("the session's clothing entry mode", () => {
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].violations).toEqual([]);
+  });
+
+  // The gate and the run's violations judge at the precision a row shows (ADR-0002 decision 56): ISO 7730's
+  // converted end is a search's answer, which the library gives the model a hair over its own 2 clo.
+  it("leaves the row open through the switch to dynamic clothing entry at the exact converted bound, and reports nothing", () => {
+    const consoleWrites = (["warn", "log", "error"] as const).map((method) => vi.spyOn(console, method).mockImplementation(() => undefined));
+    onTestFinished(() => {
+      vi.restoreAllMocks();
+    });
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.v, 0);
+    session.slots[0].setEntered(q.met, 1);
+    const end = enteredBound(pmvPpdIso, q.clo, session.slots[0], session.atmosphericPressure)?.max ?? Number.NaN;
+    session.slots[0].setEntered(q.clo, end);
+    expect(clo_dynamic_iso(end, 1, 0)).toBeGreaterThan(2);
+    expect(clo_dynamic_iso(end, 1, 0)).toBeCloseTo(2, 2);
+
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].violations).toEqual([]);
+
+    session.setClothingMode(clothingMode.corrected);
+
+    expect(session.slots[0].values.get(q.clo_dynamic)).toBeCloseTo(2, 2);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].notCalculated).toBe(false);
+    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].violations).toEqual([]);
+    expect(consoleWrites.flatMap((spy) => spy.mock.calls)).toEqual([]);
+  });
+
+  it("passes an entry the row shows as the range's end, and stops one shown past it, withholding the result", () => {
+    const session = new Session(pmvPpdAshrae);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.met, 2);
+    expect(enteredBound(pmvPpdAshrae, q.clo, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 1.875 });
+
+    for (const clo of [1.8749, 1.875, 1.8751, 1.88]) {
+      session.slots[0].setEntered(q.clo, clo);
+      expect(outputs.slots[0].outOfRangeQuantities, String(clo)).toEqual([]);
+      expect(outputs.slots[0].result, String(clo)).not.toBeNull();
+      // ASHRAE 55's rule gives 1.88 clo as 1.504, which a row shows as the model's 1.5.
+      expect(outputs.slots[0].violations, String(clo)).toEqual([]);
+    }
+
+    session.slots[0].setEntered(q.clo, 1.885);
+
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
+    expect(outputs.slots[0].notCalculated).toBe(true);
   });
 
   // ASHRAE 55's rule gives 1.6 clo at 2 met as 1.28 clo, inside the model's 1.5.
