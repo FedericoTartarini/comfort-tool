@@ -1316,7 +1316,12 @@ the local `../comfort_tool` checkout:
     library warning whose value passes that comparison, since the library judges its bounds exactly, and drops it
     silently: the app's rule is at work, not a fault, and the console stays clean. (3) The range beside a row and in
     the switch dialog is the bound's ends formatted as any number is, nearest: "0 – 1.88" for 1.875, and the gate
-    accepts what it reads. (4) A "Yes" moves a listed entry to the bound's end itself. (5) A test of a number a person
+    accepts what it reads. Where the unit shown is coarser than the SI display unit the gate judges in (inHg against
+    kPa or Pa), the nearest end typed back could be stopped: so each end is asked of the gate's own comparison as if
+    typed, and steps one shown digit inward when it would be stopped ("≤ 0.79 inHg" for 2700 Pa, whose nearest 0.8
+    is 2709 Pa). One step suffices, since a coarser step crosses the finer one. *(Revised 2026-10-01 with the user
+    after ticket 02's open point 1; a gate in the displayed unit was rejected as a parameter on every reader and a
+    verdict that changes with the unit system.)* (4) A "Yes" moves a listed entry to the bound's end itself. (5) A test of a number a person
     can see asserts at the shown precision in SI (`toBeCloseTo(x, 2)` or `formatNumber` equality); a test of the
     app's own arithmetic (`core/units.ts`, `src/temporary-library/`) may pin tighter, because it verifies a formula,
     not a precision. The three tests that pin exact restoration across an entry-mode switch are rewritten at the
@@ -1329,8 +1334,9 @@ the local `../comfort_tool` checkout:
     needed a rounding at ten writes.
     Accepted: shown ≠ held below the shown precision (0.42 shown, 0.4238 given to the model) after a conversion or
     an IP entry, as the deployed tool for a typed entry; the gate's step in IP is the SI display unit's, so an air
-    speed shown 394 fpm passes a range reading "0 – 393.7"; a conversion truly outside its bound is marked and left
-    to the person (decision 32). Withdrawn with 55: `shownNumber` and the inside-rounded range text (`11dad2a`,
+    speed shown 394 fpm passes a range reading "0 – 393.7", and a pressure within the last inHg digit below its
+    bound shows above a range end that stepped inward (0.8 beside "≤ 0.79"), not marked, reachable by a conversion
+    only; a conversion truly outside its bound is marked and left to the person (decision 32). Withdrawn with 55: `shownNumber` and the inside-rounded range text (`11dad2a`,
     `b3abf9e`), the "Yes" on the shown end (`174de5a`), the unit-system parameter `2e45c2b` put on every writer.
     Kept: `formatNumber`, the one formatter, and its one constant.
     The work is a spec and tickets to follow.
