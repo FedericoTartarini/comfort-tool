@@ -20,7 +20,7 @@ import { resultWarnings } from "./modelRun";
 import { formatBoundEnd, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import { isHumidityQuantity, resolvedTdb, valueEntryGroups, type EntryCorrection, type Slot, type ValueEntryModes } from "./slot";
-import { displayUnitFor, valueWithUnit } from "./units";
+import { displayUnitFor, valueWithUnit, type DisplayUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
 export type { Bound };
@@ -66,7 +66,16 @@ function boundFor(table: Readonly<Record<string, VariableInfo>> | undefined, qua
  * 1.875, is not outside.
  */
 function breaksBound(quantity: Quantity, bound: Bound, value: number): boolean {
-  return isShownBeyond(value, bound, displayUnitFor(quantity, unitSystem.si));
+  return isShownBeyond(value, bound, gateUnitFor(quantity));
+}
+
+/**
+ * The unit the gate judges a value of `quantity` in, whatever the session
+ * shows: g/kg for the humidity ratio, not kg/kg. The range text asks the same
+ * unit, so an end it writes is one the gate accepts.
+ */
+function gateUnitFor(quantity: Quantity): DisplayUnit {
+  return displayUnitFor(quantity, unitSystem.si);
 }
 
 /** The bound between `min` and `max`, keeping only an end that is a finite number. */
@@ -379,7 +388,7 @@ export function splitViolations(rows: readonly ViolationRow[]): ViolationSides {
  */
 export function formatBound(bound: Bound, quantity: Quantity, system: UnitSystem): string {
   const unit = displayUnitFor(quantity, system);
-  const judgedIn = displayUnitFor(quantity, unitSystem.si);
+  const judgedIn = gateUnitFor(quantity);
   const min = bound.min !== undefined ? formatBoundEnd(bound.min, "min", unit, judgedIn) : undefined;
   const max = bound.max !== undefined ? formatBoundEnd(bound.max, "max", unit, judgedIn) : undefined;
   if (min !== undefined && max !== undefined) {
