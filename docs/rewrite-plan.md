@@ -50,6 +50,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-10-01 — position, two decimals are the app's one precision**: `.scratch/activity-adjusted-inputs/` ticket 09 met one fact three times, the gate comparing exactly what a row shows at two decimals. ADR-0002 decision 55 (a slot holds the number its row shows) was taken for it and withdrawn the same day by decision 56, before its code landed (`.scratch/shown-precision/`, `wontfix`), because rounding at every write needed the display unit and the bound at each one. Decision 56 restores ADR-0001 §4.6: state is full-precision SI, and the one comparison, `isShownBeyond` beside the formatter, judges at two decimals in the quantity's SI display unit. It landed on `rewrite/v1` as `.scratch/one-precision/`, a commit per ticket: 01 `c59b51b` reverts the unit system `2e45c2b` put on every writer, 02 `36573db` the gate, the pressure's check and the violation rows judge at the shown precision and the range reads nearest, 03 `56bfbe2` a "Yes" lands on the bound's end itself, 04 `33c17d9` seven tests of a bound's end or a restoration assert at two decimals, 05 `2e78fa0` a range end steps one shown digit inward where typing it back would be stopped (`≤ 0.79` inHg for 2700 Pa), then `e45c686` and `fda8a9f`. Ticket 06 read the documents against the code: decision 56 carries a dated note, decision 55's five withdrawn notes name their commits, and the first Consequences bullet is amended. The four scripts are green at 644 tests. The page was walked in SI and IP with Compare off and on (a value at each range end, each entry-mode switch at the end, a "Yes" on ISO 7730's converted clothing end, a unit switch there and back), with the console clean. **Next: `.scratch/activity-adjusted-inputs/` ticket 05, that folder's close-out.**
 
+> **2026-10-01 — position, activity-adjusted inputs done**: Phase 5 item 9 landed on `rewrite/v1` (`.scratch/activity-adjusted-inputs/`), a commit per ticket, two for 04: 01 the library's `76a570d` (`clo_dynamic_ashrae`, `clo_dynamic_iso` and the added `clo_dynamic_iso_vr`), 02 `150fae9` the entry-group rules over one table, 03 `4610891` the air-speed group, 06 `6ea791b` the relative air speed's axis range, 07 `6267385` the air-speed switch back inverts, 04 `a0c7e16` + `edcf6f2` the clothing group, 08 `dcc2909` both inverses in `src/temporary-library/` and the clothing switch back inverts, 09 `60f088f` the converted bound; decisions 55 and 56 came out of 09 (the position above). Ticket 05 read the documents against the code: decisions 32, 48, 51 and 54 and ADR-0001's §4.1.5, §4.5 and §4.8 markers carry dated notes, and Phase 5b item 2 is noted for what a calculator writes under dynamic clothing entry. The four scripts are green at 644 tests. The four entry-mode controls were walked in the running app (Chromium 154 via Playwright, Vite dev server) in SI and IP, by mouse and keyboard, Compare off and on, reaching models by link, select, typed address and the back button, with the console clean. Seen and left: through Adaptive (ASHRAE 55), a dynamic clothing insulation that PMV (ISO 7730)'s rule gave comes back on PMV (ASHRAE 55) up to 0.001 clo higher (decision 54's note); what the checklist's human half and `CONTEXT.md` found is in ticket 05's Comments, none changed. **Next: Phase 5 item 3, the Explore threshold editor and the Standard / Explore split.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -954,6 +956,14 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    output row shows a derived value. **The library first** (decision 22): `clo_dynamic_ashrae` / `clo_dynamic_iso`
    are ported into the main repository, which has neither. **Built before items 3 and 4**, so the link's schema is
    written once.
+   **Done 2026-10-01** (`.scratch/activity-adjusted-inputs/` tickets 01 to 04 and 06 to 09: the library's `76a570d`,
+   then `150fae9`, `4610891`, `6ea791b`, `6267385`, `a0c7e16`, `edcf6f2`, `dcc2909`, `60f088f`). As built it differs
+   from the text above in four places, each written under decision 54, in its revisions of 2026-09-30 or its note of
+   2026-10-01: switching back inverts the correction in both groups, so the model is given the same value either
+   way, where the text says it keeps the number; the entry of the uncorrected mode is held to the model's bound
+   converted into it; PMV (ISO 7730) corrects the clothing at every metabolic rate, so its default PMV is −0.41
+   (walked, ticket 05's Comments); and the ISO correction is called at the relative air speed,
+   `clo_dynamic_iso_vr` (`core/clothingCorrection.ts:37`). The link's schema is item 4's.
 
 **Done criteria**
 - From any state, Export Link → open in a new tab → the state is identical (three slots, whether Compare is on and which slots are enabled, units, chart type, thresholds, atmospheric pressure, numbers)
@@ -978,6 +988,11 @@ Scope was narrowed on 2026-09-04 to exactly three; `Globe temp` is explicitly ou
    Apply writes `clo`", the deployed button's name wired to the activity correction. The button is `clo_tout`
    (`static/js/ASHRAE/ashrae.js:384-389` at `e809c96`). The activity correction is Phase 5 item 9's, not a
    calculator: its input is its target.
+   **Noted 2026-10-01** (`.scratch/activity-adjusted-inputs/` ticket 05): what ticket 04 left for it is that `clo`
+   stays the entered clothing insulation, the one the presets hang off, and the dynamic value is a separate entry,
+   `clo_dynamic`. So "Apply writes `clo`" holds under clothing insulation entry. Under dynamic clothing entry the slot
+   holds no `clo` and the panel shows no clothing insulation row; whether the calculator is offered there, writes
+   the entry in the session's mode, or switches the mode first, is this item's to decide, and item 1's too.
 3. **Solar gain on occupants** — confirm first whether the fork already ports it; if not, that is a library task, since
    the formula is general (ADR §3).
 
