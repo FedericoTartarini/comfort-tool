@@ -24,21 +24,26 @@ export function formatNumber(value: number): string {
  * formatter's precision in `unit`. Where `value` is inside `bound` and the
  * nearest is not, the neighbour inside (`1.875 → 1.87` under a maximum of
  * 1.875); where `value` itself is outside, the nearest, which the gate then
- * marks. Inside is judged in `unit`, where the number is rounded: 27 °C is
- * 80.6 °F there, and a hair under 27 once 80.6 °F is converted back.
+ * marks. Inside is judged in SI, on the number a slot would hold, as the gate
+ * judges it: 80.6 °F is a hair under 27 °C, so a minimum of 27 °C gives 80.61 °F.
  */
 export function shownNumber(value: number, unit: DisplayUnit, bound: Bound = {}): number {
-  const displayed = unit.fromSi(value);
-  const min = bound.min !== undefined ? unit.fromSi(bound.min) : -Infinity;
-  const max = bound.max !== undefined ? unit.fromSi(bound.max) : Infinity;
   // `+ 0` turns the -0 a small negative rounds to into 0, as `formatNumber` prints it.
-  let steps = Math.round(displayed * STEPS_PER_UNIT) + 0;
-  if (displayed >= min && displayed <= max) {
-    if (steps / STEPS_PER_UNIT > max) {
-      steps -= 1;
-    } else if (steps / STEPS_PER_UNIT < min) {
-      steps += 1;
-    }
+  const steps = Math.round(unit.fromSi(value) * STEPS_PER_UNIT) + 0;
+  const nearest = unit.toSi(steps / STEPS_PER_UNIT);
+  if (isAbove(value, bound) || isBelow(value, bound)) {
+    return nearest;
   }
-  return unit.toSi(steps / STEPS_PER_UNIT);
+  if (isAbove(nearest, bound)) {
+    return unit.toSi((steps - 1) / STEPS_PER_UNIT);
+  }
+  return isBelow(nearest, bound) ? unit.toSi((steps + 1) / STEPS_PER_UNIT) : nearest;
+}
+
+function isAbove(value: number, bound: Bound): boolean {
+  return bound.max !== undefined && value > bound.max;
+}
+
+function isBelow(value: number, bound: Bound): boolean {
+  return bound.min !== undefined && value < bound.min;
 }

@@ -493,9 +493,18 @@ describe("formatBound", () => {
     expect(formatBound({ min: 0, max: 0.7 }, unitOf(q.v))).toBe("0 – 0.7");
     expect(formatBound({ min: 10, max: 30 }, unitOf(q.tdb))).toBe("10 – 30");
     expect(formatBound({ max: 0.2 }, unitOf(q.vr))).toBe("≤ 0.2");
-    // Heat Index's 27 °C is 80.6 °F, which converts back to a hair under 27 °C.
-    expect(formatBound({ min: 27 }, unitOf(q.tdb, unitSystem.ip))).toBe("≥ 80.6");
-    expect(formatBound({ min: 11, max: 28 }, unitOf(q.tdb, unitSystem.ip))).toBe("51.8 – 82.4");
+  });
+
+  it("writes ends that, typed into the row, the gate accepts", () => {
+    // Heat Index's 27 °C is 80.6 °F, which converts back to a hair under 27 °C and would be stopped.
+    const fahrenheit = unitOf(q.tdb, unitSystem.ip);
+    expect(formatBound({ min: 27 }, fahrenheit)).toBe("≥ 80.61");
+    for (let celsius = 0; celsius <= 50; celsius += 0.1) {
+      const bound = { min: celsius, max: celsius + 10 };
+      const [min, max] = formatBound(bound, fahrenheit).split(" – ").map((end) => fahrenheit.toSi(Number(end)));
+      expect(min, String(celsius)).toBeGreaterThanOrEqual(bound.min);
+      expect(max, String(celsius)).toBeLessThanOrEqual(bound.max);
+    }
   });
 
   it("writes each end inside the bound in IP, rounded in the IP unit", () => {

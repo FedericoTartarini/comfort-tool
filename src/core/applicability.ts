@@ -360,7 +360,8 @@ export function splitViolations(rows: readonly ViolationRow[]): ViolationSides {
 /**
  * `bound` in the display unit, formatted, without the unit symbol. Each end is
  * written inside the bound at the precision a row shows (ADR-0002 decision
- * 55): `0 – 1.87` for a maximum of 1.875.
+ * 55): `0 – 1.87` for a maximum of 1.875. An end, typed into its row, is a
+ * number the gate accepts.
  */
 export function formatBound(bound: Bound, unit: DisplayUnit): string {
   const shownEnd = (end: number): string => formatNumber(unit.fromSi(shownNumber(end, unit, bound)));

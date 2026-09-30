@@ -80,10 +80,14 @@ describe("shownNumber", () => {
     expect(shownNumber(0.007886, gramsPerKilogram, { max: 0.007886 })).toBe(gramsPerKilogram.toSi(7.88));
   });
 
-  it("keeps these ends, which have no more than two decimals in the display unit", () => {
-    // 27 °C is 80.6 °F, and 80.6 °F converts back to a hair under 27 °C.
-    expect(shownNumber(27, fahrenheit, { min: 27 })).toBe(fahrenheit.toSi(80.6));
-    expect(shownNumber(28, fahrenheit, { max: 28 })).toBe(fahrenheit.toSi(82.4));
-    expect(shownNumber(0.00071, gramsPerKilogram, { min: 0.00071 })).toBe(gramsPerKilogram.toSi(0.71));
+  it("judges inside on the SI number a slot would hold, as the gate does", () => {
+    // 27 °C is 80.6 °F, and 80.6 °F converts back to a hair under 27 °C, which a minimum of 27 °C stops.
+    expect(fahrenheit.toSi(80.6)).toBeLessThan(27);
+    expect(shownNumber(27, fahrenheit, { min: 27 })).toBe(fahrenheit.toSi(80.61));
+    expect(shownNumber(27, fahrenheit, { max: 27 })).toBe(fahrenheit.toSi(80.6));
+    for (let celsius = 0; celsius <= 50; celsius += 0.1) {
+      expect(shownNumber(celsius, fahrenheit, { min: celsius }), String(celsius)).toBeGreaterThanOrEqual(celsius);
+      expect(shownNumber(celsius, fahrenheit, { max: celsius }), String(celsius)).toBeLessThanOrEqual(celsius);
+    }
   });
 });
