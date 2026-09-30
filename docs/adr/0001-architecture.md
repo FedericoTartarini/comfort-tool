@@ -279,6 +279,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 8 as noted 2026-09-28** (review after Phase 4b, Proposal 29; `P029`): the clause "an `intervals` entry is coloured pass / fail by `satisfied`" is retired. No result carries `intervals`; a yes-or-no output (Adaptive's `acceptability_80` and `acceptability_90`, PMV (ASHRAE 55)'s `compliance`) is a column of the model's `table`, headed by its `Quantity.label` and reading Yes or No, uncoloured.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 50** (2026-09-29): "Baseline decides which row the difference highlighting is relative to" in the first rule above is retired. Compare has no baseline and highlights no difference; the table has one row per compared slot.
+>
+> **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 and 52, as noted the same day; `.scratch/compare/` ticket 09).** "Coloured with the slot colour" in the second rule above holds while Compare is on: a row's first cell is then the slot's name beside a swatch of its hue. While Compare is off the one row reads "Input 1" with no swatch. Whether a row was calculated is said in the table's caption, one line per slot that was not (`ui/outputs/ResultTable.svelte`).
 
 ### 4.4 Chart types (closed set, v1)
 
@@ -295,6 +297,8 @@ Result table (`table`):
 > **Amended 2026-09-28** (review after Phase 4b, Proposal 19; `S102`): in the legend rules below, `Swatch` is a string union, `"fill" | "line" | "marker"` in `core/charts/chartSpec.ts`, not an object collection read as `Swatch.fill`. Its members double as CSS classes: `ChartLegend.svelte` writes an entry's swatch into the swatch element's `class` and styles each member by that name.
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 50 and 51** (2026-09-29): "marker points for the three slots" in the table below is, on both charts, the declaration's Comfort zones and one marker for every compared slot, each solved at that slot's own values and drawn in the slot's hue. Compare is the Standard page's: Explore draws the bands of slot 1. The axes are resolved from the session's entry mode, which every slot is entered in.
+>
+> **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 and 52, as noted the same day; `.scratch/compare/` ticket 09).** "Every compared slot" is every compared slot that has a last valid run. "At that slot's own values" is at the chart's one atmospheric pressure, the first drawn slot's run's (decision 52's note). On the scanned dynamic chart one drawn slot still draws the bands, as before Compare; two or more draw each slot's Comfort zones as contours of its own scan, and no bands. Explore is not built.
 
 
 | Type | Definition |
@@ -366,6 +370,8 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 50 to 52** (2026-09-29): `compare: { enabled, activeSlot, baselineSlot }` below is whether Compare is on and whether slots 2 and 3 are each enabled; there is no active slot and no baseline (decision 50). `InputSlot` keeps its `humidity` and `temperature` entries, and the session keeps the three slots in one entry mode per entry group (decision 51). `Outputs` keeps a last valid run per slot, and in the "Switching models" rule "all three slots are handled the same way" reads: one dialog lists the compared slots' rows and asks once, and a slot that is not compared is converted and seeded without being listed or adjusted (decision 52).
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 53** (2026-09-29): while the atmospheric pressure is out of range, a humidity-ratio entry has no bound, so the dialog of the "Switching models" rule neither lists it nor moves it.
+>
+> **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 to 52, as noted the same day; `.scratch/compare/` ticket 09).** As built (`state/session.svelte.ts`, `state/compute.svelte.ts`): `Session.compare` is a boolean, with `setCompare`, `isSlotEnabled`, `setSlotEnabled` and the derived `comparedPositions` beside it. `slots` below is `[InputSlot, InputSlot | null, InputSlot | null]`, slots 2 and 3 `null` until first enabled. The session holds no entry mode of its own: `temperatureMode` and `humidityMode` read slot 1's, and `setTemperatureMode` and `setHumidityMode` convert every slot that holds values. The last valid run is kept by a `SlotOutputs`, one per slot, and `Outputs.slots` lists those of the compared slots. "All three slots" in the "Switching models" rule is every slot that holds values.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session

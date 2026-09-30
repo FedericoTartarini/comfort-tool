@@ -44,6 +44,8 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-09-30 — position, three slots' scans measured**: Compare's ticket 01 timed PMV (ASHRAE 55)'s dynamic chart for three compared slots in the browser (Chrome 154, Vite dev server, no throttling): **median 328.3 ms**, one slot 98.0 ms against Phase 4b's 90.5, PMV (ISO 7730)'s three 42.4 ms. The slots with a higher `met` and `clo` scanned slower, so the 270 ms estimate did not hold. Decision 29's 300 ms line is one scan, so it stands; decision 29 is amended to keep v1 synchronous whatever three slots cost, with no Worker, row-sliced scan or cache, since v1 puts a simpler app ahead of a faster one, and decision 50 is noted. **Next: Compare's tickets 02, 03 and 08.**
 
+> **2026-09-30 — position, Compare done**: Phase 5 items 1 and 2 landed on `rewrite/v1` (`.scratch/compare/`), a commit per ticket, two for 01 and 04: 01 `9936a0c` three slots' scans are measured (with `251da23`), 02 `bf85aec` the outputs are derived per slot, 03 `ab47b68` the chart's request lists its slots, 04 `f6b1e08` the Compare switch, the three columns and a row per compared slot (with `b33a8b2`, slot 1's button), 05 `c5578d2` both charts draw every compared slot's comfort zones and marker, 06 `4d98cc0` an entry mode converts every slot, 07 `76c92f8` a model switch asks once for every compared slot, 08 `43b9261` a humidity-ratio entry has no bound while the pressure is out of range. Ticket 09 read the documents against the code: decisions 50 to 53 and ADR-0001's §4.3, §4.4 and §4.5 markers carry dated notes. The four scripts are green at 438 tests. **Measured** (Chrome 154, Vite dev server): three slots' scans of PMV (ASHRAE 55)'s dynamic chart, median 328.3 ms, one 98.0 ms (ticket 01, no throttling); in the running app, an edit the three slots share redraws that chart in a median of 332.8 ms, an edit to one slot's clothing in 149.0 ms, and PMV (ISO 7730)'s three slots in 57.7 ms (ticket 05). The three models were walked end to end in the running app with Compare on (Chromium via Playwright, 1600×1000, Vite dev server), in SI and in IP, by mouse and by keyboard, reached by link, by the select, by typed address and by the back and forward buttons, with the console clean. Seen and left, with where each goes: the switch dialog's default width clips "Allowed range" once it has the slot column, the not-calculated note is a caption line and not text in its row, the swatch rule is written in two components' styles, slots 2 and 3's hues are placeholders, and how nine zones read on one chart is not judged (all Phase 5c); a scanned dynamic chart draws bands for one slot and comfort zones for two or more until the Standard / Explore split (Phase 5 item 3); whether a humidity entry mode says itself which bound it has (`BS04`, `.scratch/review-after-4b/deferred.md`, "Unscheduled"); what the checklist's human half found in the diff and where `CONTEXT.md` and the code's names differ (ticket 09's Comments, neither changed). **Next: the grilling of `.scratch/activity-adjusted-inputs/` 01 and 02, then Phase 5 item 3.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -898,6 +900,11 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    rest is built. **Measured 2026-09-29**: 328.3 ms for PMV (ASHRAE 55)'s three, 98.0 ms for one; decision 29's line
    is one scan, so it stands, and v1 stays synchronous whatever three slots cost (decision 29 as amended).
    With it (decision 53): while the atmospheric pressure is out of range, a humidity-ratio entry has no bound.
+   **Done 2026-09-30** (`.scratch/compare/` tickets 02 to 06 and 08: `bf85aec`, `ab47b68`, `f6b1e08`, `c5578d2`,
+   `4d98cc0`, `43b9261`). As built it differs from the text above in three places, each a dated note under its
+   decision: the charts draw every compared slot that has a last valid run; a scanned dynamic chart still draws the
+   bands while one slot is drawn, and comfort zones as contours for two or more, until item 3's split; and an
+   entry-mode change converts every slot that holds values, a slot never enabled holding none. Explore is item 3's.
 2. Cross-model switch dialog (ADR §4.5): parameters for the same quantity are kept, and the
    "Boundary Range Warning" only pops up when a value exceeds the new model's hard range (table Input / Current / Allowed range,
    buttons "Yes, switch and adjust" / "No, stay here"); no out-of-range, no dialog.
@@ -906,6 +913,8 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    **Settled 2026-09-29** (ADR-0002 decision 52): one dialog and one question. Its rows are the compared slots',
    grouped by slot with the slot's name in a column of its own; a yes adjusts every listed value and a no leaves all
    three slots untouched. A slot that is not compared is converted and seeded, not listed and not adjusted.
+   **Done 2026-09-30** (`.scratch/compare/` ticket 07, `76c92f8`). The slot's column appears while more than one
+   slot is compared; with one the dialog reads as before. The dialog's width with that column is Phase 5c item 5's.
 3. Explore threshold editor (rewritten 2026-09-21, ADR-0002 decision 31): a Band list is the library's `ClassifierBins`
    plus a colour per band — contiguous edges, the classifier's own `right` inclusivity, the library's edges kept exactly.
    The editor moves, adds and removes Edges (removing one merges two bands; a band with no colour leaves a range
@@ -967,6 +976,10 @@ all change the layout, so a design drawn before them would be redrawn after them
 
 1. The three columns as designed rather than as stacked: real proportions, real density, a considered
    information hierarchy. The architecture is fixed (ADR §1), the execution is not.
+   **Added 2026-09-30** (`.scratch/compare/` ticket 09): Compare's three input columns and slot buttons, the hues
+   of slots 2 and 3, which are placeholders in `core/slotBadge.ts`, how nine comfort zones read on one chart
+   (decision 50 is what reopens if they do not), the not-calculated note, a caption line today, and the swatch rule
+   written in both `StandardPage.svelte` and `ResultTable.svelte`.
 2. Header and footer — title, unit switch, Documentation link, version / date / licence, Reset. **Moved here from
    Phase 6** on 2026-09-04: they are design work, not wrap-up chores.
    **Added 2026-09-29** (ADR-0002 decision 49): Reset returns the atmospheric pressure to 101 325 Pa, and this phase
@@ -976,6 +989,8 @@ all change the layout, so a design drawn before them would be redrawn after them
 4. Responsive behaviour, and the result table's horizontal overflow — legible since Phase 2, never designed.
 5. The model-switch dialog mock-up ADR §7.4 refers to. It is produced here; until then that criterion is judged on
    content, not appearance.
+   **Added 2026-09-30** (`.scratch/compare/` ticket 09): with the slot's column its default width clips "Allowed
+   range" behind a horizontal scrollbar; it is to be as wide with that column as without it (the user).
 6. Where the psychrometric chart's readout sits (added 2026-09-28): on the pointer, as the dynamic chart's does, or in
    a box, as the deployed tool's. The readout itself is Phase 5 item 8.
 
