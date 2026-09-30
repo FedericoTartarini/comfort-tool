@@ -17,6 +17,8 @@ import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
@@ -68,8 +70,8 @@ describe("Compare in the session", () => {
     const session = new Session(pmvPpdAshrae);
     const [option] = pmvPpdAshrae.options;
     session.slots[0].setOption(option, !option.default);
-    session.slots[0].setTemperatureMode(temperatureMode.operative, session.model);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
+    session.setTemperatureMode(temperatureMode.operative);
+    session.setHumidityMode(humidityMode.dewPoint);
     session.slots[0].setEntered(q.clo, 0.8);
 
     session.setCompare(true);
@@ -384,5 +386,210 @@ describe("the charts of the compared slots", () => {
 
       expect(runs()).toBe(before);
     });
+  });
+});
+
+/**
+ * An entry mode is the session's (ADR-0002 decision 51): a change converts
+ * every slot that holds values, each as a session holding that slot alone
+ * converts it.
+ */
+describe("the session's entry modes", () => {
+  /** The slot a session holding only a slot entered with `entries` holds after `change`. */
+  function convertedAlone(model: RegisteredModel, entries: ReadonlyMap<Quantity, number>, change: (session: Session) => void) {
+    const session = new Session(model);
+    for (const [quantity, value] of entries) {
+      session.slots[0].setEntered(quantity, value);
+    }
+    change(session);
+    return shapeOf(session.slots[0]);
+  }
+
+  /** Three different slots, each entered with its own entries, all compared. */
+  const entriesOfSlot: readonly ReadonlyMap<Quantity, number>[] = [
+    new Map<Quantity, number>([[q.tdb, 24]]),
+    new Map<Quantity, number>([
+      [q.tdb, 21],
+      [q.tr, 27],
+      [q.v, 0.1],
+    ]),
+    new Map<Quantity, number>([
+      [q.tdb, 28],
+      [q.tr, 22],
+      [q.v, 0.8],
+      [q.rh, 60],
+    ]),
+  ];
+
+  function threeDifferentSlots(model: RegisteredModel): Session {
+    const session = sessionComparingThreeSlots(model);
+    slotPositions.forEach((position) => {
+      for (const [quantity, value] of entriesOfSlot[position]) {
+        heldSlot(session, position).setEntered(quantity, value);
+      }
+    });
+    return session;
+  }
+
+  it("converts slots 1, 2 and 3 at a change of the temperature entry mode, each as a session holding it alone does", () => {
+    const session = threeDifferentSlots(pmvPpdAshrae);
+    const toOperative = (changed: Session) => changed.setTemperatureMode(temperatureMode.operative);
+
+    toOperative(session);
+
+    expect(session.temperatureMode).toBe(temperatureMode.operative);
+    slotPositions.forEach((position) => {
+      expect(shapeOf(heldSlot(session, position))).toEqual(convertedAlone(pmvPpdAshrae, entriesOfSlot[position], toOperative));
+    });
+  });
+
+  it("converts each slot's humidity at its own dry-bulb temperature", () => {
+    const session = threeDifferentSlots(pmvPpdIso);
+    const toDewPoint = (changed: Session) => changed.setHumidityMode(humidityMode.dewPoint);
+
+    toDewPoint(session);
+
+    expect(session.humidityMode).toBe(humidityMode.dewPoint);
+    slotPositions.forEach((position) => {
+      expect(shapeOf(heldSlot(session, position))).toEqual(convertedAlone(pmvPpdIso, entriesOfSlot[position], toDewPoint));
+    });
+    expect(heldSlot(session, 1).humidity?.value).not.toBe(heldSlot(session, 2).humidity?.value);
+  });
+
+  it("converts a slot that holds values and is not compared, which is in the session's entry modes when next enabled", () => {
+    const session = threeDifferentSlots(pmvPpdIso);
+    session.setSlotEnabled(2, false);
+    const toOperativeDewPoint = (changed: Session) => {
+      changed.setTemperatureMode(temperatureMode.operative);
+      changed.setHumidityMode(humidityMode.dewPoint);
+    };
+
+    toOperativeDewPoint(session);
+    session.setSlotEnabled(2, true);
+
+    expect(shapeOf(heldSlot(session, 2))).toEqual(convertedAlone(pmvPpdIso, entriesOfSlot[2], toOperativeDewPoint));
+  });
+
+  it("converts no slot never enabled, which holds slot 1's entry modes when first enabled", () => {
+    const session = new Session(pmvPpdIso);
+    session.setCompare(true);
+
+    session.setTemperatureMode(temperatureMode.operative);
+    session.setHumidityMode(humidityMode.humidityRatio);
+    expect(session.slots[2]).toBeNull();
+    session.setSlotEnabled(2, true);
+
+    expect(heldSlot(session, 2).temperature.mode).toBe(temperatureMode.operative);
+    expect(heldSlot(session, 2).humidity?.mode).toBe(humidityMode.humidityRatio);
+  });
+
+  it("keeps every slot that holds values in one temperature and one humidity entry mode through enabling, disabling and changes", () => {
+    const session = new Session(pmvPpdIso);
+    const steps: readonly ((changed: Session) => void)[] = [
+      (changed) => changed.setTemperatureMode(temperatureMode.operative),
+      (changed) => changed.setCompare(true),
+      (changed) => changed.setHumidityMode(humidityMode.wetBulb),
+      (changed) => changed.setSlotEnabled(1, false),
+      (changed) => changed.setTemperatureMode(temperatureMode.separate),
+      (changed) => changed.setSlotEnabled(2, true),
+      (changed) => changed.setHumidityMode(humidityMode.vapourPressure),
+      (changed) => changed.setCompare(false),
+      (changed) => changed.setTemperatureMode(temperatureMode.operative),
+      (changed) => changed.setSlotEnabled(1, true),
+      (changed) => changed.setCompare(true),
+    ];
+
+    for (const step of steps) {
+      step(session);
+      const held = session.slots.filter((slot) => slot !== null);
+      expect(held.map((slot) => slot.temperature.mode)).toEqual(held.map(() => session.temperatureMode));
+      expect(held.map((slot) => slot.humidity?.mode)).toEqual(held.map(() => session.humidityMode));
+    }
+  });
+
+  // While a model switch reshapes slot 1 alone, slot 2 can lack what the
+  // model runs on, and with it what a conversion reads: Adaptive's slot has
+  // no humidity, Heat Index's no mean radiant temperature. It is left as it
+  // is held, as the switch left it.
+  it.each([
+    { from: adaptiveAshrae, change: (changed: Session) => changed.setHumidityMode(humidityMode.dewPoint) },
+    { from: heatIndexRothfusz, change: (changed: Session) => changed.setTemperatureMode(temperatureMode.operative) },
+  ])("converts slot 1 and leaves a slot the model cannot run on as held, from $from.info.label", ({ from, change }) => {
+    const session = new Session(from);
+    session.setCompare(true);
+    session.setModel(pmvPpdIso);
+    const held = shapeOf(heldSlot(session, 1));
+    const alone = new Session(from);
+    alone.setModel(pmvPpdIso);
+    change(alone);
+
+    change(session);
+
+    expect(shapeOf(session.slots[0])).toEqual(shapeOf(alone.slots[0]));
+    expect(shapeOf(heldSlot(session, 1))).toEqual(held);
+  });
+
+  it("resolves the chart's axes and the picker's choices from the session's entry mode, whichever slot's gate is closed", () => {
+    const session = new Session(pmvPpdAshrae);
+    session.chart.type = chartType.dynamic;
+    const outputs = new Outputs(session);
+    session.setCompare(true);
+    void outputs.chart;
+    // 3 clo is past ASHRAE 55's 2 clo, and no entry-mode change moves it.
+    session.slots[0].setEntered(q.clo, 3);
+
+    session.setTemperatureMode(temperatureMode.operative);
+
+    expect(outputs.slots[0].notCalculated).toBe(true);
+    expect(outputs.slots[0].lastValid?.slot.temperature.mode).toBe(temperatureMode.separate);
+    const alone = new Session(pmvPpdAshrae);
+    alone.chart.type = chartType.dynamic;
+    alone.setTemperatureMode(temperatureMode.operative);
+    const aloneOutputs = new Outputs(alone);
+    expect(outputs.drawnAxes).toEqual(aloneOutputs.drawnAxes);
+    expect(outputs.chart?.layout).toEqual(aloneOutputs.chart?.layout);
+  });
+
+  it("marks a slot whose gate is closed on the new axis, at the value the conversion gives its last valid inputs", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.setCompare(true);
+    const lastValid = new Map<Quantity, number>([
+      [q.tdb, 24],
+      [q.tr, 28],
+    ]);
+    for (const [quantity, value] of lastValid) {
+      heldSlot(session, 1).setEntered(quantity, value);
+    }
+    void outputs.chart;
+    // 3 clo is past ISO 7730's 2 clo, and no entry-mode change moves it.
+    // Slot 1's gate is closed as well, so no slot's run is in the new mode.
+    heldSlot(session, 1).setEntered(q.clo, 3);
+    session.slots[0].setEntered(q.clo, 3);
+
+    session.setTemperatureMode(temperatureMode.operative);
+
+    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([true, true]);
+    const alone = new Session(pmvPpdIso);
+    for (const [quantity, value] of lastValid) {
+      alone.slots[0].setEntered(quantity, value);
+    }
+    alone.setTemperatureMode(temperatureMode.operative);
+    const aloneChart = new Outputs(alone).chart;
+    expect(outputs.chart?.layout).toEqual(aloneChart?.layout);
+    expect(markerAt(outputs.chart, 1)).toEqual(markerAt(aloneChart, 0));
+  });
+
+  it("moves no marker off the value its slot's input shows while every gate is open", () => {
+    const session = threeDifferentSlots(pmvPpdIso);
+    const outputs = new Outputs(session);
+
+    for (const mode of [temperatureMode.operative, temperatureMode.separate]) {
+      session.setTemperatureMode(mode);
+      slotPositions.forEach((position) => {
+        expect(outputs.slots[position].notCalculated).toBe(false);
+        expect(markerAt(outputs.chart, position)?.x).toBe(heldSlot(session, position).values.get(mode.axis));
+      });
+    }
   });
 });

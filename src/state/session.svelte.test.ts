@@ -137,7 +137,7 @@ describe("Session.setModel", () => {
 
   it("converts a slot in operative entry for a model without the temperature entry group", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
+    session.setTemperatureMode(temperatureMode.operative);
     const operative = session.slots[0].values.get(q.operative_tmp);
     expect(operative).toBeTypeOf("number");
 
@@ -150,7 +150,7 @@ describe("Session.setModel", () => {
 
   it("leaves a slot in operative entry alone for a model that has the temperature entry group", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
+    session.setTemperatureMode(temperatureMode.operative);
 
     session.setModel(takesExternalWork);
 
@@ -173,7 +173,7 @@ describe("Session.setModel", () => {
 
   it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
+    session.setHumidityMode(humidityMode.dewPoint);
     const entered = session.slots[0].humidity;
 
     session.setModel(adaptiveAshrae);
@@ -215,7 +215,7 @@ describe("Session.requestModel", () => {
 
   it("converts the entry mode the model asks for", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
+    session.setTemperatureMode(temperatureMode.operative);
     const operative = session.slots[0].values.get(q.operative_tmp);
 
     session.requestModel(withoutTemperatureGroup);
@@ -227,7 +227,7 @@ describe("Session.requestModel", () => {
 
   it("keeps a held humidity in the mode it was entered in, across a model without humidity and back", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
+    session.setHumidityMode(humidityMode.dewPoint);
     const entered = session.slots[0].humidity;
 
     session.requestModel(adaptiveAshrae);
@@ -383,7 +383,7 @@ describe("InputSlot.setEntered", () => {
   it("enters the humidity entry's quantity as the entry, in its own mode, and the outputs follow", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
+    session.setHumidityMode(humidityMode.dewPoint);
     const before = resultValueOf(outputs.slots[0].result, q.pmv);
 
     session.slots[0].setEntered(q.dew_point_tmp, 12);
@@ -406,9 +406,9 @@ export function slotWritesTypeProof(slot: InputSlot): void {
   slot.values.set(q.tdb, 22);
   // @ts-expect-error an option written past `setOption`
   slot.options.set(airSpeedControl, true);
-  // @ts-expect-error a humidity entry written past `setEntered` and `setHumidityMode`
+  // @ts-expect-error a humidity entry written past `setEntered` and the session's `setHumidityMode`
   slot.humidity = { mode: humidityMode.rh, value: 50 };
-  // @ts-expect-error a temperature entry written past `setTemperatureMode`
+  // @ts-expect-error a temperature entry written past the session's `setTemperatureMode`
   slot.temperature = { mode: temperatureMode.operative };
 }
 
@@ -418,7 +418,7 @@ export function slotWritesTypeProof(slot: InputSlot): void {
  * mode. Walked through every mode from a humidity that is not the default, so
  * each conversion runs on a value the one before it produced.
  */
-describe("InputSlot.setHumidityMode", () => {
+describe("Session.setHumidityMode", () => {
   const walk = [...Object.values(humidityMode).filter((mode) => mode !== humidityMode.rh), humidityMode.rh];
 
   /** The values the walk should enter, each mode's own conversions composed at `tdb`. */
@@ -432,29 +432,29 @@ describe("InputSlot.setHumidityMode", () => {
     });
   }
 
-  /** The value `slot` holds after each change of the walk. */
-  function walkedValues(slot: InputSlot): (number | undefined)[] {
+  /** The value slot 1 holds after each change of the walk. */
+  function walkedValues(session: Session): (number | undefined)[] {
     return walk.map((mode) => {
-      slot.setHumidityMode(mode, DEFAULT_ATMOSPHERIC_PRESSURE);
-      return slot.humidity?.value;
+      session.setHumidityMode(mode);
+      return session.slots[0].humidity?.value;
     });
   }
 
   it("converts at the entered dry-bulb temperature under separate entry", () => {
-    const slot = new Session(pmvPpdIso).slots[0];
-    slot.setEntered(q.tdb, 27);
-    slot.setEntered(q.rh, 35);
+    const session = new Session(pmvPpdIso);
+    session.slots[0].setEntered(q.tdb, 27);
+    session.slots[0].setEntered(q.rh, 35);
 
-    expect(walkedValues(slot)).toEqual(expectedWalk(35, 27));
-    expect(slot.humidity?.mode).toBe(humidityMode.rh);
+    expect(walkedValues(session)).toEqual(expectedWalk(35, 27));
+    expect(session.slots[0].humidity?.mode).toBe(humidityMode.rh);
   });
 
   it("converts at the operative temperature under operative entry", () => {
-    const slot = new Session(pmvPpdIso).slots[0];
-    slot.setTemperatureMode(temperatureMode.operative, pmvPpdIso);
-    slot.setEntered(q.operative_tmp, 22);
-    slot.setEntered(q.rh, 35);
+    const session = new Session(pmvPpdIso);
+    session.setTemperatureMode(temperatureMode.operative);
+    session.slots[0].setEntered(q.operative_tmp, 22);
+    session.slots[0].setEntered(q.rh, 35);
 
-    expect(walkedValues(slot)).toEqual(expectedWalk(35, 22));
+    expect(walkedValues(session)).toEqual(expectedWalk(35, 22));
   });
 });

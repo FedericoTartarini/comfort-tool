@@ -231,26 +231,49 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
   });
 });
 
-describe("a slot in another temperature entry mode than slot 1", () => {
+/**
+ * A slot whose gate is closed keeps its last valid inputs in the entry mode
+ * they were entered in, so a request may hold a slot in another temperature
+ * entry mode than the session's (ADR-0002 decision 51).
+ */
+describe("a slot in another temperature entry mode than the session's", () => {
   const operative = withTemperatureMode(enteredSlotFor(pmvPpdIso, { tdb: 22, tr: 28 }), temperatureMode.operative, pmvPpdIso);
   const separate = enteredSlotFor(pmvPpdIso, { tdb: 22, tr: 28 });
   const xUnit = displayUnitFor(q.tdb, unitSystem.si);
 
-  it("is drawn on slot 1's axes, at the temperature the entry-mode change converts it to", () => {
-    const spec = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [operative, separate]), psychrometricOf(pmvPpdIso));
+  it("is drawn on the session's axes, at the temperature the entry-mode change converts it to", () => {
+    const spec = psychrometricSpec(
+      chartRequestForSlots(pmvPpdIso, [operative, separate], unitSystem.si, temperatureMode.operative),
+      psychrometricOf(pmvPpdIso),
+    );
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
     expect(markersOf(spec)[1].x).toBe(xUnit.fromSi(operativeTemperatureOf(separate, pmvPpdIso)));
   });
 
-  it("is scanned on slot 1's axes as the converted slot alone is", () => {
+  it("does not decide the axes when it is slot 1", () => {
+    const chart = psychrometricOf(pmvPpdIso);
+    const spec = psychrometricSpec(
+      chartRequestForSlots(pmvPpdIso, [separate, operative], unitSystem.si, temperatureMode.operative),
+      chart,
+    );
+    const alone = psychrometricSpec(chartRequestFor(pmvPpdIso, withTemperatureMode(separate, temperatureMode.operative, pmvPpdIso)), chart);
+    expect(spec.layout).toEqual(alone.layout);
+    expect(markersOf(spec)[0].x).toBe(markersOf(alone)[0].x);
+  });
+
+  it("is scanned on the session's axes as the converted slot alone is", () => {
     const chart = dynamicOf(pmvPpdIso);
-    const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, [startingSlot(pmvPpdIso), operative]), chart, chart.axes);
+    const spec = dynamicSpec(
+      chartRequestForSlots(pmvPpdIso, [operative, startingSlot(pmvPpdIso)], unitSystem.si, temperatureMode.separate),
+      chart,
+      chart.axes,
+    );
     const alone = dynamicSpec(
       chartRequestFor(pmvPpdIso, withTemperatureMode(operative, temperatureMode.separate, pmvPpdIso)),
       chart,
       chart.axes,
     );
     expect(spec.layout.x.title).toContain(q.tdb.label);
-    expect(markersOf(spec)[1].x).toBe(markersOf(alone)[0].x);
+    expect(markersOf(spec)[0].x).toBe(markersOf(alone)[0].x);
   });
 });

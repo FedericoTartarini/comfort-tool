@@ -4,7 +4,7 @@ import { temperatureMode, type HumidityMode, type TemperatureMode } from "$lib/c
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { adjustToBounds, rehearseSwitch, type RehearsedSwitch } from "$lib/core/modelSwitch";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantities";
-import { startingSlot, withEnteredValues, withHumidityMode, withOption, withTemperatureMode, type Slot } from "$lib/core/slot";
+import { holdsEveryInputOf, startingSlot, withEnteredValues, withHumidityMode, withOption, withTemperatureMode, type Slot } from "$lib/core/slot";
 import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
 
 /**
@@ -16,7 +16,10 @@ import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
  * way, keyed by the declaration's own option objects (ADR-0002 decision 36).
  *
  * Every write is a core function from a slot to a slot, whose answer the slot
- * lands; the two maps and the two entries are read-only outside the class.
+ * lands; the two maps and the two entries are read-only outside the class. An
+ * entry mode is the session's, so the slot has no entry-mode setter: the
+ * session converts every slot through {@link InputSlot.replaceWith}
+ * (ADR-0002 decision 51).
  */
 export class InputSlot implements Slot {
   readonly #values = new SvelteMap<Quantity, number>();
@@ -56,27 +59,6 @@ export class InputSlot implements Slot {
   /** Tick or untick `option`, as the option's checkbox does. */
   setOption(option: OptionSpec, value: boolean): void {
     this.replaceWith(withOption(this, option, value));
-  }
-
-  /**
-   * Re-express the stored humidity in the new representation, by the rule
-   * `core/slot.ts` states: at the slot's dry-bulb temperature and the
-   * session's atmospheric pressure, lossy and one-way. The slot does not hold
-   * the pressure, so the caller names it. Throws for a slot that holds no
-   * humidity.
-   */
-  setHumidityMode(mode: HumidityMode, atmosphericPressure: number): void {
-    this.replaceWith(withHumidityMode(this, mode, atmosphericPressure));
-  }
-
-  /**
-   * Convert the stored temperatures into the new representation, by the rule
-   * `core/slot.ts` states: lossy and one-way, and weighed by
-   * `model`'s standard going into operative entry. The slot does not keep its
-   * model, so the caller names it.
-   */
-  setTemperatureMode(mode: TemperatureMode, model: RegisteredModel): void {
-    this.replaceWith(withTemperatureMode(this, mode, model));
   }
 
   /**
@@ -248,6 +230,46 @@ export class Session {
   }
 
   /**
+   * The session's temperature entry mode (ADR-0002 decision 51): slot 1's,
+   * since an entry-mode change converts every slot the model runs on
+   * ({@link setTemperatureMode}) and slot 1 always holds values.
+   */
+  get temperatureMode(): TemperatureMode {
+    return this.#slots[0].temperature.mode;
+  }
+
+  /**
+   * The session's humidity entry mode: slot 1's, for the reason
+   * {@link temperatureMode} gives, or none while slot 1 holds no humidity.
+   */
+  get humidityMode(): HumidityMode | undefined {
+    return this.#slots[0].humidity?.mode;
+  }
+
+  /**
+   * Change the temperature entry mode: every slot that holds values,
+   * compared or not, is converted by `withTemperatureMode` at its own values,
+   * weighed by the session's model. A slot never enabled holds nothing and
+   * takes the mode when it copies slot 1.
+   */
+  setTemperatureMode(mode: TemperatureMode): void {
+    for (const slot of this.#convertibleSlots()) {
+      slot.replaceWith(withTemperatureMode(slot, mode, this.model));
+    }
+  }
+
+  /**
+   * Change the humidity entry mode: every slot that holds values is converted
+   * by `withHumidityMode` at its own dry-bulb temperature and the session's
+   * atmospheric pressure, as {@link setTemperatureMode} converts.
+   */
+  setHumidityMode(mode: HumidityMode): void {
+    for (const slot of this.#convertibleSlots()) {
+      slot.replaceWith(withHumidityMode(slot, mode, this.atmosphericPressure));
+    }
+  }
+
+  /**
    * The address's path — a typed URL, the back button, a share link — which
    * has no previous page to stay on and so never asks and never adjusts a
    * value (ADR-0002 decision 32). The rehearsed slot and the model land in one
@@ -309,6 +331,17 @@ export class Session {
     this.model = model;
     this.chart = this.#chartFor(model);
     this.pendingSwitch = null;
+  }
+
+  /**
+   * The slots an entry-mode change converts, in slot order: every slot that
+   * holds values and every input the model runs on. A model switch reshapes
+   * slot 1 alone, so slots 2 and 3 can lack what a conversion reads, a
+   * humidity or a mean radiant temperature; such a slot is left as it is
+   * held, as the switch left it, and its gate stays closed.
+   */
+  #convertibleSlots(): InputSlot[] {
+    return this.#slots.filter((slot): slot is InputSlot => slot !== null && holdsEveryInputOf(slot, this.model));
   }
 
   #chartFor(model: RegisteredModel): ChartState {

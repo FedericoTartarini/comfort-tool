@@ -202,12 +202,8 @@
             outOfRange={outputs.atmosphericPressureOutOfRange}
             oncommit={(si) => (session.atmosphericPressure = si)}
           />
-          <!-- The session's entry modes, shown once; they convert slot 1 alone until each converts every slot. -->
-          <EntryModeControls
-            model={session.model}
-            inputSlot={session.slots[0]}
-            atmosphericPressure={session.atmosphericPressure}
-          />
+          <!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
+          <EntryModeControls {session} />
           <!--
             While Compare is on, a column per slot, a third of the width whether
             its slot is enabled or not, so enabling one moves no other; a

@@ -18,7 +18,7 @@ import { displayUnitFor, numberWithUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { Annotation, ChartSpec, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, axisModeOf, labelFor, markerFor, samples, zoneFor } from "./specParts";
+import { axisFor, labelFor, markerFor, samples, zoneFor } from "./specParts";
 
 const q = quantities;
 
@@ -43,9 +43,9 @@ const ZONE_RH_STEP = 5;
  * the slot's hue with the opacity rising inwards. Never the thermal-sensation
  * palette: it is diverging, and nested zones are levels of one thing.
  *
- * The x axis quantity is the temperature entry mode's ({@link axisModeOf}:
- * `tdb` when the two temperatures are entered separately, `operative_tmp`
- * under operative entry), and
+ * The x axis quantity is {@link ChartRequest.temperatureMode}'s: `tdb` when
+ * the two temperatures are entered separately, `operative_tmp` under
+ * operative entry, and
  * operative entry solves the zone with `tr_follows_db`, which is the geometry
  * the CBE tool's psychtop chart draws. No root finder is written here — the
  * temporary library owns that (ADR-0002 decision 24). The drawn x range is the
@@ -58,7 +58,7 @@ const ZONE_RH_STEP = 5;
  */
 export function psychrometricSpec(request: ChartRequest, chart: DeclaredPsychrometricChart): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
-  const mode = axisModeOf(request);
+  const mode = request.temperatureMode;
   const operative = mode === temperatureMode.operative;
   const axisQuantity = mode.axis;
   const xUnit = displayUnitFor(axisQuantity, unitSystem);

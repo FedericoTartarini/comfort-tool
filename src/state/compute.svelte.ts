@@ -17,7 +17,6 @@ import {
 } from "$lib/core/charts/dynamicChart";
 import { psychrometricSpec } from "$lib/core/charts/psychrometricChart";
 import { chartType } from "$lib/core/chartType";
-import type { TemperatureMode } from "$lib/core/entryModes";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -74,9 +73,11 @@ export interface DrawnAxes {
  * (ADR-0002 decision 49), and the frame every slot is scanned in.
  *
  * The chart is of every compared slot that has a run (ADR-0002 decision 50),
- * drawn on the axes and at the atmospheric pressure of the first: slot 1's,
- * unless slot 1 has none. One pressure for the whole chart, so a slot kept
- * from a run at another pressure is drawn at this one.
+ * drawn at the atmospheric pressure of the first: slot 1's, unless slot 1 has
+ * none. One pressure for the whole chart, so a slot kept from a run at
+ * another pressure is drawn at this one. Its axes are resolved from the
+ * session's temperature entry mode, which no slot decides (ADR-0002 decision
+ * 51).
  *
  * What the gate freezes is the *result*, not the screen (ADR-0002 decision
  * 33). Remembered are the last valid inputs alone; the result, the violation
@@ -109,22 +110,22 @@ export class Outputs {
     this.#compared.flatMap((outputs) => (outputs.lastValid ? [{ outputs, last: outputs.lastValid }] : [])),
   );
 
-  // The entry mode and the pressure the chart is drawn in, each its own
-  // derivation: an edit to the first slot recomputes both to the same value,
-  // and their equality keeps every other slot's scan from running again.
-  readonly #axisMode = $derived.by((): TemperatureMode | null => this.#charted[0]?.last.slot.temperature.mode ?? null);
+  // The session's temperature entry mode and the pressure the chart is drawn
+  // at, each its own derivation: enabling a slot recomputes both, and an edit
+  // to the first recomputes the pressure, each to the same value, and their
+  // equality keeps every other slot's scan from running again.
+  readonly #temperatureMode = $derived.by(() => this.#session.temperatureMode);
   readonly #chartPressure = $derived.by((): number | null => this.#charted[0]?.last.atmosphericPressure ?? null);
 
   /** What every slot's scan shares, or `null` while the chart drawn is not a scanned one. */
   readonly #scanFrame = $derived.by((): ScanFrame | null => {
     const session = this.#session;
     const chart = dynamicChartOf(session.model);
-    const mode = this.#axisMode;
     const pressure = this.#chartPressure;
-    if (drawnPsychrometricOf(session) || !chart || isPolygonsChart(chart) || mode === null || pressure === null) {
+    if (drawnPsychrometricOf(session) || !chart || isPolygonsChart(chart) || pressure === null) {
       return null;
     }
-    return scanFrameFor(session.model, chart, session.chart.axes, mode, pressure);
+    return scanFrameFor(session.model, chart, session.chart.axes, this.#temperatureMode, pressure);
   });
 
   readonly #chart = $derived.by((): ChartSpec | null => {
@@ -132,10 +133,9 @@ export class Outputs {
     return charted.length > 0 ? chartSpecOf(this.#session, charted, this.#scanFrame !== null) : null;
   });
 
-  readonly #drawnAxes = $derived.by((): DrawnAxes | null => {
-    const [first] = this.#charted;
-    return first ? drawnAxesOf(this.#session, first.last) : null;
-  });
+  readonly #drawnAxes = $derived.by((): DrawnAxes | null =>
+    this.#charted.length > 0 ? drawnAxesOf(this.#session) : null,
+  );
 
   constructor(session: Session) {
     this.#session = session;
@@ -166,8 +166,8 @@ export class Outputs {
 
   /**
    * The axes {@link chart} is drawn on and the ones the picker offers beside
-   * them, resolved from the same last valid inputs, so a closed gate never
-   * leaves the picker in an entry mode the chart is not drawn in. `null` when
+   * them, resolved from the same entry mode, the session's, so the picker is
+   * never in an entry mode the chart is not drawn in. `null` when
    * the chart on screen has no axis to pick: none is drawn, it is not the
    * dynamic chart, or its axes are locked.
    */
@@ -382,6 +382,7 @@ function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: 
     model: session.model,
     slots: charted.map(({ outputs, last }) => ({ ...outputs.badge, slot: last.slot })),
     unitSystem: session.unitSystem,
+    temperatureMode: session.temperatureMode,
     atmosphericPressure: charted[0].last.atmosphericPressure,
   };
   const psychrometric = drawnPsychrometricOf(session);
@@ -395,19 +396,19 @@ function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: 
 }
 
 /**
- * The picker's axes for the chart {@link chartSpecOf} draws of `last`'s
- * slot. The chart keeps the axis the user picked; the entry mode of that
- * slot decides which temperature quantity that is.
+ * The picker's axes for the chart {@link chartSpecOf} draws. The chart keeps
+ * the axis the user picked; the session's temperature entry mode decides
+ * which temperature quantity that is.
  */
-function drawnAxesOf(session: Session, last: LastValidRun): DrawnAxes | null {
+function drawnAxesOf(session: Session): DrawnAxes | null {
   if (session.chart.type !== chartType.dynamic) {
     return null;
   }
-  const mode = last.slot.temperature.mode;
-  const choices = dynamicAxisQuantities(last.model, mode);
+  const mode = session.temperatureMode;
+  const choices = dynamicAxisQuantities(session.model, mode);
   // A polygons chart offers none: its axes are locked (ADR-0002 decision 37).
   if (choices.length === 0) {
     return null;
   }
-  return { choices, selected: resolvedAxes(last.model, session.chart.axes, mode) };
+  return { choices, selected: resolvedAxes(session.model, session.chart.axes, mode) };
 }

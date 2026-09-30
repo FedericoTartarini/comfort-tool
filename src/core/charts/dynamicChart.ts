@@ -22,7 +22,7 @@ import { displayUnitFor, numberWithUnit, type DisplayUnit } from "$lib/core/unit
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
 import type { BandFill, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
-import { axisFor, axisModeOf, contourZoneFor, labelFor, markerFor, samples, zoneFor } from "./specParts";
+import { axisFor, contourZoneFor, labelFor, markerFor, samples, zoneFor } from "./specParts";
 import { containsPoint } from "./polygon";
 
 /** One count for every axis and every model: 51 points are 50 intervals, so the SI steps are round (ADR-0002 decision 28). */
@@ -85,7 +85,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
 
 /**
  * The dynamic chart of every slot of the request (ADR-0002 decision 50), on
- * the axes {@link axisModeOf} puts them in.
+ * the axes {@link ChartRequest.temperatureMode} puts them in.
  *
  * A scanned chart scans the declared numeric output over a `GRID × GRID` field
  * of two entered quantities, once per slot. One slot's field is banded by the
@@ -126,7 +126,7 @@ export function dynamicSpec(
   scans?: readonly ScannedField[],
 ): ChartSpec {
   const { model, unitSystem, atmosphericPressure } = request;
-  const mode = axisModeOf(request);
+  const mode = request.temperatureMode;
   const { x, y } = isPolygonsChart(chart) ? chart.axes : resolvedAxes(model, axes, mode);
   const xRange = requireAxisRange(model, x);
   const yRange = requireAxisRange(model, y);

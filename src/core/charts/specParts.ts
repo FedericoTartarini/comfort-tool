@@ -5,7 +5,6 @@
  * alike.
  */
 import { chartInk } from "$lib/core/bandPalette";
-import type { TemperatureMode } from "$lib/core/entryModes";
 import type { Range } from "$lib/core/modelDeclaration";
 import type { Quantity } from "$lib/core/quantities";
 import type { SlotBadge, SlotHue } from "$lib/core/slotBadge";
@@ -13,16 +12,6 @@ import { labelWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest, ChartedSlot } from "./chartRequest";
 import type { AxisSpec, ContourZoneTrace, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
-
-/**
- * The temperature entry mode the axes are drawn in: the first slot's. Until
- * the session's entry mode converts every slot (ADR-0002 decision 51), another
- * slot may be in the other mode, and each builder converts it into this one
- * by `withTemperatureMode`, the entry-mode change's own conversion.
- */
-export function axisModeOf(request: ChartRequest): TemperatureMode {
-  return request.slots[0].slot.temperature.mode;
-}
 
 /**
  * `label`, a legend entry's or a readout line's, as the chart names it for

@@ -203,7 +203,7 @@ describe("a humidity entry and the session's atmospheric pressure", () => {
     const session = new Session(pmvPpdIso);
     session.atmosphericPressure = LOWER_PRESSURE;
 
-    session.slots[0].setHumidityMode(humidityMode.humidityRatio, session.atmosphericPressure);
+    session.setHumidityMode(humidityMode.humidityRatio);
 
     expect(session.slots[0].humidity?.value).toBe(psy_ta_rh(TDB, 50, LOWER_PRESSURE).hr);
   });
@@ -211,7 +211,7 @@ describe("a humidity entry and the session's atmospheric pressure", () => {
   it("asks a model switch about a humidity-ratio entry at the session's pressure", () => {
     const session = new Session(pmvPpdIso);
     session.atmosphericPressure = LOWER_PRESSURE;
-    session.slots[0].setHumidityMode(humidityMode.humidityRatio, session.atmosphericPressure);
+    session.setHumidityMode(humidityMode.humidityRatio);
 
     // The slot's 50 % is above this fixture's maximum of 40 %.
     session.requestModel(withBound("rh", { max: 40 }));

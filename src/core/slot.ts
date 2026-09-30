@@ -220,9 +220,11 @@ export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot
  * deployed tool converts nothing here — its checkbox copies the air
  * temperature into mean radiant.
  *
- * The one statement of the conversion a slot undergoes: the entry-mode buttons
- * apply it through the slot they own, and `core/modelSwitch.ts` applies it for
- * a model that has no temperature entry group. `resolveQuantities`'s
+ * The one statement of the conversion a slot undergoes: the session applies it
+ * to every slot at an entry-mode change (ADR-0002 decision 51), each chart
+ * builder to a slot kept in the other mode than the session's, and
+ * `core/modelSwitch.ts` to a slot bound for a model that has no temperature
+ * entry group. `resolveQuantities`'s
  * expansion (`core/libraryInputs.ts`) is a different act — it stands the
  * operative entry in for the two temperatures of one library call and changes
  * no entry mode.

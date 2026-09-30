@@ -87,7 +87,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
   it("lists the operative temperature against the range both temperatures allow at once", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
+    session.setTemperatureMode(temperatureMode.operative);
     const operative = session.slots[0].values.get(q.operative_tmp);
 
     // tdb is 10–20 here and tr is the registered 10–40, so the row is 10–20.
@@ -134,7 +134,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setHumidityMode(humidityMode.humidityRatio, DEFAULT_ATMOSPHERIC_PRESSURE);
+    session.setHumidityMode(humidityMode.humidityRatio);
     const entered = session.slots[0].humidity?.value;
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
@@ -153,7 +153,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
   it("checks the humidity entry at the temperature the switch would leave, and lists it when that rules it out", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setHumidityMode(humidityMode.humidityRatio, DEFAULT_ATMOSPHERIC_PRESSURE);
+    session.setHumidityMode(humidityMode.humidityRatio);
     // About 85 % at the slot's 25 °C, but above saturation at the 20 °C "Yes" moves tdb to.
     session.slots[0].setEntered(q.hr, 0.017);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
@@ -174,8 +174,8 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
   it("leaves everything as it was on a decline", () => {
     const session = new Session(pmvPpdIso);
-    session.slots[0].setHumidityMode(humidityMode.dewPoint, DEFAULT_ATMOSPHERIC_PRESSURE);
-    session.slots[0].setTemperatureMode(temperatureMode.operative, pmvPpdIso);
+    session.setHumidityMode(humidityMode.dewPoint);
+    session.setTemperatureMode(temperatureMode.operative);
     const before = shapeOf(session.slots[0]);
 
     session.requestModel(belowTheSlot);
