@@ -30,9 +30,9 @@
 
   const rows = $derived(panelQuantities(model, inputSlot));
 
-  // Everything but the result's own bound. Entered values are gated before the call, so an `input` row
-  // here comes from a value the panel did not show as an input: the relative air speed vr = v + 0.3(met − 1),
-  // which the standard bounds instead of `v` — so the sentence names the relative air speed, not the entered one.
+  // Everything but the result's own bound. Entered values are gated before the call against every row of the
+  // model's info, so an `input` row here is a limit the info does not carry: PMV (ASHRAE 55)'s on the relative
+  // air speed at the operative temperature — so the sentence names the relative air speed, under either air-speed mode.
   const hints = $derived(splitViolations(violations).inputs);
 
   function shownValueFor(quantity: Quantity): number {

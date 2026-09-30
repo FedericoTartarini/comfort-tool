@@ -21,15 +21,18 @@ import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions } from "./session.svelte";
-import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots, shapeOf } from "./sessionTestReaders";
+import { heldSlot, listedRowsOf, resultValueOf, sessionComparingThreeSlots, shapeOf, withBounds } from "./sessionTestReaders";
 
 const q = quantities;
 
-/** Each slot's own air speed and metabolic rate, so no two convert to one number. */
+/**
+ * Each slot's own air speed and metabolic rate, so no two convert to one
+ * number, each inside ISO 7730's 1 m/s of relative air speed.
+ */
 const entriesOfSlot = [
   { v: 0.1, met: 1.1 },
   { v: 0.4, met: 2 },
-  { v: 0.8, met: 3 },
+  { v: 0.3, met: 3 },
 ] as const;
 
 function threeDifferentSlots(): Session {
@@ -136,7 +139,7 @@ describe("the session's air-speed entry mode", () => {
 
       expect(session.slots[0].values.get(q.v)).toBe(-0.2);
       expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.v]);
-      expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0 });
+      expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 0.7 });
       expect(outputs.slots[0].notCalculated).toBe(true);
       expect(outputs.slots[0].result).toBeNull();
     });
@@ -147,7 +150,8 @@ describe("the session's air-speed entry mode", () => {
       session.requestModel(pmvPpdAshrae);
 
       expect(session.model).toBe(pmvPpdIso);
-      expect(listedRowsOf(session)).toEqual([{ quantity: q.v, value: -0.2, bound: { min: 0 } }]);
+      // ASHRAE 55's 2 m/s of relative air speed, less the activity's 0.3 m/s at 2 met.
+      expect(listedRowsOf(session)).toEqual([{ quantity: q.v, value: -0.2, bound: { min: 0, max: 1.7 } }]);
 
       session.acceptSwitch();
 
@@ -195,8 +199,7 @@ describe("the session's air-speed entry mode", () => {
       expect(heldSlot(first, position).values.has(q.operative_tmp)).toBe(true);
       expect(heldSlot(first, position).values.has(q.vr)).toBe(true);
     });
-    // Slot 3's relative air speed is past ISO 7730's bound for it, so its gate is closed.
-    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([false, false, true]);
+    expect(outputs.slots.map((slot) => slot.notCalculated)).toEqual([false, false, false]);
     expect(outputs.chart).not.toBeNull();
   });
 
@@ -216,17 +219,40 @@ describe("the session's air-speed entry mode", () => {
     expect(outputs.slots[0].violations.map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.vr, q.vr]]);
   });
 
-  it("stops an entered relative air speed at the model's bound for it, where an air speed is only reported", () => {
-    const beyond = (pmvPpdIso.info.inputs.vr?.applicability?.max ?? 0) + 0.5;
+  it("stops an entry past the model's bound for the relative air speed on the row entered, in either mode", () => {
+    const bound = pmvPpdIso.info.inputs.vr?.applicability;
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
-    session.slots[0].setEntered(q.v, beyond);
-    expect(outputs.slots[0].notCalculated).toBe(false);
+    session.slots[0].setEntered(q.met, 2);
+    // 0.8 m/s at 2 met is a relative air speed of 1.1 m/s, past the model's 1.
+    session.slots[0].setEntered(q.v, 0.8);
+
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.v]);
+    expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 0.7 });
+    expect(outputs.slots[0].notCalculated).toBe(true);
+    expect(outputs.slots[0].result).toBeNull();
 
     session.setAirSpeedMode(airSpeedMode.corrected);
 
+    expect(session.slots[0].values.get(q.vr)).toBe(1.1);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.vr]);
+    expect(enteredBound(pmvPpdIso, q.vr, session.slots[0], session.atmosphericPressure)).toEqual(bound);
     expect(outputs.slots[0].notCalculated).toBe(true);
+  });
+
+  it("moves the air speed's bound with the metabolic rate, and opens the gate where the entry is inside it", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.met, 2);
+    session.slots[0].setEntered(q.v, 0.8);
+    expect(outputs.slots[0].notCalculated).toBe(true);
+
+    session.slots[0].setEntered(q.met, 1);
+
+    expect(enteredBound(pmvPpdIso, q.v, session.slots[0], session.atmosphericPressure)).toEqual({ min: 0, max: 1 });
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].violations).toEqual([]);
   });
 });
 
@@ -321,15 +347,52 @@ describe("a model switch under relative air speed entry", () => {
     expect(new Outputs(session).slots[0].outOfRangeQuantities).toEqual([q.vr]);
   });
 
-  it("asks nothing of an air speed under air speed entry, as before", () => {
+  it("asks about an air speed the new model's converted bound stops, and moves it to the converted end on a yes", () => {
     const session = new Session(pmvPpdAshrae);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.met, 2);
+    // A relative air speed of 1.8 m/s: inside ASHRAE 55's 2, past ISO 7730's 1.
     session.slots[0].setEntered(q.v, 1.5);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
 
     session.requestModel(pmvPpdIso);
 
-    expect(session.pendingSwitch).toBeNull();
+    expect(session.model).toBe(pmvPpdAshrae);
+    expect(listedRowsOf(session)).toEqual([{ quantity: q.v, value: 1.5, bound: { min: 0, max: 0.7 } }]);
+
+    session.acceptSwitch();
+
     expect(session.model).toBe(pmvPpdIso);
     expect(session.airSpeedMode).toBe(airSpeedMode.uncorrected);
+    expect(session.slots[0].values.get(q.v)).toBe(0.7);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].result).not.toBeNull();
+    expect(outputs.slots[0].violations).toEqual([]);
+  });
+
+  // The air speed's bound is read at the metabolic rate, so the entry is judged
+  // at the metabolic rate a yes would leave, and listed with the bound it has there.
+  it("asks about an air speed the converted bound stops only at the metabolic rate a yes would leave", () => {
+    const moreActive = withBounds({ met: { min: 3, max: 4 } });
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.slots[0].setEntered(q.met, 1);
+    session.slots[0].setEntered(q.v, 0.8);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+
+    session.requestModel(moreActive);
+
+    expect(listedRowsOf(session)).toEqual([
+      { quantity: q.v, value: 0.8, bound: { min: 0, max: 0.4 } },
+      { quantity: q.met, value: 1, bound: { min: 3, max: 4 } },
+    ]);
+
+    session.acceptSwitch();
+
+    expect(session.slots[0].values.get(q.met)).toBe(3);
+    expect(session.slots[0].values.get(q.v)).toBe(0.4);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].result).not.toBeNull();
   });
 
   // Adaptive (ASHRAE 55) has no air-speed group, so the slot arrives in air

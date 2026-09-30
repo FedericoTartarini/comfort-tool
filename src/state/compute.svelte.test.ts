@@ -41,14 +41,13 @@ function markerOf(chart: ChartSpec | null): PointTrace | undefined {
 /**
  * A session whose valid run also breaks an applicability row, so that "the
  * rows are kept too" is an assertion about something rather than about an
- * empty array. Entered `v` has no bound but its kind's 0; at `met` 2.5 the `vr` the
- * model derives from it passes ISO 7730's limit of 1 m/s, which the library
- * reports on the result and `core/applicability.ts` maps back onto `v`.
+ * empty array. No entry breaks a bound; at 95 % the vapour pressure the model
+ * derives passes ISO 7730's limit of 2700 Pa, at the slot's 25 °C and at 26 °C,
+ * which the library reports on the result.
  */
 function sessionBreakingOneRow(): Session {
   const session = new Session(pmvPpdIso);
-  session.slots[0].setEntered(q.met, 2.5);
-  session.slots[0].setEntered(q.v, 0.9);
+  session.slots[0].setEntered(q.rh, 95);
   return session;
 }
 
@@ -81,7 +80,7 @@ describe("Outputs", () => {
     const violations = outputs.slots[0].violations;
     const chart = outputs.chart;
     expect(result).not.toBeNull();
-    expect(violations.map((row) => row.quantity)).toEqual([q.v]);
+    expect(violations.map((row) => row.quantity)).toEqual([q.pa]);
 
     // 35 °C is past ISO 7730's 30 °C, so the gate blocks the run.
     session.slots[0].setEntered(q.tdb, 35);
@@ -101,12 +100,12 @@ describe("Outputs", () => {
     session.slots[0].setEntered(q.tdb, 35);
     // Read while blocked, so this is the round trip and not one jump.
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
-    session.slots[0].setEntered(q.tdb, 20);
+    session.slots[0].setEntered(q.tdb, 26);
 
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBe(kept);
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).not.toBe(resultValueOf(kept, q.pmv));
-    expect(outputs.slots[0].violations.map((row) => row.quantity)).toEqual([q.v]);
+    expect(outputs.slots[0].violations.map((row) => row.quantity)).toEqual([q.pa]);
     expect(outputs.chart).not.toBe(keptChart);
   });
 

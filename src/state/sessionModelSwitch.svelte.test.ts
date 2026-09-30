@@ -10,7 +10,7 @@
  * registry entries: each spreads PMV (ISO 7730)'s declaration and overrides
  * the one thing it is about.
  */
-import { psy_ta_rh } from "jsthermalcomfort";
+import { clo_dynamic_iso, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { outOfRangeRows } from "$lib/core/applicability";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
@@ -26,8 +26,9 @@ const q = quantities;
 // applicability — from above, from below, and by a bound with one end only.
 const belowTheSlot = withBounds({ tdb: { min: 10, max: 20 } });
 const aboveTheSlot = withBounds({ tdb: { min: 28, max: 40 } });
-// clo starts at 0.5, so a minimum of 1 is the one-sided bound; met's maximum
-// is removed, so a met of 6 breaks nothing under it.
+// clo starts at 0.5, so a minimum of 1 is the one-sided bound, of the dynamic
+// clothing insulation the model is given; met's maximum is removed, so a met
+// of 6 breaks nothing under it.
 const oneSidedBounds = withBounds({ clo: { min: 1 }, met: { min: 0.8 } });
 // The slot starts at 50 % relative humidity, which a maximum of 40 rules out.
 const drierThanTheSlot = withBounds({ rh: { max: 40 } });
@@ -82,11 +83,16 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.requestModel(oneSidedBounds);
 
-    expect(listedRowsOf(session)).toEqual([{ quantity: q.clo, value: 0.5, bound: { min: 1 } }]);
+    // The bound converted into the clothing insulation entered: at 6 met and 0.1 m/s ISO 7730's rule gives 1.66 clo as 1.
+    const [row] = listedRowsOf(session) ?? [];
+    expect(listedRowsOf(session)).toEqual([{ quantity: q.clo, value: 0.5, bound: { min: row.bound.min } }]);
+    expect(row.bound.min).toBeCloseTo(1.6571, 4);
+    expect(clo_dynamic_iso(row.bound.min ?? Number.NaN, 6, 0.1)).toBeCloseTo(1, 8);
+    expect(clo_dynamic_iso(row.bound.min ?? Number.NaN, 6, 0.1)).toBeGreaterThanOrEqual(1);
 
     session.acceptSwitch();
 
-    expect(session.slots[0].values.get(q.clo)).toBe(1);
+    expect(session.slots[0].values.get(q.clo)).toBe(row.bound.min);
     expect(session.slots[0].values.get(q.met)).toBe(6);
   });
 

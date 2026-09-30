@@ -10,9 +10,8 @@
  * the converted slot and not the original one, and the gate has to see what
  * seeding left. The gate is asked, never second-guessed: the rows are
  * `core/applicability.ts`'s and the app has no other notion of out of range.
- * It is asked a second time, on the slot with the other rows adjusted,
- * because the humidity entry's bound depends on the temperature (see
- * {@link rehearseSwitch}).
+ * It is asked again at the slot with its rows adjusted, because a bound may
+ * be read at another entry (see {@link rehearseSwitch}).
  */
 import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
 import type { RegisteredModel } from "./modelDeclaration";
@@ -25,7 +24,7 @@ export interface RehearsedSwitch {
   readonly slot: Slot;
   /**
    * The entered values the new model's Applicability rules out, as the pre-call
-   * gate reports them; the humidity entry's at the temperature a "Yes" would leave.
+   * gate reports them, each against the bound it has at the values a "Yes" would leave.
    */
   readonly outOfRangeRows: readonly OutOfRangeRow[];
 }
@@ -34,23 +33,38 @@ export interface RehearsedSwitch {
  * What `slot`, held under the model `from`, would hold under `model`, and
  * what `model` would not accept of it at `atmosphericPressure`, which the
  * switch keeps (ADR-0002 decision 49).
- * Temperatures first: the humidity entry's bound moves with the dry-bulb
- * temperature (ADR-0002 decision 46), so it is checked at the temperature a
- * "Yes" would leave — the gate asked again on the slot with every other row
- * adjusted — and listed with the bound it has there. A "Yes" then leaves
- * nothing out of range, except while `atmosphericPressure` is out of range:
- * a humidity-ratio entry has no bound then and is not listed, so it may be out
- * of range once the pressure returns (ADR-0002 decision 53).
+ * A bound may be read at another entry: the humidity entry's at the dry-bulb
+ * temperature (ADR-0002 decision 46), an entered air speed's at the metabolic
+ * rate, an entered clothing insulation's at that and the air speed (decision
+ * 54). So each entry is judged at the values a "Yes" would leave, and listed
+ * with the bound it has there: the gate is asked again at the slot with the
+ * rows so far adjusted, until a pass lists what the pass before did. Each pass
+ * settles the rows read at entries the pass before settled, and no bound is
+ * read at the entry it bounds, so there are no more passes than the slot has
+ * values. A "Yes" then leaves nothing out of range, except
+ * while `atmosphericPressure` is out of range: a humidity-ratio entry has no
+ * bound then and is not listed, so it may be out of range once the pressure
+ * returns (ADR-0002 decision 53).
  */
 export function rehearseSwitch(slot: Slot, from: RegisteredModel, model: RegisteredModel, atmosphericPressure: number): RehearsedSwitch {
-  const converted = convertEntryModes(slot, from, model);
-  const seeded = seedDeclaredDefaults(converted, model);
-  const humidity = seeded.humidity?.mode.quantity;
-  const others = outOfRangeRows(seeded, model, atmosphericPressure).filter((row) => row.quantity !== humidity);
-  const humidityRow = outOfRangeRows(adjustToBounds(seeded, others), model, atmosphericPressure).find(
-    (row) => row.quantity === humidity,
+  const seeded = seedDeclaredDefaults(convertEntryModes(slot, from, model), model);
+  let rows = outOfRangeRows(seeded, model, atmosphericPressure);
+  for (let pass = 0; pass < seeded.values.size; pass += 1) {
+    const next = outOfRangeRows(seeded, model, atmosphericPressure, adjustToBounds(seeded, rows));
+    if (areSameRows(rows, next)) {
+      break;
+    }
+    rows = next;
+  }
+  return { slot: seeded, outOfRangeRows: rows };
+}
+
+/** Whether `a` and `b` list the same quantities against the same bounds, in one order. */
+function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((row, index) => row.quantity === b[index].quantity && row.bound.min === b[index].bound.min && row.bound.max === b[index].bound.max)
   );
-  return { slot: seeded, outOfRangeRows: humidityRow ? [...others, humidityRow] : others };
 }
 
 /**

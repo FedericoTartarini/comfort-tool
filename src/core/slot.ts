@@ -7,7 +7,7 @@
  * adjusting it to bounds `core/modelSwitch.ts`'s; both depend on this module,
  * and this module on neither.
  */
-import { t_o, v_relative } from "jsthermalcomfort";
+import { t_o, v_relative, type Bound } from "jsthermalcomfort";
 import { clo_dynamic_inverse } from "$lib/temporary-library/clo_dynamic_inverse";
 import { v_relative_inverse } from "$lib/temporary-library/v_relative_inverse";
 import {
@@ -81,7 +81,9 @@ export function areSameEntryModes(a: ValueEntryModes, b: ValueEntryModes): boole
  * name beside the others, and which the session's slot, its setter and its
  * control carry as the slot's shape. What a group's entry resolves to for the
  * library is `core/libraryInputs.ts`'s, and the row a library violation is
- * reported on `core/applicability.ts`'s: each names the group there.
+ * reported on `core/applicability.ts`'s: each names the group there. The
+ * bound an entry must satisfy is `core/applicability.ts`'s too, which names
+ * no activity-adjusted group: it reads the row's {@link EntryCorrection}.
  *
  * Humidity is an entry group and not one of these: its entry is one quantity
  * held apart from the values (`Slot.humidity`), its modes carry their own
@@ -104,6 +106,31 @@ export interface ValueEntryGroup {
    * model that has no such group, under the model it leaves.
    */
   readonly convert: (slot: Slot, mode: ValueEntryMode, model: RegisteredModel) => Slot;
+  /** Set for an activity-adjusted group, whose model is given the entry of one mode as it is and of the other corrected. */
+  readonly correction?: EntryCorrection;
+}
+
+/**
+ * What an activity-adjusted group tells the pre-call gate (ADR-0002 decision
+ * 54 as revised a third time): the model's info bounds the quantity the model
+ * takes, so an entry of the corrected mode is held to that row as it is, and
+ * an entry of the other mode to that row converted into the entered quantity.
+ * `core/applicability.ts` reads it, by one rule for every such group.
+ */
+export interface EntryCorrection {
+  /** The quantity the model's info names what the model is given by, and so bounds. */
+  readonly taken: Quantity;
+  /** The mode whose entry the model is given as it is. */
+  readonly corrected: ValueEntryMode;
+  /**
+   * The entry of the uncorrected mode that `model` is given `taken` for at the
+   * slot's own other values, by the correction's inverse. `taken` is the value
+   * at the `end` of a bound, and where no entry is given exactly `taken` the answer is the
+   * nearest one given a value inside that end: no less than a `min`, no more
+   * than a `max`. So an entry at an end converted by this is inside the
+   * model's own bound.
+   */
+  readonly entryGiving: (taken: number, slot: Slot, model: RegisteredModel, end: keyof Bound) => number;
 }
 
 export const valueEntryGroups: readonly ValueEntryGroup[] = [
@@ -118,12 +145,14 @@ export const valueEntryGroups: readonly ValueEntryGroup[] = [
     appliesTo: takesRelativeAirSpeed,
     modeOf: (modes) => modes.airSpeed.mode,
     convert: withAirSpeedMode,
+    correction: { taken: q.vr, corrected: airSpeedMode.corrected, entryGiving: airSpeedGiving },
   },
   {
     modes: Object.values(clothingMode),
     appliesTo: hasClothingGroup,
     modeOf: (modes) => modes.clothing.mode,
     convert: withClothingMode,
+    correction: { taken: q.clo, corrected: clothingMode.corrected, entryGiving: clothingGiving },
   },
 ];
 
@@ -237,7 +266,8 @@ export function relativeAirSpeedOf(slot: Slot): number {
  * the value the switch into dynamic clothing entry stores
  * ({@link withClothingMode}), so the person sees the number the model was
  * getting. The one place the app corrects a clothing insulation, by the one
- * rule {@link withClothingMode} inverts ({@link clothingCorrectionAt}).
+ * rule {@link withClothingMode} and {@link clothingGiving} invert
+ * ({@link clothingCorrectionAt}).
  */
 export function dynamicClothingOf(slot: Slot, model: RegisteredModel): number {
   if (slot.clothing.mode === clothingMode.corrected) {
@@ -251,7 +281,8 @@ export function dynamicClothingOf(slot: Slot, model: RegisteredModel): number {
  * The clothing correction of `model`'s standard at the slot's own metabolic
  * rate and relative air speed ({@link relativeAirSpeedOf}), a function of the
  * clothing insulation alone: what {@link dynamicClothingOf} corrects by and
- * {@link withClothingMode} inverts. `undefined` for a model without the
+ * {@link withClothingMode} and {@link clothingGiving} invert.
+ * `undefined` for a model without the
  * clothing entry group.
  */
 function clothingCorrectionAt(slot: Slot, model: RegisteredModel): ((clo: number) => number) | undefined {
@@ -269,6 +300,41 @@ function clothingCorrectionAt(slot: Slot, model: RegisteredModel): ((clo: number
     },
   };
   return (clo) => correct(clo, resolved);
+}
+
+/**
+ * The air speed that gives the relative air speed `vr` at the slot's own
+ * metabolic rate: the air-speed group's {@link EntryCorrection.entryGiving}.
+ * `v_relative` rounds to 0.001, so the answer is given exactly `vr`.
+ */
+function airSpeedGiving(vr: number, slot: Slot): number {
+  return v_relative_inverse({ vr, met: requireValue(slot.values, q.met) });
+}
+
+/** The decimals `clo_dynamic_inverse` answers to at most, and one step of them, [clo]. */
+const CLOTHING_INVERSE_DECIMALS = 9;
+const CLOTHING_INVERSE_STEP = 10 ** -CLOTHING_INVERSE_DECIMALS;
+
+/**
+ * The clothing insulation `model`'s rule corrects to `dynamic`, the value at
+ * the `end` of a bound, at the slot's own values ({@link clothingCorrectionAt}): the clothing
+ * group's {@link EntryCorrection.entryGiving}. `clo_dynamic_inverse` answers
+ * to nine decimals and never with a clothing insulation corrected to less,
+ * which is inside a `min`. Under ISO 7730's rule, which does not round, its
+ * answer is corrected to a hair more than `dynamic` (2.0000000004 clo for the
+ * model's 2), which the library, comparing strictly, would report after the
+ * run: for a `max` the answer one step below is then the one. Under ASHRAE
+ * 55's rule the inverse's answer is corrected to exactly `dynamic` and is
+ * kept at either end: 1.875 clo for 1.5 at 2 met.
+ */
+function clothingGiving(dynamic: number, slot: Slot, model: RegisteredModel, end: keyof Bound): number {
+  const correction = clothingCorrectionAt(slot, model);
+  if (!correction) {
+    return dynamic;
+  }
+  const clothing = clo_dynamic_inverse({ clo_dynamic: dynamic, correction });
+  const isPastMax = end === "max" && correction(clothing) > dynamic;
+  return isPastMax ? Number((clothing - CLOTHING_INVERSE_STEP).toFixed(CLOTHING_INVERSE_DECIMALS)) : clothing;
 }
 
 /**

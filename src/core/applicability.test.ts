@@ -19,7 +19,7 @@ import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./e
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
-import { defaultEntryModes, startingSlot, withEnteredValues, type Slot } from "./slot";
+import { defaultEntryModes, dynamicClothingOf, relativeAirSpeedOf, startingSlot, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
@@ -55,47 +55,112 @@ describe("enteredBound / outOfRangeQuantities", () => {
     expect(outOfRangeQuantities(enteredSlotFor(pmvPpdIso, { operative_tmp: bound?.max ?? 0 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
-  it("judges an entered relative air speed against the model's bound for it directly", () => {
-    const bound = pmvPpdIso.info.inputs.vr?.applicability;
-    const within = enteredSlotFor(pmvPpdIso, { vr: bound?.max ?? 0 });
-    const beyond = enteredSlotFor(pmvPpdIso, { vr: (bound?.max ?? 0) + 0.1 });
-    expect(enteredBound(pmvPpdIso, q.vr, within, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(bound);
-    expect(outOfRangeRows(within, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
-    expect(outOfRangeRows(beyond, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
-      { quantity: q.vr, value: (bound?.max ?? 0) + 0.1, bound },
-    ]);
-  });
-
-  it("judges the entered clothing against the model's bound for clo on the row entered, in either clothing mode", () => {
+  it("holds an entered relative air speed and an entered dynamic clothing insulation to the model's own row, unchanged", () => {
     for (const model of [pmvPpdIso, pmvPpdAshrae]) {
-      const bound = model.info.inputs.clo?.applicability;
-      const beyond = (bound?.max ?? 0) + 0.1;
-      const intrinsic = enteredSlotFor(model, { clo: beyond });
-      const dynamic = enteredSlotFor(model, { clo_dynamic: beyond });
-      expect(enteredBound(model, q.clo, intrinsic, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual(bound);
-      expect(enteredBound(model, q.clo_dynamic, dynamic, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual(bound);
-      expect(outOfRangeQuantities(intrinsic, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([q.clo]);
-      expect(outOfRangeQuantities(dynamic, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([q.clo_dynamic]);
-      const within = enteredSlotFor(model, { clo_dynamic: bound?.max ?? 0 });
-      expect(outOfRangeQuantities(within, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([]);
+      const airSpeed = model.info.inputs.vr?.applicability;
+      const clothing = model.info.inputs.clo?.applicability;
+      // At 2 met, where both corrections move an entry of the other mode.
+      const within = enteredSlotFor(model, { met: 2, vr: airSpeed?.max ?? 0, clo_dynamic: clothing?.max ?? 0 });
+      expect(enteredBound(model, q.vr, within, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual(airSpeed);
+      expect(enteredBound(model, q.clo_dynamic, within, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual(clothing);
+      expect(outOfRangeRows(within, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([]);
+      const beyond = enteredSlotFor(model, { met: 2, vr: (airSpeed?.max ?? 0) + 0.1, clo_dynamic: (clothing?.max ?? 0) + 0.1 });
+      expect(outOfRangeRows(beyond, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([
+        { quantity: q.vr, value: (airSpeed?.max ?? 0) + 0.1, bound: airSpeed },
+        { quantity: q.clo_dynamic, value: (clothing?.max ?? 0) + 0.1, bound: clothing },
+      ]);
     }
   });
 
-  // The entry is judged as typed, not as corrected: 1.6 clo at 2 met is given
-  // to PMV (ASHRAE 55) as 1.28 clo, inside its 1.5, and the gate still stops it.
-  it("judges the clothing insulation as entered, not as corrected", () => {
-    const slot = enteredSlotFor(pmvPpdAshrae, { clo: 1.6, met: 2 });
-    expect(outOfRangeQuantities(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.clo]);
+  // The model info bounds the relative air speed, 0 – 1 m/s on ISO 7730 and 0 – 2 m/s on ASHRAE 55;
+  // the activity's share of it, 0.3 m/s per met above 1 met, comes off the air speed a person may enter.
+  it("holds an entered air speed to the model's bound for the relative air speed, converted at the slot's metabolic rate", () => {
+    const boundAt = (model: RegisteredModel, met: number) =>
+      enteredBound(model, q.v, enteredSlotFor(model, { met }), DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(boundAt(pmvPpdIso, 2)).toEqual({ min: 0, max: 0.7 });
+    expect(boundAt(pmvPpdIso, 1)).toEqual({ min: 0, max: 1 });
+    expect(boundAt(pmvPpdIso, 1.1)).toEqual({ min: 0, max: 0.97 });
+    expect(boundAt(pmvPpdAshrae, 1.1)).toEqual({ min: 0, max: 1.97 });
+
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 2, v: 0.7 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 2, v: 0.8 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
+      { quantity: q.v, value: 0.8, bound: { min: 0, max: 0.7 } },
+    ]);
+    // The same air speed is inside the bound at 1 met.
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 1, v: 0.8 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
   });
 
-  it("holds an entered air speed at 0 by its kind, in a model whose standard does not limit it", () => {
-    // The standard bounds the relative air speed vr, not the entered v.
+  it("holds an entered air speed at 0 by its kind, where the converted bound's lower end is below it", () => {
+    // The standard bounds the relative air speed vr, not the entered v: 0 m/s of it at 2 met is an air speed of −0.3 m/s.
     expect(pmvPpdIso.info.inputs.v).toBeUndefined();
-    expect(enteredBound(pmvPpdIso, q.v, startingSlot(pmvPpdIso), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(kindBounds.airSpeed);
-    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { v: 0 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
-    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { v: -0.2 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
-      { quantity: q.v, value: -0.2, bound: { min: 0 } },
+    expect(kindBounds.airSpeed).toEqual({ min: 0 });
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 2, v: 0 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 2, v: -0.2 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
+      { quantity: q.v, value: -0.2, bound: { min: 0, max: 0.7 } },
     ]);
+  });
+
+  it("holds an air speed by its kind alone where the converted bound leaves no air speed, at a metabolic rate the gate stops", () => {
+    // At 5 met the activity's share is 1.2 m/s, over the model's 1 m/s of relative air speed whatever the air speed.
+    const slot = enteredSlotFor(pmvPpdIso, { met: 5, v: 0.1 });
+    expect(enteredBound(pmvPpdIso, q.v, slot, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(kindBounds.airSpeed);
+    expect(outOfRangeQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.met]);
+  });
+
+  // The model info bounds the dynamic clothing insulation the model is given, 0 – 2 clo on ISO 7730
+  // and 0 – 1.5 clo on ASHRAE 55; each standard's rule is inverted at the slot's own values.
+  it("holds an entered clothing insulation to the model's bound for the clothing, converted by its standard's rule", () => {
+    const boundAt = (model: RegisteredModel, entered: Parameters<typeof enteredSlotFor>[1]) =>
+      enteredBound(model, q.clo, enteredSlotFor(model, entered), DEFAULT_ATMOSPHERIC_PRESSURE);
+
+    // ISO 7730's rule gives still, seated air more clothing than was entered: 2 clo is given as 2.069.
+    const stillAir = boundAt(pmvPpdIso, { met: 1, v: 0 });
+    expect(stillAir?.min).toBe(0);
+    expect(stillAir?.max).toBeCloseTo(1.934, 3);
+    expect(clo_dynamic_iso(2, 1, 0)).toBeGreaterThan(2);
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 1, v: 0, clo: 2 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
+      { quantity: q.clo, value: 2, bound: stillAir },
+    ]);
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 1, v: 0, clo: 1.93 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+
+    // ASHRAE 55's rule gives 1.6 clo at 2 met as 1.28 clo, inside the model's 1.5.
+    expect(boundAt(pmvPpdAshrae, { met: 2 })).toEqual({ min: 0, max: 1.875 });
+    expect(outOfRangeRows(enteredSlotFor(pmvPpdAshrae, { met: 2, clo: 1.6 }), pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(outOfRangeQuantities(enteredSlotFor(pmvPpdAshrae, { met: 2, clo: 1.9 }), pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.clo]);
+    // At or below 1.2 met the rule is the identity, and the bound the model's own.
+    expect(boundAt(pmvPpdAshrae, { met: 1.1 })).toEqual(pmvPpdAshrae.info.inputs.clo?.applicability);
+  });
+
+  it("moves the clothing bound with the air speed under ISO 7730's rule, in either air-speed mode, and not under ASHRAE 55's", () => {
+    const maxAt = (model: RegisteredModel, entered: Parameters<typeof enteredSlotFor>[1]) =>
+      enteredBound(model, q.clo, enteredSlotFor(model, entered), DEFAULT_ATMOSPHERIC_PRESSURE)?.max;
+    expect(maxAt(pmvPpdIso, { met: 2, v: 0.4 })).toBeGreaterThan(maxAt(pmvPpdIso, { met: 2, v: 0 }) ?? Infinity);
+    expect(maxAt(pmvPpdIso, { met: 2, vr: 0.7 })).toBe(maxAt(pmvPpdIso, { met: 2, v: 0.4 }));
+    expect(maxAt(pmvPpdAshrae, { met: 2, v: 0.4 })).toBe(maxAt(pmvPpdAshrae, { met: 2, v: 0 }));
+  });
+
+  // The library compares strictly, and ISO 7730's rule does not round: an end a hair
+  // outside the model's bound would pass the gate and be reported by the run.
+  it("gives the model no more than its bound for an entry at a converted end, so the run reports none the gate passed", () => {
+    for (const model of [pmvPpdIso, pmvPpdAshrae]) {
+      const airSpeedMax = model.info.inputs.vr?.applicability?.max ?? 0;
+      const clothingMax = model.info.inputs.clo?.applicability?.max ?? 0;
+      for (let met = 1; met <= 4; met += 0.1) {
+        const airSpeedEnd = enteredBound(model, q.v, enteredSlotFor(model, { met }), DEFAULT_ATMOSPHERIC_PRESSURE)?.max ?? Number.NaN;
+        for (const v of [0, airSpeedEnd / 2, airSpeedEnd]) {
+          const clothingEnd = enteredBound(model, q.clo, enteredSlotFor(model, { met, v }), DEFAULT_ATMOSPHERIC_PRESSURE)?.max ?? Number.NaN;
+          const slot = enteredSlotFor(model, { met, v, clo: clothingEnd });
+          const at = `${model.info.label}, ${met} met, ${v} m/s`;
+          expect(outOfRangeRows(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), at).toEqual([]);
+          expect(relativeAirSpeedOf(slot), at).toBeLessThanOrEqual(airSpeedMax);
+          expect(dynamicClothingOf(slot, model), at).toBeLessThanOrEqual(clothingMax);
+          // And no bound stops short: 0.01 clo past the end, a step ASHRAE 55's rounding cannot hide, is given as more.
+          expect(dynamicClothingOf(enteredSlotFor(model, { met, v, clo: clothingEnd + 0.01 }), model), at).toBeGreaterThan(clothingMax);
+          const rows = violationRows(model, runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
+          expect(rows.filter((row) => row.bounded === q.clo), at).toEqual([]);
+        }
+      }
+    }
   });
 
   it("narrows a model's own air-speed row by the kind's bound, and leaves a model that enters no air speed alone", () => {
@@ -197,8 +262,10 @@ describe("enteredBound / outOfRangeQuantities, on the humidity entry", () => {
   });
 
   it("neither bounds nor lists a humidity for a slot that holds none", () => {
-    // Adaptive (ASHRAE 55) takes no humidity, so the slot it starts on holds none.
-    const holdsNone = startingSlot(adaptiveAshrae);
+    // As the slot Adaptive (ASHRAE 55) starts on, which takes no humidity; the values are PMV (ISO 7730)'s,
+    // since the bound of its air speed is read at its metabolic rate.
+    expect(startingSlot(adaptiveAshrae).humidity).toBeUndefined();
+    const holdsNone: Slot = { ...startingSlot(pmvPpdIso), humidity: undefined };
     for (const mode of Object.values(humidityMode)) {
       expect(enteredBound(pmvPpdIso, mode.quantity, holdsNone, DEFAULT_ATMOSPHERIC_PRESSURE), mode.id).toBeUndefined();
     }
@@ -306,15 +373,6 @@ describe("violationRows", () => {
     expect(Math.abs(violation!.value)).toBeGreaterThan(pmvPpdIso.info.outputs.pmv!.applicability!.max!);
   });
 
-  it("reports a relative air speed that breaks the vr bound on the entered v row, without gating it", () => {
-    const slot = enteredSlotFor(pmvPpdIso, { v: 1.5 });
-    const violation = rowsFor(slot).find((row) => row.quantity === q.v);
-    expect(violation?.role).toBe("input");
-    expect(violation?.bound).toEqual(pmvPpdIso.info.inputs.vr?.applicability);
-    expect(rowsFor(slot).some((row) => row.quantity === q.vr)).toBe(false);
-    expect(outOfRangeQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
-  });
-
   it("merges rows on one quantity and role into one sentence over the narrowest bound", () => {
     // PMV (ASHRAE 55) with the air-speed control off, at an operative temperature ≤ 23 °C:
     // the no-control rows, and above 2 m/s the fixed 0–2 m/s row too.
@@ -360,29 +418,13 @@ describe("violationRows", () => {
     expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
   });
 
-  // ISO 7730's rule gives still, seated air more clothing than was entered:
-  // 2 clo, the most the gate lets through, is given to the model as 2.069.
-  it("reports a dynamic clothing insulation the run breaks on the clothing row entered, and names it in the sentence", () => {
-    const slot = enteredSlotFor(pmvPpdIso, { v: 0, met: 1, clo: 2 });
-    expect(outOfRangeQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
-    const rows = rowsFor(slot);
-    expect(rows.map(({ quantity, bounded, role, value }) => [quantity, bounded, role, value])).toEqual([
-      [q.clo, q.clo_dynamic, "input", clo_dynamic_iso(2, 1, 0)],
-    ]);
-    expect(rows[0].bound).toEqual(pmvPpdIso.info.inputs.clo?.applicability);
-    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Dynamic clothing insulation must be 0 – 2 clo"]);
-  });
-
-  it("reports a clothing row in the clothing mode it is asked in, and as the library keys it for a model without the group", () => {
+  // The gate holds the clothing to the model's bound converted into the entry, so a run is given
+  // no clothing outside it; a `clo` row, were the library to report one, is reported as keyed.
+  it("reports a clothing row as the library keys it, in either clothing mode", () => {
     const warnings = [{ key: "clo", role: "input", value: 2.5, bound: { max: 2 } }];
-    const rowOf = (model: RegisteredModel, modes: Parameters<typeof violationRows>[2]) => {
-      const [{ quantity, bounded }] = violationRows(model, { warnings }, modes);
-      return [quantity, bounded];
-    };
-    const corrected = entryModesWithClothing(clothingMode.corrected);
-    expect(rowOf(pmvPpdIso, defaultEntryModes)).toEqual([q.clo, q.clo_dynamic]);
-    expect(rowOf(pmvPpdIso, corrected)).toEqual([q.clo_dynamic, q.clo_dynamic]);
-    expect(rowOf({ ...pmvPpdIso, standard: undefined }, defaultEntryModes)).toEqual([q.clo, q.clo]);
+    for (const modes of [defaultEntryModes, entryModesWithClothing(clothingMode.corrected)]) {
+      expect(violationRows(pmvPpdIso, { warnings }, modes).map(({ quantity, bounded }) => [quantity, bounded])).toEqual([[q.clo, q.clo]]);
+    }
   });
 
   it("reports the row in the entry modes it is asked in, whatever mode the run was entered in", () => {
