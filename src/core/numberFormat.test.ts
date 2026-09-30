@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatNumber, isShownBeyond } from "./numberFormat";
+import { formatBoundEnd, formatNumber, isShownBeyond } from "./numberFormat";
 import { quantities } from "./quantities";
 import { displayUnitFor } from "./units";
 import { unitSystem } from "./unitSystem";
@@ -81,5 +81,50 @@ describe("isShownBeyond", () => {
     expect(isShownBeyond(2.01, { max: 2 }, clo)).toBe(true);
     expect(isShownBeyond(1e9, { min: 0 }, clo)).toBe(false);
     expect(isShownBeyond(-0.01, { min: 0 }, clo)).toBe(true);
+  });
+});
+
+describe("formatBoundEnd", () => {
+  const clo = displayUnitFor(quantities.clo, unitSystem.si);
+  const celsius = displayUnitFor(quantities.tdb, unitSystem.si);
+  const fahrenheit = displayUnitFor(quantities.tdb, unitSystem.ip);
+  const kilopascals = displayUnitFor(quantities.pa, unitSystem.si);
+  const inchesOfMercury = displayUnitFor(quantities.pa, unitSystem.ip);
+
+  it("steps a maximum one shown digit inward where the nearest, typed back, would be stopped", () => {
+    // 2700 Pa is 0.7973 inHg; 0.8 inHg is 2709 Pa, which reads 2.71 kPa against 2.7.
+    expect(formatBoundEnd(2700, "max", inchesOfMercury, kilopascals)).toBe("0.79");
+  });
+
+  it("steps a minimum one shown digit inward where the nearest, typed back, would be stopped", () => {
+    // 2720 Pa is 0.8032 inHg; 0.8 inHg is 2709 Pa, which reads 2.71 kPa against 2.72.
+    expect(formatBoundEnd(2720, "min", inchesOfMercury, kilopascals)).toBe("0.81");
+  });
+
+  it("writes the nearest where, typed back, it passes", () => {
+    // 2710 Pa is 0.8003 inHg, and 0.8 inHg reads 2.71 kPa, as the end does.
+    expect(formatBoundEnd(2710, "max", inchesOfMercury, kilopascals)).toBe("0.8");
+    expect(formatBoundEnd(2710, "min", inchesOfMercury, kilopascals)).toBe("0.8");
+    expect(formatBoundEnd(2700, "max", kilopascals, kilopascals)).toBe("2.7");
+  });
+
+  it("never steps in the unit the gate judges in, the identity unit among them", () => {
+    expect(formatBoundEnd(1.875, "max", clo, clo)).toBe("1.88");
+    expect(formatBoundEnd(1.6549, "min", clo, clo)).toBe("1.65");
+    expect(formatBoundEnd(-0.001, "min", clo, clo)).toBe("0");
+  });
+
+  it("never steps in °F an end °C shows as it is: the shown step of °F is the finer", () => {
+    for (let hundredths = 0; hundredths <= 5000; hundredths += 1) {
+      const end = hundredths / 100;
+      const nearest = formatNumber(fahrenheit.fromSi(end));
+      expect(formatBoundEnd(end, "min", fahrenheit, celsius), `min ${end}`).toBe(nearest);
+      expect(formatBoundEnd(end, "max", fahrenheit, celsius), `max ${end}`).toBe(nearest);
+    }
+  });
+
+  it("steps in °F an end of more decimals whose nearest reads a step over in °C", () => {
+    // 10.0049 °C reads 10 and is 50.0088 °F; 50.01 °F is 10.0056 °C, which reads 10.01.
+    expect(formatBoundEnd(10.0049, "max", fahrenheit, celsius)).toBe("50");
   });
 });

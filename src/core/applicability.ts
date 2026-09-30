@@ -17,10 +17,9 @@ import { copy } from "$lib/text/copy";
 import { humidityMode, temperatureMode, type HumidityMode } from "./entryModes";
 import { takesRelativeAirSpeed, type ModelResult, type RegisteredModel } from "./modelDeclaration";
 import { resultWarnings } from "./modelRun";
-import { formatNumber, isShownBeyond } from "./numberFormat";
+import { formatBoundEnd, isShownBeyond } from "./numberFormat";
 import { kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import { isHumidityQuantity, resolvedTdb, valueEntryGroups, type EntryCorrection, type Slot, type ValueEntryModes } from "./slot";
-import type { DisplayUnit } from "./units";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
 
@@ -371,15 +370,18 @@ export function splitViolations(rows: readonly ViolationRow[]): ViolationSides {
 }
 
 /**
- * `bound` in the display unit, formatted, without the unit symbol. Each end is
- * written as any number is, nearest: `0 – 1.88` for a maximum of 1.875. The
- * gate compares at this precision, so the end a person reads is accepted
- * (ADR-0002 decision 56).
+ * `bound` on `quantity` in its display unit under `system`, formatted, without
+ * the unit symbol. Each end is written as any number is, nearest: `0 – 1.88`
+ * for a maximum of 1.875; where that end typed back would be stopped by the
+ * gate, which judges in the quantity's SI display unit, it steps one shown
+ * digit inward: `≤ 0.79` inHg for 2700 Pa (`formatBoundEnd`). The end a person
+ * reads is accepted (ADR-0002 decision 56).
  */
-export function formatBound(bound: Bound, unit: DisplayUnit): string {
-  const shownEnd = (end: number): string => formatNumber(unit.fromSi(end));
-  const min = bound.min !== undefined ? shownEnd(bound.min) : undefined;
-  const max = bound.max !== undefined ? shownEnd(bound.max) : undefined;
+export function formatBound(bound: Bound, quantity: Quantity, system: UnitSystem): string {
+  const unit = displayUnitFor(quantity, system);
+  const judgedIn = displayUnitFor(quantity, unitSystem.si);
+  const min = bound.min !== undefined ? formatBoundEnd(bound.min, "min", unit, judgedIn) : undefined;
+  const max = bound.max !== undefined ? formatBoundEnd(bound.max, "max", unit, judgedIn) : undefined;
   if (min !== undefined && max !== undefined) {
     return `${min} – ${max}`;
   }
@@ -389,5 +391,5 @@ export function formatBound(bound: Bound, unit: DisplayUnit): string {
 /** The sentence a violation row shows the user, from the bounded quantity's label, the bound and its display unit. */
 export function warningFor(row: ViolationRow, unitSystem: UnitSystem): string {
   const unit = displayUnitFor(row.bounded, unitSystem);
-  return copy.applicabilityWarning(row.bounded.label, valueWithUnit(formatBound(row.bound, unit), unit));
+  return copy.applicabilityWarning(row.bounded.label, valueWithUnit(formatBound(row.bound, row.bounded, unitSystem), unit));
 }

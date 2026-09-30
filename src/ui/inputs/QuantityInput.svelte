@@ -30,7 +30,7 @@
   const unit = $derived(displayUnitFor(quantity, unitSystem));
   const text = $derived(formatNumber(unit.fromSi(value)));
   const labelText = $derived(labelWithUnit(quantity, unit));
-  const boundText = $derived(bound ? formatBound(bound, unit) : "");
+  const boundText = $derived(bound ? formatBound(bound, quantity, unitSystem) : "");
 
   // Commit only when the parsed value differs from what is stored. While the
   // user types "25." the parse is still 25, nothing is committed, and the

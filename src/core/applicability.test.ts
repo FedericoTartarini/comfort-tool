@@ -5,6 +5,7 @@ import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
+import { registeredModels } from "$lib/models";
 import {
   enteredBound,
   formatBound,
@@ -14,6 +15,7 @@ import {
   splitViolations,
   violationRows,
   warningFor,
+  type Bound,
 } from "./applicability";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing } from "./declarationTestSlots";
 import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./entryModes";
@@ -21,7 +23,7 @@ import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { adjustToBounds } from "./modelSwitch";
 import { formatNumber, isShownBeyond } from "./numberFormat";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, type Quantity } from "./quantities";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, quantityFor, type Quantity } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, relativeAirSpeedOf, requireValue, startingSlot, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
 import { unitSystem, type UnitSystem } from "./unitSystem";
@@ -541,41 +543,103 @@ describe("violationRows", () => {
 });
 
 describe("formatBound", () => {
-  const unitOf = (quantity: Quantity, system: UnitSystem = unitSystem.si) => displayUnitFor(quantity, system);
+  const si = unitSystem.si;
+  const ip = unitSystem.ip;
 
   // The gate compares at this precision, so the end a person reads is accepted (ADR-0002 decision 56).
   it("writes each end as any number is written, nearest at two decimals", () => {
-    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo))).toBe("0 – 1.88");
-    expect(formatBound({ min: 0, max: 1.934059254 }, unitOf(q.clo))).toBe("0 – 1.93");
-    expect(formatBound({ min: 1.654, max: 2 }, unitOf(q.clo))).toBe("1.65 – 2");
+    expect(formatBound({ min: 0, max: 1.875 }, q.clo, si)).toBe("0 – 1.88");
+    expect(formatBound({ min: 0, max: 1.934059254 }, q.clo, si)).toBe("0 – 1.93");
+    expect(formatBound({ min: 1.654, max: 2 }, q.clo, si)).toBe("1.65 – 2");
   });
 
   it("writes a one-ended bound with its end nearest", () => {
-    expect(formatBound({ min: 1.654 }, unitOf(q.clo))).toBe("≥ 1.65");
-    expect(formatBound({ max: 1.875 }, unitOf(q.clo))).toBe("≤ 1.88");
+    expect(formatBound({ min: 1.654 }, q.clo, si)).toBe("≥ 1.65");
+    expect(formatBound({ max: 1.875 }, q.clo, si)).toBe("≤ 1.88");
   });
 
   it("leaves an end of no more than two decimals unchanged", () => {
-    expect(formatBound({ min: 0, max: 0.7 }, unitOf(q.v))).toBe("0 – 0.7");
-    expect(formatBound({ min: 10, max: 30 }, unitOf(q.tdb))).toBe("10 – 30");
-    expect(formatBound({ max: 0.2 }, unitOf(q.vr))).toBe("≤ 0.2");
+    expect(formatBound({ min: 0, max: 0.7 }, q.v, si)).toBe("0 – 0.7");
+    expect(formatBound({ min: 10, max: 30 }, q.tdb, si)).toBe("10 – 30");
+    expect(formatBound({ max: 0.2 }, q.vr, si)).toBe("≤ 0.2");
   });
 
   it("writes each end nearest in IP, rounded in the IP unit", () => {
     // 0.2 m/s is 39.3700… fpm and 0.15 m/s is 29.5275… fpm; 27 °C is 80.6 °F and 10.03 °C is 50.054 °F.
-    expect(formatBound({ min: 0, max: 0.2 }, unitOf(q.v, unitSystem.ip))).toBe("0 – 39.37");
-    expect(formatBound({ max: 0.15 }, unitOf(q.v, unitSystem.ip))).toBe("≤ 29.53");
-    expect(formatBound({ min: 27 }, unitOf(q.tdb, unitSystem.ip))).toBe("≥ 80.6");
-    expect(formatBound({ min: 10.03, max: 30 }, unitOf(q.tdb, unitSystem.ip))).toBe("50.05 – 86");
-    expect(formatBound({ min: 0, max: 1.875 }, unitOf(q.clo, unitSystem.ip))).toBe("0 – 1.88");
+    expect(formatBound({ min: 0, max: 0.2 }, q.v, ip)).toBe("0 – 39.37");
+    expect(formatBound({ max: 0.15 }, q.v, ip)).toBe("≤ 29.53");
+    expect(formatBound({ min: 27 }, q.tdb, ip)).toBe("≥ 80.6");
+    expect(formatBound({ min: 10.03, max: 30 }, q.tdb, ip)).toBe("50.05 – 86");
+    expect(formatBound({ min: 0, max: 1.875 }, q.clo, ip)).toBe("0 – 1.88");
+  });
+
+  // inHg's shown step is 33.9 Pa, coarser than the 10 Pa of kPa the gate judges a vapour pressure in.
+  it("steps an end inward in IP where the nearest, typed back, would be stopped", () => {
+    // 2700 Pa is 0.7973 inHg, and 0.8 inHg is 2709 Pa, which reads 2.71 kPa.
+    expect(formatBound({ max: 2700 }, q.pa, ip)).toBe("≤ 0.79");
+    expect(formatBound({ max: 2700 }, q.pa, si)).toBe("≤ 2.7");
+    expect(formatBound({ min: 2720, max: 3700 }, q.pa, ip)).toBe("0.81 – 1.09");
+  });
+
+  it("leaves the atmospheric pressure's range in IP as its ends read nearest", () => {
+    expect(formatBound(pressureBound, q.p_atm, ip)).toBe("8.86 – 32.48");
+    expect(formatBound({ min: pressureBound.min }, q.p_atm, ip)).toBe("≥ 8.86");
   });
 
   it("writes ends that, typed into the row, the gate accepts", () => {
-    const fahrenheit = unitOf(q.tdb, unitSystem.ip);
+    const fahrenheit = displayUnitFor(q.tdb, ip);
     for (let celsius = 0; celsius <= 50; celsius += 0.1) {
       const bound = { min: celsius, max: celsius + 10 };
-      for (const end of formatBound(bound, fahrenheit).split(" – ")) {
-        expect(isShownBeyond(fahrenheit.toSi(Number(end)), bound, unitOf(q.tdb)), `${celsius}: ${end}`).toBe(false);
+      for (const end of formatBound(bound, q.tdb, ip).split(" – ")) {
+        expect(isShownBeyond(fahrenheit.toSi(Number(end)), bound, displayUnitFor(q.tdb, si)), `${celsius}: ${end}`).toBe(false);
+      }
+    }
+  });
+});
+
+/** Every number in a range's text, in the order written. */
+function endsOf(range: string): number[] {
+  return (range.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+}
+
+describe("formatBound, across the registry", () => {
+  const humidityEntries = Object.values(humidityMode);
+  /** Every bound an entry of `model` is held to at its starting slot, in each humidity entry mode, and every row of its info. */
+  function boundsOf(model: RegisteredModel): (readonly [Quantity, Bound])[] {
+    const bounds: (readonly [Quantity, Bound])[] = [];
+    const starting = startingSlot(model);
+    const slots = starting.humidity ? humidityEntries.map((mode) => withHumidity(starting, mode, 0)) : [starting];
+    for (const slot of slots) {
+      for (const quantity of Object.values(q)) {
+        const bound = enteredBound(model, quantity, slot, DEFAULT_ATMOSPHERIC_PRESSURE);
+        if (bound) {
+          bounds.push([quantity, bound]);
+        }
+      }
+    }
+    for (const [key, variable] of Object.entries(model.info.inputs)) {
+      const quantity = quantityFor(key);
+      if (quantity && variable.applicability) {
+        bounds.push([quantity, variable.applicability]);
+      }
+    }
+    return bounds;
+  }
+
+  const bounded = [...registeredModels.flatMap(boundsOf), [q.p_atm, pressureBound] as const];
+
+  it("reads a vapour-pressure bound among them, the one whose end steps", () => {
+    expect(bounded.some(([quantity]) => quantity === q.pa)).toBe(true);
+  });
+
+  it.each([unitSystem.si, unitSystem.ip])("writes no end the gate would stop when typed back, in $id", (system) => {
+    for (const [quantity, bound] of bounded) {
+      const unit = displayUnitFor(quantity, system);
+      const range = formatBound(bound, quantity, system);
+      const ends = endsOf(range);
+      expect(ends.length, `${quantity.key}: ${range}`).toBe([bound.min, bound.max].filter((end) => end !== undefined).length);
+      for (const end of ends) {
+        expect(isShownBeyond(unit.toSi(end), bound, displayUnitFor(quantity, unitSystem.si)), `${quantity.key}: ${range}`).toBe(false);
       }
     }
   });

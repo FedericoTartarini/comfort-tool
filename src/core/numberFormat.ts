@@ -23,14 +23,33 @@ export function formatNumber(value: number): string {
  * in `unit` (ADR-0002 decision 56): each is rounded to the formatter's steps
  * in `unit`, and the steps are compared. A difference no row shows is not
  * beyond: under a maximum of 1.875, which reads 1.88, so do 1.8751 and 1.88.
- * The one comparison the gate and the run's violation rows make, called with
- * the quantity's SI display unit.
+ * The one comparison the gate, the run's violation rows and the range text
+ * make, called with the quantity's SI display unit.
  */
 export function isShownBeyond(value: number, bound: Bound, unit: DisplayUnit): boolean {
   const steps = shownSteps(value, unit);
   return (
     (bound.min !== undefined && steps < shownSteps(bound.min, unit)) || (bound.max !== undefined && steps > shownSteps(bound.max, unit))
   );
+}
+
+/** The direction of one shown step into a bound, from each of its ends. */
+const inwardStep = { min: 1, max: -1 } as const;
+
+/**
+ * The SI `end` of a bound, the `side` it is, written in `unit` as a range
+ * shows it (ADR-0002 decision 56, rule 3): nearest, as any number is, unless
+ * that number typed back would be stopped by {@link isShownBeyond} in
+ * `judgedIn`, the quantity's SI display unit; then one shown step inward.
+ * Only a `unit` whose step is coarser than `judgedIn`'s moves an end a row
+ * shows as it is ("≤ 0.79 inHg" for 2700 Pa, whose nearest 0.8 is 2709 Pa,
+ * 2.71 kPa); one step suffices, since it crosses the end.
+ */
+export function formatBoundEnd(end: number, side: keyof typeof inwardStep, unit: DisplayUnit, judgedIn: DisplayUnit): string {
+  const nearest = shownSteps(end, unit);
+  const typedBack = unit.toSi(nearest / STEPS_PER_UNIT);
+  const steps = isShownBeyond(typedBack, { [side]: end }, judgedIn) ? nearest + inwardStep[side] : nearest;
+  return formatNumber(steps / STEPS_PER_UNIT);
 }
 
 /** The SI `value` in `unit`, as the whole number of the formatter's steps a row shows. */

@@ -135,8 +135,8 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(session.slots[0].values.get(q.tdb)).toBe(20);
     expect(session.slots[0].humidity?.value).toBe(psy_ta_rh(20, 100).hr);
     expect(boxOf(q.tdb, session.slots[0].values.get(q.tdb))).toBe("68");
-    expect(formatBound(rows[0].bound, displayUnitFor(q.tdb, unitSystem.ip))).toBe("50 – 68");
-    expect(formatBound(rows[1].bound, displayUnitFor(q.hr, unitSystem.ip))).toBe(`0 – ${boxOf(q.hr, session.slots[0].humidity?.value)}`);
+    expect(formatBound(rows[0].bound, q.tdb, unitSystem.ip)).toBe("50 – 68");
+    expect(formatBound(rows[1].bound, q.hr, unitSystem.ip)).toBe(`0 – ${boxOf(q.hr, session.slots[0].humidity?.value)}`);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].violations).toEqual([]);
   });

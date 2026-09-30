@@ -381,7 +381,7 @@ describe("a model switch under clothing insulation entry", () => {
     // The box reads the end as the range beside it does.
     const unit = displayUnitFor(q.clo, system);
     expect(formatNumber(unit.fromSi(landed))).toBe("1.93");
-    expect(formatBound(row.bound, unit)).toBe("0 – 1.93");
+    expect(formatBound(row.bound, q.clo, system)).toBe("0 – 1.93");
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].notCalculated).toBe(false);
     expect(outputs.slots[0].result).not.toBeNull();

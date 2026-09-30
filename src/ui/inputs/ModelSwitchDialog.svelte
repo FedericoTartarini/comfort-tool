@@ -49,7 +49,7 @@
           return {
             quantity: row.quantity,
             current: numberWithUnit(row.value, unit),
-            allowed: formatBound(row.bound, unit),
+            allowed: formatBound(row.bound, row.quantity, unitSystem),
           };
         }),
       })),
