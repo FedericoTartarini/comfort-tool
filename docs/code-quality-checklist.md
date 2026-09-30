@@ -68,6 +68,11 @@ Read the diff once against each of these. They are judgement calls; none of them
   cheaper than the long term cost of complex type expressions.")*
 - Callbacks whose return value is ignored are typed `void`, not `any`.
 
+**Precision**
+
+- Does a test of a number a person can see assert at the shown precision in SI (`toBeCloseTo(x, 2)`, or `formatNumber` equality)? Only a test of the app's own arithmetic (`core/units.ts`, `src/temporary-library/`) pins tighter, because it verifies a formula, not a precision (ADR-0002 decision 56).
+- Is anything rounded on its way into a slot, or compared against a bound exactly? A slot holds full-precision SI; the gate and the range text judge and read at the formatter's constant, and nowhere else is a precision written.
+
 **Svelte**
 
 - Is every `$effect` synchronising something external? Anything computed from state belongs in `$derived`.

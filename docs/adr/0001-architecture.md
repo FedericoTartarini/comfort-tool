@@ -409,7 +409,7 @@ Rules:
 
 ### 4.6 Units and number display
 
-> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 55** (2026-10-01): the second bullet's "the stored value keeps full precision" no longer holds. A slot holds the number its row shows, at most two decimals in the displayed unit, stored as the SI of that number; switching SI ↔ IP rewrites it to two decimals of the new unit, so a switch there and back may move a value in its last shown digit.
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 56** (2026-10-01; decision 55, taken earlier the same day, had withdrawn the second bullet's "the stored value keeps full precision" and was itself withdrawn before its code landed, so the bullet holds): the gate compares an entered value and its bound's ends at the formatter's precision in the quantity's SI display unit, and the range beside a row is the bound's ends formatted as any number is, so a difference no row shows never closes the gate and the range a person reads is the range it accepts.
 
 - **Canonical stored state is always SI**, and the library is always called in SI (even though the library supports IP, that path is not taken, guaranteeing a single path).
 - Switching to IP: the input box shows `displayUnitFor(quantity, unitSystem.ip).fromSi(si)`; when the user edits in IP: parse → `toSi` → store. The stored value keeps full precision and only the display text is formatted; therefore switching SI ↔ IP back and forth does not drift.
