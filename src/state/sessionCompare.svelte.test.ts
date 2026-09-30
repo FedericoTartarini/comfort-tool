@@ -12,7 +12,7 @@
 import { describe, expect, it } from "vitest";
 import type { ChartSpec, ContourZoneTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
-import { airSpeedMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
+import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
 import { entryModesOf } from "$lib/core/slot";
@@ -507,6 +507,8 @@ describe("the session's entry modes", () => {
       (changed) => heldSlot(changed, 1).setEntered(q.operative_tmp, 27),
       (changed) => changed.setAirSpeedMode(airSpeedMode.corrected),
       (changed) => heldSlot(changed, 1).setEntered(q.vr, 0.3),
+      (changed) => changed.setClothingMode(clothingMode.corrected),
+      (changed) => heldSlot(changed, 1).setEntered(q.clo_dynamic, 0.9),
       (changed) => changed.setHumidityMode(humidityMode.wetBulb),
       (changed) => heldSlot(changed, 1).setEntered(q.wet_bulb_tmp, 18),
       (changed) => changed.setSlotEnabled(1, false),
@@ -516,6 +518,7 @@ describe("the session's entry modes", () => {
       (changed) => changed.setHumidityMode(humidityMode.vapourPressure),
       (changed) => changed.setCompare(false),
       (changed) => changed.setAirSpeedMode(airSpeedMode.uncorrected),
+      (changed) => changed.setClothingMode(clothingMode.uncorrected),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
       (changed) => changed.setSlotEnabled(1, true),
       (changed) => changed.setCompare(true),
@@ -525,6 +528,7 @@ describe("the session's entry modes", () => {
       (changed) => changed.setHumidityMode(humidityMode.dewPoint),
       (changed) => changed.setTemperatureMode(temperatureMode.operative),
       (changed) => changed.setAirSpeedMode(airSpeedMode.corrected),
+      (changed) => changed.setClothingMode(clothingMode.corrected),
       (changed) => {
         changed.requestModel(cooler);
         expect(changed.pendingSwitch).not.toBeNull();
@@ -544,8 +548,9 @@ describe("the session's entry modes", () => {
       expect(held.map((slot) => slot.humidity?.mode)).toEqual(held.map(() => session.humidityMode));
     }
     expect(session.slots.every((slot) => slot !== null)).toBe(true);
-    // The switch kept the mode the last step before it set.
+    // The switch kept the modes the last steps before it set.
     expect(session.airSpeedMode).toBe(airSpeedMode.corrected);
+    expect(session.clothingMode).toBe(clothingMode.corrected);
   });
 
   // A slot started on Adaptive holds no humidity, and one started on Heat

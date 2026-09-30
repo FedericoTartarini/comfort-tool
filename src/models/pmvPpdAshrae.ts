@@ -78,6 +78,7 @@ export const pmvPpdAshrae = {
     { quantity: q.rh, min: 0, max: 100 },
     { quantity: q.met, min: 1, max: 4 },
     { quantity: q.clo, min: 0, max: 2 },
+    { quantity: q.clo_dynamic, min: 0, max: 2 },
   ],
   // `compliance` reads Yes or No, as Adaptive's acceptabilities do.
   table: [q.pmv, q.ppd, q.compliance],

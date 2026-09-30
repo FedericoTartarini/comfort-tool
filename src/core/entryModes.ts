@@ -50,6 +50,20 @@ export const airSpeedMode = {
 } as const satisfies Record<string, AirSpeedMode>;
 
 /**
+ * How the user enters the clothing, an activity-adjusted input (ADR-0002
+ * decision 54). Uncorrected, the default, enters the clothing insulation, the
+ * value the presets publish, and the model is given the dynamic clothing
+ * insulation its standard's rule derives from it; corrected enters the dynamic
+ * clothing insulation itself, and the model is given it unchanged.
+ */
+export type ClothingMode = ValueEntryMode;
+
+export const clothingMode = {
+  uncorrected: { id: "clothing-insulation", panel: [quantities.clo], axis: quantities.clo },
+  corrected: { id: "dynamic-clothing-insulation", panel: [quantities.clo_dynamic], axis: quantities.clo_dynamic },
+} as const satisfies Record<string, ClothingMode>;
+
+/**
  * How the user enters humidity. The entered quantity is the truth; `rh` is
  * derived in `core/slot.ts` (ADR §4.5). Each mode carries its own
  * two conversions, library calls, so no caller switches on mode identity to

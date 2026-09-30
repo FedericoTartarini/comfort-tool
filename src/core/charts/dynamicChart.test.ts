@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
 import { sensationPalette } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
-import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
-import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
+import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
+import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import { valuesReader } from "$lib/core/libraryInputs";
 import {
   dynamicChartOf,
@@ -19,6 +19,7 @@ import { enteredQuantities, startingSlot, withEnteredValues, type Slot } from "$
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { BandTrace, ChartSpec, HoverGridTrace, HoverReadout, PathTrace, PointTrace } from "./chartSpec";
 import { chartRequestFor } from "./chartTestRequests";
@@ -437,6 +438,40 @@ describe("axes across an air-speed entry mode switch", () => {
   });
 });
 
+describe("axes across a clothing entry mode switch", () => {
+  const corrected = entryModesWithClothing(clothingMode.corrected);
+  const clothingAxes = { x: q.tdb, y: q.clo };
+
+  it("offers the dynamic clothing insulation where it offered the clothing insulation", () => {
+    const offered = dynamicAxisQuantities(pmvPpdIso, corrected);
+    expect(offered).toContain(q.clo_dynamic);
+    expect(offered).not.toContain(q.clo);
+    expect(dynamicAxisQuantities(pmvPpdIso, entryModesWithClothing(clothingMode.uncorrected))).toContain(q.clo);
+  });
+
+  it("sweeps the dynamic clothing insulation when a remembered clothing axis no longer exists, as far as it drew the clothing, and marks the entry", () => {
+    const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8 })), isoChart, clothingAxes);
+    expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
+    expect(spec.layout.y.range).toEqual(declaredRangeOf(q.clo));
+    expect(new Set(bands(spec).z.flat()).size).toBeGreaterThan(1);
+    expect(markerOf(spec)?.y).toBe(0.8);
+  });
+
+  // PMV (ASHRAE 55) corrects nothing at or below 1.2 met, so there the two
+  // entries are one number and the two fields one field; above it the swept
+  // clothing insulation is corrected in every cell and the dynamic one is not.
+  it("gives the model the swept dynamic clothing insulation unchanged, and the swept clothing insulation corrected", () => {
+    const ashraeChart = dynamicChartOf(pmvPpdAshrae);
+    if (!ashraeChart || isPolygonsChart(ashraeChart)) {
+      throw new Error("pmvPpdAshrae no longer declares a scanned dynamic chart");
+    }
+    const fieldOf = (entered: Parameters<typeof enteredSlotFor>[1]) =>
+      bands(dynamicSpec(chartRequestFor(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, entered)), ashraeChart, clothingAxes)).z;
+    expect(fieldOf({ clo_dynamic: 0.5, met: 1.2 })).toEqual(fieldOf({ clo: 0.5, met: 1.2 }));
+    expect(fieldOf({ clo_dynamic: 0.5, met: 2 })).not.toEqual(fieldOf({ clo: 0.5, met: 2 }));
+  });
+});
+
 const adaptiveChart = dynamicChartOf(adaptiveAshrae);
 if (!adaptiveChart) {
   throw new Error("adaptiveAshrae no longer declares a dynamic chart");
@@ -522,13 +557,14 @@ describe("the scanned chart's hover readout", () => {
   const pmvRequest = chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso));
 
   // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
-  // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.0618….
+  // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.2209… on the
+  // clothing ISO 7730's rule gives it (0.4238 clo for the 0.5 clo entered).
   it("reads both axis values, the output and the band, each number at two decimals at most", () => {
     const surface = bands(dynamicSpec(pmvRequest, isoChart, isoChart.axes));
     expect(surface.hoverText[2][26]).toEqual([
       "Dry-bulb air temperature: 25.6 °C",
       "Air speed: 0.08 m/s",
-      "Predicted Mean Vote: -0.06",
+      "Predicted Mean Vote: -0.22",
       "Neutral",
     ]);
   });
@@ -538,7 +574,7 @@ describe("the scanned chart's hover readout", () => {
     expect(surface.hoverText[2][26]).toEqual([
       "Dry-bulb air temperature: 78.08 °F",
       "Air speed: 15.75 fpm",
-      "Predicted Mean Vote: -0.06",
+      "Predicted Mean Vote: -0.22",
       "Neutral",
     ]);
   });

@@ -60,6 +60,7 @@ export const pmvPpdIso = {
     { quantity: q.rh, min: 0, max: 100 },
     { quantity: q.met, min: 1, max: 4 },
     { quantity: q.clo, min: 0, max: 2 },
+    { quantity: q.clo_dynamic, min: 0, max: 2 },
   ],
   table: [q.pmv, q.ppd],
   charts: [

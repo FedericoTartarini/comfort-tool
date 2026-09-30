@@ -1,5 +1,6 @@
 import type { ClassifierBins, ModelInfo, Standard } from "jsthermalcomfort";
 import { chartType } from "./chartType";
+import { clothingCorrectionFor, type ClothingCorrection } from "./clothingCorrection";
 import { temperatureMode } from "./entryModes";
 import { quantities, quantityFor, type Quantity } from "./quantities";
 
@@ -325,4 +326,21 @@ export function hasTemperatureGroup(model: RegisteredModel): boolean {
  */
 export function takesRelativeAirSpeed(model: RegisteredModel): boolean {
   return Object.keys(model.info.inputs).some((key) => quantityFor(key) === quantities.vr);
+}
+
+/**
+ * The rule by which `model` is given the dynamic clothing insulation: its
+ * standard's row in `core/clothingCorrection.ts`, when its info names `clo`.
+ * `undefined` for a model that takes no clothing, and for one whose standard
+ * corrects none, which is given the clothing insulation as entered (ADR-0002
+ * decision 54).
+ */
+export function clothingCorrectionOf(model: RegisteredModel): ClothingCorrection | undefined {
+  const takesClothing = Object.keys(model.info.inputs).some((key) => quantityFor(key) === quantities.clo);
+  return takesClothing ? clothingCorrectionFor(model.standard) : undefined;
+}
+
+/** Whether the model has the clothing entry group: it takes the clothing, and its standard corrects it. */
+export function hasClothingGroup(model: RegisteredModel): boolean {
+  return clothingCorrectionOf(model) !== undefined;
 }

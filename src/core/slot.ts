@@ -10,14 +10,23 @@
 import { t_o, v_relative } from "jsthermalcomfort";
 import {
   airSpeedMode,
+  clothingMode,
   humidityMode,
   temperatureMode,
   type AirSpeedMode,
+  type ClothingMode,
   type HumidityMode,
   type TemperatureMode,
   type ValueEntryMode,
 } from "./entryModes";
-import { hasTemperatureGroup, takesRelativeAirSpeed, type OptionSpec, type RegisteredModel } from "./modelDeclaration";
+import {
+  clothingCorrectionOf,
+  hasClothingGroup,
+  hasTemperatureGroup,
+  takesRelativeAirSpeed,
+  type OptionSpec,
+  type RegisteredModel,
+} from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
 
 /**
@@ -30,6 +39,7 @@ export interface Slot {
   readonly humidity?: { readonly mode: HumidityMode; readonly value: number };
   readonly temperature: { readonly mode: TemperatureMode };
   readonly airSpeed: { readonly mode: AirSpeedMode };
+  readonly clothing: { readonly mode: ClothingMode };
   /** Every option any model put here, by identity: a superset bag like `values` (ADR-0002 decision 36). */
   readonly options: ReadonlyMap<OptionSpec, boolean>;
 }
@@ -42,17 +52,18 @@ const q = quantities;
  * session's are slot 1's, and a chart is drawn in them (ADR-0002 decision 51).
  * Humidity's mode is not among them: it is held with the humidity entry.
  */
-export type ValueEntryModes = Pick<Slot, "temperature" | "airSpeed">;
+export type ValueEntryModes = Pick<Slot, "temperature" | "airSpeed" | "clothing">;
 
 /** The entry modes a slot starts in, which are those a declaration writes its inputs in. */
 export const defaultEntryModes: ValueEntryModes = {
   temperature: { mode: temperatureMode.separate },
   airSpeed: { mode: airSpeedMode.uncorrected },
+  clothing: { mode: clothingMode.uncorrected },
 };
 
 /** The entry modes `slot` is in, apart from the slot. */
 export function entryModesOf(slot: ValueEntryModes): ValueEntryModes {
-  return { temperature: slot.temperature, airSpeed: slot.airSpeed };
+  return { temperature: slot.temperature, airSpeed: slot.airSpeed, clothing: slot.clothing };
 }
 
 /** Whether `a` and `b` are the same entry modes, group by group. */
@@ -66,7 +77,9 @@ export function areSameEntryModes(a: ValueEntryModes, b: ValueEntryModes): boole
  * group is a row of {@link valueEntryGroups} and a field of the slot, which
  * {@link ValueEntryModes}, {@link defaultEntryModes} and {@link entryModesOf}
  * name beside the others, and which the session's slot, its setter and its
- * control carry as the slot's shape.
+ * control carry as the slot's shape. What a group's entry resolves to for the
+ * library is `core/libraryInputs.ts`'s, and the row a library violation is
+ * reported on `core/applicability.ts`'s: each names the group there.
  *
  * Humidity is an entry group and not one of these: its entry is one quantity
  * held apart from the values (`Slot.humidity`), its modes carry their own
@@ -104,6 +117,12 @@ export const valueEntryGroups: readonly ValueEntryGroup[] = [
     modeOf: (modes) => modes.airSpeed.mode,
     convert: withAirSpeedMode,
   },
+  {
+    modes: Object.values(clothingMode),
+    appliesTo: hasClothingGroup,
+    modeOf: (modes) => modes.clothing.mode,
+    convert: withClothingMode,
+  },
 ];
 
 /**
@@ -113,7 +132,8 @@ export const valueEntryGroups: readonly ValueEntryGroup[] = [
  * across a mode switch has to be re-pointed: a remembered `tdb` or `tr`
  * becomes `operative_tmp` under operative entry, and `operative_tmp` becomes
  * `tdb` again under separate entry; a remembered `v` becomes `vr` under
- * relative air speed entry, and back. A quantity of no group, or of its group's
+ * relative air speed entry, and back, as `clo` and `clo_dynamic` under dynamic
+ * clothing entry. A quantity of no group, or of its group's
  * mode in `modes`, is returned untouched.
  */
 export function underEntryModes(quantity: Quantity, modes: ValueEntryModes): Quantity {
@@ -206,6 +226,37 @@ export function relativeAirSpeedOf(slot: Slot): number {
 }
 
 /**
+ * The slot's dynamic clothing insulation, which a model with the clothing
+ * entry group is given as the library's `clo`: the entry itself under dynamic
+ * clothing entry, else the entered clothing insulation corrected by the rule
+ * of `model`'s standard, at the slot's own metabolic rate and relative air
+ * speed ({@link relativeAirSpeedOf}). A model without the group is given the
+ * clothing insulation as entered. What `core/libraryInputs.ts` resolves, and
+ * the value the switch into dynamic clothing entry stores
+ * ({@link withClothingMode}), so the person sees the number the model was
+ * getting. The one place the app corrects a clothing insulation.
+ */
+export function dynamicClothingOf(slot: Slot, model: RegisteredModel): number {
+  if (slot.clothing.mode === clothingMode.corrected) {
+    return requireValue(slot.values, q.clo_dynamic);
+  }
+  const clothing = requireValue(slot.values, q.clo);
+  const correct = clothingCorrectionOf(model);
+  if (!correct) {
+    return clothing;
+  }
+  // Getters: a rule reads only what it takes, so ASHRAE 55's asks for no air speed.
+  return correct(clothing, {
+    get met() {
+      return requireValue(slot.values, q.met);
+    },
+    get vr() {
+      return relativeAirSpeedOf(slot);
+    },
+  });
+}
+
+/**
  * Writes the operative entry into `tdb` and `tr` and removes `operative_tmp`,
  * in place. An entry convention, not an equation (ADR-0002 decision 21).
  */
@@ -289,6 +340,7 @@ function changedSlot(slot: Slot, changes: Partial<Slot>): Slot {
     humidity: changes.humidity ?? slot.humidity,
     temperature: changes.temperature ?? slot.temperature,
     airSpeed: changes.airSpeed ?? slot.airSpeed,
+    clothing: changes.clothing ?? slot.clothing,
     options: changes.options ?? slot.options,
   };
 }
@@ -426,6 +478,36 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
 }
 
 /**
+ * The same slot with its clothing re-expressed under `mode`. Uncorrected →
+ * corrected stores {@link dynamicClothingOf}'s answer, the dynamic clothing
+ * insulation `model` was given at the slot's own values, by its standard's
+ * rule; corrected → uncorrected keeps the number, an entry convention and not
+ * an equation (ADR-0002 decisions 21 and 54): ISO 7730's correction has no
+ * closed inverse, and the rule is the group's, never one standard's. So the
+ * way back is lossy, unlike {@link withAirSpeedMode}'s: the number kept is
+ * corrected again. The two representations never coexist.
+ * The deployed tool corrects on its ASHRAE pages and shows nothing of it; its
+ * EN page takes the dynamic value and corrects nothing.
+ *
+ * The clothing group's {@link ValueEntryGroup.convert}, which says who
+ * applies it.
+ */
+export function withClothingMode(slot: Slot, mode: ClothingMode, model: RegisteredModel): Slot {
+  if (mode === slot.clothing.mode) {
+    return slot;
+  }
+  const values = new Map(slot.values);
+  if (mode === clothingMode.corrected) {
+    values.set(q.clo_dynamic, dynamicClothingOf(slot, model));
+    values.delete(q.clo);
+  } else {
+    values.set(q.clo, requireValue(values, q.clo_dynamic));
+    values.delete(q.clo_dynamic);
+  }
+  return changedSlot(slot, { values, clothing: { mode } });
+}
+
+/**
  * `slot` in `modes`: converted by every entry group whose mode differs, each
  * by its own {@link ValueEntryGroup.convert}, and the slot itself when none
  * does. How a chart builder draws a slot kept in other entry modes than the
@@ -467,7 +549,8 @@ function holdsEntry(slot: Slot, quantity: Quantity): boolean {
  * the declaration's own default; what the slot already holds is kept, whatever
  * model put it there. An input of an entry group is sought under the slot's
  * own entry mode, so an operative entry answers for the dry-bulb one it
- * stands in for, and an entered relative air speed for the air speed.
+ * stands in for, an entered relative air speed for the air speed, and an
+ * entered dynamic clothing insulation for the clothing insulation.
  *
  * A humidity input is missing only from a slot that holds no humidity, which
  * then starts at the declared default: in relative-humidity entry, since a

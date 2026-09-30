@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { v_relative } from "jsthermalcomfort";
+import { clo_dynamic_ashrae, clo_dynamic_iso, v_relative } from "jsthermalcomfort";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { enteredSlotFor } from "./declarationTestSlots";
 import { humidityMode, type HumidityMode } from "./entryModes";
@@ -31,6 +32,41 @@ describe("resolveQuantities", () => {
     const resolved = resolveQuantities(enteredSlotFor(pmvPpdIso, { vr: 0.3, met: 2 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
     expect(resolved.get(q.vr)).toBe(0.3);
     expect(resolved.has(q.v)).toBe(false);
+  });
+
+  it("gives PMV (ISO 7730) the clothing corrected by ISO 7730's rule, under the library's key for it", () => {
+    for (const entered of [{}, { v: 0.4, met: 2, clo: 1 }]) {
+      const slot = enteredSlotFor(pmvPpdIso, entered);
+      const values = valuesReader(slot.values);
+      const resolved = resolveQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
+      expect(resolved.get(q.clo)).toBe(clo_dynamic_iso(values.clo, values.met, values.v));
+      expect(resolved.get(q.clo)).not.toBe(values.clo);
+      expect(resolved.has(q.clo_dynamic)).toBe(false);
+    }
+  });
+
+  it("gives PMV (ASHRAE 55) the clothing corrected by ASHRAE 55's rule above 1.2 met, and as entered at or below it", () => {
+    const active = resolveQuantities(enteredSlotFor(pmvPpdAshrae, { met: 2, clo: 1 }), pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(active.get(q.clo)).toBe(clo_dynamic_ashrae(1, 2));
+    expect(active.get(q.clo)).toBe(0.8);
+    for (const met of [1, 1.1, 1.2]) {
+      const resting = resolveQuantities(enteredSlotFor(pmvPpdAshrae, { met, clo: 1 }), pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE);
+      expect(resting.get(q.clo), `${met} met`).toBe(1);
+    }
+  });
+
+  it("hands over the entered dynamic clothing insulation unchanged under dynamic clothing entry, and derives nothing", () => {
+    for (const model of [pmvPpdIso, pmvPpdAshrae]) {
+      const resolved = resolveQuantities(enteredSlotFor(model, { clo_dynamic: 0.9, met: 2 }), model, DEFAULT_ATMOSPHERIC_PRESSURE);
+      expect(resolved.get(q.clo), model.info.label).toBe(0.9);
+      expect(resolved.has(q.clo_dynamic), model.info.label).toBe(false);
+    }
+  });
+
+  it("passes the clothing through untouched for a model whose standard has no correction", () => {
+    const uncorrected = { ...pmvPpdIso, standard: undefined };
+    const resolved = resolveQuantities(enteredSlotFor(pmvPpdIso, { met: 2, clo: 1 }), uncorrected, DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(resolved.get(q.clo)).toBe(1);
   });
 
   it("passes v through untouched when the model does not", () => {

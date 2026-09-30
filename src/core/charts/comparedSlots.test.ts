@@ -6,7 +6,7 @@
  * gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
-import { airSpeedMode, temperatureMode } from "$lib/core/entryModes";
+import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import {
   dynamicChartOf,
   isPolygonsChart,
@@ -15,8 +15,22 @@ import {
   type DeclaredPsychrometricChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
-import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
-import { operativeTemperatureOf, relativeAirSpeedOf, startingSlot, withAirSpeedMode, withTemperatureMode, type Slot } from "$lib/core/slot";
+import {
+  enteredSlotFor,
+  entryModesWithAirSpeed,
+  entryModesWithClothing,
+  entryModesWithTemperature,
+} from "$lib/core/declarationTestSlots";
+import {
+  dynamicClothingOf,
+  operativeTemperatureOf,
+  relativeAirSpeedOf,
+  startingSlot,
+  withAirSpeedMode,
+  withClothingMode,
+  withTemperatureMode,
+  type Slot,
+} from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { displayUnitFor } from "$lib/core/units";
 import { unitSystem } from "$lib/core/unitSystem";
@@ -320,5 +334,55 @@ describe("a slot in another air-speed entry mode than the session's", () => {
     const uncorrected = psychrometricSpec(chartRequestFor(pmvPpdIso, entered), chart);
     expect(kept.traces).toEqual(converted.traces);
     expect(converted.traces).toEqual(uncorrected.traces);
+  });
+});
+
+/** The same, for the clothing entry group, on both PMV models: each corrects by its own standard's rule. */
+describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode than the session's, on $info.label", (model) => {
+  const entered = enteredSlotFor(model, { clo: 1, met: 2 });
+  const corrected = entryModesWithClothing(clothingMode.corrected);
+  const clothingAxes = { x: q.tdb, y: q.clo };
+
+  it("is marked on the session's clothing axis, at the dynamic clothing insulation the model was given", () => {
+    const chart = dynamicOf(model);
+    const spec = dynamicSpec(chartRequestForSlots(model, [startingSlot(model), entered], unitSystem.si, corrected), chart, clothingAxes);
+    const alone = dynamicSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)), chart, clothingAxes);
+    expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
+    expect(markersOf(spec)[1].y).toBe(dynamicClothingOf(entered, model));
+    expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
+  });
+
+  it("has its comfort zones solved on the dynamic clothing insulation the model is given, in either mode", () => {
+    const chart = psychrometricOf(model);
+    const kept = psychrometricSpec(chartRequestForSlots(model, [entered], unitSystem.si, corrected), chart);
+    const converted = psychrometricSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)), chart);
+    const uncorrected = psychrometricSpec(chartRequestFor(model, entered), chart);
+    expect(kept.traces).toEqual(converted.traces);
+    expect(converted.traces).toEqual(uncorrected.traces);
+    // Not the zones of the number entered: those are of 1 clo given to the model as it is.
+    const uncorrectedNumber = psychrometricSpec(chartRequestFor(model, enteredSlotFor(model, { clo_dynamic: 1, met: 2 })), chart);
+    expect(zonesOf(uncorrected).map(shapeOf)).not.toEqual(zonesOf(uncorrectedNumber).map(shapeOf));
+  });
+
+  // Back keeps the number (ADR-0002 decision 54), so a slot kept in dynamic
+  // clothing entry is drawn in a clothing-insulation session as the change
+  // back would leave it: its number corrected again, which is not the clothing
+  // its run was given. Decision 51's rule, the marker and the change cannot
+  // differ; not a defect.
+  it("is drawn in a clothing-insulation session as the slot the change back leaves, which its kept run was not given", () => {
+    const kept = enteredSlotFor(model, { clo_dynamic: 1, met: 2 });
+    const back = withClothingMode(kept, clothingMode.uncorrected, model);
+    const uncorrected = entryModesWithClothing(clothingMode.uncorrected);
+    const chart = dynamicOf(model);
+    const spec = dynamicSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected), chart, clothingAxes);
+    expect(spec.layout.y.title).toContain(q.clo.label);
+    expect(spec.traces).toEqual(dynamicSpec(chartRequestFor(model, back), chart, clothingAxes).traces);
+    expect(markersOf(spec)[0].y).toBe(1);
+    expect(dynamicClothingOf(back, model)).not.toBe(dynamicClothingOf(kept, model));
+
+    const zones = psychrometricOf(model);
+    const drawn = psychrometricSpec(chartRequestForSlots(model, [kept], unitSystem.si, uncorrected), zones);
+    expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(model, back), zones).traces);
+    expect(zonesOf(drawn).map(shapeOf)).not.toEqual(zonesOf(psychrometricSpec(chartRequestFor(model, kept), zones)).map(shapeOf));
   });
 });

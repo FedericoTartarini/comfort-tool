@@ -16,6 +16,7 @@ export const copy = {
   operativeTemperature: "Operative",
   humidityInput: "Humidity input",
   airSpeedInput: "Air speed input",
+  clothingInput: "Clothing input",
   presetTrigger: "Presets",
   presetSearchPlaceholder: "Search…",
   presetEmpty: "No matches.",

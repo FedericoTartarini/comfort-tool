@@ -1,5 +1,6 @@
 import { temperatureMode } from "./entryModes";
 import {
+  hasClothingGroup,
   hasHumidityGroup,
   hasTemperatureGroup,
   takesRelativeAirSpeed,
@@ -9,7 +10,7 @@ import {
   type Values,
 } from "./modelDeclaration";
 import { quantities, type Quantity } from "./quantities";
-import { expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
+import { dynamicClothingOf, expandOperative, relativeAirSpeedOf, relativeHumidityOf, requireValue, type Slot } from "./slot";
 
 const q = quantities;
 
@@ -18,8 +19,12 @@ const q = quantities;
  * (ADR §4.5): operative temperature expands to `tdb = tr = operative_tmp`, the
  * humidity entry becomes `rh` at `atmosphericPressure`, and `v` becomes `vr`
  * when the model asks for it, where an entered `vr` is handed over as it is
- * and nothing is derived (ADR-0002 decision 54). No `p_atm` is filled: no registered model takes
- * one (ADR-0002 decision 49).
+ * and nothing is derived (ADR-0002 decision 54). A model with the clothing
+ * entry group is given the dynamic clothing insulation under `clo`, the
+ * library's key for it: the entered clothing insulation corrected by the rule
+ * of the model's standard, or an entered dynamic one as it is. So `clo` among
+ * the resolved values is the library's, and among a slot's the entry. No
+ * `p_atm` is filled: no registered model takes one (ADR-0002 decision 49).
  */
 export function resolveQuantities(slot: Slot, model: RegisteredModel, atmosphericPressure: number): Map<Quantity, number> {
   const resolved = new Map(slot.values);
@@ -35,6 +40,11 @@ export function resolveQuantities(slot: Slot, model: RegisteredModel, atmospheri
   if (takesRelativeAirSpeed(model)) {
     resolved.set(q.vr, relativeAirSpeedOf(slot));
     resolved.delete(q.v);
+  }
+
+  if (hasClothingGroup(model)) {
+    resolved.set(q.clo, dynamicClothingOf(slot, model));
+    resolved.delete(q.clo_dynamic);
   }
 
   return resolved;

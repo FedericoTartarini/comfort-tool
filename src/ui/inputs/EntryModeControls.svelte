@@ -1,6 +1,15 @@
 <script lang="ts">
-  import { airSpeedMode, humidityMode, temperatureMode, type AirSpeedMode, type HumidityMode, type TemperatureMode } from "$lib/core/entryModes";
-  import { hasHumidityGroup, hasTemperatureGroup, takesRelativeAirSpeed } from "$lib/core/modelDeclaration";
+  import {
+    airSpeedMode,
+    clothingMode,
+    humidityMode,
+    temperatureMode,
+    type AirSpeedMode,
+    type ClothingMode,
+    type HumidityMode,
+    type TemperatureMode,
+  } from "$lib/core/entryModes";
+  import { hasClothingGroup, hasHumidityGroup, hasTemperatureGroup, takesRelativeAirSpeed } from "$lib/core/modelDeclaration";
   import type { Session } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import Inline from "$lib/ui/layout/Inline.svelte";
@@ -17,6 +26,7 @@
   const showTemperatureRow = $derived(hasTemperatureGroup(session.model));
   const showHumidityRow = $derived(hasHumidityGroup(session.model));
   const showAirSpeedRow = $derived(takesRelativeAirSpeed(session.model));
+  const showClothingRow = $derived(hasClothingGroup(session.model));
 
   function temperatureVariantFor(mode: TemperatureMode) {
     return session.temperatureMode === mode ? "default" : "outline";
@@ -28,6 +38,10 @@
 
   function airSpeedVariantFor(mode: AirSpeedMode) {
     return session.airSpeedMode === mode ? "default" : "outline";
+  }
+
+  function clothingVariantFor(mode: ClothingMode) {
+    return session.clothingMode === mode ? "default" : "outline";
   }
 </script>
 
@@ -60,6 +74,17 @@
       <span>{copy.airSpeedInput}</span>
       {#each Object.values(airSpeedMode) as mode (mode)}
         <Button size="sm" variant={airSpeedVariantFor(mode)} onclick={() => session.setAirSpeedMode(mode)}>
+          {mode.axis.label}
+        </Button>
+      {/each}
+    </Inline>
+  {/if}
+
+  {#if showClothingRow}
+    <Inline gap="2" align="center">
+      <span>{copy.clothingInput}</span>
+      {#each Object.values(clothingMode) as mode (mode)}
+        <Button size="sm" variant={clothingVariantFor(mode)} onclick={() => session.setClothingMode(mode)}>
           {mode.axis.label}
         </Button>
       {/each}

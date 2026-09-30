@@ -1,4 +1,4 @@
-import { psy_ta_rh } from "jsthermalcomfort";
+import { clo_dynamic_iso, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -14,8 +14,8 @@ import {
   violationRows,
   warningFor,
 } from "./applicability";
-import { enteredSlotFor, entryModesWithAirSpeed } from "./declarationTestSlots";
-import { airSpeedMode, humidityMode, type HumidityMode } from "./entryModes";
+import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing } from "./declarationTestSlots";
+import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./entryModes";
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "./quantities";
@@ -64,6 +64,28 @@ describe("enteredBound / outOfRangeQuantities", () => {
     expect(outOfRangeRows(beyond, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
       { quantity: q.vr, value: (bound?.max ?? 0) + 0.1, bound },
     ]);
+  });
+
+  it("judges the entered clothing against the model's bound for clo on the row entered, in either clothing mode", () => {
+    for (const model of [pmvPpdIso, pmvPpdAshrae]) {
+      const bound = model.info.inputs.clo?.applicability;
+      const beyond = (bound?.max ?? 0) + 0.1;
+      const intrinsic = enteredSlotFor(model, { clo: beyond });
+      const dynamic = enteredSlotFor(model, { clo_dynamic: beyond });
+      expect(enteredBound(model, q.clo, intrinsic, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual(bound);
+      expect(enteredBound(model, q.clo_dynamic, dynamic, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual(bound);
+      expect(outOfRangeQuantities(intrinsic, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([q.clo]);
+      expect(outOfRangeQuantities(dynamic, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([q.clo_dynamic]);
+      const within = enteredSlotFor(model, { clo_dynamic: bound?.max ?? 0 });
+      expect(outOfRangeQuantities(within, model, DEFAULT_ATMOSPHERIC_PRESSURE), model.info.label).toEqual([]);
+    }
+  });
+
+  // The entry is judged as typed, not as corrected: 1.6 clo at 2 met is given
+  // to PMV (ASHRAE 55) as 1.28 clo, inside its 1.5, and the gate still stops it.
+  it("judges the clothing insulation as entered, not as corrected", () => {
+    const slot = enteredSlotFor(pmvPpdAshrae, { clo: 1.6, met: 2 });
+    expect(outOfRangeQuantities(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([q.clo]);
   });
 
   it("holds an entered air speed at 0 by its kind, in a model whose standard does not limit it", () => {
@@ -336,6 +358,31 @@ describe("violationRows", () => {
     const rows = violationRows(pmvPpdAshrae, runOn(slot, pmvPpdAshrae, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
     expect(rows.map(({ quantity, bounded, value }) => [quantity, bounded, value])).toEqual([[q.vr, q.vr, 0.237]]);
     expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual([vrWarning("≤ 0.2", unitSystem.si)]);
+  });
+
+  // ISO 7730's rule gives still, seated air more clothing than was entered:
+  // 2 clo, the most the gate lets through, is given to the model as 2.069.
+  it("reports a dynamic clothing insulation the run breaks on the clothing row entered, and names it in the sentence", () => {
+    const slot = enteredSlotFor(pmvPpdIso, { v: 0, met: 1, clo: 2 });
+    expect(outOfRangeQuantities(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    const rows = rowsFor(slot);
+    expect(rows.map(({ quantity, bounded, role, value }) => [quantity, bounded, role, value])).toEqual([
+      [q.clo, q.clo_dynamic, "input", clo_dynamic_iso(2, 1, 0)],
+    ]);
+    expect(rows[0].bound).toEqual(pmvPpdIso.info.inputs.clo?.applicability);
+    expect(rows.map((row) => warningFor(row, unitSystem.si))).toEqual(["Dynamic clothing insulation must be 0 – 2 clo"]);
+  });
+
+  it("reports a clothing row in the clothing mode it is asked in, and as the library keys it for a model without the group", () => {
+    const warnings = [{ key: "clo", role: "input", value: 2.5, bound: { max: 2 } }];
+    const rowOf = (model: RegisteredModel, modes: Parameters<typeof violationRows>[2]) => {
+      const [{ quantity, bounded }] = violationRows(model, { warnings }, modes);
+      return [quantity, bounded];
+    };
+    const corrected = entryModesWithClothing(clothingMode.corrected);
+    expect(rowOf(pmvPpdIso, defaultEntryModes)).toEqual([q.clo, q.clo_dynamic]);
+    expect(rowOf(pmvPpdIso, corrected)).toEqual([q.clo_dynamic, q.clo_dynamic]);
+    expect(rowOf({ ...pmvPpdIso, standard: undefined }, defaultEntryModes)).toEqual([q.clo, q.clo]);
   });
 
   it("reports the row in the entry modes it is asked in, whatever mode the run was entered in", () => {

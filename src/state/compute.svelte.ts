@@ -364,6 +364,7 @@ function detach(slot: Slot): Slot {
     humidity: slot.humidity,
     temperature: slot.temperature,
     airSpeed: slot.airSpeed,
+    clothing: slot.clothing,
     options: new Map(slot.options),
   };
 }

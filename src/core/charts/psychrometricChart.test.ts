@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
+import { clo_dynamic_iso, PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { intervalZone } from "$lib/core/comfortZones";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
@@ -26,8 +26,10 @@ const ZONE_RH_STEP = 5;
 /** The temporary library solves the boundaries to a PMV residual of 0.001 (ADR §4.7), so two decimals is loose. */
 const PMV_DIGITS = 2;
 
-/** The ISO declaration's own met, clo and v, which every slot below keeps. */
-const { met, clo, v } = valuesReader(startingSlot(pmvPpdIso).values);
+/** The ISO declaration's own met, clothing insulation and v, which every slot below keeps. */
+const { met, clo: clothingInsulation, v } = valuesReader(startingSlot(pmvPpdIso).values);
+/** The dynamic clothing insulation the model and the solver are given for it: ISO 7730's rule, by the library. */
+const clo = clo_dynamic_iso(clothingInsulation, met, v);
 
 function slot(mode: typeof temperatureMode.separate | typeof temperatureMode.operative): Slot {
   return mode === temperatureMode.operative
@@ -68,7 +70,7 @@ function zonePaths(spec: { traces: readonly Trace[] }): PathTrace[] {
  * relative humidity, so vertex `i` was solved at `rh = 5i` for `PMV = -limit`.
  * Feeding each one back through the model is what proves the app handed the
  * temporary library the same inputs the result table uses — `vr` derived with
- * `v_relative`, `tr` from the entry mode.
+ * `v_relative`, `clo` corrected by `clo_dynamic_iso`, `tr` from the entry mode.
  */
 function pmvAt(db: number, rh: number, tr: number): number {
   // `round_output: false`, as the temporary library's solver calls it: the
@@ -90,7 +92,8 @@ function pmvAt(db: number, rh: number, tr: number): number {
 
 /**
  * The solver's own zone at `limit` for the separate-entry slot's inputs, as the
- * chart should hand them over: `tr` 24, `vr` derived with `v_relative`.
+ * chart should hand them over: `tr` 24, `vr` derived with `v_relative`, the
+ * clothing corrected.
  */
 function solvedZone(limit: number, pmv_function: PmvFunction) {
   return pmv_psychrometric_zone({
