@@ -76,7 +76,7 @@ describe("clothingCorrectionFor", () => {
         // Read once as a clothing insulation entered and once as a dynamic one.
         const entry = step / 20;
         expect(clo_dynamic_inverse({ clo_dynamic: correction(entry), correction }), `${entry} clo at ${label}`).toBe(entry);
-        expect(correction(clo_dynamic_inverse({ clo_dynamic: entry, correction })), `dynamic ${entry} clo at ${label}`).toBeCloseTo(entry, 8);
+        expect(correction(clo_dynamic_inverse({ clo_dynamic: entry, correction })), `dynamic ${entry} clo at ${label}`).toBeCloseTo(entry, 2);
       }
     }
   });

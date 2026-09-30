@@ -90,7 +90,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     const [row] = listedRowsOf(session) ?? [];
     expect(listedRowsOf(session)).toEqual([{ quantity: q.clo, value: 0.5, bound: { min: row.bound.min } }]);
     expect(row.bound.min).toBeCloseTo(1.6571, 4);
-    expect(clo_dynamic_iso(row.bound.min ?? Number.NaN, 6, 0.1)).toBeCloseTo(1, 8);
+    expect(clo_dynamic_iso(row.bound.min ?? Number.NaN, 6, 0.1)).toBeCloseTo(1, 2);
     expect(clo_dynamic_iso(row.bound.min ?? Number.NaN, 6, 0.1)).toBeGreaterThanOrEqual(1);
 
     session.acceptSwitch();

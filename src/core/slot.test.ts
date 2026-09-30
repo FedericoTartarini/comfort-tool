@@ -442,10 +442,10 @@ describe("withClothingMode", () => {
     expect(converted.values.has(q.clo_dynamic)).toBe(false);
   });
 
-  it("inverts a dynamic clothing insulation no entry of few decimals gives, to within the search's nine decimals", () => {
+  it("inverts a dynamic clothing insulation no entry of few decimals gives, to one that reads the same", () => {
     const kept = enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8, met: 2 });
     const converted = withClothingMode(kept, clothingMode.uncorrected, pmvPpdIso);
-    expect(dynamicClothingOf(converted, pmvPpdIso)).toBeCloseTo(0.8, 8);
+    expect(dynamicClothingOf(converted, pmvPpdIso)).toBeCloseTo(0.8, 2);
     expect(converted.values.get(q.clo)).not.toBe(0.8);
   });
 

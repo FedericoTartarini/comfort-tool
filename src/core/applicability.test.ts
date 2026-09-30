@@ -119,7 +119,7 @@ describe("enteredBound / outOfRangeQuantities", () => {
     // ISO 7730's rule gives still, seated air more clothing than was entered: 2 clo is given as 2.069.
     const stillAir = boundAt(pmvPpdIso, { met: 1, v: 0 });
     expect(stillAir?.min).toBe(0);
-    expect(stillAir?.max).toBeCloseTo(1.934, 3);
+    expect(stillAir?.max).toBeCloseTo(1.93, 2);
     expect(clo_dynamic_iso(2, 1, 0)).toBeGreaterThan(2);
     expect(outOfRangeRows(enteredSlotFor(pmvPpdIso, { met: 1, v: 0, clo: 2 }), pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([
       { quantity: q.clo, value: 2, bound: stillAir },

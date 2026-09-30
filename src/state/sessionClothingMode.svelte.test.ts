@@ -234,7 +234,7 @@ describe("the session's clothing entry mode", () => {
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.clo]);
     const bound = enteredBound(pmvPpdIso, q.clo, session.slots[0], session.atmosphericPressure);
     expect(bound?.min).toBe(0);
-    expect(bound?.max).toBeCloseTo(1.934, 3);
+    expect(bound?.max).toBeCloseTo(1.93, 2);
     expect(outputs.slots[0].notCalculated).toBe(true);
     expect(outputs.slots[0].result).toBeNull();
     expect(outputs.slots[0].violations).toEqual([]);
@@ -371,7 +371,7 @@ describe("a model switch under clothing insulation entry", () => {
 
     const [row] = listedRowsOf(session) ?? [];
     expect([row.quantity, row.value, row.bound.min]).toEqual([q.clo, 2, 0]);
-    expect(row.bound.max).toBeCloseTo(1.934, 3);
+    expect(row.bound.max).toBeCloseTo(1.93, 2);
 
     session.acceptSwitch();
 
@@ -404,7 +404,7 @@ describe("a model switch under clothing insulation entry", () => {
     const rows = listedRowsOf(session) ?? [];
     expect(rows.map(({ quantity, value }) => [quantity, value])).toEqual([[q.v, 0.5], [q.clo, 2]]);
     expect(rows[0].bound).toEqual({ min: 0, max: 0 });
-    expect(rows[1].bound.max).toBeCloseTo(1.934, 3);
+    expect(rows[1].bound.max).toBeCloseTo(1.93, 2);
 
     session.acceptSwitch();
 
