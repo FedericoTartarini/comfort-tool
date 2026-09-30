@@ -247,9 +247,9 @@ function boundingQuantities(quantity: Quantity, slot: Slot): readonly Quantity[]
  * humidity-ratio entry while the pressure is out of range. An entered `v` or
  * clothing insulation is tested against the model's bound for what the model
  * is given, converted into it, so the library finds no row of the model's info
- * broken by what the gate passed, to the precision a person enters; what
- * {@link violationRows} still reports of an input is a limit the info does
- * not carry.
+ * broken by what the gate passed, at the precision a row shows, which is the
+ * precision {@link violationRows} judges the library's rows at; what it still
+ * reports of an input is a limit the info does not carry.
  *
  * The bounds are read at `boundsAt`, the slot itself unless given: a bound may be
  * read at another entry, and `core/modelSwitch.ts` asks what the entries

@@ -12,11 +12,14 @@
 import { clo_dynamic_ashrae, clo_dynamic_iso } from "jsthermalcomfort";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import type { PointTrace } from "$lib/core/charts/chartSpec";
-import { enteredBound } from "$lib/core/applicability";
+import { enteredBound, formatBound } from "$lib/core/applicability";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { formatNumber } from "$lib/core/numberFormat";
 import { quantities } from "$lib/core/quantities";
+import { displayUnitFor } from "$lib/core/units";
+import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
@@ -326,7 +329,7 @@ describe("the session's clothing entry mode", () => {
 });
 
 describe("a model switch under clothing insulation entry", () => {
-  it("asks about a clothing insulation the new model's converted bound stops, and moves it to the converted end as the row shows it on a yes", () => {
+  it("asks about a clothing insulation the new model's converted bound stops, and moves it to the converted end on a yes", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.slots[0].setEntered(q.met, 2);
@@ -337,24 +340,27 @@ describe("a model switch under clothing insulation entry", () => {
     session.requestModel(pmvPpdAshrae);
 
     expect(session.model).toBe(pmvPpdIso);
+    const [row] = listedRowsOf(session) ?? [];
     expect(listedRowsOf(session)).toEqual([{ quantity: q.clo, value: 1.9, bound: { min: 0, max: 1.875 } }]);
 
     session.acceptSwitch();
 
     expect(session.model).toBe(pmvPpdAshrae);
     expect(session.clothingMode).toBe(clothingMode.uncorrected);
-    // Inside the bound at the two decimals a row shows: 1.88 would be past it.
-    expect(session.slots[0].values.get(q.clo)).toBe(1.87);
+    // The end itself, which the row shows as 1.88, the range's end.
+    expect(session.slots[0].values.get(q.clo)).toBe(row.bound.max);
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].violations).toEqual([]);
   });
 
-  // ISO 7730's rule does not round, its converted end is a search's answer, and the library
-  // compares strictly: a yes leaves the end as the row shows it, given to the model inside its 2 clo.
-  it("leaves, on a yes, a clothing insulation ISO 7730's run reports nothing of", () => {
+  // ISO 7730's rule does not round, its converted end is a search's answer, and the library compares
+  // strictly: a yes leaves the end itself, given to the model a hair over its 2 clo, which the gate and
+  // the run's violations judge at the precision a row shows (ADR-0002 decision 56).
+  it.each([unitSystem.si, unitSystem.ip])("leaves, on a yes, the converted end itself, which ISO 7730's run reports nothing of, in $title", (system) => {
     // The same model under no standard corrects no clothing, so 2 clo is inside its bound as entered.
     const session = new Session({ ...pmvPpdIso, standard: undefined });
+    session.unitSystem = system;
     const outputs = new Outputs(session);
     for (const [quantity, value] of [[q.v, 0], [q.met, 1], [q.clo, 2]] as const) {
       session.slots[0].setEntered(quantity, value);
@@ -369,8 +375,15 @@ describe("a model switch under clothing insulation entry", () => {
 
     session.acceptSwitch();
 
-    expect(session.slots[0].values.get(q.clo)).toBe(1.93);
+    const landed = session.slots[0].values.get(q.clo) ?? Number.NaN;
+    expect(landed).toBe(row.bound.max);
+    expect(clo_dynamic_iso(landed, 1, 0)).toBeGreaterThan(2);
+    // The box reads the end as the range beside it does.
+    const unit = displayUnitFor(q.clo, system);
+    expect(formatNumber(unit.fromSi(landed))).toBe("1.93");
+    expect(formatBound(row.bound, unit)).toBe("0 – 1.93");
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].notCalculated).toBe(false);
     expect(outputs.slots[0].result).not.toBeNull();
     expect(outputs.slots[0].violations).toEqual([]);
   });
@@ -396,7 +409,8 @@ describe("a model switch under clothing insulation entry", () => {
     session.acceptSwitch();
 
     expect(session.slots[0].values.get(q.v)).toBe(0);
-    expect(session.slots[0].values.get(q.clo)).toBe(1.93);
+    expect(session.slots[0].values.get(q.clo)).toBe(rows[1].bound.max);
+    expect(formatNumber(session.slots[0].values.get(q.clo) ?? Number.NaN)).toBe("1.93");
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
     expect(outputs.slots[0].result).not.toBeNull();
   });

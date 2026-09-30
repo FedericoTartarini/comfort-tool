@@ -20,7 +20,7 @@ import { airSpeedMode, clothingMode, humidityMode, type HumidityMode } from "./e
 import type { RegisteredModel, Values } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { adjustToBounds } from "./modelSwitch";
-import { formatNumber, isShownBeyond, shownNumber } from "./numberFormat";
+import { formatNumber, isShownBeyond } from "./numberFormat";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities, type Quantity } from "./quantities";
 import { defaultEntryModes, dynamicClothingOf, relativeAirSpeedOf, requireValue, startingSlot, withEnteredValues, type Slot } from "./slot";
 import { displayUnitFor, valueWithUnit } from "./units";
@@ -143,11 +143,13 @@ describe("enteredBound / outOfRangeQuantities", () => {
   });
 
   // The library compares strictly, and ISO 7730's rule does not round: its converted end is a search's answer,
-  // given to the model a hair over its bound. A yes moves an entry to the end as the row shows it, inside the bound.
-  it("gives the model no more than its bound for an entry a yes moved to a converted end, so the run reports none", () => {
+  // given to the model a hair over its bound. A yes moves an entry to the end itself, and the gate and the
+  // run's violation rows judge at the precision a row shows (ADR-0002 decision 56).
+  it("moves an entry to a converted end itself on a yes, which the gate passes and the run reports nothing of", () => {
     for (const model of [pmvPpdIso, pmvPpdAshrae]) {
       const airSpeedMax = model.info.inputs.vr?.applicability?.max ?? 0;
-      const clothingMax = model.info.inputs.clo?.applicability?.max ?? 0;
+      const clothingBound = model.info.inputs.clo?.applicability ?? {};
+      const clothingMax = clothingBound.max ?? 0;
       for (let met = 1; met <= 4; met += 0.1) {
         const airSpeedEnd = enteredBound(model, q.v, enteredSlotFor(model, { met }), DEFAULT_ATMOSPHERIC_PRESSURE)?.max ?? Number.NaN;
         for (const v of [0, airSpeedEnd / 2, airSpeedEnd]) {
@@ -157,9 +159,8 @@ describe("enteredBound / outOfRangeQuantities", () => {
           const at = `${model.info.label}, ${met} met, ${v} m/s`;
           expect(outOfRangeRows(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), at).toEqual([]);
           expect(relativeAirSpeedOf(slot), at).toBeLessThanOrEqual(airSpeedMax);
-          expect(dynamicClothingOf(slot, model), at).toBeLessThanOrEqual(clothingMax);
-          const shownEnd = shownNumber(clothingEnd, displayUnitFor(q.clo, unitSystem.si), { max: clothingEnd });
-          expect(requireValue(slot.values, q.clo), at).toBe(shownEnd);
+          expect(requireValue(slot.values, q.clo), at).toBe(clothingEnd);
+          expect(isShownBeyond(dynamicClothingOf(slot, model), clothingBound, displayUnitFor(q.clo_dynamic, unitSystem.si)), at).toBe(false);
           // And no bound stops short: 0.01 clo past the end, a step ASHRAE 55's rounding cannot hide, is given as more.
           expect(dynamicClothingOf(enteredSlotFor(model, { met, v, clo: clothingEnd + 0.01 }), model), at).toBeGreaterThan(clothingMax);
           const rows = violationRows(model, runOn(slot, model, DEFAULT_ATMOSPHERIC_PRESSURE), slot);
@@ -167,6 +168,22 @@ describe("enteredBound / outOfRangeQuantities", () => {
         }
       }
     }
+  });
+
+  it("lands a yes on a converted end of nine decimals unchanged, which reads as the range beside the row does", () => {
+    // ISO 7730's 2 clo in still air at 1 met, inverted: 1.934059254, given to the model as 2.0000000004.
+    const beyond = enteredSlotFor(pmvPpdIso, { met: 1, v: 0, clo: 2 });
+    const [row] = outOfRangeRows(beyond, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(formatNumber(row.bound.max ?? Number.NaN)).toBe("1.93");
+    expect(row.bound.max).not.toBe(1.93);
+
+    const slot = adjustToBounds(beyond, [row]);
+
+    expect(requireValue(slot.values, q.clo)).toBe(row.bound.max);
+    expect(formatNumber(requireValue(slot.values, q.clo))).toBe("1.93");
+    expect(dynamicClothingOf(slot, pmvPpdIso)).toBeGreaterThan(2);
+    expect(outOfRangeRows(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual([]);
+    expect(violationRows(pmvPpdIso, runOn(slot, pmvPpdIso, DEFAULT_ATMOSPHERIC_PRESSURE), slot)).toEqual([]);
   });
 
   // The gate compares at the precision a row shows (ADR-0002 decision 56): ASHRAE 55's converted end at 2 met is 1.875 clo, which reads 1.88.

@@ -15,11 +15,8 @@
  */
 import { outOfRangeRows, type Bound, type OutOfRangeRow } from "./applicability";
 import type { RegisteredModel } from "./modelDeclaration";
-import { shownNumber } from "./numberFormat";
 import type { Quantity } from "./quantities";
 import { defaultEntryModes, seedDeclaredDefaults, valueEntryGroups, withEnteredValues, type Slot } from "./slot";
-import { displayUnitFor, type DisplayUnit } from "./units";
-import { unitSystem } from "./unitSystem";
 
 /** What a switch would do to one slot: the slot it would leave, and what the new model would not accept. */
 export interface RehearsedSwitch {
@@ -73,11 +70,12 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
 /**
  * `slot` with each listed value moved to the end of its bound it is beyond,
  * and no further; a bound with one end moves a value only towards that end.
- * The end is taken at the precision the row shows, on the side inside the
- * bound: a converted end has more decimals than that (1.934… clo for ISO
- * 7730's 2 clo in still air at 1 met), and the inverse that gave it is a
- * search, whose answer the model may be given a hair outside its own bound
- * for. So a yes leaves 1.93 clo, the number the range beside the row reads.
+ * The end itself, and not a rounding of it (ADR-0002 decision 56): a slot
+ * holds the full-precision number, and the gate judges at the precision a row
+ * shows, so the end passes it and reads as the range beside the row does. A
+ * converted end has more decimals than a row shows (1.934… clo for ISO 7730's
+ * 2 clo in still air at 1 met), and the model may be given a hair over its own
+ * bound for it; the run's violation rows judge that at the same precision.
  *
  * The only place the app adjusts a value the person entered, and it is reached
  * only by their yes (ADR-0002 decision 32). Everywhere else Applicability is a
@@ -86,18 +84,18 @@ function areSameRows(a: readonly OutOfRangeRow[], b: readonly OutOfRangeRow[]): 
 export function adjustToBounds(slot: Slot, rows: readonly OutOfRangeRow[]): Slot {
   const adjusted = new Map<Quantity, number>();
   for (const { quantity, value, bound } of rows) {
-    adjusted.set(quantity, nearestEnd(value, bound, displayUnitFor(quantity, unitSystem.si)));
+    adjusted.set(quantity, nearestEnd(value, bound));
   }
   return withEnteredValues(slot, adjusted);
 }
 
-/** The end of `bound` that `value` is beyond, at the precision `unit` shows and inside the bound; `value` itself when it is beyond neither. */
-function nearestEnd(value: number, bound: Bound, unit: DisplayUnit): number {
+/** The end of `bound` that `value` is beyond; `value` itself when it is beyond neither. */
+function nearestEnd(value: number, bound: Bound): number {
   if (bound.min !== undefined && value < bound.min) {
-    return shownNumber(bound.min, unit, bound);
+    return bound.min;
   }
   if (bound.max !== undefined && value > bound.max) {
-    return shownNumber(bound.max, unit, bound);
+    return bound.max;
   }
   return value;
 }

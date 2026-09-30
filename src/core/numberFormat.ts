@@ -37,33 +37,3 @@ export function isShownBeyond(value: number, bound: Bound, unit: DisplayUnit): b
 function shownSteps(value: number, unit: DisplayUnit): number {
   return Math.round(unit.fromSi(value) * STEPS_PER_UNIT);
 }
-
-/**
- * The number a row would show for the SI `value`, in `unit`, under `bound`
- * (ADR-0002 decision 55), answered in SI: the nearest number of the
- * formatter's precision in `unit`. Where `value` is inside `bound` and the
- * nearest is not, the neighbour inside (`1.875 → 1.87` under a maximum of
- * 1.875); where `value` itself is outside, the nearest, which the gate then
- * marks. Inside is judged in SI, on the number a slot would hold, as the gate
- * judges it: 80.6 °F is a hair under 27 °C, so a minimum of 27 °C gives 80.61 °F.
- */
-export function shownNumber(value: number, unit: DisplayUnit, bound: Bound = {}): number {
-  // `+ 0` turns the -0 a small negative rounds to into 0, as `formatNumber` prints it.
-  const steps = Math.round(unit.fromSi(value) * STEPS_PER_UNIT) + 0;
-  const nearest = unit.toSi(steps / STEPS_PER_UNIT);
-  if (isAbove(value, bound) || isBelow(value, bound)) {
-    return nearest;
-  }
-  if (isAbove(nearest, bound)) {
-    return unit.toSi((steps - 1) / STEPS_PER_UNIT);
-  }
-  return isBelow(nearest, bound) ? unit.toSi((steps + 1) / STEPS_PER_UNIT) : nearest;
-}
-
-function isAbove(value: number, bound: Bound): boolean {
-  return bound.max !== undefined && value > bound.max;
-}
-
-function isBelow(value: number, bound: Bound): boolean {
-  return bound.min !== undefined && value < bound.min;
-}

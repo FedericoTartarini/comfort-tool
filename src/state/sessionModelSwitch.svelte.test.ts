@@ -12,9 +12,12 @@
  */
 import { clo_dynamic_iso, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import { outOfRangeRows } from "$lib/core/applicability";
+import { formatBound, outOfRangeRows } from "$lib/core/applicability";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
-import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "$lib/core/quantities";
+import { formatNumber } from "$lib/core/numberFormat";
+import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
+import { displayUnitFor } from "$lib/core/units";
+import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session } from "./session.svelte";
@@ -92,8 +95,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.acceptSwitch();
 
-    // Inside the bound at the two decimals a row shows.
-    expect(session.slots[0].values.get(q.clo)).toBe(1.66);
+    expect(session.slots[0].values.get(q.clo)).toBe(row.bound.min);
     expect(session.slots[0].values.get(q.met)).toBe(6);
   });
 
@@ -116,7 +118,30 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     expect(resultValueOf(outputs.slots[0].result, q.pmv)).toBeTypeOf("number");
   });
 
-  it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end as the row shows it", () => {
+  it("leaves, on a yes in IP, the same ends held, each read in its box as the range beside it reads", () => {
+    const session = new Session(pmvPpdIso);
+    const outputs = new Outputs(session);
+    session.unitSystem = unitSystem.ip;
+    session.setHumidityMode(humidityMode.humidityRatio);
+    session.slots[0].setEntered(q.hr, 0.017);
+
+    session.requestModel(belowTheSlot);
+    const rows = listedRowsOf(session) ?? [];
+    session.acceptSwitch();
+
+    // 20 °C is 68 °F; saturated air at 20 °C holds 14.7 g/kg, 14.7 lb/klb.
+    const boxOf = (quantity: Quantity, value: number | undefined) => formatNumber(displayUnitFor(quantity, unitSystem.ip).fromSi(value ?? Number.NaN));
+    expect(rows.map((row) => row.quantity)).toEqual([q.tdb, q.hr]);
+    expect(session.slots[0].values.get(q.tdb)).toBe(20);
+    expect(session.slots[0].humidity?.value).toBe(psy_ta_rh(20, 100).hr);
+    expect(boxOf(q.tdb, session.slots[0].values.get(q.tdb))).toBe("68");
+    expect(formatBound(rows[0].bound, displayUnitFor(q.tdb, unitSystem.ip))).toBe("50 – 68");
+    expect(formatBound(rows[1].bound, displayUnitFor(q.hr, unitSystem.ip))).toBe(`0 – ${boxOf(q.hr, session.slots[0].humidity?.value)}`);
+    expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
+    expect(outputs.slots[0].violations).toEqual([]);
+  });
+
+  it("lists a humidity entry the new model's relative-humidity bound rules out, in the entry's own unit, and moves it to the converted end", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.setHumidityMode(humidityMode.humidityRatio);
@@ -131,10 +156,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
 
     session.acceptSwitch();
 
-    // Inside the bound at the two decimals of g/kg a row shows: 7.88 of 7.886.
-    expect(session.slots[0].humidity?.mode).toBe(humidityMode.humidityRatio);
-    expect(session.slots[0].humidity?.value).toBe(0.00788);
-    expect(psy_ta_rh(25, 40).hr - 0.00788).toBeLessThan(0.00001);
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(25, 40).hr });
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
   });
 
@@ -156,9 +178,7 @@ describe("Session.requestModel, when the new model does not accept a value", () 
     session.acceptSwitch();
 
     expect(session.slots[0].values.get(q.tdb)).toBe(20);
-    expect(session.slots[0].humidity?.mode).toBe(humidityMode.humidityRatio);
-    expect(session.slots[0].humidity?.value).toBe(0.01469);
-    expect(psy_ta_rh(20, 100).hr - 0.01469).toBeLessThan(0.00001);
+    expect(session.slots[0].humidity).toEqual({ mode: humidityMode.humidityRatio, value: psy_ta_rh(20, 100).hr });
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([]);
   });
 
