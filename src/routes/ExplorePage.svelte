@@ -2,7 +2,8 @@
   Explore (ADR-0002 decision 57): the session's controls as the Standard page
   has them, slot 1's inputs with no Compare, the result table and the charts of
   slot 1 alone. Which page is current is the session's, set by the address;
-  the session compares slot 1 alone here, whatever Compare holds.
+  the session compares slot 1 alone here, whatever Compare holds, so a switch
+  asks about slot 1 alone. The model select offers every registered model.
 -->
 <script lang="ts">
   import { getOpenSession } from "$lib/state/openSession";
@@ -11,15 +12,21 @@
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
+  import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
+  import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
   import UnitSystemControls from "$lib/ui/inputs/UnitSystemControls.svelte";
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
+  import { inAppSwitch } from "./inAppSwitch";
+  import { modelChoicesOn } from "./navigation";
+  import PageNavigation from "./PageNavigation.svelte";
 
   // The app's one session, which the address moves (`App.svelte`).
   const { session, outputs } = getOpenSession();
+  const inApp = inAppSwitch(session);
 </script>
 
 <main>
@@ -29,14 +36,17 @@
       <UnitSystemControls {session} />
     </Inline>
 
-    <Grid columns="minmax(0, 24rem) minmax(0, 1fr)" gap="6">
+    <Grid columns="12rem minmax(0, 24rem) minmax(0, 1fr)" gap="6">
+      <PageNavigation {session} onfollow={inApp.follow} />
+
       <section>
         <Stack gap="4">
           <h2>{copy.inputs}</h2>
-          <Inline gap="2" align="center">
-            <span>{copy.model}</span>
-            <strong>{session.model.info.label}</strong>
-          </Inline>
+          <ModelSelect
+            choices={modelChoicesOn({ page: session.page, model: session.model })}
+            model={session.model}
+            onchoose={(model) => inApp.follow({ page: session.page, model })}
+          />
           <SessionControls {session} atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange} />
           <InputPanel
             model={session.model}
@@ -45,6 +55,13 @@
             atmosphericPressure={session.atmosphericPressure}
             outOfRangeQuantities={outputs.slots[0].outOfRangeQuantities}
             violations={outputs.slots[0].violations}
+          />
+          <ModelSwitchDialog
+            pending={session.pendingSwitch}
+            namesSlots={false}
+            unitSystem={session.unitSystem}
+            onaccept={inApp.accept}
+            ondecline={() => session.declineSwitch()}
           />
         </Stack>
       </section>

@@ -67,7 +67,7 @@
 	html {
 		@apply font-sans;
 	}
-	/* Every page's frame and headings (ADR-0002 decision 57). How they look is Phase 5c's. */
+	/* Every page's frame, headings and navigation (ADR-0002 decision 57). How they look is Phase 5c's. */
 	main {
 		padding: 1.5rem;
 	}
@@ -78,5 +78,13 @@
 	h2 {
 		font-size: 1rem;
 		font-weight: 600;
+	}
+	nav a {
+		color: var(--muted-foreground);
+		text-decoration: none;
+	}
+	nav a[aria-current="page"] {
+		color: var(--foreground);
+		font-weight: 500;
 	}
 }

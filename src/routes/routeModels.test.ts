@@ -1,13 +1,19 @@
 import { Standard } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
+import { page } from "$lib/core/page";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { registeredModels } from "$lib/models";
 import {
   exploreSegmentsOf,
   modelByExploreSegment,
   modelBySegment,
+  modelChoicesOn,
   modelsOf,
   routeSegmentsOf,
+  standardLinks,
   standardModels,
   toRouteSegment,
 } from "./routeModels";
@@ -124,5 +130,39 @@ describe("modelByExploreSegment", () => {
     for (const model of registeredModels) {
       expect(modelByExploreSegment(exploreSegmentsOf(model).model), model.info.label).toBe(model);
     }
+  });
+});
+
+describe("standardLinks", () => {
+  it("gives each standard with a model one link, in the library's order, to its first registered model on the Standard page", () => {
+    expect(standardLinks().map(({ standard, address }) => [standard.displayName, address.page, address.model])).toEqual([
+      ["ASHRAE 55", page.standard, pmvPpdAshrae],
+      ["ISO 7730", page.standard, pmvPpdIso],
+    ]);
+  });
+
+  it("opens the standard's model registered first, whatever its place among the other standards' models", () => {
+    expect(standardLinks([pmvPpdIso, adaptiveAshrae, pmvPpdAshrae]).map(({ address }) => address.model)).toEqual([
+      adaptiveAshrae,
+      pmvPpdIso,
+    ]);
+  });
+
+  it("gives a model with no standard no link", () => {
+    expect(standardLinks([fixtureWithoutStandard])).toEqual([]);
+  });
+});
+
+describe("modelChoicesOn", () => {
+  it("offers the standard's models on the Standard page, in registry order", () => {
+    expect(modelChoicesOn({ page: page.standard, model: adaptiveAshrae })).toEqual([pmvPpdAshrae, adaptiveAshrae]);
+    expect(modelChoicesOn({ page: page.standard, model: pmvPpdIso })).toEqual([pmvPpdIso]);
+  });
+
+  it("offers every registered model on Explore, flat and in registry order, Heat Index among them", () => {
+    for (const model of registeredModels) {
+      expect(modelChoicesOn({ page: page.explore, model })).toEqual(registeredModels);
+    }
+    expect(modelChoicesOn({ page: page.explore, model: pmvPpdIso })).toContain(heatIndexRothfusz);
   });
 });

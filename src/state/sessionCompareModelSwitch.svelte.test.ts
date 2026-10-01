@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { page } from "$lib/core/page";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
@@ -271,5 +272,64 @@ describe("the model switch while Compare is on, by the address or there and back
       }
       expect(held.humidity).toEqual(before[position].humidity);
     });
+  });
+});
+
+describe("the model switch asked for on Explore, which compares slot 1 alone (ADR-0002 decision 57)", () => {
+  /** Slots 1 and 2 breaking {@link coolerAndTakesWork}, Compare on, the session on Explore. */
+  function onExploreBreakingSlots1And2(): Session {
+    const session = comparingSlotsEntered(entriesBreaking([0, 1]));
+    session.setAddress({ page: page.explore, model: session.model });
+    return session;
+  }
+
+  it("lists slot 1's rows alone when slots 1 and 2 break the model", () => {
+    const session = onExploreBreakingSlots1And2();
+
+    session.requestModel(coolerAndTakesWork);
+
+    expect(listedPositions(session)).toEqual([0]);
+    expect(listedRowsOf(session, 0)?.map((row) => row.quantity)).toEqual([q.tdb]);
+  });
+
+  it("adjusts slot 1 on a yes, and converts and seeds slots 2 and 3 without adjusting them", () => {
+    const entries = entriesBreaking([0, 1]);
+    const session = onExploreBreakingSlots1And2();
+
+    session.requestModel(coolerAndTakesWork);
+    session.acceptSwitch();
+
+    expect(session.model).toBe(coolerAndTakesWork);
+    const adjusted = sessionAlone(entries[0]);
+    adjusted.requestModel(coolerAndTakesWork);
+    adjusted.acceptSwitch();
+    expect(shapeOf(heldSlot(session, 0))).toEqual(shapeOf(adjusted.slots[0]));
+    for (const position of [1, 2] as const) {
+      const seeded = sessionAlone(entries[position]);
+      seeded.setModel(coolerAndTakesWork);
+      expect(shapeOf(heldSlot(session, position))).toEqual(shapeOf(seeded.slots[0]));
+      expect(heldSlot(session, position).values.get(q.wme)).toBe(0.4);
+    }
+    expect(heldSlot(session, 1).values.get(q.tdb)).toBe(entries[1].get(q.tdb));
+  });
+
+  it("leaves all three slots on a no", () => {
+    const session = onExploreBreakingSlots1And2();
+    const before = slotPositions.map((position) => shapeOf(heldSlot(session, position)));
+
+    session.requestModel(coolerAndTakesWork);
+    session.declineSwitch();
+
+    expect(session.model).toBe(pmvPpdIso);
+    expect(slotPositions.map((position) => shapeOf(heldSlot(session, position)))).toEqual(before);
+  });
+
+  it("lists both slots' rows for the same request on the Standard page", () => {
+    const session = onExploreBreakingSlots1And2();
+    session.setAddress({ page: page.standard, model: session.model });
+
+    session.requestModel(coolerAndTakesWork);
+
+    expect(listedPositions(session)).toEqual([0, 1]);
   });
 });

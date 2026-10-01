@@ -1,6 +1,7 @@
 import type { Standard } from "jsthermalcomfort";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { routeSegmentFor } from "$lib/core/standard";
+import { page, type Address } from "$lib/core/page";
+import { routeSegmentFor, standards, type StandardEntry } from "$lib/core/standard";
 import { registeredModels } from "$lib/models";
 
 /*
@@ -21,6 +22,33 @@ export function modelsOf(
 /** Models that belong to a standard, in registry order. */
 export function standardModels(): RegisteredModel[] {
   return registeredModels.filter((model) => model.standard !== undefined);
+}
+
+/**
+ * The navigation's Standard group: one link per standard that has a model, in
+ * `standards`' order, each opening that standard's first registered model on
+ * the Standard page (ADR-0002 decision 57). The link is an address, so it
+ * opens the same model whichever model the person is on.
+ */
+export function standardLinks(
+  models: readonly RegisteredModel[] = registeredModels,
+): { standard: StandardEntry; address: Address }[] {
+  return standards.flatMap((standard) => {
+    const [first] = modelsOf(standard.id, models);
+    return first ? [{ standard, address: { page: page.standard, model: first } }] : [];
+  });
+}
+
+/**
+ * What the model select offers at `address`, in registry order: the models of
+ * the open model's standard on the Standard page, and every registered model
+ * on Explore (ADR-0002 decision 57).
+ */
+export function modelChoicesOn(
+  address: Address,
+  models: readonly RegisteredModel[] = registeredModels,
+): readonly RegisteredModel[] {
+  return address.page === page.standard ? modelsOf(requireStandard(address.model), models) : models;
 }
 
 export function defaultModel(): RegisteredModel {

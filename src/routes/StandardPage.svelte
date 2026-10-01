@@ -1,7 +1,5 @@
 <script lang="ts">
-  import type { RegisteredModel } from "$lib/core/modelDeclaration";
   import { slotBadges } from "$lib/core/slotBadge";
-  import { standards } from "$lib/core/standard";
   import type { SlotOutputs } from "$lib/state/compute.svelte";
   import { getOpenSession } from "$lib/state/openSession";
   import { slotPositions, type InputSlot, type SlotPosition } from "$lib/state/session.svelte";
@@ -10,6 +8,7 @@
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
+  import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
   import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
   import UnitSystemControls from "$lib/ui/inputs/UnitSystemControls.svelte";
@@ -18,48 +17,13 @@
   import Stack from "$lib/ui/layout/Stack.svelte";
   import ResultTable from "$lib/ui/outputs/ResultTable.svelte";
   import { Button } from "$lib/ui/primitives/button";
-  import { Label } from "$lib/ui/primitives/label";
-  import * as Select from "$lib/ui/primitives/select";
-  import { addressFromRoute, interceptLinkClick, modelsOf, navigateTo, pathTo, requireStandard } from "./navigation";
+  import { inAppSwitch } from "./inAppSwitch";
+  import { modelChoicesOn } from "./navigation";
+  import PageNavigation from "./PageNavigation.svelte";
 
-  const id = $props.id();
   // The app's one session, which the address moves (`App.svelte`).
   const { session, outputs } = getOpenSession();
-
-  /**
-   * Switching from inside the app: the session is asked first and the address
-   * is told after, which is the order ADR-0002 decision 32 needs. Navigating
-   * first would make the address the thing that switches the model, leaving no
-   * moment at which the session could ask about the switch. No effect follows
-   * the session with the address, because the handlers that switch can say
-   * both things themselves.
-   */
-  function switchModel(model: RegisteredModel) {
-    session.requestModel(model);
-    navigateToSessionModel();
-  }
-
-  function acceptSwitch() {
-    session.acceptSwitch();
-    navigateToSessionModel();
-  }
-
-  /**
-   * The address follows the session, never the other way round. A request the
-   * session held a question about changed no model, so there is nothing to
-   * tell the address until the question has been answered with a yes.
-   */
-  function navigateToSessionModel() {
-    if (session.model !== addressFromRoute()?.model) {
-      navigateTo(session.model);
-    }
-  }
-
-  const standardGroups = standards
-    .map((entry) => ({ standard: entry, models: modelsOf(entry.id) }))
-    .filter((group) => group.models.length > 0);
-
-  const modelChoices = $derived(modelsOf(requireStandard(session.model)));
+  const inApp = inAppSwitch(session);
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
   function toggleSlot(position: SlotPosition) {
@@ -98,61 +62,17 @@
     </Inline>
 
     <Grid columns={pageColumns} gap="6">
-      <nav>
-        <Stack gap="2">
-          {#each standardGroups as group (group.standard.id)}
-            <strong>{group.standard.displayName}</strong>
-            {#each group.models as model (model)}
-              <!--
-                A link that keeps its address, so a new tab and a copied
-                address still work, and that asks the session first when it is
-                the page the click belongs to. A click the navigation module
-                declines to hand over is the browser's, and arrives as an
-                address.
-              -->
-              <a
-                href={pathTo(model)}
-                aria-current={session.model === model ? "page" : undefined}
-                onclick={(event) => {
-                  if (interceptLinkClick(event)) {
-                    switchModel(model);
-                  }
-                }}
-              >
-                {model.info.label}
-              </a>
-            {/each}
-          {/each}
-        </Stack>
-      </nav>
+      <PageNavigation {session} onfollow={inApp.follow} />
 
       <section>
         <Stack gap="4">
           <h2>{copy.inputs}</h2>
           <Inline gap="2" align="center">
-            <Label for="{id}-model">{copy.model}</Label>
-            <!--
-              A function binding, not a value plus a change handler: the
-              session, not the select, decides which model is current, and a
-              switch the person declines has to leave the select where it was.
-              With a one-way `value` the select would keep the model it had
-              offered, disagree with the page behind the dialog, and refuse to
-              offer that model a second time.
-            -->
-            <Select.Root
-              type="single"
-              bind:value={
-                () => String(modelChoices.indexOf(session.model)),
-                (value) => switchModel(modelChoices[Number(value)])
-              }
-            >
-              <Select.Trigger id="{id}-model">{session.model.info.label}</Select.Trigger>
-              <Select.Content>
-                {#each modelChoices as model, index (model)}
-                  <Select.Item value={String(index)} label={model.info.label} />
-                {/each}
-              </Select.Content>
-            </Select.Root>
+            <ModelSelect
+              choices={modelChoicesOn({ page: session.page, model: session.model })}
+              model={session.model}
+              onchoose={(model) => inApp.follow({ page: session.page, model })}
+            />
             <Button
               size="sm"
               variant={session.compare ? "default" : "outline"}
@@ -195,7 +115,7 @@
             pending={session.pendingSwitch}
             namesSlots={session.comparedPositions.length > 1}
             unitSystem={session.unitSystem}
-            onaccept={acceptSwitch}
+            onaccept={inApp.accept}
             ondecline={() => session.declineSwitch()}
           />
         </Stack>
@@ -220,20 +140,10 @@
 </main>
 
 <style>
-  nav a {
-    color: var(--muted-foreground);
-    text-decoration: none;
-  }
-
   .swatch {
     display: inline-block;
     width: 0.75em;
     height: 0.75em;
     border-radius: 50%;
-  }
-
-  nav a[aria-current="page"] {
-    color: var(--foreground);
-    font-weight: 500;
   }
 </style>

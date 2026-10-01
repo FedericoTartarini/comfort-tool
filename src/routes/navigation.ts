@@ -3,14 +3,15 @@ import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import {
   defaultModel,
+  exploreSegmentsOf,
   modelByExploreSegment,
   modelBySegment,
-  modelsOf,
-  requireStandard,
+  modelChoicesOn,
   routeSegmentsOf,
+  standardLinks,
 } from "./routeModels";
 
-export { defaultModel, modelsOf, requireStandard };
+export { defaultModel, modelChoicesOn, standardLinks };
 
 /**
  * The only place sv-router is used (ADR §2). The app and its pages import
@@ -78,18 +79,25 @@ function passAddressOn(): void {
   }
 }
 
-export function pathTo(model: RegisteredModel): string {
-  return p(STANDARD_ROUTE, { params: routeSegmentsOf(model) });
+/** The path `address` is written to: Explore's, or else the Standard page's, which throws for a model with no standard. */
+export function pathTo(address: Address): string {
+  return address.page === page.explore
+    ? p(EXPLORE_ROUTE, { params: exploreSegmentsOf(address.model) })
+    : p(STANDARD_ROUTE, { params: routeSegmentsOf(address.model) });
 }
 
 /**
- * Put `model` in the address as a new history entry, which is what following a
- * link has always done: back returns to the model the person came from. Every
- * in-app switch goes through here, so how a person switched does not change
- * what back does.
+ * Put `address` in the URL as a new history entry, which is what following a
+ * link has always done: back returns to the page and model the person came
+ * from. Every in-app switch goes through here, so how a person switched does
+ * not change what back does.
  */
-export function navigateTo(model: RegisteredModel): void {
-  void navigate(STANDARD_ROUTE, { params: routeSegmentsOf(model) });
+export function navigateTo(address: Address): void {
+  if (address.page === page.explore) {
+    void navigate(EXPLORE_ROUTE, { params: exploreSegmentsOf(address.model) });
+    return;
+  }
+  void navigate(STANDARD_ROUTE, { params: routeSegmentsOf(address.model) });
 }
 
 /**
