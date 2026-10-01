@@ -1,19 +1,12 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
-import {
-  airSpeedMode,
-  clothingMode,
-  temperatureMode,
-  type AirSpeedMode,
-  type ClothingMode,
-  type HumidityMode,
-  type TemperatureMode,
-} from "$lib/core/entryModes";
+import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
 import type { OutOfRangeRow } from "$lib/core/applicability";
 import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantities";
 import {
+  defaultEntryModes,
   entryModesOf,
   startingSlot,
   withAirSpeedMode,
@@ -50,9 +43,9 @@ export class InputSlot implements Slot {
   // the Quantity they reference, and identity comparisons against
   // `humidityMode.rh` / `io.quantities.rh` would fail. Replace, don't mutate.
   #humidity = $state.raw<Slot["humidity"]>(undefined);
-  #temperature = $state.raw<Slot["temperature"]>({ mode: temperatureMode.separate });
-  #airSpeed = $state.raw<Slot["airSpeed"]>({ mode: airSpeedMode.uncorrected });
-  #clothing = $state.raw<Slot["clothing"]>({ mode: clothingMode.uncorrected });
+  #temperature = $state.raw<Slot["temperature"]>(defaultEntryModes.temperature);
+  #airSpeed = $state.raw<Slot["airSpeed"]>(defaultEntryModes.airSpeed);
+  #clothing = $state.raw<Slot["clothing"]>(defaultEntryModes.clothing);
 
   /** A slot holding what `slot` holds: the slot a model starts on, or a copy of another. */
   constructor(slot: Slot) {
@@ -288,10 +281,11 @@ export class Session {
    * ({@link setTemperatureMode}, {@link setAirSpeedMode},
    * {@link setClothingMode}, {@link setHumidityMode}); a slot first
    * enabled copies slot 1 ({@link setSlotEnabled}); a switch puts every held
-   * slot through one rehearsal, which reads the slot's modes and the model
-   * alone ({@link #rehearse}); and the input panel enters a value only in a
-   * row of the modes the slot is in, where {@link InputSlot.setEntered} of
-   * another humidity mode's quantity would move that one slot's mode.
+   * slot through one rehearsal, which reads the slot's modes, the model and
+   * the model left ({@link #rehearse}); and the input panel enters a value
+   * only in a row of the modes the slot is in, where
+   * {@link InputSlot.setEntered} of another humidity mode's quantity would
+   * move that one slot's mode.
    *
    * It does not hold through a question left standing: a mode changed or a
    * slot first enabled while {@link pendingSwitch} is held is not in what

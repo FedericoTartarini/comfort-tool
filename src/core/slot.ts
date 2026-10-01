@@ -455,8 +455,7 @@ export function withOption(slot: Slot, option: OptionSpec, value: boolean): Slot
  * by the model's own standard as pythermalcomfort's models weigh it (ADR-0002
  * decision 39), so the slot lands where the chart marked it; operative →
  * separate sets `tdb = tr = operative_tmp`. Lossy and one-way, and a removal
- * from the bag, as every such conversion is: the two representations never
- * coexist. The
+ * from the bag: the two representations never coexist. The
  * deployed tool converts nothing here — its checkbox copies the air
  * temperature into mean radiant.
  *
@@ -506,7 +505,7 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
     values.set(q.vr, relativeAirSpeedOf(slot));
     values.delete(q.v);
   } else {
-    values.set(q.v, v_relative_inverse({ vr: requireValue(values, q.vr), met: requireValue(values, q.met) }));
+    values.set(q.v, airSpeedGiving(requireValue(values, q.vr), slot));
     values.delete(q.vr);
   }
   return changedSlot(slot, { values, airSpeed: { mode } });
@@ -523,10 +522,11 @@ export function withAirSpeedMode(slot: Slot, mode: AirSpeedMode): Slot {
  * third time). So `model` is given the same dynamic clothing insulation
  * before and after, as {@link withAirSpeedMode} leaves the relative air
  * speed: exactly for a clothing insulation a person entered, and within the
- * inverse's nine decimals for a dynamic one typed in that no such entry
- * gives. `model` is the model the slot is on: the rule inverted is the one
- * that corrected the entry, and for a model without the group nothing did,
- * so the number is kept. The two representations never coexist.
+ * rule's rounding for a dynamic one typed in that no such entry gives (under
+ * ASHRAE 55 the inverse moves it by up to 0.001; see `clo_dynamic_inverse`).
+ * `model` is the model the slot is on: the rule inverted is the one that
+ * corrected the entry, and for a model without the group nothing did, so the
+ * number is kept. The two representations never coexist.
  * The deployed tool corrects on its ASHRAE pages and shows nothing of it; its
  * EN page takes the dynamic value and corrects nothing.
  *
@@ -542,9 +542,7 @@ export function withClothingMode(slot: Slot, mode: ClothingMode, model: Register
     values.set(q.clo_dynamic, dynamicClothingOf(slot, model));
     values.delete(q.clo);
   } else {
-    const dynamic = requireValue(values, q.clo_dynamic);
-    const correction = clothingCorrectionAt(slot, model);
-    values.set(q.clo, correction ? clo_dynamic_inverse({ clo_dynamic: dynamic, correction }) : dynamic);
+    values.set(q.clo, clothingGiving(requireValue(values, q.clo_dynamic), slot, model));
     values.delete(q.clo_dynamic);
   }
   return changedSlot(slot, { values, clothing: { mode } });
