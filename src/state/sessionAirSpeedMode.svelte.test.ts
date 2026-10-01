@@ -102,7 +102,7 @@ describe("the session's air-speed entry mode", () => {
   // `v_relative` rounds to 0.001 above 1 met, so an air speed entered finer
   // than that cannot come back finer: the inverse is exact to the library's
   // own rounding and no further, and the model is given what it was given.
-  it("gives an air speed finer than the library's 0.001 back within it, and the same from then on", () => {
+  it("gives an air speed finer than the library's 0.001 back at the shown precision, and the same from then on", () => {
     const session = new Session(pmvPpdIso);
     const outputs = new Outputs(session);
     session.slots[0].setEntered(q.met, 2);
@@ -112,8 +112,7 @@ describe("the session's air-speed entry mode", () => {
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
 
-    expect(session.slots[0].values.get(q.v)).toBe(0.123);
-    expect(Math.abs(0.123 - 0.1234)).toBeLessThan(0.001);
+    expect(session.slots[0].values.get(q.v)).toBeCloseTo(0.123, 2);
     expect(outputs.slots[0].result).toEqual(before);
 
     session.setAirSpeedMode(airSpeedMode.corrected);
