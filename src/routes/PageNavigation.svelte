@@ -3,7 +3,8 @@
   (page, model) address. Under Standard one link per standard, opening that
   standard's first registered model; then one Explore link, keeping the current
   model. A standard's link is current on any of its models, the Explore link
-  on Explore.
+  on Explore. Explore is a group of its own, so its link reads as Standard's
+  heading does, one level above the standards' links.
 -->
 <script lang="ts">
   import { page, type Address } from "$lib/core/page";
@@ -23,7 +24,7 @@
   const exploreLink = $derived<Address>({ page: page.explore, model: session.model });
 </script>
 
-{#snippet link(target: Address, label: string)}
+{#snippet link(target: Address, label: string, level: "group" | "item")}
   <!--
     A link that keeps its address, so a new tab and a copied address still
     work, and that asks the session first when it is the page the click
@@ -31,6 +32,7 @@
     browser's, and arrives as an address.
   -->
   <a
+    class="nav-{level}"
     href={pathTo(target)}
     aria-current={isCurrentLink(target, session) ? "page" : undefined}
     onclick={(event) => {
@@ -45,10 +47,10 @@
 
 <nav>
   <Stack gap="2">
-    <strong>{page.standard.title}</strong>
+    <strong class="nav-group">{page.standard.title}</strong>
     {#each links as { standard, address } (standard.id)}
-      {@render link(address, standard.displayName)}
+      {@render link(address, standard.displayName, "item")}
     {/each}
-    {@render link(exploreLink, page.explore.title)}
+    {@render link(exploreLink, page.explore.title, "group")}
   </Stack>
 </nav>

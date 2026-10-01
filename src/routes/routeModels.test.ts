@@ -135,18 +135,33 @@ describe("modelByExploreSegment", () => {
 });
 
 describe("standardLinks", () => {
-  it("gives each standard with a model one link, to its first registered model on the Standard page", () => {
+  it("gives each standard with a model one link, in the app's order, to its first registered model on the Standard page", () => {
     expect(standardLinks().map(({ standard, address }) => [standard.displayName, address.page, address.model])).toEqual([
-      ["ISO 7730", page.standard, pmvPpdIso],
       ["ASHRAE 55", page.standard, pmvPpdAshrae],
+      ["ISO 7730", page.standard, pmvPpdIso],
     ]);
   });
 
-  it("orders the links as the registry orders the standards' first models, and opens each standard's first", () => {
+  it("keeps the app's order whatever the registry's", () => {
+    expect(standardLinks([pmvPpdIso, pmvPpdAshrae]).map(({ address }) => address.model)).toEqual([pmvPpdAshrae, pmvPpdIso]);
+  });
+
+  it("opens the standard's model registered first", () => {
     expect(standardLinks([adaptiveAshrae, pmvPpdIso, pmvPpdAshrae]).map(({ address }) => address.model)).toEqual([
       adaptiveAshrae,
       pmvPpdIso,
     ]);
+  });
+
+  it("gives no link to a standard the app's table does not list, though a model has it", () => {
+    expect(standardLinks([fixtureIso2005, pmvPpdIso, adaptiveAshrae]).map(({ address }) => address.model)).toEqual([
+      adaptiveAshrae,
+      pmvPpdIso,
+    ]);
+  });
+
+  it("gives no link to a listed standard no model has", () => {
+    expect(standardLinks([pmvPpdIso]).map(({ address }) => address.model)).toEqual([pmvPpdIso]);
   });
 
   it("gives a model with no standard no link", () => {
@@ -169,7 +184,7 @@ describe("modelChoicesOn", () => {
 });
 
 describe("isCurrentLink", () => {
-  const [isoLink, ashraeLink] = standardLinks().map(({ address }) => address);
+  const [ashraeLink, isoLink] = standardLinks().map(({ address }) => address);
 
   it("marks a standard's link current on any of that standard's models on the Standard page", () => {
     for (const model of [pmvPpdAshrae, adaptiveAshrae]) {

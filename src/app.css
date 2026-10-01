@@ -83,8 +83,20 @@
 		color: var(--muted-foreground);
 		text-decoration: none;
 	}
+	nav a:hover {
+		text-decoration: underline;
+	}
 	nav a[aria-current="page"] {
 		color: var(--foreground);
 		font-weight: 500;
+	}
+	/* A group's name — Standard's heading, the Explore link — one level above the links inside a group. */
+	nav strong.nav-group,
+	nav a.nav-group {
+		color: var(--foreground);
+		font-weight: 600;
+	}
+	nav .nav-item {
+		padding-left: 0.75rem;
 	}
 }

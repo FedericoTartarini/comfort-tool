@@ -1,4 +1,4 @@
-import type { Standard } from "jsthermalcomfort";
+import { Standard } from "jsthermalcomfort";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Address } from "$lib/core/page";
 import { routeSegmentFor, standards, type StandardEntry } from "$lib/core/standard";
@@ -25,20 +25,28 @@ export function standardModels(): RegisteredModel[] {
 }
 
 /**
- * The navigation's Standard group: one link per standard that has a model,
- * each opening that standard's first registered model on the Standard page,
- * in the registry's order of those models (ADR-0002 decision 57). The link is
- * an address, so it opens the same model whichever model the person is on.
+ * The standards the navigation links, in its order: the app's own table, not
+ * the library's key order or the registry's (the user, 2026-10-01). A
+ * standard not listed has no link, though its models keep their Standard page
+ * and their place in the model select.
+ */
+const navigationStandards: readonly Standard[] = [Standard.ashrae_55_2023, Standard.iso_7730_2025];
+
+/**
+ * The navigation's Standard group: one link per standard of
+ * {@link navigationStandards} that has a model, in that order, each opening
+ * the standard's first registered model on the Standard page (ADR-0002
+ * decision 57). The link is an address, so it opens the same model whichever
+ * model the person is on.
  */
 export function standardLinks(
   models: readonly RegisteredModel[] = registeredModels,
 ): { standard: StandardEntry; address: Address }[] {
-  return standards
-    .flatMap((standard) => {
-      const [first] = modelsOf(standard.id, models);
-      return first ? [{ standard, address: { page: page.standard, model: first } }] : [];
-    })
-    .sort((a, b) => models.indexOf(a.address.model) - models.indexOf(b.address.model));
+  return navigationStandards.flatMap((id) => {
+    const standard = standards.find((entry) => entry.id === id);
+    const [first] = modelsOf(id, models);
+    return standard && first ? [{ standard, address: { page: page.standard, model: first } }] : [];
+  });
 }
 
 /**
