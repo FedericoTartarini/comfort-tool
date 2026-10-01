@@ -5,7 +5,8 @@ import { routeSegmentFor, standards, type StandardEntry } from "$lib/core/standa
 import { registeredModels } from "$lib/models";
 
 /*
- * Which models the routes offer and how a URL names one. Router-free (unlike
+ * Which models the routes and the navigation offer, how a URL names one, and
+ * which link is current. Router-free (unlike
  * `navigation.ts`) so it can load under vitest without `sv-router`'s
  * `createRouter`, which needs `IntersectionObserver`; `navigation.ts`
  * re-exports what pages use.
@@ -63,11 +64,8 @@ export function isCurrentLink(link: Address, address: Address): boolean {
  * the open model's standard on the Standard page, and every registered model
  * on Explore (ADR-0002 decision 57).
  */
-export function modelChoicesOn(
-  address: Address,
-  models: readonly RegisteredModel[] = registeredModels,
-): readonly RegisteredModel[] {
-  return address.page === page.standard ? modelsOf(requireStandard(address.model), models) : models;
+export function modelChoicesOn(address: Address): readonly RegisteredModel[] {
+  return address.page === page.standard ? modelsOf(requireStandard(address.model)) : registeredModels;
 }
 
 export function defaultModel(): RegisteredModel {

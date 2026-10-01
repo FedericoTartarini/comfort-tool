@@ -69,7 +69,7 @@
           <h2>{copy.inputs}</h2>
           <Inline gap="2" align="center">
             <ModelSelect
-              choices={modelChoicesOn({ page: session.page, model: session.model })}
+              choices={modelChoicesOn(session)}
               model={session.model}
               onchoose={(model) => inApp.follow({ page: session.page, model })}
             />

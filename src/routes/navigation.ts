@@ -123,7 +123,7 @@ function redirectTo(model: RegisteredModel): void {
  * one the router declines too, and the browser opens the link elsewhere — an
  * address arrival, which is the path that never asks. The router also tests
  * the anchor (`target`, `download`, the href's shape and origin); that stays
- * with whoever writes the anchor, as the page's own model links do.
+ * with whoever writes the anchor, as the navigation's links do.
  */
 export function interceptLinkClick(event: MouseEvent): boolean {
   if (
