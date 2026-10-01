@@ -2,13 +2,14 @@
   The navigation (ADR-0002 decision 57): two groups of links, each link a
   (page, model) address. Under Standard one link per standard, opening that
   standard's first registered model; then one Explore link, keeping the current
-  model. The link to where the person is is the current one.
+  model. A standard's link is current on any of its models, the Explore link
+  on Explore.
 -->
 <script lang="ts">
   import { page, type Address } from "$lib/core/page";
   import type { Session } from "$lib/state/session.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import { interceptLinkClick, pathTo, standardLinks } from "./navigation";
+  import { interceptLinkClick, isCurrentLink, pathTo, standardLinks } from "./navigation";
 
   interface Props {
     session: Session;
@@ -31,7 +32,7 @@
   -->
   <a
     href={pathTo(target)}
-    aria-current={target.page === session.page && target.model === session.model ? "page" : undefined}
+    aria-current={isCurrentLink(target, session) ? "page" : undefined}
     onclick={(event) => {
       if (interceptLinkClick(event)) {
         onfollow(target);

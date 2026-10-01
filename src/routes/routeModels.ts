@@ -25,18 +25,29 @@ export function standardModels(): RegisteredModel[] {
 }
 
 /**
- * The navigation's Standard group: one link per standard that has a model, in
- * `standards`' order, each opening that standard's first registered model on
- * the Standard page (ADR-0002 decision 57). The link is an address, so it
- * opens the same model whichever model the person is on.
+ * The navigation's Standard group: one link per standard that has a model,
+ * each opening that standard's first registered model on the Standard page,
+ * in the registry's order of those models (ADR-0002 decision 57). The link is
+ * an address, so it opens the same model whichever model the person is on.
  */
 export function standardLinks(
   models: readonly RegisteredModel[] = registeredModels,
 ): { standard: StandardEntry; address: Address }[] {
-  return standards.flatMap((standard) => {
-    const [first] = modelsOf(standard.id, models);
-    return first ? [{ standard, address: { page: page.standard, model: first } }] : [];
-  });
+  return standards
+    .flatMap((standard) => {
+      const [first] = modelsOf(standard.id, models);
+      return first ? [{ standard, address: { page: page.standard, model: first } }] : [];
+    })
+    .sort((a, b) => models.indexOf(a.address.model) - models.indexOf(b.address.model));
+}
+
+/**
+ * Whether the navigation marks `link` current at `address`: a standard's link
+ * on any model of that standard on the Standard page, though it opens the
+ * standard's first, and the Explore link on Explore.
+ */
+export function isCurrentLink(link: Address, address: Address): boolean {
+  return link.page === address.page && (link.page !== page.standard || link.model.standard === address.model.standard);
 }
 
 /**

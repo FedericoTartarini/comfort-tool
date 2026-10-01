@@ -8,6 +8,7 @@ import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { registeredModels } from "$lib/models";
 import {
   exploreSegmentsOf,
+  isCurrentLink,
   modelByExploreSegment,
   modelBySegment,
   modelChoicesOn,
@@ -134,15 +135,15 @@ describe("modelByExploreSegment", () => {
 });
 
 describe("standardLinks", () => {
-  it("gives each standard with a model one link, in the library's order, to its first registered model on the Standard page", () => {
+  it("gives each standard with a model one link, to its first registered model on the Standard page", () => {
     expect(standardLinks().map(({ standard, address }) => [standard.displayName, address.page, address.model])).toEqual([
-      ["ASHRAE 55", page.standard, pmvPpdAshrae],
       ["ISO 7730", page.standard, pmvPpdIso],
+      ["ASHRAE 55", page.standard, pmvPpdAshrae],
     ]);
   });
 
-  it("opens the standard's model registered first, whatever its place among the other standards' models", () => {
-    expect(standardLinks([pmvPpdIso, adaptiveAshrae, pmvPpdAshrae]).map(({ address }) => address.model)).toEqual([
+  it("orders the links as the registry orders the standards' first models, and opens each standard's first", () => {
+    expect(standardLinks([adaptiveAshrae, pmvPpdIso, pmvPpdAshrae]).map(({ address }) => address.model)).toEqual([
       adaptiveAshrae,
       pmvPpdIso,
     ]);
@@ -164,5 +165,27 @@ describe("modelChoicesOn", () => {
       expect(modelChoicesOn({ page: page.explore, model })).toEqual(registeredModels);
     }
     expect(modelChoicesOn({ page: page.explore, model: pmvPpdIso })).toContain(heatIndexRothfusz);
+  });
+});
+
+describe("isCurrentLink", () => {
+  const [isoLink, ashraeLink] = standardLinks().map(({ address }) => address);
+
+  it("marks a standard's link current on any of that standard's models on the Standard page", () => {
+    for (const model of [pmvPpdAshrae, adaptiveAshrae]) {
+      expect(isCurrentLink(ashraeLink, { page: page.standard, model }), model.info.label).toBe(true);
+      expect(isCurrentLink(isoLink, { page: page.standard, model }), model.info.label).toBe(false);
+    }
+  });
+
+  it("marks no standard's link current on Explore, and the Explore link there alone, a model with no standard included", () => {
+    for (const model of [pmvPpdAshrae, heatIndexRothfusz]) {
+      const onExplore = { page: page.explore, model };
+      expect(isCurrentLink(ashraeLink, onExplore)).toBe(false);
+      expect(isCurrentLink(onExplore, onExplore)).toBe(true);
+    }
+    expect(isCurrentLink({ page: page.explore, model: pmvPpdAshrae }, { page: page.standard, model: pmvPpdAshrae })).toBe(
+      false,
+    );
   });
 });
