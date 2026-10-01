@@ -1,20 +1,18 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
   import type { RegisteredModel } from "$lib/core/modelDeclaration";
-  import { kindBounds, quantities } from "$lib/core/quantities";
   import { slotBadges } from "$lib/core/slotBadge";
   import { standards } from "$lib/core/standard";
-  import { unitSystem, type UnitSystem } from "$lib/core/unitSystem";
-  import { Outputs, type SlotOutputs } from "$lib/state/compute.svelte";
-  import { Session, slotPositions, type InputSlot, type SlotPosition } from "$lib/state/session.svelte";
+  import type { SlotOutputs } from "$lib/state/compute.svelte";
+  import { getOpenSession } from "$lib/state/openSession";
+  import { slotPositions, type InputSlot, type SlotPosition } from "$lib/state/session.svelte";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
-  import EntryModeControls from "$lib/ui/inputs/EntryModeControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSwitchDialog from "$lib/ui/inputs/ModelSwitchDialog.svelte";
-  import QuantityInput from "$lib/ui/inputs/QuantityInput.svelte";
+  import SessionControls from "$lib/ui/inputs/SessionControls.svelte";
+  import UnitSystemControls from "$lib/ui/inputs/UnitSystemControls.svelte";
   import Grid from "$lib/ui/layout/Grid.svelte";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
@@ -22,25 +20,11 @@
   import { Button } from "$lib/ui/primitives/button";
   import { Label } from "$lib/ui/primitives/label";
   import * as Select from "$lib/ui/primitives/select";
-  import {
-    defaultModel,
-    followAddress,
-    interceptLinkClick,
-    modelFromRoute,
-    modelsOf,
-    navigateTo,
-    pathTo,
-    requireStandard,
-  } from "./navigation";
+  import { addressFromRoute, interceptLinkClick, modelsOf, navigateTo, pathTo, requireStandard } from "./navigation";
 
   const id = $props.id();
-  const session = new Session(modelFromRoute() ?? defaultModel());
-  const outputs = new Outputs(session);
-
-  // The URL names the model: the one the page opens on, read above, and every
-  // one after it, which the navigation module hands over. This is the address's
-  // path — a typed URL, the back button, a share link — and it never asks.
-  onDestroy(followAddress((model) => session.setModel(model)));
+  // The app's one session, which the address moves (`App.svelte`).
+  const { session, outputs } = getOpenSession();
 
   /**
    * Switching from inside the app: the session is asked first and the address
@@ -66,7 +50,7 @@
    * tell the address until the question has been answered with a yes.
    */
   function navigateToSessionModel() {
-    if (session.model !== modelFromRoute()) {
+    if (session.model !== addressFromRoute()?.model) {
       navigateTo(session.model);
     }
   }
@@ -76,10 +60,6 @@
     .filter((group) => group.models.length > 0);
 
   const modelChoices = $derived(modelsOf(requireStandard(session.model)));
-
-  function unitVariantFor(system: UnitSystem) {
-    return session.unitSystem === system ? "default" : "outline";
-  }
 
   /** Slot 1 cannot be disabled: its button is pressed and does nothing. */
   function toggleSlot(position: SlotPosition) {
@@ -114,14 +94,7 @@
   <Stack gap="6">
     <Inline justify="between" align="center">
       <h1>{copy.appTitle}</h1>
-      <Inline gap="2" align="center">
-        <span>{copy.units}</span>
-        {#each Object.values(unitSystem) as system (system)}
-          <Button size="sm" variant={unitVariantFor(system)} onclick={() => (session.unitSystem = system)}>
-            {system.title}
-          </Button>
-        {/each}
-      </Inline>
+      <UnitSystemControls {session} />
     </Inline>
 
     <Grid columns={pageColumns} gap="6">
@@ -189,21 +162,7 @@
               {copy.compare}
             </Button>
           </Inline>
-          <!--
-            The session's pressure, not the slot's: outside the slot's rows and
-            shown on every model (ADR-0002 decision 49). Its place and look are
-            Phase 5c's.
-          -->
-          <QuantityInput
-            quantity={quantities.p_atm}
-            value={session.atmosphericPressure}
-            unitSystem={session.unitSystem}
-            bound={kindBounds[quantities.p_atm.kind]}
-            outOfRange={outputs.atmosphericPressureOutOfRange}
-            oncommit={(si) => (session.atmosphericPressure = si)}
-          />
-          <!-- The session's entry modes, shown once: each converts every slot (ADR-0002 decision 51). -->
-          <EntryModeControls {session} />
+          <SessionControls {session} atmosphericPressureOutOfRange={outputs.atmosphericPressureOutOfRange} />
           <!--
             While Compare is on, a column per slot, a third of the width whether
             its slot is enabled or not, so enabling one moves no other; a
@@ -261,20 +220,6 @@
 </main>
 
 <style>
-  main {
-    padding: 1.5rem;
-  }
-
-  h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  h2 {
-    font-size: 1rem;
-    font-weight: 600;
-  }
-
   nav a {
     color: var(--muted-foreground);
     text-decoration: none;

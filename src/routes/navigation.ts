@@ -1,19 +1,31 @@
 import { createRouter, type Routes } from "sv-router";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
-import { defaultModel, modelBySegment, modelsOf, requireStandard, routeSegmentsOf } from "./routeModels";
+import { page, type Address } from "$lib/core/page";
+import {
+  defaultModel,
+  modelByExploreSegment,
+  modelBySegment,
+  modelsOf,
+  requireStandard,
+  routeSegmentsOf,
+} from "./routeModels";
 
 export { defaultModel, modelsOf, requireStandard };
 
 /**
- * The only place sv-router is used (ADR §2). Pages import what they need from
- * here — the model the route names, a path, a way to move the address, a way
- * to follow it, a way to take a click on a link — and never the router itself.
+ * The only place sv-router is used (ADR §2). The app and its pages import
+ * what they need from here — the address the route names, a path, a way to
+ * move the address, a way to follow it, a way to take a click on a link — and
+ * never the router itself.
  */
 const STANDARD_ROUTE = "/standard/:standard/:model";
+/** Explore names the model alone: every model has the page, one with no standard included (ADR-0002 decision 57). */
+const EXPLORE_ROUTE = "/explore/:model";
 
 const routes = {
   hooks: { afterLoad: passAddressOn },
   [STANDARD_ROUTE]: () => import("./StandardPage.svelte"),
+  [EXPLORE_ROUTE]: () => import("./ExplorePage.svelte"),
   // Anything else (including "/") lands on the page, and the address is then
   // corrected to the default model. sv-router matches with or without a
   // trailing slash.
@@ -25,41 +37,44 @@ const routes = {
   "/hooks": () => import("./StandardPage.svelte"),
 } as const satisfies Routes;
 
-const { p, navigate, route } = createRouter(routes);
+const { p, navigate, isActive, route } = createRouter(routes);
 export { Router } from "sv-router";
 
-const addressFollowers = new Set<(model: RegisteredModel) => void>();
+const addressFollowers = new Set<(address: Address) => void>();
 
 /**
- * Hear every model the address names from now on — a typed URL, back and
- * forward, a link the router follows, and the app's own navigation — and
- * return the way to stop. This is the address's path, which never asks
- * (ADR-0002 decision 32), so a page hands over the session's `setModel`, and
- * after an in-app switch it finds the model already current. The address a page
- * opens on is not heard: the router loads it before the page exists, so the
- * page reads it with {@link modelFromRoute} instead.
+ * Hear every address from now on — the one the app opens on, a typed URL,
+ * back and forward, a link the router follows, and the app's own navigation —
+ * and return the way to stop. This is the address's path, which never asks
+ * (ADR-0002 decision 32), so the app hands over the session's `setAddress`,
+ * and after an in-app switch the session finds the model already current.
+ * The app follows it from before the router loads the first address, so that
+ * address is heard too, and heard before any page exists.
  */
-export function followAddress(onModel: (model: RegisteredModel) => void): () => void {
-  addressFollowers.add(onModel);
+export function followAddress(onAddress: (address: Address) => void): () => void {
+  addressFollowers.add(onAddress);
   return () => {
-    addressFollowers.delete(onModel);
+    addressFollowers.delete(onAddress);
   };
 }
 
 /**
  * The router's after-load hook, run once the address has moved and the route's
- * params are set. An address that names no model is corrected here rather than
- * before it loads, because only now are its params known; the correction is one
- * more navigation, whose own run of this hook hands the default model on.
+ * params are set, and before the page it loaded is drawn. An address that
+ * names no model opens the default model on the Standard page, handed on here
+ * so the page drawn meanwhile has a session, and is corrected to say so. The
+ * correction happens here rather than before it loads, because only now are
+ * its params known; it is one more navigation, whose own run of this hook
+ * hands the same address on again.
  */
 function passAddressOn(): void {
-  const model = modelFromRoute();
-  if (!model) {
-    redirectTo(defaultModel());
-    return;
+  const address = addressFromRoute();
+  const handedOn = address ?? { page: page.standard, model: defaultModel() };
+  for (const onAddress of addressFollowers) {
+    onAddress(handedOn);
   }
-  for (const onModel of addressFollowers) {
-    onModel(model);
+  if (!address) {
+    redirectTo(handedOn.model);
   }
 }
 
@@ -116,8 +131,10 @@ export function interceptLinkClick(event: MouseEvent): boolean {
   return true;
 }
 
-/** The model the current URL names, or `undefined` when it names none. */
-export function modelFromRoute(): RegisteredModel | undefined {
+/** The page and model the current URL names, or `undefined` when it names no model. */
+export function addressFromRoute(): Address | undefined {
   const params = route.params;
-  return modelBySegment(params.standard, params.model);
+  const onExplore = isActive(EXPLORE_ROUTE);
+  const model = onExplore ? modelByExploreSegment(params.model) : modelBySegment(params.standard, params.model);
+  return model && { page: onExplore ? page.explore : page.standard, model };
 }

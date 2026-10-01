@@ -47,7 +47,16 @@
   }
 
   function restore(event: FocusEvent) {
-    (event.currentTarget as HTMLInputElement).value = text;
+    const input = event.currentTarget as HTMLInputElement;
+    // A focused input taken out with its component — its page, when the
+    // address moves to another — blurs just before it is removed, once the
+    // component has stopped. Restore after the removal, and only an input
+    // still on the page.
+    queueMicrotask(() => {
+      if (input.isConnected) {
+        input.value = text;
+      }
+    });
   }
 </script>
 

@@ -207,6 +207,11 @@ export interface RegisteredModel {
    */
   readonly standard?: Standard;
   /**
+   * Whether the model has a Time-series page (`core/page.ts`). No registered
+   * model writes it; PHS will (ADR-0002 decision 57).
+   */
+  readonly timeSeries?: true;
+  /**
    * The library's model function, called by the declaration itself with the
    * library's one params object, every quantity written by name (ADR-0002
    * decision 34):

@@ -62,6 +62,14 @@ export function routeSegmentsOf(model: RegisteredModel): { standard: string; mod
 }
 
 /**
+ * A model's Explore address: its own route segment alone, keyed as the Explore
+ * route's params. Every model has one, a model with no standard included.
+ */
+export function exploreSegmentsOf(model: RegisteredModel): { model: string } {
+  return { model: toRouteSegment(model.info.name) };
+}
+
+/**
  * The model whose own route segments are `standardSegment` and `modelSegment`,
  * or `undefined` when the URL names none. Matched against each registered
  * model's segments rather than by parsing the address into a `Standard` first:
@@ -81,4 +89,16 @@ export function modelBySegment(
     const segments = routeSegmentsOf(model);
     return segments.standard === standardSegment && segments.model === modelSegment;
   });
+}
+
+/**
+ * The model whose own Explore segment is `modelSegment`, or `undefined` when
+ * the URL names none. Every registered model is found, a standard-less one
+ * included.
+ */
+export function modelByExploreSegment(
+  modelSegment: string | undefined,
+  models: readonly RegisteredModel[] = registeredModels,
+): RegisteredModel | undefined {
+  return models.find((model) => exploreSegmentsOf(model).model === modelSegment);
 }

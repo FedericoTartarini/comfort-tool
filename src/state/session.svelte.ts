@@ -2,6 +2,7 @@ import { SvelteMap } from "svelte/reactivity";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
+import { page, type Address, type Page } from "$lib/core/page";
 import type { OutOfRangeRow } from "$lib/core/applicability";
 import { adjustToBounds, rehearseSwitch } from "$lib/core/modelSwitch";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, type Quantity } from "$lib/core/quantities";
@@ -185,9 +186,11 @@ export type OptionalSlotPosition = Exclude<SlotPosition, 0>;
 /** What the session's three slots hold: slots 2 and 3 are `null` until first enabled. */
 type HeldSlots = readonly [InputSlot, InputSlot | null, InputSlot | null];
 
-/** Shared by Standard and Explore (ADR §4.5). */
+/** Shared by Standard and Explore (ADR §4.5; ADR-0002 decision 57). */
 export class Session {
-  // All three hold objects compared by identity elsewhere, so `$state.raw`.
+  // All four hold objects compared by identity elsewhere, so `$state.raw`.
+  /** The page the address names. Set with the model, by {@link setAddress}; no page component sets it. */
+  page: Page;
   model: RegisteredModel;
   unitSystem = $state.raw<UnitSystem>(unitSystem.si);
   /** The chart settings of the current model. */
@@ -204,9 +207,16 @@ export class Session {
   #compare = $state(false);
   /** Slot 1's `true` is the type's as well: it cannot be disabled. */
   #enabled = $state.raw<readonly [true, boolean, boolean]>([true, false, false]);
-  /** Slot 1 always, and slots 2 and 3 while Compare is on and they are enabled. */
+  /**
+   * Slot 1 always, and slots 2 and 3 while Compare is on and they are enabled,
+   * on the Standard page alone: Compare is the Standard page's, and Explore
+   * compares slot 1 whatever Compare holds (ADR-0002 decision 57).
+   */
   readonly #comparedPositions = $derived.by((): readonly SlotPosition[] =>
-    slotPositions.filter((position) => position === 0 || (this.#compare && this.#enabled[position])),
+    slotPositions.filter(
+      (position) =>
+        position === 0 || (this.page === page.standard && this.#compare && this.#enabled[position]),
+    ),
   );
   // Each model remembers its own chart settings. A plain Map: only `chart` is
   // read reactively, and lazily filling a reactive map during a derivation
@@ -214,6 +224,7 @@ export class Session {
   readonly #chartByModel = new Map<RegisteredModel, ChartState>();
 
   constructor(model: RegisteredModel) {
+    this.page = $state.raw(page.standard);
     this.model = $state.raw(model);
     this.chart = $state.raw(this.#chartFor(model));
     this.#slots = $state.raw([new InputSlot(startingSlot(model)), null, null]);
@@ -385,6 +396,20 @@ export class Session {
       return;
     }
     this.#land(model, this.#rehearse(model));
+  }
+
+  /**
+   * Where the address points now: its page and its model, the model set as
+   * {@link setModel} sets it, so a change of page never asks either. Every
+   * slot, Compare and the chart settings are kept: they are the session's,
+   * not a page's (ADR-0002 decision 57). An arrival answers whatever was
+   * pending with a "No", as a landing does, even on the model already
+   * current: the question was asked on a page the address has left.
+   */
+  setAddress(address: Address): void {
+    this.pendingSwitch = null;
+    this.page = address.page;
+    this.setModel(address.model);
   }
 
   /**

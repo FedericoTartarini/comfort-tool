@@ -1,7 +1,16 @@
 import { Standard } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { modelBySegment, modelsOf, routeSegmentsOf, standardModels, toRouteSegment } from "./routeModels";
+import { registeredModels } from "$lib/models";
+import {
+  exploreSegmentsOf,
+  modelByExploreSegment,
+  modelBySegment,
+  modelsOf,
+  routeSegmentsOf,
+  standardModels,
+  toRouteSegment,
+} from "./routeModels";
 
 const fixtureWithoutStandard = {
   ...pmvPpdIso,
@@ -86,6 +95,34 @@ describe("modelBySegment", () => {
     for (const model of withStandard) {
       const segments = routeSegmentsOf(model);
       expect(modelBySegment(segments.standard, segments.model)).toBe(model);
+    }
+  });
+});
+
+describe("exploreSegmentsOf", () => {
+  it("names the model alone, keyed as the Explore route's params", () => {
+    expect(exploreSegmentsOf(pmvPpdIso)).toEqual({ model: "pmv-ppd-iso" });
+  });
+
+  it("names a model with no standard, which has an Explore page", () => {
+    expect(exploreSegmentsOf(fixtureWithoutStandard)).toEqual({ model: "fixture-no-standard" });
+  });
+});
+
+describe("modelByExploreSegment", () => {
+  it("finds a model with no standard, which no Standard segments find", () => {
+    const segments = exploreSegmentsOf(fixtureWithoutStandard);
+    expect(modelByExploreSegment(segments.model, fixtures)).toBe(fixtureWithoutStandard);
+  });
+
+  it("returns nothing for a segment no model declares, or none", () => {
+    expect(modelByExploreSegment("no-such-model", fixtures)).toBeUndefined();
+    expect(modelByExploreSegment(undefined, fixtures)).toBeUndefined();
+  });
+
+  it("round-trips every registered model through its own Explore segments", () => {
+    for (const model of registeredModels) {
+      expect(modelByExploreSegment(exploreSegmentsOf(model).model), model.info.label).toBe(model);
     }
   });
 });
