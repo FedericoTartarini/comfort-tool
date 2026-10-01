@@ -52,6 +52,18 @@ Calculation logic moves out into the forked `jsthermalcomfort` (`typescript` bra
 
 > **2026-10-01 — position, activity-adjusted inputs done**: Phase 5 item 9 landed on `rewrite/v1` (`.scratch/activity-adjusted-inputs/`), a commit per ticket, two for 04: 01 the library's `76a570d` (`clo_dynamic_ashrae`, `clo_dynamic_iso` and the added `clo_dynamic_iso_vr`), 02 `150fae9` the entry-group rules over one table, 03 `4610891` the air-speed group, 06 `6ea791b` the relative air speed's axis range, 07 `6267385` the air-speed switch back inverts, 04 `a0c7e16` + `edcf6f2` the clothing group, 08 `dcc2909` both inverses in `src/temporary-library/` and the clothing switch back inverts, 09 `60f088f` the converted bound; decisions 55 and 56 came out of 09 (the position above). Ticket 05 read the documents against the code: decisions 32, 48, 51 and 54 and ADR-0001's §4.1.5, §4.5 and §4.8 markers carry dated notes, and Phase 5b item 2 is noted for what a calculator writes under dynamic clothing entry. The four scripts are green at 644 tests. The four entry-mode controls were walked in the running app (Chromium 154 via Playwright, Vite dev server) in SI and IP, by mouse and keyboard, Compare off and on, reaching models by link, select, typed address and the back button, with the console clean. Seen and left: through Adaptive (ASHRAE 55), a dynamic clothing insulation that PMV (ISO 7730)'s rule gave comes back on PMV (ASHRAE 55) up to 0.001 clo higher (decision 54's note); what the checklist's human half and `CONTEXT.md` found is in ticket 05's Comments, none changed. **Next: Phase 5 item 3, the Explore threshold editor and the Standard / Explore split.**
 
+> **2026-10-01 — position, Phase 5 item 3 grilled**: the Explore page, the Bands panel and the Standard / Explore split
+> are placed, ahead of the code (ADR-0002 decisions 57 to 60; `CONTEXT.md` gains **Page**, **Band list**,
+> **Classifier**, **Palette** and **Scan**, and Session, Standard and Band are revised). A fact first: the deployed tool
+> has no Explore and no threshold editor, so the only reference is the `refactor-draft` prototype, and nothing in the
+> item is owed to parity. Explore is a page with its own address and the Session is created once for every page, so
+> Compare survives the way there and back; the page decides what every chart paints, and on Explore the psychrometric
+> chart becomes a scan; a Band list is one per model, the library's classifier plus colours, edited inline in a panel
+> named Bands; a classifier's palette is one colour family from a table keyed by the classifier object, ColorBrewer's
+> arrays copied in. The two "Unscheduled" rows of `.scratch/review-after-4b/deferred.md` are decided: `BS04` is done
+> as a ticket of its own first, the humidity axis stays `rh`. Time-series is in v1 with PHS and gets a phase later;
+> `core/page.ts` names it now. **Next: the spec and tickets in `.scratch/explore/`, then Phase 5 item 4.**
+
 and the one rule is "**adding a model = one declaration file + one registry line, zero other files change**".
 
 The toolchain does not need to be rebuilt: the `refactor-draft` branch is already on the Vite 8 / TS 6 / Svelte 5.56 /
@@ -930,6 +942,25 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    **The Standard / Explore split lands here**: Explore draws the bands, and Standard's dynamic chart switches to the
    comfort zone only, filled as the psychrometric chart fills it and blank outside, reading the one comfort-limit
    constant exported from `src/temporary-library/` beside the zone solver. **There is no "show zones" toggle.**
+   **Grilled 2026-10-01** (ADR-0002 decisions 57 to 60; decisions 8, 27, 31, 37, 51, 52 and 53 carry dated notes;
+   `CONTEXT.md` gains Page, Band list, Classifier, Palette and Scan). The deployed tool has no Explore and no
+   threshold editor (its `/ranges` page overlays one PMV ±0.5 zone per step of one varied input), so the only reference
+   is the `refactor-draft` prototype's `ChartBandEditor.svelte`, and decision 31's semantics win where they differ. As
+   decided: Explore is a page, `/explore/:model`, `core/page.ts` the closed set (Standard, Explore, Time-series), one
+   Session created in `App.svelte` for every page; navigation is a link per standard (opening its first model) and one
+   Explore link (keeping the model), with the model select listing the standard's models or, on Explore, every model.
+   Explore shows the session's controls, slot 1's panel without Compare, a one-row table, both charts and the **Bands**
+   panel (its on-screen name; "threshold editor" above is history). The page decides what every chart paints: Standard
+   paints Comfort zones (the dynamic chart for one slot too), Explore paints the model's one Band list on both charts,
+   the psychrometric chart becoming a scan over its temperature axis and the humidity ratio, unpainted above
+   saturation; the builders are given the list or not (`ChartRequest.bands`). The Band list is `core/bands.ts`'s,
+   held by `ChartState`, edited inline and at once (no Apply), Add splitting a band at its midpoint, Remove merging
+   upward, an Edge refused unless strictly between its neighbours, the last Edge editable. The palette is one colour
+   family per classifier from a table keyed by the classifier object, ColorBrewer's arrays copied, closing `P004` and
+   `.scratch/compliance-column/`. Explore's model switch lists slot 1 alone. Decided with it: `BS04` (the humidity mode
+   says its own bound, a ticket before this item's) and the humidity axis (stays `rh`, out of v1). Suggested order:
+   `BS04`; `core/page.ts`, the route, the session lifted, the navigation; Standard's one-slot zones; `core/bands.ts` and
+   the palette table; the Explore page; the Bands panel; the psychrometric scan; the docs close-out.
 4. `src/core/shareLink.ts`: `?share=v1.<Base64URL(JSON)>`, schema in ADR §4.8.
    **This is the only file in the whole project that reads and writes string ids** (`Quantity.key`, each closed set's `.id` / `xxxFromId()`).
    On a parse failure, fall back to defaults and notify; no blank screen.
@@ -941,6 +972,9 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    `ChartSpec.legend` generates Plotly's horizontal bottom legend in the export layout, so screen and file agree — the
    modebar's own PNG button was removed in Phase 3 precisely because it could not do this.
 6. `RegisteredModel.timeSeries` lands with `workspace.ts`, which is its first consumer.
+   **Revised 2026-10-01** (ADR-0002 decision 57): Time-series is in v1, with PHS, and is scheduled later as a phase of
+   its own. `core/page.ts` holds `page.timeSeries` from the start, and the field is optional, `timeSeries?: true`,
+   written by no registered model until PHS lands; nothing else of Time-series is built with Phase 5 item 3.
 7. The `Proxy`-less fallback is a static notice in `index.html` naming the required browser versions (ADR §2 / §7.5,
    decided 2026-09-04). No second ES5 code path, no share decoding.
 8. The psychrometric chart answers the pointer (added 2026-09-28) through a hover grid over its axes, as the polygons
@@ -1055,6 +1089,9 @@ business components never encode appearance, so redesigning them is not a rewrit
 The site shell (header, footer, Reset) was briefly assigned here on 2026-09-04 and moved to Phase 5c the same day:
 it is design work, and doing it apart from the design would mean doing it twice. `Save` / `Reload` are not built at
 all — Export Link covers them.
+
+> **Amended 2026-10-01** (ADR-0002 decision 57): Time-series with PHS is in v1 and will be given a phase of its own; the
+> line below keeps it as written, and the rest of the line stays after v1.
 
 **After v1**: local discomfort (ankle draft, vertical air temperature difference) as standalone models under the ASHRAE tab; the remaining 5 models (heat_index / humidex / wind_chill / PHS / adaptive_en,
 each = library port + one declaration file + one registry line) → Time-series + PHS + `v1z.` compression

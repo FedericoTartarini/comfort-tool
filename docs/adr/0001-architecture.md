@@ -189,6 +189,8 @@ Where the old tool's input-panel button group belongs: `Create custom ensemble /
 ### 4.2 App-side closed sets
 
 The same style as the library's `quantities`: `as const` object collections + derived union types + plain functions. No classes.
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 57** (2026-10-01): `workspace.ts` below is `core/page.ts`, the set `page.standard`, `page.explore` and `page.timeSeries`, each a page of the app with its own address (`/standard/:standard/:model`, `/explore/:model`); `isWorkspaceAvailable` reads an optional `RegisteredModel.timeSeries?: true` for Time-series. The sketch is left as written.
+
 
 ```ts
 // src/core/workspace.ts
@@ -285,6 +287,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 50** (2026-09-29): "Baseline decides which row the difference highlighting is relative to" in the first rule above is retired. Compare has no baseline and highlights no difference; the table has one row per compared slot.
 >
 > **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 and 52, as noted the same day; `.scratch/compare/` ticket 09).** "Coloured with the slot colour" in the second rule above holds while Compare is on: a row's first cell is then the slot's name beside a swatch of its hue. While Compare is off the one row reads "Input 1" with no swatch. Whether a row was calculated is said in the table's caption, one line per slot that was not (`ui/outputs/ResultTable.svelte`).
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 60** (2026-10-01): "from the app's one band palette" in the second rule is one palette per classifier, chosen from a table in `core/bandPalette.ts` keyed by the classifier object, diverging or sequential, read at the band count; ISO 7730's "none" has no swatch. "Explore's output selection" in the third rule: there is none (decision 31).
 
 ### 4.4 Chart types (closed set, v1)
 
@@ -303,6 +307,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 50 and 51** (2026-09-29): "marker points for the three slots" in the table below is, on both charts, the declaration's Comfort zones and one marker for every compared slot, each solved at that slot's own values and drawn in the slot's hue. Compare is the Standard page's: Explore draws the bands of slot 1. The axes are resolved from the session's entry mode, which every slot is entered in.
 >
 > **Noted 2026-09-30 ([ADR-0002](0002-library-interface-model-info.md) decisions 50 and 52, as noted the same day; `.scratch/compare/` ticket 09).** "Every compared slot" is every compared slot that has a last valid run. "At that slot's own values" is at the chart's one atmospheric pressure, the first drawn slot's run's (decision 52's note). On the scanned dynamic chart one drawn slot still draws the bands, as before Compare; two or more draw each slot's Comfort zones as contours of its own scan, and no bands. Explore is not built.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 58** (2026-10-01): the page decides what every chart paints. On Standard the dynamic chart paints Comfort zones for one drawn slot as for two or more, and no bands. On Explore both charts paint the model's Band list: the dynamic chart as before, and the psychrometric chart as a scan of the model's `output` over its temperature axis and the humidity ratio, the cells above saturation unpainted. The hover rules below hold; on Explore the readout names the band of the edited list.
 
 
 | Type | Definition |
@@ -380,6 +386,8 @@ Legend rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 54** (2026-09-30): the `v → vr` rule below holds under the air-speed entry group's first entry mode; under the second the person enters `vr`. Clothing is the second such group: the model's standard's rule derives the dynamic clo from the entered one under the first mode, and the second enters the dynamic clo. The share link writes the entry modes once, beside the model (decision 51 as amended the same day).
 >
 > **Noted 2026-10-01** ([ADR-0002](0002-library-interface-model-info.md) decisions 51 and 54, as noted the same day; `.scratch/activity-adjusted-inputs/`, `150fae9` to `60f088f`): Done. `InputSlot` holds `airSpeed` and `clothing` entries beside `temperature`, each `{ mode }`; the session reads the three modes held among the values off slot 1 (`Session.entryModes`, `state/session.svelte.ts:294-296`), the humidity mode beside them (`:327-329`), and converts every slot that holds values through `setAirSpeedMode` and `setClothingMode`. `toLibraryInputs` gives the model `vr`, derived or entered, and, for a model with the clothing group, the dynamic clothing insulation under the library's `clo` (`core/libraryInputs.ts:40-48`). The switch back inverts in both groups (`core/slot.ts:508, 545`). In the "Switching models" rule, a slot bound for a model without a group returns to the group's default mode, converted under the model it leaves (`core/modelSwitch.ts:112-117`); the activity-adjusted entries are held to the new model's bound converted into them (`core/applicability.ts:232-235`), so the dialog lists them. The share link is Phase 5 item 4's and is not built.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 57 and 59** (2026-10-01): `Session.workspace` below is the page, one of `core/page.ts`'s set, and the session is created once in `App.svelte` for every page; `ChartState` holds the model's Band list in place of `bandsByOutput`. The "Explore thresholds" rule below is replaced by decision 59: a Band list is the classifier's copy with a colour per band, contiguous Edges, the classifier's own inclusivity and no gaps, edited inline in a panel named Bands, one per model, kept across a model switch and carried by the link.
 
 ```ts
 class Session {                                        // shared by Standard + Explore; Time-series has its own separate session
@@ -445,6 +453,8 @@ Rules:
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 51 and 54** (2026-09-30): the example's per-slot `"humidity": { "mode": … }` and `"temperature": { "mode": … }` are written once, beside `"model"`, one mode per entry group, air speed and clothing included; a slot carries its values and options alone. The example is left as written.
 >
 > **Noted 2026-10-01** ([ADR-0002](0002-library-interface-model-info.md) decision 51's note of the same day; `.scratch/activity-adjusted-inputs/`): the link is not built (Phase 5 item 4). What it will write is: the session holds no entry mode of its own and reads the four off slot 1 (`Session.entryModes` for temperature, air speed and clothing, `Session.humidityMode` for humidity), and the ids it would carry are the modes' `id`s in `core/entryModes.ts` (`air-speed`, `relative-air-speed`, `clothing-insulation`, `dynamic-clothing-insulation` for the two new groups). A slot's values hold `vr` under relative air speed entry and `clo_dynamic` under dynamic clothing entry, in place of `v` and `clo`.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decisions 57 and 59** (2026-10-01): the example's `"workspace"` key is `"page"`, and `chart.bands` is the Band list: the classifier's `edges`, `labels` and `right` with a colour per band, one list per model. The example is left as written.
 
 `?share=v1.<Base64URL(JSON)>`
 
@@ -467,6 +477,8 @@ Rules:
 - On parse failure fall back to defaults and notify, never a blank page; when the schema changes, write `migrate(v_old → v_new)`.
 
 ### 4.9 Time-series (not phase one)
+
+> **Amended 2026-10-01 ([ADR-0002](0002-library-interface-model-info.md) decision 57)**: Time-series is in v1, with PHS, and has no phase yet; "not phase one" in the heading is history. `core/page.ts` already holds `page.timeSeries`, and the declaration field is optional, `timeSeries?: true`, written by no registered model.
 
 The input is a table editor of "segment N + duration in minutes" (rows added one at a time), isolated from the Compare slot concept; stateless models are evaluated row by row, stateful models (PHS) call the library's `sequentialSimulation`; upper limit 200 rows; an explicit "Calculate" button; a separate session.
 

@@ -41,7 +41,7 @@ How far a quantity is drawn on a chart. A viewport, declared by the model file; 
 _Avoid_: limit, extent, domain
 
 **Standard**:
-A versioned identifier from the library (`iso_7730_2005`). A model declares the one it implements; its display name and route segment are generated from it.
+A versioned identifier from the library (`iso_7730_2005`). A model declares the one it implements; its display name and route segment are generated from it. The Standard page is named after it; "standard" alone means the identifier.
 _Avoid_: edition (except when contrasting two versions of one standard), norm
 
 **Declaration**:
@@ -77,7 +77,7 @@ Showing up to three slots side by side on the Standard page, each with its own r
 _Avoid_: baseline, active slot, scenario
 
 **Session**:
-What makes three slots one table, shared by the Standard and Explore workspaces: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot.
+What makes three slots one table, shared by the Standard and Explore pages: the model they run; the conventions they are read under (the unit system, one entry mode per entry group); the air they share (the atmospheric pressure); which of them are shown (whether Compare is on, and whether slots 2 and 3 are each enabled); and the chart settings and the Band list, remembered per model. A quantity a model names that the session holds is filled from the session, not entered in the slot.
 _Avoid_: store, app state
 
 **Atmospheric pressure**:
@@ -89,12 +89,32 @@ A region of a chart inside one limit a standard draws: what it accepts, a yes or
 _Avoid_: compliance zone, comfort region, neutral band, polygon (that is its rendering)
 
 **Band**:
-One labelled, coloured interval of an output's scale (for example "Slightly Cool"). The bands start as the library classifier's; in Explore the user may edit them.
-_Avoid_: category (the library's word for the label a value falls in), class, level, threshold (except the "threshold editor", the feature's name on screen)
+One labelled, coloured interval of an output's scale (for example "Slightly Cool"). The bands start as the library Classifier's; on the Explore page the user may edit them. A band may have no colour, and is then painted nowhere but still names what falls in it.
+_Avoid_: category (the library's word for the label a value falls in), class, level, threshold, unclassified (a band without a colour is uncoloured)
+
+**Band list**:
+The Bands of one model as the Explore page paints them: a copy of the model's Classifier with a colour per band, contiguous Edges, the Classifier's own inclusivity, no gaps. One per model, for both of its charts; it starts as the Classifier's and may be edited, moved, added to and reset. The result table never reads it.
+_Avoid_: thresholds, ranges, custom bands, scale
+
+**Classifier**:
+The library's bins that cut one output into categories: its Edges, its labels and which end of each interval is included. A model's default Band list is a copy of one, and the Compliance column's category is read against one.
+_Avoid_: scale, interval scale, bins (in prose)
+
+**Palette**:
+The colours a Classifier's Bands start with: one colour family per Classifier, diverging for a scale around neutral and sequential for a one-sided one, taken by band position, never by label.
+_Avoid_: colour scheme (that is the source family's word), theme
 
 **Edge**:
 The boundary between two bands, the library's word. Bands are contiguous, so editing bands is moving, adding or removing edges.
 _Avoid_: threshold, limit, cut-off
+
+**Page**:
+One of the app's screens, each with its own address: Standard (a model under its standard, with Compare), Explore (any model, with the Band list editable) and Time-series. The page decides what the charts paint: Standard paints Comfort zones, Explore paints Bands.
+_Avoid_: workspace, surface, view, tab, mode
+
+**Scan**:
+A model's output computed over a grid of two quantities, from which a chart contours its Bands or its Comfort zones. The dynamic chart is a scan or declared polygons; on the Explore page the psychrometric chart is a scan too.
+_Avoid_: field (in prose), heatmap, grid (that is its resolution)
 
 **Temporary library**:
 A library-shaped calculation the app carries because neither pythermalcomfort nor jsthermalcomfort has it yet: pure SI in, SI or geometry out, written to the library's conventions, depending on the library alone. The zone solver and Adaptive's band geometry live there.

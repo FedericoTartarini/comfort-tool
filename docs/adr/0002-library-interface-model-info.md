@@ -114,6 +114,9 @@ files the main repository still holds as JavaScript, so nothing is cherry-picked
    "Thermal stress category", so Heat Index reads `Thermal stress category: caution`. UTCI's `stress_category` shares
    the row and its classifier runs from extreme cold stress to extreme heat stress, which a heat-only label misreads;
    relabelling when UTCI lands would touch a third file.
+   **Noted 2026-10-01 (decision 60).** The swatch's colours come from a palette chosen per classifier; ISO's "none" has
+   no swatch; and the swatch is not matched to the chart's zone, which is in the slot's hue
+   (`.scratch/compliance-column/` 01 and 02 closed).
 9. **Comfort-zone geometry moves into the app** (`core/compute/`), ported from the fork as pure
    functions: `psychrometricZone` with `trFollowsDb` and the bisect / secant root finders, together
    with their existing oracle tests. It is chart *algorithm*, not a chart; it may be extracted
@@ -338,6 +341,8 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     `run` that rounds, which this decision leaned on it for; that is pinned by a test of its own.
     **Amended 2026-09-27 (decision 37).** `output` and `bands` are the scanned chart's, one of the dynamic chart's two
     shapes; a polygons chart declares neither.
+    **Amended 2026-10-01 (decisions 58 and 59).** "Explore's editable bands re-bin stored numbers" is the Band list of
+    `core/bands.ts`, one per model; and on the Explore page the psychrometric chart is a scan of the same `output` too.
 28. **`GRID = 51`.** Amends ADR-0001 §2 "Precision" (100×100). 51 points are 50 intervals, so the SI steps are round
     (0.6 °C, 0.06 met, 2 % rh). One count for every axis rather than a step per quantity: the accuracy that matters is
     on screen and a count gives every axis the same, the cost per chart is fixed (2,601 calls), and no per-quantity
@@ -436,6 +441,11 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     picker keys its entries by type, so a second dynamic entry is a Svelte duplicate-key error. A second surface of one
     type is a change to those readers first. A registry-wide test in `core/modelDeclaration.test.ts` asserts one chart
     per chart type; it was added with `cdff7ca`.
+    **Revised 2026-10-01 (decisions 57 to 60, Phase 5 item 3's grilling).** "Standard draws the comfort zone only;
+    Explore draws the bands" holds for every chart of a page, the psychrometric chart on Explore being a scan (58).
+    "Saved per (model, chart)" is one list per model (59). "The workspace decides" is the page (57). "Colours assigned
+    from the fixed palette by band position" is one palette per classifier, by position once at the default (60). The
+    on-screen name is "Bands", not "threshold editor".
 
 Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan close-out left behind (08–11 in
 `.scratch/numeric-scan-and-model-name/issues/`), which widened to switching models and to the shape of `run`:
@@ -696,6 +706,8 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     `DeclaredPolygonsChart`. A Declaration is the one file that binds a model, so a chart it lists is called a chart,
     as `psychrometricChartOf`, `dynamicChartOf` and `isPolygonsChart` already called it. "Declared" keeps it apart
     from the drawn chart, which is a `ChartSpec`.
+    **Noted 2026-10-01 (decisions 58 and 59).** On the Explore page a polygons chart draws its zones as it does on
+    Standard and has no Band list and no Bands panel.
 38. **What the table shows first is what must come back unrounded; the registry-wide tests hold for a polygons chart
     and prove silence.** Amends decision 35, and restates the two tests decision 37 left throwing on a polygons chart.
     The unrounded test samples the table's first column, which every model declares (ADR-0001 §4.3), along the
@@ -1107,6 +1119,11 @@ the local `../comfort_tool` checkout:
     groups. It does not hold through a question left standing: a mode changed or a slot first enabled while a switch
     question is pending is not in what a "Yes" lands; the dialog is modal, so no person reaches that, as the reader's
     comment says (`:296-298`).
+    **Noted 2026-10-01 (Phase 5 item 3's grilling).** The dynamic chart's humidity axis is the library's `rh` in every
+    humidity entry mode, a rule and not an omission (`core/slot.ts`, `panelQuantities`): following the mode would take
+    an axis range per humidity quantity in every declaration, a conversion to `rh` at each cell's dry-bulb temperature
+    and a rule for the cells above saturation, for a view nobody asked for. Left out of v1; the "Unscheduled" row of
+    `.scratch/review-after-4b/deferred.md` is closed by this note.
 52. **Each slot has its own gate, and a switch asks once for every compared slot.** Amends decisions 32 and 33, which
     were written for slot 1 alone.
     The gate is asked per slot. A slot with an entry out of range keeps its own last valid run, and its row, its
@@ -1133,6 +1150,8 @@ the local `../comfort_tool` checkout:
     held slot, whose `listedRows` are empty for a slot not compared (`state/session.svelte.ts:130-151, 348-357`).
     "With the slot's name in a column of its own": while more than one slot is compared. With one, the dialog has no
     such column and reads as it did. The column has no heading: "Input" already heads the quantity's column.
+    **Amended 2026-10-01 (decision 57).** On the Explore page the compared slots are slot 1 alone: the dialog lists its
+    rows, and slots 2 and 3 are converted and seeded as a slot not compared is.
 53. **A bound that depends on the pressure is not taken while the pressure is out of range.** Amends decisions 32, 46
     and 49, and answers the question `.scratch/atmospheric-pressure/issues/04` left open. While the atmospheric
     pressure is outside its bound, a humidity-ratio entry has no bound: it is not marked, a requested switch does not
@@ -1160,6 +1179,11 @@ the local `../comfort_tool` checkout:
     is out of range": the exception is written where the sentence is, in `rehearseSwitch`'s comment
     (`core/modelSwitch.ts:40-43`). Since decision 52 it is also a sentence about the compared slots alone: a slot not
     compared is not adjusted by a yes.
+    **Noted 2026-10-01 (`BS04`, Phase 5 item 3's grilling).** The two checks on a humidity mode's identity in
+    `humidityEntryBoundFor` (`core/applicability.ts:154-172`) move onto the mode: `HumidityMode` gains `bounded` (false
+    for wet bulb) and `readsPressure` (true for humidity ratio), and the gate reads them. The behaviour is unchanged
+    (decision 46's bound, this decision's exception); a ticket of its own before Phase 5 item 3's. Closes the
+    "Unscheduled" row of `.scratch/review-after-4b/deferred.md`.
 54. **An activity-adjusted input is an entry group with two entry modes.** Taken 2026-09-30 in the grilling of
     `.scratch/activity-adjusted-inputs/` tickets 01 and 02, ahead of the code. Amends ADR-0001 §4.1.5 ("Relative air
     speed → an option"; "Dynamic predictive clothing" as a calculator) and §4.5's `v → vr` rule, revises decision 48
@@ -1482,6 +1506,105 @@ the local `../comfort_tool` checkout:
     (31 in 10 at `e37b217`), with `core/libraryInputs.test.ts`'s humidity round trip, whose digits are a table. In
     *Accepted*, the pressure is the water vapour partial pressure, and "a conversion" includes a value entered in SI
     and read in IP (walked: at 25 °C, 3.174 kPa typed in SI reads 0.94 inHg beside "0 – 0.93" and passes).
+
+Taken 2026-10-01, in the grilling of Phase 5 item 3 (the Explore page, the Bands panel and the Standard / Explore
+split), ahead of the code; it also decided the two "Unscheduled" rows of `.scratch/review-after-4b/deferred.md`, as
+notes under decisions 51 and 53:
+
+57. **Pages: Standard, Explore and Time-series are the app's pages, `core/page.ts` is their closed set, and one
+    Session serves them all.** Taken 2026-10-01 with the user in the grilling of Phase 5 item 3, ahead of the code;
+    renames ADR-0001 §4.2's `workspace.ts` sketch and §4.8's `"workspace"` key, and CONTEXT.md gains **Page**. A fact
+    first: the deployed CBE tool has no Explore and no threshold editor. Its `/ranges` page varies one input over a
+    min–max range by a step and overlays one fixed PMV ±0.5 zone per step, PMV only, saving nothing (`comfort_tool` at
+    `e809c96`: `comfort.py:173-175`, `ranges.js:642-650`, `psychchart-ranges.css:1-17`). The only behaviour reference
+    for Explore is the `refactor-draft` prototype's `ChartBandEditor.svelte`
+    (`../comfort-tool-old/src/ui/components/chart/`), whose half-open intervals decision 31 already overrules, so
+    nothing in this item is owed to parity.
+    Rules. (1) `core/page.ts` holds `page.standard`, `page.explore` and `page.timeSeries` in the closed-set style.
+    Which pages a model has is read, never declared: Standard needs `model.standard`, Explore every model has, and
+    Time-series reads an optional `RegisteredModel.timeSeries?: true`, which no registered model writes, so the four
+    declarations do not change. The route `/explore/:model` joins `/standard/:standard/:model`. (2) One `Session`,
+    created once in `App.svelte` and handed to every page, so Compare, the three slots, the entry modes and the
+    per-model chart settings survive a page change (`.scratch/compare/spec.md`, story 46). (3) Navigation is two
+    groups of links, each link a (page, model) address: under Standard one link per standard, opening that standard's
+    first registered model; Explore one link, keeping the current model. A link to where the person is does nothing.
+    The model select lists the standard's models on Standard and every registered model, flat and in registry order,
+    on Explore. There is no page switch apart from the links and no disabled state. (4) The Explore page shows the
+    session's controls as Standard does (unit system, atmospheric pressure, the four entry modes), slot 1's input
+    panel with no Compare button and no slot columns, the result table with one row, the chart controls with both
+    declared charts selectable and the Bands panel (decision 59), and the charts of slot 1 alone. (5) A model switch
+    asked for on Explore treats slot 1 as the one compared slot: the dialog lists its rows only, and slots 2 and 3 are
+    converted and seeded as decision 52 treats a slot not compared. (6) Time-series is in v1, with PHS, and has no
+    phase yet (the user, 2026-10-01: it may be scheduled later); its page, its own session and the PHS declaration
+    are a grilling of their own, and the set's member and the optional field are all this decision lands of it.
+    Rejected: Explore as a switch on the Standard page, like Compare, because the address must be able to name Heat
+    Index, which has no Standard page; a disabled Standard tab for a standard-less model, because every link is an
+    address and needs no state; remembering the last model used under a standard, one more table for a small gain.
+    Why "page" and not "workspace": the documents already say "the Standard page" (23 times against 24 "workspace"
+    by `git grep`), "surface" is the scanned chart's surface in this repository, "mode" is the entry modes' word,
+    and "view" reads as a layer.
+58. **The page decides what the charts paint: Standard paints Comfort zones on every chart, Explore paints Bands on
+    every chart, and a spec builder is told which by being given a Band list or not.** Revises decision 31's split,
+    extending it to the psychrometric chart, and amends decisions 27 and 37. Rules. (1) On Standard the dynamic
+    chart paints its Comfort zones for one drawn slot as it does for two or more, as contours of that slot's scan
+    (`contouredZonesOf`); the one-slot band field goes (`core/charts/dynamicChart.ts`, the `request.slots.length ===
+    1` branch). The psychrometric chart is unchanged. (2) On Explore the dynamic chart paints the Band list where it
+    painted the classifier's bands, and the psychrometric chart becomes a scan: the model's `output` at every cell of
+    a `GRID × GRID` field over the chart's temperature axis (`tdb`, or `operative_tmp` under operative entry) and the
+    humidity ratio, each cell's `hr` converted to `rh` at the chart's atmospheric pressure, the cells above saturation
+    (`rh` > 100) left unpainted, contoured by the same Band list. No Comfort zone is drawn on Explore. (3) The
+    mechanism is data, not a flag: `ChartRequest.bands: BandList | null`. A builder given a list paints Bands, given
+    none paints Comfort zones, and knows no page; the state layer writes "Explore ⇒ the model's Band list" once.
+    (4) Hover: on Explore both charts read the two axis values, the number and the band the library's
+    `classifyFromBins` puts it in on the edited list; on Standard the dynamic chart reads the two axis values and
+    each slot's number, and the psychrometric chart still reads nothing until Phase 5 item 8. Cost: one scanned spec
+    for the psychrometric chart and a saturation mask; the machinery (`scannedField`, `psy_ta_rh`, `BandTrace`) is
+    there, and the scan is the dynamic chart's size, about 90 ms for PMV (ASHRAE 55). Rejected: keeping Comfort
+    zones on Explore's psychrometric chart, which would make "Explore paints Bands" a sentence about one chart, and
+    a `ChartRequest.page`, a branch in core on a word core need not know.
+59. **A Band list is the library's classifier plus a colour per band, built and changed only in `core/bands.ts`, one
+    per model, edited in place in a panel named Bands.** Revises decision 31's "saved per (model, chart)" to one list
+    per model, since both charts cut the same `output`, and replaces ADR-0001 §4.5's "Explore thresholds" rule.
+    Rules. (1) Shape: `BandList` is a read-only copy of `ClassifierBins` — `edges`, `labels`, `right` — with
+    `colors: readonly (string | undefined)[]`, `undefined` a band painted nowhere; the three arrays are of one length,
+    pinned by a test; the edited list is handed to `classifyFromBins` as it is, so the app writes no inclusivity rule.
+    (2) Home: `core/bands.ts`, pure functions from a list to a list — `bandListOf(bins)` (the default: a copy,
+    coloured by position from the classifier's palette, decision 60), `moveEdge`, `addEdge`, `removeEdge`, `setLabel`,
+    `setColor` — held by `ChartState.bands`, so it is kept per model across a model switch as the axes are, carried
+    by the share link for the current model (Phase 5 item 4), and returned to `bandListOf` by the panel's Reset; the
+    page's Reset (Phase 5c) returns it with the rest. (3) The panel: inline beside the chart, every edit effective at
+    once (ADR-0001 §2: Standard and Explore have no calculate button; the prototype's modal, Apply and Cancel are not
+    ported). One row per band with its label, its colour (a native colour input and a "no colour") and its upper
+    Edge; the first band has no lower Edge; the last Edge (10, 1000) is editable and kept by default. Add inserts an
+    Edge at the midpoint of the chosen band: the upper half keeps the label and colour, the lower half has an empty
+    label and no colour. Remove deletes a band's upper Edge, merging it into the band above; the last band merges
+    into the one below. An Edge typed must fall strictly between its neighbours, else it is refused and the old value
+    kept, marked as an out-of-range entry is; it is typed in the display unit at two decimals (decision 56). Colours
+    are assigned by position once, at the default; after that each band carries its own, so an Add recolours
+    nothing. (4) A polygons chart has no Band list and no panel. (5) On screen the panel is "Bands"; the glossary's
+    exception for "threshold editor" is removed, and the plan's item title stays as history. Rejected: a record per
+    band (`{ label, color, upper }`), more readable but converted back to the library's shape at every
+    classification; reassigning colours by position after an edit, which recolours every band on an Add; sorting
+    what was typed, as the prototype did.
+60. **A classifier's colours come from a palette table keyed by the classifier object, one colour family per
+    classifier read at its band count; the colours are ColorBrewer's, copied, not a dependency.** Closes `P004`,
+    ticket 17's note on the "none" swatch and `.scratch/compliance-column/` 01 and 02; amends decision 8 and
+    ADR-0001 §4.3. Facts: three of `core/bandPalette.ts`'s seven fills (`#0571b0`, `#92c5de`, `#f4a582`) are
+    ColorBrewer RdBu's, so the CBE palette already drew on it; the registry's classifiers are the thermal-sensation
+    bins (7, shared by both PMV models), Heat Index's (5), ISO 7730's categories A, B, C and none (4, the table's
+    swatch only) and, in Phase 6, UTCI's (10), on which the seven-colour palette throws today. Rules. (1)
+    `core/bandPalette.ts` holds a table keyed by the library's bins object, by identity as the quantity table is,
+    whose entry names a colour family and whose colours are read at `labels.length`: diverging (RdBu) for a scale
+    around neutral — thermal sensation, UTCI — and sequential (YlOrRd) for a one-sided one — Heat Index, the ISO
+    categories. (2) The ColorBrewer arrays the table needs are copied into the file with their attribution (Apache
+    2.0); no `d3-scale-chromatic` (AGENTS.md: no dependency for a few lines). (3) The thermal-sensation entry keeps
+    the CBE fills for now; whether it becomes RdBu's seven is Phase 5c item 3's one palette. (4) A classifier not in
+    the table throws, naming it, as today; a new classifier lands in the table ahead, its own commit with a test, as
+    a new quantity lands in `core/quantities.ts`. (5) ISO's "none" has no swatch: a category past the last Edge is
+    unclassified, not neutral. The table's category swatch and the chart's zones, painted in the slot's hue, are not
+    made to match; the legend is the key. Rejected: the declaration naming its palette, which puts appearance in the
+    one file a model author writes; a ramp interpolated by band count, which cannot say that Heat Index's first band
+    is "no risk" and not "neutral".
 
 ## Consequences
 
