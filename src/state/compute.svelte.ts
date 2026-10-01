@@ -27,6 +27,7 @@ import {
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { runOn } from "$lib/core/modelRun";
+import { page } from "$lib/core/page";
 import type { Quantity } from "$lib/core/quantities";
 import { areSameEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadges, type SlotBadge } from "$lib/core/slotBadge";
@@ -381,7 +382,8 @@ function drawnPsychrometricOf(session: Session): DeclaredPsychrometricChart | un
  * The spec for the chart the session currently shows of the `charted` slots,
  * at the first one's atmospheric pressure, or `null` when the model declares
  * none. Each run's model is the session's own — {@link SlotOutputs.lastValid}
- * remembers no other — so the session's chart settings are this model's.
+ * remembers no other — so the session's chart settings are this model's, its
+ * Band list among them, which the chart paints on Explore alone.
  * `scanned` says the slots keep scans of the chart drawn, which it is handed.
  */
 function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: boolean): ChartSpec | null {
@@ -391,6 +393,8 @@ function chartSpecOf(session: Session, charted: readonly ChartedRun[], scanned: 
     unitSystem: session.unitSystem,
     entryModes: session.entryModes,
     atmosphericPressure: charted[0].last.atmosphericPressure,
+    // The page decides what the chart paints (ADR-0002 decision 58).
+    bands: session.page === page.explore ? session.chart.bands : null,
   };
   const psychrometric = drawnPsychrometricOf(session);
   if (psychrometric) {

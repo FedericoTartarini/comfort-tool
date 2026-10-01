@@ -6,13 +6,16 @@
  * `compute.svelte.test.ts` gives. The page is set as the address sets it.
  */
 import { describe, expect, it } from "vitest";
-import type { ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
+import { bandListOf } from "$lib/core/bands";
+import type { BandTrace, ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
-import type { RegisteredModel } from "$lib/core/modelDeclaration";
+import { dynamicChartOf, isPolygonsChart, type DeclaredScannedChart, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
 import { quantities } from "$lib/core/quantities";
 import { slotBadges } from "$lib/core/slotBadge";
+import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
+import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { Outputs } from "./compute.svelte";
 import { Session, slotPositions, type SlotPosition } from "./session.svelte";
@@ -24,6 +27,15 @@ const q = quantities;
 function markedPositions(chart: ChartSpec | null): SlotPosition[] {
   const markers = (chart?.traces ?? []).filter((trace): trace is PointTrace => trace.kind === "point");
   return slotPositions.filter((position) => markers.some((marker) => marker.color === slotBadges[position].hue.marker));
+}
+
+/** `model`'s scanned dynamic chart. */
+function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
+  const chart = dynamicChartOf(model);
+  if (!chart || isPolygonsChart(chart)) {
+    throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
+  }
+  return chart;
 }
 
 /** `session` sent to `target` and its model, as the address sends it. */
@@ -58,6 +70,53 @@ describe("The page in the session", () => {
   });
 
   describe("on Explore", () => {
+    it("paints the current model's Band list on the dynamic chart over slot 1, with Compare on or off", () => {
+      const session = sessionComparingThreeSlots(pmvPpdIso);
+      heldSlot(session, 1).setEntered(q.tdb, 28);
+      session.chart.type = chartType.dynamic;
+      const outputs = new Outputs(session);
+      openAt(session, page.explore);
+
+      for (const compare of [true, false]) {
+        session.setCompare(compare);
+        const list = session.chart.bands;
+        const traces = outputs.chart?.traces ?? [];
+        const bands = traces.filter((trace): trace is BandTrace => trace.kind === "bands");
+        expect(list).toEqual(bandListOf(scannedChartOf(pmvPpdIso).bands));
+        expect(bands.map((trace) => trace.bands.map((band) => [band.label, band.color]))).toEqual([
+          list?.labels.map((label, index) => [label, list.colors[index]]),
+        ]);
+        expect(bands[0].z).toEqual(outputs.slots[0].scan);
+        expect(traces.some((trace) => trace.kind === "contourZone")).toBe(false);
+        expect(markedPositions(outputs.chart)).toEqual([0]);
+      }
+    });
+
+    it("paints Adaptive's polygons, which have no Band list", () => {
+      const session = new Session(pmvPpdIso);
+      openAt(session, page.explore, adaptiveAshrae);
+
+      expect(session.chart.bands).toBeNull();
+      expect(new Outputs(session).chart?.traces.some((trace) => trace.kind === "bands")).toBe(false);
+    });
+
+    it("keeps each model's Band list, the same object, across a switch and back", () => {
+      const session = new Session(pmvPpdIso);
+      openAt(session, page.explore);
+      const iso = session.chart.bands;
+      session.requestModel(pmvPpdAshrae);
+      expect(session.model).toBe(pmvPpdAshrae);
+      const ashrae = session.chart.bands;
+      expect(ashrae).not.toBe(iso);
+      session.requestModel(pmvPpdIso);
+
+      expect(session.model).toBe(pmvPpdIso);
+      expect(iso?.labels).toHaveLength(7);
+      expect(session.chart.bands).toBe(iso);
+      session.requestModel(pmvPpdAshrae);
+      expect(session.chart.bands).toBe(ashrae);
+    });
+
     for (const type of [chartType.psychrometric, chartType.dynamic]) {
       it(`asks about slot 1 alone and draws its ${type.title.toLowerCase()} chart alone, with Compare on or off`, () => {
         const session = sessionComparingThreeSlots(pmvPpdIso);

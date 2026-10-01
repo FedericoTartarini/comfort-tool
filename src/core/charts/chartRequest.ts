@@ -1,3 +1,4 @@
+import type { BandList } from "$lib/core/bands";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import type { Slot, ValueEntryModes } from "$lib/core/slot";
 import type { SlotBadge } from "$lib/core/slotBadge";
@@ -30,4 +31,10 @@ export interface ChartRequest {
   readonly entryModes: ValueEntryModes;
   /** The atmospheric pressure the slots are resolved at, in Pa (ADR-0002 decision 49). */
   readonly atmosphericPressure: number;
+  /**
+   * What the chart paints (ADR-0002 decision 58): this Band list, or the
+   * model's Comfort zones for `null`. A builder knows no page; the state layer
+   * hands the list on Explore alone.
+   */
+  readonly bands: BandList | null;
 }

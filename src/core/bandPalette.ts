@@ -13,8 +13,9 @@ import type { SlotHue } from "./slotBadge";
  * classifier object, by identity, as the quantity table is, and read at its
  * band count; they are assigned by position in its bins, never by label text,
  * so the library owns the bands and the app owns only the paint. The result
- * table's Compliance swatches read from here, as Explore's default bands will,
- * and both charts' chrome ink; a slot's own ink is its hue (`core/slotBadge.ts`).
+ * table's Compliance swatches read from here, as Explore's default Band list
+ * does (`core/bands.ts`), and both charts' chrome ink; a slot's own ink is its
+ * hue (`core/slotBadge.ts`).
  */
 
 /** Colours by band count, first band first. */

@@ -131,8 +131,9 @@ export type DeclaredChart =
       readonly axes: ChartAxes;
       /**
        * The numeric output the chart scans. Each grid cell keeps this number,
-       * and the surface is contoured at {@link bands}' Edges (ADR-0002
-       * decision 27), so a boundary lands where the value really crosses one.
+       * and the surface is contoured at the Edges of the Band list copied from
+       * {@link bands}, or at the Comfort zones' limits (ADR-0002 decisions 27
+       * and 58), so a boundary lands where the value really crosses one.
        * A classified output would be the wrong handle: a category per cell
        * says nothing about where inside the cell the crossing is.
        */
@@ -145,10 +146,10 @@ export type DeclaredChart =
        *
        * Written as `<MODEL>_INFO.outputs.<key>.classifier` where that types as
        * defined, else as the library's exported bins constant — the same
-       * object either way, and never a cast or a `!`. The band list is its
-       * `labels` in order, and the library's own `classifyFromBins` against it
-       * answers the hover readout, so the app holds no Edge, no label and no
-       * inclusivity rule of its own.
+       * object either way, and never a cast or a `!`. The model's default
+       * Band list is a copy of it (`core/bands.ts`), and the library's own
+       * `classifyFromBins` against that list answers Explore's hover readout,
+       * so the app holds no Edge, no label and no inclusivity rule of its own.
        */
       readonly bands: ClassifierBins;
       readonly zones?: never;
@@ -180,7 +181,7 @@ export type DeclaredChart =
 export type DeclaredPsychrometricChart = Extract<DeclaredChart, { type: typeof chartType.psychrometric }>;
 /** Either dynamic member of {@link DeclaredChart}. */
 export type DeclaredDynamicChart = Extract<DeclaredChart, { type: typeof chartType.dynamic }>;
-/** The dynamic chart that scans a numeric output and bands it by a classifier. */
+/** The dynamic chart that scans a numeric output, which a classifier cuts. */
 export type DeclaredScannedChart = Extract<DeclaredDynamicChart, { readonly bands: ClassifierBins }>;
 /** The dynamic chart drawn from declared polygons on locked axes. */
 export type DeclaredPolygonsChart = Exclude<DeclaredDynamicChart, DeclaredScannedChart>;

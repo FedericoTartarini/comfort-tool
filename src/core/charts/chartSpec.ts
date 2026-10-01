@@ -94,11 +94,10 @@ export interface BandFill {
  * interval, so that last Edge is drawn by interpolation like any other
  * boundary.
  *
- * `hoverText[yIndex][xIndex]` is what the pointer reads at that cell: both
- * axis values, the model's number and the band it falls in, the band left out
- * where there is none. It is carried rather than derived from `z`: which side
- * of an Edge a value falls on is the library's rule, per classifier, and it is
- * applied in the spec builder.
+ * Only painted bands are listed, so two neighbours need not meet: a band with
+ * no colour leaves its interval unpainted between them. The fills cannot say
+ * where the pointer is, so a {@link HoverGridTrace} reads for them, the band
+ * included, which is the library's classifier's to decide.
  */
 export interface BandTrace {
   readonly kind: "bands";
@@ -106,14 +105,13 @@ export interface BandTrace {
   readonly x: readonly number[];
   readonly y: readonly number[];
   readonly z: readonly (readonly (number | null)[])[];
-  readonly hoverText: readonly (readonly HoverReadout[])[];
   readonly bands: readonly BandFill[];
 }
 
 /**
  * A field that is read but never seen: `hoverText[yIndex][xIndex]` is what
  * the pointer reads at that cell, for a chart whose drawn shapes cannot report
- * where the pointer is — a polygons chart's filled zones.
+ * where the pointer is — filled zones and bands.
  */
 export interface HoverGridTrace {
   readonly kind: "hoverGrid";

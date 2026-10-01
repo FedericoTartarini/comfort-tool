@@ -2,7 +2,8 @@
  * The chart request a test draws: one slot, badged as slot 1, at the default
  * atmospheric pressure and in its own entry modes, so every builder
  * test asks as a session whose Compare is off asks; or several, badged by
- * position, as a session comparing them asks.
+ * position, as a session comparing them asks. Either paints Comfort zones, as
+ * the Standard page asks; a test of Bands hands its own list.
  */
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE } from "$lib/core/quantities";
@@ -34,5 +35,6 @@ export function chartRequestForSlots(
     unitSystem: system,
     entryModes: modes,
     atmosphericPressure: DEFAULT_ATMOSPHERIC_PRESSURE,
+    bands: null,
   };
 }

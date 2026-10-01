@@ -55,7 +55,7 @@ describe("bandColors", () => {
 
   it("has an entry whose colour count is its band count for every classifier a registered model paints", () => {
     // The Compliance column paints each classified output; the scanned
-    // dynamic chart's declared bands are what Explore will paint.
+    // dynamic chart's declared bands are Explore's default Band list.
     for (const model of registeredModels) {
       const painted = Object.entries(model.info.outputs).flatMap(([key, variable]) =>
         variable.classifier ? [{ name: `${model.info.label} ${key}`, bins: variable.classifier }] : [],

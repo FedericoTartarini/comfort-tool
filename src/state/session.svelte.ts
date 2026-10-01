@@ -1,4 +1,5 @@
 import { SvelteMap } from "svelte/reactivity";
+import { bandListOf, type BandList } from "$lib/core/bands";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
@@ -123,12 +124,18 @@ function replaceEntries<K, V>(target: SvelteMap<K, V>, source: ReadonlyMap<K, V>
 
 /**
  * Which chart is on screen and how it is set up (ADR §4.5). The defaults come
- * from the model's declaration; Explore's editable bands arrive in Phase 5.
+ * from the model's declaration.
  */
 export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
   type: ChartType;
   axes: ChartAxes;
+  /**
+   * The model's Band list, which Explore paints on its charts (ADR-0002
+   * decision 59): its scanned chart's classifier to begin with. A polygons
+   * chart has none. Replaced whole, never mutated, so `$state.raw`.
+   */
+  bands: BandList | null;
   /** A polygons chart's axes are the ones its model declares, and never move (ADR-0002 decision 37). */
   readonly #axesLocked: boolean;
 
@@ -139,6 +146,7 @@ export class ChartState {
     }
     this.type = $state.raw(model.charts[0].type);
     this.axes = $state.raw(dynamic.axes);
+    this.bands = $state.raw(isPolygonsChart(dynamic) ? null : bandListOf(dynamic.bands));
     this.#axesLocked = isPolygonsChart(dynamic);
   }
 

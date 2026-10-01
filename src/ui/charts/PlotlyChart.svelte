@@ -139,10 +139,12 @@
    * one contour draws levels at a single fixed spacing, while a classifier's
    * Edges need not be evenly spaced, so each band brings its own.
    *
-   * Every band fills up to the *last* band's upper Edge and they are drawn in
-   * band order, so each boundary is one fill's edge laid over the next fill's
-   * interior. Two fills meeting edge to edge can show a seam; a fill over an
-   * interior cannot.
+   * Every band fills up to the top of the contiguous bands from it up, those
+   * that meet Edge to Edge, and they are drawn in band order, so each boundary
+   * among them is one fill's edge laid over the next fill's interior. Two
+   * fills meeting edge to edge can show a seam; a fill over an interior
+   * cannot. Contiguity ends where an uncoloured band was left out, so its
+   * interval stays unpainted rather than showing the fill below it.
    *
    * Measured on plotly.js 4.0.0, not read off its documentation: a constraint
    * paints the side that *fails* the operation. So `"]["` paints inside the
@@ -151,30 +153,38 @@
    * version — an upgrade has to re-measure this before it ships.
    */
   function bandData(trace: BandTrace): PlotlyData[] {
-    const lastEdge = trace.bands[trace.bands.length - 1].upper;
     return trace.bands.map((band, index) => ({
       type: "contour",
       x: trace.x,
       y: trace.y,
       z: trace.z,
-      contours: { ...constrainFill(band, lastEdge), showlines: false },
+      contours: { ...constrainFill(band, contiguousTopOf(trace.bands, index)), showlines: false },
       fillcolor: band.color,
       line: { width: 0 },
       connectgaps: false,
       showscale: false,
-      // One label for the pointer, from the band whose fill reaches furthest:
-      // a contour answers off the surface, so the first trace reads for the
-      // whole field, past the last Edge and inside a hole included.
-      ...(index === 0 ? carryHover(trace) : { hoverinfo: "skip" }),
+      hoverinfo: hoverInfo(trace.hover),
       showlegend: false,
     }));
   }
 
-  /** To the band's own interval, or to everything below the last Edge for the band that is open below. */
-  function constrainFill(band: BandFill, lastEdge: number) {
+  /** The upper Edge of the last of the bands from `bands[index]` up that meet Edge to Edge. */
+  function contiguousTopOf(bands: readonly BandFill[], index: number): number {
+    let top = bands[index].upper;
+    for (const band of bands.slice(index + 1)) {
+      if (band.lower !== top) {
+        break;
+      }
+      top = band.upper;
+    }
+    return top;
+  }
+
+  /** From the band's lower Edge, or from below for the band that is open below, up to `top`. */
+  function constrainFill(band: BandFill, top: number) {
     return band.lower === undefined
-      ? { type: "constraint", operation: ">", value: lastEdge }
-      : { type: "constraint", operation: "][", value: [band.lower, lastEdge] };
+      ? { type: "constraint", operation: ">", value: top }
+      : { type: "constraint", operation: "][", value: [band.lower, top] };
   }
 
   /**
@@ -203,13 +213,13 @@
    * A field's hover readout, written whole by the spec builder: the component
    * only breaks its lines, and adds no template of its own.
    */
-  function carryHover(trace: BandTrace | HoverGridTrace) {
+  function carryHover(trace: HoverGridTrace) {
     return {
       text: trace.hoverText.map((row) => row.map((lines) => lines.join("<br>"))),
       hoverinfo: hoverInfo(trace.hover),
-      // Plotly tints a hover label with the trace's own colour where it has
-      // one, which a filled band does; the chart reads one grey label in every
-      // band.
+      // Plotly tints a hover label with the trace's own colour, a heatmap's
+      // from its colour scale; the chart reads one grey label over every band
+      // and zone.
       hoverlabel: { bgcolor: "#444444" },
     };
   }

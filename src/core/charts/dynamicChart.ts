@@ -1,3 +1,5 @@
+import { classifyFromBins } from "jsthermalcomfort";
+import type { BandList } from "$lib/core/bands";
 import { toLibraryInputs } from "$lib/core/libraryInputs";
 import {
   axisRangeFor,
@@ -26,7 +28,7 @@ import {
 import { displayUnitFor, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
-import type { ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
+import type { BandFill, ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
 import { axisFor, contourZoneFor, labelFor, markerFor, samples, zoneFor } from "./specParts";
 import { containsPoint } from "./polygon";
 
@@ -94,16 +96,21 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
  *
  * A scanned chart scans the declared numeric output over a `GRID × GRID` field
  * of two entered quantities, once per slot. Each cell keeps the model's own
- * number for `chart.output`. Each slot draws the declaration's Comfort zones
- * as contours of its own field, a lone slot exactly as each of several
- * (ADR-0002 decisions 50 and 58), painted as the psychrometric chart paints
- * its own, so the drawn boundary falls where the value crosses a zone's limit
- * rather than half a cell away (ADR-0002 decision 27); one hover grid reads
- * both axis values and every slot's number (ADR §4.4's hover rules),
- * formatted here. `scans`, one per
- * slot in the request's order, are the slots' fields in the frame this chart
- * is drawn in ({@link scanFrameFor}); a caller that keeps them hands them
- * over, and without them every slot is scanned here.
+ * number for `chart.output`, so a drawn boundary falls where the value
+ * crosses it rather than half a cell away (ADR-0002 decision 27). Given a
+ * Band list ({@link ChartRequest.bands}), the chart paints its bands over
+ * the first slot's field, each over its interval of the number in its own
+ * colour, a band without one nowhere, and the legend lists the painted ones.
+ * Given none, each slot draws the declaration's Comfort zones as contours of
+ * its own field, a lone slot exactly as each of several (ADR-0002 decisions
+ * 50 and 58), painted as the psychrometric chart paints its own. Either way
+ * one hover grid reads both axis values and every slot's number, formatted
+ * here (ADR §4.4's hover rules), and with a list the band the library's
+ * `classifyFromBins` puts it in on that list, so no Edge and no inclusivity
+ * rule is written here. `scans`, one per slot in the request's order, are the
+ * slots' fields in the frame this chart is drawn in ({@link scanFrameFor}); a
+ * caller that keeps them hands them over, and without them every slot is
+ * scanned here.
  *
  * A polygons chart skips the scan altogether and draws the exact polygons its
  * `zones` source traces for each slot (ADR §4.4), on its own declared axes:
@@ -184,25 +191,34 @@ export function dynamicSpec(
     const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
     const outputUnit = displayUnitFor(frame.chart.output, unitSystem);
     const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
-    const zones = contouredZonesOf(model, frame.chart);
-    request.slots.forEach((charted, position) => {
-      zones.forEach((zone, index) => {
-        const drawn = contourZoneFor(
-          labelFor(request, charted, copy.zoneLegend(zone)),
-          { ...displayedAxes, z: surfaces[position], lower: -zone.limit, upper: zone.limit },
-          index,
-          zones.length,
-          charted.hue,
-        );
-        traces.push(drawn.trace);
-        legendOfSlot[position].push(drawn.legendEntry);
+    const { bands } = request;
+    if (bands) {
+      const fills = bandFillsOf(bands);
+      traces.push({ kind: "bands", hover: "off", ...displayedAxes, z: surfaces[0], bands: fills });
+      legend.push(...fills.map((band): LegendEntry => ({ label: band.label, swatch: "fill", color: band.color })));
+    } else {
+      const zones = contouredZonesOf(model, frame.chart);
+      request.slots.forEach((charted, position) => {
+        zones.forEach((zone, index) => {
+          const drawn = contourZoneFor(
+            labelFor(request, charted, copy.zoneLegend(zone)),
+            { ...displayedAxes, z: surfaces[position], lower: -zone.limit, upper: zone.limit },
+            index,
+            zones.length,
+            charted.hue,
+          );
+          traces.push(drawn.trace);
+          legendOfSlot[position].push(drawn.legendEntry);
+        });
       });
-    });
+    }
     traces.push(
       hoverGrid((xIndex, yIndex) =>
-        request.slots.map((charted, position) =>
-          labelFor(request, charted, readoutLine(frame.chart.output, outputUnit, fields[position][yIndex][xIndex])),
-        ),
+        request.slots.flatMap((charted, position) => {
+          const value = fields[position][yIndex][xIndex];
+          const lines = [readoutLine(frame.chart.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
+          return lines.map((line) => labelFor(request, charted, line));
+        }),
       ),
     );
   }
@@ -270,6 +286,31 @@ export function dynamicAxisQuantities(model: RegisteredModel, modes: ValueEntryM
     return [];
   }
   return enteredQuantities(model, modes).filter((quantity) => axisRangeFor(model, quantity) !== undefined);
+}
+
+/**
+ * The bands the chart fills, in the list's order: one per band with a colour,
+ * over the interval of the scanned number between its own Edge and the one
+ * below; a band without one is painted nowhere. The first band is open below,
+ * as every library classifier is; the last Edge is where the list stops
+ * answering, and it bounds the last band's fill.
+ */
+function bandFillsOf(list: BandList): readonly BandFill[] {
+  return list.labels.flatMap((label, index) => {
+    const color = list.colors[index];
+    return color === undefined
+      ? []
+      : [{ label, color, upper: list.edges[index], lower: index === 0 ? undefined : list.edges[index - 1] }];
+  });
+}
+
+/**
+ * The band the library itself puts `value` in on `list`, so the inclusivity
+ * is the list's: one label, or none past the last Edge or without a number.
+ */
+function bandLabels(value: number, list: BandList): readonly string[] {
+  const band = classifyFromBins(value, list);
+  return typeof band === "string" ? [band] : [];
 }
 
 /**
