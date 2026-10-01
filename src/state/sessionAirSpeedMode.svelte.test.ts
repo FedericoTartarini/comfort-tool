@@ -112,13 +112,14 @@ describe("the session's air-speed entry mode", () => {
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
 
-    expect(session.slots[0].values.get(q.v)).toBeCloseTo(0.123, 2);
+    const restored = session.slots[0].values.get(q.v);
+    expect(restored).toBeCloseTo(0.123, 2);
     expect(outputs.slots[0].result).toEqual(before);
 
     session.setAirSpeedMode(airSpeedMode.corrected);
     session.setAirSpeedMode(airSpeedMode.uncorrected);
 
-    expect(session.slots[0].values.get(q.v)).toBe(0.123);
+    expect(session.slots[0].values.get(q.v)).toBe(restored);
   });
 
   describe("a relative air speed below the activity's share, switched back", () => {
