@@ -21,6 +21,7 @@
 </script>
 
 <script lang="ts">
+  import { chartInk } from "$lib/core/bandPalette";
   import type {
     Annotation,
     AxisSpec,
@@ -278,7 +279,7 @@
       showlegend: false,
       hovermode: "closest",
       annotations: source.annotations.map(annotation),
-      plot_bgcolor: "#ffffff",
+      plot_bgcolor: chartInk.ground,
       paper_bgcolor: "rgba(0, 0, 0, 0)",
       xaxis: axis(source.layout.x),
       yaxis: axis(source.layout.y),

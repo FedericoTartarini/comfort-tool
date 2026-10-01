@@ -11,7 +11,8 @@
 <!-- ADR §4.4: the whole chart has exactly one legend and it is always here,
      below the chart. Plotly's own is off. -->
 <ul>
-  {#each entries as entry (entry.label)}
+  <!-- Keyed by the entry, not its label: an edited Band list may hold two bands of one label, or two unlabelled. -->
+  {#each entries as entry (entry)}
     <li>
       <span class="swatch {entry.swatch}" style:--swatch-color={entry.color}></span>
       {entry.label}

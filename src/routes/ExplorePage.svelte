@@ -3,13 +3,15 @@
   has them, slot 1's inputs with no Compare, the result table and the charts of
   slot 1 alone. Which page is current is the session's, set by the address;
   the session compares slot 1 alone here, whatever Compare holds, so a switch
-  asks about slot 1 alone. The model select offers every registered model.
+  asks about slot 1 alone. The model select offers every registered model, and
+  the Bands panel edits the model's Band list the charts paint (decision 59).
 -->
 <script lang="ts">
   import { getOpenSession } from "$lib/state/openSession";
   import { copy } from "$lib/text/copy";
   import ChartLegend from "$lib/ui/charts/ChartLegend.svelte";
   import PlotlyChart from "$lib/ui/charts/PlotlyChart.svelte";
+  import BandsPanel from "$lib/ui/inputs/BandsPanel.svelte";
   import ChartControls from "$lib/ui/inputs/ChartControls.svelte";
   import InputPanel from "$lib/ui/inputs/InputPanel.svelte";
   import ModelSelect from "$lib/ui/inputs/ModelSelect.svelte";
@@ -78,6 +80,8 @@
               <ChartLegend entries={outputs.chart.legend} />
             </Stack>
           {/if}
+
+          <BandsPanel model={session.model} chart={session.chart} unitSystem={session.unitSystem} />
         </Stack>
       </section>
     </Grid>

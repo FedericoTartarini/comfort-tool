@@ -127,6 +127,8 @@ export const chartInk = {
    */
   zoneFill: (hue: SlotHue, level: number, levels: number): string =>
     `rgba(${hue.zoneFillRgb}, ${(0.4 * (level + 1)) / levels})`,
+  /** The plot area's ground, which a band painted nowhere shows. */
+  ground: "#ffffff",
   isoline: "#cbd5e1",
   saturationLine: "#94a3b8",
   markerEdge: "#ffffff",

@@ -17,47 +17,18 @@
 
 <script lang="ts">
   import { formatBound } from "$lib/core/applicability";
-  import { formatNumber } from "$lib/core/numberFormat";
   import { displayUnitFor, labelWithUnit } from "$lib/core/units";
   import Inline from "$lib/ui/layout/Inline.svelte";
   import Stack from "$lib/ui/layout/Stack.svelte";
-  import { Input } from "$lib/ui/primitives/input";
   import { Label } from "$lib/ui/primitives/label";
+  import NumberInput from "./NumberInput.svelte";
 
   let { quantity, value, unitSystem, bound, outOfRange = false, oncommit }: Props = $props();
 
   const id = $props.id();
   const unit = $derived(displayUnitFor(quantity, unitSystem));
-  const text = $derived(formatNumber(unit.fromSi(value)));
   const labelText = $derived(labelWithUnit(quantity, unit));
   const boundText = $derived(bound ? formatBound(bound, quantity, unitSystem) : "");
-
-  // Commit only when the parsed value differs from what is stored. While the
-  // user types "25." the parse is still 25, nothing is committed, and the
-  // displayed text is not rewritten under their cursor.
-  function commit(event: Event) {
-    const parsed = Number.parseFloat((event.currentTarget as HTMLInputElement).value);
-    if (!Number.isFinite(parsed)) {
-      return;
-    }
-    const si = unit.toSi(parsed);
-    if (si !== value) {
-      oncommit(si);
-    }
-  }
-
-  function restore(event: FocusEvent) {
-    const input = event.currentTarget as HTMLInputElement;
-    // A focused input taken out with its component — its page, when the
-    // address moves to another — blurs just before it is removed, once the
-    // component has stopped. Restore after the removal, and only an input
-    // still on the page.
-    queueMicrotask(() => {
-      if (input.isConnected) {
-        input.value = text;
-      }
-    });
-  }
 </script>
 
 <Stack gap="1">
@@ -67,15 +38,7 @@
       <span class="bound">{boundText}</span>
     {/if}
   </Inline>
-  <Input
-    {id}
-    type="number"
-    step={unit.step}
-    value={text}
-    aria-invalid={outOfRange || undefined}
-    oninput={commit}
-    onblur={restore}
-  />
+  <NumberInput {id} {value} {unit} invalid={outOfRange} {oncommit} />
 </Stack>
 
 <style>

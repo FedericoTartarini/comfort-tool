@@ -1,5 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
-import { bandListOf, type BandList } from "$lib/core/bands";
+import type { ClassifierBins } from "jsthermalcomfort";
+import { addEdge, bandListOf, moveEdge, removeEdge, setColor, setLabel, type BandList } from "$lib/core/bands";
 import type { ChartType } from "$lib/core/chartType";
 import type { AirSpeedMode, ClothingMode, HumidityMode, TemperatureMode } from "$lib/core/entryModes";
 import { dynamicChartOf, isPolygonsChart, type ChartAxes, type OptionSpec, type RegisteredModel } from "$lib/core/modelDeclaration";
@@ -130,12 +131,10 @@ export class ChartState {
   // Chart types and quantities are compared by identity, so `$state.raw`.
   type: ChartType;
   axes: ChartAxes;
-  /**
-   * The model's Band list, which Explore paints on its charts (ADR-0002
-   * decision 59): its scanned chart's classifier to begin with. A polygons
-   * chart has none. Replaced whole, never mutated, so `$state.raw`.
-   */
-  bands: BandList | null;
+  /** The classifier the Band list began as, which Add and Reset read; none for a polygons chart. */
+  readonly #classifier: ClassifierBins | null;
+  // Replaced whole, never mutated, so `$state.raw`.
+  #bands: BandList | null;
   /** A polygons chart's axes are the ones its model declares, and never move (ADR-0002 decision 37). */
   readonly #axesLocked: boolean;
 
@@ -146,8 +145,20 @@ export class ChartState {
     }
     this.type = $state.raw(model.charts[0].type);
     this.axes = $state.raw(dynamic.axes);
-    this.bands = $state.raw(isPolygonsChart(dynamic) ? null : bandListOf(dynamic.bands));
+    this.#classifier = isPolygonsChart(dynamic) ? null : dynamic.bands;
+    this.#bands = $state.raw(this.#classifier && bandListOf(this.#classifier));
     this.#axesLocked = isPolygonsChart(dynamic);
+  }
+
+  /**
+   * The model's Band list, which Explore paints on its charts and its Bands
+   * panel edits (ADR-0002 decision 59): its scanned chart's classifier to
+   * begin with. A polygons chart has none, and every edit below does nothing.
+   * Changed only by the Band list module's operations, through the methods
+   * below.
+   */
+  get bands(): BandList | null {
+    return this.#bands;
   }
 
   setAxes(axes: Partial<ChartAxes>): void {
@@ -155,6 +166,55 @@ export class ChartState {
       return;
     }
     this.axes = { ...this.axes, ...axes };
+  }
+
+  /**
+   * Band `index`'s Edge moved to `edge`, in the output's SI unit, unless it
+   * falls at or beyond a neighbour: then the list is left as it was. Whether
+   * the move was taken, so the panel can mark a refused one.
+   */
+  moveBandEdge(index: number, edge: number): boolean {
+    const list = this.#bands;
+    if (!list) {
+      return false;
+    }
+    const moved = moveEdge(list, index, edge);
+    if (moved === list) {
+      return false;
+    }
+    this.#bands = moved;
+    return true;
+  }
+
+  /** Band `index` split at its midpoint, the lower half unlabelled and uncoloured. */
+  addBand(index: number): void {
+    this.#edit((list, classifier) => addEdge(list, index, classifier));
+  }
+
+  /** Band `index` merged into the band above, the last into the one below; the only band stays. */
+  removeBand(index: number): void {
+    this.#edit((list) => removeEdge(list, index));
+  }
+
+  setBandLabel(index: number, label: string): void {
+    this.#edit((list) => setLabel(list, index, label));
+  }
+
+  /** Band `index` recoloured, or painted nowhere for `undefined`. */
+  setBandColor(index: number, color: string | undefined): void {
+    this.#edit((list) => setColor(list, index, color));
+  }
+
+  /** The classifier's bands and colours again: the panel's Reset. */
+  resetBands(): void {
+    this.#bands = this.#classifier && bandListOf(this.#classifier);
+  }
+
+  /** The list replaced by `operation`'s answer; nothing for a polygons chart, which has neither list nor classifier. */
+  #edit(operation: (list: BandList, classifier: ClassifierBins) => BandList): void {
+    if (this.#bands && this.#classifier) {
+      this.#bands = operation(this.#bands, this.#classifier);
+    }
   }
 }
 

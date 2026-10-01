@@ -59,4 +59,16 @@ export const copy = {
   categoryZone: (category: string) => `Category ${category}`,
   zoneLegend: (zone: ComfortZone) =>
     `${zone.label} (|PMV| ${zone.inclusive ? "≤" : "<"} ${formatNumber(zone.limit)})`,
+  // The Bands panel on Explore (ADR-0002 decision 59).
+  bands: "Bands",
+  bandsReset: "Reset",
+  bandLabelColumn: "Label",
+  bandColorColumn: "Colour",
+  // `output` is the cut quantity's label with its unit.
+  bandEdgeColumn: (output: string) => `Upper edge, ${output}`,
+  bandNoColor: "No colour",
+  bandAdd: "Add",
+  bandRemove: "Remove",
+  // A control's name for assistive technology: a band is named by its place, since its label may be empty.
+  bandControl: (control: string, index: number) => `${control}, band ${index + 1}`,
 } as const;
