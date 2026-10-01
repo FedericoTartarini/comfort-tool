@@ -1095,14 +1095,14 @@ the local `../comfort_tool` checkout:
     second case; since `dcc2909` the clothing switch back inverts, so that slot is drawn at the dynamic clothing
     insulation its run was given, as a kept relative air speed is since `6267385` (the same file's two "…its run was
     given" tests), but for the cases decision 54's note of the same day names. The two new groups' conversions are
-    applied by the builders as the temperature one is, through `withEntryModes` (`core/slot.ts:559-561`), and both
+    applied by the builders as the temperature one is, through `withEntryModes` (`core/slot.ts:557-559`), and both
     groups move an axis: the dynamic chart offers the quantity the mode enters.
     The amendment above, as built (`150fae9`, `4610891`, `edcf6f2`): "the share link writes the entry modes once" is a
     rule for Phase 5 item 4, whose link does not exist yet. "The session is its only writer": the session's four
     setters and a switch's landing write a mode, each through `InputSlot.replaceWith`, which stays public; an
     `InputSlot.setEntered` of another humidity mode's quantity would move one slot's humidity mode, which no row
     offers. "Stated at the session's readers and pinned by a test": `Session.entryModes`
-    (`state/session.svelte.ts:280-302`), which the four per-group readers point at, and "keeps every slot that holds
+    (`state/session.svelte.ts:273-296`), which the four per-group readers point at, and "keeps every slot that holds
     values in slot 1's entry modes after every operation" (`state/sessionCompare.svelte.test.ts:498`), over all four
     groups. It does not hold through a question left standing: a mode changed or a slot first enabled while a switch
     question is pending is not in what a "Yes" lands; the dialog is modal, so no person reaches that, as the reader's
@@ -1371,7 +1371,7 @@ the local `../comfort_tool` checkout:
     rate its own row already marks out of range.
     "The work is … tickets 08 … and 09 …, ahead of 05": `dcc2909` and `60f088f`.
     The first paragraph's "switching back keeps the number, an entry convention of decision 21's kind, not an
-    equation" is superseded by both revisions: each group inverts (`core/slot.ts:509, 545-547`).
+    equation" is superseded by both revisions: each group inverts (`core/slot.ts:508, 545`).
 55. **A slot holds the number its row shows: at most two decimals in the displayed unit.** *Withdrawn 2026-10-01 by
     decision 56, before its tickets 03 to 06 landed; kept as written for the record.* Taken 2026-10-01 with the
     user after `.scratch/activity-adjusted-inputs/` ticket 09, ahead of the code. Amends ADR-0001 §4.6 ("the stored
