@@ -1,41 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { PMV_PPD_ISO_INFO, type ClassifierBins } from "jsthermalcomfort";
+import {
+  HEAT_INDEX_STRESS_CATEGORY_BINS,
+  PMV_CATEGORY_BINS_ISO,
+  PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE,
+  PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
+  type ClassifierBins,
+} from "jsthermalcomfort";
 import { registeredModels } from "$lib/models";
-import { colorForBand, fillAtIndex, sensationPalette } from "./bandPalette";
+import { bandColors, colorForBand, palettes, type PaletteEntry } from "./bandPalette";
 import { dynamicChartOf, isPolygonsChart } from "./modelDeclaration";
 
-const tsvClassifier = PMV_PPD_ISO_INFO.outputs.tsv?.classifier;
-if (!tsvClassifier) {
-  throw new Error("PMV_PPD_ISO_INFO no longer classifies tsv");
-}
+// The fills the CBE tool has published for Cold … Hot.
+const cbeFills = ["#0571b0", "#4c78a8", "#92c5de", "#f2f2f2", "#f4a582", "#e15759", "#cc79a7"];
 
-describe("colorForBand", () => {
-  it("colours by the category's position in the classifier's labels", () => {
-    expect(colorForBand(tsvClassifier, "Cold")).toBe(sensationPalette[0]);
-    expect(colorForBand(tsvClassifier, "Neutral")).toBe(sensationPalette[3]);
-    expect(colorForBand(tsvClassifier, "Hot")).toBe(sensationPalette[6]);
+const binsOfLength = (count: number): ClassifierBins => {
+  const labels = Array.from({ length: count }, (_, index) => `band ${index + 1}`);
+  return { labels, edges: labels.map((_, index) => index), right: true };
+};
+
+const isHex = (color: string | undefined) => /^#[0-9a-f]{6}$/.test(color ?? "");
+
+describe("bandColors", () => {
+  it("gives the thermal-sensation bins of either standard the seven CBE fills", () => {
+    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ISO)).toEqual(cbeFills);
+    expect(bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ASHRAE)).toEqual(cbeFills);
   });
 
-  it("returns nothing for a category the classifier does not name", () => {
-    expect(colorForBand(tsvClassifier, Number.NaN)).toBeUndefined();
-    expect(colorForBand(tsvClassifier, "Freezing")).toBeUndefined();
-  });
-});
-
-describe("fillAtIndex", () => {
-  // One label more than the palette has colours, as UTCI's ten-label
-  // `stress_category` is against today's seven.
-  const labels = [...sensationPalette.map((_, index) => `band ${index + 1}`), "one band too many"];
-  const tooLong: ClassifierBins = { labels, edges: labels.map((_, index) => index), right: false };
-
-  it("throws naming a classifier with more labels than the palette has colours, rather than wrapping round", () => {
-    expect(() => fillAtIndex(tooLong, 0)).toThrow('"band 1" … "one band too many"');
-    expect(() => colorForBand(tooLong, "one band too many")).toThrow('"band 1" … "one band too many"');
+  it("gives Heat Index's five stress categories five colours of one sequential family, safe to dangerous", () => {
+    const colors = bandColors(HEAT_INDEX_STRESS_CATEGORY_BINS);
+    expect(colors).toHaveLength(5);
+    expect(colors.every(isHex)).toBe(true);
+    expect(new Set(colors).size).toBe(5);
+    // YlOrRd darkens towards its last colour: "extreme danger" is the darkest.
+    expect(colors[4]).toBe("#bd0026");
   });
 
-  it("has a colour for every band of every classifier a registered model paints", () => {
+  it("gives ISO 7730's A, B and C three colours of one sequential family and \"none\" no colour", () => {
+    // Read, as every classifier is, at its band count: YlOrRd's four, the fourth left unpainted.
+    expect(bandColors(PMV_CATEGORY_BINS_ISO)).toEqual(["#ffffb2", "#fecc5c", "#fd8d3c", undefined]);
+  });
+
+  it("gives a ten-label classifier with an entry in the table ten colours", () => {
+    const tenBands = binsOfLength(10);
+    const table = new Map<ClassifierBins, PaletteEntry>([[tenBands, palettes.diverging]]);
+    const colors = bandColors(tenBands, table);
+    expect(colors).toHaveLength(10);
+    expect(colors.every(isHex)).toBe(true);
+    expect(new Set(colors).size).toBe(10);
+  });
+
+  it("throws for a classifier not in the table, naming it by its first and last labels", () => {
+    expect(() => bandColors(binsOfLength(10))).toThrow('"band 1" … "band 10"');
+  });
+
+  it("has an entry whose colour count is its band count for every classifier a registered model paints", () => {
     // The Compliance column paints each classified output; the scanned
-    // dynamic chart paints its declared bands.
+    // dynamic chart's declared bands are what Explore will paint.
     for (const model of registeredModels) {
       const painted = Object.entries(model.info.outputs).flatMap(([key, variable]) =>
         variable.classifier ? [{ name: `${model.info.label} ${key}`, bins: variable.classifier }] : [],
@@ -45,8 +65,23 @@ describe("fillAtIndex", () => {
         painted.push({ name: `${model.info.label} dynamic chart`, bins: chart.bands });
       }
       for (const { name, bins } of painted) {
-        expect(bins.labels.length, name).toBeLessThanOrEqual(sensationPalette.length);
+        expect(bandColors(bins), name).toHaveLength(bins.labels.length);
       }
     }
+  });
+});
+
+describe("colorForBand", () => {
+  it("colours a category as the table colours its band", () => {
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Cold")).toBe(cbeFills[0]);
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Neutral")).toBe(cbeFills[3]);
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Hot")).toBe(cbeFills[6]);
+    expect(colorForBand(PMV_CATEGORY_BINS_ISO, "B")).toBe("#fecc5c");
+  });
+
+  it("returns nothing for \"none\" and for a category past the last Edge or not named", () => {
+    expect(colorForBand(PMV_CATEGORY_BINS_ISO, "none")).toBeUndefined();
+    expect(colorForBand(PMV_CATEGORY_BINS_ISO, Number.NaN)).toBeUndefined();
+    expect(colorForBand(PMV_THERMAL_SENSATION_VOTE_BINS_ISO, "Freezing")).toBeUndefined();
   });
 });

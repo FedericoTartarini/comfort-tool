@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { PMV_CATEGORY_BINS_ISO, PMV_THERMAL_SENSATION_VOTE_BINS_ISO } from "jsthermalcomfort";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import { sensationPalette } from "./bandPalette";
+import { bandColors } from "./bandPalette";
 import type { RegisteredModel } from "./modelDeclaration";
 import { runOn } from "./modelRun";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities } from "./quantities";
@@ -11,6 +12,9 @@ import { startingSlot, withEnteredValues } from "./slot";
 import { unitSystem } from "./unitSystem";
 
 const q = quantities;
+
+const sensation = bandColors(PMV_THERMAL_SENSATION_VOTE_BINS_ISO);
+const isoCategory = bandColors(PMV_CATEGORY_BINS_ISO);
 
 const atDefaults = (model: RegisteredModel) => runOn(startingSlot(model), model, DEFAULT_ATMOSPHERIC_PRESSURE);
 const atTdb = (model: RegisteredModel, tdb: number) =>
@@ -48,22 +52,22 @@ describe("formatResultCell", () => {
 });
 
 describe("classifiedOutputs", () => {
-  it("reads each classified output's category and colours it by its place in the output's own classifier", () => {
+  it("reads each classified output's category and colours it from the output's own classifier's palette", () => {
     // Neutral is the fourth of the seven sensation labels, B the second of A, B, C, none.
     expect(classifiedOutputs(pmvPpdIso, atDefaults(pmvPpdIso))).toEqual([
-      { quantity: q.tsv, category: "Neutral", color: sensationPalette[3] },
-      { quantity: q.category, category: "B", color: sensationPalette[1] },
+      { quantity: q.tsv, category: "Neutral", color: sensation[3] },
+      { quantity: q.category, category: "B", color: isoCategory[1] },
     ]);
     expect(classifiedOutputs(pmvPpdAshrae, atDefaults(pmvPpdAshrae))).toEqual([
-      { quantity: q.tsv, category: "Neutral", color: sensationPalette[3] },
+      { quantity: q.tsv, category: "Neutral", color: sensation[3] },
     ]);
   });
 
-  it("keeps a point outside every category, coloured as the classifier's own last label", () => {
+  it("keeps a point outside every category, with no colour", () => {
     // A tdb of 5 °C puts PMV near -4.3: Cold, and past category C, so "none".
     expect(classifiedOutputs(pmvPpdIso, atTdb(pmvPpdIso, 5))).toEqual([
-      { quantity: q.tsv, category: "Cold", color: sensationPalette[0] },
-      { quantity: q.category, category: "none", color: sensationPalette[3] },
+      { quantity: q.tsv, category: "Cold", color: sensation[0] },
+      { quantity: q.category, category: "none", color: undefined },
     ]);
   });
 

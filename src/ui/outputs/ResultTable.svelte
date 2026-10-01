@@ -69,7 +69,9 @@
             <Table.Cell>
               {#each classified as entry (entry.quantity)}
                 <span class="band">
-                  <span class="swatch" style:background-color={entry.color}></span>
+                  {#if entry.color}
+                    <span class="swatch" style:background-color={entry.color}></span>
+                  {/if}
                   {entry.quantity.label}: {entry.category}
                 </span>
               {/each}

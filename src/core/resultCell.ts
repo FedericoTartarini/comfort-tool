@@ -26,14 +26,14 @@ export function formatResultCell(result: ModelResult | null, quantity: Quantity,
 export interface ClassifiedOutput {
   readonly quantity: Quantity;
   readonly category: string | number;
-  /** As {@link colorForBand} gives it. */
+  /** As {@link colorForBand} gives it; `undefined` shows no swatch. */
   readonly color: string | undefined;
 }
 
 /**
  * The outputs `model`'s info classifies, in the info's order, each with the
- * category `result` carries and that category's colour by its position in the
- * output's own classifier (ADR-0002 decision 8). Empty before the first run.
+ * category `result` carries and that category's colour from the output's own
+ * classifier's palette (ADR-0002 decisions 8 and 60). Empty before the first run.
  */
 export function classifiedOutputs(model: RegisteredModel, result: ModelResult | null): readonly ClassifiedOutput[] {
   if (!result) {
