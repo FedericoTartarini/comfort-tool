@@ -381,6 +381,17 @@ describe("enteredBound / outOfRangeRows, with the atmospheric pressure out of ra
       expect(enteredBound(pmvPpdIso, q.wet_bulb_tmp, at25(humidityMode.wetBulb, 20), pressure)).toBeUndefined();
     }
   });
+
+  it("reads whether a mode is bounded, and whether its bound reads the pressure, off the mode itself", () => {
+    const dewPoint = humidityMode.dewPoint;
+    const inRange = enteredBound(pmvPpdIso, dewPoint.quantity, at25(dewPoint, 10), DEFAULT_ATMOSPHERIC_PRESSURE);
+    expect(inRange).toBeDefined();
+    const unbounded: HumidityMode = { ...dewPoint, bounded: false };
+    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(unbounded, 10), DEFAULT_ATMOSPHERIC_PRESSURE)).toBeUndefined();
+    const readsPressure: HumidityMode = { ...dewPoint, readsPressure: true };
+    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsPressure, 10), DEFAULT_ATMOSPHERIC_PRESSURE)).toEqual(inRange);
+    expect(enteredBound(pmvPpdIso, dewPoint.quantity, at25(readsPressure, 10), PRESSURE_ABOVE_RANGE)).toBeUndefined();
+  });
 });
 
 // Judged apart from the entered values: no slot holds the pressure (ADR-0002 decision 49).

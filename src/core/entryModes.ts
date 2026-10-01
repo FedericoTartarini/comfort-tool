@@ -72,15 +72,18 @@ export const clothingMode = {
  * of the library's conversions to relative humidity. Only humidity ratio's
  * pass the pressure on as `p_atm`: it is the one humidity the pressure moves.
  * `psy_ta_rh` takes a `p_atm` too, but its dew point, wet-bulb temperature and
- * vapour pressure do not depend on it (ADR-0002 decision 49). The two
- * checks for a particular mode are the gate's: `core/applicability.ts` leaves a
- * wet-bulb entry unbounded, because `rh_from_wet_bulb` clamps to 0 – 100
- * (ADR-0002 decision 46), and a humidity-ratio entry unbounded while the
- * pressure is out of range (decision 53). Object order is the panel's order.
+ * vapour pressure do not depend on it (ADR-0002 decision 49). Each mode also
+ * says of itself how the gate in `core/applicability.ts` bounds its entry
+ * (ADR-0002 decisions 46 and 53), so the gate holds no check on a mode's
+ * identity. Object order is the panel's order.
  */
 export interface HumidityMode {
   readonly id: string;
   readonly quantity: Quantity;
+  /** Whether the gate bounds an entry in this mode, by relative humidity's bound converted into it. */
+  readonly bounded: boolean;
+  /** Whether that bound reads the atmospheric pressure, so none is taken at a pressure out of range (decision 53). */
+  readonly readsPressure: boolean;
   /** The entered value as relative humidity, at this dry-bulb temperature and atmospheric pressure. */
   readonly toRelativeHumidity: (value: number, tdb: number, atmosphericPressure: number) => number;
   /** Relative humidity expressed in this mode, at this dry-bulb temperature and atmospheric pressure. */
@@ -91,6 +94,8 @@ export const humidityMode = {
   rh: {
     id: "relative-humidity",
     quantity: quantities.rh,
+    bounded: true,
+    readsPressure: false,
     // Every parameter named, the unused ones too, so this stays typed as the
     // three-argument signature `satisfies` narrows to: a shorter arrow here
     // would freeze to its own arity and reject the three-argument calls every
@@ -102,24 +107,35 @@ export const humidityMode = {
   humidityRatio: {
     id: "humidity-ratio",
     quantity: quantities.hr,
+    bounded: true,
+    readsPressure: true,
     toRelativeHumidity: (hr, tdb, atmosphericPressure) => hr_to_rh(hr, tdb, atmosphericPressure),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh, atmosphericPressure).hr,
   },
   dewPoint: {
     id: "dew-point",
     quantity: quantities.dew_point_tmp,
+    bounded: true,
+    readsPressure: false,
     toRelativeHumidity: (dewPoint, tdb, atmosphericPressure) => rh_from_dew_point(dewPoint, tdb),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_dp,
   },
   wetBulb: {
     id: "wet-bulb",
     quantity: quantities.wet_bulb_tmp,
+    // `rh_from_wet_bulb` clamps to 0 – 100, so a wet-bulb entry can never
+    // resolve outside the bound; and `t_wb` at 0 % is approximate (1.9 °C at
+    // 10 °C, which reads back as 16 %), so bounding the entry would stop valid ones.
+    bounded: false,
+    readsPressure: false,
     toRelativeHumidity: (wetBulb, tdb, atmosphericPressure) => rh_from_wet_bulb(wetBulb, tdb),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).t_wb,
   },
   vapourPressure: {
     id: "vapour-pressure",
     quantity: quantities.pa,
+    bounded: true,
+    readsPressure: false,
     toRelativeHumidity: (vapourPressure, tdb, atmosphericPressure) => rh_from_vapour_pressure(vapourPressure, tdb),
     fromRelativeHumidity: (rh, tdb, atmosphericPressure) => psy_ta_rh(tdb, rh).p_vap,
   },
