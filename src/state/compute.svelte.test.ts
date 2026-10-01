@@ -147,7 +147,7 @@ describe("Outputs", () => {
     session.chart.type = chartType.dynamic;
 
     // The psychrometric chart draws no scanned field, the dynamic one is one.
-    expect(outputs.chart?.traces.some((trace) => trace.kind === "bands")).toBe(true);
+    expect(outputs.chart?.traces.some((trace) => trace.kind === "contourZone")).toBe(true);
     const yTitle = outputs.chart?.layout.y.title;
 
     session.chart.setAxes({ y: q.rh });
@@ -240,8 +240,8 @@ describe("Outputs", () => {
     const outputs = new Outputs(session);
     readEverything(outputs);
     const before = runs();
-    // A bands trace is the scan's own output, so `before` counts a whole scan.
-    expect(outputs.chart?.traces.some((trace) => trace.kind === "bands")).toBe(true);
+    // A contour zone is cut from the scan, so `before` counts a whole scan.
+    expect(outputs.chart?.traces.some((trace) => trace.kind === "contourZone")).toBe(true);
     expect(before).toBeGreaterThan(0);
 
     session.slots[0].setEntered(q.tdb, 35);

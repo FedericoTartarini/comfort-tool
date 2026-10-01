@@ -47,6 +47,16 @@ describe("The page in the session", () => {
     expect(resultValueOf(new Outputs(session).slots[0].result, q.hi)).toBeTypeOf("number");
   });
 
+  it("paints Comfort zones and no band on the Standard page's dynamic chart with Compare off", () => {
+    const session = new Session(pmvPpdIso);
+    session.chart.type = chartType.dynamic;
+    const traces = new Outputs(session).chart?.traces ?? [];
+
+    expect(session.page).toBe(page.standard);
+    expect(traces.some((trace) => trace.kind === "bands")).toBe(false);
+    expect(traces.filter((trace) => trace.kind === "contourZone")).toHaveLength(3);
+  });
+
   describe("on Explore", () => {
     for (const type of [chartType.psychrometric, chartType.dynamic]) {
       it(`asks about slot 1 alone and draws its ${type.title.toLowerCase()} chart alone, with Compare on or off`, () => {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADAPTIVE_ASHRAE_INFO, classifyFromBins, t_o, type ClassifierBins } from "jsthermalcomfort";
-import { sensationPalette } from "$lib/core/bandPalette";
+import { ADAPTIVE_ASHRAE_INFO, t_o } from "jsthermalcomfort";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
@@ -10,19 +9,22 @@ import {
   isPolygonsChart,
   psychrometricChartOf,
   requireAxisRange,
+  type ComfortZone,
   type DeclaredPolygonsChart,
   type DeclaredScannedChart,
   type RegisteredModel,
 } from "$lib/core/modelDeclaration";
 import { quantities, type Quantity } from "$lib/core/quantities";
 import { enteredQuantities, startingSlot, withEnteredValues, type Slot } from "$lib/core/slot";
+import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
 import { copy } from "$lib/text/copy";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
+import { heatIndexRothfusz } from "$lib/models/heatIndexRothfusz";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
-import type { BandTrace, ChartSpec, HoverGridTrace, HoverReadout, PathTrace, PointTrace } from "./chartSpec";
-import { chartRequestFor } from "./chartTestRequests";
+import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
+import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicAxisQuantities, dynamicSpec, resolvedAxes } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -55,80 +57,68 @@ function last<T>(row: readonly T[]): T {
   return row[row.length - 1];
 }
 
-/** The band a scanned cell's readout names, after its two axis lines and its output line; empty for none. */
-function bandRead(readout: HoverReadout): string {
-  return readout[3] ?? "";
-}
-
-function bands(spec: { traces: readonly { kind: string }[] }): BandTrace {
-  const trace = spec.traces.find((entry): entry is BandTrace => entry.kind === "bands");
+/** The largest Comfort zone a scanned chart cuts from its one slot's field: it carries the field itself. */
+function surfaceOf(spec: ChartSpec): ContourZoneTrace {
+  const trace = spec.traces.find((entry): entry is ContourZoneTrace => entry.kind === "contourZone");
   if (!trace) {
-    throw new Error("spec has no band surface");
+    throw new Error("spec has no contour zone");
   }
   return trace;
 }
 
+function contourZonesOf(spec: ChartSpec): ContourZoneTrace[] {
+  return spec.traces.filter((trace): trace is ContourZoneTrace => trace.kind === "contourZone");
+}
+
+function hoverGridOf(spec: ChartSpec): HoverGridTrace {
+  const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
+  if (!trace) {
+    throw new Error("spec has no hover grid");
+  }
+  return trace;
+}
+
+/** `model`'s scanned dynamic chart. */
+function scannedChartOf(model: RegisteredModel): DeclaredScannedChart {
+  const chart = dynamicChartOf(model);
+  if (!chart || isPolygonsChart(chart)) {
+    throw new Error(`${model.info.label} no longer declares a scanned dynamic chart`);
+  }
+  return chart;
+}
+
+/** The Comfort zones `model`'s psychrometric chart declares, largest first. */
+function declaredZonesOf(model: RegisteredModel): ComfortZone[] {
+  return [...(psychrometricChartOf(model)?.zones ?? [])].sort((a, b) => b.limit - a.limit);
+}
+
 describe("dynamicSpec", () => {
   it("scans a square field across the declared axis ranges", () => {
-    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
+    const spec = dynamicSpec(request, isoChart, isoChart.axes);
+    const surface = surfaceOf(spec);
+    const { hoverText } = hoverGridOf(spec);
     // One grid count for both axes, whatever it is; the surface and its hover
     // text follow the axes rather than a number restated here.
     const grid = surface.x.length;
     expect(surface.y).toHaveLength(grid);
     expect(surface.z).toHaveLength(grid);
     expect(surface.z[0]).toHaveLength(grid);
-    expect(surface.hoverText).toHaveLength(grid);
-    expect(surface.hoverText[0]).toHaveLength(grid);
+    expect(hoverText).toHaveLength(grid);
+    expect(hoverText[0]).toHaveLength(grid);
     // The declared ranges, which are what the deployed tool draws, not
     // ISO 7730's applicability limits.
     expect([surface.x[0], last(surface.x)]).toEqual(declaredRangeOf(q.tdb));
     expect([surface.y[0], last(surface.y)]).toEqual(declaredRangeOf(q.v));
   });
 
-  it("lists the declared classifier's own bands, in order", () => {
-    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
-    expect(surface.bands.map((band) => band.label)).toEqual([...isoChart.bands.labels]);
-  });
-
-  it("paints each band by its position in the palette, Cold to Hot", () => {
-    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
-    expect(surface.bands.map((band) => band.color)).toEqual([...sensationPalette]);
-  });
-
-  it("puts a cold still point in a lower band than a warm one", () => {
-    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
+  it("puts a lower number at a cold still point than at a warm one", () => {
+    const surface = surfaceOf(dynamicSpec(request, isoChart, isoChart.axes));
     // Cold and still at the bottom left, warm and still at the bottom right.
     const coldest = surface.z[0][0];
     const warmest = last(surface.z[0]);
     expect(coldest).not.toBeNull();
     expect(warmest).not.toBeNull();
     expect(coldest).toBeLessThan(Number(warmest));
-  });
-
-  it("gives every band the interval of the number it fills, the first open below", () => {
-    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
-    const { edges } = isoChart.bands;
-    expect(surface.bands.map((band) => [band.lower, band.upper])).toEqual(
-      edges.map((edge, index) => [index === 0 ? undefined : edges[index - 1], edge]),
-    );
-  });
-
-  it("carries the model's own number in every cell, which is what the hover label bins", () => {
-    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
-    for (const [row, values] of surface.z.entries()) {
-      for (const [column, value] of values.entries()) {
-        const category = value === null ? "" : classifyFromBins(value, isoChart.bands);
-        expect(bandRead(surface.hoverText[row][column])).toBe(typeof category === "string" ? category : "");
-      }
-    }
-    // A number rather than a band index: cold and fast-moving air sits well
-    // below the first Edge, which no index ever does.
-    expect(Number(last(surface.z)[0])).toBeLessThan(isoChart.bands.edges[0]);
-  });
-
-  it("names the cold still corner and the warm still corner with different bands", () => {
-    const surface = bands(dynamicSpec(request, isoChart, isoChart.axes));
-    expect(bandRead(surface.hoverText[0][0])).not.toBe(bandRead(last(surface.hoverText[0])));
   });
 
   it("marks the value the user entered, not the derived one", () => {
@@ -139,73 +129,93 @@ describe("dynamicSpec", () => {
   });
 
   it("sweeps a swapped axis just as well", () => {
-    const surface = bands(dynamicSpec(request, isoChart, { x: q.clo, y: q.met }));
+    const surface = surfaceOf(dynamicSpec(request, isoChart, { x: q.clo, y: q.met }));
     expect([surface.x[0], last(surface.x)]).toEqual(declaredRangeOf(q.clo));
     expect([surface.y[0], last(surface.y)]).toEqual(declaredRangeOf(q.met));
   });
 
   it("converts both axes to the displayed unit", () => {
     const spec = dynamicSpec({ ...request, unitSystem: unitSystem.ip }, isoChart, isoChart.axes);
-    const surface = bands(spec);
+    const surface = surfaceOf(spec);
     expect(surface.x[0]).toBeCloseTo(50, 10);
     expect(last(surface.y)).toBeCloseTo(393.7, 2);
     expect(spec.layout.y.title).toContain("fpm");
   });
+});
 
-  it("carries one legend: every band plus the slot", () => {
-    const spec = dynamicSpec(request, isoChart, isoChart.axes);
-    expect(spec.legend).toHaveLength(isoChart.bands.labels.length + 1);
-    expect(spec.legend.filter((entry) => entry.swatch === "marker")).toHaveLength(1);
+/**
+ * One slot and no Band list, as the Standard page asks with Compare off
+ * (ADR-0002 decision 58): the slot's Comfort zones as contours of its scan,
+ * exactly as each of two slots draws its own, and no band.
+ */
+describe("the scanned dynamic chart of one slot", () => {
+  const spec = dynamicSpec(request, isoChart, isoChart.axes);
+
+  it("paints PMV (ISO 7730)'s three Comfort zones, nested, largest first, and one marker", () => {
+    expect(spec.traces.some((trace) => trace.kind === "bands")).toBe(false);
+    expect(contourZonesOf(spec).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
+      declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
+    );
+    expect(contourZonesOf(spec)).toHaveLength(3);
+    expect(spec.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
+  });
+
+  it("paints them as the first of two slots paints its own, named without the slot", () => {
+    const two = dynamicSpec(chartRequestForSlots(pmvPpdIso, [slot, slot]), isoChart, isoChart.axes);
+    const unnamed = ({ label: _label, ...zone }: ContourZoneTrace) => zone;
+    expect(contourZonesOf(spec).map(unnamed)).toEqual(contourZonesOf(two).slice(0, 3).map(unnamed));
+  });
+
+  it("paints PMV (ASHRAE 55)'s one Comfort zone and one marker", () => {
+    const ashrae = scannedChartOf(pmvPpdAshrae);
+    const drawn = dynamicSpec(chartRequestFor(pmvPpdAshrae, startingSlot(pmvPpdAshrae)), ashrae, ashrae.axes);
+    expect(drawn.traces.some((trace) => trace.kind === "bands")).toBe(false);
+    expect(contourZonesOf(drawn).map((zone) => [zone.label, zone.lower, zone.upper])).toEqual(
+      declaredZonesOf(pmvPpdAshrae).map((zone) => [copy.zoneLegend(zone), -zone.limit, zone.limit]),
+    );
+    expect(contourZonesOf(drawn)).toHaveLength(1);
+    expect(drawn.traces.filter((trace) => trace.kind === "point")).toHaveLength(1);
+  });
+
+  it("paints Heat Index's marker alone, its output being no PMV", () => {
+    const heat = scannedChartOf(heatIndexRothfusz);
+    const drawn = dynamicSpec(chartRequestFor(heatIndexRothfusz, startingSlot(heatIndexRothfusz)), heat, heat.axes);
+    expect(drawn.traces.filter((trace) => trace.hover === "off").map((trace) => trace.kind)).toEqual(["point"]);
+    expect(drawn.legend.map((entry) => entry.swatch)).toEqual(["marker"]);
+  });
+
+  it("reads both axis values and the slot's number in every cell, and no band", () => {
+    const { hoverText } = hoverGridOf(spec);
+    expect(new Set(hoverText.flat().map((readout) => readout.length))).toEqual(new Set([3]));
+    expect(spec.traces.filter((trace) => trace.hover !== "off").map((trace) => trace.kind)).toEqual(["hoverGrid"]);
+  });
+
+  it("carries one legend: every zone, then the slot", () => {
+    expect(spec.legend.map((entry) => [entry.label, entry.swatch])).toEqual([
+      ...declaredZonesOf(pmvPpdIso).map((zone) => [copy.zoneLegend(zone), "fill"]),
+      [slotBadges[0].name, "marker"],
+    ]);
   });
 });
 
-describe("a classifier whose Edges are unevenly spaced", () => {
-  // This fixture proves the Edges reach the chart unevenly spaced and
-  // untouched, and it pins the surface at values a real model reaches only by
-  // accident: exactly on an Edge, past the last one, and no number at all.
-  const uneven: ClassifierBins = {
-    edges: [0, 10, 40, 100],
-    labels: ["Low", "Mild", "High", "Extreme"],
-    right: false,
-  };
+describe("a model's own number in the scanned field", () => {
+  const chart = scannedChartOf(pmvPpdIso);
 
-  const unevenChart: DeclaredScannedChart = { ...isoChart, bands: uneven };
-
-  /** The surface of a model whose output is `value` at every point of the field. */
-  function flat(value: number, chart: DeclaredScannedChart = unevenChart): BandTrace {
+  /** The scan of a model whose PMV is `value` at every point of the field. */
+  function flat(value: number): ChartSpec {
     const model = { ...pmvPpdIso, run: () => ({ pmv: value }) } satisfies RegisteredModel;
-    return bands(dynamicSpec({ ...request, model }, chart, chart.axes));
+    return dynamicSpec({ ...request, model }, chart, chart.axes);
   }
 
   function numberAt(value: number): number | null {
-    return flat(value).z[0][0];
+    return surfaceOf(flat(value)).z[0][0];
   }
 
-  it("carries the intervals through unevenly spaced and untouched", () => {
-    expect(flat(5).bands.map((band) => [band.lower, band.upper])).toEqual([
-      [undefined, 0],
-      [0, 10],
-      [10, 40],
-      [40, 100],
-    ]);
-  });
-
-  it("hands the model's own number on, wherever it falls among the Edges", () => {
+  it("is handed on, wherever it falls", () => {
     expect(numberAt(-500)).toBe(-500);
     expect(numberAt(0)).toBe(0);
-    expect(numberAt(5)).toBe(5);
-    expect(numberAt(25)).toBe(25);
-    expect(numberAt(99)).toBe(99);
-  });
-
-  it("keeps the number past the last Edge, where the fill ends and no band is named", () => {
-    // The last Edge bounds the paint, not the surface: a kept number lets the
-    // boundary there be interpolated like every other one, and the pointer
-    // still reads no band anywhere beyond it.
-    expect(numberAt(100)).toBe(100);
-    expect(bandRead(flat(100).hoverText[0][0])).toBe("");
+    expect(numberAt(0.3)).toBe(0.3);
     expect(numberAt(250)).toBe(250);
-    expect(bandRead(flat(250).hoverText[0][0])).toBe("");
   });
 
   it("empties only the cell where the model gives no number", () => {
@@ -213,40 +223,7 @@ describe("a classifier whose Edges are unevenly spaced", () => {
   });
 
   it("reads a dash for the output where the model gives no number, as the results table does", () => {
-    expect(flat(Number.NaN).hoverText[0][0][2]).toBe(`${q.pmv.label}: ${copy.notAvailable}`);
-  });
-
-  it("leaves the surface and the Edges in the output's own unit when the axes are displayed in IP", () => {
-    // They are never shown, only compared with each other, so nothing converts
-    // them — the one exception to the chart spec's display-unit rule.
-    const celsius: DeclaredScannedChart = { ...unevenChart, output: q.operative_tmp };
-    const model = { ...pmvPpdIso, run: () => ({ operative_tmp: 30 }) } satisfies RegisteredModel;
-    const surface = bands(dynamicSpec({ ...request, model, unitSystem: unitSystem.ip }, celsius, celsius.axes));
-    // 30 °C reads as 86 °F on an axis; here it stays 30.
-    expect(surface.z[0][0]).toBe(30);
-    expect(surface.bands.map((band) => band.upper)).toEqual([...uneven.edges]);
-  });
-
-  it("reads the hover label off the library's classify-from-bins", () => {
-    for (const value of [-5, 0, 5, 10, 25, 40, 99]) {
-      expect(bandRead(flat(value).hoverText[0][0])).toBe(classifyFromBins(value, uneven));
-    }
-    expect(bandRead(flat(100).hoverText[0][0])).toBe("");
-    expect(bandRead(flat(Number.NaN).hoverText[0][0])).toBe("");
-  });
-
-  it("takes the inclusivity of the classifier rather than one of its own", () => {
-    // The same value on the same Edge: left-inclusive opens the band above it,
-    // right-inclusive closes the band below it.
-    expect(bandRead(flat(10).hoverText[0][0])).toBe("High");
-    const rightInclusive: DeclaredScannedChart = { ...unevenChart, bands: { ...uneven, right: true } };
-    expect(bandRead(flat(10, rightInclusive).hoverText[0][0])).toBe("Mild");
-    // The hover label is the only place inclusivity still shows: the surface
-    // keeps the number on either convention, and the last Edge bounds the fill
-    // whichever side of it the classifier's last band claims.
-    expect(bandRead(flat(100, rightInclusive).hoverText[0][0])).toBe("Extreme");
-    expect(numberAt(100)).toBe(100);
-    expect(flat(100, rightInclusive).z[0][0]).toBe(100);
+    expect(hoverGridOf(flat(Number.NaN)).hoverText[0][0][2]).toBe(`${q.pmv.label}: ${copy.notAvailable}`);
   });
 });
 
@@ -383,8 +360,8 @@ describe("axes across a temperature entry mode switch", () => {
     // isoChart.axes.x is tdb, which the slot no longer holds.
     const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { operative_tmp: 26 })), isoChart, isoChart.axes);
     expect(spec.layout.x.title).toContain(q.operative_tmp.label);
-    // The whole field would carry one band if the sweep were being discarded.
-    const surface = bands(spec);
+    // The whole field would carry one number if the sweep were being discarded.
+    const surface = surfaceOf(spec);
     expect(new Set(surface.z.flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.x).toBe(26);
   });
@@ -417,7 +394,7 @@ describe("axes across an air-speed entry mode switch", () => {
     // isoChart.axes.y is v, which the slot no longer holds.
     const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4 })), isoChart, isoChart.axes);
     expect(spec.layout.y.title).toContain(q.vr.label);
-    expect(new Set(bands(spec).z.flat()).size).toBeGreaterThan(1);
+    expect(new Set(surfaceOf(spec).z.flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.y).toBe(0.4);
   });
 
@@ -433,8 +410,8 @@ describe("axes across an air-speed entry mode switch", () => {
     const entered = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 2 })), isoChart, { x: q.tdb, y: q.clo });
     const moving = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { v: 0.4, met: 2 })), isoChart, { x: q.tdb, y: q.clo });
     const atMetOne = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { vr: 0.4, met: 1 })), isoChart, { x: q.tdb, y: q.clo });
-    expect(bands(atMetOne).z).toEqual(bands(still).z);
-    expect(bands(entered).z).not.toEqual(bands(moving).z);
+    expect(surfaceOf(atMetOne).z).toEqual(surfaceOf(still).z);
+    expect(surfaceOf(entered).z).not.toEqual(surfaceOf(moving).z);
   });
 });
 
@@ -453,7 +430,7 @@ describe("axes across a clothing entry mode switch", () => {
     const spec = dynamicSpec(chartRequestFor(pmvPpdIso, enteredSlotFor(pmvPpdIso, { clo_dynamic: 0.8 })), isoChart, clothingAxes);
     expect(spec.layout.y.title).toContain(q.clo_dynamic.label);
     expect(spec.layout.y.range).toEqual(declaredRangeOf(q.clo));
-    expect(new Set(bands(spec).z.flat()).size).toBeGreaterThan(1);
+    expect(new Set(surfaceOf(spec).z.flat()).size).toBeGreaterThan(1);
     expect(markerOf(spec)?.y).toBe(0.8);
   });
 
@@ -466,7 +443,7 @@ describe("axes across a clothing entry mode switch", () => {
       throw new Error("pmvPpdAshrae no longer declares a scanned dynamic chart");
     }
     const fieldOf = (entered: Parameters<typeof enteredSlotFor>[1]) =>
-      bands(dynamicSpec(chartRequestFor(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, entered)), ashraeChart, clothingAxes)).z;
+      surfaceOf(dynamicSpec(chartRequestFor(pmvPpdAshrae, enteredSlotFor(pmvPpdAshrae, entered)), ashraeChart, clothingAxes)).z;
     expect(fieldOf({ clo_dynamic: 0.5, met: 1.2 })).toEqual(fieldOf({ clo: 0.5, met: 1.2 }));
     expect(fieldOf({ clo_dynamic: 0.5, met: 2 })).not.toEqual(fieldOf({ clo: 0.5, met: 2 }));
   });
@@ -559,23 +536,21 @@ describe("the scanned chart's hover readout", () => {
   // Cell (row 2, column 26) of the 51 × 51 field at PMV (ISO 7730)'s defaults:
   // tdb 25.6 °C, v 0.08 m/s, where the model gives a PMV of -0.2209… on the
   // clothing ISO 7730's rule gives it (0.4238 clo for the 0.5 clo entered).
-  it("reads both axis values, the output and the band, each number at two decimals at most", () => {
-    const surface = bands(dynamicSpec(pmvRequest, isoChart, isoChart.axes));
-    expect(surface.hoverText[2][26]).toEqual([
+  it("reads both axis values and the output, each number at two decimals at most", () => {
+    const grid = hoverGridOf(dynamicSpec(pmvRequest, isoChart, isoChart.axes));
+    expect(grid.hoverText[2][26]).toEqual([
       "Dry-bulb air temperature: 25.6 °C",
       "Air speed: 0.08 m/s",
       "Predicted Mean Vote: -0.22",
-      "Neutral",
     ]);
   });
 
   it("reads the axis values in the displayed unit", () => {
-    const surface = bands(dynamicSpec({ ...pmvRequest, unitSystem: unitSystem.ip }, isoChart, isoChart.axes));
-    expect(surface.hoverText[2][26]).toEqual([
+    const grid = hoverGridOf(dynamicSpec({ ...pmvRequest, unitSystem: unitSystem.ip }, isoChart, isoChart.axes));
+    expect(grid.hoverText[2][26]).toEqual([
       "Dry-bulb air temperature: 78.08 °F",
       "Air speed: 15.75 fpm",
       "Predicted Mean Vote: -0.22",
-      "Neutral",
     ]);
   });
 });
@@ -591,30 +566,22 @@ describe("a polygons chart's hover grid", () => {
     ],
   };
 
-  function hoverGrid(spec: ChartSpec): HoverGridTrace {
-    const trace = spec.traces.find((entry): entry is HoverGridTrace => entry.kind === "hoverGrid");
-    if (!trace) {
-      throw new Error("spec has no hover grid");
-    }
-    return trace;
-  }
-
   // The field is operative temperature 10–40 °C and air speed 0–2 m/s, 51
   // samples each: column 25 is 25 °C, column 10 is 16 °C, column 5 is 13 °C,
   // and row 10 is 0.4 m/s.
   it("reads both axis values and the innermost zone the cell is in", () => {
-    const grid = hoverGrid(dynamicSpec(request, rectangles, rectangles.axes));
+    const grid = hoverGridOf(dynamicSpec(request, rectangles, rectangles.axes));
     expect(grid.hoverText[10][25]).toEqual(["Operative temperature: 25 °C", "Air speed: 0.4 m/s", "Inner"]);
     expect(grid.hoverText[10][10]).toEqual(["Operative temperature: 16 °C", "Air speed: 0.4 m/s", "Outer"]);
   });
 
   it("reads only the axis values outside every zone", () => {
-    const grid = hoverGrid(dynamicSpec(request, rectangles, rectangles.axes));
+    const grid = hoverGridOf(dynamicSpec(request, rectangles, rectangles.axes));
     expect(grid.hoverText[10][5]).toEqual(["Operative temperature: 13 °C", "Air speed: 0.4 m/s"]);
   });
 
   it("reads the axis values in the displayed unit, at the displayed grid", () => {
-    const grid = hoverGrid(dynamicSpec({ ...request, unitSystem: unitSystem.ip }, rectangles, rectangles.axes));
+    const grid = hoverGridOf(dynamicSpec({ ...request, unitSystem: unitSystem.ip }, rectangles, rectangles.axes));
     expect(grid.x[25]).toBeCloseTo(77, 10);
     expect(grid.y[10]).toBeCloseTo(78.74, 2);
     expect(grid.hoverText[10][25]).toEqual(["Operative temperature: 77 °F", "Air speed: 78.74 fpm", "Inner"]);
@@ -622,11 +589,11 @@ describe("a polygons chart's hover grid", () => {
 
   it("is the only trace that reads the pointer: the polygons and the marker do not", () => {
     const spec = dynamicSpec(request, rectangles, rectangles.axes);
-    expect(spec.traces.filter((trace) => trace.hover !== "off")).toEqual([hoverGrid(spec)]);
+    expect(spec.traces.filter((trace) => trace.hover !== "off")).toEqual([hoverGridOf(spec)]);
   });
 
   it("names both of Adaptive's acceptability zones somewhere on the field", () => {
-    const grid = hoverGrid(dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes));
+    const grid = hoverGridOf(dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes));
     const named = new Set(grid.hoverText.flat().map((readout) => readout[2]));
     expect(named).toEqual(new Set([undefined, q.acceptability_80.label, q.acceptability_90.label]));
   });

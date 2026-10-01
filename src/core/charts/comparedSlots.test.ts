@@ -39,7 +39,7 @@ import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import { copy } from "$lib/text/copy";
-import type { BandTrace, ChartSpec, ContourZoneTrace, PathTrace, PointTrace } from "./chartSpec";
+import type { ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace, PointTrace } from "./chartSpec";
 import { chartRequestFor, chartRequestForSlots } from "./chartTestRequests";
 import { dynamicSpec } from "./dynamicChart";
 import { psychrometricSpec } from "./psychrometricChart";
@@ -163,11 +163,7 @@ describe.each(drawings)("$name, drawn of three slots", ({ slots, draw, zonesPerS
   it("draws each slot's zones and marker as a list holding that slot alone draws them", () => {
     slots.forEach((slot, position) => {
       const alone = draw([slot]);
-      // A scanned chart draws one slot's field as bands, not zones; the
-      // scanned chart's own test below holds its zones to that field.
-      if (zonesOf(alone).length > 0) {
-        expect(zonesOfSlot(position).map(shapeOf)).toEqual(zonesOf(alone).map(shapeOf));
-      }
+      expect(zonesOfSlot(position).map(shapeOf)).toEqual(zonesOf(alone).map(shapeOf));
       const [marker] = markersOf(alone);
       expect({ x: markersOf(spec)[position].x, y: markersOf(spec)[position].y }).toEqual({ x: marker.x, y: marker.y });
     });
@@ -215,30 +211,34 @@ describe("the scanned dynamic chart drawn of more than one slot", () => {
   const slots = threeSlots(pmvPpdIso);
   const spec = dynamicSpec(chartRequestForSlots(pmvPpdIso, slots), chart, chart.axes);
 
-  function bandsOf(drawn: ChartSpec): BandTrace {
-    const bands = drawn.traces.find((trace): trace is BandTrace => trace.kind === "bands");
-    if (!bands) {
-      throw new Error("no band field");
-    }
-    return bands;
+  function contourZonesOf(drawn: ChartSpec): ContourZoneTrace[] {
+    return zonesOf(drawn).filter((zone): zone is ContourZoneTrace => zone.kind === "contourZone");
   }
 
-  it("draws no band field, which is of one slot's values", () => {
+  function hoverGridOf(drawn: ChartSpec): HoverGridTrace {
+    const grid = drawn.traces.find((trace): trace is HoverGridTrace => trace.kind === "hoverGrid");
+    if (!grid) {
+      throw new Error("no hover grid");
+    }
+    return grid;
+  }
+
+  it("draws no band field", () => {
     expect(spec.traces.some((trace) => trace.kind === "bands")).toBe(false);
   });
 
-  it("cuts each slot's zones from the field the slot alone is banded on", () => {
-    const zones = zonesOf(spec).filter((zone): zone is ContourZoneTrace => zone.kind === "contourZone");
+  it("cuts each slot's zones from the field the slot alone is scanned on", () => {
+    const zones = contourZonesOf(spec);
     slots.forEach((slot, position) => {
-      const alone = bandsOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart, chart.axes));
-      expect(zones[position * 3].z).toEqual(alone.z);
+      const alone = contourZonesOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart, chart.axes));
+      expect(zones[position * 3].z).toEqual(alone[0].z);
     });
   });
 
   it("reads both axis values and each slot's number, named by the slot, in its one hover grid", () => {
-    const grid = spec.traces.find((trace) => trace.kind === "hoverGrid");
-    const alone = slots.map((slot) => bandsOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart, chart.axes)));
-    expect(grid?.kind === "hoverGrid" ? grid.hoverText[2][26] : undefined).toEqual([
+    const grid = hoverGridOf(spec);
+    const alone = slots.map((slot) => hoverGridOf(dynamicSpec(chartRequestFor(pmvPpdIso, slot), chart, chart.axes)));
+    expect(grid.hoverText[2][26]).toEqual([
       ...alone[0].hoverText[2][26].slice(0, 2),
       ...alone.map((field, position) => copy.slotEntry(slotBadges[position].name, field.hoverText[2][26][2])),
     ]);
