@@ -488,6 +488,8 @@ The input is a table editor of "segment N + duration in minutes" (rows added one
 >
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 47** (2026-09-28): the tree gains `core/slot.ts` — the slot's shape `Slot`, the slot a model starts on and the seeding a switch uses, the changes a person makes to a slot (entering values, setting an option, either entry mode) and the reads of what the person entered (`enteredValue`, `enteredQuantities`, `panelQuantities`, `resolvedTdb`, `relativeHumidityOf`, `operativeTemperatureOf`, with the get-or-throws `requireValue` and `requireHumidity`). `enteredQuantities` and `withTemperatureMode`, which the Proposal 4 marker above keeps in `core/libraryInputs.ts`, moved there too; `libraryInputs.ts` keeps what turns a slot into the library's params. The adjuster decision 32's marker above names is `adjustToBounds(slot, rows)`; it stays in `core/modelSwitch.ts` and writes through `withEnteredValues`.
 
+> **Noted 2026-10-01** ([ADR-0002](0002-library-interface-model-info.md) decision 54; `.scratch/activity-adjusted-inputs/`): the tree gains `core/clothingCorrection.ts`, the clothing rule per standard, and, in `src/temporary-library/`, `v_relative_inverse.ts` and `clo_dynamic_inverse.ts`, the inverses of the two activity corrections (decision 54 as revised 2026-09-30).
+
 
 ```
 src/

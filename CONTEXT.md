@@ -49,7 +49,7 @@ The one file in `src/models/` that binds a model: its info, standard, run call, 
 _Avoid_: definition, config, registration (that is the one line in the registry)
 
 **Entry group**:
-A set of quantities the user may enter in more than one entry mode: temperature, humidity, air speed and clothing. Read from the declaration's inputs and, for clothing, from the model's standard; not declared.
+A set of quantities the user may enter in more than one entry mode: temperature, humidity, air speed and clothing. Read from the model's inputs and, for clothing, from its standard; not declared.
 _Avoid_: input mode, representation group
 
 **Entry mode**:
@@ -57,7 +57,7 @@ One way of entering an entry group: which quantity the user types. Temperature h
 _Avoid_: input mode, representation, humidity type, toggle
 
 **Activity-adjusted input**:
-A quantity a model takes corrected for the occupant's activity: the relative air speed, from the air speed and the metabolic rate, and the dynamic clothing insulation, from the clothing insulation by the model's standard's rule. Each is an entry group whose two entry modes enter the uncorrected value, with the correction derived, or the corrected value itself. Switching into the corrected mode shows the derived value; switching back inverts the air-speed correction, and keeps the clothing number, since the ISO clothing correction has no inverse.
+A quantity a model takes corrected for the occupant's activity: the relative air speed, from the air speed and the metabolic rate, and the dynamic clothing insulation, from the clothing insulation by the model's standard's rule. Each is an entry group whose two entry modes enter the uncorrected value, with the correction derived, or the corrected value itself. Switching into the corrected mode shows the derived value; switching back inverts the correction in both groups, so what the model takes does not change.
 _Avoid_: derived input, self-generated air speed, activity-generated air speed, toggle
 
 **Preset**:
@@ -69,7 +69,7 @@ A switch a model takes beside its quantities, carrying no unit and never on a ch
 _Avoid_: setting, flag, parameter
 
 **Slot**:
-One set of values to run a model on: what describes one air and one occupant, a value per quantity the model names, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three, named by position ("Input 1"); a slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
+One set of values to run a model on: what describes one air and one occupant, a value per quantity entered for the model, held in the entry mode it was entered in, and the options. It belongs to no model: it keeps what it holds across a model switch, and holds no humidity until a model or the user gives one. A session holds three, named by position ("Input 1"); a slot that has never been enabled holds nothing until it is, when it takes what slot 1 holds. The test for what is a slot's: two slots could differ on it and the page would still read as one row, one chart and one table. What fails the test is the session's.
 _Avoid_: scenario, case, column, inputs (those are what a model takes)
 
 **Compare**:

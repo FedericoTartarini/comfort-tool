@@ -951,7 +951,7 @@ revised, in `.scratch/review-after-4b/decisions.md`): the v1 date no longer cons
    and clothing are each an entry group with two entry modes: the first, the default, enters the uncorrected value
    and the model gets the corrected one (`vr = v_relative(v, met)`; the dynamic clo by the model's standard's rule,
    from a table in core keyed by standard); the second enters the corrected value. One control per group, the
-   session's, converting every slot; the link writes the three entry modes once (decision 51 as amended). Every
+   session's, converting every slot; the link writes the four entry modes once (decision 51 as amended). Every
    call takes the corrected value; switching into the corrected mode derives, switching back keeps the number; no
    output row shows a derived value. **The library first** (decision 22): `clo_dynamic_ashrae` / `clo_dynamic_iso`
    are ported into the main repository, which has neither. **Built before items 3 and 4**, so the link's schema is
