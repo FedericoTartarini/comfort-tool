@@ -1,6 +1,6 @@
 /**
  * Both builders given a list of slots (ADR-0002 decision 50): every slot
- * draws the declaration's Comfort zones solved at its own values and one
+ * draws the declaration's Comfort zones at its own values and one
  * marker, in its own hue, and what the slots share is drawn once. A slot's
  * expected zones and marker are the ones a list holding that slot alone
  * gives, so no number here is written by hand.
@@ -325,7 +325,7 @@ describe("a slot in another air-speed entry mode than the session's", () => {
     expect(drawn.traces).toEqual(psychrometricSpec(chartRequestFor(pmvPpdIso, kept)).traces);
   });
 
-  it("has its comfort zones solved on the relative air speed the model is given, in either mode", () => {
+  it("has its comfort zones scanned on the relative air speed the model is given, in either mode", () => {
     const kept = psychrometricSpec(chartRequestForSlots(pmvPpdIso, [entered], unitSystem.si, corrected));
     const converted = psychrometricSpec(chartRequestFor(pmvPpdIso, withAirSpeedMode(entered, airSpeedMode.corrected)));
     const uncorrected = psychrometricSpec(chartRequestFor(pmvPpdIso, entered));
@@ -349,7 +349,7 @@ describe.each([pmvPpdIso, pmvPpdAshrae])("a slot in another clothing entry mode 
     expect(markersOf(spec)[1].y).toBe(markersOf(alone)[0].y);
   });
 
-  it("has its comfort zones solved on the dynamic clothing insulation the model is given, in either mode", () => {
+  it("has its comfort zones scanned on the dynamic clothing insulation the model is given, in either mode", () => {
     const kept = psychrometricSpec(chartRequestForSlots(model, [entered], unitSystem.si, corrected));
     const converted = psychrometricSpec(chartRequestFor(model, withClothingMode(entered, clothingMode.corrected, model)));
     const uncorrected = psychrometricSpec(chartRequestFor(model, entered));

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, t_o } from "jsthermalcomfort";
-import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
@@ -489,7 +488,7 @@ describe("Adaptive's acceptability zones", () => {
   // chart paints its own (ADR-0002 decision 37's note of 2026-09-28).
   const spec = dynamicSpec(adaptiveRequest, adaptiveChart, adaptiveChart.axes);
   const zones = zoneTraces(spec);
-  const psychrometricZones = zoneTraces(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso))));
+  const psychrometricZones = contourZonesOf(psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso))));
 
   it("fills both, largest first, in the psychrometric zones' one hue, opacity rising inwards", () => {
     expect(zones.map((zone) => zone.label)).toEqual([q.acceptability_80.label, q.acceptability_90.label]);
@@ -513,11 +512,9 @@ describe("Adaptive's acceptability zones", () => {
   });
 });
 
-/** The filled paths but the psychrometric chart's cover in the plot's ground: a chart's zones. */
+/** A polygons chart's zones: its filled paths. */
 function zoneTraces(spec: ChartSpec): PathTrace[] {
-  return spec.traces.filter(
-    (trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground,
-  );
+  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
 }
 
 function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {

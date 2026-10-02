@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { bandListOf } from "$lib/core/bands";
 import { chartInk } from "$lib/core/bandPalette";
-import type { BandTrace, ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
+import type { BandTrace, ChartSpec, ContourZoneTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
 import { page, type Page } from "$lib/core/page";
@@ -61,6 +61,26 @@ describe("The page in the session", () => {
     expect(traces.filter((trace) => trace.kind === "contourZone")).toHaveLength(3);
   });
 
+  it("paints each drawn slot's Comfort zones on the Standard page's psychrometric chart over its own scan, Compare off and on, read by a hover grid", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    heldSlot(session, 1).setEntered(q.tdb, 28);
+    session.chart.type = chartType.psychrometric;
+    const outputs = new Outputs(session);
+
+    for (const compare of [false, true]) {
+      session.setCompare(compare);
+      const traces = outputs.chart?.traces ?? [];
+      const zones = traces.filter((trace): trace is ContourZoneTrace => trace.kind === "contourZone");
+      expect(traces.some((trace) => trace.kind === "bands")).toBe(false);
+      expect(zones).toHaveLength(3 * outputs.slots.length);
+      outputs.slots.forEach((slot, position) => {
+        expect(zones.slice(3 * position, 3 * position + 3).map((zone) => zone.z)).toEqual([slot.scan, slot.scan, slot.scan]);
+      });
+      expect(traces.filter((trace) => trace.kind === "hoverGrid")).toHaveLength(1);
+      expect(markedPositions(outputs.chart)).toEqual(compare ? [0, 1, 2] : [0]);
+    }
+  });
+
   describe("on Explore", () => {
     it("paints the current model's Band list on the dynamic chart over slot 1, with Compare on or off", () => {
       const session = sessionComparingThreeSlots(pmvPpdIso);
@@ -88,11 +108,9 @@ describe("The page in the session", () => {
       const session = sessionComparingThreeSlots(pmvPpdIso);
       session.chart.type = chartType.psychrometric;
       const outputs = new Outputs(session);
-      const filledPaths = (fill: (color: string) => boolean) =>
-        (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill !== undefined && fill(trace.fill));
-      const zonePaths = () => filledPaths((color) => color !== chartInk.ground);
-      const covers = () => filledPaths((color) => color === chartInk.ground);
-      expect(zonePaths()).toHaveLength(9);
+      const zones = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "contourZone");
+      const covers = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill === chartInk.ground);
+      expect(zones()).toHaveLength(9);
       expect(covers()).toHaveLength(1);
       openAt(session, page.explore);
 
@@ -103,7 +121,7 @@ describe("The page in the session", () => {
       ]);
       expect(bands[0].z).toEqual(outputs.slots[0].scan);
       expect(bands[0].z.flat()).not.toContain(null);
-      expect(zonePaths()).toHaveLength(0);
+      expect(zones()).toHaveLength(0);
       const traces = outputs.chart?.traces ?? [];
       expect(traces.indexOf(covers()[0])).toBeGreaterThan(traces.indexOf(bands[0]));
       expect(markedPositions(outputs.chart)).toEqual([0]);

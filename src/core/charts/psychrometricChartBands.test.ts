@@ -3,8 +3,8 @@
  * (ADR-0002 decision 58): a scan of the model's output over the temperature
  * axis and the humidity ratio, every cell run, cut by the list, under the
  * cover above saturation (decision 61), with the isolines and the marker as on
- * Standard and no Comfort zone. Handed none it paints Comfort zones
- * (`psychrometricChart.test.ts`).
+ * Standard and no Comfort zone. Handed none it paints Comfort zones as
+ * contours of the same scan (`psychrometricChart.test.ts`).
  */
 import { describe, expect, it } from "vitest";
 import { classifyFromBins, hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
@@ -21,7 +21,7 @@ import { unitSystem } from "$lib/core/unitSystem";
 import { pmvPpdAshrae } from "$lib/models/pmvPpdAshrae";
 import { pmvPpdIso } from "$lib/models/pmvPpdIso";
 import type { ChartRequest } from "./chartRequest";
-import type { BandTrace, ChartSpec, HoverGridTrace, PathTrace } from "./chartSpec";
+import type { BandTrace, ChartSpec, ContourZoneTrace, HoverGridTrace, PathTrace } from "./chartSpec";
 import { chartRequestFor } from "./chartTestRequests";
 import { psychrometricSpec } from "./psychrometricChart";
 
@@ -238,11 +238,12 @@ describe("the psychrometric chart given a Band list", () => {
     expect(bandTraceOf(drawn).z).toEqual(handed);
   });
 
-  it("paints Comfort zones and no band when given nothing, under the same cover", () => {
+  it("paints Comfort zones and no band when given nothing, under the same cover, over the same scan", () => {
     const drawn = psychrometricSpec(chartRequestFor(pmvPpdIso, startingSlot(pmvPpdIso)));
-    expect(drawn.traces.some((entry) => entry.kind === "bands" || entry.kind === "hoverGrid")).toBe(false);
-    const zones = drawn.traces.filter((entry) => entry.kind === "path" && entry.fill !== undefined && entry.fill !== chartInk.ground);
+    expect(drawn.traces.some((entry) => entry.kind === "bands")).toBe(false);
+    const zones = drawn.traces.filter((entry): entry is ContourZoneTrace => entry.kind === "contourZone");
     expect(zones).toHaveLength(3);
+    expect(zones[0].z).toEqual(trace.z);
     expect(coverOf(drawn)).toEqual(coverOf(spec));
   });
 });

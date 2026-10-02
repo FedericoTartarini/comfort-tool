@@ -1,8 +1,8 @@
 /**
  * Nothing a registered model does while its charts are drawn reaches the
- * console. A chart calls `run` for every cell of the dynamic chart's grid and
- * again for every root of the psychrometric zone, so one line a kernel logs
- * per call is thousands per chart, and the app's own messages drown in it.
+ * console. A chart calls `run` for every cell of its grid, the dynamic
+ * chart's and the psychrometric chart's, so one line a kernel logs per call
+ * is thousands per chart, and the app's own messages drown in it.
  * The deployed front end logs nothing; neither may this one.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -18,7 +18,7 @@ const consoleMethods = ["warn", "log", "error"] as const;
 
 /**
  * Every console write made while `model`'s dynamic chart is scanned at its
- * declared axes and its psychrometric zone solved, where it declares one, all
+ * declared axes and its psychrometric chart scanned, where it declares one, all
  * at the model's own defaults, of one slot and of three compared ones. Each
  * write reads `console.<method>: <args>`.
  */

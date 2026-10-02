@@ -84,8 +84,8 @@ export const pmvPpdAshrae = {
   table: [q.pmv, q.ppd, q.compliance],
   // The scanned number is `pmv`, cut by the same thermal-sensation bins the
   // kernel classifies `tsv` with: ISO's Edges, right-inclusive where ISO's
-  // are not, so a PMV of exactly 0.5 is Neutral here. The zone is solved on
-  // `run` itself, so on the cooling-effect PMV at the relative air speed
+  // are not, so a PMV of exactly 0.5 is Neutral here. The zone is cut from
+  // a scan of `run` itself, so of the cooling-effect PMV at the relative air speed
   // derived from the entered one. One zone, the interval `compliance` is read
   // against.
   scan: {

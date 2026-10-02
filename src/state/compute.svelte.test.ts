@@ -146,8 +146,8 @@ describe("Outputs", () => {
     expect(outputs.slots[0].outOfRangeQuantities).toEqual([q.tdb]);
     session.chart.type = chartType.dynamic;
 
-    // The psychrometric chart draws no scanned field, the dynamic one is one.
-    expect(outputs.chart?.traces.some((trace) => trace.kind === "contourZone")).toBe(true);
+    // The dynamic chart starts on the air speed, the psychrometric one on the humidity ratio.
+    expect(outputs.chart?.layout.y.title).toContain(q.v.label);
     const yTitle = outputs.chart?.layout.y.title;
 
     session.chart.setAxes({ y: q.rh });
@@ -234,8 +234,8 @@ describe("Outputs", () => {
   it("runs neither the model nor the scan again while the gate stays closed", () => {
     const { model, runs } = modelCountingRuns();
     const session = new Session(model);
-    // The dynamic chart, because the 51×51 scan is the expensive half of the
-    // claim; the model's default chart solves a zone instead and never scans.
+    // The 51×51 scan is the expensive half of the claim; either chart scans,
+    // and the dynamic one is taken here.
     session.chart.type = chartType.dynamic;
     const outputs = new Outputs(session);
     readEverything(outputs);

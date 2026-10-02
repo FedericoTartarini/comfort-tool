@@ -12,8 +12,7 @@
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
-import { chartInk } from "$lib/core/bandPalette";
-import type { ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import type { ChartSpec, ContourZoneTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { humidityMode } from "$lib/core/entryModes";
 import { requireAxisRange, type RegisteredModel } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, kindBounds, quantities } from "$lib/core/quantities";
@@ -272,9 +271,6 @@ describe("a humidity entry and the session's atmospheric pressure", () => {
 /** Humidity ratio as the SI chart draws it, in g/kg. */
 const hrUnit = displayUnitFor(q.hr, unitSystem.si);
 
-/** The chart draws one line per 5 % of relative humidity along each zone's boundaries. */
-const ZONE_RH_STEP = 5;
-
 /** The upper end of the humidity-ratio axis PMV (ISO 7730) declares, at the default pressure, [kg/kg]. */
 const DECLARED_HR_MAX = requireAxisRange(pmvPpdIso, q.hr).max;
 
@@ -307,11 +303,9 @@ function isolinesOf(chart: ChartSpec | null): { rh: number; trace: PathTrace }[]
     .map((trace) => ({ rh: Number.parseFloat(trace.label?.slice(q.rh.label.length) ?? ""), trace }));
 }
 
-/** The comfort zones of a chart: its filled paths but the cover in the plot's ground, largest first. */
-function zonesOf(chart: ChartSpec | null): PathTrace[] {
-  return (chart?.traces ?? []).filter(
-    (trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground,
-  );
+/** The comfort zones of a chart, contours of its scan, largest first. */
+function zonesOf(chart: ChartSpec | null): ContourZoneTrace[] {
+  return (chart?.traces ?? []).filter((trace): trace is ContourZoneTrace => trace.kind === "contourZone");
 }
 
 /** The slot's marker on a chart. */
@@ -340,15 +334,19 @@ describe("the psychrometric chart at the session's atmospheric pressure", () => 
     expect(marker?.y).toBe(hrUnit.fromSi(psy_ta_rh(TDB, rh, LOWER_PRESSURE).hr));
   });
 
-  it("solves each comfort zone at that pressure: a vertex solved at a relative humidity lies on its isoline", () => {
-    const zones = zonesOf(chartAt(LOWER_PRESSURE));
+  it("cuts each comfort zone from a scan at that pressure, over the taller axis", () => {
+    const chart = chartAt(LOWER_PRESSURE);
+    const zones = zonesOf(chart);
 
-    expect(zones.length).toBeGreaterThan(0);
+    expect(zones).toHaveLength(3);
     for (const zone of zones) {
-      // Each polygon opens with the cool boundary, one vertex per step of relative humidity.
-      for (let index = 0; index * ZONE_RH_STEP <= 100; index += 1) {
-        const rh = index * ZONE_RH_STEP;
-        expect(zone.y[index]).toBeCloseTo(hrUnit.fromSi(psy_ta_rh(zone.x[index], rh, LOWER_PRESSURE).hr), 9);
+      expect(zone.y[zone.y.length - 1]).toBeCloseTo(drawnHrMax(LOWER_PRESSURE), 9);
+      // Column 25 is the slot's own 25 °C; a cell's number is the slot's at the
+      // relative humidity its humidity ratio has at that pressure.
+      expect(zone.x[25]).toBeCloseTo(TDB, 9);
+      for (const yIndex of [0, 10, 20]) {
+        const rh = hr_to_rh(hrUnit.toSi(zone.y[yIndex]), TDB, LOWER_PRESSURE);
+        expect(zone.z[yIndex][25]).toBeCloseTo(Number(pmvAtRelativeHumidity(rh)), 2);
       }
     }
   });

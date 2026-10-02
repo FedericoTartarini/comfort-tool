@@ -6,7 +6,6 @@ import {
   requireAxisRange,
   requireScan,
   type ChartAxes,
-  type ComfortZone,
   type DeclaredDynamicChart,
   type RegisteredModel,
   type ZonePolygon,
@@ -14,20 +13,14 @@ import {
 import type { Quantity } from "$lib/core/quantities";
 import { enteredQuantities, enteredValue, underEntryModes, withEntryModes, type ValueEntryModes } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
-import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
-import type { ChartSpec, HoverReadout, LegendEntry, Trace } from "./chartSpec";
+import type { ChartSpec, LegendEntry, Trace } from "./chartSpec";
 import {
   axisFor,
-  bandLabels,
-  bandsFor,
-  contourZoneFor,
-  GRID,
+  fieldPaintFor,
+  hoverGridFor,
   labelFor,
   markerFor,
-  readoutLine,
-  samples,
-  scannedField,
   zoneFor,
   type ScanFrame,
   type ScannedField,
@@ -61,23 +54,15 @@ export function dynamicScanFrameFor(
  * The dynamic chart of every slot of the request (ADR-0002 decision 50), on
  * the axes {@link ChartRequest.entryModes} puts them in.
  *
- * A scanned chart scans the model's scanned output over a `GRID × GRID` field
- * of two entered quantities, once per slot. Each cell keeps the model's own
- * number for it, so a drawn boundary falls where the value
- * crosses it rather than half a cell away (ADR-0002 decision 27). Given a
- * Band list ({@link ChartRequest.bands}), the chart paints its bands over
- * the first slot's field, each over its interval of the number in its own
- * colour, a band without one nowhere, and the legend lists the painted ones.
- * Given none, each slot draws the model's Comfort zones as contours of
- * its own field, a lone slot exactly as each of several (ADR-0002 decisions
- * 50 and 58), painted as the psychrometric chart paints its own. Either way
- * one hover grid reads both axis values and every slot's number, formatted
- * here (ADR §4.4's hover rules), and with a list the band the library's
- * `classifyFromBins` puts it in on that list, so no Edge and no inclusivity
- * rule is written here. `scans`, one per slot in the request's order, are the
- * slots' fields in the frame this chart is drawn in ({@link dynamicScanFrameFor}); a
- * caller that keeps them hands them over, and without them every slot is
- * scanned here.
+ * A scanned chart scans the model's scanned output over `GRID × GRID` cells
+ * of two entered quantities, once per slot, and paints it as the
+ * psychrometric chart paints its own ({@link fieldPaintFor}): the Band list
+ * over the first slot's scan, or each slot's Comfort zones as contours of
+ * its own, with one hover grid reading both axis values and every slot's
+ * number (ADR §4.4's hover rules). Then each slot's marker; no other chrome.
+ * `scans`, one per slot in the request's order, are the slots' scans in the
+ * frame this chart is drawn in ({@link dynamicScanFrameFor}); a caller that
+ * keeps them hands them over, and without them every slot is scanned here.
  *
  * A polygons chart skips the scan altogether and draws the exact polygons its
  * `comfortZones` source traces for each slot (ADR §4.4), on its own declared axes:
@@ -107,20 +92,6 @@ export function dynamicSpec(
 
   const traces: Trace[] = [];
   const legend: LegendEntry[] = [];
-  const xValues = samples(xRange, GRID);
-  const yValues = samples(yRange, GRID);
-  const displayedAxes = { x: xValues.map((value) => xUnit.fromSi(value)), y: yValues.map((value) => yUnit.fromSi(value)) };
-  /** The two lines every cell's readout opens with. */
-  const axisLines = (xIndex: number, yIndex: number): HoverReadout => [
-    readoutLine(x, xUnit, xValues[xIndex]),
-    readoutLine(y, yUnit, yValues[yIndex]),
-  ];
-  const hoverGrid = (readout: (xIndex: number, yIndex: number) => HoverReadout): Trace => ({
-    kind: "hoverGrid",
-    hover: "field",
-    ...displayedAxes,
-    hoverText: yValues.map((_, yIndex) => xValues.map((_, xIndex) => [...axisLines(xIndex, yIndex), ...readout(xIndex, yIndex)])),
-  });
   /** Each slot's legend entries, zones first, so the legend reads slot by slot. */
   const legendOfSlot = request.slots.map((): LegendEntry[] => []);
 
@@ -145,49 +116,19 @@ export function dynamicSpec(
       }
     });
     traces.push(
-      hoverGrid((xIndex, yIndex) =>
+      hoverGridFor({ quantity: x, range: xRange }, { quantity: y, range: yRange }, unitSystem, (cell) =>
         request.slots.flatMap((charted, position) =>
-          innermostLabels(polygonsOfSlot[position], xValues[xIndex], yValues[yIndex]).map((label) =>
+          innermostLabels(polygonsOfSlot[position], cell.x, cell.y).map((label) =>
             labelFor(request, charted, label),
           ),
         ),
       ),
     );
   } else {
-    const frame = dynamicScanFrameFor(model, axes, modes, atmosphericPressure);
-    const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
-    const outputUnit = displayUnitFor(frame.output, unitSystem);
-    const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
-    const { bands } = request;
-    if (bands) {
-      const painted = bandsFor(bands, { ...displayedAxes, z: surfaces[0] });
-      traces.push(painted.trace);
-      legend.push(...painted.legendEntries);
-    } else {
-      const zones = contouredZonesOf(model);
-      request.slots.forEach((charted, position) => {
-        zones.forEach((zone, index) => {
-          const drawn = contourZoneFor(
-            labelFor(request, charted, copy.zoneLegend(zone)),
-            { ...displayedAxes, z: surfaces[position], lower: -zone.limit, upper: zone.limit },
-            index,
-            zones.length,
-            charted.hue,
-          );
-          traces.push(drawn.trace);
-          legendOfSlot[position].push(drawn.legendEntry);
-        });
-      });
-    }
-    traces.push(
-      hoverGrid((xIndex, yIndex) =>
-        request.slots.flatMap((charted, position) => {
-          const value = fields[position][yIndex][xIndex];
-          const lines = [readoutLine(frame.output, outputUnit, value), ...(bands ? bandLabels(value, bands) : [])];
-          return lines.map((line) => labelFor(request, charted, line));
-        }),
-      ),
-    );
+    const paint = fieldPaintFor(request, dynamicScanFrameFor(model, axes, modes, atmosphericPressure), scans);
+    traces.push(...paint.traces);
+    legend.push(...paint.bandLegend);
+    paint.zoneLegendOfSlot.forEach((entries, position) => legendOfSlot[position].push(...entries));
   }
 
   request.slots.forEach((charted, position) => {
@@ -208,15 +149,6 @@ export function dynamicSpec(
     legend,
     annotations: [],
   };
-}
-
-/**
- * The Comfort zones a scanned chart cuts from each slot's field, largest
- * first: the model's scan's own (`core/comfortZones`), each where |PMV| is
- * inside its limit. None for a model whose scan declares none.
- */
-function contouredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
-  return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);
 }
 
 /**

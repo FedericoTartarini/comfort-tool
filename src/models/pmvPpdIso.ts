@@ -68,7 +68,7 @@ export const pmvPpdIso = {
   // they cut |PMV|, not the signed `pmv` scanned here, and the drift test
   // pairs the classifier with the output it classifies by identity.
   //
-  // The zones are solved on `run` itself: Fanger unmodified at this edition.
+  // The zones are cut from a scan of `run` itself: Fanger unmodified at this edition.
   // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
   // Categories A, B and C, read off the bins the library classifies
   // `category` with: the category on the result is the library's, strict at
