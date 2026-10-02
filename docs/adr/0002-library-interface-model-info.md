@@ -346,8 +346,8 @@ Taken 2026-09-21, in a grilling session on what the dynamic chart scans and how 
     shapes; a polygons chart declares neither.
     **Amended 2026-10-01 (decisions 58 and 59).** "Explore's editable bands re-bin stored numbers" is the Band list of
     `core/bands.ts`, one per model; and on the Explore page the psychrometric chart is a scan of the same `output` too.
-    **Amended 2026-10-02 (decision 61).** `output` and `bands` are the model's `scan`, not a chart's; both charts scan
-    it, on every page.
+    **Amended 2026-10-02 (decision 61).** `output` and `bands` are the model's `scan`, not a chart's, `bands` named
+    `classifier` there; both charts scan it, on every page.
 28. **`GRID = 51`.** Amends ADR-0001 §2 "Precision" (100×100). 51 points are 50 intervals, so the SI steps are round
     (0.6 °C, 0.06 met, 2 % rh). One count for every axis rather than a step per quantity: the accuracy that matters is
     on screen and a count gives every axis the same, the cost per chart is fixed (2,601 calls), and no per-quantity
@@ -716,7 +716,8 @@ Taken 2026-09-22, in a grilling session on the four tickets the numeric-scan clo
     **Noted 2026-10-01 (decisions 58 and 59).** On the Explore page a polygons chart draws its zones as it does on
     Standard and has no Band list and no Bands panel.
     **Amended 2026-10-02 (decision 61).** A scanned chart declares `axes` alone; `output` and `bands` are the model's
-    `scan`. The two shapes are still told apart by the polygons chart's `zones`, and the `never` marks stay.
+    `scan`, `bands` named `classifier` there. The polygons chart's `zones` is named `comfortZones`, since its polygons
+    are Comfort zones; the two shapes are still told apart by it, and the `never` marks stay.
 38. **What the table shows first is what must come back unrounded; the registry-wide tests hold for a polygons chart
     and prove silence.** Amends decision 35, and restates the two tests decision 37 left throwing on a polygons chart.
     The unrounded test samples the table's first column, which every model declares (ADR-0001 §4.3), along the
@@ -1600,7 +1601,7 @@ notes under decisions 51 and 53:
     classification; reassigning colours by position after an edit, which recolours every band on an Add; sorting
     what was typed, as the prototype did.
     **Noted 2026-10-02 (decision 61).** "Both charts cut the same `output`" is now the declaration's shape: the
-    classifier the list copies is `model.scan.bands`.
+    classifier the list copies is `model.scan.classifier`.
 60. **A classifier's colours come from a palette table keyed by the classifier object, one colour family per
     classifier read at its band count; the colours are ColorBrewer's, copied, not a dependency.** Closes `P004`,
     ticket 17's note on the "none" swatch and `.scratch/compliance-column/` 01 and 02; amends decision 8 and
@@ -1638,9 +1639,11 @@ notes under decisions 51 and 53:
     boundaries are bisected row by row (`plots/matplotlib/_boundaries.py`: "Rasterising the whole plane and
     contouring it makes every edge out of grid cells") and which hides the supersaturated region under a white fill
     from the smooth saturation curve; jsthermalcomfort has no plots module. Rules. (1) The scanned output is the
-    model's: `scan: { output, bands, zones? }` on the declaration, one per model. A psychrometric chart declares
-    nothing but its type; a scanned dynamic chart its `axes`; a polygons chart `axes` and its `zones` function, as
-    before. A registry-wide test holds that a model declaring a psychrometric chart has `scan.zones`.
+    model's: `scan: { output, classifier, comfortZones? }` on the declaration, one per model, each field named for the
+    CONTEXT.md term it holds and not for the page that paints it, which decision 58 decides. A psychrometric chart
+    declares nothing but its type; a scanned dynamic chart its `axes`; a polygons chart `axes` and its
+    `comfortZones` function, renamed from `zones` because Adaptive's acceptability zones are Comfort zones drawn as
+    polygons. A registry-wide test holds that a model declaring a psychrometric chart has `scan.comfortZones`.
     `DeclaredScannedChart` goes; `core/bands.ts`, the session's classifier and the Standard page's zones read
     `model.scan`. (2) One `ScanFrame` — the model, the output, the two swept quantities each with its range, the
     entry modes and the pressure — one `scannedField`, and one painting of a field, Bands given a list and else the
