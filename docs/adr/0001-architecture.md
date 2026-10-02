@@ -323,6 +323,8 @@ Result table (`table`):
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 61** (2026-10-02): the "compliance-zone polygon (`psychrometricZone` …)" in the psychrometric row is a contour of a scan of the model's `scan.output` over the temperature axis and the humidity ratio, one per drawn slot, the field above the saturation line covered; the chart reads the pointer through a hover grid (temperature, humidity ratio, each slot's number), which is Phase 5 item 8. The dynamic row's `output` and `bands` are the model's `scan`, declared once. "The probe layer stays deferred for the psychrometric chart" below is closed.
 >
 > **Noted 2026-10-02** ([ADR-0002](0002-library-interface-model-info.md) decisions 58 and 61, as noted the same day; `.scratch/explore/` ticket 09): built as `2a397c4`, `47498cb`, `92d5408`, `d13fe36` and `76589c0`. In the decision-58 marker above, "the cells above saturation unpainted" is the decision-61 marker's cover over a scan run at every cell, and "on Explore both charts paint the model's Band list" holds for a chart the model scans: Adaptive's polygons chart draws its Comfort zones on Explore too. In the decision-61 marker, the scan's fields are `output`, `classifier` (decision 27's `bands`) and `comfortZones`, and the polygons chart's `zones` in the table and in the decision-37 marker above is `comfortZones`.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 62** (2026-10-02): the closed set gains `chartType.adaptive`, the chart the `chartType.dynamic` row below folds into its last sentence: locked axes `t_running_mean × operative_tmp`; each Comfort zone the two limit lines the declaration returns (`limits`), both stroked, the region between them filled, and the closing sides at the ends of the x range never stroked; marker points; no scan. It is named for the chart the deployed tool and the prototype draw under that name, not for a model; an EN 16798 adaptive model declares the same type. `chartType.dynamic` is scanned only. Every chart is drawn in one order — fills, chrome, outlines, hover grid, the psychrometric chart's cover and saturation line, markers — so the RH isolines are cut only by an outline.
 
 
 | Type | Definition |
@@ -363,6 +365,8 @@ Hover rules (2026-09-04):
   deployed tool's t/rh/hr readout box is itself a Phase 5c interface concern.
 
 > **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 37 as noted 2026-09-28** (review after Phase 4b, `P008`): a zone polygon no longer answers inside its fill; a polygons chart answers through its spec's hover grid. The probe layer stays deferred for the psychrometric chart.
+>
+> **Amended by [ADR-0002](0002-library-interface-model-info.md) decision 62** (2026-10-02): "the banded surface is a contour" is one `contourFill` per Band and one `contourLine` at each Edge, and a Comfort zone the same pair; the Plotly adapter draws fills and lines and knows no band. Band outlines are chrome, `hover: "off"`, like the isolines.
 
 
 Legend rules:
