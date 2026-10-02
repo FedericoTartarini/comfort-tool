@@ -133,9 +133,11 @@ export interface DeclaredScan {
   /**
    * The Comfort zones Standard draws on {@link output}, nested, one per
    * limit: one for a standard with one interval, one per category for a
-   * category standard. Absent for a model whose standard draws no limit on
-   * it. A model declaring the psychrometric chart has them, which a
-   * registry-wide test holds (`core/modelDeclaration.test.ts`).
+   * category standard. `core/comfortZones` builds |PMV| limits
+   * ({@link ComfortZone}), so a model declaring them scans `pmv`. Absent for
+   * a model whose standard draws no limit on it. A model declaring the
+   * psychrometric chart has them, which a registry-wide test holds
+   * (`core/modelDeclaration.test.ts`).
    */
   readonly comfortZones?: readonly [ComfortZone, ...ComfortZone[]];
 }
@@ -156,6 +158,11 @@ export interface DeclaredScan {
  */
 export type DeclaredChart =
   | {
+      /**
+       * The zones are solved on `run`'s own `pmv`, so the model's result must
+       * carry one, unrounded (ADR-0002 decision 18, revised 2026-09-18); a
+       * registry-wide test holds it (`core/modelDeclaration.test.ts`).
+       */
       readonly type: typeof chartType.psychrometric;
       readonly axes?: never;
       readonly comfortZones?: never;

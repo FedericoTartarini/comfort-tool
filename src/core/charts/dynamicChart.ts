@@ -255,8 +255,8 @@ export function dynamicSpec(
 
 /**
  * The Comfort zones a scanned chart cuts from each slot's field, largest
- * first: the model's scan's own (`core/comfortZones`), each where its output
- * lies within ± its limit. None for a model whose scan declares none.
+ * first: the model's scan's own (`core/comfortZones`), each where |PMV| is
+ * inside its limit. None for a model whose scan declares none.
  */
 function contouredZonesOf(model: RegisteredModel): readonly ComfortZone[] {
   return [...(model.scan?.comfortZones ?? [])].sort((a, b) => b.limit - a.limit);

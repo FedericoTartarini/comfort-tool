@@ -376,7 +376,7 @@ describe("requireAxisRange", () => {
  */
 export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): DeclaredChart[] {
   const axes = { x: q.v, y: q.operative_tmp };
-  const bands = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
+  const classifier = PMV_THERMAL_SENSATION_VOTE_BINS_ISO;
   const zone = { label: "Zone", limit: 0.5, inclusive: false };
   return [
     { type: chartType.psychrometric },
@@ -385,7 +385,7 @@ export function chartShapesTypeProof(polygons: readonly ZonePolygon[]): Declared
     // @ts-expect-error an output on a chart, which is the model's scan's
     { type: chartType.dynamic, axes, output: q.pmv },
     // @ts-expect-error a classifier on a chart, which is the model's scan's
-    { type: chartType.dynamic, axes, bands },
+    { type: chartType.dynamic, axes, classifier },
     // @ts-expect-error a psychrometric chart with axes, which its temperature entry mode fixes
     { type: chartType.psychrometric, axes },
     // @ts-expect-error a psychrometric chart with Comfort zones, which are the model's scan's

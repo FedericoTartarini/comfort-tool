@@ -168,18 +168,22 @@ const ROUNDED_GRID_PER_UNIT = 100;
 const SAMPLES_ALONG_THE_AXIS = 25;
 
 /**
- * How many of the first table column's values, sampled along the dynamic
- * chart's x axis, carry more decimals than any rounding the library applies
- * would leave. The first column because every model declares one, whatever
+ * How many of `quantity`'s values, sampled along the dynamic chart's x axis,
+ * carry more decimals than any rounding the library applies would leave. The
+ * first table column by default, because every model declares one, whatever
  * its chart scans or draws, and what the table shows is what must be
- * unrounded (ADR-0002 decision 38). A count over the whole sample rather than
- * an assertion per value: an unrounded kernel still returns a value on the
- * grid now and then, and one such value says nothing.
+ * unrounded (ADR-0002 decision 38); the scan's output beside it, which every
+ * scanned chart contours (decision 61). A count over the whole sample rather
+ * than an assertion per value: an unrounded kernel still returns a value on
+ * the grid now and then, and one such value says nothing.
  */
-function unroundedSampleCount(model: RegisteredModel, chart: DeclaredDynamicChart): number {
+function unroundedSampleCount(
+  model: RegisteredModel,
+  chart: DeclaredDynamicChart,
+  quantity: Quantity | undefined = model.table[0],
+): number {
   const { range, valueAt } = alongTheXAxis(model, chart);
-  const column = model.table[0];
-  if (!column) {
+  if (!quantity) {
     throw new Error(`${model.info.label} declares no table column`);
   }
   // A kernel out of its domain returns NaN, which is off no grid and on every
@@ -188,9 +192,9 @@ function unroundedSampleCount(model: RegisteredModel, chart: DeclaredDynamicChar
   // next model would fail this test with the wrong reason printed. A first
   // column that is a category or a yes-or-no answer has no decimals to check.
   const finite = (position: number) => {
-    const value = valueAt(position, column);
+    const value = valueAt(position, quantity);
     if (typeof value !== "number" || !Number.isFinite(value)) {
-      throw new Error(`${model.info.label} returns ${String(value)} for ${column.label} at ${chart.axes.x.label} ${position}`);
+      throw new Error(`${model.info.label} returns ${String(value)} for ${quantity.label} at ${chart.axes.x.label} ${position}`);
     }
     return value;
   };
@@ -233,7 +237,7 @@ function isoRounding(round_output: boolean) {
 }
 
 describe("run's numbers", () => {
-  it("come back unrounded in the table's first column, for every registered model", () => {
+  it("come back unrounded in the table's first column and the scan's output, for every registered model", () => {
     for (const model of registeredModels) {
       const chart = dynamicChartOf(model);
       if (!chart) continue;
@@ -244,6 +248,9 @@ describe("run's numbers", () => {
       // the chart's band and the table's category disagree, and the dynamic
       // chart's surface becomes a staircase.
       expect(unroundedSampleCount(model, chart), `${model.info.label} first table column`).toBeGreaterThan(0);
+      if (model.scan) {
+        expect(unroundedSampleCount(model, chart, model.scan.output), `${model.info.label} scan output`).toBeGreaterThan(0);
+      }
     }
   });
 

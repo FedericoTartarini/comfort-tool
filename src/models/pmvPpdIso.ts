@@ -64,9 +64,9 @@ export const pmvPpdIso = {
   ],
   table: [q.pmv, q.ppd],
   // The scanned number is `pmv`, cut by the same thermal-sensation bins the
-  // kernel classifies `tsv` with. The category bins cannot be the Bands:
+  // kernel classifies `tsv` with. The category bins cannot be the classifier:
   // they cut |PMV|, not the signed `pmv` scanned here, and the drift test
-  // pairs Bands with the output they classify by identity.
+  // pairs the classifier with the output it classifies by identity.
   //
   // The zones are solved on `run` itself: Fanger unmodified at this edition.
   // The elevated-air-speed cooling effect belongs to `pmv_ppd_ashrae`.
@@ -74,6 +74,10 @@ export const pmvPpdIso = {
   // `category` with: the category on the result is the library's, strict at
   // both ends, so a PMV of exactly 0.5 is C. The deployed tool's `≤` is a
   // difference not ported.
-  scan: { output: q.pmv, classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO, comfortZones: categoryZones(PMV_CATEGORY_BINS_ISO) },
+  scan: {
+    output: q.pmv,
+    classifier: PMV_THERMAL_SENSATION_VOTE_BINS_ISO,
+    comfortZones: categoryZones(PMV_CATEGORY_BINS_ISO),
+  },
   charts: [{ type: chartType.psychrometric }, { type: chartType.dynamic, axes: { x: q.tdb, y: q.v } }],
 } satisfies RegisteredModel;
