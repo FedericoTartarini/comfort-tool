@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { bandListOf } from "$lib/core/bands";
+import { chartInk } from "$lib/core/bandPalette";
 import type { BandTrace, ChartSpec, PointTrace } from "$lib/core/charts/chartSpec";
 import { chartType } from "$lib/core/chartType";
 import type { RegisteredModel } from "$lib/core/modelDeclaration";
@@ -83,12 +84,16 @@ describe("The page in the session", () => {
       }
     });
 
-    it("paints the current model's Band list on the psychrometric chart over slot 1's scan, and no zone", () => {
+    it("paints the current model's Band list on the psychrometric chart over slot 1's scan, the cover above it, and no zone", () => {
       const session = sessionComparingThreeSlots(pmvPpdIso);
       session.chart.type = chartType.psychrometric;
       const outputs = new Outputs(session);
-      const zonePaths = () => (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill !== undefined);
+      const filledPaths = (fill: (color: string) => boolean) =>
+        (outputs.chart?.traces ?? []).filter((trace) => trace.kind === "path" && trace.fill !== undefined && fill(trace.fill));
+      const zonePaths = () => filledPaths((color) => color !== chartInk.ground);
+      const covers = () => filledPaths((color) => color === chartInk.ground);
       expect(zonePaths()).toHaveLength(9);
+      expect(covers()).toHaveLength(1);
       openAt(session, page.explore);
 
       const list = session.chart.bands;
@@ -96,10 +101,11 @@ describe("The page in the session", () => {
       expect(bands.map((trace) => trace.bands.map((band) => [band.label, band.color]))).toEqual([
         list?.labels.map((label, index) => [label, list.colors[index]]),
       ]);
-      const scan = outputs.slots[0].psychrometricScan;
-      expect(bands[0].z).toEqual(scan.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));
-      expect(bands[0].z.flat()).toContain(null);
+      expect(bands[0].z).toEqual(outputs.slots[0].scan);
+      expect(bands[0].z.flat()).not.toContain(null);
       expect(zonePaths()).toHaveLength(0);
+      const traces = outputs.chart?.traces ?? [];
+      expect(traces.indexOf(covers()[0])).toBeGreaterThan(traces.indexOf(bands[0]));
       expect(markedPositions(outputs.chart)).toEqual([0]);
     });
 
@@ -108,12 +114,12 @@ describe("The page in the session", () => {
       session.chart.type = chartType.psychrometric;
       const outputs = new Outputs(session);
       openAt(session, page.explore);
-      const scan = outputs.slots[0].psychrometricScan;
+      const scan = outputs.slots[0].scan;
 
       expect(session.chart.moveBandEdge(2, -0.1)).toBe(true);
       const bands = outputs.chart?.traces.find((trace): trace is BandTrace => trace.kind === "bands");
       expect(bands?.bands.map((band) => band.upper)).toEqual(session.chart.bands?.edges);
-      expect(outputs.slots[0].psychrometricScan).toBe(scan);
+      expect(outputs.slots[0].scan).toBe(scan);
     });
 
     it("paints Adaptive's polygons, which have no Band list", () => {

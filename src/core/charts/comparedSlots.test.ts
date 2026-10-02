@@ -6,6 +6,7 @@
  * gives, so no number here is written by hand.
  */
 import { describe, expect, it } from "vitest";
+import { chartInk } from "$lib/core/bandPalette";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
 import {
   dynamicChartOf,
@@ -48,9 +49,11 @@ const q = quantities;
 /** A zone of either kind: a traced polygon, or a contour of a scanned field. */
 type ZoneTrace = PathTrace | ContourZoneTrace;
 
+/** The zones: the contours and the filled paths but the cover in the plot's ground. */
 function zonesOf(spec: ChartSpec): ZoneTrace[] {
   return spec.traces.filter(
-    (trace): trace is ZoneTrace => trace.kind === "contourZone" || (trace.kind === "path" && trace.fill !== undefined),
+    (trace): trace is ZoneTrace =>
+      trace.kind === "contourZone" || (trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground),
   );
 }
 

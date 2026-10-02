@@ -12,6 +12,7 @@
  */
 import { hr_to_rh, psy_ta_rh } from "jsthermalcomfort";
 import { describe, expect, it } from "vitest";
+import { chartInk } from "$lib/core/bandPalette";
 import type { ChartSpec, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
 import { humidityMode } from "$lib/core/entryModes";
 import { requireAxisRange, type RegisteredModel } from "$lib/core/modelDeclaration";
@@ -306,9 +307,11 @@ function isolinesOf(chart: ChartSpec | null): { rh: number; trace: PathTrace }[]
     .map((trace) => ({ rh: Number.parseFloat(trace.label?.slice(q.rh.label.length) ?? ""), trace }));
 }
 
-/** The comfort zones of a chart: its filled paths, largest first. */
+/** The comfort zones of a chart: its filled paths but the cover in the plot's ground, largest first. */
 function zonesOf(chart: ChartSpec | null): PathTrace[] {
-  return (chart?.traces ?? []).filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
+  return (chart?.traces ?? []).filter(
+    (trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground,
+  );
 }
 
 /** The slot's marker on a chart. */

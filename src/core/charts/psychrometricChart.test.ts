@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { clo_dynamic_iso, PMV_COMPLIANCE_INTERVAL_ASHRAE, pmv_ppd_iso, psy_ta_rh, v_relative } from "jsthermalcomfort";
+import { chartInk } from "$lib/core/bandPalette";
 import { intervalZone } from "$lib/core/comfortZones";
 import { enteredSlotFor } from "$lib/core/declarationTestSlots";
 import { temperatureMode } from "$lib/core/entryModes";
@@ -53,9 +54,11 @@ function requestWithZones(zones: readonly [ComfortZone, ...ComfortZone[]]): Char
   return { ...request(temperatureMode.separate), model: { ...pmvPpdIso, scan: { ...pmvPpdIso.scan, comfortZones: zones } } };
 }
 
-/** The zone outlines: the filled paths in the spec, in drawing order. */
+/** The zone outlines: the filled paths in the spec but the cover in the plot's ground, in drawing order. */
 function zonePaths(spec: { traces: readonly Trace[] }): PathTrace[] {
-  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
+  return spec.traces.filter(
+    (trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground,
+  );
 }
 
 /**

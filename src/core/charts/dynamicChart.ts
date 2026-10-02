@@ -11,17 +11,8 @@ import {
   type RegisteredModel,
   type ZonePolygon,
 } from "$lib/core/modelDeclaration";
-import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
-import {
-  enteredQuantities,
-  enteredValue,
-  underEntryModes,
-  withEnteredValues,
-  withEntryModes,
-  type Slot,
-  type ValueEntryModes,
-} from "$lib/core/slot";
+import { enteredQuantities, enteredValue, underEntryModes, withEntryModes, type ValueEntryModes } from "$lib/core/slot";
 import { displayUnitFor } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest } from "./chartRequest";
@@ -31,73 +22,39 @@ import {
   bandLabels,
   bandsFor,
   contourZoneFor,
+  GRID,
   labelFor,
   markerFor,
   readoutLine,
   samples,
+  scannedField,
   zoneFor,
+  type ScanFrame,
+  type ScannedField,
 } from "./specParts";
 import { containsPoint } from "./polygon";
 
 /**
- * One count for every axis, every model and both scanned charts: 51 points are
- * 50 intervals, so the SI steps are round (ADR-0002 decision 28).
- */
-export const GRID = 51;
-
-/**
- * What every slot's scan on one chart shares: the model and the output it
- * scans, the two axes swept, the entry modes they are in, and the
- * atmospheric pressure. A slot's scan is a function of this and the slot
- * alone, so the outputs can keep one per slot and an edit to one slot scans
- * that slot and no other (`state/compute.svelte.ts`).
- */
-export interface ScanFrame {
-  readonly model: RegisteredModel;
-  readonly output: Quantity;
-  readonly axes: ChartAxes;
-  readonly entryModes: ValueEntryModes;
-  readonly atmosphericPressure: number;
-}
-
-/**
- * One slot's scan: the model's own number for the frame's output at every cell of
- * the `GRID × GRID` field, `[yIndex][xIndex]`, in the output's SI unit.
- */
-export type ScannedField = readonly (readonly number[])[];
-
-/**
  * The frame `model`'s scanned dynamic chart is scanned in: the model's scan's
- * output, on the picked `axes` resolved under `modes` ({@link resolvedAxes}).
+ * output, on the picked `axes` resolved under `modes` ({@link resolvedAxes}),
+ * each across its declared range.
  */
-export function scanFrameFor(
+export function dynamicScanFrameFor(
   model: RegisteredModel,
   axes: ChartAxes,
   modes: ValueEntryModes,
   atmosphericPressure: number,
 ): ScanFrame {
   const { output } = requireScan(model);
-  return { model, output, axes: resolvedAxes(model, axes, modes), entryModes: modes, atmosphericPressure };
-}
-
-/**
- * `slot` scanned in `frame`: converted into the frame's entry modes first, by
- * the entry-mode change's own conversion, so a slot entered in another mode
- * is swept on the quantities it would hold after that change.
- */
-export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
-  const { model, output, axes, atmosphericPressure } = frame;
-  const converted = withEntryModes(slot, frame.entryModes, model);
-  const xValues = samples(requireAxisRange(model, axes.x), GRID);
-  return samples(requireAxisRange(model, axes.y), GRID).map((yValue) =>
-    xValues.map((xValue) => {
-      const point = withEnteredValues(converted, new Map([
-        [axes.x, xValue],
-        [axes.y, yValue],
-      ]));
-      return resultNumber(runOn(point, model, atmosphericPressure), output);
-    }),
-  );
+  const { x, y } = resolvedAxes(model, axes, modes);
+  return {
+    model,
+    output,
+    x: { quantity: x, range: requireAxisRange(model, x) },
+    y: { quantity: y, range: requireAxisRange(model, y) },
+    entryModes: modes,
+    atmosphericPressure,
+  };
 }
 
 /**
@@ -118,7 +75,7 @@ export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
  * here (ADR §4.4's hover rules), and with a list the band the library's
  * `classifyFromBins` puts it in on that list, so no Edge and no inclusivity
  * rule is written here. `scans`, one per slot in the request's order, are the
- * slots' fields in the frame this chart is drawn in ({@link scanFrameFor}); a
+ * slots' fields in the frame this chart is drawn in ({@link dynamicScanFrameFor}); a
  * caller that keeps them hands them over, and without them every slot is
  * scanned here.
  *
@@ -197,7 +154,7 @@ export function dynamicSpec(
       ),
     );
   } else {
-    const frame = scanFrameFor(model, axes, modes, atmosphericPressure);
+    const frame = dynamicScanFrameFor(model, axes, modes, atmosphericPressure);
     const fields = scans ?? request.slots.map((charted) => scannedField(frame, charted.slot));
     const outputUnit = displayUnitFor(frame.output, unitSystem);
     const surfaces = fields.map((field) => field.map((row) => row.map((value) => (Number.isNaN(value) ? null : value))));

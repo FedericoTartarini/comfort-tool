@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ADAPTIVE_ASHRAE_INFO, t_o } from "jsthermalcomfort";
+import { chartInk } from "$lib/core/bandPalette";
 import { chartType } from "$lib/core/chartType";
 import { enteredSlotFor, entryModesWithAirSpeed, entryModesWithClothing, entryModesWithTemperature } from "$lib/core/declarationTestSlots";
 import { airSpeedMode, clothingMode, temperatureMode } from "$lib/core/entryModes";
@@ -512,9 +513,11 @@ describe("Adaptive's acceptability zones", () => {
   });
 });
 
-/** The filled paths: a chart's zones. */
+/** The filled paths but the psychrometric chart's cover in the plot's ground: a chart's zones. */
 function zoneTraces(spec: ChartSpec): PathTrace[] {
-  return spec.traces.filter((trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined);
+  return spec.traces.filter(
+    (trace): trace is PathTrace => trace.kind === "path" && trace.fill !== undefined && trace.fill !== chartInk.ground,
+  );
 }
 
 function rgbaOf(color: string | undefined): { rgb: string; alpha: number } {

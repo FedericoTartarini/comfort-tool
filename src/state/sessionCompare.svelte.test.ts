@@ -11,11 +11,14 @@
  */
 import { describe, expect, it } from "vitest";
 import type { ChartSpec, ContourZoneTrace, PathTrace, PointTrace } from "$lib/core/charts/chartSpec";
+import { dynamicScanFrameFor } from "$lib/core/charts/dynamicChart";
+import { psychrometricScanFrameFor } from "$lib/core/charts/psychrometricChart";
+import { scannedField, type ScanFrame } from "$lib/core/charts/specParts";
 import { chartType } from "$lib/core/chartType";
 import { airSpeedMode, clothingMode, humidityMode, temperatureMode } from "$lib/core/entryModes";
 import type { RegisteredModel, Values } from "$lib/core/modelDeclaration";
 import { DEFAULT_ATMOSPHERIC_PRESSURE, quantities, type Quantity } from "$lib/core/quantities";
-import { entryModesOf } from "$lib/core/slot";
+import { entryModesOf, type ValueEntryModes } from "$lib/core/slot";
 import { slotBadges } from "$lib/core/slotBadge";
 import { unitSystem } from "$lib/core/unitSystem";
 import { adaptiveAshrae } from "$lib/models/adaptiveAshrae";
@@ -635,5 +638,61 @@ describe("the session's entry modes", () => {
         expect(markerAt(outputs.chart, position)?.x).toBe(heldSlot(session, position).values.get(mode.axis));
       });
     }
+  });
+});
+
+describe("the compared slots' scans", () => {
+  /** The slot's scan in `frameOf`'s frame, of its own last valid run. */
+  function expectScansOf(outputs: Outputs, frameOf: (modes: ValueEntryModes, pressure: number) => ScanFrame): void {
+    for (const slot of outputs.slots) {
+      const last = slot.lastValid;
+      if (!last) {
+        throw new Error(`${slot.badge.name} has no run`);
+      }
+      expect(slot.scan).toEqual(scannedField(frameOf(entryModesOf(last.slot), last.atmosphericPressure), last.slot));
+    }
+  }
+
+  it("are each drawn slot's own of the psychrometric chart while it is on screen", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    heldSlot(session, 1).setEntered(q.tdb, 28);
+    session.chart.type = chartType.psychrometric;
+    const outputs = new Outputs(session);
+
+    expect(positionsAskedAbout(outputs)).toEqual([0, 1, 2]);
+    expectScansOf(outputs, (modes, pressure) => psychrometricScanFrameFor(pmvPpdIso, modes, pressure));
+  });
+
+  it("are each drawn slot's own of the dynamic chart while it is on screen", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    heldSlot(session, 1).setEntered(q.tdb, 28);
+    session.chart.type = chartType.dynamic;
+    const outputs = new Outputs(session);
+
+    expectScansOf(outputs, (modes, pressure) => dynamicScanFrameFor(pmvPpdIso, session.chart.axes, modes, pressure));
+  });
+
+  it("are none while a polygons chart is on screen", () => {
+    const session = new Session(adaptiveAshrae);
+    const outputs = new Outputs(session);
+
+    expect(outputs.chart).not.toBeNull();
+    expect(() => outputs.slots[0].scan).toThrow();
+  });
+
+  it("change for an edit to slot 1 on its own, the others' kept as the same objects", () => {
+    const session = sessionComparingThreeSlots(pmvPpdIso);
+    session.chart.type = chartType.psychrometric;
+    const outputs = new Outputs(session);
+    void outputs.chart;
+    const before = outputs.slots.map((slot) => slot.scan);
+
+    session.slots[0].setEntered(q.tdb, 27);
+    void outputs.chart;
+
+    const after = outputs.slots.map((slot) => slot.scan);
+    expect(after[0]).not.toBe(before[0]);
+    expect(after.slice(1)).toEqual(before.slice(1));
+    after.slice(1).forEach((scan, index) => expect(scan).toBe(before[index + 1]));
   });
 });

@@ -1,19 +1,82 @@
 /**
- * The pieces both spec builders assemble: the slot marker, a Comfort zone, an
- * axis, the samples of a range, what the slots of a request share, a Band
- * list's paint and a readout's lines. Each is written here once, so the
+ * The pieces both spec builders assemble: the scan, the slot marker, a Comfort
+ * zone, an axis, the samples of a range, what the slots of a request share, a
+ * Band list's paint and a readout's lines. Each is written here once, so the
  * psychrometric and the dynamic chart draw them alike.
  */
 import { classifyFromBins } from "jsthermalcomfort";
 import { chartInk } from "$lib/core/bandPalette";
 import type { BandList } from "$lib/core/bands";
-import type { Range } from "$lib/core/modelDeclaration";
+import type { Range, RegisteredModel } from "$lib/core/modelDeclaration";
+import { resultNumber, runOn } from "$lib/core/modelRun";
 import type { Quantity } from "$lib/core/quantities";
+import { withEnteredValues, withEntryModes, type Slot, type ValueEntryModes } from "$lib/core/slot";
 import type { SlotBadge, SlotHue } from "$lib/core/slotBadge";
 import { labelWithUnit, numberWithUnit, type DisplayUnit } from "$lib/core/units";
 import { copy } from "$lib/text/copy";
 import type { ChartRequest, ChartedSlot } from "./chartRequest";
 import type { AxisSpec, BandFill, BandTrace, ContourZoneTrace, LegendEntry, PathTrace, PointTrace } from "./chartSpec";
+
+/**
+ * One count for every axis, every model and both scanned charts: 51 points are
+ * 50 intervals, so the SI steps are round (ADR-0002 decision 28).
+ */
+export const GRID = 51;
+
+/** A quantity a scan sweeps, and the range, in SI, it is swept across. */
+export interface Sweep {
+  readonly quantity: Quantity;
+  readonly range: Range;
+}
+
+/**
+ * What every slot's scan on one chart shares (ADR-0002 decision 61): the
+ * model and the output it scans, the two quantities swept, the entry modes
+ * the slot is converted into, and the atmospheric pressure. A slot's scan is
+ * a function of this and the slot alone, so the outputs can keep one per slot
+ * and an edit to one slot scans that slot and no other
+ * (`state/compute.svelte.ts`). Each chart builds its own frame; the scan is
+ * the same for both.
+ */
+export interface ScanFrame {
+  readonly model: RegisteredModel;
+  readonly output: Quantity;
+  readonly x: Sweep;
+  readonly y: Sweep;
+  readonly entryModes: ValueEntryModes;
+  readonly atmosphericPressure: number;
+}
+
+/**
+ * One slot's scan: the model's own number for the frame's output at every cell of
+ * the `GRID × GRID` field, `[yIndex][xIndex]`, in the output's SI unit.
+ */
+export type ScannedField = readonly (readonly number[])[];
+
+/**
+ * `slot` scanned in `frame`: converted into the frame's entry modes first, by
+ * the entry-mode change's own conversion, so a slot entered in another mode
+ * is swept on the quantities it would hold after that change; then each cell
+ * entered over the two swept quantities, as the person enters a value, and
+ * the model run. A swept humidity quantity puts the cell in that humidity's
+ * entry mode, so the slot's own conversion gives the cell its relative
+ * humidity and the scan converts nothing itself. Every cell is run: one the
+ * model has no number for is `NaN`.
+ */
+export function scannedField(frame: ScanFrame, slot: Slot): ScannedField {
+  const { model, output, x, y, atmosphericPressure } = frame;
+  const converted = withEntryModes(slot, frame.entryModes, model);
+  const xValues = samples(x.range, GRID);
+  return samples(y.range, GRID).map((yValue) =>
+    xValues.map((xValue) => {
+      const cell = withEnteredValues(converted, new Map([
+        [x.quantity, xValue],
+        [y.quantity, yValue],
+      ]));
+      return resultNumber(runOn(cell, model, atmosphericPressure), output);
+    }),
+  );
+}
 
 /**
  * `label`, a legend entry's or a readout line's, as the chart names it for
