@@ -76,12 +76,6 @@ function expectEachChartTypeOnce(model: RegisteredModel): void {
   expect(new Set(types).size, model.info.label).toBe(types.length);
 }
 
-/** The psychrometric zone is traced on `run`'s own PMV, so a model without one cannot declare the chart. */
-function expectPmvUnderAPsychrometricChart(model: RegisteredModel): void {
-  if (!psychrometricChartOf(model)) return;
-  expect(model.info.outputs[q.pmv.key], model.info.label).toBeDefined();
-}
-
 /**
  * The psychrometric chart declares nothing but its type, so what it paints on
  * Standard is the model's scan's Comfort zones: a model without them would
@@ -102,12 +96,6 @@ describe("charts", () => {
   it("name each chart type once, for every registered model", () => {
     for (const model of registeredModels) {
       expectEachChartTypeOnce(model);
-    }
-  });
-
-  it("include a psychrometric chart only where the model info carries PMV, for every registered model", () => {
-    for (const model of registeredModels) {
-      expectPmvUnderAPsychrometricChart(model);
     }
   });
 
@@ -146,15 +134,6 @@ describe("charts", () => {
       charts: [...pmvPpdIso.charts, dynamic],
     };
     expect(() => expectEachChartTypeOnce(twoDynamicCharts)).toThrow(twoDynamicCharts.info.label);
-  });
-
-  it("that include a psychrometric chart on a model info without PMV fail the check", () => {
-    const outputs = Object.fromEntries(Object.entries(pmvPpdIso.info.outputs).filter(([key]) => key !== q.pmv.key));
-    const noPmv: RegisteredModel = {
-      ...pmvPpdIso,
-      info: { ...pmvPpdIso.info, label: "Fixture without PMV", outputs },
-    };
-    expect(() => expectPmvUnderAPsychrometricChart(noPmv)).toThrow(noPmv.info.label);
   });
 });
 

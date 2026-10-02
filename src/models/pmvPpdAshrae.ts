@@ -39,8 +39,8 @@ export const pmvPpdAshrae = {
   // since external work is not an input of the app; `limit_inputs: false`,
   // since the app gates entered values itself and reads the rows the run
   // breaks off `warnings`, the air-speed rule's among them; `round_output:
-  // false`, since the psychrometric zone is root-found on this `pmv` and the
-  // display rounds; `suppress_warnings: true`, since the cooling effect logs
+  // false`, since the charts contour the zone on a scan of this `pmv` and
+  // the display rounds; `suppress_warnings: true`, since the cooling effect logs
   // each time it assumes 0 and a chart scan calls it per cell. No `units`: the
   // library's default is SI, and so is the boundary (ADR-0002 decision 1).
   run: (values, options) =>

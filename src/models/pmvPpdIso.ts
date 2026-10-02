@@ -22,9 +22,9 @@ export const pmvPpdIso = {
   // After the quantities, the app's fixed policy: `wme: 0`, since external
   // work is not an input of the app; `limit_inputs: false`, since the app
   // gates entered values itself and reads the rows the run breaks off
-  // `warnings`; `round_output: false`, since the psychrometric zone is
-  // root-found on this `pmv` and the display rounds. No `units`: the
-  // library's default is SI, and so is the boundary (ADR-0002 decision 1).
+  // `warnings`; `round_output: false`, since the charts contour the zones on
+  // a scan of this `pmv` and the display rounds. No `units`: the library's
+  // default is SI, and so is the boundary (ADR-0002 decision 1).
   run: (values) =>
     pmv_ppd_iso({
       tdb: values.tdb,
